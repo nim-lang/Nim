@@ -1125,15 +1125,17 @@ type
     data*: string ## A string data.
                   ## This is updated when called `writeLine` etc.
     pos: int
+    endPos: int # Where the buffer is ended, only moves right never left
+    growthRate: int # User defineable growthrate to allow allocations change
 
 when (NimMajor, NimMinor) < (1, 3) and defined(js):
   proc ssAtEnd(s: Stream): bool {.compileTime.} =
     var s = StringStream(s)
-    return s.pos >= s.data.len
+    return s.pos >= s.endPos
 
   proc ssSetPosition(s: Stream, pos: int) {.compileTime.} =
     var s = StringStream(s)
-    s.pos = clamp(pos, 0, s.data.len)
+    s.pos = clamp(pos, 0, s.endPos)
 
   proc ssGetPosition(s: Stream): int {.compileTime.} =
     var s = StringStream(s)
@@ -1141,7 +1143,7 @@ when (NimMajor, NimMinor) < (1, 3) and defined(js):
 
   proc ssReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int {.compileTime.} =
     var s = StringStream(s)
-    result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
+    result = min(slice.b + 1 - slice.a, s.endPos - s.pos)
     if result > 0:
       buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
       inc(s.pos, result)
@@ -1152,9 +1154,11 @@ when (NimMajor, NimMinor) < (1, 3) and defined(js):
     var s = StringStream(s)
     s.data = ""
 
-  proc newStringStream*(s: string = ""): owned StringStream {.compileTime.} =
+  proc newStringStream*(s: string = "", growthRate = 0): owned StringStream {.compileTime.} =
     new(result)
     result.data = s
+    result.endPos = s.len
+    result.growthRate = growthRate
     result.pos = 0
     result.closeImpl = ssClose
     result.atEndImpl = ssAtEnd
@@ -1179,11 +1183,11 @@ when (NimMajor, NimMinor) < (1, 3) and defined(js):
 else: # after 1.3 or JS not defined
   proc ssAtEnd(s: Stream): bool =
     var s = StringStream(s)
-    return s.pos >= s.data.len
+    return s.pos >= s.endPos
 
   proc ssSetPosition(s: Stream, pos: int) =
     var s = StringStream(s)
-    s.pos = clamp(pos, 0, s.data.len)
+    s.pos = clamp(pos, 0, s.endPos)
 
   proc ssGetPosition(s: Stream): int =
     var s = StringStream(s)
@@ -1191,7 +1195,7 @@ else: # after 1.3 or JS not defined
 
   proc ssReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
     var s = StringStream(s)
-    result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
+    result = min(slice.b + 1 - slice.a, s.endPos - s.pos)
     if result > 0:
       jsOrVmBlock:
         buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
@@ -1203,7 +1207,7 @@ else: # after 1.3 or JS not defined
 
   proc ssReadData(s: Stream, buffer: pointer, bufLen: int): int =
     var s = StringStream(s)
-    result = min(bufLen, s.data.len - s.pos)
+    result = min(bufLen, s.endPos - s.pos)
     if result > 0:
       when defined(js):
         try:
@@ -1219,7 +1223,7 @@ else: # after 1.3 or JS not defined
 
   proc ssPeekData(s: Stream, buffer: pointer, bufLen: int): int =
     var s = StringStream(s)
-    result = min(bufLen, s.data.len - s.pos)
+    result = min(bufLen, s.endPos - s.pos)
     if result > 0:
       when defined(js):
         try:
@@ -1237,7 +1241,7 @@ else: # after 1.3 or JS not defined
     if bufLen <= 0:
       return
     if s.pos + bufLen > s.data.len:
-      setLen(s.data, s.pos + bufLen)
+      setLen(s.data, max((s.data.len + 1) * s.growthRate, s.pos + bufLen)) # 0 * 2 == 0 so we offset left by one
     when defined(js):
       try:
         s.data[s.pos..<s.pos+bufLen] = cast[ptr string](buffer)[][0..<bufLen]
@@ -1247,14 +1251,19 @@ else: # after 1.3 or JS not defined
     elif not defined(nimscript):
       copyMem(addr(s.data[s.pos]), buffer, bufLen)
     inc(s.pos, bufLen)
+    if s.pos > s.endPos: # When we do `s.setPosition` dont want to move end pos until it's reached
+      inc(s.endPos, bufLen)
 
   proc ssClose(s: Stream) =
     var s = StringStream(s)
     s.data = ""
 
-  proc newStringStream*(s: sink string = ""): owned StringStream =
+  proc newStringStream*(s: sink string = "", growthRate = 0): owned StringStream =
     ## Creates a new stream from the string `s`.
-    ##
+    ## 
+    ## If `growthRate` is less than or equal to `1` the internal data is sized exactly,
+    ## otherwise it grows by the provided rate everytime it needs to grow saving allocations.
+    ## In the case data written is larger than the growth rate it's sized exactly regardless.
     ## See also:
     ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
     ##   opened File.
@@ -1272,6 +1281,8 @@ else: # after 1.3 or JS not defined
     new(result)
     result.data = s
     result.pos = 0
+    result.endPos = s.len
+    result.growthRate = growthRate
     result.closeImpl = ssClose
     result.atEndImpl = ssAtEnd
     result.setPositionImpl = ssSetPosition
