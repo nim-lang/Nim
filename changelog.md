@@ -172,6 +172,8 @@
   Added `symbolName` to return the enum symbol name ignoring the human readable name.
   Added `symbolRank` to return the index in which an enum member is listed in an enum.
 
+- Added `freshIdentNodes` in macros, for replacing `nnkSym` nodes to identifier nodes.
+
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
 

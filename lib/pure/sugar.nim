@@ -193,22 +193,6 @@ macro dumpToString*(x: untyped): string =
   result.add newLit repr(x)
   result.add x
 
-# TODO: consider exporting this in macros.nim
-proc freshIdentNodes(ast: NimNode): NimNode =
-  # Replace NimIdent and NimSym by a fresh ident node
-  # see also https://github.com/nim-lang/Nim/pull/8531#issuecomment-410436458
-  proc inspect(node: NimNode): NimNode =
-    case node.kind:
-    of nnkIdent, nnkSym:
-      result = ident($node)
-    of nnkEmpty, nnkLiterals:
-      result = node
-    else:
-      result = node.kind.newTree()
-      for child in node:
-        result.add inspect(child)
-  result = inspect(ast)
-
 macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).} =
   ## Useful when creating a closure in a loop to capture some local loop variables
   ## by their current iteration values.
