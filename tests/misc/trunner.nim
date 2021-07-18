@@ -257,6 +257,14 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     var expected = &"Hint: used config file '{filename}' [Conf]\n"
     doAssert outp.endsWith "123" & "\n" & expected
 
+  block: # exec NimScript
+    let dir = testsDir / "newconfig/foo"
+    let filenames = ["main.nims", "main.noextension", "main"]
+    let expectedArr = ["in task foo\n", "Error: " & dir / "main.noextension not found\x1F\n", "Error: " & dir / "main not found\x1F\n"]
+    let exitCodeArr = [0, 1, 1]
+    for i, filename in filenames:
+      let cmd = fmt"{nim} --hints:off foo {dir / filename}"
+      check execCmdEx(cmd) == (expectedArr[i], exitCodeArr[i])
 
   block: # nim --eval
     let opt = "--hints:off"
