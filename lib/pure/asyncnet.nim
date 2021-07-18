@@ -784,6 +784,13 @@ when defineSsl:
     of handshakeAsServer:
       sslSetAcceptState(socket.sslHandle)
 
+  proc getAlpnProtocol*(socket: AsyncSocket): string =
+    ## Returns the negotiated ALPN protocol.
+    ## If the ALPN extension is not available or no ALPN candidate
+    ## is provided by clients then returns empty string.
+    if socket.isSsl:
+      result = socket.sslHandle.getAlpnProtocol()
+
   proc getPeerCertificates*(socket: AsyncSocket): seq[Certificate] {.since: (1, 1).} =
     ## Returns the certificate chain received by the peer we are connected to
     ## through the given socket.

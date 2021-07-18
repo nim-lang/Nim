@@ -22,6 +22,9 @@
 ##   ./bin/nim c -d:ssl -p:. -r tests/untestable/tssl.nim
 ##   ./bin/nim c -d:ssl -p:. --dynlibOverride:ssl --passl:-lcrypto --passl:-lssl -r tests/untestable/tssl.nim
 
+from sequtils import map
+from strutils import join
+
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
@@ -133,6 +136,9 @@ type
     RSA_X931_PADDING = 5.cint,
     RSA_PKCS1_PSS_PADDING = 6.cint
 
+  AlpnSelectCallback* = proc (ssl: SslPtr, outbuf: ptr ptr cuchar,
+                              outlen: ptr cuchar, inbuf: ptr cuchar,
+                              inlen: cuint, args: pointer): cint
 
 const
   SSL_SENT_SHUTDOWN* = 1
@@ -438,6 +444,110 @@ else:
     if theProc.isNil:
       theProc = cast[typeof(theProc)](sslSymThrows("SSL_CTX_set_ciphersuites"))
     theProc(ctx, str)
+
+proc getAlpnProtocol*(ssl: SslPtr): string =
+  ## Wrapper around SSL_get0_alpn_selected
+  ## Returns the negotiated alpn protocol, if no protocol
+  ## then returns empty string
+  let theProc {.global.} =
+    cast[proc(ssl: SslPtr, data: ptr ptr cuchar, length: ptr cuint) {.cdecl, gcsafe.}](sslSymNullable("SSL_get0_alpn_selected"))
+  if not theProc.isNil:
+    var buf: ptr cuchar
+    var length: cuint = 0
+    theProc(ssl, addr buf, addr length)
+    if length > 0:
+      # copy carray[cuchar] into a string
+      var protoName = newString(length)
+      copyMem(addr(protoName[0]), buf, length)
+      return protoName
+
+func encodeProtolist(protos: seq[string]): string =
+  ## Encode a sequence of protos to the proto list format
+  ## According to https://www.openssl.org/docs/man1.1.1/man3/SSL_select_next_proto.html#NOTES
+  result = protos.map(proc (x: string): string = chr(x.len) & x).join("")
+
+proc setAlpnProtocols*(ctx: SslCtx, protos: seq[string]): bool =
+  ## Wrapper around SSL_CTX_set_alpn_protos
+  ## Return the SSL function is called or not
+  doAssert protos.len > 0, "cannot set empty proto list"
+  let theProc {.global.} =
+    cast[proc(ctx: SslCtx, protos: ptr cuchar, length: cuint) {.cdecl, gcsafe.}](sslSymNullable("SSL_CTX_set_alpn_protos"))
+  if not theProc.isNil:
+    ## Turn into proto list format
+    let encoded = protos.encodeProtolist()
+    let buf = cast[ptr cuchar](encoded.cstring)
+    let buflen = cast[cuint](encoded.len)
+    theProc(ctx, buf, buflen)
+    return true
+  return false
+
+proc setSslAlpnProtocols*(ssl: SslPtr, protos: seq[string]): bool =
+  ## Wrapper around SSL_set_alpn_protos.
+  ## Returns the SSL function is called or not.
+  doAssert protos.len > 0, "cannot set empty proto list"
+  let theProc {.global.} =
+    cast[proc(ssl: SslPtr, protos: ptr cuchar, length: cuint) {.cdecl, gcsafe.}](sslSymNullable("SSL_set_alpn_protos"))
+  if not theProc.isNil:
+    ## Turn into proto list format
+    let encoded = protos.encodeProtolist()
+    let buf = cast[ptr cuchar](encoded.cstring)
+    let buflen = cast[cuint](encoded.len)
+    theProc(ssl, buf, buflen)
+    return true
+  return false
+
+proc alpnSelectCandidates*(ssl: SslPtr, outbuf: ptr ptr cuchar,
+                           outlen: ptr cuchar, inbuf: ptr cuchar,
+                           inlen: cuint, candidates: seq[string]): cint =
+  ## Try to find the first protocol that both supported by client and server
+  ## if the protocol is found then returns SSL_TLSEXT_ERR_OK
+  ## else returns SSL_TLSEXT_ERR_NOACK
+  let inarr = cast[ptr UncheckedArray[cuchar]](inbuf)
+  let outbufarr = cast[ptr UncheckedArray[ptr cuchar]](outbuf)
+  let outlenarr = cast[ptr UncheckedArray[cuchar]](outlen)
+
+  var i:uint = 0
+  while i < inlen:
+    # for each protocol items
+    let itemlen = ord(inarr[i])
+
+    # copy protocol item from ptr cuchar to string
+    var protoitem = newString(itemlen)
+    copyMem(addr(protoitem[0]), addr(inarr[i+1]), itemlen)
+
+    # for each candidates
+    for cand in candidates:
+      if cand == protoitem:
+        # found the matched proto
+        outbufarr[0] = addr(inarr[i+1])
+        outlenarr[0] = inarr[i]
+        return SSL_TLSEXT_ERR_OK
+    i += cast[uint8](itemlen + 1)
+
+  return SSL_TLSEXT_ERR_NOACK
+
+template alpnAccept*(fname:untyped, protos: seq[string]): untyped =
+  ## Generate a function to match client initiated alpn protocols with
+  ## a set of candidates.
+  ## since the generated function is a callback, the fname must be
+  ## globally unique.
+  proc fname(ssl: SslPtr, outbuf: ptr ptr cuchar,
+        outlen: ptr cuchar, inbuf: ptr cuchar,
+        inlen: cuint, args: pointer): cint {.exportc.} =
+    return alpnSelectCandidates(ssl,
+                                outbuf, outlen,
+                                inbuf, inlen,
+                                protos)
+
+proc setAlpnSelectCallback*(ctx: SslCtx, cb: AlpnSelectCallback): bool =
+  ## Wrapper around SSL_CTX_set_alpn_select_cb.
+  ## Returns if the SSL function called or not
+  let theProc {.global.} = cast[proc(ctx: SslCtx, cb: AlpnSelectCallback, args: pointer) {.cdecl, gcsafe.}](sslSymNullable("SSL_CTX_set_alpn_select_cb"))
+  if not theProc.isNil:
+    theProc(ctx, cb, nil)
+    return true
+  else:
+    return false
 
 proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
 

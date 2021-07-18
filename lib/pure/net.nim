@@ -761,6 +761,13 @@ when defineSsl:
     if SSL_set_fd(socket.sslHandle, socket.fd) != 1:
       raiseSSLError()
 
+  proc getAlpnProtocol*(socket: Socket): string =
+    ## Returns the negotiated ALPN protocol
+    ## if the ALPN extension is not available or no ALPN candidate
+    ## is provided by clients then returns empty string.
+    if socket.isSsl:
+      result = socket.sslHandle.getAlpnProtocol()
+
   proc checkCertName(socket: Socket, hostname: string) =
     ## Check if the certificate Subject Alternative Name (SAN) or Subject CommonName (CN) matches hostname.
     ## Wildcards match only in the left-most label.
