@@ -1823,7 +1823,7 @@ proc `$`*(address: IpAddress): string =
         var word: uint16 = (cast[uint16](address.address_v6[i*2])) shl 8
         word = word or cast[uint16](address.address_v6[i*2+1])
 
-        if biggestZeroCount != 0 and # Check if group is in skip group
+        if biggestZeroCount > 1 and # Check if group is in skip group
           (i >= biggestZeroStart and i < (biggestZeroStart + biggestZeroCount)):
           if i == biggestZeroStart: # skip start
             result.add("::")
