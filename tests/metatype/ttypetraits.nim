@@ -350,3 +350,106 @@ block: # enum.len
     doAssert MyEnum.enumLen == 4
     doAssert OtherEnum.enumLen == 3
     doAssert MyFlag.enumLen == 4
+
+block: # getTypeId
+  const c1 = getTypeId(type(12))
+  const a1 = getTypeId(type(12))
+  const a2 = getTypeId(type(12))
+  let a3 = getTypeId(type(12))
+  doAssert a1 == a2
+    # we need to check that because nim uses different id's
+    # for different instances of tyInt (etc), so we make sure implementation of
+    # `getTypeId` is robust to that
+  doAssert a1 == a3
+  doAssert getTypeId(type(12.0)) != getTypeId(type(12))
+  doAssert getTypeId(type(12.0)) == getTypeId(float)
+
+  type Foo = object
+    x1: int
+
+  type FooT[T] = object
+    x1: int
+  type Foo2 = Foo
+  type FooT2 = FooT
+  doAssert Foo.getTypeId == Foo2.getTypeId
+  doAssert FooT2.getTypeId == FooT.getTypeId
+  doAssert FooT2[float].getTypeId == FooT[type(1.2)].getTypeId
+  doAssert FooT2[float].getTypeId != FooT[type(1)].getTypeId
+  doAssert Foo.x1.type.getTypeId == int.getTypeId
+
+  doAssert int.getTypeId is TypeId
+
+block: # example use case for `getTypeId`: passing a callback that handles multiple types
+  ## this would be in a library, say prettys.nim:
+  type Callback = proc(result: var string, a: pointer, id: TypeId): bool
+
+  proc pretty[T](result: var string, a: T, callback: Callback) =
+    when T is object:
+      result.add "("
+      for k,v in fieldPairs(a):
+        result.add $k & ": "
+        pretty(result, v, callback)
+        result.add ", "
+      result.add ")"
+    elif T is ref|ptr:
+      if callback(result, cast[pointer](a), getTypeId(T)):
+        discard
+      elif a == nil:
+        result.add "nil"
+      else:
+        pretty(result, a[], callback)
+    else:
+      result.add $a
+
+  proc pretty[T](a: T, callback: Callback): string = pretty(result, a, callback)
+
+  ## this would be in user code, say main.nim:
+  proc main()=
+    type Foo = ref object
+      x: int
+    type Bar = object
+      b1: Foo
+      b2: string
+
+    let f = Bar(b1: Foo(x: 12), b2: "abc")
+
+    proc callback(ret: var string, a: pointer, id: TypeId): bool =
+      case id
+      of Foo.getTypeId:
+        ret.add $("custom:", cast[Foo](a).x)
+        return true
+      else:
+        discard
+
+    proc callback2(ret: var string, a: pointer, id: TypeId): bool =
+      case id
+      of Foo.getTypeId:
+        ret.add $("custom2:", cast[Foo](a).x)
+        return true
+      else:
+        discard
+
+    doAssert pretty(f, callback) == """(b1: ("custom:", 12), b2: abc, )"""
+    doAssert pretty(f, callback2) == """(b1: ("custom2:", 12), b2: abc, )"""
+
+  main()
+
+type Foo3* = object
+  x3*: int
+
+import ./mtypetraits_types
+
+block:
+  # example use case for `getTypeId`: exportc proc that handles multiple types.
+  # This can be used in cases where we want to define implementation for a
+  # proc in a separate module (here, mtypetraits_impl), to avoid cyclic import
+  # issues or avoid dragging many dependencies for users of the proc, which can
+  # be declared in another import module (here, mtypetraits_types).
+  # This mimicks the use of headers vs source files in C.
+
+  doAssert callbackFun(Foo1(x1: 1)) == """("custom1", (x1: 1))"""
+  doAssert callbackFun(Foo2(x2: 2)) == """("custom2", (x2: 2))"""
+  doAssert callbackFun(Foo3(x3: 3)) == """("custom3", (x3: 3))"""
+
+import ./mtypetraits_impl
+  # this could be imported from any module; it defines our exportc proc
