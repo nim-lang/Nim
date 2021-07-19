@@ -86,7 +86,7 @@ proc addFloat*(result: var string; x: float) =
   ##     a = "123"
   ##     b = 45.67
   ##   a.addFloat(b) # a <- "12345.67"
-  when nimvm:
+  when nimvm: # also a vmops, after bootstrap
     result.add $x
   else:
     var buffer {.noinit.}: array[65, char]
