@@ -196,7 +196,7 @@
 
 import
   os, strutils, rstast, std/enumutils, algorithm, lists, sequtils,
-  std/private/miscdollars, "$lib/../compiler/lineinfos", tables
+  std/private/miscdollars, tables
 from highlite import SourceLanguage, getSourceLanguage
 
 type

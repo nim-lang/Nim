@@ -9,7 +9,7 @@
 
 ## This module implements an AST for the `reStructuredText`:idx: parser.
 
-import strutils, json, "$lib/../compiler/lineinfos"
+import strutils, json
 
 type
   RstNodeKind* = enum        ## the possible node kinds of an PRstNode
@@ -74,6 +74,11 @@ type
     rnLeaf                    # a leaf; the node's text field contains the
                               # leaf val
 
+  FileIndex* = distinct int32
+  TLineInfo* = object
+    line*: uint16
+    col*: int16
+    fileIndex*: FileIndex
 
   PRstNode* = ref RstNode    ## an RST node
   RstNodeSeq* = seq[PRstNode]
@@ -104,6 +109,8 @@ type
     anchor*: string           ## anchor, internal link target
                               ## (aka HTML id tag, aka Latex label/hypertarget)
     sons*: RstNodeSeq        ## the node's sons
+
+proc `==`*(a, b: FileIndex): bool {.borrow.}
 
 proc len*(n: PRstNode): int =
   result = len(n.sons)
