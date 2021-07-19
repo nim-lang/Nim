@@ -614,7 +614,7 @@ block osenv:
     doAssert existsEnv(dummyEnvVar) == false
     delEnv(dummyEnvVar)         # deleting an already deleted env var
     doAssert existsEnv(dummyEnvVar) == false
-  block putEnv:
+  block: # putEnv
     # raises OSError on invalid input
     doAssertRaises(OSError, putEnv("DUMMY_ENV_VAR_PUT=DUMMY_VALUE", "NEW_DUMMY_VALUE"))
     doAssertRaises(OSError, putEnv("", "NEW_DUMMY_VALUE"))
