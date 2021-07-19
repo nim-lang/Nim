@@ -97,7 +97,7 @@ proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat | float32
   else:
     writeFloatToBufferSprintf(buf, value)
 
-proc addFloatRoundtrip*(result: var string; x: float) =
+proc addFloatRoundtrip*(result: var string; x: float | float32) =
   when nimvm:
     doAssert false
   else:
