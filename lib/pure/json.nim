@@ -536,16 +536,21 @@ proc `[]`*[U, V](a: JsonNode, x: HSlice[U, V]): JsonNode =
   ## Returns the inclusive range `[a[x.a], a[x.b]]`:
   ##
   ## .. code-block:: Nim
-  ##    var a = %[1, 2, 3, 4]
+  ##    let a = %[1, 2, 3, 4]
   ##    assert a[0..2] == %[1, 2, 3]
+  runnableExamples:
+    let arr = %[0,1,2,3,4,5]
+    doAssert arr[2..4] == %[2,3,4]
+    doAssert arr[2..^2] == %[2,3,4]
+
   if a.kind != JArray:
     let msg = "Incorrect JSON kind. Wanted '$1' but got '$2'." % [
       $JArray,
       $a.kind
     ]
     raise newException(JsonKindError, msg)
-  result = newJArray()
-  for i in x.a .. x.b.int:
+  let xb = (when x.b is BackwardsIndex: a.len - int(x.b) else: int(x.b))
+  for i in x.a .. xb:
     result.add(a[i])
 
 proc hasKey*(node: JsonNode, key: string): bool =
