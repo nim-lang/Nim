@@ -326,7 +326,12 @@ proc registerAdditionalOps*(c: PCtx) =
     let fn = getNode(a, 0)
     setResult(a, fn.kind == nkClosure or (fn.typ != nil and fn.typ.callConv == ccClosure))
 
-  registerCallback c, "stdlib.strfloats.addFloat", proc(a: VmArgs) =
+  registerCallback c, "stdlib.system.addFloatRoundtrip", proc(a: VmArgs) =
     let p = a.getVar(0)
     let x = a.getFloat(1)
-    addFloat(p.strVal, x)
+    addFloatRoundtrip(p.strVal, x)
+
+  registerCallback c, "stdlib.system.addFloatSprintf", proc(a: VmArgs) =
+    let p = a.getVar(0)
+    let x = a.getFloat(1)
+    addFloatSprintf(p.strVal, x)

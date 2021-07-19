@@ -78,7 +78,23 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
 
 import formatfloat
 
-proc addFloat*(result: var string; x: float) =
+proc addFloatRoundtrip*(result: var string; x: float) =
+  when nimvm:
+    doAssert false
+  else:
+    var buffer {.noinit.}: array[65, char]
+    let n = writeFloatToBufferRoundtrip(buffer, x)
+    result.addCstringN(cstring(buffer[0].addr), n)
+
+proc addFloatSprintf*(result: var string; x: float) =
+  when nimvm:
+    doAssert false
+  else:
+    var buffer {.noinit.}: array[65, char]
+    let n = writeFloatToBufferSprintf(buffer, x)
+    result.addCstringN(cstring(buffer[0].addr), n)
+
+proc addFloat*(result: var string; x: float) {.inline.} =
   ## Converts float to its string representation and appends it to `result`.
   ##
   ## .. code-block:: Nim
@@ -86,12 +102,10 @@ proc addFloat*(result: var string; x: float) =
   ##     a = "123"
   ##     b = 45.67
   ##   a.addFloat(b) # a <- "12345.67"
-  when nimvm: # also a vmops, after bootstrap
-    result.add $x
+  when defined(nimFpRoundtrips):
+    addFloatRoundtrip(result, x)
   else:
-    var buffer {.noinit.}: array[65, char]
-    let n = writeFloatToBuffer(buffer, x)
-    result.addCstringN(cstring(buffer[0].addr), n)
+    addFloatSprintf(result, x)
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
