@@ -12,11 +12,12 @@
 
 import
   ast, strutils, strtabs, options, msgs, os, idents,
-  wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
+  wordrecg, syntaxes, renderer, lexer,
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, tables, nimpaths, renderverbatim, osproc
+import packages/docutils/rstast except FileIndex, TLineInfo
 
 from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
