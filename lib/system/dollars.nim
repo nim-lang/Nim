@@ -1,5 +1,6 @@
 import std/private/digitsutils
-
+import system/formatfloat
+export addFloat
 
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`

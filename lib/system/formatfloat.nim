@@ -10,6 +10,16 @@
 # when defined(nimFpRoundtrips) and not defined(nimscript) and
 #     not defined(js) and defined(nimHasDragonBox):
 
+# import system/memory
+proc c_memcpy(a, b: pointer, size: csize_t): pointer {.importc: "memcpy", header: "<string.h>", discardable.}
+proc addCstringN(result: var string, buf: cstring; buflen: int) =
+  # no nimvm support needed, so it doesn't need to be fast here either
+  let oldLen = result.len
+  let newLen = oldLen + buflen
+  result.setLen newLen
+  # copyMem(result[oldLen].addr, buf, buflen)
+  c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
+
 import dragonbox
 
 proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: BiggestFloat): int =
@@ -72,3 +82,49 @@ proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat): int {.i
     writeFloatToBufferRoundtrip(buf, value)
   else:
     writeFloatToBufferSprintf(buf, value)
+
+proc addFloatRoundtrip*(result: var string; x: float) =
+  when nimvm:
+    doAssert false
+  else:
+    var buffer {.noinit.}: array[65, char]
+    let n = writeFloatToBufferRoundtrip(buffer, x)
+    result.addCstringN(cstring(buffer[0].addr), n)
+
+proc addFloatSprintf*(result: var string; x: float) =
+  when nimvm:
+    doAssert false
+  else:
+    var buffer {.noinit.}: array[65, char]
+    let n = writeFloatToBufferSprintf(buffer, x)
+    result.addCstringN(cstring(buffer[0].addr), n)
+
+proc addFloat*(result: var string; x: float) {.inline.} =
+  ## Converts float to its string representation and appends it to `result`.
+  ##
+  ## .. code-block:: Nim
+  ##   var
+  ##     a = "123"
+  ##     b = 45.67
+  ##   a.addFloat(b) # a <- "12345.67"
+  when defined(nimFpRoundtrips):
+    addFloatRoundtrip(result, x)
+  else:
+    addFloatSprintf(result, x)
+
+proc nimFloatToStr(f: float): string {.compilerproc.} =
+  result = newStringOfCap(8)
+  result.addFloat f
+
+when defined(nimFpRoundtrips) and not defined(nimscript) and
+    not defined(js) and defined(nimHasDragonBox):
+  import schubfach
+
+proc nimFloat32ToStr(f: float32): string {.compilerproc.} =
+  when declared(float32ToChars):
+    result = newString(65)
+    let L = float32ToChars(result, f, forceTrailingDotZero=true)
+    setLen(result, L)
+  else:
+    result = newStringOfCap(8)
+    result.addFloat f
