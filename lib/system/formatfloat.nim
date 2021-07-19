@@ -27,6 +27,10 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
   c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
 
 import dragonbox
+import schubfach
+# when defined(nimFpRoundtrips) and not defined(nimscript) and
+#     not defined(js) and defined(nimHasDragonBox):
+#   import schubfach
 
 proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: BiggestFloat): int =
   ## This is the implementation to format floats.
@@ -34,6 +38,10 @@ proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: BiggestFloat)
   ## returns the amount of bytes written to `buf` not counting the
   ## terminating '\0' character.
   result = toChars(buf, value, forceTrailingDotZero=true)
+  buf[result] = '\0'
+
+proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: float32): int =
+  result = float32ToChars(buf, value, forceTrailingDotZero=true)
   buf[result] = '\0'
 
 proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
@@ -83,7 +91,7 @@ proc writeFloatToBufferSprintf*(buf: var array[65, char]; value: BiggestFloat): 
 #     not defined(js) and defined(nimHasDragonBox):
 #   import dragonbox
 
-proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat): int {.inline.} =
+proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat | float32): int {.inline.} =
   when defined(nimFpRoundtrips):
     writeFloatToBufferRoundtrip(buf, value)
   else:
@@ -122,7 +130,7 @@ proc nimFloatToString(a: float): cstring =
     }
   """
 
-proc addFloat*(result: var string; x: float) {.inline.} =
+proc addFloat*(result: var string; x: float | float32) {.inline.} =
   ## Converts float to its string representation and appends it to `result`.
   ##
   ## .. code-block:: Nim
@@ -138,26 +146,17 @@ proc addFloat*(result: var string; x: float) {.inline.} =
   when defined(js):
     when nimvm: impl()
     else:
-      # result.add $nimFloatToString(x)
-      # result.add cstrToNimstr(nimFloatToString(x))
+      # PRTEMP
       let tmp = nimFloatToString(x)
       for i in 0..<tmp.len:
         result.add tmp[i]
   else: impl()
 
-proc nimFloatToStr(f: float): string {.compilerproc.} =
-  result = newStringOfCap(8)
-  result.addFloat f
-
-when defined(nimFpRoundtrips) and not defined(nimscript) and
-    not defined(js) and defined(nimHasDragonBox):
-  import schubfach
-
-proc nimFloat32ToStr(f: float32): string {.compilerproc.} =
-  when declared(float32ToChars):
-    result = newString(65)
-    let L = float32ToChars(result, f, forceTrailingDotZero=true)
-    setLen(result, L)
-  else:
-    result = newStringOfCap(8)
-    result.addFloat f
+# proc nimFloat32ToStr(f: float32): string {.compilerproc.} =
+#   when declared(float32ToChars):
+#     result = newString(65)
+#     let L = float32ToChars(result, f, forceTrailingDotZero=true)
+#     setLen(result, L)
+#   else:
+#     result = newStringOfCap(8)
+#     result.addFloat f
