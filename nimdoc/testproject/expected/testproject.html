@@ -107,7 +107,9 @@ window.addEventListener('DOMContentLoaded', main);
 <li>
   <a class="reference reference-toplevel" href="#7" id="57">Types</a>
   <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#A"
+      <li><a class="reference" href="#FooBuzz"
+    title="FooBuzz {.deprecated: &quot;FooBuzz msg&quot;.} = int">FooBuzz</a></li>
+  <li><a class="reference" href="#A"
     title="A {.inject.} = enum
   aA">A</a></li>
   <li><a class="reference" href="#B"
@@ -445,6 +447,16 @@ window.addEventListener('DOMContentLoaded', main);
 <div class="section" id="7">
 <h1><a class="toc-backref" href="#7">Types</a></h1>
 <dl class="item">
+<a id="FooBuzz"></a>
+<dt><pre><a href="testproject.html#FooBuzz"><span class="Identifier">FooBuzz</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">deprecated</span><span class="Other">:</span> <span class="StringLit">&quot;FooBuzz msg&quot;</span></span>.} <span class="Other">=</span> <span class="Identifier">int</span></pre></dt>
+<dd>
+  <div class="deprecation-message">
+    <b>Deprecated:</b> FooBuzz msg
+  </div>
+
+
+
+</dd>
 <a id="A"></a>
 <dt><pre><a href="testproject.html#A"><span class="Identifier">A</span></a> {.<span class="Identifier">inject</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">aA</span></pre></dt>
@@ -544,7 +556,7 @@ This should be visible.
 
 </dd>
 <a id="baz,T,T"></a>
-<dt><pre><span class="Keyword">proc</span> <a href="#baz%2CT%2CT"><span class="Identifier">baz</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">T</span> {.<span class="Identifier">deprecated</span>.}</pre></dt>
+<dt><pre><span class="Keyword">proc</span> <a href="#baz%2CT%2CT"><span class="Identifier">baz</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">T</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">deprecated</span></span>.}</pre></dt>
 <dd>
   <div class="deprecation-message">
     <b>Deprecated</b> 
@@ -554,7 +566,7 @@ This is deprecated without message.
 
 </dd>
 <a id="buzz,T,T"></a>
-<dt><pre><span class="Keyword">proc</span> <a href="#buzz%2CT%2CT"><span class="Identifier">buzz</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">T</span> {.<span class="Identifier">deprecated</span><span class="Other">:</span> <span class="StringLit">&quot;since v0.20&quot;</span>.}</pre></dt>
+<dt><pre><span class="Keyword">proc</span> <a href="#buzz%2CT%2CT"><span class="Identifier">buzz</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">T</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">deprecated</span><span class="Other">:</span> <span class="StringLit">&quot;since v0.20&quot;</span></span>.}</pre></dt>
 <dd>
   <div class="deprecation-message">
     <b>Deprecated:</b> since v0.20

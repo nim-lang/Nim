@@ -764,14 +764,6 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
       result.add(defaultParamSeparator)
       result.add(params)
 
-proc isCallable(n: PNode): bool =
-  ## Returns true if `n` contains a callable node.
-  case n.kind
-  of nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef,
-    nkConverterDef, nkFuncDef: result = true
-  else:
-    result = false
-
 proc docstringSummary(rstText: string): string =
   ## Returns just the first line or a brief chunk of text from a rst string.
   ##
@@ -862,9 +854,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       break
     plainName.add(literal)
 
-  var pragmaNode: PNode = nil
-  if n.isCallable and n[pragmasPos].kind != nkEmpty:
-    pragmaNode = findPragma(n[pragmasPos], wDeprecated)
+  var pragmaNode = getDeclPragma(n)
+  if pragmaNode != nil: pragmaNode = findPragma(pragmaNode, wDeprecated)
 
   inc(d.id)
   let
@@ -920,7 +911,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   # because it doesn't include object fields or documentation comments. So we
   # use the plain one for callable elements, and the complex for the rest.
   var linkTitle = changeFileExt(extractFilename(d.filename), "") & ": "
-  if n.isCallable: linkTitle.add(xmltree.escape(plainName.strip))
+  if n.kind in routineDefs: linkTitle.add(xmltree.escape(plainName.strip))
   else: linkTitle.add(xmltree.escape(complexSymbol.strip))
 
   setIndexTerm(d[], external, symbolOrId, name, linkTitle,
