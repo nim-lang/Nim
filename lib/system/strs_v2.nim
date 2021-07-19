@@ -39,8 +39,8 @@ proc resize(old: int): int {.inline.} =
   elif old < 65536: result = old * 2
   else: result = old * 3 div 2 # for large arrays * 3/2 is better
 
-proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
-  let newLen = s.len + addlen
+proc prepareAdd(s: var NimStringV2; addLen: int) {.compilerRtl.} =
+  let newLen = s.len + addLen
   if isLiteral(s):
     let oldP = s.p
     # can't mutate a literal, so we need a fresh copy here:
@@ -94,7 +94,7 @@ proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, in
 proc appendString(dest: var NimStringV2; src: NimStringV2) {.compilerproc, inline.} =
   if src.len > 0:
     # also copy the \0 terminator:
-    copyMem(unsafeAddr dest.p.data[dest.len], unsafeAddr src.p.data[0], src.len+1)
+    moveMem(unsafeAddr dest.p.data[dest.len], unsafeAddr src.p.data[0], src.len+1)
     inc dest.len, src.len
 
 proc appendChar(dest: var NimStringV2; c: char) {.compilerproc, inline.} =
