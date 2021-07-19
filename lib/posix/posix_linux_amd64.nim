@@ -47,7 +47,7 @@ type
     d_ino*: Ino
     d_off*: Off
     d_reclen*: cushort
-    d_type*: int8  # cuchar really!
+    d_type*: int8  # uint8 really!
     d_name*: array[256, cchar]
 
   Tflock* {.importc: "struct flock", final, pure,

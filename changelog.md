@@ -4,9 +4,21 @@
 
 ## Changes affecting backward compatibility
 
-- Deprecated `std/mersenne`
+- Deprecated `std/mersenne`.
 
--  `cuchar` now aliases `uint8` instead of `char`
+- `system.delete` had a most surprising behavior when the index passed to it was out of
+  bounds (it would delete the last entry then). Compile with `-d:nimStrictDelete` so
+  that an index error is produced instead. But be aware that your code might depend on
+  this quirky behavior so a review process is required on your part before you can
+  use `-d:nimStrictDelete`. To make this review easier, use the `-d:nimAuditDelete`
+  switch, it pretends that `system.delete` is deprecated so that it is easier to see
+  where it was used in your code.
+
+  `-d:nimStrictDelete` will become the default in upcoming versions.
+
+
+- `cuchar` is now deprecated as it aliased `char` where arguably it should have aliased `uint8`.
+  Please use `char` or `uint8` instead.
 
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
@@ -37,9 +49,6 @@
   `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
   underlying code is also updated the same way.
 - Custom pragma values have now an API for use in macros.
-
-- In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
-  unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
 - On POSIX systems, the default signal handlers used for Nim programs (it's
   used for printing the stacktrace on fatal signals) will now re-raise the
@@ -75,9 +84,6 @@
 - `json` and `jsonutils` now serialize NaN, Inf, -Inf as strings, so that
   `%[NaN, -Inf]` is the string `["nan","-inf"]` instead of `[nan,-inf]` which was invalid json.
 
-- `system.addFloat` now uses the "Dragonbox" algorithm, which ensures correct roundtrips of floating point
-  numbers, that the minimum length representation of a floating point number is used and correct rounding.
-  Use `-d:nimLegacyAddFloat` for a transition period.
 
 - `strformat` is now part of `include std/prelude`.
 
@@ -101,6 +107,12 @@
   added support for parenthesized expressions.
   added support for const string's instead of just string literals
 
+
+- `system.addFloat` and `system.$` now can produce string representations of floating point numbers
+  that are minimal in size and that "roundtrip" (via the "Dragonbox" algorithm). This currently has
+  to be enabled via `-d:nimFpRoundtrips`. It is expected that this behavior becomes the new default
+  in upcoming versions.
+
 - Fixed buffer overflow bugs in `net`
 
 - Exported `sslHandle` from `net` and `asyncnet`.
@@ -114,8 +126,6 @@
   from `https://curl.se/ca/cacert.pem`. Besides
   the OpenSSL DLLs (e.g. libssl-1_1-x64.dll, libcrypto-1_1-x64.dll) you
   now also need to ship `cacert.pem` with your `.exe` file.
-
-- Make `{.requiresInit.}` pragma to work for `distinct` types.
 
 - `typetraits`:
   `distinctBase` now is identity instead of error for non distinct types.
@@ -346,6 +356,9 @@
 
 - Added `dom.setInterval`, `dom.clearInterval` overloads.
 
+- Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
+  if the slice is out of bounds, likewise with `strutils.delete`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -390,6 +403,9 @@
 
 - The `gc:orc` algorithm was refined so that custom container types can participate in the
   cycle collection process.
+
+- On embedded devices `malloc` can now be used instead of `mmap` via `-d:nimAllocPagesViaMalloc`.
+  This is only supported for `--gc:orc` or `--gc:arc`.
 
 
 ## Compiler changes
@@ -459,7 +475,6 @@
   enforces that every symbol is written as it was declared, not enforcing
   the official Nim style guide. To be enabled, this has to be combined either
   with `--styleCheck:error` or `--styleCheck:hint`.
-
 
 
 ## Tool changes

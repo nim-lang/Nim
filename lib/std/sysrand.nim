@@ -132,7 +132,7 @@ elif defined(windows):
   type
     PVOID = pointer
     BCRYPT_ALG_HANDLE = PVOID
-    PUCHAR = ptr cuchar
+    PUCHAR = ptr uint8
     NTSTATUS = clong
     ULONG = culong
 

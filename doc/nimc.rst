@@ -176,7 +176,7 @@ directories (in this order; later files overwrite previous settings):
    ``%APPDATA%/nim/nim.cfg`` (Windows).
    This file can be skipped with the `--skipUserCfg`:option: command line
    option.
-3) ``$parentDir/nim.cfg`` where ``$parentDir`` stands for any parent 
+3) ``$parentDir/nim.cfg`` where ``$parentDir`` stands for any parent
    directory of the project file's path.
    These files can be skipped with the `--skipParentCfg`:option:
    command-line option.
@@ -633,6 +633,18 @@ optimization in the compiler and linker.
 
 Check the `Cross-compilation`_ section for instructions on how to compile the
 program for your target.
+
+
+nimAllocPagesViaMalloc
+----------------------
+
+Nim's default allocator is based on TLSF, this algorithm was designed for embedded
+devices. This allocator gets blocks/pages of memory via a currently undocumented
+`osalloc` API which usually uses POSIX's `mmap` call. On many environments `mmap`
+is not available but C's `malloc` is. You can use the `nimAllocPagesViaMalloc`
+define to use `malloc` instead of `mmap`. `nimAllocPagesViaMalloc` is currently
+only supported with `--gc:arc` or `--gc:orc`. (Since version 1.6)
+
 
 Nim for realtime systems
 ========================

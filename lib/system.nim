@@ -1427,8 +1427,8 @@ type # these work for most platforms:
     ## This is the same as the type `long double` in *C*.
     ## This C type is not supported by Nim's code generator.
 
-  cuchar* {.importc: "unsigned char", nodecl.} = uint8
-    ## This is the same as the type `unsigned char` in *C*.
+  cuchar* {.importc: "unsigned char", nodecl, deprecated: "use `char` or `uint8` instead".} = char
+    ## Deprecated: Use `uint8` instead.
   cushort* {.importc: "unsigned short", nodecl.} = uint16
     ## This is the same as the type `unsigned short` in *C*.
   cuint* {.importc: "unsigned int", nodecl.} = uint32
@@ -2134,7 +2134,12 @@ const
 import system/dollars
 export dollars
 
-proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
+when defined(nimAuditDelete):
+  {.pragma: auditDelete, deprecated: "review this call for out of bounds behavior".}
+else:
+  {.pragma: auditDelete.}
+
+proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
   ## Deletes the item at index `i` by moving all `x[i+1..^1]` items by one position.
   ##
   ## This is an `O(n)` operation.
@@ -2147,12 +2152,10 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
     s.delete(2)
     doAssert s == @[1, 2, 4, 5]
 
-    doAssertRaises(IndexDefect):
-      s.delete(4)
-
-  if i > high(x):
-    # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
-    raise (ref IndexDefect)(msg: "index out of bounds: '" & $i & "' < '" & $x.len & "' failed")
+  when defined(nimStrictDelete):
+    if i > high(x):
+      # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
+      raise (ref IndexDefect)(msg: "index out of bounds: '" & $i & "' < '" & $x.len & "' failed")
 
   template defaultImpl =
     let xl = x.len

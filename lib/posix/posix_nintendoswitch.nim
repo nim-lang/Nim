@@ -33,7 +33,7 @@ type
   Dirent* {.importc: "struct dirent",
             header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: Ino
-    d_type*: int8  # cuchar really!
+    d_type*: int8  # uint8 really!
     d_name*: array[256, cchar]
 
   Tflock* {.importc: "struct flock", final, pure,
@@ -347,20 +347,20 @@ type
 
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr
-    sa_len: cuchar
+    sa_len: uint8
     sa_family*: TSa_Family         ## Address family.
     sa_data*: array[14, char] ## Socket address (variable-length data).
 
   Sockaddr_storage* {.importc: "struct sockaddr_storage",
                        header: "<sys/socket.h>",
                        pure, final.} = object ## struct sockaddr_storage
-    ss_len: cuchar
+    ss_len: uint8
     ss_family*: TSa_Family ## Address family.
-    ss_padding1: array[64 - sizeof(cuchar) - sizeof(cshort), char]
+    ss_padding1: array[64 - sizeof(uint8) - sizeof(cshort), char]
     ss_align: clonglong
     ss_padding2: array[
-      128 - sizeof(cuchar) - sizeof(cshort) -
-      (64 - sizeof(cuchar) - sizeof(cshort)) - 64, char]
+      128 - sizeof(uint8) - sizeof(cshort) -
+      (64 - sizeof(uint8) - sizeof(cshort)) - 64, char]
 
   Tif_nameindex* {.importc: "struct if_nameindex", final,
                    pure, header: "<net/if.h>".} = object ## struct if_nameindex

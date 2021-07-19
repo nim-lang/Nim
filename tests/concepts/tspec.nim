@@ -7,8 +7,7 @@ discard """
 2
 3
 yes int
-string int
-true'''
+string int'''
   joinable: false
 """
 
@@ -102,5 +101,5 @@ type Monoid = concept
 
 proc z(x: typedesc[int]): int = 0
 
-echo(int is Monoid)
+doAssert int is Monoid
 
