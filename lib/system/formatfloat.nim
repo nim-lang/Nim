@@ -17,6 +17,12 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
   let oldLen = result.len
   let newLen = oldLen + buflen
   result.setLen newLen
+  # when defined(js):
+  #   # debugEcho()
+  #   # for i in oldLen..<newLen:
+  #   for i in 0..<buflen:
+  #     result[oldLen + i] = buf[i]
+  # else:
   # copyMem(result[oldLen].addr, buf, buflen)
   c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
 
@@ -99,6 +105,23 @@ proc addFloatSprintf*(result: var string; x: float) =
     let n = writeFloatToBufferSprintf(buffer, x)
     result.addCstringN(cstring(buffer[0].addr), n)
 
+proc nimFloatToString(a: float): cstring =
+  ## ensures the result doesn't print like an integer, i.e. return 2.0, not 2
+  # print `-0.0` properly
+  asm """
+    function nimOnlyDigitsOrMinus(n) {
+      return n.toString().match(/^-?\d+$/);
+    }
+    if (Number.isSafeInteger(`a`))
+      `result` = `a` === 0 && 1 / `a` < 0 ? "-0.0" : `a`+".0"
+    else {
+      `result` = `a`+""
+      if(nimOnlyDigitsOrMinus(`result`)){
+        `result` = `a`+".0"
+      }
+    }
+  """
+
 proc addFloat*(result: var string; x: float) {.inline.} =
   ## Converts float to its string representation and appends it to `result`.
   ##
@@ -107,10 +130,20 @@ proc addFloat*(result: var string; x: float) {.inline.} =
   ##     a = "123"
   ##     b = 45.67
   ##   a.addFloat(b) # a <- "12345.67"
-  when defined(nimFpRoundtrips):
-    addFloatRoundtrip(result, x)
-  else:
-    addFloatSprintf(result, x)
+  template impl =
+    when defined(nimFpRoundtrips):
+      addFloatRoundtrip(result, x)
+    else:
+      addFloatSprintf(result, x)
+  when defined(js):
+    when nimvm: impl()
+    else:
+      # result.add $nimFloatToString(x)
+      # result.add cstrToNimstr(nimFloatToString(x))
+      let tmp = nimFloatToString(x)
+      for i in 0..<tmp.len:
+        result.add tmp[i]
+  else: impl()
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)

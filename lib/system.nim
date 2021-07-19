@@ -2472,8 +2472,8 @@ when defined(js) or defined(nimscript):
   proc addInt*(result: var string; x: int64) =
     result.add $x
 
-  proc addFloat*(result: var string; x: float) =
-    result.add $x
+  # proc addFloat*(result: var string; x: float) =
+  #   result.add $x
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.
