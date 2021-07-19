@@ -45,8 +45,8 @@ else:
 
   proc c_getenv(env: cstring): cstring {.
     importc: "getenv", header: "<stdlib.h>".}
-  proc c_putenv(env: cstring): cint {.
-    importc: "putenv", header: "<stdlib.h>".}
+  proc c_setenv(envname: cstring, envval: cstring, overwrite: cint): cint {.
+    importc: "setenv", header: "<stdlib.h>".}
   proc c_unsetenv(env: cstring): cint {.
     importc: "unsetenv", header: "<stdlib.h>".}
 
@@ -221,7 +221,7 @@ else:
         else:
           if setEnvironmentVariableA(key, val) == 0'i32: raiseOSError(osLastError())
       else:
-        if c_putenv(environment[indx]) != 0'i32:
+        if c_setenv(key, val, 1'i32) != 0'i32:
           raiseOSError(osLastError())
 
   proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
