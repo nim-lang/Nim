@@ -545,7 +545,7 @@ proc `[]`*[U, V](a: JsonNode, x: HSlice[U, V]): JsonNode =
     ]
     raise newException(JsonKindError, msg)
   result = newJArray()
-  for i in x.a .. x.b:
+  for i in x.a .. x.b.int:
     result.add(a[i])
 
 proc hasKey*(node: JsonNode, key: string): bool =
