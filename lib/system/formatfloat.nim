@@ -151,12 +151,3 @@ proc addFloat*(result: var string; x: float | float32) {.inline.} =
       for i in 0..<tmp.len:
         result.add tmp[i]
   else: impl()
-
-# proc nimFloat32ToStr(f: float32): string {.compilerproc.} =
-#   when declared(float32ToChars):
-#     result = newString(65)
-#     let L = float32ToChars(result, f, forceTrailingDotZero=true)
-#     setLen(result, L)
-#   else:
-#     result = newStringOfCap(8)
-#     result.addFloat f
