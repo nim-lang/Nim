@@ -809,7 +809,6 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         if n[i].kind == nkExprColonExpr:
           let field = lookupFieldAgain(n.typ, n[i][0].sym)
           if field != nil and sfCursor in field.flags:
-            # came here!
             result[i][1] = p(n[i][1], c, s, normal)
           else:
             result[i][1] = p(n[i][1], c, s, m)
