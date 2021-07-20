@@ -11,10 +11,11 @@
 ## retrieving environment variables, reading command line arguments,
 ## working with directories, running shell commands, etc.
 
-runnableExamples("-r:off"):
+runnableExamples:
   let myFile = "/path/to/my/file.nim"
   assert splitPath(myFile) == (head: "/path/to/my", tail: "file.nim")
-  assert parentDir(myFile) == "/path/to/my"
+  when defined(posix):
+    assert parentDir(myFile) == "/path/to/my"
   assert splitFile(myFile) == (dir: "/path/to/my", name: "file", ext: ".nim")
   assert myFile.changeFileExt("c") == "/path/to/my/file.c"
 
