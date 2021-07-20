@@ -779,7 +779,6 @@ Examples of changes that are considered non-breaking (or acceptable breaking cha
   (but first RFC https://github.com/nim-lang/RFCs/issues/396 needs to be implemented).
 * Changing the behavior from "crashing" into some other, well documented result (including
   raising a Defect, but not raising an exception that does not inherit from Defect).
-
 * Adding new fields to an existing object.
 
 Nim's introspection facilities imply that strictly speaking almost every addition can
