@@ -2837,6 +2837,15 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       of skProc, skFunc, skMethod, skConverter, skIterator:
         if s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
+      of skUnknown:
+        # xxx: see also `errorSubNode`, `newError`; `errorNode` uses `skEmpty`
+        # which causes redundant errors in D20210426T153714 for `let a = nonexistant`,
+        # because nim can't distinguish with `let a {.importc:"foo".}` which is valid.
+        when defined(nimsuggest):
+          # hack, see D20210427T164219. Maybe there's a better way but this works for now.
+          result = semIndirectOp(c, n, flags)
+        else:
+          result = errorNode(c, n)
       else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags)
