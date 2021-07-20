@@ -303,7 +303,7 @@ let jsonNode = %*mynode
 doAssert $jsonNode == """{"kind":"P","pChildren":[{"kind":"Text","textStr":"mychild"},{"kind":"Br"}]}"""
 doAssert $jsonNode.to(ContentNode) == """(kind: P, pChildren: @[(kind: Text, textStr: "mychild"), (kind: Br)])"""
 
-when defined(nimFpRoundtrips): # bug #17383
+block: # bug #17383
   testRoundtrip(int32.high): "2147483647"
   testRoundtrip(uint32.high): "4294967295"
   when int.sizeof == 4:
@@ -316,7 +316,7 @@ when defined(nimFpRoundtrips): # bug #17383
     testRoundtrip(int64.high): "9223372036854775807"
     testRoundtrip(uint64.high): "18446744073709551615"
 
-when defined(nimFpRoundtrips): # bug #18007
+block: # bug #18007
   testRoundtrip([NaN, Inf, -Inf, 0.0, -0.0, 1.0]): """["nan","inf","-inf",0.0,-0.0,1.0]"""
   # pending https://github.com/nim-lang/Nim/issues/18025 use:
   # testRoundtrip([float32(NaN), Inf, -Inf, 0.0, -0.0, 1.0])
@@ -332,7 +332,7 @@ when defined(nimFpRoundtrips): # bug #18007
     testRoundtripVal(0.0): "0.0"
     testRoundtripVal(-0.0): "-0.0"
 
-when defined(nimFpRoundtrips): # bug #15397, bug #13196
+block: # bug #15397, bug #13196
   testRoundtripVal(1.0 + epsilon(float64)): "1.0000000000000002"
   testRoundtripVal(0.12345678901234567890123456789): "0.12345678901234568"
 

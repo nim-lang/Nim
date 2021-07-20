@@ -13,12 +13,12 @@ treportunused.nim(30, 5) Hint: 's8' is declared but not used [XDeclaredButNotUse
 treportunused.nim(31, 5) Hint: 's9' is declared but not used [XDeclaredButNotUsed]
 treportunused.nim(32, 6) Hint: 's10' is declared but not used [XDeclaredButNotUsed]
 treportunused.nim(33, 6) Hint: 's11' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(37, 3) Hint: 'v0.99' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(38, 3) Hint: 'v0.99.99' is declared but not used [XDeclaredButNotUsed]
 '''
 action: compile
 """
 
-#treportunused.nim(37, 3) Hint: 'v0.99' is declared but not used [XDeclaredButNotUsed]
-#treportunused.nim(38, 3) Hint: 'v0.99.99' is declared but not used [XDeclaredButNotUsed]
 # bug #9764
 iterator s1(a:string): int = discard
 iterator s2(): int = discard
@@ -32,9 +32,7 @@ var s9: int
 type s10 = object
 type s11 = type(1.2)
 
-when false:
-  # enabled again when Nim bootstraps with -d:nimFpRoundtrips
-  # https://github.com/nim-lang/Nim/issues/14407
-  let
-    `v0.99` = "0.99"
-    `v0.99.99` = "0.99.99"
+# bug #14407 (requires `compiler/nim.cfg` containing define:nimFpRoundtrips)
+let
+  `v0.99` = "0.99"
+  `v0.99.99` = "0.99.99"
