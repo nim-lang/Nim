@@ -677,7 +677,7 @@ Breaking Changes
 ================
 
 Introducing breaking changes, no matter how well intentioned,
-creates long-term problems for the community, in particular those looking to protomote
+creates long-term problems for the community, in particular those looking to promote
 reusable Nim code in libraries: In the Nim distribution, critical security and bugfixes,
 language changes and community improvements are bundled in a single distribution - it is
 difficult to make partial upgrades with only benign changes. When one library depends on
