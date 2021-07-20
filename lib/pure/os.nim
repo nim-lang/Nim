@@ -14,7 +14,8 @@
 runnableExamples:
   let myFile = "/path/to/my/file.nim"
   assert splitPath(myFile) == (head: "/path/to/my", tail: "file.nim")
-  assert parentDir(myFile) == "/path/to/my".unixToNativePath
+  when defined(posix):
+    assert parentDir(myFile) == "/path/to/my"
   assert splitFile(myFile) == (dir: "/path/to/my", name: "file", ext: ".nim")
   assert myFile.changeFileExt("c") == "/path/to/my/file.c"
 
