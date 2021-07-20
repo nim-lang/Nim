@@ -12,9 +12,15 @@ import std/math
 proc `==~`(x, y: float): bool = abs(x - y) < 1e-9
 
 
+import std/math
+
+
 template main() =
   block:
     when not defined(js):
+      # bug #16434
+      doAssert round(0.499999999999999944'f64) == 0.0
+
       # check for no side effect annotation
       proc mySqrt(num: float): float {.noSideEffect.} =
         # xxx unused
