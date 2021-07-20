@@ -150,6 +150,9 @@ when defined(nimHasInvariant):
     of cincludes: copySeq(conf.cIncludes)
     of clibs: copySeq(conf.cLibs)
 
+proc stackTrace2(c: PCtx, msg: string, n: PNode) =
+  stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, msg, n.info)
+
 proc registerAdditionalOps*(c: PCtx) =
   proc gorgeExWrapper(a: VmArgs) =
     let ret = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
@@ -238,15 +241,13 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
-      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
-                  "symBodyHash() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
+      stackTrace2(c, "symBodyHash() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
     setResult(a, $symBodyDigest(c.graph, n.sym))
 
   registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
-      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
-                  "isExported() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
+      stackTrace2(c, "isExported() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
     setResult(a, sfExported in n.sym.flags)
 
   registerCallback c, "stdlib.vmutils.vmTrace", proc (a: VmArgs) =
