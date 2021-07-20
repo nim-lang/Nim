@@ -92,7 +92,8 @@ else:
     else:
       return c_getenv(key) != nil
 
-  proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
+  proc putEnv*(key, val: string, overwrite: bool = true) {.tags: [
+      WriteEnvEffect].} =
     ## Sets the value of the `environment variable`:idx: named `key` to `val`.
     ## If an error occurs, `OSError` is raised.
     ##
@@ -110,12 +111,16 @@ else:
           var v = newWideCString(val)
           if setEnvironmentVariableW(k, v) == 0'i32: raiseOSError(osLastError())
         else:
-          if setEnvironmentVariableA(key, val) == 0'i32: raiseOSError(osLastError())
+          if setEnvironmentVariableA(key, val) == 0'i32:
+            raiseOSError(osLastError())
       elif defined(vcc):
         if c_putenv_s(key, val) != 0'i32:
           raiseOSError(osLastError())
       else:
-        if c_setenv(key, val, 1'i32) != 0'i32:
+        let overwriteInt =
+          if overwrite: 1'i32
+          else: 0'i32
+        if c_setenv(key, val, overwriteInt) != 0'i32:
           raiseOSError(osLastError())
 
   proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
@@ -133,23 +138,38 @@ else:
       when defined(windows) and not defined(nimscript):
         when useWinUnicode:
           var k = newWideCString(key)
-          if setEnvironmentVariableW(k, nil) == 0'i32: raiseOSError(osLastError())
+          if setEnvironmentVariableW(k, nil) == 0'i32:
+            raiseOSError(osLastError())
         else:
-          if setEnvironmentVariableA(key, nil) == 0'i32: raiseOSError(osLastError())
+          if setEnvironmentVariableA(key, nil) == 0'i32:
+            raiseOSError(osLastError())
       else:
         if c_unsetenv(key) != 0'i32:
           raiseOSError(osLastError())
 
-  when (defined(macosx) and not defined(ios) and not defined(emscripten)) or defined(nimscript):
-        # From the manual:
-        # Shared libraries and bundles don't have direct access to environ,
-        # which is only available to the loader ld(1) when a complete program
-        # is being linked.
-        # The environment routines can still be used, but if direct access to
-        # environ is needed, the _NSGetEnviron() routine, defined in
-        # <crt_externs.h>, can be used to retrieve the address of environ
-        # at runtime.
-    proc NSGetEnviron(): ptr cstringArray {.importc: "_NSGetEnviron", header: "<crt_externs.h>".}
+  when defined(windows) and not defined(nimscript):
+    when useWinUnicode:
+      when defined(cpp):
+        proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.importcpp: "(NI16*)wcschr((const wchar_t *)#, #)",
+            header: "<string.h>".}
+      else:
+        proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.importc: "wcschr",
+            header: "<string.h>".}
+    else:
+      proc strEnd(cstr: cstring, c = 0'i32): cstring {.importc: "strchr",
+          header: "<string.h>".}
+  elif (defined(macosx) and not defined(ios) and not defined(emscripten)) or
+      defined(nimscript):
+    # From the manual:
+    # Shared libraries and bundles don't have direct access to environ,
+    # which is only available to the loader ld(1) when a complete program
+    # is being linked.
+    # The environment routines can still be used, but if direct access to
+    # environ is needed, the _NSGetEnviron() routine, defined in
+    # <crt_externs.h>, can be used to retrieve the address of environ
+    # at runtime.
+    proc NSGetEnviron(): ptr cstringArray {.importc: "_NSGetEnviron",
+        header: "<crt_externs.h>".}
     var gEnv = NSGetEnviron()[]
   elif defined(haiku):
     var gEnv {.importc: "environ", header: "<stdlib.h>".}: cstringArray
@@ -168,31 +188,32 @@ else:
     ## * `putEnv proc <#putEnv,string,string>`_
     ## * `delEnv proc <#delEnv,string>`_
     when defined(windows) and not defined(nimscript):
-      template impl(fn1, fn2, typ, num) =
-        var env = fn1()
-        var e = env
-        if e == nil: break
-        while true:
-          var eend = strEnd(e)
-          let kv = $e
-          var p = find(kv, '=')
-          yield (substr(kv, 0, p-1), substr(kv, p+1))
-          e = cast[typ](cast[ByteAddress](eend)+num)
-          if eend[1].int == 0: break
-        discard fn2(env)
-      when useWinUnicode:
-        when defined(cpp):
-          proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
-            importcpp: "(NI16*)wcschr((const wchar_t *)#, #)", header: "<string.h>".}
+      block:
+        when useWinUnicode:
+          var env = getEnvironmentStringsW()
+          var e = env
+          if e == nil: break
+          while true:
+            var eend = strEnd(e)
+            let kv = $e
+            var p = find(kv, '=')
+            yield (substr(kv, 0, p-1), substr(kv, p+1))
+            e = cast[WideCString](cast[ByteAddress](eend)+2)
+            if eend[1].int == 0: break
+          discard freeEnvironmentStringsW(env)
         else:
-          proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
-            importc: "wcschr", header: "<string.h>".}
-        impl(getEnvironmentStringsW, freeEnvironmentStringsW, WideCString, 2)
-      else:
-        proc strEnd(cstr: cstring, c = 0'i32): cstring {.
-          importc: "strchr", header: "<string.h>".}
-        impl(getEnvironmentStringsA, freeEnvironmentStringsA, cstring, 1)
-    else:     
+          var env = getEnvironmentStringsA()
+          var e = env
+          if e == nil: break
+          while true:
+            var eend = strEnd(e)
+            let kv = $e
+            var p = find(kv, '=')
+            yield (substr(kv, 0, p-1), substr(kv, p+1))
+            e = cast[cstring](cast[ByteAddress](eend)+1)
+            if eend[1] == '\0': break
+          discard freeEnvironmentStringsA(env)
+    else:
       var i = 0
       while gEnv[i] != nil:
         let kv = $gEnv[i]
