@@ -775,7 +775,7 @@ Examples of changes that are considered non-breaking include:
 * Adding an overload to an already overloaded proc.
 * Adding new default parameters to an existing proc. It is assumed that you do not
   use Nim's stdlib procs's addresses (that you don't use them as first class entities).
-* Changing the calling convetion from `nimcall` to `inline`
+* Changing the calling convention from `nimcall` to `inline`
   (but first RFC https://github.com/nim-lang/RFCs/issues/396 needs to be implemented).
 * Changing the behavior from "crashing" into some other, well documented result (including
   raising a Defect, but not raising an exception that does not inherit from Defect).
