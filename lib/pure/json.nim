@@ -533,8 +533,8 @@ proc `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline, since: (1,
 
 proc `[]`*[U, V](a: JsonNode, x: HSlice[U, V]): JsonNode =
   ## Slice operation for JArray.
-  ## Returns the inclusive range `[a[x.a], a[x.b]]`:
   ##
+  ## Returns the inclusive range `[a[x.a], a[x.b]]`:
   runnableExamples:
     let arr = %[0,1,2,3,4,5]
     doAssert arr[2..4] == %[2,3,4]
