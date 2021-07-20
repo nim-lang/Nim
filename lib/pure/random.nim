@@ -204,6 +204,19 @@ proc skipRandomNumbers*(s: var Rand) =
   s.a0 = s0
   s.a1 = s1
 
+proc rand[T: uint | uint64](r: var Rand; max: T): T =
+  # xxx export in future work
+  if max == 0: return
+  else:
+    let max = uint64(max)
+    when T.high.uint64 == uint64.high:
+      if max == uint64.high: return T(next(r))
+    while true:
+      let x = next(r)
+      # avoid `mod` bias
+      if x <= randMax - (randMax mod max):
+        return T(x mod (max + 1))
+
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
@@ -213,15 +226,13 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
-  runnableExamples("-r:off"):
+  runnableExamples:
     var r = initRand(123)
-    assert r.rand(100) == 96 # implementation defined
-
-  if max == 0: return
-  while true:
-    let x = next(r)
-    if x <= randMax - (randMax mod Ui(max)):
-      return int(x mod (uint64(max) + 1u64))
+    if false:
+      assert r.rand(100) == 96 # implementation defined
+  # bootstrap: can't use `runnableExamples("-r:off")`
+  cast[int](rand(r, uint64(max)))
+    # xxx toUnsigned pending https://github.com/nim-lang/Nim/pull/18445
 
 proc rand*(max: int): int {.benign.} =
   ## Returns a random integer in the range `0..max`.
@@ -306,7 +317,10 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   when T is SomeFloat:
     result = rand(r, x.b - x.a) + x.a
   else: # Integers and Enum types
-    result = T(rand(r, int(x.b) - int(x.a)) + int(x.a))
+    when defined(js):
+      result = cast[T](rand(r, cast[uint](x.b) - cast[uint](x.a)) + cast[uint](x.a))
+    else:
+      result = cast[T](rand(r, cast[uint64](x.b) - cast[uint64](x.a)) + cast[uint64](x.a))
 
 proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.

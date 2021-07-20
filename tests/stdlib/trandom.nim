@@ -3,7 +3,9 @@ discard """
   targets: "c js"
 """
 
-import std/[random, math, os, stats, sets, tables]
+import std/[random, math, stats, sets, tables]
+when not defined(js):
+  import std/os
 
 randomize(233)
 
@@ -187,3 +189,62 @@ block: # bug #17467
     doAssert x > 1e-4, $(x, i)
       # This used to fail for each i in 0..<26844, i.e. the 1st produced value
       # was predictable and < 1e-4, skewing distributions.
+
+const withUint = false # pending exporting `proc rand[T: uint | uint64](r: var Rand; max: T): T =`
+
+block: # bug #16360
+  var r = initRand()
+  template test(a) =
+    let a2 = a
+    block:
+      let a3 = r.rand(a2)
+      doAssert a3 <= a2
+      doAssert a3.type is a2.type
+    block:
+      let a3 = rand(a2)
+      doAssert a3 <= a2
+      doAssert a3.type is a2.type
+  when withUint:
+    test cast[uint](int.high)
+    test cast[uint](int.high) + 1
+    when not defined(js):
+      # pending bug #16411
+      test uint64.high
+      test uint64.high - 1
+    test uint.high - 2
+    test uint.high - 1
+    test uint.high
+  test int.high
+  test int.high - 1
+  test int.high - 2
+  test 0
+  when withUint:
+    test 0'u
+    test 0'u64
+
+block: # bug #16296
+  var r = initRand()
+  template test(x) =
+    let a2 = x
+    let a3 = r.rand(a2)
+    doAssert a3 <= a2.b
+    doAssert a3 >= a2.a
+    doAssert a3.type is a2.a.type
+  test(-2 .. int.high-1)
+  test(int.low .. int.high)
+  test(int.low+1 .. int.high)
+  test(int.low .. int.high-1)
+  test(int.low .. 0)
+  test(int.low .. -1)
+  test(int.low .. 1)
+  test(int64.low .. 1'i64)
+  when not defined(js):
+    # pending bug #16411
+    test(10'u64 .. uint64.high)
+
+block: # bug #17670
+  when not defined(js):
+    # pending bug #16411
+    type UInt48 = range[0'u64..2'u64^48-1]
+    let x = rand(UInt48)
+    doAssert x is UInt48
