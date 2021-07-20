@@ -10,27 +10,14 @@
 ## This module contains basic operating system facilities like
 ## retrieving environment variables, reading command line arguments,
 ## working with directories, running shell commands, etc.
-##
-## .. code-block::
-##   import std/os
-##
-##   let myFile = "/path/to/my/file.nim"
-##
-##   let pathSplit = splitPath(myFile)
-##   assert pathSplit.head == "/path/to/my"
-##   assert pathSplit.tail == "file.nim"
-##
-##   assert parentDir(myFile) == "/path/to/my"
-##
-##   let fileSplit = splitFile(myFile)
-##   assert fileSplit.dir == "/path/to/my"
-##   assert fileSplit.name == "file"
-##   assert fileSplit.ext == ".nim"
-##
-##   assert myFile.changeFileExt("c") == "/path/to/my/file.c"
 
-##
-##
+runnableExamples("-r:off"):
+  let myFile = "/path/to/my/file.nim"
+  assert splitPath(myFile) == (head: "/path/to/my", tail: "file.nim")
+  assert parentDir(myFile) == "/path/to/my"
+  assert splitFile(myFile) == (dir: "/path/to/my", name: "file", ext: ".nim")
+  assert myFile.changeFileExt("c") == "/path/to/my/file.c"
+
 ## **See also:**
 ## * `osproc module <osproc.html>`_ for process communication beyond
 ##   `execShellCmd proc <#execShellCmd,string>`_
@@ -2286,6 +2273,10 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ##
   ## Walking is not recursive. If ``relative`` is true (default: false)
   ## the resulting path is shortened to be relative to ``dir``.
+  ##
+  ## If `checkDir` is true, `OSError` is raised when `dir`
+  ## doesn't exist.
+  ##
   ## Example: This directory structure::
   ##   dirA / dirB / fileB1.txt
   ##        / dirC
@@ -2385,6 +2376,9 @@ iterator walkDirRec*(dir: string,
   ## If ``relative`` is true (default: false) the resulting path is
   ## shortened to be relative to ``dir``, otherwise the full path is returned.
   ##
+  ## If `checkDir` is true, `OSError` is raised when `dir`
+  ## doesn't exist.
+  ##
   ## .. warning:: Modifying the directory structure while the iterator
   ##   is traversing may result in undefined behavior!
   ##
@@ -2448,7 +2442,7 @@ proc removeDir*(dir: string, checkDir = false) {.rtl, extern: "nos$1", tags: [
   ## in `dir` (recursively).
   ##
   ## If this fails, `OSError` is raised. This does not fail if the directory never
-  ## existed in the first place, unless `checkDir` = true
+  ## existed in the first place, unless `checkDir` = true.
   ##
   ## See also:
   ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
