@@ -650,7 +650,7 @@ proc pragmaRaisesOrTags(c: PContext, n: PNode) =
       x.typ = makeTypeFromExpr(c, x)
     else:
       var t = skipTypes(c.semTypeNode(c, x, nil), skipPtrs)
-      if t.kind != tyObject and not t.isMetaType:
+      if t.kind notin {tyObject, tyOr}:
         localError(c.config, x.info, errGenerated, "invalid type for raises/tags list")
       x.typ = t
 
