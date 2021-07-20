@@ -732,7 +732,7 @@ Compile-time breaking changes
 
 Compile-time breaking changes are usually easier to handle, but for large code bases
 it can also be much work and it can hinder the adoption of a new Nim release.
-Additive approaches are to be preferred too.
+Additive approaches are to be preferred here as well.
 
 Examples of compile-time breaking changes include (but are not limited to):
 
