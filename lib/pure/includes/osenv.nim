@@ -92,7 +92,7 @@ else:
     else:
       return c_getenv(key) != nil
 
-  proc putEnv*(key, val: string, overwrite: bool = true) {.tags: [
+  proc putEnv*(key, val: string) {.tags: [
       WriteEnvEffect].} =
     ## Sets the value of the `environment variable`:idx: named `key` to `val`.
     ## If an error occurs, `OSError` is raised.
@@ -117,10 +117,7 @@ else:
         if c_putenv_s(key, val) != 0'i32:
           raiseOSError(osLastError())
       else:
-        let overwriteInt =
-          if overwrite: 1'i32
-          else: 0'i32
-        if c_setenv(key, val, overwriteInt) != 0'i32:
+        if c_setenv(key, val, 1'i32) != 0'i32:
           raiseOSError(osLastError())
 
   proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
