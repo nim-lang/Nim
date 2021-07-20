@@ -38,7 +38,8 @@ block fileOperations:
   doAssert dirExists(dname)
 
   block: # copyFile, copyFileToDir
-    doAssertRaises(OSError): copyFile(dname/"nonexistent.txt", dname/"nonexistent.txt")
+    doAssertRaises(OSError): copyFile(dname/"nonexistent.txt",
+        dname/"nonexistent.txt")
     let fname = "D20201009T112235"
     let fname2 = "D20201009T112235.2"
     let str = "foo1\0foo2\nfoo3\0"
@@ -330,7 +331,7 @@ block walkDirRec:
     doAssert p.startsWith("walkdir_test")
 
   var s: seq[string]
-  for p in walkDirRec("walkdir_test", {pcFile}, {pcDir}, relative=true):
+  for p in walkDirRec("walkdir_test", {pcFile}, {pcDir}, relative = true):
     s.add(p)
 
   doAssert s.len == 2
@@ -511,10 +512,14 @@ block ospaths:
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
   doAssert relativePath("", "/users/moo", '/') == ""
   doAssert relativePath("foo", "", '/') == "foo"
-  doAssert relativePath("/foo", "/Foo", '/') == (when FileSystemCaseSensitive: "../foo" else: ".")
-  doAssert relativePath("/Foo", "/foo", '/') == (when FileSystemCaseSensitive: "../Foo" else: ".")
-  doAssert relativePath("/foo", "/fOO", '/') == (when FileSystemCaseSensitive: "../foo" else: ".")
-  doAssert relativePath("/foO", "/foo", '/') == (when FileSystemCaseSensitive: "../foO" else: ".")
+  doAssert relativePath("/foo", "/Foo", '/') == (
+      when FileSystemCaseSensitive: "../foo" else: ".")
+  doAssert relativePath("/Foo", "/foo", '/') == (
+      when FileSystemCaseSensitive: "../Foo" else: ".")
+  doAssert relativePath("/foo", "/fOO", '/') == (
+      when FileSystemCaseSensitive: "../foo" else: ".")
+  doAssert relativePath("/foO", "/foo", '/') == (
+      when FileSystemCaseSensitive: "../foO" else: ".")
 
   doAssert relativePath("foo", ".", '/') == "foo"
   doAssert relativePath(".", ".", '/') == "."
@@ -524,8 +529,10 @@ block ospaths:
   doAssert relativePath("", "foo") == ""
   doAssert relativePath("././/foo", "foo//./") == "."
 
-  doAssert relativePath(getCurrentDir() / "bar", "foo") == "../bar".unixToNativePath
-  doAssert relativePath("bar", getCurrentDir() / "foo") == "../bar".unixToNativePath
+  doAssert relativePath(getCurrentDir() / "bar", "foo") ==
+      "../bar".unixToNativePath
+  doAssert relativePath("bar", getCurrentDir() / "foo") ==
+      "../bar".unixToNativePath
 
   when doslikeFileSystem:
     doAssert relativePath(r"c:\foo.nim", r"C:\") == r"foo.nim"
@@ -552,19 +559,19 @@ block ospaths:
   doAssert joinPath("/", "") == unixToNativePath"/"
   doAssert joinPath("/" / "") == unixToNativePath"/" # weird test case...
   doAssert joinPath("/", "/a/b/c") == unixToNativePath"/a/b/c"
-  doAssert joinPath("foo/","") == unixToNativePath"foo/"
-  doAssert joinPath("foo/","abc") == unixToNativePath"foo/abc"
-  doAssert joinPath("foo//./","abc/.//") == unixToNativePath"foo/abc/"
-  doAssert joinPath("foo","abc") == unixToNativePath"foo/abc"
-  doAssert joinPath("","abc") == unixToNativePath"abc"
+  doAssert joinPath("foo/", "") == unixToNativePath"foo/"
+  doAssert joinPath("foo/", "abc") == unixToNativePath"foo/abc"
+  doAssert joinPath("foo//./", "abc/.//") == unixToNativePath"foo/abc/"
+  doAssert joinPath("foo", "abc") == unixToNativePath"foo/abc"
+  doAssert joinPath("", "abc") == unixToNativePath"abc"
 
-  doAssert joinPath("gook/.","abc") == unixToNativePath"gook/abc"
+  doAssert joinPath("gook/.", "abc") == unixToNativePath"gook/abc"
 
   # controversial: inconsistent with `joinPath("gook/.","abc")`
   # on linux, `./foo` and `foo` are treated a bit differently for executables
   # but not `./foo/bar` and `foo/bar`
   doAssert joinPath(".", "/lib") == unixToNativePath"./lib"
-  doAssert joinPath(".","abc") == unixToNativePath"./abc"
+  doAssert joinPath(".", "abc") == unixToNativePath"./abc"
 
   # cases related to issue #13455
   doAssert joinPath("foo", "", "") == "foo"
@@ -583,7 +590,8 @@ block ospaths:
   doAssert joinPath("foo/", "../a") == unixToNativePath"a"
 
   when doslikeFileSystem:
-    doAssert joinPath("C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\Common7\\Tools\\", "..\\..\\VC\\vcvarsall.bat") == r"C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat"
+    doAssert joinPath("C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\Common7\\Tools\\",
+        "..\\..\\VC\\vcvarsall.bat") == r"C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat"
     doAssert joinPath("C:\\foo", "..\\a") == r"C:\a"
     doAssert joinPath("C:\\foo\\", "..\\a") == r"C:\a"
 
@@ -603,24 +611,6 @@ block getTempDir:
 
 block: # getCacheDir
   doAssert getCacheDir().dirExists
-
-block osenv:
-  block delEnv:
-    const dummyEnvVar = "DUMMY_ENV_VAR" # This env var wouldn't be likely to exist to begin with
-    doAssert existsEnv(dummyEnvVar) == false
-    putEnv(dummyEnvVar, "1")
-    doAssert existsEnv(dummyEnvVar) == true
-    delEnv(dummyEnvVar)
-    doAssert existsEnv(dummyEnvVar) == false
-    delEnv(dummyEnvVar)         # deleting an already deleted env var
-    doAssert existsEnv(dummyEnvVar) == false
-  block: # putEnv, bug #18502
-    doAssertRaises(OSError): putEnv("DUMMY_ENV_VAR_PUT=DUMMY_VALUE", "NEW_DUMMY_VALUE")
-    doAssertRaises(OSError): putEnv("", "NEW_DUMMY_VALUE")
-  block:
-    doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", "") == ""
-    doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", " ") == " "
-    doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", "Arrakis") == "Arrakis"
 
 block isRelativeTo:
   doAssert isRelativeTo("/foo", "/")
@@ -709,7 +699,7 @@ block: # normalizeExe
 
 block: # isAdmin
   let isAzure = existsEnv("TF_BUILD") # xxx factor with testament.specs.isAzure
-  # In Azure on Windows tests run as an admin user
+                                      # In Azure on Windows tests run as an admin user
   if isAzure and defined(windows): doAssert isAdmin()
   # In Azure on POSIX tests run as a normal user
   if isAzure and defined(posix): doAssert not isAdmin()
