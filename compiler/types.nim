@@ -1656,3 +1656,13 @@ proc isSinkTypeForParam*(t: PType): bool =
         result = false
       else:
         result = true
+
+proc lookupFieldAgain*(ty: PType; field: PSym): PSym =
+  var ty = ty
+  while ty != nil:
+    ty = ty.skipTypes(skipPtrs)
+    assert(ty.kind in {tyTuple, tyObject})
+    result = lookupInRecord(ty.n, field.name)
+    if result != nil: break
+    ty = ty[0]
+  if result == nil: result = field
