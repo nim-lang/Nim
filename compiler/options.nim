@@ -278,7 +278,12 @@ type
     foLegacyRelProj # legacy, shortest of (foAbs, foRelProject)
     foName # lastPathPart, e.g.: foo.nim
     foStacktrace # if optExcessiveStackTrace: foAbs else: foName
+  LocalOverrideAtom* = object
 
+  LocalOverride* = object
+    lhs*: string
+    rhs*: string
+    prefix*: string
   ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -344,6 +349,7 @@ type
     jsonBuildFile*: AbsoluteFile
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
+    localOverrides*: seq[LocalOverride]
     projectName*: string # holds a name like 'nim'
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
@@ -823,6 +829,12 @@ const stdlibDirs = [
 const
   pkgPrefix = "pkg/"
   stdPrefix = "std/"
+  systemPrefix = "system/"
+
+proc isCanonicalPath*(path: string): bool =
+  # in future work we can support also `this/` for current package.
+  let path = path & '/'
+  result = path.startsWith(stdPrefix) or path.startsWith(systemPrefix) or path.startsWith(pkgPrefix)
 
 proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = false): RelativeFile =
   let f = $f
@@ -852,7 +864,24 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
           result = rawFindFile2(conf, RelativeFile f.toLowerAscii)
   patchModule(conf)
 
-proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
+proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string
+
+proc canonicalImportPkg*(conf: ConfigRef, file: AbsoluteFile): string =
+  result = canonicalImport(conf, file)
+  let tmp = result & '/'
+  if not (tmp.startsWith(stdPrefix) or tmp.startsWith(systemPrefix)):
+    result = pkgPrefix & result
+
+proc pathMatchesPrefix(conf: ConfigRef, path: string, prefix: string): bool =
+  # see also `prefixmatches.prefixMatch`
+  if prefix == "/": result = true
+  elif prefix.isAbsolute:
+    result = path.isRelativeTo(prefix)
+  else: # canonical, eg std/foo or pkg/fusion/bar
+    let canon = canonicalImportPkg(conf, AbsoluteFile(path)) & '/'
+    result = canon.startsWith(prefix & '/')
+
+proc findModule*(conf: ConfigRef; modulename, currentModule: string, depth = 0): AbsoluteFile =
   # returns path to module
   var m = addFileExt(modulename, NimExt)
   if m.startsWith(pkgPrefix):
@@ -870,6 +899,19 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
       result = AbsoluteFile currentPath / m
     if not fileExists(result):
       result = findFile(conf, m)
+  if not result.isEmpty:
+    let canon = canonicalImportPkg(conf, result)
+    for ai in conf.localOverrides:
+      if ai.lhs == canon:
+        if pathMatchesPrefix(conf, currentModule, ai.prefix):
+          if depth > 10:
+            # can happen with: `--moduleoverride:std/foo2:std/foo2` or `--moduleoverride:std/foo2:/pathto/std/foo2`
+            # or more complex cases with cycles. Future work could improve things but this is a rare edge case.
+            # `localError` not defined in scope, alternative is some simple refactoring.
+            stderr.write "module resolution too deep, possible cyclic overrides detected\n"
+            return AbsoluteFile""
+          result = findModule(conf, ai.rhs, currentModule, depth + 1)
+          break
   patchModule(conf)
 
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =

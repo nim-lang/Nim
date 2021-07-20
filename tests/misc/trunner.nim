@@ -377,4 +377,69 @@ mused3.nim(75, 10) Hint: duplicate import of 'mused3a'; previous import here: mu
 """
 
 else:
+  block: # moduleoverride
+    proc fn(opt: string, expected: string) =
+      let output = runNimCmdChk("nimble/mmoduleoverride.nim", fmt"--warnings:off --hints:off {opt}")
+      doAssert output == expected, opt & "\noutput:\n" & output & "expected:\n" & expected
+    fn(""): """
+in pkgA.module2
+in pkgC.module2
+in pkgB.module2
+"""
+    fn("--moduleoverride:pkg/pkgC/module2:pkg/pkgC/module2b"): """
+in pkgA.module2
+in pkgC.module2b
+in pkgB.module2
+"""
+    fn("--moduleoverride:pkg/pkgC/module2:pkg/pkgC/module2b:pkg/pkgA"): """
+in pkgA.module2
+in pkgC.module2b
+in pkgB.module2
+in pkgC.module2
+"""
+    fn("--moduleoverride:pkg/pkgC/module2:pkg/pkgC/module2b:pkg/pkgB"): """
+in pkgA.module2
+in pkgC.module2
+in pkgB.module2
+in pkgC.module2b
+"""
+    fn("--moduleoverride:pkg/pkgC/module2:pkg/pkgC/module2b:pkg"): """
+in pkgA.module2
+in pkgC.module2b
+in pkgB.module2
+"""
+    fn("--moduleoverride:pkg/pkgC/module2:pkg/pkgC/module2b:pkg/pkgA/module2"): """
+in pkgA.module2
+in pkgC.module2b
+in pkgB.module2
+in pkgC.module2
+"""
+    fn("--moduleoverride:pkg/pkgC/module2:pkg/pkgC/module2b:pkg/pkgA/module"): """
+in pkgA.module2
+in pkgC.module2
+in pkgB.module2
+"""
+    fn("--moduleoverride:std/strutils:pkg/pkgC/module2b"): """
+in pkgC.module2b
+in pkgA.module2
+in pkgC.module2
+in pkgB.module2
+"""
+    let path = testsDir / "nimble/nimbleDir/simplePkgs/pkgA-0.1.0/pkgA/module2.nim"
+    fn(fmt"--moduleoverride:pkg/pkgC/module2:pkg/pkgC/module2b:{path}"): """
+in pkgA.module2
+in pkgC.module2b
+in pkgB.module2
+in pkgC.module2
+"""
+    # edge case, whether to consider `pkg/tests/nimble/mmoduleoverride` as canonical
+    fn("--moduleoverride:std/strutils:pkg/pkgC/module2b:pkg/tests/nimble/mmoduleoverride"): """
+in pkgC.module2b
+in pkgA.module2
+in pkgC.module2
+in pkgB.module2
+"""
+    doAssertRaises(AssertionDefect): fn("--moduleoverride:pkgC/module2:pkg/pkgC/module2b:pkg/pkgA/module", "") # pkg/ missing
+    doAssertRaises(AssertionDefect): fn("--moduleoverride:pkg/pkgC/module2:pkg/pkgC/nonexistent", "") # pkg/pkgC/nonexistent is nonexistent
+
   discard # only during debugging, tests added here will run with `-d:nimTestsTrunnerDebugging` enabled
