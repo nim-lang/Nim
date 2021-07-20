@@ -702,8 +702,8 @@ Examples of run-time breaking changes:
 
 - Raising exceptions of a new type, compared to what's currently being raised.
 
-- Adding overloads or generic `proc`:s when an unconstrained
-  generic implementation exists already: This may cause code to behave differently
+- Adding unconstrained or poorly constrained generic procs or macros
+  ("hash now works for all `ref T`"): This may cause code to behave differently
   depending only on which modules are imported - common examples include `==` and `hash`.
 
 - Changing behavior of existing functions like:
@@ -721,7 +721,8 @@ represenation of a floating point number that "roundtrips" is much better than
 a string represenation that doesn't. These run-time breaking changes must start in the
 state "opt-in" via a new `-d:nimPreviewX` or command line flag and then should become
 the new default later, in follow-up versions. This way users can track
-regressions more easily. (And no, "git bisect" is not an acceptable alternative.)
+regressions more easily. ("git bisect" is not an acceptable alternative, that's for
+Nim compiler developers, not for Nim users.)
 
 Above all else, additive approaches that don't change existing behaviors
 should be preferred.
@@ -753,8 +754,8 @@ Examples of compile-time breaking changes include (but are not limited to):
   be annotated with a `.since` annotation.
 
 
-Compiler bugfixes
------------------
+Compiler/language spec bugfixes
+-------------------------------
 
 This can even be applied to compiler "bugfixes": If the compiler should have been
 "pickier" in its handling of `typedesc`, instead of "fixing typedesc handling bugs",
