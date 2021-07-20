@@ -101,11 +101,6 @@ else:
     ## * `existsEnv proc <#existsEnv,string>`_
     ## * `delEnv proc <#delEnv,string>`_
     ## * `envPairs iterator <#envPairs.i>`_
-
-    # Note: by storing the string in the environment sequence,
-    # we guarantee that we don't free the memory before the program
-    # ends (this is needed for POSIX compliance). It is also needed so that
-    # the process itself may access its modified environment variables!
     when nimvm:
       discard "built into the compiler"
     else:
@@ -156,7 +151,6 @@ else:
     ## * `existsEnv proc <#existsEnv,string>`_
     ## * `putEnv proc <#putEnv,string,string>`_
     ## * `delEnv proc <#delEnv,string>`_
-    var environment: seq[string]
     when defined(windows) and not defined(nimscript):
       when useWinUnicode:
         when defined(cpp):
@@ -165,38 +159,35 @@ else:
         else:
           proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
             importc: "wcschr", header: "<string.h>".}
+        var
+          env = getEnvironmentStringsW()
+          e = env
+        if e == nil: return # an error occurred
+        while true:
+          var eend = strEnd(e)
+          let kv = $e
+          var p = find(kv, '=')
+          yield (substr(kv, 0, p-1), substr(kv, p+1))
+          e = cast[WideCString](cast[ByteAddress](eend)+2)
+          if eend[1].int == 0: break
+        discard freeEnvironmentStringsW(env)
       else:
         proc strEnd(cstr: cstring, c = 0'i32): cstring {.
           importc: "strchr", header: "<string.h>".}
-      
-      proc getEnvVarsC() =
-        environment = @[]
-        when useWinUnicode:
-          var
-            env = getEnvironmentStringsW()
-            e = env
-          if e == nil: return # an error occurred
-          while true:
-            var eend = strEnd(e)
-            add(environment, $e)
-            e = cast[WideCString](cast[ByteAddress](eend)+2)
-            if eend[1].int == 0: break
-          discard freeEnvironmentStringsW(env)
-        else:
-          var
-            env = getEnvironmentStringsA()
-            e = env
-          if e == nil: return # an error occurred
-          while true:
-            var eend = strEnd(e)
-            add(environment, $e)
-            e = cast[cstring](cast[ByteAddress](eend)+1)
-            if eend[1] == '\0': break
-          discard freeEnvironmentStringsA(env)
-    else:
-      const useNSGetEnviron = (defined(macosx) and not defined(ios) and not defined(emscripten)) or defined(nimscript)
-
-      when useNSGetEnviron:
+        var
+          env = getEnvironmentStringsA()
+          e = env
+        if e == nil: return # an error occurred
+        while true:
+          var eend = strEnd(e)
+          let kv = $e
+          var p = find(kv, '=')
+          yield (substr(kv, 0, p-1), substr(kv, p+1))
+          e = cast[cstring](cast[ByteAddress](eend)+1)
+          if eend[1] == '\0': break
+        discard freeEnvironmentStringsA(env)
+    else: 
+      when (defined(macosx) and not defined(ios) and not defined(emscripten)) or defined(nimscript):
         # From the manual:
         # Shared libraries and bundles don't have direct access to environ,
         # which is only available to the loader ld(1) when a complete program
@@ -207,23 +198,15 @@ else:
         # at runtime.
         proc NSGetEnviron(): ptr cstringArray {.
           importc: "_NSGetEnviron", header: "<crt_externs.h>".}
+        var gEnv = NSGetEnviron()[]
       elif defined(haiku):
         var gEnv {.importc: "environ", header: "<stdlib.h>".}: cstringArray
       else:
         var gEnv {.importc: "environ".}: cstringArray
-
-      proc getEnvVarsC() =
-        # retrieves the variables of char** env of C's main proc
-        environment = @[]
-        when useNSGetEnviron:
-          var gEnv = NSGetEnviron()[]
-        var i = 0
-        while gEnv[i] != nil:
-          add environment, $gEnv[i]
-          inc(i)
-
-    getEnvVarsC()
-    for i in 0..high(environment):
-      var p = find(environment[i], '=')
-      yield (substr(environment[i], 0, p-1),
-             substr(environment[i], p+1))
+          
+      var i = 0
+      while gEnv[i] != nil:
+        let kv = $gEnv[i]
+        inc(i)
+        var p = find(kv, '=')
+        yield (substr(kv, 0, p-1), substr(kv, p+1))
