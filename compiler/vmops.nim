@@ -241,13 +241,13 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
-      stackTrace2(c, "symBodyHash() requires a symbol. '$#' is of kind '$#'" % $[$n, $n.kind], n)
+      stackTrace2(c, "symBodyHash() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
     setResult(a, $symBodyDigest(c.graph, n.sym))
 
   registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
-      stackTrace2(c, "isExported() requires a symbol. '$#' is of kind '$#'" % $[$n, $n.kind], n)
+      stackTrace2(c, "isExported() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
     setResult(a, sfExported in n.sym.flags)
 
   registerCallback c, "stdlib.vmutils.vmTrace", proc (a: VmArgs) =
