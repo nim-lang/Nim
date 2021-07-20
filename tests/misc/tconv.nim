@@ -1,7 +1,4 @@
 discard """
-  nimout:'''
-tconv.nim(81, 15) Warning: enum to enum conversion is now deprecated [User]
-'''
 """
 
 template reject(x) =
@@ -64,25 +61,3 @@ block: # issue 3766
       echo x
     r 3.R
 
-
-block: # https://github.com/nim-lang/RFCs/issues/294
-  type Koo = enum k1, k2
-  type Goo = enum g1, g2
-
-  accept: Koo(k2)
-  accept: k2.Koo
-  accept: k2.int.Goo
-
-  reject: Goo(k2)
-  reject: k2.Goo
-  reject: k2.string
-
-  {.define(nimLegacyConvEnumEnum).}
-  discard Goo(k2)
-  accept: Goo(k2)
-  accept: k2.Goo
-  reject: k2.string
-  {.undef(nimLegacyConvEnumEnum).}
-
-  reject: Goo(k2)
-  reject: k2.Goo
