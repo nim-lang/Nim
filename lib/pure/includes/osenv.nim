@@ -171,7 +171,7 @@ else:
       template impl(fn1, fn2, typ, num) =
         var env = fn1()
         var e = env
-        if e == nil: return
+        if e == nil: break
         while true:
           var eend = strEnd(e)
           let kv = $e
