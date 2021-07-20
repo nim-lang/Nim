@@ -7,30 +7,16 @@
 #    distribution, for details about the copyright.
 #
 
-# when defined(nimFpRoundtrips) and not defined(nimscript) and
-#     not defined(js) and defined(nimHasDragonBox):
-
-# import system/memory
 proc c_memcpy(a, b: pointer, size: csize_t): pointer {.importc: "memcpy", header: "<string.h>", discardable.}
+
 proc addCstringN(result: var string, buf: cstring; buflen: int) =
   # no nimvm support needed, so it doesn't need to be fast here either
   let oldLen = result.len
   let newLen = oldLen + buflen
   result.setLen newLen
-  # when defined(js):
-  #   # debugEcho()
-  #   # for i in oldLen..<newLen:
-  #   for i in 0..<buflen:
-  #     result[oldLen + i] = buf[i]
-  # else:
-  # copyMem(result[oldLen].addr, buf, buflen)
   c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
 
-import dragonbox
-import schubfach
-# when defined(nimFpRoundtrips) and not defined(nimscript) and
-#     not defined(js) and defined(nimHasDragonBox):
-#   import schubfach
+import dragonbox, schubfach
 
 proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: BiggestFloat): int =
   ## This is the implementation to format floats.
@@ -87,10 +73,6 @@ proc writeFloatToBufferSprintf*(buf: var array[65, char]; value: BiggestFloat): 
       writeToBuffer(buf, "inf")
       result = 3
 
-# when defined(nimFpRoundtrips) and not defined(nimscript) and
-#     not defined(js) and defined(nimHasDragonBox):
-#   import dragonbox
-
 proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat | float32): int {.inline.} =
   when defined(nimFpRoundtrips):
     writeFloatToBufferRoundtrip(buf, value)
@@ -132,12 +114,12 @@ proc nimFloatToString(a: float): cstring =
 
 proc addFloat*(result: var string; x: float | float32) {.inline.} =
   ## Converts float to its string representation and appends it to `result`.
-  ##
-  ## .. code-block:: Nim
-  ##   var
-  ##     a = "123"
-  ##     b = 45.67
-  ##   a.addFloat(b) # a <- "12345.67"
+  runnableExamples:
+    var
+      s = "foo:"
+      b = 45.67
+    s.addFloat(45.67)
+    assert s == "foo:45.67"
   template impl =
     when defined(nimFpRoundtrips):
       addFloatRoundtrip(result, x)
@@ -146,8 +128,5 @@ proc addFloat*(result: var string; x: float | float32) {.inline.} =
   when defined(js):
     when nimvm: impl()
     else:
-      # PRTEMP
-      let tmp = nimFloatToString(x)
-      for i in 0..<tmp.len:
-        result.add tmp[i]
+      result.add nimFloatToString(x)
   else: impl()
