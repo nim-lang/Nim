@@ -540,7 +540,7 @@ proc `[]`*[U, V](a: JsonNode, x: HSlice[U, V]): JsonNode =
     doAssert arr[2..4] == %[2,3,4]
     doAssert arr[2..^2] == %[2,3,4]
 
-  assert(node.kind == JArray)
+  assert(a.kind == JArray)
   result = newJArray()
   let xb = (when x.b is BackwardsIndex: a.len - int(x.b) else: int(x.b))
   for i in x.a .. xb:
