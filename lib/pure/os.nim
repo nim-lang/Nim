@@ -14,16 +14,11 @@
 runnableExamples("-r:off"):
   let myFile = "/path/to/my/file.nim"
 
-  let pathSplit = splitPath(myFile)
-  assert pathSplit.head == "/path/to/my"
-  assert pathSplit.tail == "file.nim"
+  assert splitPath(myFile) == (head: "/path/to/my", tail: "file.nim")
 
   assert parentDir(myFile) == "/path/to/my"
 
-  let fileSplit = splitFile(myFile)
-  assert fileSplit.dir == "/path/to/my"
-  assert fileSplit.name == "file"
-  assert fileSplit.ext == ".nim"
+  assert splitFile(myFile) == (dir: "/path/to/my", name: "file", ext: ".nim")
 
   assert myFile.changeFileExt("c") == "/path/to/my/file.c"
 
@@ -2293,7 +2288,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ## Walking is not recursive. If ``relative`` is true (default: false)
   ## the resulting path is shortened to be relative to ``dir``.
   ##
-  ## If `checkDir` is true (default: false), `OSError` is raised when `dir`
+  ## If `checkDir` is true, `OSError` is raised when `dir`
   ## doesn't exist.
   ##
   ## Example: This directory structure::
@@ -2395,7 +2390,7 @@ iterator walkDirRec*(dir: string,
   ## If ``relative`` is true (default: false) the resulting path is
   ## shortened to be relative to ``dir``, otherwise the full path is returned.
   ##
-  ## If `checkDir` is true (default: false), `OSError` is raised when `dir`
+  ## If `checkDir` is true, `OSError` is raised when `dir`
   ## doesn't exist.
   ##
   ## .. warning:: Modifying the directory structure while the iterator
