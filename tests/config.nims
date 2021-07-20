@@ -34,3 +34,5 @@ hint("Processing", off)
 switch("define", "nimExperimentalAsyncjsThen")
 switch("define", "nimExperimentalJsfetch")
 switch("define", "nimExperimentalLinenoiseExtra")
+
+switch("define", "nimFpRoundtrips")

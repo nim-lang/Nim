@@ -27,6 +27,7 @@ from std/md5 import getMD5
 from std/times import cpuTime
 from std/hashes import hash
 from std/osproc import nil
+from system/formatfloat import addFloatRoundtrip, addFloatSprintf
 
 from sighashes import symBodyDigest
 
@@ -325,3 +326,13 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.typetraits.hasClosureImpl", proc (a: VmArgs) =
     let fn = getNode(a, 0)
     setResult(a, fn.kind == nkClosure or (fn.typ != nil and fn.typ.callConv == ccClosure))
+
+  registerCallback c, "stdlib.formatfloat.addFloatRoundtrip", proc(a: VmArgs) =
+    let p = a.getVar(0)
+    let x = a.getFloat(1)
+    addFloatRoundtrip(p.strVal, x)
+
+  registerCallback c, "stdlib.formatfloat.addFloatSprintf", proc(a: VmArgs) =
+    let p = a.getVar(0)
+    let x = a.getFloat(1)
+    addFloatSprintf(p.strVal, x)

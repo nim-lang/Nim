@@ -434,7 +434,6 @@ const # magic checked op; magic unchecked op;
     mBoolToStr: ["nimBoolToStr", "nimBoolToStr"],
     mIntToStr: ["cstrToNimstr", "cstrToNimstr"],
     mInt64ToStr: ["cstrToNimstr", "cstrToNimstr"],
-    mFloatToStr: ["cstrToNimstr", "cstrToNimstr"],
     mCStrToStr: ["cstrToNimstr", "cstrToNimstr"],
     mStrToStr: ["", ""]]
 
@@ -656,9 +655,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mBoolToStr: applyFormat("nimBoolToStr($1)", "nimBoolToStr($1)")
   of mIntToStr: applyFormat("cstrToNimstr(($1) + \"\")", "cstrToNimstr(($1) + \"\")")
   of mInt64ToStr: applyFormat("cstrToNimstr(($1) + \"\")", "cstrToNimstr(($1) + \"\")")
-  of mFloatToStr:
-    useMagic(p, "nimFloatToString")
-    applyFormat "cstrToNimstr(nimFloatToString($1))"
   of mCStrToStr: applyFormat("cstrToNimstr($1)", "cstrToNimstr($1)")
   of mStrToStr, mUnown, mIsolate: applyFormat("$1", "$1")
   else:
@@ -682,8 +678,7 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     gen(p, n[1], x)
     gen(p, n[2], y)
     r.res = "($1 >>> $2)" % [x.rdLoc, y.rdLoc]
-  of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr,
-      mCStrToStr, mStrToStr, mEnumToStr:
+  of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mCStrToStr, mStrToStr, mEnumToStr:
     arithAux(p, n, r, op)
   of mEqRef:
     if mapType(n[1].typ) != etyBaseIndex:

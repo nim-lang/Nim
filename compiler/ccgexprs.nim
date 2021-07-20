@@ -94,9 +94,12 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     else:
       result = makeCString(n.strVal)
   of nkFloatLit, nkFloat64Lit:
-    result = rope(n.floatVal.toStrMaxPrecision)
+    if ty.kind == tyFloat32:
+      result = rope(n.floatVal.float32.toStrMaxPrecision)
+    else:
+      result = rope(n.floatVal.toStrMaxPrecision)
   of nkFloat32Lit:
-    result = rope(n.floatVal.toStrMaxPrecision("f"))
+    result = rope(n.floatVal.float32.toStrMaxPrecision)
   else:
     internalError(p.config, n.info, "genLiteral(" & $n.kind & ')')
     result = nil
@@ -2300,11 +2303,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mInt64ToStr: genDollar(p, e, d, "#nimInt64ToStr($1)")
   of mBoolToStr: genDollar(p, e, d, "#nimBoolToStr($1)")
   of mCharToStr: genDollar(p, e, d, "#nimCharToStr($1)")
-  of mFloatToStr:
-    if e[1].typ.skipTypes(abstractInst).kind == tyFloat32:
-      genDollar(p, e, d, "#nimFloat32ToStr($1)")
-    else:
-      genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr, mUnown: expr(p, e[1], d)
   of mIsolate: genCall(p, e, d)
