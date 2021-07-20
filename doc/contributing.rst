@@ -717,7 +717,7 @@ says "inspired by Python's f-strings". This new code can be submitted to the std
 and the old code can be deprecated or it can be published as a Nimble package.
 
 Sometimes, a run-time breaking change is most desirable: For example, a string
-represenation of a floating point number that "roundtrips" is much better than
+representation of a floating point number that "roundtrips" is much better than
 a string represenation that doesn't. These run-time breaking changes must start in the
 state "opt-in" via a new `-d:nimPreviewX` or command line flag and then should become
 the new default later, in follow-up versions. This way users can track
