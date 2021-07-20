@@ -12,9 +12,6 @@ import std/math
 proc `==~`(x, y: float): bool = abs(x - y) < 1e-9
 
 
-import std/math
-
-
 template main() =
   block:
     when not defined(js):
