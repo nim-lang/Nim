@@ -496,7 +496,7 @@ template tabCellHash(i)  = t.data[i].hcode
 proc del*[A, B](t: var Table[A, B], key: A) =
   ## Deletes `key` from hash table `t`. Does nothing if the key does not exist.
   ##
-  ## **If duplicate keys were added, this may need to be called multiple times.**
+  ## .. warning:: If duplicate keys were added, this may need to be called multiple times.
   ##
   ## See also:
   ## * `pop proc<#pop,Table[A,B],A,B>`_
