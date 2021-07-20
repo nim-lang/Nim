@@ -39,9 +39,6 @@
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
   with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
-- Instead of deleting the element at the last index,
-  `system.delete()` now raises `IndexDefect` when given index is out of bounds.
-
 - Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
   characters in the decoded values. Prior versions would raise an error. This is
   no longer the case to comply with the HTML spec and other languages
