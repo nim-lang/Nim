@@ -750,7 +750,7 @@ Examples of compile-time breaking changes include (but are not limited to):
   this is often preferred over introducing a new module with just a single proc
   inside. We use good judgement and our list of "important packages" to see if
   it doesn't break too much code out there in practice. The new procs need to
-  be annotate with a `.since` annotation.
+  be annotated with a `.since` annotation.
 
 
 Compiler bugfixes
