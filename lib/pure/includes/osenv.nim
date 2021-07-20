@@ -140,6 +140,22 @@ else:
         if c_unsetenv(key) != 0'i32:
           raiseOSError(osLastError())
 
+  when (defined(macosx) and not defined(ios) and not defined(emscripten)) or defined(nimscript):
+        # From the manual:
+        # Shared libraries and bundles don't have direct access to environ,
+        # which is only available to the loader ld(1) when a complete program
+        # is being linked.
+        # The environment routines can still be used, but if direct access to
+        # environ is needed, the _NSGetEnviron() routine, defined in
+        # <crt_externs.h>, can be used to retrieve the address of environ
+        # at runtime.
+    proc NSGetEnviron(): ptr cstringArray {.importc: "_NSGetEnviron", header: "<crt_externs.h>".}
+    var gEnv = NSGetEnviron()[]
+  elif defined(haiku):
+    var gEnv {.importc: "environ", header: "<stdlib.h>".}: cstringArray
+  else:
+    var gEnv {.importc: "environ".}: cstringArray
+
   iterator envPairs*(): tuple[key, value: string] {.tags: [ReadEnvEffect].} =
     ## Iterate over all `environments variables`:idx:.
     ##
@@ -176,24 +192,7 @@ else:
         proc strEnd(cstr: cstring, c = 0'i32): cstring {.
           importc: "strchr", header: "<string.h>".}
         impl(getEnvironmentStringsA, freeEnvironmentStringsA, cstring, 1)
-    else: 
-      when (defined(macosx) and not defined(ios) and not defined(emscripten)) or defined(nimscript):
-        # From the manual:
-        # Shared libraries and bundles don't have direct access to environ,
-        # which is only available to the loader ld(1) when a complete program
-        # is being linked.
-        # The environment routines can still be used, but if direct access to
-        # environ is needed, the _NSGetEnviron() routine, defined in
-        # <crt_externs.h>, can be used to retrieve the address of environ
-        # at runtime.
-        proc NSGetEnviron(): ptr cstringArray {.
-          importc: "_NSGetEnviron", header: "<crt_externs.h>".}
-        var gEnv = NSGetEnviron()[]
-      elif defined(haiku):
-        var gEnv {.importc: "environ", header: "<stdlib.h>".}: cstringArray
-      else:
-        var gEnv {.importc: "environ".}: cstringArray
-          
+    else:     
       var i = 0
       while gEnv[i] != nil:
         let kv = $gEnv[i]
