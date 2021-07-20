@@ -672,47 +672,117 @@ Conventions
    letters, which cause issues when going from an OS without case
    sensitivity to an OS with it.
 
-Introducing change
-------------------
 
-Nim is used for mission critical applications which depend on behaviours that
+Breaking Changes
+================
+
+Introducing breaking changes, no matter how well intentioned,
+creates long-term problems for the community, in particular those looking to protomote
+reusable Nim code in libraries: In the Nim distribution, critical security and bugfixes,
+language changes and community improvements are bundled in a single distribution - it is
+difficult to make partial upgrades with only benign changes. When one library depends on
+a legacy behavior, it can no longer be used together with another library that does not,
+breaking all downstream applications - the standard library is unique in that it sits at
+the root of **all** dependency trees.
+
+There is a big difference between compile-time breaking changes and run-time breaking
+changes.
+
+
+Run-time breaking changes
+-------------------------
+
+Run-time breaking changes are to be avoided at almost all costs: Nim is used for
+mission critical applications which depend on behaviours that
 are not covered by the test suite. As such, it's important that changes to the
 *stable* parts of the standard library are made avoiding changing the existing
-behaviors, even when the test suite continues to pass. Above all else, additive
-approaches that don't change existing behaviors should be preferred.
+behaviors, even when the test suite continues to pass.
 
-Examples of breaking changes include (but are not limited to):
+Examples of run-time breaking changes:
 
-* renaming functions and modules, or moving things
-* raising exceptions of a new type, compared to what's currently being raised
-* changing behavior of existing functions
-    * this includes inputs around edge cases or undocumented behaviors
-* adding overloads or generic `proc`:s, in particular when an unconstrained generic implementation exists already
-    * this may cause code to behave differently depending only on which modules are imported - common examples include `==` and `hash`
-* hiding the old behavior behind a `-d:nimLegacy` flag
-    * legacy flags are suitable for use between major, breaking release of the langauge or non-breaking changes that nontheless are deemed sensitive
+- Raising exceptions of a new type, compared to what's currently being raised.
+
+- Adding overloads or generic `proc`:s when an unconstrained
+  generic implementation exists already: This may cause code to behave differently
+  depending only on which modules are imported - common examples include `==` and `hash`.
+
+- Changing behavior of existing functions like:
+
+  * "Nim's path handling procs like `getXDir` now consistently lack the trailing slash"
+  * "Nim's strformat implementation is now more consistent with Python"
+
+Instead write new code that explicitly announces the feature you think we announced but
+didn't. For example, `strformat` does not say "it's compatible with Python", it
+says "inspired by Python's f-strings". This new code can be submitted to the stdlib
+and the old code can be deprecated or it can be published as a Nimble package.
+
+Sometimes, a run-time breaking change is most desirable: For example, a string
+represenation of a floating point number that "roundtrips" is much better than
+a string represenation that doesn't. These run-time breaking changes must start in the
+state "opt-in" via a new `-d:nimX` or command line flag and then should become
+the new default later, in follow-up versions. This way users can track
+regressions more easily. (And no, "git bisect" is not an acceptable alternative.)
+
+Above all else, additive approaches that don't change existing behaviors
+should be preferred.
+
+
+Compile-time breaking changes
+-----------------------------
+
+Compile-time breaking changes are usually easier to handle, but for large code bases
+it can also be much work and it can hinder the adoption of a new Nim release.
+Additive approaches are to be preferred too.
+
+Examples of compile-time breaking changes include (but are not limited to):
+
+* Renaming functions and modules, or moving things. Instead of a direct rename,
+  deprecate the old name and introduce a new one.
+* Renaming the parameter names: Thanks to Nim's "named parameter" calling syntax
+  like `f(x = 0, y = 1)` this is a breaking change. Instead live with the existing
+  parameter names.
+* Adding an enum value to an existing enum. Nim's exhaustive case statements stop
+  compiling after such a change. Instead consider to introduce new `bool`
+  fields/parameters. This can be impractical though, so we use good judgement
+  and our list of "important packages" to see if it doesn't break too much code
+  out there in practice.
+* Adding a new proc to an existing stdlib module. However, for aesthetic reasons
+  this is often preferred over introducing a new module with just a single proc
+  inside. We use good judgement and our list of "important packages" to see if
+  it doesn't break too much code out there in practice. The new procs need to
+  be annotate with a `.since` annotation.
+
+
+Compiler bugfixes
+-----------------
+
+This can even be applied to compiler "bugfixes": If the compiler should have been
+"pickier" in its handling of `typedesc`, instead of "fixing typedesc handling bugs",
+consider the following solution:
+
+- Spec out how `typedesc` should really work and also spec out the cases where it
+  should not be allowed!
+- Deprecate `typedesc` and name the new metatype something new like `typeArg`.
+- Implement the spec.
+
+
+Non-breaking changes
+--------------------
 
 Examples of changes that are considered non-breaking include:
 
-* creating a new module, or adding a function with a new name
-    * this may create compile-time issues due to name conflicts
-* changing the behavior of a function where previously it was crashing, raising `Defect` or giving an incorrect result
-* addressing issues whose invalid or undefined behavior can be made a compile-time error
+* Creating a new module.
+* Adding an overload to an already overloaded proc.
+* Adding new default parameters to an existing proc. It is assumed that you do not
+  use Nim's stdlib procs's addresses (that you don't use them as first class entities).
+* Changing the calling convetion from `nimcall` to `inline`
+  (but first RFC https://github.com/nim-lang/RFCs/issues/396 needs to be implemented).
+* Changing the behavior from "crashing" into some other, well documented result (including
+  raising a Defect, but not raising an exception that does not inherit from Defect).
 
-Some behaviors in the standard library are inconsistent or unfortunate. Even so, code may have come to depend on the quirks, and it's often not possible to tell. When encountering such behaviors, consider the following approaches instead:
+* Adding new fields to an existing object.
 
-* document the quirk in manual and tutorials to raise awareness
-* create a separate, stand-alone Nimble package and deprecate the existing function or module
-    * this allows the API to evolve at its own pace - in stand-alone packages, it's also easier to introduce breaking changes since they are not bundled with other changes
-    * the deprecation message should explain why the existing behavior is problematic
-* deprectate the existing function or module, and create a new implementation in a separate module
-    * this approach is suitable for functionality closely tied to the language
-* introduce the new behavior behind a `-d:nimEnable` flag
-    * this approach is suitable for experimental changes and changes which will become default in a future breaking release of Nim, allowing early adopters to experiment with the new behavior
+Nim's introspection facilities imply that strictly speaking almost every addition can
+break somebody's code. It is impractical to care about these cases, a change that only
+affects introspection is not considered to be a breaking change.
 
-Introducing breaking changes in the standard library, no matter how well intentioned, creates long-term problems for the community, in particular those looking to protomote reusable Nim code in libraries:
-
-* in the Nim distribution, critical security and bugfixes, language changes and community improvements are bundled in a single distribution - it is difficult to make partial upgrades with only benign changes
-    * when one library depends on a legacy behavior, it can no longer be used together with another library that does not, breaking all downstream applications - the standard library is unique in that it sits at the root of _all_ dependency trees
-
-These guidelines apply to released versions of the language - `devel` can always be expected to change.
