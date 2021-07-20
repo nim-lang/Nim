@@ -2229,16 +2229,6 @@ proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
       r.res.addf("Field$#: $#", [i.rope, a.res])
   r.res.add("}")
 
-proc lookupFieldAgain(ty: PType; field: PSym): PSym =
-  var ty = ty
-  while ty != nil:
-    ty = ty.skipTypes(skipPtrs)
-    assert(ty.kind in {tyTuple, tyObject})
-    result = lookupInRecord(ty.n, field.name)
-    if result != nil: break
-    ty = ty[0]
-  if result == nil: result = field
-
 proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.kind = resExpr
