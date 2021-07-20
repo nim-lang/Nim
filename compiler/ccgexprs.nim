@@ -94,9 +94,12 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     else:
       result = makeCString(n.strVal)
   of nkFloatLit, nkFloat64Lit:
-    result = rope(n.floatVal.toStrMaxPrecision)
+    if ty.kind == tyFloat32:
+      result = rope(n.floatVal.float32.toStrMaxPrecision)
+    else:
+      result = rope(n.floatVal.toStrMaxPrecision)
   of nkFloat32Lit:
-    result = rope(n.floatVal.toStrMaxPrecision("f"))
+    result = rope(n.floatVal.float32.toStrMaxPrecision)
   else:
     internalError(p.config, n.info, "genLiteral(" & $n.kind & ')')
     result = nil
