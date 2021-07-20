@@ -152,6 +152,18 @@ else:
     ## * `putEnv proc <#putEnv,string,string>`_
     ## * `delEnv proc <#delEnv,string>`_
     when defined(windows) and not defined(nimscript):
+      template impl(fn1, fn2, typ, num) =
+        var env = fn1()
+        var e = env
+        if e == nil: return
+        while true:
+          var eend = strEnd(e)
+          let kv = $e
+          var p = find(kv, '=')
+          yield (substr(kv, 0, p-1), substr(kv, p+1))
+          e = cast[typ](cast[ByteAddress](eend)+num)
+          if eend[1].int == 0: break
+        discard fn2(env)
       when useWinUnicode:
         when defined(cpp):
           proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
@@ -159,33 +171,11 @@ else:
         else:
           proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
             importc: "wcschr", header: "<string.h>".}
-        var
-          env = getEnvironmentStringsW()
-          e = env
-        if e == nil: return # an error occurred
-        while true:
-          var eend = strEnd(e)
-          let kv = $e
-          var p = find(kv, '=')
-          yield (substr(kv, 0, p-1), substr(kv, p+1))
-          e = cast[WideCString](cast[ByteAddress](eend)+2)
-          if eend[1].int == 0: break
-        discard freeEnvironmentStringsW(env)
+        impl(getEnvironmentStringsW, freeEnvironmentStringsW, WideCString, 2)
       else:
         proc strEnd(cstr: cstring, c = 0'i32): cstring {.
           importc: "strchr", header: "<string.h>".}
-        var
-          env = getEnvironmentStringsA()
-          e = env
-        if e == nil: return # an error occurred
-        while true:
-          var eend = strEnd(e)
-          let kv = $e
-          var p = find(kv, '=')
-          yield (substr(kv, 0, p-1), substr(kv, p+1))
-          e = cast[cstring](cast[ByteAddress](eend)+1)
-          if eend[1] == '\0': break
-        discard freeEnvironmentStringsA(env)
+        impl(getEnvironmentStringsA, freeEnvironmentStringsA, cstring, 1)
     else: 
       when (defined(macosx) and not defined(ios) and not defined(emscripten)) or defined(nimscript):
         # From the manual:
