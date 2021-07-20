@@ -769,7 +769,7 @@ consider the following solution:
 Non-breaking changes
 --------------------
 
-Examples of changes that are considered non-breaking include:
+Examples of changes that are considered non-breaking (or acceptable breaking changes) include:
 
 * Creating a new module.
 * Adding an overload to an already overloaded proc.
@@ -785,4 +785,3 @@ Examples of changes that are considered non-breaking include:
 Nim's introspection facilities imply that strictly speaking almost every addition can
 break somebody's code. It is impractical to care about these cases, a change that only
 affects introspection is not considered to be a breaking change.
-
