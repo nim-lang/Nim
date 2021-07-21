@@ -511,15 +511,14 @@ proc `..`*[T, U](a: sink T, b: sink U): HSlice[T, U] {.noSideEffect, inline, mag
   ##   echo a[2 .. 3] # @[30, 40]
   result = HSlice[T, U](a: a, b: b)
 
-when defined(nimLegacyUnarySlice):
-  proc `..`*[T](b: sink T): HSlice[int, T]
-    {.noSideEffect, inline, magic: "DotDot", deprecated: "replace `..b` with `0..b`".} =
-    ## Unary `slice`:idx: operator that constructs an interval `[default(int), b]`.
-    ##
-    ## .. code-block:: Nim
-    ##   let a = [10, 20, 30, 40, 50]
-    ##   echo a[.. 2] # @[10, 20, 30]
-    result = HSlice[int, T](a: 0, b: b)
+proc `..`*[T](b: sink T): HSlice[int, T]
+  {.noSideEffect, inline, magic: "DotDot", deprecated: "replace `..b` with `0..b`".} =
+  ## Unary `slice`:idx: operator that constructs an interval `[default(int), b]`.
+  ##
+  ## .. code-block:: Nim
+  ##   let a = [10, 20, 30, 40, 50]
+  ##   echo a[.. 2] # @[10, 20, 30]
+  result = HSlice[int, T](a: 0, b: b)
 
 when defined(hotCodeReloading):
   {.pragma: hcrInline, inline.}

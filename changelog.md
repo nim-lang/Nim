@@ -63,8 +63,7 @@
 - `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
   `hashes.hash(closure)` has also been improved.
 
-- The unary slice `..b` was removed, use `0..b` instead or use `-d:nimLegacyUnarySlice`
-  for a deprecation period.
+- The unary slice `..b` was deprecated, use `0..b` instead.
 
 - Removed `.travis.yml`, `appveyor.yml.disabled`, `.github/workflows/ci.yml.disabled`.
 
