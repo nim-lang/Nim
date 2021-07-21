@@ -32,6 +32,10 @@
   echo a1.ord.B # produces no warning
   ```
 
+- A dangerous implicit conversion to `cstring` now triggers a `[CStringConv]` warning.
+  This warning will become an error in future versions! Use an explicit conversion
+  like `cstring(x)` in order to silence the warning.
+
 - Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
   behavior.
 

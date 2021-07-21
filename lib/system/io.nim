@@ -630,8 +630,8 @@ const
         ""
     else:
       ""
-  FormatOpen: array[FileMode, string] = [
-    "rb" & NoInheritFlag, "wb" & NoInheritFlag, "w+b" & NoInheritFlag,
+  FormatOpen: array[FileMode, cstring] = [
+    cstring("rb" & NoInheritFlag), "wb" & NoInheritFlag, "w+b" & NoInheritFlag,
     "r+b" & NoInheritFlag, "ab" & NoInheritFlag
   ]
     #"rt", "wt", "w+t", "r+t", "at"
@@ -678,7 +678,7 @@ proc open*(f: var File, filename: string,
   ## This throws no exception if the file could not be opened.
   ##
   ## The file handle associated with the resulting `File` is not inheritable.
-  var p = fopen(filename, FormatOpen[mode])
+  var p = fopen(filename.cstring, FormatOpen[mode])
   if p != nil:
     var f2 = cast[File](p)
     when defined(posix) and not defined(nimscript):
@@ -711,7 +711,7 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   ## Default mode is readonly. Returns true if the file could be reopened.
   ##
   ## The file handle associated with `f` won't be inheritable.
-  if freopen(filename, FormatOpen[mode], f) != nil:
+  if freopen(filename.cstring, FormatOpen[mode], f) != nil:
     when not defined(nimInheritHandles) and declared(setInheritable) and
          NoInheritFlag.len == 0:
       if not setInheritable(getOsFileHandle(f), false):
