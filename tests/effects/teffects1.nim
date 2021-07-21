@@ -3,7 +3,7 @@ discard """
   nimout: '''teffects1.nim(22, 28) template/generic instantiation from here
 teffects1.nim(23, 13) Error: can raise an unlisted exception: ref IOError
 teffects1.nim(22, 29) Hint: 'lier' cannot raise 'IO2Error' [XCannotRaiseY]
-teffects1.nim(38, 21) Error: type mismatch: got <proc (x: int): string{.noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
+teffects1.nim(38, 21) Error: type mismatch: obtained <proc (x: int): string{.noSideEffect, gcsafe, locks: 0.}> expected 'MyProcType = proc (x: int): string{.closure.}'
 .raise effects differ'''
 """
 
@@ -37,7 +37,7 @@ proc foo(x: int): string {.raises: [ValueError].} =
 
 var p: MyProcType = foo #[tt.Error
                     ^
-type mismatch: got <proc (x: int): string{.noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
+type mismatch: obtained <proc (x: int): string{.noSideEffect, gcsafe, locks: 0.}> expected 'MyProcType = proc (x: int): string{.closure.}'
 
 ]#
 {.pop.}

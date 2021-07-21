@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got <BPtr> but expected 'APtr = ptr[RegionA, int]'"
+  errormsg: "type mismatch: obtained <BPtr> expected 'APtr = ptr[RegionA, int]'"
   line: 16
 """
 

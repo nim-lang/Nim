@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got <int literal(1)> but expected 'string'"
+  errormsg: "type mismatch: obtained <int literal(1)> expected 'string'"
   line: 8
 """
 

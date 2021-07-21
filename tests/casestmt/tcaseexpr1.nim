@@ -3,7 +3,7 @@ discard """
   action: "reject"
   nimout: '''
 tcaseexpr1.nim(33, 10) Error: not all cases are covered; missing: {C}
-tcaseexpr1.nim(39, 12) Error: type mismatch: got <string> but expected 'int literal(10)'
+tcaseexpr1.nim(39, 12) Error: type mismatch: obtained <string> expected 'int literal(10)'
 '''
 """
 
