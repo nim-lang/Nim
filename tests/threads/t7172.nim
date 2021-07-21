@@ -1,5 +1,4 @@
 discard """
-  matrix: "--threads:on"
   output: '''
 In doStuff()
 In initProcess()
@@ -20,6 +19,7 @@ proc initProcess(): void =
   var thread: Thread[void]
   createThread(thread, whatever)
   echo("initProcess() done")
+  joinThread(thread)
 
 proc doStuff(): void =
   echo("In doStuff()")
