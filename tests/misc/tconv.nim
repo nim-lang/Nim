@@ -1,5 +1,5 @@
 discard """
-  matrix: "--warningAsError:EnumConv"
+  matrix: "--warningAsError:EnumConv --warningAsError:CStringConv"
 """
 
 template reject(x) =
@@ -84,3 +84,11 @@ block: # https://github.com/nim-lang/RFCs/issues/294
 
   reject: Goo(k2)
   reject: k2.Goo
+
+reject:
+  # bug #18550
+  proc f(c: char): cstring =
+    var x = newString(109*1024*1024)
+    x[0] = c
+    x
+

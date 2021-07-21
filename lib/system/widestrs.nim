@@ -171,7 +171,7 @@ proc newWideCString*(s: cstring): WideCStringObj =
   result = newWideCString(s, s.len)
 
 proc newWideCString*(s: string): WideCStringObj =
-  result = newWideCString(s, s.len)
+  result = newWideCString(cstring s, s.len)
 
 proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
   result = newStringOfCap(estimate + estimate shr 2)

@@ -1664,3 +1664,18 @@ proc lookupFieldAgain*(ty: PType; field: PSym): PSym =
     if result != nil: break
     ty = ty[0]
   if result == nil: result = field
+
+proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
+  let t = t.skipTypes(abstractInst)
+  if t.kind == tyPtr:
+    let pointsTo = t[0].skipTypes(abstractInst)
+    case pointsTo.kind
+    of tyUncheckedArray:
+      result = pointsTo[0].kind == tyChar
+    of tyArray:
+      result = pointsTo[1].kind == tyChar and firstOrd(nil, pointsTo[0]) == 0 and
+        skipTypes(pointsTo[0], {tyRange}).kind in {tyInt..tyInt64}
+    of tyChar:
+      result = allowPointerToChar
+    else:
+      discard
