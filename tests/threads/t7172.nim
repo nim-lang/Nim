@@ -1,4 +1,5 @@
 discard """
+  matrix: "--threads:on"
   output: '''
 In doStuff()
 In initProcess()
@@ -6,6 +7,7 @@ initProcess() done
 TEST
 Crashes before getting here!
 '''
+  joinable: false
 """
 
 import std/os
