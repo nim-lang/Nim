@@ -1,0 +1,17 @@
+SourceNode	sourcemap.html#SourceNode	sourcemap: SourceNode	
+Child	sourcemap.html#Child	sourcemap: Child	
+SourceMap	sourcemap.html#SourceMap	sourcemap: SourceMap	
+Mapping	sourcemap.html#Mapping	sourcemap: Mapping	
+child	sourcemap.html#child,string	sourcemap: child(s: string): Child	
+child	sourcemap.html#child,SourceNode	sourcemap: child(node: SourceNode): Child	
+text	sourcemap.html#text,SourceNode,int	sourcemap: text(sourceNode: SourceNode; depth: int): string	
+`$`	sourcemap.html#$,SourceNode	sourcemap: `$`(sourceNode: SourceNode): string	
+encode	sourcemap.html#encode,int	sourcemap: encode(i: int): string	
+tokenize	sourcemap.html#tokenize.i,string	sourcemap: tokenize(line: string): (bool, string)	
+parse	sourcemap.html#parse,string,string	sourcemap: parse(source: string; path: string): SourceNode	
+index	sourcemap.html#index,seq[T],T	sourcemap: index[T](elements: seq[T]; element: T): int	
+gen	sourcemap.html#gen,SourceMapGenerator	sourcemap: gen(map: SourceMapGenerator): SourceMap	
+addMapping	sourcemap.html#addMapping,SourceMapGenerator,Mapping	sourcemap: addMapping(map: SourceMapGenerator; mapping: Mapping)	
+walk	sourcemap.html#walk,SourceNode,proc(string,SourceNode)	sourcemap: walk(node: SourceNode; fn: proc (line: string; original: SourceNode))	
+toSourceMap	sourcemap.html#toSourceMap,SourceNode,string	sourcemap: toSourceMap(node: SourceNode; file: string): SourceMapGenerator	
+genSourceMap	sourcemap.html#genSourceMap,string,string	sourcemap: genSourceMap(source: string; outFile: string): (Rope, SourceMap)	

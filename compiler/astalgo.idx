@@ -1,0 +1,61 @@
+typekinds	astalgo.html#typekinds,PType	astalgo: typekinds(t: PType)	
+debug	astalgo.html#debug.t	astalgo: debug(x: PSym | PType | PNode)	
+debug	astalgo.html#debug.t,auto	astalgo: debug(x: auto)	
+mdbg	astalgo.html#mdbg.t	astalgo: mdbg(): bool	
+InvalidKey	astalgo.html#InvalidKey	astalgo: InvalidKey	
+TIIPair	astalgo.html#TIIPair	astalgo: TIIPair	
+TIIPairSeq	astalgo.html#TIIPairSeq	astalgo: TIIPairSeq	
+TIITable	astalgo.html#TIITable	astalgo: TIITable	
+skipConvCastAndClosure	astalgo.html#skipConvCastAndClosure,PNode	astalgo: skipConvCastAndClosure(n: PNode): PNode	
+sameValue	astalgo.html#sameValue,PNode,PNode	astalgo: sameValue(a, b: PNode): bool	
+leValue	astalgo.html#leValue,PNode,PNode	astalgo: leValue(a, b: PNode): bool	
+weakLeValue	astalgo.html#weakLeValue,PNode,PNode	astalgo: weakLeValue(a, b: PNode): TImplication	
+lookupInRecord	astalgo.html#lookupInRecord,PNode,PIdent	astalgo: lookupInRecord(n: PNode; field: PIdent): PSym	
+getModule	astalgo.html#getModule,PSym	astalgo: getModule(s: PSym): PSym	
+fromSystem	astalgo.html#fromSystem,PSym	astalgo: fromSystem(op: PSym): bool	
+getSymFromList	astalgo.html#getSymFromList,PNode,PIdent,int	astalgo: getSymFromList(list: PNode; ident: PIdent; start: int = 0): PSym	
+getNamedParamFromList	astalgo.html#getNamedParamFromList,PNode,PIdent	astalgo: getNamedParamFromList(list: PNode; ident: PIdent): PSym	
+hashNode	astalgo.html#hashNode,RootRef	astalgo: hashNode(p: RootRef): Hash	
+mustRehash	astalgo.html#mustRehash,int,int	astalgo: mustRehash(length, counter: int): bool	
+makeYamlString	astalgo.html#makeYamlString,string	astalgo: makeYamlString(s: string): Rope	
+lineInfoToStr	astalgo.html#lineInfoToStr,ConfigRef,TLineInfo	astalgo: lineInfoToStr(conf: ConfigRef; info: TLineInfo): Rope	
+treeToYaml	astalgo.html#treeToYaml,ConfigRef,PNode,int,int	astalgo: treeToYaml(conf: ConfigRef; n: PNode; indent: int = 0; maxRecDepth: int = -1): Rope	
+typeToYaml	astalgo.html#typeToYaml,ConfigRef,PType,int,int	astalgo: typeToYaml(conf: ConfigRef; n: PType; indent: int = 0; maxRecDepth: int = -1): Rope	
+symToYaml	astalgo.html#symToYaml,ConfigRef,PSym,int,int	astalgo: symToYaml(conf: ConfigRef; n: PSym; indent: int = 0; maxRecDepth: int = -1): Rope	
+debug	astalgo.html#debug,PSym,ConfigRef	astalgo: debug(n: PSym; conf: ConfigRef = nil)	
+debug	astalgo.html#debug,PType,ConfigRef	astalgo: debug(n: PType; conf: ConfigRef = nil)	
+debug	astalgo.html#debug,PNode,ConfigRef	astalgo: debug(n: PNode; conf: ConfigRef = nil)	
+nextTry	astalgo.html#nextTry,Hash,Hash	astalgo: nextTry(h, maxHash: Hash): Hash	
+objectSetContains	astalgo.html#objectSetContains,TObjectSet,RootRef	astalgo: objectSetContains(t: TObjectSet; obj: RootRef): bool	
+objectSetIncl	astalgo.html#objectSetIncl,TObjectSet,RootRef	astalgo: objectSetIncl(t: var TObjectSet; obj: RootRef)	
+objectSetContainsOrIncl	astalgo.html#objectSetContainsOrIncl,TObjectSet,RootRef	astalgo: objectSetContainsOrIncl(t: var TObjectSet; obj: RootRef): bool	
+strTableContains	astalgo.html#strTableContains,TStrTable,PSym	astalgo: strTableContains(t: TStrTable; n: PSym): bool	
+symTabReplace	astalgo.html#symTabReplace,TStrTable,PSym,PSym	astalgo: symTabReplace(t: var TStrTable; prevSym: PSym; newSym: PSym)	
+strTableAdd	astalgo.html#strTableAdd,TStrTable,PSym	astalgo: strTableAdd(t: var TStrTable; n: PSym)	
+strTableInclReportConflict	astalgo.html#strTableInclReportConflict,TStrTable,PSym	astalgo: strTableInclReportConflict(t: var TStrTable; n: PSym; onConflictKeepOld = false): PSym	
+strTableIncl	astalgo.html#strTableIncl,TStrTable,PSym	astalgo: strTableIncl(t: var TStrTable; n: PSym; onConflictKeepOld = false): bool	
+strTableGet	astalgo.html#strTableGet,TStrTable,PIdent	astalgo: strTableGet(t: TStrTable; name: PIdent): PSym	
+TIdentIter	astalgo.html#TIdentIter	astalgo: TIdentIter	
+nextIdentIter	astalgo.html#nextIdentIter,TIdentIter,TStrTable	astalgo: nextIdentIter(ti: var TIdentIter; tab: TStrTable): PSym	
+initIdentIter	astalgo.html#initIdentIter,TIdentIter,TStrTable,PIdent	astalgo: initIdentIter(ti: var TIdentIter; tab: TStrTable; s: PIdent): PSym	
+nextIdentExcluding	astalgo.html#nextIdentExcluding,TIdentIter,TStrTable,IntSet	astalgo: nextIdentExcluding(ti: var TIdentIter; tab: TStrTable; excluding: IntSet): PSym	
+firstIdentExcluding	astalgo.html#firstIdentExcluding,TIdentIter,TStrTable,PIdent,IntSet	astalgo: firstIdentExcluding(ti: var TIdentIter; tab: TStrTable; s: PIdent;\n                    excluding: IntSet): PSym	
+TTabIter	astalgo.html#TTabIter	astalgo: TTabIter	
+nextIter	astalgo.html#nextIter,TTabIter,TStrTable	astalgo: nextIter(ti: var TTabIter; tab: TStrTable): PSym	
+initTabIter	astalgo.html#initTabIter,TTabIter,TStrTable	astalgo: initTabIter(ti: var TTabIter; tab: TStrTable): PSym	
+items	astalgo.html#items.i,TStrTable	astalgo: items(tab: TStrTable): PSym	
+idTableHasObjectAsKey	astalgo.html#idTableHasObjectAsKey,TIdTable,PIdObj	astalgo: idTableHasObjectAsKey(t: TIdTable; key: PIdObj): bool	
+idTableGet	astalgo.html#idTableGet,TIdTable,PIdObj	astalgo: idTableGet(t: TIdTable; key: PIdObj): RootRef	
+idTableGet	astalgo.html#idTableGet,TIdTable,int	astalgo: idTableGet(t: TIdTable; key: int): RootRef	
+pairs	astalgo.html#pairs.i,TIdTable	astalgo: pairs(t: TIdTable): tuple[key: int, value: RootRef]	
+idTablePut	astalgo.html#idTablePut,TIdTable,PIdObj,RootRef	astalgo: idTablePut(t: var TIdTable; key: PIdObj; val: RootRef)	
+idTablePairs	astalgo.html#idTablePairs.i,TIdTable	astalgo: idTablePairs(t: TIdTable): tuple[key: PIdObj, val: RootRef]	
+idNodeTableGet	astalgo.html#idNodeTableGet,TIdNodeTable,PIdObj	astalgo: idNodeTableGet(t: TIdNodeTable; key: PIdObj): PNode	
+idNodeTablePut	astalgo.html#idNodeTablePut,TIdNodeTable,PIdObj,PNode	astalgo: idNodeTablePut(t: var TIdNodeTable; key: PIdObj; val: PNode)	
+pairs	astalgo.html#pairs.i,TIdNodeTable	astalgo: pairs(t: TIdNodeTable): tuple[key: PIdObj, val: PNode]	
+initIiTable	astalgo.html#initIiTable,TIITable	astalgo: initIiTable(x: var TIITable)	
+iiTableGet	astalgo.html#iiTableGet,TIITable,int	astalgo: iiTableGet(t: TIITable; key: int): int	
+iiTablePut	astalgo.html#iiTablePut,TIITable,int,int	astalgo: iiTablePut(t: var TIITable; key, val: int)	
+isAddrNode	astalgo.html#isAddrNode,PNode	astalgo: isAddrNode(n: PNode): bool	
+listSymbolNames	astalgo.html#listSymbolNames,openArray[PSym]	astalgo: listSymbolNames(symbols: openArray[PSym]): string	
+isDiscriminantField	astalgo.html#isDiscriminantField,PNode	astalgo: isDiscriminantField(n: PNode): bool	

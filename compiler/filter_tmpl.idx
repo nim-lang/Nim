@@ -1,0 +1,1 @@
+filterTmpl	filter_tmpl.html#filterTmpl,ConfigRef,PLLStream,AbsoluteFile,PNode	filter_tmpl: filterTmpl(conf: ConfigRef; stdin: PLLStream; filename: AbsoluteFile;\n           call: PNode): PLLStream	

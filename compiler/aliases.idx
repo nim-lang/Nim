@@ -1,0 +1,5 @@
+arNo	aliases.html#arNo	TAnalysisResult.arNo	
+arMaybe	aliases.html#arMaybe	TAnalysisResult.arMaybe	
+arYes	aliases.html#arYes	TAnalysisResult.arYes	
+TAnalysisResult	aliases.html#TAnalysisResult	aliases: TAnalysisResult	
+isPartOf	aliases.html#isPartOf,PNode,PNode	aliases: isPartOf(a, b: PNode): TAnalysisResult	

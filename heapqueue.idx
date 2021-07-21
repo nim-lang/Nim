@@ -1,0 +1,15 @@
+HeapQueue	heapqueue.html#HeapQueue	heapqueue: HeapQueue	
+initHeapQueue	heapqueue.html#initHeapQueue	heapqueue: initHeapQueue[T](): HeapQueue[T]	
+len	heapqueue.html#len,HeapQueue[T]	heapqueue: len[T](heap: HeapQueue[T]): int	
+`[]`	heapqueue.html#[],HeapQueue[T],Natural	heapqueue: `[]`[T](heap: HeapQueue[T]; i: Natural): lent T	
+push	heapqueue.html#push,HeapQueue[T],sinkT	heapqueue: push[T](heap: var HeapQueue[T]; item: sink T)	
+toHeapQueue	heapqueue.html#toHeapQueue,openArray[T]	heapqueue: toHeapQueue[T](x: openArray[T]): HeapQueue[T]	
+pop	heapqueue.html#pop,HeapQueue[T]	heapqueue: pop[T](heap: var HeapQueue[T]): T	
+find	heapqueue.html#find,HeapQueue[T],T	heapqueue: find[T](heap: HeapQueue[T]; x: T): int	
+del	heapqueue.html#del,HeapQueue[T],Natural	heapqueue: del[T](heap: var HeapQueue[T]; index: Natural)	
+replace	heapqueue.html#replace,HeapQueue[T],sinkT	heapqueue: replace[T](heap: var HeapQueue[T]; item: sink T): T	
+pushpop	heapqueue.html#pushpop,HeapQueue[T],sinkT	heapqueue: pushpop[T](heap: var HeapQueue[T]; item: sink T): T	
+clear	heapqueue.html#clear,HeapQueue[T]	heapqueue: clear[T](heap: var HeapQueue[T])	
+`$`	heapqueue.html#$,HeapQueue[T]	heapqueue: `$`[T](heap: HeapQueue[T]): string	
+Basic usage	heapqueue.html#basic-usage	 Basic usage	
+Usage with custom objects	heapqueue.html#usage-with-custom-objects	 Usage with custom objects	

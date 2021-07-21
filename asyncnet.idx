@@ -1,0 +1,40 @@
+AsyncSocket	asyncnet.html#AsyncSocket	asyncnet: AsyncSocket	
+newAsyncSocket	asyncnet.html#newAsyncSocket,AsyncFD,Domain,SockType,Protocol	asyncnet: newAsyncSocket(fd: AsyncFD; domain: Domain = AF_INET;\n               sockType: SockType = SOCK_STREAM;\n               protocol: Protocol = IPPROTO_TCP; buffered = true;\n               inheritable = defined(nimInheritHandles)): owned(AsyncSocket)	
+newAsyncSocket	asyncnet.html#newAsyncSocket,Domain,SockType,Protocol	asyncnet: newAsyncSocket(domain: Domain = AF_INET; sockType: SockType = SOCK_STREAM;\n               protocol: Protocol = IPPROTO_TCP; buffered = true;\n               inheritable = defined(nimInheritHandles)): owned(AsyncSocket)	
+getLocalAddr	asyncnet.html#getLocalAddr,AsyncSocket	asyncnet: getLocalAddr(socket: AsyncSocket): (string, Port)	
+getPeerAddr	asyncnet.html#getPeerAddr,AsyncSocket	asyncnet: getPeerAddr(socket: AsyncSocket): (string, Port)	
+newAsyncSocket	asyncnet.html#newAsyncSocket,cint,cint,cint	asyncnet: newAsyncSocket(domain, sockType, protocol: cint; buffered = true;\n               inheritable = defined(nimInheritHandles)): owned(AsyncSocket)	
+dial	asyncnet.html#dial,string,Port	asyncnet: dial(address: string; port: Port; protocol = IPPROTO_TCP; buffered = true): owned(\n    Future[AsyncSocket])	
+connect	asyncnet.html#connect,AsyncSocket,string,Port	asyncnet: connect(socket: AsyncSocket; address: string; port: Port): owned(\n    Future[void])	
+recvInto	asyncnet.html#recvInto,AsyncSocket,pointer,int	asyncnet: recvInto(socket: AsyncSocket; buf: pointer; size: int; flags = {SafeDisconn}): owned(\n    Future[int])	
+recv	asyncnet.html#recv,AsyncSocket,int	asyncnet: recv(socket: AsyncSocket; size: int; flags = {SafeDisconn}): owned(\n    Future[string])	
+send	asyncnet.html#send,AsyncSocket,pointer,int	asyncnet: send(socket: AsyncSocket; buf: pointer; size: int; flags = {SafeDisconn}): owned(\n    Future[void])	
+send	asyncnet.html#send,AsyncSocket,string	asyncnet: send(socket: AsyncSocket; data: string; flags = {SafeDisconn}): owned(\n    Future[void])	
+acceptAddr	asyncnet.html#acceptAddr,AsyncSocket	asyncnet: acceptAddr(socket: AsyncSocket; flags = {SafeDisconn};\n           inheritable = defined(nimInheritHandles)): owned(\n    Future[tuple[address: string, client: AsyncSocket]])	
+accept	asyncnet.html#accept,AsyncSocket	asyncnet: accept(socket: AsyncSocket; flags = {SafeDisconn}): owned(Future[AsyncSocket])	
+recvLineInto	asyncnet.html#recvLineInto,AsyncSocket,FutureVar[string]	asyncnet: recvLineInto(socket: AsyncSocket; resString: FutureVar[string];\n             flags = {SafeDisconn}; maxLength = MaxLineLength): owned(\n    Future[void])	
+recvLine	asyncnet.html#recvLine,AsyncSocket	asyncnet: recvLine(socket: AsyncSocket; flags = {SafeDisconn}; maxLength = MaxLineLength): owned(\n    Future[string])	
+listen	asyncnet.html#listen,AsyncSocket	asyncnet: listen(socket: AsyncSocket; backlog = SOMAXCONN)	
+bindAddr	asyncnet.html#bindAddr,AsyncSocket,string	asyncnet: bindAddr(socket: AsyncSocket; port = Port(0); address = &quot;&quot;)	
+hasDataBuffered	asyncnet.html#hasDataBuffered,AsyncSocket	asyncnet: hasDataBuffered(s: AsyncSocket): bool	
+connectUnix	asyncnet.html#connectUnix,AsyncSocket,string	asyncnet: connectUnix(socket: AsyncSocket; path: string): owned(Future[void])	
+bindUnix	asyncnet.html#bindUnix,AsyncSocket,string	asyncnet: bindUnix(socket: AsyncSocket; path: string)	
+close	asyncnet.html#close,AsyncSocket	asyncnet: close(socket: AsyncSocket)	
+sslHandle	asyncnet.html#sslHandle,AsyncSocket	asyncnet: sslHandle(self: AsyncSocket): SslPtr	
+wrapSocket	asyncnet.html#wrapSocket,SslContext,AsyncSocket	asyncnet: wrapSocket(ctx: SslContext; socket: AsyncSocket)	
+wrapConnectedSocket	asyncnet.html#wrapConnectedSocket,SslContext,AsyncSocket,SslHandshakeType,string	asyncnet: wrapConnectedSocket(ctx: SslContext; socket: AsyncSocket;\n                    handshake: SslHandshakeType; hostname: string = &quot;&quot;)	
+getPeerCertificates	asyncnet.html#getPeerCertificates,AsyncSocket	asyncnet: getPeerCertificates(socket: AsyncSocket): seq[Certificate]	
+getSockOpt	asyncnet.html#getSockOpt,AsyncSocket,SOBool	asyncnet: getSockOpt(socket: AsyncSocket; opt: SOBool; level = SOL_SOCKET): bool	
+setSockOpt	asyncnet.html#setSockOpt,AsyncSocket,SOBool,bool	asyncnet: setSockOpt(socket: AsyncSocket; opt: SOBool; value: bool; level = SOL_SOCKET)	
+isSsl	asyncnet.html#isSsl,AsyncSocket	asyncnet: isSsl(socket: AsyncSocket): bool	
+getFd	asyncnet.html#getFd,AsyncSocket	asyncnet: getFd(socket: AsyncSocket): SocketHandle	
+isClosed	asyncnet.html#isClosed,AsyncSocket	asyncnet: isClosed(socket: AsyncSocket): bool	
+sendTo	asyncnet.html#sendTo,AsyncSocket,string,Port,string	asyncnet: sendTo(socket: AsyncSocket; address: string; port: Port; data: string;\n       flags = {SafeDisconn}): owned(Future[void])	
+recvFrom	asyncnet.html#recvFrom,AsyncSocket,FutureVar[string],int,FutureVar[string],FutureVar[Port]	asyncnet: recvFrom(socket: AsyncSocket; data: FutureVar[string]; size: int;\n         address: FutureVar[string]; port: FutureVar[Port];\n         flags = {SafeDisconn}): owned(Future[int])	
+recvFrom	asyncnet.html#recvFrom,AsyncSocket,int	asyncnet: recvFrom(socket: AsyncSocket; size: int; flags = {SafeDisconn}): owned(\n    Future[tuple[data: string, address: string, port: Port]])	
+getsockname	asyncnet.html#getsockname_1	Module asyncnet	
+getpeername	asyncnet.html#getpeername_1	Module asyncnet	
+Asynchronous IO in Nim	asyncnet.html#asynchronous-io-in-nim	 Asynchronous IO in Nim	
+SSL	asyncnet.html#ssl	 SSL	
+Examples	asyncnet.html#examples	 Examples	
+Chat server	asyncnet.html#examples-chat-server	  Chat server	

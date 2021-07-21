@@ -1,0 +1,3 @@
+urandom	sysrand.html#urandom,openArray[byte]	sysrand: urandom(dest: var openArray[byte]): bool	
+urandom	sysrand.html#urandom,Natural	sysrand: urandom(size: Natural): seq[byte]	
+See also	sysrand.html#see-also	 See also	

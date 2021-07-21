@@ -1,0 +1,317 @@
+DomApiVersion	dom.html#DomApiVersion	dom: DomApiVersion	
+EventTarget	dom.html#EventTarget	dom: EventTarget	
+DomEvent	dom.html#DomEvent	dom: DomEvent	
+PerformanceMemory	dom.html#PerformanceMemory	dom: PerformanceMemory	
+PerformanceTiming	dom.html#PerformanceTiming	dom: PerformanceTiming	
+Performance	dom.html#Performance	dom: Performance	
+Range	dom.html#Range	dom: Range	
+Selection	dom.html#Selection	dom: Selection	
+Storage	dom.html#Storage	dom: Storage	
+Window	dom.html#Window	dom: Window	
+Frame	dom.html#Frame	dom: Frame	
+ClassList	dom.html#ClassList	dom: ClassList	
+ElementNode	dom.html#ElementNode	NodeType.ElementNode	
+AttributeNode	dom.html#AttributeNode	NodeType.AttributeNode	
+TextNode	dom.html#TextNode	NodeType.TextNode	
+CDATANode	dom.html#CDATANode	NodeType.CDATANode	
+EntityRefNode	dom.html#EntityRefNode	NodeType.EntityRefNode	
+EntityNode	dom.html#EntityNode	NodeType.EntityNode	
+ProcessingInstructionNode	dom.html#ProcessingInstructionNode	NodeType.ProcessingInstructionNode	
+CommentNode	dom.html#CommentNode	NodeType.CommentNode	
+DocumentNode	dom.html#DocumentNode	NodeType.DocumentNode	
+DocumentTypeNode	dom.html#DocumentTypeNode	NodeType.DocumentTypeNode	
+DocumentFragmentNode	dom.html#DocumentFragmentNode	NodeType.DocumentFragmentNode	
+NotationNode	dom.html#NotationNode	NodeType.NotationNode	
+NodeType	dom.html#NodeType	dom: NodeType	
+Node	dom.html#Node	dom: Node	
+Document	dom.html#Document	dom: Document	
+Element	dom.html#Element	dom: Element	
+ValidityState	dom.html#ValidityState	dom: ValidityState	
+Blob	dom.html#Blob	dom: Blob	
+File	dom.html#File	dom: File	
+TextAreaElement	dom.html#TextAreaElement	dom: TextAreaElement	
+InputElement	dom.html#InputElement	dom: InputElement	
+LinkElement	dom.html#LinkElement	dom: LinkElement	
+EmbedElement	dom.html#EmbedElement	dom: EmbedElement	
+AnchorElement	dom.html#AnchorElement	dom: AnchorElement	
+OptionElement	dom.html#OptionElement	dom: OptionElement	
+FormElement	dom.html#FormElement	dom: FormElement	
+ImageElement	dom.html#ImageElement	dom: ImageElement	
+Style	dom.html#Style	dom: Style	
+None	dom.html#None	EventPhase.None	
+CapturingPhase	dom.html#CapturingPhase	EventPhase.CapturingPhase	
+AtTarget	dom.html#AtTarget	EventPhase.AtTarget	
+BubblingPhase	dom.html#BubblingPhase	EventPhase.BubblingPhase	
+EventPhase	dom.html#EventPhase	dom: EventPhase	
+Event	dom.html#Event	dom: Event	
+UIEvent	dom.html#UIEvent	dom: UIEvent	
+KeyboardEvent	dom.html#KeyboardEvent	dom: KeyboardEvent	
+KeyboardEventKey	dom.html#KeyboardEventKey	dom: KeyboardEventKey	
+NoButton	dom.html#NoButton	MouseButtons.NoButton	
+PrimaryButton	dom.html#PrimaryButton	MouseButtons.PrimaryButton	
+SecondaryButton	dom.html#SecondaryButton	MouseButtons.SecondaryButton	
+AuxilaryButton	dom.html#AuxilaryButton	MouseButtons.AuxilaryButton	
+FourthButton	dom.html#FourthButton	MouseButtons.FourthButton	
+FifthButton	dom.html#FifthButton	MouseButtons.FifthButton	
+MouseButtons	dom.html#MouseButtons	dom: MouseButtons	
+MouseEvent	dom.html#MouseEvent	dom: MouseEvent	
+DataTransferItemKind	dom.html#DataTransferItemKind	dom: DataTransferItemKind	
+DataTransferItem	dom.html#DataTransferItem	dom: DataTransferItem	
+DataTransfer	dom.html#DataTransfer	dom: DataTransfer	
+DataTransferDropEffect	dom.html#DataTransferDropEffect	dom: DataTransferDropEffect	
+DataTransferEffectAllowed	dom.html#DataTransferEffectAllowed	dom: DataTransferEffectAllowed	
+Drag	dom.html#Drag	DragEventTypes.Drag	
+DragEnd	dom.html#DragEnd	DragEventTypes.DragEnd	
+DragEnter	dom.html#DragEnter	DragEventTypes.DragEnter	
+DragExit	dom.html#DragExit	DragEventTypes.DragExit	
+DragLeave	dom.html#DragLeave	DragEventTypes.DragLeave	
+DragOver	dom.html#DragOver	DragEventTypes.DragOver	
+DragStart	dom.html#DragStart	DragEventTypes.DragStart	
+Drop	dom.html#Drop	DragEventTypes.Drop	
+DragEventTypes	dom.html#DragEventTypes	dom: DragEventTypes	
+DragEvent	dom.html#DragEvent	dom: DragEvent	
+ClipboardEvent	dom.html#ClipboardEvent	dom: ClipboardEvent	
+StorageEvent	dom.html#StorageEvent	dom: StorageEvent	
+TouchList	dom.html#TouchList	dom: TouchList	
+Touch	dom.html#Touch	dom: Touch	
+TouchEvent	dom.html#TouchEvent	dom: TouchEvent	
+Location	dom.html#Location	dom: Location	
+History	dom.html#History	dom: History	
+Navigator	dom.html#Navigator	dom: Navigator	
+Plugin	dom.html#Plugin	dom: Plugin	
+MimeType	dom.html#MimeType	dom: MimeType	
+LocationBar	dom.html#LocationBar	dom: LocationBar	
+MenuBar	dom.html#MenuBar	dom: MenuBar	
+PersonalBar	dom.html#PersonalBar	dom: PersonalBar	
+ScrollBars	dom.html#ScrollBars	dom: ScrollBars	
+ToolBar	dom.html#ToolBar	dom: ToolBar	
+StatusBar	dom.html#StatusBar	dom: StatusBar	
+TimeOut	dom.html#TimeOut	dom: TimeOut	
+Interval	dom.html#Interval	dom: Interval	
+AddEventListenerOptions	dom.html#AddEventListenerOptions	dom: AddEventListenerOptions	
+FontFaceSetReady	dom.html#FontFaceSetReady	dom: FontFaceSetReady	
+FontFaceSet	dom.html#FontFaceSet	dom: FontFaceSet	
+ScrollIntoViewOptions	dom.html#ScrollIntoViewOptions	dom: ScrollIntoViewOptions	
+DomParser	dom.html#DomParser	dom: DomParser	
+DomException	dom.html#DomException	dom: DomException	
+FileReader	dom.html#FileReader	dom: FileReader	
+FileReaderState	dom.html#FileReaderState	dom: FileReaderState	
+RootNodeOptions	dom.html#RootNodeOptions	dom: RootNodeOptions	
+DocumentOrShadowRoot	dom.html#DocumentOrShadowRoot	dom: DocumentOrShadowRoot	
+ShadowRoot	dom.html#ShadowRoot	dom: ShadowRoot	
+ShadowRootInit	dom.html#ShadowRootInit	dom: ShadowRootInit	
+HTMLSlotElement	dom.html#HTMLSlotElement	dom: HTMLSlotElement	
+SlotOptions	dom.html#SlotOptions	dom: SlotOptions	
+fileReaderEmpty	dom.html#fileReaderEmpty	dom: fileReaderEmpty	
+fileReaderLoading	dom.html#fileReaderLoading	dom: fileReaderLoading	
+fileReaderDone	dom.html#fileReaderDone	dom: fileReaderDone	
+id	dom.html#id,Node	dom: id(n: Node): cstring	
+id=	dom.html#id=,Node,cstring	dom: id=(n: Node; x: cstring)	
+class	dom.html#class,Node	dom: class(n: Node): cstring	
+class=	dom.html#class=,Node,cstring	dom: class=(n: Node; v: cstring)	
+value	dom.html#value,Node	dom: value(n: Node): cstring	
+value=	dom.html#value=,Node,cstring	dom: value=(n: Node; v: cstring)	
+checked	dom.html#checked,Node	dom: checked(n: Node): bool	
+checked=	dom.html#checked=,Node,bool	dom: checked=(n: Node; v: bool)	
+disabled=	dom.html#disabled=,Node,bool	dom: disabled=(n: Node; v: bool)	
+len	dom.html#len,Node	dom: len(x: Node): int	
+`[]`	dom.html#[],Node,int	dom: `[]`(x: Node; idx: int): Element	
+getElementById	dom.html#getElementById,cstring	dom: getElementById(id: cstring): Element	
+appendChild	dom.html#appendChild,Node,Node	dom: appendChild(n, child: Node)	
+removeChild	dom.html#removeChild,Node,Node	dom: removeChild(n, child: Node)	
+remove	dom.html#remove,Node	dom: remove(child: Node)	
+replaceChild	dom.html#replaceChild,Node,Node,Node	dom: replaceChild(n, newNode, oldNode: Node)	
+insertBefore	dom.html#insertBefore,Node,Node,Node	dom: insertBefore(n, newNode, before: Node)	
+getElementById	dom.html#getElementById,Document,cstring	dom: getElementById(d: Document; id: cstring): Element	
+createElement	dom.html#createElement,Document,cstring	dom: createElement(d: Document; identifier: cstring): Element	
+createElementNS	dom.html#createElementNS,Document,cstring,cstring	dom: createElementNS(d: Document; namespaceURI, qualifiedIdentifier: cstring): Element	
+createTextNode	dom.html#createTextNode,Document,cstring	dom: createTextNode(d: Document; identifier: cstring): Node	
+createComment	dom.html#createComment,Document,cstring	dom: createComment(d: Document; data: cstring): Node	
+setTimeout	dom.html#setTimeout,proc),int	dom: setTimeout(action: proc (); ms: int): TimeOut	
+clearTimeout	dom.html#clearTimeout,TimeOut	dom: clearTimeout(t: TimeOut)	
+setInterval	dom.html#setInterval,proc),int	dom: setInterval(action: proc (); ms: int): Interval	
+clearInterval	dom.html#clearInterval,Interval	dom: clearInterval(i: Interval)	
+addEventListener	dom.html#addEventListener,EventTarget,cstring,proc(Event),bool	dom: addEventListener(et: EventTarget; ev: cstring; cb: proc (ev: Event);\n                 useCapture: bool = false)	
+addEventListener	dom.html#addEventListener,EventTarget,cstring,proc(Event),AddEventListenerOptions	dom: addEventListener(et: EventTarget; ev: cstring; cb: proc (ev: Event);\n                 options: AddEventListenerOptions)	
+dispatchEvent	dom.html#dispatchEvent,EventTarget,Event	dom: dispatchEvent(et: EventTarget; ev: Event)	
+removeEventListener	dom.html#removeEventListener,EventTarget,cstring,proc(Event)	dom: removeEventListener(et: EventTarget; ev: cstring; cb: proc (ev: Event))	
+alert	dom.html#alert,Window,cstring	dom: alert(w: Window; msg: cstring)	
+back	dom.html#back,Window	dom: back(w: Window)	
+blur	dom.html#blur,Window	dom: blur(w: Window)	
+clearInterval	dom.html#clearInterval,Window,Interval	dom: clearInterval(w: Window; interval: Interval)	
+clearTimeout	dom.html#clearTimeout,Window,TimeOut	dom: clearTimeout(w: Window; timeout: TimeOut)	
+close	dom.html#close,Window	dom: close(w: Window)	
+confirm	dom.html#confirm,Window,cstring	dom: confirm(w: Window; msg: cstring): bool	
+disableExternalCapture	dom.html#disableExternalCapture,Window	dom: disableExternalCapture(w: Window)	
+enableExternalCapture	dom.html#enableExternalCapture,Window	dom: enableExternalCapture(w: Window)	
+find	dom.html#find,Window,cstring	dom: find(w: Window; text: cstring; caseSensitive = false; backwards = false)	
+focus	dom.html#focus,Window	dom: focus(w: Window)	
+forward	dom.html#forward,Window	dom: forward(w: Window)	
+getComputedStyle	dom.html#getComputedStyle,Window,Node,Node	dom: getComputedStyle(w: Window; e: Node; pe: Node = nil): Style	
+handleEvent	dom.html#handleEvent,Window,Event	dom: handleEvent(w: Window; e: Event)	
+home	dom.html#home,Window	dom: home(w: Window)	
+moveBy	dom.html#moveBy,Window,int,int	dom: moveBy(w: Window; x, y: int)	
+moveTo	dom.html#moveTo,Window,int,int	dom: moveTo(w: Window; x, y: int)	
+open	dom.html#open,Window,cstring,cstring,cstring	dom: open(w: Window; uri, windowname: cstring; properties: cstring = nil): Window	
+print	dom.html#print,Window	dom: print(w: Window)	
+prompt	dom.html#prompt,Window,cstring,cstring	dom: prompt(w: Window; text, default: cstring): cstring	
+resizeBy	dom.html#resizeBy,Window,int,int	dom: resizeBy(w: Window; x, y: int)	
+resizeTo	dom.html#resizeTo,Window,int,int	dom: resizeTo(w: Window; x, y: int)	
+routeEvent	dom.html#routeEvent,Window,Event	dom: routeEvent(w: Window; event: Event)	
+scrollBy	dom.html#scrollBy,Window,int,int	dom: scrollBy(w: Window; x, y: int)	
+scrollTo	dom.html#scrollTo,Window,int,int	dom: scrollTo(w: Window; x, y: int)	
+setInterval	dom.html#setInterval,Window,cstring,int	dom: setInterval(w: Window; code: cstring; pause: int): Interval	
+setInterval	dom.html#setInterval,Window,proc),int	dom: setInterval(w: Window; function: proc (); pause: int): Interval	
+setTimeout	dom.html#setTimeout,Window,cstring,int	dom: setTimeout(w: Window; code: cstring; pause: int): TimeOut	
+setTimeout	dom.html#setTimeout,Window,proc),int	dom: setTimeout(w: Window; function: proc (); pause: int): Interval	
+stop	dom.html#stop,Window	dom: stop(w: Window)	
+requestAnimationFrame	dom.html#requestAnimationFrame,Window,proc(float)	dom: requestAnimationFrame(w: Window; function: proc (time: float)): int	
+cancelAnimationFrame	dom.html#cancelAnimationFrame,Window,int	dom: cancelAnimationFrame(w: Window; id: int)	
+appendData	dom.html#appendData,Node,cstring	dom: appendData(n: Node; data: cstring)	
+cloneNode	dom.html#cloneNode,Node,bool	dom: cloneNode(n: Node; copyContent: bool): Node	
+deleteData	dom.html#deleteData,Node,int,int	dom: deleteData(n: Node; start, len: int)	
+focus	dom.html#focus,Node	dom: focus(e: Node)	
+getAttribute	dom.html#getAttribute,Node,cstring	dom: getAttribute(n: Node; attr: cstring): cstring	
+getAttributeNode	dom.html#getAttributeNode,Node,cstring	dom: getAttributeNode(n: Node; attr: cstring): Node	
+hasAttribute	dom.html#hasAttribute,Node,cstring	dom: hasAttribute(n: Node; attr: cstring): bool	
+hasChildNodes	dom.html#hasChildNodes,Node	dom: hasChildNodes(n: Node): bool	
+normalize	dom.html#normalize,Node	dom: normalize(n: Node)	
+insertData	dom.html#insertData,Node,int,cstring	dom: insertData(n: Node; position: int; data: cstring)	
+removeAttribute	dom.html#removeAttribute,Node,cstring	dom: removeAttribute(n: Node; attr: cstring)	
+removeAttributeNode	dom.html#removeAttributeNode,Node,Node	dom: removeAttributeNode(n, attr: Node)	
+replaceData	dom.html#replaceData,Node,int,int,cstring	dom: replaceData(n: Node; start, len: int; text: cstring)	
+scrollIntoView	dom.html#scrollIntoView,Node	dom: scrollIntoView(n: Node)	
+scrollIntoView	dom.html#scrollIntoView,Node,ScrollIntoViewOptions	dom: scrollIntoView(n: Node; options: ScrollIntoViewOptions)	
+setAttribute	dom.html#setAttribute,Node,cstring,cstring	dom: setAttribute(n: Node; name, value: cstring)	
+setAttributeNode	dom.html#setAttributeNode,Node,Node	dom: setAttributeNode(n: Node; attr: Node)	
+querySelector	dom.html#querySelector,Node,cstring	dom: querySelector(n: Node; selectors: cstring): Element	
+querySelectorAll	dom.html#querySelectorAll,Node,cstring	dom: querySelectorAll(n: Node; selectors: cstring): seq[Element]	
+compareDocumentPosition	dom.html#compareDocumentPosition,Node,Node	dom: compareDocumentPosition(n: Node; otherNode: Node): int	
+lookupPrefix	dom.html#lookupPrefix,Node	dom: lookupPrefix(n: Node): cstring	
+lookupNamespaceURI	dom.html#lookupNamespaceURI,Node	dom: lookupNamespaceURI(n: Node): cstring	
+isDefaultNamespace	dom.html#isDefaultNamespace,Node	dom: isDefaultNamespace(n: Node): bool	
+contains	dom.html#contains,Node	dom: contains(n: Node): bool	
+isEqualNode	dom.html#isEqualNode,Node	dom: isEqualNode(n: Node): bool	
+isSameNode	dom.html#isSameNode,Node	dom: isSameNode(n: Node): bool	
+getRootNode	dom.html#getRootNode,Node,RootNodeOptions	dom: getRootNode(n: Node; options: RootNodeOptions): Node	
+getSelection	dom.html#getSelection,DocumentOrShadowRoot	dom: getSelection(n: DocumentOrShadowRoot): Selection	
+elementFromPoint	dom.html#elementFromPoint,DocumentOrShadowRoot,float,float	dom: elementFromPoint(n: DocumentOrShadowRoot; x, y: float): Element	
+attachShadow	dom.html#attachShadow,Element	dom: attachShadow(n: Element): ShadowRoot	
+assignedNodes	dom.html#assignedNodes,HTMLSlotElement,SlotOptions	dom: assignedNodes(n: HTMLSlotElement; options: SlotOptions): seq[Node]	
+assignedElements	dom.html#assignedElements,HTMLSlotElement,SlotOptions	dom: assignedElements(n: HTMLSlotElement; options: SlotOptions): seq[Element]	
+createAttribute	dom.html#createAttribute,Document,cstring	dom: createAttribute(d: Document; identifier: cstring): Node	
+getElementsByName	dom.html#getElementsByName,Document,cstring	dom: getElementsByName(d: Document; name: cstring): seq[Element]	
+getElementsByTagName	dom.html#getElementsByTagName,Document,cstring	dom: getElementsByTagName(d: Document; name: cstring): seq[Element]	
+getElementsByClassName	dom.html#getElementsByClassName,Document,cstring	dom: getElementsByClassName(d: Document; name: cstring): seq[Element]	
+insertNode	dom.html#insertNode,Range,Node	dom: insertNode(range: Range; node: Node)	
+getSelection	dom.html#getSelection,Document	dom: getSelection(d: Document): Selection	
+handleEvent	dom.html#handleEvent,Document,Event	dom: handleEvent(d: Document; event: Event)	
+open	dom.html#open,Document	dom: open(d: Document)	
+routeEvent	dom.html#routeEvent,Document,Event	dom: routeEvent(d: Document; event: Event)	
+write	dom.html#write,Document,cstring	dom: write(d: Document; text: cstring)	
+writeln	dom.html#writeln,Document,cstring	dom: writeln(d: Document; text: cstring)	
+querySelector	dom.html#querySelector,Document,cstring	dom: querySelector(d: Document; selectors: cstring): Element	
+querySelectorAll	dom.html#querySelectorAll,Document,cstring	dom: querySelectorAll(d: Document; selectors: cstring): seq[Element]	
+blur	dom.html#blur,Element	dom: blur(e: Element)	
+click	dom.html#click,Element	dom: click(e: Element)	
+focus	dom.html#focus,Element	dom: focus(e: Element)	
+handleEvent	dom.html#handleEvent,Element,Event	dom: handleEvent(e: Element; event: Event)	
+select	dom.html#select,Element	dom: select(e: Element)	
+getElementsByTagName	dom.html#getElementsByTagName,Element,cstring	dom: getElementsByTagName(e: Element; name: cstring): seq[Element]	
+getElementsByClassName	dom.html#getElementsByClassName,Element,cstring	dom: getElementsByClassName(e: Element; name: cstring): seq[Element]	
+reset	dom.html#reset,FormElement	dom: reset(f: FormElement)	
+submit	dom.html#submit,FormElement	dom: submit(f: FormElement)	
+checkValidity	dom.html#checkValidity,FormElement	dom: checkValidity(e: FormElement): bool	
+reportValidity	dom.html#reportValidity,FormElement	dom: reportValidity(e: FormElement): bool	
+play	dom.html#play,EmbedElement	dom: play(e: EmbedElement)	
+stop	dom.html#stop,EmbedElement	dom: stop(e: EmbedElement)	
+reload	dom.html#reload,Location	dom: reload(loc: Location)	
+replace	dom.html#replace,Location,cstring	dom: replace(loc: Location; s: cstring)	
+back	dom.html#back,History	dom: back(h: History)	
+forward	dom.html#forward,History	dom: forward(h: History)	
+go	dom.html#go,History,int	dom: go(h: History; pagesToJump: int)	
+pushState	dom.html#pushState,History,T,cstring,cstring	dom: pushState[T](h: History; stateObject: T; title, url: cstring)	
+javaEnabled	dom.html#javaEnabled,Navigator	dom: javaEnabled(h: Navigator): bool	
+canShare	dom.html#canShare,Navigator,cstring	dom: canShare(self: Navigator; data: cstring): bool	
+sendBeacon	dom.html#sendBeacon,Navigator,cstring,cstring	dom: sendBeacon(self: Navigator; url, data: cstring): bool	
+vibrate	dom.html#vibrate,Navigator,cint	dom: vibrate(self: Navigator; pattern: cint): bool	
+vibrate	dom.html#vibrate,Navigator,openArray[cint]	dom: vibrate(self: Navigator; pattern: openArray[cint]): bool	
+registerProtocolHandler	dom.html#registerProtocolHandler,Navigator,cstring,cstring,cstring	dom: registerProtocolHandler(self: Navigator; scheme, url, title: cstring)	
+add	dom.html#add,ClassList,cstring	dom: add(c: ClassList; class: cstring)	
+remove	dom.html#remove,ClassList,cstring	dom: remove(c: ClassList; class: cstring)	
+contains	dom.html#contains,ClassList,cstring	dom: contains(c: ClassList; class: cstring): bool	
+toggle	dom.html#toggle,ClassList,cstring	dom: toggle(c: ClassList; class: cstring)	
+getPropertyValue	dom.html#getPropertyValue,Style,cstring	dom: getPropertyValue(s: Style; property: cstring): cstring	
+removeProperty	dom.html#removeProperty,Style,cstring	dom: removeProperty(s: Style; property: cstring)	
+setProperty	dom.html#setProperty,Style,cstring,cstring,string	dom: setProperty(s: Style; property, value: cstring; priority = &quot;&quot;)	
+getPropertyPriority	dom.html#getPropertyPriority,Style,cstring	dom: getPropertyPriority(s: Style; property: cstring): cstring	
+preventDefault	dom.html#preventDefault,Event	dom: preventDefault(ev: Event)	
+stopImmediatePropagation	dom.html#stopImmediatePropagation,Event	dom: stopImmediatePropagation(ev: Event)	
+stopPropagation	dom.html#stopPropagation,Event	dom: stopPropagation(ev: Event)	
+getModifierState	dom.html#getModifierState,KeyboardEvent,cstring	dom: getModifierState(ev: KeyboardEvent; keyArg: cstring): bool	
+getModifierState	dom.html#getModifierState,MouseEvent,cstring	dom: getModifierState(ev: MouseEvent; keyArg: cstring): bool	
+identifiedTouch	dom.html#identifiedTouch,TouchList	dom: identifiedTouch(list: TouchList): Touch	
+item	dom.html#item,TouchList,int	dom: item(list: TouchList; i: int): Touch	
+clearData	dom.html#clearData,DataTransfer,cstring	dom: clearData(dt: DataTransfer; format: cstring)	
+getData	dom.html#getData,DataTransfer,cstring	dom: getData(dt: DataTransfer; format: cstring): cstring	
+setData	dom.html#setData,DataTransfer,cstring,cstring	dom: setData(dt: DataTransfer; format: cstring; data: cstring)	
+setDragImage	dom.html#setDragImage,DataTransfer,Element,int64,int64	dom: setDragImage(dt: DataTransfer; img: Element; xOffset: int64; yOffset: int64)	
+getAsFile	dom.html#getAsFile,DataTransferItem	dom: getAsFile(dti: DataTransferItem): File	
+setSelectionRange	dom.html#setSelectionRange,InputElement,int,int,cstring	dom: setSelectionRange(e: InputElement; selectionStart: int; selectionEnd: int;\n                  selectionDirection: cstring = &quot;none&quot;)	
+setRangeText	dom.html#setRangeText,InputElement,cstring,int,int,cstring	dom: setRangeText(e: InputElement; replacement: cstring; startindex: int = 0;\n             endindex: int = 0; selectionMode: cstring = &quot;preserve&quot;)	
+setCustomValidity	dom.html#setCustomValidity,InputElement,cstring	dom: setCustomValidity(e: InputElement; error: cstring)	
+checkValidity	dom.html#checkValidity,InputElement	dom: checkValidity(e: InputElement): bool	
+slice	dom.html#slice,Blob,int,int,cstring	dom: slice(e: Blob; startindex: int = 0; endindex: int = e.size;\n      contentType: cstring = &quot;&quot;)	
+now	dom.html#now,Performance	dom: now(p: Performance): float	
+removeAllRanges	dom.html#removeAllRanges,Selection	dom: removeAllRanges(s: Selection)	
+deleteFromDocument	dom.html#deleteFromDocument,Selection	dom: deleteFromDocument(s: Selection)	
+getRangeAt	dom.html#getRangeAt,Selection,int	dom: getRangeAt(s: Selection; index: int): Range	
+toString	dom.html#toString.c,Selection	dom: toString(s: Selection): cstring	
+`$`	dom.html#$,Selection	dom: `$`(s: Selection): string	
+getItem	dom.html#getItem,Storage,cstring	dom: getItem(s: Storage; key: cstring): cstring	
+setItem	dom.html#setItem,Storage,cstring,cstring	dom: setItem(s: Storage; key, value: cstring)	
+hasItem	dom.html#hasItem,Storage,cstring	dom: hasItem(s: Storage; key: cstring): bool	
+clear	dom.html#clear,Storage	dom: clear(s: Storage)	
+removeItem	dom.html#removeItem,Storage,cstring	dom: removeItem(s: Storage; key: cstring)	
+setAttr	dom.html#setAttr,Node,cstring,cstring	dom: setAttr(n: Node; key, val: cstring)	
+window	dom.html#window_2	dom: window	
+navigator	dom.html#navigator_2	dom: navigator	
+screen	dom.html#screen	dom: screen	
+document	dom.html#document_2	dom: document	
+decodeURI	dom.html#decodeURI,cstring	dom: decodeURI(uri: cstring): cstring	
+encodeURI	dom.html#encodeURI,cstring	dom: encodeURI(uri: cstring): cstring	
+escape	dom.html#escape,cstring	dom: escape(uri: cstring): cstring	
+unescape	dom.html#unescape,cstring	dom: unescape(uri: cstring): cstring	
+decodeURIComponent	dom.html#decodeURIComponent,cstring	dom: decodeURIComponent(uri: cstring): cstring	
+encodeURIComponent	dom.html#encodeURIComponent,cstring	dom: encodeURIComponent(uri: cstring): cstring	
+isFinite	dom.html#isFinite,BiggestFloat	dom: isFinite(x: BiggestFloat): bool	
+isNaN	dom.html#isNaN,BiggestFloat	dom: isNaN(x: BiggestFloat): bool	
+newEvent	dom.html#newEvent,cstring	dom: newEvent(name: cstring): Event	
+getElementsByClass	dom.html#getElementsByClass,Node,cstring	dom: getElementsByClass(n: Node; name: cstring): seq[Node]	
+BoundingRect	dom.html#BoundingRect	dom: BoundingRect	
+getBoundingClientRect	dom.html#getBoundingClientRect,Node	dom: getBoundingClientRect(e: Node): BoundingRect	
+clientHeight	dom.html#clientHeight	dom: clientHeight(): int	
+clientWidth	dom.html#clientWidth	dom: clientWidth(): int	
+inViewport	dom.html#inViewport,Node	dom: inViewport(el: Node): bool	
+scrollTop	dom.html#scrollTop,Node	dom: scrollTop(e: Node): int	
+scrollTop=	dom.html#scrollTop=,Node,int	dom: scrollTop=(e: Node; value: int)	
+scrollLeft	dom.html#scrollLeft,Node	dom: scrollLeft(e: Node): int	
+scrollHeight	dom.html#scrollHeight,Node	dom: scrollHeight(e: Node): int	
+scrollWidth	dom.html#scrollWidth,Node	dom: scrollWidth(e: Node): int	
+offsetHeight	dom.html#offsetHeight,Node	dom: offsetHeight(e: Node): int	
+offsetWidth	dom.html#offsetWidth,Node	dom: offsetWidth(e: Node): int	
+offsetTop	dom.html#offsetTop,Node	dom: offsetTop(e: Node): int	
+offsetLeft	dom.html#offsetLeft,Node	dom: offsetLeft(e: Node): int	
+newDomParser	dom.html#newDomParser	dom: newDomParser(): DomParser	
+parseFromString	dom.html#parseFromString,DomParser,cstring,cstring	dom: parseFromString(this: DomParser; str: cstring; mimeType: cstring): Document	
+newDomException	dom.html#newDomException	dom: newDomException(): DomException	
+message	dom.html#message,DomException	dom: message(ex: DomException): cstring	
+name	dom.html#name,DomException	dom: name(ex: DomException): cstring	
+newFileReader	dom.html#newFileReader	dom: newFileReader(): FileReader	
+error	dom.html#error,FileReader	dom: error(f: FileReader): DomException	
+readyState	dom.html#readyState,FileReader	dom: readyState(f: FileReader): FileReaderState	
+resultAsString	dom.html#resultAsString,FileReader	dom: resultAsString(f: FileReader): cstring	
+abort	dom.html#abort,FileReader	dom: abort(f: FileReader)	
+readAsBinaryString	dom.html#readAsBinaryString,FileReader,Blob	dom: readAsBinaryString(f: FileReader; b: Blob)	
+readAsDataURL	dom.html#readAsDataURL,FileReader,Blob	dom: readAsDataURL(f: FileReader; b: Blob)	
+readAsText	dom.html#readAsText,FileReader,	dom: readAsText(f: FileReader; b: Blob | File; encoding = cstring&quot;UTF-8&quot;)	

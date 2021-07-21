@@ -1,0 +1,28 @@
+Deque	deques.html#Deque	deques: Deque	
+defaultInitialSize	deques.html#defaultInitialSize	deques: defaultInitialSize	
+initDeque	deques.html#initDeque,int	deques: initDeque[T](initialSize: int = defaultInitialSize): Deque[T]	
+toDeque	deques.html#toDeque,openArray[T]	deques: toDeque[T](x: openArray[T]): Deque[T]	
+len	deques.html#len,Deque[T]	deques: len[T](deq: Deque[T]): int	
+`[]`	deques.html#[],Deque[T],Natural	deques: `[]`[T](deq: Deque[T]; i: Natural): lent T	
+`[]`	deques.html#[],Deque[T],Natural_2	deques: `[]`[T](deq: var Deque[T]; i: Natural): var T	
+`[]=`	deques.html#[]=,Deque[T],Natural,sinkT	deques: `[]=`[T](deq: var Deque[T]; i: Natural; val: sink T)	
+`[]`	deques.html#[],Deque[T],BackwardsIndex	deques: `[]`[T](deq: Deque[T]; i: BackwardsIndex): lent T	
+`[]`	deques.html#[],Deque[T],BackwardsIndex_2	deques: `[]`[T](deq: var Deque[T]; i: BackwardsIndex): var T	
+`[]=`	deques.html#[]=,Deque[T],BackwardsIndex,sinkT	deques: `[]=`[T](deq: var Deque[T]; i: BackwardsIndex; x: sink T)	
+items	deques.html#items.i,Deque[T]	deques: items[T](deq: Deque[T]): lent T	
+mitems	deques.html#mitems.i,Deque[T]	deques: mitems[T](deq: var Deque[T]): var T	
+pairs	deques.html#pairs.i,Deque[T]	deques: pairs[T](deq: Deque[T]): tuple[key: int, val: T]	
+contains	deques.html#contains,Deque[T],T	deques: contains[T](deq: Deque[T]; item: T): bool	
+addFirst	deques.html#addFirst,Deque[T],sinkT	deques: addFirst[T](deq: var Deque[T]; item: sink T)	
+addLast	deques.html#addLast,Deque[T],sinkT	deques: addLast[T](deq: var Deque[T]; item: sink T)	
+peekFirst	deques.html#peekFirst,Deque[T]	deques: peekFirst[T](deq: Deque[T]): lent T	
+peekLast	deques.html#peekLast,Deque[T]	deques: peekLast[T](deq: Deque[T]): lent T	
+peekFirst	deques.html#peekFirst,Deque[T]_2	deques: peekFirst[T](deq: var Deque[T]): var T	
+peekLast	deques.html#peekLast,Deque[T]_2	deques: peekLast[T](deq: var Deque[T]): var T	
+popFirst	deques.html#popFirst,Deque[T]	deques: popFirst[T](deq: var Deque[T]): T	
+popLast	deques.html#popLast,Deque[T]	deques: popLast[T](deq: var Deque[T]): T	
+clear	deques.html#clear,Deque[T]	deques: clear[T](deq: var Deque[T])	
+shrink	deques.html#shrink,Deque[T],int,int	deques: shrink[T](deq: var Deque[T]; fromFirst = 0; fromLast = 0)	
+`$`	deques.html#$,Deque[T]	deques: `$`[T](deq: Deque[T]): string	
+deque	deques.html#deque_1	Module deques	
+See also	deques.html#see-also	 See also	

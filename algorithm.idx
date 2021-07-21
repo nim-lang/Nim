@@ -1,0 +1,34 @@
+Descending	algorithm.html#Descending	SortOrder.Descending	
+Ascending	algorithm.html#Ascending	SortOrder.Ascending	
+SortOrder	algorithm.html#SortOrder	algorithm: SortOrder	
+`*`	algorithm.html#*,int,SortOrder	algorithm: `*`(x: int; order: SortOrder): int	
+fill	algorithm.html#fill,openArray[T],Natural,Natural,T	algorithm: fill[T](a: var openArray[T]; first, last: Natural; value: T)	
+fill	algorithm.html#fill,openArray[T],T	algorithm: fill[T](a: var openArray[T]; value: T)	
+reverse	algorithm.html#reverse,openArray[T],Natural,Natural	algorithm: reverse[T](a: var openArray[T]; first, last: Natural)	
+reverse	algorithm.html#reverse,openArray[T]	algorithm: reverse[T](a: var openArray[T])	
+reversed	algorithm.html#reversed,openArray[T]	algorithm: reversed[T](a: openArray[T]): seq[T]	
+reversed	algorithm.html#reversed,openArray[T],Natural,int	algorithm: reversed[T](a: openArray[T]; first: Natural; last: int): seq[T]	
+binarySearch	algorithm.html#binarySearch,openArray[T],K,proc(T,K)	algorithm: binarySearch[T, K](a: openArray[T]; key: K;\n                   cmp: proc (x: T; y: K): int {.closure.}): int	
+binarySearch	algorithm.html#binarySearch,openArray[T],T	algorithm: binarySearch[T](a: openArray[T]; key: T): int	
+lowerBound	algorithm.html#lowerBound,openArray[T],K,proc(T,K)	algorithm: lowerBound[T, K](a: openArray[T]; key: K; cmp: proc (x: T; k: K): int {.closure.}): int	
+lowerBound	algorithm.html#lowerBound,openArray[T],T	algorithm: lowerBound[T](a: openArray[T]; key: T): int	
+upperBound	algorithm.html#upperBound,openArray[T],K,proc(T,K)	algorithm: upperBound[T, K](a: openArray[T]; key: K; cmp: proc (x: T; k: K): int {.closure.}): int	
+upperBound	algorithm.html#upperBound,openArray[T],T	algorithm: upperBound[T](a: openArray[T]; key: T): int	
+sort	algorithm.html#sort,openArray[T],proc(T,T)	algorithm: sort[T](a: var openArray[T]; cmp: proc (x, y: T): int {.closure.};\n        order = SortOrder.Ascending)	
+sort	algorithm.html#sort,openArray[T]	algorithm: sort[T](a: var openArray[T]; order = SortOrder.Ascending)	
+sorted	algorithm.html#sorted,openArray[T],proc(T,T)	algorithm: sorted[T](a: openArray[T]; cmp: proc (x, y: T): int {.closure.};\n          order = SortOrder.Ascending): seq[T]	
+sorted	algorithm.html#sorted,openArray[T]	algorithm: sorted[T](a: openArray[T]; order = SortOrder.Ascending): seq[T]	
+sortedByIt	algorithm.html#sortedByIt.t,untyped,untyped	algorithm: sortedByIt(seq1, op: untyped): untyped	
+isSorted	algorithm.html#isSorted,openArray[T],proc(T,T)	algorithm: isSorted[T](a: openArray[T]; cmp: proc (x, y: T): int {.closure.};\n            order = SortOrder.Ascending): bool	
+isSorted	algorithm.html#isSorted,openArray[T]	algorithm: isSorted[T](a: openArray[T]; order = SortOrder.Ascending): bool	
+merge	algorithm.html#merge,seq[T],openArray[T],openArray[T],proc(T,T)	algorithm: merge[T](result: var seq[T]; x, y: openArray[T];\n         cmp: proc (x, y: T): int {.closure.})	
+merge	algorithm.html#merge,seq[T],openArray[T],openArray[T]	algorithm: merge[T](result: var seq[T]; x, y: openArray[T])	
+product	algorithm.html#product,openArray[seq[T]]	algorithm: product[T](x: openArray[seq[T]]): seq[seq[T]]	
+nextPermutation	algorithm.html#nextPermutation,openArray[T]	algorithm: nextPermutation[T](x: var openArray[T]): bool	
+prevPermutation	algorithm.html#prevPermutation,openArray[T]	algorithm: prevPermutation[T](x: var openArray[T]): bool	
+rotateLeft	algorithm.html#rotateLeft,openArray[T],HSlice[int,int],int	algorithm: rotateLeft[T](arg: var openArray[T]; slice: HSlice[int, int]; dist: int): int	
+rotateLeft	algorithm.html#rotateLeft,openArray[T],int	algorithm: rotateLeft[T](arg: var openArray[T]; dist: int): int	
+rotatedLeft	algorithm.html#rotatedLeft,openArray[T],HSlice[int,int],int	algorithm: rotatedLeft[T](arg: openArray[T]; slice: HSlice[int, int]; dist: int): seq[T]	
+rotatedLeft	algorithm.html#rotatedLeft,openArray[T],int	algorithm: rotatedLeft[T](arg: openArray[T]; dist: int): seq[T]	
+Basic usage	algorithm.html#basic-usage	 Basic usage	
+See also	algorithm.html#see-also	 See also	

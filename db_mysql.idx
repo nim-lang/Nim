@@ -1,0 +1,32 @@
+DbConn	db_mysql.html#DbConn	db_mysql: DbConn	
+Row	db_mysql.html#Row	db_mysql: Row	
+InstantRow	db_mysql.html#InstantRow	db_mysql: InstantRow	
+dbError	db_mysql.html#dbError,DbConn	db_mysql: dbError(db: DbConn)	
+dbQuote	db_mysql.html#dbQuote,string	db_mysql: dbQuote(s: string): string	
+tryExec	db_mysql.html#tryExec,DbConn,SqlQuery,varargs[string,]	db_mysql: tryExec(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): bool	
+exec	db_mysql.html#exec,DbConn,SqlQuery,varargs[string,]	db_mysql: exec(db: DbConn; query: SqlQuery; args: varargs[string, `$`])	
+fastRows	db_mysql.html#fastRows.i,DbConn,SqlQuery,varargs[string,]	db_mysql: fastRows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): Row	
+instantRows	db_mysql.html#instantRows.i,DbConn,SqlQuery,varargs[string,]	db_mysql: instantRows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): InstantRow	
+instantRows	db_mysql.html#instantRows.i,DbConn,DbColumns,SqlQuery,varargs[string,]	db_mysql: instantRows(db: DbConn; columns: var DbColumns; query: SqlQuery;\n            args: varargs[string, `$`]): InstantRow	
+`[]`	db_mysql.html#[],InstantRow,int	db_mysql: `[]`(row: InstantRow; col: int): string	
+unsafeColumnAt	db_mysql.html#unsafeColumnAt,InstantRow,int	db_mysql: unsafeColumnAt(row: InstantRow; index: int): cstring	
+len	db_mysql.html#len,InstantRow	db_mysql: len(row: InstantRow): int	
+getRow	db_mysql.html#getRow,DbConn,SqlQuery,varargs[string,]	db_mysql: getRow(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): Row	
+getAllRows	db_mysql.html#getAllRows,DbConn,SqlQuery,varargs[string,]	db_mysql: getAllRows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): seq[Row]	
+rows	db_mysql.html#rows.i,DbConn,SqlQuery,varargs[string,]	db_mysql: rows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): Row	
+getValue	db_mysql.html#getValue,DbConn,SqlQuery,varargs[string,]	db_mysql: getValue(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): string	
+tryInsertId	db_mysql.html#tryInsertId,DbConn,SqlQuery,varargs[string,]	db_mysql: tryInsertId(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): int64	
+insertId	db_mysql.html#insertId,DbConn,SqlQuery,varargs[string,]	db_mysql: insertId(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): int64	
+tryInsert	db_mysql.html#tryInsert,DbConn,SqlQuery,string,varargs[string,]	db_mysql: tryInsert(db: DbConn; query: SqlQuery; pkName: string;\n          args: varargs[string, `$`]): int64	
+insert	db_mysql.html#insert,DbConn,SqlQuery,string,varargs[string,]	db_mysql: insert(db: DbConn; query: SqlQuery; pkName: string; args: varargs[string, `$`]): int64	
+execAffectedRows	db_mysql.html#execAffectedRows,DbConn,SqlQuery,varargs[string,]	db_mysql: execAffectedRows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): int64	
+close	db_mysql.html#close,DbConn	db_mysql: close(db: DbConn)	
+open	db_mysql.html#open,string,string,string,string	db_mysql: open(connection, user, password, database: string): DbConn	
+setEncoding	db_mysql.html#setEncoding,DbConn,string	db_mysql: setEncoding(connection: DbConn; encoding: string): bool	
+mySQL	db_mysql.html#mysql_1	Module db_mysql	
+Parameter substitution	db_mysql.html#parameter-substitution	 Parameter substitution	
+Examples	db_mysql.html#examples	 Examples	
+Opening a connection to a database	db_mysql.html#examples-opening-a-connection-to-a-database	  Opening a connection to a database	
+Creating a table	db_mysql.html#examples-creating-a-table	  Creating a table	
+Inserting data	db_mysql.html#examples-inserting-data	  Inserting data	
+Larger example	db_mysql.html#examples-larger-example	  Larger example	

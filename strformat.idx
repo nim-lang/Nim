@@ -1,0 +1,20 @@
+alignString	strformat.html#alignString,string,int,char,char	strformat: alignString(s: string; minimumWidth: int; align = &apos;\x00&apos;; fill = &apos; &apos;): string	
+StandardFormatSpecifier	strformat.html#StandardFormatSpecifier	strformat: StandardFormatSpecifier	
+parseStandardFormatSpecifier	strformat.html#parseStandardFormatSpecifier,string,int	strformat: parseStandardFormatSpecifier(s: string; start = 0; ignoreUnknownSuffix = false): StandardFormatSpecifier	
+formatValue	strformat.html#formatValue,string,T,string	strformat: formatValue[T: SomeInteger](result: var string; value: T; specifier: string)	
+formatValue	strformat.html#formatValue,string,SomeFloat,string	strformat: formatValue(result: var string; value: SomeFloat; specifier: string)	
+formatValue	strformat.html#formatValue,string,string,string	strformat: formatValue(result: var string; value: string; specifier: string)	
+fmt	strformat.html#fmt.m,staticstring,staticchar,staticchar	strformat: fmt(pattern: static string; openChar: static char; closeChar: static char): string	
+fmt	strformat.html#fmt.t,staticstring	strformat: fmt(pattern: static string): untyped	
+`&amp;`	strformat.html#&.m	strformat: `&amp;`(pattern: string{lit}): string	
+interpolation	strformat.html#interpolation_1	Module strformat	
+format	strformat.html#format_1	Module strformat	
+fmt vs. &amp;	strformat.html#nimfmt-vsdot-nimamp	 <tt class="docutils literal"><span class="pre"><span class="Identifier">fmt</span></span></tt> vs. <tt class="docutils literal"><span class="pre"><span class="Operator">&amp;</span></span></tt>	
+Formatting strings	strformat.html#formatting-strings	 Formatting strings	
+Formatting floats	strformat.html#formatting-floats	 Formatting floats	
+Expressions	strformat.html#expressions	 Expressions	
+Debugging strings	strformat.html#debugging-strings	 Debugging strings	
+Implementation details	strformat.html#implementation-details	 Implementation details	
+Standard format specifiers for strings, integers and floats	strformat.html#standard-format-specifiers-for-strings-integers-and-floats	 Standard format specifiers for strings, integers and floats	
+Limitations	strformat.html#limitations	 Limitations	
+Future directions	strformat.html#future-directions	 Future directions	

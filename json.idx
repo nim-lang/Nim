@@ -1,0 +1,89 @@
+JNull	json.html#JNull	JsonNodeKind.JNull	
+JBool	json.html#JBool	JsonNodeKind.JBool	
+JInt	json.html#JInt	JsonNodeKind.JInt	
+JFloat	json.html#JFloat	JsonNodeKind.JFloat	
+JString	json.html#JString	JsonNodeKind.JString	
+JObject	json.html#JObject	JsonNodeKind.JObject	
+JArray	json.html#JArray	JsonNodeKind.JArray	
+JsonNodeKind	json.html#JsonNodeKind	json: JsonNodeKind	
+JsonNode	json.html#JsonNode	json: JsonNode	
+JsonNodeObj	json.html#JsonNodeObj	json: JsonNodeObj	
+newJString	json.html#newJString,string	json: newJString(s: string): JsonNode	
+newJInt	json.html#newJInt,BiggestInt	json: newJInt(n: BiggestInt): JsonNode	
+newJFloat	json.html#newJFloat,float	json: newJFloat(n: float): JsonNode	
+newJBool	json.html#newJBool,bool	json: newJBool(b: bool): JsonNode	
+newJNull	json.html#newJNull	json: newJNull(): JsonNode	
+newJObject	json.html#newJObject	json: newJObject(): JsonNode	
+newJArray	json.html#newJArray	json: newJArray(): JsonNode	
+getStr	json.html#getStr,JsonNode,string	json: getStr(n: JsonNode; default: string = &quot;&quot;): string	
+getInt	json.html#getInt,JsonNode,int	json: getInt(n: JsonNode; default: int = 0): int	
+getBiggestInt	json.html#getBiggestInt,JsonNode,BiggestInt	json: getBiggestInt(n: JsonNode; default: BiggestInt = 0): BiggestInt	
+getFloat	json.html#getFloat,JsonNode,float	json: getFloat(n: JsonNode; default: float = 0.0): float	
+getBool	json.html#getBool,JsonNode,bool	json: getBool(n: JsonNode; default: bool = false): bool	
+getFields	json.html#getFields,JsonNode	json: getFields(n: JsonNode; default = initOrderedTable(2)): OrderedTable[string,\n    JsonNode]	
+getElems	json.html#getElems,JsonNode,seq[JsonNode]	json: getElems(n: JsonNode; default: seq[JsonNode] = @[]): seq[JsonNode]	
+add	json.html#add,JsonNode,JsonNode	json: add(father, child: JsonNode)	
+add	json.html#add,JsonNode,string,JsonNode	json: add(obj: JsonNode; key: string; val: JsonNode)	
+`%`	json.html#%,string	json: `%`(s: string): JsonNode	
+`%`	json.html#%,uint	json: `%`(n: uint): JsonNode	
+`%`	json.html#%,int	json: `%`(n: int): JsonNode	
+`%`	json.html#%,BiggestUInt	json: `%`(n: BiggestUInt): JsonNode	
+`%`	json.html#%,BiggestInt	json: `%`(n: BiggestInt): JsonNode	
+`%`	json.html#%,float	json: `%`(n: float): JsonNode	
+`%`	json.html#%,bool	json: `%`(b: bool): JsonNode	
+`%`	json.html#%,openArray[tuple[string,JsonNode]]	json: `%`(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode	
+`%`	json.html#%.t,JsonNode	json: `%`(j: JsonNode): JsonNode	
+`%`	json.html#%,openArray[T]	json: `%`[T](elements: openArray[T]): JsonNode	
+`%`	json.html#%	json: `%`[T](table: Table[string, T] | OrderedTable[string, T]): JsonNode	
+`%`	json.html#%,Option[T]	json: `%`[T](opt: Option[T]): JsonNode	
+`[]=`	json.html#[]=,JsonNode,string,JsonNode	json: `[]=`(obj: JsonNode; key: string; val: JsonNode)	
+`%`	json.html#%,T	json: `%`[T: object](o: T): JsonNode	
+`%`	json.html#%,ref.	json: `%`(o: ref object): JsonNode	
+`%`	json.html#%_2	json: `%`(o: enum): JsonNode	
+`%*`	json.html#%*.m,untyped	json: `%*`(x: untyped): untyped	
+`==`	json.html#==,JsonNode,JsonNode	json: `==`(a, b: JsonNode): bool	
+hash	json.html#hash,JsonNode	json: hash(n: JsonNode): Hash	
+hash	json.html#hash,OrderedTable[string,JsonNode]	json: hash(n: OrderedTable[string, JsonNode]): Hash	
+len	json.html#len,JsonNode	json: len(n: JsonNode): int	
+`[]`	json.html#[],JsonNode,string	json: `[]`(node: JsonNode; name: string): JsonNode	
+`[]`	json.html#[],JsonNode,int	json: `[]`(node: JsonNode; index: int): JsonNode	
+`[]`	json.html#[],JsonNode,BackwardsIndex	json: `[]`(node: JsonNode; index: BackwardsIndex): JsonNode	
+hasKey	json.html#hasKey,JsonNode,string	json: hasKey(node: JsonNode; key: string): bool	
+contains	json.html#contains,JsonNode,string	json: contains(node: JsonNode; key: string): bool	
+contains	json.html#contains,JsonNode,JsonNode	json: contains(node: JsonNode; val: JsonNode): bool	
+`{}`	json.html#{},JsonNode,varargs[string]	json: `{}`(node: JsonNode; keys: varargs[string]): JsonNode	
+`{}`	json.html#{},JsonNode,varargs[int]	json: `{}`(node: JsonNode; index: varargs[int]): JsonNode	
+getOrDefault	json.html#getOrDefault,JsonNode,string	json: getOrDefault(node: JsonNode; key: string): JsonNode	
+`{}`	json.html#{},JsonNode,string	json: `{}`(node: JsonNode; key: string): JsonNode	
+`{}=`	json.html#{}=,JsonNode,varargs[string],JsonNode	json: `{}=`(node: JsonNode; keys: varargs[string]; value: JsonNode)	
+delete	json.html#delete,JsonNode,string	json: delete(obj: JsonNode; key: string)	
+copy	json.html#copy,JsonNode	json: copy(p: JsonNode): JsonNode	
+escapeJsonUnquoted	json.html#escapeJsonUnquoted,string,string	json: escapeJsonUnquoted(s: string; result: var string)	
+escapeJsonUnquoted	json.html#escapeJsonUnquoted,string	json: escapeJsonUnquoted(s: string): string	
+escapeJson	json.html#escapeJson,string,string	json: escapeJson(s: string; result: var string)	
+escapeJson	json.html#escapeJson,string	json: escapeJson(s: string): string	
+toUgly	json.html#toUgly,string,JsonNode	json: toUgly(result: var string; node: JsonNode)	
+pretty	json.html#pretty,JsonNode,int	json: pretty(node: JsonNode; indent = 2): string	
+`$`	json.html#$,JsonNode	json: `$`(node: JsonNode): string	
+items	json.html#items.i,JsonNode	json: items(node: JsonNode): JsonNode	
+mitems	json.html#mitems.i,JsonNode	json: mitems(node: var JsonNode): var JsonNode	
+pairs	json.html#pairs.i,JsonNode	json: pairs(node: JsonNode): tuple[key: string, val: JsonNode]	
+keys	json.html#keys.i,JsonNode	json: keys(node: JsonNode): string	
+mpairs	json.html#mpairs.i,JsonNode	json: mpairs(node: var JsonNode): tuple[key: string, val: var JsonNode]	
+parseJsonFragments	json.html#parseJsonFragments.i,Stream,string	json: parseJsonFragments(s: Stream; filename: string = &quot;&quot;; rawIntegers = false;\n                   rawFloats = false): JsonNode	
+parseJson	json.html#parseJson,Stream,string	json: parseJson(s: Stream; filename: string = &quot;&quot;; rawIntegers = false;\n          rawFloats = false): JsonNode	
+parseJson	json.html#parseJson,string	json: parseJson(buffer: string; rawIntegers = false; rawFloats = false): JsonNode	
+parseFile	json.html#parseFile,string	json: parseFile(filename: string): JsonNode	
+isRefSkipDistinct	json.html#isRefSkipDistinct.m,typed	json: isRefSkipDistinct(arg: typed): untyped	
+to	json.html#to,JsonNode,typedesc[T]	json: to[T](node: JsonNode; t: typedesc[T]): T	
+autovivification	json.html#autovivification_1	Module json	
+Unmarshals	json.html#unmarshals_1	Module json	
+JSON	json.html#json_1	Module json	
+See also	json.html#see-also	 See also	
+Overview	json.html#overview	 Overview	
+Parsing JSON	json.html#overview-parsing-json	  Parsing JSON	
+Reading values	json.html#overview-reading-values	  Reading values	
+Handling optional keys	json.html#overview-handling-optional-keys	  Handling optional keys	
+Using default values	json.html#overview-using-default-values	  Using default values	
+Unmarshalling	json.html#overview-unmarshalling	  Unmarshalling	
+Creating JSON	json.html#creating-json	 Creating JSON	

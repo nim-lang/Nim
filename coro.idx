@@ -1,0 +1,6 @@
+CoroutineRef	coro.html#CoroutineRef	coro: CoroutineRef	
+suspend	coro.html#suspend,float	coro: suspend(sleepTime: float = 0)	
+start	coro.html#start,proc),int	coro: start(c: proc (); stacksize: int = defaultStackSize): CoroutineRef	
+run	coro.html#run	coro: run()	
+alive	coro.html#alive,CoroutineRef	coro: alive(c: CoroutineRef): bool	
+wait	coro.html#wait,CoroutineRef,float	coro: wait(c: CoroutineRef; interval = 0.01)	

@@ -1,0 +1,11 @@
+LibHandle	dynlib.html#LibHandle	dynlib: LibHandle	
+raiseInvalidLibrary	dynlib.html#raiseInvalidLibrary,cstring	dynlib: raiseInvalidLibrary(name: cstring)	
+checkedSymAddr	dynlib.html#checkedSymAddr,LibHandle,cstring	dynlib: checkedSymAddr(lib: LibHandle; name: cstring): pointer	
+libCandidates	dynlib.html#libCandidates,string,seq[string]	dynlib: libCandidates(s: string; dest: var seq[string])	
+loadLibPattern	dynlib.html#loadLibPattern,string	dynlib: loadLibPattern(pattern: string; globalSymbols = false): LibHandle	
+loadLib	dynlib.html#loadLib,string	dynlib: loadLib(path: string; globalSymbols = false): LibHandle	
+loadLib	dynlib.html#loadLib	dynlib: loadLib(): LibHandle	
+unloadLib	dynlib.html#unloadLib,LibHandle	dynlib: unloadLib(lib: LibHandle)	
+symAddr	dynlib.html#symAddr,LibHandle,cstring	dynlib: symAddr(lib: LibHandle; name: cstring): pointer	
+Examples	dynlib.html#examples	 Examples	
+Loading a simple C function	dynlib.html#examples-loading-a-simple-c-function	  Loading a simple C function	

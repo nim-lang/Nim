@@ -1,0 +1,4 @@
+AliveSyms	ic/dce.html#AliveSyms	dce: AliveSyms	
+AliveContext	ic/dce.html#AliveContext	dce: AliveContext	
+computeAliveSyms	ic/dce.html#computeAliveSyms,PackedModuleGraph,ConfigRef	dce: computeAliveSyms(g: PackedModuleGraph; conf: ConfigRef): AliveSyms	
+isAlive	ic/dce.html#isAlive,AliveSyms,int,int32	dce: isAlive(a: AliveSyms; module: int; item: int32): bool	

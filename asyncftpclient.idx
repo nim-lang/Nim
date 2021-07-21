@@ -1,0 +1,34 @@
+AsyncFtpClient	asyncftpclient.html#AsyncFtpClient	asyncftpclient: AsyncFtpClient	
+JRetrText	asyncftpclient.html#JRetrText	FtpJobType.JRetrText	
+JRetr	asyncftpclient.html#JRetr	FtpJobType.JRetr	
+JStore	asyncftpclient.html#JStore	FtpJobType.JStore	
+FtpJobType	asyncftpclient.html#FtpJobType	asyncftpclient: FtpJobType	
+EvTransferProgress	asyncftpclient.html#EvTransferProgress	FtpEventType.EvTransferProgress	
+EvLines	asyncftpclient.html#EvLines	FtpEventType.EvLines	
+EvRetr	asyncftpclient.html#EvRetr	FtpEventType.EvRetr	
+EvStore	asyncftpclient.html#EvStore	FtpEventType.EvStore	
+FtpEventType	asyncftpclient.html#FtpEventType	asyncftpclient: FtpEventType	
+FtpEvent	asyncftpclient.html#FtpEvent	asyncftpclient: FtpEvent	
+ReplyError	asyncftpclient.html#ReplyError	asyncftpclient: ReplyError	
+ProgressChangedProc	asyncftpclient.html#ProgressChangedProc	asyncftpclient: ProgressChangedProc	
+send	asyncftpclient.html#send,AsyncFtpClient,string	asyncftpclient: send(ftp: AsyncFtpClient; m: string): Future[string]	
+connect	asyncftpclient.html#connect,AsyncFtpClient	asyncftpclient: connect(ftp: AsyncFtpClient): owned(Future[void])	
+pwd	asyncftpclient.html#pwd,AsyncFtpClient	asyncftpclient: pwd(ftp: AsyncFtpClient): Future[string]	
+cd	asyncftpclient.html#cd,AsyncFtpClient,string	asyncftpclient: cd(ftp: AsyncFtpClient; dir: string): owned(Future[void])	
+cdup	asyncftpclient.html#cdup,AsyncFtpClient	asyncftpclient: cdup(ftp: AsyncFtpClient): owned(Future[void])	
+listDirs	asyncftpclient.html#listDirs,AsyncFtpClient,string	asyncftpclient: listDirs(ftp: AsyncFtpClient; dir = &quot;&quot;): Future[seq[string]]	
+fileExists	asyncftpclient.html#fileExists,AsyncFtpClient,string	asyncftpclient: fileExists(ftp: AsyncFtpClient; file: string): Future[bool]	
+createDir	asyncftpclient.html#createDir,AsyncFtpClient,string	asyncftpclient: createDir(ftp: AsyncFtpClient; dir: string; recursive = false): owned(\n    Future[void])	
+chmod	asyncftpclient.html#chmod,AsyncFtpClient,string,set[FilePermission]	asyncftpclient: chmod(ftp: AsyncFtpClient; path: string; permissions: set[FilePermission]): owned(\n    Future[void])	
+list	asyncftpclient.html#list,AsyncFtpClient,string	asyncftpclient: list(ftp: AsyncFtpClient; dir = &quot;&quot;): Future[string]	
+retrText	asyncftpclient.html#retrText,AsyncFtpClient,string	asyncftpclient: retrText(ftp: AsyncFtpClient; file: string): Future[string]	
+defaultOnProgressChanged	asyncftpclient.html#defaultOnProgressChanged,BiggestInt,BiggestInt,float	asyncftpclient: defaultOnProgressChanged(total, progress: BiggestInt; speed: float): Future[void]	
+retrFile	asyncftpclient.html#retrFile,AsyncFtpClient,string,string,ProgressChangedProc	asyncftpclient: retrFile(ftp: AsyncFtpClient; file, dest: string;\n         onProgressChanged: ProgressChangedProc = defaultOnProgressChanged): owned(\n    Future[void])	
+store	asyncftpclient.html#store,AsyncFtpClient,string,string,ProgressChangedProc	asyncftpclient: store(ftp: AsyncFtpClient; file, dest: string;\n      onProgressChanged: ProgressChangedProc = defaultOnProgressChanged): owned(\n    Future[void])	
+rename	asyncftpclient.html#rename,AsyncFtpClient,string,string	asyncftpclient: rename(ftp: AsyncFtpClient; nameFrom: string; nameTo: string): owned(\n    Future[void])	
+removeFile	asyncftpclient.html#removeFile,AsyncFtpClient,string	asyncftpclient: removeFile(ftp: AsyncFtpClient; filename: string): owned(Future[void])	
+removeDir	asyncftpclient.html#removeDir,AsyncFtpClient,string	asyncftpclient: removeDir(ftp: AsyncFtpClient; dir: string): owned(Future[void])	
+newAsyncFtpClient	asyncftpclient.html#newAsyncFtpClient,string,string,string,int	asyncftpclient: newAsyncFtpClient(address: string; port = Port(21); user, pass = &quot;&quot;;\n                  progressInterval: int = 1000): AsyncFtpClient	
+Connecting to an FTP server	asyncftpclient.html#connecting-to-an-ftp-server	 Connecting to an FTP server	
+Uploading a new file	asyncftpclient.html#uploading-a-new-file	 Uploading a new file	
+Checking the progress of a file transfer	asyncftpclient.html#checking-the-progress-of-a-file-transfer	 Checking the progress of a file transfer	

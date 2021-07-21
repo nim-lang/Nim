@@ -1,0 +1,27 @@
+Message	smtp.html#Message	smtp: Message	
+ReplyError	smtp.html#ReplyError	smtp: ReplyError	
+Smtp	smtp.html#Smtp	smtp: Smtp	
+AsyncSmtp	smtp.html#AsyncSmtp	smtp: AsyncSmtp	
+debugSend	smtp.html#debugSend,AsyncSmtp,string	smtp: debugSend(smtp: AsyncSmtp; cmd: string): owned(Future[void])	
+debugSend	smtp.html#debugSend,Smtp,string	smtp: debugSend(smtp: Smtp; cmd: string)	
+debugRecv	smtp.html#debugRecv,AsyncSmtp	smtp: debugRecv(smtp: AsyncSmtp): Future[string]	
+debugRecv	smtp.html#debugRecv,Smtp	smtp: debugRecv(smtp: Smtp): string	
+createMessage	smtp.html#createMessage,string,string,seq[string],seq[string],openArray[tuple[string,string]]	smtp: createMessage(mSubject, mBody: string; mTo, mCc: seq[string];\n              otherHeaders: openArray[tuple[name, value: string]]): Message	
+createMessage	smtp.html#createMessage,string,string,seq[string],seq[string]	smtp: createMessage(mSubject, mBody: string; mTo, mCc: seq[string] = @[]): Message	
+`$`	smtp.html#$,Message	smtp: `$`(msg: Message): string	
+newSmtp	smtp.html#newSmtp,SslContext	smtp: newSmtp(useSsl = false; debug = false; sslContext: SslContext = nil): Smtp	
+newAsyncSmtp	smtp.html#newAsyncSmtp,SslContext	smtp: newAsyncSmtp(useSsl = false; debug = false; sslContext: SslContext = nil): AsyncSmtp	
+checkReply	smtp.html#checkReply,AsyncSmtp,string	smtp: checkReply(smtp: AsyncSmtp; reply: string): owned(Future[void])	
+checkReply	smtp.html#checkReply,Smtp,string	smtp: checkReply(smtp: Smtp; reply: string)	
+helo	smtp.html#helo,AsyncSmtp	smtp: helo(smtp: AsyncSmtp): owned(Future[void])	
+helo	smtp.html#helo,Smtp	smtp: helo(smtp: Smtp)	
+connect	smtp.html#connect,AsyncSmtp,string,Port	smtp: connect(smtp: AsyncSmtp; address: string; port: Port): owned(Future[void])	
+connect	smtp.html#connect,Smtp,string,Port	smtp: connect(smtp: Smtp; address: string; port: Port)	
+startTls	smtp.html#startTls,AsyncSmtp,SslContext	smtp: startTls(smtp: AsyncSmtp; sslContext: SslContext = nil): owned(Future[void])	
+startTls	smtp.html#startTls,Smtp,SslContext	smtp: startTls(smtp: Smtp; sslContext: SslContext = nil)	
+auth	smtp.html#auth,AsyncSmtp,string,string	smtp: auth(smtp: AsyncSmtp; username, password: string): owned(Future[void])	
+auth	smtp.html#auth,Smtp,string,string	smtp: auth(smtp: Smtp; username, password: string)	
+sendMail	smtp.html#sendMail,AsyncSmtp,string,seq[string],string	smtp: sendMail(smtp: AsyncSmtp; fromAddr: string; toAddrs: seq[string]; msg: string): owned(\n    Future[void])	
+sendMail	smtp.html#sendMail,Smtp,string,seq[string],string	smtp: sendMail(smtp: Smtp; fromAddr: string; toAddrs: seq[string]; msg: string)	
+close	smtp.html#close,AsyncSmtp	smtp: close(smtp: AsyncSmtp): owned(Future[void])	
+close	smtp.html#close,Smtp	smtp: close(smtp: Smtp)	

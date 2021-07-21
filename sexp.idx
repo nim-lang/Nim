@@ -1,0 +1,73 @@
+sexpError	sexp.html#sexpError	SexpEventKind.sexpError	
+sexpEof	sexp.html#sexpEof	SexpEventKind.sexpEof	
+sexpString	sexp.html#sexpString	SexpEventKind.sexpString	
+sexpSymbol	sexp.html#sexpSymbol	SexpEventKind.sexpSymbol	
+sexpInt	sexp.html#sexpInt	SexpEventKind.sexpInt	
+sexpFloat	sexp.html#sexpFloat	SexpEventKind.sexpFloat	
+sexpNil	sexp.html#sexpNil	SexpEventKind.sexpNil	
+sexpDot	sexp.html#sexpDot	SexpEventKind.sexpDot	
+sexpListStart	sexp.html#sexpListStart	SexpEventKind.sexpListStart	
+sexpListEnd	sexp.html#sexpListEnd	SexpEventKind.sexpListEnd	
+SexpEventKind	sexp.html#SexpEventKind	sexp: SexpEventKind	
+errNone	sexp.html#errNone	SexpError.errNone	
+errInvalidToken	sexp.html#errInvalidToken	SexpError.errInvalidToken	
+errParensRiExpected	sexp.html#errParensRiExpected	SexpError.errParensRiExpected	
+errQuoteExpected	sexp.html#errQuoteExpected	SexpError.errQuoteExpected	
+errEofExpected	sexp.html#errEofExpected	SexpError.errEofExpected	
+SexpError	sexp.html#SexpError_2	sexp: SexpError	
+SexpParser	sexp.html#SexpParser	sexp: SexpParser	
+close	sexp.html#close,SexpParser	sexp: close(my: var SexpParser)	
+str	sexp.html#str,SexpParser	sexp: str(my: SexpParser): string	
+getInt	sexp.html#getInt,SexpParser	sexp: getInt(my: SexpParser): BiggestInt	
+getFloat	sexp.html#getFloat,SexpParser	sexp: getFloat(my: SexpParser): float	
+kind	sexp.html#kind,SexpParser	sexp: kind(my: SexpParser): SexpEventKind	
+getColumn	sexp.html#getColumn,SexpParser	sexp: getColumn(my: SexpParser): int	
+getLine	sexp.html#getLine,SexpParser	sexp: getLine(my: SexpParser): int	
+errorMsg	sexp.html#errorMsg,SexpParser	sexp: errorMsg(my: SexpParser): string	
+errorMsgExpected	sexp.html#errorMsgExpected,SexpParser,string	sexp: errorMsgExpected(my: SexpParser; e: string): string	
+SNil	sexp.html#SNil	SexpNodeKind.SNil	
+SInt	sexp.html#SInt	SexpNodeKind.SInt	
+SFloat	sexp.html#SFloat	SexpNodeKind.SFloat	
+SString	sexp.html#SString	SexpNodeKind.SString	
+SSymbol	sexp.html#SSymbol	SexpNodeKind.SSymbol	
+SList	sexp.html#SList	SexpNodeKind.SList	
+SCons	sexp.html#SCons	SexpNodeKind.SCons	
+SexpNodeKind	sexp.html#SexpNodeKind	sexp: SexpNodeKind	
+SexpNode	sexp.html#SexpNode	sexp: SexpNode	
+SexpNodeObj	sexp.html#SexpNodeObj	sexp: SexpNodeObj	
+SexpParsingError	sexp.html#SexpParsingError	sexp: SexpParsingError	
+raiseParseErr	sexp.html#raiseParseErr,SexpParser,string	sexp: raiseParseErr(p: SexpParser; msg: string)	
+newSString	sexp.html#newSString,string	sexp: newSString(s: string): SexpNode	
+newSInt	sexp.html#newSInt,BiggestInt	sexp: newSInt(n: BiggestInt): SexpNode	
+newSFloat	sexp.html#newSFloat,float	sexp: newSFloat(n: float): SexpNode	
+newSNil	sexp.html#newSNil	sexp: newSNil(): SexpNode	
+newSCons	sexp.html#newSCons,SexpNode,SexpNode	sexp: newSCons(car, cdr: SexpNode): SexpNode	
+newSList	sexp.html#newSList	sexp: newSList(): SexpNode	
+newSSymbol	sexp.html#newSSymbol,string	sexp: newSSymbol(s: string): SexpNode	
+getStr	sexp.html#getStr,SexpNode,string	sexp: getStr(n: SexpNode; default: string = &quot;&quot;): string	
+getNum	sexp.html#getNum,SexpNode,BiggestInt	sexp: getNum(n: SexpNode; default: BiggestInt = 0): BiggestInt	
+getFNum	sexp.html#getFNum,SexpNode,float	sexp: getFNum(n: SexpNode; default: float = 0.0): float	
+getSymbol	sexp.html#getSymbol,SexpNode,string	sexp: getSymbol(n: SexpNode; default: string = &quot;&quot;): string	
+getElems	sexp.html#getElems,SexpNode,seq[SexpNode]	sexp: getElems(n: SexpNode; default: seq[SexpNode] = @[]): seq[SexpNode]	
+getCons	sexp.html#getCons,SexpNode,Cons	sexp: getCons(n: SexpNode; defaults: Cons = (newSNil(), newSNil())): Cons	
+sexp	sexp.html#sexp,string	sexp: sexp(s: string): SexpNode	
+sexp	sexp.html#sexp,BiggestInt	sexp: sexp(n: BiggestInt): SexpNode	
+sexp	sexp.html#sexp,float	sexp: sexp(n: float): SexpNode	
+sexp	sexp.html#sexp,bool	sexp: sexp(b: bool): SexpNode	
+sexp	sexp.html#sexp,openArray[SexpNode]	sexp: sexp(elements: openArray[SexpNode]): SexpNode	
+sexp	sexp.html#sexp,SexpNode	sexp: sexp(s: SexpNode): SexpNode	
+convertSexp	sexp.html#convertSexp.m,untyped	sexp: convertSexp(x: untyped): untyped	
+`==`	sexp.html#==,SexpNode,SexpNode	sexp: `==`(a, b: SexpNode): bool	
+hash	sexp.html#hash,SexpNode	sexp: hash(n: SexpNode): Hash	
+len	sexp.html#len,SexpNode	sexp: len(n: SexpNode): int	
+`[]`	sexp.html#[],SexpNode,int	sexp: `[]`(node: SexpNode; index: int): SexpNode	
+add	sexp.html#add,SexpNode,SexpNode	sexp: add(father, child: SexpNode)	
+escapeJson	sexp.html#escapeJson,string	sexp: escapeJson(s: string): string	
+copy	sexp.html#copy,SexpNode	sexp: copy(p: SexpNode): SexpNode	
+pretty	sexp.html#pretty,SexpNode,int	sexp: pretty(node: SexpNode; indent = 2): string	
+`$`	sexp.html#$,SexpNode	sexp: `$`(node: SexpNode): string	
+items	sexp.html#items.i,SexpNode	sexp: items(node: SexpNode): SexpNode	
+mitems	sexp.html#mitems.i,SexpNode	sexp: mitems(node: var SexpNode): var SexpNode	
+open	sexp.html#open,SexpParser,Stream	sexp: open(my: var SexpParser; input: Stream)	
+parseSexp	sexp.html#parseSexp,Stream	sexp: parseSexp(s: Stream): SexpNode	
+parseSexp	sexp.html#parseSexp,string	sexp: parseSexp(buffer: string): SexpNode	

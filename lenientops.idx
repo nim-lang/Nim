@@ -1,0 +1,12 @@
+`+`	lenientops.html#+,I,F	lenientops: `+`[I: SomeInteger; F: SomeFloat](i: I; f: F): F	
+`+`	lenientops.html#+,F,I	lenientops: `+`[I: SomeInteger; F: SomeFloat](f: F; i: I): F	
+`-`	lenientops.html#-,I,F	lenientops: `-`[I: SomeInteger; F: SomeFloat](i: I; f: F): F	
+`-`	lenientops.html#-,F,I	lenientops: `-`[I: SomeInteger; F: SomeFloat](f: F; i: I): F	
+`*`	lenientops.html#*,I,F	lenientops: `*`[I: SomeInteger; F: SomeFloat](i: I; f: F): F	
+`*`	lenientops.html#*,F,I	lenientops: `*`[I: SomeInteger; F: SomeFloat](f: F; i: I): F	
+`/`	lenientops.html#/,I,F	lenientops: `/`[I: SomeInteger; F: SomeFloat](i: I; f: F): F	
+`/`	lenientops.html#/,F,I	lenientops: `/`[I: SomeInteger; F: SomeFloat](f: F; i: I): F	
+`&lt;`	lenientops.html#<,I,F	lenientops: `&lt;`[I: SomeInteger; F: SomeFloat](i: I; f: F): bool	
+`&lt;`	lenientops.html#<,F,I	lenientops: `&lt;`[I: SomeInteger; F: SomeFloat](f: F; i: I): bool	
+`&lt;=`	lenientops.html#<=,I,F	lenientops: `&lt;=`[I: SomeInteger; F: SomeFloat](i: I; f: F): bool	
+`&lt;=`	lenientops.html#<=,F,I	lenientops: `&lt;=`[I: SomeInteger; F: SomeFloat](f: F; i: I): bool	

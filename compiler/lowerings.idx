@@ -1,0 +1,32 @@
+genPrefix	lowerings.html#genPrefix	lowerings: genPrefix	
+newDeref	lowerings.html#newDeref,PNode	lowerings: newDeref(n: PNode): PNode	
+newTupleAccess	lowerings.html#newTupleAccess,ModuleGraph,PNode,int	lowerings: newTupleAccess(g: ModuleGraph; tup: PNode; i: int): PNode	
+addVar	lowerings.html#addVar,PNode,PNode	lowerings: addVar(father, v: PNode)	
+addVar	lowerings.html#addVar,PNode,PNode,PNode	lowerings: addVar(father, v, value: PNode)	
+newAsgnStmt	lowerings.html#newAsgnStmt,PNode,PNode	lowerings: newAsgnStmt(le, ri: PNode): PNode	
+newFastAsgnStmt	lowerings.html#newFastAsgnStmt,PNode,PNode	lowerings: newFastAsgnStmt(le, ri: PNode): PNode	
+newFastMoveStmt	lowerings.html#newFastMoveStmt,ModuleGraph,PNode,PNode	lowerings: newFastMoveStmt(g: ModuleGraph; le, ri: PNode): PNode	
+lowerTupleUnpacking	lowerings.html#lowerTupleUnpacking,ModuleGraph,PNode,IdGenerator,PSym	lowerings: lowerTupleUnpacking(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode	
+evalOnce	lowerings.html#evalOnce,ModuleGraph,PNode,IdGenerator,PSym	lowerings: evalOnce(g: ModuleGraph; value: PNode; idgen: IdGenerator; owner: PSym): PNode	
+newTupleAccessRaw	lowerings.html#newTupleAccessRaw,PNode,int	lowerings: newTupleAccessRaw(tup: PNode; i: int): PNode	
+newTryFinally	lowerings.html#newTryFinally,PNode,PNode	lowerings: newTryFinally(body, final: PNode): PNode	
+lowerTupleUnpackingForAsgn	lowerings.html#lowerTupleUnpackingForAsgn,ModuleGraph,PNode,IdGenerator,PSym	lowerings: lowerTupleUnpackingForAsgn(g: ModuleGraph; n: PNode; idgen: IdGenerator;\n                           owner: PSym): PNode	
+lowerSwap	lowerings.html#lowerSwap,ModuleGraph,PNode,IdGenerator,PSym	lowerings: lowerSwap(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode	
+createObj	lowerings.html#createObj,ModuleGraph,IdGenerator,PSym,TLineInfo	lowerings: createObj(g: ModuleGraph; idgen: IdGenerator; owner: PSym; info: TLineInfo;\n          final = true): PType	
+rawAddField	lowerings.html#rawAddField,PType,PSym	lowerings: rawAddField(obj: PType; field: PSym)	
+rawIndirectAccess	lowerings.html#rawIndirectAccess,PNode,PSym,TLineInfo	lowerings: rawIndirectAccess(a: PNode; field: PSym; info: TLineInfo): PNode	
+rawDirectAccess	lowerings.html#rawDirectAccess,PSym,PSym	lowerings: rawDirectAccess(obj, field: PSym): PNode	
+addField	lowerings.html#addField,PType,PSym,IdentCache,IdGenerator	lowerings: addField(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator)	
+addUniqueField	lowerings.html#addUniqueField,PType,PSym,IdentCache,IdGenerator	lowerings: addUniqueField(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym	
+newDotExpr	lowerings.html#newDotExpr,PSym,PSym	lowerings: newDotExpr(obj, b: PSym): PNode	
+indirectAccess	lowerings.html#indirectAccess,PNode,ItemId,TLineInfo	lowerings: indirectAccess(a: PNode; b: ItemId; info: TLineInfo): PNode	
+indirectAccess	lowerings.html#indirectAccess,PNode,string,TLineInfo,IdentCache	lowerings: indirectAccess(a: PNode; b: string; info: TLineInfo; cache: IdentCache): PNode	
+getFieldFromObj	lowerings.html#getFieldFromObj,PType,PSym	lowerings: getFieldFromObj(t: PType; v: PSym): PSym	
+indirectAccess	lowerings.html#indirectAccess,PNode,PSym,TLineInfo	lowerings: indirectAccess(a: PNode; b: PSym; info: TLineInfo): PNode	
+indirectAccess	lowerings.html#indirectAccess,PSym,PSym,TLineInfo	lowerings: indirectAccess(a, b: PSym; info: TLineInfo): PNode	
+genAddrOf	lowerings.html#genAddrOf,PNode,IdGenerator	lowerings: genAddrOf(n: PNode; idgen: IdGenerator; typeKind = tyPtr): PNode	
+genDeref	lowerings.html#genDeref,PNode	lowerings: genDeref(n: PNode; k = nkHiddenDeref): PNode	
+callCodegenProc	lowerings.html#callCodegenProc,ModuleGraph,string,TLineInfo,PNode,PNode,PNode,PNode	lowerings: callCodegenProc(g: ModuleGraph; name: string; info: TLineInfo = unknownLineInfo;\n                arg1, arg2, arg3, optionalArgs: PNode = nil): PNode	
+newIntLit	lowerings.html#newIntLit,ModuleGraph,TLineInfo,BiggestInt	lowerings: newIntLit(g: ModuleGraph; info: TLineInfo; value: BiggestInt): PNode	
+genHigh	lowerings.html#genHigh,ModuleGraph,PNode	lowerings: genHigh(g: ModuleGraph; n: PNode): PNode	
+genLen	lowerings.html#genLen,ModuleGraph,PNode	lowerings: genLen(g: ModuleGraph; n: PNode): PNode	

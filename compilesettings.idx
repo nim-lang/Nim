@@ -1,0 +1,4 @@
+SingleValueSetting	compilesettings.html#SingleValueSetting	compilesettings: SingleValueSetting	
+MultipleValueSetting	compilesettings.html#MultipleValueSetting	compilesettings: MultipleValueSetting	
+querySetting	compilesettings.html#querySetting,SingleValueSetting	compilesettings: querySetting(setting: SingleValueSetting): string	
+querySettingSeq	compilesettings.html#querySettingSeq,MultipleValueSetting	compilesettings: querySettingSeq(setting: MultipleValueSetting): seq[string]	

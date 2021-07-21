@@ -1,0 +1,85 @@
+TLabel	cgendata.html#TLabel	cgendata: TLabel	
+cfsMergeInfo	cgendata.html#cfsMergeInfo	TCFileSection.cfsMergeInfo	
+cfsHeaders	cgendata.html#cfsHeaders	TCFileSection.cfsHeaders	
+cfsFrameDefines	cgendata.html#cfsFrameDefines	TCFileSection.cfsFrameDefines	
+cfsForwardTypes	cgendata.html#cfsForwardTypes	TCFileSection.cfsForwardTypes	
+cfsTypes	cgendata.html#cfsTypes	TCFileSection.cfsTypes	
+cfsSeqTypes	cgendata.html#cfsSeqTypes	TCFileSection.cfsSeqTypes	
+cfsFieldInfo	cgendata.html#cfsFieldInfo	TCFileSection.cfsFieldInfo	
+cfsTypeInfo	cgendata.html#cfsTypeInfo	TCFileSection.cfsTypeInfo	
+cfsProcHeaders	cgendata.html#cfsProcHeaders	TCFileSection.cfsProcHeaders	
+cfsData	cgendata.html#cfsData	TCFileSection.cfsData	
+cfsVars	cgendata.html#cfsVars	TCFileSection.cfsVars	
+cfsProcs	cgendata.html#cfsProcs	TCFileSection.cfsProcs	
+cfsInitProc	cgendata.html#cfsInitProc	TCFileSection.cfsInitProc	
+cfsDatInitProc	cgendata.html#cfsDatInitProc	TCFileSection.cfsDatInitProc	
+cfsTypeInit1	cgendata.html#cfsTypeInit1	TCFileSection.cfsTypeInit1	
+cfsTypeInit2	cgendata.html#cfsTypeInit2	TCFileSection.cfsTypeInit2	
+cfsTypeInit3	cgendata.html#cfsTypeInit3	TCFileSection.cfsTypeInit3	
+cfsDebugInit	cgendata.html#cfsDebugInit	TCFileSection.cfsDebugInit	
+cfsDynLibInit	cgendata.html#cfsDynLibInit	TCFileSection.cfsDynLibInit	
+cfsDynLibDeinit	cgendata.html#cfsDynLibDeinit	TCFileSection.cfsDynLibDeinit	
+TCFileSection	cgendata.html#TCFileSection	cgendata: TCFileSection	
+ctVoid	cgendata.html#ctVoid	TCTypeKind.ctVoid	
+ctChar	cgendata.html#ctChar	TCTypeKind.ctChar	
+ctBool	cgendata.html#ctBool	TCTypeKind.ctBool	
+ctInt	cgendata.html#ctInt	TCTypeKind.ctInt	
+ctInt8	cgendata.html#ctInt8	TCTypeKind.ctInt8	
+ctInt16	cgendata.html#ctInt16	TCTypeKind.ctInt16	
+ctInt32	cgendata.html#ctInt32	TCTypeKind.ctInt32	
+ctInt64	cgendata.html#ctInt64	TCTypeKind.ctInt64	
+ctFloat	cgendata.html#ctFloat	TCTypeKind.ctFloat	
+ctFloat32	cgendata.html#ctFloat32	TCTypeKind.ctFloat32	
+ctFloat64	cgendata.html#ctFloat64	TCTypeKind.ctFloat64	
+ctFloat128	cgendata.html#ctFloat128	TCTypeKind.ctFloat128	
+ctUInt	cgendata.html#ctUInt	TCTypeKind.ctUInt	
+ctUInt8	cgendata.html#ctUInt8	TCTypeKind.ctUInt8	
+ctUInt16	cgendata.html#ctUInt16	TCTypeKind.ctUInt16	
+ctUInt32	cgendata.html#ctUInt32	TCTypeKind.ctUInt32	
+ctUInt64	cgendata.html#ctUInt64	TCTypeKind.ctUInt64	
+ctArray	cgendata.html#ctArray	TCTypeKind.ctArray	
+ctPtrToArray	cgendata.html#ctPtrToArray	TCTypeKind.ctPtrToArray	
+ctStruct	cgendata.html#ctStruct	TCTypeKind.ctStruct	
+ctPtr	cgendata.html#ctPtr	TCTypeKind.ctPtr	
+ctNimStr	cgendata.html#ctNimStr	TCTypeKind.ctNimStr	
+ctNimSeq	cgendata.html#ctNimSeq	TCTypeKind.ctNimSeq	
+ctProc	cgendata.html#ctProc	TCTypeKind.ctProc	
+ctCString	cgendata.html#ctCString	TCTypeKind.ctCString	
+TCTypeKind	cgendata.html#TCTypeKind	cgendata: TCTypeKind	
+TCFileSections	cgendata.html#TCFileSections	cgendata: TCFileSections	
+cpsLocals	cgendata.html#cpsLocals	TCProcSection.cpsLocals	
+cpsInit	cgendata.html#cpsInit	TCProcSection.cpsInit	
+cpsStmts	cgendata.html#cpsStmts	TCProcSection.cpsStmts	
+TCProcSection	cgendata.html#TCProcSection	cgendata: TCProcSection	
+TCProcSections	cgendata.html#TCProcSections	cgendata: TCProcSections	
+BModule	cgendata.html#BModule	cgendata: BModule	
+BProc	cgendata.html#BProc	cgendata: BProc	
+TBlock	cgendata.html#TBlock	cgendata: TBlock	
+beforeRetNeeded	cgendata.html#beforeRetNeeded	TCProcFlag.beforeRetNeeded	
+threadVarAccessed	cgendata.html#threadVarAccessed	TCProcFlag.threadVarAccessed	
+hasCurFramePointer	cgendata.html#hasCurFramePointer	TCProcFlag.hasCurFramePointer	
+noSafePoints	cgendata.html#noSafePoints	TCProcFlag.noSafePoints	
+nimErrorFlagAccessed	cgendata.html#nimErrorFlagAccessed	TCProcFlag.nimErrorFlagAccessed	
+nimErrorFlagDeclared	cgendata.html#nimErrorFlagDeclared	TCProcFlag.nimErrorFlagDeclared	
+nimErrorFlagDisabled	cgendata.html#nimErrorFlagDisabled	TCProcFlag.nimErrorFlagDisabled	
+TCProcFlag	cgendata.html#TCProcFlag	cgendata: TCProcFlag	
+TTypeSeq	cgendata.html#TTypeSeq	cgendata: TTypeSeq	
+TypeCache	cgendata.html#TypeCache	cgendata: TypeCache	
+TypeCacheWithOwner	cgendata.html#TypeCacheWithOwner	cgendata: TypeCacheWithOwner	
+preventStackTrace	cgendata.html#preventStackTrace	CodegenFlag.preventStackTrace	
+usesThreadVars	cgendata.html#usesThreadVars	CodegenFlag.usesThreadVars	
+frameDeclared	cgendata.html#frameDeclared	CodegenFlag.frameDeclared	
+isHeaderFile	cgendata.html#isHeaderFile	CodegenFlag.isHeaderFile	
+includesStringh	cgendata.html#includesStringh	CodegenFlag.includesStringh	
+objHasKidsValid	cgendata.html#objHasKidsValid	CodegenFlag.objHasKidsValid	
+useAliveDataFromDce	cgendata.html#useAliveDataFromDce	CodegenFlag.useAliveDataFromDce	
+CodegenFlag	cgendata.html#CodegenFlag	cgendata: CodegenFlag	
+BModuleList	cgendata.html#BModuleList	cgendata: BModuleList	
+config	cgendata.html#config.t,BModule	cgendata: config(m: BModule): ConfigRef	
+config	cgendata.html#config.t,BProc	cgendata: config(p: BProc): ConfigRef	
+includeHeader	cgendata.html#includeHeader,BModule,string	cgendata: includeHeader(this: BModule; header: string)	
+s	cgendata.html#s,BProc,TCProcSection	cgendata: s(p: BProc; s: TCProcSection): var Rope	
+procSec	cgendata.html#procSec,BProc,TCProcSection	cgendata: procSec(p: BProc; s: TCProcSection): var Rope	
+newProc	cgendata.html#newProc,PSym,BModule	cgendata: newProc(prc: PSym; module: BModule): BProc	
+newModuleList	cgendata.html#newModuleList,ModuleGraph	cgendata: newModuleList(g: ModuleGraph): BModuleList	
+cgenModules	cgendata.html#cgenModules.i,BModuleList	cgendata: cgenModules(g: BModuleList): BModule	

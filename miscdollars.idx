@@ -1,0 +1,1 @@
+toLocation	miscdollars.html#toLocation.t,string,,int,int	miscdollars: toLocation(result: var string; file: string | cstring; line: int; col: int)	

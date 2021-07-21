@@ -1,0 +1,68 @@
+Int128	int128.html#Int128	int128: Int128	
+Zero	int128.html#Zero	int128: Zero	
+One	int128.html#One	int128: One	
+Ten	int128.html#Ten	int128: Ten	
+NegOne	int128.html#NegOne	int128: NegOne	
+low	int128.html#low.t,typedesc[Int128]	int128: low(t: typedesc[Int128]): Int128	
+high	int128.html#high.t,typedesc[Int128]	int128: high(t: typedesc[Int128]): Int128	
+toInt128	int128.html#toInt128,T	int128: toInt128[T: SomeInteger | bool](arg: T): Int128	
+toInt64	int128.html#toInt64,Int128	int128: toInt64(arg: Int128): int64	
+toInt64Checked	int128.html#toInt64Checked,Int128,int64	int128: toInt64Checked(arg: Int128; onError: int64): int64	
+toInt32	int128.html#toInt32,Int128	int128: toInt32(arg: Int128): int32	
+toInt16	int128.html#toInt16,Int128	int128: toInt16(arg: Int128): int16	
+toInt8	int128.html#toInt8,Int128	int128: toInt8(arg: Int128): int8	
+toInt	int128.html#toInt,Int128	int128: toInt(arg: Int128): int	
+toUInt64	int128.html#toUInt64,Int128	int128: toUInt64(arg: Int128): uint64	
+toUInt32	int128.html#toUInt32,Int128	int128: toUInt32(arg: Int128): uint32	
+toUInt16	int128.html#toUInt16,Int128	int128: toUInt16(arg: Int128): uint16	
+toUInt8	int128.html#toUInt8,Int128	int128: toUInt8(arg: Int128): uint8	
+toUInt	int128.html#toUInt,Int128	int128: toUInt(arg: Int128): uint	
+castToInt64	int128.html#castToInt64,Int128	int128: castToInt64(arg: Int128): int64	
+castToUInt64	int128.html#castToUInt64,Int128	int128: castToUInt64(arg: Int128): uint64	
+addToHex	int128.html#addToHex,string,Int128	int128: addToHex(result: var string; arg: Int128)	
+toHex	int128.html#toHex,Int128	int128: toHex(arg: Int128): string	
+inc	int128.html#inc,Int128,uint32	int128: inc(a: var Int128; y: uint32 = 1)	
+cmp	int128.html#cmp,Int128,Int128	int128: cmp(a, b: Int128): int	
+`&lt;`	int128.html#<,Int128,Int128	int128: `&lt;`(a, b: Int128): bool	
+`&lt;=`	int128.html#<=,Int128,Int128	int128: `&lt;=`(a, b: Int128): bool	
+`==`	int128.html#==,Int128,Int128	int128: `==`(a, b: Int128): bool	
+bitnot	int128.html#bitnot,Int128	int128: bitnot(a: Int128): Int128	
+bitand	int128.html#bitand,Int128,Int128	int128: bitand(a, b: Int128): Int128	
+bitor	int128.html#bitor,Int128,Int128	int128: bitor(a, b: Int128): Int128	
+bitxor	int128.html#bitxor,Int128,Int128	int128: bitxor(a, b: Int128): Int128	
+`shr`	int128.html#shr,Int128,int	int128: `shr`(a: Int128; b: int): Int128	
+`shl`	int128.html#shl,Int128,int	int128: `shl`(a: Int128; b: int): Int128	
+`+`	int128.html#+,Int128,Int128	int128: `+`(a, b: Int128): Int128	
+`+=`	int128.html#+=,Int128,Int128	int128: `+=`(a: var Int128; b: Int128)	
+`-`	int128.html#-,Int128	int128: `-`(a: Int128): Int128	
+`-`	int128.html#-,Int128,Int128	int128: `-`(a, b: Int128): Int128	
+`-=`	int128.html#-=,Int128,Int128	int128: `-=`(a: var Int128; b: Int128)	
+abs	int128.html#abs,Int128	int128: abs(a: Int128): Int128	
+`*`	int128.html#*,Int128,int32	int128: `*`(a: Int128; b: int32): Int128	
+`*=`	int128.html#*=,Int128,int32	int128: `*=`(a: var Int128; b: int32): Int128	
+`*`	int128.html#*,Int128,Int128	int128: `*`(lhs, rhs: Int128): Int128	
+`*=`	int128.html#*=,Int128,Int128	int128: `*=`(a: var Int128; b: Int128)	
+fastLog2	int128.html#fastLog2,Int128	int128: fastLog2(a: Int128): int	
+divMod	int128.html#divMod,Int128,Int128	int128: divMod(dividend, divisor: Int128): tuple[quotient, remainder: Int128]	
+`div`	int128.html#div,Int128,Int128	int128: `div`(a, b: Int128): Int128	
+`mod`	int128.html#mod,Int128,Int128	int128: `mod`(a, b: Int128): Int128	
+addInt128	int128.html#addInt128,string,Int128	int128: addInt128(result: var string; value: Int128)	
+`$`	int128.html#$,Int128	int128: `$`(a: Int128): string	
+parseDecimalInt128	int128.html#parseDecimalInt128,string,int	int128: parseDecimalInt128(arg: string; pos: int = 0): Int128	
+`&lt;`	int128.html#<,Int128,BiggestInt	int128: `&lt;`(a: Int128; b: BiggestInt): bool	
+`&lt;`	int128.html#<,BiggestInt,Int128	int128: `&lt;`(a: BiggestInt; b: Int128): bool	
+`&lt;=`	int128.html#<=,Int128,BiggestInt	int128: `&lt;=`(a: Int128; b: BiggestInt): bool	
+`&lt;=`	int128.html#<=,BiggestInt,Int128	int128: `&lt;=`(a: BiggestInt; b: Int128): bool	
+`==`	int128.html#==,Int128,BiggestInt	int128: `==`(a: Int128; b: BiggestInt): bool	
+`==`	int128.html#==,BiggestInt,Int128	int128: `==`(a: BiggestInt; b: Int128): bool	
+`-`	int128.html#-,BiggestInt,Int128	int128: `-`(a: BiggestInt; b: Int128): Int128	
+`-`	int128.html#-,Int128,BiggestInt	int128: `-`(a: Int128; b: BiggestInt): Int128	
+`+`	int128.html#+,BiggestInt,Int128	int128: `+`(a: BiggestInt; b: Int128): Int128	
+`+`	int128.html#+,Int128,BiggestInt	int128: `+`(a: Int128; b: BiggestInt): Int128	
+toFloat64	int128.html#toFloat64,Int128	int128: toFloat64(arg: Int128): float64	
+toInt128	int128.html#toInt128,float64	int128: toInt128(arg: float64): Int128	
+maskUInt64	int128.html#maskUInt64,Int128	int128: maskUInt64(arg: Int128): Int128	
+maskUInt32	int128.html#maskUInt32,Int128	int128: maskUInt32(arg: Int128): Int128	
+maskUInt16	int128.html#maskUInt16,Int128	int128: maskUInt16(arg: Int128): Int128	
+maskUInt8	int128.html#maskUInt8,Int128	int128: maskUInt8(arg: Int128): Int128	
+maskBytes	int128.html#maskBytes,Int128,int	int128: maskBytes(arg: Int128; numbytes: int): Int128	

@@ -1,0 +1,7 @@
+Distribution	distros.html#Distribution	distros: Distribution	
+LacksDevPackages	distros.html#LacksDevPackages	distros: LacksDevPackages	
+detectOs	distros.html#detectOs.t,untyped	distros: detectOs(d: untyped): bool	
+foreignCmd	distros.html#foreignCmd,string	distros: foreignCmd(cmd: string; requiresSudo = false)	
+foreignDepInstallCmd	distros.html#foreignDepInstallCmd,string	distros: foreignDepInstallCmd(foreignPackageName: string): (string, bool)	
+foreignDep	distros.html#foreignDep,string	distros: foreignDep(foreignPackageName: string)	
+echoForeignDeps	distros.html#echoForeignDeps	distros: echoForeignDeps()	

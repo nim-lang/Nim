@@ -1,0 +1,11 @@
+resetSystemArtifacts	modules.html#resetSystemArtifacts,ModuleGraph	modules: resetSystemArtifacts(g: ModuleGraph)	
+compileModule	modules.html#compileModule,ModuleGraph,FileIndex,TSymFlags,PSym	modules: compileModule(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags;\n              fromModule: PSym = nil): PSym	
+importModule	modules.html#importModule,ModuleGraph,PSym,FileIndex	modules: importModule(graph: ModuleGraph; s: PSym; fileIdx: FileIndex): PSym	
+includeModule	modules.html#includeModule,ModuleGraph,PSym,FileIndex	modules: includeModule(graph: ModuleGraph; s: PSym; fileIdx: FileIndex): PNode	
+connectCallbacks	modules.html#connectCallbacks,ModuleGraph	modules: connectCallbacks(graph: ModuleGraph)	
+compileSystemModule	modules.html#compileSystemModule,ModuleGraph	modules: compileSystemModule(graph: ModuleGraph)	
+wantMainModule	modules.html#wantMainModule,ConfigRef	modules: wantMainModule(conf: ConfigRef)	
+compileProject	modules.html#compileProject,ModuleGraph	modules: compileProject(graph: ModuleGraph; projectFileIdx = InvalidFileIdx)	
+makeModule	modules.html#makeModule,ModuleGraph,AbsoluteFile	modules: makeModule(graph: ModuleGraph; filename: AbsoluteFile): PSym	
+makeModule	modules.html#makeModule,ModuleGraph,string	modules: makeModule(graph: ModuleGraph; filename: string): PSym	
+makeStdinModule	modules.html#makeStdinModule,ModuleGraph	modules: makeStdinModule(graph: ModuleGraph): PSym	

@@ -1,0 +1,43 @@
+DbConn	db_postgres.html#DbConn	db_postgres: DbConn	
+Row	db_postgres.html#Row	db_postgres: Row	
+InstantRow	db_postgres.html#InstantRow	db_postgres: InstantRow	
+SqlPrepared	db_postgres.html#SqlPrepared	db_postgres: SqlPrepared	
+dbError	db_postgres.html#dbError,DbConn	db_postgres: dbError(db: DbConn)	
+dbQuote	db_postgres.html#dbQuote,string	db_postgres: dbQuote(s: string): string	
+tryExec	db_postgres.html#tryExec,DbConn,SqlQuery,varargs[string,]	db_postgres: tryExec(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): bool	
+tryExec	db_postgres.html#tryExec,DbConn,SqlPrepared,varargs[string,]	db_postgres: tryExec(db: DbConn; stmtName: SqlPrepared; args: varargs[string, `$`]): bool	
+exec	db_postgres.html#exec,DbConn,SqlQuery,varargs[string,]	db_postgres: exec(db: DbConn; query: SqlQuery; args: varargs[string, `$`])	
+exec	db_postgres.html#exec,DbConn,SqlPrepared,varargs[string]	db_postgres: exec(db: DbConn; stmtName: SqlPrepared; args: varargs[string])	
+prepare	db_postgres.html#prepare,DbConn,string,SqlQuery,int	db_postgres: prepare(db: DbConn; stmtName: string; query: SqlQuery; nParams: int): SqlPrepared	
+fastRows	db_postgres.html#fastRows.i,DbConn,SqlQuery,varargs[string,]	db_postgres: fastRows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): Row	
+fastRows	db_postgres.html#fastRows.i,DbConn,SqlPrepared,varargs[string,]	db_postgres: fastRows(db: DbConn; stmtName: SqlPrepared; args: varargs[string, `$`]): Row	
+instantRows	db_postgres.html#instantRows.i,DbConn,SqlQuery,varargs[string,]	db_postgres: instantRows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): InstantRow	
+instantRows	db_postgres.html#instantRows.i,DbConn,SqlPrepared,varargs[string,]	db_postgres: instantRows(db: DbConn; stmtName: SqlPrepared; args: varargs[string, `$`]): InstantRow	
+instantRows	db_postgres.html#instantRows.i,DbConn,DbColumns,SqlQuery,varargs[string,]	db_postgres: instantRows(db: DbConn; columns: var DbColumns; query: SqlQuery;\n            args: varargs[string, `$`]): InstantRow	
+`[]`	db_postgres.html#[],InstantRow,int	db_postgres: `[]`(row: InstantRow; col: int): string	
+unsafeColumnAt	db_postgres.html#unsafeColumnAt,InstantRow,int	db_postgres: unsafeColumnAt(row: InstantRow; index: int): cstring	
+len	db_postgres.html#len,InstantRow	db_postgres: len(row: InstantRow): int	
+getRow	db_postgres.html#getRow,DbConn,SqlQuery,varargs[string,]	db_postgres: getRow(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): Row	
+getRow	db_postgres.html#getRow,DbConn,SqlPrepared,varargs[string,]	db_postgres: getRow(db: DbConn; stmtName: SqlPrepared; args: varargs[string, `$`]): Row	
+getAllRows	db_postgres.html#getAllRows,DbConn,SqlQuery,varargs[string,]	db_postgres: getAllRows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): seq[Row]	
+getAllRows	db_postgres.html#getAllRows,DbConn,SqlPrepared,varargs[string,]	db_postgres: getAllRows(db: DbConn; stmtName: SqlPrepared; args: varargs[string, `$`]): seq[\n    Row]	
+rows	db_postgres.html#rows.i,DbConn,SqlQuery,varargs[string,]	db_postgres: rows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): Row	
+rows	db_postgres.html#rows.i,DbConn,SqlPrepared,varargs[string,]	db_postgres: rows(db: DbConn; stmtName: SqlPrepared; args: varargs[string, `$`]): Row	
+getValue	db_postgres.html#getValue,DbConn,SqlQuery,varargs[string,]	db_postgres: getValue(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): string	
+getValue	db_postgres.html#getValue,DbConn,SqlPrepared,varargs[string,]	db_postgres: getValue(db: DbConn; stmtName: SqlPrepared; args: varargs[string, `$`]): string	
+tryInsertID	db_postgres.html#tryInsertID,DbConn,SqlQuery,varargs[string,]	db_postgres: tryInsertID(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): int64	
+insertID	db_postgres.html#insertID,DbConn,SqlQuery,varargs[string,]	db_postgres: insertID(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): int64	
+tryInsert	db_postgres.html#tryInsert,DbConn,SqlQuery,string,varargs[string,]	db_postgres: tryInsert(db: DbConn; query: SqlQuery; pkName: string;\n          args: varargs[string, `$`]): int64	
+insert	db_postgres.html#insert,DbConn,SqlQuery,string,varargs[string,]	db_postgres: insert(db: DbConn; query: SqlQuery; pkName: string; args: varargs[string, `$`]): int64	
+execAffectedRows	db_postgres.html#execAffectedRows,DbConn,SqlQuery,varargs[string,]	db_postgres: execAffectedRows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): int64	
+execAffectedRows	db_postgres.html#execAffectedRows,DbConn,SqlPrepared,varargs[string,]	db_postgres: execAffectedRows(db: DbConn; stmtName: SqlPrepared; args: varargs[string, `$`]): int64	
+close	db_postgres.html#close,DbConn	db_postgres: close(db: DbConn)	
+open	db_postgres.html#open,string,string,string,string	db_postgres: open(connection, user, password, database: string): DbConn	
+setEncoding	db_postgres.html#setEncoding,DbConn,string	db_postgres: setEncoding(connection: DbConn; encoding: string): bool	
+PostgreSQL	db_postgres.html#postgresql_1	Module db_postgres	
+Parameter substitution	db_postgres.html#parameter-substitution	 Parameter substitution	
+Unix Socket	db_postgres.html#unix-socket	 Unix Socket	
+Examples	db_postgres.html#examples	 Examples	
+Opening a connection to a database	db_postgres.html#examples-opening-a-connection-to-a-database	  Opening a connection to a database	
+Creating a table	db_postgres.html#examples-creating-a-table	  Creating a table	
+Inserting data	db_postgres.html#examples-inserting-data	  Inserting data	

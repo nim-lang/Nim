@@ -1,0 +1,40 @@
+Nim Compiler User Guide	nimc.html
+Introduction	nimc.html#introduction	 Introduction	
+Compiler Usage	nimc.html#compiler-usage	 Compiler Usage	
+Command-line switches	nimc.html#compiler-usage-commandminusline-switches	  Command-line switches	
+List of warnings	nimc.html#compiler-usage-list-of-warnings	  List of warnings	
+List of hints	nimc.html#compiler-usage-list-of-hints	  List of hints	
+Verbosity levels	nimc.html#compiler-usage-verbosity-levels	  Verbosity levels	
+Compile-time symbols	nimc.html#compiler-usage-compileminustime-symbols	  Compile-time symbols	
+Configuration files	nimc.html#compiler-usage-configuration-files	  Configuration files	
+debug build	nimc.html#debug-build_1	Configuration files	
+release build	nimc.html#release-build_1	Configuration files	
+dangerous release build	nimc.html#dangerous-release-build_1	Configuration files	
+Search path handling	nimc.html#compiler-usage-search-path-handling	  Search path handling	
+Generated C code directory	nimc.html#compiler-usage-generated-c-code-directory	  Generated C code directory	
+Compiler Selection	nimc.html#compiler-selection	 Compiler Selection	
+Cross-compilation	nimc.html#crossminuscompilation	 Cross-compilation	
+Cross-compilation for Windows	nimc.html#crossminuscompilation-for-windows	 Cross-compilation for Windows	
+Cross-compilation for Android	nimc.html#crossminuscompilation-for-android	 Cross-compilation for Android	
+Cross-compilation for iOS	nimc.html#crossminuscompilation-for-ios	 Cross-compilation for iOS	
+Cross-compilation for Nintendo Switch	nimc.html#crossminuscompilation-for-nintendo-switch	 Cross-compilation for Nintendo Switch	
+DLL generation	nimc.html#dll-generation	 DLL generation	
+Additional compilation switches	nimc.html#additional-compilation-switches	 Additional compilation switches	
+malloc	nimc.html#malloc_1	Additional compilation switches	
+Additional Features	nimc.html#additional-features	 Additional Features	
+LineDir option	nimc.html#additional-features-linedir-option	  LineDir option	
+StackTrace option	nimc.html#additional-features-stacktrace-option	  StackTrace option	
+LineTrace option	nimc.html#additional-features-linetrace-option	  LineTrace option	
+DynlibOverride	nimc.html#dynliboverride	 DynlibOverride	
+Backend language options	nimc.html#backend-language-options	 Backend language options	
+Nim documentation tools	nimc.html#nim-documentation-tools	 Nim documentation tools	
+doc	nimc.html#doc_1	Nim documentation tools	
+Nim idetools integration	nimc.html#nim-idetools-integration	 Nim idetools integration	
+Nim for embedded systems	nimc.html#nim-for-embedded-systems	 Nim for embedded systems	
+nimAllocPagesViaMalloc	nimc.html#nim-for-embedded-systems-nimallocpagesviamalloc	  nimAllocPagesViaMalloc	
+Nim for realtime systems	nimc.html#nim-for-realtime-systems	 Nim for realtime systems	
+Signal handling in Nim	nimc.html#signal-handling-in-nim	 Signal handling in Nim	
+Optimizing for Nim	nimc.html#optimizing-for-nim	 Optimizing for Nim	
+Optimizing string handling	nimc.html#optimizing-for-nim-optimizing-string-handling	  Optimizing string handling	
+shallow	nimc.html#shallow_1	Optimizing string handling	
+freeze	nimc.html#freeze_1	Optimizing string handling	

@@ -1,0 +1,5 @@
+maxVarIntLen	varints.html#maxVarIntLen	varints: maxVarIntLen	
+readVu64	varints.html#readVu64,openArray[byte],uint64	varints: readVu64(z: openArray[byte]; pResult: var uint64): int	
+writeVu64	varints.html#writeVu64,openArray[byte],uint64	varints: writeVu64(z: var openArray[byte]; x: uint64): int	
+encodeZigzag	varints.html#encodeZigzag,int64	varints: encodeZigzag(x: int64): uint64	
+decodeZigzag	varints.html#decodeZigzag,uint64	varints: decodeZigzag(x: uint64): int64	

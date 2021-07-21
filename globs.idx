@@ -1,0 +1,3 @@
+PathEntry	globs.html#PathEntry	globs: PathEntry	
+walkDirRecFilter	globs.html#walkDirRecFilter.i,string,proc(PathEntry)	globs: walkDirRecFilter(dir: string; follow: proc (entry: PathEntry): bool = nil;\n                 relative = false; checkDir = true): PathEntry	
+nativeToUnixPath	globs.html#nativeToUnixPath,string	globs: nativeToUnixPath(path: string): string	

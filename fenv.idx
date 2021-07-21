@@ -1,0 +1,43 @@
+FE_DIVBYZERO	fenv.html#FE_DIVBYZERO	fenv: FE_DIVBYZERO	
+FE_INEXACT	fenv.html#FE_INEXACT	fenv: FE_INEXACT	
+FE_INVALID	fenv.html#FE_INVALID	fenv: FE_INVALID	
+FE_OVERFLOW	fenv.html#FE_OVERFLOW	fenv: FE_OVERFLOW	
+FE_UNDERFLOW	fenv.html#FE_UNDERFLOW	fenv: FE_UNDERFLOW	
+FE_ALL_EXCEPT	fenv.html#FE_ALL_EXCEPT	fenv: FE_ALL_EXCEPT	
+FE_DOWNWARD	fenv.html#FE_DOWNWARD	fenv: FE_DOWNWARD	
+FE_TONEAREST	fenv.html#FE_TONEAREST	fenv: FE_TONEAREST	
+FE_TOWARDZERO	fenv.html#FE_TOWARDZERO	fenv: FE_TOWARDZERO	
+FE_UPWARD	fenv.html#FE_UPWARD	fenv: FE_UPWARD	
+FE_DFL_ENV	fenv.html#FE_DFL_ENV	fenv: FE_DFL_ENV	
+Tfenv	fenv.html#Tfenv	fenv: Tfenv	
+Tfexcept	fenv.html#Tfexcept	fenv: Tfexcept	
+feclearexcept	fenv.html#feclearexcept,cint	fenv: feclearexcept(excepts: cint): cint	
+fegetexceptflag	fenv.html#fegetexceptflag,ptr.Tfexcept,cint	fenv: fegetexceptflag(flagp: ptr Tfexcept; excepts: cint): cint	
+feraiseexcept	fenv.html#feraiseexcept,cint	fenv: feraiseexcept(excepts: cint): cint	
+fesetexceptflag	fenv.html#fesetexceptflag,ptr.Tfexcept,cint	fenv: fesetexceptflag(flagp: ptr Tfexcept; excepts: cint): cint	
+fetestexcept	fenv.html#fetestexcept,cint	fenv: fetestexcept(excepts: cint): cint	
+fegetround	fenv.html#fegetround	fenv: fegetround(): cint	
+fesetround	fenv.html#fesetround,cint	fenv: fesetround(roundingDirection: cint): cint	
+fegetenv	fenv.html#fegetenv,ptr.Tfenv	fenv: fegetenv(envp: ptr Tfenv): cint	
+feholdexcept	fenv.html#feholdexcept,ptr.Tfenv	fenv: feholdexcept(envp: ptr Tfenv): cint	
+fesetenv	fenv.html#fesetenv,ptr.Tfenv	fenv: fesetenv(a1: ptr Tfenv): cint	
+feupdateenv	fenv.html#feupdateenv,ptr.Tfenv	fenv: feupdateenv(envp: ptr Tfenv): cint	
+fpRadix	fenv.html#fpRadix.t	fenv: fpRadix(): int	
+mantissaDigits	fenv.html#mantissaDigits.t,typedesc[float32]	fenv: mantissaDigits(T: typedesc[float32]): int	
+digits	fenv.html#digits.t,typedesc[float32]	fenv: digits(T: typedesc[float32]): int	
+minExponent	fenv.html#minExponent.t,typedesc[float32]	fenv: minExponent(T: typedesc[float32]): int	
+maxExponent	fenv.html#maxExponent.t,typedesc[float32]	fenv: maxExponent(T: typedesc[float32]): int	
+min10Exponent	fenv.html#min10Exponent.t,typedesc[float32]	fenv: min10Exponent(T: typedesc[float32]): int	
+max10Exponent	fenv.html#max10Exponent.t,typedesc[float32]	fenv: max10Exponent(T: typedesc[float32]): int	
+minimumPositiveValue	fenv.html#minimumPositiveValue.t,typedesc[float32]	fenv: minimumPositiveValue(T: typedesc[float32]): float32	
+maximumPositiveValue	fenv.html#maximumPositiveValue.t,typedesc[float32]	fenv: maximumPositiveValue(T: typedesc[float32]): float32	
+epsilon	fenv.html#epsilon.t,typedesc[float32]	fenv: epsilon(T: typedesc[float32]): float32	
+mantissaDigits	fenv.html#mantissaDigits.t,typedesc[float64]	fenv: mantissaDigits(T: typedesc[float64]): int	
+digits	fenv.html#digits.t,typedesc[float64]	fenv: digits(T: typedesc[float64]): int	
+minExponent	fenv.html#minExponent.t,typedesc[float64]	fenv: minExponent(T: typedesc[float64]): int	
+maxExponent	fenv.html#maxExponent.t,typedesc[float64]	fenv: maxExponent(T: typedesc[float64]): int	
+min10Exponent	fenv.html#min10Exponent.t,typedesc[float64]	fenv: min10Exponent(T: typedesc[float64]): int	
+max10Exponent	fenv.html#max10Exponent.t,typedesc[float64]	fenv: max10Exponent(T: typedesc[float64]): int	
+minimumPositiveValue	fenv.html#minimumPositiveValue.t,typedesc[float64]	fenv: minimumPositiveValue(T: typedesc[float64]): float64	
+maximumPositiveValue	fenv.html#maximumPositiveValue.t,typedesc[float64]	fenv: maximumPositiveValue(T: typedesc[float64]): float64	
+epsilon	fenv.html#epsilon.t,typedesc[float64]	fenv: epsilon(T: typedesc[float64]): float64	

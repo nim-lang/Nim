@@ -1,0 +1,35 @@
+cfgEof	parsecfg.html#cfgEof	CfgEventKind.cfgEof	
+cfgSectionStart	parsecfg.html#cfgSectionStart	CfgEventKind.cfgSectionStart	
+cfgKeyValuePair	parsecfg.html#cfgKeyValuePair	CfgEventKind.cfgKeyValuePair	
+cfgOption	parsecfg.html#cfgOption	CfgEventKind.cfgOption	
+cfgError	parsecfg.html#cfgError	CfgEventKind.cfgError	
+CfgEventKind	parsecfg.html#CfgEventKind	parsecfg: CfgEventKind	
+CfgEvent	parsecfg.html#CfgEvent	parsecfg: CfgEvent	
+CfgParser	parsecfg.html#CfgParser	parsecfg: CfgParser	
+open	parsecfg.html#open,CfgParser,Stream,string,int	parsecfg: open(c: var CfgParser; input: Stream; filename: string; lineOffset = 0)	
+close	parsecfg.html#close,CfgParser	parsecfg: close(c: var CfgParser)	
+getColumn	parsecfg.html#getColumn,CfgParser	parsecfg: getColumn(c: CfgParser): int	
+getLine	parsecfg.html#getLine,CfgParser	parsecfg: getLine(c: CfgParser): int	
+getFilename	parsecfg.html#getFilename,CfgParser	parsecfg: getFilename(c: CfgParser): string	
+errorStr	parsecfg.html#errorStr,CfgParser,string	parsecfg: errorStr(c: CfgParser; msg: string): string	
+warningStr	parsecfg.html#warningStr,CfgParser,string	parsecfg: warningStr(c: CfgParser; msg: string): string	
+ignoreMsg	parsecfg.html#ignoreMsg,CfgParser,CfgEvent	parsecfg: ignoreMsg(c: CfgParser; e: CfgEvent): string	
+next	parsecfg.html#next,CfgParser	parsecfg: next(c: var CfgParser): CfgEvent	
+Config	parsecfg.html#Config	parsecfg: Config	
+newConfig	parsecfg.html#newConfig	parsecfg: newConfig(): Config	
+loadConfig	parsecfg.html#loadConfig,Stream,string	parsecfg: loadConfig(stream: Stream; filename: string = &quot;[stream]&quot;): Config	
+loadConfig	parsecfg.html#loadConfig,string	parsecfg: loadConfig(filename: string): Config	
+writeConfig	parsecfg.html#writeConfig,Config,Stream	parsecfg: writeConfig(dict: Config; stream: Stream)	
+`$`	parsecfg.html#$,Config	parsecfg: `$`(dict: Config): string	
+writeConfig	parsecfg.html#writeConfig,Config,string	parsecfg: writeConfig(dict: Config; filename: string)	
+getSectionValue	parsecfg.html#getSectionValue,Config,string,string,string	parsecfg: getSectionValue(dict: Config; section, key: string; defaultVal = &quot;&quot;): string	
+setSectionKey	parsecfg.html#setSectionKey,Config,string,string,string	parsecfg: setSectionKey(dict: var Config; section, key, value: string)	
+delSection	parsecfg.html#delSection,Config,string	parsecfg: delSection(dict: var Config; section: string)	
+delSectionKey	parsecfg.html#delSectionKey,Config,string,string	parsecfg: delSectionKey(dict: var Config; section, key: string)	
+sections	parsecfg.html#sections.i,Config	parsecfg: sections(dict: Config): lent string	
+Configuration file example	parsecfg.html#configuration-file-example	  Configuration file example	
+Creating a configuration file	parsecfg.html#creating-a-configuration-file	  Creating a configuration file	
+Reading a configuration file	parsecfg.html#reading-a-configuration-file	  Reading a configuration file	
+Modifying a configuration file	parsecfg.html#modifying-a-configuration-file	  Modifying a configuration file	
+Deleting a section key in a configuration file	parsecfg.html#deleting-a-section-key-in-a-configuration-file	  Deleting a section key in a configuration file	
+Supported INI File structure	parsecfg.html#supported-ini-file-structure	  Supported INI File structure	

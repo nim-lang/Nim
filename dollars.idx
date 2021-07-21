@@ -1,0 +1,17 @@
+`$`	dollars.html#$,int	dollars: `$`(x: int): string	
+`$`	dollars.html#$,uint64	dollars: `$`(x: uint64): string	
+`$`	dollars.html#$,int64	dollars: `$`(x: int64): string	
+`$`	dollars.html#$	dollars: `$`(x: float | float32): string	
+`$`	dollars.html#$,bool	dollars: `$`(x: bool): string	
+`$`	dollars.html#$,char	dollars: `$`(x: char): string	
+`$`	dollars.html#$,cstring	dollars: `$`(x: cstring): string	
+`$`	dollars.html#$,string	dollars: `$`(x: string): string	
+`$`	dollars.html#$,Enum	dollars: `$`[Enum: enum](x: Enum): string	
+`$`	dollars.html#$,typedesc	dollars: `$`(t: typedesc): string	
+`$`	dollars.html#$,T	dollars: `$`[T: tuple | object](x: T): string	
+`$`	dollars.html#$,set[T]	dollars: `$`[T](x: set[T]): string	
+`$`	dollars.html#$,seq[T]	dollars: `$`[T](x: seq[T]): string	
+`$`	dollars.html#$,HSlice[T,U]	dollars: `$`[T, U](x: HSlice[T, U]): string	
+`$`	dollars.html#$,array[IDX,T]	dollars: `$`[T, IDX](x: array[IDX, T]): string	
+`$`	dollars.html#$,openArray[T]	dollars: `$`[T](x: openArray[T]): string	
+toString	dollars.html#tostring_1	Module dollars	

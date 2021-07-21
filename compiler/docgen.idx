@@ -1,0 +1,18 @@
+PDoc	docgen.html#PDoc	docgen: PDoc	
+presentationPath	docgen.html#presentationPath,ConfigRef,AbsoluteFile	docgen: presentationPath(conf: ConfigRef; file: AbsoluteFile): RelativeFile	
+newDocumentor	docgen.html#newDocumentor,AbsoluteFile,IdentCache,ConfigRef,string,PSym	docgen: newDocumentor(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef;\n              outExt: string = HtmlExt; module: PSym = nil; isPureRst = false): PDoc	
+documentRaises	docgen.html#documentRaises,IdentCache,PNode	docgen: documentRaises(cache: IdentCache; n: PNode)	
+generateDoc	docgen.html#generateDoc,PDoc,PNode,PNode,DocFlags	docgen: generateDoc(d: PDoc; n, orig: PNode; docFlags: DocFlags = kDefault)	
+finishGenerateDoc	docgen.html#finishGenerateDoc,PDoc	docgen: finishGenerateDoc(d: var PDoc)	
+generateJson	docgen.html#generateJson,PDoc,PNode,bool	docgen: generateJson(d: PDoc; n: PNode; includeComments: bool = true)	
+generateTags	docgen.html#generateTags,PDoc,PNode,string	docgen: generateTags(d: PDoc; n: PNode; r: var string)	
+generateIndex	docgen.html#generateIndex,PDoc	docgen: generateIndex(d: PDoc)	
+writeOutput	docgen.html#writeOutput,PDoc	docgen: writeOutput(d: PDoc; useWarning = false; groupedToc = false)	
+writeOutputJson	docgen.html#writeOutputJson,PDoc	docgen: writeOutputJson(d: PDoc; useWarning = false)	
+handleDocOutputOptions	docgen.html#handleDocOutputOptions,ConfigRef	docgen: handleDocOutputOptions(conf: ConfigRef)	
+commandDoc	docgen.html#commandDoc,IdentCache,ConfigRef	docgen: commandDoc(cache: IdentCache; conf: ConfigRef)	
+commandRst2Html	docgen.html#commandRst2Html,IdentCache,ConfigRef	docgen: commandRst2Html(cache: IdentCache; conf: ConfigRef)	
+commandRst2TeX	docgen.html#commandRst2TeX,IdentCache,ConfigRef	docgen: commandRst2TeX(cache: IdentCache; conf: ConfigRef)	
+commandJson	docgen.html#commandJson,IdentCache,ConfigRef	docgen: commandJson(cache: IdentCache; conf: ConfigRef)	
+commandTags	docgen.html#commandTags,IdentCache,ConfigRef	docgen: commandTags(cache: IdentCache; conf: ConfigRef)	
+commandBuildIndex	docgen.html#commandBuildIndex,ConfigRef,string	docgen: commandBuildIndex(conf: ConfigRef; dir: string; outFile = RelativeFile&quot;&quot;)	

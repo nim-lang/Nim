@@ -1,0 +1,67 @@
+Complex	complex.html#Complex	complex: Complex	
+Complex64	complex.html#Complex64	complex: Complex64	
+Complex32	complex.html#Complex32	complex: Complex32	
+complex	complex.html#complex,T,T	complex: complex[T: SomeFloat](re: T; im: T = 0.0): Complex[T]	
+complex32	complex.html#complex32,float32,float32	complex: complex32(re: float32; im: float32 = 0.0): Complex32	
+complex64	complex.html#complex64,float64,float64	complex: complex64(re: float64; im: float64 = 0.0): Complex64	
+im	complex.html#im.t,typedesc[float32]	complex: im(arg: typedesc[float32]): Complex32	
+im	complex.html#im.t,typedesc[float64]	complex: im(arg: typedesc[float64]): Complex64	
+im	complex.html#im.t,float32	complex: im(arg: float32): Complex32	
+im	complex.html#im.t,float64	complex: im(arg: float64): Complex64	
+abs	complex.html#abs,Complex[T]	complex: abs[T](z: Complex[T]): T	
+abs2	complex.html#abs2,Complex[T]	complex: abs2[T](z: Complex[T]): T	
+conjugate	complex.html#conjugate,Complex[T]	complex: conjugate[T](z: Complex[T]): Complex[T]	
+inv	complex.html#inv,Complex[T]	complex: inv[T](z: Complex[T]): Complex[T]	
+`==`	complex.html#==,Complex[T],Complex[T]	complex: `==`[T](x, y: Complex[T]): bool	
+`+`	complex.html#+,T,Complex[T]	complex: `+`[T](x: T; y: Complex[T]): Complex[T]	
+`+`	complex.html#+,Complex[T],T	complex: `+`[T](x: Complex[T]; y: T): Complex[T]	
+`+`	complex.html#+,Complex[T],Complex[T]	complex: `+`[T](x, y: Complex[T]): Complex[T]	
+`-`	complex.html#-,Complex[T]	complex: `-`[T](z: Complex[T]): Complex[T]	
+`-`	complex.html#-,T,Complex[T]	complex: `-`[T](x: T; y: Complex[T]): Complex[T]	
+`-`	complex.html#-,Complex[T],T	complex: `-`[T](x: Complex[T]; y: T): Complex[T]	
+`-`	complex.html#-,Complex[T],Complex[T]	complex: `-`[T](x, y: Complex[T]): Complex[T]	
+`*`	complex.html#*,T,Complex[T]	complex: `*`[T](x: T; y: Complex[T]): Complex[T]	
+`*`	complex.html#*,Complex[T],T	complex: `*`[T](x: Complex[T]; y: T): Complex[T]	
+`*`	complex.html#*,Complex[T],Complex[T]	complex: `*`[T](x, y: Complex[T]): Complex[T]	
+`/`	complex.html#/,Complex[T],T	complex: `/`[T](x: Complex[T]; y: T): Complex[T]	
+`/`	complex.html#/,T,Complex[T]	complex: `/`[T](x: T; y: Complex[T]): Complex[T]	
+`/`	complex.html#/,Complex[T],Complex[T]	complex: `/`[T](x, y: Complex[T]): Complex[T]	
+`+=`	complex.html#+=,Complex[T],Complex[T]	complex: `+=`[T](x: var Complex[T]; y: Complex[T])	
+`-=`	complex.html#-=,Complex[T],Complex[T]	complex: `-=`[T](x: var Complex[T]; y: Complex[T])	
+`*=`	complex.html#*=,Complex[T],Complex[T]	complex: `*=`[T](x: var Complex[T]; y: Complex[T])	
+`/=`	complex.html#/=,Complex[T],Complex[T]	complex: `/=`[T](x: var Complex[T]; y: Complex[T])	
+sqrt	complex.html#sqrt,Complex[T]	complex: sqrt[T](z: Complex[T]): Complex[T]	
+exp	complex.html#exp,Complex[T]	complex: exp[T](z: Complex[T]): Complex[T]	
+ln	complex.html#ln,Complex[T]	complex: ln[T](z: Complex[T]): Complex[T]	
+log10	complex.html#log10,Complex[T]	complex: log10[T](z: Complex[T]): Complex[T]	
+log2	complex.html#log2,Complex[T]	complex: log2[T](z: Complex[T]): Complex[T]	
+pow	complex.html#pow,Complex[T],Complex[T]	complex: pow[T](x, y: Complex[T]): Complex[T]	
+pow	complex.html#pow,Complex[T],T	complex: pow[T](x: Complex[T]; y: T): Complex[T]	
+sin	complex.html#sin,Complex[T]	complex: sin[T](z: Complex[T]): Complex[T]	
+arcsin	complex.html#arcsin,Complex[T]	complex: arcsin[T](z: Complex[T]): Complex[T]	
+cos	complex.html#cos,Complex[T]	complex: cos[T](z: Complex[T]): Complex[T]	
+arccos	complex.html#arccos,Complex[T]	complex: arccos[T](z: Complex[T]): Complex[T]	
+tan	complex.html#tan,Complex[T]	complex: tan[T](z: Complex[T]): Complex[T]	
+arctan	complex.html#arctan,Complex[T]	complex: arctan[T](z: Complex[T]): Complex[T]	
+cot	complex.html#cot,Complex[T]	complex: cot[T](z: Complex[T]): Complex[T]	
+arccot	complex.html#arccot,Complex[T]	complex: arccot[T](z: Complex[T]): Complex[T]	
+sec	complex.html#sec,Complex[T]	complex: sec[T](z: Complex[T]): Complex[T]	
+arcsec	complex.html#arcsec,Complex[T]	complex: arcsec[T](z: Complex[T]): Complex[T]	
+csc	complex.html#csc,Complex[T]	complex: csc[T](z: Complex[T]): Complex[T]	
+arccsc	complex.html#arccsc,Complex[T]	complex: arccsc[T](z: Complex[T]): Complex[T]	
+sinh	complex.html#sinh,Complex[T]	complex: sinh[T](z: Complex[T]): Complex[T]	
+arcsinh	complex.html#arcsinh,Complex[T]	complex: arcsinh[T](z: Complex[T]): Complex[T]	
+cosh	complex.html#cosh,Complex[T]	complex: cosh[T](z: Complex[T]): Complex[T]	
+arccosh	complex.html#arccosh,Complex[T]	complex: arccosh[T](z: Complex[T]): Complex[T]	
+tanh	complex.html#tanh,Complex[T]	complex: tanh[T](z: Complex[T]): Complex[T]	
+arctanh	complex.html#arctanh,Complex[T]	complex: arctanh[T](z: Complex[T]): Complex[T]	
+coth	complex.html#coth,Complex[T]	complex: coth[T](z: Complex[T]): Complex[T]	
+arccoth	complex.html#arccoth,Complex[T]	complex: arccoth[T](z: Complex[T]): Complex[T]	
+sech	complex.html#sech,Complex[T]	complex: sech[T](z: Complex[T]): Complex[T]	
+arcsech	complex.html#arcsech,Complex[T]	complex: arcsech[T](z: Complex[T]): Complex[T]	
+csch	complex.html#csch,Complex[T]	complex: csch[T](z: Complex[T]): Complex[T]	
+arccsch	complex.html#arccsch,Complex[T]	complex: arccsch[T](z: Complex[T]): Complex[T]	
+phase	complex.html#phase,Complex[T]	complex: phase[T](z: Complex[T]): T	
+polar	complex.html#polar,Complex[T]	complex: polar[T](z: Complex[T]): tuple[r, phi: T]	
+rect	complex.html#rect,T,T	complex: rect[T](r, phi: T): Complex[T]	
+`$`	complex.html#$,Complex	complex: `$`(z: Complex): string	

@@ -1,0 +1,8 @@
+Letters	linter.html#Letters	linter: Letters	
+identLen	linter.html#identLen,string,int	linter: identLen(line: string; start: int): int	
+differ	linter.html#differ,string,int,int,string	linter: differ(line: string; a, b: int; x: string): string	
+styleCheckDef	linter.html#styleCheckDef.t,ConfigRef,TLineInfo,PSym,TSymKind	linter: styleCheckDef(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind)	
+styleCheckDef	linter.html#styleCheckDef.t,ConfigRef,TLineInfo,PSym	linter: styleCheckDef(conf: ConfigRef; info: TLineInfo; s: PSym)	
+styleCheckDef	linter.html#styleCheckDef.t,ConfigRef,PSym	linter: styleCheckDef(conf: ConfigRef; s: PSym)	
+styleCheckUse	linter.html#styleCheckUse,ConfigRef,TLineInfo,PSym	linter: styleCheckUse(conf: ConfigRef; info: TLineInfo; s: PSym)	
+checkPragmaUse	linter.html#checkPragmaUse,ConfigRef,TLineInfo,TSpecialWord,string	linter: checkPragmaUse(conf: ConfigRef; info: TLineInfo; w: TSpecialWord;\n               pragmaName: string)	

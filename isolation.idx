@@ -1,0 +1,7 @@
+Isolated	isolation.html#Isolated	isolation: Isolated	
+`=copy`	isolation.html#=copy,Isolated[T],Isolated[T]	isolation: `=copy`[T](dest: var Isolated[T]; src: Isolated[T])	
+`=sink`	isolation.html#=sink,Isolated[T],Isolated[T]	isolation: `=sink`[T](dest: var Isolated[T]; src: Isolated[T])	
+`=destroy`	isolation.html#=destroy,Isolated[T]	isolation: `=destroy`[T](dest: var Isolated[T])	
+isolate	isolation.html#isolate,sinkT	isolation: isolate[T](value: sink T): Isolated[T]	
+unsafeIsolate	isolation.html#unsafeIsolate,sinkT	isolation: unsafeIsolate[T](value: sink T): Isolated[T]	
+extract	isolation.html#extract,Isolated[T]	isolation: extract[T](src: var Isolated[T]): T	

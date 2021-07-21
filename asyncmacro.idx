@@ -1,0 +1,4 @@
+await	asyncmacro.html#await.t,typed	asyncmacro: await(f: typed): untyped	
+await	asyncmacro.html#await.t,Future[T]	asyncmacro: await[T](f: Future[T]): auto	
+async	asyncmacro.html#async.m,untyped	asyncmacro: async(prc: untyped): untyped	
+multisync	asyncmacro.html#multisync.m,untyped	asyncmacro: multisync(prc: untyped): untyped	

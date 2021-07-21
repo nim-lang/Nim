@@ -1,0 +1,2 @@
+loadUnidecodeTable	unidecode.html#loadUnidecodeTable,string	unidecode: loadUnidecodeTable(datafile = &quot;unidecode.dat&quot;)	
+unidecode	unidecode.html#unidecode,string	unidecode: unidecode(s: string): string	

@@ -1,0 +1,1 @@
+elementsFromPoint	dom_extensions.html#elementsFromPoint,DocumentOrShadowRoot,float,float	dom_extensions: elementsFromPoint(n: DocumentOrShadowRoot; x, y: float): seq[Element]	

@@ -1,0 +1,29 @@
+ioselSupportedPlatform	selectors.html#ioselSupportedPlatform	selectors: ioselSupportedPlatform	
+Selector	selectors.html#Selector	selectors: Selector	
+IOSelectorsException	selectors.html#IOSelectorsException	selectors: IOSelectorsException	
+Event	selectors.html#Event	selectors: Event	
+ReadyKey	selectors.html#ReadyKey	selectors: ReadyKey	
+SelectEvent	selectors.html#SelectEvent	selectors: SelectEvent	
+newSelector	selectors.html#newSelector	selectors: newSelector[T](): Selector[T]	
+close	selectors.html#close,Selector[T]	selectors: close[T](s: Selector[T])	
+registerHandle	selectors.html#registerHandle,Selector[T],,set[Event],T	selectors: registerHandle[T](s: Selector[T]; fd: int | SocketHandle; events: set[Event];\n                  data: T)	
+updateHandle	selectors.html#updateHandle,Selector[T],,set[Event]	selectors: updateHandle[T](s: Selector[T]; fd: int | SocketHandle; events: set[Event])	
+registerTimer	selectors.html#registerTimer,Selector[T],int,bool,T	selectors: registerTimer[T](s: Selector[T]; timeout: int; oneshot: bool; data: T): int	
+registerSignal	selectors.html#registerSignal,Selector[T],int,T	selectors: registerSignal[T](s: Selector[T]; signal: int; data: T): int	
+registerProcess	selectors.html#registerProcess,Selector[T],int,T	selectors: registerProcess[T](s: Selector[T]; pid: int; data: T): int	
+registerEvent	selectors.html#registerEvent,Selector[T],SelectEvent,T	selectors: registerEvent[T](s: Selector[T]; ev: SelectEvent; data: T)	
+registerVnode	selectors.html#registerVnode,Selector[T],cint,set[Event],T	selectors: registerVnode[T](s: Selector[T]; fd: cint; events: set[Event]; data: T)	
+newSelectEvent	selectors.html#newSelectEvent	selectors: newSelectEvent(): SelectEvent	
+trigger	selectors.html#trigger,SelectEvent	selectors: trigger(ev: SelectEvent)	
+close	selectors.html#close,SelectEvent	selectors: close(ev: SelectEvent)	
+unregister	selectors.html#unregister,Selector[T],SelectEvent	selectors: unregister[T](s: Selector[T]; ev: SelectEvent)	
+unregister	selectors.html#unregister,Selector[T],	selectors: unregister[T](s: Selector[T]; fd: int | SocketHandle | cint)	
+selectInto	selectors.html#selectInto,Selector[T],int,openArray[ReadyKey]	selectors: selectInto[T](s: Selector[T]; timeout: int; results: var openArray[ReadyKey]): int	
+select	selectors.html#select,Selector[T],int	selectors: select[T](s: Selector[T]; timeout: int): seq[ReadyKey]	
+getData	selectors.html#getData,Selector[T],	selectors: getData[T](s: Selector[T]; fd: SocketHandle | int): var T	
+setData	selectors.html#setData,Selector[T],,T	selectors: setData[T](s: Selector[T]; fd: SocketHandle | int; data: var T): bool	
+isEmpty	selectors.html#isEmpty.t,Selector[T]	selectors: isEmpty[T](s: Selector[T]): bool	
+withData	selectors.html#withData.t,Selector[T],,untyped,untyped	selectors: withData[T](s: Selector[T]; fd: SocketHandle | int; value, body: untyped)	
+withData	selectors.html#withData.t,Selector[T],,untyped,untyped,untyped	selectors: withData[T](s: Selector[T]; fd: SocketHandle | int; value, body1, body2: untyped)	
+contains	selectors.html#contains,Selector[T],	selectors: contains[T](s: Selector[T]; fd: SocketHandle | int): bool	
+getFd	selectors.html#getFd,Selector[T]	selectors: getFd[T](s: Selector[T]): int	

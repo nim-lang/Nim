@@ -1,0 +1,40 @@
+FetchOptions	jsfetch.html#FetchOptions	jsfetch: FetchOptions	
+fmCors	jsfetch.html#fmCors	FetchModes.fmCors	
+fmNoCors	jsfetch.html#fmNoCors	FetchModes.fmNoCors	
+fmSameOrigin	jsfetch.html#fmSameOrigin	FetchModes.fmSameOrigin	
+FetchModes	jsfetch.html#FetchModes	jsfetch: FetchModes	
+fcInclude	jsfetch.html#fcInclude	FetchCredentials.fcInclude	
+fcSameOrigin	jsfetch.html#fcSameOrigin	FetchCredentials.fcSameOrigin	
+fcOmit	jsfetch.html#fcOmit	FetchCredentials.fcOmit	
+FetchCredentials	jsfetch.html#FetchCredentials	jsfetch: FetchCredentials	
+fchDefault	jsfetch.html#fchDefault	FetchCaches.fchDefault	
+fchNoStore	jsfetch.html#fchNoStore	FetchCaches.fchNoStore	
+fchReload	jsfetch.html#fchReload	FetchCaches.fchReload	
+fchNoCache	jsfetch.html#fchNoCache	FetchCaches.fchNoCache	
+fchForceCache	jsfetch.html#fchForceCache	FetchCaches.fchForceCache	
+FetchCaches	jsfetch.html#FetchCaches	jsfetch: FetchCaches	
+frFollow	jsfetch.html#frFollow	FetchRedirects.frFollow	
+frError	jsfetch.html#frError	FetchRedirects.frError	
+frManual	jsfetch.html#frManual	FetchRedirects.frManual	
+FetchRedirects	jsfetch.html#FetchRedirects	jsfetch: FetchRedirects	
+frpNoReferrer	jsfetch.html#frpNoReferrer	FetchReferrerPolicies.frpNoReferrer	
+frpNoReferrerWhenDowngrade	jsfetch.html#frpNoReferrerWhenDowngrade	FetchReferrerPolicies.frpNoReferrerWhenDowngrade	
+frpOrigin	jsfetch.html#frpOrigin	FetchReferrerPolicies.frpOrigin	
+frpOriginWhenCrossOrigin	jsfetch.html#frpOriginWhenCrossOrigin	FetchReferrerPolicies.frpOriginWhenCrossOrigin	
+frpUnsafeUrl	jsfetch.html#frpUnsafeUrl	FetchReferrerPolicies.frpUnsafeUrl	
+FetchReferrerPolicies	jsfetch.html#FetchReferrerPolicies	jsfetch: FetchReferrerPolicies	
+Body	jsfetch.html#Body	jsfetch: Body	
+Response	jsfetch.html#Response	jsfetch: Response	
+Request	jsfetch.html#Request	jsfetch: Request	
+newResponse	jsfetch.html#newResponse	jsfetch: newResponse(body: cstring | FormData): Response	
+newRequest	jsfetch.html#newRequest,cstring	jsfetch: newRequest(url: cstring): Request	
+clone	jsfetch.html#clone	jsfetch: clone(self: Response | Request): Response	
+text	jsfetch.html#text,Response	jsfetch: text(self: Response): Future[cstring]	
+json	jsfetch.html#json,Response	jsfetch: json(self: Response): Future[JsObject]	
+formData	jsfetch.html#formData,Body	jsfetch: formData(self: Body): Future[FormData]	
+unsafeNewFetchOptions	jsfetch.html#unsafeNewFetchOptions,cstring,cstring,cstring,cstring,cstring,cstring,bool	jsfetch: unsafeNewFetchOptions(metod, body, mode, credentials, cache, referrerPolicy: cstring;\n                      keepalive: bool; redirect = &quot;follow&quot;.cstring;\n                      referrer = &quot;client&quot;.cstring; integrity = &quot;&quot;.cstring): FetchOptions	
+newfetchOptions	jsfetch.html#newfetchOptions,HttpMethod,cstring,FetchModes,FetchCredentials,FetchCaches,FetchReferrerPolicies,bool	jsfetch: newfetchOptions(metod: HttpMethod; body: cstring; mode: FetchModes;\n                credentials: FetchCredentials; cache: FetchCaches;\n                referrerPolicy: FetchReferrerPolicies; keepalive: bool;\n                redirect = frFollow; referrer = &quot;client&quot;.cstring;\n                integrity = &quot;&quot;.cstring): FetchOptions	
+fetch	jsfetch.html#fetch	jsfetch: fetch(url: cstring | Request): Future[Response]	
+fetch	jsfetch.html#fetch,,FetchOptions	jsfetch: fetch(url: cstring | Request; options: FetchOptions): Future[Response]	
+toCstring	jsfetch.html#toCstring	jsfetch: toCstring(self: Request | Response | Body | FetchOptions): cstring	
+`$`	jsfetch.html#$	jsfetch: `$`(self: Request | Response | Body | FetchOptions): string	

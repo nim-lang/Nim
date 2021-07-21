@@ -1,0 +1,9 @@
+`=&gt;`	sugar.html#=>.m,untyped,untyped	sugar: `=&gt;`(p, b: untyped): untyped	
+`-&gt;`	sugar.html#->.m,untyped,untyped	sugar: `-&gt;`(p, b: untyped): untyped	
+dump	sugar.html#dump.m,untyped	sugar: dump(x: untyped): untyped	
+dumpToString	sugar.html#dumpToString.m,untyped	sugar: dumpToString(x: untyped): string	
+capture	sugar.html#capture.m,varargs[typed],untyped	sugar: capture(locals: varargs[typed]; body: untyped): untyped	
+dup	sugar.html#dup.m,T,varargs[untyped]	sugar: dup[T](arg: T; calls: varargs[untyped]): T	
+collect	sugar.html#collect.m,untyped,untyped	sugar: collect(init, body: untyped): untyped	
+collect	sugar.html#collect.m,untyped	sugar: collect(body: untyped): untyped	
+in-place	sugar.html#inminusplace_1	Module sugar	

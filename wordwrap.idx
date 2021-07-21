@@ -1,0 +1,1 @@
+wrapWords	wordwrap.html#wrapWords,string,int,set[char],string	wordwrap: wrapWords(s: string; maxLineWidth = 80; splitLongWords = true;\n          seps: set[char] = Whitespace; newLine = &quot;\n&quot;): string	

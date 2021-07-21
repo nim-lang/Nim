@@ -1,0 +1,25 @@
+Nim Destructors and Move Semantics	destructors.html
+About this document	destructors.html#about-this-document	 About this document	
+Motivating example	destructors.html#motivating-example	 Motivating example	
+Lifetime-tracking hooks	destructors.html#lifetimeminustracking-hooks	 Lifetime-tracking hooks	
+=destroy hook	destructors.html#lifetimeminustracking-hooks-nimeqdestroy-hook	  <tt class="docutils literal"><span class="pre"><span class="Operator">=</span><span class="Identifier">destroy</span></span></tt> hook	
+=sink hook	destructors.html#lifetimeminustracking-hooks-nimeqsink-hook	  <tt class="docutils literal"><span class="pre"><span class="Operator">=</span><span class="Identifier">sink</span></span></tt> hook	
+=copy hook	destructors.html#lifetimeminustracking-hooks-nimeqcopy-hook	  <tt class="docutils literal"><span class="pre"><span class="Operator">=</span><span class="Identifier">copy</span></span></tt> hook	
+=trace hook	destructors.html#lifetimeminustracking-hooks-nimeqtrace-hook	  <tt class="docutils literal"><span class="pre"><span class="Operator">=</span><span class="Identifier">trace</span></span></tt> hook	
+Move semantics	destructors.html#move-semantics	 Move semantics	
+Swap	destructors.html#swap	 Swap	
+Sink parameters	destructors.html#sink-parameters	 Sink parameters	
+Sink parameter inference	destructors.html#sink-parameter-inference	 Sink parameter inference	
+.nosinks	destructors.html#dotnosinks_1	Sink parameter inference	
+Rewrite rules	destructors.html#rewrite-rules	 Rewrite rules	
+Object and array construction	destructors.html#object-and-array-construction	 Object and array construction	
+Destructor removal	destructors.html#destructor-removal	 Destructor removal	
+Self assignments	destructors.html#self-assignments	 Self assignments	
+Lent type	destructors.html#lent-type	 Lent type	
+The .cursor annotation	destructors.html#the-dotcursor-annotation	 The .cursor annotation	
+Cursor inference / copy elision	destructors.html#cursor-inference-slash-copy-elision	 Cursor inference / copy elision	
+Hook lifting	destructors.html#hook-lifting	 Hook lifting	
+Hook generation	destructors.html#hook-generation	 Hook generation	
+nodestroy pragma	destructors.html#nodestroy-pragma	 nodestroy pragma	
+nodestroy	destructors.html#nodestroy_1	nodestroy pragma	
+Copy on write	destructors.html#copy-on-write	 Copy on write	

@@ -1,0 +1,30 @@
+FirstCallConv	pragmas.html#FirstCallConv	pragmas: FirstCallConv	
+LastCallConv	pragmas.html#LastCallConv	pragmas: LastCallConv	
+procPragmas	pragmas.html#procPragmas	pragmas: procPragmas	
+converterPragmas	pragmas.html#converterPragmas	pragmas: converterPragmas	
+methodPragmas	pragmas.html#methodPragmas	pragmas: methodPragmas	
+templatePragmas	pragmas.html#templatePragmas	pragmas: templatePragmas	
+macroPragmas	pragmas.html#macroPragmas	pragmas: macroPragmas	
+iteratorPragmas	pragmas.html#iteratorPragmas	pragmas: iteratorPragmas	
+exprPragmas	pragmas.html#exprPragmas	pragmas: exprPragmas	
+stmtPragmas	pragmas.html#stmtPragmas	pragmas: stmtPragmas	
+lambdaPragmas	pragmas.html#lambdaPragmas	pragmas: lambdaPragmas	
+typePragmas	pragmas.html#typePragmas	pragmas: typePragmas	
+fieldPragmas	pragmas.html#fieldPragmas	pragmas: fieldPragmas	
+varPragmas	pragmas.html#varPragmas	pragmas: varPragmas	
+constPragmas	pragmas.html#constPragmas	pragmas: constPragmas	
+paramPragmas	pragmas.html#paramPragmas	pragmas: paramPragmas	
+letPragmas	pragmas.html#letPragmas	pragmas: letPragmas	
+procTypePragmas	pragmas.html#procTypePragmas	pragmas: procTypePragmas	
+forVarPragmas	pragmas.html#forVarPragmas	pragmas: forVarPragmas	
+allRoutinePragmas	pragmas.html#allRoutinePragmas	pragmas: allRoutinePragmas	
+enumFieldPragmas	pragmas.html#enumFieldPragmas	pragmas: enumFieldPragmas	
+getPragmaVal	pragmas.html#getPragmaVal,PNode,TSpecialWord	pragmas: getPragmaVal(procAst: PNode; name: TSpecialWord): PNode	
+invalidPragma	pragmas.html#invalidPragma,PContext,PNode	pragmas: invalidPragma(c: PContext; n: PNode)	
+illegalCustomPragma	pragmas.html#illegalCustomPragma,PContext,PNode,PSym	pragmas: illegalCustomPragma(c: PContext; n: PNode; s: PSym)	
+pragmaAsm	pragmas.html#pragmaAsm,PContext,PNode	pragmas: pragmaAsm(c: PContext; n: PNode): char	
+semAsmOrEmit	pragmas.html#semAsmOrEmit,PContext,PNode,char	pragmas: semAsmOrEmit(con: PContext; n: PNode; marker: char): PNode	
+implicitPragmas	pragmas.html#implicitPragmas,PContext,PSym,TLineInfo,TSpecialWords	pragmas: implicitPragmas(c: PContext; sym: PSym; info: TLineInfo;\n                validPragmas: TSpecialWords)	
+hasPragma	pragmas.html#hasPragma,PNode,TSpecialWord	pragmas: hasPragma(n: PNode; pragma: TSpecialWord): bool	
+pragma	pragmas.html#pragma,PContext,PSym,PNode,TSpecialWords,bool	pragmas: pragma(c: PContext; sym: PSym; n: PNode; validPragmas: TSpecialWords;\n       isStatement: bool = false)	
+pragmaCallable	pragmas.html#pragmaCallable,PContext,PSym,PNode,TSpecialWords,bool	pragmas: pragmaCallable(c: PContext; sym: PSym; n: PNode; validPragmas: TSpecialWords;\n               isStatement: bool = false)	

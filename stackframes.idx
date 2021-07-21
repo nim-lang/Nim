@@ -1,0 +1,3 @@
+procName	stackframes.html#procName.t	stackframes: procName(): string	
+getPFrame	stackframes.html#getPFrame.t	stackframes: getPFrame(): PFrame	
+setFrameMsg	stackframes.html#setFrameMsg.t,string,string	stackframes: setFrameMsg(msg: string; prefix = &quot; &quot;)	

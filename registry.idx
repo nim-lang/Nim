@@ -1,0 +1,5 @@
+HKEY	registry.html#HKEY	registry: HKEY	
+HKEY_LOCAL_MACHINE	registry.html#HKEY_LOCAL_MACHINE	registry: HKEY_LOCAL_MACHINE	
+HKEY_CURRENT_USER	registry.html#HKEY_CURRENT_USER	registry: HKEY_CURRENT_USER	
+getUnicodeValue	registry.html#getUnicodeValue,string,string,HKEY	registry: getUnicodeValue(path, key: string; handle: HKEY): string	
+setUnicodeValue	registry.html#setUnicodeValue,string,string,string,HKEY	registry: setUnicodeValue(path, key, val: string; handle: HKEY)	

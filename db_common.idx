@@ -1,0 +1,51 @@
+DbError	db_common.html#DbError	db_common: DbError	
+SqlQuery	db_common.html#SqlQuery	db_common: SqlQuery	
+DbEffect	db_common.html#DbEffect	db_common: DbEffect	
+ReadDbEffect	db_common.html#ReadDbEffect	db_common: ReadDbEffect	
+WriteDbEffect	db_common.html#WriteDbEffect	db_common: WriteDbEffect	
+dbUnknown	db_common.html#dbUnknown	DbTypeKind.dbUnknown	
+dbSerial	db_common.html#dbSerial	DbTypeKind.dbSerial	
+dbNull	db_common.html#dbNull	DbTypeKind.dbNull	
+dbBit	db_common.html#dbBit	DbTypeKind.dbBit	
+dbBool	db_common.html#dbBool	DbTypeKind.dbBool	
+dbBlob	db_common.html#dbBlob	DbTypeKind.dbBlob	
+dbFixedChar	db_common.html#dbFixedChar	DbTypeKind.dbFixedChar	
+dbVarchar	db_common.html#dbVarchar	DbTypeKind.dbVarchar	
+dbJson	db_common.html#dbJson	DbTypeKind.dbJson	
+dbXml	db_common.html#dbXml	DbTypeKind.dbXml	
+dbInt	db_common.html#dbInt	DbTypeKind.dbInt	
+dbUInt	db_common.html#dbUInt	DbTypeKind.dbUInt	
+dbDecimal	db_common.html#dbDecimal	DbTypeKind.dbDecimal	
+dbFloat	db_common.html#dbFloat	DbTypeKind.dbFloat	
+dbDate	db_common.html#dbDate	DbTypeKind.dbDate	
+dbTime	db_common.html#dbTime	DbTypeKind.dbTime	
+dbDatetime	db_common.html#dbDatetime	DbTypeKind.dbDatetime	
+dbTimestamp	db_common.html#dbTimestamp	DbTypeKind.dbTimestamp	
+dbTimeInterval	db_common.html#dbTimeInterval	DbTypeKind.dbTimeInterval	
+dbEnum	db_common.html#dbEnum	DbTypeKind.dbEnum	
+dbSet	db_common.html#dbSet	DbTypeKind.dbSet	
+dbArray	db_common.html#dbArray	DbTypeKind.dbArray	
+dbComposite	db_common.html#dbComposite	DbTypeKind.dbComposite	
+dbUrl	db_common.html#dbUrl	DbTypeKind.dbUrl	
+dbUuid	db_common.html#dbUuid	DbTypeKind.dbUuid	
+dbInet	db_common.html#dbInet	DbTypeKind.dbInet	
+dbMacAddress	db_common.html#dbMacAddress	DbTypeKind.dbMacAddress	
+dbGeometry	db_common.html#dbGeometry	DbTypeKind.dbGeometry	
+dbPoint	db_common.html#dbPoint	DbTypeKind.dbPoint	
+dbLine	db_common.html#dbLine	DbTypeKind.dbLine	
+dbLseg	db_common.html#dbLseg	DbTypeKind.dbLseg	
+dbBox	db_common.html#dbBox	DbTypeKind.dbBox	
+dbPath	db_common.html#dbPath	DbTypeKind.dbPath	
+dbPolygon	db_common.html#dbPolygon	DbTypeKind.dbPolygon	
+dbCircle	db_common.html#dbCircle	DbTypeKind.dbCircle	
+dbUser1	db_common.html#dbUser1	DbTypeKind.dbUser1	
+dbUser2	db_common.html#dbUser2	DbTypeKind.dbUser2	
+dbUser3	db_common.html#dbUser3	DbTypeKind.dbUser3	
+dbUser4	db_common.html#dbUser4	DbTypeKind.dbUser4	
+dbUser5	db_common.html#dbUser5	DbTypeKind.dbUser5	
+DbTypeKind	db_common.html#DbTypeKind	db_common: DbTypeKind	
+DbType	db_common.html#DbType	db_common: DbType	
+DbColumn	db_common.html#DbColumn	db_common: DbColumn	
+DbColumns	db_common.html#DbColumns	db_common: DbColumns	
+sql	db_common.html#sql.t,string	db_common: sql(query: string): SqlQuery	
+dbError	db_common.html#dbError,string	db_common: dbError(msg: string)	

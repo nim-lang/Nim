@@ -1,0 +1,5 @@
+PathIter	pathnorm.html#PathIter	pathnorm: PathIter	
+hasNext	pathnorm.html#hasNext,PathIter,string	pathnorm: hasNext(it: PathIter; x: string): bool	
+next	pathnorm.html#next,PathIter,string	pathnorm: next(it: var PathIter; x: string): (int, int)	
+addNormalizePath	pathnorm.html#addNormalizePath,string,string,int	pathnorm: addNormalizePath(x: string; result: var string; state: var int; dirSep = DirSep)	
+normalizePath	pathnorm.html#normalizePath,string	pathnorm: normalizePath(path: string; dirSep = DirSep): string	

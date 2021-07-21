@@ -1,0 +1,1 @@
+searchForProc	procfind.html#searchForProc,PContext,PScope,PSym	procfind: searchForProc(c: PContext; scope: PScope; fn: PSym): tuple[proto: PSym,\n    comesFromShadowScope: bool]	

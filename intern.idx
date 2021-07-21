@@ -1,0 +1,20 @@
+Internals of the Nim Compiler	intern.html
+Directory structure	intern.html#directory-structure	 Directory structure	
+Bootstrapping the compiler	intern.html#bootstrapping-the-compiler	 Bootstrapping the compiler	
+Developing the compiler	intern.html#developing-the-compiler	 Developing the compiler	
+The compiler's architecture	intern.html#the-compiler-s-architecture	 The compiler's architecture	
+Short description of Nim's modules	intern.html#the-compiler-s-architecture-short-description-of-nim-s-modules	  Short description of Nim's modules	
+The syntax tree	intern.html#the-compiler-s-architecture-the-syntax-tree	  The syntax tree	
+Bisecting for regressions	intern.html#bisecting-for-regressions	 Bisecting for regressions	
+Runtimes	intern.html#runtimes	 Runtimes	
+Coding Guidelines	intern.html#coding-guidelines	 Coding Guidelines	
+Porting to new platforms	intern.html#porting-to-new-platforms	 Porting to new platforms	
+Runtime type information	intern.html#runtime-type-information	 Runtime type information	
+Magics and compilerProcs	intern.html#magics-and-compilerprocs	 Magics and compilerProcs	
+Code generation for closures	intern.html#code-generation-for-closures	 Code generation for closures	
+lambda lifting	intern.html#lambda-lifting_1	Code generation for closures	
+Design	intern.html#code-generation-for-closures-design	  Design	
+Accumulator	intern.html#code-generation-for-closures-accumulator	  Accumulator	
+Internals	intern.html#code-generation-for-closures-internals	  Internals	
+Notes on type and AST representation	intern.html#notes-on-type-and-ast-representation	 Notes on type and AST representation	
+Integer literals	intern.html#notes-on-type-and-ast-representation-integer-literals	  Integer literals	

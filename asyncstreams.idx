@@ -1,0 +1,10 @@
+FutureStream	asyncstreams.html#FutureStream	asyncstreams: FutureStream	
+newFutureStream	asyncstreams.html#newFutureStream,string	asyncstreams: newFutureStream[T](fromProc = &quot;unspecified&quot;): FutureStream[T]	
+complete	asyncstreams.html#complete,FutureStream[T]	asyncstreams: complete[T](future: FutureStream[T])	
+fail	asyncstreams.html#fail,FutureStream[T],ref.Exception	asyncstreams: fail[T](future: FutureStream[T]; error: ref Exception)	
+callback=	asyncstreams.html#callback=,FutureStream[T],proc(FutureStream[T])	asyncstreams: callback=[T](future: FutureStream[T];\n             cb: proc (future: FutureStream[T]) {.closure, gcsafe.})	
+finished	asyncstreams.html#finished,FutureStream[T]	asyncstreams: finished[T](future: FutureStream[T]): bool	
+failed	asyncstreams.html#failed,FutureStream[T]	asyncstreams: failed[T](future: FutureStream[T]): bool	
+write	asyncstreams.html#write,FutureStream[T],T	asyncstreams: write[T](future: FutureStream[T]; value: T): Future[void]	
+read	asyncstreams.html#read,FutureStream[T]	asyncstreams: read[T](future: FutureStream[T]): owned(Future[(bool, T)])	
+len	asyncstreams.html#len,FutureStream[T]	asyncstreams: len[T](future: FutureStream[T]): int	

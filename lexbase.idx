@@ -1,0 +1,10 @@
+EndOfFile	lexbase.html#EndOfFile	lexbase: EndOfFile	
+NewLines	lexbase.html#NewLines	lexbase: NewLines	
+BaseLexer	lexbase.html#BaseLexer	lexbase: BaseLexer	
+close	lexbase.html#close,BaseLexer	lexbase: close(L: var BaseLexer)	
+handleCR	lexbase.html#handleCR,BaseLexer,int	lexbase: handleCR(L: var BaseLexer; pos: int): int	
+handleLF	lexbase.html#handleLF,BaseLexer,int	lexbase: handleLF(L: var BaseLexer; pos: int): int	
+handleRefillChar	lexbase.html#handleRefillChar,BaseLexer,int	lexbase: handleRefillChar(L: var BaseLexer; pos: int): int	
+open	lexbase.html#open,BaseLexer,Stream,int,set[char]	lexbase: open(L: var BaseLexer; input: Stream; bufLen: int = 8192;\n     refillChars: set[char] = NewLines)	
+getColNumber	lexbase.html#getColNumber,BaseLexer,int	lexbase: getColNumber(L: BaseLexer; pos: int): int	
+getCurrentLine	lexbase.html#getCurrentLine,BaseLexer,bool	lexbase: getCurrentLine(L: BaseLexer; marker: bool = true): string	

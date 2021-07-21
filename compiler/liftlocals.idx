@@ -1,0 +1,1 @@
+liftLocalsIfRequested	liftlocals.html#liftLocalsIfRequested,PSym,PNode,IdentCache,ConfigRef,IdGenerator	liftlocals: liftLocalsIfRequested(prc: PSym; n: PNode; cache: IdentCache; conf: ConfigRef;\n                      idgen: IdGenerator): PNode	

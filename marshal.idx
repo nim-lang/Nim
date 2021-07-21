@@ -1,0 +1,9 @@
+load	marshal.html#load,Stream,T	marshal: load[T](s: Stream; data: var T)	
+store	marshal.html#store,Stream,T	marshal: store[T](s: Stream; data: T)	
+`$$`	marshal.html#$$,T	marshal: `$$`[T](x: T): string	
+to	marshal.html#to,string	marshal: to[T](data: string): T	
+serialization	marshal.html#serialization_1	Module marshal	
+deserialization	marshal.html#deserialization_1	Module marshal	
+JSON	marshal.html#json_1	Module marshal	
+Basic usage	marshal.html#basic-usage	 Basic usage	
+See also	marshal.html#see-also	 See also	

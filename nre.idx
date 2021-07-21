@@ -1,0 +1,46 @@
+Regex	nre.html#Regex	nre: Regex	
+RegexMatch	nre.html#RegexMatch	nre: RegexMatch	
+Captures	nre.html#Captures	nre: Captures	
+CaptureBounds	nre.html#CaptureBounds	nre: CaptureBounds	
+RegexError	nre.html#RegexError	nre: RegexError	
+RegexInternalError	nre.html#RegexInternalError	nre: RegexInternalError	
+InvalidUnicodeError	nre.html#InvalidUnicodeError	nre: InvalidUnicodeError	
+SyntaxError	nre.html#SyntaxError	nre: SyntaxError	
+StudyError	nre.html#StudyError	nre: StudyError	
+captureCount	nre.html#captureCount,Regex	nre: captureCount(pattern: Regex): int	
+captureNameId	nre.html#captureNameId,Regex	nre: captureNameId(pattern: Regex): Table[string, int]	
+captureBounds	nre.html#captureBounds,RegexMatch	nre: captureBounds(pattern: RegexMatch): CaptureBounds	
+captures	nre.html#captures,RegexMatch	nre: captures(pattern: RegexMatch): Captures	
+contains	nre.html#contains,CaptureBounds,int	nre: contains(pattern: CaptureBounds; i: int): bool	
+contains	nre.html#contains,Captures,int	nre: contains(pattern: Captures; i: int): bool	
+`[]`	nre.html#[],CaptureBounds,int	nre: `[]`(pattern: CaptureBounds; i: int): HSlice[int, int]	
+`[]`	nre.html#[],Captures,int	nre: `[]`(pattern: Captures; i: int): string	
+match	nre.html#match,RegexMatch	nre: match(pattern: RegexMatch): string	
+matchBounds	nre.html#matchBounds,RegexMatch	nre: matchBounds(pattern: RegexMatch): HSlice[int, int]	
+contains	nre.html#contains,CaptureBounds,string	nre: contains(pattern: CaptureBounds; name: string): bool	
+contains	nre.html#contains,Captures,string	nre: contains(pattern: Captures; name: string): bool	
+`[]`	nre.html#[],CaptureBounds,string	nre: `[]`(pattern: CaptureBounds; name: string): HSlice[int, int]	
+`[]`	nre.html#[],Captures,string	nre: `[]`(pattern: Captures; name: string): string	
+toTable	nre.html#toTable,Captures	nre: toTable(pattern: Captures): Table[string, string]	
+toTable	nre.html#toTable,CaptureBounds	nre: toTable(pattern: CaptureBounds): Table[string, HSlice[int, int]]	
+items	nre.html#items.i,CaptureBounds	nre: items(pattern: CaptureBounds; default = none(HSlice[int, int])): Option[\n    HSlice[int, int]]	
+items	nre.html#items.i,Captures,Option[string]	nre: items(pattern: Captures; default: Option[string] = none(string)): Option[string]	
+toSeq	nre.html#toSeq,CaptureBounds	nre: toSeq(pattern: CaptureBounds; default = none(HSlice[int, int])): seq[\n    Option[HSlice[int, int]]]	
+toSeq	nre.html#toSeq,Captures,Option[string]	nre: toSeq(pattern: Captures; default: Option[string] = none(string)): seq[\n    Option[string]]	
+`$`	nre.html#$,RegexMatch	nre: `$`(pattern: RegexMatch): string	
+`==`	nre.html#==,Regex,Regex	nre: `==`(a, b: Regex): bool	
+`==`	nre.html#==,RegexMatch,RegexMatch	nre: `==`(a, b: RegexMatch): bool	
+re	nre.html#re,string	nre: re(pattern: string): Regex	
+match	nre.html#match,string,Regex,int	nre: match(str: string; pattern: Regex; start = 0; endpos = int.high): Option[\n    RegexMatch]	
+findIter	nre.html#findIter.i,string,Regex,int	nre: findIter(str: string; pattern: Regex; start = 0; endpos = int.high): RegexMatch	
+find	nre.html#find,string,Regex,int	nre: find(str: string; pattern: Regex; start = 0; endpos = int.high): Option[\n    RegexMatch]	
+findAll	nre.html#findAll,string,Regex,int	nre: findAll(str: string; pattern: Regex; start = 0; endpos = int.high): seq[string]	
+contains	nre.html#contains,string,Regex,int	nre: contains(str: string; pattern: Regex; start = 0; endpos = int.high): bool	
+split	nre.html#split,string,Regex,int,int	nre: split(str: string; pattern: Regex; maxSplit = -1; start = 0): seq[string]	
+replace	nre.html#replace,string,Regex,proc(RegexMatch)	nre: replace(str: string; pattern: Regex; subproc: proc (match: RegexMatch): string): string	
+replace	nre.html#replace,string,Regex,proc(string)	nre: replace(str: string; pattern: Regex; subproc: proc (match: string): string): string	
+replace	nre.html#replace,string,Regex,string	nre: replace(str: string; pattern: Regex; sub: string): string	
+escapeRe	nre.html#escapeRe,string	nre: escapeRe(str: string): string	
+Options	nre.html#options	   Options	
+What is NRE?	nre.html#what-is-nreqmark	 What is NRE?	
+Licencing	nre.html#what-is-nreqmark-licencing	  Licencing	

@@ -1,0 +1,817 @@
+float	system.html#float	system: float	
+float32	system.html#float32	system: float32	
+float64	system.html#float64	system: float64	
+char	system.html#char	system: char	
+string	system.html#string	system: string	
+cstring	system.html#cstring	system: cstring	
+pointer	system.html#pointer	system: pointer	
+typedesc	system.html#typedesc	system: typedesc	
+`ptr`	system.html#ptr	system: ptr	
+`ref`	system.html#ref	system: ref	
+void	system.html#void	system: void	
+auto	system.html#auto	system: auto	
+any	system.html#any	system: any	
+untyped	system.html#untyped	system: untyped	
+typed	system.html#typed	system: typed	
+int	system.html#int	system: int	
+int8	system.html#int8	system: int8	
+int16	system.html#int16	system: int16	
+int32	system.html#int32	system: int32	
+int64	system.html#int64	system: int64	
+uint	system.html#uint	system: uint	
+uint8	system.html#uint8	system: uint8	
+uint16	system.html#uint16	system: uint16	
+uint32	system.html#uint32	system: uint32	
+uint64	system.html#uint64	system: uint64	
+bool	system.html#bool	system: bool	
+on	system.html#on	system: on	
+off	system.html#off	system: off	
+SomeSignedInt	system.html#SomeSignedInt	system: SomeSignedInt	
+SomeUnsignedInt	system.html#SomeUnsignedInt	system: SomeUnsignedInt	
+SomeInteger	system.html#SomeInteger	system: SomeInteger	
+SomeOrdinal	system.html#SomeOrdinal	system: SomeOrdinal	
+BiggestInt	system.html#BiggestInt	system: BiggestInt	
+`not`	system.html#not,bool	system: `not`(x: bool): bool	
+`and`	system.html#and,bool,bool	system: `and`(x, y: bool): bool	
+`or`	system.html#or,bool,bool	system: `or`(x, y: bool): bool	
+`xor`	system.html#xor,bool,bool	system: `xor`(x, y: bool): bool	
+runnableExamples	system.html#runnableExamples,string,untyped	system: runnableExamples(rdoccmd = &quot;&quot;; body: untyped)	
+compileOption	system.html#compileOption,string	system: compileOption(option: string): bool	
+compileOption	system.html#compileOption,string,string	system: compileOption(option, arg: string): bool	
+`or`	system.html#or,typedesc,typedesc	system: `or`(a, b: typedesc): typedesc	
+`and`	system.html#and,typedesc,typedesc	system: `and`(a, b: typedesc): typedesc	
+`not`	system.html#not,typedesc	system: `not`(a: typedesc): typedesc	
+SomeFloat	system.html#SomeFloat	system: SomeFloat	
+SomeNumber	system.html#SomeNumber	system: SomeNumber	
+defined	system.html#defined,untyped	system: defined(x: untyped): bool	
+iterable	system.html#iterable	system: iterable	
+Ordinal	system.html#Ordinal	system: Ordinal	
+declared	system.html#declared,untyped	system: declared(x: untyped): bool	
+declaredInScope	system.html#declaredInScope,untyped	system: declaredInScope(x: untyped): bool	
+`addr`	system.html#addr,T	system: `addr`[T](x: var T): ptr T	
+unsafeAddr	system.html#unsafeAddr,T	system: unsafeAddr[T](x: T): ptr T	
+`static`	system.html#static	system: static	
+`type`	system.html#type	system: type	
+typeOfProc	system.html#typeOfProc	TypeOfMode.typeOfProc	
+typeOfIter	system.html#typeOfIter	TypeOfMode.typeOfIter	
+TypeOfMode	system.html#TypeOfMode	system: TypeOfMode	
+typeof	system.html#typeof,untyped	system: typeof(x: untyped; mode = typeOfIter): typedesc	
+internalNew	system.html#internalNew,ref.T	system: internalNew[T](a: var ref T)	
+new	system.html#new,ref.T,proc(ref.T)	system: new[T](a: var ref T; finalizer: proc (x: ref T) {.nimcall.})	
+wasMoved	system.html#wasMoved,T	system: wasMoved[T](obj: var T)	
+move	system.html#move,T	system: move[T](x: var T): T	
+range	system.html#range	system: range	
+array	system.html#array	system: array	
+openArray	system.html#openArray	system: openArray	
+varargs	system.html#varargs	system: varargs	
+seq	system.html#seq	system: seq	
+set	system.html#set	system: set	
+UncheckedArray	system.html#UncheckedArray	system: UncheckedArray	
+sink	system.html#sink	system: sink	
+lent	system.html#lent	system: lent	
+high	system.html#high,T	system: high[T: Ordinal | enum | range](x: T): T	
+high	system.html#high,typedesc[T]	system: high[T: Ordinal | enum | range](x: typedesc[T]): T	
+high	system.html#high,openArray[T]	system: high[T](x: openArray[T]): int	
+high	system.html#high,array[I,T]	system: high[I, T](x: array[I, T]): I	
+high	system.html#high,typedesc[array[I,T]]	system: high[I, T](x: typedesc[array[I, T]]): I	
+high	system.html#high,cstring	system: high(x: cstring): int	
+high	system.html#high,string	system: high(x: string): int	
+low	system.html#low,T	system: low[T: Ordinal | enum | range](x: T): T	
+low	system.html#low,typedesc[T]	system: low[T: Ordinal | enum | range](x: typedesc[T]): T	
+low	system.html#low,openArray[T]	system: low[T](x: openArray[T]): int	
+low	system.html#low,array[I,T]	system: low[I, T](x: array[I, T]): I	
+low	system.html#low,typedesc[array[I,T]]	system: low[I, T](x: typedesc[array[I, T]]): I	
+low	system.html#low,cstring	system: low(x: cstring): int	
+low	system.html#low,string	system: low(x: string): int	
+shallowCopy	system.html#shallowCopy,T,T	system: shallowCopy[T](x: var T; y: T)	
+`[]`	system.html#[],T,I	system: `[]`[I: Ordinal; T](a: T; i: I): T	
+`[]=`	system.html#[]=,T,I,sinkS	system: `[]=`[I: Ordinal; T, S](a: T; i: I; x: sink S)	
+`=`	system.html#=,T,T	system: `=`[T](dest: var T; src: T)	
+`=copy`	system.html#=copy,T,T	system: `=copy`[T](dest: var T; src: T)	
+`=destroy`	system.html#=destroy,T	system: `=destroy`[T](x: var T)	
+`=sink`	system.html#=sink,T,T	system: `=sink`[T](x: var T; y: T)	
+`=trace`	system.html#=trace,T,pointer	system: `=trace`[T](x: var T; env: pointer)	
+HSlice	system.html#HSlice	system: HSlice	
+Slice	system.html#Slice	system: Slice	
+`..`	system.html#..,sinkT,sinkU	system: `..`[T, U](a: sink T; b: sink U): HSlice[T, U]	
+`..`	system.html#..,sinkT	system: `..`[T](b: sink T): HSlice[int, T]	
+nimvm	system.html#nimvm	system: nimvm	
+succ	system.html#succ,T,int	system: succ[T: Ordinal](x: T; y = 1): T	
+pred	system.html#pred,T,int	system: pred[T: Ordinal](x: T; y = 1): T	
+inc	system.html#inc,T,int	system: inc[T: Ordinal](x: var T; y = 1)	
+dec	system.html#dec,T,int	system: dec[T: Ordinal](x: var T; y = 1)	
+ze	system.html#ze,int8	system: ze(x: int8): int	
+ze	system.html#ze,int16	system: ze(x: int16): int	
+ze64	system.html#ze64,int8	system: ze64(x: int8): int64	
+ze64	system.html#ze64,int16	system: ze64(x: int16): int64	
+ze64	system.html#ze64,int32	system: ze64(x: int32): int64	
+ze64	system.html#ze64,int	system: ze64(x: int): int64	
+toU8	system.html#toU8,int	system: toU8(x: int): int8	
+toU16	system.html#toU16,int	system: toU16(x: int): int16	
+toU32	system.html#toU32,int64	system: toU32(x: int64): int32	
+`+`	system.html#+,int	system: `+`(x: int): int	
+`+`	system.html#+,int8	system: `+`(x: int8): int8	
+`+`	system.html#+,int16	system: `+`(x: int16): int16	
+`+`	system.html#+,int32	system: `+`(x: int32): int32	
+`+`	system.html#+,int64	system: `+`(x: int64): int64	
+`-`	system.html#-,int	system: `-`(x: int): int	
+`-`	system.html#-,int8	system: `-`(x: int8): int8	
+`-`	system.html#-,int16	system: `-`(x: int16): int16	
+`-`	system.html#-,int32	system: `-`(x: int32): int32	
+`-`	system.html#-,int64	system: `-`(x: int64): int64	
+`not`	system.html#not,int	system: `not`(x: int): int	
+`not`	system.html#not,int8	system: `not`(x: int8): int8	
+`not`	system.html#not,int16	system: `not`(x: int16): int16	
+`not`	system.html#not,int32	system: `not`(x: int32): int32	
+`not`	system.html#not,int64	system: `not`(x: int64): int64	
+`+`	system.html#+,int,int	system: `+`(x, y: int): int	
+`+`	system.html#+,int8,int8	system: `+`(x, y: int8): int8	
+`+`	system.html#+,int16,int16	system: `+`(x, y: int16): int16	
+`+`	system.html#+,int32,int32	system: `+`(x, y: int32): int32	
+`+`	system.html#+,int64,int64	system: `+`(x, y: int64): int64	
+`-`	system.html#-,int,int	system: `-`(x, y: int): int	
+`-`	system.html#-,int8,int8	system: `-`(x, y: int8): int8	
+`-`	system.html#-,int16,int16	system: `-`(x, y: int16): int16	
+`-`	system.html#-,int32,int32	system: `-`(x, y: int32): int32	
+`-`	system.html#-,int64,int64	system: `-`(x, y: int64): int64	
+`*`	system.html#*,int,int	system: `*`(x, y: int): int	
+`*`	system.html#*,int8,int8	system: `*`(x, y: int8): int8	
+`*`	system.html#*,int16,int16	system: `*`(x, y: int16): int16	
+`*`	system.html#*,int32,int32	system: `*`(x, y: int32): int32	
+`*`	system.html#*,int64,int64	system: `*`(x, y: int64): int64	
+`div`	system.html#div,int,int	system: `div`(x, y: int): int	
+`div`	system.html#div,int8,int8	system: `div`(x, y: int8): int8	
+`div`	system.html#div,int16,int16	system: `div`(x, y: int16): int16	
+`div`	system.html#div,int32,int32	system: `div`(x, y: int32): int32	
+`div`	system.html#div,int64,int64	system: `div`(x, y: int64): int64	
+`mod`	system.html#mod,int,int	system: `mod`(x, y: int): int	
+`mod`	system.html#mod,int8,int8	system: `mod`(x, y: int8): int8	
+`mod`	system.html#mod,int16,int16	system: `mod`(x, y: int16): int16	
+`mod`	system.html#mod,int32,int32	system: `mod`(x, y: int32): int32	
+`mod`	system.html#mod,int64,int64	system: `mod`(x, y: int64): int64	
+`shr`	system.html#shr,int,SomeInteger	system: `shr`(x: int; y: SomeInteger): int	
+`shr`	system.html#shr,int8,SomeInteger	system: `shr`(x: int8; y: SomeInteger): int8	
+`shr`	system.html#shr,int16,SomeInteger	system: `shr`(x: int16; y: SomeInteger): int16	
+`shr`	system.html#shr,int32,SomeInteger	system: `shr`(x: int32; y: SomeInteger): int32	
+`shr`	system.html#shr,int64,SomeInteger	system: `shr`(x: int64; y: SomeInteger): int64	
+`shl`	system.html#shl,int,SomeInteger	system: `shl`(x: int; y: SomeInteger): int	
+`shl`	system.html#shl,int8,SomeInteger	system: `shl`(x: int8; y: SomeInteger): int8	
+`shl`	system.html#shl,int16,SomeInteger	system: `shl`(x: int16; y: SomeInteger): int16	
+`shl`	system.html#shl,int32,SomeInteger	system: `shl`(x: int32; y: SomeInteger): int32	
+`shl`	system.html#shl,int64,SomeInteger	system: `shl`(x: int64; y: SomeInteger): int64	
+ashr	system.html#ashr,int,SomeInteger	system: ashr(x: int; y: SomeInteger): int	
+ashr	system.html#ashr,int8,SomeInteger	system: ashr(x: int8; y: SomeInteger): int8	
+ashr	system.html#ashr,int16,SomeInteger	system: ashr(x: int16; y: SomeInteger): int16	
+ashr	system.html#ashr,int32,SomeInteger	system: ashr(x: int32; y: SomeInteger): int32	
+ashr	system.html#ashr,int64,SomeInteger	system: ashr(x: int64; y: SomeInteger): int64	
+`and`	system.html#and,int,int	system: `and`(x, y: int): int	
+`and`	system.html#and,int8,int8	system: `and`(x, y: int8): int8	
+`and`	system.html#and,int16,int16	system: `and`(x, y: int16): int16	
+`and`	system.html#and,int32,int32	system: `and`(x, y: int32): int32	
+`and`	system.html#and,int64,int64	system: `and`(x, y: int64): int64	
+`or`	system.html#or,int,int	system: `or`(x, y: int): int	
+`or`	system.html#or,int8,int8	system: `or`(x, y: int8): int8	
+`or`	system.html#or,int16,int16	system: `or`(x, y: int16): int16	
+`or`	system.html#or,int32,int32	system: `or`(x, y: int32): int32	
+`or`	system.html#or,int64,int64	system: `or`(x, y: int64): int64	
+`xor`	system.html#xor,int,int	system: `xor`(x, y: int): int	
+`xor`	system.html#xor,int8,int8	system: `xor`(x, y: int8): int8	
+`xor`	system.html#xor,int16,int16	system: `xor`(x, y: int16): int16	
+`xor`	system.html#xor,int32,int32	system: `xor`(x, y: int32): int32	
+`xor`	system.html#xor,int64,int64	system: `xor`(x, y: int64): int64	
+`not`	system.html#not,uint	system: `not`(x: uint): uint	
+`not`	system.html#not,uint8	system: `not`(x: uint8): uint8	
+`not`	system.html#not,uint16	system: `not`(x: uint16): uint16	
+`not`	system.html#not,uint32	system: `not`(x: uint32): uint32	
+`not`	system.html#not,uint64	system: `not`(x: uint64): uint64	
+`shr`	system.html#shr,uint,SomeInteger	system: `shr`(x: uint; y: SomeInteger): uint	
+`shr`	system.html#shr,uint8,SomeInteger	system: `shr`(x: uint8; y: SomeInteger): uint8	
+`shr`	system.html#shr,uint16,SomeInteger	system: `shr`(x: uint16; y: SomeInteger): uint16	
+`shr`	system.html#shr,uint32,SomeInteger	system: `shr`(x: uint32; y: SomeInteger): uint32	
+`shr`	system.html#shr,uint64,SomeInteger	system: `shr`(x: uint64; y: SomeInteger): uint64	
+`shl`	system.html#shl,uint,SomeInteger	system: `shl`(x: uint; y: SomeInteger): uint	
+`shl`	system.html#shl,uint8,SomeInteger	system: `shl`(x: uint8; y: SomeInteger): uint8	
+`shl`	system.html#shl,uint16,SomeInteger	system: `shl`(x: uint16; y: SomeInteger): uint16	
+`shl`	system.html#shl,uint32,SomeInteger	system: `shl`(x: uint32; y: SomeInteger): uint32	
+`shl`	system.html#shl,uint64,SomeInteger	system: `shl`(x: uint64; y: SomeInteger): uint64	
+`and`	system.html#and,uint,uint	system: `and`(x, y: uint): uint	
+`and`	system.html#and,uint8,uint8	system: `and`(x, y: uint8): uint8	
+`and`	system.html#and,uint16,uint16	system: `and`(x, y: uint16): uint16	
+`and`	system.html#and,uint32,uint32	system: `and`(x, y: uint32): uint32	
+`and`	system.html#and,uint64,uint64	system: `and`(x, y: uint64): uint64	
+`or`	system.html#or,uint,uint	system: `or`(x, y: uint): uint	
+`or`	system.html#or,uint8,uint8	system: `or`(x, y: uint8): uint8	
+`or`	system.html#or,uint16,uint16	system: `or`(x, y: uint16): uint16	
+`or`	system.html#or,uint32,uint32	system: `or`(x, y: uint32): uint32	
+`or`	system.html#or,uint64,uint64	system: `or`(x, y: uint64): uint64	
+`xor`	system.html#xor,uint,uint	system: `xor`(x, y: uint): uint	
+`xor`	system.html#xor,uint8,uint8	system: `xor`(x, y: uint8): uint8	
+`xor`	system.html#xor,uint16,uint16	system: `xor`(x, y: uint16): uint16	
+`xor`	system.html#xor,uint32,uint32	system: `xor`(x, y: uint32): uint32	
+`xor`	system.html#xor,uint64,uint64	system: `xor`(x, y: uint64): uint64	
+`+`	system.html#+,uint,uint	system: `+`(x, y: uint): uint	
+`+`	system.html#+,uint8,uint8	system: `+`(x, y: uint8): uint8	
+`+`	system.html#+,uint16,uint16	system: `+`(x, y: uint16): uint16	
+`+`	system.html#+,uint32,uint32	system: `+`(x, y: uint32): uint32	
+`+`	system.html#+,uint64,uint64	system: `+`(x, y: uint64): uint64	
+`-`	system.html#-,uint,uint	system: `-`(x, y: uint): uint	
+`-`	system.html#-,uint8,uint8	system: `-`(x, y: uint8): uint8	
+`-`	system.html#-,uint16,uint16	system: `-`(x, y: uint16): uint16	
+`-`	system.html#-,uint32,uint32	system: `-`(x, y: uint32): uint32	
+`-`	system.html#-,uint64,uint64	system: `-`(x, y: uint64): uint64	
+`*`	system.html#*,uint,uint	system: `*`(x, y: uint): uint	
+`*`	system.html#*,uint8,uint8	system: `*`(x, y: uint8): uint8	
+`*`	system.html#*,uint16,uint16	system: `*`(x, y: uint16): uint16	
+`*`	system.html#*,uint32,uint32	system: `*`(x, y: uint32): uint32	
+`*`	system.html#*,uint64,uint64	system: `*`(x, y: uint64): uint64	
+`div`	system.html#div,uint,uint	system: `div`(x, y: uint): uint	
+`div`	system.html#div,uint8,uint8	system: `div`(x, y: uint8): uint8	
+`div`	system.html#div,uint16,uint16	system: `div`(x, y: uint16): uint16	
+`div`	system.html#div,uint32,uint32	system: `div`(x, y: uint32): uint32	
+`div`	system.html#div,uint64,uint64	system: `div`(x, y: uint64): uint64	
+`mod`	system.html#mod,uint,uint	system: `mod`(x, y: uint): uint	
+`mod`	system.html#mod,uint8,uint8	system: `mod`(x, y: uint8): uint8	
+`mod`	system.html#mod,uint16,uint16	system: `mod`(x, y: uint16): uint16	
+`mod`	system.html#mod,uint32,uint32	system: `mod`(x, y: uint32): uint32	
+`mod`	system.html#mod,uint64,uint64	system: `mod`(x, y: uint64): uint64	
+`+%`	system.html#+%,int,int	system: `+%`(x, y: int): int	
+`+%`	system.html#+%,int8,int8	system: `+%`(x, y: int8): int8	
+`+%`	system.html#+%,int16,int16	system: `+%`(x, y: int16): int16	
+`+%`	system.html#+%,int32,int32	system: `+%`(x, y: int32): int32	
+`+%`	system.html#+%,int64,int64	system: `+%`(x, y: int64): int64	
+`-%`	system.html#-%,int,int	system: `-%`(x, y: int): int	
+`-%`	system.html#-%,int8,int8	system: `-%`(x, y: int8): int8	
+`-%`	system.html#-%,int16,int16	system: `-%`(x, y: int16): int16	
+`-%`	system.html#-%,int32,int32	system: `-%`(x, y: int32): int32	
+`-%`	system.html#-%,int64,int64	system: `-%`(x, y: int64): int64	
+`*%`	system.html#*%,int,int	system: `*%`(x, y: int): int	
+`*%`	system.html#*%,int8,int8	system: `*%`(x, y: int8): int8	
+`*%`	system.html#*%,int16,int16	system: `*%`(x, y: int16): int16	
+`*%`	system.html#*%,int32,int32	system: `*%`(x, y: int32): int32	
+`*%`	system.html#*%,int64,int64	system: `*%`(x, y: int64): int64	
+`/%`	system.html#/%,int,int	system: `/%`(x, y: int): int	
+`/%`	system.html#/%,int8,int8	system: `/%`(x, y: int8): int8	
+`/%`	system.html#/%,int16,int16	system: `/%`(x, y: int16): int16	
+`/%`	system.html#/%,int32,int32	system: `/%`(x, y: int32): int32	
+`/%`	system.html#/%,int64,int64	system: `/%`(x, y: int64): int64	
+`%%`	system.html#%%,int,int	system: `%%`(x, y: int): int	
+`%%`	system.html#%%,int8,int8	system: `%%`(x, y: int8): int8	
+`%%`	system.html#%%,int16,int16	system: `%%`(x, y: int16): int16	
+`%%`	system.html#%%,int32,int32	system: `%%`(x, y: int32): int32	
+`%%`	system.html#%%,int64,int64	system: `%%`(x, y: int64): int64	
+`+=`	system.html#+=,T,T	system: `+=`[T: SomeInteger](x: var T; y: T)	
+`-=`	system.html#-=,T,T	system: `-=`[T: SomeInteger](x: var T; y: T)	
+`*=`	system.html#*=,T,T	system: `*=`[T: SomeInteger](x: var T; y: T)	
+`==`	system.html#==,Enum,Enum	system: `==`[Enum: enum](x, y: Enum): bool	
+`==`	system.html#==,pointer,pointer	system: `==`(x, y: pointer): bool	
+`==`	system.html#==,string,string	system: `==`(x, y: string): bool	
+`==`	system.html#==,char,char	system: `==`(x, y: char): bool	
+`==`	system.html#==,bool,bool	system: `==`(x, y: bool): bool	
+`==`	system.html#==,set[T],set[T]	system: `==`[T](x, y: set[T]): bool	
+`==`	system.html#==,ref.T,ref.T	system: `==`[T](x, y: ref T): bool	
+`==`	system.html#==,ptr.T,ptr.T	system: `==`[T](x, y: ptr T): bool	
+`==`	system.html#==,T,T	system: `==`[T: proc](x, y: T): bool	
+`&lt;=`	system.html#<=,Enum,Enum	system: `&lt;=`[Enum: enum](x, y: Enum): bool	
+`&lt;=`	system.html#<=,string,string	system: `&lt;=`(x, y: string): bool	
+`&lt;=`	system.html#<=,char,char	system: `&lt;=`(x, y: char): bool	
+`&lt;=`	system.html#<=,set[T],set[T]	system: `&lt;=`[T](x, y: set[T]): bool	
+`&lt;=`	system.html#<=,bool,bool	system: `&lt;=`(x, y: bool): bool	
+`&lt;=`	system.html#<=,ref.T,ref.T	system: `&lt;=`[T](x, y: ref T): bool	
+`&lt;=`	system.html#<=,pointer,pointer	system: `&lt;=`(x, y: pointer): bool	
+`&lt;`	system.html#<,Enum,Enum	system: `&lt;`[Enum: enum](x, y: Enum): bool	
+`&lt;`	system.html#<,string,string	system: `&lt;`(x, y: string): bool	
+`&lt;`	system.html#<,char,char	system: `&lt;`(x, y: char): bool	
+`&lt;`	system.html#<,set[T],set[T]	system: `&lt;`[T](x, y: set[T]): bool	
+`&lt;`	system.html#<,bool,bool	system: `&lt;`(x, y: bool): bool	
+`&lt;`	system.html#<,ref.T,ref.T	system: `&lt;`[T](x, y: ref T): bool	
+`&lt;`	system.html#<,ptr.T,ptr.T	system: `&lt;`[T](x, y: ptr T): bool	
+`&lt;`	system.html#<,pointer,pointer	system: `&lt;`(x, y: pointer): bool	
+`!=`	system.html#!=.t,untyped,untyped	system: `!=`(x, y: untyped): untyped	
+`&gt;=`	system.html#>=.t,untyped,untyped	system: `&gt;=`(x, y: untyped): untyped	
+`&gt;`	system.html#>.t,untyped,untyped	system: `&gt;`(x, y: untyped): untyped	
+`==`	system.html#==,int,int	system: `==`(x, y: int): bool	
+`==`	system.html#==,int8,int8	system: `==`(x, y: int8): bool	
+`==`	system.html#==,int16,int16	system: `==`(x, y: int16): bool	
+`==`	system.html#==,int32,int32	system: `==`(x, y: int32): bool	
+`==`	system.html#==,int64,int64	system: `==`(x, y: int64): bool	
+`&lt;=`	system.html#<=,int,int	system: `&lt;=`(x, y: int): bool	
+`&lt;=`	system.html#<=,int8,int8	system: `&lt;=`(x, y: int8): bool	
+`&lt;=`	system.html#<=,int16,int16	system: `&lt;=`(x, y: int16): bool	
+`&lt;=`	system.html#<=,int32,int32	system: `&lt;=`(x, y: int32): bool	
+`&lt;=`	system.html#<=,int64,int64	system: `&lt;=`(x, y: int64): bool	
+`&lt;`	system.html#<,int,int	system: `&lt;`(x, y: int): bool	
+`&lt;`	system.html#<,int8,int8	system: `&lt;`(x, y: int8): bool	
+`&lt;`	system.html#<,int16,int16	system: `&lt;`(x, y: int16): bool	
+`&lt;`	system.html#<,int32,int32	system: `&lt;`(x, y: int32): bool	
+`&lt;`	system.html#<,int64,int64	system: `&lt;`(x, y: int64): bool	
+`&lt;=`	system.html#<=,uint,uint	system: `&lt;=`(x, y: uint): bool	
+`&lt;=`	system.html#<=,uint8,uint8	system: `&lt;=`(x, y: uint8): bool	
+`&lt;=`	system.html#<=,uint16,uint16	system: `&lt;=`(x, y: uint16): bool	
+`&lt;=`	system.html#<=,uint32,uint32	system: `&lt;=`(x, y: uint32): bool	
+`&lt;=`	system.html#<=,uint64,uint64	system: `&lt;=`(x, y: uint64): bool	
+`&lt;`	system.html#<,uint,uint	system: `&lt;`(x, y: uint): bool	
+`&lt;`	system.html#<,uint8,uint8	system: `&lt;`(x, y: uint8): bool	
+`&lt;`	system.html#<,uint16,uint16	system: `&lt;`(x, y: uint16): bool	
+`&lt;`	system.html#<,uint32,uint32	system: `&lt;`(x, y: uint32): bool	
+`&lt;`	system.html#<,uint64,uint64	system: `&lt;`(x, y: uint64): bool	
+`&lt;=%`	system.html#<=%,int,int	system: `&lt;=%`(x, y: int): bool	
+`&lt;=%`	system.html#<=%,int8,int8	system: `&lt;=%`(x, y: int8): bool	
+`&lt;=%`	system.html#<=%,int16,int16	system: `&lt;=%`(x, y: int16): bool	
+`&lt;=%`	system.html#<=%,int32,int32	system: `&lt;=%`(x, y: int32): bool	
+`&lt;=%`	system.html#<=%,int64,int64	system: `&lt;=%`(x, y: int64): bool	
+`&lt;%`	system.html#<%,int,int	system: `&lt;%`(x, y: int): bool	
+`&lt;%`	system.html#<%,int8,int8	system: `&lt;%`(x, y: int8): bool	
+`&lt;%`	system.html#<%,int16,int16	system: `&lt;%`(x, y: int16): bool	
+`&lt;%`	system.html#<%,int32,int32	system: `&lt;%`(x, y: int32): bool	
+`&lt;%`	system.html#<%,int64,int64	system: `&lt;%`(x, y: int64): bool	
+`&gt;=%`	system.html#>=%.t,untyped,untyped	system: `&gt;=%`(x, y: untyped): untyped	
+`&gt;%`	system.html#>%.t,untyped,untyped	system: `&gt;%`(x, y: untyped): untyped	
+`==`	system.html#==,uint,uint	system: `==`(x, y: uint): bool	
+`==`	system.html#==,uint8,uint8	system: `==`(x, y: uint8): bool	
+`==`	system.html#==,uint16,uint16	system: `==`(x, y: uint16): bool	
+`==`	system.html#==,uint32,uint32	system: `==`(x, y: uint32): bool	
+`==`	system.html#==,uint64,uint64	system: `==`(x, y: uint64): bool	
+min	system.html#min,int,int	system: min(x, y: int): int	
+min	system.html#min,int8,int8	system: min(x, y: int8): int8	
+min	system.html#min,int16,int16	system: min(x, y: int16): int16	
+min	system.html#min,int32,int32	system: min(x, y: int32): int32	
+min	system.html#min,int64,int64	system: min(x, y: int64): int64	
+max	system.html#max,int,int	system: max(x, y: int): int	
+max	system.html#max,int8,int8	system: max(x, y: int8): int8	
+max	system.html#max,int16,int16	system: max(x, y: int16): int16	
+max	system.html#max,int32,int32	system: max(x, y: int32): int32	
+max	system.html#max,int64,int64	system: max(x, y: int64): int64	
+min	system.html#min,openArray[T]	system: min[T](x: openArray[T]): T	
+max	system.html#max,openArray[T]	system: max[T](x: openArray[T]): T	
+clamp	system.html#clamp,T,T,T	system: clamp[T](x, a, b: T): T	
+`==`	system.html#==,array[I,T],array[I,T]	system: `==`[I, T](x, y: array[I, T]): bool	
+`==`	system.html#==,openArray[T],openArray[T]	system: `==`[T](x, y: openArray[T]): bool	
+`==`	system.html#==,seq[T],seq[T]	system: `==`[T](x, y: seq[T]): bool	
+appType	system.html#appType	system: appType	
+byte	system.html#byte	system: byte	
+Natural	system.html#Natural	system: Natural	
+Positive	system.html#Positive	system: Positive	
+RootObj	system.html#RootObj	system: RootObj	
+RootRef	system.html#RootRef	system: RootRef	
+RootEffect	system.html#RootEffect	system: RootEffect	
+TimeEffect	system.html#TimeEffect	system: TimeEffect	
+IOEffect	system.html#IOEffect	system: IOEffect	
+ReadIOEffect	system.html#ReadIOEffect	system: ReadIOEffect	
+WriteIOEffect	system.html#WriteIOEffect	system: WriteIOEffect	
+ExecIOEffect	system.html#ExecIOEffect	system: ExecIOEffect	
+StackTraceEntry	system.html#StackTraceEntry	system: StackTraceEntry	
+Exception	system.html#Exception	system: Exception	
+Defect	system.html#Defect	system: Defect	
+CatchableError	system.html#CatchableError	system: CatchableError	
+IOError	system.html#IOError	system: IOError	
+EOFError	system.html#EOFError	system: EOFError	
+OSError	system.html#OSError	system: OSError	
+LibraryError	system.html#LibraryError	system: LibraryError	
+ResourceExhaustedError	system.html#ResourceExhaustedError	system: ResourceExhaustedError	
+ArithmeticDefect	system.html#ArithmeticDefect	system: ArithmeticDefect	
+DivByZeroDefect	system.html#DivByZeroDefect	system: DivByZeroDefect	
+OverflowDefect	system.html#OverflowDefect	system: OverflowDefect	
+AccessViolationDefect	system.html#AccessViolationDefect	system: AccessViolationDefect	
+AssertionDefect	system.html#AssertionDefect	system: AssertionDefect	
+ValueError	system.html#ValueError	system: ValueError	
+KeyError	system.html#KeyError	system: KeyError	
+OutOfMemDefect	system.html#OutOfMemDefect	system: OutOfMemDefect	
+IndexDefect	system.html#IndexDefect	system: IndexDefect	
+FieldDefect	system.html#FieldDefect	system: FieldDefect	
+RangeDefect	system.html#RangeDefect	system: RangeDefect	
+StackOverflowDefect	system.html#StackOverflowDefect	system: StackOverflowDefect	
+ReraiseDefect	system.html#ReraiseDefect	system: ReraiseDefect	
+ObjectAssignmentDefect	system.html#ObjectAssignmentDefect	system: ObjectAssignmentDefect	
+ObjectConversionDefect	system.html#ObjectConversionDefect	system: ObjectConversionDefect	
+FloatingPointDefect	system.html#FloatingPointDefect	system: FloatingPointDefect	
+FloatInvalidOpDefect	system.html#FloatInvalidOpDefect	system: FloatInvalidOpDefect	
+FloatDivByZeroDefect	system.html#FloatDivByZeroDefect	system: FloatDivByZeroDefect	
+FloatOverflowDefect	system.html#FloatOverflowDefect	system: FloatOverflowDefect	
+FloatUnderflowDefect	system.html#FloatUnderflowDefect	system: FloatUnderflowDefect	
+FloatInexactDefect	system.html#FloatInexactDefect	system: FloatInexactDefect	
+DeadThreadDefect	system.html#DeadThreadDefect	system: DeadThreadDefect	
+NilAccessDefect	system.html#NilAccessDefect	system: NilAccessDefect	
+ArithmeticError	system.html#ArithmeticError	system: ArithmeticError	
+DivByZeroError	system.html#DivByZeroError	system: DivByZeroError	
+OverflowError	system.html#OverflowError	system: OverflowError	
+AccessViolationError	system.html#AccessViolationError	system: AccessViolationError	
+AssertionError	system.html#AssertionError	system: AssertionError	
+OutOfMemError	system.html#OutOfMemError	system: OutOfMemError	
+IndexError	system.html#IndexError	system: IndexError	
+FieldError	system.html#FieldError	system: FieldError	
+RangeError	system.html#RangeError	system: RangeError	
+StackOverflowError	system.html#StackOverflowError	system: StackOverflowError	
+ReraiseError	system.html#ReraiseError	system: ReraiseError	
+ObjectAssignmentError	system.html#ObjectAssignmentError	system: ObjectAssignmentError	
+ObjectConversionError	system.html#ObjectConversionError	system: ObjectConversionError	
+FloatingPointError	system.html#FloatingPointError	system: FloatingPointError	
+FloatInvalidOpError	system.html#FloatInvalidOpError	system: FloatInvalidOpError	
+FloatDivByZeroError	system.html#FloatDivByZeroError	system: FloatDivByZeroError	
+FloatOverflowError	system.html#FloatOverflowError	system: FloatOverflowError	
+FloatUnderflowError	system.html#FloatUnderflowError	system: FloatUnderflowError	
+FloatInexactError	system.html#FloatInexactError	system: FloatInexactError	
+DeadThreadError	system.html#DeadThreadError	system: DeadThreadError	
+NilAccessError	system.html#NilAccessError	system: NilAccessError	
+JsRoot	system.html#JsRoot	system: JsRoot	
+unsafeNew	system.html#unsafeNew,ref.T,Natural	system: unsafeNew[T](a: var ref T; size: Natural)	
+sizeof	system.html#sizeof,T	system: sizeof[T](x: T): int	
+alignof	system.html#alignof,T	system: alignof[T](x: T): int	
+alignof	system.html#alignof,typedesc	system: alignof(x: typedesc): int	
+offsetOf	system.html#offsetOf.t,typedesc[T],untyped	system: offsetOf[T](t: typedesc[T]; member: untyped): int	
+offsetOf	system.html#offsetOf.t,T,untyped	system: offsetOf[T](value: T; member: untyped): int	
+sizeof	system.html#sizeof,typedesc	system: sizeof(x: typedesc): int	
+newSeq	system.html#newSeq,seq[T],Natural	system: newSeq[T](s: var seq[T]; len: Natural)	
+newSeq	system.html#newSeq	system: newSeq[T](len = 0.Natural): seq[T]	
+newSeqOfCap	system.html#newSeqOfCap,Natural	system: newSeqOfCap[T](cap: Natural): seq[T]	
+newSeqUninitialized	system.html#newSeqUninitialized,Natural	system: newSeqUninitialized[T: SomeNumber](len: Natural): seq[T]	
+len	system.html#len,TOpenArray	system: len[TOpenArray: openArray | varargs](x: TOpenArray): int	
+len	system.html#len,string	system: len(x: string): int	
+len	system.html#len,cstring	system: len(x: cstring): int	
+len	system.html#len	system: len(x: (type array) | array): int	
+len	system.html#len,seq[T]	system: len[T](x: seq[T]): int	
+ord	system.html#ord,T	system: ord[T: Ordinal | enum](x: T): int	
+chr	system.html#chr,range[]	system: chr(u: range[0 .. 255]): char	
+`+`	system.html#+,float32	system: `+`(x: float32): float32	
+`-`	system.html#-,float32	system: `-`(x: float32): float32	
+`+`	system.html#+,float32,float32	system: `+`(x, y: float32): float32	
+`-`	system.html#-,float32,float32	system: `-`(x, y: float32): float32	
+`*`	system.html#*,float32,float32	system: `*`(x, y: float32): float32	
+`/`	system.html#/,float32,float32	system: `/`(x, y: float32): float32	
+`+`	system.html#+,float	system: `+`(x: float): float	
+`-`	system.html#-,float	system: `-`(x: float): float	
+`+`	system.html#+,float,float	system: `+`(x, y: float): float	
+`-`	system.html#-,float,float	system: `-`(x, y: float): float	
+`*`	system.html#*,float,float	system: `*`(x, y: float): float	
+`/`	system.html#/,float,float	system: `/`(x, y: float): float	
+`==`	system.html#==,float32,float32	system: `==`(x, y: float32): bool	
+`&lt;=`	system.html#<=,float32,float32	system: `&lt;=`(x, y: float32): bool	
+`&lt;`	system.html#<,float32,float32	system: `&lt;`(x, y: float32): bool	
+`==`	system.html#==,float,float	system: `==`(x, y: float): bool	
+`&lt;=`	system.html#<=,float,float	system: `&lt;=`(x, y: float): bool	
+`&lt;`	system.html#<,float,float	system: `&lt;`(x, y: float): bool	
+incl	system.html#incl,set[T],T	system: incl[T](x: var set[T]; y: T)	
+incl	system.html#incl.t,set[T],set[T]	system: incl[T](x: var set[T]; y: set[T])	
+excl	system.html#excl,set[T],T	system: excl[T](x: var set[T]; y: T)	
+excl	system.html#excl.t,set[T],set[T]	system: excl[T](x: var set[T]; y: set[T])	
+card	system.html#card,set[T]	system: card[T](x: set[T]): int	
+len	system.html#len,set[T]	system: len[T](x: set[T]): int	
+`*`	system.html#*,set[T],set[T]	system: `*`[T](x, y: set[T]): set[T]	
+`+`	system.html#+,set[T],set[T]	system: `+`[T](x, y: set[T]): set[T]	
+`-`	system.html#-,set[T],set[T]	system: `-`[T](x, y: set[T]): set[T]	
+contains	system.html#contains,set[T],T	system: contains[T](x: set[T]; y: T): bool	
+contains	system.html#contains,HSlice[U,V],W	system: contains[U, V, W](s: HSlice[U, V]; value: W): bool	
+`in`	system.html#in.t,untyped,untyped	system: `in`(x, y: untyped): untyped	
+`notin`	system.html#notin.t,untyped,untyped	system: `notin`(x, y: untyped): untyped	
+`is`	system.html#is,T,S	system: `is`[T, S](x: T; y: S): bool	
+`isnot`	system.html#isnot.t,untyped,untyped	system: `isnot`(x, y: untyped): untyped	
+owned	system.html#owned	system: owned	
+unown	system.html#unown.t,typed	system: unown(x: typed): untyped	
+new	system.html#new,ref.T	system: new[T](a: var ref T)	
+new	system.html#new,typedesc	system: new(t: typedesc): auto	
+disarm	system.html#disarm.t,typed	system: disarm(x: typed)	
+`of`	system.html#of,T,typedesc[S]	system: `of`[T, S](x: T; y: typedesc[S]): bool	
+cmp	system.html#cmp,T,T	system: cmp[T](x, y: T): int	
+`@`	system.html#@,sinkarray[IDX,T]	system: `@`[IDX, T](a: sink array[IDX, T]): seq[T]	
+default	system.html#default,typedesc[T]	system: default[T](_: typedesc[T]): T	
+reset	system.html#reset,T	system: reset[T](obj: var T)	
+setLen	system.html#setLen,seq[T],Natural	system: setLen[T](s: var seq[T]; newlen: Natural)	
+setLen	system.html#setLen,string,Natural	system: setLen(s: var string; newlen: Natural)	
+newString	system.html#newString,Natural	system: newString(len: Natural): string	
+newStringOfCap	system.html#newStringOfCap,Natural	system: newStringOfCap(cap: Natural): string	
+`&amp;`	system.html#&,string,char	system: `&amp;`(x: string; y: char): string	
+`&amp;`	system.html#&,char,char	system: `&amp;`(x, y: char): string	
+`&amp;`	system.html#&,string,string	system: `&amp;`(x, y: string): string	
+`&amp;`	system.html#&,char,string	system: `&amp;`(x: char; y: string): string	
+add	system.html#add,string,char	system: add(x: var string; y: char)	
+add	system.html#add,string,string	system: add(x: var string; y: string)	
+littleEndian	system.html#littleEndian	Endianness.littleEndian	
+bigEndian	system.html#bigEndian	Endianness.bigEndian	
+Endianness	system.html#Endianness	system: Endianness	
+isMainModule	system.html#isMainModule	system: isMainModule	
+CompileDate	system.html#CompileDate	system: CompileDate	
+CompileTime	system.html#CompileTime	system: CompileTime	
+cpuEndian	system.html#cpuEndian	system: cpuEndian	
+hostOS	system.html#hostOS	system: hostOS	
+hostCPU	system.html#hostCPU	system: hostCPU	
+TaintedString	system.html#TaintedString	system: TaintedString	
+QuitSuccess	system.html#QuitSuccess	system: QuitSuccess	
+QuitFailure	system.html#QuitFailure	system: QuitFailure	
+programResult	system.html#programResult	system: programResult	
+quit	system.html#quit,int	system: quit(errorcode: int = QuitSuccess)	
+add	system.html#add,seq[T],sinkT	system: add[T](x: var seq[T]; y: sink T)	
+add	system.html#add,seq[T],openArray[T]	system: add[T](x: var seq[T]; y: openArray[T])	
+del	system.html#del,seq[T],Natural	system: del[T](x: var seq[T]; i: Natural)	
+insert	system.html#insert,seq[T],sinkT	system: insert[T](x: var seq[T]; item: sink T; i = 0.Natural)	
+repr	system.html#repr,T	system: repr[T](x: T): string	
+ByteAddress	system.html#ByteAddress	system: ByteAddress	
+BiggestFloat	system.html#BiggestFloat	system: BiggestFloat	
+BiggestUInt	system.html#BiggestUInt	system: BiggestUInt	
+clong	system.html#clong	system: clong	
+culong	system.html#culong	system: culong	
+cchar	system.html#cchar	system: cchar	
+cschar	system.html#cschar	system: cschar	
+cshort	system.html#cshort	system: cshort	
+cint	system.html#cint	system: cint	
+csize	system.html#csize	system: csize	
+csize_t	system.html#csize_t	system: csize_t	
+clonglong	system.html#clonglong	system: clonglong	
+cfloat	system.html#cfloat	system: cfloat	
+cdouble	system.html#cdouble	system: cdouble	
+clongdouble	system.html#clongdouble	system: clongdouble	
+cuchar	system.html#cuchar	system: cuchar	
+cushort	system.html#cushort	system: cushort	
+cuint	system.html#cuint	system: cuint	
+culonglong	system.html#culonglong	system: culonglong	
+cstringArray	system.html#cstringArray	system: cstringArray	
+PFloat32	system.html#PFloat32	system: PFloat32	
+PFloat64	system.html#PFloat64	system: PFloat64	
+PInt64	system.html#PInt64	system: PInt64	
+PInt32	system.html#PInt32	system: PInt32	
+toFloat	system.html#toFloat,int	system: toFloat(i: int): float	
+toBiggestFloat	system.html#toBiggestFloat,BiggestInt	system: toBiggestFloat(i: BiggestInt): BiggestFloat	
+toInt	system.html#toInt,float	system: toInt(f: float): int	
+toBiggestInt	system.html#toBiggestInt,BiggestFloat	system: toBiggestInt(f: BiggestFloat): BiggestInt	
+addQuitProc	system.html#addQuitProc,proc)	system: addQuitProc(quitProc: proc () {.noconv.})	
+swap	system.html#swap,T,T	system: swap[T](a, b: var T)	
+Inf	system.html#Inf	system: Inf	
+NegInf	system.html#NegInf	system: NegInf	
+NaN	system.html#NaN	system: NaN	
+AllocStats	system.html#AllocStats	system: AllocStats	
+`-`	system.html#-,AllocStats,AllocStats	system: `-`(a, b: AllocStats): AllocStats	
+dumpAllocstats	system.html#dumpAllocstats.t,untyped	system: dumpAllocstats(code: untyped)	
+getAllocStats	system.html#getAllocStats	system: getAllocStats(): AllocStats	
+alloc	system.html#alloc.t,Natural	system: alloc(size: Natural): pointer	
+createU	system.html#createU,typedesc	system: createU(T: typedesc; size = 1.Positive): ptr T:type	
+alloc0	system.html#alloc0.t,Natural	system: alloc0(size: Natural): pointer	
+create	system.html#create,typedesc	system: create(T: typedesc; size = 1.Positive): ptr T:type	
+realloc	system.html#realloc.t,pointer,Natural	system: realloc(p: pointer; newSize: Natural): pointer	
+realloc0	system.html#realloc0.t,pointer,Natural,Natural	system: realloc0(p: pointer; oldSize, newSize: Natural): pointer	
+resize	system.html#resize,ptr.T,Natural	system: resize[T](p: ptr T; newSize: Natural): ptr T	
+dealloc	system.html#dealloc,pointer	system: dealloc(p: pointer)	
+allocShared	system.html#allocShared.t,Natural	system: allocShared(size: Natural): pointer	
+createSharedU	system.html#createSharedU,typedesc	system: createSharedU(T: typedesc; size = 1.Positive): ptr T:type	
+allocShared0	system.html#allocShared0.t,Natural	system: allocShared0(size: Natural): pointer	
+createShared	system.html#createShared,typedesc	system: createShared(T: typedesc; size = 1.Positive): ptr T:type	
+reallocShared	system.html#reallocShared.t,pointer,Natural	system: reallocShared(p: pointer; newSize: Natural): pointer	
+reallocShared0	system.html#reallocShared0.t,pointer,Natural,Natural	system: reallocShared0(p: pointer; oldSize, newSize: Natural): pointer	
+resizeShared	system.html#resizeShared,ptr.T,Natural	system: resizeShared[T](p: ptr T; newSize: Natural): ptr T	
+deallocShared	system.html#deallocShared,pointer	system: deallocShared(p: pointer)	
+freeShared	system.html#freeShared,ptr.T	system: freeShared[T](p: ptr T)	
+`|`	system.html#|,typedesc,typedesc	system: `|`(a, b: typedesc): typedesc	
+countdown	system.html#countdown.i,T,T,Positive	system: countdown[T](a, b: T; step: Positive = 1): T	
+countup	system.html#countup.i,T,T,Positive	system: countup[T](a, b: T; step: Positive = 1): T	
+`..`	system.html#...i,T,T	system: `..`[T](a, b: T): T	
+`..`	system.html#...i,int64,int64	system: `..`(a, b: int64): int64	
+`..`	system.html#...i,int32,int32	system: `..`(a, b: int32): int32	
+`..`	system.html#...i,uint64,uint64	system: `..`(a, b: uint64): uint64	
+`..`	system.html#...i,uint32,uint32	system: `..`(a, b: uint32): uint32	
+`..&lt;`	system.html#..<.i,T,T	system: `..&lt;`[T](a, b: T): T	
+`..&lt;`	system.html#..<.i,int64,int64	system: `..&lt;`(a, b: int64): int64	
+`..&lt;`	system.html#..<.i,int32,int32	system: `..&lt;`(a, b: int32): int32	
+`..&lt;`	system.html#..<.i,uint64,uint64	system: `..&lt;`(a, b: uint64): uint64	
+`..&lt;`	system.html#..<.i,uint32,uint32	system: `..&lt;`(a, b: uint32): uint32	
+`||`	system.html#||.i,S,T,staticstring	system: `||`[S, T](a: S; b: T; annotation: static string = &quot;parallel for&quot;): T	
+`||`	system.html#||.i,S,T,Positive,staticstring	system: `||`[S, T](a: S; b: T; step: Positive;\n           annotation: static string = &quot;parallel for&quot;): T	
+abs	system.html#abs,T	system: abs[T: float64 | float32](x: T): T	
+min	system.html#min,float32,float32	system: min(x, y: float32): float32	
+min	system.html#min,float64,float64	system: min(x, y: float64): float64	
+max	system.html#max,float32,float32	system: max(x, y: float32): float32	
+max	system.html#max,float64,float64	system: max(x, y: float64): float64	
+min	system.html#min,T,T	system: min[T: not SomeFloat](x, y: T): T	
+max	system.html#max,T,T	system: max[T: not SomeFloat](x, y: T): T	
+high	system.html#high,typedesc[SomeFloat]	system: high(T: typedesc[SomeFloat]): T:type	
+low	system.html#low,typedesc[SomeFloat]	system: low(T: typedesc[SomeFloat]): T:type	
+len	system.html#len,HSlice[U: Ordinal,V: Ordinal]	system: len[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int	
+isNil	system.html#isNil,seq[T]	system: isNil[T](x: seq[T]): bool	
+isNil	system.html#isNil,string	system: isNil(x: string): bool	
+isNil	system.html#isNil,ref.T	system: isNil[T](x: ref T): bool	
+isNil	system.html#isNil,ptr.T	system: isNil[T](x: ptr T): bool	
+isNil	system.html#isNil,pointer	system: isNil(x: pointer): bool	
+isNil	system.html#isNil,cstring	system: isNil(x: cstring): bool	
+isNil	system.html#isNil,T	system: isNil[T: proc](x: T): bool	
+`@`	system.html#@,openArray[T]	system: `@`[T](a: openArray[T]): seq[T]	
+`&amp;`	system.html#&,seq[T],seq[T]	system: `&amp;`[T](x, y: seq[T]): seq[T]	
+`&amp;`	system.html#&,seq[T],T	system: `&amp;`[T](x: seq[T]; y: T): seq[T]	
+`&amp;`	system.html#&,T,seq[T]	system: `&amp;`[T](x: T; y: seq[T]): seq[T]	
+astToStr	system.html#astToStr,T	system: astToStr[T](x: T): string	
+instantiationInfo	system.html#instantiationInfo,int	system: instantiationInfo(index = -1; fullPaths = false): tuple[filename: string,\n    line: int, column: int]	
+compiles	system.html#compiles,untyped	system: compiles(x: untyped): bool	
+atomicInc	system.html#atomicInc,int,int	system: atomicInc(memLoc: var int; x: int = 1): int	
+atomicDec	system.html#atomicDec,int,int	system: atomicDec(memLoc: var int; x: int = 1): int	
+AtomType	system.html#AtomType	system: AtomType	
+addAndFetch	system.html#addAndFetch,ptr.int,int	system: addAndFetch(p: ptr int; val: int): int	
+cas	system.html#cas,ptr.T,T,T	system: cas[T: bool | int | ptr](p: ptr T; oldValue, newValue: T): bool	
+cpuRelax	system.html#cpuRelax	system: cpuRelax()	
+find	system.html#find,T,S	system: find[T, S](a: T; item: S): int	
+contains	system.html#contains,openArray[T],T	system: contains[T](a: openArray[T]; item: T): bool	
+pop	system.html#pop,seq[T]	system: pop[T](s: var seq[T]): T	
+`==`	system.html#==,T,T_2	system: `==`[T: tuple | object](x, y: T): bool	
+`&lt;=`	system.html#<=,T,T	system: `&lt;=`[T: tuple](x, y: T): bool	
+`&lt;`	system.html#<,T,T	system: `&lt;`[T: tuple](x, y: T): bool	
+gcThroughput	system.html#gcThroughput	GC_Strategy.gcThroughput	
+gcResponsiveness	system.html#gcResponsiveness	GC_Strategy.gcResponsiveness	
+gcOptimizeTime	system.html#gcOptimizeTime	GC_Strategy.gcOptimizeTime	
+gcOptimizeSpace	system.html#gcOptimizeSpace	GC_Strategy.gcOptimizeSpace	
+GC_Strategy	system.html#GC_Strategy	system: GC_Strategy	
+GC_ref	system.html#GC_ref,ref.T	system: GC_ref[T](x: ref T)	
+GC_ref	system.html#GC_ref,seq[T]	system: GC_ref[T](x: seq[T])	
+GC_ref	system.html#GC_ref,string	system: GC_ref(x: string)	
+GC_unref	system.html#GC_unref,ref.T	system: GC_unref[T](x: ref T)	
+GC_unref	system.html#GC_unref,seq[T]	system: GC_unref[T](x: seq[T])	
+GC_unref	system.html#GC_unref,string	system: GC_unref(x: string)	
+globalRaiseHook	system.html#globalRaiseHook	system: globalRaiseHook	
+localRaiseHook	system.html#localRaiseHook	system: localRaiseHook	
+outOfMemHook	system.html#outOfMemHook	system: outOfMemHook	
+unhandledExceptionHook	system.html#unhandledExceptionHook	system: unhandledExceptionHook	
+PFrame	system.html#PFrame	system: PFrame	
+TFrame	system.html#TFrame	system: TFrame	
+add	system.html#add,string,cstring	system: add(x: var string; y: cstring)	
+add	system.html#add,cstring,cstring	system: add(x: var cstring; y: cstring)	
+echo	system.html#echo,varargs[typed,]	system: echo(x: varargs[typed, `$`])	
+debugEcho	system.html#debugEcho,varargs[typed,]	system: debugEcho(x: varargs[typed, `$`])	
+newException	system.html#newException.t,typedesc,string,ref.Exception	system: newException(exceptn: typedesc; message: string;\n             parentException: ref Exception = nil): untyped	
+getTypeInfo	system.html#getTypeInfo,T	system: getTypeInfo[T](x: T): pointer	
+abs	system.html#abs,int	system: abs(x: int): int	
+abs	system.html#abs,int8	system: abs(x: int8): int8	
+abs	system.html#abs,int16	system: abs(x: int16): int16	
+abs	system.html#abs,int32	system: abs(x: int32): int32	
+abs	system.html#abs,int64	system: abs(x: int64): int64	
+likely	system.html#likely.t,bool	system: likely(val: bool): bool	
+unlikely	system.html#unlikely.t,bool	system: unlikely(val: bool): bool	
+NimMajor	system.html#NimMajor	system: NimMajor	
+NimMinor	system.html#NimMinor	system: NimMinor	
+NimPatch	system.html#NimPatch	system: NimPatch	
+delete	system.html#delete,seq[T],Natural	system: delete[T](x: var seq[T]; i: Natural)	
+NimVersion	system.html#NimVersion	system: NimVersion	
+fspSet	system.html#fspSet	FileSeekPos.fspSet	
+fspCur	system.html#fspCur	FileSeekPos.fspCur	
+fspEnd	system.html#fspEnd	FileSeekPos.fspEnd	
+FileSeekPos	system.html#FileSeekPos	system: FileSeekPos	
+zeroMem	system.html#zeroMem,pointer,Natural	system: zeroMem(p: pointer; size: Natural)	
+copyMem	system.html#copyMem,pointer,pointer,Natural	system: copyMem(dest, source: pointer; size: Natural)	
+moveMem	system.html#moveMem,pointer,pointer,Natural	system: moveMem(dest, source: pointer; size: Natural)	
+equalMem	system.html#equalMem,pointer,pointer,Natural	system: equalMem(a, b: pointer; size: Natural): bool	
+cmpMem	system.html#cmpMem,pointer,pointer,Natural	system: cmpMem(a, b: pointer; size: Natural): int	
+cmp	system.html#cmp,string,string	system: cmp(x, y: string): int	
+cstringArrayToSeq	system.html#cstringArrayToSeq,cstringArray,Natural	system: cstringArrayToSeq(a: cstringArray; len: Natural): seq[string]	
+cstringArrayToSeq	system.html#cstringArrayToSeq,cstringArray	system: cstringArrayToSeq(a: cstringArray): seq[string]	
+allocCStringArray	system.html#allocCStringArray,openArray[string]	system: allocCStringArray(a: openArray[string]): cstringArray	
+deallocCStringArray	system.html#deallocCStringArray,cstringArray	system: deallocCStringArray(a: cstringArray)	
+setControlCHook	system.html#setControlCHook,proc)	system: setControlCHook(hook: proc () {.noconv.})	
+unsetControlCHook	system.html#unsetControlCHook	system: unsetControlCHook()	
+getStackTrace	system.html#getStackTrace	system: getStackTrace(): string	
+getStackTrace	system.html#getStackTrace,ref.Exception	system: getStackTrace(e: ref Exception): string	
+errorMessageWriter	system.html#errorMessageWriter	system: errorMessageWriter	
+getFrameState	system.html#getFrameState	system: getFrameState(): FrameState	
+setFrameState	system.html#setFrameState,FrameState	system: setFrameState(state: FrameState)	
+getFrame	system.html#getFrame	system: getFrame(): PFrame	
+setFrame	system.html#setFrame,PFrame	system: setFrame(s: PFrame)	
+getGcFrame	system.html#getGcFrame	system: getGcFrame(): GcFrame	
+popGcFrame	system.html#popGcFrame	system: popGcFrame()	
+setGcFrame	system.html#setGcFrame,GcFrame	system: setGcFrame(s: GcFrame)	
+pushGcFrame	system.html#pushGcFrame,GcFrame	system: pushGcFrame(s: GcFrame)	
+stackTraceAvailable	system.html#stackTraceAvailable	system: stackTraceAvailable(): bool	
+onUnhandledException	system.html#onUnhandledException	system: onUnhandledException	
+writeStackTrace	system.html#writeStackTrace	system: writeStackTrace()	
+getStackTraceEntries	system.html#getStackTraceEntries,ref.Exception	system: getStackTraceEntries(e: ref Exception): seq[StackTraceEntry]	
+getStackTraceEntries	system.html#getStackTraceEntries	system: getStackTraceEntries(): seq[StackTraceEntry]	
+formatErrorIndexBound	system.html#formatErrorIndexBound.t,T,T,T	system: formatErrorIndexBound[T](i, a, b: T): string	
+formatErrorIndexBound	system.html#formatErrorIndexBound.t,T,T	system: formatErrorIndexBound[T](i, n: T): string	
+iterToProc	system.html#iterToProc,typed,typedesc,untyped	system: iterToProc(iter: typed; envType: typedesc; procName: untyped)	
+allocImpl	system.html#allocImpl,Natural	system: allocImpl(size: Natural): pointer	
+alloc0Impl	system.html#alloc0Impl,Natural	system: alloc0Impl(size: Natural): pointer	
+deallocImpl	system.html#deallocImpl,pointer	system: deallocImpl(p: pointer)	
+reallocImpl	system.html#reallocImpl,pointer,Natural	system: reallocImpl(p: pointer; newSize: Natural): pointer	
+realloc0Impl	system.html#realloc0Impl,pointer,Natural,Natural	system: realloc0Impl(p: pointer; oldSize, newSize: Natural): pointer	
+getFreeMem	system.html#getFreeMem	system: getFreeMem(): int	
+getTotalMem	system.html#getTotalMem	system: getTotalMem(): int	
+getOccupiedMem	system.html#getOccupiedMem	system: getOccupiedMem(): int	
+getMaxMem	system.html#getMaxMem	system: getMaxMem(): int	
+allocSharedImpl	system.html#allocSharedImpl,Natural	system: allocSharedImpl(size: Natural): pointer	
+allocShared0Impl	system.html#allocShared0Impl,Natural	system: allocShared0Impl(size: Natural): pointer	
+deallocSharedImpl	system.html#deallocSharedImpl,pointer	system: deallocSharedImpl(p: pointer)	
+reallocSharedImpl	system.html#reallocSharedImpl,pointer,Natural	system: reallocSharedImpl(p: pointer; newSize: Natural): pointer	
+reallocShared0Impl	system.html#reallocShared0Impl,pointer,Natural,Natural	system: reallocShared0Impl(p: pointer; oldSize, newSize: Natural): pointer	
+ForeignCell	system.html#ForeignCell	system: ForeignCell	
+protect	system.html#protect,pointer	system: protect(x: pointer): ForeignCell	
+dispose	system.html#dispose,ForeignCell	system: dispose(x: ForeignCell)	
+isNotForeign	system.html#isNotForeign,ForeignCell	system: isNotForeign(x: ForeignCell): bool	
+setupForeignThreadGc	system.html#setupForeignThreadGc	system: setupForeignThreadGc()	
+tearDownForeignThreadGc	system.html#tearDownForeignThreadGc	system: tearDownForeignThreadGc()	
+nimGC_setStackBottom	system.html#nimGC_setStackBottom,pointer	system: nimGC_setStackBottom(theStackBottom: pointer)	
+deallocHeap	system.html#deallocHeap	system: deallocHeap(runFinalizers = true; allowGcAfterwards = true)	
+gcInvariant	system.html#gcInvariant	system: gcInvariant()	
+GC_collectZct	system.html#GC_collectZct	system: GC_collectZct()	
+GC_disable	system.html#GC_disable	system: GC_disable()	
+GC_enable	system.html#GC_enable	system: GC_enable()	
+GC_enableMarkAndSweep	system.html#GC_enableMarkAndSweep	system: GC_enableMarkAndSweep()	
+GC_disableMarkAndSweep	system.html#GC_disableMarkAndSweep	system: GC_disableMarkAndSweep()	
+GC_fullCollect	system.html#GC_fullCollect	system: GC_fullCollect()	
+GC_getStatistics	system.html#GC_getStatistics	system: GC_getStatistics(): string	
+addInt	system.html#addInt,string,int64	system: addInt(result: var string; x: int64)	
+getCurrentException	system.html#getCurrentException	system: getCurrentException(): ref Exception	
+getCurrentExceptionMsg	system.html#getCurrentExceptionMsg	system: getCurrentExceptionMsg(): string	
+setCurrentException	system.html#setCurrentException,ref.Exception	system: setCurrentException(exc: ref Exception)	
+rawProc	system.html#rawProc,T	system: rawProc[T: proc](x: T): pointer	
+rawEnv	system.html#rawEnv,T	system: rawEnv[T: proc](x: T): pointer	
+finished	system.html#finished,T	system: finished[T: proc](x: T): bool	
+quit	system.html#quit,string	system: quit(errormsg: string; errorcode = QuitFailure)	
+`/`	system.html#/,int,int	system: `/`(x, y: int): float	
+BackwardsIndex	system.html#BackwardsIndex	system: BackwardsIndex	
+`^`	system.html#^.t,int	system: `^`(x: int): BackwardsIndex	
+`..^`	system.html#..^.t,untyped,untyped	system: `..^`(a, b: untyped): untyped	
+`..&lt;`	system.html#..<.t,untyped,untyped	system: `..&lt;`(a, b: untyped): untyped	
+`[]`	system.html#[].t,string,int	system: `[]`(s: string; i: int): char	
+`[]=`	system.html#[]=.t,string,int,char	system: `[]=`(s: string; i: int; val: char)	
+`[]`	system.html#[],string,HSlice[T: Ordinal,U: Ordinal]	system: `[]`[T, U: Ordinal](s: string; x: HSlice[T, U]): string	
+`[]=`	system.html#[]=,string,HSlice[T: Ordinal,U: Ordinal],string	system: `[]=`[T, U: Ordinal](s: var string; x: HSlice[T, U]; b: string)	
+`[]`	system.html#[],array[Idx,T],HSlice[U: Ordinal,V: Ordinal]	system: `[]`[Idx, T; U, V: Ordinal](a: array[Idx, T]; x: HSlice[U, V]): seq[T]	
+`[]=`	system.html#[]=,array[Idx,T],HSlice[U: Ordinal,V: Ordinal],openArray[T]	system: `[]=`[Idx, T; U, V: Ordinal](a: var array[Idx, T]; x: HSlice[U, V];\n                             b: openArray[T])	
+`[]`	system.html#[],openArray[T],HSlice[U: Ordinal,V: Ordinal]	system: `[]`[T; U, V: Ordinal](s: openArray[T]; x: HSlice[U, V]): seq[T]	
+`[]=`	system.html#[]=,seq[T],HSlice[U: Ordinal,V: Ordinal],openArray[T]	system: `[]=`[T; U, V: Ordinal](s: var seq[T]; x: HSlice[U, V]; b: openArray[T])	
+`[]`	system.html#[],openArray[T],BackwardsIndex	system: `[]`[T](s: openArray[T]; i: BackwardsIndex): T	
+`[]`	system.html#[],array[Idx,T],BackwardsIndex	system: `[]`[Idx, T](a: array[Idx, T]; i: BackwardsIndex): T	
+`[]`	system.html#[],string,BackwardsIndex	system: `[]`(s: string; i: BackwardsIndex): char	
+`[]`	system.html#[],openArray[T],BackwardsIndex_2	system: `[]`[T](s: var openArray[T]; i: BackwardsIndex): var T	
+`[]`	system.html#[],array[Idx,T],BackwardsIndex_2	system: `[]`[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): var T	
+`[]`	system.html#[],string,BackwardsIndex_2	system: `[]`(s: var string; i: BackwardsIndex): var char	
+`[]=`	system.html#[]=,openArray[T],BackwardsIndex,T	system: `[]=`[T](s: var openArray[T]; i: BackwardsIndex; x: T)	
+`[]=`	system.html#[]=,array[Idx,T],BackwardsIndex,T	system: `[]=`[Idx, T](a: var array[Idx, T]; i: BackwardsIndex; x: T)	
+`[]=`	system.html#[]=,string,BackwardsIndex,char	system: `[]=`(s: var string; i: BackwardsIndex; x: char)	
+slurp	system.html#slurp,string	system: slurp(filename: string): string	
+staticRead	system.html#staticRead,string	system: staticRead(filename: string): string	
+gorge	system.html#gorge,string,string,string	system: gorge(command: string; input = &quot;&quot;; cache = &quot;&quot;): string	
+staticExec	system.html#staticExec,string,string,string	system: staticExec(command: string; input = &quot;&quot;; cache = &quot;&quot;): string	
+gorgeEx	system.html#gorgeEx,string,string,string	system: gorgeEx(command: string; input = &quot;&quot;; cache = &quot;&quot;): tuple[output: string,\n    exitCode: int]	
+`+=`	system.html#+=,T,T_2	system: `+=`[T: float | float32 | float64](x: var T; y: T)	
+`-=`	system.html#-=,T,T_2	system: `-=`[T: float | float32 | float64](x: var T; y: T)	
+`*=`	system.html#*=,T,T_2	system: `*=`[T: float | float32 | float64](x: var T; y: T)	
+`/=`	system.html#/=,float64,float64	system: `/=`(x: var float64; y: float64)	
+`/=`	system.html#/=,T,T	system: `/=`[T: float | float32](x: var T; y: T)	
+`&amp;=`	system.html#&=,string,string	system: `&amp;=`(x: var string; y: string)	
+`&amp;=`	system.html#&=.t,typed,typed	system: `&amp;=`(x, y: typed)	
+currentSourcePath	system.html#currentSourcePath.t	system: currentSourcePath(): string	
+rangeCheck	system.html#rangeCheck.t	system: rangeCheck(cond)	
+shallow	system.html#shallow,seq[T]	system: shallow[T](s: var seq[T])	
+shallow	system.html#shallow,string	system: shallow(s: var string)	
+NimNode	system.html#NimNode	system: NimNode	
+varargsLen	system.html#varargsLen.m,varargs[untyped]	system: varargsLen(x: varargs[untyped]): int	
+insert	system.html#insert,string,string	system: insert(x: var string; item: string; i = 0.Natural)	
+addEscapedChar	system.html#addEscapedChar,string,char	system: addEscapedChar(s: var string; c: char)	
+addQuoted	system.html#addQuoted,string,T	system: addQuoted[T](s: var string; x: T)	
+locals	system.html#locals	system: locals(): RootObj	
+deepCopy	system.html#deepCopy,T,T	system: deepCopy[T](x: var T; y: T)	
+deepCopy	system.html#deepCopy,T	system: deepCopy[T](y: T): T	
+procCall	system.html#procCall,untyped	system: procCall(x: untyped)	
+`==`	system.html#==,cstring,cstring	system: `==`(x, y: cstring): bool	
+`==`	system.html#==,string,	system: `==`(x: string; y: typeof(nil) | typeof(nil)): bool	
+`==`	system.html#==,,string	system: `==`(x: typeof(nil) | typeof(nil); y: string): bool	
+closureScope	system.html#closureScope.t,untyped	system: closureScope(body: untyped): untyped	
+once	system.html#once.t,untyped	system: once(body: untyped): untyped	
+substr	system.html#substr,string,int,int	system: substr(s: string; first, last: int): string	
+substr	system.html#substr,string,int	system: substr(s: string; first = 0): string	
+toOpenArray	system.html#toOpenArray,ptr.UncheckedArray[T],int,int	system: toOpenArray[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T]	
+toOpenArray	system.html#toOpenArray,cstring,int,int	system: toOpenArray(x: cstring; first, last: int): openArray[char]	
+toOpenArrayByte	system.html#toOpenArrayByte,cstring,int,int	system: toOpenArrayByte(x: cstring; first, last: int): openArray[byte]	
+toOpenArray	system.html#toOpenArray,seq[T],int,int	system: toOpenArray[T](x: seq[T]; first, last: int): openArray[T]	
+toOpenArray	system.html#toOpenArray,openArray[T],int,int	system: toOpenArray[T](x: openArray[T]; first, last: int): openArray[T]	
+toOpenArray	system.html#toOpenArray,array[I,T],I,I	system: toOpenArray[I, T](x: array[I, T]; first, last: I): openArray[T]	
+toOpenArray	system.html#toOpenArray,string,int,int	system: toOpenArray(x: string; first, last: int): openArray[char]	
+toOpenArrayByte	system.html#toOpenArrayByte,string,int,int	system: toOpenArrayByte(x: string; first, last: int): openArray[byte]	
+toOpenArrayByte	system.html#toOpenArrayByte,openArray[char],int,int	system: toOpenArrayByte(x: openArray[char]; first, last: int): openArray[byte]	
+toOpenArrayByte	system.html#toOpenArrayByte,seq[char],int,int	system: toOpenArrayByte(x: seq[char]; first, last: int): openArray[byte]	
+ForLoopStmt	system.html#ForLoopStmt	system: ForLoopStmt	
+prepareMutation	system.html#prepareMutation,string	system: prepareMutation(s: var string)	
+for-loop macro	system.html#forminusloop-macro_1	Module system	
+out of memory	system.html#out-of-memory_1	Module system	
+runnable example	system.html#runnable-example_1	Module system	
+INT_MAX	system.html#int-max_1	Module system	
+MAX_INT	system.html#max-int_1	Module system	
+INT_MIN	system.html#int-min_1	Module system	
+MIN_INT	system.html#min-int_1	Module system	
+shallow copy	system.html#shallow-copy_1	Module system	
+destructor	system.html#destructor_1	Module system	
+sink	system.html#sink_1	Module system	
+trace	system.html#trace_1	Module system	
+slice	system.html#slice_1	Module system	
+slice	system.html#slice_2	Module system	
+caller info	system.html#caller-info_1	Module system	
+splice	system.html#splice_1	Module system	
+splice	system.html#splice_2	Module system	
+resource	system.html#resource_1	Module system	
+shallow	system.html#shallow_1	Module system	
+shallow	system.html#shallow_2	Module system	
+method	system.html#method_1	Module system	
+super	system.html#super_1	Module system	
+cut	system.html#cut_1	Module system	
+limit	system.html#limit_1	Module system	
+OpenMP	system.html#openmp_1	Module system	
+OpenMP	system.html#openmp_2	Module system	
+roof	system.html#roof_1	Module system	
+System module	system.html#system-module	 System module	
+Strings and characters	system.html#system-module-strings-and-characters	  Strings and characters	
+Seqs	system.html#system-module-seqs	  Seqs	
+Sets	system.html#system-module-sets	  Sets	
+Numbers	system.html#system-module-numbers	  Numbers	
+Ordinals	system.html#system-module-ordinals	  Ordinals	
+Misc	system.html#system-module-misc	  Misc	

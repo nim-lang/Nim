@@ -1,0 +1,71 @@
+buildOS	nimscript.html#buildOS	nimscript: buildOS	
+buildCPU	nimscript.html#buildCPU	nimscript: buildCPU	
+getCurrentDir	nimscript.html#getCurrentDir	nimscript: getCurrentDir(): string	
+paramStr	nimscript.html#paramStr,int	nimscript: paramStr(i: int): string	
+paramCount	nimscript.html#paramCount	nimscript: paramCount(): int	
+switch	nimscript.html#switch,string,string	nimscript: switch(key: string; val = &quot;&quot;)	
+warning	nimscript.html#warning,string,bool	nimscript: warning(name: string; val: bool)	
+hint	nimscript.html#hint,string,bool	nimscript: hint(name: string; val: bool)	
+patchFile	nimscript.html#patchFile,string,string,string	nimscript: patchFile(package, filename, replacement: string)	
+getCommand	nimscript.html#getCommand	nimscript: getCommand(): string	
+setCommand	nimscript.html#setCommand,string,string	nimscript: setCommand(cmd: string; project = &quot;&quot;)	
+cmpic	nimscript.html#cmpic,string,string	nimscript: cmpic(a, b: string): int	
+getEnv	nimscript.html#getEnv,string,string	nimscript: getEnv(key: string; default = &quot;&quot;): string	
+existsEnv	nimscript.html#existsEnv,string	nimscript: existsEnv(key: string): bool	
+putEnv	nimscript.html#putEnv,string,string	nimscript: putEnv(key, val: string)	
+delEnv	nimscript.html#delEnv,string	nimscript: delEnv(key: string)	
+fileExists	nimscript.html#fileExists,string	nimscript: fileExists(filename: string): bool	
+dirExists	nimscript.html#dirExists,string	nimscript: dirExists(dir: string): bool	
+existsFile	nimscript.html#existsFile.t,varargs[untyped]	nimscript: existsFile(args: varargs[untyped]): untyped	
+existsDir	nimscript.html#existsDir.t,varargs[untyped]	nimscript: existsDir(args: varargs[untyped]): untyped	
+selfExe	nimscript.html#selfExe	nimscript: selfExe(): string	
+toExe	nimscript.html#toExe,string	nimscript: toExe(filename: string): string	
+toDll	nimscript.html#toDll,string	nimscript: toDll(filename: string): string	
+`--`	nimscript.html#--.t,untyped,untyped	nimscript: `--`(key, val: untyped)	
+`--`	nimscript.html#--.t,untyped	nimscript: `--`(key: untyped)	
+ScriptMode	nimscript.html#ScriptMode	nimscript: ScriptMode	
+mode	nimscript.html#mode	nimscript: mode	
+listDirs	nimscript.html#listDirs,string	nimscript: listDirs(dir: string): seq[string]	
+listFiles	nimscript.html#listFiles,string	nimscript: listFiles(dir: string): seq[string]	
+rmDir	nimscript.html#rmDir,string	nimscript: rmDir(dir: string; checkDir = false)	
+rmFile	nimscript.html#rmFile,string	nimscript: rmFile(file: string)	
+mkDir	nimscript.html#mkDir,string	nimscript: mkDir(dir: string)	
+mvFile	nimscript.html#mvFile,string,string	nimscript: mvFile(from, to: string)	
+mvDir	nimscript.html#mvDir,string,string	nimscript: mvDir(from, to: string)	
+cpFile	nimscript.html#cpFile,string,string	nimscript: cpFile(from, to: string)	
+cpDir	nimscript.html#cpDir,string,string	nimscript: cpDir(from, to: string)	
+exec	nimscript.html#exec,string	nimscript: exec(command: string)	
+exec	nimscript.html#exec,string,string,string	nimscript: exec(command: string; input: string; cache = &quot;&quot;)	
+selfExec	nimscript.html#selfExec,string	nimscript: selfExec(command: string)	
+put	nimscript.html#put,string,string	nimscript: put(key, value: string)	
+get	nimscript.html#get,string	nimscript: get(key: string): string	
+exists	nimscript.html#exists,string	nimscript: exists(key: string): bool	
+nimcacheDir	nimscript.html#nimcacheDir	nimscript: nimcacheDir(): string	
+projectName	nimscript.html#projectName	nimscript: projectName(): string	
+projectDir	nimscript.html#projectDir	nimscript: projectDir(): string	
+projectPath	nimscript.html#projectPath	nimscript: projectPath(): string	
+thisDir	nimscript.html#thisDir	nimscript: thisDir(): string	
+cd	nimscript.html#cd,string	nimscript: cd(dir: string)	
+findExe	nimscript.html#findExe,string	nimscript: findExe(bin: string): string	
+withDir	nimscript.html#withDir.t,string,untyped	nimscript: withDir(dir: string; body: untyped): untyped	
+cppDefine	nimscript.html#cppDefine,string	nimscript: cppDefine(define: string)	
+readLineFromStdin	nimscript.html#readLineFromStdin	nimscript: readLineFromStdin(): string	
+readAllFromStdin	nimscript.html#readAllFromStdin	nimscript: readAllFromStdin(): string	
+task	nimscript.html#task.t,untyped,string,untyped	nimscript: task(name: untyped; description: string; body: untyped): untyped	
+packageName	nimscript.html#packageName	nimscript: packageName	
+version	nimscript.html#version	nimscript: version	
+author	nimscript.html#author	nimscript: author	
+description	nimscript.html#description	nimscript: description	
+license	nimscript.html#license	nimscript: license	
+srcDir	nimscript.html#srcDir	nimscript: srcDir	
+binDir	nimscript.html#binDir	nimscript: binDir	
+backend	nimscript.html#backend	nimscript: backend	
+skipDirs	nimscript.html#skipDirs	nimscript: skipDirs	
+skipFiles	nimscript.html#skipFiles	nimscript: skipFiles	
+skipExt	nimscript.html#skipExt	nimscript: skipExt	
+installDirs	nimscript.html#installDirs	nimscript: installDirs	
+installFiles	nimscript.html#installFiles	nimscript: installFiles	
+installExt	nimscript.html#installExt	nimscript: installExt	
+bin	nimscript.html#bin	nimscript: bin	
+requiresData	nimscript.html#requiresData	nimscript: requiresData	
+requires	nimscript.html#requires,varargs[string]	nimscript: requires(deps: varargs[string])	

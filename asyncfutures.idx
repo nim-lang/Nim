@@ -1,0 +1,32 @@
+FutureBase	asyncfutures.html#FutureBase	asyncfutures: FutureBase	
+Future	asyncfutures.html#Future	asyncfutures: Future	
+FutureVar	asyncfutures.html#FutureVar	asyncfutures: FutureVar	
+FutureError	asyncfutures.html#FutureError	asyncfutures: FutureError	
+isFutureLoggingEnabled	asyncfutures.html#isFutureLoggingEnabled	asyncfutures: isFutureLoggingEnabled	
+NimAsyncContinueSuffix	asyncfutures.html#NimAsyncContinueSuffix	asyncfutures: NimAsyncContinueSuffix	
+getCallSoonProc	asyncfutures.html#getCallSoonProc	asyncfutures: getCallSoonProc(): (proc (cbproc: proc ()) {.gcsafe.})	
+setCallSoonProc	asyncfutures.html#setCallSoonProc	asyncfutures: setCallSoonProc(p: (proc (cbproc: proc ()) {.gcsafe.}))	
+callSoon	asyncfutures.html#callSoon,proc)	asyncfutures: callSoon(cbproc: proc ())	
+newFuture	asyncfutures.html#newFuture,string	asyncfutures: newFuture[T](fromProc: string = &quot;unspecified&quot;): owned(Future[T])	
+newFutureVar	asyncfutures.html#newFutureVar,string	asyncfutures: newFutureVar[T](fromProc = &quot;unspecified&quot;): owned(FutureVar[T])	
+clean	asyncfutures.html#clean,FutureVar[T]	asyncfutures: clean[T](future: FutureVar[T])	
+complete	asyncfutures.html#complete,Future[T],T	asyncfutures: complete[T](future: Future[T]; val: T)	
+complete	asyncfutures.html#complete,Future[void]	asyncfutures: complete(future: Future[void]; val = Future[void].default)	
+complete	asyncfutures.html#complete,FutureVar[T]	asyncfutures: complete[T](future: FutureVar[T])	
+complete	asyncfutures.html#complete,FutureVar[T],T	asyncfutures: complete[T](future: FutureVar[T]; val: T)	
+fail	asyncfutures.html#fail,Future[T],ref.Exception	asyncfutures: fail[T](future: Future[T]; error: ref Exception)	
+clearCallbacks	asyncfutures.html#clearCallbacks,FutureBase	asyncfutures: clearCallbacks(future: FutureBase)	
+addCallback	asyncfutures.html#addCallback,FutureBase,proc)	asyncfutures: addCallback(future: FutureBase; cb: proc () {.closure, gcsafe.})	
+addCallback	asyncfutures.html#addCallback,Future[T],proc(Future[T])	asyncfutures: addCallback[T](future: Future[T];\n               cb: proc (future: Future[T]) {.closure, gcsafe.})	
+callback=	asyncfutures.html#callback=,FutureBase,proc)	asyncfutures: callback=(future: FutureBase; cb: proc () {.closure, gcsafe.})	
+callback=	asyncfutures.html#callback=,Future[T],proc(Future[T])	asyncfutures: callback=[T](future: Future[T]; cb: proc (future: Future[T]) {.closure, gcsafe.})	
+`$`	asyncfutures.html#$,seq[StackTraceEntry]	asyncfutures: `$`(stackTraceEntries: seq[StackTraceEntry]): string	
+read	asyncfutures.html#read	asyncfutures: read[T](future: Future[T] | FutureVar[T]): T	
+readError	asyncfutures.html#readError,Future[T]	asyncfutures: readError[T](future: Future[T]): ref Exception	
+mget	asyncfutures.html#mget,FutureVar[T]	asyncfutures: mget[T](future: FutureVar[T]): var T	
+finished	asyncfutures.html#finished	asyncfutures: finished(future: FutureBase | FutureVar): bool	
+failed	asyncfutures.html#failed,FutureBase	asyncfutures: failed(future: FutureBase): bool	
+asyncCheck	asyncfutures.html#asyncCheck,Future[T]	asyncfutures: asyncCheck[T](future: Future[T])	
+`and`	asyncfutures.html#and,Future[T],Future[Y]	asyncfutures: `and`[T, Y](fut1: Future[T]; fut2: Future[Y]): Future[void]	
+`or`	asyncfutures.html#or,Future[T],Future[Y]	asyncfutures: `or`[T, Y](fut1: Future[T]; fut2: Future[Y]): Future[void]	
+all	asyncfutures.html#all,varargs[Future[T]]	asyncfutures: all[T](futs: varargs[Future[T]]): auto	

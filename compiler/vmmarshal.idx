@@ -1,0 +1,2 @@
+storeAny	vmmarshal.html#storeAny,string,PType,PNode,ConfigRef	vmmarshal: storeAny(s: var string; t: PType; a: PNode; conf: ConfigRef)	
+loadAny	vmmarshal.html#loadAny,string,PType,IdentCache,ConfigRef,IdGenerator	vmmarshal: loadAny(s: string; t: PType; cache: IdentCache; conf: ConfigRef;\n        idgen: IdGenerator): PNode	

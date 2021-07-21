@@ -1,0 +1,9 @@
+ReadSocketStream	socketstreams.html#ReadSocketStream	socketstreams: ReadSocketStream	
+ReadSocketStreamObj	socketstreams.html#ReadSocketStreamObj	socketstreams: ReadSocketStreamObj	
+WriteSocketStream	socketstreams.html#WriteSocketStream	socketstreams: WriteSocketStream	
+WriteSocketStreamObj	socketstreams.html#WriteSocketStreamObj	socketstreams: WriteSocketStreamObj	
+newReadSocketStream	socketstreams.html#newReadSocketStream,Socket	socketstreams: newReadSocketStream(s: Socket): owned ReadSocketStream	
+resetStream	socketstreams.html#resetStream,ReadSocketStream	socketstreams: resetStream(s: ReadSocketStream)	
+newWriteSocketStream	socketstreams.html#newWriteSocketStream,Socket	socketstreams: newWriteSocketStream(s: Socket): owned WriteSocketStream	
+resetStream	socketstreams.html#resetStream,WriteSocketStream	socketstreams: resetStream(s: WriteSocketStream)	
+Examples	socketstreams.html#examples	 Examples	

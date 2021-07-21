@@ -1,0 +1,10 @@
+RawTypeMismatchError	errorhandling.html#RawTypeMismatchError	ErrorKind.RawTypeMismatchError	
+ExpressionCannotBeCalled	errorhandling.html#ExpressionCannotBeCalled	ErrorKind.ExpressionCannotBeCalled	
+CustomError	errorhandling.html#CustomError	ErrorKind.CustomError	
+WrongNumberOfArguments	errorhandling.html#WrongNumberOfArguments	ErrorKind.WrongNumberOfArguments	
+AmbiguousCall	errorhandling.html#AmbiguousCall	ErrorKind.AmbiguousCall	
+ErrorKind	errorhandling.html#ErrorKind	errorhandling: ErrorKind	
+errorSubNode	errorhandling.html#errorSubNode,PNode	errorhandling: errorSubNode(n: PNode): PNode	
+newError	errorhandling.html#newError,PNode,ErrorKind,varargs[PNode]	errorhandling: newError(wrongNode: PNode; k: ErrorKind; args: varargs[PNode]): PNode	
+newError	errorhandling.html#newError,PNode,string	errorhandling: newError(wrongNode: PNode; msg: string): PNode	
+errorToString	errorhandling.html#errorToString,ConfigRef,PNode	errorhandling: errorToString(config: ConfigRef; n: PNode): string	

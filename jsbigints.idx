@@ -1,0 +1,36 @@
+JsBigInt	jsbigints.html#JsBigInt	jsbigints: JsBigInt	
+big	jsbigints.html#big,SomeInteger	jsbigints: big(integer: SomeInteger): JsBigInt	
+`'big`	jsbigints.html#'big,cstring	jsbigints: `&apos;big`(num: cstring): JsBigInt	
+big	jsbigints.html#big,cstring	jsbigints: big(integer: cstring): JsBigInt	
+toCstring	jsbigints.html#toCstring,JsBigInt,	jsbigints: toCstring(this: JsBigInt; radix: 2 .. 36): cstring	
+toCstring	jsbigints.html#toCstring,JsBigInt	jsbigints: toCstring(this: JsBigInt): cstring	
+`$`	jsbigints.html#$,JsBigInt	jsbigints: `$`(this: JsBigInt): string	
+wrapToInt	jsbigints.html#wrapToInt,JsBigInt,Natural	jsbigints: wrapToInt(this: JsBigInt; bits: Natural): JsBigInt	
+wrapToUint	jsbigints.html#wrapToUint,JsBigInt,Natural	jsbigints: wrapToUint(this: JsBigInt; bits: Natural): JsBigInt	
+toNumber	jsbigints.html#toNumber,JsBigInt	jsbigints: toNumber(this: JsBigInt): BiggestInt	
+`+`	jsbigints.html#+,JsBigInt,JsBigInt	jsbigints: `+`(x, y: JsBigInt): JsBigInt	
+`-`	jsbigints.html#-,JsBigInt,JsBigInt	jsbigints: `-`(x, y: JsBigInt): JsBigInt	
+`*`	jsbigints.html#*,JsBigInt,JsBigInt	jsbigints: `*`(x, y: JsBigInt): JsBigInt	
+`div`	jsbigints.html#div,JsBigInt,JsBigInt	jsbigints: `div`(x, y: JsBigInt): JsBigInt	
+`mod`	jsbigints.html#mod,JsBigInt,JsBigInt	jsbigints: `mod`(x, y: JsBigInt): JsBigInt	
+`&lt;`	jsbigints.html#<,JsBigInt,JsBigInt	jsbigints: `&lt;`(x, y: JsBigInt): bool	
+`&lt;=`	jsbigints.html#<=,JsBigInt,JsBigInt	jsbigints: `&lt;=`(x, y: JsBigInt): bool	
+`==`	jsbigints.html#==,JsBigInt,JsBigInt	jsbigints: `==`(x, y: JsBigInt): bool	
+`**`	jsbigints.html#**,JsBigInt,JsBigInt	jsbigints: `**`(x, y: JsBigInt): JsBigInt	
+`and`	jsbigints.html#and,JsBigInt,JsBigInt	jsbigints: `and`(x, y: JsBigInt): JsBigInt	
+`or`	jsbigints.html#or,JsBigInt,JsBigInt	jsbigints: `or`(x, y: JsBigInt): JsBigInt	
+`xor`	jsbigints.html#xor,JsBigInt,JsBigInt	jsbigints: `xor`(x, y: JsBigInt): JsBigInt	
+`shl`	jsbigints.html#shl,JsBigInt,JsBigInt	jsbigints: `shl`(a, b: JsBigInt): JsBigInt	
+`shr`	jsbigints.html#shr,JsBigInt,JsBigInt	jsbigints: `shr`(a, b: JsBigInt): JsBigInt	
+`-`	jsbigints.html#-,JsBigInt	jsbigints: `-`(this: JsBigInt): JsBigInt	
+inc	jsbigints.html#inc,JsBigInt	jsbigints: inc(this: var JsBigInt)	
+dec	jsbigints.html#dec,JsBigInt	jsbigints: dec(this: var JsBigInt)	
+inc	jsbigints.html#inc,JsBigInt,JsBigInt	jsbigints: inc(this: var JsBigInt; amount: JsBigInt)	
+dec	jsbigints.html#dec,JsBigInt,JsBigInt	jsbigints: dec(this: var JsBigInt; amount: JsBigInt)	
+`+=`	jsbigints.html#+=,JsBigInt,JsBigInt	jsbigints: `+=`(x: var JsBigInt; y: JsBigInt)	
+`-=`	jsbigints.html#-=,JsBigInt,JsBigInt	jsbigints: `-=`(x: var JsBigInt; y: JsBigInt)	
+`*=`	jsbigints.html#*=,JsBigInt,JsBigInt	jsbigints: `*=`(x: var JsBigInt; y: JsBigInt)	
+`/=`	jsbigints.html#/=,JsBigInt,JsBigInt	jsbigints: `/=`(x: var JsBigInt; y: JsBigInt)	
+`+`	jsbigints.html#+,JsBigInt	jsbigints: `+`(_: JsBigInt): JsBigInt	
+low	jsbigints.html#low,typedesc[JsBigInt]	jsbigints: low(_: typedesc[JsBigInt]): JsBigInt	
+high	jsbigints.html#high,typedesc[JsBigInt]	jsbigints: high(_: typedesc[JsBigInt]): JsBigInt	

@@ -1,0 +1,433 @@
+Nim Manual	manual.html
+About this document	manual.html#about-this-document	 About this document	
+Definitions	manual.html#definitions	 Definitions	
+locations	manual.html#locations_1	Definitions	
+type	manual.html#type_1	Definitions	
+static type	manual.html#static-type_1	Definitions	
+dynamic type	manual.html#dynamic-type_1	Definitions	
+identifier	manual.html#identifier_1	Definitions	
+scope	manual.html#scope_1	Definitions	
+l-values	manual.html#lminusvalues_1	Definitions	
+program	manual.html#program_1	Definitions	
+source files	manual.html#source-files_1	Definitions	
+compiler	manual.html#compiler_1	Definitions	
+executable	manual.html#executable_1	Definitions	
+compile-time	manual.html#compileminustime_1	Definitions	
+runtime	manual.html#runtime_1	Definitions	
+abstract syntax tree	manual.html#abstract-syntax-tree_1	Definitions	
+AST	manual.html#ast_1	Definitions	
+semantic analysis	manual.html#semantic-analysis_1	Definitions	
+static error	manual.html#static-error_1	Definitions	
+panic	manual.html#panic_1	Definitions	
+runtime checks	manual.html#runtime-checks_1	Definitions	
+unchecked runtime error	manual.html#unchecked-runtime-error_1	Definitions	
+safe	manual.html#safe_1	Definitions	
+constant expression	manual.html#constant-expression_1	Definitions	
+Lexical Analysis	manual.html#lexical-analysis	 Lexical Analysis	
+Encoding	manual.html#lexical-analysis-encoding	  Encoding	
+Indentation	manual.html#lexical-analysis-indentation	  Indentation	
+indentation sensitive	manual.html#indentation-sensitive_1	Indentation	
+Comments	manual.html#lexical-analysis-comments	  Comments	
+comment pieces	manual.html#comment-pieces_1	Comments	
+Documentation comments	manual.html#documentation-comments_1	Comments	
+Multiline comments	manual.html#lexical-analysis-multiline-comments	  Multiline comments	
+Identifiers &amp; Keywords	manual.html#lexical-analysis-identifiers-amp-keywords	  Identifiers &amp; Keywords	
+Identifier equality	manual.html#lexical-analysis-identifier-equality	  Identifier equality	
+partial case-insensitivity	manual.html#partial-caseminusinsensitivity_1	Identifier equality	
+style-insensitive	manual.html#styleminusinsensitive_1	Identifier equality	
+Keywords as identifiers	manual.html#lexical-analysis-keywords-as-identifiers	  Keywords as identifiers	
+String literals	manual.html#lexical-analysis-string-literals	  String literals	
+escape sequences	manual.html#escape-sequences_1	String literals	
+carriage return	manual.html#carriage-return_1	String literals	
+line feed	manual.html#line-feed_1	String literals	
+newline	manual.html#newline_1	String literals	
+form feed	manual.html#form-feed_1	String literals	
+tabulator	manual.html#tabulator_1	String literals	
+vertical tabulator	manual.html#vertical-tabulator_1	String literals	
+backslash	manual.html#backslash_1	String literals	
+quotation mark	manual.html#quotation-mark_1	String literals	
+apostrophe	manual.html#apostrophe_1	String literals	
+character with decimal value d	manual.html#character-with-decimal-value-d_1	String literals	
+alert	manual.html#alert_1	String literals	
+backspace	manual.html#backspace_1	String literals	
+escape	manual.html#escape_1	String literals	
+[ESC]	manual.html#esc_1	String literals	
+character with hex value HH	manual.html#character-with-hex-value-hh_1	String literals	
+unicode codepoint with hex value HHHH	manual.html#unicode-codepoint-with-hex-value-hhhh_1	String literals	
+unicode codepoint	manual.html#unicode-codepoint_1	String literals	
+Triple quoted string literals	manual.html#lexical-analysis-triple-quoted-string-literals	  Triple quoted string literals	
+Raw string literals	manual.html#lexical-analysis-raw-string-literals	  Raw string literals	
+Generalized raw string literals	manual.html#lexical-analysis-generalized-raw-string-literals	  Generalized raw string literals	
+Character literals	manual.html#lexical-analysis-character-literals	  Character literals	
+newline	manual.html#newline_2	Character literals	
+escape sequences	manual.html#escape-sequences_2	Character literals	
+carriage return	manual.html#carriage-return_2	Character literals	
+line feed	manual.html#line-feed_2	Character literals	
+form feed	manual.html#form-feed_2	Character literals	
+tabulator	manual.html#tabulator_2	Character literals	
+vertical tabulator	manual.html#vertical-tabulator_2	Character literals	
+backslash	manual.html#backslash_2	Character literals	
+quotation mark	manual.html#quotation-mark_2	Character literals	
+apostrophe	manual.html#apostrophe_2	Character literals	
+character with decimal value d	manual.html#character-with-decimal-value-d_2	Character literals	
+alert	manual.html#alert_2	Character literals	
+backspace	manual.html#backspace_2	Character literals	
+escape	manual.html#escape_2	Character literals	
+[ESC]	manual.html#esc_2	Character literals	
+character with hex value HH	manual.html#character-with-hex-value-hh_2	Character literals	
+Numeric Literals	manual.html#lexical-analysis-numeric-literals	  Numeric Literals	
+type suffix	manual.html#type-suffix_1	Numeric Literals	
+Custom Numeric Literals	manual.html#numeric-literals-custom-numeric-literals	   Custom Numeric Literals	
+Operators	manual.html#lexical-analysis-operators	  Operators	
+Other tokens	manual.html#lexical-analysis-other-tokens	  Other tokens	
+slice	manual.html#slice_1	Other tokens	
+Syntax	manual.html#syntax	 Syntax	
+Associativity	manual.html#syntax-associativity	  Associativity	
+Precedence	manual.html#syntax-precedence	  Precedence	
+sigil-like	manual.html#sigilminuslike_1	Precedence	
+arrow like	manual.html#arrow-like_1	Precedence	
+Grammar	manual.html#syntax-grammar	  Grammar	
+Order of evaluation	manual.html#order-of-evaluation	 Order of evaluation	
+Constants and Constant Expressions	manual.html#constants-and-constant-expressions	 Constants and Constant Expressions	
+constant	manual.html#constant_1	Constants and Constant Expressions	
+Restrictions on Compile-Time Execution	manual.html#restrictions-on-compileminustime-execution	 Restrictions on Compile-Time Execution	
+Types	manual.html#types	 Types	
+Ordinal types	manual.html#types-ordinal-types	  Ordinal types	
+Pre-defined integer types	manual.html#types-preminusdefined-integer-types	  Pre-defined integer types	
+unsigned integer	manual.html#unsigned-integer_1	Pre-defined integer types	
+Automatic type conversion	manual.html#automatic-type-conversion_1	Pre-defined integer types	
+narrowing type conversion	manual.html#narrowing-type-conversion_1	Pre-defined integer types	
+widening type conversion	manual.html#widening-type-conversion_1	Pre-defined integer types	
+Subrange types	manual.html#types-subrange-types	  Subrange types	
+Pre-defined floating-point types	manual.html#types-preminusdefined-floatingminuspoint-types	  Pre-defined floating-point types	
+FloatInvalidOpDefect	manual.html#floatinvalidopdefect_1	Pre-defined floating-point types	
+FloatDivByZeroDefect	manual.html#floatdivbyzerodefect_1	Pre-defined floating-point types	
+FloatOverflowDefect	manual.html#floatoverflowdefect_1	Pre-defined floating-point types	
+FloatUnderflowDefect	manual.html#floatunderflowdefect_1	Pre-defined floating-point types	
+FloatInexactDefect	manual.html#floatinexactdefect_1	Pre-defined floating-point types	
+FloatingPointDefect	manual.html#floatingpointdefect_1	Pre-defined floating-point types	
+nanChecks	manual.html#nanchecks_1	Pre-defined floating-point types	
+infChecks	manual.html#infchecks_1	Pre-defined floating-point types	
+floatChecks	manual.html#floatchecks_1	Pre-defined floating-point types	
+Boolean type	manual.html#types-boolean-type	  Boolean type	
+bool	manual.html#bool_1	Boolean type	
+Character type	manual.html#types-character-type	  Character type	
+Enumeration types	manual.html#types-enumeration-types	  Enumeration types	
+String type	manual.html#types-string-type	  String type	
+cstring type	manual.html#types-cstring-type	  cstring type	
+Structured types	manual.html#types-structured-types	  Structured types	
+Array and sequence types	manual.html#types-array-and-sequence-types	  Array and sequence types	
+Open arrays	manual.html#types-open-arrays	  Open arrays	
+openarray	manual.html#openarray_1	Open arrays	
+Varargs	manual.html#types-varargs	  Varargs	
+Unchecked arrays	manual.html#types-unchecked-arrays	  Unchecked arrays	
+Tuples and object types	manual.html#types-tuples-and-object-types	  Tuples and object types	
+Object construction	manual.html#types-object-construction	  Object construction	
+object construction expression	manual.html#object-construction-expression_1	Object construction	
+Object variants	manual.html#types-object-variants	  Object variants	
+discriminator	manual.html#discriminator_1	Object variants	
+Set type	manual.html#types-set-type	  Set type	
+Bit fields	manual.html#set-type-bit-fields	   Bit fields	
+Reference and pointer types	manual.html#types-reference-and-pointer-types	  Reference and pointer types	
+aliasing	manual.html#aliasing_1	Reference and pointer types	
+traced	manual.html#traced_1	Reference and pointer types	
+untraced	manual.html#untraced_1	Reference and pointer types	
+Nil	manual.html#types-nil	  Nil	
+Mixing GC'ed memory with ptr	manual.html#types-mixing-gc-ed-memory-with-nimptr	  Mixing GC'ed memory with <tt class="docutils literal"><span class="pre"><span class="Keyword">ptr</span></span></tt>	
+Procedural type	manual.html#types-procedural-type	  Procedural type	
+functional	manual.html#functional_1	Procedural type	
+calling conventions	manual.html#calling-conventions_1	Procedural type	
+nimcall	manual.html#nimcall_1	Procedural type	
+closure	manual.html#closure_1	Procedural type	
+stdcall	manual.html#stdcall_1	Procedural type	
+cdecl	manual.html#cdecl_1	Procedural type	
+safecall	manual.html#safecall_1	Procedural type	
+inline	manual.html#inline_1	Procedural type	
+fastcall	manual.html#fastcall_1	Procedural type	
+thiscall	manual.html#thiscall_1	Procedural type	
+syscall	manual.html#syscall_1	Procedural type	
+noconv	manual.html#noconv_1	Procedural type	
+Distinct type	manual.html#types-distinct-type	  Distinct type	
+base type	manual.html#base-type_1	Distinct type	
+Modeling currencies	manual.html#distinct-type-modeling-currencies	   Modeling currencies	
+units	manual.html#units_1	Modeling currencies	
+borrow	manual.html#borrow_1	Modeling currencies	
+Avoiding SQL injection attacks	manual.html#distinct-type-avoiding-sql-injection-attacks	   Avoiding SQL injection attacks	
+SQL injection attack	manual.html#sql-injection-attack_1	Avoiding SQL injection attacks	
+Auto type	manual.html#types-auto-type	  Auto type	
+Type relations	manual.html#type-relations	 Type relations	
+Type equality	manual.html#type-relations-type-equality	  Type equality	
+Type equality modulo type distinction	manual.html#type-relations-type-equality-modulo-type-distinction	  Type equality modulo type distinction	
+Subtype relation	manual.html#type-relations-subtype-relation	  Subtype relation	
+Convertible relation	manual.html#type-relations-convertible-relation	  Convertible relation	
+converter	manual.html#converter_1	Convertible relation	
+Assignment compatibility	manual.html#type-relations-assignment-compatibility	  Assignment compatibility	
+Overloading resolution	manual.html#overloading-resolution	 Overloading resolution	
+Overloading based on 'var T'	manual.html#overloading-resolution-overloading-based-on-var-t	  Overloading based on 'var T'	
+l-value	manual.html#lminusvalue_1	Overloading based on 'var T'	
+Lazy type resolution for untyped	manual.html#overloading-resolution-lazy-type-resolution-for-untyped	  Lazy type resolution for untyped	
+unresolved	manual.html#unresolved_1	Lazy type resolution for untyped	
+Varargs matching	manual.html#overloading-resolution-varargs-matching	  Varargs matching	
+iterable	manual.html#overloading-resolution-iterable	  iterable	
+Statements and expressions	manual.html#statements-and-expressions	 Statements and expressions	
+simple statements	manual.html#simple-statements_1	Statements and expressions	
+complex statements	manual.html#complex-statements_1	Statements and expressions	
+dangling else problem	manual.html#dangling-else-problem_1	Statements and expressions	
+Statement list expression	manual.html#statements-and-expressions-statement-list-expression	  Statement list expression	
+Discard statement	manual.html#statements-and-expressions-discard-statement	  Discard statement	
+discardable	manual.html#discardable_1	Discard statement	
+Void context	manual.html#statements-and-expressions-void-context	  Void context	
+Var statement	manual.html#statements-and-expressions-var-statement	  Var statement	
+noinit	manual.html#noinit_1	Var statement	
+requiresInit	manual.html#requiresinit_1	Var statement	
+control flow analysis	manual.html#control-flow-analysis_1	Var statement	
+Let statement	manual.html#statements-and-expressions-let-statement	  Let statement	
+single assignment	manual.html#single-assignment_1	Let statement	
+Tuple unpacking	manual.html#statements-and-expressions-tuple-unpacking	  Tuple unpacking	
+Const section	manual.html#statements-and-expressions-const-section	  Const section	
+Static statement/expression	manual.html#statements-and-expressions-static-statementslashexpression	  Static statement/expression	
+If statement	manual.html#statements-and-expressions-if-statement	  If statement	
+Case statement	manual.html#statements-and-expressions-case-statement	  Case statement	
+When statement	manual.html#statements-and-expressions-when-statement	  When statement	
+When nimvm statement	manual.html#statements-and-expressions-when-nimvm-statement	  When nimvm statement	
+Return statement	manual.html#statements-and-expressions-return-statement	  Return statement	
+result	manual.html#result_1	Return statement	
+Yield statement	manual.html#statements-and-expressions-yield-statement	  Yield statement	
+Block statement	manual.html#statements-and-expressions-block-statement	  Block statement	
+Break statement	manual.html#statements-and-expressions-break-statement	  Break statement	
+While statement	manual.html#statements-and-expressions-while-statement	  While statement	
+Continue statement	manual.html#statements-and-expressions-continue-statement	  Continue statement	
+Assembler statement	manual.html#statements-and-expressions-assembler-statement	  Assembler statement	
+Using statement	manual.html#statements-and-expressions-using-statement	  Using statement	
+If expression	manual.html#statements-and-expressions-if-expression	  If expression	
+When expression	manual.html#statements-and-expressions-when-expression	  When expression	
+Case expression	manual.html#statements-and-expressions-case-expression	  Case expression	
+Block expression	manual.html#statements-and-expressions-block-expression	  Block expression	
+Table constructor	manual.html#statements-and-expressions-table-constructor	  Table constructor	
+Type conversions	manual.html#statements-and-expressions-type-conversions	  Type conversions	
+Type casts	manual.html#statements-and-expressions-type-casts	  Type casts	
+The addr operator	manual.html#statements-and-expressions-the-addr-operator	  The addr operator	
+The unsafeAddr operator	manual.html#statements-and-expressions-the-unsafeaddr-operator	  The unsafeAddr operator	
+Procedures	manual.html#procedures	 Procedures	
+methods	manual.html#methods_1	Procedures	
+functions	manual.html#functions_1	Procedures	
+procedures	manual.html#procedures_1	Procedures	
+forward	manual.html#forward_1	Procedures	
+result	manual.html#result_2	Procedures	
+Operators	manual.html#operators_1	Procedures	
+Export marker	manual.html#procedures-export-marker	  Export marker	
+asterisk	manual.html#asterisk_1	Export marker	
+Method call syntax	manual.html#procedures-method-call-syntax	  Method call syntax	
+Properties	manual.html#procedures-properties	  Properties	
+setter	manual.html#setter_1	Properties	
+Command invocation syntax	manual.html#procedures-command-invocation-syntax	  Command invocation syntax	
+Closures	manual.html#procedures-closures	  Closures	
+Creating closures in loops	manual.html#closures-creating-closures-in-loops	   Creating closures in loops	
+Anonymous Procs	manual.html#procedures-anonymous-procs	  Anonymous Procs	
+Func	manual.html#procedures-func	  Func	
+noSideEffect	manual.html#nosideeffect_1	Func	
+Routines	manual.html#procedures-routines	  Routines	
+Type bound operators	manual.html#procedures-type-bound-operators	  Type bound operators	
+Nonoverloadable builtins	manual.html#procedures-nonoverloadable-builtins	  Nonoverloadable builtins	
+shadow	manual.html#shadow_1	Nonoverloadable builtins	
+Var parameters	manual.html#procedures-var-parameters	  Var parameters	
+tuple unpacking	manual.html#tuple-unpacking_1	Var parameters	
+Var return type	manual.html#procedures-var-return-type	  Var return type	
+Future directions	manual.html#var-return-type-future-directions	   Future directions	
+NRVO	manual.html#procedures-nrvo	  NRVO	
+result	manual.html#result_3	NRVO	
+NRVO	manual.html#nrvo_1	NRVO	
+Overloading of the subscript operator	manual.html#procedures-overloading-of-the-subscript-operator	  Overloading of the subscript operator	
+Methods	manual.html#methods	 Methods	
+base	manual.html#base_1	Methods	
+Multi-methods	manual.html#methods-multiminusmethods	  Multi-methods	
+Inhibit dynamic method resolution via procCall	manual.html#methods-inhibit-dynamic-method-resolution-via-proccall	  Inhibit dynamic method resolution via procCall	
+system.procCall	manual.html#systemdotproccall_1	Inhibit dynamic method resolution via procCall	
+super	manual.html#super_1	Inhibit dynamic method resolution via procCall	
+Iterators and the for statement	manual.html#iterators-and-the-for-statement	 Iterators and the for statement	
+for	manual.html#for_1	Iterators and the for statement	
+iterator	manual.html#iterator_1	Iterators and the for statement	
+implicit block	manual.html#implicit-block_1	Iterators and the for statement	
+Implicit items/pairs invocations	manual.html#iterators-and-the-for-statement-implicit-itemsslashpairs-invocations	  Implicit items/pairs invocations	
+First-class iterators	manual.html#iterators-and-the-for-statement-firstminusclass-iterators	  First-class iterators	
+inline iterator	manual.html#inline-iterator_1	First-class iterators	
+closure iterator	manual.html#closure-iterator_1	First-class iterators	
+collaborative tasking	manual.html#collaborative-tasking_1	First-class iterators	
+Converters	manual.html#converters	 Converters	
+Type sections	manual.html#type-sections	 Type sections	
+Exception handling	manual.html#exception-handling	 Exception handling	
+Try statement	manual.html#exception-handling-try-statement	  Try statement	
+exception handlers	manual.html#exception-handlers_1	Try statement	
+except	manual.html#except_1	Try statement	
+finally	manual.html#finally_1	Try statement	
+Try expression	manual.html#exception-handling-try-expression	  Try expression	
+Except clauses	manual.html#exception-handling-except-clauses	  Except clauses	
+Custom exceptions	manual.html#exception-handling-custom-exceptions	  Custom exceptions	
+Defer statement	manual.html#exception-handling-defer-statement	  Defer statement	
+Raise statement	manual.html#exception-handling-raise-statement	  Raise statement	
+re-raised	manual.html#reminusraised_1	Raise statement	
+ReraiseDefect	manual.html#reraisedefect_1	Raise statement	
+Exception hierarchy	manual.html#exception-handling-exception-hierarchy	  Exception hierarchy	
+Imported exceptions	manual.html#exception-handling-imported-exceptions	  Imported exceptions	
+Effect system	manual.html#effect-system	 Effect system	
+Exception tracking	manual.html#effect-system-exception-tracking	  Exception tracking	
+raises	manual.html#raises_1	Exception tracking	
+Tag tracking	manual.html#effect-system-tag-tracking	  Tag tracking	
+effect system	manual.html#effect-system_1	Tag tracking	
+Effects pragma	manual.html#effect-system-effects-pragma	  Effects pragma	
+Generics	manual.html#generics	 Generics	
+type parameters	manual.html#type-parameters_1	Generics	
+generic type parameter	manual.html#generic-type-parameter_1	Generics	
+type variable	manual.html#type-variable_1	Generics	
+Is operator	manual.html#generics-is-operator	  Is operator	
+Type Classes	manual.html#generics-type-classes	  Type Classes	
+type constraints	manual.html#type-constraints_1	Type Classes	
+Implicit generics	manual.html#generics-implicit-generics	  Implicit generics	
+implicitly generic	manual.html#implicitly-generic_1	Implicit generics	
+bind once	manual.html#bind-once_1	Implicit generics	
+bind many	manual.html#bind-many_1	Implicit generics	
+Generic inference restrictions	manual.html#generics-generic-inference-restrictions	  Generic inference restrictions	
+Symbol lookup in generics	manual.html#generics-symbol-lookup-in-generics	  Symbol lookup in generics	
+Open and Closed symbols	manual.html#symbol-lookup-in-generics-open-and-closed-symbols	   Open and Closed symbols	
+Mixin statement	manual.html#generics-mixin-statement	  Mixin statement	
+mixin	manual.html#mixin_1	Mixin statement	
+Bind statement	manual.html#generics-bind-statement	  Bind statement	
+Delegating bind statements	manual.html#generics-delegating-bind-statements	  Delegating bind statements	
+forward	manual.html#forward_2	Delegating bind statements	
+Templates	manual.html#templates	 Templates	
+Typed vs untyped parameters	manual.html#templates-typed-vs-untyped-parameters	  Typed vs untyped parameters	
+immediate	manual.html#immediate_1	Typed vs untyped parameters	
+Passing a code block to a template	manual.html#templates-passing-a-code-block-to-a-template	  Passing a code block to a template	
+Varargs of untyped	manual.html#templates-varargs-of-untyped	  Varargs of untyped	
+Symbol binding in templates	manual.html#templates-symbol-binding-in-templates	  Symbol binding in templates	
+hygienic	manual.html#hygienic_1	Symbol binding in templates	
+Identifier construction	manual.html#templates-identifier-construction	  Identifier construction	
+Lookup rules for template parameters	manual.html#templates-lookup-rules-for-template-parameters	  Lookup rules for template parameters	
+Hygiene in templates	manual.html#templates-hygiene-in-templates	  Hygiene in templates	
+hygienic	manual.html#hygienic_2	Hygiene in templates	
+inject	manual.html#inject_1	Hygiene in templates	
+gensym	manual.html#gensym_1	Hygiene in templates	
+dirty	manual.html#dirty_1	Hygiene in templates	
+Limitations of the method call syntax	manual.html#templates-limitations-of-the-method-call-syntax	  Limitations of the method call syntax	
+Macros	manual.html#macros	 Macros	
+domain-specific languages	manual.html#domainminusspecific-languages_1	Macros	
+Debug Example	manual.html#macros-debug-example	  Debug Example	
+BindSym	manual.html#macros-bindsym	  BindSym	
+symbols	manual.html#symbols_1	BindSym	
+Case-Of Macro	manual.html#macros-caseminusof-macro	  Case-Of Macro	
+For loop macro	manual.html#macros-for-loop-macro	  For loop macro	
+Special Types	manual.html#special-types	 Special Types	
+static[T]	manual.html#special-types-static-t	  static[T]	
+typedesc[T]	manual.html#special-types-typedesc-t	  typedesc[T]	
+typeof operator	manual.html#special-types-typeof-operator	  typeof operator	
+typeof	manual.html#typeof_1	typeof operator	
+Modules	manual.html#modules	 Modules	
+namespace	manual.html#namespace_1	Modules	
+information hiding	manual.html#information-hiding_1	Modules	
+separate compilation	manual.html#separate-compilation_1	Modules	
+import	manual.html#import_1	Modules	
+Recursive module dependencies	manual.html#recursive-module-dependencies_1	Modules	
+Import statement	manual.html#modules-import-statement	  Import statement	
+Include statement	manual.html#modules-include-statement	  Include statement	
+Module names in imports	manual.html#modules-module-names-in-imports	  Module names in imports	
+Collective imports from a directory	manual.html#modules-collective-imports-from-a-directory	  Collective imports from a directory	
+Pseudo import/include paths	manual.html#modules-pseudo-importslashinclude-paths	  Pseudo import/include paths	
+From import statement	manual.html#modules-from-import-statement	  From import statement	
+Export statement	manual.html#modules-export-statement	  Export statement	
+Scope rules	manual.html#modules-scope-rules	  Scope rules	
+Block scope	manual.html#scope-rules-block-scope	   Block scope	
+Tuple or object scope	manual.html#scope-rules-tuple-or-object-scope	   Tuple or object scope	
+Module scope	manual.html#scope-rules-module-scope	   Module scope	
+system	manual.html#system_1	Module scope	
+Compiler Messages	manual.html#compiler-messages	 Compiler Messages	
+hint	manual.html#hint_1	Compiler Messages	
+warning	manual.html#warning_1	Compiler Messages	
+error	manual.html#error_1	Compiler Messages	
+Pragmas	manual.html#pragmas	 Pragmas	
+deprecated pragma	manual.html#pragmas-deprecated-pragma	  deprecated pragma	
+noSideEffect pragma	manual.html#pragmas-nosideeffect-pragma	  noSideEffect pragma	
+compileTime pragma	manual.html#pragmas-compiletime-pragma	  compileTime pragma	
+noReturn pragma	manual.html#pragmas-noreturn-pragma	  noReturn pragma	
+acyclic pragma	manual.html#pragmas-acyclic-pragma	  acyclic pragma	
+final pragma	manual.html#pragmas-final-pragma	  final pragma	
+shallow pragma	manual.html#pragmas-shallow-pragma	  shallow pragma	
+pure pragma	manual.html#pragmas-pure-pragma	  pure pragma	
+asmNoStackFrame pragma	manual.html#pragmas-asmnostackframe-pragma	  asmNoStackFrame pragma	
+error pragma	manual.html#pragmas-error-pragma	  error pragma	
+fatal pragma	manual.html#pragmas-fatal-pragma	  fatal pragma	
+warning pragma	manual.html#pragmas-warning-pragma	  warning pragma	
+hint pragma	manual.html#pragmas-hint-pragma	  hint pragma	
+line pragma	manual.html#pragmas-line-pragma	  line pragma	
+linearScanEnd pragma	manual.html#pragmas-linearscanend-pragma	  linearScanEnd pragma	
+case	manual.html#case_1	linearScanEnd pragma	
+computedGoto pragma	manual.html#pragmas-computedgoto-pragma	  computedGoto pragma	
+case	manual.html#case_2	computedGoto pragma	
+immediate pragma	manual.html#pragmas-immediate-pragma	  immediate pragma	
+compilation option pragmas	manual.html#pragmas-compilation-option-pragmas	  compilation option pragmas	
+push and pop pragmas	manual.html#pragmas-push-and-pop-pragmas	  push and pop pragmas	
+push/pop	manual.html#pushslashpop_1	push and pop pragmas	
+push/pop	manual.html#pushslashpop_2	push and pop pragmas	
+register pragma	manual.html#pragmas-register-pragma	  register pragma	
+global pragma	manual.html#pragmas-global-pragma	  global pragma	
+Disabling certain messages	manual.html#pragmas-disabling-certain-messages	  Disabling certain messages	
+used pragma	manual.html#pragmas-used-pragma	  used pragma	
+experimental pragma	manual.html#pragmas-experimental-pragma	  experimental pragma	
+Implementation Specific Pragmas	manual.html#implementation-specific-pragmas	 Implementation Specific Pragmas	
+Bitsize pragma	manual.html#implementation-specific-pragmas-bitsize-pragma	  Bitsize pragma	
+Align pragma	manual.html#implementation-specific-pragmas-align-pragma	  Align pragma	
+align	manual.html#align_1	Align pragma	
+Volatile pragma	manual.html#implementation-specific-pragmas-volatile-pragma	  Volatile pragma	
+nodecl pragma	manual.html#implementation-specific-pragmas-nodecl-pragma	  nodecl pragma	
+Header pragma	manual.html#implementation-specific-pragmas-header-pragma	  Header pragma	
+IncompleteStruct pragma	manual.html#implementation-specific-pragmas-incompletestruct-pragma	  IncompleteStruct pragma	
+Compile pragma	manual.html#implementation-specific-pragmas-compile-pragma	  Compile pragma	
+Link pragma	manual.html#implementation-specific-pragmas-link-pragma	  Link pragma	
+PassC pragma	manual.html#implementation-specific-pragmas-passc-pragma	  PassC pragma	
+LocalPassc pragma	manual.html#implementation-specific-pragmas-localpassc-pragma	  LocalPassc pragma	
+PassL pragma	manual.html#implementation-specific-pragmas-passl-pragma	  PassL pragma	
+Emit pragma	manual.html#implementation-specific-pragmas-emit-pragma	  Emit pragma	
+C++	manual.html#cplusplus_1	Emit pragma	
+Objective C	manual.html#objective-c_1	Emit pragma	
+ImportCpp pragma	manual.html#implementation-specific-pragmas-importcpp-pragma	  ImportCpp pragma	
+C++	manual.html#cplusplus_2	ImportCpp pragma	
+Namespaces	manual.html#importcpp-pragma-namespaces	   Namespaces	
+Importcpp for enums	manual.html#importcpp-pragma-importcpp-for-enums	   Importcpp for enums	
+Importcpp for procs	manual.html#importcpp-pragma-importcpp-for-procs	   Importcpp for procs	
+Wrapping constructors	manual.html#importcpp-pragma-wrapping-constructors	   Wrapping constructors	
+constructor	manual.html#constructor_1	Wrapping constructors	
+Wrapping destructors	manual.html#importcpp-pragma-wrapping-destructors	   Wrapping destructors	
+Importcpp for objects	manual.html#importcpp-pragma-importcpp-for-objects	   Importcpp for objects	
+ImportJs pragma	manual.html#implementation-specific-pragmas-importjs-pragma	  ImportJs pragma	
+ImportObjC pragma	manual.html#implementation-specific-pragmas-importobjc-pragma	  ImportObjC pragma	
+Objective C	manual.html#objective-c_2	ImportObjC pragma	
+CodegenDecl pragma	manual.html#implementation-specific-pragmas-codegendecl-pragma	  CodegenDecl pragma	
+cppNonPod pragma	manual.html#implementation-specific-pragmas-nimcppnonpod-pragma	  <tt class="docutils literal"><span class="pre"><span class="Identifier">cppNonPod</span></span></tt> pragma	
+compile-time define pragmas	manual.html#implementation-specific-pragmas-compileminustime-define-pragmas	  compile-time define pragmas	
+intdefine	manual.html#intdefine_1	compile-time define pragmas	
+strdefine	manual.html#strdefine_1	compile-time define pragmas	
+booldefine	manual.html#booldefine_1	compile-time define pragmas	
+User-defined pragmas	manual.html#userminusdefined-pragmas	 User-defined pragmas	
+pragma pragma	manual.html#userminusdefined-pragmas-pragma-pragma	  pragma pragma	
+Custom annotations	manual.html#userminusdefined-pragmas-custom-annotations	  Custom annotations	
+Macro pragmas	manual.html#userminusdefined-pragmas-macro-pragmas	  Macro pragmas	
+Foreign function interface	manual.html#foreign-function-interface	 Foreign function interface	
+FFI	manual.html#ffi_1	Foreign function interface	
+Importc pragma	manual.html#foreign-function-interface-importc-pragma	  Importc pragma	
+Exportc pragma	manual.html#foreign-function-interface-exportc-pragma	  Exportc pragma	
+Extern pragma	manual.html#foreign-function-interface-extern-pragma	  Extern pragma	
+Bycopy pragma	manual.html#foreign-function-interface-bycopy-pragma	  Bycopy pragma	
+Byref pragma	manual.html#foreign-function-interface-byref-pragma	  Byref pragma	
+Varargs pragma	manual.html#foreign-function-interface-varargs-pragma	  Varargs pragma	
+Union pragma	manual.html#foreign-function-interface-union-pragma	  Union pragma	
+Packed pragma	manual.html#foreign-function-interface-packed-pragma	  Packed pragma	
+Dynlib pragma for import	manual.html#foreign-function-interface-dynlib-pragma-for-import	  Dynlib pragma for import	
+Dynlib pragma for export	manual.html#foreign-function-interface-dynlib-pragma-for-export	  Dynlib pragma for export	
+Threads	manual.html#threads	 Threads	
+Thread pragma	manual.html#threads-thread-pragma	  Thread pragma	
+no heap sharing restriction	manual.html#no-heap-sharing-restriction_1	Thread pragma	
+GC safety	manual.html#threads-gc-safety	  GC safety	
+GC safe	manual.html#gc-safe_1	GC safety	
+gcsafe	manual.html#gcsafe_1	GC safety	
+Threadvar pragma	manual.html#threads-threadvar-pragma	  Threadvar pragma	
+thread-local	manual.html#threadminuslocal_1	Threadvar pragma	
+Threads and exceptions	manual.html#threads-threads-and-exceptions	  Threads and exceptions	

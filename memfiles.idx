@@ -1,0 +1,18 @@
+MemFile	memfiles.html#MemFile	memfiles: MemFile	
+mapMem	memfiles.html#mapMem,MemFile,FileMode,int,int	memfiles: mapMem(m: var MemFile; mode: FileMode = fmRead; mappedSize = -1; offset = 0;\n       mapFlags = cint(-1)): pointer	
+unmapMem	memfiles.html#unmapMem,MemFile,pointer,int	memfiles: unmapMem(f: var MemFile; p: pointer; size: int)	
+open	memfiles.html#open,string,FileMode,int,int,int	memfiles: open(filename: string; mode: FileMode = fmRead; mappedSize = -1; offset = 0;\n     newFileSize = -1; allowRemap = false; mapFlags = cint(-1)): MemFile	
+flush	memfiles.html#flush,MemFile,Natural	memfiles: flush(f: var MemFile; attempts: Natural = 3)	
+resize	memfiles.html#resize,MemFile,int	memfiles: resize(f: var MemFile; newFileSize: int)	
+close	memfiles.html#close,MemFile	memfiles: close(f: var MemFile)	
+MemSlice	memfiles.html#MemSlice	memfiles: MemSlice	
+`==`	memfiles.html#==,MemSlice,MemSlice	memfiles: `==`(x, y: MemSlice): bool	
+`$`	memfiles.html#$,MemSlice	memfiles: `$`(ms: MemSlice): string	
+memSlices	memfiles.html#memSlices.i,MemFile,char,char	memfiles: memSlices(mfile: MemFile; delim = &apos;\n&apos;; eat = &apos;\r&apos;): MemSlice	
+lines	memfiles.html#lines.i,MemFile,string,char,char	memfiles: lines(mfile: MemFile; buf: var string; delim = &apos;\n&apos;; eat = &apos;\r&apos;): string	
+lines	memfiles.html#lines.i,MemFile,char,char	memfiles: lines(mfile: MemFile; delim = &apos;\n&apos;; eat = &apos;\r&apos;): string	
+MemMapFileStream	memfiles.html#MemMapFileStream	memfiles: MemMapFileStream	
+MemMapFileStreamObj	memfiles.html#MemMapFileStreamObj	memfiles: MemMapFileStreamObj	
+newMemMapFileStream	memfiles.html#newMemMapFileStream,string,FileMode,int	memfiles: newMemMapFileStream(filename: string; mode: FileMode = fmRead;\n                    fileSize: int = -1): MemMapFileStream	
+memory mapped files	memfiles.html#memory-mapped-files_1	Module memfiles	
+mmap	memfiles.html#mmap_1	Module memfiles	

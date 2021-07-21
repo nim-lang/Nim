@@ -1,0 +1,3 @@
+readLineFromStdin	rdstdin.html#readLineFromStdin,string,string	rdstdin: readLineFromStdin(prompt: string; line: var string): bool	
+readLineFromStdin	rdstdin.html#readLineFromStdin,string	rdstdin: readLineFromStdin(prompt: string): string	
+stdin	rdstdin.html#stdin_1	Module rdstdin	

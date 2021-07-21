@@ -1,0 +1,3 @@
+MersenneTwister	mersenne.html#MersenneTwister	mersenne: MersenneTwister	
+newMersenneTwister	mersenne.html#newMersenneTwister,uint32	mersenne: newMersenneTwister(seed: uint32): MersenneTwister	
+getNum	mersenne.html#getNum,MersenneTwister	mersenne: getNum(m: var MersenneTwister): uint32	

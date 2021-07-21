@@ -1,0 +1,3 @@
+replaceDeprecated	nimfix/prettybase.html#replaceDeprecated,ConfigRef,TLineInfo,PIdent,PIdent	prettybase: replaceDeprecated(conf: ConfigRef; info: TLineInfo; oldSym, newSym: PIdent)	
+replaceDeprecated	nimfix/prettybase.html#replaceDeprecated,ConfigRef,TLineInfo,PSym,PSym	prettybase: replaceDeprecated(conf: ConfigRef; info: TLineInfo; oldSym, newSym: PSym)	
+replaceComment	nimfix/prettybase.html#replaceComment,ConfigRef,TLineInfo	prettybase: replaceComment(conf: ConfigRef; info: TLineInfo)	

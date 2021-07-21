@@ -1,0 +1,62 @@
+PackedConfig	ic/ic.html#PackedConfig	ic: PackedConfig	
+HasDatInitProc	ic/ic.html#HasDatInitProc	ModuleBackendFlag.HasDatInitProc	
+HasModuleInitProc	ic/ic.html#HasModuleInitProc	ModuleBackendFlag.HasModuleInitProc	
+ModuleBackendFlag	ic/ic.html#ModuleBackendFlag	ic: ModuleBackendFlag	
+PackedModule	ic/ic.html#PackedModule	ic: PackedModule	
+PackedEncoder	ic/ic.html#PackedEncoder	ic: PackedEncoder	
+toString	ic/ic.html#toString,PackedTree,NodePos,PackedModule,int,string	ic: toString(tree: PackedTree; n: NodePos; m: PackedModule; nesting: int;\n         result: var string)	
+toString	ic/ic.html#toString,PackedTree,NodePos,PackedModule	ic: toString(tree: PackedTree; n: NodePos; m: PackedModule): string	
+debug	ic/ic.html#debug,PackedTree,PackedModule	ic: debug(tree: PackedTree; m: PackedModule)	
+isActive	ic/ic.html#isActive,PackedEncoder	ic: isActive(e: PackedEncoder): bool	
+rememberStartupConfig	ic/ic.html#rememberStartupConfig,PackedConfig,ConfigRef	ic: rememberStartupConfig(dest: var PackedConfig; config: ConfigRef)	
+toFileIndex	ic/ic.html#toFileIndex,LitId,PackedModule,ConfigRef	ic: toFileIndex(x: LitId; m: PackedModule; config: ConfigRef): FileIndex	
+initEncoder	ic/ic.html#initEncoder,PackedEncoder,PackedModule,PSym,ConfigRef,PackedConfig	ic: initEncoder(c: var PackedEncoder; m: var PackedModule; moduleSym: PSym;\n            config: ConfigRef; pc: PackedConfig)	
+addIncludeFileDep	ic/ic.html#addIncludeFileDep,PackedEncoder,PackedModule,FileIndex	ic: addIncludeFileDep(c: var PackedEncoder; m: var PackedModule; f: FileIndex)	
+addImportFileDep	ic/ic.html#addImportFileDep,PackedEncoder,PackedModule,FileIndex	ic: addImportFileDep(c: var PackedEncoder; m: var PackedModule; f: FileIndex)	
+addHidden	ic/ic.html#addHidden,PackedEncoder,PackedModule,PSym	ic: addHidden(c: var PackedEncoder; m: var PackedModule; s: PSym)	
+addExported	ic/ic.html#addExported,PackedEncoder,PackedModule,PSym	ic: addExported(c: var PackedEncoder; m: var PackedModule; s: PSym)	
+addConverter	ic/ic.html#addConverter,PackedEncoder,PackedModule,PSym	ic: addConverter(c: var PackedEncoder; m: var PackedModule; s: PSym)	
+addTrmacro	ic/ic.html#addTrmacro,PackedEncoder,PackedModule,PSym	ic: addTrmacro(c: var PackedEncoder; m: var PackedModule; s: PSym)	
+addPureEnum	ic/ic.html#addPureEnum,PackedEncoder,PackedModule,PSym	ic: addPureEnum(c: var PackedEncoder; m: var PackedModule; s: PSym)	
+addMethod	ic/ic.html#addMethod,PackedEncoder,PackedModule,PSym	ic: addMethod(c: var PackedEncoder; m: var PackedModule; s: PSym)	
+addReexport	ic/ic.html#addReexport,PackedEncoder,PackedModule,PSym	ic: addReexport(c: var PackedEncoder; m: var PackedModule; s: PSym)	
+addCompilerProc	ic/ic.html#addCompilerProc,PackedEncoder,PackedModule,PSym	ic: addCompilerProc(c: var PackedEncoder; m: var PackedModule; s: PSym)	
+storeSym	ic/ic.html#storeSym,PSym,PackedEncoder,PackedModule	ic: storeSym(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId	
+toPackedNode	ic/ic.html#toPackedNode,PNode,PackedTree,PackedEncoder,PackedModule	ic: toPackedNode(n: PNode; ir: var PackedTree; c: var PackedEncoder;\n             m: var PackedModule)	
+storeTypeInst	ic/ic.html#storeTypeInst,PackedEncoder,PackedModule,PSym,PType	ic: storeTypeInst(c: var PackedEncoder; m: var PackedModule; s: PSym; inst: PType)	
+addPragmaComputation	ic/ic.html#addPragmaComputation,PackedEncoder,PackedModule,PNode	ic: addPragmaComputation(c: var PackedEncoder; m: var PackedModule; n: PNode)	
+toPackedNodeTopLevel	ic/ic.html#toPackedNodeTopLevel,PNode,PackedEncoder,PackedModule	ic: toPackedNodeTopLevel(n: PNode; encoder: var PackedEncoder; m: var PackedModule)	
+toPackedGeneratedProcDef	ic/ic.html#toPackedGeneratedProcDef,PSym,PackedEncoder,PackedModule	ic: toPackedGeneratedProcDef(s: PSym; encoder: var PackedEncoder;\n                         m: var PackedModule)	
+storeInstantiation	ic/ic.html#storeInstantiation,PackedEncoder,PackedModule,PSym,PInstantiation	ic: storeInstantiation(c: var PackedEncoder; m: var PackedModule; s: PSym;\n                   i: PInstantiation)	
+storeExpansion	ic/ic.html#storeExpansion,PackedEncoder,PackedModule,TLineInfo,PSym	ic: storeExpansion(c: var PackedEncoder; m: var PackedModule; info: TLineInfo;\n               s: PSym)	
+loadRodFile	ic/ic.html#loadRodFile,AbsoluteFile,PackedModule,ConfigRef	ic: loadRodFile(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef;\n            ignoreConfig = false): RodFileError	
+saveRodFile	ic/ic.html#saveRodFile,AbsoluteFile,PackedEncoder,PackedModule	ic: saveRodFile(filename: AbsoluteFile; encoder: var PackedEncoder;\n            m: var PackedModule)	
+PackedDecoder	ic/ic.html#PackedDecoder	ic: PackedDecoder	
+undefined	ic/ic.html#undefined	ModuleStatus.undefined	
+storing	ic/ic.html#storing	ModuleStatus.storing	
+loading	ic/ic.html#loading	ModuleStatus.loading	
+loaded	ic/ic.html#loaded	ModuleStatus.loaded	
+outdated	ic/ic.html#outdated	ModuleStatus.outdated	
+stored	ic/ic.html#stored	ModuleStatus.stored	
+ModuleStatus	ic/ic.html#ModuleStatus	ic: ModuleStatus	
+LoadedModule	ic/ic.html#LoadedModule	ic: LoadedModule	
+PackedModuleGraph	ic/ic.html#PackedModuleGraph	ic: PackedModuleGraph	
+toFileIndexCached	ic/ic.html#toFileIndexCached,PackedDecoder,PackedModuleGraph,int,LitId	ic: toFileIndexCached(c: var PackedDecoder; g: PackedModuleGraph; thisModule: int;\n                  f: LitId): FileIndex	
+loadNodes	ic/ic.html#loadNodes,PackedDecoder,PackedModuleGraph,int,PackedTree,NodePos	ic: loadNodes(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;\n          tree: PackedTree; n: NodePos): PNode	
+initPackedDecoder	ic/ic.html#initPackedDecoder,ConfigRef,IdentCache	ic: initPackedDecoder(config: ConfigRef; cache: IdentCache): PackedDecoder	
+moduleIndex	ic/ic.html#moduleIndex,PackedDecoder,PackedModuleGraph,int,PackedItemId	ic: moduleIndex(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;\n            s: PackedItemId): int32	
+moduleFromRodFile	ic/ic.html#moduleFromRodFile,PackedModuleGraph,ConfigRef,IdentCache,FileIndex,seq[FileIndex]	ic: moduleFromRodFile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;\n                  fileIdx: FileIndex; cachedModules: var seq[FileIndex]): PSym	
+loadProcBody	ic/ic.html#loadProcBody,ConfigRef,IdentCache,PackedModuleGraph,PSym	ic: loadProcBody(config: ConfigRef; cache: IdentCache; g: var PackedModuleGraph;\n             s: PSym): PNode	
+loadTypeFromId	ic/ic.html#loadTypeFromId,ConfigRef,IdentCache,PackedModuleGraph,int,PackedItemId	ic: loadTypeFromId(config: ConfigRef; cache: IdentCache; g: var PackedModuleGraph;\n               module: int; id: PackedItemId): PType	
+loadSymFromId	ic/ic.html#loadSymFromId,ConfigRef,IdentCache,PackedModuleGraph,int,PackedItemId	ic: loadSymFromId(config: ConfigRef; cache: IdentCache; g: var PackedModuleGraph;\n              module: int; id: PackedItemId): PSym	
+translateId	ic/ic.html#translateId,PackedItemId,PackedModuleGraph,int,ConfigRef	ic: translateId(id: PackedItemId; g: PackedModuleGraph; thisModule: int;\n            config: ConfigRef): ItemId	
+simulateLoadedModule	ic/ic.html#simulateLoadedModule,PackedModuleGraph,ConfigRef,IdentCache,PSym,PackedModule	ic: simulateLoadedModule(g: var PackedModuleGraph; conf: ConfigRef;\n                     cache: IdentCache; moduleSym: PSym; m: PackedModule)	
+RodIter	ic/ic.html#RodIter	ic: RodIter	
+initRodIter	ic/ic.html#initRodIter,RodIter,ConfigRef,IdentCache,PackedModuleGraph,FileIndex,PIdent,bool	ic: initRodIter(it: var RodIter; config: ConfigRef; cache: IdentCache;\n            g: var PackedModuleGraph; module: FileIndex; name: PIdent;\n            importHidden: bool): PSym	
+initRodIterAllSyms	ic/ic.html#initRodIterAllSyms,RodIter,ConfigRef,IdentCache,PackedModuleGraph,FileIndex,bool	ic: initRodIterAllSyms(it: var RodIter; config: ConfigRef; cache: IdentCache;\n                   g: var PackedModuleGraph; module: FileIndex;\n                   importHidden: bool): PSym	
+nextRodIter	ic/ic.html#nextRodIter,RodIter,PackedModuleGraph	ic: nextRodIter(it: var RodIter; g: var PackedModuleGraph): PSym	
+interfaceSymbols	ic/ic.html#interfaceSymbols.i,ConfigRef,IdentCache,PackedModuleGraph,FileIndex,PIdent,bool	ic: interfaceSymbols(config: ConfigRef; cache: IdentCache; g: var PackedModuleGraph;\n                 module: FileIndex; name: PIdent; importHidden: bool): PSym	
+interfaceSymbol	ic/ic.html#interfaceSymbol,ConfigRef,IdentCache,PackedModuleGraph,FileIndex,PIdent,bool	ic: interfaceSymbol(config: ConfigRef; cache: IdentCache; g: var PackedModuleGraph;\n                module: FileIndex; name: PIdent; importHidden: bool): PSym	
+idgenFromLoadedModule	ic/ic.html#idgenFromLoadedModule,LoadedModule	ic: idgenFromLoadedModule(m: LoadedModule): IdGenerator	
+searchForCompilerproc	ic/ic.html#searchForCompilerproc,LoadedModule,string	ic: searchForCompilerproc(m: LoadedModule; name: string): int32	
+rodViewer	ic/ic.html#rodViewer,AbsoluteFile,ConfigRef,IdentCache	ic: rodViewer(rodfile: AbsoluteFile; config: ConfigRef; cache: IdentCache)	

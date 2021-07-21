@@ -1,0 +1,6 @@
+forwardImpl	vmutils.html#forwardImpl.t,,	vmutils: forwardImpl(impl, arg)	
+toUnsigned	vmutils.html#toUnsigned.t,int8	vmutils: toUnsigned(x: int8): uint8	
+toUnsigned	vmutils.html#toUnsigned.t,int16	vmutils: toUnsigned(x: int16): uint16	
+toUnsigned	vmutils.html#toUnsigned.t,int32	vmutils: toUnsigned(x: int32): uint32	
+toUnsigned	vmutils.html#toUnsigned.t,int64	vmutils: toUnsigned(x: int64): uint64	
+toUnsigned	vmutils.html#toUnsigned.t,int	vmutils: toUnsigned(x: int): uint	

@@ -1,0 +1,24 @@
+EPOLLIN	epoll.html#EPOLLIN	epoll: EPOLLIN	
+EPOLLPRI	epoll.html#EPOLLPRI	epoll: EPOLLPRI	
+EPOLLOUT	epoll.html#EPOLLOUT	epoll: EPOLLOUT	
+EPOLLERR	epoll.html#EPOLLERR	epoll: EPOLLERR	
+EPOLLHUP	epoll.html#EPOLLHUP	epoll: EPOLLHUP	
+EPOLLRDNORM	epoll.html#EPOLLRDNORM	epoll: EPOLLRDNORM	
+EPOLLRDBAND	epoll.html#EPOLLRDBAND	epoll: EPOLLRDBAND	
+EPOLLWRNORM	epoll.html#EPOLLWRNORM	epoll: EPOLLWRNORM	
+EPOLLWRBAND	epoll.html#EPOLLWRBAND	epoll: EPOLLWRBAND	
+EPOLLMSG	epoll.html#EPOLLMSG	epoll: EPOLLMSG	
+EPOLLRDHUP	epoll.html#EPOLLRDHUP	epoll: EPOLLRDHUP	
+EPOLLEXCLUSIVE	epoll.html#EPOLLEXCLUSIVE	epoll: EPOLLEXCLUSIVE	
+EPOLLWAKEUP	epoll.html#EPOLLWAKEUP	epoll: EPOLLWAKEUP	
+EPOLLONESHOT	epoll.html#EPOLLONESHOT	epoll: EPOLLONESHOT	
+EPOLLET	epoll.html#EPOLLET	epoll: EPOLLET	
+EPOLL_CTL_ADD	epoll.html#EPOLL_CTL_ADD	epoll: EPOLL_CTL_ADD	
+EPOLL_CTL_DEL	epoll.html#EPOLL_CTL_DEL	epoll: EPOLL_CTL_DEL	
+EPOLL_CTL_MOD	epoll.html#EPOLL_CTL_MOD	epoll: EPOLL_CTL_MOD	
+EpollData	epoll.html#EpollData	epoll: EpollData	
+EpollEvent	epoll.html#EpollEvent	epoll: EpollEvent	
+epoll_create	epoll.html#epoll_create,cint	epoll: epoll_create(size: cint): cint	
+epoll_create1	epoll.html#epoll_create1,cint	epoll: epoll_create1(flags: cint): cint	
+epoll_ctl	epoll.html#epoll_ctl,cint,cint,,ptr.EpollEvent	epoll: epoll_ctl(epfd: cint; op: cint; fd: cint | SocketHandle; event: ptr EpollEvent): cint	
+epoll_wait	epoll.html#epoll_wait,cint,ptr.EpollEvent,cint,cint	epoll: epoll_wait(epfd: cint; events: ptr EpollEvent; maxevents: cint; timeout: cint): cint	

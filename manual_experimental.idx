@@ -1,0 +1,82 @@
+Nim Experimental Features	manual_experimental.html
+About this document	manual_experimental.html#about-this-document	 About this document	
+Package level objects	manual_experimental.html#package-level-objects	 Package level objects	
+incomplete	manual_experimental.html#incomplete_1	Package level objects	
+Void type	manual_experimental.html#void-type	 Void type	
+Covariance	manual_experimental.html#covariance	 Covariance	
+Automatic dereferencing	manual_experimental.html#automatic-dereferencing	 Automatic dereferencing	
+Code reordering	manual_experimental.html#code-reordering	 Code reordering	
+Named argument overloading	manual_experimental.html#named-argument-overloading	 Named argument overloading	
+Do notation	manual_experimental.html#do-notation	 Do notation	
+Special Operators	manual_experimental.html#special-operators	 Special Operators	
+dot operators	manual_experimental.html#special-operators-dot-operators	  dot operators	
+operator .	manual_experimental.html#special-operators-operator-nimdot	  operator <tt class="docutils literal"><span class="pre"><span class="Operator">.</span></span></tt>	
+operator .()	manual_experimental.html#special-operators-operator-nimdot	  operator <tt class="docutils literal"><span class="pre"><span class="Operator">.</span><span class="Punctuation">(</span><span class="Punctuation">)</span></span></tt>	
+operator .=	manual_experimental.html#special-operators-operator-nimdoteq	  operator <tt class="docutils literal"><span class="pre"><span class="Operator">.=</span></span></tt>	
+Call operator	manual_experimental.html#special-operators-call-operator	  Call operator	
+Not nil annotation	manual_experimental.html#not-nil-annotation	 Not nil annotation	
+Strict not nil checking	manual_experimental.html#strict-not-nil-checking	 Strict not nil checking	
+nil	manual_experimental.html#strict-not-nil-checking-nil	  nil	
+not nil	manual_experimental.html#strict-not-nil-checking-not-nil	  not nil	
+local turn on/off	manual_experimental.html#strict-not-nil-checking-local-turn-onslashoff	  local turn on/off	
+nilability state	manual_experimental.html#strict-not-nil-checking-nilability-state	  nilability state	
+type nilability	manual_experimental.html#strict-not-nil-checking-type-nilability	  type nilability	
+params rules	manual_experimental.html#strict-not-nil-checking-params-rules	  params rules	
+assignment rules	manual_experimental.html#strict-not-nil-checking-assignment-rules	  assignment rules	
+call args rules	manual_experimental.html#strict-not-nil-checking-call-args-rules	  call args rules	
+branches rules	manual_experimental.html#strict-not-nil-checking-branches-rules	  branches rules	
+compound expressions: field, index expressions	manual_experimental.html#strict-not-nil-checking-compound-expressionscolon-field-index-expressions	  compound expressions: field, index expressions	
+element tracking	manual_experimental.html#strict-not-nil-checking-element-tracking	  element tracking	
+unstructured control flow rules	manual_experimental.html#strict-not-nil-checking-unstructured-control-flow-rules	  unstructured control flow rules	
+aliasing	manual_experimental.html#strict-not-nil-checking-aliasing	  aliasing	
+initialization of non nilable and nilable values	manual_experimental.html#strict-not-nil-checking-initialization-of-non-nilable-and-nilable-values	  initialization of non nilable and nilable values	
+warnings and errors	manual_experimental.html#strict-not-nil-checking-warnings-and-errors	  warnings and errors	
+Concepts	manual_experimental.html#concepts	 Concepts	
+Concept diagnostics	manual_experimental.html#concepts-concept-diagnostics	  Concept diagnostics	
+Generic concepts and type binding rules	manual_experimental.html#concepts-generic-concepts-and-type-binding-rules	  Generic concepts and type binding rules	
+Concept derived values	manual_experimental.html#concepts-concept-derived-values	  Concept derived values	
+Concept refinement	manual_experimental.html#concepts-concept-refinement	  Concept refinement	
+Type bound operations	manual_experimental.html#type-bound-operations	 Type bound operations	
+deepCopy	manual_experimental.html#type-bound-operations-deepcopy	  deepCopy	
+Case statement macros	manual_experimental.html#case-statement-macros	 Case statement macros	
+pattern matching	manual_experimental.html#pattern-matching_1	Case statement macros	
+Term rewriting macros	manual_experimental.html#term-rewriting-macros	 Term rewriting macros	
+Parameter constraints	manual_experimental.html#term-rewriting-macros-parameter-constraints	  Parameter constraints	
+parameter constraint	manual_experimental.html#parameter-constraint_1	Parameter constraints	
+Pattern operators	manual_experimental.html#term-rewriting-macros-pattern-operators	  Pattern operators	
+The | operator	manual_experimental.html#pattern-operators-the-nimbar-operator	   The <tt class="docutils literal"><span class="pre"><span class="Operator">|</span></span></tt> operator	
+The {} operator	manual_experimental.html#pattern-operators-the-nim-operator	   The <tt class="docutils literal"><span class="pre"><span class="Punctuation">{</span><span class="Punctuation">}</span></span></tt> operator	
+The ~ operator	manual_experimental.html#pattern-operators-the-nimtilde-operator	   The <tt class="docutils literal"><span class="pre"><span class="Operator">~</span></span></tt> operator	
+The * operator	manual_experimental.html#pattern-operators-the-nimstar-operator	   The <tt class="docutils literal"><span class="pre"><span class="Operator">*</span></span></tt> operator	
+The ** operator	manual_experimental.html#pattern-operators-the-nimstarstar-operator	   The <tt class="docutils literal"><span class="pre"><span class="Operator">**</span></span></tt> operator	
+Parameters	manual_experimental.html#term-rewriting-macros-parameters	  Parameters	
+Example: Partial evaluation	manual_experimental.html#term-rewriting-macros-examplecolon-partial-evaluation	  Example: Partial evaluation	
+Example: Hoisting	manual_experimental.html#term-rewriting-macros-examplecolon-hoisting	  Example: Hoisting	
+AST based overloading	manual_experimental.html#ast-based-overloading	 AST based overloading	
+Parallel &amp; Spawn	manual_experimental.html#parallel-amp-spawn	 Parallel &amp; Spawn	
+Structured	manual_experimental.html#structured_1	Parallel &amp; Spawn	
+Unstructured	manual_experimental.html#unstructured_1	Parallel &amp; Spawn	
+Spawn statement	manual_experimental.html#parallel-amp-spawn-spawn-statement	  Spawn statement	
+spawn	manual_experimental.html#spawn_1	Spawn statement	
+data flow variable	manual_experimental.html#data-flow-variable_1	Spawn statement	
+Parallel statement	manual_experimental.html#parallel-amp-spawn-parallel-statement	  Parallel statement	
+disjoint checker	manual_experimental.html#disjoint-checker_1	Parallel statement	
+Guards and locks	manual_experimental.html#guards-and-locks	 Guards and locks	
+guard	manual_experimental.html#guard_1	Guards and locks	
+locks	manual_experimental.html#locks_1	Guards and locks	
+lock levels	manual_experimental.html#lock-levels_1	Guards and locks	
+Guards and the locks section	manual_experimental.html#guards-and-locks-guards-and-the-locks-section	  Guards and the locks section	
+Protecting global variables	manual_experimental.html#guards-and-the-locks-section-protecting-global-variables	   Protecting global variables	
+Protecting general locations	manual_experimental.html#guards-and-the-locks-section-protecting-general-locations	   Protecting general locations	
+path analysis	manual_experimental.html#path-analysis_1	Protecting general locations	
+Lock levels	manual_experimental.html#guards-and-locks-lock-levels	  Lock levels	
+noRewrite pragma	manual_experimental.html#guards-and-locks-norewrite-pragma	  noRewrite pragma	
+Aliasing restrictions in parameter passing	manual_experimental.html#aliasing-restrictions-in-parameter-passing	 Aliasing restrictions in parameter passing	
+Noalias annotation	manual_experimental.html#noalias-annotation	 Noalias annotation	
+Strict funcs	manual_experimental.html#strict-funcs	 Strict funcs	
+View types	manual_experimental.html#view-types	 View types	
+Path expressions	manual_experimental.html#view-types-path-expressions	  Path expressions	
+Start of a borrow	manual_experimental.html#view-types-start-of-a-borrow	  Start of a borrow	
+End of a borrow	manual_experimental.html#view-types-end-of-a-borrow	  End of a borrow	
+Reborrows	manual_experimental.html#view-types-reborrows	  Reborrows	
+Algorithm	manual_experimental.html#view-types-algorithm	  Algorithm	

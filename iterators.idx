@@ -1,0 +1,28 @@
+items	iterators.html#items.i,openArray[T]	iterators: items[T: not char](a: openArray[T]): lent2 T	
+items	iterators.html#items.i,openArray[T]_2	iterators: items[T: char](a: openArray[T]): T	
+mitems	iterators.html#mitems.i,openArray[T]	iterators: mitems[T](a: var openArray[T]): var T	
+items	iterators.html#items.i,array[IX,T]	iterators: items[IX, T](a: array[IX, T]): T	
+mitems	iterators.html#mitems.i,array[IX,T]	iterators: mitems[IX, T](a: var array[IX, T]): var T	
+items	iterators.html#items.i,set[T]	iterators: items[T](a: set[T]): T	
+items	iterators.html#items.i,cstring	iterators: items(a: cstring): char	
+mitems	iterators.html#mitems.i,cstring	iterators: mitems(a: var cstring): var char	
+items	iterators.html#items.i,typedesc[T]	iterators: items[T: enum and Ordinal](E: typedesc[T]): T	
+items	iterators.html#items.i,Slice[T: Ordinal]	iterators: items[T: Ordinal](s: Slice[T]): T	
+pairs	iterators.html#pairs.i,openArray[T]	iterators: pairs[T](a: openArray[T]): tuple[key: int, val: T]	
+mpairs	iterators.html#mpairs.i,openArray[T]	iterators: mpairs[T](a: var openArray[T]): tuple[key: int, val: var T]	
+pairs	iterators.html#pairs.i,array[IX,T]	iterators: pairs[IX, T](a: array[IX, T]): tuple[key: IX, val: T]	
+mpairs	iterators.html#mpairs.i,array[IX,T]	iterators: mpairs[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T]	
+pairs	iterators.html#pairs.i,seq[T]	iterators: pairs[T](a: seq[T]): tuple[key: int, val: T]	
+mpairs	iterators.html#mpairs.i,seq[T]	iterators: mpairs[T](a: var seq[T]): tuple[key: int, val: var T]	
+pairs	iterators.html#pairs.i,string	iterators: pairs(a: string): tuple[key: int, val: char]	
+mpairs	iterators.html#mpairs.i,string	iterators: mpairs(a: var string): tuple[key: int, val: var char]	
+pairs	iterators.html#pairs.i,cstring	iterators: pairs(a: cstring): tuple[key: int, val: char]	
+mpairs	iterators.html#mpairs.i,cstring	iterators: mpairs(a: var cstring): tuple[key: int, val: var char]	
+items	iterators.html#items.i,seq[T]	iterators: items[T](a: seq[T]): lent2 T	
+mitems	iterators.html#mitems.i,seq[T]	iterators: mitems[T](a: var seq[T]): var T	
+items	iterators.html#items.i,string	iterators: items(a: string): char	
+mitems	iterators.html#mitems.i,string	iterators: mitems(a: var string): var char	
+fields	iterators.html#fields.i,T	iterators: fields[T: tuple | object](x: T): RootObj	
+fields	iterators.html#fields.i,S,T	iterators: fields[S: tuple | object; T: tuple | object](x: S; y: T): tuple[key: string,\n    val: RootObj]	
+fieldPairs	iterators.html#fieldPairs.i,T	iterators: fieldPairs[T: tuple | object](x: T): tuple[key: string, val: RootObj]	
+fieldPairs	iterators.html#fieldPairs.i,S,T	iterators: fieldPairs[S: tuple | object; T: tuple | object](x: S; y: T): tuple[key: string,\n    a, b: RootObj]	

@@ -1,0 +1,62 @@
+DoublyLinkedNodeObj	lists.html#DoublyLinkedNodeObj	lists: DoublyLinkedNodeObj	
+DoublyLinkedNode	lists.html#DoublyLinkedNode	lists: DoublyLinkedNode	
+SinglyLinkedNodeObj	lists.html#SinglyLinkedNodeObj	lists: SinglyLinkedNodeObj	
+SinglyLinkedNode	lists.html#SinglyLinkedNode	lists: SinglyLinkedNode	
+SinglyLinkedList	lists.html#SinglyLinkedList	lists: SinglyLinkedList	
+DoublyLinkedList	lists.html#DoublyLinkedList	lists: DoublyLinkedList	
+SinglyLinkedRing	lists.html#SinglyLinkedRing	lists: SinglyLinkedRing	
+DoublyLinkedRing	lists.html#DoublyLinkedRing	lists: DoublyLinkedRing	
+SomeLinkedList	lists.html#SomeLinkedList	lists: SomeLinkedList	
+SomeLinkedRing	lists.html#SomeLinkedRing	lists: SomeLinkedRing	
+SomeLinkedCollection	lists.html#SomeLinkedCollection	lists: SomeLinkedCollection	
+SomeLinkedNode	lists.html#SomeLinkedNode	lists: SomeLinkedNode	
+initSinglyLinkedList	lists.html#initSinglyLinkedList	lists: initSinglyLinkedList[T](): SinglyLinkedList[T]	
+initDoublyLinkedList	lists.html#initDoublyLinkedList	lists: initDoublyLinkedList[T](): DoublyLinkedList[T]	
+initSinglyLinkedRing	lists.html#initSinglyLinkedRing	lists: initSinglyLinkedRing[T](): SinglyLinkedRing[T]	
+initDoublyLinkedRing	lists.html#initDoublyLinkedRing	lists: initDoublyLinkedRing[T](): DoublyLinkedRing[T]	
+newDoublyLinkedNode	lists.html#newDoublyLinkedNode,T	lists: newDoublyLinkedNode[T](value: T): DoublyLinkedNode[T]	
+newSinglyLinkedNode	lists.html#newSinglyLinkedNode,T	lists: newSinglyLinkedNode[T](value: T): SinglyLinkedNode[T]	
+toSinglyLinkedList	lists.html#toSinglyLinkedList,openArray[T]	lists: toSinglyLinkedList[T](elems: openArray[T]): SinglyLinkedList[T]	
+toDoublyLinkedList	lists.html#toDoublyLinkedList,openArray[T]	lists: toDoublyLinkedList[T](elems: openArray[T]): DoublyLinkedList[T]	
+items	lists.html#items.i,SomeLinkedList[T]	lists: items[T](L: SomeLinkedList[T]): T	
+items	lists.html#items.i,SomeLinkedRing[T]	lists: items[T](L: SomeLinkedRing[T]): T	
+mitems	lists.html#mitems.i,SomeLinkedList[T]	lists: mitems[T](L: var SomeLinkedList[T]): var T	
+mitems	lists.html#mitems.i,SomeLinkedRing[T]	lists: mitems[T](L: var SomeLinkedRing[T]): var T	
+nodes	lists.html#nodes.i,SomeLinkedList[T]	lists: nodes[T](L: SomeLinkedList[T]): SomeLinkedNode[T]	
+nodes	lists.html#nodes.i,SomeLinkedRing[T]	lists: nodes[T](L: SomeLinkedRing[T]): SomeLinkedNode[T]	
+`$`	lists.html#$,SomeLinkedCollection[T]	lists: `$`[T](L: SomeLinkedCollection[T]): string	
+find	lists.html#find,SomeLinkedCollection[T],T	lists: find[T](L: SomeLinkedCollection[T]; value: T): SomeLinkedNode[T]	
+contains	lists.html#contains,SomeLinkedCollection[T],T	lists: contains[T](L: SomeLinkedCollection[T]; value: T): bool	
+prepend	lists.html#prepend,T,T	lists: prepend[T: SomeLinkedList](a: var T; b: T)	
+prependMoved	lists.html#prependMoved,T,T	lists: prependMoved[T: SomeLinkedList](a, b: var T)	
+add	lists.html#add,SinglyLinkedList[T],SinglyLinkedNode[T]	lists: add[T](L: var SinglyLinkedList[T]; n: SinglyLinkedNode[T])	
+add	lists.html#add,SinglyLinkedList[T],T	lists: add[T](L: var SinglyLinkedList[T]; value: T)	
+prepend	lists.html#prepend,SinglyLinkedList[T],SinglyLinkedNode[T]	lists: prepend[T](L: var SinglyLinkedList[T]; n: SinglyLinkedNode[T])	
+prepend	lists.html#prepend,SinglyLinkedList[T],T	lists: prepend[T](L: var SinglyLinkedList[T]; value: T)	
+copy	lists.html#copy,SinglyLinkedList[T]	lists: copy[T](a: SinglyLinkedList[T]): SinglyLinkedList[T]	
+addMoved	lists.html#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]	lists: addMoved[T](a, b: var SinglyLinkedList[T])	
+add	lists.html#add,DoublyLinkedList[T],DoublyLinkedNode[T]	lists: add[T](L: var DoublyLinkedList[T]; n: DoublyLinkedNode[T])	
+add	lists.html#add,DoublyLinkedList[T],T	lists: add[T](L: var DoublyLinkedList[T]; value: T)	
+prepend	lists.html#prepend,DoublyLinkedList[T],DoublyLinkedNode[T]	lists: prepend[T](L: var DoublyLinkedList[T]; n: DoublyLinkedNode[T])	
+prepend	lists.html#prepend,DoublyLinkedList[T],T	lists: prepend[T](L: var DoublyLinkedList[T]; value: T)	
+copy	lists.html#copy,DoublyLinkedList[T]	lists: copy[T](a: DoublyLinkedList[T]): DoublyLinkedList[T]	
+addMoved	lists.html#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]	lists: addMoved[T](a, b: var DoublyLinkedList[T])	
+add	lists.html#add,T,T	lists: add[T: SomeLinkedList](a: var T; b: T)	
+remove	lists.html#remove,SinglyLinkedList[T],SinglyLinkedNode[T]	lists: remove[T](L: var SinglyLinkedList[T]; n: SinglyLinkedNode[T]): bool	
+remove	lists.html#remove,DoublyLinkedList[T],DoublyLinkedNode[T]	lists: remove[T](L: var DoublyLinkedList[T]; n: DoublyLinkedNode[T])	
+add	lists.html#add,SinglyLinkedRing[T],SinglyLinkedNode[T]	lists: add[T](L: var SinglyLinkedRing[T]; n: SinglyLinkedNode[T])	
+add	lists.html#add,SinglyLinkedRing[T],T	lists: add[T](L: var SinglyLinkedRing[T]; value: T)	
+prepend	lists.html#prepend,SinglyLinkedRing[T],SinglyLinkedNode[T]	lists: prepend[T](L: var SinglyLinkedRing[T]; n: SinglyLinkedNode[T])	
+prepend	lists.html#prepend,SinglyLinkedRing[T],T	lists: prepend[T](L: var SinglyLinkedRing[T]; value: T)	
+add	lists.html#add,DoublyLinkedRing[T],DoublyLinkedNode[T]	lists: add[T](L: var DoublyLinkedRing[T]; n: DoublyLinkedNode[T])	
+add	lists.html#add,DoublyLinkedRing[T],T	lists: add[T](L: var DoublyLinkedRing[T]; value: T)	
+prepend	lists.html#prepend,DoublyLinkedRing[T],DoublyLinkedNode[T]	lists: prepend[T](L: var DoublyLinkedRing[T]; n: DoublyLinkedNode[T])	
+prepend	lists.html#prepend,DoublyLinkedRing[T],T	lists: prepend[T](L: var DoublyLinkedRing[T]; value: T)	
+remove	lists.html#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]	lists: remove[T](L: var DoublyLinkedRing[T]; n: DoublyLinkedNode[T])	
+append	lists.html#append,,	lists: append[T](a: var (SinglyLinkedList[T] | SinglyLinkedRing[T]);\n          b: SinglyLinkedList[T] | SinglyLinkedNode[T] | T)	
+append	lists.html#append,,_2	lists: append[T](a: var (DoublyLinkedList[T] | DoublyLinkedRing[T]);\n          b: DoublyLinkedList[T] | DoublyLinkedNode[T] | T)	
+appendMoved	lists.html#appendMoved,T,T	lists: appendMoved[T: SomeLinkedList](a, b: var T)	
+Basic Usage	lists.html#basic-usage	 Basic Usage	
+Lists	lists.html#basic-usage-lists	  Lists	
+Rings	lists.html#basic-usage-rings	  Rings	
+See also	lists.html#see-also	 See also	

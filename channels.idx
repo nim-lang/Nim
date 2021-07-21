@@ -1,0 +1,15 @@
+nimChannelCacheSize	channels.html#nimChannelCacheSize	channels: nimChannelCacheSize	
+freeChannelCache	channels.html#freeChannelCache	channels: freeChannelCache()	
+Channel	channels.html#Channel	channels: Channel	
+`=destroy`	channels.html#=destroy,Channel[T]	channels: `=destroy`[T](c: var Channel[T])	
+`=copy`	channels.html#=copy,Channel[T],Channel[T]	channels: `=copy`[T](dest: var Channel[T]; src: Channel[T])	
+trySend	channels.html#trySend,Channel[T],Isolated[T]	channels: trySend[T](c: Channel[T]; src: var Isolated[T]): bool	
+trySend	channels.html#trySend.t,Channel[T],T	channels: trySend[T](c: Channel[T]; src: T): bool	
+tryRecv	channels.html#tryRecv,Channel[T],T	channels: tryRecv[T](c: Channel[T]; dst: var T): bool	
+send	channels.html#send,Channel[T],sinkIsolated[T]	channels: send[T](c: Channel[T]; src: sink Isolated[T])	
+send	channels.html#send.t,Channel[T],T	channels: send[T](c: Channel[T]; src: T)	
+recv	channels.html#recv,Channel[T]	channels: recv[T](c: Channel[T]): T	
+open	channels.html#open,Channel[T]	channels: open[T](c: Channel[T]): bool	
+close	channels.html#close,Channel[T]	channels: close[T](c: Channel[T]): bool	
+peek	channels.html#peek,Channel[T]	channels: peek[T](c: Channel[T]): int	
+newChannel	channels.html#newChannel,int	channels: newChannel[T](elements = 30): Channel[T]	

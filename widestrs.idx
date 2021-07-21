@@ -1,0 +1,10 @@
+Utf16Char	widestrs.html#Utf16Char	widestrs: Utf16Char	
+WideCString	widestrs.html#WideCString	widestrs: WideCString	
+WideCStringObj	widestrs.html#WideCStringObj	widestrs: WideCStringObj	
+len	widestrs.html#len,WideCString	widestrs: len(w: WideCString): int	
+newWideCString	widestrs.html#newWideCString,int	widestrs: newWideCString(size: int): WideCStringObj	
+newWideCString	widestrs.html#newWideCString,cstring,int	widestrs: newWideCString(source: cstring; L: int): WideCStringObj	
+newWideCString	widestrs.html#newWideCString,cstring	widestrs: newWideCString(s: cstring): WideCStringObj	
+newWideCString	widestrs.html#newWideCString,string	widestrs: newWideCString(s: string): WideCStringObj	
+`$`	widestrs.html#$,WideCString,int,int	widestrs: `$`(w: WideCString; estimate: int; replacement: int = 0x0000FFFD): string	
+`$`	widestrs.html#$,WideCString	widestrs: `$`(s: WideCString): string	

@@ -1,0 +1,28 @@
+AbsoluteFile	pathutils.html#AbsoluteFile	pathutils: AbsoluteFile	
+AbsoluteDir	pathutils.html#AbsoluteDir	pathutils: AbsoluteDir	
+RelativeFile	pathutils.html#RelativeFile	pathutils: RelativeFile	
+RelativeDir	pathutils.html#RelativeDir	pathutils: RelativeDir	
+AnyPath	pathutils.html#AnyPath	pathutils: AnyPath	
+isEmpty	pathutils.html#isEmpty,AnyPath	pathutils: isEmpty(x: AnyPath): bool	
+copyFile	pathutils.html#copyFile,AbsoluteFile,AbsoluteFile	pathutils: copyFile(source, dest: AbsoluteFile)	
+removeFile	pathutils.html#removeFile,AbsoluteFile	pathutils: removeFile(x: AbsoluteFile)	
+splitFile	pathutils.html#splitFile,AbsoluteFile	pathutils: splitFile(x: AbsoluteFile): tuple[dir: AbsoluteDir, name, ext: string]	
+extractFilename	pathutils.html#extractFilename,AbsoluteFile	pathutils: extractFilename(x: AbsoluteFile): string	
+fileExists	pathutils.html#fileExists,AbsoluteFile	pathutils: fileExists(x: AbsoluteFile): bool	
+dirExists	pathutils.html#dirExists,AbsoluteDir	pathutils: dirExists(x: AbsoluteDir): bool	
+quoteShell	pathutils.html#quoteShell,AbsoluteFile	pathutils: quoteShell(x: AbsoluteFile): string	
+quoteShell	pathutils.html#quoteShell,AbsoluteDir	pathutils: quoteShell(x: AbsoluteDir): string	
+cmpPaths	pathutils.html#cmpPaths,AbsoluteDir,AbsoluteDir	pathutils: cmpPaths(x, y: AbsoluteDir): int	
+createDir	pathutils.html#createDir,AbsoluteDir	pathutils: createDir(x: AbsoluteDir)	
+toAbsoluteDir	pathutils.html#toAbsoluteDir,string	pathutils: toAbsoluteDir(path: string): AbsoluteDir	
+`$`	pathutils.html#$,AnyPath	pathutils: `$`(x: AnyPath): string	
+`==`	pathutils.html#==,T,T	pathutils: `==`[T: AnyPath](x, y: T): bool	
+`/`	pathutils.html#/,AbsoluteDir,RelativeFile	pathutils: `/`(base: AbsoluteDir; f: RelativeFile): AbsoluteFile	
+`/`	pathutils.html#/,AbsoluteDir,RelativeDir	pathutils: `/`(base: AbsoluteDir; f: RelativeDir): AbsoluteDir	
+relativeTo	pathutils.html#relativeTo,AbsoluteFile,AbsoluteDir	pathutils: relativeTo(fullPath: AbsoluteFile; baseFilename: AbsoluteDir; sep = DirSep): RelativeFile	
+toAbsolute	pathutils.html#toAbsolute,string,AbsoluteDir	pathutils: toAbsolute(file: string; base: AbsoluteDir): AbsoluteFile	
+changeFileExt	pathutils.html#changeFileExt,AbsoluteFile,string	pathutils: changeFileExt(x: AbsoluteFile; ext: string): AbsoluteFile	
+changeFileExt	pathutils.html#changeFileExt,RelativeFile,string	pathutils: changeFileExt(x: RelativeFile; ext: string): RelativeFile	
+addFileExt	pathutils.html#addFileExt,AbsoluteFile,string	pathutils: addFileExt(x: AbsoluteFile; ext: string): AbsoluteFile	
+addFileExt	pathutils.html#addFileExt,RelativeFile,string	pathutils: addFileExt(x: RelativeFile; ext: string): RelativeFile	
+writeFile	pathutils.html#writeFile,AbsoluteFile,string	pathutils: writeFile(x: AbsoluteFile; content: string)	

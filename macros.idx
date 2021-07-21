@@ -1,0 +1,499 @@
+nnkNone	macros.html#nnkNone	NimNodeKind.nnkNone	
+nnkEmpty	macros.html#nnkEmpty	NimNodeKind.nnkEmpty	
+nnkIdent	macros.html#nnkIdent	NimNodeKind.nnkIdent	
+nnkSym	macros.html#nnkSym	NimNodeKind.nnkSym	
+nnkType	macros.html#nnkType	NimNodeKind.nnkType	
+nnkCharLit	macros.html#nnkCharLit	NimNodeKind.nnkCharLit	
+nnkIntLit	macros.html#nnkIntLit	NimNodeKind.nnkIntLit	
+nnkInt8Lit	macros.html#nnkInt8Lit	NimNodeKind.nnkInt8Lit	
+nnkInt16Lit	macros.html#nnkInt16Lit	NimNodeKind.nnkInt16Lit	
+nnkInt32Lit	macros.html#nnkInt32Lit	NimNodeKind.nnkInt32Lit	
+nnkInt64Lit	macros.html#nnkInt64Lit	NimNodeKind.nnkInt64Lit	
+nnkUIntLit	macros.html#nnkUIntLit	NimNodeKind.nnkUIntLit	
+nnkUInt8Lit	macros.html#nnkUInt8Lit	NimNodeKind.nnkUInt8Lit	
+nnkUInt16Lit	macros.html#nnkUInt16Lit	NimNodeKind.nnkUInt16Lit	
+nnkUInt32Lit	macros.html#nnkUInt32Lit	NimNodeKind.nnkUInt32Lit	
+nnkUInt64Lit	macros.html#nnkUInt64Lit	NimNodeKind.nnkUInt64Lit	
+nnkFloatLit	macros.html#nnkFloatLit	NimNodeKind.nnkFloatLit	
+nnkFloat32Lit	macros.html#nnkFloat32Lit	NimNodeKind.nnkFloat32Lit	
+nnkFloat64Lit	macros.html#nnkFloat64Lit	NimNodeKind.nnkFloat64Lit	
+nnkFloat128Lit	macros.html#nnkFloat128Lit	NimNodeKind.nnkFloat128Lit	
+nnkStrLit	macros.html#nnkStrLit	NimNodeKind.nnkStrLit	
+nnkRStrLit	macros.html#nnkRStrLit	NimNodeKind.nnkRStrLit	
+nnkTripleStrLit	macros.html#nnkTripleStrLit	NimNodeKind.nnkTripleStrLit	
+nnkNilLit	macros.html#nnkNilLit	NimNodeKind.nnkNilLit	
+nnkComesFrom	macros.html#nnkComesFrom	NimNodeKind.nnkComesFrom	
+nnkDotCall	macros.html#nnkDotCall	NimNodeKind.nnkDotCall	
+nnkCommand	macros.html#nnkCommand	NimNodeKind.nnkCommand	
+nnkCall	macros.html#nnkCall	NimNodeKind.nnkCall	
+nnkCallStrLit	macros.html#nnkCallStrLit	NimNodeKind.nnkCallStrLit	
+nnkInfix	macros.html#nnkInfix	NimNodeKind.nnkInfix	
+nnkPrefix	macros.html#nnkPrefix	NimNodeKind.nnkPrefix	
+nnkPostfix	macros.html#nnkPostfix	NimNodeKind.nnkPostfix	
+nnkHiddenCallConv	macros.html#nnkHiddenCallConv	NimNodeKind.nnkHiddenCallConv	
+nnkExprEqExpr	macros.html#nnkExprEqExpr	NimNodeKind.nnkExprEqExpr	
+nnkExprColonExpr	macros.html#nnkExprColonExpr	NimNodeKind.nnkExprColonExpr	
+nnkIdentDefs	macros.html#nnkIdentDefs	NimNodeKind.nnkIdentDefs	
+nnkVarTuple	macros.html#nnkVarTuple	NimNodeKind.nnkVarTuple	
+nnkPar	macros.html#nnkPar	NimNodeKind.nnkPar	
+nnkObjConstr	macros.html#nnkObjConstr	NimNodeKind.nnkObjConstr	
+nnkCurly	macros.html#nnkCurly	NimNodeKind.nnkCurly	
+nnkCurlyExpr	macros.html#nnkCurlyExpr	NimNodeKind.nnkCurlyExpr	
+nnkBracket	macros.html#nnkBracket	NimNodeKind.nnkBracket	
+nnkBracketExpr	macros.html#nnkBracketExpr	NimNodeKind.nnkBracketExpr	
+nnkPragmaExpr	macros.html#nnkPragmaExpr	NimNodeKind.nnkPragmaExpr	
+nnkRange	macros.html#nnkRange	NimNodeKind.nnkRange	
+nnkDotExpr	macros.html#nnkDotExpr	NimNodeKind.nnkDotExpr	
+nnkCheckedFieldExpr	macros.html#nnkCheckedFieldExpr	NimNodeKind.nnkCheckedFieldExpr	
+nnkDerefExpr	macros.html#nnkDerefExpr	NimNodeKind.nnkDerefExpr	
+nnkIfExpr	macros.html#nnkIfExpr	NimNodeKind.nnkIfExpr	
+nnkElifExpr	macros.html#nnkElifExpr	NimNodeKind.nnkElifExpr	
+nnkElseExpr	macros.html#nnkElseExpr	NimNodeKind.nnkElseExpr	
+nnkLambda	macros.html#nnkLambda	NimNodeKind.nnkLambda	
+nnkDo	macros.html#nnkDo	NimNodeKind.nnkDo	
+nnkAccQuoted	macros.html#nnkAccQuoted	NimNodeKind.nnkAccQuoted	
+nnkTableConstr	macros.html#nnkTableConstr	NimNodeKind.nnkTableConstr	
+nnkBind	macros.html#nnkBind	NimNodeKind.nnkBind	
+nnkClosedSymChoice	macros.html#nnkClosedSymChoice	NimNodeKind.nnkClosedSymChoice	
+nnkOpenSymChoice	macros.html#nnkOpenSymChoice	NimNodeKind.nnkOpenSymChoice	
+nnkHiddenStdConv	macros.html#nnkHiddenStdConv	NimNodeKind.nnkHiddenStdConv	
+nnkHiddenSubConv	macros.html#nnkHiddenSubConv	NimNodeKind.nnkHiddenSubConv	
+nnkConv	macros.html#nnkConv	NimNodeKind.nnkConv	
+nnkCast	macros.html#nnkCast	NimNodeKind.nnkCast	
+nnkStaticExpr	macros.html#nnkStaticExpr	NimNodeKind.nnkStaticExpr	
+nnkAddr	macros.html#nnkAddr	NimNodeKind.nnkAddr	
+nnkHiddenAddr	macros.html#nnkHiddenAddr	NimNodeKind.nnkHiddenAddr	
+nnkHiddenDeref	macros.html#nnkHiddenDeref	NimNodeKind.nnkHiddenDeref	
+nnkObjDownConv	macros.html#nnkObjDownConv	NimNodeKind.nnkObjDownConv	
+nnkObjUpConv	macros.html#nnkObjUpConv	NimNodeKind.nnkObjUpConv	
+nnkChckRangeF	macros.html#nnkChckRangeF	NimNodeKind.nnkChckRangeF	
+nnkChckRange64	macros.html#nnkChckRange64	NimNodeKind.nnkChckRange64	
+nnkChckRange	macros.html#nnkChckRange	NimNodeKind.nnkChckRange	
+nnkStringToCString	macros.html#nnkStringToCString	NimNodeKind.nnkStringToCString	
+nnkCStringToString	macros.html#nnkCStringToString	NimNodeKind.nnkCStringToString	
+nnkAsgn	macros.html#nnkAsgn	NimNodeKind.nnkAsgn	
+nnkFastAsgn	macros.html#nnkFastAsgn	NimNodeKind.nnkFastAsgn	
+nnkGenericParams	macros.html#nnkGenericParams	NimNodeKind.nnkGenericParams	
+nnkFormalParams	macros.html#nnkFormalParams	NimNodeKind.nnkFormalParams	
+nnkOfInherit	macros.html#nnkOfInherit	NimNodeKind.nnkOfInherit	
+nnkImportAs	macros.html#nnkImportAs	NimNodeKind.nnkImportAs	
+nnkProcDef	macros.html#nnkProcDef	NimNodeKind.nnkProcDef	
+nnkMethodDef	macros.html#nnkMethodDef	NimNodeKind.nnkMethodDef	
+nnkConverterDef	macros.html#nnkConverterDef	NimNodeKind.nnkConverterDef	
+nnkMacroDef	macros.html#nnkMacroDef	NimNodeKind.nnkMacroDef	
+nnkTemplateDef	macros.html#nnkTemplateDef	NimNodeKind.nnkTemplateDef	
+nnkIteratorDef	macros.html#nnkIteratorDef	NimNodeKind.nnkIteratorDef	
+nnkOfBranch	macros.html#nnkOfBranch	NimNodeKind.nnkOfBranch	
+nnkElifBranch	macros.html#nnkElifBranch	NimNodeKind.nnkElifBranch	
+nnkExceptBranch	macros.html#nnkExceptBranch	NimNodeKind.nnkExceptBranch	
+nnkElse	macros.html#nnkElse	NimNodeKind.nnkElse	
+nnkAsmStmt	macros.html#nnkAsmStmt	NimNodeKind.nnkAsmStmt	
+nnkPragma	macros.html#nnkPragma	NimNodeKind.nnkPragma	
+nnkPragmaBlock	macros.html#nnkPragmaBlock	NimNodeKind.nnkPragmaBlock	
+nnkIfStmt	macros.html#nnkIfStmt	NimNodeKind.nnkIfStmt	
+nnkWhenStmt	macros.html#nnkWhenStmt	NimNodeKind.nnkWhenStmt	
+nnkForStmt	macros.html#nnkForStmt	NimNodeKind.nnkForStmt	
+nnkParForStmt	macros.html#nnkParForStmt	NimNodeKind.nnkParForStmt	
+nnkWhileStmt	macros.html#nnkWhileStmt	NimNodeKind.nnkWhileStmt	
+nnkCaseStmt	macros.html#nnkCaseStmt	NimNodeKind.nnkCaseStmt	
+nnkTypeSection	macros.html#nnkTypeSection	NimNodeKind.nnkTypeSection	
+nnkVarSection	macros.html#nnkVarSection	NimNodeKind.nnkVarSection	
+nnkLetSection	macros.html#nnkLetSection	NimNodeKind.nnkLetSection	
+nnkConstSection	macros.html#nnkConstSection	NimNodeKind.nnkConstSection	
+nnkConstDef	macros.html#nnkConstDef	NimNodeKind.nnkConstDef	
+nnkTypeDef	macros.html#nnkTypeDef	NimNodeKind.nnkTypeDef	
+nnkYieldStmt	macros.html#nnkYieldStmt	NimNodeKind.nnkYieldStmt	
+nnkDefer	macros.html#nnkDefer	NimNodeKind.nnkDefer	
+nnkTryStmt	macros.html#nnkTryStmt	NimNodeKind.nnkTryStmt	
+nnkFinally	macros.html#nnkFinally	NimNodeKind.nnkFinally	
+nnkRaiseStmt	macros.html#nnkRaiseStmt	NimNodeKind.nnkRaiseStmt	
+nnkReturnStmt	macros.html#nnkReturnStmt	NimNodeKind.nnkReturnStmt	
+nnkBreakStmt	macros.html#nnkBreakStmt	NimNodeKind.nnkBreakStmt	
+nnkContinueStmt	macros.html#nnkContinueStmt	NimNodeKind.nnkContinueStmt	
+nnkBlockStmt	macros.html#nnkBlockStmt	NimNodeKind.nnkBlockStmt	
+nnkStaticStmt	macros.html#nnkStaticStmt	NimNodeKind.nnkStaticStmt	
+nnkDiscardStmt	macros.html#nnkDiscardStmt	NimNodeKind.nnkDiscardStmt	
+nnkStmtList	macros.html#nnkStmtList	NimNodeKind.nnkStmtList	
+nnkImportStmt	macros.html#nnkImportStmt	NimNodeKind.nnkImportStmt	
+nnkImportExceptStmt	macros.html#nnkImportExceptStmt	NimNodeKind.nnkImportExceptStmt	
+nnkExportStmt	macros.html#nnkExportStmt	NimNodeKind.nnkExportStmt	
+nnkExportExceptStmt	macros.html#nnkExportExceptStmt	NimNodeKind.nnkExportExceptStmt	
+nnkFromStmt	macros.html#nnkFromStmt	NimNodeKind.nnkFromStmt	
+nnkIncludeStmt	macros.html#nnkIncludeStmt	NimNodeKind.nnkIncludeStmt	
+nnkBindStmt	macros.html#nnkBindStmt	NimNodeKind.nnkBindStmt	
+nnkMixinStmt	macros.html#nnkMixinStmt	NimNodeKind.nnkMixinStmt	
+nnkUsingStmt	macros.html#nnkUsingStmt	NimNodeKind.nnkUsingStmt	
+nnkCommentStmt	macros.html#nnkCommentStmt	NimNodeKind.nnkCommentStmt	
+nnkStmtListExpr	macros.html#nnkStmtListExpr	NimNodeKind.nnkStmtListExpr	
+nnkBlockExpr	macros.html#nnkBlockExpr	NimNodeKind.nnkBlockExpr	
+nnkStmtListType	macros.html#nnkStmtListType	NimNodeKind.nnkStmtListType	
+nnkBlockType	macros.html#nnkBlockType	NimNodeKind.nnkBlockType	
+nnkWith	macros.html#nnkWith	NimNodeKind.nnkWith	
+nnkWithout	macros.html#nnkWithout	NimNodeKind.nnkWithout	
+nnkTypeOfExpr	macros.html#nnkTypeOfExpr	NimNodeKind.nnkTypeOfExpr	
+nnkObjectTy	macros.html#nnkObjectTy	NimNodeKind.nnkObjectTy	
+nnkTupleTy	macros.html#nnkTupleTy	NimNodeKind.nnkTupleTy	
+nnkTupleClassTy	macros.html#nnkTupleClassTy	NimNodeKind.nnkTupleClassTy	
+nnkTypeClassTy	macros.html#nnkTypeClassTy	NimNodeKind.nnkTypeClassTy	
+nnkStaticTy	macros.html#nnkStaticTy	NimNodeKind.nnkStaticTy	
+nnkRecList	macros.html#nnkRecList	NimNodeKind.nnkRecList	
+nnkRecCase	macros.html#nnkRecCase	NimNodeKind.nnkRecCase	
+nnkRecWhen	macros.html#nnkRecWhen	NimNodeKind.nnkRecWhen	
+nnkRefTy	macros.html#nnkRefTy	NimNodeKind.nnkRefTy	
+nnkPtrTy	macros.html#nnkPtrTy	NimNodeKind.nnkPtrTy	
+nnkVarTy	macros.html#nnkVarTy	NimNodeKind.nnkVarTy	
+nnkConstTy	macros.html#nnkConstTy	NimNodeKind.nnkConstTy	
+nnkMutableTy	macros.html#nnkMutableTy	NimNodeKind.nnkMutableTy	
+nnkDistinctTy	macros.html#nnkDistinctTy	NimNodeKind.nnkDistinctTy	
+nnkProcTy	macros.html#nnkProcTy	NimNodeKind.nnkProcTy	
+nnkIteratorTy	macros.html#nnkIteratorTy	NimNodeKind.nnkIteratorTy	
+nnkSharedTy	macros.html#nnkSharedTy	NimNodeKind.nnkSharedTy	
+nnkEnumTy	macros.html#nnkEnumTy	NimNodeKind.nnkEnumTy	
+nnkEnumFieldDef	macros.html#nnkEnumFieldDef	NimNodeKind.nnkEnumFieldDef	
+nnkArgList	macros.html#nnkArgList	NimNodeKind.nnkArgList	
+nnkPattern	macros.html#nnkPattern	NimNodeKind.nnkPattern	
+nnkHiddenTryStmt	macros.html#nnkHiddenTryStmt	NimNodeKind.nnkHiddenTryStmt	
+nnkClosure	macros.html#nnkClosure	NimNodeKind.nnkClosure	
+nnkGotoState	macros.html#nnkGotoState	NimNodeKind.nnkGotoState	
+nnkState	macros.html#nnkState	NimNodeKind.nnkState	
+nnkBreakState	macros.html#nnkBreakState	NimNodeKind.nnkBreakState	
+nnkFuncDef	macros.html#nnkFuncDef	NimNodeKind.nnkFuncDef	
+nnkTupleConstr	macros.html#nnkTupleConstr	NimNodeKind.nnkTupleConstr	
+nnkError	macros.html#nnkError	NimNodeKind.nnkError	
+NimNodeKind	macros.html#NimNodeKind	macros: NimNodeKind	
+NimNodeKinds	macros.html#NimNodeKinds	macros: NimNodeKinds	
+ntyNone	macros.html#ntyNone	NimTypeKind.ntyNone	
+ntyBool	macros.html#ntyBool	NimTypeKind.ntyBool	
+ntyChar	macros.html#ntyChar	NimTypeKind.ntyChar	
+ntyEmpty	macros.html#ntyEmpty	NimTypeKind.ntyEmpty	
+ntyAlias	macros.html#ntyAlias	NimTypeKind.ntyAlias	
+ntyNil	macros.html#ntyNil	NimTypeKind.ntyNil	
+ntyExpr	macros.html#ntyExpr	NimTypeKind.ntyExpr	
+ntyStmt	macros.html#ntyStmt	NimTypeKind.ntyStmt	
+ntyTypeDesc	macros.html#ntyTypeDesc	NimTypeKind.ntyTypeDesc	
+ntyGenericInvocation	macros.html#ntyGenericInvocation	NimTypeKind.ntyGenericInvocation	
+ntyGenericBody	macros.html#ntyGenericBody	NimTypeKind.ntyGenericBody	
+ntyGenericInst	macros.html#ntyGenericInst	NimTypeKind.ntyGenericInst	
+ntyGenericParam	macros.html#ntyGenericParam	NimTypeKind.ntyGenericParam	
+ntyDistinct	macros.html#ntyDistinct	NimTypeKind.ntyDistinct	
+ntyEnum	macros.html#ntyEnum	NimTypeKind.ntyEnum	
+ntyOrdinal	macros.html#ntyOrdinal	NimTypeKind.ntyOrdinal	
+ntyArray	macros.html#ntyArray	NimTypeKind.ntyArray	
+ntyObject	macros.html#ntyObject	NimTypeKind.ntyObject	
+ntyTuple	macros.html#ntyTuple	NimTypeKind.ntyTuple	
+ntySet	macros.html#ntySet	NimTypeKind.ntySet	
+ntyRange	macros.html#ntyRange	NimTypeKind.ntyRange	
+ntyPtr	macros.html#ntyPtr	NimTypeKind.ntyPtr	
+ntyRef	macros.html#ntyRef	NimTypeKind.ntyRef	
+ntyVar	macros.html#ntyVar	NimTypeKind.ntyVar	
+ntySequence	macros.html#ntySequence	NimTypeKind.ntySequence	
+ntyProc	macros.html#ntyProc	NimTypeKind.ntyProc	
+ntyPointer	macros.html#ntyPointer	NimTypeKind.ntyPointer	
+ntyOpenArray	macros.html#ntyOpenArray	NimTypeKind.ntyOpenArray	
+ntyString	macros.html#ntyString	NimTypeKind.ntyString	
+ntyCString	macros.html#ntyCString	NimTypeKind.ntyCString	
+ntyForward	macros.html#ntyForward	NimTypeKind.ntyForward	
+ntyInt	macros.html#ntyInt	NimTypeKind.ntyInt	
+ntyInt8	macros.html#ntyInt8	NimTypeKind.ntyInt8	
+ntyInt16	macros.html#ntyInt16	NimTypeKind.ntyInt16	
+ntyInt32	macros.html#ntyInt32	NimTypeKind.ntyInt32	
+ntyInt64	macros.html#ntyInt64	NimTypeKind.ntyInt64	
+ntyFloat	macros.html#ntyFloat	NimTypeKind.ntyFloat	
+ntyFloat32	macros.html#ntyFloat32	NimTypeKind.ntyFloat32	
+ntyFloat64	macros.html#ntyFloat64	NimTypeKind.ntyFloat64	
+ntyFloat128	macros.html#ntyFloat128	NimTypeKind.ntyFloat128	
+ntyUInt	macros.html#ntyUInt	NimTypeKind.ntyUInt	
+ntyUInt8	macros.html#ntyUInt8	NimTypeKind.ntyUInt8	
+ntyUInt16	macros.html#ntyUInt16	NimTypeKind.ntyUInt16	
+ntyUInt32	macros.html#ntyUInt32	NimTypeKind.ntyUInt32	
+ntyUInt64	macros.html#ntyUInt64	NimTypeKind.ntyUInt64	
+ntyUnused0	macros.html#ntyUnused0	NimTypeKind.ntyUnused0	
+ntyUnused1	macros.html#ntyUnused1	NimTypeKind.ntyUnused1	
+ntyUnused2	macros.html#ntyUnused2	NimTypeKind.ntyUnused2	
+ntyVarargs	macros.html#ntyVarargs	NimTypeKind.ntyVarargs	
+ntyUncheckedArray	macros.html#ntyUncheckedArray	NimTypeKind.ntyUncheckedArray	
+ntyError	macros.html#ntyError	NimTypeKind.ntyError	
+ntyBuiltinTypeClass	macros.html#ntyBuiltinTypeClass	NimTypeKind.ntyBuiltinTypeClass	
+ntyUserTypeClass	macros.html#ntyUserTypeClass	NimTypeKind.ntyUserTypeClass	
+ntyUserTypeClassInst	macros.html#ntyUserTypeClassInst	NimTypeKind.ntyUserTypeClassInst	
+ntyCompositeTypeClass	macros.html#ntyCompositeTypeClass	NimTypeKind.ntyCompositeTypeClass	
+ntyInferred	macros.html#ntyInferred	NimTypeKind.ntyInferred	
+ntyAnd	macros.html#ntyAnd	NimTypeKind.ntyAnd	
+ntyOr	macros.html#ntyOr	NimTypeKind.ntyOr	
+ntyNot	macros.html#ntyNot	NimTypeKind.ntyNot	
+ntyAnything	macros.html#ntyAnything	NimTypeKind.ntyAnything	
+ntyStatic	macros.html#ntyStatic	NimTypeKind.ntyStatic	
+ntyFromExpr	macros.html#ntyFromExpr	NimTypeKind.ntyFromExpr	
+ntyOptDeprecated	macros.html#ntyOptDeprecated	NimTypeKind.ntyOptDeprecated	
+ntyVoid	macros.html#ntyVoid	NimTypeKind.ntyVoid	
+NimTypeKind	macros.html#NimTypeKind	macros: NimTypeKind	
+TNimTypeKinds	macros.html#TNimTypeKinds	macros: TNimTypeKinds	
+nskUnknown	macros.html#nskUnknown	NimSymKind.nskUnknown	
+nskConditional	macros.html#nskConditional	NimSymKind.nskConditional	
+nskDynLib	macros.html#nskDynLib	NimSymKind.nskDynLib	
+nskParam	macros.html#nskParam	NimSymKind.nskParam	
+nskGenericParam	macros.html#nskGenericParam	NimSymKind.nskGenericParam	
+nskTemp	macros.html#nskTemp	NimSymKind.nskTemp	
+nskModule	macros.html#nskModule	NimSymKind.nskModule	
+nskType	macros.html#nskType	NimSymKind.nskType	
+nskVar	macros.html#nskVar	NimSymKind.nskVar	
+nskLet	macros.html#nskLet	NimSymKind.nskLet	
+nskConst	macros.html#nskConst	NimSymKind.nskConst	
+nskResult	macros.html#nskResult	NimSymKind.nskResult	
+nskProc	macros.html#nskProc	NimSymKind.nskProc	
+nskFunc	macros.html#nskFunc	NimSymKind.nskFunc	
+nskMethod	macros.html#nskMethod	NimSymKind.nskMethod	
+nskIterator	macros.html#nskIterator	NimSymKind.nskIterator	
+nskConverter	macros.html#nskConverter	NimSymKind.nskConverter	
+nskMacro	macros.html#nskMacro	NimSymKind.nskMacro	
+nskTemplate	macros.html#nskTemplate	NimSymKind.nskTemplate	
+nskField	macros.html#nskField	NimSymKind.nskField	
+nskEnumField	macros.html#nskEnumField	NimSymKind.nskEnumField	
+nskForVar	macros.html#nskForVar	NimSymKind.nskForVar	
+nskLabel	macros.html#nskLabel	NimSymKind.nskLabel	
+nskStub	macros.html#nskStub	NimSymKind.nskStub	
+NimSymKind	macros.html#NimSymKind	macros: NimSymKind	
+TNimSymKinds	macros.html#TNimSymKinds	macros: TNimSymKinds	
+NimIdent	macros.html#NimIdent	macros: NimIdent	
+NimSym	macros.html#NimSym	macros: NimSym	
+nnkLiterals	macros.html#nnkLiterals	macros: nnkLiterals	
+nnkCallKinds	macros.html#nnkCallKinds	macros: nnkCallKinds	
+toNimIdent	macros.html#toNimIdent,string	macros: toNimIdent(s: string): NimIdent	
+`==`	macros.html#==,NimIdent,NimIdent	macros: `==`(a, b: NimIdent): bool	
+`==`	macros.html#==,NimNode,NimNode	macros: `==`(a, b: NimNode): bool	
+`==`	macros.html#==,NimSym,NimSym	macros: `==`(a, b: NimSym): bool	
+sameType	macros.html#sameType,NimNode,NimNode	macros: sameType(a, b: NimNode): bool	
+len	macros.html#len,NimNode	macros: len(n: NimNode): int	
+`[]`	macros.html#[],NimNode,int	macros: `[]`(n: NimNode; i: int): NimNode	
+`[]`	macros.html#[],NimNode,BackwardsIndex	macros: `[]`(n: NimNode; i: BackwardsIndex): NimNode	
+`[]`	macros.html#[],NimNode,HSlice[T: Ordinal,U: Ordinal]	macros: `[]`[T, U: Ordinal](n: NimNode; x: HSlice[T, U]): seq[NimNode]	
+`[]=`	macros.html#[]=,NimNode,int,NimNode	macros: `[]=`(n: NimNode; i: int; child: NimNode)	
+`[]=`	macros.html#[]=,NimNode,BackwardsIndex,NimNode	macros: `[]=`(n: NimNode; i: BackwardsIndex; child: NimNode)	
+`or`	macros.html#or.t,NimNode,NimNode	macros: `or`(x, y: NimNode): NimNode	
+add	macros.html#add,NimNode,NimNode	macros: add(father, child: NimNode): NimNode	
+add	macros.html#add,NimNode,varargs[NimNode]	macros: add(father: NimNode; children: varargs[NimNode]): NimNode	
+del	macros.html#del,NimNode,int,int	macros: del(father: NimNode; idx = 0; n = 1)	
+kind	macros.html#kind,NimNode	macros: kind(n: NimNode): NimNodeKind	
+intVal	macros.html#intVal,NimNode	macros: intVal(n: NimNode): BiggestInt	
+floatVal	macros.html#floatVal,NimNode	macros: floatVal(n: NimNode): BiggestFloat	
+symKind	macros.html#symKind,NimNode	macros: symKind(symbol: NimNode): NimSymKind	
+getImpl	macros.html#getImpl,NimNode	macros: getImpl(symbol: NimNode): NimNode	
+strVal	macros.html#strVal,NimNode	macros: strVal(n: NimNode): string	
+ident	macros.html#ident,NimNode	macros: ident(n: NimNode): NimIdent	
+symbol	macros.html#symbol,NimNode	macros: symbol(n: NimNode): NimSym	
+getImpl	macros.html#getImpl,NimSym	macros: getImpl(s: NimSym): NimNode	
+`$`	macros.html#$,NimIdent	macros: `$`(i: NimIdent): string	
+`$`	macros.html#$,NimSym	macros: `$`(s: NimSym): string	
+getImplTransformed	macros.html#getImplTransformed,NimNode	macros: getImplTransformed(symbol: NimNode): NimNode	
+owner	macros.html#owner,NimNode	macros: owner(sym: NimNode): NimNode	
+isInstantiationOf	macros.html#isInstantiationOf,NimNode,NimNode	macros: isInstantiationOf(instanceProcSym, genProcSym: NimNode): bool	
+getType	macros.html#getType,NimNode	macros: getType(n: NimNode): NimNode	
+getType	macros.html#getType,typedesc	macros: getType(n: typedesc): NimNode	
+typeKind	macros.html#typeKind,NimNode	macros: typeKind(n: NimNode): NimTypeKind	
+getTypeInst	macros.html#getTypeInst,NimNode	macros: getTypeInst(n: NimNode): NimNode	
+getTypeInst	macros.html#getTypeInst,typedesc	macros: getTypeInst(n: typedesc): NimNode	
+getTypeImpl	macros.html#getTypeImpl,NimNode	macros: getTypeImpl(n: NimNode): NimNode	
+signatureHash	macros.html#signatureHash,NimNode	macros: signatureHash(n: NimNode): string	
+symBodyHash	macros.html#symBodyHash,NimNode	macros: symBodyHash(s: NimNode): string	
+getTypeImpl	macros.html#getTypeImpl,typedesc	macros: getTypeImpl(n: typedesc): NimNode	
+intVal=	macros.html#intVal=,NimNode,BiggestInt	macros: intVal=(n: NimNode; val: BiggestInt)	
+floatVal=	macros.html#floatVal=,NimNode,BiggestFloat	macros: floatVal=(n: NimNode; val: BiggestFloat)	
+symbol=	macros.html#symbol=,NimNode,NimSym	macros: symbol=(n: NimNode; val: NimSym)	
+ident=	macros.html#ident=,NimNode,NimIdent	macros: ident=(n: NimNode; val: NimIdent)	
+strVal=	macros.html#strVal=,NimNode,string	macros: strVal=(n: NimNode; val: string)	
+newNimNode	macros.html#newNimNode,NimNodeKind,NimNode	macros: newNimNode(kind: NimNodeKind; lineInfoFrom: NimNode = nil): NimNode	
+copyNimNode	macros.html#copyNimNode,NimNode	macros: copyNimNode(n: NimNode): NimNode	
+copyNimTree	macros.html#copyNimTree,NimNode	macros: copyNimTree(n: NimNode): NimNode	
+error	macros.html#error,string,NimNode	macros: error(msg: string; n: NimNode = nil)	
+warning	macros.html#warning,string,NimNode	macros: warning(msg: string; n: NimNode = nil)	
+hint	macros.html#hint,string,NimNode	macros: hint(msg: string; n: NimNode = nil)	
+newStrLitNode	macros.html#newStrLitNode,string	macros: newStrLitNode(s: string): NimNode	
+newCommentStmtNode	macros.html#newCommentStmtNode,string	macros: newCommentStmtNode(s: string): NimNode	
+newIntLitNode	macros.html#newIntLitNode,BiggestInt	macros: newIntLitNode(i: BiggestInt): NimNode	
+newFloatLitNode	macros.html#newFloatLitNode,BiggestFloat	macros: newFloatLitNode(f: BiggestFloat): NimNode	
+newIdentNode	macros.html#newIdentNode,NimIdent	macros: newIdentNode(i: NimIdent): NimNode	
+newIdentNode	macros.html#newIdentNode,string	macros: newIdentNode(i: string): NimNode	
+ident	macros.html#ident,string	macros: ident(name: string): NimNode	
+brClosed	macros.html#brClosed	BindSymRule.brClosed	
+brOpen	macros.html#brOpen	BindSymRule.brOpen	
+brForceOpen	macros.html#brForceOpen	BindSymRule.brForceOpen	
+BindSymRule	macros.html#BindSymRule	macros: BindSymRule	
+bindSym	macros.html#bindSym,,BindSymRule	macros: bindSym(ident: string | NimNode; rule: BindSymRule = brClosed): NimNode	
+genSym	macros.html#genSym,NimSymKind,string	macros: genSym(kind: NimSymKind = nskLet; ident = &quot;&quot;): NimNode	
+callsite	macros.html#callsite	macros: callsite(): NimNode	
+toStrLit	macros.html#toStrLit,NimNode	macros: toStrLit(n: NimNode): NimNode	
+LineInfo	macros.html#LineInfo	macros: LineInfo	
+`$`	macros.html#$,LineInfo	macros: `$`(arg: LineInfo): string	
+copyLineInfo	macros.html#copyLineInfo,NimNode,NimNode	macros: copyLineInfo(arg: NimNode; info: NimNode)	
+lineInfoObj	macros.html#lineInfoObj,NimNode	macros: lineInfoObj(n: NimNode): LineInfo	
+lineInfo	macros.html#lineInfo,NimNode	macros: lineInfo(arg: NimNode): string	
+internalErrorFlag	macros.html#internalErrorFlag	macros: internalErrorFlag(): string	
+parseExpr	macros.html#parseExpr,string	macros: parseExpr(s: string): NimNode	
+parseStmt	macros.html#parseStmt,string	macros: parseStmt(s: string): NimNode	
+getAst	macros.html#getAst,untyped	macros: getAst(macroOrTemplate: untyped): NimNode	
+quote	macros.html#quote,typed,string	macros: quote(bl: typed; op = &quot;``&quot;): NimNode	
+expectKind	macros.html#expectKind,NimNode,NimNodeKind	macros: expectKind(n: NimNode; k: NimNodeKind)	
+expectMinLen	macros.html#expectMinLen,NimNode,int	macros: expectMinLen(n: NimNode; min: int)	
+expectLen	macros.html#expectLen,NimNode,int	macros: expectLen(n: NimNode; len: int)	
+expectLen	macros.html#expectLen,NimNode,int,int	macros: expectLen(n: NimNode; min, max: int)	
+newTree	macros.html#newTree,NimNodeKind,varargs[NimNode]	macros: newTree(kind: NimNodeKind; children: varargs[NimNode]): NimNode	
+newCall	macros.html#newCall,NimNode,varargs[NimNode]	macros: newCall(theProc: NimNode; args: varargs[NimNode]): NimNode	
+newCall	macros.html#newCall,NimIdent,varargs[NimNode]	macros: newCall(theProc: NimIdent; args: varargs[NimNode]): NimNode	
+newCall	macros.html#newCall,string,varargs[NimNode]	macros: newCall(theProc: string; args: varargs[NimNode]): NimNode	
+newLit	macros.html#newLit,char	macros: newLit(c: char): NimNode	
+newLit	macros.html#newLit,int	macros: newLit(i: int): NimNode	
+newLit	macros.html#newLit,int8	macros: newLit(i: int8): NimNode	
+newLit	macros.html#newLit,int16	macros: newLit(i: int16): NimNode	
+newLit	macros.html#newLit,int32	macros: newLit(i: int32): NimNode	
+newLit	macros.html#newLit,int64	macros: newLit(i: int64): NimNode	
+newLit	macros.html#newLit,uint	macros: newLit(i: uint): NimNode	
+newLit	macros.html#newLit,uint8	macros: newLit(i: uint8): NimNode	
+newLit	macros.html#newLit,uint16	macros: newLit(i: uint16): NimNode	
+newLit	macros.html#newLit,uint32	macros: newLit(i: uint32): NimNode	
+newLit	macros.html#newLit,uint64	macros: newLit(i: uint64): NimNode	
+newLit	macros.html#newLit,bool	macros: newLit(b: bool): NimNode	
+newLit	macros.html#newLit,string	macros: newLit(s: string): NimNode	
+newLit	macros.html#newLit,float32	macros: newLit(f: float32): NimNode	
+newLit	macros.html#newLit,float64	macros: newLit(f: float64): NimNode	
+newLit	macros.html#newLit	macros: newLit(arg: enum): NimNode	
+newLit	macros.html#newLit_2	macros: newLit(arg: object): NimNode	
+newLit	macros.html#newLit,ref.	macros: newLit(arg: ref object): NimNode	
+newLit	macros.html#newLit,array[N,T]	macros: newLit[N, T](arg: array[N, T]): NimNode	
+newLit	macros.html#newLit,seq[T]	macros: newLit[T](arg: seq[T]): NimNode	
+newLit	macros.html#newLit,set[T]	macros: newLit[T](s: set[T]): NimNode	
+newLit	macros.html#newLit,T	macros: newLit[T: tuple](arg: T): NimNode	
+nestList	macros.html#nestList,NimNode,NimNode	macros: nestList(op: NimNode; pack: NimNode): NimNode	
+nestList	macros.html#nestList,NimNode,NimNode,NimNode	macros: nestList(op: NimNode; pack: NimNode; init: NimNode): NimNode	
+eqIdent	macros.html#eqIdent,string,string	macros: eqIdent(a: string; b: string): bool	
+eqIdent	macros.html#eqIdent,NimNode,string	macros: eqIdent(a: NimNode; b: string): bool	
+eqIdent	macros.html#eqIdent,string,NimNode	macros: eqIdent(a: string; b: NimNode): bool	
+eqIdent	macros.html#eqIdent,NimNode,NimNode	macros: eqIdent(a: NimNode; b: NimNode): bool	
+treeRepr	macros.html#treeRepr,NimNode	macros: treeRepr(n: NimNode): string	
+lispRepr	macros.html#lispRepr,NimNode	macros: lispRepr(n: NimNode; indented = false): string	
+astGenRepr	macros.html#astGenRepr,NimNode	macros: astGenRepr(n: NimNode): string	
+dumpTree	macros.html#dumpTree.m,untyped	macros: dumpTree(s: untyped): untyped	
+dumpLisp	macros.html#dumpLisp.m,untyped	macros: dumpLisp(s: untyped): untyped	
+dumpAstGen	macros.html#dumpAstGen.m,untyped	macros: dumpAstGen(s: untyped): untyped	
+newEmptyNode	macros.html#newEmptyNode	macros: newEmptyNode(): NimNode	
+newStmtList	macros.html#newStmtList,varargs[NimNode]	macros: newStmtList(stmts: varargs[NimNode]): NimNode	
+newPar	macros.html#newPar,varargs[NimNode]	macros: newPar(exprs: varargs[NimNode]): NimNode	
+newBlockStmt	macros.html#newBlockStmt,NimNode,NimNode	macros: newBlockStmt(label, body: NimNode): NimNode	
+newBlockStmt	macros.html#newBlockStmt,NimNode	macros: newBlockStmt(body: NimNode): NimNode	
+newVarStmt	macros.html#newVarStmt,NimNode,NimNode	macros: newVarStmt(name, value: NimNode): NimNode	
+newLetStmt	macros.html#newLetStmt,NimNode,NimNode	macros: newLetStmt(name, value: NimNode): NimNode	
+newConstStmt	macros.html#newConstStmt,NimNode,NimNode	macros: newConstStmt(name, value: NimNode): NimNode	
+newAssignment	macros.html#newAssignment,NimNode,NimNode	macros: newAssignment(lhs, rhs: NimNode): NimNode	
+newDotExpr	macros.html#newDotExpr,NimNode,NimNode	macros: newDotExpr(a, b: NimNode): NimNode	
+newColonExpr	macros.html#newColonExpr,NimNode,NimNode	macros: newColonExpr(a, b: NimNode): NimNode	
+newIdentDefs	macros.html#newIdentDefs,NimNode,NimNode	macros: newIdentDefs(name, kind: NimNode; default = newEmptyNode()): NimNode	
+newNilLit	macros.html#newNilLit	macros: newNilLit(): NimNode	
+last	macros.html#last,NimNode	macros: last(node: NimNode): NimNode	
+RoutineNodes	macros.html#RoutineNodes	macros: RoutineNodes	
+AtomicNodes	macros.html#AtomicNodes	macros: AtomicNodes	
+CallNodes	macros.html#CallNodes	macros: CallNodes	
+expectKind	macros.html#expectKind,NimNode,set[NimNodeKind]	macros: expectKind(n: NimNode; k: set[NimNodeKind])	
+newProc	macros.html#newProc,openArray[NimNode],NimNode,NimNode	macros: newProc(name = newEmptyNode(); params: openArray[NimNode] = [newEmptyNode()];\n        body: NimNode = newStmtList(); procType = nnkProcDef;\n        pragmas: NimNode = newEmptyNode()): NimNode	
+newIfStmt	macros.html#newIfStmt,varargs[tuple[NimNode,NimNode]]	macros: newIfStmt(branches: varargs[tuple[cond, body: NimNode]]): NimNode	
+newEnum	macros.html#newEnum,NimNode,openArray[NimNode],bool,bool	macros: newEnum(name: NimNode; fields: openArray[NimNode]; public, pure: bool): NimNode	
+copyChildrenTo	macros.html#copyChildrenTo,NimNode,NimNode	macros: copyChildrenTo(src, dest: NimNode)	
+name	macros.html#name,NimNode	macros: name(someProc: NimNode): NimNode	
+name=	macros.html#name=,NimNode,NimNode	macros: name=(someProc: NimNode; val: NimNode)	
+params	macros.html#params,NimNode	macros: params(someProc: NimNode): NimNode	
+params=	macros.html#params=,NimNode,NimNode	macros: params=(someProc: NimNode; params: NimNode)	
+pragma	macros.html#pragma,NimNode	macros: pragma(someProc: NimNode): NimNode	
+pragma=	macros.html#pragma=,NimNode,NimNode	macros: pragma=(someProc: NimNode; val: NimNode)	
+addPragma	macros.html#addPragma,NimNode,NimNode	macros: addPragma(someProc, pragma: NimNode)	
+body	macros.html#body,NimNode	macros: body(someProc: NimNode): NimNode	
+body=	macros.html#body=,NimNode,NimNode	macros: body=(someProc: NimNode; val: NimNode)	
+basename	macros.html#basename,NimNode	macros: basename(a: NimNode): NimNode	
+`$`	macros.html#$,NimNode	macros: `$`(node: NimNode): string	
+items	macros.html#items.i,NimNode	macros: items(n: NimNode): NimNode	
+pairs	macros.html#pairs.i,NimNode	macros: pairs(n: NimNode): (int, NimNode)	
+children	macros.html#children.i,NimNode	macros: children(n: NimNode): NimNode	
+findChild	macros.html#findChild.t,NimNode,untyped	macros: findChild(n: NimNode; cond: untyped): NimNode	
+insert	macros.html#insert,NimNode,int,NimNode	macros: insert(a: NimNode; pos: int; b: NimNode)	
+basename=	macros.html#basename=,NimNode,string	macros: basename=(a: NimNode; val: string)	
+postfix	macros.html#postfix,NimNode,string	macros: postfix(node: NimNode; op: string): NimNode	
+prefix	macros.html#prefix,NimNode,string	macros: prefix(node: NimNode; op: string): NimNode	
+infix	macros.html#infix,NimNode,string,NimNode	macros: infix(a: NimNode; op: string; b: NimNode): NimNode	
+unpackPostfix	macros.html#unpackPostfix,NimNode	macros: unpackPostfix(node: NimNode): tuple[node: NimNode, op: string]	
+unpackPrefix	macros.html#unpackPrefix,NimNode	macros: unpackPrefix(node: NimNode): tuple[node: NimNode, op: string]	
+unpackInfix	macros.html#unpackInfix,NimNode	macros: unpackInfix(node: NimNode): tuple[left: NimNode, op: string, right: NimNode]	
+copy	macros.html#copy,NimNode	macros: copy(node: NimNode): NimNode	
+expectIdent	macros.html#expectIdent,NimNode,string	macros: expectIdent(n: NimNode; name: string)	
+hasArgOfName	macros.html#hasArgOfName,NimNode,string	macros: hasArgOfName(params: NimNode; name: string): bool	
+addIdentIfAbsent	macros.html#addIdentIfAbsent,NimNode,string	macros: addIdentIfAbsent(dest: NimNode; ident: string)	
+boolVal	macros.html#boolVal,NimNode	macros: boolVal(n: NimNode): bool	
+nodeID	macros.html#nodeID,NimNode	macros: nodeID(n: NimNode): int	
+expandMacros	macros.html#expandMacros.m,typed	macros: expandMacros(body: typed): untyped	
+getCustomPragmaNodes	macros.html#getCustomPragmaNodes,NimNode,string	macros: getCustomPragmaNodes(sym: NimNode; name: string): seq[NimNode]	
+hasCustomPragma	macros.html#hasCustomPragma,NimNode,string	macros: hasCustomPragma(n: NimNode; name: string): bool	
+hasCustomPragma	macros.html#hasCustomPragma.m,typed,	macros: hasCustomPragma(n: typed; cp: typed{nkSym}): bool	
+getCustomPragmaVal	macros.html#getCustomPragmaVal.m,typed,typed	macros: getCustomPragmaVal(n: typed; cp: typed): untyped	
+unpackVarargs	macros.html#unpackVarargs.m,untyped,varargs[untyped]	macros: unpackVarargs(callee: untyped; args: varargs[untyped]): untyped	
+getProjectPath	macros.html#getProjectPath	macros: getProjectPath(): string	
+getSize	macros.html#getSize,NimNode	macros: getSize(arg: NimNode): int	
+getAlign	macros.html#getAlign,NimNode	macros: getAlign(arg: NimNode): int	
+getOffset	macros.html#getOffset,NimNode	macros: getOffset(arg: NimNode): int	
+isExported	macros.html#isExported,NimNode	macros: isExported(n: NimNode): bool	
+extractDocCommentsAndRunnables	macros.html#extractDocCommentsAndRunnables,NimNode	macros: extractDocCommentsAndRunnables(n: NimNode): NimNode	
+type	macros.html#type_1	Module macros	
+type	macros.html#type_2	Module macros	
+type	macros.html#type_3	Module macros	
+AST	macros.html#ast_1	Module macros	
+The AST in Nim	macros.html#the-ast-in-nim	 The AST in Nim	
+Leaf nodes/Atoms	macros.html#leaf-nodesslashatoms	 Leaf nodes/Atoms	
+Calls/expressions	macros.html#callsslashexpressions	 Calls/expressions	
+Command call	macros.html#callsslashexpressions-command-call	  Command call	
+Call with ()	macros.html#callsslashexpressions-call-with	  Call with <tt class="docutils literal"><span class="pre">()</span></tt>	
+Infix operator call	macros.html#callsslashexpressions-infix-operator-call	  Infix operator call	
+Prefix operator call	macros.html#callsslashexpressions-prefix-operator-call	  Prefix operator call	
+Postfix operator call	macros.html#callsslashexpressions-postfix-operator-call	  Postfix operator call	
+Call with named arguments	macros.html#callsslashexpressions-call-with-named-arguments	  Call with named arguments	
+Call with raw string literal	macros.html#callsslashexpressions-call-with-raw-string-literal	  Call with raw string literal	
+Dereference operator []	macros.html#callsslashexpressions-dereference-operator	  Dereference operator <tt class="docutils literal"><span class="pre">[]</span></tt>	
+Addr operator	macros.html#callsslashexpressions-addr-operator	  Addr operator	
+Cast operator	macros.html#callsslashexpressions-cast-operator	  Cast operator	
+Object access operator .	macros.html#callsslashexpressions-object-access-operator-dot	  Object access operator <tt class="docutils literal"><span class="pre">.</span></tt>	
+Array access operator []	macros.html#callsslashexpressions-array-access-operator	  Array access operator <tt class="docutils literal"><span class="pre">[]</span></tt>	
+Parentheses	macros.html#callsslashexpressions-parentheses	  Parentheses	
+Tuple Constructors	macros.html#callsslashexpressions-tuple-constructors	  Tuple Constructors	
+Curly braces	macros.html#callsslashexpressions-curly-braces	  Curly braces	
+Brackets	macros.html#callsslashexpressions-brackets	  Brackets	
+Ranges	macros.html#callsslashexpressions-ranges	  Ranges	
+If expression	macros.html#callsslashexpressions-if-expression	  If expression	
+Documentation Comments	macros.html#callsslashexpressions-documentation-comments	  Documentation Comments	
+Pragmas	macros.html#callsslashexpressions-pragmas	  Pragmas	
+Statements	macros.html#statements	 Statements	
+If statement	macros.html#statements-if-statement	  If statement	
+When statement	macros.html#statements-when-statement	  When statement	
+Assignment	macros.html#statements-assignment	  Assignment	
+Statement list	macros.html#statements-statement-list	  Statement list	
+Case statement	macros.html#statements-case-statement	  Case statement	
+While statement	macros.html#statements-while-statement	  While statement	
+For statement	macros.html#statements-for-statement	  For statement	
+Try statement	macros.html#statements-try-statement	  Try statement	
+Return statement	macros.html#statements-return-statement	  Return statement	
+Yield statement	macros.html#statements-yield-statement	  Yield statement	
+Discard statement	macros.html#statements-discard-statement	  Discard statement	
+Continue statement	macros.html#statements-continue-statement	  Continue statement	
+Break statement	macros.html#statements-break-statement	  Break statement	
+Block statement	macros.html#statements-block-statement	  Block statement	
+Asm statement	macros.html#statements-asm-statement	  Asm statement	
+Import section	macros.html#statements-import-section	  Import section	
+From statement	macros.html#statements-from-statement	  From statement	
+Export statement	macros.html#statements-export-statement	  Export statement	
+Include statement	macros.html#statements-include-statement	  Include statement	
+Var section	macros.html#statements-var-section	  Var section	
+Let section	macros.html#statements-let-section	  Let section	
+Const section	macros.html#statements-const-section	  Const section	
+Type section	macros.html#statements-type-section	  Type section	
+Mixin statement	macros.html#statements-mixin-statement	  Mixin statement	
+Bind statement	macros.html#statements-bind-statement	  Bind statement	
+Procedure declaration	macros.html#statements-procedure-declaration	  Procedure declaration	
+Iterator declaration	macros.html#statements-iterator-declaration	  Iterator declaration	
+Converter declaration	macros.html#statements-converter-declaration	  Converter declaration	
+Template declaration	macros.html#statements-template-declaration	  Template declaration	
+Macro declaration	macros.html#statements-macro-declaration	  Macro declaration	
+Hidden Standard Conversion	macros.html#statements-hidden-standard-conversion	  Hidden Standard Conversion	
+Special node kinds	macros.html#special-node-kinds	 Special node kinds	

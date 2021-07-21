@@ -1,0 +1,5 @@
+commitHead	gitutils.html#commitHead	gitutils: commitHead	
+retryCall	gitutils.html#retryCall.t,int,float,untyped	gitutils: retryCall(maxRetry = 3; backoffDuration = 1.0; call: untyped): bool	
+isGitRepo	gitutils.html#isGitRepo,string	gitutils: isGitRepo(dir: string): bool	
+diffFiles	gitutils.html#diffFiles,string,string	gitutils: diffFiles(path1, path2: string): tuple[output: string, same: bool]	
+diffStrings	gitutils.html#diffStrings,string,string	gitutils: diffStrings(a, b: string): tuple[output: string, same: bool]	

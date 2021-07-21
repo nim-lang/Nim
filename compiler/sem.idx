@@ -1,0 +1,12 @@
+commonTypeBegin	sem.html#commonTypeBegin.t	sem: commonTypeBegin(): PType	
+commonType	sem.html#commonType,PContext,PType,PType	sem: commonType(c: PContext; x, y: PType): PType	
+commonType	sem.html#commonType,PContext,PType,PNode	sem: commonType(c: PContext; x: PType; y: PNode): PType	
+newSymG	sem.html#newSymG,TSymKind,PNode,PContext	sem: newSymG(kind: TSymKind; n: PNode; c: PContext): PSym	
+pushProcCon	sem.html#pushProcCon,PContext,PSym	sem: pushProcCon(c: PContext; owner: PSym)	
+notFoundError	sem.html#notFoundError,PContext,PNode,CandidateErrors	sem: notFoundError(c: PContext; n: PNode; errors: CandidateErrors)	
+instGenericConvertersArg	sem.html#instGenericConvertersArg,PContext,PNode,TCandidate	sem: instGenericConvertersArg(c: PContext; a: PNode; x: TCandidate)	
+instGenericConvertersSons	sem.html#instGenericConvertersSons,PContext,PNode,TCandidate	sem: instGenericConvertersSons(c: PContext; n: PNode; x: TCandidate)	
+tyUserDefinedGenerics	sem.html#tyUserDefinedGenerics	sem: tyUserDefinedGenerics	
+tyMagicGenerics	sem.html#tyMagicGenerics	sem: tyMagicGenerics	
+tyGenericLike	sem.html#tyGenericLike	sem: tyGenericLike	
+semPass	sem.html#semPass	sem: semPass	

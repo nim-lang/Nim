@@ -1,0 +1,12 @@
+Uname	posix_utils.html#Uname	posix_utils: Uname	
+uname	posix_utils.html#uname_2	posix_utils: uname(): Uname	
+fsync	posix_utils.html#fsync,int	posix_utils: fsync(fd: int)	
+stat	posix_utils.html#stat,string	posix_utils: stat(path: string): Stat	
+memoryLock	posix_utils.html#memoryLock,pointer,int	posix_utils: memoryLock(a1: pointer; a2: int)	
+memoryLockAll	posix_utils.html#memoryLockAll,int	posix_utils: memoryLockAll(flags: int)	
+memoryUnlock	posix_utils.html#memoryUnlock,pointer,int	posix_utils: memoryUnlock(a1: pointer; a2: int)	
+memoryUnlockAll	posix_utils.html#memoryUnlockAll	posix_utils: memoryUnlockAll()	
+sendSignal	posix_utils.html#sendSignal,Pid,int	posix_utils: sendSignal(pid: Pid; signal: int)	
+mkstemp	posix_utils.html#mkstemp,string,string	posix_utils: mkstemp(prefix: string; suffix = &quot;&quot;): (string, File)	
+mkdtemp	posix_utils.html#mkdtemp,string	posix_utils: mkdtemp(prefix: string): string	
+osReleaseFile	posix_utils.html#osReleaseFile	posix_utils: osReleaseFile(): Config	

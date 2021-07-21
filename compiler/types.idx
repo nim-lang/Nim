@@ -1,0 +1,151 @@
+preferName	types.html#preferName	TPreferedDesc.preferName	
+preferDesc	types.html#preferDesc	TPreferedDesc.preferDesc	
+preferExported	types.html#preferExported	TPreferedDesc.preferExported	
+preferModuleInfo	types.html#preferModuleInfo	TPreferedDesc.preferModuleInfo	
+preferGenericArg	types.html#preferGenericArg	TPreferedDesc.preferGenericArg	
+preferTypeName	types.html#preferTypeName	TPreferedDesc.preferTypeName	
+preferResolved	types.html#preferResolved	TPreferedDesc.preferResolved	
+preferMixed	types.html#preferMixed	TPreferedDesc.preferMixed	
+TPreferedDesc	types.html#TPreferedDesc	types: TPreferedDesc	
+isNone	types.html#isNone	TTypeRelation.isNone	
+isConvertible	types.html#isConvertible	TTypeRelation.isConvertible	
+isIntConv	types.html#isIntConv	TTypeRelation.isIntConv	
+isSubtype	types.html#isSubtype	TTypeRelation.isSubtype	
+isSubrange	types.html#isSubrange	TTypeRelation.isSubrange	
+isBothMetaConvertible	types.html#isBothMetaConvertible	TTypeRelation.isBothMetaConvertible	
+isInferred	types.html#isInferred	TTypeRelation.isInferred	
+isInferredConvertible	types.html#isInferredConvertible	TTypeRelation.isInferredConvertible	
+isGeneric	types.html#isGeneric	TTypeRelation.isGeneric	
+isFromIntLit	types.html#isFromIntLit	TTypeRelation.isFromIntLit	
+isEqual	types.html#isEqual	TTypeRelation.isEqual	
+TTypeRelation	types.html#TTypeRelation	types: TTypeRelation	
+pcmNoSideEffect	types.html#pcmNoSideEffect	ProcConvMismatch.pcmNoSideEffect	
+pcmNotGcSafe	types.html#pcmNotGcSafe	ProcConvMismatch.pcmNotGcSafe	
+pcmLockDifference	types.html#pcmLockDifference	ProcConvMismatch.pcmLockDifference	
+pcmNotIterator	types.html#pcmNotIterator	ProcConvMismatch.pcmNotIterator	
+pcmDifferentCallConv	types.html#pcmDifferentCallConv	ProcConvMismatch.pcmDifferentCallConv	
+ProcConvMismatch	types.html#ProcConvMismatch	types: ProcConvMismatch	
+addTypeDeclVerboseMaybe	types.html#addTypeDeclVerboseMaybe,string,ConfigRef,PType	types: addTypeDeclVerboseMaybe(result: var string; conf: ConfigRef; typ: PType)	
+`$`	types.html#$.t,PType	types: `$`(typ: PType): string	
+base	types.html#base,PType	types: base(t: PType): PType	
+TTypeIter	types.html#TTypeIter	types: TTypeIter	
+TTypeMutator	types.html#TTypeMutator	types: TTypeMutator	
+TTypePredicate	types.html#TTypePredicate	types: TTypePredicate	
+paramsNotEqual	types.html#paramsNotEqual	TParamsEquality.paramsNotEqual	
+paramsEqual	types.html#paramsEqual	TParamsEquality.paramsEqual	
+paramsIncompatible	types.html#paramsIncompatible	TParamsEquality.paramsIncompatible	
+TParamsEquality	types.html#TParamsEquality	types: TParamsEquality	
+abstractPtrs	types.html#abstractPtrs	types: abstractPtrs	
+abstractVar	types.html#abstractVar	types: abstractVar	
+abstractRange	types.html#abstractRange	types: abstractRange	
+abstractInstOwned	types.html#abstractInstOwned	types: abstractInstOwned	
+skipPtrs	types.html#skipPtrs	types: skipPtrs	
+typedescPtrs	types.html#typedescPtrs	types: typedescPtrs	
+typedescInst	types.html#typedescInst	types: typedescInst	
+invalidGenericInst	types.html#invalidGenericInst,PType	types: invalidGenericInst(f: PType): bool	
+isPureObject	types.html#isPureObject,PType	types: isPureObject(typ: PType): bool	
+isUnsigned	types.html#isUnsigned,PType	types: isUnsigned(t: PType): bool	
+getOrdValue	types.html#getOrdValue,PNode	types: getOrdValue(n: PNode; onError = high(Int128)): Int128	
+getFloatValue	types.html#getFloatValue,PNode	types: getFloatValue(n: PNode): BiggestFloat	
+isIntLit	types.html#isIntLit,PType	types: isIntLit(t: PType): bool	
+isFloatLit	types.html#isFloatLit,PType	types: isFloatLit(t: PType): bool	
+addTypeHeader	types.html#addTypeHeader,string,ConfigRef,PType,TPreferedDesc	types: addTypeHeader(result: var string; conf: ConfigRef; typ: PType;\n              prefer: TPreferedDesc = preferMixed; getDeclarationPath = true)	
+getProcHeader	types.html#getProcHeader,ConfigRef,PSym,TPreferedDesc	types: getProcHeader(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName;\n              getDeclarationPath = true): string	
+elemType	types.html#elemType,PType	types: elemType(t: PType): PType	
+enumHasHoles	types.html#enumHasHoles,PType	types: enumHasHoles(t: PType): bool	
+isOrdinalType	types.html#isOrdinalType,PType,bool	types: isOrdinalType(t: PType; allowEnumWithHoles: bool = false): bool	
+iterOverType	types.html#iterOverType,PType,TTypeIter,RootRef	types: iterOverType(t: PType; iter: TTypeIter; closure: RootRef): bool	
+searchTypeFor	types.html#searchTypeFor,PType,TTypePredicate	types: searchTypeFor(t: PType; predicate: TTypePredicate): bool	
+containsObject	types.html#containsObject,PType	types: containsObject(t: PType): bool	
+frNone	types.html#frNone	TTypeFieldResult.frNone	
+frHeader	types.html#frHeader	TTypeFieldResult.frHeader	
+frEmbedded	types.html#frEmbedded	TTypeFieldResult.frEmbedded	
+TTypeFieldResult	types.html#TTypeFieldResult	types: TTypeFieldResult	
+analyseObjectWithTypeField	types.html#analyseObjectWithTypeField,PType	types: analyseObjectWithTypeField(t: PType): TTypeFieldResult	
+containsGarbageCollectedRef	types.html#containsGarbageCollectedRef,PType	types: containsGarbageCollectedRef(typ: PType): bool	
+containsManagedMemory	types.html#containsManagedMemory,PType	types: containsManagedMemory(typ: PType): bool	
+containsTyRef	types.html#containsTyRef,PType	types: containsTyRef(typ: PType): bool	
+containsHiddenPointer	types.html#containsHiddenPointer,PType	types: containsHiddenPointer(typ: PType): bool	
+isFinal	types.html#isFinal,PType	types: isFinal(t: PType): bool	
+canFormAcycle	types.html#canFormAcycle,PType	types: canFormAcycle(typ: PType): bool	
+mutateType	types.html#mutateType,PType,TTypeMutator,RootRef	types: mutateType(t: PType; iter: TTypeMutator; closure: RootRef): PType	
+bindConcreteTypeToUserTypeClass	types.html#bindConcreteTypeToUserTypeClass.t,PType,PType	types: bindConcreteTypeToUserTypeClass(tc, concrete: PType)	
+isResolvedUserTypeClass	types.html#isResolvedUserTypeClass.t,PType	types: isResolvedUserTypeClass(t: PType): bool	
+typeToString	types.html#typeToString,PType,TPreferedDesc	types: typeToString(typ: PType; prefer: TPreferedDesc = preferName): string	
+firstOrd	types.html#firstOrd,ConfigRef,PType	types: firstOrd(conf: ConfigRef; t: PType): Int128	
+firstFloat	types.html#firstFloat,PType	types: firstFloat(t: PType): BiggestFloat	
+lastOrd	types.html#lastOrd,ConfigRef,PType	types: lastOrd(conf: ConfigRef; t: PType): Int128	
+lastFloat	types.html#lastFloat,PType	types: lastFloat(t: PType): BiggestFloat	
+floatRangeCheck	types.html#floatRangeCheck,BiggestFloat,PType	types: floatRangeCheck(x: BiggestFloat; t: PType): bool	
+lengthOrd	types.html#lengthOrd,ConfigRef,PType	types: lengthOrd(conf: ConfigRef; t: PType): Int128	
+dcEq	types.html#dcEq	TDistinctCompare.dcEq	
+dcEqIgnoreDistinct	types.html#dcEqIgnoreDistinct	TDistinctCompare.dcEqIgnoreDistinct	
+dcEqOrDistinctOf	types.html#dcEqOrDistinctOf	TDistinctCompare.dcEqOrDistinctOf	
+TDistinctCompare	types.html#TDistinctCompare	types: TDistinctCompare	
+IgnoreTupleFields	types.html#IgnoreTupleFields	TTypeCmpFlag.IgnoreTupleFields	
+IgnoreCC	types.html#IgnoreCC	TTypeCmpFlag.IgnoreCC	
+ExactTypeDescValues	types.html#ExactTypeDescValues	TTypeCmpFlag.ExactTypeDescValues	
+ExactGenericParams	types.html#ExactGenericParams	TTypeCmpFlag.ExactGenericParams	
+ExactConstraints	types.html#ExactConstraints	TTypeCmpFlag.ExactConstraints	
+ExactGcSafety	types.html#ExactGcSafety	TTypeCmpFlag.ExactGcSafety	
+AllowCommonBase	types.html#AllowCommonBase	TTypeCmpFlag.AllowCommonBase	
+TTypeCmpFlag	types.html#TTypeCmpFlag	types: TTypeCmpFlag	
+TTypeCmpFlags	types.html#TTypeCmpFlags	types: TTypeCmpFlags	
+sameType	types.html#sameType,PType,PType,TTypeCmpFlags	types: sameType(a, b: PType; flags: TTypeCmpFlags = {}): bool	
+sameTypeOrNil	types.html#sameTypeOrNil,PType,PType,TTypeCmpFlags	types: sameTypeOrNil(a, b: PType; flags: TTypeCmpFlags = {}): bool	
+equalParams	types.html#equalParams,PNode,PNode	types: equalParams(a, b: PNode): TParamsEquality	
+sameObjectTypes	types.html#sameObjectTypes,PType,PType	types: sameObjectTypes(a, b: PType): bool	
+sameDistinctTypes	types.html#sameDistinctTypes,PType,PType	types: sameDistinctTypes(a, b: PType): bool	
+sameEnumTypes	types.html#sameEnumTypes,PType,PType	types: sameEnumTypes(a, b: PType): bool	
+isGenericAlias	types.html#isGenericAlias,PType	types: isGenericAlias(t: PType): bool	
+skipGenericAlias	types.html#skipGenericAlias,PType	types: skipGenericAlias(t: PType): PType	
+sameFlags	types.html#sameFlags,PType,PType	types: sameFlags(a, b: PType): bool	
+sameBackendType	types.html#sameBackendType,PType,PType	types: sameBackendType(x, y: PType): bool	
+compareTypes	types.html#compareTypes,PType,PType,TDistinctCompare,TTypeCmpFlags	types: compareTypes(x, y: PType; cmp: TDistinctCompare = dcEq;\n             flags: TTypeCmpFlags = {}): bool	
+inheritanceDiff	types.html#inheritanceDiff,PType,PType	types: inheritanceDiff(a, b: PType): int	
+commonSuperclass	types.html#commonSuperclass,PType,PType	types: commonSuperclass(a, b: PType): PType	
+matchType	types.html#matchType,PType,openArray[tuple[TTypeKind,int]],TTypeKind	types: matchType(a: PType; pattern: openArray[tuple[k: TTypeKind, i: int]];\n          last: TTypeKind): bool	
+szUnknownSize	types.html#szUnknownSize	types: szUnknownSize	
+szIllegalRecursion	types.html#szIllegalRecursion	types: szIllegalRecursion	
+szUncomputedSize	types.html#szUncomputedSize	types: szUncomputedSize	
+szTooBigSize	types.html#szTooBigSize	types: szTooBigSize	
+foldSizeOf	types.html#foldSizeOf.t,ConfigRef,PNode,PNode	types: foldSizeOf(conf: ConfigRef; n: PNode; fallback: PNode): PNode	
+foldAlignOf	types.html#foldAlignOf.t,ConfigRef,PNode,PNode	types: foldAlignOf(conf: ConfigRef; n: PNode; fallback: PNode): PNode	
+foldOffsetOf	types.html#foldOffsetOf.t,ConfigRef,PNode,PNode	types: foldOffsetOf(conf: ConfigRef; n: PNode; fallback: PNode): PNode	
+computeSize	types.html#computeSize,ConfigRef,PType	types: computeSize(conf: ConfigRef; typ: PType): BiggestInt	
+getReturnType	types.html#getReturnType,PSym	types: getReturnType(s: PSym): PType	
+getAlign	types.html#getAlign,ConfigRef,PType	types: getAlign(conf: ConfigRef; typ: PType): BiggestInt	
+getSize	types.html#getSize,ConfigRef,PType	types: getSize(conf: ConfigRef; typ: PType): BiggestInt	
+containsGenericType	types.html#containsGenericType,PType	types: containsGenericType(t: PType): bool	
+baseOfDistinct	types.html#baseOfDistinct,PType,ModuleGraph,IdGenerator	types: baseOfDistinct(t: PType; g: ModuleGraph; idgen: IdGenerator): PType	
+safeInheritanceDiff	types.html#safeInheritanceDiff,PType,PType	types: safeInheritanceDiff(a, b: PType): int	
+efCompat	types.html#efCompat	EffectsCompat.efCompat	
+efRaisesDiffer	types.html#efRaisesDiffer	EffectsCompat.efRaisesDiffer	
+efRaisesUnknown	types.html#efRaisesUnknown	EffectsCompat.efRaisesUnknown	
+efTagsDiffer	types.html#efTagsDiffer	EffectsCompat.efTagsDiffer	
+efTagsUnknown	types.html#efTagsUnknown	EffectsCompat.efTagsUnknown	
+efLockLevelsDiffer	types.html#efLockLevelsDiffer	EffectsCompat.efLockLevelsDiffer	
+EffectsCompat	types.html#EffectsCompat	types: EffectsCompat	
+compatibleEffects	types.html#compatibleEffects,PType,PType	types: compatibleEffects(formal, actual: PType): EffectsCompat	
+isCompileTimeOnly	types.html#isCompileTimeOnly,PType	types: isCompileTimeOnly(t: PType): bool	
+containsCompileTimeOnly	types.html#containsCompileTimeOnly,PType	types: containsCompileTimeOnly(t: PType): bool	
+safeSkipTypes	types.html#safeSkipTypes,PType,TTypeKinds	types: safeSkipTypes(t: PType; kinds: TTypeKinds): PType	
+NoneLike	types.html#NoneLike	OrdinalType.NoneLike	
+IntLike	types.html#IntLike	OrdinalType.IntLike	
+FloatLike	types.html#FloatLike	OrdinalType.FloatLike	
+OrdinalType	types.html#OrdinalType	types: OrdinalType	
+classify	types.html#classify,PType	types: classify(t: PType): OrdinalType	
+skipConv	types.html#skipConv,PNode	types: skipConv(n: PNode): PNode	
+skipHidden	types.html#skipHidden,PNode	types: skipHidden(n: PNode): PNode	
+skipConvTakeType	types.html#skipConvTakeType,PNode	types: skipConvTakeType(n: PNode): PNode	
+isEmptyContainer	types.html#isEmptyContainer,PType	types: isEmptyContainer(t: PType): bool	
+takeType	types.html#takeType,PType,PType,ModuleGraph,IdGenerator	types: takeType(formal, arg: PType; g: ModuleGraph; idgen: IdGenerator): PType	
+skipHiddenSubConv	types.html#skipHiddenSubConv,PNode,ModuleGraph,IdGenerator	types: skipHiddenSubConv(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode	
+getProcConvMismatch	types.html#getProcConvMismatch,ConfigRef,PType,PType	types: getProcConvMismatch(c: ConfigRef; f, a: PType; rel = isNone): (\n    set[ProcConvMismatch], TTypeRelation)	
+addPragmaAndCallConvMismatch	types.html#addPragmaAndCallConvMismatch,string,PType,PType,ConfigRef	types: addPragmaAndCallConvMismatch(message: var string; formal, actual: PType;\n                             conf: ConfigRef)	
+typeMismatch	types.html#typeMismatch,ConfigRef,TLineInfo,PType,PType,PNode	types: typeMismatch(conf: ConfigRef; info: TLineInfo; formal, actual: PType; n: PNode)	
+isTupleRecursive	types.html#isTupleRecursive,PType	types: isTupleRecursive(t: PType): bool	
+isException	types.html#isException,PType	types: isException(t: PType): bool	
+isDefectException	types.html#isDefectException,PType	types: isDefectException(t: PType): bool	
+isSinkTypeForParam	types.html#isSinkTypeForParam,PType	types: isSinkTypeForParam(t: PType): bool	
+lookupFieldAgain	types.html#lookupFieldAgain,PType,PSym	types: lookupFieldAgain(ty: PType; field: PSym): PSym	

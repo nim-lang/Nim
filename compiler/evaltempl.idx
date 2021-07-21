@@ -1,0 +1,3 @@
+evalTemplateLimit	evaltempl.html#evalTemplateLimit	evaltempl: evalTemplateLimit	
+wrapInComesFrom	evaltempl.html#wrapInComesFrom,TLineInfo,PSym,PNode	evaltempl: wrapInComesFrom(info: TLineInfo; sym: PSym; res: PNode): PNode	
+evalTemplate	evaltempl.html#evalTemplate,PNode,PSym,PSym,ConfigRef,IdentCache,ref.int,IdGenerator	evaltempl: evalTemplate(n: PNode; tmpl, genSymOwner: PSym; conf: ConfigRef; ic: IdentCache;\n             instID: ref int; idgen: IdGenerator; fromHlo = false): PNode	

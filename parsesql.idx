@@ -1,0 +1,74 @@
+SqlLexer	parsesql.html#SqlLexer	parsesql: SqlLexer	
+nkNone	parsesql.html#nkNone	SqlNodeKind.nkNone	
+nkIdent	parsesql.html#nkIdent	SqlNodeKind.nkIdent	
+nkQuotedIdent	parsesql.html#nkQuotedIdent	SqlNodeKind.nkQuotedIdent	
+nkStringLit	parsesql.html#nkStringLit	SqlNodeKind.nkStringLit	
+nkBitStringLit	parsesql.html#nkBitStringLit	SqlNodeKind.nkBitStringLit	
+nkHexStringLit	parsesql.html#nkHexStringLit	SqlNodeKind.nkHexStringLit	
+nkIntegerLit	parsesql.html#nkIntegerLit	SqlNodeKind.nkIntegerLit	
+nkNumericLit	parsesql.html#nkNumericLit	SqlNodeKind.nkNumericLit	
+nkPrimaryKey	parsesql.html#nkPrimaryKey	SqlNodeKind.nkPrimaryKey	
+nkForeignKey	parsesql.html#nkForeignKey	SqlNodeKind.nkForeignKey	
+nkNotNull	parsesql.html#nkNotNull	SqlNodeKind.nkNotNull	
+nkNull	parsesql.html#nkNull	SqlNodeKind.nkNull	
+nkStmtList	parsesql.html#nkStmtList	SqlNodeKind.nkStmtList	
+nkDot	parsesql.html#nkDot	SqlNodeKind.nkDot	
+nkDotDot	parsesql.html#nkDotDot	SqlNodeKind.nkDotDot	
+nkPrefix	parsesql.html#nkPrefix	SqlNodeKind.nkPrefix	
+nkInfix	parsesql.html#nkInfix	SqlNodeKind.nkInfix	
+nkCall	parsesql.html#nkCall	SqlNodeKind.nkCall	
+nkPrGroup	parsesql.html#nkPrGroup	SqlNodeKind.nkPrGroup	
+nkColumnReference	parsesql.html#nkColumnReference	SqlNodeKind.nkColumnReference	
+nkReferences	parsesql.html#nkReferences	SqlNodeKind.nkReferences	
+nkDefault	parsesql.html#nkDefault	SqlNodeKind.nkDefault	
+nkCheck	parsesql.html#nkCheck	SqlNodeKind.nkCheck	
+nkConstraint	parsesql.html#nkConstraint	SqlNodeKind.nkConstraint	
+nkUnique	parsesql.html#nkUnique	SqlNodeKind.nkUnique	
+nkIdentity	parsesql.html#nkIdentity	SqlNodeKind.nkIdentity	
+nkColumnDef	parsesql.html#nkColumnDef	SqlNodeKind.nkColumnDef	
+nkInsert	parsesql.html#nkInsert	SqlNodeKind.nkInsert	
+nkUpdate	parsesql.html#nkUpdate	SqlNodeKind.nkUpdate	
+nkDelete	parsesql.html#nkDelete	SqlNodeKind.nkDelete	
+nkSelect	parsesql.html#nkSelect	SqlNodeKind.nkSelect	
+nkSelectDistinct	parsesql.html#nkSelectDistinct	SqlNodeKind.nkSelectDistinct	
+nkSelectColumns	parsesql.html#nkSelectColumns	SqlNodeKind.nkSelectColumns	
+nkSelectPair	parsesql.html#nkSelectPair	SqlNodeKind.nkSelectPair	
+nkAsgn	parsesql.html#nkAsgn	SqlNodeKind.nkAsgn	
+nkFrom	parsesql.html#nkFrom	SqlNodeKind.nkFrom	
+nkFromItemPair	parsesql.html#nkFromItemPair	SqlNodeKind.nkFromItemPair	
+nkGroup	parsesql.html#nkGroup	SqlNodeKind.nkGroup	
+nkLimit	parsesql.html#nkLimit	SqlNodeKind.nkLimit	
+nkHaving	parsesql.html#nkHaving	SqlNodeKind.nkHaving	
+nkOrder	parsesql.html#nkOrder	SqlNodeKind.nkOrder	
+nkJoin	parsesql.html#nkJoin	SqlNodeKind.nkJoin	
+nkDesc	parsesql.html#nkDesc	SqlNodeKind.nkDesc	
+nkUnion	parsesql.html#nkUnion	SqlNodeKind.nkUnion	
+nkIntersect	parsesql.html#nkIntersect	SqlNodeKind.nkIntersect	
+nkExcept	parsesql.html#nkExcept	SqlNodeKind.nkExcept	
+nkColumnList	parsesql.html#nkColumnList	SqlNodeKind.nkColumnList	
+nkValueList	parsesql.html#nkValueList	SqlNodeKind.nkValueList	
+nkWhere	parsesql.html#nkWhere	SqlNodeKind.nkWhere	
+nkCreateTable	parsesql.html#nkCreateTable	SqlNodeKind.nkCreateTable	
+nkCreateTableIfNotExists	parsesql.html#nkCreateTableIfNotExists	SqlNodeKind.nkCreateTableIfNotExists	
+nkCreateType	parsesql.html#nkCreateType	SqlNodeKind.nkCreateType	
+nkCreateTypeIfNotExists	parsesql.html#nkCreateTypeIfNotExists	SqlNodeKind.nkCreateTypeIfNotExists	
+nkCreateIndex	parsesql.html#nkCreateIndex	SqlNodeKind.nkCreateIndex	
+nkCreateIndexIfNotExists	parsesql.html#nkCreateIndexIfNotExists	SqlNodeKind.nkCreateIndexIfNotExists	
+nkEnumDef	parsesql.html#nkEnumDef	SqlNodeKind.nkEnumDef	
+SqlNodeKind	parsesql.html#SqlNodeKind	parsesql: SqlNodeKind	
+SqlParseError	parsesql.html#SqlParseError	parsesql: SqlParseError	
+SqlNode	parsesql.html#SqlNode	parsesql: SqlNode	
+SqlNodeObj	parsesql.html#SqlNodeObj	parsesql: SqlNodeObj	
+SqlParser	parsesql.html#SqlParser	parsesql: SqlParser	
+newNode	parsesql.html#newNode,SqlNodeKind	parsesql: newNode(k: SqlNodeKind): SqlNode	
+newNode	parsesql.html#newNode,SqlNodeKind,string	parsesql: newNode(k: SqlNodeKind; s: string): SqlNode	
+newNode	parsesql.html#newNode,SqlNodeKind,seq[SqlNode]	parsesql: newNode(k: SqlNodeKind; sons: seq[SqlNode]): SqlNode	
+len	parsesql.html#len,SqlNode	parsesql: len(n: SqlNode): int	
+`[]`	parsesql.html#[],SqlNode,int	parsesql: `[]`(n: SqlNode; i: int): SqlNode	
+`[]`	parsesql.html#[],SqlNode,BackwardsIndex	parsesql: `[]`(n: SqlNode; i: BackwardsIndex): SqlNode	
+add	parsesql.html#add,SqlNode,SqlNode	parsesql: add(father, n: SqlNode)	
+renderSQL	parsesql.html#renderSQL,SqlNode	parsesql: renderSQL(n: SqlNode; upperCase = false): string	
+`$`	parsesql.html#$,SqlNode	parsesql: `$`(n: SqlNode): string	
+treeRepr	parsesql.html#treeRepr,SqlNode	parsesql: treeRepr(s: SqlNode): string	
+parseSQL	parsesql.html#parseSQL,Stream,string	parsesql: parseSQL(input: Stream; filename: string): SqlNode	
+parseSQL	parsesql.html#parseSQL,string,string	parsesql: parseSQL(input: string; filename = &quot;&quot;): SqlNode	

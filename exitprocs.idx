@@ -1,0 +1,4 @@
+addExitProc	exitprocs.html#addExitProc,proc)	exitprocs: addExitProc(cl: proc () {.closure.})	
+addExitProc	exitprocs.html#addExitProc,proc)_2	exitprocs: addExitProc(cl: proc () {.noconv.})	
+getProgramResult	exitprocs.html#getProgramResult	exitprocs: getProgramResult(): int	
+setProgramResult	exitprocs.html#setProgramResult,int	exitprocs: setProgramResult(a: int)	

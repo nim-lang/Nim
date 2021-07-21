@@ -1,0 +1,12 @@
+Channel	channels_builtin.html#Channel	channels_builtin: Channel	
+send	channels_builtin.html#send,Channel[TMsg],sinkTMsg	channels_builtin: send*[TMsg](c: var Channel[TMsg]; msg: sink TMsg)	
+trySend	channels_builtin.html#trySend,Channel[TMsg],sinkTMsg	channels_builtin: trySend*[TMsg](c: var Channel[TMsg]; msg: sink TMsg): bool	
+recv	channels_builtin.html#recv,Channel[TMsg]	channels_builtin: recv*[TMsg](c: var Channel[TMsg]): TMsg	
+tryRecv	channels_builtin.html#tryRecv,Channel[TMsg]	channels_builtin: tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool, msg: TMsg]	
+peek	channels_builtin.html#peek,Channel[TMsg]	channels_builtin: peek*[TMsg](c: var Channel[TMsg]): int	
+open	channels_builtin.html#open,Channel[TMsg],int	channels_builtin: open*[TMsg](c: var Channel[TMsg]; maxItems: int = 0)	
+close	channels_builtin.html#close,Channel[TMsg]	channels_builtin: close*[TMsg](c: var Channel[TMsg])	
+ready	channels_builtin.html#ready,Channel[TMsg]	channels_builtin: ready*[TMsg](c: var Channel[TMsg]): bool	
+Example	channels_builtin.html#example	 Example	
+Sample output	channels_builtin.html#example-sample-output	  Sample output	
+Passing Channels Safely	channels_builtin.html#example-passing-channels-safely	  Passing Channels Safely	

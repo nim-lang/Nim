@@ -1,0 +1,26 @@
+distance	reservedmem.html#distance.t,pointer,pointer	reservedmem: distance(lhs, rhs: pointer): int	
+shift	reservedmem.html#shift.t,pointer,int	reservedmem: shift(p: pointer; distance: int): pointer	
+MemAccessFlags	reservedmem.html#MemAccessFlags	reservedmem: MemAccessFlags	
+ReservedMem	reservedmem.html#ReservedMem	reservedmem: ReservedMem	
+ReservedMemSeq	reservedmem.html#ReservedMemSeq	reservedmem: ReservedMemSeq	
+memExec	reservedmem.html#memExec	reservedmem: memExec	
+memExecRead	reservedmem.html#memExecRead	reservedmem: memExecRead	
+memExecReadWrite	reservedmem.html#memExecReadWrite	reservedmem: memExecReadWrite	
+memRead	reservedmem.html#memRead	reservedmem: memRead	
+memReadWrite	reservedmem.html#memReadWrite	reservedmem: memReadWrite	
+init	reservedmem.html#init,typeReservedMem,Natural,Natural,int	reservedmem: init(T: type ReservedMem; maxLen: Natural; initLen: Natural = 0;\n     initCommitLen = initLen; memStart = pointer(nil);\n     accessFlags = memReadWrite; maxCommittedAndUnusedPages = 3): ReservedMem	
+len	reservedmem.html#len,ReservedMem	reservedmem: len(m: ReservedMem): int	
+commitedLen	reservedmem.html#commitedLen,ReservedMem	reservedmem: commitedLen(m: ReservedMem): int	
+maxLen	reservedmem.html#maxLen,ReservedMem	reservedmem: maxLen(m: ReservedMem): int	
+setLen	reservedmem.html#setLen,ReservedMem,int	reservedmem: setLen(m: var ReservedMem; newLen: int)	
+init	reservedmem.html#init,typeReservedMemSeq,Natural,Natural,Natural,int	reservedmem: init(SeqType: type ReservedMemSeq; maxLen: Natural; initLen: Natural = 0;\n     initCommitLen: Natural = 0; memStart = pointer(nil);\n     accessFlags = memReadWrite; maxCommittedAndUnusedPages = 3): SeqType:type	
+`[]`	reservedmem.html#[],ReservedMemSeq[T],Natural	reservedmem: `[]`[T](s: ReservedMemSeq[T]; pos: Natural): lent T	
+`[]`	reservedmem.html#[],ReservedMemSeq[T],Natural_2	reservedmem: `[]`[T](s: var ReservedMemSeq[T]; pos: Natural): var T	
+`[]`	reservedmem.html#[],ReservedMemSeq[T],BackwardsIndex	reservedmem: `[]`[T](s: ReservedMemSeq[T]; rpos: BackwardsIndex): lent T	
+`[]`	reservedmem.html#[],ReservedMemSeq[T],BackwardsIndex_2	reservedmem: `[]`[T](s: var ReservedMemSeq[T]; rpos: BackwardsIndex): var T	
+len	reservedmem.html#len,ReservedMemSeq[T]	reservedmem: len[T](s: ReservedMemSeq[T]): int	
+setLen	reservedmem.html#setLen,ReservedMemSeq[T],int	reservedmem: setLen[T](s: var ReservedMemSeq[T]; newLen: int)	
+add	reservedmem.html#add,ReservedMemSeq[T],T	reservedmem: add[T](s: var ReservedMemSeq[T]; val: T)	
+pop	reservedmem.html#pop,ReservedMemSeq[T]	reservedmem: pop[T](s: var ReservedMemSeq[T]): T	
+commitedLen	reservedmem.html#commitedLen,ReservedMemSeq[T]	reservedmem: commitedLen[T](s: ReservedMemSeq[T]): int	
+maxLen	reservedmem.html#maxLen,ReservedMemSeq[T]	reservedmem: maxLen[T](s: ReservedMemSeq[T]): int	

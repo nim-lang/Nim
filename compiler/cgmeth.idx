@@ -1,0 +1,4 @@
+getDispatcher	cgmeth.html#getDispatcher,PSym	cgmeth: getDispatcher(s: PSym): PSym	
+methodCall	cgmeth.html#methodCall,PNode,ConfigRef	cgmeth: methodCall(n: PNode; conf: ConfigRef): PNode	
+methodDef	cgmeth.html#methodDef,ModuleGraph,IdGenerator,PSym	cgmeth: methodDef(g: ModuleGraph; idgen: IdGenerator; s: PSym)	
+generateMethodDispatchers	cgmeth.html#generateMethodDispatchers,ModuleGraph	cgmeth: generateMethodDispatchers(g: ModuleGraph): PNode	

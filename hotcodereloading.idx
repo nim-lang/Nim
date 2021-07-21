@@ -1,0 +1,5 @@
+beforeCodeReload	hotcodereloading.html#beforeCodeReload.t,untyped	hotcodereloading: beforeCodeReload(body: untyped)	
+afterCodeReload	hotcodereloading.html#afterCodeReload.t,untyped	hotcodereloading: afterCodeReload(body: untyped)	
+hasModuleChanged	hotcodereloading.html#hasModuleChanged.t,typed	hotcodereloading: hasModuleChanged(module: typed): bool	
+hasAnyModuleChanged	hotcodereloading.html#hasAnyModuleChanged	hotcodereloading: hasAnyModuleChanged(): bool	
+performCodeReload	hotcodereloading.html#performCodeReload.t	hotcodereloading: performCodeReload()	

@@ -1,0 +1,12 @@
+PIdent	idents.html#PIdent	idents: PIdent	
+TIdent	idents.html#TIdent	idents: TIdent	
+IdentCache	idents.html#IdentCache	idents: IdentCache	
+resetIdentCache	idents.html#resetIdentCache	idents: resetIdentCache()	
+cmpIgnoreStyle	idents.html#cmpIgnoreStyle,cstring,cstring,int	idents: cmpIgnoreStyle(a, b: cstring; blen: int): int	
+getIdent	idents.html#getIdent,IdentCache,cstring,int,Hash	idents: getIdent(ic: IdentCache; identifier: cstring; length: int; h: Hash): PIdent	
+getIdent	idents.html#getIdent,IdentCache,string	idents: getIdent(ic: IdentCache; identifier: string): PIdent	
+getIdent	idents.html#getIdent,IdentCache,string,Hash	idents: getIdent(ic: IdentCache; identifier: string; h: Hash): PIdent	
+newIdentCache	idents.html#newIdentCache	idents: newIdentCache(): IdentCache	
+whichKeyword	idents.html#whichKeyword,PIdent	idents: whichKeyword(id: PIdent): TSpecialWord	
+hash	idents.html#hash,PIdent	idents: hash(x: PIdent): Hash	
+`==`	idents.html#==,PIdent,PIdent	idents: `==`(a, b: PIdent): bool	

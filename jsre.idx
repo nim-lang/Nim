@@ -1,0 +1,15 @@
+RegExp	jsre.html#RegExp	jsre: RegExp	
+newRegExp	jsre.html#newRegExp,cstring,cstring	jsre: newRegExp(pattern: cstring; flags: cstring): RegExp	
+newRegExp	jsre.html#newRegExp,cstring	jsre: newRegExp(pattern: cstring): RegExp	
+compile	jsre.html#compile,RegExp,cstring,cstring	jsre: compile(self: RegExp; pattern: cstring; flags: cstring)	
+replace	jsre.html#replace,cstring,RegExp,cstring	jsre: replace(pattern: cstring; self: RegExp; replacement: cstring): cstring	
+split	jsre.html#split,cstring,RegExp	jsre: split(pattern: cstring; self: RegExp): seq[cstring]	
+match	jsre.html#match,cstring,RegExp	jsre: match(pattern: cstring; self: RegExp): seq[cstring]	
+exec	jsre.html#exec,RegExp,cstring	jsre: exec(self: RegExp; pattern: cstring): seq[cstring]	
+toCstring	jsre.html#toCstring,RegExp	jsre: toCstring(self: RegExp): cstring	
+`$`	jsre.html#$,RegExp	jsre: `$`(self: RegExp): string	
+test	jsre.html#test,RegExp,cstring	jsre: test(self: RegExp; pattern: cstring): bool	
+toString	jsre.html#toString,RegExp	jsre: toString(self: RegExp): cstring	
+contains	jsre.html#contains,cstring,RegExp	jsre: contains(pattern: cstring; self: RegExp): bool	
+startsWith	jsre.html#startsWith,cstring,RegExp	jsre: startsWith(pattern: cstring; self: RegExp): bool	
+endsWith	jsre.html#endsWith,cstring,RegExp	jsre: endsWith(pattern: cstring; self: RegExp): bool	

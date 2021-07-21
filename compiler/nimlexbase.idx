@@ -1,0 +1,19 @@
+Lrz	nimlexbase.html#Lrz	nimlexbase: Lrz	
+Apo	nimlexbase.html#Apo	nimlexbase: Apo	
+Tabulator	nimlexbase.html#Tabulator	nimlexbase: Tabulator	
+ESC	nimlexbase.html#ESC	nimlexbase: ESC	
+CR	nimlexbase.html#CR	nimlexbase: CR	
+FF	nimlexbase.html#FF	nimlexbase: FF	
+LF	nimlexbase.html#LF	nimlexbase: LF	
+BEL	nimlexbase.html#BEL	nimlexbase: BEL	
+BACKSPACE	nimlexbase.html#BACKSPACE	nimlexbase: BACKSPACE	
+VT	nimlexbase.html#VT	nimlexbase: VT	
+EndOfFile	nimlexbase.html#EndOfFile	nimlexbase: EndOfFile	
+NewLines	nimlexbase.html#NewLines	nimlexbase: NewLines	
+TBaseLexer	nimlexbase.html#TBaseLexer	nimlexbase: TBaseLexer	
+closeBaseLexer	nimlexbase.html#closeBaseLexer,TBaseLexer	nimlexbase: closeBaseLexer(L: var TBaseLexer)	
+handleCR	nimlexbase.html#handleCR,TBaseLexer,int	nimlexbase: handleCR(L: var TBaseLexer; pos: int): int	
+handleLF	nimlexbase.html#handleLF,TBaseLexer,int	nimlexbase: handleLF(L: var TBaseLexer; pos: int): int	
+openBaseLexer	nimlexbase.html#openBaseLexer,TBaseLexer,PLLStream,int	nimlexbase: openBaseLexer(L: var TBaseLexer; inputstream: PLLStream; bufLen: int = 8192)	
+getColNumber	nimlexbase.html#getColNumber,TBaseLexer,int	nimlexbase: getColNumber(L: TBaseLexer; pos: int): int	
+getCurrentLine	nimlexbase.html#getCurrentLine,TBaseLexer,bool	nimlexbase: getCurrentLine(L: TBaseLexer; marker: bool = true): string	

@@ -1,0 +1,55 @@
+xmlError	parsexml.html#xmlError	XmlEventKind.xmlError	
+xmlEof	parsexml.html#xmlEof	XmlEventKind.xmlEof	
+xmlCharData	parsexml.html#xmlCharData	XmlEventKind.xmlCharData	
+xmlWhitespace	parsexml.html#xmlWhitespace	XmlEventKind.xmlWhitespace	
+xmlComment	parsexml.html#xmlComment	XmlEventKind.xmlComment	
+xmlPI	parsexml.html#xmlPI	XmlEventKind.xmlPI	
+xmlElementStart	parsexml.html#xmlElementStart	XmlEventKind.xmlElementStart	
+xmlElementEnd	parsexml.html#xmlElementEnd	XmlEventKind.xmlElementEnd	
+xmlElementOpen	parsexml.html#xmlElementOpen	XmlEventKind.xmlElementOpen	
+xmlAttribute	parsexml.html#xmlAttribute	XmlEventKind.xmlAttribute	
+xmlElementClose	parsexml.html#xmlElementClose	XmlEventKind.xmlElementClose	
+xmlCData	parsexml.html#xmlCData	XmlEventKind.xmlCData	
+xmlEntity	parsexml.html#xmlEntity	XmlEventKind.xmlEntity	
+xmlSpecial	parsexml.html#xmlSpecial	XmlEventKind.xmlSpecial	
+XmlEventKind	parsexml.html#XmlEventKind	parsexml: XmlEventKind	
+errNone	parsexml.html#errNone	XmlErrorKind.errNone	
+errEndOfCDataExpected	parsexml.html#errEndOfCDataExpected	XmlErrorKind.errEndOfCDataExpected	
+errNameExpected	parsexml.html#errNameExpected	XmlErrorKind.errNameExpected	
+errSemicolonExpected	parsexml.html#errSemicolonExpected	XmlErrorKind.errSemicolonExpected	
+errQmGtExpected	parsexml.html#errQmGtExpected	XmlErrorKind.errQmGtExpected	
+errGtExpected	parsexml.html#errGtExpected	XmlErrorKind.errGtExpected	
+errEqExpected	parsexml.html#errEqExpected	XmlErrorKind.errEqExpected	
+errQuoteExpected	parsexml.html#errQuoteExpected	XmlErrorKind.errQuoteExpected	
+errEndOfCommentExpected	parsexml.html#errEndOfCommentExpected	XmlErrorKind.errEndOfCommentExpected	
+errAttributeValueExpected	parsexml.html#errAttributeValueExpected	XmlErrorKind.errAttributeValueExpected	
+XmlErrorKind	parsexml.html#XmlErrorKind	parsexml: XmlErrorKind	
+reportWhitespace	parsexml.html#reportWhitespace	XmlParseOption.reportWhitespace	
+reportComments	parsexml.html#reportComments	XmlParseOption.reportComments	
+allowUnquotedAttribs	parsexml.html#allowUnquotedAttribs	XmlParseOption.allowUnquotedAttribs	
+allowEmptyAttribs	parsexml.html#allowEmptyAttribs	XmlParseOption.allowEmptyAttribs	
+XmlParseOption	parsexml.html#XmlParseOption	parsexml: XmlParseOption	
+XmlParser	parsexml.html#XmlParser	parsexml: XmlParser	
+open	parsexml.html#open,XmlParser,Stream,string,set[XmlParseOption]	parsexml: open(my: var XmlParser; input: Stream; filename: string;\n     options: set[XmlParseOption] = {})	
+close	parsexml.html#close,XmlParser	parsexml: close(my: var XmlParser)	
+kind	parsexml.html#kind,XmlParser	parsexml: kind(my: XmlParser): XmlEventKind	
+charData	parsexml.html#charData.t,XmlParser	parsexml: charData(my: XmlParser): string	
+elementName	parsexml.html#elementName.t,XmlParser	parsexml: elementName(my: XmlParser): string	
+entityName	parsexml.html#entityName.t,XmlParser	parsexml: entityName(my: XmlParser): string	
+attrKey	parsexml.html#attrKey.t,XmlParser	parsexml: attrKey(my: XmlParser): string	
+attrValue	parsexml.html#attrValue.t,XmlParser	parsexml: attrValue(my: XmlParser): string	
+piName	parsexml.html#piName.t,XmlParser	parsexml: piName(my: XmlParser): string	
+piRest	parsexml.html#piRest.t,XmlParser	parsexml: piRest(my: XmlParser): string	
+rawData	parsexml.html#rawData,XmlParser	parsexml: rawData(my: var XmlParser): lent string	
+rawData2	parsexml.html#rawData2,XmlParser	parsexml: rawData2(my: var XmlParser): lent string	
+getColumn	parsexml.html#getColumn,XmlParser	parsexml: getColumn(my: XmlParser): int	
+getLine	parsexml.html#getLine,XmlParser	parsexml: getLine(my: XmlParser): int	
+getFilename	parsexml.html#getFilename,XmlParser	parsexml: getFilename(my: XmlParser): string	
+errorMsg	parsexml.html#errorMsg,XmlParser	parsexml: errorMsg(my: XmlParser): string	
+errorMsgExpected	parsexml.html#errorMsgExpected,XmlParser,string	parsexml: errorMsgExpected(my: XmlParser; tag: string): string	
+errorMsg	parsexml.html#errorMsg,XmlParser,string	parsexml: errorMsg(my: XmlParser; msg: string): string	
+next	parsexml.html#next,XmlParser	parsexml: next(my: var XmlParser)	
+XML	parsexml.html#xml_1	Module parsexml	
+HTML	parsexml.html#html_1	Module parsexml	
+Example 1: Retrieve HTML title	parsexml.html#example-1colon-retrieve-html-title	 Example 1: Retrieve HTML title	
+Example 2: Retrieve all HTML links	parsexml.html#example-2colon-retrieve-all-html-links	 Example 2: Retrieve all HTML links	

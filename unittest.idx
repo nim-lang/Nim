@@ -1,0 +1,50 @@
+OK	unittest.html#OK	TestStatus.OK	
+FAILED	unittest.html#FAILED	TestStatus.FAILED	
+SKIPPED	unittest.html#SKIPPED	TestStatus.SKIPPED	
+TestStatus	unittest.html#TestStatus	unittest: TestStatus	
+PRINT_ALL	unittest.html#PRINT_ALL	OutputLevel.PRINT_ALL	
+PRINT_FAILURES	unittest.html#PRINT_FAILURES	OutputLevel.PRINT_FAILURES	
+PRINT_NONE	unittest.html#PRINT_NONE	OutputLevel.PRINT_NONE	
+OutputLevel	unittest.html#OutputLevel	unittest: OutputLevel	
+TestResult	unittest.html#TestResult	unittest: TestResult	
+OutputFormatter	unittest.html#OutputFormatter	unittest: OutputFormatter	
+ConsoleOutputFormatter	unittest.html#ConsoleOutputFormatter	unittest: ConsoleOutputFormatter	
+JUnitOutputFormatter	unittest.html#JUnitOutputFormatter	unittest: JUnitOutputFormatter	
+abortOnError	unittest.html#abortOnError	unittest: abortOnError	
+suiteStarted	unittest.html#suiteStarted.e,OutputFormatter,string	unittest: suiteStarted(formatter: OutputFormatter; suiteName: string)	
+testStarted	unittest.html#testStarted.e,OutputFormatter,string	unittest: testStarted(formatter: OutputFormatter; testName: string)	
+failureOccurred	unittest.html#failureOccurred.e,OutputFormatter,seq[string],string	unittest: failureOccurred(formatter: OutputFormatter; checkpoints: seq[string];\n                stackTrace: string)	
+testEnded	unittest.html#testEnded.e,OutputFormatter,TestResult	unittest: testEnded(formatter: OutputFormatter; testResult: TestResult)	
+suiteEnded	unittest.html#suiteEnded.e,OutputFormatter	unittest: suiteEnded(formatter: OutputFormatter)	
+addOutputFormatter	unittest.html#addOutputFormatter,OutputFormatter	unittest: addOutputFormatter(formatter: OutputFormatter)	
+delOutputFormatter	unittest.html#delOutputFormatter,OutputFormatter	unittest: delOutputFormatter(formatter: OutputFormatter)	
+resetOutputFormatters	unittest.html#resetOutputFormatters	unittest: resetOutputFormatters()	
+newConsoleOutputFormatter	unittest.html#newConsoleOutputFormatter,OutputLevel	unittest: newConsoleOutputFormatter(outputLevel: OutputLevel = outputLevelDefault;\n                          colorOutput = true): ConsoleOutputFormatter	
+defaultConsoleFormatter	unittest.html#defaultConsoleFormatter	unittest: defaultConsoleFormatter(): ConsoleOutputFormatter	
+suiteStarted	unittest.html#suiteStarted.e,ConsoleOutputFormatter,string	unittest: suiteStarted(formatter: ConsoleOutputFormatter; suiteName: string)	
+testStarted	unittest.html#testStarted.e,ConsoleOutputFormatter,string	unittest: testStarted(formatter: ConsoleOutputFormatter; testName: string)	
+failureOccurred	unittest.html#failureOccurred.e,ConsoleOutputFormatter,seq[string],string	unittest: failureOccurred(formatter: ConsoleOutputFormatter; checkpoints: seq[string];\n                stackTrace: string)	
+testEnded	unittest.html#testEnded.e,ConsoleOutputFormatter,TestResult	unittest: testEnded(formatter: ConsoleOutputFormatter; testResult: TestResult)	
+suiteEnded	unittest.html#suiteEnded.e,ConsoleOutputFormatter	unittest: suiteEnded(formatter: ConsoleOutputFormatter)	
+newJUnitOutputFormatter	unittest.html#newJUnitOutputFormatter,Stream	unittest: newJUnitOutputFormatter(stream: Stream): JUnitOutputFormatter	
+close	unittest.html#close,JUnitOutputFormatter	unittest: close(formatter: JUnitOutputFormatter)	
+suiteStarted	unittest.html#suiteStarted.e,JUnitOutputFormatter,string	unittest: suiteStarted(formatter: JUnitOutputFormatter; suiteName: string)	
+testStarted	unittest.html#testStarted.e,JUnitOutputFormatter,string	unittest: testStarted(formatter: JUnitOutputFormatter; testName: string)	
+failureOccurred	unittest.html#failureOccurred.e,JUnitOutputFormatter,seq[string],string	unittest: failureOccurred(formatter: JUnitOutputFormatter; checkpoints: seq[string];\n                stackTrace: string)	
+testEnded	unittest.html#testEnded.e,JUnitOutputFormatter,TestResult	unittest: testEnded(formatter: JUnitOutputFormatter; testResult: TestResult)	
+suiteEnded	unittest.html#suiteEnded.e,JUnitOutputFormatter	unittest: suiteEnded(formatter: JUnitOutputFormatter)	
+suite	unittest.html#suite.t,,	unittest: suite(name, body)	
+test	unittest.html#test.t,,	unittest: test(name, body)	
+checkpoint	unittest.html#checkpoint,string	unittest: checkpoint(msg: string)	
+fail	unittest.html#fail.t	unittest: fail()	
+skip	unittest.html#skip.t	unittest: skip()	
+check	unittest.html#check.m,untyped	unittest: check(conditions: untyped): untyped	
+require	unittest.html#require.t,untyped	unittest: require(conditions: untyped)	
+expect	unittest.html#expect.m,varargs[typed],untyped	unittest: expect(exceptions: varargs[typed]; body: untyped): untyped	
+disableParamFiltering	unittest.html#disableParamFiltering	unittest: disableParamFiltering()	
+Testament	unittest.html#testament	 Testament	
+Running a single test	unittest.html#running-a-single-test	 Running a single test	
+Running a single test suite	unittest.html#running-a-single-test-suite	 Running a single test suite	
+Selecting tests by pattern	unittest.html#selecting-tests-by-pattern	 Selecting tests by pattern	
+Examples	unittest.html#examples	 Examples	
+Limitations/Bugs	unittest.html#limitationsslashbugs	 Limitations/Bugs	

@@ -1,0 +1,79 @@
+InstantiationInfo	msgs.html#InstantiationInfo	msgs: InstantiationInfo	
+instLoc	msgs.html#instLoc.t	msgs: instLoc(): InstantiationInfo	
+flushDot	msgs.html#flushDot,ConfigRef	msgs: flushDot(conf: ConfigRef)	
+toCChar	msgs.html#toCChar,char,string	msgs: toCChar(c: char; result: var string)	
+makeCString	msgs.html#makeCString,string	msgs: makeCString(s: string): Rope	
+fileInfoKnown	msgs.html#fileInfoKnown,ConfigRef,AbsoluteFile	msgs: fileInfoKnown(conf: ConfigRef; filename: AbsoluteFile): bool	
+fileInfoIdx	msgs.html#fileInfoIdx,ConfigRef,AbsoluteFile,bool	msgs: fileInfoIdx(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool): FileIndex	
+fileInfoIdx	msgs.html#fileInfoIdx,ConfigRef,AbsoluteFile	msgs: fileInfoIdx(conf: ConfigRef; filename: AbsoluteFile): FileIndex	
+newLineInfo	msgs.html#newLineInfo,FileIndex,int,int	msgs: newLineInfo(fileInfoIdx: FileIndex; line, col: int): TLineInfo	
+newLineInfo	msgs.html#newLineInfo,ConfigRef,AbsoluteFile,int,int	msgs: newLineInfo(conf: ConfigRef; filename: AbsoluteFile; line, col: int): TLineInfo	
+gCmdLineInfo	msgs.html#gCmdLineInfo	msgs: gCmdLineInfo	
+suggestWriteln	msgs.html#suggestWriteln,ConfigRef,string	msgs: suggestWriteln(conf: ConfigRef; s: string)	
+msgQuit	msgs.html#msgQuit,int8	msgs: msgQuit(x: int8)	
+msgQuit	msgs.html#msgQuit,string	msgs: msgQuit(x: string)	
+suggestQuit	msgs.html#suggestQuit	msgs: suggestQuit()	
+ColOffset	msgs.html#ColOffset	msgs: ColOffset	
+commandLineDesc	msgs.html#commandLineDesc	msgs: commandLineDesc	
+getInfoContextLen	msgs.html#getInfoContextLen,ConfigRef	msgs: getInfoContextLen(conf: ConfigRef): int	
+setInfoContextLen	msgs.html#setInfoContextLen,ConfigRef,int	msgs: setInfoContextLen(conf: ConfigRef; L: int)	
+pushInfoContext	msgs.html#pushInfoContext,ConfigRef,TLineInfo,string	msgs: pushInfoContext(conf: ConfigRef; info: TLineInfo; detail: string = &quot;&quot;)	
+popInfoContext	msgs.html#popInfoContext,ConfigRef	msgs: popInfoContext(conf: ConfigRef)	
+getInfoContext	msgs.html#getInfoContext,ConfigRef,int	msgs: getInfoContext(conf: ConfigRef; index: int): TLineInfo	
+toFilename	msgs.html#toFilename.t,ConfigRef,FileIndex	msgs: toFilename(conf: ConfigRef; fileIdx: FileIndex): string	
+toProjPath	msgs.html#toProjPath,ConfigRef,FileIndex	msgs: toProjPath(conf: ConfigRef; fileIdx: FileIndex): string	
+toFullPath	msgs.html#toFullPath,ConfigRef,FileIndex	msgs: toFullPath(conf: ConfigRef; fileIdx: FileIndex): string	
+setDirtyFile	msgs.html#setDirtyFile,ConfigRef,FileIndex,AbsoluteFile	msgs: setDirtyFile(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile)	
+setHash	msgs.html#setHash,ConfigRef,FileIndex,string	msgs: setHash(conf: ConfigRef; fileIdx: FileIndex; hash: string)	
+getHash	msgs.html#getHash,ConfigRef,FileIndex	msgs: getHash(conf: ConfigRef; fileIdx: FileIndex): string	
+toFullPathConsiderDirty	msgs.html#toFullPathConsiderDirty,ConfigRef,FileIndex	msgs: toFullPathConsiderDirty(conf: ConfigRef; fileIdx: FileIndex): AbsoluteFile	
+toFilename	msgs.html#toFilename.t,ConfigRef,TLineInfo	msgs: toFilename(conf: ConfigRef; info: TLineInfo): string	
+toProjPath	msgs.html#toProjPath.t,ConfigRef,TLineInfo	msgs: toProjPath(conf: ConfigRef; info: TLineInfo): string	
+toFullPath	msgs.html#toFullPath.t,ConfigRef,TLineInfo	msgs: toFullPath(conf: ConfigRef; info: TLineInfo): string	
+toFullPathConsiderDirty	msgs.html#toFullPathConsiderDirty.t,ConfigRef,TLineInfo	msgs: toFullPathConsiderDirty(conf: ConfigRef; info: TLineInfo): string	
+toFilenameOption	msgs.html#toFilenameOption,ConfigRef,FileIndex,FilenameOption	msgs: toFilenameOption(conf: ConfigRef; fileIdx: FileIndex; opt: FilenameOption): string	
+toMsgFilename	msgs.html#toMsgFilename,ConfigRef,FileIndex	msgs: toMsgFilename(conf: ConfigRef; fileIdx: FileIndex): string	
+toMsgFilename	msgs.html#toMsgFilename.t,ConfigRef,TLineInfo	msgs: toMsgFilename(conf: ConfigRef; info: TLineInfo): string	
+toLinenumber	msgs.html#toLinenumber,TLineInfo	msgs: toLinenumber(info: TLineInfo): int	
+toColumn	msgs.html#toColumn,TLineInfo	msgs: toColumn(info: TLineInfo): int	
+toFileLineCol	msgs.html#toFileLineCol,ConfigRef,TLineInfo	msgs: toFileLineCol(conf: ConfigRef; info: TLineInfo): string	
+`$`	msgs.html#$,ConfigRef,TLineInfo	msgs: `$`(conf: ConfigRef; info: TLineInfo): string	
+`$`	msgs.html#$,TLineInfo	msgs: `$`(info: TLineInfo): string	
+`??`	msgs.html#??,ConfigRef,TLineInfo,string	msgs: `??`(conf: ConfigRef; info: TLineInfo; filename: string): bool	
+msgStdout	msgs.html#msgStdout	MsgFlag.msgStdout	
+msgSkipHook	msgs.html#msgSkipHook	MsgFlag.msgSkipHook	
+msgNoUnitSep	msgs.html#msgNoUnitSep	MsgFlag.msgNoUnitSep	
+MsgFlag	msgs.html#MsgFlag	msgs: MsgFlag	
+MsgFlags	msgs.html#MsgFlags	msgs: MsgFlags	
+msgWriteln	msgs.html#msgWriteln,ConfigRef,string,MsgFlags	msgs: msgWriteln(conf: ConfigRef; s: string; flags: MsgFlags = {})	
+msgKindToString	msgs.html#msgKindToString,TMsgKind	msgs: msgKindToString(kind: TMsgKind): string	
+doNothing	msgs.html#doNothing	TErrorHandling.doNothing	
+doAbort	msgs.html#doAbort	TErrorHandling.doAbort	
+doRaise	msgs.html#doRaise	TErrorHandling.doRaise	
+TErrorHandling	msgs.html#TErrorHandling	msgs: TErrorHandling	
+log	msgs.html#log,string	msgs: log(s: string)	
+`==`	msgs.html#==,TLineInfo,TLineInfo	msgs: `==`(a, b: TLineInfo): bool	
+exactEquals	msgs.html#exactEquals,TLineInfo,TLineInfo	msgs: exactEquals(a, b: TLineInfo): bool	
+numLines	msgs.html#numLines,ConfigRef,FileIndex	msgs: numLines(conf: ConfigRef; fileIdx: FileIndex): int	
+sourceLine	msgs.html#sourceLine,ConfigRef,TLineInfo	msgs: sourceLine(conf: ConfigRef; i: TLineInfo): string	
+formatMsg	msgs.html#formatMsg,ConfigRef,TLineInfo,TMsgKind,string	msgs: formatMsg(conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string): string	
+liMessage	msgs.html#liMessage,ConfigRef,TLineInfo,TMsgKind,string,TErrorHandling,InstantiationInfo	msgs: liMessage(conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string;\n          eh: TErrorHandling; info2: InstantiationInfo; isRaw = false)	
+rawMessage	msgs.html#rawMessage.t,ConfigRef,TMsgKind,openArray[string]	msgs: rawMessage(conf: ConfigRef; msg: TMsgKind; args: openArray[string])	
+rawMessage	msgs.html#rawMessage.t,ConfigRef,TMsgKind,string	msgs: rawMessage(conf: ConfigRef; msg: TMsgKind; arg: string)	
+fatal	msgs.html#fatal.t,ConfigRef,TLineInfo,string	msgs: fatal(conf: ConfigRef; info: TLineInfo; arg = &quot;&quot;; msg = errFatal)	
+globalAssert	msgs.html#globalAssert.t,ConfigRef,untyped,TLineInfo,string	msgs: globalAssert(conf: ConfigRef; cond: untyped; info: TLineInfo = unknownLineInfo;\n             arg = &quot;&quot;)	
+globalError	msgs.html#globalError.t,ConfigRef,TLineInfo,TMsgKind,string	msgs: globalError(conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg = &quot;&quot;)	
+globalError	msgs.html#globalError.t,ConfigRef,TLineInfo,string	msgs: globalError(conf: ConfigRef; info: TLineInfo; arg: string)	
+localError	msgs.html#localError.t,ConfigRef,TLineInfo,TMsgKind,string	msgs: localError(conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg = &quot;&quot;)	
+localError	msgs.html#localError.t,ConfigRef,TLineInfo,string	msgs: localError(conf: ConfigRef; info: TLineInfo; arg: string)	
+message	msgs.html#message.t,ConfigRef,TLineInfo,TMsgKind,string	msgs: message(conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg = &quot;&quot;)	
+warningDeprecated	msgs.html#warningDeprecated,ConfigRef,TLineInfo,string	msgs: warningDeprecated(conf: ConfigRef; info: TLineInfo = gCmdLineInfo; msg = &quot;&quot;)	
+internalError	msgs.html#internalError.t,ConfigRef,TLineInfo,string	msgs: internalError(conf: ConfigRef; info: TLineInfo; errMsg: string)	
+internalError	msgs.html#internalError.t,ConfigRef,string	msgs: internalError(conf: ConfigRef; errMsg: string)	
+internalAssert	msgs.html#internalAssert.t,ConfigRef,bool	msgs: internalAssert(conf: ConfigRef; e: bool)	
+lintReport	msgs.html#lintReport.t,ConfigRef,TLineInfo,string,string,string	msgs: lintReport(conf: ConfigRef; info: TLineInfo; beau, got: string;\n           forceHint = false; extraMsg = &quot;&quot;)	
+quotedFilename	msgs.html#quotedFilename,ConfigRef,TLineInfo	msgs: quotedFilename(conf: ConfigRef; i: TLineInfo): Rope	
+listWarnings	msgs.html#listWarnings,ConfigRef	msgs: listWarnings(conf: ConfigRef)	
+listHints	msgs.html#listHints,ConfigRef	msgs: listHints(conf: ConfigRef)	
+uniqueModuleName	msgs.html#uniqueModuleName,ConfigRef,FileIndex	msgs: uniqueModuleName(conf: ConfigRef; fid: FileIndex): string	
+genSuccessX	msgs.html#genSuccessX,ConfigRef	msgs: genSuccessX(conf: ConfigRef)	

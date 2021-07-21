@@ -1,0 +1,3 @@
+openParser	syntaxes.html#openParser,Parser,FileIndex,PLLStream,IdentCache,ConfigRef	syntaxes: openParser(p: var Parser; fileIdx: FileIndex; inputstream: PLLStream;\n           cache: IdentCache; config: ConfigRef)	
+setupParser	syntaxes.html#setupParser,Parser,FileIndex,IdentCache,ConfigRef	syntaxes: setupParser(p: var Parser; fileIdx: FileIndex; cache: IdentCache;\n            config: ConfigRef): bool	
+parseFile	syntaxes.html#parseFile,FileIndex,IdentCache,ConfigRef	syntaxes: parseFile(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode	

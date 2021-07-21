@@ -1,0 +1,6 @@
+raiseAssert	assertions.html#raiseAssert,string	assertions: raiseAssert(msg: string)	
+failedAssertImpl	assertions.html#failedAssertImpl,string	assertions: failedAssertImpl(msg: string)	
+assert	assertions.html#assert.t,untyped,string	assertions: assert(cond: untyped; msg = &quot;&quot;)	
+doAssert	assertions.html#doAssert.t,untyped,string	assertions: doAssert(cond: untyped; msg = &quot;&quot;)	
+onFailedAssert	assertions.html#onFailedAssert.t,untyped,untyped	assertions: onFailedAssert(msg, code: untyped): untyped	
+doAssertRaises	assertions.html#doAssertRaises.t,typedesc,untyped	assertions: doAssertRaises(exception: typedesc; code: untyped)	

@@ -1,0 +1,30 @@
+PackedSet	packedsets.html#PackedSet	packedsets: PackedSet	
+items	packedsets.html#items.i,PackedSet[A]	packedsets: items[A](s: PackedSet[A]): A	
+initPackedSet	packedsets.html#initPackedSet	packedsets: initPackedSet[A](): PackedSet[A]	
+contains	packedsets.html#contains,PackedSet[A],A	packedsets: contains[A](s: PackedSet[A]; key: A): bool	
+incl	packedsets.html#incl,PackedSet[A],A	packedsets: incl[A](s: var PackedSet[A]; key: A)	
+incl	packedsets.html#incl,PackedSet[A],PackedSet[A]	packedsets: incl[A](s: var PackedSet[A]; other: PackedSet[A])	
+toPackedSet	packedsets.html#toPackedSet,openArray[A]	packedsets: toPackedSet[A](x: openArray[A]): PackedSet[A]	
+containsOrIncl	packedsets.html#containsOrIncl,PackedSet[A],A	packedsets: containsOrIncl[A](s: var PackedSet[A]; key: A): bool	
+excl	packedsets.html#excl,PackedSet[A],A	packedsets: excl[A](s: var PackedSet[A]; key: A)	
+excl	packedsets.html#excl,PackedSet[A],PackedSet[A]	packedsets: excl[A](s: var PackedSet[A]; other: PackedSet[A])	
+len	packedsets.html#len,PackedSet[A]	packedsets: len[A](s: PackedSet[A]): int	
+missingOrExcl	packedsets.html#missingOrExcl,PackedSet[A],A	packedsets: missingOrExcl[A](s: var PackedSet[A]; key: A): bool	
+clear	packedsets.html#clear,PackedSet[A]	packedsets: clear[A](result: var PackedSet[A])	
+isNil	packedsets.html#isNil,PackedSet[A]	packedsets: isNil[A](x: PackedSet[A]): bool	
+assign	packedsets.html#assign,PackedSet[A],PackedSet[A]	packedsets: assign[A](dest: var PackedSet[A]; src: PackedSet[A])	
+union	packedsets.html#union,PackedSet[A],PackedSet[A]	packedsets: union[A](s1, s2: PackedSet[A]): PackedSet[A]	
+intersection	packedsets.html#intersection,PackedSet[A],PackedSet[A]	packedsets: intersection[A](s1, s2: PackedSet[A]): PackedSet[A]	
+difference	packedsets.html#difference,PackedSet[A],PackedSet[A]	packedsets: difference[A](s1, s2: PackedSet[A]): PackedSet[A]	
+symmetricDifference	packedsets.html#symmetricDifference,PackedSet[A],PackedSet[A]	packedsets: symmetricDifference[A](s1, s2: PackedSet[A]): PackedSet[A]	
+`+`	packedsets.html#+,PackedSet[A],PackedSet[A]	packedsets: `+`[A](s1, s2: PackedSet[A]): PackedSet[A]	
+`*`	packedsets.html#*,PackedSet[A],PackedSet[A]	packedsets: `*`[A](s1, s2: PackedSet[A]): PackedSet[A]	
+`-`	packedsets.html#-,PackedSet[A],PackedSet[A]	packedsets: `-`[A](s1, s2: PackedSet[A]): PackedSet[A]	
+disjoint	packedsets.html#disjoint,PackedSet[A],PackedSet[A]	packedsets: disjoint[A](s1, s2: PackedSet[A]): bool	
+card	packedsets.html#card,PackedSet[A]	packedsets: card[A](s: PackedSet[A]): int	
+`&lt;=`	packedsets.html#<=,PackedSet[A],PackedSet[A]	packedsets: `&lt;=`[A](s1, s2: PackedSet[A]): bool	
+`&lt;`	packedsets.html#<,PackedSet[A],PackedSet[A]	packedsets: `&lt;`[A](s1, s2: PackedSet[A]): bool	
+`==`	packedsets.html#==,PackedSet[A],PackedSet[A]	packedsets: `==`[A](s1, s2: PackedSet[A]): bool	
+`$`	packedsets.html#$,PackedSet[A]	packedsets: `$`[A](s: PackedSet[A]): string	
+sparse bit set	packedsets.html#sparse-bit-set_1	Module packedsets	
+See also	packedsets.html#see-also	 See also	

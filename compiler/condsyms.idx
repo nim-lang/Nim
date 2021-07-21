@@ -1,0 +1,5 @@
+defineSymbol	condsyms.html#defineSymbol,StringTableRef,string,string	condsyms: defineSymbol(symbols: StringTableRef; symbol: string; value: string = &quot;true&quot;)	
+undefSymbol	condsyms.html#undefSymbol,StringTableRef,string	condsyms: undefSymbol(symbols: StringTableRef; symbol: string)	
+definedSymbolNames	condsyms.html#definedSymbolNames.i,StringTableRef	condsyms: definedSymbolNames(symbols: StringTableRef): string	
+countDefinedSymbols	condsyms.html#countDefinedSymbols,StringTableRef	condsyms: countDefinedSymbols(symbols: StringTableRef): int	
+initDefines	condsyms.html#initDefines,StringTableRef	condsyms: initDefines(symbols: StringTableRef)	

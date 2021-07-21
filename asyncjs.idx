@@ -1,0 +1,10 @@
+Future	asyncjs.html#Future	asyncjs: Future	
+PromiseJs	asyncjs.html#PromiseJs	asyncjs: PromiseJs	
+async	asyncjs.html#async.m,untyped	asyncjs: async(arg: untyped): untyped	
+newPromise	asyncjs.html#newPromise,proc(proc(T))	asyncjs: newPromise[T](handler: proc (resolve: proc (response: T))): Future[T]	
+newPromise	asyncjs.html#newPromise,proc(proc))	asyncjs: newPromise(handler: proc (resolve: proc ())): Future[void]	
+Error	asyncjs.html#Error	asyncjs: Error	
+OnReject	asyncjs.html#OnReject	asyncjs: OnReject	
+then	asyncjs.html#then,Future[T],proc,OnReject	asyncjs: then[T](future: Future[T]; onSuccess: proc; onReject: OnReject = nil): auto	
+catch	asyncjs.html#catch,Future[T],OnReject	asyncjs: catch[T](future: Future[T]; onReject: OnReject): Future[void]	
+JavaScript compatibility	asyncjs.html#javascript-compatibility	 JavaScript compatibility	

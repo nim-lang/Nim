@@ -1,0 +1,79 @@
+osNone	platform.html#osNone	TSystemOS.osNone	
+osDos	platform.html#osDos	TSystemOS.osDos	
+osWindows	platform.html#osWindows	TSystemOS.osWindows	
+osOs2	platform.html#osOs2	TSystemOS.osOs2	
+osLinux	platform.html#osLinux	TSystemOS.osLinux	
+osMorphos	platform.html#osMorphos	TSystemOS.osMorphos	
+osSkyos	platform.html#osSkyos	TSystemOS.osSkyos	
+osSolaris	platform.html#osSolaris	TSystemOS.osSolaris	
+osIrix	platform.html#osIrix	TSystemOS.osIrix	
+osNetbsd	platform.html#osNetbsd	TSystemOS.osNetbsd	
+osFreebsd	platform.html#osFreebsd	TSystemOS.osFreebsd	
+osOpenbsd	platform.html#osOpenbsd	TSystemOS.osOpenbsd	
+osDragonfly	platform.html#osDragonfly	TSystemOS.osDragonfly	
+osAix	platform.html#osAix	TSystemOS.osAix	
+osPalmos	platform.html#osPalmos	TSystemOS.osPalmos	
+osQnx	platform.html#osQnx	TSystemOS.osQnx	
+osAmiga	platform.html#osAmiga	TSystemOS.osAmiga	
+osAtari	platform.html#osAtari	TSystemOS.osAtari	
+osNetware	platform.html#osNetware	TSystemOS.osNetware	
+osMacos	platform.html#osMacos	TSystemOS.osMacos	
+osMacosx	platform.html#osMacosx	TSystemOS.osMacosx	
+osIos	platform.html#osIos	TSystemOS.osIos	
+osHaiku	platform.html#osHaiku	TSystemOS.osHaiku	
+osAndroid	platform.html#osAndroid	TSystemOS.osAndroid	
+osVxWorks	platform.html#osVxWorks	TSystemOS.osVxWorks	
+osGenode	platform.html#osGenode	TSystemOS.osGenode	
+osJS	platform.html#osJS	TSystemOS.osJS	
+osNimVM	platform.html#osNimVM	TSystemOS.osNimVM	
+osStandalone	platform.html#osStandalone	TSystemOS.osStandalone	
+osNintendoSwitch	platform.html#osNintendoSwitch	TSystemOS.osNintendoSwitch	
+osFreeRTOS	platform.html#osFreeRTOS	TSystemOS.osFreeRTOS	
+osAny	platform.html#osAny	TSystemOS.osAny	
+TSystemOS	platform.html#TSystemOS	platform: TSystemOS	
+ospNeedsPIC	platform.html#ospNeedsPIC	TInfoOSProp.ospNeedsPIC	
+ospCaseInsensitive	platform.html#ospCaseInsensitive	TInfoOSProp.ospCaseInsensitive	
+ospPosix	platform.html#ospPosix	TInfoOSProp.ospPosix	
+ospLacksThreadVars	platform.html#ospLacksThreadVars	TInfoOSProp.ospLacksThreadVars	
+TInfoOSProp	platform.html#TInfoOSProp	platform: TInfoOSProp	
+TInfoOSProps	platform.html#TInfoOSProps	platform: TInfoOSProps	
+TInfoOS	platform.html#TInfoOS	platform: TInfoOS	
+OS	platform.html#OS	platform: OS	
+cpuNone	platform.html#cpuNone	TSystemCPU.cpuNone	
+cpuI386	platform.html#cpuI386	TSystemCPU.cpuI386	
+cpuM68k	platform.html#cpuM68k	TSystemCPU.cpuM68k	
+cpuAlpha	platform.html#cpuAlpha	TSystemCPU.cpuAlpha	
+cpuPowerpc	platform.html#cpuPowerpc	TSystemCPU.cpuPowerpc	
+cpuPowerpc64	platform.html#cpuPowerpc64	TSystemCPU.cpuPowerpc64	
+cpuPowerpc64el	platform.html#cpuPowerpc64el	TSystemCPU.cpuPowerpc64el	
+cpuSparc	platform.html#cpuSparc	TSystemCPU.cpuSparc	
+cpuVm	platform.html#cpuVm	TSystemCPU.cpuVm	
+cpuHppa	platform.html#cpuHppa	TSystemCPU.cpuHppa	
+cpuIa64	platform.html#cpuIa64	TSystemCPU.cpuIa64	
+cpuAmd64	platform.html#cpuAmd64	TSystemCPU.cpuAmd64	
+cpuMips	platform.html#cpuMips	TSystemCPU.cpuMips	
+cpuMipsel	platform.html#cpuMipsel	TSystemCPU.cpuMipsel	
+cpuArm	platform.html#cpuArm	TSystemCPU.cpuArm	
+cpuArm64	platform.html#cpuArm64	TSystemCPU.cpuArm64	
+cpuJS	platform.html#cpuJS	TSystemCPU.cpuJS	
+cpuNimVM	platform.html#cpuNimVM	TSystemCPU.cpuNimVM	
+cpuAVR	platform.html#cpuAVR	TSystemCPU.cpuAVR	
+cpuMSP430	platform.html#cpuMSP430	TSystemCPU.cpuMSP430	
+cpuSparc64	platform.html#cpuSparc64	TSystemCPU.cpuSparc64	
+cpuMips64	platform.html#cpuMips64	TSystemCPU.cpuMips64	
+cpuMips64el	platform.html#cpuMips64el	TSystemCPU.cpuMips64el	
+cpuRiscV32	platform.html#cpuRiscV32	TSystemCPU.cpuRiscV32	
+cpuRiscV64	platform.html#cpuRiscV64	TSystemCPU.cpuRiscV64	
+cpuEsp	platform.html#cpuEsp	TSystemCPU.cpuEsp	
+cpuWasm32	platform.html#cpuWasm32	TSystemCPU.cpuWasm32	
+TSystemCPU	platform.html#TSystemCPU	platform: TSystemCPU	
+TInfoCPU	platform.html#TInfoCPU	platform: TInfoCPU	
+EndianToStr	platform.html#EndianToStr	platform: EndianToStr	
+CPU	platform.html#CPU	platform: CPU	
+Target	platform.html#Target	platform: Target	
+setTarget	platform.html#setTarget,Target,TSystemOS,TSystemCPU	platform: setTarget(t: var Target; o: TSystemOS; c: TSystemCPU)	
+nameToOS	platform.html#nameToOS,string	platform: nameToOS(name: string): TSystemOS	
+listOSnames	platform.html#listOSnames	platform: listOSnames(): seq[string]	
+nameToCPU	platform.html#nameToCPU,string	platform: nameToCPU(name: string): TSystemCPU	
+listCPUnames	platform.html#listCPUnames	platform: listCPUnames(): seq[string]	
+setTargetFromSystem	platform.html#setTargetFromSystem,Target	platform: setTargetFromSystem(t: var Target)	

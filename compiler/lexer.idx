@@ -1,0 +1,153 @@
+MaxLineLength	lexer.html#MaxLineLength	lexer: MaxLineLength	
+numChars	lexer.html#numChars	lexer: numChars	
+SymChars	lexer.html#SymChars	lexer: SymChars	
+SymStartChars	lexer.html#SymStartChars	lexer: SymStartChars	
+OpChars	lexer.html#OpChars	lexer: OpChars	
+tkInvalid	lexer.html#tkInvalid	TokType.tkInvalid	
+tkEof	lexer.html#tkEof	TokType.tkEof	
+tkSymbol	lexer.html#tkSymbol	TokType.tkSymbol	
+tkAddr	lexer.html#tkAddr	TokType.tkAddr	
+tkAnd	lexer.html#tkAnd	TokType.tkAnd	
+tkAs	lexer.html#tkAs	TokType.tkAs	
+tkAsm	lexer.html#tkAsm	TokType.tkAsm	
+tkBind	lexer.html#tkBind	TokType.tkBind	
+tkBlock	lexer.html#tkBlock	TokType.tkBlock	
+tkBreak	lexer.html#tkBreak	TokType.tkBreak	
+tkCase	lexer.html#tkCase	TokType.tkCase	
+tkCast	lexer.html#tkCast	TokType.tkCast	
+tkConcept	lexer.html#tkConcept	TokType.tkConcept	
+tkConst	lexer.html#tkConst	TokType.tkConst	
+tkContinue	lexer.html#tkContinue	TokType.tkContinue	
+tkConverter	lexer.html#tkConverter	TokType.tkConverter	
+tkDefer	lexer.html#tkDefer	TokType.tkDefer	
+tkDiscard	lexer.html#tkDiscard	TokType.tkDiscard	
+tkDistinct	lexer.html#tkDistinct	TokType.tkDistinct	
+tkDiv	lexer.html#tkDiv	TokType.tkDiv	
+tkDo	lexer.html#tkDo	TokType.tkDo	
+tkElif	lexer.html#tkElif	TokType.tkElif	
+tkElse	lexer.html#tkElse	TokType.tkElse	
+tkEnd	lexer.html#tkEnd	TokType.tkEnd	
+tkEnum	lexer.html#tkEnum	TokType.tkEnum	
+tkExcept	lexer.html#tkExcept	TokType.tkExcept	
+tkExport	lexer.html#tkExport	TokType.tkExport	
+tkFinally	lexer.html#tkFinally	TokType.tkFinally	
+tkFor	lexer.html#tkFor	TokType.tkFor	
+tkFrom	lexer.html#tkFrom	TokType.tkFrom	
+tkFunc	lexer.html#tkFunc	TokType.tkFunc	
+tkIf	lexer.html#tkIf	TokType.tkIf	
+tkImport	lexer.html#tkImport	TokType.tkImport	
+tkIn	lexer.html#tkIn	TokType.tkIn	
+tkInclude	lexer.html#tkInclude	TokType.tkInclude	
+tkInterface	lexer.html#tkInterface	TokType.tkInterface	
+tkIs	lexer.html#tkIs	TokType.tkIs	
+tkIsnot	lexer.html#tkIsnot	TokType.tkIsnot	
+tkIterator	lexer.html#tkIterator	TokType.tkIterator	
+tkLet	lexer.html#tkLet	TokType.tkLet	
+tkMacro	lexer.html#tkMacro	TokType.tkMacro	
+tkMethod	lexer.html#tkMethod	TokType.tkMethod	
+tkMixin	lexer.html#tkMixin	TokType.tkMixin	
+tkMod	lexer.html#tkMod	TokType.tkMod	
+tkNil	lexer.html#tkNil	TokType.tkNil	
+tkNot	lexer.html#tkNot	TokType.tkNot	
+tkNotin	lexer.html#tkNotin	TokType.tkNotin	
+tkObject	lexer.html#tkObject	TokType.tkObject	
+tkOf	lexer.html#tkOf	TokType.tkOf	
+tkOr	lexer.html#tkOr	TokType.tkOr	
+tkOut	lexer.html#tkOut	TokType.tkOut	
+tkProc	lexer.html#tkProc	TokType.tkProc	
+tkPtr	lexer.html#tkPtr	TokType.tkPtr	
+tkRaise	lexer.html#tkRaise	TokType.tkRaise	
+tkRef	lexer.html#tkRef	TokType.tkRef	
+tkReturn	lexer.html#tkReturn	TokType.tkReturn	
+tkShl	lexer.html#tkShl	TokType.tkShl	
+tkShr	lexer.html#tkShr	TokType.tkShr	
+tkStatic	lexer.html#tkStatic	TokType.tkStatic	
+tkTemplate	lexer.html#tkTemplate	TokType.tkTemplate	
+tkTry	lexer.html#tkTry	TokType.tkTry	
+tkTuple	lexer.html#tkTuple	TokType.tkTuple	
+tkType	lexer.html#tkType	TokType.tkType	
+tkUsing	lexer.html#tkUsing	TokType.tkUsing	
+tkVar	lexer.html#tkVar	TokType.tkVar	
+tkWhen	lexer.html#tkWhen	TokType.tkWhen	
+tkWhile	lexer.html#tkWhile	TokType.tkWhile	
+tkXor	lexer.html#tkXor	TokType.tkXor	
+tkYield	lexer.html#tkYield	TokType.tkYield	
+tkIntLit	lexer.html#tkIntLit	TokType.tkIntLit	
+tkInt8Lit	lexer.html#tkInt8Lit	TokType.tkInt8Lit	
+tkInt16Lit	lexer.html#tkInt16Lit	TokType.tkInt16Lit	
+tkInt32Lit	lexer.html#tkInt32Lit	TokType.tkInt32Lit	
+tkInt64Lit	lexer.html#tkInt64Lit	TokType.tkInt64Lit	
+tkUIntLit	lexer.html#tkUIntLit	TokType.tkUIntLit	
+tkUInt8Lit	lexer.html#tkUInt8Lit	TokType.tkUInt8Lit	
+tkUInt16Lit	lexer.html#tkUInt16Lit	TokType.tkUInt16Lit	
+tkUInt32Lit	lexer.html#tkUInt32Lit	TokType.tkUInt32Lit	
+tkUInt64Lit	lexer.html#tkUInt64Lit	TokType.tkUInt64Lit	
+tkFloatLit	lexer.html#tkFloatLit	TokType.tkFloatLit	
+tkFloat32Lit	lexer.html#tkFloat32Lit	TokType.tkFloat32Lit	
+tkFloat64Lit	lexer.html#tkFloat64Lit	TokType.tkFloat64Lit	
+tkFloat128Lit	lexer.html#tkFloat128Lit	TokType.tkFloat128Lit	
+tkStrLit	lexer.html#tkStrLit	TokType.tkStrLit	
+tkRStrLit	lexer.html#tkRStrLit	TokType.tkRStrLit	
+tkTripleStrLit	lexer.html#tkTripleStrLit	TokType.tkTripleStrLit	
+tkGStrLit	lexer.html#tkGStrLit	TokType.tkGStrLit	
+tkGTripleStrLit	lexer.html#tkGTripleStrLit	TokType.tkGTripleStrLit	
+tkCharLit	lexer.html#tkCharLit	TokType.tkCharLit	
+tkCustomLit	lexer.html#tkCustomLit	TokType.tkCustomLit	
+tkParLe	lexer.html#tkParLe	TokType.tkParLe	
+tkParRi	lexer.html#tkParRi	TokType.tkParRi	
+tkBracketLe	lexer.html#tkBracketLe	TokType.tkBracketLe	
+tkBracketRi	lexer.html#tkBracketRi	TokType.tkBracketRi	
+tkCurlyLe	lexer.html#tkCurlyLe	TokType.tkCurlyLe	
+tkCurlyRi	lexer.html#tkCurlyRi	TokType.tkCurlyRi	
+tkBracketDotLe	lexer.html#tkBracketDotLe	TokType.tkBracketDotLe	
+tkBracketDotRi	lexer.html#tkBracketDotRi	TokType.tkBracketDotRi	
+tkCurlyDotLe	lexer.html#tkCurlyDotLe	TokType.tkCurlyDotLe	
+tkCurlyDotRi	lexer.html#tkCurlyDotRi	TokType.tkCurlyDotRi	
+tkParDotLe	lexer.html#tkParDotLe	TokType.tkParDotLe	
+tkParDotRi	lexer.html#tkParDotRi	TokType.tkParDotRi	
+tkComma	lexer.html#tkComma	TokType.tkComma	
+tkSemiColon	lexer.html#tkSemiColon	TokType.tkSemiColon	
+tkColon	lexer.html#tkColon	TokType.tkColon	
+tkColonColon	lexer.html#tkColonColon	TokType.tkColonColon	
+tkEquals	lexer.html#tkEquals	TokType.tkEquals	
+tkDot	lexer.html#tkDot	TokType.tkDot	
+tkDotDot	lexer.html#tkDotDot	TokType.tkDotDot	
+tkBracketLeColon	lexer.html#tkBracketLeColon	TokType.tkBracketLeColon	
+tkOpr	lexer.html#tkOpr	TokType.tkOpr	
+tkComment	lexer.html#tkComment	TokType.tkComment	
+tkAccent	lexer.html#tkAccent	TokType.tkAccent	
+tkSpaces	lexer.html#tkSpaces	TokType.tkSpaces	
+tkInfixOpr	lexer.html#tkInfixOpr	TokType.tkInfixOpr	
+tkPrefixOpr	lexer.html#tkPrefixOpr	TokType.tkPrefixOpr	
+tkPostfixOpr	lexer.html#tkPostfixOpr	TokType.tkPostfixOpr	
+tkHideableStart	lexer.html#tkHideableStart	TokType.tkHideableStart	
+tkHideableEnd	lexer.html#tkHideableEnd	TokType.tkHideableEnd	
+TokType	lexer.html#TokType	lexer: TokType	
+TokTypes	lexer.html#TokTypes	lexer: TokTypes	
+tokKeywordLow	lexer.html#tokKeywordLow	lexer: tokKeywordLow	
+tokKeywordHigh	lexer.html#tokKeywordHigh	lexer: tokKeywordHigh	
+base10	lexer.html#base10	NumericalBase.base10	
+base2	lexer.html#base2	NumericalBase.base2	
+base8	lexer.html#base8	NumericalBase.base8	
+base16	lexer.html#base16	NumericalBase.base16	
+NumericalBase	lexer.html#NumericalBase	lexer: NumericalBase	
+Token	lexer.html#Token	lexer: Token	
+ErrorHandler	lexer.html#ErrorHandler	lexer: ErrorHandler	
+Lexer	lexer.html#Lexer	lexer: Lexer	
+getLineInfo	lexer.html#getLineInfo,Lexer,Token	lexer: getLineInfo(L: Lexer; tok: Token): TLineInfo	
+isKeyword	lexer.html#isKeyword,TokType	lexer: isKeyword(kind: TokType): bool	
+isNimIdentifier	lexer.html#isNimIdentifier,string	lexer: isNimIdentifier(s: string): bool	
+`$`	lexer.html#$,Token	lexer: `$`(tok: Token): string	
+prettyTok	lexer.html#prettyTok,Token	lexer: prettyTok(tok: Token): string	
+printTok	lexer.html#printTok,ConfigRef,Token	lexer: printTok(conf: ConfigRef; tok: Token)	
+initToken	lexer.html#initToken,Token	lexer: initToken(L: var Token)	
+openLexer	lexer.html#openLexer,Lexer,FileIndex,PLLStream,IdentCache,ConfigRef	lexer: openLexer(lex: var Lexer; fileIdx: FileIndex; inputstream: PLLStream;\n          cache: IdentCache; config: ConfigRef)	
+openLexer	lexer.html#openLexer,Lexer,AbsoluteFile,PLLStream,IdentCache,ConfigRef	lexer: openLexer(lex: var Lexer; filename: AbsoluteFile; inputstream: PLLStream;\n          cache: IdentCache; config: ConfigRef)	
+closeLexer	lexer.html#closeLexer,Lexer	lexer: closeLexer(lex: var Lexer)	
+lexMessage	lexer.html#lexMessage,Lexer,TMsgKind,string	lexer: lexMessage(L: Lexer; msg: TMsgKind; arg = &quot;&quot;)	
+lexMessageTok	lexer.html#lexMessageTok,Lexer,TMsgKind,Token,string	lexer: lexMessageTok(L: Lexer; msg: TMsgKind; tok: Token; arg = &quot;&quot;)	
+getPrecedence	lexer.html#getPrecedence,Token	lexer: getPrecedence(tok: Token): int	
+newlineFollows	lexer.html#newlineFollows,Lexer	lexer: newlineFollows(L: Lexer): bool	
+rawGetTok	lexer.html#rawGetTok,Lexer,Token	lexer: rawGetTok(L: var Lexer; tok: var Token)	
+getIndentWidth	lexer.html#getIndentWidth,FileIndex,PLLStream,IdentCache,ConfigRef	lexer: getIndentWidth(fileIdx: FileIndex; inputstream: PLLStream; cache: IdentCache;\n               config: ConfigRef): int	
+getPrecedence	lexer.html#getPrecedence,PIdent	lexer: getPrecedence(ident: PIdent): int	

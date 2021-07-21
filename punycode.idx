@@ -1,0 +1,4 @@
+PunyError	punycode.html#PunyError	punycode: PunyError	
+encode	punycode.html#encode,string,string	punycode: encode(prefix, s: string): string	
+encode	punycode.html#encode,string	punycode: encode(s: string): string	
+decode	punycode.html#decode,string	punycode: decode(encoded: string): string	

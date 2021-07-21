@@ -1,0 +1,41 @@
+Rational	rationals.html#Rational	rationals: Rational	
+reduce	rationals.html#reduce,Rational[T: SomeInteger]	rationals: reduce[T: SomeInteger](x: var Rational[T])	
+initRational	rationals.html#initRational,T,T	rationals: initRational[T: SomeInteger](num, den: T): Rational[T]	
+`//`	rationals.html#//,T,T	rationals: `//`[T](num, den: T): Rational[T]	
+`$`	rationals.html#$,Rational[T]	rationals: `$`[T](x: Rational[T]): string	
+toRational	rationals.html#toRational,T	rationals: toRational[T: SomeInteger](x: T): Rational[T]	
+toRational	rationals.html#toRational,float,int	rationals: toRational(x: float; n: int = high(int) shr 32): Rational[int]	
+toFloat	rationals.html#toFloat,Rational[T]	rationals: toFloat[T](x: Rational[T]): float	
+toInt	rationals.html#toInt,Rational[T]	rationals: toInt[T](x: Rational[T]): int	
+`+`	rationals.html#+,Rational[T],Rational[T]	rationals: `+`[T](x, y: Rational[T]): Rational[T]	
+`+`	rationals.html#+,Rational[T],T	rationals: `+`[T](x: Rational[T]; y: T): Rational[T]	
+`+`	rationals.html#+,T,Rational[T]	rationals: `+`[T](x: T; y: Rational[T]): Rational[T]	
+`+=`	rationals.html#+=,Rational[T],Rational[T]	rationals: `+=`[T](x: var Rational[T]; y: Rational[T])	
+`+=`	rationals.html#+=,Rational[T],T	rationals: `+=`[T](x: var Rational[T]; y: T)	
+`-`	rationals.html#-,Rational[T]	rationals: `-`[T](x: Rational[T]): Rational[T]	
+`-`	rationals.html#-,Rational[T],Rational[T]	rationals: `-`[T](x, y: Rational[T]): Rational[T]	
+`-`	rationals.html#-,Rational[T],T	rationals: `-`[T](x: Rational[T]; y: T): Rational[T]	
+`-`	rationals.html#-,T,Rational[T]	rationals: `-`[T](x: T; y: Rational[T]): Rational[T]	
+`-=`	rationals.html#-=,Rational[T],Rational[T]	rationals: `-=`[T](x: var Rational[T]; y: Rational[T])	
+`-=`	rationals.html#-=,Rational[T],T	rationals: `-=`[T](x: var Rational[T]; y: T)	
+`*`	rationals.html#*,Rational[T],Rational[T]	rationals: `*`[T](x, y: Rational[T]): Rational[T]	
+`*`	rationals.html#*,Rational[T],T	rationals: `*`[T](x: Rational[T]; y: T): Rational[T]	
+`*`	rationals.html#*,T,Rational[T]	rationals: `*`[T](x: T; y: Rational[T]): Rational[T]	
+`*=`	rationals.html#*=,Rational[T],Rational[T]	rationals: `*=`[T](x: var Rational[T]; y: Rational[T])	
+`*=`	rationals.html#*=,Rational[T],T	rationals: `*=`[T](x: var Rational[T]; y: T)	
+reciprocal	rationals.html#reciprocal,Rational[T]	rationals: reciprocal[T](x: Rational[T]): Rational[T]	
+`/`	rationals.html#/,Rational[T],Rational[T]	rationals: `/`[T](x, y: Rational[T]): Rational[T]	
+`/`	rationals.html#/,Rational[T],T	rationals: `/`[T](x: Rational[T]; y: T): Rational[T]	
+`/`	rationals.html#/,T,Rational[T]	rationals: `/`[T](x: T; y: Rational[T]): Rational[T]	
+`/=`	rationals.html#/=,Rational[T],Rational[T]	rationals: `/=`[T](x: var Rational[T]; y: Rational[T])	
+`/=`	rationals.html#/=,Rational[T],T	rationals: `/=`[T](x: var Rational[T]; y: T)	
+cmp	rationals.html#cmp,Rational,Rational	rationals: cmp(x, y: Rational): int	
+`&lt;`	rationals.html#<,Rational,Rational	rationals: `&lt;`(x, y: Rational): bool	
+`&lt;=`	rationals.html#<=,Rational,Rational	rationals: `&lt;=`(x, y: Rational): bool	
+`==`	rationals.html#==,Rational,Rational	rationals: `==`(x, y: Rational): bool	
+abs	rationals.html#abs,Rational[T]	rationals: abs[T](x: Rational[T]): Rational[T]	
+`div`	rationals.html#div,Rational[T: SomeInteger],Rational[T: SomeInteger]	rationals: `div`[T: SomeInteger](x, y: Rational[T]): T	
+`mod`	rationals.html#mod,Rational[T: SomeInteger],Rational[T: SomeInteger]	rationals: `mod`[T: SomeInteger](x, y: Rational[T]): Rational[T]	
+floorDiv	rationals.html#floorDiv,Rational[T: SomeInteger],Rational[T: SomeInteger]	rationals: floorDiv[T: SomeInteger](x, y: Rational[T]): T	
+floorMod	rationals.html#floorMod,Rational[T: SomeInteger],Rational[T: SomeInteger]	rationals: floorMod[T: SomeInteger](x, y: Rational[T]): Rational[T]	
+hash	rationals.html#hash,Rational[T]	rationals: hash[T](x: Rational[T]): Hash	

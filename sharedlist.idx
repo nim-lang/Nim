@@ -1,0 +1,7 @@
+SharedList	sharedlist.html#SharedList	sharedlist: SharedList	
+iterAndMutate	sharedlist.html#iterAndMutate,SharedList[A],proc(A)	sharedlist: iterAndMutate[A](x: var SharedList[A]; action: proc (x: A): bool)	
+items	sharedlist.html#items.i,SharedList[A]	sharedlist: items[A](x: var SharedList[A]): A	
+add	sharedlist.html#add,SharedList[A],A	sharedlist: add[A](x: var SharedList[A]; y: A)	
+init	sharedlist.html#init,SharedList[A]	sharedlist: init[A](t: var SharedList[A])	
+clear	sharedlist.html#clear,SharedList[A]	sharedlist: clear[A](t: var SharedList[A])	
+deinitSharedList	sharedlist.html#deinitSharedList,SharedList[A]	sharedlist: deinitSharedList[A](t: var SharedList[A])	

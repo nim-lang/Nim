@@ -1,0 +1,26 @@
+renderNone	renderer.html#renderNone	TRenderFlag.renderNone	
+renderNoBody	renderer.html#renderNoBody	TRenderFlag.renderNoBody	
+renderNoComments	renderer.html#renderNoComments	TRenderFlag.renderNoComments	
+renderDocComments	renderer.html#renderDocComments	TRenderFlag.renderDocComments	
+renderNoPragmas	renderer.html#renderNoPragmas	TRenderFlag.renderNoPragmas	
+renderIds	renderer.html#renderIds	TRenderFlag.renderIds	
+renderNoProcDefs	renderer.html#renderNoProcDefs	TRenderFlag.renderNoProcDefs	
+renderSyms	renderer.html#renderSyms	TRenderFlag.renderSyms	
+renderRunnableExamples	renderer.html#renderRunnableExamples	TRenderFlag.renderRunnableExamples	
+renderIr	renderer.html#renderIr	TRenderFlag.renderIr	
+TRenderFlag	renderer.html#TRenderFlag	renderer: TRenderFlag	
+TRenderFlags	renderer.html#TRenderFlags	renderer: TRenderFlags	
+TRenderTok	renderer.html#TRenderTok	renderer: TRenderTok	
+TRenderTokSeq	renderer.html#TRenderTokSeq	renderer: TRenderTokSeq	
+TSrcGen	renderer.html#TSrcGen	renderer: TSrcGen	
+isKeyword	renderer.html#isKeyword,PIdent	renderer: isKeyword(i: PIdent): bool	
+renderDefinitionName	renderer.html#renderDefinitionName,PSym	renderer: renderDefinitionName(s: PSym; noQuotes = false): string	
+bracketKind	renderer.html#bracketKind,TSrcGen,PNode	renderer: bracketKind(g: TSrcGen; n: PNode): BracketKind	
+renderTree	renderer.html#renderTree,PNode,TRenderFlags	renderer: renderTree(n: PNode; renderFlags: TRenderFlags = {}): string	
+`$`	renderer.html#$,PNode	renderer: `$`(n: PNode): string	
+renderModule	renderer.html#renderModule,PNode,string,TRenderFlags,ConfigRef	renderer: renderModule(n: PNode; outfile: string; renderFlags: TRenderFlags = {};\n             fid = FileIndex(-1); conf: ConfigRef = nil)	
+initTokRender	renderer.html#initTokRender,TSrcGen,PNode,TRenderFlags	renderer: initTokRender(r: var TSrcGen; n: PNode; renderFlags: TRenderFlags = {})	
+getNextTok	renderer.html#getNextTok,TSrcGen,TokType,string	renderer: getNextTok(r: var TSrcGen; kind: var TokType; literal: var string)	
+getTokSym	renderer.html#getTokSym,TSrcGen	renderer: getTokSym(r: TSrcGen): PSym	
+quoteExpr	renderer.html#quoteExpr,string	renderer: quoteExpr(a: string): string	
+genFieldDefect	renderer.html#genFieldDefect,PSym,PSym	renderer: genFieldDefect(field: PSym; disc: PSym): string	

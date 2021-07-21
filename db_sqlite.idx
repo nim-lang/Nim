@@ -1,0 +1,55 @@
+DbConn	db_sqlite.html#DbConn	db_sqlite: DbConn	
+Row	db_sqlite.html#Row	db_sqlite: Row	
+InstantRow	db_sqlite.html#InstantRow	db_sqlite: InstantRow	
+SqlPrepared	db_sqlite.html#SqlPrepared	db_sqlite: SqlPrepared	
+`[]`	db_sqlite.html#[],InstantRow,int32	db_sqlite: `[]`(row: InstantRow; col: int32): string	
+len	db_sqlite.html#len,InstantRow	db_sqlite: len(row: InstantRow): int32	
+finalize	db_sqlite.html#finalize,SqlPrepared	db_sqlite: finalize(sqlPrepared: SqlPrepared)	
+dbQuote	db_sqlite.html#dbQuote,string	db_sqlite: dbQuote(s: string): string	
+tryExec	db_sqlite.html#tryExec,DbConn,SqlPrepared	db_sqlite: tryExec(db: DbConn; stmtName: SqlPrepared): bool	
+dbBindParamError	db_sqlite.html#dbBindParamError.t,int,varargs[untyped]	db_sqlite: dbBindParamError(paramIdx: int; val: varargs[untyped])	
+bindParam	db_sqlite.html#bindParam,SqlPrepared,int,int32	db_sqlite: bindParam(ps: SqlPrepared; paramIdx: int; val: int32)	
+bindParam	db_sqlite.html#bindParam,SqlPrepared,int,int64	db_sqlite: bindParam(ps: SqlPrepared; paramIdx: int; val: int64)	
+bindParam	db_sqlite.html#bindParam,SqlPrepared,int,float64	db_sqlite: bindParam(ps: SqlPrepared; paramIdx: int; val: float64)	
+bindParam	db_sqlite.html#bindParam,SqlPrepared,int,string	db_sqlite: bindParam(ps: SqlPrepared; paramIdx: int; val: string; copy = true)	
+bindParam	db_sqlite.html#bindParam,SqlPrepared,int,openArray[byte]	db_sqlite: bindParam(ps: SqlPrepared; paramIdx: int; val: openArray[byte]; copy = true)	
+bindParam	db_sqlite.html#bindParam,SqlPrepared,int,int	db_sqlite: bindParam(ps: SqlPrepared; paramIdx: int; val: int)	
+bindNull	db_sqlite.html#bindNull,SqlPrepared,int	db_sqlite: bindNull(ps: SqlPrepared; paramIdx: int)	
+bindParams	db_sqlite.html#bindParams.m,SqlPrepared,varargs[untyped]	db_sqlite: bindParams(ps: SqlPrepared; params: varargs[untyped]): untyped	
+dbError	db_sqlite.html#dbError,DbConn	db_sqlite: dbError(db: DbConn)	
+prepare	db_sqlite.html#prepare,DbConn,string	db_sqlite: prepare(db: DbConn; q: string): SqlPrepared	
+tryExec	db_sqlite.html#tryExec,DbConn,SqlQuery,varargs[string,]	db_sqlite: tryExec(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): bool	
+exec	db_sqlite.html#exec,DbConn,SqlQuery,varargs[string,]	db_sqlite: exec(db: DbConn; query: SqlQuery; args: varargs[string, `$`])	
+fastRows	db_sqlite.html#fastRows.i,DbConn,SqlQuery,varargs[string,]	db_sqlite: fastRows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): Row	
+fastRows	db_sqlite.html#fastRows.i,DbConn,SqlPrepared	db_sqlite: fastRows(db: DbConn; stmtName: SqlPrepared): Row	
+instantRows	db_sqlite.html#instantRows.i,DbConn,SqlQuery,varargs[string,]	db_sqlite: instantRows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): InstantRow	
+instantRows	db_sqlite.html#instantRows.i,DbConn,SqlPrepared	db_sqlite: instantRows(db: DbConn; stmtName: SqlPrepared): InstantRow	
+instantRows	db_sqlite.html#instantRows.i,DbConn,DbColumns,SqlQuery,varargs[string,]	db_sqlite: instantRows(db: DbConn; columns: var DbColumns; query: SqlQuery;\n            args: varargs[string, `$`]): InstantRow	
+rows	db_sqlite.html#rows.i,DbConn,SqlQuery,varargs[string,]	db_sqlite: rows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): Row	
+rows	db_sqlite.html#rows.i,DbConn,SqlPrepared	db_sqlite: rows(db: DbConn; stmtName: SqlPrepared): Row	
+close	db_sqlite.html#close,DbConn	db_sqlite: close(db: DbConn)	
+open	db_sqlite.html#open,string,string,string,string	db_sqlite: open(connection, user, password, database: string): DbConn	
+exec	db_sqlite.html#exec.t,DbConn,SqlPrepared,varargs[typed]	db_sqlite: exec(db: DbConn; stmtName: SqlPrepared; args: varargs[typed]): untyped	
+unsafeColumnAt	db_sqlite.html#unsafeColumnAt,InstantRow,int32	db_sqlite: unsafeColumnAt(row: InstantRow; index: int32): cstring	
+getRow	db_sqlite.html#getRow,DbConn,SqlQuery,varargs[string,]	db_sqlite: getRow(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): Row	
+getAllRows	db_sqlite.html#getAllRows,DbConn,SqlQuery,varargs[string,]	db_sqlite: getAllRows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): seq[Row]	
+getAllRows	db_sqlite.html#getAllRows,DbConn,SqlPrepared	db_sqlite: getAllRows(db: DbConn; stmtName: SqlPrepared): seq[Row]	
+getValue	db_sqlite.html#getValue,DbConn,SqlQuery,varargs[string,]	db_sqlite: getValue(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): string	
+getValue	db_sqlite.html#getValue,DbConn,SqlPrepared	db_sqlite: getValue(db: DbConn; stmtName: SqlPrepared): string	
+tryInsertID	db_sqlite.html#tryInsertID,DbConn,SqlQuery,varargs[string,]	db_sqlite: tryInsertID(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): int64	
+insertID	db_sqlite.html#insertID,DbConn,SqlQuery,varargs[string,]	db_sqlite: insertID(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): int64	
+tryInsert	db_sqlite.html#tryInsert,DbConn,SqlQuery,string,varargs[string,]	db_sqlite: tryInsert(db: DbConn; query: SqlQuery; pkName: string;\n          args: varargs[string, `$`]): int64	
+insert	db_sqlite.html#insert,DbConn,SqlQuery,string,varargs[string,]	db_sqlite: insert(db: DbConn; query: SqlQuery; pkName: string; args: varargs[string, `$`]): int64	
+execAffectedRows	db_sqlite.html#execAffectedRows,DbConn,SqlQuery,varargs[string,]	db_sqlite: execAffectedRows(db: DbConn; query: SqlQuery; args: varargs[string, `$`]): int64	
+execAffectedRows	db_sqlite.html#execAffectedRows,DbConn,SqlPrepared	db_sqlite: execAffectedRows(db: DbConn; stmtName: SqlPrepared): int64	
+setEncoding	db_sqlite.html#setEncoding,DbConn,string	db_sqlite: setEncoding(connection: DbConn; encoding: string): bool	
+SQLite	db_sqlite.html#sqlite_1	Module db_sqlite	
+Basic usage	db_sqlite.html#basic-usage	 Basic usage	
+Parameter substitution	db_sqlite.html#basic-usage-parameter-substitution	  Parameter substitution	
+Opening a connection to a database	db_sqlite.html#basic-usage-opening-a-connection-to-a-database	  Opening a connection to a database	
+Creating a table	db_sqlite.html#basic-usage-creating-a-table	  Creating a table	
+Inserting data	db_sqlite.html#basic-usage-inserting-data	  Inserting data	
+Larger example	db_sqlite.html#basic-usage-larger-example	  Larger example	
+Storing binary data example	db_sqlite.html#basic-usage-storing-binary-data-example	  Storing binary data example	
+Note	db_sqlite.html#note	 Note	
+See also	db_sqlite.html#see-also	 See also	

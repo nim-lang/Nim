@@ -1,0 +1,3 @@
+add	strbasics.html#add,string,openArray[char]	strbasics: add(x: var string; y: openArray[char])	
+setSlice	strbasics.html#setSlice,string,Slice[int]	strbasics: setSlice(s: var string; slice: Slice[int])	
+strip	strbasics.html#strip,string,set[char]	strbasics: strip(a: var string; leading = true; trailing = true;\n      chars: set[char] = whitespaces)	

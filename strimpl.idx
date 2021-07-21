@@ -1,0 +1,6 @@
+toLowerAscii	strimpl.html#toLowerAscii,char	strimpl: toLowerAscii(c: char): char	
+cmpIgnoreStyleImpl	strimpl.html#cmpIgnoreStyleImpl.t,T,T,staticbool	strimpl: cmpIgnoreStyleImpl[T: string | cstring](a, b: T; firstCharCaseSensitive: static\n    bool = false)	
+cmpIgnoreCaseImpl	strimpl.html#cmpIgnoreCaseImpl.t,T,T,staticbool	strimpl: cmpIgnoreCaseImpl[T: string | cstring](a, b: T; firstCharCaseSensitive: static\n    bool = false)	
+startsWithImpl	strimpl.html#startsWithImpl.t,T,T	strimpl: startsWithImpl[T: string | cstring](s, prefix: T)	
+endsWithImpl	strimpl.html#endsWithImpl.t,T,T	strimpl: endsWithImpl[T: string | cstring](s, suffix: T)	
+cmpNimIdentifier	strimpl.html#cmpNimIdentifier,T,T	strimpl: cmpNimIdentifier[T: string | cstring](a, b: T): int	

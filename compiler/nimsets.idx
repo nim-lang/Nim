@@ -1,0 +1,16 @@
+inSet	nimsets.html#inSet,PNode,PNode	nimsets: inSet(s: PNode; elem: PNode): bool	
+overlap	nimsets.html#overlap,PNode,PNode	nimsets: overlap(a, b: PNode): bool	
+someInSet	nimsets.html#someInSet,PNode,PNode,PNode	nimsets: someInSet(s: PNode; a, b: PNode): bool	
+toBitSet	nimsets.html#toBitSet,ConfigRef,PNode	nimsets: toBitSet(conf: ConfigRef; s: PNode): TBitSet	
+toTreeSet	nimsets.html#toTreeSet,ConfigRef,TBitSet,PType,TLineInfo	nimsets: toTreeSet(conf: ConfigRef; s: TBitSet; settype: PType; info: TLineInfo): PNode	
+unionSets	nimsets.html#unionSets,ConfigRef,PNode,PNode	nimsets: unionSets(conf: ConfigRef; a, b: PNode): PNode	
+diffSets	nimsets.html#diffSets,ConfigRef,PNode,PNode	nimsets: diffSets(conf: ConfigRef; a, b: PNode): PNode	
+intersectSets	nimsets.html#intersectSets,ConfigRef,PNode,PNode	nimsets: intersectSets(conf: ConfigRef; a, b: PNode): PNode	
+symdiffSets	nimsets.html#symdiffSets,ConfigRef,PNode,PNode	nimsets: symdiffSets(conf: ConfigRef; a, b: PNode): PNode	
+containsSets	nimsets.html#containsSets,ConfigRef,PNode,PNode	nimsets: containsSets(conf: ConfigRef; a, b: PNode): bool	
+equalSets	nimsets.html#equalSets,ConfigRef,PNode,PNode	nimsets: equalSets(conf: ConfigRef; a, b: PNode): bool	
+complement	nimsets.html#complement,ConfigRef,PNode	nimsets: complement(conf: ConfigRef; a: PNode): PNode	
+deduplicate	nimsets.html#deduplicate,ConfigRef,PNode	nimsets: deduplicate(conf: ConfigRef; a: PNode): PNode	
+cardSet	nimsets.html#cardSet,ConfigRef,PNode	nimsets: cardSet(conf: ConfigRef; a: PNode): BiggestInt	
+setHasRange	nimsets.html#setHasRange,PNode	nimsets: setHasRange(s: PNode): bool	
+emptyRange	nimsets.html#emptyRange,PNode,PNode	nimsets: emptyRange(a, b: PNode): bool	

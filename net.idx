@@ -1,0 +1,119 @@
+Certificate	net.html#Certificate	net: Certificate	
+SslError	net.html#SslError	net: SslError	
+CVerifyNone	net.html#CVerifyNone	SslCVerifyMode.CVerifyNone	
+CVerifyPeer	net.html#CVerifyPeer	SslCVerifyMode.CVerifyPeer	
+CVerifyPeerUseEnvVars	net.html#CVerifyPeerUseEnvVars	SslCVerifyMode.CVerifyPeerUseEnvVars	
+SslCVerifyMode	net.html#SslCVerifyMode	net: SslCVerifyMode	
+protSSLv2	net.html#protSSLv2	SslProtVersion.protSSLv2	
+protSSLv3	net.html#protSSLv3	SslProtVersion.protSSLv3	
+protTLSv1	net.html#protTLSv1	SslProtVersion.protTLSv1	
+protSSLv23	net.html#protSSLv23	SslProtVersion.protSSLv23	
+SslProtVersion	net.html#SslProtVersion	net: SslProtVersion	
+SslContext	net.html#SslContext	net: SslContext	
+AcceptNoClient	net.html#AcceptNoClient	SslAcceptResult.AcceptNoClient	
+AcceptNoHandshake	net.html#AcceptNoHandshake	SslAcceptResult.AcceptNoHandshake	
+AcceptSuccess	net.html#AcceptSuccess	SslAcceptResult.AcceptSuccess	
+SslAcceptResult	net.html#SslAcceptResult	net: SslAcceptResult	
+handshakeAsClient	net.html#handshakeAsClient	SslHandshakeType.handshakeAsClient	
+handshakeAsServer	net.html#handshakeAsServer	SslHandshakeType.handshakeAsServer	
+SslHandshakeType	net.html#SslHandshakeType	net: SslHandshakeType	
+SslClientGetPskFunc	net.html#SslClientGetPskFunc	net: SslClientGetPskFunc	
+SslServerGetPskFunc	net.html#SslServerGetPskFunc	net: SslServerGetPskFunc	
+BufferSize	net.html#BufferSize	net: BufferSize	
+MaxLineLength	net.html#MaxLineLength	net: MaxLineLength	
+SocketImpl	net.html#SocketImpl	net: SocketImpl	
+Socket	net.html#Socket	net: Socket	
+OptAcceptConn	net.html#OptAcceptConn	SOBool.OptAcceptConn	
+OptBroadcast	net.html#OptBroadcast	SOBool.OptBroadcast	
+OptDebug	net.html#OptDebug	SOBool.OptDebug	
+OptDontRoute	net.html#OptDontRoute	SOBool.OptDontRoute	
+OptKeepAlive	net.html#OptKeepAlive	SOBool.OptKeepAlive	
+OptOOBInline	net.html#OptOOBInline	SOBool.OptOOBInline	
+OptReuseAddr	net.html#OptReuseAddr	SOBool.OptReuseAddr	
+OptReusePort	net.html#OptReusePort	SOBool.OptReusePort	
+OptNoDelay	net.html#OptNoDelay	SOBool.OptNoDelay	
+SOBool	net.html#SOBool	net: SOBool	
+ReadFullLine	net.html#ReadFullLine	ReadLineResult.ReadFullLine	
+ReadPartialLine	net.html#ReadPartialLine	ReadLineResult.ReadPartialLine	
+ReadDisconnected	net.html#ReadDisconnected	ReadLineResult.ReadDisconnected	
+ReadNone	net.html#ReadNone	ReadLineResult.ReadNone	
+ReadLineResult	net.html#ReadLineResult	net: ReadLineResult	
+TimeoutError	net.html#TimeoutError	net: TimeoutError	
+SocketFlag	net.html#SocketFlag	net: SocketFlag	
+IpAddressFamily	net.html#IpAddressFamily	net: IpAddressFamily	
+IpAddress	net.html#IpAddress	net: IpAddress	
+isDisconnectionError	net.html#isDisconnectionError,set[SocketFlag],OSErrorCode	net: isDisconnectionError(flags: set[SocketFlag]; lastError: OSErrorCode): bool	
+toOSFlags	net.html#toOSFlags,set[SocketFlag]	net: toOSFlags(socketFlags: set[SocketFlag]): cint	
+newSocket	net.html#newSocket,SocketHandle,Domain,SockType,Protocol	net: newSocket(fd: SocketHandle; domain: Domain = AF_INET;\n          sockType: SockType = SOCK_STREAM; protocol: Protocol = IPPROTO_TCP;\n          buffered = true): owned(Socket)	
+newSocket	net.html#newSocket,cint,cint,cint	net: newSocket(domain, sockType, protocol: cint; buffered = true;\n          inheritable = defined(nimInheritHandles)): owned(Socket)	
+newSocket	net.html#newSocket,Domain,SockType,Protocol	net: newSocket(domain: Domain = AF_INET; sockType: SockType = SOCK_STREAM;\n          protocol: Protocol = IPPROTO_TCP; buffered = true;\n          inheritable = defined(nimInheritHandles)): owned(Socket)	
+parseIpAddress	net.html#parseIpAddress,string	net: parseIpAddress(addressStr: string): IpAddress	
+isIpAddress	net.html#isIpAddress,string	net: isIpAddress(addressStr: string): bool	
+toSockAddr	net.html#toSockAddr,IpAddress,Port,Sockaddr_storage,SockLen	net: toSockAddr(address: IpAddress; port: Port; sa: var Sockaddr_storage;\n           sl: var SockLen)	
+fromSockAddr	net.html#fromSockAddr,,SockLen,IpAddress,Port	net: fromSockAddr(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6;\n             sl: SockLen; address: var IpAddress; port: var Port)	
+sslHandle	net.html#sslHandle,Socket	net: sslHandle(self: Socket): SslPtr	
+raiseSSLError	net.html#raiseSSLError,string	net: raiseSSLError(s = &quot;&quot;)	
+getExtraData	net.html#getExtraData,SslContext,int	net: getExtraData(ctx: SslContext; index: int): RootRef	
+setExtraData	net.html#setExtraData,SslContext,int,RootRef	net: setExtraData(ctx: SslContext; index: int; data: RootRef)	
+newContext	net.html#newContext,string,string,string,string	net: newContext(protVersion = protSSLv23; verifyMode = CVerifyPeer; certFile = &quot;&quot;;\n           keyFile = &quot;&quot;; cipherList = CiphersIntermediate; caDir = &quot;&quot;;\n           caFile = &quot;&quot;): SslContext	
+destroyContext	net.html#destroyContext,SslContext	net: destroyContext(ctx: SslContext)	
+pskIdentityHint=	net.html#pskIdentityHint=,SslContext,string	net: pskIdentityHint=(ctx: SslContext; hint: string)	
+clientGetPskFunc	net.html#clientGetPskFunc,SslContext	net: clientGetPskFunc(ctx: SslContext): SslClientGetPskFunc	
+clientGetPskFunc=	net.html#clientGetPskFunc=,SslContext,SslClientGetPskFunc	net: clientGetPskFunc=(ctx: SslContext; fun: SslClientGetPskFunc)	
+serverGetPskFunc	net.html#serverGetPskFunc,SslContext	net: serverGetPskFunc(ctx: SslContext): SslServerGetPskFunc	
+serverGetPskFunc=	net.html#serverGetPskFunc=,SslContext,SslServerGetPskFunc	net: serverGetPskFunc=(ctx: SslContext; fun: SslServerGetPskFunc)	
+getPskIdentity	net.html#getPskIdentity,Socket	net: getPskIdentity(socket: Socket): string	
+wrapSocket	net.html#wrapSocket,SslContext,Socket	net: wrapSocket(ctx: SslContext; socket: Socket)	
+wrapConnectedSocket	net.html#wrapConnectedSocket,SslContext,Socket,SslHandshakeType,string	net: wrapConnectedSocket(ctx: SslContext; socket: Socket;\n                    handshake: SslHandshakeType; hostname: string = &quot;&quot;)	
+getPeerCertificates	net.html#getPeerCertificates,SslPtr	net: getPeerCertificates(sslHandle: SslPtr): seq[Certificate]	
+getPeerCertificates	net.html#getPeerCertificates,Socket	net: getPeerCertificates(socket: Socket): seq[Certificate]	
+sessionIdContext=	net.html#sessionIdContext=,SslContext,string	net: sessionIdContext=(ctx: SslContext; sidCtx: string)	
+getSocketError	net.html#getSocketError,Socket	net: getSocketError(socket: Socket): OSErrorCode	
+socketError	net.html#socketError,Socket,int,set[SocketFlag]	net: socketError(socket: Socket; err: int = -1; async = false;\n            lastError = -1.OSErrorCode; flags: set[SocketFlag] = {})	
+listen	net.html#listen,Socket	net: listen(socket: Socket; backlog = SOMAXCONN)	
+bindAddr	net.html#bindAddr,Socket,string	net: bindAddr(socket: Socket; port = Port(0); address = &quot;&quot;)	
+acceptAddr	net.html#acceptAddr,Socket,,string	net: acceptAddr(server: Socket; client: var owned(Socket); address: var string;\n           flags = {SafeDisconn}; inheritable = defined(nimInheritHandles))	
+accept	net.html#accept,Socket,	net: accept(server: Socket; client: var owned(Socket); flags = {SafeDisconn};\n       inheritable = defined(nimInheritHandles))	
+close	net.html#close,Socket	net: close(socket: Socket; flags = {SafeDisconn})	
+toCInt	net.html#toCInt,SOBool	net: toCInt(opt: SOBool): cint	
+getSockOpt	net.html#getSockOpt,Socket,SOBool	net: getSockOpt(socket: Socket; opt: SOBool; level = SOL_SOCKET): bool	
+getLocalAddr	net.html#getLocalAddr,Socket	net: getLocalAddr(socket: Socket): (string, Port)	
+getPeerAddr	net.html#getPeerAddr,Socket	net: getPeerAddr(socket: Socket): (string, Port)	
+setSockOpt	net.html#setSockOpt,Socket,SOBool,bool	net: setSockOpt(socket: Socket; opt: SOBool; value: bool; level = SOL_SOCKET)	
+connectUnix	net.html#connectUnix,Socket,string	net: connectUnix(socket: Socket; path: string)	
+bindUnix	net.html#bindUnix,Socket,string	net: bindUnix(socket: Socket; path: string)	
+hasDataBuffered	net.html#hasDataBuffered,Socket	net: hasDataBuffered(s: Socket): bool	
+recv	net.html#recv,Socket,pointer,int	net: recv(socket: Socket; data: pointer; size: int): int	
+recv	net.html#recv,Socket,pointer,int,int	net: recv(socket: Socket; data: pointer; size: int; timeout: int): int	
+recv	net.html#recv,Socket,string,int,int	net: recv(socket: Socket; data: var string; size: int; timeout = -1;\n     flags = {SafeDisconn}): int	
+recv	net.html#recv,Socket,int,int	net: recv(socket: Socket; size: int; timeout = -1; flags = {SafeDisconn}): string	
+readLine	net.html#readLine,Socket,string,int	net: readLine(socket: Socket; line: var string; timeout = -1; flags = {SafeDisconn};\n         maxLength = MaxLineLength)	
+recvLine	net.html#recvLine,Socket,int	net: recvLine(socket: Socket; timeout = -1; flags = {SafeDisconn};\n         maxLength = MaxLineLength): string	
+recvFrom	net.html#recvFrom,Socket,string,int,string,Port,int32	net: recvFrom(socket: Socket; data: var string; length: int; address: var string;\n         port: var Port; flags = 0&apos;i32): int	
+skip	net.html#skip,Socket,int,int	net: skip(socket: Socket; size: int; timeout = -1)	
+send	net.html#send,Socket,pointer,int	net: send(socket: Socket; data: pointer; size: int): int	
+send	net.html#send,Socket,string	net: send(socket: Socket; data: string; flags = {SafeDisconn})	
+`&amp;=`	net.html#&=.t,Socket,typed	net: `&amp;=`(socket: Socket; data: typed)	
+trySend	net.html#trySend,Socket,string	net: trySend(socket: Socket; data: string): bool	
+sendTo	net.html#sendTo,Socket,string,Port,pointer,int,Domain,int32	net: sendTo(socket: Socket; address: string; port: Port; data: pointer; size: int;\n       af: Domain = AF_INET; flags = 0&apos;i32)	
+sendTo	net.html#sendTo,Socket,string,Port,string	net: sendTo(socket: Socket; address: string; port: Port; data: string)	
+isSsl	net.html#isSsl,Socket	net: isSsl(socket: Socket): bool	
+getFd	net.html#getFd,Socket	net: getFd(socket: Socket): SocketHandle	
+IPv4_any	net.html#IPv4_any	net: IPv4_any(): IpAddress	
+IPv4_loopback	net.html#IPv4_loopback	net: IPv4_loopback(): IpAddress	
+IPv4_broadcast	net.html#IPv4_broadcast	net: IPv4_broadcast(): IpAddress	
+IPv6_any	net.html#IPv6_any	net: IPv6_any(): IpAddress	
+IPv6_loopback	net.html#IPv6_loopback	net: IPv6_loopback(): IpAddress	
+`==`	net.html#==,IpAddress,IpAddress	net: `==`(lhs, rhs: IpAddress): bool	
+`$`	net.html#$,IpAddress	net: `$`(address: IpAddress): string	
+dial	net.html#dial,string,Port	net: dial(address: string; port: Port; protocol = IPPROTO_TCP; buffered = true): owned(\n    Socket)	
+connect	net.html#connect,Socket,string	net: connect(socket: Socket; address: string; port = Port(0))	
+connect	net.html#connect,Socket,string,int	net: connect(socket: Socket; address: string; port = Port(0); timeout: int)	
+getPrimaryIPAddr	net.html#getPrimaryIPAddr	net: getPrimaryIPAddr(dest = parseIpAddress(&quot;8.8.8.8&quot;)): IpAddress	
+getsockname	net.html#getsockname_1	Module net	
+getpeername	net.html#getpeername_1	Module net	
+SSL	net.html#ssl	 SSL	
+SSL on Windows	net.html#ssl-on-windows	 SSL on Windows	
+Examples	net.html#examples	 Examples	
+Connecting to a server	net.html#examples-connecting-to-a-server	  Connecting to a server	
+Creating a server	net.html#examples-creating-a-server	  Creating a server	

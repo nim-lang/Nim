@@ -1,0 +1,4 @@
+genEnumCaseStmt	enumutils.html#genEnumCaseStmt.m,typedesc,typed,typed,static[int],static[int],static[proc(string)]	enumutils: genEnumCaseStmt(typ: typedesc; argSym: typed; default: typed;\n                userMin, userMax: static[int];\n                normalizer: static[proc (s: string): string]): untyped	
+items	enumutils.html#items.i,typedesc[T]	enumutils: items[T: HoleyEnum](E: typedesc[T]): T	
+symbolRank	enumutils.html#symbolRank.t,T	enumutils: symbolRank[T: enum](a: T): int	
+symbolName	enumutils.html#symbolName,T	enumutils: symbolName[T: enum](a: T): string	

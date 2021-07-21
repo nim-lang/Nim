@@ -1,0 +1,64 @@
+SymId	ic/packed_ast.html#SymId	packed_ast: SymId	
+ModuleId	ic/packed_ast.html#ModuleId	packed_ast: ModuleId	
+NodePos	ic/packed_ast.html#NodePos	packed_ast: NodePos	
+NodeId	ic/packed_ast.html#NodeId	packed_ast: NodeId	
+PackedItemId	ic/packed_ast.html#PackedItemId	packed_ast: PackedItemId	
+nilItemId	ic/packed_ast.html#nilItemId	packed_ast: nilItemId	
+emptyNodeId	ic/packed_ast.html#emptyNodeId	packed_ast: emptyNodeId	
+PackedLineInfo	ic/packed_ast.html#PackedLineInfo	packed_ast: PackedLineInfo	
+PackedLib	ic/packed_ast.html#PackedLib	packed_ast: PackedLib	
+PackedSym	ic/packed_ast.html#PackedSym	packed_ast: PackedSym	
+PackedType	ic/packed_ast.html#PackedType	packed_ast: PackedType	
+PackedNode	ic/packed_ast.html#PackedNode	packed_ast: PackedNode	
+PackedTree	ic/packed_ast.html#PackedTree	packed_ast: PackedTree	
+PackedInstantiation	ic/packed_ast.html#PackedInstantiation	packed_ast: PackedInstantiation	
+`==`	ic/packed_ast.html#==,SymId,SymId	packed_ast: `==`(a, b: SymId): bool	
+hash	ic/packed_ast.html#hash,SymId	packed_ast: hash(a: SymId): Hash	
+`==`	ic/packed_ast.html#==,NodePos,NodePos	packed_ast: `==`(a, b: NodePos): bool	
+`==`	ic/packed_ast.html#==,NodeId,NodeId	packed_ast: `==`(a, b: NodeId): bool	
+newTreeFrom	ic/packed_ast.html#newTreeFrom,PackedTree	packed_ast: newTreeFrom(old: PackedTree): PackedTree	
+throwAwayLastNode	ic/packed_ast.html#throwAwayLastNode,PackedTree	packed_ast: throwAwayLastNode(tree: var PackedTree)	
+addIdent	ic/packed_ast.html#addIdent,PackedTree,LitId,PackedLineInfo	packed_ast: addIdent(tree: var PackedTree; s: LitId; info: PackedLineInfo)	
+addSym	ic/packed_ast.html#addSym,PackedTree,int32,PackedLineInfo	packed_ast: addSym(tree: var PackedTree; s: int32; info: PackedLineInfo)	
+addModuleId	ic/packed_ast.html#addModuleId,PackedTree,ModuleId,PackedLineInfo	packed_ast: addModuleId(tree: var PackedTree; s: ModuleId; info: PackedLineInfo)	
+addSymDef	ic/packed_ast.html#addSymDef,PackedTree,SymId,PackedLineInfo	packed_ast: addSymDef(tree: var PackedTree; s: SymId; info: PackedLineInfo)	
+isAtom	ic/packed_ast.html#isAtom,PackedTree,int	packed_ast: isAtom(tree: PackedTree; pos: int): bool	
+copyTree	ic/packed_ast.html#copyTree,PackedTree,PackedTree,NodePos	packed_ast: copyTree(dest: var PackedTree; tree: PackedTree; n: NodePos)	
+prepare	ic/packed_ast.html#prepare,PackedTree,TNodeKind,TNodeFlags,PackedItemId,PackedLineInfo	packed_ast: prepare(tree: var PackedTree; kind: TNodeKind; flags: TNodeFlags;\n        typeId: PackedItemId; info: PackedLineInfo): PatchPos	
+prepare	ic/packed_ast.html#prepare,PackedTree,PackedTree,NodePos	packed_ast: prepare(dest: var PackedTree; source: PackedTree; sourcePos: NodePos): PatchPos	
+patch	ic/packed_ast.html#patch,PackedTree,PatchPos	packed_ast: patch(tree: var PackedTree; pos: PatchPos)	
+len	ic/packed_ast.html#len,PackedTree	packed_ast: len(tree: PackedTree): int	
+`[]`	ic/packed_ast.html#[],PackedTree,int	packed_ast: `[]`(tree: PackedTree; i: int): lent PackedNode	
+sonsReadonly	ic/packed_ast.html#sonsReadonly.i,PackedTree,NodePos	packed_ast: sonsReadonly(tree: PackedTree; n: NodePos): NodePos	
+sons	ic/packed_ast.html#sons.i,PackedTree,PackedTree,NodePos	packed_ast: sons(dest: var PackedTree; tree: PackedTree; n: NodePos): NodePos	
+isons	ic/packed_ast.html#isons.i,PackedTree,PackedTree,NodePos	packed_ast: isons(dest: var PackedTree; tree: PackedTree; n: NodePos): (int, NodePos)	
+sonsFrom1	ic/packed_ast.html#sonsFrom1.i,PackedTree,NodePos	packed_ast: sonsFrom1(tree: PackedTree; n: NodePos): NodePos	
+sonsWithoutLast2	ic/packed_ast.html#sonsWithoutLast2.i,PackedTree,NodePos	packed_ast: sonsWithoutLast2(tree: PackedTree; n: NodePos): NodePos	
+parent	ic/packed_ast.html#parent.t,NodePos	packed_ast: parent(n: NodePos): NodePos	
+hasXsons	ic/packed_ast.html#hasXsons,PackedTree,NodePos,int	packed_ast: hasXsons(tree: PackedTree; n: NodePos; x: int): bool	
+hasAtLeastXsons	ic/packed_ast.html#hasAtLeastXsons,PackedTree,NodePos,int	packed_ast: hasAtLeastXsons(tree: PackedTree; n: NodePos; x: int): bool	
+firstSon	ic/packed_ast.html#firstSon,PackedTree,NodePos	packed_ast: firstSon(tree: PackedTree; n: NodePos): NodePos	
+kind	ic/packed_ast.html#kind,PackedTree,NodePos	packed_ast: kind(tree: PackedTree; n: NodePos): TNodeKind	
+litId	ic/packed_ast.html#litId,PackedTree,NodePos	packed_ast: litId(tree: PackedTree; n: NodePos): LitId	
+info	ic/packed_ast.html#info,PackedTree,NodePos	packed_ast: info(tree: PackedTree; n: NodePos): PackedLineInfo	
+typ	ic/packed_ast.html#typ.t,NodePos	packed_ast: typ(n: NodePos): PackedItemId	
+flags	ic/packed_ast.html#flags.t,NodePos	packed_ast: flags(n: NodePos): TNodeFlags	
+operand	ic/packed_ast.html#operand.t,NodePos	packed_ast: operand(n: NodePos): int32	
+span	ic/packed_ast.html#span,PackedTree,int	packed_ast: span(tree: PackedTree; pos: int): int	
+sons2	ic/packed_ast.html#sons2,PackedTree,NodePos	packed_ast: sons2(tree: PackedTree; n: NodePos): (NodePos, NodePos)	
+sons3	ic/packed_ast.html#sons3,PackedTree,NodePos	packed_ast: sons3(tree: PackedTree; n: NodePos): (NodePos, NodePos, NodePos)	
+ithSon	ic/packed_ast.html#ithSon,PackedTree,NodePos,int	packed_ast: ithSon(tree: PackedTree; n: NodePos; i: int): NodePos	
+kind	ic/packed_ast.html#kind.t,NodePos	packed_ast: kind(n: NodePos): TNodeKind	
+info	ic/packed_ast.html#info.t,NodePos	packed_ast: info(n: NodePos): PackedLineInfo	
+litId	ic/packed_ast.html#litId.t,NodePos	packed_ast: litId(n: NodePos): LitId	
+symId	ic/packed_ast.html#symId.t,NodePos	packed_ast: symId(n: NodePos): SymId	
+firstSon	ic/packed_ast.html#firstSon,NodePos	packed_ast: firstSon(n: NodePos): NodePos	
+externIntLit	ic/packed_ast.html#externIntLit	packed_ast: externIntLit	
+externSIntLit	ic/packed_ast.html#externSIntLit	packed_ast: externSIntLit	
+externUIntLit	ic/packed_ast.html#externUIntLit	packed_ast: externUIntLit	
+directIntLit	ic/packed_ast.html#directIntLit	packed_ast: directIntLit	
+copyInto	ic/packed_ast.html#copyInto.t,,,	packed_ast: copyInto(dest, n, body)	
+copyIntoKind	ic/packed_ast.html#copyIntoKind.t,,,,	packed_ast: copyIntoKind(dest, kind, info, body)	
+getNodeId	ic/packed_ast.html#getNodeId,PackedTree	packed_ast: getNodeId(tree: PackedTree): NodeId	
+allNodes	ic/packed_ast.html#allNodes.i,PackedTree	packed_ast: allNodes(tree: PackedTree): NodePos	
+toPackedItemId	ic/packed_ast.html#toPackedItemId,int32	packed_ast: toPackedItemId(item: int32): PackedItemId	

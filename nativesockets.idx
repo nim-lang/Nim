@@ -1,0 +1,64 @@
+Port	nativesockets.html#Port	nativesockets: Port	
+AF_UNSPEC	nativesockets.html#AF_UNSPEC	Domain.AF_UNSPEC	
+AF_UNIX	nativesockets.html#AF_UNIX	Domain.AF_UNIX	
+AF_INET	nativesockets.html#AF_INET	Domain.AF_INET	
+AF_INET6	nativesockets.html#AF_INET6	Domain.AF_INET6	
+Domain	nativesockets.html#Domain	nativesockets: Domain	
+SOCK_STREAM	nativesockets.html#SOCK_STREAM	SockType.SOCK_STREAM	
+SOCK_DGRAM	nativesockets.html#SOCK_DGRAM	SockType.SOCK_DGRAM	
+SOCK_RAW	nativesockets.html#SOCK_RAW	SockType.SOCK_RAW	
+SOCK_SEQPACKET	nativesockets.html#SOCK_SEQPACKET	SockType.SOCK_SEQPACKET	
+SockType	nativesockets.html#SockType	nativesockets: SockType	
+IPPROTO_TCP	nativesockets.html#IPPROTO_TCP	Protocol.IPPROTO_TCP	
+IPPROTO_UDP	nativesockets.html#IPPROTO_UDP	Protocol.IPPROTO_UDP	
+IPPROTO_IP	nativesockets.html#IPPROTO_IP	Protocol.IPPROTO_IP	
+IPPROTO_IPV6	nativesockets.html#IPPROTO_IPV6	Protocol.IPPROTO_IPV6	
+IPPROTO_RAW	nativesockets.html#IPPROTO_RAW	Protocol.IPPROTO_RAW	
+IPPROTO_ICMP	nativesockets.html#IPPROTO_ICMP	Protocol.IPPROTO_ICMP	
+IPPROTO_ICMPV6	nativesockets.html#IPPROTO_ICMPV6	Protocol.IPPROTO_ICMPV6	
+Protocol	nativesockets.html#Protocol	nativesockets: Protocol	
+Servent	nativesockets.html#Servent	nativesockets: Servent	
+Hostent	nativesockets.html#Hostent	nativesockets: Hostent	
+osInvalidSocket	nativesockets.html#osInvalidSocket	nativesockets: osInvalidSocket	
+IOCPARM_MASK	nativesockets.html#IOCPARM_MASK	nativesockets: IOCPARM_MASK	
+IOC_IN	nativesockets.html#IOC_IN	nativesockets: IOC_IN	
+FIONBIO	nativesockets.html#FIONBIO	nativesockets: FIONBIO	
+ioctlsocket	nativesockets.html#ioctlsocket,SocketHandle,clong,ptr.clong	nativesockets: ioctlsocket(s: SocketHandle; cmd: clong; argptr: ptr clong): cint	
+`==`	nativesockets.html#==,Port,Port	nativesockets: `==`(a, b: Port): bool	
+`$`	nativesockets.html#$,Port	nativesockets: `$`(p: Port): string	
+toInt	nativesockets.html#toInt,Domain	nativesockets: toInt(domain: Domain): cint	
+toKnownDomain	nativesockets.html#toKnownDomain,cint	nativesockets: toKnownDomain(family: cint): Option[Domain]	
+toInt	nativesockets.html#toInt,SockType	nativesockets: toInt(typ: SockType): cint	
+toInt	nativesockets.html#toInt,Protocol	nativesockets: toInt(p: Protocol): cint	
+toSockType	nativesockets.html#toSockType,Protocol	nativesockets: toSockType(protocol: Protocol): SockType	
+getProtoByName	nativesockets.html#getProtoByName,string	nativesockets: getProtoByName(name: string): int	
+close	nativesockets.html#close,SocketHandle	nativesockets: close(socket: SocketHandle)	
+setInheritable	nativesockets.html#setInheritable,SocketHandle,bool	nativesockets: setInheritable(s: SocketHandle; inheritable: bool): bool	
+createNativeSocket	nativesockets.html#createNativeSocket,cint,cint,cint,bool	nativesockets: createNativeSocket(domain: cint; sockType: cint; protocol: cint;\n                   inheritable: bool = defined(nimInheritHandles)): SocketHandle	
+createNativeSocket	nativesockets.html#createNativeSocket,Domain,SockType,Protocol,bool	nativesockets: createNativeSocket(domain: Domain = AF_INET; sockType: SockType = SOCK_STREAM;\n                   protocol: Protocol = IPPROTO_TCP;\n                   inheritable: bool = defined(nimInheritHandles)): SocketHandle	
+bindAddr	nativesockets.html#bindAddr,SocketHandle,ptr.SockAddr,SockLen	nativesockets: bindAddr(socket: SocketHandle; name: ptr SockAddr; namelen: SockLen): cint	
+listen	nativesockets.html#listen,SocketHandle	nativesockets: listen(socket: SocketHandle; backlog = SOMAXCONN): cint	
+getAddrInfo	nativesockets.html#getAddrInfo,string,Port,Domain,SockType,Protocol	nativesockets: getAddrInfo(address: string; port: Port; domain: Domain = AF_INET;\n            sockType: SockType = SOCK_STREAM; protocol: Protocol = IPPROTO_TCP): ptr AddrInfo	
+ntohl	nativesockets.html#ntohl,uint32	nativesockets: ntohl(x: uint32): uint32	
+ntohs	nativesockets.html#ntohs,uint16	nativesockets: ntohs(x: uint16): uint16	
+htonl	nativesockets.html#htonl.t,uint32	nativesockets: htonl(x: uint32): untyped	
+htons	nativesockets.html#htons.t,uint16	nativesockets: htons(x: uint16): untyped	
+getServByName	nativesockets.html#getServByName,string,string	nativesockets: getServByName(name, proto: string): Servent	
+getServByPort	nativesockets.html#getServByPort,Port,string	nativesockets: getServByPort(port: Port; proto: string): Servent	
+getHostByAddr	nativesockets.html#getHostByAddr,string	nativesockets: getHostByAddr(ip: string): Hostent	
+getHostByName	nativesockets.html#getHostByName,string	nativesockets: getHostByName(name: string): Hostent	
+getHostname	nativesockets.html#getHostname	nativesockets: getHostname(): string	
+getSockDomain	nativesockets.html#getSockDomain,SocketHandle	nativesockets: getSockDomain(socket: SocketHandle): Domain	
+getAddrString	nativesockets.html#getAddrString,ptr.SockAddr	nativesockets: getAddrString(sockAddr: ptr SockAddr): string	
+getAddrString	nativesockets.html#getAddrString,ptr.SockAddr,string	nativesockets: getAddrString(sockAddr: ptr SockAddr; strAddress: var string)	
+getSockName	nativesockets.html#getSockName,SocketHandle	nativesockets: getSockName(socket: SocketHandle): Port	
+getLocalAddr	nativesockets.html#getLocalAddr,SocketHandle,Domain	nativesockets: getLocalAddr(socket: SocketHandle; domain: Domain): (string, Port)	
+getPeerAddr	nativesockets.html#getPeerAddr,SocketHandle,Domain	nativesockets: getPeerAddr(socket: SocketHandle; domain: Domain): (string, Port)	
+getSockOptInt	nativesockets.html#getSockOptInt,SocketHandle,int,int	nativesockets: getSockOptInt(socket: SocketHandle; level, optname: int): int	
+setSockOptInt	nativesockets.html#setSockOptInt,SocketHandle,int,int,int	nativesockets: setSockOptInt(socket: SocketHandle; level, optname, optval: int)	
+setBlocking	nativesockets.html#setBlocking,SocketHandle,bool	nativesockets: setBlocking(s: SocketHandle; blocking: bool)	
+selectRead	nativesockets.html#selectRead,seq[SocketHandle],int	nativesockets: selectRead(readfds: var seq[SocketHandle]; timeout = 500): int	
+selectWrite	nativesockets.html#selectWrite,seq[SocketHandle],int	nativesockets: selectWrite(writefds: var seq[SocketHandle]; timeout = 500): int	
+accept	nativesockets.html#accept,SocketHandle	nativesockets: accept(fd: SocketHandle; inheritable = defined(nimInheritHandles)): (\n    SocketHandle, string)	
+getsockname	nativesockets.html#getsockname_1	Module nativesockets	
+getpeername	nativesockets.html#getpeername_1	Module nativesockets	

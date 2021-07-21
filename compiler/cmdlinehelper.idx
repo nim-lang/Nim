@@ -1,0 +1,7 @@
+prependCurDir	cmdlinehelper.html#prependCurDir,AbsoluteFile	cmdlinehelper: prependCurDir(f: AbsoluteFile): AbsoluteFile	
+addCmdPrefix	cmdlinehelper.html#addCmdPrefix,string,CmdLineKind	cmdlinehelper: addCmdPrefix(result: var string; kind: CmdLineKind)	
+NimProg	cmdlinehelper.html#NimProg	cmdlinehelper: NimProg	
+initDefinesProg	cmdlinehelper.html#initDefinesProg,NimProg,ConfigRef,string	cmdlinehelper: initDefinesProg(self: NimProg; conf: ConfigRef; name: string)	
+processCmdLineAndProjectPath	cmdlinehelper.html#processCmdLineAndProjectPath,NimProg,ConfigRef	cmdlinehelper: processCmdLineAndProjectPath(self: NimProg; conf: ConfigRef)	
+loadConfigsAndProcessCmdLine	cmdlinehelper.html#loadConfigsAndProcessCmdLine,NimProg,IdentCache,ConfigRef,ModuleGraph	cmdlinehelper: loadConfigsAndProcessCmdLine(self: NimProg; cache: IdentCache; conf: ConfigRef;\n                             graph: ModuleGraph): bool	
+loadConfigsAndRunMainCommand	cmdlinehelper.html#loadConfigsAndRunMainCommand,NimProg,IdentCache,ConfigRef,ModuleGraph	cmdlinehelper: loadConfigsAndRunMainCommand(self: NimProg; cache: IdentCache; conf: ConfigRef;\n                             graph: ModuleGraph): bool	

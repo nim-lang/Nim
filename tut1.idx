@@ -1,0 +1,70 @@
+Nim Tutorial (Part I)	tut1.html
+Introduction	tut1.html#introduction	 Introduction	
+The first program	tut1.html#the-first-program	 The first program	
+local type inference	tut1.html#local-type-inference_1	The first program	
+Lexical elements	tut1.html#lexical-elements	 Lexical elements	
+String and character literals	tut1.html#lexical-elements-string-and-character-literals	  String and character literals	
+Comments	tut1.html#lexical-elements-comments	  Comments	
+Numbers	tut1.html#lexical-elements-numbers	  Numbers	
+The var statement	tut1.html#the-var-statement	 The var statement	
+Constants	tut1.html#constants	 Constants	
+The let statement	tut1.html#the-let-statement	 The let statement	
+The assignment statement	tut1.html#the-assignment-statement	 The assignment statement	
+Control flow statements	tut1.html#control-flow-statements	 Control flow statements	
+If statement	tut1.html#control-flow-statements-if-statement	  If statement	
+Case statement	tut1.html#control-flow-statements-case-statement	  Case statement	
+While statement	tut1.html#control-flow-statements-while-statement	  While statement	
+For statement	tut1.html#control-flow-statements-for-statement	  For statement	
+Scopes and the block statement	tut1.html#control-flow-statements-scopes-and-the-block-statement	  Scopes and the block statement	
+Break statement	tut1.html#control-flow-statements-break-statement	  Break statement	
+Continue statement	tut1.html#control-flow-statements-continue-statement	  Continue statement	
+When statement	tut1.html#control-flow-statements-when-statement	  When statement	
+Statements and indentation	tut1.html#statements-and-indentation	 Statements and indentation	
+Procedures	tut1.html#procedures	 Procedures	
+Result variable	tut1.html#procedures-result-variable	  Result variable	
+Parameters	tut1.html#procedures-parameters	  Parameters	
+Discard statement	tut1.html#procedures-discard-statement	  Discard statement	
+Named arguments	tut1.html#procedures-named-arguments	  Named arguments	
+Default values	tut1.html#procedures-default-values	  Default values	
+Overloaded procedures	tut1.html#procedures-overloaded-procedures	  Overloaded procedures	
+Operators	tut1.html#procedures-operators	  Operators	
+Forward declarations	tut1.html#procedures-forward-declarations	  Forward declarations	
+Iterators	tut1.html#iterators	 Iterators	
+Basic types	tut1.html#basic-types	 Basic types	
+Booleans	tut1.html#basic-types-booleans	  Booleans	
+Characters	tut1.html#basic-types-characters	  Characters	
+Strings	tut1.html#basic-types-strings	  Strings	
+Integers	tut1.html#basic-types-integers	  Integers	
+arithmetic bit shifts	tut1.html#arithmetic-bit-shifts_1	Integers	
+Automatic type conversion	tut1.html#automatic-type-conversion_1	Integers	
+Floats	tut1.html#basic-types-floats	  Floats	
+Type Conversion	tut1.html#basic-types-type-conversion	  Type Conversion	
+Internal type representation	tut1.html#internal-type-representation	 Internal type representation	
+Advanced types	tut1.html#advanced-types	 Advanced types	
+Enumerations	tut1.html#advanced-types-enumerations	  Enumerations	
+Ordinal types	tut1.html#advanced-types-ordinal-types	  Ordinal types	
+Subranges	tut1.html#advanced-types-subranges	  Subranges	
+Sets	tut1.html#advanced-types-sets	  Sets	
+Bit fields	tut1.html#sets-bit-fields	   Bit fields	
+Arrays	tut1.html#advanced-types-arrays	  Arrays	
+Sequences	tut1.html#advanced-types-sequences	  Sequences	
+Open arrays	tut1.html#advanced-types-open-arrays	  Open arrays	
+openarray	tut1.html#openarray_1	Open arrays	
+Varargs	tut1.html#advanced-types-varargs	  Varargs	
+Slices	tut1.html#advanced-types-slices	  Slices	
+Objects	tut1.html#advanced-types-objects	  Objects	
+Tuples	tut1.html#advanced-types-tuples	  Tuples	
+Reference and pointer types	tut1.html#advanced-types-reference-and-pointer-types	  Reference and pointer types	
+traced	tut1.html#traced_1	Reference and pointer types	
+untraced	tut1.html#untraced_1	Reference and pointer types	
+Procedural type	tut1.html#advanced-types-procedural-type	  Procedural type	
+functional	tut1.html#functional_1	Procedural type	
+Distinct type	tut1.html#advanced-types-distinct-type	  Distinct type	
+Modules	tut1.html#modules	 Modules	
+information hiding	tut1.html#information-hiding_1	Modules	
+separate compilation	tut1.html#separate-compilation_1	Modules	
+import	tut1.html#import_1	Modules	
+Excluding symbols	tut1.html#modules-excluding-symbols	  Excluding symbols	
+From statement	tut1.html#modules-from-statement	  From statement	
+Include statement	tut1.html#modules-include-statement	  Include statement	
+Part 2	tut1.html#part-2	 Part 2	

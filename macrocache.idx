@@ -1,0 +1,14 @@
+CacheSeq	macrocache.html#CacheSeq	macrocache: CacheSeq	
+CacheTable	macrocache.html#CacheTable	macrocache: CacheTable	
+CacheCounter	macrocache.html#CacheCounter	macrocache: CacheCounter	
+value	macrocache.html#value,CacheCounter	macrocache: value(c: CacheCounter): int	
+inc	macrocache.html#inc,CacheCounter,int	macrocache: inc(c: CacheCounter; by = 1)	
+add	macrocache.html#add,CacheSeq,NimNode	macrocache: add(s: CacheSeq; value: NimNode)	
+incl	macrocache.html#incl,CacheSeq,NimNode	macrocache: incl(s: CacheSeq; value: NimNode)	
+len	macrocache.html#len,CacheSeq	macrocache: len(s: CacheSeq): int	
+`[]`	macrocache.html#[],CacheSeq,int	macrocache: `[]`(s: CacheSeq; i: int): NimNode	
+items	macrocache.html#items.i,CacheSeq	macrocache: items(s: CacheSeq): NimNode	
+`[]=`	macrocache.html#[]=,CacheTable,string,NimNode	macrocache: `[]=`(t: CacheTable; key: string; value: NimNode)	
+len	macrocache.html#len,CacheTable	macrocache: len(t: CacheTable): int	
+`[]`	macrocache.html#[],CacheTable,string	macrocache: `[]`(t: CacheTable; key: string): NimNode	
+pairs	macrocache.html#pairs.i,CacheTable	macrocache: pairs(t: CacheTable): (string, NimNode)	

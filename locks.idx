@@ -1,0 +1,14 @@
+Lock	locks.html#Lock	locks: Lock	
+Cond	locks.html#Cond	locks: Cond	
+`$`	locks.html#$,SysLockObj	locks: `$`(lock: Lock): string	
+initLock	locks.html#initLock,SysLockObj	locks: initLock(lock: var Lock)	
+deinitLock	locks.html#deinitLock,SysLockObj	locks: deinitLock(lock: var Lock)	
+tryAcquire	locks.html#tryAcquire,SysLockObj	locks: tryAcquire(lock: var Lock): bool	
+acquire	locks.html#acquire,SysLockObj	locks: acquire(lock: var Lock)	
+release	locks.html#release,SysLockObj	locks: release(lock: var Lock)	
+initCond	locks.html#initCond,SysCondObj	locks: initCond(cond: var Cond)	
+deinitCond	locks.html#deinitCond,SysCondObj	locks: deinitCond(cond: var Cond)	
+wait	locks.html#wait,SysCondObj,SysLockObj	locks: wait(cond: var Cond; lock: var Lock)	
+signal	locks.html#signal,SysCondObj	locks: signal(cond: var Cond)	
+broadcast	locks.html#broadcast,SysCondObj	locks: broadcast(cond: var Cond)	
+withLock	locks.html#withLock.t,SysLockObj,untyped	locks: withLock(a: Lock; body: untyped)	

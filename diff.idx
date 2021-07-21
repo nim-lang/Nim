@@ -1,0 +1,4 @@
+Item	diff.html#Item	diff: Item	
+diffInt	diff.html#diffInt,openArray[int],openArray[int]	diff: diffInt(arrayA, arrayB: openArray[int]): seq[Item]	
+diffText	diff.html#diffText,string,string	diff: diffText(textA, textB: string): seq[Item]	
+diff	diff.html#diff_1	Module diff	

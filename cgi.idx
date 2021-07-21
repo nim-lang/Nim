@@ -1,0 +1,51 @@
+xmlEncode	cgi.html#xmlEncode,string	cgi: xmlEncode(s: string): string	
+CgiError	cgi.html#CgiError	cgi: CgiError	
+methodNone	cgi.html#methodNone	RequestMethod.methodNone	
+methodPost	cgi.html#methodPost	RequestMethod.methodPost	
+methodGet	cgi.html#methodGet	RequestMethod.methodGet	
+RequestMethod	cgi.html#RequestMethod	cgi: RequestMethod	
+cgiError	cgi.html#cgiError,string	cgi: cgiError(msg: string)	
+decodeData	cgi.html#decodeData.i,string	cgi: decodeData(data: string): tuple[key, value: string]	
+decodeData	cgi.html#decodeData.i,set[RequestMethod]	cgi: decodeData(allowedMethods: set[RequestMethod] = {methodNone, methodPost,\n    methodGet}): tuple[key, value: string]	
+readData	cgi.html#readData,set[RequestMethod]	cgi: readData(allowedMethods: set[RequestMethod] = {methodNone, methodPost, methodGet}): StringTableRef	
+readData	cgi.html#readData,string	cgi: readData(data: string): StringTableRef	
+validateData	cgi.html#validateData,StringTableRef,varargs[string]	cgi: validateData(data: StringTableRef; validKeys: varargs[string])	
+getContentLength	cgi.html#getContentLength	cgi: getContentLength(): string	
+getContentType	cgi.html#getContentType	cgi: getContentType(): string	
+getDocumentRoot	cgi.html#getDocumentRoot	cgi: getDocumentRoot(): string	
+getGatewayInterface	cgi.html#getGatewayInterface	cgi: getGatewayInterface(): string	
+getHttpAccept	cgi.html#getHttpAccept	cgi: getHttpAccept(): string	
+getHttpAcceptCharset	cgi.html#getHttpAcceptCharset	cgi: getHttpAcceptCharset(): string	
+getHttpAcceptEncoding	cgi.html#getHttpAcceptEncoding	cgi: getHttpAcceptEncoding(): string	
+getHttpAcceptLanguage	cgi.html#getHttpAcceptLanguage	cgi: getHttpAcceptLanguage(): string	
+getHttpConnection	cgi.html#getHttpConnection	cgi: getHttpConnection(): string	
+getHttpCookie	cgi.html#getHttpCookie	cgi: getHttpCookie(): string	
+getHttpHost	cgi.html#getHttpHost	cgi: getHttpHost(): string	
+getHttpReferer	cgi.html#getHttpReferer	cgi: getHttpReferer(): string	
+getHttpUserAgent	cgi.html#getHttpUserAgent	cgi: getHttpUserAgent(): string	
+getPathInfo	cgi.html#getPathInfo	cgi: getPathInfo(): string	
+getPathTranslated	cgi.html#getPathTranslated	cgi: getPathTranslated(): string	
+getQueryString	cgi.html#getQueryString	cgi: getQueryString(): string	
+getRemoteAddr	cgi.html#getRemoteAddr	cgi: getRemoteAddr(): string	
+getRemoteHost	cgi.html#getRemoteHost	cgi: getRemoteHost(): string	
+getRemoteIdent	cgi.html#getRemoteIdent	cgi: getRemoteIdent(): string	
+getRemotePort	cgi.html#getRemotePort	cgi: getRemotePort(): string	
+getRemoteUser	cgi.html#getRemoteUser	cgi: getRemoteUser(): string	
+getRequestMethod	cgi.html#getRequestMethod	cgi: getRequestMethod(): string	
+getRequestURI	cgi.html#getRequestURI	cgi: getRequestURI(): string	
+getScriptFilename	cgi.html#getScriptFilename	cgi: getScriptFilename(): string	
+getScriptName	cgi.html#getScriptName	cgi: getScriptName(): string	
+getServerAddr	cgi.html#getServerAddr	cgi: getServerAddr(): string	
+getServerAdmin	cgi.html#getServerAdmin	cgi: getServerAdmin(): string	
+getServerName	cgi.html#getServerName	cgi: getServerName(): string	
+getServerPort	cgi.html#getServerPort	cgi: getServerPort(): string	
+getServerProtocol	cgi.html#getServerProtocol	cgi: getServerProtocol(): string	
+getServerSignature	cgi.html#getServerSignature	cgi: getServerSignature(): string	
+getServerSoftware	cgi.html#getServerSoftware	cgi: getServerSoftware(): string	
+setTestData	cgi.html#setTestData,varargs[string]	cgi: setTestData(keysvalues: varargs[string])	
+writeContentType	cgi.html#writeContentType	cgi: writeContentType()	
+writeErrorMessage	cgi.html#writeErrorMessage,string	cgi: writeErrorMessage(data: string)	
+setStackTraceStdout	cgi.html#setStackTraceStdout	cgi: setStackTraceStdout()	
+setCookie	cgi.html#setCookie,string,string	cgi: setCookie(name, value: string)	
+getCookie	cgi.html#getCookie,string	cgi: getCookie(name: string): string	
+existsCookie	cgi.html#existsCookie,string	cgi: existsCookie(name: string): bool	

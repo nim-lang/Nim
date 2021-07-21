@@ -1,0 +1,22 @@
+ArrayBuffer	jsutils.html#ArrayBuffer	jsutils: ArrayBuffer	
+Float64Array	jsutils.html#Float64Array	jsutils: Float64Array	
+Uint32Array	jsutils.html#Uint32Array	jsutils: Uint32Array	
+Uint8Array	jsutils.html#Uint8Array	jsutils: Uint8Array	
+BigUint64Array	jsutils.html#BigUint64Array	jsutils: BigUint64Array	
+newArrayBuffer	jsutils.html#newArrayBuffer,int	jsutils: newArrayBuffer(n: int): ArrayBuffer	
+newFloat64Array	jsutils.html#newFloat64Array,ArrayBuffer	jsutils: newFloat64Array(buffer: ArrayBuffer): Float64Array	
+newUint32Array	jsutils.html#newUint32Array,ArrayBuffer	jsutils: newUint32Array(buffer: ArrayBuffer): Uint32Array	
+newBigUint64Array	jsutils.html#newBigUint64Array,ArrayBuffer	jsutils: newBigUint64Array(buffer: ArrayBuffer): BigUint64Array	
+newUint8Array	jsutils.html#newUint8Array,int	jsutils: newUint8Array(n: int): Uint8Array	
+`[]`	jsutils.html#[],Uint32Array,int	jsutils: `[]`(arr: Uint32Array; i: int): uint32	
+`[]`	jsutils.html#[],Uint8Array,int	jsutils: `[]`(arr: Uint8Array; i: int): uint8	
+`[]`	jsutils.html#[],BigUint64Array,int	jsutils: `[]`(arr: BigUint64Array; i: int): JsBigInt	
+`[]=`	jsutils.html#[]=,Float64Array,int,float	jsutils: `[]=`(arr: Float64Array; i: int; v: float)	
+jsTypeOf	jsutils.html#jsTypeOf,T	jsutils: jsTypeOf[T](x: T): cstring	
+jsConstructorName	jsutils.html#jsConstructorName,T	jsutils: jsConstructorName[T](a: T): cstring	
+hasJsBigInt	jsutils.html#hasJsBigInt	jsutils: hasJsBigInt(): bool	
+hasBigUint64Array	jsutils.html#hasBigUint64Array	jsutils: hasBigUint64Array(): bool	
+getProtoName	jsutils.html#getProtoName,T	jsutils: getProtoName[T](a: T): cstring	
+maxSafeInteger	jsutils.html#maxSafeInteger	jsutils: maxSafeInteger	
+isInteger	jsutils.html#isInteger,T	jsutils: isInteger[T](x: T): bool	
+isSafeInteger	jsutils.html#isSafeInteger,T	jsutils: isSafeInteger[T](x: T): bool	

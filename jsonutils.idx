@@ -1,0 +1,22 @@
+Joptions	jsonutils.html#Joptions	jsonutils: Joptions	
+joptEnumOrd	jsonutils.html#joptEnumOrd	EnumMode.joptEnumOrd	
+joptEnumSymbol	jsonutils.html#joptEnumSymbol	EnumMode.joptEnumSymbol	
+joptEnumString	jsonutils.html#joptEnumString	EnumMode.joptEnumString	
+EnumMode	jsonutils.html#EnumMode	jsonutils: EnumMode	
+joptJsonNodeAsRef	jsonutils.html#joptJsonNodeAsRef	JsonNodeMode.joptJsonNodeAsRef	
+joptJsonNodeAsCopy	jsonutils.html#joptJsonNodeAsCopy	JsonNodeMode.joptJsonNodeAsCopy	
+joptJsonNodeAsObject	jsonutils.html#joptJsonNodeAsObject	JsonNodeMode.joptJsonNodeAsObject	
+JsonNodeMode	jsonutils.html#JsonNodeMode	jsonutils: JsonNodeMode	
+ToJsonOptions	jsonutils.html#ToJsonOptions	jsonutils: ToJsonOptions	
+initToJsonOptions	jsonutils.html#initToJsonOptions	jsonutils: initToJsonOptions(): ToJsonOptions	
+fromJson	jsonutils.html#fromJson,T,JsonNode	jsonutils: fromJson[T](a: var T; b: JsonNode; opt = Joptions())	
+jsonTo	jsonutils.html#jsonTo,JsonNode,typedesc	jsonutils: jsonTo(b: JsonNode; T: typedesc; opt = Joptions()): T:type	
+toJson	jsonutils.html#toJson,T	jsonutils: toJson[T](a: T; opt = initToJsonOptions()): JsonNode	
+fromJsonHook	jsonutils.html#fromJsonHook,,JsonNode	jsonutils: fromJsonHook[K: string | cstring; V](t: var (Table[K, V] | OrderedTable[K, V]);\n                                     jsonNode: JsonNode)	
+toJsonHook	jsonutils.html#toJsonHook	jsonutils: toJsonHook[K: string | cstring; V](t: (Table[K, V] | OrderedTable[K, V])): JsonNode	
+fromJsonHook	jsonutils.html#fromJsonHook,SomeSet[A],JsonNode	jsonutils: fromJsonHook[A](s: var SomeSet[A]; jsonNode: JsonNode)	
+toJsonHook	jsonutils.html#toJsonHook,SomeSet[A]	jsonutils: toJsonHook[A](s: SomeSet[A]): JsonNode	
+fromJsonHook	jsonutils.html#fromJsonHook,Option[T],JsonNode	jsonutils: fromJsonHook[T](self: var Option[T]; jsonNode: JsonNode)	
+toJsonHook	jsonutils.html#toJsonHook,Option[T]	jsonutils: toJsonHook[T](self: Option[T]): JsonNode	
+fromJsonHook	jsonutils.html#fromJsonHook,StringTableRef,JsonNode	jsonutils: fromJsonHook(a: var StringTableRef; b: JsonNode)	
+toJsonHook	jsonutils.html#toJsonHook,StringTableRef	jsonutils: toJsonHook(a: StringTableRef): JsonNode	

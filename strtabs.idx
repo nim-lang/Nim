@@ -1,0 +1,28 @@
+modeCaseSensitive	strtabs.html#modeCaseSensitive	StringTableMode.modeCaseSensitive	
+modeCaseInsensitive	strtabs.html#modeCaseInsensitive	StringTableMode.modeCaseInsensitive	
+modeStyleInsensitive	strtabs.html#modeStyleInsensitive	StringTableMode.modeStyleInsensitive	
+StringTableMode	strtabs.html#StringTableMode	strtabs: StringTableMode	
+StringTableObj	strtabs.html#StringTableObj	strtabs: StringTableObj	
+StringTableRef	strtabs.html#StringTableRef	strtabs: StringTableRef	
+useEnvironment	strtabs.html#useEnvironment	FormatFlag.useEnvironment	
+useEmpty	strtabs.html#useEmpty	FormatFlag.useEmpty	
+useKey	strtabs.html#useKey	FormatFlag.useKey	
+FormatFlag	strtabs.html#FormatFlag	strtabs: FormatFlag	
+mode	strtabs.html#mode,StringTableRef	strtabs: mode(t: StringTableRef): StringTableMode	
+pairs	strtabs.html#pairs.i,StringTableRef	strtabs: pairs(t: StringTableRef): tuple[key, value: string]	
+keys	strtabs.html#keys.i,StringTableRef	strtabs: keys(t: StringTableRef): string	
+values	strtabs.html#values.i,StringTableRef	strtabs: values(t: StringTableRef): string	
+len	strtabs.html#len,StringTableRef	strtabs: len(t: StringTableRef): int	
+`[]`	strtabs.html#[],StringTableRef,string	strtabs: `[]`(t: StringTableRef; key: string): var string	
+getOrDefault	strtabs.html#getOrDefault,StringTableRef,string,string	strtabs: getOrDefault(t: StringTableRef; key: string; default: string = &quot;&quot;): string	
+hasKey	strtabs.html#hasKey,StringTableRef,string	strtabs: hasKey(t: StringTableRef; key: string): bool	
+contains	strtabs.html#contains,StringTableRef,string	strtabs: contains(t: StringTableRef; key: string): bool	
+`[]=`	strtabs.html#[]=,StringTableRef,string,string	strtabs: `[]=`(t: StringTableRef; key, val: string)	
+newStringTable	strtabs.html#newStringTable,StringTableMode	strtabs: newStringTable(mode: StringTableMode): owned(StringTableRef)	
+newStringTable	strtabs.html#newStringTable,varargs[string],StringTableMode	strtabs: newStringTable(keyValuePairs: varargs[string]; mode: StringTableMode): owned(\n    StringTableRef)	
+newStringTable	strtabs.html#newStringTable,varargs[tuple[string,string]],StringTableMode	strtabs: newStringTable(keyValuePairs: varargs[tuple[key, val: string]];\n               mode: StringTableMode = modeCaseSensitive): owned(StringTableRef)	
+clear	strtabs.html#clear,StringTableRef,StringTableMode	strtabs: clear(s: StringTableRef; mode: StringTableMode)	
+clear	strtabs.html#clear,StringTableRef	strtabs: clear(s: StringTableRef)	
+del	strtabs.html#del,StringTableRef,string	strtabs: del(t: StringTableRef; key: string)	
+`$`	strtabs.html#$,StringTableRef	strtabs: `$`(t: StringTableRef): string	
+`%`	strtabs.html#%,string,StringTableRef,set[FormatFlag]	strtabs: `%`(f: string; t: StringTableRef; flags: set[FormatFlag] = {}): string	

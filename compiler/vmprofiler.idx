@@ -1,0 +1,3 @@
+enter	vmprofiler.html#enter,Profiler,PCtx,PStackFrame	vmprofiler: enter(prof: var Profiler; c: PCtx; tos: PStackFrame)	
+leave	vmprofiler.html#leave,Profiler,PCtx	vmprofiler: leave(prof: var Profiler; c: PCtx)	
+dump	vmprofiler.html#dump,ConfigRef,ProfileData	vmprofiler: dump(conf: ConfigRef; pd: ProfileData): string	

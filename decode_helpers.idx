@@ -1,0 +1,3 @@
+handleHexChar	decode_helpers.html#handleHexChar,char,int	decode_helpers: handleHexChar(c: char; x: var int): bool	
+handleHexChar	decode_helpers.html#handleHexChar,char	decode_helpers: handleHexChar(c: char): int	
+decodePercent	decode_helpers.html#decodePercent,openArray[char],int	decode_helpers: decodePercent(s: openArray[char]; i: var int): char	

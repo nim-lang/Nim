@@ -1,0 +1,49 @@
+XmlNode	xmltree.html#XmlNode	xmltree: XmlNode	
+xnText	xmltree.html#xnText	XmlNodeKind.xnText	
+xnVerbatimText	xmltree.html#xnVerbatimText	XmlNodeKind.xnVerbatimText	
+xnElement	xmltree.html#xnElement	XmlNodeKind.xnElement	
+xnCData	xmltree.html#xnCData	XmlNodeKind.xnCData	
+xnEntity	xmltree.html#xnEntity	XmlNodeKind.xnEntity	
+xnComment	xmltree.html#xnComment	XmlNodeKind.xnComment	
+XmlNodeKind	xmltree.html#XmlNodeKind	xmltree: XmlNodeKind	
+XmlAttributes	xmltree.html#XmlAttributes	xmltree: XmlAttributes	
+xmlHeader	xmltree.html#xmlHeader	xmltree: xmlHeader	
+newElement	xmltree.html#newElement,sinkstring	xmltree: newElement(tag: sink string): XmlNode	
+newText	xmltree.html#newText,sinkstring	xmltree: newText(text: sink string): XmlNode	
+newVerbatimText	xmltree.html#newVerbatimText,sinkstring	xmltree: newVerbatimText(text: sink string): XmlNode	
+newComment	xmltree.html#newComment,sinkstring	xmltree: newComment(comment: sink string): XmlNode	
+newCData	xmltree.html#newCData,sinkstring	xmltree: newCData(cdata: sink string): XmlNode	
+newEntity	xmltree.html#newEntity,string	xmltree: newEntity(entity: string): XmlNode	
+newXmlTree	xmltree.html#newXmlTree,sinkstring,openArray[XmlNode],XmlAttributes	xmltree: newXmlTree(tag: sink string; children: openArray[XmlNode];\n           attributes: XmlAttributes = nil): XmlNode	
+text	xmltree.html#text,XmlNode	xmltree: text(n: XmlNode): lent string	
+text=	xmltree.html#text=,XmlNode,sinkstring	xmltree: text=(n: XmlNode; text: sink string)	
+tag	xmltree.html#tag,XmlNode	xmltree: tag(n: XmlNode): lent string	
+tag=	xmltree.html#tag=,XmlNode,sinkstring	xmltree: tag=(n: XmlNode; tag: sink string)	
+rawText	xmltree.html#rawText,XmlNode	xmltree: rawText(n: XmlNode): string	
+rawTag	xmltree.html#rawTag,XmlNode	xmltree: rawTag(n: XmlNode): string	
+innerText	xmltree.html#innerText,XmlNode	xmltree: innerText(n: XmlNode): string	
+add	xmltree.html#add,XmlNode,XmlNode	xmltree: add(father, son: XmlNode)	
+insert	xmltree.html#insert,XmlNode,XmlNode,int	xmltree: insert(father, son: XmlNode; index: int)	
+delete	xmltree.html#delete,XmlNode,Natural	xmltree: delete(n: XmlNode; i: Natural)	
+len	xmltree.html#len,XmlNode	xmltree: len(n: XmlNode): int	
+kind	xmltree.html#kind,XmlNode	xmltree: kind(n: XmlNode): XmlNodeKind	
+`[]`	xmltree.html#[],XmlNode,int	xmltree: `[]`(n: XmlNode; i: int): XmlNode	
+`[]`	xmltree.html#[],XmlNode,int_2	xmltree: `[]`(n: var XmlNode; i: int): var XmlNode	
+clear	xmltree.html#clear,XmlNode	xmltree: clear(n: var XmlNode)	
+items	xmltree.html#items.i,XmlNode	xmltree: items(n: XmlNode): XmlNode	
+mitems	xmltree.html#mitems.i,XmlNode	xmltree: mitems(n: var XmlNode): var XmlNode	
+toXmlAttributes	xmltree.html#toXmlAttributes,varargs[tuple[string,string]]	xmltree: toXmlAttributes(keyValuePairs: varargs[tuple[key, val: string]]): XmlAttributes	
+attrs	xmltree.html#attrs,XmlNode	xmltree: attrs(n: XmlNode): XmlAttributes	
+attrs=	xmltree.html#attrs=,XmlNode,XmlAttributes	xmltree: attrs=(n: XmlNode; attr: XmlAttributes)	
+attrsLen	xmltree.html#attrsLen,XmlNode	xmltree: attrsLen(n: XmlNode): int	
+attr	xmltree.html#attr,XmlNode,string	xmltree: attr(n: XmlNode; name: string): string	
+clientData	xmltree.html#clientData,XmlNode	xmltree: clientData(n: XmlNode): int	
+clientData=	xmltree.html#clientData=,XmlNode,int	xmltree: clientData=(n: XmlNode; data: int)	
+addEscaped	xmltree.html#addEscaped,string,string	xmltree: addEscaped(result: var string; s: string)	
+escape	xmltree.html#escape,string	xmltree: escape(s: string): string	
+add	xmltree.html#add,string,XmlNode,int,int	xmltree: add(result: var string; n: XmlNode; indent = 0; indWidth = 2; addNewLines = true)	
+`$`	xmltree.html#$,XmlNode	xmltree: `$`(n: XmlNode): string	
+child	xmltree.html#child,XmlNode,string	xmltree: child(n: XmlNode; name: string): XmlNode	
+findAll	xmltree.html#findAll,XmlNode,string,seq[XmlNode]	xmltree: findAll(n: XmlNode; tag: string; result: var seq[XmlNode];\n        caseInsensitive = false)	
+findAll	xmltree.html#findAll,XmlNode,string	xmltree: findAll(n: XmlNode; tag: string; caseInsensitive = false): seq[XmlNode]	
+`&lt;&gt;`	xmltree.html#<>.m,untyped	xmltree: `&lt;&gt;`(x: untyped): untyped	

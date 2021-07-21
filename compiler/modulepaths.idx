@@ -1,0 +1,2 @@
+getModuleName	modulepaths.html#getModuleName,ConfigRef,PNode	modulepaths: getModuleName(conf: ConfigRef; n: PNode): string	
+checkModuleName	modulepaths.html#checkModuleName,ConfigRef,PNode	modulepaths: checkModuleName(conf: ConfigRef; n: PNode; doLocalError = true): FileIndex	

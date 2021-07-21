@@ -1,0 +1,4 @@
+getRaisesList	effecttraits.html#getRaisesList,NimNode	effecttraits: getRaisesList(fn: NimNode): NimNode	
+getTagsList	effecttraits.html#getTagsList,NimNode	effecttraits: getTagsList(fn: NimNode): NimNode	
+isGcSafe	effecttraits.html#isGcSafe,NimNode	effecttraits: isGcSafe(fn: NimNode): bool	
+hasNoSideEffects	effecttraits.html#hasNoSideEffects,NimNode	effecttraits: hasNoSideEffects(fn: NimNode): bool	

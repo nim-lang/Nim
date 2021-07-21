@@ -1,0 +1,134 @@
+explanationsBaseUrl	lineinfos.html#explanationsBaseUrl	lineinfos: explanationsBaseUrl	
+createDocLink	lineinfos.html#createDocLink,string	lineinfos: createDocLink(urlSuffix: string): string	
+errUnknown	lineinfos.html#errUnknown	TMsgKind.errUnknown	
+errFatal	lineinfos.html#errFatal	TMsgKind.errFatal	
+errInternal	lineinfos.html#errInternal	TMsgKind.errInternal	
+errIllFormedAstX	lineinfos.html#errIllFormedAstX	TMsgKind.errIllFormedAstX	
+errCannotOpenFile	lineinfos.html#errCannotOpenFile	TMsgKind.errCannotOpenFile	
+errXExpected	lineinfos.html#errXExpected	TMsgKind.errXExpected	
+errRstGridTableNotImplemented	lineinfos.html#errRstGridTableNotImplemented	TMsgKind.errRstGridTableNotImplemented	
+errRstMarkdownIllformedTable	lineinfos.html#errRstMarkdownIllformedTable	TMsgKind.errRstMarkdownIllformedTable	
+errRstNewSectionExpected	lineinfos.html#errRstNewSectionExpected	TMsgKind.errRstNewSectionExpected	
+errRstGeneralParseError	lineinfos.html#errRstGeneralParseError	TMsgKind.errRstGeneralParseError	
+errRstInvalidDirectiveX	lineinfos.html#errRstInvalidDirectiveX	TMsgKind.errRstInvalidDirectiveX	
+errRstInvalidField	lineinfos.html#errRstInvalidField	TMsgKind.errRstInvalidField	
+errRstFootnoteMismatch	lineinfos.html#errRstFootnoteMismatch	TMsgKind.errRstFootnoteMismatch	
+errProveInit	lineinfos.html#errProveInit	TMsgKind.errProveInit	
+errGenerated	lineinfos.html#errGenerated	TMsgKind.errGenerated	
+errUser	lineinfos.html#errUser	TMsgKind.errUser	
+warnCannotOpenFile	lineinfos.html#warnCannotOpenFile	TMsgKind.warnCannotOpenFile	
+warnOctalEscape	lineinfos.html#warnOctalEscape	TMsgKind.warnOctalEscape	
+warnXIsNeverRead	lineinfos.html#warnXIsNeverRead	TMsgKind.warnXIsNeverRead	
+warnXmightNotBeenInit	lineinfos.html#warnXmightNotBeenInit	TMsgKind.warnXmightNotBeenInit	
+warnDeprecated	lineinfos.html#warnDeprecated	TMsgKind.warnDeprecated	
+warnConfigDeprecated	lineinfos.html#warnConfigDeprecated	TMsgKind.warnConfigDeprecated	
+warnSmallLshouldNotBeUsed	lineinfos.html#warnSmallLshouldNotBeUsed	TMsgKind.warnSmallLshouldNotBeUsed	
+warnUnknownMagic	lineinfos.html#warnUnknownMagic	TMsgKind.warnUnknownMagic	
+warnRstRedefinitionOfLabel	lineinfos.html#warnRstRedefinitionOfLabel	TMsgKind.warnRstRedefinitionOfLabel	
+warnRstUnknownSubstitutionX	lineinfos.html#warnRstUnknownSubstitutionX	TMsgKind.warnRstUnknownSubstitutionX	
+warnRstBrokenLink	lineinfos.html#warnRstBrokenLink	TMsgKind.warnRstBrokenLink	
+warnRstLanguageXNotSupported	lineinfos.html#warnRstLanguageXNotSupported	TMsgKind.warnRstLanguageXNotSupported	
+warnRstFieldXNotSupported	lineinfos.html#warnRstFieldXNotSupported	TMsgKind.warnRstFieldXNotSupported	
+warnRstStyle	lineinfos.html#warnRstStyle	TMsgKind.warnRstStyle	
+warnCommentXIgnored	lineinfos.html#warnCommentXIgnored	TMsgKind.warnCommentXIgnored	
+warnTypelessParam	lineinfos.html#warnTypelessParam	TMsgKind.warnTypelessParam	
+warnUseBase	lineinfos.html#warnUseBase	TMsgKind.warnUseBase	
+warnWriteToForeignHeap	lineinfos.html#warnWriteToForeignHeap	TMsgKind.warnWriteToForeignHeap	
+warnUnsafeCode	lineinfos.html#warnUnsafeCode	TMsgKind.warnUnsafeCode	
+warnUnusedImportX	lineinfos.html#warnUnusedImportX	TMsgKind.warnUnusedImportX	
+warnInheritFromException	lineinfos.html#warnInheritFromException	TMsgKind.warnInheritFromException	
+warnEachIdentIsTuple	lineinfos.html#warnEachIdentIsTuple	TMsgKind.warnEachIdentIsTuple	
+warnUnsafeSetLen	lineinfos.html#warnUnsafeSetLen	TMsgKind.warnUnsafeSetLen	
+warnUnsafeDefault	lineinfos.html#warnUnsafeDefault	TMsgKind.warnUnsafeDefault	
+warnProveInit	lineinfos.html#warnProveInit	TMsgKind.warnProveInit	
+warnProveField	lineinfos.html#warnProveField	TMsgKind.warnProveField	
+warnProveIndex	lineinfos.html#warnProveIndex	TMsgKind.warnProveIndex	
+warnUnreachableElse	lineinfos.html#warnUnreachableElse	TMsgKind.warnUnreachableElse	
+warnUnreachableCode	lineinfos.html#warnUnreachableCode	TMsgKind.warnUnreachableCode	
+warnStaticIndexCheck	lineinfos.html#warnStaticIndexCheck	TMsgKind.warnStaticIndexCheck	
+warnGcUnsafe	lineinfos.html#warnGcUnsafe	TMsgKind.warnGcUnsafe	
+warnGcUnsafe2	lineinfos.html#warnGcUnsafe2	TMsgKind.warnGcUnsafe2	
+warnUninit	lineinfos.html#warnUninit	TMsgKind.warnUninit	
+warnGcMem	lineinfos.html#warnGcMem	TMsgKind.warnGcMem	
+warnDestructor	lineinfos.html#warnDestructor	TMsgKind.warnDestructor	
+warnLockLevel	lineinfos.html#warnLockLevel	TMsgKind.warnLockLevel	
+warnResultShadowed	lineinfos.html#warnResultShadowed	TMsgKind.warnResultShadowed	
+warnInconsistentSpacing	lineinfos.html#warnInconsistentSpacing	TMsgKind.warnInconsistentSpacing	
+warnCaseTransition	lineinfos.html#warnCaseTransition	TMsgKind.warnCaseTransition	
+warnCycleCreated	lineinfos.html#warnCycleCreated	TMsgKind.warnCycleCreated	
+warnObservableStores	lineinfos.html#warnObservableStores	TMsgKind.warnObservableStores	
+warnStrictNotNil	lineinfos.html#warnStrictNotNil	TMsgKind.warnStrictNotNil	
+warnResultUsed	lineinfos.html#warnResultUsed	TMsgKind.warnResultUsed	
+warnCannotOpen	lineinfos.html#warnCannotOpen	TMsgKind.warnCannotOpen	
+warnFileChanged	lineinfos.html#warnFileChanged	TMsgKind.warnFileChanged	
+warnSuspiciousEnumConv	lineinfos.html#warnSuspiciousEnumConv	TMsgKind.warnSuspiciousEnumConv	
+warnUser	lineinfos.html#warnUser	TMsgKind.warnUser	
+hintSuccess	lineinfos.html#hintSuccess	TMsgKind.hintSuccess	
+hintSuccessX	lineinfos.html#hintSuccessX	TMsgKind.hintSuccessX	
+hintCC	lineinfos.html#hintCC	TMsgKind.hintCC	
+hintLineTooLong	lineinfos.html#hintLineTooLong	TMsgKind.hintLineTooLong	
+hintXDeclaredButNotUsed	lineinfos.html#hintXDeclaredButNotUsed	TMsgKind.hintXDeclaredButNotUsed	
+hintDuplicateModuleImport	lineinfos.html#hintDuplicateModuleImport	TMsgKind.hintDuplicateModuleImport	
+hintXCannotRaiseY	lineinfos.html#hintXCannotRaiseY	TMsgKind.hintXCannotRaiseY	
+hintConvToBaseNotNeeded	lineinfos.html#hintConvToBaseNotNeeded	TMsgKind.hintConvToBaseNotNeeded	
+hintConvFromXtoItselfNotNeeded	lineinfos.html#hintConvFromXtoItselfNotNeeded	TMsgKind.hintConvFromXtoItselfNotNeeded	
+hintExprAlwaysX	lineinfos.html#hintExprAlwaysX	TMsgKind.hintExprAlwaysX	
+hintQuitCalled	lineinfos.html#hintQuitCalled	TMsgKind.hintQuitCalled	
+hintProcessing	lineinfos.html#hintProcessing	TMsgKind.hintProcessing	
+hintProcessingStmt	lineinfos.html#hintProcessingStmt	TMsgKind.hintProcessingStmt	
+hintCodeBegin	lineinfos.html#hintCodeBegin	TMsgKind.hintCodeBegin	
+hintCodeEnd	lineinfos.html#hintCodeEnd	TMsgKind.hintCodeEnd	
+hintConf	lineinfos.html#hintConf	TMsgKind.hintConf	
+hintPath	lineinfos.html#hintPath	TMsgKind.hintPath	
+hintConditionAlwaysTrue	lineinfos.html#hintConditionAlwaysTrue	TMsgKind.hintConditionAlwaysTrue	
+hintConditionAlwaysFalse	lineinfos.html#hintConditionAlwaysFalse	TMsgKind.hintConditionAlwaysFalse	
+hintName	lineinfos.html#hintName	TMsgKind.hintName	
+hintPattern	lineinfos.html#hintPattern	TMsgKind.hintPattern	
+hintExecuting	lineinfos.html#hintExecuting	TMsgKind.hintExecuting	
+hintLinking	lineinfos.html#hintLinking	TMsgKind.hintLinking	
+hintDependency	lineinfos.html#hintDependency	TMsgKind.hintDependency	
+hintSource	lineinfos.html#hintSource	TMsgKind.hintSource	
+hintPerformance	lineinfos.html#hintPerformance	TMsgKind.hintPerformance	
+hintStackTrace	lineinfos.html#hintStackTrace	TMsgKind.hintStackTrace	
+hintGCStats	lineinfos.html#hintGCStats	TMsgKind.hintGCStats	
+hintGlobalVar	lineinfos.html#hintGlobalVar	TMsgKind.hintGlobalVar	
+hintExpandMacro	lineinfos.html#hintExpandMacro	TMsgKind.hintExpandMacro	
+hintUser	lineinfos.html#hintUser	TMsgKind.hintUser	
+hintUserRaw	lineinfos.html#hintUserRaw	TMsgKind.hintUserRaw	
+hintExtendedContext	lineinfos.html#hintExtendedContext	TMsgKind.hintExtendedContext	
+hintMsgOrigin	lineinfos.html#hintMsgOrigin	TMsgKind.hintMsgOrigin	
+hintDeclaredLoc	lineinfos.html#hintDeclaredLoc	TMsgKind.hintDeclaredLoc	
+TMsgKind	lineinfos.html#TMsgKind	lineinfos: TMsgKind	
+MsgKindToStr	lineinfos.html#MsgKindToStr	lineinfos: MsgKindToStr	
+fatalMsgs	lineinfos.html#fatalMsgs	lineinfos: fatalMsgs	
+errMin	lineinfos.html#errMin	lineinfos: errMin	
+errMax	lineinfos.html#errMax	lineinfos: errMax	
+warnMin	lineinfos.html#warnMin	lineinfos: warnMin	
+warnMax	lineinfos.html#warnMax	lineinfos: warnMax	
+hintMin	lineinfos.html#hintMin	lineinfos: hintMin	
+hintMax	lineinfos.html#hintMax	lineinfos: hintMax	
+rstWarnings	lineinfos.html#rstWarnings	lineinfos: rstWarnings	
+TNoteKind	lineinfos.html#TNoteKind	lineinfos: TNoteKind	
+TNoteKinds	lineinfos.html#TNoteKinds	lineinfos: TNoteKinds	
+NotesVerbosity	lineinfos.html#NotesVerbosity	lineinfos: NotesVerbosity	
+errXMustBeCompileTime	lineinfos.html#errXMustBeCompileTime	lineinfos: errXMustBeCompileTime	
+errArgsNeedRunOption	lineinfos.html#errArgsNeedRunOption	lineinfos: errArgsNeedRunOption	
+TFileInfo	lineinfos.html#TFileInfo	lineinfos: TFileInfo	
+FileIndex	lineinfos.html#FileIndex	lineinfos: FileIndex	
+TLineInfo	lineinfos.html#TLineInfo	lineinfos: TLineInfo	
+eStdOut	lineinfos.html#eStdOut	TErrorOutput.eStdOut	
+eStdErr	lineinfos.html#eStdErr	TErrorOutput.eStdErr	
+TErrorOutput	lineinfos.html#TErrorOutput	lineinfos: TErrorOutput	
+TErrorOutputs	lineinfos.html#TErrorOutputs	lineinfos: TErrorOutputs	
+ERecoverableError	lineinfos.html#ERecoverableError	lineinfos: ERecoverableError	
+ESuggestDone	lineinfos.html#ESuggestDone	lineinfos: ESuggestDone	
+`==`	lineinfos.html#==,FileIndex,FileIndex	lineinfos: `==`(a, b: FileIndex): bool	
+hash	lineinfos.html#hash,TLineInfo	lineinfos: hash(i: TLineInfo): Hash	
+raiseRecoverableError	lineinfos.html#raiseRecoverableError,string	lineinfos: raiseRecoverableError(msg: string)	
+InvalidFileIdx	lineinfos.html#InvalidFileIdx	lineinfos: InvalidFileIdx	
+unknownLineInfo	lineinfos.html#unknownLineInfo	lineinfos: unknownLineInfo	
+Severity	lineinfos.html#Severity	lineinfos: Severity	
+trackPosInvalidFileIdx	lineinfos.html#trackPosInvalidFileIdx	lineinfos: trackPosInvalidFileIdx	
+commandLineIdx	lineinfos.html#commandLineIdx	lineinfos: commandLineIdx	
+MsgConfig	lineinfos.html#MsgConfig	lineinfos: MsgConfig	
+initMsgConfig	lineinfos.html#initMsgConfig	lineinfos: initMsgConfig(): MsgConfig	

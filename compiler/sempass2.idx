@@ -1,0 +1,5 @@
+checkForSink	sempass2.html#checkForSink,ConfigRef,IdGenerator,PSym,PNode	sempass2: checkForSink(config: ConfigRef; idgen: IdGenerator; owner: PSym; arg: PNode)	
+checkMethodEffects	sempass2.html#checkMethodEffects,ModuleGraph,PSym,PSym	sempass2: checkMethodEffects(g: ModuleGraph; disp, branch: PSym)	
+setEffectsForProcType	sempass2.html#setEffectsForProcType,ModuleGraph,PType,PNode	sempass2: setEffectsForProcType(g: ModuleGraph; t: PType; n: PNode)	
+trackProc	sempass2.html#trackProc,PContext,PSym,PNode	sempass2: trackProc(c: PContext; s: PSym; body: PNode)	
+trackStmt	sempass2.html#trackStmt,PContext,PSym,PNode,bool	sempass2: trackStmt(c: PContext; module: PSym; n: PNode; isTopLevel: bool)	

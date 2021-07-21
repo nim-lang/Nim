@@ -1,0 +1,33 @@
+Contributing	contributing.html
+Writing tests	contributing.html#writing-tests	 Writing tests	
+Stdlib	contributing.html#writing-tests-stdlib	  Stdlib	
+Compiler	contributing.html#writing-tests-compiler	  Compiler	
+Running tests	contributing.html#running-tests	 Running tests	
+Comparing tests	contributing.html#comparing-tests	 Comparing tests	
+Deprecation	contributing.html#deprecation	 Deprecation	
+Documentation	contributing.html#documentation	 Documentation	
+Best practices	contributing.html#best-practices	 Best practices	
+The git stuff	contributing.html#the-cmdgit-stuff	 The <tt class="docutils literal"><span class="pre"><span class="program">git</span></span></tt> stuff	
+General commit rules	contributing.html#the-cmdgit-stuff-general-commit-rules	  General commit rules	
+Continuous Integration (CI)	contributing.html#the-cmdgit-stuff-continuous-integration-ci	  Continuous Integration (CI)	
+Debugging CI failures, flaky tests, etc	contributing.html#the-cmdgit-stuff-debugging-ci-failures-flaky-tests-etc	  Debugging CI failures, flaky tests, etc	
+Code reviews	contributing.html#the-cmdgit-stuff-code-reviews	  Code reviews	
+Documentation Style	contributing.html#documentation-style	 Documentation Style	
+General Guidelines	contributing.html#documentation-style-general-guidelines	  General Guidelines	
+Module-level documentation	contributing.html#documentation-style-moduleminuslevel-documentation	  Module-level documentation	
+Procs, Templates, Macros, Converters, and Iterators	contributing.html#documentation-style-procs-templates-macros-converters-and-iterators	  Procs, Templates, Macros, Converters, and Iterators	
+Types	contributing.html#documentation-style-types	  Types	
+Var, Let, and Const	contributing.html#documentation-style-var-let-and-const	  Var, Let, and Const	
+Evolving the stdlib	contributing.html#evolving-the-stdlib	 Evolving the stdlib	
+What the compiler itself needs must be part of the stdlib	contributing.html#evolving-the-stdlib-what-the-compiler-itself-needs-must-be-part-of-the-stdlib	  What the compiler itself needs must be part of the stdlib	
+Vocabulary types must be part of the stdlib	contributing.html#evolving-the-stdlib-vocabulary-types-must-be-part-of-the-stdlib	  Vocabulary types must be part of the stdlib	
+Existing, battle-tested modules stay	contributing.html#evolving-the-stdlib-existing-battleminustested-modules-stay	  Existing, battle-tested modules stay	
+Syntactic helpers can start as experimental stdlib modules	contributing.html#evolving-the-stdlib-syntactic-helpers-can-start-as-experimental-stdlib-modules	  Syntactic helpers can start as experimental stdlib modules	
+Other new stdlib modules do not start as stdlib modules	contributing.html#evolving-the-stdlib-other-new-stdlib-modules-do-not-start-as-stdlib-modules	  Other new stdlib modules do not start as stdlib modules	
+Little additions are acceptable	contributing.html#evolving-the-stdlib-little-additions-are-acceptable	  Little additions are acceptable	
+Conventions	contributing.html#evolving-the-stdlib-conventions	  Conventions	
+Breaking Changes	contributing.html#breaking-changes	 Breaking Changes	
+Run-time breaking changes	contributing.html#breaking-changes-runminustime-breaking-changes	  Run-time breaking changes	
+Compile-time breaking changes	contributing.html#breaking-changes-compileminustime-breaking-changes	  Compile-time breaking changes	
+Compiler/language spec bugfixes	contributing.html#breaking-changes-compilerslashlanguage-spec-bugfixes	  Compiler/language spec bugfixes	
+Non-breaking changes	contributing.html#breaking-changes-nonminusbreaking-changes	  Non-breaking changes	

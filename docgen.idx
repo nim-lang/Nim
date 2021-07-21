@@ -1,0 +1,18 @@
+Nim DocGen Tools Guide	docgen.html
+Introduction	docgen.html#introduction	 Introduction	
+documentation generation tools	docgen.html#documentation-generation-tools_1	Introduction	
+Quick start	docgen.html#introduction-quick-start	  Quick start	
+Documentation Comments	docgen.html#introduction-documentation-comments	  Documentation Comments	
+Document Types	docgen.html#document-types	 Document Types	
+Example of Nim file input	docgen.html#document-types-example-of-nim-file-input	  Example of Nim file input	
+HTML	docgen.html#document-types-html	  HTML	
+LaTeX	docgen.html#document-types-latex	  LaTeX	
+JSON	docgen.html#document-types-json	  JSON	
+Related Options	docgen.html#related-options	 Related Options	
+Project switch	docgen.html#related-options-project-switch	  Project switch	
+Index switch	docgen.html#related-options-index-switch	  Index switch	
+See source switch	docgen.html#related-options-see-source-switch	  See source switch	
+Other Input Formats	docgen.html#other-input-formats	 Other Input Formats	
+HTML anchor generation	docgen.html#html-anchor-generation	 HTML anchor generation	
+Index (idx) file format	docgen.html#index-idx-file-format	 Index (idx) file format	
+Additional resources	docgen.html#additional-resources	 Additional resources	

@@ -1,0 +1,14 @@
+Headers	jsheaders.html#Headers	jsheaders: Headers	
+newHeaders	jsheaders.html#newHeaders	jsheaders: newHeaders(): Headers	
+add	jsheaders.html#add,Headers,cstring,cstring	jsheaders: add(self: Headers; key: cstring; value: cstring)	
+delete	jsheaders.html#delete,Headers,cstring	jsheaders: delete(self: Headers; key: cstring)	
+hasKey	jsheaders.html#hasKey,Headers,cstring	jsheaders: hasKey(self: Headers; key: cstring): bool	
+keys	jsheaders.html#keys,Headers	jsheaders: keys(self: Headers): seq[cstring]	
+values	jsheaders.html#values,Headers	jsheaders: values(self: Headers): seq[cstring]	
+entries	jsheaders.html#entries,Headers	jsheaders: entries(self: Headers): seq[tuple[key, value: cstring]]	
+`[]`	jsheaders.html#[],Headers,cstring	jsheaders: `[]`(self: Headers; key: cstring): cstring	
+`[]=`	jsheaders.html#[]=,Headers,cstring,cstring	jsheaders: `[]=`(self: Headers; key: cstring; value: cstring)	
+clear	jsheaders.html#clear,Headers	jsheaders: clear(self: Headers)	
+toCstring	jsheaders.html#toCstring,Headers	jsheaders: toCstring(self: Headers): cstring	
+`$`	jsheaders.html#$,Headers	jsheaders: `$`(self: Headers): string	
+len	jsheaders.html#len,Headers	jsheaders: len(self: Headers): int	

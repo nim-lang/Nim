@@ -1,0 +1,2 @@
+setupVM	scriptconfig.html#setupVM,PSym,IdentCache,string,ModuleGraph,IdGenerator	scriptconfig: setupVM(module: PSym; cache: IdentCache; scriptName: string; graph: ModuleGraph;\n        idgen: IdGenerator): PEvalContext	
+runNimScript	scriptconfig.html#runNimScript,IdentCache,AbsoluteFile,IdGenerator,ConfigRef,PLLStream	scriptconfig: runNimScript(cache: IdentCache; scriptName: AbsoluteFile; idgen: IdGenerator;\n             freshDefines = true; conf: ConfigRef; stream: PLLStream)	

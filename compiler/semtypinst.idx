@@ -1,0 +1,17 @@
+checkConstructedType	semtypinst.html#checkConstructedType,ConfigRef,TLineInfo,PType	semtypinst: checkConstructedType(conf: ConfigRef; info: TLineInfo; typ: PType)	
+searchInstTypes	semtypinst.html#searchInstTypes,ModuleGraph,PType	semtypinst: searchInstTypes(g: ModuleGraph; key: PType): PType	
+LayeredIdTable	semtypinst.html#LayeredIdTable	semtypinst: LayeredIdTable	
+TReplTypeVars	semtypinst.html#TReplTypeVars	semtypinst: TReplTypeVars	
+initLayeredTypeMap	semtypinst.html#initLayeredTypeMap,TIdTable	semtypinst: initLayeredTypeMap(pt: TIdTable): LayeredIdTable	
+newTypeMapLayer	semtypinst.html#newTypeMapLayer,TReplTypeVars	semtypinst: newTypeMapLayer(cl: var TReplTypeVars): LayeredIdTable	
+replaceTypeVarsT	semtypinst.html#replaceTypeVarsT,TReplTypeVars,PType	semtypinst: replaceTypeVarsT(cl: var TReplTypeVars; t: PType): PType	
+replaceTypeVarsN	semtypinst.html#replaceTypeVarsN,TReplTypeVars,PNode,int	semtypinst: replaceTypeVarsN(cl: var TReplTypeVars; n: PNode; start = 0): PNode	
+instCopyType	semtypinst.html#instCopyType,TReplTypeVars,PType	semtypinst: instCopyType(cl: var TReplTypeVars; t: PType): PType	
+eraseVoidParams	semtypinst.html#eraseVoidParams,PType	semtypinst: eraseVoidParams(t: PType)	
+skipIntLiteralParams	semtypinst.html#skipIntLiteralParams,PType,IdGenerator	semtypinst: skipIntLiteralParams(t: PType; idgen: IdGenerator)	
+initTypeVars	semtypinst.html#initTypeVars,PContext,LayeredIdTable,TLineInfo,PSym	semtypinst: initTypeVars(p: PContext; typeMap: LayeredIdTable; info: TLineInfo; owner: PSym): TReplTypeVars	
+replaceTypesInBody	semtypinst.html#replaceTypesInBody,PContext,TIdTable,PNode,PSym	semtypinst: replaceTypesInBody(p: PContext; pt: TIdTable; n: PNode; owner: PSym;\n                   allowMetaTypes = false): PNode	
+recomputeFieldPositions	semtypinst.html#recomputeFieldPositions,PType,PNode,int	semtypinst: recomputeFieldPositions(t: PType; obj: PNode; currPosition: var int)	
+generateTypeInstance	semtypinst.html#generateTypeInstance,PContext,TIdTable,TLineInfo,PType	semtypinst: generateTypeInstance(p: PContext; pt: TIdTable; info: TLineInfo; t: PType): PType	
+prepareMetatypeForSigmatch	semtypinst.html#prepareMetatypeForSigmatch,PContext,TIdTable,TLineInfo,PType	semtypinst: prepareMetatypeForSigmatch(p: PContext; pt: TIdTable; info: TLineInfo; t: PType): PType	
+generateTypeInstance	semtypinst.html#generateTypeInstance.t,PContext,TIdTable,PNode,PType	semtypinst: generateTypeInstance(p: PContext; pt: TIdTable; arg: PNode; t: PType): untyped	

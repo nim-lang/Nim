@@ -1,0 +1,1 @@
+semLocals	plugins/locals.html#semLocals,PContext,PNode	locals: semLocals(c: PContext; n: PNode): PNode	

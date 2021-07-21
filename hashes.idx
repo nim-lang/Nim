@@ -1,0 +1,22 @@
+Hash	hashes.html#Hash	hashes: Hash	
+`!&amp;`	hashes.html#!&,Hash,int	hashes: `!&amp;`(h: Hash; val: int): Hash	
+`!$`	hashes.html#!$,Hash	hashes: `!$`(h: Hash): Hash	
+hashWangYi1	hashes.html#hashWangYi1	hashes: hashWangYi1(x: int64 | uint64 | Hash): Hash	
+hashData	hashes.html#hashData,pointer,int	hashes: hashData(data: pointer; size: int): Hash	
+hashIdentity	hashes.html#hashIdentity,T	hashes: hashIdentity[T: Ordinal | enum](x: T): Hash	
+hash	hashes.html#hash,T	hashes: hash[T: Ordinal | enum](x: T): Hash	
+hash	hashes.html#hash,pointer	hashes: hash(x: pointer): Hash	
+hash	hashes.html#hash,ptr.	hashes: hash[T](x: ptr [T]): Hash	
+hash	hashes.html#hash,float	hashes: hash(x: float): Hash	
+hash	hashes.html#hash,string	hashes: hash(x: string): Hash	
+hash	hashes.html#hash,cstring	hashes: hash(x: cstring): Hash	
+hash	hashes.html#hash,string,int,int	hashes: hash(sBuf: string; sPos, ePos: int): Hash	
+hashIgnoreStyle	hashes.html#hashIgnoreStyle,string	hashes: hashIgnoreStyle(x: string): Hash	
+hashIgnoreStyle	hashes.html#hashIgnoreStyle,string,int,int	hashes: hashIgnoreStyle(sBuf: string; sPos, ePos: int): Hash	
+hashIgnoreCase	hashes.html#hashIgnoreCase,string	hashes: hashIgnoreCase(x: string): Hash	
+hashIgnoreCase	hashes.html#hashIgnoreCase,string,int,int	hashes: hashIgnoreCase(sBuf: string; sPos, ePos: int): Hash	
+hash	hashes.html#hash,T_2	hashes: hash[T: tuple | object | proc](x: T): Hash	
+hash	hashes.html#hash,openArray[A]	hashes: hash[A](x: openArray[A]): Hash	
+hash	hashes.html#hash,openArray[A],int,int	hashes: hash[A](aBuf: openArray[A]; sPos, ePos: int): Hash	
+hash	hashes.html#hash,set[A]	hashes: hash[A](x: set[A]): Hash	
+See also	hashes.html#see-also	 See also	

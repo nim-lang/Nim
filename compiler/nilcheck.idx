@@ -1,0 +1,20 @@
+add	nilcheck.html#add,SeqOfDistinct[T,U],U	nilcheck: add[T, U](a: var SeqOfDistinct[T, U]; value: U)	
+Parent	nilcheck.html#Parent	Nilability.Parent	
+Safe	nilcheck.html#Safe	Nilability.Safe	
+MaybeNil	nilcheck.html#MaybeNil	Nilability.MaybeNil	
+Nil	nilcheck.html#Nil	Nilability.Nil	
+Unreachable	nilcheck.html#Unreachable	Nilability.Unreachable	
+Nilability	nilcheck.html#Nilability	nilcheck: Nilability	
+`&lt;`	nilcheck.html#<,ExprIndex,ExprIndex	nilcheck: `&lt;`(a: ExprIndex; b: ExprIndex): bool	
+`&lt;=`	nilcheck.html#<=,ExprIndex,ExprIndex	nilcheck: `&lt;=`(a: ExprIndex; b: ExprIndex): bool	
+`&gt;`	nilcheck.html#>,ExprIndex,ExprIndex	nilcheck: `&gt;`(a: ExprIndex; b: ExprIndex): bool	
+`&gt;=`	nilcheck.html#>=,ExprIndex,ExprIndex	nilcheck: `&gt;=`(a: ExprIndex; b: ExprIndex): bool	
+`==`	nilcheck.html#==,ExprIndex,ExprIndex	nilcheck: `==`(a: ExprIndex; b: ExprIndex): bool	
+`$`	nilcheck.html#$,ExprIndex	nilcheck: `$`(a: ExprIndex): string	
+`+`	nilcheck.html#+,ExprIndex,ExprIndex	nilcheck: `+`(a: ExprIndex; b: ExprIndex): ExprIndex	
+`-`	nilcheck.html#-,ExprIndex,ExprIndex	nilcheck: `-`(a: ExprIndex; b: ExprIndex): ExprIndex	
+`$`	nilcheck.html#$,SetIndex	nilcheck: `$`(a: SetIndex): string	
+`==`	nilcheck.html#==,SetIndex,SetIndex	nilcheck: `==`(a: SetIndex; b: SetIndex): bool	
+`+`	nilcheck.html#+,SetIndex,SetIndex	nilcheck: `+`(a: SetIndex; b: SetIndex): SetIndex	
+`-`	nilcheck.html#-,SetIndex,SetIndex	nilcheck: `-`(a: SetIndex; b: SetIndex): SetIndex	
+checkNil	nilcheck.html#checkNil,PSym,PNode,ConfigRef,IdGenerator	nilcheck: checkNil(s: PSym; body: PNode; conf: ConfigRef; idgen: IdGenerator)	

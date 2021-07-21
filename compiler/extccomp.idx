@@ -1,0 +1,38 @@
+hasSwitchRange	extccomp.html#hasSwitchRange	TInfoCCProp.hasSwitchRange	
+hasComputedGoto	extccomp.html#hasComputedGoto	TInfoCCProp.hasComputedGoto	
+hasCpp	extccomp.html#hasCpp	TInfoCCProp.hasCpp	
+hasAssume	extccomp.html#hasAssume	TInfoCCProp.hasAssume	
+hasGcGuard	extccomp.html#hasGcGuard	TInfoCCProp.hasGcGuard	
+hasGnuAsm	extccomp.html#hasGnuAsm	TInfoCCProp.hasGnuAsm	
+hasDeclspec	extccomp.html#hasDeclspec	TInfoCCProp.hasDeclspec	
+hasAttribute	extccomp.html#hasAttribute	TInfoCCProp.hasAttribute	
+TInfoCCProp	extccomp.html#TInfoCCProp	extccomp: TInfoCCProp	
+TInfoCCProps	extccomp.html#TInfoCCProps	extccomp: TInfoCCProps	
+TInfoCC	extccomp.html#TInfoCC	extccomp: TInfoCC	
+CC	extccomp.html#CC	extccomp: CC	
+hExt	extccomp.html#hExt	extccomp: hExt	
+nameToCC	extccomp.html#nameToCC,string	extccomp: nameToCC(name: string): TSystemCC	
+isVSCompatible	extccomp.html#isVSCompatible,ConfigRef	extccomp: isVSCompatible(conf: ConfigRef): bool	
+setCC	extccomp.html#setCC,ConfigRef,string,TLineInfo	extccomp: setCC(conf: ConfigRef; ccname: string; info: TLineInfo)	
+addLinkOption	extccomp.html#addLinkOption,ConfigRef,string	extccomp: addLinkOption(conf: ConfigRef; option: string)	
+addCompileOption	extccomp.html#addCompileOption,ConfigRef,string	extccomp: addCompileOption(conf: ConfigRef; option: string)	
+addLinkOptionCmd	extccomp.html#addLinkOptionCmd,ConfigRef,string	extccomp: addLinkOptionCmd(conf: ConfigRef; option: string)	
+addCompileOptionCmd	extccomp.html#addCompileOptionCmd,ConfigRef,string	extccomp: addCompileOptionCmd(conf: ConfigRef; option: string)	
+initVars	extccomp.html#initVars,ConfigRef	extccomp: initVars(conf: ConfigRef)	
+completeCfilePath	extccomp.html#completeCfilePath,ConfigRef,AbsoluteFile,bool	extccomp: completeCfilePath(conf: ConfigRef; cfile: AbsoluteFile;\n                  createSubDir: bool = true): AbsoluteFile	
+toObjFile	extccomp.html#toObjFile,ConfigRef,AbsoluteFile	extccomp: toObjFile(conf: ConfigRef; filename: AbsoluteFile): AbsoluteFile	
+addFileToCompile	extccomp.html#addFileToCompile,ConfigRef,Cfile	extccomp: addFileToCompile(conf: ConfigRef; cf: Cfile)	
+addLocalCompileOption	extccomp.html#addLocalCompileOption,ConfigRef,string,AbsoluteFile	extccomp: addLocalCompileOption(conf: ConfigRef; option: string; nimfile: AbsoluteFile)	
+resetCompilationLists	extccomp.html#resetCompilationLists,ConfigRef	extccomp: resetCompilationLists(conf: ConfigRef)	
+addExternalFileToLink	extccomp.html#addExternalFileToLink,ConfigRef,AbsoluteFile	extccomp: addExternalFileToLink(conf: ConfigRef; filename: AbsoluteFile)	
+execExternalProgram	extccomp.html#execExternalProgram,ConfigRef,string	extccomp: execExternalProgram(conf: ConfigRef; cmd: string; msg = hintExecuting)	
+ccHasSaneOverflow	extccomp.html#ccHasSaneOverflow,ConfigRef	extccomp: ccHasSaneOverflow(conf: ConfigRef): bool	
+getCompileCFileCmd	extccomp.html#getCompileCFileCmd,ConfigRef,Cfile	extccomp: getCompileCFileCmd(conf: ConfigRef; cfile: Cfile; isMainFile = false;\n                   produceOutput = false): string	
+addExternalFileToCompile	extccomp.html#addExternalFileToCompile,ConfigRef,Cfile	extccomp: addExternalFileToCompile(conf: ConfigRef; c: var Cfile)	
+addExternalFileToCompile	extccomp.html#addExternalFileToCompile,ConfigRef,AbsoluteFile	extccomp: addExternalFileToCompile(conf: ConfigRef; filename: AbsoluteFile)	
+callCCompiler	extccomp.html#callCCompiler,ConfigRef	extccomp: callCCompiler(conf: ConfigRef)	
+jsonBuildInstructionsFile	extccomp.html#jsonBuildInstructionsFile,ConfigRef	extccomp: jsonBuildInstructionsFile(conf: ConfigRef): AbsoluteFile	
+writeJsonBuildInstructions	extccomp.html#writeJsonBuildInstructions,ConfigRef	extccomp: writeJsonBuildInstructions(conf: ConfigRef)	
+changeDetectedViaJsonBuildInstructions	extccomp.html#changeDetectedViaJsonBuildInstructions,ConfigRef,AbsoluteFile	extccomp: changeDetectedViaJsonBuildInstructions(conf: ConfigRef; jsonFile: AbsoluteFile): bool	
+runJsonBuildInstructions	extccomp.html#runJsonBuildInstructions,ConfigRef,AbsoluteFile	extccomp: runJsonBuildInstructions(conf: ConfigRef; jsonFile: AbsoluteFile)	
+writeMapping	extccomp.html#writeMapping,ConfigRef,Rope	extccomp: writeMapping(conf: ConfigRef; symbolMapping: Rope)	

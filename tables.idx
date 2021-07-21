@@ -1,0 +1,161 @@
+Table	tables.html#Table	tables: Table	
+TableRef	tables.html#TableRef	tables: TableRef	
+defaultInitialSize	tables.html#defaultInitialSize	tables: defaultInitialSize	
+rightSize	tables.html#rightSize,Natural	tables: rightSize(count: Natural): int	
+initTable	tables.html#initTable	tables: initTable[A, B](initialSize = defaultInitialSize): Table[A, B]	
+`[]=`	tables.html#[]=,Table[A,B],A,sinkB	tables: `[]=`[A, B](t: var Table[A, B]; key: A; val: sink B)	
+toTable	tables.html#toTable,openArray[]	tables: toTable[A, B](pairs: openArray[(A, B)]): Table[A, B]	
+`[]`	tables.html#[],Table[A,B],A	tables: `[]`[A, B](t: Table[A, B]; key: A): B	
+`[]`	tables.html#[],Table[A,B],A_2	tables: `[]`[A, B](t: var Table[A, B]; key: A): var B	
+hasKey	tables.html#hasKey,Table[A,B],A	tables: hasKey[A, B](t: Table[A, B]; key: A): bool	
+contains	tables.html#contains,Table[A,B],A	tables: contains[A, B](t: Table[A, B]; key: A): bool	
+hasKeyOrPut	tables.html#hasKeyOrPut,Table[A,B],A,B	tables: hasKeyOrPut[A, B](t: var Table[A, B]; key: A; val: B): bool	
+getOrDefault	tables.html#getOrDefault,Table[A,B],A	tables: getOrDefault[A, B](t: Table[A, B]; key: A): B	
+getOrDefault	tables.html#getOrDefault,Table[A,B],A,B	tables: getOrDefault[A, B](t: Table[A, B]; key: A; default: B): B	
+mgetOrPut	tables.html#mgetOrPut,Table[A,B],A,B	tables: mgetOrPut[A, B](t: var Table[A, B]; key: A; val: B): var B	
+len	tables.html#len,Table[A,B]	tables: len[A, B](t: Table[A, B]): int	
+add	tables.html#add,Table[A,B],A,sinkB	tables: add[A, B](t: var Table[A, B]; key: A; val: sink B)	
+del	tables.html#del,Table[A,B],A	tables: del[A, B](t: var Table[A, B]; key: A)	
+pop	tables.html#pop,Table[A,B],A,B	tables: pop[A, B](t: var Table[A, B]; key: A; val: var B): bool	
+take	tables.html#take,Table[A,B],A,B	tables: take[A, B](t: var Table[A, B]; key: A; val: var B): bool	
+clear	tables.html#clear,Table[A,B]	tables: clear[A, B](t: var Table[A, B])	
+`$`	tables.html#$,Table[A,B]	tables: `$`[A, B](t: Table[A, B]): string	
+`==`	tables.html#==,Table[A,B],Table[A,B]	tables: `==`[A, B](s, t: Table[A, B]): bool	
+indexBy	tables.html#indexBy,A,proc(B)	tables: indexBy[A, B, C](collection: A; index: proc (x: B): C): Table[C, B]	
+withValue	tables.html#withValue.t,Table[A,B],A,untyped,untyped	tables: withValue[A, B](t: var Table[A, B]; key: A; value, body: untyped)	
+withValue	tables.html#withValue.t,Table[A,B],A,untyped,untyped,untyped	tables: withValue[A, B](t: var Table[A, B]; key: A; value, body1, body2: untyped)	
+pairs	tables.html#pairs.i,Table[A,B]	tables: pairs[A, B](t: Table[A, B]): (A, B)	
+mpairs	tables.html#mpairs.i,Table[A,B]	tables: mpairs[A, B](t: var Table[A, B]): (A, var B)	
+keys	tables.html#keys.i,Table[A,B]	tables: keys[A, B](t: Table[A, B]): lent A	
+values	tables.html#values.i,Table[A,B]	tables: values[A, B](t: Table[A, B]): lent B	
+mvalues	tables.html#mvalues.i,Table[A,B]	tables: mvalues[A, B](t: var Table[A, B]): var B	
+allValues	tables.html#allValues.i,Table[A,B],A	tables: allValues[A, B](t: Table[A, B]; key: A): B	
+newTable	tables.html#newTable	tables: newTable[A, B](initialSize = defaultInitialSize): TableRef[A, B]	
+newTable	tables.html#newTable,openArray[]	tables: newTable[A, B](pairs: openArray[(A, B)]): TableRef[A, B]	
+newTableFrom	tables.html#newTableFrom,A,proc(B)	tables: newTableFrom[A, B, C](collection: A; index: proc (x: B): C): TableRef[C, B]	
+`[]`	tables.html#[],TableRef[A,B],A	tables: `[]`[A, B](t: TableRef[A, B]; key: A): var B	
+`[]=`	tables.html#[]=,TableRef[A,B],A,sinkB	tables: `[]=`[A, B](t: TableRef[A, B]; key: A; val: sink B)	
+hasKey	tables.html#hasKey,TableRef[A,B],A	tables: hasKey[A, B](t: TableRef[A, B]; key: A): bool	
+contains	tables.html#contains,TableRef[A,B],A	tables: contains[A, B](t: TableRef[A, B]; key: A): bool	
+hasKeyOrPut	tables.html#hasKeyOrPut,TableRef[A,B],A,B	tables: hasKeyOrPut[A, B](t: var TableRef[A, B]; key: A; val: B): bool	
+getOrDefault	tables.html#getOrDefault,TableRef[A,B],A	tables: getOrDefault[A, B](t: TableRef[A, B]; key: A): B	
+getOrDefault	tables.html#getOrDefault,TableRef[A,B],A,B	tables: getOrDefault[A, B](t: TableRef[A, B]; key: A; default: B): B	
+mgetOrPut	tables.html#mgetOrPut,TableRef[A,B],A,B	tables: mgetOrPut[A, B](t: TableRef[A, B]; key: A; val: B): var B	
+len	tables.html#len,TableRef[A,B]	tables: len[A, B](t: TableRef[A, B]): int	
+add	tables.html#add,TableRef[A,B],A,sinkB	tables: add[A, B](t: TableRef[A, B]; key: A; val: sink B)	
+del	tables.html#del,TableRef[A,B],A	tables: del[A, B](t: TableRef[A, B]; key: A)	
+pop	tables.html#pop,TableRef[A,B],A,B	tables: pop[A, B](t: TableRef[A, B]; key: A; val: var B): bool	
+take	tables.html#take,TableRef[A,B],A,B	tables: take[A, B](t: TableRef[A, B]; key: A; val: var B): bool	
+clear	tables.html#clear,TableRef[A,B]	tables: clear[A, B](t: TableRef[A, B])	
+`$`	tables.html#$,TableRef[A,B]	tables: `$`[A, B](t: TableRef[A, B]): string	
+`==`	tables.html#==,TableRef[A,B],TableRef[A,B]	tables: `==`[A, B](s, t: TableRef[A, B]): bool	
+pairs	tables.html#pairs.i,TableRef[A,B]	tables: pairs[A, B](t: TableRef[A, B]): (A, B)	
+mpairs	tables.html#mpairs.i,TableRef[A,B]	tables: mpairs[A, B](t: TableRef[A, B]): (A, var B)	
+keys	tables.html#keys.i,TableRef[A,B]	tables: keys[A, B](t: TableRef[A, B]): lent A	
+values	tables.html#values.i,TableRef[A,B]	tables: values[A, B](t: TableRef[A, B]): lent B	
+mvalues	tables.html#mvalues.i,TableRef[A,B]	tables: mvalues[A, B](t: TableRef[A, B]): var B	
+OrderedTable	tables.html#OrderedTable	tables: OrderedTable	
+OrderedTableRef	tables.html#OrderedTableRef	tables: OrderedTableRef	
+initOrderedTable	tables.html#initOrderedTable	tables: initOrderedTable[A, B](initialSize = defaultInitialSize): OrderedTable[A, B]	
+`[]=`	tables.html#[]=,OrderedTable[A,B],A,sinkB	tables: `[]=`[A, B](t: var OrderedTable[A, B]; key: A; val: sink B)	
+toOrderedTable	tables.html#toOrderedTable,openArray[]	tables: toOrderedTable[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B]	
+`[]`	tables.html#[],OrderedTable[A,B],A	tables: `[]`[A, B](t: OrderedTable[A, B]; key: A): B	
+`[]`	tables.html#[],OrderedTable[A,B],A_2	tables: `[]`[A, B](t: var OrderedTable[A, B]; key: A): var B	
+hasKey	tables.html#hasKey,OrderedTable[A,B],A	tables: hasKey[A, B](t: OrderedTable[A, B]; key: A): bool	
+contains	tables.html#contains,OrderedTable[A,B],A	tables: contains[A, B](t: OrderedTable[A, B]; key: A): bool	
+hasKeyOrPut	tables.html#hasKeyOrPut,OrderedTable[A,B],A,B	tables: hasKeyOrPut[A, B](t: var OrderedTable[A, B]; key: A; val: B): bool	
+getOrDefault	tables.html#getOrDefault,OrderedTable[A,B],A	tables: getOrDefault[A, B](t: OrderedTable[A, B]; key: A): B	
+getOrDefault	tables.html#getOrDefault,OrderedTable[A,B],A,B	tables: getOrDefault[A, B](t: OrderedTable[A, B]; key: A; default: B): B	
+mgetOrPut	tables.html#mgetOrPut,OrderedTable[A,B],A,B	tables: mgetOrPut[A, B](t: var OrderedTable[A, B]; key: A; val: B): var B	
+len	tables.html#len,OrderedTable[A,B]	tables: len[A, B](t: OrderedTable[A, B]): int	
+add	tables.html#add,OrderedTable[A,B],A,sinkB	tables: add[A, B](t: var OrderedTable[A, B]; key: A; val: sink B)	
+del	tables.html#del,OrderedTable[A,B],A	tables: del[A, B](t: var OrderedTable[A, B]; key: A)	
+pop	tables.html#pop,OrderedTable[A,B],A,B	tables: pop[A, B](t: var OrderedTable[A, B]; key: A; val: var B): bool	
+clear	tables.html#clear,OrderedTable[A,B]	tables: clear[A, B](t: var OrderedTable[A, B])	
+sort	tables.html#sort,OrderedTable[A,B],proc(,)	tables: sort[A, B](t: var OrderedTable[A, B]; cmp: proc (x, y: (A, B)): int;\n           order = SortOrder.Ascending)	
+`$`	tables.html#$,OrderedTable[A,B]	tables: `$`[A, B](t: OrderedTable[A, B]): string	
+`==`	tables.html#==,OrderedTable[A,B],OrderedTable[A,B]	tables: `==`[A, B](s, t: OrderedTable[A, B]): bool	
+pairs	tables.html#pairs.i,OrderedTable[A,B]	tables: pairs[A, B](t: OrderedTable[A, B]): (A, B)	
+mpairs	tables.html#mpairs.i,OrderedTable[A,B]	tables: mpairs[A, B](t: var OrderedTable[A, B]): (A, var B)	
+keys	tables.html#keys.i,OrderedTable[A,B]	tables: keys[A, B](t: OrderedTable[A, B]): lent A	
+values	tables.html#values.i,OrderedTable[A,B]	tables: values[A, B](t: OrderedTable[A, B]): lent B	
+mvalues	tables.html#mvalues.i,OrderedTable[A,B]	tables: mvalues[A, B](t: var OrderedTable[A, B]): var B	
+newOrderedTable	tables.html#newOrderedTable	tables: newOrderedTable[A, B](initialSize = defaultInitialSize): OrderedTableRef[A, B]	
+newOrderedTable	tables.html#newOrderedTable,openArray[]	tables: newOrderedTable[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B]	
+`[]`	tables.html#[],OrderedTableRef[A,B],A	tables: `[]`[A, B](t: OrderedTableRef[A, B]; key: A): var B	
+`[]=`	tables.html#[]=,OrderedTableRef[A,B],A,sinkB	tables: `[]=`[A, B](t: OrderedTableRef[A, B]; key: A; val: sink B)	
+hasKey	tables.html#hasKey,OrderedTableRef[A,B],A	tables: hasKey[A, B](t: OrderedTableRef[A, B]; key: A): bool	
+contains	tables.html#contains,OrderedTableRef[A,B],A	tables: contains[A, B](t: OrderedTableRef[A, B]; key: A): bool	
+hasKeyOrPut	tables.html#hasKeyOrPut,OrderedTableRef[A,B],A,B	tables: hasKeyOrPut[A, B](t: var OrderedTableRef[A, B]; key: A; val: B): bool	
+getOrDefault	tables.html#getOrDefault,OrderedTableRef[A,B],A	tables: getOrDefault[A, B](t: OrderedTableRef[A, B]; key: A): B	
+getOrDefault	tables.html#getOrDefault,OrderedTableRef[A,B],A,B	tables: getOrDefault[A, B](t: OrderedTableRef[A, B]; key: A; default: B): B	
+mgetOrPut	tables.html#mgetOrPut,OrderedTableRef[A,B],A,B	tables: mgetOrPut[A, B](t: OrderedTableRef[A, B]; key: A; val: B): var B	
+len	tables.html#len,OrderedTableRef[A,B]	tables: len[A, B](t: OrderedTableRef[A, B]): int	
+add	tables.html#add,OrderedTableRef[A,B],A,sinkB	tables: add[A, B](t: OrderedTableRef[A, B]; key: A; val: sink B)	
+del	tables.html#del,OrderedTableRef[A,B],A	tables: del[A, B](t: OrderedTableRef[A, B]; key: A)	
+pop	tables.html#pop,OrderedTableRef[A,B],A,B	tables: pop[A, B](t: OrderedTableRef[A, B]; key: A; val: var B): bool	
+clear	tables.html#clear,OrderedTableRef[A,B]	tables: clear[A, B](t: OrderedTableRef[A, B])	
+sort	tables.html#sort,OrderedTableRef[A,B],proc(,)	tables: sort[A, B](t: OrderedTableRef[A, B]; cmp: proc (x, y: (A, B)): int;\n           order = SortOrder.Ascending)	
+`$`	tables.html#$,OrderedTableRef[A,B]	tables: `$`[A, B](t: OrderedTableRef[A, B]): string	
+`==`	tables.html#==,OrderedTableRef[A,B],OrderedTableRef[A,B]	tables: `==`[A, B](s, t: OrderedTableRef[A, B]): bool	
+pairs	tables.html#pairs.i,OrderedTableRef[A,B]	tables: pairs[A, B](t: OrderedTableRef[A, B]): (A, B)	
+mpairs	tables.html#mpairs.i,OrderedTableRef[A,B]	tables: mpairs[A, B](t: OrderedTableRef[A, B]): (A, var B)	
+keys	tables.html#keys.i,OrderedTableRef[A,B]	tables: keys[A, B](t: OrderedTableRef[A, B]): lent A	
+values	tables.html#values.i,OrderedTableRef[A,B]	tables: values[A, B](t: OrderedTableRef[A, B]): lent B	
+mvalues	tables.html#mvalues.i,OrderedTableRef[A,B]	tables: mvalues[A, B](t: OrderedTableRef[A, B]): var B	
+CountTable	tables.html#CountTable	tables: CountTable	
+CountTableRef	tables.html#CountTableRef	tables: CountTableRef	
+initCountTable	tables.html#initCountTable	tables: initCountTable[A](initialSize = defaultInitialSize): CountTable[A]	
+toCountTable	tables.html#toCountTable,openArray[A]	tables: toCountTable[A](keys: openArray[A]): CountTable[A]	
+`[]`	tables.html#[],CountTable[A],A	tables: `[]`[A](t: CountTable[A]; key: A): int	
+`[]=`	tables.html#[]=,CountTable[A],A,int	tables: `[]=`[A](t: var CountTable[A]; key: A; val: int)	
+inc	tables.html#inc,CountTable[A],A,int	tables: inc[A](t: var CountTable[A]; key: A; val = 1)	
+len	tables.html#len,CountTable[A]	tables: len[A](t: CountTable[A]): int	
+smallest	tables.html#smallest,CountTable[A]	tables: smallest[A](t: CountTable[A]): tuple[key: A, val: int]	
+largest	tables.html#largest,CountTable[A]	tables: largest[A](t: CountTable[A]): tuple[key: A, val: int]	
+hasKey	tables.html#hasKey,CountTable[A],A	tables: hasKey[A](t: CountTable[A]; key: A): bool	
+contains	tables.html#contains,CountTable[A],A	tables: contains[A](t: CountTable[A]; key: A): bool	
+getOrDefault	tables.html#getOrDefault,CountTable[A],A,int	tables: getOrDefault[A](t: CountTable[A]; key: A; default: int = 0): int	
+del	tables.html#del,CountTable[A],A	tables: del[A](t: var CountTable[A]; key: A)	
+pop	tables.html#pop,CountTable[A],A,int	tables: pop[A](t: var CountTable[A]; key: A; val: var int): bool	
+clear	tables.html#clear,CountTable[A]	tables: clear[A](t: var CountTable[A])	
+sort	tables.html#sort,CountTable[A]	tables: sort[A](t: var CountTable[A]; order = SortOrder.Descending)	
+merge	tables.html#merge,CountTable[A],CountTable[A]	tables: merge[A](s: var CountTable[A]; t: CountTable[A])	
+`$`	tables.html#$,CountTable[A]	tables: `$`[A](t: CountTable[A]): string	
+`==`	tables.html#==,CountTable[A],CountTable[A]	tables: `==`[A](s, t: CountTable[A]): bool	
+pairs	tables.html#pairs.i,CountTable[A]	tables: pairs[A](t: CountTable[A]): (A, int)	
+mpairs	tables.html#mpairs.i,CountTable[A]	tables: mpairs[A](t: var CountTable[A]): (A, var int)	
+keys	tables.html#keys.i,CountTable[A]	tables: keys[A](t: CountTable[A]): lent A	
+values	tables.html#values.i,CountTable[A]	tables: values[A](t: CountTable[A]): int	
+mvalues	tables.html#mvalues.i,CountTable[A]	tables: mvalues[A](t: var CountTable[A]): var int	
+newCountTable	tables.html#newCountTable	tables: newCountTable[A](initialSize = defaultInitialSize): CountTableRef[A]	
+newCountTable	tables.html#newCountTable,openArray[A]	tables: newCountTable[A](keys: openArray[A]): CountTableRef[A]	
+`[]`	tables.html#[],CountTableRef[A],A	tables: `[]`[A](t: CountTableRef[A]; key: A): int	
+`[]=`	tables.html#[]=,CountTableRef[A],A,int	tables: `[]=`[A](t: CountTableRef[A]; key: A; val: int)	
+inc	tables.html#inc,CountTableRef[A],A,int	tables: inc[A](t: CountTableRef[A]; key: A; val = 1)	
+smallest	tables.html#smallest,CountTableRef[A]	tables: smallest[A](t: CountTableRef[A]): tuple[key: A, val: int]	
+largest	tables.html#largest,CountTableRef[A]	tables: largest[A](t: CountTableRef[A]): tuple[key: A, val: int]	
+hasKey	tables.html#hasKey,CountTableRef[A],A	tables: hasKey[A](t: CountTableRef[A]; key: A): bool	
+contains	tables.html#contains,CountTableRef[A],A	tables: contains[A](t: CountTableRef[A]; key: A): bool	
+getOrDefault	tables.html#getOrDefault,CountTableRef[A],A,int	tables: getOrDefault[A](t: CountTableRef[A]; key: A; default: int): int	
+len	tables.html#len,CountTableRef[A]	tables: len[A](t: CountTableRef[A]): int	
+del	tables.html#del,CountTableRef[A],A	tables: del[A](t: CountTableRef[A]; key: A)	
+pop	tables.html#pop,CountTableRef[A],A,int	tables: pop[A](t: CountTableRef[A]; key: A; val: var int): bool	
+clear	tables.html#clear,CountTableRef[A]	tables: clear[A](t: CountTableRef[A])	
+sort	tables.html#sort,CountTableRef[A]	tables: sort[A](t: CountTableRef[A]; order = SortOrder.Descending)	
+merge	tables.html#merge,CountTableRef[A],CountTableRef[A]	tables: merge[A](s, t: CountTableRef[A])	
+`$`	tables.html#$,CountTableRef[A]	tables: `$`[A](t: CountTableRef[A]): string	
+`==`	tables.html#==,CountTableRef[A],CountTableRef[A]	tables: `==`[A](s, t: CountTableRef[A]): bool	
+pairs	tables.html#pairs.i,CountTableRef[A]	tables: pairs[A](t: CountTableRef[A]): (A, int)	
+mpairs	tables.html#mpairs.i,CountTableRef[A]	tables: mpairs[A](t: CountTableRef[A]): (A, var int)	
+keys	tables.html#keys.i,CountTableRef[A]	tables: keys[A](t: CountTableRef[A]): A	
+values	tables.html#values.i,CountTableRef[A]	tables: values[A](t: CountTableRef[A]): int	
+mvalues	tables.html#mvalues.i,CountTableRef[A]	tables: mvalues[A](t: CountTableRef[A]): var int	
+hash table	tables.html#hash-table_1	Module tables	
+dictionary	tables.html#dictionary_1	Module tables	
+Basic usage	tables.html#basic-usage	 Basic usage	
+Table	tables.html#basic-usage-table	  Table	
+OrderedTable	tables.html#basic-usage-orderedtable	  OrderedTable	
+CountTable	tables.html#basic-usage-counttable	  CountTable	
+Hashing	tables.html#basic-usage-hashing	  Hashing	
+See also	tables.html#see-also	 See also	

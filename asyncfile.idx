@@ -1,0 +1,16 @@
+AsyncFile	asyncfile.html#AsyncFile	asyncfile: AsyncFile	
+getFileSize	asyncfile.html#getFileSize,AsyncFile	asyncfile: getFileSize(f: AsyncFile): int64	
+newAsyncFile	asyncfile.html#newAsyncFile,AsyncFD	asyncfile: newAsyncFile(fd: AsyncFD): AsyncFile	
+openAsync	asyncfile.html#openAsync,string	asyncfile: openAsync(filename: string; mode = fmRead): AsyncFile	
+readBuffer	asyncfile.html#readBuffer,AsyncFile,pointer,int	asyncfile: readBuffer(f: AsyncFile; buf: pointer; size: int): Future[int]	
+read	asyncfile.html#read,AsyncFile,int	asyncfile: read(f: AsyncFile; size: int): Future[string]	
+readLine	asyncfile.html#readLine,AsyncFile	asyncfile: readLine(f: AsyncFile): Future[string]	
+getFilePos	asyncfile.html#getFilePos,AsyncFile	asyncfile: getFilePos(f: AsyncFile): int64	
+setFilePos	asyncfile.html#setFilePos,AsyncFile,int64	asyncfile: setFilePos(f: AsyncFile; pos: int64)	
+readAll	asyncfile.html#readAll,AsyncFile	asyncfile: readAll(f: AsyncFile): Future[string]	
+writeBuffer	asyncfile.html#writeBuffer,AsyncFile,pointer,int	asyncfile: writeBuffer(f: AsyncFile; buf: pointer; size: int): Future[void]	
+write	asyncfile.html#write,AsyncFile,string	asyncfile: write(f: AsyncFile; data: string): Future[void]	
+setFileSize	asyncfile.html#setFileSize,AsyncFile,int64	asyncfile: setFileSize(f: AsyncFile; length: int64)	
+close	asyncfile.html#close,AsyncFile	asyncfile: close(f: AsyncFile)	
+writeFromStream	asyncfile.html#writeFromStream,AsyncFile,FutureStream[string]	asyncfile: writeFromStream(f: AsyncFile; fs: FutureStream[string]): owned(Future[void])	
+readToStream	asyncfile.html#readToStream,AsyncFile,FutureStream[string]	asyncfile: readToStream(f: AsyncFile; fs: FutureStream[string]): owned(Future[void])	

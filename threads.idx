@@ -1,0 +1,14 @@
+Thread	threads.html#Thread	threads: Thread	
+`=copy`	threads.html#copy,Thread[TArg],Thread[TArg]	threads: `=copy`*[TArg](x: var Thread[TArg]; y: Thread[TArg])	
+onThreadDestruction	threads.html#onThreadDestruction,proc)	threads: onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].})	
+running	threads.html#running,Thread[TArg]	threads: running*[TArg](t: Thread[TArg]): bool	
+handle	threads.html#handle,Thread[TArg]	threads: handle*[TArg](t: Thread[TArg]): SysThread	
+joinThread	threads.html#joinThread,Thread[TArg]	threads: joinThread*[TArg](t: Thread[TArg])	
+joinThreads	threads.html#joinThreads,varargs[Thread[TArg]]	threads: joinThreads*[TArg](t: varargs[Thread[TArg]])	
+createThread	threads.html#createThread,Thread[TArg],proc(TArg),TArg	threads: createThread*[TArg](t: var Thread[TArg];\n                    tp: proc (arg: TArg) {.thread, nimcall.}; param: TArg)	
+pinToCpu	threads.html#pinToCpu,Thread[Arg],Natural	threads: pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural)	
+createThread	threads.html#createThread,Thread[void],proc)	threads: createThread*(t: var Thread[void]; tp: proc () {.thread, nimcall.})	
+getThreadId	threads.html#getThreadId	threads: getThreadId*(): int	
+CPU	threads.html#cpu_1	Module threads	
+affinity	threads.html#affinity_1	Module threads	
+Examples	threads.html#examples	 Examples	

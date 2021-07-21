@@ -1,0 +1,27 @@
+Nim IDE Integration Guide	idetools.html
+Idetools invocation	idetools.html#idetools-invocation	 Idetools invocation	
+Specifying the location of the query	idetools.html#idetools-invocation-specifying-the-location-of-the-query	  Specifying the location of the query	
+Definitions	idetools.html#idetools-invocation-definitions	  Definitions	
+Suggestions	idetools.html#idetools-invocation-suggestions	  Suggestions	
+Invocation context	idetools.html#idetools-invocation-invocation-context	  Invocation context	
+Symbol usages	idetools.html#idetools-invocation-symbol-usages	  Symbol usages	
+Expression evaluation	idetools.html#idetools-invocation-expression-evaluation	  Expression evaluation	
+Compiler as a service (CAAS)	idetools.html#compiler-as-a-service-caas	 Compiler as a service (CAAS)	
+Parsing idetools output	idetools.html#parsing-idetools-output	 Parsing idetools output	
+skConst	idetools.html#parsing-idetools-output-skconst	  skConst	
+skEnumField	idetools.html#parsing-idetools-output-skenumfield	  skEnumField	
+skForVar	idetools.html#parsing-idetools-output-skforvar	  skForVar	
+skIterator, skClosureIterator	idetools.html#parsing-idetools-output-skiterator-skclosureiterator	  skIterator, skClosureIterator	
+skLabel	idetools.html#parsing-idetools-output-sklabel	  skLabel	
+skLet	idetools.html#parsing-idetools-output-sklet	  skLet	
+skMacro	idetools.html#parsing-idetools-output-skmacro	  skMacro	
+skMethod	idetools.html#parsing-idetools-output-skmethod	  skMethod	
+skParam	idetools.html#parsing-idetools-output-skparam	  skParam	
+skProc	idetools.html#parsing-idetools-output-skproc	  skProc	
+skResult	idetools.html#parsing-idetools-output-skresult	  skResult	
+skTemplate	idetools.html#parsing-idetools-output-sktemplate	  skTemplate	
+skType	idetools.html#parsing-idetools-output-sktype	  skType	
+skVar	idetools.html#parsing-idetools-output-skvar	  skVar	
+Test suite	idetools.html#test-suite	 Test suite	
+Running the test suite	idetools.html#test-suite-running-the-test-suite	  Running the test suite	
+Test case file format	idetools.html#test-suite-test-case-file-format	  Test case file format	

@@ -1,0 +1,14 @@
+CsvRow	parsecsv.html#CsvRow	parsecsv: CsvRow	
+CsvParser	parsecsv.html#CsvParser	parsecsv: CsvParser	
+CsvError	parsecsv.html#CsvError	parsecsv: CsvError	
+open	parsecsv.html#open,CsvParser,Stream,string,char,char,char	parsecsv: open(self: var CsvParser; input: Stream; filename: string; separator = &apos;,&apos;;\n     quote = &apos;\&quot;&apos;; escape = &apos;\x00&apos;; skipInitialSpace = false)	
+open	parsecsv.html#open,CsvParser,string,char,char,char	parsecsv: open(self: var CsvParser; filename: string; separator = &apos;,&apos;; quote = &apos;\&quot;&apos;;\n     escape = &apos;\x00&apos;; skipInitialSpace = false)	
+processedRows	parsecsv.html#processedRows,CsvParser	parsecsv: processedRows(self: var CsvParser): int	
+readRow	parsecsv.html#readRow,CsvParser,int	parsecsv: readRow(self: var CsvParser; columns = 0): bool	
+close	parsecsv.html#close,CsvParser	parsecsv: close(self: var CsvParser)	
+readHeaderRow	parsecsv.html#readHeaderRow,CsvParser	parsecsv: readHeaderRow(self: var CsvParser)	
+rowEntry	parsecsv.html#rowEntry,CsvParser,string	parsecsv: rowEntry(self: var CsvParser; entry: string): var string	
+CSV	parsecsv.html#csv_1	Module parsecsv	
+comma separated value	parsecsv.html#comma-separated-value_1	Module parsecsv	
+Basic usage	parsecsv.html#basic-usage	 Basic usage	
+See also	parsecsv.html#see-also	 See also	

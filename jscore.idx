@@ -1,0 +1,74 @@
+MathLib	jscore.html#MathLib	jscore: MathLib	
+JsonLib	jscore.html#JsonLib	jscore: JsonLib	
+DateLib	jscore.html#DateLib	jscore: DateLib	
+DateTime	jscore.html#DateTime	jscore: DateTime	
+Math	jscore.html#Math	jscore: Math	
+Date	jscore.html#Date	jscore: Date	
+JSON	jscore.html#JSON	jscore: JSON	
+abs	jscore.html#abs,MathLib,SomeNumber	jscore: abs(m: MathLib; a: SomeNumber): SomeNumber	
+acos	jscore.html#acos,MathLib,SomeNumber	jscore: acos(m: MathLib; a: SomeNumber): float	
+acosh	jscore.html#acosh,MathLib,SomeNumber	jscore: acosh(m: MathLib; a: SomeNumber): float	
+asin	jscore.html#asin,MathLib,SomeNumber	jscore: asin(m: MathLib; a: SomeNumber): float	
+asinh	jscore.html#asinh,MathLib,SomeNumber	jscore: asinh(m: MathLib; a: SomeNumber): float	
+atan	jscore.html#atan,MathLib,SomeNumber	jscore: atan(m: MathLib; a: SomeNumber): float	
+atan2	jscore.html#atan2,MathLib,SomeNumber	jscore: atan2(m: MathLib; a: SomeNumber): float	
+atanh	jscore.html#atanh,MathLib,SomeNumber	jscore: atanh(m: MathLib; a: SomeNumber): float	
+cbrt	jscore.html#cbrt,MathLib,SomeFloat	jscore: cbrt(m: MathLib; f: SomeFloat): SomeFloat	
+ceil	jscore.html#ceil,MathLib,SomeFloat	jscore: ceil(m: MathLib; f: SomeFloat): SomeFloat	
+clz32	jscore.html#clz32,MathLib,SomeInteger	jscore: clz32(m: MathLib; f: SomeInteger): int	
+cos	jscore.html#cos,MathLib,SomeNumber	jscore: cos(m: MathLib; a: SomeNumber): float	
+cosh	jscore.html#cosh,MathLib,SomeNumber	jscore: cosh(m: MathLib; a: SomeNumber): float	
+exp	jscore.html#exp,MathLib,SomeNumber	jscore: exp(m: MathLib; a: SomeNumber): float	
+expm1	jscore.html#expm1,MathLib,SomeNumber	jscore: expm1(m: MathLib; a: SomeNumber): float	
+floor	jscore.html#floor,MathLib,SomeFloat	jscore: floor(m: MathLib; f: SomeFloat): int	
+fround	jscore.html#fround,MathLib,SomeFloat	jscore: fround(m: MathLib; f: SomeFloat): float32	
+hypot	jscore.html#hypot,MathLib,varargs[]	jscore: hypot(m: MathLib; args: varargs[distinct SomeNumber]): float	
+imul	jscore.html#imul,MathLib,int32,int32	jscore: imul(m: MathLib; a, b: int32): int32	
+log	jscore.html#log,MathLib,SomeNumber	jscore: log(m: MathLib; a: SomeNumber): float	
+log10	jscore.html#log10,MathLib,SomeNumber	jscore: log10(m: MathLib; a: SomeNumber): float	
+log1p	jscore.html#log1p,MathLib,SomeNumber	jscore: log1p(m: MathLib; a: SomeNumber): float	
+log2	jscore.html#log2,MathLib,SomeNumber	jscore: log2(m: MathLib; a: SomeNumber): float	
+max	jscore.html#max,MathLib,SomeNumber,SomeNumber	jscore: max(m: MathLib; a, b: SomeNumber): SomeNumber	
+min	jscore.html#min,MathLib,T,T	jscore: min[T: SomeNumber | JsRoot](m: MathLib; a, b: T): T	
+pow	jscore.html#pow,MathLib,,	jscore: pow(m: MathLib; a, b: distinct SomeNumber): float	
+random	jscore.html#random,MathLib	jscore: random(m: MathLib): float	
+round	jscore.html#round,MathLib,SomeFloat	jscore: round(m: MathLib; f: SomeFloat): int	
+sign	jscore.html#sign,MathLib,SomeNumber	jscore: sign(m: MathLib; f: SomeNumber): int	
+sin	jscore.html#sin,MathLib,SomeNumber	jscore: sin(m: MathLib; a: SomeNumber): float	
+sinh	jscore.html#sinh,MathLib,SomeNumber	jscore: sinh(m: MathLib; a: SomeNumber): float	
+sqrt	jscore.html#sqrt,MathLib,SomeFloat	jscore: sqrt(m: MathLib; f: SomeFloat): SomeFloat	
+tan	jscore.html#tan,MathLib,SomeNumber	jscore: tan(m: MathLib; a: SomeNumber): float	
+tanh	jscore.html#tanh,MathLib,SomeNumber	jscore: tanh(m: MathLib; a: SomeNumber): float	
+trunc	jscore.html#trunc,MathLib,SomeFloat	jscore: trunc(m: MathLib; f: SomeFloat): int	
+now	jscore.html#now,DateLib	jscore: now(d: DateLib): int	
+UTC	jscore.html#UTC,DateLib	jscore: UTC(d: DateLib): int	
+parse	jscore.html#parse,DateLib,cstring	jscore: parse(d: DateLib; s: cstring): int	
+newDate	jscore.html#newDate	jscore: newDate(): DateTime	
+newDate	jscore.html#newDate_2	jscore: newDate(date: int | int64 | string): DateTime	
+newDate	jscore.html#newDate,int,int,int,int,int,int,int	jscore: newDate(year, month, day, hours, minutes, seconds, milliseconds: int): DateTime	
+getDay	jscore.html#getDay,DateTime	jscore: getDay(d: DateTime): int	
+getFullYear	jscore.html#getFullYear,DateTime	jscore: getFullYear(d: DateTime): int	
+getHours	jscore.html#getHours,DateTime	jscore: getHours(d: DateTime): int	
+getMilliseconds	jscore.html#getMilliseconds,DateTime	jscore: getMilliseconds(d: DateTime): int	
+getMinutes	jscore.html#getMinutes,DateTime	jscore: getMinutes(d: DateTime): int	
+getMonth	jscore.html#getMonth,DateTime	jscore: getMonth(d: DateTime): int	
+getSeconds	jscore.html#getSeconds,DateTime	jscore: getSeconds(d: DateTime): int	
+getYear	jscore.html#getYear,DateTime	jscore: getYear(d: DateTime): int	
+getTime	jscore.html#getTime,DateTime	jscore: getTime(d: DateTime): int	
+toString	jscore.html#toString,DateTime	jscore: toString(d: DateTime): cstring	
+getUTCDate	jscore.html#getUTCDate,DateTime	jscore: getUTCDate(d: DateTime): int	
+getUTCFullYear	jscore.html#getUTCFullYear,DateTime	jscore: getUTCFullYear(d: DateTime): int	
+getUTCHours	jscore.html#getUTCHours,DateTime	jscore: getUTCHours(d: DateTime): int	
+getUTCMilliseconds	jscore.html#getUTCMilliseconds,DateTime	jscore: getUTCMilliseconds(d: DateTime): int	
+getUTCMinutes	jscore.html#getUTCMinutes,DateTime	jscore: getUTCMinutes(d: DateTime): int	
+getUTCMonth	jscore.html#getUTCMonth,DateTime	jscore: getUTCMonth(d: DateTime): int	
+getUTCSeconds	jscore.html#getUTCSeconds,DateTime	jscore: getUTCSeconds(d: DateTime): int	
+getUTCDay	jscore.html#getUTCDay,DateTime	jscore: getUTCDay(d: DateTime): int	
+getTimezoneOffset	jscore.html#getTimezoneOffset,DateTime	jscore: getTimezoneOffset(d: DateTime): int	
+setFullYear	jscore.html#setFullYear,DateTime,int	jscore: setFullYear(d: DateTime; year: int)	
+stringify	jscore.html#stringify,JsonLib,JsRoot	jscore: stringify(l: JsonLib; s: JsRoot): cstring	
+parse	jscore.html#parse,JsonLib,cstring	jscore: parse(l: JsonLib; s: cstring): JsRoot	
+debugger	jscore.html#debugger	jscore: debugger()	
+copyWithin	jscore.html#copyWithin,openArray[T],int	jscore: copyWithin[T](self: openArray[T]; target: int): seq[T]	
+copyWithin	jscore.html#copyWithin,openArray[T],int,int	jscore: copyWithin[T](self: openArray[T]; target, start: int): seq[T]	
+copyWithin	jscore.html#copyWithin,openArray[T],int,int,int	jscore: copyWithin[T](self: openArray[T]; target, start, ends: int): seq[T]	

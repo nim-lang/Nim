@@ -1,0 +1,14 @@
+SharedTable	sharedtables.html#SharedTable	sharedtables: SharedTable	
+rightSize	sharedtables.html#rightSize,Natural	sharedtables: rightSize(count: Natural): int	
+withValue	sharedtables.html#withValue.t,SharedTable[A,B],A,untyped,untyped	sharedtables: withValue[A, B](t: var SharedTable[A, B]; key: A; value, body: untyped)	
+withValue	sharedtables.html#withValue.t,SharedTable[A,B],A,untyped,untyped,untyped	sharedtables: withValue[A, B](t: var SharedTable[A, B]; key: A; value, body1, body2: untyped)	
+mget	sharedtables.html#mget,SharedTable[A,B],A	sharedtables: mget[A, B](t: var SharedTable[A, B]; key: A): var B	
+mgetOrPut	sharedtables.html#mgetOrPut,SharedTable[A,B],A,B	sharedtables: mgetOrPut[A, B](t: var SharedTable[A, B]; key: A; val: B): var B	
+hasKeyOrPut	sharedtables.html#hasKeyOrPut,SharedTable[A,B],A,B	sharedtables: hasKeyOrPut[A, B](t: var SharedTable[A, B]; key: A; val: B): bool	
+withKey	sharedtables.html#withKey,SharedTable[A,B],A,proc(A,B,bool)	sharedtables: withKey[A, B](t: var SharedTable[A, B]; key: A;\n              mapper: proc (key: A; val: var B; pairExists: var bool))	
+`[]=`	sharedtables.html#[]=,SharedTable[A,B],A,B	sharedtables: `[]=`[A, B](t: var SharedTable[A, B]; key: A; val: B)	
+add	sharedtables.html#add,SharedTable[A,B],A,B	sharedtables: add[A, B](t: var SharedTable[A, B]; key: A; val: B)	
+del	sharedtables.html#del,SharedTable[A,B],A	sharedtables: del[A, B](t: var SharedTable[A, B]; key: A)	
+len	sharedtables.html#len,SharedTable[A,B]	sharedtables: len[A, B](t: var SharedTable[A, B]): int	
+init	sharedtables.html#init,SharedTable[A,B],int	sharedtables: init[A, B](t: var SharedTable[A, B]; initialSize = 32)	
+deinitSharedTable	sharedtables.html#deinitSharedTable,SharedTable[A,B]	sharedtables: deinitSharedTable[A, B](t: var SharedTable[A, B])	

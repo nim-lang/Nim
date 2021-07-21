@@ -1,0 +1,9 @@
+Oid	oids.html#Oid	oids: Oid	
+`==`	oids.html#==,Oid,Oid	oids: `==`(oid1: Oid; oid2: Oid): bool	
+hash	oids.html#hash,Oid	oids: hash(oid: Oid): Hash	
+hexbyte	oids.html#hexbyte,char	oids: hexbyte(hex: char): int	
+parseOid	oids.html#parseOid,cstring	oids: parseOid(str: cstring): Oid	
+oidToString	oids.html#oidToString,Oid,cstring	oids: oidToString(oid: Oid; str: cstring)	
+`$`	oids.html#$,Oid	oids: `$`(oid: Oid): string	
+genOid	oids.html#genOid	oids: genOid(): Oid	
+generatedTime	oids.html#generatedTime,Oid	oids: generatedTime(oid: Oid): Time	

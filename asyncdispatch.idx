@@ -1,0 +1,61 @@
+CompletionData	asyncdispatch.html#CompletionData	asyncdispatch: CompletionData	
+PDispatcher	asyncdispatch.html#PDispatcher	asyncdispatch: PDispatcher	
+CustomRef	asyncdispatch.html#CustomRef	asyncdispatch: CustomRef	
+AsyncFD	asyncdispatch.html#AsyncFD	asyncdispatch: AsyncFD	
+AsyncEvent	asyncdispatch.html#AsyncEvent	asyncdispatch: AsyncEvent	
+Callback	asyncdispatch.html#Callback	asyncdispatch: Callback	
+`==`	asyncdispatch.html#==,AsyncFD,AsyncFD	asyncdispatch: `==`(x: AsyncFD; y: AsyncFD): bool	
+newDispatcher	asyncdispatch.html#newDispatcher	asyncdispatch: newDispatcher(): owned PDispatcher	
+setGlobalDispatcher	asyncdispatch.html#setGlobalDispatcher,sinkPDispatcher	asyncdispatch: setGlobalDispatcher(disp: sink PDispatcher)	
+getGlobalDispatcher	asyncdispatch.html#getGlobalDispatcher	asyncdispatch: getGlobalDispatcher(): PDispatcher	
+getIoHandler	asyncdispatch.html#getIoHandler,PDispatcher	asyncdispatch: getIoHandler(disp: PDispatcher): Handle	
+register	asyncdispatch.html#register,AsyncFD	asyncdispatch: register(fd: AsyncFD)	
+hasPendingOperations	asyncdispatch.html#hasPendingOperations	asyncdispatch: hasPendingOperations(): bool	
+newCustom	asyncdispatch.html#newCustom	asyncdispatch: newCustom(): CustomRef	
+recv	asyncdispatch.html#recv,AsyncFD,int	asyncdispatch: recv(socket: AsyncFD; size: int; flags = {SafeDisconn}): owned(Future[string])	
+recvInto	asyncdispatch.html#recvInto,AsyncFD,pointer,int	asyncdispatch: recvInto(socket: AsyncFD; buf: pointer; size: int; flags = {SafeDisconn}): owned(\n    Future[int])	
+send	asyncdispatch.html#send,AsyncFD,pointer,int	asyncdispatch: send(socket: AsyncFD; buf: pointer; size: int; flags = {SafeDisconn}): owned(\n    Future[void])	
+sendTo	asyncdispatch.html#sendTo,AsyncFD,pointer,int,ptr.SockAddr,SockLen	asyncdispatch: sendTo(socket: AsyncFD; data: pointer; size: int; saddr: ptr SockAddr;\n       saddrLen: SockLen; flags = {SafeDisconn}): owned(Future[void])	
+recvFromInto	asyncdispatch.html#recvFromInto,AsyncFD,pointer,int,ptr.SockAddr,ptr.SockLen	asyncdispatch: recvFromInto(socket: AsyncFD; data: pointer; size: int; saddr: ptr SockAddr;\n             saddrLen: ptr SockLen; flags = {SafeDisconn}): owned(Future[int])	
+acceptAddr	asyncdispatch.html#acceptAddr,AsyncFD	asyncdispatch: acceptAddr(socket: AsyncFD; flags = {SafeDisconn};\n           inheritable = defined(nimInheritHandles)): owned(\n    Future[tuple[address: string, client: AsyncFD]])	
+setInheritable	asyncdispatch.html#setInheritable,AsyncFD,bool	asyncdispatch: setInheritable(fd: AsyncFD; inheritable: bool): bool	
+closeSocket	asyncdispatch.html#closeSocket,AsyncFD	asyncdispatch: closeSocket(socket: AsyncFD)	
+unregister	asyncdispatch.html#unregister,AsyncFD	asyncdispatch: unregister(fd: AsyncFD)	
+contains	asyncdispatch.html#contains,PDispatcher,AsyncFD	asyncdispatch: contains(disp: PDispatcher; fd: AsyncFD): bool	
+addRead	asyncdispatch.html#addRead,AsyncFD,Callback	asyncdispatch: addRead(fd: AsyncFD; cb: Callback)	
+addWrite	asyncdispatch.html#addWrite,AsyncFD,Callback	asyncdispatch: addWrite(fd: AsyncFD; cb: Callback)	
+addTimer	asyncdispatch.html#addTimer,int,bool,Callback	asyncdispatch: addTimer(timeout: int; oneshot: bool; cb: Callback)	
+addProcess	asyncdispatch.html#addProcess,int,Callback	asyncdispatch: addProcess(pid: int; cb: Callback)	
+newAsyncEvent	asyncdispatch.html#newAsyncEvent	asyncdispatch: newAsyncEvent(): AsyncEvent	
+trigger	asyncdispatch.html#trigger,AsyncEvent	asyncdispatch: trigger(ev: AsyncEvent)	
+unregister	asyncdispatch.html#unregister,AsyncEvent	asyncdispatch: unregister(ev: AsyncEvent)	
+close	asyncdispatch.html#close,AsyncEvent	asyncdispatch: close(ev: AsyncEvent)	
+addEvent	asyncdispatch.html#addEvent,AsyncEvent,Callback	asyncdispatch: addEvent(ev: AsyncEvent; cb: Callback)	
+drain	asyncdispatch.html#drain,int	asyncdispatch: drain(timeout = 500)	
+poll	asyncdispatch.html#poll,int	asyncdispatch: poll(timeout = 500)	
+createAsyncNativeSocket	asyncdispatch.html#createAsyncNativeSocket,cint,cint,cint	asyncdispatch: createAsyncNativeSocket(domain: cint; sockType: cint; protocol: cint;\n                        inheritable = defined(nimInheritHandles)): AsyncFD	
+createAsyncNativeSocket	asyncdispatch.html#createAsyncNativeSocket,Domain,SockType,Protocol	asyncdispatch: createAsyncNativeSocket(domain: Domain = Domain.AF_INET;\n                        sockType: SockType = SOCK_STREAM;\n                        protocol: Protocol = IPPROTO_TCP;\n                        inheritable = defined(nimInheritHandles)): AsyncFD	
+dial	asyncdispatch.html#dial,string,Port,Protocol	asyncdispatch: dial(address: string; port: Port; protocol: Protocol = IPPROTO_TCP): owned(\n    Future[AsyncFD])	
+connect	asyncdispatch.html#connect,AsyncFD,string,Port	asyncdispatch: connect(socket: AsyncFD; address: string; port: Port; domain = Domain.AF_INET): owned(\n    Future[void])	
+sleepAsync	asyncdispatch.html#sleepAsync	asyncdispatch: sleepAsync(ms: int | float): owned(Future[void])	
+withTimeout	asyncdispatch.html#withTimeout,Future[T],int	asyncdispatch: withTimeout[T](fut: Future[T]; timeout: int): owned(Future[bool])	
+accept	asyncdispatch.html#accept,AsyncFD	asyncdispatch: accept(socket: AsyncFD; flags = {SafeDisconn};\n       inheritable = defined(nimInheritHandles)): owned(Future[AsyncFD])	
+send	asyncdispatch.html#send,AsyncFD,string	asyncdispatch: send(socket: AsyncFD; data: string; flags = {SafeDisconn}): owned(Future[void])	
+await	asyncdispatch.html#await.t,typed	asyncdispatch: await(f: typed): untyped	
+await	asyncdispatch.html#await.t,Future[T]	asyncdispatch: await[T](f: Future[T]): auto	
+async	asyncdispatch.html#async.m,untyped	asyncdispatch: async(prc: untyped): untyped	
+multisync	asyncdispatch.html#multisync.m,untyped	asyncdispatch: multisync(prc: untyped): untyped	
+readAll	asyncdispatch.html#readAll,FutureStream[string]	asyncdispatch: readAll(future: FutureStream[string]): owned(Future[string])	
+callSoon	asyncdispatch.html#callSoon,proc)	asyncdispatch: callSoon(cbproc: proc () {.gcsafe.})	
+runForever	asyncdispatch.html#runForever	asyncdispatch: runForever()	
+waitFor	asyncdispatch.html#waitFor,Future[T]	asyncdispatch: waitFor[T](fut: Future[T]): T	
+activeDescriptors	asyncdispatch.html#activeDescriptors	asyncdispatch: activeDescriptors(): int	
+maxDescriptors	asyncdispatch.html#maxDescriptors	asyncdispatch: maxDescriptors(): int	
+epoll	asyncdispatch.html#epoll_1	Module asyncdispatch	
+kqueue	asyncdispatch.html#kqueue_1	Module asyncdispatch	
+Asynchronous procedures	asyncdispatch.html#asynchronous-procedures	 Asynchronous procedures	
+Handling Exceptions	asyncdispatch.html#asynchronous-procedures-handling-exceptions	  Handling Exceptions	
+Discarding futures	asyncdispatch.html#discarding-futures	 Discarding futures	
+Examples	asyncdispatch.html#examples	 Examples	
+Investigating pending futures	asyncdispatch.html#investigating-pending-futures	 Investigating pending futures	
+Limitations/Bugs	asyncdispatch.html#limitationsslashbugs	 Limitations/Bugs	

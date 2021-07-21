@@ -1,0 +1,38 @@
+concat	sequtils.html#concat,varargs[seq[T]]	sequtils: concat[T](seqs: varargs[seq[T]]): seq[T]	
+count	sequtils.html#count,openArray[T],T	sequtils: count[T](s: openArray[T]; x: T): int	
+cycle	sequtils.html#cycle,openArray[T],Natural	sequtils: cycle[T](s: openArray[T]; n: Natural): seq[T]	
+repeat	sequtils.html#repeat,T,Natural	sequtils: repeat[T](x: T; n: Natural): seq[T]	
+deduplicate	sequtils.html#deduplicate,openArray[T],bool	sequtils: deduplicate[T](s: openArray[T]; isSorted: bool = false): seq[T]	
+minIndex	sequtils.html#minIndex,openArray[T]	sequtils: minIndex[T](s: openArray[T]): int	
+maxIndex	sequtils.html#maxIndex,openArray[T]	sequtils: maxIndex[T](s: openArray[T]): int	
+zip	sequtils.html#zip,,	sequtils: zip[S, T](s1: openArray[S]; s2: openArray[T]): seq[(S, T)]	
+unzip	sequtils.html#unzip,openArray[]	sequtils: unzip[S, T](s: openArray[(S, T)]): (seq[S], seq[T])	
+distribute	sequtils.html#distribute,seq[T],Positive	sequtils: distribute[T](s: seq[T]; num: Positive; spread = true): seq[seq[T]]	
+map	sequtils.html#map,openArray[T],proc(T)	sequtils: map[T, S](s: openArray[T]; op: proc (x: T): S {.closure.}): seq[S]	
+apply	sequtils.html#apply,openArray[T],proc(T)	sequtils: apply[T](s: var openArray[T]; op: proc (x: var T) {.closure.})	
+apply	sequtils.html#apply,openArray[T],proc(T)_2	sequtils: apply[T](s: var openArray[T]; op: proc (x: T): T {.closure.})	
+apply	sequtils.html#apply,openArray[T],proc(T)_3	sequtils: apply[T](s: openArray[T]; op: proc (x: T) {.closure.})	
+filter	sequtils.html#filter.i,openArray[T],proc(T)	sequtils: filter[T](s: openArray[T]; pred: proc (x: T): bool {.closure.}): T	
+filter	sequtils.html#filter,openArray[T],proc(T)	sequtils: filter[T](s: openArray[T]; pred: proc (x: T): bool {.closure.}): seq[T]	
+keepIf	sequtils.html#keepIf,seq[T],proc(T)	sequtils: keepIf[T](s: var seq[T]; pred: proc (x: T): bool {.closure.})	
+delete	sequtils.html#delete,seq[T],Slice[int]	sequtils: delete[T](s: var seq[T]; slice: Slice[int])	
+delete	sequtils.html#delete,seq[T],Natural,Natural	sequtils: delete[T](s: var seq[T]; first, last: Natural)	
+insert	sequtils.html#insert,seq[T],openArray[T],int	sequtils: insert[T](dest: var seq[T]; src: openArray[T]; pos = 0)	
+filterIt	sequtils.html#filterIt.t,untyped,untyped	sequtils: filterIt(s, pred: untyped): untyped	
+keepItIf	sequtils.html#keepItIf.t,seq,untyped	sequtils: keepItIf(varSeq: seq; pred: untyped)	
+countIt	sequtils.html#countIt.t,untyped,untyped	sequtils: countIt(s, pred: untyped): int	
+all	sequtils.html#all,openArray[T],proc(T)	sequtils: all[T](s: openArray[T]; pred: proc (x: T): bool {.closure.}): bool	
+allIt	sequtils.html#allIt.t,untyped,untyped	sequtils: allIt(s, pred: untyped): bool	
+any	sequtils.html#any,openArray[T],proc(T)	sequtils: any[T](s: openArray[T]; pred: proc (x: T): bool {.closure.}): bool	
+anyIt	sequtils.html#anyIt.t,untyped,untyped	sequtils: anyIt(s, pred: untyped): bool	
+toSeq	sequtils.html#toSeq.t,untyped	sequtils: toSeq(iter: untyped): untyped	
+foldl	sequtils.html#foldl.t,untyped,untyped	sequtils: foldl(sequence, operation: untyped): untyped	
+foldl	sequtils.html#foldl.t,,,	sequtils: foldl(sequence, operation, first): untyped	
+foldr	sequtils.html#foldr.t,untyped,untyped	sequtils: foldr(sequence, operation: untyped): untyped	
+mapIt	sequtils.html#mapIt.t,typed,untyped	sequtils: mapIt(s: typed; op: untyped): untyped	
+applyIt	sequtils.html#applyIt.t,untyped,untyped	sequtils: applyIt(varSeq, op: untyped)	
+newSeqWith	sequtils.html#newSeqWith.t,int,untyped	sequtils: newSeqWith(len: int; init: untyped): untyped	
+mapLiterals	sequtils.html#mapLiterals.m,untyped,untyped	sequtils: mapLiterals(constructor, op: untyped; nested = true): untyped	
+items	sequtils.html#items.i	sequtils: items[T](xs: iterator (): T): T	
+seq	sequtils.html#seq_1	Module sequtils	
+See also	sequtils.html#see-also	 See also	

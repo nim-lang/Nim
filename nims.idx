@@ -1,0 +1,15 @@
+NimScript	nims.html
+Limitations	nims.html#limitations	 Limitations	
+Standard library modules	nims.html#standard-library-modules	 Standard library modules	
+NimScript as a configuration file	nims.html#nimscript-as-a-configuration-file	 NimScript as a configuration file	
+NimScript as a build tool	nims.html#nimscript-as-a-build-tool	 NimScript as a build tool	
+Nimble integration	nims.html#nimble-integration	 Nimble integration	
+Standalone NimScript	nims.html#standalone-nimscript	 Standalone NimScript	
+Benefits	nims.html#benefits	 Benefits	
+Cross-Platform	nims.html#crossminusplatform	  Cross-Platform	
+Uniform Syntax	nims.html#uniform-syntax	  Uniform Syntax	
+Powerful Metaprogramming	nims.html#powerful-metaprogramming	  Powerful Metaprogramming	
+Graceful Fallback	nims.html#graceful-fallback	  Graceful Fallback	
+Evolving Scripting language	nims.html#evolving-scripting-language	  Evolving Scripting language	
+Scripting Language with a Package Manager	nims.html#scripting-language-with-a-package-manager	  Scripting Language with a Package Manager	
+DevOps Scripting	nims.html#devops-scripting	  DevOps Scripting	

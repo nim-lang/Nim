@@ -1,0 +1,2 @@
+PipeOutStream	streamwrapper.html#PipeOutStream	streamwrapper: PipeOutStream	
+newPipeOutStream	streamwrapper.html#newPipeOutStream,sink	streamwrapper: newPipeOutStream[T](s: sink (ref T)): owned PipeOutStream[T]	

@@ -1,0 +1,54 @@
+File	io.html#File	io: File	
+fmRead	io.html#fmRead	FileMode.fmRead	
+fmWrite	io.html#fmWrite	FileMode.fmWrite	
+fmReadWrite	io.html#fmReadWrite	FileMode.fmReadWrite	
+fmReadWriteExisting	io.html#fmReadWriteExisting	FileMode.fmReadWriteExisting	
+fmAppend	io.html#fmAppend	FileMode.fmAppend	
+FileMode	io.html#FileMode	io: FileMode	
+FileHandle	io.html#FileHandle	io: FileHandle	
+stdin	io.html#stdin	io: stdin	
+stdout	io.html#stdout	io: stdout	
+stderr	io.html#stderr	io: stderr	
+stdmsg	io.html#stdmsg.t	io: stdmsg(): File	
+readBuffer	io.html#readBuffer,File,pointer,Natural	io: readBuffer(f: File; buffer: pointer; len: Natural): int	
+readBytes	io.html#readBytes,File,openArray[],Natural,Natural	io: readBytes(f: File; a: var openArray[int8 | uint8]; start, len: Natural): int	
+readChars	io.html#readChars,File,openArray[char]	io: readChars(f: File; a: var openArray[char]): int	
+readChars	io.html#readChars,File,openArray[char],Natural,Natural	io: readChars(f: File; a: var openArray[char]; start, len: Natural): int	
+write	io.html#write,File,cstring	io: write(f: File; c: cstring)	
+writeBuffer	io.html#writeBuffer,File,pointer,Natural	io: writeBuffer(f: File; buffer: pointer; len: Natural): int	
+writeBytes	io.html#writeBytes,File,openArray[],Natural,Natural	io: writeBytes(f: File; a: openArray[int8 | uint8]; start, len: Natural): int	
+writeChars	io.html#writeChars,File,openArray[char],Natural,Natural	io: writeChars(f: File; a: openArray[char]; start, len: Natural): int	
+write	io.html#write,File,string	io: write(f: File; s: string)	
+close	io.html#close,File	io: close(f: File)	
+readChar	io.html#readChar,File	io: readChar(f: File): char	
+flushFile	io.html#flushFile,File	io: flushFile(f: File)	
+getFileHandle	io.html#getFileHandle,File	io: getFileHandle(f: File): FileHandle	
+getOsFileHandle	io.html#getOsFileHandle,File	io: getOsFileHandle(f: File): FileHandle	
+setInheritable	io.html#setInheritable,FileHandle,bool	io: setInheritable(f: FileHandle; inheritable: bool): bool	
+readLine	io.html#readLine,File,string	io: readLine(f: File; line: var string): bool	
+readLine	io.html#readLine,File	io: readLine(f: File): string	
+write	io.html#write,File,int	io: write(f: File; i: int)	
+write	io.html#write,File,BiggestInt	io: write(f: File; i: BiggestInt)	
+write	io.html#write,File,bool	io: write(f: File; b: bool)	
+write	io.html#write,File,float32	io: write(f: File; r: float32)	
+write	io.html#write,File,BiggestFloat	io: write(f: File; r: BiggestFloat)	
+write	io.html#write,File,char	io: write(f: File; c: char)	
+write	io.html#write,File,varargs[string,]	io: write(f: File; a: varargs[string, `$`])	
+endOfFile	io.html#endOfFile,File	io: endOfFile(f: File): bool	
+readAll	io.html#readAll,File	io: readAll(file: File): string	
+writeLine	io.html#writeLine,File,varargs[Ty,]	io: writeLine[Ty](f: File; x: varargs[Ty, `$`])	
+open	io.html#open,File,string,FileMode,int	io: open(f: var File; filename: string; mode: FileMode = fmRead; bufSize: int = -1): bool	
+reopen	io.html#reopen,File,string,FileMode	io: reopen(f: File; filename: string; mode: FileMode = fmRead): bool	
+open	io.html#open,File,FileHandle,FileMode	io: open(f: var File; filehandle: FileHandle; mode: FileMode = fmRead): bool	
+open	io.html#open,string,FileMode,int	io: open(filename: string; mode: FileMode = fmRead; bufSize: int = -1): File	
+setFilePos	io.html#setFilePos,File,int64,FileSeekPos	io: setFilePos(f: File; pos: int64; relativeTo: FileSeekPos = fspSet)	
+getFilePos	io.html#getFilePos,File	io: getFilePos(f: File): int64	
+getFileSize	io.html#getFileSize,File	io: getFileSize(f: File): int64	
+setStdIoUnbuffered	io.html#setStdIoUnbuffered	io: setStdIoUnbuffered()	
+readFile	io.html#readFile,string	io: readFile(filename: string): string	
+writeFile	io.html#writeFile,string,string	io: writeFile(filename, content: string)	
+writeFile	io.html#writeFile,string,openArray[byte]	io: writeFile(filename: string; content: openArray[byte])	
+readLines	io.html#readLines,string,Natural	io: readLines(filename: string; n: Natural): seq[string]	
+readLines	io.html#readLines.t,string	io: readLines(filename: string): seq[string]	
+lines	io.html#lines.i,string	io: lines(filename: string): string	
+lines	io.html#lines.i,File	io: lines(f: File): string	

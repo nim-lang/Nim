@@ -1,0 +1,36 @@
+RunningStat	stats.html#RunningStat	stats: RunningStat	
+RunningRegress	stats.html#RunningRegress	stats: RunningRegress	
+clear	stats.html#clear,RunningStat	stats: clear(s: var RunningStat)	
+push	stats.html#push,RunningStat,float	stats: push(s: var RunningStat; x: float)	
+push	stats.html#push,RunningStat,int	stats: push(s: var RunningStat; x: int)	
+push	stats.html#push,RunningStat,openArray[]	stats: push(s: var RunningStat; x: openArray[float | int])	
+mean	stats.html#mean,RunningStat	stats: mean(s: RunningStat): float	
+variance	stats.html#variance,RunningStat	stats: variance(s: RunningStat): float	
+varianceS	stats.html#varianceS,RunningStat	stats: varianceS(s: RunningStat): float	
+standardDeviation	stats.html#standardDeviation,RunningStat	stats: standardDeviation(s: RunningStat): float	
+standardDeviationS	stats.html#standardDeviationS,RunningStat	stats: standardDeviationS(s: RunningStat): float	
+skewness	stats.html#skewness,RunningStat	stats: skewness(s: RunningStat): float	
+skewnessS	stats.html#skewnessS,RunningStat	stats: skewnessS(s: RunningStat): float	
+kurtosis	stats.html#kurtosis,RunningStat	stats: kurtosis(s: RunningStat): float	
+kurtosisS	stats.html#kurtosisS,RunningStat	stats: kurtosisS(s: RunningStat): float	
+`+`	stats.html#+,RunningStat,RunningStat	stats: `+`(a, b: RunningStat): RunningStat	
+`+=`	stats.html#+=,RunningStat,RunningStat	stats: `+=`(a: var RunningStat; b: RunningStat)	
+`$`	stats.html#$,RunningStat	stats: `$`(a: RunningStat): string	
+mean	stats.html#mean,openArray[T]	stats: mean[T](x: openArray[T]): float	
+variance	stats.html#variance,openArray[T]	stats: variance[T](x: openArray[T]): float	
+varianceS	stats.html#varianceS,openArray[T]	stats: varianceS[T](x: openArray[T]): float	
+standardDeviation	stats.html#standardDeviation,openArray[T]	stats: standardDeviation[T](x: openArray[T]): float	
+standardDeviationS	stats.html#standardDeviationS,openArray[T]	stats: standardDeviationS[T](x: openArray[T]): float	
+skewness	stats.html#skewness,openArray[T]	stats: skewness[T](x: openArray[T]): float	
+skewnessS	stats.html#skewnessS,openArray[T]	stats: skewnessS[T](x: openArray[T]): float	
+kurtosis	stats.html#kurtosis,openArray[T]	stats: kurtosis[T](x: openArray[T]): float	
+kurtosisS	stats.html#kurtosisS,openArray[T]	stats: kurtosisS[T](x: openArray[T]): float	
+clear	stats.html#clear,RunningRegress	stats: clear(r: var RunningRegress)	
+push	stats.html#push,RunningRegress,float,float	stats: push(r: var RunningRegress; x, y: float)	
+push	stats.html#push,RunningRegress,int,int	stats: push(r: var RunningRegress; x, y: int)	
+push	stats.html#push,RunningRegress,openArray[],openArray[]	stats: push(r: var RunningRegress; x, y: openArray[float | int])	
+slope	stats.html#slope,RunningRegress	stats: slope(r: RunningRegress): float	
+intercept	stats.html#intercept,RunningRegress	stats: intercept(r: RunningRegress): float	
+correlation	stats.html#correlation,RunningRegress	stats: correlation(r: RunningRegress): float	
+`+`	stats.html#+,RunningRegress,RunningRegress	stats: `+`(a, b: RunningRegress): RunningRegress	
+`+=`	stats.html#+=,RunningRegress,RunningRegress	stats: `+=`(a: var RunningRegress; b: RunningRegress)	

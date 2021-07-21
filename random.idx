@@ -1,0 +1,28 @@
+Rand	random.html#Rand	random: Rand	
+randState	random.html#randState.t	random: randState(): untyped	
+next	random.html#next,Rand	random: next(r: var Rand): uint64	
+skipRandomNumbers	random.html#skipRandomNumbers,Rand	random: skipRandomNumbers(s: var Rand)	
+rand	random.html#rand,Rand,Natural	random: rand(r: var Rand; max: Natural): int	
+rand	random.html#rand,int	random: rand(max: int): int	
+rand	random.html#rand,Rand,range[]	random: rand(r: var Rand; max: range[0.0 .. high(float)]): float	
+rand	random.html#rand,float	random: rand(max: float): float	
+rand	random.html#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]	random: rand[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T	
+rand	random.html#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]	random: rand[T: Ordinal or SomeFloat](x: HSlice[T, T]): T	
+rand	random.html#rand,typedesc[T]	random: rand[T: SomeInteger](t: typedesc[T]): T	
+sample	random.html#sample,Rand,set[T]	random: sample[T](r: var Rand; s: set[T]): T	
+sample	random.html#sample,set[T]	random: sample[T](s: set[T]): T	
+sample	random.html#sample,Rand,openArray[T]	random: sample[T](r: var Rand; a: openArray[T]): T	
+sample	random.html#sample,openArray[T]	random: sample[T](a: openArray[T]): lent T	
+sample	random.html#sample,Rand,openArray[T],openArray[U]	random: sample[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T	
+sample	random.html#sample,openArray[T],openArray[U]	random: sample[T, U](a: openArray[T]; cdf: openArray[U]): T	
+gauss	random.html#gauss,Rand,float,float	random: gauss(r: var Rand; mu = 0.0; sigma = 1.0): float	
+gauss	random.html#gauss,float,float	random: gauss(mu = 0.0; sigma = 1.0): float	
+initRand	random.html#initRand,int64	random: initRand(seed: int64): Rand	
+randomize	random.html#randomize,int64	random: randomize(seed: int64)	
+shuffle	random.html#shuffle,Rand,openArray[T]	random: shuffle[T](r: var Rand; x: var openArray[T])	
+shuffle	random.html#shuffle,openArray[T]	random: shuffle[T](x: var openArray[T])	
+initRand	random.html#initRand,int64_2	random: initRand(seed: int64): Rand	
+initRand	random.html#initRand	random: initRand(): Rand	
+randomize	random.html#randomize	random: randomize()	
+Basic usage	random.html#basic-usage	 Basic usage	
+See also	random.html#see-also	 See also	

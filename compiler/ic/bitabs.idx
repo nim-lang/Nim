@@ -1,0 +1,16 @@
+LitId	ic/bitabs.html#LitId	bitabs: LitId	
+BiTable	ic/bitabs.html#BiTable	bitabs: BiTable	
+`$`	ic/bitabs.html#$,LitId	bitabs: `$`(x: LitId): string	
+`&lt;`	ic/bitabs.html#<,LitId,LitId	bitabs: `&lt;`(x, y: LitId): bool	
+`&lt;=`	ic/bitabs.html#<=,LitId,LitId	bitabs: `&lt;=`(x, y: LitId): bool	
+`==`	ic/bitabs.html#==,LitId,LitId	bitabs: `==`(x, y: LitId): bool	
+hash	ic/bitabs.html#hash,LitId	bitabs: hash(x: LitId): Hash	
+len	ic/bitabs.html#len,BiTable[T]	bitabs: len[T](t: BiTable[T]): int	
+hasLitId	ic/bitabs.html#hasLitId,BiTable[T],LitId	bitabs: hasLitId[T](t: BiTable[T]; x: LitId): bool	
+getKeyId	ic/bitabs.html#getKeyId,BiTable[T],T	bitabs: getKeyId[T](t: BiTable[T]; v: T): LitId	
+getOrIncl	ic/bitabs.html#getOrIncl,BiTable[T],T	bitabs: getOrIncl[T](t: var BiTable[T]; v: T): LitId	
+`[]`	ic/bitabs.html#[],BiTable[T],LitId	bitabs: `[]`[T](t: var BiTable[T]; LitId: LitId): var T	
+`[]`	ic/bitabs.html#[],BiTable[T],LitId_2	bitabs: `[]`[T](t: BiTable[T]; LitId: LitId): lent T	
+hash	ic/bitabs.html#hash,BiTable[T]	bitabs: hash[T](t: BiTable[T]): Hash	
+store	ic/bitabs.html#store,RodFile,BiTable[T]	bitabs: store[T](f: var RodFile; t: BiTable[T])	
+load	ic/bitabs.html#load,RodFile,BiTable[T]	bitabs: load[T](f: var RodFile; t: var BiTable[T])	

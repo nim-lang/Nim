@@ -1,0 +1,10 @@
+swapEndian64	endians.html#swapEndian64,pointer,pointer	endians: swapEndian64(outp, inp: pointer)	
+swapEndian32	endians.html#swapEndian32,pointer,pointer	endians: swapEndian32(outp, inp: pointer)	
+swapEndian16	endians.html#swapEndian16,pointer,pointer	endians: swapEndian16(outp, inp: pointer)	
+littleEndian64	endians.html#littleEndian64,pointer,pointer	endians: littleEndian64(outp, inp: pointer)	
+littleEndian32	endians.html#littleEndian32,pointer,pointer	endians: littleEndian32(outp, inp: pointer)	
+littleEndian16	endians.html#littleEndian16,pointer,pointer	endians: littleEndian16(outp, inp: pointer)	
+bigEndian64	endians.html#bigEndian64,pointer,pointer	endians: bigEndian64(outp, inp: pointer)	
+bigEndian32	endians.html#bigEndian32,pointer,pointer	endians: bigEndian32(outp, inp: pointer)	
+bigEndian16	endians.html#bigEndian16,pointer,pointer	endians: bigEndian16(outp, inp: pointer)	
+endian	endians.html#endian_1	Module endians	

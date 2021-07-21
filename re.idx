@@ -1,0 +1,53 @@
+MaxSubpatterns	re.html#MaxSubpatterns	re: MaxSubpatterns	
+reIgnoreCase	re.html#reIgnoreCase	RegexFlag.reIgnoreCase	
+reMultiLine	re.html#reMultiLine	RegexFlag.reMultiLine	
+reDotAll	re.html#reDotAll	RegexFlag.reDotAll	
+reExtended	re.html#reExtended	RegexFlag.reExtended	
+reStudy	re.html#reStudy	RegexFlag.reStudy	
+RegexFlag	re.html#RegexFlag	re: RegexFlag	
+Regex	re.html#Regex	re: Regex	
+RegexError	re.html#RegexError	re: RegexError	
+re	re.html#re,string	re: re(s: string; flags = {reStudy}): Regex	
+rex	re.html#rex,string	re: rex(s: string; flags = {reStudy, reExtended}): Regex	
+MaxReBufSize	re.html#MaxReBufSize	re: MaxReBufSize	
+findBounds	re.html#findBounds,cstring,Regex,openArray[string],int,int	re: findBounds(buf: cstring; pattern: Regex; matches: var openArray[string];\n           start = 0; bufSize: int): tuple[first, last: int]	
+findBounds	re.html#findBounds,string,Regex,openArray[string],int	re: findBounds(s: string; pattern: Regex; matches: var openArray[string]; start = 0): tuple[\n    first, last: int]	
+findBounds	re.html#findBounds,cstring,Regex,openArray[tuple[int,int]],int,int	re: findBounds(buf: cstring; pattern: Regex;\n           matches: var openArray[tuple[first, last: int]]; start = 0;\n           bufSize: int): tuple[first, last: int]	
+findBounds	re.html#findBounds,string,Regex,openArray[tuple[int,int]],int	re: findBounds(s: string; pattern: Regex;\n           matches: var openArray[tuple[first, last: int]]; start = 0): tuple[\n    first, last: int]	
+findBounds	re.html#findBounds,cstring,Regex,int,int	re: findBounds(buf: cstring; pattern: Regex; start = 0; bufSize: int): tuple[\n    first, last: int]	
+findBounds	re.html#findBounds,string,Regex,int	re: findBounds(s: string; pattern: Regex; start = 0): tuple[first, last: int]	
+matchLen	re.html#matchLen,string,Regex,openArray[string],int	re: matchLen(s: string; pattern: Regex; matches: var openArray[string]; start = 0): int	
+matchLen	re.html#matchLen,cstring,Regex,openArray[string],int,int	re: matchLen(buf: cstring; pattern: Regex; matches: var openArray[string];\n         start = 0; bufSize: int): int	
+matchLen	re.html#matchLen,string,Regex,int	re: matchLen(s: string; pattern: Regex; start = 0): int	
+matchLen	re.html#matchLen,cstring,Regex,int,int	re: matchLen(buf: cstring; pattern: Regex; start = 0; bufSize: int): int	
+match	re.html#match,string,Regex,int	re: match(s: string; pattern: Regex; start = 0): bool	
+match	re.html#match,string,Regex,openArray[string],int	re: match(s: string; pattern: Regex; matches: var openArray[string]; start = 0): bool	
+match	re.html#match,cstring,Regex,openArray[string],int,int	re: match(buf: cstring; pattern: Regex; matches: var openArray[string]; start = 0;\n      bufSize: int): bool	
+find	re.html#find,cstring,Regex,openArray[string],int,int	re: find(buf: cstring; pattern: Regex; matches: var openArray[string]; start = 0;\n     bufSize: int): int	
+find	re.html#find,string,Regex,openArray[string],int	re: find(s: string; pattern: Regex; matches: var openArray[string]; start = 0): int	
+find	re.html#find,cstring,Regex,int,int	re: find(buf: cstring; pattern: Regex; start = 0; bufSize: int): int	
+find	re.html#find,string,Regex,int	re: find(s: string; pattern: Regex; start = 0): int	
+findAll	re.html#findAll.i,string,Regex,int	re: findAll(s: string; pattern: Regex; start = 0): string	
+findAll	re.html#findAll.i,cstring,Regex,int,int	re: findAll(buf: cstring; pattern: Regex; start = 0; bufSize: int): string	
+findAll	re.html#findAll,string,Regex,int	re: findAll(s: string; pattern: Regex; start = 0): seq[string]	
+`=~`	re.html#=~.t,string,Regex	re: `=~`(s: string; pattern: Regex): untyped	
+contains	re.html#contains,string,Regex,int	re: contains(s: string; pattern: Regex; start = 0): bool	
+contains	re.html#contains,string,Regex,openArray[string],int	re: contains(s: string; pattern: Regex; matches: var openArray[string]; start = 0): bool	
+startsWith	re.html#startsWith,string,Regex	re: startsWith(s: string; prefix: Regex): bool	
+endsWith	re.html#endsWith,string,Regex	re: endsWith(s: string; suffix: Regex): bool	
+replace	re.html#replace,string,Regex,string	re: replace(s: string; sub: Regex; by = &quot;&quot;): string	
+replacef	re.html#replacef,string,Regex,string	re: replacef(s: string; sub: Regex; by: string): string	
+multiReplace	re.html#multiReplace,string,openArray[tuple[Regex,string]]	re: multiReplace(s: string; subs: openArray[tuple[pattern: Regex, repl: string]]): string	
+transformFile	re.html#transformFile,string,string,openArray[tuple[Regex,string]]	re: transformFile(infile, outfile: string;\n              subs: openArray[tuple[pattern: Regex, repl: string]])	
+split	re.html#split.i,string,Regex,int	re: split(s: string; sep: Regex; maxsplit = -1): string	
+split	re.html#split,string,Regex,int	re: split(s: string; sep: Regex; maxsplit = -1): seq[string]	
+escapeRe	re.html#escapeRe,string	re: escapeRe(s: string): string	
+Licence of the PCRE library	re.html#licence-of-the-pcre-library	 Licence of the PCRE library	
+Regular expression syntax and semantics	re.html#regular-expression-syntax-and-semantics	 Regular expression syntax and semantics	
+Backslash	re.html#regular-expression-syntax-and-semantics-backslash	  Backslash	
+backslash	re.html#backslash_1	Backslash	
+Non-printing characters	re.html#regular-expression-syntax-and-semantics-nonminusprinting-characters	  Non-printing characters	
+Generic character types	re.html#regular-expression-syntax-and-semantics-generic-character-types	  Generic character types	
+generic character types	re.html#generic-character-types_1	Generic character types	
+Simple assertions	re.html#regular-expression-syntax-and-semantics-simple-assertions	  Simple assertions	
+simple assertions	re.html#simple-assertions_1	Simple assertions	

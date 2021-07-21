@@ -1,0 +1,3 @@
+osOpenCmd	browsers.html#osOpenCmd	browsers: osOpenCmd	
+openDefaultBrowser	browsers.html#openDefaultBrowser,string	browsers: openDefaultBrowser(url: string)	
+openDefaultBrowser	browsers.html#openDefaultBrowser	browsers: openDefaultBrowser()	

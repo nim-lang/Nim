@@ -1,0 +1,6 @@
+XmlError	xmlparser.html#XmlError	xmlparser: XmlError	
+parseXml	xmlparser.html#parseXml,Stream,string,seq[string],set[XmlParseOption]	xmlparser: parseXml(s: Stream; filename: string; errors: var seq[string];\n         options: set[XmlParseOption] = {reportComments}): XmlNode	
+parseXml	xmlparser.html#parseXml,Stream,set[XmlParseOption]	xmlparser: parseXml(s: Stream; options: set[XmlParseOption] = {reportComments}): XmlNode	
+parseXml	xmlparser.html#parseXml,string,set[XmlParseOption]	xmlparser: parseXml(str: string; options: set[XmlParseOption] = {reportComments}): XmlNode	
+loadXml	xmlparser.html#loadXml,string,seq[string],set[XmlParseOption]	xmlparser: loadXml(path: string; errors: var seq[string];\n        options: set[XmlParseOption] = {reportComments}): XmlNode	
+loadXml	xmlparser.html#loadXml,string,set[XmlParseOption]	xmlparser: loadXml(path: string; options: set[XmlParseOption] = {reportComments}): XmlNode	

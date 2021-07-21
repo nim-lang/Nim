@@ -1,0 +1,30 @@
+InotifyEvent	inotify.html#InotifyEvent	inotify: InotifyEvent	
+IN_ACCESS	inotify.html#IN_ACCESS	inotify: IN_ACCESS	
+IN_MODIFY	inotify.html#IN_MODIFY	inotify: IN_MODIFY	
+IN_ATTRIB	inotify.html#IN_ATTRIB	inotify: IN_ATTRIB	
+IN_CLOSE_WRITE	inotify.html#IN_CLOSE_WRITE	inotify: IN_CLOSE_WRITE	
+IN_CLOSE_NOWRITE	inotify.html#IN_CLOSE_NOWRITE	inotify: IN_CLOSE_NOWRITE	
+IN_CLOSE	inotify.html#IN_CLOSE	inotify: IN_CLOSE	
+IN_OPEN	inotify.html#IN_OPEN	inotify: IN_OPEN	
+IN_MOVED_FROM	inotify.html#IN_MOVED_FROM	inotify: IN_MOVED_FROM	
+IN_MOVED_TO	inotify.html#IN_MOVED_TO	inotify: IN_MOVED_TO	
+IN_MOVE	inotify.html#IN_MOVE	inotify: IN_MOVE	
+IN_CREATE	inotify.html#IN_CREATE	inotify: IN_CREATE	
+IN_DELETE	inotify.html#IN_DELETE	inotify: IN_DELETE	
+IN_DELETE_SELF	inotify.html#IN_DELETE_SELF	inotify: IN_DELETE_SELF	
+IN_MOVE_SELF	inotify.html#IN_MOVE_SELF	inotify: IN_MOVE_SELF	
+IN_UNMOUNT	inotify.html#IN_UNMOUNT	inotify: IN_UNMOUNT	
+IN_Q_OVERFLOW	inotify.html#IN_Q_OVERFLOW	inotify: IN_Q_OVERFLOW	
+IN_IGNORED	inotify.html#IN_IGNORED	inotify: IN_IGNORED	
+IN_ONLYDIR	inotify.html#IN_ONLYDIR	inotify: IN_ONLYDIR	
+IN_DONT_FOLLOW	inotify.html#IN_DONT_FOLLOW	inotify: IN_DONT_FOLLOW	
+IN_EXCL_UNLINK	inotify.html#IN_EXCL_UNLINK	inotify: IN_EXCL_UNLINK	
+IN_MASK_ADD	inotify.html#IN_MASK_ADD	inotify: IN_MASK_ADD	
+IN_ISDIR	inotify.html#IN_ISDIR	inotify: IN_ISDIR	
+IN_ONESHOT	inotify.html#IN_ONESHOT	inotify: IN_ONESHOT	
+IN_ALL_EVENTS	inotify.html#IN_ALL_EVENTS	inotify: IN_ALL_EVENTS	
+inotify_init	inotify.html#inotify_init	inotify: inotify_init(): FileHandle	
+inotify_init1	inotify.html#inotify_init1,cint	inotify: inotify_init1(flags: cint): FileHandle	
+inotify_add_watch	inotify.html#inotify_add_watch,cint,cstring,uint32	inotify: inotify_add_watch(fd: cint; name: cstring; mask: uint32): cint	
+inotify_rm_watch	inotify.html#inotify_rm_watch,cint,cint	inotify: inotify_rm_watch(fd: cint; wd: cint): cint	
+inotify_events	inotify.html#inotify_events.i,pointer,int	inotify: inotify_events(evs: pointer; n: int): ptr InotifyEvent	

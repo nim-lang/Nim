@@ -1,0 +1,15 @@
+nilOrSysInt	magicsys.html#nilOrSysInt,ModuleGraph	magicsys: nilOrSysInt(g: ModuleGraph): PType	
+getSysSym	magicsys.html#getSysSym,ModuleGraph,TLineInfo,string	magicsys: getSysSym(g: ModuleGraph; info: TLineInfo; name: string): PSym	
+getSysMagic	magicsys.html#getSysMagic,ModuleGraph,TLineInfo,string,TMagic	magicsys: getSysMagic(g: ModuleGraph; info: TLineInfo; name: string; m: TMagic): PSym	
+sysTypeFromName	magicsys.html#sysTypeFromName,ModuleGraph,TLineInfo,string	magicsys: sysTypeFromName(g: ModuleGraph; info: TLineInfo; name: string): PType	
+getSysType	magicsys.html#getSysType,ModuleGraph,TLineInfo,TTypeKind	magicsys: getSysType(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType	
+resetSysTypes	magicsys.html#resetSysTypes,ModuleGraph	magicsys: resetSysTypes(g: ModuleGraph)	
+getFloatLitType	magicsys.html#getFloatLitType,ModuleGraph,PNode	magicsys: getFloatLitType(g: ModuleGraph; literal: PNode): PType	
+skipIntLit	magicsys.html#skipIntLit,PType,IdGenerator	magicsys: skipIntLit(t: PType; id: IdGenerator): PType	
+addSonSkipIntLit	magicsys.html#addSonSkipIntLit,PType,PType,IdGenerator	magicsys: addSonSkipIntLit(father, son: PType; id: IdGenerator)	
+getCompilerProc	magicsys.html#getCompilerProc,ModuleGraph,string	magicsys: getCompilerProc(g: ModuleGraph; name: string): PSym	
+registerCompilerProc	magicsys.html#registerCompilerProc,ModuleGraph,PSym	magicsys: registerCompilerProc(g: ModuleGraph; s: PSym)	
+registerNimScriptSymbol	magicsys.html#registerNimScriptSymbol,ModuleGraph,PSym	magicsys: registerNimScriptSymbol(g: ModuleGraph; s: PSym)	
+getNimScriptSymbol	magicsys.html#getNimScriptSymbol,ModuleGraph,string	magicsys: getNimScriptSymbol(g: ModuleGraph; name: string): PSym	
+resetNimScriptSymbols	magicsys.html#resetNimScriptSymbols,ModuleGraph	magicsys: resetNimScriptSymbols(g: ModuleGraph)	
+getMagicEqSymForType	magicsys.html#getMagicEqSymForType,ModuleGraph,PType,TLineInfo	magicsys: getMagicEqSymForType(g: ModuleGraph; t: PType; info: TLineInfo): PSym	

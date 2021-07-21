@@ -1,0 +1,9 @@
+fillObjectFields	cgen.html#fillObjectFields,BModule,PType	cgen: fillObjectFields(m: BModule; typ: PType)	
+cgDeclFrmt	cgen.html#cgDeclFrmt.t,PSym	cgen: cgDeclFrmt(s: PSym): string	
+registerInitProcs	cgen.html#registerInitProcs,BModuleList,PSym,set[ModuleBackendFlag]	cgen: registerInitProcs(g: BModuleList; m: PSym; flags: set[ModuleBackendFlag])	
+whichInitProcs	cgen.html#whichInitProcs,BModule	cgen: whichInitProcs(m: BModule): set[ModuleBackendFlag]	
+newModule	cgen.html#newModule,BModuleList,PSym,ConfigRef	cgen: newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule	
+genTopLevelStmt	cgen.html#genTopLevelStmt,BModule,PNode	cgen: genTopLevelStmt(m: BModule; n: PNode)	
+finalCodegenActions	cgen.html#finalCodegenActions,ModuleGraph,BModule,PNode	cgen: finalCodegenActions(graph: ModuleGraph; m: BModule; n: PNode)	
+cgenWriteModules	cgen.html#cgenWriteModules,RootRef,ConfigRef	cgen: cgenWriteModules(backend: RootRef; config: ConfigRef)	
+cgenPass	cgen.html#cgenPass	cgen: cgenPass	

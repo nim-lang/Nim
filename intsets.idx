@@ -1,0 +1,3 @@
+IntSet	intsets.html#IntSet	intsets: IntSet	
+toIntSet	intsets.html#toIntSet,openArray[int]	intsets: toIntSet(x: openArray[int]): IntSet	
+initIntSet	intsets.html#initIntSet	intsets: initIntSet(): IntSet	

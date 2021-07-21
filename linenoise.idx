@@ -1,0 +1,20 @@
+Completions	linenoise.html#Completions	linenoise: Completions	
+CompletionCallback	linenoise.html#CompletionCallback	linenoise: CompletionCallback	
+setCompletionCallback	linenoise.html#setCompletionCallback,CompletionCallback	linenoise: setCompletionCallback(a2: CompletionCallback)	
+addCompletion	linenoise.html#addCompletion,ptr.Completions,cstring	linenoise: addCompletion(a2: ptr Completions; a3: cstring)	
+readLine	linenoise.html#readLine,cstring	linenoise: readLine(prompt: cstring): cstring	
+historyAdd	linenoise.html#historyAdd,cstring	linenoise: historyAdd(line: cstring): cint	
+historySetMaxLen	linenoise.html#historySetMaxLen,cint	linenoise: historySetMaxLen(len: cint): cint	
+historySave	linenoise.html#historySave,cstring	linenoise: historySave(filename: cstring): cint	
+historyLoad	linenoise.html#historyLoad,cstring	linenoise: historyLoad(filename: cstring): cint	
+clearScreen	linenoise.html#clearScreen	linenoise: clearScreen()	
+setMultiLine	linenoise.html#setMultiLine,cint	linenoise: setMultiLine(ml: cint)	
+printKeyCodes	linenoise.html#printKeyCodes	linenoise: printKeyCodes()	
+free	linenoise.html#free,cstring	linenoise: free(s: cstring)	
+LinenoiseData	linenoise.html#LinenoiseData	linenoise: LinenoiseData	
+lnCtrlUnkown	linenoise.html#lnCtrlUnkown	Status.lnCtrlUnkown	
+lnCtrlC	linenoise.html#lnCtrlC	Status.lnCtrlC	
+lnCtrlD	linenoise.html#lnCtrlD	Status.lnCtrlD	
+Status	linenoise.html#Status	linenoise: Status	
+ReadLineResult	linenoise.html#ReadLineResult	linenoise: ReadLineResult	
+readLineStatus	linenoise.html#readLineStatus,string,ReadLineResult	linenoise: readLineStatus(prompt: string; result: var ReadLineResult)	

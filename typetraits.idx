@@ -1,0 +1,21 @@
+HoleyEnum	typetraits.html#HoleyEnum	typetraits: HoleyEnum	
+OrdinalEnum	typetraits.html#OrdinalEnum	typetraits: OrdinalEnum	
+name	typetraits.html#name,typedesc	typetraits: name(t: typedesc): string	
+arity	typetraits.html#arity,typedesc	typetraits: arity(t: typedesc): int	
+genericHead	typetraits.html#genericHead,typedesc	typetraits: genericHead(t: typedesc): typedesc	
+stripGenericParams	typetraits.html#stripGenericParams,typedesc	typetraits: stripGenericParams(t: typedesc): typedesc	
+supportsCopyMem	typetraits.html#supportsCopyMem,typedesc	typetraits: supportsCopyMem(t: typedesc): bool	
+isNamedTuple	typetraits.html#isNamedTuple,typedesc	typetraits: isNamedTuple(T: typedesc): bool	
+pointerBase	typetraits.html#pointerBase.t,typedesc[]	typetraits: pointerBase[T](_: typedesc[ptr T | ref T]): typedesc	
+distinctBase	typetraits.html#distinctBase,typedesc	typetraits: distinctBase(T: typedesc): typedesc	
+distinctBase	typetraits.html#distinctBase.t,T	typetraits: distinctBase[T](a: T): untyped	
+tupleLen	typetraits.html#tupleLen,typedesc[]	typetraits: tupleLen(T: typedesc[tuple]): int	
+tupleLen	typetraits.html#tupleLen.t	typetraits: tupleLen(t: tuple): int	
+get	typetraits.html#get.t,typedesc[],staticint	typetraits: get(T: typedesc[tuple]; i: static int): untyped	
+StaticParam	typetraits.html#StaticParam	typetraits: StaticParam	
+elementType	typetraits.html#elementType.t,untyped	typetraits: elementType(a: untyped): typedesc	
+enumLen	typetraits.html#enumLen.m,typedesc[]	typetraits: enumLen(T: typedesc[enum]): int	
+genericParams	typetraits.html#genericParams.t,typedesc	typetraits: genericParams(T: typedesc): untyped	
+hasClosure	typetraits.html#hasClosure,NimNode	typetraits: hasClosure(fn: NimNode): bool	
+copyMem	typetraits.html#copymem_1	Module typetraits	
+blob	typetraits.html#blob_1	Module typetraits	

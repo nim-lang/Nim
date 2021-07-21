@@ -1,0 +1,86 @@
+akNone	typeinfo.html#akNone	AnyKind.akNone	
+akBool	typeinfo.html#akBool	AnyKind.akBool	
+akChar	typeinfo.html#akChar	AnyKind.akChar	
+akEnum	typeinfo.html#akEnum	AnyKind.akEnum	
+akArray	typeinfo.html#akArray	AnyKind.akArray	
+akObject	typeinfo.html#akObject	AnyKind.akObject	
+akTuple	typeinfo.html#akTuple	AnyKind.akTuple	
+akSet	typeinfo.html#akSet	AnyKind.akSet	
+akRange	typeinfo.html#akRange	AnyKind.akRange	
+akPtr	typeinfo.html#akPtr	AnyKind.akPtr	
+akRef	typeinfo.html#akRef	AnyKind.akRef	
+akSequence	typeinfo.html#akSequence	AnyKind.akSequence	
+akProc	typeinfo.html#akProc	AnyKind.akProc	
+akPointer	typeinfo.html#akPointer	AnyKind.akPointer	
+akString	typeinfo.html#akString	AnyKind.akString	
+akCString	typeinfo.html#akCString	AnyKind.akCString	
+akInt	typeinfo.html#akInt	AnyKind.akInt	
+akInt8	typeinfo.html#akInt8	AnyKind.akInt8	
+akInt16	typeinfo.html#akInt16	AnyKind.akInt16	
+akInt32	typeinfo.html#akInt32	AnyKind.akInt32	
+akInt64	typeinfo.html#akInt64	AnyKind.akInt64	
+akFloat	typeinfo.html#akFloat	AnyKind.akFloat	
+akFloat32	typeinfo.html#akFloat32	AnyKind.akFloat32	
+akFloat64	typeinfo.html#akFloat64	AnyKind.akFloat64	
+akFloat128	typeinfo.html#akFloat128	AnyKind.akFloat128	
+akUInt	typeinfo.html#akUInt	AnyKind.akUInt	
+akUInt8	typeinfo.html#akUInt8	AnyKind.akUInt8	
+akUInt16	typeinfo.html#akUInt16	AnyKind.akUInt16	
+akUInt32	typeinfo.html#akUInt32	AnyKind.akUInt32	
+akUInt64	typeinfo.html#akUInt64	AnyKind.akUInt64	
+AnyKind	typeinfo.html#AnyKind	typeinfo: AnyKind	
+Any	typeinfo.html#Any	typeinfo: Any	
+toAny	typeinfo.html#toAny,T	typeinfo: toAny[T](x: var T): Any	
+kind	typeinfo.html#kind,Any	typeinfo: kind(x: Any): AnyKind	
+size	typeinfo.html#size,Any	typeinfo: size(x: Any): int	
+baseTypeKind	typeinfo.html#baseTypeKind,Any	typeinfo: baseTypeKind(x: Any): AnyKind	
+baseTypeSize	typeinfo.html#baseTypeSize,Any	typeinfo: baseTypeSize(x: Any): int	
+invokeNew	typeinfo.html#invokeNew,Any	typeinfo: invokeNew(x: Any)	
+invokeNewSeq	typeinfo.html#invokeNewSeq,Any,int	typeinfo: invokeNewSeq(x: Any; len: int)	
+extendSeq	typeinfo.html#extendSeq,Any	typeinfo: extendSeq(x: Any)	
+setObjectRuntimeType	typeinfo.html#setObjectRuntimeType,Any	typeinfo: setObjectRuntimeType(x: Any)	
+`[]`	typeinfo.html#[],Any,int	typeinfo: `[]`(x: Any; i: int): Any	
+`[]=`	typeinfo.html#[]=,Any,int,Any	typeinfo: `[]=`(x: Any; i: int; y: Any)	
+len	typeinfo.html#len,Any	typeinfo: len(x: Any): int	
+base	typeinfo.html#base,Any	typeinfo: base(x: Any): Any	
+isNil	typeinfo.html#isNil,Any	typeinfo: isNil(x: Any): bool	
+getPointer	typeinfo.html#getPointer,Any	typeinfo: getPointer(x: Any): pointer	
+setPointer	typeinfo.html#setPointer,Any,pointer	typeinfo: setPointer(x: Any; y: pointer)	
+fields	typeinfo.html#fields.i,Any	typeinfo: fields(x: Any): tuple[name: string, any: Any]	
+`[]=`	typeinfo.html#[]=,Any,string,Any	typeinfo: `[]=`(x: Any; fieldName: string; value: Any)	
+`[]`	typeinfo.html#[],Any,string	typeinfo: `[]`(x: Any; fieldName: string): Any	
+`[]`	typeinfo.html#[],Any	typeinfo: `[]`(x: Any): Any	
+`[]=`	typeinfo.html#[]=,Any,Any	typeinfo: `[]=`(x, y: Any)	
+getInt	typeinfo.html#getInt,Any	typeinfo: getInt(x: Any): int	
+getInt8	typeinfo.html#getInt8,Any	typeinfo: getInt8(x: Any): int8	
+getInt16	typeinfo.html#getInt16,Any	typeinfo: getInt16(x: Any): int16	
+getInt32	typeinfo.html#getInt32,Any	typeinfo: getInt32(x: Any): int32	
+getInt64	typeinfo.html#getInt64,Any	typeinfo: getInt64(x: Any): int64	
+getBiggestInt	typeinfo.html#getBiggestInt,Any	typeinfo: getBiggestInt(x: Any): BiggestInt	
+setBiggestInt	typeinfo.html#setBiggestInt,Any,BiggestInt	typeinfo: setBiggestInt(x: Any; y: BiggestInt)	
+getUInt	typeinfo.html#getUInt,Any	typeinfo: getUInt(x: Any): uint	
+getUInt8	typeinfo.html#getUInt8,Any	typeinfo: getUInt8(x: Any): uint8	
+getUInt16	typeinfo.html#getUInt16,Any	typeinfo: getUInt16(x: Any): uint16	
+getUInt32	typeinfo.html#getUInt32,Any	typeinfo: getUInt32(x: Any): uint32	
+getUInt64	typeinfo.html#getUInt64,Any	typeinfo: getUInt64(x: Any): uint64	
+getBiggestUint	typeinfo.html#getBiggestUint,Any	typeinfo: getBiggestUint(x: Any): uint64	
+setBiggestUint	typeinfo.html#setBiggestUint,Any,uint64	typeinfo: setBiggestUint(x: Any; y: uint64)	
+getChar	typeinfo.html#getChar,Any	typeinfo: getChar(x: Any): char	
+getBool	typeinfo.html#getBool,Any	typeinfo: getBool(x: Any): bool	
+skipRange	typeinfo.html#skipRange,Any	typeinfo: skipRange(x: Any): Any	
+getEnumOrdinal	typeinfo.html#getEnumOrdinal,Any,string	typeinfo: getEnumOrdinal(x: Any; name: string): int	
+getEnumField	typeinfo.html#getEnumField,Any,int	typeinfo: getEnumField(x: Any; ordinalValue: int): string	
+getEnumField	typeinfo.html#getEnumField,Any	typeinfo: getEnumField(x: Any): string	
+getFloat	typeinfo.html#getFloat,Any	typeinfo: getFloat(x: Any): float	
+getFloat32	typeinfo.html#getFloat32,Any	typeinfo: getFloat32(x: Any): float32	
+getFloat64	typeinfo.html#getFloat64,Any	typeinfo: getFloat64(x: Any): float64	
+getBiggestFloat	typeinfo.html#getBiggestFloat,Any	typeinfo: getBiggestFloat(x: Any): BiggestFloat	
+setBiggestFloat	typeinfo.html#setBiggestFloat,Any,BiggestFloat	typeinfo: setBiggestFloat(x: Any; y: BiggestFloat)	
+getString	typeinfo.html#getString,Any	typeinfo: getString(x: Any): string	
+setString	typeinfo.html#setString,Any,string	typeinfo: setString(x: Any; y: string)	
+getCString	typeinfo.html#getCString,Any	typeinfo: getCString(x: Any): cstring	
+assign	typeinfo.html#assign,Any,Any	typeinfo: assign(x, y: Any)	
+elements	typeinfo.html#elements.i,Any	typeinfo: elements(x: Any): int	
+inclSetElement	typeinfo.html#inclSetElement,Any,int	typeinfo: inclSetElement(x: Any; elem: int)	
+runtime type information	typeinfo.html#runtime-type-information_1	Module typeinfo	
+RTTI	typeinfo.html#rtti_1	Module typeinfo	

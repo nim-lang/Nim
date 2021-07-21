@@ -1,0 +1,129 @@
+MaxSubpatterns	pegs.html#MaxSubpatterns	pegs: MaxSubpatterns	
+pkEmpty	pegs.html#pkEmpty	PegKind.pkEmpty	
+pkAny	pegs.html#pkAny	PegKind.pkAny	
+pkAnyRune	pegs.html#pkAnyRune	PegKind.pkAnyRune	
+pkNewLine	pegs.html#pkNewLine	PegKind.pkNewLine	
+pkLetter	pegs.html#pkLetter	PegKind.pkLetter	
+pkLower	pegs.html#pkLower	PegKind.pkLower	
+pkUpper	pegs.html#pkUpper	PegKind.pkUpper	
+pkTitle	pegs.html#pkTitle	PegKind.pkTitle	
+pkWhitespace	pegs.html#pkWhitespace	PegKind.pkWhitespace	
+pkTerminal	pegs.html#pkTerminal	PegKind.pkTerminal	
+pkTerminalIgnoreCase	pegs.html#pkTerminalIgnoreCase	PegKind.pkTerminalIgnoreCase	
+pkTerminalIgnoreStyle	pegs.html#pkTerminalIgnoreStyle	PegKind.pkTerminalIgnoreStyle	
+pkChar	pegs.html#pkChar	PegKind.pkChar	
+pkCharChoice	pegs.html#pkCharChoice	PegKind.pkCharChoice	
+pkNonTerminal	pegs.html#pkNonTerminal	PegKind.pkNonTerminal	
+pkSequence	pegs.html#pkSequence	PegKind.pkSequence	
+pkOrderedChoice	pegs.html#pkOrderedChoice	PegKind.pkOrderedChoice	
+pkGreedyRep	pegs.html#pkGreedyRep	PegKind.pkGreedyRep	
+pkGreedyRepChar	pegs.html#pkGreedyRepChar	PegKind.pkGreedyRepChar	
+pkGreedyRepSet	pegs.html#pkGreedyRepSet	PegKind.pkGreedyRepSet	
+pkGreedyAny	pegs.html#pkGreedyAny	PegKind.pkGreedyAny	
+pkOption	pegs.html#pkOption	PegKind.pkOption	
+pkAndPredicate	pegs.html#pkAndPredicate	PegKind.pkAndPredicate	
+pkNotPredicate	pegs.html#pkNotPredicate	PegKind.pkNotPredicate	
+pkCapture	pegs.html#pkCapture	PegKind.pkCapture	
+pkBackRef	pegs.html#pkBackRef	PegKind.pkBackRef	
+pkBackRefIgnoreCase	pegs.html#pkBackRefIgnoreCase	PegKind.pkBackRefIgnoreCase	
+pkBackRefIgnoreStyle	pegs.html#pkBackRefIgnoreStyle	PegKind.pkBackRefIgnoreStyle	
+pkSearch	pegs.html#pkSearch	PegKind.pkSearch	
+pkCapturedSearch	pegs.html#pkCapturedSearch	PegKind.pkCapturedSearch	
+pkRule	pegs.html#pkRule	PegKind.pkRule	
+pkList	pegs.html#pkList	PegKind.pkList	
+pkStartAnchor	pegs.html#pkStartAnchor	PegKind.pkStartAnchor	
+PegKind	pegs.html#PegKind	pegs: PegKind	
+ntDeclared	pegs.html#ntDeclared	NonTerminalFlag.ntDeclared	
+ntUsed	pegs.html#ntUsed	NonTerminalFlag.ntUsed	
+NonTerminalFlag	pegs.html#NonTerminalFlag	pegs: NonTerminalFlag	
+Peg	pegs.html#Peg	pegs: Peg	
+NonTerminal	pegs.html#NonTerminal	pegs: NonTerminal	
+kind	pegs.html#kind,Peg	pegs: kind(p: Peg): PegKind	
+term	pegs.html#term,Peg	pegs: term(p: Peg): string	
+ch	pegs.html#ch,Peg	pegs: ch(p: Peg): char	
+charChoice	pegs.html#charChoice,Peg	pegs: charChoice(p: Peg): ref set[char]	
+nt	pegs.html#nt,Peg	pegs: nt(p: Peg): NonTerminal	
+index	pegs.html#index,Peg	pegs: index(p: Peg): range[-20 .. 20 - 1]	
+items	pegs.html#items.i,Peg	pegs: items(p: Peg): Peg	
+pairs	pegs.html#pairs.i,Peg	pegs: pairs(p: Peg): (int, Peg)	
+name	pegs.html#name,NonTerminal	pegs: name(nt: NonTerminal): string	
+line	pegs.html#line,NonTerminal	pegs: line(nt: NonTerminal): int	
+col	pegs.html#col,NonTerminal	pegs: col(nt: NonTerminal): int	
+flags	pegs.html#flags,NonTerminal	pegs: flags(nt: NonTerminal): set[NonTerminalFlag]	
+rule	pegs.html#rule,NonTerminal	pegs: rule(nt: NonTerminal): Peg	
+term	pegs.html#term,string	pegs: term(t: string): Peg	
+termIgnoreCase	pegs.html#termIgnoreCase,string	pegs: termIgnoreCase(t: string): Peg	
+termIgnoreStyle	pegs.html#termIgnoreStyle,string	pegs: termIgnoreStyle(t: string): Peg	
+term	pegs.html#term,char	pegs: term(t: char): Peg	
+charSet	pegs.html#charSet,set[char]	pegs: charSet(s: set[char]): Peg	
+`/`	pegs.html#/,varargs[Peg]	pegs: `/`(a: varargs[Peg]): Peg	
+sequence	pegs.html#sequence,varargs[Peg]	pegs: sequence(a: varargs[Peg]): Peg	
+`?`	pegs.html#?,Peg	pegs: `?`(a: Peg): Peg	
+`*`	pegs.html#*,Peg	pegs: `*`(a: Peg): Peg	
+`!*`	pegs.html#!*,Peg	pegs: `!*`(a: Peg): Peg	
+`!*\`	pegs.html#!*\,Peg	pegs: `!*\`(a: Peg): Peg	
+`+`	pegs.html#+,Peg	pegs: `+`(a: Peg): Peg	
+`&amp;`	pegs.html#&,Peg	pegs: `&amp;`(a: Peg): Peg	
+`!`	pegs.html#!,Peg	pegs: `!`(a: Peg): Peg	
+any	pegs.html#any	pegs: any(): Peg	
+anyRune	pegs.html#anyRune	pegs: anyRune(): Peg	
+newLine	pegs.html#newLine	pegs: newLine(): Peg	
+unicodeLetter	pegs.html#unicodeLetter	pegs: unicodeLetter(): Peg	
+unicodeLower	pegs.html#unicodeLower	pegs: unicodeLower(): Peg	
+unicodeUpper	pegs.html#unicodeUpper	pegs: unicodeUpper(): Peg	
+unicodeTitle	pegs.html#unicodeTitle	pegs: unicodeTitle(): Peg	
+unicodeWhitespace	pegs.html#unicodeWhitespace	pegs: unicodeWhitespace(): Peg	
+startAnchor	pegs.html#startAnchor	pegs: startAnchor(): Peg	
+endAnchor	pegs.html#endAnchor	pegs: endAnchor(): Peg	
+capture	pegs.html#capture,Peg	pegs: capture(a: Peg = Peg(kind: pkEmpty)): Peg	
+backref	pegs.html#backref,range[],bool	pegs: backref(index: range[1 .. MaxSubpatterns]; reverse: bool = false): Peg	
+backrefIgnoreCase	pegs.html#backrefIgnoreCase,range[],bool	pegs: backrefIgnoreCase(index: range[1 .. MaxSubpatterns]; reverse: bool = false): Peg	
+backrefIgnoreStyle	pegs.html#backrefIgnoreStyle,range[],bool	pegs: backrefIgnoreStyle(index: range[1 .. MaxSubpatterns]; reverse: bool = false): Peg	
+nonterminal	pegs.html#nonterminal,NonTerminal	pegs: nonterminal(n: NonTerminal): Peg	
+newNonTerminal	pegs.html#newNonTerminal,string,int,int	pegs: newNonTerminal(name: string; line, column: int): NonTerminal	
+letters	pegs.html#letters.t	pegs: letters(): Peg	
+digits	pegs.html#digits.t	pegs: digits(): Peg	
+whitespace	pegs.html#whitespace.t	pegs: whitespace(): Peg	
+identChars	pegs.html#identChars.t	pegs: identChars(): Peg	
+identStartChars	pegs.html#identStartChars.t	pegs: identStartChars(): Peg	
+ident	pegs.html#ident.t	pegs: ident(): Peg	
+natural	pegs.html#natural.t	pegs: natural(): Peg	
+`$`	pegs.html#$,Peg	pegs: `$`(r: Peg): string	
+Captures	pegs.html#Captures	pegs: Captures	
+bounds	pegs.html#bounds,Captures,range[]	pegs: bounds(c: Captures; i: range[0 .. 20 - 1]): tuple[first, last: int]	
+rawMatch	pegs.html#rawMatch,string,Peg,int,Captures	pegs: rawMatch(s: string; p: Peg; start: int; c: var Captures): int	
+eventParser	pegs.html#eventParser.t,untyped,untyped	pegs: eventParser(pegAst, handlers: untyped): (proc (s: string): int)	
+matchLen	pegs.html#matchLen,string,Peg,openArray[string],int	pegs: matchLen(s: string; pattern: Peg; matches: var openArray[string]; start = 0): int	
+matchLen	pegs.html#matchLen,string,Peg,int	pegs: matchLen(s: string; pattern: Peg; start = 0): int	
+match	pegs.html#match,string,Peg,openArray[string],int	pegs: match(s: string; pattern: Peg; matches: var openArray[string]; start = 0): bool	
+match	pegs.html#match,string,Peg,int	pegs: match(s: string; pattern: Peg; start = 0): bool	
+find	pegs.html#find,string,Peg,openArray[string],int	pegs: find(s: string; pattern: Peg; matches: var openArray[string]; start = 0): int	
+findBounds	pegs.html#findBounds,string,Peg,openArray[string],int	pegs: findBounds(s: string; pattern: Peg; matches: var openArray[string]; start = 0): tuple[\n    first, last: int]	
+find	pegs.html#find,string,Peg,int	pegs: find(s: string; pattern: Peg; start = 0): int	
+findAll	pegs.html#findAll.i,string,Peg,int	pegs: findAll(s: string; pattern: Peg; start = 0): string	
+findAll	pegs.html#findAll,string,Peg,int	pegs: findAll(s: string; pattern: Peg; start = 0): seq[string]	
+`=~`	pegs.html#=~.t,string,Peg	pegs: `=~`(s: string; pattern: Peg): bool	
+contains	pegs.html#contains,string,Peg,int	pegs: contains(s: string; pattern: Peg; start = 0): bool	
+contains	pegs.html#contains,string,Peg,openArray[string],int	pegs: contains(s: string; pattern: Peg; matches: var openArray[string]; start = 0): bool	
+startsWith	pegs.html#startsWith,string,Peg,int	pegs: startsWith(s: string; prefix: Peg; start = 0): bool	
+endsWith	pegs.html#endsWith,string,Peg,int	pegs: endsWith(s: string; suffix: Peg; start = 0): bool	
+replacef	pegs.html#replacef,string,Peg,string	pegs: replacef(s: string; sub: Peg; by: string): string	
+replace	pegs.html#replace,string,Peg,string	pegs: replace(s: string; sub: Peg; by = &quot;&quot;): string	
+parallelReplace	pegs.html#parallelReplace,string,varargs[tuple[Peg,string]]	pegs: parallelReplace(s: string; subs: varargs[tuple[pattern: Peg, repl: string]]): string	
+replace	pegs.html#replace,string,Peg,proc(int,int,openArray[string])	pegs: replace(s: string; sub: Peg;\n        cb: proc (match: int; cnt: int; caps: openArray[string]): string): string	
+transformFile	pegs.html#transformFile,string,string,varargs[tuple[Peg,string]]	pegs: transformFile(infile, outfile: string;\n              subs: varargs[tuple[pattern: Peg, repl: string]])	
+split	pegs.html#split.i,string,Peg	pegs: split(s: string; sep: Peg): string	
+split	pegs.html#split,string,Peg	pegs: split(s: string; sep: Peg): seq[string]	
+EInvalidPeg	pegs.html#EInvalidPeg	pegs: EInvalidPeg	
+parsePeg	pegs.html#parsePeg,string,string,int,int	pegs: parsePeg(pattern: string; filename = &quot;pattern&quot;; line = 1; col = 0): Peg	
+peg	pegs.html#peg,string	pegs: peg(pattern: string): Peg	
+escapePeg	pegs.html#escapePeg,string	pegs: escapePeg(s: string): string	
+any character	pegs.html#any-character_1	Module pegs	
+any rune	pegs.html#any-rune_1	Module pegs	
+newline	pegs.html#newline_1	Module pegs	
+PEG syntax and semantics	pegs.html#peg-syntax-and-semantics	 PEG syntax and semantics	
+Built-in macros	pegs.html#peg-syntax-and-semantics-builtminusin-macros	  Built-in macros	
+Supported PEG grammar	pegs.html#peg-syntax-and-semantics-supported-peg-grammar	  Supported PEG grammar	
+Examples	pegs.html#peg-syntax-and-semantics-examples	  Examples	
+PEG vs regular expression	pegs.html#peg-syntax-and-semantics-peg-vs-regular-expression	  PEG vs regular expression	
+PEG construction	pegs.html#peg-syntax-and-semantics-peg-construction	  PEG construction	

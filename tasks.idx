@@ -1,0 +1,5 @@
+Task	tasks.html#Task	tasks: Task	
+`=copy`	tasks.html#=copy,Task,Task	tasks: `=copy`(x: var Task; y: Task)	
+`=destroy`	tasks.html#=destroy,Task	tasks: `=destroy`(t: var Task)	
+invoke	tasks.html#invoke,Task	tasks: invoke(task: Task)	
+toTask	tasks.html#toTask.m	tasks: toTask(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand |\n    nkCallStrLit}): Task	

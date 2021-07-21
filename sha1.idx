@@ -1,0 +1,13 @@
+Sha1Digest	sha1.html#Sha1Digest	sha1: Sha1Digest	
+SecureHash	sha1.html#SecureHash	sha1: SecureHash	
+Sha1State	sha1.html#Sha1State	sha1: Sha1State	
+newSha1State	sha1.html#newSha1State	sha1: newSha1State(): Sha1State	
+update	sha1.html#update,Sha1State,openArray[char]	sha1: update(ctx: var Sha1State; data: openArray[char])	
+finalize	sha1.html#finalize,Sha1State	sha1: finalize(ctx: var Sha1State): Sha1Digest	
+secureHash	sha1.html#secureHash,openArray[char]	sha1: secureHash(str: openArray[char]): SecureHash	
+secureHashFile	sha1.html#secureHashFile,string	sha1: secureHashFile(filename: string): SecureHash	
+`$`	sha1.html#$,SecureHash	sha1: `$`(self: SecureHash): string	
+parseSecureHash	sha1.html#parseSecureHash,string	sha1: parseSecureHash(hash: string): SecureHash	
+`==`	sha1.html#==,SecureHash,SecureHash	sha1: `==`(a, b: SecureHash): bool	
+isValidSha1Hash	sha1.html#isValidSha1Hash,string	sha1: isValidSha1Hash(s: string): bool	
+See also	sha1.html#see-also	 See also	

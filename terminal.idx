@@ -1,0 +1,95 @@
+ansiResetCode	terminal.html#ansiResetCode	terminal: ansiResetCode	
+terminalWidthIoctl	terminal.html#terminalWidthIoctl,openArray[int]	terminal: terminalWidthIoctl(fds: openArray[int]): int	
+terminalHeightIoctl	terminal.html#terminalHeightIoctl,openArray[int]	terminal: terminalHeightIoctl(fds: openArray[int]): int	
+terminalWidth	terminal.html#terminalWidth	terminal: terminalWidth(): int	
+terminalHeight	terminal.html#terminalHeight	terminal: terminalHeight(): int	
+terminalSize	terminal.html#terminalSize	terminal: terminalSize(): tuple[w, h: int]	
+hideCursor	terminal.html#hideCursor,File	terminal: hideCursor(f: File)	
+showCursor	terminal.html#showCursor,File	terminal: showCursor(f: File)	
+setCursorPos	terminal.html#setCursorPos,File,int,int	terminal: setCursorPos(f: File; x, y: int)	
+setCursorXPos	terminal.html#setCursorXPos,File,int	terminal: setCursorXPos(f: File; x: int)	
+cursorUp	terminal.html#cursorUp,File,int	terminal: cursorUp(f: File; count = 1)	
+cursorDown	terminal.html#cursorDown,File,int	terminal: cursorDown(f: File; count = 1)	
+cursorForward	terminal.html#cursorForward,File,int	terminal: cursorForward(f: File; count = 1)	
+cursorBackward	terminal.html#cursorBackward,File,int	terminal: cursorBackward(f: File; count = 1)	
+eraseLine	terminal.html#eraseLine,File	terminal: eraseLine(f: File)	
+eraseScreen	terminal.html#eraseScreen,File	terminal: eraseScreen(f: File)	
+resetAttributes	terminal.html#resetAttributes,File	terminal: resetAttributes(f: File)	
+styleBright	terminal.html#styleBright	Style.styleBright	
+styleDim	terminal.html#styleDim	Style.styleDim	
+styleItalic	terminal.html#styleItalic	Style.styleItalic	
+styleUnderscore	terminal.html#styleUnderscore	Style.styleUnderscore	
+styleBlink	terminal.html#styleBlink	Style.styleBlink	
+styleBlinkRapid	terminal.html#styleBlinkRapid	Style.styleBlinkRapid	
+styleReverse	terminal.html#styleReverse	Style.styleReverse	
+styleHidden	terminal.html#styleHidden	Style.styleHidden	
+styleStrikethrough	terminal.html#styleStrikethrough	Style.styleStrikethrough	
+Style	terminal.html#Style	terminal: Style	
+ansiStyleCode	terminal.html#ansiStyleCode,int	terminal: ansiStyleCode(style: int): string	
+ansiStyleCode	terminal.html#ansiStyleCode.t,Style	terminal: ansiStyleCode(style: Style): string	
+ansiStyleCode	terminal.html#ansiStyleCode.t,static[Style]	terminal: ansiStyleCode(style: static[Style]): string	
+setStyle	terminal.html#setStyle,File,set[Style]	terminal: setStyle(f: File; style: set[Style])	
+writeStyled	terminal.html#writeStyled,string,set[Style]	terminal: writeStyled(txt: string; style: set[Style] = {styleBright})	
+fgBlack	terminal.html#fgBlack	ForegroundColor.fgBlack	
+fgRed	terminal.html#fgRed	ForegroundColor.fgRed	
+fgGreen	terminal.html#fgGreen	ForegroundColor.fgGreen	
+fgYellow	terminal.html#fgYellow	ForegroundColor.fgYellow	
+fgBlue	terminal.html#fgBlue	ForegroundColor.fgBlue	
+fgMagenta	terminal.html#fgMagenta	ForegroundColor.fgMagenta	
+fgCyan	terminal.html#fgCyan	ForegroundColor.fgCyan	
+fgWhite	terminal.html#fgWhite	ForegroundColor.fgWhite	
+fg8Bit	terminal.html#fg8Bit	ForegroundColor.fg8Bit	
+fgDefault	terminal.html#fgDefault	ForegroundColor.fgDefault	
+ForegroundColor	terminal.html#ForegroundColor	terminal: ForegroundColor	
+bgBlack	terminal.html#bgBlack	BackgroundColor.bgBlack	
+bgRed	terminal.html#bgRed	BackgroundColor.bgRed	
+bgGreen	terminal.html#bgGreen	BackgroundColor.bgGreen	
+bgYellow	terminal.html#bgYellow	BackgroundColor.bgYellow	
+bgBlue	terminal.html#bgBlue	BackgroundColor.bgBlue	
+bgMagenta	terminal.html#bgMagenta	BackgroundColor.bgMagenta	
+bgCyan	terminal.html#bgCyan	BackgroundColor.bgCyan	
+bgWhite	terminal.html#bgWhite	BackgroundColor.bgWhite	
+bg8Bit	terminal.html#bg8Bit	BackgroundColor.bg8Bit	
+bgDefault	terminal.html#bgDefault	BackgroundColor.bgDefault	
+BackgroundColor	terminal.html#BackgroundColor	terminal: BackgroundColor	
+setForegroundColor	terminal.html#setForegroundColor,File,ForegroundColor	terminal: setForegroundColor(f: File; fg: ForegroundColor; bright = false)	
+setBackgroundColor	terminal.html#setBackgroundColor,File,BackgroundColor	terminal: setBackgroundColor(f: File; bg: BackgroundColor; bright = false)	
+ansiForegroundColorCode	terminal.html#ansiForegroundColorCode,ForegroundColor	terminal: ansiForegroundColorCode(fg: ForegroundColor; bright = false): string	
+ansiForegroundColorCode	terminal.html#ansiForegroundColorCode.t,static[ForegroundColor],static[bool]	terminal: ansiForegroundColorCode(fg: static[ForegroundColor];\n                        bright: static[bool] = false): string	
+ansiForegroundColorCode	terminal.html#ansiForegroundColorCode,Color	terminal: ansiForegroundColorCode(color: Color): string	
+ansiForegroundColorCode	terminal.html#ansiForegroundColorCode.t,static[Color]	terminal: ansiForegroundColorCode(color: static[Color]): string	
+ansiBackgroundColorCode	terminal.html#ansiBackgroundColorCode,Color	terminal: ansiBackgroundColorCode(color: Color): string	
+ansiBackgroundColorCode	terminal.html#ansiBackgroundColorCode.t,static[Color]	terminal: ansiBackgroundColorCode(color: static[Color]): string	
+setForegroundColor	terminal.html#setForegroundColor,File,Color	terminal: setForegroundColor(f: File; color: Color)	
+setBackgroundColor	terminal.html#setBackgroundColor,File,Color	terminal: setBackgroundColor(f: File; color: Color)	
+isatty	terminal.html#isatty,File	terminal: isatty(f: File): bool	
+resetStyle	terminal.html#resetStyle	TerminalCmd.resetStyle	
+fgColor	terminal.html#fgColor	TerminalCmd.fgColor	
+bgColor	terminal.html#bgColor	TerminalCmd.bgColor	
+TerminalCmd	terminal.html#TerminalCmd	terminal: TerminalCmd	
+styledWrite	terminal.html#styledWrite.m,File,varargs[typed]	terminal: styledWrite(f: File; m: varargs[typed]): untyped	
+styledWriteLine	terminal.html#styledWriteLine.t,File,varargs[untyped]	terminal: styledWriteLine(f: File; args: varargs[untyped])	
+styledEcho	terminal.html#styledEcho.t,varargs[untyped]	terminal: styledEcho(args: varargs[untyped])	
+getch	terminal.html#getch	terminal: getch(): char	
+readPasswordFromStdin	terminal.html#readPasswordFromStdin,string,string	terminal: readPasswordFromStdin(prompt: string; password: var string): bool	
+readPasswordFromStdin	terminal.html#readPasswordFromStdin,string	terminal: readPasswordFromStdin(prompt = &quot;password: &quot;): string	
+hideCursor	terminal.html#hideCursor.t	terminal: hideCursor()	
+showCursor	terminal.html#showCursor.t	terminal: showCursor()	
+setCursorPos	terminal.html#setCursorPos.t,int,int	terminal: setCursorPos(x, y: int)	
+setCursorXPos	terminal.html#setCursorXPos.t,int	terminal: setCursorXPos(x: int)	
+cursorUp	terminal.html#cursorUp.t,int	terminal: cursorUp(count = 1)	
+cursorDown	terminal.html#cursorDown.t,int	terminal: cursorDown(count = 1)	
+cursorForward	terminal.html#cursorForward.t,int	terminal: cursorForward(count = 1)	
+cursorBackward	terminal.html#cursorBackward.t,int	terminal: cursorBackward(count = 1)	
+eraseLine	terminal.html#eraseLine.t	terminal: eraseLine()	
+eraseScreen	terminal.html#eraseScreen.t	terminal: eraseScreen()	
+setStyle	terminal.html#setStyle.t,set[Style]	terminal: setStyle(style: set[Style])	
+setForegroundColor	terminal.html#setForegroundColor.t,ForegroundColor	terminal: setForegroundColor(fg: ForegroundColor; bright = false)	
+setBackgroundColor	terminal.html#setBackgroundColor.t,BackgroundColor	terminal: setBackgroundColor(bg: BackgroundColor; bright = false)	
+setForegroundColor	terminal.html#setForegroundColor.t,Color	terminal: setForegroundColor(color: Color)	
+setBackgroundColor	terminal.html#setBackgroundColor.t,Color	terminal: setBackgroundColor(color: Color)	
+resetAttributes	terminal.html#resetAttributes	terminal: resetAttributes()	
+isTrueColorSupported	terminal.html#isTrueColorSupported	terminal: isTrueColorSupported(): bool	
+enableTrueColors	terminal.html#enableTrueColors	terminal: enableTrueColors()	
+disableTrueColors	terminal.html#disableTrueColors	terminal: disableTrueColors()	
+Playing with colorful and styled text	terminal.html#playing-with-colorful-and-styled-text	  Playing with colorful and styled text	

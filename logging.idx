@@ -1,0 +1,42 @@
+lvlAll	logging.html#lvlAll	Level.lvlAll	
+lvlDebug	logging.html#lvlDebug	Level.lvlDebug	
+lvlInfo	logging.html#lvlInfo	Level.lvlInfo	
+lvlNotice	logging.html#lvlNotice	Level.lvlNotice	
+lvlWarn	logging.html#lvlWarn	Level.lvlWarn	
+lvlError	logging.html#lvlError	Level.lvlError	
+lvlFatal	logging.html#lvlFatal	Level.lvlFatal	
+lvlNone	logging.html#lvlNone	Level.lvlNone	
+Level	logging.html#Level	logging: Level	
+LevelNames	logging.html#LevelNames	logging: LevelNames	
+defaultFmtStr	logging.html#defaultFmtStr	logging: defaultFmtStr	
+verboseFmtStr	logging.html#verboseFmtStr	logging: verboseFmtStr	
+Logger	logging.html#Logger	logging: Logger	
+ConsoleLogger	logging.html#ConsoleLogger	logging: ConsoleLogger	
+FileLogger	logging.html#FileLogger	logging: FileLogger	
+RollingFileLogger	logging.html#RollingFileLogger	logging: RollingFileLogger	
+substituteLog	logging.html#substituteLog,string,Level,varargs[string,]	logging: substituteLog(frmt: string; level: Level; args: varargs[string, `$`]): string	
+log	logging.html#log.e,Logger,Level,varargs[string,]	logging: log(logger: Logger; level: Level; args: varargs[string, `$`])	
+log	logging.html#log.e,ConsoleLogger,Level,varargs[string,]	logging: log(logger: ConsoleLogger; level: Level; args: varargs[string, `$`])	
+newConsoleLogger	logging.html#newConsoleLogger	logging: newConsoleLogger(levelThreshold = lvlAll; fmtStr = defaultFmtStr;\n                 useStderr = false): ConsoleLogger	
+log	logging.html#log.e,FileLogger,Level,varargs[string,]	logging: log(logger: FileLogger; level: Level; args: varargs[string, `$`])	
+defaultFilename	logging.html#defaultFilename	logging: defaultFilename(): string	
+newFileLogger	logging.html#newFileLogger,File	logging: newFileLogger(file: File; levelThreshold = lvlAll; fmtStr = defaultFmtStr): FileLogger	
+newFileLogger	logging.html#newFileLogger,FileMode,int	logging: newFileLogger(filename = defaultFilename(); mode: FileMode = fmAppend;\n              levelThreshold = lvlAll; fmtStr = defaultFmtStr; bufSize: int = -1): FileLogger	
+newRollingFileLogger	logging.html#newRollingFileLogger,FileMode,Positive,int	logging: newRollingFileLogger(filename = defaultFilename(); mode: FileMode = fmReadWrite;\n                     levelThreshold = lvlAll; fmtStr = defaultFmtStr;\n                     maxLines: Positive = 1000; bufSize: int = -1): RollingFileLogger	
+log	logging.html#log.e,RollingFileLogger,Level,varargs[string,]	logging: log(logger: RollingFileLogger; level: Level; args: varargs[string, `$`])	
+log	logging.html#log.t,Level,varargs[string,]	logging: log(level: Level; args: varargs[string, `$`])	
+debug	logging.html#debug.t,varargs[string,]	logging: debug(args: varargs[string, `$`])	
+info	logging.html#info.t,varargs[string,]	logging: info(args: varargs[string, `$`])	
+notice	logging.html#notice.t,varargs[string,]	logging: notice(args: varargs[string, `$`])	
+warn	logging.html#warn.t,varargs[string,]	logging: warn(args: varargs[string, `$`])	
+error	logging.html#error.t,varargs[string,]	logging: error(args: varargs[string, `$`])	
+fatal	logging.html#fatal.t,varargs[string,]	logging: fatal(args: varargs[string, `$`])	
+addHandler	logging.html#addHandler,Logger	logging: addHandler(handler: Logger)	
+getHandlers	logging.html#getHandlers	logging: getHandlers(): seq[Logger]	
+setLogFilter	logging.html#setLogFilter,Level	logging: setLogFilter(lvl: Level)	
+getLogFilter	logging.html#getLogFilter	logging: getLogFilter(): Level	
+Basic usage	logging.html#basic-usage	 Basic usage	
+Handlers	logging.html#basic-usage-handlers	  Handlers	
+Format strings	logging.html#basic-usage-format-strings	  Format strings	
+Notes when using multiple threads	logging.html#basic-usage-notes-when-using-multiple-threads	  Notes when using multiple threads	
+See also	logging.html#see-also	 See also	

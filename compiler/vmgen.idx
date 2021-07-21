@@ -1,0 +1,11 @@
+debugEchoCode	vmgen.html#debugEchoCode	vmgen: debugEchoCode	
+echoCode	vmgen.html#echoCode,PCtx,int,int	vmgen: echoCode(c: PCtx; start = 0; last = -1)	
+canonValue	vmgen.html#canonValue,PNode	vmgen: canonValue(n: PNode): PNode	
+sameConstant	vmgen.html#sameConstant,PNode,PNode	vmgen: sameConstant(a, b: PNode): bool	
+fitsRegister	vmgen.html#fitsRegister,PType	vmgen: fitsRegister(t: PType): bool	
+importcCondVar	vmgen.html#importcCondVar,PSym	vmgen: importcCondVar(s: PSym): bool	
+importcCond	vmgen.html#importcCond,PCtx,PSym	vmgen: importcCond(c: PCtx; s: PSym): bool	
+getNullValue	vmgen.html#getNullValue,PType,TLineInfo,ConfigRef	vmgen: getNullValue(typ: PType; info: TLineInfo; conf: ConfigRef): PNode	
+genStmt	vmgen.html#genStmt,PCtx,PNode	vmgen: genStmt(c: PCtx; n: PNode): int	
+genExpr	vmgen.html#genExpr,PCtx,PNode	vmgen: genExpr(c: PCtx; n: PNode; requiresValue = true): int	
+genProc	vmgen.html#genProc,PCtx,PSym	vmgen: genProc(c: PCtx; s: PSym): int	

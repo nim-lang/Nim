@@ -1,0 +1,3 @@
+RtArray	rtarrays.html#RtArray	rtarrays: RtArray	
+initRtArray	rtarrays.html#initRtArray,Natural	rtarrays: initRtArray[T](len: Natural): RtArray[T]	
+getRawData	rtarrays.html#getRawData,RtArray[T]	rtarrays: getRawData[T](x: var RtArray[T]): ptr UncheckedArray[T]	

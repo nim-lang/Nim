@@ -1,0 +1,375 @@
+useWinUnicode	winlean.html#useWinUnicode	winlean: useWinUnicode	
+WinChar	winlean.html#WinChar	winlean: WinChar	
+Handle	winlean.html#Handle	winlean: Handle	
+LONG	winlean.html#LONG	winlean: LONG	
+ULONG	winlean.html#ULONG	winlean: ULONG	
+PULONG	winlean.html#PULONG	winlean: PULONG	
+WINBOOL	winlean.html#WINBOOL	winlean: WINBOOL	
+PBOOL	winlean.html#PBOOL	winlean: PBOOL	
+DWORD	winlean.html#DWORD	winlean: DWORD	
+PDWORD	winlean.html#PDWORD	winlean: PDWORD	
+LPINT	winlean.html#LPINT	winlean: LPINT	
+ULONG_PTR	winlean.html#ULONG_PTR	winlean: ULONG_PTR	
+PULONG_PTR	winlean.html#PULONG_PTR	winlean: PULONG_PTR	
+HDC	winlean.html#HDC	winlean: HDC	
+HGLRC	winlean.html#HGLRC	winlean: HGLRC	
+BYTE	winlean.html#BYTE	winlean: BYTE	
+SECURITY_ATTRIBUTES	winlean.html#SECURITY_ATTRIBUTES	winlean: SECURITY_ATTRIBUTES	
+STARTUPINFO	winlean.html#STARTUPINFO	winlean: STARTUPINFO	
+PROCESS_INFORMATION	winlean.html#PROCESS_INFORMATION	winlean: PROCESS_INFORMATION	
+FILETIME	winlean.html#FILETIME	winlean: FILETIME	
+BY_HANDLE_FILE_INFORMATION	winlean.html#BY_HANDLE_FILE_INFORMATION	winlean: BY_HANDLE_FILE_INFORMATION	
+OSVERSIONINFO	winlean.html#OSVERSIONINFO	winlean: OSVERSIONINFO	
+Protoent	winlean.html#Protoent	winlean: Protoent	
+STARTF_USESHOWWINDOW	winlean.html#STARTF_USESHOWWINDOW	winlean: STARTF_USESHOWWINDOW	
+STARTF_USESTDHANDLES	winlean.html#STARTF_USESTDHANDLES	winlean: STARTF_USESTDHANDLES	
+HIGH_PRIORITY_CLASS	winlean.html#HIGH_PRIORITY_CLASS	winlean: HIGH_PRIORITY_CLASS	
+IDLE_PRIORITY_CLASS	winlean.html#IDLE_PRIORITY_CLASS	winlean: IDLE_PRIORITY_CLASS	
+NORMAL_PRIORITY_CLASS	winlean.html#NORMAL_PRIORITY_CLASS	winlean: NORMAL_PRIORITY_CLASS	
+REALTIME_PRIORITY_CLASS	winlean.html#REALTIME_PRIORITY_CLASS	winlean: REALTIME_PRIORITY_CLASS	
+WAIT_OBJECT_0	winlean.html#WAIT_OBJECT_0	winlean: WAIT_OBJECT_0	
+WAIT_TIMEOUT	winlean.html#WAIT_TIMEOUT	winlean: WAIT_TIMEOUT	
+WAIT_FAILED	winlean.html#WAIT_FAILED	winlean: WAIT_FAILED	
+INFINITE	winlean.html#INFINITE	winlean: INFINITE	
+STILL_ACTIVE	winlean.html#STILL_ACTIVE	winlean: STILL_ACTIVE	
+STD_INPUT_HANDLE	winlean.html#STD_INPUT_HANDLE	winlean: STD_INPUT_HANDLE	
+STD_OUTPUT_HANDLE	winlean.html#STD_OUTPUT_HANDLE	winlean: STD_OUTPUT_HANDLE	
+STD_ERROR_HANDLE	winlean.html#STD_ERROR_HANDLE	winlean: STD_ERROR_HANDLE	
+DETACHED_PROCESS	winlean.html#DETACHED_PROCESS	winlean: DETACHED_PROCESS	
+SW_SHOWNORMAL	winlean.html#SW_SHOWNORMAL	winlean: SW_SHOWNORMAL	
+INVALID_HANDLE_VALUE	winlean.html#INVALID_HANDLE_VALUE	winlean: INVALID_HANDLE_VALUE	
+CREATE_UNICODE_ENVIRONMENT	winlean.html#CREATE_UNICODE_ENVIRONMENT	winlean: CREATE_UNICODE_ENVIRONMENT	
+PIPE_ACCESS_DUPLEX	winlean.html#PIPE_ACCESS_DUPLEX	winlean: PIPE_ACCESS_DUPLEX	
+PIPE_ACCESS_INBOUND	winlean.html#PIPE_ACCESS_INBOUND	winlean: PIPE_ACCESS_INBOUND	
+PIPE_ACCESS_OUTBOUND	winlean.html#PIPE_ACCESS_OUTBOUND	winlean: PIPE_ACCESS_OUTBOUND	
+PIPE_NOWAIT	winlean.html#PIPE_NOWAIT	winlean: PIPE_NOWAIT	
+SYNCHRONIZE	winlean.html#SYNCHRONIZE	winlean: SYNCHRONIZE	
+CREATE_NO_WINDOW	winlean.html#CREATE_NO_WINDOW	winlean: CREATE_NO_WINDOW	
+HANDLE_FLAG_INHERIT	winlean.html#HANDLE_FLAG_INHERIT	winlean: HANDLE_FLAG_INHERIT	
+isSuccess	winlean.html#isSuccess,WINBOOL	winlean: isSuccess(a: WINBOOL): bool	
+getVersionExW	winlean.html#getVersionExW,ptr.OSVERSIONINFO	winlean: getVersionExW(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL	
+getVersionExA	winlean.html#getVersionExA,ptr.OSVERSIONINFO	winlean: getVersionExA(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL	
+getVersion	winlean.html#getVersion	winlean: getVersion(): DWORD	
+closeHandle	winlean.html#closeHandle,Handle	winlean: closeHandle(hObject: Handle): WINBOOL	
+readFile	winlean.html#readFile,Handle,pointer,int32,ptr.int32,pointer	winlean: readFile(hFile: Handle; buffer: pointer; nNumberOfBytesToRead: int32;\n         lpNumberOfBytesRead: ptr int32; lpOverlapped: pointer): WINBOOL	
+writeFile	winlean.html#writeFile,Handle,pointer,int32,ptr.int32,pointer	winlean: writeFile(hFile: Handle; buffer: pointer; nNumberOfBytesToWrite: int32;\n          lpNumberOfBytesWritten: ptr int32; lpOverlapped: pointer): WINBOOL	
+createPipe	winlean.html#createPipe,Handle,Handle,SECURITY_ATTRIBUTES,int32	winlean: createPipe(hReadPipe, hWritePipe: var Handle;\n           lpPipeAttributes: var SECURITY_ATTRIBUTES; nSize: int32): WINBOOL	
+createNamedPipe	winlean.html#createNamedPipe,WideCString,int32,int32,int32,int32,int32,int32,ptr.SECURITY_ATTRIBUTES	winlean: createNamedPipe(lpName: WideCString; dwOpenMode, dwPipeMode, nMaxInstances,\n                                     nOutBufferSize, nInBufferSize,\n                                     nDefaultTimeOut: int32;\n                lpSecurityAttributes: ptr SECURITY_ATTRIBUTES): Handle	
+peekNamedPipe	winlean.html#peekNamedPipe,Handle,pointer,int32,ptr.int32,ptr.int32,ptr.int32	winlean: peekNamedPipe(hNamedPipe: Handle; lpBuffer: pointer = nil;\n              nBufferSize: int32 = 0; lpBytesRead: ptr int32 = nil;\n              lpTotalBytesAvail: ptr int32 = nil;\n              lpBytesLeftThisMessage: ptr int32 = nil): bool	
+createProcessW	winlean.html#createProcessW,WideCString,WideCString,ptr.SECURITY_ATTRIBUTES,ptr.SECURITY_ATTRIBUTES,WINBOOL,int32,WideCString,WideCString,STARTUPINFO,PROCESS_INFORMATION	winlean: createProcessW(lpApplicationName, lpCommandLine: WideCString;\n               lpProcessAttributes: ptr SECURITY_ATTRIBUTES;\n               lpThreadAttributes: ptr SECURITY_ATTRIBUTES;\n               bInheritHandles: WINBOOL; dwCreationFlags: int32;\n               lpEnvironment, lpCurrentDirectory: WideCString;\n               lpStartupInfo: var STARTUPINFO;\n               lpProcessInformation: var PROCESS_INFORMATION): WINBOOL	
+suspendThread	winlean.html#suspendThread,Handle	winlean: suspendThread(hThread: Handle): int32	
+resumeThread	winlean.html#resumeThread,Handle	winlean: resumeThread(hThread: Handle): int32	
+waitForSingleObject	winlean.html#waitForSingleObject,Handle,int32	winlean: waitForSingleObject(hHandle: Handle; dwMilliseconds: int32): int32	
+terminateProcess	winlean.html#terminateProcess,Handle,int	winlean: terminateProcess(hProcess: Handle; uExitCode: int): WINBOOL	
+getExitCodeProcess	winlean.html#getExitCodeProcess,Handle,int32	winlean: getExitCodeProcess(hProcess: Handle; lpExitCode: var int32): WINBOOL	
+getStdHandle	winlean.html#getStdHandle,int32	winlean: getStdHandle(nStdHandle: int32): Handle	
+setStdHandle	winlean.html#setStdHandle,int32,Handle	winlean: setStdHandle(nStdHandle: int32; hHandle: Handle): WINBOOL	
+flushFileBuffers	winlean.html#flushFileBuffers,Handle	winlean: flushFileBuffers(hFile: Handle): WINBOOL	
+getLastError	winlean.html#getLastError	winlean: getLastError(): int32	
+setLastError	winlean.html#setLastError,int32	winlean: setLastError(error: int32)	
+formatMessageW	winlean.html#formatMessageW,int32,pointer,int32,int32,pointer,int32,pointer	winlean: formatMessageW(dwFlags: int32; lpSource: pointer;\n               dwMessageId, dwLanguageId: int32; lpBuffer: pointer;\n               nSize: int32; arguments: pointer): int32	
+localFree	winlean.html#localFree,pointer	winlean: localFree(p: pointer)	
+getCurrentDirectoryW	winlean.html#getCurrentDirectoryW,int32,WideCString	winlean: getCurrentDirectoryW(nBufferLength: int32; lpBuffer: WideCString): int32	
+setCurrentDirectoryW	winlean.html#setCurrentDirectoryW,WideCString	winlean: setCurrentDirectoryW(lpPathName: WideCString): int32	
+createDirectoryW	winlean.html#createDirectoryW,WideCString,pointer	winlean: createDirectoryW(pathName: WideCString; security: pointer = nil): int32	
+removeDirectoryW	winlean.html#removeDirectoryW,WideCString	winlean: removeDirectoryW(lpPathName: WideCString): int32	
+setEnvironmentVariableW	winlean.html#setEnvironmentVariableW,WideCString,WideCString	winlean: setEnvironmentVariableW(lpName, lpValue: WideCString): int32	
+getModuleFileNameW	winlean.html#getModuleFileNameW,Handle,WideCString,int32	winlean: getModuleFileNameW(handle: Handle; buf: WideCString; size: int32): int32	
+createSymbolicLinkW	winlean.html#createSymbolicLinkW,WideCString,WideCString,DWORD	winlean: createSymbolicLinkW(lpSymlinkFileName, lpTargetFileName: WideCString;\n                    flags: DWORD): int32	
+createHardLinkW	winlean.html#createHardLinkW,WideCString,WideCString,pointer	winlean: createHardLinkW(lpFileName, lpExistingFileName: WideCString;\n                security: pointer = nil): int32	
+FILE_ATTRIBUTE_READONLY	winlean.html#FILE_ATTRIBUTE_READONLY	winlean: FILE_ATTRIBUTE_READONLY	
+FILE_ATTRIBUTE_HIDDEN	winlean.html#FILE_ATTRIBUTE_HIDDEN	winlean: FILE_ATTRIBUTE_HIDDEN	
+FILE_ATTRIBUTE_SYSTEM	winlean.html#FILE_ATTRIBUTE_SYSTEM	winlean: FILE_ATTRIBUTE_SYSTEM	
+FILE_ATTRIBUTE_DIRECTORY	winlean.html#FILE_ATTRIBUTE_DIRECTORY	winlean: FILE_ATTRIBUTE_DIRECTORY	
+FILE_ATTRIBUTE_ARCHIVE	winlean.html#FILE_ATTRIBUTE_ARCHIVE	winlean: FILE_ATTRIBUTE_ARCHIVE	
+FILE_ATTRIBUTE_DEVICE	winlean.html#FILE_ATTRIBUTE_DEVICE	winlean: FILE_ATTRIBUTE_DEVICE	
+FILE_ATTRIBUTE_NORMAL	winlean.html#FILE_ATTRIBUTE_NORMAL	winlean: FILE_ATTRIBUTE_NORMAL	
+FILE_ATTRIBUTE_TEMPORARY	winlean.html#FILE_ATTRIBUTE_TEMPORARY	winlean: FILE_ATTRIBUTE_TEMPORARY	
+FILE_ATTRIBUTE_SPARSE_FILE	winlean.html#FILE_ATTRIBUTE_SPARSE_FILE	winlean: FILE_ATTRIBUTE_SPARSE_FILE	
+FILE_ATTRIBUTE_REPARSE_POINT	winlean.html#FILE_ATTRIBUTE_REPARSE_POINT	winlean: FILE_ATTRIBUTE_REPARSE_POINT	
+FILE_ATTRIBUTE_COMPRESSED	winlean.html#FILE_ATTRIBUTE_COMPRESSED	winlean: FILE_ATTRIBUTE_COMPRESSED	
+FILE_ATTRIBUTE_OFFLINE	winlean.html#FILE_ATTRIBUTE_OFFLINE	winlean: FILE_ATTRIBUTE_OFFLINE	
+FILE_ATTRIBUTE_NOT_CONTENT_INDEXED	winlean.html#FILE_ATTRIBUTE_NOT_CONTENT_INDEXED	winlean: FILE_ATTRIBUTE_NOT_CONTENT_INDEXED	
+FILE_FLAG_FIRST_PIPE_INSTANCE	winlean.html#FILE_FLAG_FIRST_PIPE_INSTANCE	winlean: FILE_FLAG_FIRST_PIPE_INSTANCE	
+FILE_FLAG_OPEN_NO_RECALL	winlean.html#FILE_FLAG_OPEN_NO_RECALL	winlean: FILE_FLAG_OPEN_NO_RECALL	
+FILE_FLAG_OPEN_REPARSE_POINT	winlean.html#FILE_FLAG_OPEN_REPARSE_POINT	winlean: FILE_FLAG_OPEN_REPARSE_POINT	
+FILE_FLAG_POSIX_SEMANTICS	winlean.html#FILE_FLAG_POSIX_SEMANTICS	winlean: FILE_FLAG_POSIX_SEMANTICS	
+FILE_FLAG_BACKUP_SEMANTICS	winlean.html#FILE_FLAG_BACKUP_SEMANTICS	winlean: FILE_FLAG_BACKUP_SEMANTICS	
+FILE_FLAG_DELETE_ON_CLOSE	winlean.html#FILE_FLAG_DELETE_ON_CLOSE	winlean: FILE_FLAG_DELETE_ON_CLOSE	
+FILE_FLAG_SEQUENTIAL_SCAN	winlean.html#FILE_FLAG_SEQUENTIAL_SCAN	winlean: FILE_FLAG_SEQUENTIAL_SCAN	
+FILE_FLAG_RANDOM_ACCESS	winlean.html#FILE_FLAG_RANDOM_ACCESS	winlean: FILE_FLAG_RANDOM_ACCESS	
+FILE_FLAG_NO_BUFFERING	winlean.html#FILE_FLAG_NO_BUFFERING	winlean: FILE_FLAG_NO_BUFFERING	
+FILE_FLAG_OVERLAPPED	winlean.html#FILE_FLAG_OVERLAPPED	winlean: FILE_FLAG_OVERLAPPED	
+FILE_FLAG_WRITE_THROUGH	winlean.html#FILE_FLAG_WRITE_THROUGH	winlean: FILE_FLAG_WRITE_THROUGH	
+MAX_PATH	winlean.html#MAX_PATH	winlean: MAX_PATH	
+MOVEFILE_COPY_ALLOWED	winlean.html#MOVEFILE_COPY_ALLOWED	winlean: MOVEFILE_COPY_ALLOWED	
+MOVEFILE_CREATE_HARDLINK	winlean.html#MOVEFILE_CREATE_HARDLINK	winlean: MOVEFILE_CREATE_HARDLINK	
+MOVEFILE_DELAY_UNTIL_REBOOT	winlean.html#MOVEFILE_DELAY_UNTIL_REBOOT	winlean: MOVEFILE_DELAY_UNTIL_REBOOT	
+MOVEFILE_FAIL_IF_NOT_TRACKABLE	winlean.html#MOVEFILE_FAIL_IF_NOT_TRACKABLE	winlean: MOVEFILE_FAIL_IF_NOT_TRACKABLE	
+MOVEFILE_REPLACE_EXISTING	winlean.html#MOVEFILE_REPLACE_EXISTING	winlean: MOVEFILE_REPLACE_EXISTING	
+MOVEFILE_WRITE_THROUGH	winlean.html#MOVEFILE_WRITE_THROUGH	winlean: MOVEFILE_WRITE_THROUGH	
+WIN32_FIND_DATA	winlean.html#WIN32_FIND_DATA	winlean: WIN32_FIND_DATA	
+findFirstFileW	winlean.html#findFirstFileW,WideCString,WIN32_FIND_DATA	winlean: findFirstFileW(lpFileName: WideCString; lpFindFileData: var WIN32_FIND_DATA): Handle	
+findNextFileW	winlean.html#findNextFileW,Handle,WIN32_FIND_DATA	winlean: findNextFileW(hFindFile: Handle; lpFindFileData: var WIN32_FIND_DATA): int32	
+findClose	winlean.html#findClose,Handle	winlean: findClose(hFindFile: Handle)	
+getFullPathNameW	winlean.html#getFullPathNameW,WideCString,int32,WideCString,WideCString	winlean: getFullPathNameW(lpFileName: WideCString; nBufferLength: int32;\n                 lpBuffer: WideCString; lpFilePart: var WideCString): int32	
+getFileAttributesW	winlean.html#getFileAttributesW,WideCString	winlean: getFileAttributesW(lpFileName: WideCString): int32	
+setFileAttributesW	winlean.html#setFileAttributesW,WideCString,int32	winlean: setFileAttributesW(lpFileName: WideCString; dwFileAttributes: int32): WINBOOL	
+copyFileW	winlean.html#copyFileW,WideCString,WideCString,WINBOOL	winlean: copyFileW(lpExistingFileName, lpNewFileName: WideCString; bFailIfExists: WINBOOL): WINBOOL	
+moveFileW	winlean.html#moveFileW,WideCString,WideCString	winlean: moveFileW(lpExistingFileName, lpNewFileName: WideCString): WINBOOL	
+moveFileExW	winlean.html#moveFileExW,WideCString,WideCString,DWORD	winlean: moveFileExW(lpExistingFileName, lpNewFileName: WideCString; flags: DWORD): WINBOOL	
+getEnvironmentStringsW	winlean.html#getEnvironmentStringsW	winlean: getEnvironmentStringsW(): WideCString	
+freeEnvironmentStringsW	winlean.html#freeEnvironmentStringsW,WideCString	winlean: freeEnvironmentStringsW(para1: WideCString): int32	
+getCommandLineW	winlean.html#getCommandLineW	winlean: getCommandLineW(): WideCString	
+rdFileTime	winlean.html#rdFileTime,FILETIME	winlean: rdFileTime(f: FILETIME): int64	
+rdFileSize	winlean.html#rdFileSize,WIN32_FIND_DATA	winlean: rdFileSize(f: WIN32_FIND_DATA): int64	
+getSystemTimeAsFileTime	winlean.html#getSystemTimeAsFileTime,FILETIME	winlean: getSystemTimeAsFileTime(lpSystemTimeAsFileTime: var FILETIME)	
+sleep	winlean.html#sleep,int32	winlean: sleep(dwMilliseconds: int32)	
+shellExecuteW	winlean.html#shellExecuteW,Handle,WideCString,WideCString,WideCString,WideCString,int32	winlean: shellExecuteW(hwnd: Handle;\n              lpOperation, lpFile, lpParameters, lpDirectory: WideCString;\n              nShowCmd: int32): Handle	
+getFileInformationByHandle	winlean.html#getFileInformationByHandle,Handle,ptr.BY_HANDLE_FILE_INFORMATION	winlean: getFileInformationByHandle(hFile: Handle;\n                           lpFileInformation: ptr BY_HANDLE_FILE_INFORMATION): WINBOOL	
+WSADESCRIPTION_LEN	winlean.html#WSADESCRIPTION_LEN	winlean: WSADESCRIPTION_LEN	
+WSASYS_STATUS_LEN	winlean.html#WSASYS_STATUS_LEN	winlean: WSASYS_STATUS_LEN	
+FD_SETSIZE	winlean.html#FD_SETSIZE	winlean: FD_SETSIZE	
+MSG_PEEK	winlean.html#MSG_PEEK	winlean: MSG_PEEK	
+INADDR_ANY	winlean.html#INADDR_ANY	winlean: INADDR_ANY	
+INADDR_LOOPBACK	winlean.html#INADDR_LOOPBACK	winlean: INADDR_LOOPBACK	
+INADDR_BROADCAST	winlean.html#INADDR_BROADCAST	winlean: INADDR_BROADCAST	
+INADDR_NONE	winlean.html#INADDR_NONE	winlean: INADDR_NONE	
+wsaGetLastError	winlean.html#wsaGetLastError	winlean: wsaGetLastError(): cint	
+SocketHandle	winlean.html#SocketHandle	winlean: SocketHandle	
+WSAData	winlean.html#WSAData	winlean: WSAData	
+SockAddr	winlean.html#SockAddr	winlean: SockAddr	
+InAddr	winlean.html#InAddr	winlean: InAddr	
+Sockaddr_in	winlean.html#Sockaddr_in	winlean: Sockaddr_in	
+In6_addr	winlean.html#In6_addr	winlean: In6_addr	
+Sockaddr_in6	winlean.html#Sockaddr_in6	winlean: Sockaddr_in6	
+Sockaddr_storage	winlean.html#Sockaddr_storage	winlean: Sockaddr_storage	
+Servent	winlean.html#Servent	winlean: Servent	
+Hostent	winlean.html#Hostent	winlean: Hostent	
+TFdSet	winlean.html#TFdSet	winlean: TFdSet	
+AddrInfo	winlean.html#AddrInfo	winlean: AddrInfo	
+SockLen	winlean.html#SockLen	winlean: SockLen	
+Timeval	winlean.html#Timeval	winlean: Timeval	
+SOMAXCONN	winlean.html#SOMAXCONN	winlean: SOMAXCONN	
+INVALID_SOCKET	winlean.html#INVALID_SOCKET	winlean: INVALID_SOCKET	
+SOL_SOCKET	winlean.html#SOL_SOCKET	winlean: SOL_SOCKET	
+SO_DEBUG	winlean.html#SO_DEBUG	winlean: SO_DEBUG	
+SO_ACCEPTCONN	winlean.html#SO_ACCEPTCONN	winlean: SO_ACCEPTCONN	
+SO_REUSEADDR	winlean.html#SO_REUSEADDR	winlean: SO_REUSEADDR	
+SO_REUSEPORT	winlean.html#SO_REUSEPORT	winlean: SO_REUSEPORT	
+SO_KEEPALIVE	winlean.html#SO_KEEPALIVE	winlean: SO_KEEPALIVE	
+SO_DONTROUTE	winlean.html#SO_DONTROUTE	winlean: SO_DONTROUTE	
+SO_BROADCAST	winlean.html#SO_BROADCAST	winlean: SO_BROADCAST	
+SO_USELOOPBACK	winlean.html#SO_USELOOPBACK	winlean: SO_USELOOPBACK	
+SO_LINGER	winlean.html#SO_LINGER	winlean: SO_LINGER	
+SO_OOBINLINE	winlean.html#SO_OOBINLINE	winlean: SO_OOBINLINE	
+SO_DONTLINGER	winlean.html#SO_DONTLINGER	winlean: SO_DONTLINGER	
+SO_EXCLUSIVEADDRUSE	winlean.html#SO_EXCLUSIVEADDRUSE	winlean: SO_EXCLUSIVEADDRUSE	
+SO_ERROR	winlean.html#SO_ERROR	winlean: SO_ERROR	
+TCP_NODELAY	winlean.html#TCP_NODELAY	winlean: TCP_NODELAY	
+`==`	winlean.html#==,SocketHandle,SocketHandle	winlean: `==`(x, y: SocketHandle): bool	
+getservbyname	winlean.html#getservbyname,cstring,cstring	winlean: getservbyname(name, proto: cstring): ptr Servent	
+getservbyport	winlean.html#getservbyport,cint,cstring	winlean: getservbyport(port: cint; proto: cstring): ptr Servent	
+gethostbyaddr	winlean.html#gethostbyaddr,ptr.InAddr,cuint,cint	winlean: gethostbyaddr(ip: ptr InAddr; len: cuint; theType: cint): ptr Hostent	
+gethostbyname	winlean.html#gethostbyname,cstring	winlean: gethostbyname(name: cstring): ptr Hostent	
+gethostname	winlean.html#gethostname,cstring,cint	winlean: gethostname(hostname: cstring; len: cint): cint	
+getprotobyname	winlean.html#getprotobyname,cstring	winlean: getprotobyname(name: cstring): ptr Protoent	
+getprotobynumber	winlean.html#getprotobynumber,cint	winlean: getprotobynumber(proto: cint): ptr Protoent	
+socket	winlean.html#socket,cint,cint,cint	winlean: socket(af, typ, protocol: cint): SocketHandle	
+closesocket	winlean.html#closesocket,SocketHandle	winlean: closesocket(s: SocketHandle): cint	
+accept	winlean.html#accept,SocketHandle,ptr.SockAddr,ptr.SockLen	winlean: accept(s: SocketHandle; a: ptr SockAddr; addrlen: ptr SockLen): SocketHandle	
+bindSocket	winlean.html#bindSocket,SocketHandle,ptr.SockAddr,SockLen	winlean: bindSocket(s: SocketHandle; name: ptr SockAddr; namelen: SockLen): cint	
+connect	winlean.html#connect,SocketHandle,ptr.SockAddr,SockLen	winlean: connect(s: SocketHandle; name: ptr SockAddr; namelen: SockLen): cint	
+getsockname	winlean.html#getsockname,SocketHandle,ptr.SockAddr,ptr.SockLen	winlean: getsockname(s: SocketHandle; name: ptr SockAddr; namelen: ptr SockLen): cint	
+getpeername	winlean.html#getpeername,SocketHandle,ptr.SockAddr,ptr.SockLen	winlean: getpeername(s: SocketHandle; name: ptr SockAddr; namelen: ptr SockLen): cint	
+getsockopt	winlean.html#getsockopt,SocketHandle,cint,cint,pointer,ptr.SockLen	winlean: getsockopt(s: SocketHandle; level, optname: cint; optval: pointer;\n           optlen: ptr SockLen): cint	
+setsockopt	winlean.html#setsockopt,SocketHandle,cint,cint,pointer,SockLen	winlean: setsockopt(s: SocketHandle; level, optname: cint; optval: pointer;\n           optlen: SockLen): cint	
+listen	winlean.html#listen,SocketHandle,cint	winlean: listen(s: SocketHandle; backlog: cint): cint	
+recv	winlean.html#recv,SocketHandle,pointer,cint,cint	winlean: recv(s: SocketHandle; buf: pointer; len, flags: cint): cint	
+recvfrom	winlean.html#recvfrom,SocketHandle,cstring,cint,cint,ptr.SockAddr,ptr.SockLen	winlean: recvfrom(s: SocketHandle; buf: cstring; len, flags: cint; fromm: ptr SockAddr;\n         fromlen: ptr SockLen): cint	
+select	winlean.html#select,cint,ptr.TFdSet,ptr.TFdSet,ptr.TFdSet,ptr.Timeval	winlean: select(nfds: cint; readfds, writefds, exceptfds: ptr TFdSet;\n       timeout: ptr Timeval): cint	
+send	winlean.html#send,SocketHandle,pointer,cint,cint	winlean: send(s: SocketHandle; buf: pointer; len, flags: cint): cint	
+sendto	winlean.html#sendto,SocketHandle,pointer,cint,cint,ptr.SockAddr,SockLen	winlean: sendto(s: SocketHandle; buf: pointer; len, flags: cint; to: ptr SockAddr;\n       tolen: SockLen): cint	
+shutdown	winlean.html#shutdown,SocketHandle,cint	winlean: shutdown(s: SocketHandle; how: cint): cint	
+getnameinfo	winlean.html#getnameinfo,ptr.SockAddr,SockLen,cstring,SockLen,cstring,SockLen,cint	winlean: getnameinfo(a1: ptr SockAddr; a2: SockLen; a3: cstring; a4: SockLen;\n            a5: cstring; a6: SockLen; a7: cint): cint	
+inet_addr	winlean.html#inet_addr,cstring	winlean: inet_addr(cp: cstring): uint32	
+FD_ISSET	winlean.html#FD_ISSET,SocketHandle,TFdSet	winlean: FD_ISSET(socket: SocketHandle; set: var TFdSet): cint	
+FD_SET	winlean.html#FD_SET,SocketHandle,TFdSet	winlean: FD_SET(socket: SocketHandle; s: var TFdSet)	
+FD_ZERO	winlean.html#FD_ZERO,TFdSet	winlean: FD_ZERO(s: var TFdSet)	
+wsaStartup	winlean.html#wsaStartup,int16,ptr.WSAData	winlean: wsaStartup(wVersionRequired: int16; WSData: ptr WSAData): cint	
+getaddrinfo	winlean.html#getaddrinfo,cstring,cstring,ptr.AddrInfo,ptr.AddrInfo	winlean: getaddrinfo(nodename, servname: cstring; hints: ptr AddrInfo;\n            res: var ptr AddrInfo): cint	
+freeaddrinfo	winlean.html#freeaddrinfo,ptr.AddrInfo	winlean: freeaddrinfo(ai: ptr AddrInfo)	
+inet_ntoa	winlean.html#inet_ntoa,InAddr	winlean: inet_ntoa(i: InAddr): cstring	
+MAXIMUM_WAIT_OBJECTS	winlean.html#MAXIMUM_WAIT_OBJECTS	winlean: MAXIMUM_WAIT_OBJECTS	
+WOHandleArray	winlean.html#WOHandleArray	winlean: WOHandleArray	
+PWOHandleArray	winlean.html#PWOHandleArray	winlean: PWOHandleArray	
+waitForMultipleObjects	winlean.html#waitForMultipleObjects,DWORD,PWOHandleArray,WINBOOL,DWORD	winlean: waitForMultipleObjects(nCount: DWORD; lpHandles: PWOHandleArray;\n                       bWaitAll: WINBOOL; dwMilliseconds: DWORD): DWORD	
+GENERIC_READ	winlean.html#GENERIC_READ	winlean: GENERIC_READ	
+GENERIC_WRITE	winlean.html#GENERIC_WRITE	winlean: GENERIC_WRITE	
+GENERIC_ALL	winlean.html#GENERIC_ALL	winlean: GENERIC_ALL	
+FILE_SHARE_READ	winlean.html#FILE_SHARE_READ	winlean: FILE_SHARE_READ	
+FILE_SHARE_DELETE	winlean.html#FILE_SHARE_DELETE	winlean: FILE_SHARE_DELETE	
+FILE_SHARE_WRITE	winlean.html#FILE_SHARE_WRITE	winlean: FILE_SHARE_WRITE	
+CREATE_ALWAYS	winlean.html#CREATE_ALWAYS	winlean: CREATE_ALWAYS	
+CREATE_NEW	winlean.html#CREATE_NEW	winlean: CREATE_NEW	
+OPEN_EXISTING	winlean.html#OPEN_EXISTING	winlean: OPEN_EXISTING	
+OPEN_ALWAYS	winlean.html#OPEN_ALWAYS	winlean: OPEN_ALWAYS	
+FILE_BEGIN	winlean.html#FILE_BEGIN	winlean: FILE_BEGIN	
+INVALID_SET_FILE_POINTER	winlean.html#INVALID_SET_FILE_POINTER	winlean: INVALID_SET_FILE_POINTER	
+NO_ERROR	winlean.html#NO_ERROR	winlean: NO_ERROR	
+PAGE_NOACCESS	winlean.html#PAGE_NOACCESS	winlean: PAGE_NOACCESS	
+PAGE_EXECUTE	winlean.html#PAGE_EXECUTE	winlean: PAGE_EXECUTE	
+PAGE_EXECUTE_READ	winlean.html#PAGE_EXECUTE_READ	winlean: PAGE_EXECUTE_READ	
+PAGE_EXECUTE_READWRITE	winlean.html#PAGE_EXECUTE_READWRITE	winlean: PAGE_EXECUTE_READWRITE	
+PAGE_READONLY	winlean.html#PAGE_READONLY	winlean: PAGE_READONLY	
+PAGE_READWRITE	winlean.html#PAGE_READWRITE	winlean: PAGE_READWRITE	
+FILE_MAP_READ	winlean.html#FILE_MAP_READ	winlean: FILE_MAP_READ	
+FILE_MAP_WRITE	winlean.html#FILE_MAP_WRITE	winlean: FILE_MAP_WRITE	
+INVALID_FILE_SIZE	winlean.html#INVALID_FILE_SIZE	winlean: INVALID_FILE_SIZE	
+DUPLICATE_SAME_ACCESS	winlean.html#DUPLICATE_SAME_ACCESS	winlean: DUPLICATE_SAME_ACCESS	
+FILE_READ_DATA	winlean.html#FILE_READ_DATA	winlean: FILE_READ_DATA	
+FILE_WRITE_DATA	winlean.html#FILE_WRITE_DATA	winlean: FILE_WRITE_DATA	
+ERROR_FILE_NOT_FOUND	winlean.html#ERROR_FILE_NOT_FOUND	winlean: ERROR_FILE_NOT_FOUND	
+ERROR_PATH_NOT_FOUND	winlean.html#ERROR_PATH_NOT_FOUND	winlean: ERROR_PATH_NOT_FOUND	
+ERROR_ACCESS_DENIED	winlean.html#ERROR_ACCESS_DENIED	winlean: ERROR_ACCESS_DENIED	
+ERROR_NO_MORE_FILES	winlean.html#ERROR_NO_MORE_FILES	winlean: ERROR_NO_MORE_FILES	
+ERROR_LOCK_VIOLATION	winlean.html#ERROR_LOCK_VIOLATION	winlean: ERROR_LOCK_VIOLATION	
+ERROR_HANDLE_EOF	winlean.html#ERROR_HANDLE_EOF	winlean: ERROR_HANDLE_EOF	
+ERROR_FILE_EXISTS	winlean.html#ERROR_FILE_EXISTS	winlean: ERROR_FILE_EXISTS	
+ERROR_BAD_ARGUMENTS	winlean.html#ERROR_BAD_ARGUMENTS	winlean: ERROR_BAD_ARGUMENTS	
+duplicateHandle	winlean.html#duplicateHandle,Handle,Handle,Handle,ptr.Handle,DWORD,WINBOOL,DWORD	winlean: duplicateHandle(hSourceProcessHandle: Handle; hSourceHandle: Handle;\n                hTargetProcessHandle: Handle; lpTargetHandle: ptr Handle;\n                dwDesiredAccess: DWORD; bInheritHandle: WINBOOL;\n                dwOptions: DWORD): WINBOOL	
+getHandleInformation	winlean.html#getHandleInformation,Handle,ptr.DWORD	winlean: getHandleInformation(hObject: Handle; lpdwFlags: ptr DWORD): WINBOOL	
+setHandleInformation	winlean.html#setHandleInformation,Handle,DWORD,DWORD	winlean: setHandleInformation(hObject: Handle; dwMask: DWORD; dwFlags: DWORD): WINBOOL	
+getCurrentProcess	winlean.html#getCurrentProcess	winlean: getCurrentProcess(): Handle	
+createFileW	winlean.html#createFileW,WideCString,DWORD,DWORD,pointer,DWORD,DWORD,Handle	winlean: createFileW(lpFileName: WideCString; dwDesiredAccess, dwShareMode: DWORD;\n            lpSecurityAttributes: pointer;\n            dwCreationDisposition, dwFlagsAndAttributes: DWORD;\n            hTemplateFile: Handle): Handle	
+deleteFileW	winlean.html#deleteFileW,WideCString	winlean: deleteFileW(pathName: WideCString): int32	
+createFileA	winlean.html#createFileA,cstring,DWORD,DWORD,pointer,DWORD,DWORD,Handle	winlean: createFileA(lpFileName: cstring; dwDesiredAccess, dwShareMode: DWORD;\n            lpSecurityAttributes: pointer;\n            dwCreationDisposition, dwFlagsAndAttributes: DWORD;\n            hTemplateFile: Handle): Handle	
+deleteFileA	winlean.html#deleteFileA,cstring	winlean: deleteFileA(pathName: cstring): int32	
+setEndOfFile	winlean.html#setEndOfFile,Handle	winlean: setEndOfFile(hFile: Handle): WINBOOL	
+setFilePointer	winlean.html#setFilePointer,Handle,LONG,ptr.LONG,DWORD	winlean: setFilePointer(hFile: Handle; lDistanceToMove: LONG;\n               lpDistanceToMoveHigh: ptr LONG; dwMoveMethod: DWORD): DWORD	
+getFileSize	winlean.html#getFileSize,Handle,ptr.DWORD	winlean: getFileSize(hFile: Handle; lpFileSizeHigh: ptr DWORD): DWORD	
+WinSizeT	winlean.html#WinSizeT	winlean: WinSizeT	
+mapViewOfFileEx	winlean.html#mapViewOfFileEx,Handle,DWORD,DWORD,DWORD,WinSizeT,pointer	winlean: mapViewOfFileEx(hFileMappingObject: Handle; dwDesiredAccess: DWORD;\n                dwFileOffsetHigh, dwFileOffsetLow: DWORD;\n                dwNumberOfBytesToMap: WinSizeT; lpBaseAddress: pointer): pointer	
+createFileMappingW	winlean.html#createFileMappingW,Handle,pointer,DWORD,DWORD,DWORD,pointer	winlean: createFileMappingW(hFile: Handle; lpFileMappingAttributes: pointer;\n                   flProtect, dwMaximumSizeHigh: DWORD; dwMaximumSizeLow: DWORD;\n                   lpName: pointer): Handle	
+unmapViewOfFile	winlean.html#unmapViewOfFile,pointer	winlean: unmapViewOfFile(lpBaseAddress: pointer): WINBOOL	
+flushViewOfFile	winlean.html#flushViewOfFile,pointer,DWORD	winlean: flushViewOfFile(lpBaseAddress: pointer; dwNumberOfBytesToFlush: DWORD): WINBOOL	
+OVERLAPPED	winlean.html#OVERLAPPED	winlean: OVERLAPPED	
+POVERLAPPED	winlean.html#POVERLAPPED	winlean: POVERLAPPED	
+POVERLAPPED_COMPLETION_ROUTINE	winlean.html#POVERLAPPED_COMPLETION_ROUTINE	winlean: POVERLAPPED_COMPLETION_ROUTINE	
+GUID	winlean.html#GUID	winlean: GUID	
+ERROR_IO_PENDING	winlean.html#ERROR_IO_PENDING	winlean: ERROR_IO_PENDING	
+WSAECONNABORTED	winlean.html#WSAECONNABORTED	winlean: WSAECONNABORTED	
+WSAEADDRINUSE	winlean.html#WSAEADDRINUSE	winlean: WSAEADDRINUSE	
+WSAECONNRESET	winlean.html#WSAECONNRESET	winlean: WSAECONNRESET	
+WSAEDISCON	winlean.html#WSAEDISCON	winlean: WSAEDISCON	
+WSAENETRESET	winlean.html#WSAENETRESET	winlean: WSAENETRESET	
+WSAETIMEDOUT	winlean.html#WSAETIMEDOUT	winlean: WSAETIMEDOUT	
+WSANOTINITIALISED	winlean.html#WSANOTINITIALISED	winlean: WSANOTINITIALISED	
+WSAENOTSOCK	winlean.html#WSAENOTSOCK	winlean: WSAENOTSOCK	
+WSAEINPROGRESS	winlean.html#WSAEINPROGRESS	winlean: WSAEINPROGRESS	
+WSAEINTR	winlean.html#WSAEINTR	winlean: WSAEINTR	
+WSAEWOULDBLOCK	winlean.html#WSAEWOULDBLOCK	winlean: WSAEWOULDBLOCK	
+WSAESHUTDOWN	winlean.html#WSAESHUTDOWN	winlean: WSAESHUTDOWN	
+ERROR_NETNAME_DELETED	winlean.html#ERROR_NETNAME_DELETED	winlean: ERROR_NETNAME_DELETED	
+STATUS_PENDING	winlean.html#STATUS_PENDING	winlean: STATUS_PENDING	
+createIoCompletionPort	winlean.html#createIoCompletionPort,Handle,Handle,ULONG_PTR,DWORD	winlean: createIoCompletionPort(FileHandle: Handle; ExistingCompletionPort: Handle;\n                       CompletionKey: ULONG_PTR;\n                       NumberOfConcurrentThreads: DWORD): Handle	
+getQueuedCompletionStatus	winlean.html#getQueuedCompletionStatus,Handle,PDWORD,PULONG_PTR,ptr.POVERLAPPED,DWORD	winlean: getQueuedCompletionStatus(CompletionPort: Handle;\n                          lpNumberOfBytesTransferred: PDWORD;\n                          lpCompletionKey: PULONG_PTR;\n                          lpOverlapped: ptr POVERLAPPED; dwMilliseconds: DWORD): WINBOOL	
+getOverlappedResult	winlean.html#getOverlappedResult,Handle,POVERLAPPED,DWORD,WINBOOL	winlean: getOverlappedResult(hFile: Handle; lpOverlapped: POVERLAPPED;\n                    lpNumberOfBytesTransferred: var DWORD; bWait: WINBOOL): WINBOOL	
+hasOverlappedIoCompleted	winlean.html#hasOverlappedIoCompleted.t	winlean: hasOverlappedIoCompleted(lpOverlapped): bool	
+IOC_OUT	winlean.html#IOC_OUT	winlean: IOC_OUT	
+IOC_IN	winlean.html#IOC_IN	winlean: IOC_IN	
+IOC_WS2	winlean.html#IOC_WS2	winlean: IOC_WS2	
+IOC_INOUT	winlean.html#IOC_INOUT	winlean: IOC_INOUT	
+WSAIORW	winlean.html#WSAIORW.t,,	winlean: WSAIORW(x, y): untyped	
+SIO_GET_EXTENSION_FUNCTION_POINTER	winlean.html#SIO_GET_EXTENSION_FUNCTION_POINTER	winlean: SIO_GET_EXTENSION_FUNCTION_POINTER	
+SO_UPDATE_ACCEPT_CONTEXT	winlean.html#SO_UPDATE_ACCEPT_CONTEXT	winlean: SO_UPDATE_ACCEPT_CONTEXT	
+AI_V4MAPPED	winlean.html#AI_V4MAPPED	winlean: AI_V4MAPPED	
+AF_UNSPEC	winlean.html#AF_UNSPEC	winlean: AF_UNSPEC	
+AF_INET	winlean.html#AF_INET	winlean: AF_INET	
+AF_INET6	winlean.html#AF_INET6	winlean: AF_INET6	
+WSAID_CONNECTEX	winlean.html#WSAID_CONNECTEX	winlean: WSAID_CONNECTEX	
+WSAID_ACCEPTEX	winlean.html#WSAID_ACCEPTEX	winlean: WSAID_ACCEPTEX	
+WSAID_GETACCEPTEXSOCKADDRS	winlean.html#WSAID_GETACCEPTEXSOCKADDRS	winlean: WSAID_GETACCEPTEXSOCKADDRS	
+WSAIoctl	winlean.html#WSAIoctl,SocketHandle,DWORD,pointer,DWORD,pointer,DWORD,PDWORD,POVERLAPPED,POVERLAPPED_COMPLETION_ROUTINE	winlean: WSAIoctl(s: SocketHandle; dwIoControlCode: DWORD; lpvInBuffer: pointer;\n         cbInBuffer: DWORD; lpvOutBuffer: pointer; cbOutBuffer: DWORD;\n         lpcbBytesReturned: PDWORD; lpOverlapped: POVERLAPPED;\n         lpCompletionRoutine: POVERLAPPED_COMPLETION_ROUTINE): cint	
+TWSABuf	winlean.html#TWSABuf	winlean: TWSABuf	
+WSARecv	winlean.html#WSARecv,SocketHandle,ptr.TWSABuf,DWORD,PDWORD,PDWORD,POVERLAPPED,POVERLAPPED_COMPLETION_ROUTINE	winlean: WSARecv(s: SocketHandle; buf: ptr TWSABuf; bufCount: DWORD;\n        bytesReceived, flags: PDWORD; lpOverlapped: POVERLAPPED;\n        completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint	
+WSARecvFrom	winlean.html#WSARecvFrom,SocketHandle,ptr.TWSABuf,DWORD,PDWORD,PDWORD,ptr.SockAddr,ptr.cint,POVERLAPPED,POVERLAPPED_COMPLETION_ROUTINE	winlean: WSARecvFrom(s: SocketHandle; buf: ptr TWSABuf; bufCount: DWORD;\n            bytesReceived: PDWORD; flags: PDWORD; name: ptr SockAddr;\n            namelen: ptr cint; lpOverlapped: POVERLAPPED;\n            completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint	
+WSASend	winlean.html#WSASend,SocketHandle,ptr.TWSABuf,DWORD,PDWORD,DWORD,POVERLAPPED,POVERLAPPED_COMPLETION_ROUTINE	winlean: WSASend(s: SocketHandle; buf: ptr TWSABuf; bufCount: DWORD; bytesSent: PDWORD;\n        flags: DWORD; lpOverlapped: POVERLAPPED;\n        completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint	
+WSASendTo	winlean.html#WSASendTo,SocketHandle,ptr.TWSABuf,DWORD,PDWORD,DWORD,ptr.SockAddr,cint,POVERLAPPED,POVERLAPPED_COMPLETION_ROUTINE	winlean: WSASendTo(s: SocketHandle; buf: ptr TWSABuf; bufCount: DWORD; bytesSent: PDWORD;\n          flags: DWORD; name: ptr SockAddr; namelen: cint;\n          lpOverlapped: POVERLAPPED;\n          completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint	
+get_osfhandle	winlean.html#get_osfhandle,FileHandle	winlean: get_osfhandle(fd: FileHandle): Handle	
+getSystemTimes	winlean.html#getSystemTimes,FILETIME,FILETIME,FILETIME	winlean: getSystemTimes(lpIdleTime, lpKernelTime, lpUserTime: var FILETIME): WINBOOL	
+getProcessTimes	winlean.html#getProcessTimes,Handle,FILETIME,FILETIME,FILETIME,FILETIME	winlean: getProcessTimes(hProcess: Handle; lpCreationTime, lpExitTime, lpKernelTime,\n                                  lpUserTime: var FILETIME): WINBOOL	
+getSystemTimePreciseAsFileTime	winlean.html#getSystemTimePreciseAsFileTime,FILETIME	winlean: getSystemTimePreciseAsFileTime(lpSystemTimeAsFileTime: var FILETIME)	
+inet_ntop	winlean.html#inet_ntop,cint,pointer,cstring,int32	winlean: inet_ntop(family: cint; paddr: pointer; pStringBuffer: cstring;\n          stringBufSize: int32): cstring	
+WSAPROC_ACCEPTEX	winlean.html#WSAPROC_ACCEPTEX	winlean: WSAPROC_ACCEPTEX	
+WSAPROC_CONNECTEX	winlean.html#WSAPROC_CONNECTEX	winlean: WSAPROC_CONNECTEX	
+WSAPROC_GETACCEPTEXSOCKADDRS	winlean.html#WSAPROC_GETACCEPTEXSOCKADDRS	winlean: WSAPROC_GETACCEPTEXSOCKADDRS	
+WT_EXECUTEDEFAULT	winlean.html#WT_EXECUTEDEFAULT	winlean: WT_EXECUTEDEFAULT	
+WT_EXECUTEINIOTHREAD	winlean.html#WT_EXECUTEINIOTHREAD	winlean: WT_EXECUTEINIOTHREAD	
+WT_EXECUTEINUITHREAD	winlean.html#WT_EXECUTEINUITHREAD	winlean: WT_EXECUTEINUITHREAD	
+WT_EXECUTEINWAITTHREAD	winlean.html#WT_EXECUTEINWAITTHREAD	winlean: WT_EXECUTEINWAITTHREAD	
+WT_EXECUTEONLYONCE	winlean.html#WT_EXECUTEONLYONCE	winlean: WT_EXECUTEONLYONCE	
+WT_EXECUTELONGFUNCTION	winlean.html#WT_EXECUTELONGFUNCTION	winlean: WT_EXECUTELONGFUNCTION	
+WT_EXECUTEINTIMERTHREAD	winlean.html#WT_EXECUTEINTIMERTHREAD	winlean: WT_EXECUTEINTIMERTHREAD	
+WT_EXECUTEINPERSISTENTIOTHREAD	winlean.html#WT_EXECUTEINPERSISTENTIOTHREAD	winlean: WT_EXECUTEINPERSISTENTIOTHREAD	
+WT_EXECUTEINPERSISTENTTHREAD	winlean.html#WT_EXECUTEINPERSISTENTTHREAD	winlean: WT_EXECUTEINPERSISTENTTHREAD	
+WT_TRANSFER_IMPERSONATION	winlean.html#WT_TRANSFER_IMPERSONATION	winlean: WT_TRANSFER_IMPERSONATION	
+PROCESS_TERMINATE	winlean.html#PROCESS_TERMINATE	winlean: PROCESS_TERMINATE	
+PROCESS_CREATE_THREAD	winlean.html#PROCESS_CREATE_THREAD	winlean: PROCESS_CREATE_THREAD	
+PROCESS_SET_SESSIONID	winlean.html#PROCESS_SET_SESSIONID	winlean: PROCESS_SET_SESSIONID	
+PROCESS_VM_OPERATION	winlean.html#PROCESS_VM_OPERATION	winlean: PROCESS_VM_OPERATION	
+PROCESS_VM_READ	winlean.html#PROCESS_VM_READ	winlean: PROCESS_VM_READ	
+PROCESS_VM_WRITE	winlean.html#PROCESS_VM_WRITE	winlean: PROCESS_VM_WRITE	
+PROCESS_DUP_HANDLE	winlean.html#PROCESS_DUP_HANDLE	winlean: PROCESS_DUP_HANDLE	
+PROCESS_CREATE_PROCESS	winlean.html#PROCESS_CREATE_PROCESS	winlean: PROCESS_CREATE_PROCESS	
+PROCESS_SET_QUOTA	winlean.html#PROCESS_SET_QUOTA	winlean: PROCESS_SET_QUOTA	
+PROCESS_SET_INFORMATION	winlean.html#PROCESS_SET_INFORMATION	winlean: PROCESS_SET_INFORMATION	
+PROCESS_QUERY_INFORMATION	winlean.html#PROCESS_QUERY_INFORMATION	winlean: PROCESS_QUERY_INFORMATION	
+PROCESS_SUSPEND_RESUME	winlean.html#PROCESS_SUSPEND_RESUME	winlean: PROCESS_SUSPEND_RESUME	
+PROCESS_QUERY_LIMITED_INFORMATION	winlean.html#PROCESS_QUERY_LIMITED_INFORMATION	winlean: PROCESS_QUERY_LIMITED_INFORMATION	
+PROCESS_SET_LIMITED_INFORMATION	winlean.html#PROCESS_SET_LIMITED_INFORMATION	winlean: PROCESS_SET_LIMITED_INFORMATION	
+WAITORTIMERCALLBACK	winlean.html#WAITORTIMERCALLBACK	winlean: WAITORTIMERCALLBACK	
+postQueuedCompletionStatus	winlean.html#postQueuedCompletionStatus,Handle,DWORD,ULONG_PTR,pointer	winlean: postQueuedCompletionStatus(CompletionPort: Handle;\n                           dwNumberOfBytesTransferred: DWORD;\n                           dwCompletionKey: ULONG_PTR; lpOverlapped: pointer): bool	
+registerWaitForSingleObject	winlean.html#registerWaitForSingleObject,ptr.Handle,Handle,WAITORTIMERCALLBACK,pointer,ULONG,ULONG	winlean: registerWaitForSingleObject(phNewWaitObject: ptr Handle; hObject: Handle;\n                            Callback: WAITORTIMERCALLBACK; Context: pointer;\n                            dwMilliseconds: ULONG; dwFlags: ULONG): bool	
+unregisterWait	winlean.html#unregisterWait,Handle	winlean: unregisterWait(WaitHandle: Handle): DWORD	
+openProcess	winlean.html#openProcess,DWORD,WINBOOL,DWORD	winlean: openProcess(dwDesiredAccess: DWORD; bInheritHandle: WINBOOL; dwProcessId: DWORD): Handle	
+createEvent	winlean.html#createEvent,ptr.SECURITY_ATTRIBUTES,DWORD,DWORD,ptr.Utf16Char	winlean: createEvent(lpEventAttributes: ptr SECURITY_ATTRIBUTES; bManualReset: DWORD;\n            bInitialState: DWORD; lpName: ptr Utf16Char): Handle	
+setEvent	winlean.html#setEvent,Handle	winlean: setEvent(hEvent: Handle): cint	
+FD_READ	winlean.html#FD_READ	winlean: FD_READ	
+FD_WRITE	winlean.html#FD_WRITE	winlean: FD_WRITE	
+FD_OOB	winlean.html#FD_OOB	winlean: FD_OOB	
+FD_ACCEPT	winlean.html#FD_ACCEPT	winlean: FD_ACCEPT	
+FD_CONNECT	winlean.html#FD_CONNECT	winlean: FD_CONNECT	
+FD_CLOSE	winlean.html#FD_CLOSE	winlean: FD_CLOSE	
+FD_QQS	winlean.html#FD_QQS	winlean: FD_QQS	
+FD_GROUP_QQS	winlean.html#FD_GROUP_QQS	winlean: FD_GROUP_QQS	
+FD_ROUTING_INTERFACE_CHANGE	winlean.html#FD_ROUTING_INTERFACE_CHANGE	winlean: FD_ROUTING_INTERFACE_CHANGE	
+FD_ADDRESS_LIST_CHANGE	winlean.html#FD_ADDRESS_LIST_CHANGE	winlean: FD_ADDRESS_LIST_CHANGE	
+FD_ALL_EVENTS	winlean.html#FD_ALL_EVENTS	winlean: FD_ALL_EVENTS	
+wsaEventSelect	winlean.html#wsaEventSelect,SocketHandle,Handle,clong	winlean: wsaEventSelect(s: SocketHandle; hEventObject: Handle; lNetworkEvents: clong): cint	
+wsaCreateEvent	winlean.html#wsaCreateEvent	winlean: wsaCreateEvent(): Handle	
+wsaCloseEvent	winlean.html#wsaCloseEvent,Handle	winlean: wsaCloseEvent(hEvent: Handle): bool	
+wsaResetEvent	winlean.html#wsaResetEvent,Handle	winlean: wsaResetEvent(hEvent: Handle): bool	
+KEY_EVENT_RECORD	winlean.html#KEY_EVENT_RECORD	winlean: KEY_EVENT_RECORD	
+readConsoleInput	winlean.html#readConsoleInput,Handle,pointer,cint,ptr.cint	winlean: readConsoleInput(hConsoleInput: Handle; lpBuffer: pointer; nLength: cint;\n                 lpNumberOfEventsRead: ptr cint): cint	
+LPFIBER_START_ROUTINE	winlean.html#LPFIBER_START_ROUTINE	winlean: LPFIBER_START_ROUTINE	
+FIBER_FLAG_FLOAT_SWITCH	winlean.html#FIBER_FLAG_FLOAT_SWITCH	winlean: FIBER_FLAG_FLOAT_SWITCH	
+CreateFiber	winlean.html#CreateFiber,int,LPFIBER_START_ROUTINE,pointer	winlean: CreateFiber(stackSize: int; fn: LPFIBER_START_ROUTINE; param: pointer): pointer	
+CreateFiberEx	winlean.html#CreateFiberEx,int,int,int32,LPFIBER_START_ROUTINE,pointer	winlean: CreateFiberEx(stkCommit: int; stkReserve: int; flags: int32;\n              fn: LPFIBER_START_ROUTINE; param: pointer): pointer	
+ConvertThreadToFiber	winlean.html#ConvertThreadToFiber,pointer	winlean: ConvertThreadToFiber(param: pointer): pointer	
+ConvertThreadToFiberEx	winlean.html#ConvertThreadToFiberEx,pointer,int32	winlean: ConvertThreadToFiberEx(param: pointer; flags: int32): pointer	
+DeleteFiber	winlean.html#DeleteFiber,pointer	winlean: DeleteFiber(fiber: pointer)	
+SwitchToFiber	winlean.html#SwitchToFiber,pointer	winlean: SwitchToFiber(fiber: pointer)	
+GetCurrentFiber	winlean.html#GetCurrentFiber	winlean: GetCurrentFiber(): pointer	
+toFILETIME	winlean.html#toFILETIME,int64	winlean: toFILETIME(t: int64): FILETIME	
+LPFILETIME	winlean.html#LPFILETIME	winlean: LPFILETIME	
+setFileTime	winlean.html#setFileTime,Handle,LPFILETIME,LPFILETIME,LPFILETIME	winlean: setFileTime(hFile: Handle; lpCreationTime: LPFILETIME;\n            lpLastAccessTime: LPFILETIME; lpLastWriteTime: LPFILETIME): WINBOOL	
+SID_IDENTIFIER_AUTHORITY	winlean.html#SID_IDENTIFIER_AUTHORITY	winlean: SID_IDENTIFIER_AUTHORITY	
+SID	winlean.html#SID	winlean: SID	
+PSID	winlean.html#PSID	winlean: PSID	
+SECURITY_NT_AUTHORITY	winlean.html#SECURITY_NT_AUTHORITY	winlean: SECURITY_NT_AUTHORITY	
+SECURITY_BUILTIN_DOMAIN_RID	winlean.html#SECURITY_BUILTIN_DOMAIN_RID	winlean: SECURITY_BUILTIN_DOMAIN_RID	
+DOMAIN_ALIAS_RID_ADMINS	winlean.html#DOMAIN_ALIAS_RID_ADMINS	winlean: DOMAIN_ALIAS_RID_ADMINS	
+allocateAndInitializeSid	winlean.html#allocateAndInitializeSid,ptr.SID_IDENTIFIER_AUTHORITY,BYTE,DWORD,DWORD,DWORD,DWORD,DWORD,DWORD,DWORD,DWORD,ptr.PSID	winlean: allocateAndInitializeSid(pIdentifierAuthority: ptr SID_IDENTIFIER_AUTHORITY;\n                         nSubAuthorityCount: BYTE; nSubAuthority0: DWORD;\n                         nSubAuthority1: DWORD; nSubAuthority2: DWORD;\n                         nSubAuthority3: DWORD; nSubAuthority4: DWORD;\n                         nSubAuthority5: DWORD; nSubAuthority6: DWORD;\n                         nSubAuthority7: DWORD; pSid: ptr PSID): WINBOOL	
+checkTokenMembership	winlean.html#checkTokenMembership,Handle,PSID,PBOOL	winlean: checkTokenMembership(tokenHandle: Handle; sidToCheck: PSID; isMember: PBOOL): WINBOOL	
+freeSid	winlean.html#freeSid,PSID	winlean: freeSid(pSid: PSID): PSID	

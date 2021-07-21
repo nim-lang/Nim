@@ -1,0 +1,42 @@
+bitnot	bitops.html#bitnot,T	bitops: bitnot[T: SomeInteger](x: T): T	
+bitand	bitops.html#bitand.m,T,T,varargs[T]	bitops: bitand[T: SomeInteger](x, y: T; z: varargs[T]): T	
+bitor	bitops.html#bitor.m,T,T,varargs[T]	bitops: bitor[T: SomeInteger](x, y: T; z: varargs[T]): T	
+bitxor	bitops.html#bitxor.m,T,T,varargs[T]	bitops: bitxor[T: SomeInteger](x, y: T; z: varargs[T]): T	
+BitsRange	bitops.html#BitsRange	bitops: BitsRange	
+bitsliced	bitops.html#bitsliced,T,Slice[int]	bitops: bitsliced[T: SomeInteger](v: T; slice: Slice[int]): T	
+bitslice	bitops.html#bitslice,T,Slice[int]	bitops: bitslice[T: SomeInteger](v: var T; slice: Slice[int])	
+toMask	bitops.html#toMask,Slice[int]	bitops: toMask[T: SomeInteger](slice: Slice[int]): T	
+masked	bitops.html#masked,T,T	bitops: masked[T: SomeInteger](v, mask: T): T	
+masked	bitops.html#masked,T,Slice[int]	bitops: masked[T: SomeInteger](v: T; slice: Slice[int]): T	
+mask	bitops.html#mask,T,T	bitops: mask[T: SomeInteger](v: var T; mask: T)	
+mask	bitops.html#mask,T,Slice[int]	bitops: mask[T: SomeInteger](v: var T; slice: Slice[int])	
+setMasked	bitops.html#setMasked,T,T	bitops: setMasked[T: SomeInteger](v, mask: T): T	
+setMasked	bitops.html#setMasked,T,Slice[int]	bitops: setMasked[T: SomeInteger](v: T; slice: Slice[int]): T	
+setMask	bitops.html#setMask,T,T	bitops: setMask[T: SomeInteger](v: var T; mask: T)	
+setMask	bitops.html#setMask,T,Slice[int]	bitops: setMask[T: SomeInteger](v: var T; slice: Slice[int])	
+clearMasked	bitops.html#clearMasked,T,T	bitops: clearMasked[T: SomeInteger](v, mask: T): T	
+clearMasked	bitops.html#clearMasked,T,Slice[int]	bitops: clearMasked[T: SomeInteger](v: T; slice: Slice[int]): T	
+clearMask	bitops.html#clearMask,T,T	bitops: clearMask[T: SomeInteger](v: var T; mask: T)	
+clearMask	bitops.html#clearMask,T,Slice[int]	bitops: clearMask[T: SomeInteger](v: var T; slice: Slice[int])	
+flipMasked	bitops.html#flipMasked,T,T	bitops: flipMasked[T: SomeInteger](v, mask: T): T	
+flipMasked	bitops.html#flipMasked,T,Slice[int]	bitops: flipMasked[T: SomeInteger](v: T; slice: Slice[int]): T	
+flipMask	bitops.html#flipMask,T,T	bitops: flipMask[T: SomeInteger](v: var T; mask: T)	
+flipMask	bitops.html#flipMask,T,Slice[int]	bitops: flipMask[T: SomeInteger](v: var T; slice: Slice[int])	
+setBit	bitops.html#setBit,T,BitsRange[T: SomeInteger]	bitops: setBit[T: SomeInteger](v: var T; bit: BitsRange[T])	
+clearBit	bitops.html#clearBit,T,BitsRange[T: SomeInteger]	bitops: clearBit[T: SomeInteger](v: var T; bit: BitsRange[T])	
+flipBit	bitops.html#flipBit,T,BitsRange[T: SomeInteger]	bitops: flipBit[T: SomeInteger](v: var T; bit: BitsRange[T])	
+setBits	bitops.html#setBits.m,typed,varargs[typed]	bitops: setBits(v: typed; bits: varargs[typed]): untyped	
+clearBits	bitops.html#clearBits.m,typed,varargs[typed]	bitops: clearBits(v: typed; bits: varargs[typed]): untyped	
+flipBits	bitops.html#flipBits.m,typed,varargs[typed]	bitops: flipBits(v: typed; bits: varargs[typed]): untyped	
+testBit	bitops.html#testBit,T,BitsRange[T: SomeInteger]	bitops: testBit[T: SomeInteger](v: T; bit: BitsRange[T]): bool	
+countSetBits	bitops.html#countSetBits,SomeInteger	bitops: countSetBits(x: SomeInteger): int	
+popcount	bitops.html#popcount,SomeInteger	bitops: popcount(x: SomeInteger): int	
+parityBits	bitops.html#parityBits,SomeInteger	bitops: parityBits(x: SomeInteger): int	
+firstSetBit	bitops.html#firstSetBit,SomeInteger	bitops: firstSetBit(x: SomeInteger): int	
+fastLog2	bitops.html#fastLog2,SomeInteger	bitops: fastLog2(x: SomeInteger): int	
+countLeadingZeroBits	bitops.html#countLeadingZeroBits,SomeInteger	bitops: countLeadingZeroBits(x: SomeInteger): int	
+countTrailingZeroBits	bitops.html#countTrailingZeroBits,SomeInteger	bitops: countTrailingZeroBits(x: SomeInteger): int	
+rotateLeftBits	bitops.html#rotateLeftBits,T,range[]	bitops: rotateLeftBits[T: SomeUnsignedInt](value: T; shift: range[0 .. (sizeof(T) * 8)]): T	
+rotateRightBits	bitops.html#rotateRightBits,T,range[]	bitops: rotateRightBits[T: SomeUnsignedInt](value: T; shift: range[0 .. (sizeof(T) * 8)]): T	
+reverseBits	bitops.html#reverseBits,T	bitops: reverseBits[T: SomeUnsignedInt](x: T): T	
+Hamming weight	bitops.html#hamming-weight_1	Module bitops	

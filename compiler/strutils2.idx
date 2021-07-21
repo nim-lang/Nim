@@ -1,0 +1,4 @@
+dataPointer	strutils2.html#dataPointer,T	strutils2: dataPointer[T](a: T): pointer	
+setLen	strutils2.html#setLen,string,int,bool	strutils2: setLen(result: var string; n: int; isInit: bool)	
+forceCopy	strutils2.html#forceCopy,string,string	strutils2: forceCopy(result: var string; a: string)	
+toLowerAscii	strutils2.html#toLowerAscii,string	strutils2: toLowerAscii(a: var string)	

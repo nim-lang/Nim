@@ -1,0 +1,57 @@
+HashSet	sets.html#HashSet	sets: HashSet	
+OrderedSet	sets.html#OrderedSet	sets: OrderedSet	
+SomeSet	sets.html#SomeSet	sets: SomeSet	
+defaultInitialSize	sets.html#defaultInitialSize	sets: defaultInitialSize	
+rightSize	sets.html#rightSize,Natural	sets: rightSize(count: Natural): int	
+init	sets.html#init,HashSet[A]	sets: init[A](s: var HashSet[A]; initialSize = defaultInitialSize)	
+initHashSet	sets.html#initHashSet	sets: initHashSet[A](initialSize = defaultInitialSize): HashSet[A]	
+`[]`	sets.html#[],HashSet[A],A	sets: `[]`[A](s: var HashSet[A]; key: A): var A	
+contains	sets.html#contains,HashSet[A],A	sets: contains[A](s: HashSet[A]; key: A): bool	
+len	sets.html#len,HashSet[A]	sets: len[A](s: HashSet[A]): int	
+card	sets.html#card,HashSet[A]	sets: card[A](s: HashSet[A]): int	
+incl	sets.html#incl,HashSet[A],A	sets: incl[A](s: var HashSet[A]; key: A)	
+incl	sets.html#incl,HashSet[A],HashSet[A]	sets: incl[A](s: var HashSet[A]; other: HashSet[A])	
+toHashSet	sets.html#toHashSet,openArray[A]	sets: toHashSet[A](keys: openArray[A]): HashSet[A]	
+items	sets.html#items.i,HashSet[A]	sets: items[A](s: HashSet[A]): A	
+containsOrIncl	sets.html#containsOrIncl,HashSet[A],A	sets: containsOrIncl[A](s: var HashSet[A]; key: A): bool	
+excl	sets.html#excl,HashSet[A],A	sets: excl[A](s: var HashSet[A]; key: A)	
+excl	sets.html#excl,HashSet[A],HashSet[A]	sets: excl[A](s: var HashSet[A]; other: HashSet[A])	
+missingOrExcl	sets.html#missingOrExcl,HashSet[A],A	sets: missingOrExcl[A](s: var HashSet[A]; key: A): bool	
+pop	sets.html#pop,HashSet[A]	sets: pop[A](s: var HashSet[A]): A	
+clear	sets.html#clear,HashSet[A]	sets: clear[A](s: var HashSet[A])	
+union	sets.html#union,HashSet[A],HashSet[A]	sets: union[A](s1, s2: HashSet[A]): HashSet[A]	
+intersection	sets.html#intersection,HashSet[A],HashSet[A]	sets: intersection[A](s1, s2: HashSet[A]): HashSet[A]	
+difference	sets.html#difference,HashSet[A],HashSet[A]	sets: difference[A](s1, s2: HashSet[A]): HashSet[A]	
+symmetricDifference	sets.html#symmetricDifference,HashSet[A],HashSet[A]	sets: symmetricDifference[A](s1, s2: HashSet[A]): HashSet[A]	
+`+`	sets.html#+,HashSet[A],HashSet[A]	sets: `+`[A](s1, s2: HashSet[A]): HashSet[A]	
+`*`	sets.html#*,HashSet[A],HashSet[A]	sets: `*`[A](s1, s2: HashSet[A]): HashSet[A]	
+`-`	sets.html#-,HashSet[A],HashSet[A]	sets: `-`[A](s1, s2: HashSet[A]): HashSet[A]	
+`-+-`	sets.html#-+-,HashSet[A],HashSet[A]	sets: `-+-`[A](s1, s2: HashSet[A]): HashSet[A]	
+disjoint	sets.html#disjoint,HashSet[A],HashSet[A]	sets: disjoint[A](s1, s2: HashSet[A]): bool	
+`&lt;`	sets.html#<,HashSet[A],HashSet[A]	sets: `&lt;`[A](s, t: HashSet[A]): bool	
+`&lt;=`	sets.html#<=,HashSet[A],HashSet[A]	sets: `&lt;=`[A](s, t: HashSet[A]): bool	
+`==`	sets.html#==,HashSet[A],HashSet[A]	sets: `==`[A](s, t: HashSet[A]): bool	
+map	sets.html#map,HashSet[A],proc(A)	sets: map[A, B](data: HashSet[A]; op: proc (x: A): B {.closure.}): HashSet[B]	
+hash	sets.html#hash,HashSet[A]	sets: hash[A](s: HashSet[A]): Hash	
+`$`	sets.html#$,HashSet[A]	sets: `$`[A](s: HashSet[A]): string	
+initSet	sets.html#initSet	sets: initSet[A](initialSize = defaultInitialSize): HashSet[A]	
+toSet	sets.html#toSet,openArray[A]	sets: toSet[A](keys: openArray[A]): HashSet[A]	
+isValid	sets.html#isValid,HashSet[A]	sets: isValid[A](s: HashSet[A]): bool	
+init	sets.html#init,OrderedSet[A]	sets: init[A](s: var OrderedSet[A]; initialSize = defaultInitialSize)	
+initOrderedSet	sets.html#initOrderedSet	sets: initOrderedSet[A](initialSize = defaultInitialSize): OrderedSet[A]	
+toOrderedSet	sets.html#toOrderedSet,openArray[A]	sets: toOrderedSet[A](keys: openArray[A]): OrderedSet[A]	
+contains	sets.html#contains,OrderedSet[A],A	sets: contains[A](s: OrderedSet[A]; key: A): bool	
+incl	sets.html#incl,OrderedSet[A],A	sets: incl[A](s: var OrderedSet[A]; key: A)	
+incl	sets.html#incl,HashSet[A],OrderedSet[A]	sets: incl[A](s: var HashSet[A]; other: OrderedSet[A])	
+containsOrIncl	sets.html#containsOrIncl,OrderedSet[A],A	sets: containsOrIncl[A](s: var OrderedSet[A]; key: A): bool	
+excl	sets.html#excl,OrderedSet[A],A	sets: excl[A](s: var OrderedSet[A]; key: A)	
+missingOrExcl	sets.html#missingOrExcl,OrderedSet[A],A	sets: missingOrExcl[A](s: var OrderedSet[A]; key: A): bool	
+clear	sets.html#clear,OrderedSet[A]	sets: clear[A](s: var OrderedSet[A])	
+len	sets.html#len,OrderedSet[A]	sets: len[A](s: OrderedSet[A]): int	
+card	sets.html#card,OrderedSet[A]	sets: card[A](s: OrderedSet[A]): int	
+`==`	sets.html#==,OrderedSet[A],OrderedSet[A]	sets: `==`[A](s, t: OrderedSet[A]): bool	
+hash	sets.html#hash,OrderedSet[A]	sets: hash[A](s: OrderedSet[A]): Hash	
+`$`	sets.html#$,OrderedSet[A]	sets: `$`[A](s: OrderedSet[A]): string	
+items	sets.html#items.i,OrderedSet[A]	sets: items[A](s: OrderedSet[A]): A	
+pairs	sets.html#pairs.i,OrderedSet[A]	sets: pairs[A](s: OrderedSet[A]): tuple[a: int, b: A]	
+hash set	sets.html#hash-set_1	Module sets	

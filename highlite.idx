@@ -1,0 +1,59 @@
+langNone	highlite.html#langNone	SourceLanguage.langNone	
+langNim	highlite.html#langNim	SourceLanguage.langNim	
+langCpp	highlite.html#langCpp	SourceLanguage.langCpp	
+langCsharp	highlite.html#langCsharp	SourceLanguage.langCsharp	
+langC	highlite.html#langC	SourceLanguage.langC	
+langJava	highlite.html#langJava	SourceLanguage.langJava	
+langYaml	highlite.html#langYaml	SourceLanguage.langYaml	
+langPython	highlite.html#langPython	SourceLanguage.langPython	
+langCmd	highlite.html#langCmd	SourceLanguage.langCmd	
+langConsole	highlite.html#langConsole	SourceLanguage.langConsole	
+SourceLanguage	highlite.html#SourceLanguage	highlite: SourceLanguage	
+gtEof	highlite.html#gtEof	TokenClass.gtEof	
+gtNone	highlite.html#gtNone	TokenClass.gtNone	
+gtWhitespace	highlite.html#gtWhitespace	TokenClass.gtWhitespace	
+gtDecNumber	highlite.html#gtDecNumber	TokenClass.gtDecNumber	
+gtBinNumber	highlite.html#gtBinNumber	TokenClass.gtBinNumber	
+gtHexNumber	highlite.html#gtHexNumber	TokenClass.gtHexNumber	
+gtOctNumber	highlite.html#gtOctNumber	TokenClass.gtOctNumber	
+gtFloatNumber	highlite.html#gtFloatNumber	TokenClass.gtFloatNumber	
+gtIdentifier	highlite.html#gtIdentifier	TokenClass.gtIdentifier	
+gtKeyword	highlite.html#gtKeyword	TokenClass.gtKeyword	
+gtStringLit	highlite.html#gtStringLit	TokenClass.gtStringLit	
+gtLongStringLit	highlite.html#gtLongStringLit	TokenClass.gtLongStringLit	
+gtCharLit	highlite.html#gtCharLit	TokenClass.gtCharLit	
+gtEscapeSequence	highlite.html#gtEscapeSequence	TokenClass.gtEscapeSequence	
+gtOperator	highlite.html#gtOperator	TokenClass.gtOperator	
+gtPunctuation	highlite.html#gtPunctuation	TokenClass.gtPunctuation	
+gtComment	highlite.html#gtComment	TokenClass.gtComment	
+gtLongComment	highlite.html#gtLongComment	TokenClass.gtLongComment	
+gtRegularExpression	highlite.html#gtRegularExpression	TokenClass.gtRegularExpression	
+gtTagStart	highlite.html#gtTagStart	TokenClass.gtTagStart	
+gtTagEnd	highlite.html#gtTagEnd	TokenClass.gtTagEnd	
+gtKey	highlite.html#gtKey	TokenClass.gtKey	
+gtValue	highlite.html#gtValue	TokenClass.gtValue	
+gtRawData	highlite.html#gtRawData	TokenClass.gtRawData	
+gtAssembler	highlite.html#gtAssembler	TokenClass.gtAssembler	
+gtPreprocessor	highlite.html#gtPreprocessor	TokenClass.gtPreprocessor	
+gtDirective	highlite.html#gtDirective	TokenClass.gtDirective	
+gtCommand	highlite.html#gtCommand	TokenClass.gtCommand	
+gtRule	highlite.html#gtRule	TokenClass.gtRule	
+gtHyperlink	highlite.html#gtHyperlink	TokenClass.gtHyperlink	
+gtLabel	highlite.html#gtLabel	TokenClass.gtLabel	
+gtReference	highlite.html#gtReference	TokenClass.gtReference	
+gtPrompt	highlite.html#gtPrompt	TokenClass.gtPrompt	
+gtProgramOutput	highlite.html#gtProgramOutput	TokenClass.gtProgramOutput	
+gtProgram	highlite.html#gtProgram	TokenClass.gtProgram	
+gtOption	highlite.html#gtOption	TokenClass.gtOption	
+gtOther	highlite.html#gtOther	TokenClass.gtOther	
+TokenClass	highlite.html#TokenClass	highlite: TokenClass	
+GeneralTokenizer	highlite.html#GeneralTokenizer	highlite: GeneralTokenizer	
+sourceLanguageToStr	highlite.html#sourceLanguageToStr	highlite: sourceLanguageToStr	
+sourceLanguageToAlpha	highlite.html#sourceLanguageToAlpha	highlite: sourceLanguageToAlpha	
+tokenClassToStr	highlite.html#tokenClassToStr	highlite: tokenClassToStr	
+getSourceLanguage	highlite.html#getSourceLanguage,string	highlite: getSourceLanguage(name: string): SourceLanguage	
+initGeneralTokenizer	highlite.html#initGeneralTokenizer,GeneralTokenizer,cstring	highlite: initGeneralTokenizer(g: var GeneralTokenizer; buf: cstring)	
+initGeneralTokenizer	highlite.html#initGeneralTokenizer,GeneralTokenizer,string	highlite: initGeneralTokenizer(g: var GeneralTokenizer; buf: string)	
+deinitGeneralTokenizer	highlite.html#deinitGeneralTokenizer,GeneralTokenizer	highlite: deinitGeneralTokenizer(g: var GeneralTokenizer)	
+getNextToken	highlite.html#getNextToken,GeneralTokenizer,SourceLanguage	highlite: getNextToken(g: var GeneralTokenizer; lang: SourceLanguage)	
+tokenize	highlite.html#tokenize,string,SourceLanguage	highlite: tokenize(text: string; lang: SourceLanguage): seq[(string, TokenClass)]	

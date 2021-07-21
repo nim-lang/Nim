@@ -1,0 +1,3 @@
+prepend	chains.html#prepend.t,,	chains: prepend(header, node)	
+append	chains.html#append.t,,	chains: append(header, node)	
+unlink	chains.html#unlink.t,,	chains: unlink(header, node)	

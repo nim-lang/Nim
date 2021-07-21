@@ -1,0 +1,3 @@
+defaultParamSeparator	typesrenderer.html#defaultParamSeparator	typesrenderer: defaultParamSeparator	
+renderPlainSymbolName	typesrenderer.html#renderPlainSymbolName,PNode	typesrenderer: renderPlainSymbolName(n: PNode): string	
+renderParamTypes	typesrenderer.html#renderParamTypes,PNode	typesrenderer: renderParamTypes(n: PNode; sep = defaultParamSeparator): string	

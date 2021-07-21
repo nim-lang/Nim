@@ -1,0 +1,33 @@
+CritBitTree	critbits.html#CritBitTree	critbits: CritBitTree	
+len	critbits.html#len,CritBitTree[T]	critbits: len[T](c: CritBitTree[T]): int	
+contains	critbits.html#contains,CritBitTree[T],string	critbits: contains[T](c: CritBitTree[T]; key: string): bool	
+hasKey	critbits.html#hasKey,CritBitTree[T],string	critbits: hasKey[T](c: CritBitTree[T]; key: string): bool	
+excl	critbits.html#excl,CritBitTree[T],string	critbits: excl[T](c: var CritBitTree[T]; key: string)	
+missingOrExcl	critbits.html#missingOrExcl,CritBitTree[T],string	critbits: missingOrExcl[T](c: var CritBitTree[T]; key: string): bool	
+containsOrIncl	critbits.html#containsOrIncl,CritBitTree[T],string,T	critbits: containsOrIncl[T](c: var CritBitTree[T]; key: string; val: T): bool	
+containsOrIncl	critbits.html#containsOrIncl,CritBitTree[void],string	critbits: containsOrIncl(c: var CritBitTree[void]; key: string): bool	
+inc	critbits.html#inc,CritBitTree[int],string,int	critbits: inc(c: var CritBitTree[int]; key: string; val: int = 1)	
+incl	critbits.html#incl,CritBitTree[void],string	critbits: incl(c: var CritBitTree[void]; key: string)	
+incl	critbits.html#incl,CritBitTree[T],string,T	critbits: incl[T](c: var CritBitTree[T]; key: string; val: T)	
+`[]=`	critbits.html#[]=,CritBitTree[T],string,T	critbits: `[]=`[T](c: var CritBitTree[T]; key: string; val: T)	
+`[]`	critbits.html#[],CritBitTree[T],string	critbits: `[]`[T](c: CritBitTree[T]; key: string): T	
+`[]`	critbits.html#[],CritBitTree[T],string_2	critbits: `[]`[T](c: var CritBitTree[T]; key: string): var T	
+keys	critbits.html#keys.i,CritBitTree[T]	critbits: keys[T](c: CritBitTree[T]): string	
+values	critbits.html#values.i,CritBitTree[T]	critbits: values[T](c: CritBitTree[T]): T	
+mvalues	critbits.html#mvalues.i,CritBitTree[T]	critbits: mvalues[T](c: var CritBitTree[T]): var T	
+items	critbits.html#items.i,CritBitTree[T]	critbits: items[T](c: CritBitTree[T]): string	
+pairs	critbits.html#pairs.i,CritBitTree[T]	critbits: pairs[T](c: CritBitTree[T]): tuple[key: string, val: T]	
+mpairs	critbits.html#mpairs.i,CritBitTree[T]	critbits: mpairs[T](c: var CritBitTree[T]): tuple[key: string, val: var T]	
+keysWithPrefix	critbits.html#keysWithPrefix.i,CritBitTree[T],string	critbits: keysWithPrefix[T](c: CritBitTree[T]; prefix: string): string	
+valuesWithPrefix	critbits.html#valuesWithPrefix.i,CritBitTree[T],string	critbits: valuesWithPrefix[T](c: CritBitTree[T]; prefix: string): T	
+mvaluesWithPrefix	critbits.html#mvaluesWithPrefix.i,CritBitTree[T],string	critbits: mvaluesWithPrefix[T](c: var CritBitTree[T]; prefix: string): var T	
+itemsWithPrefix	critbits.html#itemsWithPrefix.i,CritBitTree[T],string	critbits: itemsWithPrefix[T](c: CritBitTree[T]; prefix: string): string	
+pairsWithPrefix	critbits.html#pairsWithPrefix.i,CritBitTree[T],string	critbits: pairsWithPrefix[T](c: CritBitTree[T]; prefix: string): tuple[key: string, val: T]	
+mpairsWithPrefix	critbits.html#mpairsWithPrefix.i,CritBitTree[T],string	critbits: mpairsWithPrefix[T](c: var CritBitTree[T]; prefix: string): tuple[key: string,\n    val: var T]	
+`$`	critbits.html#$,CritBitTree[T]	critbits: `$`[T](c: CritBitTree[T]): string	
+commonPrefixLen	critbits.html#commonPrefixLen,CritBitTree[T]	critbits: commonPrefixLen[T](c: CritBitTree[T]): int	
+toCritBitTree	critbits.html#toCritBitTree,openArray[]	critbits: toCritBitTree[T](pairs: openArray[(string, T)]): CritBitTree[T]	
+toCritBitTree	critbits.html#toCritBitTree,openArray[string]	critbits: toCritBitTree(items: openArray[string]): CritBitTree[void]	
+crit bit tree	critbits.html#crit-bit-tree_1	Module critbits	
+radix tree	critbits.html#radix-tree_1	Module critbits	
+patricia trie	critbits.html#patricia-trie_1	Module critbits	

@@ -1,0 +1,2 @@
+includeModule	reorder.html#includeModule,ModuleGraph,PSym,FileIndex	reorder: includeModule(graph: ModuleGraph; s: PSym; fileIdx: FileIndex): PNode	
+reorder	reorder.html#reorder,ModuleGraph,PNode,PSym	reorder: reorder(graph: ModuleGraph; n: PNode; module: PSym): PNode	

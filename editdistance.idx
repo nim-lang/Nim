@@ -1,0 +1,5 @@
+editDistance	editdistance.html#editDistance,string,string	editdistance: editDistance(a, b: string): int	
+editDistanceAscii	editdistance.html#editDistanceAscii,string,string	editdistance: editDistanceAscii(a, b: string): int	
+Levenshtein	editdistance.html#levenshtein_1	Module editdistance	
+Levenshtein	editdistance.html#levenshtein_2	Module editdistance	
+edit distance	editdistance.html#edit-distance_1	Module editdistance	

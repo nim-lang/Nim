@@ -1,0 +1,30 @@
+DbConn	db_odbc.html#DbConn	db_odbc: DbConn	
+Row	db_odbc.html#Row	db_odbc: Row	
+InstantRow	db_odbc.html#InstantRow	db_odbc: InstantRow	
+dbError	db_odbc.html#dbError,DbConn	db_odbc: dbError(db: var DbConn)	
+dbQuote	db_odbc.html#dbQuote,string	db_odbc: dbQuote(s: string): string	
+tryExec	db_odbc.html#tryExec,DbConn,SqlQuery,varargs[string,]	db_odbc: tryExec(db: var DbConn; query: SqlQuery; args: varargs[string, `$`]): bool	
+exec	db_odbc.html#exec,DbConn,SqlQuery,varargs[string,]	db_odbc: exec(db: var DbConn; query: SqlQuery; args: varargs[string, `$`])	
+fastRows	db_odbc.html#fastRows.i,DbConn,SqlQuery,varargs[string,]	db_odbc: fastRows(db: var DbConn; query: SqlQuery; args: varargs[string, `$`]): Row	
+instantRows	db_odbc.html#instantRows.i,DbConn,SqlQuery,varargs[string,]	db_odbc: instantRows(db: var DbConn; query: SqlQuery; args: varargs[string, `$`]): InstantRow	
+`[]`	db_odbc.html#[],InstantRow,int	db_odbc: `[]`(row: InstantRow; col: int): string	
+unsafeColumnAt	db_odbc.html#unsafeColumnAt,InstantRow,int	db_odbc: unsafeColumnAt(row: InstantRow; index: int): cstring	
+len	db_odbc.html#len,InstantRow	db_odbc: len(row: InstantRow): int	
+getRow	db_odbc.html#getRow,DbConn,SqlQuery,varargs[string,]	db_odbc: getRow(db: var DbConn; query: SqlQuery; args: varargs[string, `$`]): Row	
+getAllRows	db_odbc.html#getAllRows,DbConn,SqlQuery,varargs[string,]	db_odbc: getAllRows(db: var DbConn; query: SqlQuery; args: varargs[string, `$`]): seq[Row]	
+rows	db_odbc.html#rows.i,DbConn,SqlQuery,varargs[string,]	db_odbc: rows(db: var DbConn; query: SqlQuery; args: varargs[string, `$`]): Row	
+getValue	db_odbc.html#getValue,DbConn,SqlQuery,varargs[string,]	db_odbc: getValue(db: var DbConn; query: SqlQuery; args: varargs[string, `$`]): string	
+tryInsertId	db_odbc.html#tryInsertId,DbConn,SqlQuery,varargs[string,]	db_odbc: tryInsertId(db: var DbConn; query: SqlQuery; args: varargs[string, `$`]): int64	
+insertId	db_odbc.html#insertId,DbConn,SqlQuery,varargs[string,]	db_odbc: insertId(db: var DbConn; query: SqlQuery; args: varargs[string, `$`]): int64	
+tryInsert	db_odbc.html#tryInsert,DbConn,SqlQuery,string,varargs[string,]	db_odbc: tryInsert(db: var DbConn; query: SqlQuery; pkName: string;\n          args: varargs[string, `$`]): int64	
+insert	db_odbc.html#insert,DbConn,SqlQuery,string,varargs[string,]	db_odbc: insert(db: var DbConn; query: SqlQuery; pkName: string;\n       args: varargs[string, `$`]): int64	
+execAffectedRows	db_odbc.html#execAffectedRows,DbConn,SqlQuery,varargs[string,]	db_odbc: execAffectedRows(db: var DbConn; query: SqlQuery; args: varargs[string, `$`]): int64	
+close	db_odbc.html#close,DbConn	db_odbc: close(db: var DbConn)	
+open	db_odbc.html#open,string,string,string,string	db_odbc: open(connection, user, password, database: string): DbConn	
+setEncoding	db_odbc.html#setEncoding,DbConn,string	db_odbc: setEncoding(connection: DbConn; encoding: string): bool	
+Parameter substitution	db_odbc.html#parameter-substitution	 Parameter substitution	
+Examples	db_odbc.html#examples	 Examples	
+Opening a connection to a database	db_odbc.html#examples-opening-a-connection-to-a-database	  Opening a connection to a database	
+Creating a table	db_odbc.html#examples-creating-a-table	  Creating a table	
+Inserting data	db_odbc.html#examples-inserting-data	  Inserting data	
+Large example	db_odbc.html#examples-large-example	  Large example	

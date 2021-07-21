@@ -1,0 +1,6 @@
+doNothing	cpuload.html#doNothing	ThreadPoolAdvice.doNothing	
+doCreateThread	cpuload.html#doCreateThread	ThreadPoolAdvice.doCreateThread	
+doShutdownThread	cpuload.html#doShutdownThread	ThreadPoolAdvice.doShutdownThread	
+ThreadPoolAdvice	cpuload.html#ThreadPoolAdvice	cpuload: ThreadPoolAdvice	
+ThreadPoolState	cpuload.html#ThreadPoolState	cpuload: ThreadPoolState	
+advice	cpuload.html#advice,ThreadPoolState	cpuload: advice(s: var ThreadPoolState): ThreadPoolAdvice	

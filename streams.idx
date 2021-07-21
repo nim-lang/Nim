@@ -1,0 +1,63 @@
+Stream	streams.html#Stream	streams: Stream	
+StreamObj	streams.html#StreamObj	streams: StreamObj	
+flush	streams.html#flush,Stream	streams: flush(s: Stream)	
+close	streams.html#close,Stream	streams: close(s: Stream)	
+atEnd	streams.html#atEnd,Stream	streams: atEnd(s: Stream): bool	
+setPosition	streams.html#setPosition,Stream,int	streams: setPosition(s: Stream; pos: int)	
+getPosition	streams.html#getPosition,Stream	streams: getPosition(s: Stream): int	
+readData	streams.html#readData,Stream,pointer,int	streams: readData(s: Stream; buffer: pointer; bufLen: int): int	
+readDataStr	streams.html#readDataStr,Stream,string,Slice[int]	streams: readDataStr(s: Stream; buffer: var string; slice: Slice[int]): int	
+readAll	streams.html#readAll,Stream	streams: readAll(s: Stream): string	
+peekData	streams.html#peekData,Stream,pointer,int	streams: peekData(s: Stream; buffer: pointer; bufLen: int): int	
+writeData	streams.html#writeData,Stream,pointer,int	streams: writeData(s: Stream; buffer: pointer; bufLen: int)	
+write	streams.html#write,Stream,T	streams: write[T](s: Stream; x: T)	
+write	streams.html#write,Stream,string	streams: write(s: Stream; x: string)	
+write	streams.html#write,Stream,varargs[string,]	streams: write(s: Stream; args: varargs[string, `$`])	
+writeLine	streams.html#writeLine,Stream,varargs[string,]	streams: writeLine(s: Stream; args: varargs[string, `$`])	
+read	streams.html#read,Stream,T	streams: read[T](s: Stream; result: var T)	
+peek	streams.html#peek,Stream,T	streams: peek[T](s: Stream; result: var T)	
+readChar	streams.html#readChar,Stream	streams: readChar(s: Stream): char	
+peekChar	streams.html#peekChar,Stream	streams: peekChar(s: Stream): char	
+readBool	streams.html#readBool,Stream	streams: readBool(s: Stream): bool	
+peekBool	streams.html#peekBool,Stream	streams: peekBool(s: Stream): bool	
+readInt8	streams.html#readInt8,Stream	streams: readInt8(s: Stream): int8	
+peekInt8	streams.html#peekInt8,Stream	streams: peekInt8(s: Stream): int8	
+readInt16	streams.html#readInt16,Stream	streams: readInt16(s: Stream): int16	
+peekInt16	streams.html#peekInt16,Stream	streams: peekInt16(s: Stream): int16	
+readInt32	streams.html#readInt32,Stream	streams: readInt32(s: Stream): int32	
+peekInt32	streams.html#peekInt32,Stream	streams: peekInt32(s: Stream): int32	
+readInt64	streams.html#readInt64,Stream	streams: readInt64(s: Stream): int64	
+peekInt64	streams.html#peekInt64,Stream	streams: peekInt64(s: Stream): int64	
+readUint8	streams.html#readUint8,Stream	streams: readUint8(s: Stream): uint8	
+peekUint8	streams.html#peekUint8,Stream	streams: peekUint8(s: Stream): uint8	
+readUint16	streams.html#readUint16,Stream	streams: readUint16(s: Stream): uint16	
+peekUint16	streams.html#peekUint16,Stream	streams: peekUint16(s: Stream): uint16	
+readUint32	streams.html#readUint32,Stream	streams: readUint32(s: Stream): uint32	
+peekUint32	streams.html#peekUint32,Stream	streams: peekUint32(s: Stream): uint32	
+readUint64	streams.html#readUint64,Stream	streams: readUint64(s: Stream): uint64	
+peekUint64	streams.html#peekUint64,Stream	streams: peekUint64(s: Stream): uint64	
+readFloat32	streams.html#readFloat32,Stream	streams: readFloat32(s: Stream): float32	
+peekFloat32	streams.html#peekFloat32,Stream	streams: peekFloat32(s: Stream): float32	
+readFloat64	streams.html#readFloat64,Stream	streams: readFloat64(s: Stream): float64	
+peekFloat64	streams.html#peekFloat64,Stream	streams: peekFloat64(s: Stream): float64	
+readStr	streams.html#readStr,Stream,int,string	streams: readStr(s: Stream; length: int; str: var string)	
+readStr	streams.html#readStr,Stream,int	streams: readStr(s: Stream; length: int): string	
+peekStr	streams.html#peekStr,Stream,int,string	streams: peekStr(s: Stream; length: int; str: var string)	
+peekStr	streams.html#peekStr,Stream,int	streams: peekStr(s: Stream; length: int): string	
+readLine	streams.html#readLine,Stream,string	streams: readLine(s: Stream; line: var string): bool	
+peekLine	streams.html#peekLine,Stream,string	streams: peekLine(s: Stream; line: var string): bool	
+readLine	streams.html#readLine,Stream	streams: readLine(s: Stream): string	
+peekLine	streams.html#peekLine,Stream	streams: peekLine(s: Stream): string	
+lines	streams.html#lines.i,Stream	streams: lines(s: Stream): string	
+StringStream	streams.html#StringStream	streams: StringStream	
+StringStreamObj	streams.html#StringStreamObj	streams: StringStreamObj	
+newStringStream	streams.html#newStringStream,sinkstring	streams: newStringStream(s: sink string = &quot;&quot;): owned StringStream	
+FileStream	streams.html#FileStream	streams: FileStream	
+FileStreamObj	streams.html#FileStreamObj	streams: FileStreamObj	
+newFileStream	streams.html#newFileStream,File	streams: newFileStream(f: File): owned FileStream	
+newFileStream	streams.html#newFileStream,string,FileMode,int	streams: newFileStream(filename: string; mode: FileMode = fmRead; bufSize: int = -1): owned\n    FileStream	
+openFileStream	streams.html#openFileStream,string,FileMode,int	streams: openFileStream(filename: string; mode: FileMode = fmRead; bufSize: int = -1): owned\n    FileStream	
+Basic usage	streams.html#basic-usage	 Basic usage	
+StringStream example	streams.html#basic-usage-stringstream-example	  StringStream example	
+FileStream example	streams.html#basic-usage-filestream-example	  FileStream example	
+See also	streams.html#see-also	 See also	

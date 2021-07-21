@@ -1,0 +1,24 @@
+Rope	ropes.html#Rope	ropes: Rope	
+len	ropes.html#len,Rope	ropes: len(a: Rope): int	
+rope	ropes.html#rope,string	ropes: rope(s: string = &quot;&quot;): Rope	
+rope	ropes.html#rope,BiggestInt	ropes: rope(i: BiggestInt): Rope	
+rope	ropes.html#rope,BiggestFloat	ropes: rope(f: BiggestFloat): Rope	
+enableCache	ropes.html#enableCache	ropes: enableCache()	
+disableCache	ropes.html#disableCache	ropes: disableCache()	
+`&amp;`	ropes.html#&,Rope,Rope	ropes: `&amp;`(a, b: Rope): Rope	
+`&amp;`	ropes.html#&,Rope,string	ropes: `&amp;`(a: Rope; b: string): Rope	
+`&amp;`	ropes.html#&,string,Rope	ropes: `&amp;`(a: string; b: Rope): Rope	
+`&amp;`	ropes.html#&,openArray[Rope]	ropes: `&amp;`(a: openArray[Rope]): Rope	
+add	ropes.html#add,Rope,Rope	ropes: add(a: var Rope; b: Rope)	
+add	ropes.html#add,Rope,string	ropes: add(a: var Rope; b: string)	
+`[]`	ropes.html#[],Rope,int	ropes: `[]`(r: Rope; i: int): char	
+leaves	ropes.html#leaves.i,Rope	ropes: leaves(r: Rope): string	
+items	ropes.html#items.i,Rope	ropes: items(r: Rope): char	
+write	ropes.html#write,File,Rope	ropes: write(f: File; r: Rope)	
+write	ropes.html#write,Stream,Rope	ropes: write(s: Stream; r: Rope)	
+`$`	ropes.html#$,Rope	ropes: `$`(r: Rope): string	
+`%`	ropes.html#%,string,openArray[Rope]	ropes: `%`(frmt: string; args: openArray[Rope]): Rope	
+addf	ropes.html#addf,Rope,string,openArray[Rope]	ropes: addf(c: var Rope; frmt: string; args: openArray[Rope])	
+equalsFile	ropes.html#equalsFile,Rope,File	ropes: equalsFile(r: Rope; f: File): bool	
+equalsFile	ropes.html#equalsFile,Rope,string	ropes: equalsFile(r: Rope; filename: string): bool	
+rope	ropes.html#rope_1	Module ropes	

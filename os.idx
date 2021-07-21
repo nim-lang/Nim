@@ -1,0 +1,168 @@
+invalidFilenameChars	os.html#invalidFilenameChars	os: invalidFilenameChars	
+invalidFilenames	os.html#invalidFilenames	os: invalidFilenames	
+ReadEnvEffect	os.html#ReadEnvEffect	os: ReadEnvEffect	
+WriteEnvEffect	os.html#WriteEnvEffect	os: WriteEnvEffect	
+ReadDirEffect	os.html#ReadDirEffect	os: ReadDirEffect	
+WriteDirEffect	os.html#WriteDirEffect	os: WriteDirEffect	
+OSErrorCode	os.html#OSErrorCode	os: OSErrorCode	
+doslikeFileSystem	os.html#doslikeFileSystem	os: doslikeFileSystem	
+CurDir	os.html#CurDir	os: CurDir	
+ParDir	os.html#ParDir	os: ParDir	
+DirSep	os.html#DirSep	os: DirSep	
+AltSep	os.html#AltSep	os: AltSep	
+PathSep	os.html#PathSep	os: PathSep	
+FileSystemCaseSensitive	os.html#FileSystemCaseSensitive	os: FileSystemCaseSensitive	
+ExeExt	os.html#ExeExt	os: ExeExt	
+ScriptExt	os.html#ScriptExt	os: ScriptExt	
+DynlibFormat	os.html#DynlibFormat	os: DynlibFormat	
+ExtSep	os.html#ExtSep	os: ExtSep	
+normalizePathEnd	os.html#normalizePathEnd,string	os: normalizePathEnd(path: var string; trailingSep = false)	
+normalizePathEnd	os.html#normalizePathEnd,string_2	os: normalizePathEnd(path: string; trailingSep = false): string	
+joinPath	os.html#joinPath,string,string	os: joinPath(head, tail: string): string	
+joinPath	os.html#joinPath,varargs[string]	os: joinPath(parts: varargs[string]): string	
+`/`	os.html#/,string,string	os: `/`(head, tail: string): string	
+splitPath	os.html#splitPath,string	os: splitPath(path: string): tuple[head, tail: string]	
+isAbsolute	os.html#isAbsolute,string	os: isAbsolute(path: string): bool	
+relativePath	os.html#relativePath,string,string	os: relativePath(path, base: string; sep = DirSep): string	
+isRelativeTo	os.html#isRelativeTo,string,string	os: isRelativeTo(path: string; base: string): bool	
+parentDir	os.html#parentDir,string	os: parentDir(path: string): string	
+tailDir	os.html#tailDir,string	os: tailDir(path: string): string	
+isRootDir	os.html#isRootDir,string	os: isRootDir(path: string): bool	
+parentDirs	os.html#parentDirs.i,string	os: parentDirs(path: string; fromRoot = false; inclusive = true): string	
+`/../`	os.html#/../,string,string	os: `/../`(head, tail: string): string	
+searchExtPos	os.html#searchExtPos,string	os: searchExtPos(path: string): int	
+splitFile	os.html#splitFile,string	os: splitFile(path: string): tuple[dir, name, ext: string]	
+extractFilename	os.html#extractFilename,string	os: extractFilename(path: string): string	
+lastPathPart	os.html#lastPathPart,string	os: lastPathPart(path: string): string	
+changeFileExt	os.html#changeFileExt,string,string	os: changeFileExt(filename, ext: string): string	
+addFileExt	os.html#addFileExt,string,string	os: addFileExt(filename, ext: string): string	
+cmpPaths	os.html#cmpPaths,string,string	os: cmpPaths(pathA, pathB: string): int	
+unixToNativePath	os.html#unixToNativePath,string,string	os: unixToNativePath(path: string; drive = &quot;&quot;): string	
+`==`	os.html#==,OSErrorCode,OSErrorCode	os: `==`(err1, err2: OSErrorCode): bool	
+`$`	os.html#$,OSErrorCode	os: `$`(err: OSErrorCode): string	
+osErrorMsg	os.html#osErrorMsg,OSErrorCode	os: osErrorMsg(errorCode: OSErrorCode): string	
+newOSError	os.html#newOSError,OSErrorCode,string	os: newOSError(errorCode: OSErrorCode; additionalInfo = &quot;&quot;): owned(ref OSError)	
+raiseOSError	os.html#raiseOSError,OSErrorCode,string	os: raiseOSError(errorCode: OSErrorCode; additionalInfo = &quot;&quot;)	
+osLastError	os.html#osLastError	os: osLastError(): OSErrorCode	
+getEnv	os.html#getEnv,string,string	os: getEnv(key: string; default = &quot;&quot;): string	
+existsEnv	os.html#existsEnv,string	os: existsEnv(key: string): bool	
+putEnv	os.html#putEnv,string,string	os: putEnv(key, val: string)	
+delEnv	os.html#delEnv,string	os: delEnv(key: string)	
+envPairs	os.html#envPairs.i	os: envPairs(): tuple[key, value: string]	
+getHomeDir	os.html#getHomeDir	os: getHomeDir(): string	
+getConfigDir	os.html#getConfigDir	os: getConfigDir(): string	
+getCacheDir	os.html#getCacheDir	os: getCacheDir(): string	
+getCacheDir	os.html#getCacheDir,string	os: getCacheDir(app: string): string	
+getTempDir	os.html#getTempDir	os: getTempDir(): string	
+expandTilde	os.html#expandTilde,string	os: expandTilde(path: string): string	
+quoteShellWindows	os.html#quoteShellWindows,string	os: quoteShellWindows(s: string): string	
+quoteShellPosix	os.html#quoteShellPosix,string	os: quoteShellPosix(s: string): string	
+quoteShell	os.html#quoteShell,string	os: quoteShell(s: string): string	
+quoteShellCommand	os.html#quoteShellCommand,openArray[string]	os: quoteShellCommand(args: openArray[string]): string	
+fileExists	os.html#fileExists,string	os: fileExists(filename: string): bool	
+dirExists	os.html#dirExists,string	os: dirExists(dir: string): bool	
+symlinkExists	os.html#symlinkExists,string	os: symlinkExists(link: string): bool	
+ExeExts	os.html#ExeExts	os: ExeExts	
+findExe	os.html#findExe,string,bool,openArray[string]	os: findExe(exe: string; followSymlinks: bool = true;\n        extensions: openArray[string] = ExeExts): string	
+getLastModificationTime	os.html#getLastModificationTime,string	os: getLastModificationTime(file: string): times.Time	
+getLastAccessTime	os.html#getLastAccessTime,string	os: getLastAccessTime(file: string): times.Time	
+getCreationTime	os.html#getCreationTime,string	os: getCreationTime(file: string): times.Time	
+fileNewer	os.html#fileNewer,string,string	os: fileNewer(a, b: string): bool	
+getCurrentDir	os.html#getCurrentDir	os: getCurrentDir(): string	
+setCurrentDir	os.html#setCurrentDir,string	os: setCurrentDir(newDir: string)	
+absolutePath	os.html#absolutePath,string	os: absolutePath(path: string; root = getCurrentDir()): string	
+normalizeExe	os.html#normalizeExe,string	os: normalizeExe(file: var string)	
+normalizePath	os.html#normalizePath,string	os: normalizePath(path: var string)	
+normalizedPath	os.html#normalizedPath,string	os: normalizedPath(path: string): string	
+sameFile	os.html#sameFile,string,string	os: sameFile(path1, path2: string): bool	
+fpUserExec	os.html#fpUserExec	FilePermission.fpUserExec	
+fpUserWrite	os.html#fpUserWrite	FilePermission.fpUserWrite	
+fpUserRead	os.html#fpUserRead	FilePermission.fpUserRead	
+fpGroupExec	os.html#fpGroupExec	FilePermission.fpGroupExec	
+fpGroupWrite	os.html#fpGroupWrite	FilePermission.fpGroupWrite	
+fpGroupRead	os.html#fpGroupRead	FilePermission.fpGroupRead	
+fpOthersExec	os.html#fpOthersExec	FilePermission.fpOthersExec	
+fpOthersWrite	os.html#fpOthersWrite	FilePermission.fpOthersWrite	
+fpOthersRead	os.html#fpOthersRead	FilePermission.fpOthersRead	
+FilePermission	os.html#FilePermission	os: FilePermission	
+getFilePermissions	os.html#getFilePermissions,string	os: getFilePermissions(filename: string): set[FilePermission]	
+setFilePermissions	os.html#setFilePermissions,string,set[FilePermission]	os: setFilePermissions(filename: string; permissions: set[FilePermission];\n                   followSymlinks = true)	
+isAdmin	os.html#isAdmin	os: isAdmin(): bool	
+createSymlink	os.html#createSymlink,string,string	os: createSymlink(src, dest: string)	
+expandSymlink	os.html#expandSymlink,string	os: expandSymlink(symlinkPath: string): string	
+cfSymlinkAsIs	os.html#cfSymlinkAsIs	CopyFlag.cfSymlinkAsIs	
+cfSymlinkFollow	os.html#cfSymlinkFollow	CopyFlag.cfSymlinkFollow	
+cfSymlinkIgnore	os.html#cfSymlinkIgnore	CopyFlag.cfSymlinkIgnore	
+CopyFlag	os.html#CopyFlag	os: CopyFlag	
+copyFile	os.html#copyFile,string,string	os: copyFile(source, dest: string; options = {cfSymlinkFollow})	
+copyFileToDir	os.html#copyFileToDir,string,string	os: copyFileToDir(source, dir: string; options = {cfSymlinkFollow})	
+tryRemoveFile	os.html#tryRemoveFile,string	os: tryRemoveFile(file: string): bool	
+removeFile	os.html#removeFile,string	os: removeFile(file: string)	
+moveFile	os.html#moveFile,string,string	os: moveFile(source, dest: string)	
+exitStatusLikeShell	os.html#exitStatusLikeShell,cint	os: exitStatusLikeShell(status: cint): cint	
+execShellCmd	os.html#execShellCmd,string	os: execShellCmd(command: string): int	
+walkPattern	os.html#walkPattern.i,string	os: walkPattern(pattern: string): string	
+walkFiles	os.html#walkFiles.i,string	os: walkFiles(pattern: string): string	
+walkDirs	os.html#walkDirs.i,string	os: walkDirs(pattern: string): string	
+expandFilename	os.html#expandFilename,string	os: expandFilename(filename: string): string	
+pcFile	os.html#pcFile	PathComponent.pcFile	
+pcLinkToFile	os.html#pcLinkToFile	PathComponent.pcLinkToFile	
+pcDir	os.html#pcDir	PathComponent.pcDir	
+pcLinkToDir	os.html#pcLinkToDir	PathComponent.pcLinkToDir	
+PathComponent	os.html#PathComponent	os: PathComponent	
+getCurrentCompilerExe	os.html#getCurrentCompilerExe	os: getCurrentCompilerExe(): string	
+walkDir	os.html#walkDir.i,string	os: walkDir(dir: string; relative = false; checkDir = false): tuple[\n    kind: PathComponent, path: string]	
+walkDirRec	os.html#walkDirRec.i,string	os: walkDirRec(dir: string; yieldFilter = {pcFile}; followFilter = {pcDir};\n           relative = false; checkDir = false): string	
+removeDir	os.html#removeDir,string	os: removeDir(dir: string; checkDir = false)	
+existsOrCreateDir	os.html#existsOrCreateDir,string	os: existsOrCreateDir(dir: string): bool	
+createDir	os.html#createDir,string	os: createDir(dir: string)	
+copyDir	os.html#copyDir,string,string	os: copyDir(source, dest: string)	
+moveDir	os.html#moveDir,string,string	os: moveDir(source, dest: string)	
+createHardlink	os.html#createHardlink,string,string	os: createHardlink(src, dest: string)	
+copyFileWithPermissions	os.html#copyFileWithPermissions,string,string	os: copyFileWithPermissions(source, dest: string; ignorePermissionErrors = true;\n                        options = {cfSymlinkFollow})	
+copyDirWithPermissions	os.html#copyDirWithPermissions,string,string	os: copyDirWithPermissions(source, dest: string; ignorePermissionErrors = true)	
+inclFilePermissions	os.html#inclFilePermissions,string,set[FilePermission]	os: inclFilePermissions(filename: string; permissions: set[FilePermission])	
+exclFilePermissions	os.html#exclFilePermissions,string,set[FilePermission]	os: exclFilePermissions(filename: string; permissions: set[FilePermission])	
+parseCmdLine	os.html#parseCmdLine,string	os: parseCmdLine(c: string): seq[string]	
+paramCount	os.html#paramCount	os: paramCount(): int	
+paramStr	os.html#paramStr,int	os: paramStr(i: int): string	
+commandLineParams	os.html#commandLineParams	os: commandLineParams(): seq[string]	
+getAppFilename	os.html#getAppFilename	os: getAppFilename(): string	
+getAppDir	os.html#getAppDir	os: getAppDir(): string	
+sleep	os.html#sleep,int	os: sleep(milsecs: int)	
+getFileSize	os.html#getFileSize,string	os: getFileSize(file: string): BiggestInt	
+DeviceId	os.html#DeviceId	os: DeviceId	
+FileId	os.html#FileId	os: FileId	
+FileInfo	os.html#FileInfo	os: FileInfo	
+getFileInfo	os.html#getFileInfo,FileHandle	os: getFileInfo(handle: FileHandle): FileInfo	
+getFileInfo	os.html#getFileInfo,File	os: getFileInfo(file: File): FileInfo	
+getFileInfo	os.html#getFileInfo,string	os: getFileInfo(path: string; followSymlink = true): FileInfo	
+sameFileContent	os.html#sameFileContent,string,string	os: sameFileContent(path1, path2: string): bool	
+isHidden	os.html#isHidden,string	os: isHidden(path: string): bool	
+getCurrentProcessId	os.html#getCurrentProcessId	os: getCurrentProcessId(): int	
+setLastModificationTime	os.html#setLastModificationTime,string,	os: setLastModificationTime(file: string; t: times.Time)	
+isValidFilename	os.html#isValidFilename,string	os: isValidFilename(filename: string; maxLen = 259.Positive): bool	
+existsFile	os.html#existsFile.t,varargs[untyped]	os: existsFile(args: varargs[untyped]): untyped	
+existsDir	os.html#existsDir.t,varargs[untyped]	os: existsDir(args: varargs[untyped]): untyped	
+DLL	os.html#dll_1	Module os	
+shared object	os.html#shared-object_1	Module os	
+baseName	os.html#basename_1	Module os	
+environment variable	os.html#environment-variable_1	Module os	
+environment variable	os.html#environment-variable_2	Module os	
+environment variable	os.html#environment-variable_3	Module os	
+current working directory	os.html#current-working-directory_1	Module os	
+current working directory	os.html#current-working-directory_2	Module os	
+rename files	os.html#rename-files_1	Module os	
+shell command	os.html#shell-command_1	Module os	
+absolute	os.html#absolute_1	Module os	
+directory	os.html#directory_1	Module os	
+directory	os.html#directory_2	Module os	
+command line	os.html#command-line_1	Module os	
+command line arguments	os.html#command-line-arguments_1	Module os	
+argc	os.html#argc_1	Module os	
+command line argument	os.html#command-line-argument_1	Module os	
+argv	os.html#argv_1	Module os	
+environments variables	os.html#environments-variables_1	Module os	
+glob	os.html#glob_1	Module os	
+glob	os.html#glob_2	Module os	
+glob	os.html#glob_3	Module os	

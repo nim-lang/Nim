@@ -1,0 +1,1 @@
+liftParallel	semparallel.html#liftParallel,ModuleGraph,IdGenerator,PSym,PNode	semparallel: liftParallel(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode	

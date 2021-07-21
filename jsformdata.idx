@@ -1,0 +1,17 @@
+FormData	jsformdata.html#FormData	jsformdata: FormData	
+newFormData	jsformdata.html#newFormData	jsformdata: newFormData(): FormData	
+add	jsformdata.html#add,FormData,cstring,	jsformdata: add(self: FormData; name: cstring; value: SomeNumber | bool | cstring)	
+add	jsformdata.html#add,FormData,cstring,,cstring	jsformdata: add(self: FormData; name: cstring; value: SomeNumber | bool | cstring;\n    filename: cstring)	
+delete	jsformdata.html#delete,FormData,cstring	jsformdata: delete(self: FormData; name: cstring)	
+getAll	jsformdata.html#getAll,FormData,cstring	jsformdata: getAll(self: FormData; name: cstring): seq[cstring]	
+hasKey	jsformdata.html#hasKey,FormData,cstring	jsformdata: hasKey(self: FormData; name: cstring): bool	
+keys	jsformdata.html#keys,FormData	jsformdata: keys(self: FormData): seq[cstring]	
+values	jsformdata.html#values,FormData	jsformdata: values(self: FormData): seq[cstring]	
+pairs	jsformdata.html#pairs,FormData	jsformdata: pairs(self: FormData): seq[tuple[key, val: cstring]]	
+put	jsformdata.html#put,FormData,cstring,cstring,cstring	jsformdata: put(self: FormData; name, value, filename: cstring)	
+`[]=`	jsformdata.html#[]=,FormData,cstring,cstring	jsformdata: `[]=`(self: FormData; name, value: cstring)	
+`[]`	jsformdata.html#[],FormData,cstring	jsformdata: `[]`(self: FormData; name: cstring): cstring	
+clear	jsformdata.html#clear,FormData	jsformdata: clear(self: FormData)	
+toCstring	jsformdata.html#toCstring,FormData	jsformdata: toCstring(self: FormData): cstring	
+`$`	jsformdata.html#$,FormData	jsformdata: `$`(self: FormData): string	
+len	jsformdata.html#len,FormData	jsformdata: len(self: FormData): int	

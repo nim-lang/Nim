@@ -1,0 +1,20 @@
+FlowVarBase	threadpool.html#FlowVarBase	threadpool: FlowVarBase	
+FlowVar	threadpool.html#FlowVar	threadpool: FlowVar	
+blockUntil	threadpool.html#blockUntil,FlowVarBaseObj	threadpool: blockUntil(fv: var FlowVarBaseObj)	
+awaitAndThen	threadpool.html#awaitAndThen,FlowVar[T],proc(T)	threadpool: awaitAndThen[T](fv: FlowVar[T]; action: proc (x: T) {.closure.})	
+unsafeRead	threadpool.html#unsafeRead,FlowVar[ref.T]	threadpool: unsafeRead[T](fv: FlowVar[ref T]): ptr T	
+`^`	threadpool.html#^,FlowVar[T]	threadpool: `^`[T](fv: FlowVar[T]): T	
+blockUntilAny	threadpool.html#blockUntilAny,openArray[FlowVarBase]	threadpool: blockUntilAny(flowVars: openArray[FlowVarBase]): int	
+isReady	threadpool.html#isReady,FlowVarBase	threadpool: isReady(fv: FlowVarBase): bool	
+MaxThreadPoolSize	threadpool.html#MaxThreadPoolSize	threadpool: MaxThreadPoolSize	
+MaxDistinguishedThread	threadpool.html#MaxDistinguishedThread	threadpool: MaxDistinguishedThread	
+ThreadId	threadpool.html#ThreadId	threadpool: ThreadId	
+setMinPoolSize	threadpool.html#setMinPoolSize,range[]	threadpool: setMinPoolSize(size: range[1 .. MaxThreadPoolSize])	
+setMaxPoolSize	threadpool.html#setMaxPoolSize,range[]	threadpool: setMaxPoolSize(size: range[1 .. MaxThreadPoolSize])	
+preferSpawn	threadpool.html#preferSpawn	threadpool: preferSpawn(): bool	
+spawn	threadpool.html#spawn,sinktyped	threadpool: spawn(call: sink typed)	
+pinnedSpawn	threadpool.html#pinnedSpawn,ThreadId,sinktyped	threadpool: pinnedSpawn(id: ThreadId; call: sink typed)	
+spawnX	threadpool.html#spawnX.t	threadpool: spawnX(call)	
+parallel	threadpool.html#parallel,untyped	threadpool: parallel(body: untyped)	
+sync	threadpool.html#sync	threadpool: sync()	
+See also	threadpool.html#see-also	 See also	

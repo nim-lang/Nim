@@ -1,0 +1,16 @@
+upName	lambdalifting.html#upName	lambdalifting: upName	
+paramName	lambdalifting.html#paramName	lambdalifting: paramName	
+envName	lambdalifting.html#envName	lambdalifting: envName	
+createClosureIterStateType	lambdalifting.html#createClosureIterStateType,ModuleGraph,PSym,IdGenerator	lambdalifting: createClosureIterStateType(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PType	
+getClosureIterResult	lambdalifting.html#getClosureIterResult,ModuleGraph,PSym,IdGenerator	lambdalifting: getClosureIterResult(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym	
+getEnvParam	lambdalifting.html#getEnvParam,PSym	lambdalifting: getEnvParam(routine: PSym): PSym	
+makeClosure	lambdalifting.html#makeClosure,ModuleGraph,IdGenerator,PSym,PNode,TLineInfo	lambdalifting: makeClosure(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode;\n            info: TLineInfo): PNode	
+isIterator	lambdalifting.html#isIterator.t,PSym	lambdalifting: isIterator(owner: PSym): bool	
+liftIterSym	lambdalifting.html#liftIterSym,ModuleGraph,PNode,IdGenerator,PSym	lambdalifting: liftIterSym(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode	
+freshVarForClosureIter	lambdalifting.html#freshVarForClosureIter,ModuleGraph,PSym,IdGenerator,PSym	lambdalifting: freshVarForClosureIter(g: ModuleGraph; s: PSym; idgen: IdGenerator; owner: PSym): PNode	
+getStateField	lambdalifting.html#getStateField,ModuleGraph,PSym	lambdalifting: getStateField(g: ModuleGraph; owner: PSym): PSym	
+semCaptureSym	lambdalifting.html#semCaptureSym,PSym,PSym	lambdalifting: semCaptureSym(s, owner: PSym)	
+liftIterToProc	lambdalifting.html#liftIterToProc,ModuleGraph,PSym,PNode,PType,IdGenerator	lambdalifting: liftIterToProc(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType;\n               idgen: IdGenerator): PNode	
+liftLambdas	lambdalifting.html#liftLambdas,ModuleGraph,PSym,PNode,bool,IdGenerator	lambdalifting: liftLambdas(g: ModuleGraph; fn: PSym; body: PNode; tooEarly: var bool;\n            idgen: IdGenerator): PNode	
+liftLambdasForTopLevel	lambdalifting.html#liftLambdasForTopLevel,PSym,PNode	lambdalifting: liftLambdasForTopLevel(module: PSym; body: PNode): PNode	
+liftForLoop	lambdalifting.html#liftForLoop,ModuleGraph,PNode,IdGenerator,PSym	lambdalifting: liftForLoop(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym): PNode	

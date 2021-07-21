@@ -1,0 +1,26 @@
+Parser	parser.html#Parser	parser: Parser	
+getTok	parser.html#getTok,Parser	parser: getTok(p: var Parser)	
+openParser	parser.html#openParser,Parser,FileIndex,PLLStream,IdentCache,ConfigRef	parser: openParser(p: var Parser; fileIdx: FileIndex; inputStream: PLLStream;\n           cache: IdentCache; config: ConfigRef)	
+openParser	parser.html#openParser,Parser,AbsoluteFile,PLLStream,IdentCache,ConfigRef	parser: openParser(p: var Parser; filename: AbsoluteFile; inputStream: PLLStream;\n           cache: IdentCache; config: ConfigRef)	
+closeParser	parser.html#closeParser,Parser	parser: closeParser(p: var Parser)	
+parMessage	parser.html#parMessage,Parser,TMsgKind,string	parser: parMessage(p: Parser; msg: TMsgKind; arg: string = &quot;&quot;)	
+skipComment	parser.html#skipComment,Parser,PNode	parser: skipComment(p: var Parser; node: PNode)	
+skipInd	parser.html#skipInd,Parser	parser: skipInd(p: var Parser)	
+optPar	parser.html#optPar,Parser	parser: optPar(p: var Parser)	
+optInd	parser.html#optInd,Parser,PNode	parser: optInd(p: var Parser; n: PNode)	
+expectIdentOrKeyw	parser.html#expectIdentOrKeyw,Parser	parser: expectIdentOrKeyw(p: Parser)	
+expectIdent	parser.html#expectIdent,Parser	parser: expectIdent(p: Parser)	
+eat	parser.html#eat,Parser,TokType	parser: eat(p: var Parser; tokType: TokType)	
+parLineInfo	parser.html#parLineInfo,Parser	parser: parLineInfo(p: Parser): TLineInfo	
+indAndComment	parser.html#indAndComment,Parser,PNode	parser: indAndComment(p: var Parser; n: PNode; maybeMissEquals = false)	
+newNodeP	parser.html#newNodeP,TNodeKind,Parser	parser: newNodeP(kind: TNodeKind; p: Parser): PNode	
+newIntNodeP	parser.html#newIntNodeP,TNodeKind,BiggestInt,Parser	parser: newIntNodeP(kind: TNodeKind; intVal: BiggestInt; p: Parser): PNode	
+newFloatNodeP	parser.html#newFloatNodeP,TNodeKind,BiggestFloat,Parser	parser: newFloatNodeP(kind: TNodeKind; floatVal: BiggestFloat; p: Parser): PNode	
+newStrNodeP	parser.html#newStrNodeP,TNodeKind,string,Parser	parser: newStrNodeP(kind: TNodeKind; strVal: string; p: Parser): PNode	
+newIdentNodeP	parser.html#newIdentNodeP,PIdent,Parser	parser: newIdentNodeP(ident: PIdent; p: Parser): PNode	
+isOperator	parser.html#isOperator,Token	parser: isOperator(tok: Token): bool	
+parseSymbol	parser.html#parseSymbol,Parser	parser: parseSymbol(p: var Parser; mode = smNormal): PNode	
+setBaseFlags	parser.html#setBaseFlags,PNode,NumericalBase	parser: setBaseFlags(n: PNode; base: NumericalBase)	
+parseAll	parser.html#parseAll,Parser	parser: parseAll(p: var Parser): PNode	
+parseTopLevelStmt	parser.html#parseTopLevelStmt,Parser	parser: parseTopLevelStmt(p: var Parser): PNode	
+parseString	parser.html#parseString,string,IdentCache,ConfigRef,string,int,ErrorHandler	parser: parseString(s: string; cache: IdentCache; config: ConfigRef;\n            filename: string = &quot;&quot;; line: int = 0;\n            errorHandler: ErrorHandler = nil): PNode	

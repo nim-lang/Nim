@@ -1,0 +1,4 @@
+memalign	switch_memory.html#memalign,csize,csize	switch_memory: memalign(bytes: csize; size: csize): pointer	
+svcMapMemory	switch_memory.html#svcMapMemory,pointer,pointer,uint64	switch_memory: svcMapMemory(dst_addr: pointer; src_addr: pointer; size: uint64): uint32	
+svcUnmapMemory	switch_memory.html#svcUnmapMemory,pointer,pointer,uint64	switch_memory: svcUnmapMemory(dst_addr: pointer; src_addr: pointer; size: uint64): uint32	
+virtmemReserveMap	switch_memory.html#virtmemReserveMap,csize	switch_memory: virtmemReserveMap(size: csize): pointer	

@@ -1,0 +1,1 @@
+opGorge	gorgeimpl.html#opGorge,string,string,string,TLineInfo,ConfigRef	gorgeimpl: opGorge(cmd, input, cache: string; info: TLineInfo; conf: ConfigRef): (string,\n    int)	

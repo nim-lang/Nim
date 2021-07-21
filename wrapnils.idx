@@ -1,0 +1,5 @@
+`?.`	wrapnils.html#?..m,typed	wrapnils: `?.`(a: typed): auto	
+`??.`	wrapnils.html#??..m,typed	wrapnils: `??.`(a: typed): Option	
+fakeDot	wrapnils.html#fakeDot.t,Option,	wrapnils: fakeDot(a: Option; b): untyped	
+`[]`	wrapnils.html#[],Option[T],I	wrapnils: `[]`[T, I](a: Option[T]; i: I): auto	
+`[]`	wrapnils.html#[],Option[U]	wrapnils: `[]`[U](a: Option[U]): auto	

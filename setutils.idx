@@ -1,0 +1,5 @@
+toSet	setutils.html#toSet.t,untyped	setutils: toSet(iter: untyped): untyped	
+fullSet	setutils.html#fullSet,typedesc[T]	setutils: fullSet[T](U: typedesc[T]): set[T]	
+complement	setutils.html#complement,set[T]	setutils: complement[T](s: set[T]): set[T]	
+`[]=`	setutils.html#[]=,set[T],T,bool	setutils: `[]=`[T](t: var set[T]; key: T; val: bool)	
+See also	setutils.html#see-also	 See also	

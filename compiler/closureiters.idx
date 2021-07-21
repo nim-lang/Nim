@@ -1,0 +1,1 @@
+transformClosureIterator	closureiters.html#transformClosureIterator,ModuleGraph,IdGenerator,PSym,PNode	closureiters: transformClosureIterator(g: ModuleGraph; idgen: IdGenerator; fn: PSym; n: PNode): PNode	

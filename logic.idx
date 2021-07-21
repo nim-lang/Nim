@@ -1,0 +1,5 @@
+`-&gt;`	logic.html#->,bool,bool	logic: `-&gt;`(a, b: bool): bool	
+`&lt;-&gt;`	logic.html#<->,bool,bool	logic: `&lt;-&gt;`(a, b: bool): bool	
+forall	logic.html#forall,varargs[untyped]	logic: forall(args: varargs[untyped]): bool	
+exists	logic.html#exists,varargs[untyped]	logic: exists(args: varargs[untyped]): bool	
+old	logic.html#old,T	logic: old[T](x: T): T	

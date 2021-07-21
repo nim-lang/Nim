@@ -1,0 +1,5 @@
+startsWith	cstrutils.html#startsWith,cstring,cstring	cstrutils: startsWith(s, prefix: cstring): bool	
+endsWith	cstrutils.html#endsWith,cstring,cstring	cstrutils: endsWith(s, suffix: cstring): bool	
+cmpIgnoreStyle	cstrutils.html#cmpIgnoreStyle,cstring,cstring	cstrutils: cmpIgnoreStyle(a, b: cstring): int	
+cmpIgnoreCase	cstrutils.html#cmpIgnoreCase,cstring,cstring	cstrutils: cmpIgnoreCase(a, b: cstring): int	
+See also	cstrutils.html#see-also	 See also	

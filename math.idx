@@ -1,0 +1,122 @@
+c_frexp	math.html#c_frexp,cfloat,cint	math: c_frexp(x: cfloat; exponent: var cint): cfloat	
+c_frexp	math.html#c_frexp,cdouble,cint	math: c_frexp(x: cdouble; exponent: var cint): cdouble	
+binom	math.html#binom,int,int	math: binom(n, k: int): int	
+fac	math.html#fac,int	math: fac(n: int): int	
+PI	math.html#PI	math: PI	
+TAU	math.html#TAU	math: TAU	
+E	math.html#E	math: E	
+MaxFloat64Precision	math.html#MaxFloat64Precision	math: MaxFloat64Precision	
+MaxFloat32Precision	math.html#MaxFloat32Precision	math: MaxFloat32Precision	
+MaxFloatPrecision	math.html#MaxFloatPrecision	math: MaxFloatPrecision	
+MinFloatNormal	math.html#MinFloatNormal	math: MinFloatNormal	
+fcNormal	math.html#fcNormal	FloatClass.fcNormal	
+fcSubnormal	math.html#fcSubnormal	FloatClass.fcSubnormal	
+fcZero	math.html#fcZero	FloatClass.fcZero	
+fcNegZero	math.html#fcNegZero	FloatClass.fcNegZero	
+fcNan	math.html#fcNan	FloatClass.fcNan	
+fcInf	math.html#fcInf	FloatClass.fcInf	
+fcNegInf	math.html#fcNegInf	FloatClass.fcNegInf	
+FloatClass	math.html#FloatClass	math: FloatClass	
+isNaN	math.html#isNaN,SomeFloat	math: isNaN(x: SomeFloat): bool	
+signbit	math.html#signbit,SomeFloat	math: signbit(x: SomeFloat): bool	
+copySign	math.html#copySign,T,T	math: copySign[T: SomeFloat](x, y: T): T	
+classify	math.html#classify,float	math: classify(x: float): FloatClass	
+almostEqual	math.html#almostEqual,T,T,Natural	math: almostEqual[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4): bool	
+isPowerOfTwo	math.html#isPowerOfTwo,int	math: isPowerOfTwo(x: int): bool	
+nextPowerOfTwo	math.html#nextPowerOfTwo,int	math: nextPowerOfTwo(x: int): int	
+sum	math.html#sum,openArray[T]	math: sum[T](x: openArray[T]): T	
+prod	math.html#prod,openArray[T]	math: prod[T](x: openArray[T]): T	
+cumsummed	math.html#cumsummed,openArray[T]	math: cumsummed[T](x: openArray[T]): seq[T]	
+cumsum	math.html#cumsum,openArray[T]	math: cumsum[T](x: var openArray[T])	
+sqrt	math.html#sqrt,float32	math: sqrt(x: float32): float32	
+sqrt	math.html#sqrt,float64	math: sqrt(x: float64): float64	
+cbrt	math.html#cbrt,float32	math: cbrt(x: float32): float32	
+cbrt	math.html#cbrt,float64	math: cbrt(x: float64): float64	
+ln	math.html#ln,float32	math: ln(x: float32): float32	
+ln	math.html#ln,float64	math: ln(x: float64): float64	
+log	math.html#log,T,T	math: log[T: SomeFloat](x, base: T): T	
+log10	math.html#log10,float32	math: log10(x: float32): float32	
+log10	math.html#log10,float64	math: log10(x: float64): float64	
+exp	math.html#exp,float32	math: exp(x: float32): float32	
+exp	math.html#exp,float64	math: exp(x: float64): float64	
+sin	math.html#sin,float32	math: sin(x: float32): float32	
+sin	math.html#sin,float64	math: sin(x: float64): float64	
+cos	math.html#cos,float32	math: cos(x: float32): float32	
+cos	math.html#cos,float64	math: cos(x: float64): float64	
+tan	math.html#tan,float32	math: tan(x: float32): float32	
+tan	math.html#tan,float64	math: tan(x: float64): float64	
+sinh	math.html#sinh,float32	math: sinh(x: float32): float32	
+sinh	math.html#sinh,float64	math: sinh(x: float64): float64	
+cosh	math.html#cosh,float32	math: cosh(x: float32): float32	
+cosh	math.html#cosh,float64	math: cosh(x: float64): float64	
+tanh	math.html#tanh,float32	math: tanh(x: float32): float32	
+tanh	math.html#tanh,float64	math: tanh(x: float64): float64	
+arcsin	math.html#arcsin,float32	math: arcsin(x: float32): float32	
+arcsin	math.html#arcsin,float64	math: arcsin(x: float64): float64	
+arccos	math.html#arccos,float32	math: arccos(x: float32): float32	
+arccos	math.html#arccos,float64	math: arccos(x: float64): float64	
+arctan	math.html#arctan,float32	math: arctan(x: float32): float32	
+arctan	math.html#arctan,float64	math: arctan(x: float64): float64	
+arctan2	math.html#arctan2,float32,float32	math: arctan2(y, x: float32): float32	
+arctan2	math.html#arctan2,float64,float64	math: arctan2(y, x: float64): float64	
+arcsinh	math.html#arcsinh,float32	math: arcsinh(x: float32): float32	
+arcsinh	math.html#arcsinh,float64	math: arcsinh(x: float64): float64	
+arccosh	math.html#arccosh,float32	math: arccosh(x: float32): float32	
+arccosh	math.html#arccosh,float64	math: arccosh(x: float64): float64	
+arctanh	math.html#arctanh,float32	math: arctanh(x: float32): float32	
+arctanh	math.html#arctanh,float64	math: arctanh(x: float64): float64	
+cot	math.html#cot,T	math: cot[T: float32 | float64](x: T): T	
+sec	math.html#sec,T	math: sec[T: float32 | float64](x: T): T	
+csc	math.html#csc,T	math: csc[T: float32 | float64](x: T): T	
+coth	math.html#coth,T	math: coth[T: float32 | float64](x: T): T	
+sech	math.html#sech,T	math: sech[T: float32 | float64](x: T): T	
+csch	math.html#csch,T	math: csch[T: float32 | float64](x: T): T	
+arccot	math.html#arccot,T	math: arccot[T: float32 | float64](x: T): T	
+arcsec	math.html#arcsec,T	math: arcsec[T: float32 | float64](x: T): T	
+arccsc	math.html#arccsc,T	math: arccsc[T: float32 | float64](x: T): T	
+arccoth	math.html#arccoth,T	math: arccoth[T: float32 | float64](x: T): T	
+arcsech	math.html#arcsech,T	math: arcsech[T: float32 | float64](x: T): T	
+arccsch	math.html#arccsch,T	math: arccsch[T: float32 | float64](x: T): T	
+hypot	math.html#hypot,float32,float32	math: hypot(x, y: float32): float32	
+hypot	math.html#hypot,float64,float64	math: hypot(x, y: float64): float64	
+pow	math.html#pow,float32,float32	math: pow(x, y: float32): float32	
+pow	math.html#pow,float64,float64	math: pow(x, y: float64): float64	
+erf	math.html#erf,float32	math: erf(x: float32): float32	
+erf	math.html#erf,float64	math: erf(x: float64): float64	
+erfc	math.html#erfc,float32	math: erfc(x: float32): float32	
+erfc	math.html#erfc,float64	math: erfc(x: float64): float64	
+gamma	math.html#gamma,float32	math: gamma(x: float32): float32	
+gamma	math.html#gamma,float64	math: gamma(x: float64): float64	
+lgamma	math.html#lgamma,float32	math: lgamma(x: float32): float32	
+lgamma	math.html#lgamma,float64	math: lgamma(x: float64): float64	
+floor	math.html#floor,float32	math: floor(x: float32): float32	
+floor	math.html#floor,float64	math: floor(x: float64): float64	
+ceil	math.html#ceil,float32	math: ceil(x: float32): float32	
+ceil	math.html#ceil,float64	math: ceil(x: float64): float64	
+round	math.html#round,float32	math: round(x: float32): float32	
+round	math.html#round,float64	math: round(x: float64): float64	
+trunc	math.html#trunc,float32	math: trunc(x: float32): float32	
+trunc	math.html#trunc,float64	math: trunc(x: float64): float64	
+`mod`	math.html#mod,float32,float32	math: `mod`(x, y: float32): float32	
+`mod`	math.html#mod,float64,float64	math: `mod`(x, y: float64): float64	
+round	math.html#round,T,int	math: round[T: float32 | float64](x: T; places: int): T	
+floorDiv	math.html#floorDiv,T,T	math: floorDiv[T: SomeInteger](x, y: T): T	
+floorMod	math.html#floorMod,T,T	math: floorMod[T: SomeNumber](x, y: T): T	
+euclDiv	math.html#euclDiv,T,T	math: euclDiv[T: SomeInteger](x, y: T): T	
+euclMod	math.html#euclMod,T,T	math: euclMod[T: SomeNumber](x, y: T): T	
+frexp	math.html#frexp,T	math: frexp[T: float32 | float64](x: T): tuple[frac: T, exp: int]	
+frexp	math.html#frexp,T,int	math: frexp[T: float32 | float64](x: T; exponent: var int): T	
+log2	math.html#log2,float32	math: log2(x: float32): float32	
+log2	math.html#log2,float64	math: log2(x: float64): float64	
+splitDecimal	math.html#splitDecimal,T	math: splitDecimal[T: float32 | float64](x: T): tuple[intpart: T, floatpart: T]	
+degToRad	math.html#degToRad,T	math: degToRad[T: float32 | float64](d: T): T	
+radToDeg	math.html#radToDeg,T	math: radToDeg[T: float32 | float64](d: T): T	
+sgn	math.html#sgn,T	math: sgn[T: SomeNumber](x: T): int	
+`^`	math.html#^,T,Natural	math: `^`[T: SomeNumber](x: T; y: Natural): T	
+gcd	math.html#gcd,T,T	math: gcd[T](x, y: T): T	
+gcd	math.html#gcd,SomeInteger,SomeInteger	math: gcd(x, y: SomeInteger): SomeInteger	
+gcd	math.html#gcd,openArray[T]	math: gcd[T](x: openArray[T]): T	
+lcm	math.html#lcm,T,T	math: lcm[T](x, y: T): T	
+clamp	math.html#clamp,T,Slice[T]	math: clamp[T](val: T; bounds: Slice[T]): T	
+lcm	math.html#lcm,openArray[T]	math: lcm[T](x: openArray[T]): T	
+See also	math.html#see-also	 See also	

@@ -1,0 +1,2 @@
+replayStateChanges	ic/replayer.html#replayStateChanges,PSym,ModuleGraph	replayer: replayStateChanges(module: PSym; g: ModuleGraph)	
+replayGenericCacheInformation	ic/replayer.html#replayGenericCacheInformation,ModuleGraph,int	replayer: replayGenericCacheInformation(g: ModuleGraph; module: int)	

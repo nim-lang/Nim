@@ -1,0 +1,3 @@
+hashMainCompilationParams	main.html#hashMainCompilationParams,ConfigRef	main: hashMainCompilationParams(conf: ConfigRef): string	
+setOutFile	main.html#setOutFile,ConfigRef	main: setOutFile(conf: ConfigRef)	
+mainCommand	main.html#mainCommand,ModuleGraph	main: mainCommand(graph: ModuleGraph)	

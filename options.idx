@@ -1,0 +1,22 @@
+Option	options.html#Option	options: Option	
+UnpackDefect	options.html#UnpackDefect	options: UnpackDefect	
+UnpackError	options.html#UnpackError	options: UnpackError	
+option	options.html#option,sinkT	options: option[T](val: sink T): Option[T]	
+some	options.html#some,sinkT	options: some[T](val: sink T): Option[T]	
+none	options.html#none,typedesc	options: none(T: typedesc): Option[T]	
+none	options.html#none	options: none[T](): Option[T]	
+isSome	options.html#isSome,Option[T]	options: isSome[T](self: Option[T]): bool	
+isNone	options.html#isNone,Option[T]	options: isNone[T](self: Option[T]): bool	
+get	options.html#get,Option[T]	options: get[T](self: Option[T]): lent T	
+get	options.html#get,Option[T],T	options: get[T](self: Option[T]; otherwise: T): T	
+get	options.html#get,Option[T]_2	options: get[T](self: var Option[T]): var T	
+map	options.html#map,Option[T],proc(T)	options: map[T](self: Option[T]; callback: proc (input: T))	
+map	options.html#map,Option[T],proc(T)_2	options: map[T, R](self: Option[T]; callback: proc (input: T): R): Option[R]	
+flatten	options.html#flatten,Option[Option[T]]	options: flatten[T](self: Option[Option[T]]): Option[T]	
+flatMap	options.html#flatMap,Option[T],proc(T)	options: flatMap[T, R](self: Option[T]; callback: proc (input: T): Option[R]): Option[R]	
+filter	options.html#filter,Option[T],proc(T)	options: filter[T](self: Option[T]; callback: proc (input: T): bool): Option[T]	
+`==`	options.html#==,Option[T],Option[T]	options: `==`[T](a, b: Option[T]): bool	
+`$`	options.html#$,Option[T]	options: `$`[T](self: Option[T]): string	
+unsafeGet	options.html#unsafeGet,Option[T]	options: unsafeGet[T](self: Option[T]): lent T	
+Basic usage	options.html#basic-usage	 Basic usage	
+Pattern matching	options.html#pattern-matching	 Pattern matching	

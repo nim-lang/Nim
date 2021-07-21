@@ -1,0 +1,8 @@
+EncodingConverter	encodings.html#EncodingConverter	encodings: EncodingConverter	
+EncodingError	encodings.html#EncodingError	encodings: EncodingError	
+getCurrentEncoding	encodings.html#getCurrentEncoding	encodings: getCurrentEncoding(uiApp = false): string	
+open	encodings.html#open,string,string	encodings: open(destEncoding = &quot;UTF-8&quot;; srcEncoding = &quot;CP1252&quot;): EncodingConverter	
+close	encodings.html#close,EncodingConverter	encodings: close(c: EncodingConverter)	
+convert	encodings.html#convert,EncodingConverter,string	encodings: convert(c: EncodingConverter; s: string): string	
+convert	encodings.html#convert,string,string,string	encodings: convert(s: string; destEncoding = &quot;UTF-8&quot;; srcEncoding = &quot;CP1252&quot;): string	
+iconv	encodings.html#iconv_1	Module encodings	

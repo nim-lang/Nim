@@ -1,0 +1,3 @@
+expandTabs	strmisc.html#expandTabs,string,int	strmisc: expandTabs(s: string; tabSize: int = 8): string	
+partition	strmisc.html#partition,string,string,bool	strmisc: partition(s: string; sep: string; right: bool = false): (string, string, string)	
+rpartition	strmisc.html#rpartition,string,string	strmisc: rpartition(s: string; sep: string): (string, string, string)	

@@ -1,0 +1,59 @@
+versionSection	ic/rodfiles.html#versionSection	RodSection.versionSection	
+configSection	ic/rodfiles.html#configSection	RodSection.configSection	
+stringsSection	ic/rodfiles.html#stringsSection	RodSection.stringsSection	
+checkSumsSection	ic/rodfiles.html#checkSumsSection	RodSection.checkSumsSection	
+depsSection	ic/rodfiles.html#depsSection	RodSection.depsSection	
+numbersSection	ic/rodfiles.html#numbersSection	RodSection.numbersSection	
+exportsSection	ic/rodfiles.html#exportsSection	RodSection.exportsSection	
+hiddenSection	ic/rodfiles.html#hiddenSection	RodSection.hiddenSection	
+reexportsSection	ic/rodfiles.html#reexportsSection	RodSection.reexportsSection	
+compilerProcsSection	ic/rodfiles.html#compilerProcsSection	RodSection.compilerProcsSection	
+trmacrosSection	ic/rodfiles.html#trmacrosSection	RodSection.trmacrosSection	
+convertersSection	ic/rodfiles.html#convertersSection	RodSection.convertersSection	
+methodsSection	ic/rodfiles.html#methodsSection	RodSection.methodsSection	
+pureEnumsSection	ic/rodfiles.html#pureEnumsSection	RodSection.pureEnumsSection	
+macroUsagesSection	ic/rodfiles.html#macroUsagesSection	RodSection.macroUsagesSection	
+toReplaySection	ic/rodfiles.html#toReplaySection	RodSection.toReplaySection	
+topLevelSection	ic/rodfiles.html#topLevelSection	RodSection.topLevelSection	
+bodiesSection	ic/rodfiles.html#bodiesSection	RodSection.bodiesSection	
+symsSection	ic/rodfiles.html#symsSection	RodSection.symsSection	
+typesSection	ic/rodfiles.html#typesSection	RodSection.typesSection	
+typeInstCacheSection	ic/rodfiles.html#typeInstCacheSection	RodSection.typeInstCacheSection	
+procInstCacheSection	ic/rodfiles.html#procInstCacheSection	RodSection.procInstCacheSection	
+attachedOpsSection	ic/rodfiles.html#attachedOpsSection	RodSection.attachedOpsSection	
+methodsPerTypeSection	ic/rodfiles.html#methodsPerTypeSection	RodSection.methodsPerTypeSection	
+enumToStringProcsSection	ic/rodfiles.html#enumToStringProcsSection	RodSection.enumToStringProcsSection	
+typeInfoSection	ic/rodfiles.html#typeInfoSection	RodSection.typeInfoSection	
+backendFlagsSection	ic/rodfiles.html#backendFlagsSection	RodSection.backendFlagsSection	
+aliveSymsSection	ic/rodfiles.html#aliveSymsSection	RodSection.aliveSymsSection	
+RodSection	ic/rodfiles.html#RodSection	rodfiles: RodSection	
+ok	ic/rodfiles.html#ok	RodFileError.ok	
+tooBig	ic/rodfiles.html#tooBig	RodFileError.tooBig	
+cannotOpen	ic/rodfiles.html#cannotOpen	RodFileError.cannotOpen	
+ioFailure	ic/rodfiles.html#ioFailure	RodFileError.ioFailure	
+wrongHeader	ic/rodfiles.html#wrongHeader	RodFileError.wrongHeader	
+wrongSection	ic/rodfiles.html#wrongSection	RodFileError.wrongSection	
+configMismatch	ic/rodfiles.html#configMismatch	RodFileError.configMismatch	
+includeFileChanged	ic/rodfiles.html#includeFileChanged	RodFileError.includeFileChanged	
+RodFileError	ic/rodfiles.html#RodFileError	rodfiles: RodFileError	
+RodFile	ic/rodfiles.html#RodFile	rodfiles: RodFile	
+storePrim	ic/rodfiles.html#storePrim,RodFile,string	rodfiles: storePrim(f: var RodFile; s: string)	
+storePrim	ic/rodfiles.html#storePrim,RodFile,T	rodfiles: storePrim[T](f: var RodFile; x: T)	
+storeSeq	ic/rodfiles.html#storeSeq,RodFile,seq[T]	rodfiles: storeSeq[T](f: var RodFile; s: seq[T])	
+loadPrim	ic/rodfiles.html#loadPrim,RodFile,string	rodfiles: loadPrim(f: var RodFile; s: var string)	
+loadPrim	ic/rodfiles.html#loadPrim,RodFile,T	rodfiles: loadPrim[T](f: var RodFile; x: var T)	
+loadSeq	ic/rodfiles.html#loadSeq,RodFile,seq[T]	rodfiles: loadSeq[T](f: var RodFile; s: var seq[T])	
+storeHeader	ic/rodfiles.html#storeHeader,RodFile	rodfiles: storeHeader(f: var RodFile)	
+loadHeader	ic/rodfiles.html#loadHeader,RodFile	rodfiles: loadHeader(f: var RodFile)	
+storeSection	ic/rodfiles.html#storeSection,RodFile,RodSection	rodfiles: storeSection(f: var RodFile; s: RodSection)	
+loadSection	ic/rodfiles.html#loadSection,RodFile,RodSection	rodfiles: loadSection(f: var RodFile; expected: RodSection)	
+create	ic/rodfiles.html#create,string	rodfiles: create(filename: string): RodFile	
+close	ic/rodfiles.html#close,RodFile	rodfiles: close(f: var RodFile)	
+open	ic/rodfiles.html#open,string	rodfiles: open(filename: string): RodFile	
+Overview	ic/rodfiles.html#overview	 Overview	
+A basic but &quot;wrong&quot; example of the lifecycle:	ic/rodfiles.html#overview-a-basic-but-wrong-example-of-the-lifecyclecolon	  A basic but &quot;wrong&quot; example of the lifecycle:	
+Issues with the Example	ic/rodfiles.html#a-basic-but-wrong-example-of-the-lifecyclecolon-issues-with-the-example	   Issues with the Example	
+API Notes	ic/rodfiles.html#api-notes	 API Notes	
+Valid inputs for Rod files	ic/rodfiles.html#api-notes-valid-inputs-for-rod-files	  Valid inputs for Rod files	
+Note on error handling style	ic/rodfiles.html#api-notes-note-on-error-handling-style	  Note on error handling style	
+Misc	ic/rodfiles.html#api-notes-misc	  Misc	

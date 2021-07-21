@@ -1,0 +1,12 @@
+Hot code reloading	hcr.html
+hotCodeReloading	hcr.html#hotcodereloading_1	Hot code reloading	
+Basic workflow	hcr.html#basic-workflow	 Basic workflow	
+Reloading API	hcr.html#reloading-api	 Reloading API	
+beforeCodeReload	hcr.html#beforecodereload_1	Reloading API	
+afterCodeReload	hcr.html#aftercodereload_1	Reloading API	
+hasModuleChanged()	hcr.html#hasmodulechanged_1	Reloading API	
+performCodeReload()	hcr.html#performcodereload_1	Reloading API	
+hasAnyModuleChanged()	hcr.html#hasanymodulechanged_1	Reloading API	
+hotcodereloading	hcr.html#hotcodereloading_2	Reloading API	
+Native code targets	hcr.html#native-code-targets	 Native code targets	
+JavaScript target	hcr.html#javascript-target	 JavaScript target	

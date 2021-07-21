@@ -1,0 +1,17 @@
+passCmd1	commands.html#passCmd1	TCmdLinePass.passCmd1	
+passCmd2	commands.html#passCmd2	TCmdLinePass.passCmd2	
+passPP	commands.html#passPP	TCmdLinePass.passPP	
+TCmdLinePass	commands.html#TCmdLinePass	commands: TCmdLinePass	
+writeCommandLineUsage	commands.html#writeCommandLineUsage,ConfigRef	commands: writeCommandLineUsage(conf: ConfigRef)	
+processSpecificNote	commands.html#processSpecificNote,string,TSpecialWord,TCmdLinePass,TLineInfo,string,ConfigRef	commands: processSpecificNote(arg: string; state: TSpecialWord; pass: TCmdLinePass;\n                    info: TLineInfo; orig: string; conf: ConfigRef)	
+testCompileOptionArg	commands.html#testCompileOptionArg,ConfigRef,string,string,TLineInfo	commands: testCompileOptionArg(conf: ConfigRef; switch, arg: string; info: TLineInfo): bool	
+testCompileOption	commands.html#testCompileOption,ConfigRef,string,TLineInfo	commands: testCompileOption(conf: ConfigRef; switch: string; info: TLineInfo): bool	
+handleStdinInput	commands.html#handleStdinInput,ConfigRef	commands: handleStdinInput(conf: ConfigRef)	
+handleCmdInput	commands.html#handleCmdInput,ConfigRef	commands: handleCmdInput(conf: ConfigRef)	
+parseCommand	commands.html#parseCommand,string	commands: parseCommand(command: string): Command	
+setCmd	commands.html#setCmd,ConfigRef,Command	commands: setCmd(conf: ConfigRef; cmd: Command)	
+setCommandEarly	commands.html#setCommandEarly,ConfigRef,string	commands: setCommandEarly(conf: ConfigRef; command: string)	
+processSwitch	commands.html#processSwitch,string,string,TCmdLinePass,TLineInfo,ConfigRef	commands: processSwitch(switch, arg: string; pass: TCmdLinePass; info: TLineInfo;\n              conf: ConfigRef)	
+processCommand	commands.html#processCommand,string,TCmdLinePass,ConfigRef	commands: processCommand(switch: string; pass: TCmdLinePass; config: ConfigRef)	
+processSwitch	commands.html#processSwitch,TCmdLinePass,OptParser,ConfigRef	commands: processSwitch(pass: TCmdLinePass; p: OptParser; config: ConfigRef)	
+processArgument	commands.html#processArgument,TCmdLinePass,OptParser,int,ConfigRef	commands: processArgument(pass: TCmdLinePass; p: OptParser; argsCount: var int;\n                config: ConfigRef): bool	

@@ -1,0 +1,31 @@
+parseBin	parseutils.html#parseBin,string,T,int,int	parseutils: parseBin[T: SomeInteger](s: string; number: var T; start = 0; maxLen = 0): int	
+parseOct	parseutils.html#parseOct,string,T,int,int	parseutils: parseOct[T: SomeInteger](s: string; number: var T; start = 0; maxLen = 0): int	
+parseHex	parseutils.html#parseHex,string,T,int,int	parseutils: parseHex[T: SomeInteger](s: string; number: var T; start = 0; maxLen = 0): int	
+parseIdent	parseutils.html#parseIdent,string,string,int	parseutils: parseIdent(s: string; ident: var string; start = 0): int	
+parseIdent	parseutils.html#parseIdent,string,int	parseutils: parseIdent(s: string; start = 0): string	
+parseChar	parseutils.html#parseChar,string,char,int	parseutils: parseChar(s: string; c: var char; start = 0): int	
+skipWhitespace	parseutils.html#skipWhitespace,string,int	parseutils: skipWhitespace(s: string; start = 0): int	
+skip	parseutils.html#skip,string,string,int	parseutils: skip(s, token: string; start = 0): int	
+skipIgnoreCase	parseutils.html#skipIgnoreCase,string,string,int	parseutils: skipIgnoreCase(s, token: string; start = 0): int	
+skipUntil	parseutils.html#skipUntil,string,set[char],int	parseutils: skipUntil(s: string; until: set[char]; start = 0): int	
+skipUntil	parseutils.html#skipUntil,string,char,int	parseutils: skipUntil(s: string; until: char; start = 0): int	
+skipWhile	parseutils.html#skipWhile,string,set[char],int	parseutils: skipWhile(s: string; toSkip: set[char]; start = 0): int	
+parseUntil	parseutils.html#parseUntil,string,string,set[char],int	parseutils: parseUntil(s: string; token: var string; until: set[char]; start = 0): int	
+parseUntil	parseutils.html#parseUntil,string,string,char,int	parseutils: parseUntil(s: string; token: var string; until: char; start = 0): int	
+parseUntil	parseutils.html#parseUntil,string,string,string,int	parseutils: parseUntil(s: string; token: var string; until: string; start = 0): int	
+parseWhile	parseutils.html#parseWhile,string,string,set[char],int	parseutils: parseWhile(s: string; token: var string; validChars: set[char]; start = 0): int	
+captureBetween	parseutils.html#captureBetween,string,char,char,int	parseutils: captureBetween(s: string; first: char; second = &apos;\x00&apos;; start = 0): string	
+parseBiggestInt	parseutils.html#parseBiggestInt,string,BiggestInt,int	parseutils: parseBiggestInt(s: string; number: var BiggestInt; start = 0): int	
+parseInt	parseutils.html#parseInt,string,int,int	parseutils: parseInt(s: string; number: var int; start = 0): int	
+parseSaturatedNatural	parseutils.html#parseSaturatedNatural,string,int,int	parseutils: parseSaturatedNatural(s: string; b: var int; start = 0): int	
+parseBiggestUInt	parseutils.html#parseBiggestUInt,string,BiggestUInt,int	parseutils: parseBiggestUInt(s: string; number: var BiggestUInt; start = 0): int	
+parseUInt	parseutils.html#parseUInt,string,uint,int	parseutils: parseUInt(s: string; number: var uint; start = 0): int	
+parseBiggestFloat	parseutils.html#parseBiggestFloat,string,BiggestFloat,int	parseutils: parseBiggestFloat(s: string; number: var BiggestFloat; start = 0): int	
+parseFloat	parseutils.html#parseFloat,string,float,int	parseutils: parseFloat(s: string; number: var float; start = 0): int	
+ikStr	parseutils.html#ikStr	InterpolatedKind.ikStr	
+ikDollar	parseutils.html#ikDollar	InterpolatedKind.ikDollar	
+ikVar	parseutils.html#ikVar	InterpolatedKind.ikVar	
+ikExpr	parseutils.html#ikExpr	InterpolatedKind.ikExpr	
+InterpolatedKind	parseutils.html#InterpolatedKind	parseutils: InterpolatedKind	
+interpolatedFragments	parseutils.html#interpolatedFragments.i,string	parseutils: interpolatedFragments(s: string): tuple[kind: InterpolatedKind, value: string]	
+parseInt	parseutils.html#parseint_1	Module parseutils	

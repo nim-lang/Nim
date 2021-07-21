@@ -1,0 +1,9 @@
+BTree	btrees.html#BTree	btrees: BTree	
+initBTree	btrees.html#initBTree	btrees: initBTree[Key, Val](): BTree[Key, Val]	
+getOrDefault	btrees.html#getOrDefault,BTree[Key,Val],Key	btrees: getOrDefault[Key, Val](b: BTree[Key, Val]; key: Key): Val	
+contains	btrees.html#contains,BTree[Key,Val],Key	btrees: contains[Key, Val](b: BTree[Key, Val]; key: Key): bool	
+add	btrees.html#add,BTree[Key,Val],Key,Val	btrees: add[Key, Val](b: var BTree[Key, Val]; key: Key; val: Val)	
+hasNext	btrees.html#hasNext,BTree[Key,Val],int	btrees: hasNext[Key, Val](b: BTree[Key, Val]; index: int): bool	
+next	btrees.html#next,BTree[Key,Val],int	btrees: next[Key, Val](b: BTree[Key, Val]; index: int): (Key, Val, int)	
+pairs	btrees.html#pairs.i,BTree[Key,Val]	btrees: pairs[Key, Val](b: BTree[Key, Val]): (Key, Val)	
+len	btrees.html#len,BTree[Key,Val]	btrees: len[Key, Val](b: BTree[Key, Val]): int	
