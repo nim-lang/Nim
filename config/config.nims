@@ -14,3 +14,7 @@ when defined(nimStrictMode):
     # switch("hint", "ConvFromXtoItselfNotNeeded")
     switch("hintAsError", "ConvFromXtoItselfNotNeeded")
     # future work: XDeclaredButNotUsed
+
+switch("define", "nimMigratedGetHomeDir")
+switch("define", "nimMigratedGetConfigDir")
+switch("define", "nimMigratedGetTempDir")

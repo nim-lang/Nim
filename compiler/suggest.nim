@@ -32,7 +32,8 @@
 
 # included from sigmatch.nim
 
-import algorithm, sets, prefixmatches, lineinfos, parseutils, linter, tables
+import algorithm, sets, prefixmatches, lineinfos, parseutils, linter, tables, astmsgs
+import std/private/constants
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
 when defined(nimsuggest):
@@ -547,7 +548,13 @@ proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
     for it in pragmaNode:
       if whichPragma(it) == wDeprecated and it.safeLen == 2 and
           it[1].kind in {nkStrLit..nkTripleStrLit}:
-        message(conf, info, warnDeprecated, it[1].strVal & "; " & name & " is deprecated")
+        let msg = it[1].strVal
+        if msg.startsWith migratedPrefix:
+          var msg2 = msg[migratedPrefix.len .. ^1] & "; " & name & " was migrated"
+          addDeclaredLoc(msg2, conf, s)
+          message(conf, info, warnMigrated, msg2)
+        else:
+          message(conf, info, warnDeprecated, msg & "; " & name & " is deprecated")
         return
   message(conf, info, warnDeprecated, name & " is deprecated")
 
