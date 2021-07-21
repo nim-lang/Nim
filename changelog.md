@@ -23,8 +23,8 @@
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
-- A type conversion from one enum type to another now produces a `[EnumConv]` warning.
-  You should use `ord` (or `cast`, but compiler won't help if you misuse it).
+- A type conversion from one enum type to another now produces an `[EnumConv]` warning.
+  You should use `ord` (or `cast`, but the compiler won't help, if you misuse it) instead.
   ```
   type A = enum a1, a2
   type B = enum b1, b2
