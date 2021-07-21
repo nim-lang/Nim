@@ -536,15 +536,18 @@ proc `[]`*[U, V](a: JsonNode, x: HSlice[U, V]): JsonNode =
   ##
   ## Returns the inclusive range `[a[x.a], a[x.b]]`:
   runnableExamples:
+    import json
     let arr = %[0,1,2,3,4,5]
     doAssert arr[2..4] == %[2,3,4]
     doAssert arr[2..^2] == %[2,3,4]
+    doAssert arr[^4..^2] == %[2,3,4]
 
   assert(a.kind == JArray)
   result = newJArray()
-  let xb = (when x.b is BackwardsIndex: a.len - int(x.b) else: int(x.b))
-  for i in x.a .. xb:
-    result.add(a[i])
+  let xa = (when x.a is BackwardsIndex: a.len - int(x.a) else: int(x.a))
+  let L = (when x.b is BackwardsIndex: a.len - int(x.b) else: int(x.b)) - xa + 1
+  for i in 0..<L:
+    result.add(a[i + xa])
 
 proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
