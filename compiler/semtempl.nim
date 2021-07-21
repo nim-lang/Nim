@@ -54,7 +54,13 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     o: TOverloadIter
   var i = 0
   a = initOverloadIter(o, c, n)
+  let a0 = a
   while a != nil:
+    if i == 1:
+      # this is needed, see D20210519T200936 and D20210519T201000
+      # TODO: consider inGenericInst ?
+      if c.getCurrOwner.kind != skModule and c.getCurrOwner == a0.owner and a.owner != a0.owner:
+        break
     if a.kind != skModule:
       inc(i)
       if i > 1: break
@@ -84,6 +90,14 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
         result.add newSymNode(a, info)
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
+    if result.len == 0:
+      if n.kind == nkIdent: # TODO: nkAccQuoted ?
+        # do we need another TSymKind or cna we use a flag? skUnknown? skGenericParam? skParam? skStub?
+        let sym = newSym(skMixin, n.ident, nextSymId c.idgen, owner = c.getCurrOwner(), info, options = {})
+        # incl(sym.flags, sfUsed) # leave uncommented or remove!
+        # markOwnerModuleAsUsed(c, a)
+        result.add newSymNode(sym, info)
+        onUse(info, sym)
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
   result = copyNode(n)

@@ -134,6 +134,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     maybeAddResult(c, result, result.ast)
 
     inc c.inGenericInst
+    c.genericInstStack.add result
     # add it here, so that recursive generic procs are possible:
     var b = n[bodyPos]
     var symMap: TIdTable
@@ -149,6 +150,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     excl(result.flags, sfForward)
     trackProc(c, result, result.ast[bodyPos])
     dec c.inGenericInst
+    discard c.genericInstStack.pop
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
   for i in 0..<c.generics.len:
@@ -172,27 +174,17 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
         {sfNoSideEffect, sfSideEffect}:
       localError(s.info, errXhasSideEffects, s.name.s)
 
-proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
-                          allowMetaTypes = false): PType =
+proc instGenericContainerImpl(cl: var TReplTypeVars, info: TLineInfo, header: PType, isReplaceVars: bool): PType =
+  let c = cl.c
   internalAssert c.config, header.kind == tyGenericInvocation
-
-  var
-    cl: TReplTypeVars
-
-  initIdTable(cl.symMap)
-  initIdTable(cl.localCache)
-  cl.typeMap = LayeredIdTable()
-  initIdTable(cl.typeMap.topLayer)
-
-  cl.info = info
-  cl.c = c
-  cl.allowMetaTypes = allowMetaTypes
-
   # We must add all generic params in scope, because the generic body
   # may include tyFromExpr nodes depending on these generic params.
   # XXX: This looks quite similar to the code in matchUserTypeClass,
   # perhaps the code can be extracted in a shared function.
   openScope(c)
+
+  cl.c.genericInstStack.add header.sym
+
   let genericTyp = header.base
   for i in 0..<genericTyp.len - 1:
     let genParam = genericTyp[i]
@@ -208,6 +200,8 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
     else:
       param = paramSym skType
       param.typ = makeTypeDesc(c, header[i+1])
+    if isReplaceVars:
+      param.typ = replaceTypeVarsT(cl, param.typ) # checkme
 
     # this scope was not created by the user,
     # unused params shouldn't be reported.
@@ -215,7 +209,23 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
     addDecl(c, param)
 
   result = replaceTypeVarsT(cl, header)
+  discard cl.c.genericInstStack.pop
   closeScope(c)
+
+proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
+                          allowMetaTypes = false): PType =
+  var
+    cl: TReplTypeVars
+
+  initIdTable(cl.symMap)
+  initIdTable(cl.localCache)
+  cl.typeMap = LayeredIdTable()
+  initIdTable(cl.typeMap.topLayer)
+
+  cl.info = info
+  cl.c = c
+  cl.allowMetaTypes = allowMetaTypes
+  instGenericContainerImpl(cl, info, header, isReplaceVars = false)
 
 proc referencesAnotherParam(n: PNode, p: PSym): bool =
   if n.kind == nkSym:
@@ -306,7 +316,13 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   resetIdTable(cl.symMap)
   resetIdTable(cl.localCache)
   cl.isReturnType = true
-  result[0] = replaceTypeVarsT(cl, result[0])
+
+  if result[0] != nil and result[0].kind == tyGenericInvocation:
+    result[0] = instGenericContainerImpl(cl, info, result[0], isReplaceVars = true)
+  else:
+    result[0] = replaceTypeVarsT(cl, result[0])
+  # proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
+
   cl.isReturnType = false
   result.n[0] = originalParams[0].copyTree
   if result[0] != nil:
@@ -345,7 +361,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   let oldMatchedConcept = c.matchedConcept
   c.matchedConcept = nil
   let oldScope = c.currentScope
-  while not isTopLevel(c): c.currentScope = c.currentScope.parent
+  # while not isTopLevel(c): c.currentScope = c.currentScope.parent # this was causing bug #13747
   result = copySym(fn, nextSymId c.idgen)
   incl(result.flags, sfFromGeneric)
   result.owner = fn
@@ -354,6 +370,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
 
   # mixin scope:
   openScope(c)
+  c.genericInstStack.add result
   fillMixinScope(c)
 
   openScope(c)
@@ -406,6 +423,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popProcCon(c)
   popInfoContext(c.config)
   closeScope(c)           # close scope for parameters
+  discard c.genericInstStack.pop
   closeScope(c)           # close scope for 'mixin' declarations
   popOwner(c)
   c.currentScope = oldScope

@@ -187,9 +187,45 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
           ambiguous = true
 
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
+  #[
+  This is the key algorithm to solve the generic sandwich problem:
+  Inside generics, we stop the search at c.genericInstStack[^1] unless we found
+  a mixin; this means:
+
+  # module m1:
+  proc bar1()=discard
+  proc fn*[T] =
+    mixin bar3
+    proc bar2() = discard
+    bar1() # ok, this is resolved as a symbol during generic prepass
+    bar2() # ok, ditto
+    bar3() # ok, this is resolved as a skMixin symbol during generic prepass
+    bar4() # error, this is not visible
+    bar5() # error, ditto, even if bar5 is at module scope in m2
+
+  # module m2:
+  import m1
+  proc bar5() = discard
+  proc main =
+    proc bar3() = discard
+    proc bar4() = discard
+    fn[int]()
+  ]#
+  var foundMixin = false
   for scope in allScopes(c.currentScope):
     result = strTableGet(scope.symbols, s)
-    if result != nil: return result
+    if result != nil:
+      if result.kind == skMixin:
+        foundMixin = true
+        continue
+      if c.inGenericInst > 0 and not foundMixin:
+        var parent = result.owner
+        while true:
+          if parent == c.genericInstStack[^1]: break
+          if parent != nil: parent = parent.owner
+          else: return nil
+      return result
+  if c.inGenericInst > 0 and not foundMixin: return nil
   result = someSymFromImportTable(c, s, ambiguous)
 
 proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
@@ -200,7 +236,8 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
         if count >= max: return
-        echo count, ": ", scope.symbols.data[h].name.s
+        let sym = scope.symbols.data[h]
+        echo count, ": ", sym, " owner:", sym.owner
         count.inc
     if i == limit: return
     inc i
@@ -213,6 +250,8 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
     while candidate != nil:
       if candidate.kind in filter:
         if result.len == 0:
+          # xxx check whether we need similar logic as in `searchInScopes`
+          # (`inGenericInst` etc)
           result.add candidate
       candidate = nextIdentIter(ti, scope.symbols)
 

@@ -46,7 +46,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
            s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam):
         handleParam actual[s.owner.typ.len + s.position - 1]
       else:
-        internalAssert c.config, sfGenSym in s.flags or s.kind == skType
+        internalAssert c.config, sfGenSym in s.flags or s.kind in {skType, skMixin}
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
           x = copySym(s, nextSymId(c.idgen))

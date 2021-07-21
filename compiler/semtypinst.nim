@@ -115,6 +115,9 @@ template checkMetaInvariants(cl: TReplTypeVars, t: PType) = # noop code
       writeStackTrace()
 
 proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
+  # when defined(nimCompilerStackraceHints):
+  #   # setFrameMsg $(t, ?.t.sym, ?.t.sym.owner, cl.owner)
+  #   setFrameMsg $t
   result = replaceTypeVarsTAux(cl, t)
   checkMetaInvariants(cl, result)
 

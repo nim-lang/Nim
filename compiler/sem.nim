@@ -19,6 +19,9 @@ import
   lowerings, plugins/active, lineinfos, strtabs, int128,
   isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs
 
+when defined(nimCompilerStackraceHints):
+  import std/stackframes
+
 when defined(nimfix):
   import nimfix/prettybase
 
@@ -496,6 +499,7 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
 
 proc semGenericStmt(c: PContext, n: PNode): PNode
 proc semConceptBody(c: PContext, n: PNode): PNode
+proc semGenericStmtInTypeSection(c: PContext, n: PNode): PNode
 
 include semtypes
 
@@ -637,11 +641,13 @@ proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
   else:
     let oldContextLen = msgs.getInfoContextLen(c.config)
     let oldInGenericInst = c.inGenericInst
+    let oldgenericInstStackLen = c.genericInstStack.len
     try:
       result = semStmtAndGenerateGenerics(c, n)
     except ERecoverableError, ESuggestDone:
       recoverContext(c)
       c.inGenericInst = oldInGenericInst
+      c.genericInstStack.setLen oldgenericInstStackLen
       msgs.setInfoContextLen(c.config, oldContextLen)
       if getCurrentException() of ESuggestDone:
         c.suggestionsMade = true

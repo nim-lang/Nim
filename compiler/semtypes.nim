@@ -1834,7 +1834,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semTypeExpr(c, n[1], prev)
       else:
         if c.inGenericContext > 0 and n.kind == nkCall:
-          result = makeTypeFromExpr(c, n.copyTree)
+          # e.g.: type Foo[T; N: static int]=object: f0: fun(T, N, int, 3)
+          let n2 = semGenericStmtInTypeSection(c, n.copyTree)
+          result = makeTypeFromExpr(c, n2)
         else:
           result = semTypeExpr(c, n, prev)
   of nkWhenStmt:

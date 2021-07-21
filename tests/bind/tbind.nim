@@ -2,8 +2,10 @@ discard """
 output: '''
 3
 1
-1
-1
+TFoo1
+TFoo2
+Bar1
+Bar2
 5
 '''
 """
@@ -48,9 +50,11 @@ block tmixin:
       v: int
     TFoo2 = object of TFoo1
       v2: int
+    Bar1 = object
+    Bar2 = object
 
   proc test(f: TFoo1) =
-    echo "1"
+    echo "TFoo1"
 
   proc Foo[T](f: T) =
     mixin test
@@ -59,13 +63,17 @@ block tmixin:
   var
     a: TFoo1
     b: TFoo2
+    bar1: Bar1
+    bar2: Bar2
 
-
-  proc test(f: TFoo2) =
-    echo "2"
+  proc test(f: TFoo2) = echo "TFoo2"
+  proc test(f: Bar1) = echo "Bar1"
+  proc test(f: Bar2) = echo "Bar2"
 
   Foo(a)
   Foo(b)
+  Foo(bar1)
+  Foo(bar2)
 
 # issue #11811
 proc p(a : int) =

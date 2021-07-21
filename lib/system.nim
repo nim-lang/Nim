@@ -1237,10 +1237,10 @@ else:
   proc quit*(errorcode: int = QuitSuccess) {.
     magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
 
-
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
     if not cond:
+      mixin cstderr
       cstderr.rawWrite "[SYSASSERT] "
       cstderr.rawWrite msg
       cstderr.rawWrite "\n"

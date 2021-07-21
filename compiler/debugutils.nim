@@ -13,6 +13,15 @@ useful debugging flags:
 ## future work
 * expose and improve astalgo.debug, replacing it by std/prettyprints,
   refs https://github.com/nim-lang/RFCs/issues/385
+
+## examples:
+{.define(nimCompilerDebug).}
+code
+{.undef(nimCompilerDebug).}
+
+when defined(nimDebugUtils):
+  if isCompilerDebug():
+    dbg t, ?.t.sym, ?.t.sym.owner, cl.owner
 ]#
 
 import options
@@ -54,3 +63,25 @@ proc isCompilerDebug*(): bool =
       {.undef(nimCompilerDebug).}
       echo 'x'
   conf0.isDefined("nimCompilerDebug")
+
+template debugScopesIf* =
+  if isCompilerDebug():
+    # TODO: callSite?
+    const infom1 = instantiationInfo(-1, true)
+    dbg(info = infom1)
+    debugScopes(c, limit = 100)
+
+template debugScopes2* =
+  # TODO: callSite?
+  const infom1 = instantiationInfo(-1, true)
+  dbg(info = infom1)
+  debugScopes(c, limit = 100)
+
+template dbgIf*(args: varargs[untyped]) =
+  if isCompilerDebug():
+    const infom1 = instantiationInfo(-1, true)
+    when varargsLen(args) > 0:
+      dbg(info = infom1, args)
+    else:
+      # otherwise info is wrong (points to here)
+      dbg(info = infom1)

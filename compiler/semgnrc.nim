@@ -178,6 +178,9 @@ proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
 
 proc semGenericStmt(c: PContext, n: PNode,
                     flags: TSemGenericFlags, ctx: var GenericCtx): PNode =
+  when defined(nimCompilerStackraceHints):
+    setFrameMsg c.config$n.info & " " & $n.kind
+
   result = n
 
   when defined(nimsuggest):
@@ -185,7 +188,6 @@ proc semGenericStmt(c: PContext, n: PNode,
 
   #if conf.cmd == cmdIdeTools: suggestStmt(c, n)
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
-
   case n.kind
   of nkIdent, nkAccQuoted:
     result = lookup(c, n, flags, ctx)
@@ -488,7 +490,15 @@ proc semGenericStmt(c: PContext, n: PNode,
     else: body = n[bodyPos]
     n[bodyPos] = semGenericStmtScope(c, body, flags, ctx)
     closeScope(c)
-  of nkPragma, nkPragmaExpr: discard
+  of nkPragma, nkPragmaExpr:
+    # similar to treatment in `semTemplBody`
+    for i in 0..<n.len:
+      if n[i].kind == nkExprColonExpr:
+        if n[i][0].kind == nkIdent and getIdent(c.cache, $wPragma) == n[i][0].ident:
+          # handles: `{.pragma: myprag, inline.}`, where `myprag` shouldn't be passed through `semGenericStmt`
+          discard
+        else:
+          result[i][1] = semGenericStmt(c, n[i][1], flags, ctx)
   of nkExprColonExpr, nkExprEqExpr:
     checkMinSonsLen(n, 2, c.config)
     result[1] = semGenericStmt(c, n[1], flags, ctx)
@@ -499,17 +509,17 @@ proc semGenericStmt(c: PContext, n: PNode,
   when defined(nimsuggest):
     if withinTypeDesc in flags: dec c.inTypeContext
 
-proc semGenericStmt(c: PContext, n: PNode): PNode =
+proc semGenericStmtImpl(c: PContext, n: PNode, flags: TSemGenericFlags): PNode {.inline.} =
   var ctx: GenericCtx
   ctx.toMixin = initIntSet()
   ctx.toBind = initIntSet()
-  result = semGenericStmt(c, n, {}, ctx)
+  result = semGenericStmt(c, n, flags, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
 
-proc semConceptBody(c: PContext, n: PNode): PNode =
-  var ctx: GenericCtx
-  ctx.toMixin = initIntSet()
-  ctx.toBind = initIntSet()
-  result = semGenericStmt(c, n, {withinConcept}, ctx)
-  semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
+proc semGenericStmt(c: PContext, n: PNode): PNode = semGenericStmtImpl(c, n, {})
 
+proc semGenericStmtInTypeSection(c: PContext, n: PNode): PNode =
+  # xxx consider merging with `semGenericStmt`
+  result = semGenericStmt(c, n)
+
+proc semConceptBody(c: PContext, n: PNode): PNode = semGenericStmtImpl(c, n, {withinConcept})

@@ -675,7 +675,16 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   matchedConceptContext.candidateType = a
   typeClass[0][0] = a
   c.matchedConcept = addr(matchedConceptContext)
+  let genericInstStackLenOld = c.genericInstStack.len
+  c.genericInstStack.add typeClass.sym
+
+  # similar to `fixupInstantiatedSymbols`
+  pushOwner(c, typeClass.sym)
+  # pushInfoContext(c.config, oldPrc.info)
+
   defer:
+    c.genericInstStack.setLen genericInstStackLenOld
+    popOwner(c)
     c.matchedConcept = prevMatchedConcept
     typeClass[0][0] = prevCandidateType
     closeScope(c)
