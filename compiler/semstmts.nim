@@ -490,6 +490,18 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
     ret.add result
     result = semExprNoType(c, ret)
 
+proc errorSymChoiceUseQualifier(c: PContext; n: PNode) =
+  assert n.kind in nkSymChoices
+  var err = "ambiguous identifier: '" & $n[0] & "'"
+  var i = 0
+  for child in n:
+    let candidate = child.sym
+    if i == 0: err.add " -- use one of the following:\n"
+    else: err.add "\n"
+    err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+    inc i
+  localError(c.config, n.info, errGenerated, err)
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   if n.len == 1:
     result = semLowerLetVarCustomPragma(c, n[0], n)
@@ -514,7 +526,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {efAllowDestructor})
 
-      if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
+      if def.kind in nkSymChoices and def.typ.skipTypes(abstractInst).kind == tyEnum:
+        errorSymChoiceUseQualifier(c, def)
+      elif def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
       elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
         typFlags.incl taProcContextIsNotMacro
