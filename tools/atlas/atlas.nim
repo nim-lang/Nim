@@ -14,7 +14,7 @@ import parse_requires, osutils, packagesjson
 
 const
   Version = "0.1"
-  Usage = "atlas - Nim Package Manager Version " & Version & """
+  Usage = "atlas - Nim Package Cloner Version " & Version & """
 
   (c) 2021 Andreas Rumpf
 Usage:
@@ -170,7 +170,7 @@ proc toName(p: string): PackageName =
   else:
     result = PackageName p
 
-proc needsCommitLookup(commit: string): bool {.inline} =
+proc needsCommitLookup(commit: string): bool {.inline.} =
   '.' in commit or commit == InvalidCommit
 
 proc isShortCommitHash(commit: string): bool {.inline.} =
