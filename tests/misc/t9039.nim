@@ -1,8 +1,16 @@
 discard """
   action: reject
   nimout: '''
-t9039.nim(22, 22) Error: type mismatch: got <array[0..2, int], int, array[0..1, int]>
-but expression 'nesting + 1' is of type: int
+t9039.nim(30, 22) Error: type mismatch: got <array[0..2, int], int, array[0..1, int]>
+but expected one of:
+func shapeBad[T: not char](s: openArray[T]; rank: static[int]; nesting = 0;
+                           parent_shape = default(array[rank, int])): array[
+    rank, int]
+  first type mismatch at position: 2
+  required type for rank: 'static[int]'
+  but expression 'nesting + 1' is of type: 'int'
+
+expression: shapeBad(s[0], nesting + 1, result)
 '''
 """
 

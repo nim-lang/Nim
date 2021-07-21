@@ -11,7 +11,7 @@
 # included from sem.nim
 
 from algorithm import sort
-
+from renderer import quoteExpr
 proc sameMethodDispatcher(a, b: PSym): bool =
   result = false
   if a.kind == skMethod and b.kind == skMethod:
@@ -274,8 +274,8 @@ const
   errTypeMismatch = "type mismatch: got <"
   errButExpected = "but expected one of:"
   errUndeclaredField = "undeclared field: '$1'"
-  errUndeclaredRoutine = "attempting to call undeclared routine: '$1'"
-  errBadRoutine = "attempting to call routine: '$1'$2"
+  errUndeclaredRoutine = "attempting to call undeclared routine: $1"
+  errBadRoutine = "attempting to call routine: $1$2"
   errAmbiguousCallXYZ = "ambiguous call; both $1 and $2 match for: $3"
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
@@ -287,7 +287,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     globalError(c.config, n.info, "type mismatch")
     return
   if errors.len == 0:
-    localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree)
+    localError(c.config, n.info, "expression $1 cannot be called" % n[0].renderTree.quoteExpr)
     return
 
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
@@ -344,8 +344,8 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
     let suffix = if result.len > 0: " " & result else: ""
     result = errUndeclaredField % ident & typeHint & suffix
   else:
-    if result.len == 0: result = errUndeclaredRoutine % ident
-    else: result = errBadRoutine % [ident, result]
+    if result.len == 0: result = errUndeclaredRoutine % ident.quoteExpr
+    else: result = errBadRoutine % [ident.quoteExpr, result]
 
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds, flags: TExprFlags,
@@ -432,8 +432,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
-        localError(c.config, n.info, "expression '$1' cannot be called" %
-                   renderTree(n, {renderNoComments}))
+        localError(c.config, n.info, "expression $1 cannot be called" %
+                   renderTree(n, {renderNoComments}).quoteExpr)
       else:
         if {nfDotField, nfDotSetter} * n.flags != {}:
           # clean up the inserted ops
@@ -457,8 +457,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       args.add(")")
 
       localError(c.config, n.info, errAmbiguousCallXYZ % [
-        getProcHeader(c.config, result.calleeSym),
-        getProcHeader(c.config, alt.calleeSym),
+        getProcHeader(c.config, result.calleeSym).quoteExpr,
+        getProcHeader(c.config, alt.calleeSym).quoteExpr,
         args])
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
@@ -664,8 +664,8 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     # number of generic type parameters:
     if s.ast[genericParamsPos].safeLen != n.len-1:
       let expected = s.ast[genericParamsPos].safeLen
-      localError(c.config, getCallLineInfo(n), errGenerated, "cannot instantiate: '" & renderTree(n) &
-         "'; got " & $(n.len-1) & " typeof(s) but expected " & $expected)
+      localError(c.config, getCallLineInfo(n), errGenerated, "cannot instantiate: " & renderTree(n) &
+         "; got " & $(n.len-1) & " typeof(s) but expected " & $expected)
       return n
     result = explicitGenericSym(c, n, s)
     if result == nil: result = explicitGenericInstError(c, n)

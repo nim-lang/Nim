@@ -4,7 +4,7 @@ discard """
 but expected one of:
 proc inc[T: Ordinal](x: var T; y = 1)
   first type mismatch at position: 1
-  required type for x: var T: Ordinal
+  required type for x: 'var T: Ordinal'
   but expression 'i' is immutable, not 'var'
 
 expression: inc i

@@ -53,10 +53,10 @@ proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
 
 proc addTypeDeclVerboseMaybe*(result: var string, conf: ConfigRef; typ: PType) =
   if optDeclaredLocs in conf.globalOptions:
-    result.add typeToString(typ, preferMixed)
+    result.add typeToString(typ, preferMixed).quoteExpr
     result.addDeclaredLoc(conf, typ)
   else:
-    result.add typeToString(typ)
+    result.add typeToString(typ).quoteExpr
 
 template `$`*(typ: PType): string = typeToString(typ)
 
