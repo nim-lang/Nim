@@ -1380,10 +1380,9 @@ variadic proc, it is implicitly converted to `cstring` too:
 
 Even though the conversion is implicit, it is not *safe*: The garbage collector
 does not consider a `cstring` to be a root and may collect the underlying
-memory. However, in practice, this almost never happens as the GC considers
-stack roots conservatively. One can use the builtin procs `GC_ref` and
-`GC_unref` to keep the string data alive for the rare cases where it does
-not work.
+memory. For this reason, the implicit conversion will be removed in future
+releases of the Nim compiler. Certain idioms like conversion of a `const` string
+to `cstring` are safe and will remain to be allowed.
 
 A `$` proc is defined for cstrings that returns a string. Thus to get a nim
 string from a cstring:
