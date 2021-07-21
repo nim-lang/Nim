@@ -271,7 +271,7 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
     if not result: result = searchTypeNodeForAux(t.n, predicate, marker)
   of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = searchTypeForAux(lastSon(t), predicate, marker)
-  of tyArray, tySet, tyTuple:
+  of tyArray, tySet, tyTuple, tySequence:
     for i in 0..<t.len:
       result = searchTypeForAux(t[i], predicate, marker)
       if result: return
@@ -353,12 +353,16 @@ proc isManagedMemory(t: PType): bool =
 proc containsManagedMemory*(typ: PType): bool =
   result = searchTypeFor(typ, isManagedMemory)
 
-proc isTyRef(t: PType): bool =
-  result = t.kind == tyRef or (t.kind == tyProc and t.callConv == ccClosure)
+proc containsTyRefOrClosure*(typ: PType): bool =
+  ## returns true if typ contains a ref or closure
+  proc fn(t: PType): bool =
+    result = t.kind == tyRef or (t.kind == tyProc and t.callConv == ccClosure)
+  result = searchTypeFor(typ, fn)
 
 proc containsTyRef*(typ: PType): bool =
-  # returns true if typ contains a 'ref'
-  result = searchTypeFor(typ, isTyRef)
+  proc fn(t: PType): bool =
+    result = t.kind == tyRef
+  result = searchTypeFor(typ, fn)
 
 proc isHiddenPointer(t: PType): bool =
   result = t.kind in {tyString, tySequence, tyOpenArray, tyVarargs}

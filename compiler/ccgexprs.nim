@@ -2724,7 +2724,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         internalError(p.config, n.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     of skConst:
-      if isSimpleConst(sym.typ):
+      if containsTyRef(sym.typ.skipTypes(abstractVar)):
+        expr(p, sym.ast, d)
+      elif isSimpleConst(sym.typ):
         putIntoDest(p, d, n, genLiteral(p, sym.ast, sym.typ), OnStatic)
       elif useAliveDataFromDce in p.module.flags:
         genConstHeader(p.module, p.module, p, sym)

@@ -78,7 +78,7 @@ proc canAlias*(arg, ret: PType): bool =
     result = canAlias(arg, ret, marker)
 
 proc checkIsolate*(n: PNode): bool =
-  if types.containsTyRef(n.typ):
+  if types.containsTyRefOrClosure(n.typ):
     # XXX Maybe require that 'n.typ' is acyclic. This is not much
     # worse than the already exisiting inheritance and closure restrictions.
     case n.kind
@@ -95,7 +95,7 @@ proc checkIsolate*(n: PNode): bool =
           discard "fine, it is isolated already"
         else:
           let argType = n[i].typ
-          if argType != nil and not isCompileTimeOnly(argType) and containsTyRef(argType):
+          if argType != nil and not isCompileTimeOnly(argType) and containsTyRefOrClosure(argType):
             if argType.canAlias(n.typ):
               return false
       result = true

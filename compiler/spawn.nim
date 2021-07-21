@@ -215,7 +215,7 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
 
       if formals[i].typ.kind in {tyTypeDesc, tyStatic}:
         continue
-    #elif containsTyRef(argType):
+    #elif containsTyRefOrClosure(argType):
     #  localError(n[i].info, "'spawn'ed function cannot refer to 'ref'/closure")
 
     let fieldname = if i < formals.len: formals[i].sym.name else: tmpName
@@ -246,7 +246,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
 
     let argType = skipTypes(if i < formals.len: formals[i].typ else: n.typ,
                             abstractInst)
-    #if containsTyRef(argType):
+    #if containsTyRefOrClosure(argType):
     #  localError(n.info, "'spawn'ed function cannot refer to 'ref'/closure")
 
     let fieldname = if i < formals.len: formals[i].sym.name else: tmpName
