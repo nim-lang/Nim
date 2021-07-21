@@ -1,7 +1,5 @@
 discard """
-  nimout:'''
-tconv.nim(81, 15) Warning: enum to enum conversion is now deprecated [User]
-'''
+  matrix: "--warningAsError:EnumConv"
 """
 
 template reject(x) =
@@ -77,12 +75,12 @@ block: # https://github.com/nim-lang/RFCs/issues/294
   reject: k2.Goo
   reject: k2.string
 
-  {.define(nimLegacyConvEnumEnum).}
+  {.push warningAsError[EnumConv]:off.}
   discard Goo(k2)
   accept: Goo(k2)
   accept: k2.Goo
   reject: k2.string
-  {.undef(nimLegacyConvEnumEnum).}
+  {.pop.}
 
   reject: Goo(k2)
   reject: k2.Goo
