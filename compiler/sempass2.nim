@@ -1171,7 +1171,10 @@ proc track(tracked: PEffects, n: PNode) =
         not allowCStringConv(n[1]):
       message(tracked.config, n.info, warnCstringConv,
         "implicit conversion to 'cstring' from a non-const location: $1; this will become a compile time error in the future" %
-          [$n[1]])
+          $n[1])
+
+    if n.typ.skipTypes(abstractInst).kind == tyEnum:
+      message(tracked.config, n.info, warnAnyEnumConv, "enum conversion: $1" % $n[1])
 
     if n.len == 2:
       track(tracked, n[1])
