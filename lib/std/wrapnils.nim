@@ -73,15 +73,13 @@ proc finalize(n: NimNode, lhs: NimNode, level: int): NimNode =
     result = quote: `lhs` = `n`
   else:
     result = quote: (let `lhs` = `n`)
-import timn/dbgs
+
 proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
-  dbg n.repr, level, lhs, "process"
   var n = n.copyNimTree
   var it = n.addr
   let addr2 = bindSym"addr"
   let checkNil2 = bindSym("checkNil")
   while true:
-    dbg it.repr, n.repr, it[].len, it[].kind
     if it[].len == 0:
       result = finalize(n, lhs, level)
       break
@@ -139,14 +137,11 @@ macro `?.`*(a: typed): auto =
   ## value is produced.
   let lhs = genSym(nskVar, "lhs")
   let body = process(a, lhs, 0)
-  echo a.repr
-  echo a.treeRepr
   result = quote do:
     var `lhs`: type(`a`)
     block:
       `body`
     `lhs`
-  echo result.repr
 
 # the code below is not needed for `?.`
 from options import Option, isSome, get, option, unsafeGet, UnpackDefect
