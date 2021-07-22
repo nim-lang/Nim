@@ -63,29 +63,29 @@ proc finalize(n: NimNode, lhs: NimNode, level: int): NimNode =
     result = quote: (let `lhs` = `n`)
 import timn/dbgs
 proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
+  dbg n.repr, level, lhs, "process"
   var n = n.copyNimTree
-  var it = n
-  var pit = n.addr
+  var it = n.addr
   let addr2 = bindSym"addr"
   let checkNil2 = bindSym("checkNil")
   var old: tuple[n: NimNode, index: int]
   while true:
-    # dbg it.repr
-    if it.len == 0:
+    dbg it.repr, n.repr, it[].len, it[].kind
+    if it[].len == 0:
       result = finalize(n, lhs, level)
       break
-    elif it.kind == nnkCheckedFieldExpr:
-      let dot = it[0]
+    elif it[].kind == nnkCheckedFieldExpr:
+      let dot = it[][0]
       let obj = dot[0]
       let objRef = quote do: `addr2`(`obj`)
         # avoids a copy and preserves lvalue semantics, see tests
-      let check = it[1]
+      let check = it[][1]
       let okSet = check[1]
       let kind1 = check[2]
       let tmp = genSym(nskLet, "tmpCase")
       let body = process(objRef, tmp, level + 1)
       let tmp3 = nnkDerefExpr.newTree(tmp)
-      it[0][0] = tmp3
+      it[][0][0] = tmp3
       let dot2 = nnkDotExpr.newTree(@[tmp, dot[1]])
       if old.n != nil: old.n[old.index] = dot2
       else: n = dot2
@@ -95,22 +95,22 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
         if `tmp3`.`kind1` notin `okSet`: break
         `assgn`
       break
-    elif it.kind in {nnkHiddenDeref, nnkDerefExpr}:
+    elif it[].kind in {nnkHiddenDeref, nnkDerefExpr}:
       let tmp = genSym(nskLet, "tmp")
-      let body = process(it[0], tmp, level + 1)
-      it[0] = tmp
+      let body = process(it[][0], tmp, level + 1)
+      it[][0] = tmp
       let assgn = finalize(n, lhs, level)
       result = quote do:
         `body`
         if `tmp` == nil: break
         `assgn`
       break
-    elif it.kind == nnkCall: # consider extending to `nnkCallKinds`
+    elif it[].kind == nnkCall: # consider extending to `nnkCallKinds`
       # `copyNimTree` needed to avoid `typ = nil` issues
-      if it[0].strVal.eqIdent("checkNil"):
+      if it[][0].strVal.eqIdent("checkNil"):
         let tmp = genSym(nskLet, "tmpNotNil")
-        let body = process(it[1], tmp, level + 1)
-        pit[][1] = tmp
+        let body = process(it[][1], tmp, level + 1)
+        it[][1] = tmp
         let assgn = finalize(n, lhs, level)
         result = quote do:
           `body`
@@ -118,13 +118,14 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
           `assgn`
         break
       else:
-        old = (it, 1)
-        it = it[1].copyNimTree
+        old = (it[], 1)
+        var n2 = it[][1].copyNimTree
+        it = n2.addr
     else:
       dbg "else"
-      old = (it, 0)
-      it = it[0]
-      pit = getChildPtr(pit[], 0)
+      old = (it[], 0)
+      # it[] = it[0]
+      it = getChildPtr(it[], 0)
 
 macro `?.`*(a: typed): auto =
   ## Transforms `a` into an expression that can be safely evaluated even in
