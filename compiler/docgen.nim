@@ -1280,11 +1280,12 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
 
   proc cmp(x, y: TocItem): int = cmpIgnoreCase(x.sortName, y.sortName)
   if groupedToc:
-    for plainName in d.tocTable[kind].keys.toSeq.sorted():
-      var overloadedItems = d.tocTable[kind][plainName]
-      overloadedItems.sort(cmp)
+    let overloadableNames = toSeq(keys(d.tocTable[kind]))
+    for plainName in overloadableNames.sorted():
+      var overloadChoices = d.tocTable[kind][plainName]
+      overloadChoices.sort(cmp)
       var content: string
-      for item in overloadedItems:
+      for item in overloadChoices:
         content.add item.content
       d.toc2[kind].add getConfigVar(d.conf, "doc.section.toc2") % [
           "sectionid", $ord(kind), "sectionTitle", title,
