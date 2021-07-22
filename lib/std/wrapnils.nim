@@ -15,7 +15,19 @@ doAssert ?.default(seq[int])[3] == default(int)
 
 import macros
 
-proc checkNil*[T: ptr|ref|cstring|proc](a: T): T {.inline.} = a
+proc checkNil*[T: ptr|ref|cstring|proc](a: T): T {.inline.} =
+  ## Special API that can be used inside a `?.` expression, which will cause a
+  ## default value to be returned in an argument passed to `checkNil` was nil.
+  runnableExamples:
+    type A = ref object
+      val: int
+      lhs: A
+    proc fn(a: A): A =
+      result = a.lhs # the nil dereference is inside a proc
+    let a = A(val: 10, lhs: A(val: 11))
+    # this would give a nil dereference: ?.a.lhs.lhs.fn.val
+    doAssert ?.a.lhs.lhs.checkNil.fn.val == 0
+  a
 
 runnableExamples:
   type Foo = ref object
@@ -68,7 +80,6 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
   var it = n.addr
   let addr2 = bindSym"addr"
   let checkNil2 = bindSym("checkNil")
-  var old: tuple[n: NimNode, index: int]
   while true:
     dbg it.repr, n.repr, it[].len, it[].kind
     if it[].len == 0:
@@ -86,9 +97,7 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
       let body = process(objRef, tmp, level + 1)
       let tmp3 = nnkDerefExpr.newTree(tmp)
       it[][0][0] = tmp3
-      let dot2 = nnkDotExpr.newTree(@[tmp, dot[1]])
-      if old.n != nil: old.n[old.index] = dot2
-      else: n = dot2
+      it[] = nnkDotExpr.newTree(@[tmp, dot[1]])
       let assgn = finalize(n, lhs, level)
       result = quote do:
         `body`
@@ -106,9 +115,8 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
         `assgn`
       break
     elif it[].kind == nnkCall: # consider extending to `nnkCallKinds`
-      # `copyNimTree` needed to avoid `typ = nil` issues
       if it[][0].strVal.eqIdent("checkNil"):
-        let tmp = genSym(nskLet, "tmpNotNil")
+        let tmp = genSym(nskLet, "tmpCheckNil")
         let body = process(it[][1], tmp, level + 1)
         it[][1] = tmp
         let assgn = finalize(n, lhs, level)
@@ -118,13 +126,11 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
           `assgn`
         break
       else:
-        old = (it[], 1)
-        var n2 = it[][1].copyNimTree
+        # `copyNimTree` needed to avoid `typ = nil` issues
+        var n1 = it[][1]
+        var n2 = n1.copyNimTree
         it = n2.addr
     else:
-      dbg "else"
-      old = (it[], 0)
-      # it[] = it[0]
       it = getChildPtr(it[], 0)
 
 macro `?.`*(a: typed): auto =

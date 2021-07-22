@@ -66,3 +66,18 @@ block: # unpackVarargs
     doAssert call1(toString) == ""
     doAssert call1(toString, 10) == "10"
     doAssert call1(toString, 10, 11) == "1011"
+
+template main =
+  # xxx move all under here
+  block: # getChildPtr
+    proc process(n: NimNode): NimNode =
+      let n2 = getChildPtr(n, 0)
+      # let n2 = n[0].unsafeAddr # would not work
+      n2[] = quote do: 123
+      result = n
+    macro fn(n: auto): untyped =
+      result = process(n)
+    doAssert fn(("foo1", "foo2")) == (123, "foo2")
+
+static: main()
+main()

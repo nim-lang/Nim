@@ -215,5 +215,42 @@ proc main() =
         p3[] = 4.7
       doAssert b.b1 == 4.7
 
+  block: # checkNil
+    type A = ref object
+      val: int
+      lhs: A
+    proc fn(a: A): A =
+      # the nil dereference is inside a proc
+      result = a.lhs
+    let a = A(val: 10, lhs: A(val: 11))
+    # this would give a nil dereference: ?.a.lhs.lhs.fn.val
+    doAssert ?.a.lhs.lhs.checkNil.fn.val == 0
+    doAssert ?.a.lhs.checkNil.fn.val == 0
+    doAssert ?.a.lhs.fn.val == 0
+    doAssert ?.a.checkNil.fn.val == 11
+    doAssert ?.a.fn.val == 11
+
 main()
 static: main()
+
+# additional tests with extra imports
+
+import std/json
+import std/jsonutils
+
+template main2 =
+  type A = ref object
+    val: int
+    vals: seq[int]
+    lhs: A
+
+  block: # checkNil
+    let a = A(val: 10, lhs: A(val: 11, lhs: A(val: 12, vals: @[2,3,4])))
+    let b = a.toJson
+    doAssert ?.b.getOrDefault("lhs").getOrDefault("lhs").getOrDefault("vals").checkNil.jsonTo(seq[int]) == @[2, 3, 4]
+    doAssert ?.b.getOrDefault("lhs").getOrDefault("lhs").getOrDefault("nonexistent").checkNil.jsonTo(seq[int]) == @[]
+    # without checkNil:
+    doAssertRaises(ValueError): discard ?.b.getOrDefault("lhs").getOrDefault("lhs").getOrDefault("nonexistent").jsonTo(seq[int])
+
+main2()
+static: main2()

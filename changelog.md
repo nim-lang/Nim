@@ -123,6 +123,8 @@
 
 - Make custom op in macros.quote work for all statements.
 
+- Added `macros.getChildPtr(n: NimNode, i: int)` to get a ptr to the ith child of `n`.
+
 - On Windows the SSL library now checks for valid certificates.
   It uses the `cacert.pem` file for this purpose which was extracted
   from `https://curl.se/ca/cacert.pem`. Besides
@@ -292,6 +294,7 @@
   case objects, generates optimal code (no overhead compared to manual
   if-else branches), and preserves lvalue semantics which allows modifying
   an expression.
+  Added `checkNil` to return a default value if an argument with `checkNil` is nil.
 
 - Added `math.frexp` overload procs. Deprecated `c_frexp`, use `frexp` instead.
 

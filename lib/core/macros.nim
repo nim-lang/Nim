@@ -174,6 +174,16 @@ proc `[]`*(n: NimNode, i: BackwardsIndex): NimNode = n[n.len - i.int]
   ## Get `n`'s `i`'th child.
 
 proc getChildPtr*(n: NimNode, i: int): ptr NimNode =
+  ## Return a ptr to the ith child of `n`; note that `n[i]` doesn't have an address
+  ## so `n[i].addr` or `n[i].unsafeAddr` won't work.
+  runnableExamples:
+    proc process(n: NimNode): NimNode =
+      let n2 = getChildPtr(n, 0)
+      n2[] = quote do: 123
+      result = n
+    macro fn(n: auto): untyped =
+      result = process(n)
+    doAssert fn(("foo1", "foo2")) == (123, "foo2")
   doAssert false, "nimvm"
 
 template `^^`(n: NimNode, i: untyped): untyped =
