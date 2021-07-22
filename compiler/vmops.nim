@@ -336,3 +336,8 @@ proc registerAdditionalOps*(c: PCtx) =
     let p = a.getVar(0)
     let x = a.getFloat(1)
     addFloatSprintf(p.strVal, x)
+
+  registerCallback c, "stdlib.macros.getChildPtr", proc(a: VmArgs) =
+    let p = a.getNode(0)
+    let index = a.getInt(1)
+    setResult(a, p.sons[index])

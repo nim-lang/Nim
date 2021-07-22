@@ -15,6 +15,8 @@ doAssert ?.default(seq[int])[3] == default(int)
 
 import macros
 
+proc checkNil*[T: ptr|ref|cstring|proc](a: T): T {.inline.} = a
+
 runnableExamples:
   type Foo = ref object
     x1: string
@@ -59,13 +61,16 @@ proc finalize(n: NimNode, lhs: NimNode, level: int): NimNode =
     result = quote: `lhs` = `n`
   else:
     result = quote: (let `lhs` = `n`)
-
+import timn/dbgs
 proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
   var n = n.copyNimTree
   var it = n
+  var pit = n.addr
   let addr2 = bindSym"addr"
+  let checkNil2 = bindSym("checkNil")
   var old: tuple[n: NimNode, index: int]
   while true:
+    # dbg it.repr
     if it.len == 0:
       result = finalize(n, lhs, level)
       break
@@ -102,11 +107,24 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
       break
     elif it.kind == nnkCall: # consider extending to `nnkCallKinds`
       # `copyNimTree` needed to avoid `typ = nil` issues
-      old = (it, 1)
-      it = it[1].copyNimTree
+      if it[0].strVal.eqIdent("checkNil"):
+        let tmp = genSym(nskLet, "tmpNotNil")
+        let body = process(it[1], tmp, level + 1)
+        pit[][1] = tmp
+        let assgn = finalize(n, lhs, level)
+        result = quote do:
+          `body`
+          if `tmp` == nil: break
+          `assgn`
+        break
+      else:
+        old = (it, 1)
+        it = it[1].copyNimTree
     else:
+      dbg "else"
       old = (it, 0)
       it = it[0]
+      pit = getChildPtr(pit[], 0)
 
 macro `?.`*(a: typed): auto =
   ## Transforms `a` into an expression that can be safely evaluated even in
@@ -114,11 +132,14 @@ macro `?.`*(a: typed): auto =
   ## value is produced.
   let lhs = genSym(nskVar, "lhs")
   let body = process(a, lhs, 0)
+  echo a.repr
+  echo a.treeRepr
   result = quote do:
     var `lhs`: type(`a`)
     block:
       `body`
     `lhs`
+  echo result.repr
 
 # the code below is not needed for `?.`
 from options import Option, isSome, get, option, unsafeGet, UnpackDefect

@@ -173,6 +173,9 @@ proc `[]`*(n: NimNode, i: int): NimNode {.magic: "NChild", noSideEffect.}
 proc `[]`*(n: NimNode, i: BackwardsIndex): NimNode = n[n.len - i.int]
   ## Get `n`'s `i`'th child.
 
+proc getChildPtr*(n: NimNode, i: int): ptr NimNode =
+  doAssert false, "nimvm"
+
 template `^^`(n: NimNode, i: untyped): untyped =
   (when i is BackwardsIndex: n.len - int(i) else: int(i))
 

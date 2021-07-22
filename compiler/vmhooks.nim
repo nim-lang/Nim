@@ -28,6 +28,10 @@ proc setResult*(a: VmArgs; n: PNode) =
   a.slots[a.ra].ensureKind(rkNode)
   a.slots[a.ra].node = n
 
+proc setResult*(a: VmArgs; n: ptr PNode) =
+  a.slots[a.ra].ensureKind(rkNodeAddr)
+  a.slots[a.ra].nodeAddr = n
+
 proc setResult*(a: VmArgs; v: AbsoluteDir) = setResult(a, v.string)
 
 proc setResult*(a: VmArgs; v: seq[string]) =
