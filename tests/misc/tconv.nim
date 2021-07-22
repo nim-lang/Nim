@@ -92,3 +92,16 @@ reject:
     x[0] = c
     x
 
+{.push warning[AnyEnumConv]:on, warningAsError[AnyEnumConv]:on.}
+
+reject:
+  # bug #12815
+  type
+    Foo = enum
+      one = 1
+      three = 3
+
+  var va = 2
+  var vb = va.Foo
+
+{.pop.}
