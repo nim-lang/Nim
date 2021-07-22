@@ -78,7 +78,6 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
   var n = n.copyNimTree
   var it = n.addr
   let addr2 = bindSym"addr"
-  let checkNil2 = bindSym("checkNil")
   while true:
     if it[].len == 0:
       result = finalize(n, lhs, level)
