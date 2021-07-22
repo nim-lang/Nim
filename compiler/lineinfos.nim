@@ -72,6 +72,7 @@ type
     warnFileChanged = "FileChanged",
     warnSuspiciousEnumConv = "EnumConv",
     warnAnyEnumConv = "AnyEnumConv",
+    warnHoleEnumConv = "HoleEnumConv",
     warnCstringConv = "CStringConv",
     warnUser = "User",
     # hints
@@ -158,6 +159,7 @@ const
     warnFileChanged: "file changed: $1",
     warnSuspiciousEnumConv: "$1",
     warnAnyEnumConv: "$1",
+    warnHoleEnumConv: "$1",
     warnCstringConv: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",

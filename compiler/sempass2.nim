@@ -1173,8 +1173,12 @@ proc track(tracked: PEffects, n: PNode) =
         "implicit conversion to 'cstring' from a non-const location: $1; this will become a compile time error in the future" %
           $n[1])
 
-    if n.typ.skipTypes(abstractInst).kind == tyEnum:
-      message(tracked.config, n.info, warnAnyEnumConv, "enum conversion: $1" % $n[1])
+    let t = n.typ.skipTypes(abstractInst)
+    if t.kind == tyEnum:
+      if tfEnumHasHoles in t.flags:
+        message(tracked.config, n.info, warnHoleEnumConv, "conversion to enum with holes is unsafe: $1" % $n)
+      else:
+        message(tracked.config, n.info, warnAnyEnumConv, "enum conversion: $1" % $n)
 
     if n.len == 2:
       track(tracked, n[1])
