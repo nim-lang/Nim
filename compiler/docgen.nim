@@ -11,7 +11,7 @@
 # by knowing how the anchors are going to be named.
 
 import
-  ast, strutils, strtabs, options, msgs, os, idents,
+  ast, strutils, strtabs, algorithm, sequtils, options, msgs, os, idents,
   wordrecg, syntaxes, renderer, lexer,
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, trees, types,
@@ -43,11 +43,15 @@ type
     descRst: ItemPre     ## Description of the item (may contain
                          ## runnableExamples).
     substitutions: seq[string]    ## Variable names in `doc.item`...
+    sortName: string    ## The string used for sorting in output
   ModSection = object  ## Section like Procs, Types, etc.
     secItems: seq[Item]  ## Pre-processed items.
     finalMarkup: string  ## The items, after RST pass 2 and rendering.
   ModSections = array[TSymKind, ModSection]
-  TSections = array[TSymKind, string]
+  TocItem = object  ## HTML TOC item
+    content: string
+    sortName: string
+  TocSectionsFinal = array[TSymKind, string]
   ExampleGroup = ref object
     ## a group of runnableExamples with same rdoccmd
     rdoccmd: string ## from 1st arg in `runnableExamples(rdoccmd): body`
@@ -64,8 +68,13 @@ type
     module: PSym
     modDeprecationMsg: string
     section: ModSections     # entries of ``.nim`` file (for `proc`s, etc)
-    toc, toc2: TSections     # toc2 - grouped TOC
-    tocTable: array[TSymKind, Table[string, string]]
+    tocSimple: array[TSymKind, seq[TocItem]]
+      # TOC entries for non-overloadable symbols (e.g. types, constants)...
+    tocTable:  array[TSymKind, Table[string, seq[TocItem]]]
+      # ...otherwise (e.g. procs)
+    toc2: TocSectionsFinal  # TOC `content`, which is probably wrapped
+                            # in `doc.section.toc2`
+    toc: TocSectionsFinal  # final TOC (wrapped in `doc.section.toc`)
     indexValFilename: string
     analytics: string  # Google Analytics javascript, "" if doesn't exist
     seenSymbols: StringTableRef # avoids duplicate symbol generation for HTML.
@@ -874,7 +883,10 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
 
   let seeSrc = genSeeSrc(d, toFullPath(d.conf, n.info), n.info.line.int)
 
-  d.section[k].secItems.add Item(descRst: comm, substitutions: @[
+  d.section[k].secItems.add Item(
+    descRst: comm,
+    sortName: plainNameEsc,
+    substitutions: @[
      "name", name, "uniqueName", uniqueName,
      "header", result, "itemID", $d.id,
      "header_plain", plainNameEsc, "itemSym", cleanPlainSymbol,
@@ -898,12 +910,15 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       setIndexTerm(d[], external, symbolOrId, plain, nameNode.sym.name.s & '.' & plain,
         xmltree.escape(getPlainDocstring(e).docstringSummary))
 
-  d.toc[k].add(getConfigVar(d.conf, "doc.item.toc") % [
+  d.tocSimple[k].add TocItem(
+    sortName: plainNameEsc,
+    content: getConfigVar(d.conf, "doc.item.toc") % [
       "name", name, "header_plain", plainNameEsc,
       "itemSymOrIDEnc", symbolOrIdEnc])
 
-  d.tocTable[k].mgetOrPut(cleanPlainSymbol, "").add(
-    getConfigVar(d.conf, "doc.item.tocTable") % [
+  d.tocTable[k].mgetOrPut(cleanPlainSymbol, newSeq[TocItem]()).add TocItem(
+    sortName: plainNameEsc,
+    content: getConfigVar(d.conf, "doc.item.tocTable") % [
       "name", name, "header_plain", plainNameEsc,
       "itemSymOrID", symbolOrId.replace(",", ",<wbr>"),
       "itemSymOrIDEnc", symbolOrIdEnc])
@@ -1143,8 +1158,9 @@ proc finishGenerateDoc*(d: var PDoc) =
         var resolved = resolveSubs(d.sharedState, f.rst)
         renderRstToOut(d[], resolved, result)
       of false: result &= f.str
+  proc cmp(x, y: Item): int = cmpIgnoreCase(x.sortName, y.sortName)
   for k in TSymKind:
-    for item in d.section[k].secItems:
+    for item in d.section[k].secItems.sorted(cmp):
       var itemDesc: string
       renderItemPre(d, item.descRst, itemDesc)
       d.section[k].finalMarkup.add(
@@ -1262,18 +1278,25 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
       "sectionid", $ord(kind), "sectionTitle", title,
       "sectionTitleID", $(ord(kind) + 50), "content", d.section[kind].finalMarkup]
 
-  var tocSource = d.toc
+  proc cmp(x, y: TocItem): int = cmpIgnoreCase(x.sortName, y.sortName)
   if groupedToc:
-    for p in d.tocTable[kind].keys:
+    for plainName in d.tocTable[kind].keys.toSeq.sorted():
+      var overloadedItems = d.tocTable[kind][plainName]
+      overloadedItems.sort(cmp)
+      var content: string
+      for item in overloadedItems:
+        content.add item.content
       d.toc2[kind].add getConfigVar(d.conf, "doc.section.toc2") % [
           "sectionid", $ord(kind), "sectionTitle", title,
           "sectionTitleID", $(ord(kind) + 50),
-          "content", d.tocTable[kind][p], "plainName", p]
-    tocSource = d.toc2
+          "content", content, "plainName", plainName]
+  else:
+    for item in d.tocSimple[kind].sorted(cmp):
+      d.toc2[kind].add item.content
 
   d.toc[kind] = getConfigVar(d.conf, "doc.section.toc") % [
       "sectionid", $ord(kind), "sectionTitle", title,
-      "sectionTitleID", $(ord(kind) + 50), "content", tocSource[kind]]
+      "sectionTitleID", $(ord(kind) + 50), "content", d.toc2[kind]]
 
 proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): string =
   $relativeTo(outDir / linkto, destFile.splitFile().dir, '/')
