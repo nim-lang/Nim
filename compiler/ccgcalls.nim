@@ -317,36 +317,46 @@ proc skipTrivialIndirections(n: PNode): PNode =
   result = n
   while true:
     case result.kind
-    of {nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr, nkObjDownConv, nkObjUpConv}:
+    of nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr, nkObjDownConv, nkObjUpConv:
       result = result[0]
-    of {nkHiddenStdConv, nkHiddenSubConv}:
+    of nkHiddenStdConv, nkHiddenSubConv:
       result = result[1]
     else: break
 
-proc getPotentialWrites(n: PNode, mutate = false): seq[PNode] =
+proc getPotentialWrites(n: PNode; mutate: bool; result: var seq[PNode]) =
   case n.kind:
   of nkLiterals, nkIdent: discard
   of nkSym:
     if mutate: result.add n
   of nkAsgn, nkFastAsgn:
-    result.add getPotentialWrites(n[0], true)
-    result.add getPotentialWrites(n[1], mutate)
+    getPotentialWrites(n[0], true, result)
+    getPotentialWrites(n[1], mutate, result)
   of nkAddr, nkHiddenAddr:
-    result.add getPotentialWrites(n[0], true)
-  of nkCallKinds: #TODO: Find out why in f += 1, f is a nkSym and not a nkHiddenAddr
-    for s in n.sons:
-      result.add getPotentialWrites(s, true)
+    getPotentialWrites(n[0], true, result)
+  of nkCallKinds:
+    case n.getMagic:
+    of mIncl, mExcl, mInc, mDec, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
+        mAddr, mNew, mNewFinalize, mWasMoved, mDestroy, mReset:
+      getPotentialWrites(n[1], true, result)
+      for i in 2..<n.len:
+        getPotentialWrites(n[i], mutate, result)
+    of mSwap:
+      for i in 1..<n.len:
+        getPotentialWrites(n[i], true, result)
+    else:
+      for i in 1..<n.len:
+        getPotentialWrites(n[i], mutate, result)
   else:
-    for s in n.sons:
-      result.add getPotentialWrites(s, mutate)
+    for s in n:
+      getPotentialWrites(s, mutate, result)
 
-proc getPotentialReads(n: PNode): seq[PNode] =
+proc getPotentialReads(n: PNode; result: var seq[PNode]) =
   case n.kind:
   of nkLiterals, nkIdent: discard
   of nkSym: result.add n
   else:
-    for s in n.sons:
-      result.add getPotentialReads(s)
+    for s in n:
+      getPotentialReads(s, result)
 
 proc genParams(p: BProc, ri: PNode, typ: PType): Rope =
   # We must generate temporaries in cases like #14396
@@ -357,10 +367,12 @@ proc genParams(p: BProc, ri: PNode, typ: PType): Rope =
     if ri[i].skipTrivialIndirections.kind == nkSym:
       needTmp[i - 1] = potentialAlias(ri[i], potentialWrites)
     else:
-      for n in getPotentialReads(ri[i]):
+      var potentialReads: seq[PNode]
+      getPotentialReads(ri[i], potentialReads)
+      for n in potentialReads:
         if not needTmp[i - 1]:
           needTmp[i - 1] = potentialAlias(n, potentialWrites)
-      potentialWrites.add getPotentialWrites(ri[i])
+      getPotentialWrites(ri[i], false, potentialWrites)
     if ri[i].kind == nkHiddenAddr:
       # Optimization: don't use a temp, if we would only take the adress anyway
       needTmp[i - 1] = false
