@@ -65,7 +65,7 @@ type
       # you may be in position to supply a better error message
       # to the user.
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
-    efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
+    efWantValue, efOperand, efNoSemCheck,
     efNoEvaluateGeneric, efInCall, efFromHlo, efNoSem2Check,
     efNoUndeclared
       # Use this if undeclared identifiers should not raise an error during
