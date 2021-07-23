@@ -4,7 +4,7 @@ discard """
 joinable: false
 """
 
-## GOAL: Allow this code:
+{.experimental: "overloadableEnums".}
 
 type
   E1 = enum
