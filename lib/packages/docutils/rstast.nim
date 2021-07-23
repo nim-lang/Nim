@@ -74,6 +74,11 @@ type
     rnLeaf                    # a leaf; the node's text field contains the
                               # leaf val
 
+  FileIndex* = distinct int32
+  TLineInfo* = object
+    line*: uint16
+    col*: int16
+    fileIndex*: FileIndex
 
   PRstNode* = ref RstNode    ## an RST node
   RstNodeSeq* = seq[PRstNode]
@@ -92,21 +97,32 @@ type
       level*: int             ## level of headings starting from 1 (main
                               ## chapter) to larger ones (minor sub-sections)
                               ## level=0 means it's document title or subtitle
-    of rnFootnote, rnCitation, rnFootnoteRef, rnOptionListItem:
+    of rnFootnote, rnCitation, rnOptionListItem:
       order*: int             ## footnote order (for auto-symbol footnotes and
                               ## auto-numbered ones without a label)
+    of rnRef, rnSubstitutionReferences,
+        rnInterpretedText, rnField, rnInlineCode, rnCodeBlock, rnFootnoteRef:
+      info*: TLineInfo        ## To have line/column info for warnings at
+                              ## nodes that are post-processed after parsing
     else:
       discard
     anchor*: string           ## anchor, internal link target
                               ## (aka HTML id tag, aka Latex label/hypertarget)
     sons*: RstNodeSeq        ## the node's sons
 
+proc `==`*(a, b: FileIndex): bool {.borrow.}
+
 proc len*(n: PRstNode): int =
   result = len(n.sons)
 
 proc newRstNode*(kind: RstNodeKind, sons: seq[PRstNode] = @[],
                  anchor = ""): PRstNode =
+  result = PRstNode(kind: kind, sons: sons, anchor: anchor)
+
+proc newRstNode*(kind: RstNodeKind, info: TLineInfo,
+                 sons: seq[PRstNode] = @[]): PRstNode =
   result = PRstNode(kind: kind, sons: sons)
+  result.info = info
 
 proc newRstNode*(kind: RstNodeKind, s: string): PRstNode {.deprecated.} =
   assert kind in {rnLeaf, rnSmiley}
@@ -388,7 +404,7 @@ proc renderRstToStr*(node: PRstNode, indent=0): string =
     result.add "  adType=" & node.adType
   of rnHeadline, rnOverline, rnMarkdownHeadline:
     result.add "  level=" & $node.level
-  of rnFootnote, rnCitation, rnFootnoteRef, rnOptionListItem:
+  of rnFootnote, rnCitation, rnOptionListItem:
     result.add (if node.order == 0:   "" else: "  order=" & $node.order)
   else:
     discard

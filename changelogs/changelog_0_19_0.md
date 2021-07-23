@@ -15,7 +15,7 @@
   at runtime. Use ``ref object`` with inheritance rather than ``object`` with
   inheritance to prevent this issue.
 - The ``not nil`` type annotation now has to be enabled explicitly
-  via ``{.experimental: "notnil"}`` as we are still not pleased with how this
+  via ``{.experimental: "notnil".}`` as we are still not pleased with how this
   feature works with Nim's containers.
 - The parser now warns about inconsistent spacing around binary operators as
   these can easily be confused with unary operators. This warning will likely

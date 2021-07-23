@@ -10,27 +10,15 @@
 ## This module contains basic operating system facilities like
 ## retrieving environment variables, reading command line arguments,
 ## working with directories, running shell commands, etc.
-##
-## .. code-block::
-##   import std/os
-##
-##   let myFile = "/path/to/my/file.nim"
-##
-##   let pathSplit = splitPath(myFile)
-##   assert pathSplit.head == "/path/to/my"
-##   assert pathSplit.tail == "file.nim"
-##
-##   assert parentDir(myFile) == "/path/to/my"
-##
-##   let fileSplit = splitFile(myFile)
-##   assert fileSplit.dir == "/path/to/my"
-##   assert fileSplit.name == "file"
-##   assert fileSplit.ext == ".nim"
-##
-##   assert myFile.changeFileExt("c") == "/path/to/my/file.c"
 
-##
-##
+runnableExamples:
+  let myFile = "/path/to/my/file.nim"
+  assert splitPath(myFile) == (head: "/path/to/my", tail: "file.nim")
+  when defined(posix):
+    assert parentDir(myFile) == "/path/to/my"
+  assert splitFile(myFile) == (dir: "/path/to/my", name: "file", ext: ".nim")
+  assert myFile.changeFileExt("c") == "/path/to/my/file.c"
+
 ## **See also:**
 ## * `osproc module <osproc.html>`_ for process communication beyond
 ##   `execShellCmd proc <#execShellCmd,string>`_
@@ -901,14 +889,9 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
   runnableExamples:
     assert getHomeDir() == expandTilde("~")
-    # `getHomeDir()` doesn't end in `DirSep` even if `$HOME` (on posix) or
-    # `$USERPROFILE` (on windows) does, unless `-d:nimLegacyHomeDir` is specified.
-    from std/strutils import endsWith
-    assert not getHomeDir().endsWith DirSep
 
-  when defined(windows): result = getEnv("USERPROFILE")
-  else: result = getEnv("HOME")
-  result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
+  when defined(windows): return getEnv("USERPROFILE") & "\\"
+  else: return getEnv("HOME") & "/"
 
 proc getConfigDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
@@ -917,21 +900,23 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ## On non-Windows OSs, this proc conforms to the XDG Base Directory
   ## spec. Thus, this proc returns the value of the `XDG_CONFIG_HOME` environment
   ## variable if it is set, otherwise it returns the default configuration
-  ## directory ("~/.config").
+  ## directory ("~/.config/").
+  ##
+  ## An OS-dependent trailing slash is always present at the end of the
+  ## returned string: `\\` on Windows and `/` on all other OSs.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getTempDir proc <#getTempDir>`_
-  ## * `getCacheDir proc <#getCacheDir>`_
-  runnableExamples:
-    from std/strutils import endsWith
-    # See `getHomeDir` for behavior regarding trailing DirSep.
-    assert not getConfigDir().endsWith DirSep
+  ## * `expandTilde proc <#expandTilde,string>`_
+  ## * `getCurrentDir proc <#getCurrentDir>`_
+  ## * `setCurrentDir proc <#setCurrentDir,string>`_
   when defined(windows):
     result = getEnv("APPDATA")
   else:
     result = getEnv("XDG_CONFIG_HOME", getEnv("HOME") / ".config")
-  result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
+  result.normalizePathEnd(trailingSep = true)
+
 
 proc getCacheDir*(): string =
   ## Returns the cache directory of the current user for applications.
@@ -1006,11 +991,9 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getConfigDir proc <#getConfigDir>`_
-  ## * `getCacheDir proc <#getCacheDir>`_
-  runnableExamples:
-    from std/strutils import endsWith
-    # See `getHomeDir` for behavior regarding trailing DirSep.
-    assert not getTempDir().endsWith(DirSep)
+  ## * `expandTilde proc <#expandTilde,string>`_
+  ## * `getCurrentDir proc <#getCurrentDir>`_
+  ## * `setCurrentDir proc <#setCurrentDir,string>`_
   const tempDirDefault = "/tmp"
   when defined(tempDir):
     const tempDir {.strdefine.}: string = tempDirDefault
@@ -1031,7 +1014,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
         getTempDirImpl(result)
     if result.len == 0:
       result = tempDirDefault
-  result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
+  normalizePathEnd(result, trailingSep=true)
 
 proc expandTilde*(path: string): string {.
   tags: [ReadEnvEffect, ReadIOEffect].} =
@@ -1040,8 +1023,6 @@ proc expandTilde*(path: string): string {.
   ##
   ## Windows: this is still supported despite the Windows platform not having this
   ## convention; also, both ``~/`` and ``~\`` are handled.
-  ##
-  ## .. warning:: `~bob` and `~bob/` are not yet handled correctly.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
@@ -1053,9 +1034,6 @@ proc expandTilde*(path: string): string {.
     assert expandTilde("~" / "appname.cfg") == getHomeDir() / "appname.cfg"
     assert expandTilde("~/foo/bar") == getHomeDir() / "foo/bar"
     assert expandTilde("/foo/bar") == "/foo/bar"
-    assert expandTilde("~") == getHomeDir()
-    from std/strutils import endsWith
-    assert not expandTilde("~").endsWith(DirSep)
 
   if len(path) == 0 or path[0] != '~':
     result = path
@@ -2296,6 +2274,10 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ##
   ## Walking is not recursive. If ``relative`` is true (default: false)
   ## the resulting path is shortened to be relative to ``dir``.
+  ##
+  ## If `checkDir` is true, `OSError` is raised when `dir`
+  ## doesn't exist.
+  ##
   ## Example: This directory structure::
   ##   dirA / dirB / fileB1.txt
   ##        / dirC
@@ -2395,6 +2377,9 @@ iterator walkDirRec*(dir: string,
   ## If ``relative`` is true (default: false) the resulting path is
   ## shortened to be relative to ``dir``, otherwise the full path is returned.
   ##
+  ## If `checkDir` is true, `OSError` is raised when `dir`
+  ## doesn't exist.
+  ##
   ## .. warning:: Modifying the directory structure while the iterator
   ##   is traversing may result in undefined behavior!
   ##
@@ -2458,7 +2443,7 @@ proc removeDir*(dir: string, checkDir = false) {.rtl, extern: "nos$1", tags: [
   ## in `dir` (recursively).
   ##
   ## If this fails, `OSError` is raised. This does not fail if the directory never
-  ## existed in the first place, unless `checkDir` = true
+  ## existed in the first place, unless `checkDir` = true.
   ##
   ## See also:
   ## * `tryRemoveFile proc <#tryRemoveFile,string>`_

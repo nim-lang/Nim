@@ -159,6 +159,7 @@ type
     exportIndirections*: HashSet[(int, int)] # (module.id, symbol.id)
     importModuleMap*: Table[int, int] # (module.id, module.id)
     lastTLineInfo*: TLineInfo
+    sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
 
 template config*(c: PContext): ConfigRef = c.graph.config
 

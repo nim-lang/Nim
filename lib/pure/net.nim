@@ -503,7 +503,7 @@ when defineSsl:
     ## Retrieve the ssl pointer of `socket`.
     ## Useful for interfacing with `openssl`.
     self.sslHandle
-    
+
   proc raiseSSLError*(s = "") =
     ## Raises a new SSL error.
     if s != "":
@@ -647,7 +647,7 @@ when defineSsl:
       if verifyMode != CVerifyNone:
         # Use the caDir and caFile parameters if set
         if caDir != "" or caFile != "":
-          if newCTX.SSL_CTX_load_verify_locations(caFile, caDir) != VerifySuccess:
+          if newCTX.SSL_CTX_load_verify_locations(if caFile == "": nil else: caFile.cstring, if caDir == "": nil else: caDir.cstring) != VerifySuccess:
             raise newException(IOError, "Failed to load SSL/TLS CA certificate(s).")
 
         else:
@@ -688,7 +688,7 @@ when defineSsl:
     return ctx.getExtraInternal().clientGetPskFunc
 
   proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring;
-      max_identity_len: cuint; psk: ptr cuchar;
+      max_identity_len: cuint; psk: ptr uint8;
       max_psk_len: cuint): cuint {.cdecl.} =
     let ctx = SslContext(context: ssl.SSL_get_SSL_CTX)
     let hintString = if hint == nil: "" else: $hint
@@ -714,7 +714,7 @@ when defineSsl:
   proc serverGetPskFunc*(ctx: SslContext): SslServerGetPskFunc =
     return ctx.getExtraInternal().serverGetPskFunc
 
-  proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar;
+  proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr uint8;
       max_psk_len: cint): cuint {.cdecl.} =
     let ctx = SslContext(context: ssl.SSL_get_SSL_CTX)
     let pskString = (ctx.serverGetPskFunc)($identity)

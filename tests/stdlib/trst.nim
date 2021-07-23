@@ -5,6 +5,8 @@ discard """
 
 [Suite] RST indentation
 
+[Suite] Warnings
+
 [Suite] RST include directive
 
 [Suite] RST escaping
@@ -51,9 +53,8 @@ proc toAst(input: string,
       # we don't find any files in online mode:
       result = ""
 
-    var dummyHasToc = false
-    var rst = rstParse(input, filen, line=LineRstInit, column=ColRstInit,
-                       dummyHasToc, rstOptions, myFindFile, testMsgHandler)
+    var (rst, _, _) = rstParse(input, filen, line=LineRstInit, column=ColRstInit,
+                               rstOptions, myFindFile, testMsgHandler)
     result = renderRstToStr(rst)
   except EParseError as e:
     if e.msg != "":
@@ -356,6 +357,53 @@ suite "RST indentation":
     # "template..." should be parsed as a definition list attached to ":test:":
     check inputWrong.toAst != ast
 
+suite "Warnings":
+  test "warnings for broken footnotes/links/substitutions":
+    let input = dedent"""
+      firstParagraph
+
+      footnoteRef [som]_
+
+      link `a broken Link`_
+
+      substitution |undefined subst|
+
+      link short.link_
+
+      lastParagraph
+      """
+    var warnings = new seq[string]
+    let output = input.toAst(warnings=warnings)
+    check(warnings[] == @[
+        "input(3, 14) Warning: broken link 'citation-som'",
+        "input(5, 7) Warning: broken link 'a-broken-link'",
+        "input(7, 15) Warning: unknown substitution 'undefined subst'",
+        "input(9, 6) Warning: broken link 'shortdotlink'"
+        ])
+
+  test "With include directive and blank lines at the beginning":
+    "other.rst".writeFile(dedent"""
+
+
+        firstParagraph
+
+        here brokenLink_""")
+    let input = ".. include:: other.rst"
+    var warnings = new seq[string]
+    let output = input.toAst(warnings=warnings)
+    check warnings[] == @["other.rst(5, 6) Warning: broken link 'brokenlink'"]
+    check(output == dedent"""
+      rnInner
+        rnParagraph
+          rnLeaf  'firstParagraph'
+        rnParagraph
+          rnLeaf  'here'
+          rnLeaf  ' '
+          rnRef
+            rnLeaf  'brokenLink'
+      """)
+    removeFile("other.rst")
+
 suite "RST include directive":
   test "Include whole":
     "other.rst".writeFile("**test1**")
@@ -374,7 +422,7 @@ OtherStart
 .. include:: other.rst
              :start-after: OtherStart
 """
-    doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
+    check "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
     removeFile("other.rst")
 
   test "Include everything before":
@@ -406,7 +454,7 @@ And this should **NOT** be visible in `docs.html`
              :start-after: OtherStart
              :end-before: OtherEnd
 """
-    doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
+    check "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
     removeFile("other.rst")
 
 
