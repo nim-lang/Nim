@@ -40,8 +40,6 @@ when defined(nodejs):
 #   {.error: "requires -d:nodejs".}
 
 else:
-  when defined(windows):
-    from parseutils import skipIgnoreCase
 
   proc c_getenv(env: cstring): cstring {.
     importc: "getenv", header: "<stdlib.h>".}
@@ -71,7 +69,7 @@ else:
     when nimvm:
       discard "built into the compiler"
     else:
-      var env = c_getenv(key)
+      let env = c_getenv(key)
       if env == nil: return default
       result = $env
 
@@ -107,18 +105,19 @@ else:
     else:
       when defined(windows) and not defined(nimscript):
         when useWinUnicode:
-          var k = newWideCString(key)
-          var v = newWideCString(val)
-          if setEnvironmentVariableW(k, v) == 0'i32: raiseOSError(osLastError())
+          let k = newWideCString(key)
+          let v = newWideCString(val)
+          if setEnvironmentVariableW(k, v) == 0'i32: 
+            raiseOSError(osLastError(), $(key, val))
         else:
           if setEnvironmentVariableA(key, val) == 0'i32:
-            raiseOSError(osLastError())
+            raiseOSError(osLastError(), $(key, val))
       elif defined(vcc):
         if c_putenv_s(key, val) != 0'i32:
-          raiseOSError(osLastError())
+          raiseOSError(osLastError(), $(key, val))
       else:
         if c_setenv(key, val, 1'i32) != 0'i32:
-          raiseOSError(osLastError())
+          raiseOSError(osLastError(), $(key, val))
 
   proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
     ## Deletes the `environment variable`:idx: named `key`.
@@ -134,15 +133,15 @@ else:
     else:
       when defined(windows) and not defined(nimscript):
         when useWinUnicode:
-          var k = newWideCString(key)
+          let k = newWideCString(key)
           if setEnvironmentVariableW(k, nil) == 0'i32:
-            raiseOSError(osLastError())
+            raiseOSError(osLastError(), $key)
         else:
           if setEnvironmentVariableA(key, nil) == 0'i32:
-            raiseOSError(osLastError())
+            raiseOSError(osLastError(), $key)
       else:
         if c_unsetenv(key) != 0'i32:
-          raiseOSError(osLastError())
+          raiseOSError(osLastError(), $key)
 
   when defined(windows) and not defined(nimscript):
     when useWinUnicode:
@@ -187,25 +186,25 @@ else:
     when defined(windows) and not defined(nimscript):
       block:
         when useWinUnicode:
-          var env = getEnvironmentStringsW()
+          let env = getEnvironmentStringsW()
           var e = env
           if e == nil: break
           while true:
-            var eend = strEnd(e)
+            let eend = strEnd(e)
             let kv = $e
-            var p = find(kv, '=')
+            let p = find(kv, '=')
             yield (substr(kv, 0, p-1), substr(kv, p+1))
             e = cast[WideCString](cast[ByteAddress](eend)+2)
             if eend[1].int == 0: break
           discard freeEnvironmentStringsW(env)
         else:
-          var env = getEnvironmentStringsA()
+          let env = getEnvironmentStringsA()
           var e = env
           if e == nil: break
           while true:
-            var eend = strEnd(e)
+            let eend = strEnd(e)
             let kv = $e
-            var p = find(kv, '=')
+            let p = find(kv, '=')
             yield (substr(kv, 0, p-1), substr(kv, p+1))
             e = cast[cstring](cast[ByteAddress](eend)+1)
             if eend[1] == '\0': break
@@ -215,5 +214,5 @@ else:
       while gEnv[i] != nil:
         let kv = $gEnv[i]
         inc(i)
-        var p = find(kv, '=')
+        let p = find(kv, '=')
         yield (substr(kv, 0, p-1), substr(kv, p+1))
