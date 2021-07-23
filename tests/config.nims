@@ -35,4 +35,4 @@ switch("define", "nimExperimentalAsyncjsThen")
 switch("define", "nimExperimentalJsfetch")
 switch("define", "nimExperimentalLinenoiseExtra")
 
-switch("define", "nimTransitionFloatRoundtrip")
+switch("define", "nimPreviewFloatRoundtrip")
