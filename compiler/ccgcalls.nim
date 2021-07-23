@@ -334,9 +334,18 @@ proc getPotentialWrites(n: PNode; mutate: bool; result: var seq[PNode]) =
   of nkAddr, nkHiddenAddr:
     getPotentialWrites(n[0], true, result)
   of nkCallKinds:
-    #TODO: Find out why in f += 1, f is a nkSym and not a nkHiddenAddr
-    for i in 1..<n.len:
-      getPotentialWrites(n[i], mutate, result)
+    case n.getMagic:
+    of mIncl, mExcl, mInc, mDec, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
+        mAddr, mNew, mNewFinalize, mWasMoved, mDestroy, mReset:
+      getPotentialWrites(n[1], true, result)
+      for i in 2..<n.len:
+        getPotentialWrites(n[i], mutate, result)
+    of mSwap:
+      for i in 1..<n.len:
+        getPotentialWrites(n[i], true, result)
+    else:
+      for i in 1..<n.len:
+        getPotentialWrites(n[i], mutate, result)
   else:
     for s in n:
       getPotentialWrites(s, mutate, result)
