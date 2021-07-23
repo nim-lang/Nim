@@ -20,7 +20,7 @@ when declared(math.copySign):
 when declared(math.signbit):
   from std/math import signbit
 
-from std/os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir,
+from std/os import getEnv, existsEnv, delEnv, putEnv, dirExists, fileExists, walkDir,
                    getAppFilename, raiseOSError, osLastError
 
 from std/md5 import getMD5
@@ -215,6 +215,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2s(getEnv, osop)
     wrap1s(existsEnv, osop)
     wrap2svoid(putEnv, osop)
+    wrap1svoid(delEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
     wrapDangerous(writeFile, ioop)
