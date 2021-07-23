@@ -23,24 +23,24 @@
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
-- An enum now can't be converted to another enum directly, you must use `ord` (or `cast`, but
-  compiler won't help if you misuse it).
+- A type conversion from one enum type to another now produces an `[EnumConv]` warning.
+  You should use `ord` (or `cast`, but the compiler won't help, if you misuse it) instead.
   ```
   type A = enum a1, a2
   type B = enum b1, b2
-  doAssert not compiles(a1.B)
-  doAssert compiles(a1.ord.B)
+  echo a1.B # produces a warning
+  echo a1.ord.B # produces no warning
   ```
-  for a transition period, use `-d:nimLegacyConvEnumEnum`.
+
+- A dangerous implicit conversion to `cstring` now triggers a `[CStringConv]` warning.
+  This warning will become an error in future versions! Use an explicit conversion
+  like `cstring(x)` in order to silence the warning.
 
 - Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
   behavior.
 
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
   with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
-
-- Instead of deleting the element at the last index,
-  `system.delete()` now raises `IndexDefect` when given index is out of bounds.
 
 - Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
   characters in the decoded values. Prior versions would raise an error. This is
@@ -67,8 +67,7 @@
 - `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
   `hashes.hash(closure)` has also been improved.
 
-- The unary slice `..b` was removed, use `0..b` instead or use `-d:nimLegacyUnarySlice`
-  for a deprecation period.
+- The unary slice `..b` was deprecated, use `0..b` instead.
 
 - Removed `.travis.yml`, `appveyor.yml.disabled`, `.github/workflows/ci.yml.disabled`.
 

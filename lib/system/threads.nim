@@ -41,7 +41,7 @@
 ##  for i in 0..high(thr):
 ##    createThread(thr[i], threadFunc, (i*10, i*10+5))
 ##  joinThreads(thr)
-## 
+##
 ##  deinitLock(L)
 
 when not declared(ThisIsSystem):
@@ -395,7 +395,7 @@ elif defined(netbsd):
 
 elif defined(freebsd):
   proc syscall(arg: cint, arg0: ptr cint): cint {.varargs, importc: "syscall", header: "<unistd.h>".}
-  var SYS_thr_self {.importc:"SYS_thr_self", header:"<sys/syscall.h>"}: cint
+  var SYS_thr_self {.importc:"SYS_thr_self", header:"<sys/syscall.h>".}: cint
 
   proc getThreadId*(): int =
     ## Gets the ID of the currently running thread.

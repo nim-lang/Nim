@@ -1,5 +1,6 @@
 import std/private/digitsutils
-
+import system/formatfloat
+export addFloat
 
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
@@ -40,13 +41,9 @@ proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
-proc `$`*(x: float): string {.magic: "FloatToStr", noSideEffect.}
-  ## The stringify operator for a float argument. Returns `x`
-  ## converted to a decimal string.
-
-proc `$`*(x: float32): string {.magic: "FloatToStr", noSideEffect.}
-  ## The stringify operator for a float32 argument. Returns `x`
-  ## converted to a decimal string.
+func `$`*(x: float | float32): string =
+  ## Outplace version of `addFloat`.
+  result.addFloat(x)
 
 proc `$`*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## The stringify operator for a boolean argument. Returns `x`

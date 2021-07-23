@@ -14,7 +14,9 @@ from hashes import Hash
 import types
 
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
-proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
+proc `&=`(c: var MD5Context, ch: char) =
+  # XXX suspicious code here; relies on ch being zero terminated?
+  md5Update(c, unsafeAddr ch, 1)
 proc `&=`(c: var MD5Context, r: Rope) =
   for l in leaves(r): md5Update(c, l, l.len)
 proc `&=`(c: var MD5Context, i: BiggestInt) =

@@ -474,13 +474,13 @@ Not nil annotation
 ==================
 
 **Note:** This is an experimental feature. It can be enabled with
-`{.experimental: "notnil"}`.
+`{.experimental: "notnil".}`.
 
 All types for which `nil` is a valid value can be annotated with the
 `not nil` annotation to exclude `nil` as a valid value:
 
 .. code-block:: nim
-  {.experimental: "notnil"}
+  {.experimental: "notnil".}
 
   type
     PObject = ref TObj not nil

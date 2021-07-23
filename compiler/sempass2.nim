@@ -951,6 +951,15 @@ proc trackInnerProc(tracked: PEffects, n: PNode) =
   else:
     for ch in n: trackInnerProc(tracked, ch)
 
+proc allowCStringConv(n: PNode): bool =
+  case n.kind
+  of nkStrLit..nkTripleStrLit: result = true
+  of nkSym: result = n.sym.kind in {skConst, skParam}
+  of nkAddr: result = isCharArrayPtr(n.typ, true)
+  of nkCallKinds:
+    result = isCharArrayPtr(n.typ, n[0].kind == nkSym and n[0].sym.magic == mAddr)
+  else: result = isCharArrayPtr(n.typ, false)
+
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
   of nkSym:
@@ -1157,6 +1166,13 @@ proc track(tracked: PEffects, n: PNode) =
       if tracked.owner.kind != skMacro:
         createTypeBoundOps(tracked, n.typ, n.info)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if n.kind in {nkHiddenStdConv, nkHiddenSubConv} and
+        n.typ.skipTypes(abstractInst).kind == tyCstring and
+        not allowCStringConv(n[1]):
+      message(tracked.config, n.info, warnCstringConv,
+        "implicit conversion to 'cstring' from a non-const location: $1; this will become a compile time error in the future" %
+          [$n[1]])
+
     if n.len == 2:
       track(tracked, n[1])
       if tracked.owner.kind != skMacro:

@@ -69,47 +69,6 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
   result.addInt x
 
-proc addCstringN(result: var string, buf: cstring; buflen: int) =
-  # no nimvm support needed, so it doesn't need to be fast here either
-  let oldLen = result.len
-  let newLen = oldLen + buflen
-  result.setLen newLen
-  copyMem(result[oldLen].addr, buf, buflen)
-
-import formatfloat
-
-proc addFloat*(result: var string; x: float) =
-  ## Converts float to its string representation and appends it to `result`.
-  ##
-  ## .. code-block:: Nim
-  ##   var
-  ##     a = "123"
-  ##     b = 45.67
-  ##   a.addFloat(b) # a <- "12345.67"
-  when nimvm:
-    result.add $x
-  else:
-    var buffer {.noinit.}: array[65, char]
-    let n = writeFloatToBuffer(buffer, x)
-    result.addCstringN(cstring(buffer[0].addr), n)
-
-proc nimFloatToStr(f: float): string {.compilerproc.} =
-  result = newStringOfCap(8)
-  result.addFloat f
-
-when defined(nimFpRoundtrips) and not defined(nimscript) and
-    not defined(js) and defined(nimHasDragonBox):
-  import schubfach
-
-proc nimFloat32ToStr(f: float32): string {.compilerproc.} =
-  when declared(float32ToChars):
-    result = newString(65)
-    let L = float32ToChars(result, f, forceTrailingDotZero=true)
-    setLen(result, L)
-  else:
-    result = newStringOfCap(8)
-    result.addFloat f
-
 proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
   importc: "strtod", header: "<stdlib.h>", noSideEffect.}
 

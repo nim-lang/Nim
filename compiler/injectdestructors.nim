@@ -774,7 +774,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       result = passCopyToSink(n, c, s)
   else:
     case n.kind
-    of nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkCurly:
+    of nkBracket, nkTupleConstr, nkClosure, nkCurly:
       # Let C(x) be the construction, 'x' the vector of arguments.
       # C(x) either owns 'x' or it doesn't.
       # If C(x) owns its data, we must consume C(x).
@@ -785,18 +785,33 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       # don't destroy it"
       # but if C(x) is a ref it MUST own its data since we must destroy it
       # so then we have no choice but to use 'sinkArg'.
-      let isRefConstr = n.kind == nkObjConstr and n.typ.skipTypes(abstractInst).kind == tyRef
-      let m = if isRefConstr: sinkArg
-              elif mode == normal: normal
+      let m = if mode == normal: normal
               else: sinkArg
 
       result = copyTree(n)
-      for i in ord(n.kind in {nkObjConstr, nkClosure})..<n.len:
+      for i in ord(n.kind == nkClosure)..<n.len:
         if n[i].kind == nkExprColonExpr:
           result[i][1] = p(n[i][1], c, s, m)
         elif n[i].kind == nkRange:
           result[i][0] = p(n[i][0], c, s, m)
           result[i][1] = p(n[i][1], c, s, m)
+        else:
+          result[i] = p(n[i], c, s, m)
+    of nkObjConstr:
+      # see also the remark about `nkTupleConstr`.
+      let isRefConstr = n.typ.skipTypes(abstractInst).kind == tyRef
+      let m = if isRefConstr: sinkArg
+              elif mode == normal: normal
+              else: sinkArg
+
+      result = copyTree(n)
+      for i in 1..<n.len:
+        if n[i].kind == nkExprColonExpr:
+          let field = lookupFieldAgain(n.typ, n[i][0].sym)
+          if field != nil and sfCursor in field.flags:
+            result[i][1] = p(n[i][1], c, s, normal)
+          else:
+            result[i][1] = p(n[i][1], c, s, m)
         else:
           result[i] = p(n[i], c, s, m)
       if mode == normal and isRefConstr:
