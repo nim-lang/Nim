@@ -92,3 +92,29 @@ reject:
     x[0] = c
     x
 
+{.push warning[AnyEnumConv]:on, warningAsError[AnyEnumConv]:on.}
+
+reject:
+  type
+    Foo = enum
+      one
+      three
+
+  var va = 2
+  var vb = va.Foo
+
+{.pop.}
+
+{.push warningAsError[HoleEnumConv]:on.}
+
+reject:
+  # bug #12815
+  type
+    Hole = enum
+      one = 1
+      three = 3
+
+  var va = 2
+  var vb = va.Hole
+
+{.pop.}

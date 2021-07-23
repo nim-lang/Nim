@@ -71,6 +71,8 @@ type
     warnCannotOpen = "CannotOpen",
     warnFileChanged = "FileChanged",
     warnSuspiciousEnumConv = "EnumConv",
+    warnAnyEnumConv = "AnyEnumConv",
+    warnHoleEnumConv = "HoleEnumConv",
     warnCstringConv = "CStringConv",
     warnUser = "User",
     # hints
@@ -156,6 +158,8 @@ const
     warnCannotOpen: "cannot open: $1",
     warnFileChanged: "file changed: $1",
     warnSuspiciousEnumConv: "$1",
+    warnAnyEnumConv: "$1",
+    warnHoleEnumConv: "$1",
     warnCstringConv: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
@@ -211,7 +215,7 @@ type
   TNoteKinds* = set[TNoteKind]
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
-  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv}
   result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,

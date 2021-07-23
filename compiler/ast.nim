@@ -1064,7 +1064,7 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   # which may simplify code.
   case a.kind
   of nkSym: a.sym.name
-  of nkIdent:  a.ident
+  of nkIdent: a.ident
   else: nil
 
 proc getnimblePkg*(a: PSym): PSym =

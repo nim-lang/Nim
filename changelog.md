@@ -36,6 +36,9 @@
   This warning will become an error in future versions! Use an explicit conversion
   like `cstring(x)` in order to silence the warning.
 
+- There is a new warning for *any* type conversion to enum that can be enabled via
+  `.warning[AnyEnumConv]:on` or `--warning:AnyEnumConv:on`.
+
 - Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
   behavior.
 
