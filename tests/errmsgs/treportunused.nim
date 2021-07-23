@@ -32,7 +32,7 @@ var s9: int
 type s10 = object
 type s11 = type(1.2)
 
-# bug #14407 (requires `compiler/nim.cfg` containing define:nimFpRoundtrips)
+# bug #14407 (requires `compiler/nim.cfg` containing define:nimPreviewFloatRoundtrip)
 let
   `v0.99` = "0.99"
   `v0.99.99` = "0.99.99"

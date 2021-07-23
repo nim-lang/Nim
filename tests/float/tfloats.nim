@@ -1,5 +1,5 @@
 discard """
-  matrix: "-d:nimFpRoundtrips; -u:nimFpRoundtrips"
+  matrix: "-d:nimPreviewFloatRoundtrip; -u:nimPreviewFloatRoundtrip"
   targets: "c cpp js"
 """
 
@@ -67,14 +67,14 @@ template main =
     block: # example 1
       let a = 0.1+0.2
       doAssert a != 0.3
-      when defined(nimFpRoundtrips):
+      when defined(nimPreviewFloatRoundtrip):
         doAssert $a == "0.30000000000000004"
       else:
         whenRuntimeJs: discard
         do: doAssert $a == "0.3"
     block: # example 2
       const a = 0.1+0.2
-      when defined(nimFpRoundtrips):
+      when defined(nimPreviewFloatRoundtrip):
         doAssert $($a, a) == """("0.30000000000000004", 0.30000000000000004)"""
       else:
         whenRuntimeJs: discard
@@ -83,13 +83,13 @@ template main =
       const a1 = 0.1+0.2
       let a2 = a1
       doAssert a1 != 0.3
-      when defined(nimFpRoundtrips):
+      when defined(nimPreviewFloatRoundtrip):
         doAssert $[$a1, $a2] == """["0.30000000000000004", "0.30000000000000004"]"""
       else:
         whenRuntimeJs: discard
         do: doAssert $[$a1, $a2] == """["0.3", "0.3"]"""
 
-  when defined(nimFpRoundtrips):
+  when defined(nimPreviewFloatRoundtrip):
     block: # bug #18148
       var a = 1.1'f32
       doAssert $a == "1.1", $a # was failing

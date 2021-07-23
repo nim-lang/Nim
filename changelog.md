@@ -112,8 +112,8 @@
 
 - `system.addFloat` and `system.$` now can produce string representations of floating point numbers
   that are minimal in size and that "roundtrip" (via the "Dragonbox" algorithm). This currently has
-  to be enabled via `-d:nimFpRoundtrips`. It is expected that this behavior becomes the new default
-  in upcoming versions.
+  to be enabled via `-d:nimPreviewFloatRoundtrip`. It is expected that this behavior becomes the new default
+  in upcoming versions, as with other `nimPreviewX` define flags.
 
 - Fixed buffer overflow bugs in `net`
 

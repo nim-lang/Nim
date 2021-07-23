@@ -74,7 +74,7 @@ proc writeFloatToBufferSprintf*(buf: var array[65, char]; value: BiggestFloat): 
       result = 3
 
 proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat | float32): int {.inline.} =
-  when defined(nimFpRoundtrips):
+  when defined(nimPreviewFloatRoundtrip):
     writeFloatToBufferRoundtrip(buf, value)
   else:
     writeFloatToBufferSprintf(buf, value)
@@ -121,7 +121,7 @@ proc addFloat*(result: var string; x: float | float32) {.inline.} =
     s.addFloat(45.67)
     assert s == "foo:45.67"
   template impl =
-    when defined(nimFpRoundtrips):
+    when defined(nimPreviewFloatRoundtrip):
       addFloatRoundtrip(result, x)
     else:
       addFloatSprintf(result, x)
