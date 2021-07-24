@@ -148,7 +148,6 @@ else:
     # at runtime.
     proc NSGetEnviron(): ptr cstringArray {.importc: "_NSGetEnviron",
         header: "<crt_externs.h>".}
-    var gEnv = NSGetEnviron()[]
   elif defined(haiku):
     var gEnv {.importc: "environ", header: "<stdlib.h>".}: cstringArray
   else:
@@ -185,6 +184,8 @@ else:
           impl(getEnvironmentStringsA, cstring, 1, '\0', freeEnvironmentStringsA)
     else:
       var i = 0
+      when defined(macosx) and not defined(ios) and not defined(emscripten):
+        var gEnv = NSGetEnviron()[]
       while gEnv[i] != nil:
         let kv = $gEnv[i]
         inc(i)
