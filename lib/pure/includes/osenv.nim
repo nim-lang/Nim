@@ -116,7 +116,7 @@ else:
     ## * `existsEnv proc <#existsEnv,string>`_
     ## * `putEnv proc <#putEnv,string,string>`_
     ## * `envPairs iterator <#envPairs.i>`_
-    template bail = raiseOSError(osLastError(), $key)
+    template bail = raiseOSError(osLastError(), key)
     when defined(windows):
       when useWinUnicode:
         let k = newWideCString(key)
