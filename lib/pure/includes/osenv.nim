@@ -66,12 +66,9 @@ else:
       assert getEnv("unknownEnv") == ""
       assert getEnv("unknownEnv", "doesn't exist") == "doesn't exist"
 
-    when nimvm:
-      discard "built into the compiler"
-    else:
-      let env = c_getenv(key)
-      if env == nil: return default
-      result = $env
+    let env = c_getenv(key)
+    if env == nil: return default
+    result = $env
 
   proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
     ## Checks whether the environment variable named `key` exists.
@@ -85,10 +82,7 @@ else:
     runnableExamples:
       assert not existsEnv("unknownEnv")
 
-    when nimvm:
-      discard "built into the compiler"
-    else:
-      return c_getenv(key) != nil
+    return c_getenv(key) != nil
 
   proc putEnv*(key, val: string) {.tags: [
       WriteEnvEffect].} =
@@ -100,24 +94,21 @@ else:
     ## * `existsEnv proc <#existsEnv,string>`_
     ## * `delEnv proc <#delEnv,string>`_
     ## * `envPairs iterator <#envPairs.i>`_
-    when nimvm:
-      discard "built into the compiler"
-    else:
-      when defined(windows) and not defined(nimscript):
-        when useWinUnicode:
-          let k = newWideCString(key)
-          let v = newWideCString(val)
-          if setEnvironmentVariableW(k, v) == 0'i32: 
-            raiseOSError(osLastError(), $(key, val))
-        else:
-          if setEnvironmentVariableA(key, val) == 0'i32:
-            raiseOSError(osLastError(), $(key, val))
-      elif defined(vcc):
-        if c_putenv_s(key, val) != 0'i32:
+    when defined(windows):
+      when useWinUnicode:
+        let k = newWideCString(key)
+        let v = newWideCString(val)
+        if setEnvironmentVariableW(k, v) == 0'i32: 
           raiseOSError(osLastError(), $(key, val))
       else:
-        if c_setenv(key, val, 1'i32) != 0'i32:
+        if setEnvironmentVariableA(key, val) == 0'i32:
           raiseOSError(osLastError(), $(key, val))
+    elif defined(vcc):
+      if c_putenv_s(key, val) != 0'i32:
+        raiseOSError(osLastError(), $(key, val))
+    else:
+      if c_setenv(key, val, 1'i32) != 0'i32:
+        raiseOSError(osLastError(), $(key, val))
 
   proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
     ## Deletes the `environment variable`:idx: named `key`.
@@ -128,22 +119,19 @@ else:
     ## * `existsEnv proc <#existsEnv,string>`_
     ## * `putEnv proc <#putEnv,string,string>`_
     ## * `envPairs iterator <#envPairs.i>`_
-    when nimvm:
-      discard "built into the compiler"
-    else:
-      when defined(windows) and not defined(nimscript):
-        when useWinUnicode:
-          let k = newWideCString(key)
-          if setEnvironmentVariableW(k, nil) == 0'i32:
-            raiseOSError(osLastError(), $key)
-        else:
-          if setEnvironmentVariableA(key, nil) == 0'i32:
-            raiseOSError(osLastError(), $key)
-      else:
-        if c_unsetenv(key) != 0'i32:
+    when defined(windows):
+      when useWinUnicode:
+        let k = newWideCString(key)
+        if setEnvironmentVariableW(k, nil) == 0'i32:
           raiseOSError(osLastError(), $key)
+      else:
+        if setEnvironmentVariableA(key, nil) == 0'i32:
+          raiseOSError(osLastError(), $key)
+    else:
+      if c_unsetenv(key) != 0'i32:
+        raiseOSError(osLastError(), $key)
 
-  when defined(windows) and not defined(nimscript):
+  when defined(windows):
     when useWinUnicode:
       when defined(cpp):
         proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.importcpp: "(NI16*)wcschr((const wchar_t *)#, #)",
@@ -154,8 +142,7 @@ else:
     else:
       proc strEnd(cstr: cstring, c = 0'i32): cstring {.importc: "strchr",
           header: "<string.h>".}
-  elif (defined(macosx) and not defined(ios) and not defined(emscripten)) or
-      defined(nimscript):
+  elif defined(macosx) and not defined(ios) and not defined(emscripten):
     # From the manual:
     # Shared libraries and bundles don't have direct access to environ,
     # which is only available to the loader ld(1) when a complete program
@@ -183,32 +170,24 @@ else:
     ## * `existsEnv proc <#existsEnv,string>`_
     ## * `putEnv proc <#putEnv,string,string>`_
     ## * `delEnv proc <#delEnv,string>`_
-    when defined(windows) and not defined(nimscript):
+    when defined(windows):
       block:
+        template impl(get_fun, typ, size, zero, free_fun) =
+          let env = get_fun()
+          var e = env
+          if e == nil: break
+          while true:
+            let eend = strEnd(e)
+            let kv = $e
+            let p = find(kv, '=')
+            yield (substr(kv, 0, p-1), substr(kv, p+1))
+            e = cast[typ](cast[ByteAddress](eend)+size)
+            if typeof(zero)(eend[1]) == zero: break
+          discard free_fun(env)
         when useWinUnicode:
-          let env = getEnvironmentStringsW()
-          var e = env
-          if e == nil: break
-          while true:
-            let eend = strEnd(e)
-            let kv = $e
-            let p = find(kv, '=')
-            yield (substr(kv, 0, p-1), substr(kv, p+1))
-            e = cast[WideCString](cast[ByteAddress](eend)+2)
-            if eend[1].int == 0: break
-          discard freeEnvironmentStringsW(env)
+          impl(getEnvironmentStringsW, WideCString, 2, 0, freeEnvironmentStringsW)
         else:
-          let env = getEnvironmentStringsA()
-          var e = env
-          if e == nil: break
-          while true:
-            let eend = strEnd(e)
-            let kv = $e
-            let p = find(kv, '=')
-            yield (substr(kv, 0, p-1), substr(kv, p+1))
-            e = cast[cstring](cast[ByteAddress](eend)+1)
-            if eend[1] == '\0': break
-          discard freeEnvironmentStringsA(env)
+          impl(getEnvironmentStringsA, cstring, 1, '\0', freeEnvironmentStringsA)
     else:
       var i = 0
       while gEnv[i] != nil:

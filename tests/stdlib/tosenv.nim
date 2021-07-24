@@ -19,6 +19,9 @@ block: # putEnv
   # raises OSError on invalid input
   doAssertRaises(OSError, putEnv("NIM_TESTS_TOSENV_PUT=DUMMY_VALUE", "NEW_DUMMY_VALUE"))
   doAssertRaises(OSError, putEnv("", "NEW_DUMMY_VALUE"))
+  doAssert not existsEnv("")
+  doAssert not existsEnv("NIM_TESTS_TOSENV_PUT=DUMMY_VALUE")
+  doAssert not existsEnv("NIM_TESTS_TOSENV_PUT")
 
 block:
   doAssert getEnv("NIM_TESTS_TOSENV_NONEXISTENT", "") == ""
