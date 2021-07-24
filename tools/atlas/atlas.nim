@@ -58,6 +58,27 @@ type
 
 const
   InvalidCommit = "<invalid commit>"
+  MockupRun = false
+
+type
+  Command = enum
+    GitDiff = "git diff",
+    GitTags = "git show-ref --tags",
+    GitRevParse = "git rev-parse",
+    GitCheckout = "git checkout",
+    GitPull = "git pull",
+    GitGetCurrentCommit = "git log -n 1 --format=%H"
+    GitMergeBase = "git merge-base"
+
+proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, int) =
+  when MockupRun:
+    discard
+  else:
+    var cmdLine = $cmd
+    for i in 0..<args.len:
+      cmdLine.add ' '
+      cmdLine.add quoteShell(args[i])
+    result = osproc.execCmdEx(cmdLine)
 
 proc toDepRelation(s: string): DepRelation =
   case s
@@ -65,9 +86,9 @@ proc toDepRelation(s: string): DepRelation =
   of ">": strictlyGreater
   else: normal
 
-proc isCleanGit(dir: string): string =
+proc isCleanGit(c: var AtlasContext; dir: string): string =
   result = ""
-  let (outp, status) = osproc.execCmdEx("git diff")
+  let (outp, status) = exec(c, GitDiff, [])
   if outp.len != 0:
     result = "'git diff' not empty"
   elif status != 0:
@@ -101,8 +122,8 @@ proc sameVersionAs(tag, ver: string): bool =
     result = safeCharAt(tag, idx-1) notin VersionChars and
       safeCharAt(tag, idx+ver.len) notin VersionChars
 
-proc versionToCommit(d: Dependency): string =
-  let (outp, status) = osproc.execCmdEx("git show-ref --tags")
+proc versionToCommit(c: var AtlasContext; d: Dependency): string =
+  let (outp, status) = exec(c, GitTags, [])
   if status == 0:
     var useNextOne = false
     for line in splitLines(outp):
@@ -123,17 +144,17 @@ proc versionToCommit(d: Dependency): string =
 
   return ""
 
-proc shortToCommit(short: string): string =
-  let (cc, status) = osproc.execCmdEx("git rev-parse " & quoteShell(short))
+proc shortToCommit(c: var AtlasContext; short: string): string =
+  let (cc, status) = exec(c, GitRevParse, [short])
   result = if status == 0: strutils.strip(cc) else: ""
 
 proc checkoutGitCommit(c: var AtlasContext; p: PackageName; commit: string) =
-  let (_, status) = osproc.execCmdEx("git checkout " & quoteShell(commit))
+  let (_, status) = exec(c, GitCheckout, [commit])
   if status != 0:
     error(c, p, "could not checkout commit", commit)
 
 proc gitPull(c: var AtlasContext; p: PackageName) =
-  let (_, status) = osproc.execCmdEx("git pull")
+  let (_, status) = exec(c, GitPull, [])
   if status != 0:
     error(c, p, "could not 'git pull'")
 
@@ -182,15 +203,15 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
     if w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
       gitPull(c, w.name)
     else:
-      let err = isCleanGit(dir)
+      let err = isCleanGit(c, dir)
       if err != "":
         warn c, w.name, err
       else:
         let requiredCommit =
-          if needsCommitLookup(w.commit): versionToCommit(w)
-          elif isShortCommitHash(w.commit): shortToCommit(w.commit)
+          if needsCommitLookup(w.commit): versionToCommit(c, w)
+          elif isShortCommitHash(w.commit): shortToCommit(c, w.commit)
           else: w.commit
-        let (cc, status) = osproc.execCmdEx("git log -n 1 --format=%H")
+        let (cc, status) = exec(c, GitGetCurrentCommit, [])
         let currentCommit = strutils.strip(cc)
         if requiredCommit == "" or status != 0:
           if requiredCommit == "" and w.commit == InvalidCommit:
@@ -201,8 +222,7 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
           if currentCommit != requiredCommit:
             # checkout the later commit:
             # git merge-base --is-ancestor <commit> <commit>
-            let (cc, status) = osproc.execCmdEx("git merge-base " &
-                currentCommit.quoteShell & " " & requiredCommit.quoteShell)
+            let (cc, status) = exec(c, GitMergeBase, [currentCommit, requiredCommit])
             let mergeBase = strutils.strip(cc)
             if status == 0 and (mergeBase == currentCommit or mergeBase == requiredCommit):
               # conflict resolution: pick the later commit:
