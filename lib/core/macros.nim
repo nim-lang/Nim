@@ -656,6 +656,22 @@ proc expectLen*(n: NimNode, min, max: int) =
   if n.len < min or n.len > max:
     error("Expected a node with " & $min & ".." & $max & " children, got " & $n.len, n)
 
+proc expectKind*(n: NimNode, k: NimNodeKind; errorMessage: string) {.since: (1, 5).} =
+  ## Same as `expectKind` but allows a custom error `errorMessage` argument.
+  if n.kind != k: error(errorMessage)
+
+proc expectMinLen*(n: NimNode, min: int; errorMessage: string) {.since: (1, 5).} =
+  ## Same as `expectMinLen` but allows a custom error `errorMessage` argument.
+  if n.len < min: error(errorMessage)
+
+proc expectLen*(n: NimNode, len: int; errorMessage: string) {.since: (1, 5).} =
+  ## Same as `expectLen` but allows a custom error `errorMessage` argument.
+  if n.len != len: error(errorMessage)
+
+proc expectLen*(n: NimNode, min, max: int; errorMessage: string) {.since: (1, 5).} =
+  ## Same as `expectLen` but allows a custom error `errorMessage` argument.
+  if n.len < min or n.len > max: error(errorMessage)
+
 proc newTree*(kind: NimNodeKind,
               children: varargs[NimNode]): NimNode =
   ## Produces a new node with children.
