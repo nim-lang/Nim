@@ -1832,7 +1832,7 @@ proc sleepAsync*(ms: int | float): owned(Future[void]) =
   ## Suspends the execution of the current async procedure for the next
   ## `ms` milliseconds.
   ##
-  ## ..warning:: When `ms` argument is `float`, it is not checked for `NaN` nor `Inf`, for backwards compatibility reasons.
+  ## .. warning:: When `ms` is a `float`, it is not checked for `NaN` nor `Inf`, for backwards compatibility reasons.
   var retFuture = newFuture[void]("sleepAsync")
   let p = getGlobalDispatcher()
   when ms is int:
