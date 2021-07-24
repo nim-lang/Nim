@@ -1380,10 +1380,9 @@ variadic proc, it is implicitly converted to `cstring` too:
 
 Even though the conversion is implicit, it is not *safe*: The garbage collector
 does not consider a `cstring` to be a root and may collect the underlying
-memory. However, in practice, this almost never happens as the GC considers
-stack roots conservatively. One can use the builtin procs `GC_ref` and
-`GC_unref` to keep the string data alive for the rare cases where it does
-not work.
+memory. For this reason, the implicit conversion will be removed in future
+releases of the Nim compiler. Certain idioms like conversion of a `const` string
+to `cstring` are safe and will remain to be allowed.
 
 A `$` proc is defined for cstrings that returns a string. Thus to get a nim
 string from a cstring:
@@ -3543,7 +3542,8 @@ separation of types and subsequent identifiers more distinct.
   proc foo(a; b: int; c, d: bool): int
 
 A parameter may be declared with a default value which is used if the caller
-does not provide a value for the argument.
+does not provide a value for the argument. The value will be reevaluated
+every time the function is called.
 
 .. code-block:: nim
   # b is optional with 47 as its default value
@@ -3840,9 +3840,8 @@ the operator is in scope (including if it is private).
   # will still be called upon exiting scope
   doAssert witness == 3
 
-Type bound operators currently include:
-`=destroy`, `=copy`, `=sink`, `=trace`, `=dispose`, `=deepcopy`
-(some of which are still implementation defined and not yet documented).
+Type bound operators are:
+`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`.
 
 For more details on some of those procs, see
 `Lifetime-tracking hooks <destructors.html#lifetimeminustracking-hooks>`_.

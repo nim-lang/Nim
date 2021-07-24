@@ -25,7 +25,8 @@ endif
 
 ifeq ($(uos),linux)
   myos = linux
-  LDFLAGS += -ldl -lm
+  ## add -lrt to avoid "undefined reference to `clock_gettime'" with glibc<2.17
+  LDFLAGS += -ldl -lm -lrt
 endif
 ifeq ($(uos),dragonfly)
   myos = freebsd

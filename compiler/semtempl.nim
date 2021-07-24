@@ -209,7 +209,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       let pragmaNode = n[1]
       for i in 0..<pragmaNode.len:
         openScope(c)
-        pragmaNode[i] = semTemplBody(c,pragmaNode[i])
+        pragmaNode[i] = semTemplBody(c, pragmaNode[i])
         closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
@@ -306,20 +306,24 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   # close scope for parameters
   closeScope(c)
 
-proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
+proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start = 0) =
   for i in start..<n.len:
     var a = n[i]
-    if a.kind == nkCommentStmt: continue
-    if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): illFormedAst(a, c.c.config)
-    checkMinSonsLen(a, 3, c.c.config)
-    when defined(nimsuggest):
-      inc c.c.inTypeContext
-    a[^2] = semTemplBody(c, a[^2])
-    when defined(nimsuggest):
-      dec c.c.inTypeContext
-    a[^1] = semTemplBody(c, a[^1])
-    for j in 0..<a.len-2:
-      addLocalDecl(c, a[j], symKind)
+    case a.kind:
+    of nkCommentStmt: continue
+    of nkIdentDefs, nkVarTuple, nkConstDef:
+      checkMinSonsLen(a, 3, c.c.config)
+      when defined(nimsuggest):
+        inc c.c.inTypeContext
+      a[^2] = semTemplBody(c, a[^2])
+      when defined(nimsuggest):
+        dec c.c.inTypeContext
+      a[^1] = semTemplBody(c, a[^1])
+      for j in 0..<a.len-2:
+        addLocalDecl(c, a[j], symKind)
+    else:
+      illFormedAst(a, c.c.config)
+
 
 proc semPattern(c: PContext, n: PNode): PNode
 
@@ -434,15 +438,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     checkMinSonsLen(n, 1, c.c.config)
     semTemplSomeDecl(c, n, skParam, 1)
     n[0] = semTemplBody(c, n[0])
-  of nkConstSection:
-    for i in 0..<n.len:
-      var a = n[i]
-      if a.kind == nkCommentStmt: continue
-      if (a.kind != nkConstDef): illFormedAst(a, c.c.config)
-      checkSonsLen(a, 3, c.c.config)
-      addLocalDecl(c, a[0], skConst)
-      a[1] = semTemplBody(c, a[1])
-      a[2] = semTemplBody(c, a[2])
+  of nkConstSection: semTemplSomeDecl(c, n, skConst)
   of nkTypeSection:
     for i in 0..<n.len:
       var a = n[i]

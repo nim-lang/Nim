@@ -12,11 +12,12 @@
 
 import
   ast, strutils, strtabs, options, msgs, os, idents,
-  wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
+  wordrecg, syntaxes, renderer, lexer,
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, tables, nimpaths, renderverbatim, osproc
+import packages/docutils/rstast except FileIndex, TLineInfo
 
 from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
@@ -159,17 +160,18 @@ template declareClosures =
     case msgKind
     of meCannotOpenFile: k = errCannotOpenFile
     of meExpected: k = errXExpected
-    of meGridTableNotImplemented: k = errGridTableNotImplemented
-    of meMarkdownIllformedTable: k = errMarkdownIllformedTable
-    of meNewSectionExpected: k = errNewSectionExpected
-    of meGeneralParseError: k = errGeneralParseError
-    of meInvalidDirective: k = errInvalidDirectiveX
-    of meInvalidRstField: k = errInvalidRstField
-    of meFootnoteMismatch: k = errFootnoteMismatch
-    of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
-    of mwUnknownSubstitution: k = warnUnknownSubstitutionX
-    of mwUnsupportedLanguage: k = warnLanguageXNotSupported
-    of mwUnsupportedField: k = warnFieldXNotSupported
+    of meGridTableNotImplemented: k = errRstGridTableNotImplemented
+    of meMarkdownIllformedTable: k = errRstMarkdownIllformedTable
+    of meNewSectionExpected: k = errRstNewSectionExpected
+    of meGeneralParseError: k = errRstGeneralParseError
+    of meInvalidDirective: k = errRstInvalidDirectiveX
+    of meInvalidField: k = errRstInvalidField
+    of meFootnoteMismatch: k = errRstFootnoteMismatch
+    of mwRedefinitionOfLabel: k = warnRstRedefinitionOfLabel
+    of mwUnknownSubstitution: k = warnRstUnknownSubstitutionX
+    of mwBrokenLink: k = warnRstBrokenLink
+    of mwUnsupportedLanguage: k = warnRstLanguageXNotSupported
+    of mwUnsupportedField: k = warnRstFieldXNotSupported
     of mwRstStyle: k = warnRstStyle
     {.gcsafe.}:
       globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
@@ -182,11 +184,9 @@ template declareClosures =
 
 proc parseRst(text, filename: string,
               line, column: int,
-              rstOptions: RstParseOptions;
               conf: ConfigRef, sharedState: PRstSharedState): PRstNode =
   declareClosures()
-  result = rstParsePass1(text, filename, line, column, rstOptions,
-                         sharedState)
+  result = rstParsePass1(text, line, column, sharedState)
 
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
                  ext: string, guessTarget: bool): AbsoluteFile =
@@ -202,20 +202,22 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
 proc isLatexCmd(conf: ConfigRef): bool = conf.cmd in {cmdRst2tex, cmdDoc2tex}
 
 proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
-                    outExt: string = HtmlExt, module: PSym = nil): PDoc =
+                    outExt: string = HtmlExt, module: PSym = nil,
+                    isPureRst = false): PDoc =
   declareClosures()
   new(result)
   result.module = module
   result.conf = conf
   result.cache = cache
   result.outDir = conf.outDir.string
-  const options = {roSupportRawDirective, roSupportMarkdown,
-                   roPreferMarkdown, roNimFile}
+  result.isPureRst = isPureRst
+  var options= {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown}
+  if not isPureRst: options.incl roNimFile
   result.sharedState = newRstSharedState(
       options, filename.string,
       docgenFindFile, compilerMsgHandler)
   initRstGenerator(result[], (if conf.isLatexCmd: outLatex else: outHtml),
-                   conf.configVars, filename.string, options,
+                   conf.configVars, filename.string,
                    docgenFindFile, compilerMsgHandler)
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
@@ -299,8 +301,7 @@ proc genComment(d: PDoc, n: PNode): PRstNode =
     result = parseRst(n.comment, toFullPath(d.conf, n.info),
                       toLinenumber(n.info),
                       toColumn(n.info) + DocColOffset,
-                      d.options, d.conf,
-                      d.sharedState)
+                      d.conf, d.sharedState)
 
 proc genRecCommentAux(d: PDoc, n: PNode): PRstNode =
   if n == nil: return nil
@@ -468,6 +469,10 @@ proc runAllExamples(d: PDoc) =
 
 proc quoted(a: string): string = result.addQuoted(a)
 
+proc toInstantiationInfo(conf: ConfigRef, info: TLineInfo): auto =
+  # xxx expose in compiler/lineinfos.nim
+  (conf.toMsgFilename(info), info.line.int, info.col.int + ColOffset)
+
 proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, code: string] =
   ## returns `rdoccmd` and source code for this runnableExamples
   var rdoccmd = ""
@@ -481,6 +486,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   let useRenderModule = false
   let loc = d.conf.toFileLineCol(n.info)
   let code = extractRunnableExamplesSource(d.conf, n)
+  let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
 
   if d.conf.errorCounter > 0:
     return (rdoccmd, code)
@@ -489,7 +495,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   let outputDir = d.exampleOutputDir
   createDir(outputDir)
   inc d.exampleCounter
-  let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" & ("_examples$1.nim" % $d.exampleCounter)))
+  let outp = outputDir / RelativeFile("$#_examples_$#.nim" % [d.filename.extractFilename.changeFileExt"", $d.exampleCounter])
 
   if useRenderModule:
     var docComment = newTree(nkCommentStmt)
@@ -507,13 +513,21 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
     renderModule(runnableExamples, outp.string, conf = d.conf)
 
   else:
-    let code2 = """
+    var code2 = code
+    if code.len > 0 and "codeReordering" notin code:
+      # hacky but simplest solution, until we devise a way to make `{.line.}`
+      # work without introducing a scope
+      code2 = """
+{.line: $#.}:
+$#
+""" % [$toInstantiationInfo(d.conf, n.info), codeIndent]
+    code2 = """
 #[
-$1
+$#
 ]#
-import $2
-$3
-""" % [comment, d.filename.quoted, code]
+import $#
+$#
+""" % [comment, d.filename.quoted, code2]
     writeFile(outp.string, code2)
 
   if rdoccmd notin d.exampleGroups:
@@ -751,14 +765,6 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
       result.add(defaultParamSeparator)
       result.add(params)
 
-proc isCallable(n: PNode): bool =
-  ## Returns true if `n` contains a callable node.
-  case n.kind
-  of nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef,
-    nkConverterDef, nkFuncDef: result = true
-  else:
-    result = false
-
 proc docstringSummary(rstText: string): string =
   ## Returns just the first line or a brief chunk of text from a rst string.
   ##
@@ -849,9 +855,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       break
     plainName.add(literal)
 
-  var pragmaNode: PNode = nil
-  if n.isCallable and n[pragmasPos].kind != nkEmpty:
-    pragmaNode = findPragma(n[pragmasPos], wDeprecated)
+  var pragmaNode = getDeclPragma(n)
+  if pragmaNode != nil: pragmaNode = findPragma(pragmaNode, wDeprecated)
 
   inc(d.id)
   let
@@ -907,7 +912,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   # because it doesn't include object fields or documentation comments. So we
   # use the plain one for callable elements, and the complex for the rest.
   var linkTitle = changeFileExt(extractFilename(d.filename), "") & ": "
-  if n.isCallable: linkTitle.add(xmltree.escape(plainName.strip))
+  if n.kind in routineDefs: linkTitle.add(xmltree.escape(plainName.strip))
   else: linkTitle.add(xmltree.escape(complexSymbol.strip))
 
   setIndexTerm(d[], external, symbolOrId, name, linkTitle,
@@ -1119,6 +1124,9 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
 
 proc finishGenerateDoc*(d: var PDoc) =
   ## Perform 2nd RST pass for resolution of links/footnotes/headings...
+  # copy file map `filenames` to ``rstgen.nim`` for its warnings
+  d.filenames = d.sharedState.filenames
+
   # Main title/subtitle are allowed only in the first RST fragment of document
   var firstRst = PRstNode(nil)
   for fragment in d.modDescPre:
@@ -1413,14 +1421,10 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
 proc commandRstAux(cache: IdentCache, conf: ConfigRef;
                    filename: AbsoluteFile, outExt: string) =
   var filen = addFileExt(filename, "txt")
-  var d = newDocumentor(filen, cache, conf, outExt)
-
-  d.isPureRst = true
+  var d = newDocumentor(filen, cache, conf, outExt, isPureRst = true)
   let rst = parseRst(readFile(filen.string), filen.string,
                      line=LineRstInit, column=ColRstInit,
-                     {roSupportRawDirective, roSupportMarkdown,
-                      roPreferMarkdown}, conf,
-                     d.sharedState)
+                     conf, d.sharedState)
   d.modDescPre = @[ItemFragment(isRst: true, rst: rst)]
   finishGenerateDoc(d)
   writeOutput(d)

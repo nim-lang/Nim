@@ -592,8 +592,8 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS == osNintendoSwitch
     of "freertos", "lwip":
       result = conf.target.targetOS == osFreeRTOS
-    of "littleendian": result = CPU[conf.target.targetCPU].endian == platform.littleEndian
-    of "bigendian": result = CPU[conf.target.targetCPU].endian == platform.bigEndian
+    of "littleendian": result = CPU[conf.target.targetCPU].endian == littleEndian
+    of "bigendian": result = CPU[conf.target.targetCPU].endian == bigEndian
     of "cpu8": result = CPU[conf.target.targetCPU].bit == 8
     of "cpu16": result = CPU[conf.target.targetCPU].bit == 16
     of "cpu32": result = CPU[conf.target.targetCPU].bit == 32
@@ -694,6 +694,16 @@ proc setDefaultLibpath*(conf: ConfigRef) =
 
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   result = AbsoluteFile path.string.expandFilename
+
+proc setFromProjectName*(conf: ConfigRef; projectName: string) =
+  try:
+    conf.projectFull = canonicalizePath(conf, AbsoluteFile projectName)
+  except OSError:
+    conf.projectFull = AbsoluteFile projectName
+  let p = splitFile(conf.projectFull)
+  let dir = if p.dir.isEmpty: AbsoluteDir getCurrentDir() else: p.dir
+  conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
+  conf.projectName = p.name
 
 proc removeTrailingDirSep*(path: string): string =
   if (path.len > 0) and (path[^1] == DirSep):

@@ -11,8 +11,7 @@
 ## for details. Note this is a first implementation and only the "Concept matching"
 ## section has been implemented.
 
-import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer,
-  types, intsets
+import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer, types, intsets
 
 from magicsys import addSonSkipIntLit
 
@@ -23,7 +22,7 @@ const
 ## --------------------------------------
 
 proc declareSelf(c: PContext; info: TLineInfo) =
-  ## adds the magical 'Self' symbols to the current scope.
+  ## Adds the magical 'Self' symbols to the current scope.
   let ow = getCurrOwner(c)
   let s = newSym(skType, getIdent(c.cache, "Self"), nextSymId(c.idgen), ow, info)
   s.typ = newType(tyTypeDesc, nextTypeId(c.idgen), ow)
@@ -32,7 +31,7 @@ proc declareSelf(c: PContext; info: TLineInfo) =
   addDecl(c, s, info)
 
 proc isSelf*(t: PType): bool {.inline.} =
-  ## is this the magical 'Self' type?
+  ## Is this the magical 'Self' type?
   t.kind == tyTypeDesc and tfPacked in t.flags
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
@@ -45,8 +44,8 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 
 proc semConceptDecl(c: PContext; n: PNode): PNode =
   ## Recursive helper for semantic checking for the concept declaration.
-  ## Currently we only support lists of statements containing 'proc'
-  ## declarations and the like.
+  ## Currently we only support (possibly empty) lists of statements
+  ## containing 'proc' declarations and the like.
   case n.kind
   of nkStmtList, nkStmtListExpr:
     result = shallowCopy(n)
@@ -60,7 +59,7 @@ proc semConceptDecl(c: PContext; n: PNode): PNode =
       result[i] = n[i]
     result[^1] = semConceptDecl(c, n[^1])
   else:
-    localError(c.config, n.info, "unexpected construct in the new-styled concept " & renderTree(n))
+    localError(c.config, n.info, "unexpected construct in the new-styled concept: " & renderTree(n))
     result = n
 
 proc semConceptDeclaration*(c: PContext; n: PNode): PNode =
@@ -97,7 +96,7 @@ proc existingBinding(m: MatchCon; key: PType): PType =
 proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool
 
 proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
-  ## the heart of the concept matching process. 'f' is the formal parameter of some
+  ## The heart of the concept matching process. 'f' is the formal parameter of some
   ## routine inside the concept that we're looking for. 'a' is the formal parameter
   ## of a routine that might match.
   const

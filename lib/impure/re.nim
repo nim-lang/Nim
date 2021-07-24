@@ -41,12 +41,12 @@ const
 
 type
   RegexFlag* = enum     ## options for regular expressions
-    reIgnoreCase = 0,    ## do caseless matching
-    reMultiLine = 1,     ## `^` and `$` match newlines within data
-    reDotAll = 2,        ## `.` matches anything including NL
-    reExtended = 3,      ## ignore whitespace and `#` comments
-    reStudy = 4          ## study the expression (may be omitted if the
-                         ## expression will be used only once)
+    reIgnoreCase = 0,   ## do caseless matching
+    reMultiLine = 1,    ## `^` and `$` match newlines within data
+    reDotAll = 2,       ## `.` matches anything including NL
+    reExtended = 3,     ## ignore whitespace and `#` comments
+    reStudy = 4         ## study the expression (may be omitted if the
+                        ## expression will be used only once)
 
   RegexDesc = object
     h: ptr Pcre

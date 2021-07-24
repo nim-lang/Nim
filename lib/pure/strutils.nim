@@ -1476,12 +1476,39 @@ func dedent*(s: string, count: Natural = indentation(s)): string {.rtl,
     doAssert x == "Hello\n  There\n"
   unindent(s, count, " ")
 
-func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
-  ## Deletes in `s` (must be declared as `var`) the characters at positions
-  ## `first .. last` (both ends included).
+func delete*(s: var string, slice: Slice[int]) =
+  ## Deletes the items `s[slice]`, raising `IndexDefect` if the slice contains
+  ## elements out of range.
   ##
-  ## This modifies `s` itself, it does not return a copy.
+  ## This operation moves all elements after `s[slice]` in linear time, and
+  ## is the string analog to `sequtils.delete`.
   runnableExamples:
+    var a = "abcde"
+    doAssertRaises(IndexDefect): a.delete(4..5)
+    assert a == "abcde"
+    a.delete(4..4)
+    assert a == "abcd"
+    a.delete(1..2)
+    assert a == "ad"
+    a.delete(1..<1) # empty slice
+    assert a == "ad"
+  when compileOption("boundChecks"):
+    if not (slice.a < s.len and slice.a >= 0 and slice.b < s.len):
+      raise newException(IndexDefect, $(slice: slice, len: s.len))
+  if slice.b >= slice.a:
+    var i = slice.a
+    var j = slice.b + 1
+    var newLen = s.len - j + i
+    # if j < s.len: moveMem(addr s[i], addr s[j], s.len - j) # pending benchmark
+    while i < newLen:
+      s[i] = s[j]
+      inc(i)
+      inc(j)
+    setLen(s, newLen)
+
+func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete", deprecated: "use `delete(s, first..last)`".} =
+  ## Deletes in `s` the characters at positions `first .. last` (both ends included).
+  runnableExamples("--warning:deprecated:off"):
     var a = "abracadabra"
 
     a.delete(4, 5)
@@ -1501,7 +1528,6 @@ func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
     inc(i)
     inc(j)
   setLen(s, newLen)
-
 
 func startsWith*(s: string, prefix: char): bool {.inline.} =
   ## Returns true if `s` starts with character `prefix`.
@@ -1760,7 +1786,7 @@ func join*(a: openArray[string], sep: string = ""): string {.rtl,
   else:
     result = ""
 
-func join*[T: not string](a: openArray[T], sep: string = ""): string {.rtl.} =
+func join*[T: not string](a: openArray[T], sep: string = ""): string =
   ## Converts all elements in the container `a` to strings using `$`,
   ## and concatenates them with `sep`.
   runnableExamples:

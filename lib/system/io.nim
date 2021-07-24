@@ -227,9 +227,6 @@ when defined(windows):
     # But we cannot call printf directly as the string might contain \0.
     # So we have to loop over all the sections separated by potential \0s.
     var i = c_fprintf(f, "%s", s)
-    if i < 0:
-      if doRaise: raiseEIO("cannot write string to file")
-      return
     while i < s.len:
       if s[i] == '\0':
         let w = c_fputc('\0', f)
@@ -633,8 +630,8 @@ const
         ""
     else:
       ""
-  FormatOpen: array[FileMode, string] = [
-    "rb" & NoInheritFlag, "wb" & NoInheritFlag, "w+b" & NoInheritFlag,
+  FormatOpen: array[FileMode, cstring] = [
+    cstring("rb" & NoInheritFlag), "wb" & NoInheritFlag, "w+b" & NoInheritFlag,
     "r+b" & NoInheritFlag, "ab" & NoInheritFlag
   ]
     #"rt", "wt", "w+t", "r+t", "at"
@@ -681,7 +678,7 @@ proc open*(f: var File, filename: string,
   ## This throws no exception if the file could not be opened.
   ##
   ## The file handle associated with the resulting `File` is not inheritable.
-  var p = fopen(filename, FormatOpen[mode])
+  var p = fopen(filename.cstring, FormatOpen[mode])
   if p != nil:
     var f2 = cast[File](p)
     when defined(posix) and not defined(nimscript):
@@ -714,7 +711,7 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   ## Default mode is readonly. Returns true if the file could be reopened.
   ##
   ## The file handle associated with `f` won't be inheritable.
-  if freopen(filename, FormatOpen[mode], f) != nil:
+  if freopen(filename.cstring, FormatOpen[mode], f) != nil:
     when not defined(nimInheritHandles) and declared(setInheritable) and
          NoInheritFlag.len == 0:
       if not setInheritable(getOsFileHandle(f), false):
@@ -787,13 +784,6 @@ when declared(stdout):
                      not defined(nintendoswitch) and not defined(freertos) and
                      hostOS != "any"
 
-  const echoDoRaise = not defined(nimLegacyEchoNoRaise) and not defined(guiapp) # see PR #16366
-
-  template checkErrMaybe(succeeded: bool): untyped =
-    if not succeeded:
-      when echoDoRaise:
-        checkErr(stdout)
-
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     when defined(androidNDK):
       var s = ""
@@ -806,18 +796,20 @@ when declared(stdout):
         proc flockfile(f: File) {.importc, nodecl.}
         proc funlockfile(f: File) {.importc, nodecl.}
         flockfile(stdout)
-        defer: funlockfile(stdout)
       when defined(windows) and compileOption("threads"):
         acquireSys echoLock
-        defer: releaseSys echoLock
       for s in args:
         when defined(windows):
-          writeWindows(stdout, s, doRaise = echoDoRaise)
+          writeWindows(stdout, s)
         else:
-          checkErrMaybe(c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout) == s.len)
+          discard c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout)
       const linefeed = "\n"
-      checkErrMaybe(c_fwrite(linefeed.cstring, linefeed.len, 1, stdout) == linefeed.len)
-      checkErrMaybe(c_fflush(stdout) == 0)
+      discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
+      discard c_fflush(stdout)
+      when stdOutLock:
+        funlockfile(stdout)
+      when defined(windows) and compileOption("threads"):
+        releaseSys echoLock
 
 
 when defined(windows) and not defined(nimscript) and not defined(js):

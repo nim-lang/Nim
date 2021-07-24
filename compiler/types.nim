@@ -26,7 +26,38 @@ type
       # most useful, shows: symbol + resolved symbols if it differs, e.g.:
       # tuple[a: MyInt{int}, b: float]
 
+  TTypeRelation* = enum      # order is important!
+    isNone, isConvertible,
+    isIntConv,
+    isSubtype,
+    isSubrange,              # subrange of the wanted type; no type conversion
+                             # but apart from that counts as ``isSubtype``
+    isBothMetaConvertible    # generic proc parameter was matched against
+                             # generic type, e.g., map(mySeq, x=>x+1),
+                             # maybe recoverable by rerun if the parameter is
+                             # the proc's return value
+    isInferred,              # generic proc was matched against a concrete type
+    isInferredConvertible,   # same as above, but requiring proc CC conversion
+    isGeneric,
+    isFromIntLit,            # conversion *from* int literal; proven safe
+    isEqual
+
+  ProcConvMismatch* = enum
+    pcmNoSideEffect
+    pcmNotGcSafe
+    pcmLockDifference
+    pcmNotIterator
+    pcmDifferentCallConv
+
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
+
+proc addTypeDeclVerboseMaybe*(result: var string, conf: ConfigRef; typ: PType) =
+  if optDeclaredLocs in conf.globalOptions:
+    result.add typeToString(typ, preferMixed)
+    result.addDeclaredLoc(conf, typ)
+  else:
+    result.add typeToString(typ)
+
 template `$`*(typ: PType): string = typeToString(typ)
 
 proc base*(t: PType): PType =
@@ -1471,6 +1502,68 @@ proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
   else:
     result = n
 
+proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel = isNone): (set[ProcConvMismatch], TTypeRelation) =
+  ## Returns a set of the reason of mismatch, and the relation for conversion.
+  result[1] = rel
+  if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
+    # Formal is pure, but actual is not
+    result[0].incl pcmNoSideEffect
+    result[1] = isNone
+
+  if tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {} and
+    optThreadAnalysis in c.globalOptions:
+    # noSideEffect implies ``tfThread``!
+    result[0].incl pcmNotGcSafe
+    result[1] = isNone
+
+  if f.flags * {tfIterator} != a.flags * {tfIterator}:
+    # One of them is an iterator so not convertible
+    result[0].incl pcmNotIterator
+    result[1] = isNone
+
+  if f.callConv != a.callConv:
+    # valid to pass a 'nimcall' thingie to 'closure':
+    if f.callConv == ccClosure and a.callConv == ccNimCall:
+      case result[1]
+      of isInferred: result[1] = isInferredConvertible
+      of isBothMetaConvertible: result[1] = isBothMetaConvertible
+      elif result[1] != isNone: result[1] = isConvertible
+    else:
+      result[1] = isNone
+      result[0].incl pcmDifferentCallConv
+
+  if f.lockLevel.ord != UnspecifiedLockLevel.ord and
+     a.lockLevel.ord != UnspecifiedLockLevel.ord:
+       # proctypeRel has more logic to catch this difference,
+       # so dont need to do `rel = isNone`
+       # but it's a pragma mismatch reason which is why it's here
+       result[0].incl pcmLockDifference
+
+proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, conf: ConfigRef) =
+  assert formal.kind == tyProc and actual.kind == tyProc
+  let (convMismatch, _) = getProcConvMismatch(conf, formal, actual)
+  var
+    gotPragmas = ""
+    expectedPragmas = ""
+  for reason in convMismatch:
+    case reason
+    of pcmDifferentCallConv:
+      message.add "\n  Calling convention mismatch: got '{.$1.}', but expected '{.$2.}'." % [$actual.callConv, $formal.callConv]
+    of pcmNoSideEffect:
+      expectedPragmas.add "noSideEffect, "
+    of pcmNotGcSafe:
+      expectedPragmas.add "gcsafe, "
+    of pcmLockDifference:
+      gotPragmas.add("locks: " & $actual.lockLevel & ", ")
+      expectedPragmas.add("locks: " & $formal.lockLevel & ", ")
+    of pcmNotIterator: discard
+
+  if expectedPragmas.len > 0:
+    gotPragmas.setLen(max(0, gotPragmas.len - 2)) # Remove ", "
+    expectedPragmas.setLen(max(0, expectedPragmas.len - 2)) # Remove ", "
+    message.add "\n  Pragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [gotPragmas, expectedPragmas]
+
+
 proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
     let actualStr = typeToString(actual)
@@ -1491,6 +1584,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
     if verbose: msg.addDeclaredLoc(conf, formal)
 
     if formal.kind == tyProc and actual.kind == tyProc:
+      msg.addPragmaAndCallConvMismatch(formal, actual, conf)
       case compatibleEffects(formal, actual)
       of efCompat: discard
       of efRaisesDiffer:
@@ -1503,8 +1597,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
         msg.add "\n.tag effect is 'any tag allowed'"
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
-    if formal.kind == tyEnum and actual.kind == tyEnum:
-      msg.add "\nmaybe use `-d:nimLegacyConvEnumEnum` for a transition period"
+
     localError(conf, info, msg)
 
 proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
@@ -1561,3 +1654,28 @@ proc isSinkTypeForParam*(t: PType): bool =
         result = false
       else:
         result = true
+
+proc lookupFieldAgain*(ty: PType; field: PSym): PSym =
+  var ty = ty
+  while ty != nil:
+    ty = ty.skipTypes(skipPtrs)
+    assert(ty.kind in {tyTuple, tyObject})
+    result = lookupInRecord(ty.n, field.name)
+    if result != nil: break
+    ty = ty[0]
+  if result == nil: result = field
+
+proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
+  let t = t.skipTypes(abstractInst)
+  if t.kind == tyPtr:
+    let pointsTo = t[0].skipTypes(abstractInst)
+    case pointsTo.kind
+    of tyUncheckedArray:
+      result = pointsTo[0].kind == tyChar
+    of tyArray:
+      result = pointsTo[1].kind == tyChar and firstOrd(nil, pointsTo[0]) == 0 and
+        skipTypes(pointsTo[0], {tyRange}).kind in {tyInt..tyInt64}
+    of tyChar:
+      result = allowPointerToChar
+    else:
+      discard

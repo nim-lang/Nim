@@ -520,16 +520,16 @@ proc OPENSSL_sk_num*(stack: PSTACK): int {.cdecl, dynlib: DLLSSLName, importc.}
 proc OPENSSL_sk_value*(stack: PSTACK, index: int): pointer {.cdecl,
     dynlib: DLLSSLName, importc.}
 
-proc d2i_X509*(px: ptr PX509, i: ptr ptr cuchar, len: cint): PX509 {.cdecl,
+proc d2i_X509*(px: ptr PX509, i: ptr ptr uint8, len: cint): PX509 {.cdecl,
     dynlib: DLLUtilName, importc.}
 
-proc i2d_X509*(cert: PX509; o: ptr ptr cuchar): cint {.cdecl,
+proc i2d_X509*(cert: PX509; o: ptr ptr uint8): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
 
 proc d2i_X509*(b: string): PX509 =
   ## decode DER/BER bytestring into X.509 certificate struct
   var bb = b.cstring
-  let i = cast[ptr ptr cuchar](addr bb)
+  let i = cast[ptr ptr uint8](addr bb)
   let ret = d2i_X509(addr result, i, b.len.cint)
   if ret.isNil:
     raise newException(Exception, "X.509 certificate decoding failed")
@@ -539,7 +539,7 @@ proc i2d_X509*(cert: PX509): string =
   let encoded_length = i2d_X509(cert, nil)
   result = newString(encoded_length)
   var q = result.cstring
-  let o = cast[ptr ptr cuchar](addr q)
+  let o = cast[ptr ptr uint8](addr q)
   let length = i2d_X509(cert, o)
   if length.int <= 0:
     raise newException(Exception, "X.509 certificate encoding failed")
@@ -599,11 +599,11 @@ proc SSL_CTX_set_tlsext_servername_arg*(ctx: SslCtx, arg: pointer): int =
 
 type
   PskClientCallback* = proc (ssl: SslPtr;
-    hint: cstring; identity: cstring; max_identity_len: cuint; psk: ptr cuchar;
+    hint: cstring; identity: cstring; max_identity_len: cuint; psk: ptr uint8;
     max_psk_len: cuint): cuint {.cdecl.}
 
   PskServerCallback* = proc (ssl: SslPtr;
-    identity: cstring; psk: ptr cuchar; max_psk_len: cint): cuint {.cdecl.}
+    identity: cstring; psk: ptr uint8; max_psk_len: cint): cuint {.cdecl.}
 
 proc SSL_CTX_set_psk_client_callback*(ctx: SslCtx; callback: PskClientCallback) {.cdecl, dynlib: DLLSSLName, importc.}
   ## Set callback called when OpenSSL needs PSK (for client).
@@ -672,13 +672,13 @@ proc PEM_read_bio_RSAPublicKey*(bp: BIO, x: ptr PRSA, cb: pem_password_cb, u: po
     dynlib: DLLUtilName, importc.}
 proc PEM_read_bio_RSAPrivateKey*(bp: BIO, x: ptr PRSA, cb: pem_password_cb, u: pointer): PRSA {.cdecl,
     dynlib: DLLUtilName, importc.}
-proc RSA_private_encrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+proc RSA_private_encrypt*(flen: cint, fr: ptr uint8, to: ptr uint8, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
-proc RSA_public_encrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+proc RSA_public_encrypt*(flen: cint, fr: ptr uint8, to: ptr uint8, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
-proc RSA_private_decrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+proc RSA_private_decrypt*(flen: cint, fr: ptr uint8, to: ptr uint8, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
-proc RSA_public_decrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+proc RSA_public_decrypt*(flen: cint, fr: ptr uint8, to: ptr uint8, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
 proc RSA_free*(rsa: PRSA) {.cdecl, dynlib: DLLUtilName, importc.}
 proc RSA_size*(rsa: PRSA): cint {.cdecl, dynlib: DLLUtilName, importc.}
@@ -744,8 +744,8 @@ type
 proc md5_Init*(c: var MD5_CTX): cint{.importc: "MD5_Init".}
 proc md5_Update*(c: var MD5_CTX; data: pointer; len: csize_t): cint{.importc: "MD5_Update".}
 proc md5_Final*(md: cstring; c: var MD5_CTX): cint{.importc: "MD5_Final".}
-proc md5*(d: ptr cuchar; n: csize_t; md: ptr cuchar): ptr cuchar{.importc: "MD5".}
-proc md5_Transform*(c: var MD5_CTX; b: ptr cuchar){.importc: "MD5_Transform".}
+proc md5*(d: ptr uint8; n: csize_t; md: ptr uint8): ptr uint8{.importc: "MD5".}
+proc md5_Transform*(c: var MD5_CTX; b: ptr uint8){.importc: "MD5_Transform".}
 {.pop.}
 
 from strutils import toHex, toLowerAscii

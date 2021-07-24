@@ -18,7 +18,7 @@ proc addDeclaredLoc*(result: var string, conf: ConfigRef; typ: PType) =
   # xxx figure out how to resolve `tyGenericParam`, e.g. for
   # proc fn[T](a: T, b: T) = discard
   # fn(1.1, "a")
-  let typ = typ.skipTypes(abstractInst + {tyStatic, tyUserTypeClassInst} - {tyRange})
+  let typ = typ.skipTypes(abstractInst + {tyStatic, tySequence, tyArray, tySet, tyUserTypeClassInst, tyVar, tyRef, tyPtr} - {tyRange})
   result.add " [$1" % typ.kind.toHumanStr
   if typ.sym != nil:
     result.add " declared in " & toFileLineCol(conf, typ.sym.info)

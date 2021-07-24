@@ -551,6 +551,12 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     let op = getAttachedOp(c.graph, t, attachedDestructor)
     if op != nil:
       result[0] = newSymNode(op)
+  of mTrace:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedTrace)
+    if op != nil:
+      result[0] = newSymNode(op)
   of mUnown:
     result = semUnown(c, n)
   of mExists, mForall:

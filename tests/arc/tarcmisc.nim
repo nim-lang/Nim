@@ -28,11 +28,13 @@ aaaaa
 hello
 ok
 true
+copying
+123
 closed
 destroying variable: 20
 destroying variable: 10
 '''
-  cmd: "nim c --gc:arc --deepcopy:on $file"
+  cmd: "nim c --gc:arc --deepcopy:on -d:nimAllocPagesViaMalloc $file"
 """
 
 proc takeSink(x: sink string): bool = true
@@ -433,3 +435,31 @@ proc t17712 =
   echo el != nil
 
 t17712()
+
+# bug #18030
+
+type
+  Foo = object
+    n: int
+
+proc `=copy`(dst: var Foo, src: Foo) =
+  echo "copying"
+  dst.n = src.n
+
+proc `=sink`(dst: var Foo, src: Foo) =
+  echo "sinking"
+  dst.n = src.n
+
+var a: Foo
+
+proc putValue[T](n: T)
+
+proc useForward =
+  putValue(123)
+
+proc putValue[T](n: T) =
+  var b = Foo(n:n)
+  a = b
+  echo b.n
+
+useForward()

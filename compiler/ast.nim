@@ -652,7 +652,7 @@ type
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
-    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
+    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mImplies, mIff, mExists, mForall, mOld,
@@ -667,7 +667,7 @@ type
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
-    mMove, mWasMoved, mDestroy,
+    mMove, mWasMoved, mDestroy, mTrace,
     mDefault, mUnown, mIsolate, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
@@ -720,7 +720,7 @@ const
     mEqRef, mEqProc, mLePtr, mLtPtr, mEqCString, mXor,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot, mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
-    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
+    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mEqStr, mLeStr, mLtStr,
@@ -911,7 +911,6 @@ type
     attachedAsgn,
     attachedSink,
     attachedTrace,
-    attachedDispose,
     attachedDeepCopy
 
   TType* {.acyclic.} = object of TIdObj # \
@@ -1065,7 +1064,7 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   # which may simplify code.
   case a.kind
   of nkSym: a.sym.name
-  of nkIdent:  a.ident
+  of nkIdent: a.ident
   else: nil
 
 proc getnimblePkg*(a: PSym): PSym =
@@ -1168,6 +1167,37 @@ template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
 
 template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
 template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
+
+proc getDeclPragma*(n: PNode): PNode =
+  ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
+  ## Currently only supports routineDefs + {nkTypeDef}.
+  case n.kind
+  of routineDefs:
+    if n[pragmasPos].kind != nkEmpty: result = n[pragmasPos]
+  of nkTypeDef:
+    #[
+    type F3*{.deprecated: "x3".} = int
+
+    TypeSection
+      TypeDef
+        PragmaExpr
+          Postfix
+            Ident "*"
+            Ident "F3"
+          Pragma
+            ExprColonExpr
+              Ident "deprecated"
+              StrLit "x3"
+        Empty
+        Ident "int"
+    ]#
+    if n[0].kind == nkPragmaExpr:
+      result = n[0][1]
+  else:
+    # support as needed for `nkIdentDefs` etc.
+    result = nil
+  if result != nil:
+    assert result.kind == nkPragma, $(result.kind, n.kind)
 
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
@@ -1408,7 +1438,7 @@ const
   MaxLockLevel* = 1000'i16
   UnknownLockLevel* = TLockLevel(1001'i16)
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
-    "=destroy", "=copy", "=sink", "=trace", "=dispose", "=deepcopy"]
+    "=destroy", "=copy", "=sink", "=trace", "=deepcopy"]
 
 proc `$`*(x: TLockLevel): string =
   if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"

@@ -61,7 +61,7 @@ SET nim_csources=bin\nim_csources_%nim_csourcesHash%.exe
 echo "building from csources: %nim_csources%"
 
 if not exist %nim_csourcesDir% (
-  git clone -q --depth 1 %nim_csourcesUrl% %nim_csourcesDir%
+  git clone -q --depth 1 -b %nim_csourcesBranch% %nim_csourcesUrl% %nim_csourcesDir%
 )
 
 if not exist %nim_csources% (
@@ -82,7 +82,7 @@ if not exist %nim_csources% (
 
 proc genPosixScript(): string =
   result = fmt"""
-#! /bin/sh
+#!/bin/sh
 # {doNotEdit}
 
 # build development version of the compiler; can be rerun safely.

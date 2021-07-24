@@ -7,15 +7,44 @@
 #    distribution, for details about the copyright.
 #
 
-## Converts between different character encodings. On UNIX, this uses
+## Routines for converting between different character encodings. On UNIX, this uses
 ## the `iconv`:idx: library, on Windows the Windows API.
+##
+## The following example shows how to change character encodings.
+runnableExamples:
+  when defined(windows):
+    let
+      orig = "öäüß"
+      # convert `orig` from "UTF-8" to "CP1252"
+      cp1252 = convert(orig, "CP1252", "UTF-8")
+      # convert `cp1252` from "CP1252" to "ibm850"
+      ibm850 = convert(cp1252, "ibm850", "CP1252")
+      current = getCurrentEncoding()
+    assert orig == "\195\182\195\164\195\188\195\159"
+    assert ibm850 == "\148\132\129\225"
+    assert convert(ibm850, current, "ibm850") == orig
+
+## The example below uses a reuseable `EncodingConverter` object which is
+## created by `open` with `destEncoding` and `srcEncoding` specified. You can use
+## `convert` on this object multiple times.
+runnableExamples:
+  when defined(windows):
+    var fromGB2312 = open("utf-8", "gb2312")
+    let first = "\203\173\197\194\163\191\210\187" &
+        "\203\242\209\204\211\234\200\206\198\189\201\250"
+    assert fromGB2312.convert(first) == "谁怕？一蓑烟雨任平生"
+
+    let second = "\211\208\176\215\205\183\200\231" &
+        "\208\194\163\172\199\227\184\199\200\231\185\202"
+    assert fromGB2312.convert(second) == "有白头如新，倾盖如故"
+
 
 import os
 
 when not defined(windows):
   type
     ConverterObj = object
-    EncodingConverter* = ptr ConverterObj ## can convert between two character sets
+    EncodingConverter* = ptr ConverterObj ## Can convert between two character sets.
 
 else:
   type
@@ -24,8 +53,8 @@ else:
       dest, src: CodePage
 
 type
-  EncodingError* = object of ValueError ## exception that is raised
-                                        ## for encoding errors
+  EncodingError* = object of ValueError ## Exception that is raised
+                                        ## for encoding errors.
 
 when defined(windows):
   import parseutils, strutils
@@ -298,7 +327,7 @@ else:
     importc: "iconv", importIconv.}
 
 proc getCurrentEncoding*(uiApp = false): string =
-  ## retrieves the current encoding. On Unix, always "UTF-8" is returned.
+  ## Retrieves the current encoding. On Unix, "UTF-8" is always returned.
   ## The `uiApp` parameter is Windows specific. If true, the UI's code-page
   ## is returned, if false, the Console's code-page is returned.
   when defined(windows):
@@ -307,7 +336,7 @@ proc getCurrentEncoding*(uiApp = false): string =
     result = "UTF-8"
 
 proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
-  ## opens a converter that can convert from `srcEncoding` to `destEncoding`.
+  ## Opens a converter that can convert from `srcEncoding` to `destEncoding`.
   ## Raises `IOError` if it cannot fulfill the request.
   when not defined(windows):
     result = iconvOpen(destEncoding, srcEncoding)
@@ -326,7 +355,7 @@ proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
         "cannot find encoding " & srcEncoding)
 
 proc close*(c: EncodingConverter) =
-  ## frees the resources the converter `c` holds.
+  ## Frees the resources the converter `c` holds.
   when not defined(windows):
     iconvClose(c)
 
@@ -421,12 +450,13 @@ when defined(windows):
            else: convertFromWideString(codePageTo, wideString)
 
   proc convert*(c: EncodingConverter, s: string): string =
-    ## converts `s` to `destEncoding` that was given to the converter `c`. It
-    ## assumed that `s` is in `srcEncoding`.
-    ## utf-16BE, utf-32 conversions not supported on windows
     result = convertWin(c.src, c.dest, s)
 else:
   proc convert*(c: EncodingConverter, s: string): string =
+    ## Converts `s` to `destEncoding` that was given to the converter `c`. It
+    ## assumes that `s` is in `srcEncoding`.
+    ##
+    ## .. warning:: UTF-16BE and UTF-32 conversions are not supported on Windows.
     result = newString(s.len)
     var inLen = csize_t len(s)
     var outLen = csize_t len(result)
@@ -467,10 +497,11 @@ else:
 
 proc convert*(s: string, destEncoding = "UTF-8",
                          srcEncoding = "CP1252"): string =
-  ## converts `s` to `destEncoding`. It assumed that `s` is in `srcEncoding`.
+  ## Converts `s` to `destEncoding`. It assumed that `s` is in `srcEncoding`.
   ## This opens a converter, uses it and closes it again and is thus more
   ## convenient but also likely less efficient than re-using a converter.
-  ## utf-16BE, utf-32 conversions not supported on windows
+  ##
+  ## .. warning:: UTF-16BE and UTF-32 conversions are not supported on Windows.
   var c = open(destEncoding, srcEncoding)
   try:
     result = convert(c, s)

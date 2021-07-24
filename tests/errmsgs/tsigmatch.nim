@@ -89,9 +89,9 @@ expression: fun1(default(Mystring), "asdf")
 
 
 
-
-
-
+#[
+see also: tests/errmsgs/tdeclaredlocs.nim
+]#
 
 
 
