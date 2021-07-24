@@ -97,6 +97,46 @@ type
 proc add(dest: var ItemPre, rst: PRstNode) = dest.add ItemFragment(isRst: true, rst: rst)
 proc add(dest: var ItemPre, str: string) = dest.add ItemFragment(isRst: false, str: str)
 
+proc cmpDecimalsIgnoreCase(a, b: string): int =
+  ## For sorting with correct handling of cases like 'uint8' and 'uint16'.
+  ## Also handles leading zeroes well.
+  runnableExamples:
+    doAssert cmpDecimalsIgnoreCase("uint8", "uint16") < 0
+    doAssert cmpDecimalsIgnoreCase("val00032", "val16suffix") > 0
+    doAssert cmpDecimalsIgnoreCase("val16suffix", "val16") > 0
+    doAssert cmpDecimalsIgnoreCase("val_08_32", "val_08_8") > 0
+    doAssert cmpDecimalsIgnoreCase("val_07_32", "val_08_8") < 0
+  let aLen = a.len
+  let bLen = b.len
+  var
+    iA = 0
+    iB = 0
+  while iA < aLen and iB < bLen:
+    if isDigit(a[iA]) and isDigit(b[iB]):
+      var
+        limitA = iA
+        limitB = iB
+      while limitA < aLen and isDigit(a[limitA]): inc limitA
+      while limitB < bLen and isDigit(b[limitB]): inc limitB
+      var pos = max(limitA-iA, limitB-iA)
+      while pos > 0:
+        if limitA-pos < iA:  # digit in `a` is 0 effectively
+          result = ord('0') - ord(b[limitB-pos])
+        elif limitB-pos < iB:  # digit in `b` is 0 effectively
+          result = ord(a[limitA-pos]) - ord('0')
+        else:
+          result = ord(a[limitA-pos]) - ord(b[limitB-pos])
+        if result != 0: return
+        dec pos
+      iA = limitA
+      iB = limitB
+    else:
+      result = ord(toLowerAscii(a[iA])) - ord(toLowerAscii(b[iB]))
+      if result != 0: return
+      inc iA
+      inc iB
+  result = (aLen - iA) - (bLen - iB)
+
 proc prettyString(a: object): string =
   # xxx pending std/prettyprint refs https://github.com/nim-lang/RFCs/issues/203#issuecomment-602534906
   for k, v in fieldPairs(a):
@@ -1158,7 +1198,7 @@ proc finishGenerateDoc*(d: var PDoc) =
         var resolved = resolveSubs(d.sharedState, f.rst)
         renderRstToOut(d[], resolved, result)
       of false: result &= f.str
-  proc cmp(x, y: Item): int = cmpIgnoreCase(x.sortName, y.sortName)
+  proc cmp(x, y: Item): int = cmpDecimalsIgnoreCase(x.sortName, y.sortName)
   for k in TSymKind:
     for item in d.section[k].secItems.sorted(cmp):
       var itemDesc: string
@@ -1278,10 +1318,10 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
       "sectionid", $ord(kind), "sectionTitle", title,
       "sectionTitleID", $(ord(kind) + 50), "content", d.section[kind].finalMarkup]
 
-  proc cmp(x, y: TocItem): int = cmpIgnoreCase(x.sortName, y.sortName)
+  proc cmp(x, y: TocItem): int = cmpDecimalsIgnoreCase(x.sortName, y.sortName)
   if groupedToc:
     let overloadableNames = toSeq(keys(d.tocTable[kind]))
-    for plainName in overloadableNames.sorted():
+    for plainName in overloadableNames.sorted(cmpDecimalsIgnoreCase):
       var overloadChoices = d.tocTable[kind][plainName]
       overloadChoices.sort(cmp)
       var content: string
