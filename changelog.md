@@ -361,6 +361,10 @@
 - Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
   if the slice is out of bounds, likewise with `strutils.delete`.
 
+- Added an overload to `macros.expectKind`, `macros.expectMinLen` and `macros.expectLen`
+  that allows a custom error `errorMessage` string argument instead of the hardcoded one.
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
