@@ -17,11 +17,6 @@ low-level interface to a C library.
 
 Read this `document <apis.html>`_ for a quick overview of the API design.
 
-Note that there exists a category of `std/` libraries that are not accessible by the usual `import <library name>` but only via `import std/<library name>` although all of the ordinary standard libraries are accessible by the former import statement format.  For this reason, it is recommended that all standard library names be imported as per the second format as that will include all standard library categories, both old and new, with the only exceptions when there are libraries with the same name both in the `std` category and not in it.  In this case, if one wants the non-`std/` version, the first form must be used.
-
-Libraries that might be accessible both ways with the same name might be libraries that have been updated to work with new compiler capabilities would have a newer `std/` version (which use might be restricted to only with those new capabilities).  An example of such a library is the `std/channels` library which only works with the new Arc/Orc memory management (`--gc:arc` or `--gc:orc`) and won't be imported automatically when the compiler option `--threads:on` is used.  This library needs to be imported with `import std/channels` and the `Channels[T]` type needs to be aliased to refer to the type in this library and not the one automatically imported.
-
-Read more about importing standard libraries [in the manual](https://nim-lang.org/docs/manual.html#modules-pseudo-importslashinclude-paths).
 
 Nimble
 ======
@@ -50,8 +45,6 @@ Automatic imports
   Nim message passing support for threads. **Note:** This is part of the
   system module. Do not import it explicitly. Enabled with `--threads:on`:option:.
 
-* `std/channels <channels.html>`_
-  Nim message passing support for threads when Arc/Orc memory management is used.  **Note:** This library is **not** automatically imported with the `--threads:on`:option:, and when it is used with that option the `Channels[T]` type must be aliased to refer to this library's implementation and not the the above library's automatically imported version.  The library API is similar but not identical to that of the above library in order to allow the new `Channel[T]` type to not require use as global variables but to allow easy passing of these channels between threads via atomic reference counting.
 
 Core
 ----
