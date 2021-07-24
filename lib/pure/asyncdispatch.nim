@@ -1836,6 +1836,7 @@ proc sleepAsync*(ms: int | float): owned(Future[void]) =
   when ms is int:
     p.timers.push((getMonoTime() + initDuration(milliseconds = ms), retFuture))
   elif ms is float:
+    {.warning: "When argument is float, it is not checked for NaN nor Inf, for backwards compatibility reasons".}
     let ns = (ms * 1_000_000).int64
     p.timers.push((getMonoTime() + initDuration(nanoseconds = ns), retFuture))
   return retFuture
