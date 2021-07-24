@@ -34,5 +34,15 @@ template main() =
     doAssert ct in b, $(b, ct)
     doAssert NimVersion in b
 
+  block: # Test for fix on broken const unpacking
+    template mytemp() =
+      const
+        (x, increment) = (4, true)
+        a = 100
+      discard (x, increment, a)
+    mytemp()
+
+
+
 static: main()
 main()

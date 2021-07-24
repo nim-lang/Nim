@@ -196,7 +196,7 @@
 
 import
   os, strutils, rstast, std/enumutils, algorithm, lists, sequtils,
-  std/private/miscdollars
+  std/private/miscdollars, tables
 from highlite import SourceLanguage, getSourceLanguage
 
 type
@@ -217,6 +217,7 @@ type
     mcWarning = "Warning",
     mcError = "Error"
 
+  # keep the order in sync with compiler/docgen.nim and compiler/lineinfos.nim:
   MsgKind* = enum          ## the possible messages
     meCannotOpenFile = "cannot open '$1'",
     meExpected = "'$1' expected",
@@ -225,10 +226,11 @@ type
     meNewSectionExpected = "new section expected $1",
     meGeneralParseError = "general parse error",
     meInvalidDirective = "invalid directive: '$1'",
-    meInvalidRstField = "invalid field: $1",
+    meInvalidField = "invalid field: $1",
     meFootnoteMismatch = "mismatch in number of footnotes and their refs: $1",
     mwRedefinitionOfLabel = "redefinition of label '$1'",
     mwUnknownSubstitution = "unknown substitution '$1'",
+    mwBrokenLink = "broken link '$1'",
     mwUnsupportedLanguage = "language '$1' not supported",
     mwUnsupportedField = "field '$1' not supported",
     mwRstStyle = "RST style: $1"
@@ -489,7 +491,9 @@ type
     autoNumIdx: int     # order of occurence: fnAutoNumber, fnAutoNumberLabel
     autoSymIdx: int     # order of occurence: fnAutoSymbol
     label: string       # valid for fnAutoNumberLabel
-
+  RstFileTable* = object
+    filenameToIdx*: Table[string, FileIndex]
+    idxToFilename*: seq[string]
   RstSharedState = object
     options: RstParseOptions    # parsing options
     hLevels: LevelMap           # hierarchy of heading styles
@@ -501,15 +505,19 @@ type
     subs: seq[Substitution]     # substitutions
     refs*: seq[Substitution]    # references
     anchors*: seq[AnchorSubst]  # internal target substitutions
-    lineFootnoteNum: seq[int]     # footnote line, auto numbers .. [#]
-    lineFootnoteNumRef: seq[int]  # footnote line, their reference [#]_
-    lineFootnoteSym: seq[int]     # footnote line, auto symbols .. [*]
-    lineFootnoteSymRef: seq[int]  # footnote line, their reference [*]_
+    lineFootnoteNum: seq[TLineInfo]     # footnote line, auto numbers .. [#]
+    lineFootnoteNumRef: seq[TLineInfo]  # footnote line, their reference [#]_
+    currFootnoteNumRef: int             # ... their counter for `resolveSubs`
+    lineFootnoteSym: seq[TLineInfo]     # footnote line, auto symbols .. [*]
+    lineFootnoteSymRef: seq[TLineInfo]  # footnote line, their reference [*]_
+    currFootnoteSymRef: int             # ... their counter for `resolveSubs`
     footnotes: seq[FootnoteSubst] # correspondence b/w footnote label,
                                   # number, order of occurrence
     msgHandler: MsgHandler      # How to handle errors.
     findFile: FindFileHandler   # How to find files.
-    filename: string
+    filenames*: RstFileTable    # map file name <-> FileIndex (for storing
+                                # file names for warnings after 1st stage)
+    currFileIdx: FileIndex      # current index in `filesnames`
     hasToc*: bool
 
   PRstSharedState* = ref RstSharedState
@@ -579,6 +587,25 @@ proc whichRoleAux(sym: string): RstNodeKind =
   else:  # unknown role
     result = rnUnknownRole
 
+proc len(filenames: RstFileTable): int = filenames.idxToFilename.len
+
+proc setCurrFilename(s: PRstSharedState, file1: string) =
+  let nextIdx = s.filenames.len.FileIndex
+  let v = getOrDefault(s.filenames.filenameToIdx, file1, default = nextIdx)
+  if v == nextIdx:
+    s.filenames.filenameToIdx[file1] = v
+    s.filenames.idxToFilename.add file1
+  s.currFileIdx = v
+
+proc getFilename(filenames: RstFileTable, fid: FileIndex): string =
+  doAssert(0 <= fid.int and fid.int < filenames.len,
+      "incorrect FileIndex $1 (range 0..$2)" % [
+        $fid.int, $(filenames.len - 1)])
+  result = filenames.idxToFilename[fid.int]
+
+proc currFilename(s: PRstSharedState): string =
+  getFilename(s.filenames, s.currFileIdx)
+
 proc newRstSharedState*(options: RstParseOptions,
                         filename: string,
                         findFile: FindFileHandler,
@@ -589,32 +616,37 @@ proc newRstSharedState*(options: RstParseOptions,
       currRoleKind: whichRoleAux(r),
       options: options,
       msgHandler: if not isNil(msgHandler): msgHandler else: defaultMsgHandler,
-      filename: filename,
       findFile: if not isNil(findFile): findFile else: defaultFindFile
   )
+  setCurrFilename(result, filename)
 
 proc curLine(p: RstParser): int = p.line + currentTok(p).line
 
 proc findRelativeFile(p: RstParser; filename: string): string =
-  result = p.s.filename.splitFile.dir / filename
+  result = p.s.currFilename.splitFile.dir / filename
   if not fileExists(result):
     result = p.s.findFile(filename)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
-  p.s.msgHandler(p.s.filename, curLine(p),
+  p.s.msgHandler(p.s.currFilename, curLine(p),
                              p.col + currentTok(p).col, msgKind, arg)
 
 proc rstMessage(s: PRstSharedState, msgKind: MsgKind, arg: string) =
-  ## Print warnings for footnotes/substitutions.
-  ## TODO: their line/column info is not known, to fix it.
-  s.msgHandler(s.filename, LineRstInit, ColRstInit, msgKind, arg)
+  s.msgHandler(s.currFilename, LineRstInit, ColRstInit, msgKind, arg)
+
+proc rstMessage*(filenames: RstFileTable, f: MsgHandler,
+                 info: TLineInfo, msgKind: MsgKind, arg: string) =
+  ## Print warnings using `info`, i.e. in 2nd-pass warnings for
+  ## footnotes/substitutions/references or from ``rstgen.nim``.
+  let file = getFilename(filenames, info.fileIndex)
+  f(file, info.line.int, info.col.int, msgKind, arg)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string, line, col: int) =
-  p.s.msgHandler(p.s.filename, p.line + line,
+  p.s.msgHandler(p.s.currFilename, p.line + line,
                              p.col + col, msgKind, arg)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind) =
-  p.s.msgHandler(p.s.filename, curLine(p),
+  p.s.msgHandler(p.s.currFilename, curLine(p),
                              p.col + currentTok(p).col, msgKind,
                              currentTok(p).symbol)
 
@@ -827,11 +859,18 @@ proc addFootnoteNumManual(p: var RstParser, num: int) =
       return
   p.s.footnotes.add((fnManualNumber, num, -1, -1, $num))
 
+proc lineInfo(p: RstParser, iTok: int): TLineInfo =
+  result.col = int16(p.col + p.tok[iTok].col)
+  result.line = uint16(p.line + p.tok[iTok].line)
+  result.fileIndex = p.s.currFileIdx
+
+proc lineInfo(p: RstParser): TLineInfo = lineInfo(p, p.idx)
+
 proc addFootnoteNumAuto(p: var RstParser, label: string) =
   ## add auto-numbered footnote.
   ## Empty label [#] means it'll be resolved by the occurrence.
   if label == "":  # simple auto-numbered [#]
-    p.s.lineFootnoteNum.add curLine(p)
+    p.s.lineFootnoteNum.add lineInfo(p)
     p.s.footnotes.add((fnAutoNumber, -1, p.s.lineFootnoteNum.len, -1, label))
   else:           # auto-numbered with label [#label]
     for fnote in p.s.footnotes:
@@ -841,7 +880,7 @@ proc addFootnoteNumAuto(p: var RstParser, label: string) =
     p.s.footnotes.add((fnAutoNumberLabel, -1, -1, -1, label))
 
 proc addFootnoteSymAuto(p: var RstParser) =
-  p.s.lineFootnoteSym.add curLine(p)
+  p.s.lineFootnoteSym.add lineInfo(p)
   p.s.footnotes.add((fnAutoSymbol, -1, -1, p.s.lineFootnoteSym.len, ""))
 
 proc orderFootnotes(s: PRstSharedState) =
@@ -850,7 +889,15 @@ proc orderFootnotes(s: PRstSharedState) =
   ## Save the result back to `s.footnotes`.
 
   # Report an error if found any mismatch in number of automatic footnotes
-  proc listFootnotes(lines: seq[int]): string =
+  proc listFootnotes(locations: seq[TLineInfo]): string =
+    var lines: seq[string]
+    for info in locations:
+      if s.filenames.len > 1:
+        let file = getFilename(s.filenames, info.fileIndex)
+        lines.add file & ":"
+      else:  # no need to add file name here if there is only 1
+        lines.add ""
+      lines[^1].add $info.line
     result.add $lines.len & " (lines " & join(lines, ", ") & ")"
   if s.lineFootnoteNum.len != s.lineFootnoteNumRef.len:
     rstMessage(s, meFootnoteMismatch,
@@ -1157,7 +1204,7 @@ proc whichRole(p: RstParser, sym: string): RstNodeKind =
 
 proc toInlineCode(n: PRstNode, language: string): PRstNode =
   ## Creates rnInlineCode and attaches `n` contents as code (in 3rd son).
-  result = newRstNode(rnInlineCode)
+  result = newRstNode(rnInlineCode, info=n.info)
   let args = newRstNode(rnDirArg)
   var lang = language
   if language == "cpp": lang = "c++"
@@ -1179,6 +1226,7 @@ proc toOtherRole(n: PRstNode, kind: RstNodeKind, roleName: string): PRstNode =
   result = newRstNode(kind, newSons)
 
 proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
+  ## Finalizes node `n` that was tentatively determined as interpreted text.
   var newKind = n.kind
   var newSons = n.sons
 
@@ -1207,12 +1255,10 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
         newKind = rnHyperlink
         newSons = @[a, b]
         setRef(p, rstnodeToRefname(a), b)
-    elif n.kind == rnInterpretedText:
+      result = newRstNode(newKind, newSons)
+    else:  # some link that will be resolved in `resolveSubs`
       newKind = rnRef
-    else:
-      newKind = rnRef
-      newSons = @[n]
-    result = newRstNode(newKind, newSons)
+      result = newRstNode(newKind, sons=newSons, info=n.info)
   elif match(p, p.idx, ":w:"):
     # a role:
     let (roleName, lastIdx) = getRefname(p, p.idx+1)
@@ -1300,20 +1346,19 @@ proc parseWordOrRef(p: var RstParser, father: PRstNode) =
   else:
     # check for reference (probably, long one like some.ref.with.dots_ )
     var saveIdx = p.idx
-    var isRef = false
+    var reference: PRstNode = nil
     inc p.idx
     while currentTok(p).kind in {tkWord, tkPunct}:
       if currentTok(p).kind == tkPunct:
         if isInlineMarkupEnd(p, "_", exact=true):
-          isRef = true
+          reference = newRstNode(rnRef, info=lineInfo(p, saveIdx))
           break
         if not validRefnamePunct(currentTok(p).symbol):
           break
       inc p.idx
-    if isRef:
-      let r = newRstNode(rnRef)
-      for i in saveIdx..p.idx-1: r.add newLeaf(p.tok[i].symbol)
-      father.add r
+    if reference != nil:
+      for i in saveIdx..p.idx-1: reference.add newLeaf(p.tok[i].symbol)
+      father.add reference
       inc p.idx  # skip final _
     else:  # 1 normal word
       father.add newLeaf(p.tok[saveIdx].symbol)
@@ -1387,6 +1432,8 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
     else: rstMessage(p, meExpected, postfix, line, col)
 
 proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
+  result = newRstNodeA(p, rnCodeBlock)
+  result.info = lineInfo(p)
   var args = newRstNode(rnDirArg)
   if currentTok(p).kind == tkWord:
     args.add(newLeaf(p))
@@ -1411,7 +1458,6 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
       inc p.idx
   var lb = newRstNode(rnLiteralBlock)
   lb.add(n)
-  result = newRstNodeA(p, rnCodeBlock)
   result.add(args)
   result.add(PRstNode(nil))
   result.add(lb)
@@ -1495,6 +1541,7 @@ proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
 
 proc parseInline(p: var RstParser, father: PRstNode) =
   var n: PRstNode  # to be used in `if` condition
+  let saveIdx = p.idx
   case currentTok(p).kind
   of tkPunct:
     if isInlineMarkupStart(p, "***"):
@@ -1537,12 +1584,12 @@ proc parseInline(p: var RstParser, father: PRstNode) =
         n = n.toOtherRole(k, roleName)
       father.add(n)
     elif isInlineMarkupStart(p, "`"):
-      var n = newRstNode(rnInterpretedText)
+      var n = newRstNode(rnInterpretedText, info=lineInfo(p, p.idx+1))
       parseUntil(p, n, "`", false) # bug #17260
       n = parsePostfix(p, n)
       father.add(n)
     elif isInlineMarkupStart(p, "|"):
-      var n = newRstNode(rnSubstitutionReferences)
+      var n = newRstNode(rnSubstitutionReferences, info=lineInfo(p, p.idx+1))
       parseUntil(p, n, "|", false)
       father.add(n)
     elif roSupportMarkdown in p.s.options and
@@ -1552,15 +1599,14 @@ proc parseInline(p: var RstParser, father: PRstNode) =
     elif isInlineMarkupStart(p, "[") and nextTok(p).symbol != "[" and
          (n = parseFootnoteName(p, reference=true); n != nil):
       var nn = newRstNode(rnFootnoteRef)
+      nn.info = lineInfo(p, saveIdx+1)
       nn.add n
       let (fnType, _) = getFootnoteType(n)
       case fnType
       of fnAutoSymbol:
-        p.s.lineFootnoteSymRef.add curLine(p)
-        nn.order = p.s.lineFootnoteSymRef.len
+        p.s.lineFootnoteSymRef.add lineInfo(p)
       of fnAutoNumber:
-        p.s.lineFootnoteNumRef.add curLine(p)
-        nn.order = p.s.lineFootnoteNumRef.len
+        p.s.lineFootnoteNumRef.add lineInfo(p)
       else: discard
       father.add(nn)
     else:
@@ -1693,7 +1739,7 @@ proc parseField(p: var RstParser): PRstNode =
   ## Returns a parsed rnField node.
   ##
   ## rnField nodes have two children nodes, a rnFieldName and a rnFieldBody.
-  result = newRstNode(rnField)
+  result = newRstNode(rnField, info=lineInfo(p))
   var col = currentTok(p).col
   var fieldname = newRstNode(rnFieldName)
   parseUntil(p, fieldname, ":", false)
@@ -2469,6 +2515,7 @@ proc parseDirective(p: var RstParser, k: RstNodeKind, flags: DirFlags): PRstNode
   ## Both rnDirArg and rnFieldList children nodes might be nil, so you need to
   ## check them before accessing.
   result = newRstNodeA(p, k)
+  if k == rnCodeBlock: result.info = lineInfo(p)
   var args: PRstNode = nil
   var options: PRstNode = nil
   if hasArg in flags:
@@ -2593,14 +2640,16 @@ proc dirInclude(p: var RstParser): PRstNode =
 
       var q: RstParser
       initParser(q, p.s)
-      q.s.filename = path
+      let saveFileIdx = p.s.currFileIdx
+      setCurrFilename(p.s, path)
       getTokens(
-        inputString[startPosition..endPosition].strip(),
+        inputString[startPosition..endPosition],
         q.tok)
       # workaround a GCC bug; more like the interior pointer bug?
       #if find(q.tok[high(q.tok)].symbol, "\0\x01\x02") > 0:
       #  InternalError("Too many binary zeros in include file")
       result = parseDoc(q)
+      p.s.currFileIdx = saveFileIdx
 
 proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
   ## Parses a code block.
@@ -2634,7 +2683,7 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
     if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
     assert result.sons[1].kind == rnFieldList
     # Hook the extra field and specify the Nim language as value.
-    var extraNode = newRstNode(rnField)
+    var extraNode = newRstNode(rnField, info=lineInfo(p))
     extraNode.add(newRstNode(rnFieldName))
     extraNode.add(newRstNode(rnFieldBody))
     extraNode.sons[0].add newLeaf("default-language")
@@ -2837,9 +2886,8 @@ proc parseDotDot(p: var RstParser): PRstNode =
   else:
     result = parseComment(p, col)
 
-proc rstParsePass1*(fragment, filename: string,
+proc rstParsePass1*(fragment: string,
                     line, column: int,
-                    options: RstParseOptions,
                     sharedState: PRstSharedState): PRstNode =
   ## Parses an RST `fragment`.
   ## The result should be further processed by
@@ -2872,7 +2920,8 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       var key = addNodes(n)
       var e = getEnv(key)
       if e != "": result = newLeaf(e)
-      else: rstMessage(s, mwUnknownSubstitution, key)
+      else: rstMessage(s.filenames, s.msgHandler, n.info,
+                       mwUnknownSubstitution, key)
   of rnHeadline, rnOverline:
     # fix up section levels depending on presence of a title and subtitle
     if s.hTitleCnt == 2:
@@ -2890,12 +2939,14 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       let text = newRstNode(rnInner, n.sons)
       result.sons = @[text, y]
     else:
-      let s = findMainAnchor(s, refn)
-      if s != "":
+      let anchor = findMainAnchor(s, refn)
+      if anchor != "":
         result = newRstNode(rnInternalRef)
         let text = newRstNode(rnInner, n.sons)
-        result.sons = @[text,        # visible text of reference
-                        newLeaf(s)]  # link itself
+        result.sons = @[text,             # visible text of reference
+                        newLeaf(anchor)]  # link itself
+      else:
+        rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, refn)
   of rnFootnote:
     var (fnType, num) = getFootnoteType(n.sons[0])
     case fnType
@@ -2922,20 +2973,22 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       result.add(nn)
     var refn = fnType.prefix
     # create new rnFootnoteRef, add final label, and finalize target refn:
-    result = newRstNode(rnFootnoteRef)
+    result = newRstNode(rnFootnoteRef, info = n.info)
     case fnType
     of fnManualNumber:
       addLabel num
       refn.add $num
     of fnAutoNumber:
-      addLabel getFootnoteNum(s, n.order)
-      refn.add $n.order
+      inc s.currFootnoteNumRef
+      addLabel getFootnoteNum(s, s.currFootnoteNumRef)
+      refn.add $s.currFootnoteNumRef
     of fnAutoNumberLabel:
       addLabel getFootnoteNum(s, rstnodeToRefname(n))
       refn.add rstnodeToRefname(n)
     of fnAutoSymbol:
-      addLabel getAutoSymbol(s, n.order)
-      refn.add $n.order
+      inc s.currFootnoteSymRef
+      addLabel getAutoSymbol(s, s.currFootnoteSymRef)
+      refn.add $s.currFootnoteSymRef
     of fnCitation:
       result.add n.sons[0]
       refn.add rstnodeToRefname(n)
@@ -2943,7 +2996,7 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
     if anch != "":
       result.add newLeaf(anch)     # add link
     else:
-      rstMessage(s, mwUnknownSubstitution, refn)
+      rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, refn)
       result.add newLeaf(refn)  # add link
   of rnLeaf:
     discard
@@ -2971,14 +3024,18 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       result.sons = newSons
 
 proc rstParse*(text, filename: string,
-               line, column: int, hasToc: var bool,
+               line, column: int,
                options: RstParseOptions,
                findFile: FindFileHandler = nil,
-               msgHandler: MsgHandler = nil): PRstNode =
-  ## Parses the whole `text`. The result is ready for `rstgen.renderRstToOut`.
+               msgHandler: MsgHandler = nil):
+              tuple[node: PRstNode, filenames: RstFileTable, hasToc: bool] =
+  ## Parses the whole `text`. The result is ready for `rstgen.renderRstToOut`,
+  ## note that 2nd tuple element should be fed to `initRstGenerator`
+  ## argument `filenames` (it is being filled here at least with `filename`
+  ## and possibly with other files from RST ``.. include::`` statement).
   var sharedState = newRstSharedState(options, filename, findFile, msgHandler)
-  let unresolved = rstParsePass1(text, filename, line, column,
-                                 options, sharedState)
+  let unresolved = rstParsePass1(text, line, column, sharedState)
   preparePass2(sharedState, unresolved)
-  result = resolveSubs(sharedState, unresolved)
-  hasToc = sharedState.hasToc
+  result.node = resolveSubs(sharedState, unresolved)
+  result.filenames = sharedState.filenames
+  result.hasToc = sharedState.hasToc

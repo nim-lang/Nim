@@ -70,6 +70,14 @@ SmallLshouldNotBeUsed            The letter 'l' should not be used as an
                                  identifier.
 EachIdentIsTuple                 The code contains a confusing `var`
                                  declaration.
+CStringConv                      Warn about dangerous implicit conversions
+                                 to `cstring`.
+EnumConv                         Warn about conversions from enum to enum.
+AnyEnumConv                      Warn about any conversions to an enum type.
+HoleEnumConv                     Warn about conversion to an enum with
+                                 holes. These conversions are unsafe.
+ResultUsed                       Warn about the usage of the
+                                 built-in `result` variable.
 User                             Some user-defined warning.
 ==========================       ============================================
 

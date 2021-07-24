@@ -39,7 +39,10 @@ when not declared(signbit):
   proc signbit*(x: SomeFloat): bool {.inline.} =
     result = c_signbit(x) != 0
 
-proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
+import system/formatfloat
+
+proc toStrMaxPrecision*(f: BiggestFloat | float32): string =
+  const literalPostfix = when f is float32: "f" else: ""
   case classify(f)
   of fcNan:
     if signbit(f):
@@ -55,9 +58,8 @@ proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
   of fcNegInf:
     result = "-INF"
   else:
-    result = newString(81)
-    let n = c_snprintf(result.cstring, result.len.uint, "%#.16e%s", f, literalPostfix.cstring)
-    setLen(result, n)
+    result.addFloatRoundtrip(f)
+    result.add literalPostfix
 
 proc encodeStr*(s: string, result: var string) =
   for i in 0..<s.len:

@@ -695,6 +695,16 @@ proc setDefaultLibpath*(conf: ConfigRef) =
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   result = AbsoluteFile path.string.expandFilename
 
+proc setFromProjectName*(conf: ConfigRef; projectName: string) =
+  try:
+    conf.projectFull = canonicalizePath(conf, AbsoluteFile projectName)
+  except OSError:
+    conf.projectFull = AbsoluteFile projectName
+  let p = splitFile(conf.projectFull)
+  let dir = if p.dir.isEmpty: AbsoluteDir getCurrentDir() else: p.dir
+  conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
+  conf.projectName = p.name
+
 proc removeTrailingDirSep*(path: string): string =
   if (path.len > 0) and (path[^1] == DirSep):
     result = substr(path, 0, path.len - 2)

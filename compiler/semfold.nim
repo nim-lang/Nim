@@ -290,7 +290,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
   of mBoolToStr:
     if getOrdValue(a) == 0: result = newStrNodeT("false", n, g)
     else: result = newStrNodeT("true", n, g)
-  of mFloatToStr: result = newStrNodeT($getFloat(a), n, g)
   of mCStrToStr, mCharToStr:
     if a.kind == nkBracket:
       var s = ""

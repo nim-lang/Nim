@@ -511,15 +511,14 @@ proc `..`*[T, U](a: sink T, b: sink U): HSlice[T, U] {.noSideEffect, inline, mag
   ##   echo a[2 .. 3] # @[30, 40]
   result = HSlice[T, U](a: a, b: b)
 
-when defined(nimLegacyUnarySlice):
-  proc `..`*[T](b: sink T): HSlice[int, T]
-    {.noSideEffect, inline, magic: "DotDot", deprecated: "replace `..b` with `0..b`".} =
-    ## Unary `slice`:idx: operator that constructs an interval `[default(int), b]`.
-    ##
-    ## .. code-block:: Nim
-    ##   let a = [10, 20, 30, 40, 50]
-    ##   echo a[.. 2] # @[10, 20, 30]
-    result = HSlice[int, T](a: 0, b: b)
+proc `..`*[T](b: sink T): HSlice[int, T]
+  {.noSideEffect, inline, magic: "DotDot", deprecated: "replace `..b` with `0..b`".} =
+  ## Unary `slice`:idx: operator that constructs an interval `[default(int), b]`.
+  ##
+  ## .. code-block:: Nim
+  ##   let a = [10, 20, 30, 40, 50]
+  ##   echo a[.. 2] # @[10, 20, 30]
+  result = HSlice[int, T](a: 0, b: b)
 
 when defined(hotCodeReloading):
   {.pragma: hcrInline, inline.}
@@ -536,7 +535,7 @@ include "system/arithmetics"
 include "system/comparisons"
 
 const
-  appType* {.magic: "AppType"}: string = ""
+  appType* {.magic: "AppType".}: string = ""
     ## A string that describes the application type. Possible values:
     ## `"console"`, `"gui"`, `"lib"`.
 
@@ -1101,15 +1100,15 @@ const
     ## True only when accessed in the main module. This works thanks to
     ## compiler magic. It is useful to embed testing code in a module.
 
-  CompileDate* {.magic: "CompileDate"}: string = "0000-00-00"
+  CompileDate* {.magic: "CompileDate".}: string = "0000-00-00"
     ## The date (in UTC) of compilation as a string of the form
     ## `YYYY-MM-DD`. This works thanks to compiler magic.
 
-  CompileTime* {.magic: "CompileTime"}: string = "00:00:00"
+  CompileTime* {.magic: "CompileTime".}: string = "00:00:00"
     ## The time (in UTC) of compilation as a string of the form
     ## `HH:MM:SS`. This works thanks to compiler magic.
 
-  cpuEndian* {.magic: "CpuEndian"}: Endianness = littleEndian
+  cpuEndian* {.magic: "CpuEndian".}: Endianness = littleEndian
     ## The endianness of the target CPU. This is a valuable piece of
     ## information for low-level code only. This works thanks to compiler
     ## magic.
@@ -2470,9 +2469,6 @@ when defined(js):
 
 when defined(js) or defined(nimscript):
   proc addInt*(result: var string; x: int64) =
-    result.add $x
-
-  proc addFloat*(result: var string; x: float) =
     result.add $x
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =

@@ -647,7 +647,7 @@ when defineSsl:
       if verifyMode != CVerifyNone:
         # Use the caDir and caFile parameters if set
         if caDir != "" or caFile != "":
-          if newCTX.SSL_CTX_load_verify_locations(caFile, caDir) != VerifySuccess:
+          if newCTX.SSL_CTX_load_verify_locations(if caFile == "": nil else: caFile.cstring, if caDir == "": nil else: caDir.cstring) != VerifySuccess:
             raise newException(IOError, "Failed to load SSL/TLS CA certificate(s).")
 
         else:

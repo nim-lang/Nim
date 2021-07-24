@@ -512,7 +512,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     var def: PNode = c.graph.emptyNode
     if a[^1].kind != nkEmpty:
-      def = semExprWithType(c, a[^1], {efAllowDestructor})
+      def = semExprWithType(c, a[^1], {})
 
       if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro

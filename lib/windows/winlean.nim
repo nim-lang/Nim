@@ -1143,7 +1143,7 @@ proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
 type
   # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid_identifier_authority
   SID_IDENTIFIER_AUTHORITY* {.importc, header: "<windows.h>".} = object
-    value* {.importc: "Value"}: array[6, BYTE]
+    value* {.importc: "Value".}: array[6, BYTE]
   # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid
   SID* {.importc, header: "<windows.h>".} = object
     Revision: BYTE
