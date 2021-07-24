@@ -80,6 +80,20 @@ proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, 
       cmdLine.add quoteShell(args[i])
     result = osproc.execCmdEx(cmdLine)
 
+proc cloneUrl(c: var AtlasContext; url, dest: string; cloneUsingHttps: bool): string =
+  when MockupRun:
+    discard
+  else:
+    result = osutils.cloneUrl(url, dest, cloneUsingHttps)
+
+template withDir*(c: var AtlasContext; dir: string; body: untyped) =
+  let oldDir = getCurrentDir()
+  try:
+    setCurrentDir(dir)
+    body
+  finally:
+    setCurrentDir(oldDir)
+
 proc toDepRelation(s: string): DepRelation =
   case s
   of "<": strictlyLess
@@ -160,11 +174,11 @@ proc gitPull(c: var AtlasContext; p: PackageName) =
 
 proc updatePackages(c: var AtlasContext) =
   if dirExists(c.workspace / PackagesDir):
-    withDir(c.workspace / PackagesDir):
+    withDir(c, c.workspace / PackagesDir):
       gitPull(c, PackageName PackagesDir)
   else:
-    withDir c.workspace:
-      let err = cloneUrl("https://github.com/nim-lang/packages", PackagesDir, false)
+    withDir c, c.workspace:
+      let err = cloneUrl(c, "https://github.com/nim-lang/packages", PackagesDir, false)
       if err != "":
         error c, PackageName(PackagesDir), err
 
@@ -199,7 +213,7 @@ proc isShortCommitHash(commit: string): bool {.inline.} =
 
 proc checkoutCommit(c: var AtlasContext; w: Dependency) =
   let dir = c.workspace / w.name.string
-  withDir dir:
+  withDir c, dir:
     if w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
       gitPull(c, w.name)
     else:
@@ -300,8 +314,8 @@ proc clone(c: var AtlasContext; start: string): seq[string] =
     let w = work[i]
     let oldErrors = c.errors
     if not dirExists(c.workspace / w.name.string):
-      withDir c.workspace:
-        let err = cloneUrl(w.url, w.name.string, false)
+      withDir c, c.workspace:
+        let err = cloneUrl(c, w.url, w.name.string, false)
         if err != "":
           error c, w.name, err
     if oldErrors == c.errors:

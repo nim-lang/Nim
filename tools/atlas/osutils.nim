@@ -3,14 +3,6 @@
 
 import os, strutils, osproc
 
-template withDir*(dir, body) =
-  let oldDir = getCurrentDir()
-  try:
-    setCurrentDir(dir)
-    body
-  finally:
-    setCurrentDir(oldDir)
-
 proc isUrl*(x: string): bool =
   x.startsWith("git://") or x.startsWith("https://") or x.startsWith("http://")
 
