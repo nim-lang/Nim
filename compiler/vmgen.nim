@@ -2254,8 +2254,16 @@ proc optimizeJumps(c: PCtx; start: int) =
     else: discard
 
 proc genProc(c: PCtx; s: PSym): int =
-  let pos = c.procToCodePos.getOrDefault(s.id)
-  if pos == 0:
+  let
+    pos = c.procToCodePos.getOrDefault(s.id)
+    wasNotGenProcBefore = pos == 0
+    noRegistersAllocated = s.offset == -1
+  if wasNotGenProcBefore or noRegistersAllocated:
+    # xxx: the noRegisterAllocated check is required in order to avoid issues
+    #      where nimsuggest can crash due as a macro with pos will be loaded
+    #      but it doesn't have offsets for register allocations see:
+    #      https://github.com/nim-lang/Nim/issues/18385
+    #      Improvements and further use of IC should remove the need for this.
     #if s.name.s == "outterMacro" or s.name.s == "innerProc":
     #  echo "GENERATING CODE FOR ", s.name.s
     let last = c.code.len-1
