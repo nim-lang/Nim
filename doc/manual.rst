@@ -6190,6 +6190,7 @@ There are two pseudo directories:
    its semantics are: *Use the search path to look for module name but ignore the standard
    library locations*. In other words, it is the opposite of `std`.
 
+It is recommended and preferred but not currently enforced that all imports include a "pseudo directorY" to qualify the search path in order to guaranty the correct search path to the desired module.
 
 From import statement
 ---------------------
