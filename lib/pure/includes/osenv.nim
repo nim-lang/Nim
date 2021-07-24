@@ -94,21 +94,18 @@ else:
     ## * `existsEnv proc <#existsEnv,string>`_
     ## * `delEnv proc <#delEnv,string>`_
     ## * `envPairs iterator <#envPairs.i>`_
+    template bail = raiseOSError(osLastError(), $(key, val))
     when defined(windows):
       when useWinUnicode:
         let k = newWideCString(key)
         let v = newWideCString(val)
-        if setEnvironmentVariableW(k, v) == 0'i32: 
-          raiseOSError(osLastError(), $(key, val))
+        if setEnvironmentVariableW(k, v) == 0'i32: bail
       else:
-        if setEnvironmentVariableA(key, val) == 0'i32:
-          raiseOSError(osLastError(), $(key, val))
+        if setEnvironmentVariableA(key, val) == 0'i32: bail
     elif defined(vcc):
-      if c_putenv_s(key, val) != 0'i32:
-        raiseOSError(osLastError(), $(key, val))
+      if c_putenv_s(key, val) != 0'i32: bail
     else:
-      if c_setenv(key, val, 1'i32) != 0'i32:
-        raiseOSError(osLastError(), $(key, val))
+      if c_setenv(key, val, 1'i32) != 0'i32: bail
 
   proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
     ## Deletes the `environment variable`:idx: named `key`.
@@ -119,17 +116,15 @@ else:
     ## * `existsEnv proc <#existsEnv,string>`_
     ## * `putEnv proc <#putEnv,string,string>`_
     ## * `envPairs iterator <#envPairs.i>`_
+    template bail = raiseOSError(osLastError(), $key)
     when defined(windows):
       when useWinUnicode:
         let k = newWideCString(key)
-        if setEnvironmentVariableW(k, nil) == 0'i32:
-          raiseOSError(osLastError(), $key)
+        if setEnvironmentVariableW(k, nil) == 0'i32: bail
       else:
-        if setEnvironmentVariableA(key, nil) == 0'i32:
-          raiseOSError(osLastError(), $key)
+        if setEnvironmentVariableA(key, nil) == 0'i32: bail
     else:
-      if c_unsetenv(key) != 0'i32:
-        raiseOSError(osLastError(), $key)
+      if c_unsetenv(key) != 0'i32: bail
 
   when defined(windows):
     when useWinUnicode:
