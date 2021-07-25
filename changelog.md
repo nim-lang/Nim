@@ -361,6 +361,9 @@
 - Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
   if the slice is out of bounds, likewise with `strutils.delete`.
 
+- Deprecated `sequtils.mapLiterals`, see https://github.com/nim-lang/Nim/pull/18577
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
