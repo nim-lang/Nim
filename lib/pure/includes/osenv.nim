@@ -45,6 +45,7 @@ else:
     importc: "getenv", header: "<stdlib.h>".}
   when defined(windows):
     proc c_putenv_s(envname: cstring, envval: cstring): cint {.importc: "_putenv_s", header: "<stdlib.h>".}
+    from std/private/win_setenv import setEnvImpl
   else:
     proc c_setenv(envname: cstring, envval: cstring, overwrite: cint): cint {.importc: "setenv", header: "<stdlib.h>".}
   proc c_unsetenv(env: cstring): cint {.importc: "unsetenv", header: "<stdlib.h>".}
@@ -83,8 +84,7 @@ else:
 
     return c_getenv(key) != nil
 
-  proc putEnv*(key, val: string) {.tags: [
-      WriteEnvEffect].} =
+  proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
     ## Sets the value of the `environment variable`:idx: named `key` to `val`.
     ## If an error occurs, `OSError` is raised.
     ##
@@ -93,11 +93,14 @@ else:
     ## * `existsEnv proc <#existsEnv,string>`_
     ## * `delEnv proc <#delEnv,string>`_
     ## * `envPairs iterator <#envPairs.i>`_
-    template bail = raiseOSError(osLastError(), $(key, val))
     when defined(windows):
-      if c_putenv_s(key, val) != 0'i32: bail
+      if key.len == 0 or '=' in key:
+        raise newException(OSError, "invalid key, got: " & $(key, val))
+      if setEnvImpl(key, val, 1'i32) != 0'i32:
+        raiseOSError(osLastError(), $(key, val))
     else:
-      if c_setenv(key, val, 1'i32) != 0'i32: bail
+      if c_setenv(key, val, 1'i32) != 0'i32:
+        raiseOSError(osLastError(), $(key, val))
 
   proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
     ## Deletes the `environment variable`:idx: named `key`.
@@ -115,6 +118,8 @@ else:
       > You can remove a variable from the environment by specifying an empty string (that is, "") for value_string
       note that nil is not legal
       ]#
+      if key.len == 0 or '=' in key:
+        raise newException(OSError, "invalid key, got: " & key)
       if c_putenv_s(key, "") != 0'i32: bail
     else:
       if c_unsetenv(key) != 0'i32: bail
