@@ -99,13 +99,16 @@ proc add(dest: var ItemPre, str: string) = dest.add ItemFragment(isRst: false, s
 
 proc cmpDecimalsIgnoreCase(a, b: string): int =
   ## For sorting with correct handling of cases like 'uint8' and 'uint16'.
-  ## Also handles leading zeroes well.
+  ## Also handles leading zeros well (however note that leading zeros are
+  ## significant when lengths of numbers mismatch, e.g. 'bar08' > 'bar8' !).
   runnableExamples:
     doAssert cmpDecimalsIgnoreCase("uint8", "uint16") < 0
     doAssert cmpDecimalsIgnoreCase("val00032", "val16suffix") > 0
     doAssert cmpDecimalsIgnoreCase("val16suffix", "val16") > 0
     doAssert cmpDecimalsIgnoreCase("val_08_32", "val_08_8") > 0
     doAssert cmpDecimalsIgnoreCase("val_07_32", "val_08_8") < 0
+    doAssert cmpDecimalsIgnoreCase("ab8", "ab08") < 0
+    doAssert cmpDecimalsIgnoreCase("ab8de", "ab08c") < 0 # sanity check
   let aLen = a.len
   let bLen = b.len
   var
@@ -114,7 +117,7 @@ proc cmpDecimalsIgnoreCase(a, b: string): int =
   while iA < aLen and iB < bLen:
     if isDigit(a[iA]) and isDigit(b[iB]):
       var
-        limitA = iA
+        limitA = iA  # index after the last (least significant) digit
         limitB = iB
       while limitA < aLen and isDigit(a[limitA]): inc limitA
       while limitB < bLen and isDigit(b[limitB]): inc limitB
@@ -128,6 +131,8 @@ proc cmpDecimalsIgnoreCase(a, b: string): int =
           result = ord(a[limitA-pos]) - ord(b[limitB-pos])
         if result != 0: return
         dec pos
+      result = (limitA - iA) - (limitB - iB)  # consider 'bar08' > 'bar8'
+      if result != 0: return
       iA = limitA
       iB = limitB
     else:
