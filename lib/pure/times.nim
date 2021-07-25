@@ -1350,13 +1350,13 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
     hour: hour,
     minute: minute,
     second: second,
-    nanosecond: nanosecond
+    nanosecond: nanosecond,
   )
   result = initDateTime(zone.zonedTimeFromAdjTime(dt.toAdjTime), zone)
 
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   zone: Timezone = local()): DateTime =
+                   zone: Timezone = local()): DateTime {.deprecated: "use the other `initDateTime` instead".} =
   ## Create a new `DateTime <#DateTime>`_ in the specified timezone.
   runnableExamples:
     let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
