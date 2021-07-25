@@ -916,6 +916,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   let
     plainNameEsc = esc(d.target, plainName.strip)
     uniqueName = if k in routineKinds: plainNameEsc else: name
+    sortName = if k in routineKinds: plainName.strip else: name
     cleanPlainSymbol = renderPlainSymbolName(nameNode)
     complexSymbol = complexName(k, n, cleanPlainSymbol)
     plainSymbolEnc = encodeUrl(cleanPlainSymbol)
@@ -930,7 +931,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
 
   d.section[k].secItems.add Item(
     descRst: comm,
-    sortName: plainNameEsc,
+    sortName: sortName,
     substitutions: @[
      "name", name, "uniqueName", uniqueName,
      "header", result, "itemID", $d.id,
@@ -956,13 +957,13 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
         xmltree.escape(getPlainDocstring(e).docstringSummary))
 
   d.tocSimple[k].add TocItem(
-    sortName: plainNameEsc,
+    sortName: sortName,
     content: getConfigVar(d.conf, "doc.item.toc") % [
       "name", name, "header_plain", plainNameEsc,
       "itemSymOrIDEnc", symbolOrIdEnc])
 
   d.tocTable[k].mgetOrPut(cleanPlainSymbol, newSeq[TocItem]()).add TocItem(
-    sortName: plainNameEsc,
+    sortName: sortName,
     content: getConfigVar(d.conf, "doc.item.tocTable") % [
       "name", name, "header_plain", plainNameEsc,
       "itemSymOrID", symbolOrId.replace(",", ",<wbr>"),
