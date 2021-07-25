@@ -1098,6 +1098,8 @@ macro mapLiterals*(constructor, op: untyped;
     let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
     assert x is array[4, int]
     assert x == [int(0.1), int(1.2), int(2.3), int(3.4)]
+    # op applies to atomic literals only
+    assert mapLiterals((-0.9, 'X', -Inf, true, {9.0}, [9.0], @[9.0]), int) == (0, 88, -Inf, true, {9}, [9], @[9])
   ## If `nested` is true (which is the default), the literals are replaced
   ## everywhere in the `constructor` AST, otherwise only the first level
   ## is considered:
