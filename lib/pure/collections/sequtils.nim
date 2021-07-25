@@ -1115,8 +1115,6 @@ macro mapLiterals*(constructor, op: untyped;
     assert d == ("1", (2, 3), "4", (5, 6))
   ## There are no constraints for the `constructor` AST, it
   ## works for nested tuples of arrays of sets etc.
-  ##
-  ## .. warning:: Deprecated; See https://github.com/nim-lang/Nim/pull/18577
   result = mapLitsImpl(constructor, op, nested.boolVal)
 
 iterator items*[T](xs: iterator: T): T =
