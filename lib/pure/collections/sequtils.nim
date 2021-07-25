@@ -1090,7 +1090,7 @@ func mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
         result.add v
 
 macro mapLiterals*(constructor, op: untyped;
-                   nested = true): untyped =
+                   nested = true): untyped {.deprecated.} =
   ## Applies `op` to each of the **atomic** literals like `3`
   ## or `"abc"` in the specified `constructor` AST. This can
   ## be used to map every array element to some target type:
@@ -1098,8 +1098,6 @@ macro mapLiterals*(constructor, op: untyped;
     let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
     assert x is array[4, int]
     assert x == [int(0.1), int(1.2), int(2.3), int(3.4)]
-    ## op applies to atomic literals only
-    assert mapLiterals((-0.9, 'X', -Inf, true, {9.0}, [9.0], @[9.0]), int) == (0, 88, -Inf, true, {9}, [9], @[9])
   ## If `nested` is true (which is the default), the literals are replaced
   ## everywhere in the `constructor` AST, otherwise only the first level
   ## is considered:
@@ -1115,6 +1113,8 @@ macro mapLiterals*(constructor, op: untyped;
     assert d == ("1", (2, 3), "4", (5, 6))
   ## There are no constraints for the `constructor` AST, it
   ## works for nested tuples of arrays of sets etc.
+  ##
+  ## .. warning:: Deprecated; See https://github.com/nim-lang/Nim/pull/18577
   result = mapLitsImpl(constructor, op, nested.boolVal)
 
 iterator items*[T](xs: iterator: T): T =
