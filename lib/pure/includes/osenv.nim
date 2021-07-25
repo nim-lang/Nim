@@ -43,7 +43,7 @@ else:
 
   proc c_getenv(env: cstring): cstring {.
     importc: "getenv", header: "<stdlib.h>".}
-  when defined(vcc):
+  when defined(windows):
     proc c_putenv_s(envname: cstring, envval: cstring): cint {.importc: "_putenv_s", header: "<stdlib.h>".}
   else:
     proc c_setenv(envname: cstring, envval: cstring, overwrite: cint): cint {.importc: "setenv", header: "<stdlib.h>".}
@@ -95,13 +95,6 @@ else:
     ## * `envPairs iterator <#envPairs.i>`_
     template bail = raiseOSError(osLastError(), $(key, val))
     when defined(windows):
-      when useWinUnicode:
-        let k = newWideCString(key)
-        let v = newWideCString(val)
-        if setEnvironmentVariableW(k, v) == 0'i32: bail
-      else:
-        if setEnvironmentVariableA(key, val) == 0'i32: bail
-    elif defined(vcc):
       if c_putenv_s(key, val) != 0'i32: bail
     else:
       if c_setenv(key, val, 1'i32) != 0'i32: bail
@@ -117,11 +110,7 @@ else:
     ## * `envPairs iterator <#envPairs.i>`_
     template bail = raiseOSError(osLastError(), key)
     when defined(windows):
-      when useWinUnicode:
-        let k = newWideCString(key)
-        if setEnvironmentVariableW(k, nil) == 0'i32: bail
-      else:
-        if setEnvironmentVariableA(key, nil) == 0'i32: bail
+      if c_putenv_s(key, nil) != 0'i32: bail
     else:
       if c_unsetenv(key) != 0'i32: bail
 
