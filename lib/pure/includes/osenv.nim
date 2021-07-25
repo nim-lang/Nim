@@ -110,7 +110,12 @@ else:
     ## * `envPairs iterator <#envPairs.i>`_
     template bail = raiseOSError(osLastError(), key)
     when defined(windows):
-      if c_putenv_s(key, nil) != 0'i32: bail
+      #[ 
+      # https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/putenv-s-wputenv-s?view=msvc-160
+      > You can remove a variable from the environment by specifying an empty string (that is, "") for value_string
+      note that nil is not legal
+      ]#
+      if c_putenv_s(key, "") != 0'i32: bail
     else:
       if c_unsetenv(key) != 0'i32: bail
 
