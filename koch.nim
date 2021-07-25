@@ -596,7 +596,7 @@ proc runCI(cmd: string) =
       # xxx we could also skip building nimsuggest in buildTools, or build it with -d:release
       # in bundleNimsuggest depending on some environment variable when we are in CI. One advantage
       # of rebuilding is this won't affect bin/nimsuggest when running runCI locally
-      execFold("Run nimsuggest tests", "nim c -o:bin/nimsuggest_testing -d:release nimsuggest/tester")
+      execFold("Run nimsuggest tests", "nim c -o:bin/nimsuggest_testing -d:danger nimsuggest/tester") # PRTEMP
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
     execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
