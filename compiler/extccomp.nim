@@ -667,7 +667,6 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                 objfiles: string, isDllBuild: bool): string =
   if optGenStaticLib in conf.globalOptions:
-    removeFile output # fixes: bug #16947
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(output),
                                             "objfiles", objfiles]
   else:
@@ -752,6 +751,10 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
 
 template getLinkCmd(conf: ConfigRef; output: AbsoluteFile, objfiles: string): string =
   getLinkCmd(conf, output, objfiles, optGenDynLib in conf.globalOptions)
+
+template removeStaticlibIfExists(output: AbsoluteFile) =
+  if optGenStaticLib in conf.globalOptions:
+    removeFile output # fixes: bug #16947
 
 template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped) =
   try:
@@ -891,6 +894,7 @@ proc callCCompiler*(conf: ConfigRef) =
         let objFile = conf.getObjFilePath(x)
         let buildDll = idx != mainFileIdx
         let linkTarget = conf.hcrLinkTargetName(objFile, not buildDll)
+        removeStaticlibIfExists(linkTarget)
         cmds.add(getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll))
         # try to remove all .pdb files for the current binary so they don't accumulate endlessly in the nimcache
         # for more info check the comment inside of getLinkCmd() where the /PDB:<filename> MSVC flag is used
@@ -914,6 +918,8 @@ proc callCCompiler*(conf: ConfigRef) =
         objfiles.add(quoteShell(objFile))
       let mainOutput = if optGenScript notin conf.globalOptions: conf.prepareToWriteOutput
                        else: AbsoluteFile(conf.projectName)
+
+      removeStaticlibIfExists(mainOutput)
       linkCmd = getLinkCmd(conf, mainOutput, objfiles)
       extraCmds = getExtraCmds(conf, mainOutput)
       if optCompileOnly notin conf.globalOptions:
