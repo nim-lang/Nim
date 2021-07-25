@@ -23,7 +23,7 @@ import std/compilesettings
 
 proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
-  let nimsug = "bin" / addFileExt("nimsuggest", ExeExt)
+  let nimsug = "bin" / addFileExt("nimsuggest_testing", ExeExt)
   doAssert nimsug.fileExists, nimsug
   const libpath = querySetting(libPath)
   result.filename = filename
