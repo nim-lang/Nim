@@ -558,9 +558,9 @@ block ospaths:
   doAssert joinPath("foo","abc") == unixToNativePath"foo/abc"
   doAssert joinPath("","abc") == unixToNativePath"abc"
 
-  doAssert joinPath("gook/.","abc") == unixToNativePath"gook/abc"
+  doAssert joinPath("zook/.","abc") == unixToNativePath"zook/abc"
 
-  # controversial: inconsistent with `joinPath("gook/.","abc")`
+  # controversial: inconsistent with `joinPath("zook/.","abc")`
   # on linux, `./foo` and `foo` are treated a bit differently for executables
   # but not `./foo/bar` and `foo/bar`
   doAssert joinPath(".", "/lib") == unixToNativePath"./lib"
