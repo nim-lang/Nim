@@ -6,6 +6,7 @@
 # `nim r nimsuggest/tester.nim nimsuggest/tests/tsug_accquote.nim`
 
 import os, osproc, strutils, streams, re, sexp, net
+from sequtils import toSeq
 
 type
   Test = object
@@ -336,8 +337,9 @@ proc main() =
     failures += runTest(xx)
     failures += runEpcTest(xx)
   else:
-    for x in walkFiles(tpath / "t*.nim"):
-      echo "Test ", x
+    let files = toSeq(walkFiles(tpath / "t*.nim"))
+    for i, x in files:
+      echo ("Test ", x, i, files.len)
       when defined(i386):
         if x == "nimsuggest/tests/tmacro_highlight.nim":
           echo "skipping" # workaround bug #17945
