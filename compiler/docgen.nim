@@ -11,7 +11,7 @@
 # by knowing how the anchors are going to be named.
 
 import
-  ast, strutils, strtabs, options, msgs, os, idents,
+  ast, strutils, strtabs, algorithm, sequtils, options, msgs, os, idents,
   wordrecg, syntaxes, renderer, lexer,
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, trees, types,
@@ -43,11 +43,15 @@ type
     descRst: ItemPre     ## Description of the item (may contain
                          ## runnableExamples).
     substitutions: seq[string]    ## Variable names in `doc.item`...
+    sortName: string    ## The string used for sorting in output
   ModSection = object  ## Section like Procs, Types, etc.
     secItems: seq[Item]  ## Pre-processed items.
     finalMarkup: string  ## The items, after RST pass 2 and rendering.
   ModSections = array[TSymKind, ModSection]
-  TSections = array[TSymKind, string]
+  TocItem = object  ## HTML TOC item
+    content: string
+    sortName: string
+  TocSectionsFinal = array[TSymKind, string]
   ExampleGroup = ref object
     ## a group of runnableExamples with same rdoccmd
     rdoccmd: string ## from 1st arg in `runnableExamples(rdoccmd): body`
@@ -64,8 +68,13 @@ type
     module: PSym
     modDeprecationMsg: string
     section: ModSections     # entries of ``.nim`` file (for `proc`s, etc)
-    toc, toc2: TSections     # toc2 - grouped TOC
-    tocTable: array[TSymKind, Table[string, string]]
+    tocSimple: array[TSymKind, seq[TocItem]]
+      # TOC entries for non-overloadable symbols (e.g. types, constants)...
+    tocTable:  array[TSymKind, Table[string, seq[TocItem]]]
+      # ...otherwise (e.g. procs)
+    toc2: TocSectionsFinal  # TOC `content`, which is probably wrapped
+                            # in `doc.section.toc2`
+    toc: TocSectionsFinal  # final TOC (wrapped in `doc.section.toc`)
     indexValFilename: string
     analytics: string  # Google Analytics javascript, "" if doesn't exist
     seenSymbols: StringTableRef # avoids duplicate symbol generation for HTML.
@@ -87,6 +96,51 @@ type
 
 proc add(dest: var ItemPre, rst: PRstNode) = dest.add ItemFragment(isRst: true, rst: rst)
 proc add(dest: var ItemPre, str: string) = dest.add ItemFragment(isRst: false, str: str)
+
+proc cmpDecimalsIgnoreCase(a, b: string): int =
+  ## For sorting with correct handling of cases like 'uint8' and 'uint16'.
+  ## Also handles leading zeros well (however note that leading zeros are
+  ## significant when lengths of numbers mismatch, e.g. 'bar08' > 'bar8' !).
+  runnableExamples:
+    doAssert cmpDecimalsIgnoreCase("uint8", "uint16") < 0
+    doAssert cmpDecimalsIgnoreCase("val00032", "val16suffix") > 0
+    doAssert cmpDecimalsIgnoreCase("val16suffix", "val16") > 0
+    doAssert cmpDecimalsIgnoreCase("val_08_32", "val_08_8") > 0
+    doAssert cmpDecimalsIgnoreCase("val_07_32", "val_08_8") < 0
+    doAssert cmpDecimalsIgnoreCase("ab8", "ab08") < 0
+    doAssert cmpDecimalsIgnoreCase("ab8de", "ab08c") < 0 # sanity check
+  let aLen = a.len
+  let bLen = b.len
+  var
+    iA = 0
+    iB = 0
+  while iA < aLen and iB < bLen:
+    if isDigit(a[iA]) and isDigit(b[iB]):
+      var
+        limitA = iA  # index after the last (least significant) digit
+        limitB = iB
+      while limitA < aLen and isDigit(a[limitA]): inc limitA
+      while limitB < bLen and isDigit(b[limitB]): inc limitB
+      var pos = max(limitA-iA, limitB-iA)
+      while pos > 0:
+        if limitA-pos < iA:  # digit in `a` is 0 effectively
+          result = ord('0') - ord(b[limitB-pos])
+        elif limitB-pos < iB:  # digit in `b` is 0 effectively
+          result = ord(a[limitA-pos]) - ord('0')
+        else:
+          result = ord(a[limitA-pos]) - ord(b[limitB-pos])
+        if result != 0: return
+        dec pos
+      result = (limitA - iA) - (limitB - iB)  # consider 'bar08' > 'bar8'
+      if result != 0: return
+      iA = limitA
+      iB = limitB
+    else:
+      result = ord(toLowerAscii(a[iA])) - ord(toLowerAscii(b[iB]))
+      if result != 0: return
+      inc iA
+      inc iB
+  result = (aLen - iA) - (bLen - iB)
 
 proc prettyString(a: object): string =
   # xxx pending std/prettyprint refs https://github.com/nim-lang/RFCs/issues/203#issuecomment-602534906
@@ -862,6 +916,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   let
     plainNameEsc = esc(d.target, plainName.strip)
     uniqueName = if k in routineKinds: plainNameEsc else: name
+    sortName = if k in routineKinds: plainName.strip else: name
     cleanPlainSymbol = renderPlainSymbolName(nameNode)
     complexSymbol = complexName(k, n, cleanPlainSymbol)
     plainSymbolEnc = encodeUrl(cleanPlainSymbol)
@@ -874,7 +929,10 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
 
   let seeSrc = genSeeSrc(d, toFullPath(d.conf, n.info), n.info.line.int)
 
-  d.section[k].secItems.add Item(descRst: comm, substitutions: @[
+  d.section[k].secItems.add Item(
+    descRst: comm,
+    sortName: sortName,
+    substitutions: @[
      "name", name, "uniqueName", uniqueName,
      "header", result, "itemID", $d.id,
      "header_plain", plainNameEsc, "itemSym", cleanPlainSymbol,
@@ -898,12 +956,15 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       setIndexTerm(d[], external, symbolOrId, plain, nameNode.sym.name.s & '.' & plain,
         xmltree.escape(getPlainDocstring(e).docstringSummary))
 
-  d.toc[k].add(getConfigVar(d.conf, "doc.item.toc") % [
+  d.tocSimple[k].add TocItem(
+    sortName: sortName,
+    content: getConfigVar(d.conf, "doc.item.toc") % [
       "name", name, "header_plain", plainNameEsc,
       "itemSymOrIDEnc", symbolOrIdEnc])
 
-  d.tocTable[k].mgetOrPut(cleanPlainSymbol, "").add(
-    getConfigVar(d.conf, "doc.item.tocTable") % [
+  d.tocTable[k].mgetOrPut(cleanPlainSymbol, newSeq[TocItem]()).add TocItem(
+    sortName: sortName,
+    content: getConfigVar(d.conf, "doc.item.tocTable") % [
       "name", name, "header_plain", plainNameEsc,
       "itemSymOrID", symbolOrId.replace(",", ",<wbr>"),
       "itemSymOrIDEnc", symbolOrIdEnc])
@@ -1143,8 +1204,9 @@ proc finishGenerateDoc*(d: var PDoc) =
         var resolved = resolveSubs(d.sharedState, f.rst)
         renderRstToOut(d[], resolved, result)
       of false: result &= f.str
+  proc cmp(x, y: Item): int = cmpDecimalsIgnoreCase(x.sortName, y.sortName)
   for k in TSymKind:
-    for item in d.section[k].secItems:
+    for item in d.section[k].secItems.sorted(cmp):
       var itemDesc: string
       renderItemPre(d, item.descRst, itemDesc)
       d.section[k].finalMarkup.add(
@@ -1262,18 +1324,26 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
       "sectionid", $ord(kind), "sectionTitle", title,
       "sectionTitleID", $(ord(kind) + 50), "content", d.section[kind].finalMarkup]
 
-  var tocSource = d.toc
+  proc cmp(x, y: TocItem): int = cmpDecimalsIgnoreCase(x.sortName, y.sortName)
   if groupedToc:
-    for p in d.tocTable[kind].keys:
+    let overloadableNames = toSeq(keys(d.tocTable[kind]))
+    for plainName in overloadableNames.sorted(cmpDecimalsIgnoreCase):
+      var overloadChoices = d.tocTable[kind][plainName]
+      overloadChoices.sort(cmp)
+      var content: string
+      for item in overloadChoices:
+        content.add item.content
       d.toc2[kind].add getConfigVar(d.conf, "doc.section.toc2") % [
           "sectionid", $ord(kind), "sectionTitle", title,
           "sectionTitleID", $(ord(kind) + 50),
-          "content", d.tocTable[kind][p], "plainName", p]
-    tocSource = d.toc2
+          "content", content, "plainName", plainName]
+  else:
+    for item in d.tocSimple[kind].sorted(cmp):
+      d.toc2[kind].add item.content
 
   d.toc[kind] = getConfigVar(d.conf, "doc.section.toc") % [
       "sectionid", $ord(kind), "sectionTitle", title,
-      "sectionTitleID", $(ord(kind) + 50), "content", tocSource[kind]]
+      "sectionTitleID", $(ord(kind) + 50), "content", d.toc2[kind]]
 
 proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): string =
   $relativeTo(outDir / linkto, destFile.splitFile().dir, '/')
