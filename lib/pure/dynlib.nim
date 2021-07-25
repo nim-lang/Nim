@@ -33,16 +33,10 @@ runnableExamples:
         loadLib("french.dll")
       else:
         loadLib("english.dll")
-
-    if lib == nil:
-      echo "Error loading library"
-      quit(QuitFailure)
+    assert lib != nil, "Error loading library"
 
     let greet = cast[GreetFunction](lib.symAddr("greet"))
-
-    if greet == nil:
-      echo "Error loading 'greet' function from library"
-      quit(QuitFailure)
+    assert greet != nil, "Error loading 'greet' function from library"
 
     echo greet()
 
