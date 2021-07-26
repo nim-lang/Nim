@@ -224,8 +224,9 @@ proc updatePackages(c: var AtlasContext) =
 proc fillPackageLookupTable(c: var AtlasContext) =
   if not c.hasPackageList:
     c.hasPackageList = true
-    updatePackages(c)
-    let plist = getPackages(c.workspace)
+    when not MockupRun:
+      updatePackages(c)
+    let plist = getPackages(when MockupRun: TestsDir else: c.workspace)
     for entry in plist:
       c.p[unicode.toLower entry.name] = entry.url
 
