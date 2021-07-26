@@ -3,8 +3,7 @@ import std/[os, osproc, strformat]
 
 const dir = "tests/compiles"
 const fileName = dir / "mstaticlib.nim"
-# const nim = getCurrentCompilerExe()
-const nim = "bin/nim_temp"
+const nim = getCurrentCompilerExe()
 
 block: # bug #18578
   const libName = dir / "tstaticlib1.a"
