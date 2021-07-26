@@ -594,6 +594,8 @@ proc runCI(cmd: string) =
     when defined(posix):
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
+    execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
+
   when not defined(bsd):
     if not doUseCpp:
       # the BSDs are overwhelmed already, so only run this test on the other machines:
