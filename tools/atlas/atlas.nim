@@ -39,6 +39,10 @@ proc writeVersion() =
   stdout.flushFile()
   quit(0)
 
+const
+  MockupRun = defined(atlasTests)
+  TestsDir = "tools/atlas/tests"
+
 type
   PackageName = distinct string
   DepRelation = enum
@@ -55,10 +59,14 @@ type
     p: Table[string, string] # name -> url mapping
     processed: HashSet[string] # the key is (url / commit)
     errors: int
+    when MockupRun:
+      currentDir: string
+      step: int
+      mockupSuccess: bool
 
 const
   InvalidCommit = "<invalid commit>"
-  MockupRun = false
+  ProduceTest = false
 
 type
   Command = enum
@@ -67,32 +75,63 @@ type
     GitRevParse = "git rev-parse",
     GitCheckout = "git checkout",
     GitPull = "git pull",
-    GitGetCurrentCommit = "git log -n 1 --format=%H"
+    GitCurrentCommit = "git log -n 1 --format=%H"
     GitMergeBase = "git merge-base"
+
+include testdata
 
 proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, int) =
   when MockupRun:
-    discard
+    assert TestLog[c.step].cmd == cmd
+    case cmd
+    of GitDiff, GitTags, GitRevParse, GitPull, GitCurrentCommit:
+      result = (TestLog[c.step].output, TestLog[c.step].exitCode)
+    of GitCheckout:
+      assert args[0] == TestLog[c.step].output
+    of GitMergeBase:
+      let tmp = TestLog[c.step].output.splitLines()
+      assert tmp.len == 4, $tmp.len
+      assert tmp[0] == args[0]
+      assert tmp[1] == args[1]
+      assert tmp[3] == ""
+      result[0] = tmp[2]
+      result[1] = TestLog[c.step].exitCode
+    inc c.step
   else:
     var cmdLine = $cmd
     for i in 0..<args.len:
       cmdLine.add ' '
       cmdLine.add quoteShell(args[i])
     result = osproc.execCmdEx(cmdLine)
+    when ProduceTest:
+      echo "cmd ", cmd, " args ", args, " --> ", result
 
 proc cloneUrl(c: var AtlasContext; url, dest: string; cloneUsingHttps: bool): string =
   when MockupRun:
-    discard
+    result = ""
   else:
     result = osutils.cloneUrl(url, dest, cloneUsingHttps)
+    when ProduceTest:
+      echo "cloned ", url, " into ", dest
 
 template withDir*(c: var AtlasContext; dir: string; body: untyped) =
-  let oldDir = getCurrentDir()
-  try:
-    setCurrentDir(dir)
+  when MockupRun:
+    c.currentDir = dir
     body
-  finally:
-    setCurrentDir(oldDir)
+  else:
+    let oldDir = getCurrentDir()
+    try:
+      when ProduceTest:
+        echo "Current directory is now ", dir
+      setCurrentDir(dir)
+      body
+    finally:
+      setCurrentDir(oldDir)
+
+proc extractRequiresInfo(c: var AtlasContext; nimbleFile: string): NimbleFileInfo =
+  result = extractRequiresInfo(nimbleFile)
+  when ProduceTest:
+    echo "nimble ", nimbleFile, " info ", result
 
 proc toDepRelation(s: string): DepRelation =
   case s
@@ -225,7 +264,7 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
           if needsCommitLookup(w.commit): versionToCommit(c, w)
           elif isShortCommitHash(w.commit): shortToCommit(c, w.commit)
           else: w.commit
-        let (cc, status) = exec(c, GitGetCurrentCommit, [])
+        let (cc, status) = exec(c, GitCurrentCommit, [])
         let currentCommit = strutils.strip(cc)
         if requiredCommit == "" or status != 0:
           if requiredCommit == "" and w.commit == InvalidCommit:
@@ -249,15 +288,19 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
                   currentCommit, "(current) or", w.commit, " =", requiredCommit, "(required)"
 
 proc findNimbleFile(c: AtlasContext; dep: Dependency): string =
-  result = c.workspace / dep.name.string / (dep.name.string & ".nimble")
-  if not fileExists(result):
-    result = ""
-    for x in walkFiles(c.workspace / dep.name.string / "*.nimble"):
-      if result.len == 0:
-        result = x
-      else:
-        # ambiguous .nimble file
-        return ""
+  when MockupRun:
+    result = TestsDir / dep.name.string & ".nimble"
+    doAssert fileExists(result), "file does not exist " & result
+  else:
+    result = c.workspace / dep.name.string / (dep.name.string & ".nimble")
+    if not fileExists(result):
+      result = ""
+      for x in walkFiles(c.workspace / dep.name.string / "*.nimble"):
+        if result.len == 0:
+          result = x
+        else:
+          # ambiguous .nimble file
+          return ""
 
 proc addUniqueDep(c: var AtlasContext; work: var seq[Dependency];
                   tokens: seq[string]) =
@@ -274,7 +317,7 @@ proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
                     isMainProject: bool) =
   let nimbleFile = findNimbleFile(c, dep)
   if nimbleFile != "":
-    let nimbleInfo = extractRequiresInfo(nimbleFile)
+    let nimbleInfo = extractRequiresInfo(c, nimbleFile)
     for r in nimbleInfo.requires:
       var tokens: seq[string] = @[]
       for token in tokenizeRequires(r):
@@ -330,29 +373,34 @@ const
   configPatternBegin = "############# begin Atlas config section ##########\n"
   configPatternEnd =   "############# end Atlas config section   ##########\n"
 
-proc patchNimCfg(c: AtlasContext; deps: seq[string]) =
+proc patchNimCfg(c: var AtlasContext; deps: seq[string]) =
   var paths = "--noNimblePath\n"
   for d in deps:
     paths.add "--path:\"../" & d.replace("\\", "/") & "\"\n"
 
-  let cfg = c.projectDir / "nim.cfg"
   var cfgContent = configPatternBegin & paths & configPatternEnd
-  if not fileExists(cfg):
-    writeFile(cfg, cfgContent)
+
+  when MockupRun:
+    assert readFile(TestsDir / "nim.cfg") == cfgContent
+    c.mockupSuccess = true
   else:
-    let content = readFile(cfg)
-    let start = content.find(configPatternBegin)
-    if start >= 0:
-      cfgContent = content.substr(0, start-1) & cfgContent
-      let theEnd = content.find(configPatternEnd, start)
-      if theEnd >= 0:
-        cfgContent.add content.substr(theEnd+len(configPatternEnd))
-    else:
-      cfgContent = content & "\n" & cfgContent
-    if cfgContent != content:
-      # do not touch the file if nothing changed
-      # (preserves the file date information):
+    let cfg = c.projectDir / "nim.cfg"
+    if not fileExists(cfg):
       writeFile(cfg, cfgContent)
+    else:
+      let content = readFile(cfg)
+      let start = content.find(configPatternBegin)
+      if start >= 0:
+        cfgContent = content.substr(0, start-1) & cfgContent
+        let theEnd = content.find(configPatternEnd, start)
+        if theEnd >= 0:
+          cfgContent.add content.substr(theEnd+len(configPatternEnd))
+      else:
+        cfgContent = content & "\n" & cfgContent
+      if cfgContent != content:
+        # do not touch the file if nothing changed
+        # (preserves the file date information):
+        writeFile(cfg, cfgContent)
 
 proc error*(msg: string) =
   when defined(debug):
@@ -399,8 +447,12 @@ proc main =
     singleArg()
     let deps = clone(c, args[0])
     patchNimCfg c, deps
-    if c.errors > 0:
-      error "There were problems."
+    when MockupRun:
+      if not c.mockupSuccess:
+        error "There were problems."
+    else:
+      if c.errors > 0:
+        error "There were problems."
   of "refresh":
     noArgs()
     updatePackages(c)
