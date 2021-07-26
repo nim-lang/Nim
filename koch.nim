@@ -562,42 +562,42 @@ proc runCI(cmd: string) =
     execFold("Test selected Nimble packages", "nim r testament/testament $# pcat nimble-packages" % batchParam)
   else:
     buildTools()
+    when false:
+      for a in "zip opengl sdl1 jester@#head".split:
+        let buildDeps = "build"/"deps" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
+        # if this gives `Additional info: "build/deps" [OSError]`, make sure nimble is >= v0.12.0,
+        # otherwise `absolutePath` is needed, refs https://github.com/nim-lang/nimble/issues/901
+        execFold("", "nimble install -y --nimbleDir:$# $#" % [buildDeps.quoteShell, a])
 
-    for a in "zip opengl sdl1 jester@#head".split:
-      let buildDeps = "build"/"deps" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
-      # if this gives `Additional info: "build/deps" [OSError]`, make sure nimble is >= v0.12.0,
-      # otherwise `absolutePath` is needed, refs https://github.com/nim-lang/nimble/issues/901
-      execFold("", "nimble install -y --nimbleDir:$# $#" % [buildDeps.quoteShell, a])
+      ## run tests
+      execFold("Test nimscript", "nim e tests/test_nimscript.nims")
+      when defined(windows):
+        execFold("Compile tester", "nim c --usenimcache -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
-    ## run tests
-    execFold("Test nimscript", "nim e tests/test_nimscript.nims")
-    when defined(windows):
-      execFold("Compile tester", "nim c --usenimcache -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
+      # main bottleneck here
+      # xxx: even though this is the main bottleneck, we could speedup the rest via batching with `--batch`.
+      # BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch, pending bug #14343
+      execFold("Run tester", "nim c -r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
 
-    # main bottleneck here
-    # xxx: even though this is the main bottleneck, we could speedup the rest via batching with `--batch`.
-    # BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch, pending bug #14343
-    execFold("Run tester", "nim c -r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
+      block: # nimHasLibFFI:
+        when defined(posix): # windows can be handled in future PR's
+          execFold("nimble install -y libffi", "nimble install -y libffi")
+          const nimFFI = "bin/nim.ctffi"
+          # no need to bootstrap with koch boot (would be slower)
+          let backend = if doUseCpp(): "cpp" else: "c"
+          execFold("build with -d:nimHasLibFFI", "nim $1 -d:release -d:nimHasLibFFI -o:$2 compiler/nim.nim" % [backend, nimFFI])
+          execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/misc/trunner.nim -d:nimTrunnerFfi" % [nimFFI, backend])
 
-    block: # nimHasLibFFI:
-      when defined(posix): # windows can be handled in future PR's
-        execFold("nimble install -y libffi", "nimble install -y libffi")
-        const nimFFI = "bin/nim.ctffi"
-        # no need to bootstrap with koch boot (would be slower)
-        let backend = if doUseCpp(): "cpp" else: "c"
-        execFold("build with -d:nimHasLibFFI", "nim $1 -d:release -d:nimHasLibFFI -o:$2 compiler/nim.nim" % [backend, nimFFI])
-        execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/misc/trunner.nim -d:nimTrunnerFfi" % [nimFFI, backend])
-
-    execFold("Run nimdoc tests", "nim r nimdoc/tester")
-    execFold("Run rst2html tests", "nim r nimdoc/rsttester")
-    execFold("Run nimpretty tests", "nim r nimpretty/tester.nim")
+      execFold("Run nimdoc tests", "nim r nimdoc/tester")
+      execFold("Run rst2html tests", "nim r nimdoc/rsttester")
+      execFold("Run nimpretty tests", "nim r nimpretty/tester.nim")
     when defined(posix):
       # refs #18385, build with -d:release instead of -d:danger for testing
       # xxx we could also skip building nimsuggest in buildTools, or build it with -d:release
       # in bundleNimsuggest depending on some environment variable when we are in CI. One advantage
       # of rebuilding is this won't affect bin/nimsuggest when running runCI locally
-      execFold("Run nimsuggest tests", "nim c -o:bin/nimsuggest_testing -d:danger nimsuggest/tester") # PRTEMP
-      execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
+      execFold("Run nimsuggest tests 1", "bin/nim c -o:bin/nimsuggest_testing -d:danger nimsuggest/tester") # PRTEMP
+      execFold("Run nimsuggest tests 2", "nim r nimsuggest/tester")
 
     execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
 

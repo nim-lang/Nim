@@ -250,9 +250,11 @@ proc runEpcTest(filename: string): int =
       echo "disabled epc: " & s.filename
       return 0
   for cmd in s.startup:
+    echo (cmd, "ok6")
     if not runCmd(cmd, s.dest):
       quit "invalid command: " & cmd
   let epccmd = s.cmd.replace("--tester", "--epc --v2 --log")
+  echo (epccmd, "ok7")
   let cl = parseCmdLine(epccmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
@@ -265,6 +267,7 @@ proc runEpcTest(filename: string): int =
     when defined(posix):
       var a = newStringOfCap(120)
       discard outp.readLine(a)
+      echo ("ok2", outp,)
     else:
       var i = 0
       while not osproc.hasData(p) and i < 100:
@@ -272,17 +275,29 @@ proc runEpcTest(filename: string): int =
         inc i
       let a = outp.readAll().strip()
     let port = parseInt(a)
+    echo ("ok3", port,)
     socket.connect("localhost", Port(port))
+    echo ("ok4", )
+
     for req, resp in items(s.script):
+      echo ("ok5", req, resp)
       if not runCmd(req, s.dest):
+        echo ("ok8", )
         socket.sendEpcStr(req)
+        echo ("ok9", )
         let sx = parseSexp(socket.recvEpc())
+        echo ("ok10", )
         if not req.startsWith("mod "):
+          echo ("ok11", )
           let answer = sexpToAnswer(sx)
           doReport(filename, answer, resp, report)
+          echo ("ok12", )
   finally:
+    echo ("ok13", )
     socket.sendEpcStr "return arg"
+    echo ("ok14", )
     close(p)
+    echo ("ok15", )
   if report.len > 0:
     echo "==== EPC ========================================"
     echo report
@@ -331,6 +346,7 @@ proc runTest(filename: string): int =
 
 proc main() =
   var failures = 0
+  echo (os.paramCount(), "ok0")
   if os.paramCount() > 0:
     let x = os.paramStr(1)
     let xx = expandFilename x
@@ -345,6 +361,7 @@ proc main() =
           echo "skipping" # workaround bug #17945
           continue
       let xx = expandFilename x
+      echo (xx, failures, "ok1")
       when not defined(windows):
         # XXX Windows IO redirection seems bonkers:
         failures += runTest(xx)
