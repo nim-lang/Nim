@@ -941,6 +941,44 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
   if result < 0:
     result += abs(y)
 
+func ceilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
+  ## Ceil division is conceptually defined as `ceil(x / y)`.
+  ##
+  ## This is different from the `system.div <system.html#div,int,int>`_
+  ## operator, which is defined as `trunc(x / y)`.
+  ## That is, `div` rounds towards `0` and `ceilDiv` rounds up.
+  ##
+  ## **See also:**
+  ## * `system.div proc <system.html#div,int,int>`_ for integer division
+  ## * `floorDiv func <#floorDiv,T,T>`_ for integer division with rounds down.
+  ## * `fastCeilDiv func <#fastCeilDiv,T,T>`_ for faster integer division.
+  runnableExamples:
+    doAssert ceilDiv( 12,  3) ==  4
+    doAssert ceilDiv( 13,  3) ==  5
+    doAssert ceilDiv(-13,  3) == -4
+    doAssert ceilDiv( 13, -3) == -4
+    doAssert ceilDiv(-13, -3) ==  5
+
+  result = x div y
+  if not (x < 0 xor y < 0) and x mod y != 0:
+    inc result
+
+func fastCeilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
+  ## Faster version of `ceilDiv`.
+  ##
+  ## Both x and y must be positive and
+  ## x + y - 1 must be less than or equal to high(T).
+  ##
+  ## **See also:**
+  ## * `system.div proc <system.html#div,int,int>`_ for integer division
+  ## * `ceilDiv func <#ceilDiv,T,T>`_ for integer division with rounds up.
+  runnableExamples:
+    doAssert fastCeilDiv( 12,  3) ==  4
+    doAssert fastCeilDiv( 13,  3) ==  5
+
+  assert x >= 0 and y >= 0
+  (x + (y - 1)) div y
+
 func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
   ## Splits `x` into a normalized fraction `frac` and an integral power of 2 `exp`,
   ## such that `abs(frac) in 0.5..<1` and `x == frac * 2 ^ exp`, except for special

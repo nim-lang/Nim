@@ -106,6 +106,27 @@ template main() =
     doAssert euclDiv(-9, -3) == 3
     doAssert euclMod(-9, -3) == 0
 
+  block: # ceilDiv/fastCeilDiv
+    doAssert ceilDiv(8, 3) == 3
+    doAssert ceilDiv(8, -3) == -2
+    doAssert ceilDiv(-8, 3) == -2
+    doAssert ceilDiv(-8, -3) == 3
+    doAssert ceilDiv(8, 4) == 2
+    doAssert ceilDiv(8, -4) == -2
+    doAssert ceilDiv(-8, 4) == -2
+    doAssert ceilDiv(-8, -4) == 2
+    doAssert ceilDiv(11,  3) ==  4
+    doAssert ceilDiv(12,  3) ==  4
+    doAssert ceilDiv(13,  3) ==  5
+
+    doAssert fastCeilDiv(8,  3) ==  3
+    doAssert fastCeilDiv(8,  4) ==  2
+    doAssert fastCeilDiv(8,  5) ==  2
+    doAssert fastCeilDiv(11,  3) ==  4
+    doAssert fastCeilDiv(12,  3) ==  4
+    doAssert fastCeilDiv(13,  3) ==  5
+    doAssert fastCeilDiv(41,  7) ==  6
+
   block: # splitDecimal() tests
     doAssert splitDecimal(54.674).intpart == 54.0
     doAssert splitDecimal(54.674).floatpart ==~ 0.674
