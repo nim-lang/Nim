@@ -1333,10 +1333,30 @@ proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ##    `cpuTime` instead, depending on the use case.
   getTime().local
 
+proc dateTime*(year: int, month: Month, monthday: MonthdayRange, 
+                   hour: HourRange = 0, minute: MinuteRange = 0, second: SecondRange = 0,
+                   nanosecond: NanosecondRange = 0,
+                   zone: Timezone = local()): DateTime =
+  ## Create a new `DateTime <#DateTime>`_ in the specified timezone.
+  runnableExamples:
+    doAssert $dateTime(2017, mMar, 30, zone = utc()) == "2017-03-30T00:00:00Z"
+
+  assertValidDate monthday, month, year
+  let dt = DateTime(
+    monthdayZero: monthday,
+    year: year,
+    monthZero: month.int,
+    hour: hour,
+    minute: minute,
+    second: second,
+    nanosecond: nanosecond
+  )
+  result = initDateTime(zone.zonedTimeFromAdjTime(dt.toAdjTime), zone)
+
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    nanosecond: NanosecondRange,
-                   zone: Timezone = local()): DateTime =
+                   zone: Timezone = local()): DateTime {.deprecated: "use `dateTime`".} =
   ## Create a new `DateTime <#DateTime>`_ in the specified timezone.
   runnableExamples:
     let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, 00, utc())
@@ -1356,7 +1376,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
 
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   zone: Timezone = local()): DateTime =
+                   zone: Timezone = local()): DateTime {.deprecated: "use `dateTime`".} =
   ## Create a new `DateTime <#DateTime>`_ in the specified timezone.
   runnableExamples:
     let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
