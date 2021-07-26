@@ -919,9 +919,9 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
     sortName = if k in routineKinds: plainName.strip else: name
     cleanPlainSymbol = renderPlainSymbolName(nameNode)
     complexSymbol = complexName(k, n, cleanPlainSymbol)
-    plainSymbolEnc = encodeUrl(cleanPlainSymbol)
+    plainSymbolEnc = encodeUrl(cleanPlainSymbol, usePlus = false)
     symbolOrId = d.newUniquePlainSymbol(complexSymbol)
-    symbolOrIdEnc = encodeUrl(symbolOrId)
+    symbolOrIdEnc = encodeUrl(symbolOrId, usePlus = false)
     deprecationMsg = genDeprecationMsg(d, pragmaNode)
 
   nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
