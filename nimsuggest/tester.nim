@@ -267,15 +267,16 @@ proc runEpcTest(filename: string): int =
     when defined(posix):
       var a = newStringOfCap(120)
       discard outp.readLine(a)
-      echo ("ok2", outp,)
+      echo ("ok2", outp, a)
     else:
       var i = 0
       while not osproc.hasData(p) and i < 100:
         os.sleep(50)
         inc i
       let a = outp.readAll().strip()
+    echo ("ok3a", a)
     let port = parseInt(a)
-    echo ("ok3", port,)
+    echo ("ok3b", port,)
     socket.connect("localhost", Port(port))
     echo ("ok4", )
 
