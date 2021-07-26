@@ -333,6 +333,8 @@ proc getPotentialWrites(n: PNode; mutate: bool; result: var seq[PNode]) =
     getPotentialWrites(n[1], mutate, result)
   of nkAddr, nkHiddenAddr:
     getPotentialWrites(n[0], true, result)
+  of nkBracketExpr, nkDotExpr, nkCheckedFieldExpr:
+    getPotentialWrites(n[0], mutate, result)
   of nkCallKinds:
     case n.getMagic:
     of mIncl, mExcl, mInc, mDec, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
