@@ -227,6 +227,12 @@ template dataLen(t): untyped = len(t.data)
 
 include tableimpl
 
+proc raiseKeyError[T](key: T) {.noinline, noreturn.} =
+  when compiles($key):
+    raise newException(KeyError, "key not found: " & $key)
+  else:
+    raise newException(KeyError, "key not found")
+
 template get(t, key): untyped =
   ## retrieves the value at `t[key]`. The value can be modified.
   ## If `key` is not in `t`, the `KeyError` exception is raised.
@@ -235,10 +241,7 @@ template get(t, key): untyped =
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
   else:
-    when compiles($key):
-      raise newException(KeyError, "key not found: " & $key)
-    else:
-      raise newException(KeyError, "key not found")
+    raiseKeyError(key)
 
 proc enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
