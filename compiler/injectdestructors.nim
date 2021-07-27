@@ -799,7 +799,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
           result[i] = p(n[i], c, s, m)
     of nkObjConstr:
       # see also the remark about `nkTupleConstr`.
-      let isRefConstr = n.typ.skipTypes(abstractInst).kind == tyRef
+      let t = n.typ.skipTypes(abstractInst)
+      let isRefConstr = t.kind == tyRef
       let m = if isRefConstr: sinkArg
               elif mode == normal: normal
               else: sinkArg
@@ -807,7 +808,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       result = copyTree(n)
       for i in 1..<n.len:
         if n[i].kind == nkExprColonExpr:
-          let field = lookupFieldAgain(n.typ, n[i][0].sym)
+          let field = lookupFieldAgain(t, n[i][0].sym)
           if field != nil and sfCursor in field.flags:
             result[i][1] = p(n[i][1], c, s, normal)
           else:
