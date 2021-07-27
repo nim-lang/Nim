@@ -1075,6 +1075,57 @@ template newSeqWith*(len: int, init: untyped): untyped =
     result[i] = init
   move(result) # refs bug #7295
 
+proc replaceIdent(n: NimNode, val: NimNode, ident: NimNode): NimNode =
+  result = n
+  case n.kind
+  of nnkIdent, nnkSym:
+    if n.strVal == ident.strVal: result = val
+  else:
+    for i in 0..<n.len:
+      result[i] = replaceIdent(result[i], val, ident)
+
+proc mapItLitImpl(n: NimNode, op: NimNode, ident: NimNode, count: var int): NimNode =
+  result = n
+  case n.kind
+  of nnkBracket, nnkCurly, nnkTupleConstr:
+    count.inc
+    for i in 0..<n.len:
+      result[i] = replaceIdent(op.copyNimTree, result[i], ident)
+  else:
+    result[^1] = mapItLitImpl(result[^1], op, ident, count)
+
+proc mapItLitAux(elems, op: NimNode, ident: NimNode): NimNode =
+  var count = 0
+  result = mapItLitImpl(elems, op, ident, count)
+  if count != 1:
+    doAssert false, "invalid AST, expected array-like AST, got: " & elems.repr
+
+macro mapItLitTyped(elems: typed, op: untyped, ident: untyped): untyped =
+  result = mapItLitAux(getImpl(elems), op, ident)
+
+macro mapItLit*(elems, op: untyped, ident: untyped = nil): untyped =
+  ## Applies `op` to each of the elements of `elems`.
+  ##
+  ## The top-level AST must contain one of these: `{}, [], @[], ()`, or be a
+  ## symbol that resolves to a const expression with one of these.
+  runnableExamples:
+    assert mapItLit([1, 2, 3], $it) == ["1", "2", "3"]
+    assert mapItLit(@[1, 2, 3], (it, it)) == @[(1, 1), (2, 2), (3, 3)]
+    static: assert mapItLit({1, 2, 3}, it.uint8) == {1'u8, 2, 3}
+    assert mapItLit((1, 2, 3), it.float) == (1.0, 2.0, 3.0)
+    # also works with symbols that resolve to a const type with elements:
+    const a = 3
+    const x = [1, 2+2, a, a*2]
+    assert mapItLit(x, it.float) == [1.0, 4.0, 3.0, 6.0]
+  runnableExamples:
+    # for recursive use, you can specify a custom identifer instead of `it`:
+    const y = [10, 11]
+    assert mapItLit([y, y], mapItLit(it, a * 10, a)) == [[100, 110], [100, 110]]
+  # Other kinds ( e.g. "abc") could be supported in future work if reasonable.
+  let ident2 = if ident.kind == nnkNilLit: newIdentNode("it") else: ident
+  if elems.kind == nnkIdent: result = newCall(bindSym"mapItLitTyped", elems, op, ident2)
+  else: result = mapItLitAux(elems, op, ident2)
+
 func mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
                  filter = nnkLiterals): NimNode =
   if constructor.kind in filter:
@@ -1090,7 +1141,7 @@ func mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
         result.add v
 
 macro mapLiterals*(constructor, op: untyped;
-                   nested = true): untyped =
+                   nested = true): untyped {.deprecated: "use `mapItLit`".} =
   ## Applies `op` to each of the **atomic** literals like `3`
   ## or `"abc"` in the specified `constructor` AST. This can
   ## be used to map every array element to some target type:

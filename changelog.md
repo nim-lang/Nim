@@ -363,6 +363,10 @@
 
 - Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
   if the slice is out of bounds, likewise with `strutils.delete`.
+- `std/sequtils`:
+  * Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
+    if the slice is out of bounds, likewise with `strutils.delete`.
+  * Deprecated `mapLiterals` and added `mapItLit`.
 
 ## Language changes
 
