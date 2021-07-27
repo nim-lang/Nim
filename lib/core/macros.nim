@@ -1068,11 +1068,11 @@ proc newEmptyNode*(): NimNode {.noSideEffect.} =
   ## Create a new empty node.
   result = newNimNode(nnkEmpty)
 
-proc newStmtList*(stmts: varargs[NimNode]): NimNode=
+proc newStmtList*(stmts: varargs[NimNode]): NimNode =
   ## Create a new statement list.
   result = newNimNode(nnkStmtList).add(stmts)
 
-proc newPar*(exprs: varargs[NimNode]): NimNode=
+proc newPar*(exprs: varargs[NimNode]): NimNode =
   ## Create a new parentheses-enclosed expression.
   newNimNode(nnkPar).add(exprs)
 
@@ -1494,148 +1494,80 @@ macro expandMacros*(body: typed): untyped =
   echo body.toStrLit
   result = body
 
-proc findPragmaNodeInRecList(arg, fieldSym: NimNode): NimNode =
-  case arg.kind
-  of nnkRecList, nnkRecCase:
-    for it in arg.children:
-      result = findPragmaNodeInRecList(it, fieldSym)
-      if result != nil: return
-  of nnkOfBranch:
-    return findPragmaNodeInRecList(arg[1], fieldSym)
-  of nnkElse:
-    return findPragmaNodeInRecList(arg[0], fieldSym)
-  of nnkIdentDefs:
-    for i in 0..<arg.len-2:
-      result = findPragmaNodeInRecList(arg[i], fieldSym)
-      if result != nil: return
-  of nnkAccQuoted, nnkIdent, nnkSym, nnkPostfix:
-    return nil
-  of nnkPragmaExpr:
-    var ident = arg[0]
-    if ident.kind == nnkPostfix: ident = ident[1]
-    if ident.kind == nnkAccQuoted: ident = ident[0]
-    if eqIdent(ident, fieldSym):
-      return arg[1]
-  else:
-    error("illegal arg: ", arg)
+proc customPragmaNode(n: NimNode): NimNode =
+  expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkCheckedFieldExpr})
+  let
+    typ = n.getTypeInst()
 
-proc getPragmaNodeFromProcSym(sym: NimNode): NimNode =
-  sym.expectKind nnkSym
-  if sym.symKind != nskProc: error("expected proc sym", sym)
-
-  let impl = sym.getImpl
-  expectKind(impl, nnkProcDef)
-  result = impl[4]
-
-proc getPragmaNodeFromObjFieldSym(sym: NimNode): NimNode =
-  sym.expectKind nnkSym
-  if sym.symKind != nskField: error("expected field sym", sym)
-
-  # note this is not ``getTypeImpl``, because the result of
-  # ``getTypeImpl`` is cleaned up of any pragma expressions.
-  let impl = sym.owner.getImpl
-  impl.expectKind nnkTypeDef
-
-  let objectTy = if impl[2].kind == nnkRefTy: impl[2][0]
-                 else: impl[2]
-
-  # only works on object types
-  objectTy.expectKind nnkObjectTy
-
-  let recList = objectTy[2]
-  recList.expectKind nnkRecList
-  result = findPragmaNodeInRecList(recList, sym)
-
-proc getPragmaNodeFromTypeSym(sym: NimNode): NimNode =
-  sym.expectKind nnkSym
-  if sym.symKind != nskType: error("expected type sym", sym)
-  let impl = sym.getImpl
-  if impl.len > 0:
-    impl.expectKind nnkTypeDef
-    let pragmaExpr = impl[0]
-    if pragmaExpr.kind == nnkPragmaExpr:
-      result = pragmaExpr[1]
-
-proc getPragmaNodeFromType(typ: NimNode): NimNode =
-  case typ.kind
-  of nnkSym:
-    result = getPragmaNodeFromTypeSym(typ)
-  of nnkProcTy:
-    result = typ[1]
-  else: error("illegal typ kind for argument: " & $typ.kind, typ)
-
-proc getPragmaNodeFromVarLetSym(sym: NimNode): NimNode =
-  sym.expectKind nnkSym
-  if sym.symKind notin {nskVar, nskLet}: error("expected var/let sym", sym)
-  let impl = sym.getImpl
-  impl.expectKind nnkIdentDefs
-  impl.expectLen 3
-  let pragmaExpr = impl[0]
-  if pragmaExpr.kind == nnkPragmaExpr:
-    result = pragmaExpr[1]
-
-proc getPragmasByName(pragmaExpr: NimNode, name: string): seq[NimNode] =
-  if pragmaExpr.kind == nnkPragma:
-    for it in pragmaExpr:
-      if it.kind in nnkPragmaCallKinds:
-        if eqIdent(it[0], name):
-          result.add it
-      elif it.kind == nnkSym:
-        if eqIdent(it, name):
-          result.add it
-
-proc getCustomPragmaNodes(sym: NimNode, name: string): seq[NimNode] =
-  sym.expectKind nnkSym
-  case sym.symKind
-  of nskField:
-    result = getPragmaNodeFromObjFieldSym(sym).getPragmasByName(name)
-  of nskProc:
-    result = getPragmaNodeFromProcSym(sym).getPragmasByName(name)
-  of nskType:
-    result = getPragmaNodeFromTypeSym(sym).getPragmasByName(name)
-  of nskParam:
-    # When a typedesc parameter is passed to the macro, it will be of nskParam.
-    let typeInst = getTypeInst(sym)
-    if typeInst.kind == nnkBracketExpr and eqIdent(typeInst[0], "typeDesc"):
-      result = getPragmaNodeFromTypeSym(typeInst[1]).getPragmasByName(name)
+  if typ.kind == nnkBracketExpr and typ.len > 1 and typ[1].kind == nnkProcTy:
+    return typ[1][1]
+  elif typ.typeKind == ntyTypeDesc:
+    let impl = typ[1].getImpl()
+    if impl[0].kind == nnkPragmaExpr:
+      return impl[0][1]
     else:
-      error("illegal sym kind for argument: " & $sym.symKind, sym)
-  of nskVar, nskLet:
-    # This checks the type of the sym too, this is consistent with how
-    # field expressions are handled too. If this is changed, make sure to
-    # change it for fields expressions too.
-    result = getPragmaNodeFromType(sym.getTypeInst).getPragmasByName(name)
-    result.add getPragmaNodeFromVarLetSym(sym).getPragmasByName(name)
-  else:
-    error("illegal sym kind for argument: " & $sym.symKind, sym)
+      return impl[0] # handle types which don't have macro at all
 
-since (1, 5):
-  export getCustomPragmaNodes
+  if n.kind == nnkSym: # either an variable or a proc
+    let impl = n.getImpl()
+    if impl.kind in RoutineNodes:
+      return impl.pragma
+    elif impl.kind == nnkIdentDefs and impl[0].kind == nnkPragmaExpr:
+      return impl[0][1]
+    else:
+      let timpl = typ.getImpl()
+      if timpl.len>0 and timpl[0].len>1:
+        return timpl[0][1]
+      else:
+        return timpl
 
-proc hasCustomPragma*(n: NimNode, name: string): bool =
-  n.expectKind nnkSym
-  result = getCustomPragmaNodes(n, name).len > 0
+  if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
+    let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
+    let typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
+    var typDef = getImpl(if typInst.kind == nnkVarTy: typInst[0] else: typInst)
+    while typDef != nil:
+      typDef.expectKind(nnkTypeDef)
+      let typ = typDef[2]
+      typ.expectKind({nnkRefTy, nnkPtrTy, nnkObjectTy})
+      let isRef = typ.kind in {nnkRefTy, nnkPtrTy}
+      if isRef and typ[0].kind in {nnkSym, nnkBracketExpr}: # defines ref type for another object(e.g. X = ref X)
+        typDef = getImpl(typ[0])
+      else: # object definition, maybe an object directly defined as a ref type
+        let
+          obj = (if isRef: typ[0] else: typ)
+        var identDefsStack = newSeq[NimNode](obj[2].len)
+        for i in 0..<identDefsStack.len: identDefsStack[i] = obj[2][i]
+        while identDefsStack.len > 0:
+          var identDefs = identDefsStack.pop()
+          if identDefs.kind == nnkRecCase:
+            identDefsStack.add(identDefs[0])
+            for i in 1..<identDefs.len:
+              let varNode = identDefs[i]
+              # if it is and empty branch, skip
+              if varNode[0].kind == nnkNilLit: continue
+              if varNode[1].kind == nnkIdentDefs:
+                identDefsStack.add(varNode[1])
+              else: # nnkRecList
+                for j in 0 ..< varNode[1].len:
+                  identDefsStack.add(varNode[1][j])
 
-proc getCustomPragmaNodesSmart(n: NimNode, name: string): seq[NimNode] =
-  case n.kind
-  of nnkDotExpr:
-    result = getCustomPragmaNodes(n[1], name)
-  of nnkCheckedFieldExpr:
-    expectKind n[0], nnkDotExpr
-    result = getCustomPragmaNodes(n[0][1], name)
-  of nnkSym:
-    result = getCustomPragmaNodes(n, name)
-  of nnkTypeOfExpr:
-    var typ = n.getTypeInst
-    while typ.kind == nnkBracketExpr and typ[0].eqIdent "typeDesc":
-      typ = typ[1]
-    result = getPragmaNodeFromType(typ).getPragmasByName(name)
-  of nnkBracketExpr:
-    discard
-  else:
-    n.expectKind({nnkDotExpr, nnkCheckedFieldExpr, nnkSym, nnkTypeOfExpr})
+          else:
+            for i in 0 .. identDefs.len - 3:
+              let varNode = identDefs[i]
+              if varNode.kind == nnkPragmaExpr:
+                var varName = varNode[0]
+                if varName.kind == nnkPostfix:
+                  # This is a public field. We are skipping the postfix *
+                  varName = varName[1]
+                if eqIdent($varName, name):
+                  return varNode[1]
 
-macro hasCustomPragma*(n: typed, cp: typed{nkSym}): bool =
+        if obj[1].kind == nnkOfInherit: # explore the parent object
+          typDef = getImpl(obj[1][0])
+        else:
+          typDef = nil
+
+macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
   ## Expands to `true` if expression `n` which is expected to be `nnkDotExpr`
   ## (if checking a field), a proc or a type has custom pragma `cp`.
   ##
@@ -1652,18 +1584,14 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): bool =
   ##   var o: MyObj
   ##   assert(o.myField.hasCustomPragma(myAttr))
   ##   assert(myProc.hasCustomPragma(myAttr))
-  result = newLit(getCustomPragmaNodesSmart(n, $cp).len > 0)
+  let pragmaNode = customPragmaNode(n)
+  for p in pragmaNode:
+    if (p.kind == nnkSym and p == cp) or
+        (p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp):
+      return newLit(true)
+  return newLit(false)
 
-iterator iterOverFormalArgs(f: NimNode): tuple[name, typ, val: NimNode] =
-  f.expectKind nnkFormalParams
-  for i in 1..<f.len:
-    f[i].expectKind nnkIdentDefs
-    let typ = f[i][^2]
-    let val = f[i][^1]
-    for j in 0..<f[i].len-2:
-      yield (f[i][j], typ, val)
-
-macro getCustomPragmaVal*(n: typed, cp: typed): untyped =
+macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ## Expands to value of custom pragma `cp` of expression `n` which is expected
   ## to be `nnkDotExpr`, a proc or a type.
   ##
@@ -1678,28 +1606,22 @@ macro getCustomPragmaVal*(n: typed, cp: typed): untyped =
   ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
   ##   assert(o.getCustomPragmaVal(serializationKey) == "mo")
   ##   assert(MyObj.getCustomPragmaVal(serializationKey) == "mo")
-  n.expectKind {nnkDotExpr, nnkCheckedFieldExpr, nnkSym, nnkTypeOfExpr}
-  cp.expectKind {nnkSym, nnkOpenSymChoice, nnkClosedSymChoice}
-  let pragmaNodes = getCustomPragmaNodesSmart(n, $cp)
-  if pragmaNodes.len == 0:
-    error(n.repr & " doesn't have any custom pragmas")
-  let pragmaNode = pragmaNodes[^1]
-
-  case pragmaNode.kind
-  of nnkPragmaCallKinds:
-    if pragmaNode.len == 2:
-      result = pragmaNode[1]
-    else:
-      # create a named tuple expression for pragmas with multiple arguments
-      result = newTree(nnkPar)
-      var i = 1
-      for (key, t, v) in iterOverFormalArgs(pragmaNode[0].getImpl[3]):
-        result.add nnkExprColonExpr.newTree(key, pragmaNode[i])
-        inc i
-  of nnkSym:
-    error("The named pragma " & cp.repr & " in " & n.repr & " has no arguments and therefore no value.")
-  else:
-    error(n.repr & " doesn't have a pragma named " & cp.repr, n)
+  result = nil
+  let pragmaNode = customPragmaNode(n)
+  for p in pragmaNode:
+    if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
+      if p.len == 2:
+        result = p[1]
+      else:
+        let def = p[0].getImpl[3]
+        result = newTree(nnkPar)
+        for i in 1 ..< def.len:
+          let key = def[i][0]
+          let val = p[i]
+          result.add newTree(nnkExprColonExpr, key, val)
+      break
+  if result.kind == nnkEmpty:
+    error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
 
 macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
   ## Calls `callee` with `args` unpacked as individual arguments.
