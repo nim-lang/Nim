@@ -6190,7 +6190,7 @@ There are two pseudo directories:
    its semantics are: *Use the search path to look for module name but ignore the standard
    library locations*. In other words, it is the opposite of `std`.
 
-It is recommended and preferred but not currently enforced that all module imports include either the std/ or pkg/ "pseudo directory" as part of the import name to qualify the search path in order to guarantee the correct search path to the desired module.
+It is recommended and preferred but not currently enforced that all stdlib module imports include the std/ "pseudo directory" as part of the import name.
 
 From import statement
 ---------------------
