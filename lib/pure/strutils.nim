@@ -1004,7 +1004,7 @@ func fromOct*[T: SomeInteger](s: string): T =
   ##
   ## Does not check for overflow. If the value represented by `s`
   ## is too big to fit into a return type, only the value of the rightmost
-  ## binary digits of `s` is returned without producing an error.
+  ## oct digits of `s` is returned without producing an error.
   runnableExamples:
     let s = "0o_123_456_777"
     doAssert fromOct[int](s) == 21913087
@@ -1023,7 +1023,7 @@ func fromHex*[T: SomeInteger](s: string): T =
   ##
   ## Does not check for overflow. If the value represented by `s`
   ## is too big to fit into a return type, only the value of the rightmost
-  ## binary digits of `s` is returned without producing an error.
+  ## hex digits of `s` is returned without producing an error.
   runnableExamples:
     let s = "0x_1235_8df6"
     doAssert fromHex[int](s) == 305499638
