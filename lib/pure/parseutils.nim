@@ -71,7 +71,8 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0,
   ## are parsed starting from the ``start`` position.
   ##
   ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, 0 will be returned indicating an error.
+  ## too big to fit into ``number``, only the value of last fitting characters
+  ## will be stored in ``number`` without producing an error.
   runnableExamples:
     var num: int
     doAssert parseBin("0100_1110_0110_1001_1110_1101", num) == 29
@@ -126,7 +127,8 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
   ## are parsed starting from the ``start`` position.
   ##
   ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, 0 will be returned indicating an error.
+  ## too big to fit into ``number``, only the value of last fitting characters
+  ## will be stored in ``number`` without producing an error.
   runnableExamples:
     var num: int
     doAssert parseOct("0o23464755", num) == 10
@@ -192,7 +194,8 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
   ## are parsed starting from the ``start`` position.
   ##
   ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, 0 will be returned indicating an error.
+  ## too big to fit into ``number``, only the value of last fitting characters
+  ## will be stored in ``number`` without producing an error.
   runnableExamples:
     var num: int
     doAssert parseHex("4E_69_ED", num) == 8
