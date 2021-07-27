@@ -22,6 +22,7 @@ __really_obscure_dir_name/test
 Raises
 Raises
 '''
+  joinable: false
 """
 # test os path creation, iteration, and deletion
 
