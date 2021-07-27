@@ -3,6 +3,15 @@ enumValueB	subdir/subdir_b/utils.html#enumValueB	SomeType.enumValueB
 enumValueC	subdir/subdir_b/utils.html#enumValueC	SomeType.enumValueC	
 SomeType	subdir/subdir_b/utils.html#SomeType	utils: SomeType	
 someType	subdir/subdir_b/utils.html#someType_2	utils: someType(): SomeType	
+fn2	subdir/subdir_b/utils.html#fn2	utils: fn2()	
+fn3	subdir/subdir_b/utils.html#fn3	utils: fn3(): auto	
+fn4	subdir/subdir_b/utils.html#fn4	utils: fn4(): auto	
+fn5	subdir/subdir_b/utils.html#fn5	utils: fn5()	
+fn6	subdir/subdir_b/utils.html#fn6	utils: fn6()	
+fn7	subdir/subdir_b/utils.html#fn7	utils: fn7()	
+fn8	subdir/subdir_b/utils.html#fn8	utils: fn8(): auto	
+fn9	subdir/subdir_b/utils.html#fn9,int	utils: fn9(a: int): int	
+fn10	subdir/subdir_b/utils.html#fn10,int	utils: fn10(a: int): int	
 aEnum	subdir/subdir_b/utils.html#aEnum.t	utils: aEnum(): untyped	
 bEnum	subdir/subdir_b/utils.html#bEnum.t	utils: bEnum(): untyped	
 fromUtilsGen	subdir/subdir_b/utils.html#fromUtilsGen.t	utils: fromUtilsGen(): untyped	

@@ -31,6 +31,23 @@ proc someType*(): SomeType =
   ## constructor.
   SomeType(2)
 
+
+proc fn2*() = discard ## comment
+proc fn3*(): auto = 1 ## comment
+proc fn4*(): auto = 2 * 3 + 4 ## comment
+proc fn5*() ## comment
+proc fn5*() = discard
+proc fn6*() =
+  ## comment
+proc fn7*() =
+  ## comment
+  discard
+proc fn8*(): auto =
+  ## comment
+  1+1
+func fn9*(a: int): int = 42  ## comment
+func fn10*(a: int): int = a  ## comment
+
 # bug #9235
 
 template aEnum*(): untyped =
