@@ -585,6 +585,9 @@ proc value(this: var DebugPrinter; value: PNode) =
   this.openCurly
   this.key "kind"
   this.value  value.kind
+  if value.comment.len > 0:
+    this.key "comment"
+    this.value  value.comment
   when defined(useNodeIds):
     this.key "id"
     this.value value.id
