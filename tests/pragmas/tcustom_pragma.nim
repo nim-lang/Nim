@@ -384,7 +384,7 @@ block:
   discard Hello(a: 1.0, b: 12)
 
 # issue #11511
-block:
+when false:
   template myAttr {.pragma.}
 
   type TObj = object
@@ -395,23 +395,24 @@ block:
     let recList = objTy[2]
     let sym = recList[0]
     assert sym.kind == nnkSym and sym.eqIdent("a")
-    let hasAttr = sym.hasCustomPragma("myAttr")
+    let hasAttr = sym.hasCustomPragma(myAttr)
     newLit(hasAttr)
 
   doAssert hasMyAttr(TObj)
 
-# misc
-{.pragma: haha.}
-{.pragma: hoho.}
-template hehe(key, val: string, haha) {.pragma.}
+when false:
+  # misc
+  {.pragma: haha.}
+  {.pragma: hoho.}
+  template hehe(key, val: string, haha) {.pragma.}
 
-type A {.haha, hoho, haha, hehe("hi", "hu", "he").} = int
+  type A {.haha, hoho, haha, hehe("hi", "hu", "he").} = int
 
-assert A.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
+  assert A.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
 
-template hehe(key, val: int) {.pragma.}
+  template hehe(key, val: int) {.pragma.}
 
-var bb {.haha, hoho, hehe(1, 2), haha, hehe("hi", "hu", "he").} = 3
+  var bb {.haha, hoho, hehe(1, 2), haha, hehe("hi", "hu", "he").} = 3
 
-# left-to-right priority/override order for getCustomPragmaVal
-assert bb.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
+  # left-to-right priority/override order for getCustomPragmaVal
+  assert bb.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")

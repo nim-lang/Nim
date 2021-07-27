@@ -51,7 +51,6 @@
   implementations. Old behavior can be obtained with
   `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
   underlying code is also updated the same way.
-- Custom pragma values have now an API for use in macros.
 
 - On POSIX systems, the default signal handlers used for Nim programs (it's
   used for printing the stacktrace on fatal signals) will now re-raise the
