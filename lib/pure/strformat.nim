@@ -142,12 +142,12 @@ An expression like `&"{key} is {value:arg} {{z}}"` is transformed into:
   temp
 
 Parts of the string that are enclosed in the curly braces are interpreted
-as Nim code, to escape a `{` or `}`, double it.
+as Nim code. To escape a `{` or `}`, double it.
 
-Within a curly expression,however, '{','}', must be escaped with a backslash.
+Within a curly expression, however, `{`, `}`, must be escaped with a backslash.
 
-To enable evaluating Nim expressions within curlies, inside parentheses
-colons do not need to be escaped.
+To enable evaluating Nim expressions within curlies, colons inside parentheses
+do not need to be escaped.
 ]##
 
 runnableExamples:
@@ -177,28 +177,28 @@ The general form of a standard format specifier is::
 
 The square brackets `[]` indicate an optional element.
 
-The optional 'align' flag can be one of the following:
+The optional `align` flag can be one of the following:
 
-'<'
+`<`
     Forces the field to be left-aligned within the available
     space. (This is the default for strings.)
 
-'>'
+`>`
     Forces the field to be right-aligned within the available space.
     (This is the default for numbers.)
 
-'^'
+`^`
     Forces the field to be centered within the available space.
 
 Note that unless a minimum field width is defined, the field width
 will always be the same size as the data to fill it, so that the alignment
 option has no meaning in this case.
 
-The optional 'fill' character defines the character to be used to pad
+The optional `fill` character defines the character to be used to pad
 the field to the minimum width. The fill character, if present, must be
 followed by an alignment flag.
 
-The 'sign' option is only valid for numeric types, and can be one of the following:
+The `sign` option is only valid for numeric types, and can be one of the following:
 
 =================        ====================================================
   Sign                   Meaning
@@ -211,22 +211,22 @@ The 'sign' option is only valid for numeric types, and can be one of the followi
                          positive numbers.
 =================        ====================================================
 
-If the '#' character is present, integers use the 'alternate form' for formatting.
+If the `#` character is present, integers use the 'alternate form' for formatting.
 This means that binary, octal and hexadecimal output will be prefixed
-with '0b', '0o' and '0x', respectively.
+with `0b`, `0o` and `0x`, respectively.
 
-'width' is a decimal integer defining the minimum field width. If not specified,
+`width` is a decimal integer defining the minimum field width. If not specified,
 then the field width will be determined by the content.
 
-If the width field is preceded by a zero ('0') character, this enables
+If the width field is preceded by a zero (`0`) character, this enables
 zero-padding.
 
-The 'precision' is a decimal number indicating how many digits should be displayed
+The `precision` is a decimal number indicating how many digits should be displayed
 after the decimal point in a floating point conversion. For non-numeric types the
 field indicates the maximum field size - in other words, how many characters will
 be used from the field content. The precision is ignored for integer conversions.
 
-Finally, the 'type' determines how the data should be presented.
+Finally, the `type` determines how the data should be presented.
 
 The available integer presentation types are:
 
@@ -240,7 +240,7 @@ The available integer presentation types are:
                          lower-case letters for the digits above 9.
 `X`                      Hex format. Outputs the number in base 16, using
                          uppercase letters for the digits above 9.
-(None)                   The same as 'd'.
+(None)                   The same as `d`.
 =================        ====================================================
 
 The available floating point presentation types are:
@@ -249,21 +249,21 @@ The available floating point presentation types are:
   Type                   Result
 =================        ====================================================
 `e`                      Exponent notation. Prints the number in scientific
-                         notation using the letter 'e' to indicate the
+                         notation using the letter `e` to indicate the
                          exponent.
-`E`                      Exponent notation. Same as 'e' except it converts
+`E`                      Exponent notation. Same as `e` except it converts
                          the number to uppercase.
 `f`                      Fixed point. Displays the number as a fixed-point
                          number.
-`F`                      Fixed point. Same as 'f' except it converts the
+`F`                      Fixed point. Same as `f` except it converts the
                          number to uppercase.
 `g`                      General format. This prints the number as a
                          fixed-point number, unless the number is too
-                         large, in which case it switches to 'e'
+                         large, in which case it switches to `e`
                          exponent notation.
-`G`                      General format. Same as 'g' except it switches to 'E'
+`G`                      General format. Same as `g` except it switches to `E`
                          if the number gets to large.
-(None)                   Similar to 'g', except that it prints at least one
+(None)                   Similar to `g`, except that it prints at least one
                          digit after the decimal point.
 =================        ====================================================
 

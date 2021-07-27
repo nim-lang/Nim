@@ -585,10 +585,10 @@ when defineSsl:
     ##
     ## CA certificates will be loaded, in the following order, from:
     ##
-    ##  - caFile, caDir, parameters, if set
-    ##  - if `verifyMode` is set to `CVerifyPeerUseEnvVars`,
-    ##    the SSL_CERT_FILE and SSL_CERT_DIR environment variables are used
-    ##  - a set of files and directories from the `ssl_certs <ssl_certs.html>`_ file.
+    ## - caFile, caDir, parameters, if set
+    ## - if `verifyMode` is set to `CVerifyPeerUseEnvVars`,
+    ##   the SSL_CERT_FILE and SSL_CERT_DIR environment variables are used
+    ## - a set of files and directories from the `ssl_certs <ssl_certs.html>`_ file.
     ##
     ## The last two parameters specify the certificate file path and the key file
     ## path, a server socket will most likely not work without these.

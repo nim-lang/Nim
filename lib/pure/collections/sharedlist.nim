@@ -35,7 +35,7 @@ template withLock(t, x: untyped) =
   release(t.lock)
 
 proc iterAndMutate*[A](x: var SharedList[A]; action: proc(x: A): bool) =
-  ## Iterates over the list. If 'action' returns true, the
+  ## Iterates over the list. If `action` returns true, the
   ## current item is removed from the list.
   ##
   ## .. warning:: It may not preserve the element order after some modifications.
