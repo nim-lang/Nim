@@ -9,3 +9,14 @@ proc vmTrace*(on: bool) {.compileTime.} =
       var a = 1
       vmTrace(false)
     static: fn()
+
+proc debugNimNode*(a: NimNode): string =
+  ## Implementation-specific rendering of `a` in the compiler, unstable.
+  runnableExamples:
+    import std/[macros, strutils]
+    macro dbg1(a: auto): string =
+      newLit(debugNimNode(a))
+    macro dbg2(a): string =
+      newLit(debugNimNode(a))
+    assert "nfSem" in dbg1(1+2)
+    assert "nfSem" notin dbg2(1+2)

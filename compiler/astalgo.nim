@@ -663,6 +663,14 @@ proc debug(n: PNode; conf: ConfigRef) =
   this.value(n)
   echo($this.res)
 
+proc debugNimNodeImpl*(n: PNode; conf: ConfigRef): string =
+  var this: DebugPrinter
+  this.visited = initTable[pointer, int]()
+  #this.renderSymType = true # can be customized later
+  this.useColor = not defined(windows)
+  this.value(n)
+  result = $this.res
+
 proc nextTry(h, maxHash: Hash): Hash =
   result = ((5 * h) + 1) and maxHash
   # For any initial h in range(maxHash), repeating that maxHash times

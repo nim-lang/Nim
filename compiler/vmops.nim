@@ -33,6 +33,7 @@ from sighashes import symBodyDigest
 
 # There are some useful procs in vmconv.
 import vmconv
+from astalgo import debugNimNodeImpl
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -337,3 +338,7 @@ proc registerAdditionalOps*(c: PCtx) =
     let p = a.getVar(0)
     let x = a.getFloat(1)
     addFloatSprintf(p.strVal, x)
+
+  registerCallback c, "stdlib.vmutils.debugNimNode", proc(a: VmArgs) =
+    let n = getNode(a, 0)
+    setResult(a, debugNimNodeImpl(n, c.config))
