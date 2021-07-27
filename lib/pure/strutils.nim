@@ -1004,7 +1004,7 @@ func fromOct*[T: SomeInteger](s: string): T =
   ##
   ## Does not check for overflow. If the value represented by `s`
   ## is too big to fit into a return type, only the value of the rightmost
-  ## oct digits of `s` is returned without producing an error.
+  ## octal digits of `s` is returned without producing an error.
   runnableExamples:
     let s = "0o_123_456_777"
     doAssert fromOct[int](s) == 21913087
