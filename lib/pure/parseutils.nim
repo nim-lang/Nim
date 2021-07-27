@@ -105,7 +105,7 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0,
     else: break
     inc(i)
 
-  when not defined(nimLegacyParseInts):
+  when defined(nimPreviewParseInts):
     if foundDigit and count <= sizeof(T) * 8:
       number = output
       result = i - start
@@ -171,7 +171,7 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
     else: break
     inc(i)
 
-  when not defined(nimLegacyParseInts):
+  when defined(nimPreviewParseInts):
     if foundDigit and count <= sizeof(T) * 8 div 3:
       number = output
       result = i - start
@@ -237,7 +237,7 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
     else: break
     inc(i)
 
-  when not defined(nimLegacyParseInts):
+  when defined(nimPreviewParseInts):
     if foundDigit and count <= sizeof(T) * 2:
       number = output
       result = i - start

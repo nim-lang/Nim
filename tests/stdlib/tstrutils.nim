@@ -1,4 +1,5 @@
 discard """
+  matrix: "-d:nimPreviewParseInts"
   targets: "c cpp js"
 """
 
