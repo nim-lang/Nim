@@ -1797,12 +1797,11 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
   indAndComment(p, result, maybeMissEquals)
   let body = result[^1]
   if body.kind == nkStmtList and body.len > 0 and body[0].comment.len > 0 and body[0].kind != nkCommentStmt:
-    assert result.comment.len == 0
-    #[
-    proc fn*(a: int): int = a ## foo
-    => moves comment `foo` to `fn`
-    ]#
-    swap(result.comment, body[0].comment)
+    if result.comment.len == 0:
+      # proc fn*(a: int): int = a ## foo
+      # => moves comment `foo` to `fn`
+      swap(result.comment, body[0].comment)
+    else: discard # xxx either `assert false` or issue a warning (otherwise we'll never know of this edge case)
 
 proc newCommentStmt(p: var Parser): PNode =
   #| commentStmt = COMMENT
