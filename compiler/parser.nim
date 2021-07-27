@@ -1795,6 +1795,13 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
   else:
     result.add(p.emptyNode)
   indAndComment(p, result, maybeMissEquals)
+  if result[^1].kind == nkStmtList and result[^1].len > 0 and result.sons[^1][0].comment.len > 0:
+    assert result.comment.len == 0
+    #[
+    proc fn*(a: int): int = a ## foo
+    => moves comment `foo` to `fn`
+    ]#
+    swap(result.comment, result.sons[^1][0].comment)
 
 proc newCommentStmt(p: var Parser): PNode =
   #| commentStmt = COMMENT
