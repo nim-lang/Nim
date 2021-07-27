@@ -2272,7 +2272,7 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
   else:
     result = a
     considerGenSyms(c, result)
-    if result.kind != nkHiddenDeref and result.typ.kind in {tyVar, tyLent}:
+    if result.kind != nkHiddenDeref and result.typ.kind in {tyVar, tyLent} and c.matchedConcept == nil:
       result = newDeref(result)
 
 proc prepareOperand(c: PContext; a: PNode): PNode =
