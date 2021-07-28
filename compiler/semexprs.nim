@@ -2770,7 +2770,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       if optOwnedRefs in c.config.globalOptions:
         result.typ = makeVarType(c, result.typ, tyOwned)
     of skEnumField:
-      result = enumFieldSymChoice(c, n, s)
+      if overloadableEnums in c.features:
+        result = enumFieldSymChoice(c, n, s)
+      else:
+        result = semSym(c, n, s, flags)
     else:
       result = semSym(c, n, s, flags)
   of nkSym:
