@@ -21,6 +21,20 @@ More text.
 
 ]##
 
+runnableExamples:
+  echo "module level 1"
+
+when true:
+  runnableExamples:
+    echo "module level 2"
+  runnableExamples:
+    echo "module level 3"
+
+## before 4
+runnableExamples:
+  echo "module level 4"
+## after 4
+
 type
   SomeType* = enum
     enumValueA,
@@ -89,3 +103,77 @@ template fromUtilsGen*(): untyped =
     ## came form utils but should be shown where `fromUtilsGen` is called
     runnableExamples: discard """should be shown as examples for fromUtils3
        in module calling fromUtilsGen"""
+
+# bug #18305
+var
+  c1*, c2*: int ## comment1
+  c3*: int ## comment3
+runnableExamples:
+  discard "ok1"
+runnableExamples:
+  discard "ok2"
+## ok3
+runnableExamples:
+  discard "ok4"
+## ok5
+
+## ok6
+## ok7
+runnableExamples:
+  discard "ok8"
+
+type
+  Foo1* = object
+  Foo2* = object
+## ok1
+runnableExamples:
+  discard "ok2"
+## ok3
+
+let c4* = 1
+runnableExamples:
+  discard "ok1"
+
+let c5* = 1
+## ok1
+
+let c6* = 1 ## ok1
+
+const c7* = 1
+runnableExamples:
+  discard "ok1"
+
+const
+  c8* = 1
+  c9* = 1
+runnableExamples:
+  discard "ok1"
+
+when 1+1 == 2:
+  type Foo3* = object
+  runnableExamples:
+    discard "ok for Foo3"
+
+# closes https://github.com/nim-lang/RFCs/issues/309
+proc gn1*()
+runnableExamples:
+  discard "for fwd proc gn1"
+
+proc gn2*()
+  ## ok1
+runnableExamples:
+  discard "for fwd proc gn2"
+
+proc gn1() = discard
+proc gn2() = discard
+
+when true:
+  proc baz*()
+  runnableExamples:
+    echo "ok4"
+  proc baz() = discard
+
+proc baz2*()
+runnableExamples:
+  echo "ok4"
+proc baz2() = discard
