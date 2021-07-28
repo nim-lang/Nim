@@ -742,7 +742,8 @@ proc isVisible(d: PDoc; n: PNode): bool =
       result = {sfFromGeneric, sfForward}*n.sym.flags == {}
     else:
       result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
-    d.lastSym = n.sym
+    if sfForward in n.sym.flags:
+      d.lastSym = n.sym
     if result and containsOrIncl(d.emitted, n.sym.id):
       result = false
   elif n.kind == nkPragmaExpr:
@@ -916,8 +917,13 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, examp
     getAllRunnableExamples(d, n, comm)
   else:
     comm.add genRecComment(d, n)
-  for ai in d.lastSym.examplesAttached & examples:
+
+  if d.lastSym != nil:
+    for ai in d.lastSym.examplesAttached:
+      discard getAllRunnableExamplesImpl(d, ai, comm, rsStart, topLevel = false)
+  for ai in examples:
     discard getAllRunnableExamplesImpl(d, ai, comm, rsStart, topLevel = false)
+
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
