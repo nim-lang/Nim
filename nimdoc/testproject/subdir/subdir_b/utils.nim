@@ -109,30 +109,30 @@ var
   c1*, c2*: int ## comment1
   c3*: int ## comment3
 runnableExamples:
-  discard "ok1"
+  discard "c3"
 runnableExamples:
-  discard "ok2"
+  discard "c3"
 ## ok3
 runnableExamples:
-  discard "ok4"
+  discard "c3"
 ## ok5
 
 ## ok6
 ## ok7
 runnableExamples:
-  discard "ok8"
+  discard "c3"
 
 type
   Foo1* = object
   Foo2* = object
 ## ok1
 runnableExamples:
-  discard "ok2"
+  discard "Foo2"
 ## ok3
 
 let c4* = 1
 runnableExamples:
-  discard "ok1"
+  discard "c4"
 
 let c5* = 1
 ## ok1
@@ -141,18 +141,18 @@ let c6* = 1 ## ok1
 
 const c7* = 1
 runnableExamples:
-  discard "ok1"
+  discard "c7"
 
 const
   c8* = 1
   c9* = 1
 runnableExamples:
-  discard "ok1"
+  discard "c9"
 
 when 1+1 == 2:
   type Foo3* = object
   runnableExamples:
-    discard "ok for Foo3"
+    discard "Foo3"
 
 # closes https://github.com/nim-lang/RFCs/issues/309
 proc gn1*()
@@ -175,10 +175,10 @@ when true:
 
 proc gn4*()
 runnableExamples:
-  discard "gn4 1"
-## gn4 2
+  discard "gn4 v1"
+## gn4 v2
 runnableExamples:
-  discard "gn4 3"
+  discard "gn4 v3"
 
 
 when true:

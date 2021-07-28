@@ -18,7 +18,6 @@ import
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, tables, nimpaths, renderverbatim, osproc
 import packages/docutils/rstast except FileIndex, TLineInfo
-import renderer
 
 from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
