@@ -22,17 +22,17 @@ More text.
 ]##
 
 runnableExamples:
-  echo "module level 1"
+  discard "module level 1"
 
 when true:
   runnableExamples:
-    echo "module level 2"
+    discard "module level 2"
   runnableExamples:
-    echo "module level 3"
+    discard "module level 3"
 
 ## before 4
 runnableExamples:
-  echo "module level 4"
+  discard "module level 4"
 ## after 4
 
 type
@@ -170,10 +170,10 @@ proc gn2() = discard
 when true:
   proc baz*()
   runnableExamples:
-    echo "ok4"
+    discard "ok4"
   proc baz() = discard
 
 proc baz2*()
 runnableExamples:
-  echo "ok4"
+  discard "ok4"
 proc baz2() = discard
