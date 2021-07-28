@@ -45,7 +45,7 @@ proc close(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
 proc closeJson(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
     writeOutputJson(g.doc, useWarning)
-
+import renderer
 proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)

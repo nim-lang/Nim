@@ -153,20 +153,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       if n.kind == nkEmpty: break
       if (sfSystemModule notin module.flags and
           ({sfNoForward, sfReorder} * module.flags != {} or
-          codeReordering in graph.config.features)) or
-          graph.config.cmd in {cmdDoc, cmdDoc2tex, cmdDoc0}:
-          #[
-          for `nim doc`, we don't care about stream processing, and doing it in 1
-          pass simplifies attaching examples to top-level forward declared routines, eg:
-
-          # in foo.nim:
-          proc fn*() = discard
-          runnableExamples: discard
-
-          This ensures the example is attached to `fn`, instead of being split in
-          separate calls to `processTopLevelStmt`.
-          ]#
-
+          codeReordering in graph.config.features)):
         # read everything, no streaming possible
         var sl = newNodeI(nkStmtList, n.info)
         sl.add n

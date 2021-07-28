@@ -867,6 +867,7 @@ type
       bitsize*: int
       alignment*: int # for alignment
     else: nil
+    examplesAttached*: seq[PNode]
     magic*: TMagic
     typ*: PType
     name*: PIdent

@@ -157,23 +157,30 @@ when 1+1 == 2:
 # closes https://github.com/nim-lang/RFCs/issues/309
 proc gn1*()
 runnableExamples:
-  discard "for fwd proc gn1"
+  discard "gn1"
 
 proc gn2*()
   ## ok1
 runnableExamples:
-  discard "for fwd proc gn2"
+  discard "gn2"
 
 proc gn1() = discard
 proc gn2() = discard
 
 when true:
-  proc baz*()
+  proc gn3*()
   runnableExamples:
-    discard "ok4"
-  proc baz() = discard
+    discard "gn3"
+  proc gn3() = discard
 
-proc baz2*()
+proc gn4*()
 runnableExamples:
-  discard "ok4"
-proc baz2() = discard
+  discard "gn4"
+proc gn4() = discard
+
+when true:
+  proc gn5*()
+  runnableExamples:
+    discard "gn5" # works even if implementation is in an include
+
+include utils_incl

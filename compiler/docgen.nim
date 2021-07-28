@@ -18,6 +18,7 @@ import
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, tables, nimpaths, renderverbatim, osproc
 import packages/docutils/rstast except FileIndex, TLineInfo
+import renderer
 
 from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
@@ -91,6 +92,9 @@ type
     thisDir*: AbsoluteDir
     exampleGroups: OrderedTable[string, ExampleGroup]
     wroteSupportFiles*: bool
+    
+    # examplesAttached*: seq[PNode]
+    lastSym*: PSym
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -741,6 +745,13 @@ proc isVisible(d: PDoc; n: PNode): bool =
       result = {sfFromGeneric, sfForward}*n.sym.flags == {}
     else:
       result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
+    dbg n.sym.flags, n.sym, n, n.sym.id
+    d.lastSym = n.sym
+    # if sfForward in n.sym.flags and examples.len > 0:
+    # if sfForward in n.sym.flags and examples.len > 0:
+    #   n.sym.examplesAttached.add examples
+    # elif sfWasForwarded in n.sym.flags:
+    #   examples.add n.sym.examplesAttached
     if result and containsOrIncl(d.emitted, n.sym.id):
       result = false
   elif n.kind == nkPragmaExpr:
@@ -902,7 +913,11 @@ proc genSeeSrc(d: PDoc, path: string, line: int): string =
           "commit", commit, "devel", develBranch]])
 
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, examples: seq[PNode] = @[]) =
-  if (docFlags != kForceExport) and not isVisible(d, nameNode): return
+  dbg examples, nameNode, n
+  # var examples = examples
+  if (docFlags != kForceExport) and not isVisible(d, nameNode):
+    dbg "invisible"
+    return
   let
     name = getName(d, nameNode)
   var plainDocstring = getPlainDocstring(n) # call here before genRecComment!
@@ -914,7 +929,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, examp
     getAllRunnableExamples(d, n, comm)
   else:
     comm.add genRecComment(d, n)
-  for ai in examples:
+  # for ai in examples:
+  for ai in d.lastSym.examplesAttached & examples:
     discard getAllRunnableExamplesImpl(d, ai, comm, rsStart, topLevel = false)
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
@@ -1215,9 +1231,14 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault, exampl
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
   of nkCallKinds:
-    var comm: ItemPre
-    getAllRunnableExamples(d, n, comm)
-    if comm.len != 0: d.modDescPre.add(comm)
+    # PRTEMP also for comment
+    if d.lastSym  == nil:
+      var comm: ItemPre
+      getAllRunnableExamples(d, n, comm)
+      if comm.len != 0: d.modDescPre.add(comm)
+    else:
+      d.lastSym.examplesAttached.add n
+      # d.examplesAttached.add n
   else: discard
 
 proc finishGenerateDoc*(d: var PDoc) =
