@@ -331,8 +331,11 @@
 
 - Added `htmlgen.portal` for [making "SPA style" pages using HTML only](https://web.dev/hands-on-portals).
 
-- Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
+- `std/times`:
+  Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
   zone offsets without colons, e.g. `UTC+7 -> +0700`.
+
+  Added `dateTime` and deprecated `initDateTime`.
 
 - Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
 
@@ -356,6 +359,7 @@
 - Added `dom.scrollIntoView` proc with options
 
 - Added `dom.setInterval`, `dom.clearInterval` overloads.
+
 
 - Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
   if the slice is out of bounds, likewise with `strutils.delete`.
