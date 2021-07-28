@@ -691,7 +691,7 @@ proc getRoutineBody(n: PNode): PNode =
     doAssert result.len == 2
     result = result[1]
 
-proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var ItemPre) =
+proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var ItemPre, topLevel = true) =
   var n = n
   var state = rsStart
   template fn(n2, topLevel) =
@@ -706,7 +706,7 @@ proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var ItemPre) =
       for i in 0..<n.safeLen:
         fn(n[i], topLevel = false)
         if state == rsDone: discard # check all sons
-  else: fn(n, topLevel = true)
+  else: fn(n, topLevel = topLevel)
 
 proc isVisible(d: PDoc; n: PNode): bool =
   result = false
@@ -895,7 +895,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, examp
     getAllRunnableExamples(d, n, comm)
   else:
     comm.add genRecComment(d, n)
-  for ai in examples: getAllRunnableExamples(d, ai, comm)
+  for ai in examples: getAllRunnableExamples(d, ai, comm, topLevel = false)
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
