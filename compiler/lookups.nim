@@ -177,13 +177,16 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
   var marked = initIntSet()
+  var symSet = OverloadableSyms
+  if overloadableEnums notin c.features:
+    symSet.excl skEnumField
   result = nil
   for im in c.imports.mitems:
     for s in symbols(im, marked, name, c.graph):
       if result == nil:
         result = s
       else:
-        if s.kind notin OverloadableSyms or result.kind notin OverloadableSyms:
+        if s.kind notin symSet or result.kind notin symSet:
           ambiguous = true
 
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
@@ -384,7 +387,7 @@ proc mergeShadowScope*(c: PContext) =
   ##
   ## Merges:
   ## shadow -> shadow: add symbols to the parent but check for redefinitions etc
-  ## shadow -> non-shadow: the above, but also handle exports and all that 
+  ## shadow -> non-shadow: the above, but also handle exports and all that
   let shadowScope = c.currentScope
   c.rawCloseScope
   for sym in shadowScope.symbols:
