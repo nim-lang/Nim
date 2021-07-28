@@ -79,13 +79,14 @@ macro enumNames(a: typed): untyped =
 iterator items*[T: HoleyEnum](E: typedesc[T]): T =
   ## Iterates over an enum with holes.
   runnableExamples:
-    type A = enum
-      a0 = 2
-      a1 = 4
-      a2
-    type B[T] = enum
-      b0 = 2
-      b1 = 4
+    type
+      A = enum
+        a0 = 2
+        a1 = 4
+        a2
+      B[T] = enum
+        b0 = 2
+        b1 = 4
     from std/sequtils import toSeq
     assert A.toSeq == [a0, a1, a2]
     assert B[float].toSeq == [B[float].b0, B[float].b1]

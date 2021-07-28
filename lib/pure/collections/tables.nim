@@ -501,7 +501,7 @@ template tabCellHash(i)  = t.data[i].hcode
 proc del*[A, B](t: var Table[A, B], key: A) =
   ## Deletes `key` from hash table `t`. Does nothing if the key does not exist.
   ##
-  ## .. warning:: If duplicate keys were added (via now deprecated `add` proc),
+  ## .. warning:: If duplicate keys were added (via the now deprecated `add` proc),
   ##   this may need to be called multiple times.
   ##
   ## See also:
@@ -522,7 +522,7 @@ proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
   ## unchanged.
   ##
-  ## .. warning:: If duplicate keys were added (via now deprecated `add` proc),
+  ## .. warning:: If duplicate keys were added (via the now deprecated `add` proc),
   ##   this may need to be called multiple times.
   ##
   ## See also:
@@ -1032,7 +1032,7 @@ proc add*[A, B](t: TableRef[A, B], key: A, val: sink B) {.deprecated:
 proc del*[A, B](t: TableRef[A, B], key: A) =
   ## Deletes `key` from hash table `t`. Does nothing if the key does not exist.
   ##
-  ## .. warning:: If duplicate keys were added (via now deprecated `add` proc),
+  ## .. warning:: If duplicate keys were added (via the now deprecated `add` proc),
   ##   this may need to be called multiple times.
   ##
   ## See also:
@@ -1053,7 +1053,7 @@ proc pop*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
   ## unchanged.
   ##
-  ## .. warning:: If duplicate keys were added (via now deprecated `add` proc),
+  ## .. warning:: If duplicate keys were added (via the now deprecated `add` proc),
   ##   this may need to be called multiple times.
   ##
   ## See also:
