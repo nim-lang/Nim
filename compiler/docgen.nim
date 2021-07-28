@@ -905,7 +905,9 @@ proc genSeeSrc(d: PDoc, path: string, line: int): string =
           "commit", commit, "devel", develBranch]])
 
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, examples: seq[PNode] = @[]) =
-  if (docFlags != kForceExport) and not isVisible(d, nameNode): return
+  if (docFlags != kForceExport) and not isVisible(d, nameNode):
+    doAssert examples.len == 0, "`runnableExamples` silently ignored for $#: $#" % [$nameNode, $examples]
+    return
   let
     name = getName(d, nameNode)
   var plainDocstring = getPlainDocstring(n) # call here before genRecComment!
