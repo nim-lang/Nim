@@ -182,9 +182,9 @@ suite "RST parsing":
   test "using .. as separator b/w directives and block quotes":
     check(dedent"""
         .. note:: someNote
-    
+
         ..
-    
+
           someBlockQuote""".toAst ==
       dedent"""
         rnInner
@@ -300,14 +300,14 @@ suite "RST indentation":
     let input1 = dedent"""
       .. code-block:: nim
           :test: "nim c $1"
-      
+
         template additive(typ: typedesc) =
           discard
       """
     let input2 = dedent"""
       .. code-block:: nim
         :test: "nim c $1"
-      
+
         template additive(typ: typedesc) =
           discard
       """
@@ -320,7 +320,7 @@ suite "RST indentation":
     let inputWrong = dedent"""
       .. code-block:: nim
        :test: "nim c $1"
-      
+
          template additive(typ: typedesc) =
            discard
       """

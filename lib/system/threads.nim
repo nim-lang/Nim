@@ -11,7 +11,7 @@
 ##
 ## **Note**: This is part of the system module. Do not import it directly.
 ## To activate thread support you need to compile
-## with the `--threads:on` command line switch.
+## with the `--threads:on`:option: command line switch.
 ##
 ## Nim's memory model for threads is quite different from other common
 ## programming languages (C, Pascal): Each thread has its own

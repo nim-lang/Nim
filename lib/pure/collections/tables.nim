@@ -136,6 +136,8 @@ runnableExamples:
 ## a more complex object as a key you will be greeted by a strange compiler
 ## error:
 ##
+## .. code::
+##
 ##   Error: type mismatch: got (Person)
 ##   but expected one of:
 ##   hashes.hash(x: openArray[A]): Hash
@@ -324,7 +326,7 @@ proc `[]`*[A, B](t: Table[A, B], key: A): B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,Table[A,B],A,B>`_ for inserting a new
+  ## * `[]= proc<#[]=,Table[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_ for checking if a key is in
   ##   the table
@@ -345,7 +347,7 @@ proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,Table[A,B],A,B>`_ for inserting a new
+  ## * `[]= proc<#[]=,Table[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_ for checking if a key is in
   ##   the table
@@ -488,7 +490,7 @@ proc add*[A, B](t: var Table[A, B], key: A, val: sink B) {.deprecated:
   ##
   ## **This can introduce duplicate keys into the table!**
   ##
-  ## Use `[]= proc<#[]=,Table[A,B],A,B>`_ for inserting a new
+  ## Use `[]= proc<#[]=,Table[A,B],A,sinkB>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   addImpl(enlarge)
 
@@ -499,7 +501,8 @@ template tabCellHash(i)  = t.data[i].hcode
 proc del*[A, B](t: var Table[A, B], key: A) =
   ## Deletes `key` from hash table `t`. Does nothing if the key does not exist.
   ##
-  ## .. warning:: If duplicate keys were added, this may need to be called multiple times.
+  ## .. warning:: If duplicate keys were added (via the now deprecated `add` proc),
+  ##   this may need to be called multiple times.
   ##
   ## See also:
   ## * `pop proc<#pop,Table[A,B],A,B>`_
@@ -519,7 +522,8 @@ proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
   ## unchanged.
   ##
-  ## .. warning:: If duplicate keys were added, this may need to be called multiple times.
+  ## .. warning:: If duplicate keys were added (via the now deprecated `add` proc),
+  ##   this may need to be called multiple times.
   ##
   ## See also:
   ## * `del proc<#del,Table[A,B],A>`_
@@ -1028,7 +1032,8 @@ proc add*[A, B](t: TableRef[A, B], key: A, val: sink B) {.deprecated:
 proc del*[A, B](t: TableRef[A, B], key: A) =
   ## Deletes `key` from hash table `t`. Does nothing if the key does not exist.
   ##
-  ## **If duplicate keys were added, this may need to be called multiple times.**
+  ## .. warning:: If duplicate keys were added (via the now deprecated `add` proc),
+  ##   this may need to be called multiple times.
   ##
   ## See also:
   ## * `pop proc<#pop,TableRef[A,B],A,B>`_
@@ -1048,7 +1053,8 @@ proc pop*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
   ## unchanged.
   ##
-  ## **If duplicate keys were added, this may need to be called multiple times.**
+  ## .. warning:: If duplicate keys were added (via the now deprecated `add` proc),
+  ##   this may need to be called multiple times.
   ##
   ## See also:
   ## * `del proc<#del,TableRef[A,B],A>`_

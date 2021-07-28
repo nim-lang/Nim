@@ -79,8 +79,14 @@ macro enumNames(a: typed): untyped =
 iterator items*[T: HoleyEnum](E: typedesc[T]): T =
   ## Iterates over an enum with holes.
   runnableExamples:
-    type A = enum a0 = 2, a1 = 4, a2
-    type B[T] = enum b0 = 2, b1 = 4
+    type
+      A = enum
+        a0 = 2
+        a1 = 4
+        a2
+      B[T] = enum
+        b0 = 2
+        b1 = 4
     from std/sequtils import toSeq
     assert A.toSeq == [a0, a1, a2]
     assert B[float].toSeq == [B[float].b0, B[float].b1]
@@ -130,9 +136,19 @@ template symbolRank*[T: enum](a: T): int =
   ## for small enums, otherwise is `O(T.enumLen)`.
   runnableExamples:
     type
-      A = enum a0 = -3, a1 = 10, a2, a3 = (20, "f3Alt") # HoleyEnum
-      B = enum b0, b1, b2 # OrdinalEnum
-      C = enum c0 = 10, c1, c2 # OrdinalEnum
+      A = enum # HoleyEnum
+        a0 = -3
+        a1 = 10
+        a2
+        a3 = (20, "f3Alt")
+      B = enum # OrdinalEnum
+        b0
+        b1
+        b2
+      C = enum # OrdinalEnum
+        c0 = 10
+        c1
+        c2
     assert a2.symbolRank == 2
     assert b2.symbolRank == 2
     assert c2.symbolRank == 2
@@ -156,7 +172,10 @@ func symbolName*[T: enum](a: T): string =
     assert b.symbolName == "b0"
     assert $b == "kb0"
     static: assert B.high.symbolName == "b2"
-    type C = enum c0 = -3, c1 = 4, c2 = 20 # HoleyEnum
+    type C = enum # HoleyEnum
+      c0 = -3
+      c1 = 4
+      c2 = 20
     assert c1.symbolName == "c1"
   const names = enumNames(T)
   names[a.symbolRank]
