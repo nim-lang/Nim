@@ -1164,13 +1164,14 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault, exampl
       var examples: seq[PNode]
       let ni = n[i]
       i.inc
-      while i < n.len:
-        let nj = n[i]
-        if nj.isRunnableExamplesRoot:
-          examples.add nj
-          i.inc
-        else:
-          break
+      if ni.kind in {nkTypeSection, nkVarSection, nkLetSection, nkConstSection} + routineDefs:
+        while i < n.len:
+          let nj = n[i]
+          if nj.isRunnableExamplesRoot or nj.kind == nkCommentStmt:
+            examples.add nj
+            i.inc
+          else:
+            break
       generateDoc(d, ni, orig, examples = examples)
   of nkWhenStmt:
     # generate documentation for the first branch only:
