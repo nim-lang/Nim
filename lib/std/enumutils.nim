@@ -46,7 +46,7 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
         fStr = f[0].strVal
         fNum = f[1].intVal
       else: error("Invalid tuple syntax!", f[1])
-    else: error("Invalid node for enum type!", f)
+    else: error("Invalid node for enum type `" & $f.kind & "`!", f)
     # add field if string not already added
     if fNum >= userMin and fNum <= userMax:
       fStr = normalizer(fStr)
