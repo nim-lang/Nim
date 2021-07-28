@@ -50,10 +50,7 @@ proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
   if shouldProcess(g):
-    let doc = g.doc
-    updateAttachedExamples(doc, n)
-    generateDoc(doc, n, n, examples = doc.examplesAttached)
-    doc.examplesAttached.setLen 0
+    generateDoc(g.doc, n, n)
 
 proc processNodeJson(c: PPassContext, n: PNode): PNode =
   result = n

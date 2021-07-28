@@ -92,10 +92,6 @@ type
     exampleGroups: OrderedTable[string, ExampleGroup]
     wroteSupportFiles*: bool
 
-    isAttachedExamples*: bool
-    examplesAttachedRoot*: PNode
-    examplesAttached*: seq[PNode]
-
   PDoc* = ref TDocumentor ## Alias to type less.
 
 proc add(dest: var ItemPre, rst: PRstNode) = dest.add ItemFragment(isRst: true, rst: rst)
@@ -1150,13 +1146,6 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
     if p4 != nil: n[pragmasPos].add p4
     if p5 != nil: n[pragmasPos].add p5
 
-
-const runnableExamplesKinds = {nkTypeSection, nkVarSection, nkLetSection, nkConstSection} + routineDefs
-proc updateAttachedExamples*(d: PDoc, n: PNode) =
-  if n.kind in runnableExamplesKinds:
-    # PRTEMP: check that it's indeed this module; what about for includes?
-    d.isAttachedExamples = true # from now on, top-level examples are attached to a declaration in this module
-
 proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault, examples: seq[PNode] = @[]) =
   ## Goes through nim nodes recursively and collects doc comments.
   ## Main function for `doc`:option: command,
@@ -1168,6 +1157,7 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault, exampl
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
     d.modDeprecationMsg.add(genDeprecationMsg(d, pragmaNode))
+  of nkCommentStmt: d.modDescPre.add(genComment(d, n))
   of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skProc)
@@ -1200,7 +1190,7 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault, exampl
       var examples: seq[PNode]
       let ni = n[i]
       i.inc
-      if ni.kind in runnableExamplesKinds:
+      if ni.kind in {nkTypeSection, nkVarSection, nkLetSection, nkConstSection} + routineDefs:
         while i < n.len:
           let nj = n[i]
           if nj.isRunnableExamplesRoot or nj.kind == nkCommentStmt:
@@ -1224,15 +1214,10 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault, exampl
           exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
-  of nkCommentStmt:
-    d.modDescPre.add(genComment(d, n))
-  elif isRunnableExamplesRoot(n):
-    if d.isAttachedExamples:
-      d.examplesAttached.add n
-    else:
-      var comm: ItemPre
-      getAllRunnableExamples(d, n, comm)
-      if comm.len != 0: d.modDescPre.add(comm)
+  of nkCallKinds:
+    var comm: ItemPre
+    getAllRunnableExamples(d, n, comm)
+    if comm.len != 0: d.modDescPre.add(comm)
   else: discard
 
 proc finishGenerateDoc*(d: var PDoc) =
