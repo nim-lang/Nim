@@ -74,3 +74,26 @@ func addIntImpl*(result: var string, origin: uint64) =
       {.noSideEffect.}:
         copyMem result[n].addr, tmp[next].addr, length
 
+proc addInt*(result: var string; x: int64) =
+  ## Converts integer to its string representation and appends it to `result`.
+  ##
+  ## .. code-block:: Nim
+  ##   var
+  ##     a = "123"
+  ##     b = 45
+  ##   a.addInt(b) # a <- "12345"
+  var num: uint64
+
+  if x < 0:
+    if x == low(int64):
+      num = uint64(x)
+    else:
+      num = uint64(-x)
+    let base = result.len
+    setLen(result, base + 1)
+    result[base] = '-'
+  else:
+    num = uint64(x)
+  addIntImpl(result, num)
+
+# proc addInt*(result: var string; x: int64) {.error.}

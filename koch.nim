@@ -659,7 +659,8 @@ proc valgrind(cmd: string) =
   exec("valgrind --suppressions=" & supp & valcmd)
 
 proc showHelp(success: bool) =
-  quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
+  # quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
+  quit(HelpText % [VersionAsString & spaces(44-12),
                    CompileDate, CompileTime], if success: QuitSuccess else: QuitFailure)
 
 proc branchDone() =

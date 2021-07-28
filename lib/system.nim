@@ -2130,8 +2130,20 @@ const
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 
+# from std/private/digitsutils import nil
+# when defined(nimHasDragonBox): # PRTEMP
+#   export digitsutils.addInt
+# else:
+#   proc addInt*(result: var string; x: int64) =
+#     discard
+# proc addInt*(result: var string; x: int64) =
+#   discard
+    # "D20210728T164318"
+    # digitsutils.addInt(result, x)
+
 import system/dollars
 export dollars
+
 
 when defined(nimAuditDelete):
   {.pragma: auditDelete, deprecated: "review this call for out of bounds behavior".}
@@ -2467,9 +2479,9 @@ when defined(js):
   include "system/jssys"
   include "system/reprjs"
 
-when defined(js) or defined(nimscript):
-  proc addInt*(result: var string; x: int64) =
-    result.add $x
+# when defined(js) or defined(nimscript):
+#   proc addInt*(result: var string; x: int64) {.error.}
+#     # result.add $x
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.
@@ -3145,3 +3157,6 @@ when notJSnotNims and not defined(nimSeqsV2):
       moveMem(addr y[0], addr x[0], x.len)
       assert y == "abcgh"
     discard
+
+from std/private/digitsutils import nil
+export digitsutils.addInt

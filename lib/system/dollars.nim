@@ -1,11 +1,14 @@
 import std/private/digitsutils
 import system/formatfloat
+# export addFloat, addInt
 export addFloat
 
-proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
+# proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
+proc `$`*(x: int): string =
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string. `$` is Nim's general way of
   ## spelling `toString`:idx:.
+  "D20210728T161209"
 
 template dollarImpl(x: uint | uint64, result: var string) =
   addIntImpl(result, x)
@@ -37,9 +40,11 @@ else:
     ## converted to a decimal string.
     dollarImpl(x, result)
 
-proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
+# proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
+proc `$`*(x: int64): string =
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
+  "D20210728T161304"
 
 func `$`*(x: float | float32): string =
   ## Outplace version of `addFloat`.
