@@ -1173,11 +1173,17 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault, exampl
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
+    var last = -1
+    for i in countdown(n.len - 1, 0):
+      if n[i].kind != nkCommentStmt:
+        last = i
+        break
     for i in 0..<n.len:
-      if n[i].kind != nkCommentStmt: # PRTEMP
+      if n[i].kind != nkCommentStmt:
+        # xxx this produce a warning, it's silently ignored and has no valid use case
         # order is always 'type var let const':
         genItem(d, n[i], n[i][0],
-                succ(skType, ord(n.kind)-ord(nkTypeSection)), docFlags, examples)
+                succ(skType, ord(n.kind)-ord(nkTypeSection)), docFlags, if i == last: examples else: @[])
   of nkStmtList:
     var i=0
     while i<n.len:
