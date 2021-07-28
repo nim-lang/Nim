@@ -36,6 +36,10 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
     case f.kind
     of nnkEmpty: continue # skip first node of `enumTy`
     of nnkSym, nnkIdent: fStr = f.strVal
+    of nnkAccQuoted:
+      fStr = ""
+      for ch in f:
+        fStr.add ch.strVal
     of nnkEnumFieldDef:
       case f[1].kind
       of nnkStrLit: fStr = f[1].strVal
