@@ -614,6 +614,25 @@ type RunnableState = enum
   rsRunnable
   rsDone
 
+when false:
+  proc toStr(a: ItemFragment): string =
+    case a.isRst:
+    of true:
+      if a.rst == nil:
+        result.add "nil"
+      else:
+        # result.add $a.rst.kind
+        result.add a.rst.renderRstToText
+    of false:
+      result.add a.str
+
+  proc toStr(a: ItemPre): string =
+    result.add "["
+    for ai in a:
+      result.add toStr(ai)
+      result.add ", "
+    result.add "]"
+
 proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var ItemPre,
                                 state: RunnableState, topLevel: bool):
                                RunnableState =
@@ -691,7 +710,7 @@ proc getRoutineBody(n: PNode): PNode =
     doAssert result.len == 2
     result = result[1]
 
-proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var ItemPre, topLevel = true) =
+proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var ItemPre) =
   var n = n
   var state = rsStart
   template fn(n2, topLevel) =
@@ -706,7 +725,7 @@ proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var ItemPre, topLevel = tru
       for i in 0..<n.safeLen:
         fn(n[i], topLevel = false)
         if state == rsDone: discard # check all sons
-  else: fn(n, topLevel = topLevel)
+  else: fn(n, topLevel = true)
 
 proc isVisible(d: PDoc; n: PNode): bool =
   result = false
@@ -895,7 +914,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, examp
     getAllRunnableExamples(d, n, comm)
   else:
     comm.add genRecComment(d, n)
-  for ai in examples: getAllRunnableExamples(d, ai, comm, topLevel = false)
+  for ai in examples:
+    discard getAllRunnableExamplesImpl(d, ai, comm, rsStart, topLevel = false)
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
