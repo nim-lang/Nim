@@ -106,16 +106,68 @@ window.addEventListener('DOMContentLoaded', main);
 </ul><li>
   <a class="reference reference-toplevel" href="#7" id="57">Types</a>
   <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#SomeType"
+      <li><a class="reference" href="#Foo1"
+    title="Foo1 = object">Foo1</a></li>
+  <li><a class="reference" href="#Foo2"
+    title="Foo2 = object">Foo2</a></li>
+  <li><a class="reference" href="#Foo3"
+    title="Foo3 = object">Foo3</a></li>
+  <li><a class="reference" href="#SomeType"
     title="SomeType = enum
   enumValueA, enumValueB, enumValueC">SomeType</a></li>
 
   </ul>
 </li>
 <li>
+  <a class="reference reference-toplevel" href="#8" id="58">Vars</a>
+  <ul class="simple simple-toc-section">
+      <li><a class="reference" href="#c1"
+    title="c1: int">c1</a></li>
+  <li><a class="reference" href="#c2"
+    title="c2: int">c2</a></li>
+  <li><a class="reference" href="#c3"
+    title="c3: int">c3</a></li>
+
+  </ul>
+</li>
+<li>
+  <a class="reference reference-toplevel" href="#9" id="59">Lets</a>
+  <ul class="simple simple-toc-section">
+      <li><a class="reference" href="#c4"
+    title="c4 = 1">c4</a></li>
+  <li><a class="reference" href="#c5"
+    title="c5 = 1">c5</a></li>
+  <li><a class="reference" href="#c6"
+    title="c6 = 1">c6</a></li>
+
+  </ul>
+</li>
+<li>
+  <a class="reference reference-toplevel" href="#10" id="60">Consts</a>
+  <ul class="simple simple-toc-section">
+      <li><a class="reference" href="#c7"
+    title="c7 = 1">c7</a></li>
+  <li><a class="reference" href="#c8"
+    title="c8 = 1">c8</a></li>
+  <li><a class="reference" href="#c9"
+    title="c9 = 1">c9</a></li>
+
+  </ul>
+</li>
+<li>
   <a class="reference reference-toplevel" href="#12" id="62">Procs</a>
   <ul class="simple simple-toc-section">
-      <ul class="simple nested-toc-section">fn2
+      <ul class="simple nested-toc-section">baz
+      <li><a class="reference" href="#baz"
+    title="baz()">baz()</a></li>
+
+  </ul>
+  <ul class="simple nested-toc-section">baz2
+      <li><a class="reference" href="#baz2"
+    title="baz2()">baz2()</a></li>
+
+  </ul>
+  <ul class="simple nested-toc-section">fn2
       <li><a class="reference" href="#fn2"
     title="fn2()">fn2()</a></li>
 
@@ -158,6 +210,16 @@ window.addEventListener('DOMContentLoaded', main);
   <ul class="simple nested-toc-section">fn10
       <li><a class="reference" href="#fn10%2Cint"
     title="fn10(a: int): int">fn10(a: int): int</a></li>
+
+  </ul>
+  <ul class="simple nested-toc-section">gn1
+      <li><a class="reference" href="#gn1"
+    title="gn1()">gn1()</a></li>
+
+  </ul>
+  <ul class="simple nested-toc-section">gn2
+      <li><a class="reference" href="#gn2"
+    title="gn2()">gn2()</a></li>
 
   </ul>
   <ul class="simple nested-toc-section">someType
@@ -209,11 +271,54 @@ window.addEventListener('DOMContentLoaded', main);
 <ol class="simple"><li>Other case value</li>
 <li>Second case.</li>
 </ol>
-</p>
+
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">import</span> <span class="Identifier">subdir</span><span class="Operator">/</span><span class="Identifier">subdir_b</span><span class="Operator">/</span><span class="Identifier">utils</span>
+<span class="Keyword">discard</span> <span class="StringLit">&quot;module level 1&quot;</span></pre>
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">import</span> <span class="Identifier">subdir</span><span class="Operator">/</span><span class="Identifier">subdir_b</span><span class="Operator">/</span><span class="Identifier">utils</span>
+<span class="Keyword">discard</span> <span class="StringLit">&quot;module level 2&quot;</span></pre>
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">import</span> <span class="Identifier">subdir</span><span class="Operator">/</span><span class="Identifier">subdir_b</span><span class="Operator">/</span><span class="Identifier">utils</span>
+<span class="Keyword">discard</span> <span class="StringLit">&quot;module level 3&quot;</span></pre>before 4
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">import</span> <span class="Identifier">subdir</span><span class="Operator">/</span><span class="Identifier">subdir_b</span><span class="Operator">/</span><span class="Identifier">utils</span>
+<span class="Keyword">discard</span> <span class="StringLit">&quot;module level 4&quot;</span></pre>after 4</p>
   <div class="section" id="7">
 <h1><a class="toc-backref" href="#7">Types</a></h1>
 <dl class="item">
+<<<<<<< HEAD
 <div id="SomeType">
+||||||| parent of 553031bcb (fix tests)
+<a id="SomeType"></a>
+=======
+<a id="Foo1"></a>
+<dt><pre><a href="utils.html#Foo1"><span class="Identifier">Foo1</span></a> <span class="Other">=</span> <span class="Keyword">object</span></pre></dt>
+<dd>
+
+
+
+</dd>
+<a id="Foo2"></a>
+<dt><pre><a href="utils.html#Foo2"><span class="Identifier">Foo2</span></a> <span class="Other">=</span> <span class="Keyword">object</span></pre></dt>
+<dd>
+
+ok1
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;ok2&quot;</span></pre>ok3
+
+</dd>
+<a id="Foo3"></a>
+<dt><pre><a href="utils.html#Foo3"><span class="Identifier">Foo3</span></a> <span class="Other">=</span> <span class="Keyword">object</span></pre></dt>
+<dd>
+
+
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;ok for Foo3&quot;</span></pre>
+
+</dd>
+<a id="SomeType"></a>
+>>>>>>> 553031bcb (fix tests)
 <dt><pre><a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">enumValueA</span><span class="Other">,</span> <span class="Identifier">enumValueB</span><span class="Other">,</span> <span class="Identifier">enumValueC</span></pre></dt>
 <dd>
@@ -224,10 +329,126 @@ window.addEventListener('DOMContentLoaded', main);
 </div>
 
 </dl></div>
+<div class="section" id="8">
+<h1><a class="toc-backref" href="#8">Vars</a></h1>
+<dl class="item">
+<a id="c1"></a>
+<dt><pre><a href="utils.html#c1"><span class="Identifier">c1</span></a><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+<dd>
+
+comment1
+
+</dd>
+<a id="c2"></a>
+<dt><pre><a href="utils.html#c2"><span class="Identifier">c2</span></a><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+<dd>
+
+comment1
+
+</dd>
+<a id="c3"></a>
+<dt><pre><a href="utils.html#c3"><span class="Identifier">c3</span></a><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+<dd>
+
+comment3
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;ok1&quot;</span></pre>
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;ok2&quot;</span></pre>ok3
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;ok4&quot;</span></pre>ok5ok6 ok7
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;ok8&quot;</span></pre>
+
+</dd>
+
+</dl></div>
+<div class="section" id="9">
+<h1><a class="toc-backref" href="#9">Lets</a></h1>
+<dl class="item">
+<a id="c4"></a>
+<dt><pre><a href="utils.html#c4"><span class="Identifier">c4</span></a> <span class="Other">=</span> <span class="DecNumber">1</span></pre></dt>
+<dd>
+
+
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;ok1&quot;</span></pre>
+
+</dd>
+<a id="c5"></a>
+<dt><pre><a href="utils.html#c5"><span class="Identifier">c5</span></a> <span class="Other">=</span> <span class="DecNumber">1</span></pre></dt>
+<dd>
+
+ok1
+
+</dd>
+<a id="c6"></a>
+<dt><pre><a href="utils.html#c6"><span class="Identifier">c6</span></a> <span class="Other">=</span> <span class="DecNumber">1</span></pre></dt>
+<dd>
+
+ok1
+
+</dd>
+
+</dl></div>
+<div class="section" id="10">
+<h1><a class="toc-backref" href="#10">Consts</a></h1>
+<dl class="item">
+<a id="c7"></a>
+<dt><pre><a href="utils.html#c7"><span class="Identifier">c7</span></a> <span class="Other">=</span> <span class="DecNumber">1</span></pre></dt>
+<dd>
+
+
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;ok1&quot;</span></pre>
+
+</dd>
+<a id="c8"></a>
+<dt><pre><a href="utils.html#c8"><span class="Identifier">c8</span></a> <span class="Other">=</span> <span class="DecNumber">1</span></pre></dt>
+<dd>
+
+
+
+</dd>
+<a id="c9"></a>
+<dt><pre><a href="utils.html#c9"><span class="Identifier">c9</span></a> <span class="Other">=</span> <span class="DecNumber">1</span></pre></dt>
+<dd>
+
+
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;ok1&quot;</span></pre>
+
+</dd>
+
+</dl></div>
 <div class="section" id="12">
 <h1><a class="toc-backref" href="#12">Procs</a></h1>
 <dl class="item">
+<<<<<<< HEAD
 <div id="fn2">
+||||||| parent of 553031bcb (fix tests)
+<a id="fn2"></a>
+=======
+<a id="baz"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#baz"><span class="Identifier">baz</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+<dd>
+
+
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;ok4&quot;</span></pre>
+
+</dd>
+<a id="baz2"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#baz2"><span class="Identifier">baz2</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+<dd>
+
+
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;ok4&quot;</span></pre>
+
+</dd>
+<a id="fn2"></a>
+>>>>>>> 553031bcb (fix tests)
 <dt><pre><span class="Keyword">proc</span> <a href="#fn2"><span class="Identifier">fn2</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
 <dd>
 
@@ -298,8 +519,32 @@ comment
 comment
 
 </dd>
+<<<<<<< HEAD
 </div>
 <div id="someType_2">
+||||||| parent of 553031bcb (fix tests)
+<a id="someType_2"></a>
+=======
+<a id="gn1"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#gn1"><span class="Identifier">gn1</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+<dd>
+
+
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;for fwd proc gn1&quot;</span></pre>
+
+</dd>
+<a id="gn2"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#gn2"><span class="Identifier">gn2</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+<dd>
+
+ok1
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;for fwd proc gn2&quot;</span></pre>
+
+</dd>
+<a id="someType_2"></a>
+>>>>>>> 553031bcb (fix tests)
 <dt><pre><span class="Keyword">proc</span> <a href="#someType_2"><span class="Identifier">someType</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
 <dd>
 

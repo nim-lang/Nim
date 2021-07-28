@@ -15,6 +15,22 @@ fn10	subdir/subdir_b/utils.html#fn10,int	utils: fn10(a: int): int
 aEnum	subdir/subdir_b/utils.html#aEnum.t	utils: aEnum(): untyped	
 bEnum	subdir/subdir_b/utils.html#bEnum.t	utils: bEnum(): untyped	
 fromUtilsGen	subdir/subdir_b/utils.html#fromUtilsGen.t	utils: fromUtilsGen(): untyped	
+c1	subdir/subdir_b/utils.html#c1	utils: c1	
+c2	subdir/subdir_b/utils.html#c2	utils: c2	
+c3	subdir/subdir_b/utils.html#c3	utils: c3	
+Foo1	subdir/subdir_b/utils.html#Foo1	utils: Foo1	
+Foo2	subdir/subdir_b/utils.html#Foo2	utils: Foo2	
+c4	subdir/subdir_b/utils.html#c4	utils: c4	
+c5	subdir/subdir_b/utils.html#c5	utils: c5	
+c6	subdir/subdir_b/utils.html#c6	utils: c6	
+c7	subdir/subdir_b/utils.html#c7	utils: c7	
+c8	subdir/subdir_b/utils.html#c8	utils: c8	
+c9	subdir/subdir_b/utils.html#c9	utils: c9	
+Foo3	subdir/subdir_b/utils.html#Foo3	utils: Foo3	
+gn1	subdir/subdir_b/utils.html#gn1	utils: gn1()	
+gn2	subdir/subdir_b/utils.html#gn2	utils: gn2()	
+baz	subdir/subdir_b/utils.html#baz	utils: baz()	
+baz2	subdir/subdir_b/utils.html#baz2	utils: baz2()	
 This is now a header	subdir/subdir_b/utils.html#this-is-now-a-header	 This is now a header	
 Next header	subdir/subdir_b/utils.html#this-is-now-a-header-next-header	  Next header	
 And so on	subdir/subdir_b/utils.html#next-header-and-so-on	   And so on	
