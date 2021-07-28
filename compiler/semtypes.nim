@@ -144,8 +144,13 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     styleCheckDef(c.config, e)
     onDef(e.info, e)
     if sfGenSym notin e.flags:
-      if not isPure: addInterfaceDecl(c, e)
-      else: declarePureEnumField(c, e)
+      if not isPure:
+        if overloadableEnums in c.features:
+          addInterfaceOverloadableSymAt(c, c.currentScope, e)
+        else:
+          addInterfaceDecl(c, e)
+      else:
+        declarePureEnumField(c, e)
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
@@ -240,7 +245,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
 
   if not hasUnknownTypes:
     if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
-      localError(c.config, n.info, "type mismatch")
+      typeMismatch(c.config, n.info, rangeT[0], rangeT[1], n)
+
     elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin {tyFloat..tyFloat128} or
         rangeT[0].kind == tyBool:
       localError(c.config, n.info, "ordinal or float type expected")

@@ -203,7 +203,8 @@ type
     vmopsDanger,
     strictFuncs,
     views,
-    strictNotNil
+    strictNotNil,
+    overloadableEnums
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

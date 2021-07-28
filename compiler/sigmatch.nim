@@ -2197,7 +2197,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     var best = -1
     for i in 0..<arg.len:
       if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
-                                  skIterator, skMacro, skTemplate}:
+                             skIterator, skMacro, skTemplate, skEnumField}:
         copyCandidate(z, m)
         z.callee = arg[i].typ
         if tfUnresolved in z.callee.flags: continue
