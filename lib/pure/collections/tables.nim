@@ -227,6 +227,12 @@ template dataLen(t): untyped = len(t.data)
 
 include tableimpl
 
+proc raiseKeyError[T](key: T) {.noinline, noreturn.} =
+  when compiles($key):
+    raise newException(KeyError, "key not found: " & $key)
+  else:
+    raise newException(KeyError, "key not found")
+
 template get(t, key): untyped =
   ## retrieves the value at `t[key]`. The value can be modified.
   ## If `key` is not in `t`, the `KeyError` exception is raised.
@@ -235,10 +241,7 @@ template get(t, key): untyped =
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
   else:
-    when compiles($key):
-      raise newException(KeyError, "key not found: " & $key)
-    else:
-      raise newException(KeyError, "key not found")
+    raiseKeyError(key)
 
 proc enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
@@ -496,6 +499,8 @@ template tabCellHash(i)  = t.data[i].hcode
 proc del*[A, B](t: var Table[A, B], key: A) =
   ## Deletes `key` from hash table `t`. Does nothing if the key does not exist.
   ##
+  ## .. warning:: If duplicate keys were added, this may need to be called multiple times.
+  ##
   ## See also:
   ## * `pop proc<#pop,Table[A,B],A,B>`_
   ## * `clear proc<#clear,Table[A,B]>`_ to empty the whole table
@@ -513,6 +518,8 @@ proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   ## Returns `true`, if the `key` existed, and sets `val` to the
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
   ## unchanged.
+  ##
+  ## .. warning:: If duplicate keys were added, this may need to be called multiple times.
   ##
   ## See also:
   ## * `del proc<#del,Table[A,B],A>`_

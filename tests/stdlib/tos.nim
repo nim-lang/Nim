@@ -22,6 +22,7 @@ __really_obscure_dir_name/test
 Raises
 Raises
 '''
+  joinable: false
 """
 # test os path creation, iteration, and deletion
 
@@ -558,9 +559,9 @@ block ospaths:
   doAssert joinPath("foo","abc") == unixToNativePath"foo/abc"
   doAssert joinPath("","abc") == unixToNativePath"abc"
 
-  doAssert joinPath("gook/.","abc") == unixToNativePath"gook/abc"
+  doAssert joinPath("zook/.","abc") == unixToNativePath"zook/abc"
 
-  # controversial: inconsistent with `joinPath("gook/.","abc")`
+  # controversial: inconsistent with `joinPath("zook/.","abc")`
   # on linux, `./foo` and `foo` are treated a bit differently for executables
   # but not `./foo/bar` and `foo/bar`
   doAssert joinPath(".", "/lib") == unixToNativePath"./lib"
@@ -594,12 +595,12 @@ block getTempDir:
       if existsEnv("TMPDIR"):
         let origTmpDir = getEnv("TMPDIR")
         putEnv("TMPDIR", "/mytmp")
-        doAssert getTempDir() == "/mytmp"
+        doAssert getTempDir() == "/mytmp/"
         delEnv("TMPDIR")
-        doAssert getTempDir() == "/tmp"
+        doAssert getTempDir() == "/tmp/"
         putEnv("TMPDIR", origTmpDir)
       else:
-        doAssert getTempDir() == "/tmp"
+        doAssert getTempDir() == "/tmp/"
 
 block: # getCacheDir
   doAssert getCacheDir().dirExists
@@ -614,6 +615,9 @@ block osenv:
     doAssert existsEnv(dummyEnvVar) == false
     delEnv(dummyEnvVar)         # deleting an already deleted env var
     doAssert existsEnv(dummyEnvVar) == false
+  block: # putEnv, bug #18502
+    doAssertRaises(OSError): putEnv("DUMMY_ENV_VAR_PUT=DUMMY_VALUE", "NEW_DUMMY_VALUE")
+    doAssertRaises(OSError): putEnv("", "NEW_DUMMY_VALUE")
   block:
     doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", "") == ""
     doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", " ") == " "

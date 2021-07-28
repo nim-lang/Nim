@@ -1795,6 +1795,13 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
   else:
     result.add(p.emptyNode)
   indAndComment(p, result, maybeMissEquals)
+  let body = result[^1]
+  if body.kind == nkStmtList and body.len > 0 and body[0].comment.len > 0 and body[0].kind != nkCommentStmt:
+    if result.comment.len == 0:
+      # proc fn*(a: int): int = a ## foo
+      # => moves comment `foo` to `fn`
+      swap(result.comment, body[0].comment)
+    else: discard # xxx either `assert false` or issue a warning (otherwise we'll never know of this edge case)
 
 proc newCommentStmt(p: var Parser): PNode =
   #| commentStmt = COMMENT
@@ -2058,6 +2065,8 @@ proc parseTypeClass(p: var Parser): PNode =
     skipComment(p, result)
   # an initial IND{>} HAS to follow:
   if not realInd(p):
+    if result.isNewStyleConcept:
+      parMessage(p, "routine expected, but found '$1' (empty new-styled concepts are not allowed)", p.tok)
     result.add(p.emptyNode)
   else:
     result.add(parseStmt(p))

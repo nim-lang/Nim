@@ -325,6 +325,9 @@ typedef unsigned char NIM_BOOL; // best effort
 #endif
 
 NIM_STATIC_ASSERT(sizeof(NIM_BOOL) == 1, ""); // check whether really needed
+NIM_STATIC_ASSERT(CHAR_BIT == 8, "");
+  // fail fast for (rare) environments where this doesn't hold, as some implicit
+  // assumptions would need revisiting (e.g. `uint8` or https://github.com/nim-lang/Nim/pull/18505)
 
 #define NIM_TRUE true
 #define NIM_FALSE false

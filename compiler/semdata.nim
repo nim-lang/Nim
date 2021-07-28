@@ -65,7 +65,7 @@ type
       # you may be in position to supply a better error message
       # to the user.
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
-    efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
+    efWantValue, efOperand, efNoSemCheck,
     efNoEvaluateGeneric, efInCall, efFromHlo, efNoSem2Check,
     efNoUndeclared
       # Use this if undeclared identifiers should not raise an error during
@@ -159,6 +159,7 @@ type
     exportIndirections*: HashSet[(int, int)] # (module.id, symbol.id)
     importModuleMap*: Table[int, int] # (module.id, module.id)
     lastTLineInfo*: TLineInfo
+    sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
 
 template config*(c: PContext): ConfigRef = c.graph.config
 

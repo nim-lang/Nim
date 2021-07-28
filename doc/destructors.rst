@@ -222,16 +222,33 @@ The prototype of this hook for a type `T` needs to be:
 `env` is used by ORC to keep track of its internal state, it should be passed around
 to calls of the built-in `=trace` operation.
 
-The general pattern in `=trace` looks like:
+Usually there will only be a need for a custom `=trace` when a custom `=destroy` that deallocates manually allocated resources is also used, and then only when there is a chance of cyclic references from items within the manually allocated resources when it is desired that `--gc:orc` be able to break and collect these cyclic referenced resources.  Currently however, there is a mutual use problem in that whichever of `=destroy`/`=trace` is used first will automatically create a version of the other which will then conflict with the creation of the second of the pair.  The work around for this problem is to forward declare the second of the "hooks" to prevent the automatic creation.
+
+The general pattern in using `=destroy` with `=trace` looks like:
 
 .. code-block:: nim
 
-  proc `=trace`(dest: var T; env: pointer) =
-    for child in childrenThatCanContainPointers(dest):
-      `=trace`(child, env)
+  type
+    Test[T] = object
+      size: Natural
+      arr: ptr UncheckedArray[T] # raw pointer field
+
+  proc makeTest[T](size: Natural): Test[T] = # custom allocation...
+    Test[T](size: size, arr: cast[ptr UncheckedArray[T]](alloc0(sizeof(T) * size)))
 
 
-**Note**: The `=trace` hooks is currently more experimental and less refined
+  proc `=destroy`[T](dest: var Test[T]) =
+    if dest.arr != nil:
+      for i in 0 ..< dest.size: dest.arr[i].`=destroy`
+      dest.arr.dealloc
+
+  proc `=trace`[T](dest: var Test[T]; env: pointer) =
+    if dest.arr != nil: # trace the `T`'s which may be cyclic
+      for i in 0 ..< dest.size: dest.arr[i].`=trace` env
+
+  # following may be other custom "hooks" as required...
+
+**Note**: The `=trace` hooks (which are only used by `--gc:orc`) are currently more experimental and less refined
 than the other hooks.
 
 

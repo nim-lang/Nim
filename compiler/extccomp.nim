@@ -665,9 +665,10 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
   addExternalFileToCompile(conf, c)
 
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
-                objfiles: string, isDllBuild: bool): string =
+                objfiles: string, isDllBuild: bool, removeStaticFile: bool): string =
   if optGenStaticLib in conf.globalOptions:
-    removeFile output # fixes: bug #16947
+    if removeStaticFile:
+      removeFile output # fixes: bug #16947
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(output),
                                             "objfiles", objfiles]
   else:
@@ -750,8 +751,9 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
   if optCDebug in conf.globalOptions and conf.cCompiler == ccVcc:
     result.add " /Zi /FS /Od"
 
-template getLinkCmd(conf: ConfigRef; output: AbsoluteFile, objfiles: string): string =
-  getLinkCmd(conf, output, objfiles, optGenDynLib in conf.globalOptions)
+template getLinkCmd(conf: ConfigRef; output: AbsoluteFile, objfiles: string,
+                    removeStaticFile = false): string =
+  getLinkCmd(conf, output, objfiles, optGenDynLib in conf.globalOptions, removeStaticFile)
 
 template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped) =
   try:
@@ -891,7 +893,7 @@ proc callCCompiler*(conf: ConfigRef) =
         let objFile = conf.getObjFilePath(x)
         let buildDll = idx != mainFileIdx
         let linkTarget = conf.hcrLinkTargetName(objFile, not buildDll)
-        cmds.add(getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll))
+        cmds.add(getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll, removeStaticFile = true))
         # try to remove all .pdb files for the current binary so they don't accumulate endlessly in the nimcache
         # for more info check the comment inside of getLinkCmd() where the /PDB:<filename> MSVC flag is used
         if isVSCompatible(conf):
@@ -914,7 +916,8 @@ proc callCCompiler*(conf: ConfigRef) =
         objfiles.add(quoteShell(objFile))
       let mainOutput = if optGenScript notin conf.globalOptions: conf.prepareToWriteOutput
                        else: AbsoluteFile(conf.projectName)
-      linkCmd = getLinkCmd(conf, mainOutput, objfiles)
+
+      linkCmd = getLinkCmd(conf, mainOutput, objfiles, removeStaticFile = true)
       extraCmds = getExtraCmds(conf, mainOutput)
       if optCompileOnly notin conf.globalOptions:
         const MaxCmdLen = when defined(windows): 8_000 else: 32_000

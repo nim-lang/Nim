@@ -198,7 +198,30 @@ template main() =
     s.removePrefix("")
     doAssert s == "\r\n\r\nhello"
 
-  block: # delete
+  block: # delete(slice)
+    var s = "0123456789ABCDEFGH"
+    delete(s, 4 .. 5)
+    doAssert s == "01236789ABCDEFGH"
+    delete(s, s.len-1 .. s.len-1)
+    doAssert s == "01236789ABCDEFG"
+    delete(s, 0..0)
+    doAssert s == "1236789ABCDEFG"
+    s = ""
+    doAssertRaises(IndexDefect): delete(s, 0..0)
+    doAssert s == ""
+    s = "abc"
+    doAssertRaises(IndexDefect): delete(s, -1 .. -2)
+    doAssertRaises(IndexDefect): delete(s, 2..3)
+    doAssertRaises(IndexDefect): delete(s, 3..2)
+    delete(s, 2..2)
+    doAssert s == "ab"
+    delete(s, 1..0)
+    doAssert s == "ab"
+    delete(s, 0..0)
+    doAssert s == "b"
+
+  block: # delete(first, last)
+    {.push warning[deprecated]:off.}
     var s = "0123456789ABCDEFGH"
     delete(s, 4, 5)
     doAssert s == "01236789ABCDEFGH"
@@ -206,6 +229,7 @@ template main() =
     doAssert s == "01236789ABCDEFG"
     delete(s, 0, 0)
     doAssert s == "1236789ABCDEFG"
+    {.pop.}
 
   block: # find
     doAssert "0123456789ABCDEFGH".find('A') == 10

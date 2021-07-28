@@ -1,5 +1,6 @@
 discard """
   output: "pcDir\npcFile\npcLinkToDir\npcLinkToFile\n"
+  joinable: false
 """
 
 import os, strutils

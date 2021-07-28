@@ -168,9 +168,7 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
   elif (targetBaseTyp.kind in IntegralTypes) and
       (srcBaseTyp.kind in IntegralTypes):
     if targetTyp.kind == tyEnum and srcBaseTyp.kind == tyEnum:
-      if c.config.isDefined("nimLegacyConvEnumEnum"):
-        message(c.config, src.info, warnUser, "enum to enum conversion is now deprecated")
-      else: result = convNotLegal
+      message(c.config, src.info, warnSuspiciousEnumConv, "suspicious code: enum to enum conversion")
     # `elif` would be incorrect here
     if targetTyp.kind == tyBool:
       discard "convOk"
@@ -625,10 +623,10 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
           localError(c.config, x.info, "invalid order in array constructor")
         x = x[1]
 
-      let xx = semExprWithType(c, x, flags*{efAllowDestructor})
+      let xx = semExprWithType(c, x, {})
       result.add xx
       typ = commonType(c, typ, xx.typ)
-      #n[i] = semExprWithType(c, x, flags*{efAllowDestructor})
+      #n[i] = semExprWithType(c, x, {})
       #result.add fitNode(c, typ, n[i])
       inc(lastIndex)
     addSonSkipIntLit(result.typ, typ, c.idgen)
@@ -1760,13 +1758,9 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     localError(c.config, a.info, errXCannotBeAssignedTo %
                renderTree(a, {renderNoComments}))
   else:
-    let
-      lhs = n[0]
-      lhsIsResult = lhs.kind == nkSym and lhs.sym.kind == skResult
-    var
-      rhs = semExprWithType(c, n[1],
-        if lhsIsResult: {efAllowDestructor} else: {})
-    if lhsIsResult:
+    let lhs = n[0]
+    let rhs = semExprWithType(c, n[1], {})
+    if lhs.kind == nkSym and lhs.sym.kind == skResult:
       n.typ = c.enforceVoidContext
       if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
         var rhsTyp = rhs.typ
@@ -2514,8 +2508,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     let id = considerQuotedIdent(c, n[i][0])
     if containsOrIncl(ids, id.id):
       localError(c.config, n[i].info, errFieldInitTwice % id.s)
-    n[i][1] = semExprWithType(c, n[i][1],
-                                        flags*{efAllowDestructor})
+    n[i][1] = semExprWithType(c, n[i][1], {})
 
     if n[i][1].typ.kind == tyTypeDesc:
       localError(c.config, n[i][1].info, "typedesc not allowed as tuple field.")
@@ -2535,7 +2528,7 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result.transitionSonsKind(nkTupleConstr)
   var typ = newTypeS(tyTuple, c)  # leave typ.n nil!
   for i in 0..<n.len:
-    n[i] = semExprWithType(c, n[i], flags*{efAllowDestructor})
+    n[i] = semExprWithType(c, n[i], {})
     addSonSkipIntLit(typ, n[i].typ, c.idgen)
   result.typ = typ
 

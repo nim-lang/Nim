@@ -28,7 +28,30 @@ const doNotUnmap = not (defined(amd64) or defined(i386)) or
                    defined(windows) or defined(nimAllocNoUnmap)
 
 
-when defined(emscripten) and not defined(StandaloneHeapSize):
+when defined(nimAllocPagesViaMalloc):
+  when not defined(gcArc) and not defined(gcOrc):
+    {.error: "-d:nimAllocPagesViaMalloc is only supported with --gc:arc or --gc:orc".}
+
+  proc osTryAllocPages(size: int): pointer {.inline.} =
+    let base = c_malloc(csize_t size + PageSize - 1 + sizeof(uint32))
+    if base == nil: raiseOutOfMem()
+    # memory layout: padding + offset (4 bytes) + user_data
+    # in order to deallocate: read offset at user_data - 4 bytes,
+    # then deallocate user_data - offset
+    let offset = PageSize - (cast[int](base) and (PageSize - 1))
+    cast[ptr uint32](base +! (offset - sizeof(uint32)))[] = uint32(offset)
+    result = base +! offset
+
+  proc osAllocPages(size: int): pointer {.inline.} =
+    result = osTryAllocPages(size)
+    if result == nil: raiseOutOfMem()
+
+  proc osDeallocPages(p: pointer, size: int) {.inline.} =
+    # read offset at p - 4 bytes, then deallocate (p - offset) pointer
+    let offset = cast[ptr uint32](p -! sizeof(uint32))[]
+    c_free(p -! offset)
+
+elif defined(emscripten) and not defined(StandaloneHeapSize):
   const
     PROT_READ  = 1             # page can be read
     PROT_WRITE = 2             # page can be written
@@ -197,11 +220,11 @@ elif defined(posix) and not defined(StandaloneHeapSize):
     PROT_WRITE = 2             # page can be written
 
   when defined(netbsd) or defined(openbsd):
-      # OpenBSD security for setjmp/longjmp coroutines
-      var MAP_STACK {.importc: "MAP_STACK", header: "<sys/mman.h>".}: cint
+    # OpenBSD security for setjmp/longjmp coroutines
+    var MAP_STACK {.importc: "MAP_STACK", header: "<sys/mman.h>".}: cint
   else:
     const MAP_STACK = 0             # avoid sideeffects
-    
+
   when defined(macosx) or defined(freebsd):
     const MAP_ANONYMOUS = 0x1000
     const MAP_PRIVATE = 0x02        # Changes are private

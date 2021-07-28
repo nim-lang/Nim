@@ -391,16 +391,24 @@ proc semGenericStmt(c: PContext, n: PNode,
       a[^1] = semGenericStmtScope(c, a[^1], flags, ctx)
       closeScope(c)
 
-  of nkVarSection, nkLetSection:
+  of nkVarSection, nkLetSection, nkConstSection:
+    let varKind =
+      case n.kind
+      of nkVarSection: skVar
+      of nkLetSection: skLet
+      else: skConst
     for i in 0..<n.len:
       var a = n[i]
-      if a.kind == nkCommentStmt: continue
-      if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): illFormedAst(a, c.config)
-      checkMinSonsLen(a, 3, c.config)
-      a[^2] = semGenericStmt(c, a[^2], flags+{withinTypeDesc}, ctx)
-      a[^1] = semGenericStmt(c, a[^1], flags, ctx)
-      for j in 0..<a.len-2:
-        addTempDecl(c, getIdentNode(c, a[j]), skVar)
+      case a.kind:
+      of nkCommentStmt: continue
+      of nkIdentDefs, nkVarTuple, nkConstDef:
+        checkMinSonsLen(a, 3, c.config)
+        a[^2] = semGenericStmt(c, a[^2], flags+{withinTypeDesc}, ctx)
+        a[^1] = semGenericStmt(c, a[^1], flags, ctx)
+        for j in 0..<a.len-2:
+          addTempDecl(c, getIdentNode(c, a[j]), varKind)
+      else: 
+        illFormedAst(a, c.config)
   of nkGenericParams:
     for i in 0..<n.len:
       var a = n[i]
@@ -410,15 +418,6 @@ proc semGenericStmt(c: PContext, n: PNode,
       # do not perform symbol lookup for default expressions
       for j in 0..<a.len-2:
         addTempDecl(c, getIdentNode(c, a[j]), skType)
-  of nkConstSection:
-    for i in 0..<n.len:
-      var a = n[i]
-      if a.kind == nkCommentStmt: continue
-      if (a.kind != nkConstDef): illFormedAst(a, c.config)
-      checkSonsLen(a, 3, c.config)
-      addTempDecl(c, getIdentNode(c, a[0]), skConst)
-      a[1] = semGenericStmt(c, a[1], flags+{withinTypeDesc}, ctx)
-      a[2] = semGenericStmt(c, a[2], flags, ctx)
   of nkTypeSection:
     for i in 0..<n.len:
       var a = n[i]

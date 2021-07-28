@@ -222,8 +222,7 @@ proc semConstructFields(c: PContext, n: PNode,
           valsDiff.renderAsType(n[0].typ)])
 
       let branchNode = n[selectedBranch]
-      let flags = flags*{efAllowDestructor} + {efPreferStatic,
-                                               efPreferNilResult}
+      let flags = {efPreferStatic, efPreferNilResult}
       var discriminatorVal = semConstrField(c, flags,
                                             discriminator.sym,
                                             constrCtx.initExpr)
@@ -436,6 +435,6 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   if initResult == initFull:
     incl result.flags, nfAllFieldsSet
-  
+
   # wrap in an error see #17437
   if hasError: result = errorNode(c, result)

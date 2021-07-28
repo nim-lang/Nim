@@ -17,75 +17,64 @@
 ## Loading a simple C function
 ## ---------------------------
 ##
-## The following example demonstrates loading a function called 'greet'
+## The following example demonstrates loading a function called `greet`
 ## from a library that is determined at runtime based upon a language choice.
-## If the library fails to load or the function 'greet' is not found,
+## If the library fails to load or the function `greet` is not found,
 ## it quits with a failure error code.
 ##
-## .. code-block:: Nim
-##
-##   import std/dynlib
-##
-##   type
-##     greetFunction = proc(): cstring {.gcsafe, stdcall.}
-##
-##   let lang = stdin.readLine()
-##
-##   let lib = case lang
-##   of "french":
-##     loadLib("french.dll")
-##   else:
-##     loadLib("english.dll")
-##
-##   if lib == nil:
-##     echo "Error loading library"
-##     quit(QuitFailure)
-##
-##   let greet = cast[greetFunction](lib.symAddr("greet"))
-##
-##   if greet == nil:
-##     echo "Error loading 'greet' function from library"
-##     quit(QuitFailure)
-##
-##   let greeting = greet()
-##
-##   echo greeting
-##
-##   unloadLib(lib)
-##
+runnableExamples:
+  type
+    GreetFunction = proc (): cstring {.gcsafe, stdcall.}
 
-import strutils
+  proc loadGreet(lang: string) =
+    let lib =
+      case lang
+      of "french":
+        loadLib("french.dll")
+      else:
+        loadLib("english.dll")
+    assert lib != nil, "Error loading library"
+
+    let greet = cast[GreetFunction](lib.symAddr("greet"))
+    assert greet != nil, "Error loading 'greet' function from library"
+
+    echo greet()
+
+    unloadLib(lib)
+
+
+import std/strutils
 
 type
-  LibHandle* = pointer ## a handle to a dynamically loaded library
+  LibHandle* = pointer ## A handle to a dynamically loaded library.
 
 proc loadLib*(path: string, globalSymbols = false): LibHandle {.gcsafe.}
-  ## loads a library from `path`. Returns nil if the library could not
+  ## Loads a library from `path`. Returns nil if the library could not
   ## be loaded.
 
 proc loadLib*(): LibHandle {.gcsafe.}
-  ## gets the handle from the current executable. Returns nil if the
+  ## Gets the handle from the current executable. Returns nil if the
   ## library could not be loaded.
 
 proc unloadLib*(lib: LibHandle) {.gcsafe.}
-  ## unloads the library `lib`
+  ## Unloads the library `lib`.
 
 proc raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.} =
-  ## raises an `EInvalidLibrary` exception.
+  ## Raises a `LibraryError` exception.
   raise newException(LibraryError, "could not find symbol: " & $name)
 
 proc symAddr*(lib: LibHandle, name: cstring): pointer {.gcsafe.}
-  ## retrieves the address of a procedure/variable from `lib`. Returns nil
+  ## Retrieves the address of a procedure/variable from `lib`. Returns nil
   ## if the symbol could not be found.
 
 proc checkedSymAddr*(lib: LibHandle, name: cstring): pointer =
-  ## retrieves the address of a procedure/variable from `lib`. Raises
-  ## `EInvalidLibrary` if the symbol could not be found.
+  ## Retrieves the address of a procedure/variable from `lib`. Raises
+  ## `LibraryError` if the symbol could not be found.
   result = symAddr(lib, name)
   if result == nil: raiseInvalidLibrary(name)
 
 proc libCandidates*(s: string, dest: var seq[string]) =
-  ## given a library name pattern `s` write possible library names to `dest`.
+  ## Given a library name pattern `s`, write possible library names to `dest`.
   var le = strutils.find(s, '(')
   var ri = strutils.find(s, ')', le+1)
   if le >= 0 and ri > le:
@@ -97,8 +86,9 @@ proc libCandidates*(s: string, dest: var seq[string]) =
     add(dest, s)
 
 proc loadLibPattern*(pattern: string, globalSymbols = false): LibHandle =
-  ## loads a library with name matching `pattern`, similar to what `dynlib`
+  ## Loads a library with name matching `pattern`, similar to what the `dynlib`
   ## pragma does. Returns nil if the library could not be loaded.
+  ##
   ## .. warning:: this proc uses the GC and so cannot be used to load the GC.
   var candidates = newSeq[string]()
   libCandidates(pattern, candidates)

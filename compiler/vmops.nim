@@ -20,13 +20,14 @@ when declared(math.copySign):
 when declared(math.signbit):
   from std/math import signbit
 
-from std/os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir,
+from std/os import getEnv, existsEnv, delEnv, putEnv, dirExists, fileExists, walkDir,
                    getAppFilename, raiseOSError, osLastError
 
 from std/md5 import getMD5
 from std/times import cpuTime
 from std/hashes import hash
 from std/osproc import nil
+from system/formatfloat import addFloatRoundtrip, addFloatSprintf
 
 from sighashes import symBodyDigest
 
@@ -150,6 +151,9 @@ when defined(nimHasInvariant):
     of cincludes: copySeq(conf.cIncludes)
     of clibs: copySeq(conf.cLibs)
 
+proc stackTrace2(c: PCtx, msg: string, n: PNode) =
+  stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, msg, n.info)
+
 proc registerAdditionalOps*(c: PCtx) =
   proc gorgeExWrapper(a: VmArgs) =
     let ret = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
@@ -211,6 +215,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2s(getEnv, osop)
     wrap1s(existsEnv, osop)
     wrap2svoid(putEnv, osop)
+    wrap1svoid(delEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
     wrapDangerous(writeFile, ioop)
@@ -238,15 +243,13 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
-      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
-                  "symBodyHash() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
+      stackTrace2(c, "symBodyHash() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
     setResult(a, $symBodyDigest(c.graph, n.sym))
 
   registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
-      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
-                  "isExported() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
+      stackTrace2(c, "isExported() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
     setResult(a, sfExported in n.sym.flags)
 
   registerCallback c, "stdlib.vmutils.vmTrace", proc (a: VmArgs) =
@@ -324,3 +327,13 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.typetraits.hasClosureImpl", proc (a: VmArgs) =
     let fn = getNode(a, 0)
     setResult(a, fn.kind == nkClosure or (fn.typ != nil and fn.typ.callConv == ccClosure))
+
+  registerCallback c, "stdlib.formatfloat.addFloatRoundtrip", proc(a: VmArgs) =
+    let p = a.getVar(0)
+    let x = a.getFloat(1)
+    addFloatRoundtrip(p.strVal, x)
+
+  registerCallback c, "stdlib.formatfloat.addFloatSprintf", proc(a: VmArgs) =
+    let p = a.getVar(0)
+    let x = a.getFloat(1)
+    addFloatSprintf(p.strVal, x)

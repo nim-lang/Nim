@@ -671,3 +671,117 @@ Conventions
    Furthermore, module names should use `snake_case` and not use capital
    letters, which cause issues when going from an OS without case
    sensitivity to an OS with it.
+
+
+Breaking Changes
+================
+
+Introducing breaking changes, no matter how well intentioned,
+creates long-term problems for the community, in particular those looking to promote
+reusable Nim code in libraries: In the Nim distribution, critical security and bugfixes,
+language changes and community improvements are bundled in a single distribution - it is
+difficult to make partial upgrades with only benign changes. When one library depends on
+a legacy behavior, it can no longer be used together with another library that does not,
+breaking all downstream applications - the standard library is unique in that it sits at
+the root of **all** dependency trees.
+
+There is a big difference between compile-time breaking changes and run-time breaking
+changes.
+
+
+Run-time breaking changes
+-------------------------
+
+Run-time breaking changes are to be avoided at almost all costs: Nim is used for
+mission critical applications which depend on behaviours that
+are not covered by the test suite. As such, it's important that changes to the
+*stable* parts of the standard library are made avoiding changing the existing
+behaviors, even when the test suite continues to pass.
+
+Examples of run-time breaking changes:
+
+- Raising exceptions of a new type, compared to what's currently being raised.
+
+- Adding unconstrained or poorly constrained generic procs or macros
+  ("hash now works for all `ref T`"): This may cause code to behave differently
+  depending only on which modules are imported - common examples include `==` and `hash`.
+
+- Changing behavior of existing functions like:
+
+  * "Nim's path handling procs like `getXDir` now consistently lack the trailing slash"
+  * "Nim's strformat implementation is now more consistent with Python"
+
+Instead write new code that explicitly announces the feature you think we announced but
+didn't. For example, `strformat` does not say "it's compatible with Python", it
+says "inspired by Python's f-strings". This new code can be submitted to the stdlib
+and the old code can be deprecated or it can be published as a Nimble package.
+
+Sometimes, a run-time breaking change is most desirable: For example, a string
+representation of a floating point number that "roundtrips" is much better than
+a string represenation that doesn't. These run-time breaking changes must start in the
+state "opt-in" via a new `-d:nimPreviewX` or command line flag and then should become
+the new default later, in follow-up versions. This way users can track
+regressions more easily. ("git bisect" is not an acceptable alternative, that's for
+Nim compiler developers, not for Nim users.)
+
+Above all else, additive approaches that don't change existing behaviors
+should be preferred.
+
+
+Compile-time breaking changes
+-----------------------------
+
+Compile-time breaking changes are usually easier to handle, but for large code bases
+it can also be much work and it can hinder the adoption of a new Nim release.
+Additive approaches are to be preferred here as well.
+
+Examples of compile-time breaking changes include (but are not limited to):
+
+* Renaming functions and modules, or moving things. Instead of a direct rename,
+  deprecate the old name and introduce a new one.
+* Renaming the parameter names: Thanks to Nim's "named parameter" calling syntax
+  like `f(x = 0, y = 1)` this is a breaking change. Instead live with the existing
+  parameter names.
+* Adding an enum value to an existing enum. Nim's exhaustive case statements stop
+  compiling after such a change. Instead consider to introduce new `bool`
+  fields/parameters. This can be impractical though, so we use good judgement
+  and our list of "important packages" to see if it doesn't break too much code
+  out there in practice.
+* Adding a new proc to an existing stdlib module. However, for aesthetic reasons
+  this is often preferred over introducing a new module with just a single proc
+  inside. We use good judgement and our list of "important packages" to see if
+  it doesn't break too much code out there in practice. The new procs need to
+  be annotated with a `.since` annotation.
+
+
+Compiler/language spec bugfixes
+-------------------------------
+
+This can even be applied to compiler "bugfixes": If the compiler should have been
+"pickier" in its handling of `typedesc`, instead of "fixing typedesc handling bugs",
+consider the following solution:
+
+- Spec out how `typedesc` should really work and also spec out the cases where it
+  should not be allowed!
+- Deprecate `typedesc` and name the new metatype something new like `typeArg`.
+- Implement the spec.
+
+
+Non-breaking changes
+--------------------
+
+Examples of changes that are considered non-breaking (or acceptable breaking changes) include:
+
+* Creating a new module.
+* Adding an overload to an already overloaded proc.
+* Adding new default parameters to an existing proc. It is assumed that you do not
+  use Nim's stdlib procs's addresses (that you don't use them as first class entities).
+* Changing the calling convention from `nimcall` to `inline`
+  (but first RFC https://github.com/nim-lang/RFCs/issues/396 needs to be implemented).
+* Changing the behavior from "crashing" into some other, well documented result (including
+  raising a Defect, but not raising an exception that does not inherit from Defect).
+* Adding new fields to an existing object.
+
+Nim's introspection facilities imply that strictly speaking almost every addition can
+break somebody's code. It is impractical to care about these cases, a change that only
+affects introspection is not considered to be a breaking change.

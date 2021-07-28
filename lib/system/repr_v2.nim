@@ -19,9 +19,9 @@ proc repr*(x: uint64): string {.noSideEffect.} =
   ## converted to a decimal string.
   $x #Calls `$` from system/strmantle.nim
 
-proc repr*(x: float): string {.magic: "FloatToStr", noSideEffect.}
-  ## repr for a float argument. Returns `x`
-  ## converted to a decimal string.
+proc repr*(x: float): string =
+  ## Same as $x
+  $x
 
 proc repr*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## repr for a boolean argument. Returns `x`
