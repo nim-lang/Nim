@@ -526,7 +526,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {})
 
-      if def.kind in nkSymChoices and def.typ.skipTypes(abstractInst).kind == tyEnum:
+      if def.kind in nkSymChoices and def[0].typ.skipTypes(abstractInst).kind == tyEnum:
         errorSymChoiceUseQualifier(c, def)
       elif def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
