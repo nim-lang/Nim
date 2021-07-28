@@ -122,10 +122,15 @@ template main() =
     doAssert fastCeilDiv(8,  3) ==  3
     doAssert fastCeilDiv(8,  4) ==  2
     doAssert fastCeilDiv(8,  5) ==  2
-    doAssert fastCeilDiv(11,  3) ==  4
-    doAssert fastCeilDiv(12,  3) ==  4
-    doAssert fastCeilDiv(13,  3) ==  5
-    doAssert fastCeilDiv(41,  7) ==  6
+    doAssert fastCeilDiv(11, 3) ==  4
+    doAssert fastCeilDiv(12, 3) ==  4
+    doAssert fastCeilDiv(13, 3) ==  5
+    doAssert fastCeilDiv(41, 7) ==  6
+    when not defined(danger):
+      doAssertRaises(AssertionDefect): discard fastCeilDiv(41,  0)
+      doAssertRaises(AssertionDefect): discard fastCeilDiv(41, -1)
+      doAssertRaises(AssertionDefect): discard fastCeilDiv(-1,  1)
+      doAssertRaises(AssertionDefect): discard fastCeilDiv(-1, -1)
 
   block: # splitDecimal() tests
     doAssert splitDecimal(54.674).intpart == 54.0
