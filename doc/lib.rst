@@ -49,6 +49,9 @@ Automatic imports
 Core
 ----
 
+* `atomics <atomics.html>`_
+  Types and operations for atomic operations and lockless algorithms.
+
 * `bitops <bitops.html>`_
   Provides a series of low-level methods for bit manipulation.
 
@@ -169,6 +172,9 @@ String handling
   Ropes can represent very long strings efficiently;
   in particular, concatenation is done in O(1) instead of O(n).
 
+* `strbasics <strbasics.html>`_
+  This module provides some high performance string operations.
+
 * `strformat <strformat.html>`_
   Macro based standard string interpolation/formatting. Inspired by
   Python's f-strings.
@@ -275,6 +281,9 @@ Math libraries
 * `stats <stats.html>`_
   Statistical analysis.
 
+* `sums <sums.html>`_
+  Accurate summation functions.
+
 * `sysrand <sysrand.html>`_
   Cryptographically secure pseudorandom number generator.
 
@@ -333,6 +342,13 @@ Internet Protocols and Support
 
 * `uri <uri.html>`_
   This module provides functions for working with URIs.
+
+
+Threading
+---------
+
+* `threadpool <threadpool.html>`_
+  Implements Nim's `spawn <manual_experimental.html#parallel-amp-spawn>`_.
 
 
 Parsers
@@ -442,8 +458,15 @@ Hashing
 Miscellaneous
 -------------
 
+* `browsers <browsers.html>`_
+  This module implements procs for opening URLs with the user's default
+  browser.
+
 * `colors <colors.html>`_
   This module implements color handling for Nim.
+
+* `coro <coro.html>`_
+  This module implements experimental coroutines in Nim.
 
 * `enumerate <enumerate.html>`_
   This module implements `enumerate` syntactic sugar based on Nim's macro system.
@@ -459,6 +482,9 @@ Miscellaneous
 
 * `unittest <unittest.html>`_
   Implements a Unit testing DSL.
+
+* `varints <varints.html>`_
+  Decode variable-length integers that are compatible with SQLite.
 
 * `with <with.html>`_
   This module implements the `with` macro for easy function chaining.
@@ -571,23 +597,3 @@ Network Programming and Internet Protocols
 
 * `openssl <openssl.html>`_
   Wrapper for OpenSSL.
-
-
-Unstable
-========
-
-* `atomics <atomics.html>`_
-  Types and operations for atomic operations and lockless algorithms.
-
-* `browsers <browsers.html>`_
-  This module implements procs for opening URLs with the user's default
-  browser.
-
-* `coro <coro.html>`_
-  This module implements experimental coroutines in Nim.
-
-* `threadpool <threadpool.html>`_
-  Implements Nim's `spawn <manual_experimental.html#parallel-amp-spawn>`_.
-
-* `varints <varints.html>`_
-  Decode variable-length integers that are compatible with SQLite.
