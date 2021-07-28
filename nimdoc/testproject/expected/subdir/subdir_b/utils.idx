@@ -29,8 +29,9 @@ c9	subdir/subdir_b/utils.html#c9	utils: c9
 Foo3	subdir/subdir_b/utils.html#Foo3	utils: Foo3	
 gn1	subdir/subdir_b/utils.html#gn1	utils: gn1()	
 gn2	subdir/subdir_b/utils.html#gn2	utils: gn2()	
-baz	subdir/subdir_b/utils.html#baz	utils: baz()	
-baz2	subdir/subdir_b/utils.html#baz2	utils: baz2()	
+gn3	subdir/subdir_b/utils.html#gn3	utils: gn3()	
+gn5	subdir/subdir_b/utils.html#gn5	utils: gn5()	
+gn4	subdir/subdir_b/utils.html#gn4	utils: gn4()	
 This is now a header	subdir/subdir_b/utils.html#this-is-now-a-header	 This is now a header	
 Next header	subdir/subdir_b/utils.html#this-is-now-a-header-next-header	  Next header	
 And so on	subdir/subdir_b/utils.html#next-header-and-so-on	   And so on	
