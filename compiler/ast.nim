@@ -1858,6 +1858,9 @@ proc isRunnableExamples*(n: PNode): bool =
   result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
     n.kind == nkIdent and n.ident.s == "runnableExamples"
 
+proc isRunnableExamplesRoot*(n: PNode): bool =
+  result = n.kind in nkCallKinds and isRunnableExamples(n[0]) and n.len >= 2 and n.lastSon.kind == nkStmtList
+
 proc requiredParams*(s: PSym): int =
   # Returns the number of required params (without default values)
   # XXX: Perhaps we can store this in the `offset` field of the

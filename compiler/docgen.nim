@@ -638,28 +638,25 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var ItemPre,
     if state in {rsStart, rsRunnable}:
       dest.add genRecComment(d, n)
       return rsComment
-  of nkCallKinds:
-    if isRunnableExamples(n[0]) and
-        n.len >= 2 and n.lastSon.kind == nkStmtList:
-      if state in {rsStart, rsComment, rsRunnable}:
-        let (rdoccmd, code) = prepareExample(d, n, topLevel)
-        var msg = "Example:"
-        if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
-        var s: string
-        dispA(d.conf, s, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
-            "\n\n\\textbf{$1}\n", [msg])
-        dest.add s
-        inc d.listingCounter
-        let id = $d.listingCounter
-        dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])
-        var dest2 = ""
-        renderNimCode(dest2, code, d.target)
-        dest.add dest2
-        dest.add(d.config.getOrDefault"doc.listing_end" % id)
-        return rsRunnable
-      else:
-        localError(d.conf, n.info, errUser, "runnableExamples must appear before the first non-comment statement")
-  else: discard
+  elif isRunnableExamplesRoot(n):
+    if state in {rsStart, rsComment, rsRunnable}:
+      let (rdoccmd, code) = prepareExample(d, n, topLevel)
+      var msg = "Example:"
+      if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
+      var s: string
+      dispA(d.conf, s, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
+          "\n\n\\textbf{$1}\n", [msg])
+      dest.add s
+      inc d.listingCounter
+      let id = $d.listingCounter
+      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])
+      var dest2 = ""
+      renderNimCode(dest2, code, d.target)
+      dest.add dest2
+      dest.add(d.config.getOrDefault"doc.listing_end" % id)
+      return rsRunnable
+    else:
+      localError(d.conf, n.info, errUser, "runnableExamples must appear before the first non-comment statement")
   return rsDone
     # change this to `rsStart` if you want to keep generating doc comments
     # and runnableExamples that occur after some code in routine
@@ -885,7 +882,7 @@ proc genSeeSrc(d: PDoc, path: string, line: int): string =
           "path", path.string, "line", $line, "url", gitUrl,
           "commit", commit, "devel", develBranch]])
 
-proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
+proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, examples: seq[PNode] = @[]) =
   if (docFlags != kForceExport) and not isVisible(d, nameNode): return
   let
     name = getName(d, nameNode)
@@ -898,7 +895,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
     getAllRunnableExamples(d, n, comm)
   else:
     comm.add genRecComment(d, n)
-
+  for ai in examples: getAllRunnableExamples(d, ai, comm)
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
@@ -1129,12 +1126,13 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
     if p4 != nil: n[pragmasPos].add p4
     if p5 != nil: n[pragmasPos].add p5
 
-proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
+proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault, examples: seq[PNode] = @[]) =
   ## Goes through nim nodes recursively and collects doc comments.
   ## Main function for `doc`:option: command,
   ## which is implemented in ``docgen2.nim``.
   template genItemAux(skind) =
-    genItem(d, n, n[namePos], skind, docFlags)
+    genItem(d, n, n[namePos], skind, docFlags, examples)
+
   case n.kind
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
@@ -1156,12 +1154,24 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
     genItemAux(skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
     for i in 0..<n.len:
-      if n[i].kind != nkCommentStmt:
+      if n[i].kind != nkCommentStmt: # PRTEMP
         # order is always 'type var let const':
         genItem(d, n[i], n[i][0],
-                succ(skType, ord(n.kind)-ord(nkTypeSection)), docFlags)
+                succ(skType, ord(n.kind)-ord(nkTypeSection)), docFlags, examples)
   of nkStmtList:
-    for i in 0..<n.len: generateDoc(d, n[i], orig)
+    var i=0
+    while i<n.len:
+      var examples: seq[PNode]
+      let ni = n[i]
+      i.inc
+      while i < n.len:
+        let nj = n[i]
+        if nj.isRunnableExamplesRoot:
+          examples.add nj
+          i.inc
+        else:
+          break
+      generateDoc(d, ni, orig, examples = examples)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n[0][0]):
