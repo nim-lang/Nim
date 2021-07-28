@@ -175,8 +175,11 @@ when true:
 
 proc gn4*()
 runnableExamples:
-  discard "gn4"
-proc gn4() = discard
+  discard "gn4 1"
+## gn4 2
+runnableExamples:
+  discard "gn4 3"
+
 
 when true:
   proc gn5*()
@@ -184,3 +187,5 @@ when true:
     discard "gn5" # works even if implementation is in an include
 
 include utils_incl
+
+proc gn4() = discard

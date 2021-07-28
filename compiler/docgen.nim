@@ -92,8 +92,6 @@ type
     thisDir*: AbsoluteDir
     exampleGroups: OrderedTable[string, ExampleGroup]
     wroteSupportFiles*: bool
-    
-    # examplesAttached*: seq[PNode]
     lastSym*: PSym
 
   PDoc* = ref TDocumentor ## Alias to type less.
@@ -745,13 +743,7 @@ proc isVisible(d: PDoc; n: PNode): bool =
       result = {sfFromGeneric, sfForward}*n.sym.flags == {}
     else:
       result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
-    dbg n.sym.flags, n.sym, n, n.sym.id
     d.lastSym = n.sym
-    # if sfForward in n.sym.flags and examples.len > 0:
-    # if sfForward in n.sym.flags and examples.len > 0:
-    #   n.sym.examplesAttached.add examples
-    # elif sfWasForwarded in n.sym.flags:
-    #   examples.add n.sym.examplesAttached
     if result and containsOrIncl(d.emitted, n.sym.id):
       result = false
   elif n.kind == nkPragmaExpr:
@@ -913,11 +905,7 @@ proc genSeeSrc(d: PDoc, path: string, line: int): string =
           "commit", commit, "devel", develBranch]])
 
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, examples: seq[PNode] = @[]) =
-  dbg examples, nameNode, n
-  # var examples = examples
-  if (docFlags != kForceExport) and not isVisible(d, nameNode):
-    dbg "invisible"
-    return
+  if (docFlags != kForceExport) and not isVisible(d, nameNode): return
   let
     name = getName(d, nameNode)
   var plainDocstring = getPlainDocstring(n) # call here before genRecComment!
@@ -929,7 +917,6 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, examp
     getAllRunnableExamples(d, n, comm)
   else:
     comm.add genRecComment(d, n)
-  # for ai in examples:
   for ai in d.lastSym.examplesAttached & examples:
     discard getAllRunnableExamplesImpl(d, ai, comm, rsStart, topLevel = false)
   var r: TSrcGen
@@ -1173,7 +1160,6 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault, exampl
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
     d.modDeprecationMsg.add(genDeprecationMsg(d, pragmaNode))
-  of nkCommentStmt: d.modDescPre.add(genComment(d, n))
   of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skProc)
@@ -1230,16 +1216,18 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault, exampl
           exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
-  of nkCallKinds:
-    # PRTEMP also for comment
-    if d.lastSym  == nil:
+  of nkCommentStmt:
+    if d.lastSym  != nil:
+      d.lastSym.examplesAttached.add n
+    else:
+      d.modDescPre.add(genComment(d, n))
+  elif isRunnableExamplesRoot(n):
+    if d.lastSym  != nil:
+      d.lastSym.examplesAttached.add n
+    else:
       var comm: ItemPre
       getAllRunnableExamples(d, n, comm)
       if comm.len != 0: d.modDescPre.add(comm)
-    else:
-      d.lastSym.examplesAttached.add n
-      # d.examplesAttached.add n
-  else: discard
 
 proc finishGenerateDoc*(d: var PDoc) =
   ## Perform 2nd RST pass for resolution of links/footnotes/headings...
