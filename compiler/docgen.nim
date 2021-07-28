@@ -906,7 +906,13 @@ proc genSeeSrc(d: PDoc, path: string, line: int): string =
 
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, examples: seq[PNode] = @[]) =
   if (docFlags != kForceExport) and not isVisible(d, nameNode):
-    doAssert examples.len == 0, "`runnableExamples` silently ignored for $#: $#" % [$nameNode, $examples]
+    if examples.len > 0:
+      let loc = d.conf $ examples[0].info
+      # module scope doc comments/examples should precede other declarations.
+      rawMessage(d.conf, warnInvalidDocSection, "invalid runnableExamples or doc comment placement: $#" % loc)
+    for ai in examples:
+      var comm: ItemPre
+      discard getAllRunnableExamplesImpl(d, ai, comm, rsStart, topLevel = true)
     return
   let
     name = getName(d, nameNode)

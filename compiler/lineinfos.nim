@@ -55,6 +55,7 @@ type
     warnRstFieldXNotSupported = "FieldXNotSupported",
     warnRstStyle = "warnRstStyle",
     warnCommentXIgnored = "CommentXIgnored",
+    warnInvalidDocSection = "InvalidDocSection",
     warnTypelessParam = "TypelessParam",
     warnUseBase = "UseBase", warnWriteToForeignHeap = "WriteToForeignHeap",
     warnUnsafeCode = "UnsafeCode", warnUnusedImportX = "UnusedImport",
@@ -127,6 +128,7 @@ const
     warnRstFieldXNotSupported: "field '$1' not supported",
     warnRstStyle: "RST style: $1",
     warnCommentXIgnored: "comment '$1' ignored",
+    warnInvalidDocSection: "$1",
     warnTypelessParam: "", # deadcode
     warnUseBase: "use {.base.} for base methods; baseless methods are deprecated",
     warnWriteToForeignHeap: "write to foreign heap",
