@@ -2402,15 +2402,17 @@ when notJSnotNims and hasAlloc:
     include "system/sysstr"
   {.pop.}
 
+from std/private/digitsutils import nil
+export digitsutils.addInt
+
+when notJSnotNims and hasAlloc:
   include "system/strmantle"
   include "system/assign"
-
   when not defined(nimV2):
     include "system/repr"
 
 when notJSnotNims and hasThreadSupport and hostOS != "standalone":
   include "system/channels_builtin"
-
 
 when notJSnotNims and hostOS != "standalone":
   proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
@@ -3157,6 +3159,3 @@ when notJSnotNims and not defined(nimSeqsV2):
       moveMem(addr y[0], addr x[0], x.len)
       assert y == "abcgh"
     discard
-
-from std/private/digitsutils import nil
-export digitsutils.addInt
