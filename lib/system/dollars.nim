@@ -7,15 +7,15 @@ import std/private/digitsutils
 import system/formatfloat
 export addFloat
 
-proc `$`*(x: int): string =
+func `$`*(x: int): string =
   ## Outplace version of `addInt`.
   result.addInt(x)
 
-proc `$`*(x: int64): string =
+func `$`*(x: int64): string =
   ## Outplace version of `addInt`.
   result.addInt(x)
 
-proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
+func `$`*(x: uint64): string {.raises: [].} =
   ## Outplace version of `addInt`.
   addInt(result, x)
 
