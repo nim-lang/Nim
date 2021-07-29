@@ -91,7 +91,7 @@ Algorithms
 ----------
 
 * `algorithm <algorithm.html>`_
-  This module implements some common generic algorithms on `openArray`s.
+  This module implements some common generic algorithms like sort or binary search.
 
 * `enumutils <enumutils.html>`_
   This module adds functionality for `enum`s.
