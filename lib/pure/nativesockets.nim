@@ -478,7 +478,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
                          result.len.int32) == nil:
         raiseOSError(osLastError())
       if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
-        result.setSlice("::ffff:".len..addrLen)
+        result.setSlice("::ffff:".len..<addrLen)
     else:
       if winlean.inet_ntop(winlean.AF_INET6, addr6, addr result[0],
                            result.len.int32) == nil:
@@ -516,7 +516,7 @@ proc getAddrString*(sockAddr: ptr SockAddr, strAddress: var string) =
                          strAddress.len.int32) == nil:
         raiseOSError(osLastError())
       if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
-        strAddress.setSlice("::ffff:".len..length)
+        strAddress.setSlice("::ffff:".len..<length)
     else:
       if winlean.inet_ntop(winlean.AF_INET6, addr6, addr strAddress[0],
                            strAddress.len.int32) == nil:
