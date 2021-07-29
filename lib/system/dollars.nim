@@ -21,7 +21,7 @@ when defined(js):
       ## semantics of js' Number type.
       # for c, see strmantle.`$`
       when nimvm:
-        addIntImpl(result, x)
+        addInt(result, x)
       else:
         result = $(int(x))
 
@@ -31,14 +31,14 @@ when defined(js):
       ## 64bit ints.
       # pending https://github.com/nim-lang/RFCs/issues/187
       when nimvm:
-        addIntImpl(result, x)
+        addInt(result, x)
       else:
         result = $(cast[int](x))
 else:
   proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
     ## The stringify operator for an unsigned integer argument. Returns `x`
     ## converted to a decimal string.
-    addIntImpl(result, x)
+    addInt(result, x)
 
 func `$`*(x: float | float32): string =
   ## Outplace version of `addFloat`.

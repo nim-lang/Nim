@@ -38,7 +38,7 @@ proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
   assert(digits <= 99)
   return trailingZeros100[digits]
 
-func addIntImpl*(result: var string, origin: uint64) =
+func addInt*(result: var string, origin: uint64) =
   var tmp {.noinit.}: array[24, char]
   var num = origin
   var next = tmp.len - 1
@@ -94,6 +94,4 @@ proc addInt*(result: var string; x: int64) =
     result[base] = '-'
   else:
     num = uint64(x)
-  addIntImpl(result, num)
-
-# proc addInt*(result: var string; x: int64) {.error.}
+  addInt(result, num)
