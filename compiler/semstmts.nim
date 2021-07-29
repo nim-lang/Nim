@@ -2005,6 +2005,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         localError(c.config, n.info, "the overloaded " & s.name.s &
           " operator has to be enabled with {.experimental: \"callOperator\".}")
 
+  var trackProcCalled = false
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
     if sfBorrow in s.flags:
@@ -2022,6 +2023,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addResult(c, n, s.typ[0], skProc)
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
         trackProc(c, s, s.ast[bodyPos])
+        trackProcCalled = true
         popProcCon(c)
       elif efOperand notin flags:
         localError(c.config, n.info, errGenericLambdaNotAllowed)
@@ -2038,6 +2040,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
         trackProc(c, s, s.ast[bodyPos])
+        trackProcCalled = true
       else:
         if (s.typ[0] != nil and s.kind != skIterator):
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextSymId c.idgen, nil, n.info))
@@ -2074,6 +2077,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       result.typ = makeVarType(c, result.typ, tyOwned)
   elif isTopLevel(c) and s.kind != skIterator and s.typ.callConv == ccClosure:
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
+  if not trackProcCalled and strictEffects in c.features:
+    setEffectsForProcType(c.graph, s.typ, s.ast[pragmasPos])
 
 proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
