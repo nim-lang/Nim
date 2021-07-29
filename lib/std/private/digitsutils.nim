@@ -87,12 +87,10 @@ func addInt*(result: var string, x: uint64) =
 
 proc addInt*(result: var string; x: int64) =
   ## Converts integer to its string representation and appends it to `result`.
-  ##
-  ## .. code-block:: Nim
-  ##   var
-  ##     a = "123"
-  ##     b = 45
-  ##   a.addInt(b) # a <- "12345"
+  runnableExamples:
+    var s = "foo"
+    s.addInt(45)
+    assert s == "foo45"
   template impl =
     var num: uint64
     if x < 0:
