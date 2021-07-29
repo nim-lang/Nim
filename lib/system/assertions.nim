@@ -107,7 +107,9 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
       wrong = true
     except exception:
       discard
-    except Exception as e: raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
+    except Exception as e:
+      mixin `$`
+      raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
     except: raisedForeign()
   if wrong:
     raiseAssert(begin & " nothing was raised" & msgEnd)
