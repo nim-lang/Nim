@@ -1,16 +1,18 @@
+## `$` is Nim's general way of spelling `toString`:idx:.
+runnableExamples:
+  assert $0.1 == "0.1"
+  assert $(-2*3) == "-6"
+
 import std/private/digitsutils
 import system/formatfloat
 export addFloat
 
 proc `$`*(x: int): string =
-  ## The stringify operator for an integer argument. Returns `x`
-  ## converted to a decimal string. `$` is Nim's general way of
-  ## spelling `toString`:idx:.
+  ## Outplace version of `addInt`.
   result.addInt(x)
 
 proc `$`*(x: int64): string =
-  ## The stringify operator for an integer argument. Returns `x`
-  ## converted to a decimal string.
+  ## Outplace version of `addInt`.
   result.addInt(x)
 
 when defined(js):
@@ -36,9 +38,16 @@ when defined(js):
         result = $(cast[int](x))
 else:
   proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
-    ## The stringify operator for an unsigned integer argument. Returns `x`
-    ## converted to a decimal string.
+    ## Outplace version of `addInt`.
     addInt(result, x)
+
+# same as old `ctfeWhitelist` behavior, whether or not this is a good idea.
+template gen(T) =
+  # xxx simplify this by supporting this in compiler: int{lit} | uint64{lit} | int64{lit}
+  func `$`*(x: T{lit}): string {.compileTime.} = result.addInt(x)
+gen(int)
+gen(uint64)
+gen(int64)
 
 func `$`*(x: float | float32): string =
   ## Outplace version of `addFloat`.
