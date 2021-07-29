@@ -40,12 +40,23 @@ proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
 
 when defined(js):
   proc numToString(a: SomeInteger): cstring {.importjs: "((#) + \"\")".}
-  proc addCstring(result: var string, x: cstring) =
-    let old = result.len
-    result.setLen old + x.len
-    for i in 0..<x.len: result[old + i] = x[i]
 
-func addIntImpl(result: var string, x: uint64) =
+func addChars[T](result: var string, x: T, start: int, n: int) {.inline.} =
+  let old = result.len
+  result.setLen old + n
+  when nimvm:
+    for i in 0..<n: result[old + i] = x[start + i]
+  else:
+    when defined(js) or defined(nimscript):
+      for i in 0..<n: result[old + i] = x[start + i]
+    else:
+      {.noSideEffect.}:
+        copyMem result[old].addr, x[start].unsafeAddr, n
+
+func addChars[T](result: var string, x: T) {.inline.} =
+  addChars(result, x, 0, x.len)
+
+func addIntImpl(result: var string, x: uint64) {.inline.} =
   var tmp {.noinit.}: array[24, char]
   var num = x
   var next = tmp.len - 1
@@ -67,27 +78,14 @@ func addIntImpl(result: var string, x: uint64) =
     tmp[next] = digits100[index + 1]
     tmp[next - 1] = digits100[index]
     dec next
-  let n = result.len
-  let length = tmp.len - next
-  result.setLen n + length
-  when nimvm:
-    for i in 0..<length:
-      result[n+i] = tmp[next+i]
-  else:
-    when defined(js): discard
-    elif defined(nimscript):
-      for i in 0..<length:
-        result[n+i] = tmp[next+i]
-    else:
-      {.noSideEffect.}:
-        copyMem result[n].addr, tmp[next].addr, length
+  addChars(result, tmp, next, tmp.len - next)
 
 func addInt*(result: var string, x: uint64) =
   when nimvm: addIntImpl(result, x)
   else:
     when not defined(js): addIntImpl(result, x)
     else:
-      addCstring(result, numToString(x))
+      addChars(result, numToString(x))
 
 proc addInt*(result: var string; x: int64) =
   ## Converts integer to its string representation and appends it to `result`.
@@ -113,7 +111,7 @@ proc addInt*(result: var string; x: int64) =
   when nimvm: impl()
   else:
     when defined(js):
-      addCstring(result, numToString(x))
+      addChars(result, numToString(x))
     else: impl()
 
 proc addInt*(result: var string; x: int) {.inline.} =
