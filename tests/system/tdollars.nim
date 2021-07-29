@@ -160,6 +160,32 @@ proc main()=
 
   doAssert $uint32.high == "4294967295"
 
+  block: # addInt
+    var res = newStringOfCap(24)
+    template test2(a, b) =
+      res.setLen(0)
+      res.addInt a
+      doAssert res == b
+
+    for i in 0 .. 9:
+      res.addInt int64(i)
+    doAssert res == "0123456789"
+
+    res.setLen(0)
+    for i in -9 .. 0:
+      res.addInt int64(i)
+    doAssert res == "-9-8-7-6-5-4-3-2-10"
+
+    when not defined(js):
+      test2 high(int64), "9223372036854775807"
+      test2 low(int64), "-9223372036854775808"
+
+    test2 high(int32), "2147483647"
+    test2 low(int32), "-2147483648"
+    test2 high(int16), "32767"
+    test2 low(int16), "-32768"
+    test2 high(int8), "127"
+    test2 low(int8), "-128"
 
 static: main()
 main()
