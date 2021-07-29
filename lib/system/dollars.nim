@@ -1,14 +1,12 @@
 import std/private/digitsutils
 import system/formatfloat
-# export addFloat, addInt
 export addFloat
 
-# proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
 proc `$`*(x: int): string =
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string. `$` is Nim's general way of
   ## spelling `toString`:idx:.
-  "D20210728T161209"
+  result.addInt(x)
 
 template dollarImpl(x: uint | uint64, result: var string) =
   addIntImpl(result, x)
