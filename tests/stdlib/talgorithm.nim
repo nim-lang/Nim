@@ -7,8 +7,8 @@ discard """
 
 import std/[sequtils, algorithm, json, sugar]
 
-proc test() = 
-  try: 
+proc test() =
+  try:
     let info = parseJson("""
     {"a": ["1", "2", "3"]}
     """)
@@ -205,7 +205,7 @@ proc main() =
     type
       Record = object
         id: int
-    
+
     proc r(id: int): Record =
       Record(id: id)
 
@@ -226,7 +226,7 @@ proc main() =
     type
       Record = object
         id: int
-    
+
     proc r(id: int): Record =
       Record(id: id)
 

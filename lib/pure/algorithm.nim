@@ -44,6 +44,9 @@ runnableExamples:
 
 import std/private/since
 
+when not defined(nimHasEffectsDelayed):
+  {.pragma: effectsDelayed.}
+
 type
   SortOrder* = enum
     Descending, Ascending
@@ -148,7 +151,7 @@ proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]
   reversed(toOpenArray(a, first, last))
 
 proc binarySearch*[T, K](a: openArray[T], key: K,
-                         cmp: proc (x: T, y: K): int {.closure.}): int =
+                         cmp {.effectsDelayed.}: proc (x: T, y: K): int {.closure.}): int =
   ## Binary search for `key` in `a`. Return the index of `key` or -1 if not found.
   ## Assumes that `a` is sorted according to `cmp`.
   ##
@@ -210,7 +213,7 @@ const
   onlySafeCode = true
 
 proc lowerBound*[T, K](a: openArray[T], key: K,
-                       cmp: proc(x: T, k: K): int {.closure.}): int =
+                       cmp {.effectsDelayed.}: proc(x: T, k: K): int {.closure.}): int =
   ## Returns the index of the first element in `a` that is not less than
   ## (i.e. greater or equal to) `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
@@ -260,7 +263,7 @@ proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
   ## * `upperBound proc<#upperBound,openArray[T],T>`_
 
 proc upperBound*[T, K](a: openArray[T], key: K,
-                       cmp: proc(x: T, k: K): int {.closure.}): int =
+                       cmp {.effectsDelayed.}: proc(x: T, k: K): int {.closure.}): int =
   ## Returns the index of the first element in `a` that is greater than
   ## `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
@@ -318,7 +321,7 @@ template `<-`(a, b) =
     copyMem(addr(a), addr(b), sizeof(T))
 
 proc mergeAlt[T](a, b: var openArray[T], lo, m, hi: int,
-              cmp: proc (x, y: T): int {.closure.}, order: SortOrder) =
+              cmp {.effectsDelayed.}: proc (x, y: T): int {.closure.}, order: SortOrder) =
   # Optimization: If max(left) <= min(right) there is nothing to do!
   # 1 2 3 4 ## 5 6 7 8
   # -> O(n) for sorted arrays.
@@ -357,7 +360,7 @@ proc mergeAlt[T](a, b: var openArray[T], lo, m, hi: int,
     if k < j: copyMem(addr(a[k]), addr(b[i]), sizeof(T)*(j-k))
 
 func sort*[T](a: var openArray[T],
-              cmp: proc (x, y: T): int {.closure.},
+              cmp {.effectsDelayed.}: proc (x, y: T): int {.closure.},
               order = SortOrder.Ascending) =
   ## Default Nim sort (an implementation of merge sort). The sorting
   ## is guaranteed to be stable (that is, equal elements stay in the same order)
@@ -419,7 +422,7 @@ proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a,
   ## * `sorted proc<#sorted,openArray[T]>`_
   ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
 
-proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
+proc sorted*[T](a: openArray[T], cmp {.effectsDelayed.}: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
   ## Returns `a` sorted by `cmp` in the specified `order`.
   ##
@@ -496,7 +499,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
   result
 
 func isSorted*[T](a: openArray[T],
-                 cmp: proc(x, y: T): int {.closure.},
+                 cmp {.effectsDelayed.}: proc (x, y: T): int {.closure.},
                  order = SortOrder.Ascending): bool =
   ## Checks to see whether `a` is already sorted in `order`
   ## using `cmp` for the comparison. The parameters are identical
@@ -544,7 +547,7 @@ proc isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
 
 proc merge*[T](
   result: var seq[T],
-  x, y: openArray[T], cmp: proc(x, y: T): int {.closure.}
+  x, y: openArray[T], cmp {.effectsDelayed.}: proc(x, y: T): int {.closure.}
 ) {.since: (1, 5, 1).} =
   ## Merges two sorted `openArray`. `x` and `y` are assumed to be sorted.
   ## If you do not wish to provide your own `cmp`,
@@ -638,7 +641,7 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## Produces the Cartesian product of the array.
   ## Every element of the result is a combination of one element from each seq in `x`,
   ## with the ith element coming from `x[i]`.
-  ## 
+  ##
   ## .. warning:: complexity may explode.
   runnableExamples:
     assert product(@[@[1], @[2]]) == @[@[1, 2]]
