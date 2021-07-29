@@ -469,7 +469,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
   if sockAddr.sa_family.cint == nativeAfInet:
     result = $inet_ntoa(cast[ptr Sockaddr_in](sockAddr).sin_addr)
   elif sockAddr.sa_family.cint == nativeAfInet6:
-    let addrLen = when not useWinVersion: posix.INET6_ADDRSTRLEN
+    let addrLen = when not useWinVersion: posix.INET6_ADDRSTRLEN.int
                   else: 46 # it's actually 46 in both cases
     result = newString(addrLen)
     let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
