@@ -262,7 +262,8 @@ proc runEpcTest(filename: string): int =
   let outp = p.outputStream
   var report = ""
   var socket = newSocket()
-  try:
+  # try:
+  when true:
     # read the port number:
     when defined(posix):
       var a = newStringOfCap(120)
@@ -274,7 +275,7 @@ proc runEpcTest(filename: string): int =
         os.sleep(50)
         inc i
       let a = outp.readAll().strip()
-    echo ("ok3a", a)
+    echo ("ok3a attempting to call parseInt on v2: ", a)
     let port = parseInt(a)
     echo ("ok3b", port,)
     socket.connect("localhost", Port(port))
@@ -293,7 +294,9 @@ proc runEpcTest(filename: string): int =
           let answer = sexpToAnswer(sx)
           doReport(filename, answer, resp, report)
           echo ("ok12", )
-  finally:
+
+  when true:
+  # finally:
     echo ("ok13", )
     socket.sendEpcStr "return arg"
     echo ("ok14", )
@@ -347,7 +350,8 @@ proc runTest(filename: string): int =
 
 proc main() =
   var failures = 0
-  echo (os.paramCount(), "ok0")
+  # echo (os.paramCount(), "ok0")
+  echo (os.paramCount(), "ok0_zook")
   if os.paramCount() > 0:
     let x = os.paramStr(1)
     let xx = expandFilename x
