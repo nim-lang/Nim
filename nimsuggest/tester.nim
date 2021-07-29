@@ -260,7 +260,7 @@ proc runEpcTest(filename: string): int =
   let outp = p.outputStream
   var report = ""
   var socket = newSocket()
-  when true:
+  try:
     # read the port number:
     when defined(posix):
       var a = newStringOfCap(120)
@@ -282,8 +282,11 @@ proc runEpcTest(filename: string): int =
           let answer = sexpToAnswer(sx)
           doReport(filename, answer, resp, report)
 
-  when true:
     socket.sendEpcStr "return arg"
+      # bugfix: this was in `finally` block, causing the original error to be
+      # potentially masked by another one in case `socket.sendEpcStr` raises
+      # (e.g. if socket couldn't connect in the 1st place)
+  finally:
     close(p)
   if report.len > 0:
     echo "==== EPC ========================================"
