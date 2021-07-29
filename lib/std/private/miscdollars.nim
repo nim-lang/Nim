@@ -1,3 +1,5 @@
+from std/private/digitsutils import addInt
+
 template toLocation*(result: var string, file: string | cstring, line: int, col: int) =
   ## avoids spurious allocations
   # Hopefully this can be re-used everywhere so that if a user needs to customize,
@@ -5,11 +7,8 @@ template toLocation*(result: var string, file: string | cstring, line: int, col:
   result.add file
   if line > 0:
     result.add "("
-    # simplify this after moving moving `include strmantle` above import assertions`
-    when declared(addInt): result.addInt line
-    else: result.add $line
+    addInt(result, line)
     if col > 0:
       result.add ", "
-      when declared(addInt): result.addInt col
-      else: result.add $col
+      addInt(result, col)
     result.add ")"

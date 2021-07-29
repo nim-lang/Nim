@@ -12,9 +12,6 @@ import std/private/miscdollars
 
 type InstantiationInfo = tuple[filename: string, line: int, column: int]
 
-# proc `$`(x: int): string {.magic: "IntToStr", noSideEffect.}
-proc `$`(x: int): string =
-  "D20210728T161139"
 proc `$`(info: InstantiationInfo): string =
   # The +1 is needed here
   # instead of overriding `$` (and changing its meaning), consider explicit name.

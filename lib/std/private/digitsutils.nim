@@ -29,18 +29,18 @@ const
 #   doAssert res == digits100
 
 proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline.} =
-  assert(digits <= 99)
+  # assert(digits <= 99)
   buf[pos] = digits100[2 * digits]
   buf[pos+1] = digits100[2 * digits + 1]
   #copyMem(buf, unsafeAddr(digits100[2 * digits]), 2 * sizeof((char)))
 
 proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
-  assert(digits <= 99)
+  # assert(digits <= 99)
   return trailingZeros100[digits]
 
-func addInt*(result: var string, origin: uint64) =
+func addInt*(result: var string, x: uint64) =
   var tmp {.noinit.}: array[24, char]
-  var num = origin
+  var num = x
   var next = tmp.len - 1
   const nbatch = 100
 
@@ -95,3 +95,6 @@ proc addInt*(result: var string; x: int64) =
   else:
     num = uint64(x)
   addInt(result, num)
+
+proc addInt*(result: var string; x: int) {.inline.} =
+  addInt(result, int64(x))
