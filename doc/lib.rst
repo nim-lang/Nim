@@ -41,13 +41,16 @@ Automatic imports
   Basic Nim thread support. **Note:** This is part of the system module. Do not
   import it explicitly. Enabled with `--threads:on`:option:.
 
-* `channels <channels_builtin.html>`_
+* `channels_builtin <channels_builtin.html>`_
   Nim message passing support for threads. **Note:** This is part of the
   system module. Do not import it explicitly. Enabled with `--threads:on`:option:.
 
 
 Core
 ----
+
+* `atomics <atomics.html>`_
+  Types and operations for atomic operations and lockless algorithms.
 
 * `bitops <bitops.html>`_
   Provides a series of low-level methods for bit manipulation.
@@ -66,7 +69,7 @@ Core
 
 * `macrocache <macrocache.html>`_
   Provides an API for macros to collect compile-time information across modules.
-  
+
 * `macros <macros.html>`_
   Contains the AST API and documentation of Nim for writing macros.
 
@@ -113,7 +116,7 @@ Collections
   The underlying implementation uses a `seq`.
 
 * `heapqueue <heapqueue.html>`_
-  Implementation of a heap data structure that can be used as a priority queue.
+  Implementation of a binary heap data structure that can be used as a priority queue.
 
 * `intsets <intsets.html>`_
   Efficient implementation of a set of ints as a sparse bit set.
@@ -129,7 +132,7 @@ Collections
   Efficient implementation of a set of ordinals as a sparse bit set.
 
 * `sets <sets.html>`_
-  Nim hash and bit set support.
+  Nim hash set support.
 
 * `sharedlist <sharedlist.html>`_
   Nim shared linked list support. Contains a shared singly-linked list.
@@ -167,11 +170,14 @@ String handling
 * `ropes <ropes.html>`_
   This module contains support for a *rope* data type.
   Ropes can represent very long strings efficiently;
-  especially concatenation is done in O(1) instead of O(n).
+  in particular, concatenation is done in O(1) instead of O(n).
+
+* `strbasics <strbasics.html>`_
+  This module provides some high performance string operations.
 
 * `strformat <strformat.html>`_
   Macro based standard string interpolation/formatting. Inspired by
-  Python's `f`-strings.
+  Python's f-strings.
 
 * `strmisc <strmisc.html>`_
   This module contains uncommon string handling operations that do not
@@ -265,9 +271,6 @@ Math libraries
 
 * `math <math.html>`_
   Mathematical operations like cosine, square root.
-
-* `mersenne <mersenne.html>`_
-  Mersenne twister random number generator.
 
 * `random <random.html>`_
   Fast and tiny random number generator.
@@ -433,7 +436,7 @@ Hashing
 -------
 
 * `base64 <base64.html>`_
-  This module implements a base64 encoder and decoder.
+  This module implements a Base64 encoder and decoder.
 
 * `hashes <hashes.html>`_
   This module implements efficient computations of hash values for diverse
@@ -446,7 +449,7 @@ Hashing
   An OID is a global ID that consists of a timestamp,
   a unique counter, and a random value. This combination should suffice to
   produce a globally distributed unique ID. This implementation was extracted
-  from the Mongodb interface and it thus binary compatible with a Mongo OID.
+  from the MongoDB interface and it thus binary compatible with a MongoDB OID.
 
 * `sha1 <sha1.html>`_
   This module implements a sha1 encoder and decoder.
@@ -487,15 +490,17 @@ Miscellaneous
   This module implements the `with` macro for easy function chaining.
 
 
-
-Modules for JS backend
-----------------------
+Modules for the JS backend
+--------------------------
 
 * `asyncjs <asyncjs.html>`_
   Types and macros for writing asynchronous procedures in JavaScript.
 
 * `dom <dom.html>`_
   Declaration of the Document Object Model for the JS backend.
+
+* `jsbigints <jsbigints.html>`_
+  Arbitrary precision integers.
 
 * `jsconsole <jsconsole.html>`_
   Wrapper for the `console` object.
@@ -517,7 +522,6 @@ Regular expressions
 * `re <re.html>`_
   This module contains procedures and operators for handling regular
   expressions. The current implementation uses PCRE.
-
 
 
 Database support
@@ -583,7 +587,7 @@ Database support
 * `mysql <mysql.html>`_
   Contains a wrapper for the mySQL API.
 * `sqlite3 <sqlite3.html>`_
-  Contains a wrapper for SQLite 3 API.
+  Contains a wrapper for the SQLite 3 API.
 * `odbcsql <odbcsql.html>`_
   interface to the ODBC driver.
 
@@ -593,11 +597,3 @@ Network Programming and Internet Protocols
 
 * `openssl <openssl.html>`_
   Wrapper for OpenSSL.
-
-
-
-Unstable
-========
-
-* `atomics <atomics.html>`_
-  Types and operations for atomic operations and lockless algorithms.
