@@ -2423,9 +2423,6 @@ when notJSnotNims and hostOS != "standalone":
 elif defined(nimscript):
   proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
 
-from std/private/digitsutils import addInt
-export addInt
-
 when notJSnotNims:
   {.push stackTrace: off, profiler: off.}
   when (defined(profiler) or defined(memProfiler)):
@@ -2465,6 +2462,9 @@ when notJSnotNims:
       """.}
     else:
       {.error: "Only closure iterator is allowed!".}
+
+from std/private/digitsutils import addInt
+export addInt
 
 when defined(js):
   include "system/jssys"
