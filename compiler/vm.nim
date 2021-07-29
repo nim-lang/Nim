@@ -812,11 +812,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # vmgen generates opcWrDeref, which means that we must dereference
         # twice.
         # TODO: This should likely be handled differently in vmgen.
-        if (nfIsRef notin regs[ra].nodeAddr[].flags and
-            nfIsRef notin n.flags):
-          regs[ra].nodeAddr[][] = n[]
-        else:
-          regs[ra].nodeAddr[] = n
+        let nAddr = regs[ra].nodeAddr
+        if nAddr[] == nil: stackTrace(c, tos, pc, "opcWrDeref internal error") # refs bug #16613
+        if (nfIsRef notin nAddr[].flags and nfIsRef notin n.flags): nAddr[][] = n[]
+        else: nAddr[] = n
       of rkRegisterAddr: regs[ra].regAddr[] = regs[rc]
       of rkNode:
          # xxx: also check for nkRefTy as in opcLdDeref?
