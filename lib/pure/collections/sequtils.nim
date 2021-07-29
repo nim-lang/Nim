@@ -1141,10 +1141,13 @@ func mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
         result.add v
 
 macro mapLiterals*(constructor, op: untyped;
-                   nested = true): untyped {.deprecated: "use `mapItLit`".} =
+                   nested = true): untyped =
   ## Applies `op` to each of the **atomic** literals like `3`
-  ## or `"abc"` in the specified `constructor` AST. This can
-  ## be used to map every array element to some target type:
+  ## or `"abc"` in the specified `constructor` AST.
+  ##
+  ## See also `mapItLit`.
+  ##
+  ## This can be used to map every array element to some target type:
   runnableExamples:
     let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
     doAssert x is array[4, int]
