@@ -8,18 +8,17 @@ proc distinctBase(T: typedesc, recursive: static bool = true): typedesc {.magic:
 
 proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
 
-proc repr*(x: int): string {.magic: "IntToStr", noSideEffect.}
-  ## repr for an integer argument. Returns `x`
-  ## converted to a decimal string.
+proc repr*(x: int): string =
+  ## Same as $x
+  $x
 
-proc repr*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
-  ## repr for an integer argument. Returns `x`
-  ## converted to a decimal string.
+proc repr*(x: int64): string =
+  ## Same as $x
+  $x
 
 proc repr*(x: uint64): string {.noSideEffect.} =
-  ## repr for an unsigned integer argument. Returns `x`
-  ## converted to a decimal string.
-  $x #Calls `$` from system/strmantle.nim
+  ## Same as $x
+  $x
 
 proc repr*(x: float): string =
   ## Same as $x
