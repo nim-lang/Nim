@@ -97,10 +97,13 @@
   The downside is that these defines now have custom logic that doesn't apply for
   other defines.
 
+- `std/os`: `putEnv` now raises if the 1st argument contains a `=`
+
 - Renamed `-d:nimCompilerStackraceHints` to `-d:nimCompilerStacktraceHints`.
 
 - In `std/dom`, `Interval` is now a `ref object`, same as `Timeout`. Definitions of `setTimeout`,
   `clearTimeout`, `setInterval`, `clearInterval` were updated.
+
 
 ## Standard library additions and changes
 
