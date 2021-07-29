@@ -471,7 +471,7 @@ proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn},
   var retFuture = newFuture[tuple[address: string, client: AsyncSocket]]("asyncnet.acceptAddr")
   var fut = acceptAddr(socket.fd.AsyncFD, flags, inheritable)
   fut.callback =
-    proc (future: Future[tuple[address: string, client: AsyncFD]]) =
+    proc (future: Future[tuple[address: string, client: AsyncFD]]) {.gcsafe.} =
       assert future.finished
       if future.failed:
         retFuture.fail(future.readError)
@@ -492,7 +492,7 @@ proc accept*(socket: AsyncSocket,
   var retFut = newFuture[AsyncSocket]("asyncnet.accept")
   var fut = acceptAddr(socket, flags)
   fut.callback =
-    proc (future: Future[tuple[address: string, client: AsyncSocket]]) =
+    proc (future: Future[tuple[address: string, client: AsyncSocket]]) {.gcsafe.} =
       assert future.finished
       if future.failed:
         retFut.fail(future.readError)
@@ -664,7 +664,7 @@ when defined(posix):
       let retFuture = newFuture[void]("connectUnix")
       result = retFuture
 
-      proc cb(fd: AsyncFD): bool =
+      proc cb(fd: AsyncFD): bool {.gcsafe.} =
         let ret = SocketHandle(fd).getSockOptInt(cint(SOL_SOCKET), cint(SO_ERROR))
         if ret == 0:
           retFuture.complete()
@@ -740,7 +740,7 @@ when defineSsl:
     ## Retrieve the ssl pointer of `socket`.
     ## Useful for interfacing with `openssl`.
     self.sslHandle
-  
+
   proc wrapSocket*(ctx: SslContext, socket: AsyncSocket) =
     ## Wraps a socket in an SSL context. This function effectively turns
     ## `socket` into an SSL socket.

@@ -12,15 +12,15 @@ when defined(windows):
   proc winConnect*(socket: AsyncFD, address: string, port: Port,
       domain = Domain.AF_INET): Future[void] =
     var retFuture = newFuture[void]("winConnect")
-    proc cb(fd: AsyncFD): bool =
+    proc cb(fd: AsyncFD): bool {.gcsafe.} =
       var ret = SocketHandle(fd).getSockOptInt(cint(SOL_SOCKET), cint(SO_ERROR))
       if ret == 0:
-          # We have connected.
-          retFuture.complete()
-          return true
+        # We have connected.
+        retFuture.complete()
+        return true
       else:
-          retFuture.fail(newException(OSError, osErrorMsg(OSErrorCode(ret))))
-          return true
+        retFuture.fail(newException(OSError, osErrorMsg(OSErrorCode(ret))))
+        return true
 
     var aiList = getAddrInfo(address, port, domain)
     var success = false
@@ -54,7 +54,7 @@ when defined(windows):
 
     var readBuffer = newString(size)
 
-    proc cb(sock: AsyncFD): bool =
+    proc cb(sock: AsyncFD): bool {.gcsafe.} =
       result = true
       let res = recv(sock.SocketHandle, addr readBuffer[0], size.cint,
                      flags.toOSFlags())
@@ -79,7 +79,7 @@ when defined(windows):
                   flags = {SocketFlag.SafeDisconn}): Future[int] =
     var retFuture = newFuture[int]("winRecvInto")
 
-    proc cb(sock: AsyncFD): bool =
+    proc cb(sock: AsyncFD): bool {.gcsafe.} =
       result = true
       let res = nativesockets.recv(sock.SocketHandle, buf, size.cint,
                                    flags.toOSFlags())
@@ -102,7 +102,7 @@ when defined(windows):
 
     var written = 0
 
-    proc cb(sock: AsyncFD): bool =
+    proc cb(sock: AsyncFD): bool {.gcsafe.} =
       result = true
       let netSize = data.len-written
       var d = data.cstring
@@ -128,7 +128,7 @@ when defined(windows):
       Future[tuple[address: string, client: AsyncFD]] =
     var retFuture = newFuture[tuple[address: string,
         client: AsyncFD]]("winAcceptAddr")
-    proc cb(sock: AsyncFD): bool =
+    proc cb(sock: AsyncFD): bool {.gcsafe.} =
       result = true
       if not retFuture.finished:
         var sockAddress = Sockaddr()
@@ -151,7 +151,7 @@ when defined(windows):
     var retFut = newFuture[AsyncFD]("winAccept")
     var fut = winAcceptAddr(socket, flags)
     fut.callback =
-      proc (future: Future[tuple[address: string, client: AsyncFD]]) =
+      proc (future: Future[tuple[address: string, client: AsyncFD]]) {.gcsafe.} =
         assert future.finished
         if future.failed:
           retFut.fail(future.error)

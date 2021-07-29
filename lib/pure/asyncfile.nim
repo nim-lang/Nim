@@ -134,7 +134,7 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
   when defined(windows) or defined(nimdoc):
     var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount > 0
@@ -179,7 +179,7 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
         f.offset.inc bytesRead
         retFuture.complete(bytesRead)
   else:
-    proc cb(fd: AsyncFD): bool =
+    proc cb(fd: AsyncFD): bool {.gcsafe.} =
       result = true
       let res = read(fd.cint, cast[cstring](buf), size.cint)
       if res < 0:
@@ -213,7 +213,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
 
     var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount > 0
@@ -271,7 +271,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
   else:
     var readBuffer = newString(size)
 
-    proc cb(fd: AsyncFD): bool =
+    proc cb(fd: AsyncFD): bool {.gcsafe.} =
       result = true
       let res = read(fd.cint, addr readBuffer[0], size.cint)
       if res < 0:
@@ -340,7 +340,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
   when defined(windows) or defined(nimdoc):
     var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount == size.int32
@@ -377,7 +377,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
   else:
     var written = 0
 
-    proc cb(fd: AsyncFD): bool =
+    proc cb(fd: AsyncFD): bool {.gcsafe.} =
       result = true
       let remainderSize = size - written
       var cbuf = cast[cstring](buf)
@@ -413,7 +413,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
 
     var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount == data.len.int32
@@ -452,7 +452,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
   else:
     var written = 0
 
-    proc cb(fd: AsyncFD): bool =
+    proc cb(fd: AsyncFD): bool {.gcsafe.} =
       result = true
 
       let remainderSize = data.len - written

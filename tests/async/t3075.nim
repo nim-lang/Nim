@@ -24,6 +24,6 @@ proc recv(ws: WebSocket, p: WebSocketRecvClosure): Future[string] {.async.}=
   return result
 
 proc reсvSize(ws: WebSocket, size: int): Future[string] {.async.} =
-  proc recvSizeClosure(ws: WebSocket): Future[string] {.async.} =
+  proc recvSizeClosure(ws: WebSocket): Future[string] {.gcsafe, async.} =
     return await ws.socket.recv(size)
   return await ws.recv(recvSizeClosure)

@@ -83,17 +83,17 @@ when isFutureLoggingEnabled:
   proc logFutureFinish(fut: FutureBase) =
     getFuturesInProgress()[getFutureInfo(fut)].dec()
 
-var callSoonProc {.threadvar.}: proc (cbproc: proc ()) {.gcsafe.}
+var callSoonProc {.threadvar.}: proc (cbproc: proc () {.gcsafe.}) {.gcsafe.}
 
-proc getCallSoonProc*(): (proc(cbproc: proc ()) {.gcsafe.}) =
+proc getCallSoonProc*(): (proc(cbproc: proc () {.gcsafe.}) {.gcsafe.}) =
   ## Get current implementation of `callSoon`.
   return callSoonProc
 
-proc setCallSoonProc*(p: (proc(cbproc: proc ()) {.gcsafe.})) =
+proc setCallSoonProc*(p: (proc(cbproc: proc () {.gcsafe.}) {.gcsafe.})) =
   ## Change current implementation of `callSoon`. This is normally called when dispatcher from `asyncdispatcher` is initialized.
   callSoonProc = p
 
-proc callSoon*(cbproc: proc ()) =
+proc callSoon*(cbproc: proc () {.gcsafe.}) =
   ## Call `cbproc` "soon".
   ##
   ## If async dispatcher is running, `cbproc` will be executed during next dispatcher tick.
@@ -158,7 +158,7 @@ proc checkFinished[T](future: Future[T]) =
       err.cause = future
       raise err
 
-proc call(callbacks: var CallbackList) =
+proc call(callbacks: var CallbackList) {.gcsafe.} =
   var current = callbacks
   while true:
     if not current.function.isNil:
@@ -227,7 +227,7 @@ proc complete*[T](future: FutureVar[T], val: T) =
   fut.callbacks.call()
   when isFutureLoggingEnabled: logFutureFinish(future)
 
-proc fail*[T](future: Future[T], error: ref Exception) =
+proc fail*[T](future: Future[T], error: ref Exception) {.gcsafe.} =
   ## Completes `future` with `error`.
   #assert(not future.finished, "Future already finished, cannot finish twice.")
   checkFinished(future)
@@ -430,7 +430,7 @@ proc asyncCheck*[T](future: Future[T]) =
   assert(not future.isNil, "Future is nil")
   # TODO: We can likely look at the stack trace here and inject the location
   # where the `asyncCheck` was called to give a better error stack message.
-  proc asyncCheckCallback() =
+  proc asyncCheckCallback() {.gcsafe.} =
     if future.failed:
       injectStacktrace(future)
       raise future.error
@@ -441,12 +441,12 @@ proc `and`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## complete.
   var retFuture = newFuture[void]("asyncdispatch.`and`")
   fut1.callback =
-    proc () =
+    proc () {.gcsafe.} =
       if not retFuture.finished:
         if fut1.failed: retFuture.fail(fut1.error)
         elif fut2.finished: retFuture.complete()
   fut2.callback =
-    proc () =
+    proc () {.gcsafe.} =
       if not retFuture.finished:
         if fut2.failed: retFuture.fail(fut2.error)
         elif fut1.finished: retFuture.complete()
@@ -456,7 +456,7 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## Returns a future which will complete once either `fut1` or `fut2`
   ## complete.
   var retFuture = newFuture[void]("asyncdispatch.`or`")
-  proc cb[X](fut: Future[X]) =
+  proc cb[X](fut: Future[X]) {.gcsafe.} =
     if not retFuture.finished:
       if fut.failed: retFuture.fail(fut.error)
       else: retFuture.complete()
@@ -483,7 +483,7 @@ proc all*[T](futs: varargs[Future[T]]): auto =
     let totalFutures = len(futs)
 
     for fut in futs:
-      fut.addCallback proc (f: Future[T]) =
+      fut.addCallback proc (f: Future[T]) {.gcsafe.} =
         inc(completedFutures)
         if not retFuture.finished:
           if f.failed:
@@ -504,8 +504,8 @@ proc all*[T](futs: varargs[Future[T]]): auto =
       completedFutures = 0
 
     for i, fut in futs:
-      proc setCallback(i: int) =
-        fut.addCallback proc (f: Future[T]) =
+      proc setCallback(i: int) {.gcsafe.} =
+        fut.addCallback proc (f: Future[T]) {.gcsafe.} =
           inc(completedFutures)
           if not retFuture.finished:
             if f.failed:

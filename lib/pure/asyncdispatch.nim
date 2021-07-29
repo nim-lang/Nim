@@ -454,7 +454,7 @@ when defined(windows) or defined(nimdoc):
     var flagsio = flags.toOSFlags().DWORD
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             if bytesCount == 0 and dataBuf.buf[0] == '\0':
@@ -530,7 +530,7 @@ when defined(windows) or defined(nimdoc):
     var flagsio = flags.toOSFlags().DWORD
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete(bytesCount)
@@ -582,7 +582,7 @@ when defined(windows) or defined(nimdoc):
     var bytesReceived, lowFlags: DWORD
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -632,7 +632,7 @@ when defined(windows) or defined(nimdoc):
 
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -673,7 +673,7 @@ when defined(windows) or defined(nimdoc):
 
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount <= size
@@ -737,7 +737,7 @@ when defined(windows) or defined(nimdoc):
       if flags.isDisconnectionError(errcode):
         var newAcceptFut = acceptAddr(socket, flags)
         newAcceptFut.callback =
-          proc () =
+          proc () {.gcsafe.} =
             if newAcceptFut.failed:
               retFuture.fail(newAcceptFut.readError)
             else:
@@ -772,7 +772,7 @@ when defined(windows) or defined(nimdoc):
 
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             completeAccept()
@@ -897,7 +897,7 @@ when defined(windows) or defined(nimdoc):
 
     pcd.ovl = ol
     if not registerWaitForSingleObject(addr(pcd.waitFd), hEvent,
-                                    cast[WAITORTIMERCALLBACK](waitableCallback),
+                                       cast[WAITORTIMERCALLBACK](waitableCallback),
                                        cast[pointer](pcd), INFINITE, flags):
       let err = osLastError()
       GC_unref(ol)
@@ -998,7 +998,7 @@ when defined(windows) or defined(nimdoc):
     var flags = WT_EXECUTEINWAITTHREAD.DWORD
     if oneshot: flags = flags or WT_EXECUTEONLYONCE
 
-    proc timercb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+    proc timercb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
       let res = cb(fd)
       if res or oneshot:
         closeWaitable(hEvent)
@@ -1670,7 +1670,7 @@ when defined(windows) or defined(nimdoc):
 
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -1875,7 +1875,7 @@ proc accept*(socket: AsyncFD,
   var retFut = newFuture[AsyncFD]("accept")
   var fut = acceptAddr(socket, flags, inheritable)
   fut.callback =
-    proc (future: Future[tuple[address: string, client: AsyncFD]]) =
+    proc (future: Future[tuple[address: string, client: AsyncFD]]) {.gcsafe.} =
       assert future.finished
       if future.failed:
         retFut.fail(future.error)
@@ -1894,7 +1894,7 @@ proc send*(socket: AsyncFD, data: string,
   if data.len > 0:
     let sendFut = socket.send(unsafeAddr data[0], data.len, flags)
     sendFut.callback =
-      proc () =
+      proc () {.gcsafe.} =
         keepAlive(data)
         if sendFut.failed:
           retFuture.fail(sendFut.error)
