@@ -2133,7 +2133,6 @@ const
 import system/dollars
 export dollars
 
-
 when defined(nimAuditDelete):
   {.pragma: auditDelete, deprecated: "review this call for out of bounds behavior".}
 else:
@@ -2393,11 +2392,13 @@ when notJSnotNims and hasAlloc:
 
   include "system/strmantle"
   include "system/assign"
+
   when not defined(nimV2):
     include "system/repr"
 
 when notJSnotNims and hasThreadSupport and hostOS != "standalone":
   include "system/channels_builtin"
+
 
 when notJSnotNims and hostOS != "standalone":
   proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
