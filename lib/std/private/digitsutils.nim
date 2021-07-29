@@ -38,7 +38,10 @@ proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
   # assert(digits <= 99)
   return trailingZeros100[digits]
 
-func addInt*(result: var string, x: uint64) =
+when defined(js):
+  proc intToStr(a: uint64): cstring {.importjs: "((#) + \"\")".}
+
+func addIntImpl*(result: var string, x: uint64) =
   var tmp {.noinit.}: array[24, char]
   var num = x
   var next = tmp.len - 1
@@ -74,6 +77,17 @@ func addInt*(result: var string, x: uint64) =
       {.noSideEffect.}:
         copyMem result[n].addr, tmp[next].addr, length
 
+func addInt*(result: var string, x: uint64) =
+  when nimvm: addIntImpl(result, x)
+  else:
+    when not defined(js): addIntImpl(result, x)
+    else:
+      let tmp = intToStr(x)
+      let old = result.len
+      result.setLen old + tmp.len
+      for i in 0..<tmp.len:
+        result[old + i] = tmp[i]
+
 proc addInt*(result: var string; x: int64) =
   ## Converts integer to its string representation and appends it to `result`.
   ##
@@ -84,7 +98,7 @@ proc addInt*(result: var string; x: int64) =
   ##   a.addInt(b) # a <- "12345"
   var num: uint64
 
-  if x < 0:
+  if x < 0: # PRTEMP for js
     if x == low(int64):
       num = uint64(x)
     else:

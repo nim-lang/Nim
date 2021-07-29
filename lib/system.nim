@@ -2391,8 +2391,8 @@ when notJSnotNims and hasAlloc:
     include "system/sysstr"
   {.pop.}
 
-from std/private/digitsutils import nil
-export digitsutils.addInt
+from std/private/digitsutils import addInt
+export addInt
 
 when notJSnotNims and hasAlloc:
   include "system/strmantle"
@@ -2917,8 +2917,12 @@ proc addQuoted*[T](s: var string, x: T) =
     s.addEscapedChar(x)
     s.add("'")
   # prevent temporary string allocation
+  # elif T is SomeSignedInt:
   elif T is SomeInteger:
     s.addInt(x)
+  # elif T is SomeInteger and not defined(js):
+  #   # remove js special case pending bug #18591
+  #   s.addInt(x)
   elif T is SomeFloat:
     s.addFloat(x)
   elif compiles(s.add(x)):

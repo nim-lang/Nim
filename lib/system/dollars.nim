@@ -15,31 +15,9 @@ proc `$`*(x: int64): string =
   ## Outplace version of `addInt`.
   result.addInt(x)
 
-when defined(js):
-  import std/private/since
-  since (1, 3):
-    proc `$`*(x: uint): string =
-      ## Caveat: currently implemented as $(cast[int](x)), tied to current
-      ## semantics of js' Number type.
-      # for c, see strmantle.`$`
-      when nimvm:
-        addInt(result, x)
-      else:
-        result = $(int(x))
-
-    proc `$`*(x: uint64): string =
-      ## Compatibility note:
-      ## the results may change in future releases if/when js target implements
-      ## 64bit ints.
-      # pending https://github.com/nim-lang/RFCs/issues/187
-      when nimvm:
-        addInt(result, x)
-      else:
-        result = $(cast[int](x))
-else:
-  proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
-    ## Outplace version of `addInt`.
-    addInt(result, x)
+proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
+  ## Outplace version of `addInt`.
+  addInt(result, x)
 
 # same as old `ctfeWhitelist` behavior, whether or not this is a good idea.
 template gen(T) =
