@@ -108,7 +108,7 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
     except exception:
       discard
     except Exception as e:
-      mixin `$`
+      mixin `$` # alternatively, we could define $cstring in this module
       raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
     except: raisedForeign()
   if wrong:
