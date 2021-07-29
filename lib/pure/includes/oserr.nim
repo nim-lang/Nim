@@ -13,7 +13,7 @@ when not defined(nimscript):
     import winlean
 
 proc `==`*(err1, err2: OSErrorCode): bool {.borrow.}
-func `$`*(err: OSErrorCode): string {.borrow.}
+proc `$`*(err: OSErrorCode): string {.borrow.}
 
 proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## Converts an OS error code into a human readable string.
