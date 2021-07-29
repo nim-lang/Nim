@@ -2130,17 +2130,6 @@ const
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 
-# from std/private/digitsutils import nil
-# when defined(nimHasDragonBox): # PRTEMP
-#   export digitsutils.addInt
-# else:
-#   proc addInt*(result: var string; x: int64) =
-#     discard
-# proc addInt*(result: var string; x: int64) =
-#   discard
-    # "D20210728T164318"
-    # digitsutils.addInt(result, x)
-
 import system/dollars
 export dollars
 
@@ -2480,10 +2469,6 @@ when notJSnotNims:
 when defined(js):
   include "system/jssys"
   include "system/reprjs"
-
-# when defined(js) or defined(nimscript):
-#   proc addInt*(result: var string; x: int64) {.error.}
-#     # result.add $x
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.
@@ -2932,7 +2917,7 @@ proc addQuoted*[T](s: var string, x: T) =
     s.addEscapedChar(x)
     s.add("'")
   # prevent temporary string allocation
-  elif T is SomeSignedInt:
+  elif T is SomeInteger:
     s.addInt(x)
   elif T is SomeFloat:
     s.addFloat(x)
