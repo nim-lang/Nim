@@ -42,11 +42,11 @@ when defined(js):
 func addChars[T](result: var string, x: T, start: int, n: int) {.inline.} =
   let old = result.len
   result.setLen old + n
-  when nimvm:
+  template impl =
     for i in 0..<n: result[old + i] = x[start + i]
+  when nimvm: impl
   else:
-    when defined(js) or defined(nimscript):
-      for i in 0..<n: result[old + i] = x[start + i]
+    when defined(js) or defined(nimscript): impl
     else:
       {.noSideEffect.}:
         copyMem result[old].addr, x[start].unsafeAddr, n
