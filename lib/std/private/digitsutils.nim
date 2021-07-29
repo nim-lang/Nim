@@ -39,9 +39,13 @@ proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
   return trailingZeros100[digits]
 
 when defined(js):
-  proc intToStr(a: uint64): cstring {.importjs: "((#) + \"\")".}
+  proc numToString(a: SomeInteger): cstring {.importjs: "((#) + \"\")".}
+  proc addCstring(result: var string, x: cstring) =
+    let old = result.len
+    result.setLen old + x.len
+    for i in 0..<x.len: result[old + i] = x[i]
 
-func addIntImpl*(result: var string, x: uint64) =
+func addIntImpl(result: var string, x: uint64) =
   var tmp {.noinit.}: array[24, char]
   var num = x
   var next = tmp.len - 1
@@ -70,7 +74,8 @@ func addIntImpl*(result: var string, x: uint64) =
     for i in 0..<length:
       result[n+i] = tmp[next+i]
   else:
-    when defined(js) or defined(nimscript):
+    when defined(js): discard
+    elif defined(nimscript):
       for i in 0..<length:
         result[n+i] = tmp[next+i]
     else:
@@ -82,11 +87,7 @@ func addInt*(result: var string, x: uint64) =
   else:
     when not defined(js): addIntImpl(result, x)
     else:
-      let tmp = intToStr(x)
-      let old = result.len
-      result.setLen old + tmp.len
-      for i in 0..<tmp.len:
-        result[old + i] = tmp[i]
+      addCstring(result, numToString(x))
 
 proc addInt*(result: var string; x: int64) =
   ## Converts integer to its string representation and appends it to `result`.
@@ -96,19 +97,24 @@ proc addInt*(result: var string; x: int64) =
   ##     a = "123"
   ##     b = 45
   ##   a.addInt(b) # a <- "12345"
-  var num: uint64
-
-  if x < 0: # PRTEMP for js
-    if x == low(int64):
-      num = uint64(x)
+  template impl =
+    var num: uint64
+    if x < 0:
+      if x == low(int64):
+        num = uint64(x)
+      else:
+        num = uint64(-x)
+      let base = result.len
+      setLen(result, base + 1)
+      result[base] = '-'
     else:
-      num = uint64(-x)
-    let base = result.len
-    setLen(result, base + 1)
-    result[base] = '-'
+      num = uint64(x)
+    addInt(result, num)
+  when nimvm: impl()
   else:
-    num = uint64(x)
-  addInt(result, num)
+    when defined(js):
+      addCstring(result, numToString(x))
+    else: impl()
 
 proc addInt*(result: var string; x: int) {.inline.} =
   addInt(result, int64(x))

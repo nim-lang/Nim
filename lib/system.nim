@@ -2391,10 +2391,6 @@ when notJSnotNims and hasAlloc:
     include "system/sysstr"
   {.pop.}
 
-from std/private/digitsutils import addInt
-export addInt
-
-when notJSnotNims and hasAlloc:
   include "system/strmantle"
   include "system/assign"
   when not defined(nimV2):
@@ -2425,6 +2421,9 @@ when notJSnotNims and hostOS != "standalone":
     currException = exc
 elif defined(nimscript):
   proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
+
+from std/private/digitsutils import addInt
+export addInt
 
 when notJSnotNims:
   {.push stackTrace: off, profiler: off.}
