@@ -1182,7 +1182,7 @@ when not defined(js) and hostOS != "standalone":
 
 import std/private/since
 
-proc align(address, alignment: int): int =
+proc align*(address, alignment: int): int =
   if alignment == 0: # Actually, this is illegal. This branch exists to actively
                      # hide problems.
     result = address
