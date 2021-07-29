@@ -561,7 +561,7 @@ proc runCI(cmd: string) =
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
     execFold("Test selected Nimble packages", "nim r testament/testament $# pcat nimble-packages" % batchParam)
   else:
-    buildTools()
+    # buildTools()
     when false:
       for a in "zip opengl sdl1 jester@#head".split:
         let buildDeps = "build"/"deps" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
@@ -596,7 +596,7 @@ proc runCI(cmd: string) =
       # xxx we could also skip building nimsuggest in buildTools, or build it with -d:release
       # in bundleNimsuggest depending on some environment variable when we are in CI. One advantage
       # of rebuilding is this won't affect bin/nimsuggest when running runCI locally
-      execFold("Run nimsuggest tests 1", "bin/nim c -o:bin/nimsuggest_testing -d:danger nimsuggest/tester") # PRTEMP
+      execFold("Run nimsuggest tests 1", "bin/nim c -o:bin/nimsuggest_testing -d:release nimsuggest/nimsuggest") # PRTEMP
       execFold("Run nimsuggest tests 2", "nim r nimsuggest/tester")
 
     execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
