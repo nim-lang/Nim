@@ -8,8 +8,10 @@ proc `$`*(x: int): string =
   ## spelling `toString`:idx:.
   result.addInt(x)
 
-template dollarImpl(x: uint | uint64, result: var string) =
-  addIntImpl(result, x)
+proc `$`*(x: int64): string =
+  ## The stringify operator for an integer argument. Returns `x`
+  ## converted to a decimal string.
+  result.addInt(x)
 
 when defined(js):
   import std/private/since
@@ -19,7 +21,7 @@ when defined(js):
       ## semantics of js' Number type.
       # for c, see strmantle.`$`
       when nimvm:
-        dollarImpl(x, result)
+        addIntImpl(result, x)
       else:
         result = $(int(x))
 
@@ -29,20 +31,14 @@ when defined(js):
       ## 64bit ints.
       # pending https://github.com/nim-lang/RFCs/issues/187
       when nimvm:
-        dollarImpl(x, result)
+        addIntImpl(result, x)
       else:
         result = $(cast[int](x))
 else:
   proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
     ## The stringify operator for an unsigned integer argument. Returns `x`
     ## converted to a decimal string.
-    dollarImpl(x, result)
-
-# proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
-proc `$`*(x: int64): string =
-  ## The stringify operator for an integer argument. Returns `x`
-  ## converted to a decimal string.
-  "D20210728T161304"
+    addIntImpl(result, x)
 
 func `$`*(x: float | float32): string =
   ## Outplace version of `addFloat`.
