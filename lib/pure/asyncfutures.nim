@@ -258,8 +258,7 @@ proc addCallback*[T](future: Future[T],
   ##
   ## If future has already completed then `cb` will be called immediately.
   future.addCallback(
-    proc() =
-    cb(future)
+    proc() = cb(future)
   )
 
 proc `callback=`*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =

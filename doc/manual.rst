@@ -4764,10 +4764,14 @@ possibly raised exceptions; the algorithm operates on `p`'s call graph:
 1. Every indirect call via some proc type `T` is assumed to
    raise `system.Exception` (the base type of the exception hierarchy) and
    thus any exception unless `T` has an explicit `raises` list.
-   However, if the call is of the form `f(...)` where `f` is a parameter of the currently analyzed routine it is ignored. The call is optimistically assumed to have no effect. Rule 2 compensates for this case.
+   However, if the call is of the form `f(...)` where `f` is
+   a `.effectsDelayed` parameter of the currently analyzed routine it is ignored.
+   The call is optimistically assumed to have no effect. Rule 2 compensates for
+   this case.
 2. Every expression of some proc type within a call that is not a call
-   itself (and not nil) is assumed to be called indirectly somehow and thus
-   its raises list is added to `p`'s raises list.
+   itself (and not nil) and that is passed to a `.effectsDelayed` parameter is
+   assumed to be called indirectly somehow and thus its raises list is added
+   to `p`'s raises list.
 3. Every call to a proc `q` which has an unknown body (due to a forward
    declaration or an `importc` pragma) is assumed to
    raise `system.Exception` unless `q` has an explicit `raises` list.
@@ -4780,7 +4784,7 @@ possibly raised exceptions; the algorithm operates on `p`'s call graph:
 Rules 1-2 ensure the following works:
 
 .. code-block:: nim
-  proc noRaise(x: proc()) {.raises: [].} =
+  proc noRaise(x {.effectsDelayed.}: proc()) {.raises: [].} =
     # unknown call that might raise anything, but valid:
     x()
 

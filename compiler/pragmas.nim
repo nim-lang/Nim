@@ -76,7 +76,7 @@ const
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
-  paramPragmas* = {wNoalias, wInject, wGensym}
+  paramPragmas* = {wNoalias, wInject, wGensym, wEffectsDelayed}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe,
@@ -895,6 +895,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wNoalias:
         noVal(c, it)
         incl(sym.flags, sfNoalias)
+      of wEffectsDelayed:
+        noVal(c, it)
+        incl(sym.flags, sfEffectsDelayed)
       of wThreadVar:
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
