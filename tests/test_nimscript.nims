@@ -71,7 +71,11 @@ import std/[
   decls, compilesettings, with, wrapnils
 ]
 
+# non-std imports
+import stdtest/testutils
+# tests (increase coverage via code reuse)
 import stdlib/trandom
+import stdlib/tosenv
 
 echo "Nimscript imports are successful."
 
@@ -120,6 +124,3 @@ block:  # cpDir, cpFile, dirExists, fileExists, mkDir, mvDir, mvFile, rmDir, rmF
 block:
   # check parseopt can get command line:
   discard initOptParser()
-
-import stdtest/testutils
-import tests/stdlib/tosenv
