@@ -2359,9 +2359,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     if not hasVararg and argCount > paramCount:
       # Needn't to check maximum argument count if there is varargs
       m.firstMismatch.kind = kExtraArg
+      a = paramCount + 1
       noMatch(false)
     elif argCount < paramCount - paramCountWithDefaultValue:
       m.firstMismatch.kind = kMissingParam
+      formal = nil
       noMatch(false)
 
   m.state = csMatch # until proven otherwise
