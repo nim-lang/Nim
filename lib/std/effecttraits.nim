@@ -11,7 +11,7 @@
 ## for Nim's macro system.
 ## **Since**: Version 1.4.
 ##
-## One can test for the existance of this standard module
+## One can test for the existence of this standard module
 ## via `defined(nimHasEffectTraitsModule)`.
 
 import macros
