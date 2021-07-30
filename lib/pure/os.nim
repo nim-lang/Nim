@@ -871,8 +871,7 @@ proc unixToNativePath*(path: string, drive=""): string {.
         inc(i)
 
 include "includes/oserr"
-when not defined(nimscript):
-  include "includes/osenv"
+include "includes/osenv"
 
 proc getHomeDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =

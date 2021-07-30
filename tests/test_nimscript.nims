@@ -120,3 +120,6 @@ block:  # cpDir, cpFile, dirExists, fileExists, mkDir, mvDir, mvFile, rmDir, rmF
 block:
   # check parseopt can get command line:
   discard initOptParser()
+
+import stdtest/testutils
+import tests/stdlib/tosenv

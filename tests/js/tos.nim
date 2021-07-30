@@ -1,3 +1,5 @@
+# xxx consider merging this in tests/stdlib/tos.nim for increased coverage (with selecting disabling)
+
 static: doAssert defined(nodejs)
 
 import os
@@ -19,29 +21,3 @@ block:
   if not isWindows:
     doAssert cwd.isAbsolute
     doAssert relativePath(getCurrentDir() / "foo", "bar") == "../foo"
-
-import std/sequtils
-
-template main =
-  putEnv("foo", "bar")
-  doAssert getEnv("foo") == "bar"
-  doAssert existsEnv("foo")
-
-  putEnv("foo", "")
-  doAssert existsEnv("foo")
-  putEnv("foo", "bar2")
-  doAssert getEnv("foo") == "bar2"
-
-  when nimvm:
-    discard
-  else:
-    # need support in vmops: envPairs, delEnv
-    let s = toSeq(envPairs())
-    doAssert ("foo", "bar2") in s
-    doAssert ("foo", "bar") notin s
-
-    delEnv("foo")
-    doAssert not existsEnv("foo")
-
-static: main()
-main()
