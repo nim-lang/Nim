@@ -2307,7 +2307,8 @@ template isVarargsUntyped(x): untyped =
 
 proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
 
-  template noMatch() =
+  template noMatch(closeScope = true) =
+    if closeScope:
     c.mergeShadowScope #merge so that we don't have to resem for later overloads
     m.state = csNoMatch
     m.firstMismatch.arg = a
@@ -2332,6 +2333,37 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         m.firstMismatch.kind = kVarNeeded
         noMatch()
 
+  template getParamCountInfo(): tuple[countWithDefaultValue: int, paramCount: int, hasVararg: bool] =
+    var
+      hasVararg = tfVarargs in m.callee.flags
+      defaultValueCount = 0
+      total = 0
+
+    let p = m.callee.n
+    for i in f..<p.len:
+      if p[i].typ.kind == tyVarargs:
+        # count vararg parameter as zero
+        hasVararg = true
+      else:
+        inc(total)
+        if p[i].sym.ast != nil:
+          inc(defaultValueCount)
+
+    (defaultValueCount, total, hasVararg)
+
+  template checkArgCount() =
+    let
+      argCount = n.len - 1
+      (paramCountWithDefaultValue, paramCount, hasVararg) = getParamCountInfo()
+
+    if not hasVararg and argCount > paramCount:
+      # Needn't to check maximum argument count if there is varargs
+      m.firstMismatch.kind = kExtraArg
+      noMatch(false)
+    elif argCount < paramCount - paramCountWithDefaultValue:
+      m.firstMismatch.kind = kMissingParam
+      noMatch(false)
+
   m.state = csMatch # until proven otherwise
   m.firstMismatch = MismatchInfo()
   m.call = newNodeIT(n.kind, n.info, m.callee.base)
@@ -2345,6 +2377,14 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     formalLen = m.callee.n.len
     formal = if formalLen > 1: m.callee.n[1].sym else: nil # current routine parameter
     container: PNode = nil # constructed container
+
+  # Check if the argument count match with the parameter count,
+  # if doesn't match, fail fast
+  # See https://github.com/nim-lang/RFCs/issues/402
+
+  if n.len - 1 != formalLen - f:
+    # Check only when the argument count not equal to parameter count
+    checkArgCount()
 
   while a < n.len:
     c.openShadowScope
