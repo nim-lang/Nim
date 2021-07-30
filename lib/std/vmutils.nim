@@ -12,6 +12,7 @@ proc vmTrace*(on: bool) {.compileTime.} =
 
 proc debugNimNode*(a: NimNode): string =
   ## Implementation-specific rendering of `a` in the compiler, unstable.
+  # This is a vmops, see implementation in `astalgo.debugNimNodeImpl`.
   runnableExamples:
     import std/[macros, strutils]
     macro dbg1(a: auto): string =
