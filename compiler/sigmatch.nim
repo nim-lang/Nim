@@ -2333,9 +2333,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         m.firstMismatch.kind = kVarNeeded
         noMatch()
 
-  template getParamCountInfo(): tuple[countWithDefaultValue: int, paramCount: int, hasVararg: bool] =
+  template getParamCountInfo(): tuple[countWithDefaultValue: int, paramCount: int, hasVararg: bool, hasUntyped: bool] =
     var
       hasVararg = tfVarargs in m.callee.flags
+      hasUntyped = false
       defaultValueCount = 0
       total = 0
 
@@ -2344,27 +2345,34 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
       if p[i].typ.kind == tyVarargs:
         # count vararg parameter as zero
         hasVararg = true
+        if p[i].typ[0].kind == tyUntyped:
+          hasUntyped = true
       else:
         inc(total)
         if p[i].sym.ast != nil:
           inc(defaultValueCount)
 
-    (defaultValueCount, total, hasVararg)
+        if p[i].typ.kind == tyUntyped:
+          hasUntyped = true
+
+    (defaultValueCount, total, hasVararg, hasUntyped)
 
   template checkArgCount() =
     let
       argCount = n.len - 1
-      (paramCountWithDefaultValue, paramCount, hasVararg) = getParamCountInfo()
+      (paramCountWithDefaultValue, paramCount, hasVararg, hasUntyped) = getParamCountInfo()
 
-    if not hasVararg and argCount > paramCount:
-      # Needn't to check maximum argument count if there is varargs
-      m.firstMismatch.kind = kExtraArg
-      a = paramCount + 1
-      noMatch(false)
-    elif argCount < paramCount - paramCountWithDefaultValue:
-      m.firstMismatch.kind = kMissingParam
-      formal = nil
-      noMatch(false)
+    if hasUntyped:
+      if not hasVararg and argCount > paramCount:
+        # Needn't to check maximum argument count if there is varargs
+        m.firstMismatch.kind = kExtraArg
+        a = paramCount + 1
+        noMatch(false)
+      elif argCount < paramCount - paramCountWithDefaultValue:
+        m.firstMismatch.kind = kMissingParam
+        a = argCount + 1
+        formal = m.callee.n[argCount + f].sym
+        noMatch(false)
 
   m.state = csMatch # until proven otherwise
   m.firstMismatch = MismatchInfo()
