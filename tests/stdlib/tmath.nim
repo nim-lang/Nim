@@ -118,6 +118,33 @@ template main() =
     doAssert ceilDiv(11,  3) ==  4
     doAssert ceilDiv(12,  3) ==  4
     doAssert ceilDiv(13,  3) ==  5
+    doAssert ceilDiv(low(int), low(int)) == 1
+    doAssert ceilDiv(low(int) + 1, low(int)) == 1
+    doAssert ceilDiv(low(int) + 2, low(int)) == 1
+    doAssert ceilDiv(-2, low(int)) == 1
+    doAssert ceilDiv(-1, low(int)) == 1
+    doAssert ceilDiv( 0, low(int)) == 0
+    doAssert ceilDiv( 1, low(int)) == 0
+    doAssert ceilDiv( 2, low(int)) == 0
+    doAssert ceilDiv(high(int), low(int)) == 0
+    doAssert ceilDiv(low(int), low(int) + 1) == 2
+    doAssert ceilDiv(low(int) + 1, low(int) + 1) == 1
+    doAssert ceilDiv(low(int) + 2, low(int) + 1) == 1
+    doAssert ceilDiv(-2, low(int) + 1) == 1
+    doAssert ceilDiv(-1, low(int) + 1) == 1
+    doAssert ceilDiv( 0, low(int) + 1) == 0
+    doAssert ceilDiv( 1, low(int) + 1) == 0
+    doAssert ceilDiv( 2, low(int) + 1) == 0
+    doAssert ceilDiv(high(int), low(int) + 1) == -1
+    doAssert ceilDiv(high(int) - 1, low(int) + 1) == 0
+    doAssert ceilDiv(low(int), high(int)) == -1
+    doAssert ceilDiv(low(int) + 1, high(int)) == -1
+    doAssert ceilDiv(low(int) + 2, high(int)) == 0
+    doAssert ceilDiv(-1, high(int)) == 0
+    doAssert ceilDiv(0, high(int)) == 0
+    doAssert ceilDiv(1, high(int)) == 1
+    doAssert ceilDiv(high(int) - 1, high(int)) == 1
+    doAssert ceilDiv(high(int), high(int)) == 1
 
     doAssert fastCeilDiv(8,  3) ==  3
     doAssert fastCeilDiv(8,  4) ==  2
@@ -126,6 +153,23 @@ template main() =
     doAssert fastCeilDiv(12, 3) ==  4
     doAssert fastCeilDiv(13, 3) ==  5
     doAssert fastCeilDiv(41, 7) ==  6
+    doAssert fastCeilDiv(0,  1) ==  0
+    doAssert fastCeilDiv(1,  1) ==  1
+    doAssert fastCeilDiv(1,  2) ==  1
+    doAssert fastCeilDiv(2,  1) ==  2
+    doAssert fastCeilDiv(2,  2) ==  1
+    doAssert fastCeilDiv(0, high(int)) == 0
+    doAssert fastCeilDiv(1, high(int)) == 1
+    doAssert fastCeilDiv(0, high(int) - 1) == 0
+    doAssert fastCeilDiv(1, high(int) - 1) == 1
+    doAssert fastCeilDiv(high(int) div 2, high(int) div 2 + 1) == 1
+    doAssert fastCeilDiv(high(int) div 2, high(int) div 2 + 2) == 1
+    doAssert fastCeilDiv(high(int) div 2 + 1, high(int) div 2) == 2
+    doAssert fastCeilDiv(high(int) div 2 + 2, high(int) div 2) == 2
+    doAssert fastCeilDiv(high(int) div 2 + 1, high(int) div 2 + 1) == 1
+    doAssert fastCeilDiv(high(int), 1) == high(int)
+    doAssert fastCeilDiv(high(int) - 1, 1) == high(int) - 1
+    doAssert fastCeilDiv(high(int) - 1, 2) == high(int) div 2
     when not defined(danger):
       doAssertRaises(AssertionDefect): discard fastCeilDiv(41,  0)
       doAssertRaises(AssertionDefect): discard fastCeilDiv(41, -1)
