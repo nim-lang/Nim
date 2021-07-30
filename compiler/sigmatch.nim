@@ -2309,7 +2309,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
 
   template noMatch(closeScope = true) =
     if closeScope:
-    c.mergeShadowScope #merge so that we don't have to resem for later overloads
+      c.mergeShadowScope #merge so that we don't have to resem for later overloads
     m.state = csNoMatch
     m.firstMismatch.arg = a
     m.firstMismatch.formal = formal
