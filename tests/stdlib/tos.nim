@@ -713,10 +713,8 @@ template main =
   block: # parseCmdLine, bug #14343
     let s = ["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\\", "\n\a\b\t\0abc", " ", "  a   \\", " '   ' '", """  ' " \ '' "" """]
     let s2 = s.quoteShellCommand
-    echo s2
     let s3 = s2.parseCmdLine
     doAssert s3 == s, $(s, s3, s2)
-    echo s3
 
 static: main()
 main()
