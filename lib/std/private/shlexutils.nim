@@ -1,8 +1,3 @@
-#[
-KEY shlex
-parseCmdLine D20200513T195153
-]#
-
 type State = enum
   sInStart
   sInRegular
@@ -22,15 +17,17 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
   var state = sInStart
   var ready = false
   error = seOk
+  const ShellWhiteSpace = {' ', '\t'} # not \n
   while true:
-    # echo (i, state, buf)
     if i >= a.len:
       case state
       of sInSingleQuote:
         error = seMissingSingleQuote
       of sInDoubleQuote:
         error = seMissingDoubleQuote
+      of sInStart: discard
       else:
+        # dbg ready, state
         ready = true
       state = sFinished
     var c: char
@@ -41,7 +38,7 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
     of sFinished: discard
     of sInStart:
       case c
-      of ' ': discard
+      of ShellWhiteSpace: discard
       of '\'': state = sInSingleQuote
       of '\"': state = sInDoubleQuote
       else:
@@ -49,7 +46,7 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
         buf.add c
     of sInRegular:
       case c
-      of ' ': ready = true
+      of ShellWhiteSpace: ready = true
       of '\'': state = sInSingleQuote
       of '\"': state = sInDoubleQuote
       else: buf.add c
@@ -64,7 +61,7 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
       else: buf.add c
     of sInSpace:
       case c
-      of ' ': discard
+      of ShellWhiteSpace: discard
       of '\'': state = sInSingleQuote
       of '\"': state = sInDoubleQuote
       else:
@@ -73,6 +70,7 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
     if ready:
       ready = false
       # echo (buf,)
+      # if state != sInStart:
       yield buf
       buf.setLen 0
       if state != sFinished:

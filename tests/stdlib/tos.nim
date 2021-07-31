@@ -723,6 +723,10 @@ template main =
     let a4 = a3.quoteShell
     let b4 = a4.parseCmdLine
     doAssert b4 == @[a3]
+    
+    doAssert "".parseCmdLine == @[]
+    doAssert " \t\t   \t".parseCmdLine == @[]
+    doAssert " \t  abc   \t def  \t\t  ".parseCmdLine == @["abc", "def"]
 
 static: main()
 main()
