@@ -708,9 +708,6 @@ block: # isAdmin
   # In Azure on POSIX tests run as a normal user
   if isAzure and defined(posix): doAssert not isAdmin()
 
-  # import std/strutils
-  # from std/sequtils import toSeq
-  # from std/os import commandLineParams, quoteShellCommand, parseCmdLine
 template main =
   # xxx move all tests under here so they get tested in VM, for ones which can
   block: # parseCmdLine, bug #14343
