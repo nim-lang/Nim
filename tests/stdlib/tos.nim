@@ -711,10 +711,18 @@ block: # isAdmin
 template main =
   # xxx move all tests under here so they get tested in VM, for ones which can
   block: # parseCmdLine, bug #14343
-    let s = ["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\\", "\n\a\b\t\0abc", " ", "  a   \\", " '   ' '", """  ' " \ '' "" """]
-    let s2 = s.quoteShellCommand
-    let s3 = s2.parseCmdLine
-    doAssert s3 == s, $(s, s3, s2)
+    let a = ["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\\", "\n\a\b\t\0abc", " ", "  a   \\", " '   ' '", """  ' " \ '' "" """]
+    let a2 = a.quoteShellCommand
+    let b2 = a2.parseCmdLine
+    doAssert b2 == a, $(a, a2, b2)
+
+    let a3 = a2.quoteShell
+    let b3 = a3.parseCmdLine
+    doAssert b3 == @[a2]
+
+    let a4 = a3.quoteShell
+    let b4 = a4.parseCmdLine
+    doAssert b4 == @[a3]
 
 static: main()
 main()
