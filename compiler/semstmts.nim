@@ -490,6 +490,18 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
     ret.add result
     result = semExprNoType(c, ret)
 
+proc errorSymChoiceUseQualifier(c: PContext; n: PNode) =
+  assert n.kind in nkSymChoices
+  var err = "ambiguous identifier: '" & $n[0] & "'"
+  var i = 0
+  for child in n:
+    let candidate = child.sym
+    if i == 0: err.add " -- use one of the following:\n"
+    else: err.add "\n"
+    err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+    inc i
+  localError(c.config, n.info, errGenerated, err)
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   if n.len == 1:
     result = semLowerLetVarCustomPragma(c, n[0], n)
@@ -514,7 +526,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {})
 
-      if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
+      if def.kind in nkSymChoices and def[0].typ.skipTypes(abstractInst).kind == tyEnum:
+        errorSymChoiceUseQualifier(c, def)
+      elif def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
       elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
         typFlags.incl taProcContextIsNotMacro
@@ -2260,20 +2274,20 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
   #                                         nkNilLit, nkEmpty}:
   #  dec last
   for i in 0..<n.len:
-    var expr = semExpr(c, n[i], flags)
-    n[i] = expr
-    if c.matchedConcept != nil and expr.typ != nil and
+    var x = semExpr(c, n[i], flags)
+    n[i] = x
+    if c.matchedConcept != nil and x.typ != nil and
         (nfFromTemplate notin n.flags or i != last):
-      case expr.typ.kind
+      case x.typ.kind
       of tyBool:
-        if expr.kind == nkInfix and
-            expr[0].kind == nkSym and
-            expr[0].sym.name.s == "==":
-          if expr[1].typ.isUnresolvedStatic:
-            inferConceptStaticParam(c, expr[1], expr[2])
+        if x.kind == nkInfix and
+            x[0].kind == nkSym and
+            x[0].sym.name.s == "==":
+          if x[1].typ.isUnresolvedStatic:
+            inferConceptStaticParam(c, x[1], x[2])
             continue
-          elif expr[2].typ.isUnresolvedStatic:
-            inferConceptStaticParam(c, expr[2], expr[1])
+          elif x[2].typ.isUnresolvedStatic:
+            inferConceptStaticParam(c, x[2], x[1])
             continue
 
         let verdict = semConstExpr(c, n[i])

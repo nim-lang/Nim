@@ -20,7 +20,7 @@ when declared(math.copySign):
 when declared(math.signbit):
   from std/math import signbit
 
-from std/os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir,
+from std/os import getEnv, existsEnv, delEnv, putEnv, dirExists, fileExists, walkDir,
                    getAppFilename, raiseOSError, osLastError
 
 from std/md5 import getMD5
@@ -215,6 +215,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2s(getEnv, osop)
     wrap1s(existsEnv, osop)
     wrap2svoid(putEnv, osop)
+    wrap1svoid(delEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
     wrapDangerous(writeFile, ioop)
@@ -302,12 +303,15 @@ proc registerAdditionalOps*(c: PCtx) =
 
   proc getEffectList(c: PCtx; a: VmArgs; effectIndex: int) =
     let fn = getNode(a, 0)
+    var list = newNodeI(nkBracket, fn.info)
     if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].len >= effectListLen and
         fn.typ.n[0][effectIndex] != nil:
-      var list = newNodeI(nkBracket, fn.info)
       for e in fn.typ.n[0][effectIndex]:
         list.add opMapTypeInstToAst(c.cache, e.typ.skipTypes({tyRef}), e.info, c.idgen)
-      setResult(a, list)
+    else:
+      list.add newIdentNode(getIdent(c.cache, "UncomputedEffects"), fn.info)
+
+    setResult(a, list)
 
   registerCallback c, "stdlib.effecttraits.getRaisesListImpl", proc (a: VmArgs) =
     getEffectList(c, a, exceptionEffects)

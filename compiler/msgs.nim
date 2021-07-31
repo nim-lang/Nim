@@ -27,7 +27,7 @@ proc flushDot*(conf: ConfigRef) =
     conf.lastMsgWasDot.excl stdOrrKind
     write(stdOrr, "\n")
 
-proc toCChar*(c: char; result: var string) =
+proc toCChar*(c: char; result: var string) {.inline.} =
   case c
   of '\0'..'\x1F', '\x7F'..'\xFF':
     result.add '\\'

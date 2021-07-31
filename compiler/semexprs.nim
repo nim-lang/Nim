@@ -2707,6 +2707,34 @@ proc getNilType(c: PContext): PType =
     result.align = c.config.target.ptrSize.int16
     c.nilTypeCache = result
 
+proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
+  var o: TOverloadIter
+  var i = 0
+  var a = initOverloadIter(o, c, n)
+  while a != nil:
+    if a.kind in OverloadableSyms-{skModule}:
+      inc(i)
+      if i > 1: break
+    a = nextOverloadIter(o, c, n)
+  let info = getCallLineInfo(n)
+  if i <= 1:
+    if sfGenSym notin s.flags:
+      result = newSymNode(s, info)
+      markUsed(c, info, s)
+      onUse(info, s)
+    else:
+      result = n
+  else:
+    result = newNodeIT(nkClosedSymChoice, info, newTypeS(tyNone, c))
+    a = initOverloadIter(o, c, n)
+    while a != nil:
+      if a.kind in OverloadableSyms-{skModule}:
+        incl(a.flags, sfUsed)
+        markOwnerModuleAsUsed(c, a)
+        result.add newSymNode(a, info)
+        onUse(info, a)
+      a = nextOverloadIter(o, c, n)
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
@@ -2730,7 +2758,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
-    if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
+    case s.kind
+    of skProc, skFunc, skMethod, skConverter, skIterator:
       #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym:
@@ -2740,6 +2769,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       # "procs literals" are 'owned'
       if optOwnedRefs in c.config.globalOptions:
         result.typ = makeVarType(c, result.typ, tyOwned)
+    of skEnumField:
+      if overloadableEnums in c.features:
+        result = enumFieldSymChoice(c, n, s)
+      else:
+        result = semSym(c, n, s, flags)
     else:
       result = semSym(c, n, s, flags)
   of nkSym:

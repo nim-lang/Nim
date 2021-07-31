@@ -90,6 +90,12 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     # error correction:
     result = copyTree(arg)
     result.typ = formal
+  elif arg.kind in nkSymChoices and formal.skipTypes(abstractInst).kind == tyEnum:
+    # Pick the right 'sym' from the sym choice by looking at 'formal' type:
+    for ch in arg:
+      if sameType(ch.typ, formal):
+        return getConstExpr(c.module, ch, c.idgen, c.graph)
+    typeMismatch(c.config, info, formal, arg.typ, arg)
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
@@ -356,6 +362,8 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
   if e == nil:
     localError(c.config, n.info, errConstExprExpected)
     return n
+  if e.kind in nkSymChoices and e[0].typ.skipTypes(abstractInst).kind == tyEnum:
+    return e
   result = getConstExpr(c.module, e, c.idgen, c.graph)
   if result == nil:
     #if e.kind == nkEmpty: globalError(n.info, errConstExprExpected)

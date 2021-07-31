@@ -22,6 +22,7 @@ __really_obscure_dir_name/test
 Raises
 Raises
 '''
+  joinable: false
 """
 # test os path creation, iteration, and deletion
 
@@ -330,7 +331,7 @@ block walkDirRec:
     doAssert p.startsWith("walkdir_test")
 
   var s: seq[string]
-  for p in walkDirRec("walkdir_test", {pcFile}, {pcDir}, relative=true):
+  for p in walkDirRec("walkdir_test", {pcFile}, {pcDir}, relative = true):
     s.add(p)
 
   doAssert s.len == 2
@@ -552,19 +553,19 @@ block ospaths:
   doAssert joinPath("/", "") == unixToNativePath"/"
   doAssert joinPath("/" / "") == unixToNativePath"/" # weird test case...
   doAssert joinPath("/", "/a/b/c") == unixToNativePath"/a/b/c"
-  doAssert joinPath("foo/","") == unixToNativePath"foo/"
-  doAssert joinPath("foo/","abc") == unixToNativePath"foo/abc"
-  doAssert joinPath("foo//./","abc/.//") == unixToNativePath"foo/abc/"
-  doAssert joinPath("foo","abc") == unixToNativePath"foo/abc"
-  doAssert joinPath("","abc") == unixToNativePath"abc"
+  doAssert joinPath("foo/", "") == unixToNativePath"foo/"
+  doAssert joinPath("foo/", "abc") == unixToNativePath"foo/abc"
+  doAssert joinPath("foo//./", "abc/.//") == unixToNativePath"foo/abc/"
+  doAssert joinPath("foo", "abc") == unixToNativePath"foo/abc"
+  doAssert joinPath("", "abc") == unixToNativePath"abc"
 
-  doAssert joinPath("gook/.","abc") == unixToNativePath"gook/abc"
+  doAssert joinPath("zook/.", "abc") == unixToNativePath"zook/abc"
 
-  # controversial: inconsistent with `joinPath("gook/.","abc")`
+  # controversial: inconsistent with `joinPath("zook/.","abc")`
   # on linux, `./foo` and `foo` are treated a bit differently for executables
   # but not `./foo/bar` and `foo/bar`
   doAssert joinPath(".", "/lib") == unixToNativePath"./lib"
-  doAssert joinPath(".","abc") == unixToNativePath"./abc"
+  doAssert joinPath(".", "abc") == unixToNativePath"./abc"
 
   # cases related to issue #13455
   doAssert joinPath("foo", "", "") == "foo"
@@ -603,24 +604,6 @@ block getTempDir:
 
 block: # getCacheDir
   doAssert getCacheDir().dirExists
-
-block osenv:
-  block delEnv:
-    const dummyEnvVar = "DUMMY_ENV_VAR" # This env var wouldn't be likely to exist to begin with
-    doAssert existsEnv(dummyEnvVar) == false
-    putEnv(dummyEnvVar, "1")
-    doAssert existsEnv(dummyEnvVar) == true
-    delEnv(dummyEnvVar)
-    doAssert existsEnv(dummyEnvVar) == false
-    delEnv(dummyEnvVar)         # deleting an already deleted env var
-    doAssert existsEnv(dummyEnvVar) == false
-  block: # putEnv, bug #18502
-    doAssertRaises(OSError): putEnv("DUMMY_ENV_VAR_PUT=DUMMY_VALUE", "NEW_DUMMY_VALUE")
-    doAssertRaises(OSError): putEnv("", "NEW_DUMMY_VALUE")
-  block:
-    doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", "") == ""
-    doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", " ") == " "
-    doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", "Arrakis") == "Arrakis"
 
 block isRelativeTo:
   doAssert isRelativeTo("/foo", "/")

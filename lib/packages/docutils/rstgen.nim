@@ -675,7 +675,7 @@ proc readIndexDir(dir: string):
           var x = fileEntries[0].link
           let i = find(x, '#')
           if i > 0:
-            x = x.substr(0, i-1)
+            x.setLen(i)
           if i != 0:
             # don't add entries starting with '#'
             result.modules.add(x.changeFileExt(""))

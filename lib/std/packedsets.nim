@@ -12,10 +12,10 @@
 ##
 ## Supports any Ordinal type.
 ##
-## **Note**: Currently the assignment operator `=` for `PackedSet[A]`
-## performs some rather meaningless shallow copy. Since Nim currently does
-## not allow the assignment operator to be overloaded, use the `assign proc
-## <#assign,PackedSet[A],PackedSet[A]>`_ to get a deep copy.
+## .. note:: Currently the assignment operator `=` for `PackedSet[A]`
+##   performs some rather meaningless shallow copy. Since Nim currently does
+##   not allow the assignment operator to be overloaded, use the `assign proc
+##   <#assign,PackedSet[A],PackedSet[A]>`_ to get a deep copy.
 ##
 ## See also
 ## ========

@@ -39,6 +39,10 @@ proc writeVersion() =
   stdout.flushFile()
   quit(0)
 
+const
+  MockupRun = defined(atlasTests)
+  TestsDir = "tools/atlas/tests"
+
 type
   PackageName = distinct string
   DepRelation = enum
@@ -55,9 +59,79 @@ type
     p: Table[string, string] # name -> url mapping
     processed: HashSet[string] # the key is (url / commit)
     errors: int
+    when MockupRun:
+      currentDir: string
+      step: int
+      mockupSuccess: bool
 
 const
   InvalidCommit = "<invalid commit>"
+  ProduceTest = false
+
+type
+  Command = enum
+    GitDiff = "git diff",
+    GitTags = "git show-ref --tags",
+    GitRevParse = "git rev-parse",
+    GitCheckout = "git checkout",
+    GitPull = "git pull",
+    GitCurrentCommit = "git log -n 1 --format=%H"
+    GitMergeBase = "git merge-base"
+
+include testdata
+
+proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, int) =
+  when MockupRun:
+    assert TestLog[c.step].cmd == cmd
+    case cmd
+    of GitDiff, GitTags, GitRevParse, GitPull, GitCurrentCommit:
+      result = (TestLog[c.step].output, TestLog[c.step].exitCode)
+    of GitCheckout:
+      assert args[0] == TestLog[c.step].output
+    of GitMergeBase:
+      let tmp = TestLog[c.step].output.splitLines()
+      assert tmp.len == 4, $tmp.len
+      assert tmp[0] == args[0]
+      assert tmp[1] == args[1]
+      assert tmp[3] == ""
+      result[0] = tmp[2]
+      result[1] = TestLog[c.step].exitCode
+    inc c.step
+  else:
+    var cmdLine = $cmd
+    for i in 0..<args.len:
+      cmdLine.add ' '
+      cmdLine.add quoteShell(args[i])
+    result = osproc.execCmdEx(cmdLine)
+    when ProduceTest:
+      echo "cmd ", cmd, " args ", args, " --> ", result
+
+proc cloneUrl(c: var AtlasContext; url, dest: string; cloneUsingHttps: bool): string =
+  when MockupRun:
+    result = ""
+  else:
+    result = osutils.cloneUrl(url, dest, cloneUsingHttps)
+    when ProduceTest:
+      echo "cloned ", url, " into ", dest
+
+template withDir*(c: var AtlasContext; dir: string; body: untyped) =
+  when MockupRun:
+    c.currentDir = dir
+    body
+  else:
+    let oldDir = getCurrentDir()
+    try:
+      when ProduceTest:
+        echo "Current directory is now ", dir
+      setCurrentDir(dir)
+      body
+    finally:
+      setCurrentDir(oldDir)
+
+proc extractRequiresInfo(c: var AtlasContext; nimbleFile: string): NimbleFileInfo =
+  result = extractRequiresInfo(nimbleFile)
+  when ProduceTest:
+    echo "nimble ", nimbleFile, " info ", result
 
 proc toDepRelation(s: string): DepRelation =
   case s
@@ -65,9 +139,9 @@ proc toDepRelation(s: string): DepRelation =
   of ">": strictlyGreater
   else: normal
 
-proc isCleanGit(dir: string): string =
+proc isCleanGit(c: var AtlasContext; dir: string): string =
   result = ""
-  let (outp, status) = osproc.execCmdEx("git diff")
+  let (outp, status) = exec(c, GitDiff, [])
   if outp.len != 0:
     result = "'git diff' not empty"
   elif status != 0:
@@ -101,8 +175,8 @@ proc sameVersionAs(tag, ver: string): bool =
     result = safeCharAt(tag, idx-1) notin VersionChars and
       safeCharAt(tag, idx+ver.len) notin VersionChars
 
-proc versionToCommit(d: Dependency): string =
-  let (outp, status) = osproc.execCmdEx("git show-ref --tags")
+proc versionToCommit(c: var AtlasContext; d: Dependency): string =
+  let (outp, status) = exec(c, GitTags, [])
   if status == 0:
     var useNextOne = false
     for line in splitLines(outp):
@@ -123,35 +197,36 @@ proc versionToCommit(d: Dependency): string =
 
   return ""
 
-proc shortToCommit(short: string): string =
-  let (cc, status) = osproc.execCmdEx("git rev-parse " & quoteShell(short))
+proc shortToCommit(c: var AtlasContext; short: string): string =
+  let (cc, status) = exec(c, GitRevParse, [short])
   result = if status == 0: strutils.strip(cc) else: ""
 
 proc checkoutGitCommit(c: var AtlasContext; p: PackageName; commit: string) =
-  let (_, status) = osproc.execCmdEx("git checkout " & quoteShell(commit))
+  let (_, status) = exec(c, GitCheckout, [commit])
   if status != 0:
     error(c, p, "could not checkout commit", commit)
 
 proc gitPull(c: var AtlasContext; p: PackageName) =
-  let (_, status) = osproc.execCmdEx("git pull")
+  let (_, status) = exec(c, GitPull, [])
   if status != 0:
     error(c, p, "could not 'git pull'")
 
 proc updatePackages(c: var AtlasContext) =
   if dirExists(c.workspace / PackagesDir):
-    withDir(c.workspace / PackagesDir):
+    withDir(c, c.workspace / PackagesDir):
       gitPull(c, PackageName PackagesDir)
   else:
-    withDir c.workspace:
-      let err = cloneUrl("https://github.com/nim-lang/packages", PackagesDir, false)
+    withDir c, c.workspace:
+      let err = cloneUrl(c, "https://github.com/nim-lang/packages", PackagesDir, false)
       if err != "":
         error c, PackageName(PackagesDir), err
 
 proc fillPackageLookupTable(c: var AtlasContext) =
   if not c.hasPackageList:
     c.hasPackageList = true
-    updatePackages(c)
-    let plist = getPackages(c.workspace)
+    when not MockupRun:
+      updatePackages(c)
+    let plist = getPackages(when MockupRun: TestsDir else: c.workspace)
     for entry in plist:
       c.p[unicode.toLower entry.name] = entry.url
 
@@ -178,19 +253,19 @@ proc isShortCommitHash(commit: string): bool {.inline.} =
 
 proc checkoutCommit(c: var AtlasContext; w: Dependency) =
   let dir = c.workspace / w.name.string
-  withDir dir:
+  withDir c, dir:
     if w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
       gitPull(c, w.name)
     else:
-      let err = isCleanGit(dir)
+      let err = isCleanGit(c, dir)
       if err != "":
         warn c, w.name, err
       else:
         let requiredCommit =
-          if needsCommitLookup(w.commit): versionToCommit(w)
-          elif isShortCommitHash(w.commit): shortToCommit(w.commit)
+          if needsCommitLookup(w.commit): versionToCommit(c, w)
+          elif isShortCommitHash(w.commit): shortToCommit(c, w.commit)
           else: w.commit
-        let (cc, status) = osproc.execCmdEx("git log -n 1 --format=%H")
+        let (cc, status) = exec(c, GitCurrentCommit, [])
         let currentCommit = strutils.strip(cc)
         if requiredCommit == "" or status != 0:
           if requiredCommit == "" and w.commit == InvalidCommit:
@@ -201,8 +276,7 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
           if currentCommit != requiredCommit:
             # checkout the later commit:
             # git merge-base --is-ancestor <commit> <commit>
-            let (cc, status) = osproc.execCmdEx("git merge-base " &
-                currentCommit.quoteShell & " " & requiredCommit.quoteShell)
+            let (cc, status) = exec(c, GitMergeBase, [currentCommit, requiredCommit])
             let mergeBase = strutils.strip(cc)
             if status == 0 and (mergeBase == currentCommit or mergeBase == requiredCommit):
               # conflict resolution: pick the later commit:
@@ -215,15 +289,19 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
                   currentCommit, "(current) or", w.commit, " =", requiredCommit, "(required)"
 
 proc findNimbleFile(c: AtlasContext; dep: Dependency): string =
-  result = c.workspace / dep.name.string / (dep.name.string & ".nimble")
-  if not fileExists(result):
-    result = ""
-    for x in walkFiles(c.workspace / dep.name.string / "*.nimble"):
-      if result.len == 0:
-        result = x
-      else:
-        # ambiguous .nimble file
-        return ""
+  when MockupRun:
+    result = TestsDir / dep.name.string & ".nimble"
+    doAssert fileExists(result), "file does not exist " & result
+  else:
+    result = c.workspace / dep.name.string / (dep.name.string & ".nimble")
+    if not fileExists(result):
+      result = ""
+      for x in walkFiles(c.workspace / dep.name.string / "*.nimble"):
+        if result.len == 0:
+          result = x
+        else:
+          # ambiguous .nimble file
+          return ""
 
 proc addUniqueDep(c: var AtlasContext; work: var seq[Dependency];
                   tokens: seq[string]) =
@@ -240,7 +318,7 @@ proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
                     isMainProject: bool) =
   let nimbleFile = findNimbleFile(c, dep)
   if nimbleFile != "":
-    let nimbleInfo = extractRequiresInfo(nimbleFile)
+    let nimbleInfo = extractRequiresInfo(c, nimbleFile)
     for r in nimbleInfo.requires:
       var tokens: seq[string] = @[]
       for token in tokenizeRequires(r):
@@ -280,8 +358,8 @@ proc clone(c: var AtlasContext; start: string): seq[string] =
     let w = work[i]
     let oldErrors = c.errors
     if not dirExists(c.workspace / w.name.string):
-      withDir c.workspace:
-        let err = cloneUrl(w.url, w.name.string, false)
+      withDir c, c.workspace:
+        let err = cloneUrl(c, w.url, w.name.string, false)
         if err != "":
           error c, w.name, err
     if oldErrors == c.errors:
@@ -296,29 +374,34 @@ const
   configPatternBegin = "############# begin Atlas config section ##########\n"
   configPatternEnd =   "############# end Atlas config section   ##########\n"
 
-proc patchNimCfg(c: AtlasContext; deps: seq[string]) =
+proc patchNimCfg(c: var AtlasContext; deps: seq[string]) =
   var paths = "--noNimblePath\n"
   for d in deps:
     paths.add "--path:\"../" & d.replace("\\", "/") & "\"\n"
 
-  let cfg = c.projectDir / "nim.cfg"
   var cfgContent = configPatternBegin & paths & configPatternEnd
-  if not fileExists(cfg):
-    writeFile(cfg, cfgContent)
+
+  when MockupRun:
+    assert readFile(TestsDir / "nim.cfg") == cfgContent
+    c.mockupSuccess = true
   else:
-    let content = readFile(cfg)
-    let start = content.find(configPatternBegin)
-    if start >= 0:
-      cfgContent = content.substr(0, start-1) & cfgContent
-      let theEnd = content.find(configPatternEnd, start)
-      if theEnd >= 0:
-        cfgContent.add content.substr(theEnd+len(configPatternEnd))
-    else:
-      cfgContent = content & "\n" & cfgContent
-    if cfgContent != content:
-      # do not touch the file if nothing changed
-      # (preserves the file date information):
+    let cfg = c.projectDir / "nim.cfg"
+    if not fileExists(cfg):
       writeFile(cfg, cfgContent)
+    else:
+      let content = readFile(cfg)
+      let start = content.find(configPatternBegin)
+      if start >= 0:
+        cfgContent = content.substr(0, start-1) & cfgContent
+        let theEnd = content.find(configPatternEnd, start)
+        if theEnd >= 0:
+          cfgContent.add content.substr(theEnd+len(configPatternEnd))
+      else:
+        cfgContent = content & "\n" & cfgContent
+      if cfgContent != content:
+        # do not touch the file if nothing changed
+        # (preserves the file date information):
+        writeFile(cfg, cfgContent)
 
 proc error*(msg: string) =
   when defined(debug):
@@ -365,8 +448,12 @@ proc main =
     singleArg()
     let deps = clone(c, args[0])
     patchNimCfg c, deps
-    if c.errors > 0:
-      error "There were problems."
+    when MockupRun:
+      if not c.mockupSuccess:
+        error "There were problems."
+    else:
+      if c.errors > 0:
+        error "There were problems."
   of "refresh":
     noArgs()
     updatePackages(c)

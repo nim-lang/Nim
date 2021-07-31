@@ -42,12 +42,12 @@
 ##
 ## Code to read some data from a socket may look something like this:
 ##
-##   .. code-block:: Nim
-##      var future = socket.recv(100)
-##      future.addCallback(
-##        proc () =
-##          echo(future.read)
-##      )
+## .. code-block:: Nim
+##    var future = socket.recv(100)
+##    future.addCallback(
+##      proc () =
+##        echo(future.read)
+##    )
 ##
 ## All asynchronous functions returning a `Future` will not block. They
 ## will not however return immediately. An asynchronous function will have
@@ -104,20 +104,20 @@
 ## The most reliable way to handle exceptions is to use `yield` on a future
 ## then check the future's `failed` property. For example:
 ##
-##   .. code-block:: Nim
-##     var future = sock.recv(100)
-##     yield future
-##     if future.failed:
-##       # Handle exception
+## .. code-block:: Nim
+##   var future = sock.recv(100)
+##   yield future
+##   if future.failed:
+##     # Handle exception
 ##
 ## The `async` procedures also offer limited support for the try statement.
 ##
-##    .. code-block:: Nim
-##      try:
-##        let data = await sock.recv(100)
-##        echo("Received ", data)
-##      except:
-##        # Handle exception
+## .. code-block:: Nim
+##   try:
+##     let data = await sock.recv(100)
+##     echo("Received ", data)
+##   except:
+##     # Handle exception
 ##
 ## Unfortunately the semantics of the try statement may not always be correct,
 ## and occasionally the compilation may fail altogether.

@@ -51,7 +51,6 @@
   implementations. Old behavior can be obtained with
   `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
   underlying code is also updated the same way.
-- Custom pragma values have now an API for use in macros.
 
 - On POSIX systems, the default signal handlers used for Nim programs (it's
   used for printing the stacktrace on fatal signals) will now re-raise the
@@ -98,10 +97,13 @@
   The downside is that these defines now have custom logic that doesn't apply for
   other defines.
 
+- `std/os`: `putEnv` now raises if the 1st argument contains a `=`
+
 - Renamed `-d:nimCompilerStackraceHints` to `-d:nimCompilerStacktraceHints`.
 
 - In `std/dom`, `Interval` is now a `ref object`, same as `Timeout`. Definitions of `setTimeout`,
   `clearTimeout`, `setInterval`, `clearInterval` were updated.
+
 
 ## Standard library additions and changes
 
@@ -332,8 +334,11 @@
 
 - Added `htmlgen.portal` for [making "SPA style" pages using HTML only](https://web.dev/hands-on-portals).
 
-- Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
+- `std/times`:
+  Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
   zone offsets without colons, e.g. `UTC+7 -> +0700`.
+
+  Added `dateTime` and deprecated `initDateTime`.
 
 - Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
 
@@ -357,6 +362,7 @@
 - Added `dom.scrollIntoView` proc with options
 
 - Added `dom.setInterval`, `dom.clearInterval` overloads.
+
 
 - Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
   if the slice is out of bounds, likewise with `strutils.delete`.
