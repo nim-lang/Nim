@@ -23,6 +23,9 @@ from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
 from magicsys import getSysType
 
+proc addDebugDeallocRef(p: pointer, ln: int) {.importc.}
+proc removeDebugDeallocRef(p: pointer) {.importc.}
+
 const
   traceCode = defined(nimVMDebug)
 
@@ -174,6 +177,14 @@ template createStr(x) =
 template createSet(x) =
   x.node = newNode(nkCurly)
 
+proc moveNodeAddr(p: var ptr PNode, v: ptr PNode, ln: int) =
+  if p != nil:
+    removeDebugDeallocRef(cast[pointer](p[]))
+  p = v
+  if p != nil:
+    addDebugDeallocRef(cast[pointer](p[]), ln)
+
+
 proc moveConst(x: var TFullReg, y: TFullReg) =
   x.ensureKind(y.kind)
   case x.kind
@@ -182,7 +193,8 @@ proc moveConst(x: var TFullReg, y: TFullReg) =
   of rkFloat: x.floatVal = y.floatVal
   of rkNode: x.node = y.node
   of rkRegisterAddr: x.regAddr = y.regAddr
-  of rkNodeAddr: x.nodeAddr = y.nodeAddr
+  of rkNodeAddr:
+    moveNodeAddr(x.nodeAddr, y.nodeAddr, 197)
 
 # this seems to be the best way to model the reference semantics
 # of system.NimNode:
@@ -218,7 +230,8 @@ proc asgnComplex(x: var TFullReg, y: TFullReg) =
   of rkFloat: x.floatVal = y.floatVal
   of rkNode: x.node = copyValue(y.node)
   of rkRegisterAddr: x.regAddr = y.regAddr
-  of rkNodeAddr: x.nodeAddr = y.nodeAddr
+  of rkNodeAddr:
+    moveNodeAddr(x.nodeAddr, y.nodeAddr, 234)
 
 proc fastAsgnComplex(x: var TFullReg, y: TFullReg) =
   x.ensureKind(y.kind)
@@ -228,7 +241,8 @@ proc fastAsgnComplex(x: var TFullReg, y: TFullReg) =
   of rkFloat: x.floatVal = y.floatVal
   of rkNode: x.node = y.node
   of rkRegisterAddr: x.regAddr = y.regAddr
-  of rkNodeAddr: x.nodeAddr = y.nodeAddr
+  of rkNodeAddr:
+    moveNodeAddr(x.nodeAddr, y.nodeAddr, 245)
 
 proc writeField(n: var PNode, x: TFullReg) =
   case x.kind
@@ -677,7 +691,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let idx = regs[rc].intVal.int
       let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
       if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
-        regs[ra].nodeAddr = addr src.sons[idx]
+        moveNodeAddr(regs[ra].nodeAddr, addr src.sons[idx], 694)
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
     of opcLdStrIdx:
@@ -745,11 +759,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of nkObjConstr:
         let n = src.sons[rc + 1]
         if n.kind == nkExprColonExpr:
-          regs[ra].nodeAddr = addr n.sons[1]
+          moveNodeAddr(regs[ra].nodeAddr, addr n.sons[1], 762)
         else:
-          regs[ra].nodeAddr = addr src.sons[rc + 1]
+          moveNodeAddr(regs[ra].nodeAddr, addr src.sons[rc + 1], 764)
       else:
-        regs[ra].nodeAddr = addr src.sons[rc]
+        moveNodeAddr(regs[ra].nodeAddr, addr src.sons[rc], 766)
     of opcWrObj:
       # a.b = c
       decodeBC(rkNode)
@@ -776,9 +790,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNodeAddr)
       case regs[rb].kind
       of rkNode:
-        regs[ra].nodeAddr = addr(regs[rb].node)
+        moveNodeAddr(regs[ra].nodeAddr, addr(regs[rb].node), 793)
       of rkNodeAddr: # bug #14339
-        regs[ra].nodeAddr = regs[rb].nodeAddr
+        moveNodeAddr(regs[ra].nodeAddr, regs[rb].nodeAddr, 795)
       else:
         stackTrace(c, tos, pc, "limited VM support for 'addr', got kind: " & $regs[rb].kind)
     of opcLdDeref:
@@ -1461,7 +1475,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLdGlobalAddr:
       let rb = instr.regBx - wordExcess - 1
       ensureKind(rkNodeAddr)
-      regs[ra].nodeAddr = addr(c.globals[rb])
+      moveNodeAddr(regs[ra].nodeAddr, addr(c.globals[rb]), 1478)
     of opcRepr:
       decodeB(rkNode)
       createStr regs[ra]

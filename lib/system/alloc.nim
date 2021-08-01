@@ -821,9 +821,37 @@ proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
   result = rawAlloc(a, requestedSize)
   zeroMem(result, requestedSize)
 
+var debugDeallocp: array[1024, (pointer, int)]
+
+proc addDebugDeallocPtr(p: pointer, ln: int) =
+  for i in 0 .. debugDeallocp.high:
+    if debugDeallocp[i][0] == nil:
+      debugDeallocp[i] = (p, ln)
+      break
+
+proc removeDebugDeallocPtr(p: pointer) =
+  var idx = -1
+  var len = 0
+  for i in 0 .. debugDeallocp.high:
+    if debugDeallocp[i][0] == p:
+      idx = i
+    elif debugDeallocp[i][0] == nil:
+      len = i
+      break
+
+  sysAssert(idx >= 0, "p not found")
+  debugDeallocp[idx] = debugDeallocp[len - 1]
+  debugDeallocp[len - 1][0] = nil
+
 proc rawDealloc(a: var MemRegion, p: pointer) =
   when defined(nimTypeNames):
     inc(a.deallocCounter)
+
+  for i in 0 .. debugDeallocp.high:
+    if debugDeallocp[i][0] == p:
+      c_printf("ptr deleted: %ul\n", debugDeallocp[i][1])
+      sysAssert(false, "used ptr deleted")
+
   #sysAssert(isAllocatedPtr(a, p), "rawDealloc: no allocated pointer")
   sysAssert(allocInv(a), "rawDealloc: begin")
   var c = pageAddr(p)

@@ -533,6 +533,14 @@ proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
   when defined(memProfiler): nimProfile(size)
 {.pop.}
 
+proc addDebugDeallocRef(p: pointer, ln: int) {.exportc.} =
+  if p != nil:
+    addDebugDeallocPtr(usrToCell(p), ln)
+
+proc removeDebugDeallocRef(p: pointer) {.exportc.} =
+  if p != nil:
+    removeDebugDeallocPtr(usrToCell(p))
+
 proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   collectCT(gch)
   var ol = usrToCell(old)
