@@ -1700,14 +1700,14 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
   result.rawAddSon(base)
   result.flags.incl tfHasStatic
 
-proc semTypeof(c: PContext; n: PNode; prev: PType): PType =
+proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
   let t = semExprWithType(c, n, {efInTypeof})
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
 
-proc semTypeof2(c: PContext; n: PNode; prev: PType): PType =
+proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
   var m = BiggestInt 1 # typeOfIter
   if n.len == 3:
@@ -1731,7 +1731,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTypeOfExpr:
     # for ``typeof(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1, c.config)
-    result = semTypeof(c, n[0], prev)
+    result = semTypeOf(c, n[0], prev)
     if result.kind == tyTypeDesc: result.flags.incl tfExplicit
   of nkPar:
     if n.len == 1: result = semTypeNode(c, n[0], prev)
@@ -1833,9 +1833,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semAnyRef(c, n, tyRef, prev)
       elif op.id == ord(wType):
         checkSonsLen(n, 2, c.config)
-        result = semTypeof(c, n[1], prev)
+        result = semTypeOf(c, n[1], prev)
       elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeOf:
-        result = semTypeof2(c, n, prev)
+        result = semTypeOf2(c, n, prev)
       elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)
       else:
