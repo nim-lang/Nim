@@ -21,13 +21,10 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
   while true:
     if i >= a.len:
       case state
-      of sInSingleQuote:
-        error = seMissingSingleQuote
-      of sInDoubleQuote:
-        error = seMissingDoubleQuote
+      of sInSingleQuote: error = seMissingSingleQuote
+      of sInDoubleQuote: error = seMissingDoubleQuote
       of sInStart: discard
       else:
-        # dbg ready, state
         ready = true
       state = sFinished
     var c: char
@@ -57,7 +54,6 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
     of sInDoubleQuote:
       case c
       of '\"': state = sInRegular
-      # of '\'': state = sInRegular
       else: buf.add c
     of sInSpace:
       case c
@@ -69,8 +65,6 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
         buf.add c
     if ready:
       ready = false
-      # echo (buf,)
-      # if state != sInStart:
       yield buf
       buf.setLen 0
       if state != sFinished:
@@ -78,10 +72,12 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
     if state == sFinished:
       break
 
-proc parseCmdLineImpl*(a: string): seq[string] {.inline.} =
+iterator shlex*(a: openArray[char]): string =
   var err: ShlexError
   for val in shlex(a, err):
-    if err == seOk:
-      result.add val
-    else:
-      raise newException(ValueError, $(a, err))
+    assert err == seOk
+    yield val
+  if err != seOk:
+    var msg = "error: " & $err & " a: "
+    for ai in a: msg.add ai
+    raise newException(ValueError, msg)

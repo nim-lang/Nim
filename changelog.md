@@ -110,6 +110,9 @@
 
 - The allocator for Nintendo Switch, which was nonfunctional because
   of breaking changes in libnx, was removed, in favour of the new `-d:nimAllocPagesViaMalloc` option.
+- `os.parseCmdLine` now raises on posix for invalid inputs, and now returns correct results, such
+  that `parseCmdLine(quoteShellCommand(a)) == a`.
+
 
 ## Standard library additions and changes
 

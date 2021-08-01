@@ -2779,7 +2779,8 @@ proc parseCmdLine*(c: string): seq[string] {.
   ## * `paramStr proc <#paramStr,int>`_
   ## * `commandLineParams proc <#commandLineParams>`_
   when not defined(windows):
-    result = parseCmdLineImpl(c)
+    for val in shlex(c):
+      result.add val
   else:
     result = @[]
     var i = 0
