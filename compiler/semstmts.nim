@@ -447,17 +447,25 @@ proc setVarType(c: PContext; v: PSym, typ: PType) =
 
 proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
   var b = a[0]
+  dbgIf b, b.kind
   if b.kind == nkPragmaExpr:
+    dbgIf b[1].len
     if b[1].len != 1:
       # we could in future support pragmas w args e.g.: `var foo {.bar:"goo".} = expr`
       return nil
     let nodePragma = b[1][0]
     # see: `singlePragma`
+    dbgIf nodePragma, nodePragma.kind
 
     var amb = false
     var sym: PSym = nil
     case nodePragma.kind
     of nkIdent, nkAccQuoted:
+      dbgIf nodePragma, nodePragma.kind, templatePragmas
+      if nodePragma.kind == nkIdent:
+        for a in templatePragmas: # see D20210801T100514 test
+          if nodePragma.ident == getIdent(c.cache, $a):
+            return nil
       let ident = considerQuotedIdent(c, nodePragma)
       var userPragma = strTableGet(c.userPragmas, ident)
       if userPragma != nil: return nil
@@ -472,6 +480,7 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
       if sym == nil or sfCustomPragma in sym.flags: return nil
     of nkSym:
       sym = nodePragma.sym
+      dbgIf sym, sym.kind
     else:
       return nil
       # skip if not in scope; skip `template myAttr() {.pragma.}`

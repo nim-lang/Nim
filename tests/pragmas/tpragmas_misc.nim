@@ -54,12 +54,11 @@ block: # (partial fix) bug #15920
     when false: # bug
       template fun3(): int {.since2: (1, 3).} = 12
 
-import macros # defines `proc genSym` symbol
-#[
-Error: undeclared identifier: 'ret`gensym0'
-]#
-block:
-  template fn() =
-    var ret {.gensym.}: int
-    discard ret
-  fn()
+when true: # D20210801T100514:here
+  import macros # defines `proc genSym` symbol
+  {.define(nimCompilerDebug).}
+  block:
+    template fn() =
+      var ret {.gensym.}: int # must special case template pragmas so it doesn't get confused
+      discard ret
+    fn()
