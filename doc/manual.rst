@@ -5839,7 +5839,7 @@ type `system.ForLoopStmt` can rewrite the entirety of a `for` loop:
     result = newTree(nnkForStmt)    # Create a new For loop.
     result.add loop[^3]             # This is "item".
     result.add loop[^2][^1]         # This is "[1, 2, 3]".
-    result.add(quote do: echo item) # Replace "discard" with "echo item".
+    result.add newCall(bindSym"echo", loop[0])
 
   for item in example([1, 2, 3]): discard
 
