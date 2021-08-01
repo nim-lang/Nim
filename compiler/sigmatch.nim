@@ -2346,6 +2346,22 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     formal = if formalLen > 1: m.callee.n[1].sym else: nil # current routine parameter
     container: PNode = nil # constructed container
 
+  # for i in 0..<n.len:
+  #   dbgIf n[i].kind, n[i], i
+  # if isCompilerDebug():
+  #   dbgIf m.callee.n[^1], m.callee.n[^1]
+  #   debug2 n[^1]
+  #   debug2 m.callee.n[^1]
+  #   debug2 m.callee.n[^1].sym
+  #   debug2 m.callee.n[^1].sym.ast
+  #   debug2 m.callee.n
+  #   debug2 m.callee
+
+  var forceLastBlockMatch = false
+  if nfBlockArg in n[^1].flags:
+    if m.callee.n[^1].sym.ast == nil:
+      forceLastBlockMatch = true
+  dbgIf forceLastBlockMatch
   while a < n.len:
     c.openShadowScope
 
@@ -2441,6 +2457,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         if m.callee.n[f].kind != nkSym:
           internalError(c.config, n[a].info, "matches")
           noMatch()
+        if forceLastBlockMatch and a == n.len - 1:
+          f = m.callee.n.len - 1
         formal = m.callee.n[f].sym
         m.firstMismatch.kind = kTypeMismatch
         if containsOrIncl(marker, formal.position) and container.isNil:
