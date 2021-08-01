@@ -711,29 +711,29 @@ block: # isAdmin
 template main =
   # xxx move all tests under here so they get tested in VM, for ones which can
   block: # parseCmdLine, bug #14343
-    doAssertRaises(ValueError): discard "\"".parseCmdLine
-    doAssertRaises(ValueError): discard "  \"  ".parseCmdLine
-    doAssertRaises(ValueError): discard "  \'  ".parseCmdLine
-    let a = ["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\\", "\n\a\b\t\0abc", " ", "  a   \\", " '   ' '", """  ' " \ '' "" """]
+    var a = @["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\n\a\b\t\0abc", " ", " '   ' '", """  ' " \ '' "" """]
+    when defined(posix):
+      a = a & @["\\", "  a   \\"]
     let a2 = a.quoteShellCommand
     let b2 = a2.parseCmdLine
+    doAssert b2 == a, $(a, a2, b2)
+
+    let a3 = a2.quoteShell
+    let b3 = a3.parseCmdLine
+    doAssert b3 == @[a2]
+
+    let a4 = a3.quoteShell
+    let b4 = a4.parseCmdLine
+    doAssert b4 == @[a3]
+    
+    doAssert "".parseCmdLine == @[]
+    doAssert " \t\t   \t".parseCmdLine == @[]
+    doAssert " \t  abc   \t def  \t\t  ".parseCmdLine == @["abc", "def"]
+    doAssert " \t  abc   \t def  \t\t  ".parseCmdLine == @["abc", "def"]
     when defined(posix):
-      doAssert b2 == a, $(a, a2, b2)
-
-      let a3 = a2.quoteShell
-      let b3 = a3.parseCmdLine
-      doAssert b3 == @[a2]
-
-      let a4 = a3.quoteShell
-      let b4 = a4.parseCmdLine
-      doAssert b4 == @[a3]
-      
-      doAssert "".parseCmdLine == @[]
-      doAssert " \t\t   \t".parseCmdLine == @[]
-      doAssert " \t  abc   \t def  \t\t  ".parseCmdLine == @["abc", "def"]
-      doAssert " \t  abc   \t def  \t\t  ".parseCmdLine == @["abc", "def"]
-    elif defined(windows):
-      discard # xxx add tests
+      doAssertRaises(ValueError): discard "\"".parseCmdLine
+      doAssertRaises(ValueError): discard "  \"  ".parseCmdLine
+      doAssertRaises(ValueError): discard "  \'  ".parseCmdLine
 
 static: main()
 main()
