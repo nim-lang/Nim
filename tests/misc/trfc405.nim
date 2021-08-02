@@ -59,5 +59,23 @@ template main =
     fn6(""): discard
     doAssert witness == 2
 
+  block: # multi block args
+    template fn8(a = 1, b = 2, body1: untyped, body2: untyped): auto = (a, b, astToStr(body1), astToStr(body2))
+    let a1 = fn8():
+      foobar1
+      foobar2
+    do:
+      foobar3
+      foobar4
+    doAssert a1 == (1, 2, "\nfoobar1\nfoobar2", "\nfoobar3\nfoobar4")
+
+    let a2 = fn8(b = 20):
+      foobar1
+      foobar2
+    do:
+      foobar3
+      foobar4
+    doAssert a2 == (1, 20, "\nfoobar1\nfoobar2", "\nfoobar3\nfoobar4")
+
 static: main()
 main()
