@@ -55,10 +55,10 @@ block: # (partial fix) bug #15920
       template fun3(): int {.since2: (1, 3).} = 12
 
 when true: # D20210801T100514:here
-  import macros # defines `proc genSym` symbol
-  {.define(nimCompilerDebug).}
+  from macros import genSym
   block:
     template fn() =
       var ret {.gensym.}: int # must special case template pragmas so it doesn't get confused
       discard ret
     fn()
+    static: discard genSym()
