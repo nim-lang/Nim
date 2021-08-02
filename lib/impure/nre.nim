@@ -557,7 +557,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
   ## Variants:
   ##
   ## -  `proc findAll(...)` returns a `seq[string]`
-  # see pcredemo for explanation
+  # see pcredemo for explanation => https://www.pcre.org/original/doc/html/pcredemo.html
   let matchesCrLf = pattern.matchesCrLf()
   let unicode = uint32(getinfo[culong](pattern, pcre.INFO_OPTIONS) and
     pcre.UTF8) > 0u32
