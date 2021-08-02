@@ -54,4 +54,3 @@ proc isCompilerDebug*(): bool =
       {.undef(nimCompilerDebug).}
       echo 'x'
   conf0.isDefined("nimCompilerDebug")
-include timn/exp/nim_compiler_debugutils
