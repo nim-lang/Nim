@@ -337,6 +337,10 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   semIdeForTemplateOrGenericCheck(c.c.config, n, c.cursorInBody)
   case n.kind
   of nkIdent:
+    # see D20210801T100514
+    for a in templatePragmas:
+      if n.ident == getIdent(c.c.cache, $a):
+        return n
     if n.ident.id in c.toInject: return n
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
