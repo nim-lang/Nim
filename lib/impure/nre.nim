@@ -577,7 +577,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
       # either the end of the input or the string
       # cannot be split here - we also need to bail
       # if we've never matched and we've already tried to...
-      if flags == 0:
+      if flags == 0: # All matches found
         break
 
       if matchesCrLf and offset < (str.len - 1) and
