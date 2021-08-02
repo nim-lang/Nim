@@ -52,6 +52,7 @@ type
     CentOS
     Deepin
     ArchLinux
+    Artix
     Antergos
     PCLinuxOS
     Mageia
@@ -133,7 +134,7 @@ type
 
 
 const
-  LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware, Distribution.ArchLinux}
+  LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware, Distribution.ArchLinux, Distribution.Artix}
 
 # we cache the result of the 'cmdRelease'
 # execution for faster platform detections.
@@ -180,6 +181,8 @@ proc detectOsImpl(d: Distribution): bool =
         result = "rhel" in osReleaseID()
       of Distribution.ArchLinux:
         result = "arch" in osReleaseID()
+      of Distribution.Artix:
+        result = "artix" in osReleaseID()
       of Distribution.NixOS:
         # Check if this is a Nix build or NixOS environment
         result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
@@ -249,7 +252,7 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
       result = ("pkg_add " & p, true)
     elif detectOs(PCLinuxOS):
       result = ("rpm -ivh " & p, true)
-    elif detectOs(ArchLinux) or detectOs(Manjaro):
+    elif detectOs(ArchLinux) or detectOs(Manjaro) or detectOs(Artix):
       result = ("pacman -S " & p, true)
     else:
       result = ("<your package manager here> install " & p, true)
