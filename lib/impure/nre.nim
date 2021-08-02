@@ -302,29 +302,6 @@ proc captureCount*(pattern: Regex): int =
 proc captureNameId*(pattern: Regex): Table[string, int] =
   return pattern.captureNameToId
 
-when false:
-  proc matchesCrLf(pattern: Regex): bool =
-    let flags = uint32(getinfo[culong](pattern, pcre.INFO_OPTIONS))
-    let newlineFlags = flags and (pcre.NEWLINE_CRLF or
-                                  pcre.NEWLINE_ANY or
-                                  pcre.NEWLINE_ANYCRLF)
-    if newLineFlags > 0u32:
-      return true
-
-    # get flags from build config
-    var confFlags: cint
-    if pcre.config(pcre.CONFIG_NEWLINE, addr confFlags) != 0:
-      assert(false, "CONFIG_NEWLINE apparently got screwed up")
-
-    case confFlags
-    of 13: return false
-    of 10: return false
-    of (13 shl 8) or 10: return true
-    of -2: return true
-    of -1: return true
-    else: return false
-
-
 func captureBounds*(pattern: RegexMatch): CaptureBounds = return CaptureBounds(pattern)
 
 func captures*(pattern: RegexMatch): Captures = return Captures(pattern)
