@@ -564,7 +564,6 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
   let strlen = if endpos == int.high: str.len else: endpos+1
   var offset = start
   var match: Option[RegexMatch]
-  var neverMatched = true
 
   while true:
     var flags = 0
@@ -578,7 +577,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
       # either the end of the input or the string
       # cannot be split here - we also need to bail
       # if we've never matched and we've already tried to...
-      if offset >= strlen or neverMatched:
+      if flags == 0:
         break
 
       if matchesCrLf and offset < (str.len - 1) and
@@ -589,10 +588,9 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
         # XXX what about invalid unicode?
         offset += str.runeLenAt(offset)
         assert(offset <= strlen)
-      else: # no match
-        break
+      else:
+        offset += 1
     else:
-      neverMatched = false
       offset = match.get.matchBounds.b + 1
 
       yield match.get
