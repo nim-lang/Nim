@@ -524,10 +524,7 @@ proc getStackTrace(e: ref Exception): string =
 proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
   ## Returns the attached stack trace to the exception `e` as
   ## a `seq`. This is not yet available for the JS backend.
-  when not defined(nimSeqsV2):
-    shallowCopy(result, e.trace)
-  else:
-    result = move(e.trace)
+  shallowCopy(result, e.trace)
 
 proc getStackTraceEntries*(): seq[StackTraceEntry] =
   ## Returns the stack trace entries for the current stack trace.
