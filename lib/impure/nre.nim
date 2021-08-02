@@ -589,8 +589,8 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
         # XXX what about invalid unicode?
         offset += str.runeLenAt(offset)
         assert(offset <= strlen)
-      else:
-        offset += 1
+      else: # no match
+        break
     else:
       neverMatched = false
       offset = match.get.matchBounds.b + 1
