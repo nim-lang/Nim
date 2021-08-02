@@ -29,6 +29,8 @@ hint("Processing", off)
 
 # switch("hint", "ConvFromXtoItselfNotNeeded")
 
+switch("warningAsError", "InheritFromException")
+
 # experimental API's are enabled in testament, refs https://github.com/timotheecour/Nim/issues/575
 # sync with `kochdocs.docDefines` or refactor.
 switch("define", "nimExperimentalAsyncjsThen")
