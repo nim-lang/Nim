@@ -564,6 +564,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
   let strlen = if endpos == int.high: str.len else: endpos+1
   var offset = start
   var match: Option[RegexMatch]
+  var neverMatched = true
 
   while true:
     var flags = 0
@@ -577,7 +578,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
       # either the end of the input or the string
       # cannot be split here - we also need to bail
       # if we've never matched and we've already tried to...
-      if flags == 0 or offset >= strlen: # All matches found
+      if flags == 0 or offset >= strlen or neverMatched: # All matches found
         break
 
       if matchesCrLf and offset < (str.len - 1) and
@@ -592,6 +593,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
         offset += 1
     else:
       offset = match.get.matchBounds.b + 1
+      neverMatched = false
       yield match.get
 
 proc find*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
