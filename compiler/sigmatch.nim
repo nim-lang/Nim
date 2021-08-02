@@ -2348,7 +2348,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
 
   var forceLastBlockMatch = false
   if n[^1].kind == nkStmtList: # this wouldn't work inside templates: `if nfBlockArg in n[^1].flags`
-    if m.callee.n[^1].sym.ast == nil:
+    let formalLast = m.callee.n[^1]
+    if formalLast.kind == nkSym and formalLast.sym.ast == nil:
       forceLastBlockMatch = true
   while a < n.len:
     c.openShadowScope
