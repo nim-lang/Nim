@@ -2346,6 +2346,15 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     formal = if formalLen > 1: m.callee.n[1].sym else: nil # current routine parameter
     container: PNode = nil # constructed container
 
+  var firstArgBlock = int.high # see https://github.com/nim-lang/RFCs/issues/405
+  for a2 in countdown(n.len-1, 0):
+    # checking `nfBlockArg in n[a2].flags` wouldn't work inside templates
+    if n[a2].kind != nkStmtList: break
+    let formalLast = m.callee.n[m.callee.n.len - (n.len - a2)]
+    if formalLast.kind == nkSym and formalLast.sym.ast == nil:
+      firstArgBlock = a2
+    else: break
+
   while a < n.len:
     c.openShadowScope
 
@@ -2441,23 +2450,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         if m.callee.n[f].kind != nkSym:
           internalError(c.config, n[a].info, "matches")
           noMatch()
-
-        var allBlockArgs = true # see https://github.com/nim-lang/RFCs/issues/405
-        for a2 in a..<n.len:
-          # checking `nfBlockArg in n[a2].flags` wouldn't work inside templates
-          if n[a2].kind != nkStmtList:
-            allBlockArgs = false
-            break
-          let formalLast = m.callee.n[m.callee.n.len - (n.len - a2)]
-          if formalLast.kind == nkSym and formalLast.sym.ast == nil: discard
-          else:
-            allBlockArgs = false
-            break
-        if allBlockArgs:
+        if a >= firstArgBlock:
           let fOld = f
           f = m.callee.n.len - (n.len - a)
           assert f >= fOld
-
         formal = m.callee.n[f].sym
         m.firstMismatch.kind = kTypeMismatch
         if containsOrIncl(marker, formal.position) and container.isNil:
