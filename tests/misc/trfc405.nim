@@ -1,38 +1,30 @@
 # https://github.com/nim-lang/RFCs/issues/405
 
 template main =
-# proc main =
-  block:
-    template fn(a = 1, b = 2, body): auto = (a, b, astToStr(body))
-    let a1 = fn(10, 20):
-      foo
-    doAssert a1 == (10, 20, "\nfoo")
+  template fn1(a = 1, b = 2, body): auto = (a, b, astToStr(body))
+  let a1 = fn1(10, 20):
+    foo
+  doAssert a1 == (10, 20, "\nfoo")
 
-    template fn2(a = 1, b = 2, body) = echo (a, b, astToStr(body))
-    fn2(a = 10): foo
+  template fn2(a = 1, b = 2, body): auto = (a, b, astToStr(body))
+  let a2 = fn2(a = 10): foo
+  doAssert a2 == (10, 2, "\nfoo")
+  let a2b = fn2(b = 20): foo
+  doAssert a2b == (1, 20, "\nfoo")
 
-    # fn2(a = 10):
-    #   foo
+  template fn3(x: int, a = 1, b = 2, body): auto = (a, b, astToStr(body))
+  let a3 = fn3(3, 10, 20): foo
+  doAssert a3 == (10, 20, "\nfoo")
+  let a3b = fn3(3, a = 10): foo
+  doAssert a3b == (10, 2, "\nfoo")
 
-    # let a2 = fn(a = 10):
-    #   foo
-    # echo a2
-  #   fn(b = 20): foo
+  template fn4(x: int, y: int, body): auto = (x, y, astToStr(body))
+  let a4 = fn4(1, 2): foo
+  doAssert a4 == (1, 2, "\nfoo")
 
-  # block:
-  #   template fn(x: int, a = 1, b = 2, body) = echo (a, b, astToStr(body))
-  #   fn(3, 10, 20): # works
-  #     foo
-  #   {.define(nimCompilerDebug).}
-  #   fn(3, a = 10): foo
-  #   fn(3, b = 20): foo
-  #   fn(3, b = 20):
-  #     foo1
-  #     foo2
-
-  # block:
-  #   template fn(x: int, y: int, body) = echo (x, y, astToStr(body))
-  #   fn(3): foo
+  template fn5(x = 1, y = 2, body: untyped = 3): auto = (x, y, astToStr(body))
+  doAssert compiles(fn5(1, 2, foo))
+  doAssert not compiles(fn5(1, foo))
 
 static: main()
 main()
