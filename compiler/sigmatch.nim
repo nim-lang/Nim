@@ -2450,10 +2450,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         if m.callee.n[f].kind != nkSym:
           internalError(c.config, n[a].info, "matches")
           noMatch()
-        if a >= firstArgBlock:
-          let fOld = f
-          f = m.callee.n.len - (n.len - a)
-          assert f >= fOld
+        if a >= firstArgBlock: f = max(f, m.callee.n.len - (n.len - a))
         formal = m.callee.n[f].sym
         m.firstMismatch.kind = kTypeMismatch
         if containsOrIncl(marker, formal.position) and container.isNil:
