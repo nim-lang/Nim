@@ -1,7 +1,7 @@
 # https://github.com/nim-lang/RFCs/issues/405
 
-# template main =
-proc main =
+template main =
+# proc main =
   block:
     template fn(a = 1, b = 2, body): auto = (a, b, astToStr(body))
     let a1 = fn(10, 20):
