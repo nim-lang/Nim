@@ -592,8 +592,8 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
       else:
         offset += 1
     else:
-      offset = match.get.matchBounds.b + 1
       neverMatched = false
+      offset = match.get.matchBounds.b + 1
       yield match.get
 
 proc find*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
