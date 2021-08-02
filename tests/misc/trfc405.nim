@@ -26,5 +26,38 @@ template main =
   doAssert compiles(fn5(1, 2, foo))
   doAssert not compiles(fn5(1, foo))
 
+  block:
+    # with an overload
+    var witness = 0
+    template fn6() = discard
+    template fn6(procname: string, body: untyped): untyped = witness.inc
+    fn6("abc"): discard
+    assert witness == 1
+
+  block:
+    # with overloads
+    var witness = 0
+    template fn6() = discard
+    template fn6(a: int) = discard
+    template fn6(procname: string, body: untyped): untyped = witness.inc
+    fn6("abc"): discard
+    assert witness == 1
+
+    template fn6(b = 1.5, body: untyped): untyped = witness.inc
+    fn6(1.3): discard
+    assert witness == 2
+
+  block:
+    var witness = 0
+    template fn6(a: int) = discard
+    template fn6(a: string) = discard
+    template fn6(ignore: string, b = 1.5, body: untyped): untyped = witness.inc
+    fn6(""):
+      foobar1
+      foobar2
+    doAssert witness == 1
+    fn6(""): discard
+    doAssert witness == 2
+
 static: main()
 main()
