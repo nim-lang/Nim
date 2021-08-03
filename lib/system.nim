@@ -1894,6 +1894,8 @@ proc `<`*[T: tuple](x, y: T): bool =
   return false
 
 
+when not defined(nimscript): {.define(nimAfterSystem).}
+
 include "system/gc_interface"
 
 # we have to compute this here before turning it off in except.nim anyway ...
@@ -3124,6 +3126,7 @@ when defined(genode):
         # and return to thread entrypoint.
 
 
+
 import system/widestrs
 export widestrs
 
@@ -3145,6 +3148,3 @@ when notJSnotNims and not defined(nimSeqsV2):
       moveMem(addr y[0], addr x[0], x.len)
       assert y == "abcgh"
     discard
-
-when not defined(nimscript):
-  {.define(nimAfterSystem).}
