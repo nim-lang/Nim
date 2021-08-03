@@ -679,6 +679,7 @@ proc semConst(c: PContext, n: PNode): PNode =
         (proc(): typ2 = def)()
     def = semExprWithType(c, def)
     typ = def.typ
+    # PRTEMP: do we still need this? check type compatibility between def.typ and typ
 
     if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
       typFlags.incl taIsTemplateOrMacro
@@ -2233,13 +2234,10 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   #writeStackTrace()
   inc c.inStaticContext
   openScope(c)
-
   var a = n[0]
-  let c2 = GenContext(cache: c.cache, info: n.info)
-  a = genPNode(c2, a):
+  a = genPNode(GenContext(cache: c.cache, info: n.info), a):
     (proc() = a)()
   a = semStmt(c, a, {})
-
   closeScope(c)
   dec c.inStaticContext
   n[0] = a

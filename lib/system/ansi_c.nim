@@ -62,15 +62,7 @@ elif defined(macosx) or defined(linux) or defined(freebsd) or
     SIGSEGV* = cint(11)
     SIGTERM* = cint(15)
     SIGPIPE* = cint(13)
-
-  # const
     SIG_DFL* = cast[CSighandlerT](nil)
-
-  # const
-  #   SIGABRT3* = cint(6)
-  #   SIGABRT4* = (proc(): auto = cint(6))()
-  #   # SIGABRT4*: float = (proc(): auto = cint(6))()
-
 elif defined(haiku):
   const
     SIGABRT* = cint(6)

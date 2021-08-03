@@ -899,7 +899,6 @@ proc transform(c: PTransf, n: PNode): PNode =
     result = n
   of nkBracketExpr: result = transformArrayAccess(c, n)
   of procDefs:
-    # PRTEMP
     var s = n[namePos].sym
     if n.typ != nil and s.typ.callConv == ccClosure:
       result = transformSym(c, n[namePos])

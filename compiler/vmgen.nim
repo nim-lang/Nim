@@ -1488,7 +1488,6 @@ proc importcCondVar*(s: PSym): bool {.inline.} =
   if sfImportc in s.flags:
     return s.kind in {skVar, skLet, skConst}
 
-import renderer
 proc checkCanEval(c: PCtx; n: PNode) =
   # we need to ensure that we don't evaluate 'x' here:
   # proc foo() = var x ...
@@ -1500,13 +1499,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
     # little hack ahead for bug #12612: assume gensym'ed variables
     # are in the right scope:
     if sfGenSym in s.flags and c.prc.sym == nil: discard
-    else:
-      dbgIf c.prc.sym, n
-      var s2 = s
-      while s2 != nil:
-        dbgIf s2
-        s2 = s2.owner
-      cannotEval(c, n)
+    else: cannotEval(c, n)
   elif s.kind in {skProc, skFunc, skConverter, skMethod,
                   skIterator} and sfForward in s.flags:
     cannotEval(c, n)

@@ -357,35 +357,8 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
 const
   errConstExprExpected = "constant expression expected"
 
-import vmconv
 proc semConstExpr(c: PContext, n: PNode): PNode =
-  # var c2 = GenContext(cache: c.cache, info: n.info)
-  # n = genPNode(c2, module, name):
-  # dbgIf n
-  # dbg g.config$n.info
-  # if mode == emConst:
-
-  # var n = n
-  # var e: PNode = nil
-  # # if true:
-  # if c.config.isDefined("nimAfterSystem"):
-  #   n = genPNode(c2, n):
-  #     block:
-  #       proc zoo_xy(): auto =
-  #         n
-  #       zoo_xy()
-  #   # n = genPNode(c2, n):
-  #   #   (proc(): auto =
-  #   #     n)()
-  #   e = semExprWithType(c, n)
-  #   # dbg n
-  #   # ns = semExprWithType(c, n) # PRTEMP
-  #   dbgIf n
-  # else:
-  #   e = semExprWithType(c, n)
-
-  let e = semExprWithType(c, n)
-
+  var e = semExprWithType(c, n)
   if e == nil:
     localError(c.config, n.info, errConstExprExpected)
     return n

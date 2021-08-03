@@ -1765,8 +1765,6 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
 when notJSnotNims:
   import system/ansi_c
   import system/memory
-else:
-  when not defined(nimscript): {.define(nimAfterSystem).}
 
 
 {.push stackTrace: off.}
@@ -1894,7 +1892,6 @@ proc `<`*[T: tuple](x, y: T): bool =
     if c < 0: return true
     if c > 0: return false
   return false
-
 
 
 include "system/gc_interface"
@@ -3125,7 +3122,6 @@ when defined(genode):
       componentConstructHook(env)
         # Perform application initialization
         # and return to thread entrypoint.
-
 
 
 import system/widestrs
