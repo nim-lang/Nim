@@ -39,10 +39,13 @@ runnableExamples:
 runnableExamples:
   import std/sugar
   let vowels = re"[aeoui]"
-  assert collect(for match in "moiga".findIter(vowels): match.matchBounds) ==
-    @[1 .. 1, 2 .. 2, 4 .. 4]
+  let bounds = collect:
+    for match in "moiga".findIter(vowels): match.matchBounds
+  assert bounds == @[1 .. 1, 2 .. 2, 4 .. 4]
   from std/sequtils import toSeq
-  let s = sequtils.toSeq("moiga".findIter(vowels)) # fully qualified to avoid confusion with nre.toSeq
+  let s = sequtils.toSeq("moiga".findIter(vowels))
+    # fully qualified to avoid confusion with nre.toSeq
+  assert s.len == 3
 
   let firstVowel = "foo".find(vowels)
   let hasVowel = firstVowel.isSome()
