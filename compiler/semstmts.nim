@@ -667,14 +667,11 @@ proc needConstWrap(n: PNode): bool =
     for ni in n:
       if needConstWrap(ni):
         return true
-      # if ni.kind in {nkVarSection, nkLetSection}:
-      #   return true
   of nkVarSection, nkLetSection:
     return true
   else:
     # TODO
     return false
-
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
