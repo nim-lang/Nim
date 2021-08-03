@@ -666,29 +666,19 @@ proc semConst(c: PContext, n: PNode): PNode =
     checkMinSonsLen(a, 3, c.config)
 
     var typ: PType = nil
-    # if a[^2].kind != nkEmpty:
-    #   typ = semTypeNode(c, a[^2], nil)
-
     var typFlags: TTypeAllowedFlags
-
     # don't evaluate here since the type compatibility check below may add a converter
     var def = a[^1]
-    if c.config.isDefined("nimAfterSystem"):
-      let c2 = GenContext(cache: c.cache, info: def.info)
-      if a[^2].kind == nkEmpty:
-      # if typ == nil:
-        def = genPNode(c2, def):
-          (proc(): auto = def)()
-      else:
-        let typ2 = a[^2]
-        def = genPNode(c2, def, typ2):
-          (proc(): typ2 = def)()
-      def = semExprWithType(c, def)
-      typ = def.typ
+    let c2 = GenContext(cache: c.cache, info: def.info)
+    if a[^2].kind == nkEmpty:
+      def = genPNode(c2, def):
+        (proc(): auto = def)()
     else:
-      def = semExprWithType(c, def)
-      if a[^2].kind != nkEmpty:
-        typ = semTypeNode(c, a[^2], nil)
+      let typ2 = a[^2]
+      def = genPNode(c2, def, typ2):
+        (proc(): typ2 = def)()
+    def = semExprWithType(c, def)
+    typ = def.typ
 
     if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
       typFlags.incl taIsTemplateOrMacro

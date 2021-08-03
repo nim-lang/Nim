@@ -52,7 +52,6 @@ type
   typed* {.magic: Stmt.}         ## Meta type to denote an expression that
                                  ## is resolved (for templates).
 
-{.define(nimAfterSystem).}
 include "system/basic_types"
 
 
