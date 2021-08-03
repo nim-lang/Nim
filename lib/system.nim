@@ -52,6 +52,7 @@ type
   typed* {.magic: Stmt.}         ## Meta type to denote an expression that
                                  ## is resolved (for templates).
 
+{.define(nimAfterSystem).}
 include "system/basic_types"
 
 
@@ -1765,6 +1766,8 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
 when notJSnotNims:
   import system/ansi_c
   import system/memory
+else:
+  when not defined(nimscript): {.define(nimAfterSystem).}
 
 
 {.push stackTrace: off.}
@@ -1894,7 +1897,6 @@ proc `<`*[T: tuple](x, y: T): bool =
   return false
 
 
-when not defined(nimscript): {.define(nimAfterSystem).}
 
 include "system/gc_interface"
 
