@@ -24,10 +24,11 @@ const useOrcArc = defined(gcArc) or defined(gcOrc)
 include "system/syslocks"
 
 type
-  Lock* = object  ## Nim lock; whether this is re-entrant
-                  ## or not is unspecified!
+  Lock* = object
+    ## Nim lock; whether this is re-entrant or not is unspecified!
     lock: SysLock
-  Cond* = object  ## Nim condition variable
+  Cond* = object
+    ## Nim condition variable
     cond: SysCond
 
 {.push stackTrace: off.}
@@ -49,7 +50,7 @@ when useOrcArc:
     deinitSys(lock.lock)
 
   proc deinitLock*(lock: var Lock) {.inline, 
-        deprecated: "'deinitLock' is not needed anymore in ARC/ORC(it is a no-op now); `=destroy` is already defined for 'Lock'".} =
+        deprecated: "`deinitLock` is not needed anymore in ARC/ORC(it is a no-op now); `=destroy` is already defined for `Lock`".} =
     discard
 else:
   proc deinitLock*(lock: var Lock) {.inline.} =
@@ -83,7 +84,7 @@ when useOrcArc:
     deinitSysCond(cond.cond)
 
   proc deinitCond*(cond: var Cond) {.inline, 
-        deprecated: "'deinitCond' is not needed anymore in ARC/ORC(it is a no-op now); `=destroy` is already defined for 'Cond'".} =
+        deprecated: "`deinitCond` is not needed anymore in ARC/ORC(it is a no-op now); `=destroy` is already defined for `Cond`".} =
     discard
 else:
   proc deinitCond*(cond: var Cond) {.inline.} =
