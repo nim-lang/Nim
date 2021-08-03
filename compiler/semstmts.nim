@@ -657,10 +657,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
 import vmconv
 proc needConstWrap(n: PNode): bool =
-  # return true
-  # # dbgIf n
-  # # if isCompilerDebug():
-  # #   debug n
   case n.kind
   of nkBlockStmt, nkForStmt:
     result = needConstWrap(n[^1])
@@ -690,26 +686,16 @@ proc semConst(c: PContext, n: PNode): PNode =
     var def = a[^1]
     var needTypInfer = false
     let c2 = GenContext(cache: c.cache, info: def.info)
-
-    # def = semExprWithType(c, def)
     if a[^2].kind == nkEmpty:
       if needConstWrap(def):
         def = genPNode(c2, def):
           (proc(): auto = def)()
     else:
       let typ2 = a[^2]
-      # if needConstWrap(def):
       def = genPNode(c2, def, typ2):
         (proc(): typ2 = def)()
-      # else:
-      #   needTypInfer = true
     def = semExprWithType(c, def)
-    # if needTypInfer:
-    #   typ = semTypeNode(c, a[^2], nil)
-    # else:
-    #   typ = def.typ
     typ = def.typ
-    # PRTEMP: do we still need this? check type compatibility between def.typ and typ
 
     if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
       typFlags.incl taIsTemplateOrMacro
