@@ -24,11 +24,11 @@ const useOrcArc = defined(gcArc) or defined(gcOrc)
 include "system/syslocks"
 
 type
-  Lock* = object
-    lock: SysLock ## Nim lock; whether this is re-entrant
+  Lock* = object  ## Nim lock; whether this is re-entrant
                   ## or not is unspecified!
-  Cond* = object
-    cond: SysCond ## Nim condition variable
+    lock: SysLock
+  Cond* = object  ## Nim condition variable
+    cond: SysCond
 
 {.push stackTrace: off.}
 

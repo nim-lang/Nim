@@ -22,8 +22,8 @@ const useOrcArc = defined(gcArc) or defined(gcOrc)
 include "system/syslocks"
 
 type
-  RLock* = object
-    lock: SysLock ## Nim lock, re-entrant
+  RLock* = object ## Nim lock, re-entrant
+    lock: SysLock
 
 proc initRLock*(lock: var RLock) {.inline.} =
   ## Initializes the given lock.
