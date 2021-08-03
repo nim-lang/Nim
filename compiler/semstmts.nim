@@ -2233,7 +2233,13 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   #writeStackTrace()
   inc c.inStaticContext
   openScope(c)
-  let a = semStmt(c, n[0], {})
+
+  var a = n[0]
+  let c2 = GenContext(cache: c.cache, info: n.info)
+  a = genPNode(c2, a):
+    (proc() = a)()
+  a = semStmt(c, a, {})
+
   closeScope(c)
   dec c.inStaticContext
   n[0] = a
