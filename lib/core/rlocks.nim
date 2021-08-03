@@ -37,6 +37,8 @@ proc initRLock*(lock: var RLock) {.inline.} =
     initSysLock(lock.lock)
 
 when useOrcArc:
+  proc `=sink`*(x: var RLock, y: RLock) {.error.}
+
   proc `=copy`*(x: var RLock, y: RLock) {.error.}
 
   proc `=destroy`*(lock: var RLock) {.inline.} =
