@@ -691,11 +691,17 @@ proc semConst(c: PContext, n: PNode): PNode =
         def = genPNode(c2, def):
           (proc(): auto = def)()
     else:
-      let typ2 = a[^2]
-      def = genPNode(c2, def, typ2):
-        (proc(): typ2 = def)()
+      if needConstWrap(def):
+        let typ2 = a[^2]
+        def = genPNode(c2, def, typ2):
+          (proc(): typ2 = def)()
+      else:
+        needTypInfer = true
     def = semExprWithType(c, def)
-    typ = def.typ
+    if needTypInfer:
+      typ = semTypeNode(c, a[^2], nil)
+    else:
+      typ = def.typ
 
     if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
       typFlags.incl taIsTemplateOrMacro
