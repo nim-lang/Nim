@@ -23,7 +23,7 @@ include "system/syslocks"
 
 type
   RLock* = object
-    ## Nim lock, re-entrant
+    ## Nim lock, re-entrant.
     lock: SysLock
 
 proc initRLock*(lock: var RLock) {.inline.} =
@@ -43,7 +43,7 @@ when useOrcArc:
     deinitSys(lock.lock)
 
   proc deinitRLock*(lock: var RLock) {.inline, 
-        deprecated: "`deinitRLock` is not needed anymore in ARC/ORC(it is a no-op now); `=destroy` is already defined for `RLock`".} =
+        deprecated: "`deinitRLock` is not needed anymore in ARC/ORC (it is a no-op now); `=destroy` is already defined for `RLock`".} =
     discard
 else:
   proc deinitRLock*(lock: var RLock) {.inline.} =
