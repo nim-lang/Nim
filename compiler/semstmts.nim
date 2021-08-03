@@ -655,6 +655,27 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
 
+import vmconv
+proc needConstWrap(n: PNode): bool =
+  # dbgIf n
+  # if isCompilerDebug():
+  #   debug n
+  case n.kind
+  of nkBlockStmt, nkForStmt:
+    result = needConstWrap(n[^1])
+  of nkStmtList:
+    for ni in n:
+      if needConstWrap(ni):
+        return true
+      # if ni.kind in {nkVarSection, nkLetSection}:
+      #   return true
+  of nkVarSection, nkLetSection:
+    return true
+  else:
+    # TODO
+    return false
+
+
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
   inc c.inStaticContext
@@ -669,16 +690,24 @@ proc semConst(c: PContext, n: PNode): PNode =
     var typFlags: TTypeAllowedFlags
     # don't evaluate here since the type compatibility check below may add a converter
     var def = a[^1]
+    var needTypInfer = false
     let c2 = GenContext(cache: c.cache, info: def.info)
     if a[^2].kind == nkEmpty:
-      def = genPNode(c2, def):
-        (proc(): auto = def)()
+      if needConstWrap(def):
+        def = genPNode(c2, def):
+          (proc(): auto = def)()
     else:
       let typ2 = a[^2]
-      def = genPNode(c2, def, typ2):
-        (proc(): typ2 = def)()
+      if needConstWrap(def):
+        def = genPNode(c2, def, typ2):
+          (proc(): typ2 = def)()
+      else:
+        needTypInfer = true
     def = semExprWithType(c, def)
-    typ = def.typ
+    if needTypInfer:
+      typ = semTypeNode(c, a[^2], nil)
+    else:
+      typ = def.typ
     # PRTEMP: do we still need this? check type compatibility between def.typ and typ
 
     if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
