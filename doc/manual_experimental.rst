@@ -1157,6 +1157,24 @@ the ordinary AST predicates:
     a = b
     inc a, c
 
+Another example:
+
+.. code-block:: nim
+  proc somefunc(s: string)                 = assert s == "variable"
+  proc somefunc(s: string{nkStrLit})       = assert s == "literal"
+  proc somefunc(s: string{nkRStrLit})      = assert s == r"raw"
+  proc somefunc(s: string{nkTripleStrLit}) = assert s == """triple"""
+  proc somefunc(s: static[string])         = assert s == "constant"
+
+  # Use parameter constraints to provide overloads based on both the input parameter type and form.
+  var variable = "variable"
+  somefunc(variable)
+  const constant = "constant"
+  somefunc(constant)
+  somefunc("literal")
+  somefunc(r"raw")
+  somefunc("""triple""")
+
 
 Pattern operators
 -----------------
