@@ -1,9 +1,14 @@
+funWithGenerics	subdir/subdir_b/utils.html#funWithGenerics,T,U	utils: funWithGenerics[T, U: SomeFloat](a: T; b: U)	
 enumValueA	subdir/subdir_b/utils.html#enumValueA	SomeType.enumValueA	
 enumValueB	subdir/subdir_b/utils.html#enumValueB	SomeType.enumValueB	
 enumValueC	subdir/subdir_b/utils.html#enumValueC	SomeType.enumValueC	
 SomeType	subdir/subdir_b/utils.html#SomeType	utils: SomeType	
+G	subdir/subdir_b/utils.html#G	utils: G	
 someType	subdir/subdir_b/utils.html#someType_2	utils: someType(): SomeType	
 fn2	subdir/subdir_b/utils.html#fn2	utils: fn2()	
+fn2	subdir/subdir_b/utils.html#fn2,int	utils: fn2(x: int)	
+fn2	subdir/subdir_b/utils.html#fn2,int,float	utils: fn2(x: int; y: float)	
+binarySearch	subdir/subdir_b/utils.html#binarySearch,openArray[T],K,proc(T,K)	utils: binarySearch[T, K](a: openArray[T]; key: K;\n                   cmp: proc (x: T; y: K): int {.closure.}): int	
 fn3	subdir/subdir_b/utils.html#fn3	utils: fn3(): auto	
 fn4	subdir/subdir_b/utils.html#fn4	utils: fn4(): auto	
 fn5	subdir/subdir_b/utils.html#fn5	utils: fn5()	
@@ -15,6 +20,15 @@ fn10	subdir/subdir_b/utils.html#fn10,int	utils: fn10(a: int): int
 aEnum	subdir/subdir_b/utils.html#aEnum.t	utils: aEnum(): untyped	
 bEnum	subdir/subdir_b/utils.html#bEnum.t	utils: bEnum(): untyped	
 fromUtilsGen	subdir/subdir_b/utils.html#fromUtilsGen.t	utils: fromUtilsGen(): untyped	
+f	subdir/subdir_b/utils.html#f,G[int]	utils: f(x: G[int])	
+f	subdir/subdir_b/utils.html#f,G[string]	utils: f(x: G[string])	
+`[]`	subdir/subdir_b/utils.html#[],G[T]	utils: `[]`[T](x: G[T]): T	
+`[]=`	subdir/subdir_b/utils.html#[]=,G[T],int,T	utils: `[]=`[T](a: var G[T]; index: int; value: T)	
+`$`	subdir/subdir_b/utils.html#$,G[T]	utils: `$`[T](a: G[T]): string	
+`$`	subdir/subdir_b/utils.html#$,ref.SomeType	utils: `$`[T](a: ref SomeType): string	
+fooBar	subdir/subdir_b/utils.html#fooBar.i,seq[SomeType]	utils: fooBar(a: seq[SomeType]): int	
+fn	subdir/subdir_b/utils.html#fn	utils: fn[T; U, V: SomeFloat]()	
+`'big`	subdir/subdir_b/utils.html#'big,string	utils: `&apos;big`(a: string): SomeType	
 This is now a header	subdir/subdir_b/utils.html#this-is-now-a-header	 This is now a header	
 Next header	subdir/subdir_b/utils.html#this-is-now-a-header-next-header	  Next header	
 And so on	subdir/subdir_b/utils.html#next-header-and-so-on	   And so on	

@@ -60,8 +60,8 @@ type
   MetaEnum* = enum
     metaNone, metaTitle, metaSubtitle, metaAuthor, metaVersion
 
-  EscapeMode = enum  # in Latex text inside options [] and URLs is
-                     # escaped slightly differently than in normal text
+  EscapeMode* = enum  # in Latex text inside options [] and URLs is
+                      # escaped slightly differently than in normal text
     emText, emOption, emUrl  # emText is currently used for code also
 
   RstGenerator* = object of RootObj
@@ -201,7 +201,9 @@ proc addTexChar(dest: var string, c: char, escMode: EscapeMode) =
   ## All escapes that need to work in text and code blocks (`emText` mode)
   ## should start from \ (to be compatible with fancyvrb/fvextra).
   case c
-  of '_', '$', '&', '#', '%': add(dest, "\\" & c)
+  of '_', '&', '#', '%': add(dest, "\\" & c)
+  # commands \label and \pageref don't accept \$ by some reason but OK with $:
+  of '$': (if escMode == emUrl: add(dest, c) else: add(dest, "\\" & c))
   # \~ and \^ have a special meaning unless they are followed by {}
   of '~', '^': add(dest, "\\" & c & "{}")
   # Latex loves to substitute ` to opening quote, even in texttt mode!
@@ -1180,7 +1182,8 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
         "$1\n\\end{rstadmonition}\n",
       result)
 
-proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string, external: bool) =
+proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string,
+                     external: bool, nimdoc = false, tooltip="") =
   var linkStr = ""
   block:
     let mode = d.escMode
@@ -1189,14 +1192,19 @@ proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string, external
     d.escMode = mode
   var textStr = ""
   renderRstToOut(d, text, textStr)
+  let nimDocStr = if nimdoc: " nimdoc" else: ""
+  var tooltipStr = ""
+  if tooltip != "":
+    tooltipStr = """ title="$1"""" % [ esc(d.target, tooltip) ]
   if external:
     dispA(d.target, result,
-      "<a class=\"reference external\" href=\"$2\">$1</a>",
-      "\\href{$2}{$1}", [textStr, linkStr])
+      "<a class=\"reference external$3\"$4 href=\"$2\">$1</a>",
+      "\\href{$2}{$1}", [textStr, linkStr, nimDocStr, tooltipStr])
   else:
     dispA(d.target, result,
-      "<a class=\"reference internal\" href=\"#$2\">$1</a>",
-      "\\hyperlink{$2}{$1} (p.~\\pageref{$2})", [textStr, linkStr])
+      "<a class=\"reference internal$3\"$4 href=\"#$2\">$1</a>",
+      "\\hyperlink{$2}{$1} (p.~\\pageref{$2})",
+      [textStr, linkStr, nimDocStr, tooltipStr])
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
@@ -1329,6 +1337,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderHyperlink(d, text=n.sons[0], link=n.sons[0], result, external=true)
   of rnInternalRef:
     renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=false)
+  of rnNimdocRef:
+    renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=false,
+                    nimdoc=true, tooltip=n.tooltip)
   of rnHyperlink:
     renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=true)
   of rnFootnoteRef:

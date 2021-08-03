@@ -43,6 +43,7 @@ type
     rnFootnoteGroup,          # footnote group - exists for a purely stylistic
                               # reason: to display a few footnotes as 1 block
     rnStandaloneHyperlink, rnHyperlink, rnRef, rnInternalRef, rnFootnoteRef,
+    rnNimdocRef,              # reference to automatically generated Nim symbol
     rnDirective,              # a general directive
     rnDirArg,                 # a directive argument (for some directives).
                               # here are directives that are not rnDirective:
@@ -104,6 +105,8 @@ type
         rnInterpretedText, rnField, rnInlineCode, rnCodeBlock, rnFootnoteRef:
       info*: TLineInfo        ## To have line/column info for warnings at
                               ## nodes that are post-processed after parsing
+    of rnNimdocRef:
+      tooltip*: string
     else:
       discard
     anchor*: string           ## anchor, internal link target

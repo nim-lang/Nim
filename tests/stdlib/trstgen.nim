@@ -1054,8 +1054,9 @@ Test1
       Paragraph2 ref `internal anchor`_.
       """
     let output9 = input9.toHtml
-    #doAssert "id=\"internal-anchor\"" in output9
-    #doAssert "internal anchor" notin output9
+    # _`internal anchor` got erased:
+    check "href=\"#internal-anchor\"" notin output9
+    check "href=\"#citation-another\"" in output9
     doAssert output9.count("<hr class=\"footnote\">" &
                            "<div class=\"footnote-group\">") == 1
     doAssert output9.count("<div class=\"footnote-label\">") == 3
@@ -1330,12 +1331,12 @@ Test1
     """
     let output1 = input1.toHtml
     # "target101" should be erased and changed to "section-xyz":
-    doAssert "href=\"#target101\"" notin output1
-    doAssert "id=\"target101\""    notin output1
-    doAssert "href=\"#target102\"" notin output1
-    doAssert "id=\"target102\""    notin output1
-    doAssert "id=\"section-xyz\""     in output1
-    doAssert "href=\"#section-xyz\""  in output1
+    check "href=\"#target101\"" notin output1
+    check "id=\"target101\""    notin output1
+    check "href=\"#target102\"" notin output1
+    check "id=\"target102\""    notin output1
+    check "id=\"section-xyz\""     in output1
+    check "href=\"#section-xyz\""  in output1
 
     let input2 = dedent """
       .. _target300:
@@ -1405,7 +1406,7 @@ Test1
     let output1 = input1.toHtml
     doAssert "id=\"secdot1\"" in output1
     doAssert "id=\"Z2minusothercolonsecplusc-2\"" in output1
-    doAssert "id=\"linkdot1-2021\"" in output1
+    check "id=\"linkdot1-2021\"" in output1
     let ref1 = "<a class=\"reference internal\" href=\"#secdot1\">sec.1</a>"
     let ref2 = "<a class=\"reference internal\" href=\"#Z2minusothercolonsecplusc-2\">2-other:sec+c_2</a>"
     let ref3 = "<a class=\"reference internal\" href=\"#linkdot1-2021\">link.1_2021</a>"

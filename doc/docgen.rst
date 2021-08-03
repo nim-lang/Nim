@@ -229,6 +229,168 @@ Output::
 Note that the `jsondoc`:option: command outputs its JSON without pretty-printing it,
 while `jsondoc0`:option: outputs pretty-printed JSON.
 
+
+Referencing Nim symbols: simple documentation links
+===================================================
+
+You can reference Nim identifiers from Nim documentation comments, currently
+only inside their ``.nim`` file (or inside a ``.rst`` file included from
+the ``.nim``). The point is that such links will be resolved automatically
+by `nim doc`:cmd: (or `nim jsondoc`:cmd: or `nim doc2tex`:cmd:).
+This pertains to any exported symbol like `proc`, `const`, `iterator`, etc.
+Syntax for referencing is basically a normal RST one: addition of
+underscore `_` to a *link text*.
+Link text is either one word or a group of words enclosed by backticks `\``.
+Link text will be displayed *as is* while *link target* will be set to
+the anchor [*]_ of Nim symbol that corresponds to link text.
+
+.. [*] anchors' format is described in `HTML anchor generation`_ section below.
+
+If you have a constant:
+
+.. code:: Nim
+
+   const pi* = 3.14
+
+then it should be referenced in one of the 2 forms:
+
+A. non-qualified (no symbol kind specification)::
+     pi_
+B. qualified (with symbol kind specification)::
+     `const pi`_
+
+For routine kinds there are more options. Consider this definition:
+
+.. code:: Nim
+
+   proc foo*(a: int, b: float): string
+
+Generally following syntax is allowed for referencing `foo`:
+
+*  short (without parameters):
+
+   A. non-qualified::
+
+        foo_
+
+   B. qualified::
+
+        `proc foo`_
+
+*  longer variants (with parameters):
+
+   A. non-qualified:
+
+      1) specifying parameters names::
+
+          `foo(a, b)`_
+
+      2) specifying parameters types::
+
+          `foo(int, float)`_
+
+      3) specifying both names and types::
+
+          `foo(a: int, b: float)`_
+
+      4) output parameter can also be specified if you wish::
+
+          `foo(a: int, b: float): string`_
+
+   B. qualified: all 4 options above are valid.
+      Particularly you can use the full format::
+
+        `proc foo(a: int, b: float): string`_
+
+.. Tip:: Avoid cluttering your text with extraneous information by using
+   one of shorter forms::
+
+     binarySearch_
+     `binarySearch(a, key, cmp)`_
+
+   Brevity is better for reading! If you use a short form and have an
+   ambiguity problem (see below) then just add some additional info.
+
+.. Warning:: An ambiguity in resolving documentation links may arise because of:
+
+   1. clash with other RST anchors
+      * manually setup anchors
+      * automatically set up, e.g. section names
+   2. collision with other Nim symbols:
+
+      * routines with different parameters can exist e.g. for
+        `proc` and `template`. In this case they are split between their
+        corresponding sections in output file
+      * because in Nim `proc` and `iterator` belong to different namespaces,
+        so there can be a collision even if parameters are the same.
+
+      Qualified references are useful in this case: just disambiguate
+      the reference like `\`proc foo\`_`:literal:
+      or `\`template foo\`_`:literal: or `\`iterator foo\`_`:literal:.
+
+   Any ambiguity is always reported with Nim compiler warnings and an anchor
+   with higher priority is selected. Manual anchors have highest
+   priority, then go automatic RST anchors; then Nim-generated anchors
+   (while procs have higher priority than other Nim symbol kinds).
+
+Generic parameters can also be used. All in all, this long form will be
+recognized fine::
+
+  `proc binarySearch*[T; K](a: openArray[T], key: K, cmp: proc(T, K)): int`_
+
+**Limitations**:
+
+1. The parameters of a nested routine type can be specified only with types
+   (without parameter names, see form A.2 above).
+   E.g. for this signature:
+
+   .. code:: Nim
+
+      proc binarySearch*[T, K](a: openArray[T]; key: K;
+                               cmp: proc (x: T; y: K): int {.closure.}): int
+                                          ~~    ~~   ~~~~~
+
+   you cannot use names underlined by `~~` so it must be referenced with
+   ``cmp: proc(T, K)``. Hence these forms are valid::
+
+     `binarySearch(a: openArray[T], key: K, cmp: proc(T, K))`_
+     `binarySearch(openArray[T], K, proc(T, K))`_
+     `binarySearch(a, key, cmp)`_
+2. Default values in routine parameters are not recognized, one needs to
+   specify the type and/or name instead. E.g. for referencing `proc f(x = 7)`
+   use one of the mentioned forms::
+
+     `f(int)`_ or `f(x)`_ or `f(x: int)`_.
+3. Generic parameters must be given the same way as in the
+   definition of referenced symbol.
+
+   * their names should be the same
+   * parameters list should be given the same way, e.g. without substitutions
+     between commas (,) and semicolons (;).
+
+.. Note:: A bit special case is operators
+   (as their signature is also defined with `\``):
+
+   .. code:: Nim
+
+      func `$`(x: MyType): string
+      func `[]`*[T](x: openArray[T]): T
+
+   A short form works without additional backticks::
+
+     `$`_
+     `[]`_
+
+   However for fully-qualified reference copy-pasting backticks (`) into other
+   backticks will not work in our RST parser (because we use Markdown-like
+   inline markup rules). You need either to delete backticks or keep
+   them and escape with backslash \\::
+
+      no backticks: `func $`_
+      escaped:  `func \`$\``_
+      no backticks: `func [][T](x: openArray[T]): T`_
+      escaped:  `func \`[]\`[T](x: openArray[T]): T`_
+
 Related Options
 ===============
 

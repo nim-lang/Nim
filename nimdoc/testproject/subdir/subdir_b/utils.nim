@@ -1,5 +1,7 @@
 ##[
 
+.. include:: ./utils_overview.rst
+
 # This is now a header
 
 ## Next header
@@ -19,13 +21,30 @@ More text.
 1. Other case value
 2. Second case.
 
+Ref group fn2_ or specific function like `fn2()`_
+or `fn2(  int  )`_ or `fn2(int,
+float)`_.
+
+Ref generics like this: binarySearch_ or `binarySearch(openArray[T], K,
+proc (T, K))`_ or `proc binarySearch(openArray[T], K,  proc (T, K))`_ or
+in different style: `proc binarysearch(openarray[T], K, proc(T, K))`_.
+Can be combined with export symbols and type parameters:
+`binarysearch*[T, K](openArray[T], K, proc (T, K))`_.
+With spaces `binary search`_.
+
+Ref. type like G_ and `type G`_ and `G[T]`_ and `type G*[T]`_.
+
 ]##
+
+include ./utils_helpers
 
 type
   SomeType* = enum
     enumValueA,
     enumValueB,
     enumValueC
+  G*[T] = object
+    val: T
 
 proc someType*(): SomeType =
   ## constructor.
@@ -33,6 +52,14 @@ proc someType*(): SomeType =
 
 
 proc fn2*() = discard ## comment
+proc fn2*(x: int) =
+  ## fn2 comment
+  discard
+proc fn2*(x: int, y: float) =
+  discard
+proc binarySearch*[T, K](a: openArray[T]; key: K;
+                         cmp: proc (x: T; y: K): int {.closure.}): int =
+  discard
 proc fn3*(): auto = 1 ## comment
 proc fn4*(): auto = 2 * 3 + 4 ## comment
 proc fn5*() ## comment
@@ -89,3 +116,39 @@ template fromUtilsGen*(): untyped =
     ## came form utils but should be shown where `fromUtilsGen` is called
     runnableExamples: discard """should be shown as examples for fromUtils3
        in module calling fromUtilsGen"""
+
+proc f*(x: G[int]) =
+  ## There is also variant `f(G[string])`_
+  discard
+proc f*(x: G[string]) =
+  ## See also `f(G[int])`_.
+  discard
+
+## Ref. `[]`_ is the same as `proc \`[]\`(G[T])`_ because there are no
+## overloads. The full form: `proc \`[]\`*[T](x: G[T]): T`_
+
+proc `[]`*[T](x: G[T]): T = x.val
+
+## Ref. `[]=`_ aka `\`[]=\`(G[T], int, T)`_.
+
+proc `[]=`*[T](a: var G[T], index: int, value: T) = discard
+
+## Ref. `$`_ aka `proc $`_ or `proc \`$\``_.
+
+proc `$`*[T](a: G[T]): string = ""
+
+## Ref. `$(a: ref SomeType)`_.
+
+proc `$`*[T](a: ref SomeType): string = ""
+
+## Ref. foo_bar_ aka `iterator foo_bar_`_.
+
+iterator fooBar*(a: seq[SomeType]): int = discard
+
+## Ref. `fn[T; U,V: SomeFloat]()`_.
+
+proc fn*[T; U, V: SomeFloat]() = discard
+
+## Ref. `'big`_ or `func \`'big\``_ or `\`'big\`(string)`_.
+
+func `'big`*(a: string): SomeType = discard
