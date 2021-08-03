@@ -1165,6 +1165,8 @@ Another example:
   proc somefunc(s: string{nkRStrLit})      = assert s == r"raw"
   proc somefunc(s: string{nkTripleStrLit}) = assert s == """triple"""
   proc somefunc(s: static[string])         = assert s == "constant"
+
+  # Use parameter constraints to provide overloads based on both the input parameter type and form.
   var variable = "variable"
   somefunc(variable)
   const constant = "constant"
