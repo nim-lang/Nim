@@ -17,10 +17,13 @@ when not compileOption("threads") and not defined(nimdoc):
     {.error: "Rlocks requires --threads:on option.".}
 
 const insideRLocksModule = true
+const useOrcArc = defined(gcArc) or defined(gcOrc)
+
 include "system/syslocks"
 
 type
-  RLock* = SysLock ## Nim lock, re-entrant
+  RLock* = object
+    lock: SysLock ## Nim lock, re-entrant
 
 proc initRLock*(lock: var RLock) {.inline.} =
   ## Initializes the given lock.
@@ -28,25 +31,35 @@ proc initRLock*(lock: var RLock) {.inline.} =
     var a: SysLockAttr
     initSysLockAttr(a)
     setSysLockType(a, SysLockType_Reentrant)
-    initSysLock(lock, a.addr)
+    initSysLock(lock.lock, a.addr)
   else:
-    initSysLock(lock)
+    initSysLock(lock.lock)
 
-proc deinitRLock*(lock: var RLock) {.inline.} =
-  ## Frees the resources associated with the lock.
-  deinitSys(lock)
+when useOrcArc:
+  proc `=copy`*(x: var RLock, y: RLock) {.error.}
+
+  proc `=destroy`*(lock: var RLock) {.inline.} =
+    deinitSys(lock.lock)
+
+  proc deinitRLock*(lock: var RLock) {.inline, 
+        deprecated: "'deinitRLock' is not needed anymore in ARC/ORC(it is a no-op now); `=destroy` is already defined for 'RLock'".} =
+    discard
+else:
+  proc deinitRLock*(lock: var RLock) {.inline.} =
+    ## Frees the resources associated with the lock.
+    deinitSys(lock.lock)
 
 proc tryAcquire*(lock: var RLock): bool {.inline.} =
   ## Tries to acquire the given lock. Returns `true` on success.
-  result = tryAcquireSys(lock)
+  result = tryAcquireSys(lock.lock)
 
 proc acquire*(lock: var RLock) {.inline.} =
   ## Acquires the given lock.
-  acquireSys(lock)
+  acquireSys(lock.lock)
 
 proc release*(lock: var RLock) {.inline.} =
   ## Releases the given lock.
-  releaseSys(lock)
+  releaseSys(lock.lock)
 
 template withRLock*(lock: RLock, code: untyped) =
   ## Acquires the given lock and then executes the code.
