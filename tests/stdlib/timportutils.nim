@@ -1,3 +1,7 @@
+discard """
+  joinable: false
+"""
+
 import std/importutils
 import stdtest/testutils
 import mimportutils
