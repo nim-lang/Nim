@@ -672,20 +672,10 @@ proc semConst(c: PContext, n: PNode): PNode =
     var typFlags: TTypeAllowedFlags
 
     # don't evaluate here since the type compatibility check below may add a converter
-    # var def = semExprWithType(c, a[^1])
     var def = a[^1]
     if c.config.isDefined("nimAfterSystem"):
-    # if true:
-      var c2 = GenContext(cache: c.cache, info: def.info)
-      def = genPNode(c2, def):
-        block:
-          (proc(): auto = def)()
-          # proc zoo_xy(): auto =
-          #   def
-          # zoo_xy()
-      # n = genPNode(c2, n):
-      #   (proc(): auto =
-      #     n)()
+      def = genPNode(GenContext(cache: c.cache, info: def.info), def):
+        (proc(): auto = def)()
     def = semExprWithType(c, def)
 
     if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
