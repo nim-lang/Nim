@@ -43,6 +43,7 @@ template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]
     const
       loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
       ploc = $loc
+      # ploc = (proc(): auto = $loc)()
     bind instantiationInfo
     mixin failedAssertImpl
     {.line: loc.}:

@@ -2196,7 +2196,27 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
   #if g.config.errorCounter > 0: return n
-  let n = transformExpr(g, idgen, module, n)
+  # var n = transformExpr(g, idgen, module, n)
+  var n = n
+
+  # var c2 = GenContext(cache: g.cache, info: n.info)
+  # # n = genPNode(c2, module, name):
+  # dbgIf n
+  # dbg g.config$n.info
+  # if mode == emConst:
+  #   n = genPNode(c2, n):
+  #     (proc(): auto =
+  #       n)()
+  #     # import module as name
+  #     # {.used: name.}
+
+  #   # dbgIf n
+  #   dbg n
+  #   n = semExprWithType(c, n) # PRTEMP
+  #   dbg n
+
+  n = transformExpr(g, idgen, module, n)
+
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm
   let oldMode = c.mode

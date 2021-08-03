@@ -3145,3 +3145,6 @@ when notJSnotNims and not defined(nimSeqsV2):
       moveMem(addr y[0], addr x[0], x.len)
       assert y == "abcgh"
     discard
+
+when not defined(nimscript):
+  {.define(nimAfterSystem).}
