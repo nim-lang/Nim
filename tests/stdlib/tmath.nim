@@ -137,6 +137,16 @@ template main() =
     doAssert ceilDiv( 2, low(int) + 1) == 0
     doAssert ceilDiv(high(int), low(int) + 1) == -1
     doAssert ceilDiv(high(int) - 1, low(int) + 1) == 0
+    doAssert ceilDiv(low(int),     high(int) - 1) == -1
+    doAssert ceilDiv(low(int) + 1, high(int) - 1) == -1
+    doAssert ceilDiv(low(int) + 2, high(int) - 1) == -1
+    doAssert ceilDiv(low(int) + 3, high(int) - 1) == 0
+    doAssert ceilDiv(-1, high(int) - 1) == 0
+    doAssert ceilDiv( 0, high(int) - 1) == 0
+    doAssert ceilDiv( 1, high(int) - 1) == 1
+    doAssert ceilDiv(high(int) - 2, high(int) - 1) == 1
+    doAssert ceilDiv(high(int) - 1, high(int) - 1) == 1
+    doAssert ceilDiv(high(int)    , high(int) - 1) == 2
     doAssert ceilDiv(low(int), high(int)) == -1
     doAssert ceilDiv(low(int) + 1, high(int)) == -1
     doAssert ceilDiv(low(int) + 2, high(int)) == 0
