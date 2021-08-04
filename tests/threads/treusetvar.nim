@@ -1,4 +1,5 @@
 discard """
+  matrix: "--gc:refc; --gc:arc"
   outputsub: "65"
 """
 
