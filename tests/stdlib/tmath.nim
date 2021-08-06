@@ -180,11 +180,20 @@ template main() =
     doAssert fastCeilDiv(high(int), 1) == high(int)
     doAssert fastCeilDiv(high(int) - 1, 1) == high(int) - 1
     doAssert fastCeilDiv(high(int) - 1, 2) == high(int) div 2
+    doAssert fastCeilDiv(high(int) - 1, high(int)) == 1
+    doAssert fastCeilDiv(high(int) - 1, high(int) - 1) == 1
+    doAssert fastCeilDiv(high(int) - 1, high(int) - 2) == 2
+    doAssert fastCeilDiv(high(int), high(int)) == 1
+    doAssert fastCeilDiv(high(int), high(int) - 1) == 2
+    doAssert fastCeilDiv(255'u8,  1'u8) == 255'u8
+    doAssert fastCeilDiv(254'u8,  2'u8) == 127'u8
     when not defined(danger):
       doAssertRaises(AssertionDefect): discard fastCeilDiv(41,  0)
       doAssertRaises(AssertionDefect): discard fastCeilDiv(41, -1)
       doAssertRaises(AssertionDefect): discard fastCeilDiv(-1,  1)
       doAssertRaises(AssertionDefect): discard fastCeilDiv(-1, -1)
+      doAssertRaises(AssertionDefect): discard fastCeilDiv(254'u8, 3'u8)
+      doAssertRaises(AssertionDefect): discard fastCeilDiv(255'u8, 2'u8)
 
   block: # splitDecimal() tests
     doAssert splitDecimal(54.674).intpart == 54.0

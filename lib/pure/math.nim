@@ -966,7 +966,7 @@ func ceilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
 func fastCeilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
   ## Faster version of `ceilDiv`.
   ##
-  ## Assumes `x >= 0` and `y > 0` and `x + y - 1 <= high(T)`.
+  ## Assumes `x >= 0` and `y > 0` and (`x + y - 1 <= high(T)` if T is SomeUnsignedInt).
   ##
   ## **See also:**
   ## * `system.div proc <system.html#div,int,int>`_ for integer division
@@ -975,8 +975,29 @@ func fastCeilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
     assert fastCeilDiv(12,  3) ==  4
     assert fastCeilDiv(13,  3) ==  5
 
+  when sizeof(T) == 8:
+    type UT = uint64
+  elif sizeof(T) == 4:
+    type UT = uint32
+  elif sizeof(T) == 2:
+    type UT = uint16
+  else:
+    type UT = uint8
+
   assert x >= 0 and y > 0
-  (x + (y - 1)) div y
+  when T is SomeUnsignedInt:
+    assert x + y - 1 >= x
+
+  # If divisor is const, backend compiler generate code without `div` instruction
+  # as it is slow on most of CPU.
+  # If divisor is a power of 2 and a const unsigned integer type,
+  # compiler generates faster code.
+  # If divisor is const and signed int, generated code become slower than
+  # the code with unsigned int because division with signed int need to works
+  # both positive and negative value without `idiv`/`sdiv`.
+  # That is why this code convert parameters to unsigned.
+  # And also this works with any positive int value unless T is unsigned.
+  ((x.UT + (y.UT - 1.UT)) div y.UT).T
 
 func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
   ## Splits `x` into a normalized fraction `frac` and an integral power of 2 `exp`,
