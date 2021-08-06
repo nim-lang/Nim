@@ -179,7 +179,7 @@ proc detectOsImpl(d: Distribution): bool =
         result = ("-" & $d & " ") in uname()
       of Distribution.Elementary, Distribution.Ubuntu, Distribution.Debian,
         Distribution.Fedora, Distribution.OpenMandriva, Distribution.CentOS,
-	  Distribution.Alpine, Distribution.Mageia, Distribution.Zorin:
+        Distribution.Alpine, Distribution.Mageia, Distribution.Zorin:
         result = toLowerAscii($d) in osReleaseID()
       of Distribution.RedHat:
         result = "rhel" in osReleaseID()
