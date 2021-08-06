@@ -178,9 +178,8 @@ proc detectOsImpl(d: Distribution): bool =
       of Distribution.Gentoo:
         result = ("-" & $d & " ") in uname()
       of Distribution.Elementary, Distribution.Ubuntu, Distribution.Debian,
-          Distribution.Fedora,
-        Distribution.OpenMandriva, Distribution.CentOS, Distribution.Alpine,
-        Distribution.Mageia, Distribution.Zorin:
+        Distribution.Fedora, Distribution.OpenMandriva, Distribution.CentOS,
+	Distribution.Alpine, Distribution.Mageia, Distribution.Zorin:
         result = toLowerAscii($d) in osReleaseID()
       of Distribution.RedHat:
         result = "rhel" in osReleaseID()
@@ -192,8 +191,7 @@ proc detectOsImpl(d: Distribution): bool =
         # Check if this is a Nix build or NixOS environment
         result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
       of Distribution.OpenSUSE:
-        result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(
-            release())
+        result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
       of Distribution.GoboLinux:
         result = "-Gobo " in uname()
       of Distribution.Solaris:
