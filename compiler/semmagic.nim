@@ -192,7 +192,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     var arg = operand.skipTypes({tyGenericInst})
     let rec =
       if traitCall.len >= 2:
-        operand2.intVal != 0
+        traitCall[2].intVal != 0
       else:
         true
     
