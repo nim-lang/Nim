@@ -190,9 +190,20 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result = newIntNodeT(toInt128(operand.len), traitCall, c.idgen, c.graph)
   of "distinctBase":
     var arg = operand.skipTypes({tyGenericInst})
-    while arg.kind == tyDistinct:
+    let rec =
+      if traitCall.len >= 2:
+        operand2.intVal != 0
+      else:
+        true
+    
+    if arg.kind == tyDistinct:
       arg = arg.base
       arg = arg.skipTypes(skippedTypes + {tyGenericInst})
+      if rec:
+        while arg.kind == tyDistinct:
+          arg = arg.base
+          arg = arg.skipTypes(skippedTypes + {tyGenericInst})
+    
     result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
