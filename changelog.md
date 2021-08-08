@@ -112,6 +112,8 @@
   of breaking changes in libnx, was removed, in favour of the new `-d:nimAllocPagesViaMalloc` option.
 - `os.parseCmdLine` now raises on posix for invalid inputs, and now returns correct results, such
   that `parseCmdLine(quoteShellCommand(a)) == a`.
+- `os.parseCmdLine` with `-d:nimPreviewParseCmdLine` (enabled on devel) now raises on posix for invalid inputs,
+  and now returns correct results, such that `parseCmdLine(quoteShellCommand(a)) == a`.
 
 
 ## Standard library additions and changes

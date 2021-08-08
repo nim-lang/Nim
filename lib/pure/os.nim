@@ -2743,9 +2743,6 @@ proc parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a `command line`:idx: into several components.
   ##
-  ## **Note**: This proc is only occasionally useful, better use the
-  ## `parseopt module <parseopt.html>`_.
-  ##
   ## On Windows, it uses the `following parsing rules
   ## <http://msdn.microsoft.com/en-us/library/17w5ykft.aspx>`_:
   ##
@@ -2769,7 +2766,11 @@ proc parseCmdLine*(c: string): seq[string] {.
   ##   and the double quotation mark is "escaped" by the remaining backslash,
   ##   causing a literal double quotation mark (") to be placed in argv.
   ##
-  ## On Posix systems, it uses the following parsing rules:
+  ## On Posix systems, with `-d:nimPreviewParseCmdLine`, it is defined such that
+  ## `parseCmdLine(quoteShellCommand(a)) == a`, and raises ValueError on invalid
+  ## inputs.
+  ##
+  ## Without `-d:nimPreviewParseCmdLine`, it uses the following parsing rules:
   ## Components are separated by whitespace unless the whitespace
   ## occurs within ``"`` or ``'`` quotes.
   ##
@@ -2778,9 +2779,14 @@ proc parseCmdLine*(c: string): seq[string] {.
   ## * `paramCount proc <#paramCount>`_
   ## * `paramStr proc <#paramStr,int>`_
   ## * `commandLineParams proc <#commandLineParams>`_
-  when not defined(windows):
-    for val in shlex(c):
-      result.add val
+  runnableExamples:
+    var a = @["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\n\a\b\t\0abc", " ", " '   ' '", """  ' " \ '' "" """]
+    assert a.quoteShellCommand.parseCmdLine == a
+    when defined(posix):
+      doAssertRaises(ValueError): discard parseCmdLine("abc'bar") # missing single quote
+      doAssertRaises(ValueError): discard parseCmdLine("abc\"bar") # missing single quote
+  when not defined(windows) and defined(nimPreviewParseCmdLine):
+    for val in shlex(c): result.add val
   else:
     result = @[]
     var i = 0
@@ -2790,39 +2796,53 @@ proc parseCmdLine*(c: string): seq[string] {.
       # eat all delimiting whitespace
       while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
       if i >= c.len: break
-      # parse a single argument according to the above rules:
-      var inQuote = false
-      while i < c.len:
-        case c[i]
-        of '\\':
-          var j = i
-          while j < c.len and c[j] == '\\': inc(j)
-          if j < c.len and c[j] == '"':
-            for k in 1..(j-i) div 2: a.add('\\')
-            if (j-i) mod 2 == 0:
-              i = j
+      when defined(windows):
+        # parse a single argument according to the above rules:
+        var inQuote = false
+        while i < c.len:
+          case c[i]
+          of '\\':
+            var j = i
+            while j < c.len and c[j] == '\\': inc(j)
+            if j < c.len and c[j] == '"':
+              for k in 1..(j-i) div 2: a.add('\\')
+              if (j-i) mod 2 == 0:
+                i = j
+              else:
+                a.add('"')
+                i = j+1
             else:
-              a.add('"')
-              i = j+1
+              a.add(c[i])
+              inc(i)
+          of '"':
+            inc(i)
+            if not inQuote: inQuote = true
+            elif i < c.len and c[i] == '"':
+              a.add(c[i])
+              inc(i)
+            else:
+              inQuote = false
+              break
+          of ' ', '\t':
+            if not inQuote: break
+            a.add(c[i])
+            inc(i)
           else:
             a.add(c[i])
             inc(i)
-        of '"':
-          inc(i)
-          if not inQuote: inQuote = true
-          elif i < c.len and c[i] == '"':
-            a.add(c[i])
+      else:
+        case c[i]
+        of '\'', '\"':
+          var delim = c[i]
+          inc(i) # skip ' or "
+          while i < c.len and c[i] != delim:
+            add a, c[i]
             inc(i)
-          else:
-            inQuote = false
-            break
-        of ' ', '\t':
-          if not inQuote: break
-          a.add(c[i])
-          inc(i)
+          if i < c.len: inc(i)
         else:
-          a.add(c[i])
-          inc(i)
+          while i < c.len and c[i] > ' ':
+            add(a, c[i])
+            inc(i)
       add(result, a)
 
 when defined(nimdoc):
