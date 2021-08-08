@@ -191,15 +191,9 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   of "distinctBase":
     var arg = operand.skipTypes({tyGenericInst})
     let rec = semConstExpr(c, traitCall[2]).intVal != 0
-
-    if arg.kind == tyDistinct:
-      arg = arg.base
-      arg = arg.skipTypes(skippedTypes + {tyGenericInst})
-      if rec:
-        while arg.kind == tyDistinct:
-          arg = arg.base
-          arg = arg.skipTypes(skippedTypes + {tyGenericInst})
-    
+    while arg.kind == tyDistinct:
+      arg = arg.base.skipTypes(skippedTypes + {tyGenericInst})
+      if not rec: break
     result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
