@@ -1,5 +1,5 @@
 discard """
-  output: "####"
+  output: ""
 """
 # unfortunately our tester doesn't support multiple lines of compiler
 # error messages yet...
@@ -29,3 +29,9 @@ import sequtils
 
 applyIt (var i = @[""];i), it
 (var i = @[""];i).applyIt(it)
+
+#i is not in scope anymore here. This is in accordance with the
+#normal scoping rules:
+# for it in mitems( (var i = @[""]; i) ):
+#   it = it
+# echo i # undeclared identifier: 'i'
