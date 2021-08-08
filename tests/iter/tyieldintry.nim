@@ -1,17 +1,15 @@
 discard """
-targets: "c"
-output: "ok"
+  targets: "c cpp"
 """
-var closureIterResult = newSeq[int]()
 
-# XXX Investigate why this fails now for 'nim cpp'
+var closureIterResult = newSeq[int]()
 
 proc checkpoint(arg: int) =
   closureIterResult.add(arg)
 
 type
-  TestException = object of Exception
-  AnotherException = object of Exception
+  TestError = object of CatchableError
+  AnotherError = object of CatchableError
 
 proc testClosureIterAux(it: iterator(): int, exceptionExpected: bool, expectedResults: varargs[int]) =
   closureIterResult.setLen(0)
@@ -21,7 +19,7 @@ proc testClosureIterAux(it: iterator(): int, exceptionExpected: bool, expectedRe
   try:
     for i in it():
       closureIterResult.add(i)
-  except TestException:
+  except TestError:
     exceptionCaught = true
 
   if closureIterResult != @expectedResults or exceptionCaught != exceptionExpected:
@@ -39,8 +37,8 @@ proc test(it: iterator(): int, expectedResults: varargs[int]) =
 proc testExc(it: iterator(): int, expectedResults: varargs[int]) =
   testClosureIterAux(it, true, expectedResults)
 
-proc raiseException() =
-  raise newException(TestException, "Test exception!")
+proc raiseTestError() =
+  raise newException(TestError, "Test exception!")
 
 block:
   iterator it(): int {.closure.} =
@@ -58,8 +56,8 @@ block:
     yield 0
     try:
       checkpoint(1)
-      raiseException()
-    except TestException:
+      raiseTestError()
+    except TestError:
       checkpoint(2)
       yield 3
       checkpoint(4)
@@ -89,7 +87,7 @@ block:
     yield 0
     try:
       yield 1
-      raiseException()
+      raiseTestError()
       yield 2
     finally:
       checkpoint(3)
@@ -103,8 +101,8 @@ block:
   iterator it(): int {.closure.} =
     try:
       try:
-        raiseException()
-      except AnotherException:
+        raiseTestError()
+      except AnotherError:
         yield 123
       finally:
         checkpoint(3)
@@ -117,8 +115,8 @@ block:
   iterator it(): int {.closure.} =
     try:
       yield 1
-      raiseException()
-    except AnotherException:
+      raiseTestError()
+    except AnotherError:
       checkpoint(123)
     finally:
       checkpoint(2)
@@ -134,12 +132,12 @@ block:
         yield 1
         try:
           yield 2
-          raiseException()
-        except AnotherException:
+          raiseTestError()
+        except AnotherError:
           yield 123
         finally:
           yield 3
-      except AnotherException:
+      except AnotherError:
         yield 124
       finally:
         yield 4
@@ -170,10 +168,10 @@ block:
     try:
       try:
         yield 0
-        raiseException()
+        raiseTestError()
       finally:
         checkpoint(1)
-    except TestException:
+    except TestError:
       yield 2
       return
     finally:
@@ -188,10 +186,10 @@ block:
     try:
       try:
         yield 0
-        raiseException()
+        raiseTestError()
       finally:
         return # Return in finally should stop exception propagation
-    except AnotherException:
+    except AnotherError:
       yield 2
       return
     finally:
@@ -228,9 +226,9 @@ block:
     var foo = 123
     let i = try:
         yield 0
-        raiseException()
+        raiseTestError()
         1
-      except TestException as e:
+      except TestError as e:
         assert(e.msg == "Test exception!")
         case foo
         of 1:
@@ -262,9 +260,9 @@ block:
     template tryexcept: int =
       try:
         yield 1
-        raiseException()
+        raiseTestError()
         123
-      except TestException:
+      except TestError:
         yield 2
         checkpoint(3)
         4
@@ -323,11 +321,11 @@ block:
     for i in 0 .. 1:
       try:
         yield 1
-        raiseException()
-      except TestException as e:
+        raiseTestError()
+      except TestError as e:
         doAssert(e.msg == "Test exception!")
         yield 2
-      except AnotherException:
+      except AnotherError:
         yield 123
       except:
         yield 1234
@@ -497,5 +495,3 @@ block: #17849 - yield in case subject
     yield 5
 
   test(it, 1, 2, 13, 5)
-
-echo "ok"
