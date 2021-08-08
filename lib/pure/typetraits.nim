@@ -132,7 +132,7 @@ since (1, 1):
       type MyOtherInt = distinct MyInt
       doAssert 12.MyInt.distinctBase == 12
       doAssert 12.MyOtherInt.distinctBase == 12
-      doAssert 12.MyOtherInt.distinctBase(false) == 12.MyInt
+      doAssert 12.MyOtherInt.distinctBase(false) is MyInt
       doAssert 12.distinctBase == 12
     when T is distinct:
       distinctBase(typeof(a), recursive)(a)

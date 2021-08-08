@@ -190,12 +190,8 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result = newIntNodeT(toInt128(operand.len), traitCall, c.idgen, c.graph)
   of "distinctBase":
     var arg = operand.skipTypes({tyGenericInst})
-    let rec =
-      if traitCall.len >= 2:
-        traitCall[2].intVal != 0
-      else:
-        true
-    
+    let rec = semConstExpr(c, traitCall[2]).intVal != 0
+
     if arg.kind == tyDistinct:
       arg = arg.base
       arg = arg.skipTypes(skippedTypes + {tyGenericInst})
