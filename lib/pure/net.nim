@@ -445,7 +445,10 @@ proc parseIPv6Address(addressStr: string): IpAddress =
 
 proc parseIpAddress*(addressStr: string): IpAddress =
   ## Parses an IP address
-  ## Raises ValueError on error. For IPv4 addresses, only the strict form as
+  ##
+  ## Raises ValueError on error. 
+  ## 
+  ## For IPv4 addresses, only the strict form as
   ## defined in RFC 6943 is considered valid, see
   ## https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1.
   if addressStr.len == 0:
