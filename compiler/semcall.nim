@@ -629,11 +629,12 @@ proc semOverloadedCallHandleEarlySym(c: PContext, n, nOrig: PNode,
       argsWrappedInPotentialEarlySem[i] = n[i]
       n[i] = n[i][0]
   result = semOverloadedCall(c, n, nOrig, filter, flags)
-  for i in 1..<argsWrappedInPotentialEarlySem.len:
-    if argsWrappedInPotentialEarlySem[i] != nil:
-      argsWrappedInPotentialEarlySem[i][0] = result[i]
-      n[i] = argsWrappedInPotentialEarlySem[i]
-      result[i] = n[i]
+  if result != nil:
+    for i in 1..<argsWrappedInPotentialEarlySem.len:
+      if argsWrappedInPotentialEarlySem[i] != nil:
+        argsWrappedInPotentialEarlySem[i][0] = result[i]
+        n[i] = argsWrappedInPotentialEarlySem[i]
+        result[i] = n[i]
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))

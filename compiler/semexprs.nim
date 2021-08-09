@@ -877,16 +877,15 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     let callee = result[0].sym
     case callee.kind
     of skMacro, skTemplate:
-      let typ = callee.typ.n
-      if result.len > 1 and result[1].kind == nkEarlySemArg and typ.len > 1 and typ[1].typ != nil and typ[1].typ.kind == tyUntyped:
+      if result.len > 1 and result[1].kind == nkEarlySemArg:
         #First argument is early gensymmed because of the method call syntax
         assert n[1] == result[1]
-        result[1] = result[1][1]
-        n[1] = result[1]
-        echo "Warning, semmed twice" #TODO: Warn properly
-      elif result.len > 1 and result[1].kind == nkEarlySemArg:
-        assert n[1] == result[1]
-        result[1] = result[1][0]
+        let typ = callee.typ.n
+        if typ.len > 1 and typ[1].typ != nil and typ[1].typ.kind == tyUntyped:
+          result[1] = result[1][1]
+          # TODO: Hint that this will sem twice
+        else:
+          result[1] = result[1][0]
         n[1] = result[1]
     else:
       if result.len > 1 and result[1].kind == nkEarlySemArg:
