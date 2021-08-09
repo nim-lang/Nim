@@ -835,7 +835,7 @@ proc docstringSummary(rstText: string): string =
   result = rstText.substr(2).strip
   var pos = result.find('\L')
   if pos > 0:
-    result = result[0 .. pos]
+    result.delete(pos, result.len - 1)
     result.add("…")
   if pos < maxDocstringChars:
     return
@@ -843,7 +843,7 @@ proc docstringSummary(rstText: string): string =
   pos = result.find({'.', ',', ':'})
   let last = result.len - 1
   if pos > 0 and pos < last:
-    result = result[0 .. pos]
+    result.delete(pos, last)
     result.add("…")
 
 proc genDeprecationMsg(d: PDoc, n: PNode): string =
