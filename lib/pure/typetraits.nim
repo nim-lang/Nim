@@ -110,25 +110,32 @@ template pointerBase*[T](_: typedesc[ptr T | ref T]): typedesc =
     assert (var s = "abc"; s[0].addr).typeof.pointerBase is char
   T
 
-proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".} =
+proc distinctBase*(T: typedesc, recursive: static bool = true): typedesc {.magic: "TypeTrait".} =
   ## Returns the base type for distinct types, or the type itself otherwise.
+  ## If `recursive` is false, only the immediate distinct base will be returned.
   ##
   ## **See also:**
-  ## * `distinctBase template <#distinctBase.t,T>`_
+  ## * `distinctBase template <#distinctBase.t,T,static[bool]>`_
   runnableExamples:
     type MyInt = distinct int
+    type MyOtherInt = distinct MyInt
     doAssert distinctBase(MyInt) is int
+    doAssert distinctBase(MyOtherInt) is int
+    doAssert distinctBase(MyOtherInt, false) is MyInt
     doAssert distinctBase(int) is int
 
 since (1, 1):
-  template distinctBase*[T](a: T): untyped =
-    ## Overload of `distinctBase <#distinctBase,typedesc>`_ for values.
+  template distinctBase*[T](a: T, recursive: static bool = true): untyped =
+    ## Overload of `distinctBase <#distinctBase,typedesc,static[bool]>`_ for values.
     runnableExamples:
       type MyInt = distinct int
+      type MyOtherInt = distinct MyInt
       doAssert 12.MyInt.distinctBase == 12
+      doAssert 12.MyOtherInt.distinctBase == 12
+      doAssert 12.MyOtherInt.distinctBase(false) is MyInt
       doAssert 12.distinctBase == 12
     when T is distinct:
-      distinctBase(typeof(a))(a)
+      distinctBase(typeof(a), recursive)(a)
     else: # avoids hint ConvFromXtoItselfNotNeeded
       a
 
