@@ -17,15 +17,17 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
   var state = sInStart
   var ready = false
   error = seOk
-  const ShellWhiteSpace = {' ', '\t'} # not \n
+  const
+    ShellWhiteSpace = {' ', '\t'} # not \n
+    Quote = '\''
+    DoubleQuote = '"'
   while true:
     if i >= a.len:
       case state
       of sInSingleQuote: error = seMissingSingleQuote
       of sInDoubleQuote: error = seMissingDoubleQuote
       of sInStart: discard
-      else:
-        ready = true
+      else: ready = true
       state = sFinished
     var c: char
     if i < a.len:
@@ -36,30 +38,30 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
     of sInStart:
       case c
       of ShellWhiteSpace: discard
-      of '\'': state = sInSingleQuote
-      of '\"': state = sInDoubleQuote
+      of Quote: state = sInSingleQuote
+      of DoubleQuote: state = sInDoubleQuote
       else:
         state = sInRegular
         buf.add c
     of sInRegular:
       case c
       of ShellWhiteSpace: ready = true
-      of '\'': state = sInSingleQuote
-      of '\"': state = sInDoubleQuote
+      of Quote: state = sInSingleQuote
+      of DoubleQuote: state = sInDoubleQuote
       else: buf.add c
     of sInSingleQuote:
       case c
-      of '\'': state = sInRegular
+      of Quote: state = sInRegular
       else: buf.add c
     of sInDoubleQuote:
       case c
-      of '\"': state = sInRegular
+      of DoubleQuote: state = sInRegular
       else: buf.add c
     of sInSpace:
       case c
       of ShellWhiteSpace: discard
-      of '\'': state = sInSingleQuote
-      of '\"': state = sInDoubleQuote
+      of Quote: state = sInSingleQuote
+      of DoubleQuote: state = sInDoubleQuote
       else:
         state = sInRegular
         buf.add c
