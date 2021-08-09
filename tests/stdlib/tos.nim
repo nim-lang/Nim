@@ -725,24 +725,54 @@ template main =
     let a4 = a3.quoteShell
     let b4 = a4.parseCmdLine
     doAssert b4 == @[a3]
-    
-    doAssert "".parseCmdLine == @[]
-    doAssert " \t\t   \t".parseCmdLine == @[]
-    doAssert " \t  abc   \t def  \t\t  ".parseCmdLine == @["abc", "def"]
-    doAssert " \t  abc   \t def  \t\t  ".parseCmdLine == @["abc", "def"]
-    when defined(posix):
-      doAssert """ ab\"cd  """.parseCmdLine == @["ab\"cd"]
-      doAssert """ ab\'cd  """.parseCmdLine == @["ab'cd"]
-      doAssert """ ab\\cd  """.parseCmdLine == @["ab\\cd"]
-      doAssert """ ab\ncd  """.parseCmdLine == @["abncd"]
-      doAssert """ " ab\"cd " def  """.parseCmdLine == @[" ab\"cd ", "def"]
-      doAssert """  \ \ ab\ cd\ ef\  \ gh\   """.parseCmdLine == @["  ab cd ef ", " gh "]
 
+    template chk(a: string, b: seq[string]) =
+      let b2 = parseCmdLine(a)
+      doAssert b2 == b, $(a, b, b2)
+    
+    chk "", seq[string].default
+    chk " \t\t   \t", seq[string].default
+    chk " \t  abc   \t def  \t\t  ", @["abc", "def"]
+    chk " \t  abc   \t def  \t\t  ", @["abc", "def"]
+    chk "\n\n  aa\nbb\n \t \ncc \n\n  ", @["aa", "bb", "cc"]
+    when defined(posix):
+      chk "aa\nbb\\\ncc", @["aa", "bb\ncc"]
+      chk """ ab\"cd  """, @["ab\"cd"]
+      chk """ ab\'cd  """, @["ab'cd"]
+      chk """ ab\\cd  """, @["ab\\cd"]
+      chk """ ab\ncd  """, @["abncd"]
+      chk """  \ \ ab\ cd\ ef\  \ gh\   """, @["  ab cd ef ", " gh "]
+      chk """ " ab\"cd " def  """, @[""" ab"cd """, "def"]
+      chk " \" ab\\\"cd \" def  ", @[" ab\"cd ", "def"] # same thing
+
+      # BackSlash inside double quotes, behavior depends on character following it
+      chk "aa\"bb\\cc\"dd1", @["aabb\\ccdd1"]
+      chk "aa\"bb\\\\cc\"dd2", @["aabb\\ccdd2"]
+      chk "aa\"bb\\\\\\cc\"dd3", @["aabb\\\\ccdd3"]
+      chk "aa\"bb\ncc\"dd4", @["aabb\nccdd4"]
+      chk "aa\"bb\\\ncc\"dd5", @["aabb\\\nccdd5"]
+
+      # BackSlash inside single quotes, behavior does not depend on character following it
+      chk "aa'bb\\cc'dd1", @["aabb\\ccdd1"]
+      chk "aa'bb\\\\cc'dd1", @["aabb\\\\ccdd1"]
+      chk "aa'bb\\\\\\cc'dd1", @["aabb\\\\\\ccdd1"]
+      chk "aa'bb\ncc'dd1", @["aabb\nccdd1"]
+      chk "aa'bb\\\ncc'dd1", @["aabb\\\nccdd1"]
+
+      # BackSlash inside regular section
+      chk "b\\c", @["bc"]
+      chk "b\\\\c", @["b\\c"]
+      chk "b\\\\\\c", @["b\\c"]
+      chk "b\nc", @["b", "c"]
+      chk "b\\\nc", @["b\nc"]
+
+      # invalid inputs
       doAssertRaises(ValueError): discard """\""".parseCmdLine
       doAssertRaises(ValueError): discard """abc\""".parseCmdLine
       doAssertRaises(ValueError): discard "\"".parseCmdLine
       doAssertRaises(ValueError): discard "  \"  ".parseCmdLine
       doAssertRaises(ValueError): discard "  \'  ".parseCmdLine
+      doAssertRaises(ValueError): discard "aa'bb\\'cc'dd".parseCmdLine # `'` cannot be escaped within single quotes
 
 static: main()
 main()

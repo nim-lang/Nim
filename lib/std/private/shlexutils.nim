@@ -12,16 +12,18 @@ type ShlexError = enum
   seUnfinishedEscape
 
 iterator shlex*(a: openArray[char], error: var ShlexError): string =
+  # see quoting rules in https://ss64.com/bash/syntax-quoting.html
+  # we try to follow behavior of python3 `list(shlex.shlex(..., posix=True)))`
   var i = 0
   var buf: string
   var state = sInStart
   var ready = false
   error = seOk
   const
-    ShellWhiteSpace = {' ', '\t'} # not \n
+    ShellWhiteSpace = {' ', '\t', '\n'}
     Quote = '\''
     DoubleQuote = '"'
-    Escape = '\\'
+    BackSlash = '\\'
 
   template eatEscape(state2) =
     if i >= a.len:
@@ -51,7 +53,7 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
       of ShellWhiteSpace: discard
       of Quote: state = sInSingleQuote
       of DoubleQuote: state = sInDoubleQuote
-      of Escape: eatEscape(sInRegular)
+      of BackSlash: eatEscape(sInRegular)
       else:
         state = sInRegular
         buf.add c
@@ -60,7 +62,7 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
       of ShellWhiteSpace: ready = true
       of Quote: state = sInSingleQuote
       of DoubleQuote: state = sInDoubleQuote
-      of Escape: eatEscape(state)
+      of BackSlash: eatEscape(state)
       else: buf.add c
     of sInSingleQuote:
       case c
@@ -69,7 +71,18 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
     of sInDoubleQuote:
       case c
       of DoubleQuote: state = sInRegular
-      of Escape: eatEscape(state)
+      of BackSlash:
+        if i < a.len:
+          let c = a[i]
+          case c
+          of DoubleQuote, Quote, BackSlash: buf.add c
+          else:
+            buf.add BackSlash
+            buf.add c
+          i+=1
+        else:
+          error = seUnfinishedEscape
+          state = sFinished
       else: buf.add c
     if ready:
       ready = false
