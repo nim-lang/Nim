@@ -1,6 +1,5 @@
 
 import std / [json, os, sets, strutils]
-import osutils
 
 type
   Package* = ref object
