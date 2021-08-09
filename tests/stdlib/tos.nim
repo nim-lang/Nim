@@ -726,7 +726,7 @@ template main =
     let b4 = a4.parseCmdLine
     doAssert b4 == @[a3]
 
-    template chk(a: string, b: seq[string]) =
+    proc chk(a: string, b: seq[string]) =
       let b2 = parseCmdLine(a)
       doAssert b2 == b, $(a, b, b2)
     
@@ -734,8 +734,8 @@ template main =
     chk " \t\t   \t", seq[string].default
     chk " \t  abc   \t def  \t\t  ", @["abc", "def"]
     chk " \t  abc   \t def  \t\t  ", @["abc", "def"]
-    chk "\n\n  aa\nbb\n \t \ncc \n\n  ", @["aa", "bb", "cc"]
     when defined(posix):
+      chk "\n\n  aa\nbb\n \t \ncc \n\n  ", @["aa", "bb", "cc"]
       chk "aa\nbb\\\ncc", @["aa", "bb\ncc"]
       chk """ ab\"cd  """, @["ab\"cd"]
       chk """ ab\'cd  """, @["ab'cd"]
@@ -751,6 +751,11 @@ template main =
       chk "aa\"bb\\\\\\cc\"dd3", @["aabb\\\\ccdd3"]
       chk "aa\"bb\ncc\"dd4", @["aabb\nccdd4"]
       chk "aa\"bb\\\ncc\"dd5", @["aabb\\\nccdd5"]
+      # $
+      chk "aa\"bb$xcc\"dd6", @["aabb$xccdd6"]
+      chk "aa\"bb${x}cc\"dd6", @["aabb${x}ccdd6"]
+      chk "aa\"bb\\$xcc\"dd6", @["aabb\\$xccdd6"]
+      chk "aa\"bb\\${x}cc\"dd6", @["aabb\\${x}ccdd6"]
 
       # BackSlash inside single quotes, behavior does not depend on character following it
       chk "aa'bb\\cc'dd1", @["aabb\\ccdd1"]
@@ -758,6 +763,11 @@ template main =
       chk "aa'bb\\\\\\cc'dd1", @["aabb\\\\\\ccdd1"]
       chk "aa'bb\ncc'dd1", @["aabb\nccdd1"]
       chk "aa'bb\\\ncc'dd1", @["aabb\\\nccdd1"]
+      # $
+      chk "aa'bb$xcc'dd6", @["aabb$xccdd6"]
+      chk "aa'bb${x}cc'dd6", @["aabb${x}ccdd6"]
+      chk "aa'bb\\$xcc'dd6", @["aabb\\$xccdd6"]
+      chk "aa'bb\\${x}cc'dd6", @["aabb\\${x}ccdd6"]
 
       # BackSlash inside regular section
       chk "b\\c", @["bc"]
@@ -765,6 +775,12 @@ template main =
       chk "b\\\\\\c", @["b\\c"]
       chk "b\nc", @["b", "c"]
       chk "b\\\nc", @["b\nc"]
+
+      when false: # xxx dollar, {, } in regular section: left for future work
+        chk "bb$cc dd", @["bb", "$", "cc", "dd"]
+        chk "bb${cc}dd", @["bb", "$", "{", "cc", "}", "dd"]
+        chk "bb\\${cc}dd", @["bb$", "{", "cc", "}", "dd"]
+        chk "bb\\$cc dd", @["bb$cc", "dd"]
 
       # invalid inputs
       doAssertRaises(ValueError): discard """\""".parseCmdLine
