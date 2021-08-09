@@ -2766,9 +2766,10 @@ proc parseCmdLine*(c: string): seq[string] {.
   ##   and the double quotation mark is "escaped" by the remaining backslash,
   ##   causing a literal double quotation mark (") to be placed in argv.
   ##
-  ## On Posix systems, with `-d:nimPreviewParseCmdLine`, it is defined such that
-  ## `parseCmdLine(quoteShellCommand(a)) == a`, and raises ValueError on invalid
-  ## inputs.
+  ## On Posix systems, with `-d:nimPreviewParseCmdLine`, it follows the shell
+  ## quoting rules for `"`, `'`, ``\`` and is such that
+  ## `parseCmdLine(quoteShellCommand(a)) == a`; it raises ValueError on invalid
+  ## inputs (unclosed single or double quotes or unfinished escape sequences).
   ##
   ## Without `-d:nimPreviewParseCmdLine`, it uses the following parsing rules:
   ## Components are separated by whitespace unless the whitespace
@@ -2779,12 +2780,15 @@ proc parseCmdLine*(c: string): seq[string] {.
   ## * `paramCount proc <#paramCount>`_
   ## * `paramStr proc <#paramStr,int>`_
   ## * `commandLineParams proc <#commandLineParams>`_
-  runnableExamples:
-    var a = @["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\n\a\b\t\0abc", " ", " '   ' '", """  ' " \ '' "" """]
+  runnableExamples("-d:nimPreviewParseCmdLine"):
+    let a = @["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\n\a\b\t\0abc", " ", " '   ' '", """  ' " \ '' "" """]
     assert a.quoteShellCommand.parseCmdLine == a
     when defined(posix):
-      doAssertRaises(ValueError): discard parseCmdLine("abc'bar") # missing single quote
-      doAssertRaises(ValueError): discard parseCmdLine("abc\"bar") # missing single quote
+      assert """  \ \ ab\ cd\ ef\  \ gh\   """.parseCmdLine == @["  ab cd ef ", " gh "]
+      assert """ ab\"cd " ef\"gh "\   """.parseCmdLine == @["ab\"cd", " ef\"gh  "]
+      doAssertRaises(ValueError): discard parseCmdLine("abc'bar") # unclosed `'`
+      doAssertRaises(ValueError): discard parseCmdLine("abc\"bar") # unclosed `"`
+      doAssertRaises(ValueError): discard parseCmdLine("abc\\") # unfinished escape
   when not defined(windows) and defined(nimPreviewParseCmdLine):
     for val in shlex(c): result.add val
   else:

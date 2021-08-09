@@ -731,6 +731,15 @@ template main =
     doAssert " \t  abc   \t def  \t\t  ".parseCmdLine == @["abc", "def"]
     doAssert " \t  abc   \t def  \t\t  ".parseCmdLine == @["abc", "def"]
     when defined(posix):
+      doAssert """ ab\"cd  """.parseCmdLine == @["ab\"cd"]
+      doAssert """ ab\'cd  """.parseCmdLine == @["ab'cd"]
+      doAssert """ ab\\cd  """.parseCmdLine == @["ab\\cd"]
+      doAssert """ ab\ncd  """.parseCmdLine == @["abncd"]
+      doAssert """ " ab\"cd " def  """.parseCmdLine == @[" ab\"cd ", "def"]
+      doAssert """  \ \ ab\ cd\ ef\  \ gh\   """.parseCmdLine == @["  ab cd ef ", " gh "]
+
+      doAssertRaises(ValueError): discard """\""".parseCmdLine
+      doAssertRaises(ValueError): discard """abc\""".parseCmdLine
       doAssertRaises(ValueError): discard "\"".parseCmdLine
       doAssertRaises(ValueError): discard "  \"  ".parseCmdLine
       doAssertRaises(ValueError): discard "  \'  ".parseCmdLine

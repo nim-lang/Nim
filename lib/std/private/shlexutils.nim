@@ -1,15 +1,15 @@
 type State = enum
   sInStart
   sInRegular
-  sInSpace
   sInSingleQuote
   sInDoubleQuote
   sFinished
 
 type ShlexError = enum
   seOk
-  seMissingDoubleQuote
-  seMissingSingleQuote
+  seUnclosedDoubleQuote
+  seUnclosedSingleQuote
+  seUnfinishedEscape
 
 iterator shlex*(a: openArray[char], error: var ShlexError): string =
   var i = 0
@@ -21,11 +21,22 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
     ShellWhiteSpace = {' ', '\t'} # not \n
     Quote = '\''
     DoubleQuote = '"'
+    Escape = '\\'
+
+  template eatEscape(state2) =
+    if i >= a.len:
+      error = seUnfinishedEscape
+      state = sFinished
+    else:
+      buf.add a[i]
+      i.inc
+      state = state2
+
   while true:
     if i >= a.len:
       case state
-      of sInSingleQuote: error = seMissingSingleQuote
-      of sInDoubleQuote: error = seMissingDoubleQuote
+      of sInSingleQuote: error = seUnclosedSingleQuote
+      of sInDoubleQuote: error = seUnclosedDoubleQuote
       of sInStart: discard
       else: ready = true
       state = sFinished
@@ -40,6 +51,7 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
       of ShellWhiteSpace: discard
       of Quote: state = sInSingleQuote
       of DoubleQuote: state = sInDoubleQuote
+      of Escape: eatEscape(sInRegular)
       else:
         state = sInRegular
         buf.add c
@@ -48,6 +60,7 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
       of ShellWhiteSpace: ready = true
       of Quote: state = sInSingleQuote
       of DoubleQuote: state = sInDoubleQuote
+      of Escape: eatEscape(state)
       else: buf.add c
     of sInSingleQuote:
       case c
@@ -56,15 +69,8 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
     of sInDoubleQuote:
       case c
       of DoubleQuote: state = sInRegular
+      of Escape: eatEscape(state)
       else: buf.add c
-    of sInSpace:
-      case c
-      of ShellWhiteSpace: discard
-      of Quote: state = sInSingleQuote
-      of DoubleQuote: state = sInDoubleQuote
-      else:
-        state = sInRegular
-        buf.add c
     if ready:
       ready = false
       yield buf
