@@ -48,3 +48,25 @@ block tsqlitebindatas: ## db_sqlite binary data
 
   db.close()
   doAssert tryRemoveFile(dbName)
+
+
+block:
+  block:
+    var db = db_sqlite.open("db.sqlite3", "", "", "")
+    try:
+      db.exec(sql("CREATE TABLE table1 (url TEXT, other_field INT);"))
+      db.exec(sql("REPLACE INTO table (url, another_field) VALUES (?, '123');"))
+    except DbError as e:
+      doAssert e.msg == "The number of parameter doesn't match that of \"?\" "
+    finally:
+      db.close()
+      removeFile("db.sqlite3")
+
+  block:
+    var db = db_sqlite.open("db.sqlite3", "", "", "")
+    try:
+      db.exec(sql("CREATE TABLE table1 (url TEXT, other_field INT);"))
+      db.exec(sql("INSERT INTO table1 (url, other_field) VALUES (?, ?);"), "http://domain.com/test?param=1", 123)
+    finally:
+      db.close()
+      removeFile("db.sqlite3")
