@@ -406,12 +406,14 @@ to your usual `nim c`:cmd: or `nim cpp`:cmd: command and set the `passC`:option:
 and `passL`:option: command line switches to something like:
 
 .. code-block:: cmd
-  nim c ... --passC="-I$DEVKITPRO/libnx/include" ...
+  nim c ... --d:nimAllocPagesViaMalloc --gc:arc --passC="-I$DEVKITPRO/libnx/include" ...
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
 or setup a ``nim.cfg`` file like so::
 
   #nim.cfg
+  --gc:arc
+  --d:nimAllocPagesViaMalloc
   --passC="-I$DEVKITPRO/libnx/include"
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
@@ -438,6 +440,7 @@ They are:
 3. mqueue. Sadly there are no mqueue headers.
 4. ucontext. No headers for these either. No coroutines for now :(
 5. nl_types. No headers for this.
+6. As mmap is not supported, the nimAllocPagesViaMalloc option has to be used.
 
 DLL generation
 ==============
