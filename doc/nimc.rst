@@ -406,13 +406,13 @@ to your usual `nim c`:cmd: or `nim cpp`:cmd: command and set the `passC`:option:
 and `passL`:option: command line switches to something like:
 
 .. code-block:: cmd
-  nim c ... --d:nimAllocPagesViaMalloc --gc:arc --passC="-I$DEVKITPRO/libnx/include" ...
+  nim c ... --d:nimAllocPagesViaMalloc --gc:orc --passC="-I$DEVKITPRO/libnx/include" ...
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
 or setup a ``nim.cfg`` file like so::
 
   #nim.cfg
-  --gc:arc
+  --gc:orc
   --d:nimAllocPagesViaMalloc
   --passC="-I$DEVKITPRO/libnx/include"
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
