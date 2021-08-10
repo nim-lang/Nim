@@ -29,7 +29,7 @@ implements the required case distinction.
 
 
 import
-  ast, astalgo, trees, magicsys, options,
+  ast, trees, magicsys, options,
   nversion, msgs, idents, types,
   ropes, passes, ccgutils, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
