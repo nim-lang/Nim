@@ -78,8 +78,8 @@ proc initToJsonOptions*(): ToJsonOptions =
   ## initializes `ToJsonOptions` with sane options.
   ToJsonOptions(enumMode: joptEnumOrd, jsonNodeMode: joptJsonNodeAsRef)
 
-proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
-template distinctBase[T](a: T): untyped = distinctBase(typeof(a))(a)
+proc distinctBase(T: typedesc, recursive: static bool = true): typedesc {.magic: "TypeTrait".}
+template distinctBase[T](a: T, recursive: static bool = true): untyped = distinctBase(typeof(a), recursive)(a)
 
 macro getDiscriminants(a: typedesc): seq[string] =
   ## return the discriminant keys

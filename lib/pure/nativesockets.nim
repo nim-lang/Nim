@@ -14,6 +14,7 @@
 
 import os, options
 import std/private/since
+import std/strbasics
 
 
 when hostOS == "solaris":
@@ -468,7 +469,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
   if sockAddr.sa_family.cint == nativeAfInet:
     result = $inet_ntoa(cast[ptr Sockaddr_in](sockAddr).sin_addr)
   elif sockAddr.sa_family.cint == nativeAfInet6:
-    let addrLen = when not useWinVersion: posix.INET6_ADDRSTRLEN
+    let addrLen = when not useWinVersion: posix.INET6_ADDRSTRLEN.int
                   else: 46 # it's actually 46 in both cases
     result = newString(addrLen)
     let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
@@ -477,7 +478,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
                          result.len.int32) == nil:
         raiseOSError(osLastError())
       if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
-        result = result.substr("::ffff:".len)
+        result.setSlice("::ffff:".len..<addrLen)
     else:
       if winlean.inet_ntop(winlean.AF_INET6, addr6, addr result[0],
                            result.len.int32) == nil:
@@ -495,7 +496,8 @@ proc getAddrString*(sockAddr: ptr SockAddr, strAddress: var string) =
   ##
   ## **Note**
   ## * `strAddress` must be initialized to 46 in length.
-  assert(46 == len(strAddress),
+  const length = 46
+  assert(length == len(strAddress),
          "`strAddress` was not initialized correctly. 46 != `len(strAddress)`")
   if sockAddr.sa_family.cint == nativeAfInet:
     let addr4 = addr cast[ptr Sockaddr_in](sockAddr).sin_addr
@@ -514,7 +516,7 @@ proc getAddrString*(sockAddr: ptr SockAddr, strAddress: var string) =
                          strAddress.len.int32) == nil:
         raiseOSError(osLastError())
       if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
-        strAddress = strAddress.substr("::ffff:".len)
+        strAddress.setSlice("::ffff:".len..<length)
     else:
       if winlean.inet_ntop(winlean.AF_INET6, addr6, addr strAddress[0],
                            strAddress.len.int32) == nil:

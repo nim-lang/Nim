@@ -234,6 +234,12 @@ select:focus {
 }
 
 /* Docgen styles */
+
+:target {
+  border: 2px solid #B5651D;
+  border-style: dotted;
+}
+
 /* Links */
 a {
   color: var(--anchor);

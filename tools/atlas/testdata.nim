@@ -25,7 +25,7 @@ const
     toData("ups", GitCheckout, 0, "4008f9339cd22b30e180bc87a6cca7270fd28ac1"),
 
     toData("sync", GitDiff, 0, ""),
-    toData("sync", GitTags, 0, "c9811af2d03dc78a920d33592d0a3daae3d9e68f refs/tags/v0.1.0\nc99d3a73344c4c02335190b489e7ea8aaa4e9584 refs/tags/v0.2.0\n6186a38c97c0f26e1a0c8016979227d26c41717b refs/tags/v0.3.0\n5506e4e09b849bd59f930fcccee3096abb089b1d refs/tags/v0.4.0\n1e4ef046ed0447aec7ca4ab3b2e2a5347ac41448 refs/tags/v0.5.0\na95f7b0b22c77b98ed63c1c4f435d550de8dbb05 refs/tags/v0.6.0\n214b868ace4ebc9140ee56734147fbd16b238c71 refs/tags/v0.7.0\n786698bf9f597834f36cd530d32faee31545a1d7 refs/tags/v0.9.0\n810bd2d75e9f6e182534ae2488670b51a9f13fc3 refs/tags/v1.0.0\na133d37991e3d4e9553c5261eabcb07d471968f7 refs/tags/v1.1.0\n0872a7cd70ea43a26deb94b8ab12cc5b89a1c212 refs/tags/v1.2.0\n19ac734438b6c04fe89711728a97fcde591324eb refs/tags/v1.3.0\nde5c7337ebc22422190e8aeca37d05651735f440 refs/tags/v1.4.0\n"),
+    toData("sync", GitRevParse, 0, "810bd2d75e9f6e182534ae2488670b51a9f13fc3\n"),
     toData("sync", GitCurrentCommit, 0, "de5c7337ebc22422190e8aeca37d05651735f440\n"),
     toData("sync", GitMergeBase, 0, "de5c7337ebc22422190e8aeca37d05651735f440\n810bd2d75e9f6e182534ae2488670b51a9f13fc3\n810bd2d75e9f6e182534ae2488670b51a9f13fc3\n"),
 

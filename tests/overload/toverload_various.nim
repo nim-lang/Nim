@@ -395,7 +395,7 @@ block:
   template bar2[F,T](x: FooUn[F,T]): int = 1
   template bar2[F,T1,T2](x: FooBi[F,T1,T2]): int = 2
 
-  proc test(x: any, n: int) =
+  proc test(x: auto, n: int) =
     doAssert(foo1(x) == n)
     doAssert(foo2(x) == n)
     doAssert(bar1(x) == n)

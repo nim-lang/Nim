@@ -592,6 +592,11 @@ proc runCI(cmd: string) =
     execFold("Run rst2html tests", "nim r nimdoc/rsttester")
     execFold("Run nimpretty tests", "nim r nimpretty/tester.nim")
     when defined(posix):
+      # refs #18385, build with -d:release instead of -d:danger for testing
+      # We could also skip building nimsuggest in buildTools, or build it with -d:release
+      # in bundleNimsuggest depending on some environment variable when we are in CI. One advantage
+      # of rebuilding is this won't affect bin/nimsuggest when running runCI locally
+      execFold("build nimsuggest_testing", "nim c -o:bin/nimsuggest_testing -d:release nimsuggest/nimsuggest")
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
     execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")

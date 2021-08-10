@@ -6,7 +6,7 @@ license = "MIT"
 # requires newTreeFrom
 requires "https://github.com/disruptek/grok >= 0.5.0 & < 1.0.0"
 requires "https://github.com/disruptek/ups < 1.0.0"
-requires "https://github.com/planetis-m/sync >= 1.0.0 & < 2.0.0"
+requires "https://github.com/planetis-m/sync#810bd2d"
 #requires "https://github.com/c-blake/cligen < 2.0.0"
 
 bin = @["balls"]            # build the binary for basic test running

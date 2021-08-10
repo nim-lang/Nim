@@ -36,6 +36,10 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
     case f.kind
     of nnkEmpty: continue # skip first node of `enumTy`
     of nnkSym, nnkIdent: fStr = f.strVal
+    of nnkAccQuoted:
+      fStr = ""
+      for ch in f:
+        fStr.add ch.strVal
     of nnkEnumFieldDef:
       case f[1].kind
       of nnkStrLit: fStr = f[1].strVal
@@ -46,7 +50,7 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
         fStr = f[0].strVal
         fNum = f[1].intVal
       else: error("Invalid tuple syntax!", f[1])
-    else: error("Invalid node for enum type!", f)
+    else: error("Invalid node for enum type `" & $f.kind & "`!", f)
     # add field if string not already added
     if fNum >= userMin and fNum <= userMax:
       fStr = normalizer(fStr)

@@ -28,6 +28,7 @@ hint("Processing", off)
 # switch("define", "nimTestsEnableFlaky")
 
 # switch("hint", "ConvFromXtoItselfNotNeeded")
+# switch("warningAsError", "InheritFromException") # would require fixing a few tests
 
 # experimental API's are enabled in testament, refs https://github.com/timotheecour/Nim/issues/575
 # sync with `kochdocs.docDefines` or refactor.

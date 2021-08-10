@@ -17,7 +17,7 @@ proc cloneUrl*(url, dest: string; cloneUsingHttps: bool): string =
   # github + https + trailing url slash causes a
   # checkout/ls-remote to fail with Repository not found
   var isGithub = false
-  if modUrl.contains("github.com") and modUrl.endswith("/"):
+  if modUrl.contains("github.com") and modUrl.endsWith("/"):
     modUrl = modUrl[0 .. ^2]
     isGithub = true
 
