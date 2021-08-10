@@ -1,3 +1,14 @@
+discard """
+output: '''
+1
+1
+1
+1
+1
+1
+'''
+"""
+
 # bug #5909
 type
   Vec2[T] = tuple
