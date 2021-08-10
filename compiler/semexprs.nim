@@ -875,23 +875,21 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
       internalError(c.config, "semOverloadedCallAnalyseEffects")
       return
     let callee = result[0].sym
-    case callee.kind
-    of skMacro, skTemplate:
-      if result.len > 1 and result[1].kind == nkEarlySemArg:
-        #First argument is early gensymmed because of the method call syntax
-        assert n[1] == result[1]
-        let typ = callee.typ.n
-        if typ.len > 1 and typ[1].typ != nil and typ[1].typ.kind == tyUntyped:
-          result[1] = result[1][1]
-          # TODO: Hint that this will sem twice
-        else:
-          result[1] = result[1][0]
-        n[1] = result[1]
-    else:
-      if result.len > 1 and result[1].kind == nkEarlySemArg:
-        assert n[1] == result[1]
+    if result.len > 1 and result[1].kind == nkEarlySemArg:
+      #First argument is early gensymmed because of the method call syntax
+      assert n[1] == result[1]
+      let typ = callee.typ.n
+      if typ.len > 1 and typ[1].typ != nil and typ[1].typ.kind == tyUntyped:
+        result[1][0] = nil # We won't need the semmed ast anymore, so we remove our ref to it
+        result[1] = result[1][1]
+        # TODO: Hint that this will sem twice
+      else:
+        result[1][1] = nil # We won't need the unsemmed ast anymore, so we remove our ref to it
         result[1] = result[1][0]
-        n[1] = result[1]
+      n[1] = result[1]
+    case callee.kind
+    of skMacro, skTemplate: discard
+    else:
       if callee.kind == skIterator and callee.id == c.p.owner.id:
         localError(c.config, n.info, errRecursiveDependencyIteratorX % callee.name.s)
         # error correction, prevents endless for loop elimination in transf.
