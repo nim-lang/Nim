@@ -2739,11 +2739,59 @@ proc exclFilePermissions*(filename: string,
 when not defined(windows):
   import std/private/shlexutils
 
+proc parseShellCommandWindows(c: string): seq[string] =
+  var i = 0
+  var a = ""
+  while true:
+    setLen(a, 0)
+    # eat all delimiting whitespace
+    while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
+    if i >= c.len: break
+    # parse a single argument according to the above rules:
+    var inQuote = false
+    while i < c.len:
+      case c[i]
+      of '\\':
+        var j = i
+        while j < c.len and c[j] == '\\': inc(j)
+        if j < c.len and c[j] == '"':
+          for k in 1..(j-i) div 2: a.add('\\')
+          if (j-i) mod 2 == 0:
+            i = j
+          else:
+            a.add('"')
+            i = j+1
+        else:
+          a.add(c[i])
+          inc(i)
+      of '"':
+        inc(i)
+        if not inQuote: inQuote = true
+        elif i < c.len and c[i] == '"':
+          a.add(c[i])
+          inc(i)
+        else:
+          inQuote = false
+          break
+      of ' ', '\t':
+        if not inQuote: break
+        a.add(c[i])
+        inc(i)
+      else:
+        a.add(c[i])
+        inc(i)
+    add(result, a)
+
 proc parseShellCommand*(a: string): seq[string] =
-  ## On Posix systems, it follows the shell quoting rules for `"`, `'`, ``\``
-  ## and is such that `parseCmdLine(quoteShellCommand(a)) == a`;
-  ## it raises ValueError on invalid inputs
+  ## On posix, it follows the shell quoting rules for `"`, `'`, ``\`` and
+  ## raises `ValueError` on invalid inputs
   ## (unclosed single or double quotes or unfinished escape sequences).
+  ##
+  ## On windows, it follows the shell quoting rules for `"`, ``\`` and
+  ## raises `ValueError` on invalid inputs (unclosed double quotes or unfinished
+  ## escape sequences).
+  ##
+  ## On either platform, it verifies that `parseCmdLine(quoteShellCommand(a)) == a`.
   runnableExamples:
     let a = @["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\n\a\b\t\0abc", " ", " '   ' '", """  ' " \ '' "" """]
     assert a.quoteShellCommand.parseShellCommand == a
@@ -2755,7 +2803,10 @@ proc parseShellCommand*(a: string): seq[string] =
       doAssertRaises(ValueError): discard parseShellCommand("abc\\") # unfinished escape
   # Future work can add optional params to specify how to handle special chars:
   # `!, {, }, $, |` etc.
-  for val in shlex(a): result.add val
+  when defined(windows):
+    result = parseShellCommandWindows(a)
+  else:
+    for val in shlex(a): result.add val
 
 proc parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -2797,49 +2848,16 @@ proc parseCmdLine*(c: string): seq[string] {.
   ## * `paramStr proc <#paramStr,int>`_
   ## * `commandLineParams proc <#commandLineParams>`_
 
-  result = @[]
-  var i = 0
-  var a = ""
-  while true:
-    setLen(a, 0)
-    # eat all delimiting whitespace
-    while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
-    if i >= c.len: break
-    when defined(windows):
-      # parse a single argument according to the above rules:
-      var inQuote = false
-      while i < c.len:
-        case c[i]
-        of '\\':
-          var j = i
-          while j < c.len and c[j] == '\\': inc(j)
-          if j < c.len and c[j] == '"':
-            for k in 1..(j-i) div 2: a.add('\\')
-            if (j-i) mod 2 == 0:
-              i = j
-            else:
-              a.add('"')
-              i = j+1
-          else:
-            a.add(c[i])
-            inc(i)
-        of '"':
-          inc(i)
-          if not inQuote: inQuote = true
-          elif i < c.len and c[i] == '"':
-            a.add(c[i])
-            inc(i)
-          else:
-            inQuote = false
-            break
-        of ' ', '\t':
-          if not inQuote: break
-          a.add(c[i])
-          inc(i)
-        else:
-          a.add(c[i])
-          inc(i)
-    else:
+  when defined(windows):
+    result = parseShellCommandWindows(c)
+  else:
+    var i = 0
+    var a = ""
+    while true:
+      setLen(a, 0)
+      # eat all delimiting whitespace
+      while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
+      if i >= c.len: break
       case c[i]
       of '\'', '\"':
         var delim = c[i]
@@ -2852,7 +2870,7 @@ proc parseCmdLine*(c: string): seq[string] {.
         while i < c.len and c[i] > ' ':
           add(a, c[i])
           inc(i)
-    add(result, a)
+      add(result, a)
 
 when defined(nimdoc):
   # Common forward declaration docstring block for parameter retrieval procs.
