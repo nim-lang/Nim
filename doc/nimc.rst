@@ -406,16 +406,18 @@ to your usual `nim c`:cmd: or `nim cpp`:cmd: command and set the `passC`:option:
 and `passL`:option: command line switches to something like:
 
 .. code-block:: cmd
-  nim c ... --passC="-I$DEVKITPRO/libnx/include" ...
+  nim c ... --d:nimAllocPagesViaMalloc --gc:orc --passC="-I$DEVKITPRO/libnx/include" ...
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
 or setup a ``nim.cfg`` file like so::
 
   #nim.cfg
+  --gc:orc
+  --d:nimAllocPagesViaMalloc
   --passC="-I$DEVKITPRO/libnx/include"
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
-The DevkitPro setup must be the same as the default with their new installer
+The devkitPro setup must be the same as the default with their new installer
 `here for Mac/Linux <https://github.com/devkitPro/pacman/releases>`_ or
 `here for Windows <https://github.com/devkitPro/installer/releases>`_.
 
@@ -426,20 +428,19 @@ For example, with the above-mentioned config:
   nim c --os:nintendoswitch switchhomebrew.nim
 
 This will generate a file called ``switchhomebrew.elf`` which can then be turned into
-an nro file with the `elf2nro`:cmd: tool in the DevkitPro release. Examples can be found at
+an nro file with the `elf2nro`:cmd: tool in the devkitPro release. Examples can be found at
 `the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_.
 
-There are a few things that don't work because the DevkitPro libraries don't support them.
+There are a few things that don't work because the devkitPro libraries don't support them.
 They are:
 
 1. Waiting for a subprocess to finish. A subprocess can be started, but right
    now it can't be waited on, which sort of makes subprocesses a bit hard to use
-2. Dynamic calls. DevkitPro libraries have no dlopen/dlclose functions.
-3. Command line parameters. It doesn't make sense to have these for a console
-   anyways, so no big deal here.
-4. mqueue. Sadly there are no mqueue headers.
-5. ucontext. No headers for these either. No coroutines for now :(
-6. nl_types. No headers for this.
+2. Dynamic calls. Switch OS (Horizon) doesn't support dynamic libraries, so dlopen/dlclose are not available.
+3. mqueue. Sadly there are no mqueue headers.
+4. ucontext. No headers for these either. No coroutines for now :(
+5. nl_types. No headers for this.
+6. As mmap is not supported, the nimAllocPagesViaMalloc option has to be used.
 
 DLL generation
 ==============

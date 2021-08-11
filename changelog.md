@@ -104,6 +104,8 @@
 - In `std/dom`, `Interval` is now a `ref object`, same as `Timeout`. Definitions of `setTimeout`,
   `clearTimeout`, `setInterval`, `clearInterval` were updated.
 
+- The allocator for Nintendo Switch, which was nonfunctional because
+  of breaking changes in libnx, was removed, in favour of the new `-d:nimAllocPagesViaMalloc` option.
 
 ## Standard library additions and changes
 
@@ -363,6 +365,7 @@
 
 - Added `dom.setInterval`, `dom.clearInterval` overloads.
 
+- Allow reading parameters when compiling for Nintendo Switch.
 
 - Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
   if the slice is out of bounds, likewise with `strutils.delete`.
