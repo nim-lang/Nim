@@ -2843,14 +2843,14 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces any ``\`` by `\\`
   ## * replaces any `'` by `\'`
   ## * replaces any `"` by `\"`
-  ## * replaces any `\a` by `\\a`
-  ## * replaces any `\b` by `\\b`
-  ## * replaces any `\t` by `\\t`
-  ## * replaces any `\n` by `\\n`
-  ## * replaces any `\v` by `\\v`
-  ## * replaces any `\f` by `\\f`
-  ## * replaces any `\r` by `\\r`
-  ## * replaces any `\e` by `\\e`
+  ## * replaces any `\a` (`\x07`) by `\\a`
+  ## * replaces any `\b` (`\x08`) by `\\b`
+  ## * replaces any `\t` (`\x09`) by `\\t`
+  ## * replaces any `\n` (`\x0A`) by `\\n`
+  ## * replaces any `\v` (`\x0B`) by `\\v`
+  ## * replaces any `\f` (`\x0C`) by `\\f`
+  ## * replaces any `\r` (`\x0D`) by `\\r`
+  ## * replaces any `\e` (`\x1B`) by `\\e`
   ## * replaces any other character not in the set `{\21..\126}`
   ##   by `\xHH` where `HH` is its hexadecimal value
   ##
@@ -2869,7 +2869,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   of '\r': (when defined(nimLegacyAddEscapedCharx0D): s.add "\\c" else: s.add "\\r") # \x0D
   of '\e': s.add "\\e" # \x1B
   of '\\': s.add("\\\\")
-  of '\'': s.add("\\'")
+  of '\'': (when defined(nimLegacyAddEscapedCharQuote): s.add "\\'" else: s.add '\'')
   of '\"': s.add("\\\"")
   of {'\32'..'\126'} - {'\\', '\'', '\"'}: s.add(c)
   else:
