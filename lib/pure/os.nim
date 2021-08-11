@@ -2739,7 +2739,7 @@ proc exclFilePermissions*(filename: string,
 when not defined(windows):
   import std/private/shlexutils
 
-proc parseShellCommandWindows(c: string): seq[string] =
+func parseShellCommandWindows(c: string): seq[string] =
   var i = 0
   var a = ""
   while true:
@@ -2782,7 +2782,7 @@ proc parseShellCommandWindows(c: string): seq[string] =
         inc(i)
     add(result, a)
 
-proc parseShellCommand*(a: string): seq[string] =
+func parseShellCommand*(a: string): seq[string] =
   ## On posix, it follows the shell quoting rules for `"`, `'`, ``\`` and
   ## raises `ValueError` on invalid inputs
   ## (unclosed single or double quotes or unfinished escape sequences).
@@ -2809,8 +2809,7 @@ proc parseShellCommand*(a: string): seq[string] =
   else:
     for val in shlex(a): result.add val
 
-proc parseCmdLine*(c: string): seq[string] {.
-  noSideEffect, rtl, extern: "nos$1".} =
+func parseCmdLine*(c: string): seq[string] {.rtl, extern: "nos$1".} =
   ## Splits a `command line`:idx: into several components.
   ##
   ## **Note**: This proc is only occasionally useful, better use the
