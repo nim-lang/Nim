@@ -2840,36 +2840,40 @@ when declared(initDebugger):
 proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## Adds a char to string `s` and applies the following escaping:
   ##
-  ## * replaces any ``\`` by `\\`
-  ## * replaces any `'` by `\'`
-  ## * replaces any `"` by `\"`
-  ## * replaces any `\a` (`\x07`) by `\\a`
-  ## * replaces any `\b` (`\x08`) by `\\b`
-  ## * replaces any `\t` (`\x09`) by `\\t`
-  ## * replaces any `\n` (`\x0A`) by `\\n`
-  ## * replaces any `\v` (`\x0B`) by `\\v`
-  ## * replaces any `\f` (`\x0C`) by `\\f`
-  ## * replaces any `\r` (`\x0D`) by `\\r`
-  ## * replaces any `\e` (`\x1B`) by `\\e`
-  ## * replaces any other character not in the set `{\21..\126}`
+  ## * replaces ``\`` by `\\`
+  ## * replaces `"` by `\"`
+  ## * replaces `\a` (`\x07`) by `\\a`
+  ## * replaces `\b` (`\x08`) by `\\b`
+  ## * replaces `\t` (`\x09`) by `\\t`
+  ## * replaces `\n` (`\x0A`) by `\\n`
+  ## * replaces `\v` (`\x0B`) by `\\v`
+  ## * replaces `\f` (`\x0C`) by `\\f`
+  ## * replaces `\r` (`\x0D`) by `\\r`
+  ## * replaces `\e` (`\x1B`) by `\\e`
+  ## * replaces other character not in the set `{\21..\126}`
   ##   by `\xHH` where `HH` is its hexadecimal value
+  ## * `'` is replaced by `\'` only if `nimPreviewAddEscapedCharQuote` is undefined.
   ##
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes.
   ##
   ## .. warning:: This is **not correct** for producing ANSI C code!
-  ##
+  runnableExamples:
+    from std/sugar import dup
+    assert "".dup(addEscapedChar('\"')) == "\\\""
+    assert "".dup(addEscapedChar('a')) == "a"
+    assert "".dup(addEscapedChar(0x13.char)) == r"\x13"
   case c
-  of '\a': s.add "\\a" # \x07
-  of '\b': s.add "\\b" # \x08
-  of '\t': s.add "\\t" # \x09
-  of '\n': s.add "\\n" # \x0A
-  of '\v': s.add "\\v" # \x0B
-  of '\f': s.add "\\f" # \x0C
-  of '\r': (when defined(nimLegacyAddEscapedCharx0D): s.add "\\c" else: s.add "\\r") # \x0D
-  of '\e': s.add "\\e" # \x1B
+  of '\a': s.add "\\a"
+  of '\b': s.add "\\b"
+  of '\t': s.add "\\t"
+  of '\n': s.add "\\n"
+  of '\v': s.add "\\v"
+  of '\f': s.add "\\f"
+  of '\r': (when defined(nimLegacyAddEscapedCharx0D): s.add "\\c" else: s.add "\\r")
+  of '\e': s.add "\\e"
   of '\\': s.add("\\\\")
-  of '\'': (when defined(nimLegacyAddEscapedCharQuote): s.add "\\'" else: s.add '\'')
+  of '\'': (when defined(nimPreviewAddEscapedCharQuote): s.add '\'' else: s.add "\\'")
   of '\"': s.add("\\\"")
   of {'\32'..'\126'} - {'\\', '\'', '\"'}: s.add(c)
   else:
