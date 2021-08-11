@@ -776,10 +776,10 @@ template main =
       chk "b\nc", @["b", "c"]
       chk "b\\\nc", @["b\nc"]
 
-      # dollar, {, } in regular section: left for future work
-      chk "bb$cc dd", @["bb", "$", "cc", "dd"]
-      chk "bb${cc}dd", @["bb", "$", "{", "cc", "}", "dd"]
-      chk "bb\\${cc}dd", @["bb$", "{", "cc", "}", "dd"]
+      # edge case: dollar, {, } in regular section:
+      chk "bb$cc dd", @["bb$cc", "dd"]
+      chk "bb${cc}dd", @["bb${cc}dd"]
+      chk "bb\\${cc}dd", @["bb${cc}dd"]
       chk "bb\\$cc dd", @["bb$cc", "dd"]
 
       # invalid inputs
