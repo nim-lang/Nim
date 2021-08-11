@@ -376,6 +376,7 @@ type
     linkOptions*: string          # (*)
     compileOptions*: string       # (*)
     cCompilerPath*: string
+    runExe*: string
     toCompile*: CfileList         # (*)
     suggestionResultHook*: proc (result: Suggest) {.closure.}
     suggestVersion*: int

@@ -809,6 +809,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       setTarget(conf.target, conf.target.targetOS, cpu)
   of "run", "r":
     processOnOffSwitchG(conf, {optRun}, arg, pass, info)
+  of "runexe":
+    expectArg(conf, switch, arg, pass, info)
+    conf.runExe = arg
   of "maxloopiterationsvm":
     expectArg(conf, switch, arg, pass, info)
     conf.maxLoopIterationsVM = parseInt(arg)

@@ -30,7 +30,10 @@ Options:
   --debugger:native         Use native debugger (gdb)
   --app:console|gui|lib|staticlib
                             generate a console app|GUI app|DLL|static library
-  -r, --run                 run the compiled program with given arguments
+  -r, --run.                run the compiled program with given arguments.
+  --runexe:exe              Prepends `exe` to the command line, when `-r` is specified.
+                            e.g. `nim r --runexe:wine64 --os:windows main` or
+                            `nim r -b:js --run:/pathto/node -d:nodejs main`
   --eval:cmd                evaluates nim code directly; e.g.: `nim --eval:"echo 1"`
                             defaults to `e` (nimscript) but customizable:
                             `nim r --eval:'for a in stdin.lines: echo a'`
