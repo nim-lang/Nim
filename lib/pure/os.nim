@@ -2753,6 +2753,8 @@ proc parseShellCommand*(a: string): seq[string] =
       doAssertRaises(ValueError): discard parseShellCommand("abc'bar") # unclosed `'`
       doAssertRaises(ValueError): discard parseShellCommand("abc\"bar") # unclosed `"`
       doAssertRaises(ValueError): discard parseShellCommand("abc\\") # unfinished escape
+  # Future work can add optional params to specify how to handle special chars:
+  # `!, {, }, $, |` etc.
   for val in shlex(a): result.add val
 
 proc parseCmdLine*(c: string): seq[string] {.

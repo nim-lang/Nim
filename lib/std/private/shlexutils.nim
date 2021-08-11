@@ -24,6 +24,7 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
     Quote = '\''
     DoubleQuote = '"'
     BackSlash = '\\'
+    Special = {'$', '{', '}'}
 
   template eatEscape(state2) =
     if i >= a.len:
@@ -50,6 +51,9 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
     of sFinished: discard
     of sInStart:
       case c
+      of Special:
+        buf.add c
+        ready = true
       of ShellWhiteSpace: discard
       of Quote: state = sInSingleQuote
       of DoubleQuote: state = sInDoubleQuote
@@ -63,6 +67,9 @@ iterator shlex*(a: openArray[char], error: var ShlexError): string =
       of Quote: state = sInSingleQuote
       of DoubleQuote: state = sInDoubleQuote
       of BackSlash: eatEscape(state)
+      of Special:
+        ready = true
+        i.dec
       else: buf.add c
     of sInSingleQuote:
       case c

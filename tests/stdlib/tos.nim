@@ -776,11 +776,11 @@ template main =
       chk "b\nc", @["b", "c"]
       chk "b\\\nc", @["b\nc"]
 
-      when false: # xxx dollar, {, } in regular section: left for future work
-        chk "bb$cc dd", @["bb", "$", "cc", "dd"]
-        chk "bb${cc}dd", @["bb", "$", "{", "cc", "}", "dd"]
-        chk "bb\\${cc}dd", @["bb$", "{", "cc", "}", "dd"]
-        chk "bb\\$cc dd", @["bb$cc", "dd"]
+      # dollar, {, } in regular section: left for future work
+      chk "bb$cc dd", @["bb", "$", "cc", "dd"]
+      chk "bb${cc}dd", @["bb", "$", "{", "cc", "}", "dd"]
+      chk "bb\\${cc}dd", @["bb$", "{", "cc", "}", "dd"]
+      chk "bb\\$cc dd", @["bb$cc", "dd"]
 
       # invalid inputs
       doAssertRaises(ValueError): discard """\""".parseShellCommand
