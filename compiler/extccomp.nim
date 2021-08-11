@@ -252,7 +252,7 @@ compiler envcc:
     buildGui: "",
     buildDll: " -shared ",
     buildLib: "", # XXX: not supported yet
-    linkerExe: "cc",
+    linkerExe: "",
     linkTmpl: "-o $exefile $buildgui $builddll $objfiles $options",
     includeCmd: " -I",
     linkDirCmd: "", # XXX: not supported yet
