@@ -252,8 +252,7 @@ compiler envcc:
     buildGui: "",
     buildDll: " -shared ",
     buildLib: "", # XXX: not supported yet
-    # linkerExe: "cc",
-    linkerExe: "/usr/local/opt/mingw-w64/toolchain-x86_64/bin/x86_64-w64-mingw32-gcc",
+    linkerExe: "",
     linkTmpl: "-o $exefile $buildgui $builddll $objfiles $options",
     includeCmd: " -I",
     linkDirCmd: "", # XXX: not supported yet
