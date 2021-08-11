@@ -2305,6 +2305,17 @@ proc incrIndexType(t: PType) =
 template isVarargsUntyped(x): untyped =
   x.kind == tyVarargs and x[0].kind == tyUntyped
 
+proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
+  # see https://github.com/nim-lang/RFCs/issues/405
+  result = int.high
+  for a2 in countdown(n.len-1, 0):
+    # checking `nfBlockArg in n[a2].flags` wouldn't work inside templates
+    if n[a2].kind != nkStmtList: break
+    let formalLast = m.callee.n[m.callee.n.len - (n.len - a2)]
+    if formalLast.kind == nkSym and formalLast.sym.ast == nil:
+      result = a2
+    else: break
+
 proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
 
   template noMatch() =
@@ -2345,16 +2356,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     formalLen = m.callee.n.len
     formal = if formalLen > 1: m.callee.n[1].sym else: nil # current routine parameter
     container: PNode = nil # constructed container
-
-  var firstArgBlock = int.high # see https://github.com/nim-lang/RFCs/issues/405
-  for a2 in countdown(n.len-1, 0):
-    # checking `nfBlockArg in n[a2].flags` wouldn't work inside templates
-    if n[a2].kind != nkStmtList: break
-    let formalLast = m.callee.n[m.callee.n.len - (n.len - a2)]
-    if formalLast.kind == nkSym and formalLast.sym.ast == nil:
-      firstArgBlock = a2
-    else: break
-
+  let firstArgBlock = findFirstArgBlock(m, n)
   while a < n.len:
     c.openShadowScope
 
