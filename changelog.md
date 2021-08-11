@@ -222,6 +222,8 @@
 
 - Added `os.getCacheDir()` to return platform specific cache directory.
 
+- Added `os.parseShellCommand` such that `parseShellCommand(quoteShellCommand(a)) == a`.
+
 - Added a simpler to use `io.readChars` overload.
 
 - Added `**` to jsffi.

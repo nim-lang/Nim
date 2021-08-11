@@ -710,26 +710,26 @@ block: # isAdmin
 
 template main =
   # xxx move all tests under here so they get tested in VM, for ones which can
-  block: # parseCmdLine, bug #14343
+  block: # parseShellCommand, bug #14343
     var a = @["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\n\a\b\t\0abc", " ", " '   ' '", """  ' " \ '' "" """]
     when defined(posix):
       a = a & @["\\", "  a   \\"]
     let a2 = a.quoteShellCommand
-    let b2 = a2.parseCmdLine
+    let b2 = a2.parseShellCommand
     doAssert b2 == a, $(a, a2, b2)
 
     let a3 = a2.quoteShell
-    let b3 = a3.parseCmdLine
+    let b3 = a3.parseShellCommand
     doAssert b3 == @[a2]
 
     let a4 = a3.quoteShell
-    let b4 = a4.parseCmdLine
+    let b4 = a4.parseShellCommand
     doAssert b4 == @[a3]
 
     proc chk(a: string, b: seq[string]) =
-      let b2 = parseCmdLine(a)
+      let b2 = parseShellCommand(a)
       doAssert b2 == b, $(a, b, b2)
-    
+
     chk "", seq[string].default
     chk " \t\t   \t", seq[string].default
     chk " \t  abc   \t def  \t\t  ", @["abc", "def"]
@@ -783,12 +783,12 @@ template main =
         chk "bb\\$cc dd", @["bb$cc", "dd"]
 
       # invalid inputs
-      doAssertRaises(ValueError): discard """\""".parseCmdLine
-      doAssertRaises(ValueError): discard """abc\""".parseCmdLine
-      doAssertRaises(ValueError): discard "\"".parseCmdLine
-      doAssertRaises(ValueError): discard "  \"  ".parseCmdLine
-      doAssertRaises(ValueError): discard "  \'  ".parseCmdLine
-      doAssertRaises(ValueError): discard "aa'bb\\'cc'dd".parseCmdLine # `'` cannot be escaped within single quotes
+      doAssertRaises(ValueError): discard """\""".parseShellCommand
+      doAssertRaises(ValueError): discard """abc\""".parseShellCommand
+      doAssertRaises(ValueError): discard "\"".parseShellCommand
+      doAssertRaises(ValueError): discard "  \"  ".parseShellCommand
+      doAssertRaises(ValueError): discard "  \'  ".parseShellCommand
+      doAssertRaises(ValueError): discard "aa'bb\\'cc'dd".parseShellCommand # `'` cannot be escaped within single quotes
 
 static: main()
 main()
