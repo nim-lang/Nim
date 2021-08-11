@@ -769,6 +769,12 @@ proc gen(c: var Con; n: PNode) =
   of nkCharLit..nkNilLit: discard
   of nkAsgn, nkFastAsgn:
     gen(c, n[1])
+
+    if n[0].kind in PathKinds0:
+      let a = c.skipTrivials(n[0])
+      if a.kind in nkCallKinds:
+        gen(c, a)
+
     # watch out: 'obj[i].f2 = value' sets 'f2' but
     # "uses" 'i'. But we are only talking about builtin array indexing so
     # it doesn't matter and 'x = 34' is NOT a usage of 'x'.
