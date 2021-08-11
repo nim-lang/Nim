@@ -635,7 +635,7 @@ proc getValue*(db: DbConn,  stmtName: SqlPrepared): string
 
 proc tryInsertID*(db: DbConn, query: SqlQuery,
                   args: varargs[string, `$`]): int64
-                  {.tags: [WriteDbEffect], raises: [].} =
+                  {.tags: [WriteDbEffect], raises: [DbError].} =
   ## Executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   ##
@@ -692,7 +692,7 @@ proc insertID*(db: DbConn, query: SqlQuery,
 
 proc tryInsert*(db: DbConn, query: SqlQuery, pkName: string,
                 args: varargs[string, `$`]): int64
-               {.tags: [WriteDbEffect], raises: [DbError]], since: (1, 3).} =
+               {.tags: [WriteDbEffect], raises: [DbError], since: (1, 3).} =
   ## same as tryInsertID
   tryInsertID(db, query, args)
 
