@@ -1045,15 +1045,12 @@ proc expandTilde*(path: string): string {.
     # TODO: handle `~bob` and `~bob/` which means home of bob
     result = path
 
-# TODO: consider whether quoteShellPosix, quoteShellWindows, quoteShell, quoteShellCommand
-# belong in `strutils` instead; they are not specific to paths
 proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote `s`, so it can be safely passed to Windows API.
   ##
   ## Based on Python's `subprocess.list2cmdline`.
   ## See `this link <http://msdn.microsoft.com/en-us/library/17w5ykft.aspx>`_
   ## for more details.
-
   let needQuote = {' ', '\t'} in s or s.len == 0
   result = ""
   var backslashBuff = ""
@@ -1064,8 +1061,8 @@ proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1"
     if c == '\\':
       backslashBuff.add(c)
     elif c == '\"':
-      result.add(backslashBuff)
-      result.add(backslashBuff)
+      for i in 0..<backslashBuff.len*2:
+        result.add('\\')
       backslashBuff.setLen(0)
       result.add("\\\"")
     else:
@@ -1074,8 +1071,12 @@ proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1"
         backslashBuff.setLen(0)
       result.add(c)
 
+  if backslashBuff.len > 0:
+    result.add(backslashBuff)
   if needQuote:
+    result.add(backslashBuff)
     result.add("\"")
+
 
 proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote ``s``, so it can be safely passed to POSIX shell.
