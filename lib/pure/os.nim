@@ -2787,9 +2787,7 @@ proc parseShellCommand*(a: string): seq[string] =
   ## raises `ValueError` on invalid inputs
   ## (unclosed single or double quotes or unfinished escape sequences).
   ##
-  ## On windows, it follows the shell quoting rules for `"`, ``\`` and
-  ## raises `ValueError` on invalid inputs (unclosed double quotes or unfinished
-  ## escape sequences).
+  ## On windows, it follows the shell quoting rules for `"`, ``\`` .
   ##
   ## On either platform, it verifies that `parseCmdLine(quoteShellCommand(a)) == a`.
   runnableExamples:
@@ -2803,6 +2801,8 @@ proc parseShellCommand*(a: string): seq[string] =
       doAssertRaises(ValueError): discard parseShellCommand("abc\\") # unfinished escape
   # Future work can add optional params to specify how to handle special chars:
   # `!, {, }, $, |` etc.
+  # note: `parseCmdLine(quoteShellCommand(a)) == a` requires https://github.com/nim-lang/Nim/pull/18671
+  # on windows.
   when defined(windows):
     result = parseShellCommandWindows(a)
   else:
