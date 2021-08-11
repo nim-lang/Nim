@@ -2789,7 +2789,10 @@ proc parseShellCommand*(a: string): seq[string] =
   ##
   ## On windows, it follows the shell quoting rules for `"`, ``\`` .
   ##
-  ## On either platform, it verifies that `parseCmdLine(quoteShellCommand(a)) == a`.
+  ## On either platform, it satisfies `parseCmdLine(quoteShellCommand(a)) == a`,
+  ## but `quoteShellCommand(parseCmdLine(a)) == a` doesn't necessarily hold.
+  ##
+  ## Special chars (`!, {, }, $, |` etc) are treated as regular chars.
   runnableExamples:
     let a = @["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\n\a\b\t\0abc", " ", " '   ' '", """  ' " \ '' "" """]
     assert a.quoteShellCommand.parseShellCommand == a
@@ -2799,8 +2802,6 @@ proc parseShellCommand*(a: string): seq[string] =
       doAssertRaises(ValueError): discard parseShellCommand("abc'bar") # unclosed `'`
       doAssertRaises(ValueError): discard parseShellCommand("abc\"bar") # unclosed `"`
       doAssertRaises(ValueError): discard parseShellCommand("abc\\") # unfinished escape
-  # Future work can add optional params to specify how to handle special chars:
-  # `!, {, }, $, |` etc.
   # note: `parseCmdLine(quoteShellCommand(a)) == a` requires https://github.com/nim-lang/Nim/pull/18671
   # on windows.
   when defined(windows):
