@@ -453,23 +453,29 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
       return nil
     let nodePragma = b[1][0]
     # see: `singlePragma`
-    if nodePragma.kind notin {nkIdent, nkAccQuoted}:
-      return nil
-    let ident = considerQuotedIdent(c, nodePragma)
-    var userPragma = strTableGet(c.userPragmas, ident)
-    if userPragma != nil: return nil
-
-    let w = nodePragma.whichPragma
-    if n.kind == nkVarSection and w in varPragmas or
-      n.kind == nkLetSection and w in letPragmas or
-      n.kind == nkConstSection and w in constPragmas:
-      return nil
 
     var amb = false
-    let sym = searchInScopes(c, ident, amb)
-    # XXX what if amb is true?
-    if sym == nil or sfCustomPragma in sym.flags: return nil
+    var sym: PSym = nil
+    case nodePragma.kind
+    of nkIdent, nkAccQuoted:
+      let ident = considerQuotedIdent(c, nodePragma)
+      var userPragma = strTableGet(c.userPragmas, ident)
+      if userPragma != nil: return nil
+      let w = nodePragma.whichPragma
+      if n.kind == nkVarSection and w in varPragmas or
+        n.kind == nkLetSection and w in letPragmas or
+        n.kind == nkConstSection and w in constPragmas:
+        return nil
+      sym = searchInScopes(c, ident, amb)
+      # XXX what if amb is true?
+      # CHECKME: should that test also apply to `nkSym` case?
+      if sym == nil or sfCustomPragma in sym.flags: return nil
+    of nkSym:
+      sym = nodePragma.sym
+    else:
+      return nil
       # skip if not in scope; skip `template myAttr() {.pragma.}`
+
     let lhs = b[0]
     let clash = strTableGet(c.currentScope.symbols, lhs.ident)
     if clash != nil:
@@ -477,7 +483,6 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
       wrongRedefinition(c, lhs.info, lhs.ident.s, clash.info)
 
     result = newTree(nkCall)
-    doAssert nodePragma.kind in {nkIdent, nkAccQuoted}, $nodePragma.kind
     result.add nodePragma
     result.add lhs
     if a[1].kind != nkEmpty:
