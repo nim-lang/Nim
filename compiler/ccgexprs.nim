@@ -888,18 +888,17 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     template fun(code) = linefmt(p, cpsStmts, code, [rdLoc(test)])
     if op.magic == mNot: fun("if ($1) ") else: fun("if (!($1)) ")
 
-    ## raiseFieldError2 on failure
-    if optTinyRtti in p.config.globalOptions: # optNimV2 disappeared in 61ea85687c2950bb40c23a1a7cd2c13473bd9662
-      const code = "{ #raiseFieldError2($1, $2); $3} $n"
-      linefmt(p, cpsStmts, code, [strLit, newLitRope("(repr unavailable in newruntime)"), raiseInstr(p)])
+    let discIndex = rdSetElemLoc(p.config, v, u.t)
+    if optTinyRtti in p.config.globalOptions:
+      const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$3))); $2} $n"
+      linefmt(p, cpsStmts, code, [strLit, raiseInstr(p), discIndex])
     else:
       # complication needed for signed types
       let first = p.config.firstOrd(disc.sym.typ)
       let firstLit = int64Literal(cast[int](first))
-      let discIndex = rdSetElemLoc(p.config, v, u.t)
       let discName = genTypeInfo(p.config, p.module, disc.sym.typ, e.info)
-      const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$2) + (NI)$3, $4)); $5} $n"
-      linefmt(p, cpsStmts, code, [strLit, discIndex, firstLit, discName, raiseInstr(p)])
+      const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$3) + (NI)$4, $5)); $2} $n"
+      linefmt(p, cpsStmts, code, [strLit, raiseInstr(p), discIndex, firstLit, discName])
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   assert e[0].kind == nkDotExpr
