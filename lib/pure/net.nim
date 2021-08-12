@@ -2056,7 +2056,7 @@ proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
     socket.close()
 
 func toIpAddress*(ip: int64): IpAddress {.since: (1, 5).} =
-  ## Convert an `int64` to an `IpAddress` of family `IPv4`.
+  ## Converts an `int64` to an `IpAddress` of family `IPv4`.
   assert ip >= 0, "IP address must be a positive integer"
   result = IpAddress(family: IpAddressFamily.IPv4, address_v4: [
     uint8(ip div 16_777_216'i64 mod 256'i64),
