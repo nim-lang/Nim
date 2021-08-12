@@ -880,7 +880,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
       # should have no runtime cost (unlike -d:stacktrace)
       # this could be added to all/most chcks.nim errors, and perhaps
       # can be disabled with a compile flag.
-    msg.add " " & genFieldDefect(p.config, field, disc.sym)
+    msg.add " " & genFieldDefect(p.config, field.name.s, disc.sym)
 
     template newLitRope(s: string): untyped = genStringLiteral(p.module, newStrNode(nkStrLit, s))
     let strLit = newLitRope(msg)
