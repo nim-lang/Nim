@@ -2842,6 +2842,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ##
   ## * replaces ``\`` by `\\`
   ## * replaces `"` by `\"`
+  ## * replaces `'` by `\'`
   ## * replaces `\a` (`\x07`) by `\\a`
   ## * replaces `\b` (`\x08`) by `\\b`
   ## * replaces `\t` (`\x09`) by `\\t`
@@ -2852,7 +2853,6 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces `\e` (`\x1B`) by `\\e`
   ## * replaces other character not in the set `{\21..\126}`
   ##   by `\xHH` where `HH` is its hexadecimal value
-  ## * `'` is replaced by `\'` only if `nimPreviewAddEscapedCharQuote` is undefined.
   ##
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes.
@@ -2862,6 +2862,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
     from std/sugar import dup
     assert "".dup(addEscapedChar('\"')) == "\\\""
     assert "".dup(addEscapedChar('a')) == "a"
+    assert "".dup(addEscapedChar('\'')) == r"\'"
     assert "".dup(addEscapedChar(0x13.char)) == r"\x13"
   case c
   of '\a': s.add "\\a"
@@ -2873,7 +2874,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   of '\r': (when defined(nimLegacyAddEscapedCharx0D): s.add "\\c" else: s.add "\\r")
   of '\e': s.add "\\e"
   of '\\': s.add("\\\\")
-  of '\'': (when defined(nimPreviewAddEscapedCharQuote): s.add '\'' else: s.add "\\'")
+  of '\'': s.add "\\'"
   of '\"': s.add("\\\"")
   of {'\32'..'\126'} - {'\\', '\'', '\"'}: s.add(c)
   else:
@@ -2890,29 +2891,30 @@ proc addQuoted*[T](s: var string, x: T) =
   ## See `addEscapedChar <#addEscapedChar,string,char>`_
   ## for the escaping scheme. When `x` is a string, characters in the
   ## range `{\128..\255}` are never escaped so that multibyte UTF-8
-  ## characters are untouched (note that this behavior is different from
-  ## `addEscapedChar`).
+  ## characters are untouched, likewise with `'`
+  ## (note that this behavior is different from `addEscapedChar`).
   ##
   ## The Nim standard library uses this function on the elements of
   ## collections when producing a string representation of a collection.
   ## It is recommended to use this function as well for user-side collections.
   ## Users may overload `addQuoted` for custom (string-like) types if
   ## they want to implement a customized element representation.
-  ##
-  ## .. code-block:: Nim
-  ##   var tmp = ""
-  ##   tmp.addQuoted(1)
-  ##   tmp.add(", ")
-  ##   tmp.addQuoted("string")
-  ##   tmp.add(", ")
-  ##   tmp.addQuoted('c')
-  ##   assert(tmp == """1, "string", 'c'""")
+  runnableExamples:
+    import std/sugar
+    assert "".dup(addQuoted("ab'å∫c\"d\\")) == "\"ab'å∫c\\\"d\\\\\"" # `'å∫` is not escaped
+    var tmp = ""
+    tmp.addQuoted(1)
+    tmp.add(", ")
+    tmp.addQuoted("string")
+    tmp.add(", ")
+    tmp.addQuoted('c')
+    assert(tmp == """1, "string", 'c'""")
   when T is string or T is cstring:
     s.add("\"")
     for c in x:
       # Only ASCII chars are escaped to avoid butchering
       # multibyte UTF-8 characters.
-      if c <= 127.char:
+      if c <= 127.char and c != '\'': # escaping `'` would be redundant inside double quotes
         s.addEscapedChar(c)
       else:
         s.add c

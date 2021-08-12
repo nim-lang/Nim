@@ -327,8 +327,8 @@
 
 - `system.addEscapedChar` now renders `\r` as `\r` instead of `\c`, to be compatible
   with most other languages.
- `system.addEscapedChar` now renders `'` as `'` instead of `\'`, to be compatible
-  with most other languages, with `-d:nimPreviewAddEscapedCharQuote`.
+
+- `system.addQuoted` now renders `'` as `'` instead of `\'`.
 
 - Removed support for named procs in `sugar.=>`.
 
