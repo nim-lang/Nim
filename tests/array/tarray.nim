@@ -590,3 +590,14 @@ block t12466:
     a[0'u16 + i] = i
   for i in 0'u16 ..< 8'u16:
     a[0'u16 + i] = i
+
+block t18643:
+  # https://github.com/nim-lang/Nim/issues/18643
+  let a: array[0, int] = []
+  var caught = false
+  let b = 9999999
+  try:
+    echo a[b]
+  except IndexDefect:
+    caught = true
+  doAssert caught, "IndexDefect not caught!"

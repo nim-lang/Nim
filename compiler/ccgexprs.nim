@@ -868,7 +868,7 @@ proc genArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if optBoundsCheck in p.options and ty.kind != tyUncheckedArray:
     if not isConstExpr(y):
       # semantic pass has already checked for const index expressions
-      if firstOrd(p.config, ty) == 0:
+      if firstOrd(p.config, ty) == 0 and lastOrd(p.config, ty) >= 0:
         if (firstOrd(p.config, b.t) < firstOrd(p.config, ty)) or (lastOrd(p.config, b.t) > lastOrd(p.config, ty)):
           linefmt(p, cpsStmts, "if ((NU)($1) > (NU)($2)){ #raiseIndexError2($1, $2); $3}$n",
                   [rdCharLoc(b), intLiteral(lastOrd(p.config, ty)), raiseInstr(p)])
