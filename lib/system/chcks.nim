@@ -29,9 +29,14 @@ proc raiseFieldError(f: string) {.compilerproc, noinline.} =
   ## remove after bootstrap > 1.5.1
   sysFatal(FieldDefect, f)
 
-proc raiseFieldError2(f: string, discVal: string) {.compilerproc, noinline.} =
-  ## raised when field is inaccessible given runtime value of discriminant
-  sysFatal(FieldError, formatFieldDefect(f, discVal))
+when defined(gcdestructors):
+  proc raiseFieldError2(f: string, discVal: int) {.compilerproc, noinline.} =
+    ## raised when field is inaccessible given runtime value of discriminant
+    sysFatal(FieldError, f & $discVal & "'")
+else:
+  proc raiseFieldError2(f: string, discVal: string) {.compilerproc, noinline.} =
+    ## raised when field is inaccessible given runtime value of discriminant
+    sysFatal(FieldError, formatFieldDefect(f, discVal))
 
 proc raiseRangeErrorI(i, a, b: BiggestInt) {.compilerproc, noinline.} =
   when defined(standalone):

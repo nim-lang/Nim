@@ -885,7 +885,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     ## call raiseFieldError2 on failure
     let discIndex = rdSetElemLoc(p.config, v, u.t)
     if optTinyRtti in p.config.globalOptions:
-      const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$3))); $2} $n"
+      const code = "{ #raiseFieldError2($1, (NI)$3); $2} $n"
       linefmt(p, cpsStmts, code, [strLit, raiseInstr(p), discIndex])
     else:
       # complication needed for signed types
