@@ -446,8 +446,8 @@ proc parseIPv6Address(addressStr: string): IpAddress =
 proc parseIpAddress*(addressStr: string): IpAddress =
   ## Parses an IP address
   ##
-  ## Raises ValueError on error. 
-  ## 
+  ## Raises ValueError on error.
+  ##
   ## For IPv4 addresses, only the strict form as
   ## defined in RFC 6943 is considered valid, see
   ## https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1.
@@ -2054,3 +2054,29 @@ proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
     result = socket.getLocalAddr()[0].parseIpAddress()
   finally:
     socket.close()
+
+func toIpAddress*(ip: int64): IpAddress {.since: (1, 5).} =
+  ## Convert an `int64` to an `IpAddress` of family `IPv4`.
+  assert ip >= 0, "IP address must be a positive integer"
+  result = IpAddress(family: IpAddressFamily.IPv4, address_v4: [
+    uint8(ip div 16_777_216'i64 mod 256'i64),
+    uint8(ip div 65_536'i64 mod 256'i64),
+    uint8(ip div 256'i64 mod 256'i64),
+    uint8(ip mod 256'i64),
+  ])
+
+func toInt*(ip: IpAddress): int64 {.since: (1, 5).} =
+  ## Convert an `IpAddress` of family `IPv4` to an `int64`.
+  runnableExamples:
+    template example() =
+      assert 0.toIpAddress.toInt == 0.int64                         # 0.0.0.0
+      assert 4_294_967_295.toIpAddress.toInt == 4_294_967_295.int64 # 255.255.255.255
+      assert 2_130_706_433.toIpAddress.toInt == 2_130_706_433.int64 # 127.0.0.1
+      assert 3_232_235_521.toIpAddress.toInt == 3_232_235_521.int64 # 192.168.0.1
+
+    example()
+    static: example()
+
+  assert ip.family == IpAddressFamily.IPv4, "IP address must be IPv4"
+  result = int64((16_777_216 * ip.address_v4[0]) +
+    (65_536 * ip.address_v4[1]) + (256 * ip.address_v4[2]) + ip.address_v4[3])
