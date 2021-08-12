@@ -1698,9 +1698,3 @@ proc genFieldDefect*(conf: ConfigRef, field: PSym, disc: PSym): string =
   # addDeclaredLoc(result, conf, typ)
   # addDeclaredLoc(result, conf, disc.owner)
   addDeclaredLoc(result, conf, disc)
-
-proc genFieldDefectPattern*(conf: ConfigRef, field: string, disc: PSym): string =
-  result = "field "
-  # `types.typeToString` would be better, eg for generics
-  result = "field '$#' is not accessible using discriminant '$#' = '$#' for type $#" % [field, "$#", disc.name.s, disc.owner.name.s]
-  addDeclaredLoc(result, conf, disc)

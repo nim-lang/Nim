@@ -31,7 +31,7 @@ import tables
 
 import
   strutils, ast, types, msgs, renderer, vmdef,
-  intsets, magicsys, options, lowerings, lineinfos, transf
+  intsets, magicsys, options, lowerings, lineinfos, transf, astmsgs
 
 from modulegraphs import getBody
 
@@ -1753,26 +1753,16 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   let lab1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, rs)
   c.freeTemp(rs)
 
-  when true: # PRTEMP
-    let strType = getSysType(c.graph, n.info, tyString)
-    var fieldNameRegister: TDest = c.getTemp(strType)
-    let fieldName = $accessExpr[1]
-    let msg = genFieldDefectPattern(c.config, fieldName, disc.sym)
-    # let msg = $accessExpr[1]
-    let strLit = newStrNode(msg, accessExpr[1].info)
-    strLit.typ = strType
-    c.genLit(strLit, fieldNameRegister)
-    c.gABC(n, opcInvalidField, fieldNameRegister, discVal)
-    c.freeTemp(fieldNameRegister)
-  else:
-    let msg = genFieldDefect(c.config, if field.kind == nkSym: field.sym else: nil, disc.sym)
-    # instead of `nil`, could track down the `sym` inside `field`
-    # could also report `discVal` (shown as enum)
-    let s = newStrNode(msg, n.info)
-    s.typ = c.graph.getSysType(n.info, tyString)
-    let msgKind = newIntNode(nkIntLit, errUser.int)
-    msgKind.info = n.info
-    c.genCustom(opcStacktrace, [s, msgKind])
+  let strType = getSysType(c.graph, n.info, tyString)
+  var msgReg: TDest = c.getTemp(strType)
+  let fieldName = $accessExpr[1]
+  let msg = genFieldDefectPattern(c.config, fieldName, disc.sym)
+  let strLit = newStrNode(msg, accessExpr[1].info)
+  strLit.typ = strType
+  c.genLit(strLit, msgReg)
+  c.gABC(n, opcInvalidField, msgReg, discVal)
+  c.freeTemp(msgReg)
+
   c.patch(lab1)
 
 proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =

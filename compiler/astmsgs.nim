@@ -26,3 +26,7 @@ proc addDeclaredLoc*(result: var string, conf: ConfigRef; typ: PType) =
 
 proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; typ: PType) =
   if optDeclaredLocs in conf.globalOptions: addDeclaredLoc(result, conf, typ)
+
+proc genFieldDefectPattern*(conf: ConfigRef, field: string, disc: PSym): string =
+  result = "field '$#' is not accessible using discriminant '$# = $#' for type '$#'" % [field, disc.name.s, "$#", disc.owner.name.s]
+  addDeclaredLoc(result, conf, disc)
