@@ -1581,13 +1581,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
   initLocExpr(p, e[1], a)
   initLocExpr(p, e[2], f)
   initLoc(b, locExpr, a.lode, OnHeap)
-
-  # xxx use `genTypeInfo`
-  if optTinyRtti in p.config.globalOptions:
-    ti = genTypeInfoV2(p.module, refType, e.info)
-  else:
-    ti = genTypeInfoV1(p.module, refType, e.info)
-
+  ti = genTypeInfo(p.config, p.module, refType, e.info)
   p.module.s[cfsTypeInit3].addf("$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
   b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [
       getTypeDesc(p.module, refType),
