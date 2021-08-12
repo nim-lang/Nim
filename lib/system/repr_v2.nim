@@ -68,7 +68,7 @@ proc repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## If a `repr` operator for a concrete enumeration is provided, this is
   ## used instead. (In other words: *Overwriting* is possible.)
 
-proc reprDiscriminant*(e: int): string {.compilerProc.} =
+proc reprDiscriminant*(e: int): string {.compilerproc.} =
   # repr and reprjs can use `PNimType` to symbolize `e`; making this work here
   # would require a way to pass the set of enum stringified values to cgen.
   $e
