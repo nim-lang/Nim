@@ -122,7 +122,7 @@ else:
     stripLineEnd(ret.output)
     assertEquals ret.output,
       """
-@["a1b", "a2 b", "", "a4\"b", "a5\'b", "a6\\b", "a7\'b"]
+@["a1b", "a2 b", "", "a4\"b", "a5'b", "a6\\b", "a7'b"]
 arg 0 ai.len:3 :{a1b}
 arg 1 ai.len:4 :{a2 b}
 arg 2 ai.len:0 :{}

@@ -13,7 +13,7 @@ assertAST dedent """
   StmtList
     ProcDef
       AccQuoted
-        Ident "\'"
+        Ident "'"
         Ident "wrap"
       Empty
       Empty
@@ -42,12 +42,12 @@ assertAST dedent """
   StmtList
     DotExpr
       RStrLit "-38383839292839283928392839283928392839283.928493849385935898243e-50000"
-      Ident "\'wrap"""":
+      Ident "'wrap"""":
   -38383839292839283928392839283928392839283.928493849385935898243e-50000'wrap
 
 proc `'wrap`(number: string): string = "[[" & number & "]]"
 proc wrap2(number: string): string = "[[" & number & "]]"
-doAssert lispReprStr(-1'wrap) == """(DotExpr (RStrLit "-1") (Ident "\'wrap"))"""
+doAssert lispReprStr(-1'wrap) == """(DotExpr (RStrLit "-1") (Ident "'wrap"))"""
 
 template main =
   block: # basic suffix usage
@@ -101,7 +101,7 @@ template main =
     doAssert 1234.56'wrap == 1234.56'd9
     doAssert 1234.56'wrap == 1234.56'i9
     doAssert 1234.56'wrap == 1234.56'u9
-    doAssert lispReprStr(1234.56'u9) == """(DotExpr (RStrLit "1234.56") (Ident "\'u9"))""":
+    doAssert lispReprStr(1234.56'u9) == """(DotExpr (RStrLit "1234.56") (Ident "'u9"))""":
       "failed to properly build AST for suffix that starts with u"
     doAssert -128'i8 == (-128).int8
 
@@ -137,14 +137,14 @@ template main =
     macro deb2(a): untyped = newLit a.lispRepr
     doAssert deb1(-12'wrap) == "-12'wrap"
     doAssert deb1(-12'nonexistent) == "-12'nonexistent"
-    doAssert deb2(-12'nonexistent) == """(DotExpr (RStrLit "-12") (Ident "\'nonexistent"))"""
+    doAssert deb2(-12'nonexistent) == """(DotExpr (RStrLit "-12") (Ident "'nonexistent"))"""
     when false: # xxx bug:
       # this holds:
       doAssert deb2(-12.wrap2) == """(DotExpr (IntLit -12) (Sym "wrap2"))"""
-      doAssert deb2(-12'wrap) == """(DotExpr (RStrLit "-12") (Sym "\'wrap"))"""
+      doAssert deb2(-12'wrap) == """(DotExpr (RStrLit "-12") (Sym "'wrap"))"""
       # but instead this should hold:
       doAssert deb2(-12.wrap2) == """(DotExpr (IntLit -12) (Ident "wrap2"))"""
-      doAssert deb2(-12'wrap) == """(DotExpr (RStrLit "-12") (Ident "\'wrap"))"""
+      doAssert deb2(-12'wrap) == """(DotExpr (RStrLit "-12") (Ident "'wrap"))"""
 
   block: # bug 2 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
     template toSuf(`'suf`): untyped =
