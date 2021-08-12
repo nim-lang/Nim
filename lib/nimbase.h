@@ -75,7 +75,8 @@ __AVR__
 #endif
 /* ------------------------------------------------------------------------- */
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__ZEPHYR__)
+/* Zephyr does some magic in it's headers that override the GCC stdlib. This breaks that. */
 #  define _GNU_SOURCE 1
 #endif
 
@@ -528,7 +529,7 @@ struct TFrame_ {
 #  define NIM_UNLIKELY(x) __builtin_expect(x, 0)
 /* We need the following for the posix wrapper. In particular it will give us
    POSIX_SPAWN_USEVFORK: */
-#  ifndef _GNU_SOURCE
+#  ifndef _GNU_SOURCE && !defined(__ZEPHYR__)
 #    define _GNU_SOURCE
 #  endif
 #else
