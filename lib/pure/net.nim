@@ -281,14 +281,20 @@ proc parseIPv4Address(addressStr: string): IpAddress =
     byteCount = 0
     currentByte: uint16 = 0
     separatorValid = false
+    leadingZero = false
 
   result = IpAddress(family: IpAddressFamily.IPv4)
 
   for i in 0 .. high(addressStr):
     if addressStr[i] in strutils.Digits: # Character is a number
+      if leadingZero:
+        raise newException(ValueError,
+          "Invalid IP address. Octal numbers are not allowed")
       currentByte = currentByte * 10 +
         cast[uint16](ord(addressStr[i]) - ord('0'))
-      if currentByte > 255'u16:
+      if currentByte == 0'u16:
+        leadingZero = true
+      elif currentByte > 255'u16:
         raise newException(ValueError,
           "Invalid IP Address. Value is out of range")
       separatorValid = true
@@ -300,6 +306,7 @@ proc parseIPv4Address(addressStr: string): IpAddress =
       currentByte = 0
       byteCount.inc
       separatorValid = false
+      leadingZero = false
     else:
       raise newException(ValueError,
         "Invalid IP Address. Address contains an invalid character")
@@ -388,10 +395,16 @@ proc parseIPv6Address(addressStr: string): IpAddress =
       result.address_v6[groupCount*2+1] = cast[uint8](currentShort and 0xFF)
       groupCount.inc()
   else: # Must parse IPv4 address
+    var leadingZero = false
     for i, c in addressStr[v4StartPos..high(addressStr)]:
       if c in strutils.Digits: # Character is a number
+        if leadingZero:
+          raise newException(ValueError,
+            "Invalid IP address. Octal numbers not allowed")
         currentShort = currentShort * 10 + cast[uint32](ord(c) - ord('0'))
-        if currentShort > 255'u32:
+        if currentShort == 0'u32:
+          leadingZero = true
+        elif currentShort > 255'u32:
           raise newException(ValueError,
             "Invalid IP Address. Value is out of range")
         separatorValid = true
@@ -402,6 +415,7 @@ proc parseIPv6Address(addressStr: string): IpAddress =
         currentShort = 0
         byteCount.inc()
         separatorValid = false
+        leadingZero = false
       else: # Invalid character
         raise newException(ValueError,
           "Invalid IP Address. Address contains an invalid character")
@@ -431,7 +445,12 @@ proc parseIPv6Address(addressStr: string): IpAddress =
 
 proc parseIpAddress*(addressStr: string): IpAddress =
   ## Parses an IP address
-  ## Raises ValueError on error
+  ##
+  ## Raises ValueError on error. 
+  ## 
+  ## For IPv4 addresses, only the strict form as
+  ## defined in RFC 6943 is considered valid, see
+  ## https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1.
   if addressStr.len == 0:
     raise newException(ValueError, "IP Address string is empty")
   if addressStr.contains(':'):

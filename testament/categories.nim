@@ -588,7 +588,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
           except ValueError:
             # e.g. for `tests/navigator/tincludefile.nim` which have multiple
             # specs; this will be handled elsewhere
-            echo "parseSpec failed for: '$1', assuming this will be handled outside of megatest" % file
+            echo "parseSpec raised ValueError for: '$1', assuming this will be handled outside of megatest" % file
             continue
           if isJoinableSpec(spec):
             specs.add spec

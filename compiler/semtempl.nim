@@ -208,9 +208,18 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
     if (n.kind == nkPragmaExpr and n.len >= 2 and n[1].kind == nkPragma):
       let pragmaNode = n[1]
       for i in 0..<pragmaNode.len:
-        openScope(c)
-        pragmaNode[i] = semTemplBody(c, pragmaNode[i])
-        closeScope(c)
+        let ni = pragmaNode[i]
+        # see D20210801T100514
+        var found = false
+        if ni.kind == nkIdent:
+          for a in templatePragmas:
+            if ni.ident == getIdent(c.c.cache, $a):
+              found = true
+              break
+        if not found:
+          openScope(c)
+          pragmaNode[i] = semTemplBody(c, pragmaNode[i])
+          closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
       if n.kind != nkSym:

@@ -5835,6 +5835,27 @@ type `system.ForLoopStmt` can rewrite the entirety of a `for` loop:
 
   import std/macros
 
+  macro example(loop: ForLoopStmt) =
+    result = newTree(nnkForStmt)    # Create a new For loop.
+    result.add loop[^3]             # This is "item".
+    result.add loop[^2][^1]         # This is "[1, 2, 3]".
+    result.add newCall(bindSym"echo", loop[0])
+
+  for item in example([1, 2, 3]): discard
+
+Expands to:
+
+.. code-block:: nim
+  for item in items([1, 2, 3]):
+    echo item
+
+Another example:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  import std/macros
+
   macro enumerate(x: ForLoopStmt): untyped =
     expectKind x, nnkForStmt
     # check if the starting count is specified:
@@ -5864,7 +5885,6 @@ type `system.ForLoopStmt` can rewrite the entirety of a `for` loop:
   # names for `a` and `b` here to avoid redefinition errors
   for a, b in enumerate(10, [1, 2, 3, 5]):
     echo a, " ", b
-
 
 
 Special Types

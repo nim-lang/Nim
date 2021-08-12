@@ -539,7 +539,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
   ## Variants:
   ##
   ## -  `proc findAll(...)` returns a `seq[string]`
-  # see pcredemo for explanation
+  # see pcredemo for explanation => https://www.pcre.org/original/doc/html/pcredemo.html
   let matchesCrLf = pattern.matchesCrLf()
   let unicode = uint32(getinfo[culong](pattern, pcre.INFO_OPTIONS) and
     pcre.UTF8) > 0u32
@@ -560,7 +560,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
       # either the end of the input or the string
       # cannot be split here - we also need to bail
       # if we've never matched and we've already tried to...
-      if offset >= strlen or neverMatched:
+      if flags == 0 or offset >= strlen or neverMatched: # All matches found
         break
 
       if matchesCrLf and offset < (str.len - 1) and
@@ -576,7 +576,6 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
     else:
       neverMatched = false
       offset = match.get.matchBounds.b + 1
-
       yield match.get
 
 proc find*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
