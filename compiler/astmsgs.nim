@@ -36,5 +36,4 @@ proc genFieldDefectPattern*(conf: ConfigRef, field: string, disc: PSym): string 
   result = "field '$#' is not accessible for type '$#' [discriminant declared in $#] using '$# = " % [field, obj, toFileLineCol(conf, disc.info), disc.name.s]
 
 proc genFieldDefect*(conf: ConfigRef, field: PSym, disc: PSym): string =
-  let fieldName = if field == nil: "?" else: field.name.s
-  result = genFieldDefectPattern(conf, fieldName, disc)
+  result = genFieldDefectPattern(conf, field.name.s, disc)
