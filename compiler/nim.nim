@@ -96,13 +96,14 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     case conf.cmd
     of cmdBackends, cmdTcc:
       let nimRunExe = conf.getConfigVar("nimrun.exe")
-      var cmdPrefix = nimRunExe
+      var cmdPrefix: string
+      if nimRunExe.len > 0: cmdPrefix.add nimRunExe.quoteShell
       case conf.backend
       of backendC, backendCpp, backendObjc: discard
       of backendJs:
         # D20210217T215950:here this flag is needed for node < v15.0.0, otherwise
         # tasyncjs_fail` would fail, refs https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-        if cmdPrefix.len == 0: cmdPrefix = findNodeJs()
+        if cmdPrefix.len == 0: cmdPrefix = findNodeJs().quoteShell
         cmdPrefix.add " --unhandled-rejections=strict"
       else: doAssert false, $conf.backend
       if cmdPrefix.len > 0: cmdPrefix.add " "
