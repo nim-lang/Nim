@@ -1753,24 +1753,26 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   let lab1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, rs)
   c.freeTemp(rs)
 
-  when false: # PRTEMP
+  when true: # PRTEMP
     let strType = getSysType(c.graph, n.info, tyString)
     var fieldNameRegister: TDest = c.getTemp(strType)
     let strLit = newStrNode($accessExpr[1], accessExpr[1].info)
+    let msg = genFieldDefectPattern(c.config, "$#", disc.sym)
     strLit.typ = strType
     c.genLit(strLit, fieldNameRegister)
-    c.gABC(n, opcInvalidField, fieldNameRegister)
+    let disc2 = c.genx(disc)
+    c.gABC(n, opcInvalidField, fieldNameRegister, discVal, disc2)
     c.freeTemp(fieldNameRegister)
-
-  let msg = genFieldDefect(c.config, if field.kind == nkSym: field.sym else: nil, disc.sym)
-  # instead of `nil`, could track down the `sym` inside `field`
-  # could also report `discVal` (shown as enum)
-  let s = newStrNode(msg, n.info)
-  s.typ = c.graph.getSysType(n.info, tyString)
-  let msgKind = newIntNode(nkIntLit, errUser.int)
-  msgKind.info = n.info
-  c.genCustom(opcStacktrace, [s, msgKind])
-
+    c.freeTemp(disc2)
+  else:
+    let msg = genFieldDefect(c.config, if field.kind == nkSym: field.sym else: nil, disc.sym)
+    # instead of `nil`, could track down the `sym` inside `field`
+    # could also report `discVal` (shown as enum)
+    let s = newStrNode(msg, n.info)
+    s.typ = c.graph.getSysType(n.info, tyString)
+    let msgKind = newIntNode(nkIntLit, errUser.int)
+    msgKind.info = n.info
+    c.genCustom(opcStacktrace, [s, msgKind])
   c.patch(lab1)
 
 proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =

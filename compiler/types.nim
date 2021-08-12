@@ -1684,6 +1684,7 @@ template quoteExpr*(a: string): untyped =
   ## can be used for quoting expressions in error msgs.
   "'" & a & "'"
 
+# PRTEMP astmsgs?
 proc genFieldDefect*(conf: ConfigRef, field: PSym, disc: PSym): string =
   ## this needs to be in a module accessible by jsgen, ccgexprs, and vm to
   ## provide this error msg FieldDefect; msgs would be better but it does not
@@ -1696,4 +1697,10 @@ proc genFieldDefect*(conf: ConfigRef, field: PSym, disc: PSym): string =
   result.add " for type " & disc.owner.name.s.quoteExpr
   # addDeclaredLoc(result, conf, typ)
   # addDeclaredLoc(result, conf, disc.owner)
+  addDeclaredLoc(result, conf, disc)
+
+proc genFieldDefectPattern*(conf: ConfigRef, field: string, disc: PSym): string =
+  result = "field "
+  # `types.typeToString` would be better, eg for generics
+  result = "field '$#' is not accessible using discriminant '$#' = '$#' for type $#" % [field, "$#", disc.name.s, disc.owner.name.s]
   addDeclaredLoc(result, conf, disc)

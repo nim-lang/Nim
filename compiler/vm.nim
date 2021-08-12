@@ -1480,7 +1480,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         return TFullReg(kind: rkNone)
     of opcInvalidField:
-      stackTrace(c, tos, pc, errFieldXNotFound & regs[ra].node.strVal)
+      let field = regs[ra].node.strVal
+      let disc = regs[instr.regB].regToNode # PRTEMP
+      let discTyp = regs[instr.regC].regToNode # PRTEMP
+      # dbg disc.kind, disc.typ
+      let discStr = $disc
+      let fieldStr = regs[ra].node.strVal
+      dbg discTyp, discTyp.kind
+      # let msg = genFieldDefect(c.config, fieldStr, discStr)
+      let msg = genFieldDefect(c.config, nil, discTyp.sym)
+      # stackTrace(c, tos, pc, "field `$#` not accessible for discriminant `$#`" % [regs[ra].node.strVal, $disc])
+      stackTrace(c, tos, pc, msg)
     of opcSetLenStr:
       decodeB(rkNode)
       #createStrKeepNode regs[ra]
