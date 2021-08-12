@@ -72,11 +72,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
 
   result = $e & " (invalid data!)"
 
-proc reprDiscriminant(e: int, typ: PNimType): string {.compilerRtl.} =
-  case typ.kind
-  of tyEnum: reprEnum(e, typ)
-  of tyBool: (if e == 0: "false" else: "true")
-  else: $e
+include std/private/repr_impl
 
 type
   PByteArray = ptr UncheckedArray[byte] # array[0xffff, byte]
