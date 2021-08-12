@@ -875,12 +875,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     v.r.add(".")
     v.r.add(disc.sym.loc.r)
     genInExprAux(p, it, u, v, test)
-    var msg = toFileLineCol(p.config, e.info)
-      # shows the most relevant lineinfo even with -d:release;
-      # should have no runtime cost (unlike -d:stacktrace)
-      # this could be added to all/most chcks.nim errors, and perhaps
-      # can be disabled with a compile flag.
-    msg.add " " & genFieldDefect(p.config, field.name.s, disc.sym)
+    let msg = toFileLineCol(p.config, e.info) & " " & genFieldDefect(p.config, field.name.s, disc.sym)
     let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
 
     ## discriminant check
