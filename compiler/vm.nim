@@ -17,7 +17,7 @@ import
   parser, vmdeps, idents, trees, renderer, options, transf,
   vmmarshal, gorgeimpl, lineinfos, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128, vmprofiler
-
+# from system/indexerrors import formatFieldDefect
 import ast except getstr
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -1481,16 +1481,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         return TFullReg(kind: rkNone)
     of opcInvalidField:
       let msg = regs[ra].node.strVal
-      let disc = regs[instr.regB].regToNode # PRTEMP
-      # let discTyp = regs[instr.regC].regToNode # PRTEMP
-      # dbg disc.kind, disc.typ
-      let discStr = $disc
-      # let fieldStr = regs[ra].node.strVal
-      dbg discStr, msg
-      # let msg = genFieldDefect(c.config, fieldStr, discStr)
-      # let msg = genFieldDefect(c.config, nil, discTyp.sym)
-      let msg2 = msg % [discStr]
-      # stackTrace(c, tos, pc, "field `$#` not accessible for discriminant `$#`" % [regs[ra].node.strVal, $disc])
+      let disc = regs[instr.regB].regToNode
+      let msg2 = formatFieldDefect(msg, $disc)
       stackTrace(c, tos, pc, msg2)
     of opcSetLenStr:
       decodeB(rkNode)

@@ -33,7 +33,7 @@ import
   nversion, msgs, idents, types,
   ropes, passes, ccgutils, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors, sourcemap
+  transf, injectdestructors, sourcemap, astmsgs
 
 import json, sets, math, tables, intsets, strutils
 

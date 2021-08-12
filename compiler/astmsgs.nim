@@ -27,6 +27,14 @@ proc addDeclaredLoc*(result: var string, conf: ConfigRef; typ: PType) =
 proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; typ: PType) =
   if optDeclaredLocs in conf.globalOptions: addDeclaredLoc(result, conf, typ)
 
+template quoteExpr*(a: string): untyped =
+  ## can be used for quoting expressions in error msgs.
+  "'" & a & "'"
+
 proc genFieldDefectPattern*(conf: ConfigRef, field: string, disc: PSym): string =
-  result = "field '$#' is not accessible using discriminant '$# = $#' for type '$#'" % [field, disc.name.s, "$#", disc.owner.name.s]
-  addDeclaredLoc(result, conf, disc)
+  let obj = disc.owner.name.s # `types.typeToString` might be better, eg for generics
+  result = "field '$#' is not accessible for type '$#' [discriminant declared in $#] using '$# = " % [field, obj, toFileLineCol(conf, disc.info), disc.name.s]
+
+proc genFieldDefect*(conf: ConfigRef, field: PSym, disc: PSym): string =
+  let fieldName = if field == nil: "?" else: field.name.s
+  result = genFieldDefectPattern(conf, fieldName, disc)

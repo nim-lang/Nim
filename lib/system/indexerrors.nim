@@ -1,4 +1,5 @@
 # imported by other modules, unlike helpers.nim which is included
+# xxx this is now included instead of imported, we should import instead
 
 template formatErrorIndexBound*[T](i, a, b: T): string =
   when defined(standalone):
@@ -11,4 +12,4 @@ template formatErrorIndexBound*[T](i, n: T): string =
   formatErrorIndexBound(i, 0, n)
 
 template formatFieldDefect*(f, discVal): string =
-  f & " discriminant was: " & discVal
+  f & discVal & "'"
