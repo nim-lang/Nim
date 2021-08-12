@@ -810,16 +810,6 @@ proc genUnaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
   c.gABC(n, opc, tmp, 0, 0)
   c.freeTemp(tmp)
 
-proc genCustom(c: PCtx; opc: TOpcode, nodes: openArray[PNode]) =
-  ## Usage: genCustom(c, opc, @[n1, n2]); works with 1..3 nodes.
-  const N = 3
-  assert nodes.len <= N and nodes.len >= 1, $nodes.len
-  var temps: array[N, TRegister]
-  let nlen = nodes.len
-  for i in 0..<nlen: temps[i] = c.genx(nodes[i])
-  c.gABC(nodes[0], opc, temps[0], temps[1], temps[2])
-  for i in 0..<nlen: c.freeTemp(temps[i])
-
 proc genVarargsABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   if dest < 0: dest = getTemp(c, n.typ)
   var x = c.getTempRange(n.len-1, slotTempStr)
