@@ -2066,7 +2066,7 @@ func toIpAddress*(ip: int64): IpAddress {.since: (1, 5).} =
   ])
 
 func toInt*(ip: IpAddress): int64 {.since: (1, 5).} =
-  ## Convert an `IpAddress` of family `IPv4` to an `int64`.
+  ## Converts an `IpAddress` of family `IPv4` to an `int64`.
   runnableExamples:
     template example() =
       assert 0.toIpAddress.toInt == 0.int64                         # 0.0.0.0
