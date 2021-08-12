@@ -370,6 +370,11 @@
 - Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
   if the slice is out of bounds, likewise with `strutils.delete`.
 
+- Added `net.toIpAddress` and `net.toInt` to convert from an `IpAddress` to an integer, and back,
+  inspired (but not copied) from Python `ipaddress` module,
+  allows to store IP Addresses as a primitive integer instead of strings or seqs.
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
