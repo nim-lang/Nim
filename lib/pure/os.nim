@@ -2802,8 +2802,6 @@ func parseShellCommand*(a: string): seq[string] =
       doAssertRaises(ValueError): discard parseShellCommand("abc'bar") # unclosed `'`
       doAssertRaises(ValueError): discard parseShellCommand("abc\"bar") # unclosed `"`
       doAssertRaises(ValueError): discard parseShellCommand("abc\\") # unfinished escape
-  # note: `parseCmdLine(quoteShellCommand(a)) == a` requires https://github.com/nim-lang/Nim/pull/18671
-  # on windows.
   when defined(windows):
     result = parseShellCommandWindows(a)
   else:

@@ -711,9 +711,8 @@ block: # isAdmin
 template main =
   # xxx move all tests under here so they get tested in VM, for ones which can
   block: # parseShellCommand, bug #14343
-    var a = @["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\n\a\b\t\0abc", " ", " '   ' '", """  ' " \ '' "" """]
-    when defined(posix):
-      a = a & @["\\", "  a   \\"]
+    var a = @["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "",
+      "\n\a\b\t\0abc", " ", " '   ' '", """  ' " \ '' "" """, "\\", "  a   \\"]
     let a2 = a.quoteShellCommand
     let b2 = a2.parseShellCommand
     doAssert b2 == a, $(a, a2, b2)
