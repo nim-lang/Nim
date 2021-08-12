@@ -103,7 +103,7 @@ type
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcIsNil, opcOf, opcIs,
     opcSubStr, opcParseFloat, opcConv, opcCast,
-    opcQuit, opcInvalidField, opcStacktrace,
+    opcQuit, opcInvalidField,
     opcNarrowS, opcNarrowU,
     opcSignExtend,
 
