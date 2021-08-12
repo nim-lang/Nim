@@ -1728,8 +1728,7 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   internalAssert c.config, disc.sym.kind == skField
 
   # Load the object in `dest`
-  let field = accessExpr[0]
-  c.gen(field, dest, flags)
+  c.gen(accessExpr[0], dest, flags)
   # Load the discriminant
   var discVal = c.getTemp(disc.typ)
   c.gABC(n, opcLdObj, discVal, dest, genField(c, disc))
