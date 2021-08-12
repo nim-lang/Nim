@@ -482,6 +482,10 @@
   nim r main # uses cached binary
   nim r main arg1 arg2 # ditto (runtime arguments are irrelevant)
 
+- `nim r` now supports cross compilation from unix to windows when specifying `-d:mingw` by using wine,
+  e.g.: `nim r --eval:'import os; echo "a" / "b"'` prints `a\b`
+  Use `--nimrun.exe:/pathto/wine64` to override.
+
 - The style checking of the compiler now supports a `--styleCheck:usages` switch. This switch
   enforces that every symbol is written as it was declared, not enforcing
   the official Nim style guide. To be enabled, this has to be combined either

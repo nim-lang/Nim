@@ -95,18 +95,20 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     let output = conf.absOutFile
     case conf.cmd
     of cmdBackends, cmdTcc:
-      var cmdPrefix = ""
+      let nimRunExe = conf.getConfigVar("nimrun.exe")
+      var cmdPrefix = nimRunExe
       case conf.backend
       of backendC, backendCpp, backendObjc: discard
       of backendJs:
         # D20210217T215950:here this flag is needed for node < v15.0.0, otherwise
         # tasyncjs_fail` would fail, refs https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-        cmdPrefix = findNodeJs() & " --unhandled-rejections=strict "
+        if cmdPrefix.len == 0: cmdPrefix = findNodeJs()
+        cmdPrefix.add " --unhandled-rejections=strict"
       else: doAssert false, $conf.backend
-      # No space before command otherwise on windows you'd get a cryptic:
-      # `The parameter is incorrect`
+      if cmdPrefix.len > 0: cmdPrefix.add " "
+        # without the `cmdPrefix.len > 0` check, on windows you'd get a cryptic:
+        # `The parameter is incorrect`
       execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
-      # execExternalProgram(conf, cmdPrefix & ' ' & output.quoteShell & ' ' & conf.arguments)
     of cmdDocLike, cmdRst2html, cmdRst2tex: # bugfix(cmdRst2tex was missing)
       if conf.arguments.len > 0:
         # reserved for future use

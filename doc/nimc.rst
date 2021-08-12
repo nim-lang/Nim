@@ -317,6 +317,8 @@ To cross-compile for Windows from Linux or macOS using the MinGW-w64 toolchain:
 .. code:: cmd
 
   nim c -d:mingw myproject.nim
+  # `nim r` also works, setting `nimrun.exe` to `wine` or `wine64`
+  nim r -d:mingw --eval:'import os; echo "a" / "b"'
 
 Use `--cpu:i386`:option: or `--cpu:amd64`:option: to switch the CPU architecture.
 
