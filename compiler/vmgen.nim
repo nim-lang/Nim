@@ -1756,14 +1756,14 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   when true: # PRTEMP
     let strType = getSysType(c.graph, n.info, tyString)
     var fieldNameRegister: TDest = c.getTemp(strType)
-    let strLit = newStrNode($accessExpr[1], accessExpr[1].info)
-    let msg = genFieldDefectPattern(c.config, "$#", disc.sym)
+    let fieldName = $accessExpr[1]
+    let msg = genFieldDefectPattern(c.config, fieldName, disc.sym)
+    # let msg = $accessExpr[1]
+    let strLit = newStrNode(msg, accessExpr[1].info)
     strLit.typ = strType
     c.genLit(strLit, fieldNameRegister)
-    let disc2 = c.genx(disc)
-    c.gABC(n, opcInvalidField, fieldNameRegister, discVal, disc2)
+    c.gABC(n, opcInvalidField, fieldNameRegister, discVal)
     c.freeTemp(fieldNameRegister)
-    c.freeTemp(disc2)
   else:
     let msg = genFieldDefect(c.config, if field.kind == nkSym: field.sym else: nil, disc.sym)
     # instead of `nil`, could track down the `sym` inside `field`
