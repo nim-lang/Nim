@@ -594,3 +594,14 @@ block t17705:
   a = int(a)
   var b = array[0, int].high
   b = int(b)
+
+block t18643:
+  # https://github.com/nim-lang/Nim/issues/18643
+  let a: array[0, int] = []
+  var caught = false
+  let b = 9999999
+  try:
+    echo a[b]
+  except IndexDefect:
+    caught = true
+  doAssert caught, "IndexDefect not caught!"
