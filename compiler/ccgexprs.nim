@@ -881,13 +881,13 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
       # this could be added to all/most chcks.nim errors, and perhaps
       # can be disabled with a compile flag.
     msg.add " " & genFieldDefect(p.config, field.name.s, disc.sym)
+    let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
 
-    template newLitRope(s: string): untyped = genStringLiteral(p.module, newStrNode(nkStrLit, s))
-    let strLit = newLitRope(msg)
     ## discriminant check
     template fun(code) = linefmt(p, cpsStmts, code, [rdLoc(test)])
     if op.magic == mNot: fun("if ($1) ") else: fun("if (!($1)) ")
 
+    ## call raiseFieldError2 on failure
     let discIndex = rdSetElemLoc(p.config, v, u.t)
     if optTinyRtti in p.config.globalOptions:
       const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$3))); $2} $n"

@@ -31,6 +31,6 @@ template quoteExpr*(a: string): untyped =
   ## can be used for quoting expressions in error msgs.
   "'" & a & "'"
 
-proc genFieldDefectPattern*(conf: ConfigRef, field: string, disc: PSym): string =
+proc genFieldDefect*(conf: ConfigRef, field: string, disc: PSym): string =
   let obj = disc.owner.name.s # `types.typeToString` might be better, eg for generics
   result = "field '$#' is not accessible for type '$#' [discriminant declared in $#] using '$# = " % [field, obj, toFileLineCol(conf, disc.info), disc.name.s]
