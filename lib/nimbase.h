@@ -529,7 +529,7 @@ struct TFrame_ {
 #  define NIM_UNLIKELY(x) __builtin_expect(x, 0)
 /* We need the following for the posix wrapper. In particular it will give us
    POSIX_SPAWN_USEVFORK: */
-#  ifndef _GNU_SOURCE && !defined(__ZEPHYR__)
+#  ifndef _GNU_SOURCE
 #    define _GNU_SOURCE
 #  endif
 #else
