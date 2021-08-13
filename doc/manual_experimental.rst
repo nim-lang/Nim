@@ -669,7 +669,6 @@ in any required way. For example, here is how one might define the classic
 type is an instance of it:
 
 .. code-block:: nim
-
     :test: "nim c $1"
 
   import std/[sugar, typetraits]
@@ -919,7 +918,6 @@ simplistic form of pattern matching for tuples, leveraging the existing
 equality operator for tuples (as provided in `system.==`):
 
 .. code-block:: nim
-
     :test: "nim c $1"
 
   {.experimental: "caseStmtMacros".}
@@ -1436,7 +1434,6 @@ Parallel statement
 Example:
 
 .. code-block:: nim
-
     :test: "nim c --threads:on $1"
 
   # Compute PI in an inefficient way
