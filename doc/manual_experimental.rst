@@ -42,7 +42,6 @@ type information for `T` is available.
 Example:
 
 .. code-block:: nim
-
   # module A (in an arbitrary package)
   type
     Pack.SomeObject = object ## declare as incomplete object of package 'Pack'
@@ -54,7 +53,6 @@ Example:
 
 
 .. code-block:: nim
-
   # module B (in package "Pack")
   type
     SomeObject* {.package.} = object ## Use 'package' to complete the object
@@ -102,106 +100,6 @@ The `void` type is only valid for parameters and return types; other symbols
 cannot have the type `void`.
 
 
-
-Covariance
-==========
-
-Covariance in Nim can be introduced only through pointer-like types such
-as `ptr` and `ref`. Sequence, Array and OpenArray types, instantiated
-with pointer-like types will be considered covariant if and only if they
-are also immutable. The introduction of a `var` modifier or additional
-`ptr` or `ref` indirections would result in invariant treatment of
-these types.
-
-`proc` types are currently always invariant, but future versions of Nim
-may relax this rule.
-
-User-defined generic types may also be covariant with respect to some of
-their parameters. By default, all generic params are considered invariant,
-but you may choose the apply the prefix modifier `in` to a parameter to
-make it contravariant or `out` to make it covariant:
-
-.. code-block:: nim
-  type
-    AnnotatedPtr[out T] =
-      metadata: MyTypeInfo
-      p: ref T
-
-    RingBuffer[out T] =
-      startPos: int
-      data: seq[T]
-
-    Action {.importcpp: "std::function<void ('0)>".} [in T] = object
-
-When the designated generic parameter is used to instantiate a pointer-like
-type as in the case of `AnnotatedPtr` above, the resulting generic type will
-also have pointer-like covariance:
-
-.. code-block:: nim
-  type
-    GuiWidget = object of RootObj
-    Button = object of GuiWidget
-    ComboBox = object of GuiWidget
-
-  var
-    widgetPtr: AnnotatedPtr[GuiWidget]
-    buttonPtr: AnnotatedPtr[Button]
-
-  ...
-
-  proc drawWidget[T](x: AnnotatedPtr[GuiWidget]) = ...
-
-  # you can call procs expecting base types by supplying a derived type
-  drawWidget(buttonPtr)
-
-  # and you can convert more-specific pointer types to more general ones
-  widgetPtr = buttonPtr
-
-Just like with regular pointers, covariance will be enabled only for immutable
-values:
-
-.. code-block:: nim
-  proc makeComboBox[T](x: var AnnotatedPtr[GuiWidget]) =
-    x.p = new(ComboBox)
-
-  makeComboBox(buttonPtr) # Error, AnnotatedPtr[Button] cannot be modified
-                          # to point to a ComboBox
-
-On the other hand, in the `RingBuffer` example above, the designated generic
-param is used to instantiate the non-pointer `seq` type, which means that
-the resulting generic type will have covariance that mimics an array or
-sequence (i.e. it will be covariant only when instantiated with `ptr` and
-`ref` types):
-
-.. code-block:: nim
-
-  type
-    Base = object of RootObj
-    Derived = object of Base
-
-  proc consumeBaseValues(b: RingBuffer[Base]) = ...
-
-  var derivedValues: RingBuffer[Derived]
-
-  consumeBaseValues(derivedValues) # Error, Base and Derived values may differ
-                                   # in size
-
-  proc consumeBasePointers(b: RingBuffer[ptr Base]) = ...
-
-  var derivedPointers: RingBuffer[ptr Derived]
-
-  consumeBaseValues(derivedPointers) # This is legal
-
-Please note that Nim will treat the user-defined pointer-like types as
-proper alternatives to the built-in pointer types. That is, types such
-as `seq[AnnotatedPtr[T]]` or `RingBuffer[AnnotatedPtr[T]]` will also be
-considered covariant and you can create new pointer-like types by instantiating
-other user-defined pointer-like types.
-
-The contravariant parameters introduced with the `in` modifier are currently
-useful only when interfacing with imported types having such semantics.
-
-
 Automatic dereferencing
 =======================
 
@@ -218,6 +116,7 @@ This feature has to be enabled via `{.experimental: "implicitDeref".}`:
   new(n)
   echo n.depth
   # no need to write n[].depth either
+
 
 Code reordering
 ===============
@@ -264,7 +163,6 @@ preface definitions inside a module.
 Example:
 
 .. code-block:: nim
-
   {.experimental: "codeReordering".}
 
   proc foo(x: int) =
@@ -378,7 +276,6 @@ pass multiple blocks to a macro:
     # to perform the task
   do:
     # code to undo it
-
 
 
 Special Operators
@@ -501,6 +398,7 @@ non-nilable pointers. The details of this analysis are still to be specified
 here.
 
 .. include:: manual_experimental_strictnotnil.rst
+
 
 Concepts
 ========
@@ -1822,7 +1720,6 @@ via a parameter that is not declared as a `var` parameter.
 For example:
 
 .. code-block:: nim
-
   {.experimental: "strictFuncs".}
 
   type
@@ -1862,7 +1759,6 @@ A view type is a type that is or contains one of the following types:
 For example:
 
 .. code-block:: nim
-
   type
     View1 = openArray[byte]
     View2 = lent string
@@ -1873,7 +1769,6 @@ Exceptions to this rule are types constructed via `ptr` or `proc`.
 For example, the following types are **not** view types:
 
 .. code-block:: nim
-
   type
     NotView1 = proc (x: openArray[int])
     NotView2 = ptr openArray[char]
@@ -1895,7 +1790,6 @@ it was borrowed from.
 For example:
 
 .. code-block:: nim
-
   {.experimental: "views".}
 
   proc take(a: openArray[int]) =
@@ -1976,7 +1870,6 @@ may be performed except via the view that borrowed from the
 location. The borrowed location is said to be *sealed* during the borrow.
 
 .. code-block:: nim
-
   {.experimental: "views".}
 
   type
@@ -1992,7 +1885,6 @@ location. The borrowed location is said to be *sealed* during the borrow.
 The scope of the view does not matter:
 
 .. code-block:: nim
-
   proc valid(s: var seq[Obj]) =
     let v: lent Obj = s[0]  # begin of borrow
     echo v.field            # end of borrow
@@ -2007,7 +1899,6 @@ with `--experimental:strictFuncs`:option:.
 The analysis is currently control flow insensitive:
 
 .. code-block:: nim
-
   proc invalid(s: var seq[Obj]) =
     let v: lent Obj = s[0]
     if false:
