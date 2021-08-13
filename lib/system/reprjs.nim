@@ -30,6 +30,8 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   else:
     result = $e & " (invalid data!)"
 
+include system/repr_impl
+
 proc reprChar(x: char): string {.compilerRtl.} =
   result = "\'"
   case x

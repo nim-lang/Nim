@@ -1514,3 +1514,9 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
 
 proc genTypeSection(m: BModule, n: PNode) =
   discard
+
+proc genTypeInfo*(config: ConfigRef, m: BModule, t: PType; info: TLineInfo): Rope =
+  if optTinyRtti in config.globalOptions:
+    result = genTypeInfoV2(m, t, info)
+  else:
+    result = genTypeInfoV1(m, t, info)

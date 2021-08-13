@@ -18,6 +18,8 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
 
 # -------------------------- constant expressions ------------------------
 
+proc rdSetElemLoc(conf: ConfigRef; a: TLoc, typ: PType): Rope
+
 proc int64Literal(i: BiggestInt): Rope =
   if i > low(int64):
     result = "IL64($1)" % [rope(i)]
@@ -873,16 +875,34 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     v.r.add(".")
     v.r.add(disc.sym.loc.r)
     genInExprAux(p, it, u, v, test)
-    let msg = genFieldDefect(field, disc.sym)
+    var msg = ""
+    if optDeclaredLocs in p.config.globalOptions:
+      # xxx this should be controlled by a separate flag, and
+      # used for other similar defects so that location information is shown
+      # even without the expensive `--stacktrace`; binary size could be optimized
+      # by encoding the file names separately from `file(line:col)`, essentially
+      # passing around `TLineInfo` + the set of files in the project.
+      msg.add toFileLineCol(p.config, e.info) & " "
+    msg.add genFieldDefect(p.config, field.name.s, disc.sym)
     let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
-    if op.magic == mNot:
-      linefmt(p, cpsStmts,
-              "if ($1){ #raiseFieldError($2); $3}$n",
-              [rdLoc(test), strLit, raiseInstr(p)])
+
+    ## discriminant check
+    template fun(code) = linefmt(p, cpsStmts, code, [rdLoc(test)])
+    if op.magic == mNot: fun("if ($1) ") else: fun("if (!($1)) ")
+
+    ## call raiseFieldError2 on failure
+    let discIndex = rdSetElemLoc(p.config, v, u.t)
+    if optTinyRtti in p.config.globalOptions:
+      # not sure how to use `genEnumToStr` here
+      const code = "{ #raiseFieldError2($1, (NI)$3); $2} $n"
+      linefmt(p, cpsStmts, code, [strLit, raiseInstr(p), discIndex])
     else:
-      linefmt(p, cpsStmts,
-              "if (!($1)){ #raiseFieldError($2); $3}$n",
-              [rdLoc(test), strLit, raiseInstr(p)])
+      # complication needed for signed types
+      let first = p.config.firstOrd(disc.sym.typ)
+      let firstLit = int64Literal(cast[int](first))
+      let discName = genTypeInfo(p.config, p.module, disc.sym.typ, e.info)
+      const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$3) + (NI)$4, $5)); $2} $n"
+      linefmt(p, cpsStmts, code, [strLit, raiseInstr(p), discIndex, firstLit, discName])
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   assert e[0].kind == nkDotExpr
@@ -1565,10 +1585,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
   initLocExpr(p, e[1], a)
   initLocExpr(p, e[2], f)
   initLoc(b, locExpr, a.lode, OnHeap)
-  if optTinyRtti in p.config.globalOptions:
-    ti = genTypeInfoV2(p.module, refType, e.info)
-  else:
-    ti = genTypeInfoV1(p.module, refType, e.info)
+  ti = genTypeInfo(p.config, p.module, refType, e.info)
   p.module.s[cfsTypeInit3].addf("$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
   b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [
       getTypeDesc(p.module, refType),

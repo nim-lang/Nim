@@ -699,7 +699,7 @@ proc typeBorrow(c: PContext; sym: PSym, n: PNode) =
   incl(sym.typ.flags, tfBorrowDot)
 
 proc markCompilerProc(c: PContext; s: PSym) =
-  # minor hack ahead: FlowVar is the only generic .compilerProc type which
+  # minor hack ahead: FlowVar is the only generic .compilerproc type which
   # should not have an external name set:
   if s.kind != skType or s.name.s != "FlowVar":
     makeExternExport(c, s, "$1", s.info)
