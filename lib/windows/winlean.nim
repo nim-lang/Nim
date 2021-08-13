@@ -15,7 +15,8 @@ import dynlib
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
-{.passc: "-DWIN32_LEAN_AND_MEAN".}
+when defined(Win32LeanAndMean):
+  {.passc: "-DWIN32_LEAN_AND_MEAN".}
 
 const
   useWinUnicode* = not defined(useWinAnsi)
