@@ -33,4 +33,7 @@ template quoteExpr*(a: string): untyped =
 
 proc genFieldDefect*(conf: ConfigRef, field: string, disc: PSym): string =
   let obj = disc.owner.name.s # `types.typeToString` might be better, eg for generics
-  result = "field '$#' is not accessible for type '$#' [discriminant declared in $#] using '$# = " % [field, obj, toFileLineCol(conf, disc.info), disc.name.s]
+  result = "field '$#' is not accessible for type '$#'" % [field, obj]
+  if optDeclaredLocs in conf.globalOptions:
+    result.add " [discriminant declared in $#]" % toFileLineCol(conf, disc.info)
+  result.add " using '$# = " % disc.name.s

@@ -885,6 +885,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     ## call raiseFieldError2 on failure
     let discIndex = rdSetElemLoc(p.config, v, u.t)
     if optTinyRtti in p.config.globalOptions:
+      # not sure how to use `genEnumToStr` here
       const code = "{ #raiseFieldError2($1, (NI)$3); $2} $n"
       linefmt(p, cpsStmts, code, [strLit, raiseInstr(p), discIndex])
     else:
