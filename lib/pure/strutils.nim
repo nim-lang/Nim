@@ -2726,7 +2726,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
       add s, formatstr[i]
       inc(i)
 
-func `%` *(formatstr: string, a: openArray[string]): string {.rtl,
+func `%`*(formatstr: string, a: openArray[string]): string {.rtl,
     extern: "nsuFormatOpenArray".} =
   ## Interpolates a format string with the values from `a`.
   ##
@@ -2774,7 +2774,7 @@ func `%` *(formatstr: string, a: openArray[string]): string {.rtl,
   result = newStringOfCap(formatstr.len + a.len shl 4)
   addf(result, formatstr, a)
 
-func `%` *(formatstr, a: string): string {.rtl,
+func `%`*(formatstr, a: string): string {.rtl,
     extern: "nsuFormatSingleElem".} =
   ## This is the same as `formatstr % [a]` (see
   ## `% func<#%25,string,openArray[string]>`_).
