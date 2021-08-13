@@ -15,7 +15,7 @@ import dynlib
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
-when defined(Win32LeanAndMean):
+when not defined(nimFullWindowsHeader):
   {.passc: "-DWIN32_LEAN_AND_MEAN".}
 
 const
