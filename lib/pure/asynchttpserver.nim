@@ -362,7 +362,9 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
     let retry = await processRequest(
       server, request, client, address, lineFut, callback
     )
-    if not retry: break
+    if not retry:
+      client.close()
+      break
 
 const
   nimMaxDescriptorsFallback* {.intdefine.} = 16_000 ## fallback value for \

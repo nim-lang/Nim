@@ -15,7 +15,7 @@ import
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
-  injectdestructors
+  injectdestructors, astmsgs
 
 when not defined(leanCompiler):
   import spawn, semparallel
