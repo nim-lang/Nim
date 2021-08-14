@@ -1367,23 +1367,24 @@ type
 proc compatibleEffects*(formal, actual: PType): EffectsCompat =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc
-  if formal.effects == nil or actual.effects == nil:
-    return efTagsUnknown
+  if formal.effects != nil:
+    if actual.effects == nil:
+      return efTagsUnknown
 
-  var spec = formal.effects
-  var real = actual.effects
+    var spec = formal.effects
+    var real = actual.effects
 
-  if explicitRaises in spec.flags:
-    # spec requires some exception or tag, but we don't know anything:
-    if {knownRaises, explicitRaises} * real.flags == {}: return efRaisesUnknown
-    if not compatibleEffectsAux(spec.a[raisesEffects], real.a[raisesEffects]):
-      return efRaisesDiffer
+    if explicitRaises in spec.flags:
+      # spec requires some exception or tag, but we don't know anything:
+      if {knownRaises, explicitRaises} * real.flags == {}: return efRaisesUnknown
+      if not compatibleEffectsAux(spec.a[raisesEffects], real.a[raisesEffects]):
+        return efRaisesDiffer
 
-  if explicitTags in spec.flags:
-    # spec requires some exception or tag, but we don't know anything:
-    if {knownTags, explicitTags} * real.flags == {}: return efTagsUnknown
-    if not compatibleEffectsAux(spec.a[tagsEffects], real.a[tagsEffects]):
-      return efTagsDiffer
+    if explicitTags in spec.flags:
+      # spec requires some exception or tag, but we don't know anything:
+      if {knownTags, explicitTags} * real.flags == {}: return efTagsUnknown
+      if not compatibleEffectsAux(spec.a[tagsEffects], real.a[tagsEffects]):
+        return efTagsDiffer
 
   if formal.lockLevel.ord < 0 or
       actual.lockLevel.ord <= formal.lockLevel.ord:
