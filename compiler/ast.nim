@@ -909,7 +909,7 @@ type
     raisesEffects, tagsEffects
 
   EffectFlag* = enum
-    unkownRaises, unknownTags, explicitRaises, explicitTags
+    knownRaises, knownTags, explicitRaises, explicitTags
 
   Effects* = ref object
     a*: array[EffectKind, seq[PNode]]
@@ -2012,6 +2012,7 @@ proc newProcType*(info: TLineInfo; id: ItemId; owner: PSym): PType =
   result = newType(tyProc, id, owner)
   result.n = newNodeI(nkFormalParams, info)
   rawAddSon(result, nil) # return type
+  result.n.add newNodeI(nkEmpty, info)
 
 proc addParam*(procType: PType; param: PSym) =
   param.position = procType.len-1

@@ -13,7 +13,8 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: IdGener
   result.typ = newType(tyProc, nextTypeId idgen, t.owner)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
-  result.typ.n.add newNodeI(nkEffectList, info)
+  result.typ.n.add newNodeI(nkEmpty, info)
+  result.typ.effects = Effects(flags: {knownRaises, knownTags})
 
   result.typ.addParam dest
 
@@ -74,7 +75,8 @@ proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGra
   result.typ = newType(tyProc, nextTypeId idgen, t.owner)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
-  result.typ.n.add newNodeI(nkEffectList, info)
+  result.typ.n.add newNodeI(nkEmpty, info)
+  result.typ.effects = Effects(flags: {knownRaises, knownTags})
 
   result.typ.addParam dest
 

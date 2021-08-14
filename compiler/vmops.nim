@@ -301,12 +301,11 @@ proc registerAdditionalOps*(c: PCtx) =
     registerCallback c, "stdlib.times.getTime", proc (a: VmArgs) {.nimcall.} =
       setResult(a, times.getTime().toLit)
 
-  proc getEffectList(c: PCtx; a: VmArgs; effectIndex: int) =
+  proc getEffectList(c: PCtx; a: VmArgs; effectIndex: EffectKind) =
     let fn = getNode(a, 0)
     var list = newNodeI(nkBracket, fn.info)
-    if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].len >= effectListLen and
-        fn.typ.n[0][effectIndex] != nil:
-      for e in fn.typ.n[0][effectIndex]:
+    if fn.typ != nil and fn.typ.effects != nil:
+      for e in fn.typ.effects.a[effectIndex]:
         list.add opMapTypeInstToAst(c.cache, e.typ.skipTypes({tyRef}), e.info, c.idgen)
     else:
       list.add newIdentNode(getIdent(c.cache, "UncomputedEffects"), fn.info)
@@ -314,9 +313,9 @@ proc registerAdditionalOps*(c: PCtx) =
     setResult(a, list)
 
   registerCallback c, "stdlib.effecttraits.getRaisesListImpl", proc (a: VmArgs) =
-    getEffectList(c, a, exceptionEffects)
+    getEffectList(c, a, raisesEffects)
   registerCallback c, "stdlib.effecttraits.getTagsListImpl", proc (a: VmArgs) =
-    getEffectList(c, a, tagEffects)
+    getEffectList(c, a, tagsEffects)
 
   registerCallback c, "stdlib.effecttraits.isGcSafeImpl", proc (a: VmArgs) =
     let fn = getNode(a, 0)

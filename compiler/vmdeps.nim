@@ -237,7 +237,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       for i in 1..<t.len:
         fp.add newIdentDefs(t.n[i], t[i])
       result.add fp
-      result.add if t.n[0].len > 0: t.n[0][pragmasEffects].copyTree
+      result.add if t.effects != nil: t.effects.pragmas.copyTree
                  else: newNodeI(nkEmpty, info)
     else:
       result = mapTypeToBracket("proc", mNone, t, info)

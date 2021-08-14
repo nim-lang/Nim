@@ -596,7 +596,7 @@ proc isOwnedProcVar(n: PNode; owner: PSym): bool =
   result = n.kind == nkSym and n.sym.kind == skParam and owner == n.sym.owner
 
 proc isNoEffectList(e: Effects): bool {.inline.} =
-  e == nil or e.flags * {unkownRaises, unknownTags} != {}
+  e == nil or e.flags == {}
 
 proc isTrival(caller: PNode): bool {.inline.} =
   result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved, mSwap}
@@ -1294,37 +1294,34 @@ proc checkMethodEffects*(g: ModuleGraph; disp, branch: PSym) =
           [$branch.typ.lockLevel, $disp.typ.lockLevel])
 
 proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode) =
-  var effects = t.effects
-  if t.kind != tyProc or effects == nil: return
-  if n.kind != nkEmpty:
-    internalAssert g.config, effects.len == 0
-    newSeq(effects.sons, effectListLen)
+  if t.kind != tyProc: return
+  if n.kind != nkEmpty and t.effects == nil:
+    t.effects = Effects()
     let raisesSpec = effectSpec(n, wRaises)
     if not isNil(raisesSpec):
-      effects[exceptionEffects] = raisesSpec
+      t.effects.a[raisesEffects] = raisesSpec.sons
+      t.effects.flags.incl explicitRaises
     let tagsSpec = effectSpec(n, wTags)
     if not isNil(tagsSpec):
-      effects[tagEffects] = tagsSpec
+      t.effects.a[tagsEffects] = tagsSpec.sons
+      t.effects.flags.incl explicitTags
 
     let requiresSpec = propSpec(n, wRequires)
     if not isNil(requiresSpec):
-      effects[requiresEffects] = requiresSpec
+      t.effects.requires = requiresSpec
     let ensuresSpec = propSpec(n, wEnsures)
     if not isNil(ensuresSpec):
-      effects[ensuresEffects] = ensuresSpec
+      t.effects.ensures = ensuresSpec
 
-    effects[pragmasEffects] = n
+    t.effects.pragmas = n
 
-proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PContext) =
-  newSeq(effects.sons, effectListLen)
-  effects[exceptionEffects] = newNodeI(nkArgList, s.info)
-  effects[tagEffects] = newNodeI(nkArgList, s.info)
-  effects[requiresEffects] = g.emptyNode
-  effects[ensuresEffects] = g.emptyNode
-  effects[pragmasEffects] = g.emptyNode
+proc initEffects(g: ModuleGraph; effects: Effects; s: PSym; t: var TEffects; c: PContext) =
+  effects.requires = g.emptyNode
+  effects.ensures = g.emptyNode
+  effects.pragmas = g.emptyNode
 
-  t.exc = effects[exceptionEffects]
-  t.tags = effects[tagEffects]
+  t.exc = @[]
+  t.tags = @[]
   t.owner = s
   t.ownerModule = s.getModule
   t.init = @[]
@@ -1350,6 +1347,9 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   var effects = s.typ.effects
   # effects already computed?
   if not s.hasRealBody or effects != nil: return
+
+  s.typ.effects = Effects()
+  effects = s.typ.effects
 
   var t: TEffects
   initEffects(g, effects, s, t, c)
@@ -1380,22 +1380,22 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     checkRaisesSpec(g, raisesSpec, t.exc, "can raise an unlisted exception: ",
                     hints=on, subtypeRelation, hintsArg=s.ast[0])
     # after the check, use the formal spec:
-    effects[exceptionEffects] = raisesSpec
+    effects.a[raisesEffects] = raisesSpec.sons
 
   let tagsSpec = effectSpec(p, wTags)
   if not isNil(tagsSpec):
     checkRaisesSpec(g, tagsSpec, t.tags, "can have an unlisted effect: ",
                     hints=off, subtypeRelation)
     # after the check, use the formal spec:
-    effects[tagEffects] = tagsSpec
+    effects.a[tagsEffects] = tagsSpec.sons
 
   let requiresSpec = propSpec(p, wRequires)
   if not isNil(requiresSpec):
-    effects[requiresEffects] = requiresSpec
+    effects.requires = requiresSpec
   let ensuresSpec = propSpec(p, wEnsures)
   if not isNil(ensuresSpec):
     patchResult(t, ensuresSpec)
-    effects[ensuresEffects] = ensuresSpec
+    effects.ensures = ensuresSpec
 
   var mutationInfo = MutationInfo()
   var hasMutationSideEffect = false
@@ -1455,7 +1455,7 @@ proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
                 nkTypeSection, nkConverterDef, nkMethodDef, nkIteratorDef}:
     return
   let g = c.graph
-  var effects = newNodeI(nkEffectList, n.info)
+  var effects = Effects()
   var t: TEffects
   initEffects(g, effects, module, t, c)
   t.isTopLevel = isTopLevel

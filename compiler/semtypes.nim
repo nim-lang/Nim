@@ -1203,10 +1203,8 @@ proc newProcType(c: PContext; info: TLineInfo; prev: PType = nil): PType =
   result.callConv = lastOptionEntry(c).defaultCC
   result.n = newNodeI(nkFormalParams, info)
   rawAddSon(result, nil) # return type
-  # result.n[0] used to be `nkType`, but now it's `nkEffectList` because
-  # the effects are now stored in there too ... this is a bit hacky, but as
-  # usual we desperately try to save memory:
-  result.n.add newNodeI(nkEffectList, info)
+  # result.n[0] needs to be some data for backwards compatibility
+  result.n.add newNodeI(nkEmpty, info)
 
 proc isMagic(sym: PSym): bool =
   let nPragmas = sym.ast[pragmasPos]
