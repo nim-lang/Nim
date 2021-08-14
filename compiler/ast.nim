@@ -336,14 +336,6 @@ const
   # getting ready for the future expr/stmt merge
   nkWhen* = nkWhenStmt
   nkWhenExpr* = nkWhenStmt
-  nkEffectList* = nkArgList
-  # hacks ahead: an nkEffectList is a node with 4 children:
-  exceptionEffects* = 0 # exceptions at position 0
-  requiresEffects* = 1      # 'requires' annotation
-  ensuresEffects* = 2     # 'ensures' annotation
-  tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
-  pragmasEffects* = 4    # not an effect, but a slot for pragmas in proc type
-  effectListLen* = 5    # list of effects list
   nkLastBlockStmts* = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
                         # these must be last statements in a block
 
@@ -913,6 +905,19 @@ type
     attachedTrace,
     attachedDeepCopy
 
+  EffectKind* = enum
+    raisesEffects, tagsEffects
+
+  EffectFlag* = enum
+    unkownRaises, unknownTags, explicitRaises, explicitTags
+
+  Effects* = ref object
+    a*: array[EffectKind, seq[PNode]]
+    flags*: set[EffectFlag]
+    requires*: PNode
+    ensures*: PNode
+    pragmas*: PNode
+
   TType* {.acyclic.} = object of TIdObj # \
                               # types are identical iff they have the
                               # same id; there may be multiple copies of a type
@@ -944,6 +949,7 @@ type
                               # type.
     uniqueId*: ItemId         # due to a design mistake, we need to keep the real ID here as it
                               # is required by the --incremental:on mode.
+    effects*: Effects         # only valid for `kind == tyProc`
 
   TPair* = object
     key*, val*: RootRef
@@ -2006,10 +2012,6 @@ proc newProcType*(info: TLineInfo; id: ItemId; owner: PSym): PType =
   result = newType(tyProc, id, owner)
   result.n = newNodeI(nkFormalParams, info)
   rawAddSon(result, nil) # return type
-  # result.n[0] used to be `nkType`, but now it's `nkEffectList` because
-  # the effects are now stored in there too ... this is a bit hacky, but as
-  # usual we desperately try to save memory:
-  result.n.add newNodeI(nkEffectList, info)
 
 proc addParam*(procType: PType; param: PSym) =
   param.position = procType.len-1
@@ -2037,9 +2039,7 @@ proc canRaise*(fn: PNode): bool =
     if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].kind == nkSym:
       result = false
     else:
-      result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
-        (fn.typ.n[0][exceptionEffects] != nil and
-        fn.typ.n[0][exceptionEffects].safeLen > 0))
+      result = fn.typ != nil and (fn.typ.effects == nil or fn.typ.effects.a[raisesEffects].len > 0)
 
 proc toHumanStrImpl[T](kind: T, num: static int): string =
   result = $kind

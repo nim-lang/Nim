@@ -61,8 +61,8 @@ discard """
 
 type
   TEffects = object
-    exc: PNode  # stack of exceptions
-    tags: PNode # list of tags
+    exc: seq[PNode]  # inferred exceptions
+    tags: seq[PNode] # inferred tags
     bottom, inTryStmt, inExceptOrFinallyStmt, leftPartOfAsgn: int
     owner: PSym
     ownerModule: PSym
@@ -333,7 +333,7 @@ proc addToIntersection(inter: var TIntersection, s: int) =
       return
   inter.add((id: s, count: 1))
 
-proc throws(tracked, n, orig: PNode) =
+proc throws(tracked: var seq[PNode]; n, orig: PNode) =
   if n.typ == nil or n.typ.kind != tyError:
     if orig != nil:
       let x = copyTree(orig)
@@ -380,13 +380,25 @@ proc addTag(a: PEffects, e, comesFrom: PNode) =
     if sameType(aa[i].typ.skipTypes(skipPtrs), e.typ.skipTypes(skipPtrs)): return
   throws(a.tags, e, comesFrom)
 
-proc mergeRaises(a: PEffects, b, comesFrom: PNode) =
+proc mergeRaises(a: PEffects, b: Effects, comesFrom: PNode) =
+  if b.isNil:
+    addRaiseEffect(a, createRaise(a.graph, comesFrom), comesFrom)
+  else:
+    for effect in items(b.a[raisesEffects]): addRaiseEffect(a, effect, comesFrom)
+
+proc mergeRaises(a: PEffects, b: PNode, comesFrom: PNode) =
   if b.isNil:
     addRaiseEffect(a, createRaise(a.graph, comesFrom), comesFrom)
   else:
     for effect in items(b): addRaiseEffect(a, effect, comesFrom)
 
-proc mergeTags(a: PEffects, b, comesFrom: PNode) =
+proc mergeTags(a: PEffects, b: Effects, comesFrom: PNode) =
+  if b.isNil:
+    addTag(a, createTag(a.graph, comesFrom), comesFrom)
+  else:
+    for effect in items(b.a[tagsEffects]): addTag(a, effect, comesFrom)
+
+proc mergeTags(a: PEffects, b: PNode, comesFrom: PNode) =
   if b.isNil:
     addTag(a, createTag(a.graph, comesFrom), comesFrom)
   else:
@@ -410,13 +422,13 @@ proc catches(tracked: PEffects, e: PType) =
     else:
       inc i
   if tracked.exc.len > 0:
-    setLen(tracked.exc.sons, L)
+    setLen(tracked.exc, L)
   else:
     assert L == 0
 
 proc catchesAll(tracked: PEffects) =
   if tracked.exc.len > 0:
-    setLen(tracked.exc.sons, tracked.bottom)
+    setLen(tracked.exc, tracked.bottom)
 
 proc track(tracked: PEffects, n: PNode)
 proc trackTryStmt(tracked: PEffects, n: PNode) =
@@ -583,9 +595,8 @@ proc isOwnedProcVar(n: PNode; owner: PSym): bool =
   # XXX prove the soundness of this effect system rule
   result = n.kind == nkSym and n.sym.kind == skParam and owner == n.sym.owner
 
-proc isNoEffectList(n: PNode): bool {.inline.} =
-  assert n.kind == nkEffectList
-  n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil)
+proc isNoEffectList(e: Effects): bool {.inline.} =
+  e == nil or e.flags * {unkownRaises, unknownTags} != {}
 
 proc isTrival(caller: PNode): bool {.inline.} =
   result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved, mSwap}
@@ -595,8 +606,7 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; 
   let op = a.typ
   # assume indirect calls are taken here:
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit and not isTrival(caller):
-    internalAssert tracked.config, op.n[0].kind == nkEffectList
-    var effectList = op.n[0]
+    var effectList = op.effects
     var s = n.skipConv
     if s.kind == nkCast and s[1].typ.kind == tyProc:
       s = s[1]
@@ -617,8 +627,8 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; 
       elif tfNoSideEffect notin op.flags and not isOwnedProcVar(a, tracked.owner):
         markSideEffect(tracked, a, n.info)
     else:
-      mergeRaises(tracked, effectList[exceptionEffects], n)
-      mergeTags(tracked, effectList[tagEffects], n)
+      mergeRaises(tracked, effectList, n)
+      mergeTags(tracked, effectList, n)
       if notGcSafe(op):
         if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
         markGcUnsafe(tracked, a)
@@ -797,7 +807,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
     # calling getAst(templateOrMacro()). Currently, templates and macros
     # are indistinguishable from normal procs (both have tyProc type) and
     # we can detect them only by checking for attached nkEffectList.
-    if op != nil and op.kind == tyProc and op.n[0].kind == nkEffectList:
+    if op != nil and op.kind == tyProc and op.effects != nil:
       if a.kind == nkSym:
         if a.sym == tracked.owner: tracked.isRecursive = true
         # even for recursive calls we need to check the lock levels (!):
@@ -805,7 +815,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
         if sfSideEffect in a.sym.flags: markSideEffect(tracked, a, n.info)
       else:
         mergeLockLevels(tracked, n, op.lockLevel)
-      var effectList = op.n[0]
+      var effectList = op.effects
       if a.kind == nkSym and a.sym.kind == skMethod:
         propagateEffects(tracked, n, a.sym)
       elif isNoEffectList(effectList):
@@ -815,8 +825,8 @@ proc trackCall(tracked: PEffects; n: PNode) =
           assumeTheWorst(tracked, n, op)
           gcsafeAndSideeffectCheck()
       else:
-        mergeRaises(tracked, effectList[exceptionEffects], n)
-        mergeTags(tracked, effectList[tagEffects], n)
+        mergeRaises(tracked, effectList, n)
+        mergeTags(tracked, effectList, n)
         gcsafeAndSideeffectCheck()
     if a.kind != nkSym or a.sym.magic != mNBindSym:
       for i in 1..<n.len: trackOperandForIndirectCall(tracked, n[i], paramType(op, i), a)
@@ -900,11 +910,11 @@ proc unapplyBlockContext(tracked: PEffects; bc: PragmaBlockContext) =
   if bc.exc != nil:
     # beware that 'raises: []' is very different from not saying
     # anything about 'raises' in the 'cast' at all. Same applies for 'tags'.
-    setLen(tracked.exc.sons, bc.oldExc)
+    setLen(tracked.exc, bc.oldExc)
     for e in bc.exc:
       addRaiseEffect(tracked, e, e)
   if bc.tags != nil:
-    setLen(tracked.tags.sons, bc.oldTags)
+    setLen(tracked.tags, bc.oldTags)
     for t in bc.tags:
       addTag(tracked, t, t)
 
@@ -1225,7 +1235,7 @@ proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
   else:
     return safeInheritanceDiff(g.excType(real), spec.typ) <= 0
 
-proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool;
+proc checkRaisesSpec(g: ModuleGraph; spec: PNode, real: seq[PNode], msg: string, hints: bool;
                      effectPredicate: proc (g: ModuleGraph; a, b: PNode): bool {.nimcall.};
                      hintsArg: PNode = nil) =
   # check that any real exception is listed in 'spec'; mark those as used;
@@ -1252,17 +1262,17 @@ proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool
 
 proc checkMethodEffects*(g: ModuleGraph; disp, branch: PSym) =
   ## checks for consistent effects for multi methods.
-  let actual = branch.typ.n[0]
-  if actual.len != effectListLen: return
+  let actual = branch.typ.effects
+  if actual == nil: return
 
   let p = disp.ast[pragmasPos]
   let raisesSpec = effectSpec(p, wRaises)
   if not isNil(raisesSpec):
-    checkRaisesSpec(g, raisesSpec, actual[exceptionEffects],
+    checkRaisesSpec(g, raisesSpec, actual.a[raisesEffects],
       "can raise an unlisted exception: ", hints=off, subtypeRelation)
   let tagsSpec = effectSpec(p, wTags)
   if not isNil(tagsSpec):
-    checkRaisesSpec(g, tagsSpec, actual[tagEffects],
+    checkRaisesSpec(g, tagsSpec, actual.a[tagsEffects],
       "can have an unlisted effect: ", hints=off, subtypeRelation)
   if sfThread in disp.flags and notGcSafe(branch.typ):
     localError(g.config, branch.info, "base method is GC-safe, but '$1' is not" %
@@ -1284,8 +1294,8 @@ proc checkMethodEffects*(g: ModuleGraph; disp, branch: PSym) =
           [$branch.typ.lockLevel, $disp.typ.lockLevel])
 
 proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode) =
-  var effects = t.n[0]
-  if t.kind != tyProc or effects.kind != nkEffectList: return
+  var effects = t.effects
+  if t.kind != tyProc or effects == nil: return
   if n.kind != nkEmpty:
     internalAssert g.config, effects.len == 0
     newSeq(effects.sons, effectListLen)
@@ -1337,11 +1347,9 @@ proc hasRealBody(s: PSym): bool =
 
 proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let g = c.graph
-  var effects = s.typ.n[0]
-  if effects.kind != nkEffectList: return
+  var effects = s.typ.effects
   # effects already computed?
-  if not s.hasRealBody: return
-  if effects.len == effectListLen: return
+  if not s.hasRealBody or effects != nil: return
 
   var t: TEffects
   initEffects(g, effects, s, t, c)

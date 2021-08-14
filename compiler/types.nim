@@ -1346,8 +1346,7 @@ proc safeInheritanceDiff*(a, b: PType): int =
   else:
     result = inheritanceDiff(a.skipTypes(skipPtrs), b.skipTypes(skipPtrs))
 
-proc compatibleEffectsAux(se, re: PNode): bool =
-  if re.isNil: return false
+proc compatibleEffectsAux(se, re: seq[PNode]): bool =
   for r in items(re):
     block search:
       for s in items(se):
@@ -1368,30 +1367,24 @@ type
 proc compatibleEffects*(formal, actual: PType): EffectsCompat =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc
-  if formal.n[0].kind != nkEffectList or
-     actual.n[0].kind != nkEffectList:
+  if formal.effects == nil or actual.effects == nil:
     return efTagsUnknown
 
-  var spec = formal.n[0]
-  if spec.len != 0:
-    var real = actual.n[0]
+  var spec = formal.effects
+  var real = actual.effects
 
-    let se = spec[exceptionEffects]
-    # if 'se.kind == nkArgList' it is no formal type really, but a
-    # computed effect and as such no spec:
-    # 'r.msgHandler = if isNil(msgHandler): defaultMsgHandler else: msgHandler'
-    if not isNil(se) and se.kind != nkArgList:
-      # spec requires some exception or tag, but we don't know anything:
-      if real.len == 0: return efRaisesUnknown
-      let res = compatibleEffectsAux(se, real[exceptionEffects])
-      if not res: return efRaisesDiffer
+  if explicitRaises in spec.flags:
+    # spec requires some exception or tag, but we don't know anything:
+    if unkownRaises in real.flags: return efRaisesUnknown
+    if not compatibleEffectsAux(spec.a[raisesEffects], real.a[raisesEffects]):
+      return efRaisesDiffer
 
-    let st = spec[tagEffects]
-    if not isNil(st) and st.kind != nkArgList:
-      # spec requires some exception or tag, but we don't know anything:
-      if real.len == 0: return efTagsUnknown
-      let res = compatibleEffectsAux(st, real[tagEffects])
-      if not res: return efTagsDiffer
+  if explicitTags in spec.flags:
+    # spec requires some exception or tag, but we don't know anything:
+    if unknownTags in real.flags: return efTagsUnknown
+    if not compatibleEffectsAux(spec.a[tagsEffects], real.a[tagsEffects]):
+      return efTagsDiffer
+
   if formal.lockLevel.ord < 0 or
       actual.lockLevel.ord <= formal.lockLevel.ord:
     result = efCompat
