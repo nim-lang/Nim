@@ -287,7 +287,7 @@ since (1, 1):
     underscoredCalls(result, calls, tmp)
     result.add tmp
 
-proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
+proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) =
   # Looks for the last statement of the last statement, etc...
   case n.kind
   of nnkIfExpr, nnkIfStmt, nnkTryStmt, nnkCaseStmt, nnkWhenStmt:
@@ -331,7 +331,7 @@ proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (
     template adder(res, v) = res.add(v)
     result[0] = getAst(adder(res, n))
 
-proc collectImpl(init, body: NimNode): NimNode {.since: (1, 1).} =
+proc collectImpl(init, body: NimNode): NimNode =
   let res = genSym(nskVar, "collectResult")
   var bracketExpr: NimNode
   if init != nil:
