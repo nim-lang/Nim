@@ -31,7 +31,7 @@ import tables
 
 import
   strutils, ast, types, msgs, renderer, vmdef,
-  intsets, magicsys, options, lowerings, lineinfos, transf
+  intsets, magicsys, options, lowerings, lineinfos, transf, astmsgs
 
 from modulegraphs import getBody
 
@@ -1742,12 +1742,14 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   let lab1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, rs)
   c.freeTemp(rs)
   let strType = getSysType(c.graph, n.info, tyString)
-  var fieldNameRegister: TDest = c.getTemp(strType)
-  let strLit = newStrNode($accessExpr[1], accessExpr[1].info)
+  var msgReg: TDest = c.getTemp(strType)
+  let fieldName = $accessExpr[1]
+  let msg = genFieldDefect(c.config, fieldName, disc.sym)
+  let strLit = newStrNode(msg, accessExpr[1].info)
   strLit.typ = strType
-  c.genLit(strLit, fieldNameRegister)
-  c.gABC(n, opcInvalidField, fieldNameRegister)
-  c.freeTemp(fieldNameRegister)
+  c.genLit(strLit, msgReg)
+  c.gABC(n, opcInvalidField, msgReg, discVal)
+  c.freeTemp(msgReg)
   c.patch(lab1)
 
 proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =

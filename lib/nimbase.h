@@ -75,7 +75,8 @@ __AVR__
 #endif
 /* ------------------------------------------------------------------------- */
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__ZEPHYR__)
+/* Zephyr does some magic in it's headers that override the GCC stdlib. This breaks that. */
 #  define _GNU_SOURCE 1
 #endif
 

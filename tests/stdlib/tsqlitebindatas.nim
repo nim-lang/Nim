@@ -48,3 +48,31 @@ block tsqlitebindatas: ## db_sqlite binary data
 
   db.close()
   doAssert tryRemoveFile(dbName)
+
+
+block:
+  block:
+    const dbName = buildDir / "db.sqlite3"
+    var db = db_sqlite.open(dbName, "", "", "")
+    var witness = false
+    try:
+      db.exec(sql("CREATE TABLE table1 (url TEXT, other_field INT);"))
+      db.exec(sql("REPLACE INTO table (url, another_field) VALUES (?, '123');"))
+    except DbError as e:
+      witness = true
+      doAssert e.msg == "The number of \"?\" given exceeds the number of parameters present in the query."
+    finally:
+      db.close()
+      removeFile(dbName)
+
+    doAssert witness
+
+  block:
+    const dbName = buildDir / "db.sqlite3"
+    var db = db_sqlite.open(dbName, "", "", "")
+    try:
+      db.exec(sql("CREATE TABLE table1 (url TEXT, other_field INT);"))
+      db.exec(sql("INSERT INTO table1 (url, other_field) VALUES (?, ?);"), "http://domain.com/test?param=1", 123)
+    finally:
+      db.close()
+      removeFile(dbName)

@@ -1472,7 +1472,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         return TFullReg(kind: rkNone)
     of opcInvalidField:
-      stackTrace(c, tos, pc, errFieldXNotFound & regs[ra].node.strVal)
+      let msg = regs[ra].node.strVal
+      let disc = regs[instr.regB].regToNode
+      let msg2 = formatFieldDefect(msg, $disc)
+      stackTrace(c, tos, pc, msg2)
     of opcSetLenStr:
       decodeB(rkNode)
       #createStrKeepNode regs[ra]

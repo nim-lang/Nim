@@ -171,8 +171,8 @@ proc raiseRangeError() {.compilerproc, noreturn.} =
 proc raiseIndexError(i, a, b: int) {.compilerproc, noreturn.} =
   raise newException(IndexDefect, formatErrorIndexBound(int(i), int(a), int(b)))
 
-proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
-  raise newException(FieldDefect, f)
+proc raiseFieldError2(f: string, discVal: string) {.compilerproc, noreturn.} =
+  raise newException(FieldDefect, formatFieldDefect(f, discVal))
 
 proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   asm """

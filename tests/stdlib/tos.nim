@@ -622,7 +622,18 @@ block: # quoteShellWindows
   doAssert quoteShellWindows("aaa\"") == "aaa\\\""
   doAssert quoteShellWindows("") == "\"\""
 
-block: # quoteShellWindows
+block: # quoteShellCommand
+  when defined(windows):
+    doAssert quoteShellCommand(["a b c", "d", "e"]) == """"a b c" d e"""
+    doAssert quoteShellCommand(["""ab"c""", r"\", "d"]) == """ab\"c \ d"""
+    doAssert quoteShellCommand(["""ab"c""", """ \""", "d"]) == """ab\"c " \\" d"""
+    doAssert quoteShellCommand(["""a\\\b""", """de fg""", "h"]) == """a\\\b "de fg" h"""
+    doAssert quoteShellCommand(["""a\"b""", "c", "d"]) == """a\\\"b c d"""
+    doAssert quoteShellCommand(["""a\\b c""", "d", "e"]) == """"a\\b c" d e"""
+    doAssert quoteShellCommand(["""a\\b\ c""", "d", "e"]) == """"a\\b\ c" d e"""
+    doAssert quoteShellCommand(["ab", ""]) == """ab """""
+
+block: # quoteShellPosix
   doAssert quoteShellPosix("aaa") == "aaa"
   doAssert quoteShellPosix("aaa a") == "'aaa a'"
   doAssert quoteShellPosix("") == "''"
