@@ -70,6 +70,13 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
         config.arguments.len > 0 and config.cmd notin {cmdTcc, cmdNimscript, cmdCrun}:
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
+proc getNimRunExe(conf: ConfigRef): string =
+  # xxx consider defining `conf.getConfigVar("nimrun.exe")` to allow users to
+  # customize the binary to run the command with, e.g. for custom `nodejs` or `wine`.
+  if conf.isDefined("mingw"):
+    if conf.isDefined("i386"): result = "wine"
+    elif conf.isDefined("amd64"): result = "wine64"
+
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
     supportsStdinFile: true,
@@ -95,7 +102,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     let output = conf.absOutFile
     case conf.cmd
     of cmdBackends, cmdTcc:
-      let nimRunExe = conf.getConfigVar("nimrun.exe")
+      let nimRunExe = getNimRunExe(conf)
       var cmdPrefix: string
       if nimRunExe.len > 0: cmdPrefix.add nimRunExe.quoteShell
       case conf.backend
