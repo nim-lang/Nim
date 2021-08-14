@@ -2058,7 +2058,7 @@ proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
 
 since (1, 5):
   func toIpAddress*(ip: uint64): IpAddress =
-    ## Convert an `uint64` to an `IpAddress` of family `IPv4`.
+    ## Converts an `uint64` to an `IpAddress` of family `IPv4`.
     result = IpAddress(family: IpAddressFamily.IPv4, address_v4: [
       uint8((ip and 0xff000000.uint64) shr 24),
       uint8((ip and 0xff0000.uint64) shr 16),
@@ -2067,7 +2067,7 @@ since (1, 5):
     ])
 
   func toUint*(ip: IpAddress): uint64 =
-    ## Convert an `IpAddress` of family `IPv4` to an `uint64`.
+    ## Converts an `IpAddress` of family `IPv4` to an `uint64`.
     runnableExamples:
       template example() =
         assert 0.uint64.toIpAddress.toUint == 0.uint64                         # 0.0.0.0
