@@ -1319,6 +1319,7 @@ proc initEffects(g: ModuleGraph; effects: Effects; s: PSym; t: var TEffects; c: 
   effects.requires = g.emptyNode
   effects.ensures = g.emptyNode
   effects.pragmas = g.emptyNode
+  effects.flags = {knownRaises, knownTags}
 
   t.exc = @[]
   t.tags = @[]
@@ -1381,6 +1382,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
                     hints=on, subtypeRelation, hintsArg=s.ast[0])
     # after the check, use the formal spec:
     effects.a[raisesEffects] = raisesSpec.sons
+    effects.flags.incl explicitRaises
 
   let tagsSpec = effectSpec(p, wTags)
   if not isNil(tagsSpec):
@@ -1388,6 +1390,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
                     hints=off, subtypeRelation)
     # after the check, use the formal spec:
     effects.a[tagsEffects] = tagsSpec.sons
+    effects.flags.incl explicitTags
 
   let requiresSpec = propSpec(p, wRequires)
   if not isNil(requiresSpec):

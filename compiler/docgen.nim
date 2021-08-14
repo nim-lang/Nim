@@ -1077,14 +1077,14 @@ proc documentNewEffect(cache: IdentCache; n: PNode): PNode =
   if tfReturnsNew in s.typ.flags:
     result = newIdentNode(getIdent(cache, "new"), n.info)
 
-proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
+proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, idx: EffectKind): PNode =
   let spec = effectSpec(x, effectType)
   if isNil(spec):
     let s = n[namePos].sym
 
-    let actual = s.typ.n[0]
-    if actual.len != effectListLen: return
-    let real = actual[idx]
+    let actual = s.typ.effects
+    if actual == nil: return
+    let real = actual.a[idx]
 
     # warning: hack ahead:
     var effects = newNodeI(nkBracket, n.info, real.len)
@@ -1114,8 +1114,8 @@ proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName
 proc documentRaises*(cache: IdentCache; n: PNode) =
   if n[namePos].kind != nkSym: return
   let pragmas = n[pragmasPos]
-  let p1 = documentEffect(cache, n, pragmas, wRaises, exceptionEffects)
-  let p2 = documentEffect(cache, n, pragmas, wTags, tagEffects)
+  let p1 = documentEffect(cache, n, pragmas, wRaises, raisesEffects)
+  let p2 = documentEffect(cache, n, pragmas, wTags, tagsEffects)
   let p3 = documentWriteEffect(cache, n, sfWrittenTo, "writes")
   let p4 = documentNewEffect(cache, n)
   let p5 = documentWriteEffect(cache, n, sfEscapes, "escapes")

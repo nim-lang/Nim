@@ -174,7 +174,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   t.rawAddSon threadParam.typ
   t.rawAddSon argsParam.typ
   t.n = newNodeI(nkFormalParams, f.info)
-  t.n.add newNodeI(nkEffectList, f.info)
+  t.n.add newNodeI(nkEmpty, f.info)
   t.n.add threadParam.newSymNode
   t.n.add argsParam.newSymNode
 
