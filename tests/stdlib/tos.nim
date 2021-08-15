@@ -710,23 +710,23 @@ block: # isAdmin
 
 template main =
   # xxx move all tests under here so they get tested in VM, for ones which can
-  block: # parseShellCommand, bug #14343
+  block: # splitShellCmd, bug #14343
     var a = @["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "",
       "\n\a\b\t\0abc", " ", " '   ' '", """  ' " \ '' "" """, "\\", "  a   \\"]
     let a2 = a.quoteShellCommand
-    let b2 = a2.parseShellCommand
+    let b2 = a2.splitShellCmd
     doAssert b2 == a, $(a, a2, b2)
 
     let a3 = a2.quoteShell
-    let b3 = a3.parseShellCommand
+    let b3 = a3.splitShellCmd
     doAssert b3 == @[a2]
 
     let a4 = a3.quoteShell
-    let b4 = a4.parseShellCommand
+    let b4 = a4.splitShellCmd
     doAssert b4 == @[a3]
 
     proc chk(a: string, b: seq[string]) =
-      let b2 = parseShellCommand(a)
+      let b2 = splitShellCmd(a)
       doAssert b2 == b, $(a, b, b2)
 
     chk "", seq[string].default
@@ -782,12 +782,12 @@ template main =
       chk "bb\\$cc dd", @["bb$cc", "dd"]
 
       # invalid inputs
-      doAssertRaises(ValueError): discard """\""".parseShellCommand
-      doAssertRaises(ValueError): discard """abc\""".parseShellCommand
-      doAssertRaises(ValueError): discard "\"".parseShellCommand
-      doAssertRaises(ValueError): discard "  \"  ".parseShellCommand
-      doAssertRaises(ValueError): discard "  \'  ".parseShellCommand
-      doAssertRaises(ValueError): discard "aa'bb\\'cc'dd".parseShellCommand # `'` cannot be escaped within single quotes
+      doAssertRaises(ValueError): discard """\""".splitShellCmd
+      doAssertRaises(ValueError): discard """abc\""".splitShellCmd
+      doAssertRaises(ValueError): discard "\"".splitShellCmd
+      doAssertRaises(ValueError): discard "  \"  ".splitShellCmd
+      doAssertRaises(ValueError): discard "  \'  ".splitShellCmd
+      doAssertRaises(ValueError): discard "aa'bb\\'cc'dd".splitShellCmd # `'` cannot be escaped within single quotes
 
 static: main()
 main()

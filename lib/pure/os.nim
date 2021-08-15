@@ -2739,7 +2739,7 @@ proc exclFilePermissions*(filename: string,
 when not defined(windows):
   import std/private/shlexutils
 
-func parseShellCommandWindows(c: string): seq[string] =
+func splitShellCmdWindows(c: string): seq[string] =
   var i = 0
   var a = ""
   while true:
@@ -2782,7 +2782,7 @@ func parseShellCommandWindows(c: string): seq[string] =
         inc(i)
     add(result, a)
 
-func parseShellCommand*(a: string): seq[string] =
+func splitShellCmd*(a: string): seq[string] =
   ## On posix, it follows the shell quoting rules for `"`, `'`, ``\`` and
   ## raises `ValueError` on invalid inputs
   ## (unclosed single or double quotes or unfinished escape sequences).
@@ -2795,15 +2795,15 @@ func parseShellCommand*(a: string): seq[string] =
   ## Special chars (`!, {, }, $, |` etc) are treated as regular chars.
   runnableExamples:
     let a = @["foo", "ba'r", "b\"az", "", "'", "''", "\"\'", "", "", "\n\a\b\t\0abc", " ", " '   ' '", """  ' " \ '' "" """]
-    assert a.quoteShellCommand.parseShellCommand == a
+    assert a.quoteShellCommand.splitShellCmd == a
     when defined(posix):
-      assert """  \ \ ab\ cd\ ef\  \ gh\   """.parseShellCommand == @["  ab cd ef ", " gh "]
-      assert """ ab\"cd " ef\"gh "\   """.parseShellCommand == @["ab\"cd", " ef\"gh  "]
-      doAssertRaises(ValueError): discard parseShellCommand("abc'bar") # unclosed `'`
-      doAssertRaises(ValueError): discard parseShellCommand("abc\"bar") # unclosed `"`
-      doAssertRaises(ValueError): discard parseShellCommand("abc\\") # unfinished escape
+      assert """  \ \ ab\ cd\ ef\  \ gh\   """.splitShellCmd == @["  ab cd ef ", " gh "]
+      assert """ ab\"cd " ef\"gh "\   """.splitShellCmd == @["ab\"cd", " ef\"gh  "]
+      doAssertRaises(ValueError): discard splitShellCmd("abc'bar") # unclosed `'`
+      doAssertRaises(ValueError): discard splitShellCmd("abc\"bar") # unclosed `"`
+      doAssertRaises(ValueError): discard splitShellCmd("abc\\") # unfinished escape
   when defined(windows):
-    result = parseShellCommandWindows(a)
+    result = splitShellCmdWindows(a)
   else:
     for val in shlex(a): result.add val
 
@@ -2811,7 +2811,7 @@ func parseCmdLine*(c: string): seq[string] {.rtl, extern: "nos$1".} =
   ## Splits a `command line`:idx: into several components.
   ##
   ## **Note**: This proc is only occasionally useful, better use the
-  ## `parseopt module <parseopt.html>`_ or `os.parseShellCommand`.
+  ## `parseopt module <parseopt.html>`_ or `os.splitShellCmd`.
   ##
   ## On Windows, it uses the `following parsing rules
   ## <http://msdn.microsoft.com/en-us/library/17w5ykft.aspx>`_:
@@ -2847,7 +2847,7 @@ func parseCmdLine*(c: string): seq[string] {.rtl, extern: "nos$1".} =
   ## * `commandLineParams proc <#commandLineParams>`_
 
   when defined(windows):
-    result = parseShellCommandWindows(c)
+    result = splitShellCmdWindows(c)
   else:
     var i = 0
     var a = ""
