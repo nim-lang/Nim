@@ -944,24 +944,24 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
 func ceilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
   ## Ceil division is conceptually defined as `ceil(x / y)`.
   ##
-  ## Assumes `x >= 0` and `y > 0` and (`x + y - 1 <= high(T)` if T is SomeUnsignedInt).
+  ## Assumes `x >= 0` and `y > 0` (and `x + y - 1 <= high(T)` if T is SomeUnsignedInt).
   ##
   ## This is different from the `system.div <system.html#div,int,int>`_
-  ## operator, which is defined as `trunc(x / y)`.
+  ## operator, which works like `trunc(x / y)`.
   ## That is, `div` rounds towards `0` and `ceilDiv` rounds up.
   ##
-  ## This function has above input limitation because it is implemented with
-  ## the expression that backend compiler generates faster code and it is
-  ## rarely used with negative value or unsigned int close to high(T)/2.
-  ## If you need `ceilDiv` works with any input, see:
-  ## https://github.com/demotomohiro/divmath
+  ## This function has the above input limitation, because that allow the
+  ## compiler to generate faster code and it is rarely used with
+  ## negative values or unsigned integers close to `high(T)/2`.
+  ## If you need a `ceilDiv` that works with any input, see:
+  ## https://github.com/demotomohiro/divmath.
   ##
   ## **See also:**
   ## * `system.div proc <system.html#div,int,int>`_ for integer division
-  ## * `floorDiv func <#floorDiv,T,T>`_ for integer division with rounds down.
+  ## * `floorDiv func <#floorDiv,T,T>`_ for integer division which rounds down.
   runnableExamples:
-    assert ceilDiv( 12,  3) ==  4
-    assert ceilDiv( 13,  3) ==  5
+    assert ceilDiv(12, 3) ==  4
+    assert ceilDiv(13, 3) ==  5
 
   when sizeof(T) == 8:
     type UT = uint64
@@ -976,15 +976,19 @@ func ceilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
   when T is SomeUnsignedInt:
     assert x + y - 1 >= x
 
-  # If divisor is const, backend compiler generate code without `div` instruction
-  # as it is slow on most of CPU.
-  # If divisor is a power of 2 and a const unsigned integer type,
+  # If divisor is const, the backend C/C++ compiler generates code without a `div`
+  # instruction, as it is slow on most CPUs.
+  # If the divisor is a power of 2 and a const unsigned integer type, the
   # compiler generates faster code.
-  # If divisor is const and signed int, generated code become slower than
-  # the code with unsigned int because division with signed int need to works
-  # both positive and negative value without `idiv`/`sdiv`.
+  # If the divisor is const and a signed integer, generated code become slower
+  # than the code with unsigned integers, because division with signed integers
+  # need to works for both positive and negative value without `idiv`/`sdiv`.
   # That is why this code convert parameters to unsigned.
-  # And also this works with any positive int value unless T is unsigned.
+  # This post contains a comparison of the performance of signed/unsigned integers:
+  # https://github.com/nim-lang/Nim/pull/18596#issuecomment-894420984
+  # And if signed integer arguments were not converted to unsigned integer,
+  # `ceilDiv` doesn't work for any positive signed integer value, because
+  # `x + (y - 1)` can overflow.
   ((x.UT + (y.UT - 1.UT)) div y.UT).T
 
 func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
