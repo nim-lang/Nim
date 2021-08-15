@@ -15,6 +15,21 @@
 ## code `exitprocs.addExitProc(resetAttributes)` to restore the defaults.
 ## Similarly, if you hide the cursor, make sure to unhide it with
 ## `showCursor` before quitting.
+##
+## Progress bar
+## ============
+##
+## Basic progress bar example:
+runnableExamples("-r:off"):
+  import std/[os, strutils]
+
+  for i in 0..100:
+    stdout.styledWriteLine(fgRed, "0% ", fgWhite, '#'.repeat i, if i > 50: fgGreen else: fgYellow, "\t", $i , "%")
+    sleep 42
+    cursorUp 1
+    eraseLine()
+
+  stdout.resetAttributes()
 
 ##[
 ## Playing with colorful and styled text
@@ -42,7 +57,6 @@ runnableExamples("-r:off"):
   styledEcho styleBright, fgGreen, "[PASS]", resetStyle, fgGreen, " Yay!"
 
   stdout.styledWriteLine(fgRed, "red text ", styleBright, "bold red", fgDefault, " bold text")
-
 
 import macros
 import strformat
