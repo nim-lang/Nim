@@ -969,8 +969,10 @@ func ceilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
     type UT = uint32
   elif sizeof(T) == 2:
     type UT = uint16
-  else:
+  elif sizeof(T) == 1:
     type UT = uint8
+  else:
+    {.fatal: "Unsupported int type".}
 
   assert x >= 0 and y > 0
   when T is SomeUnsignedInt:
