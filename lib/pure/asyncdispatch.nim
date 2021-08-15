@@ -165,6 +165,30 @@
 ## ================
 ##
 ## * The effect system (`raises: []`) does not work with async procedures.
+##
+##
+## Multiple async backend support
+## ==============================
+##
+## Thanks to its powerful macro support, Nim allows `async`/`await` to be
+## implemented in libraries with only minimal support from the language - as
+## such, multiple `async` libraries exist, including `asyncdispatch` and
+## `asyncdispatch`, and more may come to be developed in the future.
+##
+## Libraries built on top of async/await may wish to support multiple async
+## backends - the best way to do so is to create separate modules for each backend
+## that may be imported side-by-side.
+##
+## An alternative way is to select backend using a global compile flag - this
+## method makes it diffucult to compose applications that use both backends as may
+## happen with transitive dependencies, but may be appropriate in some cases -
+## libraries choosing this path should call the flag `async_backend`, allowing
+## applications to choose the backend with `-d:async_backend=<backend_name>`.
+##
+## Known `async` backends include:
+##
+## * `asyncdispatch <https://nim-lang.org/docs/asyncdispatch.html> -``-d:async_backend=asyncdispatch``
+## * `chronos <https://github.com/status-im/nim-chronos/>` - ``-d:async_backend=chronos``
 
 import os, tables, strutils, times, heapqueue, options, asyncstreams
 import options, math, std/monotimes
