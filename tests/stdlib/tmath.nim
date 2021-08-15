@@ -106,94 +106,45 @@ template main() =
     doAssert euclDiv(-9, -3) == 3
     doAssert euclMod(-9, -3) == 0
 
-  block: # ceilDiv/fastCeilDiv
-    doAssert ceilDiv(8, 3) == 3
-    doAssert ceilDiv(8, -3) == -2
-    doAssert ceilDiv(-8, 3) == -2
-    doAssert ceilDiv(-8, -3) == 3
-    doAssert ceilDiv(8, 4) == 2
-    doAssert ceilDiv(8, -4) == -2
-    doAssert ceilDiv(-8, 4) == -2
-    doAssert ceilDiv(-8, -4) == 2
-    doAssert ceilDiv(11,  3) ==  4
-    doAssert ceilDiv(12,  3) ==  4
-    doAssert ceilDiv(13,  3) ==  5
-    doAssert ceilDiv(low(int), low(int)) == 1
-    doAssert ceilDiv(low(int) + 1, low(int)) == 1
-    doAssert ceilDiv(low(int) + 2, low(int)) == 1
-    doAssert ceilDiv(-2, low(int)) == 1
-    doAssert ceilDiv(-1, low(int)) == 1
-    doAssert ceilDiv( 0, low(int)) == 0
-    doAssert ceilDiv( 1, low(int)) == 0
-    doAssert ceilDiv( 2, low(int)) == 0
-    doAssert ceilDiv(high(int), low(int)) == 0
-    doAssert ceilDiv(low(int), low(int) + 1) == 2
-    doAssert ceilDiv(low(int) + 1, low(int) + 1) == 1
-    doAssert ceilDiv(low(int) + 2, low(int) + 1) == 1
-    doAssert ceilDiv(-2, low(int) + 1) == 1
-    doAssert ceilDiv(-1, low(int) + 1) == 1
-    doAssert ceilDiv( 0, low(int) + 1) == 0
-    doAssert ceilDiv( 1, low(int) + 1) == 0
-    doAssert ceilDiv( 2, low(int) + 1) == 0
-    doAssert ceilDiv(high(int), low(int) + 1) == -1
-    doAssert ceilDiv(high(int) - 1, low(int) + 1) == 0
-    doAssert ceilDiv(low(int),     high(int) - 1) == -1
-    doAssert ceilDiv(low(int) + 1, high(int) - 1) == -1
-    doAssert ceilDiv(low(int) + 2, high(int) - 1) == -1
-    doAssert ceilDiv(low(int) + 3, high(int) - 1) == 0
-    doAssert ceilDiv(-1, high(int) - 1) == 0
-    doAssert ceilDiv( 0, high(int) - 1) == 0
-    doAssert ceilDiv( 1, high(int) - 1) == 1
-    doAssert ceilDiv(high(int) - 2, high(int) - 1) == 1
-    doAssert ceilDiv(high(int) - 1, high(int) - 1) == 1
-    doAssert ceilDiv(high(int)    , high(int) - 1) == 2
-    doAssert ceilDiv(low(int), high(int)) == -1
-    doAssert ceilDiv(low(int) + 1, high(int)) == -1
-    doAssert ceilDiv(low(int) + 2, high(int)) == 0
-    doAssert ceilDiv(-1, high(int)) == 0
+  block: # ceilDiv
+    doAssert ceilDiv(8,  3) ==  3
+    doAssert ceilDiv(8,  4) ==  2
+    doAssert ceilDiv(8,  5) ==  2
+    doAssert ceilDiv(11, 3) ==  4
+    doAssert ceilDiv(12, 3) ==  4
+    doAssert ceilDiv(13, 3) ==  5
+    doAssert ceilDiv(41, 7) ==  6
+    doAssert ceilDiv(0,  1) ==  0
+    doAssert ceilDiv(1,  1) ==  1
+    doAssert ceilDiv(1,  2) ==  1
+    doAssert ceilDiv(2,  1) ==  2
+    doAssert ceilDiv(2,  2) ==  1
     doAssert ceilDiv(0, high(int)) == 0
     doAssert ceilDiv(1, high(int)) == 1
+    doAssert ceilDiv(0, high(int) - 1) == 0
+    doAssert ceilDiv(1, high(int) - 1) == 1
+    doAssert ceilDiv(high(int) div 2, high(int) div 2 + 1) == 1
+    doAssert ceilDiv(high(int) div 2, high(int) div 2 + 2) == 1
+    doAssert ceilDiv(high(int) div 2 + 1, high(int) div 2) == 2
+    doAssert ceilDiv(high(int) div 2 + 2, high(int) div 2) == 2
+    doAssert ceilDiv(high(int) div 2 + 1, high(int) div 2 + 1) == 1
+    doAssert ceilDiv(high(int), 1) == high(int)
+    doAssert ceilDiv(high(int) - 1, 1) == high(int) - 1
+    doAssert ceilDiv(high(int) - 1, 2) == high(int) div 2
     doAssert ceilDiv(high(int) - 1, high(int)) == 1
+    doAssert ceilDiv(high(int) - 1, high(int) - 1) == 1
+    doAssert ceilDiv(high(int) - 1, high(int) - 2) == 2
     doAssert ceilDiv(high(int), high(int)) == 1
-
-    doAssert fastCeilDiv(8,  3) ==  3
-    doAssert fastCeilDiv(8,  4) ==  2
-    doAssert fastCeilDiv(8,  5) ==  2
-    doAssert fastCeilDiv(11, 3) ==  4
-    doAssert fastCeilDiv(12, 3) ==  4
-    doAssert fastCeilDiv(13, 3) ==  5
-    doAssert fastCeilDiv(41, 7) ==  6
-    doAssert fastCeilDiv(0,  1) ==  0
-    doAssert fastCeilDiv(1,  1) ==  1
-    doAssert fastCeilDiv(1,  2) ==  1
-    doAssert fastCeilDiv(2,  1) ==  2
-    doAssert fastCeilDiv(2,  2) ==  1
-    doAssert fastCeilDiv(0, high(int)) == 0
-    doAssert fastCeilDiv(1, high(int)) == 1
-    doAssert fastCeilDiv(0, high(int) - 1) == 0
-    doAssert fastCeilDiv(1, high(int) - 1) == 1
-    doAssert fastCeilDiv(high(int) div 2, high(int) div 2 + 1) == 1
-    doAssert fastCeilDiv(high(int) div 2, high(int) div 2 + 2) == 1
-    doAssert fastCeilDiv(high(int) div 2 + 1, high(int) div 2) == 2
-    doAssert fastCeilDiv(high(int) div 2 + 2, high(int) div 2) == 2
-    doAssert fastCeilDiv(high(int) div 2 + 1, high(int) div 2 + 1) == 1
-    doAssert fastCeilDiv(high(int), 1) == high(int)
-    doAssert fastCeilDiv(high(int) - 1, 1) == high(int) - 1
-    doAssert fastCeilDiv(high(int) - 1, 2) == high(int) div 2
-    doAssert fastCeilDiv(high(int) - 1, high(int)) == 1
-    doAssert fastCeilDiv(high(int) - 1, high(int) - 1) == 1
-    doAssert fastCeilDiv(high(int) - 1, high(int) - 2) == 2
-    doAssert fastCeilDiv(high(int), high(int)) == 1
-    doAssert fastCeilDiv(high(int), high(int) - 1) == 2
-    doAssert fastCeilDiv(255'u8,  1'u8) == 255'u8
-    doAssert fastCeilDiv(254'u8,  2'u8) == 127'u8
+    doAssert ceilDiv(high(int), high(int) - 1) == 2
+    doAssert ceilDiv(255'u8,  1'u8) == 255'u8
+    doAssert ceilDiv(254'u8,  2'u8) == 127'u8
     when not defined(danger):
-      doAssertRaises(AssertionDefect): discard fastCeilDiv(41,  0)
-      doAssertRaises(AssertionDefect): discard fastCeilDiv(41, -1)
-      doAssertRaises(AssertionDefect): discard fastCeilDiv(-1,  1)
-      doAssertRaises(AssertionDefect): discard fastCeilDiv(-1, -1)
-      doAssertRaises(AssertionDefect): discard fastCeilDiv(254'u8, 3'u8)
-      doAssertRaises(AssertionDefect): discard fastCeilDiv(255'u8, 2'u8)
+      doAssertRaises(AssertionDefect): discard ceilDiv(41,  0)
+      doAssertRaises(AssertionDefect): discard ceilDiv(41, -1)
+      doAssertRaises(AssertionDefect): discard ceilDiv(-1,  1)
+      doAssertRaises(AssertionDefect): discard ceilDiv(-1, -1)
+      doAssertRaises(AssertionDefect): discard ceilDiv(254'u8, 3'u8)
+      doAssertRaises(AssertionDefect): discard ceilDiv(255'u8, 2'u8)
 
   block: # splitDecimal() tests
     doAssert splitDecimal(54.674).intpart == 54.0

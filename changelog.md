@@ -144,7 +144,7 @@
 
 - Added `clamp` in `math` which allows using a `Slice` to clamp to a value.
 
-- Added `ceilDiv` and `fastCeilDiv` in `math` for round up integer division.
+- Added `ceilDiv` in `math` for round up integer division.
 
 - The JSON module can now handle integer literals and floating point literals of
   arbitrary length and precision.

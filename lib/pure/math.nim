@@ -944,36 +944,24 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
 func ceilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
   ## Ceil division is conceptually defined as `ceil(x / y)`.
   ##
+  ## Assumes `x >= 0` and `y > 0` and (`x + y - 1 <= high(T)` if T is SomeUnsignedInt).
+  ##
   ## This is different from the `system.div <system.html#div,int,int>`_
   ## operator, which is defined as `trunc(x / y)`.
   ## That is, `div` rounds towards `0` and `ceilDiv` rounds up.
   ##
+  ## This function has above input limitation because it is implemented with
+  ## the expression that backend compiler generates faster code and it is
+  ## rarely used with negative value or unsigned int close to high(T)/2.
+  ## If you need `ceilDiv` works with any input, see:
+  ## https://github.com/demotomohiro/divmath
+  ##
   ## **See also:**
   ## * `system.div proc <system.html#div,int,int>`_ for integer division
   ## * `floorDiv func <#floorDiv,T,T>`_ for integer division with rounds down.
-  ## * `fastCeilDiv func <#fastCeilDiv,T,T>`_ for faster integer division.
   runnableExamples:
     assert ceilDiv( 12,  3) ==  4
     assert ceilDiv( 13,  3) ==  5
-    assert ceilDiv(-13,  3) == -4
-    assert ceilDiv( 13, -3) == -4
-    assert ceilDiv(-13, -3) ==  5
-
-  result = x div y
-  if not (x < 0 xor y < 0) and x mod y != 0:
-    inc result
-
-func fastCeilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
-  ## Faster version of `ceilDiv`.
-  ##
-  ## Assumes `x >= 0` and `y > 0` and (`x + y - 1 <= high(T)` if T is SomeUnsignedInt).
-  ##
-  ## **See also:**
-  ## * `system.div proc <system.html#div,int,int>`_ for integer division
-  ## * `ceilDiv func <#ceilDiv,T,T>`_ for integer division with rounds up.
-  runnableExamples:
-    assert fastCeilDiv(12,  3) ==  4
-    assert fastCeilDiv(13,  3) ==  5
 
   when sizeof(T) == 8:
     type UT = uint64
