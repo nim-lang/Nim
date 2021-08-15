@@ -950,7 +950,7 @@ func ceilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
   ## operator, which works like `trunc(x / y)`.
   ## That is, `div` rounds towards `0` and `ceilDiv` rounds up.
   ##
-  ## This function has the above input limitation, because that allow the
+  ## This function has the above input limitation, because that allows the
   ## compiler to generate faster code and it is rarely used with
   ## negative values or unsigned integers close to `high(T)/2`.
   ## If you need a `ceilDiv` that works with any input, see:
@@ -976,18 +976,18 @@ func ceilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
   when T is SomeUnsignedInt:
     assert x + y - 1 >= x
 
-  # If divisor is const, the backend C/C++ compiler generates code without a `div`
+  # If the divisor is const, the backend C/C++ compiler generates code without a `div`
   # instruction, as it is slow on most CPUs.
   # If the divisor is a power of 2 and a const unsigned integer type, the
   # compiler generates faster code.
-  # If the divisor is const and a signed integer, generated code become slower
+  # If the divisor is const and a signed integer, generated code becomes slower
   # than the code with unsigned integers, because division with signed integers
   # need to works for both positive and negative value without `idiv`/`sdiv`.
   # That is why this code convert parameters to unsigned.
   # This post contains a comparison of the performance of signed/unsigned integers:
-  # https://github.com/nim-lang/Nim/pull/18596#issuecomment-894420984
-  # And if signed integer arguments were not converted to unsigned integer,
-  # `ceilDiv` doesn't work for any positive signed integer value, because
+  # https://github.com/nim-lang/Nim/pull/18596#issuecomment-894420984.
+  # If signed integer arguments were not converted to unsigned integers,
+  # `ceilDiv` wouldn't work for any positive signed integer value, because
   # `x + (y - 1)` can overflow.
   ((x.UT + (y.UT - 1.UT)) div y.UT).T
 
