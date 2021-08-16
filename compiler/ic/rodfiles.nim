@@ -88,6 +88,7 @@ type
     bodiesSection
     symsSection
     typesSection
+    effectsSection
     typeInstCacheSection
     procInstCacheSection
     attachedOpsSection

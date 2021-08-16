@@ -56,7 +56,7 @@ type
     strings*: BiTable[string] # we could share these between modules.
     numbers*: BiTable[BiggestInt] # we also store floats in here so
                                   # that we can assure that every bit is kept
-
+    effects*: seq[PackedEffects]
     cfg: PackedConfig
 
   PackedEncoder* = object
@@ -597,6 +597,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection bodiesSection, m.bodies.nodes
   loadSeqSection symsSection, m.syms
   loadSeqSection typesSection, m.types
+  loadSeqSection effectsSection, m.effects
 
   loadSeqSection typeInstCacheSection, m.typeInstCache
   loadSeqSection procInstCacheSection, m.procInstCache
@@ -663,6 +664,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection symsSection, m.syms
 
   storeSeqSection typesSection, m.types
+  storeSeqSection effectsSection, m.effects
 
   storeSeqSection typeInstCacheSection, m.typeInstCache
   storeSeqSection procInstCacheSection, m.procInstCache
@@ -891,6 +893,9 @@ proc typeHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                 uniqueId: ItemId(module: si, item: item),
                 callConv: t.callConv)
 
+proc loadEffects(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; e: PackedItemId): Effects =
+  result = Effects()
+
 proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                         t: PackedType; si, item: int32; result: PType) =
   result.sym = loadSym(c, g, si, t.sym)
@@ -905,6 +910,8 @@ proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
   when false:
     for gen, id in items t.methods:
       result.methods.add((gen, loadSym(c, g, si, id)))
+  if t.effects != nilItemId:
+    result.effects = loadEffects(c, g, si, t.effects)
 
 proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t: PackedItemId): PType =
   if t == nilItemId:

@@ -46,6 +46,14 @@ type
     name*: LitId
     path*: NodeId
 
+  PackedEffects* = object
+    raises*: seq[NodeId]
+    tags*: seq[NodeId]
+    flags*: set[EffectFlag]
+    requires*: NodeId
+    ensures*: NodeId
+    pragmas*: NodeId
+
   PackedSym* = object
     kind*: TSymKind
     name*: LitId
@@ -85,6 +93,7 @@ type
     # not serialized: loc*: TLoc because it is backend-specific
     typeInst*: PackedItemId
     nonUniqueId*: int32
+    effects*: PackedItemId
 
   PackedNode* = object     # 28 bytes
     kind*: TNodeKind
