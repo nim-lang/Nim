@@ -248,15 +248,16 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   var ti = 0
   let maxlen = t.high - "e+000".len # reserve enough space for exponent
 
-  result = i - start
+  let endPos = i
+  result = endPos - start
   i = start
   # re-parse without error checking, any error should be handled by the code above.
-  if i < s.len and s[i] == '.': i.inc
-  while i < s.len and s[i] in {'0'..'9','+','-'}:
+  if i < endPos and s[i] == '.': i.inc
+  while i < endPos and s[i] in {'0'..'9','+','-'}:
     if ti < maxlen:
       t[ti] = s[i]; inc(ti)
     inc(i)
-    while i < s.len and s[i] in {'.', '_'}: # skip underscore and decimal point
+    while i < endPos and s[i] in {'.', '_'}: # skip underscore and decimal point
       inc(i)
 
   # insert exponent
