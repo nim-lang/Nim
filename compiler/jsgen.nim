@@ -434,6 +434,7 @@ const # magic checked op; magic unchecked op;
     mBoolToStr: ["nimBoolToStr", "nimBoolToStr"],
     mIntToStr: ["cstrToNimstr", "cstrToNimstr"],
     mInt64ToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mFloatToStr: ["cstrToNimstr", "cstrToNimstr"],
     mCStrToStr: ["cstrToNimstr", "cstrToNimstr"],
     mStrToStr: ["", ""]]
 

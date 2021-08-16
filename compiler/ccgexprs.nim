@@ -894,15 +894,23 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     let discIndex = rdSetElemLoc(p.config, v, u.t)
     if optTinyRtti in p.config.globalOptions:
       # not sure how to use `genEnumToStr` here
-      const code = "{ #raiseFieldError2($1, (NI)$3); $2} $n"
-      linefmt(p, cpsStmts, code, [strLit, raiseInstr(p), discIndex])
+      if p.config.isDefined("nimBackport140"):
+        const code = "{ #raiseFieldError($1); $2} $n"
+        linefmt(p, cpsStmts, code, [strLit, raiseInstr(p)])
+      else:
+        const code = "{ #raiseFieldError2($1, (NI)$3); $2} $n"
+        linefmt(p, cpsStmts, code, [strLit, raiseInstr(p), discIndex])
     else:
       # complication needed for signed types
       let first = p.config.firstOrd(disc.sym.typ)
       let firstLit = int64Literal(cast[int](first))
       let discName = genTypeInfo(p.config, p.module, disc.sym.typ, e.info)
-      const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$3) + (NI)$4, $5)); $2} $n"
-      linefmt(p, cpsStmts, code, [strLit, raiseInstr(p), discIndex, firstLit, discName])
+      if p.config.isDefined("nimBackport140"):
+        const code = "{ #raiseFieldError($1); $2} $n"
+        linefmt(p, cpsStmts, code, [strLit, raiseInstr(p)])
+      else:
+        const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$3) + (NI)$4, $5)); $2} $n"
+        linefmt(p, cpsStmts, code, [strLit, raiseInstr(p), discIndex, firstLit, discName])
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   assert e[0].kind == nkDotExpr
@@ -2320,6 +2328,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mInt64ToStr: genDollar(p, e, d, "#nimInt64ToStr($1)")
   of mBoolToStr: genDollar(p, e, d, "#nimBoolToStr($1)")
   of mCharToStr: genDollar(p, e, d, "#nimCharToStr($1)")
+  of mFloatToStr:
+    if e[1].typ.skipTypes(abstractInst).kind == tyFloat32:
+      genDollar(p, e, d, "#nimFloat32ToStr($1)")
+    else:
+      genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr, mUnown: expr(p, e[1], d)
   of mIsolate: genCall(p, e, d)
