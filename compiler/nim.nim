@@ -70,6 +70,13 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
         config.arguments.len > 0 and config.cmd notin {cmdTcc, cmdNimscript, cmdCrun}:
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
+proc getNimRunExe(conf: ConfigRef): string =
+  # xxx consider defining `conf.getConfigVar("nimrun.exe")` to allow users to
+  # customize the binary to run the command with, e.g. for custom `nodejs` or `wine`.
+  if conf.isDefined("mingw"):
+    if conf.isDefined("i386"): result = "wine"
+    elif conf.isDefined("amd64"): result = "wine64"
+
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
     supportsStdinFile: true,
@@ -95,18 +102,21 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     let output = conf.absOutFile
     case conf.cmd
     of cmdBackends, cmdTcc:
-      var cmdPrefix = ""
+      let nimRunExe = getNimRunExe(conf)
+      var cmdPrefix: string
+      if nimRunExe.len > 0: cmdPrefix.add nimRunExe.quoteShell
       case conf.backend
       of backendC, backendCpp, backendObjc: discard
       of backendJs:
         # D20210217T215950:here this flag is needed for node < v15.0.0, otherwise
         # tasyncjs_fail` would fail, refs https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-        cmdPrefix = findNodeJs() & " --unhandled-rejections=strict "
+        if cmdPrefix.len == 0: cmdPrefix = findNodeJs().quoteShell
+        cmdPrefix.add " --unhandled-rejections=strict"
       else: doAssert false, $conf.backend
-      # No space before command otherwise on windows you'd get a cryptic:
-      # `The parameter is incorrect`
+      if cmdPrefix.len > 0: cmdPrefix.add " "
+        # without the `cmdPrefix.len > 0` check, on windows you'd get a cryptic:
+        # `The parameter is incorrect`
       execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
-      # execExternalProgram(conf, cmdPrefix & ' ' & output.quoteShell & ' ' & conf.arguments)
     of cmdDocLike, cmdRst2html, cmdRst2tex: # bugfix(cmdRst2tex was missing)
       if conf.arguments.len > 0:
         # reserved for future use
