@@ -216,8 +216,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   # re-parse without error checking, any error should be handled by the code above.
   if i < s.len and s[i] == '.': i.inc
 
-  if s[0] in {'+', '-'}:
-    t[0] = s[0]
+  if s[i] in {'+', '-'}:
+    t[i] = s[i]
     inc i
     inc ti
   while i < s.len and s[i] in {'0'..'9'}:
