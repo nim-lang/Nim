@@ -1205,6 +1205,8 @@ proc newProcType(c: PContext; info: TLineInfo; prev: PType = nil): PType =
   rawAddSon(result, nil) # return type
   # result.n[0] needs to be some data for backwards compatibility
   result.n.add newNodeI(nkEmpty, info)
+  if result.effects == nil:
+    result.effects = Effects(flags: {knownRaises, knownTags})
 
 proc isMagic(sym: PSym): bool =
   let nPragmas = sym.ast[pragmasPos]

@@ -1346,8 +1346,7 @@ proc hasRealBody(s: PSym): bool =
 proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let g = c.graph
   var effects = s.typ.effects
-  # effects already computed?
-  if not s.hasRealBody or effects != nil: return
+  if not s.hasRealBody: return
 
   s.typ.effects = Effects()
   effects = s.typ.effects
