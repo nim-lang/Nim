@@ -858,123 +858,71 @@ proc genRaiseStmt(p: PProc, n: PNode) =
     useMagic(p, "reraiseException")
     line(p, "reraiseException();\L")
 
-# proc genCase2If(p: PProc, n: PNode, r: var TCompRes) =
-#   var
-#     cond, stmt: TCompRes
-#   var toClose = 0
-
-#   genLineDir(p, n)
-#   gen(p, n[0], cond)
-
-#   let tmp = getTemp(p)
-#   lineF(p, "$1 = $2;", [tmp, cond.rdLoc])
-#   if not isEmptyType(n.typ):
-#     r.kind = resVal
-#     r.res = getTemp(p)
-
-#   for i in 1..<n.len:
-#     let it = n[i]
-#     case it.kind
-#     of nkOfBranch:
-#       if i > 1:
-#         lineF(p, "else {$n", [])
-#         inc(toClose)
-
-#       var ifCond = rope("")
-#       for j in 0..<it.len - 1:
-#         let e = it[j]
-#         if e.kind == nkRange:
-#           ifCond.add "(($1 >= $2) & ($1 <= $3))" % [tmp, rope($e[0].intVal), rope($e[1].intVal)]
-#         else:
-#           gen(p, e, cond)
-#           ifCond.add "($1 == $2)" % [tmp, cond.rdLoc]
-
-#         if j != it.len - 2:
-#           ifCond.add " | "
-#       lineF(p, "if ($1) {$n", [ifCond])
-#     of nkElse:
-#       # else part:
-#       lineF(p, "else {$n", [])
-#     else:
-#       internalError(p.config, it.info, "jsgen.genCaseStmt")
-#     gen(p, lastSon(it), stmt)
-#     moveInto(p, stmt, r)
-#     lineF(p, "}$n", [])
-#   line(p, repeat('}', toClose) & "\L")
-
-# proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
-#   var totalRange = 0
-#   for i in 1..<n.len:
-#     let it = n[i]
-#     case it.kind
-#     of nkOfBranch:
-#       for j in 0..<it.len - 1:
-#         let e = it[j]
-#         if e.kind == nkRange:
-#           inc(totalRange, int(e[1].intVal - e[0].intVal))
-#           if totalRange > 50:
-#             genCase2If(p, n, r)
-#             return
-#     else:
-#       discard
-
-#   var
-#     cond, stmt: TCompRes
-
-#   genLineDir(p, n)
-#   gen(p, n[0], cond)
-#   let stringSwitch = skipTypes(n[0].typ, abstractVar).kind == tyString
-#   if stringSwitch:
-#     useMagic(p, "toJSStr")
-#     lineF(p, "switch (toJSStr($1)) {$n", [cond.rdLoc])
-#   else:
-#     lineF(p, "switch ($1) {$n", [cond.rdLoc])
-#   if not isEmptyType(n.typ):
-#     r.kind = resVal
-#     r.res = getTemp(p)
-#   for i in 1..<n.len:
-#     let it = n[i]
-#     case it.kind
-#     of nkOfBranch:
-#       for j in 0..<it.len - 1:
-#         let e = it[j]
-#         if e.kind == nkRange:
-#           var v = copyNode(e[0])
-#           while v.intVal <= e[1].intVal:
-#             gen(p, v, cond)
-#             lineF(p, "case $1:$n", [cond.rdLoc])
-#             inc(v.intVal)
-#         else:
-#           if stringSwitch:
-#             case e.kind
-#             of nkStrLit..nkTripleStrLit: lineF(p, "case $1:$n",
-#                 [makeJSString(e.strVal, false)])
-#             else: internalError(p.config, e.info, "jsgen.genCaseStmt: 2")
-#           else:
-#             gen(p, e, cond)
-#             lineF(p, "case $1:$n", [cond.rdLoc])
-#       p.nested:
-#         gen(p, lastSon(it), stmt)
-#         moveInto(p, stmt, r)
-#         lineF(p, "break;$n", [])
-#     of nkElse:
-#       lineF(p, "default: $n", [])
-#       p.nested:
-#         gen(p, it[0], stmt)
-#         moveInto(p, stmt, r)
-#         lineF(p, "break;$n", [])
-#     else: internalError(p.config, it.info, "jsgen.genCaseStmt")
-#   lineF(p, "}$n", [])
-
-proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
+proc genCase2If(p: PProc, n: PNode, r: var TCompRes) =
   var
     cond, stmt: TCompRes
+  var toClose = 0
 
   genLineDir(p, n)
   gen(p, n[0], cond)
 
   let tmp = getTemp(p)
   lineF(p, "$1 = $2;", [tmp, cond.rdLoc])
+  if not isEmptyType(n.typ):
+    r.kind = resVal
+    r.res = getTemp(p)
+
+  for i in 1..<n.len:
+    let it = n[i]
+    case it.kind
+    of nkOfBranch:
+      if i > 1:
+        lineF(p, "else {$n", [])
+        inc(toClose)
+
+      var ifCond = rope("")
+      for j in 0..<it.len - 1:
+        let e = it[j]
+        if e.kind == nkRange:
+          ifCond.add "(($1 >= $2) & ($1 <= $3))" % [tmp, rope($e[0].intVal), rope($e[1].intVal)]
+        else:
+          gen(p, e, cond)
+          ifCond.add "($1 == $2)" % [tmp, cond.rdLoc]
+
+        if j != it.len - 2:
+          ifCond.add " | "
+      lineF(p, "if ($1) {$n", [ifCond])
+    of nkElse:
+      # else part:
+      lineF(p, "else {$n", [])
+    else:
+      internalError(p.config, it.info, "jsgen.genCaseStmt")
+    gen(p, lastSon(it), stmt)
+    moveInto(p, stmt, r)
+    lineF(p, "}$n", [])
+  line(p, repeat('}', toClose) & "\L")
+
+proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
+  var totalRange = 0
+  for i in 1..<n.len:
+    let it = n[i]
+    case it.kind
+    of nkOfBranch:
+      for j in 0..<it.len - 1:
+        let e = it[j]
+        if e.kind == nkRange:
+          inc(totalRange, int(e[1].intVal - e[0].intVal))
+          if totalRange > 50:
+            genCase2If(p, n, r)
+            return
+    else:
+      discard
+
+  var
+    cond, stmt: TCompRes
+
+  genLineDir(p, n)
+  gen(p, n[0], cond)
   let stringSwitch = skipTypes(n[0].typ, abstractVar).kind == tyString
   if stringSwitch:
     useMagic(p, "toJSStr")
@@ -984,30 +932,18 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
   if not isEmptyType(n.typ):
     r.kind = resVal
     r.res = getTemp(p)
-  
-  var transferRope: seq[(Rope, Rope)]
-  var hasElse = false
   for i in 1..<n.len:
     let it = n[i]
     case it.kind
     of nkOfBranch:
       for j in 0..<it.len - 1:
         let e = it[j]
-
         if e.kind == nkRange:
-          if (e[1].intVal - e[0].intVal) < 10:
-            var v = copyNode(e[0])
-            while v.intVal <= e[1].intVal:
-              gen(p, v, cond)
-              lineF(p, "case $1:$n", [cond.rdLoc])
-              inc(v.intVal)
-          else:
-            var ifCond = rope("")
-            ifCond.add "(($1 >= $2) & ($1 <= $3))" % [tmp, rope($e[0].intVal), rope($e[1].intVal)]
-            # if j != it.len - 2:
-            #   ifCond.add " | "
-            gen(p, lastSon(it), stmt)
-            transferRope.add (ifCond, stmt.rdLoc)
+          var v = copyNode(e[0])
+          while v.intVal <= e[1].intVal:
+            gen(p, v, cond)
+            lineF(p, "case $1:$n", [cond.rdLoc])
+            inc(v.intVal)
         else:
           if stringSwitch:
             case e.kind
@@ -1022,23 +958,87 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
         moveInto(p, stmt, r)
         lineF(p, "break;$n", [])
     of nkElse:
-      hasElse = true
       lineF(p, "default: $n", [])
       p.nested:
-        for (r1, r2) in transferRope:
-          lineF(p, "if ($1) $n{$2}", [r1, r2])
         gen(p, it[0], stmt)
         moveInto(p, stmt, r)
         lineF(p, "break;$n", [])
     else: internalError(p.config, it.info, "jsgen.genCaseStmt")
-
-  if not hasElse and transferRope.len > 0:
-    lineF(p, "default: $n", [])
-    p.nested:
-      for (r1, r2) in transferRope:
-        lineF(p, "if ($1) $n{$2}", [r1, r2])
-      lineF(p, "break;$n", [])
   lineF(p, "}$n", [])
+
+# proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
+#   var
+#     cond, stmt: TCompRes
+
+#   genLineDir(p, n)
+#   gen(p, n[0], cond)
+
+#   let tmp = getTemp(p)
+#   lineF(p, "$1 = $2;", [tmp, cond.rdLoc])
+#   let stringSwitch = skipTypes(n[0].typ, abstractVar).kind == tyString
+#   if stringSwitch:
+#     useMagic(p, "toJSStr")
+#     lineF(p, "switch (toJSStr($1)) {$n", [cond.rdLoc])
+#   else:
+#     lineF(p, "switch ($1) {$n", [cond.rdLoc])
+#   if not isEmptyType(n.typ):
+#     r.kind = resVal
+#     r.res = getTemp(p)
+  
+#   var transferRope: seq[(Rope, Rope)]
+#   var hasElse = false
+#   for i in 1..<n.len:
+#     let it = n[i]
+#     case it.kind
+#     of nkOfBranch:
+#       for j in 0..<it.len - 1:
+#         let e = it[j]
+
+#         if e.kind == nkRange:
+#           if (e[1].intVal - e[0].intVal) < 10:
+#             var v = copyNode(e[0])
+#             while v.intVal <= e[1].intVal:
+#               gen(p, v, cond)
+#               lineF(p, "case $1:$n", [cond.rdLoc])
+#               inc(v.intVal)
+#           else:
+#             var ifCond = rope("")
+#             ifCond.add "(($1 >= $2) & ($1 <= $3))" % [tmp, rope($e[0].intVal), rope($e[1].intVal)]
+#             # if j != it.len - 2:
+#             #   ifCond.add " | "
+#             gen(p, lastSon(it), stmt)
+#             transferRope.add (ifCond, stmt.rdLoc)
+#         else:
+#           if stringSwitch:
+#             case e.kind
+#             of nkStrLit..nkTripleStrLit: lineF(p, "case $1:$n",
+#                 [makeJSString(e.strVal, false)])
+#             else: internalError(p.config, e.info, "jsgen.genCaseStmt: 2")
+#           else:
+#             gen(p, e, cond)
+#             lineF(p, "case $1:$n", [cond.rdLoc])
+#       p.nested:
+#         gen(p, lastSon(it), stmt)
+#         moveInto(p, stmt, r)
+#         lineF(p, "break;$n", [])
+#     of nkElse:
+#       hasElse = true
+#       lineF(p, "default: $n", [])
+#       p.nested:
+#         for (r1, r2) in transferRope:
+#           lineF(p, "if ($1) $n{$2}", [r1, r2])
+#         gen(p, it[0], stmt)
+#         moveInto(p, stmt, r)
+#         lineF(p, "break;$n", [])
+#     else: internalError(p.config, it.info, "jsgen.genCaseStmt")
+
+#   if not hasElse and transferRope.len > 0:
+#     lineF(p, "default: $n", [])
+#     p.nested:
+#       for (r1, r2) in transferRope:
+#         lineF(p, "if ($1) $n{$2}", [r1, r2])
+#       lineF(p, "break;$n", [])
+#   lineF(p, "}$n", [])
 
 proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
   inc(p.unique)
