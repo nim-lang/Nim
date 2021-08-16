@@ -234,20 +234,12 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   inc(ti, 4)
 
   # insert adjusted exponent
-  echo absExponent
   t[ti-1] = ('0'.ord + absExponent mod 10).char
   absExponent = absExponent div 10
   t[ti-2] = ('0'.ord + absExponent mod 10).char
   absExponent = absExponent div 10
   t[ti-3] = ('0'.ord + absExponent mod 10).char
-
-  var x: string
-  for i in 0 .. 30:
-    # echo t[i]
-    x.add t[i]
-  echo x
   number = c_strtod(addr t, nil)
-
 
 when defined(nimHasInvariant):
   {.pop.} # staticBoundChecks
