@@ -1463,7 +1463,7 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
                  lockLevel: UnspecifiedLockLevel,
                  uniqueId: id)
   when false:
-    if result.itemId.module == 55 and result.itemId.item == 2:
+    if result.itemId.module == 27 and result.itemId.item == 24:
       echo "KNID ", kind
       writeStackTrace()
 
@@ -1496,6 +1496,7 @@ proc assignType*(dest, src: PType) =
       dest.sym = src.sym
   newSons(dest, src.len)
   for i in 0..<src.len: dest[i] = src[i]
+  dest.effects = src.effects
 
 proc copyType*(t: PType, id: ItemId, owner: PSym): PType =
   result = newType(t.kind, id, owner)
@@ -2013,6 +2014,7 @@ proc newProcType*(info: TLineInfo; id: ItemId; owner: PSym): PType =
   result.n = newNodeI(nkFormalParams, info)
   rawAddSon(result, nil) # return type
   result.n.add newNodeI(nkEmpty, info)
+  result.effects = Effects(flags: {knownRaises, knownTags})
 
 proc addParam*(procType: PType; param: PSym) =
   param.position = procType.len-1
