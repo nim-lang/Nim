@@ -215,7 +215,12 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   i = start
   # re-parse without error checking, any error should be handled by the code above.
   if i < s.len and s[i] == '.': i.inc
-  while i < s.len and s[i] in {'0'..'9','+','-'}:
+
+  if s[0] in {'+', '-'}:
+    t[0] = s[0]
+    inc i
+    inc ti
+  while i < s.len and s[i] in {'0'..'9'}:
     if ti < maxlen:
       t[ti] = s[i]; inc(ti)
     inc(i)
@@ -229,12 +234,20 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   inc(ti, 4)
 
   # insert adjusted exponent
+  echo absExponent
   t[ti-1] = ('0'.ord + absExponent mod 10).char
   absExponent = absExponent div 10
   t[ti-2] = ('0'.ord + absExponent mod 10).char
   absExponent = absExponent div 10
   t[ti-3] = ('0'.ord + absExponent mod 10).char
+
+  var x: string
+  for i in 0 .. 30:
+    # echo t[i]
+    x.add t[i]
+  echo x
   number = c_strtod(addr t, nil)
+
 
 when defined(nimHasInvariant):
   {.pop.} # staticBoundChecks
