@@ -273,18 +273,36 @@ func nimIdentNormalize*(s: string): string =
   ##
   ## That means to convert to lower case and remove any '_' on all characters
   ## except first one.
+  ## All `' '` (spaces) are removed.
+  ##
+  ## .. Note:: All ` (backticks) are preserved iff they are present in `s`.
+  ##
+  ## .. Warning:: No checking (e.g. that identifiers cannot start from
+  ##    digits or '_') is performed.
   runnableExamples:
     doAssert nimIdentNormalize("Foo_bar") == "Foobar"
+    doAssert nimIdentNormalize("Foo Bar") == "Foobar"
+    doAssert nimIdentNormalize("`Foo BAR`") == "`Foobar`"
+    doAssert nimIdentNormalize("` Foo BAR `") == "`Foobar`"
+    doAssert nimIdentNormalize("`_x_y`") == "`_xy`"  # not a valid identifier
   result = newString(s.len)
-  if s.len > 0:
-    result[0] = s[0]
-  var j = 1
-  for i in 1..len(s) - 1:
+  var firstChar = true
+  var j = 0
+  for i in 0..len(s) - 1:
     if s[i] in {'A'..'Z'}:
-      result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
+      if not firstChar:
+        result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
+      else:
+        result[j] = s[i]
+        firstChar = false
       inc j
-    elif s[i] != '_':
+    elif s[i] notin {'_', ' '}:
       result[j] = s[i]
+      inc j
+      if s[i] != '`':
+        firstChar = false
+    elif s[i] == '_' and firstChar:
+      result[j] = '_'
       inc j
   if j != s.len: setLen(result, j)
 
