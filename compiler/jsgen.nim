@@ -884,13 +884,13 @@ proc genCase2If(p: PProc, n: PNode, r: var TCompRes) =
       for j in 0..<it.len - 1:
         let e = it[j]
         if e.kind == nkRange:
-          ifCond.add "(($1 >= $2) & ($1 <= $3))" % [tmp, rope($e[0].intVal), rope($e[1].intVal)]
+          ifCond.add "(($1 >= $2) && ($1 <= $3))" % [tmp, rope($e[0].intVal), rope($e[1].intVal)]
         else:
           gen(p, e, cond)
           ifCond.add "($1 == $2)" % [tmp, cond.rdLoc]
 
         if j != it.len - 2:
-          ifCond.add " | "
+          ifCond.add " || "
       lineF(p, "if ($1) {$n", [ifCond])
     of nkElse:
       # else part:
