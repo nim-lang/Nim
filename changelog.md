@@ -104,6 +104,9 @@
 - In `std/dom`, `Interval` is now a `ref object`, same as `Timeout`. Definitions of `setTimeout`,
   `clearTimeout`, `setInterval`, `clearInterval` were updated.
 
+- Dot-like operators (operators starting with `.` but not with `..`) now have same precedence as `.`,
+  so that `a.?b.c` is now parsed as `(a.?b).c` instead of `a.?(b.c)`.
+
 - The allocator for Nintendo Switch, which was nonfunctional because
   of breaking changes in libnx, was removed, in favour of the new `-d:nimAllocPagesViaMalloc` option.
 

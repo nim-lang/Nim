@@ -32,7 +32,7 @@ when isMainModule:
 import
   llstream, lexer, idents, strutils, ast, msgs, options, lineinfos,
   pathutils
-
+import renderer
 when defined(nimpretty):
   import layouter
 
@@ -466,6 +466,17 @@ proc dotExpr(p: var Parser, a: PNode): PNode =
       exprColonEqExprListAux(p, tkParRi, y)
     result = y
 
+proc dotLikeExpr(p: var Parser, a: PNode): PNode =
+  #| dotLikeExpr = expr operator optInd symbol
+  var info = p.parLineInfo
+  result = newNodeI(nkInfix, info)
+  optInd(p, result)
+  var opNode = newIdentNodeP(p.tok.ident, p)
+  getTok(p)
+  result.add(opNode)
+  result.add(a)
+  result.add(parseSymbol(p, smAfterDot))
+
 proc qualifiedIdent(p: var Parser): PNode =
   #| qualifiedIdent = symbol ('.' optInd symbol)?
   result = parseSymbol(p)
@@ -788,6 +799,11 @@ proc commandExpr(p: var Parser; r: PNode; mode: PrimaryMode): PNode =
   p.hasProgress = false
   result.add commandParam(p, isFirstParam, mode)
 
+proc isDotLike(tok: Token): bool =
+  if tok.tokType == tkOpr:
+    if tok.ident.s.len > 1 and tok.ident.s[0] == '.' and tok.ident.s[1] != '.':
+      result = true
+
 proc primarySuffix(p: var Parser, r: PNode,
                    baseIndent: int, mode: PrimaryMode): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')'
@@ -840,11 +856,15 @@ proc primarySuffix(p: var Parser, r: PNode,
       # `foo ref` or `foo ptr`. Unfortunately, these two are also
       # used as infix operators for the memory regions feature and
       # the current parsing rules don't play well here.
-      if p.inPragma == 0 and (isUnary(p.tok) or p.tok.tokType notin {tkOpr, tkDotDot}):
-        # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
-        # solution, but pragmas.nim can't handle that
-        result = commandExpr(p, result, mode)
-      break
+      if p.tok.isDotLike: # synchronize with `tkDot` branch
+        result = dotLikeExpr(p, result)
+        result = parseGStrLit(p, result)
+      else:
+        if p.inPragma == 0 and (isUnary(p.tok) or p.tok.tokType notin {tkOpr, tkDotDot}):
+          # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
+          # solution, but pragmas.nim can't handle that
+          result = commandExpr(p, result, mode)
+        break
     else:
       break
 
