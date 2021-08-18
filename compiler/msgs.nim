@@ -669,17 +669,28 @@ proc genSuccessX*(conf: ConfigRef) =
     else: formatSize(getTotalMem()) & " totmem"
   let loc = $conf.linesCompiled
   var build = ""
+  var flags = ""
+  const debugModeHints = "none (DEBUG BUILD, `-d:release` generates faster code)"
   if conf.cmd in cmdBackends:
-    build.add "gc: $#; " % $conf.selectedGC
-    if optThreads in conf.globalOptions: build.add "threads: on; "
-    build.add "opt: "
-    if optOptimizeSpeed in conf.options: build.add "speed"
-    elif optOptimizeSize in conf.options: build.add "size"
-    else: build.add "none (DEBUG BUILD, `-d:release` generates faster code)"
-      # pending https://github.com/timotheecour/Nim/issues/752, point to optimization.html
-    var flags = ""
-    if isDefined(conf, "danger"): flags.add " -d:danger"
-    elif isDefined(conf, "release"): flags.add " -d:release"
+    if conf.backend != backendJs:
+      build.add "gc: $#; " % $conf.selectedGC
+      if optThreads in conf.globalOptions: build.add "threads: on; "
+      build.add "opt: "
+      if optOptimizeSpeed in conf.options: build.add "speed"
+      elif optOptimizeSize in conf.options: build.add "size"
+      else: build.add debugModeHints
+        # pending https://github.com/timotheecour/Nim/issues/752, point to optimization.html
+      if isDefined(conf, "danger"): flags.add " -d:danger"
+      elif isDefined(conf, "release"): flags.add " -d:release"
+    else:
+      build.add "opt: "
+      if isDefined(conf, "danger"):
+        build.add "speed"
+        flags.add " -d:danger"
+      elif isDefined(conf, "release"):
+        build.add "speed"
+        flags.add " -d:release"
+      else: build.add debugModeHints
     if flags.len > 0: build.add "; options:" & flags
   let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
   let project = if conf.filenameOption == foAbs: $conf.projectFull else: $conf.projectName
