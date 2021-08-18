@@ -485,6 +485,9 @@
 - `nim r` now supports cross compilation from unix to windows when specifying `-d:mingw` by using wine,
   e.g.: `nim r --eval:'import os; echo "a" / "b"'` prints `a\b`
 
+- `nim` can compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off -d:nimVersion140 compiler/nim`.
+  `-d:nimVersion140` is not needed for bootstrapping, only for building 1.4.0 from devel.
+
 - The style checking of the compiler now supports a `--styleCheck:usages` switch. This switch
   enforces that every symbol is written as it was declared, not enforcing
   the official Nim style guide. To be enabled, this has to be combined either
