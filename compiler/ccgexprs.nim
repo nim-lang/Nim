@@ -894,7 +894,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     let discIndex = rdSetElemLoc(p.config, v, u.t)
     if optTinyRtti in p.config.globalOptions:
       # not sure how to use `genEnumToStr` here
-      if p.config.isDefined("nimBackport140"):
+      if p.config.isDefined("nimVersion140"):
         const code = "{ #raiseFieldError($1); $2} $n"
         linefmt(p, cpsStmts, code, [strLit, raiseInstr(p)])
       else:
@@ -905,7 +905,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
       let first = p.config.firstOrd(disc.sym.typ)
       let firstLit = int64Literal(cast[int](first))
       let discName = genTypeInfo(p.config, p.module, disc.sym.typ, e.info)
-      if p.config.isDefined("nimBackport140"):
+      if p.config.isDefined("nimVersion140"):
         const code = "{ #raiseFieldError($1); $2} $n"
         linefmt(p, cpsStmts, code, [strLit, raiseInstr(p)])
       else:

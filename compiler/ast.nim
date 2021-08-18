@@ -653,7 +653,7 @@ type
     mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
     mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
-    mFloatToStr, # xxx backporting: only needed to support building 1.4 (and not needed for bootstrap)
+    mFloatToStr, # for -d:nimVersion140
     mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
