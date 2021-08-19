@@ -467,7 +467,7 @@ proc dotExpr(p: var Parser, a: PNode): PNode =
     result = y
 
 proc dotLikeExpr(p: var Parser, a: PNode): PNode =
-  #| dotLikeExpr = expr operator optInd symbol
+  #| dotLikeExpr = expr DOTLIKEOP optInd symbol
   var info = p.parLineInfo
   result = newNodeI(nkInfix, info)
   optInd(p, result)
@@ -807,6 +807,7 @@ proc primarySuffix(p: var Parser, r: PNode,
                    baseIndent: int, mode: PrimaryMode): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')'
   #|       | '.' optInd symbol generalizedLit?
+  #|       | DOTLIKEOP optInd symbol generalizedLit?
   #|       | '[' optInd exprColonEqExprList optPar ']'
   #|       | '{' optInd exprColonEqExprList optPar '}'
   #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
