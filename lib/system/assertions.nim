@@ -12,7 +12,6 @@ import std/private/miscdollars
 
 type InstantiationInfo = tuple[filename: string, line: int, column: int]
 
-proc `$`(x: int): string {.magic: "IntToStr", noSideEffect.}
 proc `$`(info: InstantiationInfo): string =
   # The +1 is needed here
   # instead of overriding `$` (and changing its meaning), consider explicit name.
@@ -108,7 +107,9 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
       wrong = true
     except exception:
       discard
-    except Exception as e: raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
+    except Exception as e:
+      mixin `$` # alternatively, we could define $cstring in this module
+      raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
     except: raisedForeign()
   if wrong:
     raiseAssert(begin & " nothing was raised" & msgEnd)

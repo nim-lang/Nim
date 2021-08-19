@@ -29,18 +29,34 @@ const
 #   doAssert res == digits100
 
 proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline.} =
-  assert(digits <= 99)
   buf[pos] = digits100[2 * digits]
   buf[pos+1] = digits100[2 * digits + 1]
   #copyMem(buf, unsafeAddr(digits100[2 * digits]), 2 * sizeof((char)))
 
 proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
-  assert(digits <= 99)
   return trailingZeros100[digits]
 
-func addIntImpl*(result: var string, origin: uint64) =
+when defined(js):
+  proc numToString(a: SomeInteger): cstring {.importjs: "((#) + \"\")".}
+
+func addChars[T](result: var string, x: T, start: int, n: int) {.inline.} =
+  let old = result.len
+  result.setLen old + n
+  template impl =
+    for i in 0..<n: result[old + i] = x[start + i]
+  when nimvm: impl
+  else:
+    when defined(js) or defined(nimscript): impl
+    else:
+      {.noSideEffect.}:
+        copyMem result[old].addr, x[start].unsafeAddr, n
+
+func addChars[T](result: var string, x: T) {.inline.} =
+  addChars(result, x, 0, x.len)
+
+func addIntImpl(result: var string, x: uint64) {.inline.} =
   var tmp {.noinit.}: array[24, char]
-  var num = origin
+  var num = x
   var next = tmp.len - 1
   const nbatch = 100
 
@@ -60,17 +76,39 @@ func addIntImpl*(result: var string, origin: uint64) =
     tmp[next] = digits100[index + 1]
     tmp[next - 1] = digits100[index]
     dec next
-  let n = result.len
-  let length = tmp.len - next
-  result.setLen n + length
-  when nimvm:
-    for i in 0..<length:
-      result[n+i] = tmp[next+i]
-  else:
-    when defined(js) or defined(nimscript):
-      for i in 0..<length:
-        result[n+i] = tmp[next+i]
-    else:
-      {.noSideEffect.}:
-        copyMem result[n].addr, tmp[next].addr, length
+  addChars(result, tmp, next, tmp.len - next)
 
+func addInt*(result: var string, x: uint64) =
+  when nimvm: addIntImpl(result, x)
+  else:
+    when not defined(js): addIntImpl(result, x)
+    else:
+      addChars(result, numToString(x))
+
+proc addInt*(result: var string; x: int64) =
+  ## Converts integer to its string representation and appends it to `result`.
+  runnableExamples:
+    var s = "foo"
+    s.addInt(45)
+    assert s == "foo45"
+  template impl =
+    var num: uint64
+    if x < 0:
+      if x == low(int64):
+        num = uint64(x)
+      else:
+        num = uint64(-x)
+      let base = result.len
+      setLen(result, base + 1)
+      result[base] = '-'
+    else:
+      num = uint64(x)
+    addInt(result, num)
+  when nimvm: impl()
+  else:
+    when defined(js):
+      addChars(result, numToString(x))
+    else: impl()
+
+proc addInt*(result: var string; x: int) {.inline.} =
+  addInt(result, int64(x))

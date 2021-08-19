@@ -7,15 +7,18 @@ ok0
 ok1
 onInject: 3
 onInject: 4
-0
 onInject: 5
+0
 onInject: 6
-1
 onInject: 7
 onInject: 8
+1
+onInject: 9
+onInject: 10
+onInject: 11
 2
 ok2
-onInject: 9
+onInject: 12
 '''
 """
 
@@ -25,7 +28,7 @@ onInject: 9
 {.injectStmt.} pragma can be used to inject a statement before every
 other statement in the current module. It's now undocumented and may be removed
 in the future and replaced with something more general and without its limitations.
-e.g. (e.g. doesn't work in VM or js backends).
+(e.g. doesn't work in VM or js backends).
 ]#
 
 from system/ansi_c import c_printf
@@ -44,5 +47,5 @@ proc main()=
     echo a
   echo "ok2"
 
-static: main() # xxx injectStmt not honred in VM
+static: main() # xxx injectStmt not honored in VM
 main()

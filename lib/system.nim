@@ -2463,13 +2463,12 @@ when notJSnotNims:
     else:
       {.error: "Only closure iterator is allowed!".}
 
+from std/private/digitsutils import addInt
+export addInt
+
 when defined(js):
   include "system/jssys"
   include "system/reprjs"
-
-when defined(js) or defined(nimscript):
-  proc addInt*(result: var string; x: int64) =
-    result.add $x
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.
@@ -2918,7 +2917,7 @@ proc addQuoted*[T](s: var string, x: T) =
     s.addEscapedChar(x)
     s.add("'")
   # prevent temporary string allocation
-  elif T is SomeSignedInt:
+  elif T is SomeInteger:
     s.addInt(x)
   elif T is SomeFloat:
     s.addFloat(x)

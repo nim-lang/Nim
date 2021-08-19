@@ -1,45 +1,31 @@
+## `$` is Nim's general way of spelling `toString`:idx:.
+runnableExamples:
+  assert $0.1 == "0.1"
+  assert $(-2*3) == "-6"
+
 import std/private/digitsutils
 import system/formatfloat
 export addFloat
 
-proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
-  ## The stringify operator for an integer argument. Returns `x`
-  ## converted to a decimal string. `$` is Nim's general way of
-  ## spelling `toString`:idx:.
+proc `$`*(x: int): string {.raises: [].} =
+  ## Outplace version of `addInt`.
+  result.addInt(x)
 
-template dollarImpl(x: uint | uint64, result: var string) =
-  addIntImpl(result, x)
+proc `$`*(x: int64): string {.raises: [].} =
+  ## Outplace version of `addInt`.
+  result.addInt(x)
 
-when defined(js):
-  import std/private/since
-  since (1, 3):
-    proc `$`*(x: uint): string =
-      ## Caveat: currently implemented as $(cast[int](x)), tied to current
-      ## semantics of js' Number type.
-      # for c, see strmantle.`$`
-      when nimvm:
-        dollarImpl(x, result)
-      else:
-        result = $(int(x))
+proc `$`*(x: uint64): string {.raises: [].} =
+  ## Outplace version of `addInt`.
+  addInt(result, x)
 
-    proc `$`*(x: uint64): string =
-      ## Compatibility note:
-      ## the results may change in future releases if/when js target implements
-      ## 64bit ints.
-      # pending https://github.com/nim-lang/RFCs/issues/187
-      when nimvm:
-        dollarImpl(x, result)
-      else:
-        result = $(cast[int](x))
-else:
-  proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
-    ## The stringify operator for an unsigned integer argument. Returns `x`
-    ## converted to a decimal string.
-    dollarImpl(x, result)
-
-proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
-  ## The stringify operator for an integer argument. Returns `x`
-  ## converted to a decimal string.
+# same as old `ctfeWhitelist` behavior, whether or not this is a good idea.
+template gen(T) =
+  # xxx simplify this by supporting this in compiler: int{lit} | uint64{lit} | int64{lit}
+  func `$`*(x: T{lit}): string {.compileTime.} = result.addInt(x)
+gen(int)
+gen(uint64)
+gen(int64)
 
 func `$`*(x: float | float32): string =
   ## Outplace version of `addFloat`.

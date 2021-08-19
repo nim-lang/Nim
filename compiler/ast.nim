@@ -652,8 +652,8 @@ type
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
-    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
-    mFloatToStr, # for -d:nimVersion140
+    mCharToStr, mBoolToStr,
+    mIntToStr, mInt64ToStr, mFloatToStr, # for -d:nimVersion140
     mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
@@ -722,8 +722,8 @@ const
     mEqRef, mEqProc, mLePtr, mLtPtr, mEqCString, mXor,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot, mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
-    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
-    mFloatToStr,
+    mCharToStr, mBoolToStr,
+    mIntToStr, mInt64ToStr, mFloatToStr,
     mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
