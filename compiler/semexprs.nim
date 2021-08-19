@@ -49,7 +49,6 @@ template rejectEmptyNode(n: PNode) =
   if n.kind == nkEmpty: illFormedAst(n, c.config)
 
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  let n = if n.kind == nkEarlySemArg: n[0] else: n
   rejectEmptyNode(n)
   # same as 'semExprWithType' but doesn't check for proc vars
   result = semExpr(c, n, flags + {efOperand})
@@ -84,7 +83,6 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = errorNode(c, n)
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  let n = if n.kind == nkEarlySemArg: n[0] else: n
   result = semExprCheck(c, n, flags)
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
@@ -2754,6 +2752,7 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
       a = nextOverloadIter(o, c, n)
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  let n = if n.kind == nkEarlySemArg: n[0] else: n
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
   when false: # see `tdebugutils`
