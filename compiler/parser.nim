@@ -32,7 +32,7 @@ when isMainModule:
 import
   llstream, lexer, idents, strutils, ast, msgs, options, lineinfos,
   pathutils
-import renderer
+
 when defined(nimpretty):
   import layouter
 
@@ -800,9 +800,8 @@ proc commandExpr(p: var Parser; r: PNode; mode: PrimaryMode): PNode =
   result.add commandParam(p, isFirstParam, mode)
 
 proc isDotLike(tok: Token): bool =
-  if tok.tokType == tkOpr:
-    if tok.ident.s.len > 1 and tok.ident.s[0] == '.' and tok.ident.s[1] != '.':
-      result = true
+  result = tok.tokType == tkOpr and tok.ident.s.len > 1 and
+    tok.ident.s[0] == '.' and tok.ident.s[1] != '.'
 
 proc primarySuffix(p: var Parser, r: PNode,
                    baseIndent: int, mode: PrimaryMode): PNode =
