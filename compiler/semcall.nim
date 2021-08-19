@@ -280,7 +280,7 @@ const
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
-  # as semOverlodedCall is already pretty slow (and we need this information
+  # as semOverloadedCall is already pretty slow (and we need this information
   # only in case of an error).
   if c.config.m.errorOutputs == {}:
     # fail fast:
