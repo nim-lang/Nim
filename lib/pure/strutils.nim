@@ -272,38 +272,43 @@ func nimIdentNormalize*(s: string): string =
   ## Normalizes the string `s` as a Nim identifier.
   ##
   ## That means to convert to lower case and remove any '_' on all characters
-  ## except first one.
-  ## All `' '` (spaces) are removed.
-  ##
-  ## .. Note:: All ` (backticks) are preserved iff they are present in `s`.
+  ## except first one; spaces `' '` between backticks ` are removed.
   ##
   ## .. Warning:: No checking (e.g. that identifiers cannot start from
-  ##    digits or '_') is performed.
+  ##    digits or '_', or that number of backticks is even) is performed.
   runnableExamples:
     doAssert nimIdentNormalize("Foo_bar") == "Foobar"
-    doAssert nimIdentNormalize("Foo Bar") == "Foobar"
-    doAssert nimIdentNormalize("`Foo BAR`") == "`Foobar`"
-    doAssert nimIdentNormalize("` Foo BAR `") == "`Foobar`"
-    doAssert nimIdentNormalize("`_x_y`") == "`_xy`"  # not a valid identifier
+    doAssert nimIdentNormalize("FoO BAr") == "Foo Bar"
+    doAssert nimIdentNormalize("`Foo BAR`") == "Foobar"
+    doAssert nimIdentNormalize("` Foo BAR `") == "Foobar"
+    doAssert nimIdentNormalize("`_x_y`") == "_xy"  # not a valid identifier
   result = newString(s.len)
   var firstChar = true
+  var inBackticks = false
   var j = 0
   for i in 0..len(s) - 1:
     if s[i] in {'A'..'Z'}:
-      if not firstChar:
+      if not firstChar:  # to lowercase
         result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       else:
         result[j] = s[i]
         firstChar = false
       inc j
-    elif s[i] notin {'_', ' '}:
+    elif s[i] notin {'_', ' ', '`'}:
       result[j] = s[i]
       inc j
-      if s[i] != '`':
-        firstChar = false
+      firstChar = false
+    elif s[i] == '`':
+      inBackticks = not inBackticks
     elif s[i] == '_' and firstChar:
       result[j] = '_'
       inc j
+      firstChar = false
+    elif s[i] == ' ' and (not inBackticks):
+      result[j] = ' '
+      inc j
+      firstChar = true
+    else: discard  # just omit '_' or ' '
   if j != s.len: setLen(result, j)
 
 func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
