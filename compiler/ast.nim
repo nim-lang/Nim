@@ -1595,7 +1595,7 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
   if mask != {} and propagateHasAsgn:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tySet, tyDistinct, tyOpenArray, tyVarargs}:
+                   tySequence, tySet, tyDistinct}:
       o2.flags.incl mask
       owner.flags.incl mask
 
