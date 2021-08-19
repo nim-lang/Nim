@@ -941,6 +941,58 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
   if result < 0:
     result += abs(y)
 
+func ceilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
+  ## Ceil division is conceptually defined as `ceil(x / y)`.
+  ##
+  ## Assumes `x >= 0` and `y > 0` (and `x + y - 1 <= high(T)` if T is SomeUnsignedInt).
+  ##
+  ## This is different from the `system.div <system.html#div,int,int>`_
+  ## operator, which works like `trunc(x / y)`.
+  ## That is, `div` rounds towards `0` and `ceilDiv` rounds up.
+  ##
+  ## This function has the above input limitation, because that allows the
+  ## compiler to generate faster code and it is rarely used with
+  ## negative values or unsigned integers close to `high(T)/2`.
+  ## If you need a `ceilDiv` that works with any input, see:
+  ## https://github.com/demotomohiro/divmath.
+  ##
+  ## **See also:**
+  ## * `system.div proc <system.html#div,int,int>`_ for integer division
+  ## * `floorDiv func <#floorDiv,T,T>`_ for integer division which rounds down.
+  runnableExamples:
+    assert ceilDiv(12, 3) ==  4
+    assert ceilDiv(13, 3) ==  5
+
+  when sizeof(T) == 8:
+    type UT = uint64
+  elif sizeof(T) == 4:
+    type UT = uint32
+  elif sizeof(T) == 2:
+    type UT = uint16
+  elif sizeof(T) == 1:
+    type UT = uint8
+  else:
+    {.fatal: "Unsupported int type".}
+
+  assert x >= 0 and y > 0
+  when T is SomeUnsignedInt:
+    assert x + y - 1 >= x
+
+  # If the divisor is const, the backend C/C++ compiler generates code without a `div`
+  # instruction, as it is slow on most CPUs.
+  # If the divisor is a power of 2 and a const unsigned integer type, the
+  # compiler generates faster code.
+  # If the divisor is const and a signed integer, generated code becomes slower
+  # than the code with unsigned integers, because division with signed integers
+  # need to works for both positive and negative value without `idiv`/`sdiv`.
+  # That is why this code convert parameters to unsigned.
+  # This post contains a comparison of the performance of signed/unsigned integers:
+  # https://github.com/nim-lang/Nim/pull/18596#issuecomment-894420984.
+  # If signed integer arguments were not converted to unsigned integers,
+  # `ceilDiv` wouldn't work for any positive signed integer value, because
+  # `x + (y - 1)` can overflow.
+  ((x.UT + (y.UT - 1.UT)) div y.UT).T
+
 func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
   ## Splits `x` into a normalized fraction `frac` and an integral power of 2 `exp`,
   ## such that `abs(frac) in 0.5..<1` and `x == frac * 2 ^ exp`, except for special

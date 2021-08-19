@@ -148,6 +148,8 @@
 
 - Added `clamp` in `math` which allows using a `Slice` to clamp to a value.
 
+- Added `ceilDiv` in `math` for round up integer division.
+
 - The JSON module can now handle integer literals and floating point literals of
   arbitrary length and precision.
   Numbers that do not fit the underlying `BiggestInt` or `BiggestFloat` fields are
