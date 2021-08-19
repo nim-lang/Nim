@@ -855,7 +855,12 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         result[0] = p(n[0], c, s, normal)
       if canRaise(n[0]): s.needsTry = true
       if mode == normal:
-        result = ensureDestruction(result, n, c, s)
+        if n[0].kind == nkSym and n[0].sym.magic == mSlice:
+          # toOpenArray borrows data form owner, so we cannot
+          # destroy the result.
+          discard
+        else:
+          result = ensureDestruction(result, n, c, s)
     of nkDiscardStmt: # Small optimization
       result = shallowCopy(n)
       if n[0].kind != nkEmpty:
