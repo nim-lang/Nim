@@ -22,5 +22,6 @@ template main =
   doAssert j.?a3.identity.?a4.getFloat.timesTwo == 5.0
   doAssert j.identity.?a3.identity.?a4.identity.getFloat.timesTwo == 5.0
   doAssert j.identity.?a3.?a4.identity.getFloat.timesTwo == 5.0
+
 static: main()
 main()
