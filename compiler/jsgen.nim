@@ -916,8 +916,10 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
           if totalRange > 20:
             genCase2If(p, n, r)
             return
+    of nkElse:
+      break
     else:
-      discard
+      internalError(p.config, it.info, "jsgen.genCaseStmt")
 
   var
     cond, stmt: TCompRes
