@@ -748,6 +748,9 @@ has the second-lowest precedence.
 
 Otherwise, precedence is determined by the first character.
 
+Dot-like operators are operators starting with `.`, but not with `..`, for e.g. `.?`;
+they have the same precedence as `.`, so that `a.?b.c` is parsed as `(a.?b).c` instead of `a.?(b.c)`.
+
 ================  =======================================================  ==================  ===============
 Precedence level    Operators                                              First character     Terminal symbol
 ================  =======================================================  ==================  ===============
