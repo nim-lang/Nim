@@ -12,7 +12,7 @@ block: # bug 18627
       echo i
 
   proc uciLoop() =
-    let params = @[readLine(stdin)]
+    let params = @["hi"]
     setPosition(params)
 
   uciLoop()
