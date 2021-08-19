@@ -104,7 +104,7 @@
 - In `std/dom`, `Interval` is now a `ref object`, same as `Timeout`. Definitions of `setTimeout`,
   `clearTimeout`, `setInterval`, `clearInterval` were updated.
 
-- Dot-like operators (operators starting with `.` but not with `..`) now have same precedence as `.`,
+- Dot-like operators (operators starting with `.`, but not with `..`) now have the same precedence as `.`,
   so that `a.?b.c` is now parsed as `(a.?b).c` instead of `a.?(b.c)`.
 
 - The allocator for Nintendo Switch, which was nonfunctional because
