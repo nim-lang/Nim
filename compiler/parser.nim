@@ -856,10 +856,14 @@ proc primarySuffix(p: var Parser, r: PNode,
       # `foo ref` or `foo ptr`. Unfortunately, these two are also
       # used as infix operators for the memory regions feature and
       # the current parsing rules don't play well here.
-      if p.tok.isDotLike: # synchronize with `tkDot` branch
+      let isDotLike2 = p.tok.isDotLike
+      if isDotLike2 and p.lex.config.isDefined("nimPreviewDotLikeOps"):
+        # synchronize with `tkDot` branch
         result = dotLikeExpr(p, result)
         result = parseGStrLit(p, result)
       else:
+        if isDotLike2:
+          parMessage(p, warnDotLikeOps, "dot-like operators will be parsed differently with `-d:nimPreviewDotLikeOps`")
         if p.inPragma == 0 and (isUnary(p.tok) or p.tok.tokType notin {tkOpr, tkDotDot}):
           # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
           # solution, but pragmas.nim can't handle that
