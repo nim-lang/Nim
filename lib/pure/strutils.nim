@@ -291,7 +291,7 @@ func nimIdentNormalize*(s: string): string =
       inc j
   if j != s.len: setLen(result, j)
 
-func nimIdentBackticksNormalize*(s: string): string =
+func nimIdentBackticksNormalize*(s: string): string {.since: (1, 5).} =
   ## Normalizes the string `s` as a Nim identifier.
   ##
   ## Unlike `nimIdentNormalize` removes spaces and backticks.
