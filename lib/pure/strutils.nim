@@ -272,19 +272,41 @@ func nimIdentNormalize*(s: string): string =
   ## Normalizes the string `s` as a Nim identifier.
   ##
   ## That means to convert to lower case and remove any '_' on all characters
-  ## except first one; spaces `' '` between backticks ` are removed.
+  ## except first one.
+  ##
+  ## .. Warning:: Backticks and spaces are NOT removed (even if spaces are
+  ##    between backticks), they are left as is.
+  runnableExamples:
+    doAssert nimIdentNormalize("Foo_bar") == "Foobar"
+  result = newString(s.len)
+  if s.len > 0:
+    result[0] = s[0]
+  var j = 1
+  for i in 1..len(s) - 1:
+    if s[i] in {'A'..'Z'}:
+      result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
+      inc j
+    elif s[i] != '_':
+      result[j] = s[i]
+      inc j
+  if j != s.len: setLen(result, j)
+
+func nimIdentBackticksNormalize*(s: string): string =
+  ## Normalizes the string `s` as a Nim identifier.
+  ##
+  ## Unlike `nimIdentNormalize` removes spaces and backticks.
   ##
   ## .. Warning:: No checking (e.g. that identifiers cannot start from
   ##    digits or '_', or that number of backticks is even) is performed.
   runnableExamples:
-    doAssert nimIdentNormalize("Foo_bar") == "Foobar"
-    doAssert nimIdentNormalize("FoO BAr") == "Foo Bar"
-    doAssert nimIdentNormalize("`Foo BAR`") == "Foobar"
-    doAssert nimIdentNormalize("` Foo BAR `") == "Foobar"
-    doAssert nimIdentNormalize("`_x_y`") == "_xy"  # not a valid identifier
+    doAssert nimIdentBackticksNormalize("Foo_bar") == "Foobar"
+    doAssert nimIdentBackticksNormalize("FoO BAr") == "Foobar"
+    doAssert nimIdentBackticksNormalize("`Foo BAR`") == "Foobar"
+    doAssert nimIdentBackticksNormalize("` Foo BAR `") == "Foobar"
+    # not a valid identifier:
+    doAssert nimIdentBackticksNormalize("`_x_y`") == "_xy"
   result = newString(s.len)
   var firstChar = true
-  var inBackticks = false
   var j = 0
   for i in 0..len(s) - 1:
     if s[i] in {'A'..'Z'}:
@@ -298,17 +320,11 @@ func nimIdentNormalize*(s: string): string =
       result[j] = s[i]
       inc j
       firstChar = false
-    elif s[i] == '`':
-      inBackticks = not inBackticks
     elif s[i] == '_' and firstChar:
       result[j] = '_'
       inc j
       firstChar = false
-    elif s[i] == ' ' and (not inBackticks):
-      result[j] = ' '
-      inc j
-      firstChar = true
-    else: discard  # just omit '_' or ' '
+    else: discard  # just omit '`' or ' '
   if j != s.len: setLen(result, j)
 
 func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
