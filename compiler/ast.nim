@@ -656,7 +656,7 @@ type
     mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
     mCharToStr, mBoolToStr,
-    mIntToStr, mInt64ToStr, mFloatToStr, # for -d:nimVersion140
+    mIntToStr, mInt64ToStr, mFloatToStr, # for compiling nimStdlibVersion < 1.5.1 (not bootstrapping)
     mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
