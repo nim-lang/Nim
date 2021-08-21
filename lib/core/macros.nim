@@ -444,7 +444,7 @@ proc ident*(name: string): NimNode {.magic: "StrToIdent", noSideEffect.}
 type
   BindSymRule* = enum    ## specifies how `bindSym` behaves
     brClosed,            ## only the symbols in current scope are bound
-    brOpen,              ## open wrt overloaded symbols, but may be a single
+    brOpen,              ## open regrading overloaded symbols, but may be a single
                          ## symbol if not ambiguous (the rules match that of
                          ## binding in generics)
     brForceOpen          ## same as brOpen, but it will always be open even

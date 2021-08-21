@@ -172,7 +172,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
     if result.isEmpty: bail()
   elif conf.docRoot.len > 0:
     # we're (currently) requiring `isAbsolute` to avoid confusion when passing
-    # a relative path (would it be relative wrt $PWD or to projectfile)
+    # a relative path (would it be relative with regard to $PWD or to projectfile)
     conf.globalAssert conf.docRoot.isAbsolute, arg=conf.docRoot
     conf.globalAssert conf.docRoot.dirExists, arg=conf.docRoot
     # needed because `canonicalizePath` called on `file`

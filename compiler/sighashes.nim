@@ -390,7 +390,7 @@ proc idOrSig*(s: PSym, currentModule: string,
               sigCollisions: var CountTable[SigHash]): Rope =
   if s.kind in routineKinds and s.typ != nil:
     # signatures for exported routines are reliable enough to
-    # produce a unique name and this means produced C++ is more stable wrt
+    # produce a unique name and this means produced C++ is more stable regarding
     # Nim changes:
     let sig = hashProc(s)
     result = rope($sig)
