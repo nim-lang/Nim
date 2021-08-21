@@ -1502,7 +1502,12 @@ proc customPragmaNode(n: NimNode): NimNode =
   if typ.kind == nnkBracketExpr and typ.len > 1 and typ[1].kind == nnkProcTy:
     return typ[1][1]
   elif typ.typeKind == ntyTypeDesc:
-    let impl = typ[1].getImpl()
+    var impl: NimNode
+    if typ[1].kind == nnkBracketExpr:
+      impl = typ[1][0].getImpl()
+    else:
+      impl = typ[1].getImpl()
+
     if impl[0].kind == nnkPragmaExpr:
       return impl[0][1]
     else:
@@ -1524,7 +1529,18 @@ proc customPragmaNode(n: NimNode): NimNode =
   if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
     let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
     let typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
-    var typDef = getImpl(if typInst.kind == nnkVarTy: typInst[0] else: typInst)
+
+    var typDef: NimNode
+    if typInst.kind == nnkVarTy:
+      if typInst[0].kind == nnkBracketExpr:
+        typDef = getImpl(typInst[0][0])
+      else:
+        typDef = getImpl(typInst[0])
+    elif typInst.kind == nnkBracketExpr:
+      typDef = getImpl(typInst[0])
+    else:
+      typDef = getImpl(typInst)
+
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
       let typ = typDef[2]
@@ -1563,7 +1579,10 @@ proc customPragmaNode(n: NimNode): NimNode =
                   return varNode[1]
 
         if obj[1].kind == nnkOfInherit: # explore the parent object
-          typDef = getImpl(obj[1][0])
+          if obj[1][0].kind == nnkBracketExpr:
+            typDef = getImpl(obj[1][0][0])
+          else:
+            typDef = getImpl(obj[1][0])
         else:
           typDef = nil
 
