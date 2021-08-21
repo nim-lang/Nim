@@ -47,7 +47,7 @@ takeCallback x
 
 echo ord v
 
-block:
+block: # https://github.com/nim-lang/RFCs/issues/8
   type
     Enum1 = enum
       A, B, C
