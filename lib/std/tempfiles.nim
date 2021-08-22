@@ -108,7 +108,7 @@ template randomPathName(length: Natural): string =
   var res = newString(length)
   if not nimTempPathState.isInit:
     var time = getMonoTime().ticks
-    when not defined(js) and compileOption("threads"):
+    when compileOption("threads"):
       time = time xor int64(getThreadId())
     nimTempPathState.isInit = true
     nimTempPathState.state = initRand(time)
