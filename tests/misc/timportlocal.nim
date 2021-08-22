@@ -119,3 +119,11 @@ doAssert not compiles(fn1())
 doAssert not declared(fn1)
 doAssert not declared(fn2)
 doAssert not declared(fn3)
+
+when true: # `from a import b` inside generics
+  proc bar5(a: auto) =
+    from mimportlocalb import fn1
+    echo declared(mimportlocalb)
+    doAssert mimportlocalb.fn1() == 1
+    doAssert fn1() == 1
+  bar5(1)

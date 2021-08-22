@@ -491,7 +491,29 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkExprColonExpr, nkExprEqExpr:
     checkMinSonsLen(n, 2, c.config)
     result[1] = semGenericStmt(c, n[1], flags, ctx)
+  of nkFromStmt:
+    dbgIf n.kind, n.safeLen, n
+    addTempDecl(c, getIdentNode(c, n[0]), skModule)
+    result = newNodeI(nkStmtList, n.info)
+    var nMix = newNodeI(nkMixinStmt, n.info)
+    nMix.add n[1] # TODO : 1..^1
+    nMix = semMixinStmt(c, nMix, ctx.toMixin)
+    result.add nMix
+    result.add n
+    dbgIf result
+    # result = semGenericStmt(c, n[i], flags, ctx)
+    # for i in 1..<n.len:
+    #   # result.add 
+    #   # dbgIf n[i], n[i].kind
+    #   # addTempDecl(c, getIdentNode(c, n[i]), skMixin)
+    #   # addTempDecl(c, getIdentNode(c, n[i]), skUnknown)
+    #   # result[i] = semMixinStmt(c, result[i], ctx.toMixin)
+    #   result[i] = semMixinStmt2(c, result[i], ctx.toMixin) # TODO: bind ?; TODO: see other PR for scope based symbol resolution
+    # # for i in 0..<n.len:
+    # #   addTempDecl(c, getIdentNode(c, n[0]), skProc)
+    # #   result[i] = semGenericStmt(c, n[i], flags, ctx)
   else:
+    dbgIf n.kind, n.safeLen, n
     for i in 0..<n.len:
       result[i] = semGenericStmt(c, n[i], flags, ctx)
 
