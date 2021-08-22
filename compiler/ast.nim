@@ -860,7 +860,7 @@ type
     case kind*: TSymKind
     of routineKinds:
       #procInstCache*: seq[PInstantiation]
-      gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
+      gcUnsafetyReason*: PSym  # for better error messages regarding gcsafe
       transformedBody*: PNode  # cached body after transf pass
     of skLet, skVar, skField, skForVar:
       guard*: PSym
