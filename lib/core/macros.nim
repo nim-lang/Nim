@@ -442,9 +442,11 @@ proc ident*(name: string): NimNode {.magic: "StrToIdent", noSideEffect.}
   ## Create a new ident node from a string.
 
 type
-  BindSymRule* = enum    ## specifies how `bindSym` behaves
+  BindSymRule* = enum    ## Specifies how `bindSym` behaves. The difference
+                         ## between open and closed symbols can be found in
+                         ## `<manual.html#symbol-lookup-in-generics-open-and-closed-symbols>`_
     brClosed,            ## only the symbols in current scope are bound
-    brOpen,              ## open regrading overloaded symbols, but may be a single
+    brOpen,              ## open for overloaded symbols, but may be a single
                          ## symbol if not ambiguous (the rules match that of
                          ## binding in generics)
     brForceOpen          ## same as brOpen, but it will always be open even
