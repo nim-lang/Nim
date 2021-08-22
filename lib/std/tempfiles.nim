@@ -17,7 +17,7 @@ See also:
 * `mkstemp` (posix), refs https://man7.org/linux/man-pages/man3/mkstemp.3.html
 ]#
 
-import os, random
+import os, random, std/monotimes
 
 
 const
@@ -96,11 +96,25 @@ proc safeOpen(filename: string): File =
       discard posix.close(fileHandle) # TODO handles failure when closing file
       raiseOSError(osLastError(), filename)
 
+
+type
+  NimTempPathState = object
+    state: Rand
+    isInit: bool
+
+var nimTempPathState {.threadvar.}: NimTempPathState
+
 template randomPathName(length: Natural): string =
   var res = newString(length)
-  var state = initRand()
+  if not nimTempPathState.isInit:
+    var time = getMonoTime().ticks
+    when not defined(js) and compileOption("threads"):
+      time = time xor int64(getThreadId())
+    nimTempPathState.isInit = true
+    nimTempPathState.state = initRand(time)
+
   for i in 0 ..< length:
-    res[i] = state.sample(letters)
+    res[i] = nimTempPathState.state.sample(letters)
   res
 
 proc getTempDirImpl(dir: string): string {.inline.} =
