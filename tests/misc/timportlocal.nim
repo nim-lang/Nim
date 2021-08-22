@@ -29,8 +29,6 @@ doAssert not compiles(fn1())
 doAssert not declared(fn1)
 
 proc bar2[T](a: T) =
-  # BUG D20210618T171059
-  mixin mimportlocalb, fn1
   from mimportlocalb import fn1
   doAssert fn1() == 1
   doAssert declared(fn1)
@@ -40,7 +38,6 @@ doAssert not declared(mimportlocalb)
 doAssert not compiles(fn1())
 
 proc bar3[T](a: T) =
-  mixin mimportlocalb
   when T is int8:
     from mimportlocalb import fn1
     doAssert declared(fn1)
@@ -61,10 +58,7 @@ proc enumList(T: typedesc): seq[T] =
   for ai in T: result.add ai
 
 proc bar4[T](a: T) =
-  mixin mimportlocalb
-
   block: # overloaded symbol
-    mixin fn3
     from mimportlocalb import fn3
     doAssert compiles(fn3(1.0))
     doAssert compiles(fn3(1))
@@ -73,7 +67,6 @@ proc bar4[T](a: T) =
     doAssert fn3(1.0) == 3.5
 
   block: # enum
-    mixin A3
     from mimportlocalb import A3
     doAssert g0 is A3
     doAssert A3.enumList == @[g0, g1, g2]
@@ -81,7 +74,6 @@ proc bar4[T](a: T) =
 
   block: # pure enum
     block:
-      mixin A1
       from mimportlocalb import A1
       doAssert k1 is A1
       doAssert A1.enumList == @[k0, k1]
@@ -90,7 +82,6 @@ proc bar4[T](a: T) =
       # let x = A1.k1
 
     block:
-      mixin A2
       from mimportlocalb import A2
       doAssert k2 is A2
       doAssert A2.enumList == @[k0, k2]
@@ -98,7 +89,6 @@ proc bar4[T](a: T) =
       doAssert not declared(k1)
 
     block:
-      mixin A1, A2
       from mimportlocalb import A1, A2
       doAssert k1 is A1
       doAssert k2 is A2
