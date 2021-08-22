@@ -1,6 +1,9 @@
 proc fn1*(): int = 1
 proc fn2*(): int = 2
-proc fn3*(): int = 3
+proc fn4*(): int = 4
+
+proc fn3*(x: int): int = 3
+proc fn3*(x: float): float = 3.5
 
 type A1* {.pure.} = enum k0, k1
 type A2* {.pure.} = enum k0, k2

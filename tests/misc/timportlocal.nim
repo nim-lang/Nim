@@ -18,12 +18,12 @@ block:
     doAssert fn2() == 2
   doAssert not declared(fn2)
   proc bara() =
-    from mimportlocalb import fn3
-    doAssert fn3() == 3
+    from mimportlocalb import fn4
+    doAssert fn4() == 4
     doAssert fn1() == 1
     doAssert not declared(fn2)
   bara()
-  doAssert not declared(fn3)
+  doAssert not declared(fn4)
 
 doAssert not compiles(fn1())
 doAssert not declared(fn1)
@@ -40,28 +40,38 @@ doAssert not declared(mimportlocalb)
 doAssert not compiles(fn1())
 
 proc bar3[T](a: T) =
-  mixin mimportlocalb, fn1
+  mixin mimportlocalb
   when T is int8:
+    from mimportlocalb import fn1
+    doAssert declared(fn1)
+    doAssert not declared(fn2)
+    doAssert fn1() == 1
+  when T is int16:
     from mimportlocalb import fn2
     doAssert declared(fn2)
-    doAssert not declared(fn3)
+    doAssert not declared(fn1)
     doAssert fn2() == 2
-  when T is int16:
-    from mimportlocalb import fn3
-    doAssert declared(fn3)
-    doAssert not declared(fn2)
-    doAssert fn3() == 3
 
 bar3(1'i8)
 bar3(1'i16)
+doAssert not declared(fn1)
 doAssert not declared(fn2)
-doAssert not declared(fn3)
 
 proc enumList(T: typedesc): seq[T] =
   for ai in T: result.add ai
 
 proc bar4[T](a: T) =
   mixin mimportlocalb
+
+  block: # overloaded symbol
+    mixin fn3
+    from mimportlocalb import fn3
+    doAssert compiles(fn3(1.0))
+    doAssert compiles(fn3(1))
+    doAssert declared(fn3)
+    doAssert fn3(1) == 3
+    doAssert fn3(1.0) == 3.5
+
   block: # enum
     mixin A3
     from mimportlocalb import A3
