@@ -2998,11 +2998,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     #     import x
     #
     # works:
-    if c.currentScope.depthLevel > 2 + c.compilesContextId:
-      localError(c.config, n.info, errXOnlyAtModuleScope % "import")
+    # if c.currentScope.depthLevel > 2 + c.compilesContextId:
+    #   localError(c.config, n.info, errXOnlyAtModuleScope % "import")
     result = evalImport(c, n)
   of nkImportExceptStmt:
-    if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "import")
+    # if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "import")
     result = evalImportExcept(c, n)
   of nkFromStmt:
     # if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "from")
