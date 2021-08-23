@@ -492,7 +492,6 @@ proc semGenericStmt(c: PContext, n: PNode,
     checkMinSonsLen(n, 2, c.config)
     result[1] = semGenericStmt(c, n[1], flags, ctx)
   of nkFromStmt, nkImportStmt, nkImportExceptStmt:
-    # TODO: remove deadcode nkImportAs
     if n[0].kind == nkInfix:
       addTempDecl(c, getIdentNode(c, n[0][2]), skModule)
     else:
