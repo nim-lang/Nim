@@ -493,10 +493,8 @@ proc semGenericStmt(c: PContext, n: PNode,
     result[1] = semGenericStmt(c, n[1], flags, ctx)
   of nkFromStmt:
     addTempDecl(c, getIdentNode(c, n[0]), skModule)
-    result = newNodeI(nkStmtList, n.info)
     for i in 1..<n.len:
       addTempDecl(c, getIdentNode(c, n[i]), skMixin)
-    result.add n
   else:
     for i in 0..<n.len:
       result[i] = semGenericStmt(c, n[i], flags, ctx)
