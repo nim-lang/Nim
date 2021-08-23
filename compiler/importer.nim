@@ -69,57 +69,44 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet, isPure
   # This does not handle stubs, because otherwise loading on demand would be
   # pointless in practice. So importing stubs is fine here!
   # check if we have already a symbol of the same name:
-
-  # TODO: newSym
-  let isLocalImport = not isTopLevel(c)
-  if isLocalImport:
-    # TODO: OverloadableSyms ? let multiImport = s.kind notin ExportableSymKinds or s.kind in skProcKinds ?
-    if s.kind in skProcKinds:
+  template rawImportSymbolAux(e, body) =
+    if s.kind == skType:
+      var etyp = s.typ
+      if etyp.kind in {tyBool, tyEnum}:
+        for j in 0..<etyp.n.len:
+          var e = etyp.n[j].sym
+          if e.kind != skEnumField:
+            internalError(c.config, s.info, "rawImportSymbol")
+            # BUGFIX: because of aliases for enums the symbol may already
+            # have been put into the symbol table
+            # BUGFIX: but only iff they are the same symbols!
+          body
+  if not isTopLevel(c):
+    if s.kind in OverloadableSyms:
       addOverloadableSymAt(c, c.currentScope, s)
     elif s.kind == skEnumField and isPureEnumField:
       c.currentScope.addSym(s)
     else:
       addDecl(c, s)
-      # xxx factor with code below
-      if s.kind == skType:
-        var etyp = s.typ
-        if etyp.kind in {tyBool, tyEnum}:
-          for j in 0..<etyp.n.len:
-            var e = etyp.n[j].sym
-            if e.kind != skEnumField:
-              internalError(c.config, s.info, "rawImportSymbol")
-              # BUGFIX: because of aliases for enums the symbol may already
-              # have been put into the symbol table
-              # BUGFIX: but only iff they are the same symbols!
-            if e != nil:
-              # dbg e, e.kind, e.flags
-              rawImportSymbol(c, e, origin, importSet, isPureEnumField = sfPure in s.flags)
-    return
-
-  when false:
-    var check = someSymFromImportTable(c, s.name)
-    if check != nil and check.id != s.id:
-      if s.kind notin OverloadableSyms or check.kind notin OverloadableSyms:
-        # s and check need to be qualified:
-        incl(c.ambiguousSymbols, s.id)
-        incl(c.ambiguousSymbols, check.id)
-  # thanks to 'export' feature, it could be we import the same symbol from
-  # multiple sources, so we need to call 'strTableAdd' here:
-  when false:
-    # now lazy. Speeds up the compiler and is a prerequisite for IC.
-    strTableAdd(c.importTable.symbols, s)
+      rawImportSymbolAux(e):
+        if e != nil:
+          rawImportSymbol(c, e, origin, importSet, isPureEnumField = sfPure in s.flags)
   else:
-    importSet.incl s.id
-  if s.kind == skType:
-    var etyp = s.typ
-    if etyp.kind in {tyBool, tyEnum}:
-      for j in 0..<etyp.n.len:
-        var e = etyp.n[j].sym
-        if e.kind != skEnumField:
-          internalError(c.config, s.info, "rawImportSymbol")
-          # BUGFIX: because of aliases for enums the symbol may already
-          # have been put into the symbol table
-          # BUGFIX: but only iff they are the same symbols!
+    when false:
+      var check = someSymFromImportTable(c, s.name)
+      if check != nil and check.id != s.id:
+        if s.kind notin OverloadableSyms or check.kind notin OverloadableSyms:
+          # s and check need to be qualified:
+          incl(c.ambiguousSymbols, s.id)
+          incl(c.ambiguousSymbols, check.id)
+    # thanks to 'export' feature, it could be we import the same symbol from
+    # multiple sources, so we need to call 'strTableAdd' here:
+    when false:
+      # now lazy. Speeds up the compiler and is a prerequisite for IC.
+      strTableAdd(c.importTable.symbols, s)
+    else:
+      importSet.incl s.id
+      rawImportSymbolAux(e):
         for check in importedItems(c, e.name):
           if check.id == e.id:
             e = nil
@@ -129,11 +116,11 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet, isPure
             rawImportSymbol(c, e, origin, importSet)
           else:
             importPureEnumField(c, e)
-  else:
-    if s.kind == skConverter: addConverter(c, LazySym(sym: s))
-    if hasPattern(s): addPattern(c, LazySym(sym: s))
-  if s.owner != origin:
-    c.exportIndirections.incl((origin.id, s.id))
+    if s.kind != skType:
+      if s.kind == skConverter: addConverter(c, LazySym(sym: s))
+      if hasPattern(s): addPattern(c, LazySym(sym: s))
+    if s.owner != origin:
+      c.exportIndirections.incl((origin.id, s.id))
 
 proc splitPragmas(c: PContext, n: PNode): (PNode, seq[TSpecialWord]) =
   template bail = globalError(c.config, n.info, "invalid pragma")
@@ -227,7 +214,7 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
     c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
     addUnnamedIt(c, fromMod, it.sym.id notin exceptSet)
   else:
-    var importSet: IntSet # TODO: this param seems useless; written to but not read
+    var importSet: IntSet
     for s in allSyms(c.graph, fromMod):
       if exceptSet.isNil or s.name.id notin exceptSet:
         rawImportSymbol(c, s, fromMod, importSet)

@@ -3002,12 +3002,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     #   localError(c.config, n.info, errXOnlyAtModuleScope % "import")
     result = evalImport(c, n)
   of nkImportExceptStmt:
-    # if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "import")
     result = evalImportExcept(c, n)
   of nkFromStmt:
     result = evalFrom(c, n)
   of nkIncludeStmt:
-    #if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "include")
     result = evalInclude(c, n)
   of nkExportStmt:
     if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "export")
