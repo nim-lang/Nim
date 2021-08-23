@@ -89,9 +89,12 @@ proc toString*(tree: PackedTree; n: NodePos; m: PackedModule; nesting: int;
   of directIntLit:
     result.add " "
     result.addInt tree.nodes[pos].operand
-  of externSIntLit, externUIntLit:
+  of externSIntLit:
     result.add " "
     result.addInt m.numbers[LitId tree.nodes[pos].operand]
+  of externUIntLit:
+    result.add " "
+    result.addInt cast[uint64](m.numbers[LitId tree.nodes[pos].operand])
   of nkFloatLit..nkFloat128Lit:
     result.add " "
     result.add $cast[BiggestFloat](m.numbers[LitId tree.nodes[pos].operand])
