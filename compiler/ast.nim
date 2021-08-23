@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, hashes, options, ropes, idents, int128, intsets
+  lineinfos, hashes, options, ropes, idents, int128
 from strutils import toLowerAscii
 
 export int128
@@ -991,17 +991,6 @@ type
 
   TImplication* = enum
     impUnknown, impNo, impYes
-
-  ImportMode* = enum
-    importAll, importSet, importExcept
-  ImportedModule* = object
-    m*: PSym
-    case mode*: ImportMode
-    of importAll: discard
-    of importSet:
-      imported*: IntSet          # of PIdent.id
-    of importExcept:
-      exceptSet*: IntSet         # of PIdent.id
 
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
