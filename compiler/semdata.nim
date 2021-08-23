@@ -150,15 +150,6 @@ type
     lastTLineInfo*: TLineInfo
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
 
-when false:
-  template imports*(c: PContext): seq[ImportedModule] =
-    # PRTEMP
-    static:
-      # echo getInstantiationInfo()
-      # echo instantiationInfo(-1)
-      echo instantiationInfo(-2)
-    c.currentScope.importsLocal
-
 template config*(c: PContext): ConfigRef = c.graph.config
 
 proc getIntLitType*(c: PContext; literal: PNode): PType =

@@ -852,8 +852,6 @@ type
     symbols*: TStrTable
     parent*: PScope
     allowPrivateAccess*: seq[PSym] #  # enable access to private fields
-    # allowPrivateAccess*: seq[PSym] #  PRTEMP
-    importsLocal*: seq[ImportedModule] #  PRTEMP
 
   PScope* = ref TScope
 
