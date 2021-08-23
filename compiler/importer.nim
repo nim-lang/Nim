@@ -111,8 +111,6 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet, isPure
     strTableAdd(c.importTable.symbols, s)
   else:
     importSet.incl s.id
-
-
   if s.kind == skType:
     var etyp = s.typ
     if etyp.kind in {tyBool, tyEnum}:
