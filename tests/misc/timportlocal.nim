@@ -68,9 +68,12 @@ proc bar4[T](a: T) =
 
   block: # enum
     from mimportlocalb import A3
-    doAssert g0 is A3
+    doAssert g0 is A3 # PRTEMP: how can this work? and can we use same technique to avoid mixin trick?
     doAssert A3.enumList == @[g0, g1, g2]
     doAssert A3.g0 == g0
+    doAssert declared(g0)
+
+  doAssert not declared(g0)
 
   block: # pure enum
     block:
@@ -79,7 +82,7 @@ proc bar4[T](a: T) =
       doAssert A1.enumList == @[k0, k1]
       doAssert not declared(A2)
       doAssert not declared(k2)
-      # let x = A1.k1
+      # let x = A1.k1 # BUG D20210822T163934:here
 
     block:
       from mimportlocalb import A2
@@ -113,7 +116,7 @@ doAssert not declared(fn3)
 when true: # `from a import b` inside generics
   proc bar5(a: auto) =
     from mimportlocalb import fn1
-    echo declared(mimportlocalb)
+    doAssert declared(mimportlocalb)
     doAssert mimportlocalb.fn1() == 1
     doAssert fn1() == 1
   bar5(1)
