@@ -537,43 +537,26 @@ type
 
 proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
-  if isCompilerDebug():
-    dbg n, flags, n.kind
   case n.kind
   of nkIdent, nkAccQuoted:
     var amb = false
     var ident = considerQuotedIdent(c, n)
-    if isCompilerDebug():
-      dbg ident
     if checkModule in flags:
       result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
-      if isCompilerDebug():
-        dbg result
-        debugScopes2()
     else:
       let candidates = searchInScopesFilterBy(c, ident, allExceptModule) #.skipAlias(n, c.config)
-      if isCompilerDebug():
-        dbg candidates.len
       if candidates.len > 0:
         result = candidates[0]
         amb = candidates.len > 1
         if amb and checkAmbiguity in flags:
           errorUseQualifier(c, n.info, candidates)
-    if isCompilerDebug():
-      dbg result
-      debugScopes(c)
     if result == nil:
       let candidates = allPureEnumFields(c, ident)
-      if isCompilerDebug():
-        dbg candidates.len
       if candidates.len > 0:
         result = candidates[0]
         amb = candidates.len > 1
         if amb and checkAmbiguity in flags:
           errorUseQualifier(c, n.info, candidates)
-
-    if isCompilerDebug():
-      dbg result
     if result == nil and checkUndeclared in flags:
       result = errorUndeclaredIdentifierHint(c, n, ident)
     elif checkAmbiguity in flags and result != nil and amb:
@@ -583,10 +566,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     result = n.sym
   of nkDotExpr:
     result = nil
-    dbgIf n, n.kind, flags
-    # ?.n[0], 
     var m = qualifiedLookUp(c, n[0], (flags * {checkUndeclared}) + {checkModule})
-    dbgIf m
     if m != nil and m.kind == skModule:
       var ident: PIdent = nil
       if n[1].kind == nkIdent:

@@ -492,23 +492,12 @@ proc semGenericStmt(c: PContext, n: PNode,
     checkMinSonsLen(n, 2, c.config)
     result[1] = semGenericStmt(c, n[1], flags, ctx)
   of nkFromStmt:
-    dbgIf n.kind, n.safeLen, n
     addTempDecl(c, getIdentNode(c, n[0]), skModule)
     result = newNodeI(nkStmtList, n.info)
-    when false:
-      var nMix = newNodeI(nkMixinStmt, n.info)
-      for i in 1..<n.len:
-        nMix.add n[i]
-      nMix = semMixinStmt(c, nMix, ctx.toMixin)
-      result.add nMix
-      result.add n
-    else:
-      for i in 1..<n.len:
-        addTempDecl(c, getIdentNode(c, n[i]), skMixin)
-      result.add n
-    dbgIf result
+    for i in 1..<n.len:
+      addTempDecl(c, getIdentNode(c, n[i]), skMixin)
+    result.add n
   else:
-    dbgIf n.kind, n.safeLen, n
     for i in 0..<n.len:
       result[i] = semGenericStmt(c, n[i], flags, ctx)
 
