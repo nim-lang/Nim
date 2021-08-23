@@ -491,10 +491,15 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkExprColonExpr, nkExprEqExpr:
     checkMinSonsLen(n, 2, c.config)
     result[1] = semGenericStmt(c, n[1], flags, ctx)
-  of nkFromStmt:
-    addTempDecl(c, getIdentNode(c, n[0]), skModule)
-    for i in 1..<n.len:
-      addTempDecl(c, getIdentNode(c, n[i]), skMixin)
+  of nkFromStmt, nkImportStmt, nkImportExceptStmt:
+    # TODO: remove deadcode nkImportAs
+    if n[0].kind == nkInfix:
+      addTempDecl(c, getIdentNode(c, n[0][2]), skModule)
+    else:
+      addTempDecl(c, getIdentNode(c, n[0]), skModule)
+    if n.kind == nkFromStmt:
+      for i in 1..<n.len:
+        addTempDecl(c, getIdentNode(c, n[i]), skMixin)
   else:
     for i in 0..<n.len:
       result[i] = semGenericStmt(c, n[i], flags, ctx)

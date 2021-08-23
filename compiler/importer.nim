@@ -223,13 +223,20 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
       importPureEnumFields(c, it.sym, it.sym.typ)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
-  c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
-  addUnnamedIt(c, fromMod, it.sym.id notin exceptSet)
+  if isTopLevel(c):
+    c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
+    addUnnamedIt(c, fromMod, it.sym.id notin exceptSet)
+  else:
+    var importSet: IntSet # TODO: this param seems useless; written to but not read
+    for s in allSyms(c.graph, fromMod):
+      if exceptSet.isNil or s.name.id notin exceptSet:
+        rawImportSymbol(c, s, fromMod, importSet)
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
-  c.addImport ImportedModule(m: fromMod, mode: importAll)
-  addUnnamedIt(c, fromMod, true)
-  when false:
+  if isTopLevel(c):
+    c.addImport ImportedModule(m: fromMod, mode: importAll)
+    addUnnamedIt(c, fromMod, true)
+  else:
     var exceptSet: IntSet
     importAllSymbolsExcept(c, fromMod, exceptSet)
 
