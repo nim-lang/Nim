@@ -18,7 +18,7 @@ proc `&=`(c: var MD5Context, ch: char) =
   # XXX suspicious code here; relies on ch being zero terminated?
   md5Update(c, unsafeAddr ch, 1)
 proc `&=`(c: var MD5Context, r: Rope) =
-  for l in leaves(r): md5Update(c, l, l.len)
+  for l in leaves(r): md5Update(c, l.cstring, l.len)
 proc `&=`(c: var MD5Context, i: BiggestInt) =
   md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))
 proc `&=`(c: var MD5Context, f: BiggestFloat) =
