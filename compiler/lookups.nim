@@ -561,6 +561,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           errorUseQualifier(c, n.info, candidates)
     if isCompilerDebug():
       dbg result
+      debugScopes(c)
     if result == nil:
       let candidates = allPureEnumFields(c, ident)
       if isCompilerDebug():

@@ -603,6 +603,7 @@ type
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
     skAlias               # an alias (needs to be resolved immediately)
+    skMixin               # `from a import b` in generics
   TSymKinds* = set[TSymKind]
 
 const

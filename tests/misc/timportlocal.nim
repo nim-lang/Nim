@@ -1,8 +1,9 @@
+# tests for local `from a import b`
 
 proc bar()=
-  # import mimportlocalb
   from mimportlocalb import fn1
-  doAssert fn1() == 1
+  let x = fn1()
+  doAssert x == 1
   doAssert declared(fn1)
 bar()
 
@@ -67,9 +68,12 @@ proc bar4[T](a: T) =
     doAssert fn3(1.0) == 3.5
 
   block: # enum
-    from mimportlocalb import A3
-    doAssert g0 is A3 # PRTEMP: how can this work? and can we use same technique to avoid mixin trick?
-    doAssert A3.enumList == @[g0, g1, g2]
+    from mimportlocalb import A3, g0, g1, g2
+    var x1 = g0
+    var x2 = g0 is A3
+    doAssert x2
+    let x3 = @[g0, g1, g2]
+    doAssert A3.enumList == x3
     doAssert A3.g0 == g0
     doAssert declared(g0)
 
@@ -82,28 +86,30 @@ proc bar4[T](a: T) =
       doAssert A1.enumList == @[k0, k1]
       doAssert not declared(A2)
       doAssert not declared(k2)
-      # let x = A1.k1 # BUG D20210822T163934:here
+      let x = A1.k1
+      doAssert $x == "k1"
 
     block:
       from mimportlocalb import A2
       doAssert k2 is A2
-      doAssert A2.enumList == @[k0, k2]
+      doAssert A2.enumList == @[k2, k3, k0]
       doAssert not declared(A1)
       doAssert not declared(k1)
+      let b = @[A2.k2, A2.k3, A2.k0]
+      doAssert b == A2.enumList
 
     block:
       from mimportlocalb import A1, A2
       doAssert k1 is A1
       doAssert k2 is A2
       doAssert $enumList(A1) == "@[k0, k1]"
-      doAssert $enumList(A2) == "@[k0, k2]"
-      # let x = A1.k1
-      # let x = A1.k0
-      # echo x1
-      # echo A2.enumList
-      # doAssert A2.enumList == @[k0, k2]
-      # doAssert not declared(A1)
-      # doAssert not declared(k1)
+      doAssert $enumList(A2) == "@[k2, k3, k0]"
+      let x0 = A1.k0
+      let x1 = A1.k1
+      let x0b = A2.k0
+      doAssert x0.ord == 0
+      doAssert x1.ord == 1
+      doAssert x0b.ord == 2
 
 bar4(1.0)
 bar4("abc")
