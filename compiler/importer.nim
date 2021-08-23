@@ -74,14 +74,13 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet, isPure
   let isLocalImport = not isTopLevel(c)
   if isLocalImport:
     # TODO: OverloadableSyms ? let multiImport = s.kind notin ExportableSymKinds or s.kind in skProcKinds ?
-    # if s.kind in skProcKinds:
     if s.kind in skProcKinds:
       addOverloadableSymAt(c, c.currentScope, s)
     elif s.kind == skEnumField and isPureEnumField:
       c.currentScope.addSym(s)
     else:
       addDecl(c, s)
-
+      # xxx factor with code below
       if s.kind == skType:
         var etyp = s.typ
         if etyp.kind in {tyBool, tyEnum}:
