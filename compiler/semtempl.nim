@@ -108,12 +108,6 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
     else:
       illFormedAst(a, c.config)
 
-proc semMixinStmt2(c: PContext, n: PNode, toMixin: var IntSet): PNode =
-  # result = copyNode(n)
-  toMixin.incl(considerQuotedIdent(c, n).id)
-  result = symChoice(c, n, nil, scForceOpen)
-  # result.add symChoice(c, n[i], nil, scForceOpen)
-
 proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
   result = copyNode(n)
   for i in 0..<n.len:
