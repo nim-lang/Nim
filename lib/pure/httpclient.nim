@@ -230,6 +230,7 @@ type
     headers*: HttpHeaders
     body: string
     bodyStream*: Stream
+    uri*: Uri
 
   AsyncResponse* = ref object
     version*: string
@@ -237,6 +238,7 @@ type
     headers*: HttpHeaders
     body: string
     bodyStream*: FutureStream[string]
+    uri*: Uri
 
 proc code*(response: Response | AsyncResponse): HttpCode
            {.raises: [ValueError, OverflowDefect].} =
@@ -635,7 +637,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
     let exampleHtml = waitFor asyncProc()
     assert "Example Domain" in exampleHtml
     assert "Pizza" notin exampleHtml
-  
+
   new result
   result.headers = headers
   result.userAgent = userAgent
@@ -1014,7 +1016,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
 
   var data: seq[string]
   if multipart != nil and multipart.content.len > 0:
-    # `format` modifies `client.headers`, see 
+    # `format` modifies `client.headers`, see
     # https://github.com/nim-lang/Nim/pull/18208#discussion_r647036979
     data = await client.format(multipart)
     newHeaders = client.headers.override(headers)
@@ -1055,6 +1057,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   let getBody = httpMethod notin {HttpHead, HttpConnect} and
                 client.getBody
   result = await parseResponse(client, getBody)
+  result.uri = url
 
 proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
               httpMethod: HttpMethod | string = HttpGet, body = "",
@@ -1247,7 +1250,7 @@ proc downloadFile*(client: HttpClient, url: Uri | string, filename: string) =
   defer:
     client.getBody = true
   let resp = client.get(url)
-  
+
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
 
@@ -1262,7 +1265,7 @@ proc downloadFileEx(client: AsyncHttpClient,
   ## Downloads `url` and saves it to `filename`.
   client.getBody = false
   let resp = await client.get(url)
-  
+
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
 
