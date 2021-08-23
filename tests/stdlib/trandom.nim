@@ -10,7 +10,7 @@ when not defined(js):
 
 randomize(233)
 
-proc main() =
+proc main1() =
   var occur: array[1000, int]
 
   for i in 0..100_000:
@@ -36,7 +36,7 @@ proc main() =
   # don't use causes integer overflow
   doAssert compiles(rand[int](low(int) .. high(int)))
 
-main()
+main1()
 
 block:
   when not defined(js):
@@ -269,3 +269,13 @@ block: # bug #17898
     ret
 
   doAssert isUnique(items(vals))
+
+
+template main =
+  # xxx move all tests here to test also in VM
+  var s = initRand()
+  let b = s.rand(2)
+  doAssert b <= 2 and b >= 0
+
+static: main()
+main()
