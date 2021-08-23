@@ -33,6 +33,7 @@ from sighashes import symBodyDigest
 
 # There are some useful procs in vmconv.
 import vmconv
+from std/cputicks import getCpuTicks
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -340,3 +341,6 @@ proc registerAdditionalOps*(c: PCtx) =
     let p = a.getVar(0)
     let x = a.getFloat(1)
     addFloatSprintf(p.strVal, x)
+
+  registerCallback c, "stdlib.cputicks.getCpuTicksImpl", proc(a: VmArgs) =
+    setResult(a, getCpuTicks())

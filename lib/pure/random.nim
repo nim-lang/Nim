@@ -618,10 +618,10 @@ proc shuffle*[T](x: var openArray[T]) =
   shuffle(state, x)
 
 when not defined(nimscript) and not defined(standalone):
-  import std/monotimes
+  import std/cputicks
 
   proc initRand(): Rand =
-    ## Initializes a new Rand state with a seed based on the current time.
+    ## Initializes a new Rand state with a seed based on the current cpu tick.
     ##
     ## The resulting state is independent of the default RNG's state.
     ##
@@ -631,7 +631,7 @@ when not defined(nimscript) and not defined(standalone):
     ## * `initRand proc<#initRand,int64>`_ that accepts a seed for a new Rand state
     ## * `randomize proc<#randomize>`_ that initializes the default RNG using the current time
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed for the default RNG
-    result = initRand(getMonoTime().ticks)
+    result = initRand(getCpuTicks())
 
   since (1, 5, 1):
     export initRand
