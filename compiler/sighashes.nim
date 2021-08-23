@@ -166,7 +166,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         if t.n.len > 0:
           let oldFlags = symWithFlags.flags
           # Hack to prevent endless recursion
-          # xxx intead, use a hash table to indicate we've already visited a type, which
+          # xxx instead, use a hash table to indicate we've already visited a type, which
           # would also be more efficient.
           symWithFlags.flags.excl {sfAnon, sfGenSym}
           hashTree(c, t.n, flags + {CoHashTypeInsideNode})
