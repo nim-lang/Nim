@@ -580,13 +580,12 @@ proc runCI(cmd: string) =
     execFold("Run tester", "nim c -r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
 
     block: # nimHasLibFFI:
-      when defined(posix): # windows can be handled in future PR's
-        execFold("nimble install -y libffi", "nimble install -y libffi")
-        const nimFFI = "bin/nim.ctffi"
-        # no need to bootstrap with koch boot (would be slower)
-        let backend = if doUseCpp(): "cpp" else: "c"
-        execFold("build with -d:nimHasLibFFI", "nim $1 -d:release -d:nimHasLibFFI -o:$2 compiler/nim.nim" % [backend, nimFFI])
-        execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/misc/trunner.nim -d:nimTrunnerFfi" % [nimFFI, backend])
+      execFold("nimble install -y libffi", "nimble install -y libffi")
+      const nimFFI = "bin/nim_ctffi"
+      # no need to bootstrap with koch boot (would be slower)
+      let backend = if doUseCpp(): "cpp" else: "c"
+      execFold("build with -d:nimHasLibFFI", "nim $1 -d:release -d:nimHasLibFFI -o:$2 compiler/nim.nim" % [backend, nimFFI])
+      execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/misc/trunner.nim -d:nimTrunnerFfi" % [nimFFI, backend])
 
     execFold("Run nimdoc tests", "nim r nimdoc/tester")
     execFold("Run rst2html tests", "nim r nimdoc/rsttester")
