@@ -32,7 +32,7 @@ pkg "gara"
 pkg "glob"
 pkg "gnuplot"
 # pkg "godot", "nim c -r godot/godot.nim" # not yet compatible with Nim 0.19
-pkg "hts", "nim c -o:htss src/hts.nim"
+# pkg "hts", "nim c -o:htss src/hts.nim"
 pkg "illwill", "nimble examples"
 # pkg "inim", "", true
 pkg "itertools", "nim doc src/itertools.nim"
@@ -41,7 +41,7 @@ pkg "jstin"
 pkg "karax", "nim c -r tests/tester.nim"
 pkg "loopfusion"
 pkg "msgpack4nim"
-pkg "nake", "nim c nakefile.nim"
+# pkg "nake", "nim c nakefile.nim"
 pkg "neo", "nim c -d:blas=openblas tests/all.nim", true
 # pkg "nico", "", true
 # pkg "nicy", "nim c src/nicy.nim"
@@ -50,8 +50,8 @@ pkg "nimcrypto", "nim c -r tests/testall.nim"
 # pkg "NimData", "nim c -o:nimdataa src/nimdata.nim", true
 pkg "nimes", "nim c src/nimes.nim", true
 pkg "nimfp", "nim c -o:nfp -r src/fp.nim", true
-pkg "nimgame2", "nim c nimgame2/nimgame.nim", true
-pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim", true
+# pkg "nimgame2", "nim c nimgame2/nimgame.nim", true
+# pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim", true
 # pkg "nimlsp", "", true
 # pkg "nimly", "", true
 # pkg "nimongo", "nimble test_ci", true
