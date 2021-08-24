@@ -48,7 +48,7 @@ template getCpuTicks*(): int64 =
   cast[int64](getCpuTicksImpl())
 
 template toInt64(a, b): untyped =
-  cast[int64](cast[uint](a) or (cast[uint](d) shl 32))
+  cast[int64](cast[uint64](a) or (cast[uint64](d) shl 32))
 
 proc getCpuTicksStart*(): int64 {.inline.} =
   ## Variant of `getCpuTicks` which uses the `RDTSCP` instruction. Compared to
