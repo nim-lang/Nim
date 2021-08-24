@@ -75,17 +75,22 @@ proc closeScope*(c: PContext) =
   rawCloseScope(c)
 
 iterator allScopes*(scope: PScope): PScope =
+  ## Iterates the current scope and all of its parent scopes.
   var current = scope
   while current != nil:
     yield current
     current = current.parent
 
 iterator localScopesFrom*(c: PContext; scope: PScope): PScope =
+  ## Iterates the current scope and all of its parent scopes
+  ## except the top-level one.
   for s in allScopes(scope):
     if s == c.topLevelScope: break
     yield s
 
 proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
+  ## Skips symbol of `skAlis` kind. `skAlias` is used in
+  ## deprecated rule: {.deprecated: [...].}
   if s == nil or s.kind != skAlias:
     result = s
   else:
@@ -181,13 +186,15 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
   if overloadableEnums notin c.features:
     symSet.excl skEnumField
   result = nil
-  for im in c.imports.mitems:
-    for s in symbols(im, marked, name, c.graph):
-      if result == nil:
-        result = s
-      else:
-        if s.kind notin symSet or result.kind notin symSet:
-          ambiguous = true
+  block outer:
+    for im in c.imports.mitems:
+      for s in symbols(im, marked, name, c.graph):
+        if result == nil:
+          result = s
+        else:
+          if s.kind notin symSet or result.kind notin symSet:
+            ambiguous = true
+            break outer
 
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
   for scope in allScopes(c.currentScope):
