@@ -94,10 +94,10 @@ proc toString*(tree: PackedTree; n: NodePos; m: PackedModule; nesting: int;
     result.addInt m.numbers[LitId tree.nodes[pos].operand]
   of externUIntLit:
     result.add " "
-    result.add $cast[uint64](m.numbers[LitId tree.nodes[pos].operand])
+    result.addInt cast[uint64](m.numbers[LitId tree.nodes[pos].operand])
   of nkFloatLit..nkFloat128Lit:
     result.add " "
-    result.add $cast[BiggestFloat](m.numbers[LitId tree.nodes[pos].operand])
+    result.addFloat cast[BiggestFloat](m.numbers[LitId tree.nodes[pos].operand])
   else:
     result.add "(\n"
     for i in 1..(nesting+1)*2: result.add ' '
