@@ -11,6 +11,9 @@
 
 # ------------------------- Name Mangling --------------------------------
 
+import sighashes, modulegraphs
+from lowerings import createObj
+
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
 
 proc isKeyword(w: PIdent): bool =
