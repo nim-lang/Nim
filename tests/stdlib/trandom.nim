@@ -248,3 +248,23 @@ block: # bug #17670
     type UInt48 = range[0'u64..2'u64^48-1]
     let x = rand(UInt48)
     doAssert x is UInt48
+
+block: # bug #17898
+  # Checks whether `initRand()` generates unique states.
+  # size should be 2^64, but we don't have time and space.
+  const size = 1000
+  var
+    rands: array[size, Rand]
+    randSet: HashSet[Rand]
+  for i in 0..<size:
+    rands[i] = initRand()
+    randSet.incl rands[i]
+
+  doAssert randSet.len == size
+
+  # Checks random number sequences overlapping.
+  const numRepeat = 100
+  for i in 0..<numRepeat:
+    for j in 0..<size:
+      discard rands[j].next
+      doAssert rands[j] notin randSet
