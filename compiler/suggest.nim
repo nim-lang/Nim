@@ -32,7 +32,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, sets, prefixmatches, lineinfos, parseutils, linter, tables
+import algorithm, sets, prefixmatches, parseutils, tables
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
 when defined(nimsuggest):
