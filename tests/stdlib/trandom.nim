@@ -254,7 +254,7 @@ block: # bug #17898
   # size should be 2^64, but we don't have time and space.
 
   # Disable this test for js until js gets proper skipRandomNumbers.
-  when not defined(js): 
+  when not defined(js):
     const size = 1000
     var
       rands: array[size, Rand]
