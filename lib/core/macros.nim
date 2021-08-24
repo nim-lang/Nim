@@ -1539,22 +1539,28 @@ proc customPragmaNode(n: NimNode): NimNode =
         for i in 0..<identDefsStack.len: identDefsStack[i] = obj[2][i]
         while identDefsStack.len > 0:
           var identDefs = identDefsStack.pop()
-          if identDefs.kind == nnkRecCase:
+
+          case identDefs.kind
+          of nnkRecList:
+            for child in identDefs.children:
+              identDefsStack.add(child)
+          of nnkRecCase:
+            # Add condition definition
             identDefsStack.add(identDefs[0])
-            for i in 1..<identDefs.len:
+            # Add branches
+            for i in 1 ..< identDefs.len:
               let varNode = identDefs[i]
-              # if it is and empty branch, skip
-              if varNode[0].kind == nnkNilLit: continue
-
-              if varNode.len > 1 and varNode[1].kind == nnkIdentDefs:
-                identDefsStack.add(varNode[1])
-              else: # nnkRecList
-                var idx: int = 1
-                if varNode.kind == nnkElse:
-                  idx = 0
-                for j in 0 ..< varNode[idx].len:
-                  identDefsStack.add(varNode[idx][j])
-
+              case varNode.kind
+              of nnkOfBranch:
+                # We are only interested in variable definitions
+                if varNode[1].kind in {nnkIdentDefs, nnkRecList}:
+                  identDefsStack.add(varNode[1])
+              of nnkElse:
+                # We are only interested in variable definitions
+                if varNode[0].kind in {nnkIdentDefs, nnkRecList}:
+                  identDefsStack.add(varNode[0])
+              else:
+                doAssert(false, "Unknown node kind in nnkRecCase: " & $varNode.kind)
           else:
             for i in 0 .. identDefs.len - 3:
               let varNode = identDefs[i]
