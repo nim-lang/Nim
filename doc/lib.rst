@@ -210,6 +210,9 @@ String handling
 Time handling
 -------------
 
+* `cputicks <cputicks.html>`_
+  The `cputicks` module contains APIs for high performance CPU counters.
+
 * `monotimes <monotimes.html>`_
   The `monotimes` module implements monotonic timestamps.
 
