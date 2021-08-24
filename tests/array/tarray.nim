@@ -598,6 +598,6 @@ block t18643:
   let b = 9999999
   try:
     echo a[b]
-  except IndexDefect:
+  except IndexError:
     caught = true
-  doAssert caught, "IndexDefect not caught!"
+  doAssert caught, "IndexError not caught!"
