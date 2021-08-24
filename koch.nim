@@ -582,7 +582,7 @@ proc runCI(cmd: string) =
     block: # nimHasLibFFI:
       # xxx remove hash once a release is tagged
       execFold("nimble install -y libffi", "nimble install -y libffi@#153322d744666b312dd04b5cbd4e2444415e2260")
-      const nimFFI = "bin/nim_ctffi"
+      const nimFFI = "bin" / "nim_ctffi"
       # no need to bootstrap with koch boot (would be slower)
       let backend = if doUseCpp(): "cpp" else: "c"
       execFold("build with -d:nimHasLibFFI", "nim $1 -d:release -d:nimHasLibFFI -o:$2 compiler/nim.nim" % [backend, nimFFI])
