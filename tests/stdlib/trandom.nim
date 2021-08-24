@@ -252,19 +252,22 @@ block: # bug #17670
 block: # bug #17898
   # Checks whether `initRand()` generates unique states.
   # size should be 2^64, but we don't have time and space.
-  const size = 1000
-  var
-    rands: array[size, Rand]
-    randSet: HashSet[Rand]
-  for i in 0..<size:
-    rands[i] = initRand()
-    randSet.incl rands[i]
 
-  doAssert randSet.len == size
+  # Disable this test for js until js gets proper skipRandomNumbers.
+  when not defined(js): 
+    const size = 1000
+    var
+      rands: array[size, Rand]
+      randSet: HashSet[Rand]
+    for i in 0..<size:
+      rands[i] = initRand()
+      randSet.incl rands[i]
 
-  # Checks random number sequences overlapping.
-  const numRepeat = 100
-  for i in 0..<numRepeat:
-    for j in 0..<size:
-      discard rands[j].next
-      doAssert rands[j] notin randSet
+    doAssert randSet.len == size
+
+    # Checks random number sequences overlapping.
+    const numRepeat = 100
+    for i in 0..<size:
+      for j in 0..<numRepeat:
+        discard rands[i].next
+        doAssert rands[i] notin randSet
