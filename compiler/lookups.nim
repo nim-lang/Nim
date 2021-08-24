@@ -191,8 +191,11 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
       for s in symbols(im, marked, name, c.graph):
         if result == nil:
           result = s
+          if result.kind notin symSet:
+            ambiguous = true
+            break outer
         else:
-          if s.kind notin symSet or result.kind notin symSet:
+          if s.kind notin symSet:
             ambiguous = true
             break outer
 
