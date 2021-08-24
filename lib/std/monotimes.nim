@@ -34,6 +34,7 @@ that the actual supported time resolution differs for different systems.
 See also
 ========
 * `times module <times.html>`_
+* `cputicks module <times.html>`_ which provides strictly monotonic cpu counter
 ]##
 
 import times
