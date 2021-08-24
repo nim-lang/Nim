@@ -580,7 +580,8 @@ proc runCI(cmd: string) =
     execFold("Run tester", "nim c -r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
 
     block: # nimHasLibFFI:
-      execFold("nimble install -y libffi", "nimble install -y libffi")
+      # xxx remove hash once a release is tagged
+      execFold("nimble install -y libffi", "nimble install -y libffi@#153322d744666b312dd04b5cbd4e2444415e2260")
       const nimFFI = "bin/nim_ctffi"
       # no need to bootstrap with koch boot (would be slower)
       let backend = if doUseCpp(): "cpp" else: "c"
