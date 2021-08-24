@@ -1,5 +1,5 @@
 ##[
-Experimental API, subject to change
+Experimental API, subject to change.
 ]##
 
 #[
@@ -32,7 +32,7 @@ else:
   proc getCpuTicksImpl(): uint64 {.importc: "__rdtsc", header: header.}
 
 template getCpuTicks*(): int64 =
-  ## Returns number of CPU ticks as given by `RDTSC` instruction.
+  ## Returns number of CPU ticks as given by the `RDTSC` instruction.
   ## Unlike `std/monotimes.ticks`, this gives a strictly monotonic counter
   ## and has higher resolution and lower overhead,
   ## allowing to measure individual instructions (corresponding to time offsets in
