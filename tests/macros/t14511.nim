@@ -1,3 +1,7 @@
+discard """
+  output: "true\n(y: XInt, a: 5)\n(y: XString, b: \"abc\")"
+"""
+
 import macros
 
 block TEST_1:
