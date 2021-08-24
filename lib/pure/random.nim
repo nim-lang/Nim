@@ -633,6 +633,8 @@ when not defined(standalone):
       if not ret.isValid:
         ret = DefaultRandSeed
       ret
+  elif defined(js):
+    import std/times
   else:
     import std/[hashes, os, sysrand, monotimes]
 
