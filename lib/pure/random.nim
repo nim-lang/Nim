@@ -630,7 +630,7 @@ when not defined(standalone):
       var ret = Rand(
         a0: CompileTime.hash.Ui,
         a1: CompileDate.hash.Ui)
-      if ret.a0 == 0 and ret.a1 == 0:
+      if not ret.isValid:
         ret = DefaultRandSeed
       ret
   else:

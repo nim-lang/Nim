@@ -10,5 +10,3 @@ block: # bug #17898
     randSet.incl rands[i]
 
   doAssert randSet.len == size
-
-echo "Nim script test done!"
