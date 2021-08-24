@@ -76,7 +76,7 @@ proc getCpuTicksStart*(): int64 {.inline.} =
       result = toInt64(a, b)
 
 proc getCpuTicksEnd*(): int64 {.inline.} =
-  ## See `getCpuTicksStart`.
+  ## See `getCpuTicksStart <#getCpuTicksStart>`_
   when nimvm: result = getCpuTicks()
   else:
     when defined(js): result = getCpuTicks()
