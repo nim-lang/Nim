@@ -6238,6 +6238,22 @@ It's also possible to use `from module import nil` if one wants to import
 the module but wants to enforce fully qualified access to every symbol
 in `module`.
 
+Local imports
+-------------
+
+`import` can be used at any scope, top-level or local:
+
+.. code-block:: nim
+  import foo1 # top-level import
+  proc fn =
+    from foo2 import b # local import (other forms of imports work too)
+    assert declared(b)
+  assert not declared(b) # b is now out of scope
+  block:
+    import foo3 except bar # block scope also works
+  proc fn[T](a: T) =
+    from foo4 import c # foo4 will not be imported if `fn` is not instantiated
+
 
 Export statement
 ----------------
