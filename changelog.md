@@ -371,6 +371,9 @@
 
 - Added `dom.setInterval`, `dom.clearInterval` overloads.
 
+- Merged `dom_extensions` module into `dom` module,
+  it was a module with a single line, see https://github.com/nim-lang/RFCs/issues/413
+
 - Allow reading parameters when compiling for Nintendo Switch.
 
 - Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
