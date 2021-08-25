@@ -186,10 +186,9 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
       for s in symbols(im, marked, name, c.graph):
         if result == nil:
           result = s
-        else:
-          if s.kind notin symSet or result.kind notin symSet:
-            ambiguous = true
-            break outer
+        elif s.kind notin symSet or result.kind notin symSet:
+          ambiguous = true
+          break outer
 
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
   for scope in allScopes(c.currentScope):
