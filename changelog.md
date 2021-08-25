@@ -39,6 +39,8 @@
 - There is a new warning for *any* type conversion to enum that can be enabled via
   `.warning[AnyEnumConv]:on` or `--warning:AnyEnumConv:on`.
 
+- Type mismatch errors now show more context.
+
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
   with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
