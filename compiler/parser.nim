@@ -445,8 +445,6 @@ proc exprColonEqExprList(p: var Parser, kind: TNodeKind,
   exprColonEqExprListAux(p, endTok, result)
 
 proc dotExpr(p: var Parser, a: PNode): PNode =
-  #| dotExpr = expr '.' optInd (symbol | '[:' exprList ']')
-  #| explicitGenericInstantiation = '[:' exprList ']' ( '(' exprColonEqExpr ')' )?
   var info = p.parLineInfo
   getTok(p)
   result = newNodeI(nkDotExpr, info)
@@ -467,7 +465,6 @@ proc dotExpr(p: var Parser, a: PNode): PNode =
     result = y
 
 proc dotLikeExpr(p: var Parser, a: PNode): PNode =
-  #| dotLikeExpr = expr DOTLIKEOP optInd symbol
   var info = p.parLineInfo
   result = newNodeI(nkInfix, info)
   optInd(p, result)

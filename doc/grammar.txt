@@ -27,9 +27,6 @@ symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
 exprColonEqExpr = expr (':'|'=' expr)?
 exprList = expr ^+ comma
 exprColonEqExprList = exprColonEqExpr (comma exprColonEqExpr)* (comma)?
-dotExpr = expr '.' optInd (symbol | '[:' exprList ']')
-explicitGenericInstantiation = '[:' exprList ']' ( '(' exprColonEqExpr ')' )?
-dotLikeExpr = expr DOTLIKEOP optInd symbol
 qualifiedIdent = symbol ('.' optInd symbol)?
 setOrTableConstr = '{' ((exprColonEqExpr comma)* | ':' ) '}'
 castExpr = 'cast' ('[' optInd typeDesc optPar ']' '(' optInd expr optPar ')') /
