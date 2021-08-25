@@ -1541,18 +1541,17 @@ proc customPragmaNode(n: NimNode): NimNode =
         for i in 0..<identDefsStack.len: identDefsStack[i] = obj[2][i]
         while identDefsStack.len > 0:
           var identDefs = identDefsStack.pop()
-          if identDefs.kind == nnkRecCase:
-            identDefsStack.add(identDefs[0])
-            for i in 1..<identDefs.len:
-              let varNode = identDefs[i]
-              # if it is and empty branch, skip
-              if varNode[0].kind == nnkNilLit: continue
-              if varNode[1].kind == nnkIdentDefs:
-                identDefsStack.add(varNode[1])
-              else: # nnkRecList
-                for j in 0 ..< varNode[1].len:
-                  identDefsStack.add(varNode[1][j])
 
+          case identDefs.kind
+          of nnkRecList:
+            for child in identDefs.children:
+              identDefsStack.add(child)
+          of nnkRecCase:
+            # Add condition definition
+            identDefsStack.add(identDefs[0])
+            # Add branches
+            for i in 1 ..< identDefs.len:
+              identDefsStack.add(identDefs[i].last)
           else:
             for i in 0 .. identDefs.len - 3:
               let varNode = identDefs[i]
