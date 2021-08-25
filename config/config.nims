@@ -21,3 +21,4 @@ when (NimMajor, NimMinor) >= (1, 7):
   # These flags be overridden using user/project/cmdline flags using `switch("undef", "nimPreviewX")`
   # other `nimPreview` switches can go here, as needed.
   switch("define", "nimPreviewFloatRoundtrip")
+  switch("define", "nimPreviewDotLikeOps")
