@@ -1549,18 +1549,7 @@ proc customPragmaNode(n: NimNode): NimNode =
             identDefsStack.add(identDefs[0])
             # Add branches
             for i in 1 ..< identDefs.len:
-              let varNode = identDefs[i]
-              case varNode.kind
-              of nnkOfBranch:
-                # We are only interested in variable definitions
-                if varNode[1].kind in {nnkIdentDefs, nnkRecList}:
-                  identDefsStack.add(varNode[1])
-              of nnkElse:
-                # We are only interested in variable definitions
-                if varNode[0].kind in {nnkIdentDefs, nnkRecList}:
-                  identDefsStack.add(varNode[0])
-              else:
-                doAssert(false, "Unknown node kind in nnkRecCase: " & $varNode.kind)
+              identDefsStack.add(identDefs[i].last)
           else:
             for i in 0 .. identDefs.len - 3:
               let varNode = identDefs[i]
