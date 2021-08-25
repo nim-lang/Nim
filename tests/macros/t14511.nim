@@ -16,7 +16,7 @@ block TEST_1:
       XUnused
     X = object
       case y {.myPragma.}: XType
-        of XInt:
+        of XInt, XUnused:
           a: int
         else: # <-- Else case caused the "Error: index 1 not in 0 .. 0" error
           b: string
