@@ -18,8 +18,6 @@ when (NimMajor, NimMinor, NimPatch) >= (1,5,1):
 switch("define", "nimUnittestOutputLevel:PRINT_FAILURES")
 switch("define", "nimUnittestColor:off")
 
-switch("define", "nimLegacyTypeMismatch")
-
 hint("Processing", off)
   # dots can cause annoyances; instead, a single test can test `hintProcessing`
 

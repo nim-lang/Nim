@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: obtained <proc (){.closure, gcsafe, locks: 0.}> expected 'A = proc (){.nimcall.}'"
+  errormsg: "type mismatch: got 'proc (){.closure, gcsafe, locks: 0.}' for 'proc () = echo [b]', but expected 'A = proc (){.nimcall.}'"
   line: 9
 """
 

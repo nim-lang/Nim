@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: obtained <string> expected 'ptr'"
+  errormsg: "type mismatch: got 'string' for 'str2', but expected 'ptr'"
   line: 20
 """
 

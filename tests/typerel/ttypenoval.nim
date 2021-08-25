@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: obtained <typedesc[int]> expected 'int'"
+  errormsg: "type mismatch: got 'typedesc[int]' for 'int', but expected 'int'"
   file: "ttypenoval.nim"
   line: 38
 """

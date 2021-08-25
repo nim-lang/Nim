@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: obtained <ptr int16> expected 'ptr int'"
+  errormsg: "type mismatch: got 'ptr int16' for 'addr n', but expected 'ptr int'"
   line: 8
 """
 

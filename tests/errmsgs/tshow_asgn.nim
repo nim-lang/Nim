@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: obtained <int> expected 'cshort = int16'"
+  errormsg: "type mismatch: got 'int' for 'int(x.b - x.a) + x.a', but expected 'cshort = int16'"
   line: 12
   column: 27
   file: "tshow_asgn.nim"

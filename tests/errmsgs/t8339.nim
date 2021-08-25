@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: obtained <seq[int]> expected 'seq[float]'"
+  errormsg: "type mismatch: got 'seq[int]' for '"
   line: 8
 """
 

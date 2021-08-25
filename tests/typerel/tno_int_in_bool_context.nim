@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: obtained <int literal(1)> expected 'bool'"
+  errormsg: "type mismatch: got 'int literal(1)' for '1', but expected 'bool'"
   line: 6
 """
 

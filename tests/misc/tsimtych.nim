@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: obtained <bool> expected 'string'"
+  errormsg: "type mismatch: got 'bool' for 'false', but expected 'string'"
   file: "tsimtych.nim"
   line: 10
 """
