@@ -748,6 +748,7 @@ has the second-lowest precedence.
 
 Otherwise, precedence is determined by the first character.
 
+
 ================  =======================================================  ==================  ===============
 Precedence level    Operators                                              First character     Terminal symbol
 ================  =======================================================  ==================  ===============
@@ -782,6 +783,14 @@ of a call or whether it is parsed as a tuple constructor:
 
 .. code-block:: nim
   echo (1, 2) # pass the tuple (1, 2) to echo
+
+Dot-like operators
+------------------
+
+Terminal symbol in the grammar: `DOTLIKEOP`.
+
+Dot-like operators are operators starting with `.`, but not with `..`, for e.g. `.?`;
+they have the same precedence as `.`, so that `a.?b.c` is parsed as `(a.?b).c` instead of `a.?(b.c)`.
 
 
 Grammar

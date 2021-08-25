@@ -36,3 +36,4 @@ switch("define", "nimExperimentalAsyncjsThen")
 switch("define", "nimExperimentalLinenoiseExtra")
 
 switch("define", "nimPreviewFloatRoundtrip")
+switch("define", "nimPreviewDotLikeOps")
