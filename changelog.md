@@ -416,7 +416,7 @@
 - Added a new module `std/importutils`, and an API `privateAccess`, which allows access to private fields
   for an object type in the current scope.
 
-- `import` now works at local scope.
+- `from import` now works at local scope.
 
 - `typeof(voidStmt)` now works and returns `void`.
 

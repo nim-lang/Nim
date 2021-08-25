@@ -2998,10 +2998,19 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     #     import x
     #
     # works:
-    # if c.currentScope.depthLevel > 2 + c.compilesContextId:
-    #   localError(c.config, n.info, errXOnlyAtModuleScope % "import")
+    if c.currentScope.depthLevel > 2 + c.compilesContextId:
+      localError(c.config, n.info, errXOnlyAtModuleScope % "import")
+    #[
+    We disallow for now local imports except via `from import` until the scoping
+    rules allow this:
+
+    proc fn(a: int) =
+      import foo # could contain a symbol `a` but should not hide local symbol `a`.
+      assert a is int
+    ]#
     result = evalImport(c, n)
   of nkImportExceptStmt:
+    if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "import")
     result = evalImportExcept(c, n)
   of nkFromStmt:
     result = evalFrom(c, n)

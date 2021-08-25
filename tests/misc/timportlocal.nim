@@ -119,71 +119,6 @@ doAssert not declared(fn1)
 doAssert not declared(fn2)
 doAssert not declared(fn3)
 
-# `from a import b` inside generics
-proc bar5(a: auto) =
-  from mimportlocalb import fn1
-  doAssert declared(mimportlocalb)
-  doAssert mimportlocalb.fn1() == 1
-  doAssert fn1() == 1
-bar5(1)
-doAssert not compiles(fn1())
-
-# {.define(nimCompilerDebug).}
-block: # import
-  doAssert not compiles(fn1())
-  import mimportlocalb
-  doAssert fn1() == 1
-  doAssert declared(fn1)
-  let a = fn1()
-  doAssert a == 1
-doAssert not declared(mimportlocalb)
-doAssert not compiles(fn1())
-
-block: # import except
-  doAssert not compiles(fn1())
-  import mimportlocalb except fn2
-  doAssert fn1() == 1
-  doAssert not compiles(fn2())
-  let a = fn1()
-  doAssert a == 1
-doAssert not declared(mimportlocalb)
-doAssert not compiles(fn1())
-
-# import inside generics
-proc bar6(a: auto) =
-  import mimportlocalb
-  doAssert declared(mimportlocalb)
-  # let a = fn1() # can't work because of generic prepass
-  doAssert mimportlocalb.fn1() == 1
-  let b = mimportlocalb.fn1() # can work using fully qualified name
-  doAssert b == 1
-  mixin fn2 # can work using mixin
-  let c = fn2()
-  doAssert c == 2
-bar6(1)
-doAssert not compiles(fn1())
-
-# import except inside generics
-proc bar7(a: auto) =
-  import mimportlocalb except fn2
-  doAssert declared(mimportlocalb)
-  doAssert mimportlocalb.fn1() == 1
-  let b = mimportlocalb.fn1()
-  doAssert b == 1
-bar7(1)
-doAssert not compiles(fn1())
-
-{.define(nimCompilerDebug).}
-# import except inside generics
-proc bar8(a: auto) =
-  import mimportlocalb as foo
-  doAssert declared(foo)
-  doAssert not declared(mimportlocalb)
-  doAssert foo.fn1() == 1
-  let b = foo.fn1()
-  doAssert b == 1
-bar8(1)
-doAssert not compiles(fn1())
 
 # `from a as b import c` inside generics
 proc bar9(a: auto) =
@@ -198,3 +133,69 @@ proc bar9(a: auto) =
   doAssert c4b == 4
 bar9(1)
 doAssert not compiles(fn1())
+
+# `from a import b` inside generics
+proc bar5(a: auto) =
+  from mimportlocalb import fn1
+  doAssert declared(mimportlocalb)
+  doAssert mimportlocalb.fn1() == 1
+  doAssert fn1() == 1
+bar5(1)
+doAssert not compiles(fn1())
+
+when false:
+  # These tests can be re-enabled once other forms of `local import` are supported.
+  block: # import
+    doAssert not compiles(fn1())
+    import mimportlocalb
+    doAssert fn1() == 1
+    doAssert declared(fn1)
+    let a = fn1()
+    doAssert a == 1
+  doAssert not declared(mimportlocalb)
+  doAssert not compiles(fn1())
+
+  block: # import except
+    doAssert not compiles(fn1())
+    import mimportlocalb except fn2
+    doAssert fn1() == 1
+    doAssert not compiles(fn2())
+    let a = fn1()
+    doAssert a == 1
+  doAssert not declared(mimportlocalb)
+  doAssert not compiles(fn1())
+
+  # import inside generics
+  proc bar6(a: auto) =
+    import mimportlocalb
+    doAssert declared(mimportlocalb)
+    # let a = fn1() # can't work because of generic prepass
+    doAssert mimportlocalb.fn1() == 1
+    let b = mimportlocalb.fn1() # can work using fully qualified name
+    doAssert b == 1
+    mixin fn2 # can work using mixin
+    let c = fn2()
+    doAssert c == 2
+  bar6(1)
+  doAssert not compiles(fn1())
+
+  # import except inside generics
+  proc bar7(a: auto) =
+    import mimportlocalb except fn2
+    doAssert declared(mimportlocalb)
+    doAssert mimportlocalb.fn1() == 1
+    let b = mimportlocalb.fn1()
+    doAssert b == 1
+  bar7(1)
+  doAssert not compiles(fn1())
+
+  # import except inside generics
+  proc bar8(a: auto) =
+    import mimportlocalb as foo
+    doAssert declared(foo)
+    doAssert not declared(mimportlocalb)
+    doAssert foo.fn1() == 1
+    let b = foo.fn1()
+    doAssert b == 1
+  bar8(1)
+  doAssert not compiles(fn1())

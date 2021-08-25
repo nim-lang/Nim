@@ -6241,18 +6241,18 @@ in `module`.
 Local imports
 -------------
 
-`import` can be used at any scope, top-level or local:
+`from import` can be used at any scope, top-level or local:
 
 .. code-block:: nim
   import foo1 # top-level import
   proc fn =
-    from foo2 import b # local import (other forms of imports work too)
-    assert declared(b)
-  assert not declared(b) # b is now out of scope
+    from foo2 import a2 # local import
+    assert declared(a2)
+  assert not declared(a2) # a2 is now out of scope
   block:
-    import foo3 except bar # block scope also works
+    from foo3 import a3 # block scope
   proc fn[T](a: T) =
-    from foo4 import c # foo4 will not be imported if `fn` is not instantiated
+    from foo4 import a3 # `foo4` will not be imported if `fn` is not instantiated
 
 
 Export statement
