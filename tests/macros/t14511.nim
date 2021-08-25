@@ -12,7 +12,8 @@ block TEST_1:
   type
     XType = enum
       XInt,
-      XString
+      XString,
+      XUnused
     X = object
       case y {.myPragma.}: XType
         of XInt:
