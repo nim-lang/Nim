@@ -181,13 +181,15 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
   if overloadableEnums notin c.features:
     symSet.excl skEnumField
   result = nil
-  for im in c.imports.mitems:
-    for s in symbols(im, marked, name, c.graph):
-      if result == nil:
-        result = s
-      else:
-        if s.kind notin symSet or result.kind notin symSet:
-          ambiguous = true
+  block outer:
+    for im in c.imports.mitems:
+      for s in symbols(im, marked, name, c.graph):
+        if result == nil:
+          result = s
+        else:
+          if s.kind notin symSet or result.kind notin symSet:
+            ambiguous = true
+            break outer
 
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
   for scope in allScopes(c.currentScope):
