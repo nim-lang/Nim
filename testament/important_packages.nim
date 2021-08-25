@@ -56,7 +56,7 @@ pkg "nimfp", "nim c -o:nfp -r src/fp.nim", true
 # pkg "nimly", "", true
 # pkg "nimongo", "nimble test_ci", true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
-pkg "nimquery"
+# pkg "nimquery"
 pkg "nimsl", "", true
 pkg "nimsvg"
 # pkg "nimterop", "", true
@@ -80,7 +80,7 @@ pkg "snip", "", false, "https://github.com/genotrance/snip"
 # pkg "stint", "nim c -o:stintt -r stint.nim"
 pkg "strunicode", "nim c -r src/strunicode.nim", true
 pkg "telebot", "nim c -o:tbot -r src/telebot.nim", true
-pkg "tempdir"
+# pkg "tempdir"
 pkg "tensordsl", "nim c -r tests/tests.nim", false, "https://krux02@bitbucket.org/krux02/tensordslnim.git"
 pkg "tiny_sqlite"
 pkg "unicodedb"
