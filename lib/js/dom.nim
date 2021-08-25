@@ -1771,3 +1771,6 @@ since (1, 3):
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
   proc readAsText*(f: FileReader, b: Blob|File, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText
+
+since (1, 5):
+  proc elementsFromPoint*(n: DocumentOrShadowRoot; x, y: float): seq[Element] {.importcpp.}
