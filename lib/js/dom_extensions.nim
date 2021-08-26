@@ -4,4 +4,4 @@ import std/dom
 proc elementsFromPoint*(n: DocumentOrShadowRoot; x, y: float): seq[Element]
 {.pop.}
 
-{.deprecated: "Use std/dom instead.".}
+{.deprecated: "use `std/dom` instead".}
