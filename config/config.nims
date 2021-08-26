@@ -15,9 +15,8 @@ when defined(nimStrictMode):
     switch("hintAsError", "ConvFromXtoItselfNotNeeded")
     # future work: XDeclaredButNotUsed
 
-when (NimMajor, NimMinor) >= (1, 7):
-  # consider using instead: `when (NimMajor, NimMinor) > (1,4) and (NimMajor, NimMinor) != (1,6)`
-  # to make those flags available in devel but not 1.6.
+when (NimMajor, NimMinor) >= (1, 5) and (NimMinor mod 2) == 1:
+  # We enable these in devel; the stable release in which these will be enabled is not yet specified.
   # These flags be overridden using user/project/cmdline flags using `switch("undef", "nimPreviewX")`
   # other `nimPreview` switches can go here, as needed.
   switch("define", "nimPreviewFloatRoundtrip")
