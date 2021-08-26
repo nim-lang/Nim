@@ -12,7 +12,6 @@
 # ------------------------- Name Mangling --------------------------------
 
 import sighashes, modulegraphs
-from lowerings import createObj
 
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
 
@@ -256,8 +255,6 @@ proc addAbiCheck(m: BModule, t: PType, name: Rope) =
     m.s[cfsTypeInfo].addf("NIM_STATIC_ASSERT(sizeof($1) == $2, $3);$n", [name, rope(size), msg2.rope])
     # see `testCodegenABICheck` for example error message it generates
 
-from ccgutils import ccgIntroducedPtr
-export ccgIntroducedPtr
 
 proc fillResult(conf: ConfigRef; param: PNode) =
   fillLoc(param.sym.loc, locParam, param, ~"Result",
