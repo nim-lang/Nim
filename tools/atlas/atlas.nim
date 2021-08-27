@@ -11,6 +11,11 @@
 
 import std/[parseopt, strutils, os, osproc, unicode, tables, sets]
 import parse_requires, osutils, packagesjson
+import timn/dbgs
+template enforce(cond: untyped) =
+  if not cond:
+    stderr.writeLine astToStr(cond) & " failed\n" # PRTEMP
+    quit(1)
 
 const
   Version = "0.1"
@@ -46,14 +51,14 @@ const
 type
   PackageName = distinct string
   DepRelation = enum
-    normal, strictlyLess, strictlyGreater
+    normal, strictlyLess, strictlyGreater, anyCommit
 
   Dependency = object
     name: PackageName
     url, commit: string
     rel: DepRelation # "requires x < 1.0" is silly, but Nimble allows it so we have too.
   AtlasContext = object
-    projectDir, workspace: string
+    projectDir, workspace, outFileCfg: string
     hasPackageList: bool
     keepCommits: bool
     p: Table[string, string] # name -> url mapping
@@ -65,7 +70,7 @@ type
       mockupSuccess: bool
 
 const
-  InvalidCommit = "<invalid commit>"
+  InvalidCommit = "<invalid commit>" # xxx REMOVE, unused
   ProduceTest = false
 
 type
@@ -81,6 +86,7 @@ type
 include testdata
 
 proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, int) =
+  dbg "D20210826T132456: ", cmd, args
   when MockupRun:
     assert TestLog[c.step].cmd == cmd
     case cmd
@@ -133,12 +139,6 @@ proc extractRequiresInfo(c: var AtlasContext; nimbleFile: string): NimbleFileInf
   when ProduceTest:
     echo "nimble ", nimbleFile, " info ", result
 
-proc toDepRelation(s: string): DepRelation =
-  case s
-  of "<": strictlyLess
-  of ">": strictlyGreater
-  else: normal
-
 proc isCleanGit(c: var AtlasContext; dir: string): string =
   result = ""
   let (outp, status) = exec(c, GitDiff, [])
@@ -153,6 +153,8 @@ proc message(c: var AtlasContext; category: string; p: PackageName; args: vararg
     msg.add ' '
     msg.add a
   stdout.writeLine msg
+  dbg msg
+  doAssert false
   inc c.errors
 
 proc warn(c: var AtlasContext; p: PackageName; args: varargs[string]) =
@@ -183,6 +185,8 @@ proc versionToCommit(c: var AtlasContext; d: Dependency): string =
       let commitsAndTags = strutils.splitWhitespace(line)
       if commitsAndTags.len == 2:
         case d.rel
+        of anyCommit:
+          return commitsAndTags[0]
         of normal:
           if commitsAndTags[1].sameVersionAs(d.commit):
             return commitsAndTags[0]
@@ -212,6 +216,7 @@ proc gitPull(c: var AtlasContext; p: PackageName) =
     error(c, p, "could not 'git pull'")
 
 proc updatePackages(c: var AtlasContext) =
+  dbg c.workspace / PackagesDir, c.workspace
   if dirExists(c.workspace / PackagesDir):
     withDir(c, c.workspace / PackagesDir):
       gitPull(c, PackageName PackagesDir)
@@ -237,7 +242,9 @@ proc toUrl(c: var AtlasContext; p: string): string =
     fillPackageLookupTable(c)
     result = c.p.getOrDefault(unicode.toLower p)
   if result.len == 0:
+    dbg p
     inc c.errors
+    doAssert false
 
 proc toName(p: string): PackageName =
   if p.isUrl:
@@ -253,6 +260,7 @@ proc isShortCommitHash(commit: string): bool {.inline.} =
 
 proc checkoutCommit(c: var AtlasContext; w: Dependency) =
   let dir = c.workspace / w.name.string
+  dbg dir, w, "D20210826T182906"
   withDir c, dir:
     if w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
       gitPull(c, w.name)
@@ -267,6 +275,7 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
           else: w.commit
         let (cc, status) = exec(c, GitCurrentCommit, [])
         let currentCommit = strutils.strip(cc)
+        dbg currentCommit, cc, status, requiredCommit, w.commit, err, dir, w.name, w
         if requiredCommit == "" or status != 0:
           if requiredCommit == "" and w.commit == InvalidCommit:
             warn c, w.name, "package has no tagged releases"
@@ -294,6 +303,7 @@ proc findNimbleFile(c: AtlasContext; dep: Dependency): string =
     doAssert fileExists(result), "file does not exist " & result
   else:
     result = c.workspace / dep.name.string / (dep.name.string & ".nimble")
+    dbg result, c.workspace, "D20210826T162754"
     if not fileExists(result):
       result = ""
       for x in walkFiles(c.workspace / dep.name.string / "*.nimble"):
@@ -304,14 +314,12 @@ proc findNimbleFile(c: AtlasContext; dep: Dependency): string =
           return ""
 
 proc addUniqueDep(c: var AtlasContext; work: var seq[Dependency];
-                  tokens: seq[string]) =
+                  tokens: seq[string], dep: Dependency) =
   let oldErrors = c.errors
-  let url = toUrl(c, tokens[0])
   if oldErrors != c.errors:
-    warn c, toName(tokens[0]), "cannot resolve package name"
-  elif not c.processed.containsOrIncl(url / tokens[2]):
-    work.add Dependency(name: toName(tokens[0]), url: url, commit: tokens[2],
-                        rel: toDepRelation(tokens[1]))
+    warn c, dep.name, "cannot resolve package name"
+  elif not c.processed.containsOrIncl($(dep.url, tokens, dep.rel)):
+    work.add dep
 
 proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
                     dep: Dependency; result: var seq[string];
@@ -319,24 +327,37 @@ proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
   let nimbleFile = findNimbleFile(c, dep)
   if nimbleFile != "":
     let nimbleInfo = extractRequiresInfo(c, nimbleFile)
+    dbg nimbleInfo, dep, nimbleFile
     for r in nimbleInfo.requires:
       var tokens: seq[string] = @[]
       for token in tokenizeRequires(r):
         tokens.add token
-      if tokens.len == 1:
-        # nimx uses dependencies like 'requires "sdl2"'.
-        # Via this hack we map them to the first tagged release.
-        # (See the `isStrictlySmallerThan` logic.)
-        tokens.add "<"
-        tokens.add InvalidCommit
-      elif tokens.len == 2 and tokens[1].startsWith("#"):
-        # Dependencies can also look like 'requires "sdl2#head"
-        var commit = tokens[1][1 .. ^1]
-        tokens[1] = "=="
-        tokens.add commit
 
-      if tokens.len >= 3 and cmpIgnoreCase(tokens[0], "nim") != 0:
-        c.addUniqueDep work, tokens
+      let name = tokens[0]
+      var dep = Dependency(name: toName(name))
+      template maybeAdd() =
+        if cmpIgnoreCase(name, "nim") != 0:
+          dep.url = toUrl(c, name)
+          c.addUniqueDep work, tokens, dep
+      if tokens.len == 1:
+        # support dependencies like 'requires "foo"'; note that `foo` doesn't
+        # necessarily have a git tag
+        dep.rel = anyCommit
+        maybeAdd()
+      else:
+        if tokens.len == 2 and tokens[1].startsWith("#"):
+          # Dependencies can also look like 'requires "sdl2#head"
+          var commit = tokens[1][1 .. ^1]
+          tokens[1] = "=="
+          tokens.add commit
+        if tokens.len >= 3:
+          # xxx handle tokens.len > 3
+          dep.commit = tokens[2]
+          dep.rel = case tokens[1]
+          of "<": strictlyLess
+          of ">": strictlyGreater
+          else: normal # xxx support other
+          maybeAdd()
 
     result.add dep.name.string / nimbleInfo.srcDir
   else:
@@ -344,6 +365,7 @@ proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
 
 proc clone(c: var AtlasContext; start: string): seq[string] =
   # non-recursive clone.
+  dbg start, "D20210826T183021"
   let oldErrors = c.errors
   var work = @[Dependency(name: toName(start), url: toUrl(c, start), commit: "")]
 
@@ -352,10 +374,12 @@ proc clone(c: var AtlasContext; start: string): seq[string] =
     return
 
   c.projectDir = work[0].name.string
+  dbg c.projectDir
   result = @[]
   var i = 0
   while i < work.len:
     let w = work[i]
+    dbg w, i
     let oldErrors = c.errors
     if not dirExists(c.workspace / w.name.string):
       withDir c, c.workspace:
@@ -374,18 +398,26 @@ const
   configPatternBegin = "############# begin Atlas config section ##########\n"
   configPatternEnd =   "############# end Atlas config section   ##########\n"
 
+proc getOutFileCfg(c: var AtlasContext): string =
+  if c.outFileCfg.len == 0:
+    when MockupRun:
+      c.outFileCfg = TestsDir / "nim.cfg"
+    else:
+      c.outFileCfg = c.projectDir / "nim.cfg"
+  result = c.outFileCfg
+
 proc patchNimCfg(c: var AtlasContext; deps: seq[string]) =
+  dbg deps
   var paths = "--noNimblePath\n"
   for d in deps:
     paths.add "--path:\"../" & d.replace("\\", "/") & "\"\n"
 
   var cfgContent = configPatternBegin & paths & configPatternEnd
-
+  let cfg = c.getOutFileCfg
   when MockupRun:
-    assert readFile(TestsDir / "nim.cfg") == cfgContent
+    assert readFile(cfg) == cfgContent
     c.mockupSuccess = true
   else:
-    let cfg = c.projectDir / "nim.cfg"
     if not fileExists(cfg):
       writeFile(cfg, cfgContent)
     else:
@@ -419,10 +451,8 @@ proc main =
     if args.len != 0:
       error action & " command takes no arguments"
 
-  var c = AtlasContext(
-    projectDir: getCurrentDir(),
-    workspace: getCurrentDir())
-
+  let cwd = getCurrentDir()
+  var c = AtlasContext(projectDir: cwd)
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
@@ -435,11 +465,21 @@ proc main =
       of "help", "h": writeHelp()
       of "version", "v": writeVersion()
       of "keepcommits": c.keepCommits = true
+      of "outfilecfg": c.outFileCfg = val.absolutePath
+      of "atlasdir":
+        c.workspace = val.absolutePath
+        dbg c.workspace
+        enforce val.len > 0 and c.workspace.len > 0
+        createDir c.workspace
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
 
-  while c.workspace.len > 0 and dirExists(c.workspace / ".git"):
-    c.workspace = c.workspace.parentDir()
+  dbg c.workspace
+  if c.workspace.len == 0:
+    c.workspace = cwd
+    # PRTEMP
+    while c.workspace.len > 0 and dirExists(c.workspace / ".git"):
+      c.workspace = c.workspace.parentDir()
 
   case action
   of "":
@@ -453,6 +493,7 @@ proc main =
         error "There were problems."
     else:
       if c.errors > 0:
+        dbg c.errors, deps, args
         error "There were problems."
   of "refresh":
     noArgs()
