@@ -125,8 +125,7 @@
 
 - Fixed buffer overflow bugs in `net`
 
-- Added `std/cputicks` containing APIs for nanosecond resolution CPU counters, providing strictly monotonic
-  counters with highest available resolution.
+- Added `std/cputicks` containing APIs for CPU counters with highest performance available.
 
 - Exported `sslHandle` from `net` and `asyncnet`.
 

@@ -32,11 +32,13 @@ else:
   proc getCpuTicksImpl(): uint64 {.importc: "__rdtsc", header: header.}
 
 template getCpuTicks*(): int64 =
-  ## Returns number of CPU ticks as given by the `RDTSC` instruction.
-  ## Unlike `std/monotimes.ticks`, this gives a strictly monotonic counter
-  ## and has higher resolution and lower overhead,
+  ## Returns number of CPU ticks as given by a platform specific timestamp counter,
+  ## oftentimes the `RDTSC` instruction.
+  ## Unlike `std/monotimes.ticks`, this gives a strictly monotonic counter at least
+  ## on recent enough x86 platforms, and has higher resolution and lower overhead,
   ## allowing to measure individual instructions (corresponding to time offsets in
-  ## the nanosecond range).
+  ## the nanosecond range). A best effort implementation is provided when a timestamp
+  ## counter is not available.
   ##
   ## Note that the CPU may reorder instructions.
   runnableExamples:
@@ -55,6 +57,9 @@ proc getCpuTicksStart*(): int64 {.inline.} =
   ## `getCpuTicks`, this avoids introducing noise in the measurements caused by
   ## CPU instruction reordering, and can result in more deterministic results,
   ## at the expense of extra overhead and requiring asymetric start/stop APIs.
+  ##
+  ## A best effort implementation is provided for platforms where  `RDTSCP` is
+  ## not available.
   runnableExamples:
     var a = 0
     for i in 0..<100:
