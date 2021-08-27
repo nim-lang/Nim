@@ -11,10 +11,10 @@
 
 import std/[parseopt, strutils, os, osproc, unicode, tables, sets]
 import parse_requires, osutils, packagesjson
-import timn/dbgs
-template enforce(cond: untyped) =
+
+template fail(cond: untyped) =
   if not cond:
-    stderr.writeLine astToStr(cond) & " failed\n" # PRTEMP
+    stderr.writeLine astToStr(cond) & " failed\n"
     quit(1)
 
 const
@@ -86,7 +86,6 @@ type
 include testdata
 
 proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, int) =
-  dbg "D20210826T132456: ", cmd, args
   when MockupRun:
     assert TestLog[c.step].cmd == cmd
     case cmd
@@ -153,8 +152,7 @@ proc message(c: var AtlasContext; category: string; p: PackageName; args: vararg
     msg.add ' '
     msg.add a
   stdout.writeLine msg
-  dbg msg
-  doAssert false
+  doAssert false, msg
   inc c.errors
 
 proc warn(c: var AtlasContext; p: PackageName; args: varargs[string]) =
@@ -216,7 +214,6 @@ proc gitPull(c: var AtlasContext; p: PackageName) =
     error(c, p, "could not 'git pull'")
 
 proc updatePackages(c: var AtlasContext) =
-  dbg c.workspace / PackagesDir, c.workspace
   if dirExists(c.workspace / PackagesDir):
     withDir(c, c.workspace / PackagesDir):
       gitPull(c, PackageName PackagesDir)
@@ -242,7 +239,6 @@ proc toUrl(c: var AtlasContext; p: string): string =
     fillPackageLookupTable(c)
     result = c.p.getOrDefault(unicode.toLower p)
   if result.len == 0:
-    dbg p
     inc c.errors
     doAssert false
 
@@ -260,7 +256,6 @@ proc isShortCommitHash(commit: string): bool {.inline.} =
 
 proc checkoutCommit(c: var AtlasContext; w: Dependency) =
   let dir = c.workspace / w.name.string
-  dbg dir, w, "D20210826T182906"
   withDir c, dir:
     if w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
       gitPull(c, w.name)
@@ -275,7 +270,6 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
           else: w.commit
         let (cc, status) = exec(c, GitCurrentCommit, [])
         let currentCommit = strutils.strip(cc)
-        dbg currentCommit, cc, status, requiredCommit, w.commit, err, dir, w.name, w
         if requiredCommit == "" or status != 0:
           if requiredCommit == "" and w.commit == InvalidCommit:
             warn c, w.name, "package has no tagged releases"
@@ -303,7 +297,6 @@ proc findNimbleFile(c: AtlasContext; dep: Dependency): string =
     doAssert fileExists(result), "file does not exist " & result
   else:
     result = c.workspace / dep.name.string / (dep.name.string & ".nimble")
-    dbg result, c.workspace, "D20210826T162754"
     if not fileExists(result):
       result = ""
       for x in walkFiles(c.workspace / dep.name.string / "*.nimble"):
@@ -327,7 +320,6 @@ proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
   let nimbleFile = findNimbleFile(c, dep)
   if nimbleFile != "":
     let nimbleInfo = extractRequiresInfo(c, nimbleFile)
-    dbg nimbleInfo, dep, nimbleFile
     for r in nimbleInfo.requires:
       var tokens: seq[string] = @[]
       for token in tokenizeRequires(r):
@@ -365,7 +357,6 @@ proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
 
 proc clone(c: var AtlasContext; start: string): seq[string] =
   # non-recursive clone.
-  dbg start, "D20210826T183021"
   let oldErrors = c.errors
   var work = @[Dependency(name: toName(start), url: toUrl(c, start), commit: "")]
 
@@ -374,12 +365,10 @@ proc clone(c: var AtlasContext; start: string): seq[string] =
     return
 
   c.projectDir = work[0].name.string
-  dbg c.projectDir
   result = @[]
   var i = 0
   while i < work.len:
     let w = work[i]
-    dbg w, i
     let oldErrors = c.errors
     if not dirExists(c.workspace / w.name.string):
       withDir c, c.workspace:
@@ -407,7 +396,6 @@ proc getOutFileCfg(c: var AtlasContext): string =
   result = c.outFileCfg
 
 proc patchNimCfg(c: var AtlasContext; deps: seq[string]) =
-  dbg deps
   var paths = "--noNimblePath\n"
   for d in deps:
     paths.add "--path:\"../" & d.replace("\\", "/") & "\"\n"
@@ -468,16 +456,14 @@ proc main =
       of "outfilecfg": c.outFileCfg = val.absolutePath
       of "atlasdir":
         c.workspace = val.absolutePath
-        dbg c.workspace
-        enforce val.len > 0 and c.workspace.len > 0
+        fail val.len > 0 and c.workspace.len > 0
         createDir c.workspace
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
 
-  dbg c.workspace
   if c.workspace.len == 0:
     c.workspace = cwd
-    # PRTEMP
+    # xxx this seems like a bad default, refs #18750
     while c.workspace.len > 0 and dirExists(c.workspace / ".git"):
       c.workspace = c.workspace.parentDir()
 
@@ -493,7 +479,6 @@ proc main =
         error "There were problems."
     else:
       if c.errors > 0:
-        dbg c.errors, deps, args
         error "There were problems."
   of "refresh":
     noArgs()
