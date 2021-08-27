@@ -990,21 +990,23 @@ type
   TImplication* = enum
     impUnknown, impNo, impYes
 
+template nodeId(n: PNode): int = cast[int](n)
+
 type Gconfig = object
   # we put comments in a side channel to avoid increasing `sizeof(TNode)`, which
-  # reduces memory usage given that `PNode` is the most numerous type.
-  comments: Table[int, string] # PNode.id => comment
+  # reduces memory usage given that `PNode` is the most allocated type by far.
+  comments: Table[int, string] # nodeId => comment
 
 var gconfig {.threadvar.}: Gconfig
 
 proc comment*(n: PNode): string =
-  gconfig.comments.getOrDefault(cast[int](n))
+  gconfig.comments.getOrDefault(n.nodeId)
 
 proc `comment=`*(n: PNode, a: string) =
   if a.len > 0:
-    gconfig.comments[cast[int](n)] = a
+    gconfig.comments[n.nodeId] = a
   else:
-    gconfig.comments.del(cast[int](n))
+    gconfig.comments.del(n.nodeId)
 
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
@@ -1222,37 +1224,34 @@ when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
 
-proc newNode*(kind: TNodeKind): PNode =
-  ## new node with unknown line info, no type, and no children
-  result = PNode(kind: kind, info: unknownLineInfo)
+template newNodeImpl(info2) =
+  result = PNode(kind: kind, info: info2)
+  result.comment = "" # avoids comments[addr] from a deleted node being reused for this new node
+
+template setIdMaybe() =
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
       echo "KIND ", result.kind
       writeStackTrace()
     inc gNodeId
+
+proc newNode*(kind: TNodeKind): PNode =
+  ## new node with unknown line info, no type, and no children
+  newNodeImpl(unknownLineInfo)
+  setIdMaybe()
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
   ## new node with line info, no type, and no children
-  result = PNode(kind: kind, info: info)
-  when defined(useNodeIds):
-    result.id = gNodeId
-    if result.id == nodeIdToDebug:
-      echo "KIND ", result.kind
-      writeStackTrace()
-    inc gNodeId
+  newNodeImpl(info)
+  setIdMaybe()
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
   ## new node with line info, type, and children
-  result = PNode(kind: kind, info: info)
+  newNodeImpl(info)
   if children > 0:
     newSeq(result.sons, children)
-  when defined(useNodeIds):
-    result.id = gNodeId
-    if result.id == nodeIdToDebug:
-      echo "KIND ", result.kind
-      writeStackTrace()
-    inc gNodeId
+  setIdMaybe()
 
 proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   ## new node with line info, type, and no children

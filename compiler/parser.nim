@@ -1826,13 +1826,10 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
     if result.comment.len == 0:
       # proc fn*(a: int): int = a ## foo
       # => moves comment `foo` to `fn`
-      var c1 = result.comment
-      var c2 = body[0].comment
-      if c1.len > 0 or c2.len > 0:
-        swap(c1, c2)
-        result.comment = c1
-        body[0].comment = c2
-    else: discard # xxx either `assert false` or issue a warning (otherwise we'll never know of this edge case)
+      result.comment = body[0].comment
+      body[0].comment = ""
+    else:
+      assert false, p.lex.config$body.info # avoids hard to track bugs, fail early.
 
 proc newCommentStmt(p: var Parser): PNode =
   #| commentStmt = COMMENT
