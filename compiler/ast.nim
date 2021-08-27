@@ -1003,10 +1003,11 @@ proc comment*(n: PNode): string =
   gconfig.comments.getOrDefault(n.nodeId)
 
 proc `comment=`*(n: PNode, a: string) =
+  let id = n.nodeId
   if a.len > 0:
-    gconfig.comments[n.nodeId] = a
+    gconfig.comments[id] = a
   else:
-    gconfig.comments.del(n.nodeId)
+    gconfig.comments.del(id)
 
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
