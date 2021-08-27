@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, hashes, options, ropes, idents, int128
+  lineinfos, hashes, options, ropes, idents, int128, tables
 from strutils import toLowerAscii
 
 export int128
@@ -774,7 +774,6 @@ type
       ident*: PIdent
     else:
       sons*: TNodeSeq
-    comment*: string
 
   TStrTable* = object         # a table[PIdent] of PSym
     counter*: int
@@ -990,6 +989,22 @@ type
 
   TImplication* = enum
     impUnknown, impNo, impYes
+
+type Gconfig = object
+  # we put comments in a side channel to avoid increasing `sizeof(TNode)`, which
+  # reduces memory usage given that `PNode` is the most numerous type.
+  comments: Table[int, string] # PNode.id => comment
+
+var gconfig {.threadvar.}: Gconfig
+
+proc comment*(n: PNode): string =
+  gconfig.comments.getOrDefault(cast[int](n))
+
+proc `comment=`*(n: PNode, a: string) =
+  if a.len > 0:
+    gconfig.comments[cast[int](n)] = a
+  else:
+    gconfig.comments.del(cast[int](n))
 
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
@@ -1644,8 +1659,8 @@ proc copyNode*(src: PNode): PNode =
 
 template transitionNodeKindCommon(k: TNodeKind) =
   let obj {.inject.} = n[]
-  n[] = TNode(kind: k, typ: obj.typ, info: obj.info, flags: obj.flags,
-              comment: obj.comment)
+  n[] = TNode(kind: k, typ: obj.typ, info: obj.info, flags: obj.flags)
+  # n.comment = obj.comment # shouldn't be needed, the address doesnt' change
   when defined(useNodeIds):
     n.id = obj.id
 
