@@ -92,6 +92,7 @@ type
     exampleGroups: OrderedTable[string, ExampleGroup]
     wroteSupportFiles*: bool
     lastSym*: PSym
+    examplesAttached*: Table[int, seq[PNode]] # PSym.id => seq[PNode]
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -927,7 +928,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, examp
     comm.add genRecComment(d, n)
 
   if d.lastSym != nil:
-    for ai in d.lastSym.examplesAttached:
+    for ai in d.examplesAttached.getOrDefault(d.lastSym.id):
       discard getAllRunnableExamplesImpl(d, ai, comm, rsStart, topLevel = false)
   for ai in examples:
     discard getAllRunnableExamplesImpl(d, ai, comm, rsStart, topLevel = false)
@@ -1168,7 +1169,9 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault, exampl
   ## which is implemented in ``docgen2.nim``.
   template genItemAux(skind) =
     genItem(d, n, n[namePos], skind, docFlags, examples)
-
+  template attach(n) =
+    if not d.examplesAttached.hasKey(d.lastSym.id): d.examplesAttached[d.lastSym.id] = @[]
+    d.examplesAttached[d.lastSym.id].add n
   case n.kind
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
@@ -1231,12 +1234,12 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault, exampl
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
   of nkCommentStmt:
     if d.lastSym  != nil:
-      d.lastSym.examplesAttached.add n
+      attach(n)
     else:
       d.modDescPre.add(genComment(d, n))
   elif isRunnableExamplesRoot(n):
     if d.lastSym  != nil:
-      d.lastSym.examplesAttached.add n
+      attach(n)
     else:
       var comm: ItemPre
       getAllRunnableExamples(d, n, comm)
