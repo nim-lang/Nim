@@ -17,7 +17,7 @@ See also:
 * `mkstemp` (posix), refs https://man7.org/linux/man-pages/man3/mkstemp.3.html
 ]#
 
-import os, random, std/monotimes
+import os, random
 
 
 const
