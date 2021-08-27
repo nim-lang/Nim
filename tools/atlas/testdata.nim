@@ -46,8 +46,7 @@ const
     toData("grok", GitMergeBase, 0, "4e6526a91a23eaec778184e16ce9a34d25d48bdc\n62707b8ac684efac35d301dbde57dc750880268e\n349c15fd1e03f1fcdd81a1edefba3fa6116ab911\n"),
     toData("grok", GitCheckout, 0, "62707b8ac684efac35d301dbde57dc750880268e"),
 
-    toData("nim-bytes2human", GitDiff, 0, ""),
-    toData("nim-bytes2human", GitTags, 0, ""),
+    toData("nim-bytes2human", GitPull, 0, "Already up to date.\n"),
     toData("nim-bytes2human", GitCurrentcommit, 0, "ec2c1a758cabdd4751a06c8ebf2b923f19e32731\n")
   ]
 

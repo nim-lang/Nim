@@ -15,7 +15,9 @@ import parse_requires, osutils, packagesjson
 const
   MockupRun = defined(atlasTests)
   atlasDebug = defined(atlasDebug)
-  TestsDir = "tools/atlas/tests"
+
+when MockupRun:
+  const TestsDir = "tools/atlas/tests"
 
 proc error*(msg: string) =
   when atlasDebug:
@@ -34,8 +36,8 @@ Command:
   search keyw keywB...  search for package that contains the given keywords
 
 Options:
-  --outFileCfg:file     write cfg to `file`
-  --atlasDir:dir        root of atlas packages, required
+  --outFileCfg:file     (required) write cfg to `file`
+  --atlasDir:dir        (required) root of atlas packages
   --keepCommits         do not perform any `git checkouts`
   --version             show the version
   --help                show this help
@@ -61,7 +63,7 @@ type
     url, commit: string
     rel: DepRelation # "requires x < 1.0" is silly, but Nimble allows it so we have too.
   AtlasContext = object
-    projectDir, workspace, outFileCfg: string
+    workspace, outFileCfg: string
     hasPackageList: bool
     keepCommits: bool
     p: Table[string, string] # name -> url mapping
@@ -259,7 +261,7 @@ proc isShortCommitHash(commit: string): bool {.inline.} =
 proc checkoutCommit(c: var AtlasContext; w: Dependency) =
   let dir = c.workspace / w.name.string
   withDir c, dir:
-    if w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
+    if w.rel == anyCommit or w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
       gitPull(c, w.name)
     else:
       let err = isCleanGit(c, dir)
@@ -362,8 +364,6 @@ proc clone(c: var AtlasContext; start: string): seq[string] =
   if oldErrors != c.errors:
     error c, toName(start), "cannot resolve package name"
     return
-
-  c.projectDir = work[0].name.string
   result = @[]
   var i = 0
   while i < work.len:
@@ -386,21 +386,13 @@ const
   configPatternBegin = "############# begin Atlas config section ##########\n"
   configPatternEnd =   "############# end Atlas config section   ##########\n"
 
-proc getOutFileCfg(c: var AtlasContext): string =
-  if c.outFileCfg.len == 0:
-    when MockupRun:
-      c.outFileCfg = TestsDir / "nim.cfg"
-    else:
-      c.outFileCfg = c.projectDir / "nim.cfg"
-  result = c.outFileCfg
-
 proc patchNimCfg(c: var AtlasContext; deps: seq[string]) =
   var paths = "--noNimblePath\n"
   for d in deps:
     paths.add "--path:\"../" & d.replace("\\", "/") & "\"\n"
 
   var cfgContent = configPatternBegin & paths & configPatternEnd
-  let cfg = c.getOutFileCfg
+  let cfg = c.outFileCfg
   when MockupRun:
     assert readFile(cfg) == cfgContent
     c.mockupSuccess = true
@@ -434,7 +426,7 @@ proc main =
       error action & " command takes no arguments"
 
   let cwd = getCurrentDir()
-  var c = AtlasContext(projectDir: cwd)
+  var c = AtlasContext()
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
@@ -455,7 +447,9 @@ proc main =
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
   if c.workspace.len == 0:
-    error "--atlasdir:dir must be provided" # refs #18750
+    error "--atlasDir:dir must be provided" # refs #18750
+  if c.outfilecfg.len == 0:
+    error "--outFileCfg:file must be provided" # refs #18751
   case action
   of "":
     error "No action."
@@ -483,9 +477,7 @@ when isMainModule:
 
 when false:
   # some testing code for the `patchNimCfg` logic:
-  var c = AtlasContext(
-    projectDir: getCurrentDir(),
-    workspace: getCurrentDir().parentDir)
+  var c = AtlasContext(workspace: getCurrentDir().parentDir)
 
   patchNimCfg(c, @[PackageName"abc", PackageName"xyz"])
 

@@ -599,7 +599,8 @@ proc runCI(cmd: string) =
       execFold("build nimsuggest_testing", "nim c -o:bin/nimsuggest_testing -d:release nimsuggest/nimsuggest")
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
-    execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
+    # `outFileCfg` is being read with `-d:atlasTests`, not written to.
+    execFold("Run atlas tests", "nim r -d:atlasTests tools/atlas/atlas.nim --atlasDir:build/atlas --outFileCfg:tools/atlas/tests/nim.cfg clone https://github.com/disruptek/balls")
 
   when not defined(bsd):
     if not doUseCpp:
