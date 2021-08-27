@@ -70,7 +70,6 @@ type
       mockupSuccess: bool
 
 const
-  InvalidCommit = "<invalid commit>" # xxx REMOVE, unused
   ProduceTest = false
 
 type
@@ -189,7 +188,7 @@ proc versionToCommit(c: var AtlasContext; d: Dependency): string =
           if commitsAndTags[1].sameVersionAs(d.commit):
             return commitsAndTags[0]
         of strictlyLess:
-          if d.commit == InvalidCommit or not commitsAndTags[1].sameVersionAs(d.commit):
+          if not commitsAndTags[1].sameVersionAs(d.commit):
             return commitsAndTags[0]
         of strictlyGreater:
           if commitsAndTags[1].sameVersionAs(d.commit):
@@ -249,7 +248,7 @@ proc toName(p: string): PackageName =
     result = PackageName p
 
 proc needsCommitLookup(commit: string): bool {.inline.} =
-  '.' in commit or commit == InvalidCommit
+  '.' in commit
 
 proc isShortCommitHash(commit: string): bool {.inline.} =
   commit.len >= 4 and commit.len < 40
@@ -271,10 +270,7 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
         let (cc, status) = exec(c, GitCurrentCommit, [])
         let currentCommit = strutils.strip(cc)
         if requiredCommit == "" or status != 0:
-          if requiredCommit == "" and w.commit == InvalidCommit:
-            warn c, w.name, "package has no tagged releases"
-          else:
-            warn c, w.name, "cannot find specified version/commit", w.commit
+          warn c, w.name, "cannot find specified version/commit", w.commit
         else:
           if currentCommit != requiredCommit:
             # checkout the later commit:
