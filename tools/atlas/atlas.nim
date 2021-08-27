@@ -12,10 +12,15 @@
 import std/[parseopt, strutils, os, osproc, unicode, tables, sets]
 import parse_requires, osutils, packagesjson
 
-template fail(cond: untyped) =
-  if not cond:
-    stderr.writeLine astToStr(cond) & " failed\n"
-    quit(1)
+const
+  MockupRun = defined(atlasTests)
+  atlasDebug = defined(atlasDebug)
+  TestsDir = "tools/atlas/tests"
+
+proc error*(msg: string) =
+  when atlasDebug:
+    writeStackTrace()
+  quit "[Error] " & msg
 
 const
   Version = "0.1"
@@ -29,6 +34,8 @@ Command:
   search keyw keywB...  search for package that contains the given keywords
 
 Options:
+  --outFileCfg:file     write cfg to `file`
+  --atlasDir:dir        root of atlas packages, required
   --keepCommits         do not perform any `git checkouts`
   --version             show the version
   --help                show this help
@@ -43,10 +50,6 @@ proc writeVersion() =
   stdout.write(Version & "\n")
   stdout.flushFile()
   quit(0)
-
-const
-  MockupRun = defined(atlasTests)
-  TestsDir = "tools/atlas/tests"
 
 type
   PackageName = distinct string
@@ -419,11 +422,6 @@ proc patchNimCfg(c: var AtlasContext; deps: seq[string]) =
         # (preserves the file date information):
         writeFile(cfg, cfgContent)
 
-proc error*(msg: string) =
-  when defined(debug):
-    writeStackTrace()
-  quit "[Error] " & msg
-
 proc main =
   var action = ""
   var args: seq[string] = @[]
@@ -452,17 +450,12 @@ proc main =
       of "outfilecfg": c.outFileCfg = val.absolutePath
       of "atlasdir":
         c.workspace = val.absolutePath
-        fail val.len > 0 and c.workspace.len > 0
+        if not (val.len > 0 and c.workspace.len > 0): error "invalid dir: " & val
         createDir c.workspace
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
-
   if c.workspace.len == 0:
-    c.workspace = cwd
-    # xxx this seems like a bad default, refs #18750
-    while c.workspace.len > 0 and dirExists(c.workspace / ".git"):
-      c.workspace = c.workspace.parentDir()
-
+    error "--atlasdir:dir must be provided" # refs #18750
   case action
   of "":
     error "No action."
