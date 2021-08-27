@@ -9,7 +9,7 @@
 ## Simple tool to automate frequent workflows: Can "clone"
 ## a Nimble dependency and its dependencies recursively.
 
-import std/[parseopt, strutils, os, osproc, unicode, tables, sets]
+import std/[parseopt, strutils, os, osproc, unicode, tables, sets, sugar]
 import parse_requires, osutils, packagesjson
 
 const
@@ -389,12 +389,15 @@ const
 proc patchNimCfg(c: var AtlasContext; deps: seq[string]) =
   var paths = "--noNimblePath\n"
   for d in deps:
-    paths.add "--path:\"../" & d.replace("\\", "/") & "\"\n"
+    var dir = c.workspace / d
+    dir = dir.relativePath(c.outFileCfg.parentDir) # skip to keep the path absolute
+    dir = dir.replace("\\", "/")
+    paths.add "--path:$1\n" % "".dup(addQuoted(dir))
 
   var cfgContent = configPatternBegin & paths & configPatternEnd
   let cfg = c.outFileCfg
   when MockupRun:
-    assert readFile(cfg) == cfgContent
+    assert readFile(cfg) == cfgContent, cfg & "\n" & cfgContent
     c.mockupSuccess = true
   else:
     if not fileExists(cfg):
