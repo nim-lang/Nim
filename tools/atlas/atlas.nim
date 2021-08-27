@@ -156,7 +156,6 @@ proc message(c: var AtlasContext; category: string; p: PackageName; args: vararg
     msg.add ' '
     msg.add a
   stdout.writeLine msg
-  doAssert false, msg
   inc c.errors
 
 proc warn(c: var AtlasContext; p: PackageName; args: varargs[string]) =
@@ -244,7 +243,6 @@ proc toUrl(c: var AtlasContext; p: string): string =
     result = c.p.getOrDefault(unicode.toLower p)
   if result.len == 0:
     inc c.errors
-    doAssert false
 
 proc toName(p: string): PackageName =
   if p.isUrl:
@@ -344,12 +342,12 @@ proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
           tokens[1] = "=="
           tokens.add commit
         if tokens.len >= 3:
-          # xxx handle tokens.len > 3
+          # xxx handle tokens.len > 3, refs bug #18755
           dep.commit = tokens[2]
           dep.rel = case tokens[1]
           of "<": strictlyLess
           of ">": strictlyGreater
-          else: normal # xxx support other
+          else: normal # xxx support other tokens, refs bug #18755
           maybeAdd()
 
     result.add dep.name.string / nimbleInfo.srcDir
@@ -461,8 +459,7 @@ proc main =
     let deps = clone(c, args[0])
     patchNimCfg c, deps
     when MockupRun:
-      if not c.mockupSuccess:
-        error "There were problems."
+      doAssert c.mockupSuccess
     else:
       if c.errors > 0:
         error "There were problems."
