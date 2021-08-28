@@ -157,23 +157,27 @@ proc addTypeHeader*(result: var string, conf: ConfigRef; typ: PType; prefer: TPr
 
 proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName; getDeclarationPath = true): string =
   assert sym != nil
+  dbg sym.owner.name.s, sym.name.s, sym
   # consider using `skipGenericOwner` to avoid fun2.fun2 when fun2 is generic
   result = sym.owner.name.s & '.' & sym.name.s
   if sym.kind in routineKinds:
-    result.add '('
-    var n = sym.typ.n
-    for i in 1..<n.len:
-      let p = n[i]
-      if p.kind == nkSym:
-        result.add(p.sym.name.s)
-        result.add(": ")
-        result.add(typeToString(p.sym.typ, prefer))
-        if i != n.len-1: result.add(", ")
-      else:
-        result.add renderTree(p)
-    result.add(')')
-    if n[0].typ != nil:
-      result.add(": " & typeToString(n[0].typ, prefer))
+    if sym.typ == nil:
+      result.add "(typ=nil)"
+    else:
+      result.add '('
+      var n = sym.typ.n
+      for i in 1..<n.len:
+        let p = n[i]
+        if p.kind == nkSym:
+          result.add(p.sym.name.s)
+          result.add(": ")
+          result.add(typeToString(p.sym.typ, prefer))
+          if i != n.len-1: result.add(", ")
+        else:
+          result.add renderTree(p)
+      result.add(')')
+      if n[0].typ != nil:
+        result.add(": " & typeToString(n[0].typ, prefer))
   if getDeclarationPath: result.addDeclaredLoc(conf, sym)
 
 proc elemType*(t: PType): PType =

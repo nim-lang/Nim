@@ -1873,6 +1873,20 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
   let declarationScope = c.currentScope
+
+  if c.config.isDefined("nimLazySemcheck"):
+    # PRTEMP
+    let status = lazyVisit(c, s)
+    dbgIf status, s
+    if not status.needDeclaration:
+      # PRTEMP
+      s.flags.incl sfForward
+      if s.kind in OverloadableSyms:
+        addInterfaceOverloadableSymAt(c, declarationScope, s)
+      else:
+        addInterfaceDeclAt(c, declarationScope, s)
+      return result
+
   pushOwner(c, s)
   openScope(c)
 

@@ -2779,6 +2779,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
+  # if n.kind in routineDefs and c.config.isDefined("nimLazySemcheck"):
+  #   # xxx could use a flag (see also nfSem)
+  #   let status = lazyVisit(c, n)
+  #   if not status.needDeclaration:
+  #     return nil # PRTEMP or result?
   case n.kind
   of nkIdent, nkAccQuoted:
     let checks = if efNoEvaluateGeneric in flags:
