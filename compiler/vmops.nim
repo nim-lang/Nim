@@ -29,7 +29,6 @@ from std/hashes import hash
 from std/osproc import nil
 from system/formatfloat import addFloatRoundtrip, addFloatSprintf
 
-from sighashes import symBodyDigest
 
 # There are some useful procs in vmconv.
 import vmconv
