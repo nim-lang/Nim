@@ -497,6 +497,7 @@ type
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
     nfLastRead  # this node is a last read
     nfFirstWrite# this node is a first write
+    nfHasComment # node has a comment
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 43)
@@ -1000,13 +1001,22 @@ type Gconfig = object
 var gconfig {.threadvar.}: Gconfig
 
 proc comment*(n: PNode): string =
-  gconfig.comments.getOrDefault(n.nodeId)
+  if nfHasComment in n.flags:
+    result = gconfig.comments[n.nodeId]
 
 proc `comment=`*(n: PNode, a: string) =
   let id = n.nodeId
   if a.len > 0:
+    # if needed, we could periodically cleanup gconfig.comments when its size increases,
+    # to ensure only live nodes (and with nfHasComment) have an entry in gconfig.comments;
+    # for compiling compiler, the waste is very small:
+    # num calls to newNodeImpl: 14984160 (num of PNode allocations)
+    # size of gconfig.comments: 33585
+    # num of nodes with comments that were deleted and hence wasted: 3081
+    n.flags.incl nfHasComment
     gconfig.comments[id] = a
-  else:
+  elif nfHasComment in n.flags:
+    n.flags.excl nfHasComment
     gconfig.comments.del(id)
 
 # BUGFIX: a module is overloadable so that a proc can have the
@@ -1227,7 +1237,13 @@ when defined(useNodeIds):
 
 template newNodeImpl(info2) =
   result = PNode(kind: kind, info: info2)
-  result.comment = "" # avoids comments[addr] from a deleted node being reused for this new node
+  when false:
+    # this would add overhead, so we skip it; it results in a small amount of leaked entries
+    # for old PNode that gets re-allocated at the same address as a PNode that
+    # has `nfHasComment` set (and an entry in that table). Only `nfHasComment`
+    # should be used to test whether a PNode has a comment; gconfig.comments
+    # can contain extra entries for deleted PNode's with comments.
+    gconfig.comments.del(cast[int](result))
 
 template setIdMaybe() =
   when defined(useNodeIds):
