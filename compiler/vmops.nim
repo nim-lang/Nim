@@ -15,10 +15,12 @@ from std/math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   lgamma
 
 when declared(math.copySign):
-  from std/math import copySign
+  # pending bug #18762, avoid renaming math
+  from std/math as math2 import copySign
 
 when declared(math.signbit):
-  from std/math import signbit
+  # ditto
+  from std/math as math3 import signbit
 
 from std/os import getEnv, existsEnv, delEnv, putEnv, dirExists, fileExists, walkDir,
                    getAppFilename, raiseOSError, osLastError
