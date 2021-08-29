@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, hashes, options, ropes, idents, int128
+  lineinfos, hashes, options, ropes, idents, int128, tables
 from strutils import toLowerAscii
 
 export int128
@@ -497,6 +497,7 @@ type
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
     nfLastRead  # this node is a last read
     nfFirstWrite# this node is a first write
+    nfHasComment # node has a comment
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 43)
@@ -774,7 +775,6 @@ type
       ident*: PIdent
     else:
       sons*: TNodeSeq
-    comment*: string
 
   TStrTable* = object         # a table[PIdent] of PSym
     counter*: int
@@ -990,6 +990,38 @@ type
 
   TImplication* = enum
     impUnknown, impNo, impYes
+
+template nodeId(n: PNode): int = cast[int](n)
+
+type Gconfig = object
+  # we put comments in a side channel to avoid increasing `sizeof(TNode)`, which
+  # reduces memory usage given that `PNode` is the most allocated type by far.
+  comments: Table[int, string] # nodeId => comment
+  useIc*: bool
+
+var gconfig {.threadvar.}: Gconfig
+
+proc setUseIc*(useIc: bool) = gconfig.useIc = useIc
+
+proc comment*(n: PNode): string =
+  if nfHasComment in n.flags and not gconfig.useIc:
+    # IC doesn't track comments, see `packed_ast`, so this could fail
+    result = gconfig.comments[n.nodeId]
+
+proc `comment=`*(n: PNode, a: string) =
+  let id = n.nodeId
+  if a.len > 0:
+    # if needed, we could periodically cleanup gconfig.comments when its size increases,
+    # to ensure only live nodes (and with nfHasComment) have an entry in gconfig.comments;
+    # for compiling compiler, the waste is very small:
+    # num calls to newNodeImpl: 14984160 (num of PNode allocations)
+    # size of gconfig.comments: 33585
+    # num of nodes with comments that were deleted and hence wasted: 3081
+    n.flags.incl nfHasComment
+    gconfig.comments[id] = a
+  elif nfHasComment in n.flags:
+    n.flags.excl nfHasComment
+    gconfig.comments.del(id)
 
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
@@ -1207,37 +1239,40 @@ when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
 
-proc newNode*(kind: TNodeKind): PNode =
-  ## new node with unknown line info, no type, and no children
-  result = PNode(kind: kind, info: unknownLineInfo)
+template newNodeImpl(info2) =
+  result = PNode(kind: kind, info: info2)
+  when false:
+    # this would add overhead, so we skip it; it results in a small amount of leaked entries
+    # for old PNode that gets re-allocated at the same address as a PNode that
+    # has `nfHasComment` set (and an entry in that table). Only `nfHasComment`
+    # should be used to test whether a PNode has a comment; gconfig.comments
+    # can contain extra entries for deleted PNode's with comments.
+    gconfig.comments.del(cast[int](result))
+
+template setIdMaybe() =
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
       echo "KIND ", result.kind
       writeStackTrace()
     inc gNodeId
+
+proc newNode*(kind: TNodeKind): PNode =
+  ## new node with unknown line info, no type, and no children
+  newNodeImpl(unknownLineInfo)
+  setIdMaybe()
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
   ## new node with line info, no type, and no children
-  result = PNode(kind: kind, info: info)
-  when defined(useNodeIds):
-    result.id = gNodeId
-    if result.id == nodeIdToDebug:
-      echo "KIND ", result.kind
-      writeStackTrace()
-    inc gNodeId
+  newNodeImpl(info)
+  setIdMaybe()
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
   ## new node with line info, type, and children
-  result = PNode(kind: kind, info: info)
+  newNodeImpl(info)
   if children > 0:
     newSeq(result.sons, children)
-  when defined(useNodeIds):
-    result.id = gNodeId
-    if result.id == nodeIdToDebug:
-      echo "KIND ", result.kind
-      writeStackTrace()
-    inc gNodeId
+  setIdMaybe()
 
 proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   ## new node with line info, type, and no children
@@ -1644,8 +1679,8 @@ proc copyNode*(src: PNode): PNode =
 
 template transitionNodeKindCommon(k: TNodeKind) =
   let obj {.inject.} = n[]
-  n[] = TNode(kind: k, typ: obj.typ, info: obj.info, flags: obj.flags,
-              comment: obj.comment)
+  n[] = TNode(kind: k, typ: obj.typ, info: obj.info, flags: obj.flags)
+  # n.comment = obj.comment # shouldn't be needed, the address doesnt' change
   when defined(useNodeIds):
     n.id = obj.id
 

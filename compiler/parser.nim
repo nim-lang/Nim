@@ -170,13 +170,15 @@ proc validInd(p: var Parser): bool {.inline.} =
 proc rawSkipComment(p: var Parser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
+      var rhs = node.comment
       when defined(nimpretty):
         if p.tok.commentOffsetB > p.tok.commentOffsetA:
-          node.comment.add fileSection(p.lex.config, p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
+          rhs.add fileSection(p.lex.config, p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
         else:
-          node.comment.add p.tok.literal
+          rhs.add p.tok.literal
       else:
-        node.comment.add  p.tok.literal
+        rhs.add p.tok.literal
+      node.comment = move rhs
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)
@@ -1824,8 +1826,10 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
     if result.comment.len == 0:
       # proc fn*(a: int): int = a ## foo
       # => moves comment `foo` to `fn`
-      swap(result.comment, body[0].comment)
-    else: discard # xxx either `assert false` or issue a warning (otherwise we'll never know of this edge case)
+      result.comment = body[0].comment
+      body[0].comment = ""
+    else:
+      assert false, p.lex.config$body.info # avoids hard to track bugs, fail early.
 
 proc newCommentStmt(p: var Parser): PNode =
   #| commentStmt = COMMENT
