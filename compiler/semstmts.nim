@@ -10,6 +10,8 @@
 ## this module does the semantic checking of statements
 #  included from sem.nim
 
+import tables
+
 const
   errNoSymbolToBorrowFromFound = "no symbol to borrow from found"
   errDiscardValueX = "value of type '$1' has to be used (or discarded)"
@@ -1863,7 +1865,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addInterfaceOverloadableSymAt(c, c.currentScope, s)
         s.flags.incl sfForward
         return
-
   assert s.kind in skProcKinds
 
   s.ast = n
@@ -1885,6 +1886,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addInterfaceOverloadableSymAt(c, declarationScope, s)
       else:
         addInterfaceDeclAt(c, declarationScope, s)
+      c.graph.symToScope[s.id] = c.currentScope
       return result
 
   pushOwner(c, s)
@@ -2106,7 +2108,18 @@ proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
   #if s.magic != mNone: return
   #if s.ast.isNil: return
+  dbgIf c.module, s
+  # c.scopeStack.push
+  let old = c.currentScope
+  #[
+  TODO: change PContext also?
+  ]#
+  # c.currentScope = c.scopeStack[^1]
+  c.currentScope = c.graph.symToScope[s.id]
   discard semProcAux(c, s.ast, s.kind, {})
+  c.currentScope = old
+  # c.scopeStack.pop
+  dbgIf c.module, s, "after"
 
 proc semIterator(c: PContext, n: PNode): PNode =
   # gensym'ed iterator?

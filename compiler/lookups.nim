@@ -546,10 +546,14 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   of nkIdent, nkAccQuoted:
     var amb = false
     var ident = considerQuotedIdent(c, n)
+    if c.config.isDefined("nimCompilerDebug2"):
+      dbgIf n, flags, n.kind
     if checkModule in flags:
       result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
     else:
       let candidates = searchInScopesFilterBy(c, ident, allExceptModule) #.skipAlias(n, c.config)
+      if c.config.isDefined("nimCompilerDebug2"):
+        dbgIf n, flags, n.kind, candidates, candidates.len
       if candidates.len > 0:
         result = candidates[0]
         amb = candidates.len > 1
@@ -564,6 +568,10 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           errorUseQualifier(c, n.info, candidates)
 
     if result == nil and checkUndeclared in flags:
+      if c.config.isDefined("nimCompilerDebug2"):
+        # debugScopes(c; limit=0, max = int.high) {.deprecated.} =
+        dbgIf()
+        debugScopes(c, limit = 10)
       result = errorUndeclaredIdentifierHint(c, n, ident)
     elif checkAmbiguity in flags and result != nil and amb:
       result = errorUseQualifier(c, n.info, result, amb)

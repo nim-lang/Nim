@@ -104,6 +104,7 @@ type
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator
     operators*: Operators
+    symToScope*: Table[int, PScope] # key: sym.id
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
