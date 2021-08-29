@@ -1,5 +1,5 @@
 discard """
-  matrix: "--gc:refc; --gc:arc"
+  matrix: "--gc:refc --threads:on; --gc:arc --threads:on"
   outputsub: "65"
 """
 
