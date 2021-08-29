@@ -75,22 +75,17 @@ proc closeScope*(c: PContext) =
   rawCloseScope(c)
 
 iterator allScopes*(scope: PScope): PScope =
-  ## Iterates the current scope and all of its parent scopes.
   var current = scope
   while current != nil:
     yield current
     current = current.parent
 
 iterator localScopesFrom*(c: PContext; scope: PScope): PScope =
-  ## Iterates the current scope and all of its parent scopes
-  ## except the top-level one.
   for s in allScopes(scope):
     if s == c.topLevelScope: break
     yield s
 
 proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
-  ## Skips symbol of `skAlis` kind. `skAlias` is used in
-  ## deprecated rule: {.deprecated: [...].}
   if s == nil or s.kind != skAlias:
     result = s
   else:
