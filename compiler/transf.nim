@@ -364,7 +364,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
   if e.typ.isNil: return result # can happen in nimsuggest for unknown reasons
   if c.transCon.forStmt.len != 3:
     e = skipConv(e)
-    if e.kind in {nkPar, nkTupleConstr}:
+    if e.kind == nkTupleConstr:
       for i in 0..<e.len:
         var v = e[i]
         if v.kind == nkExprColonExpr: v = v[1]
