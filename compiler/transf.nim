@@ -362,34 +362,55 @@ proc transformYield(c: PTransf, n: PNode): PNode =
   # c.transCon.forStmt.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
   if e.typ.isNil: return result # can happen in nimsuggest for unknown reasons
+  e = skipConv(e)
   if c.transCon.forStmt.len != 3:
-    e = skipConv(e)
-    if e.kind in {nkPar, nkTupleConstr}:
+    if e.kind == nkTupleConstr:
       for i in 0..<e.len:
         var v = e[i]
         if v.kind == nkExprColonExpr: v = v[1]
-        if c.transCon.forStmt[i].kind == nkVarTuple:
-          for j in 0..<c.transCon.forStmt[i].len-1:
-            let lhs = c.transCon.forStmt[i][j]
-            let rhs = transform(c, newTupleAccess(c.graph, v, j))
-            result.add(asgnTo(lhs, rhs))
-        else:
-          let lhs = c.transCon.forStmt[i]
-          let rhs = transform(c, v)
-          result.add(asgnTo(lhs, rhs))
-    else:
-      # Unpack the tuple into the loop variables
-      # XXX: BUG: what if `n` is an expression with side-effects?
-      for i in 0..<c.transCon.forStmt.len - 2:
+        # if c.transCon.forStmt[i].kind == nkVarTuple:
+        #   for j in 0..<c.transCon.forStmt[i].len-1:
+        #     let lhs = c.transCon.forStmt[i][j]
+        #     let rhs = transform(c, newTupleAccess(c.graph, v, j))
+        #     result.add(asgnTo(lhs, rhs))
+        # else:
         let lhs = c.transCon.forStmt[i]
-        let rhs = transform(c, newTupleAccess(c.graph, e, i))
+        let rhs = transform(c, v)
         result.add(asgnTo(lhs, rhs))
+    else:
+      if e.kind in nkCallKinds:
+        var tmp = newTemp(c, e.typ, e.info)
+        let v = newNodeI(nkVarSection, e.info)
+        v.addVar(tmp, e)
+
+        result.add transform(c, v)
+
+        for i in 0..<c.transCon.forStmt.len - 2:
+          let lhs = c.transCon.forStmt[i]
+          let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
+          result.add(asgnTo(lhs, rhs))
+      else:
+        for i in 0..<c.transCon.forStmt.len - 2:
+          let lhs = c.transCon.forStmt[i]
+          let rhs = transform(c, newTupleAccess(c.graph, e, i))
+          result.add(asgnTo(lhs, rhs))
   else:
     if c.transCon.forStmt[0].kind == nkVarTuple:
-      for i in 0..<c.transCon.forStmt[0].len-1:
-        let lhs = c.transCon.forStmt[0][i]
-        let rhs = transform(c, newTupleAccess(c.graph, e, i))
-        result.add(asgnTo(lhs, rhs))
+      if e.kind in nkCallKinds + {nkTupleConstr}:
+        var tmp = newTemp(c, e.typ, e.info)
+        let v = newNodeI(nkVarSection, e.info)
+        v.addVar(tmp, e)
+
+        result.add transform(c, v)
+        for i in 0..<c.transCon.forStmt[0].len-1:
+          let lhs = c.transCon.forStmt[0][i]
+          let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
+          result.add(asgnTo(lhs, rhs))
+      else:
+        for i in 0..<c.transCon.forStmt[0].len-1:
+          let lhs = c.transCon.forStmt[0][i]
+          let rhs = transform(c, newTupleAccess(c.graph, e, i))
+          result.add(asgnTo(lhs, rhs))
     else:
       let lhs = c.transCon.forStmt[0]
       let rhs = transform(c, e)
@@ -405,8 +426,8 @@ proc transformYield(c: PTransf, n: PNode): PNode =
   if result.len > 0:
     var changeNode = result[0]
     changeNode.info = c.transCon.forStmt.info
-    for i, child in changeNode:
-      child.info = changeNode.info
+    # for i, child in changeNode:
+    #   child.info = changeNode.info
 
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
   result = transformSons(c, n)
