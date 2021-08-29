@@ -23,7 +23,6 @@ when not defined(leanCompiler):
 import strutils except `%` # collides with ropes.`%`
 
 from ic / ic import ModuleBackendFlag
-from modulegraphs import ModuleGraph, PPassContext
 import dynlib
 
 when not declared(dynlib.libCandidates):
