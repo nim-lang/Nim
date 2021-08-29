@@ -178,7 +178,7 @@ proc rawSkipComment(p: var Parser, node: PNode) =
           rhs.add p.tok.literal
       else:
         rhs.add p.tok.literal
-      node.comment = rhs
+      node.comment = move rhs
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)
