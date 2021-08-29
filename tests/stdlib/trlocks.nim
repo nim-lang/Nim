@@ -3,7 +3,7 @@ discard """
   # Disallow joining to ensure it can compile in isolation.
   # See #15584
   joinable: false
-  matrix: "--threads:on --gc:refc; --threads:on --gc:arc"
+  matrix: "--threads:on --gc:refc; --threads:on --gc:arc; --threads:on --gc:orc"
 """
 
 # bugfix #15584
