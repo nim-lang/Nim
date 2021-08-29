@@ -368,15 +368,15 @@ proc transformYield(c: PTransf, n: PNode): PNode =
       for i in 0..<e.len:
         var v = e[i]
         if v.kind == nkExprColonExpr: v = v[1]
-        # if c.transCon.forStmt[i].kind == nkVarTuple:
-        #   for j in 0..<c.transCon.forStmt[i].len-1:
-        #     let lhs = c.transCon.forStmt[i][j]
-        #     let rhs = transform(c, newTupleAccess(c.graph, v, j))
-        #     result.add(asgnTo(lhs, rhs))
-        # else:
-        let lhs = c.transCon.forStmt[i]
-        let rhs = transform(c, v)
-        result.add(asgnTo(lhs, rhs))
+        if c.transCon.forStmt[i].kind == nkVarTuple:
+          for j in 0..<c.transCon.forStmt[i].len-1:
+            let lhs = c.transCon.forStmt[i][j]
+            let rhs = transform(c, newTupleAccess(c.graph, v, j))
+            result.add(asgnTo(lhs, rhs))
+        else:
+          let lhs = c.transCon.forStmt[i]
+          let rhs = transform(c, v)
+          result.add(asgnTo(lhs, rhs))
     else:
       if e.kind in nkCallKinds:
         var tmp = newTemp(c, e.typ, e.info)
