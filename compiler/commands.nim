@@ -8,7 +8,7 @@
 #
 
 # This module handles the parsing of command line arguments.
-
+from ast import setUseIc
 
 # We do this here before the 'import' statement so 'defined' does not get
 # confused with 'TGCMode.gcMarkAndSweep' etc.
@@ -862,6 +862,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "v2": conf.symbolFiles = v2Sf
       of "stress": conf.symbolFiles = stressTest
       else: localError(conf, info, "invalid option for --incremental: " & arg)
+    setUseIc(conf.symbolFiles != disabledSf)
   of "skipcfg":
     processOnOffSwitchG(conf, {optSkipSystemConfigFile}, arg, pass, info)
   of "skipprojcfg":

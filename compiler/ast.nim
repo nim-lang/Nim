@@ -997,11 +997,15 @@ type Gconfig = object
   # we put comments in a side channel to avoid increasing `sizeof(TNode)`, which
   # reduces memory usage given that `PNode` is the most allocated type by far.
   comments: Table[int, string] # nodeId => comment
+  useIc*: bool
 
 var gconfig {.threadvar.}: Gconfig
 
+proc setUseIc*(useIc: bool) = gconfig.useIc = useIc
+
 proc comment*(n: PNode): string =
-  if nfHasComment in n.flags:
+  if nfHasComment in n.flags and not gconfig.useIc:
+    # IC doesn't track comments, see `packed_ast`, so this could fail
     result = gconfig.comments[n.nodeId]
 
 proc `comment=`*(n: PNode, a: string) =
