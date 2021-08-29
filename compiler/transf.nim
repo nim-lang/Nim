@@ -362,8 +362,8 @@ proc transformYield(c: PTransf, n: PNode): PNode =
   # c.transCon.forStmt.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
   if e.typ.isNil: return result # can happen in nimsuggest for unknown reasons
-  e = skipConv(e)
   if c.transCon.forStmt.len != 3:
+    e = skipConv(e)
     if e.kind == nkTupleConstr:
       for i in 0..<e.len:
         var v = e[i]
@@ -396,7 +396,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
           result.add(asgnTo(lhs, rhs))
   else:
     if c.transCon.forStmt[0].kind == nkVarTuple:
-      if e.kind in nkCallKinds + {nkTupleConstr}:
+      if skipConv(e).kind in nkCallKinds + {nkTupleConstr}:
         var tmp = newTemp(c, e.typ, e.info)
         let v = newNodeI(nkVarSection, e.info)
         v.addVar(tmp, e)
