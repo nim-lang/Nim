@@ -377,23 +377,22 @@ proc transformYield(c: PTransf, n: PNode): PNode =
           let lhs = c.transCon.forStmt[i]
           let rhs = transform(c, v)
           result.add(asgnTo(lhs, rhs))
+    elif e.kind in nkCallKinds:
+      var tmp = newTemp(c, e.typ, e.info)
+      let v = newNodeI(nkVarSection, e.info)
+      v.addVar(tmp, e)
+
+      result.add transform(c, v)
+
+      for i in 0..<c.transCon.forStmt.len - 2:
+        let lhs = c.transCon.forStmt[i]
+        let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
+        result.add(asgnTo(lhs, rhs))
     else:
-      if e.kind in nkCallKinds:
-        var tmp = newTemp(c, e.typ, e.info)
-        let v = newNodeI(nkVarSection, e.info)
-        v.addVar(tmp, e)
-
-        result.add transform(c, v)
-
-        for i in 0..<c.transCon.forStmt.len - 2:
-          let lhs = c.transCon.forStmt[i]
-          let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
-          result.add(asgnTo(lhs, rhs))
-      else:
-        for i in 0..<c.transCon.forStmt.len - 2:
-          let lhs = c.transCon.forStmt[i]
-          let rhs = transform(c, newTupleAccess(c.graph, e, i))
-          result.add(asgnTo(lhs, rhs))
+      for i in 0..<c.transCon.forStmt.len - 2:
+        let lhs = c.transCon.forStmt[i]
+        let rhs = transform(c, newTupleAccess(c.graph, e, i))
+        result.add(asgnTo(lhs, rhs))
   else:
     if c.transCon.forStmt[0].kind == nkVarTuple:
       if skipConv(e).kind in nkCallKinds + {nkTupleConstr}:
