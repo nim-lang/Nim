@@ -389,6 +389,8 @@ proc transformYield(c: PTransf, n: PNode): PNode =
         let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
         result.add(asgnTo(lhs, rhs))
     else:
+      # Unpack the tuple into the loop variables
+      # XXX: BUG: what if `n` is an expression with side-effects?
       for i in 0..<c.transCon.forStmt.len - 2:
         let lhs = c.transCon.forStmt[i]
         let rhs = transform(c, newTupleAccess(c.graph, e, i))
