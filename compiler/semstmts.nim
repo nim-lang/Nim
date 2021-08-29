@@ -2116,7 +2116,20 @@ proc determineType(c: PContext, s: PSym) =
   ]#
   # c.currentScope = c.scopeStack[^1]
   c.currentScope = c.graph.symToScope[s.id]
-  discard semProcAux(c, s.ast, s.kind, {})
+  var validPragmas: TSpecialWords
+  #[
+  PRTEMP
+    let validPragmas = if n[namePos].kind != nkEmpty: procPragmas
+                     else: lambdaPragmas
+  ]#
+  # TODO: recall it, avoid recomputing
+  case s.kind
+  of skProc: validPragmas = procPragmas
+  of skFunc: validPragmas = procPragmas # PRTEMP
+  of skIterator: validPragmas = iteratorPragmas
+  else: validPragmas = {} # PRTEMP
+  discard semProcAux(c, s.ast, s.kind, validPragmas)
+  # discard semProcAux(c, s.ast, s.kind, {})
   c.currentScope = old
   # c.scopeStack.pop
   dbgIf c.module, s, "after"
@@ -2134,6 +2147,10 @@ proc semIterator(c: PContext, n: PNode): PNode =
   if result.kind != n.kind: return
   var s = result[namePos].sym
   var t = s.typ
+  if t == nil:
+    # PRTEMP
+    # lazyVisit(c, sym).needDeclaration = true
+    return result
   if t[0] == nil and s.typ.callConv != ccClosure:
     localError(c.config, n.info, "iterator needs a return type")
   # iterators are either 'inline' or 'closure'; for backwards compatibility,
@@ -2205,6 +2222,8 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   if result.kind != nkMacroDef: return
   var s = result[namePos].sym
   var t = s.typ
+  if t == nil: # PRTEMP
+    return result
   var allUntyped = true
   for i in 1..<t.n.len:
     let param = t.n[i].sym
