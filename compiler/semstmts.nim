@@ -1838,6 +1838,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
+  dbgIf c.p, c.module
   result = semProcAnnotation(c, n, validPragmas)
   if result != nil: return result
   result = n
@@ -1887,12 +1888,19 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addInterfaceOverloadableSymAt(c, declarationScope, s)
       else:
         addInterfaceDeclAt(c, declarationScope, s)
-      c.graph.symToPContext[s.id] = c
-      c.graph.symToScope[s.id] = c.currentScope # TODO: needed?
+      let lcontext = c.graph.symLazyContext[s.id]
+      lcontext.ctxt = c
+      lcontext.scope = c.currentScope # TODO: needed?
+      # lcontext.p = c.p
+      # PRTEMP
+      # c.graph.symToScope[s.id] = c.currentScope # TODO: needed?
       return result
 
+  dbgIf c.p, c.module
   pushOwner(c, s)
+  dbgIf c.p, c.module
   openScope(c)
+  dbgIf c.p, c.module
 
   # process parameters:
   # generic parameters, parameters, and also the implicit generic parameters
@@ -1903,6 +1911,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   # potential forward declaration.
   setGenericParamsMisc(c, n)
 
+  dbgIf c.p, n[paramsPos].kind, s, c.module
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], n[genericParamsPos], s)
   else:
@@ -2148,10 +2157,11 @@ proc determineType(c: PContext, s: PSym) =
   of skIterator: validPragmas = iteratorPragmas
   else: validPragmas = {} # PRTEMP
 
-  var c2 = PContext(c.graph.symToPContext[s.id])
+  let lcontext = c.graph.symLazyContext[s.id]
+  var c2 = PContext(lcontext.ctxt)
   doAssert c2 != nil
   dbgIf c.module, c2.module, s, "retrieve"
-  c2.currentScope = c.graph.symToScope[s.id]
+  c2.currentScope = lcontext.scope
   discard semProcAux(c2, s.ast, s.kind, validPragmas)
   # discard semProcAux(c, s.ast, s.kind, validPragmas)
   c2.currentScope = old

@@ -2766,6 +2766,7 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
 
+import renderer
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
@@ -2793,6 +2794,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
+    dbgIf s, c.p, c.module, n, n.renderTree
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:

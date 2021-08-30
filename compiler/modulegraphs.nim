@@ -104,13 +104,20 @@ type
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator
     operators*: Operators
-    symToScope*: Table[int, PScope] # key: sym.id
-    symToPContext*: Table[int, PPassContext] # key: sym.id
-    lazyStatus*: Table[int, LazyStatus] # key: symbol.id
+    # symToScope*: Table[int, PScope] # key: sym.id
+    symLazyContext*: Table[int, LazyContext] # key: sym.id
+    # symToPContext*: Table[int, PPassContext] # key: sym.id
+    # lazyStatus*: Table[int, LazyStatus] # key: symbol.id
 
-  LazyStatus* = ref object
+  LazyContext* = ref object
+    scope*: PScope
+    ctxt*: PPassContext
+    # status*: PPassContext
     needDeclaration*: bool
     needBody*: bool
+  # LazyStatus* = ref object
+  #   needDeclaration*: bool
+  #   needBody*: bool
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -125,12 +132,12 @@ type
                  close: TPassClose,
                  isFrontend: bool]
 
-proc lazyVisit*(g: ModuleGraph, sym: PSym): LazyStatus =
-  if sym.id notin g.lazyStatus:
-    result = LazyStatus(needDeclaration: false, needBody: false)
-    g.lazyStatus[sym.id] = result
+proc lazyVisit*(g: ModuleGraph, sym: PSym): LazyContext =
+  if sym.id notin g.symLazyContext:
+    result = LazyContext()
+    g.symLazyContext[sym.id] = result
   else:
-    result = g.lazyStatus[sym.id]
+    result = g.symLazyContext[sym.id]
 
 proc resetForBackend*(g: ModuleGraph) =
   initStrTable(g.compilerprocs)
