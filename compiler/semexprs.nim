@@ -2781,7 +2781,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   if nfSem in n.flags: return
   # if n.kind in routineDefs and c.config.isDefined("nimLazySemcheck"):
   #   # xxx could use a flag (see also nfSem)
-  #   let status = lazyVisit(c, n)
+  #   let status = lazyVisit(c.graph, n)
   #   if not status.needDeclaration:
   #     return nil # PRTEMP or result?
   case n.kind

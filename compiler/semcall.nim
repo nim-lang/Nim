@@ -91,7 +91,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       continue
     if c.config.isDefined("nimLazySemcheck"):
       # dbgIf sym
-      lazyVisit(c, sym).needDeclaration = true # TODO: set scope
+      lazyVisit(c.graph, sym).needDeclaration = true # TODO: set scope
       if sym.typ == nil:
         dbgIf sym
     determineType(c, sym)

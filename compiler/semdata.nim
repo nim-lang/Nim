@@ -83,9 +83,6 @@ type
       imported*: IntSet          # of PIdent.id
     of importExcept:
       exceptSet*: IntSet         # of PIdent.id
-  LazyStatus* = ref object
-    needDeclaration*: bool
-    needBody*: bool
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents the module
@@ -165,14 +162,7 @@ type
     lastTLineInfo*: TLineInfo
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
     inUncheckedAssignSection*: int
-    lazyStatus*: Table[int, LazyStatus] # key: symbol.id
-
-proc lazyVisit*(c: PContext, sym: PSym): LazyStatus =
-  if sym.id notin c.lazyStatus:
-    result = LazyStatus(needDeclaration: false, needBody: false)
-    c.lazyStatus[sym.id] = result
-  else:
-    result = c.lazyStatus[sym.id]
+    # lazyStatus*: Table[int, LazyStatus] # key: symbol.id
 
 template config*(c: PContext): ConfigRef = c.graph.config
 

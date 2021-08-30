@@ -106,6 +106,11 @@ type
     operators*: Operators
     symToScope*: Table[int, PScope] # key: sym.id
     symToPContext*: Table[int, PPassContext] # key: sym.id
+    lazyStatus*: Table[int, LazyStatus] # key: symbol.id
+
+  LazyStatus* = ref object
+    needDeclaration*: bool
+    needBody*: bool
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -119,6 +124,13 @@ type
                  process: TPassProcess,
                  close: TPassClose,
                  isFrontend: bool]
+
+proc lazyVisit*(g: ModuleGraph, sym: PSym): LazyStatus =
+  if sym.id notin g.lazyStatus:
+    result = LazyStatus(needDeclaration: false, needBody: false)
+    g.lazyStatus[sym.id] = result
+  else:
+    result = g.lazyStatus[sym.id]
 
 proc resetForBackend*(g: ModuleGraph) =
   initStrTable(g.compilerprocs)

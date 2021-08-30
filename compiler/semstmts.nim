@@ -1877,7 +1877,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if c.config.isDefined("nimLazySemcheck"):
     # PRTEMP
-    let status = lazyVisit(c, s)
+    let status = lazyVisit(c.graph, s)
     dbgIf status, s
     if not status.needDeclaration:
       # PRTEMP
@@ -2155,7 +2155,7 @@ proc semIterator(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t == nil:
     # PRTEMP
-    # lazyVisit(c, sym).needDeclaration = true
+    # lazyVisit(c.graph, sym).needDeclaration = true
     return result
   if t[0] == nil and s.typ.callConv != ccClosure:
     localError(c.config, n.info, "iterator needs a return type")
