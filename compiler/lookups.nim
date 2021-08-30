@@ -217,9 +217,9 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
       var candidate = initIdentIter(ti, scope.symbols, s)
       while candidate != nil:
         if candidate.kind in filter:
-          if result.len == 0:
-            result.add candidate
-            break outer
+          result.add candidate
+          # Break here, because further symbols encountered would be shadowed
+          break outer
         candidate = nextIdentIter(ti, scope.symbols)
 
   if result.len == 0:
