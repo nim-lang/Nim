@@ -401,7 +401,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
       var ev = e.skipConv
       if ev.kind == nkTupleConstr:
         for i in ev:
-          if i.kind notin nkLiterals:
+          if not isConstExpr(i):
             notLiteralTuple = true
             break
       else:
