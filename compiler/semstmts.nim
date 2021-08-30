@@ -1937,7 +1937,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if isAnon: (nil, false)
       else: searchForProc(c, declarationScope, s)
   dbgIf proto, s, s.flags, s.kind, n[bodyPos].kind
-  if proto == nil and sfForward in s.flags and n[bodyPos].kind != nkEmpty:
+  if proto == nil and sfForward in s.flags and sfLazy notin s.flags and n[bodyPos].kind != nkEmpty:
+    dbgIf "D20210829T225843"
     ## In cases such as a macro generating a proc with a gensymmed name we
     ## know `searchForProc` will not find it and sfForward will be set. In
     ## such scenarios the sym is shared between forward declaration and we
@@ -1974,13 +1975,19 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     else:
       addInterfaceDeclAt(c, declarationScope, s)
 
-  s.flags.excl sfLazy
+  if sfLazy in s.flags:
+    s.flags.excl sfLazy
+    if not hasProto:
+      s.flags.excl sfForward
+  dbgIf s.flags
 
   pragmaCallable(c, s, n, validPragmas)
   # PRTEMP after here, sfForward => sfImportc
+  dbgIf s.flags
 
   if not hasProto:
     implicitPragmas(c, s, n.info, validPragmas)
+  dbgIf s.flags
 
   if n[pragmasPos].kind != nkEmpty and sfBorrow notin s.flags:
     setEffectsForProcType(c.graph, s.typ, n[pragmasPos], s)
