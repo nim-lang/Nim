@@ -377,7 +377,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
           let lhs = c.transCon.forStmt[i]
           let rhs = transform(c, v)
           result.add(asgnTo(lhs, rhs))
-    elif e.kind in nkCallKinds + {nkIfExpr, nkBlockExpr, nkStmtListExpr}:
+    elif e.kind notin {nkAddr, nkHiddenAddr}:
       var tmp = newTemp(c, e.typ, e.info)
       let v = newNodeI(nkVarSection, e.info)
       v.addVar(tmp, e)
@@ -397,7 +397,9 @@ proc transformYield(c: PTransf, n: PNode): PNode =
         result.add(asgnTo(lhs, rhs))
   else:
     if c.transCon.forStmt[0].kind == nkVarTuple:
-      if skipConv(e).kind in nkCallKinds + {nkTupleConstr, nkIfExpr, nkBlockExpr, nkStmtListExpr}:
+
+      if false: discard
+      if e.kind notin {nkAddr, nkHiddenAddr}:
         var tmp = newTemp(c, e.typ, e.info)
         let v = newNodeI(nkVarSection, e.info)
         v.addVar(tmp, e)
