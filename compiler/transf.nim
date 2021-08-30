@@ -404,6 +404,8 @@ proc transformYield(c: PTransf, n: PNode): PNode =
           if i.kind notin nkLiterals:
             notLiteralTuple = true
             break
+      else:
+        notLiteralTuple = true
 
       if e.kind notin {nkAddr, nkHiddenAddr} and notLiteralTuple:
         var tmp = newTemp(c, e.typ, e.info)
