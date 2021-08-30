@@ -157,7 +157,6 @@ proc addTypeHeader*(result: var string, conf: ConfigRef; typ: PType; prefer: TPr
 
 proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName; getDeclarationPath = true): string =
   assert sym != nil
-  # dbg sym.owner.name.s, sym.name.s, sym
   # consider using `skipGenericOwner` to avoid fun2.fun2 when fun2 is generic
   result = sym.owner.name.s & '.' & sym.name.s
   if sym.kind in routineKinds:

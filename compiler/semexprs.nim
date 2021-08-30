@@ -67,9 +67,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 
 proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
   rejectEmptyNode(n)
-  dbgIf n, flags
   result = semExpr(c, n, flags+{efWantValue})
-  dbgIf result
 
   let
     isEmpty = result.kind == nkEmpty
@@ -85,9 +83,7 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = errorNode(c, n)
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  dbgIf flags, n
   result = semExprCheck(c, n, flags)
-  dbgIf result, result.typ
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
   elif result.typ == nil or result.typ == c.enforceVoidContext:

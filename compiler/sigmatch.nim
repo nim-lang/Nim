@@ -135,7 +135,6 @@ proc determineType2*(c: PContext, s: PSym) {.importc.} # PRTEMP
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
                     binding: PNode, calleeScope = -1,
                     diagnosticsEnabled = false) =
-  dbgIf callee, callee.flags
   determineType2(ctx, callee) # PRTEMP: do this here? or earlier? PRTEMP: now redundant because done earlier?
   initCandidateAux(ctx, c, callee.typ)
   c.calleeSym = callee
@@ -2358,9 +2357,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
 
   m.state = csMatch # until proven otherwise
   m.firstMismatch = MismatchInfo()
-  # PRTEMP
-  if m.callee == nil:
-    dbgIf n.kind, n, m, nOrig, c.module
   m.call = newNodeIT(n.kind, n.info, m.callee.base)
   m.call.add n[0]
 
