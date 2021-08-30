@@ -1886,7 +1886,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addInterfaceOverloadableSymAt(c, declarationScope, s)
       else:
         addInterfaceDeclAt(c, declarationScope, s)
-      c.graph.symToScope[s.id] = c.currentScope
+      c.graph.symToPContext[s.id] = c
+      c.graph.symToScope[s.id] = c.currentScope # TODO: needed?
       return result
 
   pushOwner(c, s)
@@ -2115,7 +2116,7 @@ proc determineType(c: PContext, s: PSym) =
   TODO: change PContext also?
   ]#
   # c.currentScope = c.scopeStack[^1]
-  c.currentScope = c.graph.symToScope[s.id]
+
   var validPragmas: TSpecialWords
   #[
   PRTEMP
@@ -2128,9 +2129,14 @@ proc determineType(c: PContext, s: PSym) =
   of skFunc: validPragmas = procPragmas # PRTEMP
   of skIterator: validPragmas = iteratorPragmas
   else: validPragmas = {} # PRTEMP
-  discard semProcAux(c, s.ast, s.kind, validPragmas)
-  # discard semProcAux(c, s.ast, s.kind, {})
-  c.currentScope = old
+
+  var c2 = PContext(c.graph.symToPContext[s.id])
+  doAssert c2 != nil
+  dbgIf c.module, c2.module, s, "retrieve"
+  c2.currentScope = c.graph.symToScope[s.id]
+  discard semProcAux(c2, s.ast, s.kind, validPragmas)
+  # discard semProcAux(c, s.ast, s.kind, validPragmas)
+  c2.currentScope = old
   # c.scopeStack.pop
   dbgIf c.module, s, "after"
 

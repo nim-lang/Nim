@@ -105,6 +105,7 @@ type
     idgen*: IdGenerator
     operators*: Operators
     symToScope*: Table[int, PScope] # key: sym.id
+    symToPContext*: Table[int, PPassContext] # key: sym.id
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
