@@ -130,9 +130,16 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
       echo "binding ", key, " -> ", val
   idTablePut(c.bindings, key, val.skipIntLit(c.c.idgen))
 
+proc determineType2*(c: PContext, s: PSym) {.importc.} # PRTEMP
+
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
                     binding: PNode, calleeScope = -1,
                     diagnosticsEnabled = false) =
+  dbgIf callee, callee.flags
+  if ctx.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR
+    lazyVisit(ctx.graph, callee).needDeclaration = true
+  determineType2(ctx, callee) # PRTEMP: do this here?
+  dbgIf callee, callee.flags
   initCandidateAux(ctx, c, callee.typ)
   c.calleeSym = callee
   if callee.kind in skProcKinds and calleeScope == -1:

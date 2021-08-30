@@ -2171,6 +2171,10 @@ proc determineType(c: PContext, s: PSym) =
   # c.scopeStack.pop
   dbgIf c.module, s, "after"
 
+proc determineType2*(c: PContext, s: PSym) {.exportc.} =
+  # PRTEMP
+  determineType(c, s)
+
 proc semIterator(c: PContext, n: PNode): PNode =
   # gensym'ed iterator?
   if n[namePos].kind == nkSym:
