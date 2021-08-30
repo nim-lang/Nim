@@ -2782,9 +2782,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         echo ("<", c.config$n.info, n, ?.result.typ)
 
   result = n
-  if isCompilerDebug():
-    dbgIf n, n.kind, flags, c.module
-    debugScopes(c, limit = 5, 11)
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
   # if n.kind in routineDefs and c.config.isDefined("nimLazySemcheck"):
@@ -2792,8 +2789,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   #   let status = lazyVisit(c.graph, n)
   #   if not status.needDeclaration:
   #     return nil # PRTEMP or result?
-  dbgIf n.kind, n, c.module, flags
-  # debugScopes(c, limit = 5, 10)
   case n.kind
   of nkIdent, nkAccQuoted:
     let checks = if efNoEvaluateGeneric in flags:
@@ -2802,16 +2797,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         {checkUndeclared, checkModule, checkPureEnumFields}
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
-    dbgIf checks, n
     var s = qualifiedLookUp(c, n, checks)
     # PRTEMP : determineType(c, sym) inside qualifiedLookUp?
-    let wasLazy = sfLazy in s.flags
-    dbgIf s, s.flags, wasLazy
-    if wasLazy: debugScopes(c, limit = 5, 20)
     determineType2(c, s)
-    if wasLazy:
-      dbgIf "after2"
-      debugScopes(c, limit = 5, 20)
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
@@ -2900,12 +2888,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
     if s != nil:
-      dbgIf s, s.flags, s.kind, s.magic, c.module
-      let wasLazy = sfLazy in s.flags
-      if wasLazy: debugScopes(c, limit = 5, 20)
       determineType2(c, s)
-      dbgIf s, s.flags, s.kind, s.magic, c.module
-      if wasLazy: debugScopes(c, limit = 5, 20)
       #if c.config.cmd == cmdNimfix and n[0].kind == nkDotExpr:
       #  pretty.checkUse(n[0][1].info, s)
       case s.kind
@@ -3061,13 +3044,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # works:
     if c.currentScope.depthLevel > 2 + c.compilesContextId:
       localError(c.config, n.info, errXOnlyAtModuleScope % "import")
-    if isCompilerDebug():
-      dbgIf n, n.kind, flags, c.module
-      debugScopes(c, limit = 5, 11)
     result = evalImport(c, n)
-    if isCompilerDebug():
-      dbgIf n, n.kind, flags, c.module
-      debugScopes(c, limit = 5, 11)
   of nkImportExceptStmt:
     if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "import")
     result = evalImportExcept(c, n)

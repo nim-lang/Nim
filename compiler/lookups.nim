@@ -569,7 +569,6 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
 
     if result == nil and checkUndeclared in flags:
       if c.config.isDefined("nimCompilerDebug2"):
-        # debugScopes(c; limit=0, max = int.high) {.deprecated.} =
         dbgIf()
         debugScopes(c, limit = 10)
       result = errorUndeclaredIdentifierHint(c, n, ident)
