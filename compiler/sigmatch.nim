@@ -136,8 +136,6 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
                     binding: PNode, calleeScope = -1,
                     diagnosticsEnabled = false) =
   dbgIf callee, callee.flags
-  if ctx.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR
-    lazyVisit(ctx.graph, callee).needDeclaration = true
   determineType2(ctx, callee) # PRTEMP: do this here?
   dbgIf callee, callee.flags
   initCandidateAux(ctx, c, callee.typ)

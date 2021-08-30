@@ -1309,6 +1309,7 @@ proc local*(): Timezone =
       # PRTEMP: makes D20210830T020045 work
       discard localZonedTimeFromAdjTime(Time.default) # PRTEMP
       discard localZonedTimeFromTime(Time.default)
+      discard
     localInstance = newTimezone("LOCAL", localZonedTimeFromTime,
       localZonedTimeFromAdjTime)
   result = localInstance

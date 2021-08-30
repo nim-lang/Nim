@@ -2172,6 +2172,8 @@ proc determineType(c: PContext, s: PSym) =
   dbgIf c.module, s, "after"
 
 proc determineType2*(c: PContext, s: PSym) {.exportc.} =
+  if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR
+    lazyVisit(c.graph, s).needDeclaration = true
   # PRTEMP
   determineType(c, s)
 
