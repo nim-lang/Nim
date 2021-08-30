@@ -2793,10 +2793,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         {checkUndeclared, checkModule, checkPureEnumFields}
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
+    dbgIf checks, n
     var s = qualifiedLookUp(c, n, checks)
     # PRTEMP : determineType(c, sym) inside qualifiedLookUp?
     determineType2(c, s)
-    dbgIf s, c.p, c.module, n, n.renderTree, s.flags
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
