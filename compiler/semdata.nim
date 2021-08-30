@@ -162,7 +162,6 @@ type
     lastTLineInfo*: TLineInfo
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
     inUncheckedAssignSection*: int
-    # lazyStatus*: Table[int, LazyStatus] # key: symbol.id
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -301,7 +300,6 @@ proc popOptionEntry*(c: PContext) =
   c.optionStack.setLen(c.optionStack.len - 1)
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
-  dbgIf module
   new(result)
   result.optionStack = @[newOptionEntry(graph.config)]
   result.libs = @[]
