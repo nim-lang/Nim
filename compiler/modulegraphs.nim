@@ -104,20 +104,13 @@ type
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator
     operators*: Operators
-    # symToScope*: Table[int, PScope] # key: sym.id
     symLazyContext*: Table[int, LazyContext] # key: sym.id
-    # symToPContext*: Table[int, PPassContext] # key: sym.id
-    # lazyStatus*: Table[int, LazyStatus] # key: symbol.id
 
   LazyContext* = ref object
     scope*: PScope
     ctxt*: PPassContext
-    # status*: PPassContext
     needDeclaration*: bool
     needBody*: bool
-  # LazyStatus* = ref object
-  #   needDeclaration*: bool
-  #   needBody*: bool
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
