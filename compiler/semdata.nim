@@ -29,7 +29,7 @@ type
 
   POptionEntry* = ref TOptionEntry
   PProcCon* = ref TProcCon
-  TProcCon* {.acyclic.} = object # procedure context; also used for top-level
+  TProcCon* {.acyclic.} = object of TProcConBase # procedure context; also used for top-level
                                  # statements
     owner*: PSym              # the symbol this context belongs to
     resultSym*: PSym          # the result symbol (if we are in a proc)
@@ -93,7 +93,7 @@ type
     voidType*: PType # for typeof(stmt)
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
-    scopeStack*: seq[PScope]   # for lazy semcheck
+    scopeStack*: seq[PScope]   # for lazy semcheck # PRTEMP
     moduleScope*: PScope       # scope for modules
     imports*: seq[ImportedModule] # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols

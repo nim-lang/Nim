@@ -1891,7 +1891,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       let lcontext = c.graph.symLazyContext[s.id]
       lcontext.ctxt = c
       lcontext.scope = c.currentScope # TODO: needed?
-      # lcontext.p = c.p
+      lcontext.pBase = c.p
       # PRTEMP
       # c.graph.symToScope[s.id] = c.currentScope # TODO: needed?
       return result
@@ -2162,9 +2162,12 @@ proc determineType(c: PContext, s: PSym) =
   doAssert c2 != nil
   dbgIf c.module, c2.module, s, "retrieve"
   c2.currentScope = lcontext.scope
+  let pBaseOld = c2.p
+  c2.p = lcontext.pBase.PProcCon
   discard semProcAux(c2, s.ast, s.kind, validPragmas)
   # discard semProcAux(c, s.ast, s.kind, validPragmas)
   c2.currentScope = old
+  c2.p = pBaseOld
   # c.scopeStack.pop
   dbgIf c.module, s, "after"
 

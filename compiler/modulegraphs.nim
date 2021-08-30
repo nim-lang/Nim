@@ -109,9 +109,11 @@ type
   LazyContext* = ref object
     scope*: PScope
     ctxt*: PPassContext
+    pBase*: ref TProcConBase
     needDeclaration*: bool
     needBody*: bool
 
+  TProcConBase* = object of RootObj
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
   PPassContext* = ref TPassContext
