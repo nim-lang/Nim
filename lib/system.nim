@@ -149,6 +149,14 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
 
+# when true: # PRTEMP
+#   {.define(nimCompilerDebug).}
+#   # when defined("asadf"):
+#   when defined(nimHasIterable2):
+#     {.error: "D20210830T102135.1".}
+#   else:
+#     {.error: "D20210830T102135.2".}
+
 when defined(nimHasIterable):
   type
     iterable*[T] {.magic: IterableType.}  ## Represents an expression that yields `T`

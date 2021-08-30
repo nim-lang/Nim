@@ -2138,7 +2138,7 @@ proc determineType(c: PContext, s: PSym) =
   #if s.ast.isNil: return
   dbgIf c.module, s
   # c.scopeStack.push
-  let old = c.currentScope
+  # let old = c.currentScope
   #[
   TODO: change PContext also?
   ]#
@@ -2161,6 +2161,7 @@ proc determineType(c: PContext, s: PSym) =
   var c2 = PContext(lcontext.ctxt)
   doAssert c2 != nil
   dbgIf c.module, c2.module, s, "retrieve"
+  let old = c2.currentScope # BUGFIX?
   c2.currentScope = lcontext.scope
   let pBaseOld = c2.p
   c2.p = lcontext.pBase.PProcCon
@@ -2170,9 +2171,11 @@ proc determineType(c: PContext, s: PSym) =
   c2.p = pBaseOld
   # c.scopeStack.pop
   dbgIf c.module, s, "after"
+  dbgIf getStacktrace()
 
 proc determineType2*(c: PContext, s: PSym) {.exportc.} =
   if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR
+    # TODO: instead, just set sfLazy flag?
     lazyVisit(c.graph, s).needDeclaration = true
   # PRTEMP
   determineType(c, s)

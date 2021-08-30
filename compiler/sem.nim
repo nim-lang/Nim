@@ -366,10 +366,13 @@ const
   errConstExprExpected = "constant expression expected"
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
+  dbgIf n
   var e = semExprWithType(c, n)
+  dbgIf n, e
   if e == nil:
     localError(c.config, n.info, errConstExprExpected)
     return n
+  dbgIf e.kind
   if e.kind in nkSymChoices and e[0].typ.skipTypes(abstractInst).kind == tyEnum:
     return e
   result = getConstExpr(c.module, e, c.idgen, c.graph)

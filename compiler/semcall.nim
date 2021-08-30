@@ -89,7 +89,8 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       sym = nextOverloadIter(o, c, headSymbol)
       scope = o.lastOverloadScope
       continue
-    determineType2(c, sym)
+    dbgIf sym, sym.flags
+    determineType2(c, sym) # PRTEMP: now redundant?
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
     if c.currentScope.symbols.counter == counterInitial or syms.len != 0:
       matches(c, n, orig, z)
