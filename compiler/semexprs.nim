@@ -1376,6 +1376,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
   if s != nil:
+    dbgIf s.flags, s.kind
     if s.kind in OverloadableSyms:
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym: result = semSym(c, n, s, flags)
@@ -1394,11 +1395,13 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   if ty.kind == tyTypeDesc:
     if ty.base.kind == tyNone:
+      dbgIf()
       # This is a still unresolved typedesc parameter.
       # If this is a regular proc, then all bets are off and we must return
       # tyFromExpr, but when this happen in a macro this is not a built-in
       # field access and we leave the compiler to compile a normal call:
       if getCurrOwner(c).kind != skMacro:
+        dbgIf()
         n.typ = makeTypeFromExpr(c, n.copyTree)
         return n
       else:
@@ -1428,7 +1431,9 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         if n[1].kind == nkSym and n[1].sym == f:
           false # field lookup was done already, likely by hygienic template or bindSym
         else: true
+      dbgIf visibilityCheckNeeded
       if not visibilityCheckNeeded or fieldVisible(c, f):
+        dbgIf()
         # is the access to a public field or in the same module or in a friend?
         markUsed(c, n[1].info, f)
         onUse(n[1].info, f)
@@ -1441,8 +1446,10 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
           check[0] = n
           check.typ = n.typ
           result = check
+      dbgIf()
   elif ty.kind == tyTuple and ty.n != nil:
     f = getSymFromList(ty.n, i)
+    dbgIf f
     if f != nil:
       markUsed(c, n[1].info, f)
       onUse(n[1].info, f)
@@ -1451,10 +1458,12 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.typ = f.typ
       result = n
 
+  dbgIf result
   # we didn't find any field, let's look for a generic param
   if result == nil:
     let t = n[0].typ.skipTypes(tyDotOpTransparent)
     result = tryReadingGenericParam(c, n, i, t)
+    dbgIf result
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n[1]):

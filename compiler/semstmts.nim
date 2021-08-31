@@ -1866,7 +1866,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n[namePos] = newSymNode(s)
   of nkSym:
     s = n[namePos].sym
+    dbgIf s, s.flags, c.module, s.owner
+    # PRTEMP
     s.owner = c.getCurrOwner
+    dbgIf s, s.flags, c.module, s.owner, c.getCurrOwner
   else:
     s = semIdentDef(c, n[namePos], kind)
     n[namePos] = newSymNode(s)
@@ -1882,7 +1885,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   s.ast = n
   s.options = c.config.options
   #s.scope = c.currentScope
-  # dbgIf n, s, s.flags, c.module
+  dbgIf n, s, s.flags, c.module, s.owner
   # dbgIf getStacktrace()
 
   # before compiling the proc params & body, set as current the scope
@@ -1928,7 +1931,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       lcontext.ctxt = c
       lcontext.scope = c.currentScope # TODO: needed?
       lcontext.pBase = c.p
-      # dbgIf()
+      dbgIf s.owner
       return result
 
   pushOwner(c, s)
@@ -2127,6 +2130,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextSymId c.idgen, nil, n.info))
 
         openScope(c)
+        dbgIf c.module, s
         n[bodyPos] = semGenericStmt(c, n[bodyPos])
         closeScope(c)
         if s.magic == mNone:
@@ -2160,9 +2164,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
 
 proc determineType(c: PContext, s: PSym) =
-  # dbgIf s, s.typ, s.flags
+  # dbgIf s, s.typ, s.flags, c.module
   if s.typ != nil: return
   if sfLazy notin s.flags: return # PRTEMP
+  dbgIf s, s.typ, s.flags, s.owner
   #if s.magic != mNone: return
   #if s.ast.isNil: return
   var validPragmas: TSpecialWords
@@ -2183,20 +2188,22 @@ proc determineType(c: PContext, s: PSym) =
   let lcontext = c.graph.symLazyContext[s.id]
   var c2 = PContext(lcontext.ctxt)
   doAssert c2 != nil
-  # dbgIf c.module, c2.module, s, "retrieve"
+  dbgIf c.module, c2.module, s, "retrieve"
   let old = c2.currentScope
   c2.currentScope = lcontext.scope
   let pBaseOld = c2.p
   c2.p = lcontext.pBase.PProcCon
+
   # if isCompilerDebug():
   #   dbgIf "scopes2", s
   #   debugScopes(c2, limit = 10, max = 20)
   var candidates: seq[PSym]
   for s2 in c2.currentScope.symbols:
-    if s2.kind == s.kind and s2.name == s.name:
-        if s2.typ == nil and sfLazy in s2.flags:
-          # dbgIf s2, s, s2.flags, s.flags, c.config$s2.ast.info
-          candidates.add s2
+    # if s2.kind == s.kind and s2.name == s.name:
+    if s2.name == s.name: # checking `s2.kind == s.kind` would be wrong because all overloads in same scope must be revealed
+      if s2.typ == nil and sfLazy in s2.flags:
+        # dbgIf s2, s, s2.flags, s.flags, c.config$s2.ast.info
+        candidates.add s2
   candidates = candidates.sortedByIt(it.id)
     # to ensure that fwd declarations are processed before implementations
   for s2 in candidates:
@@ -2206,7 +2213,9 @@ proc determineType(c: PContext, s: PSym) =
     if sfLazy notin s2.flags: continue # PRTEMP
     if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR; do we even need this side channel or can we use a sf flag?
       lazyVisit(c.graph, s2).needDeclaration = true
+    c2.pushOwner(s2.owner) # c2.getCurrOwner() would be wrong (it's global)
     discard semProcAux(c2, s2.ast, s2.kind, validPragmas)
+    c2.popOwner()
   c2.currentScope = old
   c2.p = pBaseOld
 
