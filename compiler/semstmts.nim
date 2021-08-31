@@ -1847,10 +1847,10 @@ proc isCompilerPoc(c: PContext, s: PSym, n: PNode): bool =
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
-  dbgIf n, kind
+  # dbgIf n, kind
   result = semProcAnnotation(c, n, validPragmas)
   if result != nil:
-    dbgIf()
+    # dbgIf()
     return result
   result = n
   checkMinSonsLen(n, bodyPos + 1, c.config)
@@ -1897,10 +1897,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if isAnon: (nil, false)
       else: searchForProc(c, declarationScope, s, isCompilerProc = true)
     if proto2 != nil:
-      dbgIf proto2, proto2.flags
+      # dbgIf proto2, proto2.flags
       if sfCompilerProc in proto2.flags or sfLazyForwardRequested in proto2.flags:
         ret = true
-    dbgIf ret, proto2, s
+    # dbgIf ret, proto2, s
     if ret:
       status.needDeclaration = true
     if isAnon:
@@ -1928,7 +1928,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       lcontext.ctxt = c
       lcontext.scope = c.currentScope # TODO: needed?
       lcontext.pBase = c.p
-      dbgIf()
+      # dbgIf()
       return result
 
   pushOwner(c, s)
@@ -2013,11 +2013,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     else:
       addInterfaceDeclAt(c, declarationScope, s)
 
-  dbgIf "D20210831T114053", s, s.flags, hasProto
+  # dbgIf "D20210831T114053", s, s.flags, hasProto
   if sfLazy in s.flags:
     s.flags.excl sfLazy
-    if hasProto:
-      dbgIf proto, proto.flags, proto == s
+    # if hasProto:
+    #   dbgIf proto, proto.flags, proto == s
     if not hasProto:
       s.flags.excl sfForward
       s.flags.incl sfLazyForwardRequested
@@ -2160,7 +2160,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
 
 proc determineType(c: PContext, s: PSym) =
-  dbgIf s, s.typ, s.flags
+  # dbgIf s, s.typ, s.flags
   if s.typ != nil: return
   if sfLazy notin s.flags: return # PRTEMP
   #if s.magic != mNone: return
@@ -2183,14 +2183,14 @@ proc determineType(c: PContext, s: PSym) =
   let lcontext = c.graph.symLazyContext[s.id]
   var c2 = PContext(lcontext.ctxt)
   doAssert c2 != nil
-  dbgIf c.module, c2.module, s, "retrieve"
+  # dbgIf c.module, c2.module, s, "retrieve"
   let old = c2.currentScope
   c2.currentScope = lcontext.scope
   let pBaseOld = c2.p
   c2.p = lcontext.pBase.PProcCon
-  if isCompilerDebug():
-    dbgIf "scopes2", s
-    debugScopes(c2, limit = 10, max = 20)
+  # if isCompilerDebug():
+  #   dbgIf "scopes2", s
+  #   debugScopes(c2, limit = 10, max = 20)
   var candidates: seq[PSym]
   for s2 in c2.currentScope.symbols:
     if s2.kind == s.kind and s2.name == s.name:
@@ -2200,7 +2200,7 @@ proc determineType(c: PContext, s: PSym) =
   candidates = candidates.sortedByIt(it.id)
     # to ensure that fwd declarations are processed before implementations
   for s2 in candidates:
-    dbgIf s2, s, s2.flags, s.flags, candidates.len
+    # dbgIf s2, s, s2.flags, s.flags, candidates.len
     # PRTEMP because of prior processing might affect this?
     if s2.typ != nil: continue
     if sfLazy notin s2.flags: continue # PRTEMP

@@ -279,8 +279,8 @@ proc hash*(x: float): Hash {.inline.} =
 
 # Forward declarations before methods that hash containers. This allows
 # containers to contain other containers
-# proc hash*[A](x: openArray[A]): Hash
-# proc hash*[A](x: set[A]): Hash
+proc hash*[A](x: openArray[A]): Hash
+proc hash*[A](x: set[A]): Hash
 
 
 when defined(js):

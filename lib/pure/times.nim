@@ -1305,11 +1305,6 @@ proc local*(): Timezone =
     doAssert now().timezone == local()
     doAssert local().name == "LOCAL"
   if localInstance.isNil:
-    if false:
-      # PRTEMP: makes D20210830T020045 work
-      discard localZonedTimeFromAdjTime(Time.default) # PRTEMP
-      discard localZonedTimeFromTime(Time.default)
-      discard
     localInstance = newTimezone("LOCAL", localZonedTimeFromTime,
       localZonedTimeFromAdjTime)
   result = localInstance
