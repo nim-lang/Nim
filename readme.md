@@ -35,7 +35,7 @@ architecture combinations:
 
   * Windows (Windows XP or greater) - x86 and x86_64
   * Linux (most, if not all, distributions) - x86, x86_64, ppc64 and armv6l
-  * Mac OS X (10.04 or greater) - x86, x86_64 and ppc64
+  * Mac OS X (10.04 or greater) - x86, x86_64, ppc64 and Apple Silicon
 
 More platforms are supported, however, they are not tested regularly and they
 may not be as stable as the above-listed platforms.
