@@ -202,10 +202,11 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
 
 proc read*(f: AsyncFile, size: int): Future[string] =
   ## Read `size` bytes from the specified file asynchronously starting at
-  ## the current position of the file pointer.
+  ## the current position of the file pointer. `size` should be greater than zero.
   ##
   ## If the file pointer is past the end of the file then an empty string is
   ## returned.
+  assert size > 0
   var retFuture = newFuture[string]("asyncfile.read")
 
   when defined(windows) or defined(nimdoc):
