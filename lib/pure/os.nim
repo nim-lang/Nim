@@ -75,7 +75,11 @@ elif defined(js):
 else:
   {.pragma: noNimJs.}
 
-proc normalizePathAux(path: var string){.inline, raises: [], noSideEffect.}
+
+# when not defined(nimscript):
+when not defined(nimLazySemcheck):
+  # PRTEMP
+  proc normalizePathAux(path: var string){.inline, raises: [], noSideEffect.} # PRTEMP
 
 type
   ReadEnvEffect* = object of ReadIOEffect   ## Effect that denotes a read

@@ -7,7 +7,7 @@ type
   LitId* = distinct uint32
 
   BiTable*[T] = object
-    vals: seq[T] # indexed by LitId
+    vals*: seq[T] # indexed by LitId
     keys: seq[LitId]  # indexed by hash(val)
 
 proc nextTry(h, maxHash: Hash): Hash {.inline.} =

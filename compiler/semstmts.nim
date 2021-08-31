@@ -1891,9 +1891,21 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if isAnon: (nil, false)
       else: searchForProc(c, declarationScope, s, isCompilerProc = true)
     if proto2 != nil:
+      # dbgIf proto2, proto2.flags
       if sfCompilerProc in proto2.flags or sfLazyForwardRequested in proto2.flags:
         ret = true
+    # dbgIf ret, proto2, s
     if ret:
+      status.needDeclaration = true
+    if isAnon:
+      #[
+      `foo(proc()=discard)` is similar to:
+
+      proc tmp()=discard
+      foo(tmp)
+
+      so we semcheck anon procs; but that we could restrict to semchecking just declaration
+      ]#
       status.needDeclaration = true
     if not status.needDeclaration:
       # PRTEMP
@@ -2136,6 +2148,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
 proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
+  if sfLazy notin s.flags: return # PRTEMP
   #if s.magic != mNone: return
   #if s.ast.isNil: return
   var validPragmas: TSpecialWords
@@ -2151,11 +2164,13 @@ proc determineType(c: PContext, s: PSym) =
   of skIterator: validPragmas = iteratorPragmas
   else: validPragmas = {} # PRTEMP
 
+  # if s.id notin c.graph.symLazyContext:
+  #   dbg s, s.flags, s.typ, s.id, c.module
   let lcontext = c.graph.symLazyContext[s.id]
   var c2 = PContext(lcontext.ctxt)
   doAssert c2 != nil
-  dbgIf c.module, c2.module, s, "retrieve"
-  let old = c2.currentScope # BUGFIX?
+  # dbgIf c.module, c2.module, s, "retrieve"
+  let old = c2.currentScope
   c2.currentScope = lcontext.scope
   let pBaseOld = c2.p
   c2.p = lcontext.pBase.PProcCon

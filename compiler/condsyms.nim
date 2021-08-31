@@ -138,3 +138,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasHintAll")
   defineSymbol("nimHasTrace")
   defineSymbol("nimHasEffectsOf")
+  defineSymbol("nimHasLazySemcheck")
