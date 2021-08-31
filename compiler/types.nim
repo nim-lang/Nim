@@ -1368,6 +1368,9 @@ type
 proc compatibleEffects*(formal, actual: PType): EffectsCompat =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc
+  #if tfEffectSystemWorkaround in actual.flags:
+  #  return efCompat
+
   if formal.n[0].kind != nkEffectList or
      actual.n[0].kind != nkEffectList:
     return efTagsUnknown

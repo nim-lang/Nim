@@ -1333,7 +1333,7 @@ proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ##    `cpuTime` instead, depending on the use case.
   getTime().local
 
-proc dateTime*(year: int, month: Month, monthday: MonthdayRange, 
+proc dateTime*(year: int, month: Month, monthday: MonthdayRange,
                hour: HourRange = 0, minute: MinuteRange = 0, second: SecondRange = 0,
                nanosecond: NanosecondRange = 0,
                zone: Timezone = local()): DateTime =

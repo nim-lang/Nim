@@ -1953,6 +1953,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if not hasProto:
     implicitPragmas(c, s, n.info, validPragmas)
 
+  if n[pragmasPos].kind != nkEmpty:
+    setEffectsForProcType(c.graph, s.typ, n[pragmasPos], s)
+  s.typ.flags.incl tfEffectSystemWorkaround
+
   # To ease macro generation that produce forwarded .async procs we now
   # allow a bit redundancy in the pragma declarations. The rule is
   # a prototype's pragma list must be a superset of the current pragma

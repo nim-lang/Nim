@@ -568,6 +568,7 @@ type
       # sizeof, alignof, offsetof at CT
     tfExplicitCallConv
     tfIsConstructor
+    tfEffectSystemWorkaround
 
   TTypeFlags* = set[TTypeFlag]
 
