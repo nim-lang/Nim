@@ -215,7 +215,10 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
         if count >= max: return
         # echo count, ": ", scope.symbols.data[h].name.s
         let s = scope.symbols.data[h]
-        echo count, ": ", s, " flags: ", s.flags
+        var msg = $count & ": " & $s & " flags: " & $s.flags
+        if s.ast!=nil:
+          msg.add " " & c.config$s.ast.info
+        echo msg
         count.inc
     if i == limit: return
     inc i

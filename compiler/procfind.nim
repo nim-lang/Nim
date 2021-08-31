@@ -37,6 +37,7 @@ proc searchForProcAux(c: PContext, scope: PScope, fn: PSym, isCompilerProc: bool
     if result.kind == fn.kind and sfLazy notin result.flags: #and sameType(result.typ, fn.typ, flags):
       if isCompilerProc:
         #[
+        PRTEMP: RENAME isCompilerProc
         proc f(a: int)
         proc f(a: float)
         f(1) # trigger sfLazyForwardRequested
@@ -46,7 +47,7 @@ proc searchForProcAux(c: PContext, scope: PScope, fn: PSym, isCompilerProc: bool
         D20210830T204927
         ]#
         if sfLazyForwardRequested in result.flags or sfCompilerProc in result.flags:
-          return # compilerProc is like importc, can't overload by params
+          return # compilerProc is like importc, can't overload by params (EDIT: update this comment)
         else:
           discard
       else:
