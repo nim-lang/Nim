@@ -310,6 +310,26 @@ proc cmpCandidates*(a, b: TCandidate): int =
   if result != 0: return
   result = a.calleeScope - b.calleeScope
 
+  # PRTEMP BAD!
+  if result != 0: return
+  if result == 0:
+    proc fn1(x: TCandidate): bool =
+      sfForward in x.calleeSym.flags and sfWasForwarded notin x.calleeSym.flags
+    proc fn2(x: TCandidate): bool =
+      sfForward notin x.calleeSym.flags and sfWasForwarded in x.calleeSym.flags
+    # xxx check if correct
+    if fn1(a) and fn2(b): result = -1
+    elif fn1(b) and fn2(a): result = 1
+
+    # let z1 = sfForward in a.calleeSym and sfWasForwarded notin a.calleeSym.flags
+    # if sfForward in a.calleeSym and sfWasForwarded notin a.calleeSym.flags and sfForward notin a.calleeSym and sfWasForwarded in a.calleeSym.flags:
+    #   result = 1
+    # elif sfForward in a.calleeSym and sfWasForwarded notin a.calleeSym.flags and sfForward notin a.calleeSym and sfWasForwarded in a.calleeSym.flags:
+    #   result = -1
+    # dbg a.callee, b.callee, a.callee.flags, b.callee.flags
+    # dbg a.calleeSym, b.calleeSym, a.calleeSym.flags, b.calleeSym.flags
+  # result = (sfForward in a.callee.flags).ord - (sfForward in b.callee.flags).ord
+
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   if arg.kind in nkSymChoices:
     result = typeToString(arg[0].typ, prefer)

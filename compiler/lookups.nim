@@ -14,6 +14,8 @@ import
   renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
+proc determineTypesCompilerProcs(c: PContext; scope: PScope)
+proc determineType2(c: PContext, s: PSym) {.importc.}
 
 proc noidentError(conf: ConfigRef; n, origin: PNode) =
   var m = ""
@@ -71,6 +73,7 @@ proc rawCloseScope*(c: PContext) =
   c.currentScope = c.currentScope.parent
 
 proc closeScope*(c: PContext) =
+  determineTypesCompilerProcs(c, c.currentScope)
   ensureNoMissingOrUnusedSymbols(c, c.currentScope)
   rawCloseScope(c)
 
@@ -267,6 +270,19 @@ proc getSymRepr*(conf: ConfigRef; s: PSym, getDeclarationPath = true): string =
     result = "'$1'" % s.name.s
     if getDeclarationPath:
       result.addDeclaredLoc(conf, s)
+
+proc determineTypesCompilerProcs(c: PContext; scope: PScope) =
+  when false: # PRTEMP
+    var it: TTabIter
+    var s = initTabIter(it, scope.symbols)
+    # xxx define allSymsLocal or similar for a simpler API
+    while s != nil:
+      # dbgIf s, s.owner, s.flags
+      dbg s, s.owner, s.flags
+      doAssert s.name.s != "nimGCvisit" # PRTEMP
+      if sfCompilerProc in s.flags:
+        determineType2(c, s)
+      s = nextIter(it, scope.symbols)
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
   # check if all symbols have been used and defined:

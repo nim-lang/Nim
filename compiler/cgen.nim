@@ -1011,6 +1011,10 @@ proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
   sfNoReturn in s.flags and m.config.exc != excGoto
 
 proc genProcAux(m: BModule, prc: PSym) =
+  dbg prc.flags, prc
+  if sfForward in prc.flags:
+    # PRTEMP
+    return
   var p = newProc(prc, m)
   var header = genProcHeader(m, prc)
   var returnStmt: Rope = nil
@@ -2073,7 +2077,8 @@ proc genForwardedProcs(g: BModuleList) =
       prc = g.forwardedProcs.pop()
       m = g.modules[prc.itemId.module]
     if sfForward in prc.flags:
-      internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
+      dbg "still forwarded: " & prc.name.s
+      # internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
 
     genProcNoForward(m, prc)
 

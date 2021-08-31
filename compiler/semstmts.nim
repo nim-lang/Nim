@@ -1836,6 +1836,18 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 
+proc isCompilerPoc(c: PContext, s: PSym, n: PNode): bool =
+  # PRTEMP HACK
+  # if s.name.s == "nimGCvisit":
+  #   return true
+  when true:
+    for ai in n[pragmasPos]:
+      # TODO: compilerproc; sameIdent etc
+      if ai.kind == nkIdent:
+        for a in ["compilerRtl", "compilerProc", "nimbaseH"]:
+          if ai.ident == getIdent(c.cache, a):
+            return true
+
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
   result = semProcAnnotation(c, n, validPragmas)
@@ -1878,6 +1890,17 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if c.config.isDefined("nimLazySemcheck"):
     # PRTEMP
     let status = lazyVisit(c.graph, s)
+    let ret = isCompilerPoc(c, s, n)
+    if ret:
+      dbg s, c.config$n.info, n[pragmasPos], ret
+    # if isCompilerPoc(s, n):
+    if ret:
+      # dbg s
+      status.needDeclaration = true
+    # if s.name.s == "nimGCvisit":
+    #   dbgIf s, s.flags
+    #   debug2 n
+    #   doAssert false
     if not status.needDeclaration:
       # PRTEMP
       s.flags.incl sfForward
@@ -2010,7 +2033,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   else:
     onDef(n[namePos].info, s)
 
-  if hasProto: # PRTEMP ideally, shouldn't treat this like we have a proto for lazy re-visit?
+  if hasProto:
     if sfForward notin proto.flags and proto.magic == mNone:
       wrongRedefinition(c, n.info, proto.name.s, proto.info)
     if not comesFromShadowScope:
