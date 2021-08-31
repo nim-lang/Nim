@@ -623,52 +623,20 @@ proc shuffle*[T](x: var openArray[T]) =
   shuffle(state, x)
 
 when not defined(standalone):
-  when defined(nimscript):
-    import std/hashes
-
-    var baseState = block:
-      var ret = Rand(
-        a0: CompileTime.hash.Ui,
-        a1: CompileDate.hash.Ui)
-      if not ret.isValid:
-        ret = DefaultRandSeed
-      ret
-  elif defined(js):
+  when defined(js):
     import std/times
   else:
-    import std/[hashes, os, sysrand, monotimes]
+    when defined(nimscript):
+      import std/hashes
+    else:
+      import std/[hashes, os, sysrand, monotimes]
 
-    var baseState: Rand = block:
-      var
-        ret: Rand
-        urand: array[sizeof(Rand), byte]
+      when compileOption("threads"):
+        import locks
+        var baseSeedLock: Lock
+        baseSeedLock.initLock
 
-      for i in 0 .. 7:
-        if sysrand.urandom(urand):
-          copyMem(ret.addr, urand[0].addr, sizeof(Rand))
-          if ret.isValid:
-            break
-
-      if not ret.isValid:
-        # When 2 processes executed at same time on different machines,
-        # `ret` can still have same value.
-        let
-          pid = getCurrentProcessId()
-          t = getMonoTime().ticks
-        ret.a0 = pid.hash().Ui
-        ret.a1 = t.hash().Ui
-        if not ret.isValid:
-          ret.a0 = pid.Ui
-          ret.a1 = t.Ui
-
-      if not ret.isValid:
-        ret = DefaultRandSeed
-      ret
-
-    when compileOption("threads"):
-      import locks
-      var baseSeedLock: Lock
-      baseSeedLock.initLock
+    var baseState: Rand
 
   proc initRand(): Rand =
     ## Initializes a new Rand state.
@@ -685,13 +653,46 @@ when not defined(standalone):
       let time = int64(times.epochTime() * 1000) and 0x7fff_ffff
       result = initRand(time)
     else:
-      assert baseState.isValid
+      proc getRandomState(): Rand =
+        when defined(nimscript):
+          result = Rand(
+            a0: CompileTime.hash.Ui,
+            a1: CompileDate.hash.Ui)
+          if not result.isValid:
+            result = DefaultRandSeed
+        else:
+          var urand: array[sizeof(Rand), byte]
+
+          for i in 0 .. 7:
+            if sysrand.urandom(urand):
+              copyMem(result.addr, urand[0].addr, sizeof(Rand))
+              if result.isValid:
+                break
+
+          if not result.isValid:
+            # When 2 processes executed at same time on different machines,
+            # `result` can still have same value.
+            let
+              pid = getCurrentProcessId()
+              t = getMonoTime().ticks
+            result.a0 = pid.hash().Ui
+            result.a1 = t.hash().Ui
+            if not result.isValid:
+              result.a0 = pid.Ui
+              result.a1 = t.Ui
+
+          if not result.isValid:
+            result = DefaultRandSeed
 
       when compileOption("threads"):
         baseSeedLock.withLock:
+          if not baseState.isValid:
+            baseState = getRandomState()
           result = baseState
           baseState.skipRandomNumbers
       else:
+        if not baseState.isValid:
+          baseState = getRandomState()
         result = baseState
         baseState.skipRandomNumbers
 
