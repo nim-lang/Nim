@@ -211,14 +211,16 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
 
 proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
   result = @[]
-  for scope in allScopes(c.currentScope):
-    var ti: TIdentIter
-    var candidate = initIdentIter(ti, scope.symbols, s)
-    while candidate != nil:
-      if candidate.kind in filter:
-        if result.len == 0:
+  block outer:
+    for scope in allScopes(c.currentScope):
+      var ti: TIdentIter
+      var candidate = initIdentIter(ti, scope.symbols, s)
+      while candidate != nil:
+        if candidate.kind in filter:
           result.add candidate
-      candidate = nextIdentIter(ti, scope.symbols)
+          # Break here, because further symbols encountered would be shadowed
+          break outer
+        candidate = nextIdentIter(ti, scope.symbols)
 
   if result.len == 0:
     var marked = initIntSet()
