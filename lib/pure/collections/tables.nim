@@ -210,8 +210,8 @@ type
     ## can't be accessed.
     ##
     ## For creating an empty Table, use `initTable proc<#initTable>`_.
-    data*: KeyValuePairSeq[A, B]
-    counter*: int
+    data: KeyValuePairSeq[A, B]
+    counter: int
   TableRef*[A, B] = ref Table[A, B] ## Ref version of `Table<#Table>`_.
     ##
     ## For creating a new empty TableRef, use `newTable proc

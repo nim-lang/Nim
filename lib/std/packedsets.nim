@@ -39,19 +39,19 @@ const
 
 type
   Trunk {.acyclic.} = ref object
-    next*: Trunk                                 # all nodes are connected with this pointer
-    key*: int                                    # start address at bit 0
-    bits*: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector
+    next: Trunk                                 # all nodes are connected with this pointer
+    key: int                                    # start address at bit 0
+    bits: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector
 
   TrunkSeq = seq[Trunk]
 
   PackedSet*[A: Ordinal] = object
     ## An efficient set of `Ordinal` types implemented as a sparse bit set.
-    elems*: int           # only valid for small numbers
-    counter*, max*: int
-    head*: Trunk
-    data*: TrunkSeq
-    a*: array[0..33, int] # profiling shows that 34 elements are enough
+    elems: int           # only valid for small numbers
+    counter, max: int
+    head: Trunk
+    data: TrunkSeq
+    a: array[0..33, int] # profiling shows that 34 elements are enough
 
 proc mustRehash[T](t: T): bool {.inline.} =
   let length = t.max + 1

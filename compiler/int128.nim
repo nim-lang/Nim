@@ -7,7 +7,7 @@ from math import trunc
 
 type
   Int128* = object
-    udata*: array[4, uint32]
+    udata: array[4, uint32]
 
 template sdata(arg: Int128, idx: int): int32 =
   # udata and sdata was supposed to be in a union, but unions are
