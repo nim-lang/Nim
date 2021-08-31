@@ -35,11 +35,8 @@ proc searchForProcAux(c: PContext, scope: PScope, fn: PSym, isCompilerProc: bool
   result = initIdentIter(it, scope.symbols, fn.name)
   while result != nil:
     if result.kind == fn.kind and sfLazy notin result.flags: #and sameType(result.typ, fn.typ, flags):
-      # dbg result.typ, fn.typ, result, fn
       if isCompilerProc:
-        # if sfCompilerProc in result.flags:
         #[
-        PRTEMP: BUG this is incorrect in case you have:
         proc f(a: int)
         proc f(a: float)
         f(1) # trigger sfLazyForwardRequested

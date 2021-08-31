@@ -295,7 +295,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
       # too many 'implementation of X' errors are annoying
       # and slow 'suggest' down:
       if missingImpls == 0:
-        dbg "skipped:" & getSymRepr(c.config, s, getDeclarationPath=false)
+        # dbg "skipped:" & getSymRepr(c.config, s, getDeclarationPath=false)
         if false:
           localError(c.config, s.info, "implementation of '$1' expected" %
               getSymRepr(c.config, s, getDeclarationPath=false))

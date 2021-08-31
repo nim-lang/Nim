@@ -36,6 +36,8 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   # anymore since `Defect` can't be raised.
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect, tags: [].}
   cast[Hide](raiseAssert)(msg)
+  # PRTEMP
+  # raiseAssert(msg)
 
 template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
   when enabled:

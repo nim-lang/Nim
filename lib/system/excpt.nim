@@ -362,7 +362,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     else:
       var trace = $e.trace
       add(buf, trace)
-      # `=destroy`(trace)
+      # `=destroy`(trace) # PRTEMP D20210830T213050
     add(buf, "Error: unhandled exception: ")
     add(buf, e.msg)
     add(buf, " [")
@@ -373,7 +373,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
       onUnhandledException(buf)
     else:
       showErrorMessage2(buf)
-    # `=destroy`(buf)
+    # `=destroy`(buf) # PRTEMP D20210830T213050
   else:
     # ugly, but avoids heap allocations :-)
     template xadd(buf, s, slen) =
