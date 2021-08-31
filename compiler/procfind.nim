@@ -38,6 +38,16 @@ proc searchForProcAux(c: PContext, scope: PScope, fn: PSym, isCompilerProc: bool
       # dbg result.typ, fn.typ, result, fn
       if isCompilerProc:
         # if sfCompilerProc in result.flags:
+        #[
+        PRTEMP: BUG this is incorrect in case you have:
+        proc f(a: int)
+        proc f(a: float)
+        f(1) # trigger sfLazyForwardRequested
+        proc f(a: float) = discard # => BUG: picks of the of fwd procs, but must know which?
+
+        EDIT: actually maybe it's ok; it should just trigger generating the type signature at least though
+        D20210830T204927
+        ]#
         if sfLazyForwardRequested in result.flags or sfCompilerProc in result.flags:
           return # compilerProc is like importc, can't overload by params
         else:
