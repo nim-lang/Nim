@@ -107,6 +107,15 @@ proc localSearchInScope*(c: PContext, s: PIdent): PSym =
     scope = scope.parent
     result = strTableGet(scope.symbols, s)
 
+# iterator localSearchInScope2*(c: PContext, s: PIdent): PSym =
+#   var scope = c.currentScope
+#   while true:
+#     result = strTableGet(scope.symbols, s)
+#     while result == nil and scope.isShadowScope:
+#       # We are in a shadow scope, check in the parent too
+#       scope = scope.parent
+#       result = strTableGet(scope.symbols, s)
+
 proc initIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule; name: PIdent;
                    g: ModuleGraph): PSym =
   result = initModuleIter(ti, g, im.m, name)
@@ -204,7 +213,9 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
         if count >= max: return
-        echo count, ": ", scope.symbols.data[h].name.s
+        # echo count, ": ", scope.symbols.data[h].name.s
+        let s = scope.symbols.data[h]
+        echo count, ": ", s, " flags: ", s.flags
         count.inc
     if i == limit: return
     inc i

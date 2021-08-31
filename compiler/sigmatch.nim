@@ -320,6 +320,7 @@ proc cmpCandidates*(a, b: TCandidate): int =
     # xxx check if correct
     if fn1(a) and fn2(b): result = -1
     elif fn1(b) and fn2(a): result = 1
+    # dbgIf a.calleeSym.flags, b.calleeSym.flags, a.calleeSym, b.calleeSym.flags, result
 
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   if arg.kind in nkSymChoices:

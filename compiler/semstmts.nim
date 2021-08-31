@@ -11,6 +11,7 @@
 #  included from sem.nim
 
 import tables
+from std/algorithm import sortedByIt
 
 const
   errNoSymbolToBorrowFromFound = "no symbol to borrow from found"
@@ -1878,6 +1879,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   s.ast = n
   s.options = c.config.options
   #s.scope = c.currentScope
+  # dbgIf n, s, s.flags, c.module
+  # dbgIf getStacktrace()
 
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
@@ -1915,12 +1918,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addInterfaceOverloadableSymAt(c, declarationScope, s)
       else:
         addInterfaceDeclAt(c, declarationScope, s)
+      # if isCompilerDebug():
+      #   dbgIf "scopes", s
+      #   debugScopes(c, limit = 10, max = 20)
       let lcontext = c.graph.symLazyContext[s.id]
       lcontext.ctxt = c
       lcontext.scope = c.currentScope # TODO: needed?
       lcontext.pBase = c.p
-      # PRTEMP
-      # c.graph.symToScope[s.id] = c.currentScope # TODO: needed?
       return result
 
   pushOwner(c, s)
@@ -1968,6 +1972,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   var (proto, comesFromShadowScope) =
       if isAnon: (nil, false)
       else: searchForProc(c, declarationScope, s)
+  # dbgIf proto, s, s.flags
   if proto == nil and sfForward in s.flags and sfLazy notin s.flags and n[bodyPos].kind != nkEmpty:
     ## In cases such as a macro generating a proc with a gensymmed name we
     ## know `searchForProc` will not find it and sfForward will be set. In
@@ -1980,6 +1985,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     ## See the "doubly-typed forward decls" case in tmacros_issues.nim
     proto = s
   let hasProto = proto != nil
+  # dbgIf hasProto, s == proto
 
   # set the default calling conventions
   case s.kind
@@ -2147,6 +2153,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
 
 proc determineType(c: PContext, s: PSym) =
+  # dbgIf s, s.typ, s.flags
   if s.typ != nil: return
   if sfLazy notin s.flags: return # PRTEMP
   #if s.magic != mNone: return
@@ -2174,7 +2181,23 @@ proc determineType(c: PContext, s: PSym) =
   c2.currentScope = lcontext.scope
   let pBaseOld = c2.p
   c2.p = lcontext.pBase.PProcCon
-  discard semProcAux(c2, s.ast, s.kind, validPragmas)
+  # if isCompilerDebug():
+  #   dbgIf "scopes2", s
+  #   debugScopes(c2, limit = 10, max = 20)
+  var candidates: seq[PSym]
+  for s2 in c2.currentScope.symbols:
+    if s2.kind == s.kind and s2.name == s.name:
+        if s2.typ == nil and sfLazy in s2.flags:
+          # dbgIf s2, s, s2.flags, s.flags, c.config$s2.ast.info
+          candidates.add s2
+  candidates = candidates.sortedByIt(it.id)
+    # to ensure that fwd declarations are processed before implementations
+  for s2 in candidates:
+    # dbgIf s2, s, s2.flags, s.flags, candidates.len
+    # PRTEMP because of prior processing might affect this?
+    if s2.typ != nil: continue
+    if sfLazy notin s2.flags: continue # PRTEMP
+    discard semProcAux(c2, s2.ast, s2.kind, validPragmas)
   c2.currentScope = old
   c2.p = pBaseOld
 
