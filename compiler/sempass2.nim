@@ -1310,6 +1310,9 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode; s: PSym = nil) =
       effects[ensuresEffects] = ensuresSpec
 
     effects[pragmasEffects] = n
+  if s != nil and s.magic != mNone:
+    if s.magic != mEcho:
+      t.flags.incl tfNoSideEffect
 
 proc rawInitEffects(g: ModuleGraph; effects: PNode) =
   newSeq(effects.sons, effectListLen)
