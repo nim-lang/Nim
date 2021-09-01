@@ -296,11 +296,12 @@ proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
   if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
       s.magic != mNimvm:
     if s.guard != nil: guardGlobal(a, n, s.guard)
-    if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
-        (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
-      #if a.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n)
-      markGcUnsafe(a, s)
-    markSideEffect(a, s, n.info)
+    if strictEffects notin a.config.features:
+      if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
+          (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
+        #if a.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n)
+        markGcUnsafe(a, s)
+      markSideEffect(a, s, n.info)
   if s.owner != a.owner and s.kind in {skVar, skLet, skForVar, skResult, skParam} and
      {sfGlobal, sfThread} * s.flags == {}:
     a.isInnerProc = true

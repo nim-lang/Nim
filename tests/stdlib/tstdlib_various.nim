@@ -167,9 +167,9 @@ block tsegfaults:
           discard
       except NilAccessDefect:
         inc crashes
-      assert crashes == 6
     for i in 0..5:
       main()
+    assert crashes == 6
 
 
 
