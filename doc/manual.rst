@@ -4831,7 +4831,7 @@ is an *effect*. Other effects can also be defined. A user defined effect is a
 means to *tag* a routine and to perform checks against this tag:
 
 .. code-block:: nim
-    :test: "nim c $1"
+    :test: "nim c --warningAsError:Effect:on $1"
     :status: 1
 
   type IO = object ## input/output effect
