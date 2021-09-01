@@ -84,6 +84,12 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExprCheck(c, n, flags)
+  dbgIf result, result.typ, result.kind
+  if result.kind == nkSym:
+    dbgIf result.sym, result.sym.flags, result.sym.kind
+  if result.kind == nkClosedSymChoice:
+    # for ai in result:
+    debug2 result
 
   # dbgIf result, result.typ, result.kind, n, flags
 
@@ -1323,6 +1329,9 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     #if efInCall notin flags:
     markUsed(c, info, s)
     onUse(info, s)
+    # dbgIf s, s.kind, c.config$info
+    # PRTEMP
+    determineType2(c, s)
     result = newSymNode(s, info)
 
 proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
@@ -1442,9 +1451,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         if n[1].kind == nkSym and n[1].sym == f:
           false # field lookup was done already, likely by hygienic template or bindSym
         else: true
-      dbgIf visibilityCheckNeeded
       if not visibilityCheckNeeded or fieldVisible(c, f):
-        dbgIf()
         # is the access to a public field or in the same module or in a friend?
         markUsed(c, n[1].info, f)
         onUse(n[1].info, f)
@@ -1457,10 +1464,8 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
           check[0] = n
           check.typ = n.typ
           result = check
-      dbgIf()
   elif ty.kind == tyTuple and ty.n != nil:
     f = getSymFromList(ty.n, i)
-    dbgIf f
     if f != nil:
       markUsed(c, n[1].info, f)
       onUse(n[1].info, f)
@@ -1469,12 +1474,10 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.typ = f.typ
       result = n
 
-  dbgIf result
   # we didn't find any field, let's look for a generic param
   if result == nil:
     let t = n[0].typ.skipTypes(tyDotOpTransparent)
     result = tryReadingGenericParam(c, n, i, t)
-    dbgIf result
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n[1]):
@@ -2816,13 +2819,17 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
+    dbgIf s, s.kind
     # PRTEMP : determineType(c, sym) inside qualifiedLookUp?
     determineType2(c, s)
+    dbgIf s, s.kind
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
       #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)
+      dbgIf result, result.kind
+      debug2 result
       if result.kind == nkSym:
         markIndirect(c, result.sym)
         # if isGenericRoutine(result.sym):
@@ -2841,10 +2848,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, n.sym, flags)
-    # if result.kind == nkSym:
-    #   # xxx PRTEMP should we do this inside semSym?
-    #   determineType2(c, result.sym)
-    #   result.typ = result.sym.typ
+    dbgIf n, flags, n.sym, n.sym.kind, n.sym.flags, result.typ, n.sym.typ
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:

@@ -86,7 +86,10 @@ iterator localScopesFrom*(c: PContext; scope: PScope): PScope =
     yield s
 
 proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
-  if s == nil or s.kind != skAlias:
+  if s != nil and sfLazyImplmentation in s.flags:
+    # don't return the impl, return the fwd decl
+    result = nil
+  elif s == nil or s.kind != skAlias:
     result = s
   else:
     result = s.owner
@@ -615,6 +618,9 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   o.importIdx = -1
   o.marked = initIntSet()
+  dbgIf n.kind, n
+  defer:
+    dbgIf result
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerQuotedIdent(c, n)

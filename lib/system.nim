@@ -3159,4 +3159,5 @@ when notJSnotNims and not defined(nimSeqsV2):
 
 when defined(nimHasLazySemcheck) and not defined(nimscript):
   # PRTEMP
-  {.define(nimLazySemcheck).}
+  when defined(nimLazySemcheckAfterSystem):
+    {.define(nimLazySemcheck).}

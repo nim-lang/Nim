@@ -313,6 +313,7 @@ proc cmpCandidates*(a, b: TCandidate): int =
   # PRTEMP BAD!
   if result != 0: return
   if result == 0:
+    # TODO: use sfLazyImplmentation instead (and prefer the one without it if any)
     proc fn1(x: TCandidate): bool =
       sfForward in x.calleeSym.flags and sfWasForwarded notin x.calleeSym.flags
     proc fn2(x: TCandidate): bool =
@@ -2224,9 +2225,12 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     for i in 0..<arg.len:
       if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
                              skIterator, skMacro, skTemplate, skEnumField}:
-        # determineType2(c, arg[i].sym) # PRTEMP D20210831T155116
+        # dbgIf arg[i].sym, arg[i], i, arg[i].sym.typ, arg[i].sym.flags
+        determineType2(c, arg[i].sym) # PRTEMP D20210831T155116
         copyCandidate(z, m)
         z.callee = arg[i].typ
+        if z.callee == nil:
+          dbgIf i, arg[i], f, a, arg, argOrig, arg[i].sym, arg[i].sym.typ, arg[i].sym.flags, arg.typ, arg.len
         if tfUnresolved in z.callee.flags: continue
         z.calleeSym = arg[i].sym
         # XXX this is still all wrong: (T, T) should be 2 generic matches

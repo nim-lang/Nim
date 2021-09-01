@@ -533,6 +533,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var def: PNode = c.graph.emptyNode
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {})
+      dbgIf def, a, a[^1], def.kind, def.typ
 
       if def.kind in nkSymChoices and def[0].typ.skipTypes(abstractInst).kind == tyEnum:
         errorSymChoiceUseQualifier(c, def)
@@ -1900,12 +1901,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if isAnon: (nil, false)
       else: searchForProc(c, declarationScope, s, isCompilerProc = true)
     if proto2 != nil:
-      # dbgIf proto2, proto2.flags
+      dbgIf proto2, proto2.flags
       if sfCompilerProc in proto2.flags or sfLazyForwardRequested in proto2.flags:
         ret = true
-    # dbgIf ret, proto2, s
     if ret:
       status.needDeclaration = true
+    dbgIf ret, proto2, s, status.needDeclaration
     if isAnon:
       #[
       `foo(proc()=discard)` is similar to:
@@ -1978,7 +1979,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   var (proto, comesFromShadowScope) =
       if isAnon: (nil, false)
       else: searchForProc(c, declarationScope, s)
-  # dbgIf proto, s, s.flags
+  dbgIf proto, s, s.flags
   if proto == nil and sfForward in s.flags and sfLazy notin s.flags and n[bodyPos].kind != nkEmpty:
     ## In cases such as a macro generating a proc with a gensymmed name we
     ## know `searchForProc` will not find it and sfForward will be set. In
@@ -1991,7 +1992,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     ## See the "doubly-typed forward decls" case in tmacros_issues.nim
     proto = s
   let hasProto = proto != nil
-  # dbgIf hasProto, s == proto
+  dbgIf hasProto, s == proto
 
   # set the default calling conventions
   case s.kind
@@ -2023,6 +2024,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if not hasProto:
       s.flags.excl sfForward
       s.flags.incl sfLazyForwardRequested
+    else:
+      s.flags.incl sfLazyImplmentation
 
   pragmaCallable(c, s, n, validPragmas)
   # PRTEMP after here, sfForward => sfImportc
@@ -2209,6 +2212,7 @@ proc determineType(c: PContext, s: PSym) =
         candidates.add s2
   candidates = candidates.sortedByIt(it.id)
     # to ensure that fwd declarations are processed before implementations
+  dbgIf candidates.len, candidates, s, c.module
   for s2 in candidates:
     # dbgIf s2, s, s2.flags, s.flags, candidates.len
     # PRTEMP because of prior processing might affect this?

@@ -527,6 +527,9 @@ proc value(this: var DebugPrinter; value: PSym) =
   this.value(value.name.s)
   this.key("id")
   this.value(value.id)
+  if value.ast!=nil and this.conf!=nil:
+    this.key("loc")
+    this.value(this.conf$value.ast.info)
   if value.kind in {skField, skEnumField, skParam}:
     this.key("position")
     this.value(value.position)
@@ -594,6 +597,7 @@ proc value(this: var DebugPrinter; value: PNode) =
   if this.conf != nil:
     this.key "info"
     this.value $lineInfoToStr(this.conf, value.info)
+    # TODO: loc this.value(this.conf$value.ast.info)
   if value.flags != {}:
     this.key "flags"
     this.value value.flags
@@ -640,7 +644,7 @@ proc value(this: var DebugPrinter; value: PNode) =
 
 
 proc debug(n: PSym; conf: ConfigRef) =
-  var this: DebugPrinter
+  var this = DebugPrinter(conf: conf)
   this.visited = initTable[pointer, int]()
   this.renderSymType = true
   this.useColor = not defined(windows)
@@ -648,7 +652,7 @@ proc debug(n: PSym; conf: ConfigRef) =
   echo($this.res)
 
 proc debug(n: PType; conf: ConfigRef) =
-  var this: DebugPrinter
+  var this = DebugPrinter(conf: conf)
   this.visited = initTable[pointer, int]()
   this.renderSymType = true
   this.useColor = not defined(windows)
@@ -656,7 +660,7 @@ proc debug(n: PType; conf: ConfigRef) =
   echo($this.res)
 
 proc debug(n: PNode; conf: ConfigRef) =
-  var this: DebugPrinter
+  var this = DebugPrinter(conf: conf)
   this.visited = initTable[pointer, int]()
   #this.renderSymType = true
   this.useColor = not defined(windows)

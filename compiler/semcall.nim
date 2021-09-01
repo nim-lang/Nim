@@ -547,9 +547,9 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       result.typ = newTypeS(x.fauxMatch, c)
       if result.typ.kind == tyError: incl result.typ.flags, tfCheckedForDestructor
     return
-  dbgIf finalCallee, finalCallee.owner, finalCallee.typ
+  # dbgIf finalCallee, finalCallee.owner, finalCallee.typ
   # dbgIf finalCallee, c.config$finalCallee.ast.info, finalCallee.flags, finalCallee.typ
-  # determineType2(c, finalCallee) # TODO: maybe put determineType2 inside onUse or right after/before? EDIT: already done
+  # determineType2(c, finalCallee) # TODO: maybe put determineType2 inside onUse or right after/before? EDIT: already done; EDIT: CHECME?
   # dbgIf finalCallee, c.config$finalCallee.ast.info, finalCallee.flags, finalCallee.typ
   let gp = finalCallee.ast[genericParamsPos]
   if gp.isGenericParams:
