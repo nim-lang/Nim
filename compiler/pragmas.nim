@@ -779,11 +779,14 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
     # pragma(arg) -> pragma: arg
     result.transitionSonsKind(n.kind)
 
-proc processEffectsOf(c: PContext, n: PNode) =
+proc processEffectsOf(c: PContext, n: PNode; owner: PSym) =
   proc processParam(c: PContext; n: PNode) =
     let r = c.semExpr(c, n)
     if r.kind == nkSym and r.sym.kind == skParam:
-      incl r.sym.flags, sfEffectsDelayed
+      if r.sym.owner == owner:
+        incl r.sym.flags, sfEffectsDelayed
+      else:
+        localError(c.config, n.info, errGenerated, "parameter cannot be declared as .effectsOf")
     else:
       localError(c.config, n.info, errGenerated, "parameter name expected")
 
@@ -913,7 +916,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         incl(sym.flags, sfNoalias)
       of wEffectsOf:
-        processEffectsOf(c, it)
+        processEffectsOf(c, it, sym)
       of wThreadVar:
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
