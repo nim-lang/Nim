@@ -482,9 +482,13 @@ proc isIndirectCall(tracked: PEffects; n: PNode): bool =
   if n.kind != nkSym:
     result = true
   elif n.sym.kind == skParam:
-    result = tracked.owner != n.sym.owner or tracked.owner == nil
     if strictEffects in tracked.config.features:
-      result = result and sfEffectsDelayed in n.sym.flags
+      if tracked.owner == n.sym.owner and sfEffectsDelayed in n.sym.flags:
+        result = false # it is not a harmful call
+      else:
+        result = true
+    else:
+      result = tracked.owner != n.sym.owner or tracked.owner == nil
   elif n.sym.kind notin routineKinds:
     result = true
 
@@ -778,6 +782,23 @@ proc checkRange(c: PEffects; value: PNode; typ: PType) =
     checkLe(c, lowBound, value)
     checkLe(c, value, highBound)
 
+proc passedToEffectsDelayedParam(tracked: PEffects; n: PNode) =
+  let t = n.typ.skipTypes(abstractInst)
+  if t.kind == tyProc:
+    if n.kind == nkSym and tracked.owner == n.sym.owner and sfEffectsDelayed in n.sym.flags:
+      discard "the arg is itself a delayed parameter, so do nothing"
+    else:
+      var effectList = t.n[0]
+      if effectList.len == effectListLen:
+        mergeRaises(tracked, effectList[exceptionEffects], n)
+        mergeTags(tracked, effectList[tagEffects], n)
+      if not importedFromC(n):
+        if notGcSafe(t):
+          if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
+          markGcUnsafe(tracked, n)
+        if tfNoSideEffect notin t.flags:
+          markSideEffect(tracked, n, n.info)
+
 proc trackCall(tracked: PEffects; n: PNode) =
   template gcsafeAndSideeffectCheck() =
     if notGcSafe(op) and not importedFromC(a):
@@ -881,6 +902,8 @@ proc trackCall(tracked: PEffects; n: PNode) =
       # call, this is fine.
       # initVar(tracked, n[i].skipAddr, false)
       else: discard
+      if sfEffectsDelayed in op.n[i].sym.flags and strictEffects in tracked.config.features:
+        passedToEffectsDelayedParam(tracked, n[i])
 
 type
   PragmaBlockContext = object
