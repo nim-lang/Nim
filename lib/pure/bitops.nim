@@ -502,8 +502,7 @@ func parityBits*(x: SomeInteger): int {.inline.} =
 
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
-  when x is SomeSignedInt:
-    let x = x.castToUnsigned
+  let x = x.castToUnsigned
   when nimvm:
     result = forwardImpl(parityImpl, x)
   else:
@@ -526,8 +525,7 @@ func firstSetBit*(x: SomeInteger): int {.inline.} =
     doAssert firstSetBit(0b0000_1111'u8) == 1
 
   # GCC builtin 'builtin_ffs' already handle zero input.
-  when x is SomeSignedInt:
-    let x = x.castToUnsigned
+  let x = x.castToUnsigned
   when nimvm:
     when noUndefined:
       if x == 0:
@@ -569,8 +567,7 @@ func fastLog2*(x: SomeInteger): int {.inline.} =
     doAssert fastLog2(0b0000_1000'u8) == 3
     doAssert fastLog2(0b0000_1111'u8) == 3
 
-  when x is SomeSignedInt:
-    let x = x.castToUnsigned
+  let x = x.castToUnsigned
   when noUndefined:
     if x == 0:
       return -1
@@ -612,8 +609,7 @@ func countLeadingZeroBits*(x: SomeInteger): int {.inline.} =
     doAssert countLeadingZeroBits(0b0000_1000'u8) == 4
     doAssert countLeadingZeroBits(0b0000_1111'u8) == 4
 
-  when x is SomeSignedInt:
-    let x = x.castToUnsigned
+  let x = x.castToUnsigned
   when noUndefined:
     if x == 0:
       return 0
@@ -641,8 +637,7 @@ func countTrailingZeroBits*(x: SomeInteger): int {.inline.} =
     doAssert countTrailingZeroBits(0b0000_1000'u8) == 3
     doAssert countTrailingZeroBits(0b0000_1111'u8) == 0
 
-  when x is SomeSignedInt:
-    let x = x.castToUnsigned
+  let x = x.castToUnsigned
   when noUndefined:
     if x == 0:
       return 0

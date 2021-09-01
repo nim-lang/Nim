@@ -64,8 +64,7 @@ func countSetBitsImpl*(x: SomeInteger): int {.inline.} =
   ## Counts the set bits in an integer (also called `Hamming weight`:idx:).
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
   # like GCC and MSVC
-  when x is SomeSignedInt:
-    let x = x.castToUnsigned
+  let x = x.castToUnsigned
   when nimvm:
     result = forwardImpl(countBitsImpl, x)
   else:

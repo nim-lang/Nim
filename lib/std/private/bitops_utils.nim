@@ -10,23 +10,13 @@ template forwardImpl*(impl, arg) {.dirty.} =
     else:
       impl(x.uint64)
 
-template toUnsigned(T: typedesc[SomeInteger and not range]): untyped =
-  # copied/adapted from std/typetraits.toUnsigned to avoid a `system => typetraits` dependency
-  when T is int8: uint8
-  elif T is int16: uint16
-  elif T is int32: uint32
-  elif T is int64: uint64
-  elif T is int: uint
-  else: T
+# this could also be implemented via:
+# import std/typetraits
+# template castToUnsigned*(x: SomeInteger): auto = cast[toUnsigned(typeof(x))](x)
 
-template toSigned(T: typedesc[SomeInteger and not range]): untyped =
-  # ditto
-  when T is uint8: int8
-  elif T is uint16: int16
-  elif T is uint32: int32
-  elif T is uint64: int64
-  elif T is uint: int
-  else: T
-
-template castToUnsigned*(x: SomeInteger): auto = cast[toUnsigned(typeof(x))](x)
-template castToSigned*(x: SomeInteger): auto = cast[toUnsigned(typeof(x))](x)
+template castToUnsigned*(x: int8): uint8 = cast[uint8](x)
+template castToUnsigned*(x: int16): uint16 = cast[uint16](x)
+template castToUnsigned*(x: int32): uint32 = cast[uint32](x)
+template castToUnsigned*(x: int64): uint64 = cast[uint64](x)
+template castToUnsigned*(x: int): uint = cast[uint](x)
+template castToUnsigned*[T: SomeUnsignedInt](x: T): T = x
