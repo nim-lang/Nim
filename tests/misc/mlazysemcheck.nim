@@ -2,6 +2,11 @@ discard """
   matrix: "-d:case_noimports; -d:case4; -d:case_stdlib ; -d:case_import1; -d:case_cyclic"
 """
 #[
+
+## TODO
+* support `from a import b` (`import a` already works) in presence of cyclic deps
+  which would mean importing a lazy symbol.
+
 PRTEMP: move to tlazysemcheck otherwise tests won't run?
 ]#
 
@@ -76,6 +81,27 @@ when defined case_noimports:
     proc fn1(): int = 1
     const z1 = fn1()
     doAssert z1 == 1
+
+  block:
+    type Foo = proc(): int
+    proc foo1(): int = 2
+    proc foo2(): int = 2
+    proc bar1(r = foo1) = discard
+    proc bar2(r = @[foo2]) = discard
+    bar1()
+    bar2()
+
+  block:
+    type A = object
+      x: int
+    template foo1(lineInfo: A = A.default) = discard
+    template foo2(lineInfo: A = default(A)) = discard
+    proc foo3(lineInfo: A = A.default) = discard
+    proc foo4(lineInfo: A = default(A)) = discard
+    foo1()
+    foo2()
+    foo3()
+    foo4()
 
   block:
     proc fn1(): int
@@ -186,6 +212,14 @@ when defined case_import1:
   doAssert not c_isnan3(1.5)
   doAssert hash(@[1,2]) == 123
   doAssert testCallback() == 123
+  testFieldAccessible[int]()
+
+  fn4(1)
+  fn5(1)
+  fn6(1)
+  fn7(1)
+  fn8(1)
+  fn9(1)
 
 when defined case_cyclic:
   #[
@@ -213,6 +247,44 @@ when defined case_cyclic:
   doAssert ret == @[0, 1, 2, 3]
   doAssert s2 == """("fn1", 4)("fn2", 0, "seq[int]")("fn2", 1, "seq[int]")("fn2", 2, "seq[int]")("fn2", 3, "seq[int]")"""
 
+  #[
+  3-way cycle, where each module imports the other 2
+  ]#
+  import mlazysemcheck_b
+  import mlazysemcheck_c
+  proc ha*(a: int): int =
+    if a>0:
+      hb(a-1) + hc(a-1)
+    else:
+      10
+  doAssert ha(0) == 10
+  doAssert ha(1) == 10
+  doAssert ha(2) == 134
+  doAssert ha(3) == 700
+
+  #[
+  3-way cycle with generics
+  ]#
+  import mlazysemcheck_b
+  import mlazysemcheck_c
+
+  proc someOverload*(a: int8): string = "int8"
+
+  proc ga*[T](a: T): T =
+    # checks that it finds the right overload among imports
+    doAssert someOverload(1'i8) == "int8"
+    doAssert someOverload(1'i16) == "int16"
+    doAssert someOverload(1'i32) == "int32"
+    if a>0:
+      gb(a-1) + gc(a-1)
+    else:
+      10
+
+  doAssert ga(0) == 10
+  doAssert ga(1) == 10
+  doAssert ga(2) == 134
+  doAssert ga(3) == 700
+
 when defined case_perf:
   #[
   TODO:
@@ -222,66 +294,6 @@ when defined case_perf:
   echo 1
 
 ## scratch below
-
-when defined case10c:
-  proc aux0()=discard
-  static: echo "ok0"
-  import mlazysemcheck_b
-  import mlazysemcheck_c
-  static: echo "ok1"
-  discard sorted2(1)
-  static: echo "ok2"
-
-when defined case10d:
-  # works
-  proc aux0()=discard
-  static: echo "ok0"
-  import mlazysemcheck_b
-  import mlazysemcheck_c
-  static: echo "ok1"
-  discard sorted2(1)
-  static: echo "ok2"
-
-when defined case10e:
-  # works
-  proc aux0()=discard
-  static: echo "ok0"
-  import mlazysemcheck_b
-  static: echo "ok1"
-  discard sorted2(1)
-  static: echo "ok2"
-
-when defined case21:
-  #[
-  BUG D20210831T002126:here
-  ]#
-  import mlazysemcheck_b
-  fn(1)
-
-when defined case21b:
-  import mlazysemcheck_b
-  fn(1)
-
-when defined case21c:
-  import mlazysemcheck_b
-  fn(1)
-
-when defined case25:
-  #[
-  D20210831T132959 not accessible field
-  ]#
-  type A = object
-    a0: float
-  import mlazysemcheck_b
-  fn()
-  fn2(3)
-
-when defined case25b:
-  #[
-  ]#
-  import mlazysemcheck_b
-  # proc bam() = echo "in bam"
-  fn2(3)
 
 when defined case26:
   #[
@@ -298,46 +310,6 @@ when defined case26:
   fn(2)
   # EDIT: how com works now?
 
-when defined case27:
-  # ok
-  # proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int
-  type Foo = proc(): int
-  proc foo(): int = 2
-  # proc llStreamOpenStdIn*(r: TLLRepl = llReadFromStdin, onPrompt: OnPrompt = nil): PLLStream =
-  # proc llStreamOpenStdIn*(r: Foo = foo) =
-  proc llStreamOpenStdIn*(r = foo) =
-  # proc llStreamOpenStdIn*(r = @[foo]) =
-    discard
-  llStreamOpenStdIn()
-
-
-when defined case27a:
-  # ok
-  type Foo = proc(): int
-  proc foo(): int = 2
-  # discard foo()
-  proc llStreamOpenStdIn*(r = foo) =
-    discard
-  llStreamOpenStdIn()
-
-when defined case27b:
-  # template stackTrace(c: PCtx, tos: PStackFrame, pc: int,
-  #                     msg: string, lineInfo: TLineInfo = TLineInfo.default) =
-  type A = object
-    x: int
-  template foo(lineInfo: A = A.default) =
-  # template foo(lineInfo: A = default(A)) =
-    discard
-  foo()
-
-when defined case27c:
-  type A = object
-    x: int
-  proc foo(lineInfo: A = A.default) =
-  # proc foo(lineInfo: A = default(A)) =
-    discard
-  foo()
-
 when defined case27d:
   #[
   BUG D20210831T182524:here SIGSEGV
@@ -352,8 +324,4 @@ when defined case28:
   not really a bug but should report a proper error
   ]#
   proc fn()
-  fn()
-
-when defined case30:
-  import mlazysemcheck_b
   fn()

@@ -57,6 +57,36 @@ when defined case_import1:
   proc fn3(t: int): int = discard
   proc testCallback*(): auto = fn2(fn3)
 
+  type A = object
+    a0: int
+
+  proc testFieldAccessible*[T]() =
+    # makes sure the friend module works correctly
+    var a = A(a0: 1)
+    doAssert a.a0 == 1
+
+  # fwd decls in various forms
+  proc fn4*(a: int)
+  proc fn4(a: int) = discard
+
+  proc fn5*(a: int)
+  proc fn5*(a: int) = discard
+
+  proc fn6*(a: int)
+  proc fn6(a: int, b: float) = discard
+  proc fn6(a: int) = discard
+
+  proc fn7*(a: auto)
+  proc fn7(a: auto) = discard
+
+  proc fn8*(a: auto)
+  fn8(1)
+  proc fn8(a: auto) = discard
+
+  proc fn9*(a: int)
+  fn9(1)
+  proc fn9(a: int) = discard
+
 when defined case_cyclic:
   import mlazysemcheck
   proc fn2*(s: var string, a: int) =
@@ -68,79 +98,37 @@ when defined case_cyclic:
     s.add $("fn2", a, $typeof(fn3(s, 1)))
     a
 
-## scratch below
-when defined case10c:
-  proc aux1()=discard
-  proc sorted3*(a1: int): int = discard
-  proc sorted2*[T2](a2: T2): T2 = sorted3(a2)
-  # proc sorted2*(a: int): int = sorted3(a) # would work
-
-when defined case10d:
-  # uncmoment sorted3
-  proc aux1()=discard
-  proc sorted3(a1: int): int = discard
-  proc sorted2*[T2](a2: T2): T2 = sorted3(a2)
-
-when defined case10e:
-  # uncmoment sorted3
+  import mlazysemcheck
   import mlazysemcheck_c
-  proc aux1()=discard
-  # proc sorted3b(a1: int): int = discard
-  # proc sorted3b(a1: int, a2: int): int = discard
-  proc sorted2*[T2](a2: T2): T2 = sorted3b(a2)
-  proc sorted2*[T2](a2: T2, b: T2): T2 = sorted3b(a2)
 
-when defined case21:
-  proc fn*(a: int)
-  proc fn(a: int) = discard
-    #[
-    the bug: this isn't exported in symbol table even though should
-    should be in an overload set with `proc fn*(a: int)` but not some other proc fn*(a: float) ?
-    if fn() is requested, it should trigger decl semcheck of fn(a: int)  even though those are not exported?
-    ]#
+  proc hb*(a: int): int =
+    if a>0:
+      ha(a-1)*3 + hc(a-1)*4
+    else: 7
 
-when defined case21b:
-  proc fn*(a: int)
-  proc fn*(a: int) = discard
+  proc gbImpl1() = discard
+  proc gbImpl2()
+  proc gbImpl3()
+  proc gbImpl3() = discard
+  proc gbImpl4[T]() = discard
+  proc gbImpl5[T]()
 
-when defined case21c:
-  proc fn*(a: int)
-  fn(2)
-  proc fn*(a: int) = echo (a,)
+  proc someOverload*(a: int16): string = "int16"
 
-when defined case23:
-  type Hash = int64
-  proc hash*[A](x: openArray[A]): Hash
-  # let b1 = hash(@[1,2])
-  proc hash*[A](x: openArray[A]): Hash =
-    discard
-  let b2 = hash(@[1.4])
+  proc gb*[T](a: T): T =
+    # also tests fwd decls
+    gbImpl1()
+    gbImpl2()
+    gbImpl3()
+    gbImpl4[int]()
+    gbImpl5[int]()
+    if a>0:
+      ga(a-1)*3 + gc(a-1)*4
+    else: 7
+  proc gbImpl2() = discard
+  proc gbImpl5[T]() = discard
 
-
-when defined case25:
-  type A = object
-    a0: int
-  proc fn*() =
-    var a: A
-    a.a0 = 1
-    echo a
-
-  proc fn2*[T](b: T) =
-    var a: A
-    # a.a0 = 1
-    let b = a.a0
-
-when defined case25b:
-  type A = object
-    a0: int
-  # proc bam(a: int) = echo "in bam2"
-  # proc bam(a: float) = echo "in bam3"
-  proc fn2*[T](b: T) =
-    # mixin bam
-    var a: A
-    let b = a.a0
-    # let b2 = a.a2
-    # bam()
+## scratch below
 
 when defined case26:
   #[
@@ -160,7 +148,3 @@ when defined case27d:
   # discard fnAux()
   # discard fnAux
   # let z = fnAux # see D20210831T180635
-
-when defined case30:
-  proc fn*()=discard
-
