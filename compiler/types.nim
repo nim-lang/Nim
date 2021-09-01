@@ -1395,8 +1395,8 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
       if real.len == 0: return efTagsUnknown
       let res = compatibleEffectsAux(st, real[tagEffects])
       if not res:
-        if tfEffectSystemWorkaround notin actual.flags:
-          return efTagsDiffer
+        #if tfEffectSystemWorkaround notin actual.flags:
+        return efTagsDiffer
   if formal.lockLevel.ord < 0 or
       actual.lockLevel.ord <= formal.lockLevel.ord:
     result = efCompat

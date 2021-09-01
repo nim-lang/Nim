@@ -1299,7 +1299,7 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode; s: PSym = nil) =
     let tagsSpec = effectSpec(n, wTags)
     if not isNil(tagsSpec):
       effects[tagEffects] = tagsSpec
-    elif s != nil and s.magic != mNone:
+    elif s != nil and (s.magic != mNone or sfImportc in s.flags):
       effects[tagEffects] = newNodeI(nkArgList, effects.info)
 
     let requiresSpec = propSpec(n, wRequires)
