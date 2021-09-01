@@ -4721,6 +4721,11 @@ and rely on functionality of the `x` object to get exception details.
 Effect system
 =============
 
+**Note**: The rules for effect tracking changed with the release of version
+1.6 of the Nim compiler. This section describes the new rules that are activated
+via `--experimental:strictEffects`.
+
+
 Exception tracking
 ------------------
 
