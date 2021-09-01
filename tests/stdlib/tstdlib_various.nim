@@ -155,7 +155,7 @@ block tropes:
 
 
 block tsegfaults:
-  when not defined(arm64):
+  when not defined(arm64) and not defined(cpu32):
     proc main =
       var crashes = 0
       try:
