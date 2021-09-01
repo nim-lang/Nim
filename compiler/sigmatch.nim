@@ -2226,6 +2226,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
                              skIterator, skMacro, skTemplate, skEnumField}:
         # dbgIf arg[i].sym, arg[i], i, arg[i].sym.typ, arg[i].sym.flags
+        dbgIf i, arg[i].sym, arg[i].sym.flags
         determineType2(c, arg[i].sym) # PRTEMP D20210831T155116
         copyCandidate(z, m)
         z.callee = arg[i].typ

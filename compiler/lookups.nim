@@ -95,20 +95,6 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
     else:
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
               s.name.s & " is deprecated")
-# proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
-#   if s == nil: return nil
-#   var s = s
-#   if s.kind in routineKinds and s.lazyDecl != nil:
-#     s = s.lazyDecl
-#   if s.kind != skAlias:
-#     result = s
-#   else:
-#     result = s.owner
-#     if conf.cmd == cmdNimfix:
-#       prettybase.replaceDeprecated(conf, n.info, s, result)
-#     else:
-#       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
-#               s.name.s & " is deprecated")
 
 proc isShadowScope*(s: PScope): bool {.inline.} =
   s.parent != nil and s.parent.depthLevel == s.depthLevel
@@ -631,9 +617,6 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym
 proc initOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   o.importIdx = -1
   o.marked = initIntSet()
-  dbgIf n.kind, n
-  defer:
-    dbgIf result
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerQuotedIdent(c, n)
@@ -694,6 +677,15 @@ proc initOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
 
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   result = initOverloadIterImpl(o, c, n)
+  defer:
+    dbgIf result, n
+    if result!=nil:
+      if result.name.s == "fnAux":
+        var gcount{.global.}: int
+        gcount.inc
+        if gcount == 1:
+          gcount.inc
+          dbgIf getStacktrace()
   while true:
     if result == nil:
       break
@@ -815,6 +807,8 @@ proc nextOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     if result != nil and result.kind == skStub: loadStub(result)
 
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  defer:
+    dbgIf result, n, ?.result.flags, ?.result.kind
   while true:
     result = nextOverloadIterImpl(o, c, n)
     if result == nil:

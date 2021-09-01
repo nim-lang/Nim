@@ -2165,6 +2165,31 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   elif isTopLevel(c) and s.kind != skIterator and s.typ.callConv == ccClosure:
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
 
+proc determineTypeOne(c: PContext, s: PSym) =
+  # dbgIf s, s.flags
+  # PRTEMP because of prior processing might affect this?
+  if s.typ != nil: return
+  if sfLazy notin s.flags: return # PRTEMP
+
+  #[
+  PRTEMP
+    let validPragmas = if n[namePos].kind != nkEmpty: procPragmas
+                     else: lambdaPragmas
+  ]#
+  # TODO: recall it, avoid recomputing
+  let validPragmas =
+    case s.kind
+    of skProc: procPragmas
+    of skFunc: procPragmas
+    of skIterator: iteratorPragmas
+    else: {} # PRTEMP
+
+  if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR; do we even need this side channel or can we use a sf flag?
+    lazyVisit(c.graph, s).needDeclaration = true
+  c.pushOwner(s.owner) # c.getCurrOwner() would be wrong (it's global)
+  discard semProcAux(c, s.ast, s.kind, validPragmas)
+  c.popOwner()
+
 proc determineType(c: PContext, s: PSym) =
   # dbgIf s, s.typ, s.flags, c.module
   if s.typ != nil: return
@@ -2176,18 +2201,6 @@ proc determineType(c: PContext, s: PSym) =
   # dbgIf s, s.typ, s.flags, s.owner
   #if s.magic != mNone: return
   #if s.ast.isNil: return
-  var validPragmas: TSpecialWords
-  #[
-  PRTEMP
-    let validPragmas = if n[namePos].kind != nkEmpty: procPragmas
-                     else: lambdaPragmas
-  ]#
-  # TODO: recall it, avoid recomputing
-  case s.kind
-  of skProc: validPragmas = procPragmas
-  of skFunc: validPragmas = procPragmas # PRTEMP
-  of skIterator: validPragmas = iteratorPragmas
-  else: validPragmas = {} # PRTEMP
 
   # if s.id notin c.graph.symLazyContext:
   #   dbgIf s, s.flags, s.typ, s.id, c.module
@@ -2205,7 +2218,6 @@ proc determineType(c: PContext, s: PSym) =
   #   debugScopes(c2, limit = 10, max = 20)
   var candidates: seq[PSym]
   for s2 in c2.currentScope.symbols:
-    # if s2.kind == s.kind and s2.name == s.name:
     if s2.name == s.name: # checking `s2.kind == s.kind` would be wrong because all overloads in same scope must be revealed
       if s2.typ == nil and sfLazy in s2.flags:
         # dbgIf s2, s, s2.flags, s.flags, c.config$s2.ast.info
@@ -2214,15 +2226,7 @@ proc determineType(c: PContext, s: PSym) =
     # to ensure that fwd declarations are processed before implementations
   dbgIf candidates.len, candidates, s, c.module
   for s2 in candidates:
-    # dbgIf s2, s, s2.flags, s.flags, candidates.len
-    # PRTEMP because of prior processing might affect this?
-    if s2.typ != nil: continue
-    if sfLazy notin s2.flags: continue # PRTEMP
-    if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR; do we even need this side channel or can we use a sf flag?
-      lazyVisit(c.graph, s2).needDeclaration = true
-    c2.pushOwner(s2.owner) # c2.getCurrOwner() would be wrong (it's global)
-    discard semProcAux(c2, s2.ast, s2.kind, validPragmas)
-    c2.popOwner()
+    determineTypeOne(c2, s2)
   c2.currentScope = old
   c2.p = pBaseOld
 
