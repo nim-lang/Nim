@@ -1,5 +1,5 @@
 discard """
-  matrix: "-d:case_noimports; -d:case4; -d:case_stdlib ; -d:case_import1; -d:case_cyclic"
+  matrix: "-d:case_noimports; -d:case4; -d:case_stdlib ; -d:case_import1; -d:case_cyclic; -d:case_perf"
 """
 #[
 
@@ -115,7 +115,7 @@ when defined case_noimports:
 
   chk "fn2\n"
 
-when defined case4:
+elif defined case4:
   import mlazysemcheck_c
   from mlazysemcheck_b import b1
 
@@ -173,7 +173,7 @@ iterator
 20
 """
 
-when defined case_stdlib:
+elif defined case_stdlib:
   #[
   WAS: case7
   ]#
@@ -205,7 +205,7 @@ when defined case_stdlib:
     let t2 = now()
     doAssert t2 > t
 
-when defined case_import1:
+elif defined case_import1:
   import mlazysemcheck_b
   doAssert 3.sorted2 == 6
   doAssert not c_isnan2(1.5)
@@ -221,7 +221,7 @@ when defined case_import1:
   fn8(1)
   fn9(1)
 
-when defined case_cyclic:
+elif defined case_cyclic:
   #[
   example showing cyclic deps work
   ]#
@@ -285,7 +285,7 @@ when defined case_cyclic:
   doAssert ga(2) == 134
   doAssert ga(3) == 700
 
-when defined case_perf:
+elif defined case_perf:
   #[
   TODO:
   example showing perf for lots of imports
@@ -293,9 +293,19 @@ when defined case_perf:
   import std/[strutils, os, times, enumutils, browsers]
   echo 1
 
-## scratch below
 
-when defined case26:
+elif defined case_bug1:
+  #[
+  D20210831T175533
+  minor bug: this gives: `Error: internal error: still forwarded: fn`
+  but instead should report a proper compiler error
+  ]#
+  proc fn()
+  fn()
+
+# scratch below
+
+elif defined case26:
   #[
   D20210831T151342
   -d:nimLazySemcheck
@@ -310,18 +320,12 @@ when defined case26:
   fn(2)
   # EDIT: how com works now?
 
-when defined case27d:
+elif defined case27d:
   #[
   BUG D20210831T182524:here SIGSEGV
   ]#
   import mlazysemcheck_b
   llStreamOpenStdIn()
 
-when defined case28:
-  #[
-  BUG D20210831T175533:here
-  /t12748.nim(494, 8) Error: internal error: still forwarded: fn
-  not really a bug but should report a proper error
-  ]#
-  proc fn()
-  fn()
+else:
+  static: doAssert false
