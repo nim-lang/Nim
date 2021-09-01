@@ -296,7 +296,7 @@ proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
   if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
       s.magic != mNimvm:
     if s.guard != nil: guardGlobal(a, n, s.guard)
-    if strictEffects notin a.config.features:
+    if strictEffects notin a.c.features:
       if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
           (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
         #if a.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n)
@@ -482,7 +482,7 @@ proc isIndirectCall(tracked: PEffects; n: PNode): bool =
   if n.kind != nkSym:
     result = true
   elif n.sym.kind == skParam:
-    if strictEffects in tracked.config.features:
+    if strictEffects in tracked.c.features:
       if tracked.owner == n.sym.owner and sfEffectsDelayed in n.sym.flags:
         result = false # it is not a harmful call
       else:
@@ -592,7 +592,7 @@ proc isOwnedProcVar(tracked: PEffects; n: PNode): bool =
     tracked.owner == n.sym.owner
   #if result and sfPolymorphic notin n.sym.flags:
   #  echo tracked.config $ n.info, " different here!"
-  if strictEffects in tracked.config.features:
+  if strictEffects in tracked.c.features:
     result = result and sfEffectsDelayed in n.sym.flags
 
 proc isNoEffectList(n: PNode): bool {.inline.} =
@@ -602,11 +602,15 @@ proc isNoEffectList(n: PNode): bool {.inline.} =
 proc isTrival(caller: PNode): bool {.inline.} =
   result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved, mSwap}
 
-proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) =
+proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; argIndex: int; caller: PNode) =
   let a = skipConvCastAndClosure(n)
   let op = a.typ
+  let param = if formals != nil and argIndex < formals.len and formals.n != nil: formals.n[argIndex].sym else: nil
   # assume indirect calls are taken here:
-  if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit and not isTrival(caller):
+  if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit and
+      not isTrival(caller) and
+      ((param != nil and sfEffectsDelayed in param.flags) or strictEffects notin tracked.c.features):
+
     internalAssert tracked.config, op.n[0].kind == nkEffectList
     var effectList = op.n[0]
     var s = n.skipConv
@@ -636,6 +640,7 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; 
         markGcUnsafe(tracked, a)
       elif tfNoSideEffect notin op.flags:
         markSideEffect(tracked, a, n.info)
+  let paramType = if formals != nil and argIndex < formals.len: formals[argIndex] else: nil
   if paramType != nil and paramType.kind in {tyVar}:
     invalidateFacts(tracked.guards, n)
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
@@ -736,9 +741,6 @@ proc trackBlock(tracked: PEffects, n: PNode) =
   else:
     track(tracked, n)
 
-proc paramType(op: PType, i: int): PType =
-  if op != nil and i < op.len: result = op[i]
-
 proc cstringCheck(tracked: PEffects; n: PNode) =
   if n[0].typ.kind == tyCstring and (let a = skipConv(n[1]);
       a.typ.kind == tyString and a.kind notin {nkStrLit..nkTripleStrLit}):
@@ -782,6 +784,7 @@ proc checkRange(c: PEffects; value: PNode; typ: PType) =
     checkLe(c, lowBound, value)
     checkLe(c, value, highBound)
 
+#[
 proc passedToEffectsDelayedParam(tracked: PEffects; n: PNode) =
   let t = n.typ.skipTypes(abstractInst)
   if t.kind == tyProc:
@@ -798,6 +801,7 @@ proc passedToEffectsDelayedParam(tracked: PEffects; n: PNode) =
           markGcUnsafe(tracked, n)
         if tfNoSideEffect notin t.flags:
           markSideEffect(tracked, n, n.info)
+]#
 
 proc trackCall(tracked: PEffects; n: PNode) =
   template gcsafeAndSideeffectCheck() =
@@ -848,7 +852,8 @@ proc trackCall(tracked: PEffects; n: PNode) =
         mergeTags(tracked, effectList[tagEffects], n)
         gcsafeAndSideeffectCheck()
     if a.kind != nkSym or a.sym.magic != mNBindSym:
-      for i in 1..<n.len: trackOperandForIndirectCall(tracked, n[i], paramType(op, i), a)
+      for i in 1..<n.len:
+        trackOperandForIndirectCall(tracked, n[i], op, i, a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
       let arg = n[1]
@@ -902,8 +907,6 @@ proc trackCall(tracked: PEffects; n: PNode) =
       # call, this is fine.
       # initVar(tracked, n[i].skipAddr, false)
       else: discard
-      if sfEffectsDelayed in op.n[i].sym.flags and strictEffects in tracked.config.features:
-        passedToEffectsDelayedParam(tracked, n[i])
 
 type
   PragmaBlockContext = object
