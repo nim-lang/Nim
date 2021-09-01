@@ -23,9 +23,10 @@ proc main() =
   doAssert a in [[0,1], [1,0]]
 
   doAssert rand(0) == 0
-  doAssert sample("a") == 'a'
+  when not defined(nimscript):
+    doAssert sample("a") == 'a'
 
-  when compileOption("rangeChecks"):
+  when compileOption("rangeChecks") and not defined(nimscript):
     doAssertRaises(RangeDefect):
       discard rand(-1)
 
@@ -92,7 +93,7 @@ block: # random int
 
   block: # again gives new numbers
     var rand1 = rand(1000000)
-    when not defined(js):
+    when not (defined(js) or defined(nimscript)):
       os.sleep(200)
 
     var rand2 = rand(1000000)
@@ -122,7 +123,7 @@ block: # random float
 
   block: # again gives new numbers
     var rand1: float = rand(1000000.0)
-    when not defined(js):
+    when not (defined(js) or defined(nimscript)):
       os.sleep(200)
 
     var rand2: float = rand(1000000.0)
