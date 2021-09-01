@@ -780,14 +780,21 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
     result.transitionSonsKind(n.kind)
 
 proc processEffectsOf(c: PContext, n: PNode) =
+  proc processParam(c: PContext; n: PNode) =
+    let r = c.semExpr(c, n)
+    if r.kind == nkSym and r.sym.kind == skParam:
+      incl r.sym.flags, sfEffectsDelayed
+    else:
+      localError(c.config, n.info, errGenerated, "parameter name expected")
+
   if n.kind notin nkPragmaCallKinds or n.len != 2:
     localError(c.config, n.info, errGenerated, "parameter name expected")
   else:
-    n[1] = c.semExpr(c, n[1])
-    if n[1].kind == nkSym and n[1].sym.kind == skParam:
-      incl n[1].sym.flags, sfEffectsDelayed
+    let it = n[1]
+    if it.kind in {nkCurly, nkBracket}:
+      for x in items(it): processParam(c, x)
     else:
-      localError(c.config, n.info, errGenerated, "parameter name expected")
+      processParam(c, it)
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords,
