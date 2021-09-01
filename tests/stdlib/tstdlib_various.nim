@@ -20,12 +20,6 @@ Hi Andreas! How do you feel, Rumpf?
 @[0, 2, 1]
 @[0, 1, 2]
 055this should be the casehugh@["(", "+", " 1", " 2", ")"]
-caught a crash!
-caught a crash!
-caught a crash!
-caught a crash!
-caught a crash!
-caught a crash!
 [5]
 [4, 5]
 [3, 4, 5]
@@ -161,18 +155,21 @@ block tropes:
 
 
 block tsegfaults:
-  proc main =
-    try:
-      var x: ptr int
-      echo x[]
+  when not defined(arm64):
+    proc main =
+      var crashes = 0
       try:
-        raise newException(ValueError, "not a crash")
-      except ValueError:
-        discard
-    except NilAccessDefect:
-      echo "caught a crash!"
-  for i in 0..5:
-    main()
+        var x: ptr int
+        echo x[]
+        try:
+          raise newException(ValueError, "not a crash")
+        except ValueError:
+          discard
+      except NilAccessDefect:
+        inc crashes
+      assert crashes == 6
+    for i in 0..5:
+      main()
 
 
 
