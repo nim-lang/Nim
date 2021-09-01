@@ -84,6 +84,17 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExprCheck(c, n, flags)
+
+  # dbgIf result, result.typ, result.kind, n, flags
+
+  # dbgIf result, n, flags, result.kind, result.typ
+  # if result.kind == nkSym:
+  #   # xxx PRTEMP should we do this inside semSym?
+  #   determineType2(c, result.sym)
+  #   dbgIf result.sym.typ, result.sym, result.sym.flags
+  #   result.typ = result.sym.typ
+
+
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
   elif result.typ == nil or result.typ == c.enforceVoidContext:
@@ -2785,7 +2796,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     defer:
       if isCompilerDebug():
         echo ("<", c.config$n.info, n, ?.result.typ)
-
+  # dbgIf n, n.kind, flags
+  # defer:
+  #   dbgIf result
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
@@ -2828,6 +2841,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, n.sym, flags)
+    # if result.kind == nkSym:
+    #   # xxx PRTEMP should we do this inside semSym?
+    #   determineType2(c, result.sym)
+    #   result.typ = result.sym.typ
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:

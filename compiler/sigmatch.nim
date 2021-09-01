@@ -2211,6 +2211,8 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     # this correctly is inefficient. We have to copy `m` here to be able to
     # roll back the side effects of the unification algorithm.
     let c = m.c
+    # if m.calleeSym!=nil:
+    #   determineType2(c, m.calleeSym) # PRTEMP D20210831T155116
     var
       x = newCandidate(c, m.callee)
       y = newCandidate(c, m.callee)
@@ -2222,6 +2224,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     for i in 0..<arg.len:
       if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
                              skIterator, skMacro, skTemplate, skEnumField}:
+        # determineType2(c, arg[i].sym) # PRTEMP D20210831T155116
         copyCandidate(z, m)
         z.callee = arg[i].typ
         if tfUnresolved in z.callee.flags: continue

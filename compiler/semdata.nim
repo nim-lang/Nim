@@ -304,7 +304,6 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.libs = @[]
   result.module = module
   result.friendModules = @[module]
-  dbgIf module, result.friendModules
   result.converters = @[]
   result.patterns = @[]
   result.includedFiles = initIntSet()

@@ -253,10 +253,8 @@ proc filterSymNoOpr(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline
 proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
   let fmoduleId = getModule(f).id
   result = sfExported in f.flags or fmoduleId == c.module.id
-  dbgIf c.module, f, f.flags, result, fmoduleId, c.module.id, getModule(f)
 
   if not result:
-    dbgIf c.friendModules
     for module in c.friendModules:
       if fmoduleId == module.id: return true
     if f.kind == skField:

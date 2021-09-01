@@ -343,7 +343,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
   c.friendModules.add(getModule(fn))
-  dbgIf c.friendModules, getModule(fn), fn
   let oldMatchedConcept = c.matchedConcept
   c.matchedConcept = nil
   let oldScope = c.currentScope
