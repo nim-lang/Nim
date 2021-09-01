@@ -86,10 +86,7 @@ iterator localScopesFrom*(c: PContext; scope: PScope): PScope =
     yield s
 
 proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
-  if s != nil and sfLazyImplmentation in s.flags:
-    # don't return the impl, return the fwd decl
-    result = nil
-  elif s == nil or s.kind != skAlias:
+  if s == nil or s.kind != skAlias:
     result = s
   else:
     result = s.owner
@@ -98,6 +95,20 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
     else:
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
               s.name.s & " is deprecated")
+# proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
+#   if s == nil: return nil
+#   var s = s
+#   if s.kind in routineKinds and s.lazyDecl != nil:
+#     s = s.lazyDecl
+#   if s.kind != skAlias:
+#     result = s
+#   else:
+#     result = s.owner
+#     if conf.cmd == cmdNimfix:
+#       prettybase.replaceDeprecated(conf, n.info, s, result)
+#     else:
+#       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
+#               s.name.s & " is deprecated")
 
 proc isShadowScope*(s: PScope): bool {.inline.} =
   s.parent != nil and s.parent.depthLevel == s.depthLevel
@@ -615,7 +626,9 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   when false:
     if result != nil and result.kind == skStub: loadStub(result)
 
-proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym
+
+proc initOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   o.importIdx = -1
   o.marked = initIntSet()
   dbgIf n.kind, n
@@ -679,6 +692,16 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   when false:
     if result != nil and result.kind == skStub: loadStub(result)
 
+proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  result = initOverloadIterImpl(o, c, n)
+  while true:
+    if result == nil:
+      break
+    elif result.lazyDecl!=nil:
+      result = nextOverloadIter(o, c, n)
+    else:
+      break
+
 proc lastOverloadScope*(o: TOverloadIter): int =
   case o.mode
   of oimNoQualifier:
@@ -712,7 +735,7 @@ proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
       return result
     inc o.importIdx
 
-proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+proc nextOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   case o.mode
   of oimDone:
     result = nil
@@ -790,6 +813,16 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
 
   when false:
     if result != nil and result.kind == skStub: loadStub(result)
+
+proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  while true:
+    result = nextOverloadIterImpl(o, c, n)
+    if result == nil:
+      break
+    elif result.lazyDecl != nil:
+      discard
+    else:
+      break
 
 proc pickSym*(c: PContext, n: PNode; kinds: set[TSymKind];
               flags: TSymFlags = {}): PSym =

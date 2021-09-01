@@ -2024,8 +2024,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if not hasProto:
       s.flags.excl sfForward
       s.flags.incl sfLazyForwardRequested
-    else:
-      s.flags.incl sfLazyImplmentation
+    elif proto != s:
+      s.lazyDecl = proto
 
   pragmaCallable(c, s, n, validPragmas)
   # PRTEMP after here, sfForward => sfImportc

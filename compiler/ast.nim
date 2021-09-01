@@ -240,7 +240,6 @@ type
     sfForward,        # symbol is forward declared
     sfLazy,           # symbol is lazy declared
     sfLazyForwardRequested, # semchecking was requested for a lazy symbol; PRTEMP RENAME
-    sfLazyImplmentation, # this was resolved as an impl for a fwd proc; we shouldn't pick such a symbol and instead pick the fwd decl
     sfWasForwarded,   # symbol had a forward declaration
                       # (implies it's too dangerous to patch its type signature)
     sfImportc,        # symbol is external; imported
@@ -872,6 +871,10 @@ type
       bitsize*: int
       alignment*: int # for alignment
     else: nil
+    lazyDecl*: PSym
+      # could be in routineKinds branch
+      # proc f(); proc f()=discard; => 2nd sym.lazyDecl = 1st sym
+      # this was resolved as an impl for a fwd proc; we shouldn't pick such a symbol and instead pick the fwd decl
     magic*: TMagic
     typ*: PType
     name*: PIdent

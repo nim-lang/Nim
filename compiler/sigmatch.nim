@@ -313,7 +313,7 @@ proc cmpCandidates*(a, b: TCandidate): int =
   # PRTEMP BAD!
   if result != 0: return
   if result == 0:
-    # TODO: use sfLazyImplmentation instead (and prefer the one without it if any)
+    # TODO: use lazyDecl instead (and prefer the one without it if any)
     proc fn1(x: TCandidate): bool =
       sfForward in x.calleeSym.flags and sfWasForwarded notin x.calleeSym.flags
     proc fn2(x: TCandidate): bool =
