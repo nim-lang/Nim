@@ -474,14 +474,16 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   for id, count in items(inter):
     if count == branches: tracked.init.add id
 
-proc isIndirectCall(n: PNode, owner: PSym): bool =
+proc isIndirectCall(tracked: PEffects; n: PNode): bool =
   # we don't count f(...) as an indirect call if 'f' is an parameter.
   # Instead we track expressions of type tyProc too. See the manual for
   # details:
   if n.kind != nkSym:
     result = true
   elif n.sym.kind == skParam:
-    result = owner != n.sym.owner or owner == nil
+    result = tracked.owner != n.sym.owner or tracked.owner == nil
+    if strictEffects in tracked.config.features:
+      result = result and sfEffectsDelayed in n.sym.flags
   elif n.sym.kind notin routineKinds:
     result = true
 
@@ -579,9 +581,14 @@ proc assumeTheWorst(tracked: PEffects; n: PNode; op: PType) =
   #  message(??.config, n.info, warnUser, "had to assume the worst here")
   mergeLockLevels(tracked, n, lockLevel)
 
-proc isOwnedProcVar(n: PNode; owner: PSym): bool =
+proc isOwnedProcVar(tracked: PEffects; n: PNode): bool =
   # XXX prove the soundness of this effect system rule
-  result = n.kind == nkSym and n.sym.kind == skParam and owner == n.sym.owner
+  result = n.kind == nkSym and n.sym.kind == skParam and
+    tracked.owner == n.sym.owner
+  #if result and sfPolymorphic notin n.sym.flags:
+  #  echo tracked.config $ n.info, " different here!"
+  if strictEffects in tracked.config.features:
+    result = result and sfEffectsDelayed in n.sym.flags
 
 proc isNoEffectList(n: PNode): bool {.inline.} =
   assert n.kind == nkEffectList
@@ -607,14 +614,14 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; 
         # we have no explicit effects but it's a forward declaration and so it's
         # stated there are no additional effects, so simply propagate them:
         propagateEffects(tracked, n, n.sym)
-      elif not isOwnedProcVar(a, tracked.owner):
+      elif not isOwnedProcVar(tracked, a):
         # we have no explicit effects so assume the worst:
         assumeTheWorst(tracked, n, op)
       # assume GcUnsafe unless in its type; 'forward' does not matter:
-      if notGcSafe(op) and not isOwnedProcVar(a, tracked.owner):
+      if notGcSafe(op) and not isOwnedProcVar(tracked, a):
         if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
         markGcUnsafe(tracked, a)
-      elif tfNoSideEffect notin op.flags and not isOwnedProcVar(a, tracked.owner):
+      elif tfNoSideEffect notin op.flags and not isOwnedProcVar(tracked, a):
         markSideEffect(tracked, a, n.info)
     else:
       mergeRaises(tracked, effectList[exceptionEffects], n)
@@ -811,7 +818,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
       elif isNoEffectList(effectList):
         if isForwardedProc(a):
           propagateEffects(tracked, n, a.sym)
-        elif isIndirectCall(a, tracked.owner):
+        elif isIndirectCall(tracked, a):
           assumeTheWorst(tracked, n, op)
           gcsafeAndSideeffectCheck()
       else:

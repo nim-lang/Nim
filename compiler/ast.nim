@@ -229,7 +229,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 47 flags!
+  TSymFlag* = enum    # 48 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -299,6 +299,7 @@ type
     sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
     sfSingleUsedTemp  # For temporaries that we know will only be used once
     sfNoalias         # 'noalias' annotation, means C's 'restrict'
+    sfEffectsDelayed  # an 'effectsDelayed' parameter
 
   TSymFlags* = set[TSymFlag]
 

@@ -1364,6 +1364,7 @@ type
     efTagsDiffer
     efTagsUnknown
     efLockLevelsDiffer
+    efEffectsDelayed
 
 proc compatibleEffects*(formal, actual: PType): EffectsCompat =
   # for proc type compatibility checking:
@@ -1399,6 +1400,12 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
         return efTagsDiffer
   if formal.lockLevel.ord < 0 or
       actual.lockLevel.ord <= formal.lockLevel.ord:
+
+    for i in 1 ..< min(formal.n.len, actual.n.len):
+      if formal.n[i].sym.flags * {sfEffectsDelayed} != actual.n[i].sym.flags * {sfEffectsDelayed}:
+        result = efEffectsDelayed
+        break
+
     result = efCompat
   else:
     result = efLockLevelsDiffer
@@ -1602,7 +1609,8 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
         msg.add "\n.tag effect is 'any tag allowed'"
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
-
+      of efEffectsDelayed:
+        msg.add "\n.effectsOf annotations differ"
     localError(conf, info, msg)
 
 proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
