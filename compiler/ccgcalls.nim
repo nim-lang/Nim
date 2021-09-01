@@ -325,7 +325,7 @@ proc skipTrivialIndirections(n: PNode): PNode =
 
 proc getPotentialWrites(n: PNode; mutate: bool; result: var seq[PNode]) =
   case n.kind:
-  of nkLiterals, nkIdent: discard
+  of nkLiterals, nkIdent, nkFormalParams: discard
   of nkSym:
     if mutate: result.add n
   of nkAsgn, nkFastAsgn:
@@ -354,7 +354,7 @@ proc getPotentialWrites(n: PNode; mutate: bool; result: var seq[PNode]) =
 
 proc getPotentialReads(n: PNode; result: var seq[PNode]) =
   case n.kind:
-  of nkLiterals, nkIdent: discard
+  of nkLiterals, nkIdent, nkFormalParams: discard
   of nkSym: result.add n
   else:
     for s in n:
