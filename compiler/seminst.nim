@@ -152,10 +152,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     dec c.inGenericInst
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
-  dbgIf c.generics.len, s, "D20210901T202819"
   for i in 0..<c.generics.len:
-    dbgIf i, c.generics[i].genericSym, s, s.flags
-    # sfLazySemcheckInprogress
     if c.generics[i].genericSym.id == s.id:
       var oldPrc = c.generics[i].inst.sym
       pushProcCon(c, oldPrc)
@@ -164,7 +161,6 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       openScope(c)
       var n = oldPrc.ast
       n[bodyPos] = copyTree(getBody(c.graph, s))
-      dbgIf c.generics.len, s, "D20210901T202713", oldPrc, oldPrc.typ, s.typ
       instantiateBody(c, n, oldPrc.typ.n, oldPrc, s)
       closeScope(c)
       popInfoContext(c.config)

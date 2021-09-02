@@ -527,14 +527,14 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var typ: PType = nil
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
-      dbgIf typ, ?.typ.kind
+      # dbgIf typ, ?.typ.kind
 
     var typFlags: TTypeAllowedFlags
 
     var def: PNode = c.graph.emptyNode
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {})
-      dbgIf def, a, a[^1], def.kind, def.typ
+      # dbgIf def, a, a[^1], def.kind, def.typ
 
       if def.kind in nkSymChoices and def[0].typ.skipTypes(abstractInst).kind == tyEnum:
         errorSymChoiceUseQualifier(c, def)
@@ -1849,10 +1849,8 @@ proc isCompilerPoc(c: PContext, s: PSym, n: PNode): bool =
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
-  # dbgIf n, kind
   result = semProcAnnotation(c, n, validPragmas)
   if result != nil:
-    # dbgIf()
     return result
   result = n
   checkMinSonsLen(n, bodyPos + 1, c.config)
@@ -1868,10 +1866,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n[namePos] = newSymNode(s)
   of nkSym:
     s = n[namePos].sym
-    # dbgIf s, s.flags, c.module, s.owner
-    # PRTEMP
     s.owner = c.getCurrOwner
-    # dbgIf s, s.flags, c.module, s.owner, c.getCurrOwner
   else:
     s = semIdentDef(c, n[namePos], kind)
     n[namePos] = newSymNode(s)
@@ -1887,8 +1882,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   s.ast = n
   s.options = c.config.options
   #s.scope = c.currentScope
-  # dbgIf n, s, s.flags, c.module, s.owner
-  # dbgIf getStacktrace()
 
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
@@ -1903,12 +1896,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if isAnon: (nil, false)
       else: searchForProc(c, declarationScope, s, isCompilerProc = true)
     if proto2 != nil:
-      dbgIf proto2, proto2.flags
+      # dbgIf proto2, proto2.flags
       if sfCompilerProc in proto2.flags or sfLazyForwardRequested in proto2.flags:
         ret = true
     if ret:
       status.needDeclaration = true
-    dbgIf ret, proto2, s, status.needDeclaration
+    # dbgIf ret, proto2, s, status.needDeclaration
     if isAnon:
       #[
       `foo(proc()=discard)` is similar to:
@@ -1981,7 +1974,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   var (proto, comesFromShadowScope) =
       if isAnon: (nil, false)
       else: searchForProc(c, declarationScope, s)
-  dbgIf proto, s, s.flags
+  # dbgIf proto, s, s.flags
   if proto == nil and sfForward in s.flags and sfLazy notin s.flags and n[bodyPos].kind != nkEmpty:
     ## In cases such as a macro generating a proc with a gensymmed name we
     ## know `searchForProc` will not find it and sfForward will be set. In
@@ -1994,7 +1987,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     ## See the "doubly-typed forward decls" case in tmacros_issues.nim
     proto = s
   let hasProto = proto != nil
-  dbgIf hasProto, s == proto
+  # dbgIf hasProto, s == proto
 
   # set the default calling conventions
   case s.kind
@@ -2134,7 +2127,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextSymId c.idgen, nil, n.info))
 
         openScope(c)
-        dbgIf c.module, s
         n[bodyPos] = semGenericStmt(c, n[bodyPos])
         closeScope(c)
         if s.magic == mNone:
@@ -2169,9 +2161,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   elif isTopLevel(c) and s.kind != skIterator and s.typ.callConv == ccClosure:
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
 proc determineTypeOne(c: PContext, s: PSym) =
-  # dbgIf s.flags, s.typ, s
-
-  # dbgIf s, s.flags
   # PRTEMP because of prior processing might affect this?
   if s.typ != nil: return
   if sfLazy notin s.flags: return # PRTEMP
@@ -2215,12 +2204,12 @@ proc determineType(c: PContext, s: PSym) =
   let lcontext = c.graph.symLazyContext[s.id]
   var c2 = PContext(lcontext.ctxt)
   doAssert c2 != nil
-  dbgIf c.module, c2.module, s, "retrieve"
+  # dbgIf c.module, c2.module, s, "retrieve"
   let old = c2.currentScope
-  dbgIf old == lcontext.scope
-  dbgIf getStacktrace()
-  debugScopesIf old
-  debugScopesIf lcontext.scope
+  # dbgIf old == lcontext.scope
+  # dbgIf getStacktrace()
+  # debugScopesIf old
+  # debugScopesIf lcontext.scope
   c2.currentScope = lcontext.scope
 
   # TODO: which is better?
@@ -2236,17 +2225,17 @@ proc determineType(c: PContext, s: PSym) =
         candidates.add s2
   candidates = candidates.sortedByIt(it.id)
     # to ensure that fwd declarations are processed before implementations
-  dbgIf candidates.len, candidates, s, c.module
+  # dbgIf candidates.len, candidates, s, c.module
   for s2 in candidates:
     determineTypeOne(c2, s2)
-  debugScopesIf old
-  debugScopesIf c2.currentScope
+  # debugScopesIf old
+  # debugScopesIf c2.currentScope
   c2.currentScope = old
 
   # c2.p = pBaseOld
   popProcCon(c2)
 
-  dbgIf c.module, c2.module, s, "retrieve.done"
+  # dbgIf c.module, c2.module, s, "retrieve.done"
 
 proc determineType2*(c: PContext, s: PSym) {.exportc.} =
   if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR

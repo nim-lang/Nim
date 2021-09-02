@@ -321,7 +321,6 @@ proc cmpCandidates*(a, b: TCandidate): int =
     # xxx check if correct
     if fn1(a) and fn2(b): result = -1
     elif fn1(b) and fn2(a): result = 1
-    # dbgIf a.calleeSym.flags, b.calleeSym.flags, a.calleeSym, b.calleeSym.flags, result
 
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   if arg.kind in nkSymChoices:
@@ -2225,13 +2224,10 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     for i in 0..<arg.len:
       if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
                              skIterator, skMacro, skTemplate, skEnumField}:
-        # dbgIf arg[i].sym, arg[i], i, arg[i].sym.typ, arg[i].sym.flags
-        dbgIf i, arg[i].sym, arg[i].sym.flags
         determineType2(c, arg[i].sym) # PRTEMP D20210831T155116
         copyCandidate(z, m)
         z.callee = arg[i].typ
-        if z.callee == nil:
-          dbgIf i, arg[i], f, a, arg, argOrig, arg[i].sym, arg[i].sym.typ, arg[i].sym.flags, arg.typ, arg.len
+        assert z.callee != nil, $(arg[i].sym, i, ) # TODO: the problem is upstream
         if tfUnresolved in z.callee.flags: continue
         z.calleeSym = arg[i].sym
         # XXX this is still all wrong: (T, T) should be 2 generic matches

@@ -206,12 +206,10 @@ proc semGenericStmt(c: PContext, n: PNode,
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
     var dummy: bool
     result = fuzzyLookup(c, n, flags, ctx, dummy)
-    dbgIf result, n, c.module
   of nkSym:
     let a = n.sym
     let b = getGenSym(c, a)
     if b != a: n.sym = b
-    dbgIf a, b
   of nkEmpty, succ(nkSym)..nkNilLit, nkComesFrom:
     # see tests/compile/tgensymgeneric.nim:
     # We need to open the gensym'ed symbol again so that the instantiation
@@ -232,8 +230,6 @@ proc semGenericStmt(c: PContext, n: PNode,
     checkMinSonsLen(n, 1, c.config)
     let fn = n[0]
     var s = qualifiedLookUp(c, fn, {})
-    # if s!=nil and s.typ == nil:
-    #   dbg s, s.flags # PRTEMP
     if s == nil and
         {withinMixin, withinConcept}*flags == {} and
         fn.kind in {nkIdent, nkAccQuoted} and

@@ -1396,7 +1396,6 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
   if s != nil:
-    dbgIf s.flags, s.kind
     if s.kind in OverloadableSyms:
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym: result = semSym(c, n, s, flags)
@@ -1415,13 +1414,11 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   if ty.kind == tyTypeDesc:
     if ty.base.kind == tyNone:
-      dbgIf()
       # This is a still unresolved typedesc parameter.
       # If this is a regular proc, then all bets are off and we must return
       # tyFromExpr, but when this happen in a macro this is not a built-in
       # field access and we leave the compiler to compile a normal call:
       if getCurrOwner(c).kind != skMacro:
-        dbgIf()
         n.typ = makeTypeFromExpr(c, n.copyTree)
         return n
       else:
@@ -2799,9 +2796,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     defer:
       if isCompilerDebug():
         echo ("<", c.config$n.info, n, ?.result.typ)
-  # dbgIf n, n.kind, flags
-  # defer:
-  #   dbgIf result
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
@@ -2819,17 +2813,13 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
-    dbgIf s, s.kind
     # PRTEMP : determineType(c, sym) inside qualifiedLookUp?
     determineType2(c, s)
-    dbgIf s, s.kind
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
       #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)
-      dbgIf result, result.kind
-      debug2 result
       if result.kind == nkSym:
         markIndirect(c, result.sym)
         # if isGenericRoutine(result.sym):
@@ -2848,7 +2838,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, n.sym, flags)
-    dbgIf n, flags, n.sym, n.sym.kind, n.sym.flags, result.typ, n.sym.typ
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:

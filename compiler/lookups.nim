@@ -680,15 +680,6 @@ proc initOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
 
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   result = initOverloadIterImpl(o, c, n)
-  defer:
-    dbgIf result, n
-    if result!=nil:
-      if result.name.s == "fnAux":
-        var gcount{.global.}: int
-        gcount.inc
-        if gcount == 1:
-          gcount.inc
-          dbgIf getStacktrace()
   while true:
     if result == nil:
       break
