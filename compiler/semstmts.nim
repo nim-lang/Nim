@@ -529,14 +529,12 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var typ: PType = nil
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
-      # dbgIf typ, ?.typ.kind
 
     var typFlags: TTypeAllowedFlags
 
     var def: PNode = c.graph.emptyNode
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {})
-      # dbgIf def, a, a[^1], def.kind, def.typ
 
       if def.kind in nkSymChoices and def[0].typ.skipTypes(abstractInst).kind == tyEnum:
         errorSymChoiceUseQualifier(c, def)
@@ -1852,8 +1850,7 @@ proc isCompilerPoc(c: PContext, s: PSym, n: PNode): bool =
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
   result = semProcAnnotation(c, n, validPragmas)
-  if result != nil:
-    return result
+  if result != nil: return result
   result = n
   checkMinSonsLen(n, bodyPos + 1, c.config)
 
@@ -1879,6 +1876,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addInterfaceOverloadableSymAt(c, c.currentScope, s)
         s.flags.incl sfForward
         return
+
   assert s.kind in skProcKinds
 
   s.ast = n
@@ -1906,16 +1904,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         ret = true
     if ret:
       status.needDeclaration = true
-    # dbgIf ret, proto2, s, status.needDeclaration
     if isAnon:
-      #[
-      `foo(proc()=discard)` is similar to:
-
-      proc tmp()=discard
-      foo(tmp)
-
-      so we semcheck anon procs; but that we could restrict to semchecking just declaration
-      ]#
+      # `foo(proc()=discard)` is similar to: `proc tmp()=discard; foo(tmp)`
+      # so we semcheck anon procs; but that we could restrict to semchecking just declaration
       status.needDeclaration = true
     if not status.needDeclaration:
       # PRTEMP
@@ -1925,16 +1916,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addInterfaceOverloadableSymAt(c, declarationScope, s)
       else:
         addInterfaceDeclAt(c, declarationScope, s)
-      # if isCompilerDebug():
-      #   dbgIf "scopes", s
-      #   debugScopes(c, limit = 10, max = 20)
       let lcontext = c.graph.symLazyContext[s.id]
       lcontext.ctxt = c
       lcontext.scope = c.currentScope # TODO: needed?
       lcontext.pBase = c.p
-
-      lcontext.optionStackEntry = c.optionStack[^1] # CHECKME; can it be empty?
-
+      lcontext.optionStackEntry = c.optionStack[^1]
       return result
 
   pushOwner(c, s)
@@ -1982,7 +1968,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   var (proto, comesFromShadowScope) =
       if isAnon: (nil, false)
       else: searchForProc(c, declarationScope, s)
-  # dbgIf proto, s, s.flags
   if proto == nil and sfForward in s.flags and sfLazy notin s.flags and n[bodyPos].kind != nkEmpty:
     ## In cases such as a macro generating a proc with a gensymmed name we
     ## know `searchForProc` will not find it and sfForward will be set. In
@@ -1995,7 +1980,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     ## See the "doubly-typed forward decls" case in tmacros_issues.nim
     proto = s
   let hasProto = proto != nil
-  # dbgIf hasProto, s == proto
 
   # set the default calling conventions
   case s.kind
@@ -2011,7 +1995,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       # in this case we're either a forward declaration or we're an impl without
       # a forward decl. We set the calling convention or will be set during
       # pragma analysis further down.
-      s.typ.callConv = lastOptionEntry(c).defaultCC # PRTEMP: for importc ?
+      s.typ.callConv = lastOptionEntry(c).defaultCC
 
   if not hasProto and sfGenSym notin s.flags and sfLazy notin s.flags: #and not isAnon:
     if s.kind in OverloadableSyms:
@@ -2019,19 +2003,15 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     else:
       addInterfaceDeclAt(c, declarationScope, s)
 
-  # dbgIf "D20210831T114053", s, s.flags, hasProto
   if sfLazy in s.flags:
     s.flags.excl sfLazy
-    # if hasProto:
-    #   dbgIf proto, proto.flags, proto == s
     if not hasProto:
       s.flags.excl sfForward
       s.flags.incl sfLazyForwardRequested
     elif proto != s:
       s.lazyDecl = proto
 
-  pragmaCallable(c, s, n, validPragmas)
-  # PRTEMP after here, sfForward => sfImportc
+  pragmaCallable(c, s, n, validPragmas) # after here, things like sfForward can be transformed into sfImportc
 
   if not hasProto:
     implicitPragmas(c, s, n.info, validPragmas)
@@ -2274,8 +2254,7 @@ proc semIterator(c: PContext, n: PNode): PNode =
   var s = result[namePos].sym
   var t = s.typ
   if t == nil:
-    # PRTEMP
-    # lazyVisit(c.graph, sym).needDeclaration = true
+    # PRTEMP: check lazy
     return result
   if t[0] == nil and s.typ.callConv != ccClosure:
     localError(c.config, n.info, "iterator needs a return type")
