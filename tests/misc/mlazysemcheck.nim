@@ -1,13 +1,10 @@
-discard """
-  matrix: "-d:case_noimports; -d:case4; -d:case_stdlib ; -d:case_import1; -d:case_cyclic; -d:case_perf"
-"""
 #[
+## notes
+see main test: `tlazysemcheck`
 
 ## TODO
 * support `from a import b` (`import a` already works) in presence of cyclic deps
   which would mean importing a lazy symbol.
-
-PRTEMP: move to tlazysemcheck otherwise tests won't run?
 ]#
 
 {.define(nimLazySemcheck).}
@@ -291,8 +288,6 @@ elif defined case_perf:
   example showing perf for lots of imports
   ]#
   import std/[strutils, os, times, enumutils, browsers]
-  echo 1
-
 
 elif defined case_bug1:
   #[
