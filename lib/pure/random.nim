@@ -670,19 +670,7 @@ when not defined(standalone):
                 break
 
           if not result.isValid:
-            # When 2 processes executed at same time on different machines,
-            # `result` can still have same value.
-            let
-              pid = getCurrentProcessId()
-              t = getMonoTime().ticks
-            result.a0 = pid.hash().Ui
-            result.a1 = t.hash().Ui
-            if not result.isValid:
-              result.a0 = pid.Ui
-              result.a1 = t.Ui
-
-          if not result.isValid:
-            result = DefaultRandSeed
+            quit("Failed to initializes baseState in random module as sysrand.urandom doesn't work.")
 
       when compileOption("threads"):
         baseSeedLock.withLock:
