@@ -2623,9 +2623,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
      nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt,
      nkMixinStmt, nkBindStmt: discard
   of nkIteratorDef:
-    # PRTEMP sfForward, sfLazy, sfLazySemcheckInprogress; test; nim r -b:js tests/stdlib/toptions.nim
-    # if n[0].sym.typ == nil:
-    #   dbgIf n[0].sym, n[0].sym.flags, n[0], n, p.config$n[0].info
+    # PRTEMP: sfLazy for for nim r -b:js -d:nimLazySemcheckAfterSystem tests/stdlib/toptions.nim
     if sfLazy notin n[0].sym.flags and n[0].sym.typ.callConv == TCallingConvention.ccClosure:
       globalError(p.config, n.info, "Closure iterators are not supported by JS backend!")
   of nkPragma: genPragma(p, n)
