@@ -1929,6 +1929,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       lcontext.ctxt = c
       lcontext.scope = c.currentScope # TODO: needed?
       lcontext.pBase = c.p
+
+      lcontext.optionStackEntry = c.optionStack[^1] # CHECKME; can it be empty?
+
       return result
 
   pushOwner(c, s)
@@ -2162,6 +2165,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       result.typ = makeVarType(c, result.typ, tyOwned)
   elif isTopLevel(c) and s.kind != skIterator and s.typ.callConv == ccClosure:
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
+
 proc determineTypeOne(c: PContext, s: PSym) =
   # PRTEMP because of prior processing might affect this?
   if s.typ != nil: return
@@ -2186,7 +2190,13 @@ proc determineTypeOne(c: PContext, s: PSym) =
   if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR; do we even need this side channel or can we use a sf flag?
     lazyVisit(c.graph, s).needDeclaration = true
   c.pushOwner(s.owner) # c.getCurrOwner() would be wrong (it's global)
+  let lcontext = c.graph.symLazyContext[s.id]
+
+  # pushOptionEntry()
+  # c.optionStack.add(result)
+  c.optionStack.add(lcontext.optionStackEntry.POptionEntry)
   discard semProcAux(c, s.ast, s.kind, validPragmas)
+  discard c.optionStack.pop
   c.popOwner()
 
 proc determineType(c: PContext, s: PSym) =

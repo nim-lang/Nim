@@ -112,7 +112,10 @@ type
     pBase*: ref TProcConBase
     needDeclaration*: bool
     needBody*: bool
+    # optionStackEntry*: POptionEntry # PRTEMP; just last elem? or index? etc
+    optionStackEntry*: ref TPOptionEntryBase # PRTEMP; just last elem? or index? etc
 
+  TPOptionEntryBase* = object of RootObj
   TProcConBase* = object of RootObj
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator

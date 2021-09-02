@@ -27,10 +27,10 @@ template chk(a: auto) =
 
 when defined case_noimports:
   # fwd proc + impl proc without `*` in impl
-  proc fn1*(): int
-  proc fn1: int = 2
-  static: doAssert fn1() == 2
-  doAssert fn1() == 2
+  proc gfn1*(): int
+  proc gfn1: int = 2
+  static: doAssert gfn1() == 2
+  doAssert gfn1() == 2
 
   block: # out of order
     proc fn1 =
@@ -104,15 +104,95 @@ when defined case_noimports:
     proc fn1(): int
     proc fn1(): int = 1
     const z1 = fn1()
-    type A = proc(): int
-    # type T = type(fn1)
-    # echo T # BUG: PRTEMP None
-    # doAssert type(fn1) is A # BUG: Error: internal error: genMagicExpr: mIs
     doAssert type(fn1()) is int
+
+  block:
+    proc fn1(): int
+    proc fn1(): int = 1
+    type T = type(fn1)
+    var a: T
+    doAssert type(fn1) is proc
+
+  block:
+    # test a case where a generic `foo` semcheck triggers another semcheck that in turns
+    # calls `foo`
+    proc foo[T](a: T) =
+      var b: T
+      type T2 = typeof(bar())
+    proc bar() =
+      foo(1)
+    foo(1)
+
+  block:
+    # variation on this
+    proc foo[T](a: T) =
+      var b: T
+      when T is string:
+        static:
+          bar()
+    proc bar() =
+      foo(1.5)
+    foo(1)
+
+  block: # compiles
+    block:
+      proc foo[T](a: T) =
+        var b: T
+        const z1 = compiles(bar(""))
+        const z2 = compiles(bar(1.0))
+        doAssert not z1
+        doAssert z2
+      proc bar(a: float) =
+        foo(1)
+      foo(1)
+    block:
+      proc fn(a: int) = discard
+      proc fn2(a: int) = discard
+      block:
+        doAssert compiles(fn(1))
+        doAssert not compiles(fn(""))
+        doAssert not compiles(fn_nonexistent(1))
+        block:
+          proc fn3(a: int) = discard
+          doAssert compiles(fn3(1))
+        doAssert not compiles(fn3(1))
+
+  block: # a regression test involving fwd declared procs
+    block:
+      proc fn1(): int
+      proc fn1(): int = discard
+      let z1 = fn1()
+    block:
+      proc fn1(): int
+      let z1 = fn1()
+      proc fn1(): int = discard
+    block:
+      proc fn1(): int
+      proc fn1(): int = discard
+      discard fn1()
+    block:
+      proc fn1(): int
+      discard fn1()
+      proc fn1(): int = discard
+    block:
+      proc fn1(): int = discard
+      let z1 = fn1
+    block:
+      proc fn1(): int
+      proc fn1(): int = discard
+      let z1 = fn1
+    block:
+      proc fn1(): int
+      proc fn1(): int = discard
+      const z1 = fn1
+    block:
+      proc fn1(): int
+      proc fn1(): int = discard
+      var z1: type(fn1)
 
   chk "fn2\n"
 
-elif defined case4:
+elif defined case_reordering:
   import mlazysemcheck_c
   from mlazysemcheck_b import b1
 
@@ -170,38 +250,6 @@ iterator
 20
 """
 
-elif defined case_stdlib:
-  #[
-  WAS: case7
-  ]#
-  import strutils
-  doAssert repeat("ab", 3) == "ababab"
-  import algorithm
-  doAssert isSorted([10,11,12])
-  doAssert not isSorted([10,11,12, 5])
-  doAssert @[1,4,2].sorted == @[1,2,4]
-
-  import algorithm, math, strutils
-  doAssert "abCd".toUpper == "ABCD"
-  import strutils
-  doAssert "abCd".toLower == "abcd"
-  doAssert "abCd".repeat(3) == "abCdabCdabCd"
-  doAssert not isNaN(3.4)
-  doAssert floorDiv(17,4) == 4
-
-  import os
-  doAssert ("ab" / "cd" / "ef").endsWith("ef")
-
-  doAssert 1.5 mod 1.6 == 1.5
-
-  import options, times
-  # BUG xxx PRTEMP
-  # Error: internal error: getTypeDescAux(tyFromExpr)
-  when false:
-    let t = now()
-    let t2 = now()
-    doAssert t2 > t
-
 elif defined case_import1:
   import mlazysemcheck_b
   doAssert 3.sorted2 == 6
@@ -217,6 +265,27 @@ elif defined case_import1:
   fn7(1)
   fn8(1)
   fn9(1)
+
+  block: # a regression test
+    type Foo = int
+    proc bar(a: Foo)
+    proc fun[T](a: T)
+    proc fun[T](a: T) =
+      const b = compiles(bar(1))
+    proc gun[T](b: T) =
+      var a: Foo
+      fun(a)
+    proc bar(a: Foo) =
+      gun(1)
+    fun("")
+
+  block:
+    fnProcParamDefault1a()
+    fnProcParamDefault1b()
+    when false: # xxx bug D20210831T182524
+      fnProcParamDefault1c()
+      fnProcParamDefault1()
+      fnProcParamDefault2()
 
 elif defined case_cyclic:
   #[
@@ -282,6 +351,116 @@ elif defined case_cyclic:
   doAssert ga(2) == 134
   doAssert ga(3) == 700
 
+elif defined case_stdlib:
+  import strutils, algorithm
+  block:
+    doAssert repeat("ab", 3) == "ababab"
+    doAssert isSorted([10,11,12])
+    doAssert not isSorted([10,11,12, 5])
+    doAssert @[1,4,2].sorted == @[1,2,4]
+
+  import algorithm, math, strutils
+
+  block:
+    doAssert "abCd".toUpper == "ABCD"
+    doAssert "abCd".toLower == "abcd"
+    doAssert "abCd".repeat(3) == "abCdabCdabCd"
+    doAssert not isNaN(3.4)
+    doAssert floorDiv(17,4) == 4
+
+  import os
+
+  block:
+    doAssert ("ab" / "cd" / "ef").endsWith("ef")
+    doAssert 1.5 mod 1.6 == 1.5
+
+  import std/jsonutils
+  import std/json
+  block:
+    let a = "abc"
+    var a2: type(a)
+    fromJson(a2, a.toJson)
+    doAssert a2 == a
+
+  import options, times
+
+  block:
+    let t = now()
+    let t2 = now()
+    doAssert t2 > t
+
+elif defined case_stdlib_imports:
+  #[
+  from tests/test_nimscript.nims, minus 1 module, see below
+  ]#
+  import std/[
+  # Core:
+  bitops, typetraits, lenientops, macros, volatile,
+  # fails: typeinfo, endians
+  # works but shouldn't: cpuinfo, rlocks, locks
+
+  # Algorithms:
+  algorithm, sequtils,
+
+  # Collections:
+  critbits, deques, heapqueue, intsets, lists, options, sets,
+  sharedlist, tables,
+  # fails: sharedtables
+
+  # Strings:
+  editdistance, wordwrap, parseutils, ropes,
+  pegs, punycode, strformat, strmisc, strscans, strtabs,
+  strutils, unicode, unidecode,
+  # works but shouldn't: cstrutils, encodings
+
+  # Time handling:
+  # fails: monotimes, times
+  # but times.getTime() implemented for VM
+
+  # Generic operator system services:
+  os, streams,
+  # fails: distros, dynlib, marshal, memfiles, osproc, terminal
+
+  # Math libraries:
+  complex, math, mersenne, random, rationals, stats, sums,
+  # works but shouldn't: fenv
+
+  # Internet protocols:
+  # httpcore, mimetypes, uri,
+  mimetypes, uri,
+  # fails: asyncdispatch, asyncfile, asyncftpclient, asynchttpserver,
+  # asyncnet, cgi, cookies, httpclient, nativesockets, net, selectors, smtp
+  # works but shouldn't test: asyncstreams, asyncfutures
+
+  # Threading:
+  # fails: threadpool
+
+  # Parsers:
+  htmlparser, json, lexbase, parsecfg, parsecsv, parsesql, parsexml,
+  parseopt,
+
+  # XML processing:
+  xmltree, xmlparser,
+
+  # Generators:
+  htmlgen,
+
+  # Hashing:
+  base64, hashes,
+  # fails: md5, oids, sha1
+
+  # Miscellaneous:
+  colors, sugar, varints,
+  # fails: browsers, coro, logging (times), segfaults, unittest (uses methods)
+
+  # Modules for JS backend:
+  # fails: asyncjs, dom, jsconsole, jscore, jsffi,
+
+  # Unlisted in lib.html:
+  decls, compilesettings, with, wrapnils
+  ]
+  # import std/httpcore # see case_bug2
+
 elif defined case_perf:
   #[
   TODO:
@@ -298,29 +477,26 @@ elif defined case_bug1:
   proc fn()
   fn()
 
+elif defined case_bug2: # xxx bug
+  #[
+  the only module from tests/test_nimscript.nims that can't be imported, giving: SIGSEGV
+  ]#
+  import std/httpcore
+
 # scratch below
 
 elif defined case26:
   #[
   D20210831T151342
-  -d:nimLazySemcheck
-  broken bc of compiles:
+  -d:nimLazySemcheck (works if nimLazySemcheck passed after system is processed)
+  broken bc of compiles ?
   prints:
   2
   (...,)
-
   would be fixed if not using compiles
   ]#
   import mlazysemcheck_b
   fn(2)
-  # EDIT: how com works now?
-
-elif defined case27d:
-  #[
-  BUG D20210831T182524:here SIGSEGV
-  ]#
-  import mlazysemcheck_b
-  llStreamOpenStdIn()
 
 else:
   static: doAssert false

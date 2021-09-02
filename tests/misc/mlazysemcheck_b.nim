@@ -1,4 +1,4 @@
-when defined case4:
+when defined case_reordering:
   const c4* = 123
   proc b3*()=
     static: echo " in b3 ct"
@@ -87,6 +87,31 @@ when defined case_import1:
   fn9(1)
   proc fn9(a: int) = discard
 
+  when true:
+    # works:
+    proc fnProcParamDefault1a*(r = fn10a) = discard
+    proc fn10a(): int = discard
+
+    proc fn10b(): int = discard
+    proc fnProcParamDefault1b*(r = fn10b) = discard
+
+    when true:
+      # xxx bug using these would fail, because of the fwd decl
+  
+      proc fn10c(): int
+      proc fn10c(): int = discard
+      if false: discard fn10c()
+      proc fnProcParamDefault1c*(r = fn10c) = discard
+
+      proc fn10(): int
+      type Fn10 = proc(): int
+      proc fnProcParamDefault1*(r: Fn10 = fn10) = discard
+      proc fn10(): int = discard
+
+      proc fn11(): int
+      proc fnProcParamDefault2*(r = fn11) = discard
+      proc fn11(): int = discard
+
 when defined case_cyclic:
   import mlazysemcheck
   proc fn2*(s: var string, a: int) =
@@ -136,15 +161,3 @@ when defined case26:
   proc fn*(a: int)=
     echo a # ok
     echo (a,) # hits bug with compiles
-
-when defined case27d:
-  proc fnAux(): int
-  type TLLRepl = proc(): int
-  proc llStreamOpenStdIn*(r: TLLRepl = fnAux) = # SIGSEGV
-  # proc llStreamOpenStdIn*(r = fnAux) = # Error: invalid type: 'None' in this context: 'proc (r: None)' for proc
-    discard
-  proc fnAux(): int = discard
-  # let z = fnAux
-  # discard fnAux()
-  # discard fnAux
-  # let z = fnAux # see D20210831T180635
