@@ -1847,6 +1847,10 @@ proc isCompilerProc(c: PContext, s: PSym, n: PNode): bool =
         if ai.ident == getIdent(c.cache, a):
           return true
 
+proc isLazySemcheck*(c: PContext): bool =
+  # could also depend on some --experimental:lazysemcheck flag
+  c.config.isDefined("nimLazySemcheck")
+
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
   result = semProcAnnotation(c, n, validPragmas)
@@ -1887,7 +1891,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   # where the proc was declared
   let declarationScope = c.currentScope
 
-  if c.config.isDefined("nimLazySemcheck") and s.kind notin {skConverter}:
+  if c.isLazySemcheck and s.kind notin {skConverter}:
     # for converter, we have to at least have `needDeclaration` otherwise there would
     # be no way to guess when to attempt to apply a converter; but we could refine this
     # by using `needDeclaration: true, needBody: false`
@@ -2160,14 +2164,17 @@ proc getValidPragmas(kind: TSymKind, n: PNode): set[TSpecialWord] =
   of skMethod: methodPragmas
   of skConverter: converterPragmas
   of skMacro: macroPragmas
-  else: doAssert false, $s.kind # support as needed
+  else:
+    doAssert false, $kind # support as needed
+    set[TSpecialWord].default
 
 proc determineTypeOne(c: PContext, s: PSym) =
   if s.typ != nil or sfLazy notin s.flags: return
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$s.ast.info & " " & $(s, s.owner, s.flags, c.module)
   let validPragmas = getValidPragmas(s.kind, s.ast)
-  if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR; do we even need this side channel or can we use a sf flag?
+  if c.isLazySemcheck:
+    # PRTEMP FACTOR; do we even need this side channel or can we use a sf flag?
     lazyVisit(c.graph, s).needDeclaration = true
   c.pushOwner(s.owner) # c.getCurrOwner() would be wrong (it's derived globally from ConfigRef)
   let lcontext = c.graph.symLazyContext[s.id]
@@ -2218,7 +2225,7 @@ proc determineType(c: PContext, s: PSym) =
   popProcCon(c2)
 
 proc determineType2*(c: PContext, s: PSym) {.exportc.} =
-  if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR
+  if c.isLazySemcheck: # PRTEMP FACTOR
     # TODO: instead, just set sfLazy flag?
     lazyVisit(c.graph, s).needDeclaration = true
   determineType(c, s)
