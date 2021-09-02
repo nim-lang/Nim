@@ -51,7 +51,8 @@ proc semGenericStmtScope(c: PContext, n: PNode,
   closeScope(c)
 
 template macroToExpand(s): untyped =
-  s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfAllUntyped in s.flags)
+  # s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfAllUntyped in s.flags)
+  s.kind in {skMacro, skTemplate} and sfLazySemcheckInprogress notin s.flags and (s.typ.len == 1 or sfAllUntyped in s.flags)
 
 template macroToExpandSym(s): untyped =
   sfCustomPragma notin s.flags and s.kind in {skMacro, skTemplate} and
@@ -238,9 +239,9 @@ proc semGenericStmt(c: PContext, n: PNode,
         fn.kind in {nkIdent, nkAccQuoted} and
         considerQuotedIdent(c, fn).id notin ctx.toMixin:
       errorUndeclaredIdentifier(c, n.info, fn.renderTree)
-    if s!=nil:
-      # PRTEMP: make this s=determineType2(c, s) ?
-      determineType2(c, s)
+    # if s!=nil:
+    #   # PRTEMP: make this s=determineType2(c, s) ?
+    #   determineType2(c, s)
     var first = int ord(withinConcept in flags)
     var mixinContext = false
     if s != nil:

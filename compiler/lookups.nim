@@ -810,8 +810,8 @@ proc nextOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     if result != nil and result.kind == skStub: loadStub(result)
 
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
-  defer:
-    dbgIf result, n, ?.result.flags, ?.result.kind
+  # defer:
+  #   dbgIf result, n, ?.result.flags, ?.result.kind
   while true:
     result = nextOverloadIterImpl(o, c, n)
     if result == nil:
