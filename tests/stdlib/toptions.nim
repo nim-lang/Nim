@@ -2,8 +2,8 @@ discard """
   targets: "c js"
 """
 
-{.define(nimCompilerDebug).}
 import std/[json, options]
+
 
 # RefPerson is used to test that overloaded `==` operator is not called by
 # options. It is defined here in the global scope, because otherwise the test
