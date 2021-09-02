@@ -107,15 +107,6 @@ proc localSearchInScope*(c: PContext, s: PIdent): PSym =
     scope = scope.parent
     result = strTableGet(scope.symbols, s)
 
-# iterator localSearchInScope2*(c: PContext, s: PIdent): PSym =
-#   var scope = c.currentScope
-#   while true:
-#     result = strTableGet(scope.symbols, s)
-#     while result == nil and scope.isShadowScope:
-#       # We are in a shadow scope, check in the parent too
-#       scope = scope.parent
-#       result = strTableGet(scope.symbols, s)
-
 proc initIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule; name: PIdent;
                    g: ModuleGraph): PSym =
   result = initModuleIter(ti, g, im.m, name)
@@ -213,10 +204,8 @@ proc debugScopes*(conf: ConfigRef, scope: PScope; limit=0, max = int.high) {.dep
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
         if count >= max: return
-        # echo count, ": ", scope.symbols.data[h].name.s
         let s = scope.symbols.data[h]
         var msg = $count & ": " & $s & $(s.flags, s.owner, s.kind, s.typ)
-        # var msg = $count & ": " & $s & $(s.flags, s.owner, s.kind, s.typ, ?.s.typ.kind)
         if s.ast!=nil:
           msg.add " " & conf$s.ast.info
         echo msg
@@ -297,8 +286,8 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
       # too many 'implementation of X' errors are annoying
       # and slow 'suggest' down:
       if missingImpls == 0:
-        # dbg "skipped:" & getSymRepr(c.config, s, getDeclarationPath=false)
         if false:
+          # PRTEMP
           localError(c.config, s.info, "implementation of '$1' expected" %
               getSymRepr(c.config, s, getDeclarationPath=false))
       inc missingImpls
@@ -682,12 +671,9 @@ proc initOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   result = initOverloadIterImpl(o, c, n)
   while true:
-    if result == nil:
-      break
-    elif result.lazyDecl!=nil:
-      result = nextOverloadIter(o, c, n)
-    else:
-      break
+    if result == nil: break
+    elif result.lazyDecl != nil: result = nextOverloadIter(o, c, n)
+    else: break
 
 proc lastOverloadScope*(o: TOverloadIter): int =
   case o.mode
@@ -802,16 +788,9 @@ proc nextOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     if result != nil and result.kind == skStub: loadStub(result)
 
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
-  # defer:
-  #   dbgIf result, n, ?.result.flags, ?.result.kind
   while true:
     result = nextOverloadIterImpl(o, c, n)
-    if result == nil:
-      break
-    elif result.lazyDecl != nil:
-      discard
-    else:
-      break
+    if result == nil or result.lazyDecl == nil: break
 
 proc pickSym*(c: PContext, n: PNode; kinds: set[TSymKind];
               flags: TSymFlags = {}): PSym =
