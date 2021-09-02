@@ -89,9 +89,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       sym = nextOverloadIter(o, c, headSymbol)
       scope = o.lastOverloadScope
       continue
-    # dbgIf sym, flags, sym.flags, sym.typ
-    determineType2(c, sym) # PRTEMP: now redundant?
-    # dbgIf sym, flags, sym.flags, sym.typ
+    determineType2(c, sym)
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
     if c.currentScope.symbols.counter == counterInitial or syms.len != 0:
       matches(c, n, orig, z)
@@ -547,10 +545,6 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       result.typ = newTypeS(x.fauxMatch, c)
       if result.typ.kind == tyError: incl result.typ.flags, tfCheckedForDestructor
     return
-  # dbgIf finalCallee, finalCallee.owner, finalCallee.typ
-  # dbgIf finalCallee, c.config$finalCallee.ast.info, finalCallee.flags, finalCallee.typ
-  # determineType2(c, finalCallee) # TODO: maybe put determineType2 inside onUse or right after/before? EDIT: already done; EDIT: CHECME?
-  # dbgIf finalCallee, c.config$finalCallee.ast.info, finalCallee.flags, finalCallee.typ
   let gp = finalCallee.ast[genericParamsPos]
   if gp.isGenericParams:
     if x.calleeSym.kind notin {skMacro, skTemplate}:
