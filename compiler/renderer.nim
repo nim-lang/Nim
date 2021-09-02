@@ -325,8 +325,7 @@ proc gcoms(g: var TSrcGen) =
   for i in 0..high(g.comStack): gcom(g, g.comStack[i])
   popAllComs(g)
 
-when not defined(nimLazySemcheck): # PRTEMP
-  proc lsub(g: TSrcGen; n: PNode): int
+proc lsub(g: TSrcGen; n: PNode): int
 proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
