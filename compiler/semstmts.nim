@@ -12,6 +12,8 @@
 
 import tables
 from std/algorithm import sortedByIt
+when defined(nimCompilerStacktraceHints):
+  import std/stackframes
 
 const
   errNoSymbolToBorrowFromFound = "no symbol to borrow from found"

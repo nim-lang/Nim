@@ -215,7 +215,8 @@ proc debugScopes*(conf: ConfigRef, scope: PScope; limit=0, max = int.high) {.dep
         if count >= max: return
         # echo count, ": ", scope.symbols.data[h].name.s
         let s = scope.symbols.data[h]
-        var msg = $count & ": " & $s & $(s.flags, s.owner, s.kind, s.typ, ?.s.typ.kind)
+        var msg = $count & ": " & $s & $(s.flags, s.owner, s.kind, s.typ)
+        # var msg = $count & ": " & $s & $(s.flags, s.owner, s.kind, s.typ, ?.s.typ.kind)
         if s.ast!=nil:
           msg.add " " & conf$s.ast.info
         echo msg
