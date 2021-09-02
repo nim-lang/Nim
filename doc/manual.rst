@@ -4930,7 +4930,7 @@ To override the compiler's side effect analysis a `{.noSideEffect.}`
       echo "test"
 
 **Side effects are usually inferred. The inference for side effects is
-analogous ot the inference for exception tracking.**
+analogous to the inference for exception tracking.**
 
 
 GC safety effect
