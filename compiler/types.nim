@@ -1364,10 +1364,14 @@ type
     efTagsDiffer
     efTagsUnknown
     efLockLevelsDiffer
+    efEffectsDelayed
 
 proc compatibleEffects*(formal, actual: PType): EffectsCompat =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc
+  #if tfEffectSystemWorkaround in actual.flags:
+  #  return efCompat
+
   if formal.n[0].kind != nkEffectList or
      actual.n[0].kind != nkEffectList:
     return efTagsUnknown
@@ -1391,9 +1395,17 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
       # spec requires some exception or tag, but we don't know anything:
       if real.len == 0: return efTagsUnknown
       let res = compatibleEffectsAux(st, real[tagEffects])
-      if not res: return efTagsDiffer
+      if not res:
+        #if tfEffectSystemWorkaround notin actual.flags:
+        return efTagsDiffer
   if formal.lockLevel.ord < 0 or
       actual.lockLevel.ord <= formal.lockLevel.ord:
+
+    for i in 1 ..< min(formal.n.len, actual.n.len):
+      if formal.n[i].sym.flags * {sfEffectsDelayed} != actual.n[i].sym.flags * {sfEffectsDelayed}:
+        result = efEffectsDelayed
+        break
+
     result = efCompat
   else:
     result = efLockLevelsDiffer
@@ -1597,7 +1609,8 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
         msg.add "\n.tag effect is 'any tag allowed'"
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
-
+      of efEffectsDelayed:
+        msg.add "\n.effectsOf annotations differ"
     localError(conf, info, msg)
 
 proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =

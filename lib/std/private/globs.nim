@@ -8,13 +8,18 @@ import os
 when defined(windows):
   from strutils import replace
 
+when defined(nimHasEffectsOf):
+  {.experimental: "strictEffects".}
+else:
+  {.pragma: effectsOf.}
+
 type
   PathEntry* = object
     kind*: PathComponent
     path*: string
 
 iterator walkDirRecFilter*(dir: string, follow: proc(entry: PathEntry): bool = nil,
-    relative = false, checkDir = true): PathEntry {.tags: [ReadDirEffect].} =
+    relative = false, checkDir = true): PathEntry {.tags: [ReadDirEffect], effectsOf: follow.} =
   ## Improved `os.walkDirRec`.
   #[
   note: a yieldFilter isn't needed because caller can filter at call site, without

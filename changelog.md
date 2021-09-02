@@ -427,6 +427,23 @@
 - On embedded devices `malloc` can now be used instead of `mmap` via `-d:nimAllocPagesViaMalloc`.
   This is only supported for `--gc:orc` or `--gc:arc`.
 
+- The effect system was refined and there is a new `.effectsOf` annotation that does
+  explicitly what was previously done implicitly. See the manual for details.
+  To write code that is portable with older Nim versions, use this idiom:
+
+```nim
+
+when defined(nimHasEffectsOf):
+  {.experimental: "strictEffects".}
+else:
+  {.pragma: effectsOf.}
+
+proc mysort(s: seq; cmp: proc(a, b: T): int) {.effectsOf: cmp.}
+
+```
+
+  To enable the new effect system, use --experimental:strictEffects.
+
 
 ## Compiler changes
 

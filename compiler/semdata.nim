@@ -261,7 +261,9 @@ proc getGenSym*(c: PContext; s: PSym): PSym =
   result = s
 
 proc considerGenSyms*(c: PContext; n: PNode) =
-  if n.kind == nkSym:
+  if n == nil:
+    discard "can happen for nkFormalParams/nkArgList"
+  elif n.kind == nkSym:
     let s = getGenSym(c, n.sym)
     if n.sym != s:
       n.sym = s

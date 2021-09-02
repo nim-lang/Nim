@@ -400,9 +400,10 @@ when not defined(nimHasSinkInference):
 include hlo, seminst, semcall
 
 proc resetSemFlag(n: PNode) =
-  excl n.flags, nfSem
-  for i in 0..<n.safeLen:
-    resetSemFlag(n[i])
+  if n != nil:
+    excl n.flags, nfSem
+    for i in 0..<n.safeLen:
+      resetSemFlag(n[i])
 
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
                        s: PSym, flags: TExprFlags): PNode =
