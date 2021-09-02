@@ -1899,7 +1899,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     var ret = isCompilerPoc(c, s, n)
     var (proto2, comesFromShadowScope2) =
       if isAnon: (nil, false)
-      else: searchForProc(c, declarationScope, s, isCompilerProc = true)
+      else: searchForProc(c, declarationScope, s, isLazy = true)
     if proto2 != nil:
       # dbgIf proto2, proto2.flags
       if sfCompilerProc in proto2.flags or sfLazyForwardRequested in proto2.flags:

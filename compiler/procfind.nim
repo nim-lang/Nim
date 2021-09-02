@@ -28,16 +28,16 @@ proc equalGenericParams(procA, procB: PNode): bool =
       if not exprStructuralEquivalent(a.ast, b.ast): return
   result = true
 
-proc searchForProcAux(c: PContext, scope: PScope, fn: PSym, isCompilerProc: bool): PSym =
+proc searchForProcAux(c: PContext, scope: PScope, fn: PSym, isLazy: bool): PSym =
   const flags = {ExactGenericParams, ExactTypeDescValues,
                  ExactConstraints, IgnoreCC}
   var it: TIdentIter
   result = initIdentIter(it, scope.symbols, fn.name)
   while result != nil:
     if result.kind == fn.kind and sfLazy notin result.flags: #and sameType(result.typ, fn.typ, flags):
-      if isCompilerProc:
+      if isLazy:
         #[
-        PRTEMP: RENAME isCompilerProc
+        PRTEMP
         proc f(a: int)
         proc f(a: float)
         f(1) # trigger sfLazyForwardRequested
@@ -47,9 +47,7 @@ proc searchForProcAux(c: PContext, scope: PScope, fn: PSym, isCompilerProc: bool
         D20210830T204927
         ]#
         if sfLazyForwardRequested in result.flags or sfCompilerProc in result.flags:
-          return # compilerProc is like importc, can't overload by params (EDIT: update this comment)
-        else:
-          discard
+          return # some overload was found
       else:
         case equalParams(result.typ.n, fn.typ.n)
         of paramsEqual:
@@ -66,12 +64,12 @@ proc searchForProcAux(c: PContext, scope: PScope, fn: PSym, isCompilerProc: bool
           discard
     result = nextIdentIter(it, scope.symbols)
 
-proc searchForProc*(c: PContext, scope: PScope, fn: PSym, isCompilerProc = false): tuple[proto: PSym, comesFromShadowScope: bool] =
+proc searchForProc*(c: PContext, scope: PScope, fn: PSym, isLazy = false): tuple[proto: PSym, comesFromShadowScope: bool] =
   var scope = scope
-  result.proto = searchForProcAux(c, scope, fn, isCompilerProc)
+  result.proto = searchForProcAux(c, scope, fn, isLazy)
   while result.proto == nil and scope.isShadowScope:
     scope = scope.parent
-    result.proto = searchForProcAux(c, scope, fn, isCompilerProc)
+    result.proto = searchForProcAux(c, scope, fn, isLazy)
     result.comesFromShadowScope = true
 
 when false:
