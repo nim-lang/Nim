@@ -2184,6 +2184,7 @@ proc determineTypeOne(c: PContext, s: PSym) =
     case s.kind
     of skProc: procPragmas
     of skFunc: procPragmas
+    of skMethod: methodPragmas
     of skIterator: iteratorPragmas
     else: {} # PRTEMP
 
