@@ -1053,22 +1053,48 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
         inc(result, it.size)
         it = it.next
 
-  proc getFreeMem(): int =
-    result = allocator.freeMem
-    #sysAssert(result == countFreeMem())
+  when hasThreadSupport:
+    var sharedHeap: MemRegion
+    var heapLock: SysLock
+    initSysLock(heapLock)
 
-  proc getTotalMem(): int = return allocator.currMem
-  proc getOccupiedMem(): int = return allocator.occ #getTotalMem() - getFreeMem()
-  proc getMaxMem*(): int = return getMaxMem(allocator)
+  proc getFreeMem(): int =
+    #sysAssert(result == countFreeMem())
+    when hasThreadSupport and defined(gcDestructors):
+      acquireSys(heapLock)
+      result = sharedHeap.freeMem
+      releaseSys(heapLock)
+    else:
+      result = allocator.freeMem
+
+  proc getTotalMem(): int =
+    when hasThreadSupport and defined(gcDestructors):
+      acquireSys(heapLock)
+      result = sharedHeap.currMem
+      releaseSys(heapLock)
+    else:
+      result = allocator.currMem
+
+  proc getOccupiedMem(): int =
+    when hasThreadSupport and defined(gcDestructors):
+      acquireSys(heapLock)
+      result = sharedHeap.occ
+      releaseSys(heapLock)
+    else:
+      result = allocator.occ #getTotalMem() - getFreeMem()
+
+  proc getMaxMem*(): int =
+    when hasThreadSupport and defined(gcDestructors):
+      acquireSys(heapLock)
+      result = getMaxMem(sharedHeap)
+      releaseSys(heapLock)
+    else:
+      result = getMaxMem(allocator)
 
   when defined(nimTypeNames):
     proc getMemCounters*(): (int, int) = getMemCounters(allocator)
 
   # -------------------- shared heap region ----------------------------------
-  when hasThreadSupport:
-    var sharedHeap: MemRegion
-    var heapLock: SysLock
-    initSysLock(heapLock)
 
   proc allocSharedImpl(size: Natural): pointer =
     when hasThreadSupport:
