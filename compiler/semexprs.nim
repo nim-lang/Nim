@@ -84,12 +84,12 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExprCheck(c, n, flags)
-  dbgIf result, result.typ, result.kind
-  if result.kind == nkSym:
-    dbgIf result.sym, result.sym.flags, result.sym.kind
-  if result.kind == nkClosedSymChoice:
-    # for ai in result:
-    debug2 result
+  # dbgIf result, result.typ, result.kind
+  # if result.kind == nkSym:
+  #   dbgIf result.sym, result.sym.flags, result.sym.kind
+  # if result.kind == nkClosedSymChoice:
+  #   # for ai in result:
+  #   debug2 result
 
   # dbgIf result, result.typ, result.kind, n, flags
 
