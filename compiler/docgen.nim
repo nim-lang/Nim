@@ -1085,8 +1085,8 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
     let actual = s.typ.n[0]
     if actual.len != effectListLen: return
     let real = actual[idx]
-
-    let realLen = if real == nil: 0 else: real.len
+    if real == nil: return
+    let realLen = real.len
     # warning: hack ahead:
     var effects = newNodeI(nkBracket, n.info, realLen)
     for i in 0..<realLen:
