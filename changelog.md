@@ -427,6 +427,9 @@
 - On embedded devices `malloc` can now be used instead of `mmap` via `-d:nimAllocPagesViaMalloc`.
   This is only supported for `--gc:orc` or `--gc:arc`.
 
+- The effect system was refined and there is a new `.effectsOf` annotation that does
+  explicitly what was previously done implicitly. See the manual for details.
+
 
 ## Compiler changes
 

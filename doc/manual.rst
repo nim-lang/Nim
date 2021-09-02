@@ -4776,36 +4776,23 @@ possibly raised exceptions; the algorithm operates on `p`'s call graph:
    raise `system.Exception` (the base type of the exception hierarchy) and
    thus any exception unless `T` has an explicit `raises` list.
    However, if the call is of the form `f(...)` where `f` is a parameter of
-   the currently analyzed routine it is ignored. The call is optimistically
-   assumed to have no effect. Rule 2 compensates for this case.
-2. Every expression of some proc type within a call that is not a call
-   itself (and not nil) is assumed to be called indirectly somehow and thus
+   the currently analyzed routine it is ignored that is marked as `.effectsOf: f`.
+   The call is optimistically assumed to have no effect.
+   Rule 2 compensates for this case.
+2. Every expression `e` of some proc type within a call that is passed to parameter
+   marked as `.effectsOf` is assumed to be called indirectly and thus
    its raises list is added to `p`'s raises list.
 3. Every call to a proc `q` which has an unknown body (due to a forward
-   declaration or an `importc` pragma) is assumed to
+   declaration) is assumed to
    raise `system.Exception` unless `q` has an explicit `raises` list.
+   Procs that are `importc`'ed are assumed to have `.raises: []`, unless explicitly
+   declared otherwise.
 4. Every call to a method `m` is assumed to
    raise `system.Exception` unless `m` has an explicit `raises` list.
 5. For every other call, the analysis can determine an exact `raises` list.
 6. For determining a `raises` list, the `raise` and `try` statements
    of `p` are taken into consideration.
 
-Rules 1-2 ensure the following works:
-
-.. code-block:: nim
-  proc noRaise(x: proc()) {.raises: [].} =
-    # unknown call that might raise anything, but valid:
-    x()
-
-  proc doRaise() {.raises: [IOError].} =
-    raise newException(IOError, "IO")
-
-  proc use() {.raises: [].} =
-    # doesn't compile! Can raise IOError!
-    noRaise(doRaise)
-
-So in many cases a callback does not cause the compiler to be overly
-conservative in its effect analysis.
 
 Exceptions inheriting from `system.Defect` are not tracked with
 the `.raises: []` exception tracking mechanism. This is more consistent with the
@@ -4828,6 +4815,33 @@ And so is:
 The reason for this is that `DivByZeroDefect` inherits from `Defect` and
 with `--panics:on`:option: Defects become unrecoverable errors.
 (Since version 1.4 of the language.)
+
+
+EffectsOf annotation
+--------------------
+
+Rules 1-2 of the exception tracking inference rules (see the previous section)
+ensure the following works:
+
+.. code-block:: nim
+  proc weDontRaiseButMaybeTheCallback(callback: proc()) {.raises: [], effectsOf: callback.} =
+    callback()
+
+  proc doRaise() {.raises: [IOError].} =
+    raise newException(IOError, "IO")
+
+  proc use() {.raises: [].} =
+    # doesn't compile! Can raise IOError!
+    weDontRaiseButMaybeTheCallback(doRaise)
+
+As can be seen from the example, a parameter of type `proc (...)` can be
+annotated as `.effectsOf`. Such a parameter allows for effect polymorphism:
+The proc `weDontRaiseButMaybeTheCallback` raises the exceptions
+that `callback` raises.
+
+So in many cases a callback does not cause the compiler to be overly
+conservative in its effect analysis.
+
 
 
 Tag tracking
@@ -4853,6 +4867,78 @@ also be attached to a proc type. This affects type compatibility.
 
 The inference for tag tracking is analogous to the inference for
 exception tracking.
+
+
+Side effects
+------------
+
+The `noSideEffect` pragma is used to mark a proc/iterator that can have only
+side effects through parameters. This means that the proc/iterator only changes locations that are
+reachable from its parameters and the return value only depends on the
+parameters. If none of its parameters have the type `var`, `ref`, `ptr`, `cstring`, or `proc`,
+then no locations are modified.
+
+In other words, a routine has no side effects if it does not access a threadlocal
+or global variable and it does not call any routine that has a side effect.
+
+It is a static error to mark a proc/iterator to have no side effect if the compiler cannot verify this.
+
+As a special semantic rule, the built-in `debugEcho
+<system.html#debugEcho,varargs[typed,]>`_ pretends to be free of side effects
+so that it can be used for debugging routines marked as `noSideEffect`.
+
+`func` is syntactic sugar for a proc with no side effects:
+
+.. code-block:: nim
+  func `+` (x, y: int): int
+
+
+To override the compiler's side effect analysis a `{.noSideEffect.}`
+`cast` pragma block can be used:
+
+.. code-block:: nim
+
+  func f() =
+    {.cast(noSideEffect).}:
+      echo "test"
+
+**Side effects are usually inferred. The inference for side effects is
+analogous ot the inference for exception tracking.**
+
+
+GC safety effect
+----------------
+
+We call a proc `p` `GC safe`:idx: when it doesn't access any global variable
+that contains GC'ed memory (`string`, `seq`, `ref` or a closure) either
+directly or indirectly through a call to a GC unsafe proc.
+
+**The GC safety property is usually inferred. The inference for GC safety is
+analogous to the inference for exception tracking.**
+
+The `gcsafe`:idx: annotation can be used to mark a proc to be gcsafe,
+otherwise this property is inferred by the compiler. Note that `noSideEffect`
+implies `gcsafe`.
+
+Routines that are imported from C are always assumed to be `gcsafe`.
+
+To override the compiler's gcsafety analysis a `{.cast(gcsafe).}` pragma block can
+be used:
+
+.. code-block:: nim
+
+  var
+    someGlobal: string = "some string here"
+    perThread {.threadvar.}: string
+
+  proc setPerThread() =
+    {.cast(gcsafe).}:
+      deepCopy(perThread, someGlobal)
+
+
+See also:
+
+- `Shared heap memory management <gc.html>`_.
 
 
 
@@ -6373,55 +6459,6 @@ This pragma can also take in an optional warning string to relay to developers.
   proc thing(x: bool) {.deprecated: "use thong instead".}
 
 
-noSideEffect pragma
--------------------
-
-The `noSideEffect` pragma is used to mark a proc/iterator that can have only
-side effects through parameters. This means that the proc/iterator only changes locations that are
-reachable from its parameters and the return value only depends on the
-parameters. If none of its parameters have the type `var`, `ref`, `ptr`, `cstring`, or `proc`,
-then no locations are modified.
-
-It is a static error to mark a proc/iterator to have no side effect if the compiler cannot verify this.
-
-As a special semantic rule, the built-in `debugEcho
-<system.html#debugEcho,varargs[typed,]>`_ pretends to be free of side effects
-so that it can be used for debugging routines marked as `noSideEffect`.
-
-`func` is syntactic sugar for a proc with no side effects:
-
-.. code-block:: nim
-  func `+` (x, y: int): int
-
-
-To override the compiler's side effect analysis a `{.noSideEffect.}`
-`cast` pragma block can be used:
-
-.. code-block:: nim
-
-  func f() =
-    {.cast(noSideEffect).}:
-      echo "test"
-
-When a `noSideEffect` proc has proc params `bar`, whether it can be used inside a `noSideEffect` context
-depends on what the compiler knows about `bar`:
-
-.. code-block:: nim
-    :test: "nim c $1"
-
-  func foo(bar: proc(): int): int = bar()
-  var count = 0
-  proc fn1(): int = 1
-  proc fn2(): int = (count.inc; count)
-  func fun1() = discard foo(fn1) # ok because fn1 is inferred as `func`
-  # func fun2() = discard foo(fn2) # would give: Error: 'fun2' can have side effects
-
-  # with callbacks, the compiler is conservative, ie that bar will have side effects
-  var foo2: type(foo) = foo
-  func main() =
-    discard foo(fn1) # ok
-    # discard foo2(fn1) # now this errors
-
 
 compileTime pragma
 ------------------
@@ -7868,6 +7905,10 @@ collected) heap, and sharing of memory is restricted to global variables. This
 helps to prevent race conditions. GC efficiency is improved quite a lot,
 because the GC never has to stop other threads and see what they reference.
 
+The only way to create a thread is via `spawn` or
+`createThread`. The invoked proc must not use `var` parameters nor must
+any of its parameters contain a `ref` or `closure` type. This enforces
+the *no heap sharing restriction*.
 
 Thread pragma
 -------------
@@ -7881,43 +7922,6 @@ allocated from different (thread-local) heaps.
 A thread proc is passed to `createThread` or `spawn` and invoked
 indirectly; so the `thread` pragma implies `procvar`.
 
-
-GC safety
----------
-
-We call a proc `p` `GC safe`:idx: when it doesn't access any global variable
-that contains GC'ed memory (`string`, `seq`, `ref` or a closure) either
-directly or indirectly through a call to a GC unsafe proc.
-
-The `gcsafe`:idx: annotation can be used to mark a proc to be gcsafe,
-otherwise this property is inferred by the compiler. Note that `noSideEffect`
-implies `gcsafe`. The only way to create a thread is via `spawn` or
-`createThread`. The invoked proc must not use `var` parameters nor must
-any of its parameters contain a `ref` or `closure` type. This enforces
-the *no heap sharing restriction*.
-
-Routines that are imported from C are always assumed to be `gcsafe`.
-To disable the GC-safety checking the `--threadAnalysis:off`:option: command-line
-switch can be used. This is a temporary workaround to ease the porting effort
-from old code to the new threading model.
-
-To override the compiler's gcsafety analysis a `{.cast(gcsafe).}` pragma block can
-be used:
-
-.. code-block:: nim
-
-  var
-    someGlobal: string = "some string here"
-    perThread {.threadvar.}: string
-
-  proc setPerThread() =
-    {.cast(gcsafe).}:
-      deepCopy(perThread, someGlobal)
-
-
-See also:
-
-- `Shared heap memory management <gc.html>`_.
 
 
 Threadvar pragma
