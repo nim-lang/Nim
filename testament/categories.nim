@@ -541,7 +541,7 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string, ta
 proc isJoinableSpec(spec: TSpec): bool =
   # xxx simplify implementation using a whitelist of fields that are allowed to be
   # set to non-default values (use `fieldPairs`), to avoid issues like bug #16576.
-  result = not spec.sortoutput and
+  result = useMegatest and not spec.sortoutput and
     spec.action == actionRun and
     not fileExists(spec.file.changeFileExt("cfg")) and
     not fileExists(spec.file.changeFileExt("nims")) and
