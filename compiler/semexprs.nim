@@ -84,23 +84,6 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExprCheck(c, n, flags)
-  # dbgIf result, result.typ, result.kind
-  # if result.kind == nkSym:
-  #   dbgIf result.sym, result.sym.flags, result.sym.kind
-  # if result.kind == nkClosedSymChoice:
-  #   # for ai in result:
-  #   debug2 result
-
-  # dbgIf result, result.typ, result.kind, n, flags
-
-  # dbgIf result, n, flags, result.kind, result.typ
-  # if result.kind == nkSym:
-  #   # xxx PRTEMP should we do this inside semSym?
-  #   determineType2(c, result.sym)
-  #   dbgIf result.sym.typ, result.sym, result.sym.flags
-  #   result.typ = result.sym.typ
-
-
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
   elif result.typ == nil or result.typ == c.enforceVoidContext:
@@ -1329,9 +1312,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     #if efInCall notin flags:
     markUsed(c, info, s)
     onUse(info, s)
-    # dbgIf s, s.kind, c.config$info
-    # PRTEMP
-    determineType2(c, s)
+    determineType2(c, s) # PRTEMP
     result = newSymNode(s, info)
 
 proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
@@ -2786,7 +2767,6 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
 
-import renderer
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
@@ -2796,14 +2776,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     defer:
       if isCompilerDebug():
         echo ("<", c.config$n.info, n, ?.result.typ)
+
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
-  # if n.kind in routineDefs and c.config.isDefined("nimLazySemcheck"):
-  #   # xxx could use a flag (see also nfSem)
-  #   let status = lazyVisit(c.graph, n)
-  #   if not status.needDeclaration:
-  #     return nil # PRTEMP or result?
   case n.kind
   of nkIdent, nkAccQuoted:
     let checks = if efNoEvaluateGeneric in flags:
@@ -2813,8 +2789,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
-    # PRTEMP : determineType(c, sym) inside qualifiedLookUp?
-    determineType2(c, s)
+    determineType2(c, s) # PRTEMP: inside qualifiedLookUp instead? already case?
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
@@ -2903,7 +2878,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
     if s != nil:
-      determineType2(c, s)
+      determineType2(c, s) # PRTEMP: inside qualifiedLookUp ? already case?
       #if c.config.cmd == cmdNimfix and n[0].kind == nkDotExpr:
       #  pretty.checkUse(n[0][1].info, s)
       case s.kind
