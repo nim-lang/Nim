@@ -116,6 +116,10 @@ else:
   var state = DefaultRandSeed # global for backwards compatibility
 
 func isValid(r: Rand): bool {.inline.} =
+  ## Check whether state of `r` is valid.
+  ##
+  ## In `xoroshiro128+`, if all bits of `a0` and `a1` are zero,
+  ## they are always zero after calling `next(r: var Rand)`.
   not (r.a0 == 0 and r.a1 == 0)
 
 since (1, 5):
@@ -670,6 +674,8 @@ when not defined(standalone):
                 break
 
           if not result.isValid:
+            # Don't try to get alternative random values from other source like time or process/thread id,
+            # because such code would be never tested and is a liability for security.
             quit("Failed to initializes baseState in random module as sysrand.urandom doesn't work.")
 
       when compileOption("threads"):
