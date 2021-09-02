@@ -836,7 +836,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     dec c.instCounter
   else:
     let k = whichKeyword(ident)
-    # sym = nil
     if k in validPragmas:
       if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
         checkPragmaUse(c.config, key.info, k, ident.s)
