@@ -364,7 +364,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
   if e.typ.isNil: return result # can happen in nimsuggest for unknown reasons
   if c.transCon.forStmt.len != 3:
     e = skipConv(e)
-    if e.kind in {nkPar, nkTupleConstr}:
+    if e.kind == nkTupleConstr:
       for i in 0..<e.len:
         var v = e[i]
         if v.kind == nkExprColonExpr: v = v[1]
@@ -377,19 +377,51 @@ proc transformYield(c: PTransf, n: PNode): PNode =
           let lhs = c.transCon.forStmt[i]
           let rhs = transform(c, v)
           result.add(asgnTo(lhs, rhs))
+    elif e.kind notin {nkAddr, nkHiddenAddr}: # no need to generate temp for address operation
+      # TODO do not use temp for nodes which cannot have side-effects
+      var tmp = newTemp(c, e.typ, e.info)
+      let v = newNodeI(nkVarSection, e.info)
+      v.addVar(tmp, e)
+
+      result.add transform(c, v)
+
+      for i in 0..<c.transCon.forStmt.len - 2:
+        let lhs = c.transCon.forStmt[i]
+        let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
+        result.add(asgnTo(lhs, rhs))
     else:
-      # Unpack the tuple into the loop variables
-      # XXX: BUG: what if `n` is an expression with side-effects?
       for i in 0..<c.transCon.forStmt.len - 2:
         let lhs = c.transCon.forStmt[i]
         let rhs = transform(c, newTupleAccess(c.graph, e, i))
         result.add(asgnTo(lhs, rhs))
   else:
     if c.transCon.forStmt[0].kind == nkVarTuple:
-      for i in 0..<c.transCon.forStmt[0].len-1:
-        let lhs = c.transCon.forStmt[0][i]
-        let rhs = transform(c, newTupleAccess(c.graph, e, i))
-        result.add(asgnTo(lhs, rhs))
+      var notLiteralTuple = false # we don't generate temp for tuples with const value: (1, 2, 3)
+      let ev = e.skipConv
+      if ev.kind == nkTupleConstr:
+        for i in ev:
+          if not isConstExpr(i):
+            notLiteralTuple = true
+            break
+      else:
+        notLiteralTuple = true
+
+      if e.kind notin {nkAddr, nkHiddenAddr} and notLiteralTuple:
+        # TODO do not use temp for nodes which cannot have side-effects
+        var tmp = newTemp(c, e.typ, e.info)
+        let v = newNodeI(nkVarSection, e.info)
+        v.addVar(tmp, e)
+
+        result.add transform(c, v)
+        for i in 0..<c.transCon.forStmt[0].len-1:
+          let lhs = c.transCon.forStmt[0][i]
+          let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
+          result.add(asgnTo(lhs, rhs))
+      else:
+        for i in 0..<c.transCon.forStmt[0].len-1:
+          let lhs = c.transCon.forStmt[0][i]
+          let rhs = transform(c, newTupleAccess(c.graph, e, i))
+          result.add(asgnTo(lhs, rhs))
     else:
       let lhs = c.transCon.forStmt[0]
       let rhs = transform(c, e)
@@ -403,10 +435,11 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     # we need to introduce new local variables:
     result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
   if result.len > 0:
-    var changeNode = result[0]
-    changeNode.info = c.transCon.forStmt.info
-    for i, child in changeNode:
-      child.info = changeNode.info
+    for idx in 0 ..< result.len:
+      var changeNode = result[idx]
+      changeNode.info = c.transCon.forStmt.info
+      for i, child in changeNode:
+        child.info = changeNode.info
 
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
   result = transformSons(c, n)
