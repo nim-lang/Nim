@@ -377,7 +377,8 @@ proc transformYield(c: PTransf, n: PNode): PNode =
           let lhs = c.transCon.forStmt[i]
           let rhs = transform(c, v)
           result.add(asgnTo(lhs, rhs))
-    elif e.kind notin {nkAddr, nkHiddenAddr}:
+    elif e.kind notin {nkAddr, nkHiddenAddr}: # no need to generate temporary variable for address operation
+      # XXX: do not use temporary for nodes which cannot have side-effects
       var tmp = newTemp(c, e.typ, e.info)
       let v = newNodeI(nkVarSection, e.info)
       v.addVar(tmp, e)
@@ -389,16 +390,14 @@ proc transformYield(c: PTransf, n: PNode): PNode =
         let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
         result.add(asgnTo(lhs, rhs))
     else:
-      # Unpack the tuple into the loop variables
-      # XXX: BUG: what if `n` is an expression with side-effects?
       for i in 0..<c.transCon.forStmt.len - 2:
         let lhs = c.transCon.forStmt[i]
         let rhs = transform(c, newTupleAccess(c.graph, e, i))
         result.add(asgnTo(lhs, rhs))
   else:
     if c.transCon.forStmt[0].kind == nkVarTuple:
-      var notLiteralTuple = false
-      var ev = e.skipConv
+      var notLiteralTuple = false # we don't generate temp for tuples with const value: (1, 2, 3)
+      let ev = e.skipConv
       if ev.kind == nkTupleConstr:
         for i in ev:
           if not isConstExpr(i):
@@ -408,6 +407,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
         notLiteralTuple = true
 
       if e.kind notin {nkAddr, nkHiddenAddr} and notLiteralTuple:
+        # XXX: do not use temporary for nodes which cannot have side-effects
         var tmp = newTemp(c, e.typ, e.info)
         let v = newNodeI(nkVarSection, e.info)
         v.addVar(tmp, e)
