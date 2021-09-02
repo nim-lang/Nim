@@ -4840,7 +4840,34 @@ The proc `weDontRaiseButMaybeTheCallback` raises the exceptions
 that `callback` raises.
 
 So in many cases a callback does not cause the compiler to be overly
-conservative in its effect analysis.
+conservative in its effect analysis:
+
+.. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
+  {.push warningAsError[Effect]: on.}
+  {.experimental: "strictEffects".}
+
+  import algorithm
+
+  type
+    MyInt = distinct int
+
+  var toSort = @[MyInt 1, MyInt 2, MyInt 3]
+
+  proc cmpN(a, b: MyInt): int =
+    cmp(a.int, b.int)
+
+  proc harmless {.raises: [].} =
+    toSort.sort cmpN
+
+  proc cmpE(a, b: MyInt): int {.raises: [Exception].} =
+    cmp(a.int, b.int)
+
+  proc harmfull {.raises: [].} =
+    # does not compile, `sort` can now raise Exception
+    toSort.sort cmpE
 
 
 
