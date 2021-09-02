@@ -527,6 +527,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var typ: PType = nil
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
+      dbgIf typ, ?.typ.kind
 
     var typFlags: TTypeAllowedFlags
 
@@ -1895,6 +1896,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if c.config.isDefined("nimLazySemcheck"):
     # PRTEMP
+    s.flags.incl sfLazySemcheckInprogress
     let status = lazyVisit(c.graph, s)
     var ret = isCompilerPoc(c, s, n)
     var (proto2, comesFromShadowScope2) =
@@ -2136,7 +2138,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         n[bodyPos] = semGenericStmt(c, n[bodyPos])
         closeScope(c)
         if s.magic == mNone:
-          fixupInstantiatedSymbols(c, s)
+          if sfLazySemcheckInprogress notin s.flags:
+            fixupInstantiatedSymbols(c, s)
       if s.kind == skMethod: semMethodPrototype(c, s, n)
       popProcCon(c)
   else:
@@ -2155,6 +2158,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   closeScope(c)           # close scope for parameters
   # c.currentScope = oldScope
   popOwner(c)
+  s.flags.excl sfLazySemcheckInprogress
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)
   if isAnon:
@@ -2164,12 +2168,16 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       result.typ = makeVarType(c, result.typ, tyOwned)
   elif isTopLevel(c) and s.kind != skIterator and s.typ.callConv == ccClosure:
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
-
 proc determineTypeOne(c: PContext, s: PSym) =
+  # dbgIf s.flags, s.typ, s
+
   # dbgIf s, s.flags
   # PRTEMP because of prior processing might affect this?
   if s.typ != nil: return
   if sfLazy notin s.flags: return # PRTEMP
+
+  when defined(nimCompilerStacktraceHints):
+    setFrameMsg c.config$s.ast.info & " " & $(s, s.owner, s.flags, c.module)
 
   #[
   PRTEMP
@@ -2209,13 +2217,17 @@ proc determineType(c: PContext, s: PSym) =
   doAssert c2 != nil
   dbgIf c.module, c2.module, s, "retrieve"
   let old = c2.currentScope
+  dbgIf old == lcontext.scope
+  dbgIf getStacktrace()
+  debugScopesIf old
+  debugScopesIf lcontext.scope
   c2.currentScope = lcontext.scope
-  let pBaseOld = c2.p
-  c2.p = lcontext.pBase.PProcCon
 
-  # if isCompilerDebug():
-  #   dbgIf "scopes2", s
-  #   debugScopes(c2, limit = 10, max = 20)
+  # TODO: which is better?
+  # let pBaseOld = c2.p
+  # c2.p = lcontext.pBase.PProcCon
+  pushProcCon(c2, lcontext.pBase.PProcCon.owner)
+
   var candidates: seq[PSym]
   for s2 in c2.currentScope.symbols:
     if s2.name == s.name: # checking `s2.kind == s.kind` would be wrong because all overloads in same scope must be revealed
@@ -2227,8 +2239,14 @@ proc determineType(c: PContext, s: PSym) =
   dbgIf candidates.len, candidates, s, c.module
   for s2 in candidates:
     determineTypeOne(c2, s2)
+  debugScopesIf old
+  debugScopesIf c2.currentScope
   c2.currentScope = old
-  c2.p = pBaseOld
+
+  # c2.p = pBaseOld
+  popProcCon(c2)
+
+  dbgIf c.module, c2.module, s, "retrieve.done"
 
 proc determineType2*(c: PContext, s: PSym) {.exportc.} =
   if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR

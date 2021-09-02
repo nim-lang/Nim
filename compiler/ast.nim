@@ -240,6 +240,7 @@ type
     sfForward,        # symbol is forward declared
     sfLazy,           # symbol is lazy declared
     sfLazyForwardRequested, # semchecking was requested for a lazy symbol; PRTEMP RENAME
+    sfLazySemcheckInprogress,
     sfWasForwarded,   # symbol had a forward declaration
                       # (implies it's too dangerous to patch its type signature)
     sfImportc,        # symbol is external; imported

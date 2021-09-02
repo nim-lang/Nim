@@ -205,23 +205,26 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
     if result != nil: return result
   result = someSymFromImportTable(c, s, ambiguous)
 
-proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
+proc debugScopes*(conf: ConfigRef, scope: PScope; limit=0, max = int.high) {.deprecated.} =
   var i = 0
   var count = 0
-  for scope in allScopes(c.currentScope):
+  for scope in allScopes(scope):
     echo "scope ", i
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
         if count >= max: return
         # echo count, ": ", scope.symbols.data[h].name.s
         let s = scope.symbols.data[h]
-        var msg = $count & ": " & $s & " flags: " & $s.flags
+        var msg = $count & ": " & $s & $(s.flags, s.owner, s.kind, s.typ, ?.s.typ.kind)
         if s.ast!=nil:
-          msg.add " " & c.config$s.ast.info
+          msg.add " " & conf$s.ast.info
         echo msg
         count.inc
     if i == limit: return
     inc i
+
+proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
+  debugScopes(c.config, c.currentScope, limit, max)
 
 proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
   result = @[]

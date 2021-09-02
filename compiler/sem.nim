@@ -263,6 +263,8 @@ proc typeAllowedCheck(c: PContext; info: TLineInfo; typ: PType; kind: TSymKind;
     else:
       err = "invalid type: '$1' in this context: '$2' for $3" % [typeToString(t),
               typeToString(typ), toHumanStr(kind)]
+    dbgIf c.config$info, typ, kind, flags
+    debug2 t
     localError(c.config, info, err)
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =

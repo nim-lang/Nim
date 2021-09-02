@@ -23,5 +23,5 @@ proc check(opt: string, expected: string) =
 
 proc main =
   for opt in "-d:case_noimports; -d:case4; -d:case_stdlib ; -d:case_import1; -d:case_cyclic; -d:case_perf".split(";"):
-    check(opt): "afasdf" # we can add per-test expectations on compiler output here, e.g. to ensure certain APIs were (or not) compiled
+    check(opt): "" # we can add per-test expectations on compiler output here, e.g. to ensure certain APIs were (or not) compiled
 main()

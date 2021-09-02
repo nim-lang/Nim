@@ -1724,6 +1724,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   inc c.inTypeContext
 
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
+  dbgIf n, n.kind
   case n.kind
   of nkEmpty: result = n.typ
   of nkTypeOfExpr:
@@ -1914,6 +1915,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         if alias != nil: result = alias
   of nkIdent, nkAccQuoted:
     var s = semTypeIdent(c, n)
+    dbgIf s, s.typ, s.kind, s.flags, n, ?.s.typ.kind
     if s.typ == nil:
       if s.kind != skError: localError(c.config, n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
