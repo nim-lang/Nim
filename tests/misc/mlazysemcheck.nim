@@ -416,8 +416,8 @@ elif defined case_stdlib_imports:
   import std/[
   # Core:
   bitops, typetraits, lenientops, macros, volatile,
-  # fails: typeinfo, endians
-  # works but shouldn't: cpuinfo, rlocks, locks
+  typeinfo, endians,
+  cpuinfo, rlocks, locks,
 
   # Algorithms:
   algorithm, sequtils,
@@ -425,35 +425,33 @@ elif defined case_stdlib_imports:
   # Collections:
   critbits, deques, heapqueue, intsets, lists, options, sets,
   sharedlist, tables,
-  # fails: sharedtables
+  sharedtables,
 
   # Strings:
   editdistance, wordwrap, parseutils, ropes,
   pegs, punycode, strformat, strmisc, strscans, strtabs,
   strutils, unicode, unidecode,
-  # works but shouldn't: cstrutils, encodings
+  cstrutils, encodings,
 
   # Time handling:
-  # fails: monotimes, times
-  # but times.getTime() implemented for VM
+  monotimes, times,
 
   # Generic operator system services:
   os, streams,
-  # fails: distros, dynlib, marshal, memfiles, osproc, terminal
+  distros, dynlib, marshal, memfiles, osproc, terminal,
 
   # Math libraries:
-  complex, math, mersenne, random, rationals, stats, sums,
-  # works but shouldn't: fenv
+  complex, math, mersenne, random, rationals, stats, sums, fenv,
 
   # Internet protocols:
-  # httpcore, mimetypes, uri,
-  mimetypes, uri,
-  # fails: asyncdispatch, asyncfile, asyncftpclient, asynchttpserver,
-  # asyncnet, cgi, cookies, httpclient, nativesockets, net, selectors, smtp
-  # works but shouldn't test: asyncstreams, asyncfutures
+  httpcore, mimetypes, uri,
+  asyncdispatch, asyncfile, asyncftpclient, asynchttpserver,
+  asyncnet, cgi, cookies, httpclient, nativesockets, net, selectors,
+  # smtp, # require -d:ssl
+  asyncstreams, asyncfutures,
 
   # Threading:
-  # fails: threadpool
+  # threadpool, # requires --threads
 
   # Parsers:
   htmlparser, json, lexbase, parsecfg, parsecsv, parsesql, parsexml,
@@ -467,11 +465,12 @@ elif defined case_stdlib_imports:
 
   # Hashing:
   base64, hashes,
-  # fails: md5, oids, sha1
+  md5, oids, sha1,
 
   # Miscellaneous:
   colors, sugar, varints,
-  # fails: browsers, coro, logging (times), segfaults, unittest (uses methods)
+  browsers, logging, segfaults, unittest,
+  # coro, # require -d:nimCoroutines
 
   # Modules for JS backend:
   # fails: asyncjs, dom, jsconsole, jscore, jsffi,
@@ -479,7 +478,6 @@ elif defined case_stdlib_imports:
   # Unlisted in lib.html:
   decls, compilesettings, with, wrapnils
   ]
-  # import std/httpcore # see case_bug2
 
 elif defined case_perf:
   #[
@@ -496,12 +494,6 @@ elif defined case_bug1:
   ]#
   proc fn()
   fn()
-
-elif defined case_bug2: # xxx bug
-  #[
-  the only module from tests/test_nimscript.nims that can't be imported, giving: SIGSEGV
-  ]#
-  import std/httpcore
 
 # scratch below
 
