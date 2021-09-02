@@ -1839,7 +1839,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 
-proc isCompilerPoc(c: PContext, s: PSym, n: PNode): bool =
+proc isCompilerProc(c: PContext, s: PSym, n: PNode): bool =
   # PRTEMP HACK
   for ai in n[pragmasPos]:
     if ai.kind == nkIdent:
@@ -1894,7 +1894,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     # PRTEMP
     s.flags.incl sfLazySemcheckInprogress
     let status = lazyVisit(c.graph, s)
-    var ret = isCompilerPoc(c, s, n)
+    var ret = isCompilerProc(c, s, n)
     var (proto2, comesFromShadowScope2) =
       if isAnon: (nil, false)
       else: searchForProc(c, declarationScope, s, isLazy = true)
@@ -2149,36 +2149,28 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   elif isTopLevel(c) and s.kind != skIterator and s.typ.callConv == ccClosure:
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
 
-proc determineTypeOne(c: PContext, s: PSym) =
-  # PRTEMP because of prior processing might affect this?
-  if s.typ != nil: return
-  if sfLazy notin s.flags: return # PRTEMP
+proc getValidPragmas(kind: TSymKind, n: PNode): set[TSpecialWord] =
+  case kind
+  of skProc: procPragmas
+  of skFunc:
+    # seems weird but pre-existing behavior
+    if n[namePos].kind != nkEmpty: procPragmas
+    else: lambdaPragmas
+  of skIterator: iteratorPragmas
+  of skMethod: methodPragmas
+  of skConverter: converterPragmas
+  of skMacro: macroPragmas
+  else: doAssert false, $s.kind # support as needed
 
+proc determineTypeOne(c: PContext, s: PSym) =
+  if s.typ != nil or sfLazy notin s.flags: return
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$s.ast.info & " " & $(s, s.owner, s.flags, c.module)
-
-  #[
-  PRTEMP
-    let validPragmas = if n[namePos].kind != nkEmpty: procPragmas
-                     else: lambdaPragmas
-  ]#
-  # TODO: recall it, avoid recomputing
-  let validPragmas =
-    case s.kind
-    of skProc: procPragmas
-    of skFunc: procPragmas
-    of skMethod: methodPragmas
-    of skIterator: iteratorPragmas
-    of skConverter: converterPragmas # PRTEMP
-    else: {} # PRTEMP
-
+  let validPragmas = getValidPragmas(s.kind, s.ast)
   if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR; do we even need this side channel or can we use a sf flag?
     lazyVisit(c.graph, s).needDeclaration = true
-  c.pushOwner(s.owner) # c.getCurrOwner() would be wrong (it's global)
+  c.pushOwner(s.owner) # c.getCurrOwner() would be wrong (it's derived globally from ConfigRef)
   let lcontext = c.graph.symLazyContext[s.id]
-
-  # pushOptionEntry()
-  # c.optionStack.add(result)
   c.optionStack.add(lcontext.optionStackEntry.POptionEntry)
   discard semProcAux(c, s.ast, s.kind, validPragmas)
   discard c.optionStack.pop
@@ -2203,10 +2195,6 @@ proc determineType(c: PContext, s: PSym) =
   doAssert c2 != nil
   # dbgIf c.module, c2.module, s, "retrieve"
   let old = c2.currentScope
-  # dbgIf old == lcontext.scope
-  # dbgIf getStacktrace()
-  # debugScopesIf old
-  # debugScopesIf lcontext.scope
   c2.currentScope = lcontext.scope
 
   # TODO: which is better?
@@ -2225,14 +2213,9 @@ proc determineType(c: PContext, s: PSym) =
   # dbgIf candidates.len, candidates, s, c.module
   for s2 in candidates:
     determineTypeOne(c2, s2)
-  # debugScopesIf old
-  # debugScopesIf c2.currentScope
   c2.currentScope = old
-
   # c2.p = pBaseOld
   popProcCon(c2)
-
-  # dbgIf c.module, c2.module, s, "retrieve.done"
 
 proc determineType2*(c: PContext, s: PSym) {.exportc.} =
   if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR
@@ -2275,9 +2258,7 @@ proc semProc(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skProc, procPragmas)
 
 proc semFunc(c: PContext, n: PNode): PNode =
-  let validPragmas = if n[namePos].kind != nkEmpty: procPragmas
-                     else: lambdaPragmas
-  result = semProcAux(c, n, skFunc, validPragmas)
+  result = semProcAux(c, n, skFunc, getValidPragmas(skFunc, n))
 
 proc semMethod(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "method")
