@@ -23,9 +23,10 @@ proc main() =
   doAssert a in [[0,1], [1,0]]
 
   doAssert rand(0) == 0
-  doAssert sample("a") == 'a'
+  when not defined(nimscript):
+    doAssert sample("a") == 'a'
 
-  when compileOption("rangeChecks"):
+  when compileOption("rangeChecks") and not defined(nimscript):
     doAssertRaises(RangeDefect):
       discard rand(-1)
 
@@ -92,7 +93,7 @@ block: # random int
 
   block: # again gives new numbers
     var rand1 = rand(1000000)
-    when not defined(js):
+    when not (defined(js) or defined(nimscript)):
       os.sleep(200)
 
     var rand2 = rand(1000000)
@@ -122,7 +123,7 @@ block: # random float
 
   block: # again gives new numbers
     var rand1: float = rand(1000000.0)
-    when not defined(js):
+    when not (defined(js) or defined(nimscript)):
       os.sleep(200)
 
     var rand2: float = rand(1000000.0)
@@ -248,3 +249,26 @@ block: # bug #17670
     type UInt48 = range[0'u64..2'u64^48-1]
     let x = rand(UInt48)
     doAssert x is UInt48
+
+block: # bug #17898
+  # Checks whether `initRand()` generates unique states.
+  # size should be 2^64, but we don't have time and space.
+
+  # Disable this test for js until js gets proper skipRandomNumbers.
+  when not defined(js):
+    const size = 1000
+    var
+      rands: array[size, Rand]
+      randSet: HashSet[Rand]
+    for i in 0..<size:
+      rands[i] = initRand()
+      randSet.incl rands[i]
+
+    doAssert randSet.len == size
+
+    # Checks random number sequences overlapping.
+    const numRepeat = 100
+    for i in 0..<size:
+      for j in 0..<numRepeat:
+        discard rands[i].next
+        doAssert rands[i] notin randSet

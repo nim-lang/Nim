@@ -71,6 +71,8 @@ import std/[
   decls, compilesettings, with, wrapnils
 ]
 
+import stdlib/trandom
+
 echo "Nimscript imports are successful."
 
 block:
