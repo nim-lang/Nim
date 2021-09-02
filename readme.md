@@ -16,7 +16,7 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
 [![Follow @nim_lang on Twitter][badge-nim-twitter]][nim-twitter]
 
 * The [forum][nim-forum] - the best place to ask questions and to discuss Nim.
-* [#nim IRC Channel (Freenode)][nim-irc] - a place to discuss Nim in real-time.
+* [#nim IRC Channel (Libera Chat)][nim-irc] - a place to discuss Nim in real-time.
   Also where most development decisions get made.
 * [Discord][nim-discord] - an additional place to discuss Nim in real-time. Most
   channels there are bridged to IRC.
@@ -35,7 +35,7 @@ architecture combinations:
 
   * Windows (Windows XP or greater) - x86 and x86_64
   * Linux (most, if not all, distributions) - x86, x86_64, ppc64 and armv6l
-  * Mac OS X (10.04 or greater) - x86, x86_64 and ppc64
+  * Mac OS X (10.04 or greater) - x86, x86_64, ppc64 and Apple Silicon (based on the ARM64 architecture)
 
 More platforms are supported, however, they are not tested regularly and they
 may not be as stable as the above-listed platforms.
@@ -45,7 +45,7 @@ Compiling the Nim compiler is quite straightforward if you follow these steps:
 First, the C source of an older version of the Nim compiler is needed to
 bootstrap the latest version because the Nim compiler itself is written in the
 Nim programming language. Those C sources are available within the
-[``nim-lang/csources``][csources-repo] repository.
+[``nim-lang/csources_v1``][csources-v1-repo] repository.
 
 Next, to build from source you will need:
 
@@ -206,7 +206,7 @@ Copyright © 2006-2021 Andreas Rumpf, all rights reserved.
 [nim-forum]: https://forum.nim-lang.org
 [nim-issues]: https://github.com/nim-lang/Nim/issues
 [nim-issues-easy]: https://github.com/nim-lang/Nim/labels/Easy
-[nim-irc]: https://webchat.freenode.net/?channels=nim
+[nim-irc]: https://web.libera.chat/#nim
 [nim-twitter]: https://twitter.com/nim_lang
 [nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim-lang
 [nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim-lang?sort=newest&pageSize=15
@@ -217,7 +217,8 @@ Copyright © 2006-2021 Andreas Rumpf, all rights reserved.
 [nim-bitcoin]: https://blockchain.info/address/1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ
 [nimble-repo]: https://github.com/nim-lang/nimble
 [nimsuggest-repo]: https://github.com/nim-lang/nimsuggest
-[csources-repo]: https://github.com/nim-lang/csources
+[csources-repo-deprecated]: https://github.com/nim-lang/csources
+[csources-v1-repo]: https://github.com/nim-lang/csources_v1
 [badge-nim-travisci]: https://img.shields.io/travis/nim-lang/Nim/devel.svg?style=flat-square
 [badge-nim-irc]: https://img.shields.io/badge/chat-on_irc-blue.svg?style=flat-square
 [badge-nim-discord]: https://img.shields.io/discord/371759389889003530?color=blue&label=discord&logo=discord&logoColor=gold&style=flat-square

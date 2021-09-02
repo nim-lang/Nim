@@ -17,7 +17,7 @@ import
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
-  isolation_check, typeallowed, modulegraphs, enumtostr, concepts,
+  isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs,
   finalast
 
 when defined(nimfix):
@@ -91,6 +91,12 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     # error correction:
     result = copyTree(arg)
     result.typ = formal
+  elif arg.kind in nkSymChoices and formal.skipTypes(abstractInst).kind == tyEnum:
+    # Pick the right 'sym' from the sym choice by looking at 'formal' type:
+    for ch in arg:
+      if sameType(ch.typ, formal):
+        return getConstExpr(c.module, ch, c.idgen, c.graph)
+    typeMismatch(c.config, info, formal, arg.typ, arg)
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
@@ -100,6 +106,15 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
       result.typ = formal
     else:
       result = fitNodePostMatch(c, formal, result)
+
+proc fitNodeForLocalVar(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
+  let a = fitNode(c, formal, arg, info)
+  if formal.kind in {tyVar, tyLent}:
+    #classifyViewType(formal) != noView:
+    result = newNodeIT(nkHiddenAddr, a.info, formal)
+    result.add a
+  else:
+   result = a
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode
@@ -348,6 +363,8 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
   if e == nil:
     localError(c.config, n.info, errConstExprExpected)
     return n
+  if e.kind in nkSymChoices and e[0].typ.skipTypes(abstractInst).kind == tyEnum:
+    return e
   result = getConstExpr(c.module, e, c.idgen, c.graph)
   if result == nil:
     #if e.kind == nkEmpty: globalError(n.info, errConstExprExpected)
@@ -384,9 +401,10 @@ when not defined(nimHasSinkInference):
 include hlo, seminst, semcall
 
 proc resetSemFlag(n: PNode) =
-  excl n.flags, nfSem
-  for i in 0..<n.safeLen:
-    resetSemFlag(n[i])
+  if n != nil:
+    excl n.flags, nfSem
+    for i in 0..<n.safeLen:
+      resetSemFlag(n[i])
 
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
                        s: PSym, flags: TExprFlags): PNode =
@@ -526,6 +544,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
   var c = newContext(graph, module)
   c.idgen = idgen
   c.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
+  c.voidType = newType(tyVoid, nextTypeId(idgen), nil)
 
   if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr

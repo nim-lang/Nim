@@ -359,7 +359,7 @@ type
   Timezone* = ref object ## \
       ## Timezone interface for supporting `DateTime <#DateTime>`_\s of arbitrary
       ## timezones. The `times` module only supplies implementations for the
-      ## systems local time and UTC.
+      ## system's local time and UTC.
     zonedTimeFromTimeImpl: proc (x: Time): ZonedTime
         {.tags: [], raises: [], benign.}
     zonedTimeFromAdjTimeImpl: proc (x: Time): ZonedTime
@@ -880,6 +880,7 @@ since((1, 1)):
   export fromUnixFloat
   export toUnixFloat
 
+
 proc fromWinTime*(win: int64): Time =
   ## Convert a Windows file time (100-nanosecond intervals since
   ## `1601-01-01T00:00:00Z`) to a `Time`.
@@ -1144,7 +1145,7 @@ proc name*(zone: Timezone): string =
   ## If the timezone doesn't exist in the tz database, or if the timezone
   ## name is unknown, then any string that describes the timezone
   ## unambiguously might be used. For example, the string "LOCAL" is used
-  ## for the systems local timezone.
+  ## for the system's local timezone.
   ##
   ## See also: https://en.wikipedia.org/wiki/Tz_database
   zone.name
@@ -1332,14 +1333,13 @@ proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ##    `cpuTime` instead, depending on the use case.
   getTime().local
 
-proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
-                   hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   nanosecond: NanosecondRange,
-                   zone: Timezone = local()): DateTime =
+proc dateTime*(year: int, month: Month, monthday: MonthdayRange,
+               hour: HourRange = 0, minute: MinuteRange = 0, second: SecondRange = 0,
+               nanosecond: NanosecondRange = 0,
+               zone: Timezone = local()): DateTime =
   ## Create a new `DateTime <#DateTime>`_ in the specified timezone.
   runnableExamples:
-    let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, 00, utc())
-    doAssert $dt1 == "2017-03-30T00:00:00Z"
+    assert $dateTime(2017, mMar, 30, zone = utc()) == "2017-03-30T00:00:00Z"
 
   assertValidDate monthday, month, year
   let dt = DateTime(
@@ -1355,12 +1355,20 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
 
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   zone: Timezone = local()): DateTime =
+                   nanosecond: NanosecondRange,
+                   zone: Timezone = local()): DateTime {.deprecated: "use `dateTime`".} =
   ## Create a new `DateTime <#DateTime>`_ in the specified timezone.
-  runnableExamples:
-    let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
-    doAssert $dt1 == "2017-03-30T00:00:00Z"
-  initDateTime(monthday, month, year, hour, minute, second, 0, zone)
+  runnableExamples("--warning:deprecated:off"):
+    assert $initDateTime(30, mMar, 2017, 00, 00, 00, 00, utc()) == "2017-03-30T00:00:00Z"
+  dateTime(year, month, monthday, hour, minute, second, nanosecond, zone)
+
+proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
+                   hour: HourRange, minute: MinuteRange, second: SecondRange,
+                   zone: Timezone = local()): DateTime {.deprecated: "use `dateTime`".} =
+  ## Create a new `DateTime <#DateTime>`_ in the specified timezone.
+  runnableExamples("--warning:deprecated:off"):
+    assert $initDateTime(30, mMar, 2017, 00, 00, 00, utc()) == "2017-03-30T00:00:00Z"
+  dateTime(year, month, monthday, hour, minute, second, 0, zone)
 
 proc `+`*(dt: DateTime, dur: Duration): DateTime =
   runnableExamples:

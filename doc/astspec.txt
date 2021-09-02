@@ -364,6 +364,7 @@ AST:
     nnkExprColonExpr(nnkIdent("a"), nnkIntLit(1)),
     nnkExprColonExpr(nnkIdent("b"), nnkIntLit(2)),
     nnkExprColonExpr(nnkIdent("c"), nnkIntLit(3)))
+  nnkTupleConstr()
 
 Since the one tuple would be syntactically identical to parentheses
 with an expression in them, the parser expects a trailing comma for
@@ -1081,7 +1082,7 @@ its entirety to see some of the complexities.
 Concrete syntax:
 
 .. code-block:: nim
-  type Obj[T] = object {.inheritable.}
+  type Obj[T] {.inheritable.} = object
     name: string
     case isFat: bool
     of true:
@@ -1093,10 +1094,18 @@ AST:
 
 .. code-block:: nim
   # ...
+  nnkPragmaExpr(
+    nnkIdent("Obj"),
+    nnkPragma(nnkIdent("inheritable"))
+  ),
+  nnkGenericParams(
+  nnkIdentDefs(
+    nnkIdent("T"),
+    nnkEmpty(),
+    nnkEmpty())
+  ),
   nnkObjectTy(
-    nnkPragma(
-      nnkIdent("inheritable")
-    ),
+    nnkEmpty(),
     nnkEmpty(),
     nnkRecList( # list of object parameters
       nnkIdentDefs(

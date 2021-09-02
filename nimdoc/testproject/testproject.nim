@@ -39,6 +39,9 @@ proc buzz*[T](a, b: T): T {.deprecated: "since v0.20".} =
   ## This is deprecated with a message.
   result = a + b
 
+type
+  FooBuzz* {.deprecated: "FooBuzz msg".} = int
+
 import std/macros
 
 var aVariable*: array[1, int]
@@ -131,6 +134,7 @@ when true:
       # BUG: this currently this won't be run since not exported
       # but probably should
       doAssert false
+  if false: bazNonExported() # silence XDeclaredButNotUsed
 
   proc z17*() =
     # BUG: a comment before 1st doc comment currently doesn't prevent
@@ -185,7 +189,7 @@ when true: # procs without `=` (using comment field)
     ## the c printf.
     ## etc.
 
-  proc c_nonexistant*(frmt: cstring): cint {.importc: "nonexistant", header: "<stdio.h>", varargs, discardable.}
+  proc c_nonexistent*(frmt: cstring): cint {.importc: "nonexistent", header: "<stdio.h>", varargs, discardable.}
 
 when true: # tests RST inside comments
   proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.}
@@ -212,7 +216,7 @@ when true: # tests RST inside comments
 
 when true: # multiline string litterals
   proc tripleStrLitTest*() =
-    runnableExamples:
+    runnableExamples("--hint:XDeclaredButNotUsed:off"):
       ## mullitline string litterals are tricky as their indentation can span
       ## below that of the runnableExamples
       let s1a = """
@@ -252,12 +256,12 @@ at indent 0
 
 when true: # methods; issue #14691
   type Moo = object
-  method method1*(self: Moo) =
+  method method1*(self: Moo) {.base.} =
     ## foo1
-  method method2*(self: Moo): int =
+  method method2*(self: Moo): int {.base.} =
     ## foo2
     result = 1
-  method method3*(self: Moo): int =
+  method method3*(self: Moo): int {.base.} =
     ## foo3
     1
 
@@ -341,7 +345,7 @@ when true: # issue #14473
   template doit(): untyped =
     ## doit
     ## return output only
-    toSeq([1,2])
+    toSeq(["D20210427T172228"]) # make it searcheable at least until we figure out a way to avoid echo
   echo doit() # using doAssert or similar to avoid echo would "hide" the original bug
 
 when true: # issue #14846

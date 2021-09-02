@@ -12,6 +12,9 @@ runnableExamples:
   let a = (1.5'f32, (b: "b2", a: "a2"), 'x', @[Foo(t: true, z1: -3), nil], [{"name": "John"}.newStringTable])
   let j = a.toJson
   assert j.jsonTo(typeof(a)).toJson == j
+  assert $[NaN, Inf, -Inf, 0.0, -0.0, 1.0, 1e-2].toJson == """["nan","inf","-inf",0.0,-0.0,1.0,0.01]"""
+  assert 0.0.toJson.kind == JFloat
+  assert Inf.toJson.kind == JString
 
 import json, strutils, tables, sets, strtabs, options
 
@@ -28,9 +31,28 @@ add a way to customize serialization, for e.g.:
 ]#
 
 import macros
+from enumutils import symbolName
+from typetraits import OrdinalEnum
+
+when not defined(nimFixedForwardGeneric):
+  # xxx remove pending csources_v1 update >= 1.2.0
+  proc to[T](node: JsonNode, t: typedesc[T]): T =
+    when T is string: node.getStr
+    elif T is bool: node.getBool
+    else: static: doAssert false, $T # support as needed (only needed during bootstrap)
+  proc isNamedTuple(T: typedesc): bool = # old implementation
+    when T isnot tuple: result = false
+    else:
+      var t: T
+      for name, _ in t.fieldPairs:
+        when name == "Field0": return compiles(t.Field0)
+        else: return true
+      return false
+else:
+  proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 
 type
-  Joptions* = object
+  Joptions* = object # xxx rename FromJsonOptions
     ## Options controlling the behavior of `fromJson`.
     allowExtraKeys*: bool
       ## If `true` Nim's object to which the JSON is parsed is not required to
@@ -39,10 +61,25 @@ type
       ## If `true` Nim's object to which JSON is parsed is allowed to have
       ## fields without corresponding JSON keys.
     # in future work: a key rename could be added
+  EnumMode* = enum
+    joptEnumOrd
+    joptEnumSymbol
+    joptEnumString
+  JsonNodeMode* = enum ## controls `toJson` for JsonNode types
+    joptJsonNodeAsRef ## returns the ref as is
+    joptJsonNodeAsCopy ## returns a deep copy of the JsonNode
+    joptJsonNodeAsObject ## treats JsonNode as a regular ref object
+  ToJsonOptions* = object
+    enumMode*: EnumMode
+    jsonNodeMode*: JsonNodeMode
+    # xxx charMode, etc
 
-proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
-proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
-template distinctBase[T](a: T): untyped = distinctBase(typeof(a))(a)
+proc initToJsonOptions*(): ToJsonOptions =
+  ## initializes `ToJsonOptions` with sane options.
+  ToJsonOptions(enumMode: joptEnumOrd, jsonNodeMode: joptJsonNodeAsRef)
+
+proc distinctBase(T: typedesc, recursive: static bool = true): typedesc {.magic: "TypeTrait".}
+template distinctBase[T](a: T, recursive: static bool = true): untyped = distinctBase(typeof(a), recursive)(a)
 
 macro getDiscriminants(a: typedesc): seq[string] =
   ## return the discriminant keys
@@ -91,14 +128,14 @@ macro initCaseObject(T: typedesc, fun: untyped): untyped =
         `fun`(`key2`, typedesc[`typ`])
       result.add newTree(nnkExprColonExpr, key, val)
 
-proc checkJsonImpl(cond: bool, condStr: string, msg = "") =
-  if not cond:
-    # just pick 1 exception type for simplicity; other choices would be:
-    # JsonError, JsonParser, JsonKindError
-    raise newException(ValueError, msg)
+proc raiseJsonException(condStr: string, msg: string) {.noinline.} =
+  # just pick 1 exception type for simplicity; other choices would be:
+  # JsonError, JsonParser, JsonKindError
+  raise newException(ValueError, condStr & " failed: " & msg)
 
 template checkJson(cond: untyped, msg = "") =
-  checkJsonImpl(cond, astToStr(cond), msg)
+  if not cond:
+    raiseJsonException(astToStr(cond), msg)
 
 proc hasField[T](obj: T, field: string): bool =
   for k, _ in fieldPairs(obj):
@@ -214,6 +251,10 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     for ai in mitems(a):
       fromJson(ai, b[i], opt)
       i.inc
+  elif T is set:
+    type E = typeof(for ai in a: ai)
+    for val in b.getElems:
+      incl a, jsonTo(val, E)
   elif T is seq:
     a.setLen b.len
     for i, val in b.getElems:
@@ -254,29 +295,47 @@ proc jsonTo*(b: JsonNode, T: typedesc, opt = Joptions()): T =
   ## reverse of `toJson`
   fromJson(result, b, opt)
 
-proc toJson*[T](a: T): JsonNode =
+proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   ## serializes `a` to json; uses `toJsonHook(a: T)` if it's in scope to
   ## customize serialization, see strtabs.toJsonHook for an example.
   when compiles(toJsonHook(a)): result = toJsonHook(a)
   elif T is object | tuple:
     when T is object or isNamedTuple(T):
       result = newJObject()
-      for k, v in a.fieldPairs: result[k] = toJson(v)
+      for k, v in a.fieldPairs: result[k] = toJson(v, opt)
     else:
       result = newJArray()
-      for v in a.fields: result.add toJson(v)
+      for v in a.fields: result.add toJson(v, opt)
   elif T is ref | ptr:
-    if system.`==`(a, nil): result = newJNull()
-    else: result = toJson(a[])
-  elif T is array | seq:
+    template impl =
+      if system.`==`(a, nil): result = newJNull()
+      else: result = toJson(a[], opt)
+    when T is JsonNode:
+      case opt.jsonNodeMode
+      of joptJsonNodeAsRef: result = a
+      of joptJsonNodeAsCopy: result = copy(a)
+      of joptJsonNodeAsObject: impl()
+    else: impl()
+  elif T is array | seq | set:
     result = newJArray()
-    for ai in a: result.add toJson(ai)
-  elif T is pointer: result = toJson(cast[int](a))
+    for ai in a: result.add toJson(ai, opt)
+  elif T is pointer: result = toJson(cast[int](a), opt)
     # edge case: `a == nil` could've also led to `newJNull()`, but this results
     # in simpler code for `toJson` and `fromJson`.
-  elif T is distinct: result = toJson(a.distinctBase)
+  elif T is distinct: result = toJson(a.distinctBase, opt)
   elif T is bool: result = %(a)
   elif T is SomeInteger: result = %a
+  elif T is enum:
+    case opt.enumMode
+    of joptEnumOrd:
+      when T is Ordinal or not defined(nimLegacyJsonutilsHoleyEnum): %(a.ord)
+      else: toJson($a, opt)
+    of joptEnumSymbol:
+      when T is OrdinalEnum:
+        toJson(symbolName(a), opt)
+      else:
+        toJson($a, opt)
+    of joptEnumString: toJson($a, opt)
   elif T is Ordinal: result = %(a.ord)
   elif T is cstring: (if a == nil: result = newJNull() else: result = % $a)
   else: result = %a

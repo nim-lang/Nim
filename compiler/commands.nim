@@ -9,7 +9,6 @@
 
 # This module handles the parsing of command line arguments.
 
-
 # We do this here before the 'import' statement so 'defined' does not get
 # confused with 'TGCMode.gcMarkAndSweep' etc.
 template bootSwitch(name, expr, userString) =
@@ -25,18 +24,15 @@ bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
 bootSwitch(usedGoGC, defined(gogc), "--gc:go")
 bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
+import std/[setutils, os, strutils, parseutils, parseopt, sequtils, strtabs]
 import
-  os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
-  wordrecg, parseutils, nimblecmd, parseopt, sequtils, lineinfos,
-  pathutils, strtabs, pathnorm
+  msgs, options, nversion, condsyms, extccomp, platform,
+  wordrecg, nimblecmd, lineinfos, pathutils, pathnorm
 
-from ast import eqTypeFlags, tfGcSafe, tfNoSideEffect
+from ast import setUseIc, eqTypeFlags, tfGcSafe, tfNoSideEffect
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
-bootSwitch(usedNativeStacktrace,
-  defined(nativeStackTrace) and nativeStackTraceSupported,
-  "-d:nativeStackTrace")
 bootSwitch(usedFFI, hasFFI, "-d:nimHasLibFFI")
 
 type
@@ -101,7 +97,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
     msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
-      usedTinyC & useLinenoise & usedNativeStacktrace &
+      usedTinyC & useLinenoise &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGoGC & usedNoGC,
                {msgStdout})
     msgQuit(0)
@@ -153,7 +149,7 @@ template switchOn(arg: string): bool =
 proc processOnOffSwitch(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                         info: TLineInfo) =
   case arg.normalize
-  of "","on": conf.options.incl op
+  of "", "on": conf.options.incl op
   of "off": conf.options.excl op
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
 
@@ -185,7 +181,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string; conf: ConfigRef) =
   var id = ""  # arg = key or [key] or key:val or [key]:val;  with val=on|off
   var i = 0
-  var n = hintMin
+  var notes: set[TMsgKind]
   var isBracket = false
   if i < arg.len and arg[i] == '[':
     isBracket = true
@@ -200,37 +196,38 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   if i == arg.len: discard
   elif i < arg.len and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
-  # unfortunately, hintUser and warningUser clash
-  if state in {wHint, wHintAsError}:
-    let x = findStr(hintMin, hintMax, id, errUnknown)
-    if x != errUnknown: n = TNoteKind(x)
-    else: localError(conf, info, "unknown hint: " & id)
-  else:
-    let x = findStr(warnMin, warnMax, id, errUnknown)
-    if x != errUnknown: n = TNoteKind(x)
-    else: localError(conf, info, "unknown warning: " & id)
 
+  let isSomeHint = state in {wHint, wHintAsError}
+  template findNote(noteMin, noteMax, name) =
+    # unfortunately, hintUser and warningUser clash, otherwise implementation would simplify a bit
+    let x = findStr(noteMin, noteMax, id, errUnknown)
+    if x != errUnknown: notes = {TNoteKind(x)}
+    else: localError(conf, info, "unknown $#: $#" % [name, id])
+  case id.normalize
+  of "all": # other note groups would be easy to support via additional cases
+    notes = if isSomeHint: {hintMin..hintMax} else: {warnMin..warnMax}
+  elif isSomeHint: findNote(hintMin, hintMax, "hint")
+  else: findNote(warnMin, warnMax, "warning")
   var val = substr(arg, i).normalize
   if val == "": val = "on"
   if val notin ["on", "off"]:
+    # xxx in future work we should also allow users to have control over `foreignPackageNotes`
+    # so that they can enable `hints|warnings|warningAsErrors` for all the code they depend on.
     localError(conf, info, errOnOrOffExpectedButXFound % arg)
-  elif n notin conf.cmdlineNotes or pass == passCmd1:
-    if pass == passCmd1: incl(conf.cmdlineNotes, n)
-    incl(conf.modifiedyNotes, n)
-    case val
-    of "on":
-      if state in {wWarningAsError, wHintAsError}:
-        incl(conf.warningAsErrors, n) # xxx rename warningAsErrors to noteAsErrors
-      else:
-        incl(conf.notes, n)
-        incl(conf.mainPackageNotes, n)
-    of "off":
-      if state in {wWarningAsError, wHintAsError}:
-        excl(conf.warningAsErrors, n)
-      else:
-        excl(conf.notes, n)
-        excl(conf.mainPackageNotes, n)
-        excl(conf.foreignPackageNotes, n)
+  else:
+    let isOn = val == "on"
+    if isOn and id.normalize == "all":
+      localError(conf, info, "only 'all:off' is supported")
+    for n in notes:
+      if n notin conf.cmdlineNotes or pass == passCmd1:
+        if pass == passCmd1: incl(conf.cmdlineNotes, n)
+        incl(conf.modifiedyNotes, n)
+        if state in {wWarningAsError, wHintAsError}:
+          conf.warningAsErrors[n] = isOn # xxx rename warningAsErrors to noteAsErrors
+        else:
+          conf.notes[n] = isOn
+          conf.mainPackageNotes[n] = isOn
+        if not isOn: excl(conf.foreignPackageNotes, n)
 
 proc processCompile(conf: ConfigRef; filename: string) =
   var found = findFile(conf, filename)
@@ -446,7 +443,8 @@ proc parseCommand*(command: string): Command =
   of "check": cmdCheck
   of "e": cmdNimscript
   of "doc0": cmdDoc0
-  of "doc2", "doc": cmdDoc2
+  of "doc2", "doc": cmdDoc
+  of "doc2tex": cmdDoc2tex
   of "rst2html": cmdRst2html
   of "rst2tex": cmdRst2tex
   of "jsondoc0": cmdJsondoc0
@@ -483,6 +481,19 @@ proc setCommandEarly*(conf: ConfigRef, command: string) =
     conf.foreignPackageNotes = {hintSuccessX}
   else:
     conf.foreignPackageNotes = foreignPackageNotesDefault
+
+proc specialDefine(conf: ConfigRef, key: string) =
+  # Keep this syncronized with the default config/nim.cfg!
+  if cmpIgnoreStyle(key, "nimQuirky") == 0:
+    conf.exc = excQuirky
+  elif cmpIgnoreStyle(key, "release") == 0 or cmpIgnoreStyle(key, "danger") == 0:
+    conf.options.excl {optStackTrace, optLineTrace, optLineDir, optOptimizeSize}
+    conf.globalOptions.excl {optExcessiveStackTrace, optCDebug}
+    conf.options.incl optOptimizeSpeed
+  if cmpIgnoreStyle(key, "danger") == 0 or cmpIgnoreStyle(key, "quick") == 0:
+    conf.options.excl {optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
+      optOverflowCheck, optAssert, optStackTrace, optLineTrace, optLineDir}
+    conf.globalOptions.excl {optCDebug}
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
@@ -525,6 +536,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.lazyPaths.keepItIf(it != path)
   of "nimcache":
     expectArg(conf, switch, arg, pass, info)
+    var arg = arg
+    # refs bug #18674, otherwise `--os:windows` messes up with `--nimcache` set
+    # in config nims files, e.g. via: `import os; switch("nimcache", "/tmp/somedir")`
+    if conf.target.targetOS == osWindows and DirSep == '/': arg = arg.replace('\\', '/')
     conf.nimcacheDir = processPath(conf, arg, info, notRelativeToProj=true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
@@ -550,12 +565,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if {':', '='} in arg:
       splitSwitch(conf, arg, key, val, pass, info)
-      if cmpIgnoreStyle(key, "nimQuirky") == 0:
-        conf.exc = excQuirky
+      specialDefine(conf, key)
       defineSymbol(conf.symbols, key, val)
     else:
-      if cmpIgnoreStyle(arg, "nimQuirky") == 0:
-        conf.exc = excQuirky
+      specialDefine(conf, arg)
       defineSymbol(conf.symbols, arg)
   of "undef", "u":
     expectArg(conf, switch, arg, pass, info)
@@ -848,6 +861,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "v2": conf.symbolFiles = v2Sf
       of "stress": conf.symbolFiles = stressTest
       else: localError(conf, info, "invalid option for --incremental: " & arg)
+    setUseIc(conf.symbolFiles != disabledSf)
   of "skipcfg":
     processOnOffSwitchG(conf, {optSkipSystemConfigFile}, arg, pass, info)
   of "skipprojcfg":
@@ -910,6 +924,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       excl(conf.notes, hintProcessing)
       excl(conf.mainPackageNotes, hintProcessing)
     else: localError(conf, info, "expected: dots|filenames|off, got: $1" % arg)
+  of "unitsep":
+    conf.unitSep = if switchOn(arg): "\31" else: ""
   of "listfullpaths":
     # xxx in future work, use `warningDeprecated`
     conf.filenameOption = if switchOn(arg): foAbs else: foCanonical
@@ -974,6 +990,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
     of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError}
     of "error": conf.globalOptions = conf.globalOptions + {optStyleError}
+    of "usages": conf.globalOptions.incl optStyleUsages
     else: localError(conf, info, errOffHintsError % arg)
   of "showallmismatches":
     processOnOffSwitchG(conf, {optShowAllMismatches}, arg, pass, info)

@@ -275,3 +275,7 @@ proc `==`*(a, b: SecureHash): bool =
 
   # Not a constant-time comparison, but that's acceptable in this context
   Sha1Digest(a) == Sha1Digest(b)
+
+proc isValidSha1Hash*(s: string): bool =
+  ## Checks if a string is a valid sha1 hash sum.
+  s.len == 40 and allCharsInSet(s, HexDigits)

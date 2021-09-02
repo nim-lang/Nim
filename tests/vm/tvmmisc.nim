@@ -256,6 +256,17 @@ block:
   doAssert f == @[]
 
 
+block: # bug #18310
+  macro t() : untyped =
+    let
+      x = nnkTupleConstr.newTree(newLit(1))
+      y = nnkTupleConstr.newTree(newLit(2))
+    doAssert not (x == y) # not using != intentionally
+    doAssert not(cast[int](x) == cast[int](y))
+    doAssert not(system.`==`(x, y))
+    doAssert system.`==`(x, x)
+  t()
+
 block: # bug #10815
   type
     Opcode = enum
@@ -365,7 +376,7 @@ block: # VM wrong register free causes errors in unrelated code
     in let prc = if not isClosure: bb.sym else: bb[0].sym
     ]#
     proc bar2(head: string): string = "asdf"
-    proc gook(u1: int) = discard
+    proc zook(u1: int) = discard
 
     type PathEntry = object
       kind: int
@@ -374,20 +385,20 @@ block: # VM wrong register free causes errors in unrelated code
     iterator globOpt(): int =
       var u1: int
 
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
 
       var entry = PathEntry()
       entry.path = bar2("")

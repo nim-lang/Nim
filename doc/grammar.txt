@@ -29,6 +29,7 @@ exprList = expr ^+ comma
 exprColonEqExprList = exprColonEqExpr (comma exprColonEqExpr)* (comma)?
 dotExpr = expr '.' optInd (symbol | '[:' exprList ']')
 explicitGenericInstantiation = '[:' exprList ']' ( '(' exprColonEqExpr ')' )?
+dotLikeExpr = expr DOTLIKEOP optInd symbol
 qualifiedIdent = symbol ('.' optInd symbol)?
 setOrTableConstr = '{' ((exprColonEqExpr comma)* | ':' ) '}'
 castExpr = 'cast' ('[' optInd typeDesc optPar ']' '(' optInd expr optPar ')') /
@@ -56,6 +57,7 @@ tupleConstr = '(' optInd (exprColonEqExpr comma?)* optPar ')'
 arrayConstr = '[' optInd (exprColonEqExpr comma?)* optPar ']'
 primarySuffix = '(' (exprColonEqExpr comma?)* ')'
       | '.' optInd symbol generalizedLit?
+      | DOTLIKEOP optInd symbol generalizedLit?
       | '[' optInd exprColonEqExprList optPar ']'
       | '{' optInd exprColonEqExprList optPar '}'
       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax

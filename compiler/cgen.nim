@@ -15,7 +15,7 @@ import
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
-  injectdestructors
+  injectdestructors, astmsgs
 
 when not defined(leanCompiler):
   import spawn, semparallel
@@ -23,9 +23,6 @@ when not defined(leanCompiler):
 import strutils except `%` # collides with ropes.`%`
 
 from ic / ic import ModuleBackendFlag
-from modulegraphs import ModuleGraph, PPassContext
-from lineinfos import
-  warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated, errCannotOpenFile
 import dynlib
 
 when not declared(dynlib.libCandidates):

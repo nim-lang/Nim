@@ -35,7 +35,7 @@ type
     wMagic = "magic", wThread = "thread", wFinal = "final", wProfiler = "profiler",
     wMemTracker = "memtracker", wObjChecks = "objchecks",
     wIntDefine = "intdefine", wStrDefine = "strdefine", wBoolDefine = "booldefine",
-    wCursor = "cursor", wNoalias = "noalias",
+    wCursor = "cursor", wNoalias = "noalias", wEffectsOf = "effectsOf",
 
     wImmediate = "immediate", wConstructor = "constructor", wDestructor = "destructor",
     wDelegator = "delegator", wOverride = "override", wImportCpp = "importcpp",

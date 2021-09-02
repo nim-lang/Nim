@@ -12,7 +12,8 @@
 import
   intsets, ast, astalgo, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos, sets,
-  modulegraphs, wordrecg
+  modulegraphs, wordrecg, tables
+from strutils import `%`
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
@@ -224,19 +225,21 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
 
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool): PSym =
   result = realModule
-  c.unusedImports.add((realModule, n.info))
   template createModuleAliasImpl(ident): untyped =
-    createModuleAlias(realModule, nextSymId c.idgen, ident, realModule.info, c.config.options)
+    createModuleAlias(realModule, nextSymId c.idgen, ident, n.info, c.config.options)
   if n.kind != nkImportAs: discard
   elif n.len != 2 or n[1].kind != nkIdent:
     localError(c.config, n.info, "module alias must be an identifier")
   elif n[1].ident.id != realModule.name.id:
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAliasImpl(n[1].ident)
+  if result == realModule:
+    # avoids modifying `realModule`, see D20201209T194412 for `import {.all.}`
+    result = createModuleAliasImpl(realModule.name)
   if importHidden:
-    if result == realModule: # avoids modifying `realModule`, see D20201209T194412.
-      result = createModuleAliasImpl(realModule.name)
     result.options.incl optImportHidden
+  c.unusedImports.add((result, n.info))
+  c.importModuleMap[result.id] = realModule.id
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
   var ret: typeof(result)
@@ -274,26 +277,32 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
                 toFullPath(c.config, c.graph.importStack[i+1])
       c.recursiveDep = err
 
+    var realModule: PSym
     discard pushOptionEntry(c)
-    result = importModuleAs(c, n, c.graph.importModuleCallback(c.graph, c.module, f), transf.importHidden)
+    realModule = c.graph.importModuleCallback(c.graph, c.module, f)
+    result = importModuleAs(c, n, realModule, transf.importHidden)
     popOptionEntry(c)
 
     #echo "set back to ", L
     c.graph.importStack.setLen(L)
     # we cannot perform this check reliably because of
-    # test: modules/import_in_config)
-    when true:
-      if result.info.fileIndex == c.module.info.fileIndex and
-          result.info.fileIndex == n.info.fileIndex:
-        localError(c.config, n.info, "A module cannot import itself")
-    if sfDeprecated in result.flags:
-      if result.constraint != nil:
-        message(c.config, n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s & " is deprecated")
-      else:
-        message(c.config, n.info, warnDeprecated, result.name.s & " is deprecated")
+    # test: modules/import_in_config) # xxx is that still true?
+    if realModule == c.module:
+      localError(c.config, n.info, "module '$1' cannot import itself" % realModule.name.s)
+    if sfDeprecated in realModule.flags:
+      var prefix = ""
+      if realModule.constraint != nil: prefix = realModule.constraint.strVal & "; "
+      message(c.config, n.info, warnDeprecated, prefix & realModule.name.s & " is deprecated")
     suggestSym(c.graph, n.info, result, c.graph.usageSym, false)
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)
+
+proc afterImport(c: PContext, m: PSym) =
+  # fixes bug #17510, for re-exported symbols
+  let realModuleId = c.importModuleMap[m.id]
+  for s in allSyms(c.graph, m):
+    if s.owner.id != realModuleId:
+      c.exportIndirections.incl((m.id, s.id))
 
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
   var it = it
@@ -303,6 +312,7 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
     addDecl(c, m, it.info) # add symbol to symbol table of module
     importAllSymbols(c, m)
     #importForwarded(c, m.ast, emptySet, m)
+    afterImport(c, m)
 
 proc evalImport*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
@@ -341,6 +351,7 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
       if n[i].kind != nkNilLit:
         importSymbol(c, n[i], m, im.imported)
     c.addImport im
+    afterImport(c, m)
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
@@ -351,3 +362,4 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
     addDecl(c, m, n.info)               # add symbol to symbol table of module
     importAllSymbolsExcept(c, m, readExceptSet(c, n))
     #importForwarded(c, m.ast, exceptSet, m)
+    afterImport(c, m)

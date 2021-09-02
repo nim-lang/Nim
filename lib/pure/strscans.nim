@@ -52,7 +52,7 @@ substrings starting with ``$``. These constructions are available:
 =================   ========================================================
 
 Even though ``$*`` and ``$+`` look similar to the regular expressions ``.*``
-and ``.+`` they work quite differently, there is no non-deterministic
+and ``.+``, they work quite differently. There is no non-deterministic
 state machine involved and the matches are non-greedy. ``[$*]``
 matches ``[xyz]`` via ``parseutils.parseUntil``.
 

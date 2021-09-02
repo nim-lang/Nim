@@ -4,7 +4,7 @@
 import std / [strutils, sets]
 
 import ".." / compiler / [
-  llstream, ast, lexer, options, msgs, idents,
+  llstream, lexer, options, msgs, idents,
   lineinfos, pathutils]
 
 proc checkGrammarFileImpl(cache: IdentCache, config: ConfigRef) =
@@ -35,6 +35,10 @@ proc checkGrammarFileImpl(cache: IdentCache, config: ConfigRef) =
           usedSyms.incl word
       else:
         rawGetTok(L, tok)
+    for u in declaredSyms:
+      if u notin usedSyms:
+        echo "Unused non-terminal: ", u
+
     for u in usedSyms:
       if u notin declaredSyms:
         echo "Undeclared non-terminal: ", u

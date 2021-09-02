@@ -373,7 +373,7 @@ iterator elements(t: IntSet): int {.inline.} =
       r = r.next
 
 proc isSmallChunk(c: PChunk): bool {.inline.} =
-  return c.size <= SmallChunkSize-smallChunkOverhead()
+  result = c.size <= SmallChunkSize-smallChunkOverhead()
 
 proc chunkUnused(c: PChunk): bool {.inline.} =
   result = (c.prevSize and 1) == 0
@@ -749,8 +749,9 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
-  sysAssert(requestedSize >= sizeof(FreeCell), "rawAlloc: requested size too small")
   var size = roundup(requestedSize, MemAlign)
+  sysAssert(size >= sizeof(FreeCell), "rawAlloc: requested size too small")
+
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
   if size <= SmallChunkSize-smallChunkOverhead():
@@ -1052,22 +1053,48 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
         inc(result, it.size)
         it = it.next
 
-  proc getFreeMem(): int =
-    result = allocator.freeMem
-    #sysAssert(result == countFreeMem())
+  when hasThreadSupport:
+    var sharedHeap: MemRegion
+    var heapLock: SysLock
+    initSysLock(heapLock)
 
-  proc getTotalMem(): int = return allocator.currMem
-  proc getOccupiedMem(): int = return allocator.occ #getTotalMem() - getFreeMem()
-  proc getMaxMem*(): int = return getMaxMem(allocator)
+  proc getFreeMem(): int =
+    #sysAssert(result == countFreeMem())
+    when hasThreadSupport and defined(gcDestructors):
+      acquireSys(heapLock)
+      result = sharedHeap.freeMem
+      releaseSys(heapLock)
+    else:
+      result = allocator.freeMem
+
+  proc getTotalMem(): int =
+    when hasThreadSupport and defined(gcDestructors):
+      acquireSys(heapLock)
+      result = sharedHeap.currMem
+      releaseSys(heapLock)
+    else:
+      result = allocator.currMem
+
+  proc getOccupiedMem(): int =
+    when hasThreadSupport and defined(gcDestructors):
+      acquireSys(heapLock)
+      result = sharedHeap.occ
+      releaseSys(heapLock)
+    else:
+      result = allocator.occ #getTotalMem() - getFreeMem()
+
+  proc getMaxMem*(): int =
+    when hasThreadSupport and defined(gcDestructors):
+      acquireSys(heapLock)
+      result = getMaxMem(sharedHeap)
+      releaseSys(heapLock)
+    else:
+      result = getMaxMem(allocator)
 
   when defined(nimTypeNames):
     proc getMemCounters*(): (int, int) = getMemCounters(allocator)
 
   # -------------------- shared heap region ----------------------------------
-  when hasThreadSupport:
-    var sharedHeap: MemRegion
-    var heapLock: SysLock
-    initSysLock(heapLock)
 
   proc allocSharedImpl(size: Natural): pointer =
     when hasThreadSupport:

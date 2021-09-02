@@ -170,13 +170,15 @@ proc validInd(p: var Parser): bool {.inline.} =
 proc rawSkipComment(p: var Parser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
+      var rhs = node.comment
       when defined(nimpretty):
         if p.tok.commentOffsetB > p.tok.commentOffsetA:
-          node.comment.add fileSection(p.lex.config, p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
+          rhs.add fileSection(p.lex.config, p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
         else:
-          node.comment.add p.tok.literal
+          rhs.add p.tok.literal
       else:
-        node.comment.add  p.tok.literal
+        rhs.add p.tok.literal
+      node.comment = move rhs
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)
@@ -466,6 +468,17 @@ proc dotExpr(p: var Parser, a: PNode): PNode =
       exprColonEqExprListAux(p, tkParRi, y)
     result = y
 
+proc dotLikeExpr(p: var Parser, a: PNode): PNode =
+  #| dotLikeExpr = expr DOTLIKEOP optInd symbol
+  var info = p.parLineInfo
+  result = newNodeI(nkInfix, info)
+  optInd(p, result)
+  var opNode = newIdentNodeP(p.tok.ident, p)
+  getTok(p)
+  result.add(opNode)
+  result.add(a)
+  result.add(parseSymbol(p, smAfterDot))
+
 proc qualifiedIdent(p: var Parser): PNode =
   #| qualifiedIdent = symbol ('.' optInd symbol)?
   result = parseSymbol(p)
@@ -537,13 +550,16 @@ proc parseGStrLit(p: var Parser, a: PNode): PNode =
 
 proc complexOrSimpleStmt(p: var Parser): PNode
 proc simpleExpr(p: var Parser, mode = pmNormal): PNode
-proc parseIfExpr(p: var Parser, kind: TNodeKind): PNode
+proc parseIfOrWhenExpr(p: var Parser, kind: TNodeKind): PNode
 
 proc semiStmtList(p: var Parser, result: PNode) =
   inc p.inSemiStmtList
   withInd(p):
     # Be lenient with the first stmt/expr
-    let a = if p.tok.tokType == tkIf: parseIfExpr(p, nkIfStmt) else: complexOrSimpleStmt(p)
+    let a = case p.tok.tokType
+            of tkIf: parseIfOrWhenExpr(p, nkIfStmt)
+            of tkWhen: parseIfOrWhenExpr(p, nkWhenStmt)
+            else: complexOrSimpleStmt(p)
     result.add a
 
     while p.tok.tokType != tkEof:
@@ -556,6 +572,7 @@ proc semiStmtList(p: var Parser, result: PNode) =
       let a = complexOrSimpleStmt(p)
       if a.kind == nkEmpty:
         parMessage(p, errExprExpected, p.tok)
+        getTok(p)
       else:
         result.add a
   dec p.inSemiStmtList
@@ -784,10 +801,15 @@ proc commandExpr(p: var Parser; r: PNode; mode: PrimaryMode): PNode =
   p.hasProgress = false
   result.add commandParam(p, isFirstParam, mode)
 
+proc isDotLike(tok: Token): bool =
+  result = tok.tokType == tkOpr and tok.ident.s.len > 1 and
+    tok.ident.s[0] == '.' and tok.ident.s[1] != '.'
+
 proc primarySuffix(p: var Parser, r: PNode,
                    baseIndent: int, mode: PrimaryMode): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')'
   #|       | '.' optInd symbol generalizedLit?
+  #|       | DOTLIKEOP optInd symbol generalizedLit?
   #|       | '[' optInd exprColonEqExprList optPar ']'
   #|       | '{' optInd exprColonEqExprList optPar '}'
   #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
@@ -836,11 +858,19 @@ proc primarySuffix(p: var Parser, r: PNode,
       # `foo ref` or `foo ptr`. Unfortunately, these two are also
       # used as infix operators for the memory regions feature and
       # the current parsing rules don't play well here.
-      if p.inPragma == 0 and (isUnary(p.tok) or p.tok.tokType notin {tkOpr, tkDotDot}):
-        # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
-        # solution, but pragmas.nim can't handle that
-        result = commandExpr(p, result, mode)
-      break
+      let isDotLike2 = p.tok.isDotLike
+      if isDotLike2 and p.lex.config.isDefined("nimPreviewDotLikeOps"):
+        # synchronize with `tkDot` branch
+        result = dotLikeExpr(p, result)
+        result = parseGStrLit(p, result)
+      else:
+        if isDotLike2:
+          parMessage(p, warnDotLikeOps, "dot-like operators will be parsed differently with `-d:nimPreviewDotLikeOps`")
+        if p.inPragma == 0 and (isUnary(p.tok) or p.tok.tokType notin {tkOpr, tkDotDot}):
+          # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
+          # solution, but pragmas.nim can't handle that
+          result = commandExpr(p, result, mode)
+        break
     else:
       break
 
@@ -1202,13 +1232,13 @@ proc parseExpr(p: var Parser): PNode =
       result = parseBlock(p)
   of tkIf:
     nimprettyDontTouch:
-      result = parseIfExpr(p, nkIfExpr)
+      result = parseIfOrWhenExpr(p, nkIfExpr)
   of tkFor:
     nimprettyDontTouch:
       result = parseFor(p)
   of tkWhen:
     nimprettyDontTouch:
-      result = parseIfExpr(p, nkWhenExpr)
+      result = parseIfOrWhenExpr(p, nkWhenExpr)
   of tkCase:
     # Currently we think nimpretty is good enough with case expressions,
     # so it is allowed to touch them:
@@ -1558,7 +1588,7 @@ proc parseIfOrWhen(p: var Parser, kind: TNodeKind): PNode =
     branch.add(parseStmt(p))
     result.add(branch)
 
-proc parseIfExpr(p: var Parser, kind: TNodeKind): PNode =
+proc parseIfOrWhenExpr(p: var Parser, kind: TNodeKind): PNode =
   #| condExpr = expr colcom expr optInd
   #|         ('elif' expr colcom expr optInd)*
   #|          'else' colcom expr
@@ -1791,6 +1821,15 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
   else:
     result.add(p.emptyNode)
   indAndComment(p, result, maybeMissEquals)
+  let body = result[^1]
+  if body.kind == nkStmtList and body.len > 0 and body[0].comment.len > 0 and body[0].kind != nkCommentStmt:
+    if result.comment.len == 0:
+      # proc fn*(a: int): int = a ## foo
+      # => moves comment `foo` to `fn`
+      result.comment = body[0].comment
+      body[0].comment = ""
+    else:
+      assert false, p.lex.config$body.info # avoids hard to track bugs, fail early.
 
 proc newCommentStmt(p: var Parser): PNode =
   #| commentStmt = COMMENT
@@ -2054,6 +2093,8 @@ proc parseTypeClass(p: var Parser): PNode =
     skipComment(p, result)
   # an initial IND{>} HAS to follow:
   if not realInd(p):
+    if result.isNewStyleConcept:
+      parMessage(p, "routine expected, but found '$1' (empty new-styled concepts are not allowed)", p.tok)
     result.add(p.emptyNode)
   else:
     result.add(parseStmt(p))

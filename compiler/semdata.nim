@@ -29,15 +29,13 @@ type
 
   POptionEntry* = ref TOptionEntry
   PProcCon* = ref TProcCon
-  TProcCon* = object          # procedure context; also used for top-level
-                              # statements
+  TProcCon* {.acyclic.} = object # procedure context; also used for top-level
+                                 # statements
     owner*: PSym              # the symbol this context belongs to
     resultSym*: PSym          # the result symbol (if we are in a proc)
     selfSym*: PSym            # the 'self' symbol (if available)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
-    inTryStmt*: int           # whether we are in a try statement; works also
-                              # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     mappingExists*: bool
     mapping*: TIdTable
@@ -67,7 +65,7 @@ type
       # you may be in position to supply a better error message
       # to the user.
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
-    efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
+    efWantValue, efOperand, efNoSemCheck,
     efNoEvaluateGeneric, efInCall, efFromHlo, efNoSem2Check,
     efNoUndeclared
       # Use this if undeclared identifiers should not raise an error during
@@ -90,6 +88,9 @@ type
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
     enforceVoidContext*: PType
+      # for `if cond: stmt else: foo`, `foo` will be evaluated under
+      # enforceVoidContext != nil
+    voidType*: PType # for typeof(stmt)
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
     moduleScope*: PScope       # scope for modules
@@ -155,8 +156,10 @@ type
     features*: set[Feature]
     inTypeContext*, inConceptDecl*: int
     unusedImports*: seq[(PSym, TLineInfo)]
-    exportIndirections*: HashSet[(int, int)]
+    exportIndirections*: HashSet[(int, int)] # (module.id, symbol.id)
+    importModuleMap*: Table[int, int] # (module.id, module.id)
     lastTLineInfo*: TLineInfo
+    sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -258,7 +261,9 @@ proc getGenSym*(c: PContext; s: PSym): PSym =
   result = s
 
 proc considerGenSyms*(c: PContext; n: PNode) =
-  if n.kind == nkSym:
+  if n == nil:
+    discard "can happen for nkFormalParams/nkArgList"
+  elif n.kind == nkSym:
     let s = getGenSym(c, n.sym)
     if n.sym != s:
       n.sym = s

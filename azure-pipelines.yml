@@ -19,10 +19,11 @@ jobs:
   strategy:
     matrix:
       Linux_amd64:
-        vmImage: 'ubuntu-16.04'
+        vmImage: 'ubuntu-18.04'
         CPU: amd64
+      # regularly breaks, refs bug #17325
       Linux_i386:
-        # bug #17325: fails on 'ubuntu-16.04' because it now errors with:
+        # on 'ubuntu-16.04' (not supported anymore anyways) it errored with:
         # g++-multilib : Depends: gcc-multilib (>= 4:5.3.1-1ubuntu1) but it is not going to be installed
         vmImage: 'ubuntu-18.04'
         CPU: i386
@@ -69,14 +70,10 @@ jobs:
         fi
       displayName: 'Check whether to skip CI'
 
-    - bash: git clone --depth 1 https://github.com/nim-lang/csources_v1 csources
-      displayName: 'Checkout Nim csources'
-      condition: and(succeeded(), eq(variables['skipci'], 'false'))
-
     - task: NodeTool@0
       inputs:
-        versionSpec: '12.x'
-      displayName: 'Install node.js 12.x'
+        versionSpec: '16.x'
+      displayName: 'Install node.js 16.x'
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
 
     - bash: |
@@ -136,11 +133,7 @@ jobs:
     - bash: |
         set -e
         . ci/funs.sh
-        echo_run mkdir dist
-        echo_run curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
-        echo_run curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
-        echo_run 7z x dist/mingw64.7z -odist
-        echo_run 7z x dist/dlls.zip -obin
+        nimInternalInstallDepsWindows
         echo_run echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/dist/mingw64/bin'
 
       displayName: 'Install dependencies (Windows)'
@@ -150,66 +143,25 @@ jobs:
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Add build binaries to PATH'
 
-    - bash: |
-        set -e
-        . ci/funs.sh
-        echo_run echo 'PATH:' "$PATH"
-        echo_run echo '##[section]gcc version'
-        echo_run gcc -v
-        echo_run echo '##[section]nodejs version'
-        echo_run node -v
-        echo_run echo '##[section]make version'
-        echo_run make -v
+    - bash: . ci/funs.sh && nimCiSystemInfo
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'System information'
 
-    - bash: echo '##vso[task.setvariable variable=csources_version]'"$(git -C csources rev-parse HEAD)"
+    - bash: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu=$(CPU)
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
-      displayName: 'Get csources version'
+      displayName: 'Build csourcesAny'
 
-    - task: Cache@2
-      inputs:
-        key: 'csources | "$(Agent.OS)" | $(CPU) | $(csources_version)'
-        path: csources/bin
+    # this could be revived if performance justifies it (needs a few updates)
+    # - task: Cache@2
+    #   inputs:
+    #     key: 'csourcesAny | "$(Agent.OS)" | $(CPU) | $(csources_version)'
+    #     path: $(nim_csources)
+    #   condition: and(succeeded(), eq(variables['skipci'], 'false'))
+    #   displayName: 'Restore built csourcesAny'
+
+    - bash: . ci/funs.sh && nimInternalBuildKochAndRunCI
+      # would could also show on failure: echo '##vso[task.complete result=Failed]'
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
-      displayName: 'Restore built csources'
-
-    - bash: |
-        set -e
-        . ci/funs.sh
-        ncpu=
-        ext=
-        case '$(Agent.OS)' in
-        'Linux')
-          ncpu=$(nproc)
-          ;;
-        'Darwin')
-          ncpu=$(sysctl -n hw.ncpu)
-          ;;
-        'Windows_NT')
-          ncpu=$NUMBER_OF_PROCESSORS
-          ext=.exe
-          ;;
-        esac
-        [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
-
-        if [[ -x csources/bin/nim$ext ]]; then
-          echo_run echo "Found cached compiler, skipping build"
-        else
-          echo_run make -C csources -j $ncpu CC=gcc ucpu=$(CPU) koch=no
-        fi
-
-        echo_run cp csources/bin/nim$ext bin
-      condition: and(succeeded(), eq(variables['skipci'], 'false'))
-      displayName: 'Build 1-stage compiler from csources'
-
-    - bash: nim c koch
-      condition: and(succeeded(), eq(variables['skipci'], 'false'))
-      displayName: 'Build koch'
-
-      # set result to omit the "bash exited with error code '1'" message
-    - bash: ./koch runCI || echo '##vso[task.complete result=Failed]'
-      condition: and(succeeded(), eq(variables['skipci'], 'false'))
-      displayName: 'Run CI'
+      displayName: 'koch, Run CI'
       env:
         SYSTEM_ACCESSTOKEN: $(System.AccessToken)

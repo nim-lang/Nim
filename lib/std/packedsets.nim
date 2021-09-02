@@ -12,10 +12,10 @@
 ##
 ## Supports any Ordinal type.
 ##
-## **Note**: Currently the assignment operator `=` for `PackedSet[A]`
-## performs some rather meaningless shallow copy. Since Nim currently does
-## not allow the assignment operator to be overloaded, use the `assign proc
-## <#assign,PackedSet[A],PackedSet[A]>`_ to get a deep copy.
+## .. note:: Currently the assignment operator `=` for `PackedSet[A]`
+##   performs some rather meaningless shallow copy. Since Nim currently does
+##   not allow the assignment operator to be overloaded, use the `assign proc
+##   <#assign,PackedSet[A],PackedSet[A]>`_ to get a deep copy.
 ##
 ## See also
 ## ========
@@ -38,7 +38,7 @@ const
   IntMask = 1 shl IntShift - 1
 
 type
-  Trunk = ref object
+  Trunk {.acyclic.} = ref object
     next: Trunk                                 # all nodes are connected with this pointer
     key: int                                    # start address at bit 0
     bits: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector

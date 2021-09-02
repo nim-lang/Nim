@@ -1,27 +1,28 @@
+include system/inclrtl
+
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
   ## imported from typetraits
 
-proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
+proc distinctBase(T: typedesc, recursive: static bool = true): typedesc {.magic: "TypeTrait".}
   ## imported from typetraits
 
 proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
 
-proc repr*(x: int): string {.magic: "IntToStr", noSideEffect.}
-  ## repr for an integer argument. Returns `x`
-  ## converted to a decimal string.
+proc repr*(x: int): string =
+  ## Same as $x
+  $x
 
-proc repr*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
-  ## repr for an integer argument. Returns `x`
-  ## converted to a decimal string.
+proc repr*(x: int64): string =
+  ## Same as $x
+  $x
 
 proc repr*(x: uint64): string {.noSideEffect.} =
-  ## repr for an unsigned integer argument. Returns `x`
-  ## converted to a decimal string.
-  $x #Calls `$` from system/strmantle.nim
+  ## Same as $x
+  $x
 
-proc repr*(x: float): string {.magic: "FloatToStr", noSideEffect.}
-  ## repr for a float argument. Returns `x`
-  ## converted to a decimal string.
+proc repr*(x: float): string =
+  ## Same as $x
+  $x
 
 proc repr*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## repr for a boolean argument. Returns `x`
@@ -65,6 +66,11 @@ proc repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ##
   ## If a `repr` operator for a concrete enumeration is provided, this is
   ## used instead. (In other words: *Overwriting* is possible.)
+
+proc reprDiscriminant*(e: int): string {.compilerproc.} =
+  # repr and reprjs can use `PNimType` to symbolize `e`; making this work here
+  # would require a way to pass the set of enum stringified values to cgen.
+  $e
 
 proc repr*(p: pointer): string =
   ## repr of pointer as its hexadecimal value

@@ -2,8 +2,11 @@
 # Every test file can have a #[!]# comment that is deleted from the input
 # before 'nimsuggest' is invoked to ensure this token doesn't make a
 # crucial difference for Nim's parser.
+# When debugging, to run a single test, use for e.g.:
+# `nim r nimsuggest/tester.nim nimsuggest/tests/tsug_accquote.nim`
 
 import os, osproc, strutils, streams, re, sexp, net
+from sequtils import toSeq
 
 type
   Test = object
@@ -13,16 +16,16 @@ type
     disabled: bool
 
 const
-  curDir = when defined(windows): "" else: ""
   DummyEof = "!EOF!"
-
-template tpath(): untyped = getAppDir() / "tests"
+  tpath = "nimsuggest/tests"
+  # we could also use `stdtest/specialpaths`
 
 import std/compilesettings
 
 proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
-  let nimsug = curDir & addFileExt("nimsuggest", ExeExt)
+  let nimsug = "bin" / addFileExt("nimsuggest_testing", ExeExt)
+  doAssert nimsug.fileExists, nimsug
   const libpath = querySetting(libPath)
   result.filename = filename
   result.dest = getTempDir() / extractFilename(filename)
@@ -63,7 +66,7 @@ proc parseTest(filename: string; epcMode=false): Test =
       elif x.startsWith(">"):
         # since 'markers' here are not complete yet, we do the $substitutions
         # afterwards
-        result.script.add((x.substr(1).replaceWord("$path", tpath()), ""))
+        result.script.add((x.substr(1).replaceWord("$path", tpath), ""))
       elif x.len > 0:
         # expected output line:
         let x = x % ["file", filename, "lib", libpath]
@@ -104,7 +107,7 @@ proc parseCmd(c: string): seq[string] =
 proc edit(tmpfile: string; x: seq[string]) =
   if x.len != 3 and x.len != 4:
     quit "!edit takes two or three arguments"
-  let f = if x.len >= 4: tpath() / x[3] else: tmpfile
+  let f = if x.len >= 4: tpath / x[3] else: tmpfile
   try:
     let content = readFile(f)
     let newcontent = content.replace(x[1], x[2])
@@ -121,12 +124,12 @@ proc exec(x: seq[string]) =
 
 proc copy(x: seq[string]) =
   if x.len != 3: quit "!copy takes two arguments"
-  let rel = tpath()
+  let rel = tpath
   copyFile(rel / x[1], rel / x[2])
 
 proc del(x: seq[string]) =
   if x.len != 2: quit "!del takes one argument"
-  removeFile(tpath() / x[1])
+  removeFile(tpath / x[1])
 
 proc runCmd(cmd, dest: string): bool =
   result = cmd[0] == '!'
@@ -270,6 +273,7 @@ proc runEpcTest(filename: string): int =
       let a = outp.readAll().strip()
     let port = parseInt(a)
     socket.connect("localhost", Port(port))
+
     for req, resp in items(s.script):
       if not runCmd(req, s.dest):
         socket.sendEpcStr(req)
@@ -277,8 +281,12 @@ proc runEpcTest(filename: string): int =
         if not req.startsWith("mod "):
           let answer = sexpToAnswer(sx)
           doReport(filename, answer, resp, report)
-  finally:
+
     socket.sendEpcStr "return arg"
+      # bugfix: this was in `finally` block, causing the original error to be
+      # potentially masked by another one in case `socket.sendEpcStr` raises
+      # (e.g. if socket couldn't connect in the 1st place)
+  finally:
     close(p)
   if report.len > 0:
     echo "==== EPC ========================================"
@@ -317,7 +325,7 @@ proc runTest(filename: string): int =
     try:
       inp.writeLine("quit")
       inp.flush()
-    except:
+    except IOError, OSError:
       # assume it's SIGPIPE, ie, the child already died
       discard
     close(p)
@@ -334,8 +342,13 @@ proc main() =
     failures += runTest(xx)
     failures += runEpcTest(xx)
   else:
-    for x in walkFiles(tpath() / "t*.nim"):
-      echo "Test ", x
+    let files = toSeq(walkFiles(tpath / "t*.nim"))
+    for i, x in files:
+      echo "$#/$# test: $#" % [$i, $files.len, x]
+      when defined(i386):
+        if x == "nimsuggest/tests/tmacro_highlight.nim":
+          echo "skipping" # workaround bug #17945
+          continue
       let xx = expandFilename x
       when not defined(windows):
         # XXX Windows IO redirection seems bonkers:

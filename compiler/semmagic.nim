@@ -190,9 +190,10 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result = newIntNodeT(toInt128(operand.len), traitCall, c.idgen, c.graph)
   of "distinctBase":
     var arg = operand.skipTypes({tyGenericInst})
+    let rec = semConstExpr(c, traitCall[2]).intVal != 0
     while arg.kind == tyDistinct:
-      arg = arg.base
-      arg = arg.skipTypes(skippedTypes + {tyGenericInst})
+      arg = arg.base.skipTypes(skippedTypes + {tyGenericInst})
+      if not rec: break
     result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
@@ -457,6 +458,11 @@ proc semOld(c: PContext; n: PNode): PNode =
     localError(c.config, n[1].info, n[1].sym.name.s & " does not belong to " & getCurrOwner(c).name.s)
   result = n
 
+proc semPrivateAccess(c: PContext, n: PNode): PNode =
+  let t = n[1].typ[0].toObjectFromRefPtrGeneric
+  c.currentScope.allowPrivateAccess.add t.sym
+  result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -546,6 +552,12 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     let op = getAttachedOp(c.graph, t, attachedDestructor)
     if op != nil:
       result[0] = newSymNode(op)
+  of mTrace:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedTrace)
+    if op != nil:
+      result[0] = newSymNode(op)
   of mUnown:
     result = semUnown(c, n)
   of mExists, mForall:
@@ -574,9 +586,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       n[0].sym.magic = mSubU
     result = n
   of mPrivateAccess:
-    var t = n[1].typ[0]
-    if t.kind in {tyRef, tyPtr}: t = t[0]
-    c.currentScope.allowPrivateAccess.add t.sym
-    result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
+    result = semPrivateAccess(c, n)
   else:
     result = n

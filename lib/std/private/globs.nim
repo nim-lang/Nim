@@ -8,13 +8,18 @@ import os
 when defined(windows):
   from strutils import replace
 
+when defined(nimHasEffectsOf):
+  {.experimental: "strictEffects".}
+else:
+  {.pragma: effectsOf.}
+
 type
   PathEntry* = object
     kind*: PathComponent
     path*: string
 
 iterator walkDirRecFilter*(dir: string, follow: proc(entry: PathEntry): bool = nil,
-    relative = false, checkDir = true): PathEntry {.tags: [ReadDirEffect].} =
+    relative = false, checkDir = true): PathEntry {.tags: [ReadDirEffect], effectsOf: follow.} =
   ## Improved `os.walkDirRec`.
   #[
   note: a yieldFilter isn't needed because caller can filter at call site, without
@@ -45,12 +50,17 @@ iterator walkDirRecFilter*(dir: string, follow: proc(entry: PathEntry): bool = n
 
 proc nativeToUnixPath*(path: string): string =
   # pending https://github.com/nim-lang/Nim/pull/13265
-  doAssert not path.isAbsolute # not implemented here; absolute files need more care for the drive
+  result = path
+  when defined(windows):
+    if path.len >= 2 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':':
+      result[0] = '/'
+      result[1] = path[0]
+      if path.len > 2 and path[2] != '\\':
+        doAssert false, "paths like `C:foo` are currently unsupported, path: " & path
   when DirSep == '\\':
-    result = replace(path, '\\', '/')
-  else: result = path
+    result = replace(result, '\\', '/')
 
 when isMainModule:
   import sugar
-  for a in walkDirRecFilter(".", follow = a=>a.path.lastPathPart notin ["nimcache", ".git", ".csources", "bin"]):
+  for a in walkDirRecFilter(".", follow = a=>a.path.lastPathPart notin ["nimcache", ".git", "csources_v1", "csources", "bin"]):
     echo a

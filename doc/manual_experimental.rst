@@ -1,5 +1,3 @@
-.. default-role:: code
-
 =========================
 Nim Experimental Features
 =========================
@@ -7,6 +5,8 @@ Nim Experimental Features
 :Authors: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 
@@ -15,7 +15,7 @@ About this document
 
 This document describes features of Nim that are to be considered experimental.
 Some of these are not covered by the `.experimental` pragma or
-`--experimental` switch because they are already behind a special syntax and
+`--experimental`:option: switch because they are already behind a special syntax and
 one may want to use Nim libraries using these features without using them
 oneself.
 
@@ -70,6 +70,7 @@ type `void` are treated as non-existent, `void` as a return type means that
 the procedure does not return a value:
 
 .. code-block:: nim
+
   proc nothing(x, y: void): void =
     echo "ha"
 
@@ -78,6 +79,7 @@ the procedure does not return a value:
 The `void` type is particularly useful for generic code:
 
 .. code-block:: nim
+
   proc callProc[T](p: proc (x: T), x: T) =
     when T is void:
       p()
@@ -93,6 +95,7 @@ The `void` type is particularly useful for generic code:
 However, a `void` type cannot be inferred in generic code:
 
 .. code-block:: nim
+
   callProc(emptyProc)
   # Error: type mismatch: got (proc ())
   # but expected one of:
@@ -102,106 +105,6 @@ The `void` type is only valid for parameters and return types; other symbols
 cannot have the type `void`.
 
 
-
-Covariance
-==========
-
-Covariance in Nim can be introduced only through pointer-like types such
-as `ptr` and `ref`. Sequence, Array and OpenArray types, instantiated
-with pointer-like types will be considered covariant if and only if they
-are also immutable. The introduction of a `var` modifier or additional
-`ptr` or `ref` indirections would result in invariant treatment of
-these types.
-
-`proc` types are currently always invariant, but future versions of Nim
-may relax this rule.
-
-User-defined generic types may also be covariant with respect to some of
-their parameters. By default, all generic params are considered invariant,
-but you may choose the apply the prefix modifier `in` to a parameter to
-make it contravariant or `out` to make it covariant:
-
-.. code-block:: nim
-  type
-    AnnotatedPtr[out T] =
-      metadata: MyTypeInfo
-      p: ref T
-
-    RingBuffer[out T] =
-      startPos: int
-      data: seq[T]
-
-    Action {.importcpp: "std::function<void ('0)>".} [in T] = object
-
-When the designated generic parameter is used to instantiate a pointer-like
-type as in the case of `AnnotatedPtr` above, the resulting generic type will
-also have pointer-like covariance:
-
-.. code-block:: nim
-  type
-    GuiWidget = object of RootObj
-    Button = object of GuiWidget
-    ComboBox = object of GuiWidget
-
-  var
-    widgetPtr: AnnotatedPtr[GuiWidget]
-    buttonPtr: AnnotatedPtr[Button]
-
-  ...
-
-  proc drawWidget[T](x: AnnotatedPtr[GuiWidget]) = ...
-
-  # you can call procs expecting base types by supplying a derived type
-  drawWidget(buttonPtr)
-
-  # and you can convert more-specific pointer types to more general ones
-  widgetPtr = buttonPtr
-
-Just like with regular pointers, covariance will be enabled only for immutable
-values:
-
-.. code-block:: nim
-  proc makeComboBox[T](x: var AnnotatedPtr[GuiWidget]) =
-    x.p = new(ComboBox)
-
-  makeComboBox(buttonPtr) # Error, AnnotatedPtr[Button] cannot be modified
-                          # to point to a ComboBox
-
-On the other hand, in the `RingBuffer` example above, the designated generic
-param is used to instantiate the non-pointer `seq` type, which means that
-the resulting generic type will have covariance that mimics an array or
-sequence (i.e. it will be covariant only when instantiated with `ptr` and
-`ref` types):
-
-.. code-block:: nim
-
-  type
-    Base = object of RootObj
-    Derived = object of Base
-
-  proc consumeBaseValues(b: RingBuffer[Base]) = ...
-
-  var derivedValues: RingBuffer[Derived]
-
-  consumeBaseValues(derivedValues) # Error, Base and Derived values may differ
-                                   # in size
-
-  proc consumeBasePointers(b: RingBuffer[ptr Base]) = ...
-
-  var derivedPointers: RingBuffer[ptr Derived]
-
-  consumeBaseValues(derivedPointers) # This is legal
-
-Please note that Nim will treat the user-defined pointer-like types as
-proper alternatives to the built-in pointer types. That is, types such
-as `seq[AnnotatedPtr[T]]` or `RingBuffer[AnnotatedPtr[T]]` will also be
-considered covariant and you can create new pointer-like types by instantiating
-other user-defined pointer-like types.
-
-The contravariant parameters introduced with the `in` modifier are currently
-useful only when interfacing with imported types having such semantics.
-
-
 Automatic dereferencing
 =======================
 
@@ -209,6 +112,7 @@ Automatic dereferencing is performed for the first argument of a routine call.
 This feature has to be enabled via `{.experimental: "implicitDeref".}`:
 
 .. code-block:: nim
+
   {.experimental: "implicitDeref".}
 
   proc depth(x: NodeObj): int = ...
@@ -218,6 +122,7 @@ This feature has to be enabled via `{.experimental: "implicitDeref".}`:
   new(n)
   echo n.depth
   # no need to write n[].depth either
+
 
 Code reordering
 ===============
@@ -281,6 +186,7 @@ statement) can have their entire initialization statement reordered. Be wary of
 what code is executed at the top level:
 
 .. code-block:: nim
+
   {.experimental: "codeReordering".}
 
   proc a() =
@@ -300,6 +206,7 @@ what code is executed at the top level:
    code is the same as it would be with code reordering disabled.
 
    .. code-block:: nim
+
      {.experimental: "codeReordering".}
 
      proc x() =
@@ -313,6 +220,7 @@ It is important to note that reordering *only* works for symbols at top level
 scope. Therefore, the following will *fail to compile:*
 
 .. code-block:: nim
+
   {.experimental: "codeReordering".}
 
   proc a() =
@@ -331,6 +239,7 @@ has different names. This does not need an `experimental` switch, but is an
 unstable feature.
 
 .. code-block:: Nim
+
   proc foo(x: int) =
     echo "Using x: ", x
   proc foo(y: int) =
@@ -349,6 +258,7 @@ As a special more convenient notation, proc expressions involved in procedure
 calls can use the `do` keyword:
 
 .. code-block:: nim
+
   sort(cities) do (x,y: string) -> int:
     cmp(x.len, y.len)
 
@@ -371,6 +281,7 @@ parentheses is just a block of code. The `do` notation can be used to
 pass multiple blocks to a macro:
 
 .. code-block:: nim
+
   macro performWithUndo(task, undo: untyped) = ...
 
   performWithUndo do:
@@ -403,6 +314,7 @@ the expression, where the unknown field or proc name is passed to
 an `untyped` parameter:
 
 .. code-block:: nim
+
   a.b # becomes `.`(a, b)
   a.b(c, d) # becomes `.`(a, b, c, d)
 
@@ -410,6 +322,7 @@ The matched dot operators can be symbols of any callable kind (procs,
 templates and macros), depending on the desired effect:
 
 .. code-block:: nim
+
   template `.`(js: PJsonNode, field: untyped): JSON = js[astToStr(field)]
 
   var js = parseJson("{ x: 1, y: 2}")
@@ -434,6 +347,7 @@ operator `.=`
 This operator will be matched against assignments to missing fields.
 
 .. code-block:: nim
+
   a.b = c # becomes `.=`(a, b, c)
 
 Call operator
@@ -444,6 +358,7 @@ for existing routines. The experimental `callOperator` switch must be enabled
 to use this operator.
 
 .. code-block:: nim
+
   {.experimental: "callOperator".}
 
   template `()`(a: int, b: float): untyped = $(a, b)
@@ -473,13 +388,14 @@ Not nil annotation
 ==================
 
 **Note:** This is an experimental feature. It can be enabled with
-`{.experimental: "notnil"}`.
+`{.experimental: "notnil".}`.
 
-All types for which `nil` is a valid value can be annotated with the `not
-nil` annotation to exclude `nil` as a valid value:
+All types for which `nil` is a valid value can be annotated with the
+`not nil` annotation to exclude `nil` as a valid value:
 
 .. code-block:: nim
-  {.experimental: "notnil"}
+
+  {.experimental: "notnil".}
 
   type
     PObject = ref TObj not nil
@@ -501,6 +417,7 @@ here.
 
 .. include:: manual_experimental_strictnotnil.rst
 
+
 Concepts
 ========
 
@@ -510,6 +427,7 @@ arbitrary set of requirements that the matched type must satisfy.
 Concepts are written in the following form:
 
 .. code-block:: nim
+
   type
     Comparable = concept x, y
       (x < y) is bool
@@ -535,6 +453,7 @@ instance. You can also apply the `type` modifier to create a named instance of
 the type itself:
 
 .. code-block:: nim
+
   type
     MyConcept = concept x, var v, ref r, ptr p, static s, type T
       ...
@@ -544,6 +463,7 @@ and parameters are expected. This provides a more convenient way to check for
 the presence of callable symbols with specific signatures:
 
 .. code-block:: nim
+
   type
     OutputStream = concept var s
       s.write(string)
@@ -554,6 +474,7 @@ type, following the `concept` keyword is also considered to have the
 explicit modifier and will be matched only as a type.
 
 .. code-block:: nim
+
   type
     # Let's imagine a user-defined casting framework with operators
     # such as `val.to(string)` and `val.to(JSonValue)`. We can test
@@ -591,6 +512,7 @@ concept and, as a result, a wrong overload is selected, you can apply the
 `explain` pragma to either the concept body or a particular call-site.
 
 .. code-block:: nim
+
   type
     MyConcept {.explain.} = concept ...
 
@@ -606,6 +528,7 @@ Generic concepts and type binding rules
 The concept types can be parametric just like the regular generic types:
 
 .. code-block:: nim
+
   ### matrixalgo.nim
 
   import std/typetraits
@@ -679,6 +602,7 @@ Unbound static params will be inferred from expressions involving the `==`
 operator and also when types dependent on them are being matched:
 
 .. code-block:: nim
+
   type
     MatrixReducer[M, N: static int; T] = concept x
       x.reduce(SquareMatrix[N, T]) is array[M, int]
@@ -693,6 +617,7 @@ matched without permanently inferring it. This may be useful when you need
 to match several procs accepting the same wide class of types:
 
 .. code-block:: nim
+
   type
     Enumerable[T] = concept e
       for v in e:
@@ -715,6 +640,7 @@ types used in multiple signatures, without actually requiring any concrete
 types, thus allowing you to encode implementation-defined types:
 
 .. code-block:: nim
+
   type
     MyConcept = concept x
       type T1 = auto
@@ -775,6 +701,7 @@ accessible through the dot operator in procs where the concept was successfully
 matched to a concrete type:
 
 .. code-block:: nim
+
   type
     DateTime = concept t1, t2, type T
       const Min = T.MinDate
@@ -809,6 +736,7 @@ one. As an alternative way of defining concept refinements, you can use the
 object inheritance syntax involving the `of` keyword:
 
 .. code-block:: nim
+
   type
     Graph = concept g, type G of EquallyComparable, Copyable
       type
@@ -852,6 +780,7 @@ object inheritance syntax involving the `of` keyword:
   the concept body:
 
   .. code-block:: nim
+
     type
       Stringable = concept x
         $x is string
@@ -903,6 +832,7 @@ object inheritance syntax involving the `of` keyword:
   types to the corresponding VTable type.
 
   .. code-block:: nim
+
     type
       IntEnumerable = vtref Enumerable[int]
 
@@ -969,6 +899,7 @@ language may weaken this restriction.)
 The signature has to be:
 
 .. code-block:: nim
+
   proc `=deepCopy`(x: T): T
 
 This mechanism will be used by most data structures that support shared memory
@@ -1036,6 +967,7 @@ phase of the compiler: This means they provide an easy way to enhance the
 compilation pipeline with user defined optimizations:
 
 .. code-block:: nim
+
   template optMul{`*`(a, 2)}(a: int): int = a+a
 
   let x = 3
@@ -1058,6 +990,7 @@ Unfortunately optimizations are hard to get right and even the tiny example
 is **wrong**:
 
 .. code-block:: nim
+
   template optMul{`*`(a, 2)}(a: int): int = a+a
 
   proc f(): int =
@@ -1070,6 +1003,7 @@ We cannot duplicate 'a' if it denotes an expression that has a side effect!
 Fortunately Nim supports side effect analysis:
 
 .. code-block:: nim
+
   template optMul{`*`(a, 2)}(a: int{noSideEffect}): int = a+a
 
   proc f(): int =
@@ -1087,11 +1021,13 @@ cannot really do that however as the following code only swaps arguments
 blindly:
 
 .. code-block:: nim
+
   template mulIsCommutative{`*`(a, b)}(a, b: int): int = b*a
 
 What optimizers really need to do is a *canonicalization*:
 
 .. code-block:: nim
+
   template canonMul{`*`(a, b)}(a: int{lit}, b: int): int = b*a
 
 The `int{lit}` parameter pattern matches against an expression of
@@ -1109,7 +1045,7 @@ The `parameter constraint`:idx: expression can use the operators `|` (or),
 Predicate                Meaning
 ===================      =====================================================
 `atom`                   The matching node has no children.
-`lit`                    The matching node is a literal like "abc", 12.
+`lit`                    The matching node is a literal like `"abc"`, `12`.
 `sym`                    The matching node must be a symbol (a bound
                          identifier).
 `ident`                  The matching node must be an identifier (an unbound
@@ -1151,10 +1087,30 @@ but also to every other bound parameter; syntactically they need to occur after
 the ordinary AST predicates:
 
 .. code-block:: nim
+
   template ex{a = b + c}(a: int{noalias}, b, c: int) =
     # this transformation is only valid if 'b' and 'c' do not alias 'a':
     a = b
     inc a, c
+
+Another example:
+
+.. code-block:: nim
+
+  proc somefunc(s: string)                 = assert s == "variable"
+  proc somefunc(s: string{nkStrLit})       = assert s == "literal"
+  proc somefunc(s: string{nkRStrLit})      = assert s == r"raw"
+  proc somefunc(s: string{nkTripleStrLit}) = assert s == """triple"""
+  proc somefunc(s: static[string])         = assert s == "constant"
+
+  # Use parameter constraints to provide overloads based on both the input parameter type and form.
+  var variable = "variable"
+  somefunc(variable)
+  const constant = "constant"
+  somefunc(constant)
+  somefunc("literal")
+  somefunc(r"raw")
+  somefunc("""triple""")
 
 
 Pattern operators
@@ -1170,6 +1126,7 @@ The `|` operator
 The `|` operator if used as infix operator creates an ordered choice:
 
 .. code-block:: nim
+
   template t{0|1}(): untyped = 3
   let a = 1
   # outputs 3:
@@ -1179,13 +1136,14 @@ The matching is performed after the compiler performed some optimizations like
 constant folding, so the following does not work:
 
 .. code-block:: nim
+
   template t{0|1}(): untyped = 3
   # outputs 1:
   echo 1
 
 The reason is that the compiler already transformed the 1 into "1" for
 the `echo` statement. However, a term rewriting macro should not change the
-semantics anyway. In fact they can be deactivated with the `--patterns:off`
+semantics anyway. In fact they can be deactivated with the `--patterns:off`:option:
 command line option or temporarily with the `patterns` pragma.
 
 
@@ -1196,6 +1154,7 @@ A pattern expression can be bound to a pattern parameter via the `expr{param}`
 notation:
 
 .. code-block:: nim
+
   template t{(0|1|2){x}}(x: untyped): untyped = x+1
   let a = 1
   # outputs 2:
@@ -1208,6 +1167,7 @@ The `~` operator
 The `~` operator is the **not** operator in patterns:
 
 .. code-block:: nim
+
   template t{x = (~x){y} and (~x){z}}(x, y, z: bool) =
     x = y
     if x: x = z
@@ -1227,6 +1187,7 @@ The `*` operator can *flatten* a nested binary expression like `a & b & c`
 to `&(a, b, c)`:
 
 .. code-block:: nim
+
   var
     calls = 0
 
@@ -1251,6 +1212,7 @@ which is flattened into a call expression; thus the invocation of `optConc`
 produces:
 
 .. code-block:: nim
+
    `&&`("my", space & "awe", "some ", "concat")
 
 
@@ -1261,6 +1223,7 @@ The `**` is much like the `*` operator, except that it gathers not only
 all the arguments, but also the matched operators in reverse polish notation:
 
 .. code-block:: nim
+
   import std/macros
 
   type
@@ -1305,6 +1268,7 @@ parameter is of the type `varargs` it is treated specially and it can match
 0 or more arguments in the AST to be matched against:
 
 .. code-block:: nim
+
   template optWrite{
     write(f, x)
     ((write|writeLine){w})(f, y)
@@ -1320,6 +1284,7 @@ The following example shows how some simple partial evaluation can be
 implemented with term rewriting:
 
 .. code-block:: nim
+
   proc p(x, y: int; cond: bool): int =
     result = if cond: x + y else: x - y
 
@@ -1333,6 +1298,7 @@ Example: Hoisting
 The following example shows how some form of hoisting can be implemented:
 
 .. code-block:: nim
+
   import std/pegs
 
   template optPeg{peg(pattern)}(pattern: string{lit}): Peg =
@@ -1356,6 +1322,7 @@ Parameter constraints can also be used for ordinary routine parameters; these
 constraints affect ordinary overloading resolution then:
 
 .. code-block:: nim
+
   proc optLit(a: string{lit|`const`}) =
     echo "string literal"
   proc optLit(a: string) =
@@ -1407,6 +1374,7 @@ Spawn statement
 `spawn`:idx: can be used to pass a task to the thread pool:
 
 .. code-block:: nim
+
   import std/threadpool
 
   proc processLine(line: string) =
@@ -1439,6 +1407,7 @@ with the `^` operator is **blocking**. However, one can use `blockUntilAny` to
 wait on multiple flow variables at the same time:
 
 .. code-block:: nim
+
   import std/threadpool, ...
 
   # wait until 2 out of 3 servers received the update:
@@ -1533,6 +1502,7 @@ Protecting global variables
 Object fields and global variables can be annotated via a `guard` pragma:
 
 .. code-block:: nim
+
   var glock: TLock
   var gdata {.guard: glock.}: int
 
@@ -1540,6 +1510,7 @@ The compiler then ensures that every access of `gdata` is within a `locks`
 section:
 
 .. code-block:: nim
+
   proc invalid =
     # invalid: unguarded access:
     echo gdata
@@ -1558,6 +1529,7 @@ semantics and should not be used directly! It should only be used in templates
 that also implement some form of locking at runtime:
 
 .. code-block:: nim
+
   template lock(a: TLock; body: untyped) =
     pthread_mutex_lock(a)
     {.locks: [a].}:
@@ -1571,6 +1543,7 @@ The guard does not need to be of any particular type. It is flexible enough to
 model low level lockfree mechanisms:
 
 .. code-block:: nim
+
   var dummyLock {.compileTime.}: int
   var atomicCounter {.guard: dummyLock.}: int
 
@@ -1598,6 +1571,7 @@ Since objects can reside on the heap or on the stack this greatly enhances the
 expressivity of the language:
 
 .. code-block:: nim
+
   type
     ProtectedCounter = object
       v {.guard: L.}: int
@@ -1612,6 +1586,7 @@ The access to field `x.v` is allowed since its guard `x.L`  is active.
 After template expansion, this amounts to:
 
 .. code-block:: nim
+
   proc incCounters(counters: var openArray[ProtectedCounter]) =
     for i in 0..counters.high:
       pthread_mutex_lock(counters[i].L)
@@ -1632,6 +1607,7 @@ Two paths are considered equivalent if they are syntactically the same.
 This means the following compiles (for now) even though it really should not:
 
 .. code-block:: nim
+
   {.locks: [a[i].L].}:
     inc i
     access a[i].v
@@ -1652,6 +1628,7 @@ of the same level can only be acquired *at the same time* within a
 single `locks` section:
 
 .. code-block:: nim
+
   var a, b: TLock[2]
   var x: TLock[1]
   # invalid locking order: TLock[1] cannot be acquired before TLock[2]:
@@ -1678,6 +1655,7 @@ the runtime check is required to ensure a global ordering for two locks `a`
 and `b` of the same lock level:
 
 .. code-block:: nim
+
   template multilock(a, b: ptr TLock; body: untyped) =
     if cast[ByteAddress](a) < cast[ByteAddress](b):
       pthread_mutex_lock(a)
@@ -1698,6 +1676,7 @@ level. This then means that the routine may acquire locks of up to this level.
 This is essential so that procs can be called within a `locks` section:
 
 .. code-block:: nim
+
   proc p() {.locks: 3.} = discard
 
   var a: TLock[4]
@@ -1720,6 +1699,7 @@ cannot be inferred statically, leading to compiler warnings. By using
 having unknown lock level as well:
 
 .. code-block:: nim
+
   type SomeBase* = ref object of RootObj
   type SomeDerived* = ref object of SomeBase
     memberProc*: proc ()
@@ -1742,6 +1722,7 @@ e.g. when rewriting term to same term plus extra content.
 e.g. with given example `echo("ab")` will be rewritten just once:
 
 .. code-block:: nim
+
   template pwnEcho{echo(x)}(x: untyped) =
     {.noRewrite.}: echo("pwned!")
 
@@ -1779,7 +1760,7 @@ Noalias annotation
 ==================
 
 Since version 1.4 of the Nim compiler, there is a `.noalias` annotation for variables
-and parameters. It is mapped directly to C/C++'s `restrict` keyword and means that
+and parameters. It is mapped directly to C/C++'s `restrict`:c: keyword and means that
 the underlying pointer is pointing to a unique location in memory, no other aliases to
 this location exist. It is *unchecked* that this alias restriction is followed, if the
 restriction is violated, the backend optimizer is free to miscompile the code.
@@ -1832,13 +1813,12 @@ the `view types section <#view-types-algorithm>`_.
 View types
 ==========
 
-**Note**:  `--experimental:views` is more effective
-with `--experimental:strictFuncs`.
+**Note**:  `--experimental:views`:option: is more effective
+with `--experimental:strictFuncs`:option:.
 
 A view type is a type that is or contains one of the following types:
 
-- `var T` (mutable view into `T`)
-- `lent T` (immutable view into `T`)
+- `lent T` (view into `T`)
 - `openArray[T]` (pair of (pointer to array of `T`, size))
 
 For example:
@@ -1846,10 +1826,9 @@ For example:
 .. code-block:: nim
 
   type
-    View1 = var int
-    View2 = openArray[byte]
-    View3 = lent string
-    View4 = Table[openArray[char], int]
+    View1 = openArray[byte]
+    View2 = lent string
+    View3 = Table[openArray[char], int]
 
 
 Exceptions to this rule are types constructed via `ptr` or `proc`.
@@ -1860,11 +1839,11 @@ For example, the following types are **not** view types:
   type
     NotView1 = proc (x: openArray[int])
     NotView2 = ptr openArray[char]
-    NotView3 = ptr array[4, var int]
+    NotView3 = ptr array[4, lent int]
 
 
-A *mutable* view type is a type that is or contains a `var T` type.
-An *immutable* view type is a view type that is not a mutable view type.
+The mutability aspect of a view type is not part of the type but part
+of the locations it's derived from. More on this later.
 
 A *view* is a symbol (a let, var, const, etc.) that has a view type.
 
@@ -1948,11 +1927,14 @@ details about how this is done for `var T`.
 A mutable view can borrow from a mutable location, an immutable view can borrow
 from both a mutable or an immutable location.
 
+If a view borrows from a mutable location, the view can be used to update the
+location. Otherwise it cannot be used for mutations.
+
 The *duration* of a borrow is the span of commands beginning from the assignment
 to the view and ending with the last usage of the view.
 
 For the duration of the borrow operation, no mutations to the borrowed locations
-may be performed except via the potentially mutable view that borrowed from the
+may be performed except via the view that borrowed from the
 location. The borrowed location is said to be *sealed* during the borrow.
 
 .. code-block:: nim
@@ -1981,8 +1963,8 @@ The scope of the view does not matter:
 
 The analysis requires as much precision about mutations as is reasonably obtainable,
 so it is more effective with the experimental `strict funcs <#strict-funcs>`_
-feature. In other words `--experimental:views` works better
-with `--experimental:strictFuncs`.
+feature. In other words `--experimental:views`:option: works better
+with `--experimental:strictFuncs`:option:.
 
 The analysis is currently control flow insensitive:
 
@@ -2064,11 +2046,7 @@ and `b` the location that is borrowed from.
 
 - The lifetime of `v` must not exceed `b`'s lifetime. Note: The lifetime of
   a parameter is the complete proc body.
-- If `v` is a mutable view and `v` is used to actually mutate the
-  borrowed location, then `b` has to be a mutable location.
-  Note: If it is not actually used for mutation, borrowing a mutable view from an
-  immutable location is allowed! This allows for many important idioms and will be
-  justified in an upcoming RFC.
+- If `v` is used for a mutation, `b` must be a mutable location too.
 - During `v`'s lifetime, `G(b)` can only be modified by `v` (and only if
   `v` is a mutable view).
 - If `v` is `result` then `b` has to be a location derived from the first

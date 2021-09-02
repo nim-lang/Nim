@@ -8,7 +8,8 @@ const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
   # errormax: subsequent errors are probably consequences of 1st one; a simple
   # bug could cause unlimited number of errors otherwise, hard to debug in CI.
-  nimArgs = "--errormax:3 --hint:Conf:off --hint:Path:off --hint:Processing:off --hint:XDeclaredButNotUsed:off --warning:UnusedImport:off -d:boot --putenv:nimversion=$#" % system.NimVersion
+  docDefines = "-d:nimExperimentalAsyncjsThen -d:nimExperimentalLinenoiseExtra"
+  nimArgs = "--errormax:3 --hint:Conf:off --hint:Path:off --hint:Processing:off --hint:XDeclaredButNotUsed:off --warning:UnusedImport:off -d:boot --putenv:nimversion=$# $#" % [system.NimVersion, docDefines]
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
   webUploadOutput = "web/upload"
@@ -97,8 +98,9 @@ proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   exec cmd
 
-proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "") =
-  let output = outputDir / input.splitFile.name.exe
+proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "", outputName = "") =
+  let outputName2 = if outputName.len == 0: input.splitFile.name.exe else: outputName.exe
+  let output = outputDir / outputName2
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
 
@@ -284,22 +286,22 @@ proc buildDoc(nimArgs, destPath: string) =
 
 proc nim2pdf(src: string, dst: string, nimArgs: string) =
   # xxx expose as a `nim` command or in some other reusable way.
-  let outDir = "build" / "pdflatextmp" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
+  let outDir = "build" / "xelatextmp" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
   # note: this will generate temporary files in gitignored `outDir`: aux toc log out tex
   exec("$# rst2tex $# --outdir:$# $#" % [findNim().quoteShell(), nimArgs, outDir.quoteShell, src.quoteShell])
   let texFile = outDir / src.lastPathPart.changeFileExt("tex")
-  for i in 0..<2: # call LaTeX twice to get cross references right:
-    let pdflatexLog = outDir / "pdflatex.log"
+  for i in 0..<3: # call LaTeX three times to get cross references right:
+    let xelatexLog = outDir / "xelatex.log"
     # `>` should work on windows, if not, we can use `execCmdEx`
-    let cmd = "pdflatex -interaction=nonstopmode -output-directory=$# $# > $#" % [outDir.quoteShell, texFile.quoteShell, pdflatexLog.quoteShell]
-    exec(cmd) # on error, user can inspect `pdflatexLog`
+    let cmd = "xelatex -interaction=nonstopmode -output-directory=$# $# > $#" % [outDir.quoteShell, texFile.quoteShell, xelatexLog.quoteShell]
+    exec(cmd) # on error, user can inspect `xelatexLog`
   moveFile(texFile.changeFileExt("pdf"), dst)
 
 proc buildPdfDoc*(nimArgs, destPath: string) =
   var pdfList: seq[string]
   createDir(destPath)
-  if os.execShellCmd("pdflatex -version") != 0:
-    doAssert false, "pdflatex not found" # or, raise an exception
+  if os.execShellCmd("xelatex -version") != 0:
+    doAssert false, "xelatex not found" # or, raise an exception
   else:
     for src in items(rstPdfList):
       let dst = destPath / src.lastPathPart.changeFileExt("pdf")

@@ -106,6 +106,46 @@ template main() =
     doAssert euclDiv(-9, -3) == 3
     doAssert euclMod(-9, -3) == 0
 
+  block: # ceilDiv
+    doAssert ceilDiv(8,  3) ==  3
+    doAssert ceilDiv(8,  4) ==  2
+    doAssert ceilDiv(8,  5) ==  2
+    doAssert ceilDiv(11, 3) ==  4
+    doAssert ceilDiv(12, 3) ==  4
+    doAssert ceilDiv(13, 3) ==  5
+    doAssert ceilDiv(41, 7) ==  6
+    doAssert ceilDiv(0,  1) ==  0
+    doAssert ceilDiv(1,  1) ==  1
+    doAssert ceilDiv(1,  2) ==  1
+    doAssert ceilDiv(2,  1) ==  2
+    doAssert ceilDiv(2,  2) ==  1
+    doAssert ceilDiv(0, high(int)) == 0
+    doAssert ceilDiv(1, high(int)) == 1
+    doAssert ceilDiv(0, high(int) - 1) == 0
+    doAssert ceilDiv(1, high(int) - 1) == 1
+    doAssert ceilDiv(high(int) div 2, high(int) div 2 + 1) == 1
+    doAssert ceilDiv(high(int) div 2, high(int) div 2 + 2) == 1
+    doAssert ceilDiv(high(int) div 2 + 1, high(int) div 2) == 2
+    doAssert ceilDiv(high(int) div 2 + 2, high(int) div 2) == 2
+    doAssert ceilDiv(high(int) div 2 + 1, high(int) div 2 + 1) == 1
+    doAssert ceilDiv(high(int), 1) == high(int)
+    doAssert ceilDiv(high(int) - 1, 1) == high(int) - 1
+    doAssert ceilDiv(high(int) - 1, 2) == high(int) div 2
+    doAssert ceilDiv(high(int) - 1, high(int)) == 1
+    doAssert ceilDiv(high(int) - 1, high(int) - 1) == 1
+    doAssert ceilDiv(high(int) - 1, high(int) - 2) == 2
+    doAssert ceilDiv(high(int), high(int)) == 1
+    doAssert ceilDiv(high(int), high(int) - 1) == 2
+    doAssert ceilDiv(255'u8,  1'u8) == 255'u8
+    doAssert ceilDiv(254'u8,  2'u8) == 127'u8
+    when not defined(danger):
+      doAssertRaises(AssertionDefect): discard ceilDiv(41,  0)
+      doAssertRaises(AssertionDefect): discard ceilDiv(41, -1)
+      doAssertRaises(AssertionDefect): discard ceilDiv(-1,  1)
+      doAssertRaises(AssertionDefect): discard ceilDiv(-1, -1)
+      doAssertRaises(AssertionDefect): discard ceilDiv(254'u8, 3'u8)
+      doAssertRaises(AssertionDefect): discard ceilDiv(255'u8, 2'u8)
+
   block: # splitDecimal() tests
     doAssert splitDecimal(54.674).intpart == 54.0
     doAssert splitDecimal(54.674).floatpart ==~ 0.674

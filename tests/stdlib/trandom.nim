@@ -1,9 +1,11 @@
 discard """
-  joinable: false
+  joinable: false # to avoid messing with global rand state
   targets: "c js"
 """
 
-import std/[random, math, os, stats, sets, tables]
+import std/[random, math, stats, sets, tables]
+when not defined(js):
+  import std/os
 
 randomize(233)
 
@@ -21,9 +23,10 @@ proc main() =
   doAssert a in [[0,1], [1,0]]
 
   doAssert rand(0) == 0
-  doAssert sample("a") == 'a'
+  when not defined(nimscript):
+    doAssert sample("a") == 'a'
 
-  when compileOption("rangeChecks"):
+  when compileOption("rangeChecks") and not defined(nimscript):
     doAssertRaises(RangeDefect):
       discard rand(-1)
 
@@ -37,11 +40,14 @@ main()
 
 block:
   when not defined(js):
-    doAssert almostEqual(rand(12.5), 4.012897747078944)
-    doAssert almostEqual(rand(2233.3322), 879.702755321298)
+    doAssert almostEqual(rand(12.5), 7.355175342026979)
+    doAssert almostEqual(rand(2233.3322), 499.342386778917)
 
   type DiceRoll = range[0..6]
-  doAssert rand(DiceRoll).int == 4
+  when not defined(js):
+    doAssert rand(DiceRoll).int == 3
+  else:
+    doAssert rand(DiceRoll).int == 6
 
 var rs: RunningStat
 for j in 1..5:
@@ -87,7 +93,7 @@ block: # random int
 
   block: # again gives new numbers
     var rand1 = rand(1000000)
-    when not defined(js):
+    when not (defined(js) or defined(nimscript)):
       os.sleep(200)
 
     var rand2 = rand(1000000)
@@ -117,7 +123,7 @@ block: # random float
 
   block: # again gives new numbers
     var rand1: float = rand(1000000.0)
-    when not defined(js):
+    when not (defined(js) or defined(nimscript)):
       os.sleep(200)
 
     var rand2: float = rand(1000000.0)
@@ -164,3 +170,105 @@ block: # random sample
       let stdDev = sqrt(n * p * (1.0 - p))
       # NOTE: like unnormalized int CDF test, P(wholeTestFails) =~ 0.01.
       doAssert abs(float(histo[values[i]]) - expected) <= 3.0 * stdDev
+
+block:
+  # 0 is a valid seed
+  var r = initRand(0)
+  doAssert r.rand(1.0) != r.rand(1.0)
+  r = initRand(10)
+  doAssert r.rand(1.0) != r.rand(1.0)
+  # changing the seed changes the sequence
+  var r1 = initRand(123)
+  var r2 = initRand(124)
+  doAssert r1.rand(1.0) != r2.rand(1.0)
+
+block: # bug #17467
+  let n = 1000
+  for i in -n .. n:
+    var r = initRand(i)
+    let x = r.rand(1.0)
+    doAssert x > 1e-4, $(x, i)
+      # This used to fail for each i in 0..<26844, i.e. the 1st produced value
+      # was predictable and < 1e-4, skewing distributions.
+
+const withUint = false # pending exporting `proc rand[T: uint | uint64](r: var Rand; max: T): T =`
+
+block: # bug #16360
+  var r = initRand()
+  template test(a) =
+    let a2 = a
+    block:
+      let a3 = r.rand(a2)
+      doAssert a3 <= a2
+      doAssert a3.type is a2.type
+    block:
+      let a3 = rand(a2)
+      doAssert a3 <= a2
+      doAssert a3.type is a2.type
+  when withUint:
+    test cast[uint](int.high)
+    test cast[uint](int.high) + 1
+    when not defined(js):
+      # pending bug #16411
+      test uint64.high
+      test uint64.high - 1
+    test uint.high - 2
+    test uint.high - 1
+    test uint.high
+  test int.high
+  test int.high - 1
+  test int.high - 2
+  test 0
+  when withUint:
+    test 0'u
+    test 0'u64
+
+block: # bug #16296
+  var r = initRand()
+  template test(x) =
+    let a2 = x
+    let a3 = r.rand(a2)
+    doAssert a3 <= a2.b
+    doAssert a3 >= a2.a
+    doAssert a3.type is a2.a.type
+  test(-2 .. int.high-1)
+  test(int.low .. int.high)
+  test(int.low+1 .. int.high)
+  test(int.low .. int.high-1)
+  test(int.low .. 0)
+  test(int.low .. -1)
+  test(int.low .. 1)
+  test(int64.low .. 1'i64)
+  when not defined(js):
+    # pending bug #16411
+    test(10'u64 .. uint64.high)
+
+block: # bug #17670
+  when not defined(js):
+    # pending bug #16411
+    type UInt48 = range[0'u64..2'u64^48-1]
+    let x = rand(UInt48)
+    doAssert x is UInt48
+
+block: # bug #17898
+  # Checks whether `initRand()` generates unique states.
+  # size should be 2^64, but we don't have time and space.
+
+  # Disable this test for js until js gets proper skipRandomNumbers.
+  when not defined(js):
+    const size = 1000
+    var
+      rands: array[size, Rand]
+      randSet: HashSet[Rand]
+    for i in 0..<size:
+      rands[i] = initRand()
+      randSet.incl rands[i]
+
+    doAssert randSet.len == size
+
+    # Checks random number sequences overlapping.
+    const numRepeat = 100
+    for i in 0..<size:
+      for j in 0..<numRepeat:
+        discard rands[i].next
+        doAssert rands[i] notin randSet

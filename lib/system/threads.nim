@@ -11,7 +11,7 @@
 ##
 ## **Note**: This is part of the system module. Do not import it directly.
 ## To activate thread support you need to compile
-## with the `--threads:on` command line switch.
+## with the `--threads:on`:option: command line switch.
 ##
 ## Nim's memory model for threads is quite different from other common
 ## programming languages (C, Pascal): Each thread has its own
@@ -41,7 +41,7 @@
 ##  for i in 0..high(thr):
 ##    createThread(thr[i], threadFunc, (i*10, i*10+5))
 ##  joinThreads(thr)
-## 
+##
 ##  deinitLock(L)
 
 when not declared(ThisIsSystem):
@@ -395,7 +395,7 @@ elif defined(netbsd):
 
 elif defined(freebsd):
   proc syscall(arg: cint, arg0: ptr cint): cint {.varargs, importc: "syscall", header: "<unistd.h>".}
-  var SYS_thr_self {.importc:"SYS_thr_self", header:"<sys/syscall.h>"}: cint
+  var SYS_thr_self {.importc:"SYS_thr_self", header:"<sys/syscall.h>".}: cint
 
   proc getThreadId*(): int =
     ## Gets the ID of the currently running thread.

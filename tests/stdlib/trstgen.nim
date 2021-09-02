@@ -10,7 +10,7 @@ import unittest, strutils, strtabs
 import std/private/miscdollars
 
 proc toHtml(input: string,
-            rstOptions: RstParseOptions = {roSupportMarkdown, roNimFile},
+            rstOptions: RstParseOptions = {roPreferMarkdown, roSupportMarkdown, roNimFile},
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
@@ -23,18 +23,20 @@ proc toHtml(input: string,
     toLocation(message, filename, line, col + ColRstOffset)
     message.add " $1: $2" % [$mc, a]
     if mc == mcError:
-      doAssert error != nil, "unexpected RST error '" & message & "'"
+      if error == nil:
+        raise newException(EParseError, "[unexpected error] " & message)
       error[] = message
       # we check only first error because subsequent ones may be meaningless
-      raise newException(EParseError, message)
+      raise newException(EParseError, "")
     else:
       doAssert warnings != nil, "unexpected RST warning '" & message & "'"
       warnings[].add message
   try:
     result = rstToHtml(input, rstOptions, defaultConfig(),
                        msgHandler=testMsgHandler)
-  except EParseError:
-    discard
+  except EParseError as e:
+    if e.msg != "":
+      result = e.msg
 
 # inline code tags (for parsing originated from highlite.nim)
 proc id(str: string): string = """<span class="Identifier">"""  & str & "</span>"
@@ -142,7 +144,7 @@ suite "YAML syntax highlighting":
 
   test "Directives: warnings":
     let input = dedent"""
-      .. non-existant-warning: Paragraph.
+      .. non-existent-warning: Paragraph.
 
       .. another.wrong:warning::: Paragraph.
       """
@@ -151,7 +153,7 @@ suite "YAML syntax highlighting":
     check output == ""
     doAssert warnings[].len == 2
     check "(1, 24) Warning: RST style:" in warnings[0]
-    check "double colon :: may be missing at end of 'non-existant-warning'" in warnings[0]
+    check "double colon :: may be missing at end of 'non-existent-warning'" in warnings[0]
     check "(3, 25) Warning: RST style:" in warnings[1]
     check "RST style: too many colons for a directive (should be ::)" in warnings[1]
 
@@ -235,8 +237,7 @@ not in table"""
 <tr><td>D1 <tt class="docutils literal"><span class="pre">""" & id"code" & " " & op"\|" & """</span></tt></td><td>D2</td></tr>
 <tr><td>E1 | text</td><td></td></tr>
 <tr><td></td><td>F2 without pipe</td></tr>
-</table><p>not in table</p>
-""")
+</table><p>not in table</p>""")
     let input2 = """
 | A1 header | A2 |
 | --- | --- |"""
@@ -257,7 +258,7 @@ A2     A3
 A4     A5
 ====   === """
     let output1 = rstToLatex(input1, {})
-    doAssert "{|X|X|}" in output1  # 2 columns
+    doAssert "{LL}" in output1  # 2 columns
     doAssert count(output1, "\\\\") == 4  # 4 rows
     for cell in ["H0", "H1", "A0", "A1", "A2", "A3", "A4", "A5"]:
       doAssert cell in output1
@@ -272,7 +273,7 @@ A0     A1   X
        Ax   Y
 ====   ===  = """
     let output2 = rstToLatex(input2, {})
-    doAssert "{|X|X|X|}" in output2  # 3 columns
+    doAssert "{LLL}" in output2  # 3 columns
     doAssert count(output2, "\\\\") == 2  # 2 rows
     for cell in ["H0", "H1", "H", "A0", "A1", "X", "Ax", "Y"]:
       doAssert cell in output2
@@ -418,9 +419,10 @@ Some chapter
             "the following intermediate section level(s) are missing on " &
             "lines 12..15: underline -----)")
 
+  test "RST sections overline":
     # the same as input9good but with overline headings
     # first overline heading has a special meaning: document title
-    let input10 = dedent """
+    let input = dedent """
       ======
       Title0
       ======
@@ -452,22 +454,23 @@ Some chapter
       ~~~~~
 
       """
-    var option: bool
     var rstGenera: RstGenerator
-    var output10: string
-    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", {})
-    rstGenera.renderRstToOut(rstParse(input10, "", 1, 1, option, {}), output10)
+    var output: string
+    let (rst, files, _) = rstParse(input, "", 1, 1, {})
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames = files)
+    rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Title0"
     doAssert rstGenera.meta[metaSubTitle] == "SubTitle0"
-    doAssert "<h1 id=\"level1\"><center>Level1</center></h1>" in output10
-    doAssert "<h2 id=\"level2\">Level2</h2>" in output10
-    doAssert "<h3 id=\"level3\"><center>Level3</center></h3>" in output10
-    doAssert "<h1 id=\"l1\"><center>L1</center></h1>" in output10
-    doAssert "<h2 id=\"another2\">Another2</h2>" in output10
-    doAssert "<h3 id=\"more3\"><center>More3</center></h3>" in output10
+    doAssert "<h1 id=\"level1\"><center>Level1</center></h1>" in output
+    doAssert "<h2 id=\"level2\">Level2</h2>" in output
+    doAssert "<h3 id=\"level3\"><center>Level3</center></h3>" in output
+    doAssert "<h1 id=\"l1\"><center>L1</center></h1>" in output
+    doAssert "<h2 id=\"another2\">Another2</h2>" in output
+    doAssert "<h3 id=\"more3\"><center>More3</center></h3>" in output
 
+  test "RST sections overline 2":
     # check that a paragraph prevents interpreting overlines as document titles
-    let input11 = dedent """
+    let input = dedent """
       Paragraph
 
       ======
@@ -478,18 +481,19 @@ Some chapter
       SubTitle0
       +++++++++
       """
-    var option11: bool
-    var rstGenera11: RstGenerator
-    var output11: string
-    rstGenera11.initRstGenerator(outHtml, defaultConfig(), "input", {})
-    rstGenera11.renderRstToOut(rstParse(input11, "", 1, 1, option11, {}), output11)
-    doAssert rstGenera11.meta[metaTitle] == ""
-    doAssert rstGenera11.meta[metaSubTitle] == ""
-    doAssert "<h1 id=\"title0\"><center>Title0</center></h1>" in output11
-    doAssert "<h2 id=\"subtitle0\"><center>SubTitle0</center></h2>" in output11
+    var rstGenera: RstGenerator
+    var output: string
+    let (rst, files, _) = rstParse(input, "", 1, 1, {})
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames=files)
+    rstGenera.renderRstToOut(rst, output)
+    doAssert rstGenera.meta[metaTitle] == ""
+    doAssert rstGenera.meta[metaSubTitle] == ""
+    doAssert "<h1 id=\"title0\"><center>Title0</center></h1>" in output
+    doAssert "<h2 id=\"subtitle0\"><center>SubTitle0</center></h2>" in output
 
+  test "RST+Markdown sections":
     # check that RST and Markdown headings don't interfere
-    let input12 = dedent """
+    let input = dedent """
       ======
       Title0
       ======
@@ -507,14 +511,14 @@ Some chapter
       MySection2a
       -----------
       """
-    var option12: bool
-    var rstGenera12: RstGenerator
-    var output12: string
-    rstGenera12.initRstGenerator(outHtml, defaultConfig(), "input", {})
-    rstGenera12.renderRstToOut(rstParse(input12, "", 1, 1, option12, {roSupportMarkdown}), output12)
-    doAssert rstGenera12.meta[metaTitle] == "Title0"
-    doAssert rstGenera12.meta[metaSubTitle] == ""
-    doAssert output12 ==
+    var rstGenera: RstGenerator
+    var output: string
+    let (rst, files, _) = rstParse(input, "", 1, 1, {roSupportMarkdown})
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames=files)
+    rstGenera.renderRstToOut(rst, output)
+    doAssert rstGenera.meta[metaTitle] == "Title0"
+    doAssert rstGenera.meta[metaSubTitle] == ""
+    doAssert output ==
              "\n<h1 id=\"mysection1a\">MySection1a</h1>" & # RST
              "\n<h1 id=\"mysection1b\">MySection1b</h1>" & # Markdown
              "\n<h1 id=\"mysection1c\">MySection1c</h1>" & # RST
@@ -626,7 +630,7 @@ let x = 1
     let p2 = """<p>Par2 <tt class="docutils literal"><span class="pre">value2</span></tt>.</p>"""
     let p3 = """<p>Par3 <tt class="docutils literal"><span class="pre">""" & id"value3" & "</span></tt>.</p>"
     let p4 = """<p>Par4 <tt class="docutils literal"><span class="pre">value4</span></tt>.</p>"""
-    let expected = p1 & p2 & "\n" & p3 & "\n" & p4 & "\n"
+    let expected = p1 & p2 & "\n" & p3 & "\n" & p4
     check(input.toHtml == expected)
 
   test "role directive":
@@ -651,8 +655,8 @@ Check that comment disappears:
     let output1 = input1.toHtml
     doAssert output1 == "Check that comment disappears:"
 
-  test "RST line blocks":
-    let input1 = """
+  test "RST line blocks + headings":
+    let input = """
 =====
 Test1
 =====
@@ -663,19 +667,20 @@ Test1
 | other line
 
 """
-    var option: bool
     var rstGenera: RstGenerator
-    var output1: string
-    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", {})
-    rstGenera.renderRstToOut(rstParse(input1, "", 1, 1, option, {}), output1)
+    var output: string
+    let (rst, files, _) = rstParse(input, "", 1, 1, {})
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames=files)
+    rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Test1"
       # check that title was not overwritten to '|'
-    doAssert output1 == "<p><br/><br/>line block<br/>other line<br/></p>"
-    let output1l = rstToLatex(input1, {})
+    doAssert output == "<p><br/><br/>line block<br/>other line<br/></p>"
+    let output1l = rstToLatex(input, {})
     doAssert "line block\n\n" in output1l
     doAssert "other line\n\n" in output1l
     doAssert output1l.count("\\vspace") == 2 + 2  # +2 surrounding paddings
 
+  test "RST line blocks":
     let input2 = dedent"""
       Paragraph1
       
@@ -684,7 +689,7 @@ Test1
       Paragraph2"""
 
     let output2 = input2.toHtml
-    doAssert "Paragraph1<p><br/></p> <p>Paragraph2</p>\n" == output2
+    doAssert "Paragraph1<p><br/></p> <p>Paragraph2</p>" == output2
 
     let input3 = dedent"""
       | xxx
@@ -849,9 +854,9 @@ Test1
     let output8 = input8.toHtml(warnings = warnings8)
     check(warnings8[].len == 1)
     check("input(6, 1) Warning: RST style: \n" &
-          "  not enough indentation on line 6" in warnings8[0])
+          "not enough indentation on line 6" in warnings8[0])
     doAssert output8 == "Paragraph.<ol class=\"upperalpha simple\">" &
-        "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>\n"
+        "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>"
 
   test "Markdown enumerated lists":
     let input1 = dedent """
@@ -924,7 +929,7 @@ Test1
       Not references[#note]_[1 #]_ [wrong citation]_ and [not&allowed]_.
       """
     let output2 = input2.toHtml
-    doAssert output2 == "Not references[#note]_[1 #]_ [wrong citation]_ and [not&amp;allowed]_. "
+    doAssert output2 == "Not references[#note]_[1 #]_ [wrong citation]_ and [not&amp;allowed]_."
 
     # check that auto-symbol footnotes work:
     let input3 = dedent """
@@ -995,7 +1000,7 @@ Test1
       """
     var error5 = new string
     let output5 = input5.toHtml(error=error5)
-    check(error5[] == "input(6, 1) Error: mismatch in number of footnotes " &
+    check(error5[] == "input(1, 1) Error: mismatch in number of footnotes " &
             "and their refs: 1 (lines 2) != 0 (lines ) for auto-numbered " &
             "footnotes")
 
@@ -1009,7 +1014,7 @@ Test1
       """
     var error6 = new string
     let output6 = input6.toHtml(error=error6)
-    check(error6[] == "input(6, 1) Error: mismatch in number of footnotes " &
+    check(error6[] == "input(1, 1) Error: mismatch in number of footnotes " &
             "and their refs: 1 (lines 3) != 2 (lines 2, 6) for auto-symbol " &
             "footnotes")
 
@@ -1032,8 +1037,7 @@ Test1
       """
     var warnings8 = new seq[string]
     let output8 = input8.toHtml(warnings=warnings8)
-    check(warnings8[] == @["input(4, 1) Warning: unknown substitution " &
-            "\'citation-som\'"])
+    check(warnings8[] == @["input(3, 7) Warning: broken link 'citation-som'"])
 
     # check that footnote group does not break parsing of other directives:
     let input9 = dedent """
@@ -1132,6 +1136,41 @@ Test1
     let output = input.toHtml
     check "<pre class=\"line-nums\">55\n</pre>" in output
     check "<span class=\"Identifier\">x</span>" in output
+
+  test "Nim code-block indentation":
+    let input = dedent """
+      .. code-block:: nim
+        :number-lines: 55
+         let a = 1
+      """
+    var error = new string
+    let output = input.toHtml(error=error)
+    check(error[] == "input(2, 3) Error: invalid field: " &
+                     "extra arguments were given to number-lines: ' let a = 1'")
+    check "" == output
+
+  test "code-block warning":
+    let input = dedent """
+      .. code:: Nim
+         :unsupportedField: anything
+
+      .. code:: unsupportedLang
+
+         anything
+
+      ```anotherLang
+      someCode
+      ```
+      """
+    let warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    check(warnings[] == @[
+        "input(2, 4) Warning: field 'unsupportedField' not supported",
+        "input(4, 11) Warning: language 'unsupportedLang' not supported",
+        "input(8, 4) Warning: language 'anotherLang' not supported"
+        ])
+    check(output == "<pre class = \"listing\">anything</pre>" &
+                    "<p><pre class = \"listing\">\nsomeCode\n</pre> </p>")
 
   test "RST admonitions":
     # check that all admonitions are implemented
@@ -1462,7 +1501,7 @@ Test1
     check "(3, 15) Warning: " in warnings[1]
     check "language 'py:class' not supported" in warnings[1]
     check("""<p>See function <span class="py:func">spam</span>.</p>""" & "\n" &
-          """<p>See also <span class="py:class">egg</span>. </p>""" & "\n" ==
+          """<p>See also <span class="py:class">egg</span>. </p>""" ==
           output)
 
   test "(not) Roles: check escaping 1":

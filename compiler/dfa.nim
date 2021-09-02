@@ -29,7 +29,7 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, types, intsets, lineinfos, renderer
+import ast, intsets, lineinfos, renderer
 import std/private/asciitables
 
 type
@@ -467,7 +467,7 @@ proc genCase(c: var Con; n: PNode) =
       # treat the last branch as 'else' if this is an exhaustive case statement.
       c.gen(it.lastSon)
       if endings.len != 0:
-          c.patch(endings[^1])
+        c.patch(endings[^1])
     else:
       forkT(it.lastSon):
         c.gen(it.lastSon)
@@ -696,9 +696,10 @@ proc skipTrivials(c: var Con, n: PNode): PNode =
 proc genUse(c: var Con; orig: PNode) =
   let n = c.skipTrivials(orig)
 
-  if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: orig, kind: use)
-  elif n.kind in nkCallKinds:
+  if n.kind == nkSym:
+    if n.sym.kind in InterestingSyms:
+      c.code.add Instr(n: orig, kind: use)
+  else:
     gen(c, n)
 
 proc genDef(c: var Con; orig: PNode) =
@@ -768,6 +769,12 @@ proc gen(c: var Con; n: PNode) =
   of nkCharLit..nkNilLit: discard
   of nkAsgn, nkFastAsgn:
     gen(c, n[1])
+
+    if n[0].kind in PathKinds0:
+      let a = c.skipTrivials(n[0])
+      if a.kind in nkCallKinds:
+        gen(c, a)
+
     # watch out: 'obj[i].f2 = value' sets 'f2' but
     # "uses" 'i'. But we are only talking about builtin array indexing so
     # it doesn't matter and 'x = 34' is NOT a usage of 'x'.

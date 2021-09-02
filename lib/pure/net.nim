@@ -44,46 +44,44 @@
 ## After you create a socket with the `newSocket` procedure, you can easily
 ## connect it to a server running at a known hostname (or IP address) and port.
 ## To do so over TCP, use the example below.
-##
-## .. code-block:: Nim
-##   var socket = newSocket()
-##   socket.connect("google.com", Port(80))
-##
-## For SSL, use the following example (and make sure to compile with `-d:ssl`):
-##
-## .. code-block:: Nim
-##   var socket = newSocket()
-##   var ctx = newContext()
-##   wrapSocket(ctx, socket)
-##   socket.connect("google.com", Port(443))
-##
+
+runnableExamples("-r:off"):
+  let socket = newSocket()
+  socket.connect("google.com", Port(80))
+
+## For SSL, use the following example:
+
+runnableExamples("-r:off -d:ssl"):
+  let socket = newSocket()
+  let ctx = newContext()
+  wrapSocket(ctx, socket)
+  socket.connect("google.com", Port(443))
+
 ## UDP is a connectionless protocol, so UDP sockets don't have to explicitly
 ## call the `connect <net.html#connect%2CSocket%2Cstring>`_ procedure. They can
 ## simply start sending data immediately.
-##
-## .. code-block:: Nim
-##   var socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-##   socket.sendTo("192.168.0.1", Port(27960), "status\n")
-##
+
+runnableExamples("-r:off"):
+  let socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+  socket.sendTo("192.168.0.1", Port(27960), "status\n")
+
 ## Creating a server
 ## -----------------
 ##
 ## After you create a socket with the `newSocket` procedure, you can create a
 ## TCP server by calling the `bindAddr` and `listen` procedures.
-##
-## .. code-block:: Nim
-##   var socket = newSocket()
-##   socket.bindAddr(Port(1234))
-##   socket.listen()
-##
-## You can then begin accepting connections using the `accept` procedure.
-##
-## .. code-block:: Nim
-##   var client: Socket
-##   var address = ""
-##   while true:
-##     socket.acceptAddr(client, address)
-##     echo("Client connected from: ", address)
+
+runnableExamples("-r:off"):
+  let socket = newSocket()
+  socket.bindAddr(Port(1234))
+  socket.listen()
+
+  # You can then begin accepting connections using the `accept` procedure.
+  var client: Socket
+  var address = ""
+  while true:
+    socket.acceptAddr(client, address)
+    echo "Client connected from: ", address
 
 import std/private/since
 
@@ -283,14 +281,20 @@ proc parseIPv4Address(addressStr: string): IpAddress =
     byteCount = 0
     currentByte: uint16 = 0
     separatorValid = false
+    leadingZero = false
 
   result = IpAddress(family: IpAddressFamily.IPv4)
 
   for i in 0 .. high(addressStr):
     if addressStr[i] in strutils.Digits: # Character is a number
+      if leadingZero:
+        raise newException(ValueError,
+          "Invalid IP address. Octal numbers are not allowed")
       currentByte = currentByte * 10 +
         cast[uint16](ord(addressStr[i]) - ord('0'))
-      if currentByte > 255'u16:
+      if currentByte == 0'u16:
+        leadingZero = true
+      elif currentByte > 255'u16:
         raise newException(ValueError,
           "Invalid IP Address. Value is out of range")
       separatorValid = true
@@ -302,6 +306,7 @@ proc parseIPv4Address(addressStr: string): IpAddress =
       currentByte = 0
       byteCount.inc
       separatorValid = false
+      leadingZero = false
     else:
       raise newException(ValueError,
         "Invalid IP Address. Address contains an invalid character")
@@ -390,10 +395,16 @@ proc parseIPv6Address(addressStr: string): IpAddress =
       result.address_v6[groupCount*2+1] = cast[uint8](currentShort and 0xFF)
       groupCount.inc()
   else: # Must parse IPv4 address
+    var leadingZero = false
     for i, c in addressStr[v4StartPos..high(addressStr)]:
       if c in strutils.Digits: # Character is a number
+        if leadingZero:
+          raise newException(ValueError,
+            "Invalid IP address. Octal numbers not allowed")
         currentShort = currentShort * 10 + cast[uint32](ord(c) - ord('0'))
-        if currentShort > 255'u32:
+        if currentShort == 0'u32:
+          leadingZero = true
+        elif currentShort > 255'u32:
           raise newException(ValueError,
             "Invalid IP Address. Value is out of range")
         separatorValid = true
@@ -404,6 +415,7 @@ proc parseIPv6Address(addressStr: string): IpAddress =
         currentShort = 0
         byteCount.inc()
         separatorValid = false
+        leadingZero = false
       else: # Invalid character
         raise newException(ValueError,
           "Invalid IP Address. Address contains an invalid character")
@@ -433,7 +445,12 @@ proc parseIPv6Address(addressStr: string): IpAddress =
 
 proc parseIpAddress*(addressStr: string): IpAddress =
   ## Parses an IP address
-  ## Raises ValueError on error
+  ##
+  ## Raises ValueError on error. 
+  ## 
+  ## For IPv4 addresses, only the strict form as
+  ## defined in RFC 6943 is considered valid, see
+  ## https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1.
   if addressStr.len == 0:
     raise newException(ValueError, "IP Address string is empty")
   if addressStr.contains(':'):
@@ -500,6 +517,11 @@ when defineSsl:
   SSL_load_error_strings()
   ERR_load_BIO_strings()
   OpenSSL_add_all_algorithms()
+
+  proc sslHandle*(self: Socket): SslPtr =
+    ## Retrieve the ssl pointer of `socket`.
+    ## Useful for interfacing with `openssl`.
+    self.sslHandle
 
   proc raiseSSLError*(s = "") =
     ## Raises a new SSL error.
@@ -582,10 +604,10 @@ when defineSsl:
     ##
     ## CA certificates will be loaded, in the following order, from:
     ##
-    ##  - caFile, caDir, parameters, if set
-    ##  - if `verifyMode` is set to `CVerifyPeerUseEnvVars`,
-    ##    the SSL_CERT_FILE and SSL_CERT_DIR environment variables are used
-    ##  - a set of files and directories from the `ssl_certs <ssl_certs.html>`_ file.
+    ## - caFile, caDir, parameters, if set
+    ## - if `verifyMode` is set to `CVerifyPeerUseEnvVars`,
+    ##   the SSL_CERT_FILE and SSL_CERT_DIR environment variables are used
+    ## - a set of files and directories from the `ssl_certs <ssl_certs.html>`_ file.
     ##
     ## The last two parameters specify the certificate file path and the key file
     ## path, a server socket will most likely not work without these.
@@ -644,7 +666,7 @@ when defineSsl:
       if verifyMode != CVerifyNone:
         # Use the caDir and caFile parameters if set
         if caDir != "" or caFile != "":
-          if newCTX.SSL_CTX_load_verify_locations(caFile, caDir) != VerifySuccess:
+          if newCTX.SSL_CTX_load_verify_locations(if caFile == "": nil else: caFile.cstring, if caDir == "": nil else: caDir.cstring) != VerifySuccess:
             raise newException(IOError, "Failed to load SSL/TLS CA certificate(s).")
 
         else:
@@ -685,7 +707,7 @@ when defineSsl:
     return ctx.getExtraInternal().clientGetPskFunc
 
   proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring;
-      max_identity_len: cuint; psk: ptr cuchar;
+      max_identity_len: cuint; psk: ptr uint8;
       max_psk_len: cuint): cuint {.cdecl.} =
     let ctx = SslContext(context: ssl.SSL_get_SSL_CTX)
     let hintString = if hint == nil: "" else: $hint
@@ -711,7 +733,7 @@ when defineSsl:
   proc serverGetPskFunc*(ctx: SslContext): SslServerGetPskFunc =
     return ctx.getExtraInternal().serverGetPskFunc
 
-  proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar;
+  proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr uint8;
       max_psk_len: cint): cuint {.cdecl.} =
     let ctx = SslContext(context: ssl.SSL_get_SSL_CTX)
     let pskString = (ctx.serverGetPskFunc)($identity)
@@ -955,7 +977,9 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   var aiList = getAddrInfo(realaddr, port, socket.domain)
   if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
     freeaddrinfo(aiList)
-    raiseOSError(osLastError())
+    var address2: string
+    address2.addQuoted address
+    raiseOSError(osLastError(), "address: $# port: $#" % [address2, $port])
   freeaddrinfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
@@ -1228,12 +1252,10 @@ proc getPeerAddr*(socket: Socket): (string, Port) =
 proc setSockOpt*(socket: Socket, opt: SOBool, value: bool,
     level = SOL_SOCKET) {.tags: [WriteIOEffect].} =
   ## Sets option `opt` to a boolean value specified by `value`.
-  ##
-  ## .. code-block:: Nim
-  ##   var socket = newSocket()
-  ##   socket.setSockOpt(OptReusePort, true)
-  ##   socket.setSockOpt(OptNoDelay, true, level=IPPROTO_TCP.toInt)
-  ##
+  runnableExamples("-r:off"):
+    let socket = newSocket()
+    socket.setSockOpt(OptReusePort, true)
+    socket.setSockOpt(OptNoDelay, true, level = IPPROTO_TCP.cint)
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
@@ -2020,10 +2042,8 @@ proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
   ##
   ## Supports IPv4 and v6.
   ## Raises OSError if external networking is not set up.
-  ##
-  ## .. code-block:: Nim
-  ##   echo $getPrimaryIPAddr()  # "192.168.1.2"
-
+  runnableExamples("-r:off"):
+    echo getPrimaryIPAddr() # "192.168.1.2"
   let socket =
     if dest.family == IpAddressFamily.IPv4:
       newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)

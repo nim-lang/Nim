@@ -54,6 +54,8 @@ proc createProcType(p, b: NimNode): NimNode =
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures. It also supports pragmas.
+  ##
+  ## .. warning:: Semicolons can not be used to separate procedure arguments.
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
 
@@ -133,6 +135,8 @@ macro `=>`*(p, b: untyped): untyped =
 
 macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types. It also supports pragmas.
+  ##
+  ## .. warning:: Semicolons can not be used to separate procedure arguments.
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
     # is the same as:
@@ -186,7 +190,7 @@ macro dumpToString*(x: untyped): string =
     assert dumpToString(a + x) == "a + x: 1 + x = 11"
     template square(x): untyped = x * x
     assert dumpToString(square(x)) == "square(x): x * x = 100"
-    assert not compiles dumpToString(1 + nonexistant)
+    assert not compiles dumpToString(1 + nonexistent)
     import std/strutils
     assert "failedAssertImpl" in dumpToString(assert true) # example with a statement
   result = newCall(bindSym"dumpToStringImpl")

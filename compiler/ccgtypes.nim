@@ -12,7 +12,6 @@
 # ------------------------- Name Mangling --------------------------------
 
 import sighashes, modulegraphs
-from lowerings import createObj
 
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
 
@@ -256,8 +255,6 @@ proc addAbiCheck(m: BModule, t: PType, name: Rope) =
     m.s[cfsTypeInfo].addf("NIM_STATIC_ASSERT(sizeof($1) == $2, $3);$n", [name, rope(size), msg2.rope])
     # see `testCodegenABICheck` for example error message it generates
 
-from ccgutils import ccgIntroducedPtr
-export ccgIntroducedPtr
 
 proc fillResult(conf: ConfigRef; param: PNode) =
   fillLoc(param.sym.loc, locParam, param, ~"Result",
@@ -1301,6 +1298,10 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
 
     genProc(m, theProc)
     result = theProc.loc.r
+
+    when false:
+      if not canFormAcycle(t) and op == attachedTrace:
+        echo "ayclic but has this =trace ", t, " ", theProc.ast
   else:
     when false:
       if op == attachedTrace and m.config.selectedGC == gcOrc and
@@ -1324,11 +1325,13 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
   m.s[cfsData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
   let destroyImpl = genHook(m, t, info, attachedDestructor)
   let traceImpl = genHook(m, t, info, attachedTrace)
-  let disposeImpl = genHook(m, t, info, attachedDispose)
 
-  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.name = $4;$n; $1.traceImpl = (void*)$5; $1.disposeImpl = (void*)$6;", [
+  var flags = 0
+  if not canFormAcycle(t): flags = flags or 1
+
+  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.name = $4;$n; $1.traceImpl = (void*)$5; $1.flags = $6;", [
     name, destroyImpl, getTypeDesc(m, t), typeName,
-    traceImpl, disposeImpl])
+    traceImpl, rope(flags)])
 
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
@@ -1508,3 +1511,9 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
 
 proc genTypeSection(m: BModule, n: PNode) =
   discard
+
+proc genTypeInfo*(config: ConfigRef, m: BModule, t: PType; info: TLineInfo): Rope =
+  if optTinyRtti in config.globalOptions:
+    result = genTypeInfoV2(m, t, info)
+  else:
+    result = genTypeInfoV1(m, t, info)

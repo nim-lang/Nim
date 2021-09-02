@@ -198,7 +198,6 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
     isImported
 
   result = n
-  inc c.p.inTryStmt
   checkMinSonsLen(n, 2, c.config)
 
   var typ = commonTypeBegin
@@ -265,7 +264,6 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
     else: dec last
     closeScope(c)
 
-  dec c.p.inTryStmt
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped}:
     discardCheck(c, n[0], flags)
     for i in 1..<n.len: discardCheck(c, n[i].lastSon, flags)
@@ -387,6 +385,23 @@ proc hasEmpty(typ: PType): bool =
     for s in typ.sons:
       result = result or hasEmpty(s)
 
+proc hasUnresolvedParams(n: PNode; flags: TExprFlags): bool =
+  result = tfUnresolved in n.typ.flags
+  when false:
+    case n.kind
+    of nkSym:
+      result = isGenericRoutineStrict(n.sym)
+    of nkSymChoices:
+      for ch in n:
+        if hasUnresolvedParams(ch, flags):
+          return true
+      result = false
+    else:
+      result = false
+    if efOperand in flags:
+      if tfUnresolved notin n.typ.flags:
+        result = false
+
 proc makeDeref(n: PNode): PNode =
   var t = n.typ
   if t.kind in tyUserTypeClasses and t.isResolvedUserTypeClass:
@@ -438,23 +453,29 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
       return nil
     let nodePragma = b[1][0]
     # see: `singlePragma`
-    if nodePragma.kind notin {nkIdent, nkAccQuoted}:
-      return nil
-    let ident = considerQuotedIdent(c, nodePragma)
-    var userPragma = strTableGet(c.userPragmas, ident)
-    if userPragma != nil: return nil
-
-    let w = nodePragma.whichPragma
-    if n.kind == nkVarSection and w in varPragmas or
-      n.kind == nkLetSection and w in letPragmas or
-      n.kind == nkConstSection and w in constPragmas:
-      return nil
 
     var amb = false
-    let sym = searchInScopes(c, ident, amb)
-    # XXX what if amb is true?
-    if sym == nil or sfCustomPragma in sym.flags: return nil
+    var sym: PSym = nil
+    case nodePragma.kind
+    of nkIdent, nkAccQuoted:
+      let ident = considerQuotedIdent(c, nodePragma)
+      var userPragma = strTableGet(c.userPragmas, ident)
+      if userPragma != nil: return nil
+      let w = nodePragma.whichPragma
+      if n.kind == nkVarSection and w in varPragmas or
+        n.kind == nkLetSection and w in letPragmas or
+        n.kind == nkConstSection and w in constPragmas:
+        return nil
+      sym = searchInScopes(c, ident, amb)
+      # XXX what if amb is true?
+      # CHECKME: should that test also apply to `nkSym` case?
+      if sym == nil or sfCustomPragma in sym.flags: return nil
+    of nkSym:
+      sym = nodePragma.sym
+    else:
+      return nil
       # skip if not in scope; skip `template myAttr() {.pragma.}`
+
     let lhs = b[0]
     let clash = strTableGet(c.currentScope.symbols, lhs.ident)
     if clash != nil:
@@ -462,7 +483,6 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
       wrongRedefinition(c, lhs.info, lhs.ident.s, clash.info)
 
     result = newTree(nkCall)
-    doAssert nodePragma.kind in {nkIdent, nkAccQuoted}, $nodePragma.kind
     result.add nodePragma
     result.add lhs
     if a[1].kind != nkEmpty:
@@ -474,6 +494,18 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
     let ret = newNodeI(nkStmtList, a.info)
     ret.add result
     result = semExprNoType(c, ret)
+
+proc errorSymChoiceUseQualifier(c: PContext; n: PNode) =
+  assert n.kind in nkSymChoices
+  var err = "ambiguous identifier: '" & $n[0] & "'"
+  var i = 0
+  for child in n:
+    let candidate = child.sym
+    if i == 0: err.add " -- use one of the following:\n"
+    else: err.add "\n"
+    err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+    inc i
+  localError(c.config, n.info, errGenerated, err)
 
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   if n.len == 1:
@@ -497,9 +529,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     var def: PNode = c.graph.emptyNode
     if a[^1].kind != nkEmpty:
-      def = semExprWithType(c, a[^1], {efAllowDestructor})
+      def = semExprWithType(c, a[^1], {})
 
-      if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
+      if def.kind in nkSymChoices and def[0].typ.skipTypes(abstractInst).kind == tyEnum:
+        errorSymChoiceUseQualifier(c, def)
+      elif def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
       elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
         typFlags.incl taProcContextIsNotMacro
@@ -511,7 +545,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         else:
           # BUGFIX: ``fitNode`` is needed here!
           # check type compatibility between def.typ and typ
-          def = fitNode(c, typ, def, def.info)
+          def = fitNodeForLocalVar(c, typ, def, def.info)
           #changeType(def.skipConv, typ, check=true)
       else:
         typ = def.typ.skipTypes({tyStatic, tySink}).skipIntLit(c.idgen)
@@ -519,7 +553,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           typ = typ.lastSon
         if hasEmpty(typ):
           localError(c.config, def.info, errCannotInferTypeOfTheLiteral % typ.kind.toHumanStr)
-        elif typ.kind == tyProc and tfUnresolved in typ.flags:
+        elif typ.kind == tyProc and hasUnresolvedParams(def, {}):
+          # tfUnresolved in typ.flags:
           localError(c.config, def.info, errProcHasNoConcreteType % def.renderTree)
         when false:
           # XXX This typing rule is neither documented nor complete enough to
@@ -1441,16 +1476,33 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
   else:
     localError(c.config, n.info, errNoSymbolToBorrowFromFound)
 
+proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
+  ## Swap nodes that are (skResult) symbols to d(estination)Node.
+  for i in 0..<n.safeLen:
+    if n[i].kind == nkSym and n[i].sym == sRes:
+        n[i] = dNode
+    swapResult(n[i], sRes, dNode)
+
 proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
+  template genResSym(s) =
+    var s = newSym(skResult, getIdent(c.cache, "result"), nextSymId c.idgen,
+                   getCurrOwner(c), n.info)
+    s.typ = t
+    incl(s.flags, sfUsed)
+
   if owner == skMacro or t != nil:
     if n.len > resultPos and n[resultPos] != nil:
-      if n[resultPos].sym.kind != skResult or n[resultPos].sym.owner != getCurrOwner(c):
+      if n[resultPos].sym.kind != skResult:
         localError(c.config, n.info, "incorrect result proc symbol")
+      if n[resultPos].sym.owner != getCurrOwner(c):
+        # re-write result with new ownership, and re-write the proc accordingly
+        let sResSym = n[resultPos].sym
+        genResSym(s)
+        n[resultPos] = newSymNode(s)
+        swapResult(n, sResSym, n[resultPos])
       c.p.resultSym = n[resultPos].sym
     else:
-      var s = newSym(skResult, getIdent(c.cache, "result"), nextSymId c.idgen, getCurrOwner(c), n.info)
-      s.typ = t
-      incl(s.flags, sfUsed)
+      genResSym(s)
       c.p.resultSym = s
       n.add newSymNode(c.p.resultSym)
     addParamOrResult(c, c.p.resultSym, owner)
@@ -1616,6 +1668,8 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   var noError = false
   let cond = if op == attachedDestructor:
                t.len == 2 and t[0] == nil and t[1].kind == tyVar
+             elif op == attachedTrace:
+               t.len == 3 and t[0] == nil and t[1].kind == tyVar and t[2].kind == tyPointer
              else:
                t.len >= 2 and t[0] == nil
 
@@ -1640,8 +1694,12 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
         localError(c.config, n.info, errGenerated,
           "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
   if not noError and sfSystemModule notin s.owner.flags:
-    localError(c.config, n.info, errGenerated,
-      "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
+    if op == attachedTrace:
+      localError(c.config, n.info, errGenerated,
+        "signature for '=trace' must be proc[T: object](x: var T; env: pointer)")
+    else:
+      localError(c.config, n.info, errGenerated,
+        "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
   incl(s.flags, sfUsed)
   incl(s.flags, sfOverriden)
 
@@ -1719,9 +1777,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       localError(c.config, n.info, errGenerated,
                 "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: T)")
   of "=trace":
-    bindTypeHook(c, s, n, attachedTrace)
-  of "=dispose":
-    bindTypeHook(c, s, n, attachedDispose)
+    if s.magic != mTrace:
+      bindTypeHook(c, s, n, attachedTrace)
   else:
     if sfOverriden in s.flags:
       localError(c.config, n.info, errGenerated,
@@ -1811,7 +1868,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
-  let delcarationScope = c.currentScope
+  let declarationScope = c.currentScope
   pushOwner(c, s)
   openScope(c)
 
@@ -1856,12 +1913,17 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   var (proto, comesFromShadowScope) =
       if isAnon: (nil, false)
-      else: searchForProc(c, delcarationScope, s)
-  if proto == nil and sfForward in s.flags:
+      else: searchForProc(c, declarationScope, s)
+  if proto == nil and sfForward in s.flags and n[bodyPos].kind != nkEmpty:
     ## In cases such as a macro generating a proc with a gensymmed name we
     ## know `searchForProc` will not find it and sfForward will be set. In
     ## such scenarios the sym is shared between forward declaration and we
     ## can treat the `s` as the proto.
+    ## To differentiate between that happening and a macro just returning a
+    ## forward declaration that has been typed before we check if the body
+    ## is not empty. This has the sideeffect of allowing multiple forward
+    ## declarations if they share the same sym.
+    ## See the "doubly-typed forward decls" case in tmacros_issues.nim
     proto = s
   let hasProto = proto != nil
 
@@ -1883,13 +1945,17 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if not hasProto and sfGenSym notin s.flags: #and not isAnon:
     if s.kind in OverloadableSyms:
-      addInterfaceOverloadableSymAt(c, delcarationScope, s)
+      addInterfaceOverloadableSymAt(c, declarationScope, s)
     else:
-      addInterfaceDeclAt(c, delcarationScope, s)
+      addInterfaceDeclAt(c, declarationScope, s)
 
   pragmaCallable(c, s, n, validPragmas)
   if not hasProto:
     implicitPragmas(c, s, n.info, validPragmas)
+
+  if n[pragmasPos].kind != nkEmpty:
+    setEffectsForProcType(c.graph, s.typ, n[pragmasPos], s)
+  s.typ.flags.incl tfEffectSystemWorkaround
 
   # To ease macro generation that produce forwarded .async procs we now
   # allow a bit redundancy in the pragma declarations. The rule is
@@ -2120,6 +2186,7 @@ proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult: PNode) =
   var f = checkModuleName(c.config, it)
   if f != InvalidFileIdx:
     addIncludeFileDep(c, f)
+    onProcessing(c.graph, f, "include", c.module)
     if containsOrIncl(c.includedFiles, f.int):
       localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
     else:
@@ -2148,8 +2215,9 @@ proc evalInclude(c: PContext, n: PNode): PNode =
       incMod(c, n, it, result)
 
 proc setLine(n: PNode, info: TLineInfo) =
-  for i in 0..<n.safeLen: setLine(n[i], info)
-  n.info = info
+  if n != nil:
+    for i in 0..<n.safeLen: setLine(n[i], info)
+    n.info = info
 
 proc semPragmaBlock(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2, c.config)
@@ -2216,20 +2284,20 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
   #                                         nkNilLit, nkEmpty}:
   #  dec last
   for i in 0..<n.len:
-    var expr = semExpr(c, n[i], flags)
-    n[i] = expr
-    if c.matchedConcept != nil and expr.typ != nil and
+    var x = semExpr(c, n[i], flags)
+    n[i] = x
+    if c.matchedConcept != nil and x.typ != nil and
         (nfFromTemplate notin n.flags or i != last):
-      case expr.typ.kind
+      case x.typ.kind
       of tyBool:
-        if expr.kind == nkInfix and
-            expr[0].kind == nkSym and
-            expr[0].sym.name.s == "==":
-          if expr[1].typ.isUnresolvedStatic:
-            inferConceptStaticParam(c, expr[1], expr[2])
+        if x.kind == nkInfix and
+            x[0].kind == nkSym and
+            x[0].sym.name.s == "==":
+          if x[1].typ.isUnresolvedStatic:
+            inferConceptStaticParam(c, x[1], x[2])
             continue
-          elif expr[2].typ.isUnresolvedStatic:
-            inferConceptStaticParam(c, expr[2], expr[1])
+          elif x[2].typ.isUnresolvedStatic:
+            inferConceptStaticParam(c, x[2], x[1])
             continue
 
         let verdict = semConstExpr(c, n[i])

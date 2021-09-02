@@ -1595,7 +1595,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##   import std/[strutils, strtabs]
   ##   stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
   ##   doAssert result == ("12", 0)
-  ##   doAssert execCmdEx("ls --nonexistant").exitCode != 0
+  ##   doAssert execCmdEx("ls --nonexistent").exitCode != 0
   ##   when defined(posix):
   ##     assert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
   ##     assert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)

@@ -1,6 +1,6 @@
 ﻿#? stdtmpl(subsChar='?') | standard
 #proc generateBuildShellScript(c: ConfigData): string =
-#  result = "#! /bin/sh\n# Generated from niminst\n" &
+#  result = "#!/bin/sh\n# Generated from niminst\n" &
 #           "# Template is in tools/niminst/buildsh.nimf\n" &
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
 
@@ -21,9 +21,22 @@ do
       optosname=$2
       shift 2
       ;;
+    --parallel)
+      parallel=$2
+      shift 2
+      ;;
     --extraBuildArgs)
       extraBuildArgs=" $2"
       shift 2
+      ;;
+    -h | --help)
+      echo "Options:"
+      echo "  --os <OS>"
+      echo "  --cpu <CPU architecture>"
+      echo "  --osname <name>           Additional OS specification (used for Android)"
+      echo "  --extraBuildArgs <args>   Additional arguments passed to the compiler"
+      echo "  --parallel <number>       Multiprocess build. Requires GNU parallel"
+      exit 0
       ;;
     --) # End of all options
       shift
@@ -39,7 +52,15 @@ do
   esac
 done
 
+parallel="${parallel:-0}"
 CC="${CC:-gcc}"
+if [ "$parallel" -gt 1 ]; then
+  if ! command -v sem > /dev/null; then
+    echo "Error: GNU parallel is required to use --parallel"
+    exit 1
+  fi
+  CC="sem -j $parallel --id $$ ${CC}"
+fi
 COMP_FLAGS="${CPPFLAGS:-} ${CFLAGS:-} ?{c.ccompiler.flags}$extraBuildArgs"
 LINK_FLAGS="${LDFLAGS:-} ?{c.linker.flags}"
 PS4=""
@@ -222,6 +243,9 @@ case $myos in
     $CC $COMP_FLAGS -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}
 #        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
 #      end for
+    if [ "$parallel" -gt 0 ]; then
+      sem --wait --id $$
+    fi
     $CC -o ?{"$binDir/" & toLowerAscii(c.name)} ?linkCmd $LINK_FLAGS
     ;;
 #    end for

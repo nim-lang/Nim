@@ -9,7 +9,7 @@
 
 # included from cgen.nim
 
-when defined(nimCompilerStackraceHints):
+when defined(nimCompilerStacktraceHints):
   import std/stackframes
 
 proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
@@ -17,6 +17,8 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
                       isConst: bool, info: TLineInfo)
 
 # -------------------------- constant expressions ------------------------
+
+proc rdSetElemLoc(conf: ConfigRef; a: TLoc, typ: PType): Rope
 
 proc int64Literal(i: BiggestInt): Rope =
   if i > low(int64):
@@ -94,9 +96,12 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     else:
       result = makeCString(n.strVal)
   of nkFloatLit, nkFloat64Lit:
-    result = rope(n.floatVal.toStrMaxPrecision)
+    if ty.kind == tyFloat32:
+      result = rope(n.floatVal.float32.toStrMaxPrecision)
+    else:
+      result = rope(n.floatVal.toStrMaxPrecision)
   of nkFloat32Lit:
-    result = rope(n.floatVal.toStrMaxPrecision("f"))
+    result = rope(n.floatVal.float32.toStrMaxPrecision)
   else:
     internalError(p.config, n.info, "genLiteral(" & $n.kind & ')')
     result = nil
@@ -870,16 +875,42 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     v.r.add(".")
     v.r.add(disc.sym.loc.r)
     genInExprAux(p, it, u, v, test)
-    let msg = genFieldDefect(field, disc.sym)
+    var msg = ""
+    if optDeclaredLocs in p.config.globalOptions:
+      # xxx this should be controlled by a separate flag, and
+      # used for other similar defects so that location information is shown
+      # even without the expensive `--stacktrace`; binary size could be optimized
+      # by encoding the file names separately from `file(line:col)`, essentially
+      # passing around `TLineInfo` + the set of files in the project.
+      msg.add toFileLineCol(p.config, e.info) & " "
+    msg.add genFieldDefect(p.config, field.name.s, disc.sym)
     let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
-    if op.magic == mNot:
-      linefmt(p, cpsStmts,
-              "if ($1){ #raiseFieldError($2); $3}$n",
-              [rdLoc(test), strLit, raiseInstr(p)])
+
+    ## discriminant check
+    template fun(code) = linefmt(p, cpsStmts, code, [rdLoc(test)])
+    if op.magic == mNot: fun("if ($1) ") else: fun("if (!($1)) ")
+
+    ## call raiseFieldError2 on failure
+    let discIndex = rdSetElemLoc(p.config, v, u.t)
+    if optTinyRtti in p.config.globalOptions:
+      # not sure how to use `genEnumToStr` here
+      if p.config.isDefined("nimVersion140"):
+        const code = "{ #raiseFieldError($1); $2} $n"
+        linefmt(p, cpsStmts, code, [strLit, raiseInstr(p)])
+      else:
+        const code = "{ #raiseFieldError2($1, (NI)$3); $2} $n"
+        linefmt(p, cpsStmts, code, [strLit, raiseInstr(p), discIndex])
     else:
-      linefmt(p, cpsStmts,
-              "if (!($1)){ #raiseFieldError($2); $3}$n",
-              [rdLoc(test), strLit, raiseInstr(p)])
+      # complication needed for signed types
+      let first = p.config.firstOrd(disc.sym.typ)
+      let firstLit = int64Literal(cast[int](first))
+      let discName = genTypeInfo(p.config, p.module, disc.sym.typ, e.info)
+      if p.config.isDefined("nimVersion140"):
+        const code = "{ #raiseFieldError($1); $2} $n"
+        linefmt(p, cpsStmts, code, [strLit, raiseInstr(p)])
+      else:
+        const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$3) + (NI)$4, $5)); $2} $n"
+        linefmt(p, cpsStmts, code, [strLit, raiseInstr(p), discIndex, firstLit, discName])
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   assert e[0].kind == nkDotExpr
@@ -917,7 +948,7 @@ proc genArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if optBoundsCheck in p.options and ty.kind != tyUncheckedArray:
     if not isConstExpr(y):
       # semantic pass has already checked for const index expressions
-      if firstOrd(p.config, ty) == 0:
+      if firstOrd(p.config, ty) == 0 and lastOrd(p.config, ty) >= 0:
         if (firstOrd(p.config, b.t) < firstOrd(p.config, ty)) or (lastOrd(p.config, b.t) > lastOrd(p.config, ty)):
           linefmt(p, cpsStmts, "if ((NU)($1) > (NU)($2)){ #raiseIndexError2($1, $2); $3}$n",
                   [rdCharLoc(b), intLiteral(lastOrd(p.config, ty)), raiseInstr(p)])
@@ -1562,10 +1593,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
   initLocExpr(p, e[1], a)
   initLocExpr(p, e[2], f)
   initLoc(b, locExpr, a.lode, OnHeap)
-  if optTinyRtti in p.config.globalOptions:
-    ti = genTypeInfoV2(p.module, refType, e.info)
-  else:
-    ti = genTypeInfoV1(p.module, refType, e.info)
+  ti = genTypeInfo(p.config, p.module, refType, e.info)
   p.module.s[cfsTypeInit3].addf("$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
   b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [
       getTypeDesc(p.module, refType),
@@ -2300,7 +2328,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mInt64ToStr: genDollar(p, e, d, "#nimInt64ToStr($1)")
   of mBoolToStr: genDollar(p, e, d, "#nimBoolToStr($1)")
   of mCharToStr: genDollar(p, e, d, "#nimCharToStr($1)")
-  of mFloatToStr: genDollar(p, e, d, "#nimFloatToStr($1)")
+  of mFloatToStr:
+    if e[1].typ.skipTypes(abstractInst).kind == tyFloat32:
+      genDollar(p, e, d, "#nimFloat32ToStr($1)")
+    else:
+      genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr, mUnown: expr(p, e[1], d)
   of mIsolate: genCall(p, e, d)
@@ -2319,7 +2351,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       gcUsage(p.config, e)
     else:
       genNewFinalize(p, e)
-  of mNewSeq: genNewSeq(p, e)
+  of mNewSeq:
+    if optSeqDestructors in p.config.globalOptions:
+      e[1] = makeAddr(e[1], p.module.idgen)
+      genCall(p, e, d)
+    else:
+      genNewSeq(p, e)
   of mNewSeqOfCap: genNewSeqOfCap(p, e, d)
   of mSizeOf:
     let t = e[1].typ.skipTypes({tyTypeDesc})
@@ -2413,6 +2450,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mDestroy: genDestroy(p, e)
   of mAccessEnv: unaryExpr(p, e, d, "$1.ClE_0")
   of mSlice: genSlice(p, e, d)
+  of mTrace: discard "no code to generate"
   else:
     when defined(debugMagics):
       echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind
@@ -2640,7 +2678,9 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   result = lfNoDecl notin sym.loc.flags
 
 proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
-  assert(sym.loc.r != nil)
+  if sym.loc.r == nil:
+    if not genConstSetup(p, sym): return
+  assert(sym.loc.r != nil, $sym.name.s & $sym.itemId)
   if m.hcrOn:
     m.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r]);
     m.initProc.procSec(cpsLocals).addf(
@@ -2683,7 +2723,7 @@ proc genConstStmt(p: BProc, n: PNode) =
         genConstDefinition(m, p, sym)
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
-  when defined(nimCompilerStackraceHints):
+  when defined(nimCompilerStacktraceHints):
     setFrameMsg p.config$n.info & " " & $n.kind
   p.currLineInfo = n.info
 

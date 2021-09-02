@@ -50,7 +50,7 @@ type
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
-  ModuleGraph* = ref object
+  ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
     encoders*: seq[PackedEncoder]
@@ -599,3 +599,15 @@ proc setRoutineBody*(g: ModuleGraph; s: PSym; body: PNode) =
 proc getSemcheckedBody*(g: ModuleGraph; s: PSym): PNode =
   # XXX IC support
   result = s.semcheckedBody
+
+from std/strutils import repeat, `%`
+
+proc onProcessing*(graph: ModuleGraph, fileIdx: FileIndex, moduleStatus: string, fromModule: PSym, ) =
+  let conf = graph.config
+  let isNimscript = conf.isDefined("nimscript")
+  if (not isNimscript) or hintProcessing in conf.cmdlineNotes:
+    let path = toFilenameOption(conf, fileIdx, conf.filenameOption)
+    let indent = ">".repeat(graph.importStack.len)
+    let fromModule2 = if fromModule != nil: $fromModule.name.s else: "(toplevel)"
+    let mode = if isNimscript: "(nims) " else: ""
+    rawMessage(conf, hintProcessing, "$#$# $#: $#: $#" % [mode, indent, fromModule2, moduleStatus, path])

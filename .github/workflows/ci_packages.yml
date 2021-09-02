@@ -6,11 +6,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04, macos-10.15]
+        os: [ubuntu-20.04, macos-10.15]
         cpu: [amd64]
         batch: ["allowed_failures", "0_3", "1_3", "2_3"] # list of `index_num`
     name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60 # refs bug #18178
     env:
       NIM_TEST_PACKAGES: "1"
       NIM_TESTAMENT_BATCH: ${{ matrix.batch }}
@@ -20,16 +21,11 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: 'Checkout csources'
-        uses: actions/checkout@v2
+      - name: 'Install node.js 16.x'
+        uses: actions/setup-node@v2
         with:
-          repository: nim-lang/csources
-          path: csources
+          node-version: '16.x'
 
-      - name: 'Install node.js 12.x'
-        uses: actions/setup-node@v1
-        with:
-          node-version: '12.x'
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
         run: |
@@ -45,43 +41,23 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          mkdir dist
-          curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
-          curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
-          7z x dist/mingw64.7z -odist
-          7z x dist/dlls.zip -obin
-          echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
+          set -e
+          . ci/funs.sh
+          nimInternalInstallDepsWindows
+          echo_run echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
 
       - name: 'Add build binaries to PATH'
         shell: bash
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
-      - name: 'Build csources'
+      - name: 'System information'
         shell: bash
-        run: |
-          ncpu=
-          case '${{ runner.os }}' in
-          'Linux')
-            ncpu=$(nproc)
-            ;;
-          'macOS')
-            ncpu=$(sysctl -n hw.ncpu)
-            ;;
-          'Windows')
-            ncpu=$NUMBER_OF_PROCESSORS
-            ;;
-          esac
-          [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
+        run: . ci/funs.sh && nimCiSystemInfo
 
-          make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.cpu }}'
-      - name: 'Build koch'
+      - name: 'Build csourcesAny'
         shell: bash
-        run: nim c koch
-      - name: 'Run CI'
-        shell: bash
-        run: ./koch runCI
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
-      - name: 'Show failed tests'
-        if: failure()
+      - name: 'koch, Run CI'
         shell: bash
-        run: nim c -r tools/ci_testresults.nim
+        run: . ci/funs.sh && nimInternalBuildKochAndRunCI

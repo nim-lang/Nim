@@ -10,17 +10,14 @@
 ##[
 The `std/monotimes` module implements monotonic timestamps. A monotonic
 timestamp represents the time that has passed since some system defined
-point in time. The monotonic timestamps are guaranteed to always increase,
+point in time. The monotonic timestamps are guaranteed not to decrease,
 meaning that that the following is guaranteed to work:
 ]##
 
 runnableExamples:
-  import std/os
-
   let a = getMonoTime()
-  sleep(10)
   let b = getMonoTime()
-  assert a < b
+  assert a <= b
 
 ##[
 This is not guaranteed for the `times.Time` type! This means that the

@@ -6,6 +6,8 @@ discard """
 ## tests that don't quite fit the mold and are easier to handle via `execCmdEx`
 ## A few others could be added to here to simplify code.
 ## Note: this test is a bit slow but tests a lot of things; please don't disable.
+## Note: if needed, we could use `matrix: "-d:case1; -d:case2"` to split this
+## into several independent tests while retaining the common test helpers.
 
 import std/[strformat,os,osproc,unittest,compilesettings]
 from std/sequtils import toSeq,mapIt
@@ -21,20 +23,29 @@ proc isDots(a: string): bool =
   a.startsWith(".") and a.strip(chars = {'.'}) == ""
 
 const
-  defaultHintsOff = "--hint:successx:off --hint:exec:off --hint:link:off --hint:cc:off --hint:conf:off --hint:processing:off --hint:QuitCalled:off"
-    # useful when you want to turn only some hints on, and some common ones off.
-    # pending https://github.com/timotheecour/Nim/issues/453, simplify to: `--hints:off`
   nim = getCurrentCompilerExe()
   mode = querySetting(backend)
   nimcache = buildDir / "nimcacheTrunner"
     # instead of `querySetting(nimcacheDir)`, avoids stomping on other parallel tests
 
-proc runCmd(file, options = ""): auto =
+proc runNimCmd(file, options = "", rtarg = ""): auto =
   let fileabs = testsDir / file.unixToNativePath
-  doAssert fileabs.fileExists, fileabs
-  let cmd = fmt"{nim} {mode} {options} --hints:off {fileabs}"
+  # doAssert fileabs.fileExists, fileabs # disabled because this allows passing `nim r --eval:code fakefile`
+  let cmd = fmt"{nim} {mode} --hint:all:off {options} {fileabs} {rtarg}"
   result = execCmdEx(cmd)
-  when false:  echo result[0] & "\n" & result[1] # for debugging
+  when false: # for debugging
+    echo cmd
+    echo result[0] & "\n" & $result[1]
+
+proc runNimCmdChk(file, options = "", rtarg = "", status = 0): string =
+  let (ret, status2) = runNimCmd(file, options, rtarg = rtarg)
+  doAssert status2 == status, $(file, options, status, status2) & "\n" & ret
+  ret
+
+proc genShellCmd(filename: string): string =
+  let filename = filename.quoteShell
+  when defined(windows): "cmd /c " & filename # or "cmd /c " ?
+  else: "sh " & filename
 
 when defined(nimTrunnerFfi):
   block: # mevalffi
@@ -53,8 +64,8 @@ when defined(nimTrunnerFfi):
 hello world stderr
 hi stderr
 """
-    let (output, exitCode) = runCmd("vm/mevalffi.nim", fmt"{opt} --experimental:compiletimeFFI")
-    let expected = fmt"""
+    let output = runNimCmdChk("vm/mevalffi.nim", fmt"{opt} --experimental:compiletimeFFI")
+    doAssert output == fmt"""
 {prefix}foo
 foo:100
 foo:101
@@ -62,12 +73,13 @@ foo:102:103
 foo:102:103:104
 foo:0.03:asdf:103:105
 ret=[s1:foobar s2:foobar age:25 pi:3.14]
-"""
-    doAssert output == expected, output
-    doAssert exitCode == 0
+""", output
 
-else: # don't run twice the same test
-  import std/[strutils]
+elif not defined(nimTestsTrunnerDebugging):
+  # don't run twice the same test with `nimTrunnerFfi`
+  # use `-d:nimTestsTrunnerDebugging` for debugging convenience when you want to just run 1 test
+  import std/strutils
+  import std/json
   template check2(msg) = doAssert msg in output, output
 
   block: # tests with various options `nim doc --project --index --docroot`
@@ -142,17 +154,16 @@ sub/mmain.idx""", context
       else: doAssert false
 
   block: # mstatic_assert
-    let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim", "-d:caseBad")
+    let (output, exitCode) = runNimCmd("ccgbugs/mstatic_assert.nim", "-d:caseBad")
     check2 "sizeof(bool) == 2"
     check exitCode != 0
 
   block: # ABI checks
     let file = "misc/msizeof5.nim"
     block:
-      let (output, exitCode) = runCmd(file, "-d:checkAbi")
-      doAssert exitCode == 0, output
+      discard runNimCmdChk(file, "-d:checkAbi")
     block:
-      let (output, exitCode) = runCmd(file, "-d:checkAbi -d:caseBad")
+      let (output, exitCode) = runNimCmd(file, "-d:checkAbi -d:caseBad")
       # on platforms that support _StaticAssert natively, errors will show full context, e.g.:
       # error: static_assert failed due to requirement 'sizeof(unsigned char) == 8'
       # "backend & Nim disagree on size for: BadImportcType{int64} [declared in mabi_check.nim(1, 6)]"
@@ -222,7 +233,7 @@ sub/mmain.idx""", context
     check execCmdEx(cmd) == ("witness\n", 0)
 
   block: # config.nims, nim.cfg, hintConf, bug #16557
-    let cmd = fmt"{nim} r {defaultHintsOff} --hint:conf tests/newconfig/bar/mfoo.nim"
+    let cmd = fmt"{nim} r --hint:all:off --hint:conf tests/newconfig/bar/mfoo.nim"
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     doAssert exitCode == 0
     let dir = getCurrentDir()
@@ -235,7 +246,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     var expected = ""
     for a in files:
       let b = dir / a
-      expected.add &"Hint: used config file '{b}' [Conf]\31\n"
+      expected.add &"Hint: used config file '{b}' [Conf]\n"
     doAssert outp.endsWith expected, outp & "\n" & expected
 
   block: # mfoo2.customext
@@ -243,7 +254,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     let cmd = fmt"{nim} e --hint:conf {filename}"
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     doAssert exitCode == 0
-    var expected = &"Hint: used config file '{filename}' [Conf]\31\n"
+    var expected = &"Hint: used config file '{filename}' [Conf]\n"
     doAssert outp.endsWith "123" & "\n" & expected
 
 
@@ -254,7 +265,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)
 
   block: # `hintProcessing` dots should not interfere with `static: echo` + friends
-    let cmd = fmt"""{nim} r {defaultHintsOff} --hint:processing -f --eval:"static: echo 1+1""""
+    let cmd = fmt"""{nim} r --hint:all:off --hint:processing -f --eval:"static: echo 1+1""""
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     template check3(cond) = doAssert cond, $(outp,)
     doAssert exitCode == 0
@@ -268,7 +279,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
       check3 "2" in outp
 
   block: # nim secret
-    let opt = fmt"{defaultHintsOff} --hint:processing"
+    let opt = "--hint:all:off --hint:processing"
     template check3(cond) = doAssert cond, $(outp,)
     for extra in ["", "--stdout"]:
       let cmd = fmt"""{nim} secret {opt} {extra}"""
@@ -293,3 +304,87 @@ tests/newconfig/bar/mfoo.nims""".splitLines
         let (outp, exitCode) = run "echo 1+2; quit(2)"
         check3 "3" in outp
         doAssert exitCode == 2
+
+  block: # nimBetterRun
+    let file = "misc/mbetterrun.nim"
+    const nimcache2 = buildDir / "D20210423T185116"
+    removeDir nimcache2
+    # related to `-d:nimBetterRun`
+    let opt = fmt"-r --usenimcache --nimcache:{nimcache2}"
+    var ret = ""
+    for a in @["v1", "v2", "v1", "v3"]:
+      ret.add runNimCmdChk(file, fmt"{opt} -d:mbetterrunVal:{a}")
+    ret.add runNimCmdChk(file, fmt"{opt} -d:mbetterrunVal:v2", rtarg = "arg1 arg2")
+      # rt arguments should not cause a recompilation
+    doAssert ret == """
+compiling: v1
+running: v1
+compiling: v2
+running: v2
+running: v1
+compiling: v3
+running: v3
+running: v2
+""", ret
+
+  block: # nim dump
+    let cmd = fmt"{nim} dump --dump.format:json -d:D20210428T161003 --hints:off ."
+    let (ret, status) = execCmdEx(cmd)
+    doAssert status == 0
+    let j = ret.parseJson
+    # sanity checks
+    doAssert "D20210428T161003" in j["defined_symbols"].to(seq[string])
+    doAssert j["version"].to(string) == NimVersion
+    doAssert j["nimExe"].to(string) == getCurrentCompilerExe()
+
+  block: # genscript
+    const nimcache2 = buildDir / "D20210524T212851"
+    removeDir(nimcache2)
+    let input = "tgenscript_fakefile" # no need for a real file, --eval is good enough
+    let output = runNimCmdChk(input, fmt"""--genscript --nimcache:{nimcache2.quoteShell} --eval:"echo(12345)" """)
+    doAssert output.len == 0, output
+    let ext = when defined(windows): ".bat" else: ".sh"
+    let filename = fmt"compile_{input}{ext}" # synchronize with `generateScript`
+    doAssert fileExists(nimcache2/filename), nimcache2/filename
+    let (outp, status) = execCmdEx(genShellCmd(filename), options = {poStdErrToStdOut}, workingDir = nimcache2)
+    doAssert status == 0, outp
+    let (outp2, status2) = execCmdEx(nimcache2 / input, options = {poStdErrToStdOut})
+    doAssert outp2 == "12345\n", outp2
+    doAssert status2 == 0
+
+  block: # UnusedImport
+    proc fn(opt: string, expected: string) =
+      let output = runNimCmdChk("pragmas/mused3.nim", fmt"--warning:all:off --warning:UnusedImport --hint:DuplicateModuleImport {opt}")
+      doAssert output == expected, opt & "\noutput:\n" & output & "expected:\n" & expected
+    fn("-d:case1"): """
+mused3.nim(13, 8) Warning: imported and not used: 'mused3b' [UnusedImport]
+"""
+    fn("-d:case2"): ""
+    fn("-d:case3"): ""
+    fn("-d:case4"): ""
+    fn("-d:case5"): ""
+    fn("-d:case6"): ""
+    fn("-d:case7"): ""
+    fn("-d:case8"): ""
+    fn("-d:case9"): ""
+    fn("-d:case10"): ""
+    when false:
+      fn("-d:case11"): """
+  Warning: imported and not used: 'm2' [UnusedImport]
+  """
+    fn("-d:case12"): """
+mused3.nim(75, 10) Hint: duplicate import of 'mused3a'; previous import here: mused3.nim(74, 10) [DuplicateModuleImport]
+"""
+
+  block: # FieldDefect
+    proc fn(opt: string, expected: string) =
+      let output = runNimCmdChk("misc/mfield_defect.nim", fmt"-r --warning:all:off --declaredlocs {opt}", status = 1)
+      doAssert expected in output, opt & "\noutput:\n" & output & "expected:\n" & expected
+    fn("-d:case1"): """mfield_defect.nim(25, 15) Error: field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
+    fn("-d:case2 --gc:refc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
+    fn("-d:case1 -b:js"): """mfield_defect.nim(25, 15) Error: field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
+    fn("-d:case2 -b:js"): """field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
+    # 3 instead of k3, because of lack of RTTI
+    fn("-d:case2 --gc:arc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = 3'"""
+else:
+  discard # only during debugging, tests added here will run with `-d:nimTestsTrunnerDebugging` enabled

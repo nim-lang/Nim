@@ -593,8 +593,8 @@ proc isHideable(config: ConfigRef, n: PNode): bool =
   # xxx compare `ident` directly with `getIdent(cache, wRaises)`, but
   # this requires a `cache`.
   case n.kind
-  of nkExprColonExpr: result = n[0].kind == nkIdent and n[0].ident.s in ["raises", "tags", "extern"]
-  of nkIdent: result = n.ident.s in ["gcsafe"]
+  of nkExprColonExpr: result = n[0].kind == nkIdent and n[0].ident.s in ["raises", "tags", "extern", "deprecated"]
+  of nkIdent: result = n.ident.s in ["gcsafe", "deprecated"]
   else: result = false
 
 proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
@@ -1238,6 +1238,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     putWithSpace(g, tkBind, "bind")
     gsub(g, n, 0)
   of nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString:
+    if renderIds in g.flags:
+      putWithSpace(g, tkAddr, $n.kind)
     gsub(g, n, 0)
   of nkLambda:
     putWithSpace(g, tkProc, "proc")
@@ -1290,10 +1292,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
       put(g, tkSpaces, Space)
     infixArgument(g, n, 2)
   of nkPrefix:
-    if n.len > 0 and n[0].kind == nkIdent and n[0].ident.s == "<//>":
-      discard "XXX Remove this hack after 0.20 has been released!"
-    else:
-      gsub(g, n, 0)
+    gsub(g, n, 0)
     if n.len > 1:
       let opr = if n[0].kind == nkIdent: n[0].ident
                 elif n[0].kind == nkSym: n[0].sym.name
@@ -1759,15 +1758,3 @@ proc getTokSym*(r: TSrcGen): PSym =
     result = r.tokens[r.idx-1].sym
   else:
     result = nil
-
-proc quoteExpr*(a: string): string {.inline.} =
-  ## can be used for quoting expressions in error msgs.
-  "'" & a & "'"
-
-proc genFieldDefect*(field: PSym, disc: PSym): string =
-  ## this needs to be in a module accessible by jsgen, ccgexprs, and vm to
-  ## provide this error msg FieldDefect; msgs would be better but it does not
-  ## import ast
-  result = field.name.s.quoteExpr & " is not accessible using discriminant " &
-    disc.name.s.quoteExpr & " of type " &
-    disc.owner.name.s.quoteExpr

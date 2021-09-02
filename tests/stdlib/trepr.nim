@@ -9,6 +9,7 @@ from strutils import endsWith, contains, strip
 from std/macros import newLit
 
 macro deb(a): string = newLit a.repr.strip
+macro debTyped(a: typed): string = newLit a.repr.strip
 
 template main() =
   doAssert repr({3,5}) == "{3, 5}"
@@ -242,6 +243,32 @@ template bar(): untyped =
   a.add(foo7 do:
     echo "baz"
     4)"""
+
+  block: # one liner doc comments
+    let a1 = deb:
+      func fn1(): int = 1  ## comment
+      func fn2(): int = 1
+        ## comment
+    let a2 = debTyped:
+      func fn1(): int = 1  ## comment
+      func fn2(): int = 1
+        ## comment
+    doAssert a1 == """
+func fn1(): int =
+  ## comment
+  1
+
+func fn2(): int =
+  ## comment
+  1"""
+    doAssert a2 == """
+func fn1(): int =
+  ## comment
+  result = 1
+
+func fn2(): int =
+  ## comment
+  result = 1"""
 
 static: main()
 main()

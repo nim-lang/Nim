@@ -1,5 +1,4 @@
 discard """
-  targets: "c"
   errormsg: "undeclared identifier: 'undeclared'"
   line: 10
   column: 6

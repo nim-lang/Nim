@@ -234,6 +234,12 @@ select:focus {
 }
 
 /* Docgen styles */
+
+:target {
+  border: 2px solid #B5651D;
+  border-style: dotted;
+}
+
 /* Links */
 a {
   color: var(--anchor);
@@ -937,6 +943,14 @@ span.option {
   font-family: "Source Code Pro", Monaco, Menlo, Consolas, "Courier New", monospace;
   color: var(--option);
 }
+
+span.Prompt {
+  font-weight: bold;
+  color: red; }
+
+span.ProgramOutput {
+  font-weight: bold;
+  color: #808080; }
 
 span.program {
   font-weight: bold;

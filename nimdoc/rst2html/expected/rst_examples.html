@@ -34,7 +34,6 @@ function main() {
     }
   }
 
-  const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
   function switchTheme(e) {
       if (e.target.checked) {
           document.documentElement.setAttribute('data-theme', 'dark');
@@ -45,13 +44,19 @@ function main() {
       }
   }
 
-  toggleSwitch.addEventListener('change', switchTheme, false);
+  const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+  if (toggleSwitch !== null) {
+    toggleSwitch.addEventListener('change', switchTheme, false);
+  }
 
-  const currentTheme = localStorage.getItem('theme') ? localStorage.getItem('theme') : null;
+  var currentTheme = localStorage.getItem('theme');
+  if (!currentTheme && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    currentTheme = 'dark';
+  }
   if (currentTheme) {
     document.documentElement.setAttribute('data-theme', currentTheme);
 
-    if (currentTheme === 'dark') {
+    if (currentTheme === 'dark' && toggleSwitch !== null) {
       toggleSwitch.checked = true;
     }
   }
@@ -128,8 +133,7 @@ window.addEventListener('DOMContentLoaded', main);
 <p><strong>Note</strong>: Assignments, moves, and destruction are specified in the <a class="reference external" href="destructors.html">destructors</a> document.</p>
 <p>The language constructs are explained using an extended BNF, in which <tt class="docutils literal"><span class="pre">(a)*</span></tt> means 0 or more <tt class="docutils literal"><span class="pre">a</span></tt>'s, <tt class="docutils literal"><span class="pre">a+</span></tt> means 1 or more <tt class="docutils literal"><span class="pre">a</span></tt>'s, and <tt class="docutils literal"><span class="pre">(a)?</span></tt> means an optional <em>a</em>. Parentheses may be used to group elements.</p>
 <p><tt class="docutils literal"><span class="pre">&amp;</span></tt> is the lookahead operator; <tt class="docutils literal"><span class="pre">&amp;a</span></tt> means that an <tt class="docutils literal"><span class="pre">a</span></tt> is expected but not consumed. It will be consumed in the following rule.</p>
-<p>Non-terminals start with a lowercase letter, abstract terminal symbols are in UPPERCASE. Verbatim terminal symbols (including keywords) are quoted with <tt class="docutils literal"><span class="pre">'</span></tt>. An example:<pre>
-ifStmt = 'if' expr ':' stmts ('elif' expr ':' stmts)* ('else' stmts)?</pre>
+<p>Non-terminals start with a lowercase letter, abstract terminal symbols are in UPPERCASE. Verbatim terminal symbols (including keywords) are quoted with <tt class="docutils literal"><span class="pre">'</span></tt>. An example:<pre>ifStmt = 'if' expr ':' stmts ('elif' expr ':' stmts)* ('else' stmts)?</pre>
 </p>
 <p>In a typical Nim program, most of the code is compiled into the executable. However, some of the code may be executed at <span id="compileminustime_1">compile-time</span>. This can include constant expressions, macro definitions, and Nim procedures used by macro definitions. Most of the Nim language is supported at compile-time, but there are some restrictions -- see <a class="reference external" href="#restrictions-on-compileminustime-execution">Restrictions on Compile-Time Execution</a> for details. We use the term <span id="runtime_1">runtime</span> to cover both compile-time execution and code execution in the executable.</p>
 <pre class="listing"><span class="Keyword">var</span> <span class="Identifier">a</span><span class="Punctuation">:</span> <span class="Identifier">array</span><span class="Punctuation">[</span><span class="FloatNumber">0.</span><span class="Operator">.</span><span class="DecNumber">1</span><span class="Punctuation">,</span> <span class="Identifier">char</span><span class="Punctuation">]</span>
@@ -141,8 +145,7 @@ ifStmt = 'if' expr ':' stmts ('elif' expr ':' stmts)* ('else' stmts)?</pre>
 <h2><a class="toc-backref" id="about-this-document-encoding" href="#about-this-document-encoding">Encoding</a></h2><p>All Nim source files are in the UTF-8 encoding (or its ASCII subset). Other encodings are not supported. Any of the standard platform line termination sequences can be used - the Unix form using ASCII LF (linefeed), the Windows form using the ASCII sequence CR LF (return followed by linefeed), or the old Macintosh form using the ASCII CR (return) character. All of these forms can be used equally, regardless of the platform.</p>
 
 <h2><a class="toc-backref" id="about-this-document-indentation" href="#about-this-document-indentation">Indentation</a></h2><p>Nim's standard grammar describes an <span id="indentation-sensitive_1">indentation sensitive</span> language. This means that all the control structures are recognized by indentation. Indentation consists only of spaces; tabulators are not allowed.</p>
-<p>With this notation we can now easily define the core of the grammar: A block of statements (simplified example):<pre>
-ifStmt = 'if' expr ':' stmt
+<p>With this notation we can now easily define the core of the grammar: A block of statements (simplified example):<pre>ifStmt = 'if' expr ':' stmt
          (IND{=} 'elif' expr ':' stmt)*
          (IND{=} 'else' ':' stmt)?
 
@@ -169,18 +172,15 @@ stmt = IND{&gt;} stmt ^+ IND{=} DED  # list of statements
 <tr><td><tt class="docutils literal"><span class="pre">\x</span></tt> HH</td><td><span id="character-with-hex-value-hh_1">character with hex value HH</span>; exactly two hex digits are allowed</td></tr>
 <tr><td><tt class="docutils literal"><span class="pre">\u</span></tt> HHHH</td><td><span id="unicode-codepoint-with-hex-value-hhhh_1">unicode codepoint with hex value HHHH</span>; exactly four hex digits are allowed</td></tr>
 <tr><td><tt class="docutils literal"><span class="pre">\u</span></tt> {H+}</td><td><span id="unicode-codepoint_1">unicode codepoint</span>; all hex digits enclosed in <tt class="docutils literal"><span class="pre">{}</span></tt> are used for the codepoint</td></tr>
-</table><pre class="listing"><span class="LongStringLit">&quot;&quot;&quot;&quot;long string within quotes&quot;&quot;&quot;&quot;</span></pre><p>Produces:<pre>
-&quot;long string within quotes&quot;</pre>
+</table><pre class="listing"><span class="LongStringLit">&quot;&quot;&quot;&quot;long string within quotes&quot;&quot;&quot;&quot;</span></pre><p>Produces:<pre>&quot;long string within quotes&quot;</pre>
 </p>
 
-<h2><a class="toc-backref" id="about-this-document-operators" href="#about-this-document-operators">Operators</a></h2><p>Nim allows user defined operators. An operator is any combination of the following characters:<pre>
-=     +     -     *     /     &lt;     &gt;
+<h2><a class="toc-backref" id="about-this-document-operators" href="#about-this-document-operators">Operators</a></h2><p>Nim allows user defined operators. An operator is any combination of the following characters:<pre>=     +     -     *     /     &lt;     &gt;
 @     $     ~     &amp;     %     |
 !     ?     ^     .     :     \</pre>
 </p>
 <p>(The grammar uses the terminal OPR to refer to operator symbols as defined here.)</p>
-<p>The following strings denote other tokens:<pre>
-`   (    )     {    }     [    ]    ,  ;   [.    .]  {.   .}  (.  .)  [:</pre>
+<p>The following strings denote other tokens:<pre>`   (    )     {    }     [    ]    ,  ;   [.    .]  {.   .}  (.  .)  [:</pre>
 </p>
 <p>Otherwise, precedence is determined by the first character.</p>
 <table border="1" class="docutils"><tr><th>Precedence level</th><th>Operators</th><th>First character</th><th>Terminal symbol</th></tr>

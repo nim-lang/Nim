@@ -65,8 +65,7 @@
 ## * `parsesql module <parsesql.html>`_ for a SQL parser
 ## * `other parsers <lib.html#pure-libraries-parsers>`_ for other parsers
 
-import
-  lexbase, streams
+import lexbase, streams
 
 type
   CsvRow* = seq[string] ## A row in a CSV file.
@@ -97,10 +96,10 @@ proc raiseEInvalidCsv(filename: string, line, col: int,
     e.msg = filename & "(" & $line & ", " & $col & ") Error: " & msg
   raise e
 
-proc error(my: CsvParser, pos: int, msg: string) =
-  raiseEInvalidCsv(my.filename, my.lineNumber, getColNumber(my, pos), msg)
+proc error(self: CsvParser, pos: int, msg: string) =
+  raiseEInvalidCsv(self.filename, self.lineNumber, getColNumber(self, pos), msg)
 
-proc open*(my: var CsvParser, input: Stream, filename: string,
+proc open*(self: var CsvParser, input: Stream, filename: string,
            separator = ',', quote = '"', escape = '\0',
            skipInitialSpace = false) =
   ## Initializes the parser with an input stream. `Filename` is only used
@@ -127,16 +126,14 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
     parser.close()
     strm.close()
 
-  lexbase.open(my, input)
-  my.filename = filename
-  my.sep = separator
-  my.quote = quote
-  my.esc = escape
-  my.skipWhite = skipInitialSpace
-  my.row = @[]
-  my.currRow = 0
+  lexbase.open(self, input)
+  self.filename = filename
+  self.sep = separator
+  self.quote = quote
+  self.esc = escape
+  self.skipWhite = skipInitialSpace
 
-proc open*(my: var CsvParser, filename: string,
+proc open*(self: var CsvParser, filename: string,
            separator = ',', quote = '"', escape = '\0',
            skipInitialSpace = false) =
   ## Similar to the `other open proc<#open,CsvParser,Stream,string,char,char,char>`_,
@@ -150,54 +147,54 @@ proc open*(my: var CsvParser, filename: string,
     removeFile("tmp.csv")
 
   var s = newFileStream(filename, fmRead)
-  if s == nil: my.error(0, "cannot open: " & filename)
-  open(my, s, filename, separator,
+  if s == nil: self.error(0, "cannot open: " & filename)
+  open(self, s, filename, separator,
        quote, escape, skipInitialSpace)
 
-proc parseField(my: var CsvParser, a: var string) =
-  var pos = my.bufpos
-  if my.skipWhite:
-    while my.buf[pos] in {' ', '\t'}: inc(pos)
+proc parseField(self: var CsvParser, a: var string) =
+  var pos = self.bufpos
+  if self.skipWhite:
+    while self.buf[pos] in {' ', '\t'}: inc(pos)
   setLen(a, 0) # reuse memory
-  if my.buf[pos] == my.quote and my.quote != '\0':
+  if self.buf[pos] == self.quote and self.quote != '\0':
     inc(pos)
     while true:
-      let c = my.buf[pos]
+      let c = self.buf[pos]
       if c == '\0':
-        my.bufpos = pos # can continue after exception?
-        error(my, pos, my.quote & " expected")
+        self.bufpos = pos # can continue after exception?
+        error(self, pos, self.quote & " expected")
         break
-      elif c == my.quote:
-        if my.esc == '\0' and my.buf[pos+1] == my.quote:
-          add(a, my.quote)
+      elif c == self.quote:
+        if self.esc == '\0' and self.buf[pos + 1] == self.quote:
+          add(a, self.quote)
           inc(pos, 2)
         else:
           inc(pos)
           break
-      elif c == my.esc:
-        add(a, my.buf[pos+1])
+      elif c == self.esc:
+        add(a, self.buf[pos + 1])
         inc(pos, 2)
       else:
         case c
         of '\c':
-          pos = handleCR(my, pos)
+          pos = handleCR(self, pos)
           add(a, "\n")
         of '\l':
-          pos = handleLF(my, pos)
+          pos = handleLF(self, pos)
           add(a, "\n")
         else:
           add(a, c)
           inc(pos)
   else:
     while true:
-      let c = my.buf[pos]
-      if c == my.sep: break
+      let c = self.buf[pos]
+      if c == self.sep: break
       if c in {'\c', '\l', '\0'}: break
       add(a, c)
       inc(pos)
-  my.bufpos = pos
+  self.bufpos = pos
 
-proc processedRows*(my: var CsvParser): int =
+proc processedRows*(self: var CsvParser): int {.inline.} =
   ## Returns number of the processed rows.
   ##
   ## But even if `readRow <#readRow,CsvParser,int>`_ arrived at EOF then
@@ -220,9 +217,9 @@ proc processedRows*(my: var CsvParser): int =
     parser.close()
     strm.close()
 
-  return my.currRow
+  self.currRow
 
-proc readRow*(my: var CsvParser, columns = 0): bool =
+proc readRow*(self: var CsvParser, columns = 0): bool =
   ## Reads the next row; if `columns` > 0, it expects the row to have
   ## exactly this many columns. Returns false if the end of the file
   ## has been encountered else true.
@@ -251,47 +248,47 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
     strm.close()
 
   var col = 0 # current column
-  let oldpos = my.bufpos
+  let oldpos = self.bufpos
   # skip initial empty lines #8365
   while true:
-    case my.buf[my.bufpos]
-    of '\c': my.bufpos = handleCR(my, my.bufpos)
-    of '\l': my.bufpos = handleLF(my, my.bufpos)
+    case self.buf[self.bufpos]
+    of '\c': self.bufpos = handleCR(self, self.bufpos)
+    of '\l': self.bufpos = handleLF(self, self.bufpos)
     else: break
-  while my.buf[my.bufpos] != '\0':
-    let oldlen = my.row.len
-    if oldlen < col+1:
-      setLen(my.row, col+1)
-      my.row[col] = ""
-    parseField(my, my.row[col])
+  while self.buf[self.bufpos] != '\0':
+    let oldlen = self.row.len
+    if oldlen < col + 1:
+      setLen(self.row, col + 1)
+      self.row[col] = ""
+    parseField(self, self.row[col])
     inc(col)
-    if my.buf[my.bufpos] == my.sep:
-      inc(my.bufpos)
+    if self.buf[self.bufpos] == self.sep:
+      inc(self.bufpos)
     else:
-      case my.buf[my.bufpos]
+      case self.buf[self.bufpos]
       of '\c', '\l':
         # skip empty lines:
         while true:
-          case my.buf[my.bufpos]
-          of '\c': my.bufpos = handleCR(my, my.bufpos)
-          of '\l': my.bufpos = handleLF(my, my.bufpos)
+          case self.buf[self.bufpos]
+          of '\c': self.bufpos = handleCR(self, self.bufpos)
+          of '\l': self.bufpos = handleLF(self, self.bufpos)
           else: break
       of '\0': discard
-      else: error(my, my.bufpos, my.sep & " expected")
+      else: error(self, self.bufpos, self.sep & " expected")
       break
 
-  setLen(my.row, col)
+  setLen(self.row, col)
   result = col > 0
   if result and col != columns and columns > 0:
-    error(my, oldpos+1, $columns & " columns expected, but found " &
+    error(self, oldpos + 1, $columns & " columns expected, but found " &
           $col & " columns")
-  inc(my.currRow)
+  inc(self.currRow)
 
-proc close*(my: var CsvParser) {.inline.} =
-  ## Closes the parser `my` and its associated input stream.
-  lexbase.close(my)
+proc close*(self: var CsvParser) {.inline.} =
+  ## Closes the parser `self` and its associated input stream.
+  lexbase.close(self)
 
-proc readHeaderRow*(my: var CsvParser) =
+proc readHeaderRow*(self: var CsvParser) =
   ## Reads the first row and creates a look-up table for column numbers
   ## See also:
   ## * `rowEntry proc <#rowEntry,CsvParser,string>`_
@@ -313,16 +310,16 @@ proc readHeaderRow*(my: var CsvParser) =
     parser.close()
     strm.close()
 
-  let present = my.readRow()
+  let present = self.readRow()
   if present:
-    my.headers = my.row
+    self.headers = self.row
 
-proc rowEntry*(my: var CsvParser, entry: string): var string =
+proc rowEntry*(self: var CsvParser, entry: string): var string =
   ## Accesses a specified `entry` from the current row.
   ##
   ## Assumes that `readHeaderRow <#readHeaderRow,CsvParser>`_ has already been
   ## called.
-  ## 
+  ##
   ## If specified `entry` does not exist, raises KeyError.
   runnableExamples:
     import std/streams
@@ -340,9 +337,9 @@ proc rowEntry*(my: var CsvParser, entry: string): var string =
     parser.close()
     strm.close()
 
-  let index = my.headers.find(entry)
+  let index = self.headers.find(entry)
   if index >= 0:
-    result = my.row[index]
+    result = self.row[index]
   else:
     raise newException(KeyError, "Entry `" & entry & "` doesn't exist")
 

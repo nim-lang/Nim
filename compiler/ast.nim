@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, hashes, options, ropes, idents, int128
+  lineinfos, hashes, options, ropes, idents, int128, tables
 from strutils import toLowerAscii
 
 export int128
@@ -229,7 +229,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 46 flags!
+  TSymFlag* = enum    # 48 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -299,6 +299,7 @@ type
     sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
     sfSingleUsedTemp  # For temporaries that we know will only be used once
     sfNoalias         # 'noalias' annotation, means C's 'restrict'
+    sfEffectsDelayed  # an 'effectsDelayed' parameter
 
   TSymFlags* = set[TSymFlag]
 
@@ -464,6 +465,8 @@ const
   # consider renaming as `tyAbstractVarRange`
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
+  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
+                   tyInferred, tySink, tyOwned} # xxx what about tyStatic?
 
 type
   TTypeKinds* = set[TTypeKind]
@@ -495,9 +498,10 @@ type
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
     nfLastRead  # this node is a last read
     nfFirstWrite# this node is a first write
+    nfHasComment # node has a comment
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~40)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 43)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -564,6 +568,8 @@ type
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
     tfExplicitCallConv
+    tfIsConstructor
+    tfEffectSystemWorkaround
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -649,7 +655,9 @@ type
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
-    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
+    mCharToStr, mBoolToStr,
+    mIntToStr, mInt64ToStr, mFloatToStr, # for -d:nimVersion140
+    mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mImplies, mIff, mExists, mForall, mOld,
@@ -664,7 +672,7 @@ type
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
-    mMove, mWasMoved, mDestroy,
+    mMove, mWasMoved, mDestroy, mTrace,
     mDefault, mUnown, mIsolate, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
@@ -717,7 +725,9 @@ const
     mEqRef, mEqProc, mLePtr, mLtPtr, mEqCString, mXor,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot, mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
-    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
+    mCharToStr, mBoolToStr,
+    mIntToStr, mInt64ToStr, mFloatToStr,
+    mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mEqStr, mLeStr, mLtStr,
@@ -740,7 +750,7 @@ proc hash*(x: ItemId): Hash =
 
 
 type
-  TIdObj* = object of RootObj
+  TIdObj* {.acyclic.} = object of RootObj
     itemId*: ItemId
   PIdObj* = ref TIdObj
 
@@ -767,7 +777,6 @@ type
       ident*: PIdent
     else:
       sons*: TNodeSeq
-    comment*: string
 
   TStrTable* = object         # a table[PIdent] of PSym
     counter*: int
@@ -839,7 +848,7 @@ type
 
   PInstantiation* = ref TInstantiation
 
-  TScope* = object
+  TScope* {.acyclic.} = object
     depthLevel*: int
     symbols*: TStrTable
     parent*: PScope
@@ -853,7 +862,7 @@ type
     case kind*: TSymKind
     of routineKinds:
       #procInstCache*: seq[PInstantiation]
-      gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
+      gcUnsafetyReason*: PSym  # for better error messages regarding gcsafe
       semcheckedBody*: PNode   # proc body after semantic checking
     of skLet, skVar, skField, skForVar:
       guard*: PSym
@@ -908,7 +917,6 @@ type
     attachedAsgn,
     attachedSink,
     attachedTrace,
-    attachedDispose,
     attachedDeepCopy
 
   TType* {.acyclic.} = object of TIdObj # \
@@ -985,13 +993,45 @@ type
   TImplication* = enum
     impUnknown, impNo, impYes
 
+template nodeId(n: PNode): int = cast[int](n)
+
+type Gconfig = object
+  # we put comments in a side channel to avoid increasing `sizeof(TNode)`, which
+  # reduces memory usage given that `PNode` is the most allocated type by far.
+  comments: Table[int, string] # nodeId => comment
+  useIc*: bool
+
+var gconfig {.threadvar.}: Gconfig
+
+proc setUseIc*(useIc: bool) = gconfig.useIc = useIc
+
+proc comment*(n: PNode): string =
+  if nfHasComment in n.flags and not gconfig.useIc:
+    # IC doesn't track comments, see `packed_ast`, so this could fail
+    result = gconfig.comments[n.nodeId]
+
+proc `comment=`*(n: PNode, a: string) =
+  let id = n.nodeId
+  if a.len > 0:
+    # if needed, we could periodically cleanup gconfig.comments when its size increases,
+    # to ensure only live nodes (and with nfHasComment) have an entry in gconfig.comments;
+    # for compiling compiler, the waste is very small:
+    # num calls to newNodeImpl: 14984160 (num of PNode allocations)
+    # size of gconfig.comments: 33585
+    # num of nodes with comments that were deleted and hence wasted: 3081
+    n.flags.incl nfHasComment
+    gconfig.comments[id] = a
+  elif nfHasComment in n.flags:
+    n.flags.excl nfHasComment
+    gconfig.comments.del(id)
+
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
 # the poor naming choices in the standard library.
 
 const
   OverloadableSyms* = {skProc, skFunc, skMethod, skIterator,
-    skConverter, skModule, skTemplate, skMacro}
+    skConverter, skModule, skTemplate, skMacro, skEnumField}
 
   GenericTypes*: TTypeKinds = {tyGenericInvocation, tyGenericBody,
     tyGenericParam}
@@ -1062,7 +1102,7 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   # which may simplify code.
   case a.kind
   of nkSym: a.sym.name
-  of nkIdent:  a.ident
+  of nkIdent: a.ident
   else: nil
 
 proc getnimblePkg*(a: PSym): PSym =
@@ -1166,40 +1206,78 @@ template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
 template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
 template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
+proc getDeclPragma*(n: PNode): PNode =
+  ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
+  ## Currently only supports routineDefs + {nkTypeDef}.
+  case n.kind
+  of routineDefs:
+    if n[pragmasPos].kind != nkEmpty: result = n[pragmasPos]
+  of nkTypeDef:
+    #[
+    type F3*{.deprecated: "x3".} = int
+
+    TypeSection
+      TypeDef
+        PragmaExpr
+          Postfix
+            Ident "*"
+            Ident "F3"
+          Pragma
+            ExprColonExpr
+              Ident "deprecated"
+              StrLit "x3"
+        Empty
+        Ident "int"
+    ]#
+    if n[0].kind == nkPragmaExpr:
+      result = n[0][1]
+  else:
+    # support as needed for `nkIdentDefs` etc.
+    result = nil
+  if result != nil:
+    assert result.kind == nkPragma, $(result.kind, n.kind)
+
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
 
-proc newNode*(kind: TNodeKind): PNode =
-  result = PNode(kind: kind, info: unknownLineInfo)
+template newNodeImpl(info2) =
+  result = PNode(kind: kind, info: info2)
+  when false:
+    # this would add overhead, so we skip it; it results in a small amount of leaked entries
+    # for old PNode that gets re-allocated at the same address as a PNode that
+    # has `nfHasComment` set (and an entry in that table). Only `nfHasComment`
+    # should be used to test whether a PNode has a comment; gconfig.comments
+    # can contain extra entries for deleted PNode's with comments.
+    gconfig.comments.del(cast[int](result))
+
+template setIdMaybe() =
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
       echo "KIND ", result.kind
       writeStackTrace()
     inc gNodeId
+
+proc newNode*(kind: TNodeKind): PNode =
+  ## new node with unknown line info, no type, and no children
+  newNodeImpl(unknownLineInfo)
+  setIdMaybe()
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
-  result = PNode(kind: kind, info: info)
-  when defined(useNodeIds):
-    result.id = gNodeId
-    if result.id == nodeIdToDebug:
-      echo "KIND ", result.kind
-      writeStackTrace()
-    inc gNodeId
+  ## new node with line info, no type, and no children
+  newNodeImpl(info)
+  setIdMaybe()
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
-  result = PNode(kind: kind, info: info)
+  ## new node with line info, type, and children
+  newNodeImpl(info)
   if children > 0:
     newSeq(result.sons, children)
-  when defined(useNodeIds):
-    result.id = gNodeId
-    if result.id == nodeIdToDebug:
-      echo "KIND ", result.kind
-      writeStackTrace()
-    inc gNodeId
+  setIdMaybe()
 
 proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
+  ## new node with line info, type, and no children
   result = newNode(kind)
   result.info = info
   result.typ = typ
@@ -1401,7 +1479,7 @@ const
   MaxLockLevel* = 1000'i16
   UnknownLockLevel* = TLockLevel(1001'i16)
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
-    "=destroy", "=copy", "=sink", "=trace", "=dispose", "=deepcopy"]
+    "=destroy", "=copy", "=sink", "=trace", "=deepcopy"]
 
 proc `$`*(x: TLockLevel): string =
   if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"
@@ -1554,7 +1632,7 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
   if mask != {} and propagateHasAsgn:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tySet, tyDistinct, tyOpenArray, tyVarargs}:
+                   tySequence, tySet, tyDistinct}:
       o2.flags.incl mask
       owner.flags.incl mask
 
@@ -1603,8 +1681,8 @@ proc copyNode*(src: PNode): PNode =
 
 template transitionNodeKindCommon(k: TNodeKind) =
   let obj {.inject.} = n[]
-  n[] = TNode(kind: k, typ: obj.typ, info: obj.info, flags: obj.flags,
-              comment: obj.comment)
+  n[] = TNode(kind: k, typ: obj.typ, info: obj.info, flags: obj.flags)
+  # n.comment = obj.comment # shouldn't be needed, the address doesnt' change
   when defined(useNodeIds):
     n.id = obj.id
 
@@ -1706,7 +1784,7 @@ proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
-  of nkEmpty..nkNilLit: result = n.kind == kind
+  of nkEmpty..nkNilLit, nkFormalParams: result = n.kind == kind
   else:
     for i in 0..<n.len:
       if (n[i].kind == kind) or hasSubnodeWith(n[i], kind):
@@ -1881,6 +1959,26 @@ proc toObject*(typ: PType): PType =
   let t = typ.skipTypes({tyAlias, tyGenericInst})
   if t.kind == tyRef: t.lastSon
   else: typ
+
+proc toObjectFromRefPtrGeneric*(typ: PType): PType =
+  #[
+  See also `toObject`.
+  Finds the underlying `object`, even in cases like these:
+  type
+    B[T] = object f0: int
+    A1[T] = ref B[T]
+    A2[T] = ref object f1: int
+    A3 = ref object f2: int
+    A4 = object f3: int
+  ]#
+  result = typ
+  while true:
+    case result.kind
+    of tyGenericBody: result = result.lastSon
+    of tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias: result = result[0]
+      # automatic dereferencing is deep, refs #18298.
+    else: break
+  assert result.sym != nil
 
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil

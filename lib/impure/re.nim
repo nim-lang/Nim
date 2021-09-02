@@ -41,12 +41,12 @@ const
 
 type
   RegexFlag* = enum     ## options for regular expressions
-    reIgnoreCase = 0,    ## do caseless matching
-    reMultiLine = 1,     ## `^` and `$` match newlines within data
-    reDotAll = 2,        ## `.` matches anything including NL
-    reExtended = 3,      ## ignore whitespace and `#` comments
-    reStudy = 4          ## study the expression (may be omitted if the
-                         ## expression will be used only once)
+    reIgnoreCase = 0,   ## do caseless matching
+    reMultiLine = 1,    ## `^` and `$` match newlines within data
+    reDotAll = 2,       ## `.` matches anything including NL
+    reExtended = 3,     ## ignore whitespace and `#` comments
+    reStudy = 4         ## study the expression (may be omitted if the
+                        ## expression will be used only once)
 
   RegexDesc = object
     h: ptr Pcre
@@ -141,6 +141,10 @@ proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
     else: matches[i-1] = ""
   return rawMatches[1] - rawMatches[0]
 
+const MaxReBufSize* = high(cint)
+  ## Maximum PCRE (API 1) buffer start/size equal to `high(cint)`, which even
+  ## for 64-bit systems can be either 2`31`:sup:-1 or 2`63`:sup:-1.
+
 proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
                  start = 0, bufSize: int): tuple[first, last: int] =
   ## returns the starting position and end position of `pattern` in `buf`
@@ -167,11 +171,12 @@ proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
   ## and the captured substrings in the array `matches`.
   ## If it does not match, nothing
   ## is written into `matches` and `(-1,0)` is returned.
-  result = findBounds(cstring(s), pattern, matches, start, s.len)
+  result = findBounds(cstring(s), pattern, matches,
+      min(start, MaxReBufSize), min(s.len, MaxReBufSize))
 
 proc findBounds*(buf: cstring, pattern: Regex,
                  matches: var openArray[tuple[first, last: int]],
-                 start = 0, bufSize = 0): tuple[first, last: int] =
+                 start = 0, bufSize: int): tuple[first, last: int] =
   ## returns the starting position and end position of `pattern` in `buf`
   ## (where `buf` has length `bufSize` and is not necessarily `'\0'` terminated),
   ## and the captured substrings in the array `matches`.
@@ -197,7 +202,20 @@ proc findBounds*(s: string, pattern: Regex,
   ## and the captured substrings in the array `matches`.
   ## If it does not match, nothing is written into `matches` and
   ## `(-1,0)` is returned.
-  result = findBounds(cstring(s), pattern, matches, start, s.len)
+  result = findBounds(cstring(s), pattern, matches,
+      min(start, MaxReBufSize), min(s.len, MaxReBufSize))
+
+proc findBoundsImpl(buf: cstring, pattern: Regex,
+                    start = 0, bufSize = 0, flags = 0): tuple[first, last: int] =
+  var rtarray = initRtArray[cint](3)
+  let rawMatches = rtarray.getRawData
+  let res = pcre.exec(pattern.h, pattern.e, buf, bufSize.cint, start.cint, flags.int32,
+                cast[ptr cint](rawMatches), 3)
+
+  if res < 0'i32:
+    result = (-1, 0)
+  else:
+    result = (int(rawMatches[0]), int(rawMatches[1]-1))
 
 proc findBounds*(buf: cstring, pattern: Regex,
                  start = 0, bufSize: int): tuple[first, last: int] =
@@ -220,7 +238,8 @@ proc findBounds*(s: string, pattern: Regex,
   ## Note: there is a speed improvement if the matches do not need to be captured.
   runnableExamples:
     assert findBounds("01234abc89", re"abc") == (5,7)
-  result = findBounds(cstring(s), pattern, start, s.len)
+  result = findBounds(cstring(s), pattern,
+      min(start, MaxReBufSize), min(s.len, MaxReBufSize))
 
 proc matchOrFind(buf: cstring, pattern: Regex, start, bufSize: int, flags: cint): cint =
   var
@@ -290,7 +309,7 @@ proc match*(buf: cstring, pattern: Regex, matches: var openArray[string],
   result = matchLen(buf, pattern, matches, start, bufSize) != -1
 
 proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
-           start = 0, bufSize = 0): int =
+           start = 0, bufSize: int): int =
   ## returns the starting position of `pattern` in `buf` and the captured
   ## substrings in the array `matches`. If it does not match, nothing
   ## is written into `matches` and `-1` is returned.
@@ -433,12 +452,16 @@ proc replace*(s: string, sub: Regex, by = ""): string =
     doAssert "var1=key; var2=key2".replace(re"(\w+)=(\w+)", "?") == "?; ?"
   result = ""
   var prev = 0
+  var flags = int32(0)
   while prev < s.len:
-    var match = findBounds(s, sub, prev)
+    var match = findBoundsImpl(s.cstring, sub, prev, s.len, flags)
+    flags = 0
     if match.first < 0: break
     add(result, substr(s, prev, match.first-1))
     add(result, by)
-    if match.last + 1 == prev: break
+    if match.first > match.last:
+      # 0-len match
+      flags = pcre.NOTEMPTY_ATSTART
     prev = match.last + 1
   add(result, substr(s, prev))
 

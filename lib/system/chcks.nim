@@ -26,7 +26,17 @@ proc raiseIndexError() {.compilerproc, noinline.} =
   sysFatal(IndexDefect, "index out of bounds")
 
 proc raiseFieldError(f: string) {.compilerproc, noinline.} =
+  ## remove after bootstrap > 1.5.1
   sysFatal(FieldDefect, f)
+
+when defined(gcdestructors):
+  proc raiseFieldError2(f: string, discVal: int) {.compilerproc, noinline.} =
+    ## raised when field is inaccessible given runtime value of discriminant
+    sysFatal(FieldError, f & $discVal & "'")
+else:
+  proc raiseFieldError2(f: string, discVal: string) {.compilerproc, noinline.} =
+    ## raised when field is inaccessible given runtime value of discriminant
+    sysFatal(FieldError, formatFieldDefect(f, discVal))
 
 proc raiseRangeErrorI(i, a, b: BiggestInt) {.compilerproc, noinline.} =
   when defined(standalone):

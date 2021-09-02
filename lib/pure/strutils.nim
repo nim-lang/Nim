@@ -72,7 +72,7 @@ runnableExamples:
 
 import parseutils
 from math import pow, floor, log10
-from algorithm import reverse
+from algorithm import fill, reverse
 import std/enumutils
 
 from unicode import toLower, toUpper
@@ -1476,12 +1476,39 @@ func dedent*(s: string, count: Natural = indentation(s)): string {.rtl,
     doAssert x == "Hello\n  There\n"
   unindent(s, count, " ")
 
-func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
-  ## Deletes in `s` (must be declared as `var`) the characters at positions
-  ## `first .. last` (both ends included).
+func delete*(s: var string, slice: Slice[int]) =
+  ## Deletes the items `s[slice]`, raising `IndexDefect` if the slice contains
+  ## elements out of range.
   ##
-  ## This modifies `s` itself, it does not return a copy.
+  ## This operation moves all elements after `s[slice]` in linear time, and
+  ## is the string analog to `sequtils.delete`.
   runnableExamples:
+    var a = "abcde"
+    doAssertRaises(IndexDefect): a.delete(4..5)
+    assert a == "abcde"
+    a.delete(4..4)
+    assert a == "abcd"
+    a.delete(1..2)
+    assert a == "ad"
+    a.delete(1..<1) # empty slice
+    assert a == "ad"
+  when compileOption("boundChecks"):
+    if not (slice.a < s.len and slice.a >= 0 and slice.b < s.len):
+      raise newException(IndexDefect, $(slice: slice, len: s.len))
+  if slice.b >= slice.a:
+    var i = slice.a
+    var j = slice.b + 1
+    var newLen = s.len - j + i
+    # if j < s.len: moveMem(addr s[i], addr s[j], s.len - j) # pending benchmark
+    while i < newLen:
+      s[i] = s[j]
+      inc(i)
+      inc(j)
+    setLen(s, newLen)
+
+func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete", deprecated: "use `delete(s, first..last)`".} =
+  ## Deletes in `s` the characters at positions `first .. last` (both ends included).
+  runnableExamples("--warning:deprecated:off"):
     var a = "abracadabra"
 
     a.delete(4, 5)
@@ -1501,7 +1528,6 @@ func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
     inc(i)
     inc(j)
   setLen(s, newLen)
-
 
 func startsWith*(s: string, prefix: char): bool {.inline.} =
   ## Returns true if `s` starts with character `prefix`.
@@ -1760,7 +1786,7 @@ func join*(a: openArray[string], sep: string = ""): string {.rtl,
   else:
     result = ""
 
-func join*[T: not string](a: openArray[T], sep: string = ""): string {.rtl.} =
+func join*[T: not string](a: openArray[T], sep: string = ""): string =
   ## Converts all elements in the container `a` to strings using `$`,
   ## and concatenates them with `sep`.
   runnableExamples:
@@ -1779,17 +1805,7 @@ func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
     extern: "nsuInitSkipTable".} =
   ## Preprocess table `a` for `sub`.
   let m = len(sub)
-  var i = 0
-  while i <= 0xff-7:
-    a[chr(i + 0)] = m
-    a[chr(i + 1)] = m
-    a[chr(i + 2)] = m
-    a[chr(i + 3)] = m
-    a[chr(i + 4)] = m
-    a[chr(i + 5)] = m
-    a[chr(i + 6)] = m
-    a[chr(i + 7)] = m
-    i += 8
+  fill(a, m)
 
   for i in 0 ..< m - 1:
     a[sub[i]] = m - 1 - i
@@ -1890,7 +1906,7 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   ## See also:
   ## * `rfind func<#rfind,string,string,Natural>`_
   ## * `replace func<#replace,string,string,string>`_
-  if sub.len > s.len: return -1
+  if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
 
   template useSkipTable {.dirty.} =
@@ -1966,6 +1982,8 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
   if sub.len == 0:
+    return -1
+  if sub.len > s.len - start:
     return -1
   let last = if last == -1: s.high else: last
   result = 0
@@ -2708,7 +2726,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
       add s, formatstr[i]
       inc(i)
 
-func `%` *(formatstr: string, a: openArray[string]): string {.rtl,
+func `%`*(formatstr: string, a: openArray[string]): string {.rtl,
     extern: "nsuFormatOpenArray".} =
   ## Interpolates a format string with the values from `a`.
   ##
@@ -2756,7 +2774,7 @@ func `%` *(formatstr: string, a: openArray[string]): string {.rtl,
   result = newStringOfCap(formatstr.len + a.len shl 4)
   addf(result, formatstr, a)
 
-func `%` *(formatstr, a: string): string {.rtl,
+func `%`*(formatstr, a: string): string {.rtl,
     extern: "nsuFormatSingleElem".} =
   ## This is the same as `formatstr % [a]` (see
   ## `% func<#%25,string,openArray[string]>`_).
@@ -2812,7 +2830,7 @@ func strip*(s: string, leading = true, trailing = true,
   result = substr(s, first, last)
 
 func stripLineEnd*(s: var string) =
-  ## Returns `s` stripped from one of these suffixes:
+  ## Strips one of these suffixes from `s` in-place:
   ## `\r, \n, \r\n, \f, \v` (at most once instance).
   ## For example, can be useful in conjunction with `osproc.execCmdEx`.
   ## aka: `chomp`:idx:
