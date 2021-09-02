@@ -1889,7 +1889,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   # where the proc was declared
   let declarationScope = c.currentScope
 
-  if c.config.isDefined("nimLazySemcheck"):
+  if c.config.isDefined("nimLazySemcheck") and s.kind notin {skConverter}:
+    # for converter, we have to at least have `needDeclaration` otherwise there would
+    # be no way to guess when to attempt to apply a converter; but we could refine this
+    # by using `needDeclaration: true, needBody: false`
     # PRTEMP
     s.flags.incl sfLazySemcheckInprogress
     let status = lazyVisit(c.graph, s)
@@ -2186,6 +2189,7 @@ proc determineTypeOne(c: PContext, s: PSym) =
     of skFunc: procPragmas
     of skMethod: methodPragmas
     of skIterator: iteratorPragmas
+    of skConverter: converterPragmas # PRTEMP
     else: {} # PRTEMP
 
   if c.config.isDefined("nimLazySemcheck"): # PRTEMP FACTOR; do we even need this side channel or can we use a sf flag?

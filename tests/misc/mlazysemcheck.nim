@@ -26,18 +26,31 @@ template chk(a: auto) =
 # next, define each test case:
 
 when defined case_noimports:
-  # fwd proc + impl proc without `*` in impl
   when true: # top-level tests
+    # export with fwd proc + impl proc without `*` in impl
     proc gfn1*(): int
     proc gfn1: int = 2
     static: doAssert gfn1() == 2
     doAssert gfn1() == 2
 
+    # method
     type Ga = ref object of RootObj
     method gfn2*(a: Ga, b: string) {.base, gcsafe.} = discard
     block:
       var a = Ga()
       a.gfn2("")
+
+    # converter
+    type Ga3 = object
+      a0: int
+    type Gb3 = object
+      b0: int
+    converter toGb3(a: Ga3): Gb3 =
+      Gb3(b0: a.a0)
+    block:
+      var a = Ga3(a0: 3)
+      var b: Gb3 = a
+      doAssert b == Gb3(b0: 3)
 
   block: # out of order
     proc fn1 =

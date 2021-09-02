@@ -40,3 +40,6 @@ switch("define", "nimPreviewFloatRoundtrip")
 switch("define", "nimPreviewDotLikeOps")
 switch("define", "nimPreviewJsonutilsHoleyEnum")
 switch("define", "nimPreviewHashRef")
+
+when false:
+  switch("define", "nimLazySemcheckAfterSystem")
