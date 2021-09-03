@@ -2997,7 +2997,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkClosedSymChoice, nkOpenSymChoice:
     # handling of sym choices is context dependent
     # the node is left intact for now
-    discard
+    if efDetermineType in flags:
+      for i, ai in n:
+        if ai.kind == nkSym:
+          # dbgIf i, ai.sym, ai.sym.flags, ai.sym.typ
+          determineType2(c, ai.sym)
+          # dbgIf i, ai.sym, ai.sym.flags, ai.sym.typ
+          result[i].typ = ai.sym.typ
+          assert result[i].typ != nil, $ai.sym
   of nkStaticExpr: result = semStaticExpr(c, n[0])
   of nkAsgn: result = semAsgn(c, n)
   of nkBlockStmt, nkBlockExpr: result = semBlock(c, n, flags)

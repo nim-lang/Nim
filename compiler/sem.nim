@@ -98,6 +98,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
         return getConstExpr(c.module, ch, c.idgen, c.graph)
     typeMismatch(c.config, info, formal, arg.typ, arg)
   else:
+    dbgIf arg.typ, arg, arg.safeLen
     result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
       typeMismatch(c.config, info, formal, arg.typ, arg)
