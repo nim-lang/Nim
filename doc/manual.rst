@@ -703,7 +703,7 @@ and not the two tokens `{.`:tok:, `.}`:tok:.
 Unicode Operators
 -----------------
 
-Under the `--experimental:unicodeOperators` these Unicode operators are
+Under the `--experimental:unicodeOperators` switch these Unicode operators are
 also parsed as operators::
 
   ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)

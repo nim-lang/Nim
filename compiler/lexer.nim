@@ -887,36 +887,41 @@ const
     # the allowed unicode characters ("∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔")
     # all start with one of these.
 
-proc unicodeOprLen(L: var Lexer; tok: var Token; pos: int): int =
-  if unicodeOperators notin L.config.features: return 0
-  result = 0
-  case L.buf[pos]
+type
+  UnicodeOprPred = enum
+    Mul, Add
+
+proc unicodeOprLen(buf: cstring; pos: int): (int8, UnicodeOprPred) =
+  template m(len): untyped = (int8(len), Mul)
+  template a(len): untyped = (int8(len), Add)
+  result = 0.m
+  case buf[pos]
   of '\226':
-    if L.buf[pos+1] == '\136':
-      if L.buf[pos+2] == '\152': result = 3 # ∘
-      elif L.buf[pos+2] == '\153': result = 3 # ∙
-      elif L.buf[pos+2] == '\167': result = 3 # ∧
-      elif L.buf[pos+2] == '\168': result = 3 # ∨
-      elif L.buf[pos+2] == '\169': result = 3 # ∩
-      elif L.buf[pos+2] == '\170': result = 3 # ∪
-    elif L.buf[pos+1] == '\138':
-      if L.buf[pos+2] == '\147': result = 3 # ⊓
-      elif L.buf[pos+2] == '\148': result = 3 # ⊔
-      elif L.buf[pos+2] == '\149': result = 3 # ⊕
-      elif L.buf[pos+2] == '\150': result = 3 # ⊖
-      elif L.buf[pos+2] == '\151': result = 3 # ⊗
-      elif L.buf[pos+2] == '\152': result = 3 # ⊘
-      elif L.buf[pos+2] == '\153': result = 3 # ⊙
-      elif L.buf[pos+2] == '\155': result = 3 # ⊛
-      elif L.buf[pos+2] == '\158': result = 3 # ⊞
-      elif L.buf[pos+2] == '\159': result = 3 # ⊟
-      elif L.buf[pos+2] == '\160': result = 3 # ⊠
-      elif L.buf[pos+2] == '\161': result = 3 # ⊡
-    elif L.buf[pos+1] == '\152' and L.buf[pos+2] == '\133': result = 3 # ★
+    if buf[pos+1] == '\136':
+      if buf[pos+2] == '\152': result = 3.m # ∘
+      elif buf[pos+2] == '\153': result = 3.m # ∙
+      elif buf[pos+2] == '\167': result = 3.m # ∧
+      elif buf[pos+2] == '\168': result = 3.a # ∨
+      elif buf[pos+2] == '\169': result = 3.m # ∩
+      elif buf[pos+2] == '\170': result = 3.a # ∪
+    elif buf[pos+1] == '\138':
+      if buf[pos+2] == '\147': result = 3.m # ⊓
+      elif buf[pos+2] == '\148': result = 3.a # ⊔
+      elif buf[pos+2] == '\149': result = 3.a # ⊕
+      elif buf[pos+2] == '\150': result = 3.a # ⊖
+      elif buf[pos+2] == '\151': result = 3.m # ⊗
+      elif buf[pos+2] == '\152': result = 3.m # ⊘
+      elif buf[pos+2] == '\153': result = 3.m # ⊙
+      elif buf[pos+2] == '\155': result = 3.m # ⊛
+      elif buf[pos+2] == '\158': result = 3.a # ⊞
+      elif buf[pos+2] == '\159': result = 3.a # ⊟
+      elif buf[pos+2] == '\160': result = 3.m # ⊠
+      elif buf[pos+2] == '\161': result = 3.m # ⊡
+    elif buf[pos+1] == '\152' and buf[pos+2] == '\133': result = 3.m # ★
   of '\194':
-    if L.buf[pos+1] == '\177': result = 2 # ±
+    if buf[pos+1] == '\177': result = 2.a # ±
   of '\195':
-    if L.buf[pos+1] == '\151': result = 2 # ×
+    if buf[pos+1] == '\151': result = 2.m # ×
   else:
     discard
 
@@ -929,8 +934,8 @@ proc getOperator(L: var Lexer, tok: var Token) =
     if c in OpChars:
       h = h !& ord(c)
       inc(pos)
-    elif c in UnicodeOperatorStartChars:
-      let oprLen = unicodeOprLen(L, tok, pos)
+    elif c in UnicodeOperatorStartChars and unicodeOperators in L.config.features:
+      let oprLen = unicodeOprLen(L.buf, pos)[0]
       if oprLen == 0: break
       for i in 0..<oprLen:
         h = h !& ord(L.buf[pos])
@@ -953,8 +958,6 @@ proc getPrecedence*(tok: Token): int =
   const
     MulPred = 9
     PlusPred = 8
-    UnicodeOprs = {"∙", "∘", "×", "★", "⊗", "⊘", "⊙", "⊛", "⊠", "⊡", "∩", "∧", "⊓": MulPred,
-                   "±", "⊕", "⊖", "⊞", "⊟", "∪", "∨", "⊔": PlusPred}
   case tok.tokType
   of tkOpr:
     let relevantChar = tok.ident.s[0]
@@ -979,10 +982,11 @@ proc getPrecedence*(tok: Token): int =
       if tok.ident.s[^1] == '=':
         result = 1
       else:
-        for (opr, pred) in UnicodeOprs:
-          if tok.ident.s.startsWith(opr):
-            return pred
-        return 2
+        let (len, pred) = unicodeOprLen(cstring(tok.ident.s), 0)
+        if len != 0:
+          result = if pred == Mul: MulPred else: PlusPred
+        else:
+          result = 2
     else: considerAsgn(2)
   of tkDiv, tkMod, tkShl, tkShr: result = 9
   of tkDotDot: result = 6
@@ -1231,7 +1235,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
   else:
     case c
     of UnicodeOperatorStartChars:
-      if unicodeOprLen(L, tok, L.bufpos) != 0:
+      if unicodeOperators in L.config.features and unicodeOprLen(L.buf, L.bufpos)[0] != 0:
         getOperator(L, tok)
       else:
         getSymbol(L, tok)
