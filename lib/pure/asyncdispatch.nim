@@ -187,9 +187,9 @@
 ##
 ## Known `async` backends include:
 ##
-## * `none` - ``-d:async_backend=none`` - disable ``async`` support completely
-## * `asyncdispatch <https://nim-lang.org/docs/asyncdispatch.html> -``-d:async_backend=asyncdispatch``
-## * `chronos <https://github.com/status-im/nim-chronos/>` - ``-d:async_backend=chronos``
+## * `none` - ``-d:asyncBackend=none`` - disable ``async`` support completely
+## * `asyncdispatch <https://nim-lang.org/docs/asyncdispatch.html> -``-d:asyncBackend=asyncdispatch``
+## * `chronos <https://github.com/status-im/nim-chronos/>` - ``-d:asyncBackend=chronos``
 ##
 ## ``none`` can be used when a library supports both a synchronous and
 ## asynchronous API, to disable the latter.
