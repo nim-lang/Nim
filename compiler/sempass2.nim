@@ -1467,13 +1467,13 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       listGcUnsafety(s, onlyWarning=false, g.config)
     else:
       if hasMutationSideEffect:
-        localError(g.config, s.info, "'$1' can have side effects$2" % [s.name.s, g.config $ mutationInfo])
-      elif c.compilesContextId == 0: # don't render extended diagnostic messages in `system.compiles` context
+        message(g.config, s.info, warnSideEffects, "'$1' can have side effects$2" % [s.name.s, g.config $ mutationInfo])
+      elif c.compilesContextId == 0 or warnSideEffects notin g.config.warningAsErrors: # don't render extended diagnostic messages in `system.compiles` context
         var msg = ""
         listSideEffects(msg, s, g.config, t.c)
-        message(g.config, s.info, errGenerated, msg)
+        message(g.config, s.info, warnSideEffects, msg)
       else:
-        localError(g.config, s.info, "") # simple error for `system.compiles` context
+        message(g.config, s.info, warnSideEffects, "") # simple error (because warningAsErrors is on in this branch) for `system.compiles` context
   if not t.gcUnsafe:
     s.typ.flags.incl tfGcSafe
   if not t.hasSideEffect and sfSideEffect notin s.flags:
