@@ -882,15 +882,66 @@ proc endOperator(L: var Lexer, tok: var Token, pos: int,
   else: tok.tokType = TokType(tok.ident.id - oprLow + ord(tkColon))
   L.bufpos = pos
 
+const
+  UnicodeOperatorStartChars = {'\226', '\194', '\195'}
+    # the allowed unicode characters ("∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔")
+    # all start with one of these.
+
+type
+  UnicodeOprPred = enum
+    Mul, Add
+
+proc unicodeOprLen(buf: cstring; pos: int): (int8, UnicodeOprPred) =
+  template m(len): untyped = (int8(len), Mul)
+  template a(len): untyped = (int8(len), Add)
+  result = 0.m
+  case buf[pos]
+  of '\226':
+    if buf[pos+1] == '\136':
+      if buf[pos+2] == '\152': result = 3.m # ∘
+      elif buf[pos+2] == '\153': result = 3.m # ∙
+      elif buf[pos+2] == '\167': result = 3.m # ∧
+      elif buf[pos+2] == '\168': result = 3.a # ∨
+      elif buf[pos+2] == '\169': result = 3.m # ∩
+      elif buf[pos+2] == '\170': result = 3.a # ∪
+    elif buf[pos+1] == '\138':
+      if buf[pos+2] == '\147': result = 3.m # ⊓
+      elif buf[pos+2] == '\148': result = 3.a # ⊔
+      elif buf[pos+2] == '\149': result = 3.a # ⊕
+      elif buf[pos+2] == '\150': result = 3.a # ⊖
+      elif buf[pos+2] == '\151': result = 3.m # ⊗
+      elif buf[pos+2] == '\152': result = 3.m # ⊘
+      elif buf[pos+2] == '\153': result = 3.m # ⊙
+      elif buf[pos+2] == '\155': result = 3.m # ⊛
+      elif buf[pos+2] == '\158': result = 3.a # ⊞
+      elif buf[pos+2] == '\159': result = 3.a # ⊟
+      elif buf[pos+2] == '\160': result = 3.m # ⊠
+      elif buf[pos+2] == '\161': result = 3.m # ⊡
+    elif buf[pos+1] == '\152' and buf[pos+2] == '\133': result = 3.m # ★
+  of '\194':
+    if buf[pos+1] == '\177': result = 2.a # ±
+  of '\195':
+    if buf[pos+1] == '\151': result = 2.m # ×
+  else:
+    discard
+
 proc getOperator(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tokenBegin(tok, pos)
   var h: Hash = 0
   while true:
     var c = L.buf[pos]
-    if c notin OpChars: break
-    h = h !& ord(c)
-    inc(pos)
+    if c in OpChars:
+      h = h !& ord(c)
+      inc(pos)
+    elif c in UnicodeOperatorStartChars and unicodeOperators in L.config.features:
+      let oprLen = unicodeOprLen(L.buf, pos)[0]
+      if oprLen == 0: break
+      for i in 0..<oprLen:
+        h = h !& ord(L.buf[pos])
+        inc pos
+    else:
+      break
   endOperator(L, tok, pos, h)
   tokenEnd(tok, pos-1)
   # advance pos but don't store it in L.bufpos so the next token (which might
@@ -904,6 +955,9 @@ proc getOperator(L: var Lexer, tok: var Token) =
 
 proc getPrecedence*(tok: Token): int =
   ## Calculates the precedence of the given token.
+  const
+    MulPred = 9
+    PlusPred = 8
   case tok.tokType
   of tkOpr:
     let relevantChar = tok.ident.s[0]
@@ -917,13 +971,22 @@ proc getPrecedence*(tok: Token): int =
 
     case relevantChar
     of '$', '^': considerAsgn(10)
-    of '*', '%', '/', '\\': considerAsgn(9)
+    of '*', '%', '/', '\\': considerAsgn(MulPred)
     of '~': result = 8
-    of '+', '-', '|': considerAsgn(8)
+    of '+', '-', '|': considerAsgn(PlusPred)
     of '&': considerAsgn(7)
     of '=', '<', '>', '!': result = 5
     of '.': considerAsgn(6)
     of '?': result = 2
+    of UnicodeOperatorStartChars:
+      if tok.ident.s[^1] == '=':
+        result = 1
+      else:
+        let (len, pred) = unicodeOprLen(cstring(tok.ident.s), 0)
+        if len != 0:
+          result = if pred == Mul: MulPred else: PlusPred
+        else:
+          result = 2
     else: considerAsgn(2)
   of tkDiv, tkMod, tkShl, tkShr: result = 9
   of tkDotDot: result = 6
@@ -1167,10 +1230,15 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
   var c = L.buf[L.bufpos]
   tok.line = L.lineNumber
   tok.col = getColNumber(L, L.bufpos)
-  if c in SymStartChars - {'r', 'R'}:
+  if c in SymStartChars - {'r', 'R'} - UnicodeOperatorStartChars:
     getSymbol(L, tok)
   else:
     case c
+    of UnicodeOperatorStartChars:
+      if unicodeOperators in L.config.features and unicodeOprLen(L.buf, L.bufpos)[0] != 0:
+        getOperator(L, tok)
+      else:
+        getSymbol(L, tok)
     of '#':
       scanComment(L, tok)
     of '*':
