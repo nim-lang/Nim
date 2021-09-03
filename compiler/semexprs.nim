@@ -691,8 +691,12 @@ proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
   else:
     result = newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ))
     result.add n
-    if isAssignable(c, n) notin {arLValue, arLocalLValue}:
-      localError(c.config, n.info, errVarForOutParamNeededX % renderNotLValue(n))
+    let aa = isAssignable(c, n)
+    if aa notin {arLValue, arLocalLValue}:
+      if aa == arDiscriminant and c.inUncheckedAssignSection > 0:
+        discard "allow access within a cast(unsafeAssign) section"
+      else:
+        localError(c.config, n.info, errVarForOutParamNeededX % renderNotLValue(n))
 
 proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
   result = n
@@ -738,9 +742,13 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
       if i < t.len and t[i] != nil and
           skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar}:
         let it = n[i]
-        if isAssignable(c, it) notin {arLValue, arLocalLValue}:
+        let aa = isAssignable(c, it)
+        if aa notin {arLValue, arLocalLValue}:
           if it.kind != nkHiddenAddr:
-            localError(c.config, it.info, errVarForOutParamNeededX % $it)
+            if aa == arDiscriminant and c.inUncheckedAssignSection > 0:
+              discard "allow access within a cast(unsafeAssign) section"
+            else:
+              localError(c.config, it.info, errVarForOutParamNeededX % $it)
     # bug #5113: disallow newSeq(result) where result is a 'var T':
     if n[0].sym.magic in {mNew, mNewFinalize, mNewSeq}:
       var arg = n[1] #.skipAddr

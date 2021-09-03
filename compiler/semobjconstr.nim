@@ -200,20 +200,22 @@ proc semConstructFields(c: PContext, n: PNode,
 
     if selectedBranch != -1:
       template badDiscriminatorError =
-        let fields = fieldsPresentInBranch(selectedBranch)
-        localError(c.config, constrCtx.initExpr.info,
-          ("cannot prove that it's safe to initialize $1 with " &
-          "the runtime value for the discriminator '$2' ") %
-          [fields, discriminator.sym.name.s])
+        if c.inUncheckedAssignSection == 0:
+          let fields = fieldsPresentInBranch(selectedBranch)
+          localError(c.config, constrCtx.initExpr.info,
+            ("cannot prove that it's safe to initialize $1 with " &
+            "the runtime value for the discriminator '$2' ") %
+            [fields, discriminator.sym.name.s])
         mergeInitStatus(result, initNone)
 
       template wrongBranchError(i) =
-        let fields = fieldsPresentInBranch(i)
-        localError(c.config, constrCtx.initExpr.info,
-          "a case selecting discriminator '$1' with value '$2' " &
-          "appears in the object construction, but the field(s) $3 " &
-          "are in conflict with this value." %
-          [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
+        if c.inUncheckedAssignSection == 0:
+          let fields = fieldsPresentInBranch(i)
+          localError(c.config, constrCtx.initExpr.info,
+            ("a case selecting discriminator '$1' with value '$2' " &
+            "appears in the object construction, but the field(s) $3 " &
+            "are in conflict with this value.") %
+            [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
 
       template valuesInConflictError(valsDiff) =
         localError(c.config, discriminatorVal.info, ("possible values " &
@@ -251,9 +253,10 @@ proc semConstructFields(c: PContext, n: PNode,
             badDiscriminatorError()
         elif discriminatorVal.sym.kind notin {skLet, skParam} or
             discriminatorVal.sym.typ.kind in {tyVar}:
-          localError(c.config, discriminatorVal.info,
-            "runtime discriminator must be immutable if branch fields are " &
-            "initialized, a 'let' binding is required.")
+          if c.inUncheckedAssignSection == 0:
+            localError(c.config, discriminatorVal.info,
+              "runtime discriminator must be immutable if branch fields are " &
+              "initialized, a 'let' binding is required.")
         elif ctorCase[ctorIdx].kind == nkElifBranch:
           localError(c.config, discriminatorVal.info, "branch initialization " &
             "with a runtime discriminator is not supported inside of an " &

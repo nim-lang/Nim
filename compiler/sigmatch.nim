@@ -1879,6 +1879,16 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   result.add c.graph.emptyNode
   result.add arg
 
+proc isLValue(c: PContext; n: PNode): bool {.inline.} =
+  let aa = isAssignable(nil, n)
+  case aa
+  of arLValue, arLocalLValue, arStrange:
+    result = true
+  of arDiscriminant:
+    result = c.inUncheckedAssignSection > 0
+  else:
+    result = false
+
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                    arg: PNode): PNode =
   result = nil
@@ -1895,7 +1905,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     let constraint = c.converters[i].typ.n[1].sym.constraint
     if not constraint.isNil and not matchNodeKinds(constraint, arg):
       continue
-    if src.kind in {tyVar, tyLent} and not arg.isLValue:
+    if src.kind in {tyVar, tyLent} and not isLValue(c, arg):
       continue
 
     let destIsGeneric = containsGenericType(dest)
@@ -2338,7 +2348,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         if argConverter.typ.kind notin {tyVar}:
           m.firstMismatch.kind = kVarNeeded
           noMatch()
-      elif not n.isLValue:
+      elif not isLValue(c, n):
         m.firstMismatch.kind = kVarNeeded
         noMatch()
 

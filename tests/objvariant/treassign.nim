@@ -25,3 +25,12 @@ t.curr = TokenObject(kind: Token.bar, bar: BasicNumber(value: 12.34))
 t.curr = TokenObject(kind: Token.foo, foo: "foo")
 
 echo "SUCCESS"
+
+proc passToVar(x: var Token) = discard
+
+{.cast(uncheckedAssign).}:
+  passToVar(t.curr.kind)
+
+  t.curr = TokenObject(kind: t.curr.kind, foo: "abc")
+
+  t.curr.kind = Token.foo
