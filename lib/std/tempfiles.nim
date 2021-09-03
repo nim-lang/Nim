@@ -17,7 +17,7 @@ See also:
 * `mkstemp` (posix), refs https://man7.org/linux/man-pages/man3/mkstemp.3.html
 ]#
 
-import os, random, std/monotimes
+import os, random
 
 
 const
@@ -107,11 +107,8 @@ var nimTempPathState {.threadvar.}: NimTempPathState
 template randomPathName(length: Natural): string =
   var res = newString(length)
   if not nimTempPathState.isInit:
-    var time = getMonoTime().ticks
-    when compileOption("threads"):
-      time = time xor int64(getThreadId())
     nimTempPathState.isInit = true
-    nimTempPathState.state = initRand(time)
+    nimTempPathState.state = initRand()
 
   for i in 0 ..< length:
     res[i] = nimTempPathState.state.sample(letters)

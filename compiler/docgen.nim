@@ -1085,10 +1085,11 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
     let actual = s.typ.n[0]
     if actual.len != effectListLen: return
     let real = actual[idx]
-
+    if real == nil: return
+    let realLen = real.len
     # warning: hack ahead:
-    var effects = newNodeI(nkBracket, n.info, real.len)
-    for i in 0..<real.len:
+    var effects = newNodeI(nkBracket, n.info, realLen)
+    for i in 0..<realLen:
       var t = typeToString(real[i].typ)
       if t.startsWith("ref "): t = substr(t, 4)
       effects[i] = newIdentNode(getIdent(cache, t), n.info)

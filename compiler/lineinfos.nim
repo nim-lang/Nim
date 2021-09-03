@@ -75,6 +75,7 @@ type
     warnAnyEnumConv = "AnyEnumConv",
     warnHoleEnumConv = "HoleEnumConv",
     warnCstringConv = "CStringConv",
+    warnEffect = "Effect",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -163,6 +164,7 @@ const
     warnAnyEnumConv: "$1",
     warnHoleEnumConv: "$1",
     warnCstringConv: "$1",
+    warnEffect: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`

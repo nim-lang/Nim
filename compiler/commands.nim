@@ -8,7 +8,6 @@
 #
 
 # This module handles the parsing of command line arguments.
-from ast import setUseIc
 
 # We do this here before the 'import' statement so 'defined' does not get
 # confused with 'TGCMode.gcMarkAndSweep' etc.
@@ -30,7 +29,7 @@ import
   msgs, options, nversion, condsyms, extccomp, platform,
   wordrecg, nimblecmd, lineinfos, pathutils, pathnorm
 
-from ast import eqTypeFlags, tfGcSafe, tfNoSideEffect
+from ast import setUseIc, eqTypeFlags, tfGcSafe, tfNoSideEffect
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")

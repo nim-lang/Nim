@@ -107,6 +107,12 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = n
     onUse(n.info, s)
+  of skEnumField:
+    if overloadableEnums in c.features:
+      result = symChoice(c, n, s, scOpen)
+    else:
+      result = newSymNode(s, n.info)
+      onUse(n.info, s)
   else:
     result = newSymNode(s, n.info)
     onUse(n.info, s)
@@ -407,7 +413,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         a[^1] = semGenericStmt(c, a[^1], flags, ctx)
         for j in 0..<a.len-2:
           addTempDecl(c, getIdentNode(c, a[j]), varKind)
-      else: 
+      else:
         illFormedAst(a, c.config)
   of nkGenericParams:
     for i in 0..<n.len:

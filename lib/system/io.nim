@@ -78,7 +78,7 @@ proc c_fputs(c: cstring, f: File): cint {.
 proc c_fgets(c: cstring, n: cint, f: File): cstring {.
   importc: "fgets", header: "<stdio.h>", tags: [ReadIOEffect].}
 proc c_fgetc(stream: File): cint {.
-  importc: "fgetc", header: "<stdio.h>", tags: [ReadIOEffect].}
+  importc: "fgetc", header: "<stdio.h>", tags: [].}
 proc c_ungetc(c: cint, f: File): cint {.
   importc: "ungetc", header: "<stdio.h>", tags: [].}
 proc c_putc(c: cint, stream: File): cint {.

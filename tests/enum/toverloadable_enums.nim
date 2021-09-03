@@ -1,6 +1,7 @@
 discard """
   output: '''B
-0'''
+0
+E2-B'''
 joinable: false
 """
 
@@ -75,3 +76,11 @@ block: # https://github.com/nim-lang/RFCs/issues/8
   doAssert x == 0
   doAssert hA3 == 1
   doAssert hA4 == 1
+
+# bug #18769
+proc g3[T](x: T, e: E2): int =
+  case e
+  of value1: echo "E2-A"        # Error: type mismatch: got 'E1' for 'value1' but expected 'E2 = enum'
+  of value2: echo "E2-B"
+
+let v5 = g3(99, E2.value2)

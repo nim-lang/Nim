@@ -8,6 +8,9 @@ import std/sequtils
 import strutils
 from algorithm import sorted
 
+{.experimental: "strictEffects".}
+{.push warningAsError[Effect]: on.}
+
 # helper for testing double substitution side effects which are handled
 # by `evalOnceAs`
 var counter = 0
@@ -507,3 +510,5 @@ template main =
 
 static: main()
 main()
+
+{.pop.}
