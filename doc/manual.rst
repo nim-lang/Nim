@@ -700,6 +700,25 @@ contain a dot: `{..}` are the three tokens `{`:tok:, `..`:tok:, `}`:tok:
 and not the two tokens `{.`:tok:, `.}`:tok:.
 
 
+Unicode Operators
+-----------------
+
+Under the `--experimental:unicodeOperators` these Unicode operators are
+also parsed as operators::
+
+  ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
+  ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
+
+
+If enabled, Unicode operators can be combined with non-Unicode operator
+symbols. The usual precedence extensions then apply, for example, `⊠=` is an
+assignment like operator just like `*=` is.
+
+No Unicode normalization step is performed.
+
+**Note**: Due to parser limitations one **cannot** enable this feature via a
+pragma `{.experimental: "unicodeOperators".}` reliably.
+
 
 Syntax
 ======
