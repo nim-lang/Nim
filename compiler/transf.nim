@@ -734,7 +734,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
 
-  let body = transformBody(c.graph, c.idgen, iter, true)
+  let body = transformBody(c.graph, c.idgen, iter, true).copyTree
   pushInfoContext(c.graph.config, n.info)
   inc(c.inlining)
   stmtList.add(transform(c, body))
