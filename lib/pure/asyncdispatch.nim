@@ -182,8 +182,8 @@
 ## An alternative way is to select backend using a global compile flag - this
 ## method makes it difficult to compose applications that use both backends as may
 ## happen with transitive dependencies, but may be appropriate in some cases -
-## libraries choosing this path should call the flag `async_backend`, allowing
-## applications to choose the backend with `-d:async_backend=<backend_name>`.
+## libraries choosing this path should call the flag `asyncBackend`, allowing
+## applications to choose the backend with `-d:asyncBackend=<backend_name>`.
 ##
 ## Known `async` backends include:
 ##
