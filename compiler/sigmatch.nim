@@ -2211,8 +2211,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     # this correctly is inefficient. We have to copy `m` here to be able to
     # roll back the side effects of the unification algorithm.
     let c = m.c
-    # if m.calleeSym!=nil:
-    #   determineType2(c, m.calleeSym) # PRTEMP D20210831T155116
+    assert m.calleeSym.typ != nil
     var
       x = newCandidate(c, m.callee)
       y = newCandidate(c, m.callee)
