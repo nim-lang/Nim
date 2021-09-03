@@ -31,6 +31,9 @@ proc debug*(n: PSym; conf: ConfigRef = nil) {.exportc: "debugSym", deprecated.}
 proc debug*(n: PType; conf: ConfigRef = nil) {.exportc: "debugType", deprecated.}
 proc debug*(n: PNode; conf: ConfigRef = nil) {.exportc: "debugNode", deprecated.}
 
+proc isNotDup(s: PSym): bool =
+  s.lazyDecl == nil
+
 proc typekinds*(t: PType) {.deprecated.} =
   var t = t
   var s = ""
@@ -806,7 +809,7 @@ proc strTableGet*(t: TStrTable, name: PIdent): PSym =
   while true:
     result = t.data[h]
     if result == nil: break
-    if result.name.id == name.id: break
+    if result.name.id == name.id and result.isNotDup: break
     h = nextTry(h, high(t.data))
 
 
@@ -820,7 +823,7 @@ proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
   var start = h
   result = tab.data[h]
   while result != nil:
-    if result.name.id == ti.name.id: break
+    if result.name.id == ti.name.id and result.isNotDup: break
     h = nextTry(h, high(tab.data))
     if h == start:
       result = nil
@@ -840,7 +843,7 @@ proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
   var start = h
   result = tab.data[h]
   while result != nil:
-    if result.name.id == ti.name.id and not contains(excluding, result.id):
+    if result.name.id == ti.name.id and result.isNotDup and not contains(excluding, result.id):
       break
     h = nextTry(h, high(tab.data))
     if h == start:
@@ -848,7 +851,10 @@ proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
       break
     result = tab.data[h]
   ti.h = nextTry(h, high(tab.data))
-  if result != nil and contains(excluding, result.id): result = nil
+  if result != nil:
+    # bugfix for pre-existing issue: avoid redundant check
+    assert not contains(excluding, result.id)
+    assert result.isNotDup
 
 proc firstIdentExcluding*(ti: var TIdentIter, tab: TStrTable, s: PIdent,
                           excluding: IntSet): PSym =

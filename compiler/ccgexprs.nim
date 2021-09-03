@@ -2751,7 +2751,6 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         genProc(p.module, sym)
       if sym.loc.r == nil or sym.loc.lode == nil:
-        debugIf sym
         internalError(p.config, n.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     of skConst:

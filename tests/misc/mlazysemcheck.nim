@@ -462,6 +462,25 @@ elif defined case_cyclic:
   doAssert ga(2) == 134
   doAssert ga(3) == 700
 
+elif defined case_many_fake_symbols:
+  # a regression test
+  proc semTypeNodeFake()
+  proc semTypeNodeFake() = discard
+  import macros
+  macro genfns(n: static int): untyped =
+    result = newStmtList()
+    for i in 0..<n:
+      let name2 = ident("fnz_" & $i)
+      result.add quote do:
+        proc `name2`(): int = discard
+  genfns(1000)
+  semTypeNodeFake()
+  proc foo() =
+    template bar() =
+      semTypeNodeFake()
+    bar()
+  foo()
+
 elif defined case_stdlib:
   import strutils, algorithm
   block:
