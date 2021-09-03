@@ -210,6 +210,35 @@ when defined case_noimports:
       proc fn1(): int = discard
       var z1: type(fn1)
 
+  block: # semchecking `fun1(fun2(arg))` inside a generic
+    proc fun[T](a: T): auto =
+      result = bar1(bar2(a))
+    proc bar2(a: int): int =
+      a*3
+    proc bar1(a: int):int =
+      a*2
+    doAssert fun(4) == 4 * 3 * 2
+
+  block: # a regression test
+    proc fun2[T](a: T): auto =
+      const b = bar1(bar2(T.sizeof))
+      result = b
+    proc bar2(a: int): int =
+      a*3
+    proc bar1(a: int):int =
+      a*2
+    doAssert fun2(1'i16) == (int16.sizeof) * 3 * 2
+
+  block: # a regression test
+    proc fun3[T](a: T): auto =
+      const b = bar1(bar2(T.sizeof))
+      result = b
+    proc bar2(a: auto): auto =
+      a*3
+    proc bar1(a: auto): auto =
+      a*2
+    doAssert fun3(1'i16) == (int16.sizeof) * 3 * 2
+
   chk "fn2\n"
 
 elif defined case_reordering:

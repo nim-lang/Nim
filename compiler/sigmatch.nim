@@ -135,7 +135,7 @@ proc determineType2*(c: PContext, s: PSym) {.importc.} # PRTEMP
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
                     binding: PNode, calleeScope = -1,
                     diagnosticsEnabled = false) =
-  determineType2(ctx, callee) # PRTEMP: do this here? or earlier? PRTEMP: now redundant because done earlier?
+  determineType2(ctx, callee) # needDeclaration needed since we need callee.typ
   initCandidateAux(ctx, c, callee.typ)
   c.calleeSym = callee
   if callee.kind in skProcKinds and calleeScope == -1:
