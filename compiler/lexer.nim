@@ -950,6 +950,11 @@ proc getOperator(L: var Lexer, tok: var Token) =
 
 proc getPrecedence*(tok: Token): int =
   ## Calculates the precedence of the given token.
+  const
+    MulPred = 9
+    PlusPred = 8
+    UnicodeOprs = {"∙", "∘", "×", "★", "⊗", "⊘", "⊙", "⊛", "⊠", "⊡", "∩", "∧", "⊓": MulPred,
+                   "±", "⊕", "⊖", "⊞", "⊟", "∪", "∨", "⊔": PlusPred}
   case tok.tokType
   of tkOpr:
     let relevantChar = tok.ident.s[0]
@@ -963,21 +968,21 @@ proc getPrecedence*(tok: Token): int =
 
     case relevantChar
     of '$', '^': considerAsgn(10)
-    of '*', '%', '/', '\\': considerAsgn(9)
+    of '*', '%', '/', '\\': considerAsgn(MulPred)
     of '~': result = 8
-    of '+', '-', '|': considerAsgn(8)
+    of '+', '-', '|': considerAsgn(PlusPred)
     of '&': considerAsgn(7)
     of '=', '<', '>', '!': result = 5
     of '.': considerAsgn(6)
     of '?': result = 2
     of UnicodeOperatorStartChars:
-      case tok.ident.s
-      of "∙", "∘", "×", "★", "⊗", "⊘", "⊙", "⊛", "⊠", "⊡", "∩", "∧", "⊓":
-        considerAsgn(9)
-      of "±", "⊕", "⊖", "⊞", "⊟", "∪", "∨", "⊔":
-        considerAsgn(8)
+      if tok.ident.s[^1] == '=':
+        result = 1
       else:
-        considerAsgn(2)
+        for (opr, pred) in UnicodeOprs:
+          if tok.ident.s.startsWith(opr):
+            return pred
+        return 2
     else: considerAsgn(2)
   of tkDiv, tkMod, tkShl, tkShr: result = 9
   of tkDotDot: result = 6
