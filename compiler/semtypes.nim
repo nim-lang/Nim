@@ -1250,24 +1250,16 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       block determineType:
         if genericParams.isGenericParams:
           def = semGenericStmt(c, def)
-          dbgIf def.typ, def
           if hasUnresolvedArgs(c, def):
-            dbgIf def.typ, def
             def.typ = makeTypeFromExpr(c, def.copyTree)
-            dbgIf def.typ, def
             break determineType
 
-        dbgIf def.typ, def
         def = semExprWithType(c, def, {efDetermineType})
-        dbgIf def.typ, def
         if def.referencesAnotherParam(getCurrOwner(c)):
-          dbgIf def.typ, def
           def.flags.incl nfDefaultRefsParam
-          dbgIf def.flags
 
       if typ == nil:
         typ = def.typ
-        dbgIf def.typ, def
         if isEmptyContainer(typ):
           localError(c.config, a.info, "cannot infer the type of parameter '" & $a[0] & "'")
 

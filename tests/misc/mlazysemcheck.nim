@@ -239,9 +239,8 @@ when defined case_noimports:
       a*2
     doAssert fun3(1'i16) == (int16.sizeof) * 3 * 2
 
-
-
-  block: # a regression test
+  block: # regression tests
+    # D20210902T184355
     block:
       proc fnAux(): int
       type FnAux = proc(): int
@@ -249,20 +248,58 @@ when defined case_noimports:
       proc fnAux(): int = discard
       fn7()
 
-    # block: # PRTEMP BUG
-    #   proc fnAux(): int
-    #   type FnAux = proc(): int
-    #   proc fn8(r = fnAux) = discard
-    #   proc fnAux(): int = discard
-    #   fn8()
+    block:
+      proc fnAux(): int
+      proc fn8(r = fnAux) = discard
+      proc fnAux(): int = discard
+      fn8()
 
     block:
       proc fnAux(): int
       proc fnAux(b: float): int
       type FnAux = proc(): int
-      proc fn8(r: FnAux = fnAux) = discard
+      proc fn9(r: FnAux = fnAux) = discard
       proc fnAux(): int = discard
-      fn8()
+      proc fnAux(b: float): int = discard
+      fn9()
+
+    block:
+      proc fnAux(): int
+      proc fnAux(b: float): int = discard
+      proc fnAux(b: float32): int = discard
+      type FnAux = proc(): int
+      proc fn10(r: FnAux = fnAux) = discard
+      proc fnAux(): int = discard
+      fn10()
+
+    block:
+      proc fnAux(b: float): int
+      proc fnAux(): int = discard
+      proc fn11(r = fnAux) = discard
+      doAssert not compiles(fn11()) # ambiguous
+
+  block:
+    proc fn12() =
+      static: doAssert false # shouldn't fail because semcheck should be lazy
+    template bar() =
+      static: fn12() # semchecking bar shouldn't trigger calling fn12
+      fn12() # ditto
+
+  block:
+    proc fn2() =
+      static: doAssert false # shouldn't fail because semcheck should be lazy
+    template bar1() =
+      static: fn12() # semchecking bar shouldn't trigger calling fn12
+      fn12() # ditto
+    proc bar2() =
+      static: fn12()
+      fn12() # ditto
+    macro bar3() =
+      static: fn12()
+      fn12()
+    iterator bar4(): int =
+      static: fn12()
+      fn12()
 
   chk "fn2\n"
 
@@ -559,7 +596,7 @@ elif defined case_bug1:
 
 # scratch below
 
-elif defined case26:
+elif defined case_bug2:
   #[
   D20210831T151342
   -d:nimLazySemcheck (works if nimLazySemcheck passed after system is processed)
