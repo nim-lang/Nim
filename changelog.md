@@ -447,7 +447,7 @@ proc mysort(s: seq; cmp: proc(a, b: T): int) {.effectsOf: cmp.}
 
 - Nim now supports a small subset of Unicode operators as operator symbols.
   The supported symbols are: "∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔".
-  To enable this feature use --experimental:unicodeOperators. Note that due
+  To enable this feature, use `--experimental:unicodeOperators`. Note that due
   to parser limitations you **cannot** enable this feature via a
   pragma `{.experimental: "unicodeOperators".}` reliably.
 
