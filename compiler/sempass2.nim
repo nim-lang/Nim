@@ -961,6 +961,8 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.exc = newNodeI(nkArgList, pragma.info)
       bc.exc.add n
+  of wUncheckedAssign:
+    discard "handled in sempass1"
   else:
     localError(tracked.config, pragma.info,
         "invalid pragma block: " & $pragma)

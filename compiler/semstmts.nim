@@ -2223,7 +2223,21 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2, c.config)
   let pragmaList = n[0]
   pragma(c, nil, pragmaList, exprPragmas, isStatement = true)
+
+  var inUncheckedAssignSection = 0
+  for p in pragmaList:
+    if whichPragma(p) == wCast:
+      case whichPragma(p[1])
+      of wGcSafe, wNoSideEffect, wTags, wRaises:
+        discard "handled in sempass2"
+      of wUncheckedAssign:
+        inUncheckedAssignSection = 1
+      else:
+        localError(c.config, p.info, "invalid pragma block: " & $p)
+
+  inc c.inUncheckedAssignSection, inUncheckedAssignSection
   n[1] = semExpr(c, n[1])
+  dec c.inUncheckedAssignSection, inUncheckedAssignSection
   result = n
   result.typ = n[1].typ
   for i in 0..<pragmaList.len:

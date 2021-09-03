@@ -36,6 +36,7 @@ type
     wMemTracker = "memtracker", wObjChecks = "objchecks",
     wIntDefine = "intdefine", wStrDefine = "strdefine", wBoolDefine = "booldefine",
     wCursor = "cursor", wNoalias = "noalias", wEffectsOf = "effectsOf",
+    wUncheckedAssign = "uncheckedAssign",
 
     wImmediate = "immediate", wConstructor = "constructor", wDestructor = "destructor",
     wDelegator = "delegator", wOverride = "override", wImportCpp = "importcpp",
