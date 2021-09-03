@@ -548,6 +548,7 @@ type
     checkAmbiguity, checkUndeclared, checkModule, checkPureEnumFields
 
 proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
+  # `determineType2` should not be called inside this; instead callers should selectively call it as needed.
   const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
   case n.kind
   of nkIdent, nkAccQuoted:

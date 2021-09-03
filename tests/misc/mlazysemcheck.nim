@@ -438,6 +438,14 @@ elif defined case_stdlib:
     let t2 = now()
     doAssert t2 > t
 
+elif defined case_test2:
+  import std/macros
+  block: # regression test D20210902T181022:here
+    macro foo(normalizer: static[proc(s :string): string]): untyped =
+      let ret = quote: `normalizer`
+    proc baz(s: string): string = discard
+    foo(baz)
+
 elif defined case_stdlib_imports:
   #[
   from tests/test_nimscript.nims, minus 1 module, see below
@@ -510,7 +518,7 @@ elif defined case_stdlib_imports:
 
 elif defined case_perf:
   #[
-  TODO:
+  PRTEMP TODO:
   example showing perf for lots of imports
   ]#
   import std/[strutils, os, times, enumutils, browsers]

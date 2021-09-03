@@ -1312,7 +1312,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     #if efInCall notin flags:
     markUsed(c, info, s)
     onUse(info, s)
-    determineType2(c, s) # PRTEMP
+    determineType2(c, s) # needed, e.g. for semchecking `proc f(a = fn)`; xxx see whether other branches also need this
     result = newSymNode(s, info)
 
 proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
@@ -2789,7 +2789,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
-    determineType2(c, s) # PRTEMP: inside qualifiedLookUp instead? already case?
+    determineType2(c, s) # needed
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
@@ -2878,7 +2878,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
     if s != nil:
-      determineType2(c, s) # PRTEMP: inside qualifiedLookUp ? already case?
+      determineType2(c, s) # needed, see D20210902T181022
       #if c.config.cmd == cmdNimfix and n[0].kind == nkDotExpr:
       #  pretty.checkUse(n[0][1].info, s)
       case s.kind
