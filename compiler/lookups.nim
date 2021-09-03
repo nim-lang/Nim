@@ -606,9 +606,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   when false:
     if result != nil and result.kind == skStub: loadStub(result)
 
-proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym
-
-proc initOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   o.importIdx = -1
   o.marked = initIntSet()
   case n.kind
@@ -669,13 +667,6 @@ proc initOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   when false:
     if result != nil and result.kind == skStub: loadStub(result)
 
-proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
-  result = initOverloadIterImpl(o, c, n)
-  while true:
-    if result == nil: break
-    elif result.lazyDecl != nil: result = nextOverloadIter(o, c, n)
-    else: break
-
 proc lastOverloadScope*(o: TOverloadIter): int =
   case o.mode
   of oimNoQualifier:
@@ -709,7 +700,7 @@ proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
       return result
     inc o.importIdx
 
-proc nextOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   case o.mode
   of oimDone:
     result = nil
@@ -787,11 +778,6 @@ proc nextOverloadIterImpl(o: var TOverloadIter, c: PContext, n: PNode): PSym =
 
   when false:
     if result != nil and result.kind == skStub: loadStub(result)
-
-proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
-  while true:
-    result = nextOverloadIterImpl(o, c, n)
-    if result == nil or result.lazyDecl == nil: break
 
 proc pickSym*(c: PContext, n: PNode; kinds: set[TSymKind];
               flags: TSymFlags = {}): PSym =
