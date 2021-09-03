@@ -49,6 +49,11 @@ type
 
 proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
                isField = false): PNode =
+  # dbgIf n, s, isField, r
+  # defer:
+  #   dbgIf result, ?.result.kind, ?.result.sym.kind
+  # if s != nil:
+  #   determineType2(c, s) # PRTEMP ; would be wrong for generic prepass
   var
     a: PSym
     o: TOverloadIter

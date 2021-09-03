@@ -185,6 +185,9 @@ proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
 
 proc semGenericStmt(c: PContext, n: PNode,
                     flags: TSemGenericFlags, ctx: var GenericCtx): PNode =
+  when defined(nimCompilerStacktraceHints):
+    setFrameMsg c.config$n.info & " " & $(n.kind, flags)
+
   result = n
 
   when defined(nimsuggest):

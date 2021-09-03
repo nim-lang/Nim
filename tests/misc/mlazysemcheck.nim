@@ -239,6 +239,31 @@ when defined case_noimports:
       a*2
     doAssert fun3(1'i16) == (int16.sizeof) * 3 * 2
 
+
+
+  block: # a regression test
+    block:
+      proc fnAux(): int
+      type FnAux = proc(): int
+      proc fn7(r: FnAux = fnAux) = discard
+      proc fnAux(): int = discard
+      fn7()
+
+    # block: # PRTEMP BUG
+    #   proc fnAux(): int
+    #   type FnAux = proc(): int
+    #   proc fn8(r = fnAux) = discard
+    #   proc fnAux(): int = discard
+    #   fn8()
+
+    block:
+      proc fnAux(): int
+      proc fnAux(b: float): int
+      type FnAux = proc(): int
+      proc fn8(r: FnAux = fnAux) = discard
+      proc fnAux(): int = discard
+      fn8()
+
   chk "fn2\n"
 
 elif defined case_reordering:

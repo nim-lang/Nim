@@ -10,9 +10,6 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
-when defined(nimCompilerStacktraceHints):
-  import std/stackframes
-
 const
   errExprXHasNoType = "expression '$1' has no type (or is ambiguous)"
   errXExpectsTypeOrValue = "'$1' expects a type or value"
@@ -24,6 +21,10 @@ const
   errNamedExprNotAllowed = "named expression not allowed here"
   errFieldInitTwice = "field initialized twice: '$1'"
   errUndeclaredFieldX = "undeclared field: '$1'"
+
+proc symChoiceDetermined(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule; isField = false): PNode =
+  determineType2(c, s)
+  result = symChoice(c, n, s, r, isField)
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
@@ -104,6 +105,7 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = errorType(c)
 
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
+  dbgIf()
   result = symChoice(c, n, s, scClosed)
 
 proc inlineConst(c: PContext, n: PNode, s: PSym): PNode {.inline.} =
@@ -1185,6 +1187,9 @@ proc readTypeParameter(c: PContext, typ: PType,
 
 proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   let s = getGenSym(c, sym)
+
+  dbgIf s.kind, s, sym, flags
+
   case s.kind
   of skConst:
     markUsed(c, n.info, s)
@@ -1221,6 +1226,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
        (n.kind notin nkCallKinds and s.requiredParams > 0):
       markUsed(c, n.info, s)
       onUse(n.info, s)
+      dbgIf()
       result = symChoice(c, n, s, scClosed)
     else:
       result = semMacroExpr(c, n, n, s, flags)
@@ -1231,6 +1237,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       let info = getCallLineInfo(n)
       markUsed(c, info, s)
       onUse(info, s)
+      dbgIf()
       result = symChoice(c, n, s, scClosed)
     else:
       result = semTemplateExpr(c, n, s, flags)
@@ -1314,6 +1321,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     onUse(info, s)
     determineType2(c, s) # needed, e.g. for semchecking `proc f(a = fn)`; xxx see whether other branches also need this
     result = newSymNode(s, info)
+    dbgIf result
 
 proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
   case t.kind
@@ -1378,6 +1386,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
   if s != nil:
     if s.kind in OverloadableSyms:
+      dbgIf()
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym: result = semSym(c, n, s, flags)
     else:
@@ -2789,11 +2798,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
+    dbgIf s
     determineType2(c, s) # needed
+    dbgIf s
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
       #performProcvarCheck(c, n, s)
+      dbgIf()
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym:
         markIndirect(c, result.sym)
@@ -2996,15 +3008,29 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semTableConstr(c, n)
   of nkClosedSymChoice, nkOpenSymChoice:
     # handling of sym choices is context dependent
-    # the node is left intact for now
+    # the node is left intact for now, except in following case:
     if efDetermineType in flags:
       for i, ai in n:
-        if ai.kind == nkSym:
-          # dbgIf i, ai.sym, ai.sym.flags, ai.sym.typ
-          determineType2(c, ai.sym)
-          # dbgIf i, ai.sym, ai.sym.flags, ai.sym.typ
-          result[i].typ = ai.sym.typ
-          assert result[i].typ != nil, $ai.sym
+        # PRTEMP: alternative is to handle this in symChoice/semSym but we need to make sure this isn't done in generic prepass
+        determineType2(c, ai.sym)
+        dbgIf ai.sym, ai.sym.typ
+        # should we remove the node with a lazyDecl ?
+        result[i].typ = ai.sym.typ
+      if n.len == 2:
+        #[
+        handle case of 2 syms, one of which is fwd decl of the other D20210902T212839
+        ]#
+        var realSym: PSym = nil
+        if n[0].sym.lazyDecl == n[1].sym:
+          realSym = n[1].sym
+        elif n[1].sym.lazyDecl == n[0].sym:
+          realSym = n[0].sym
+        dbgIf realSym, n.kind
+        if realSym != nil:
+          # we could also return a newSymNode depending on nkClosedSymChoice vs nkOpenSymChoice?
+          # result.typ = realSym.typ
+          result = newSymNode(realSym, n.info)
+    dbgIf result.typ, result, result.kind
   of nkStaticExpr: result = semStaticExpr(c, n[0])
   of nkAsgn: result = semAsgn(c, n)
   of nkBlockStmt, nkBlockExpr: result = semBlock(c, n, flags)

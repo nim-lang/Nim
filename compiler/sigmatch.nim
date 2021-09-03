@@ -2211,9 +2211,6 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     # this correctly is inefficient. We have to copy `m` here to be able to
     # roll back the side effects of the unification algorithm.
     let c = m.c
-    dbgIf m.c.config$arg.info, arg, argOrig, f, a, arg.len
-    for i in 0..<arg.len:
-      dbgIf i, arg[i].sym, arg[i].sym.flags, arg[i].sym.typ
     # `m.calleeSym` can be nil (pre-existing to lazy semchecking), e.g. D20210902T184355
     var
       x = newCandidate(c, m.callee)
@@ -2226,9 +2223,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     for i in 0..<arg.len:
       if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
                              skIterator, skMacro, skTemplate, skEnumField}:
-        dbgIf i, arg[i].sym, arg[i].sym.flags, arg[i].sym.typ
         determineType2(c, arg[i].sym) # PRTEMP D20210831T155116
-        dbgIf i, arg[i].sym, arg[i].sym.flags, arg[i].sym.typ
         copyCandidate(z, m)
         z.callee = arg[i].typ
         assert z.callee != nil, $(arg[i].sym, i, ) # TODO: the problem is upstream

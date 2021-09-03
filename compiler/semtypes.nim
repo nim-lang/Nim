@@ -1221,7 +1221,6 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
   for i in 1..<n.len:
     var a = n[i]
-    dbgIf i, a, a.kind, a.typ
     if a.kind != nkIdentDefs:
       # for some generic instantiations the passed ':env' parameter
       # for closures has already been produced (see bug #898). We simply
@@ -1248,27 +1247,27 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     if hasDefault:
       def = a[^1]
-      dbgIf def, def.kind, def.typ, genericParams.isGenericParams
       block determineType:
         if genericParams.isGenericParams:
           def = semGenericStmt(c, def)
-          dbgIf def, def.typ, def.kind
+          dbgIf def.typ, def
           if hasUnresolvedArgs(c, def):
+            dbgIf def.typ, def
             def.typ = makeTypeFromExpr(c, def.copyTree)
-            dbgIf def.typ
+            dbgIf def.typ, def
             break determineType
 
-        dbgIf def, def.typ, def.kind
+        dbgIf def.typ, def
         def = semExprWithType(c, def, {efDetermineType})
-        dbgIf def, def.typ, def.kind, def.flags
+        dbgIf def.typ, def
         if def.referencesAnotherParam(getCurrOwner(c)):
+          dbgIf def.typ, def
           def.flags.incl nfDefaultRefsParam
           dbgIf def.flags
 
-      dbgIf def, def.kind, def.typ
-
       if typ == nil:
         typ = def.typ
+        dbgIf def.typ, def
         if isEmptyContainer(typ):
           localError(c.config, a.info, "cannot infer the type of parameter '" & $a[0] & "'")
 
