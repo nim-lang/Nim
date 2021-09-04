@@ -838,50 +838,6 @@ proc getCharacter(L: var Lexer; tok: var Token) =
       lexMessage(L, errGenerated, "missing closing ' for character literal")
     tokenEndIgnore(tok, L.bufpos)
 
-proc getSymbol(L: var Lexer, tok: var Token) =
-  var h: Hash = 0
-  var pos = L.bufpos
-  tokenBegin(tok, pos)
-  var suspicious = false
-  while true:
-    var c = L.buf[pos]
-    case c
-    of 'a'..'z', '0'..'9', '\x80'..'\xFF':
-      h = h !& ord(c)
-      inc(pos)
-    of 'A'..'Z':
-      c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-      h = h !& ord(c)
-      inc(pos)
-      suspicious = true
-    of '_':
-      if L.buf[pos+1] notin SymChars:
-        lexMessage(L, errGenerated, "invalid token: trailing underscore")
-        break
-      inc(pos)
-      suspicious = true
-    else: break
-  tokenEnd(tok, pos-1)
-  h = !$h
-  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
-  if (tok.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
-      (tok.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
-    tok.tokType = tkSymbol
-  else:
-    tok.tokType = TokType(tok.ident.id + ord(tkSymbol))
-    if suspicious and {optStyleHint, optStyleError} * L.config.globalOptions != {}:
-      lintReport(L.config, getLineInfo(L), tok.ident.s.normalize, tok.ident.s)
-  L.bufpos = pos
-
-
-proc endOperator(L: var Lexer, tok: var Token, pos: int,
-                 hash: Hash) {.inline.} =
-  var h = !$hash
-  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
-  if (tok.ident.id < oprLow) or (tok.ident.id > oprHigh): tok.tokType = tkOpr
-  else: tok.tokType = TokType(tok.ident.id - oprLow + ord(tkColon))
-  L.bufpos = pos
-
 const
   UnicodeOperatorStartChars = {'\226', '\194', '\195'}
     # the allowed unicode characters ("∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔")
@@ -924,6 +880,56 @@ proc unicodeOprLen(buf: cstring; pos: int): (int8, UnicodeOprPred) =
     if buf[pos+1] == '\151': result = 2.m # ×
   else:
     discard
+
+proc getSymbol(L: var Lexer, tok: var Token) =
+  var h: Hash = 0
+  var pos = L.bufpos
+  tokenBegin(tok, pos)
+  var suspicious = false
+  while true:
+    var c = L.buf[pos]
+    case c
+    of 'a'..'z', '0'..'9':
+      h = h !& ord(c)
+      inc(pos)
+    of 'A'..'Z':
+      c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
+      h = h !& ord(c)
+      inc(pos)
+      suspicious = true
+    of '_':
+      if L.buf[pos+1] notin SymChars:
+        lexMessage(L, errGenerated, "invalid token: trailing underscore")
+        break
+      inc(pos)
+      suspicious = true
+    of '\x80'..'\xFF':
+      if c in UnicodeOperatorStartChars and unicodeOperators in L.config.features and unicodeOprLen(L.buf, pos)[0] != 0:
+        break
+      else:
+        h = h !& ord(c)
+        inc(pos)
+    else: break
+  tokenEnd(tok, pos-1)
+  h = !$h
+  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
+  if (tok.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
+      (tok.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
+    tok.tokType = tkSymbol
+  else:
+    tok.tokType = TokType(tok.ident.id + ord(tkSymbol))
+    if suspicious and {optStyleHint, optStyleError} * L.config.globalOptions != {}:
+      lintReport(L.config, getLineInfo(L), tok.ident.s.normalize, tok.ident.s)
+  L.bufpos = pos
+
+
+proc endOperator(L: var Lexer, tok: var Token, pos: int,
+                 hash: Hash) {.inline.} =
+  var h = !$hash
+  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
+  if (tok.ident.id < oprLow) or (tok.ident.id > oprHigh): tok.tokType = tkOpr
+  else: tok.tokType = TokType(tok.ident.id - oprLow + ord(tkColon))
+  L.bufpos = pos
 
 proc getOperator(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
@@ -1346,7 +1352,11 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
       getNumber(L, tok)
       let c = L.buf[L.bufpos]
       if c in SymChars+{'_'}:
-        lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
+        if c in UnicodeOperatorStartChars and unicodeOperators in L.config.features and
+            unicodeOprLen(L.buf, L.bufpos)[0] != 0:
+          discard
+        else:
+          lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
     of '-':
       if L.buf[L.bufpos+1] in {'0'..'9'} and
           (L.bufpos-1 == 0 or L.buf[L.bufpos-1] in UnaryMinusWhitelist):
@@ -1357,7 +1367,11 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
         getNumber(L, tok)
         let c = L.buf[L.bufpos]
         if c in SymChars+{'_'}:
-          lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
+          if c in UnicodeOperatorStartChars and unicodeOperators in L.config.features and
+              unicodeOprLen(L.buf, L.bufpos)[0] != 0:
+            discard
+          else:
+            lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
       else:
         getOperator(L, tok)
     else:
