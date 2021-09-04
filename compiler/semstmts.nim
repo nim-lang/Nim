@@ -1851,6 +1851,11 @@ proc isLazySemcheck*(c: PContext): bool =
   # could also depend on some --experimental:lazysemcheck flag
   c.config.isDefined("nimLazySemcheck")
 
+proc needsSemcheckDecl(c: PContext, s: PSym): bool =
+  # TODO: distinguish decl from impl
+  if sfOverriden in s.flags or s.name.s[0] == '=': result = true # we could refine this logic but it's simplest
+  elif s.kind in {skConverter}: result = true
+
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
   result = semProcAnnotation(c, n, validPragmas)
@@ -1890,8 +1895,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
   let declarationScope = c.currentScope
-
-  if c.isLazySemcheck and s.kind notin {skConverter}:
+  if c.isLazySemcheck and not needsSemcheckDecl(c, s):
     # for converter, we have to at least have `needDeclaration` otherwise there would
     # be no way to guess when to attempt to apply a converter; but we could refine this
     # by using `needDeclaration: true, needBody: false`
@@ -2073,7 +2077,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     pushOwner(c, s)
 
   if not isAnon:
-    if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
+    if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n) # sync with needsSemcheckDecl
     elif s.name.s[0] in {'.', '('}:
       if s.name.s in [".", ".()", ".="] and {Feature.destructor, dotOperators} * c.features == {}:
         localError(c.config, n.info, "the overloaded " & s.name.s &
