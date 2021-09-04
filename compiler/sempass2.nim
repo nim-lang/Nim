@@ -1420,7 +1420,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let p = s.ast[pragmasPos]
   let raisesSpec = effectSpec(p, wRaises)
   if not isNil(raisesSpec):
-    checkRaisesSpec(g, emitWarnings, raisesSpec, t.exc, "can raise an unlisted exception: ",
+    checkRaisesSpec(g, false, raisesSpec, t.exc, "can raise an unlisted exception: ",
                     hints=on, subtypeRelation, hintsArg=s.ast[0])
     # after the check, use the formal spec:
     effects[exceptionEffects] = raisesSpec
@@ -1429,7 +1429,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
 
   let tagsSpec = effectSpec(p, wTags)
   if not isNil(tagsSpec):
-    checkRaisesSpec(g, emitWarnings, tagsSpec, t.tags, "can have an unlisted effect: ",
+    checkRaisesSpec(g, false, tagsSpec, t.tags, "can have an unlisted effect: ",
                     hints=off, subtypeRelation)
     # after the check, use the formal spec:
     effects[tagEffects] = tagsSpec
