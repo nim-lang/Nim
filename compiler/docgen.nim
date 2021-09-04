@@ -1136,9 +1136,6 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
   ## which is implemented in ``docgen2.nim``.
   template genItemAux(skind) =
     genItem(d, n, n[namePos], skind, docFlags)
-  dbgIf n, n.kind
-  if n.kind in routineDefs:
-    dbgIf n[0].sym, n[0].sym.typ, n[0].sym.flags
   if n.kind in routineDefs and n[0].sym.typ == nil:
     return
   case n.kind

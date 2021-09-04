@@ -2510,47 +2510,45 @@ proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode =
   else:
     result = semExpr(c, n, flags)
 
+proc isSemcheckUnusedSymbols(conf: ConfigRef): bool =
+  if conf.cmd in cmdDocLike - {cmdDoc0, cmdJsondoc0} + {cmdRst2html, cmdRst2tex}:
+    result = true
+  elif conf.isDefined("nimLazySemcheckComplete"):
+    result = true
+
 proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
-  # PRTEMP
-  if graph.config.isDefined("nimLazySemcheckComplete"):
-    dbgIf "nimLazySemcheckComplete", graph.allSymbols.len
-    # symLazyContext
-    # TODO: just use lazyVisit(c.graph, s).needDeclaration = true
+  if graph.config.isSemcheckUnusedSymbols:
     var i=0
     var allSymbols2: seq[PSym]
     while i < graph.allSymbols.len: # can grow during iteration
       let s = graph.allSymbols[i]
       i.inc
       if s.lazyDecl == nil and s.typ == nil: # PRTEMP checkme in case multi stage?
-        dbgIf i, s, graph.allSymbols.len, graph.config$s.ast.info
+        # dbgIf i, s, graph.allSymbols.len, graph.config$s.ast.info
+        # we could also have laxer checking with just `needDeclaration = true`
         let lcontext = lazyVisit(graph, s)
         determineType2(lcontext.ctxt. PContext, s) # TODO: can shortcut some work?
       allSymbols2.add s
 
     var ok = true
     block post:
-      dbgIf allSymbols2.len
       for i in 0..<graph.passes.len:
         let passi = graph.passes[i].addr
         if not isNil(passi.process):
           for s in allSymbols2:
             let module = s.getModule
             let passContext = passi.moduleContexts[module.id]
-            dbgIf i, s, graph.config$s.ast.info, module
+            # dbgIf i, s, graph.config$s.ast.info, module, allSymbols2.len
             let m = passi.process(passContext, s.ast)
-            # doAssert false # PRTEMP
             if isNil(m):
               ok = false
               break post
-        if not isNil(passi.closeEpilogue):
-          for moduleId,  passContext in passi.moduleContexts:
-            discard passi.closeEpilogue(graph, passContext, nil)
-        for moduleId,  passContext in passi.moduleContexts:
-          passi.moduleContexts[moduleId] = nil # free the memory here
     assert ok
 
-    # for j in graph.postPasses:
-    #   let process = graph.postPasses[j].process
-    #   for s in allSymbols2:
-    #     process(s)
-    #     # generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
+  for i in 0..<graph.passes.len:
+    let passi = graph.passes[i].addr
+    if not isNil(passi.closeEpilogue):
+      for moduleId,  passContext in passi.moduleContexts:
+        discard passi.closeEpilogue(graph, passContext, nil)
+    for moduleId,  passContext in passi.moduleContexts:
+      passi.moduleContexts[moduleId] = nil # free the memory here
