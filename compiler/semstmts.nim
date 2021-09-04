@@ -1916,6 +1916,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       # PRTEMP
       s.flags.incl sfForward
       s.flags.incl sfLazy
+      c.graph.allSymbols.add s
       if s.kind in OverloadableSyms:
         addInterfaceOverloadableSymAt(c, declarationScope, s)
       else:
@@ -2508,3 +2509,19 @@ proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode =
     result = semExprNoType(c, n)
   else:
     result = semExpr(c, n, flags)
+
+proc nimLazyVisitAll(g: ModuleGraph) {.exportc.} =
+  # PRTEMP
+  if g.config.isDefined("nimLazySemcheckComplete"):
+    dbgIf "nimLazySemcheckComplete", g.allSymbols.len
+    # symLazyContext
+    # TODO: just use lazyVisit(c.graph, s).needDeclaration = true
+    var i=0
+    while i < g.allSymbols.len:
+      # list can grow underneath!
+      let s = g.allSymbols[i]
+      i.inc
+      if s.lazyDecl == nil and s.typ == nil: # PRTEMP checkme in case multi stage?
+        dbgIf i, s, g.allSymbols.len, g.config$s.ast.info
+        let lcontext = lazyVisit(g, s)
+        determineType2(lcontext.ctxt. PContext, s) # TODO: can shortcut some work?

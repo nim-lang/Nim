@@ -157,6 +157,8 @@ proc wantMainModule*(conf: ConfigRef) =
     fatal(conf, gCmdLineInfo, "command expects a filename")
   conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
 
+proc nimLazyVisitAll(g: ModuleGraph) {.importc.}
+
 proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   connectCallbacks(graph)
   let conf = graph.config
@@ -176,6 +178,7 @@ proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   else:
     graph.compileSystemModule()
     discard graph.compileModule(projectFile, {sfMainModule})
+  nimLazyVisitAll(graph)
 
 proc makeModule*(graph: ModuleGraph; filename: AbsoluteFile): PSym =
   result = graph.newModule(fileInfoIdx(graph.config, filename))

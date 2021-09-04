@@ -105,6 +105,7 @@ type
     idgen*: IdGenerator
     operators*: Operators
     symLazyContext*: Table[int, LazyContext] # key: sym.id
+    allSymbols*: seq[PSym]
 
   LazyContext* = ref object
     scope*: PScope

@@ -57,6 +57,8 @@ proc semTypeOf(c: PContext; n: PNode): PNode
 proc computeRequiresInit(c: PContext, t: PType): bool
 proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo)
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool
+# PRTEMP: put determineType2 here too, avoid exportc
+
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and
     n.typ.skipTypes(abstractInst).kind == tyArray
@@ -609,6 +611,7 @@ proc isEmptyTree(n: PNode): bool =
   else: result = false
 
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
+  # dbgIf n
   if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
     if sfSystemModule notin c.module.flags and not isEmptyTree(n):
       assert c.graph.systemModule != nil
