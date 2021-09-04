@@ -2802,6 +2802,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         # echo "FAILED FOR PRCO ", p.prc.name.s
         # debug p.prc.typ.n
         # echo renderTree(p.prc.ast, {renderIds})
+        dbgIf sym, sym.flags, sym.loc, sym.typ
         internalError(p.config, n.info, "expr: param not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
     else: internalError(p.config, n.info, "expr(" & $sym.kind & "); unknown symbol")

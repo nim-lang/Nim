@@ -2179,12 +2179,18 @@ proc determineTypeOne(c: PContext, s: PSym) =
   c.pushOwner(s.owner) # c.getCurrOwner() would be wrong (it's derived globally from ConfigRef)
   let lcontext = c.graph.symLazyContext[s.id]
   c.optionStack.add(lcontext.optionStackEntry.POptionEntry)
-  discard semProcAux(c, s.ast, s.kind, validPragmas)
+
+  # discard semProcAux(c, s.ast, s.kind, validPragmas)
+  doAssert s.ast.kind in routineDefs, $s
+  discard semExpr(c, s.ast, {}, forceReSem = true)
+  # s.ast =  ?
+  # semIterator(c: PContext, n: PNode): PNode =
+
   discard c.optionStack.pop
   c.popOwner()
 
 proc determineType(c: PContext, s: PSym) =
-  # dbgIf s, s.typ, s.flags, c.module
+  dbgIf s, s.typ, s.flags, c.module
   if s.typ != nil: return
   if sfLazy notin s.flags: return # PRTEMP
 
@@ -2243,9 +2249,12 @@ proc semIterator(c: PContext, n: PNode): PNode =
   if result.kind != n.kind: return
   var s = result[namePos].sym
   var t = s.typ
+  dbgIf t, s, s.flags
   if t == nil:
     # PRTEMP: check lazy
     return result
+
+  dbgIf s.typ.callConv, t[0]
   if t[0] == nil and s.typ.callConv != ccClosure:
     localError(c.config, n.info, "iterator needs a return type")
   # iterators are either 'inline' or 'closure'; for backwards compatibility,

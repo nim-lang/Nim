@@ -2768,7 +2768,7 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
 
-proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, forceReSem = false): PNode =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
   when false: # see `tdebugutils`
@@ -2780,7 +2780,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
-  if nfSem in n.flags: return
+  if nfSem in n.flags and not forceReSem: return
   case n.kind
   of nkIdent, nkAccQuoted:
     let checks = if efNoEvaluateGeneric in flags:

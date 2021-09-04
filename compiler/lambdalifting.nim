@@ -414,6 +414,7 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
     cp = newSym(skParam, getIdent(c.graph.cache, paramName), nextSymId(c.idgen), fn, fn.info)
     incl(cp.flags, sfFromGeneric)
     cp.typ = t
+    dbgIf cp.typ, t, fn, c.graph.config$info, owner
     addHiddenParam(fn, cp)
   elif cp.typ != t and fn.kind != skIterator:
     localError(c.graph.config, fn.info, "internal error: inconsistent environment type")

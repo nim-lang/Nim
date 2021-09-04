@@ -1,20 +1,26 @@
-type
-  A[T] = iterator(x: T): T {.gcsafe, closure.}
+# when defined case1
+# iterator aimp[T](x: T): int = # ok
+when defined case1:
+  iterator aimp[T](x: T): int {.closure.} =
+    discard
 
-iterator aimp[T](x: T): T {.gcsafe, closure.} =
-  var total = 0
-  while (total < 100):
-    yield total
-    total += x
+  for x in aimp[int](3):
+    discard
 
-iterator bimp(y: A[int], z:int): int {.gcsafe, closure.} =
-  for i in y(z):
-    yield i
+when defined case2:
+  iterator aimp(): int {.closure.} =
+    discard
 
-for x in aimp[int](3):
-  discard x
+  # type T = typeof(aimp())
+  for x in aimp():
+    discard
 
-var y = aimp[int]
-var z = bimp
-for x in z(y, 1):
-  discard x
+when defined case3:
+  block:
+    {.define(nimCompilerDebug).}
+    iterator aimp(): int {.closure.} =
+      discard
+
+    # type T = typeof(aimp())
+    for x in aimp():
+      discard
