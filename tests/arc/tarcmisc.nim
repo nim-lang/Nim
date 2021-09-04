@@ -463,3 +463,14 @@ proc putValue[T](n: T) =
   echo b.n
 
 useForward()
+
+
+# bug #16246
+
+proc testWeirdTypeAliases() =
+  var values = newSeq[cuint](8)
+  # var values: seq[cuint] does not produce codegen error
+  var drawCb = proc(): seq[uint32] =
+    result = newSeq[uint32](10)
+
+testWeirdTypeAliases()
