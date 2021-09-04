@@ -28,17 +28,17 @@ const
   nimcache = buildDir / "nimcacheTrunner"
     # instead of `querySetting(nimcacheDir)`, avoids stomping on other parallel tests
 
-proc runNimCmd(file, options = "", rtarg = ""): auto =
+proc runNimCmd(file, options = "", rtarg = "", mode2 = mode): auto =
   let fileabs = testsDir / file.unixToNativePath
   # doAssert fileabs.fileExists, fileabs # disabled because this allows passing `nim r --eval:code fakefile`
-  let cmd = fmt"{nim} {mode} --hint:all:off {options} {fileabs} {rtarg}"
+  let cmd = fmt"{nim} {mode2} --hint:all:off {options} {fileabs} {rtarg}"
   result = execCmdEx(cmd)
   when false: # for debugging
     echo cmd
     echo result[0] & "\n" & $result[1]
 
-proc runNimCmdChk(file, options = "", rtarg = "", status = 0): string =
-  let (ret, status2) = runNimCmd(file, options, rtarg = rtarg)
+proc runNimCmdChk(file, options = "", rtarg = "", status = 0, mode2 = mode): string =
+  let (ret, status2) = runNimCmd(file, options, rtarg = rtarg, mode2 = mode2)
   doAssert status2 == status, $(file, options, status, status2) & "\n" & ret
   ret
 
@@ -387,4 +387,9 @@ mused3.nim(75, 10) Hint: duplicate import of 'mused3a'; previous import here: mu
     # 3 instead of k3, because of lack of RTTI
     fn("-d:case2 --gc:arc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = 3'"""
 else:
+  # block: # trunnableexamples
+  #   proc fn(opt: string, expected: string) =
+  #     let output = runNimCmdChk("nimdoc/trunnableexamples.nim", fmt"--doccmd:--hints:off --hints:off {opt}", mode2 = "doc")
+  #     doAssert expected in output, opt & "\noutput:\n" & output & "expected:\n" & expected
+  #   fn("-d:case1"): """mfield_defect.nim(25, 15) Error: field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
   discard # only during debugging, tests added here will run with `-d:nimTestsTrunnerDebugging` enabled

@@ -2552,3 +2552,6 @@ proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
         discard passi.closeEpilogue(graph, passContext, nil)
     for moduleId,  passContext in passi.moduleContexts:
       passi.moduleContexts[moduleId] = nil # free the memory here
+
+if false: nimLazyVisitAll(nil) # PRTEMP ensure compiled in
+

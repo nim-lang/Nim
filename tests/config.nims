@@ -43,3 +43,4 @@ switch("define", "nimPreviewHashRef")
 
 when false:
   switch("define", "nimLazySemcheckAfterSystem")
+  switch("define", "nimLazySemcheckComplete")

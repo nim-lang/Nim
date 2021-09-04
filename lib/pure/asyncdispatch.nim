@@ -246,13 +246,14 @@ proc adjustTimeout(
   result = max(nextTimer.get(), 0)
   result = min(pollTimeout, result)
 
-proc callSoon*(cbproc: proc () {.gcsafe.}) {.gcsafe.}
+# PRTEMP temporarily renamed refs D20210827T174229_None_type_fwd
+proc callSoon2*(cbproc: proc () {.gcsafe.}) {.gcsafe.}
   ## Schedule `cbproc` to be called as soon as possible.
   ## The callback is called when control returns to the event loop.
 
 proc initCallSoonProc =
   if asyncfutures.getCallSoonProc().isNil:
-    asyncfutures.setCallSoonProc(callSoon)
+    asyncfutures.setCallSoonProc(callSoon2)
 
 template implementSetInheritable() {.dirty.} =
   when declared(setInheritable):
@@ -1947,7 +1948,7 @@ proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
     else:
       break
 
-proc callSoon(cbproc: proc () {.gcsafe.}) =
+proc callSoon2(cbproc: proc () {.gcsafe.}) =
   getGlobalDispatcher().callbacks.addLast(cbproc)
 
 proc runForever*() =

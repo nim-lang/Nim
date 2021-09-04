@@ -280,14 +280,19 @@ when defined case_noimports:
 
   block:
     proc fn12() =
-      static: doAssert false # shouldn't fail because semcheck should be lazy
+      when not defined(nimLazySemcheckComplete):
+        static: doAssert false # shouldn't fail because semcheck should be lazy
     template bar() =
       static: fn12() # semchecking bar shouldn't trigger calling fn12
       fn12() # ditto
 
   block:
+    proc fn12() =
+      when not defined(nimLazySemcheckComplete):
+        static: doAssert false # shouldn't fail because semcheck should be lazy
     proc fn2() =
-      static: doAssert false # shouldn't fail because semcheck should be lazy
+      when not defined(nimLazySemcheckComplete):
+        static: doAssert false # shouldn't fail because semcheck should be lazy
     template bar1() =
       static: fn12() # semchecking bar shouldn't trigger calling fn12
       fn12() # ditto
