@@ -459,11 +459,11 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
       r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
 
   except JsonParsingError:
-    error = 1
+    errors = 1
     r.addResult(packageFileTest, targetC, "", "Invalid package file", reBuildFailed)
     raise
   except ValueError:
-    error = 1
+    errors = 1
     r.addResult(packageFileTest, targetC, "", "Unknown package", reBuildFailed)
     raise
   finally:
