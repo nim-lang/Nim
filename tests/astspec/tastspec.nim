@@ -161,6 +161,37 @@ static:
     of nnkCommand(ident"echo", "abc", "xyz"):
       echo "ok"
 
+  scope:
+    let ast = myquote:
+      match arg:
+      of test1: discard
+      of test2: discard
+      else: discard
+
+    ast.peelOff({nnkStmtList, nnkTypeSection}).matchAst:
+    of nnkCommand(
+      ident"match", ident"arg",
+      nnkOfBranch(ident"test1", nnkStmtList(nnkDiscardStmt(nnkEmpty()))),
+      nnkOfBranch(ident"test2", nnkStmtList(nnkDiscardStmt(nnkEmpty()))),
+      nnkElse(nnkStmtList(nnkDiscardStmt(nnkEmpty())))):
+      echo "ok"
+
+  scope:
+    let ast = myquote:
+      match arg:
+        of test1: discard
+        of test2: discard
+        else: discard
+
+    ast.peelOff({nnkStmtList, nnkTypeSection}).matchAst:
+    of nnkCommand(
+      ident"match", ident"arg",
+      nnkOfBranch(ident"test1", nnkStmtList(nnkDiscardStmt(nnkEmpty()))),
+      nnkOfBranch(ident"test2", nnkStmtList(nnkDiscardStmt(nnkEmpty()))),
+      nnkElse(nnkStmtList(nnkDiscardStmt(nnkEmpty())))):
+      echo "ok"
+
+
   ## Call with ``()``
 
   scope:

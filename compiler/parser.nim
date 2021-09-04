@@ -1394,6 +1394,13 @@ proc postExprBlocks(p: var Parser, x: PNode): PNode =
       else:
         result.add stmtList
 
+
+    var wasIndented = false
+    let oldInd = p.currInd
+    if realInd(p):
+      p.currInd = p.tok.indent
+      wasIndented = true
+
     while sameInd(p):
       var nextBlock: PNode
       let nextToken = p.tok.tokType
@@ -1428,6 +1435,10 @@ proc postExprBlocks(p: var Parser, x: PNode): PNode =
       result.add nextBlock
 
       if nextBlock.kind in {nkElse, nkFinally}: break
+
+
+    if wasIndented:
+      p.currInd = oldInd
   else:
     if openingParams.kind != nkEmpty:
       parMessage(p, "expected ':'")
