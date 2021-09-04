@@ -111,7 +111,8 @@ proc rawWriteStackTrace(): string =
 proc writeStackTrace() =
   var trace = rawWriteStackTrace()
   trace.setLen(trace.len - 1)
-  echo trace
+  {.cast(tags: []).}:
+    echo trace
 
 proc getStackTrace*(): string = rawWriteStackTrace()
 proc getStackTrace*(e: ref Exception): string = e.trace
