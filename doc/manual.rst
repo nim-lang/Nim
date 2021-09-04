@@ -8016,7 +8016,7 @@ Threads
 
 To enable thread support the `--threads:on`:option: command-line switch needs to
 be used. The system_ module then contains several threading primitives.
-See the `threads <threads.html>`_ and `channels <channels_builtin.html>`_ modules
+See the `channels <channels_builtin.html>`_ modules
 for the low-level thread API. There are also high-level parallelism constructs
 available. See `spawn <manual_experimental.html#parallel-amp-spawn>`_ for
 further details.
