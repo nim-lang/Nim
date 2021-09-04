@@ -593,11 +593,8 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
         `result` = null;
       }
       else {
-        if (`dest` === null || `dest` === undefined) {
+        if (`dest` === null || `dest` === undefined || `dest`.length != `src`.length) {
           `dest` = new Array(`src`.length);
-        }
-        else {
-          `dest`.length = `src`.length;
         }
         `result` = `dest`;
         for (var i = 0; i < `src`.length; ++i) {
