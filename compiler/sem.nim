@@ -30,7 +30,6 @@ when defined(nimCompilerStacktraceHints):
 
 # implementation
 
-# proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, forceReSem = false): PNode
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semExprNoType(c: PContext, n: PNode): PNode
