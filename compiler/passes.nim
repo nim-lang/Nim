@@ -14,7 +14,7 @@ import
   options, ast, llstream, msgs,
   idents,
   syntaxes, modulegraphs, reorder,
-  lineinfos, pathutils
+  lineinfos, pathutils, tables
 
 type
   TPassData* = tuple[input: PNode, closeOutput: PNode]
@@ -26,10 +26,13 @@ type
 proc makePass*(open: TPassOpen = nil,
                process: TPassProcess = nil,
                close: TPassClose = nil,
+               closeEpilogue: TPassClose = nil,
+               # processPost: TPassProcess = nil,
                isFrontend = false): TPass =
   result.open = open
   result.close = close
   result.process = process
+  result.closeEpilogue = closeEpilogue
   result.isFrontend = isFrontend
 
 proc skipCodegen*(config: ConfigRef; n: PNode): bool {.inline.} =
@@ -56,6 +59,7 @@ proc openPasses(g: ModuleGraph; a: var TPassContextArray;
   for i in 0..<g.passes.len:
     if not isNil(g.passes[i].open):
       a[i] = g.passes[i].open(g, module, idgen)
+      g.passes[i].moduleContexts[module.id] = a[i] # PRTEMP; make it optional
     else: a[i] = nil
 
 proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
@@ -63,7 +67,7 @@ proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
   for i in 0..<graph.passes.len:
     if not isNil(graph.passes[i].close):
       m = graph.passes[i].close(graph, a[i], m)
-    a[i] = nil                # free the memory here
+    # a[i] = nil                # free the memory here # PRTEMP
 
 proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray): bool =
   # this implements the code transformation pipeline

@@ -78,11 +78,11 @@ proc myOpenTex(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassConte
 proc myOpenJson(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   myOpenImpl(JsonExt)
 
-const docgen2Pass* = makePass(open = myOpen, process = processNode, close = close)
+const docgen2Pass* = makePass(open = myOpen, process = processNode, closeEpilogue = close)
 const docgen2TexPass* = makePass(open = myOpenTex, process = processNode,
-                                 close = close)
+                                 closeEpilogue = close)
 const docgen2JsonPass* = makePass(open = myOpenJson, process = processNodeJson,
-                                  close = closeJson)
+                                  closeEpilogue = closeJson)
 
 proc finishDoc2Pass*(project: string) =
   discard

@@ -104,6 +104,7 @@ type
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator
     operators*: Operators
+    # fields for lazy semchecking
     symLazyContext*: Table[int, LazyContext] # key: sym.id
     allSymbols*: seq[PSym]
 
@@ -125,10 +126,13 @@ type
   TPassClose* = proc (graph: ModuleGraph; p: PPassContext, n: PNode): PNode {.nimcall.}
   TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
 
-  TPass* = tuple[open: TPassOpen,
-                 process: TPassProcess,
-                 close: TPassClose,
-                 isFrontend: bool]
+  TPass* = object
+    open*: TPassOpen
+    process*: TPassProcess
+    close*: TPassClose
+    isFrontend*: bool
+    closeEpilogue*: TPassClose # after whole program semchecked
+    moduleContexts*: Table[int, PPassContext] # key: sym.id (module)
 
 proc lazyVisit*(g: ModuleGraph, sym: PSym): LazyContext =
   if sym.id notin g.symLazyContext:

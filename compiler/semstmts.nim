@@ -2510,18 +2510,47 @@ proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode =
   else:
     result = semExpr(c, n, flags)
 
-proc nimLazyVisitAll(g: ModuleGraph) {.exportc.} =
+proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
   # PRTEMP
-  if g.config.isDefined("nimLazySemcheckComplete"):
-    dbgIf "nimLazySemcheckComplete", g.allSymbols.len
+  if graph.config.isDefined("nimLazySemcheckComplete"):
+    dbgIf "nimLazySemcheckComplete", graph.allSymbols.len
     # symLazyContext
     # TODO: just use lazyVisit(c.graph, s).needDeclaration = true
     var i=0
-    while i < g.allSymbols.len:
-      # list can grow underneath!
-      let s = g.allSymbols[i]
+    var allSymbols2: seq[PSym]
+    while i < graph.allSymbols.len: # can grow during iteration
+      let s = graph.allSymbols[i]
       i.inc
       if s.lazyDecl == nil and s.typ == nil: # PRTEMP checkme in case multi stage?
-        dbgIf i, s, g.allSymbols.len, g.config$s.ast.info
-        let lcontext = lazyVisit(g, s)
+        dbgIf i, s, graph.allSymbols.len, graph.config$s.ast.info
+        let lcontext = lazyVisit(graph, s)
         determineType2(lcontext.ctxt. PContext, s) # TODO: can shortcut some work?
+      allSymbols2.add s
+
+    var ok = true
+    block post:
+      dbgIf allSymbols2.len
+      for i in 0..<graph.passes.len:
+        let passi = graph.passes[i].addr
+        if not isNil(passi.process):
+          for s in allSymbols2:
+            let module = s.getModule
+            let passContext = passi.moduleContexts[module.id]
+            dbgIf i, s, graph.config$s.ast.info, module
+            let m = passi.process(passContext, s.ast)
+            # doAssert false # PRTEMP
+            if isNil(m):
+              ok = false
+              break post
+        if not isNil(passi.closeEpilogue):
+          for moduleId,  passContext in passi.moduleContexts:
+            discard passi.closeEpilogue(graph, passContext, nil)
+        for moduleId,  passContext in passi.moduleContexts:
+          passi.moduleContexts[moduleId] = nil # free the memory here
+    assert ok
+
+    # for j in graph.postPasses:
+    #   let process = graph.postPasses[j].process
+    #   for s in allSymbols2:
+    #     process(s)
+    #     # generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
