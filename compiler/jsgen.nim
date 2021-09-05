@@ -1397,8 +1397,6 @@ proc checkClosureIteratorJs(p: PProc, n: PNode) =
 
 proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   var s = n.sym
-  # dbgIf n, s, s.flags, s.typ
-  # determineType2(p.module.graph, s) # PRTEMP
   case s.kind
   of skVar, skLet, skParam, skTemp, skResult, skForVar:
     if s.loc.r == nil:
@@ -2630,12 +2628,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
      nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt,
      nkMixinStmt, nkBindStmt: discard
   of nkIteratorDef:
-    # dbgIf n, n[0].sym, n[0].sym.flags
-    # determineType2(p.module.graph, n[0].sym) # PRTEMP; not so good because it forces semcheck
-    # PRTEMP: sfLazy for for nim r -b:js -d:nimLazySemcheckAfterSystem tests/stdlib/toptions.nim
     checkClosureIteratorJs(p, n)
-    # if sfLazy notin n[0].sym.flags and n[0].sym.typ.callConv == TCallingConvention.ccClosure:
-    #   globalError(p.config, n.info, "Closure iterators are not supported by JS backend!")
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     var s = n[namePos].sym
