@@ -2494,6 +2494,8 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
     r.res = r.address
     r.typ = etyObject
 
+proc determineType2(c: PContext, s: PSym) {.importc.} # PRTEMP
+
 proc gen(p: PProc, n: PNode, r: var TCompRes) =
   r.typ = etyNone
   if r.kind != resCallee: r.kind = resNone
@@ -2623,6 +2625,8 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
      nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt,
      nkMixinStmt, nkBindStmt: discard
   of nkIteratorDef:
+    dbgIf n, n[0].sym, n[0].sym.flags
+    determineType2(c.c, n[0].sym) # PRTEMP
     # PRTEMP: sfLazy for for nim r -b:js -d:nimLazySemcheckAfterSystem tests/stdlib/toptions.nim
     if sfLazy notin n[0].sym.flags and n[0].sym.typ.callConv == TCallingConvention.ccClosure:
       globalError(p.config, n.info, "Closure iterators are not supported by JS backend!")

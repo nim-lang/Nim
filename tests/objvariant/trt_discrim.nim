@@ -149,6 +149,7 @@ reject:
     case kind:
     of k1: result = KindObj(kind: kind, i32: 1)
     else: discard
+  type T = typeof(varKindProc) # PRTEMP: forceSemcheck? D20210905T125411_forceSemcheck_compiles:here
 
 type
   Kind3 = enum
