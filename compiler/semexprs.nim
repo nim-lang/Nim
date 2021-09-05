@@ -23,7 +23,7 @@ const
   errUndeclaredFieldX = "undeclared field: '$1'"
 
 proc symChoiceDetermined(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule; isField = false): PNode =
-  determineType2(c, s)
+  determineType2(c.graph, s)
   result = symChoice(c, n, s, r, isField)
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
@@ -1313,7 +1313,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     #if efInCall notin flags:
     markUsed(c, info, s)
     onUse(info, s)
-    determineType2(c, s) # needed, e.g. for semchecking `proc f(a = fn)`; xxx see whether other branches also need this
+    determineType2(c.graph, s) # needed, e.g. for semchecking `proc f(a = fn)`; xxx see whether other branches also need this
     result = newSymNode(s, info)
 
 proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
@@ -2790,7 +2790,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, forceReSem = false):
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
-    determineType2(c, s) # needed
+    determineType2(c.graph, s) # needed
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
@@ -2879,7 +2879,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, forceReSem = false):
     c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
     if s != nil:
-      determineType2(c, s) # needed, see D20210902T181022
+      determineType2(c.graph, s) # needed, see D20210902T181022
       #if c.config.cmd == cmdNimfix and n[0].kind == nkDotExpr:
       #  pretty.checkUse(n[0][1].info, s)
       case s.kind
@@ -3001,7 +3001,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, forceReSem = false):
     if efDetermineType in flags:
       for i, ai in n:
         # PRTEMP: alternative is to handle this in symChoice/semSym but we need to make sure this isn't done in generic prepass
-        determineType2(c, ai.sym)
+        determineType2(c.graph, ai.sym)
         # should we remove the node with a lazyDecl ?
         result[i].typ = ai.sym.typ
       if n.len == 2:

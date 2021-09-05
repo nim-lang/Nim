@@ -1852,9 +1852,9 @@ proc isCompilerProc(c: PContext, s: PSym, n: PNode): bool =
         if ai.ident == getIdent(c.cache, a):
           return true
 
-proc isLazySemcheck*(c: PContext): bool =
+proc isLazySemcheck*(conf: ConfigRef): bool =
   # could also depend on some --experimental:lazysemcheck flag
-  c.config.isDefined("nimLazySemcheck")
+  conf.isDefined("nimLazySemcheck")
 
 proc needsSemcheckDecl(c: PContext, s: PSym): bool =
   # TODO: distinguish decl from impl
@@ -1900,7 +1900,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
   let declarationScope = c.currentScope
-  if c.isLazySemcheck and not needsSemcheckDecl(c, s):
+  if c.config.isLazySemcheck and not needsSemcheckDecl(c, s):
     # for converter, we have to at least have `needDeclaration` otherwise there would
     # be no way to guess when to attempt to apply a converter; but we could refine this
     # by using `needDeclaration: true, needBody: false`
@@ -2184,7 +2184,7 @@ proc determineTypeOne(c: PContext, s: PSym) =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$s.ast.info & " " & $(s, s.owner, s.flags, c.module)
   let validPragmas = getValidPragmas(s.kind, s.ast)
-  if c.isLazySemcheck:
+  if c.config.isLazySemcheck:
     # PRTEMP FACTOR; do we even need this side channel or can we use a sf flag?
     lazyVisit(c.graph, s).needDeclaration = true
   c.pushOwner(s.owner) # c.getCurrOwner() would be wrong (it's derived globally from ConfigRef)
@@ -2200,24 +2200,28 @@ proc determineTypeOne(c: PContext, s: PSym) =
   discard c.optionStack.pop
   c.popOwner()
 
-proc determineType(c: PContext, s: PSym) =
-  # dbgIf s, s.typ, s.flags, c.module
+proc determineType2(graph: ModuleGraph, s: PSym) {.exportc.} =
+  if graph.config.isLazySemcheck: # PRTEMP FACTOR
+    # TODO: instead, just set sfLazy flag?
+    lazyVisit(graph, s).needDeclaration = true
+
+  # dbgIf s, s.typ, s.flags
   if s.typ != nil: return
   if sfLazy notin s.flags: return # PRTEMP
 
   when defined(nimCompilerStacktraceHints):
-    setFrameMsg c.config$s.ast.info & " " & $(s, s.owner, s.flags, c.module)
+    setFrameMsg graph.config$s.ast.info & " " & $(s, s.owner, s.flags)
 
   # dbgIf s, s.typ, s.flags, s.owner
   #if s.magic != mNone: return
   #if s.ast.isNil: return
 
-  # if s.id notin c.graph.symLazyContext:
-  #   dbgIf s, s.flags, s.typ, s.id, c.module
-  let lcontext = c.graph.symLazyContext[s.id]
+  # if s.id notin graph.symLazyContext:
+  #   dbgIf s, s.flags, s.typ, s.id
+  let lcontext = graph.symLazyContext[s.id]
   var c2 = PContext(lcontext.ctxt)
   doAssert c2 != nil
-  # dbgIf c.module, c2.module, s, "retrieve"
+  # dbgIf c2.module, s, "retrieve"
   let old = c2.currentScope
   c2.currentScope = lcontext.scope
 
@@ -2230,24 +2234,18 @@ proc determineType(c: PContext, s: PSym) =
   for s2 in c2.currentScope.symbols:
     if s2.name == s.name: # checking `s2.kind == s.kind` would be wrong because all overloads in same scope must be revealed
       if s2.typ == nil and sfLazy in s2.flags:
-        # dbgIf s2, s, s2.flags, s.flags, c.config$s2.ast.info
+        # dbgIf s2, s, s2.flags, s.flags, graph.config$s2.ast.info
         candidates.add s2
   candidates = candidates.sortedByIt(it.id)
   when defined(nimCompilerStacktraceHints):
     setFrameMsg $(candidates.len, candidates)
     # to ensure that fwd declarations are processed before implementations
-  # dbgIf candidates.len, candidates, s, c.module
+  # dbgIf candidates.len, candidates, s
   for s2 in candidates:
     determineTypeOne(c2, s2)
   c2.currentScope = old
   # c2.p = pBaseOld
   popProcCon(c2)
-
-proc determineType2*(c: PContext, s: PSym) {.exportc.} =
-  if c.isLazySemcheck: # PRTEMP FACTOR
-    # TODO: instead, just set sfLazy flag?
-    lazyVisit(c.graph, s).needDeclaration = true
-  determineType(c, s)
 
 proc semIterator(c: PContext, n: PNode): PNode =
   # gensym'ed iterator?
@@ -2548,8 +2546,9 @@ proc visitAllLiveSymbols(n: PNode, vc: var VisitContext, isFindName = false) =
          # PRTEMP checkme in case multi stage?
         # dbgIf i, s, graph.allSymbols.len, graph.config$s.ast.info
         # we could also have laxer checking with just `needDeclaration = true`
-        let lcontext = lazyVisit(vc.graph, s)
-        determineType2(lcontext.ctxt. PContext, s)
+        # let lcontext = lazyVisit(vc.graph, s)
+        # determineType2(lcontext.ctxt.PContext, s)
+        determineType2(vc.graph, s)
         vc.allSymbols2.add s
         visitAllLiveSymbols(s.ast, vc)
   else:
@@ -2585,8 +2584,8 @@ proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
         if s.lazyDecl == nil and s.typ == nil and sfLazyDeadSymTansf notin s.flags: # PRTEMP checkme in case multi stage?
           # dbgIf i, s, graph.allSymbols.len, graph.config$s.ast.info
           # we could also have laxer checking with just `needDeclaration = true`
-          let lcontext = lazyVisit(graph, s)
-          determineType2(lcontext.ctxt. PContext, s) # TODO: can shortcut some work?
+          # let lcontext = lazyVisit(graph, s)
+          determineType2(graph, s) # TODO: can shortcut some work?
         allSymbols2.add s
 
     var ok = true

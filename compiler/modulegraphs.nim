@@ -136,6 +136,8 @@ type
     closeEpilogue*: TPassClose # after whole program semchecked
     moduleContexts*: Table[int, PPassContext] # key: sym.id (module)
 
+proc determineType2*(graph: ModuleGraph, s: PSym) {.importc.} # PRTEMP
+
 proc lazyVisit*(g: ModuleGraph, sym: PSym): LazyContext =
   if sym.id notin g.symLazyContext:
     result = LazyContext()

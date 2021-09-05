@@ -34,8 +34,6 @@ proc sameMethodDispatcher(a, b: PSym): bool =
       # be disambiguated by the programmer; this way the right generic is
       # instantiated.
 
-proc determineType(c: PContext, s: PSym)
-
 proc initCandidateSymbols(c: PContext, headSymbol: PNode,
                           initialBinding: PNode,
                           filter: TSymKinds,

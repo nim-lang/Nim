@@ -49,7 +49,7 @@ type
 
 proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
                isField = false): PNode =
-  # `determineType2(c, s)` would be wrong for generic prepass
+  # `determineType2(c.graph, s)` would be wrong for generic prepass
   var
     a: PSym
     o: TOverloadIter

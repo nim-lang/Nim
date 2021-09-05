@@ -239,7 +239,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         considerQuotedIdent(c, fn).id notin ctx.toMixin:
       errorUndeclaredIdentifier(c, n.info, fn.renderTree)
 
-    # `if s!=nil: determineType2(c, s)` would be incorrect here (triggering semcheck during generic prepass causes issues)
+    # `if s!=nil: determineType2(c.graph, s)` would be incorrect here (triggering semcheck during generic prepass causes issues)
     var first = int ord(withinConcept in flags)
     var mixinContext = false
     if s != nil:

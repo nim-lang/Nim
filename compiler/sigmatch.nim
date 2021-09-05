@@ -130,12 +130,10 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
       echo "binding ", key, " -> ", val
   idTablePut(c.bindings, key, val.skipIntLit(c.c.idgen))
 
-proc determineType2*(c: PContext, s: PSym) {.importc.} # PRTEMP
-
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
                     binding: PNode, calleeScope = -1,
                     diagnosticsEnabled = false) =
-  determineType2(ctx, callee) # needDeclaration needed since we need callee.typ
+  determineType2(ctx.graph, callee) # needDeclaration needed since we need callee.typ
   initCandidateAux(ctx, c, callee.typ)
   c.calleeSym = callee
   if callee.kind in skProcKinds and calleeScope == -1:
@@ -2223,7 +2221,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     for i in 0..<arg.len:
       if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
                              skIterator, skMacro, skTemplate, skEnumField}:
-        determineType2(c, arg[i].sym) # PRTEMP D20210831T155116
+        determineType2(c.graph, arg[i].sym) # PRTEMP D20210831T155116
         copyCandidate(z, m)
         z.callee = arg[i].typ
         assert z.callee != nil, $(arg[i].sym, i, ) # TODO: the problem is upstream
