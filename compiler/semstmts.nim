@@ -1571,6 +1571,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
 
     doAssert r[0].kind == nkSym
     let m = r[0].sym
+    # dbgIf m, m.typ, m.flags
     case m.kind
     of skMacro: result = semMacroExpr(c, r, r, m, {})
     of skTemplate: result = semTemplateExpr(c, r, m, {})
@@ -1579,12 +1580,16 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       continue
 
     doAssert result != nil
+    # dbgIf result
 
     # since a proc annotation can set pragmas, we process these here again.
     # This is required for SqueakNim-like export pragmas.
     if result.kind in procDefs and result[namePos].kind == nkSym and
         result[pragmasPos].kind != nkEmpty:
-      pragma(c, result[namePos].sym, result[pragmasPos], validPragmas)
+      let sym = result[namePos].sym
+      # dbgIf sym, sym.flags, sym.typ
+      if sym.typ != nil: # PRTEMP check sfLazy ?
+        pragma(c, sym, result[pragmasPos], validPragmas)
 
     return
 
