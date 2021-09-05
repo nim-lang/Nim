@@ -934,11 +934,9 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkBracketExpr: result = transformArrayAccess(c, n)
   of procDefs:
     var s = n[namePos].sym
-    dbgIf n.typ, s.typ, s, s.kind, s.flags, c.graph.config$s.ast.info
     if n.typ != nil:
       if s.typ == nil:
-        s.flags.incl sfLazyDeadSymTansf # D20210904T200315
-        dbgIf s, s.flags
+        s.flags.incl sfLazyDeadSymTansf # D20210904T200315 PRTEMP remove?
       if s.typ != nil and s.typ.callConv == ccClosure:
         result = transformSym(c, n[namePos])
         # use the same node as before if still a symbol:

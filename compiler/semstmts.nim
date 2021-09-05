@@ -2057,7 +2057,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if hasProto:
     if sfForward notin proto.flags and proto.magic == mNone:
-      dbgIf proto, s, proto.flags, s.flags, s.typ, proto.typ, proto.ast, s.ast
+      # dbgIf proto, s, proto.flags, s.flags, s.typ, proto.typ, proto.ast, s.ast
       wrongRedefinition(c, n.info, proto.name.s, proto.info)
     if not comesFromShadowScope:
       excl(proto.flags, sfForward)
@@ -2534,7 +2534,6 @@ type VisitContext = object
 
 proc visitAllLiveSymbols(n: PNode, vc: var VisitContext, isFindName = false) =
   # if n == nil: return # PRTEMP
-  dbgIf n.kind
   case n.kind
   of routineDefs:
     visitAllLiveSymbols(n[namePos], vc, isFindName = true)
@@ -2544,7 +2543,7 @@ proc visitAllLiveSymbols(n: PNode, vc: var VisitContext, isFindName = false) =
       let s = n.sym
       # if s.lazyDecl == nil and s.typ == nil and s.ast != nil and s.ast.kind in routineDefs:
       if s.lazyDecl == nil and s.typ == nil and s.ast != nil:
-        dbgIf s, vc.allSymbols2.len, vc.graph.config$s.ast.info
+        # dbgIf s, vc.allSymbols2.len, vc.graph.config$s.ast.info
         # dbgIf s, vc.graph.config$s.ast.info
          # PRTEMP checkme in case multi stage?
         # dbgIf i, s, graph.allSymbols.len, graph.config$s.ast.info
@@ -2564,10 +2563,10 @@ proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
     var vc: VisitContext
     vc.graph=graph
     when true:
-      dbgIf graph.allModules.len
+      # dbgIf graph.allModules.len
       for module in graph.allModules:
-        dbgIf module, vc.allSymbols2.len, "D20210904T212130"
-        dbgIf module.ast
+        # dbgIf module, vc.allSymbols2.len, "D20210904T212130"
+        # dbgIf module.ast
         # let n = module.ast # nil !
         let n = graph.moduleAsts[module.id]
         visitAllLiveSymbols(n, vc)
