@@ -476,6 +476,9 @@ proc sameConstant*(a, b: PNode): bool =
         result = true
 
 proc genLiteral(c: PCtx; n: PNode): int =
+  # if n.typ == nil:
+  #   dbgIf n
+  #   dbgIf getStacktrace()
   # types do not matter here:
   for i in 0..<c.constants.len:
     if sameConstant(c.constants[i], n): return i

@@ -1416,7 +1416,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLdConst:
       let rb = instr.regBx - wordExcess
       let cnst = c.constants[rb]
-      if fitsRegister(cnst.typ):
+      #[
+      case_D20210904T193500
+      for constants generated via bindSym, typ can be nil if we haven't semchecked
+      the symbol; no need to semcheck it if it won't be used; so we must check
+      for `cnst.kind != nkSym` before using `cnst.typ`
+      ]#
+      if cnst.kind != nkSym and fitsRegister(cnst.typ):
         reset(regs[ra])
         putIntoReg(regs[ra], cnst)
       else:
