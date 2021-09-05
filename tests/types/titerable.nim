@@ -51,9 +51,11 @@ template bad1 =
 
 template bad2 =
   proc fn4(a: iterable) = discard
+  type T = typeof(fn4) # D20210905T125411_forceSemcheck_compiles
 
 template bad3 =
   proc fn4(a: iterable[int]) = discard
+  type T = typeof(fn4) # D20210905T125411_forceSemcheck_compiles
 
 template good4 =
   template fn1(a: iterable) = discard

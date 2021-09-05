@@ -33,6 +33,8 @@ proc debug*(n: PNode; conf: ConfigRef = nil) {.exportc: "debugNode", deprecated.
 
 proc isNotDup(s: PSym): bool =
   s.lazyDecl == nil
+  # s.lazyDecl == nil and sfLazySemcheckStarted notin s.flags # PRTEMP
+  # sfLazySemcheckStarted
 
 proc typekinds*(t: PType) {.deprecated.} =
   var t = t

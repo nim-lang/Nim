@@ -2180,7 +2180,8 @@ proc getValidPragmas(kind: TSymKind, n: PNode): set[TSpecialWord] =
     set[TSpecialWord].default
 
 proc determineTypeOne(c: PContext, s: PSym) =
-  if s.typ != nil or sfLazy notin s.flags: return
+  if s.typ != nil or sfLazy notin s.flags or sfLazySemcheckStarted in s.flags: return
+  s.flags.incl sfLazySemcheckStarted # avoid infinite recursion
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$s.ast.info & " " & $(s, s.owner, s.flags, c.module)
   let validPragmas = getValidPragmas(s.kind, s.ast)
@@ -2196,6 +2197,7 @@ proc determineTypeOne(c: PContext, s: PSym) =
   let n2 = semExpr(c, s.ast, {}, forceReSem = true)
   # eg: for semIterator etc
   assert n2 == s.ast
+  s.flags.excl sfLazySemcheckStarted
 
   discard c.optionStack.pop
   c.popOwner()
