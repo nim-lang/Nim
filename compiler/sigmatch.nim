@@ -2283,24 +2283,28 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     # {tyTypeDesc, tyUntyped, tyTyped, tyProxy}:
     # a.typ == nil is valid
     result = a
-  elif a.typ.isNil:
-    if formal.kind == tyIterable:
-      let flags = {efDetermineType, efAllowStmt, efWantIterator, efWantIterable}
-      result = c.semOperand(c, a, flags)
-    else:
-      # XXX This is unsound! 'formal' can differ from overloaded routine to
-      # overloaded routine!
-      let flags = {efDetermineType, efAllowStmt}
-                  #if formal.kind == tyIterable: {efDetermineType, efWantIterator}
-                  #else: {efDetermineType, efAllowStmt}
-                  #elif formal.kind == tyTyped: {efDetermineType, efWantStmt}
-                  #else: {efDetermineType}
-      result = c.semOperand(c, a, flags)
   else:
-    result = a
-    considerGenSyms(c, result)
-    if result.kind != nkHiddenDeref and result.typ.kind in {tyVar, tyLent} and c.matchedConcept == nil:
-      result = newDeref(result)
+    var a = a
+    if a.typ.isNil: # PRTEMP see D20210905T112902
+      a = c.semExpr(c, a, {efDetermineType, efWantValue})
+    if a.typ.isNil:
+      if formal.kind == tyIterable:
+        let flags = {efDetermineType, efAllowStmt, efWantIterator, efWantIterable}
+        result = c.semOperand(c, a, flags)
+      else:
+        # XXX This is unsound! 'formal' can differ from overloaded routine to
+        # overloaded routine!
+        let flags = {efDetermineType, efAllowStmt}
+                    #if formal.kind == tyIterable: {efDetermineType, efWantIterator}
+                    #else: {efDetermineType, efAllowStmt}
+                    #elif formal.kind == tyTyped: {efDetermineType, efWantStmt}
+                    #else: {efDetermineType}
+        result = c.semOperand(c, a, flags)
+    else:
+      result = a
+      considerGenSyms(c, result)
+      if result.kind != nkHiddenDeref and result.typ.kind in {tyVar, tyLent} and c.matchedConcept == nil:
+        result = newDeref(result)
 
 proc prepareOperand(c: PContext; a: PNode): PNode =
   if a.typ.isNil:
