@@ -2285,7 +2285,7 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     result = a
   else:
     var a = a
-    if a.typ.isNil: # PRTEMP see D20210905T112902
+    if a.typ.isNil and a.kind == nkSym: # PRTEMP see D20210905T112902 and tests/generics/t6137.nim
       a = c.semExpr(c, a, {efDetermineType, efWantValue})
     if a.typ.isNil:
       if formal.kind == tyIterable:
