@@ -1568,11 +1568,28 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       of skProc, skFunc, skMethod, skConverter, skIterator:
         # type parameters: partial generic specialization
         n[0] = semSymGenericInstantiation(c, n[0], s)
-        result = explicitGenericInstantiation(c, n, s)
-        if result == n:
-          n[0] = copyTree(result)
-        else:
-          n[0] = result
+        block inferredGenericCheck:
+          let
+            neededGenParams = s.ast[genericParamsPos].len
+            heldGenParams = n.len - 1
+            implicitParams = block:
+              var res = 0
+              for x in s.ast[genericParamsPos]:
+                if tfImplicitTypeParam in x.typ.flags:
+                  inc res
+              res
+          if heldGenParams != neededGenParams and implicitParams + heldGenParams == neededGenParams:
+            # This is an implicit + explicit generic procedure without all args passed,
+            # kicking back the sem'd symbol fixes #17212
+            # Uncertain the hackiness of this solution.
+            result = n
+            break inferredGenericCheck
+
+          result = explicitGenericInstantiation(c, n, s)
+          if result == n:
+            n[0] = copyTree(result)
+          else:
+            n[0] = result
       of skMacro, skTemplate:
         if efInCall in flags:
           # We are processing macroOrTmpl[] in macroOrTmpl[](...) call.
