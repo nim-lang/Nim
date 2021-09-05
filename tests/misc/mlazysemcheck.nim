@@ -533,6 +533,7 @@ elif defined case_test2:
     foo(baz)
 
 elif defined case_stdlib_imports:
+  {.define(nimCompilerDebug).}
   #[
   from tests/test_nimscript.nims, minus 1 module, see below
   ]#

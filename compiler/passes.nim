@@ -45,7 +45,9 @@ const
   maxPasses = 10
 
 type
-  TPassContextArray = array[0..maxPasses - 1, PPassContext]
+  TPassContextArray = object
+    passContexts: array[0..maxPasses - 1, PPassContext]
+    module: PSym
 
 proc clearPasses*(g: ModuleGraph) =
   g.passes.setLen(0)
@@ -56,26 +58,29 @@ proc registerPass*(g: ModuleGraph; p: TPass) =
 
 proc openPasses(g: ModuleGraph; a: var TPassContextArray;
                 module: PSym; idgen: IdGenerator) =
+  g.allModules.add module
+  g.moduleAsts[module.id] = newNodeI(nkStmtList, module.info)
   for i in 0..<g.passes.len:
     if not isNil(g.passes[i].open):
-      a[i] = g.passes[i].open(g, module, idgen)
-      g.passes[i].moduleContexts[module.id] = a[i] # PRTEMP; make it optional
-    else: a[i] = nil
+      a.passContexts[i] = g.passes[i].open(g, module, idgen)
+      g.passes[i].moduleContexts[module.id] = a.passContexts[i] # PRTEMP; make it optional
+    else: a.passContexts[i] = nil
 
 proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
   var m: PNode = nil
   for i in 0..<graph.passes.len:
     if not isNil(graph.passes[i].close):
-      m = graph.passes[i].close(graph, a[i], m)
-    # a[i] = nil                # free the memory here # PRTEMP
+      m = graph.passes[i].close(graph, a.passContexts[i], m)
+    # a.passContexts[i] = nil                # free the memory here # PRTEMP
 
 proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray): bool =
   # this implements the code transformation pipeline
   var m = n
   for i in 0..<graph.passes.len:
     if not isNil(graph.passes[i].process):
-      m = graph.passes[i].process(a[i], m)
+      m = graph.passes[i].process(a.passContexts[i], m)
       if isNil(m): return false
+  graph.moduleAsts[a.module.id].add m # PRTEMP
   result = true
 
 proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =
@@ -130,6 +135,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     s: PLLStream
     fileIdx = module.fileIdx
   prepareConfigNotes(graph, module)
+  a.module = module
   openPasses(graph, a, module, idgen)
   if stream == nil:
     let filename = toFullPathConsiderDirty(graph.config, fileIdx)

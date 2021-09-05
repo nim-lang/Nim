@@ -241,6 +241,7 @@ type
     sfLazy,           # symbol is lazy declared
     sfLazyForwardRequested, # semchecking was requested for a lazy symbol; PRTEMP RENAME
     sfLazySemcheckInprogress,
+    sfLazyDeadSymTansf, # for transf.nim D20210904T200315
     sfWasForwarded,   # symbol had a forward declaration
                       # (implies it's too dangerous to patch its type signature)
     sfImportc,        # symbol is external; imported

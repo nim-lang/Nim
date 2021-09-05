@@ -2057,6 +2057,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if hasProto:
     if sfForward notin proto.flags and proto.magic == mNone:
+      dbgIf proto, s, proto.flags, s.flags, s.typ, proto.typ, proto.ast, s.ast
       wrongRedefinition(c, n.info, proto.name.s, proto.info)
     if not comesFromShadowScope:
       excl(proto.flags, sfForward)
@@ -2232,6 +2233,8 @@ proc determineType(c: PContext, s: PSym) =
         # dbgIf s2, s, s2.flags, s.flags, c.config$s2.ast.info
         candidates.add s2
   candidates = candidates.sortedByIt(it.id)
+  when defined(nimCompilerStacktraceHints):
+    setFrameMsg $(candidates.len, candidates)
     # to ensure that fwd declarations are processed before implementations
   # dbgIf candidates.len, candidates, s, c.module
   for s2 in candidates:
@@ -2525,19 +2528,67 @@ proc isSemcheckUnusedSymbols(conf: ConfigRef): bool =
   elif conf.isDefined("nimLazySemcheckComplete"):
     result = true
 
-proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
-  if graph.config.isSemcheckUnusedSymbols:
-    var i=0
-    var allSymbols2: seq[PSym]
-    while i < graph.allSymbols.len: # can grow during iteration
-      let s = graph.allSymbols[i]
-      i.inc
-      if s.lazyDecl == nil and s.typ == nil: # PRTEMP checkme in case multi stage?
+type VisitContext = object
+  graph: ModuleGraph
+  allSymbols2: seq[PSym]
+
+proc visitAllLiveSymbols(n: PNode, vc: var VisitContext, isFindName = false) =
+  # if n == nil: return # PRTEMP
+  dbgIf n.kind
+  case n.kind
+  of routineDefs:
+    visitAllLiveSymbols(n[namePos], vc, isFindName = true)
+  of nkSym:
+    if isFindName:
+      # PRTEMP IMPROVE
+      let s = n.sym
+      # if s.lazyDecl == nil and s.typ == nil and s.ast != nil and s.ast.kind in routineDefs:
+      if s.lazyDecl == nil and s.typ == nil and s.ast != nil:
+        dbgIf s, vc.allSymbols2.len, vc.graph.config$s.ast.info
+        # dbgIf s, vc.graph.config$s.ast.info
+         # PRTEMP checkme in case multi stage?
         # dbgIf i, s, graph.allSymbols.len, graph.config$s.ast.info
         # we could also have laxer checking with just `needDeclaration = true`
-        let lcontext = lazyVisit(graph, s)
-        determineType2(lcontext.ctxt. PContext, s) # TODO: can shortcut some work?
-      allSymbols2.add s
+        let lcontext = lazyVisit(vc.graph, s)
+        determineType2(lcontext.ctxt. PContext, s)
+        vc.allSymbols2.add s
+        visitAllLiveSymbols(s.ast, vc)
+  else:
+    if n.safeLen > 0:
+      for ni in n:
+        visitAllLiveSymbols(ni, vc, isFindName)
+
+proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
+  if graph.config.isSemcheckUnusedSymbols:
+    # var allSymbols2: seq[PSym]
+    var vc: VisitContext
+    vc.graph=graph
+    when true:
+      dbgIf graph.allModules.len
+      for module in graph.allModules:
+        dbgIf module, vc.allSymbols2.len, "D20210904T212130"
+        dbgIf module.ast
+        # let n = module.ast # nil !
+        let n = graph.moduleAsts[module.id]
+        visitAllLiveSymbols(n, vc)
+      let allSymbols2 = move(vc.allSymbols2)
+    else:
+      #[
+      TODO: see D20210904T200315;
+      should we instead walk all syms top-down from root modules to ensure
+      they're still live and attached?
+      ]#
+
+      var i=0
+      while i < graph.allSymbols.len: # can grow during iteration
+        let s = graph.allSymbols[i]
+        i.inc
+        if s.lazyDecl == nil and s.typ == nil and sfLazyDeadSymTansf notin s.flags: # PRTEMP checkme in case multi stage?
+          # dbgIf i, s, graph.allSymbols.len, graph.config$s.ast.info
+          # we could also have laxer checking with just `needDeclaration = true`
+          let lcontext = lazyVisit(graph, s)
+          determineType2(lcontext.ctxt. PContext, s) # TODO: can shortcut some work?
+        allSymbols2.add s
 
     var ok = true
     block post:

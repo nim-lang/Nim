@@ -1857,6 +1857,15 @@ proc connect*(socket: AsyncFD, address: string, port: Port,
     socket.SocketHandle.bindToDomain(domain)
   asyncAddrInfoLoop(aiList, socket)
 
+proc sleepAsync2*(ms: int | float) =
+# proc sleepAsync2*(ms: int) =
+  type Mono = typeof(getMonoTime())
+  var timers: HeapQueue[tuple[finishAt: Mono, fut: ptr int]]
+  timers.push((getMonoTime(), nil))
+
+  # var timers: HeapQueue[Mono]
+  # timers.push(getMonoTime())
+
 proc sleepAsync*(ms: int | float): owned(Future[void]) =
   ## Suspends the execution of the current async procedure for the next
   ## `ms` milliseconds.

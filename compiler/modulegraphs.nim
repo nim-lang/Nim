@@ -107,6 +107,8 @@ type
     # fields for lazy semchecking
     symLazyContext*: Table[int, LazyContext] # key: sym.id
     allSymbols*: seq[PSym]
+    allModules*: seq[PSym]
+    moduleAsts*: Table[int, PNode] # key: sym.id (module)
 
   LazyContext* = ref object
     scope*: PScope
