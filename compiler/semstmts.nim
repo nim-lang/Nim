@@ -1935,7 +1935,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       lcontext.ctxt = c
       lcontext.scope = c.currentScope # TODO: needed?
       lcontext.pBase = c.p
-      lcontext.optionStackEntry = c.optionStack[^1]
+      # lcontext.optionStackEntry = c.optionStack[^1]
+      # PRTEMP avoid doing all those copies; maybe c.optionStack should be what's always written to
+      lcontext.optionStackEntry = c.snapshotOptionEntry
+      # dbgIf lcontext.optionStackEntry, c.config$s.info, s, c.optionStack[^1], c.optionStack[^1].options, optOverflowCheck in c.optionStack[^1].options
       return result
 
   pushOwner(c, s)
@@ -2191,7 +2194,12 @@ proc determineTypeOne(c: PContext, s: PSym) =
     lazyVisit(c.graph, s).needDeclaration = true
   c.pushOwner(s.owner) # c.getCurrOwner() would be wrong (it's derived globally from ConfigRef)
   let lcontext = c.graph.symLazyContext[s.id]
-  c.optionStack.add(lcontext.optionStackEntry.POptionEntry)
+  dbgIf c.optionStack.len
+  discard pushOptionEntry(c)
+  readOptionEntry(c, lcontext.optionStackEntry.POptionEntry)
+  # c.optionStack.add(lcontext.optionStackEntry.POptionEntry)
+  # dbgIf c.optionStack.len
+  # dbgIf c.optionStack[^1], s, c.config$s.info
 
   # discard semProcAux(c, s.ast, s.kind, validPragmas)
   assert s.ast.kind in routineDefs, $s
@@ -2200,7 +2208,11 @@ proc determineTypeOne(c: PContext, s: PSym) =
   assert n2 == s.ast
   s.flags.excl sfLazySemcheckStarted
 
-  discard c.optionStack.pop
+  # dbgIf c.optionStack.len
+  # discard c.optionStack.pop
+  popOptionEntry(c)
+  # dbgIf c.optionStack.len
+  # dbgIf c.optionStack[^1], s
   c.popOwner()
 
 proc determineType2(graph: ModuleGraph, s: PSym) {.exportc.} =

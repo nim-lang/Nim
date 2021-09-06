@@ -416,8 +416,10 @@ proc tryProcessOption(c: PContext, n: PNode, resOptions: var TOptions): bool =
       processExperimental(c, n)
       return true
     let opts = pragmaToOptions(sw)
+    dbgIf opts
     if opts != {}:
       onOff(c, n, opts, resOptions)
+      dbgIf resOptions
     else:
       case sw
       of wCallconv: processCallConv(c, n)
@@ -447,20 +449,25 @@ proc processOption(c: PContext, n: PNode, resOptions: var TOptions) =
 proc processPush(c: PContext, n: PNode, start: int) =
   if n[start-1].kind in nkPragmaCallKinds:
     localError(c.config, n.info, "'push' cannot have arguments")
+  dbgIf c.optionStack.len, c.optionStack[^1], n, start
   var x = pushOptionEntry(c)
+  dbgIf c.optionStack.len
   for i in start..<n.len:
+    dbgIf c.config.options
     if not tryProcessOption(c, n[i], c.config.options):
       # simply store it somewhere:
       if x.otherPragmas.isNil:
         x.otherPragmas = newNodeI(nkPragma, n.info)
       x.otherPragmas.add n[i]
     #localError(c.config, n.info, errOptionExpected)
+  dbgIf c.config.options
 
   # If stacktrace is disabled globally we should not enable it
   if optStackTrace notin c.optionStack[0].options:
     c.config.options.excl(optStackTrace)
   when defined(debugOptions):
     echo c.config $ n.info, " PUSH config is now ", c.config.options
+  dbgIf c.optionStack.len, c.optionStack[^1]
 
 proc processPop(c: PContext, n: PNode) =
   if c.optionStack.len <= 1:

@@ -280,7 +280,7 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   result.notes = conf.notes
   result.warningAsErrors = conf.warningAsErrors
 
-proc pushOptionEntry*(c: PContext): POptionEntry =
+proc snapshotOptionEntry*(c: PContext): POptionEntry =
   new(result)
   var prev = c.optionStack[^1]
   result.options = c.config.options
@@ -289,14 +289,28 @@ proc pushOptionEntry*(c: PContext): POptionEntry =
   result.notes = c.config.notes
   result.warningAsErrors = c.config.warningAsErrors
   result.features = c.features
+
+proc pushOptionEntry*(c: PContext): POptionEntry =
+  result = snapshotOptionEntry(c)
   c.optionStack.add(result)
 
+proc readOptionEntry*(c: PContext, b :POptionEntry) =
+  c.config.options = b.options
+  c.config.notes = b.notes
+  c.config.warningAsErrors = b.warningAsErrors
+  c.features = b.features
+
 proc popOptionEntry*(c: PContext) =
-  c.config.options = c.optionStack[^1].options
-  c.config.notes = c.optionStack[^1].notes
-  c.config.warningAsErrors = c.optionStack[^1].warningAsErrors
-  c.features = c.optionStack[^1].features
+  readOptionEntry(c, c.optionStack[^1])
   c.optionStack.setLen(c.optionStack.len - 1)
+
+  # static:
+  #   echo "D20210906T011701"
+  #   4 11 11 4
+  #   echo c.config.options.type.sizeof
+  #   echo c.config.notes.type.sizeof
+  #   echo c.config.warningAsErrors.type.sizeof
+  #   echo c.config.features.type.sizeof
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
