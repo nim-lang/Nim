@@ -459,11 +459,12 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
       r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
 
   except JsonParsingError:
-    echo "[Warning] - Cannot run nimble tests: Invalid package file."
+    errors = 1
     r.addResult(packageFileTest, targetC, "", "Invalid package file", reBuildFailed)
   except ValueError:
-    echo "[Warning] - $#" % getCurrentExceptionMsg()
+    errors = 1
     r.addResult(packageFileTest, targetC, "", "Unknown package", reBuildFailed)
+    raise # bug #18805
   finally:
     if errors == 0: removeDir(packagesDir)
 
