@@ -9,6 +9,7 @@ tests: hintAsError, warningAsError
 template fn1 =
   {.hintAsError[ConvFromXtoItselfNotNeeded]:on.}
   proc fn(a: string) = discard a.string
+  type _ = typeof(fn) # D20210905T125411_forceSemcheck_compiles
   {.hintAsError[ConvFromXtoItselfNotNeeded]:off.}
 
 template fn2 =

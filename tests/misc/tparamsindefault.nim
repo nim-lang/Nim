@@ -76,18 +76,22 @@ block:
   reject:
     # This is a type mismatch error:
     proc f4(a: int, b = a, c: float = b) = discard
+    type _ = typeof(f4) # D20210905T125411_forceSemcheck_compiles
 
   reject:
     # undeclared identifier
     proc f5(a: int, b = c, c = 10) = discard
+    type _ = typeof(f5) # D20210905T125411_forceSemcheck_compiles
 
   reject:
     # undeclared identifier
     proc f6(a: int, b = b) = discard
+    type _ = typeof(f6) # D20210905T125411_forceSemcheck_compiles
 
   reject:
     # undeclared identifier
     proc f7(a = a) = discard
+    type _ = typeof(f7) # D20210905T125411_forceSemcheck_compiles
 
 block:
   proc f(a: var int, b: ptr int, c = addr(a)) =

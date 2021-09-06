@@ -8,4 +8,5 @@ import async
 proc a {.async.} =
   await 0
 
-waitFor a()
+# waitFor is declared in std/asyncdispatch so the following would trigger a different error with nimLazySemcheck
+# waitFor a()
