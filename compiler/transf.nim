@@ -738,7 +738,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   pushInfoContext(c.graph.config, n.info)
   inc(c.inlining)
   stmtList.add(transform(c, body))
-  #findWrongOwners(c, stmtList.pnode)
+  #findWrongOwners(c, stmtList.PNode)
   dec(c.inlining)
   popInfoContext(c.graph.config)
   popTransCon(c)
@@ -1019,10 +1019,11 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkAsgn:
     result = transformAsgn(c, n)
   of nkIdentDefs, nkConstDef:
-    result = n
+    result = newTransNode(n)
     result[0] = transform(c, n[0])
     # Skip the second son since it only contains an unsemanticized copy of the
     # variable type used by docgen
+    result[1] = n[1]
     result[2] = transform(c, n[2])
     # XXX comment handling really sucks:
     if importantComments(c.graph.config):
@@ -1033,8 +1034,10 @@ proc transform(c: PTransf, n: PNode): PNode =
     # (bug #2604). We need to patch this environment here too:
     let a = n[1]
     if a.kind == nkSym:
-      n[1] = transformSymAux(c, a)
-    return n
+      result = copyTree(n)
+      result[1] = transformSymAux(c, a)
+    else:
+      result = n
   of nkExceptBranch:
     result = transformExceptBranch(c, n)
   of nkCheckedFieldExpr:
