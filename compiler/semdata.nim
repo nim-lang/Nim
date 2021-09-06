@@ -18,10 +18,6 @@ import
 import ic / ic
 
 type
-  # TOptionStack* = object of TOptionStackBase
-  #   optionStack*: seq[POptionEntry]
-  # OptionStack* = ref TOptionStack
-
   PProcCon* = ref TProcCon
   TProcCon* {.acyclic.} = object of TProcConBase # procedure context; also used for top-level
                                  # statements

@@ -1936,11 +1936,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       lcontext.scope = c.currentScope # TODO: needed?
       lcontext.pBase = c.p
       # PRTEMP avoid doing all those copies; maybe c.optionStack should be what's always written to
-      # lcontext.optionStackEntry = c.snapshotOptionEntry
-      # TODO: ref object to avoid copy instead?
-      # lcontext.optionStack = c.optionStack
       lcontext.optionStack = snapshotOptionEntry(c) # PRTEMP
-      dbgIf lcontext.optionStack
       return result
 
   pushOwner(c, s)
@@ -2171,6 +2167,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
 
 proc getValidPragmas(kind: TSymKind, n: PNode): set[TSpecialWord] =
+  # PRTEMP REMOVE
   case kind
   of skProc: procPragmas
   of skFunc:
@@ -2190,7 +2187,6 @@ proc determineTypeOne(c: PContext, s: PSym) =
   s.flags.incl sfLazySemcheckStarted # avoid infinite recursion
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$s.ast.info & " " & $(s, s.owner, s.flags, c.module)
-  let validPragmas = getValidPragmas(s.kind, s.ast)
   if c.config.isLazySemcheck:
     # PRTEMP FACTOR; do we even need this side channel or can we use a sf flag?
     lazyVisit(c.graph, s).needDeclaration = true
@@ -2201,19 +2197,10 @@ proc determineTypeOne(c: PContext, s: PSym) =
   c.optionStack = lcontext.optionStack
   # TODO: swap?
 
+  # TODO: use popOptionEntry?
   readOptionEntry(c, lcontext.optionStack)
   c.optionStack = lcontext.optionStack.parent
 
-# proc popOptionEntry*(c: PContext) =
-#   readOptionEntry(c, c.optionStack)
-#   c.optionStack = c.optionStack.parent
-
-
-  # c.optionStack = lcontext.optionStack # TODO: swap? or make it all refs
-  # discard pushOptionEntry(c)
-  # readOptionEntry(c, lcontext.optionStackEntry.POptionEntry)
-
-  # discard semProcAux(c, s.ast, s.kind, validPragmas)
   assert s.ast.kind in routineDefs, $s
   let n2 = semExpr(c, s.ast, {}, forceReSem = true) # PRTEMP: can this raise? if so, need try/catch?
   # eg: for semIterator etc
@@ -2222,8 +2209,6 @@ proc determineTypeOne(c: PContext, s: PSym) =
 
   readOptionEntry(c, old)
   c.optionStack = old.parent
-  # popOptionEntry(c)
-  # c.optionStack = move(old)
   c.popOwner()
 
 proc determineType2(graph: ModuleGraph, s: PSym) {.exportc.} =

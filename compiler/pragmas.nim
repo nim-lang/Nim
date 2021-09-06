@@ -455,9 +455,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
       # simply store it somewhere:
       if x.otherPragmas.isNil:
         x.otherPragmas = newNodeI(nkPragma, n.info)
-      dbgIf i, n[i]
       x.otherPragmas.add n[i]
-      dbgIf x.otherPragmas
     #localError(c.config, n.info, errOptionExpected)
 
   # If stacktrace is disabled globally we should not enable it

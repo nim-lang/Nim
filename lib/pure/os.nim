@@ -1794,12 +1794,7 @@ when hasCCopyfile:
   type
     copyfile_state_t {.nodecl.} = pointer
     copyfile_flags_t = cint
-  # proc copyfile_state_alloc(): copyfile_state_t
-  proc copyfile_state_alloc(): copyfile_state_t  {.header: "<copyfile.h>".}
-  # proc copyfile_state_alloc(): copyfile_state_t {.nodecl.}
-  # proc copyfile_state_alloc(): copyfile_state_t {.nodecl, header: "<copyfile.h>".}
-  # proc copyfile_state_alloc(): copyfile_state_t {.header: "<copyfile.h>".}
-  # proc copyfile_state_alloc(): copyfile_state_t
+  proc copyfile_state_alloc(): copyfile_state_t
   proc copyfile_state_free(state: copyfile_state_t): cint
   proc c_copyfile(src, dst: cstring,  state: copyfile_state_t, flags: copyfile_flags_t): cint {.importc: "copyfile".}
   # replace with `let` pending bootstrap >= 1.4.0

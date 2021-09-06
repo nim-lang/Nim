@@ -124,7 +124,6 @@ type
     allModules*: seq[PSym]
     moduleAsts*: Table[int, PNode] # key: sym.id (module)
 
-  # TOptionStackBase* = object of RootObj
   LazyContext* = ref object
     scope*: PScope
     ctxt*: PPassContext
