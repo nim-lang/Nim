@@ -879,6 +879,7 @@ proc handleStmtMacro(c: PContext; n, selector: PNode; magicType: string;
     var symx = initOverloadIter(o, c, headSymbol)
     while symx != nil:
       if symx.kind in {skTemplate, skMacro}:
+        determineType2(c.graph, symx) # eg, tests/stdlib/tenumutils.nim
         if symx.typ.len == 2 and symx.typ[1] == maType.typ:
           if match == nil:
             match = symx
@@ -2533,7 +2534,7 @@ type VisitContext = object
   allSymbols2: seq[PSym]
 
 proc visitAllLiveSymbols(n: PNode, vc: var VisitContext, isFindName = false) =
-  # if n == nil: return # PRTEMP
+  if n == nil: return # PRTEMP, with tests/stdlib/tsugar.nim
   case n.kind
   of routineDefs:
     visitAllLiveSymbols(n[namePos], vc, isFindName = true)

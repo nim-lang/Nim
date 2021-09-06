@@ -2025,6 +2025,7 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
     var o: TOverloadIter
     var symx = initOverloadIter(o, c, headSymbol)
     while symx != nil:
+      determineType2(c.graph, symx) # TODO: find all similar instances; TODO: more lazy (ie, only when computing typ?)
       if symx.kind in {skTemplate, skMacro} and symx.typ.len == macroCall.len:
         cand = symx
         inc cands
