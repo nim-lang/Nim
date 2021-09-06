@@ -174,6 +174,12 @@ proc commonType*(c: PContext; x, y: PType): PType =
         result = b #.skipIntLit
       elif a.kind in IntegralTypes and a.n != nil:
         result = a #.skipIntLit
+  elif a.kind == tyProc and b.kind == tyProc:
+    if a.callConv == ccClosure and b.callConv != ccClosure:
+      result = x
+    elif compatibleEffects(a, b) != efCompat or
+        (b.flags * {tfNoSideEffect, tfGcSafe}) < (a.flags * {tfNoSideEffect, tfGcSafe}):
+      result = y
   else:
     var k = tyNone
     if a.kind in {tyRef, tyPtr}:

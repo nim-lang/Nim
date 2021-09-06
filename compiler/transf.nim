@@ -1023,8 +1023,9 @@ proc transform(c: PTransf, n: PNode): PNode =
     result[0] = transform(c, n[0])
     # Skip the second son since it only contains an unsemanticized copy of the
     # variable type used by docgen
-    result[1] = n[1]
-    result[2] = transform(c, n[2])
+    let last = n.len-1
+    for i in 1..<last: result[i] = n[i]
+    result[last] = transform(c, n[last])
     # XXX comment handling really sucks:
     if importantComments(c.graph.config):
       result.comment = n.comment
