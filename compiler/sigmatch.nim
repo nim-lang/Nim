@@ -2221,9 +2221,10 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     for i in 0..<arg.len:
       if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
                              skIterator, skMacro, skTemplate, skEnumField}:
-        dbgIf arg[i], arg[i].sym, arg[i].sym.kind, arg[i].sym.flags, arg[i].sym.typ
         determineType2(c.graph, arg[i].sym) # PRTEMP D20210831T155116
-        dbgIf arg[i], arg[i].sym, arg[i].sym.kind, arg[i].sym.flags, arg[i].sym.typ
+        # dbgIf arg[i], arg[i].sym, arg[i].sym.kind, arg[i].sym.flags, arg[i].sym.typ
+        if arg[i].typ == nil:
+          arg[i].typ = arg[i].sym.typ # PRTEMP; otherwise do it in semExpr in D20210905T170324
         copyCandidate(z, m)
         z.callee = arg[i].typ
         assert z.callee != nil, $(arg[i].sym, i, ) # TODO: the problem is upstream
@@ -2377,9 +2378,9 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
   m.state = csMatch # until proven otherwise
   m.firstMismatch = MismatchInfo()
   # dbgIf n, m.calleeSym, m.callee, ?.m.calleeSym.flags, ?.m.calleeSym.typ
-  dbgIf n, m.calleeSym, m.callee, m.calleeSym
-  if m.calleeSym != nil:
-    dbgIf m.calleeSym.flags, m.calleeSym.typ
+  # dbgIf n, m.calleeSym, m.callee, m.calleeSym
+  # if m.calleeSym != nil:
+  #   dbgIf m.calleeSym.flags, m.calleeSym.typ
   m.call = newNodeIT(n.kind, n.info, m.callee.base)
   m.call.add n[0]
 

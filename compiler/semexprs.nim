@@ -2795,7 +2795,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, forceReSem = false):
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
       #performProcvarCheck(c, n, s)
-      result = symChoice(c, n, s, scClosed)
+      result = symChoice(c, n, s, scClosed) # D20210905T170324
       if result.kind == nkSym:
         markIndirect(c, result.sym)
         # if isGenericRoutine(result.sym):
