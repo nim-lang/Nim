@@ -378,7 +378,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   cl.typeMap = newTypeMapLayer(cl)
 
   for i in 1..<t.len:
-    var x = replaceTypeVarsT(cl, t[i])
+    var x = replaceTypeVarsT(cl, header[i])
     assert x.kind != tyGenericInvocation
     header[i] = x
     propagateToOwner(header, x)
