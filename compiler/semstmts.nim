@@ -1935,11 +1935,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       lcontext.ctxt = c
       lcontext.scope = c.currentScope # TODO: needed?
       lcontext.pBase = c.p
-      # lcontext.optionStackEntry = c.optionStack[^1]
       # PRTEMP avoid doing all those copies; maybe c.optionStack should be what's always written to
       # lcontext.optionStackEntry = c.snapshotOptionEntry
       # TODO: ref object to avoid copy instead?
-      lcontext.optionStack = c.optionStack # PRTEMP
+      # lcontext.optionStack = c.optionStack
+      lcontext.optionStack = snapshotOptionEntry(c) # PRTEMP
+      dbgIf lcontext.optionStack
       return result
 
   pushOwner(c, s)
@@ -2195,9 +2196,20 @@ proc determineTypeOne(c: PContext, s: PSym) =
     lazyVisit(c.graph, s).needDeclaration = true
   c.pushOwner(s.owner) # c.getCurrOwner() would be wrong (it's derived globally from ConfigRef)
   let lcontext = c.graph.symLazyContext[s.id]
-  var old = c.optionStack.move
+  # let old = c.optionStack
+  let old = c.snapshotOptionEntry
+  c.optionStack = lcontext.optionStack
   # TODO: swap?
-  c.optionStack = lcontext.optionStack # TODO: swap? or make it all refs
+
+  readOptionEntry(c, lcontext.optionStack)
+  c.optionStack = lcontext.optionStack.parent
+
+# proc popOptionEntry*(c: PContext) =
+#   readOptionEntry(c, c.optionStack)
+#   c.optionStack = c.optionStack.parent
+
+
+  # c.optionStack = lcontext.optionStack # TODO: swap? or make it all refs
   # discard pushOptionEntry(c)
   # readOptionEntry(c, lcontext.optionStackEntry.POptionEntry)
 
@@ -2208,8 +2220,10 @@ proc determineTypeOne(c: PContext, s: PSym) =
   assert n2 == s.ast
   s.flags.excl sfLazySemcheckStarted
 
+  readOptionEntry(c, old)
+  c.optionStack = old.parent
   # popOptionEntry(c)
-  c.optionStack = move(old)
+  # c.optionStack = move(old)
   c.popOwner()
 
 proc determineType2(graph: ModuleGraph, s: PSym) {.exportc.} =

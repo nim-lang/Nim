@@ -14,6 +14,8 @@ import
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter
 
+from modulegraphs import optionStackList
+
 from ic / ic import addCompilerProc
 
 const
@@ -281,7 +283,7 @@ proc processCallConv(c: PContext, n: PNode) =
     let sw = whichKeyword(n[1].ident)
     case sw
     of FirstCallConv..LastCallConv:
-      c.optionStack[^1].defaultCC = wordToCallConv(sw)
+      c.optionStack.defaultCC = wordToCallConv(sw)
     else: localError(c.config, n.info, "calling convention expected")
   else:
     localError(c.config, n.info, "calling convention expected")
@@ -316,7 +318,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
   if (sym == nil) or (sym.kind == skModule):
     let lib = getLib(c, libDynamic, expectDynlibNode(c, n))
     if not lib.isOverriden:
-      c.optionStack[^1].dynlib = lib
+      c.optionStack.dynlib = lib
   else:
     if n.kind in nkPragmaCallKinds:
       var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
@@ -459,13 +461,13 @@ proc processPush(c: PContext, n: PNode, start: int) =
     #localError(c.config, n.info, errOptionExpected)
 
   # If stacktrace is disabled globally we should not enable it
-  if optStackTrace notin c.optionStack[0].options:
+  if optStackTrace notin c.firstOptionEntry.options:
     c.config.options.excl(optStackTrace)
   when defined(debugOptions):
     echo c.config $ n.info, " PUSH config is now ", c.config.options
 
 proc processPop(c: PContext, n: PNode) =
-  if c.optionStack.len <= 1:
+  if c.optionStack.parent == nil:
     localError(c.config, n.info, "{.pop.} without a corresponding {.push.}")
   else:
     popOptionEntry(c)
@@ -1273,7 +1275,7 @@ proc mergePragmas(n, pragmas: PNode) =
 proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
                       validPragmas: TSpecialWords) =
   if sym != nil and sym.kind != skModule:
-    for it in c.optionStack:
+    for it in c.optionStack.optionStackList:
       let o = it.otherPragmas
       if not o.isNil and sfFromGeneric notin sym.flags: # see issue #12985
         pushInfoContext(c.config, info)
@@ -1287,7 +1289,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(c.config, info, ".dynlib requires .exportc")
-    var lib = c.optionStack[^1].dynlib
+    var lib = c.optionStack.dynlib
     if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
         sfImportc in sym.flags and lib != nil:
       incl(sym.loc.flags, lfDynamicLib)

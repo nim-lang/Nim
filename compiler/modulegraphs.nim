@@ -18,6 +18,20 @@ import ic / [packed_ast, ic]
 type
   SigHash* = distinct MD5Digest
 
+  TOptionEntry* = object      # entries to put on a stack for pragma parsing
+    # analog to TScope
+    options*: TOptions
+    defaultCC*: TCallingConvention
+    dynlib*: PLib
+    notes*: TNoteKinds
+    features*: set[Feature]
+    otherPragmas*: PNode      # every pragma can be pushed
+    warningAsErrors*: TNoteKinds
+    parent*: POptionEntry
+    # depthLevel*: int
+
+  POptionEntry* = ref TOptionEntry
+
   LazySym* = object
     id*: FullId
     sym*: PSym
@@ -110,18 +124,15 @@ type
     allModules*: seq[PSym]
     moduleAsts*: Table[int, PNode] # key: sym.id (module)
 
+  # TOptionStackBase* = object of RootObj
   LazyContext* = ref object
     scope*: PScope
     ctxt*: PPassContext
     pBase*: ref TProcConBase
     needDeclaration*: bool
     needBody*: bool
-    # optionStackEntry*: ref TPOptionEntryBase
-    # TODO: revert change to TPOptionEntryBase?
-    # SPEED expensive PRTEMP
-    optionStack*: seq[POptionEntry]
+    optionStack*: POptionEntry
 
-  TPOptionEntryBase* = object of RootObj
   TProcConBase* = object of RootObj
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -138,6 +149,14 @@ type
     isFrontend*: bool
     closeEpilogue*: TPassClose # after whole program semchecked
     moduleContexts*: Table[int, PPassContext] # key: sym.id (module)
+
+iterator optionStackList*(a: POptionEntry): POptionEntry =
+  var a = a
+  while true:
+    if a == nil:
+      break
+    yield a
+    a = a.parent
 
 proc determineType2*(graph: ModuleGraph, s: PSym) {.importc.} # PRTEMP
 

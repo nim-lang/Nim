@@ -18,16 +18,10 @@ import
 import ic / ic
 
 type
-  TOptionEntry* = object of TPOptionEntryBase      # entries to put on a stack for pragma parsing
-    options*: TOptions
-    defaultCC*: TCallingConvention
-    dynlib*: PLib
-    notes*: TNoteKinds
-    features*: set[Feature]
-    otherPragmas*: PNode      # every pragma can be pushed
-    warningAsErrors*: TNoteKinds
+  # TOptionStack* = object of TOptionStackBase
+  #   optionStack*: seq[POptionEntry]
+  # OptionStack* = ref TOptionStack
 
-  POptionEntry* = ref TOptionEntry
   PProcCon* = ref TProcCon
   TProcCon* {.acyclic.} = object of TProcConBase # procedure context; also used for top-level
                                  # statements
@@ -114,7 +108,7 @@ type
     inGenericInst*: int        # > 0 if we are instantiating a generic
     converters*: seq[PSym]
     patterns*: seq[PSym]       # sequence of pattern matchers
-    optionStack*: seq[POptionEntry]
+    optionStack*: POptionEntry
     symMapping*: TIdTable      # every gensym'ed symbol needs to be mapped
                                # to some new symbol in a generic instantiation
     libs*: seq[PLib]           # all libs used by this module
@@ -235,7 +229,13 @@ proc popOwner*(c: PContext) =
   else: internalError(c.config, "popOwner")
 
 proc lastOptionEntry*(c: PContext): POptionEntry =
-  result = c.optionStack[^1]
+  # REMOVE?
+  result = c.optionStack
+
+proc firstOptionEntry*(c: PContext): POptionEntry =
+  result = c.optionStack
+  while result.parent != nil:
+    result = result.parent
 
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
@@ -287,31 +287,29 @@ proc snapshotOptionEntry*(c: PContext): POptionEntry =
   result.warningAsErrors = c.config.warningAsErrors
   result.features = c.features
 
-  var prev = c.optionStack[^1]
+  var prev = c.optionStack
   result.defaultCC = prev.defaultCC
   result.dynlib = prev.dynlib
   result.otherPragmas = prev.otherPragmas # PRTEMP
+  result.parent = prev
 
 proc pushOptionEntry*(c: PContext): POptionEntry =
   result = snapshotOptionEntry(c)
-  c.optionStack.add(result)
+  c.optionStack = result
 
-proc readOptionEntry*(c: PContext, b :POptionEntry) =
+proc readOptionEntry*(c: PContext, b: POptionEntry) =
   c.config.options = b.options
   c.config.notes = b.notes
   c.config.warningAsErrors = b.warningAsErrors
   c.features = b.features
 
-# proc lazyReadOptionEntry*(c: PContext, b :POptionEntry) =
-#   readOptionEntry(c, b)
-
 proc popOptionEntry*(c: PContext) =
-  readOptionEntry(c, c.optionStack[^1])
-  c.optionStack.setLen(c.optionStack.len - 1)
+  readOptionEntry(c, c.optionStack)
+  c.optionStack = c.optionStack.parent
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
-  result.optionStack = @[newOptionEntry(graph.config)]
+  result.optionStack = newOptionEntry(graph.config)
   result.libs = @[]
   result.module = module
   result.friendModules = @[module]
