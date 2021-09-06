@@ -1499,12 +1499,10 @@ proc maybeInstantiateGeneric(c: PContext, n: PNode, s: PSym): PNode =
   let
     neededGenParams = s.ast[genericParamsPos].len
     heldGenParams = n.len - 1
-    implicitParams = block:
-      var res = 0
-      for x in s.ast[genericParamsPos]:
-        if tfImplicitTypeParam in x.typ.flags:
-          inc res
-      res
+  var implicitParams = 0
+  for x in s.ast[genericParamsPos]:
+    if tfImplicitTypeParam in x.typ.flags:
+      inc implicitParams
   if heldGenParams != neededGenParams and implicitParams + heldGenParams == neededGenParams:
     # This is an implicit + explicit generic procedure without all args passed,
     # kicking back the sem'd symbol fixes #17212
