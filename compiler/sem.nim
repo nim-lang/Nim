@@ -178,7 +178,7 @@ proc commonType*(c: PContext; x, y: PType): PType =
     if a.callConv == ccClosure and b.callConv != ccClosure:
       result = x
     elif compatibleEffects(a, b) != efCompat or
-        (b.flags * {tfNoSideEffect, tfGcSafe}) <= (a.flags * {tfNoSideEffect, tfGcSafe}):
+        (b.flags * {tfNoSideEffect, tfGcSafe}) < (a.flags * {tfNoSideEffect, tfGcSafe}):
       result = y
   else:
     var k = tyNone
