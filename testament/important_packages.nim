@@ -161,7 +161,7 @@ pkg "weave", "nimble test_gc_arc", allowFailure = true
 pkg "websocket", "nim c websocket.nim"
 pkg "winim", allowFailure = true
 pkg "with"
-pkg "ws"
+pkg "ws", allowFailure = true
 pkg "yaml", "nim c -r test/tserialization.nim"
 pkg "zero_functional", "nim c -r -d:nimNoLentIterators test.nim"
 pkg "zippy"
