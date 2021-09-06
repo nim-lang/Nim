@@ -62,3 +62,53 @@ type Rule[T] = (int, T)
 var t: seq[Rule[int]]
 for (c, t) in t:
   discard
+
+
+
+import std/sugar
+
+# bug #14165
+iterator log_nodups_hamming(): int {.inline.} =
+  let lb3 = 1
+  let lb4 = 123
+  proc mul3(): int = lb3 + lb4
+  yield mul3()
+
+for h in log_nodups_hamming():
+  break
+for h in log_nodups_hamming():
+  break
+for h in log_nodups_hamming():
+  break
+
+# bug #18536
+iterator envPairs*(): int =
+  var foo: seq[int]
+  proc fun() =
+    foo = @[]
+  fun()
+  yield 3
+
+proc main() =
+  for a in envPairs():
+    discard
+  for a in envPairs():
+    discard
+static: main()
+main()
+
+# bug #6269
+iterator makeFn(outer_val: int): proc(a: int): int =
+  for i in 0..1:
+    yield proc(a:int): int =
+      return a + i.int
+
+let v1 = 42
+
+let res = collect:
+  for fn1 in makeFn(v1):
+    let v2 = fn1(v1)
+    for fn2 in makeFn(v2):
+      fn2(v2)
+
+doAssert res == @[42, 43, 43, 44]
