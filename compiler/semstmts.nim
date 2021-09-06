@@ -1937,8 +1937,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       lcontext.pBase = c.p
       # lcontext.optionStackEntry = c.optionStack[^1]
       # PRTEMP avoid doing all those copies; maybe c.optionStack should be what's always written to
-      lcontext.optionStackEntry = c.snapshotOptionEntry
-      # dbgIf lcontext.optionStackEntry, c.config$s.info, s, c.optionStack[^1], c.optionStack[^1].options, optOverflowCheck in c.optionStack[^1].options
+      # lcontext.optionStackEntry = c.snapshotOptionEntry
+      # TODO: ref object to avoid copy instead?
+      lcontext.optionStack = c.optionStack # PRTEMP
       return result
 
   pushOwner(c, s)
@@ -2194,25 +2195,21 @@ proc determineTypeOne(c: PContext, s: PSym) =
     lazyVisit(c.graph, s).needDeclaration = true
   c.pushOwner(s.owner) # c.getCurrOwner() would be wrong (it's derived globally from ConfigRef)
   let lcontext = c.graph.symLazyContext[s.id]
-  dbgIf c.optionStack.len
-  discard pushOptionEntry(c)
-  readOptionEntry(c, lcontext.optionStackEntry.POptionEntry)
-  # c.optionStack.add(lcontext.optionStackEntry.POptionEntry)
-  # dbgIf c.optionStack.len
-  # dbgIf c.optionStack[^1], s, c.config$s.info
+  var old = c.optionStack.move
+  # TODO: swap?
+  c.optionStack = lcontext.optionStack # TODO: swap? or make it all refs
+  # discard pushOptionEntry(c)
+  # readOptionEntry(c, lcontext.optionStackEntry.POptionEntry)
 
   # discard semProcAux(c, s.ast, s.kind, validPragmas)
   assert s.ast.kind in routineDefs, $s
-  let n2 = semExpr(c, s.ast, {}, forceReSem = true)
+  let n2 = semExpr(c, s.ast, {}, forceReSem = true) # PRTEMP: can this raise? if so, need try/catch?
   # eg: for semIterator etc
   assert n2 == s.ast
   s.flags.excl sfLazySemcheckStarted
 
-  # dbgIf c.optionStack.len
-  # discard c.optionStack.pop
-  popOptionEntry(c)
-  # dbgIf c.optionStack.len
-  # dbgIf c.optionStack[^1], s
+  # popOptionEntry(c)
+  c.optionStack = move(old)
   c.popOwner()
 
 proc determineType2(graph: ModuleGraph, s: PSym) {.exportc.} =

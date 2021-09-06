@@ -116,7 +116,10 @@ type
     pBase*: ref TProcConBase
     needDeclaration*: bool
     needBody*: bool
-    optionStackEntry*: ref TPOptionEntryBase
+    # optionStackEntry*: ref TPOptionEntryBase
+    # TODO: revert change to TPOptionEntryBase?
+    # SPEED expensive PRTEMP
+    optionStack*: seq[POptionEntry]
 
   TPOptionEntryBase* = object of RootObj
   TProcConBase* = object of RootObj

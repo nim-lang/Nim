@@ -282,13 +282,15 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
 
 proc snapshotOptionEntry*(c: PContext): POptionEntry =
   new(result)
-  var prev = c.optionStack[^1]
   result.options = c.config.options
-  result.defaultCC = prev.defaultCC
-  result.dynlib = prev.dynlib
   result.notes = c.config.notes
   result.warningAsErrors = c.config.warningAsErrors
   result.features = c.features
+
+  var prev = c.optionStack[^1]
+  result.defaultCC = prev.defaultCC
+  result.dynlib = prev.dynlib
+  result.otherPragmas = prev.otherPragmas # PRTEMP
 
 proc pushOptionEntry*(c: PContext): POptionEntry =
   result = snapshotOptionEntry(c)
@@ -300,17 +302,12 @@ proc readOptionEntry*(c: PContext, b :POptionEntry) =
   c.config.warningAsErrors = b.warningAsErrors
   c.features = b.features
 
+# proc lazyReadOptionEntry*(c: PContext, b :POptionEntry) =
+#   readOptionEntry(c, b)
+
 proc popOptionEntry*(c: PContext) =
   readOptionEntry(c, c.optionStack[^1])
   c.optionStack.setLen(c.optionStack.len - 1)
-
-  # static:
-  #   echo "D20210906T011701"
-  #   4 11 11 4
-  #   echo c.config.options.type.sizeof
-  #   echo c.config.notes.type.sizeof
-  #   echo c.config.warningAsErrors.type.sizeof
-  #   echo c.config.features.type.sizeof
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
