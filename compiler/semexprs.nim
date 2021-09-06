@@ -1596,7 +1596,7 @@ proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = semSubscript(c, n, flags)
   if result == nil:
     # overloaded [] operator:
-    result = semExpr(c, buildOverloadedSubscripts(n, getIdent(c.cache, "[]")))
+    result = semExpr(c, buildOverloadedSubscripts(n, getIdent(c.cache, "[]")), flags)
 
 proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   var id = considerQuotedIdent(c, a[1], a)
