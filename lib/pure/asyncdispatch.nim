@@ -246,14 +246,13 @@ proc adjustTimeout(
   result = max(nextTimer.get(), 0)
   result = min(pollTimeout, result)
 
-# PRTEMP temporarily renamed refs D20210827T174229_None_type_fwd
-proc callSoon2*(cbproc: proc () {.gcsafe.}) {.gcsafe.}
+proc callSoon*(cbproc: proc () {.gcsafe.}) {.gcsafe.}
   ## Schedule `cbproc` to be called as soon as possible.
   ## The callback is called when control returns to the event loop.
 
 proc initCallSoonProc =
   if asyncfutures.getCallSoonProc().isNil:
-    asyncfutures.setCallSoonProc(callSoon2)
+    asyncfutures.setCallSoonProc(callSoon)
 
 template implementSetInheritable() {.dirty.} =
   when declared(setInheritable):
@@ -1857,15 +1856,6 @@ proc connect*(socket: AsyncFD, address: string, port: Port,
     socket.SocketHandle.bindToDomain(domain)
   asyncAddrInfoLoop(aiList, socket)
 
-proc sleepAsync2*(ms: int | float) =
-# proc sleepAsync2*(ms: int) =
-  type Mono = typeof(getMonoTime())
-  var timers: HeapQueue[tuple[finishAt: Mono, fut: ptr int]]
-  timers.push((getMonoTime(), nil))
-
-  # var timers: HeapQueue[Mono]
-  # timers.push(getMonoTime())
-
 proc sleepAsync*(ms: int | float): owned(Future[void]) =
   ## Suspends the execution of the current async procedure for the next
   ## `ms` milliseconds.
@@ -1957,7 +1947,7 @@ proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
     else:
       break
 
-proc callSoon2(cbproc: proc () {.gcsafe.}) =
+proc callSoon(cbproc: proc () {.gcsafe.}) =
   getGlobalDispatcher().callbacks.addLast(cbproc)
 
 proc runForever*() =

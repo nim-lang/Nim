@@ -261,7 +261,6 @@ macro async*(prc: untyped): untyped =
     result = asyncSingleProc(prc)
   when defined(nimDumpAsync):
     echo repr result
-  # echo repr result
 
 proc splitParamType(paramType: NimNode, async: bool): NimNode =
   result = paramType
