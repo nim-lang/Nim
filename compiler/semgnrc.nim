@@ -55,7 +55,7 @@ template macroToExpand(s): untyped =
   s.kind in {skMacro, skTemplate} and sfLazySemcheckInprogress notin s.flags and (s.typ.len == 1 or sfAllUntyped in s.flags)
 
 template macroToExpandSym(s): untyped =
-  sfCustomPragma notin s.flags and s.kind in {skMacro, skTemplate} and
+  sfCustomPragma notin s.flags and s.kind in {skMacro, skTemplate} and sfLazySemcheckInprogress notin s.flags and
     (s.typ.len == 1) and not fromDotExpr
 
 template isMixedIn(sym): bool =
