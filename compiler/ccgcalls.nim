@@ -369,6 +369,7 @@ proc genParams(p: BProc, ri: PNode, typ: PType): Rope =
     if ri[i].skipTrivialIndirections.kind == nkSym:
       needTmp[i - 1] = potentialAlias(ri[i], potentialWrites)
     else:
+      #if not ri[i].typ.isCompileTimeOnly:
       var potentialReads: seq[PNode]
       getPotentialReads(ri[i], potentialReads)
       for n in potentialReads:
