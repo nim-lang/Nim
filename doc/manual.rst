@@ -7894,6 +7894,9 @@ instructs the compiler to pass the type by value to procs:
     Vector {.bycopy.} = object
       x, y, z: float
 
+Nim will pass objects larger than 24 bytes by reference for performance. 
+Using `bycopy` disables this. The `bycopy` can be used with `exportc` 
+when interfacing with C to match the function signature exactly. 
 
 Byref pragma
 ------------
