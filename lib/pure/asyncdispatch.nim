@@ -252,7 +252,9 @@ proc callSoon*(cbproc: proc () {.gcsafe.}) {.gcsafe.}
 
 proc initCallSoonProc =
   if asyncfutures.getCallSoonProc().isNil:
-    asyncfutures.setCallSoonProc(callSoon)
+    # PRTEMP workaround D20210905T181502_callsoon
+    # asyncfutures.setCallSoonProc(callSoon)
+    asyncfutures.setCallSoonProc(asyncdispatch.callSoon)
 
 template implementSetInheritable() {.dirty.} =
   when declared(setInheritable):
@@ -1856,7 +1858,7 @@ proc connect*(socket: AsyncFD, address: string, port: Port,
     socket.SocketHandle.bindToDomain(domain)
   asyncAddrInfoLoop(aiList, socket)
 
-proc sleepAsync*(ms: int | float): owned(Future[void]) =
+proc sleepAsyncImpl(ms: int | float): owned(Future[void]) =
   ## Suspends the execution of the current async procedure for the next
   ## `ms` milliseconds.
   var retFuture = newFuture[void]("sleepAsync")
@@ -1867,6 +1869,16 @@ proc sleepAsync*(ms: int | float): owned(Future[void]) =
     let ns = (ms * 1_000_000).int64
     p.timers.push((getMonoTime() + initDuration(nanoseconds = ns), retFuture))
   return retFuture
+
+proc sleepAsync*(ms: int): owned(Future[void]) =
+  ## Suspends the execution of the current async procedure for the next
+  ## `ms` milliseconds.
+  # PRTEMP: workaround D20210905T181502_callsoon (related to generic sandwich; a pre-exising issue)
+  sleepAsyncImpl(ms)
+
+proc sleepAsync*(ms: float): owned(Future[void]) =
+  ## overload
+  sleepAsyncImpl(ms)
 
 proc withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =
   ## Returns a future which will complete once `fut` completes or after
