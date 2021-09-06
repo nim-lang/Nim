@@ -25,3 +25,21 @@ block: # static test
   t2[int]("hello")
   t2[string]("world")
   t2[float]("test222222")
+
+block: #11152
+  proc f[T](X: typedesc) = discard
+  f[int](string)
+
+block: #15622
+  proc test1[T](a: T, b: static[string] = "") = discard
+  test1[int64](123)
+  proc test2[T](a: T, b: static[string] = "") = discard
+  test2[int64, static[string]](123)
+
+block: #4688
+  proc convertTo[T](v: int or float): T = (T)(v)
+  discard convertTo[float](1)
+
+block: #4164
+  proc printStr[T](s: static[string]): T = discard
+  discard printStr[int]("hello static")
