@@ -19,19 +19,19 @@ type
 
 
 proc newButton(caption: string; onclick: owned(proc())): owned Button =
-  proc draw(self: Widget) =
+  proc draw2(self: Widget) = # draw2=>draw would run into #18785 with nimLazySemcheck
     let b = Button(self)
     echo b.caption
 
-  result = Button(drawImpl: draw, caption: caption, onclick: onclick)
+  result = Button(drawImpl: draw2, caption: caption, onclick: onclick)
 
 proc newWindow(): owned Window =
-  proc draw(self: Widget) =
+  proc draw2(self: Widget) =
     let w = Window(self)
     for e in w.elements:
       if not e.drawImpl.isNil: e.drawImpl(e)
 
-  result = Window(drawImpl: draw, elements: @[])
+  result = Window(drawImpl: draw2, elements: @[])
 
 proc draw(w: Widget) =
   if not w.drawImpl.isNil: w.drawImpl(w)

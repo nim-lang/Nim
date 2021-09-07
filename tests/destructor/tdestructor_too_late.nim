@@ -6,7 +6,7 @@ type Obj* = object
 
 proc something(this: sink Obj) = 
   discard
-
+type _ = typeof(something) # D20210905T125411_forceSemcheck_compiles
 proc `=destroy`(this: var Obj) =
   echo "igotdestroyed"
   this.v = -1

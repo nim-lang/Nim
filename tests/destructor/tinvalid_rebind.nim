@@ -10,6 +10,6 @@ type
 
 proc main =
   var f: Foo[int]
-
+type _ = typeof(main) # D20210905T125411_forceSemcheck_compiles
 proc `=destroy`[T](f: var Foo[T]) =
   discard
