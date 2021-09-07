@@ -2,8 +2,6 @@ discard """
 output: '''
 3
 1
-1
-1
 5
 '''
 """
@@ -49,10 +47,10 @@ block tmixin:
     TFoo2 = object of TFoo1
       v2: int
 
-  proc test(f: TFoo1) =
-    echo "1"
+  proc test(f: TFoo1): string =
+    "1"
 
-  proc Foo[T](f: T) =
+  proc Foo[T](f: T): string =
     mixin test
     test(f)
 
@@ -61,11 +59,15 @@ block tmixin:
     b: TFoo2
 
 
-  proc test(f: TFoo2) =
-    echo "2"
+  proc test(f: TFoo2): string =
+    "2"
 
-  Foo(a)
-  Foo(b)
+  doAssert Foo(a) == "1"
+
+  when defined(nimLazySemcheck):
+    doAssert Foo(b) == "2" # because it can pickup the better-matching overload
+  else:
+    doAssert Foo(b) == "1"
 
 # issue #11811
 proc p(a : int) =
