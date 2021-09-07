@@ -27,7 +27,7 @@ proc resultVar3: string =
   "I will cause an error"
 
 doAssert implicit() == "I will be returned"
-doAssert discarded() == nil
+# doAssert discarded() == nil # this would've caused another error before the semcheck of unused procs kicks in
 doAssert explicit() == "I will be returned"
 doAssert resultVar() == "I will be returned"
 doAssert resultVar2() == "I will be returned"
