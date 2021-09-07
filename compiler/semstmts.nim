@@ -1857,10 +1857,12 @@ proc isLazySemcheck*(conf: ConfigRef): bool =
   # could also depend on some --experimental:lazysemcheck flag
   conf.isDefined("nimLazySemcheck")
 
-proc needsSemcheckDecl(c: PContext, s: PSym): bool =
+proc needsSemcheckDecl(c: PContext, n: PNode, s: PSym): bool =
   # TODO: distinguish decl from impl
   if sfOverriden in s.flags or s.name.s[0] == '=': result = true # we could refine this logic but it's simplest
-  elif s.kind in {skConverter}: result = true
+  elif s.kind in {skConverter}: result = true # because it's implicit
+  elif n[patternPos].kind != nkEmpty: result = true
+    # because pattern rewrite rules are implicit, e.g. trmacros_various.nim
   elif sfGenSym in s.flags: result = true
     #[
     PRTEMP for D20210906T193359; maybe there's a way to stay lazy in this case too
@@ -1906,7 +1908,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
   let declarationScope = c.currentScope
-  if c.config.isLazySemcheck and not needsSemcheckDecl(c, s):
+  if c.config.isLazySemcheck and not needsSemcheckDecl(c, n, s):
     # for converter, we have to at least have `needDeclaration` otherwise there would
     # be no way to guess when to attempt to apply a converter; but we could refine this
     # by using `needDeclaration: true, needBody: false`
