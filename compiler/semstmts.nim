@@ -2546,15 +2546,22 @@ type VisitContext = object
   graph: ModuleGraph
   allSymbolsNewRoutines: seq[PSym]
   mctxt: ModuleSemContext
+  root: PNode
 
-proc visitName(n: PNode): PSym =
+proc visitName(vc: VisitContext, n: PNode): PSym =
+  # dbgIf n.kind, n
   case n.kind
   of nkSym: result = n.sym
-  of nkPragmaExpr: result = visitName(n[0])
-  of nkPostfix: result = visitName(n[1])
-  else: assert false, $n.kind
+  of nkPragmaExpr: result = visitName(vc, n[0])
+  of nkPostfix: result = visitName(vc, n[1])
+  of nkDotExpr:
+    # tests/closure/tclosure_issues.nim `:env.i1` (nkHiddenDeref, nkSym)
+    result = visitName(vc, n[1])
+  else:
+    # dbgIf vc.root
+    assert false, $(n.kind, n, vc.graph.config$n.info)
 
-proc visitAllLiveSymbols(n: PNode, vc: var VisitContext) =
+proc visitAllLiveSymbols(vc: var VisitContext, n: PNode) =
   #[
   PRTEMP: TODO: instead, we could walk scopes? but would miss inner scopes
   see D20210904T200315
@@ -2564,31 +2571,32 @@ proc visitAllLiveSymbols(n: PNode, vc: var VisitContext) =
     result = coyNimTree(a)
     result[0].name = ident"foo" # makes old symbol un-attached
   ]#
+  # dbgIf n.kind, n
   if n == nil: return # PRTEMP, with tests/stdlib/tsugar.nim
   case n.kind
   of nkLetSection, nkVarSection, nkConstSection:
     for ni in n:
       for j in 0..<ni.len-2:
-        let s = visitName(ni[j])
+        let s = visitName(vc, ni[j])
         vc.mctxt.allSymbols.add s
   of nkTypeSection:
     for ni in n:
       if ni.kind == nkTypeDef: # skip nkCommentStmt
-        let s = visitName(ni[0])
+        let s = visitName(vc, ni[0])
         vc.mctxt.allSymbols.add s
   of routineDefs:
-    let s = visitName(n[namePos])
+    let s = visitName(vc, n[namePos])
     if s.lazyDecl == nil and s.typ == nil and s.ast != nil:
       # we could also have laxer checking with just `needDeclaration = true`
       determineType2(vc.graph, s)
       vc.allSymbolsNewRoutines.add s
-      visitAllLiveSymbols(s.ast, vc)
+      visitAllLiveSymbols(vc, s.ast)
     else:
       vc.mctxt.allSymbols.add s
-  else:
-    if n.safeLen > 0:
-      for ni in n:
-        visitAllLiveSymbols(ni, vc)
+  elif n.kind in nkCallKinds and isRunnableExamples(n[0]): discard
+  elif n.safeLen > 0:
+    for ni in n:
+      visitAllLiveSymbols(vc, ni)
 
 proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
   if graph.config.isSemcheckUnusedSymbols:
@@ -2598,7 +2606,8 @@ proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
       for module in graph.allModules: # PRTEMP: need an iterator that's robust to modules being added during this visit
         vc.mctxt = graph.moduleSemContexts[module.id]
         let n = vc.mctxt.ast
-        visitAllLiveSymbols(n, vc)
+        vc.root = n
+        visitAllLiveSymbols(vc, n)
       let allSymbolsNewRoutines = move(vc.allSymbolsNewRoutines)
     else:
       var i=0
