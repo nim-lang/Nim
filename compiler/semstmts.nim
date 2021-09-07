@@ -2598,9 +2598,9 @@ proc visitAllLiveSymbols(vc: var VisitContext, n: PNode) =
 
 proc nimSemcheckTree(graph: ModuleGraph, n: PNode) {.exportc.} =
   var vc = VisitContext(graph: graph)
-  dbgIf n
+  # dbgIf n
   visitAllLiveSymbols(vc, n)
-  dbgIf n.typ
+  # dbgIf n.typ
 
 proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
   if graph.config.isSemcheckUnusedSymbols:
