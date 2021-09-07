@@ -124,7 +124,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = typeAllowedAux(marker, lastSon(t), kind, c, flags)
   of tyRange:
     if skipTypes(t[0], abstractInst-{tyTypeDesc}).kind notin
-      {tyChar, tyEnum, tyInt..tyFloat128, tyInt..tyUInt64}: result = t
+      {tyChar, tyEnum, tyInt..tyFloat128, tyInt..tyUInt64, tyRange}: result = t
   of tyOpenArray:
     # you cannot nest openArrays/sinks/etc.
     if (kind != skParam or taIsOpenArray in flags) and views notin c.features:
