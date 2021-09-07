@@ -676,6 +676,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     result = newNodeI(a.kind, getCallLineInfo(n))
     for i in 0..<a.len:
       var candidate = a[i].sym
+      determineType2(c.graph, candidate)
       if candidate.kind in {skProc, skMethod, skConverter,
                             skFunc, skIterator}:
         # it suffices that the candidate has the proper number of generic
