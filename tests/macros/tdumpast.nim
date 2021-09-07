@@ -137,25 +137,35 @@ Call
   Sym "baz""""
 
   let a = treeRepr3(block:
-    proc bar(a: auto) = baz())
+    proc bar(a: auto) = baz()
+    type _ = typeof(bar)) # typeof for D20210905T125411_forceSemcheck_compiles
+
   doAssert a == """
 BlockStmt
   Empty
-  ProcDef
-    Sym "bar"
-    Empty
-    GenericParams
-      Sym "a:type"
-    FormalParams
+  StmtList
+    ProcDef
+      Sym "bar"
       Empty
-      IdentDefs
-        Sym "a"
-        Sym "auto"
+      GenericParams
+        Sym "a:type"
+      FormalParams
         Empty
-    Empty
-    Bracket
+        IdentDefs
+          Sym "a"
+          Sym "auto"
+          Empty
       Empty
-      Empty
-    StmtList
-      Call
-        OpenSymChoice 3 "baz""""
+      Bracket
+        Empty
+        Empty
+      StmtList
+        Call
+          OpenSymChoice 3 "baz"
+    TypeSection
+      TypeDef
+        Sym "_"
+        Empty
+        Call
+          Ident "typeof"
+          Ident "bar""""
