@@ -155,9 +155,7 @@ type
 
 iterator optionStackList*(a: POptionEntry): POptionEntry =
   var a = a
-  while true:
-    if a == nil:
-      break
+  while a!=nil:
     yield a
     a = a.parent
 
