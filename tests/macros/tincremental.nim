@@ -112,6 +112,8 @@ func sub_calc2(b: float): float  {.incremental.} =
 func heavy_calc(a: float, b: float): float {.incremental.} = 
   sub_calc1(a) + sub_calc2(b)
 
+type z1 = typeof(heavy_calc) # D20210905T125411_forceSemcheck_compiles
+
 ###########################################################################
 ## graph finalize and inputs
 ###########################################################################

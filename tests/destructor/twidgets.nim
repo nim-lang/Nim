@@ -20,13 +20,13 @@ type
 
 
 proc newButton(caption: string; onclick: owned(proc())): owned Button =
-  proc draw(self: Widget) =
+  proc draw2(self: Widget) = # renamed, refs #18785
     let b = Button(self)
     echo b.caption
 
   #result = Button(drawImpl: draw, caption: caption, onclick: onclick)
   new(result)
-  result.drawImpl = draw
+  result.drawImpl = draw2
   result.caption = caption
   result.onclick = onclick
 
