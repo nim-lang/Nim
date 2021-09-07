@@ -120,14 +120,12 @@ type
     operators*: Operators
     # fields for lazy semchecking
     symLazyContext*: Table[int, LazyContext] # key: sym.id
-    allSymbols*: seq[PSym]
     allModules*: seq[PSym]
-    # moduleAsts*: Table[int, PNode] # key: sym.id (module)
-    moduleContexts*: Table[int, ModuleContext] # key: sym.id (module)
+    moduleSemContexts*: Table[int, ModuleSemContext] # key: sym.id (module)
 
-  ModuleContext* = object
-    ast: PNode
-    ctxt: PPassContext
+  ModuleSemContext* = ref object
+    ast*: PNode # because module.ast is nil
+    allSymbols*: seq[PSym]
 
   LazyContext* = ref object
     scope*: PScope

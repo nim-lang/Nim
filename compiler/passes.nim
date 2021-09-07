@@ -59,7 +59,7 @@ proc registerPass*(g: ModuleGraph; p: TPass) =
 proc openPasses(g: ModuleGraph; a: var TPassContextArray;
                 module: PSym; idgen: IdGenerator) =
   g.allModules.add module
-  g.moduleAsts[module.id] = newNodeI(nkStmtList, module.info)
+  g.moduleSemContexts[module.id] = ModuleSemContext(ast: newNodeI(nkStmtList, module.info))
   for i in 0..<g.passes.len:
     if not isNil(g.passes[i].open):
       a.passContexts[i] = g.passes[i].open(g, module, idgen)
@@ -80,7 +80,7 @@ proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray)
     if not isNil(graph.passes[i].process):
       m = graph.passes[i].process(a.passContexts[i], m)
       if isNil(m): return false
-  graph.moduleAsts[a.module.id].add m # PRTEMP
+  graph.moduleSemContexts[a.module.id].ast.add m # PRTEMP
   result = true
 
 proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =

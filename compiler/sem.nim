@@ -685,7 +685,7 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     suggestSentinel(c)
   closeScope(c)         # close module's scope
   rawCloseScope(c)      # imported symbols; don't check for unused ones!
-  if not graph.config.isSemcheckUnusedSymbols:
+  if not graph.config.isSemcheckUnusedSymbols: # CHECKME
     reportUnusedModules(c)
   result = newNode(nkStmtList)
   if n != nil:
@@ -698,7 +698,9 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   sealRodFile(c)
 
 proc closeEpilogue(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
-  reportUnusedModules(p.PContext)
+  let ctxt = p.PContext
+  reportUnusedModules(ctxt)
+  ensureNoMissingOrUnusedSymbols(graph.config, graph.moduleSemContexts[ctxt.module.id].allSymbols)
 
 const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true, closeEpilogue = closeEpilogue)

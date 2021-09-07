@@ -1926,7 +1926,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       # PRTEMP
       s.flags.incl sfForward
       s.flags.incl sfLazy
-      c.graph.allSymbols.add s
       if s.kind in OverloadableSyms:
         addInterfaceOverloadableSymAt(c, declarationScope, s)
       else:
@@ -2198,6 +2197,7 @@ proc determineTypeOne(c: PContext, s: PSym) =
   # TODO: swap?
 
   # TODO: use popOptionEntry?
+  # D20210906T191019:here
   readOptionEntry(c, lcontext.optionStack)
   c.optionStack = lcontext.optionStack.parent
 
@@ -2534,7 +2534,7 @@ proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode =
 type VisitContext = object
   graph: ModuleGraph
   allSymbolsNewRoutines: seq[PSym]
-  allSymbolsAny: seq[PSym]
+  mctxt: ModuleSemContext
 
 proc visitName(n: PNode): PSym =
   case n.kind
@@ -2559,12 +2559,12 @@ proc visitAllLiveSymbols(n: PNode, vc: var VisitContext) =
     for ni in n:
       for j in 0..<ni.len-2:
         let s = visitName(ni[j])
-        vc.allSymbolsAny.add s
+        vc.mctxt.allSymbols.add s
   of nkTypeSection:
     for ni in n:
       if ni.kind == nkTypeDef: # skip nkCommentStmt
         let s = visitName(ni[0])
-        vc.allSymbolsAny.add s
+        vc.mctxt.allSymbols.add s
   of routineDefs:
     let s = visitName(n[namePos])
     if s.lazyDecl == nil and s.typ == nil and s.ast != nil:
@@ -2573,7 +2573,7 @@ proc visitAllLiveSymbols(n: PNode, vc: var VisitContext) =
       vc.allSymbolsNewRoutines.add s
       visitAllLiveSymbols(s.ast, vc)
     else:
-      vc.allSymbolsAny.add s
+      vc.mctxt.allSymbols.add s
   else:
     if n.safeLen > 0:
       for ni in n:
@@ -2581,21 +2581,15 @@ proc visitAllLiveSymbols(n: PNode, vc: var VisitContext) =
 
 proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
   if graph.config.isSemcheckUnusedSymbols:
-    var vc: VisitContext
-    vc.graph=graph
+    var vc = VisitContext(graph: graph)
     when true:
       # dbgIf graph.allModules.len
       for module in graph.allModules: # PRTEMP: need an iterator that's robust to modules being added during this visit
-        # dbgIf module, vc.allSymbolsNewRoutines.len, "D20210904T212130"
-        # dbgIf module.ast
-        # let n = module.ast # nil !
-        let n = graph.moduleAsts[module.id]
+        vc.mctxt = graph.moduleSemContexts[module.id]
+        let n = vc.mctxt.ast
         visitAllLiveSymbols(n, vc)
-        # moduleContexts
-        for vc.allSymbolsAny:
-          symbolsInModule
-      else:
       let allSymbolsNewRoutines = move(vc.allSymbolsNewRoutines)
+    else:
       var i=0
       while i < graph.allSymbols.len: # can grow during iteration
         let s = graph.allSymbols[i]
@@ -2606,9 +2600,6 @@ proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
           # let lcontext = lazyVisit(graph, s)
           determineType2(graph, s) # TODO: can shortcut some work?
         allSymbolsNewRoutines.add s
-    ensureNoMissingOrUnusedSymbols(graph.config, vc.allSymbolsAny)
-      # this could also go in sem.closeEpilogue next to reportUnusedModules but
-      # would require splitting symbols in modules
 
     var ok = true
     block post:
