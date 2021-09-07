@@ -674,7 +674,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
   storeRodNode(c, result)
 
-proc reportUnusedModules(c: PContext) =
+proc reportUnusedModules*(c: PContext) =
   for i in 0..high(c.unusedImports):
     if sfUsed notin c.unusedImports[i][0].flags:
       message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)
@@ -685,7 +685,8 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     suggestSentinel(c)
   closeScope(c)         # close module's scope
   rawCloseScope(c)      # imported symbols; don't check for unused ones!
-  reportUnusedModules(c)
+  if not graph.config.isSemcheckUnusedSymbols:
+    reportUnusedModules(c)
   result = newNode(nkStmtList)
   if n != nil:
     internalError(c.config, n.info, "n is not nil") #result := n;
@@ -696,5 +697,8 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   popProcCon(c)
   sealRodFile(c)
 
+proc closeEpilogue(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
+  reportUnusedModules(p.PContext)
+
 const semPass* = makePass(myOpen, myProcess, myClose,
-                          isFrontend = true)
+                          isFrontend = true, closeEpilogue = closeEpilogue)

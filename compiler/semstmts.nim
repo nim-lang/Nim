@@ -2545,6 +2545,7 @@ proc visitName(n: PNode): PSym =
 
 proc visitAllLiveSymbols(n: PNode, vc: var VisitContext) =
   #[
+  PRTEMP: TODO: instead, we could walk scopes? but would miss inner scopes
   see D20210904T200315
   visits all symbols top-down which ensures they're still alive, in particular this
   avoids getting un-attached symbols arising from macros such as:
@@ -2562,7 +2563,6 @@ proc visitAllLiveSymbols(n: PNode, vc: var VisitContext) =
   of nkTypeSection:
     for ni in n:
       if ni.kind == nkTypeDef: # skip nkCommentStmt
-        dbgIf ni, vc.graph.config$ni.info, ni.safeLen, ni.kind
         let s = visitName(ni[0])
         vc.allSymbolsAny.add s
   of routineDefs:
@@ -2585,14 +2585,17 @@ proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
     vc.graph=graph
     when true:
       # dbgIf graph.allModules.len
-      for module in graph.allModules:
+      for module in graph.allModules: # PRTEMP: need an iterator that's robust to modules being added during this visit
         # dbgIf module, vc.allSymbolsNewRoutines.len, "D20210904T212130"
         # dbgIf module.ast
         # let n = module.ast # nil !
         let n = graph.moduleAsts[module.id]
         visitAllLiveSymbols(n, vc)
+        # moduleContexts
+        for vc.allSymbolsAny:
+          symbolsInModule
+      else:
       let allSymbolsNewRoutines = move(vc.allSymbolsNewRoutines)
-    else:
       var i=0
       while i < graph.allSymbols.len: # can grow during iteration
         let s = graph.allSymbols[i]
@@ -2604,6 +2607,8 @@ proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
           determineType2(graph, s) # TODO: can shortcut some work?
         allSymbolsNewRoutines.add s
     ensureNoMissingOrUnusedSymbols(graph.config, vc.allSymbolsAny)
+      # this could also go in sem.closeEpilogue next to reportUnusedModules but
+      # would require splitting symbols in modules
 
     var ok = true
     block post:

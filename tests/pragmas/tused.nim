@@ -2,7 +2,7 @@ discard """
   nimout: '''
 compile start
 tused.nim(17, 8) Hint: 'echoSub' is declared but not used [XDeclaredButNotUsed]
-compile end'''
+'''
   output: "8\n8"
   joinable: false
 """
@@ -27,7 +27,7 @@ block:
   # should produce warning for the unused 'echoSub'
   implementArithOpsOld(int)
   echoAdd 3, 5
-
+# xxx these tests are meaningless until `nimoutfull` is used
 block:
   # no warning produced for the unused 'echoSub'
   implementArithOpsNew(int)
@@ -37,7 +37,3 @@ block:
 type
   MyEnum {.used.} = enum
     Val1, Val2, Val3
-
-
-static:
-  echo "compile end"

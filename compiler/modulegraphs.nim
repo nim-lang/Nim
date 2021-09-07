@@ -122,7 +122,12 @@ type
     symLazyContext*: Table[int, LazyContext] # key: sym.id
     allSymbols*: seq[PSym]
     allModules*: seq[PSym]
-    moduleAsts*: Table[int, PNode] # key: sym.id (module)
+    # moduleAsts*: Table[int, PNode] # key: sym.id (module)
+    moduleContexts*: Table[int, ModuleContext] # key: sym.id (module)
+
+  ModuleContext* = object
+    ast: PNode
+    ctxt: PPassContext
 
   LazyContext* = ref object
     scope*: PScope
