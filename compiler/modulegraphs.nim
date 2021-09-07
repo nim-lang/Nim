@@ -134,6 +134,7 @@ type
     needDeclaration*: bool
     needBody*: bool
     optionStack*: POptionEntry
+    inConceptDecl*: int
 
   TProcConBase* = object of RootObj
   TPassContext* = object of RootObj # the pass's context

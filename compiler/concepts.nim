@@ -14,6 +14,7 @@
 import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer, types, intsets
 
 from magicsys import addSonSkipIntLit
+from modulegraphs import determineType2
 
 const
   logBindings = false
@@ -269,8 +270,10 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
 proc matchSyms(c: PContext, n: PNode; kinds: set[TSymKind]; m: var MatchCon): bool =
   ## Walk the current scope, extract candidates which the same name as 'n[namePos]',
   ## 'n' is the nkProcDef or similar from the concept that we try to match.
+  determineType2 c.graph, n[namePos].sym
   let candidates = searchInScopesFilterBy(c, n[namePos].sym.name, kinds)
   for candidate in candidates:
+    determineType2(c.graph, candidate)
     #echo "considering ", typeToString(candidate.typ), " ", candidate.magic
     m.magic = candidate.magic
     if matchSym(c, candidate, n, m): return true
