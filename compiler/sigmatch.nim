@@ -2286,8 +2286,16 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     result = a
   else:
     var a = a
-    if a.typ.isNil and a.kind == nkSym: # PRTEMP see D20210905T112902 and tests/generics/t6137.nim
+    dbgIf formal, a, a.typ, a.kind
+    # if a.typ.isNil and a.kind == nkSym: # PRTEMP see D20210905T112902 and tests/generics/t6137.nim
+      # a = c.semExpr(c, a, {efDetermineType, efWantValue})
+    if a.typ.isNil:
+      dbgIf a, a.typ
       a = c.semExpr(c, a, {efDetermineType, efWantValue})
+      dbgIf a, a.typ
+      nimSemcheckTree(c.graph, a) # PRTEMP
+      dbgIf a, a.typ
+    dbgIf a.typ, a
     if a.typ.isNil:
       if formal.kind == tyIterable:
         let flags = {efDetermineType, efAllowStmt, efWantIterator, efWantIterable}

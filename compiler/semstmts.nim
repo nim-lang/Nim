@@ -2545,8 +2545,7 @@ proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode =
 type VisitContext = object
   graph: ModuleGraph
   allSymbolsNewRoutines: seq[PSym]
-  mctxt: ModuleSemContext
-  root: PNode
+  allSymbols: seq[PSym]
 
 proc visitName(vc: VisitContext, n: PNode): PSym =
   # dbgIf n.kind, n
@@ -2558,7 +2557,6 @@ proc visitName(vc: VisitContext, n: PNode): PSym =
     # tests/closure/tclosure_issues.nim `:env.i1` (nkHiddenDeref, nkSym)
     result = visitName(vc, n[1])
   else:
-    # dbgIf vc.root
     assert false, $(n.kind, n, vc.graph.config$n.info)
 
 proc visitAllLiveSymbols(vc: var VisitContext, n: PNode) =
@@ -2578,12 +2576,12 @@ proc visitAllLiveSymbols(vc: var VisitContext, n: PNode) =
     for ni in n:
       for j in 0..<ni.len-2:
         let s = visitName(vc, ni[j])
-        vc.mctxt.allSymbols.add s
+        vc.allSymbols.add s
   of nkTypeSection:
     for ni in n:
       if ni.kind == nkTypeDef: # skip nkCommentStmt
         let s = visitName(vc, ni[0])
-        vc.mctxt.allSymbols.add s
+        vc.allSymbols.add s
   of routineDefs:
     let s = visitName(vc, n[namePos])
     if s.lazyDecl == nil and s.typ == nil and s.ast != nil:
@@ -2592,24 +2590,28 @@ proc visitAllLiveSymbols(vc: var VisitContext, n: PNode) =
       vc.allSymbolsNewRoutines.add s
       visitAllLiveSymbols(vc, s.ast)
     else:
-      vc.mctxt.allSymbols.add s
+      vc.allSymbols.add s
   elif n.kind in nkCallKinds and isRunnableExamples(n[0]): discard
   elif n.safeLen > 0:
     for ni in n:
       visitAllLiveSymbols(vc, ni)
 
+proc nimSemcheckTree(graph: ModuleGraph, n: PNode) {.exportc.} =
+  var vc = VisitContext(graph: graph)
+  dbgIf n
+  visitAllLiveSymbols(vc, n)
+  dbgIf n.typ
+
 proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
   if graph.config.isSemcheckUnusedSymbols:
     var vc = VisitContext(graph: graph)
-    when true:
-      # dbgIf graph.allModules.len
-      for module in graph.allModules: # PRTEMP: need an iterator that's robust to modules being added during this visit
-        vc.mctxt = graph.moduleSemContexts[module.id]
-        let n = vc.mctxt.ast
-        vc.root = n
-        visitAllLiveSymbols(vc, n)
-      let allSymbolsNewRoutines = move(vc.allSymbolsNewRoutines)
-    else:
+    for module in graph.allModules: # PRTEMP: need an iterator that's robust to modules being added during this visit
+      let mctxt = graph.moduleSemContexts[module.id]
+      visitAllLiveSymbols(vc, mctxt.ast)
+      mctxt.allSymbols = mctxt.allSymbols.move
+    let allSymbolsNewRoutines = move(vc.allSymbolsNewRoutines)
+
+    when false:
       var i=0
       while i < graph.allSymbols.len: # can grow during iteration
         let s = graph.allSymbols[i]

@@ -160,6 +160,7 @@ iterator optionStackList*(a: POptionEntry): POptionEntry =
     a = a.parent
 
 proc determineType2*(graph: ModuleGraph, s: PSym) {.importc.} # PRTEMP
+proc nimSemcheckTree*(graph: ModuleGraph, n: PNode) {.importc.} # PRTEMP
 
 proc lazyVisit*(g: ModuleGraph, sym: PSym): LazyContext =
   if sym.id notin g.symLazyContext:
