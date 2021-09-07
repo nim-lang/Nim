@@ -345,6 +345,9 @@ proc semConv(c: PContext, n: PNode): PNode =
   else:
     for i in 0..<op.len:
       let it = op[i]
+      let sym = it.sym
+      determineType2(c.graph, it.sym)
+      it.typ = it.sym.typ # PRTEMP; eg, see tests/overload/toverload_various.nim; should this be handled upstream in semExprWithType?
       let status = checkConvertible(c, result.typ, it)
       if status in {convOK, convNotNeedeed}:
         markUsed(c, n.info, it.sym)
