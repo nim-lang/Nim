@@ -1861,6 +1861,11 @@ proc needsSemcheckDecl(c: PContext, s: PSym): bool =
   # TODO: distinguish decl from impl
   if sfOverriden in s.flags or s.name.s[0] == '=': result = true # we could refine this logic but it's simplest
   elif s.kind in {skConverter}: result = true
+  elif sfGenSym in s.flags: result = true
+    #[
+    PRTEMP for D20210906T193359; maybe there's a way to stay lazy in this case too
+    eg tests/astspec/tastspec.nim
+    ]#
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
