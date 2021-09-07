@@ -13,8 +13,6 @@ import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
   renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs
 
-proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
-
 proc noidentError(conf: ConfigRef; n, origin: PNode) =
   var m = ""
   if origin != nil:
@@ -69,10 +67,6 @@ proc openScope*(c: PContext): PScope {.discardable.} =
 
 proc rawCloseScope*(c: PContext) =
   c.currentScope = c.currentScope.parent
-
-proc closeScope*(c: PContext) =
-  ensureNoMissingOrUnusedSymbols(c, c.currentScope)
-  rawCloseScope(c)
 
 iterator allScopes*(scope: PScope): PScope =
   var current = scope
@@ -275,32 +269,50 @@ proc getSymRepr*(conf: ConfigRef; s: PSym, getDeclarationPath = true): string =
     if getDeclarationPath:
       result.addDeclaredLoc(conf, s)
 
-proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
-  # check if all symbols have been used and defined:
+type EpilogueData = object
+  missingImpls: int
+  unusedSyms: seq[tuple[sym: PSym, key: string]]
+
+proc ensureNoMissingOrUnusedSymbol*(data: var EpilogueData, config: ConfigRef, s: PSym) =
+  if sfForward in s.flags and s.kind notin {skType, skModule}:
+    # too many 'implementation of X' errors are annoying
+    # and slow 'suggest' down:
+    if data.missingImpls == 0:
+      if false:
+        # PRTEMP
+        localError(config, s.info, "implementation of '$1' expected" %
+            getSymRepr(config, s, getDeclarationPath=false))
+    inc data.missingImpls
+  elif {sfUsed, sfExported} * s.flags == {}:
+    if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam, skEnumField}:
+      # XXX: implicit type params are currently skTypes
+      # maybe they can be made skGenericParam as well.
+      if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
+         s.typ.kind != tyGenericParam:
+        data.unusedSyms.add (s, toFileLineCol(config, s.info))
+
+iterator getSymbols(scope: PScope): PSym =
   var it: TTabIter
   var s = initTabIter(it, scope.symbols)
-  var missingImpls = 0
-  var unusedSyms: seq[tuple[sym: PSym, key: string]]
   while s != nil:
-    if sfForward in s.flags and s.kind notin {skType, skModule}:
-      # too many 'implementation of X' errors are annoying
-      # and slow 'suggest' down:
-      if missingImpls == 0:
-        if false:
-          # PRTEMP
-          localError(c.config, s.info, "implementation of '$1' expected" %
-              getSymRepr(c.config, s, getDeclarationPath=false))
-      inc missingImpls
-    elif {sfUsed, sfExported} * s.flags == {}:
-      if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam, skEnumField}:
-        # XXX: implicit type params are currently skTypes
-        # maybe they can be made skGenericParam as well.
-        if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
-           s.typ.kind != tyGenericParam:
-          unusedSyms.add (s, toFileLineCol(c.config, s.info))
+    yield s
     s = nextIter(it, scope.symbols)
-  for (s, _) in sortedByIt(unusedSyms, it.key):
-    message(c.config, s.info, hintXDeclaredButNotUsed, s.name.s)
+
+template ensureNoMissingOrUnusedSymbols*(conf: ConfigRef; syms: untyped) = # syms: iterable[PSym]
+  # check if all symbols have been used and defined:
+  var data: EpilogueData
+  for s in syms:
+    ensureNoMissingOrUnusedSymbol(data, conf, s)
+  for (s, _) in sortedByIt(data.unusedSyms, it.key):
+    # if s.getnimblePkgId == conf.mainPackageId:
+    if s.getModule.getnimblePkgId == conf.mainPackageId:
+      # see also foreignPackageNotes
+      message(conf, s.info, hintXDeclaredButNotUsed, s.name.s)
+
+proc closeScope*(c: PContext) =
+  if not c.config.isSemcheckUnusedSymbols:
+    ensureNoMissingOrUnusedSymbols(c.config, getSymbols(c.currentScope))
+  rawCloseScope(c)
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
                         conflictsWith: TLineInfo, note = errGenerated) =

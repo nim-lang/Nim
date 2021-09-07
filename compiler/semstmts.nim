@@ -2531,63 +2531,68 @@ proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode =
   else:
     result = semExpr(c, n, flags)
 
-proc isSemcheckUnusedSymbols(conf: ConfigRef): bool =
-  if conf.cmd in cmdDocLike - {cmdDoc0, cmdJsondoc0} + {cmdRst2html, cmdRst2tex}:
-    result = true
-  elif conf.isDefined("nimLazySemcheckComplete"):
-    result = true
-
 type VisitContext = object
   graph: ModuleGraph
-  allSymbols2: seq[PSym]
+  allSymbolsNewRoutines: seq[PSym]
+  allSymbolsAny: seq[PSym]
 
-proc visitAllLiveSymbols(n: PNode, vc: var VisitContext, isFindName = false) =
+proc visitName(n: PNode): PSym =
+  case n.kind
+  of nkSym: result = n.sym
+  of nkPragmaExpr: result = visitName(n[0])
+  of nkPostfix: result = visitName(n[1])
+  else: assert false, $n.kind
+
+proc visitAllLiveSymbols(n: PNode, vc: var VisitContext) =
+  #[
+  see D20210904T200315
+  visits all symbols top-down which ensures they're still alive, in particular this
+  avoids getting un-attached symbols arising from macros such as:
+  macro m(a: typed) =
+    result = coyNimTree(a)
+    result[0].name = ident"foo" # makes old symbol un-attached
+  ]#
   if n == nil: return # PRTEMP, with tests/stdlib/tsugar.nim
   case n.kind
+  of nkLetSection, nkVarSection, nkConstSection:
+    for ni in n:
+      for j in 0..<ni.len-2:
+        let s = visitName(ni[j])
+        vc.allSymbolsAny.add s
+  of nkTypeSection:
+    for ni in n:
+      if ni.kind == nkTypeDef: # skip nkCommentStmt
+        dbgIf ni, vc.graph.config$ni.info, ni.safeLen, ni.kind
+        let s = visitName(ni[0])
+        vc.allSymbolsAny.add s
   of routineDefs:
-    visitAllLiveSymbols(n[namePos], vc, isFindName = true)
-  of nkSym:
-    if isFindName:
-      # PRTEMP IMPROVE
-      let s = n.sym
-      # if s.lazyDecl == nil and s.typ == nil and s.ast != nil and s.ast.kind in routineDefs:
-      if s.lazyDecl == nil and s.typ == nil and s.ast != nil:
-        # dbgIf s, vc.allSymbols2.len, vc.graph.config$s.ast.info
-        # dbgIf s, vc.graph.config$s.ast.info
-         # PRTEMP checkme in case multi stage?
-        # dbgIf i, s, graph.allSymbols.len, graph.config$s.ast.info
-        # we could also have laxer checking with just `needDeclaration = true`
-        # let lcontext = lazyVisit(vc.graph, s)
-        # determineType2(lcontext.ctxt.PContext, s)
-        determineType2(vc.graph, s)
-        vc.allSymbols2.add s
-        visitAllLiveSymbols(s.ast, vc)
+    let s = visitName(n[namePos])
+    if s.lazyDecl == nil and s.typ == nil and s.ast != nil:
+      # we could also have laxer checking with just `needDeclaration = true`
+      determineType2(vc.graph, s)
+      vc.allSymbolsNewRoutines.add s
+      visitAllLiveSymbols(s.ast, vc)
+    else:
+      vc.allSymbolsAny.add s
   else:
     if n.safeLen > 0:
       for ni in n:
-        visitAllLiveSymbols(ni, vc, isFindName)
+        visitAllLiveSymbols(ni, vc)
 
 proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
   if graph.config.isSemcheckUnusedSymbols:
-    # var allSymbols2: seq[PSym]
     var vc: VisitContext
     vc.graph=graph
     when true:
       # dbgIf graph.allModules.len
       for module in graph.allModules:
-        # dbgIf module, vc.allSymbols2.len, "D20210904T212130"
+        # dbgIf module, vc.allSymbolsNewRoutines.len, "D20210904T212130"
         # dbgIf module.ast
         # let n = module.ast # nil !
         let n = graph.moduleAsts[module.id]
         visitAllLiveSymbols(n, vc)
-      let allSymbols2 = move(vc.allSymbols2)
+      let allSymbolsNewRoutines = move(vc.allSymbolsNewRoutines)
     else:
-      #[
-      TODO: see D20210904T200315;
-      should we instead walk all syms top-down from root modules to ensure
-      they're still live and attached?
-      ]#
-
       var i=0
       while i < graph.allSymbols.len: # can grow during iteration
         let s = graph.allSymbols[i]
@@ -2597,17 +2602,17 @@ proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
           # we could also have laxer checking with just `needDeclaration = true`
           # let lcontext = lazyVisit(graph, s)
           determineType2(graph, s) # TODO: can shortcut some work?
-        allSymbols2.add s
+        allSymbolsNewRoutines.add s
+    ensureNoMissingOrUnusedSymbols(graph.config, vc.allSymbolsAny)
 
     var ok = true
     block post:
       for i in 0..<graph.passes.len:
         let passi = graph.passes[i].addr
         if not isNil(passi.process):
-          for s in allSymbols2:
+          for s in allSymbolsNewRoutines:
             let module = s.getModule
             let passContext = passi.moduleContexts[module.id]
-            # dbgIf i, s, graph.config$s.ast.info, module, allSymbols2.len
             let m = passi.process(passContext, s.ast)
             if isNil(m):
               ok = false

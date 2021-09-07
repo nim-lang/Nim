@@ -475,6 +475,12 @@ const foreignPackageNotesDefault* = {
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool
 
+proc isSemcheckUnusedSymbols*(conf: ConfigRef): bool =
+  if conf.cmd in cmdDocLike - {cmdDoc0, cmdJsondoc0} + {cmdRst2html, cmdRst2tex}:
+    result = true
+  elif conf.isDefined("nimLazySemcheckComplete"):
+    result = true
+
 when defined(nimDebugUtils):
   # this allows inserting debugging utilties in all modules that import `options`
   # with a single switch, which is useful when debugging compiler.
