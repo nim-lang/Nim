@@ -14,3 +14,7 @@ when defined(nimStrictMode):
     # switch("hint", "ConvFromXtoItselfNotNeeded")
     switch("hintAsError", "ConvFromXtoItselfNotNeeded")
     # future work: XDeclaredButNotUsed
+
+# PRTEMP, should be only in $nim_prs_D/tests/config.nims but we also want a quick and dirty way to test on NIM_TEST_PACKAGES
+switch("define", "nimLazySemcheckAfterSystem")
+switch("define", "nimLazySemcheckComplete")
