@@ -2291,8 +2291,11 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
       # a = c.semExpr(c, a, {efDetermineType, efWantValue})
     if a.typ.isNil:
       dbgIf a, a.typ
-      a = c.semExpr(c, a, {efDetermineType, efWantValue})
+      # a = c.semExpr(c, a, {efDetermineType, efWantValue})
+      a = c.semExpr(c, a, {efDetermineType, efWantValue, efOperand})
       dbgIf a, a.typ
+      # if a.typ != nil:
+        # nimSemcheckTree(c.graph, a) # PRTEMP
       nimSemcheckTree(c.graph, a) # PRTEMP
       dbgIf a, a.typ
     dbgIf a.typ, a
