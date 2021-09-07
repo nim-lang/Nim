@@ -81,3 +81,5 @@ method beta(x: Obj) =
 # Simple recursion
 method gamma(x: Obj) {.base.} =
   gamma(x)
+
+if false: Obj().gamma # PRTEMP: avoids link error D20210905T125411_linkerror
