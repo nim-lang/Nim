@@ -253,6 +253,8 @@ template bar(): untyped =
       func fn1(): int = 1  ## comment
       func fn2(): int = 1
         ## comment
+      discard fn1() # to ensure fn1 gets semchecked with nimLazySemcheck
+      discard fn2()
     doAssert a1 == """
 func fn1(): int =
   ## comment
@@ -261,6 +263,7 @@ func fn1(): int =
 func fn2(): int =
   ## comment
   1"""
+
     doAssert a2 == """
 func fn1(): int =
   ## comment
@@ -268,7 +271,10 @@ func fn1(): int =
 
 func fn2(): int =
   ## comment
-  result = 1"""
+  result = 1
+
+discard fn1()
+discard fn2()"""
 
 static: main()
 main()
