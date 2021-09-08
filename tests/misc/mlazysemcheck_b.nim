@@ -97,7 +97,6 @@ when defined case_import1:
 
     when true:
       # xxx bug using these would fail, because of the fwd decl
-  
       proc fn10c(): int
       proc fn10c(): int = discard
       if false: discard fn10c()

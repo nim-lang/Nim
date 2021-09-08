@@ -83,7 +83,7 @@ block toverprc:
 
   type
     TParseInt = proc (x: string): int {.noSideEffect.}
-  {.define(nimCompilerDebug).}
+
   var
     q = TParseInt(parseInt)
     p: TParseInt = parseInt
