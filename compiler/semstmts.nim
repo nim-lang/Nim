@@ -1572,7 +1572,6 @@ proc semProcAnnotation(c: PContext, prc: PNode;
 
     doAssert r[0].kind == nkSym
     let m = r[0].sym
-    # dbgIf m, m.typ, m.flags
     case m.kind
     of skMacro: result = semMacroExpr(c, r, r, m, {})
     of skTemplate: result = semTemplateExpr(c, r, m, {})
@@ -1581,14 +1580,12 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       continue
 
     doAssert result != nil
-    # dbgIf result
 
     # since a proc annotation can set pragmas, we process these here again.
     # This is required for SqueakNim-like export pragmas.
     if result.kind in procDefs and result[namePos].kind == nkSym and
         result[pragmasPos].kind != nkEmpty:
       let sym = result[namePos].sym
-      # dbgIf sym, sym.flags, sym.typ
       if sym.typ != nil: # PRTEMP check sfLazy ?
         pragma(c, sym, result[pragmasPos], validPragmas)
 
@@ -2227,64 +2224,39 @@ proc determineType2(graph: ModuleGraph, s: PSym, instantiationScope: PScope = ni
   if graph.config.isLazySemcheck: # PRTEMP FACTOR
     # TODO: instead, just set sfLazy flag?
     lazyVisit(graph, s).needDeclaration = true
-
-  # dbgIf s, s.typ, s.flags
   if s.typ != nil: return
   if sfLazy notin s.flags: return # PRTEMP
 
   when defined(nimCompilerStacktraceHints):
     setFrameMsg graph.config$s.ast.info & " " & $(s, s.owner, s.flags)
-
-  # dbgIf s, s.typ, s.flags, s.owner
   #if s.magic != mNone: return
   #if s.ast.isNil: return
-
-  # if s.id notin graph.symLazyContext:
-  #   dbgIf s, s.flags, s.typ, s.id
   let lcontext = graph.symLazyContext[s.id]
   var c2 = PContext(lcontext.ctxt)
   doAssert c2 != nil
-  # dbgIf c2.module, s, "retrieve"
   let old = c2.currentScope
   c2.currentScope = lcontext.scope
-  # dbgIf cast[int](c2), s, cast[int](old), cast[int](lcontext.scope)
-  # debugScopesIf old
-  # debugScopesIf lcontext.scope
-
   # TODO: which is better?
   # let pBaseOld = c2.p
   # c2.p = lcontext.pBase.PProcCon
   pushProcCon(c2, lcontext.pBase.PProcCon.owner)
 
   var candidates: seq[PSym]
-  #[
-  
-  PRTEMP to fix D20210907T225444, unclear what should be done; maybe
-  consider revealing c2.currentScope.parent.symbols in that case too?
-  ]#
-  # dbgIf s, s.flags, s.typ, s.owner, graph.config$s.info
-  # for s2 in c2.currentScope.parent.symbols:
-  #   dbgIf s2, s2.flags, s2.typ, s2.owner, graph.config$s2.info
-
   proc getCandidates(scope: PScope) =
     for s2 in scope.symbols: # TODO: do we need to analyze parent scopes too? EDIT: probably not
-      # dbgIf s2, s2.typ, s2.flags, graph.config$s2.info, s2.owner
       if s2.name == s.name: # checking `s2.kind == s.kind` would be wrong because all overloads in same scope must be revealed
         if s2.typ == nil and sfLazy in s2.flags:
-          # dbgIf s2, s, s2.flags, s.flags, graph.config$s2.ast.info
           candidates.add s2
   getCandidates(c2.currentScope)
   if instantiationScope != nil and c2.currentScope.parent == instantiationScope:
+    # see D20210827T174229_macrp_typed_param_lazy, D20210907T225444
     getCandidates(instantiationScope)
 
   candidates = candidates.sortedByIt(it.id)
-  # dbgIf candidates
   when defined(nimCompilerStacktraceHints):
     setFrameMsg $(candidates.len, candidates)
     # to ensure that fwd declarations are processed before implementations
-  # dbgIf candidates.len, candidates, s
   for s2 in candidates:
-    # dbgIf s2
     determineTypeOne(c2, s2)
   # dbgIf "after"
   c2.currentScope = old
@@ -2592,7 +2564,6 @@ proc visitAllLiveSymbols(vc: var VisitContext, n: PNode) =
     result = coyNimTree(a)
     result[0].name = ident"foo" # makes old symbol un-attached
   ]#
-  # dbgIf n.kind, n
   if n == nil: return # PRTEMP, with tests/stdlib/tsugar.nim
   case n.kind
   of nkLetSection, nkVarSection, nkConstSection:
@@ -2607,18 +2578,12 @@ proc visitAllLiveSymbols(vc: var VisitContext, n: PNode) =
         vc.allSymbols.add s
   of routineDefs:
     let s = visitName(vc, n[namePos])
-    # dbgIf s, n[namePos], s.lazyDecl, s.typ, s.flags # PRTEMP
-    # debugScopes(vc.graph.config, ) 
-    # debugScopesIf
     if s.lazyDecl == nil and s.typ == nil and s.ast != nil:
-      # dbgIf "here"
       # we could also have laxer checking with just `needDeclaration = true`
       determineType2(vc.graph, s, vc.instantiationScope)
       vc.allSymbolsNewRoutines.add s
-      # dbgIf "before visitAllLiveSymbols"
       visitAllLiveSymbols(vc, s.ast)
     else:
-      # dbgIf "here2"
       vc.allSymbols.add s
   elif n.kind in nkCallKinds and isRunnableExamples(n[0]): discard
   elif n.safeLen > 0:
@@ -2627,9 +2592,7 @@ proc visitAllLiveSymbols(vc: var VisitContext, n: PNode) =
 
 proc nimSemcheckTree(graph: ModuleGraph, n: PNode, instantiationScope: PScope) {.exportc.} =
   var vc = VisitContext(graph: graph, instantiationScope: instantiationScope)
-  # dbgIf n
   visitAllLiveSymbols(vc, n)
-  # dbgIf n.typ
 
 proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
   if graph.config.isSemcheckUnusedSymbols:

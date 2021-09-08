@@ -2380,10 +2380,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
 
   m.state = csMatch # until proven otherwise
   m.firstMismatch = MismatchInfo()
-  # dbgIf n, m.calleeSym, m.callee, ?.m.calleeSym.flags, ?.m.calleeSym.typ
-  # dbgIf n, m.calleeSym, m.callee, m.calleeSym
-  # if m.calleeSym != nil:
-  #   dbgIf m.calleeSym.flags, m.calleeSym.typ
   m.call = newNodeIT(n.kind, n.info, m.callee.base)
   m.call.add n[0]
 

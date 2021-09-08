@@ -87,7 +87,6 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       sym = nextOverloadIter(o, c, headSymbol)
       scope = o.lastOverloadScope
       continue
-    # dbgIf sym, sym.flags, sym.typ, c.config$sym.ast.info
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
     if c.currentScope.symbols.counter == counterInitial or syms.len != 0:
       matches(c, n, orig, z)

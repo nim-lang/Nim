@@ -483,19 +483,10 @@ const
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =
   rememberExpansion(c, nOrig.info, sym)
-  # dbgIf sym, sym.typ.len, cast[int](c)
-  # debugScopesIf(c.currentScope)
   for i in 1..<sym.typ.len:
-    # PRTEMP D20210827T174229_macrp_typed_param_lazy
     let t = sym.typ[i]
-    # dbgIf t, i
     if t.kind != tyUntyped and not t.isVarargsUntyped:
-      # lazyScopeForTypedParams
-      # dbgIf n[i], i
-      # debugScopesIf(c.currentScope)
       nimSemcheckTree(c.graph, n[i], instantiationScope = c.currentScope)
-  # dbgIf()
-
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
   let info = getCallLineInfo(n)
@@ -624,7 +615,6 @@ proc isEmptyTree(n: PNode): bool =
   else: result = false
 
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
-  # dbgIf n
   if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
     if sfSystemModule notin c.module.flags and not isEmptyTree(n):
       assert c.graph.systemModule != nil

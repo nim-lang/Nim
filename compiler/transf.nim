@@ -917,7 +917,6 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
       result = n
 
 proc transform(c: PTransf, n: PNode): PNode =
-  # dbgIf n, n.kind, n.typ
   when false:
     var oldDeferAnchor: PNode
     if n.kind in {nkElifBranch, nkOfBranch, nkExceptBranch, nkElifExpr,
