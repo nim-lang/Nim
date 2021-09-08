@@ -151,7 +151,17 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       if graph.stopCompile(): break
       var n = parseTopLevelStmt(p)
       if n.kind == nkEmpty: break
-      if (sfSystemModule notin module.flags and
+      if cyclicImports in graph.config.features:
+        var sl = newNodeI(nkStmtList, n.info)
+        sl.add n
+        while true:
+          var n = parseTopLevelStmt(p)
+          if n.kind == nkEmpty: break
+          sl.add n
+        sl = registerTopLevelDecls(graph, sl, module, idgen)
+        discard processTopLevelStmt(graph, sl, a)
+        break
+      elif (sfSystemModule notin module.flags and
           ({sfNoForward, sfReorder} * module.flags != {} or
           codeReordering in graph.config.features)):
         # read everything, no streaming possible

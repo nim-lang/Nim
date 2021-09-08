@@ -22,9 +22,17 @@ type
     id*: FullId
     sym*: PSym
 
+  ModulePhase* = enum     ## the 'phase' of the module we're compiling
+    RegisterTopLevelDecls ## register top level declarations that
+                          ## are **not** in a `when` section or similar
+    SemSignatures         ## sem'check type/proc/func/method signatures
+    SemRest               ## sem'check the rest (top level statements,
+                          ## proc bodies)
+
   Iface* = object       ## data we don't want to store directly in the
                         ## ast.PSym type for s.kind == skModule
     module*: PSym       ## module this "Iface" belongs to
+    phase*: ModulePhase
     converters*: seq[LazySym]
     patterns*: seq[LazySym]
     pureEnums*: seq[LazySym]
