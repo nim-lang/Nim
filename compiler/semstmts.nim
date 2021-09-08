@@ -1222,7 +1222,11 @@ proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
       discard
   discard traverseSubTypes(c, body)
 
-proc typeSectionRightSidePass(c: PContext, n: PNode) =
+proc isObjectDecl(n: PNode): bool =
+  result = n.kind == nkObjectTy or (
+    n.kind in {nkRefTy, nkPtrTy} and n.len == 1 and n[0].kind == nkObjectTy)
+
+proc typeSectionRightSidePass(c: PContext, n: PNode; ignoreObjects=false) =
   for i in 0..<n.len:
     var a = n[i]
     if a.kind == nkCommentStmt: continue
@@ -1279,7 +1283,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
 
       popOwner(c)
       closeScope(c)
-    elif a[2].kind != nkEmpty:
+    elif a[2].kind != nkEmpty and (not ignoreObjects or not isObjectDecl(a[2])):
       # process the type's body:
       pushOwner(c, s)
       var t = semTypeNode(c, a[2], s.typ)
@@ -1315,12 +1319,12 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       let symNode = newSymNode(obj)
       obj.ast = a.shallowCopy
       case a[0].kind
-        of nkSym: obj.ast[0] = symNode
-        of nkPragmaExpr:
-          obj.ast[0] = a[0].shallowCopy
-          obj.ast[0][0] = symNode
-          obj.ast[0][1] = a[0][1]
-        else: assert(false)
+      of nkSym: obj.ast[0] = symNode
+      of nkPragmaExpr:
+        obj.ast[0] = a[0].shallowCopy
+        obj.ast[0][0] = symNode
+        obj.ast[0][1] = a[0][1]
+      else: assert(false)
       obj.ast[1] = a[1]
       obj.ast[2] = a[2][0]
       if sfPure in s.flags:

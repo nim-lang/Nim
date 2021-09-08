@@ -151,7 +151,14 @@ proc semRoutineSignature(c: PContext; n: PNode; kind: TSymKind) =
     openScope(c)
     semProcSignature(c, n, s)
 
-    pragmaCallable(c, s, n, procPragmas)
+    case kind
+    of skProc, skFunc: pragmaCallable(c, s, n, procPragmas)
+    of skConverter: pragmaCallable(c, s, n, converterPragmas)
+    of skMethod: pragmaCallable(c, s, n, methodPragmas)
+    of skTemplate: pragmaCallable(c, s, n, templatePragmas)
+    of skMacro: pragmaCallable(c, s, n, macroPragmas)
+    of skIterator: pragmaCallable(c, s, n, iteratorPragmas)
+    else: discard
 
     closeScope(c)
     popOwner(c)
@@ -207,8 +214,8 @@ proc semSignaturesAux(c: PContext, n: PNode) =
   of nkVarSection: semLocalSignature(c, n, skVar)
   of nkUsingStmt: semLocalSignature(c, n, skParam)
   of nkTypeSection:
-    typeSectionRightSidePass(c, n)
-    typeSectionFinalPass(c, n)
+    typeSectionRightSidePass(c, n, ignoreObjects=true)
+    #  typeSectionFinalPass(c, n)
   of nkImportStmt:
     when false:
       discard evalImport(c, copyTree(n))
