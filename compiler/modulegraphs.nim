@@ -39,6 +39,7 @@ type
     interf: TStrTable
     interfHidden: TStrTable
     uniqueName*: Rope
+    topLevelScope*: PScope
 
   Operators* = object
     opNot*, opContains*, opLe*, opLt*, opAnd*, opOr*, opIsNil*, opEq*: PSym

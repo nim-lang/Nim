@@ -548,6 +548,18 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         n.add prc.ast
   c.lastGenericIdx = c.generics.len
 
+proc linkTopLevelScope(g: ModuleGraph; c: PContext) =
+  assert c.module.position < g.ifaces.len
+  let ts = g.ifaces[c.module.position].topLevelScope
+  if ts != nil:
+    ts.parent = c.currentScope
+    c.topLevelScope = ts
+    c.currentScope = ts
+  else:
+    let newTs = openScope(c)
+    c.topLevelScope = newTs
+    g.ifaces[c.module.position].topLevelScope = newTs
+
 proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
   var c = newContext(graph, module)
   c.idgen = idgen
@@ -578,7 +590,10 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
 
   if sfSystemModule in module.flags:
     graph.systemModule = module
-  c.topLevelScope = openScope(c)
+  if cyclicImports in c.config.features:
+    linkTopLevelScope(graph, c)
+  else:
+    c.topLevelScope = openScope(c)
   result = c
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =

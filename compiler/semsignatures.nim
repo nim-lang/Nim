@@ -13,7 +13,7 @@
 from reorder import accQuoted, includeModule
 
 proc patchNode(c: PContext; n: PNode; name: PIdent; kind: TSymKind) =
-  var s = newSym(kind, n.ident, nextSymId(c.idgen), c.module, n.info)
+  var s = newSym(kind, name, nextSymId(c.idgen), c.module, n.info)
   s.flags.incl sfForward
   let obj = n[]
   n[] = TNode(kind: nkSym, typ: nil, info: obj.info, flags: obj.flags, sym: s)
@@ -73,13 +73,15 @@ proc topLevelDecl(c: PContext; n: PNode): PNode =
   of nkVarSection: declLoop(c, n, skVar)
   of nkUsingStmt: declLoop(c, n, skParam)
   of nkTypeSection:
+    typeSectionLeftSidePass(c, n)
     for a in n:
-      decl(c, a[0], skType)
-      for i in 1..<a.len:
-        if a[i].kind == nkEnumTy:
-          # declare enum members
-          for b in a[i]:
-            decl(c, b, skEnumField)
+      if a.kind == nkTypeDef:
+        #decl(c, a[0], skType)
+        for i in 1..<a.len:
+          if a[i].kind == nkEnumTy:
+            # declare enum members
+            for b in a[i]:
+              decl(c, b, skEnumField)
   else:
     discard "DO NOT recurse here."
 
@@ -127,9 +129,8 @@ proc semProcSignature(c: PContext; n: PNode; s: PSym) =
     incl(s.typ.flags, tfNoSideEffect)
 
 proc addParametersAgainToCurrentScope(c: PContext; s: PSym) =
-  for x in s.ast[genericParamsPos]:
-    if x.kind == nkSym:
-      addDecl(c, x.sym)
+  if s.ast[genericParamsPos].kind != nkEmpty:
+    addGenericParamListToScope(c, s.ast[genericParamsPos])
   for x in s.typ.n:
     if x.kind == nkSym:
       addParamOrResult(c, x.sym, s.kind)
@@ -169,6 +170,8 @@ proc semLocalSignature(c: PContext; n: PNode; kind: TSymKind) =
     for i in 0..<n.len-2:
       if n[i].kind == nkSym:
         n[i].sym.typ = typ
+  # It turns out that the old Nim compiler code is perfectly prepared
+  # for this logic, see `setVarType`.
 
 proc semSignaturesAux(c: PContext, n: PNode) =
   case n.kind
@@ -189,8 +192,15 @@ proc semSignaturesAux(c: PContext, n: PNode) =
   of nkTypeSection:
     typeSectionRightSidePass(c, n)
     typeSectionFinalPass(c, n)
-  of nkImportStmt, nkFromStmt, nkImportExceptStmt:
-    discard "TO DO!"
+  of nkImportStmt:
+    when false:
+      discard evalImport(c, copyTree(n))
+  of nkImportExceptStmt:
+    when false:
+      discard evalImportExcept(c, copyTree(n))
+  of nkFromStmt:
+    when false:
+      discard evalFrom(c, copyTree(n))
   else:
     discard "DO NOT recurse here."
 

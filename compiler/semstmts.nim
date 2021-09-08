@@ -1116,6 +1116,8 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
         typeDefLeftSidePass(c, typeSection, i)
         return
       pragma(c, s, name[1], typePragmas)
+      if s.magic != mNone: processMagicType(c, s)
+
     if sfForward in s.flags:
       # check if the symbol already exists:
       let pkg = c.module.owner
@@ -1230,7 +1232,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     var s = name.sym
     if s.magic == mNone and a[2].kind == nkEmpty:
       localError(c.config, a.info, errImplOfXexpected % s.name.s)
-    if s.magic != mNone: processMagicType(c, s)
+
     if a[1].kind != nkEmpty:
       # We have a generic type declaration here. In generic types,
       # symbol lookup needs to be done here.
