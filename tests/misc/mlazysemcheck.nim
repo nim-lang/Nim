@@ -306,6 +306,58 @@ when defined case_noimports:
       static: fn12()
       fn12()
 
+  block: # typed params in macros
+    # D20210907T225444
+    macro barUntyped1(fns: untyped): untyped =
+      result = fns
+    macro barUntyped2(fns: untyped): untyped =
+      discard
+    macro barTyped1(fns: typed): untyped =
+      result = fns
+    macro barTyped2(fns: typed): untyped =
+      discard
+
+    proc fn13(): int
+    barTyped1: # works with fwd procs
+      proc fn13(): int = 1
+    doAssert fn13() == 1
+
+    barUntyped2:
+      proc fn14(): int =
+        static: doAssert false
+
+    template bad1 =
+      barTyped2:
+        proc fn15(): int =
+          static: doAssert false
+
+    template bad2 =
+      barUntyped1:
+        proc fn16(): int =
+          static: doAssert false
+        fn16()
+    doAssert not compiles(bad1()) # typed params must be fully semcheck-able (epilogue happens during typed param evaluation)
+    doAssert not compiles(bad2())
+
+    barTyped1: # cycles work inside typed params
+      proc fn17x1 = fn17x2()
+      proc fn17x2 = fn17x3()
+      proc fn17x3 = fn17x1()
+
+    barTyped2: # ditto
+      proc fn18x1 = fn18x2()
+      proc fn18x2 = fn18x3()
+      proc fn18x3 = fn18x1()
+
+    template bad3 =
+      barTyped2: # ditto
+        proc fn18x1 = fn18x2()
+        proc fn18x2 = fn18x3()
+        proc fn18x3 = fn18x4()
+    doAssert not compiles(bad3())
+      # because `fn18x4` not declared; even if `barTyped2` then later ignores its input,
+      # epilogue for typed param should prevent this from compiling
+
   chk "fn2\n"
 
 elif defined case_reordering:
