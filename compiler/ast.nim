@@ -1215,6 +1215,9 @@ template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
 template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
 template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
+proc isVarargsUntyped*(x: PType): bool {.inline.} =
+  x.kind == tyVarargs and x[0].kind == tyUntyped
+
 proc getDeclPragma*(n: PNode): PNode =
   ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
   ## Currently only supports routineDefs + {nkTypeDef}.

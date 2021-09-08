@@ -1904,6 +1904,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   s.ast = n
   s.options = c.config.options
   #s.scope = c.currentScope
+  dbgIf s, s.kind, n, flags, s.flags, s.typ, c.config$s.ast.info
 
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
@@ -2246,6 +2247,9 @@ proc determineType2(graph: ModuleGraph, s: PSym) {.exportc.} =
   # dbgIf c2.module, s, "retrieve"
   let old = c2.currentScope
   c2.currentScope = lcontext.scope
+  dbgIf cast[int](c2), s, cast[int](old), cast[int](lcontext.scope)
+  debugScopesIf old
+  debugScopesIf lcontext.scope
 
   # TODO: which is better?
   # let pBaseOld = c2.p
@@ -2253,18 +2257,31 @@ proc determineType2(graph: ModuleGraph, s: PSym) {.exportc.} =
   pushProcCon(c2, lcontext.pBase.PProcCon.owner)
 
   var candidates: seq[PSym]
-  for s2 in c2.currentScope.symbols:
+  #[
+  
+  PRTEMP to fix D20210907T225444, unclear what should be done; maybe
+  consider revealing c2.currentScope.parent.symbols in that case too?
+  ]#
+  # dbgIf s, s.flags, s.typ, s.owner, graph.config$s.info
+  # for s2 in c2.currentScope.parent.symbols:
+  #   dbgIf s2, s2.flags, s2.typ, s2.owner, graph.config$s2.info
+
+  for s2 in c2.currentScope.symbols: # TODO: do we need to analyze parent scopes too?
+    dbgIf s2, s2.typ, s2.flags, graph.config$s2.info, s2.owner
     if s2.name == s.name: # checking `s2.kind == s.kind` would be wrong because all overloads in same scope must be revealed
       if s2.typ == nil and sfLazy in s2.flags:
         # dbgIf s2, s, s2.flags, s.flags, graph.config$s2.ast.info
         candidates.add s2
   candidates = candidates.sortedByIt(it.id)
+  dbgIf candidates
   when defined(nimCompilerStacktraceHints):
     setFrameMsg $(candidates.len, candidates)
     # to ensure that fwd declarations are processed before implementations
   # dbgIf candidates.len, candidates, s
   for s2 in candidates:
+    dbgIf s2
     determineTypeOne(c2, s2)
+  dbgIf "after"
   c2.currentScope = old
   # c2.p = pBaseOld
   popProcCon(c2)
@@ -2584,12 +2601,18 @@ proc visitAllLiveSymbols(vc: var VisitContext, n: PNode) =
         vc.allSymbols.add s
   of routineDefs:
     let s = visitName(vc, n[namePos])
+    dbgIf s, n[namePos], s.lazyDecl, s.typ, s.flags # PRTEMP
+    # debugScopes(vc.graph.config, ) 
+    # debugScopesIf
     if s.lazyDecl == nil and s.typ == nil and s.ast != nil:
+      dbgIf "here"
       # we could also have laxer checking with just `needDeclaration = true`
       determineType2(vc.graph, s)
       vc.allSymbolsNewRoutines.add s
+      dbgIf "before visitAllLiveSymbols"
       visitAllLiveSymbols(vc, s.ast)
     else:
+      dbgIf "here2"
       vc.allSymbols.add s
   elif n.kind in nkCallKinds and isRunnableExamples(n[0]): discard
   elif n.safeLen > 0:

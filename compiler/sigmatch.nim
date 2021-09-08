@@ -2340,9 +2340,6 @@ proc incrIndexType(t: PType) =
   assert t.kind == tyArray
   inc t[0].n[1].intVal
 
-template isVarargsUntyped(x): untyped =
-  x.kind == tyVarargs and x[0].kind == tyUntyped
-
 proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
   # see https://github.com/nim-lang/RFCs/issues/405
   result = int.high
