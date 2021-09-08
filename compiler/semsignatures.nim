@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2021 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -145,8 +145,30 @@ proc semRoutineSignature(c: PContext; n: PNode; kind: TSymKind) =
     assert s.typ != nil
 
 proc semLocalSignature(c: PContext; n: PNode; kind: TSymKind) =
-  for i in 0..<n.len-2:
-    discard "to do!"
+  #[
+  Consider this case:
+
+  proc split(...): int = ...
+
+  const
+    c = split("abc")
+
+  proc p(x: typeof(c))
+
+  It's crucial that we only compute the type of `split("abc")` but not yet
+  its value which cannot be done as we haven't processed split's body yet!
+
+  ]#
+  var typ: PType = nil
+  if n[^2].kind != nkEmpty:
+    typ = semTypeNode(c, n[^2], nil)
+  elif n[^1].kind != nkEmpty:
+    let def = semExprWithType(c, copyTree(n[^1]), {efNoEval})
+    typ = def.typ
+  if typ != nil:
+    for i in 0..<n.len-2:
+      if n[i].kind == nkSym:
+        n[i].sym.typ = typ
 
 proc semSignaturesAux(c: PContext, n: PNode) =
   case n.kind
