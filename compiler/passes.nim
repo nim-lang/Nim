@@ -158,7 +158,6 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
           var n = parseTopLevelStmt(p)
           if n.kind == nkEmpty: break
           sl.add n
-        sl = registerTopLevelDecls(graph, sl, module, idgen)
         discard processTopLevelStmt(graph, sl, a)
         break
       elif (sfSystemModule notin module.flags and

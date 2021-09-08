@@ -33,7 +33,7 @@ proc newDepN(id: int, pnode: PNode): DepN =
   when defined(debugReorder):
     result.expls = @[]
 
-proc accQuoted(cache: IdentCache; n: PNode): PIdent =
+proc accQuoted*(cache: IdentCache; n: PNode): PIdent =
   var id = ""
   for i in 0..<n.len:
     let ident = n[i].getPIdent
@@ -417,81 +417,3 @@ proc reorder*(graph: ModuleGraph, n: PNode, module: PSym): PNode =
   var g = buildGraph(n, deps)
   let comps = getStrongComponents(g)
   mergeSections(graph.config, comps, result)
-
-type
-  RegisterContext = object
-    g: ModuleGraph
-    m: PSym
-    includedFiles: IntSet
-    idgen: IdGenerator
-
-proc patchNode(c: var RegisterContext; n: PNode; name: PIdent; kind: TSymKind) =
-  var sym = newSym(kind, n.ident, nextSymId(c.idgen), c.m, n.info)
-  sym.flags.incl sfForward
-  let obj = n[]
-  n[] = TNode(kind: nkSym, typ: nil, info: obj.info, flags: obj.flags, sym: sym)
-  # XXX also add to m's symbol table!
-
-proc decl(c: var RegisterContext; n: PNode; kind: TSymKind) =
-  # mutates n directly.
-  case n.kind
-  of nkPostfix: decl(c, n[1], kind)
-  of nkPragmaExpr: decl(c, n[0], kind)
-  of nkIdent:
-    patchNode(c, n, n.ident, kind)
-  of nkAccQuoted:
-    let a = accQuoted(c.g.cache, n)
-    patchNode(c, n, a, kind)
-  of nkEnumFieldDef:
-    decl(c, n[0], kind)
-  else: discard
-
-proc declLoop(c: var RegisterContext; n: PNode; kind: TSymKind) =
-  for a in n:
-    if a.kind in {nkIdentDefs, nkVarTuple}:
-      for j in 0..<a.len-2: decl(c, a[j], kind)
-
-proc topLevelDecl(c: var RegisterContext; n: PNode): PNode =
-  result = n
-  case n.kind
-  of nkStmtList, nkStmtListExpr:
-    result = newNodeI(n.kind, n.info, n.len)
-    for i in 0..<n.len:
-      result[i] = topLevelDecl(c, n[i])
-  of nkIncludeStmt:
-    for i in 0..<n.len:
-      var f = checkModuleName(c.g.config, n[i])
-      if f != InvalidFileIdx:
-        if containsOrIncl(c.includedFiles, f.int):
-          localError(c.g.config, n[i].info, "recursive dependency: '$1'" %
-            toMsgFilename(c.g.config, f))
-        else:
-          let nn = includeModule(c.g, c.m, f)
-          result = topLevelDecl(c, nn)
-          excl(c.includedFiles, f.int)
-  of nkProcDef: decl(c, n[0], skProc)
-  of nkFuncDef: decl(c, n[0], skFunc)
-  of nkMethodDef: decl(c, n[0], skMethod)
-  of nkIteratorDef: decl(c, n[0], skIterator)
-  of nkConverterDef: decl(c, n[0], skConverter)
-  of nkMacroDef: decl(c, n[0], skMacro)
-  of nkTemplateDef: decl(c, n[0], skTemplate)
-  of nkConstSection: declLoop(c, n, skConst)
-  of nkLetSection: declLoop(c, n, skLet)
-  of nkVarSection: declLoop(c, n, skVar)
-  of nkUsingStmt: declLoop(c, n, skParam)
-  of nkTypeSection:
-    for a in n:
-      decl(c, a[0], skType)
-      for i in 1..<a.len:
-        if a[i].kind == nkEnumTy:
-          # declare enum members
-          for b in a[i]:
-            decl(c, b, skEnumField)
-  else:
-    discard "DO NOT recurse here."
-
-proc registerTopLevelDecls*(graph: ModuleGraph; n: PNode;
-                            module: PSym; idgen: IdGenerator): PNode =
-  var c = RegisterContext(g: graph, m: module, includedFiles: initIntSet(), idgen: idgen)
-  result = topLevelDecl(c, n)

@@ -10,6 +10,79 @@
 # this module does the semantic checking for proc signatures
 # included from sem.nim
 
+from reorder import accQuoted, includeModule
+
+proc patchNode(c: PContext; n: PNode; name: PIdent; kind: TSymKind) =
+  var s = newSym(kind, n.ident, nextSymId(c.idgen), c.module, n.info)
+  s.flags.incl sfForward
+  let obj = n[]
+  n[] = TNode(kind: nkSym, typ: nil, info: obj.info, flags: obj.flags, sym: s)
+
+  if kind in OverloadableSyms:
+    addInterfaceOverloadableSymAt(c, c.currentScope, s)
+  else:
+    addInterfaceDeclAt(c, c.currentScope, s)
+
+
+proc decl(c: PContext; n: PNode; kind: TSymKind) =
+  # mutates n directly.
+  case n.kind
+  of nkPostfix: decl(c, n[1], kind)
+  of nkPragmaExpr: decl(c, n[0], kind)
+  of nkIdent:
+    patchNode(c, n, n.ident, kind)
+  of nkAccQuoted:
+    let a = accQuoted(c.graph.cache, n)
+    patchNode(c, n, a, kind)
+  of nkEnumFieldDef:
+    decl(c, n[0], kind)
+  else: discard
+
+proc declLoop(c: PContext; n: PNode; kind: TSymKind) =
+  for a in n:
+    if a.kind in {nkIdentDefs, nkVarTuple}:
+      for j in 0..<a.len-2: decl(c, a[j], kind)
+
+proc topLevelDecl(c: PContext; n: PNode): PNode =
+  result = n
+  case n.kind
+  of nkStmtList, nkStmtListExpr:
+    result = newNodeI(n.kind, n.info, n.len)
+    for i in 0..<n.len:
+      result[i] = topLevelDecl(c, n[i])
+  of nkIncludeStmt:
+    for i in 0..<n.len:
+      var f = checkModuleName(c.config, n[i])
+      if f != InvalidFileIdx:
+        if containsOrIncl(c.includedFiles, f.int):
+          localError(c.config, n[i].info, "recursive dependency: '$1'" %
+            toMsgFilename(c.config, f))
+        else:
+          let nn = includeModule(c.graph, c.module, f)
+          result = topLevelDecl(c, nn)
+          excl(c.includedFiles, f.int)
+  of nkProcDef: decl(c, n[0], skProc)
+  of nkFuncDef: decl(c, n[0], skFunc)
+  of nkMethodDef: decl(c, n[0], skMethod)
+  of nkIteratorDef: decl(c, n[0], skIterator)
+  of nkConverterDef: decl(c, n[0], skConverter)
+  of nkMacroDef: decl(c, n[0], skMacro)
+  of nkTemplateDef: decl(c, n[0], skTemplate)
+  of nkConstSection: declLoop(c, n, skConst)
+  of nkLetSection: declLoop(c, n, skLet)
+  of nkVarSection: declLoop(c, n, skVar)
+  of nkUsingStmt: declLoop(c, n, skParam)
+  of nkTypeSection:
+    for a in n:
+      decl(c, a[0], skType)
+      for i in 1..<a.len:
+        if a[i].kind == nkEnumTy:
+          # declare enum members
+          for b in a[i]:
+            decl(c, b, skEnumField)
+  else:
+    discard "DO NOT recurse here."
+
 proc semProcSignature(c: PContext; n: PNode; s: PSym) =
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
@@ -100,5 +173,5 @@ proc semSignaturesAux(c: PContext, n: PNode) =
     discard "DO NOT recurse here."
 
 proc semSignatures(c: PContext, n: PNode): PNode =
-  semSignaturesAux(c, n)
-  result = n
+  result = topLevelDecl(c, n)
+  semSignaturesAux(c, result)
