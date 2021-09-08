@@ -1,7 +1,7 @@
 discard """
   exitcode: 1
   outputsub: '''
-Unhandled exception: Cannot read properties of null (reading 'charCodeAt') [<foreign exception>]
+[<foreign exception>]
 [FAILED] Bad test
   '''
   matrix: "-d:nodejs"
