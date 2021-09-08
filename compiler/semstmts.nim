@@ -2632,10 +2632,10 @@ proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
   for i in 0..<graph.passes.len:
     let passi = graph.passes[i].addr
     if not isNil(passi.closeEpilogue):
-      for moduleId,  passContext in passi.moduleContexts:
+      for moduleId, passContext in passi.moduleContexts:
         discard passi.closeEpilogue(graph, passContext, nil)
-    for moduleId,  passContext in passi.moduleContexts:
+    for moduleId, passContext in passi.moduleContexts:
       passi.moduleContexts[moduleId] = nil # free the memory here
 
-if false: nimLazyVisitAll(nil) # PRTEMP ensure compiled in
+if false: nimLazyVisitAll(nil) # PRTEMP ensure compiled in; maybe we need extern?
 
