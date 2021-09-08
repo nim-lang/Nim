@@ -2600,7 +2600,7 @@ proc nimLazyVisitAll(graph: ModuleGraph) {.exportc.} =
     for module in graph.allModules: # PRTEMP: need an iterator that's robust to modules being added during this visit
       let mctxt = graph.moduleSemContexts[module.id]
       visitAllLiveSymbols(vc, mctxt.ast)
-      mctxt.allSymbols = mctxt.allSymbols.move
+      mctxt.allSymbols = vc.allSymbols.move
     let allSymbolsNewRoutines = move(vc.allSymbolsNewRoutines)
 
     when false:
