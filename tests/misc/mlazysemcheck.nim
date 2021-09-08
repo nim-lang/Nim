@@ -177,6 +177,15 @@ when defined case_noimports:
           doAssert compiles(fn3(1))
         doAssert not compiles(fn3(1))
 
+    block: # compiles triggers local epilogue
+      template bar(cond) =
+        proc fn1()=fn2()
+        proc fn2()=fn3()
+        proc fn3()=
+          static: doAssert cond
+      doAssert not compiles(bar(false))
+      doAssert compiles(bar(true))
+
   block: # a regression test involving fwd declared procs
     block:
       proc fn1(): int
