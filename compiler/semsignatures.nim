@@ -136,9 +136,17 @@ proc addParametersAgainToCurrentScope(c: PContext; s: PSym) =
     if x.kind == nkSym:
       addParamOrResult(c, x.sym, s.kind)
 
+proc nameSym(n: PNode): PSym =
+  case n.kind
+  of nkPostfix: result = nameSym(n[1])
+  of nkPragmaExpr: result = nameSym(n[0])
+  of nkSym: result = n.sym
+  else: result = nil
+
 proc semRoutineSignature(c: PContext; n: PNode; kind: TSymKind) =
-  if n[namePos].kind == nkSym and n[namePos].sym.typ == nil:
-    let s = n[namePos].sym
+  let s = nameSym(n[namePos])
+  if s != nil and s.typ == nil:
+    s.ast = n
     pushOwner(c, s)
     openScope(c)
     semProcSignature(c, n, s)
