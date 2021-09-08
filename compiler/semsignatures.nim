@@ -146,10 +146,13 @@ proc nameSym(n: PNode): PSym =
 proc semRoutineSignature(c: PContext; n: PNode; kind: TSymKind) =
   let s = nameSym(n[namePos])
   if s != nil and s.typ == nil:
-    s.ast = n
+    if s.ast == nil: s.ast = n
     pushOwner(c, s)
     openScope(c)
     semProcSignature(c, n, s)
+
+    pragmaCallable(c, s, n, procPragmas)
+
     closeScope(c)
     popOwner(c)
     assert s.typ != nil
