@@ -2187,6 +2187,8 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   try:
     result = semExpr(c, n, flags)
     if result != nil and efNoSem2Check notin flags:
+      # `compiles(foo)` triggers epilogue for generated tree
+      nimSemcheckTree(c.graph, result, instantiationScope = nil)
       trackStmt(c, c.module, result, isTopLevel = false)
     if c.config.errorCounter != oldErrorCount:
       result = nil
