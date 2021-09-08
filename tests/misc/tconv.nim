@@ -91,7 +91,6 @@ reject:
     var x = newString(109*1024*1024)
     x[0] = c
     x
-  type _ = typeof(f) # D20210905T125411_forceSemcheck_compiles
 
 {.push warning[AnyEnumConv]:on, warningAsError[AnyEnumConv]:on.}
 

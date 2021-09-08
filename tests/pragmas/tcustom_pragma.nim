@@ -204,7 +204,6 @@ let xx = compiles:
   proc myproc_bad(s: string): int =
     {.not_exist.}:
       s.len
-  type _ = typeof(myproc_bad) # D20210905T125411_forceSemcheck_compiles
 doAssert: xx == false
 
 macro checkSym(s: typed{nkSym}): untyped =

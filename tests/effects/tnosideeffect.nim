@@ -16,11 +16,9 @@ block: # `.noSideEffect`
     func fun1() = discard foo(fn1)
   reject:
     func fun1() = discard foo(fn2)
-    type _ = typeof(fun1) # D20210905T125411_forceSemcheck_compiles
 
   var foo2: type(foo) = foo
   accept:
     func main() = discard foo(fn1)
   reject:
     func main() = discard foo2(fn1)
-    type _ = typeof(main) # D20210905T125411_forceSemcheck_compiles
