@@ -483,6 +483,11 @@ const
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =
   rememberExpansion(c, nOrig.info, sym)
+  for i in 1..<sym.typ.len:
+    # PRTEMP D20210827T174229_macrp_typed_param_lazy
+    if sym.typ[i].kind != tyUntyped:
+      nimSemcheckTree(c.graph, n[i])
+
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
   let info = getCallLineInfo(n)

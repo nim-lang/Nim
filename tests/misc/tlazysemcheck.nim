@@ -17,6 +17,7 @@ proc run(opt: string): string =
   result = ret
 
 proc check(opt: string, expected: string) =
+  # echo opt
   let actual = run(opt)
   # use unittest.check pending https://github.com/nim-lang/Nim/pull/10558
   doAssert expected in actual, fmt("{opt=}\n{actual=}\n{expected=}")
