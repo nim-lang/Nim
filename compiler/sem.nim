@@ -533,7 +533,10 @@ proc setGenericParamsMisc(c: PContext; n: PNode) =
   else:
     n[miscPos][1] = orig
 
-include semtempl, semgnrc, semstmts, semexprs
+proc semProcSignature(c: PContext; n: PNode; s: PSym)
+proc addParametersAgainToCurrentScope(c: PContext; s: PSym)
+
+include semtempl, semgnrc, semstmts, semexprs, semsignatures
 
 proc addCodeForGenerics(c: PContext, n: PNode) =
   for i in c.lastGenericIdx..<c.generics.len:
@@ -612,7 +615,10 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
       inc c.topStmts
   else:
     inc c.topStmts
-  if sfNoForward in c.module.flags:
+
+  if cyclicImports in c.config.features:
+    result = semSignatures(c, n)
+  elif sfNoForward in c.module.flags:
     result = semAllTypeSections(c, n)
   else:
     result = n
