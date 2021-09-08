@@ -74,14 +74,15 @@ proc topLevelDecl(c: PContext; n: PNode): PNode =
   of nkUsingStmt: declLoop(c, n, skParam)
   of nkTypeSection:
     typeSectionLeftSidePass(c, n)
-    for a in n:
-      if a.kind == nkTypeDef:
-        #decl(c, a[0], skType)
-        for i in 1..<a.len:
-          if a[i].kind == nkEnumTy:
-            # declare enum members
-            for b in a[i]:
-              decl(c, b, skEnumField)
+    when false:
+      for a in n:
+        if a.kind == nkTypeDef:
+          #decl(c, a[0], skType)
+          for i in 1..<a.len:
+            if a[i].kind == nkEnumTy:
+              # declare enum members
+              for b in a[i]:
+                decl(c, b, skEnumField)
   else:
     discard "DO NOT recurse here."
 
@@ -145,7 +146,7 @@ proc semRoutineSignature(c: PContext; n: PNode; kind: TSymKind) =
     popOwner(c)
     assert s.typ != nil
 
-proc semLocalSignature(c: PContext; n: PNode; kind: TSymKind) =
+proc semLocalSignature(c: PContext; section: PNode; kind: TSymKind) =
   #[
   Consider this case:
 
@@ -160,18 +161,20 @@ proc semLocalSignature(c: PContext; n: PNode; kind: TSymKind) =
   its value which cannot be done as we haven't processed split's body yet!
 
   ]#
-  var typ: PType = nil
-  if n[^2].kind != nkEmpty:
-    typ = semTypeNode(c, n[^2], nil)
-  elif n[^1].kind != nkEmpty:
-    let def = semExprWithType(c, copyTree(n[^1]), {efNoEval})
-    typ = def.typ
-  if typ != nil:
-    for i in 0..<n.len-2:
-      if n[i].kind == nkSym:
-        n[i].sym.typ = typ
-  # It turns out that the old Nim compiler code is perfectly prepared
-  # for this logic, see `setVarType`.
+  for n in section:
+    if n.kind == nkCommentStmt: continue
+    var typ: PType = nil
+    if n[^2].kind != nkEmpty:
+      typ = semTypeNode(c, n[^2], nil)
+    elif n[^1].kind != nkEmpty:
+      let def = semExprWithType(c, copyTree(n[^1]), {efNoEval})
+      typ = def.typ
+    if typ != nil:
+      for i in 0..<n.len-2:
+        if n[i].kind == nkSym:
+          n[i].sym.typ = typ
+    # It turns out that the old Nim compiler code is perfectly prepared
+    # for this logic, see `setVarType`.
 
 proc semSignaturesAux(c: PContext, n: PNode) =
   case n.kind

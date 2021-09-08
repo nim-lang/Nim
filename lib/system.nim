@@ -153,17 +153,11 @@ when defined(nimHasIterable):
   type
     iterable*[T] {.magic: IterableType.}  ## Represents an expression that yields `T`
 
-when defined(nimHashOrdinalFixed):
-  type
-    Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
-                                   ## bool, character, and enumeration types
-                                   ## as well as their subtypes. See also
-                                   ## `SomeOrdinal`.
-else:
-  # bootstrap <= 0.20.0
-  type
-    OrdinalImpl[T] {.magic: Ordinal.}
-    Ordinal* = OrdinalImpl | uint | uint64
+type
+  Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
+                                  ## bool, character, and enumeration types
+                                  ## as well as their subtypes. See also
+                                  ## `SomeOrdinal`.
 
 when defined(nimHasDeclaredMagic):
   proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.}
