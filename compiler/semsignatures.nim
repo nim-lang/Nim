@@ -156,6 +156,8 @@ proc semRoutineSignature(c: PContext; n: PNode; kind: TSymKind) =
     closeScope(c)
     popOwner(c)
     assert s.typ != nil
+    #if s.name.s == "high":
+    #  echo "did check ", s.typ
 
 proc semLocalSignature(c: PContext; section: PNode; kind: TSymKind) =
   #[

@@ -74,7 +74,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   var noSyms = true
   var nextSymIndex = 0
   while sym != nil:
-    if sym.kind in filter:
+    if sym.kind in filter and sym.typ != nil:
       # Initialise 'best' and 'alt' with the first available symbol
       initCandidate(c, best, sym, initialBinding, scope, diagnosticsFlag)
       initCandidate(c, alt, sym, initialBinding, scope, diagnosticsFlag)
@@ -85,7 +85,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       scope = o.lastOverloadScope
   var z: TCandidate
   while sym != nil:
-    if sym.kind notin filter:
+    if sym.kind notin filter or sym.typ == nil:
       sym = nextOverloadIter(o, c, headSymbol)
       scope = o.lastOverloadScope
       continue
