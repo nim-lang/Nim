@@ -40,7 +40,7 @@ proc decl(c: PContext; n: PNode; kind: TSymKind) =
 
 proc declLoop(c: PContext; n: PNode; kind: TSymKind) =
   for a in n:
-    if a.kind in {nkIdentDefs, nkVarTuple}:
+    if a.kind in {nkIdentDefs, nkVarTuple, nkConstDef}:
       for j in 0..<a.len-2: decl(c, a[j], kind)
 
 proc topLevelDecl(c: PContext; n: PNode): PNode =
@@ -184,8 +184,9 @@ proc semLocalSignature(c: PContext; section: PNode; kind: TSymKind) =
       typ = def.typ
     if typ != nil:
       for i in 0..<n.len-2:
-        if n[i].kind == nkSym:
-          n[i].sym.typ = typ
+        let local = nameSym(n[i])
+        if local != nil:
+          local.typ = typ
     # It turns out that the old Nim compiler code is perfectly prepared
     # for this logic, see `setVarType`.
 
