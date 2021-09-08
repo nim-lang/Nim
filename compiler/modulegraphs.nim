@@ -159,8 +159,8 @@ iterator optionStackList*(a: POptionEntry): POptionEntry =
     yield a
     a = a.parent
 
-proc determineType2*(graph: ModuleGraph, s: PSym) {.importc.} # PRTEMP
-proc nimSemcheckTree*(graph: ModuleGraph, n: PNode) {.importc.} # PRTEMP
+proc determineType2*(graph: ModuleGraph, s: PSym, instantiationScope: PScope = nil) {.importc.} # PRTEMP
+proc nimSemcheckTree*(graph: ModuleGraph, n: PNode, instantiationScope: PScope) {.importc.} # PRTEMP
 
 proc lazyVisit*(g: ModuleGraph, sym: PSym): LazyContext =
   if sym.id notin g.symLazyContext:

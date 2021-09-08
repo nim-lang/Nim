@@ -483,17 +483,18 @@ const
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =
   rememberExpansion(c, nOrig.info, sym)
-  dbgIf sym, sym.typ.len, cast[int](c)
-  debugScopesIf(c.currentScope)
+  # dbgIf sym, sym.typ.len, cast[int](c)
+  # debugScopesIf(c.currentScope)
   for i in 1..<sym.typ.len:
     # PRTEMP D20210827T174229_macrp_typed_param_lazy
     let t = sym.typ[i]
-    dbgIf t, i
+    # dbgIf t, i
     if t.kind != tyUntyped and not t.isVarargsUntyped:
-      dbgIf n[i], i
-      debugScopesIf(c.currentScope)
-      nimSemcheckTree(c.graph, n[i])
-  dbgIf()
+      # lazyScopeForTypedParams
+      # dbgIf n[i], i
+      # debugScopesIf(c.currentScope)
+      nimSemcheckTree(c.graph, n[i], instantiationScope = c.currentScope)
+  # dbgIf()
 
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 

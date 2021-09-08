@@ -1904,7 +1904,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   s.ast = n
   s.options = c.config.options
   #s.scope = c.currentScope
-  dbgIf s, s.kind, n, flags, s.flags, s.typ, c.config$s.ast.info
+  # dbgIf s, s.kind, n, flags, s.flags, s.typ, c.config$s.ast.info
 
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
@@ -2223,7 +2223,7 @@ proc determineTypeOne(c: PContext, s: PSym) =
   c.inConceptDecl = inConceptDecl
   c.popOwner()
 
-proc determineType2(graph: ModuleGraph, s: PSym) {.exportc.} =
+proc determineType2(graph: ModuleGraph, s: PSym, instantiationScope: PScope = nil) {.exportc.} =
   if graph.config.isLazySemcheck: # PRTEMP FACTOR
     # TODO: instead, just set sfLazy flag?
     lazyVisit(graph, s).needDeclaration = true
@@ -2247,9 +2247,9 @@ proc determineType2(graph: ModuleGraph, s: PSym) {.exportc.} =
   # dbgIf c2.module, s, "retrieve"
   let old = c2.currentScope
   c2.currentScope = lcontext.scope
-  dbgIf cast[int](c2), s, cast[int](old), cast[int](lcontext.scope)
-  debugScopesIf old
-  debugScopesIf lcontext.scope
+  # dbgIf cast[int](c2), s, cast[int](old), cast[int](lcontext.scope)
+  # debugScopesIf old
+  # debugScopesIf lcontext.scope
 
   # TODO: which is better?
   # let pBaseOld = c2.p
@@ -2266,22 +2266,27 @@ proc determineType2(graph: ModuleGraph, s: PSym) {.exportc.} =
   # for s2 in c2.currentScope.parent.symbols:
   #   dbgIf s2, s2.flags, s2.typ, s2.owner, graph.config$s2.info
 
-  for s2 in c2.currentScope.symbols: # TODO: do we need to analyze parent scopes too?
-    dbgIf s2, s2.typ, s2.flags, graph.config$s2.info, s2.owner
-    if s2.name == s.name: # checking `s2.kind == s.kind` would be wrong because all overloads in same scope must be revealed
-      if s2.typ == nil and sfLazy in s2.flags:
-        # dbgIf s2, s, s2.flags, s.flags, graph.config$s2.ast.info
-        candidates.add s2
+  proc getCandidates(scope: PScope) =
+    for s2 in scope.symbols: # TODO: do we need to analyze parent scopes too? EDIT: probably not
+      # dbgIf s2, s2.typ, s2.flags, graph.config$s2.info, s2.owner
+      if s2.name == s.name: # checking `s2.kind == s.kind` would be wrong because all overloads in same scope must be revealed
+        if s2.typ == nil and sfLazy in s2.flags:
+          # dbgIf s2, s, s2.flags, s.flags, graph.config$s2.ast.info
+          candidates.add s2
+  getCandidates(c2.currentScope)
+  if instantiationScope != nil and c2.currentScope.parent == instantiationScope:
+    getCandidates(instantiationScope)
+
   candidates = candidates.sortedByIt(it.id)
-  dbgIf candidates
+  # dbgIf candidates
   when defined(nimCompilerStacktraceHints):
     setFrameMsg $(candidates.len, candidates)
     # to ensure that fwd declarations are processed before implementations
   # dbgIf candidates.len, candidates, s
   for s2 in candidates:
-    dbgIf s2
+    # dbgIf s2
     determineTypeOne(c2, s2)
-  dbgIf "after"
+  # dbgIf "after"
   c2.currentScope = old
   # c2.p = pBaseOld
   popProcCon(c2)
@@ -2563,6 +2568,7 @@ type VisitContext = object
   graph: ModuleGraph
   allSymbolsNewRoutines: seq[PSym]
   allSymbols: seq[PSym]
+  instantiationScope*: PScope
 
 proc visitName(vc: VisitContext, n: PNode): PSym =
   # dbgIf n.kind, n
@@ -2601,26 +2607,26 @@ proc visitAllLiveSymbols(vc: var VisitContext, n: PNode) =
         vc.allSymbols.add s
   of routineDefs:
     let s = visitName(vc, n[namePos])
-    dbgIf s, n[namePos], s.lazyDecl, s.typ, s.flags # PRTEMP
+    # dbgIf s, n[namePos], s.lazyDecl, s.typ, s.flags # PRTEMP
     # debugScopes(vc.graph.config, ) 
     # debugScopesIf
     if s.lazyDecl == nil and s.typ == nil and s.ast != nil:
-      dbgIf "here"
+      # dbgIf "here"
       # we could also have laxer checking with just `needDeclaration = true`
-      determineType2(vc.graph, s)
+      determineType2(vc.graph, s, vc.instantiationScope)
       vc.allSymbolsNewRoutines.add s
-      dbgIf "before visitAllLiveSymbols"
+      # dbgIf "before visitAllLiveSymbols"
       visitAllLiveSymbols(vc, s.ast)
     else:
-      dbgIf "here2"
+      # dbgIf "here2"
       vc.allSymbols.add s
   elif n.kind in nkCallKinds and isRunnableExamples(n[0]): discard
   elif n.safeLen > 0:
     for ni in n:
       visitAllLiveSymbols(vc, ni)
 
-proc nimSemcheckTree(graph: ModuleGraph, n: PNode) {.exportc.} =
-  var vc = VisitContext(graph: graph)
+proc nimSemcheckTree(graph: ModuleGraph, n: PNode, instantiationScope: PScope) {.exportc.} =
+  var vc = VisitContext(graph: graph, instantiationScope: instantiationScope)
   # dbgIf n
   visitAllLiveSymbols(vc, n)
   # dbgIf n.typ

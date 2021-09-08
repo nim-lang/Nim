@@ -857,6 +857,7 @@ type
     depthLevel*: int
     symbols*: TStrTable
     parent*: PScope
+    lazyScopeForTypedParams*: bool
     allowPrivateAccess*: seq[PSym] #  # enable access to private fields
 
   PScope* = ref TScope
