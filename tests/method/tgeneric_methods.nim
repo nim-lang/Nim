@@ -13,6 +13,11 @@ type
 method wow[T](y: int; x: First[T]) {.base.} =
   echo "wow1"
 
+when defined(nimLazySemcheck):
+  # this currently needs the following workaround; note that generic methods
+  # are deprecated and non-generic methods work fine, see D20210909T005449
+  type _ = typeof(wow) # D20210905T125411_forceSemcheck_compiles
+
 method wow[T](y: int; x: Second[T]) =
   echo "wow2"
 
