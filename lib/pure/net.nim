@@ -1391,6 +1391,9 @@ proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [
       # Save the error in case it gets reset.
       socket.lastError = osLastError()
 
+block: # see D20210909T002033; workaround to make nimsuggest compile
+  type _ = typeof(recv(Socket.default, nil, 0))
+
 proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
              funcName: string): int {.tags: [TimeEffect].} =
   ## determines the amount of characters that can be read. Result will never
@@ -1681,7 +1684,8 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
 
 # workaround to avoid effect error by forcing semchecking, see reduced case and
 # explanation here: D20210909T002033
-type _ = typeof(send(Socket.default, nil, 0))
+block:
+  type _ = typeof(send(Socket.default, nil, 0))
 
 proc send*(socket: Socket, data: string,
            flags = {SocketFlag.SafeDisconn}) {.tags: [WriteIOEffect].} =
