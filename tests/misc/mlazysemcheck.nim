@@ -752,5 +752,14 @@ elif defined case_bug3:
     foo()
     {.pop.}
 
+elif defined case_bug4:
+  # probably not a bug; nimLazySemcheck makes the assert fail
+  # reduction of a failure from `nim doc lib/pure/asyncfile.nim`
+  proc foo() =
+    static: doAssert not declared(posix)
+  when defined(posix):
+    import posix
+  foo()
+
 else:
   static: doAssert false
