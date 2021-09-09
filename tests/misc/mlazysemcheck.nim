@@ -607,6 +607,24 @@ elif defined case_test2:
     proc baz(s: string): string = discard
     foo(baz)
 
+elif defined case_method1:
+  # D20210909T094624:here
+  # reduced from a failure in nimble/src/nimblepkg/cli.nim
+  # to ren-enable lazy semchecking, this test must keep passing;
+  # see also tests/method/tgeneric_methods which could be re-visited once methods
+  # become lazy again
+  proc displayWarning*(message: string) = discard
+  proc displayDetails*(message: string) = discard
+  type A = ref object of RootObj
+  type B = ref object of A
+  method displayDetails*(error: A) {.base.} =
+    if false: displayDetails(A())
+  method displayDetails*(error: B) = discard
+  method displayWarning*(error: A) {.base.} =
+    if false: displayDetails(A())
+  method displayWarning*(error: B) = discard
+  displayWarning("ab")
+
 elif defined case_stdlib_imports:
   {.define(nimCompilerDebug).}
   #[

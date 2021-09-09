@@ -23,6 +23,6 @@ proc check(opt: string, expected: string) =
   doAssert expected in actual, fmt("{opt=}\n{actual=}\n{expected=}")
 
 proc main =
-  for opt in "-d:case_noimports; -d:case_reordering; -d:case_many_fake_symbols; -d:case_stdlib ; -d:case_stdlib_imports; -d:case_import1; -d:case_cyclic; -d:case_test2".split(";"):
+  for opt in "-d:case_noimports; -d:case_reordering; -d:case_many_fake_symbols; -d:case_stdlib ; -d:case_stdlib_imports; -d:case_import1; -d:case_cyclic; -d:case_test2; -d:case_method1".split(";"):
     check(opt): "" # we can add per-test expectations on compiler output here, e.g. to ensure certain APIs were (or not) compiled
 main()

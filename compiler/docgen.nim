@@ -1136,8 +1136,11 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
   ## which is implemented in ``docgen2.nim``.
   template genItemAux(skind) =
     genItem(d, n, n[namePos], skind, docFlags)
-  if n.kind in routineDefs and n[0].sym.typ == nil:
-    return
+  if n.kind in routineDefs:
+    if n[0].kind != nkSym:
+      # e.g. for: nim doc0 lib/system/threads.nim
+      assert d.conf.cmd == cmdDoc0, $d.conf.cmd
+    elif n[0].sym.typ == nil: return # lazy semchecking; we could also defer to epilogue
   case n.kind
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
