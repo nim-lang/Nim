@@ -1465,7 +1465,11 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:
       #localError(s.info, "'$1' is not GC-safe" % s.name.s)
-      listGcUnsafety(s, onlyWarning=false, g.config)
+      listGcUnsafety(s, onlyWarning=true, g.config) # PRTEMP
+      # if c.config.isLazySemcheck: # PRTEMP
+      #   listGcUnsafety(s, onlyWarning=true, g.config)
+      # else:
+      #   listGcUnsafety(s, onlyWarning=false, g.config)
     else:
       listGcUnsafety(s, onlyWarning=true, g.config)
       #localError(s.info, warnGcUnsafe2, s.name.s)
@@ -1478,7 +1482,11 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       elif c.compilesContextId == 0: # don't render extended diagnostic messages in `system.compiles` context
         var msg = ""
         listSideEffects(msg, s, g.config, t.c)
-        message(g.config, s.info, errGenerated, msg)
+        # if c.config.isLazySemcheck: # PRTEMP
+        #   message(g.config, s.info, warnProveInit, msg) # PRTEMP: wrong warning
+        # else:
+        #   message(g.config, s.info, errGenerated, msg)
+        message(g.config, s.info, warnProveInit, msg) # PRTEMP: wrong warning
       else:
         localError(g.config, s.info, "") # simple error for `system.compiles` context
   if not t.gcUnsafe:
