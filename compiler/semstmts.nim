@@ -1931,10 +1931,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       # PRTEMP
       s.flags.incl sfForward
       s.flags.incl sfLazy
-      openScope(c) # needed for `isTopLevelInsideDeclaration` so we match the regular flow; we could optimize a bit by avoiding to create a dummy scope since all we need is declarationScope
       addInterfaceDeclSelect(c, declarationScope, s)
-      closeScope(c)
-
       let lcontext = c.graph.symLazyContext[s.id]
       lcontext.ctxt = c
       lcontext.scope = c.currentScope # TODO: needed?

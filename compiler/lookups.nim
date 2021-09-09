@@ -351,13 +351,13 @@ proc addPrelimDecl*(c: PContext, sym: PSym) =
 
 from ic / ic import addHidden
 
-proc addInterfaceDeclAux(c: PContext, sym: PSym) =
+proc addInterfaceDeclAux(c: PContext, sym: PSym, isTopLevel: bool) =
   ## adds symbol to the module for either private or public access.
   if sfExported in sym.flags:
     # add to interface:
     if c.module != nil: exportSym(c, sym)
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
-  elif sym.kind in ExportableSymKinds and c.module != nil and isTopLevelInsideDeclaration(c, sym):
+  elif sym.kind in ExportableSymKinds and c.module != nil and isTopLevel:
     strTableAdd(semtabAll(c.graph, c.module), sym)
     if c.config.symbolFiles != disabledSf:
       addHidden(c.encoder, c.packedRepr, sym)
@@ -367,7 +367,7 @@ proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
   addDeclAt(c, scope, sym)
   if not scope.isShadowScope:
     # adding into a non-shadow scope, we need to handle exports, etc
-    addInterfaceDeclAux(c, sym)
+    addInterfaceDeclAux(c, sym, scope.isTopLevel)
 
 proc addInterfaceDecl*(c: PContext, sym: PSym) {.inline.} =
   ## adds a decl and the interface if appropriate
@@ -390,7 +390,7 @@ proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   addOverloadableSymAt(c, scope, sym)
   if not scope.isShadowScope:
     # adding into a non-shadow scope, we need to handle exports, etc
-    addInterfaceDeclAux(c, sym)
+    addInterfaceDeclAux(c, sym, scope.isTopLevel)
 
 proc addInterfaceDeclSelect*(c: PContext, scope: PScope, sym: PSym) {.inline.} =
   if sym.kind in OverloadableSyms:

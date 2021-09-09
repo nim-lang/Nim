@@ -566,12 +566,11 @@ proc checkSonsLen*(n: PNode, length: int; conf: ConfigRef) =
 proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
   if n.len < length: illFormedAst(n, conf)
 
-proc isTopLevel*(c: PContext): bool {.inline.} =
-  result = c.currentScope.depthLevel <= 2
+proc isTopLevel*(scope: PScope): bool {.inline.} =
+  result = scope.depthLevel <= 2
 
-proc isTopLevelInsideDeclaration*(c: PContext, sym: PSym): bool {.inline.} =
-  # for routineKinds the scope isn't closed yet:
-  c.currentScope.depthLevel <= 2 + ord(sym.kind in routineKinds)
+proc isTopLevel*(c: PContext): bool {.inline.} =
+  result = c.currentScope.isTopLevel
 
 proc pushCaseContext*(c: PContext, caseNode: PNode) =
   c.p.caseContext.add((caseNode, 0))
