@@ -1857,13 +1857,18 @@ proc isLazySemcheck*(conf: ConfigRef): bool =
 proc needsSemcheckDecl(c: PContext, n: PNode, s: PSym): bool =
   # TODO: distinguish decl from impl
   if sfOverriden in s.flags or s.name.s[0] == '=': result = true # we could refine this logic but it's simplest
-  elif s.kind in {skConverter}: result = true # because it's implicit
+  elif s.kind == skConverter: result = true # because it's implicit
   elif n[patternPos].kind != nkEmpty: result = true
     # because pattern rewrite rules are implicit, e.g. trmacros_various.nim
   elif sfGenSym in s.flags: result = true
     #[
     PRTEMP for D20210906T193359; maybe there's a way to stay lazy in this case too
     eg tests/astspec/tastspec.nim
+    ]#
+  elif s.kind == skMethod: result = true
+    #[
+    with more care, methods could be made lazy too, it currently fails
+    on one test, see D20210909T094624
     ]#
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
