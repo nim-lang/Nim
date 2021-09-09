@@ -481,6 +481,10 @@ proc isSemcheckUnusedSymbols*(conf: ConfigRef): bool =
   elif conf.isDefined("nimLazySemcheckComplete"):
     result = true
 
+proc isLazySemcheck*(conf: ConfigRef): bool =
+  # could also depend on some --experimental:lazysemcheck flag
+  conf.isDefined("nimLazySemcheck")
+
 when defined(nimDebugUtils):
   # this allows inserting debugging utilties in all modules that import `options`
   # with a single switch, which is useful when debugging compiler.

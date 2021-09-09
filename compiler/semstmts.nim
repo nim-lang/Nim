@@ -1850,10 +1850,6 @@ proc isCompilerProc(c: PContext, s: PSym, n: PNode): bool =
         if ai.ident == getIdent(c.cache, a):
           return true
 
-proc isLazySemcheck*(conf: ConfigRef): bool =
-  # could also depend on some --experimental:lazysemcheck flag
-  conf.isDefined("nimLazySemcheck")
-
 proc needsSemcheckDecl(c: PContext, n: PNode, s: PSym): bool =
   # TODO: distinguish decl from impl
   if sfOverriden in s.flags or s.name.s[0] == '=': result = true # we could refine this logic but it's simplest

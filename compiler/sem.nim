@@ -689,7 +689,7 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   closeScope(c)         # close module's scope
   rawCloseScope(c)      # imported symbols; don't check for unused ones!
   graph.moduleSemContexts[c.module.id].optionStack = snapshotOptionEntry(c) # PRTEMP
-  if not graph.config.isSemcheckUnusedSymbols: # CHECKME
+  if not graph.config.isLazySemcheck:
     reportUnusedModules(c)
   result = newNode(nkStmtList)
   if n != nil:
@@ -699,15 +699,18 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     result.add(c.module.ast)
   popOwner(c)
   popProcCon(c)
-  sealRodFile(c)
+  if not graph.config.isLazySemcheck: sealRodFile(c)
 
 proc closeEpilogue(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
-  let c = p.PContext
-  let mctxt = graph.moduleSemContexts[c.module.id]
-  let optionStackOld = retrieveSavedOptionStack(c, mctxt.optionStack)
-  reportUnusedModules(c)
-  ensureNoMissingOrUnusedSymbols(graph.config, graph.moduleSemContexts[c.module.id].allSymbols)
-  popOptionEntry(c, optionStackOld)
+  if graph.config.isLazySemcheck:
+    let c = p.PContext
+    if graph.config.isSemcheckUnusedSymbols:
+      let mctxt = graph.moduleSemContexts[c.module.id]
+      let optionStackOld = retrieveSavedOptionStack(c, mctxt.optionStack)
+      reportUnusedModules(c)
+      ensureNoMissingOrUnusedSymbols(graph.config, graph.moduleSemContexts[c.module.id].allSymbols)
+      popOptionEntry(c, optionStackOld)
+    sealRodFile(c)
 
 const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true, closeEpilogue = closeEpilogue)
