@@ -753,6 +753,7 @@ elif defined case_bug3:
     {.pop.}
 
 elif defined case_bug4:
+  # D20210909T120651:here
   # probably not a bug; nimLazySemcheck makes the assert fail
   # reduction of a failure from `nim doc lib/pure/asyncfile.nim`
   proc foo() =
