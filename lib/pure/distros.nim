@@ -273,7 +273,7 @@ proc foreignDep*(foreignPackageName: string) =
   let (installCmd, sudo) = foreignDepInstallCmd(foreignPackageName)
   foreignCmd(installCmd, sudo)
 
-proc echoForeignDeps*() {.deprecated: "use `foreignDeps` instead".} =
+proc echoForeignDeps*() =
   ## Writes the list of registered foreign deps to stdout.
   for d in foreignDeps:
     echo d
