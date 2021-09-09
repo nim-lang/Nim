@@ -301,6 +301,10 @@ proc popOptionEntry*(c: PContext, b: POptionEntry = c.optionStack) =
   c.features = b.features
   c.optionStack = b.parent
 
+proc retrieveSavedOptionStack*(c: PContext, b: POptionEntry): POptionEntry =
+  result = c.snapshotOptionEntry
+  popOptionEntry(c, b)
+
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
   result.optionStack = newOptionEntry(graph.config)

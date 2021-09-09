@@ -703,17 +703,11 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
 
 proc closeEpilogue(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   let c = p.PContext
-
-  # FACTOR D20210906T191019
-  let old = snapshotOptionEntry(c)
   let mctxt = graph.moduleSemContexts[c.module.id]
-  popOptionEntry(c, mctxt.optionStack)
-
-  # work
+  let optionStackOld = retrieveSavedOptionStack(c, mctxt.optionStack)
   reportUnusedModules(c)
   ensureNoMissingOrUnusedSymbols(graph.config, graph.moduleSemContexts[c.module.id].allSymbols)
-
-  popOptionEntry(c, old)
+  popOptionEntry(c, optionStackOld)
 
 const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true, closeEpilogue = closeEpilogue)

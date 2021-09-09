@@ -2199,13 +2199,7 @@ proc determineTypeOne(c: PContext, s: PSym) =
   let lcontext = c.graph.symLazyContext[s.id]
   let inConceptDecl = c.inConceptDecl
   c.inConceptDecl = lcontext.inConceptDecl
-
-  let old = c.snapshotOptionEntry
-  c.optionStack = lcontext.optionStack
-  # TODO: use swap?
-  # D20210906T191019:here
-  popOptionEntry(c, lcontext.optionStack)
-
+  let optionStackOld = retrieveSavedOptionStack(c, lcontext.optionStack)
   assert s.ast.kind in routineDefs, $s
   let n2 = semExpr(c, s.ast, {}, forceReSem = true) # PRTEMP: can this raise? if so, need try/catch?
   # eg: for semIterator etc
@@ -2213,7 +2207,7 @@ proc determineTypeOne(c: PContext, s: PSym) =
   s.flags.excl sfLazySemcheckStarted
 
   c.inConceptDecl = inConceptDecl
-  popOptionEntry(c, old)
+  popOptionEntry(c, optionStackOld)
   c.popOwner()
 
 proc determineType2(graph: ModuleGraph, s: PSym, instantiationScope: PScope = nil) {.exportc.} =
