@@ -570,7 +570,7 @@ proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
 
 proc isTopLevelInsideDeclaration*(c: PContext, sym: PSym): bool {.inline.} =
-  # for routeKinds the scope isn't closed yet:
+  # for routineKinds the scope isn't closed yet:
   c.currentScope.depthLevel <= 2 + ord(sym.kind in routineKinds)
 
 proc pushCaseContext*(c: PContext, caseNode: PNode) =

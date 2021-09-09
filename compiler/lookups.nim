@@ -194,7 +194,7 @@ proc debugScopes*(conf: ConfigRef, scope: PScope; limit=0, max = int.high) {.dep
   var i = 0
   var count = 0
   for scope in allScopes(scope):
-    echo "scope ", i
+    echo "scope $# depth: $#" % [$i, $scope.depthLevel]
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
         if count >= max: return
