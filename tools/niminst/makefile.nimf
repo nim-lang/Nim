@@ -164,7 +164,7 @@ ifeq ($(ucpu),riscv64)
   mycpu = riscv64
 endif
 ifndef mycpu
-  $(error unknown processor: $(ucpu))
+  $(error unknown CPU architecture: $(ucpu) See makefile.nimf)
 endif
 
 # for osA in 1..c.oses.len:
