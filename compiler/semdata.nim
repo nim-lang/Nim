@@ -294,7 +294,8 @@ proc pushOptionEntry*(c: PContext): POptionEntry =
   result = snapshotOptionEntry(c)
   c.optionStack = result
 
-proc popOptionEntry*(c: PContext, b: POptionEntry = c.optionStack) =
+proc popOptionEntry*(c: PContext, b: POptionEntry = nil) =
+  let b = if b != nil: b else: c.optionStack
   c.config.options = b.options
   c.config.notes = b.notes
   c.config.warningAsErrors = b.warningAsErrors
