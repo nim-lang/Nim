@@ -664,13 +664,6 @@ elif defined case_stdlib_imports:
   decls, compilesettings, with, wrapnils
   ]
 
-elif defined case_perf:
-  #[
-  PRTEMP TODO:
-  example showing perf for lots of imports
-  ]#
-  import std/[strutils, os, times, enumutils, browsers]
-
 elif defined case_bug1:
   #[
   D20210831T175533
@@ -694,6 +687,38 @@ elif defined case_bug2:
   ]#
   import mlazysemcheck_b
   fn(2)
+
+elif defined case_bug3:
+  #[
+  D20210909T002033:here
+  xxx these currently give an error (GcUnsafe2 or side effects); the problem
+  is that foo() triggers semchecking of foo overloads, which starts with `foo(int)`
+  which triggers semchecking of `foo()`; when trackProc is reached, foo(int) has
+  a type but its effects (`tfGcSafe`) are not yet known and `gcsafeAndSideeffectCheck`
+  incorrectly assumes this is not gcsafe.
+
+  This can be fixed in several ways:
+  * instead of triggering full semchecking for all overloads of foo, only trigger
+    type semchecking for all overloads of foo, and then trigger full semchecking
+    (including `semProcBody`) only for the selected overload.
+  * or, we can defer effect analysis until the epilogue is reached, at which point
+    all proc types are known
+  ]#
+  block:
+    proc foo(a: string) = discard
+    proc foo(a: int) {.tags: [].} = foo("")
+    # type _ = typeof(foo) # this would remove the bug
+    proc foo() {.noSideEffect.} = foo(1)
+    foo()
+
+  block:
+    {.push warningAsError[GcUnsafe2]:on.}
+    proc foo(a: string) = discard
+    proc foo(a: int) {.tags: [].} = foo("")
+    # type _ = typeof(foo) # this would remove the bug
+    proc foo() {.gcsafe.} = foo(1)
+    foo()
+    {.pop.}
 
 else:
   static: doAssert false

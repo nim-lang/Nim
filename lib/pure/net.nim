@@ -1679,6 +1679,10 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
       const MSG_NOSIGNAL = 0
     result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
 
+# workaround to avoid effect error by forcing semchecking, see reduced case and
+# explanation here: D20210909T002033
+type _ = typeof(send(Socket.default, nil, 0))
+
 proc send*(socket: Socket, data: string,
            flags = {SocketFlag.SafeDisconn}) {.tags: [WriteIOEffect].} =
   ## sends data to a socket.
