@@ -126,6 +126,7 @@ type
   ModuleSemContext* = ref object
     ast*: PNode # because module.ast is nil
     allSymbols*: seq[PSym]
+    optionStack*: POptionEntry
 
   LazyContext* = ref object
     scope*: PScope
