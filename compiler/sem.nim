@@ -631,13 +631,21 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   else:
     inc c.topStmts
 
-  if cyclicImports in c.config.features:
+  if cyclicImports in c.config.features and c.graph.systemModuleComplete:
+    c.phase = RegisterTopLevelDecls
+
+  if c.phase == RegisterTopLevelDecls:
     result = semSignatures(c, n)
+    c.phase = SemSignatures
   elif sfNoForward in c.module.flags:
     result = semAllTypeSections(c, n)
   else:
     result = n
   result = semStmt(c, result, {})
+  if c.phase != Intertwined:
+    c.phase = SemRest
+    result = semRest(c, result)
+
   when false:
     # Code generators are lazy now and can deal with undeclared procs, so these
     # steps are not required anymore and actually harmful for the upcoming
@@ -708,6 +716,8 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   popOwner(c)
   popProcCon(c)
   sealRodFile(c)
+  if sfSystemModule in c.module.flags:
+    graph.systemModuleComplete = true
 
 const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true)

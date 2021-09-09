@@ -153,6 +153,7 @@ type
     recursiveDep*: string
     suggestionsMade*: bool
     isAmbiguous*: bool # little hack
+    phase*: ModulePhase
     features*: set[Feature]
     inTypeContext*, inConceptDecl*: int
     unusedImports*: seq[(PSym, TLineInfo)]

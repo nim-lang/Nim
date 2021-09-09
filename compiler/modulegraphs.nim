@@ -23,6 +23,7 @@ type
     sym*: PSym
 
   ModulePhase* = enum     ## the 'phase' of the module we're compiling
+    Intertwined           ## the old, 100% backwards compatible setting
     RegisterTopLevelDecls ## register top level declarations that
                           ## are **not** in a `when` section or similar
     SemSignatures         ## sem'check type/proc/func/method signatures
@@ -32,7 +33,6 @@ type
   Iface* = object       ## data we don't want to store directly in the
                         ## ast.PSym type for s.kind == skModule
     module*: PSym       ## module this "Iface" belongs to
-    phase*: ModulePhase
     converters*: seq[LazySym]
     patterns*: seq[LazySym]
     pureEnums*: seq[LazySym]
@@ -78,6 +78,7 @@ type
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
+    systemModuleComplete*: bool
     inclToMod*: Table[FileIndex, FileIndex] # mapping of include file to the
                                             # first module that included it
     importStack*: seq[FileIndex]  # The current import stack. Used for detecting recursive

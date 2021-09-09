@@ -1226,7 +1226,7 @@ proc isObjectDecl(n: PNode): bool =
   result = n.kind == nkObjectTy or (
     n.kind in {nkRefTy, nkPtrTy} and n.len == 1 and n[0].kind == nkObjectTy)
 
-proc typeSectionRightSidePass(c: PContext, n: PNode; ignoreObjects=false) =
+proc typeSectionRightSidePass(c: PContext, n: PNode) =
   for i in 0..<n.len:
     var a = n[i]
     if a.kind == nkCommentStmt: continue
@@ -1283,7 +1283,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode; ignoreObjects=false) =
 
       popOwner(c)
       closeScope(c)
-    elif a[2].kind != nkEmpty and (not ignoreObjects or not isObjectDecl(a[2])):
+    elif a[2].kind != nkEmpty and (c.phase != SemSignatures or not isObjectDecl(a[2])):
       # process the type's body:
       pushOwner(c, s)
       var t = semTypeNode(c, a[2], s.typ)
@@ -1456,9 +1456,18 @@ proc semTypeSection(c: PContext, n: PNode): PNode =
   ## without regard for the order of their definitions.
   if sfNoForward notin c.module.flags or nfSem notin n.flags:
     inc c.inTypeContext
-    typeSectionLeftSidePass(c, n)
-    typeSectionRightSidePass(c, n)
-    typeSectionFinalPass(c, n)
+    case c.phase
+    of Intertwined:
+      typeSectionLeftSidePass(c, n)
+      typeSectionRightSidePass(c, n)
+      typeSectionFinalPass(c, n)
+    of RegisterTopLevelDecls:
+      typeSectionLeftSidePass(c, n)
+    of SemSignatures:
+      typeSectionRightSidePass(c, n)
+    of SemRest:
+      typeSectionRightSidePass(c, n)
+      typeSectionFinalPass(c, n)
     dec c.inTypeContext
   result = n
 
@@ -1836,6 +1845,10 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 
+proc processBody(c: PContext; s: PSym): bool =
+  result = c.phase in {Intertwined, SemRest} or s.magic != mNone
+  # isTopLevel(c)
+
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
   result = semProcAnnotation(c, n, validPragmas)
@@ -1988,7 +2001,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         localError(c.config, n.info, "the overloaded " & s.name.s &
           " operator has to be enabled with {.experimental: \"callOperator\".}")
 
-  if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
+  if n[bodyPos].kind != nkEmpty and sfError notin s.flags and processBody(c, s):
     # for DLL generation we allow sfImportc to have a body, for use in VM
     if sfBorrow in s.flags:
       localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)

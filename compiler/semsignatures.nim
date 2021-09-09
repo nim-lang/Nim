@@ -155,9 +155,18 @@ proc semRoutineSignature(c: PContext; n: PNode; kind: TSymKind) =
     of skProc, skFunc: pragmaCallable(c, s, n, procPragmas)
     of skConverter: pragmaCallable(c, s, n, converterPragmas)
     of skMethod: pragmaCallable(c, s, n, methodPragmas)
-    of skTemplate: pragmaCallable(c, s, n, templatePragmas)
     of skMacro: pragmaCallable(c, s, n, macroPragmas)
     of skIterator: pragmaCallable(c, s, n, iteratorPragmas)
+    of skTemplate:
+      pragmaCallable(c, s, n, templatePragmas)
+
+      var allUntyped = true
+      for i in 1..<s.typ.n.len:
+        let param = s.typ.n[i].sym
+        param.flags.incl sfTemplateParam
+        param.flags.excl sfGenSym
+        if param.typ.kind != tyUntyped: allUntyped = false
+      if allUntyped: incl(s.flags, sfAllUntyped)
     else: discard
 
     closeScope(c)
@@ -214,7 +223,7 @@ proc semSignaturesAux(c: PContext, n: PNode) =
   of nkVarSection: semLocalSignature(c, n, skVar)
   of nkUsingStmt: semLocalSignature(c, n, skParam)
   of nkTypeSection:
-    typeSectionRightSidePass(c, n, ignoreObjects=true)
+    typeSectionRightSidePass(c, n)
     #  typeSectionFinalPass(c, n)
   of nkImportStmt:
     when false:
@@ -230,4 +239,18 @@ proc semSignaturesAux(c: PContext, n: PNode) =
 
 proc semSignatures(c: PContext, n: PNode): PNode =
   result = topLevelDecl(c, n)
-  semSignaturesAux(c, result)
+  #semSignaturesAux(c, result)
+
+proc semRest(c: PContext; n: PNode): PNode =
+  case n.kind
+  of nkEmpty..nkNilLit: result = n
+  of nkIteratorDef: result = semIterator(c, n)
+  of nkProcDef: result = semProc(c, n)
+  of nkFuncDef: result = semFunc(c, n)
+  of nkMethodDef: result = semMethod(c, n)
+  of nkConverterDef: result = semConverterDef(c, n)
+  of nkTypeSection: result = semTypeSection(c, n)
+  else:
+    result = n
+    for i in 0..<n.len:
+      n[i] = semRest(c, n[i])
