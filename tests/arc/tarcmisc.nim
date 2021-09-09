@@ -168,7 +168,11 @@ proc free*(game: Game) =
 
 proc newGame*(): Game =
   new(result, free)
-
+type _ = typeof(newGame)
+  # D20210905T125411_forceSemcheck_implicit_destroy; `newGame` triggers calling `new(result, free)`
+  # which creates an implicit `=destroy`; without forcing semchecking here we'd
+  # get a compile time error: cannot bind another '=destroy'; in future work we
+  # could late-bind destructors to ensure none were found, but it's better to be explicit.
 var game*: Game
 
 
