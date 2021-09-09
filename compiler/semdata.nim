@@ -294,15 +294,12 @@ proc pushOptionEntry*(c: PContext): POptionEntry =
   result = snapshotOptionEntry(c)
   c.optionStack = result
 
-proc readOptionEntry*(c: PContext, b: POptionEntry) =
+proc popOptionEntry*(c: PContext, b: POptionEntry = c.optionStack) =
   c.config.options = b.options
   c.config.notes = b.notes
   c.config.warningAsErrors = b.warningAsErrors
   c.features = b.features
-
-proc popOptionEntry*(c: PContext) =
-  readOptionEntry(c, c.optionStack)
-  c.optionStack = c.optionStack.parent
+  c.optionStack = b.parent
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)

@@ -2197,17 +2197,14 @@ proc determineTypeOne(c: PContext, s: PSym) =
     lazyVisit(c.graph, s).needDeclaration = true
   c.pushOwner(s.owner) # c.getCurrOwner() would be wrong (it's derived globally from ConfigRef)
   let lcontext = c.graph.symLazyContext[s.id]
-  # let old = c.optionStack
-  let old = c.snapshotOptionEntry
   let inConceptDecl = c.inConceptDecl
   c.inConceptDecl = lcontext.inConceptDecl
-  c.optionStack = lcontext.optionStack
-  # TODO: swap?
 
-  # TODO: use popOptionEntry?
+  let old = c.snapshotOptionEntry
+  c.optionStack = lcontext.optionStack
+  # TODO: use swap?
   # D20210906T191019:here
-  readOptionEntry(c, lcontext.optionStack)
-  c.optionStack = lcontext.optionStack.parent
+  popOptionEntry(c, lcontext.optionStack)
 
   assert s.ast.kind in routineDefs, $s
   let n2 = semExpr(c, s.ast, {}, forceReSem = true) # PRTEMP: can this raise? if so, need try/catch?
@@ -2215,9 +2212,8 @@ proc determineTypeOne(c: PContext, s: PSym) =
   assert n2 == s.ast
   s.flags.excl sfLazySemcheckStarted
 
-  readOptionEntry(c, old)
-  c.optionStack = old.parent
   c.inConceptDecl = inConceptDecl
+  popOptionEntry(c, old)
   c.popOwner()
 
 proc determineType2(graph: ModuleGraph, s: PSym, instantiationScope: PScope = nil) {.exportc.} =
