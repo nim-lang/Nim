@@ -392,6 +392,12 @@ proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
     # adding into a non-shadow scope, we need to handle exports, etc
     addInterfaceDeclAux(c, sym)
 
+proc addInterfaceDeclSelect*(c: PContext, scope: PScope, sym: PSym) {.inline.} =
+  if sym.kind in OverloadableSyms:
+    addInterfaceOverloadableSymAt(c, scope, sym)
+  else:
+    addInterfaceDeclAt(c, scope, sym)
+
 proc openShadowScope*(c: PContext) =
   ## opens a shadow scope, just like any other scope except the depth is the
   ## same as the parent -- see `isShadowScope`.
@@ -415,10 +421,7 @@ proc mergeShadowScope*(c: PContext) =
   let shadowScope = c.currentScope
   c.rawCloseScope
   for sym in shadowScope.symbols:
-    if sym.kind in OverloadableSyms:
-      c.addInterfaceOverloadableSymAt(c.currentScope, sym)
-    else:
-      c.addInterfaceDecl(sym)
+    addInterfaceDeclSelect(c, c.currentScope, sym)
 
 when false:
   # `nimfix` used to call `altSpelling` and prettybase.replaceDeprecated(n.info, ident, alt)

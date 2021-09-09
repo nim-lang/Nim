@@ -1932,10 +1932,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       s.flags.incl sfForward
       s.flags.incl sfLazy
       openScope(c) # needed for `isTopLevelInsideDeclaration` so we match the regular flow; we could optimize a bit by avoiding to create a dummy scope since all we need is declarationScope
-      if s.kind in OverloadableSyms:
-        addInterfaceOverloadableSymAt(c, declarationScope, s)
-      else:
-        addInterfaceDeclAt(c, declarationScope, s)
+      addInterfaceDeclSelect(c, declarationScope, s)
       closeScope(c)
 
       let lcontext = c.graph.symLazyContext[s.id]
@@ -2022,11 +2019,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       s.typ.callConv = lastOptionEntry(c).defaultCC
 
   if not hasProto and sfGenSym notin s.flags and sfLazy notin s.flags: #and not isAnon:
-    if s.kind in OverloadableSyms:
-      addInterfaceOverloadableSymAt(c, declarationScope, s)
-    else:
-      addInterfaceDeclAt(c, declarationScope, s)
-
+    addInterfaceDeclSelect(c, declarationScope, s)
   if sfLazy in s.flags:
     s.flags.excl sfLazy
     if not hasProto:
