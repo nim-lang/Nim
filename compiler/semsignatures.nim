@@ -12,10 +12,11 @@
 
 from reorder import accQuoted, includeModule
 
-proc patchNode(c: PContext; n: PNode; name: PIdent; kind: TSymKind) =
+proc patchNode(c: PContext; n: PNode; name: PIdent; kind: TSymKind; isPublic: bool) =
   var s = newSym(kind, name, nextSymId(c.idgen), c.module, n.info)
   #s.flags.incl sfForward
   s.flags.incl sfTopLevelForward
+  if isPublic: s.flags.incl sfExported
   let obj = n[]
   n[] = TNode(kind: nkSym, typ: nil, info: obj.info, flags: obj.flags, sym: s)
 
@@ -25,18 +26,18 @@ proc patchNode(c: PContext; n: PNode; name: PIdent; kind: TSymKind) =
     addInterfaceDeclAt(c, c.currentScope, s)
 
 
-proc decl(c: PContext; n: PNode; kind: TSymKind) =
+proc decl(c: PContext; n: PNode; kind: TSymKind; isPublic=false) =
   # mutates n directly.
   case n.kind
-  of nkPostfix: decl(c, n[1], kind)
-  of nkPragmaExpr: decl(c, n[0], kind)
+  of nkPostfix: decl(c, n[1], kind, true)
+  of nkPragmaExpr: decl(c, n[0], kind, isPublic)
   of nkIdent:
-    patchNode(c, n, n.ident, kind)
+    patchNode(c, n, n.ident, kind, isPublic)
   of nkAccQuoted:
     let a = accQuoted(c.graph.cache, n)
-    patchNode(c, n, a, kind)
-  of nkEnumFieldDef:
-    decl(c, n[0], kind)
+    patchNode(c, n, a, kind, isPublic)
+  #of nkEnumFieldDef:
+  #  decl(c, n[0], kind)
   else: discard
 
 proc declLoop(c: PContext; n: PNode; kind: TSymKind) =
