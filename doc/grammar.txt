@@ -98,12 +98,13 @@ primary = typeKeyw optInd typeDesc
 typeDesc = simpleExpr ('not' expr)?
 typeDefAux = simpleExpr ('not' expr)?
            | 'concept' typeClass
-postExprBlocks = ':' stmt? ( IND{=} doBlock
-                           | IND{=} 'of' exprList ':' stmt
-                           | IND{=} 'elif' expr ':' stmt
-                           | IND{=} 'except' exprList ':' stmt
-                           | IND{=} 'finally' ':' stmt
-                           | IND{=} 'else' ':' stmt )*
+exprBlockStmts = stmt? ( IND{=} doBlock
+                       | IND{=} 'of' exprList ':' stmt
+                       | IND{=} 'elif' expr ':' stmt
+                       | IND{=} 'except' exprList ':' stmt
+                       | IND{=} 'finally' ':' stmt
+                       | IND{=} 'else' ':' stmt )*
+postExprBlocks = ':' (IND{>} exprBlockStmts DED | IND{=} exprBlockStmts)
 exprStmt = simpleExpr
          (( '=' optInd expr colonBody? )
          / ( expr ^+ comma

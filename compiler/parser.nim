@@ -1355,12 +1355,13 @@ proc makeCall(n: PNode): PNode =
     result.add n
 
 proc postExprBlocks(p: var Parser, x: PNode): PNode =
-  #| postExprBlocks = ':' stmt? ( IND{=} doBlock
-  #|                            | IND{=} 'of' exprList ':' stmt
-  #|                            | IND{=} 'elif' expr ':' stmt
-  #|                            | IND{=} 'except' exprList ':' stmt
-  #|                            | IND{=} 'finally' ':' stmt
-  #|                            | IND{=} 'else' ':' stmt )*
+  #| exprBlockStmts = stmt? ( IND{=} doBlock
+  #|                        | IND{=} 'of' exprList ':' stmt
+  #|                        | IND{=} 'elif' expr ':' stmt
+  #|                        | IND{=} 'except' exprList ':' stmt
+  #|                        | IND{=} 'finally' ':' stmt
+  #|                        | IND{=} 'else' ':' stmt )*
+  #| postExprBlocks = ':' (IND{>} exprBlockStmts DED | IND{=} exprBlockStmts)
   result = x
   if p.tok.indent >= 0: return
 
