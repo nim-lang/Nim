@@ -2536,7 +2536,10 @@ proc visitName(vc: VisitContext, n: PNode): PSym =
     # tests/closure/tclosure_issues.nim `:env.i1` (nkHiddenDeref, nkSym)
     result = visitName(vc, n[1])
   else:
-    assert false, $(n.kind, n, vc.graph.config$n.info)
+    result = nil
+    # this can happen, e.g. `nkAccQuoted`, containing a nkIdent, see
+    # `nim r src/fp` for nimfp package.
+    # assert false, $(n.kind, n, vc.graph.config$n.info)
 
 proc visitAllLiveSymbols(vc: var VisitContext, n: PNode) =
   #[
@@ -2554,21 +2557,24 @@ proc visitAllLiveSymbols(vc: var VisitContext, n: PNode) =
     for ni in n:
       for j in 0..<ni.len-2:
         let s = visitName(vc, ni[j])
-        vc.allSymbols.add s
+        if s!=nil:
+          vc.allSymbols.add s
   of nkTypeSection:
     for ni in n:
       if ni.kind == nkTypeDef: # skip nkCommentStmt
         let s = visitName(vc, ni[0])
-        vc.allSymbols.add s
+        if s!=nil:
+          vc.allSymbols.add s
   of routineDefs:
     let s = visitName(vc, n[namePos])
-    if s.lazyDecl == nil and s.typ == nil and s.ast != nil:
-      # we could also have laxer checking with just `needDeclaration = true`
-      determineType2(vc.graph, s, vc.instantiationScope)
-      vc.allSymbolsNewRoutines.add s
-      visitAllLiveSymbols(vc, s.ast)
-    else:
-      vc.allSymbols.add s
+    if s!=nil:
+      if s.lazyDecl == nil and s.typ == nil and s.ast != nil:
+        # we could also have laxer checking with just `needDeclaration = true`
+        determineType2(vc.graph, s, vc.instantiationScope)
+        vc.allSymbolsNewRoutines.add s
+        visitAllLiveSymbols(vc, s.ast)
+      else:
+        vc.allSymbols.add s
   elif n.kind in nkCallKinds and isRunnableExamples(n[0]): discard
   elif n.safeLen > 0:
     for ni in n:
