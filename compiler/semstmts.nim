@@ -540,7 +540,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
       if typ != nil:
         if typ.isMetaType:
-          def = inferWithMetatype(c, typ, def)
+          if nilConversionCheck(c, typ, a[^2], def):
+            def = inferWithMetatype(c, typ, def)
           typ = def.typ
         else:
           # BUGFIX: ``fitNode`` is needed here!

@@ -37,6 +37,13 @@ const
   errIllegalRecursionInTypeX = "illegal recursion in type '$1'"
   errNoGenericParamsAllowedForX = "no generic parameters allowed for $1"
   errInOutFlagNotExtern = "the '$1' modifier can be used only with imported types"
+  errNilToGeneric = "'$1' is generic, the concrete type cannot be inferred when initializing as 'nil'."
+
+proc nilConversionCheck*(c: PContext, typ: PType, f, a: PNode): bool =
+  ## Checks if it's `a: SomeTypeclass = nil`, makes local error if it is.
+  result = typ.isMetaType and a.kind == nkNilLit
+  if result:
+    localError(c.config, a.info, errNilToGeneric % $f)
 
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
   if prev == nil:
@@ -1283,6 +1290,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         elif typ.kind == tyStatic:
           def = semConstExpr(c, def)
           def = fitNode(c, typ, def, def.info)
+
+        if containsGenericType(typ) and (typ.kind notin GenericTypes or (typ.len > 0 and typ.base.kind notin GenericTypes)):
+          # Only need to nil check if type is not `T` or a generic that relies on `T`
+          # IE `: T` or `: SomeRef[T, Y]`
+          discard nilConversionCheck(c, typ, a[^2], def)
 
     if not hasType and not hasDefault:
       if isType: localError(c.config, a.info, "':' expected")
