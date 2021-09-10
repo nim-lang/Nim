@@ -15,6 +15,7 @@ from reorder import accQuoted, includeModule
 proc patchNode(c: PContext; n: PNode; name: PIdent; kind: TSymKind) =
   var s = newSym(kind, name, nextSymId(c.idgen), c.module, n.info)
   #s.flags.incl sfForward
+  s.flags.incl sfTopLevelForward
   let obj = n[]
   n[] = TNode(kind: nkSym, typ: nil, info: obj.info, flags: obj.flags, sym: s)
 

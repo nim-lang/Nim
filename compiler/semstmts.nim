@@ -1892,11 +1892,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   openScope(c)
 
   var signatureAlreadyChecked = false
-  if s.typ == nil:
+  if s.typ == nil or sfTopLevelForward notin s.flags:
     semProcSignature(c, n, s)
   else:
     addParametersAgainToCurrentScope(c, s)
     signatureAlreadyChecked = true
+    s.flags.excl sfTopLevelForward
 
   var (proto, comesFromShadowScope) =
       if isAnon: (nil, false)
