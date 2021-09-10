@@ -1982,12 +1982,12 @@ proc activeDescriptors*(): int {.inline.} =
   elif not defined(nimdoc):
     result = getGlobalDispatcher().selector.count
 
-when defined(posix):
+when defined(posix) and not defined(nimdoc):
   # D20210909T120651
   # import posix # failed with `nim doc lib/pure/asyncfile.nim` because it brings
   # posix into scope and the above code contains `when defined(nimdoc): import winlean`,
   # causing conclicts
-  from posix import getrlimit, RLimit, RLIMIT_NOFILE
+  import posix
 
 when defined(linux) or defined(windows) or defined(macosx) or defined(bsd):
   proc maxDescriptors*(): int {.raises: OSError.} =
@@ -1996,7 +1996,7 @@ when defined(linux) or defined(windows) or defined(macosx) or defined(bsd):
     ## supported on the following OSes: Windows, Linux, OSX, BSD.
     when defined(windows):
       result = 16_700_000
-    else:
+    elif not defined(nimdoc):
       var fdLim: RLimit
       if getrlimit(RLIMIT_NOFILE, fdLim) < 0:
         raiseOSError(osLastError())
