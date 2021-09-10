@@ -380,6 +380,7 @@
 - Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
   if the slice is out of bounds, likewise with `strutils.delete`.
 
+
 ## Language changes
 
 - The `cstring` doesn't support `[]=` operator in JS backend.
