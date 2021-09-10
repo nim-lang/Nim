@@ -4,7 +4,7 @@ action: "reject"
 nimout:'''
 tpointerprocs.nim(15, 11) Error: 'foo' doesn't have a concrete type, due to unspecified generic parameters.
 tpointerprocs.nim(27, 11) Error: cannot instantiate: 'foo[int]'; got 1 typeof(s) but expected 2
-tpointerprocs.nim(27, 14) Error: expression 'foo[int][int]' has no type (or is ambiguous)
+tpointerprocs.nim(27, 14) Error: expression 'foo[int]' has no type (or is ambiguous)
 tpointerprocs.nim(28, 11) Error: expression 'bar' has no type (or is ambiguous)
 '''
 """
