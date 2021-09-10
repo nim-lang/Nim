@@ -1493,6 +1493,28 @@ proc semDeref(c: PContext, n: PNode): PNode =
   else: result = nil
   #GlobalError(n[0].info, errCircumNeedsPointer)
 
+proc maybeInstantiateGeneric(c: PContext, n: PNode, s: PSym): PNode =
+  ## Instantiates generic if not lacking implicit generics,
+  ## otherwise returns n.
+  let
+    neededGenParams = s.ast[genericParamsPos].len
+    heldGenParams = n.len - 1
+  var implicitParams = 0
+  for x in s.ast[genericParamsPos]:
+    if tfImplicitTypeParam in x.typ.flags:
+      inc implicitParams
+  if heldGenParams != neededGenParams and implicitParams + heldGenParams == neededGenParams:
+    # This is an implicit + explicit generic procedure without all args passed,
+    # kicking back the sem'd symbol fixes #17212
+    # Uncertain the hackiness of this solution.
+    result = n
+  else:
+    result = explicitGenericInstantiation(c, n, s)
+    if result == n:
+      n[0] = copyTree(result)
+    else:
+      n[0] = result
+
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if not a built-in subscript operator; also called for the
   ## checking of assignments
@@ -1568,11 +1590,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       of skProc, skFunc, skMethod, skConverter, skIterator:
         # type parameters: partial generic specialization
         n[0] = semSymGenericInstantiation(c, n[0], s)
-        result = explicitGenericInstantiation(c, n, s)
-        if result == n:
-          n[0] = copyTree(result)
-        else:
-          n[0] = result
+        result = maybeInstantiateGeneric(c, n, s)
       of skMacro, skTemplate:
         if efInCall in flags:
           # We are processing macroOrTmpl[] in macroOrTmpl[](...) call.
@@ -1596,7 +1614,7 @@ proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = semSubscript(c, n, flags)
   if result == nil:
     # overloaded [] operator:
-    result = semExpr(c, buildOverloadedSubscripts(n, getIdent(c.cache, "[]")))
+    result = semExpr(c, buildOverloadedSubscripts(n, getIdent(c.cache, "[]")), flags)
 
 proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   var id = considerQuotedIdent(c, a[1], a)

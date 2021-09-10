@@ -114,16 +114,18 @@
 ## Standard library additions and changes
 
 - `strformat`:
-  added support for parenthesized expressions.
-  added support for const string's instead of just string literals
+  - added support for parenthesized expressions.
+  - added support for const string's instead of just string literals
 
+- `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
+  use `-d:nimLegacyCopyFile` for OSX < 10.5.
 
 - `system.addFloat` and `system.$` now can produce string representations of floating point numbers
   that are minimal in size and that "roundtrip" (via the "Dragonbox" algorithm). This currently has
   to be enabled via `-d:nimPreviewFloatRoundtrip`. It is expected that this behavior becomes the new default
   in upcoming versions, as with other `nimPreviewX` define flags.
 
-- Fixed buffer overflow bugs in `net`
+- Fixed buffer overflow bugs in `net`.
 
 - Exported `sslHandle` from `net` and `asyncnet`.
 
@@ -187,10 +189,11 @@
 - Added `std/sysrand` module to get random numbers from a secure source
   provided by the operating system.
 
-- Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
-  Added `items` for enums with holes.
-  Added `symbolName` to return the enum symbol name ignoring the human readable name.
-  Added `symbolRank` to return the index in which an enum member is listed in an enum.
+- Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates
+  case statement to parse string to enum.
+- Added `items` for enums with holes.
+- Added `symbolName` to return the enum symbol name ignoring the human readable name.
+- Added `symbolRank` to return the index in which an enum member is listed in an enum.
 
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
@@ -338,8 +341,6 @@
 
 - Added `jscore.debugger` to [call any available debugging functionality, such as breakpoints.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger).
 
-- Added `std/channels`.
-
 - Added `htmlgen.portal` for [making "SPA style" pages using HTML only](https://web.dev/hands-on-portals).
 
 - `std/times`:
@@ -379,16 +380,12 @@
 - Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
   if the slice is out of bounds, likewise with `strutils.delete`.
 
-## Language changes
 
-- `nimscript` now handles `except Exception as e`.
+## Language changes
 
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
-
-- `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
-  use `-d:nimLegacyCopyFile` for OSX < 10.5.
 
 - The required name of case statement macros for the experimental
   `caseStmtMacros` feature has changed from `match` to `` `case` ``.
@@ -403,18 +400,11 @@
 - Tuple expressions are now parsed consistently as
   `nnkTupleConstr` node. Will affect macros expecting nodes to be of `nnkPar`.
 
-- `nim e` now accepts arbitrary file extensions for the nimscript file,
-  although `.nims` is still the preferred extension in general.
-
 - Added `iterable[T]` type class to match called iterators, which enables writing:
   `template fn(a: iterable)` instead of `template fn(a: untyped)`
 
 - A new import syntax `import foo {.all.}` now allows to import all symbols (public or private)
-  from `foo`. It works in combination with all pre-existing import features.
-  This reduces or eliminates the need for workarounds such as using `include` (which has known issues)
-  when you need a private symbol for testing or making some internal APIs public just because
-  another internal module needs those.
-  It also helps mitigate the lack of cyclic imports in some cases.
+  from `foo`. This can be useful for testing purposes.
 
 - Added a new module `std/importutils`, and an API `privateAccess`, which allows access to private fields
   for an object type in the current scope.
@@ -422,7 +412,7 @@
 - `typeof(voidStmt)` now works and returns `void`.
 
 - The `gc:orc` algorithm was refined so that custom container types can participate in the
-  cycle collection process.
+  cycle collection process. See the documentation of `=trace` for more details.
 
 - On embedded devices `malloc` can now be used instead of `mmap` via `-d:nimAllocPagesViaMalloc`.
   This is only supported for `--gc:orc` or `--gc:arc`.
@@ -449,7 +439,18 @@ proc mysort(s: seq; cmp: proc(a, b: T): int) {.effectsOf: cmp.}
   The supported symbols are: "∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔".
   To enable this feature, use `--experimental:unicodeOperators`. Note that due
   to parser limitations you **cannot** enable this feature via a
-  pragma `{.experimental: "unicodeOperators".}` reliably.
+  pragma `{.experimental: "unicodeOperators".}` reliably, you need to enable
+  it via the command line or in a configuration file.
+
+- There is a new `cast` section `{.cast(uncheckedAssign).}: body` that disables some
+  compiler checks regarding `case objects`. This allows serialization libraries
+  to avoid ugly, non-portable solutions. See https://github.com/nim-lang/RFCs/issues/407
+  for more details.
+
+- Enum values can now be overloaded. This needs to be enabled
+  via `{.experimental: "overloadableEnums".}`. We hope that this feature allows for the
+  development of more fluent (less ugly) APIs. See https://github.com/nim-lang/RFCs/issues/373
+  for more details.
 
 
 ## Compiler changes
@@ -528,6 +529,11 @@ proc mysort(s: seq; cmp: proc(a, b: T): int) {.effectsOf: cmp.}
 
 
 ## Tool changes
+
+- `nimscript` now handles `except Exception as e`.
+
+- `nim e` now accepts arbitrary file extensions for the nimscript file,
+  although `.nims` is still the preferred extension in general.
 
 - Latex doc generation is revised: output `.tex` files should be compiled
   by `xelatex` (not by `pdflatex` as before). Now default Latex settings

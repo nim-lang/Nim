@@ -1323,6 +1323,47 @@ as `MyEnum.value`:
 
 To implement bit fields with enums see `Bit fields <#set-type-bit-fields>`_
 
+Overloadable enum field names
+-----------------------------
+
+To be enabled via `{.experimental: "overloadableEnums".}`.
+
+Enum field names are overloadable much like routines. When an overloaded
+enum field is used, it produces a closed sym choice construct, here
+written as `(E|E)`.
+During overload resolution the right `E` is picked, if possible.
+For (array/object...) constructors the right `E` is picked, comparable to
+how `[byte(1), 2, 3]` works, one needs to use `[T.E, E2, E3]`. Ambiguous
+enum fields produce a static error:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  {.experimental: "overloadableEnums".}
+
+  type
+    E1 = enum
+      value1,
+      value2
+    E2 = enum
+      value1,
+      value2 = 4
+
+  const
+    Lookuptable = [
+      E1.value1: "1",
+      value2: "2"
+    ]
+
+  proc p(e: E1) =
+    # disambiguation in 'case' statements:
+    case e
+    of value1: echo "A"
+    of value2: echo "B"
+
+  p value2
+
+
 String type
 -----------
 All string literals are of the type `string`. A string in Nim is very
@@ -7975,7 +8016,7 @@ Threads
 
 To enable thread support the `--threads:on`:option: command-line switch needs to
 be used. The system_ module then contains several threading primitives.
-See the `threads <threads.html>`_ and `channels <channels_builtin.html>`_ modules
+See the `channels <channels_builtin.html>`_ modules
 for the low-level thread API. There are also high-level parallelism constructs
 available. See `spawn <manual_experimental.html#parallel-amp-spawn>`_ for
 further details.

@@ -51,7 +51,7 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
       for j in 1..high(key.sons):
         # XXX sameType is not really correct for nested generics?
         if not compareTypes(inst[j], key[j],
-                            flags = {ExactGenericParams}):
+                            flags = {ExactGenericParams, PickyCAliases}):
           break matchType
 
       return inst
@@ -378,7 +378,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   cl.typeMap = newTypeMapLayer(cl)
 
   for i in 1..<t.len:
-    var x = replaceTypeVarsT(cl, t[i])
+    var x = replaceTypeVarsT(cl, header[i])
     assert x.kind != tyGenericInvocation
     header[i] = x
     propagateToOwner(header, x)
