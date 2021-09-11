@@ -1511,7 +1511,7 @@ proc maybeInstantiateGeneric(c: PContext, n: PNode, s: PSym): PNode =
   else:
     result = explicitGenericInstantiation(c, n, s)
     if result == n:
-      n[0] = copyTree(result)
+      n[0] = copyTree(result[0])
     else:
       n[0] = result
 
