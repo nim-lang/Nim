@@ -26,7 +26,7 @@
 ## The following is a simple example of two different ways to use channels:
 ## blocking and non-blocking.
 ##
-## .. code-block :: Nim
+## .. code-block:: Nim
 ##   # Be sure to compile with --threads:on.
 ##   # The channels and threads modules are part of system and should not be
 ##   # imported.
@@ -112,7 +112,7 @@
 ## using e.g. `system.allocShared0` and pass these pointers through thread
 ## arguments:
 ##
-## .. code-block :: Nim
+## .. code-block:: Nim
 ##   proc worker(channel: ptr Channel[string]) =
 ##     let greeting = channel[].recv()
 ##     echo greeting
