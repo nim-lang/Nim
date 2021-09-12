@@ -1130,7 +1130,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
             t = t[0]
       recurseForBase(a)
       recurseForBase(b)
-      if a.kind != b.kind and tyGenericInst in {a.kind, b.kind}: return false
+      if a.kind != b.kind: return false
     of dcEqOrDistinctOf:
       while a.kind == tyDistinct: a = a[0]
       if a.kind != b.kind: return false
