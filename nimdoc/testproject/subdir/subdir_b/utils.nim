@@ -32,6 +32,8 @@ Can be combined with export symbols and type parameters:
 `binarysearch*[T, K](openArray[T], K, proc (T, K))`_.
 With spaces `binary search`_.
 
+Note that `proc` can be used in postfix form: `binarySearch proc`_.
+
 Ref. type like G_ and `type G`_ and `G[T]`_ and `type G*[T]`_.
 
 ]##

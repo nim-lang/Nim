@@ -235,12 +235,13 @@ Referencing Nim symbols: simple documentation links
 
 You can reference Nim identifiers from Nim documentation comments, currently
 only inside their ``.nim`` file (or inside a ``.rst`` file included from
-the ``.nim``). The point is that such links will be resolved automatically
+a ``.nim``). The point is that such links will be resolved automatically
 by `nim doc`:cmd: (or `nim jsondoc`:cmd: or `nim doc2tex`:cmd:).
 This pertains to any exported symbol like `proc`, `const`, `iterator`, etc.
 Syntax for referencing is basically a normal RST one: addition of
 underscore `_` to a *link text*.
-Link text is either one word or a group of words enclosed by backticks `\``.
+Link text is either one word or a group of words enclosed by backticks `\``
+(for a one word case backticks are usually omitted).
 Link text will be displayed *as is* while *link target* will be set to
 the anchor [*]_ of Nim symbol that corresponds to link text.
 
@@ -311,6 +312,11 @@ Generally following syntax is allowed for referencing `foo`:
    Brevity is better for reading! If you use a short form and have an
    ambiguity problem (see below) then just add some additional info.
 
+Symbol kind like `proc` can also be specified in the postfix form::
+
+  `foo proc`_
+  `walkDir(d: string) iterator`_
+
 .. Warning:: An ambiguity in resolving documentation links may arise because of:
 
    1. clash with other RST anchors
@@ -320,13 +326,15 @@ Generally following syntax is allowed for referencing `foo`:
 
       * routines with different parameters can exist e.g. for
         `proc` and `template`. In this case they are split between their
-        corresponding sections in output file
+        corresponding sections in output file. Qualified references are
+        useful in this case -- just disambiguate by referring to these
+        sections explicitly::
+
+          See `foo proc`_ and `foo template`_.
+
       * because in Nim `proc` and `iterator` belong to different namespaces,
         so there can be a collision even if parameters are the same.
-
-      Qualified references are useful in this case: just disambiguate
-      the reference like `\`proc foo\`_`:literal:
-      or `\`template foo\`_`:literal: or `\`iterator foo\`_`:literal:.
+        Use `\`proc foo\`_`:literal: or `\`iterator foo\`_`:literal: then.
 
    Any ambiguity is always reported with Nim compiler warnings and an anchor
    with higher priority is selected. Manual anchors have highest

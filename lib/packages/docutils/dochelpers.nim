@@ -192,26 +192,31 @@ proc toLangSymbol*(linkText: PRstNode): LangSymbol =
         state = parameterType
       else: curIdent.add ":"
     else:
-      case state
-      of inBeginning:
-        if s(i) in NimDefs:
-          state = afterSymKind
-        else:
-          state = atSymbolName
-        curIdent.add s(i)
-      of afterSymKind, beforeSymbolName:
-        state = atSymbolName
-        curIdent.add s(i)
-      of parameterType:
-        case s(i)
-        of "ref": curIdent.add "ref."
-        of "ptr": curIdent.add "ptr."
-        of "var": discard
-        else: curIdent.add s(i).nimIdentBackticksNormalize
-      of atSymbolName:
-        curIdent.add s(i)
+      let isPostfixSymKind = i > 0 and i == L - 1 and
+          result.symKind == "" and s(i) in NimDefs
+      if isPostfixSymKind:  # for links like `foo proc`_
+        result.symKind = s(i)
       else:
-        curIdent.add s(i).nimIdentBackticksNormalize
+        case state
+        of inBeginning:
+          if s(i) in NimDefs:
+            state = afterSymKind
+          else:
+            state = atSymbolName
+          curIdent.add s(i)
+        of afterSymKind, beforeSymbolName:
+          state = atSymbolName
+          curIdent.add s(i)
+        of parameterType:
+          case s(i)
+          of "ref": curIdent.add "ref."
+          of "ptr": curIdent.add "ptr."
+          of "var": discard
+          else: curIdent.add s(i).nimIdentBackticksNormalize
+        of atSymbolName:
+          curIdent.add s(i)
+        else:
+          curIdent.add s(i).nimIdentBackticksNormalize
   while i < L:
     nextState
     inc i

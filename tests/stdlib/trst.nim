@@ -1023,3 +1023,25 @@ suite "Integration with Nim":
     check(input1.toLangSymbol == expected)
     check(input2.toLangSymbol == expected)
 
+  test "postfix symbol specifier #1":
+    let input = """`walkDir iterator`_""".
+                  rstParseTest
+    let expected = LangSymbol(symKind: "iterator",
+                              name: "walkdir")
+    check(input.toLangSymbol == expected)
+
+  test "postfix symbol specifier #2":
+    let input1 = """`\`[]\`[T](a: \`open Array\`[T], idx: int): T func`_""".
+                  rstParseTest
+    let input2 = """`[][T](a: \`open Array\`[T], idx: int): T func`_""".
+                  rstParseTest
+    let expected = LangSymbol(symKind: "func",
+                              name: "[]",
+                              generics: "[T]",
+                              parameters: @[("a", "openarray[T]"),
+                                            ("idx", "int")],
+                              parametersProvided: true,
+                              outType: "T")
+    check(input1.toLangSymbol == expected)
+    check(input2.toLangSymbol == expected)
+
