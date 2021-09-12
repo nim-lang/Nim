@@ -140,6 +140,22 @@ block tRequiresInit:
     let s = "test"
     doAssert s == "test"
 
+block: #17322
+  type
+    A[T] = distinct string
+
+  proc foo(a: var A) =
+    a.string.add "foo"
+
+  type
+    B = distinct A[int]
+
+  var b: B
+  foo(A[int](b))
+  echo A[int](b).string
+  b.string.add "bar"
+  assert b.string == "foobar"
+
 type Foo = distinct string
 
 template main() =

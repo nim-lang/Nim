@@ -1123,13 +1123,13 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     of dcEqIgnoreDistinct:
       while a.kind == tyDistinct: a = a[0]
       while b.kind == tyDistinct: b = b[0]
-      if a.kind != b.kind: return false
+      if a.kind != b.kind and tyGenericInst notin {a.kind, b.kind}: return false
     of dcEqOrDistinctOf:
       while a.kind == tyDistinct: a = a[0]
       if a.kind != b.kind: return false
 
   # this is required by tunique_type but makes no sense really:
-  if x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
+  if tyDistinct notin {x.kind, y.kind} and x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
     let
       lhs = x.skipGenericAlias
       rhs = y.skipGenericAlias
