@@ -1121,9 +1121,16 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     case c.cmp
     of dcEq: return false
     of dcEqIgnoreDistinct:
-      while a.kind == tyDistinct: a = a[0]
-      while b.kind == tyDistinct: b = b[0]
-      if a.kind != b.kind and tyGenericInst notin {a.kind, b.kind}: return false
+      template recurseForBase(t: PType) =
+        while t.kind == tyDistinct:
+          if t[0].kind == tyGenericInst and t[0][^1].kind == tyDistinct:
+            # Distincts can be generic as such we want to find the node back always
+            t = t[0][^1]
+          else:
+            t = t[0]
+      recurseForBase(a)
+      recurseForBase(b)
+      if a.kind != b.kind and tyGenericInst in {a.kind, b.kind}: return false
     of dcEqOrDistinctOf:
       while a.kind == tyDistinct: a = a[0]
       if a.kind != b.kind: return false
