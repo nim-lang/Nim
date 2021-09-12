@@ -641,10 +641,17 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     result = semAllTypeSections(c, n)
   else:
     result = n
-  result = semStmt(c, result, {})
-  if c.phase != Intertwined:
-    c.phase = SemRest
-    result = semRest(c, result)
+  if c.phase == Intertwined:
+    result = semStmt(c, result, {})
+  else:
+    if c.recursiveDep.len > 0:
+      # this is a recursive module import, we need to delay
+      # phase 2 and 3 further.
+      discard "semCheckLater(c, result)"
+    else:
+      result = semStmt(c, result, {})
+      c.phase = SemRest
+      result = semRest(c, result)
 
   when false:
     # Code generators are lazy now and can deal with undeclared procs, so these
@@ -663,7 +670,8 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     result = buildEchoStmt(c, result)
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
-  trackStmt(c, c.module, result, isTopLevel = true)
+  if c.phase in {Intertwined, SemRest}:
+    trackStmt(c, c.module, result, isTopLevel = true)
 
 proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is
