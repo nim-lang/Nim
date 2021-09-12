@@ -1,6 +1,7 @@
 discard """
   output: '''@[(s1: "333", s2: ""), (s1: "abc", s2: "def"), (s1: "3x", s2: ""), (s1: "3x", s2: ""), (s1: "3x", s2: ""), (s1: "3x", s2: ""), (s1: "lastone", s2: "")]'''
-  cmd: "nim c --gc:arc $file"
+  matrix: "--gc:arc"
+  targets: "c cpp"
 """
 
 # bug #13240
