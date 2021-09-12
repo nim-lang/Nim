@@ -366,6 +366,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
     else:
       linefmt(p, section, "$1.m_type = $2;$n", [r, genTypeInfoV1(p.module, t, a.lode.info)])
   of frEmbedded:
+    # inheritance in C++ does not allow struct initialization: bug #18836
     if not p.module.compileToCpp and optTinyRtti in p.config.globalOptions:
       var tmp: TLoc
       if mode == constructRefObj:
