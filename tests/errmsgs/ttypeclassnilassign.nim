@@ -38,6 +38,7 @@ block: # minimized 18204
   proc foo(this: int, callback: proc = nil) = discard
   let sub = 100
   sub.foo()
+
 block:
   type
     FloatInt = float or int
@@ -46,3 +47,7 @@ block:
   proc foo2[T, Y](this: int, callback: ref TypeA[T, Y] = nil) = discard
   foo[int](100, nil)
   foo2[int, float](100)
+
+block:
+  type Node[T] = ref T
+  proc newNode[T](value: T, parent: Node[T] = nil): Node[T] = discard

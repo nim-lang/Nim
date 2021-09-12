@@ -1290,10 +1290,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           def = semConstExpr(c, def)
           def = fitNode(c, typ, def, def.info)
 
-        if containsGenericType(typ) and (typ.kind in GenericTypes or (typ.len > 0 and typ.base.kind notin GenericTypes)):
+        if containsGenericType(typ):
           # Only need to nil check if type is not `T` or a generic that relies on `T`
           # IE `: T` or `: SomeRef[T, Y]`
-          nilConversionCheck(c, typ, a[^2], def)
+          if typ.kind in tyTypeClasses or (typ.len > 0 and typ.base.kind in tyTypeClasses):
+            nilConversionCheck(c, typ, a[^2], def)
 
     if not hasType and not hasDefault:
       if isType: localError(c.config, a.info, "':' expected")
