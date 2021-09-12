@@ -366,7 +366,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
     else:
       linefmt(p, section, "$1.m_type = $2;$n", [r, genTypeInfoV1(p.module, t, a.lode.info)])
   of frEmbedded:
-    if optTinyRtti in p.config.globalOptions:
+    if not p.module.compileToCpp and optTinyRtti in p.config.globalOptions:
       var tmp: TLoc
       if mode == constructRefObj:
         let objType = t.skipTypes(abstractInst+{tyRef})
