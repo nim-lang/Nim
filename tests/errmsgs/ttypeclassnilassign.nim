@@ -2,11 +2,12 @@ discard """
 cmd: "nim check $options --hints:off $file"
 action: "reject"
 nimout:'''
-ttypeclassnilassign.nim(20, 23) Error: 'PIntFloat' is generic, the concrete type cannot be inferred when initializing as 'nil'.
-ttypeclassnilassign.nim(20, 5) Error: invalid type: 'typeof(nil)' for var
-ttypeclassnilassign.nim(22, 19) Error: 'MyType' is generic, the concrete type cannot be inferred when initializing as 'nil'.
-ttypeclassnilassign.nim(28, 16) Error: 'ProcA' is generic, the concrete type cannot be inferred when initializing as 'nil'.
-ttypeclassnilassign.nim(37, 40) Error: 'proc' is generic, the concrete type cannot be inferred when initializing as 'nil'.
+ttypeclassnilassign.nim(21, 23) Error: 'PIntFloat' is generic, the concrete type cannot be inferred when initializing as 'nil'.
+ttypeclassnilassign.nim(21, 5) Error: invalid type: 'typeof(nil)' for var
+ttypeclassnilassign.nim(23, 19) Error: 'MyType' is generic, the concrete type cannot be inferred when initializing as 'nil'.
+ttypeclassnilassign.nim(29, 16) Error: 'ProcA' is generic, the concrete type cannot be inferred when initializing as 'nil'.
+ttypeclassnilassign.nim(30, 31) Error: type mismatch: got <proc (a: int){.closure.}> but expected 'ProcA = proc (a: typedesc){.closure.}'
+ttypeclassnilassign.nim(38, 40) Error: 'proc' is generic, the concrete type cannot be inferred when initializing as 'nil'.
 '''
 """
 block:
@@ -26,7 +27,7 @@ block: # typedesc test
   type ProcA = proc(a: typedesc)
   var
     a: ProcA = nil
-    b: ProcA = (proc(a: int){.nimcall.}) nil
+    b: ProcA = (proc(a: int)) nil
 
 block: # used in a proc
   proc new[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) = discard
