@@ -222,7 +222,14 @@ The prototype of this hook for a type `T` needs to be:
 `env` is used by ORC to keep track of its internal state, it should be passed around
 to calls of the built-in `=trace` operation.
 
-Usually there will only be a need for a custom `=trace` when a custom `=destroy` that deallocates manually allocated resources is also used, and then only when there is a chance of cyclic references from items within the manually allocated resources when it is desired that `--gc:orc` be able to break and collect these cyclic referenced resources.  Currently however, there is a mutual use problem in that whichever of `=destroy`/`=trace` is used first will automatically create a version of the other which will then conflict with the creation of the second of the pair.  The work around for this problem is to forward declare the second of the "hooks" to prevent the automatic creation.
+Usually there will only be a need for a custom `=trace` when a custom `=destroy` that deallocates
+manually allocated resources is also used, and then only when there is a chance of cyclic
+references from items within the manually allocated resources when it is desired that `--gc:orc`
+be able to break and collect these cyclic referenced resources. Currently however, there is a
+mutual use problem in that whichever of `=destroy`/`=trace` is used first will automatically
+create a version of the other which will then conflict with the creation of the second of the
+pair. The work around for this problem is to forward declare the second of the "hooks" to
+prevent the automatic creation.
 
 The general pattern in using `=destroy` with `=trace` looks like:
 
@@ -696,43 +703,22 @@ should eventually be replaced by a better solution.
 Copy on write
 =============
 
-String literals are implemented as [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
+String literals are implemented as "copy on write".
 When assigning a string literal to a variable, a copy of the literal won't be created.
 Instead the variable simply points to the literal.
 The literal is shared between different variables which are pointing to it.
 The copy operation is deferred until the first write.
 
-.. code-block:: nim
-  var x = "abc"  # no copy
-  var y = x      # no copy
-
-The string literal "abc" is stored in static memory and not allocated on the heap.
-The variable `x` points to the literal and the variable `y` points to the literal too.
-There is no copy during assigning operations.
+For example:
 
 .. code-block:: nim
   var x = "abc"  # no copy
   var y = x      # no copy
   y[0] = 'h'     # copy
 
-The program above shows when the copy operations happen.
-When mutating the variable `y`, the Nim compiler creates a fresh copy of `x`,
-the variable `y` won't point to the string literal anymore.
-Instead it points to the copy of `x` of which the memory can be mutated
-and the variable `y` becomes a mutable string.
 
-.. Note:: The abstraction fails for `addr x` because whether the address is going to be used for mutations is unknown.
-
-Let's look at a silly example demonstrating this behaviour:
-
-.. code-block:: nim
-  var x = "abc"
-  var y = x
-
-  moveMem(addr y[0], addr x[0], 3)
-
-The program fails because we need to prepare a fresh copy for the variable `y`.
-`prepareMutation` should be called before the address operation.
+The abstraction fails for `addr x` because whether the address is going to be used for mutations is unknown.
+`prepareMutation` needs to be called before the "address of" operation. For example:
 
 .. code-block:: nim
   var x = "abc"
@@ -741,18 +727,3 @@ The program fails because we need to prepare a fresh copy for the variable `y`.
   prepareMutation(y)
   moveMem(addr y[0], addr x[0], 3)
   assert y == "abc"
-
-Now `prepareMutation` solves the problem.
-It manually creates a fresh copy and makes the variable `y` mutable.
-
-.. code-block:: nim
-  var x = "abc"
-  var y = x
-
-  prepareMutation(y)
-  moveMem(addr y[0], addr x[0], 3)
-  moveMem(addr y[0], addr x[0], 3)
-  moveMem(addr y[0], addr x[0], 3)
-  assert y == "abc"
-
-No matter how many times `moveMem` is called, the program compiles and runs.
