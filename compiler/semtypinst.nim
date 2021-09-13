@@ -344,7 +344,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
       x = lookupTypeVar(cl, x)
       if x != nil:
         if header == t: header = instCopyType(cl, t)
-        header[i] = x
+        header[i] =
+          if x.kind == tyGenericInst:
+            t[i]
+          else:
+            x
         propagateToOwner(header, x)
     else:
       propagateToOwner(header, x)
