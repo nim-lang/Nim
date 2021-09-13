@@ -111,6 +111,11 @@
 - The allocator for Nintendo Switch, which was nonfunctional because
   of breaking changes in libnx, was removed, in favour of the new `-d:nimAllocPagesViaMalloc` option.
 
+- `net.parseIpAddress` now only allows IPv4 addresses in strict form as defined
+  in [RFC 6943](https://www.rfc-editor.org/rfc/rfc6943#section-3.1.1).
+  Specifically, octal numbers in IPv4 addresses are no longer accepted (before
+  they were parsed as decimal numbers).
+
 ## Standard library additions and changes
 
 - `strformat`:
