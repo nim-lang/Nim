@@ -2400,121 +2400,38 @@ describe the type checking done by the compiler.
 
 Type equality
 -------------
+
 Nim uses structural type equivalence for most types. Only for objects,
-enumerations and distinct types name equivalence is used. The following
-algorithm, *in pseudo-code*, determines type equality:
-
-.. code-block:: nim
-  proc typeEqualsAux(a, b: PType,
-                     s: var HashSet[(PType, PType)]): bool =
-    if (a,b) in s: return true
-    incl(s, (a,b))
-    if a.kind == b.kind:
-      case a.kind
-      of int, intXX, float, floatXX, char, string, cstring, pointer,
-          bool, nil, void:
-        # leaf type: kinds identical; nothing more to check
-        result = true
-      of ref, ptr, var, set, seq, openarray:
-        result = typeEqualsAux(a.baseType, b.baseType, s)
-      of range:
-        result = typeEqualsAux(a.baseType, b.baseType, s) and
-          (a.rangeA == b.rangeA) and (a.rangeB == b.rangeB)
-      of array:
-        result = typeEqualsAux(a.baseType, b.baseType, s) and
-                 typeEqualsAux(a.indexType, b.indexType, s)
-      of tuple:
-        if a.tupleLen == b.tupleLen:
-          for i in 0..a.tupleLen-1:
-            if not typeEqualsAux(a[i], b[i], s): return false
-          result = true
-      of object, enum, distinct:
-        result = a == b
-      of proc:
-        result = typeEqualsAux(a.parameterTuple, b.parameterTuple, s) and
-                 typeEqualsAux(a.resultType, b.resultType, s) and
-                 a.callingConvention == b.callingConvention
-
-  proc typeEquals(a, b: PType): bool =
-    var s: HashSet[(PType, PType)] = {}
-    result = typeEqualsAux(a, b, s)
-
-Since types are graphs which can have cycles, the above algorithm needs an
-auxiliary set `s` to detect this case.
-
-
-Type equality modulo type distinction
--------------------------------------
-
-The following algorithm (in pseudo-code) determines whether two types
-are equal with no respect to `distinct` types. For brevity the cycle check
-with an auxiliary set `s` is omitted:
-
-.. code-block:: nim
-  proc typeEqualsOrDistinct(a, b: PType): bool =
-    if a.kind == b.kind:
-      case a.kind
-      of int, intXX, float, floatXX, char, string, cstring, pointer,
-          bool, nil, void:
-        # leaf type: kinds identical; nothing more to check
-        result = true
-      of ref, ptr, var, set, seq, openarray:
-        result = typeEqualsOrDistinct(a.baseType, b.baseType)
-      of range:
-        result = typeEqualsOrDistinct(a.baseType, b.baseType) and
-          (a.rangeA == b.rangeA) and (a.rangeB == b.rangeB)
-      of array:
-        result = typeEqualsOrDistinct(a.baseType, b.baseType) and
-                 typeEqualsOrDistinct(a.indexType, b.indexType)
-      of tuple:
-        if a.tupleLen == b.tupleLen:
-          for i in 0..a.tupleLen-1:
-            if not typeEqualsOrDistinct(a[i], b[i]): return false
-          result = true
-      of distinct:
-        result = typeEqualsOrDistinct(a.baseType, b.baseType)
-      of object, enum:
-        result = a == b
-      of proc:
-        result = typeEqualsOrDistinct(a.parameterTuple, b.parameterTuple) and
-                 typeEqualsOrDistinct(a.resultType, b.resultType) and
-                 a.callingConvention == b.callingConvention
-    elif a.kind == distinct:
-      result = typeEqualsOrDistinct(a.baseType, b)
-    elif b.kind == distinct:
-      result = typeEqualsOrDistinct(a, b.baseType)
+enumerations and distinct types and for generic types name equivalence is used.
 
 
 Subtype relation
 ----------------
-If object `a` inherits from `b`, `a` is a subtype of `b`. This subtype
-relation is extended to the types `var`, `ref`, `ptr`:
 
-.. code-block:: nim
-  proc isSubtype(a, b: PType): bool =
-    if a.kind == b.kind:
-      case a.kind
-      of object:
-        var aa = a.baseType
-        while aa != nil and aa != b: aa = aa.baseType
-        result = aa == b
-      of var, ref, ptr:
-        result = isSubtype(a.baseType, b.baseType)
+If object `a` inherits from `b`, `a` is a subtype of `b`.
 
-.. XXX nil is a special value!
+This subtype relation is extended to the types `var`, `ref`, `ptr`.
+If `A` is a subtype of `B` and `A` and `B` are `object` types then:
 
+- `var A` is a subtype of `var B`
+- `ref A` is a subtype of `ref B`
+- `ptr A` is a subtype of `ptr B`.
 
+**Note**: In later versions of the language the subtype relation might
+be changed to *require* the pointer indirection in order to prevent
+"object slicing".
 
 
 Convertible relation
 --------------------
+
 A type `a` is **implicitly** convertible to type `b` iff the following
 algorithm returns true:
 
 .. code-block:: nim
 
   proc isImplicitlyConvertible(a, b: PType): bool =
-    if isSubtype(a, b) or isCovariant(a, b):
+    if isSubtype(a, b):
       return true
     if isIntLiteral(a):
       return b in {int8, int16, int32, int64, int, uint, uint8, uint16,
@@ -2540,7 +2457,12 @@ algorithm returns true:
       result = b == pointer
     of string:
       result = b == cstring
+    of proc:
+      result = typeEquals(a, b) or compatibleParametersAndEffects(a, b)
 
+We used the predicate `typeEquals(a, b)` for the "type equality" property
+and the predicate `isSubtype(a, b)` for the "subtype relation".
+`compatibleParametersAndEffects(a, b)` is currently not specified.
 
 Implicit conversions are also performed for Nim's `range` type
 constructor.
@@ -2563,7 +2485,9 @@ algorithm returns true:
   proc isExplicitlyConvertible(a, b: PType): bool =
     result = false
     if isImplicitlyConvertible(a, b): return true
-    if typeEqualsOrDistinct(a, b): return true
+    if typeEquals(a, b): return true
+    if a == distinct and typeEquals(a.baseType, b): return true
+    if b == distinct and typeEquals(b.baseType, a): return true
     if isIntegralType(a) and isIntegralType(b): return true
     if isSubtype(a, b) or isSubtype(b, a): return true
 
