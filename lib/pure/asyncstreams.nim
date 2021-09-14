@@ -105,7 +105,7 @@ proc read*[T](future: FutureStream[T]): owned(Future[(bool, T)]) =
   ## `FutureStream`.
   var resFut = newFuture[(bool, T)]("FutureStream.take")
   let savedCb = future.cb
-  proc newCb(fs: FutureStream[T]) =
+  proc newCb(fs: FutureStream[T]) {.gcsafe.} =
     # Exit early if `resFut` is already complete. (See #8994).
     if resFut.finished: return
 

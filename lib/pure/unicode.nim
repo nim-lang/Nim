@@ -705,7 +705,7 @@ proc capitalize*(s: string): string {.noSideEffect,
   fastRuneAt(s, i, rune, doInc = true)
   result = $toUpper(rune) & substr(s, i)
 
-proc translate*(s: string, replacements: proc(key: string): string): string {.
+proc translate*(s: string, replacements: proc(key: string): string {.gcsafe.}): string {.
   rtl, extern: "nuc$1".} =
   ## Translates words in a string using the ``replacements`` proc to substitute
   ## words inside ``s`` with their replacements.
