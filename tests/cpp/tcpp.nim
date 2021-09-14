@@ -19,8 +19,8 @@ proc asVector*[T](t: T): EnumVector[T] =
 
 discard asVector(SomeEnum.A)
 
-
-type 
+# bug #10219
+type
     Vector*[T] {.importcpp: "std::vector", header: "vector".} = object
 
 proc initVector*[T](n: csize_t): Vector[T] 
