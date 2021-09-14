@@ -33,3 +33,23 @@ let b = Radians(1.0)
 a -= b
 
 echo a.float64
+
+block: #14449
+  type 
+    Foo[T] = object
+      foo: T
+
+    Bar[T] {.borrow:`.`.} = distinct Foo[T]
+    SomeThing {.borrow:`.`.} = distinct Foo[float]
+    OtherThing {.borrow:`.`.} = distinct SomeThing
+
+  var
+    a: Bar[int]
+    b: SomeThing
+    c: OtherThing
+  a.foo = 300
+  b.foo = 400
+  c.foo = 42
+  assert a.foo == 300
+  assert b.foo == 400d
+  assert c.foo == 42d
