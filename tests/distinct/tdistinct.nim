@@ -8,6 +8,7 @@ false
 false
 false
 Foo
+foo
 '''
 """
 
