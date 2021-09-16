@@ -1399,7 +1399,7 @@ else:
 
     var readBuffer = newString(size)
 
-    proc cb(sock: AsyncFD): bool {.gcsafe.} =
+    proc cb(sock: AsyncFD): bool =
       result = true
       let res = recv(sock.SocketHandle, addr readBuffer[0], size.cint,
                      flags.toOSFlags())
@@ -1428,7 +1428,7 @@ else:
                  flags = {SocketFlag.SafeDisconn}): owned(Future[int]) =
     var retFuture = newFuture[int]("recvInto")
 
-    proc cb(sock: AsyncFD): bool {.gcsafe.} =
+    proc cb(sock: AsyncFD): bool =
       result = true
       let res = recv(sock.SocketHandle, buf, size.cint,
                      flags.toOSFlags())
@@ -1455,7 +1455,7 @@ else:
 
     var written = 0
 
-    proc cb(sock: AsyncFD): bool {.gcsafe.} =
+    proc cb(sock: AsyncFD): bool =
       result = true
       let netSize = size-written
       var d = cast[cstring](buf)
@@ -1497,7 +1497,7 @@ else:
     zeroMem(addr(staddr[0]), 128)
     copyMem(addr(staddr[0]), saddr, saddrLen)
 
-    proc cb(sock: AsyncFD): bool {.gcsafe.} =
+    proc cb(sock: AsyncFD): bool =
       result = true
       let res = sendto(sock.SocketHandle, data, size, MSG_NOSIGNAL,
                        cast[ptr SockAddr](addr(staddr[0])), stalen)
@@ -1523,7 +1523,7 @@ else:
     ## complete once one datagram has been received, and will return size
     ## of packet received.
     var retFuture = newFuture[int]("recvFromInto")
-    proc cb(sock: AsyncFD): bool {.gcsafe.} =
+    proc cb(sock: AsyncFD): bool =
       result = true
       let res = recvfrom(sock.SocketHandle, data, size.cint, flags.toOSFlags(),
                          saddr, saddrLen)
@@ -1544,7 +1544,7 @@ else:
       owned(Future[tuple[address: string, client: AsyncFD]]) =
     var retFuture = newFuture[tuple[address: string,
         client: AsyncFD]]("acceptAddr")
-    proc cb(sock: AsyncFD): bool {.gcsafe.} =
+    proc cb(sock: AsyncFD): bool =
       result = true
       var sockAddress: Sockaddr_storage
       var addrLen = sizeof(sockAddress).SockLen
@@ -1727,7 +1727,7 @@ else:
     let retFuture = newFuture[void]("doConnect")
     result = retFuture
 
-    proc cb(fd: AsyncFD): bool {.gcsafe.} =
+    proc cb(fd: AsyncFD): bool =
       let ret = SocketHandle(fd).getSockOptInt(
         cint(SOL_SOCKET), cint(SO_ERROR))
       if ret == 0:
@@ -1903,7 +1903,7 @@ proc accept*(socket: AsyncFD,
   var retFut = newFuture[AsyncFD]("accept")
   var fut = acceptAddr(socket, flags, inheritable)
   fut.callback =
-    proc (future: Future[tuple[address: string, client: AsyncFD]]) {.gcsafe.} =
+    proc (future: Future[tuple[address: string, client: AsyncFD]]) =
       assert future.finished
       if future.failed:
         retFut.fail(future.error)
@@ -1922,7 +1922,7 @@ proc send*(socket: AsyncFD, data: string,
   if data.len > 0:
     let sendFut = socket.send(unsafeAddr data[0], data.len, flags)
     sendFut.callback =
-      proc () {.gcsafe.} =
+      proc () =
         keepAlive(data)
         if sendFut.failed:
           retFuture.fail(sendFut.error)
