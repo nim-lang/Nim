@@ -548,7 +548,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result = n.typ.skipTypes({tyTypeDesc})
       # result = n.typ.base
     else:
-      if n.typ.kind != tyStatic:
+      if n.typ.kind != tyStatic and n.kind != nkType:
         # XXX: In the future, semConstExpr should
         # return tyStatic values to let anyone make
         # use of this knowledge. The patching here
