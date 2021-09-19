@@ -330,12 +330,16 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
   ## It is implemented just calling `cpuinfo.countProcessors`.
   result = cpuinfo.countProcessors()
 
+when not defined(nimHasEffectsOf):
+  {.pragma: effectsOf.}
+
 proc execProcesses*(cmds: openArray[string],
     options = {poStdErrToStdOut, poParentStreams}, n = countProcessors(),
     beforeRunEvent: proc(idx: int) = nil,
     afterRunEvent: proc(idx: int, p: Process) = nil):
   int {.rtl, extern: "nosp$1",
-        tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect].} =
+        tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect],
+        effectsOf: [beforeRunEvent, afterRunEvent].} =
   ## Executes the commands `cmds` in parallel.
   ## Creates `n` processes that execute in parallel.
   ##
