@@ -93,7 +93,7 @@ proc setCallSoonProc*(p: (proc(cbproc: proc ()) {.gcsafe.})) =
   ## Change current implementation of `callSoon`. This is normally called when dispatcher from `asyncdispatcher` is initialized.
   callSoonProc = p
 
-proc callSoon*(cbproc: proc ()) =
+proc callSoon*(cbproc: proc () {.gcsafe.}) =
   ## Call `cbproc` "soon".
   ##
   ## If async dispatcher is running, `cbproc` will be executed during next dispatcher tick.
