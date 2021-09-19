@@ -2716,7 +2716,7 @@ symbol is used in a context where there is additional type information
 available. Let `p` be an overloaded symbol. These contexts are:
 
 - In a function call `q(..., p, ...)` when the corresponding formal parameter
-  of `q` is a `proc` type. If `q` itself is overloaded then the cross product
+  of `q` is a `proc` type. If `q` itself is overloaded then the cartesian product
   of every interpretation of `q` and `p` must be considered.
 - In an object constructor `Obj(..., field: p, ...)` when `field` is a `proc`
   type. Analogous rules exist for array/set/tuple constructors.
