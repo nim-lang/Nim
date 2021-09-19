@@ -2712,7 +2712,7 @@ Overload disambiguation
 =======================
 
 For routine calls "overload resolution" is performed. There is a weaker form of
-overload resoultion called *overload disambiguation* that is performed when an
+overload resolution called *overload disambiguation* that is performed when an
 overloaded symbol is used in a context where there is additional type information
 available. Let `p` be an overloaded symbol. These contexts are:
 
