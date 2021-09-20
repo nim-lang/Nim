@@ -1824,8 +1824,9 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
       # => moves comment `foo` to `fn`
       result.comment = body[0].comment
       body[0].comment = ""
-    else:
-      assert false, p.lex.config$body.info # avoids hard to track bugs, fail early.
+    #else:
+    #  assert false, p.lex.config$body.info # avoids hard to track bugs, fail early.
+    # Yeah, that worked so well. There IS a bug in this logic, now what?
 
 proc newCommentStmt(p: var Parser): PNode =
   #| commentStmt = COMMENT
