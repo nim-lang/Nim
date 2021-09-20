@@ -288,10 +288,10 @@ else:
     type
       # Atomic* {.importcpp: "_Atomic('0)".} [T] = object
 
-      AtomicInt8 {.importc: "_Atomic NI8", size: 1.} = object
-      AtomicInt16 {.importc: "_Atomic NI16", size: 2.} = object
-      AtomicInt32 {.importc: "_Atomic NI32", size: 4.} = object
-      AtomicInt64 {.importc: "_Atomic NI64", size: 8.} = object
+      AtomicInt8 {.importc: "_Atomic NI8".} = int8
+      AtomicInt16 {.importc: "_Atomic NI16".} = int16
+      AtomicInt32 {.importc: "_Atomic NI32".} = int32
+      AtomicInt64 {.importc: "_Atomic NI64".} = int64
 
     template atomicType*(T: typedesc[Trivial]): untyped =
       # Maps the size of a trivial type to it's internal atomic type
