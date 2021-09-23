@@ -245,9 +245,14 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: Co
     let msgKind = if onlyWarning: warnGcUnsafe2 else: errGenerated
     case u.kind
     of skLet, skVar:
-      message(conf, s.info, msgKind,
-        ("'$#' is not GC-safe as it accesses '$#'" &
-        " which is a global using GC'ed memory") % [s.name.s, u.name.s])
+      if u.typ.skipTypes(abstractInst).kind == tyProc:
+        message(conf, s.info, msgKind,
+          "'$#' is not GC-safe as it calls '$#'" %
+          [s.name.s, u.name.s])
+      else:
+        message(conf, s.info, msgKind,
+          ("'$#' is not GC-safe as it accesses '$#'" &
+          " which is a global using GC'ed memory") % [s.name.s, u.name.s])
     of routineKinds:
       # recursive call *always* produces only a warning so the full error
       # message is printed:
@@ -850,7 +855,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
         mergeRaises(tracked, effectList[exceptionEffects], n)
         mergeTags(tracked, effectList[tagEffects], n)
         gcsafeAndSideeffectCheck()
-    if a.kind != nkSym or a.sym.magic != mNBindSym:
+    if a.kind != nkSym or a.sym.magic notin {mNBindSym, mFinished}:
       for i in 1..<n.len:
         trackOperandForIndirectCall(tracked, n[i], op, i, a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
