@@ -1412,6 +1412,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let origF = f
     var f = if prev == nil: f else: prev
 
+    if a.len > 0:
+      let skippedA = a.skipTypesOrNil({tyObject}) # Skips if it's inheriting from a generic
+      if skippedA != nil:
+        a = skippedA
+
     let roota = a.skipGenericAlias
     let rootf = f.skipGenericAlias
 
