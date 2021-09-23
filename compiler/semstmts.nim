@@ -1474,6 +1474,9 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
     # Carry over the original symbol magic, this is necessary in order to ensure
     # the semantic pass is correct
     s.magic = b.magic
+    if b.typ != nil and b.typ.len > 0:
+      s.typ.n[0] = b.typ.n[0]
+    s.typ.flags = b.typ.flags
   else:
     localError(c.config, n.info, errNoSymbolToBorrowFromFound)
 
@@ -1954,7 +1957,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if not hasProto:
     implicitPragmas(c, s, n.info, validPragmas)
 
-  if n[pragmasPos].kind != nkEmpty:
+  if n[pragmasPos].kind != nkEmpty and sfBorrow notin s.flags:
     setEffectsForProcType(c.graph, s.typ, n[pragmasPos], s)
   s.typ.flags.incl tfEffectSystemWorkaround
 
