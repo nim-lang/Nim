@@ -400,8 +400,9 @@ proc allRoots(n: PNode; result: var seq[(PSym, int)]; level: int) =
           if typ != nil and i < typ.len:
             assert(typ.n[i].kind == nkSym)
             let paramType = typ.n[i].typ
-            if not paramType.isCompileTimeOnly and not typ.sons[0].isEmptyType and
-                canAlias(paramType, typ.sons[0]):
+            if paramType.kind == tyVar or
+               (not paramType.isCompileTimeOnly and not typ.sons[0].isEmptyType and
+                canAlias(paramType, typ.sons[0])):
               allRoots(it, result, RootEscapes)
           else:
             allRoots(it, result, RootEscapes)
@@ -606,7 +607,8 @@ proc deps(c: var Partitions; dest, src: PNode) =
   allRoots(dest, targets, 0)
   allRoots(src, sources, 0)
 
-  let destIsComplex = containsPointer(dest.typ)
+  let destIsComplex = containsPointer(dest.typ) or
+    dest.kind in {nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr}
 
   for t in targets:
     if dest.kind != nkSym and c.inNoSideEffectSection == 0:
@@ -615,6 +617,9 @@ proc deps(c: var Partitions; dest, src: PNode) =
     if destIsComplex:
       for s in sources:
         connect(c, t[0], s[0], dest.info)
+        if s[0] == t[0] and s[1] == RootEscapes:
+          localError(c.g.config, dest.info, "'" & $dest & "' borrows from location '" & s[0].name.s &
+            "' which is mutated via " & $src)
 
   if cursorInference in c.goals and src.kind != nkEmpty:
     let d = pathExpr(dest, c.owner)
