@@ -619,7 +619,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
         connect(c, t[0], s[0], dest.info)
         if s[0] == t[0] and s[1] == RootEscapes:
           localError(c.g.config, dest.info, "'" & $dest & "' borrows from location '" & s[0].name.s &
-            "' which is mutated via " & $src)
+            "' which is mutated via '" & $src & "'")
 
   if cursorInference in c.goals and src.kind != nkEmpty:
     let d = pathExpr(dest, c.owner)
