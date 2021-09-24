@@ -1723,7 +1723,7 @@ Example:
 .. code-block:: nim
     :test: "nim c $1"
   proc greet(name: string): string =
-    result = "Hello, " & name & "!"
+    "Hello, " & name & "!"
 
   proc bye(name: string): string =
     result = "Goodbye, " & name & "."
