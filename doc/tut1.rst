@@ -1726,7 +1726,7 @@ Example:
     "Hello, " & name & "!"
 
   proc bye(name: string): string =
-    result = "Goodbye, " & name & "."
+    "Goodbye, " & name & "."
 
   proc communicate(greeting: proc (x: string): string, name: string) =
     echo greeting(name)
