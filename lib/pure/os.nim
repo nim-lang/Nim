@@ -3007,7 +3007,7 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
               newp: pointer, newplen: csize_t): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
-                                      #include <sys/sysctl.h>"""}
+                                      #include <sys/sysctl.h>""".}
   const
     CTL_KERN = 1
     KERN_PROC = 14

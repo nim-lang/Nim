@@ -577,11 +577,13 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
                             osFreebsd, osOpenbsd, osDragonfly, osMacosx, osIos,
-                            osAndroid, osNintendoSwitch, osFreeRTOS}
+                            osAndroid, osNintendoSwitch, osFreeRTOS, osCrossos}
     of "linux":
       result = conf.target.targetOS in {osLinux, osAndroid}
     of "bsd":
-      result = conf.target.targetOS in {osNetbsd, osFreebsd, osOpenbsd, osDragonfly}
+      result = conf.target.targetOS in {osNetbsd, osFreebsd, osOpenbsd, osDragonfly, osCrossos}
+    of "freebsd":
+      result = conf.target.targetOS in {osFreebsd, osCrossos}
     of "emulatedthreadvars":
       result = platform.OS[conf.target.targetOS].props.contains(ospLacksThreadVars)
     of "msdos": result = conf.target.targetOS == osDos

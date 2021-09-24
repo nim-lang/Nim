@@ -109,6 +109,11 @@ case $uos in
     CC="clang"
     LINK_FLAGS="$LINK_FLAGS -lm"
     ;;
+  *crossos* )
+    myos="crossos"
+    CC="clang"
+    LINK_FLAGS="$LINK_FLAGS -lm"
+    ;;
   *openbsd* )
     myos="openbsd"
     CC="clang"
