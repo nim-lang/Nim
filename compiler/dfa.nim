@@ -308,6 +308,11 @@ when true:
     # We unroll every loop 3 times. We emulate 0, 1, 2 iterations
     # through the loop. We need to prove this is correct for our
     # purposes. But Herb Sutter claims it is. (Proof by authority.)
+    #
+    # EDIT: Actually, we only need to unroll 2 times
+    # because Nim doesn't have a way of breaking/goto-ing into
+    # a loop iteration. Unrolling 2 times is much better for compile
+    # times of nested loops than 3 times, so we do that here.
     #[
     while cond:
       body
@@ -347,12 +352,12 @@ when true:
       # 'while true' is an idiom in Nim and so we produce
       # better code for it:
       withBlock(nil):
-        for i in 0..2:
+        for i in 0..1:
           c.gen(n[1])
     else:
       withBlock(nil):
-        var endings: array[3, TPosition]
-        for i in 0..2:
+        var endings: array[2, TPosition]
+        for i in 0..1:
           c.gen(n[0])
           endings[i] = c.forkI(n)
           c.gen(n[1])
