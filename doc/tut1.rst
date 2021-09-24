@@ -1643,8 +1643,24 @@ variables! For example:
   echo badname
   echo badext
 
+Tuple unpacking is also supported in for-loops:
+
+.. code-block:: nim
+    :test: "nim c $1"
+  let a = [(10, 'a'), (20, 'b'), (30, 'c')]
+
+  for (x, c) in a:
+    echo x
+  # This will output: 10; 20; 30
+
+  # Accessing the index is also possible:
+  for i, (x, c) in a:
+    echo i, c
+  # This will output: 0a; 1b; 2c
+
 Fields of tuples are always public, they don't need to be explicity
 marked to be exported, unlike for example fields in an object type.
+
 
 Reference and pointer types
 ---------------------------
@@ -1675,13 +1691,18 @@ operators perform implicit dereferencing operations for reference types:
     Node = ref object
       le, ri: Node
       data: int
-  var
-    n: Node
-  new(n)
-  n.data = 9
+
+  var n = Node(data: 9)
+  echo n.data
   # no need to write n[].data; in fact n[].data is highly discouraged!
 
-To allocate a new traced object, the built-in procedure `new` must be used.
+To allocate a new traced object, the built-in procedure `new` can be used:
+
+.. code-block:: nim
+
+   var n: Node
+   new(n)
+
 To deal with untraced memory, the procedures `alloc`, `dealloc` and
 `realloc` can be used. The `system <system.html>`_
 module's documentation contains further details.
@@ -1701,15 +1722,17 @@ Example:
 
 .. code-block:: nim
     :test: "nim c $1"
-  proc echoItem(x: int) = echo x
+  proc greet(name: string): string =
+    "Hello, " & name & "!"
 
-  proc forEach(action: proc (x: int)) =
-    const
-      data = [2, 3, 5, 7, 11]
-    for d in items(data):
-      action(d)
+  proc bye(name: string): string =
+    "Goodbye, " & name & "."
 
-  forEach(echoItem)
+  proc communicate(greeting: proc (x: string): string, name: string) =
+    echo greeting(name)
+
+  communicate(greet, "John")
+  communicate(bye, "Mary")
 
 A subtle issue with procedural types is that the calling convention of the
 procedure influences the type compatibility: procedural types are only compatible

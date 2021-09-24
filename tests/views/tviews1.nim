@@ -5,7 +5,8 @@ discard """
 3
 2
 3
-3'''
+3
+15'''
   targets: "c cpp"
 """
 
@@ -26,3 +27,14 @@ proc main(s: seq[int]) =
   take x
 
 main(@[11, 22, 33])
+
+var x: int
+
+proc foo(x: var int): var int =
+  once: x = 42
+  return x
+
+var y: var int = foo(x)
+y = 15
+echo foo(x)
+# bug #16132

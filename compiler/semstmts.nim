@@ -1296,7 +1296,8 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         incl a[2].flags, nfSem # bug #10548
     if sfExportc in s.flags and s.typ.kind == tyAlias:
       localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
-    if tfBorrowDot in s.typ.flags and s.typ.kind != tyDistinct:
+
+    if tfBorrowDot in s.typ.flags and s.typ.skipTypes({tyGenericBody}).kind != tyDistinct:
       excl s.typ.flags, tfBorrowDot
       localError(c.config, name.info, "only a 'distinct' type can borrow `.`")
     let aa = a[2]
@@ -1473,6 +1474,9 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
     # Carry over the original symbol magic, this is necessary in order to ensure
     # the semantic pass is correct
     s.magic = b.magic
+    if b.typ != nil and b.typ.len > 0:
+      s.typ.n[0] = b.typ.n[0]
+    s.typ.flags = b.typ.flags
   else:
     localError(c.config, n.info, errNoSymbolToBorrowFromFound)
 
@@ -1904,7 +1908,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if tfTriggersCompileTime in s.typ.flags: incl(s.flags, sfCompileTime)
   if n[patternPos].kind != nkEmpty:
-    n[patternPos] = semPattern(c, n[patternPos])
+    n[patternPos] = semPattern(c, n[patternPos], s)
   if s.kind == skIterator:
     s.typ.flags.incl(tfIterator)
   elif s.kind == skFunc:
@@ -1953,7 +1957,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if not hasProto:
     implicitPragmas(c, s, n.info, validPragmas)
 
-  if n[pragmasPos].kind != nkEmpty:
+  if n[pragmasPos].kind != nkEmpty and sfBorrow notin s.flags:
     setEffectsForProcType(c.graph, s.typ, n[pragmasPos], s)
   s.typ.flags.incl tfEffectSystemWorkaround
 

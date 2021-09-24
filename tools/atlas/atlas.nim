@@ -27,6 +27,8 @@ Command:
 
 Options:
   --keepCommits         do not perform any `git checkouts`
+  --cfgHere             also create/maintain a nim.cfg in the current
+                        working directory
   --version             show the version
   --help                show this help
 """
@@ -58,6 +60,7 @@ type
     projectDir, workspace: string
     hasPackageList: bool
     keepCommits: bool
+    cfgHere: bool
     p: Table[string, string] # name -> url mapping
     processed: HashSet[string] # the key is (url / commit)
     errors: int
@@ -353,7 +356,7 @@ proc clone(c: var AtlasContext; start: string): seq[string] =
     error c, toName(start), "cannot resolve package name"
     return
 
-  c.projectDir = work[0].name.string
+  c.projectDir = c.workspace / work[0].name.string
   result = @[]
   var i = 0
   while i < work.len:
@@ -376,10 +379,16 @@ const
   configPatternBegin = "############# begin Atlas config section ##########\n"
   configPatternEnd =   "############# end Atlas config section   ##########\n"
 
-proc patchNimCfg(c: var AtlasContext; deps: seq[string]) =
+proc patchNimCfg(c: var AtlasContext; deps: seq[string]; cfgHere: bool) =
   var paths = "--noNimblePath\n"
-  for d in deps:
-    paths.add "--path:\"../" & d.replace("\\", "/") & "\"\n"
+  if cfgHere:
+    let cwd = getCurrentDir()
+    for d in deps:
+      let x = relativePath(c.workspace / d, cwd, '/')
+      paths.add "--path:\"" & x & "\"\n"
+  else:
+    for d in deps:
+      paths.add "--path:\"../" & d.replace("\\", "/") & "\"\n"
 
   var cfgContent = configPatternBegin & paths & configPatternEnd
 
@@ -387,7 +396,8 @@ proc patchNimCfg(c: var AtlasContext; deps: seq[string]) =
     assert readFile(TestsDir / "nim.cfg") == cfgContent
     c.mockupSuccess = true
   else:
-    let cfg = c.projectDir / "nim.cfg"
+    let cfg = if cfgHere: getCurrentDir() / "nim.cfg"
+              else: c.projectDir / "nim.cfg"
     if not fileExists(cfg):
       writeFile(cfg, cfgContent)
     else:
@@ -437,6 +447,7 @@ proc main =
       of "help", "h": writeHelp()
       of "version", "v": writeVersion()
       of "keepcommits": c.keepCommits = true
+      of "cfghere": c.cfgHere = true
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
 
@@ -449,7 +460,9 @@ proc main =
   of "clone":
     singleArg()
     let deps = clone(c, args[0])
-    patchNimCfg c, deps
+    patchNimCfg c, deps, false
+    if c.cfgHere:
+      patchNimCfg c, deps, true
     when MockupRun:
       if not c.mockupSuccess:
         error "There were problems."

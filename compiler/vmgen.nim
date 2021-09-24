@@ -1029,7 +1029,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.genAsgnPatch(n[1], d)
     c.freeTemp(d)
   of mOrd, mChr, mArrToSeq, mUnown: c.gen(n[1], dest)
-  of mIsolate:
+  of mIsolate, mFinished:
     genCall(c, n, dest)
   of mNew, mNewFinalize:
     unused(c, n, dest)

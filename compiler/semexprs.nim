@@ -1280,7 +1280,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     if p != nil and p.selfSym != nil:
       var ty = skipTypes(p.selfSym.typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef,
                                          tyAlias, tySink, tyOwned})
-      while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
+      while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct, tyGenericInst, tyAlias})
       var check: PNode = nil
       if ty.kind == tyObject:
         while true:
@@ -1412,7 +1412,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
     ty = ty.lastSon
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink})
-  while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
+  while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct, tyGenericInst, tyAlias})
   var check: PNode = nil
   if ty.kind == tyObject:
     while true:
@@ -1661,17 +1661,20 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
       localError(c.config, n.info, errXStackEscape % renderTree(n, {renderNoComments}))
     else:
       localError(c.config, n.info, errExprHasNoAddress)
-  result = newNodeIT(nkHiddenAddr, n.info, makePtrType(c, n.typ))
+  result = newNodeIT(nkHiddenAddr, n.info, if n.typ.kind in {tyVar, tyLent}: n.typ else: makePtrType(c, n.typ))
   result.add(n)
 
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le[0]
-    if x.kind == nkSym and x.sym.kind == skResult and (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView):
-      n[0] = x # 'result[]' --> 'result'
-      n[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
-      x.typ.flags.incl tfVarIsPtr
-      #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
+    if x.kind == nkSym:
+      if x.sym.kind == skResult and (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView):
+        n[0] = x # 'result[]' --> 'result'
+        n[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
+        x.typ.flags.incl tfVarIsPtr
+        #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
+      elif sfGlobal in x.sym.flags:
+        x.typ.flags.incl tfVarIsPtr
 
 proc borrowCheck(c: PContext, n, le, ri: PNode) =
   const

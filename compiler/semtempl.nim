@@ -334,7 +334,7 @@ proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start = 0) =
       illFormedAst(a, c.c.config)
 
 
-proc semPattern(c: PContext, n: PNode): PNode
+proc semPattern(c: PContext, n: PNode; s: PSym): PNode
 
 proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
   result = n
@@ -645,7 +645,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   if allUntyped: incl(s.flags, sfAllUntyped)
 
   if n[patternPos].kind != nkEmpty:
-    n[patternPos] = semPattern(c, n[patternPos])
+    n[patternPos] = semPattern(c, n[patternPos], s)
 
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
@@ -798,7 +798,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     for i in 0..<n.len:
       result[i] = semPatternBody(c, n[i])
 
-proc semPattern(c: PContext, n: PNode): PNode =
+proc semPattern(c: PContext, n: PNode; s: PSym): PNode =
   openScope(c)
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
@@ -813,3 +813,4 @@ proc semPattern(c: PContext, n: PNode): PNode =
     elif result.len == 0:
       localError(c.config, n.info, "a pattern cannot be empty")
   closeScope(c)
+  addPattern(c, LazySym(sym: s))
