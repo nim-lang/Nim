@@ -2039,7 +2039,7 @@ func countLines*(s: string): int {.rtl, extern: "nsuCountLines".} =
   ## Returns the number of lines in the string `s`.
   ##
   ## This is the same as `len(splitLines(s))`, but much more efficient
-  ## because it doesn't modify the string creating temporal objects. Every
+  ## because it doesn't modify the string creating temporary objects. Every
   ## `character literal <manual.html#lexical-analysis-character-literals>`_
   ## newline combination (CR, LF, CR-LF) is supported.
   ##
