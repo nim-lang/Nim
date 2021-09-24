@@ -6,7 +6,8 @@ discard """
 2
 3
 3
-15'''
+15
+(oa: [1, 3, 4])'''
   targets: "c cpp"
 """
 
@@ -38,3 +39,13 @@ var y: var int = foo(x)
 y = 15
 echo foo(x)
 # bug #16132
+
+# bug #18690
+
+type
+  F = object
+    oa: openarray[int]
+
+let s1 = @[1,3,4,5,6]
+var test = F(oa: toOpenArray(s1, 0, 2))
+echo test
