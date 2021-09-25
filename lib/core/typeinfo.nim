@@ -216,7 +216,8 @@ proc extendSeq*(x: Any) =
   when defined(gcDestructors):
     var s = cast[ptr NimSeqV2Reimpl](x.value)
     let elem = x.rawType.base
-    s.p = cast[ptr NimSeqPayloadReimpl](prepareSeqAdd(s.len, s.p, 1, elem.size, elem.align))
+    if s.p == nil or s.p.cap < s.len+1:
+      s.p = cast[ptr NimSeqPayloadReimpl](prepareSeqAdd(s.len, s.p, 1, elem.size, elem.align))
     inc s.len
   else:
     var y = cast[ptr PGenSeq](x.value)[]
