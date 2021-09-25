@@ -1055,7 +1055,7 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   else:
     result.add localErrorNode(c, n, "system needs: echo")
   result.add(n)
-  result.add(newStrNode(nkStrLit, ": " & n.typ.typeToString)) # ghci(GHC interpreter)
+  result.add(newStrNode(nkStrLit, ": " & n.typ.typeToString))
   result = semExpr(c, result)
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
