@@ -22,7 +22,7 @@ type
     info: TLineInfo
     indent, emitPar: int
     x: string                # the current input line
-    outp: PLLStream          # the output will be parsed by pnimsyn
+    outp: PLLStream          # the output will be parsed by parser
     subsChar, nimDirective: char
     emit, conc, toStr: string
     curly, bracket, par: int

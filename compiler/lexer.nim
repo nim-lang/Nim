@@ -7,12 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
-# This scanner is handwritten for efficiency. I used an elegant buffering
+# This lexer is handwritten for efficiency. I used an elegant buffering
 # scheme which I have not seen anywhere else:
 # We guarantee that a whole line is in the buffer. Thus only when scanning
 # the \n or \r character we have to check whether we need to read in the next
 # chunk. (\n or \r already need special handling for incrementing the line
-# counter; choosing both \n and \r allows the scanner to properly read Unix,
+# counter; choosing both \n and \r allows the lexer to properly read Unix,
 # DOS or Macintosh text files, even when it is not the native format.
 
 import
