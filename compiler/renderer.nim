@@ -410,7 +410,7 @@ proc atom(g: TSrcGen; n: PNode): string =
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s
     else: result = "[type node]"
   else:
-    internalError(g.config, "rnimsyn.atom " & $n.kind)
+    internalError(g.config, "renderer.atom " & $n.kind)
     result = ""
 
 proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
@@ -1699,7 +1699,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     gsub(g, n[0], c)
   else:
     #nkNone, nkExplicitTypeListCall:
-    internalError(g.config, n.info, "rnimsyn.gsub(" & $n.kind & ')')
+    internalError(g.config, n.info, "renderer.gsub(" & $n.kind & ')')
 
 proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
   if n == nil: return "<nil tree>"

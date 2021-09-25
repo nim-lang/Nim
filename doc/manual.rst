@@ -216,7 +216,7 @@ comment:
 
 .. code-block:: nim
   i = 0     # This is a single comment over multiple lines.
-    # The scanner merges these two pieces.
+    # The lexer merges these two pieces.
     # The comment continues here.
 
 
