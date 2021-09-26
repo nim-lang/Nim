@@ -213,7 +213,7 @@ case $ucpu in
     mycpu="alpha" ;;
   *aarch64*|*arm64* )
     mycpu="arm64" ;;
-  *arm*|*armv6l*|*armv71* )
+  *arm*|*armv6l*|*armv7l*|*armv8l* )
     mycpu="arm" ;;
   *riscv64|riscv* )
     mycpu="riscv64" ;;
