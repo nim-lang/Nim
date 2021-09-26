@@ -321,7 +321,7 @@
   `ValueError` when the real command line is not available. `parseopt` was
   previously excluded from `prelude` for JS, as it could not be imported.
 
-- Added `system.prepareStrMutation` for better support of low
+- Added `system.prepareMutation` for better support of low
   level `moveMem`, `copyMem` operations for Orc's copy-on-write string
   implementation.
 
