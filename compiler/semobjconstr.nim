@@ -79,7 +79,7 @@ proc semConstrField(c: PContext, flags: TExprFlags,
 
     var initValue = semExprFlagDispatched(c, assignment[1], flags)
     if initValue != nil:
-      initValue = fitNode(c, field.typ, initValue, assignment.info)
+      initValue = fitNodeConsiderViewType(c, field.typ, initValue, assignment.info)
     assignment[0] = newSymNode(field)
     assignment[1] = initValue
     assignment.flags.incl nfSem

@@ -545,7 +545,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         else:
           # BUGFIX: ``fitNode`` is needed here!
           # check type compatibility between def.typ and typ
-          def = fitNodeForLocalVar(c, typ, def, def.info)
+          def = fitNodeConsiderViewType(c, typ, def, def.info)
           #changeType(def.skipConv, typ, check=true)
       else:
         typ = def.typ.skipTypes({tyStatic, tySink}).skipIntLit(c.idgen)

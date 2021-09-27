@@ -49,3 +49,20 @@ type
 let s1 = @[1,3,4,5,6]
 var test = F(oa: toOpenArray(s1, 0, 2))
 echo test
+
+type
+  Foo = object
+    x: string
+    y: seq[int]
+    data: array[10000, byte]
+
+  View[T] = object
+    x: lent T
+
+proc mainB =
+  let f = Foo(y: @[1, 2, 3])
+  let foo = View[Foo](x: f)
+  assert foo.x.x == ""
+  assert foo.x.y == @[1, 2, 3]
+
+mainB()
