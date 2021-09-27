@@ -159,7 +159,7 @@ pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "unpack"
 pkg "weave", "nimble test_gc_arc", allowFailure = true
 pkg "websocket", "nim c websocket.nim"
-pkg "winim", allowFailure = true
+pkg "winim", "nim c winim.nim"
 pkg "with"
 pkg "ws", allowFailure = true
 pkg "yaml", "nim c -r test/tserialization.nim"
