@@ -107,7 +107,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     else:
       result = fitNodePostMatch(c, formal, result)
 
-proc fitNodeForLocalVar(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
+proc fitNodeConsiderViewType(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   let a = fitNode(c, formal, arg, info)
   if formal.kind in {tyVar, tyLent}:
     #classifyViewType(formal) != noView:
