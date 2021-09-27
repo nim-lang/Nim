@@ -187,5 +187,12 @@ proc main()=
     test2 high(int8), "127"
     test2 low(int8), "-128"
 
+  block:
+    const
+      a: array[3, char] = ['N', 'i', 'm']
+      aStr = $(a)
+
+    doAssert aStr == """['N', 'i', 'm']"""
+
 static: main()
 main()
