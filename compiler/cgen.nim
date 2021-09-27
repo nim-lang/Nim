@@ -855,10 +855,15 @@ proc closureSetup(p: BProc, prc: PSym) =
             [rdLoc(env.loc), getTypeDesc(p.module, env.typ)])
 
 proc containsResult(n: PNode): bool =
-  if n.kind == nkSym and n.sym.kind == skResult:
-    result = true
+  result = false
+  case n.kind
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkFormalParams:
+    discard
+  of nkSym:
+    if n.sym.kind == skResult:
+      result = true
   else:
-    for i in 0..<n.safeLen:
+    for i in 0..<n.len:
       if containsResult(n[i]): return true
 
 const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTemplateDef,
