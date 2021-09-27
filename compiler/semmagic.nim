@@ -216,10 +216,6 @@ proc semOrd(c: PContext, n: PNode): PNode =
   let parType = n[1].typ
   if isOrdinalType(parType, allowEnumWithHoles=true):
     discard
-  elif parType.kind == tySet:
-    let a = toInt64(firstOrd(c.config, parType))
-    let b = toInt64(lastOrd(c.config, parType))
-    result.typ = makeRangeType(c, a, b, n.info)
   else:
     localError(c.config, n.info, errOrdinalTypeExpected)
     result.typ = errorType(c)
