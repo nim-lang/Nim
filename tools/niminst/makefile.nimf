@@ -157,6 +157,9 @@ endif
 ifeq ($(ucpu),armv7hl)
   mycpu = arm
 endif
+ifeq ($(ucpu),armv8l)
+  mycpu = arm
+endif
 ifeq ($(ucpu),aarch64)
   mycpu = arm64
 endif
