@@ -128,7 +128,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
     while true:
       # Skips over all borrowed procs getting the last proc symbol without an implementation
       let body = getBody(c.graph, s)
-      if body.kind == nkSym and getBody(c.graph, body.sym).kind == nkSym:
+      if body.kind == nkSym and sfBorrow in body.sym.flags and getBody(c.graph, body.sym).kind == nkSym:
         s = body.sym
       else:
         break
