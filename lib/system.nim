@@ -160,7 +160,7 @@ when defined(nimHashOrdinalFixed):
                                    ## as well as their subtypes. See also
                                    ## `SomeOrdinal`.
 else:
-  # bootstrap <= 0.20.0
+  # bootstrap < 1.2.0
   type
     OrdinalImpl[T] {.magic: Ordinal.}
     Ordinal* = OrdinalImpl | uint | uint64
