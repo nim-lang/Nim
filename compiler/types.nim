@@ -1118,8 +1118,6 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   assert(a != nil)
   assert(b != nil)
 
-  if a == b: return true
-
   if a.kind != b.kind:
     case c.cmp
     of dcEq: return false
@@ -1137,7 +1135,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       lhs = x.skipGenericAlias
       rhs = y.skipGenericAlias
     if rhs.kind != tyGenericInst or lhs.base != rhs.base:
-      return false
+      return sameType(lhs.skipTypes({tyGenericInst}), rhs)
     for i in 1..<lhs.len - 1:
       let ff = rhs[i]
       let aa = lhs[i]
