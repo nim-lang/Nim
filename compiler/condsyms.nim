@@ -106,8 +106,8 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasCursor")
   defineSymbol("nimAlignPragma")
   defineSymbol("nimHasExceptionsQuery")
-  defineSymbol("nimHasIsNamedTuple")
-  defineSymbol("nimHashOrdinalFixed")
+  defineSymbol("nimHasIsNamedTuple") # deadcode
+  defineSymbol("nimHashOrdinalFixed") # deadcode
 
   when defined(nimHasLibFFI):
     # Renaming as we can't conflate input vs output define flags; e.g. this
