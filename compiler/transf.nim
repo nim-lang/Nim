@@ -124,6 +124,14 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   var tc = c.transCon
   if sfBorrow in s.flags and s.kind in routineKinds:
     # simply exchange the symbol:
+    var s = s
+    while true:
+      # Skips over all borrowed procs getting the last proc symbol without an implementation
+      let body = getBody(c.graph, s)
+      if body.kind == nkSym and getBody(c.graph, body.sym).kind == nkSym:
+        s = body.sym
+      else:
+        break
     b = getBody(c.graph, s)
     if b.kind != nkSym: internalError(c.graph.config, n.info, "wrong AST for borrowed symbol")
     b = newSymNode(b.sym, n.info)

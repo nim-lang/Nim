@@ -726,10 +726,6 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     var resolved = semOverloadedCall(c, call, call, filter, {})
     if resolved != nil:
       result = resolved[0].sym
-      while sfBorrow in result.flags:
-        # We iterate over all borrowed procs.
-        # This ensures we always have an instantiated proc to call
-        result = result.ast[bodyPos].sym
       if not compareTypes(result.typ[0], fn.typ[0], dcEqIgnoreDistinct):
         result = nil
       elif result.magic in {mArrPut, mArrGet}:
