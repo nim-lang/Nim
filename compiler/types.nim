@@ -1117,6 +1117,9 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     b = skipTypes(b[^1], {tyGenericInst, tyAlias})
   assert(a != nil)
   assert(b != nil)
+
+  if a == b: return true
+
   if a.kind != b.kind:
     case c.cmp
     of dcEq: return false
