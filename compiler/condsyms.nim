@@ -84,6 +84,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasSignatureHashInMacro") # deadcode
   defineSymbol("nimHasDefault") # deadcode
   defineSymbol("nimMacrosSizealignof") # deadcode
+  defineSymbol("nimHashOrdinalFixed") # deadcode
 
   # > 0.20.0
   defineSymbol("nimNoZeroExtendMagic")
@@ -107,7 +108,6 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimAlignPragma")
   defineSymbol("nimHasExceptionsQuery")
   defineSymbol("nimHasIsNamedTuple")
-  defineSymbol("nimHashOrdinalFixed") # deadcode
 
   when defined(nimHasLibFFI):
     # Renaming as we can't conflate input vs output define flags; e.g. this
