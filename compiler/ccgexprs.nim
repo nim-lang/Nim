@@ -2061,9 +2061,11 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
 
 proc genCast(p: BProc, e: PNode, d: var TLoc) =
-  var valueTypes = {tyFloat..tyFloat128, tyTuple, tyObject, tyArray}
-  if p.config.selectedGC in {gcArc, gcOrc}:
-    valueTypes.incl {tyString, tySequence}
+  let valueTypes = if p.config.selectedGC in {gcArc, gcOrc}:
+      {tyFloat..tyFloat128, tyTuple, tyObject, tyArray, tyString, tySequence}
+    else:
+      {tyFloat..tyFloat128, tyTuple, tyObject, tyArray}
+
   let
     destt = skipTypes(e.typ, abstractRange)
     srct = skipTypes(e[1].typ, abstractRange)
