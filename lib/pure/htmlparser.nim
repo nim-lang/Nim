@@ -215,7 +215,7 @@ const
     tagMenu, tagNoframes}
   SingleTags* = {tagArea, tagBase, tagBasefont,
     tagBr, tagCol, tagFrame, tagHr, tagImg, tagIsindex,
-    tagLink, tagMeta, tagParam, tagWbr}
+    tagLink, tagMeta, tagParam, tagWbr, tagSource}
 
 proc allLower(s: string): bool =
   for c in s:
