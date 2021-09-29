@@ -71,7 +71,11 @@ import std/[
   decls, compilesettings, with, wrapnils
 ]
 
+# non-std imports
+import stdtest/testutils
+# tests (increase coverage via code reuse)
 import stdlib/trandom
+import stdlib/tosenv
 
 echo "Nimscript imports are successful."
 

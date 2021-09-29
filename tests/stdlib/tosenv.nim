@@ -13,16 +13,18 @@ template main =
     for val in ["val", ""]: # ensures empty val works too
       const key = "NIM_TESTS_TOSENV_KEY"
       doAssert not existsEnv(key)
-      putEnv(key, val)
+
+      putEnv(key, "tempval")
+      doAssert existsEnv(key)
+      doAssert getEnv(key) == "tempval"
+
+      putEnv(key, val) # change a key that already exists
       doAssert existsEnv(key)
       doAssert getEnv(key) == val
-      when nimvm: discard
-      else:
-        doAssert (key, val) in toSeq(envPairs())
+
+      doAssert (key, val) in toSeq(envPairs())
       delEnv(key)
-      when nimvm: discard
-      else:
-        doAssert (key, val) notin toSeq(envPairs())
+      doAssert (key, val) notin toSeq(envPairs())
       doAssert not existsEnv(key)
       delEnv(key) # deleting an already deleted env var
       doAssert not existsEnv(key)
@@ -43,7 +45,7 @@ template main =
 static: main()
 main()
 
-when not defined(js):
+when not defined(js) and not defined(nimscript):
   block: # bug #18533
     proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
     var thr: Thread[void]

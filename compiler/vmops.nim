@@ -13,7 +13,7 @@ from std/math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, `mod`, cbrt, arcsinh, arccosh, arctanh, erf, erfc, gamma,
   lgamma
-
+from std/sequtils import toSeq
 when declared(math.copySign):
   # pending bug #18762, avoid renaming math
   from std/math as math2 import copySign
@@ -22,8 +22,8 @@ when declared(math.signbit):
   # ditto
   from std/math as math3 import signbit
 
-from std/os import getEnv, existsEnv, delEnv, putEnv, dirExists, fileExists, walkDir,
-                   getAppFilename, raiseOSError, osLastError
+from std/os import getEnv, existsEnv, delEnv, putEnv, envPairs,
+  dirExists, fileExists, walkDir, getAppFilename, raiseOSError, osLastError
 
 from std/md5 import getMD5
 from std/times import cpuTime
@@ -156,6 +156,12 @@ proc stackTrace2(c: PCtx, msg: string, n: PNode) =
   stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, msg, n.info)
 
 proc registerAdditionalOps*(c: PCtx) =
+
+  template wrapIterator(fqname: string, iter: untyped) =
+    registerCallback c, fqname, proc(a: VmArgs) =
+      setResult(a, toLit(toSeq(iter)))
+
+
   proc gorgeExWrapper(a: VmArgs) =
     let ret = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
                          a.currentLineInfo, c.config)
@@ -341,3 +347,5 @@ proc registerAdditionalOps*(c: PCtx) =
     let p = a.getVar(0)
     let x = a.getFloat(1)
     addFloatSprintf(p.strVal, x)
+
+  wrapIterator("stdlib.os.envPairsImplSeq"): envPairs()
