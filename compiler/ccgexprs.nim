@@ -2061,11 +2061,13 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
 
 proc genCast(p: BProc, e: PNode, d: var TLoc) =
-  const ValueTypes = {tyFloat..tyFloat128, tyTuple, tyObject, tyArray}
+  var valueTypes = {tyFloat..tyFloat128, tyTuple, tyObject, tyArray}
+  if p.config.selectedGC in {gcArc, gcOrc}:
+    valueTypes.incl {tyString, tySequence}
   let
     destt = skipTypes(e.typ, abstractRange)
     srct = skipTypes(e[1].typ, abstractRange)
-  if destt.kind in ValueTypes or srct.kind in ValueTypes:
+  if destt.kind in valueTypes or srct.kind in valueTypes:
     # 'cast' and some float type involved? --> use a union.
     inc(p.labels)
     var lbl = p.labels.rope

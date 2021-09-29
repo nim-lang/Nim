@@ -463,3 +463,12 @@ proc putValue[T](n: T) =
   echo b.n
 
 useForward()
+
+block: # bug #16558
+  var value = "hi there"
+  var keepInt: int
+  keepInt = cast[int](value)
+  doAssert keepInt == 8
+
+  var seqs = @[1.0, 2.3, 4.5]
+  doAssert cast[int](seqs) == 3
