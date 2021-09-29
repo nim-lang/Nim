@@ -84,10 +84,10 @@ when false:
         if not options.gNoNimblePath:
           var nimbleDir = getEnv("NIMBLE_DIR")
           if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
-          result = findInNimbleDir(pkg, subdir, nimbleDir / "pkgs")
+          result = findInNimbleDir(pkg, subdir, nimbleDir / "pkgs2")
           if result.len > 0: return result
           when not defined(windows):
-            result = findInNimbleDir(pkg, subdir, "/opt/nimble/pkgs")
+            result = findInNimbleDir(pkg, subdir, "/opt/nimble/pkgs2")
             if result.len > 0: return result
 
   proc scriptableImport(pkg, sub: string; info: TLineInfo): string =

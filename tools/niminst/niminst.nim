@@ -45,7 +45,7 @@ type
     fcUnix,       # files only for Unix; must be after ``fcWindows``
     fcUnixBin,    # binaries for Unix
     fcDocStart,   # links to documentation for Windows installer
-    fcNimble      # nimble package files to copy to /opt/nimble/pkgs/pkg-ver
+    fcNimble      # nimble package files to copy to /opt/nimble/pkgs2/pkg-ver-checksum
 
   ConfigData = object of RootObj
     actions: set[Action]
@@ -63,6 +63,7 @@ type
     nimArgs: string
     debOpts: TDebOptions
     nimblePkgName: string
+    checksum: string
 
 const
   unixDirVars: array[fcConfig..fcLib, string] = [

@@ -65,8 +65,8 @@ proc `<`*(ver: Version, ver2: Version): bool =
 
 proc getPathVersionChecksum*(p: string): tuple[name, version, checksum: string] =
   ## Splits path ``p`` in the format
-  ## ``/home/user/.nimble/pkgs/package-0.1-febadeaea2345e777f0f6f8433f7f0a52edd5d1b`` into
-  ## ``("/home/user/.nimble/pkgs/package", "0.1", "febadeaea2345e777f0f6f8433f7f0a52edd5d1b")``
+  ## ``/home/user/.nimble/pkgs2/package-0.1-febadeaea2345e777f0f6f8433f7f0a52edd5d1b`` into
+  ## ``("/home/user/.nimble/pkgs2/package", "0.1", "febadeaea2345e777f0f6f8433f7f0a52edd5d1b")``
 
   const checksumSeparator = '-'
   const versionSeparator = '-'

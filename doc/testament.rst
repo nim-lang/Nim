@@ -153,7 +153,7 @@ Example "template" **to edit** and write a Testament unittest:
 
     # Command the test should use to run. If left out or an empty string is
     # provided, the command is taken to be:
-    # "nim $target --hints:on -d:testing --nimblePath:build/deps/pkgs $options $file"
+    # "nim $target --hints:on -d:testing --nimblePath:build/deps/pkgs2 $options $file"
     # You can use the $target, $options, and $file placeholders in your own
     # command, too.
     cmd: "nim c -r $file"
