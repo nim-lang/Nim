@@ -145,7 +145,7 @@ not free the resources afterward by setting the object to its default value
 default value is written as `wasMoved(x)`. When not provided the compiler
 is using a combination of `=destroy` and `copyMem` instead. This is efficient
 hence users rarely need to implement their own `=sink` operator, it is enough to
-provide `=destroy` and `=copy`, compiler will take care of the rest.
+provide `=destroy` and `=copy`, the compiler will take care of the rest.
 
 The prototype of this hook for a type `T` needs to be:
 
@@ -169,7 +169,7 @@ How self-assignments are handled is explained later in this document.
 
 
 `=copy` hook
----------------
+------------
 
 The ordinary assignment in Nim conceptually copies the values. The `=copy` hook
 is called for assignments that couldn't be transformed into `=sink`
@@ -206,11 +206,11 @@ by the compiler. Notice that there is no `=` before the `{.error.}` pragma.
 
 
 `=trace` hook
----------------
+-------------
 
 A custom **container** type can support Nim's cycle collector `--gc:orc` via
 the `=trace` hook. If the container does not implement `=trace`, cyclic data
-structure which are constructed with the help of the container might leak
+structures which are constructed with the help of the container might leak
 memory or resources, but memory safety is not compromised.
 
 The prototype of this hook for a type `T` needs to be:
@@ -225,10 +225,10 @@ to calls of the built-in `=trace` operation.
 Usually there will only be a need for a custom `=trace` when a custom `=destroy` that deallocates
 manually allocated resources is also used, and then only when there is a chance of cyclic
 references from items within the manually allocated resources when it is desired that `--gc:orc`
-be able to break and collect these cyclic referenced resources. Currently however, there is a
+is able to break and collect these cyclic referenced resources. Currently however, there is a
 mutual use problem in that whichever of `=destroy`/`=trace` is used first will automatically
 create a version of the other which will then conflict with the creation of the second of the
-pair. The work around for this problem is to forward declare the second of the "hooks" to
+pair. The workaround for this problem is to forward declare the second of the "hooks" to
 prevent the automatic creation.
 
 The general pattern in using `=destroy` with `=trace` looks like:
@@ -250,8 +250,9 @@ The general pattern in using `=destroy` with `=trace` looks like:
       dest.arr.dealloc
 
   proc `=trace`[T](dest: var Test[T]; env: pointer) =
-    if dest.arr != nil: # trace the `T`'s which may be cyclic
-      for i in 0 ..< dest.size: dest.arr[i].`=trace` env
+    if dest.arr != nil:
+      # trace the `T`'s which may be cyclic
+      for i in 0 ..< dest.size: `=trace`(dest.arr[i], env)
 
   # following may be other custom "hooks" as required...
 
@@ -265,7 +266,7 @@ Move semantics
 A "move" can be regarded as an optimized copy operation. If the source of the
 copy operation is not used afterward, the copy can be replaced by a move. This
 document uses the notation `lastReadOf(x)` to describe that `x` is not
-used afterwards. This property is computed by a static control flow analysis
+used afterward. This property is computed by a static control flow analysis
 but can also be enforced by using `system.move` explicitly.
 
 
@@ -601,7 +602,7 @@ a form of copy elision.
 
 To see how and when we can do that, think about this question: In `dest = src` when
 do we really have to *materialize* the full copy? - Only if `dest` or `src` are mutated
-afterwards. If `dest` is a local variable that is simple to analyze. And if `src` is a
+afterward. If `dest` is a local variable that is simple to analyze. And if `src` is a
 location derived from a formal parameter, we also know it is not mutated! In other
 words, we do a compile-time copy-on-write analysis.
 
