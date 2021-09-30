@@ -44,3 +44,53 @@ block:
       link:DoublyLinkedNode[ ItemSimple ]
 
   let link = newDoublyLinkedNode( Item[Box]() )
+
+block: #18897
+  type
+    SkipListObj[T] = object
+      over: SkipList[T]
+      down: SkipList[T]
+      value: T
+
+    SkipList[T] = ref SkipListObj[T]
+
+    GraphObj[N, E; F: static[int]] = object
+      nodes: SkipList[Node[N, E]]
+
+    Graph[N, E; F: static[int]] = ref GraphObj[N, E, F]
+
+    Node[N, E] = ref NodeObj[N, E]
+
+    NodeObj[N, E] = object
+      value: N
+      incoming: SkipList[Edge[N, E]]
+      outgoing: SkipList[Edge[N, E]]
+
+    Edge[N, E] = ref EdgeObj[N, E]
+
+    EdgeObj[N, E] = object
+      value: E
+      id: int
+      source: Node[N, E]
+      target: Node[N, E]
+
+    EdgeResult[N, E] = tuple
+      source: Node[N, E]
+      edge: Edge[N, E]
+      target: Node[N, E]
+
+  proc newSkipList[T](value: T): SkipList[T] =
+    static: echo T, " ", typeof(result.value)
+    result = SkipList[T](value: value)
+
+  proc toSkipList[T](values: openArray[T] = @[]): SkipList[T] =
+    for item in items(values):
+      if result.isNil:
+        result = newSkipList(item)
+
+  proc newContainer[N, E, F](graph: Graph[N, E, F]; form: typedesc): auto =
+    result = toSkipList[form]([])
+
+  var
+    result = Graph[int, string, 0]()
+  result.nodes = result.newContainer(Node[int, string])
