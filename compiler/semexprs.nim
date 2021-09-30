@@ -217,6 +217,8 @@ proc isCastable(c: PContext; dst, src: PType): bool =
     let s = skipTypes(src, abstractInst)
     if d.kind == tyRef and s.kind == tyRef and s[0].isFinal != d[0].isFinal:
       return false
+    elif d.kind in IntegralTypes and s.kind in {tyString, tySequence}:
+      return false
 
   var dstSize, srcSize: BiggestInt
   dstSize = computeSize(conf, dst)
