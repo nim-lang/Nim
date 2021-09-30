@@ -482,18 +482,20 @@ proc setCommandEarly*(conf: ConfigRef, command: string) =
   else:
     conf.foreignPackageNotes = foreignPackageNotesDefault
 
-proc specialDefine(conf: ConfigRef, key: string) =
+proc specialDefine(conf: ConfigRef, key: string; pass: TCmdLinePass) =
   # Keep this syncronized with the default config/nim.cfg!
   if cmpIgnoreStyle(key, "nimQuirky") == 0:
     conf.exc = excQuirky
   elif cmpIgnoreStyle(key, "release") == 0 or cmpIgnoreStyle(key, "danger") == 0:
-    conf.options.excl {optStackTrace, optLineTrace, optLineDir, optOptimizeSize}
-    conf.globalOptions.excl {optExcessiveStackTrace, optCDebug}
-    conf.options.incl optOptimizeSpeed
+    if pass in {passCmd1, passPP}:
+      conf.options.excl {optStackTrace, optLineTrace, optLineDir, optOptimizeSize}
+      conf.globalOptions.excl {optExcessiveStackTrace, optCDebug}
+      conf.options.incl optOptimizeSpeed
   if cmpIgnoreStyle(key, "danger") == 0 or cmpIgnoreStyle(key, "quick") == 0:
-    conf.options.excl {optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
-      optOverflowCheck, optAssert, optStackTrace, optLineTrace, optLineDir}
-    conf.globalOptions.excl {optCDebug}
+    if pass in {passCmd1, passPP}:
+      conf.options.excl {optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
+        optOverflowCheck, optAssert, optStackTrace, optLineTrace, optLineDir}
+      conf.globalOptions.excl {optCDebug}
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
@@ -565,10 +567,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if {':', '='} in arg:
       splitSwitch(conf, arg, key, val, pass, info)
-      specialDefine(conf, key)
+      specialDefine(conf, key, pass)
       defineSymbol(conf.symbols, key, val)
     else:
-      specialDefine(conf, arg)
+      specialDefine(conf, arg, pass)
       defineSymbol(conf.symbols, arg)
   of "undef", "u":
     expectArg(conf, switch, arg, pass, info)
