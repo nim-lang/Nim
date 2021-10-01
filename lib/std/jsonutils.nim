@@ -298,6 +298,10 @@ proc jsonTo*(b: JsonNode, T: typedesc, opt = Joptions()): T =
 proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   ## serializes `a` to json; uses `toJsonHook(a: T)` if it's in scope to
   ## customize serialization, see strtabs.toJsonHook for an example.
+  ##
+  ## .. note:: With `-d:nimPreviewJsonutilsHoleyEnum`, `toJson` now can 
+  ##    serialize/deserialize holey enums as regular enums (via `ord`) instead of as strings.
+  ##    It is expected that this behavior becomes the new default in upcoming versions.
   when compiles(toJsonHook(a)): result = toJsonHook(a)
   elif T is object | tuple:
     when T is object or isNamedTuple(T):
