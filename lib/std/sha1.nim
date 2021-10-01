@@ -1,6 +1,6 @@
 #
 #
-#           The Nim Compiler
+#           Nim's Runtime Library
 #        (c) Copyright 2015 Nim Contributors
 #
 #    See the file "copying.txt", included in this
