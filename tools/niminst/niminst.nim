@@ -63,7 +63,7 @@ type
     nimArgs: string
     debOpts: TDebOptions
     nimblePkgName: string
-    checksum: string
+    nimblePkgChecksum: string
 
 const
   unixDirVars: array[fcConfig..fcLib, string] = [
@@ -408,6 +408,8 @@ proc parseIniFile(c: var ConfigData) =
             c.nimblePkgName = v
           of "pkgfiles":
             addFiles(c.cat[fcNimble], split(v, {';'}))
+          of "pkgchecksum":
+            c.nimblePkgChecksum = v
           else:
             quit(errorStr(p, "invalid key: " & k.key))
         else: quit(errorStr(p, "invalid section: " & section))
