@@ -328,7 +328,7 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   elif T is enum:
     case opt.enumMode
     of joptEnumOrd:
-      when T is Ordinal or not defined(nimLegacyJsonutilsHoleyEnum): %(a.ord)
+      when T is Ordinal or defined(nimPreviewJsonutilsHoleyEnum): %(a.ord)
       else: toJson($a, opt)
     of joptEnumSymbol:
       when T is OrdinalEnum:
