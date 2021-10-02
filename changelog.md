@@ -64,7 +64,8 @@
   for previous behavior.
 
 - `hashes.hash` can now support `object` and `ref` (can be overloaded in user code),
-  if `-d:nimEnableHashRef` is used.
+  if `-d:nimPreviewHashRef` is used. It is expected that this behavior
+  becomes the new default in upcoming versions.
 
 - `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
   `hashes.hash(closure)` has also been improved.
