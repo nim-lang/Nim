@@ -24,7 +24,7 @@ proc `=sink`*[T](dest: var Isolated[T]; src: Isolated[T]) {.inline.} =
   # delegate to value's sink operation
   `=sink`(dest.value, src.value)
 
-proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
+proc `=destroy`*[T](dest: var Isolated[T]) {.inline, nimcall.} =
   # delegate to value's destroy operation
   `=destroy`(dest.value)
 
