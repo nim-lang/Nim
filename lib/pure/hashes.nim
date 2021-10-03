@@ -52,7 +52,7 @@ runnableExamples:
     result = !$h
 
 ## .. important:: Use `-d:nimPreviewHashRef` to
-##    enable hashing ref. It is expected that this behavior
+##    enable hashing `ref`s. It is expected that this behavior
 ##    becomes the new default in upcoming versions.
 ##
 ## .. note:: If the type has a `==` operator, the following must hold:
@@ -245,7 +245,7 @@ when defined(nimPreviewHashRef) or defined(nimdoc):
     ## Efficient `hash` overload.
     ## 
     ## .. important:: Use `-d:nimPreviewHashRef` to
-    ##    enable hashing ref. It is expected that this behavior
+    ##    enable hashing `ref`s. It is expected that this behavior
     ##    becomes the new default in upcoming versions.
     runnableExamples("-d:nimPreviewHashRef"):
       type A = ref object
