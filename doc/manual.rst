@@ -1201,7 +1201,7 @@ The only operations that are affected by the `floatChecks` pragma are
 the `+`, `-`, `*`, `/` operators for floating-point types.
 
 An implementation should always use the maximum precision available to evaluate
-floating pointer values during semantic analysis; this means expressions like
+floating-point values during semantic analysis; this means expressions like
 `0.09'f32 + 0.01'f32 == 0.09'f64 + 0.01'f64` that are evaluating during
 constant folding are true.
 
