@@ -51,8 +51,12 @@ runnableExamples:
     h = h !& hash(x.bar)
     result = !$h
 
-## **Note:** If the type has a `==` operator, the following must hold:
-## If two values compare equal, their hashes must also be equal.
+## .. important:: Use `-d:nimPreviewHashRef` to
+##    enable hashing `ref`s. It is expected that this behavior
+##    becomes the new default in upcoming versions.
+##
+## .. note:: If the type has a `==` operator, the following must hold:
+##    If two values compare equal, their hashes must also be equal.
 ##
 ## See also
 ## ========
@@ -236,10 +240,14 @@ proc hash*[T](x: ptr[T]): Hash {.inline.} =
     assert cast[pointer](a[0].addr).hash == a[0].addr.hash
   hash(cast[pointer](x))
 
-when defined(nimEnableHashRef):
+when defined(nimPreviewHashRef) or defined(nimdoc):
   proc hash*[T](x: ref[T]): Hash {.inline.} =
     ## Efficient `hash` overload.
-    runnableExamples:
+    ## 
+    ## .. important:: Use `-d:nimPreviewHashRef` to
+    ##    enable hashing `ref`s. It is expected that this behavior
+    ##    becomes the new default in upcoming versions.
+    runnableExamples("-d:nimPreviewHashRef"):
       type A = ref object
         x: int
       let a = A(x: 3)
@@ -247,7 +255,7 @@ when defined(nimEnableHashRef):
       assert ha != A(x: 3).hash # A(x: 3) is a different ref object from `a`.
       a.x = 4
       assert ha == a.hash # the hash only depends on the address
-    runnableExamples:
+    runnableExamples("-d:nimPreviewHashRef"):
       # you can overload `hash` if you want to customize semantics
       type A[T] = ref object
         x, y: T
