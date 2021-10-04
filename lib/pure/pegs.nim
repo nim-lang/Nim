@@ -860,7 +860,7 @@ template matchOrParse(mopProc: untyped) =
       leave(pkStartAnchor, s, p, start, result)
     of pkRule, pkList: assert false
 
-proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
+func rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
       {.rtl, extern: "npegs$1".} =
   ## low-level matching proc that implements the PEG interpreter. Use this
   ## for maximum efficiency (every other PEG operation ends up calling this
@@ -873,7 +873,11 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
   template leave(pk, s, p, start, length) =
     discard
   matchOrParse(matchIt)
-  result = matchIt(s, p, start, c)
+  {.cast(noSideEffect).}:
+    # This cast is allowed because the `matchOrParse` template is used for
+    # both matching and parsing, but side effects are only possible when it's
+    # used by `eventParser`.
+    result = matchIt(s, p, start, c)
 
 macro mkHandlerTplts(handlers: untyped): untyped =
   # Transforms the handler spec in *handlers* into handler templates.
@@ -1069,7 +1073,7 @@ template fillMatches(s, caps, c) =
     else:
       caps[k] = ""
 
-proc matchLen*(s: string, pattern: Peg, matches: var openArray[string],
+func matchLen*(s: string, pattern: Peg, matches: var openArray[string],
                start = 0): int {.rtl, extern: "npegs$1Capture".} =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
@@ -1080,7 +1084,7 @@ proc matchLen*(s: string, pattern: Peg, matches: var openArray[string],
   result = rawMatch(s, pattern, start, c)
   if result >= 0: fillMatches(s, matches, c)
 
-proc matchLen*(s: string, pattern: Peg,
+func matchLen*(s: string, pattern: Peg,
                start = 0): int {.rtl, extern: "npegs$1".} =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
@@ -1090,7 +1094,7 @@ proc matchLen*(s: string, pattern: Peg,
   c.origStart = start
   result = rawMatch(s, pattern, start, c)
 
-proc match*(s: string, pattern: Peg, matches: var openArray[string],
+func match*(s: string, pattern: Peg, matches: var openArray[string],
             start = 0): bool {.rtl, extern: "npegs$1Capture".} =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
   ## the captured substrings in the array ``matches``. If it does not
@@ -1098,13 +1102,13 @@ proc match*(s: string, pattern: Peg, matches: var openArray[string],
   ## returned.
   result = matchLen(s, pattern, matches, start) != -1
 
-proc match*(s: string, pattern: Peg,
+func match*(s: string, pattern: Peg,
             start = 0): bool {.rtl, extern: "npegs$1".} =
   ## returns ``true`` if ``s`` matches the ``pattern`` beginning from ``start``.
   result = matchLen(s, pattern, start) != -1
 
 
-proc find*(s: string, pattern: Peg, matches: var openArray[string],
+func find*(s: string, pattern: Peg, matches: var openArray[string],
            start = 0): int {.rtl, extern: "npegs$1Capture".} =
   ## returns the starting position of ``pattern`` in ``s`` and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
@@ -1119,7 +1123,7 @@ proc find*(s: string, pattern: Peg, matches: var openArray[string],
   return -1
   # could also use the pattern here: (!P .)* P
 
-proc findBounds*(s: string, pattern: Peg, matches: var openArray[string],
+func findBounds*(s: string, pattern: Peg, matches: var openArray[string],
                  start = 0): tuple[first, last: int] {.
                  rtl, extern: "npegs$1Capture".} =
   ## returns the starting position and end position of ``pattern`` in ``s``
@@ -1136,7 +1140,7 @@ proc findBounds*(s: string, pattern: Peg, matches: var openArray[string],
       return (i, i+L-1)
   return (-1, 0)
 
-proc find*(s: string, pattern: Peg,
+func find*(s: string, pattern: Peg,
            start = 0): int {.rtl, extern: "npegs$1".} =
   ## returns the starting position of ``pattern`` in ``s``. If it does not
   ## match, -1 is returned.
@@ -1160,7 +1164,7 @@ iterator findAll*(s: string, pattern: Peg, start = 0): string =
       yield substr(s, i, i+L-1)
       inc(i, L)
 
-proc findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
+func findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   rtl, extern: "npegs$1".} =
   ## returns all matching *substrings* of `s` that match `pattern`.
   ## If it does not match, @[] is returned.
@@ -1192,22 +1196,22 @@ template `=~`*(s: string, pattern: Peg): bool =
 
 # ------------------------- more string handling ------------------------------
 
-proc contains*(s: string, pattern: Peg, start = 0): bool {.
+func contains*(s: string, pattern: Peg, start = 0): bool {.
   rtl, extern: "npegs$1".} =
   ## same as ``find(s, pattern, start) >= 0``
   return find(s, pattern, start) >= 0
 
-proc contains*(s: string, pattern: Peg, matches: var openArray[string],
+func contains*(s: string, pattern: Peg, matches: var openArray[string],
               start = 0): bool {.rtl, extern: "npegs$1Capture".} =
   ## same as ``find(s, pattern, matches, start) >= 0``
   return find(s, pattern, matches, start) >= 0
 
-proc startsWith*(s: string, prefix: Peg, start = 0): bool {.
+func startsWith*(s: string, prefix: Peg, start = 0): bool {.
   rtl, extern: "npegs$1".} =
   ## returns true if `s` starts with the pattern `prefix`
   result = matchLen(s, prefix, start) >= 0
 
-proc endsWith*(s: string, suffix: Peg, start = 0): bool {.
+func endsWith*(s: string, suffix: Peg, start = 0): bool {.
   rtl, extern: "npegs$1".} =
   ## returns true if `s` ends with the pattern `suffix`
   var c: Captures
@@ -1215,7 +1219,7 @@ proc endsWith*(s: string, suffix: Peg, start = 0): bool {.
   for i in start .. s.len-1:
     if rawMatch(s, suffix, i, c) == s.len - i: return true
 
-proc replacef*(s: string, sub: Peg, by: string): string {.
+func replacef*(s: string, sub: Peg, by: string): string {.
   rtl, extern: "npegs$1".} =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
@@ -1244,7 +1248,7 @@ proc replacef*(s: string, sub: Peg, by: string): string {.
       inc(i, x)
   add(result, substr(s, i))
 
-proc replace*(s: string, sub: Peg, by = ""): string {.
+func replace*(s: string, sub: Peg, by = ""): string {.
   rtl, extern: "npegs$1".} =
   ## Replaces `sub` in `s` by the string `by`. Captures cannot be accessed
   ## in `by`.
@@ -1261,7 +1265,7 @@ proc replace*(s: string, sub: Peg, by = ""): string {.
       inc(i, x)
   add(result, substr(s, i))
 
-proc parallelReplace*(s: string, subs: varargs[
+func parallelReplace*(s: string, subs: varargs[
                       tuple[pattern: Peg, repl: string]]): string {.
                       rtl, extern: "npegs$1".} =
   ## Returns a modified copy of `s` with the substitutions in `subs`
@@ -1288,7 +1292,7 @@ proc parallelReplace*(s: string, subs: varargs[
 when not defined(nimHasEffectsOf):
   {.pragma: effectsOf.}
 
-proc replace*(s: string, sub: Peg, cb: proc(
+func replace*(s: string, sub: Peg, cb: proc(
               match: int, cnt: int, caps: openArray[string]): string): string {.
               rtl, extern: "npegs$1cb", effectsOf: cb.} =
   ## Replaces `sub` in `s` by the resulting strings from the callback.
@@ -1297,7 +1301,7 @@ proc replace*(s: string, sub: Peg, cb: proc(
   ##
   ## .. code-block:: nim
   ##
-  ##   proc handleMatches*(m: int, n: int, c: openArray[string]): string =
+  ##   func handleMatches*(m: int, n: int, c: openArray[string]): string =
   ##     result = ""
   ##     if m > 0:
   ##       result.add ", "
@@ -1380,7 +1384,7 @@ iterator split*(s: string, sep: Peg): string =
     if first < last:
       yield substr(s, first, last-1)
 
-proc split*(s: string, sep: Peg): seq[string] {.
+func split*(s: string, sep: Peg): seq[string] {.
   rtl, extern: "npegs$1".} =
   ## Splits the string `s` into substrings.
   result = @[]
