@@ -1287,7 +1287,7 @@ proc parallelReplace*(s: string, subs: varargs[
 
 proc replace*(s: string, sub: Peg, cb: proc(
               match: int, cnt: int, caps: openArray[string]): string): string {.
-              rtl, extern: "npegs$1cb".} =
+              rtl, extern: "npegs$1cb", effectsOf: cb.} =
   ## Replaces `sub` in `s` by the resulting strings from the callback.
   ## The callback proc receives the index of the current match (starting with 0),
   ## the count of captures and an open array with the captures of each match. Examples:

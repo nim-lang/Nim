@@ -51,6 +51,8 @@ Event parser output
 '''
 """
 
+{.experimental: "strictEffects".}
+
 import std/[strutils, streams, pegs]
 
 const
