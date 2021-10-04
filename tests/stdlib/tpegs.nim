@@ -51,7 +51,8 @@ Event parser output
 '''
 """
 
-{.experimental: "strictEffects".}
+when defined(nimHasEffectsOf):
+  {.experimental: "strictEffects".}
 
 import std/[strutils, streams, pegs]
 
