@@ -50,6 +50,10 @@ proc genBuildExtras(echoRun, koch, nim: string): string =
 proc genWindowsScript(buildAll: bool): string =
   result = fmt"""
 @echo off
+
+REM Prevent user macro clashes; Issue #3989
+FOR /F "tokens=1 delim==" %%C IN (DOSKEY /MACROS) DO @DOSKEY %%C=
+
 rem {doNotEdit}
 rem Build development version of the compiler; can be rerun safely
 rem bare bones version of ci/funs.sh adapted for windows.
@@ -89,6 +93,7 @@ proc genPosixScript(): string =
 # arguments can be passed, e.g.:
 # CC=gcc ucpu=amd64 uos=darwin
 
+\unalias -a # Prevent user alias clashes; Issue #3989
 set -u # error on undefined variables
 set -e # exit on first error
 

@@ -5,6 +5,7 @@
 # arguments can be passed, e.g.:
 # CC=gcc ucpu=amd64 uos=darwin
 
+\unalias -a # Prevent user alias clashes; Issue #3989
 set -u # error on undefined variables
 set -e # exit on first error
 

@@ -4,6 +4,7 @@
 #           "# Template is in tools/niminst/buildsh.nimf\n" &
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
 
+\unalias -a # Prevent user alias clashes; Issue #3989
 set -e
 
 while :
