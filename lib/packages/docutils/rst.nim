@@ -172,6 +172,7 @@
 ##     ``header``, ``footer``, ``meta``, ``class``
 ##     - no ``role`` directives and no custom interpreted text roles
 ##     - some standard roles are not supported (check `RST roles list`_)
+##     - no generic admonition support
 ## * inline markup
 ##   - no simple-inline-markup
 ##   - no embedded aliases

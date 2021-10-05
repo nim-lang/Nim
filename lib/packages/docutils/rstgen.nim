@@ -1164,7 +1164,7 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
   case n.adType
   of "hint", "note", "tip":
     htmlCls = "admonition-info"; texSz = "\\normalsize"; texColor = "green"
-  of "attention", "admonition", "important", "warning":
+  of "attention", "admonition", "important", "warning", "caution":
     htmlCls = "admonition-warning"; texSz = "\\large"; texColor = "orange"
   of "danger", "error":
     htmlCls = "admonition-error"; texSz = "\\Large"; texColor = "red"
