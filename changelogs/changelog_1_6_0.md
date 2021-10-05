@@ -864,15 +864,16 @@ Compatibility notes:
 ## Docgen
 
 - docgen: RST files can now use single backticks instead of double backticks and
-  correctly render in both `rst2html` (as before) as well as common tools rendering
+  correctly render in both `nim rst2html` (as before) as well as common tools rendering
   RST directly (e.g. GitHub).
   This is done by adding the `default-role:: code` directive inside the RST file
-  (which is now handled by `rst2html`).
+  (which is now handled by `nim rst2html`).
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
 - Latex doc generation is revised: output `.tex` files should be compiled
   by `xelatex` (not by `pdflatex` as before). Now default Latex settings
   provide support for Unicode and better avoid margin overflows.
+  The minimum required version is TeXLive 2018 (or an equivalent MikTeX version).
 - The RST parser now supports footnotes, citations, admonitions, and short style
   references with symbols.
 - The RST parser now supports Markdown table syntax.
