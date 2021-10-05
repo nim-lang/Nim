@@ -43,8 +43,8 @@ type
 
 const
   HelpMessage = "Nim Compiler Version $1 [$2: $3]\n" &
-      "Compiled at $4\n" &
       "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
+  gitCommit {.strdefine.} = gorge("TZ=UTC git log -n 1 --date=iso-local --format='%H (%cd)'").strip
 
 proc genFeatureDesc[T: enum](t: typedesc[T]): string {.compileTime.} =
   result = ""
@@ -91,10 +91,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
                                  CPU[conf.target.hostCPU].name, CompileDate]),
                {msgStdout})
 
-    const gitHash {.strdefine.} = gorge("git log -n 1 --format=%H").strip
-      # xxx move this logic to std/private/gitutils
-    when gitHash.len == 40:
-      msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
+    msgWriteln(conf, "git commit: " & gitCommit, {msgStdout})
 
     msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
       usedTinyC & useLinenoise &
