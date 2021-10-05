@@ -68,6 +68,17 @@ More information about its options can be found in the `koch <koch.html>`_
 documentation.
 
 
+Reproducible builds
+-------------------
+
+Set the compilation timestamp with the `SOURCE_DATE_EPOCH` environment variable.
+
+.. code:: cmd
+
+  export SOURCE_DATE_EPOCH=$(git log -n 1 --format=%at)
+  koch boot # or `./build_all.sh`
+
+
 Developing the compiler
 =======================
 
