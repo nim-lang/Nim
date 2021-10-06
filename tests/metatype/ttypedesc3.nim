@@ -3,6 +3,7 @@ output: '''
 proc Base
 proc Child
 method Base
+method Child
 yield Base
 yield Child
 12
@@ -24,8 +25,7 @@ Base.pr
 Child.pr
 
 Base.me
-when false:
-  Child.me #<- bug #2710
+Child.me #<- bug #2710
 
 for s in Base.it: echo s
 for s in Child.it: echo s #<- bug #2662
