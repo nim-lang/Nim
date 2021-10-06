@@ -71,7 +71,6 @@ the installation instructions on the website to do so: https://nim-lang.org/inst
 
 For package maintainers: see [packaging guidelines](https://nim-lang.github.io/Nim/packaging.html).
 
-
 First, get Nim from github:
 
 ```
@@ -88,6 +87,8 @@ Finally, once you have finished the build steps (on Windows, Mac, or Linux) you
 should add the ``bin`` directory to your PATH.
 
 See also [rebuilding the compiler](doc/intern.rst#rebuilding-the-compiler).
+
+See also [reproducible builds](doc/intern.rst#reproducible-builds).
 
 ## Koch
 
