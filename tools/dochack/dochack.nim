@@ -341,3 +341,52 @@ proc search*() {.exportc.} =
 
   if timer != nil: clearTimeout(timer)
   timer = setTimeout(wrapper, 400)
+
+proc copyToClipboard*() {.exportc.} =
+    {.emit: """
+
+   function fallbackCopyTextToClipboard(e) {
+      if (document.selection) { // IE
+          var range = document.body.createTextRange();
+          range.moveToElementText(e.target);
+          range.select();
+      } else if (window.getSelection) {
+          var range = document.createRange();
+          range.selectNode(e.target);
+          window.getSelection().removeAllRanges();
+          window.getSelection().addRange(range);
+      }
+        document.execCommand("copy");
+        e.target.style.setProperty("--clipboard-image", "var(--clipboard-image-selected)")
+    }
+
+    function copyTextToClipboard(e) {
+        if (!navigator.clipboard) {
+            fallbackCopyTextToClipboard(e);
+            return;
+        }
+
+        navigator.clipboard.writeText(e.target.innerText).then(function() {
+            e.target.style.setProperty("--clipboard-image", "var(--clipboard-image-selected)")
+        }, function(err) {
+            console.error("Could not copy text: ", err);
+        });
+    }
+
+    window.addEventListener("click", (e) => {
+        if (e.target.nodeName === "PRE") {
+            copyTextToClipboard(e)
+        }
+    })
+
+    window.addEventListener('mouseover', (e) => {
+        if (e.target.nodeName === "PRE") {
+            e.target.style.setProperty("--clipboard-image", "var(--clipboard-image-normal)")
+        }
+
+    })
+
+    """
+    .}
+    
+copyToClipboard()
