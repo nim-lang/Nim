@@ -41,7 +41,7 @@ proc downloadMingw(): DownloadResult =
   let curl = findExe"curl"
   var cmd: string
   if curl.len > 0:
-    cmd = quoteShell(curl) & " --out " & "dist" / mingw & " " & url
+    cmd = quoteShell(curl) & " --output " & "dist" / mingw & " " & url
   elif fileExists"bin/nimgrab.exe":
     cmd = r"bin\nimgrab.exe " & url & " dist" / mingw
   if cmd.len > 0:
