@@ -245,7 +245,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of OverloadableSyms:
+  of OverloadableSyms-{skEnumField}:
     result = symChoice(c, n, s, scOpen, isField)
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
@@ -256,8 +256,12 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
-    if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNode(s, n.info)
+    if s.kind == skEnumField and overloadableEnums in c.features:
+      result = symChoice(c, n, s, scOpen, isField)
+    elif isField and sfGenSym in s.flags:
+      result = n
+    else:
+      result = newSymNode(s, n.info)
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
