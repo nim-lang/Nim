@@ -3,6 +3,17 @@ discard """
 """
 import parsesql
 
+doAssert treeRepr(parseSql("INSERT INTO STATS VALUES (10, 5.5); ")
+) == """
+
+nkStmtList
+  nkInsert
+    nkIdent STATS
+    [nil]
+    nkValueList
+      nkIntegerLit 10
+      nkNumericLit 5.5"""
+
 doAssert $parseSQL("SELECT foo FROM table;") == "select foo from table;"
 doAssert $parseSQL("""
 SELECT

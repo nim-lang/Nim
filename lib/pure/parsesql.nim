@@ -1467,6 +1467,9 @@ proc treeReprAux(s: SqlNode, level: int, result: var string) =
   result.add('\n')
   for i in 0 ..< level: result.add("  ")
 
+  if s.isNil:
+    result.add "[nil]"
+    return
   result.add($s.kind)
   if s.kind in LiteralNodes:
     result.add(' ')
