@@ -80,4 +80,4 @@ let
 testNimDoc(test2Dir, test2DocsDir, test2Switches, fixup)
 
 if failures > 0:
-  quit "$# failures occurred; see note in tester.nim regarding -d:nimTestsNimdocFixup" %  $failures
+  quit "$# failures occurred; see note in nimdoc/tester.nim regarding -d:nimTestsNimdocFixup" %  $failures
