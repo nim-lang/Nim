@@ -106,9 +106,15 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
   result = newNodeI(nkEmpty, n.info)
 
 proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
+  result = copyNode(n)
+  var count = 0
   for i in 0..<n.len:
     toMixin.incl(considerQuotedIdent(c, n[i]).id)
-  result = newNodeI(nkEmpty, n.info)
+    let x = symChoice(c, n[i], nil, scForceOpen)
+    inc count, x.len
+    result.add x
+  if count == 0:
+    result = newNodeI(nkEmpty, n.info)
 
 proc replaceIdentBySym(c: PContext; n: var PNode, s: PNode) =
   case n.kind
