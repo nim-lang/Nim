@@ -575,7 +575,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "posix", "unix":
       result = conf.target.targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
-                            osHaiku, osVxWorks, osSolaris, osOpenIndiana, osNetbsd,
+                            osHaiku, osVxWorks, osSolaris, osNetbsd,
                             osFreebsd, osOpenbsd, osDragonfly, osMacosx, osIos,
                             osAndroid, osNintendoSwitch, osFreeRTOS, osCrossos}
     of "linux":
@@ -592,7 +592,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS in {osMacos, osMacosx, osIos}
     of "osx", "macosx":
       result = conf.target.targetOS in {osMacosx, osIos}
-    of "sunos": result = conf.target.targetOS in {osSolaris, osOpenIndiana}
+    of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
     of "freertos", "lwip":
