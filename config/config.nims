@@ -15,8 +15,8 @@ when defined(nimStrictMode):
     switch("hintAsError", "ConvFromXtoItselfNotNeeded")
     # future work: XDeclaredButNotUsed
 
-# when getEnv("NIM_TEST_PACKAGES") == "1":
-when true:
-  # PRTEMP quick and dirty way to test on NIM_TEST_PACKAGES
+when false:
+  # we could use `getEnv("NIM_TEST_PACKAGES") == "1"` to test
+  # on NIM_TEST_PACKAGES
   switch("define", "nimLazySemcheckAfterSystem")
   switch("define", "nimLazySemcheckComplete")
