@@ -116,6 +116,9 @@
   Specifically, octal numbers in IPv4 addresses are no longer accepted (before
   they were parsed as decimal numbers).
 
+- The `gorge`/`staticExec` calls will now return a descriptive message in the output
+  if the execution fails for whatever reason. To get back legacy behaviour use `-d:nimLegacyGorgeErrors`.
+
 ## Standard library additions and changes
 
 - `strformat`:
