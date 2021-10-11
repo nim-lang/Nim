@@ -403,12 +403,12 @@ Compatibility notes:
 
 ## `std/json`, `std/jsonutils`
 
-- `std/jsonutils` now serializes/deserializes holey enums as regular enums
-  (via `ord`) instead of as strings.
-  Use `-d:nimLegacyJsonutilsHoleyEnum` for a transition period.
-  `toJson` now serializes `JsonNode` as-is via reference (without a deep copy)
-  instead of treating `JsonNode` as a regular ref object.
-  This can be customized via `jsonNodeMode`.
+- With `-d:nimPreviewJsonutilsHoleyEnum`, `jsonutils` now can serialize/deserialize
+  holey enums as regular enums (via `ord`) instead of as strings.
+  It is expected that this behavior becomes the new default in upcoming versions.
+ `toJson` now serializes `JsonNode` as is via reference (without a deep copy)
+   instead of treating `JsonNode` as a regular ref object,
+  this can be customized via `jsonNodeMode`.
 - `std/json` and `std/jsonutils` now serialize `NaN`, `Inf`, `-Inf` as strings,
   so that `%[NaN, -Inf]` is the string `["nan","-inf"]` instead of `[nan,-inf]`
   which was invalid JSON.
