@@ -1509,11 +1509,6 @@ proc genPragma(p: BProc, n: PNode) =
   for it in n.sons:
     case whichPragma(it)
     of wEmit: genEmit(p, it)
-    of wInjectStmt:
-      var p = newProc(nil, p.module)
-      p.options.excl {optLineTrace, optStackTrace}
-      genStmts(p, it[1])
-      p.module.injectStmt = p.s(cpsStmts)
     else: discard
 
 

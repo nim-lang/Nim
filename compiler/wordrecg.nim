@@ -80,7 +80,7 @@ type
     wLocalPassc = "localPassC", wBorrow = "borrow", wDiscardable = "discardable",
     wFieldChecks = "fieldChecks", wSubsChar = "subschar", wAcyclic = "acyclic",
     wShallow = "shallow", wUnroll = "unroll", wLinearScanEnd = "linearScanEnd",
-    wComputedGoto = "computedGoto", wInjectStmt = "injectStmt", wExperimental = "experimental",
+    wComputedGoto = "computedGoto", wExperimental = "experimental",
     wWrite = "write", wGensym = "gensym", wInject = "inject", wDirty = "dirty",
     wInheritable = "inheritable", wThreadVar = "threadvar", wEmit = "emit",
     wAsmNoStackFrame = "asmNoStackFrame", wImplicitStatic = "implicitStatic",

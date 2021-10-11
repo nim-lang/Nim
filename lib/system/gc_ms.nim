@@ -428,16 +428,6 @@ proc sweep(gch: var GcHeap) =
         if c.refcount == rcBlack: c.refcount = rcWhite
         else: freeCyclicCell(gch, c)
 
-when false:
-  # meant to be used with the now-deprected `.injectStmt`: {.injectStmt: newGcInvariant().}
-  proc newGcInvariant*() =
-    for x in allObjects(gch.region):
-      if isCell(x):
-        var c = cast[PCell](x)
-        if c.typ == nil:
-          writeStackTrace()
-          quit 1
-
 proc markGlobals(gch: var GcHeap) =
   if gch.gcThreadId == 0:
     when defined(nimTracing):
