@@ -170,7 +170,6 @@ type
     labels*: Natural          # for generating unique module-scope names
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                              # OpenGL wrapper
-    injectStmt*: Rope
     sigConflicts*: CountTable[SigHash]
     g*: BModuleList
     ndi*: NdiFile
