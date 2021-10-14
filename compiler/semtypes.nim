@@ -2076,7 +2076,10 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(c.config, m, tySequence, szUncomputedSize)
     if optSeqDestructors in c.config.globalOptions:
       incl m.typ.flags, tfHasAsgn
-    assert c.graph.sysTypes[tySequence] == nil
+    if defined(nimsuggest) or c.config.cmd == cmdCheck: # bug #18985
+      discard
+    else:
+      assert c.graph.sysTypes[tySequence] == nil
     c.graph.sysTypes[tySequence] = m.typ
   of mOrdinal:
     setMagicIntegral(c.config, m, tyOrdinal, szUncomputedSize)

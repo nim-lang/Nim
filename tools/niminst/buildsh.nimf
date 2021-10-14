@@ -139,6 +139,11 @@ case $uos in
     myos="solaris"
     LINK_FLAGS="$LINK_FLAGS -ldl -lm -lsocket -lnsl"
     ;;
+  *SunOS* )
+    myos="solaris"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm -lsocket -lnsl"
+    isOpenIndiana="yes"
+    ;;
   *haiku* )
     myos="haiku"
     LINK_FLAGS="$LINK_FLAGS -lroot -lnetwork"
@@ -159,7 +164,12 @@ esac
 
 case $ucpu in
   *i386* | *i486* | *i586* | *i686* | *bepc* | *i86pc* )
-    mycpu="i386" ;;
+    if [ isOpenIndiana -eq "yes" ] ; then
+      mycpu="amd64"
+    else
+      mycpu="i386"
+    fi
+    ;;
   *amd*64* | *x86-64* | *x86_64* )
     mycpu="amd64" ;;
   *sparc*|*sun* )

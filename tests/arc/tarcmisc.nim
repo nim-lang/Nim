@@ -463,3 +463,22 @@ proc putValue[T](n: T) =
   echo b.n
 
 useForward()
+
+
+# bug #17319
+type
+  BrokenObject = ref object
+    brokenType: seq[int]
+
+proc use(obj: BrokenObject) =
+  discard
+
+method testMethod(self: BrokenObject) {.base.} =
+  iterator testMethodIter() {.closure.} =
+    use(self)
+
+  var nameIterVar = testMethodIter
+  nameIterVar()
+
+let mikasa = BrokenObject()
+mikasa.testMethod()

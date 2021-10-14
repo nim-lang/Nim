@@ -406,7 +406,7 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
   var term = ""
   renderAux(d, n, term)
   setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), id, term, d.currentSection)
-  dispA(d.target, result, "<span id=\"$1\">$2</span>", "$2\\label{$1}",
+  dispA(d.target, result, "<span id=\"$1\">$2</span>", "\\nimindexterm{$2}{$1}",
         [id, term])
 
 type
@@ -1164,7 +1164,7 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
   case n.adType
   of "hint", "note", "tip":
     htmlCls = "admonition-info"; texSz = "\\normalsize"; texColor = "green"
-  of "attention", "admonition", "important", "warning":
+  of "attention", "admonition", "important", "warning", "caution":
     htmlCls = "admonition-warning"; texSz = "\\large"; texColor = "orange"
   of "danger", "error":
     htmlCls = "admonition-error"; texSz = "\\Large"; texColor = "red"

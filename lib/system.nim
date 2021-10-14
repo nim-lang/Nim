@@ -2142,6 +2142,10 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
   ##
   ## This is an `O(n)` operation.
   ##
+  ## .. note:: With `-d:nimStrictDelete`, an index error is produced when the index passed
+  ##    to it was out of bounds. `-d:nimStrictDelete` will become the default
+  ##    in upcoming versions.
+  ##
   ## See also:
   ## * `del <#del,seq[T],Natural>`_ for O(1) operation
   ##

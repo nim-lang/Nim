@@ -55,7 +55,7 @@ proc toAst(input: string,
 
     var (rst, _, _) = rstParse(input, filen, line=LineRstInit, column=ColRstInit,
                                rstOptions, myFindFile, testMsgHandler)
-    result = renderRstToStr(rst)
+    result = treeRepr(rst)
   except EParseError as e:
     if e.msg != "":
       result = e.msg

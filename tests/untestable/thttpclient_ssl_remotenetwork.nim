@@ -48,7 +48,7 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
     ("https://sha256.badssl.com/", good, "sha256"),
     ("https://sha384.badssl.com/", good, "sha384"),
     ("https://sha512.badssl.com/", good, "sha512"),
-    ("https://1000-sans.badssl.com/", good, "1000-sans"),
+    ("https://1000-sans.badssl.com/", bad, "1000-sans"),
     ("https://10000-sans.badssl.com/", good_broken, "10000-sans"),
     ("https://ecc256.badssl.com/", good, "ecc256"),
     ("https://ecc384.badssl.com/", good, "ecc384"),

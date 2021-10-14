@@ -381,7 +381,7 @@ proc renderRstToText*(node: PRstNode): string =
       result.add renderRstToText(node.sons[i])
     if node.kind in code: result.add "`"
 
-proc renderRstToStr*(node: PRstNode, indent=0): string =
+proc treeRepr*(node: PRstNode, indent=0): string =
   ## Writes the parsed RST `node` into an AST tree with compact string
   ## representation in the format (one line per every sub-node):
   ## ``indent - kind - [text|level|order|adType] - anchor (if non-zero)``
@@ -411,4 +411,4 @@ proc renderRstToStr*(node: PRstNode, indent=0): string =
   result.add (if node.anchor == "": "" else: "  anchor='" & node.anchor & "'")
   result.add "\n"
   for son in node.sons:
-    result.add renderRstToStr(son, indent=indent+2)
+    result.add treeRepr(son, indent=indent+2)

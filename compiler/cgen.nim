@@ -271,9 +271,6 @@ proc genLineDir(p: BProc, t: PNode) =
       linefmt(p, cpsStmts, "nimln_($1, $2);$n",
               [line, quotedFilename(p.config, t.info)])
 
-proc postStmtActions(p: BProc) {.inline.} =
-  p.s(cpsStmts).add(p.module.injectStmt)
-
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(conf: ConfigRef): bool {.inline.}
 proc genProc(m: BModule, prc: PSym)

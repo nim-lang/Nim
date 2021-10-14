@@ -95,7 +95,7 @@ proc addInt*(result: var string; x: int64) =
     var num: uint64
     if x < 0:
       if x == low(int64):
-        num = uint64(x)
+        num = cast[uint64](x)
       else:
         num = uint64(-x)
       let base = result.len

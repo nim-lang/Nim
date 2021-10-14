@@ -35,7 +35,7 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
 proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
   let genericTyp = key[0]
   if not (genericTyp.kind == tyGenericBody and
-      key[0] == genericTyp and genericTyp.sym != nil): return
+      genericTyp.sym != nil): return
 
   for inst in typeInstCacheItems(g, genericTyp.sym):
     if inst.id == key.id: return inst
