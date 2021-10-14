@@ -905,6 +905,36 @@ Compatibility notes:
   to avoid ugly, non-portable solutions. See RFC
   [#407](https://github.com/nim-lang/RFCs/issues/407) for more details.
 
+Compatibility notes:
+- Fixed effect tracking for borrowed procs (see [#18882](https://github.com/nim-lang/Nim/pull/18882)).
+  One consequence is that, under some circumstances, Nim could previously permit a procedure with side effects to be written with `func` - you may need to change some occurrences of `func` to `proc`.
+  To illustrate, Nim versions before 1.6.0 compile the below without error
+  ```nim
+  proc print(s: string) =
+    echo s
+
+  type
+    MyString = distinct string
+
+  proc print(s: MyString) {.borrow.}
+
+  func foo(s: MyString) =
+    print(s)
+  ```
+  but Nim 1.6.0 produces the error
+  ```
+  Error: 'foo' can have side effects
+  ```
+  similar to how we expect that
+  ```nim
+  func print(s: string) =
+    echo s
+  ```
+  produces
+  ```
+  Error: 'print' can have side effects
+  ```
+
 
 ## Tools
 
