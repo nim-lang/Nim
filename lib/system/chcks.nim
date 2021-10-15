@@ -132,6 +132,7 @@ when not defined(nimV2):
 
   proc isObjWithCache(obj, subclass: PNimType;
                       cache: var ObjCheckCache): bool {.compilerproc, inline.} =
+    if obj.isNil: return false
     if obj == subclass: return true
     if obj.base == subclass: return true
     if cache[0] == obj: return false
