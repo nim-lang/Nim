@@ -982,7 +982,7 @@ proc parseInsert(p: var SqlParser): SqlNode =
     parseParIdentList(p, n)
     result.add n
   else:
-    result.add(nil)
+    result.add(newNode(nkNone))
   if isKeyw(p, "default"):
     getTok(p)
     eat(p, "values")
@@ -1017,7 +1017,7 @@ proc parseUpdate(p: var SqlParser): SqlNode =
   if isKeyw(p, "where"):
     result.add(parseWhere(p))
   else:
-    result.add(nil)
+    result.add(newNode(nkNone))
 
 proc parseDelete(p: var SqlParser): SqlNode =
   getTok(p)
@@ -1029,7 +1029,7 @@ proc parseDelete(p: var SqlParser): SqlNode =
   if isKeyw(p, "where"):
     result.add(parseWhere(p))
   else:
-    result.add(nil)
+    result.add(newNode(nkNone))
 
 proc parseSelect(p: var SqlParser): SqlNode =
   getTok(p)
@@ -1467,9 +1467,6 @@ proc treeReprAux(s: SqlNode, level: int, result: var string) =
   result.add('\n')
   for i in 0 ..< level: result.add("  ")
 
-  if s.isNil:
-    result.add "[nil]"
-    return
   result.add($s.kind)
   if s.kind in LiteralNodes:
     result.add(' ')

@@ -9,7 +9,7 @@ doAssert treeRepr(parseSql("INSERT INTO STATS VALUES (10, 5.5); ")
 nkStmtList
   nkInsert
     nkIdent STATS
-    [nil]
+    nkNone
     nkValueList
       nkIntegerLit 10
       nkNumericLit 5.5"""
@@ -194,7 +194,30 @@ SET ContactName = 'Alfred Schmidt', City= 'Frankfurt'
 WHERE CustomerID = 1;
 """) == "update Customers set ContactName  = 'Alfred Schmidt' , City  = 'Frankfurt' where CustomerID = 1;"
 
+doAssert treeRepr(parseSql("""UPDATE Customers
+                              SET ContactName = 'Alice', City= 'Frankfurt';""")
+) == """
+
+nkStmtList
+  nkUpdate
+    nkIdent Customers
+    nkAsgn
+      nkIdent ContactName
+      nkStringLit Alice
+    nkAsgn
+      nkIdent City
+      nkStringLit Frankfurt
+    nkNone"""
+
 doAssert $parseSQL("DELETE FROM table_name;") == "delete from table_name;"
+
+doAssert treeRepr(parseSQL("DELETE FROM table_name;")
+) == """
+
+nkStmtList
+  nkDelete
+    nkIdent table_name
+    nkNone"""
 
 doAssert $parseSQL("DELETE * FROM table_name;") == "delete from table_name;"
 
