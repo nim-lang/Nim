@@ -337,5 +337,7 @@ else:
     include ioselects/ioselectors_select
   elif defined(freertos) or defined(lwip):
     include ioselects/ioselectors_select
+  elif defined(zephyr):
+    include ioselects/ioselectors_poll
   else:
     include ioselects/ioselectors_poll

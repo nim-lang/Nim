@@ -252,6 +252,7 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
     # is one page:
     sysAssert roundup(size+sizeof(LLChunk), PageSize) == PageSize, "roundup 6"
     var old = a.llmem # can be nil and is correct with nil
+    cprintf "llAlloc:pg: %d\n", PageSize
     a.llmem = cast[PLLChunk](osAllocPages(PageSize))
     when defined(nimAvlcorruption):
       trackLocation(a.llmem, PageSize)
@@ -443,10 +444,13 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
 
   var size = size
   if size > a.nextChunkSize:
+    cprintf "reqOs:pg: %d\n", size
     result = cast[PBigChunk](osAllocPages(size))
   else:
+    cprintf "reqOs:next:pg: %d\n", a.nextChunkSize
     result = cast[PBigChunk](osTryAllocPages(a.nextChunkSize))
     if result == nil:
+      cprintf "reqOs:nextnil:pg: %d\n", size
       result = cast[PBigChunk](osAllocPages(size))
       a.blockChunkSizeIncrease = true
     else:
@@ -612,6 +616,7 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   dec(a.freeMem, size)
 
 proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
+  cprintf "getHuge:pg: %d\n", size
   result = cast[PBigChunk](osAllocPages(size))
   incCurrMem(a, size)
   # XXX add this to the heap links. But also remove it from it later.
