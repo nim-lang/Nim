@@ -21,6 +21,7 @@ when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
 
 const useWinVersion = defined(windows) or defined(nimdoc)
+const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr)
 
 when useWinVersion:
   import winlean
@@ -35,8 +36,11 @@ else:
 
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,
   Sockaddr_in6, Sockaddr_storage,
-  inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto,
+  recv, `==`, connect, send, accept, recvfrom, sendto,
   freeAddrInfo
+
+when not useNimNetLite:
+  export inet_ntoa
 
 export
   SO_ERROR,
@@ -332,125 +336,6 @@ template htons*(x: uint16): untyped =
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
   nativesockets.ntohs(x)
 
-proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
-  ## Searches the database from the beginning and finds the first entry for
-  ## which the service name specified by `name` matches the s_name member
-  ## and the protocol name specified by `proto` matches the s_proto member.
-  ##
-  ## On posix this will search through the `/etc/services` file.
-  when useWinVersion:
-    var s = winlean.getservbyname(name, proto)
-  else:
-    var s = posix.getservbyname(name, proto)
-  if s == nil: raiseOSError(osLastError(), "Service not found.")
-  result.name = $s.s_name
-  result.aliases = cstringArrayToSeq(s.s_aliases)
-  result.port = Port(s.s_port)
-  result.proto = $s.s_proto
-
-proc getServByPort*(port: Port, proto: string): Servent {.tags: [ReadIOEffect].} =
-  ## Searches the database from the beginning and finds the first entry for
-  ## which the port specified by `port` matches the s_port member and the
-  ## protocol name specified by `proto` matches the s_proto member.
-  ##
-  ## On posix this will search through the `/etc/services` file.
-  when useWinVersion:
-    var s = winlean.getservbyport(ze(int16(port)).cint, proto)
-  else:
-    var s = posix.getservbyport(ze(int16(port)).cint, proto)
-  if s == nil: raiseOSError(osLastError(), "Service not found.")
-  result.name = $s.s_name
-  result.aliases = cstringArrayToSeq(s.s_aliases)
-  result.port = Port(s.s_port)
-  result.proto = $s.s_proto
-
-proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
-  ## This function will lookup the hostname of an IP Address.
-  var myaddr: InAddr
-  myaddr.s_addr = inet_addr(ip)
-
-  when useWinVersion:
-    var s = winlean.gethostbyaddr(addr(myaddr), sizeof(myaddr).cuint,
-                                  cint(AF_INET))
-    if s == nil: raiseOSError(osLastError())
-  else:
-    var s =
-      when defined(android4):
-        posix.gethostbyaddr(cast[cstring](addr(myaddr)), sizeof(myaddr).cint,
-                            cint(posix.AF_INET))
-      else:
-        posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).SockLen,
-                            cint(posix.AF_INET))
-    if s == nil:
-      raiseOSError(osLastError(), $hstrerror(h_errno))
-
-  result.name = $s.h_name
-  result.aliases = cstringArrayToSeq(s.h_aliases)
-  when useWinVersion:
-    result.addrtype = Domain(s.h_addrtype)
-  else:
-    if s.h_addrtype == posix.AF_INET:
-      result.addrtype = AF_INET
-    elif s.h_addrtype == posix.AF_INET6:
-      result.addrtype = AF_INET6
-    else:
-      raiseOSError(osLastError(), "unknown h_addrtype")
-  if result.addrtype == AF_INET:
-    result.addrList = @[]
-    var i = 0
-    while not isNil(s.h_addr_list[i]):
-      var inaddrPtr = cast[ptr InAddr](s.h_addr_list[i])
-      result.addrList.add($inet_ntoa(inaddrPtr[]))
-      inc(i)
-  else:
-    result.addrList = cstringArrayToSeq(s.h_addr_list)
-  result.length = int(s.h_length)
-
-proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
-  ## This function will lookup the IP address of a hostname.
-  when useWinVersion:
-    var s = winlean.gethostbyname(name)
-  else:
-    var s = posix.gethostbyname(name)
-  if s == nil: raiseOSError(osLastError())
-  result.name = $s.h_name
-  result.aliases = cstringArrayToSeq(s.h_aliases)
-  when useWinVersion:
-    result.addrtype = Domain(s.h_addrtype)
-  else:
-    if s.h_addrtype == posix.AF_INET:
-      result.addrtype = AF_INET
-    elif s.h_addrtype == posix.AF_INET6:
-      result.addrtype = AF_INET6
-    else:
-      raiseOSError(osLastError(), "unknown h_addrtype")
-  if result.addrtype == AF_INET:
-    result.addrList = @[]
-    var i = 0
-    while not isNil(s.h_addr_list[i]):
-      var inaddrPtr = cast[ptr InAddr](s.h_addr_list[i])
-      result.addrList.add($inet_ntoa(inaddrPtr[]))
-      inc(i)
-  else:
-    result.addrList = cstringArrayToSeq(s.h_addr_list)
-  result.length = int(s.h_length)
-
-proc getHostname*(): string {.tags: [ReadIOEffect].} =
-  ## Returns the local hostname (not the FQDN)
-  # https://tools.ietf.org/html/rfc1035#section-2.3.1
-  # https://tools.ietf.org/html/rfc2181#section-11
-  const size = 256
-  result = newString(size)
-  when useWinVersion:
-    let success = winlean.gethostname(result, size)
-  else:
-    # Posix
-    let success = posix.gethostname(result, size)
-  if success != 0.cint:
-    raiseOSError(osLastError())
-  let x = len(cstring(result))
-  result.setLen(x)
-
 proc getSockDomain*(socket: SocketHandle): Domain =
   ## Returns the socket's domain (AF_INET or AF_INET6).
   var name: Sockaddr_in6
@@ -464,162 +349,354 @@ proc getSockDomain*(socket: SocketHandle): Domain =
   else:
     raise newException(IOError, "Unknown socket family in getSockDomain")
 
-proc getAddrString*(sockAddr: ptr SockAddr): string =
-  ## Returns the string representation of address within sockAddr
-  if sockAddr.sa_family.cint == nativeAfInet:
-    result = $inet_ntoa(cast[ptr Sockaddr_in](sockAddr).sin_addr)
-  elif sockAddr.sa_family.cint == nativeAfInet6:
-    let addrLen = when not useWinVersion: posix.INET6_ADDRSTRLEN.int
-                  else: 46 # it's actually 46 in both cases
-    result = newString(addrLen)
-    let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
-    when not useWinVersion:
-      if posix.inet_ntop(posix.AF_INET6, addr6, addr result[0],
-                         result.len.int32) == nil:
-        raiseOSError(osLastError())
-      if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
-        result.setSlice("::ffff:".len..<addrLen)
+when not useNimNetLite: 
+  proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
+    ## Searches the database from the beginning and finds the first entry for
+    ## which the service name specified by `name` matches the s_name member
+    ## and the protocol name specified by `proto` matches the s_proto member.
+    ##
+    ## On posix this will search through the `/etc/services` file.
+    when useWinVersion:
+      var s = winlean.getservbyname(name, proto)
     else:
-      if winlean.inet_ntop(winlean.AF_INET6, addr6, addr result[0],
-                           result.len.int32) == nil:
-        raiseOSError(osLastError())
-    setLen(result, len(cstring(result)))
-  else:
-    when defined(posix) and not defined(nimdoc):
-      if sockAddr.sa_family.cint == nativeAfUnix:
-        return "unix"
-    raise newException(IOError, "Unknown socket family in getAddrString")
+      var s = posix.getservbyname(name, proto)
+    if s == nil: raiseOSError(osLastError(), "Service not found.")
+    result.name = $s.s_name
+    result.aliases = cstringArrayToSeq(s.s_aliases)
+    result.port = Port(s.s_port)
+    result.proto = $s.s_proto
 
-proc getAddrString*(sockAddr: ptr SockAddr, strAddress: var string) =
-  ## Stores in `strAddress` the string representation of the address inside
-  ## `sockAddr`
-  ##
-  ## **Note**
-  ## * `strAddress` must be initialized to 46 in length.
-  const length = 46
-  assert(length == len(strAddress),
-         "`strAddress` was not initialized correctly. 46 != `len(strAddress)`")
-  if sockAddr.sa_family.cint == nativeAfInet:
-    let addr4 = addr cast[ptr Sockaddr_in](sockAddr).sin_addr
-    when not useWinVersion:
-      if posix.inet_ntop(posix.AF_INET, addr4, addr strAddress[0],
-                         strAddress.len.int32) == nil:
-        raiseOSError(osLastError())
+  proc getServByPort*(port: Port, proto: string): Servent {.tags: [ReadIOEffect].} =
+    ## Searches the database from the beginning and finds the first entry for
+    ## which the port specified by `port` matches the s_port member and the
+    ## protocol name specified by `proto` matches the s_proto member.
+    ##
+    ## On posix this will search through the `/etc/services` file.
+    when useWinVersion:
+      var s = winlean.getservbyport(ze(int16(port)).cint, proto)
     else:
-      if winlean.inet_ntop(winlean.AF_INET, addr4, addr strAddress[0],
-                           strAddress.len.int32) == nil:
-        raiseOSError(osLastError())
-  elif sockAddr.sa_family.cint == nativeAfInet6:
-    let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
-    when not useWinVersion:
-      if posix.inet_ntop(posix.AF_INET6, addr6, addr strAddress[0],
-                         strAddress.len.int32) == nil:
-        raiseOSError(osLastError())
-      if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
-        strAddress.setSlice("::ffff:".len..<length)
+      var s = posix.getservbyport(ze(int16(port)).cint, proto)
+    if s == nil: raiseOSError(osLastError(), "Service not found.")
+    result.name = $s.s_name
+    result.aliases = cstringArrayToSeq(s.s_aliases)
+    result.port = Port(s.s_port)
+    result.proto = $s.s_proto
+
+  proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
+    ## This function will lookup the hostname of an IP Address.
+    var myaddr: InAddr
+    myaddr.s_addr = inet_addr(ip)
+
+    when useWinVersion:
+      var s = winlean.gethostbyaddr(addr(myaddr), sizeof(myaddr).cuint,
+                                    cint(AF_INET))
+      if s == nil: raiseOSError(osLastError())
     else:
-      if winlean.inet_ntop(winlean.AF_INET6, addr6, addr strAddress[0],
-                           strAddress.len.int32) == nil:
+      var s =
+        when defined(android4):
+          posix.gethostbyaddr(cast[cstring](addr(myaddr)), sizeof(myaddr).cint,
+                              cint(posix.AF_INET))
+        else:
+          posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).SockLen,
+                              cint(posix.AF_INET))
+      if s == nil:
+        raiseOSError(osLastError(), $hstrerror(h_errno))
+
+    result.name = $s.h_name
+    result.aliases = cstringArrayToSeq(s.h_aliases)
+    when useWinVersion:
+      result.addrtype = Domain(s.h_addrtype)
+    else:
+      if s.h_addrtype == posix.AF_INET:
+        result.addrtype = AF_INET
+      elif s.h_addrtype == posix.AF_INET6:
+        result.addrtype = AF_INET6
+      else:
+        raiseOSError(osLastError(), "unknown h_addrtype")
+    if result.addrtype == AF_INET:
+      result.addrList = @[]
+      var i = 0
+      while not isNil(s.h_addr_list[i]):
+        var inaddrPtr = cast[ptr InAddr](s.h_addr_list[i])
+        result.addrList.add($inet_ntoa(inaddrPtr[]))
+        inc(i)
+    else:
+      result.addrList = cstringArrayToSeq(s.h_addr_list)
+    result.length = int(s.h_length)
+
+  proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
+    ## This function will lookup the IP address of a hostname.
+    when useWinVersion:
+      var s = winlean.gethostbyname(name)
+    else:
+      var s = posix.gethostbyname(name)
+    if s == nil: raiseOSError(osLastError())
+    result.name = $s.h_name
+    result.aliases = cstringArrayToSeq(s.h_aliases)
+    when useWinVersion:
+      result.addrtype = Domain(s.h_addrtype)
+    else:
+      if s.h_addrtype == posix.AF_INET:
+        result.addrtype = AF_INET
+      elif s.h_addrtype == posix.AF_INET6:
+        result.addrtype = AF_INET6
+      else:
+        raiseOSError(osLastError(), "unknown h_addrtype")
+    if result.addrtype == AF_INET:
+      result.addrList = @[]
+      var i = 0
+      while not isNil(s.h_addr_list[i]):
+        var inaddrPtr = cast[ptr InAddr](s.h_addr_list[i])
+        result.addrList.add($inet_ntoa(inaddrPtr[]))
+        inc(i)
+    else:
+      result.addrList = cstringArrayToSeq(s.h_addr_list)
+    result.length = int(s.h_length)
+
+  proc getHostname*(): string {.tags: [ReadIOEffect].} =
+    ## Returns the local hostname (not the FQDN)
+    # https://tools.ietf.org/html/rfc1035#section-2.3.1
+    # https://tools.ietf.org/html/rfc2181#section-11
+    const size = 256
+    result = newString(size)
+    when useWinVersion:
+      let success = winlean.gethostname(result, size)
+    else:
+      # Posix
+      let success = posix.gethostname(result, size)
+    if success != 0.cint:
+      raiseOSError(osLastError())
+    let x = len(cstring(result))
+    result.setLen(x)
+
+  proc getAddrString*(sockAddr: ptr SockAddr): string =
+    ## Returns the string representation of address within sockAddr
+    if sockAddr.sa_family.cint == nativeAfInet:
+      result = $inet_ntoa(cast[ptr Sockaddr_in](sockAddr).sin_addr)
+    elif sockAddr.sa_family.cint == nativeAfInet6:
+      let addrLen = when not useWinVersion: posix.INET6_ADDRSTRLEN.int
+                    else: 46 # it's actually 46 in both cases
+      result = newString(addrLen)
+      let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
+      when not useWinVersion:
+        if posix.inet_ntop(posix.AF_INET6.TSa_Family, addr6, addr result[0],
+                          result.len.int32) == nil:
+          raiseOSError(osLastError())
+        if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
+          result.setSlice("::ffff:".len..<addrLen)
+      else:
+        if winlean.inet_ntop(winlean.AF_INET6, addr6, addr result[0],
+                            result.len.int32) == nil:
+          raiseOSError(osLastError())
+      setLen(result, len(cstring(result)))
+    else:
+      when defined(posix) and not defined(nimdoc):
+        if sockAddr.sa_family.cint == nativeAfUnix:
+          return "unix"
+      raise newException(IOError, "Unknown socket family in getAddrString")
+
+  proc getAddrString*(sockAddr: ptr SockAddr, strAddress: var string) =
+    ## Stores in `strAddress` the string representation of the address inside
+    ## `sockAddr`
+    ##
+    ## **Note**
+    ## * `strAddress` must be initialized to 46 in length.
+    const length = 46
+    assert(length == len(strAddress),
+          "`strAddress` was not initialized correctly. 46 != `len(strAddress)`")
+    if sockAddr.sa_family.cint == nativeAfInet:
+      let addr4 = addr cast[ptr Sockaddr_in](sockAddr).sin_addr
+      when not useWinVersion:
+        if posix.inet_ntop(posix.AF_INET.TSa_Family, addr4, addr strAddress[0],
+                          strAddress.len.int32) == nil:
+          raiseOSError(osLastError())
+      else:
+        if winlean.inet_ntop(winlean.AF_INET, addr4, addr strAddress[0],
+                            strAddress.len.int32) == nil:
+          raiseOSError(osLastError())
+    elif sockAddr.sa_family.cint == nativeAfInet6:
+      let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
+      when not useWinVersion:
+        if posix.inet_ntop(posix.AF_INET6.TSa_Family, addr6, addr strAddress[0],
+                          strAddress.len.int32) == nil:
+          raiseOSError(osLastError())
+        if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
+          strAddress.setSlice("::ffff:".len..<length)
+      else:
+        if winlean.inet_ntop(winlean.AF_INET6, addr6, addr strAddress[0],
+                            strAddress.len.int32) == nil:
+          raiseOSError(osLastError())
+    else:
+      raise newException(IOError, "Unknown socket family in getAddrString")
+    setLen(strAddress, len(cstring(strAddress)))
+
+  when defined(posix) and not defined(nimdoc):
+    proc makeUnixAddr*(path: string): Sockaddr_un =
+      result.sun_family = AF_UNIX.TSa_Family
+      if path.len >= Sockaddr_un_path_length:
+        raise newException(ValueError, "socket path too long")
+      copyMem(addr result.sun_path, path.cstring, path.len + 1)
+
+  proc getSockName*(socket: SocketHandle): Port =
+    ## Returns the socket's associated port number.
+    var name: Sockaddr_in
+    when useWinVersion:
+      name.sin_family = uint16(ord(AF_INET))
+    else:
+      name.sin_family = TSa_Family(posix.AF_INET)
+    #name.sin_port = htons(cint16(port))
+    #name.sin_addr.s_addr = htonl(INADDR_ANY)
+    var namelen = sizeof(name).SockLen
+    if getsockname(socket, cast[ptr SockAddr](addr(name)),
+                  addr(namelen)) == -1'i32:
+      raiseOSError(osLastError())
+    result = Port(nativesockets.ntohs(name.sin_port))
+
+  proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
+    ## Returns the socket's local address and port number.
+    ##
+    ## Similar to POSIX's `getsockname`:idx:.
+    case domain
+    of AF_INET:
+      var name: Sockaddr_in
+      when useWinVersion:
+        name.sin_family = uint16(ord(AF_INET))
+      else:
+        name.sin_family = TSa_Family(posix.AF_INET)
+      var namelen = sizeof(name).SockLen
+      if getsockname(socket, cast[ptr SockAddr](addr(name)),
+                    addr(namelen)) == -1'i32:
         raiseOSError(osLastError())
-  else:
-    raise newException(IOError, "Unknown socket family in getAddrString")
-  setLen(strAddress, len(cstring(strAddress)))
+      result = ($inet_ntoa(name.sin_addr),
+                Port(nativesockets.ntohs(name.sin_port)))
+    of AF_INET6:
+      var name: Sockaddr_in6
+      when useWinVersion:
+        name.sin6_family = uint16(ord(AF_INET6))
+      else:
+        name.sin6_family = TSa_Family(posix.AF_INET6)
+      var namelen = sizeof(name).SockLen
+      if getsockname(socket, cast[ptr SockAddr](addr(name)),
+                    addr(namelen)) == -1'i32:
+        raiseOSError(osLastError())
+      # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
+      result[0] = newString(64)
+      if inet_ntop(name.sin6_family,
+          addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
+        raiseOSError(osLastError())
+      setLen(result[0], result[0].cstring.len)
+      result[1] = Port(nativesockets.ntohs(name.sin6_port))
+    else:
+      raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 
-when defined(posix) and not defined(nimdoc):
-  proc makeUnixAddr*(path: string): Sockaddr_un =
-    result.sun_family = AF_UNIX.TSa_Family
-    if path.len >= Sockaddr_un_path_length:
-      raise newException(ValueError, "socket path too long")
-    copyMem(addr result.sun_path, path.cstring, path.len + 1)
+  proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
+    ## Returns the socket's peer address and port number.
+    ##
+    ## Similar to POSIX's `getpeername`:idx:
+    case domain
+    of AF_INET:
+      var name: Sockaddr_in
+      when useWinVersion:
+        name.sin_family = uint16(ord(AF_INET))
+      else:
+        name.sin_family = TSa_Family(posix.AF_INET)
+      var namelen = sizeof(name).SockLen
+      if getpeername(socket, cast[ptr SockAddr](addr(name)),
+                    addr(namelen)) == -1'i32:
+        raiseOSError(osLastError())
+      result = ($inet_ntoa(name.sin_addr),
+                Port(nativesockets.ntohs(name.sin_port)))
+    of AF_INET6:
+      var name: Sockaddr_in6
+      when useWinVersion:
+        name.sin6_family = uint16(ord(AF_INET6))
+      else:
+        name.sin6_family = TSa_Family(posix.AF_INET6)
+      var namelen = sizeof(name).SockLen
+      if getpeername(socket, cast[ptr SockAddr](addr(name)),
+                    addr(namelen)) == -1'i32:
+        raiseOSError(osLastError())
+      # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
+      result[0] = newString(64)
+      if inet_ntop(name.sin6_family,
+          addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
+        raiseOSError(osLastError())
+      setLen(result[0], result[0].cstring.len)
+      result[1] = Port(nativesockets.ntohs(name.sin6_port))
+    else:
+      raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 
-proc getSockName*(socket: SocketHandle): Port =
-  ## Returns the socket's associated port number.
-  var name: Sockaddr_in
+when useNimNetLite: 
+
   when useWinVersion:
-    name.sin_family = uint16(ord(AF_INET))
-  else:
-    name.sin_family = TSa_Family(posix.AF_INET)
-  #name.sin_port = htons(cint16(port))
-  #name.sin_addr.s_addr = htonl(INADDR_ANY)
-  var namelen = sizeof(name).SockLen
-  if getsockname(socket, cast[ptr SockAddr](addr(name)),
-                 addr(namelen)) == -1'i32:
-    raiseOSError(osLastError())
-  result = Port(nativesockets.ntohs(name.sin_port))
+    const
+      INET_ADDRSTRLEN = 16
+      INET6_ADDRSTRLEN = 46 # it's actually 46 in both cases
 
-proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
-  ## Returns the socket's local address and port number.
-  ##
-  ## Similar to POSIX's `getsockname`:idx:.
-  case domain
-  of AF_INET:
-    var name: Sockaddr_in
-    when useWinVersion:
-      name.sin_family = uint16(ord(AF_INET))
-    else:
-      name.sin_family = TSa_Family(posix.AF_INET)
-    var namelen = sizeof(name).SockLen
-    if getsockname(socket, cast[ptr SockAddr](addr(name)),
-                   addr(namelen)) == -1'i32:
-      raiseOSError(osLastError())
-    result = ($inet_ntoa(name.sin_addr),
-              Port(nativesockets.ntohs(name.sin_port)))
-  of AF_INET6:
-    var name: Sockaddr_in6
-    when useWinVersion:
-      name.sin6_family = uint16(ord(AF_INET6))
-    else:
-      name.sin6_family = TSa_Family(posix.AF_INET6)
-    var namelen = sizeof(name).SockLen
-    if getsockname(socket, cast[ptr SockAddr](addr(name)),
-                   addr(namelen)) == -1'i32:
-      raiseOSError(osLastError())
-    # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
-    result[0] = newString(64)
-    if inet_ntop(name.sin6_family.cint,
-        addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
-      raiseOSError(osLastError())
-    setLen(result[0], result[0].cstring.len)
-    result[1] = Port(nativesockets.ntohs(name.sin6_port))
-  else:
-    raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
+  proc sockAddrToStr(sa: ptr Sockaddr): string {.noinit.} =
+    let af_family = sa.sa_family 
+    var nl, v4Slice: cint
+    var si_addr: ptr InAddr
 
-proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
-  ## Returns the socket's peer address and port number.
-  ##
-  ## Similar to POSIX's `getpeername`:idx:
-  case domain
-  of AF_INET:
-    var name: Sockaddr_in
-    when useWinVersion:
-      name.sin_family = uint16(ord(AF_INET))
+    if af_family == AF_INET.TSa_Family:
+      nl = INET_ADDRSTRLEN
+      si_addr = cast[ptr Sockaddr_in](sa).sin_addr.addr()
+    elif af_family == AF_INET6.TSa_Family:
+      nl = INET6_ADDRSTRLEN
+      let si6_addr = cast[ptr Sockaddr_in6](sa).sin6_addr.addr()
+      si_addr = cast[ptr InAddr](si6_addr) # let's us reuse logic below 
+      when defined(posix) and not defined(nimdoc) and not defined(zephyr):
+        if posix.IN6_IS_ADDR_V4MAPPED(si6_addr) != 0:
+          v4Slice = "::ffff:".len()
     else:
-      name.sin_family = TSa_Family(posix.AF_INET)
-    var namelen = sizeof(name).SockLen
-    if getpeername(socket, cast[ptr SockAddr](addr(name)),
-                   addr(namelen)) == -1'i32:
-      raiseOSError(osLastError())
-    result = ($inet_ntoa(name.sin_addr),
-              Port(nativesockets.ntohs(name.sin_port)))
-  of AF_INET6:
-    var name: Sockaddr_in6
-    when useWinVersion:
-      name.sin6_family = uint16(ord(AF_INET6))
+      when defined(posix) and not defined(nimdoc):
+        if af_family.cint == nativeAfUnix:
+          return "unix"
+      return ""
+
+    result = newString(nl)
+    let namePtr = result.cstring()
+    if namePtr == inet_ntop(af_family, si_addr, namePtr, nl):
+      result.setLen(len(namePtr))
+      if v4Slice > 0: result.setSlice(v4Slice.int ..< nl.int)
     else:
-      name.sin6_family = TSa_Family(posix.AF_INET6)
-    var namelen = sizeof(name).SockLen
-    if getpeername(socket, cast[ptr SockAddr](addr(name)),
-                   addr(namelen)) == -1'i32:
+      return ""
+
+  proc sockAddrToStr(sa: var Sockaddr_in | var Sockaddr_in6): string =
+    result = sockAddrToStr(cast[ptr SockAddr](unsafeAddr(sa)))
+
+  proc getAddrString*(sockAddr: ptr SockAddr): string =
+    result = sockAddrToStr(sockAddr)
+    if result.len() == 0:
       raiseOSError(osLastError())
-    # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
-    result[0] = newString(64)
-    if inet_ntop(name.sin6_family.cint,
-        addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
-      raiseOSError(osLastError())
-    setLen(result[0], result[0].cstring.len)
-    result[1] = Port(nativesockets.ntohs(name.sin6_port))
-  else:
-    raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
+
+  proc getAddrString*(sockAddr: ptr SockAddr, strAddress: var string) {.noinit.} =
+    strAddress = getAddrString(sockAddr)
+
+  proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
+    ## Returns the socket's local address and port number.
+    ##
+    ## Similar to POSIX's `getsockname`:idx:.
+    template sockGetNameOrRaiseError(socket: untyped, name: untyped) =
+      var namelen = sizeof(socket).SockLen
+      if getsockname(socket, cast[ptr SockAddr](addr(name)),
+                    addr(namelen)) == -1'i32:
+        raiseOSError(osLastError())
+
+    case domain
+    of AF_INET:
+      var name = Sockaddr_in(sin_family: TSa_Family(posix.AF_INET))
+      sockGetNameOrRaiseError(socket, name)
+      result = (sockAddrToStr(name),
+                Port(nativesockets.ntohs(name.sin_port)))
+    of AF_INET6:
+      var name = Sockaddr_in6(sin6_family: TSa_Family(posix.AF_INET6))
+      sockGetNameOrRaiseError(socket, name)
+      result = (sockAddrToStr(name),
+                Port(nativesockets.ntohs(name.sin6_port)))
+    else:
+      raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
+
 
 proc getSockOptInt*(socket: SocketHandle, level, optname: int): int {.
   tags: [ReadIOEffect].} =
@@ -665,6 +742,24 @@ proc timeValFromMilliseconds(timeout = 500): Timeval =
     else:
       result.tv_sec = seconds.Time
       result.tv_usec = ((timeout - seconds * 1000) * 1000).Suseconds
+
+when defined(zephyr) or defined(freertos):
+  proc maxDescriptors*(): int {.raises: OSError.} =
+    return FD_MAX
+elif defined(posix) or defined(windows) or defined(bsd):
+  proc maxDescriptors*(): int {.raises: OSError.} =
+    ## Returns the maximum number of active file descriptors for the current
+    ## process. This involves a system call. For now `maxDescriptors` is
+    ## supported on the following OSes: Windows, Linux, OSX, BSD.
+    when defined(windows):
+      result = 16_700_000
+    else:
+      var fdLim: RLimit
+      if getrlimit(RLIMIT_NOFILE, fdLim) != 0:
+        raiseOSError(osLastError())
+      # `rlim_max` is the max the process is allowed to adjust `rlim_cur` up to
+      # so we return `rlim_max` as the limit in effect by the kernel
+      result = int(fdLim.rlim_cur) - 1
 
 proc createFdSet(fd: var TFdSet, s: seq[SocketHandle], m: var int) =
   FD_ZERO(fd)
@@ -733,14 +828,14 @@ proc accept*(fd: SocketHandle, inheritable = defined(nimInheritHandles)): (Socke
   ## child processes.
   ##
   ## Returns (osInvalidSocket, "") if an error occurred.
-  var sockAddress: Sockaddr_in
+  var sockAddress: Sockaddr
   var addrLen = sizeof(sockAddress).SockLen
   var sock =
     when (defined(linux) or defined(bsd)) and not defined(nimdoc):
-      accept4(fd, cast[ptr SockAddr](addr(sockAddress)), addr(addrLen),
+      accept4(fd, addr(sockAddress), addr(addrLen),
               if inheritable: 0 else: SOCK_CLOEXEC)
     else:
-      accept(fd, cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
+      accept(fd, addr(sockAddress), addr(addrLen))
   when declared(setInheritable) and not (defined(linux) or defined(bsd)):
     if not setInheritable(sock, inheritable):
       close sock
@@ -748,7 +843,11 @@ proc accept*(fd: SocketHandle, inheritable = defined(nimInheritHandles)): (Socke
   if sock == osInvalidSocket:
     return (osInvalidSocket, "")
   else:
-    return (sock, $inet_ntoa(sockAddress.sin_addr))
+    when useNimNetLite:
+      var name = sockAddrToStr(addr sockAddress)
+      return (sock, name)
+    else:
+      return (sock, $inet_ntoa(cast[Sockaddr_in](sockAddress).sin_addr))
 
 when defined(windows):
   var wsa: WSAData
