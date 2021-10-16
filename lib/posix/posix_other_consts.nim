@@ -465,8 +465,6 @@ var FD_SETSIZE* {.importc: "FD_SETSIZE", header: "<sys/select.h>".}: cint
 when defined(zephyr):
   # Zephyr specific hardcoded value
   var FD_MAX* {.importc: "CONFIG_POSIX_MAX_FDS ", header: "<sys/select.h>".}: cint
-elif defined(freertos):
-  var FD_MAX* {.importc: "CONFIG_LWIP_MAX_SOCKETS", header: "<lwipopts.h>".}: cint
 
 # <sys/socket.h>
 var MSG_CTRUNC* {.importc: "MSG_CTRUNC", header: "<sys/socket.h>".}: cint
