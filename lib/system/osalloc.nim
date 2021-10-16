@@ -203,6 +203,7 @@ elif hostOS == "standalone" or defined(StandaloneHeapSize):
       result = cast[pointer](bumpPointer)
       inc bumpPointer, size
     else:
+      # cprintf "osAlloc:pg: %d of %d\n", size, sizeof(theHeap)-(bumpPointer-cast[int](addr(theHeap)))
       raiseOutOfMem()
 
   proc osTryAllocPages(size: int): pointer {.inline.} =
