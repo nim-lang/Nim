@@ -1611,7 +1611,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
-      if p.len == 2:
+      if p.len == 2 or (p.len == 3 and p[1].kind == nnkSym and p[1].symKind == nskType):
         result = p[1]
       else:
         let def = p[0].getImpl[3]
