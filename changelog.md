@@ -7,6 +7,7 @@
 
 ## Standard library additions and changes
 
+- Added `sugar.debugs` debug helper that injects debugging code in-between a block of code with given frequency.
 
 
 ## Language changes
