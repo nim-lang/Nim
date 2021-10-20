@@ -3498,7 +3498,7 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
   ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
   ## You can pass full paths as argument too, but func only checks filenames.
   ##
-  ## It uses ``invalidFilenameChars``, ``invalidFilenames`` and ``maxLen`` to verify the specified ``filename``.
+  ## It uses `invalidFilenameChars`, `invalidFilenames` and `maxLen` to verify the specified `filename`.
   ##
   runnableExamples:
     assert not isValidFilename(" foo")     # Leading white space
