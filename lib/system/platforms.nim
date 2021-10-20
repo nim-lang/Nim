@@ -35,7 +35,8 @@ type
     msp430,                    ## TI MSP430 microcontroller
     riscv32,                   ## RISC-V 32-bit processor
     riscv64,                   ## RISC-V 64-bit processor
-    wasm32                     ## WASM, 32-bit
+    wasm32,                    ## WASM, 32-bit
+    e2k                        ## MCST Elbrus 2000
 
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
     none, dos, windows, os2, linux, morphos, skyos, solaris,
@@ -93,5 +94,6 @@ const
                elif defined(riscv32): CpuPlatform.riscv32
                elif defined(riscv64): CpuPlatform.riscv64
                elif defined(wasm32): CpuPlatform.wasm32
+               elif defined(e2k): CpuPlatform.e2k
                else: CpuPlatform.none
     ## the CPU this program will run on.

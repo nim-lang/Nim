@@ -227,6 +227,8 @@ case $ucpu in
     mycpu="arm" ;;
   *riscv64|riscv* )
     mycpu="riscv64" ;;
+  *e2k* )
+    mycpu="e2k" ;;
   *)
     echo 2>&1 "Error: unknown processor: $ucpu"
     exit 1
