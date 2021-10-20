@@ -3492,7 +3492,7 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noWeirdTarget.} =
     discard h.closeHandle
     if res == 0'i32: raiseOSError(osLastError(), file)
 
-func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1), deprecated: "Deprecated since v1.4.10".} =
+func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1), deprecated: "Deprecated since v1.5.1".} =
   ## Returns true if ``filename`` is valid for crossplatform use.
   ##
   ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
