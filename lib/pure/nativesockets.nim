@@ -743,24 +743,6 @@ proc timeValFromMilliseconds(timeout = 500): Timeval =
       result.tv_sec = seconds.Time
       result.tv_usec = ((timeout - seconds * 1000) * 1000).Suseconds
 
-when defined(zephyr) or defined(freertos):
-  proc maxDescriptors*(): int {.raises: OSError.} =
-    return FD_MAX
-elif defined(posix) or defined(windows) or defined(bsd):
-  proc maxDescriptors*(): int {.raises: OSError.} =
-    ## Returns the maximum number of active file descriptors for the current
-    ## process. This involves a system call. For now `maxDescriptors` is
-    ## supported on the following OSes: Windows, Linux, OSX, BSD.
-    when defined(windows):
-      result = 16_700_000
-    else:
-      var fdLim: RLimit
-      if getrlimit(RLIMIT_NOFILE, fdLim) != 0:
-        raiseOSError(osLastError())
-      # `rlim_max` is the max the process is allowed to adjust `rlim_cur` up to
-      # so we return `rlim_max` as the limit in effect by the kernel
-      result = int(fdLim.rlim_cur) - 1
-
 proc createFdSet(fd: var TFdSet, s: seq[SocketHandle], m: var int) =
   FD_ZERO(fd)
   for i in items(s):
