@@ -14,3 +14,5 @@ when defined(nimStrictMode):
     # switch("hint", "ConvFromXtoItselfNotNeeded")
     switch("hintAsError", "ConvFromXtoItselfNotNeeded")
     # future work: XDeclaredButNotUsed
+
+switch("define", "nimVersion:" & NimVersion)

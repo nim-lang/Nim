@@ -57,6 +57,10 @@ proc callRoutine*(i: Interpreter; routine: PSym; args: openArray[PNode]): PNode 
 proc getGlobalValue*(i: Interpreter; letOrVar: PSym): PNode =
   result = vm.getGlobalValue(PCtx i.graph.vm, letOrVar)
 
+proc setGlobalValue*(i: Interpreter; letOrVar: PSym, val: PNode) =
+  ## Sets a global value to a given PNode, does not do any type checking.
+  vm.setGlobalValue(PCtx i.graph.vm, letOrVar, val)
+
 proc implementRoutine*(i: Interpreter; pkg, module, name: string;
                        impl: proc (a: VmArgs) {.closure, gcsafe.}) =
   assert i != nil

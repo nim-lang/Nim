@@ -2162,6 +2162,11 @@ proc getGlobalValue*(c: PCtx; s: PSym): PNode =
   internalAssert c.config, s.kind in {skLet, skVar} and sfGlobal in s.flags
   result = c.globals[s.position-1]
 
+proc setGlobalValue*(c: PCtx; s: PSym, val: PNode) =
+  ## Does not do type checking so ensure the `val` matches the `s.typ`
+  internalAssert c.config, s.kind in {skLet, skVar} and sfGlobal in s.flags
+  c.globals[s.position-1] = val
+
 include vmops
 
 proc setupGlobalCtx*(module: PSym; graph: ModuleGraph; idgen: IdGenerator) =

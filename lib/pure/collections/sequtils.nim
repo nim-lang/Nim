@@ -169,7 +169,7 @@ func cycle*[T](s: openArray[T], n: Natural): seq[T] =
       result[o] = e
       inc o
 
-func repeat*[T](x: T, n: Natural): seq[T] =
+proc repeat*[T](x: T, n: Natural): seq[T] =
   ## Returns a new sequence with the item `x` repeated `n` times.
   ## `n` must be a non-negative number (zero or more).
   ##
@@ -246,7 +246,7 @@ func maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
 
 
 template zipImpl(s1, s2, retType: untyped): untyped =
-  func zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
+  proc zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
     ## Returns a new sequence with a combination of the two input containers.
     ##
     ## The input containers can be of different types.
@@ -289,7 +289,7 @@ when (NimMajor, NimMinor) <= (1, 0):
 else:
   zipImpl(s1, s2, seq[(S, T)])
 
-func unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
+proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
   ## Returns a tuple of two sequences split out from a sequence of 2-field tuples.
   runnableExamples:
     let
