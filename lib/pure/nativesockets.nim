@@ -479,7 +479,7 @@ when not useNimNetLite:
       result = newString(addrLen)
       let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
       when not useWinVersion:
-        if posix.inet_ntop(posix.AF_INET6, addr6, addr result[0],
+        if posix.inet_ntop(posix.AF_INET6.TSa_Family, addr6, addr result[0],
                           result.len.int32) == nil:
           raiseOSError(osLastError())
         if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
@@ -507,7 +507,7 @@ when not useNimNetLite:
     if sockAddr.sa_family.cint == nativeAfInet:
       let addr4 = addr cast[ptr Sockaddr_in](sockAddr).sin_addr
       when not useWinVersion:
-        if posix.inet_ntop(posix.AF_INET, addr4, addr strAddress[0],
+        if posix.inet_ntop(posix.AF_INET.TSa_Family, addr4, addr strAddress[0],
                           strAddress.len.int32) == nil:
           raiseOSError(osLastError())
       else:
@@ -517,7 +517,7 @@ when not useNimNetLite:
     elif sockAddr.sa_family.cint == nativeAfInet6:
       let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
       when not useWinVersion:
-        if posix.inet_ntop(posix.AF_INET6, addr6, addr strAddress[0],
+        if posix.inet_ntop(posix.AF_INET6.TSa_Family, addr6, addr strAddress[0],
                           strAddress.len.int32) == nil:
           raiseOSError(osLastError())
         if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
@@ -581,7 +581,7 @@ when not useNimNetLite:
         raiseOSError(osLastError())
       # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
       result[0] = newString(64)
-      if inet_ntop(name.sin6_family.cint,
+      if inet_ntop(name.sin6_family,
           addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
         raiseOSError(osLastError())
       setLen(result[0], result[0].cstring.len)
@@ -618,7 +618,7 @@ when not useNimNetLite:
         raiseOSError(osLastError())
       # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
       result[0] = newString(64)
-      if inet_ntop(name.sin6_family.cint,
+      if inet_ntop(name.sin6_family,
           addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
         raiseOSError(osLastError())
       setLen(result[0], result[0].cstring.len)
@@ -656,7 +656,7 @@ when useNimNetLite:
 
     result = newString(nl)
     let namePtr = result.cstring()
-    if namePtr == inet_ntop(af_family.cint, si_addr, namePtr, nl):
+    if namePtr == inet_ntop(af_family, si_addr, namePtr, nl):
       result.setLen(len(namePtr))
       if v4Slice > 0: result.setSlice(v4Slice.int ..< nl.int)
     else:

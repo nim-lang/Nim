@@ -1245,7 +1245,7 @@ proc getLocalAddr*(socket: Socket): (string, Port) =
   ## This is high-level interface for `getsockname`:idx:.
   getLocalAddr(socket.fd, socket.domain)
 
-when not useNimNetLite:
+when not defined(nimNetLite) and not defined(zephyr):
   proc getPeerAddr*(socket: Socket): (string, Port) =
     ## Get the socket's peer address and port number.
     ##
@@ -1262,7 +1262,7 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool,
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
-when defined(nimdoc) or (defined(posix) and not useNimNetLite):
+when not defined(nimNetLite) and not defined(zephyr) and (defined(posix) or defined(nimdoc)):
   proc connectUnix*(socket: Socket, path: string) =
     ## Connects to Unix socket on `path`.
     ## This only works on Unix-style systems: Mac OS X, BSD and Linux

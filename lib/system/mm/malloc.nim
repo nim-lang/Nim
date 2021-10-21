@@ -2,22 +2,27 @@
 {.push stackTrace: off.}
 
 proc allocImpl(size: Natural): pointer =
+  # c_printf("\talloc: memory: %d\n", size);
   result = c_malloc(size.csize_t)
   when defined(zephyr):
     if result == nil:
-      raiseOutOfMem()
+      c_printf("alloc:out of memory: s: %d\n", size);
+      raise newException(OutOfMemDefect, "oom")
 
 proc alloc0Impl(size: Natural): pointer =
+  # c_printf("\talloc0: memory: %d\n", size);
   result = c_calloc(size.csize_t, 1)
   when defined(zephyr):
     if result == nil:
-      raiseOutOfMem()
+      c_printf("\talloc0: out of memory: s: %d\n", size);
+      raise newException(OutOfMemDefect, "oom")
 
 proc reallocImpl(p: pointer, newSize: Natural): pointer =
   result = c_realloc(p, newSize.csize_t)
   when defined(zephyr):
     if result == nil:
-      raiseOutOfMem()
+      c_printf("\trealloc: out of memory: s: %d\n", newSize);
+      raise newException(OutOfMemDefect, "oom")
 
 proc realloc0Impl(p: pointer, oldsize, newSize: Natural): pointer =
   result = realloc(p, newSize.csize_t)
@@ -25,6 +30,7 @@ proc realloc0Impl(p: pointer, oldsize, newSize: Natural): pointer =
     zeroMem(cast[pointer](cast[int](result) + oldSize), newSize - oldSize)
 
 proc deallocImpl(p: pointer) =
+  # c_printf("\tfree: memory: %p\n", p);
   c_free(p)
 
 
