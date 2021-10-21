@@ -74,6 +74,7 @@ _nim() {
     '*--cpu=arm64[compile for ARM64 architecture]' \
     '*--cpu=avr[compile for AVR architecture]' \
     '*--cpu=esp[compile for ESP architecture]' \
+    '*--cpu=e2k[compile for Elbrus 2000 architecture]' \
     '*--cpu=hppa[compile for HPPA architecture]' \
     '*--cpu=i386[compile for i386 architecture]' \
     '*--cpu=ia64[compile for ia64 architecture]' \
