@@ -580,6 +580,10 @@ span.tok {
   margin-right: 0.2em;
 }
 
+.copyToClipBoard {
+  position: relative;
+}
+
 pre {
   font-family: "Source Code Pro", Monaco, Menlo, Consolas, "Courier New", monospace;
   color: var(--text);
@@ -598,19 +602,25 @@ pre {
   border: 1px solid var(--border);
   -webkit-border-radius: 6px;
   -moz-border-radius: 6px;
-  border-radius: 6px;
-  position:relative; }
+  border-radius: 6px; 
+}
 
-pre:hover:after {
-  content: '';
+.copyToClipBoardBtn {
+  visibility: hidden;
   position: absolute;
   width: 24px;
-  height: 24px;
   border-radius: 4px;
   background-image: var(--clipboard-image);
   right: 5px;
-  top: 5px;
+  top: 13px;
+  background-color: var(--secondary-background);
+  padding: 11px;
+  border: 0;
 }
+
+.copyToClipBoard:hover .copyToClipBoardBtn {
+  visibility: visible;
+} 
 
 .pre-scrollable {
   max-height: 340px;

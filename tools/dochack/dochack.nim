@@ -345,28 +345,34 @@ proc search*() {.exportc.} =
 proc copyToClipboard*() {.exportc.} =
     {.emit: """
 
-   function fallbackCopyTextToClipboard(e) {
-      if (document.selection) { // IE
-          var range = document.body.createTextRange();
-          range.moveToElementText(e.target);
-          range.select();
-      } else if (window.getSelection) {
-          var range = document.createRange();
-          range.selectNode(e.target);
-          window.getSelection().removeAllRanges();
-          window.getSelection().addRange(range);
-      }
-        document.execCommand("copy");
-        e.target.style.setProperty("--clipboard-image", "var(--clipboard-image-selected)")
+    function updatePreTags() {
+
+      const allPreTags = document.querySelectorAll("pre")
+    
+      allPreTags.forEach((e) => {
+      
+          const div = document.createElement("div")
+          div.classList.add("copyToClipBoard")
+    
+          const preTag = document.createElement("pre")
+          preTag.innerHTML = e.innerHTML
+    
+          const button = document.createElement("button")
+          button.value = e.innerText
+          button.classList.add("copyToClipBoardBtn")
+    
+          div.appendChild(preTag)
+          div.appendChild(button)
+    
+          e.outerHTML = div.outerHTML
+      
+      })
     }
 
-    function copyTextToClipboard(e) {
-        if (!navigator.clipboard) {
-            fallbackCopyTextToClipboard(e);
-            return;
-        }
 
-        navigator.clipboard.writeText(e.target.innerText).then(function() {
+    function copyTextToClipboard(e) {
+        const clipBoardContent = e.target.value
+        navigator.clipboard.writeText(clipBoardContent).then(function() {
             e.target.style.setProperty("--clipboard-image", "var(--clipboard-image-selected)")
         }, function(err) {
             console.error("Could not copy text: ", err);
@@ -374,17 +380,18 @@ proc copyToClipboard*() {.exportc.} =
     }
 
     window.addEventListener("click", (e) => {
-        if (e.target.nodeName === "PRE") {
+        if (e.target.classList.contains("copyToClipBoardBtn")) {
             copyTextToClipboard(e)
-        }
+          }
     })
 
-    window.addEventListener('mouseover', (e) => {
-        if (e.target.nodeName === "PRE") {
-            e.target.style.setProperty("--clipboard-image", "var(--clipboard-image-normal)")
+    window.addEventListener("mouseover", (e) => {
+        if (e.target.classList.contains("copyToClipBoard")) {
+            e.target.children[1].style.setProperty("--clipboard-image", "var(--clipboard-image-normal)")
         }
-
     })
+    
+    window.addEventListener("DOMContentLoaded", updatePreTags)
 
     """
     .}
