@@ -829,6 +829,8 @@ proc abs*(a: Duration): Duration =
       initDuration(milliseconds = 1500)
   initDuration(seconds = abs(a.seconds), nanoseconds = -a.nanosecond)
 
+when defined(nimHasCustomLiterals): include includes/duration_lit
+
 #
 # Time
 #
