@@ -155,9 +155,9 @@ when not defined(zephyr):
   proc inet_addr*(a1: cstring): InAddrT {.importc, header: "<arpa/inet.h>".}
   proc inet_ntoa*(a1: InAddr): cstring {.importc, header: "<arpa/inet.h>".}
 
-proc inet_ntop*(a1: cint, a2: ptr InAddr | ptr In6Addr, a3: cstring, a4: int32): cstring {.
+proc inet_ntop*(a1: cint, a2: pointer, a3: cstring, a4: int32): cstring {.
   importc:"(char *)$1", header: "<arpa/inet.h>".}
-proc inet_pton*(a1: cint, a2: cstring, a3: ptr InAddr | ptr In6Addr): cint {.
+proc inet_pton*(a1: cint, a2: cstring, a3: pointer): cint {.
   importc, header: "<arpa/inet.h>".}
 
 var
@@ -1121,6 +1121,20 @@ proc setrlimit*(resource: cint, rlp: var RLimit): cint
 proc getrlimit*(resource: cint, rlp: var RLimit): cint
       {.importc: "getrlimit",header: "<sys/resource.h>".}
   ## The getrlimit() system call gets resource limits.
+
+when defined(linux) or defined(windows) or defined(macosx) or defined(bsd):
+  template maxDescriptors*(): int =
+    ## Returns the maximum number of active file descriptors for the current
+    ## process. This involves a system call. For now `maxDescriptors` is
+    ## supported on the following OSes: Windows, Linux, OSX, BSD.
+    var fdLim: RLimit
+    var res = int(getrlimit(RLIMIT_NOFILE, fdLim))
+    if res >= 0:
+      res = int(fdLim.rlim_cur) - 1
+    res
+when defined(zephyr) or defined(freertos):
+  template maxDescriptors*(): int =
+    result = FD_MAX
 
 when defined(nimHasStyleChecks):
   {.pop.} # {.push styleChecks: off.}

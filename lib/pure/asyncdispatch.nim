@@ -1972,3 +1972,16 @@ proc activeDescriptors*(): int {.inline.} =
 
 when defined(posix):
   import posix
+
+when defined(linux) or defined(windows) or defined(macosx) or defined(bsd):
+  proc maxDescriptors*(): int {.raises: OSError.} =
+    ## Returns the maximum number of active file descriptors for the current
+    ## process. This involves a system call. For now `maxDescriptors` is
+    ## supported on the following OSes: Windows, Linux, OSX, BSD.
+    when defined(windows):
+      result = 16_700_000
+    else:
+      var fdLim: RLimit
+      if getrlimit(RLIMIT_NOFILE, fdLim) < 0:
+        raiseOSError(osLastError())
+      result = int(fdLim.rlim_cur) - 1
