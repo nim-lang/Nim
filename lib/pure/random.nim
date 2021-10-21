@@ -20,11 +20,6 @@
 ## ===========
 ##
 runnableExamples:
-  # Call randomize() once to initialize the default random number generator.
-  # If this is not called, the same results will occur every time these
-  # examples are run.
-  randomize()
-
   # Pick a number in 0..100.
   let num = rand(100)
   doAssert num in 0..100
