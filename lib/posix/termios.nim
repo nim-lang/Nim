@@ -237,8 +237,11 @@ proc tcFlow*(fd: cint; action: cint): cint {.importc: "tcflow",
     header: "<termios.h>".}
 # Get process group ID for session leader for controlling terminal FD.
 
-# Window size ioctl.  Should work on on any Unix that xterm has been ported to.
-var TIOCGWINSZ*{.importc, header: "<sys/ioctl.h>".}: culong
+# Window size ioctl.  Solaris based systems have an uncommen place for this.
+when defined(solaris) or defined(sunos):
+  var TIOCGWINSZ*{.importc, header: "<sys/termios.h>".}: culong
+else:
+  var TIOCGWINSZ*{.importc, header: "<sys/ioctl.h>".}: culong
 
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
