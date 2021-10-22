@@ -150,12 +150,11 @@ when defined(zephyr) and not defined(zephyrUseLibcMalloc):
   proc c_free*(p: pointer) {.
     importc: "k_free", header: "<kernel.h>".}
   proc c_realloc*(p: pointer, newsize: csize_t): pointer =
+    # Zephyr's kernel malloc doesn't support realloc
     result = c_malloc(newSize)
-    if result == nil:
+    if not result.isNil():
+      copyMem(result, p, newSize)
       c_free(p)
-      return nil
-    copyMem(result, p, newSize) # todo: fixme?
-    c_free(p)
 else:
   proc c_malloc*(size: csize_t): pointer {.
     importc: "malloc", header: "<stdlib.h>".}
