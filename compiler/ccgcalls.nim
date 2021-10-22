@@ -214,7 +214,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
   else:
     var a: TLoc
     initLocExpr(p, if n.kind == nkHiddenStdConv: n[1] else: n, a)
-    case skipTypes(a.t, abstractVar).kind
+    case skipTypes(a.t, abstractVar+{tyStatic}).kind
     of tyOpenArray, tyVarargs:
       if reifiedOpenArray(n):
         if a.t.kind in {tyVar, tyLent}:
