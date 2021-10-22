@@ -150,6 +150,10 @@ macro async*(arg: untyped): untyped =
   else:
     result = generateJsasync(arg)
 
+proc jsAwait(a: JsObject): JsObject {.importjs: "await #".} 
+  ## A helper for awaiting raw JsObjects in
+  ## async procedures.
+
 proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.importjs: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
   ## into promises and async procedures.
