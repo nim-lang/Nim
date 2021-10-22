@@ -150,7 +150,7 @@ macro async*(arg: untyped): untyped =
   else:
     result = generateJsasync(arg)
 
-proc jsAwait(a: JsObject): JsObject {.importjs: "await #".} 
+proc jsAwait*(a: auto): JsObject {.importjs: "(await #)".} 
   ## A helper for awaiting raw JsObjects in
   ## async procedures.
 
