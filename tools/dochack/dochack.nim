@@ -358,7 +358,7 @@ proc copyToClipboard*() {.exportc.} =
           preTag.innerHTML = e.innerHTML
     
           const button = document.createElement("button")
-          button.value = e.innerText
+          button.value = e.textContent.replace('...', '') 
           button.classList.add("copyToClipBoardBtn")
     
           div.appendChild(preTag)
@@ -386,8 +386,8 @@ proc copyToClipboard*() {.exportc.} =
     })
 
     window.addEventListener("mouseover", (e) => {
-        if (e.target.classList.contains("copyToClipBoard")) {
-            e.target.children[1].style.setProperty("--clipboard-image", "var(--clipboard-image-normal)")
+        if (e.target.nodeName === "PRE") {
+            e.target.nextElementSibling.style.setProperty("--clipboard-image", "var(--clipboard-image-normal)")
         }
     })
     
