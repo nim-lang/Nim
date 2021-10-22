@@ -121,7 +121,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
       internalError(p.config, "openArrayLoc: " & typeToString(a.t))
   else:
     initLocExpr(p, n, a)
-    case skipTypes(a.t, abstractVar).kind
+    case skipTypes(a.t, abstractVar+{tyStatic}).kind
     of tyOpenArray, tyVarargs:
       result = "$1, $1Len_0" % [rdLoc(a)]
     of tyString, tySequence:
