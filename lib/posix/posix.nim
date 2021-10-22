@@ -1134,7 +1134,7 @@ when defined(linux) or defined(windows) or defined(macosx) or defined(bsd):
     res
 when defined(zephyr) or defined(freertos):
   template maxDescriptors*(): int =
-    result = FD_MAX
+    FD_MAX
 
 when defined(nimHasStyleChecks):
   {.pop.} # {.push styleChecks: off.}
