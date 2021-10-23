@@ -43,6 +43,8 @@ proc callClosures() {.noconv.} =
       case fun.kind
       of kClosure: fun.fun1()
       of kNoconv: fun.fun2()
+  
+  deinitLock gFunsLock
 
 template fun() =
   if gFuns.len == 0:

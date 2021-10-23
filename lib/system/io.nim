@@ -780,6 +780,9 @@ when declared(stdout):
     var echoLock: SysLock
     initSysLock echoLock
 
+    import std/exitprocs
+    addExitProc(proc() {.noconv.} = deinitSys echoLock)
+
   const stdOutLock = not defined(windows) and not defined(android) and
                      not defined(nintendoswitch) and not defined(freertos) and
                      hostOS != "any"
