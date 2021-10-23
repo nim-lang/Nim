@@ -152,6 +152,7 @@ when defined(zephyr) and not defined(zephyrUseLibcMalloc):
   proc c_realloc*(p: pointer, newsize: csize_t): pointer =
     # Zephyr's kernel malloc doesn't support realloc
     result = c_malloc(newSize)
+    # match the ansi c behavior
     if not result.isNil():
       copyMem(result, p, newSize)
       c_free(p)
