@@ -10,7 +10,7 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
-when defined(freertos):
+when defined(freertos) or defined(zephyr):
   const
     hasSpawnH = false # should exist for every Posix system nowadays
     hasAioH = false
@@ -391,9 +391,29 @@ when hasSpawnH:
                                  header: "<spawn.h>", final, pure.} = object
 
 when defined(linux):
+  const Sockaddr_max_length* = 255
   # from sys/un.h
   const Sockaddr_un_path_length* = 108
+elif defined(zephyr):
+  when defined(net_ipv6):
+    const Sockaddr_max_length* = 24
+  elif defined(net_raw):
+    const Sockaddr_max_length* = 20
+  else:
+    const Sockaddr_max_length* = 8
+  const Sockaddr_un_path_length* = Sockaddr_max_length
+  # Zephyr is heavily customizable so it's easy to get to a state  
+  # where Nim & Zephyr IPv6 settings are out of sync, causing painful runtime failures. 
+  {.emit: ["NIM_STATIC_ASSERT(NET_SOCKADDR_MAX_SIZE == ",
+      Sockaddr_max_length,
+      ",\"NET_SOCKADDR_MAX_SIZE and Sockaddr_max_length size mismatch!",
+      " Check that Nim and Zephyr IPv4/IPv6 settings match.",
+      " Try adding -d:net_ipv6 to enable IPv6 for Nim on Zephyr.\" );"].}
+elif defined(freertos) or defined(lwip):
+  const Sockaddr_max_length* = 14
+  const Sockaddr_un_path_length* = 108
 else:
+  const Sockaddr_max_length* = 255
   # according to http://pubs.opengroup.org/onlinepubs/009604499/basedefs/sys/un.h.html
   # this is >=92
   const Sockaddr_un_path_length* = 92
@@ -408,47 +428,49 @@ when defined(lwip):
                 pure, final.} = object ## struct sockaddr
       sa_len*: uint8         ## Address family.
       sa_family*: TSa_Family         ## Address family.
-      sa_data*: array[0..255, char] ## Socket address (variable-length data).
+      sa_data*: array[0..Sockaddr_max_length-sizeof(uint8)-sizeof(TSa_Family), char] ## Socket address (variable-length data).
+
+    Sockaddr_storage* {.importc: "struct sockaddr_storage",
+                        header: "<sys/socket.h>",
+                        pure, final.} = object ## struct sockaddr_storage
+      s2_len*: uint8 ## Address family.
+      ss_family*: TSa_Family ## Address family.
+      s2_data1*: array[2, char] ## Address family.
+      s2_data2*: array[3, uint32] ## Address family.
+      when defined(lwip6) or defined(net_ipv6):
+        s2_data3*: array[3, uint32] ## Address family.
+elif defined(zephyr):
+  type
+    SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
+                pure, final.} = object ## struct sockaddr
+      sa_family*: TSa_Family         ## Address family.
+      data*: array[0..Sockaddr_max_length-sizeof(TSa_Family), char] ## Socket address (variable-length data).
+
+    Sockaddr_storage* {.importc: "struct sockaddr_storage",
+                        header: "<sys/socket.h>",
+                        pure, final.} = object ## struct sockaddr_storage
+      ss_family*: TSa_Family ## Address family.
+      data*: array[0..Sockaddr_max_length-sizeof(TSa_Family), char] ## Socket address (variable-length data).
+  {.emit: ["NIM_STATIC_ASSERT(sizeof(struct sockaddr) == ", sizeof(Sockaddr), ",\"struct size mismatch\" );"].}
+  {.emit: ["NIM_STATIC_ASSERT(sizeof(struct sockaddr_storage) == ", sizeof(Sockaddr_storage), ",\"struct size mismatch\" );"].}
 else:
   type
     SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
                 pure, final.} = object ## struct sockaddr
       sa_family*: TSa_Family         ## Address family.
-      sa_data*: array[0..255, char] ## Socket address (variable-length data).
+      sa_data*: array[0..Sockaddr_max_length-sizeof(TSa_Family), char] ## Socket address (variable-length data).
+
+    Sockaddr_storage* {.importc: "struct sockaddr_storage",
+                        header: "<sys/socket.h>",
+                        pure, final.} = object ## struct sockaddr_storage
+      ss_family*: TSa_Family ## Address family.
 
 type
   Sockaddr_un* {.importc: "struct sockaddr_un", header: "<sys/un.h>",
               pure, final.} = object ## struct sockaddr_un
     sun_family*: TSa_Family         ## Address family.
-    sun_path*: array[0..Sockaddr_un_path_length-1, char] ## Socket path
+    sun_path*: array[0..Sockaddr_un_path_length-sizeof(TSa_Family), char] ## Socket path
 
-
-when defined(lwip):
-  when not defined(lwip6):
-    type
-      Sockaddr_storage* {.importc: "struct sockaddr_storage",
-                          header: "<sys/socket.h>",
-                          pure, final.} = object ## struct sockaddr_storage
-        s2_len*: uint8 ## Address family.
-        ss_family*: TSa_Family ## Address family.
-        s2_data1*: array[2, char] ## Address family.
-        s2_data2*: array[3, uint32] ## Address family.
-  else:
-    type
-      Sockaddr_storage* {.importc: "struct sockaddr_storage",
-                          header: "<sys/socket.h>",
-                          pure, final.} = object ## struct sockaddr_storage
-        s2_len*: uint8 ## Address family.
-        ss_family*: TSa_Family ## Address family.
-        s2_data1*: array[2, char] ## Address family.
-        s2_data2*: array[3, uint32] ## Address family.
-        s2_data3*: array[3, uint32] ## Address family.
-else:
-  type
-    Sockaddr_storage* {.importc: "struct sockaddr_storage",
-                        header: "<sys/socket.h>",
-                        pure, final.} = object ## struct sockaddr_storage
-      ss_family*: TSa_Family ## Address family.
 
 type
   Tif_nameindex* {.importc: "struct if_nameindex", final,
@@ -494,6 +516,7 @@ type
              header: "<netinet/in.h>".} = object ## struct in_addr
     s_addr*: InAddrScalar
 
+  # TODO: Fixme for FreeRTOS/LwIP, these are incorrect
   Sockaddr_in* {.importc: "struct sockaddr_in", pure, final,
                   header: "<netinet/in.h>".} = object ## struct sockaddr_in
     sin_family*: TSa_Family ## AF_INET.
@@ -577,7 +600,12 @@ when not defined(lwip):
       events*: cshort  ## The input event flags (see below).
       revents*: cshort ## The output event flags (see below).
 
-    Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = cint
+  when defined(zephyr):
+    type
+      Tnfds* = distinct cint
+  else:
+    type
+      Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = cint
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable
@@ -625,7 +653,7 @@ elif defined(solaris):
   # Solaris doesn't have MSG_NOSIGNAL
   const
     MSG_NOSIGNAL* = 0'i32
-elif defined(freertos) or defined(lwip):
+elif defined(zephyr) or defined(freertos) or defined(lwip):
   # LwIP/FreeRTOS doesn't have MSG_NOSIGNAL
   const
     MSG_NOSIGNAL* = 0x20'i32
