@@ -787,8 +787,11 @@ when declared(stdout):
       import std/exitprocs
       addExitProc(proc() {.noconv.} = deinitSys echoLock)
 
-  const stdOutLock = not defined(windows) and not defined(android) and
-                     not defined(nintendoswitch) and not defined(freertos) and
+  const stdOutLock = not defined(windows) and
+                     not defined(android) and
+                     not defined(nintendoswitch) and
+                     not defined(freertos) and
+                     not defined(zephyr) and
                      hostOS != "any"
 
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
