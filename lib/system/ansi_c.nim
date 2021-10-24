@@ -142,14 +142,29 @@ proc c_sprintf*(buf, frmt: cstring): cint {.
   importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
-proc c_malloc*(size: csize_t): pointer {.
-  importc: "malloc", header: "<stdlib.h>".}
-proc c_calloc*(nmemb, size: csize_t): pointer {.
-  importc: "calloc", header: "<stdlib.h>".}
-proc c_free*(p: pointer) {.
-  importc: "free", header: "<stdlib.h>".}
-proc c_realloc*(p: pointer, newsize: csize_t): pointer {.
-  importc: "realloc", header: "<stdlib.h>".}
+when defined(zephyr) and not defined(zephyrUseLibcMalloc):
+  proc c_malloc*(size: csize_t): pointer {.
+    importc: "k_malloc", header: "<kernel.h>".}
+  proc c_calloc*(nmemb, size: csize_t): pointer {.
+    importc: "k_calloc", header: "<kernel.h>".}
+  proc c_free*(p: pointer) {.
+    importc: "k_free", header: "<kernel.h>".}
+  proc c_realloc*(p: pointer, newsize: csize_t): pointer =
+    # Zephyr's kernel malloc doesn't support realloc
+    result = c_malloc(newSize)
+    # match the ansi c behavior
+    if not result.isNil():
+      copyMem(result, p, newSize)
+      c_free(p)
+else:
+  proc c_malloc*(size: csize_t): pointer {.
+    importc: "malloc", header: "<stdlib.h>".}
+  proc c_calloc*(nmemb, size: csize_t): pointer {.
+    importc: "calloc", header: "<stdlib.h>".}
+  proc c_free*(p: pointer) {.
+    importc: "free", header: "<stdlib.h>".}
+  proc c_realloc*(p: pointer, newsize: csize_t): pointer {.
+    importc: "realloc", header: "<stdlib.h>".}
 
 proc c_fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): cint {.
   importc: "fwrite", header: "<stdio.h>".}

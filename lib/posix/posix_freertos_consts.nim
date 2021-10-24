@@ -363,6 +363,8 @@ var SEM_FAILED* {.importc: "SEM_FAILED", header: "<semaphore.h>".}: pointer
 # <sys/resource.h>
 # var RLIMIT_NOFILE* {.importc: "RLIMIT_NOFILE", header: "<sys/resource.h>".}: cint
 
+var FD_MAX* {.importc: "CONFIG_LWIP_MAX_SOCKETS", header: "<lwipopts.h>".}: cint
+
 # <sys/select.h>
 var FD_SETSIZE* {.importc: "FD_SETSIZE", header: "<sys/select.h>".}: cint
 

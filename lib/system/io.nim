@@ -347,7 +347,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
     ## availability with `declared() <system.html#declared,untyped>`.
     when SupportIoctlInheritCtl:
       result = c_ioctl(f, if inheritable: FIONCLEX else: FIOCLEX) != -1
-    elif defined(freertos):
+    elif defined(freertos) or defined(zephyr):
       result = true
     elif defined(posix):
       var flags = c_fcntl(f, F_GETFD)
@@ -780,8 +780,11 @@ when declared(stdout):
     var echoLock: SysLock
     initSysLock echoLock
 
-  const stdOutLock = not defined(windows) and not defined(android) and
-                     not defined(nintendoswitch) and not defined(freertos) and
+  const stdOutLock = not defined(windows) and
+                     not defined(android) and
+                     not defined(nintendoswitch) and
+                     not defined(freertos) and
+                     not defined(zephyr) and
                      hostOS != "any"
 
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
