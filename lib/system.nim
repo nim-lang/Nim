@@ -2413,8 +2413,10 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
     when nimvm:
       echo errormsg
     else:
-      cstderr.rawWrite(errormsg)
-      cstderr.rawWrite("\n")
+      let strm = if errorcode == QuitSuccess: cstdout else: cstderr
+
+      strm.rawWrite(errormsg)
+      strm.rawWrite("\n")
   quit(errorcode)
 
 {.pop.} # checks: off
