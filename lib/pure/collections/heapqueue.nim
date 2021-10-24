@@ -46,6 +46,7 @@ runnableExamples:
 
 
 import std/private/since
+import system/dollars
 
 type HeapQueue*[T] = object
   ## A heap queue, commonly known as a priority queue.
@@ -244,8 +245,4 @@ proc `$`*[T](heap: HeapQueue[T]): string =
     let heap = [1, 2].toHeapQueue
     assert $heap == "[1, 2]"
 
-  result = "["
-  for x in heap.data:
-    if result.len > 1: result.add(", ")
-    result.addQuoted(x)
-  result.add("]")
+  collectionToString(heap.data, "[", ", ", "]")

@@ -50,7 +50,7 @@ runnableExamples:
 ## * `channels module <channels_builtin.html>`_ for inter-thread communication
 
 import std/private/since
-
+import system/dollars
 import math
 
 type
@@ -451,9 +451,4 @@ proc `$`*[T](deq: Deque[T]): string =
   runnableExamples:
     let a = [10, 20, 30].toDeque
     assert $a == "[10, 20, 30]"
-
-  result = "["
-  for x in deq:
-    if result.len > 1: result.add(", ")
-    result.addQuoted(x)
-  result.add("]")
+  collectionToString(deq, "[", ", ", "]")

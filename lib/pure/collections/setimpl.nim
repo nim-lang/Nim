@@ -14,6 +14,7 @@ template maxHash(t): untyped = high(t.data)
 template dataLen(t): untyped = len(t.data)
 
 include hashcommon
+import system/dollars
 
 template initImpl(s: typed, size: int) =
   let correctSize = slotsNeeded(size)
@@ -95,11 +96,8 @@ proc exclImpl[A](s: var HashSet[A], key: A): bool {.inline.} =
       s.data[j] = move(s.data[i]) # data[i] will be marked EMPTY next loop
 
 template dollarImpl() {.dirty.} =
-  result = "{"
-  for key in items(s):
-    if result.len > 1: result.add(", ")
-    result.addQuoted(key)
-  result.add("}")
+  collectionToString(items(s), "{", ", ", "}")
+
 
 
 

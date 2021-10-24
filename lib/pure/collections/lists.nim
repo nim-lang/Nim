@@ -59,6 +59,7 @@ runnableExamples:
 ## * `sharedlist module <sharedlist.html>`_ for shared singly-linked lists
 
 import std/private/since
+import system/dollars
 
 when not defined(nimHasCursor):
   {.pragma: cursor.}
@@ -326,11 +327,8 @@ proc `$`*[T](L: SomeLinkedCollection[T]): string =
     let a = [1, 2, 3, 4].toSinglyLinkedList
     assert $a == "[1, 2, 3, 4]"
 
-  result = "["
-  for x in nodes(L):
-    if result.len > 1: result.add(", ")
-    result.addQuoted(x.value)
-  result.add("]")
+  collectionToString(nodes(L), "[", ", ", "]")
+
 
 proc find*[T](L: SomeLinkedCollection[T], value: T): SomeLinkedNode[T] =
   ## Searches in the list for a value. Returns `nil` if the value does not
