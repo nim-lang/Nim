@@ -85,12 +85,14 @@ runnableExamples("-r:off"):
 
 import std/private/since
 
-import nativesockets, os, strutils, times, sets, options, std/monotimes
+import nativesockets
+import os, strutils, times, sets, options, std/monotimes
 import ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
 
 const useWinVersion = defined(windows) or defined(nimdoc)
+const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr)
 const defineSsl = defined(ssl) or defined(nimdoc)
 
 when useWinVersion:
@@ -1243,11 +1245,12 @@ proc getLocalAddr*(socket: Socket): (string, Port) =
   ## This is high-level interface for `getsockname`:idx:.
   getLocalAddr(socket.fd, socket.domain)
 
-proc getPeerAddr*(socket: Socket): (string, Port) =
-  ## Get the socket's peer address and port number.
-  ##
-  ## This is high-level interface for `getpeername`:idx:.
-  getPeerAddr(socket.fd, socket.domain)
+when not useNimNetLite:
+  proc getPeerAddr*(socket: Socket): (string, Port) =
+    ## Get the socket's peer address and port number.
+    ##
+    ## This is high-level interface for `getpeername`:idx:.
+    getPeerAddr(socket.fd, socket.domain)
 
 proc setSockOpt*(socket: Socket, opt: SOBool, value: bool,
     level = SOL_SOCKET) {.tags: [WriteIOEffect].} =
@@ -1259,7 +1262,7 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool,
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
-when defined(posix) or defined(nimdoc):
+when defined(nimdoc) or (defined(posix) and not useNimNetLite):
   proc connectUnix*(socket: Socket, path: string) =
     ## Connects to Unix socket on `path`.
     ## This only works on Unix-style systems: Mac OS X, BSD and Linux

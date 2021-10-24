@@ -15,6 +15,7 @@ const
   PageSize = 1 shl PageShift
   PageMask = PageSize-1
 
+
   MemAlign = # also minimal allocatable memory block
     when defined(useMalloc):
       when defined(amd64): 16 
