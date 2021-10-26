@@ -334,14 +334,14 @@ when defined(windows):
     if setConsoleCursorInfo(h, addr(ccsi)) == 0:
       raiseOSError(osLastError())
 
-proc hideCursor*() =
+proc hideCursor*(f: File) =
   ## Hides the cursor.
   when defined(windows):
     setCursorVisibility(f, false)
   else:
     f.write("\e[?25l")
 
-proc showCursor*() =
+proc showCursor*(f: File) =
   ## Shows the cursor.
   when defined(windows):
     setCursorVisibility(f, true)
