@@ -179,7 +179,7 @@ when defined(windows):
     return 80
 
   proc terminalHeight*(): int =
-    ## Returns the terminal height in rows
+    ## Returns the terminal height in rows.
     var h: int = 0
     h = terminalHeightIoctl([getStdHandle(STD_INPUT_HANDLE),
                               getStdHandle(STD_OUTPUT_HANDLE),
