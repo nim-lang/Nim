@@ -392,7 +392,7 @@ when defined(windows):
 proc cursorUp*(f: File, count = 1) =
   ## Moves the cursor up by `count` rows.
   runnableExamples("-r:off"):
-    stdout.cursorUp(2) # Moves the cursor up 2 rows in terminal
+    stdout.cursorUp(2)
     write(stdout, "Hello World!") # anything written at that location will be erased/replaced with this
   when defined(windows):
     let h = conHandle(f)
@@ -405,7 +405,7 @@ proc cursorUp*(f: File, count = 1) =
 proc cursorDown*(f: File, count = 1) =
   ## Moves the cursor down by `count` rows.
   runnableExamples("-r:off"):
-    stdout.cursorDown(2) # Moves the cursor down 2 rows in terminal
+    stdout.cursorDown(2)
     write(stdout, "Hello World!") # anything written at that location will be erased/replaced with this
   when defined(windows):
     let h = conHandle(f)
@@ -418,7 +418,7 @@ proc cursorDown*(f: File, count = 1) =
 proc cursorForward*(f: File, count = 1) =
   ## Moves the cursor forward by `count` columns.
   runnableExamples("-r:off"):
-    stdout.cursorForward(2) # Moves the cursor forward by 2 columns in terminal
+    stdout.cursorForward(2)
     write(stdout, "Hello World!") # anything written at that location will be erased/replaced with this
   when defined(windows):
     let h = conHandle(f)
@@ -431,7 +431,7 @@ proc cursorForward*(f: File, count = 1) =
 proc cursorBackward*(f: File, count = 1) =
   ## Moves the cursor backward by `count` columns.
   runnableExamples("-r:off"):
-    stdout.cursorBackward(2) # Moves the cursor backwards by 2 columns in terminal
+    stdout.cursorBackward(2)
     write(stdout, "Hello World!") # anything written at that location will be erased/replaced with this
   when defined(windows):
     let h = conHandle(f)
