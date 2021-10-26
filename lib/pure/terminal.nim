@@ -170,6 +170,7 @@ when defined(windows):
     return 0
 
   proc terminalWidth*(): int =
+    ## Returns the terminal width in columns
     var w: int = 0
     w = terminalWidthIoctl([getStdHandle(STD_INPUT_HANDLE),
                              getStdHandle(STD_OUTPUT_HANDLE),
@@ -178,6 +179,7 @@ when defined(windows):
     return 80
 
   proc terminalHeight*(): int =
+    ## Returns the terminal height in rows
     var h: int = 0
     h = terminalHeightIoctl([getStdHandle(STD_INPUT_HANDLE),
                               getStdHandle(STD_OUTPUT_HANDLE),
@@ -332,14 +334,14 @@ when defined(windows):
     if setConsoleCursorInfo(h, addr(ccsi)) == 0:
       raiseOSError(osLastError())
 
-proc hideCursor*(f: File) =
+proc hideCursor*() =
   ## Hides the cursor.
   when defined(windows):
     setCursorVisibility(f, false)
   else:
     f.write("\e[?25l")
 
-proc showCursor*(f: File) =
+proc showCursor*() =
   ## Shows the cursor.
   when defined(windows):
     setCursorVisibility(f, true)
@@ -389,6 +391,9 @@ when defined(windows):
 
 proc cursorUp*(f: File, count = 1) =
   ## Moves the cursor up by `count` rows.
+  runnableExamples("-r:off"):
+    stdout.cursorUp(2) # Moves the cursor up 2 rows in terminal
+    write(stdout, "Hello World!") # anything written at that location will be erased/replaced with this
   when defined(windows):
     let h = conHandle(f)
     var p = getCursorPos(h)
@@ -399,6 +404,9 @@ proc cursorUp*(f: File, count = 1) =
 
 proc cursorDown*(f: File, count = 1) =
   ## Moves the cursor down by `count` rows.
+  runnableExamples("-r:off"):
+    stdout.cursorDown(2) # Moves the cursor down 2 rows in terminal
+    write(stdout, "Hello World!") # anything written at that location will be erased/replaced with this
   when defined(windows):
     let h = conHandle(f)
     var p = getCursorPos(h)
@@ -409,6 +417,9 @@ proc cursorDown*(f: File, count = 1) =
 
 proc cursorForward*(f: File, count = 1) =
   ## Moves the cursor forward by `count` columns.
+  runnableExamples("-r:off"):
+    stdout.cursorForward(2) # Moves the cursor forward by 2 columns in terminal
+    write(stdout, "Hello World!") # anything written at that location will be erased/replaced with this
   when defined(windows):
     let h = conHandle(f)
     var p = getCursorPos(h)
@@ -419,6 +430,9 @@ proc cursorForward*(f: File, count = 1) =
 
 proc cursorBackward*(f: File, count = 1) =
   ## Moves the cursor backward by `count` columns.
+  runnableExamples("-r:off"):
+    stdout.cursorBackward(2) # Moves the cursor backwards by 2 columns in terminal
+    write(stdout, "Hello World!") # anything written at that location will be erased/replaced with this
   when defined(windows):
     let h = conHandle(f)
     var p = getCursorPos(h)
