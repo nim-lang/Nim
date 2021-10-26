@@ -207,6 +207,42 @@ implementation uses C's `setjmp`:c: function to store all registers
 on the hardware stack. It may be necessary that the new platform needs to
 replace this generic code by some assembler code.
 
+Files that may need changed for your platform include:
+
+* `compiler/platform.nim`
+  Add os/cpu properties.
+* `lib/system.nim`
+  Add os/cpu to the documentation for `system.hostOS` and `system.hostCPU`.
+* `compiler/options.nim`
+  Add special os/cpu property checks in `isDefined`.
+* `compiler/installer.ini`
+  Add os/cpu to `Project.Platforms` field.
+* `lib/system/platforms.nim`
+  Add os/cpu.
+* `lib/pure/include/osseps.nim`
+  Add os specializations.
+* `lib/pure/distros.nim`
+  Add os, package handler.
+* `tools/niminst/makefile.nimf`
+  Add os/cpu compiler/linker flags.
+* `tools/niminst/buildsh.nimf`
+  Add os/cpu compiler/linker flags.
+
+If the `--os` or `--cpu` options aren't passed to the compiler, then Nim will
+determine the current host os, cpu and endianess from `system.cpuEndian`,
+`system.hostOS` and `system.hostCPU`. Those values are derived from
+`compiler/platform.nim`.
+
+In order for the new platform to be bootstrapped from the `csources`, it must:
+
+* have `compiler/platform.nim` updated
+* have `compiler/installer.ini` updated
+* have `tools/niminst/buildsh.nimf` updated
+* have `tools/niminst/makefile.nimf` updated
+* be backported to the Nim version used by the `csources`
+* the new `csources` must be pushed
+* the new `csources` revision must be updated in `config/build_config.txt`
+
 
 Runtime type information
 ========================
