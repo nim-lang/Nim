@@ -1288,75 +1288,89 @@ template isIndirect(x: PSym): bool =
     v.kind notin {skProc, skFunc, skConverter, skMethod, skIterator,
                   skConst, skTemp, skLet})
 
-proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
-  case n[0].kind
-  of nkSym:
-    let s = n[0].sym
-    if s.loc.r == nil: internalError(p.config, n.info, "genAddr: 3")
-    case s.kind
-    of skParam:
-      r.res = s.loc.r
-      r.address = nil
-      r.typ = etyNone
-    of skVar, skLet, skResult:
-      r.kind = resExpr
-      let jsType = mapType(p, n.typ)
-      if jsType == etyObject:
-        # make addr() a no-op:
-        r.typ = etyNone
-        if isIndirect(s):
-          r.res = s.loc.r & "[0]"
-        else:
-          r.res = s.loc.r
-        r.address = nil
-      elif {sfGlobal, sfAddrTaken} * s.flags != {} or jsType == etyBaseIndex:
-        # for ease of code generation, we do not distinguish between
-        # sfAddrTaken and sfGlobal.
-        r.typ = etyBaseIndex
-        r.address = s.loc.r
-        r.res = rope("0")
+proc genSymAddr(p: PProc, n: PNode, typ: PType, r: var TCompRes) = 
+  let s = n.sym
+  if s.loc.r == nil: internalError(p.config, n.info, "genAddr: 3")
+  case s.kind
+  of skParam:
+    r.res = s.loc.r
+    r.address = nil
+    r.typ = etyNone
+  of skVar, skLet, skResult:
+    r.kind = resExpr
+    let jsType = mapType(p):
+      if typ.isNil:
+        n.typ
       else:
-        # 'var openArray' for instance produces an 'addr' but this is harmless:
-        gen(p, n[0], r)
-        #internalError(p.config, n.info, "genAddr: 4 " & renderTree(n))
-    else: internalError(p.config, n.info, $("genAddr: 2", s.kind))
-  of nkCheckedFieldExpr:
-    genCheckedFieldOp(p, n[0], n.typ, r)
-  of nkDotExpr:
-    if mapType(p, n.typ) == etyBaseIndex:
-      genFieldAddr(p, n[0], r)
+        typ
+    if jsType == etyObject:
+      # make addr() a no-op:
+      r.typ = etyNone
+      if isIndirect(s):
+        r.res = s.loc.r & "[0]"
+      else:
+        r.res = s.loc.r
+      r.address = nil
+    elif {sfGlobal, sfAddrTaken} * s.flags != {} or jsType == etyBaseIndex:
+      # for ease of code generation, we do not distinguish between
+      # sfAddrTaken and sfGlobal.
+      r.typ = etyBaseIndex
+      r.address = s.loc.r
+      r.res = rope("0")
     else:
-      genFieldAccess(p, n[0], r)
-  of nkBracketExpr:
-    var ty = skipTypes(n[0].typ, abstractVarRange)
-    if ty.kind in MappedToObject:
-      gen(p, n[0], r)
-    else:
-      let kindOfIndexedExpr = skipTypes(n[0][0].typ, abstractVarRange).kind
-      case kindOfIndexedExpr
-      of tyArray, tyOpenArray, tySequence, tyString, tyCstring, tyVarargs:
-        genArrayAddr(p, n[0], r)
-      of tyTuple:
-        genFieldAddr(p, n[0], r)
-      else: internalError(p.config, n[0].info, "expr(nkBracketExpr, " & $kindOfIndexedExpr & ')')
-  of nkObjDownConv:
-    gen(p, n[0], r)
-  of nkHiddenDeref:
-    gen(p, n[0], r)
-  of nkHiddenAddr:
-    gen(p, n[0], r)
-  of nkStmtListExpr:
-    if n.len == 1: gen(p, n[0], r)
-    else: internalError(p.config, n[0].info, "genAddr for complex nkStmtListExpr")
-  of nkCallKinds:
-    if n[0].typ.kind == tyOpenArray:
       # 'var openArray' for instance produces an 'addr' but this is harmless:
-      # namely toOpenArray(a, 1, 3)
+      gen(p, n, r)
+      #internalError(p.config, n.info, "genAddr: 4 " & renderTree(n))
+  else: internalError(p.config, n.info, $("genAddr: 2", s.kind))
+
+proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
+  if n.kind == nkSym:
+    genSymAddr(p, n, nil, r)
+  else:
+    case n[0].kind
+    of nkSym:
+      genSymAddr(p, n[0], n.typ, r)
+    of nkCheckedFieldExpr:
+      genCheckedFieldOp(p, n[0], n.typ, r)
+    of nkDotExpr:
+      if mapType(p, n.typ) == etyBaseIndex:
+        genFieldAddr(p, n[0], r)
+      else:
+        genFieldAccess(p, n[0], r)
+    of nkBracketExpr:
+      var ty = skipTypes(n[0].typ, abstractVarRange)
+      if ty.kind in MappedToObject:
+        gen(p, n[0], r)
+      else:
+        let kindOfIndexedExpr = skipTypes(n[0][0].typ, abstractVarRange).kind
+        case kindOfIndexedExpr
+        of tyArray, tyOpenArray, tySequence, tyString, tyCstring, tyVarargs:
+          genArrayAddr(p, n[0], r)
+        of tyTuple:
+          genFieldAddr(p, n[0], r)
+        of tyGenericBody:
+          genAddr(p, n[^1], r)
+        else: internalError(p.config, n[0].info, "expr(nkBracketExpr, " & $kindOfIndexedExpr & ')')
+    of nkObjDownConv:
       gen(p, n[0], r)
+    of nkHiddenDeref:
+      gen(p, n[0], r)
+    of nkHiddenAddr:
+      gen(p, n[0], r)
+    of nkConv:
+      genAddr(p, n[0], r)
+    of nkStmtListExpr:
+      if n.len == 1: gen(p, n[0], r)
+      else: internalError(p.config, n[0].info, "genAddr for complex nkStmtListExpr")
+    of nkCallKinds:
+      if n[0].typ.kind == tyOpenArray:
+        # 'var openArray' for instance produces an 'addr' but this is harmless:
+        # namely toOpenArray(a, 1, 3)
+        gen(p, n[0], r)
+      else:
+        internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
     else:
       internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
-  else:
-    internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
 
 proc attachProc(p: PProc; content: Rope; s: PSym) =
   p.g.code.add(content)
