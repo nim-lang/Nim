@@ -170,7 +170,7 @@ when defined(windows):
     return 0
 
   proc terminalWidth*(): int =
-    ## Returns the terminal width in columns
+    ## Returns the terminal width in columns.
     var w: int = 0
     w = terminalWidthIoctl([getStdHandle(STD_INPUT_HANDLE),
                              getStdHandle(STD_OUTPUT_HANDLE),
