@@ -38,6 +38,11 @@
 ## .. _randomFillSync: https://nodejs.org/api/crypto.html#crypto_crypto_randomfillsync_buffer_offset_size
 ## .. _/dev/urandom: https://en.wikipedia.org/wiki//dev/random
 ##
+## On a Linux target, a call to the `getrandom` syscall can be avoided (e.g.
+## for targets running kernel version < 3.17) by passing a compile flag of
+## `-d:nimNoGetRandom`. If this flag is passed, sysrand will use `/dev/urandom`
+## as with any other POSIX compliant OS.
+##
 
 runnableExamples:
   doAssert urandom(0).len == 0
@@ -159,7 +164,7 @@ elif defined(windows):
 
     result = randomBytes(addr dest[0], size)
 
-elif defined(linux):
+elif defined(linux) and not defined(nimNoGetRandom):
   # TODO using let, pending bootstrap >= 1.4.0
   var SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
   const syscallHeader = """#include <unistd.h>
