@@ -9,6 +9,8 @@
 
 import locks
 
+from system/sysexitprocs import invokeSysClosures
+
 type
   FunKind = enum kClosure, kNoconv # extend as needed
   Fun = object
@@ -44,8 +46,7 @@ proc callClosures() {.noconv.} =
       of kClosure: fun.fun1()
       of kNoconv: fun.fun2()
 
-  when not defined(js) and not defined(nimOwnedEnabled):
-    deinitLock(gFunsLock)
+  invokeSysClosures()
 
 template fun() =
   if gFuns.len == 0:

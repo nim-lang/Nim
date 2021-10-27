@@ -1054,9 +1054,12 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
         it = it.next
 
   when hasThreadSupport:
+    import system/sysexitprocs
+
     var sharedHeap: MemRegion
     var heapLock: SysLock
     initSysLock(heapLock)
+    addSysExitProc(proc() {.noconv.} = deinitSys heapLock)
 
   proc getFreeMem(): int =
     #sysAssert(result == countFreeMem())

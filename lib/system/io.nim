@@ -778,14 +778,11 @@ proc setStdIoUnbuffered*() {.tags: [], benign.} =
 when declared(stdout):
   when defined(windows) and compileOption("threads"):
     const insideRLocksModule = false
-    include "system/syslocks"
+    include "system/sysexitprocs"
 
     var echoLock: SysLock
     initSysLock echoLock
-
-    when not defined(js) and not defined(nimOwnedEnabled):
-      import std/exitprocs
-      addExitProc(proc() {.noconv.} = deinitSys echoLock)
+    addSysExitProc(proc() {.noconv.} = deinitSys echoLock)
 
   const stdOutLock = not defined(windows) and
                      not defined(android) and
