@@ -1054,7 +1054,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
         it = it.next
 
   when hasThreadSupport:
-    import system/sysexitprocs
+    from system/sysexitprocs import addSysExitProc
 
     var sharedHeap: MemRegion
     var heapLock: SysLock

@@ -1,31 +1,37 @@
-include syslocks
+import locks
 
 const MaxSysExitProcs = 256
 
 var
+  initialized = false
   closureCallsAdded = false
-  gSysFunsLock: SysLock
+  gSysFunsLock: Lock
   gSysFuns: array[MaxSysExitProcs, proc () {.noconv.}]
   gSysFunCount = 0
 
-initSysLock(gSysFunsLock)
+template init() =
+  initLock(gSysFunsLock)
+  initialized = true
+
+if not initialized:
+  init()
 
 proc addAtExit(quitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>".}
 
 template closures() =
-  acquireSys(gSysFunsLock)
+  acquire(gSysFunsLock)
   for i in countdown(gSysFunCount - 1, 0):
     gSysFuns[i]()
-  releaseSys(gSysFunsLock)
+  release(gSysFunsLock)
 
 proc callSysClosures() {.noconv.} =
   closures()
-  deinitSys(gSysFunsLock)
+  deinitLock(gSysFunsLock)
 
 proc invokeSysClosures*() =
   closures()
-  deinitSys(gSysFunsLock)
+  deinitLock(gSysFunsLock)
 
 template sysFun() =
   if not closureCallsAdded:
@@ -35,8 +41,11 @@ template sysFun() =
 proc addSysExitProc*(cl: proc () {.noconv.}) =
   doAssert gSysFunCount < MaxSysExitProcs, "exceeded MaxSysExitProcs"
 
-  acquireSys(gSysFunsLock)
+  if not initialized:
+    init()
+
+  acquire(gSysFunsLock)
   gSysFuns[gSysFunCount] = cl
   sysFun()
   inc(gSysFunCount)
-  releaseSys(gSysFunsLock)
+  release(gSysFunsLock)

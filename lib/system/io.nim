@@ -778,7 +778,8 @@ proc setStdIoUnbuffered*() {.tags: [], benign.} =
 when declared(stdout):
   when defined(windows) and compileOption("threads"):
     const insideRLocksModule = false
-    include "system/sysexitprocs"
+    include "system/syslocks"
+    from system/sysexitprocs import addSysExitProc
 
     var echoLock: SysLock
     initSysLock echoLock
