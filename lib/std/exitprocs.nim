@@ -9,8 +9,6 @@
 
 import locks
 
-from system/sysexitprocs import invokeSysClosures
-
 type
   FunKind = enum kClosure, kNoconv # extend as needed
   Fun = object
@@ -45,8 +43,6 @@ proc callClosures() {.noconv.} =
       case fun.kind
       of kClosure: fun.fun1()
       of kNoconv: fun.fun2()
-
-  invokeSysClosures()
 
 template fun() =
   if gFuns.len == 0:

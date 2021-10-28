@@ -779,11 +779,11 @@ when declared(stdout):
   when defined(windows) and compileOption("threads"):
     const insideRLocksModule = false
     include "system/syslocks"
-    from system/sysexitprocs import addSysExitProc
+    from std/exitprocs import addExitProc
 
     var echoLock: SysLock
     initSysLock echoLock
-    addSysExitProc(proc() {.noconv.} = deinitSys echoLock)
+    addExitProc(proc() {.noconv.} = deinitSys(echoLock))
 
   const stdOutLock = not defined(windows) and
                      not defined(android) and
