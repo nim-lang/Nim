@@ -263,6 +263,10 @@ a.reference-toplevel {
   font-weight: bold;
 }
 
+a.nimdoc {
+  word-spacing: 0.3em;
+}
+
 a.toc-backref {
   text-decoration: none;
   color: var(--text); }

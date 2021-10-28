@@ -106,7 +106,10 @@ window.addEventListener('DOMContentLoaded', main);
 </ul><li>
   <a class="reference reference-toplevel" href="#7" id="57">Types</a>
   <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#SomeType"
+      <li><a class="reference" href="#G"
+    title="G[T] = object
+  val: T">G</a></li>
+  <li><a class="reference" href="#SomeType"
     title="SomeType = enum
   enumValueA, enumValueB, enumValueC">SomeType</a></li>
 
@@ -115,9 +118,54 @@ window.addEventListener('DOMContentLoaded', main);
 <li>
   <a class="reference reference-toplevel" href="#12" id="62">Procs</a>
   <ul class="simple simple-toc-section">
-      <ul class="simple nested-toc-section">fn2
+      <ul class="simple nested-toc-section">$
+      <li><a class="reference" href="#%24%2CG%5BT%5D"
+    title="`$`[T](a: G[T]): string">`$`[T](a: G[T]): string</a></li>
+  <li><a class="reference" href="#%24%2Cref.SomeType"
+    title="`$`[T](a: ref SomeType): string">`$`[T](a: ref SomeType): string</a></li>
+
+  </ul>
+  <ul class="simple nested-toc-section">'big
+      <li><a class="reference" href="#%27big%2Cstring"
+    title="`'big`(a: string): SomeType">`'big`(a: string): SomeType</a></li>
+
+  </ul>
+  <ul class="simple nested-toc-section">[]
+      <li><a class="reference" href="#%5B%5D%2CG%5BT%5D"
+    title="`[]`[T](x: G[T]): T">`[]`[T](x: G[T]): T</a></li>
+
+  </ul>
+  <ul class="simple nested-toc-section">[]=
+      <li><a class="reference" href="#%5B%5D%3D%2CG%5BT%5D%2Cint%2CT"
+    title="`[]=`[T](a: var G[T]; index: int; value: T)">`[]=`[T](a: var G[T]; index: int; value: T)</a></li>
+
+  </ul>
+  <ul class="simple nested-toc-section">binarySearch
+      <li><a class="reference" href="#binarySearch%2CopenArray%5BT%5D%2CK%2Cproc%28T%2CK%29"
+    title="binarySearch[T, K](a: openArray[T]; key: K;
+                   cmp: proc (x: T; y: K): int {.closure.}): int">binarySearch[T, K](a: openArray[T]; key: K;
+                   cmp: proc (x: T; y: K): int {.closure.}): int</a></li>
+
+  </ul>
+  <ul class="simple nested-toc-section">f
+      <li><a class="reference" href="#f%2CG%5Bint%5D"
+    title="f(x: G[int])">f(x: G[int])</a></li>
+  <li><a class="reference" href="#f%2CG%5Bstring%5D"
+    title="f(x: G[string])">f(x: G[string])</a></li>
+
+  </ul>
+  <ul class="simple nested-toc-section">fn
+      <li><a class="reference" href="#fn"
+    title="fn[T; U, V: SomeFloat]()">fn[T; U, V: SomeFloat]()</a></li>
+
+  </ul>
+  <ul class="simple nested-toc-section">fn2
       <li><a class="reference" href="#fn2"
     title="fn2()">fn2()</a></li>
+  <li><a class="reference" href="#fn2%2Cint"
+    title="fn2(x: int)">fn2(x: int)</a></li>
+  <li><a class="reference" href="#fn2%2Cint%2Cfloat"
+    title="fn2(x: int; y: float)">fn2(x: int; y: float)</a></li>
 
   </ul>
   <ul class="simple nested-toc-section">fn3
@@ -160,9 +208,25 @@ window.addEventListener('DOMContentLoaded', main);
     title="fn10(a: int): int">fn10(a: int): int</a></li>
 
   </ul>
+  <ul class="simple nested-toc-section">funWithGenerics
+      <li><a class="reference" href="#funWithGenerics%2CT%2CU"
+    title="funWithGenerics[T, U: SomeFloat](a: T; b: U)">funWithGenerics[T, U: SomeFloat](a: T; b: U)</a></li>
+
+  </ul>
   <ul class="simple nested-toc-section">someType
       <li><a class="reference" href="#someType_2"
     title="someType(): SomeType">someType(): SomeType</a></li>
+
+  </ul>
+
+  </ul>
+</li>
+<li>
+  <a class="reference reference-toplevel" href="#15" id="65">Iterators</a>
+  <ul class="simple simple-toc-section">
+      <ul class="simple nested-toc-section">fooBar
+      <li><a class="reference" href="#fooBar.i%2Cseq%5BSomeType%5D"
+    title="fooBar(a: seq[SomeType]): int">fooBar(a: seq[SomeType]): int</a></li>
 
   </ul>
 
@@ -197,7 +261,13 @@ window.addEventListener('DOMContentLoaded', main);
   <div class="nine columns" id="content">
   <div id="tocRoot"></div>
   
-  <p class="module-desc">
+  <p class="module-desc"><p>This is a description of the utils module.</p>
+<p>Links work:</p>
+<ul class="simple"><li>other module: <a class="reference external" href="iterator.html">iterators</a> (not in this dir, just an example)</li>
+<li>internal: <a class="reference internal nimdoc" title="proc fn2(x: int)" href="#fn2,int">fn2(x)</a></li>
+<li>internal included from another module: <a class="reference internal nimdoc" title="proc funWithGenerics[T, U: SomeFloat](a: T; b: U)" href="#funWithGenerics,T,U">funWithGenerics*[T, U: SomeFloat](a: T, b: U)</a>.</li>
+</ul>
+
 <h1><a class="toc-backref" id="this-is-now-a-header" href="#this-is-now-a-header">This is now a header</a></h1>
 <h2><a class="toc-backref" id="this-is-now-a-header-next-header" href="#this-is-now-a-header-next-header">Next header</a></h2>
 <h3><a class="toc-backref" id="next-header-and-so-on" href="#next-header-and-so-on">And so on</a></h3>
@@ -209,10 +279,31 @@ window.addEventListener('DOMContentLoaded', main);
 <ol class="simple"><li>Other case value</li>
 <li>Second case.</li>
 </ol>
-</p>
+<p>Ref group <a class="reference internal nimdoc" title="proc fn2 (3 overloads)" href="#fn2-procs-all">fn2</a> or specific function like <a class="reference internal nimdoc" title="proc fn2()" href="#fn2">fn2()</a> or <a class="reference internal nimdoc" title="proc fn2(x: int)" href="#fn2,int">fn2( int )</a> or <a class="reference internal nimdoc" title="proc fn2(x: int; y: float)" href="#fn2,int,float">fn2(int, float)</a>.</p>
+<p>Ref generics like this: <a class="reference internal nimdoc" title="proc binarySearch[T, K](a: openArray[T]; key: K;
+                   cmp: proc (x: T; y: K): int {.closure.}): int" href="#binarySearch,openArray[T],K,proc(T,K)">binarySearch</a> or <a class="reference internal nimdoc" title="proc binarySearch[T, K](a: openArray[T]; key: K;
+                   cmp: proc (x: T; y: K): int {.closure.}): int" href="#binarySearch,openArray[T],K,proc(T,K)">binarySearch(openArray[T], K, proc (T, K))</a> or <a class="reference internal nimdoc" title="proc binarySearch[T, K](a: openArray[T]; key: K;
+                   cmp: proc (x: T; y: K): int {.closure.}): int" href="#binarySearch,openArray[T],K,proc(T,K)">proc binarySearch(openArray[T], K, proc (T, K))</a> or in different style: <a class="reference internal nimdoc" title="proc binarySearch[T, K](a: openArray[T]; key: K;
+                   cmp: proc (x: T; y: K): int {.closure.}): int" href="#binarySearch,openArray[T],K,proc(T,K)">proc binarysearch(openarray[T], K, proc(T, K))</a>. Can be combined with export symbols and type parameters: <a class="reference internal nimdoc" title="proc binarySearch[T, K](a: openArray[T]; key: K;
+                   cmp: proc (x: T; y: K): int {.closure.}): int" href="#binarySearch,openArray[T],K,proc(T,K)">binarysearch*[T, K](openArray[T], K, proc (T, K))</a>. With spaces <a class="reference internal nimdoc" title="proc binarySearch[T, K](a: openArray[T]; key: K;
+                   cmp: proc (x: T; y: K): int {.closure.}): int" href="#binarySearch,openArray[T],K,proc(T,K)">binary search</a>.</p>
+<p>Note that <tt class="docutils literal"><span class="pre"><span class="Keyword">proc</span></span></tt> can be used in postfix form: <a class="reference internal nimdoc" title="proc binarySearch[T, K](a: openArray[T]; key: K;
+                   cmp: proc (x: T; y: K): int {.closure.}): int" href="#binarySearch,openArray[T],K,proc(T,K)">binarySearch proc</a>.</p>
+<p>Ref. type like <a class="reference internal nimdoc" title="type G" href="#G">G</a> and <a class="reference internal nimdoc" title="type G" href="#G">type G</a> and <a class="reference internal nimdoc" title="type G" href="#G">G[T]</a> and <a class="reference internal nimdoc" title="type G" href="#G">type G*[T]</a>.</p>
+Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href="#[],G[T]">[]</a> is the same as <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href="#[],G[T]">proc `[]`(G[T])</a> because there are no overloads. The full form: <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href="#[],G[T]">proc `[]`*[T](x: G[T]): T</a>Ref. <a class="reference internal nimdoc" title="proc `[]=`[T](a: var G[T]; index: int; value: T)" href="#[]=,G[T],int,T">[]=</a> aka <a class="reference internal nimdoc" title="proc `[]=`[T](a: var G[T]; index: int; value: T)" href="#[]=,G[T],int,T">`[]=`(G[T], int, T)</a>.Ref. <a class="reference internal nimdoc" title="proc $ (2 overloads)" href="#$-procs-all">$</a> aka <a class="reference internal nimdoc" title="proc $ (2 overloads)" href="#$-procs-all">proc $</a> or <a class="reference internal nimdoc" title="proc $ (2 overloads)" href="#$-procs-all">proc `$`</a>.Ref. <a class="reference internal nimdoc" title="proc `$`[T](a: ref SomeType): string" href="#$,ref.SomeType">$(a: ref SomeType)</a>.Ref. <a class="reference internal nimdoc" title="iterator fooBar(a: seq[SomeType]): int" href="#fooBar.i,seq[SomeType]">foo_bar</a> aka <a class="reference internal nimdoc" title="iterator fooBar(a: seq[SomeType]): int" href="#fooBar.i,seq[SomeType]">iterator foo_bar_</a>.Ref. <a class="reference internal nimdoc" title="proc fn[T; U, V: SomeFloat]()" href="#fn">fn[T; U,V: SomeFloat]()</a>.Ref. <a class="reference internal nimdoc" title="proc `'big`(a: string): SomeType" href="#'big,string">'big</a> or <a class="reference internal nimdoc" title="proc `'big`(a: string): SomeType" href="#'big,string">func `'big`</a> or <a class="reference internal nimdoc" title="proc `'big`(a: string): SomeType" href="#'big,string">`'big`(string)</a>.</p>
   <div class="section" id="7">
 <h1><a class="toc-backref" href="#7">Types</a></h1>
 <dl class="item">
+<div id="G">
+<dt><pre><a href="utils.html#G"><span class="Identifier">G</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">val</span><span class="Other">:</span> <span class="Identifier">T</span>
+</pre></dt>
+<dd>
+
+
+
+</dd>
+</div>
 <div id="SomeType">
 <dt><pre><a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">enumValueA</span><span class="Other">,</span> <span class="Identifier">enumValueB</span><span class="Other">,</span> <span class="Identifier">enumValueC</span></pre></dt>
@@ -227,6 +318,109 @@ window.addEventListener('DOMContentLoaded', main);
 <div class="section" id="12">
 <h1><a class="toc-backref" href="#12">Procs</a></h1>
 <dl class="item">
+
+<div id="$-procs-all">
+<div id="$,G[T]">
+<dt><pre><span class="Keyword">proc</span> <a href="#%24%2CG%5BT%5D"><span class="Identifier">`$`</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <a href="utils.html#G"><span class="Identifier">G</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span></pre></dt>
+<dd>
+
+
+
+</dd>
+</div>
+<div id="$,ref.SomeType">
+<dt><pre><span class="Keyword">proc</span> <a href="#%24%2Cref.SomeType"><span class="Identifier">`$`</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Keyword">ref</span> <a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span></pre></dt>
+<dd>
+
+
+
+</dd>
+</div>
+
+</div>
+
+<div id="'big-procs-all">
+<div id="'big,string">
+<dt><pre><span class="Keyword">func</span> <a href="#%27big%2Cstring"><span class="Identifier">`'big`</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+<dd>
+
+
+
+</dd>
+</div>
+
+</div>
+
+<div id="[]-procs-all">
+<div id="[],G[T]">
+<dt><pre><span class="Keyword">proc</span> <a href="#%5B%5D%2CG%5BT%5D"><span class="Identifier">`[]`</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <a href="utils.html#G"><span class="Identifier">G</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">T</span></pre></dt>
+<dd>
+
+
+
+</dd>
+</div>
+
+</div>
+
+<div id="[]=-procs-all">
+<div id="[]=,G[T],int,T">
+<dt><pre><span class="Keyword">proc</span> <a href="#%5B%5D%3D%2CG%5BT%5D%2Cint%2CT"><span class="Identifier">`[]=`</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="utils.html#G"><span class="Identifier">G</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">;</span> <span class="Identifier">index</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">value</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">)</span></pre></dt>
+<dd>
+
+
+
+</dd>
+</div>
+
+</div>
+
+<div id="binarySearch-procs-all">
+<div id="binarySearch,openArray[T],K,proc(T,K)">
+<dt><pre><span class="Keyword">proc</span> <a href="#binarySearch%2CopenArray%5BT%5D%2CK%2Cproc%28T%2CK%29"><span class="Identifier">binarySearch</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">,</span> <span class="Identifier">K</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">openArray</span><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">;</span> <span class="Identifier">key</span><span class="Other">:</span> <span class="Identifier">K</span><span class="Other">;</span>
+                        <span class="Identifier">cmp</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">;</span> <span class="Identifier">y</span><span class="Other">:</span> <span class="Identifier">K</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span class="Identifier">closure</span>.}<span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+<dd>
+
+
+
+</dd>
+</div>
+
+</div>
+
+<div id="f-procs-all">
+<div id="f,G[int]">
+<dt><pre><span class="Keyword">proc</span> <a href="#f%2CG%5Bint%5D"><span class="Identifier">f</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <a href="utils.html#G"><span class="Identifier">G</span></a><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+<dd>
+
+There is also variant <a class="reference internal nimdoc" title="proc f(x: G[string])" href="#f,G[string]">f(G[string])</a>
+
+</dd>
+</div>
+<div id="f,G[string]">
+<dt><pre><span class="Keyword">proc</span> <a href="#f%2CG%5Bstring%5D"><span class="Identifier">f</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <a href="utils.html#G"><span class="Identifier">G</span></a><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+<dd>
+
+See also <a class="reference internal nimdoc" title="proc f(x: G[int])" href="#f,G[int]">f(G[int])</a>.
+
+</dd>
+</div>
+
+</div>
+
+<div id="fn-procs-all">
+<div id="fn">
+<dt><pre><span class="Keyword">proc</span> <a href="#fn"><span class="Identifier">fn</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">;</span> <span class="Identifier">U</span><span class="Other">,</span> <span class="Identifier">V</span><span class="Other">:</span> <span class="Identifier">SomeFloat</span><span class="Other">]</span><span class="Other">(</span><span class="Other">)</span></pre></dt>
+<dd>
+
+
+
+</dd>
+</div>
+
+</div>
+
+<div id="fn2-procs-all">
 <div id="fn2">
 <dt><pre><span class="Keyword">proc</span> <a href="#fn2"><span class="Identifier">fn2</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
 <dd>
@@ -235,6 +429,26 @@ comment
 
 </dd>
 </div>
+<div id="fn2,int">
+<dt><pre><span class="Keyword">proc</span> <a href="#fn2%2Cint"><span class="Identifier">fn2</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+<dd>
+
+fn2 comment
+
+</dd>
+</div>
+<div id="fn2,int,float">
+<dt><pre><span class="Keyword">proc</span> <a href="#fn2%2Cint%2Cfloat"><span class="Identifier">fn2</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">y</span><span class="Other">:</span> <span class="Identifier">float</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+<dd>
+
+
+
+</dd>
+</div>
+
+</div>
+
+<div id="fn3-procs-all">
 <div id="fn3">
 <dt><pre><span class="Keyword">proc</span> <a href="#fn3"><span class="Identifier">fn3</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">auto</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
 <dd>
@@ -243,6 +457,10 @@ comment
 
 </dd>
 </div>
+
+</div>
+
+<div id="fn4-procs-all">
 <div id="fn4">
 <dt><pre><span class="Keyword">proc</span> <a href="#fn4"><span class="Identifier">fn4</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">auto</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
 <dd>
@@ -251,6 +469,10 @@ comment
 
 </dd>
 </div>
+
+</div>
+
+<div id="fn5-procs-all">
 <div id="fn5">
 <dt><pre><span class="Keyword">proc</span> <a href="#fn5"><span class="Identifier">fn5</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
 <dd>
@@ -259,6 +481,10 @@ comment
 
 </dd>
 </div>
+
+</div>
+
+<div id="fn6-procs-all">
 <div id="fn6">
 <dt><pre><span class="Keyword">proc</span> <a href="#fn6"><span class="Identifier">fn6</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
 <dd>
@@ -267,6 +493,10 @@ comment
 
 </dd>
 </div>
+
+</div>
+
+<div id="fn7-procs-all">
 <div id="fn7">
 <dt><pre><span class="Keyword">proc</span> <a href="#fn7"><span class="Identifier">fn7</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
 <dd>
@@ -275,6 +505,10 @@ comment
 
 </dd>
 </div>
+
+</div>
+
+<div id="fn8-procs-all">
 <div id="fn8">
 <dt><pre><span class="Keyword">proc</span> <a href="#fn8"><span class="Identifier">fn8</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">auto</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
 <dd>
@@ -283,6 +517,10 @@ comment
 
 </dd>
 </div>
+
+</div>
+
+<div id="fn9-procs-all">
 <div id="fn9,int">
 <dt><pre><span class="Keyword">func</span> <a href="#fn9%2Cint"><span class="Identifier">fn9</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
 <dd>
@@ -291,6 +529,10 @@ comment
 
 </dd>
 </div>
+
+</div>
+
+<div id="fn10-procs-all">
 <div id="fn10,int">
 <dt><pre><span class="Keyword">func</span> <a href="#fn10%2Cint"><span class="Identifier">fn10</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
 <dd>
@@ -299,6 +541,22 @@ comment
 
 </dd>
 </div>
+
+</div>
+
+<div id="funWithGenerics-procs-all">
+<div id="funWithGenerics,T,U">
+<dt><pre><span class="Keyword">proc</span> <a href="#funWithGenerics%2CT%2CU"><span class="Identifier">funWithGenerics</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">,</span> <span class="Identifier">U</span><span class="Other">:</span> <span class="Identifier">SomeFloat</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">;</span> <span class="Identifier">b</span><span class="Other">:</span> <span class="Identifier">U</span><span class="Other">)</span></pre></dt>
+<dd>
+
+
+
+</dd>
+</div>
+
+</div>
+
+<div id="someType-procs-all">
 <div id="someType_2">
 <dt><pre><span class="Keyword">proc</span> <a href="#someType_2"><span class="Identifier">someType</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
 <dd>
@@ -308,10 +566,31 @@ constructor.
 </dd>
 </div>
 
+</div>
+
+</dl></div>
+<div class="section" id="15">
+<h1><a class="toc-backref" href="#15">Iterators</a></h1>
+<dl class="item">
+
+<div id="fooBar-iterators-all">
+<div id="fooBar.i,seq[SomeType]">
+<dt><pre><span class="Keyword">iterator</span> <a href="#fooBar.i%2Cseq%5BSomeType%5D"><span class="Identifier">fooBar</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+<dd>
+
+
+
+</dd>
+</div>
+
+</div>
+
 </dl></div>
 <div class="section" id="18">
 <h1><a class="toc-backref" href="#18">Templates</a></h1>
 <dl class="item">
+
+<div id="aEnum-templates-all">
 <div id="aEnum.t">
 <dt><pre><span class="Keyword">template</span> <a href="#aEnum.t"><span class="Identifier">aEnum</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">untyped</span></pre></dt>
 <dd>
@@ -320,6 +599,10 @@ constructor.
 
 </dd>
 </div>
+
+</div>
+
+<div id="bEnum-templates-all">
 <div id="bEnum.t">
 <dt><pre><span class="Keyword">template</span> <a href="#bEnum.t"><span class="Identifier">bEnum</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">untyped</span></pre></dt>
 <dd>
@@ -328,6 +611,10 @@ constructor.
 
 </dd>
 </div>
+
+</div>
+
+<div id="fromUtilsGen-templates-all">
 <div id="fromUtilsGen.t">
 <dt><pre><span class="Keyword">template</span> <a href="#fromUtilsGen.t"><span class="Identifier">fromUtilsGen</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">untyped</span></pre></dt>
 <dd>
@@ -337,6 +624,8 @@ should be shown in utils.html only
 <pre class="listing"><span class="Keyword">discard</span> <span class="StringLit">&quot;should be in utils.html only, not in module that calls fromUtilsGen&quot;</span></pre>ditto
 
 </dd>
+</div>
+
 </div>
 
 </dl></div>

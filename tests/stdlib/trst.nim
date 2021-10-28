@@ -17,9 +17,7 @@ discard """
 
 # tests for rst module
 
-import ../../lib/packages/docutils/rstgen
-import ../../lib/packages/docutils/rst
-import ../../lib/packages/docutils/rstast
+import ../../lib/packages/docutils/[rstgen, rst, rstast]
 import unittest, strutils
 import std/private/miscdollars
 import os
@@ -61,6 +59,52 @@ proc toAst(input: string,
       result = e.msg
 
 suite "RST parsing":
+  test "References are whitespace-neutral and case-insensitive":
+    # refname is 'lexical-analysis', the same for all the 3 variants:
+    check(dedent"""
+        Lexical Analysis
+        ================
+
+        Ref. `Lexical Analysis`_ or `Lexical analysis`_ or `lexical analysis`_.
+        """.toAst ==
+      dedent"""
+        rnInner
+          rnHeadline  level=1
+            rnLeaf  'Lexical'
+            rnLeaf  ' '
+            rnLeaf  'Analysis'
+          rnParagraph
+            rnLeaf  'Ref'
+            rnLeaf  '.'
+            rnLeaf  ' '
+            rnInternalRef
+              rnInner
+                rnLeaf  'Lexical'
+                rnLeaf  ' '
+                rnLeaf  'Analysis'
+              rnLeaf  'lexical-analysis'
+            rnLeaf  ' '
+            rnLeaf  'or'
+            rnLeaf  ' '
+            rnInternalRef
+              rnInner
+                rnLeaf  'Lexical'
+                rnLeaf  ' '
+                rnLeaf  'analysis'
+              rnLeaf  'lexical-analysis'
+            rnLeaf  ' '
+            rnLeaf  'or'
+            rnLeaf  ' '
+            rnInternalRef
+              rnInner
+                rnLeaf  'lexical'
+                rnLeaf  ' '
+                rnLeaf  'analysis'
+              rnLeaf  'lexical-analysis'
+            rnLeaf  '.'
+            rnLeaf  ' '
+      """)
+
   test "option list has priority over definition list":
     check(dedent"""
         --defusages
@@ -376,9 +420,9 @@ suite "Warnings":
     let output = input.toAst(warnings=warnings)
     check(warnings[] == @[
         "input(3, 14) Warning: broken link 'citation-som'",
-        "input(5, 7) Warning: broken link 'a-broken-link'",
+        "input(5, 7) Warning: broken link 'a broken Link'",
         "input(7, 15) Warning: unknown substitution 'undefined subst'",
-        "input(9, 6) Warning: broken link 'shortdotlink'"
+        "input(9, 6) Warning: broken link 'short.link'"
         ])
 
   test "With include directive and blank lines at the beginning":
@@ -391,7 +435,7 @@ suite "Warnings":
     let input = ".. include:: other.rst"
     var warnings = new seq[string]
     let output = input.toAst(warnings=warnings)
-    check warnings[] == @["other.rst(5, 6) Warning: broken link 'brokenlink'"]
+    check warnings[] == @["other.rst(5, 6) Warning: broken link 'brokenLink'"]
     check(output == dedent"""
       rnInner
         rnParagraph
@@ -403,6 +447,59 @@ suite "Warnings":
             rnLeaf  'brokenLink'
       """)
     removeFile("other.rst")
+
+  test "warnings for ambiguous links (references + anchors)":
+    # Reference like `x`_ generates a link alias x that may clash with others
+    let input = dedent"""
+      Manual reference: `foo <#foo,string,string>`_
+
+      .. _foo:
+
+      Paragraph.
+
+      Ref foo_
+      """
+    var warnings = new seq[string]
+    let output = input.toAst(warnings=warnings)
+    check(warnings[] == @[
+      dedent """
+      input(7, 5) Warning: ambiguous doc link `foo`
+        clash:
+          (3, 8): (manual directive anchor)
+          (1, 45): (implicitly-generated hyperlink alias)"""
+    ])
+    # reference should be resolved to the manually set anchor:
+    check(output ==
+      dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Manual'
+            rnLeaf  ' '
+            rnLeaf  'reference'
+            rnLeaf  ':'
+            rnLeaf  ' '
+            rnHyperlink
+              rnInner
+                rnLeaf  'foo'
+              rnInner
+                rnLeaf  '#'
+                rnLeaf  'foo'
+                rnLeaf  ','
+                rnLeaf  'string'
+                rnLeaf  ','
+                rnLeaf  'string'
+          rnParagraph  anchor='foo'
+            rnLeaf  'Paragraph'
+            rnLeaf  '.'
+          rnParagraph
+            rnLeaf  'Ref'
+            rnLeaf  ' '
+            rnInternalRef
+              rnInner
+                rnLeaf  'foo'
+              rnLeaf  'foo'
+            rnLeaf  ' '
+      """)
 
 suite "RST include directive":
   test "Include whole":
