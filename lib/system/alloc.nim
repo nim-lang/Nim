@@ -1054,6 +1054,8 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
         it = it.next
 
   when hasThreadSupport:
+    proc addSysExitProc(quitProc: proc() {.noconv.}) {.importc: "atexit", header: "<stdlib.h>".}
+
     var sharedHeap: MemRegion
     var heapLock: SysLock
     initSysLock(heapLock)

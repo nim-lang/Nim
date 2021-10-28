@@ -1498,15 +1498,6 @@ proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   # In case of an unhandled exception the exit handlers should
   # not be called explicitly! The user may decide to do this manually though.
 
-proc addSysExitProc(quitProc: proc() {.noconv.}) {.
-  importc: "atexit", header: "<stdlib.h>".}
-  ## Adds/registers a quit procedure from within a system module.
-  ##
-  ## Does the same thing as `addQuitProc` (deprecated) and is similiar to the
-  ## functionality exposed by `exitprocs.addExitProcs`. Meant to be used from
-  ## within system modules which cannot depend on modules that require 
-  ## gcVisits.
-
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## Swaps the values `a` and `b`.
   ##
