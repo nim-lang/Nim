@@ -1,7 +1,7 @@
 when not defined(js):
   import locks
 
-  const MaxSysExitProcs = 256
+  const MaxSysExitProcs = 128
 
   var
     initialized = false
