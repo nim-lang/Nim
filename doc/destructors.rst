@@ -653,7 +653,7 @@ The ability to override a hook leads to a phase ordering problem:
     discard
 
 
-The solution is to define ````proc `=destroy`[T](f: var Foo[T])```` before
+The solution is to define ``proc `=destroy`[T](f: var Foo[T])`` before
 it is used. The compiler generates implicit
 hooks for all types in *strategic places* so that an explicitly provided
 hook that comes too "late" can be detected reliably. These *strategic places*
