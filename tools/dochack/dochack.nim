@@ -360,6 +360,7 @@ proc copyToClipboard*() {.exportc.} =
           const button = document.createElement("button")
           button.value = e.textContent.replace('...', '') 
           button.classList.add("copyToClipBoardBtn")
+          button.style = "cursor: pointer"
     
           div.appendChild(preTag)
           div.appendChild(button)
