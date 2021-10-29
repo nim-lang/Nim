@@ -44,9 +44,6 @@ proc callClosures() {.noconv.} =
       of kClosure: fun.fun1()
       of kNoconv: fun.fun2()
 
-  when not defined(js) and not defined(nimOwnedEnabled):
-    deinitLock(gFunsLock)
-
 template fun() =
   if gFuns.len == 0:
     addAtExit(callClosures)
