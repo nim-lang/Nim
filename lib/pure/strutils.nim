@@ -281,8 +281,9 @@ func nimIdentNormalize*(s: string): string =
   runnableExamples:
     doAssert nimIdentNormalize("Foo_bar") == "Foobar"
   result = newString(s.len)
-  if s.len > 0:
-    result[0] = s[0]
+  if s.len == 0:
+    return
+  result[0] = s[0]
   var j = 1
   for i in 1..len(s) - 1:
     if s[i] in {'A'..'Z'}:
