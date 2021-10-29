@@ -117,7 +117,7 @@ when hasAlloc and not defined(js):
     ## See also:
     ## * `create <#create,typedesc>`_
     static:
-      if sizeof(T) <= 0:
+      when sizeof(T) <= 0:
         {.fatal: "createU does not support types T where sizeof(T) == 0".}
     cast[ptr T](alloc(T.sizeof * size))
 
@@ -145,7 +145,7 @@ when hasAlloc and not defined(js):
     ## The allocated memory belongs to its allocating thread!
     ## Use `createShared <#createShared,typedesc>`_ to allocate from a shared heap.
     static:
-      if sizeof(T) <= 0:
+      when sizeof(T) <= 0:
         {.fatal: "create does not support types T where sizeof(T) == 0".}
     cast[ptr T](alloc0(sizeof(T) * size))
 
