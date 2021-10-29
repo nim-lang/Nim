@@ -841,5 +841,12 @@ bar
     doAssert s.endsWith('a') == false
     doAssert s.endsWith('\0') == false
 
+  block: # nimIdentNormalize
+    doAssert nimIdentNormalize("") == ""
+    doAssert nimIdentNormalize("foo") == "foo"
+    doAssert nimIdentNormalize("foo_bar") == "foobar"
+    doAssert nimIdentNormalize("Foo_bar") == "Foobar"
+    doAssert nimIdentNormalize("_Foo_bar") == "_foobar"
+
 static: main()
 main()
