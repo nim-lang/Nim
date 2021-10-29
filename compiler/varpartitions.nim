@@ -479,7 +479,7 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
         # calls do construct, what we construct must be destroyed,
         # so dest cannot be a cursor:
         dest.flags.incl ownsData
-      elif n.typ.kind in {tyLent, tyVar}:
+      elif n.typ.kind in {tyLent, tyVar} and n.len > 1:
         # we know the result is derived from the first argument:
         var roots: seq[(PSym, int)]
         allRoots(n[1], roots, RootEscapes)
