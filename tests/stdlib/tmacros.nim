@@ -86,9 +86,9 @@ block: # SameType
     assert not isSameType("Hello", cstring"world")
     assert not isSameType(int, B)
     assert not isSameType(int, Generic[int, int])
-  
-  assert isSameType(float(1.0), G[float](1.0))
-  assert isSameType(G[float](1.0), float(1.0))
+    
+    assert isSameType(G[float](1.0), float(1.0))
+    assert isSameType(float(1.0), G[float](1.0))
 
 
   type Tensor[T] = object
