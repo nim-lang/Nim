@@ -71,10 +71,11 @@ block: # SameType
   type
     A = int
     B = distinct int
+    C = object
     Generic[T, Y] = object
-    G[T] = T
   macro isSameType(a, b: typed): untyped =
     newLit(sameType(a, b))
+
   static:
     assert Generic[int, int].isSameType(Generic[int, int])
     assert Generic[A, string].isSameType(Generic[int, string])
@@ -86,10 +87,21 @@ block: # SameType
     assert not isSameType("Hello", cstring"world")
     assert not isSameType(int, B)
     assert not isSameType(int, Generic[int, int])
-    
-    assert isSameType(G[float](1.0), float(1.0))
-    assert isSameType(float(1.0), G[float](1.0))
+    assert not isSameType(C, string)
+    assert not isSameType(C, int)
 
+
+  #[
+    # compiler sameType fails for the following, read more in `types.nim`'s `sameTypeAux`.
+    type
+      D[T] = C
+      G[T] = T
+    static:
+      assert isSameType(D[int], C)
+      assert isSameType(D[int], D[float])
+      assert isSameType(G[float](1.0), float(1.0))
+      assert isSameType(float(1.0), G[float](1.0))
+  ]#
 
   type Tensor[T] = object
     data: T
