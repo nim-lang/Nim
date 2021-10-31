@@ -174,7 +174,7 @@ proc `$`*(msg: Message): string =
 proc newSmtp*(useSsl = false, debug = false,
               sslContext: SslContext = nil, useEhlo = false): Smtp =
   ## Creates a new `Smtp` instance.
-  ## if useEhlo is true, `ehlo` is send instead of `helo`
+  ## If `useEhlo` is true, `ehlo` is sent instead of `helo`
   new result
   result.debug = debug
   result.sock = newSocket()
