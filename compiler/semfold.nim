@@ -292,13 +292,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
     else: result = newStrNodeT("true", n, g)
   of mFloatToStr: result = newStrNodeT($getFloat(a), n, g)
   of mCStrToStr, mCharToStr:
-    if a.kind == nkBracket:
-      var s = ""
-      for b in a.sons:
-        s.add b.getStrOrChar
-      result = newStrNodeT(s, n, g)
-    else:
-      result = newStrNodeT(getStrOrChar(a), n, g)
+    result = newStrNodeT(getStrOrChar(a), n, g)
   of mStrToStr: result = newStrNodeT(getStrOrChar(a), n, g)
   of mEnumToStr: result = newStrNodeT(ordinalValToString(a, g), n, g)
   of mArrToSeq:

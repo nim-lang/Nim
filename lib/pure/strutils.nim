@@ -273,11 +273,17 @@ func nimIdentNormalize*(s: string): string =
   ##
   ## That means to convert to lower case and remove any '_' on all characters
   ## except first one.
+  ##
+  ## .. Warning:: Backticks (`) are not handled: they remain *as is* and
+  ##    spaces are preserved. See `nimIdentBackticksNormalize 
+  ##    <dochelpers.html#nimIdentBackticksNormalize,string>`_ for
+  ##    an alternative approach.
   runnableExamples:
     doAssert nimIdentNormalize("Foo_bar") == "Foobar"
   result = newString(s.len)
-  if s.len > 0:
-    result[0] = s[0]
+  if s.len == 0:
+    return
+  result[0] = s[0]
   var j = 1
   for i in 1..len(s) - 1:
     if s[i] in {'A'..'Z'}:

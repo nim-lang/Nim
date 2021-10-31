@@ -13,7 +13,7 @@
 import
   ast, strutils, strtabs, algorithm, sequtils, options, msgs, os, idents,
   wordrecg, syntaxes, renderer, lexer,
-  packages/docutils/rst, packages/docutils/rstgen,
+  packages/docutils/[rst, rstgen, dochelpers],
   json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, tables, nimpaths, renderverbatim, osproc
@@ -44,8 +44,14 @@ type
                          ## runnableExamples).
     substitutions: seq[string]    ## Variable names in `doc.item`...
     sortName: string    ## The string used for sorting in output
+    info: rstast.TLineInfo  ## place where symbol was defined (for messages)
+    anchor: string  ## e.g. HTML anchor
+    name: string  ## short name of the symbol, not unique
+                  ## (includes backticks ` if present)
+    detailedName: string  ## longer name like `proc search(x: int): int`
   ModSection = object  ## Section like Procs, Types, etc.
-    secItems: seq[Item]  ## Pre-processed items.
+    secItems: Table[string, seq[Item]]
+                         ## Map basic name -> pre-processed items.
     finalMarkup: string  ## The items, after RST pass 2 and rendering.
   ModSections = array[TSymKind, ModSection]
   TocItem = object  ## HTML TOC item
@@ -91,11 +97,21 @@ type
     thisDir*: AbsoluteDir
     exampleGroups: OrderedTable[string, ExampleGroup]
     wroteSupportFiles*: bool
+    nimToRstFid: Table[lineinfos.FileIndex, rstast.FileIndex]
+      ## map Nim FileIndex -> RST one, it's needed because we keep them separate
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
 proc add(dest: var ItemPre, rst: PRstNode) = dest.add ItemFragment(isRst: true, rst: rst)
 proc add(dest: var ItemPre, str: string) = dest.add ItemFragment(isRst: false, str: str)
+
+proc addRstFileIndex(d: PDoc, info: lineinfos.TLineInfo): rstast.FileIndex =
+  let invalid = rstast.FileIndex(-1)
+  result = d.nimToRstFid.getOrDefault(info.fileIndex, default = invalid)
+  if result == invalid:
+    let fname = toFullPath(d.conf, info)
+    result = addFilename(d.sharedState, fname)
+    d.nimToRstFid[info.fileIndex] = result
 
 proc cmpDecimalsIgnoreCase(a, b: string): int =
   ## For sorting with correct handling of cases like 'uint8' and 'uint16'.
@@ -223,6 +239,7 @@ template declareClosures =
     of meFootnoteMismatch: k = errRstFootnoteMismatch
     of mwRedefinitionOfLabel: k = warnRstRedefinitionOfLabel
     of mwUnknownSubstitution: k = warnRstUnknownSubstitutionX
+    of mwAmbiguousLink: k = warnRstAmbiguousLink
     of mwBrokenLink: k = warnRstBrokenLink
     of mwUnsupportedLanguage: k = warnRstLanguageXNotSupported
     of mwUnsupportedField: k = warnRstFieldXNotSupported
@@ -236,7 +253,7 @@ template declareClosures =
       result = getCurrentDir() / s
       if not fileExists(result): result = ""
 
-proc parseRst(text, filename: string,
+proc parseRst(text: string,
               line, column: int,
               conf: ConfigRef, sharedState: PRstSharedState): PRstNode =
   declareClosures()
@@ -352,7 +369,8 @@ proc getVarIdx(varnames: openArray[string], id: string): int =
 
 proc genComment(d: PDoc, n: PNode): PRstNode =
   if n.comment.len > 0:
-    result = parseRst(n.comment, toFullPath(d.conf, n.info),
+    d.sharedState.currFileIdx = addRstFileIndex(d, n.info)
+    result = parseRst(n.comment,
                       toLinenumber(n.info),
                       toColumn(n.info) + DocColOffset,
                       d.conf, d.sharedState)
@@ -885,6 +903,57 @@ proc genSeeSrc(d: PDoc, path: string, line: int): string =
           "path", path.string, "line", $line, "url", gitUrl,
           "commit", commit, "devel", develBranch]])
 
+proc symbolPriority(k: TSymKind): int =
+  result = case k
+    of skMacro: -3
+    of skTemplate: -2
+    of skIterator: -1
+    else: 0  # including skProc which have higher priority
+    # documentation itself has even higher priority 1
+
+proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
+  ## Converts symbol info (names/types/parameters) in `n` into format
+  ## `LangSymbol` convenient for ``rst.nim``/``dochelpers.nim``.
+  result.name = baseName.nimIdentNormalize
+  result.symKind = k.toHumanStr
+  if k in routineKinds:
+    var
+      paramTypes: seq[string]
+    renderParamTypes(paramTypes, n[paramsPos], toNormalize=true)
+    let paramNames = renderParamNames(n[paramsPos], toNormalize=true)
+    # In some rare cases (system.typeof) parameter type is not set for default:
+    doAssert paramTypes.len <= paramNames.len
+    for i in 0 ..< paramNames.len:
+      if i < paramTypes.len:
+        result.parameters.add (paramNames[i], paramTypes[i])
+      else:
+        result.parameters.add (paramNames[i], "")
+    result.parametersProvided = true
+
+    result.outType = renderOutType(n[paramsPos], toNormalize=true)
+
+  if k in {skProc, skFunc, skType, skIterator}:
+    # Obtain `result.generics`
+    # Use `n[miscPos]` since n[genericParamsPos] does not contain constraints
+    var genNode: PNode = nil
+    if k == skType:
+      genNode = n[1]  # FIXME: what is index 1?
+    else:
+      if n[miscPos].kind != nkEmpty:
+        genNode = n[miscPos][1]   # FIXME: what is index 1?
+    if genNode != nil:
+      var literal = ""
+      var r: TSrcGen
+      initTokRender(r, genNode, {renderNoBody, renderNoComments,
+        renderNoPragmas, renderNoProcDefs})
+      var kind = tkEof
+      while true:
+        getNextTok(r, kind, literal)
+        if kind == tkEof:
+          break
+        if kind != tkSpaces:
+          result.generics.add(literal.nimIdentNormalize)
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   if (docFlags != kForceExport) and not isVisible(d, nameNode): return
   let
@@ -915,6 +984,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   inc(d.id)
   let
     plainNameEsc = esc(d.target, plainName.strip)
+    detailedName = k.toHumanStr & " " & (
+        if k in routineKinds: plainName else: name)
     uniqueName = if k in routineKinds: plainNameEsc else: name
     sortName = if k in routineKinds: plainName.strip else: name
     cleanPlainSymbol = renderPlainSymbolName(nameNode)
@@ -923,20 +994,32 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
     symbolOrId = d.newUniquePlainSymbol(complexSymbol)
     symbolOrIdEnc = encodeUrl(symbolOrId, usePlus = false)
     deprecationMsg = genDeprecationMsg(d, pragmaNode)
+    rstLangSymbol = toLangSymbol(k, n, cleanPlainSymbol)
+
+  # we generate anchors automatically for subsequent use in doc comments
+  let lineinfo = rstast.TLineInfo(
+      line: nameNode.info.line, col: nameNode.info.col,
+      fileIndex: addRstFileIndex(d, nameNode.info))
+  addAnchorNim(d.sharedState, refn = symbolOrId, tooltip = detailedName,
+               rstLangSymbol, priority = symbolPriority(k), info = lineinfo)
 
   nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
     renderDocComments, renderSyms}, symbolOrIdEnc)
 
   let seeSrc = genSeeSrc(d, toFullPath(d.conf, n.info), n.info.line.int)
 
-  d.section[k].secItems.add Item(
+  d.section[k].secItems.mgetOrPut(cleanPlainSymbol, newSeq[Item]()).add Item(
     descRst: comm,
     sortName: sortName,
+    info: lineinfo,
+    anchor: symbolOrId,
+    detailedName: detailedName,
+    name: name,
     substitutions: @[
-     "name", name, "uniqueName", uniqueName,
+     "uniqueName", uniqueName,
      "header", result, "itemID", $d.id,
      "header_plain", plainNameEsc, "itemSym", cleanPlainSymbol,
-     "itemSymOrID", symbolOrId, "itemSymEnc", plainSymbolEnc,
+     "itemSymEnc", plainSymbolEnc,
      "itemSymOrIDEnc", symbolOrIdEnc, "seeSrc", seeSrc,
      "deprecationMsg", deprecationMsg])
 
@@ -1184,6 +1267,11 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
     if comm.len != 0: d.modDescPre.add(comm)
   else: discard
 
+proc overloadGroupName(s: string, k: TSymKind): string =
+  ## Turns a name like `f` into anchor `f-procs-all`
+  #s & " " & k.toHumanStr & "s all"
+  s & "-" & k.toHumanStr & "s-all"
+
 proc finishGenerateDoc*(d: var PDoc) =
   ## Perform 2nd RST pass for resolution of links/footnotes/headings...
   # copy file map `filenames` to ``rstgen.nim`` for its warnings
@@ -1197,6 +1285,21 @@ proc finishGenerateDoc*(d: var PDoc) =
       break
   preparePass2(d.sharedState, firstRst)
 
+  # add anchors to overload groups before RST resolution
+  for k in TSymKind:
+    if k in routineKinds:
+      for plainName, overloadChoices in d.section[k].secItems:
+        if overloadChoices.len > 1:
+          let refn = overloadGroupName(plainName, k)
+          let tooltip = "$1 ($2 overloads)" % [
+                      k.toHumanStr & " " & plainName, $overloadChoices.len]
+          addAnchorNim(d.sharedState, refn, tooltip,
+                       LangSymbol(symKind: k.toHumanStr, name: plainName,
+                                  isGroup: true),
+                       priority = symbolPriority(k),
+                       # select index `0` just to have any meaningful warning:
+                       info = overloadChoices[0].info)
+
   # Finalize fragments of ``.nim`` or ``.rst`` file
   proc renderItemPre(d: PDoc, fragments: ItemPre, result: var string) =
     for f in fragments:
@@ -1207,14 +1310,33 @@ proc finishGenerateDoc*(d: var PDoc) =
       of false: result &= f.str
   proc cmp(x, y: Item): int = cmpDecimalsIgnoreCase(x.sortName, y.sortName)
   for k in TSymKind:
-    for item in d.section[k].secItems.sorted(cmp):
-      var itemDesc: string
-      renderItemPre(d, item.descRst, itemDesc)
-      d.section[k].finalMarkup.add(
-        getConfigVar(d.conf, "doc.item") % (
-            item.substitutions & @["desc", itemDesc]))
-      itemDesc = ""
-    d.section[k].secItems.setLen 0
+    # add symbols to section for each `k`, while optionally wrapping
+    # overloadable items with the same basic name by ``doc.item2``
+    let overloadableNames = toSeq(keys(d.section[k].secItems))
+    for plainName in overloadableNames.sorted(cmpDecimalsIgnoreCase):
+      var overloadChoices = d.section[k].secItems[plainName]
+      overloadChoices.sort(cmp)
+      var nameContent = ""
+      for item in overloadChoices:
+        var itemDesc: string
+        renderItemPre(d, item.descRst, itemDesc)
+        nameContent.add(
+          getConfigVar(d.conf, "doc.item") % (
+              item.substitutions & @[
+                "desc", itemDesc,
+                "name", item.name,
+                "itemSymOrID", item.anchor]))
+      if k in routineKinds:
+        let plainNameEsc1 = esc(d.target, plainName.strip)
+        let plainNameEsc2 = esc(d.target, plainName.strip, escMode=emUrl)
+        d.section[k].finalMarkup.add(
+          getConfigVar(d.conf, "doc.item2") % (
+            @["header_plain", plainNameEsc1,
+              "overloadGroupName", overloadGroupName(plainNameEsc2, k),
+              "content", nameContent]))
+      else:
+        d.section[k].finalMarkup.add(nameContent)
+    d.section[k].secItems.clear
   renderItemPre(d, d.modDescPre, d.modDescFinal)
   d.modDescPre.setLen 0
   d.hasToc = d.hasToc or d.sharedState.hasToc
@@ -1493,7 +1615,7 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
                    filename: AbsoluteFile, outExt: string) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, cache, conf, outExt, isPureRst = true)
-  let rst = parseRst(readFile(filen.string), filen.string,
+  let rst = parseRst(readFile(filen.string),
                      line=LineRstInit, column=ColRstInit,
                      conf, d.sharedState)
   d.modDescPre = @[ItemFragment(isRst: true, rst: rst)]

@@ -20,19 +20,19 @@ type
           incompleteStruct.} = object
   File* = ptr CFile ## The type representing a file handle.
 
-  FileMode* = enum           ## The file mode when opening a file.
-    fmRead,                   ## Open the file for read access only.
-    fmWrite,                  ## Open the file for write access only.
-                              ## If the file does not exist, it will be
-                              ## created. Existing files will be cleared!
-    fmReadWrite,              ## Open the file for read and write access.
-                              ## If the file does not exist, it will be
-                              ## created. Existing files will be cleared!
-    fmReadWriteExisting,      ## Open the file for read and write access.
-                              ## If the file does not exist, it will not be
-                              ## created. The existing file will not be cleared.
-    fmAppend                  ## Open the file for writing only; append data
-                              ## at the end.
+  FileMode* = enum       ## The file mode when opening a file.
+    fmRead,              ## Open the file for read access only.
+    fmWrite,             ## Open the file for write access only.
+                         ## If the file does not exist, it will be
+                         ## created. Existing files will be cleared!
+    fmReadWrite,         ## Open the file for read and write access.
+                         ## If the file does not exist, it will be
+                         ## created. Existing files will be cleared!
+    fmReadWriteExisting, ## Open the file for read and write access.
+                         ## If the file does not exist, it will not be
+                         ## created. The existing file will not be cleared.
+    fmAppend             ## Open the file for writing only; append data
+                         ## at the end.
 
   FileHandle* = cint ## type that represents an OS file handle; this is
                       ## useful for low-level file access
@@ -40,7 +40,8 @@ type
 # text file handling:
 when not defined(nimscript) and not defined(js):
   # duplicated between io and ansi_c
-  const stdioUsesMacros = (defined(osx) or defined(freebsd) or defined(dragonfly)) and not defined(emscripten)
+  const stdioUsesMacros = (defined(osx) or defined(freebsd) or defined(
+      dragonfly)) and not defined(emscripten)
   const stderrName = when stdioUsesMacros: "__stderrp" else: "stderr"
   const stdoutName = when stdioUsesMacros: "__stdoutp" else: "stdout"
   const stdinName = when stdioUsesMacros: "__stdinp" else: "stdin"
@@ -158,7 +159,7 @@ proc checkErr(f: File) =
     # shouldn't happen
     quit(1)
 
-{.push stackTrace:off, profiler:off.}
+{.push stackTrace: off, profiler: off.}
 proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
   tags: [ReadIOEffect], benign.} =
   ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
@@ -167,7 +168,8 @@ proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
   result = cast[int](c_fread(buffer, 1, cast[csize_t](len), f))
   if result != len: checkErr(f)
 
-proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int {.
+proc readBytes*(f: File, a: var openArray[int8|uint8], start,
+    len: Natural): int {.
   tags: [ReadIOEffect], benign.} =
   ## reads `len` bytes into the buffer `a` starting at `a[start]`. Returns
   ## the actual number of bytes that have been read which may be less than
@@ -347,7 +349,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
     ## availability with `declared() <system.html#declared,untyped>`.
     when SupportIoctlInheritCtl:
       result = c_ioctl(f, if inheritable: FIONCLEX else: FIOCLEX) != -1
-    elif defined(freertos):
+    elif defined(freertos) or defined(zephyr):
       result = true
     elif defined(posix):
       var flags = c_fcntl(f, F_GETFD)
@@ -418,8 +420,8 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       numberOfCharsRead -= 2
       # handle Ctrl+Z as EOF
       for i in 0..<numberOfCharsRead:
-        if buffer[i].uint16 == 26:  #Ctrl+Z
-          close(f)  #has the same effect as setting EOF
+        if buffer[i].uint16 == 26: #Ctrl+Z
+          close(f) #has the same effect as setting EOF
           if i == 0:
             line = ""
             return false
@@ -480,7 +482,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     sp = 128 # read in 128 bytes at a time
     line.setLen(pos+sp)
 
-proc readLine*(f: File): string  {.tags: [ReadIOEffect], benign.} =
+proc readLine*(f: File): string {.tags: [ReadIOEffect], benign.} =
   ## reads a line of text from the file `f`. May throw an IO exception.
   ## A line of text may be delimited by `LF` or `CRLF`. The newline
   ## character(s) are not part of the returned string.
@@ -647,7 +649,7 @@ when defined(posix) and not defined(nimscript):
       Stat {.importc: "struct stat",
               header: "<sys/stat.h>", final, pure.} = object ## struct stat
         filler_1: array[24, char]
-        st_mode: Mode        ## Mode of file
+        st_mode: Mode ## Mode of file
         filler_2: array[144 - 24 - 4, char]
 
     proc modeIsDir(m: Mode): bool =
@@ -660,7 +662,7 @@ when defined(posix) and not defined(nimscript):
 
       Stat {.importc: "struct stat",
                header: "<sys/stat.h>", final, pure.} = object ## struct stat
-        st_mode: Mode        ## Mode of file
+        st_mode: Mode ## Mode of file
 
     proc modeIsDir(m: Mode): bool {.importc: "S_ISDIR", header: "<sys/stat.h>".}
       ## Test for a directory.
@@ -727,7 +729,8 @@ proc open*(f: var File, filehandle: FileHandle,
   ##
   ## The passed file handle will no longer be inheritable.
   when not defined(nimInheritHandles) and declared(setInheritable):
-    let oshandle = when defined(windows): FileHandle getOsfhandle(filehandle) else: filehandle
+    let oshandle = when defined(windows): FileHandle getOsfhandle(
+        filehandle) else: filehandle
     if not setInheritable(oshandle, false):
       return false
   f = c_fdopen(filehandle, FormatOpen[mode])
@@ -774,14 +777,21 @@ proc setStdIoUnbuffered*() {.tags: [], benign.} =
 
 when declared(stdout):
   when defined(windows) and compileOption("threads"):
+    proc addSysExitProc(quitProc: proc() {.noconv.}) {.importc: "atexit", header: "<stdlib.h>".}
+
     const insideRLocksModule = false
     include "system/syslocks"
 
+
     var echoLock: SysLock
     initSysLock echoLock
+    addSysExitProc(proc() {.noconv.} = deinitSys(echoLock))
 
-  const stdOutLock = not defined(windows) and not defined(android) and
-                     not defined(nintendoswitch) and not defined(freertos) and
+  const stdOutLock = not defined(windows) and
+                     not defined(android) and
+                     not defined(nintendoswitch) and
+                     not defined(freertos) and
+                     not defined(zephyr) and
                      hostOS != "any"
 
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
@@ -895,7 +905,8 @@ proc readLines*(filename: string, n: Natural): seq[string] =
   else:
     sysFatal(IOError, "cannot open: " & filename)
 
-template readLines*(filename: string): seq[string] {.deprecated: "use readLines with two arguments".} =
+template readLines*(filename: string): seq[
+    string] {.deprecated: "use readLines with two arguments".} =
   readLines(filename, 1)
 
 iterator lines*(filename: string): string {.tags: [ReadIOEffect].} =
@@ -912,7 +923,7 @@ iterator lines*(filename: string): string {.tags: [ReadIOEffect].} =
       for line in filename.lines:
         buffer.add(line.replace("a", "0") & '\n')
       writeFile(filename, buffer)
-  var f = open(filename, bufSize=8000)
+  var f = open(filename, bufSize = 8000)
   try:
     var res = newStringOfCap(80)
     while f.readLine(res): yield res

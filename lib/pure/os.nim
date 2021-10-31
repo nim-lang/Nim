@@ -39,8 +39,8 @@ const weirdTarget = defined(nimscript) or defined(js)
 since (1, 1):
   const
     invalidFilenameChars* = {'/', '\\', ':', '*', '?', '"', '<', '>', '|', '^', '\0'} ## \
-    ## Characters that may produce invalid filenames across Linux, Windows, Mac, etc.
-    ## You can check if your filename contains these char and strip them for safety.
+    ## Characters that may produce invalid filenames across Linux, Windows and Mac.
+    ## You can check if your filename contains any of these chars and strip them for safety.
     ## Mac bans ``':'``, Linux bans ``'/'``, Windows bans all others.
     invalidFilenames* = [
       "CON", "PRN", "AUX", "NUL",
@@ -297,7 +297,7 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raise
     result = path[0] == '$'
   elif defined(posix) or defined(js):
     # `or defined(js)` wouldn't be needed pending https://github.com/nim-lang/Nim/issues/13469
-    # This works around the problem for posix, but windows is still broken with nim js -d:nodejs
+    # This works around the problem for posix, but Windows is still broken with nim js -d:nodejs
     result = path[0] == '/'
   else:
     doAssert false # if ever hits here, adapt as needed
@@ -321,7 +321,7 @@ when doslikeFileSystem:
   proc sameRoot(path1, path2: string): bool {.noSideEffect, raises: [].} =
     ## Return true if path1 and path2 have a same root.
     ##
-    ## Detail of windows path formats:
+    ## Detail of Windows path formats:
     ## https://docs.microsoft.com/en-us/dotnet/standard/io/file-path-formats
 
     assert(isAbsolute(path1))
@@ -370,7 +370,7 @@ proc relativePath*(path, base: string, sep = DirSep): string {.
   ## this can be useful to ensure the relative path only contains `'/'`
   ## so that it can be used for URL constructions.
   ##
-  ## On windows, if a root of `path` and a root of `base` are different,
+  ## On Windows, if a root of `path` and a root of `base` are different,
   ## returns `path` as is because it is impossible to make a relative path.
   ## That means an absolute path can be returned.
   ##
@@ -558,27 +558,25 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   ## See also:
   ## * `parentDir proc <#parentDir,string>`_
   ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   let g = "a/b/c"
-  ##
-  ##   for p in g.parentDirs:
-  ##     echo p
-  ##   # a/b/c
-  ##   # a/b
-  ##   # a
-  ##
-  ##   for p in g.parentDirs(fromRoot=true):
-  ##     echo p
-  ##   # a/
-  ##   # a/b/
-  ##   # a/b/c
-  ##
-  ##   for p in g.parentDirs(inclusive=false):
-  ##     echo p
-  ##   # a/b
-  ##   # a
+  runnableExamples:
+    let g = "a/b/c"
+
+    for p in g.parentDirs:
+      echo p
+      # a/b/c
+      # a/b
+      # a
+
+    for p in g.parentDirs(fromRoot=true):
+      echo p
+      # a/
+      # a/b/
+      # a/b/c
+
+    for p in g.parentDirs(inclusive=false):
+      echo p
+      # a/b
+      # a
 
   if not fromRoot:
     var current = path
@@ -944,8 +942,7 @@ proc getCacheDir*(): string =
 proc getCacheDir*(app: string): string =
   ## Returns the cache directory for an application `app`.
   ##
-  ## * On windows, this uses: `getCacheDir() / app / "cache"`
-  ##
+  ## * On Windows, this uses: `getCacheDir() / app / "cache"`
   ## * On other platforms, this uses: `getCacheDir() / app`
   when defined(windows):
     getCacheDir() / app / "cache"
@@ -1988,7 +1985,7 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect], n
 proc tryMoveFSObject(source, dest: string, isDir: bool): bool {.noWeirdTarget.} =
   ## Moves a file (or directory if `isDir` is true) from `source` to `dest`.
   ##
-  ## Returns false in case of `EXDEV` error or `AccessDeniedError` on windows (if `isDir` is true).
+  ## Returns false in case of `EXDEV` error or `AccessDeniedError` on Windows (if `isDir` is true).
   ## In case of other errors `OSError` is raised.
   ## Returns true in case of success.
   when defined(windows):
@@ -2144,7 +2141,7 @@ iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect], noWeirdT
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
   runnableExamples:
     import std/sequtils
-    let paths = toSeq(walkPattern("lib/pure/*")) # works on windows too
+    let paths = toSeq(walkPattern("lib/pure/*")) # works on Windows too
     assert "lib/pure/concurrency".unixToNativePath in paths
     assert "lib/pure/os.nim".unixToNativePath in paths
   walkCommon(pattern, defaultWalkFilter)
@@ -2163,7 +2160,7 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTar
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
   runnableExamples:
     import std/sequtils
-    assert "lib/pure/os.nim".unixToNativePath in toSeq(walkFiles("lib/pure/*.nim")) # works on windows too
+    assert "lib/pure/os.nim".unixToNativePath in toSeq(walkFiles("lib/pure/*.nim")) # works on Windows too
   walkCommon(pattern, isFile)
 
 iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarget.} =
@@ -2180,7 +2177,7 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarg
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
   runnableExamples:
     import std/sequtils
-    let paths = toSeq(walkDirs("lib/pure/*")) # works on windows too
+    let paths = toSeq(walkDirs("lib/pure/*")) # works on Windows too
     assert "lib/pure/concurrency".unixToNativePath in paths
   walkCommon(pattern, isDir)
 
@@ -2278,7 +2275,9 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ## If `checkDir` is true, `OSError` is raised when `dir`
   ## doesn't exist.
   ##
-  ## Example: This directory structure::
+  ## **Example:**
+  ##
+  ## This directory structure::
   ##   dirA / dirB / fileB1.txt
   ##        / dirC
   ##        / fileA1.txt
@@ -2291,7 +2290,6 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
     # this also works at compile time
     assert collect(for k in walkDir("dirA"): k.path).join(" ") ==
                           "dirA/dirB dirA/dirC dirA/fileA2.txt dirA/fileA1.txt"
-  ##
   ## See also:
   ## * `walkPattern iterator <#walkPattern.i,string>`_
   ## * `walkFiles iterator <#walkFiles.i,string>`_
@@ -3271,7 +3269,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     formalInfo.lastAccessTime = fromWinTime(rdFileTime(rawInfo.ftLastAccessTime))
     formalInfo.lastWriteTime = fromWinTime(rdFileTime(rawInfo.ftLastWriteTime))
     formalInfo.creationTime = fromWinTime(rdFileTime(rawInfo.ftCreationTime))
-    formalInfo.blockSize = 8192 # xxx use windows API instead of hardcoding
+    formalInfo.blockSize = 8192 # xxx use Windows API instead of hardcoding
 
     # Retrieve basic permissions
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0'i32:
@@ -3494,27 +3492,30 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noWeirdTarget.} =
     discard h.closeHandle
     if res == 0'i32: raiseOSError(osLastError(), file)
 
-func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1).} =
+func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1), deprecated: "Deprecated since v1.5.1".} =
   ## Returns true if ``filename`` is valid for crossplatform use.
   ##
   ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
   ## You can pass full paths as argument too, but func only checks filenames.
-  ## It uses ``invalidFilenameChars``, ``invalidFilenames`` and ``maxLen`` to verify the specified ``filename``.
   ##
-  ## .. code-block:: nim
-  ##   assert not isValidFilename(" foo")    ## Leading white space
-  ##   assert not isValidFilename("foo ")    ## Trailing white space
-  ##   assert not isValidFilename("foo.")    ## Ends with Dot
-  ##   assert not isValidFilename("con.txt") ## "CON" is invalid (Windows)
-  ##   assert not isValidFilename("OwO:UwU") ## ":" is invalid (Mac)
-  ##   assert not isValidFilename("aux.bat") ## "AUX" is invalid (Windows)
+  ## It uses `invalidFilenameChars`, `invalidFilenames` and `maxLen` to verify the specified `filename`.
   ##
+  runnableExamples:
+    assert not isValidFilename(" foo")     # Leading white space
+    assert not isValidFilename("foo ")     # Trailing white space
+    assert not isValidFilename("foo.")     # Ends with dot
+    assert not isValidFilename("con.txt")  # "CON" is invalid (Windows)
+    assert not isValidFilename("OwO:UwU")  # ":" is invalid (Mac)
+    assert not isValidFilename("aux.bat")  # "AUX" is invalid (Windows)
+    assert not isValidFilename("")         # Empty string
+    assert not isValidFilename("foo/")     # Filename is empty
+
   # https://docs.microsoft.com/en-us/dotnet/api/system.io.pathtoolongexception
   # https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
   # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
   result = true
   let f = filename.splitFile()
-  if unlikely(f.name.len + f.ext.len > maxLen or
+  if unlikely(f.name.len + f.ext.len > maxLen or f.name.len == 0 or
     f.name[0] == ' ' or f.name[^1] == ' ' or f.name[^1] == '.' or
     find(f.name, invalidFilenameChars) != -1): return false
   for invalid in invalidFilenames:
