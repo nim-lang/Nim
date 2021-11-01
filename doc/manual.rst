@@ -2975,8 +2975,7 @@ Even some code that has side effects is permitted in a static block:
   static:
     echo "echo at compile time"
 
-When `static` is used like a procedure call with a proc call as an argument,
-that proc call gets executed at compile-time.
+`static` can also be used like a routine.
 
 .. code-block:: nim
 
