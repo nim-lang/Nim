@@ -3589,8 +3589,16 @@ does not provide a value for the argument. The value will be reevaluated
 every time the function is called.
 
 .. code-block:: nim
-  # b is optional with 47 as its default value
+  # b is optional with 47 as its default value.
   proc foo(a: int, b: int = 47): int
+
+Just as the comma propagates the types from right to left until the
+first parameter or until a semicolon is hit, it also propagates the
+default value starting from the parameter declared with it.
+
+.. code-block:: nim
+  # Both a and b are optional with 47 as their default values.
+  proc foo(a, b: int = 47): int
 
 Parameters can be declared mutable and so allow the proc to modify those
 arguments, by using the type modifier `var`.
