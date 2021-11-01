@@ -2975,6 +2975,21 @@ Even some code that has side effects is permitted in a static block:
   static:
     echo "echo at compile time"
 
+When `static` is used like a procedure call with a proc call as an argument,
+that proc call gets executed at compile-time.
+
+.. code-block:: nim
+
+  proc getNum(a: int): int = a
+
+  # Below calls "echo getNum(123)" at compile time.
+  static:
+    echo getNum(123)
+
+  # Below call evaluates the "getNum(123)" at compile time, but its
+  # result gets used at run time.
+  echo getNum(123).static
+
 There are limitations on what Nim code can be executed at compile time;
 see `Restrictions on Compile-Time Execution
 <#restrictions-on-compileminustime-execution>`_ for details.
