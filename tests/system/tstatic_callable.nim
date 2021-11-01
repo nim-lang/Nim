@@ -1,4 +1,4 @@
-# issue# 16987
+# bug #16987
 
 proc getNum(a: int): int = a
 

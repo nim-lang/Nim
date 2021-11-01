@@ -1,4 +1,4 @@
-# issue# 16987
+# bug #16987
 
 discard """
 errormsg: "cannot evaluate at compile time: inp"
