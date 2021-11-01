@@ -1,3 +1,4 @@
+# bug #15435
 discard """
 errormsg: "type mismatch: got <set[uint8], set[range 1..5(uint8)]>"
 nimout: '''t15435.nim(28, 13) Error: type mismatch: got <set[uint8], set[range 1..5(uint8)]>
@@ -10,7 +11,6 @@ proc `<`[T](x, y: set[T]): bool
 
 expression: {1'u8, 5} < x'''
 """
-
 
 
 
