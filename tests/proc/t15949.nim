@@ -1,10 +1,10 @@
+# bug #15949
+
 discard """
 errormsg: "parameter 'a' requires a type"
 nimout: '''
 t15949.nim(20, 14) Error: parameter 'a' requires a type'''
 """
-
-
 
 
 # line 10
