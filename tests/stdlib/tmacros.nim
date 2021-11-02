@@ -66,3 +66,61 @@ block: # unpackVarargs
     doAssert call1(toString) == ""
     doAssert call1(toString, 10) == "10"
     doAssert call1(toString, 10, 11) == "1011"
+
+block: # SameType
+  type
+    A = int
+    B = distinct int
+    C = object
+    Generic[T, Y] = object
+  macro isSameType(a, b: typed): untyped =
+    newLit(sameType(a, b))
+
+  static:
+    assert Generic[int, int].isSameType(Generic[int, int])
+    assert Generic[A, string].isSameType(Generic[int, string])
+    assert not Generic[A, string].isSameType(Generic[B, string])
+    assert not Generic[int, string].isSameType(Generic[int, int])
+    assert isSameType(int, A)
+    assert isSameType(10, 20)
+    assert isSameType("Hello", "world")
+    assert not isSameType("Hello", cstring"world")
+    assert not isSameType(int, B)
+    assert not isSameType(int, Generic[int, int])
+    assert not isSameType(C, string)
+    assert not isSameType(C, int)
+
+
+  #[
+    # compiler sameType fails for the following, read more in `types.nim`'s `sameTypeAux`.
+    type
+      D[T] = C
+      G[T] = T
+    static:
+      assert isSameType(D[int], C)
+      assert isSameType(D[int], D[float])
+      assert isSameType(G[float](1.0), float(1.0))
+      assert isSameType(float(1.0), G[float](1.0))
+  ]#
+
+  type Tensor[T] = object
+    data: T
+
+  macro testTensorInt(x: typed): untyped =
+    let
+      tensorIntType = getTypeInst(Tensor[int])[1]
+      xTyp = x.getTypeInst
+    
+    newLit(xTyp.sameType(tensorIntType))
+
+  var
+    x: Tensor[int]
+    x1 = Tensor[float]()
+    x2 = Tensor[A]()
+    x3 = Tensor[B]()
+
+  static: 
+    assert testTensorInt(x)
+    assert not testTensorInt(x1)
+    assert testTensorInt(x2)
+    assert not testTensorInt(x3)
