@@ -2987,7 +2987,7 @@ Even some code that has side effects is permitted in a static block:
 
   # Below call evaluates the "getNum(123)" at compile time, but its
   # result gets used at run time.
-  echo getNum(123).static
+  echo static(getNum(123))
 
 There are limitations on what Nim code can be executed at compile time;
 see `Restrictions on Compile-Time Execution
