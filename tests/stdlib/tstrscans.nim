@@ -15,7 +15,7 @@ block ParsePasswd:
       else:
         break
 
-  const etc_passwd = """root:x:0:0:root:/root:/bin/bash
+  const etcPasswd = """root:x:0:0:root:/root:/bin/bash
 daemon:x:1:1:daemon:/usr/sbin:/bin/sh
 bin:x:2:2:bin:/bin:/bin/sh
 sys:x:3:3:sys:/dev:/bin/sh
@@ -23,7 +23,7 @@ nobody:x:65534:65534:nobody:/nonexistent:/bin/sh
 messagebus:x:103:107::/var/run/dbus:/bin/false
 """
 
-  const parsed_etc_passwd = @[
+  const parsedEtcPasswd = @[
     "root:x:0:0:root:/root:/bin/bash",
     "daemon:x:1:1:daemon:/usr/sbin:/bin/sh",
     "bin:x:2:2:bin:/bin:/bin/sh",
@@ -31,7 +31,7 @@ messagebus:x:103:107::/var/run/dbus:/bin/false
     "nobody:x:65534:65534:nobody:/nonexistent:/bin/sh",
     "messagebus:x:103:107::/var/run/dbus:/bin/false",
     ]
-  doAssert etc_passwd.parsePasswd == parsed_etc_passwd
+  doAssert etcPasswd.parsePasswd == parsedEtcPasswd
 
 block LastNot:
   var idx : int
@@ -139,27 +139,27 @@ block:
         break
 
   var key, val: string
-  var intval: int
-  var floatval: float
-  doAssert scanf("abc:: xyz 89  33.25", "$w$s::$s$w$s$i  $f", key, val, intval, floatVal)
+  var intVal: int
+  var floatVal: float
+  doAssert scanf("abc:: xyz 89  33.25", "$w$s::$s$w$s$i  $f", key, val, intVal, floatVal)
   doAssert key == "abc"
   doAssert val == "xyz"
-  doAssert intval == 89
+  doAssert intVal == 89
   doAssert floatVal == 33.25
 
-  var binval: int
-  var octval: int
-  var hexval: int
-  doAssert scanf("0b0101 0o1234 0xabcd", "$b$s$o$s$h", binval, octval, hexval)
-  doAssert binval == 0b0101
-  doAssert octval == 0o1234
-  doAssert hexval == 0xabcd
+  var binVal: int
+  var octVal: int
+  var hexVal: int
+  doAssert scanf("0b0101 0o1234 0xabcd", "$b$s$o$s$h", binVal, octVal, hexVal)
+  doAssert binVal == 0b0101
+  doAssert octVal == 0o1234
+  doAssert hexVal == 0xabcd
 
-  let xx = scanf("$abc", "$$$i", intval)
+  let xx = scanf("$abc", "$$$i", intVal)
   doAssert xx == false
 
 
-  let xx2 = scanf("$1234", "$$$i", intval)
+  let xx2 = scanf("$1234", "$$$i", intVal)
   doAssert xx2
 
   let yy = scanf(";.--Breakpoint00 [output]",
@@ -246,24 +246,32 @@ block:
     result = 0
     while start+result < input.len and input[start+result] in seps: inc result
 
+  type
+    ScanRetType = tuple
+      success: bool
+      lo: int
+      hi: int
+      ch: char
+      word: string
+
   var res = 0
   for line in input.splitLines:
-    let (success, lo, hi, c ,w) = scanTuple(line, "$i-$i $c: $w")
-    if success:
+    let ret: ScanRetType = scanTuple(line, "$i-$i $c: $w")
+    if ret.success:
       inc res
   doAssert res == 4
 
-  let (_, key, val, intval, floatVal) = scanTuple("abc:: xyz 89  33.25", "$w$s::$s$w$s$i  $f")
+  let (_, key, val, intVal, floatVal) = scanTuple("abc:: xyz 89  33.25", "$w$s::$s$w$s$i  $f")
   doAssert key == "abc"
   doAssert val == "xyz"
-  doAssert intval == 89
+  doAssert intVal == 89
   doAssert floatVal == 33.25
 
 
-  let (_, binVal, octVal, hexVal) = scanTuple("0b0101 0o1234 0xabcd", "$b$s$o$s$h", binval, octval, hexval)
-  doAssert binval == 0b0101
-  doAssert octval == 0o1234
-  doAssert hexval == 0xabcd
+  let (_, binVal, octVal, hexVal) = scanTuple("0b0101 0o1234 0xabcd", "$b$s$o$s$h", binVal, octVal, hexVal)
+  doAssert binVal == 0b0101
+  doAssert octVal == 0o1234
+  doAssert hexVal == 0xabcd
 
   var (xx,_) = scanTuple("$abc", "$$$i")
   doAssert xx == false
@@ -272,7 +280,7 @@ block:
   let (xx2, _) = block: scanTuple("$1234", "$$$i")
   doAssert xx2
 
-  var (yy, intval2, key2) = scanTuple(";.--Breakpoint00 [output]",
+  var (yy, intVal2, key2) = scanTuple(";.--Breakpoint00 [output]",
       "$[someSep]Breakpoint${twoDigits}$[someSep({';','.','-'})] [$+]$.",
       int)
   doAssert yy
