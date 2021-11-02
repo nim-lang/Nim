@@ -149,7 +149,7 @@ read [this guide][pull-request-instructions].
 
 Ideally, you should make sure that all tests pass before submitting a pull request.
 However, if you are short on time, you can just run the tests specific to your
-changes by only running the corresponding categories of tests. Travis CI verifies
+changes by only running the corresponding categories of tests. CI verifies
 that all tests pass before allowing the pull request to be accepted, so only
 running specific tests should be harmless.
 Integration tests should go in ``tests/untestable``.
@@ -220,7 +220,6 @@ Copyright © 2006-2021 Andreas Rumpf, all rights reserved.
 [nimsuggest-repo]: https://github.com/nim-lang/nimsuggest
 [csources-repo-deprecated]: https://github.com/nim-lang/csources
 [csources-v1-repo]: https://github.com/nim-lang/csources_v1
-[badge-nim-travisci]: https://img.shields.io/travis/nim-lang/Nim/devel.svg?style=flat-square
 [badge-nim-irc]: https://img.shields.io/badge/chat-on_irc-blue.svg?style=flat-square
 [badge-nim-discord]: https://img.shields.io/discord/371759389889003530?color=blue&label=discord&logo=discord&logoColor=gold&style=flat-square
 [badge-nim-gitter]: https://img.shields.io/badge/chat-on_gitter-blue.svg?style=flat-square

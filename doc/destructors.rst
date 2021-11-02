@@ -101,7 +101,7 @@ The memory management for Nim's standard `string` and `seq` types as
 well as other standard collections is performed via so-called
 "Lifetime-tracking hooks", which are particular `type bound operators <manual.html#procedures-type-bound-operators>`_.
 
-There are 3 different hooks for each (generic or concrete) object type `T` (`T` can also be a
+There are 4 different hooks for each (generic or concrete) object type `T` (`T` can also be a
 `distinct` type) that are called implicitly by the compiler.
 
 (Note: The word "hook" here does not imply any kind of dynamic binding
