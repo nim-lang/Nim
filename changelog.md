@@ -7,7 +7,9 @@
 
 ## Standard library additions and changes
 
+## `std/smtp`
 
+- Sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
 
 ## Language changes
 
