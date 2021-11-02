@@ -559,6 +559,7 @@ proc runCI(cmd: string) =
 
   let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
+    buildTools()
     execFold("Test selected Nimble packages", "nim r testament/testament $# pcat nimble-packages" % batchParam)
   else:
     buildTools()
