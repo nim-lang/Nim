@@ -226,8 +226,8 @@ proc helo*(smtp: Smtp | AsyncSmtp) {.multisync.} =
   await smtp.checkReply("250")
 
 proc recvEhlo*(smtp: Smtp | AsyncSmtp): Future[bool] {.multisync.} =
-  ## skips "250-" lines, read until "250 " found
-  ## return `true` if server supports `EHLO`, false otherwise
+  ## Skips "250-" lines, read until "250 " found.
+  ## Return `true` if server supports `EHLO`, false otherwise.
   while true:
     var line = await smtp.sock.recvLine()
     if smtp.debug:
@@ -237,7 +237,7 @@ proc recvEhlo*(smtp: Smtp | AsyncSmtp): Future[bool] {.multisync.} =
     else: return false
 
 proc ehlo*(smtp: Smtp | AsyncSmtp): Future[bool] {.multisync.} =
-  ## Sends EHLO request
+  ## Sends EHLO request.
   await smtp.debugSend("EHLO " & smtp.address & "\c\L")
   return await smtp.recvEhlo()
 
