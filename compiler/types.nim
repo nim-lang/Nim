@@ -1128,6 +1128,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       a = a.skipTypes({tyDistinct, tyGenericInst})
       if a.kind != b.kind: return false
 
+  #[
+    The following code should not run in the case either side is an generic alias,
+    but it's not presently possible to distinguish the genericinsts from aliases of
+    objects ie `type A[T] = SomeObject`
+  ]#
   # this is required by tunique_type but makes no sense really:
   if tyDistinct notin {x.kind, y.kind} and x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
     let
