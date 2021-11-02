@@ -111,7 +111,10 @@ proc getRst2html(): seq[string] =
   for a in walkDirRecFilter("doc"):
     let path = a.path
     if a.kind == pcFile and path.splitFile.ext == ".rst" and path.lastPathPart notin
-        ["docs.rst", "nimfix.rst"]:
+        ["docs.rst", "nimfix.rst",
+         "docstyle.rst" # docstyle.rst shouldn't be converted to html separately;
+                        # it's included in contributing.rst.
+        ]:
           # maybe we should still show nimfix, could help reviving it
           # `docs` is redundant with `overview`, might as well remove that file?
       result.add path
