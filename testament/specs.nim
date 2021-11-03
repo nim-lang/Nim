@@ -103,7 +103,7 @@ type
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
-    result = compilerPrefix & " $target --hints:on -d:testing --clearNimblePath --nimblePath:build/deps/pkgs $options $file"
+    result = compilerPrefix & " $target --hints:on -d:testing --nimblePath:build/deps/pkgs $options $file"
   else:
     result = s.cmd
 

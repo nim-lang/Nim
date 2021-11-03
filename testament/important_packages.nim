@@ -115,7 +115,7 @@ pkg "nimterop", "nimble minitest"
 pkg "nimwc", "nim c nimwc.nim"
 pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
-pkg "norm", "nim c -r tests/sqlite/trows.nim"
+pkg "norm", "testament r tests/sqlite/trows.nim"
 pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nim c -r tests/test_integrate.nim"
 pkg "optionsutils"
