@@ -465,7 +465,7 @@ proc `==`*(a, b: JsonNode): bool {.noSideEffect.} =
       for key, val in a.fields:
         if not b.fields.hasKey(key): return false
         when defined(nimHasEffectsOf):
-          {.cast(noSideEffect).}:
+          {.noSideEffect.}:
             if b.fields[key] != val: return false
         else:
           if b.fields[key] != val: return false
