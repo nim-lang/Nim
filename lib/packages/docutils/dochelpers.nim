@@ -17,7 +17,9 @@ import rstast
 
 type
   LangSymbol* = object       ## symbol signature in Nim
-    symKind*: string           ## "proc", "const", etc
+    symKind*: string           ## "proc", "const", "type", etc
+    symTypeKind*: string       ## ""|enum|object|tuple -
+                               ## valid only when `symKind == "type"`
     name*: string              ## plain symbol name without any parameters
     generics*: string          ## generic parameters (without brackets)
     isGroup*: bool             ## is LangSymbol a group with overloads?
@@ -79,7 +81,14 @@ proc toLangSymbol*(linkText: PRstNode): LangSymbol =
   assert linkText.kind in {rnRef, rnInner}
 
   const NimDefs = ["proc", "func", "macro", "method", "iterator",
-                   "template", "converter", "const", "type", "var"]
+                   "template", "converter", "const", "type", "var",
+                   "enum", "object", "tuple"]
+  template resolveSymKind(x: string) =
+    if x in ["enum", "object", "tuple"]:
+      result.symKind = "type"
+      result.symTypeKind = x
+    else:
+      result.symKind = x
   type
     State = enum
       inBeginning
@@ -97,7 +106,7 @@ proc toLangSymbol*(linkText: PRstNode): LangSymbol =
     if curIdent != "":
       case state
       of inBeginning:  doAssert false, "incorrect state inBeginning"
-      of afterSymKind:  result.symKind = curIdent
+      of afterSymKind:  resolveSymKind curIdent
       of beforeSymbolName:  doAssert false, "incorrect state beforeSymbolName"
       of atSymbolName: result.name = curIdent.nimIdentBackticksNormalize
       of afterSymbolName: doAssert false, "incorrect state afterSymbolName"
@@ -195,7 +204,7 @@ proc toLangSymbol*(linkText: PRstNode): LangSymbol =
       let isPostfixSymKind = i > 0 and i == L - 1 and
           result.symKind == "" and s(i) in NimDefs
       if isPostfixSymKind:  # for links like `foo proc`_
-        result.symKind = s(i)
+        resolveSymKind s(i)
       else:
         case state
         of inBeginning:
@@ -235,6 +244,8 @@ proc match*(generated: LangSymbol, docLink: LangSymbol): bool =
       result = docLink.symKind in ["proc", "func"]
     else:
       result = generated.symKind == docLink.symKind
+      if result and docLink.symKind == "type" and docLink.symTypeKind != "":
+        result = generated.symTypeKind == docLink.symTypeKind
     if not result: return
   result = generated.name == docLink.name
   if not result: return

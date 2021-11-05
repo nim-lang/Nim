@@ -399,6 +399,13 @@ recognized fine::
       no backticks: `func [][T](x: openArray[T]): T`_
       escaped:  `func \`[]\`[T](x: openArray[T]): T`_
 
+.. Note:: Types that defined as `enum`, or `object`, or `tuple` can also be
+   referenced with those names directly (instead of `type`)::
+
+     type CopyFlag = enum
+       ...
+     ## Ref. `CopyFlag enum`_
+
 Related Options
 ===============
 

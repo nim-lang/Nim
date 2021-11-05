@@ -56,13 +56,13 @@ when not defined(nimscript):
       ##
       ## If the variable does not exist, `""` is returned. To distinguish
       ## whether a variable exists or it's value is just `""`, call
-      ## `existsEnv(key) proc <#existsEnv,string>`_.
+      ## `existsEnv(key) proc`_.
       ##
       ## See also:
-      ## * `existsEnv proc <#existsEnv,string>`_
-      ## * `putEnv proc <#putEnv,string,string>`_
-      ## * `delEnv proc <#delEnv,string>`_
-      ## * `envPairs iterator <#envPairs.i>`_
+      ## * `existsEnv proc`_
+      ## * `putEnv proc`_
+      ## * `delEnv proc`_
+      ## * `envPairs iterator`_
       runnableExamples:
         assert getEnv("unknownEnv") == ""
         assert getEnv("unknownEnv", "doesn't exist") == "doesn't exist"
@@ -76,10 +76,10 @@ when not defined(nimscript):
       ## Returns true if it exists, false otherwise.
       ##
       ## See also:
-      ## * `getEnv proc <#getEnv,string,string>`_
-      ## * `putEnv proc <#putEnv,string,string>`_
-      ## * `delEnv proc <#delEnv,string>`_
-      ## * `envPairs iterator <#envPairs.i>`_
+      ## * `getEnv proc`_
+      ## * `putEnv proc`_
+      ## * `delEnv proc`_
+      ## * `envPairs iterator`_
       runnableExamples:
         assert not existsEnv("unknownEnv")
 
@@ -90,10 +90,10 @@ when not defined(nimscript):
       ## If an error occurs, `OSError` is raised.
       ##
       ## See also:
-      ## * `getEnv proc <#getEnv,string,string>`_
-      ## * `existsEnv proc <#existsEnv,string>`_
-      ## * `delEnv proc <#delEnv,string>`_
-      ## * `envPairs iterator <#envPairs.i>`_
+      ## * `getEnv proc`_
+      ## * `existsEnv proc`_
+      ## * `delEnv proc`_
+      ## * `envPairs iterator`_
       when defined(windows):
         if key.len == 0 or '=' in key:
           raise newException(OSError, "invalid key, got: " & $(key, val))
@@ -108,10 +108,10 @@ when not defined(nimscript):
       ## If an error occurs, `OSError` is raised.
       ##
       ## See also:ven
-      ## * `getEnv proc <#getEnv,string,string>`_
-      ## * `existsEnv proc <#existsEnv,string>`_
-      ## * `putEnv proc <#putEnv,string,string>`_
-      ## * `envPairs iterator <#envPairs.i>`_
+      ## * `getEnv proc`_
+      ## * `existsEnv proc`_
+      ## * `putEnv proc`_
+      ## * `envPairs iterator`_
       template bail = raiseOSError(osLastError(), key)
       when defined(windows):
         #[ 
@@ -190,10 +190,10 @@ iterator envPairs*(): tuple[key, value: string] {.tags: [ReadEnvEffect].} =
   ## in the second its value.
   ##
   ## Works in native backends, nodejs and vm, like the following APIs:
-  ## * `getEnv proc <#getEnv,string,string>`_
-  ## * `existsEnv proc <#existsEnv,string>`_
-  ## * `putEnv proc <#putEnv,string,string>`_
-  ## * `delEnv proc <#delEnv,string>`_
+  ## * `getEnv proc`_
+  ## * `existsEnv proc`_
+  ## * `putEnv proc`_
+  ## * `delEnv proc`_
   when nimvm:
     for ai in envPairsImplSeq(): yield ai
   else:

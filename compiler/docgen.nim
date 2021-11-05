@@ -954,6 +954,13 @@ proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
         if kind != tkSpaces:
           result.generics.add(literal.nimIdentNormalize)
 
+  if k == skType:
+    case n[2].kind
+    of nkEnumTy: result.symTypeKind = "enum"
+    of nkObjectTy: result.symTypeKind = "object"
+    of nkTupleTy: result.symTypeKind = "tuple"
+    else: discard
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   if (docFlags != kForceExport) and not isVisible(d, nameNode): return
   let
