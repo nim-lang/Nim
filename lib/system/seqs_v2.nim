@@ -73,7 +73,7 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
         q.cap = newCap
         result = q
 
-proc shrink*[T](x: var seq[T]; newLen: Natural) =
+proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [].} =
   when nimvm:
     setLen(x, newLen)
   else:
