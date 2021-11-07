@@ -733,7 +733,7 @@ when defined(windows) or defined(nimdoc):
 
   proc acceptAddr*(socket: AsyncFD, flags = {SocketFlag.SafeDisconn},
                    inheritable = defined(nimInheritHandles)):
-      owned(Future[tuple[address: string, client: AsyncFD]]) =
+      owned(Future[tuple[address: string, client: AsyncFD]]) {.gcsafe.} =
     ## Accepts a new connection. Returns a future containing the client socket
     ## corresponding to that connection and the remote address of the client.
     ## The future will complete when the connection is successfully accepted.
