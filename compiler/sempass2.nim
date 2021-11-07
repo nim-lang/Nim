@@ -851,6 +851,9 @@ proc trackCall(tracked: PEffects; n: PNode) =
         elif isIndirectCall(tracked, a):
           assumeTheWorst(tracked, n, op)
           gcsafeAndSideeffectCheck()
+        else:
+          if strictEffects in tracked.c.features and a.kind == nkSym and a.sym.kind in routineKinds:
+            propagateEffects(tracked, n, a.sym)
       else:
         mergeRaises(tracked, effectList[exceptionEffects], n)
         mergeTags(tracked, effectList[tagEffects], n)
