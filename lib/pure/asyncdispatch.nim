@@ -101,16 +101,9 @@
 ## Handling Exceptions
 ## -------------------
 ##
-## The most reliable way to handle exceptions is to use `yield` on a future
-## then check the future's `failed` property. For example:
+## You can handle exceptions in the same way as in ordinary Nim code;
+## by using the try statement:
 ##
-## .. code-block:: Nim
-##   var future = sock.recv(100)
-##   yield future
-##   if future.failed:
-##     # Handle exception
-##
-## The `async` procedures also offer limited support for the try statement.
 ##
 ## .. code-block:: Nim
 ##   try:
@@ -119,9 +112,16 @@
 ##   except:
 ##     # Handle exception
 ##
-## Unfortunately the semantics of the try statement may not always be correct,
-## and occasionally the compilation may fail altogether.
-## As such it is better to use the former style when possible.
+##
+##
+## An alternative approach to handling exceptions is to use `yield` on a future
+## then check the future's `failed` property. For example:
+##
+## .. code-block:: Nim
+##   var future = sock.recv(100)
+##   yield future
+##   if future.failed:
+##     # Handle exception
 ##
 ##
 ## Discarding futures
