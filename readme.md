@@ -11,6 +11,7 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
 [![Join the IRC chat][badge-nim-irc]][nim-irc]
 [![Join the Discord server][badge-nim-discord]][nim-discord]
 [![Join the Gitter chat][badge-nim-gitter]][nim-gitter]
+[![Join the Matrix room](https://img.shields.io/matrix/nim-lang:matrix.org?color=blue&style=flat&logo=matrix)](https://matrix.to/#/#nim-lang:matrix.org)
 [![Get help][badge-nim-forum-gethelp]][nim-forum]
 [![View Nim posts on Stack Overflow][badge-nim-stackoverflow]][nim-stackoverflow-newest]
 [![Follow @nim_lang on Twitter][badge-nim-twitter]][nim-twitter]
@@ -22,6 +23,7 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
   channels there are bridged to IRC.
 * [Gitter][nim-gitter] - an additional place to discuss Nim in real-time. There
   is a bridge between Gitter and the IRC channel.
+* [Matrix][nim-matrix] - the main room to discuss Nim in real-time. [Matrix space][nim-matrix-space] contains a list of rooms, most of them are bridged to IRC.
 * [Telegram][nim-telegram] - an additional place to discuss Nim in real-time. There
   is the official Telegram channel. Not bridged to IRC.
 * [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
@@ -213,6 +215,8 @@ Copyright © 2006-2021 Andreas Rumpf, all rights reserved.
 [nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim-lang?sort=newest&pageSize=15
 [nim-discord]: https://discord.gg/nim
 [nim-gitter]: https://gitter.im/nim-lang/Nim
+[nim-matrix]: https://matrix.to/#/#nim-lang:matrix.org
+[nim-matrix-space]: https://matrix.to/#/#nim:envs.net
 [nim-telegram]: https://t.me/nim_lang
 [nim-bountysource]: https://www.bountysource.com/teams/nim
 [nim-bitcoin]: https://blockchain.info/address/1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ
