@@ -153,3 +153,9 @@ suite "Integration with Nim":
                               outType: "T")
     check(input1.toLangSymbol == expected)
     check(input2.toLangSymbol == expected)
+
+  test "type of type":
+    check ("`CopyFlag enum`_".rstParseTest.toLangSymbol ==
+           LangSymbol(symKind: "type",
+                      symTypeKind: "enum",
+                      name: "Copyflag"))
