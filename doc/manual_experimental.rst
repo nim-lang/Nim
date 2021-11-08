@@ -1990,6 +1990,24 @@ A borrow starts with one of the following:
 - The assignment of a location that is derived from a local parameter
   to a view-type.
 
+If a non l-value is borrowed from, as in:
+
+.. code-block:: nim
+
+  func f(): Obj
+  let v: lent Obj = f()
+
+Then it is turned into a borrow from an l-value:
+
+.. code-block:: nim
+
+  func f(): Obj
+  let tmp = f()
+  let v: lent Obj = tmp
+
+Such a borrow is only supported for local variables of type `lent T`. This
+limitation might be removed in later versions of the language.
+
 
 End of a borrow
 ---------------

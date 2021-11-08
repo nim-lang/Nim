@@ -73,12 +73,17 @@ type
     of dependsOn: parent: int
     of isRootOf: graphIndex: int
 
+  VarScope {.acyclic.} = ref object
+    up: VarScope
+    aliveEnd: AbstractTime
+
   VarIndex = object
     con: Connection
     flags: set[VarFlag]
     sym: PSym
     reassignedTo: int
     aliveStart, aliveEnd: AbstractTime # the range for which the variable is alive.
+    scope: VarScope
     borrowsFrom: seq[int] # indexes into Partitions.s
 
   MutationInfo* = object
@@ -101,6 +106,7 @@ type
     unanalysableMutation: bool
     inAsgnSource, inConstructor, inNoSideEffectSection: int
     inConditional, inLoop: int
+    currentScope: VarScope
     owner: PSym
     g: ModuleGraph
 
@@ -141,26 +147,29 @@ proc variableId(c: Partitions; x: PSym): int =
 proc registerResult(c: var Partitions; n: PNode) =
   if n.kind == nkSym:
     c.s.add VarIndex(con: Connection(kind: isEmptyRoot), sym: n.sym, reassignedTo: 0,
-                      aliveStart: MaxTime, aliveEnd: c.abstractTime)
+                      aliveStart: MaxTime, aliveEnd: c.abstractTime, scope: c.currentScope)
 
 proc registerParam(c: var Partitions; n: PNode) =
   assert n.kind == nkSym
   if isConstParam(n.sym):
     c.s.add VarIndex(con: Connection(kind: isRootOf, graphIndex: c.graphs.len),
                       sym: n.sym, reassignedTo: 0,
-                      aliveStart: c.abstractTime, aliveEnd: c.abstractTime)
+                      aliveStart: c.abstractTime, aliveEnd: c.abstractTime,
+                      scope: c.currentScope)
     c.graphs.add MutationInfo(param: n.sym, mutatedHere: unknownLineInfo,
                           connectedVia: unknownLineInfo, flags: {connectsConstParam},
                           maxMutation: MinTime, minConnection: MaxTime,
                           mutations: @[])
   else:
     c.s.add VarIndex(con: Connection(kind: isEmptyRoot), sym: n.sym, reassignedTo: 0,
-                     aliveStart: c.abstractTime, aliveEnd: c.abstractTime)
+                     aliveStart: c.abstractTime, aliveEnd: c.abstractTime,
+                     scope: c.currentScope)
 
 proc registerVariable(c: var Partitions; n: PNode) =
   if n.kind == nkSym and variableId(c, n.sym) < 0:
     c.s.add VarIndex(con: Connection(kind: isEmptyRoot), sym: n.sym, reassignedTo: 0,
-                     aliveStart: c.abstractTime, aliveEnd: c.abstractTime)
+                     aliveStart: c.abstractTime, aliveEnd: c.abstractTime,
+                     scope: c.currentScope)
 
 proc root(v: var Partitions; start: int): int =
   result = start
@@ -542,8 +551,8 @@ proc borrowFrom(c: var Partitions; dest: PSym; src: PNode) =
       if sourceIdx < 0:
         sourceIdx = c.s.len
         c.s.add VarIndex(con: Connection(kind: isEmptyRoot), sym: s.sym, reassignedTo: 0,
-                        aliveStart: MinTime, aliveEnd: MaxTime)
-
+                         aliveStart: MinTime, aliveEnd: MaxTime,
+                         scope: VarScope(up: c.currentScope, aliveEnd: MaxTime))
       c.s[vid].borrowsFrom.add sourceIdx
       if isConstSym(s.sym):
         c.s[vid].flags.incl viewBorrowsFromConst
@@ -635,7 +644,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
             let srcid = variableId(c, s)
             if srcid >= 0:
               if s.kind notin {skResult, skParam} and (
-                  c.s[srcid].aliveEnd < c.s[vid].aliveEnd):
+                  c.s[srcid].scope.aliveEnd < c.s[vid].scope.aliveEnd):
                 # you cannot borrow from a local that lives shorter than 'vid':
                 when explainCursors: echo "B not a cursor ", d.sym, " ", c.s[srcid].aliveEnd, " ", c.s[vid].aliveEnd
                 c.s[vid].flags.incl preventCursor
@@ -779,6 +788,12 @@ proc markAsReassigned(c: var Partitions; vid: int) {.inline.} =
     # complex for our current analysis, so we prevent the cursorfication.
     c.s[vid].flags.incl isConditionallyReassigned
 
+template withNewScope(c: var Partitions; body: untyped) =
+  c.currentScope = VarScope(up: c.currentScope)
+  body
+  c.currentScope.aliveEnd = max(c.currentScope.aliveEnd, c.abstractTime)
+  c.currentScope = c.currentScope.up
+
 proc computeLiveRanges(c: var Partitions; n: PNode) =
   # first pass: Compute live ranges for locals.
   # **Watch out!** We must traverse the tree like 'traverse' does
@@ -847,24 +862,29 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
   of nkPragmaBlock:
     computeLiveRanges(c, n.lastSon)
   of nkWhileStmt, nkForStmt, nkParForStmt:
-    for child in n: computeLiveRanges(c, child)
-    # analyse loops twice so that 'abstractTime' suffices to detect cases
-    # like:
-    #   while cond:
-    #     mutate(graph)
-    #     connect(graph, cursorVar)
-    inc c.inLoop
-    for child in n: computeLiveRanges(c, child)
-    inc c.inLoop
+    withNewScope c:
+      for child in n: computeLiveRanges(c, child)
+      # analyse loops twice so that 'abstractTime' suffices to detect cases
+      # like:
+      #   while cond:
+      #     mutate(graph)
+      #     connect(graph, cursorVar)
+      inc c.inLoop
+      for child in n: computeLiveRanges(c, child)
+      inc c.inLoop
   of nkElifBranch, nkElifExpr, nkElse, nkOfBranch:
-    inc c.inConditional
-    for child in n: computeLiveRanges(c, child)
-    dec c.inConditional
+    withNewScope c:
+      inc c.inConditional
+      for child in n: computeLiveRanges(c, child)
+      dec c.inConditional
+  of nkBlockStmt, nkBlockExpr:
+    withNewScope c:
+      for child in n: computeLiveRanges(c, child)
   else:
     for child in n: computeLiveRanges(c, child)
 
 proc computeGraphPartitions*(s: PSym; n: PNode; g: ModuleGraph; goals: set[Goal]): Partitions =
-  result = Partitions(owner: s, g: g, goals: goals)
+  result = Partitions(owner: s, g: g, goals: goals, currentScope: VarScope())
   if s.kind notin {skModule, skMacro}:
     let params = s.typ.n
     for i in 1..<params.len:
@@ -912,7 +932,7 @@ proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef
           if sid >= 0:
             if par.s[sid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[sid].con.graphIndex], par.s[i]):
               cannotBorrow(config, v, par.graphs[par.s[sid].con.graphIndex])
-            if par.s[sid].sym.kind != skParam and par.s[sid].aliveEnd < par.s[rid].aliveEnd:
+            if par.s[sid].sym.kind != skParam and par.s[sid].scope.aliveEnd < par.s[rid].scope.aliveEnd:
               localError(config, v.info, "'" & v.name.s & "' borrows from location '" & par.s[sid].sym.name.s &
                 "' which does not live long enough")
             if viewDoesMutate in par.s[rid].flags and isConstSym(par.s[sid].sym):
