@@ -1,9 +1,11 @@
 #nim c -t:-march=i686 --cpu:amd64 --threads:on -d:release lockfreehash.nim
 
-import math, hashes
-
 #------------------------------------------------------------------------------
 ## Memory Utility Functions
+
+{.deprecated.}
+
+import math, hashes
 
 proc newHeap*[T](): ptr T =
   result = cast[ptr T](alloc0(sizeof(T)))
