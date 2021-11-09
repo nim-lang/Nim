@@ -406,7 +406,7 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
   var term = ""
   renderAux(d, n, term)
   setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), id, term, d.currentSection)
-  dispA(d.target, result, "<span id=\"$1\">$2</span>", "\\nimindexterm{$2}{$1}",
+  dispA(d.target, result, "<span id=\"$1\">$2</span>", "\\nimindexterm{$1}{$2}",
         [id, term])
 
 type
