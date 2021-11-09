@@ -4,6 +4,8 @@
 
 ## Standard library additions and changes
 
+- `std/sharedlist` and `std/sharedtables` are now deprecated, see RFC [#433](https://github.com/nim-lang/RFCs/issues/433).
+
 ### New compile flag (`-d:nimNoGetRandom`) when building `std/sysrand` to remove dependency on linux `getrandom` syscall
 
 This compile flag only affects linux builds and is necessary if either compiling on a linux kernel version < 3.17, or if code built will be executing on kernel < 3.17.
