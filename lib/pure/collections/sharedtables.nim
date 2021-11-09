@@ -14,6 +14,8 @@
 ##
 ## Unstable API.
 
+{.deprecated.}
+
 import
   hashes, math, locks
 

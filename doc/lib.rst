@@ -134,12 +134,6 @@ Collections
 * `sets <sets.html>`_
   Nim hash set support.
 
-* `sharedlist <sharedlist.html>`_
-  Nim shared linked list support. Contains a shared singly-linked list.
-
-* `sharedtables <sharedtables.html>`_
-  Nim shared hash table support. Contains shared tables.
-
 * `tables <tables.html>`_
   Nim hash table support. Contains tables, ordered tables, and count tables.
 
