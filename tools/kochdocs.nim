@@ -301,6 +301,12 @@ proc nim2pdf(src: string, dst: string, nimArgs: string) =
     # `>` should work on windows, if not, we can use `execCmdEx`
     let cmd = "xelatex -interaction=nonstopmode -output-directory=$# $# > $#" % [outDir.quoteShell, texFile.quoteShell, xelatexLog.quoteShell]
     exec(cmd) # on error, user can inspect `xelatexLog`
+    if i == 1:  # build .ind file
+      var texFileBase = texFile
+      texFileBase.removeSuffix(".tex")
+      let cmd = "makeindex $# > $#" % [
+          texFileBase.quoteShell, xelatexLog.quoteShell]
+      exec(cmd)
   moveFile(texFile.changeFileExt("pdf"), dst)
 
 proc buildPdfDoc*(nimArgs, destPath: string) =
