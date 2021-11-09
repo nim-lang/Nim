@@ -220,7 +220,8 @@ proc isInvalidReturnType(conf: ConfigRef; rettype: PType): bool =
   # such a poor programming language.
   # We exclude records with refs too. This enhances efficiency and
   # is necessary for proper code generation of assignments.
-  if rettype == nil: result = true
+  if rettype == nil or getSize(conf, rettype) > conf.target.floatSize*3:
+    result = true
   else:
     case mapType(conf, rettype)
     of ctArray:
