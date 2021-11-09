@@ -2101,3 +2101,11 @@ proc skipAddr*(n: PNode): PNode {.inline.} =
 proc isNewStyleConcept*(n: PNode): bool {.inline.} =
   assert n.kind == nkTypeClassTy
   result = n[0].kind == nkEmpty
+
+const
+  nodesToIgnoreSet* = {nkNone..pred(nkSym), succ(nkSym)..nkNilLit,
+    nkTypeSection, nkProcDef, nkConverterDef,
+    nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
+    nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
+    nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
+    nkTypeOfExpr, nkMixinStmt, nkBindStmt}

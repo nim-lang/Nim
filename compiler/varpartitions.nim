@@ -647,13 +647,6 @@ proc deps(c: var Partitions; dest, src: PNode) =
                 when explainCursors: echo "D not a cursor ", d.sym, " reassignedTo ", c.s[srcid].reassignedTo
                 c.s[vid].flags.incl preventCursor
 
-const
-  nodesToIgnoreSet = {nkNone..pred(nkSym), succ(nkSym)..nkNilLit,
-    nkTypeSection, nkProcDef, nkConverterDef,
-    nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
-    nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-    nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
-    nkTypeOfExpr, nkMixinStmt, nkBindStmt}
 
 proc potentialMutationViaArg(c: var Partitions; n: PNode; callee: PType) =
   if constParameters in c.goals and tfNoSideEffect in callee.flags:

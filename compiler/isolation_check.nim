@@ -77,6 +77,17 @@ proc canAlias*(arg, ret: PType): bool =
     var marker = initIntSet()
     result = canAlias(arg, ret, marker)
 
+proc containsVariable(n: PNode): bool =
+  case n.kind
+  of nodesToIgnoreSet:
+    result = false
+  of nkSym:
+    result = n.sym.kind in {skForVar, skParam, skVar, skLet, skConst, skResult, skTemp}
+  else:
+    for ch in n:
+      if containsVariable(ch): return true
+    result = false
+
 proc checkIsolate*(n: PNode): bool =
   if types.containsTyRef(n.typ):
     # XXX Maybe require that 'n.typ' is acyclic. This is not much
@@ -96,7 +107,11 @@ proc checkIsolate*(n: PNode): bool =
         else:
           let argType = n[i].typ
           if argType != nil and not isCompileTimeOnly(argType) and containsTyRef(argType):
-            if argType.canAlias(n.typ):
+            if argType.canAlias(n.typ) or containsVariable(n[i]):
+              # bug #19013: Alias information is not enough, we need to check for potential
+              # "overlaps". I claim the problem can only happen by reading again from a location
+              # that materialized which is only possible if a variable that contains a `ref`
+              # is involved.
               return false
       result = true
     of nkIfStmt, nkIfExpr:
