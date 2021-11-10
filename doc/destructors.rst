@@ -555,14 +555,14 @@ for expressions of type `lent T` or of type `var T`.
     echo t[0] # accessor does not copy the element!
 
 
-The .cursor annotation
-======================
+The cursor pragma
+=================
 
 Under the `--gc:arc|orc`:option: modes Nim's `ref` type is implemented
 via the same runtime "hooks" and thus via reference counting.
 This means that cyclic structures cannot be freed
 immediately (`--gc:orc`:option: ships with a cycle collector).
-With the `.cursor` annotation one can break up cycles declaratively:
+With the `cursor` pragma one can break up cycles declaratively:
 
 .. code-block:: nim
 
@@ -575,7 +575,7 @@ But please notice that this is not C++'s weak_ptr, it means the right field is n
 involved in the reference counting, it is a raw pointer without runtime checks.
 
 Automatic reference counting also has the disadvantage that it introduces overhead
-when iterating over linked structures. The `.cursor` annotation can also be used
+when iterating over linked structures. The `cursor` pragma can also be used
 to avoid this overhead:
 
 .. code-block:: nim
@@ -586,10 +586,10 @@ to avoid this overhead:
     it = it.next
 
 
-In fact, `.cursor` more generally prevents object construction/destruction pairs
+In fact, `cursor` more generally prevents object construction/destruction pairs
 and so can also be useful in other contexts. The alternative solution would be to
 use raw pointers (`ptr`) instead which is more cumbersome and also more dangerous
-for Nim's evolution: Later on, the compiler can try to prove `.cursor` annotations
+for Nim's evolution: Later on, the compiler can try to prove `cursor` pragmas
 to be safe, but for `ptr` the compiler has to remain silent about possible
 problems.
 
@@ -597,7 +597,7 @@ problems.
 Cursor inference / copy elision
 ===============================
 
-The current implementation also performs `.cursor` inference. Cursor inference is
+The current implementation also performs `cursor` inference. Cursor inference is
 a form of copy elision.
 
 To see how and when we can do that, think about this question: In `dest = src` when
@@ -612,7 +612,7 @@ indirections:
 .. code-block:: nim
 
   proc main(tab: Table[string, string]) =
-    let v = tab["key"] # inferred as .cursor because 'tab' is not mutated.
+    let v = tab["key"] # inferred as cursor because 'tab' is not mutated.
     # no copy into 'v', no destruction of 'v'.
     use(v)
     useItAgain(v)
