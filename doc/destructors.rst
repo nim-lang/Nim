@@ -612,7 +612,7 @@ indirections:
 .. code-block:: nim
 
   proc main(tab: Table[string, string]) =
-    let v = tab["key"] # inferred as `cursor` because 'tab' is not mutated.
+    let v = tab["key"] # inferred as cursor because 'tab' is not mutated.
     # no copy into 'v', no destruction of 'v'.
     use(v)
     useItAgain(v)
