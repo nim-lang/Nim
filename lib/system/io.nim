@@ -365,7 +365,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
 
-when defined(nimdoc) or (defined(posix) and not defined(nimscript) and not defined(windows)):
+when defined(nimdoc) or not (defined(nimscript) or defined(windows)):
   proc setNonBlocking*(f: FileHandle, blocking = false) {.raises: [OSError].} =
     ## Control file handle blocking mode.
     ##
@@ -390,8 +390,8 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript) and not defin
     ## implemented in stdlib yet.
     ##
     ## See `setNonBlocking(File, bool) <#setNonBlocking,File>`_.
-    when not defined(windows):
-      runnableExamples:
+    runnableExamples:
+      when not defined(windows):
         setNonBlocking(getOsFileHandle(stdin))
         doAssert(endOfFile(stdin))
     when SupportIoctlInheritCtl:
@@ -411,8 +411,8 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript) and not defin
     ## Control file blocking mode.
     ##
     ## See `setNonBlocking(FileHandle, bool) <#setNonBlocking,FileHandle>`_.
-    when not defined(windows):
-      runnableExamples:
+    runnableExamples:
+      when not defined(windows):
         setNonBlocking(stdin)
         doAssert(endOfFile(stdin))
       setNonBlocking(getFileHandle(f), blocking)
