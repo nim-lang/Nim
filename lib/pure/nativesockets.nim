@@ -349,7 +349,7 @@ proc getSockDomain*(socket: SocketHandle): Domain =
   else:
     raise newException(IOError, "Unknown socket family in getSockDomain")
 
-when not useNimNetLite: 
+when not useNimNetLite:
   proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
     ## Searches the database from the beginning and finds the first entry for
     ## which the service name specified by `name` matches the s_name member
@@ -533,7 +533,7 @@ when not useNimNetLite:
   when defined(posix) and not defined(nimdoc):
     proc makeUnixAddr*(path: string): Sockaddr_un =
       result.sun_family = AF_UNIX.TSa_Family
-      if path.len >= Sockaddr_un_path_length:
+      if path.len+1 >= Sockaddr_un_path_length:
         raise newException(ValueError, "socket path too long")
       copyMem(addr result.sun_path, path.cstring, path.len + 1)
 
@@ -626,7 +626,7 @@ when not useNimNetLite:
     else:
       raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 
-when useNimNetLite: 
+when useNimNetLite:
 
   when useWinVersion:
     const
@@ -634,7 +634,7 @@ when useNimNetLite:
       INET6_ADDRSTRLEN = 46 # it's actually 46 in both cases
 
   proc sockAddrToStr(sa: ptr Sockaddr): string {.noinit.} =
-    let af_family = sa.sa_family 
+    let af_family = sa.sa_family
     var nl, v4Slice: cint
     var si_addr: ptr InAddr
 
@@ -644,7 +644,7 @@ when useNimNetLite:
     elif af_family == AF_INET6.TSa_Family:
       nl = INET6_ADDRSTRLEN
       let si6_addr = cast[ptr Sockaddr_in6](sa).sin6_addr.addr()
-      si_addr = cast[ptr InAddr](si6_addr) # let's us reuse logic below 
+      si_addr = cast[ptr InAddr](si6_addr) # let's us reuse logic below
       when defined(posix) and not defined(nimdoc) and not defined(zephyr):
         if posix.IN6_IS_ADDR_V4MAPPED(si6_addr) != 0:
           v4Slice = "::ffff:".len()
