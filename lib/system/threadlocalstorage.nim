@@ -29,9 +29,6 @@ when defined(windows):
   proc terminateThread(hThread: SysThread, dwExitCode: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "TerminateThread".}
 
-  proc getCurrentThreadId(): int32 {.
-    stdcall, dynlib: "kernel32", importc: "GetCurrentThreadId".}
-
   type
     ThreadVarSlot = distinct int32
 

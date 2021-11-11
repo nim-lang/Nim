@@ -11,6 +11,9 @@
 var threadId {.threadvar.}: int
 
 when defined(windows):
+  proc getCurrentThreadId(): int32 {.
+    stdcall, dynlib: "kernel32", importc: "GetCurrentThreadId".}
+
   proc getThreadId*(): int =
     ## Gets the ID of the currently running thread.
     if threadId == 0:
@@ -43,7 +46,7 @@ elif defined(openbsd):
   proc getthrid(): int32 {.importc: "getthrid", header: "<unistd.h>".}
 
   proc getThreadId*(): int =
-    ## get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(getthrid())
     result = threadId

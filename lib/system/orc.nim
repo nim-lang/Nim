@@ -83,7 +83,7 @@ include threadids
 
 when logOrc:
   proc writeCell(msg: cstring; s: Cell; desc: PNimTypeV2) =
-    cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld thread: %ld\n",
+    cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld; thread: %ld\n",
       msg, desc.name, s.refId, s.rootIdx, s.rc shr rcShift, s.color, getThreadId())
 
 proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
