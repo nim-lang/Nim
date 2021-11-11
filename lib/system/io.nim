@@ -395,8 +395,8 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript) and not defin
         setNonBlocking(getOsFileHandle(stdin))
         doAssert(endOfFile(stdin))
     when SupportIoctlInheritCtl:
-      int opt = if blocking: 0 else: 1
-      if c_ioctl(f, FIONBIO, opt) == -1:
+      let opt = if blocking: 0 else: 1
+      if c_ioctl(f, FIONBIO, unsafeAddr(opt)) == -1:
         raise newException(OSError, "failed to set file handle mode")
     elif defined(posix):
       var x: int = c_fcntl(f, F_GETFL, 0)
