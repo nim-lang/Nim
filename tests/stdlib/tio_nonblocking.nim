@@ -96,7 +96,6 @@ proc parent =
     let output = child.outputStream.drain
     stdout.write output
     if output == "started\n":
-      sleep 500 # this is to test that the child's last `stdin.readAll` blocks
       child.inputStream.write "stop"
       child.inputStream.close
   proc onError(code: OSErrorCode) {.closure.} =
