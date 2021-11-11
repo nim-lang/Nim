@@ -503,7 +503,7 @@ template main =
     doAssertRaises(IndexDefect): a.delete(-1 .. -1)
     doAssertRaises(IndexDefect): a.delete(5..5)
     doAssertRaises(IndexDefect): a.delete(5..3)
-    doAssertRaises(IndexDefect): a.delete(5..<5) # edge case
+    a.delete(5..<5)  # edge case
     doAssert a == @[10, 11, 12, 13, 14]
     a.delete(4..4)
     doAssert a == @[10, 11, 12, 13]
@@ -518,7 +518,8 @@ template main =
     a.delete(0..0)
     doAssert a == @[]
     doAssertRaises(IndexDefect): a.delete(0..0)
-    doAssertRaises(IndexDefect): a.delete(0..<0) # edge case
+    a.delete(0..<0)
+    doAssert a == @[]  # edge case
     block:
       type A = object
         a0: int

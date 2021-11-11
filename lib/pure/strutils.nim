@@ -1499,7 +1499,8 @@ func delete*(s: var string, slice: Slice[int]) =
     a.delete(1..<1) # empty slice
     assert a == "ad"
   when compileOption("boundChecks"):
-    if not (slice.a < s.len and slice.a >= 0 and slice.b < s.len):
+    if not (slice.a <= s.len and slice.a >= 0 and slice.b < s.len and
+            slice.b - slice.a >= -1):
       raise newException(IndexDefect, $(slice: slice, len: s.len))
   if slice.b >= slice.a:
     var i = slice.a
@@ -2455,7 +2456,7 @@ func trimZeros*(x: var string; decimalSep = '.') =
     var pos = last
     while pos >= 0 and x[pos] == '0': dec(pos)
     if pos > sPos: inc(pos)
-    x.delete(pos, last)
+    x.delete(pos .. last)
 
 type
   BinaryPrefixMode* = enum ## The different names for binary prefixes.

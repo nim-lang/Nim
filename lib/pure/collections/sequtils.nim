@@ -530,7 +530,8 @@ func delete*[T](s: var seq[T]; slice: Slice[int]) =
     a.delete(1..<1) # empty slice
     assert a == @[10, 13]
   when compileOption("boundChecks"):
-    if not (slice.a < s.len and slice.a >= 0 and slice.b < s.len):
+    if not (slice.a <= s.len and slice.a >= 0 and slice.b < s.len and
+            slice.b - slice.a >= -1):
       raise newException(IndexDefect, $(slice: slice, len: s.len))
   if slice.b >= slice.a:
     template defaultImpl =

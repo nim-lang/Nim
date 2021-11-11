@@ -212,7 +212,8 @@ template main() =
     s = "abc"
     doAssertRaises(IndexDefect): delete(s, -1 .. -2)
     doAssertRaises(IndexDefect): delete(s, 2..3)
-    doAssertRaises(IndexDefect): delete(s, 3..2)
+    delete(s, 3..2)
+    doAssert s == "abc"
     delete(s, 2..2)
     doAssert s == "ab"
     delete(s, 1..0)
