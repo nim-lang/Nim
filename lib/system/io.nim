@@ -270,6 +270,8 @@ const SupportIoctlInheritCtl = (defined(linux) or defined(bsd)) and
                               not defined(nimscript)
 when SupportIoctlInheritCtl:
   var
+    FIOBIO {.importc, header: "<sys/ioctl.h>".}: cint
+    FIONBIO {.importc, header: "<sys/ioctl.h>".}: cint
     FIOCLEX {.importc, header: "<sys/ioctl.h>".}: cint
     FIONCLEX {.importc, header: "<sys/ioctl.h>".}: cint
 
@@ -392,7 +394,10 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)):
     runnableExamples:
       setNonBlocking(getOsFileHandle(stdin))
       doAssert(endOfFile(stdin))
-    when defined(posix):
+    when SupportIoctlInheritCtl:
+      if c_ioctl(f, if blocking: FIOBIO else: FIONBIO) == -1:
+        raise newException(OSError, "failed to set file handle mode")
+    elif defined(posix):
       var x: int = c_fcntl(f, F_GETFL, 0)
       if x == -1:
         raise newException(OSError, "failed to get file handle mode")
