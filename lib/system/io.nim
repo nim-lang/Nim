@@ -366,7 +366,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
                                     inheritable.WinDWORD) != 0
 
 when defined(nimdoc) or not (defined(nimscript) or defined(windows)):
-  proc setNonBlocking*(f: FileHandle, blocking = false) {.raises: [OSError].} =
+  proc setNonBlocking*(f: FileHandle, nonBlocking = true) {.raises: [OSError].} =
     ## Control file handle blocking mode.
     ##
     ## Non-blocking IO `read`/`write` calls return immediately with whatever
@@ -374,7 +374,7 @@ when defined(nimdoc) or not (defined(nimscript) or defined(windows)):
     ## call is expected to be tried again.
     ##
     ## Calling `read` on a non-blocking file handle will result in an `IOError`
-    ## of 'Resource temporarily unavailable' whenever there is no data to read.
+    ## of `ECONNRESET` whenever there is no data to read.
     ## The state can be checked beforehand with either
     ## `endOfFile <#endOfFile,File>`_ or
     ## `atEnd <streams.html#atEnd,Stream>`_.
@@ -395,7 +395,7 @@ when defined(nimdoc) or not (defined(nimscript) or defined(windows)):
         setNonBlocking(getOsFileHandle(stdin))
         doAssert(endOfFile(stdin))
     when SupportIoctlInheritCtl:
-      let opt = if blocking: 0 else: 1
+      let opt = if nonBlocking: 1 else: 0
       if c_ioctl(f, FIONBIO, unsafeAddr(opt)) == -1:
         raise newException(OSError, "failed to set file handle mode")
     elif defined(posix):
@@ -403,11 +403,11 @@ when defined(nimdoc) or not (defined(nimscript) or defined(windows)):
       if x == -1:
         raise newException(OSError, "failed to get file handle mode")
       else:
-        var mode = if blocking: x and not O_NONBLOCK else: x or O_NONBLOCK
+        var mode = if nonBlocking: x or O_NONBLOCK else: x and not O_NONBLOCK
         if c_fcntl(f, F_SETFL, mode) == -1:
           raise newException(OSError, "failed to set file handle mode")
 
-  proc setNonBlocking*(f: File, blocking = false) {.raises: [OSError].} =
+  proc setNonBlocking*(f: File, nonBlocking = true) {.raises: [OSError].} =
     ## Control file blocking mode.
     ##
     ## See `setNonBlocking(FileHandle, bool) <#setNonBlocking,FileHandle>`_.
@@ -415,7 +415,7 @@ when defined(nimdoc) or not (defined(nimscript) or defined(windows)):
       when not defined(windows):
         setNonBlocking(stdin)
         doAssert(endOfFile(stdin))
-    setNonBlocking(getFileHandle(f), blocking)
+    setNonBlocking(getFileHandle(f), nonBlocking)
 
 proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
               benign.} =
