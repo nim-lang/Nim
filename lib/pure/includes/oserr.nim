@@ -3,14 +3,46 @@
 when not declared(os) and not declared(ospaths):
   {.error: "This is an include file for os.nim!".}
 
-when not defined(nimscript):
+when not weirdTarget:
   var errno {.importc, header: "<errno.h>".}: cint
-
-  proc c_strerror(errnum: cint): cstring {.
-    importc: "strerror", header: "<string.h>".}
 
   when defined(windows):
     import winlean
+  else:
+    # `strerror` is not necessarily thread-safe. Use `strerror_r` instead.
+    #
+    # glibc: https://linux.die.net/man/3/strerror_r
+    # The XSI-compliant version of strerror_r() is provided if:
+    # (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
+    # Otherwise, the GNU-specific version is provided.
+    # Note: -D_GNU_SOURCE=0 also defines the GNU-specific version (docs issue)
+    {.emit: """
+    #include <errno.h>
+    #include <string.h>
+    #if !defined(__GLIBC__) || \
+        (((defined(_POSIX_C_SOURCE) && (_POSIX_C_SOURCE - 0) >= 200112L) || \
+        (defined(_XOPEN_SOURCE) && (_XOPEN_SOURCE - 0) >= 600)) && \
+        !defined(_GNU_SOURCE))
+      int strerror_r(int errnum, char *buf, size_t buflen); /* XSI-compliant */
+      #define strerror_r_posix strerror_r
+    #else
+      char *strerror_r(int errnum, char *buf, size_t buflen); /* GNU-specific */
+      static int strerror_r_posix(int errnum, char *buf, size_t buflen) {
+        char *desc = strerror_r(errnum, buf, buflen);
+        if (desc == buf) return EINVAL; // `buf` is only used on unknown errors.
+        if (!buflen) return ERANGE;
+        size_t len = strnlen(desc, buflen - 1);
+        (void) memcpy(buf, desc, len);
+        buf[len] = '\0';
+        if (desc[len]) return ERANGE;
+        return 0;
+      }
+    #endif
+    """.}
+
+    proc c_strerror_r_posix(
+      errnum: cint, buf: cstring, buflen: csize_t
+    ): cint {.importc: "strerror_r_posix", nodecl.}
 
 proc `==`*(err1, err2: OSErrorCode): bool {.borrow.}
 proc `$`*(err: OSErrorCode): string {.borrow.}
@@ -31,13 +63,13 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## * `raiseOSError proc`_
   ## * `osLastError proc`_
   runnableExamples:
-    when defined(linux):
+    when defined(linux) or defined(macosx):
       assert osErrorMsg(OSErrorCode(0)) == ""
       assert osErrorMsg(OSErrorCode(1)) == "Operation not permitted"
       assert osErrorMsg(OSErrorCode(2)) == "No such file or directory"
 
   result = ""
-  when defined(nimscript):
+  when weirdTarget:
     discard
   elif defined(windows):
     if errorCode != OSErrorCode(0'i32):
@@ -55,7 +87,16 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
           if msgbuf != nil: localFree(msgbuf)
   else:
     if errorCode != OSErrorCode(0'i32):
-      result = $c_strerror(errorCode.int32)
+      var buf {.noinit.}: array[256, cchar]
+      let ret = c_strerror_r_posix(errorCode.int32, addr(buf), len(buf).csize_t)
+      if ret == 0:
+        result = $addr(buf)
+      elif ret == EINVAL:
+        result = "Unknown error " & $errorCode
+      elif ret == ERANGE:
+        result = "Long error description " & $errorCode
+      else:
+        result = "Unexpected " & $ret & " error " & $errorCode
 
 proc newOSError*(
   errorCode: OSErrorCode, additionalInfo = ""
@@ -110,7 +151,7 @@ proc osLastError*(): OSErrorCode {.sideEffect.} =
   ## See also:
   ## * `osErrorMsg proc`_
   ## * `raiseOSError proc`_
-  when defined(nimscript):
+  when weirdTarget:
     discard
   elif defined(windows):
     result = cast[OSErrorCode](getLastError())
