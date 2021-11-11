@@ -270,7 +270,6 @@ const SupportIoctlInheritCtl = (defined(linux) or defined(bsd)) and
                               not defined(nimscript)
 when SupportIoctlInheritCtl:
   var
-    FIOBIO {.importc, header: "<sys/ioctl.h>".}: cint
     FIONBIO {.importc, header: "<sys/ioctl.h>".}: cint
     FIOCLEX {.importc, header: "<sys/ioctl.h>".}: cint
     FIONCLEX {.importc, header: "<sys/ioctl.h>".}: cint
@@ -366,7 +365,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
 
-when defined(nimdoc) or (defined(posix) and not defined(nimscript)):
+when defined(nimdoc) or (defined(posix) and not defined(nimscript) and not defined(windows)):
   proc setNonBlocking*(f: FileHandle, blocking = false) {.raises: [OSError].} =
     ## Control file handle blocking mode.
     ##
@@ -391,11 +390,13 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)):
     ## implemented in stdlib yet.
     ##
     ## See `setNonBlocking(File, bool) <#setNonBlocking,File>`_.
-    runnableExamples:
-      setNonBlocking(getOsFileHandle(stdin))
-      doAssert(endOfFile(stdin))
+    when not defined(windows):
+      runnableExamples:
+        setNonBlocking(getOsFileHandle(stdin))
+        doAssert(endOfFile(stdin))
     when SupportIoctlInheritCtl:
-      if c_ioctl(f, if blocking: FIOBIO else: FIONBIO) == -1:
+      int opt = if blocking: 0 else: 1
+      if c_ioctl(f, FIONBIO, opt) == -1:
         raise newException(OSError, "failed to set file handle mode")
     elif defined(posix):
       var x: int = c_fcntl(f, F_GETFL, 0)
@@ -410,10 +411,11 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)):
     ## Control file blocking mode.
     ##
     ## See `setNonBlocking(FileHandle, bool) <#setNonBlocking,FileHandle>`_.
-    runnableExamples:
-      setNonBlocking(stdin)
-      doAssert(endOfFile(stdin))
-    setNonBlocking(getFileHandle(f), blocking)
+    when not defined(windows):
+      runnableExamples:
+        setNonBlocking(stdin)
+        doAssert(endOfFile(stdin))
+      setNonBlocking(getFileHandle(f), blocking)
 
 proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
               benign.} =
