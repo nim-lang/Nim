@@ -725,13 +725,7 @@ proc setBlocking*(s: SocketHandle, blocking: bool) =
     if ioctlsocket(s, FIONBIO, addr(mode)) == -1:
       raiseOSError(osLastError())
   else: # BSD sockets
-    var x: int = fcntl(s, F_GETFL, 0)
-    if x == -1:
-      raiseOSError(osLastError())
-    else:
-      var mode = if blocking: x and not O_NONBLOCK else: x or O_NONBLOCK
-      if fcntl(s, F_SETFL, mode) == -1:
-        raiseOSError(osLastError())
+    setNonBlocking(FileHandle(s), not blocking)
 
 proc timeValFromMilliseconds(timeout = 500): Timeval =
   if timeout != -1:

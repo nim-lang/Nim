@@ -279,7 +279,10 @@ elif defined(posix) and not defined(lwip) and not defined(nimscript):
   var
     F_GETFD {.importc, header: "<fcntl.h>".}: cint
     F_SETFD {.importc, header: "<fcntl.h>".}: cint
+    F_GETFL {.importc, header: "<fcntl.h>".}: cint
+    F_SETFL {.importc, header: "<fcntl.h>".}: cint
     FD_CLOEXEC {.importc, header: "<fcntl.h>".}: cint
+    O_NONBLOCK {.importc, header: "<fcntl.h>".}: cint
 
   proc c_fcntl(fd: cint, cmd: cint): cint {.
     importc: "fcntl", header: "<fcntl.h>", varargs.}
@@ -360,6 +363,52 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
     else:
       result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
+
+when defined(nimdoc) or (defined(posix) and not defined(nimscript)):
+  proc setNonBlocking*(f: FileHandle, blocking = false) {.raises: [OSError].} =
+    ## Control file handle blocking mode.
+    ##
+    ## Non-blocking IO `read`/`write` calls return immediately with whatever
+    ## result is available, without putting the current thread to sleep. The
+    ## call is expected to be tried again.
+    ##
+    ## Calling `read` on a non-blocking file handle will result in an `IOError`
+    ## of 'Resource temporarily unavailable' whenever there is no data to read.
+    ## The state can be checked beforehand with either
+    ## `endOfFile <#endOfFile,File>`_ or
+    ## `atEnd <streams.html#atEnd,Stream>`_.
+    ##
+    ## This requires the OS file handle, which can be
+    ## retrieved via `getOsFileHandle <#getOsFileHandle,File>`_.
+    ##
+    ## This procedure is available for POSIX platforms. Test for
+    ## availability with `declared() <system.html#declared,untyped>`_.
+    ##
+    ## There are separate APIs on Windows for using console handles,
+    ## pipes and sockets in a non-blocking manner. Some of which aren't
+    ## implemented in stdlib yet.
+    ##
+    ## See `setNonBlocking(File, bool) <#setNonBlocking,File>`_.
+    runnableExamples:
+      setNonBlocking(getOsFileHandle(stdin))
+      doAssert(endOfFile(stdin))
+    when defined(posix):
+      var x: int = c_fcntl(f, F_GETFL, 0)
+      if x == -1:
+        raise newException(OSError, "failed to get file handle mode")
+      else:
+        var mode = if blocking: x and not O_NONBLOCK else: x or O_NONBLOCK
+        if c_fcntl(f, F_SETFL, mode) == -1:
+          raise newException(OSError, "failed to set file handle mode")
+
+  proc setNonBlocking*(f: File, blocking = false) {.raises: [OSError].} =
+    ## Control file blocking mode.
+    ##
+    ## See `setNonBlocking(FileHandle, bool) <#setNonBlocking,FileHandle>`_.
+    runnableExamples:
+      setNonBlocking(stdin)
+      doAssert(endOfFile(stdin))
+    setNonBlocking(getFileHandle(f), blocking)
 
 proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
               benign.} =
