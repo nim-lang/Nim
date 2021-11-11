@@ -415,7 +415,7 @@ when defined(nimdoc) or not (defined(nimscript) or defined(windows)):
       when not defined(windows):
         setNonBlocking(stdin)
         doAssert(endOfFile(stdin))
-      setNonBlocking(getFileHandle(f), blocking)
+    setNonBlocking(getFileHandle(f), blocking)
 
 proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
               benign.} =
