@@ -2,6 +2,7 @@ discard """
   disabled: "win"
   targets: "c"
   matrix: "-d:threadsafe --threads:on"
+  timeout: 10
   output: "started\nstopped\nquit\n"
 """
 # PURPOSE
@@ -9,7 +10,7 @@ discard """
 #   Test the exception handing behavior.
 # DESIGN
 #   Create a parent process.
-#   Parent tries setting and invalid file handle to non-blocking and then catches the error.
+#   Parent tries setting an invalid file handle to non-blocking and then catches the error.
 #   Parent creates child process.
 #   Parent waits on child's non-blocking stdout and stderr.
 #   Child waits on non-blocking stdin.
