@@ -40,7 +40,7 @@
 ##   can be done by simply searching for [footnoteName].
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
-  algorithm, parseutils, std/strbasics
+  algorithm, parseutils, std/strbasics, strscans
 
 import ../../std/private/since
 
@@ -889,6 +889,16 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
 
   # support for `:target:` links for images:
   var target = esc(d.target, getFieldValue(n, "target").strip(), escMode=emUrl)
+
+  var protocol = ""
+  if scanf(target, "$w:", protocol):
+    # if it has a protocol at all, ensure that it's not 'javascript:' or worse:
+    if cmpIgnoreCase(protocol, "http") == 0 or cmpIgnoreCase(protocol, "https") == 0 or
+        cmpIgnoreCase(protocol, "ftp") == 0:
+      discard "it's fine"
+    else:
+      target = ""
+
   if target.len > 0:
     # `htmlOut` needs to be of the following format for link to work for images:
     # <a class="reference external" href="target"><img src=\"$1\"$2/></a>
