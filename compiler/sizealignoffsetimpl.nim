@@ -196,6 +196,11 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; packed: bo
     accum.offset = szUnknownSize
 
 proc computeSizeAlign(conf: ConfigRef; typ: PType) =
+  template setSize(typ, s) =
+    typ.size = s
+    typ.align = s
+    typ.paddingAtEnd = 0
+
   ## computes and sets ``size`` and ``align`` members of ``typ``
   assert typ != nil
   let hasSize = typ.size != szUncomputedSize
@@ -258,14 +263,14 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
 
   of tyArray:
     computeSizeAlign(conf, typ[1])
-    let elemSize = typ[1].size 
+    let elemSize = typ[1].size
     let len = lengthOrd(conf, typ[0])
     if elemSize < 0:
       typ.size = elemSize
       typ.align = int16(elemSize)
     elif len < 0:
       typ.size = szUnknownSize
-      typ.align = szUnknownSize    
+      typ.align = szUnknownSize
     else:
       typ.size = toInt64Checked(len * int32(elemSize), szTooBigSize)
       typ.align = typ[1].align
@@ -445,6 +450,16 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = szUnknownSize
       typ.align = szUnknownSize
       typ.paddingAtEnd = szUnknownSize
+  of tyInt, tyUInt:
+    setSize typ, conf.target.intSize.int16
+  of tyBool, tyChar, tyUInt8, tyInt8:
+    setSize typ, 1
+  of tyInt16, tyUInt16:
+    setSize typ, 2
+  of tyInt32, tyUInt32:
+    setSize typ, 4
+  of tyInt64, tyUInt64:
+    setSize typ, 8
   else:
     typ.size = szUnknownSize
     typ.align = szUnknownSize
