@@ -276,7 +276,7 @@ when SupportIoctlInheritCtl:
 
   proc c_ioctl(fd: cint, request: cint): cint {.
     importc: "ioctl", header: "<sys/ioctl.h>", varargs.}
-elif defined(posix) and not defined(lwip) and not defined(nimscript):
+elif defined(posix) and not defined(nimscript):
   var
     F_GETFD {.importc, header: "<fcntl.h>".}: cint
     F_SETFD {.importc, header: "<fcntl.h>".}: cint
@@ -365,7 +365,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
 
-when defined(nimdoc) or not (defined(nimscript) or defined(windows) or defined(lwip)):
+when defined(nimdoc) or not (defined(nimscript) or defined(windows)):
   proc setNonBlocking*(f: FileHandle, nonBlocking = true) {.raises: [OSError].} =
     ## Control file handle blocking mode.
     ##
