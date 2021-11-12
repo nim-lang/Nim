@@ -37,6 +37,7 @@ runnableExamples:
 
 
 import strutils, parseutils, base64
+from unicode import runes, isAlpha, `$`, toUTF8
 import std/private/[since, decode_helpers]
 
 
@@ -263,6 +264,7 @@ func resetUri(uri: var Uri) =
 
 func parseUri*(uri: string, result: var Uri) =
   ## Parses a URI. The `result` variable will be cleared before.
+  ## To handle untrusted inputs use `safeParseUri func <#safeParseUri>`_.
   ##
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
@@ -311,6 +313,7 @@ func parseUri*(uri: string, result: var Uri) =
 
 func parseUri*(uri: string): Uri =
   ## Parses a URI and returns it.
+  ## To handle untrusted inputs use `safeParseUri func <#safeParseUri>`_.
   ##
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
@@ -321,6 +324,67 @@ func parseUri*(uri: string): Uri =
     assert res.scheme == "ftp"
   result = initUri()
   parseUri(uri, result)
+
+
+func urlencodeIRI*(s: string): string =
+  ## Convert string to
+  for r in runes(s):
+    if r.isAlpha:
+      result &= $r
+    else:
+      for b in r.toUTF8:
+        result &= "%" & toHex(b.uint8, 2)
+
+
+func safeParseUri*(uri: string, result: var Uri, acceptIRI = false) =
+  ## Parses a URI using `parseUri func <#parseUri>`_. See below.
+  ## The `result` variable is cleared before using it.
+  const
+    scheme = Letters + Digits + {'+', '-', '.'}
+    gen_delims = {':', '/', '?', '#', '[', ']', '@'}
+    sub_delims = {'!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '='}
+    allowed = Letters + Digits + {'-', '.', '_', '~'} + gen_delims + sub_delims
+    iunreserved = Letters + Digits + {'-', '.', '_', '~', '%'} # lax on uschar
+    ihost =  iunreserved + sub_delims
+    iquery = iunreserved + sub_delims + {':', '@', '/', '?'}
+
+  parseUri(uri, result)
+  for c in result.scheme:
+    if c notin scheme:
+      uriParseError("Invalid character in scheme")
+  for c in result.username:
+    if c notin allowed:
+      uriParseError("Invalid character in username")
+  for c in result.password:
+    if c notin allowed:
+      uriParseError("Invalid character in password")
+  for c in result.hostname:
+    if c notin ihost:
+      uriParseError("Invalid character in hostname")
+  for c in result.port:
+    if c notin {'0'..'9'}:
+      uriParseError("Invalid character in port")
+
+  if acceptIRI:
+    result.path = urlencodeIRI(result.path)
+  for c in result.path:
+    if c notin iquery:
+      uriParseError("Invalid character in query")
+
+  for c in result.query:
+    if c notin iquery:
+      uriParseError("Invalid character in query")
+  for c in result.anchor:
+    if c notin allowed:
+      uriParseError("Invalid character in anchor")
+
+func safeParseUri*(uri: string, acceptIRI = false): Uri =
+  ## Parses a URI using `parseUri func <#parseUri>`_.
+  ## Raises UriParseError on invalid characters.
+  ## Optionally accepts RFC3987 IRIs.
+  ## See RFCs 1738 and 3986
+  result = initUri()
+  safeParseUri(uri, result, acceptIRI = acceptIRI)
 
 func removeDotSegments(path: string): string =
   ## Collapses `..` and `.` in `path` in a similar way as done in `os.normalizedPath`
