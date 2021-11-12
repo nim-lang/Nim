@@ -125,7 +125,7 @@ func decode*(encoded: string): string {.raises: [PunyError].} =
     i = 0
     bias = InitialBias
   var d = rfind(encoded, Delimiter)
-  result = ""
+  var output: seq[Rune]
 
   if d > 0:
     # found Delimiter
@@ -133,7 +133,7 @@ func decode*(encoded: string): string {.raises: [PunyError].} =
       var c = encoded[j] # char
       if not c.isBasic:
         raise newException(PunyError, "Encoded contains a non-basic char")
-      result.add(c) # add the character
+      output.add(Rune(c)) # add the character
     inc d
   else:
     d = 0 # set to first index
@@ -161,16 +161,17 @@ func decode*(encoded: string): string {.raises: [PunyError].} =
         break
       w *= Base - t
       k += Base
-    bias = adapt(i - oldi, runeLen(result) + 1, oldi == 0)
+    bias = adapt(i - oldi, len(output) + 1, oldi == 0)
 
-    if i div (runeLen(result) + 1) > high(int32) - n:
+    if i div (len(output) + 1) > high(int32) - n:
       raise newException(PunyError, "Value too large")
 
-    n += i div (runeLen(result) + 1)
-    i = i mod (runeLen(result) + 1)
-    insert(result, $Rune(n), i)
+    n += i div (len(output) + 1)
+    i = i mod (len(output) + 1)
+    insert(output, Rune(n), i)
     inc i
 
+  result = $output
 
 runnableExamples:
   static:
