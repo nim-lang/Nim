@@ -724,7 +724,15 @@ proc setBlocking*(s: SocketHandle, blocking: bool) =
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
     if ioctlsocket(s, FIONBIO, addr(mode)) == -1:
       raiseOSError(osLastError())
-  else: # BSD sockets
+  elif defined(freertos) or defined(lwip):
+    var x: int = fcntl(s, F_GETFL, 0)
+    if x == -1:
+      raiseOSError(osLastError())
+    else:
+      var mode = if blocking: x and not O_NONBLOCK else: x or O_NONBLOCK
+      if fcntl(s, F_SETFL, mode) == -1:
+        raiseOSError(osLastError())
+  else:
     setNonBlocking(FileHandle(s), not blocking)
 
 proc timeValFromMilliseconds(timeout = 500): Timeval =
