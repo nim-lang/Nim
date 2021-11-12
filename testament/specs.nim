@@ -9,6 +9,7 @@
 
 import sequtils, parseutils, strutils, os, streams, parsecfg,
   tables, hashes, sets
+import compiler/platform
 
 type TestamentData* = ref object
   # better to group globals under 1 object; could group the other ones here too
@@ -329,7 +330,8 @@ proc parseSpec*(filename: string): TSpec =
           # Valgrind only supports OSX <= 17.x
           result.useValgrind = disabled
       of "disabled":
-        case e.value.normalize
+        let value = e.value.normalize
+        case value
         of "y", "yes", "true", "1", "on": result.err = reDisabled
         of "n", "no", "false", "0", "off": discard
         of "win", "windows":
@@ -364,7 +366,18 @@ proc parseSpec*(filename: string): TSpec =
         of "netbsd":
           when defined(netbsd): result.err = reDisabled
         else:
-          result.parseErrors.addLine "cannot interpret as a bool: ", e.value
+          block checkHost:
+            for os in platform.OS:
+              if value == os.name.normalize:
+                if value == hostOS.normalize:
+                  result.err = reDisabled
+                break checkHost
+            for cpu in platform.CPU:
+              if value == cpu.name.normalize:
+                if value == hostCPU.normalize:
+                  result.err = reDisabled
+                break checkHost
+            result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":
         if e.value.startsWith("nim "):
           result.cmd = compilerPrefix & e.value[3..^1]
