@@ -327,7 +327,7 @@ func parseUri*(uri: string): Uri =
 
 
 func urlencodeIRI*(s: string): string =
-  ## Convert string to
+  ## Encode IRI URL path to %<hex_value>
   for r in runes(s):
     if r.isAlpha:
       result &= $r
@@ -341,12 +341,12 @@ func safeParseUri*(uri: string, result: var Uri, acceptIRI = false) =
   ## The `result` variable is cleared before using it.
   const
     scheme = Letters + Digits + {'+', '-', '.'}
-    gen_delims = {':', '/', '?', '#', '[', ']', '@'}
-    sub_delims = {'!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '='}
-    allowed = Letters + Digits + {'-', '.', '_', '~'} + gen_delims + sub_delims
+    genDelims = {':', '/', '?', '#', '[', ']', '@'}
+    subDelims = {'!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '='}
+    allowed = Letters + Digits + {'-', '.', '_', '~'} + genDelims + subDelims
     iunreserved = Letters + Digits + {'-', '.', '_', '~', '%'} # lax on uschar
-    ihost =  iunreserved + sub_delims
-    iquery = iunreserved + sub_delims + {':', '@', '/', '?'}
+    ihost =  iunreserved + subDelims
+    iquery = iunreserved + subDelims + {':', '@', '/', '?'}
 
   parseUri(uri, result)
   for c in result.scheme:
@@ -369,7 +369,7 @@ func safeParseUri*(uri: string, result: var Uri, acceptIRI = false) =
     result.path = urlencodeIRI(result.path)
   for c in result.path:
     if c notin iquery:
-      uriParseError("Invalid character in query")
+      uriParseError("Invalid character in path")
 
   for c in result.query:
     if c notin iquery:
