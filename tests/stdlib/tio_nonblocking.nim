@@ -1,6 +1,5 @@
 discard """
   disabled: "win"
-  disabled: "freertos"
   targets: "c"
   matrix: "-d:threadsafe --threads:on"
   timeout: 60
