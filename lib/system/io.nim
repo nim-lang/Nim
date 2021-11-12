@@ -376,7 +376,7 @@ when defined(nimdoc) or not (defined(nimscript) or defined(windows)):
     ## Calling `read` on a non-blocking file handle will result in an `IOError`
     ## of `EAGAIN <https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/errno.h.html>`_
     ## whenever there is no data to read. The state can be checked beforehand
-    ## with either`endOfFile <#endOfFile,File>`_ or `atEnd <streams.html#atEnd,Stream>`_.
+    ## with either `endOfFile <#endOfFile,File>`_ or `atEnd <streams.html#atEnd,Stream>`_.
     ##
     ## This requires the OS file handle, which can be
     ## retrieved via `getOsFileHandle <#getOsFileHandle,File>`_.
