@@ -365,7 +365,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
 
-when defined(nimdoc) or not (defined(nimscript) or defined(windows)):
+when defined(nimdoc) or not (defined(nimscript) or defined(windows) or defined(lwip)):
   proc setNonBlocking*(f: FileHandle, nonBlocking = true) {.raises: [OSError].} =
     ## Control file handle blocking mode.
     ##
