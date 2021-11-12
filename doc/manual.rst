@@ -6699,11 +6699,11 @@ statement, as seen in stack backtraces:
     if not cond:
       # change run-time line information of the 'raise' statement:
       {.line: instantiationInfo().}:
-        raise newException(EAssertionFailed, msg)
+        raise newException(AssertionDefect, msg)
 
 If the `line` pragma is used with a parameter, the parameter needs be a
 `tuple[filename: string, line: int]`. If it is used without a parameter,
-`system.InstantiationInfo()` is used.
+`system.instantiationInfo()` is used.
 
 
 linearScanEnd pragma
