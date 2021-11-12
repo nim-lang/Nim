@@ -3,7 +3,7 @@ discard """
   disabled: "freertos"
   targets: "c"
   matrix: "-d:threadsafe --threads:on"
-  timeout: 10
+  timeout: 60
   output: "started\nstopped\nquit\n"
 """
 # PURPOSE
