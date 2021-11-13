@@ -47,14 +47,20 @@
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
-const
-  StackGuardSize = 4096
-  ThreadStackMask =
-    when defined(genode):
-      1024*64*sizeof(int)-1
-    else:
-      1024*256*sizeof(int)-1
-  ThreadStackSize = ThreadStackMask+1 - StackGuardSize
+when defined(zephyr):
+  const
+    StackGuardSize {.intdefine.} = 128
+    ThreadStackSize {.intdefine.} = 8192 - 1 - StackGuardSize
+else:
+  const
+    StackGuardSize = 4096
+    ThreadStackMask =
+      when defined(genode):
+        1024*64*sizeof(int)-1
+      else:
+        1024*256*sizeof(int)-1
+
+    ThreadStackSize = ThreadStackMask+1 - StackGuardSize
 
 #const globalsSlot = ThreadVarSlot(0)
 #sysAssert checkSlot.int == globalsSlot.int
@@ -321,7 +327,14 @@ else:
     when hasSharedHeap: t.core.stackSize = ThreadStackSize
     var a {.noinit.}: Pthread_attr
     doAssert pthread_attr_init(a) == 0
-    let setstacksizeResult = pthread_attr_setstacksize(a, ThreadStackSize)
+    when defined(zephyr):
+      var
+        rawstk = allocShared0(ThreadStackSize + StackGuardSize)
+        stk = cast[pointer](cast[uint](rawstk) + StackGuardSize)
+      let setstacksizeResult = pthread_attr_setstack(addr a, stk, ThreadStackSize)
+    else:
+      let setstacksizeResult = pthread_attr_setstacksize(a, ThreadStackSize)
+
     when not defined(ios):
       # This fails on iOS
       doAssert(setstacksizeResult == 0)
