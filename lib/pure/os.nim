@@ -3258,7 +3258,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     template merge(a, b): untyped =
       int64(
         (uint64(cast[uint32](a))) or
-        (uint64(cast[uint32](b))) shl 32)
+        (uint64(cast[uint32](b)) shl 32)
        )
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
     formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
