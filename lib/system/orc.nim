@@ -217,7 +217,7 @@ proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
         for t in sons(s): scan(t)
   ]#
   if s.color == colGray:
-    if (s.rc shr rcShift) >= 0:
+    if (s.rc shr rcShift) > 0:
       scanBlack(s, desc, j)
       # XXX this should be done according to Lins' paper but currently breaks
       #when useJumpStack:
@@ -232,7 +232,7 @@ proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
           let t = head entry[]
           # not in jump stack anymore!
           t.rc = t.rc and not jumpStackFlag
-          if t.color == colGray and (t.rc shr rcShift) >= 0:
+          if t.color == colGray and (t.rc shr rcShift) > 0:
             scanBlack(t, desc, j)
             # XXX this should be done according to Lins' paper but currently breaks
             #t.setColor colPurple
