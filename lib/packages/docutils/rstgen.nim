@@ -1274,8 +1274,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     d.curQuotationDepth = 1
     var tmp = ""
     renderAux(d, n, "$1", "$1", tmp)
-    let itemEnding = (if d.target == outHtml: "</blockquote>"
-                      else: "\\end{rstquote}")
+    let itemEnding =
+      if d.target == outHtml: "</blockquote>" else: "\\end{rstquote}"
     tmp.add itemEnding.repeat(d.curQuotationDepth - 1)
     dispA(d.target, result,
         "<blockquote$2 class=\"markdown-quote\">$1</blockquote>\n",
@@ -1284,12 +1284,14 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     let addQuotationDepth = n.quotationDepth - d.curQuotationDepth
     var itemPrefix: string  # start or ending (quotation grey bar on the left)
     if addQuotationDepth >= 0:
-      let s = (if d.target == outHtml: "<blockquote class=\"markdown-quote\">"
-               else: "\\begin{rstquote}")
+      let s =
+        if d.target == outHtml: "<blockquote class=\"markdown-quote\">"
+        else: "\\begin{rstquote}"
       itemPrefix = s.repeat(addQuotationDepth)
     else:
-      let s = (if d.target == outHtml: "</blockquote>"
-               else: "\\end{rstquote}")
+      let s =
+        if d.target == outHtml: "</blockquote>"
+        else: "\\end{rstquote}"
       itemPrefix = s.repeat(-addQuotationDepth)
     renderAux(d, n, itemPrefix & "<p>$1</p>", itemPrefix & "\n$1", result)
     d.curQuotationDepth = n.quotationDepth
