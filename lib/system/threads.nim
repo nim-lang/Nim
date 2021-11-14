@@ -190,7 +190,7 @@ when defined(windows):
     threadProcWrapperBody(closure)
     # implicitly return 0
 elif defined(genode):
-   proc threadProcWrapper[TArg](closure: pointer) {.noconv.} =
+  proc threadProcWrapper[TArg](closure: pointer) {.noconv.} =
     threadProcWrapperBody(closure)
 else:
   proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} =
