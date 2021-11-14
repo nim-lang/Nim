@@ -567,6 +567,11 @@ blockquote {
   border-left: 5px solid #bbc;
 }
 
+blockquote.markdown-quote {
+  font-size: 0.9rem;  /* use rem to avoid recursion */
+  font-style: normal;
+}
+
 .pre, span.tok {
   font-family: "Source Code Pro", Monaco, Menlo, Consolas, "Courier New", monospace;
   font-weight: 500;

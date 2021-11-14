@@ -89,6 +89,7 @@ type
     onTestSnippet*: proc (d: var RstGenerator; filename, cmd: string; status: int;
                           content: string)
     escMode*: EscapeMode
+    curQuotationDepth: int
 
   PDoc = var RstGenerator ## Alias to type less.
 
@@ -167,6 +168,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   g.currentSection = ""
   g.id = 0
   g.escMode = emText
+  g.curQuotationDepth = 0
   let fileParts = filename.splitFile
   if fileParts.ext == ".nim":
     g.currentSection = "Module " & fileParts.name
@@ -1268,8 +1270,29 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnLiteralBlock:
     renderAux(d, n, "<pre$2>$1</pre>\n",
                     "\n\n$2\\begin{rstpre}\n$1\n\\end{rstpre}\n\n", result)
-  of rnQuotedLiteralBlock:
-    doAssert false, "renderRstToOut"
+  of rnMarkdownBlockQuote:
+    d.curQuotationDepth = 1
+    var tmp = ""
+    renderAux(d, n, "$1", "$1", tmp)
+    let itemEnding = (if d.target == outHtml: "</blockquote>"
+                      else: "\\end{rstquote}")
+    tmp.add itemEnding.repeat(d.curQuotationDepth - 1)
+    dispA(d.target, result,
+        "<blockquote$2 class=\"markdown-quote\">$1</blockquote>\n",
+        "\n\\begin{rstquote}\n$2\n$1\\end{rstquote}\n", [tmp, n.anchor.idS])
+  of rnMarkdownBlockQuoteItem:
+    let addQuotationDepth = n.quotationDepth - d.curQuotationDepth
+    var itemPrefix: string  # start or ending (quotation grey bar on the left)
+    if addQuotationDepth >= 0:
+      let s = (if d.target == outHtml: "<blockquote class=\"markdown-quote\">"
+               else: "\\begin{rstquote}")
+      itemPrefix = s.repeat(addQuotationDepth)
+    else:
+      let s = (if d.target == outHtml: "</blockquote>"
+               else: "\\end{rstquote}")
+      itemPrefix = s.repeat(-addQuotationDepth)
+    renderAux(d, n, itemPrefix & "<p>$1</p>", itemPrefix & "\n$1", result)
+    d.curQuotationDepth = n.quotationDepth
   of rnLineBlock:
     if n.sons.len == 1 and n.sons[0].lineIndent == "\n":
       # whole line block is one empty line, no need to add extra spacing
