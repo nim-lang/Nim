@@ -334,49 +334,66 @@ proc parseSpec*(filename: string): TSpec =
         case value
         of "y", "yes", "true", "1", "on": result.err = reDisabled
         of "n", "no", "false", "0", "off": discard
-        of "win", "windows":
+        # These values are defined in `compiler/options.isDefined`
+        of "win":
           when defined(windows): result.err = reDisabled
         of "linux":
           when defined(linux): result.err = reDisabled
         of "bsd":
           when defined(bsd): result.err = reDisabled
-        of "osx", "macosx": # xxx remove `macosx` alias?
+        of "osx":
           when defined(osx): result.err = reDisabled
-        of "unix":
-          when defined(unix): result.err = reDisabled
-        of "posix":
+        of "unix", "posix":
           when defined(posix): result.err = reDisabled
+        of "freebsd":
+          when defined(freebsd): result.err = reDisabled
+        of "littleendian":
+          when defined(littleendian): result.err = reDisabled
+        of "bigendian":
+          when defined(bigendian): result.err = reDisabled
+        of "cpu8", "8bit":
+          when defined(cpu8): result.err = reDisabled
+        of "cpu16", "16bit":
+          when defined(cpu16): result.err = reDisabled
+        of "cpu32", "32bit":
+          when defined(cpu32): result.err = reDisabled
+        of "cpu64", "64bit":
+          when defined(cpu64): result.err = reDisabled
+        # These values are for CI environments
         of "travis": # deprecated
           if isTravis: result.err = reDisabled
         of "appveyor": # deprecated
           if isAppVeyor: result.err = reDisabled
         of "azure":
           if isAzure: result.err = reDisabled
-        of "32bit":
-          if sizeof(int) == 4:
-            result.err = reDisabled
-        of "freebsd":
-          when defined(freebsd): result.err = reDisabled
-        of "arm64":
-          when defined(arm64): result.err = reDisabled
-        of "i386":
-          when defined(i386): result.err = reDisabled
-        of "openbsd":
-          when defined(openbsd): result.err = reDisabled
-        of "netbsd":
-          when defined(netbsd): result.err = reDisabled
         else:
+          # Check whether the value exists as an OS or CPU that is
+          # defined in `compiler/platform`.
           block checkHost:
             for os in platform.OS:
+              # Check if the value exists as OS.
               if value == os.name.normalize:
+                # The value exists; is it the same as the current host?
                 if value == hostOS.normalize:
+                  # The value exists and is the same as the current host,
+                  # so disable the test.
                   result.err = reDisabled
+                # The value was defined, so there is no need to check further
+                # values or raise an error.
                 break checkHost
             for cpu in platform.CPU:
+              # Check if the value exists as CPU.
               if value == cpu.name.normalize:
+                # The value exists; is it the same as the current host?
                 if value == hostCPU.normalize:
+                  # The value exists and is the same as the current host,
+                  # so disable the test.
                   result.err = reDisabled
+                # The value was defined, so there is no need to check further
+                # values or raise an error.
                 break checkHost
+            # The value doesn't exist as an OS, CPU, or any previous value
+            # defined in this case statement, so raise an error.
             result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":
         if e.value.startsWith("nim "):
