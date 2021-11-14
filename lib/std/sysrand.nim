@@ -164,7 +164,7 @@ elif defined(windows):
 
     result = randomBytes(addr dest[0], size)
 
-elif defined(linux) and not defined(nimNoGetRandom):
+elif defined(linux) and not defined(nimNoGetRandom) and not defined(emscripten):
   # TODO using let, pending bootstrap >= 1.4.0
   var SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
   const syscallHeader = """#include <unistd.h>
