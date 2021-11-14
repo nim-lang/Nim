@@ -27,7 +27,7 @@ const
   logOrc = defined(nimArcIds)
 
 type
-  TraceProc = proc (p, env: pointer) {.nimcall, benign.}
+  TraceProc = proc (p, env: pointer) {.nimcall, raises: [], benign.}
   DisposeProc = proc (p: pointer) {.nimcall, benign.}
 
 template color(c): untyped = c.rc and colorMask
@@ -74,7 +74,7 @@ type
     freed, touched, edges, rcSum: int
     keepThreshold: bool
 
-proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
+proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline, raises: [].} =
   if desc.traceImpl != nil:
     var p = s +! sizeof(RefHeader)
     cast[TraceProc](desc.traceImpl)(p, addr(j))
@@ -171,7 +171,7 @@ proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
       trace(t, desc, j)
       when logOrc: writeCell("child still alive", t, desc)
 
-proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
+proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.raises: [].} =
   #[
   proc markGray(s: Cell) =
     if s.color != colGray:
@@ -299,7 +299,7 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
         t.setColor(colBlack)
         trace(t, desc, j)
 
-proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
+proc collectCyclesBacon(j: var GcEnv; lowMark: int) {.raises: [].} =
   # pretty direct translation from
   # https://researcher.watson.ibm.com/researcher/files/us-bacon/Bacon01Concurrent.pdf
   # Fig. 2. Synchronous Cycle Collection
@@ -366,7 +366,7 @@ proc partialCollect(lowMark: int) =
   roots.len = lowMark
   deinit j.traceStack
 
-proc collectCycles() =
+proc collectCycles() {.raises: [].}=
   ## Collect cycles.
   when logOrc:
     cfprintf(cstderr, "[collectCycles] begin\n")
@@ -418,7 +418,7 @@ proc registerCycle(s: Cell; desc: PNimTypeV2) =
 
   orcAssert strstr(desc.name, "TType") == nil, "added a TType as a root!"
 
-proc GC_runOrc* =
+proc GC_runOrc* {.raises: [].} =
   ## Forces a cycle collection pass.
   collectCycles()
   orcAssert roots.len == 0, "roots not empty!"

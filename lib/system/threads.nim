@@ -152,6 +152,8 @@ else:
       threadTrouble()
     finally:
       afterThreadRuns()
+      when defined(gcOrc):
+        GC_runOrc()
 
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
   when defined(boehmgc):
