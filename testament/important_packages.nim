@@ -55,7 +55,7 @@ pkg "chronos", "nim c -r -d:release tests/testall", allowFailure = true # pendin
 pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --gc:orc"
 pkg "compactdict"
-pkg "comprehension", "nimble test", "https://github.com/alehander42/comprehension"
+pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehension"
 pkg "criterion", allowFailure = true # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
 pkg "datamancer"
 pkg "dashing", "nim c tests/functional.nim"
