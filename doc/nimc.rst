@@ -657,7 +657,7 @@ define to use `malloc` instead of `mmap`. `nimAllocPagesViaMalloc` is currently
 only supported with `--gc:arc` or `--gc:orc`. (Since version 1.6)
 
 nimPage256 / nimPage512 / nimPage1k
-========================
+===================================
 
 Adjust the page size for Nim's GC allocator. This enables using
 `nimAllocPagesViaMalloc` on devices with less RAM. The default
