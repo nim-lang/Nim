@@ -10,14 +10,18 @@
 # Page size of the system; in most cases 4096 bytes. For exotic OS or
 # CPU this needs to be changed:
 const
-  PageShift = when defined(cpu16): 8 else: 12 # \
-    # my tests showed no improvements for using larger page sizes.
+  PageShift = when defined(nimPage256) or defined(cpu16): 8
+              elif defined(nimPage512): 9
+              elif defined(nimPage1k): 10
+              else: 12 # \ # my tests showed no improvements for using larger page sizes.
+
   PageSize = 1 shl PageShift
   PageMask = PageSize-1
 
 
   MemAlign = # also minimal allocatable memory block
-    when defined(useMalloc):
+    when defined(nimMemAlignTiny): 4
+    elif defined(useMalloc):
       when defined(amd64): 16 
       else: 8
     else: 16
