@@ -663,7 +663,7 @@ Adjust the page size for Nim's GC allocator. This enables using
 `nimAllocPagesViaMalloc` on devices with less RAM. The default
 page size requires too much RAM to work.
 
-Recommended settings guidelines:
+Recommended settings:
 
 - < 32 kB of RAM use `nimPage256`
 
@@ -674,7 +674,6 @@ Recommended settings guidelines:
 Initial testing hasn't shown much difference between 512B or 1kB page sizes
 in terms of performance or latency. Using `nimPages256` will limit the
 total amount of allocatable RAM.
-
 
 nimMemAlignTiny
 ===============
