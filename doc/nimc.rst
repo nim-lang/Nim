@@ -656,6 +656,31 @@ is not available but C's `malloc` is. You can use the `nimAllocPagesViaMalloc`
 define to use `malloc` instead of `mmap`. `nimAllocPagesViaMalloc` is currently
 only supported with `--gc:arc` or `--gc:orc`. (Since version 1.6)
 
+nimPage256 / nimPage512 / nimPage1k
+========================
+
+Adjust the page size for Nim's GC allocator. This enables using
+`nimAllocPagesViaMalloc` on devices with less RAM. The default
+page size requires too much RAM to work.
+
+Recommended settings guidelines:
+
+- < 32 kB of RAM use `nimPage256`
+
+- < 512 kB of RAM use `nimPage512`
+
+- < 2 MB of RAM use `nimPage1k`
+
+Initial testing hasn't shown much difference between 512B or 1kB page sizes
+in terms of performance or latency. Using `nimPages256` will limit the
+total amount of allocatable RAM.
+
+
+nimMemAlignTiny
+===============
+
+Sets `MemAlign` to `4` bytes which reduces the memory alignment
+to better match some embedded devices.
 
 Nim for realtime systems
 ========================
