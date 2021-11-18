@@ -47,10 +47,11 @@
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
-when defined(zephyr):
+when defined(zephyr) or defined(freertos):
   const
     StackGuardSize {.intdefine.} = 128
-    ThreadStackSize {.intdefine.} = 8192 - 1 - StackGuardSize
+    StackThreadSize {.intdefine.} = 8192 
+    ThreadStackSize = StackThreadSize - 1 - StackGuardSize
 else:
   const
     StackGuardSize = 4096

@@ -675,11 +675,19 @@ Initial testing hasn't shown much difference between 512B or 1kB page sizes
 in terms of performance or latency. Using `nimPages256` will limit the
 total amount of allocatable RAM.
 
-nimMemAlignTiny
 ===============
 
 Sets `MemAlign` to `4` bytes which reduces the memory alignment
 to better match some embedded devices.
+
+Thread stack size 
+=================
+
+Nim's thread API provides a simple wrapper around more advanced
+RTOS task features. Customizing the stack size and stack guard size can
+be done by setting `-d:StackThreadSize=16384` or `-d:StackGuardSize:8`.
+
+Currently only Zephyr and FreeRTOS support these configurations. 
 
 Nim for realtime systems
 ========================
