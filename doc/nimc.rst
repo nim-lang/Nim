@@ -675,6 +675,7 @@ Initial testing hasn't shown much difference between 512B or 1kB page sizes
 in terms of performance or latency. Using `nimPages256` will limit the
 total amount of allocatable RAM.
 
+nimMemAlignTiny
 ===============
 
 Sets `MemAlign` to `4` bytes which reduces the memory alignment
