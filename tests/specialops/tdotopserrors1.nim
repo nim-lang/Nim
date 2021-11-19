@@ -2,7 +2,7 @@ discard """
   cmd: "nim check --hints:off $options $file"
   action: "reject"
   nimout: '''
-tdotopserrors1.nim(15, 7) Error: expression 'x' cannot be called
+tdotopserrors1.nim(15, 7) Error: undeclared field: 'x' for type tdotopserrors1.Bar [type declared in tdotopserrors1.nim(12, 6)]
 '''
 """
 

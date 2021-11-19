@@ -2,7 +2,7 @@ discard """
   cmd: "nim check --hints:off $options $file"
   action: "reject"
   nimout: '''
-tdotopserrors2.nim(15, 7) Error: expression 'x' cannot be called
+tdotopserrors2.nim(15, 7) Error: attempting to call undeclared routine: 'x'
 '''
 """
 

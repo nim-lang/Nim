@@ -2,7 +2,7 @@ discard """
   cmd: "nim check --hints:off $options $file"
   action: "reject"
   nimout: '''
-tdotopserrors3.nim(15, 2) Error: undeclared field: 'x' for type tdotopserrors3.Bar [type declared in tdotopserrors3.nim(17, 6)]
+tdotopserrors3.nim(15, 5) Error: undeclared field: 'x' for type tdotopserrors3.Bar [type declared in tdotopserrors3.nim(12, 6)]
 '''
 """
 
