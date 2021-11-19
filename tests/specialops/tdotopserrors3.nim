@@ -6,9 +6,9 @@ tdotopserrors3.nim(15, 2) Error: undeclared field: 'x' for type tdotopserrors3.B
 '''
 """
 
-# {.experimental: "dotOperators".}
-# type Foo = object
-# template `.=`(a: Foo, b: untyped, c: untyped) = b = c
+{.experimental: "dotOperators".}
+type Foo = object
+template `.=`(a: Foo, b: untyped, c: untyped) = b = c
 type Bar = object
   x1: int
 var b: Bar
