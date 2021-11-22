@@ -644,7 +644,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
             let srcid = variableId(c, s)
             if srcid >= 0:
               if s.kind notin {skResult, skParam} and (
-                  c.s[srcid].scope.aliveEnd < c.s[vid].scope.aliveEnd):
+                  c.s[srcid].aliveEnd < c.s[vid].aliveEnd):
                 # you cannot borrow from a local that lives shorter than 'vid':
                 when explainCursors: echo "B not a cursor ", d.sym, " ", c.s[srcid].aliveEnd, " ", c.s[vid].aliveEnd
                 c.s[vid].flags.incl preventCursor
