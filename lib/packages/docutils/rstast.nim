@@ -34,7 +34,7 @@ type
     rnOptionList, rnOptionListItem, rnOptionGroup, rnOption, rnOptionString,
     rnOptionArgument, rnDescription, rnLiteralBlock,
     rnMarkdownBlockQuote,     # a quote starting from punctuation like >>>
-    rnMarkdownBlockQuoteItem, # a citation block, quote lines starting with
+    rnMarkdownBlockQuoteItem, # a quotation block, quote lines starting with
                               # the same number of chars
     rnLineBlock,              # the | thingie
     rnLineBlockItem,          # a son of rnLineBlock - one line inside it.

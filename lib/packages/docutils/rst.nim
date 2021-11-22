@@ -2320,22 +2320,22 @@ proc parseMarkdownQuoteSegment(p: var RstParser, curSym: string, col: int):
   result = parseDoc(q)
 
 proc parseMarkdownBlockQuote(p: var RstParser): PRstNode =
-    var (curSym, quotationDepth, quoteTokens) = getQuoteSymbol(p, p.idx)
-    let col = currentTok(p).col
-    result = newRstNodeA(p, rnMarkdownBlockQuote)
-    inc p.idx, quoteTokens  # skip first >
-    while true:
-      var item = newRstNode(rnMarkdownBlockQuoteItem)
-      item.quotationDepth = quotationDepth
-      if currentTok(p).kind == tkWhite: inc p.idx
-      item.add parseMarkdownQuoteSegment(p, curSym, col)
-      result.add(item)
-      if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
-          nextTok(p).kind != tkEof and nextTok(p).symbol[0] == '>':
-        (curSym, quotationDepth, quoteTokens) = getQuoteSymbol(p, p.idx + 1)
-        inc p.idx, (1 + quoteTokens)  # skip newline and > > >
-      else:
-        break
+  var (curSym, quotationDepth, quoteTokens) = getQuoteSymbol(p, p.idx)
+  let col = currentTok(p).col
+  result = newRstNodeA(p, rnMarkdownBlockQuote)
+  inc p.idx, quoteTokens  # skip first >
+  while true:
+    var item = newRstNode(rnMarkdownBlockQuoteItem)
+    item.quotationDepth = quotationDepth
+    if currentTok(p).kind == tkWhite: inc p.idx
+    item.add parseMarkdownQuoteSegment(p, curSym, col)
+    result.add(item)
+    if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
+        nextTok(p).kind != tkEof and nextTok(p).symbol[0] == '>':
+      (curSym, quotationDepth, quoteTokens) = getQuoteSymbol(p, p.idx + 1)
+      inc p.idx, (1 + quoteTokens)  # skip newline and > > >
+    else:
+      break
 
 proc parseParagraph(p: var RstParser, result: PRstNode) =
   while true:
