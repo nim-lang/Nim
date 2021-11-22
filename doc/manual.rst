@@ -2682,7 +2682,7 @@ a parameter has different names between them.
   foo(y = 2)
   # Using y: 2
 
-Not supplying the parameter name in such cases will result in an
+Not supplying the parameter name in such cases results in an
 ambiguity error.
 
 
