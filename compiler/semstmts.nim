@@ -1112,7 +1112,12 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
     if name.kind == nkPragmaExpr:
       let rewritten = applyTypeSectionPragmas(c, name[1], typeDef)
       if rewritten != nil:
-        typeSection[i] = rewritten
+        case rewritten.kind
+        of nkTypeDef:
+          typeSection[i] = rewritten
+        of nkTypeSection:
+          typeSection.sons[i .. i] = rewritten.sons
+        else: illFormedAst(rewritten, c.config)
         typeDefLeftSidePass(c, typeSection, i)
         return
       pragma(c, s, name[1], typePragmas)
@@ -1143,16 +1148,19 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
 proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   # process the symbols on the left side for the whole type section, before
   # we even look at the type definitions on the right
-  for i in 0..<n.len:
+  var i = 0
+  while i < n.len: # n may grow due to type pragma macros
     var a = n[i]
     when defined(nimsuggest):
       if c.config.cmd == cmdIdeTools:
         inc c.inTypeContext
         suggestStmt(c, a)
         dec c.inTypeContext
-    if a.kind == nkCommentStmt: continue
-    if a.kind != nkTypeDef: illFormedAst(a, c.config)
-    typeDefLeftSidePass(c, n, i)
+    case a.kind
+    of nkCommentStmt: discard
+    of nkTypeDef: typeDefLeftSidePass(c, n, i)
+    else: illFormedAst(a, c.config)
+    inc i
 
 proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
   var body = genericType[^1]
