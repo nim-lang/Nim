@@ -23,45 +23,6 @@ oneself.
 but refined and overhauled.
 
 
-Package level objects
-=====================
-
-Every Nim module resides in a (nimble) package. An object type can be attached
-to the package it resides in. If that is done, the type can be referenced from
-other modules as an `incomplete`:idx: object type. This feature allows to
-break up recursive type dependencies across module boundaries. Incomplete
-object types are always passed `byref` and can only be used in pointer like
-contexts (`var/ref/ptr IncompleteObject`) in general since the compiler does
-not yet know the size of the object. To complete an incomplete object
-the `package` pragma has to be used. `package` implies `byref`.
-
-As long as a type `T` is incomplete, neither `sizeof(T)` nor runtime
-type information for `T` is available.
-
-
-Example:
-
-.. code-block:: nim
-
-  # module A (in an arbitrary package)
-  type
-    Pack.SomeObject = object ## declare as incomplete object of package 'Pack'
-    Triple = object
-      a, b, c: ref SomeObject ## pointers to incomplete objects are allowed
-
-  ## Incomplete objects can be used as parameters:
-  proc myproc(x: SomeObject) = discard
-
-
-.. code-block:: nim
-
-  # module B (in package "Pack")
-  type
-    SomeObject* {.package.} = object ## Use 'package' to complete the object
-      s, t: string
-      x, y: int
-
-
 Void type
 =========
 
@@ -105,23 +66,106 @@ The `void` type is only valid for parameters and return types; other symbols
 cannot have the type `void`.
 
 
-Automatic dereferencing
-=======================
+Unicode Operators
+=================
 
-Automatic dereferencing is performed for the first argument of a routine call.
-This feature has to be enabled via `{.experimental: "implicitDeref".}`:
+Under the `--experimental:unicodeOperators` switch these Unicode operators are
+also parsed as operators::
+
+  ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
+  ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
+
+
+If enabled, Unicode operators can be combined with non-Unicode operator
+symbols. The usual precedence extensions then apply, for example, `⊠=` is an
+assignment like operator just like `*=` is.
+
+No Unicode normalization step is performed.
+
+**Note**: Due to parser limitations one **cannot** enable this feature via a
+pragma `{.experimental: "unicodeOperators".}` reliably.
+
+
+Overloadable enum value names
+=============================
+
+Enabled via `{.experimental: "overloadableEnums".}`.
+
+Enum value names are overloadable much like routines. When an overloaded
+enum member is used, it produces a closed sym choice construct, here
+written as `(E|E)`. During overload resolution the right `E` is picked,
+if possible. For (array/object...) constructors the right `E` is picked,
+comparable to how `[byte(1), 2, 3]` works, one needs to use `[T.E, E2, E3]`.
+Ambiguous enum values produce a static error.
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  {.experimental: "overloadableEnums".}
+
+  type
+    E1 = enum
+      value1,
+      value2
+    E2 = enum
+      value1,
+      value2 = 4
+
+  const
+    Lookuptable = [
+      E1.value1: "1",
+      value2: "2"
+    ]
+
+  proc p(e: E1) =
+    # disambiguation in 'case' statements:
+    case e
+    of value1: echo "A"
+    of value2: echo "B"
+
+  p value2
+
+
+Package level objects
+=====================
+
+Every Nim module resides in a (nimble) package. An object type can be attached
+to the package it resides in. If that is done, the type can be referenced from
+other modules as an `incomplete`:idx: object type. This feature allows to
+break up recursive type dependencies across module boundaries. Incomplete
+object types are always passed `byref` and can only be used in pointer like
+contexts (`var/ref/ptr IncompleteObject`) in general since the compiler does
+not yet know the size of the object. To complete an incomplete object
+the `package` pragma has to be used. `package` implies `byref`.
+
+As long as a type `T` is incomplete, neither `sizeof(T)` nor runtime
+type information for `T` is available.
+
+
+Example:
 
 .. code-block:: nim
 
-  {.experimental: "implicitDeref".}
+  # module A (in an arbitrary package)
+  type
+    Pack.SomeObject = object ## declare as incomplete object of package 'Pack'
+    Triple = object
+      a, b, c: ref SomeObject ## pointers to incomplete objects are allowed
 
-  proc depth(x: NodeObj): int = ...
+  ## Incomplete objects can be used as parameters:
+  proc myproc(x: SomeObject) = discard
 
-  var
-    n: Node
-  new(n)
-  echo n.depth
-  # no need to write n[].depth either
+
+.. code-block:: nim
+
+  # module B (in package "Pack")
+  type
+    SomeObject* {.package.} = object ## Use 'package' to complete the object
+      s, t: string
+      x, y: int
+
+This feature will likely be superseded in the future by support for
+recursive module dependencies.
 
 
 Code reordering
@@ -230,65 +274,32 @@ scope. Therefore, the following will *fail to compile:*
 
   a()
 
-
-Named argument overloading
-==========================
-
-Routines with the same type signature can be called differently if a parameter
-has different names. This does not need an `experimental` switch, but is an
-unstable feature.
-
-.. code-block:: Nim
-
-  proc foo(x: int) =
-    echo "Using x: ", x
-  proc foo(y: int) =
-    echo "Using y: ", y
-
-  foo(x = 2)
-  # Using x: 2
-  foo(y = 2)
-  # Using y: 2
+This feature will likely be replaced with a better solution to remove
+the need for forward declarations.
 
 
-Do notation
-===========
+Automatic dereferencing
+=======================
 
-As a special more convenient notation, proc expressions involved in procedure
-calls can use the `do` keyword:
+Automatic dereferencing is performed for the first argument of a routine call.
+This feature has to be enabled via `{.experimental: "implicitDeref".}`:
 
 .. code-block:: nim
 
-  sort(cities) do (x,y: string) -> int:
-    cmp(x.len, y.len)
+  {.experimental: "implicitDeref".}
 
-  # Less parenthesis using the method plus command syntax:
-  cities = cities.map do (x:string) -> string:
-    "City of " & x
+  type
+    NodeObj = object
+      # ...
+    Node = ref NodeObj
 
-  # In macros, the do notation is often used for quasi-quoting
-  macroResults.add quote do:
-    if not `ex`:
-      echo `info`, ": Check failed: ", `expString`
+  proc depth(x: NodeObj): int = ...
 
-`do` is written after the parentheses enclosing the regular proc params.
-The proc expression represented by the do block is appended to them.
-In calls using the command syntax, the do block will bind to the immediately
-preceding expression, transforming it in a call.
-
-`do` with parentheses is an anonymous `proc`; however a `do` without
-parentheses is just a block of code. The `do` notation can be used to
-pass multiple blocks to a macro:
-
-.. code-block:: nim
-
-  macro performWithUndo(task, undo: untyped) = ...
-
-  performWithUndo do:
-    # multiple-line block of code
-    # to perform the task
-  do:
-    # code to undo it
+  var
+    n: Node
+  new(n)
+  echo n.depth
+  # no need to write n[].depth
 
 
 Special Operators
@@ -416,6 +427,314 @@ non-nilable pointers. The details of this analysis are still to be specified
 here.
 
 .. include:: manual_experimental_strictnotnil.rst
+
+
+Aliasing restrictions in parameter passing
+==========================================
+
+**Note**: The aliasing restrictions are currently not enforced by the
+implementation and need to be fleshed out further.
+
+"Aliasing" here means that the underlying storage locations overlap in memory
+at runtime. An "output parameter" is a parameter of type `var T`,
+an input parameter is any parameter that is not of type `var`.
+
+1. Two output parameters should never be aliased.
+2. An input and an output parameter should not be aliased.
+3. An output parameter should never be aliased with a global or thread local
+   variable referenced by the called proc.
+4. An input parameter should not be aliased with a global or thread local
+   variable updated by the called proc.
+
+One problem with rules 3 and 4 is that they affect specific global or thread
+local variables, but Nim's effect tracking only tracks "uses no global variable"
+via `.noSideEffect`. The rules 3 and 4 can also be approximated by a different rule:
+
+5. A global or thread local variable (or a location derived from such a location)
+   can only passed to a parameter of a `.noSideEffect` proc.
+
+
+Strict funcs
+============
+
+Since version 1.4 a stricter definition of "side effect" is available. In addition
+to the existing rule that a side effect is calling a function with side effects
+the following rule is also enforced:
+
+Any mutation to an object does count as a side effect if that object is reachable
+via a parameter that is not declared as a `var` parameter.
+
+For example:
+
+.. code-block:: nim
+
+  {.experimental: "strictFuncs".}
+
+  type
+    Node = ref object
+      le, ri: Node
+      data: string
+
+  func len(n: Node): int =
+    # valid: len does not have side effects
+    var it = n
+    while it != nil:
+      inc result
+      it = it.ri
+
+  func mut(n: Node) =
+    let m = n # is the statement that connected the mutation to the parameter
+    m.data = "yeah" # the mutation is here
+    # Error: 'mut' can have side effects
+    # an object reachable from 'n' is potentially mutated
+
+
+The algorithm behind this analysis is described in
+the `view types section <#view-types-algorithm>`_.
+
+
+View types
+==========
+
+**Note**:  `--experimental:views`:option: is more effective
+with `--experimental:strictFuncs`:option:.
+
+A view type is a type that is or contains one of the following types:
+
+- `lent T` (view into `T`)
+- `openArray[T]` (pair of (pointer to array of `T`, size))
+
+For example:
+
+.. code-block:: nim
+
+  type
+    View1 = openArray[byte]
+    View2 = lent string
+    View3 = Table[openArray[char], int]
+
+
+Exceptions to this rule are types constructed via `ptr` or `proc`.
+For example, the following types are **not** view types:
+
+.. code-block:: nim
+
+  type
+    NotView1 = proc (x: openArray[int])
+    NotView2 = ptr openArray[char]
+    NotView3 = ptr array[4, lent int]
+
+
+The mutability aspect of a view type is not part of the type but part
+of the locations it's derived from. More on this later.
+
+A *view* is a symbol (a let, var, const, etc.) that has a view type.
+
+Since version 1.4 Nim allows view types to be used as local variables.
+This feature needs to be enabled via `{.experimental: "views".}`.
+
+A local variable of a view type *borrows* from the locations and
+it is statically enforced that the view does not outlive the location
+it was borrowed from.
+
+For example:
+
+.. code-block:: nim
+
+  {.experimental: "views".}
+
+  proc take(a: openArray[int]) =
+    echo a.len
+
+  proc main(s: seq[int]) =
+    var x: openArray[int] = s # 'x' is a view into 's'
+    # it is checked that 'x' does not outlive 's' and
+    # that 's' is not mutated.
+    for i in 0 .. high(x):
+      echo x[i]
+    take(x)
+
+    take(x.toOpenArray(0, 1)) # slicing remains possible
+    let y = x  # create a view from a view
+    take y
+    # it is checked that 'y' does not outlive 'x' and
+    # that 'x' is not mutated as long as 'y' lives.
+
+
+  main(@[11, 22, 33])
+
+
+A local variable of a view type can borrow from a location
+derived from a parameter, another local variable, a global `const` or `let`
+symbol or a thread-local `var` or `let`.
+
+Let `p` the proc that is analysed for the correctness of the borrow operation.
+
+Let `source` be one of:
+
+- A formal parameter of `p`. Note that this does not cover parameters of
+  inner procs.
+- The `result` symbol of `p`.
+- A local `var` or `let` or `const` of `p`. Note that this does
+  not cover locals of inner procs.
+- A thread-local `var` or `let`.
+- A global `let` or `const`.
+- A constant array/seq/object/tuple constructor.
+
+
+Path expressions
+----------------
+
+A location derived from `source` is then defined as a path expression that
+has `source` as the owner. A path expression `e` is defined recursively:
+
+- `source` itself is a path expression.
+- Container access like `e[i]` is a path expression.
+- Tuple access `e[0]` is a path expression.
+- Object field access `e.field` is a path expression.
+- `system.toOpenArray(e, ...)` is a path expression.
+- Pointer dereference `e[]` is a path expression.
+- An address `addr e`, `unsafeAddr e` is a path expression.
+- A type conversion `T(e)` is a path expression.
+- A cast expression `cast[T](e)` is a path expression.
+- `f(e, ...)` is a path expression if `f`'s return type is a view type.
+  Because the view can only have been borrowed from `e`, we then know
+  that owner of `f(e, ...)` is `e`.
+
+
+If a view type is used as a return type, the location must borrow from a location
+that is derived from the first parameter that is passed to the proc.
+See https://nim-lang.org/docs/manual.html#procedures-var-return-type for
+details about how this is done for `var T`.
+
+A mutable view can borrow from a mutable location, an immutable view can borrow
+from both a mutable or an immutable location.
+
+If a view borrows from a mutable location, the view can be used to update the
+location. Otherwise it cannot be used for mutations.
+
+The *duration* of a borrow is the span of commands beginning from the assignment
+to the view and ending with the last usage of the view.
+
+For the duration of the borrow operation, no mutations to the borrowed locations
+may be performed except via the view that borrowed from the
+location. The borrowed location is said to be *sealed* during the borrow.
+
+.. code-block:: nim
+
+  {.experimental: "views".}
+
+  type
+    Obj = object
+      field: string
+
+  proc dangerous(s: var seq[Obj]) =
+    let v: lent Obj = s[0] # seal 's'
+    s.setLen 0  # prevented at compile-time because 's' is sealed.
+    echo v.field
+
+
+The scope of the view does not matter:
+
+.. code-block:: nim
+
+  proc valid(s: var seq[Obj]) =
+    let v: lent Obj = s[0]  # begin of borrow
+    echo v.field            # end of borrow
+    s.setLen 0  # valid because 'v' isn't used afterwards
+
+
+The analysis requires as much precision about mutations as is reasonably obtainable,
+so it is more effective with the experimental `strict funcs <#strict-funcs>`_
+feature. In other words `--experimental:views`:option: works better
+with `--experimental:strictFuncs`:option:.
+
+The analysis is currently control flow insensitive:
+
+.. code-block:: nim
+
+  proc invalid(s: var seq[Obj]) =
+    let v: lent Obj = s[0]
+    if false:
+      s.setLen 0
+    echo v.field
+
+In this example, the compiler assumes that `s.setLen 0` invalidates the
+borrow operation of `v` even though a human being can easily see that it
+will never do that at runtime.
+
+
+Start of a borrow
+-----------------
+
+A borrow starts with one of the following:
+
+- The assignment of a non-view-type to a view-type.
+- The assignment of a location that is derived from a local parameter
+  to a view-type.
+
+
+End of a borrow
+---------------
+
+A borrow operation ends with the last usage of the view variable.
+
+
+Reborrows
+---------
+
+A view `v` can borrow from multiple different locations. However, the borrow
+is always the full span of `v`'s lifetime and every location that is borrowed
+from is sealed during `v`'s lifetime.
+
+
+Algorithm
+---------
+
+The following section is an outline of the algorithm that the current implementation
+uses. The algorithm performs two traversals over the AST of the procedure or global
+section of code that uses a view variable. No fixpoint iterations are performed, the
+complexity of the analysis is O(N) where N is the number of nodes of the AST.
+
+The first pass over the AST computes the lifetime of each local variable based on
+a notion of an "abstract time", in the implementation it's a simple integer that is
+incremented for every visited node.
+
+In the second pass information about the underlying object "graphs" is computed.
+Let `v` be a parameter or a local variable. Let `G(v)` be the graph
+that `v` belongs to. A graph is defined by the set of variables that belong
+to the graph. Initially for all `v`: `G(v) = {v}`. Every variable can only
+be part of a single graph.
+
+Assignments like `a = b` "connect" two variables, both variables end up in the
+same graph `{a, b} = G(a) = G(b)`. Unfortunately, the pattern to look for is
+much more complex than that and can involve multiple assignment targets
+and sources::
+
+  f(x, y) = g(a, b)
+
+connects `x` and `y` to `a` and `b`: `G(x) = G(y) = G(a) = G(b) = {x, y, a, b}`.
+A type based alias analysis rules out some of these combinations, for example
+a `string` value cannot possibly be connected to a `seq[int]`.
+
+A pattern like `v[] = value` or `v.field = value` marks `G(v)` as mutated.
+After the second pass a set of disjoint graphs was computed.
+
+For strict functions it is then enforced that there is no graph that is both mutated
+and has an element that is an immutable parameter (that is a parameter that is not
+of type `var T`).
+
+For borrow checking a different set of checks is performed. Let `v` be the view
+and `b` the location that is borrowed from.
+
+- The lifetime of `v` must not exceed `b`'s lifetime. Note: The lifetime of
+  a parameter is the complete proc body.
+- If `v` is used for a mutation, `b` must be a mutable location too.
+- During `v`'s lifetime, `G(b)` can only be modified by `v` (and only if
+  `v` is a mutable view).
+- If `v` is `result` then `b` has to be a location derived from the first
+  formal parameter or from a constant location.
+- A view cannot be used for a read or a write access before it was assigned to.
 
 
 Concepts
@@ -909,53 +1228,22 @@ The builtin `deepCopy` can even clone closures and their environments. See
 the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
 
 
-Case statement macros
-=====================
+Dynamic arguments for bindSym
+=============================
 
-Macros named `case` can rewrite `case` statements for certain types in order to
-implement `pattern matching`:idx:. The following example implements a
-simplistic form of pattern matching for tuples, leveraging the existing
-equality operator for tuples (as provided in `system.==`):
+This experimental feature allows the symbol name argument of `macros.bindSym`
+to be computed dynamically.
 
 .. code-block:: nim
-    :test: "nim c $1"
+  {.experimental: "dynamicBindSym".}
 
-  {.experimental: "caseStmtMacros".}
+  import macros
 
-  import std/macros
+  macro callOp(opName, arg1, arg2): untyped =
+    result = newCall(bindSym($opName), arg1, arg2)
 
-  macro `case`(n: tuple): untyped =
-    result = newTree(nnkIfStmt)
-    let selector = n[0]
-    for i in 1 ..< n.len:
-      let it = n[i]
-      case it.kind
-      of nnkElse, nnkElifBranch, nnkElifExpr, nnkElseExpr:
-        result.add it
-      of nnkOfBranch:
-        for j in 0..it.len-2:
-          let cond = newCall("==", selector, it[j])
-          result.add newTree(nnkElifBranch, cond, it[^1])
-      else:
-        error "custom 'case' for tuple cannot handle this node", it
-
-  case ("foo", 78)
-  of ("foo", 78): echo "yes"
-  of ("bar", 88): echo "no"
-  else: discard
-
-
-Currently case statement macros must be enabled explicitly
-via `{.experimental: "caseStmtMacros".}`.
-
-`case` macros are subject to overload resolution. The type of the
-`case` statement's selector expression is matched against the type
-of the first argument of the `case` macro. Then the complete `case`
-statement is passed in place of the argument and the macro is evaluated.
-
-In other words, the macro needs to transform the full `case` statement
-but only the statement's selector expression is used to determine which
-macro to call.
+  echo callOp("+", 1, 2)
+  echo callOp("-", 5, 4)
 
 
 Term rewriting macros
@@ -1276,6 +1564,27 @@ parameter is of the type `varargs` it is treated specially and it can match
     w(f, x, y)
 
 
+noRewrite pragma
+----------------
+
+Term rewriting macros and templates are currently greedy and
+they will rewrite as long as there is a match.
+There was no way to ensure some rewrite happens only once,
+e.g. when rewriting term to same term plus extra content.
+
+`noRewrite` pragma can actually prevent further rewriting on marked code,
+e.g. with given example `echo("ab")` will be rewritten just once:
+
+.. code-block:: nim
+
+  template pwnEcho{echo(x)}(x: untyped) =
+    {.noRewrite.}: echo("pwned!")
+
+  echo "ab"
+
+`noRewrite` pragma can be useful to control term-rewriting macros recursion.
+
+
 
 Example: Partial evaluation
 ---------------------------
@@ -1366,6 +1675,9 @@ read prematurely within a `parallel` section and so there is no need for
 the overhead of an indirection via `FlowVar[T]` to ensure correctness.
 
 **Note**: Currently exceptions are not propagated between `spawn`'ed tasks!
+
+This feature is likely to be removed in the future as external packages
+can have better solutions. 
 
 
 Spawn statement
@@ -1477,145 +1789,9 @@ restrictions / changes:
   yet performed for ordinary slices outside of a `parallel` section.
 
 
-Guards and locks
-================
-
-Apart from `spawn` and `parallel` Nim also provides all the common low level
-concurrency mechanisms like locks, atomic intrinsics or condition variables.
-
-Nim significantly improves on the safety of these features via additional
-pragmas:
-
-1) A `guard`:idx: annotation is introduced to prevent data races.
-2) Every access of a guarded memory location needs to happen in an
-   appropriate `locks`:idx: statement.
-3) Locks and routines can be annotated with `lock levels`:idx: to allow
-   potential deadlocks to be detected during semantic analysis.
-
-
-Guards and the locks section
-----------------------------
-
-Protecting global variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Object fields and global variables can be annotated via a `guard` pragma:
-
-.. code-block:: nim
-
-  var glock: TLock
-  var gdata {.guard: glock.}: int
-
-The compiler then ensures that every access of `gdata` is within a `locks`
-section:
-
-.. code-block:: nim
-
-  proc invalid =
-    # invalid: unguarded access:
-    echo gdata
-
-  proc valid =
-    # valid access:
-    {.locks: [glock].}:
-      echo gdata
-
-Top level accesses to `gdata` are always allowed so that it can be initialized
-conveniently. It is *assumed* (but not enforced) that every top level statement
-is executed before any concurrent action happens.
-
-The `locks` section deliberately looks ugly because it has no runtime
-semantics and should not be used directly! It should only be used in templates
-that also implement some form of locking at runtime:
-
-.. code-block:: nim
-
-  template lock(a: TLock; body: untyped) =
-    pthread_mutex_lock(a)
-    {.locks: [a].}:
-      try:
-        body
-      finally:
-        pthread_mutex_unlock(a)
-
-
-The guard does not need to be of any particular type. It is flexible enough to
-model low level lockfree mechanisms:
-
-.. code-block:: nim
-
-  var dummyLock {.compileTime.}: int
-  var atomicCounter {.guard: dummyLock.}: int
-
-  template atomicRead(x): untyped =
-    {.locks: [dummyLock].}:
-      memoryReadBarrier()
-      x
-
-  echo atomicRead(atomicCounter)
-
-
-The `locks` pragma takes a list of lock expressions `locks: [a, b, ...]`
-in order to support *multi lock* statements. Why these are essential is
-explained in the `lock levels <#guards-and-locks-lock-levels>`_ section.
-
-
-Protecting general locations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The `guard` annotation can also be used to protect fields within an object.
-The guard then needs to be another field within the same object or a
-global variable.
-
-Since objects can reside on the heap or on the stack this greatly enhances the
-expressivity of the language:
-
-.. code-block:: nim
-
-  type
-    ProtectedCounter = object
-      v {.guard: L.}: int
-      L: TLock
-
-  proc incCounters(counters: var openArray[ProtectedCounter]) =
-    for i in 0..counters.high:
-      lock counters[i].L:
-        inc counters[i].v
-
-The access to field `x.v` is allowed since its guard `x.L`  is active.
-After template expansion, this amounts to:
-
-.. code-block:: nim
-
-  proc incCounters(counters: var openArray[ProtectedCounter]) =
-    for i in 0..counters.high:
-      pthread_mutex_lock(counters[i].L)
-      {.locks: [counters[i].L].}:
-        try:
-          inc counters[i].v
-        finally:
-          pthread_mutex_unlock(counters[i].L)
-
-There is an analysis that checks that `counters[i].L` is the lock that
-corresponds to the protected location `counters[i].v`. This analysis is called
-`path analysis`:idx: because it deals with paths to locations
-like `obj.field[i].fieldB[j]`.
-
-The path analysis is **currently unsound**, but that doesn't make it useless.
-Two paths are considered equivalent if they are syntactically the same.
-
-This means the following compiles (for now) even though it really should not:
-
-.. code-block:: nim
-
-  {.locks: [a[i].L].}:
-    inc i
-    access a[i].v
-
-
 
 Lock levels
------------
+===========
 
 Lock levels are used to enforce a global locking order in order to detect
 potential deadlocks during semantic analysis. A lock level is an constant
@@ -1709,346 +1885,4 @@ having unknown lock level as well:
     if g.memberProc != nil:
       g.memberProc()
 
-
-noRewrite pragma
-----------------
-
-Term rewriting macros and templates are currently greedy and
-they will rewrite as long as there is a match.
-There was no way to ensure some rewrite happens only once,
-e.g. when rewriting term to same term plus extra content.
-
-`noRewrite` pragma can actually prevent further rewriting on marked code,
-e.g. with given example `echo("ab")` will be rewritten just once:
-
-.. code-block:: nim
-
-  template pwnEcho{echo(x)}(x: untyped) =
-    {.noRewrite.}: echo("pwned!")
-
-  echo "ab"
-
-`noRewrite` pragma can be useful to control term-rewriting macros recursion.
-
-
-Aliasing restrictions in parameter passing
-==========================================
-
-**Note**: The aliasing restrictions are currently not enforced by the
-implementation and need to be fleshed out further.
-
-"Aliasing" here means that the underlying storage locations overlap in memory
-at runtime. An "output parameter" is a parameter of type `var T`,
-an input parameter is any parameter that is not of type `var`.
-
-1. Two output parameters should never be aliased.
-2. An input and an output parameter should not be aliased.
-3. An output parameter should never be aliased with a global or thread local
-   variable referenced by the called proc.
-4. An input parameter should not be aliased with a global or thread local
-   variable updated by the called proc.
-
-One problem with rules 3 and 4 is that they affect specific global or thread
-local variables, but Nim's effect tracking only tracks "uses no global variable"
-via `.noSideEffect`. The rules 3 and 4 can also be approximated by a different rule:
-
-5. A global or thread local variable (or a location derived from such a location)
-   can only passed to a parameter of a `.noSideEffect` proc.
-
-
-Noalias annotation
-==================
-
-Since version 1.4 of the Nim compiler, there is a `.noalias` annotation for variables
-and parameters. It is mapped directly to C/C++'s `restrict`:c: keyword and means that
-the underlying pointer is pointing to a unique location in memory, no other aliases to
-this location exist. It is *unchecked* that this alias restriction is followed, if the
-restriction is violated, the backend optimizer is free to miscompile the code.
-This is an **unsafe** language feature.
-
-Ideally in later versions of the language, the restriction will be enforced at
-compile time. (Which is also why the name `noalias` was choosen instead of a more
-verbose name like `unsafeAssumeNoAlias`.)
-
-
-Strict funcs
-============
-
-Since version 1.4 a stricter definition of "side effect" is available. In addition
-to the existing rule that a side effect is calling a function with side effects
-the following rule is also enforced:
-
-Any mutation to an object does count as a side effect if that object is reachable
-via a parameter that is not declared as a `var` parameter.
-
-For example:
-
-.. code-block:: nim
-
-  {.experimental: "strictFuncs".}
-
-  type
-    Node = ref object
-      le, ri: Node
-      data: string
-
-  func len(n: Node): int =
-    # valid: len does not have side effects
-    var it = n
-    while it != nil:
-      inc result
-      it = it.ri
-
-  func mut(n: Node) =
-    let m = n # is the statement that connected the mutation to the parameter
-    m.data = "yeah" # the mutation is here
-    # Error: 'mut' can have side effects
-    # an object reachable from 'n' is potentially mutated
-
-
-The algorithm behind this analysis is described in
-the `view types section <#view-types-algorithm>`_.
-
-
-View types
-==========
-
-**Note**:  `--experimental:views`:option: is more effective
-with `--experimental:strictFuncs`:option:.
-
-A view type is a type that is or contains one of the following types:
-
-- `lent T` (view into `T`)
-- `openArray[T]` (pair of (pointer to array of `T`, size))
-
-For example:
-
-.. code-block:: nim
-
-  type
-    View1 = openArray[byte]
-    View2 = lent string
-    View3 = Table[openArray[char], int]
-
-
-Exceptions to this rule are types constructed via `ptr` or `proc`.
-For example, the following types are **not** view types:
-
-.. code-block:: nim
-
-  type
-    NotView1 = proc (x: openArray[int])
-    NotView2 = ptr openArray[char]
-    NotView3 = ptr array[4, lent int]
-
-
-The mutability aspect of a view type is not part of the type but part
-of the locations it's derived from. More on this later.
-
-A *view* is a symbol (a let, var, const, etc.) that has a view type.
-
-Since version 1.4 Nim allows view types to be used as local variables.
-This feature needs to be enabled via `{.experimental: "views".}`.
-
-A local variable of a view type *borrows* from the locations and
-it is statically enforced that the view does not outlive the location
-it was borrowed from.
-
-For example:
-
-.. code-block:: nim
-
-  {.experimental: "views".}
-
-  proc take(a: openArray[int]) =
-    echo a.len
-
-  proc main(s: seq[int]) =
-    var x: openArray[int] = s # 'x' is a view into 's'
-    # it is checked that 'x' does not outlive 's' and
-    # that 's' is not mutated.
-    for i in 0 .. high(x):
-      echo x[i]
-    take(x)
-
-    take(x.toOpenArray(0, 1)) # slicing remains possible
-    let y = x  # create a view from a view
-    take y
-    # it is checked that 'y' does not outlive 'x' and
-    # that 'x' is not mutated as long as 'y' lives.
-
-
-  main(@[11, 22, 33])
-
-
-A local variable of a view type can borrow from a location
-derived from a parameter, another local variable, a global `const` or `let`
-symbol or a thread-local `var` or `let`.
-
-Let `p` the proc that is analysed for the correctness of the borrow operation.
-
-Let `source` be one of:
-
-- A formal parameter of `p`. Note that this does not cover parameters of
-  inner procs.
-- The `result` symbol of `p`.
-- A local `var` or `let` or `const` of `p`. Note that this does
-  not cover locals of inner procs.
-- A thread-local `var` or `let`.
-- A global `let` or `const`.
-- A constant array/seq/object/tuple constructor.
-
-
-Path expressions
-----------------
-
-A location derived from `source` is then defined as a path expression that
-has `source` as the owner. A path expression `e` is defined recursively:
-
-- `source` itself is a path expression.
-- Container access like `e[i]` is a path expression.
-- Tuple access `e[0]` is a path expression.
-- Object field access `e.field` is a path expression.
-- `system.toOpenArray(e, ...)` is a path expression.
-- Pointer dereference `e[]` is a path expression.
-- An address `addr e`, `unsafeAddr e` is a path expression.
-- A type conversion `T(e)` is a path expression.
-- A cast expression `cast[T](e)` is a path expression.
-- `f(e, ...)` is a path expression if `f`'s return type is a view type.
-  Because the view can only have been borrowed from `e`, we then know
-  that owner of `f(e, ...)` is `e`.
-
-
-If a view type is used as a return type, the location must borrow from a location
-that is derived from the first parameter that is passed to the proc.
-See https://nim-lang.org/docs/manual.html#procedures-var-return-type for
-details about how this is done for `var T`.
-
-A mutable view can borrow from a mutable location, an immutable view can borrow
-from both a mutable or an immutable location.
-
-If a view borrows from a mutable location, the view can be used to update the
-location. Otherwise it cannot be used for mutations.
-
-The *duration* of a borrow is the span of commands beginning from the assignment
-to the view and ending with the last usage of the view.
-
-For the duration of the borrow operation, no mutations to the borrowed locations
-may be performed except via the view that borrowed from the
-location. The borrowed location is said to be *sealed* during the borrow.
-
-.. code-block:: nim
-
-  {.experimental: "views".}
-
-  type
-    Obj = object
-      field: string
-
-  proc dangerous(s: var seq[Obj]) =
-    let v: lent Obj = s[0] # seal 's'
-    s.setLen 0  # prevented at compile-time because 's' is sealed.
-    echo v.field
-
-
-The scope of the view does not matter:
-
-.. code-block:: nim
-
-  proc valid(s: var seq[Obj]) =
-    let v: lent Obj = s[0]  # begin of borrow
-    echo v.field            # end of borrow
-    s.setLen 0  # valid because 'v' isn't used afterwards
-
-
-The analysis requires as much precision about mutations as is reasonably obtainable,
-so it is more effective with the experimental `strict funcs <#strict-funcs>`_
-feature. In other words `--experimental:views`:option: works better
-with `--experimental:strictFuncs`:option:.
-
-The analysis is currently control flow insensitive:
-
-.. code-block:: nim
-
-  proc invalid(s: var seq[Obj]) =
-    let v: lent Obj = s[0]
-    if false:
-      s.setLen 0
-    echo v.field
-
-In this example, the compiler assumes that `s.setLen 0` invalidates the
-borrow operation of `v` even though a human being can easily see that it
-will never do that at runtime.
-
-
-Start of a borrow
------------------
-
-A borrow starts with one of the following:
-
-- The assignment of a non-view-type to a view-type.
-- The assignment of a location that is derived from a local parameter
-  to a view-type.
-
-
-End of a borrow
----------------
-
-A borrow operation ends with the last usage of the view variable.
-
-
-Reborrows
----------
-
-A view `v` can borrow from multiple different locations. However, the borrow
-is always the full span of `v`'s lifetime and every location that is borrowed
-from is sealed during `v`'s lifetime.
-
-
-Algorithm
----------
-
-The following section is an outline of the algorithm that the current implementation
-uses. The algorithm performs two traversals over the AST of the procedure or global
-section of code that uses a view variable. No fixpoint iterations are performed, the
-complexity of the analysis is O(N) where N is the number of nodes of the AST.
-
-The first pass over the AST computes the lifetime of each local variable based on
-a notion of an "abstract time", in the implementation it's a simple integer that is
-incremented for every visited node.
-
-In the second pass information about the underlying object "graphs" is computed.
-Let `v` be a parameter or a local variable. Let `G(v)` be the graph
-that `v` belongs to. A graph is defined by the set of variables that belong
-to the graph. Initially for all `v`: `G(v) = {v}`. Every variable can only
-be part of a single graph.
-
-Assignments like `a = b` "connect" two variables, both variables end up in the
-same graph `{a, b} = G(a) = G(b)`. Unfortunately, the pattern to look for is
-much more complex than that and can involve multiple assignment targets
-and sources::
-
-  f(x, y) = g(a, b)
-
-connects `x` and `y` to `a` and `b`: `G(x) = G(y) = G(a) = G(b) = {x, y, a, b}`.
-A type based alias analysis rules out some of these combinations, for example
-a `string` value cannot possibly be connected to a `seq[int]`.
-
-A pattern like `v[] = value` or `v.field = value` marks `G(v)` as mutated.
-After the second pass a set of disjoint graphs was computed.
-
-For strict functions it is then enforced that there is no graph that is both mutated
-and has an element that is an immutable parameter (that is a parameter that is not
-of type `var T`).
-
-For borrow checking a different set of checks is performed. Let `v` be the view
-and `b` the location that is borrowed from.
-
-- The lifetime of `v` must not exceed `b`'s lifetime. Note: The lifetime of
-  a parameter is the complete proc body.
-- If `v` is used for a mutation, `b` must be a mutable location too.
-- During `v`'s lifetime, `G(b)` can only be modified by `v` (and only if
-  `v` is a mutable view).
-- If `v` is `result` then `b` has to be a location derived from the first
-  formal parameter or from a constant location.
-- A view cannot be used for a read or a write access before it was assigned to.
+This feature may be removed in the future due to its practical difficulties.

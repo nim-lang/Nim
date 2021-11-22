@@ -465,12 +465,7 @@ proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
   ## If `rule == brForceOpen` always an `nnkOpenSymChoice` tree is
   ## returned even if the symbol is not ambiguous.
   ##
-  ## Experimental feature:
-  ## use {.experimental: "dynamicBindSym".} to activate it.
-  ## If called from template / regular code, `ident` and `rule` must be
-  ## constant expression / literal value.
-  ## If called from macros / compile time procs / static blocks,
-  ## `ident` and `rule` can be VM computed value.
+  ## See the `manual <manual.html#macros-bindsym>`_ for more details.
 
 proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   magic: "NGenSym", noSideEffect.}

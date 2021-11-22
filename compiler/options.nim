@@ -195,7 +195,7 @@ type
     notnil,
     dynamicBindSym,
     forLoopMacros, # not experimental anymore; remains here for backwards compatibility
-    caseStmtMacros,
+    caseStmtMacros, # ditto
     codeReordering,
     compiletimeFFI,
       ## This requires building nim with `-d:nimHasLibFFI`
