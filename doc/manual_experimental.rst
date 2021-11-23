@@ -1191,15 +1191,17 @@ There are 4 operations that are bound to a type:
 3. Destruction
 4. Deep copying for communication between threads
 
-These operations can be *overridden* instead of *overloaded*. This means the
-implementation is automatically lifted to structured types. For instance if type
-`T` has an overridden assignment operator `=` this operator is also used
-for assignments of the type `seq[T]`. Since these operations are bound to a
-type they have to be bound to a nominal type for reasons of simplicity of
-implementation: This means an overridden `deepCopy` for `ref T` is really
-bound to `T` and not to `ref T`. This also means that one cannot override
-`deepCopy` for both `ptr T` and `ref T` at the same time; instead a
-distinct or object helper type has to be used for one pointer type.
+These operations can be *overridden* instead of *overloaded*. This means that
+the implementation is automatically lifted to structured types. For instance,
+if the type `T` has an overridden assignment operator `=`, this operator is
+also used for assignments of the type `seq[T]`.
+
+Since these operations are bound to a type, they have to be bound to a
+nominal type for reasons of simplicity of implementation; this means an
+overridden `deepCopy` for `ref T` is really bound to `T` and not to `ref T`.
+This also means that one cannot override `deepCopy` for both `ptr T` and
+`ref T` at the same time, instead a distinct or object helper type has to be
+used for one pointer type.
 
 Assignments, moves and destruction are specified in
 the `destructors <destructors.html>`_ document.
