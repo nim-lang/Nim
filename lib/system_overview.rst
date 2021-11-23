@@ -1,4 +1,5 @@
 .. default-role:: code
+.. include:: ../doc/rstcommon.rst
 
 The System module imports several separate modules, and their documentation
 is in separate files:
