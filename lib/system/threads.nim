@@ -49,13 +49,11 @@ when not declared(ThisIsSystem):
 
 when defined(zephyr) or defined(freertos):
   const
-    nimThreadStackGuard {.intdefine.} = 128
     nimThreadStackSize {.intdefine.} = 8192 
+    nimThreadStackGuard {.intdefine.} = 128
+
     StackGuardSize = nimThreadStackGuard 
     ThreadStackSize = nimThreadStackSize - nimThreadStackGuard 
-  static:
-    echo "StackGuardSize: ", StackGuardSize
-    echo "ThreadStackSize : ", ThreadStackSize 
 else:
   const
     StackGuardSize = 4096
