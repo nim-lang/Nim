@@ -49,9 +49,13 @@ when not declared(ThisIsSystem):
 
 when defined(zephyr) or defined(freertos):
   const
-    StackGuardSize {.intdefine.} = 128
-    StackThreadSize {.intdefine.} = 8192 
-    ThreadStackSize = StackThreadSize - 1 - StackGuardSize
+    nimThreadStackGuard {.intdefine.} = 128
+    nimThreadStackSize {.intdefine.} = 8192 
+    StackGuardSize = nimThreadStackGuard 
+    ThreadStackSize = nimThreadStackSize - nimThreadStackGuard 
+  static:
+    echo "StackGuardSize: ", StackGuardSize
+    echo "ThreadStackSize : ", ThreadStackSize 
 else:
   const
     StackGuardSize = 4096
@@ -344,6 +348,8 @@ else:
     doAssert pthread_attr_destroy(a) == 0
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
+    when defined(zephyr):
+      {.fatal: "not implemented yet".}
     ## Pins a thread to a `CPU`:idx:.
     ##
     ## In other words sets a thread's `affinity`:idx:.
