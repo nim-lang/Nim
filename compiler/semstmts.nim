@@ -987,10 +987,10 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   else:
     popCaseContext(c)
     closeScope(c)
-    if caseStmtMacros in c.features:
-      result = handleCaseStmtMacro(c, n, flags)
-      if result != nil:
-        return result
+    #if caseStmtMacros in c.features:
+    result = handleCaseStmtMacro(c, n, flags)
+    if result != nil:
+      return result
     localError(c.config, n[0].info, errSelectorMustBeOfCertainTypes)
     return
   for i in 1..<n.len:

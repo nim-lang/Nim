@@ -43,6 +43,8 @@
       x, y, z: int
     Baz = object
   ```
+- [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
+  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them. 
 
 ## Compiler changes
 
