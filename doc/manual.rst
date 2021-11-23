@@ -2677,10 +2677,8 @@ a parameter has different names between them.
   proc foo(y: int) =
     echo "Using y: ", y
 
-  foo(x = 2)
-  # Using x: 2
-  foo(y = 2)
-  # Using y: 2
+  foo(x = 2) # Using x: 2
+  foo(y = 2) # Using y: 2
 
 Not supplying the parameter name in such cases results in an
 ambiguity error.
@@ -3160,7 +3158,7 @@ Return statement
 Example:
 
 .. code-block:: nim
-  return 40+2
+  return 40 + 2
 
 The `return` statement ends the execution of the current procedure.
 It is only allowed in procedures. If there is an `expr`, this is syntactic
@@ -5859,7 +5857,7 @@ twice:
 While macros enable advanced compile-time code transformations, they
 cannot change Nim's syntax.
 
-**Style note**: For code readability, it is best to use the least powerful
+**Style note:** For code readability, it is best to use the least powerful
 programming construct that remains expressive. So the "check list" is:
 
 (1) Use an ordinary proc/iterator, if possible.
@@ -7108,12 +7106,12 @@ Noalias pragma
 Since version 1.4 of the Nim compiler, there is a `.noalias` annotation for variables
 and parameters. It is mapped directly to C/C++'s `restrict`:c: keyword and means that
 the underlying pointer is pointing to a unique location in memory, no other aliases to
-this location exist. It is *unchecked* that this alias restriction is followed, if the
+this location exist. It is *unchecked* that this alias restriction is followed. If the
 restriction is violated, the backend optimizer is free to miscompile the code.
 This is an **unsafe** language feature.
 
 Ideally in later versions of the language, the restriction will be enforced at
-compile time. (Which is also why the name `noalias` was choosen instead of a more
+compile time. (This is also why the name `noalias` was choosen instead of a more
 verbose name like `unsafeAssumeNoAlias`.)
 
 
@@ -7698,7 +7696,7 @@ Example:
     {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
 
   proc p*(a, b: int): int {.rtl.} =
-    result = a+b
+    result = a + b
 
 In the example, a new pragma named `rtl` is introduced that either imports
 a symbol from a dynamic library or exports the symbol for dynamic library
@@ -8105,8 +8103,8 @@ pragmas:
    appropriate `locks`:idx: statement.
 
 
-Guards and the locks section
-----------------------------
+Guards and locks sections
+-------------------------
 
 Protecting global variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -8179,8 +8177,8 @@ The `guard` annotation can also be used to protect fields within an object.
 The guard then needs to be another field within the same object or a
 global variable.
 
-Since objects can reside on the heap or on the stack this greatly enhances the
-expressivity of the language:
+Since objects can reside on the heap or on the stack, this greatly enhances
+the expressivity of the language:
 
 .. code-block:: nim
 

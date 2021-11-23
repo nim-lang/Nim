@@ -19,8 +19,8 @@ Some of these are not covered by the `.experimental` pragma or
 one may want to use Nim libraries using these features without using them
 oneself.
 
-**Note**: Unless otherwise indicated, these features are not to be removed,
-but refined and overhauled.
+.. note:: Unless otherwise indicated, these features are not to be removed,
+  but refined and overhauled.
 
 
 Void type
@@ -69,8 +69,8 @@ cannot have the type `void`.
 Unicode Operators
 =================
 
-Under the `--experimental:unicodeOperators` switch these Unicode operators are
-also parsed as operators::
+Under the `--experimental:unicodeOperators`:option: switch,
+these Unicode operators are also parsed as operators::
 
   ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
   ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
@@ -82,8 +82,8 @@ assignment like operator just like `*=` is.
 
 No Unicode normalization step is performed.
 
-**Note**: Due to parser limitations one **cannot** enable this feature via a
-pragma `{.experimental: "unicodeOperators".}` reliably.
+.. note:: Due to parser limitations one **cannot** enable this feature via a
+  pragma `{.experimental: "unicodeOperators".}` reliably.
 
 
 Overloadable enum value names
@@ -91,12 +91,11 @@ Overloadable enum value names
 
 Enabled via `{.experimental: "overloadableEnums".}`.
 
-Enum value names are overloadable much like routines. When an overloaded
-enum member is used, it produces a closed sym choice construct, here
-written as `(E|E)`. During overload resolution the right `E` is picked,
-if possible. For (array/object...) constructors the right `E` is picked,
-comparable to how `[byte(1), 2, 3]` works, one needs to use `[T.E, E2, E3]`.
-Ambiguous enum values produce a static error.
+Enum value names are overloadable, much like routines. If both of the enums
+`T` and `U` have a member named `foo`, then the identifier `foo` corresponds
+to a choice between `T.foo` and `U.foo`. During overload resolution,
+the correct type of `foo` is decided from the context. If the type of `foo` is
+ambiguous, a static error will be produced.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -114,6 +113,7 @@ Ambiguous enum values produce a static error.
   const
     Lookuptable = [
       E1.value1: "1",
+      # no need to qualify value2, known to be E1.value2
       value2: "2"
     ]
 
@@ -134,12 +134,12 @@ to the package it resides in. If that is done, the type can be referenced from
 other modules as an `incomplete`:idx: object type. This feature allows to
 break up recursive type dependencies across module boundaries. Incomplete
 object types are always passed `byref` and can only be used in pointer like
-contexts (`var/ref/ptr IncompleteObject`) in general since the compiler does
-not yet know the size of the object. To complete an incomplete object
+contexts (`var/ref/ptr IncompleteObject`) in general, since the compiler does
+not yet know the size of the object. To complete an incomplete object,
 the `package` pragma has to be used. `package` implies `byref`.
 
-As long as a type `T` is incomplete, neither `sizeof(T)` nor runtime
-type information for `T` is available.
+As long as a type `T` is incomplete, no runtime type information for `T` is
+available.
 
 
 Example:
@@ -148,11 +148,11 @@ Example:
 
   # module A (in an arbitrary package)
   type
-    Pack.SomeObject = object ## declare as incomplete object of package 'Pack'
+    Pack.SomeObject = object # declare as incomplete object of package 'Pack'
     Triple = object
-      a, b, c: ref SomeObject ## pointers to incomplete objects are allowed
+      a, b, c: ref SomeObject # pointers to incomplete objects are allowed
 
-  ## Incomplete objects can be used as parameters:
+  # Incomplete objects can be used as parameters:
   proc myproc(x: SomeObject) = discard
 
 
@@ -160,7 +160,7 @@ Example:
 
   # module B (in package "Pack")
   type
-    SomeObject* {.package.} = object ## Use 'package' to complete the object
+    SomeObject* {.package.} = object # Use 'package' to complete the object
       s, t: string
       x, y: int
 
@@ -295,9 +295,7 @@ This feature has to be enabled via `{.experimental: "implicitDeref".}`:
 
   proc depth(x: NodeObj): int = ...
 
-  var
-    n: Node
-  new(n)
+  let n = Node()
   echo n.depth
   # no need to write n[].depth
 
@@ -308,8 +306,8 @@ Special Operators
 dot operators
 -------------
 
-**Note**: Dot operators are still experimental and so need to be enabled
-via `{.experimental: "dotOperators".}`.
+.. note:: Dot operators are still experimental and so need to be enabled
+  via `{.experimental: "dotOperators".}`.
 
 Nim offers a special family of dot operators that can be used to
 intercept and rewrite proc call and field access attempts, referring
@@ -432,8 +430,8 @@ here.
 Aliasing restrictions in parameter passing
 ==========================================
 
-**Note**: The aliasing restrictions are currently not enforced by the
-implementation and need to be fleshed out further.
+.. note:: The aliasing restrictions are currently not enforced by the
+  implementation and need to be fleshed out further.
 
 "Aliasing" here means that the underlying storage locations overlap in memory
 at runtime. An "output parameter" is a parameter of type `var T`,
@@ -457,9 +455,9 @@ via `.noSideEffect`. The rules 3 and 4 can also be approximated by a different r
 Strict funcs
 ============
 
-Since version 1.4 a stricter definition of "side effect" is available. In addition
-to the existing rule that a side effect is calling a function with side effects
-the following rule is also enforced:
+Since version 1.4, a stricter definition of "side effect" is available.
+In addition to the existing rule that a side effect is calling a function
+with side effects, the following rule is also enforced:
 
 Any mutation to an object does count as a side effect if that object is reachable
 via a parameter that is not declared as a `var` parameter.
@@ -496,8 +494,8 @@ the `view types section <#view-types-algorithm>`_.
 View types
 ==========
 
-**Note**:  `--experimental:views`:option: is more effective
-with `--experimental:strictFuncs`:option:.
+.. tip::  `--experimental:views`:option: is more effective
+  with `--experimental:strictFuncs`:option:.
 
 A view type is a type that is or contains one of the following types:
 
@@ -530,7 +528,7 @@ of the locations it's derived from. More on this later.
 
 A *view* is a symbol (a let, var, const, etc.) that has a view type.
 
-Since version 1.4 Nim allows view types to be used as local variables.
+Since version 1.4, Nim allows view types to be used as local variables.
 This feature needs to be enabled via `{.experimental: "views".}`.
 
 A local variable of a view type *borrows* from the locations and
@@ -599,13 +597,13 @@ has `source` as the owner. A path expression `e` is defined recursively:
 - A cast expression `cast[T](e)` is a path expression.
 - `f(e, ...)` is a path expression if `f`'s return type is a view type.
   Because the view can only have been borrowed from `e`, we then know
-  that owner of `f(e, ...)` is `e`.
+  that the owner of `f(e, ...)` is `e`.
 
 
 If a view type is used as a return type, the location must borrow from a location
 that is derived from the first parameter that is passed to the proc.
-See https://nim-lang.org/docs/manual.html#procedures-var-return-type for
-details about how this is done for `var T`.
+See `the manual <https://nim-lang.org/docs/manual.html#procedures-var-return-type>`_
+for details about how this is done for `var T`.
 
 A mutable view can borrow from a mutable location, an immutable view can borrow
 from both a mutable or an immutable location.
@@ -700,7 +698,7 @@ The first pass over the AST computes the lifetime of each local variable based o
 a notion of an "abstract time", in the implementation it's a simple integer that is
 incremented for every visited node.
 
-In the second pass information about the underlying object "graphs" is computed.
+In the second pass, information about the underlying object "graphs" is computed.
 Let `v` be a parameter or a local variable. Let `G(v)` be the graph
 that `v` belongs to. A graph is defined by the set of variables that belong
 to the graph. Initially for all `v`: `G(v) = {v}`. Every variable can only
@@ -724,7 +722,7 @@ For strict functions it is then enforced that there is no graph that is both mut
 and has an element that is an immutable parameter (that is a parameter that is not
 of type `var T`).
 
-For borrow checking a different set of checks is performed. Let `v` be the view
+For borrow checking, a different set of checks is performed. Let `v` be the view
 and `b` the location that is borrowed from.
 
 - The lifetime of `v` must not exceed `b`'s lifetime. Note: The lifetime of
@@ -760,10 +758,10 @@ Concepts are written in the following form:
       for value in s:
         value is T
 
-The concept is a match if:
+The concept matches if:
 
-a) all of the expressions within the body can be compiled for the tested type
-b) all statically evaluable boolean expressions in the body must be true
+a) all expressions within the body can be compiled for the tested type
+b) all statically evaluable boolean expressions in the body are true
 
 The identifiers following the `concept` keyword represent instances of the
 currently matched type. You can apply any of the standard type modifiers such
@@ -1201,7 +1199,7 @@ type they have to be bound to a nominal type for reasons of simplicity of
 implementation: This means an overridden `deepCopy` for `ref T` is really
 bound to `T` and not to `ref T`. This also means that one cannot override
 `deepCopy` for both `ptr T` and `ref T` at the same time; instead a
-helper distinct or object type has to be used for one pointer type.
+distinct or object helper type has to be used for one pointer type.
 
 Assignments, moves and destruction are specified in
 the `destructors <destructors.html>`_ document.
@@ -1221,8 +1219,8 @@ The signature has to be:
 
   proc `=deepCopy`(x: T): T
 
-This mechanism will be used by most data structures that support shared memory
-like channels to implement thread safe automatic memory management.
+This mechanism will be used by most data structures that support shared memory,
+like channels, to implement thread safe automatic memory management.
 
 The builtin `deepCopy` can even clone closures and their environments. See
 the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
@@ -1256,30 +1254,30 @@ compilation pipeline with user defined optimizations:
 
 .. code-block:: nim
 
-  template optMul{`*`(a, 2)}(a: int): int = a+a
+  template optMul{`*`(a, 2)}(a: int): int = a + a
 
   let x = 3
   echo x * 2
 
 The compiler now rewrites `x * 2` as `x + x`. The code inside the
-curlies is the pattern to match against. The operators `*`,  `**`,
+curly brackets is the pattern to match against. The operators `*`,  `**`,
 `|`, `~` have a special meaning in patterns if they are written in infix
 notation, so to match verbatim against `*` the ordinary function call syntax
 needs to be used.
 
-Term rewriting macro are applied recursively, up to a limit. This means that
+Term rewriting macros are applied recursively, up to a limit. This means that
 if the result of a term rewriting macro is eligible for another rewriting,
 the compiler will try to perform it, and so on, until no more optimizations
 are applicable. To avoid putting the compiler into an infinite loop, there is
 a hard limit on how many times a single term rewriting macro can be applied.
 Once this limit has been passed, the term rewriting macro will be ignored.
 
-Unfortunately optimizations are hard to get right and even the tiny example
+Unfortunately optimizations are hard to get right and even this tiny example
 is **wrong**:
 
 .. code-block:: nim
 
-  template optMul{`*`(a, 2)}(a: int): int = a+a
+  template optMul{`*`(a, 2)}(a: int): int = a + a
 
   proc f(): int =
     echo "side effect!"
@@ -1292,7 +1290,7 @@ Fortunately Nim supports side effect analysis:
 
 .. code-block:: nim
 
-  template optMul{`*`(a, 2)}(a: int{noSideEffect}): int = a+a
+  template optMul{`*`(a, 2)}(a: int{noSideEffect}): int = a + a
 
   proc f(): int =
     echo "side effect!"
@@ -1310,13 +1308,13 @@ blindly:
 
 .. code-block:: nim
 
-  template mulIsCommutative{`*`(a, b)}(a, b: int): int = b*a
+  template mulIsCommutative{`*`(a, b)}(a, b: int): int = b * a
 
 What optimizers really need to do is a *canonicalization*:
 
 .. code-block:: nim
 
-  template canonMul{`*`(a, b)}(a: int{lit}, b: int): int = b*a
+  template canonMul{`*`(a, b)}(a: int{lit}, b: int): int = b * a
 
 The `int{lit}` parameter pattern matches against an expression of
 type `int`, but only if it's a literal.
@@ -1431,7 +1429,7 @@ constant folding, so the following does not work:
 
 The reason is that the compiler already transformed the 1 into "1" for
 the `echo` statement. However, a term rewriting macro should not change the
-semantics anyway. In fact they can be deactivated with the `--patterns:off`:option:
+semantics anyway. In fact, they can be deactivated with the `--patterns:off`:option:
 command line option or temporarily with the `patterns` pragma.
 
 
@@ -1443,7 +1441,7 @@ notation:
 
 .. code-block:: nim
 
-  template t{(0|1|2){x}}(x: untyped): untyped = x+1
+  template t{(0|1|2){x}}(x: untyped): untyped = x + 1
   let a = 1
   # outputs 2:
   echo a
@@ -1452,7 +1450,7 @@ notation:
 The `~` operator
 ~~~~~~~~~~~~~~~~~~
 
-The `~` operator is the **not** operator in patterns:
+The `~` operator is the 'not' operator in patterns:
 
 .. code-block:: nim
 
@@ -1545,14 +1543,14 @@ an `nnkArgList` node containing::
     Sym "x"
     Sym "-"
 
-(Which is the reverse polish notation of `x + y * z - x`.)
+(This is the reverse polish notation of `x + y * z - x`.)
 
 
 Parameters
 ----------
 
 Parameters in a pattern are type checked in the matching process. If a
-parameter is of the type `varargs` it is treated specially and it can match
+parameter is of the type `varargs`, it is treated specially and can match
 0 or more arguments in the AST to be matched against:
 
 .. code-block:: nim
@@ -1628,7 +1626,7 @@ AST based overloading
 =====================
 
 Parameter constraints can also be used for ordinary routine parameters; these
-constraints affect ordinary overloading resolution then:
+constraints then affect ordinary overloading resolution:
 
 .. code-block:: nim
 
@@ -1665,16 +1663,16 @@ module to work.
 
 Somewhat confusingly, `spawn` is also used in the `parallel` statement
 with slightly different semantics. `spawn` always takes a call expression of
-the form `f(a, ...)`. Let `T` be `f`'s return type. If `T` is `void`
-then `spawn`'s return type is also `void` otherwise it is `FlowVar[T]`.
+the form `f(a, ...)`. Let `T` be `f`'s return type. If `T` is `void`,
+then `spawn`'s return type is also `void`, otherwise it is `FlowVar[T]`.
 
-Within a `parallel` section sometimes the `FlowVar[T]` is eliminated
+Within a `parallel` section, the `FlowVar[T]` is sometimes eliminated
 to `T`. This happens when `T` does not contain any GC'ed memory.
 The compiler can ensure the location in `location = spawn f(...)` is not
 read prematurely within a `parallel` section and so there is no need for
 the overhead of an indirection via `FlowVar[T]` to ensure correctness.
 
-**Note**: Currently exceptions are not propagated between `spawn`'ed tasks!
+.. note:: Currently exceptions are not propagated between `spawn`'ed tasks!
 
 This feature is likely to be removed in the future as external packages
 can have better solutions. 
@@ -1683,7 +1681,7 @@ can have better solutions.
 Spawn statement
 ---------------
 
-`spawn`:idx: can be used to pass a task to the thread pool:
+The `spawn`:idx: statement can be used to pass a task to the thread pool:
 
 .. code-block:: nim
 
@@ -1705,10 +1703,10 @@ that `spawn` takes is restricted:
 * `f`'s parameters may not be of type `var`.
   This means one has to use raw `ptr`'s for data passing reminding the
   programmer to be careful.
-* `ref` parameters are deeply copied which is a subtle semantic change and
-  can cause performance problems but ensures memory safety. This deep copy
-  is performed via `system.deepCopy` and so can be overridden.
-* For *safe* data exchange between `f` and the caller a global `TChannel`
+* `ref` parameters are deeply copied, which is a subtle semantic change and
+  can cause performance problems, but ensures memory safety. This deep copy
+  is performed via `system.deepCopy`, so it can be overridden.
+* For *safe* data exchange between `f` and the caller, a global `Channel`
   needs to be used. However, since spawn can return a result, often no further
   communication is required.
 
@@ -1732,10 +1730,10 @@ wait on multiple flow variables at the same time:
     responses.del(index)
     discard blockUntilAny(responses)
 
-Data flow variables ensure that no data races
-are possible. Due to technical limitations not every type `T` is possible in
-a data flow variable: `T` has to be of the type `ref`, `string`, `seq`
-or of a type that doesn't contain a type that is garbage collected. This
+Data flow variables ensure that no data races are possible. Due to
+technical limitations, not every type `T` can be used in
+a data flow variable: `T` has to be a `ref`, `string`, `seq`
+or of a type that doesn't contain any GC'd type. This
 restriction is not hard to work-around in practice.
 
 
@@ -1748,14 +1746,14 @@ Example:
 .. code-block:: nim
     :test: "nim c --threads:on $1"
 
-  # Compute PI in an inefficient way
+  # Compute pi in an inefficient way
   import std/[strutils, math, threadpool]
   {.experimental: "parallel".}
 
   proc term(k: float): float = 4 * math.pow(-1, k) / (2*k + 1)
 
   proc pi(n: int): float =
-    var ch = newSeq[float](n+1)
+    var ch = newSeq[float](n + 1)
     parallel:
       for k in 0..ch.high:
         ch[k] = spawn term(float(k))
@@ -1766,16 +1764,16 @@ Example:
 
 
 The parallel statement is the preferred mechanism to introduce parallelism in a
-Nim program. A subset of the Nim language is valid within a `parallel`
+Nim program. Only a subset of the Nim language is valid within a `parallel`
 section. This subset is checked during semantic analysis to be free of data
 races. A sophisticated `disjoint checker`:idx: ensures that no data races are
-possible even though shared memory is extensively supported!
+possible, even though shared memory is extensively supported!
 
 The subset is in fact the full language with the following
 restrictions / changes:
 
 * `spawn` within a `parallel` section has special semantics.
-* Every location of the form `a[i]` and `a[i..j]` and `dest` where
+* Every location of the form `a[i]`, `a[i..j]` and `dest` where
   `dest` is part of the pattern `dest = spawn f(...)` has to be
   provably disjoint. This is called the *disjoint check*.
 * Every other complex location `loc` that is used in a spawned
@@ -1798,7 +1796,7 @@ potential deadlocks during semantic analysis. A lock level is an constant
 integer in the range 0..1_000. Lock level 0 means that no lock is acquired at
 all.
 
-If a section of code holds a lock of level `M` than it can also acquire any
+If a section of code holds a lock of level `M`, it can also acquire any
 lock of level `N < M`. Another lock of level `M` cannot be acquired. Locks
 of the same level can only be acquired *at the same time* within a
 single `locks` section:
@@ -1861,7 +1859,7 @@ This is essential so that procs can be called within a `locks` section:
     p()
 
 
-As usual `locks` is an inferred effect and there is a subtype
+As usual, `locks` is an inferred effect and there is a subtype
 relation: `proc () {.locks: N.}` is a subtype of `proc () {.locks: M.}`
 iff (M <= N).
 
