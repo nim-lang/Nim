@@ -1748,11 +1748,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       elif instr.opcode == opcNHint:
         message(c.config, info, hintUser, a.strVal)
     of opcParseExprToAst:
-      decodeB(rkNode)
-      # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
+      decodeBC(rkNode)
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
-                            toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
+                            regs[rc].node.strVal, 0,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) {.nosinks.} =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
@@ -1764,10 +1763,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         regs[ra].node = ast[0]
     of opcParseStmtToAst:
-      decodeB(rkNode)
+      decodeBC(rkNode)
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
-                            toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
+                            regs[rc].node.strVal, 0,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) {.nosinks.} =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
