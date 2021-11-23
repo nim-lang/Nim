@@ -346,8 +346,6 @@ else:
     doAssert pthread_attr_destroy(a) == 0
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
-    when defined(zephyr):
-      {.fatal: "not implemented yet".}
     ## Pins a thread to a `CPU`:idx:.
     ##
     ## In other words sets a thread's `affinity`:idx:.
