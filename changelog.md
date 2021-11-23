@@ -59,6 +59,10 @@
   ```
 - [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
   meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
+  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them. 
+- Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
+  for the right-hand side of type definitions in type sections. Previously
+  they would error with "invalid indentation".
 
 ## Compiler changes
 
