@@ -3,7 +3,13 @@
 
 ## Changes affecting backward compatibility
 
-
+- The `Math.trunc` polyfill for targeting Internet Explorer was
+  previously emitted for every JavaScript output file except if
+  the symbol `nodejs` was defined via `-d:nodejs`. Now, it is only
+  emitted if the symbol `nimJsMathTruncPolyfill` is defined. If you are
+  targeting Internet Explorer, you may choose to enable this option
+  or define your own `Math.trunc` polyfill using the [`emit` pragma](https://nim-lang.org/docs/manual.html#implementation-specific-pragmas-emit-pragma). Nim uses
+  `Math.trunc` for the division and modulo operators for integers.
 
 ## Standard library additions and changes
 
