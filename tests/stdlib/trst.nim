@@ -105,6 +105,367 @@ suite "RST parsing":
             rnLeaf  ' '
       """)
 
+  test "RST quoted literal blocks":
+    let expected =
+      dedent"""
+        rnInner
+          rnLeaf  'Paragraph'
+          rnLeaf  ':'
+          rnLiteralBlock
+            rnLeaf  '>x'
+        """
+
+    check(dedent"""
+        Paragraph::
+
+        >x""".toAst == expected)
+
+    check(dedent"""
+        Paragraph::
+
+            >x""".toAst == expected)
+
+  test "RST quoted literal blocks, :: at a separate line":
+    let expected =
+      dedent"""
+        rnInner
+          rnInner
+            rnLeaf  'Paragraph'
+          rnLiteralBlock
+            rnLeaf  '>x
+        >>y'
+      """
+
+    check(dedent"""
+        Paragraph
+
+        ::
+
+        >x
+        >>y""".toAst == expected)
+
+    check(dedent"""
+        Paragraph
+
+        ::
+
+          >x
+          >>y""".toAst == expected)
+
+  test "Markdown quoted blocks":
+    check(dedent"""
+        Paragraph.
+        >x""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'Paragraph'
+          rnLeaf  '.'
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=1
+              rnLeaf  'x'
+      """)
+
+    # bug #17987
+    check(dedent"""
+        foo https://github.com/nim-lang/Nim/issues/8258
+
+        > bar""".toAst ==
+      dedent"""
+        rnInner
+          rnInner
+            rnLeaf  'foo'
+            rnLeaf  ' '
+            rnStandaloneHyperlink
+              rnLeaf  'https://github.com/nim-lang/Nim/issues/8258'
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=1
+              rnLeaf  'bar'
+      """)
+
+    let expected = dedent"""
+        rnInner
+          rnLeaf  'Paragraph'
+          rnLeaf  '.'
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=1
+              rnInner
+                rnLeaf  'x1'
+                rnLeaf  ' '
+                rnLeaf  'x2'
+            rnMarkdownBlockQuoteItem  quotationDepth=2
+              rnInner
+                rnLeaf  'y1'
+                rnLeaf  ' '
+                rnLeaf  'y2'
+            rnMarkdownBlockQuoteItem  quotationDepth=1
+              rnLeaf  'z'
+        """
+
+    check(dedent"""
+        Paragraph.
+        >x1 x2
+        >>y1 y2
+        >z""".toAst == expected)
+
+    check(dedent"""
+        Paragraph.
+        > x1 x2
+        >> y1 y2
+        > z""".toAst == expected)
+
+    check(dedent"""
+        >x
+        >y
+        >z""".toAst ==
+      dedent"""
+        rnMarkdownBlockQuote
+          rnMarkdownBlockQuoteItem  quotationDepth=1
+            rnInner
+              rnLeaf  'x'
+              rnLeaf  ' '
+              rnLeaf  'y'
+              rnLeaf  ' '
+              rnLeaf  'z'
+      """)
+
+    check(dedent"""
+        > z
+        > > >y
+        """.toAst ==
+      dedent"""
+        rnMarkdownBlockQuote
+          rnMarkdownBlockQuoteItem  quotationDepth=1
+            rnLeaf  'z'
+          rnMarkdownBlockQuoteItem  quotationDepth=3
+            rnLeaf  'y'
+        """)
+
+  test "Markdown quoted blocks: lazy":
+    let expected = dedent"""
+        rnInner
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=2
+              rnInner
+                rnLeaf  'x'
+                rnLeaf  ' '
+                rnLeaf  'continuation1'
+                rnLeaf  ' '
+                rnLeaf  'continuation2'
+          rnParagraph
+            rnLeaf  'newParagraph'
+      """
+    check(dedent"""
+        >>x
+        continuation1
+        continuation2
+
+        newParagraph""".toAst == expected)
+
+    check(dedent"""
+        >> x
+        continuation1
+        continuation2
+
+        newParagraph""".toAst == expected)
+
+    # however mixing more than 1 non-lazy line and lazy one(s) splits quote
+    # in our parser, which appeared the easiest way to handle such cases:
+    var warnings = new seq[string]
+    check(dedent"""
+        >> x
+        >> continuation1
+        continuation2
+
+        newParagraph""".toAst(warnings=warnings) ==
+      dedent"""
+        rnInner
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=2
+              rnLeaf  'x'
+            rnMarkdownBlockQuoteItem  quotationDepth=2
+              rnInner
+                rnLeaf  'continuation1'
+                rnLeaf  ' '
+                rnLeaf  'continuation2'
+          rnParagraph
+            rnLeaf  'newParagraph'
+        """)
+    check(warnings[] == @[
+        "input(2, 1) Warning: RST style: two or more quoted lines " &
+        "are followed by unquoted line 3"])
+
+  test "Markdown quoted blocks: not lazy":
+    # here is where we deviate from CommonMark specification: 'bar' below is
+    # not considered as continuation of 2-level '>> foo' quote.
+    check(dedent"""
+        >>> foo
+        > bar
+        >> baz
+        """.toAst() ==
+      dedent"""
+        rnMarkdownBlockQuote
+          rnMarkdownBlockQuoteItem  quotationDepth=3
+            rnLeaf  'foo'
+          rnMarkdownBlockQuoteItem  quotationDepth=1
+            rnLeaf  'bar'
+          rnMarkdownBlockQuoteItem  quotationDepth=2
+            rnLeaf  'baz'
+        """)
+
+
+  test "Markdown quoted blocks: inline markup works":
+    check(dedent"""
+        > hi **bold** text
+        """.toAst == dedent"""
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=1
+              rnInner
+                rnLeaf  'hi'
+                rnLeaf  ' '
+                rnStrongEmphasis
+                  rnLeaf  'bold'
+                rnLeaf  ' '
+                rnLeaf  'text'
+        """)
+
+  test "Markdown quoted blocks: blank line separator":
+    let expected = dedent"""
+      rnInner
+        rnMarkdownBlockQuote
+          rnMarkdownBlockQuoteItem  quotationDepth=1
+            rnInner
+              rnLeaf  'x'
+              rnLeaf  ' '
+              rnLeaf  'y'
+        rnMarkdownBlockQuote
+          rnMarkdownBlockQuoteItem  quotationDepth=1
+            rnInner
+              rnLeaf  'z'
+              rnLeaf  ' '
+              rnLeaf  't'
+      """
+    check(dedent"""
+        >x
+        >y
+
+        > z
+        > t""".toAst == expected)
+
+    check(dedent"""
+        >x
+        y
+
+        > z
+         t""".toAst == expected)
+
+  test "Markdown quoted blocks: nested body blocks/elements work #1":
+    let expected = dedent"""
+      rnMarkdownBlockQuote
+        rnMarkdownBlockQuoteItem  quotationDepth=1
+          rnBulletList
+            rnBulletItem
+              rnInner
+                rnLeaf  'x'
+            rnBulletItem
+              rnInner
+                rnLeaf  'y'
+      """
+
+    check(dedent"""
+        > - x
+          - y
+        """.toAst == expected)
+
+    # TODO: if bug #17340 point 28 is resolved then this may work:
+    # check(dedent"""
+    #     > - x
+    #     - y
+    #     """.toAst == expected)
+
+    check(dedent"""
+        > - x
+        > - y
+        """.toAst == expected)
+
+    check(dedent"""
+        >
+        > - x
+        >
+        > - y
+        >
+        """.toAst == expected)
+
+  test "Markdown quoted blocks: nested body blocks/elements work #2":
+    let expected = dedent"""
+      rnAdmonition  adType=note
+        [nil]
+        [nil]
+        rnDefList
+          rnDefItem
+            rnDefName
+              rnLeaf  'deflist'
+              rnLeaf  ':'
+            rnDefBody
+              rnMarkdownBlockQuote
+                rnMarkdownBlockQuoteItem  quotationDepth=2
+                  rnInner
+                    rnLeaf  'quote'
+                    rnLeaf  ' '
+                    rnLeaf  'continuation'
+      """
+
+    check(dedent"""
+        .. Note:: deflist:
+                    >> quote
+                    continuation
+        """.toAst == expected)
+
+    check(dedent"""
+        .. Note::
+           deflist:
+             >> quote
+             continuation
+        """.toAst == expected)
+
+    check(dedent"""
+        .. Note::
+           deflist:
+             >> quote
+             >> continuation
+        """.toAst == expected)
+
+    # spaces are not significant between `>`:
+    check(dedent"""
+        .. Note::
+           deflist:
+             > > quote
+             > > continuation
+        """.toAst == expected)
+
+  test "Markdown quoted blocks: de-indent handled well":
+    check(dedent"""
+        >
+        >   - x
+        >   - y
+        >
+        > Paragraph.
+        """.toAst == dedent"""
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=1
+              rnInner
+                rnBlockQuote
+                  rnBulletList
+                    rnBulletItem
+                      rnInner
+                        rnLeaf  'x'
+                    rnBulletItem
+                      rnInner
+                        rnLeaf  'y'
+                rnParagraph
+                  rnLeaf  'Paragraph'
+                  rnLeaf  '.'
+          """)
+
   test "option list has priority over definition list":
     check(dedent"""
         --defusages

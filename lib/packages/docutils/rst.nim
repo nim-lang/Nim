@@ -53,6 +53,8 @@
 ##   + field lists
 ##   + option lists
 ##   + indented literal blocks
+##   + quoted literal blocks
+##   + line blocks
 ##   + simple tables
 ##   + directives (see official documentation in `RST directives list`_):
 ##     - ``image``, ``figure`` for including images and videos
@@ -121,6 +123,7 @@
 ## * Markdown code blocks
 ## * Markdown links
 ## * Markdown headlines
+## * Markdown block quotes
 ## * using ``1`` as auto-enumerator in enumerated lists like RST ``#``
 ##   (auto-enumerator ``1`` can not be used with ``#`` in the same list)
 ##
@@ -145,7 +148,7 @@
 ## 2) Compatibility mode which is RST rules.
 ##
 ## .. Note:: in both modes the parser interpretes text between single
-##    backticks (code) identically:
+##      backticks (code) identically:
 ##      backslash does not escape; the only exception: ``\`` folowed by `
 ##      does escape so that we can always input a single backtick ` in
 ##      inline code. However that makes impossible to input code with
@@ -156,13 +159,35 @@
 ##        ``\`` -- GOOD
 ##        So single backticks can always be input: `\`` will turn to ` code
 ##
+## .. Attention::
+##    We don't support some obviously poor design choices of Markdown (or RST).
+##
+##    - no support for the rule of 2 spaces causing a line break in Markdown
+##      (use RST "line blocks" syntax for making line breaks)
+##
+##    - interpretation of Markdown block quotes is also slightly different,
+##      e.g. case
+##
+##      ::
+##
+##        >>> foo
+##        > bar
+##        >>baz
+##
+##      is a single 3rd-level quote `foo bar baz` in original Markdown, while
+##      in Nim we naturally see it as 3rd-level quote `foo` + 1st level `bar` +
+##      2nd level `baz`:
+##
+##      >>> foo
+##      > bar
+##      >>baz
+##
 ## Limitations
 ## -----------
 ##
 ## * no Unicode support in character width calculations
 ## * body elements
 ##   - no roman numerals in enumerated lists
-##   - no quoted literal blocks
 ##   - no doctest blocks
 ##   - no grid tables
 ##   - some directives are missing (check official `RST directives list`_):
@@ -472,6 +497,10 @@ type
     line: int            # the last line of this style occurrence
                          # (for error message)
     hasPeers: bool       # has headings on the same level of hierarchy?
+  LiteralBlockKind = enum  # RST-style literal blocks after `::`
+    lbNone,
+    lbIndentedLiteralBlock,
+    lbQuotedLiteralBlock
   LevelMap = seq[LevelInfo]   # Saves for each possible title adornment
                               # style its level in the current document.
   SubstitutionKind = enum
@@ -1953,6 +1982,44 @@ proc parseLiteralBlock(p: var RstParser): PRstNode =
       inc p.idx
   result.add(n)
 
+proc parseQuotedLiteralBlock(p: var RstParser): PRstNode =
+  result = newRstNodeA(p, rnLiteralBlock)
+  var n = newLeaf("")
+  if currentTok(p).kind == tkIndent:
+    var indent = currInd(p)
+    while currentTok(p).kind == tkIndent: inc p.idx  # skip blank lines
+    var quoteSym = currentTok(p).symbol[0]
+    while true:
+      case currentTok(p).kind
+      of tkEof:
+        break
+      of tkIndent:
+        if currentTok(p).ival < indent:
+          break
+        elif currentTok(p).ival == indent:
+          if nextTok(p).kind == tkPunct and nextTok(p).symbol[0] == quoteSym:
+            n.text.add("\n")
+            inc p.idx
+          elif nextTok(p).kind == tkIndent:
+            break
+          else:
+            rstMessage(p, mwRstStyle, "no newline after quoted literal block")
+            break
+        else:
+          rstMessage(p, mwRstStyle,
+                     "unexpected indentation in quoted literal block")
+          break
+      else:
+        n.text.add(currentTok(p).symbol)
+        inc p.idx
+  result.add(n)
+
+proc parseRstLiteralBlock(p: var RstParser, kind: LiteralBlockKind): PRstNode =
+  if kind == lbIndentedLiteralBlock:
+    result = parseLiteralBlock(p)
+  else:
+    result = parseQuotedLiteralBlock(p)
+
 proc getLevel(p: var RstParser, c: char, hasOverline: bool): int =
   ## Returns (preliminary) heading level corresponding to `c` and
   ## `hasOverline`. If level does not exist, add it first.
@@ -2023,6 +2090,33 @@ proc isLineBlock(p: RstParser): bool =
       p.tok[j].col > currentTok(p).col or
       p.tok[j].symbol == "\n"
 
+proc isMarkdownBlockQuote(p: RstParser): bool =
+  result = currentTok(p).symbol[0] == '>'
+
+proc whichRstLiteralBlock(p: RstParser): LiteralBlockKind =
+  ## Checks that the following tokens are either Indented Literal Block or
+  ## Quoted Literal Block (which is not quite the same as Markdown quote block).
+  ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#quoted-literal-blocks
+  if currentTok(p).symbol == "::" and nextTok(p).kind == tkIndent:
+    if currInd(p) > nextTok(p).ival:
+      result = lbNone
+    if currInd(p) < nextTok(p).ival:
+      result = lbIndentedLiteralBlock
+    elif currInd(p) == nextTok(p).ival:
+      var i = p.idx + 1
+      while p.tok[i].kind == tkIndent: inc i
+      const validQuotingCharacters = {
+          '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-',
+          '.', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^',
+          '_', '`', '{', '|', '}', '~'}
+      if p.tok[i].kind in {tkPunct, tkAdornment} and
+          p.tok[i].symbol[0] in validQuotingCharacters:
+        result = lbQuotedLiteralBlock
+      else:
+        result = lbNone
+  else:
+    result = lbNone
+
 proc predNL(p: RstParser): bool =
   result = true
   if p.idx > 0:
@@ -2078,6 +2172,8 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif match(p, p.idx + 1, " a"): result = rnTable
     elif currentTok(p).symbol == "|" and isLineBlock(p):
       result = rnLineBlock
+    elif roSupportMarkdown in p.s.options and isMarkdownBlockQuote(p):
+      result = rnMarkdownBlockQuote
     elif match(p, p.idx + 1, "i") and isAdornmentHeadline(p, p.idx):
       result = rnOverline
     else:
@@ -2090,6 +2186,8 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnMarkdownTable
     elif currentTok(p).symbol == "|" and isLineBlock(p):
       result = rnLineBlock
+    elif roSupportMarkdown in p.s.options and isMarkdownBlockQuote(p):
+      result = rnMarkdownBlockQuote
     elif match(p, tokenAfterNewline(p), "aI") and
         isAdornmentHeadline(p, tokenAfterNewline(p)):
       result = rnHeadline
@@ -2143,6 +2241,102 @@ proc parseLineBlock(p: var RstParser): PRstNode =
       else:
         break
 
+proc parseDoc(p: var RstParser): PRstNode {.gcsafe.}
+
+proc getQuoteSymbol(p: RstParser, idx: int): tuple[sym: string, depth: int, tokens: int] =
+  result = ("", 0, 0)
+  var i = idx
+  result.sym &= p.tok[i].symbol
+  result.depth += p.tok[i].symbol.len
+  inc result.tokens
+  inc i
+  while p.tok[i].kind == tkWhite and i+1 < p.tok.len and
+        p.tok[i+1].kind == tkPunct and p.tok[i+1].symbol[0] == '>':
+    result.sym &= p.tok[i].symbol
+    result.sym &= p.tok[i+1].symbol
+    result.depth += p.tok[i+1].symbol.len
+    inc result.tokens, 2
+    inc i, 2
+
+proc parseMarkdownQuoteSegment(p: var RstParser, curSym: string, col: int):
+                              PRstNode =
+  ## We define *segment* as a group of lines that starts with exactly the
+  ## same quote symbol. If the following lines don't contain any `>` (*lazy*
+  ## continuation) they considered as continuation of the current segment.
+  var q: RstParser  # to delete `>` at a start of line and then parse normally
+  initParser(q, p.s)
+  q.col = p.col
+  q.line = p.line
+  var minCol = int.high  # minimum colum num in the segment
+  while true:  # move tokens of segment from `p` to `q` skipping `curSym`
+    case currentTok(p).kind
+    of tkEof:
+      break
+    of tkIndent:
+      if nextTok(p).kind in {tkIndent, tkEof}:
+        break
+      else:
+        if nextTok(p).symbol[0] == '>':
+          var (quoteSym, _, quoteTokens) = getQuoteSymbol(p, p.idx + 1)
+          if quoteSym == curSym:  # the segment continues
+            var iTok = tokenAfterNewline(p, p.idx+1)
+            if p.tok[iTok].kind notin {tkEof, tkIndent} and
+                p.tok[iTok].symbol[0] != '>':
+              rstMessage(p, mwRstStyle,
+                  "two or more quoted lines are followed by unquoted line " &
+                  $(curLine(p) + 1))
+              break
+            q.tok.add currentTok(p)
+            var ival = currentTok(p).ival + quoteSym.len
+            inc p.idx, (1 + quoteTokens)  # skip newline and > > >
+            if currentTok(p).kind == tkWhite:
+              ival += currentTok(p).symbol.len
+              inc p.idx
+            # fix up previous `tkIndent`s to ival (as if >>> were not there)
+            var j = q.tok.len - 1
+            while j >= 0 and q.tok[j].kind == tkIndent:
+              q.tok[j].ival = ival
+              dec j
+          else:  # next segment started
+            break
+        elif currentTok(p).ival < col:
+          break
+        else:  # the segment continues, a case like:
+               # > beginning
+               # continuation
+          q.tok.add currentTok(p)
+          inc p.idx
+    else:
+      if currentTok(p).col < minCol: minCol = currentTok(p).col
+      q.tok.add currentTok(p)
+      inc p.idx
+  q.indentStack = @[minCol]
+  # if initial indentation `minCol` is > 0 then final newlines
+  # should be omitted so that parseDoc could advance to the end of tokens:
+  var j = q.tok.len - 1
+  while q.tok[j].kind == tkIndent: dec j
+  q.tok.setLen (j+1)
+  q.tok.add Token(kind: tkEof, line: currentTok(p).line)
+  result = parseDoc(q)
+
+proc parseMarkdownBlockQuote(p: var RstParser): PRstNode =
+  var (curSym, quotationDepth, quoteTokens) = getQuoteSymbol(p, p.idx)
+  let col = currentTok(p).col
+  result = newRstNodeA(p, rnMarkdownBlockQuote)
+  inc p.idx, quoteTokens  # skip first >
+  while true:
+    var item = newRstNode(rnMarkdownBlockQuoteItem)
+    item.quotationDepth = quotationDepth
+    if currentTok(p).kind == tkWhite: inc p.idx
+    item.add parseMarkdownQuoteSegment(p, curSym, col)
+    result.add(item)
+    if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
+        nextTok(p).kind != tkEof and nextTok(p).symbol[0] == '>':
+      (curSym, quotationDepth, quoteTokens) = getQuoteSymbol(p, p.idx + 1)
+      inc p.idx, (1 + quoteTokens)  # skip newline and > > >
+    else:
+      break
+
 proc parseParagraph(p: var RstParser, result: PRstNode) =
   while true:
     case currentTok(p).kind
@@ -2158,16 +2352,17 @@ proc parseParagraph(p: var RstParser, result: PRstNode) =
           result.add newLeaf(" ")
         of rnLineBlock:
           result.addIfNotNil(parseLineBlock(p))
+        of rnMarkdownBlockQuote:
+          result.addIfNotNil(parseMarkdownBlockQuote(p))
         else: break
       else:
         break
     of tkPunct:
-      if currentTok(p).symbol == "::" and
-          nextTok(p).kind == tkIndent and
-          currInd(p) < nextTok(p).ival:
+      if (let literalBlockKind = whichRstLiteralBlock(p);
+          literalBlockKind != lbNone):
         result.add newLeaf(":")
         inc p.idx            # skip '::'
-        result.add(parseLiteralBlock(p))
+        result.add(parseRstLiteralBlock(p, literalBlockKind))
         break
       else:
         parseInline(p, result)
@@ -2256,8 +2451,6 @@ proc getColumns(p: var RstParser, cols: var IntSeq) =
   if currentTok(p).kind == tkIndent: inc p.idx
   # last column has no limit:
   cols[L - 1] = 32000
-
-proc parseDoc(p: var RstParser): PRstNode {.gcsafe.}
 
 proc parseSimpleTable(p: var RstParser): PRstNode =
   var
@@ -2585,6 +2778,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
       a = parseLiteralBlock(p)
     of rnBulletList: a = parseBulletList(p)
     of rnLineBlock: a = parseLineBlock(p)
+    of rnMarkdownBlockQuote: a = parseMarkdownBlockQuote(p)
     of rnDirective: a = parseDotDot(p)
     of rnEnumList: a = parseEnumList(p)
     of rnLeaf: rstMessage(p, meNewSectionExpected, "(syntax error)")
