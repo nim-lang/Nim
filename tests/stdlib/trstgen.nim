@@ -1560,7 +1560,7 @@ suite "invalid targets":
     check output1 == """<a class="reference external" href="https://bar.com"><img src="/images/myimage.jpg" alt="Alt text for the image"/></a>"""
 
     let input2 = dedent """.. image:: /images/myimage.jpg
-      :target: foo://bar.com
+      :target: javascript://bar.com
       :alt: Alt text for the image"""
     let output2 = input2.toHtml
     check output2 == """<img src="/images/myimage.jpg" alt="Alt text for the image"/>"""
