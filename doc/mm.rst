@@ -61,7 +61,7 @@ to your time critical function via `--expandArc:functionName`.
 Other MM modes
 --------------
 
-.. note:: The other memory management strategies are effectively morbund.
+.. note:: The other memory management strategies are effectively moribund.
 
 .. note:: The default `refc` GC is incremental, thread-local and not "stop-the-world".
 
