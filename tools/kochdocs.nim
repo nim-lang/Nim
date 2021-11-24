@@ -126,7 +126,7 @@ tut2.rst
 tut3.rst
 nimc.rst
 niminst.rst
-gc.rst
+mm.rst
 """.splitWhitespace().mapIt("doc" / it)
 
   doc0 = """

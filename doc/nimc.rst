@@ -408,13 +408,13 @@ to your usual `nim c`:cmd: or `nim cpp`:cmd: command and set the `passC`:option:
 and `passL`:option: command line switches to something like:
 
 .. code-block:: cmd
-  nim c ... --d:nimAllocPagesViaMalloc --gc:orc --passC="-I$DEVKITPRO/libnx/include" ...
+  nim c ... --d:nimAllocPagesViaMalloc --mm:orc --passC="-I$DEVKITPRO/libnx/include" ...
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
 or setup a ``nim.cfg`` file like so::
 
   #nim.cfg
-  --gc:orc
+  --mm:orc
   --d:nimAllocPagesViaMalloc
   --passC="-I$DEVKITPRO/libnx/include"
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
@@ -485,10 +485,10 @@ Define                   Effect
 `useMalloc`              Makes Nim use C's `malloc`:idx: instead of Nim's
                          own memory manager, albeit prefixing each allocation with
                          its size to support clearing memory on reallocation.
-                         This only works with `--gc:none`:option:,
-                         `--gc:arc`:option: and `--gc:orc`:option:.
+                         This only works with `--mm:none`:option:,
+                         `--mm:arc`:option: and `--mm:orc`:option:.
 `useRealtimeGC`          Enables support of Nim's GC for *soft* realtime
-                         systems. See the documentation of the `gc <gc.html>`_
+                         systems. See the documentation of the `mm <mm.html>`_
                          for further information.
 `logGC`                  Enable GC logging to stdout.
 `nodejs`                 The JS target is actually ``node.js``.
@@ -614,9 +614,9 @@ A good start is to use the `any` operating target together with the
 
 .. code:: cmd
 
-   nim c --os:any --gc:arc -d:useMalloc [...] x.nim
+   nim c --os:any --mm:arc -d:useMalloc [...] x.nim
 
-- `--gc:arc`:option: will enable the reference counting memory management instead
+- `--mm:arc`:option: will enable the reference counting memory management instead
   of the default garbage collector. This enables Nim to use heap memory which
   is required for strings and seqs, for example.
 
@@ -654,13 +654,13 @@ devices. This allocator gets blocks/pages of memory via a currently undocumented
 `osalloc` API which usually uses POSIX's `mmap` call. On many environments `mmap`
 is not available but C's `malloc` is. You can use the `nimAllocPagesViaMalloc`
 define to use `malloc` instead of `mmap`. `nimAllocPagesViaMalloc` is currently
-only supported with `--gc:arc` or `--gc:orc`. (Since version 1.6)
+only supported with `--mm:arc` or `--mm:orc`. (Since version 1.6)
 
 
 Nim for realtime systems
 ========================
 
-See the documentation of Nim's soft realtime `GC <gc.html>`_ for further
+See the `--mm:arc` or `--mm:orc` memory management settings in `MM <mm.html>`_ for further
 information.
 
 

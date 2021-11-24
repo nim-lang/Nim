@@ -12,6 +12,38 @@
 ## Language changes
 
 
+- Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
+  allowing multiple type definitions to be injected in place of the original type definition.
+
+  ```nim
+  import macros
+
+  macro multiply(amount: static int, s: untyped): untyped =
+    let name = $s[0].basename
+    result = newNimNode(nnkTypeSection)
+    for i in 1 .. amount:
+      result.add(newTree(nnkTypeDef, ident(name & $i), s[1], s[2]))
+
+  type
+    Foo = object
+    Bar {.multiply: 3.} = object
+      x, y, z: int
+    Baz = object
+
+  # becomes
+
+  type
+    Foo = object
+    Bar1 = object
+      x, y, z: int
+    Bar2 = object
+      x, y, z: int
+    Bar3 = object
+      x, y, z: int
+    Baz = object
+  ```
+- [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
+  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
 
 ## Compiler changes
 
@@ -21,5 +53,6 @@
 
 ## Tool changes
 
-
+- The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
+  reality better. (Nim moved away from all techniques based on "tracing".)
 
