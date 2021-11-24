@@ -1,81 +1,3 @@
-=======================
-Nim's Memory Management
-=======================
-
-.. default-role:: code
-.. include:: rstcommon.rst
-
-:Author: Andreas Rumpf
-:Version: |nimversion|
-
-..
-
-
-  "The road to hell is paved with good intentions."
-
-
-Introduction
-============
-
-A memory-management algorithm optimal for every use-case cannot exist.
-Nim provides multiple paradigms for needs ranging from large multi-threaded
-applications, to games, hard-realtime systems and small microcontrollers.
-
-This document describes how the management strategies work;
-How to tune the garbage collectors for your needs, like (soft) `realtime systems`:idx:,
-and how the memory management strategies other than garbage collectors work.
-
-.. note:: the default GC is incremental, thread-local and not "stop-the-world"
-
-Multi-paradigm Memory Management Strategies
-===========================================
-
-.. default-role:: option
-
-To choose the memory management strategy use the `--gc:` switch.
-
---gc:refc    This is the default GC. It's a
-  deferred reference counting based garbage collector
-  with a simple Mark&Sweep backup GC in order to collect cycles. Heaps are thread-local.
---gc:markAndSweep  Simple Mark-And-Sweep based garbage collector.
-  Heaps are thread-local.
---gc:boehm    Boehm based garbage collector, it offers a shared heap.
---gc:go    Go's garbage collector, useful for interoperability with Go.
-  Offers a shared heap.
---gc:arc    Plain reference counting with
-  `move semantic optimizations <destructors.html#move-semantics>`_, offers a shared heap.
-  It offers deterministic performance for `hard realtime`:idx: systems. Reference cycles
-  cause memory leaks, beware.
-
---gc:orc    Same as `--gc:arc` but adds a cycle collector based on "trial deletion".
-  Unfortunately, that makes its performance profile hard to reason about so it is less
-  useful for hard real-time systems.
-
---gc:none    No memory management strategy nor a garbage collector. Allocated memory is
-  simply never freed. You should use `--gc:arc` instead.
-
-
-================== ======== ================= ============== ===================
-Memory Management  Heap     Reference Cycles  Stop-The-World Command line switch
-================== ======== ================= ============== ===================
-RefC               Local    Cycle Collector   No             `--gc:refc`
-Mark & Sweep       Local    Cycle Collector   No             `--gc:markAndSweep`
-ARC                Shared   Leak              No             `--gc:arc`
-ORC                Shared   Cycle Collector   No             `--gc:orc`
-Boehm              Shared   Cycle Collector   Yes            `--gc:boehm`
-Go                 Shared   Cycle Collector   Yes            `--gc:go`
-None               Manual   Manual            Manual         `--gc:none`
-================== ======== ================= ============== ===================
-
-.. default-role:: code
-.. include:: rstcommon.rst
-
-JavaScript's garbage collector is used for the `JavaScript and NodeJS
-<backends.html#backends-the-javascript-target>`_ compilation targets.
-The `NimScript <nims.html>`_ target uses the memory management strategy built into
-the Nim compiler.
-
-
 Tweaking the refc GC
 ====================
 
@@ -178,7 +100,7 @@ Other useful procs from `system <system.html>`_ you can use to keep track of mem
 * `GC_getStatistics()` Garbage collector statistics as a human-readable string.
 
 These numbers are usually only for the running thread, not for the whole heap,
-with the exception of `--gc:boehm`:option: and `--gc:go`:option:.
+with the exception of `--mm:boehm`:option: and `--mm:go`:option:.
 
 In addition to `GC_ref` and `GC_unref` you can avoid the garbage collector by manually
 allocating memory with procs like `alloc`, `alloc0`, `allocShared`, `allocShared0` or `allocCStringArray`.

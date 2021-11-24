@@ -248,7 +248,7 @@ template deprecatedAlias(oldName, newName: string) =
 
 proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo): bool =
   case switch.normalize
-  of "gc":
+  of "gc", "mm":
     case arg.normalize
     of "boehm": result = conf.selectedGC == gcBoehm
     of "refc": result = conf.selectedGC == gcRefc
@@ -596,7 +596,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optForceFullMake}, arg, pass, info)
   of "project":
     processOnOffSwitchG(conf, {optWholeProject, optGenIndex}, arg, pass, info)
-  of "gc":
+  of "gc", "mm":
     if conf.backend == backendJs: return # for: bug #16033
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:

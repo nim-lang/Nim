@@ -122,8 +122,9 @@ Advanced options:
   --skipUserCfg:on|off      do not read the user's configuration file
   --skipParentCfg:on|off    do not read the parent dirs' configuration files
   --skipProjCfg:on|off      do not read the project's configuration file
-  --gc:refc|arc|orc|markAndSweep|boehm|go|none|regions
-                            select the GC to use; default is 'refc'
+  --mm:orc|arc|refc|markAndSweep|boehm|go|none|regions
+                            select which memory management to use; default is 'refc'
+                            recommended is 'orc'
   --exceptions:setjmp|cpp|goto|quirky
                             select the exception handling implementation
   --index:on|off            turn index file generation on|off
@@ -163,4 +164,4 @@ Advanced options:
   --profileVM:on|off        turn compile time VM profiler on|off
   --sinkInference:on|off    turn sink parameter inference on|off (default: on)
   --panics:on|off           turn panics into process terminations (default: off)
-  --deepcopy:on|off         enable 'system.deepCopy' for ``--gc:arc|orc``
+  --deepcopy:on|off         enable 'system.deepCopy' for ``--mm:arc|orc``

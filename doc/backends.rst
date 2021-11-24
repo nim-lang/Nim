@@ -105,7 +105,7 @@ file. However, you can also run the code with `nodejs`:idx:
 If you experience errors saying that `globalThis` is not defined, be
 sure to run a recent version of Node.js (at least 12.0).
 
-  
+
 Interfacing
 ===========
 
@@ -387,14 +387,8 @@ A similar thing happens with C code invoking Nim code which returns a
   proc gimme(): cstring {.exportc.} =
     result = "Hey there C code! " & $rand(100)
 
-Since Nim's garbage collector is not aware of the C code, once the
+Since Nim's reference counting mechanism is not aware of the C code, once the
 `gimme` proc has finished it can reclaim the memory of the `cstring`.
-However, from a practical standpoint, the C code invoking the `gimme`
-function directly will be able to use it since Nim's garbage collector has
-not had a chance to run *yet*. This gives you enough time to make a copy for
-the C side of the program, as calling any further Nim procs *might* trigger
-garbage collection making the previously returned string garbage. Or maybe you
-are `yourself triggering the collection <gc.html>`_.
 
 
 Custom data types
@@ -414,31 +408,3 @@ you can clean it up. And of course, once cleaned you should avoid accessing it
 from Nim (or C for that matter). Typically C data structures have their own
 `malloc_structure`:c: and `free_structure`:c: specific functions, so wrapping
 these for the Nim side should be enough.
-
-
-Thread coordination
--------------------
-
-When the `NimMain()` function is called Nim initializes the garbage
-collector to the current thread, which is usually the main thread of your
-application. If your C code later spawns a different thread and calls Nim
-code, the garbage collector will fail to work properly and you will crash.
-
-As long as you don't use the threadvar emulation Nim uses native thread
-variables, of which you get a fresh version whenever you create a thread. You
-can then attach a GC to this thread via
-
-.. code-block:: nim
-
-  system.setupForeignThreadGc()
-
-It is **not** safe to disable the garbage collector and enable it after the
-call from your background thread even if the code you are calling is short
-lived.
-
-Before the thread exits, you should tear down the thread's GC to prevent memory
-leaks by calling
-
-.. code-block:: nim
-
-  system.tearDownForeignThreadGc()

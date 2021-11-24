@@ -43,7 +43,7 @@ written as:
       dealloc(x.data)
 
   proc `=trace`[T](x: var myseq[T]; env: pointer) =
-    # `=trace` allows the cycle collector `--gc:orc`
+    # `=trace` allows the cycle collector `--mm:orc`
     # to understand how to trace the object graph.
     if x.data != nil:
       for i in 0..<x.len: `=trace`(x.data[i], env)
@@ -208,7 +208,7 @@ by the compiler. Notice that there is no `=` before the `{.error.}` pragma.
 `=trace` hook
 -------------
 
-A custom **container** type can support Nim's cycle collector `--gc:orc` via
+A custom **container** type can support Nim's cycle collector `--mm:orc` via
 the `=trace` hook. If the container does not implement `=trace`, cyclic data
 structures which are constructed with the help of the container might leak
 memory or resources, but memory safety is not compromised.
@@ -224,7 +224,7 @@ to calls of the built-in `=trace` operation.
 
 Usually there will only be a need for a custom `=trace` when a custom `=destroy` that deallocates
 manually allocated resources is also used, and then only when there is a chance of cyclic
-references from items within the manually allocated resources when it is desired that `--gc:orc`
+references from items within the manually allocated resources when it is desired that `--mm:orc`
 is able to break and collect these cyclic referenced resources. Currently however, there is a
 mutual use problem in that whichever of `=destroy`/`=trace` is used first will automatically
 create a version of the other which will then conflict with the creation of the second of the
@@ -256,7 +256,7 @@ The general pattern in using `=destroy` with `=trace` looks like:
 
   # following may be other custom "hooks" as required...
 
-**Note**: The `=trace` hooks (which are only used by `--gc:orc`) are currently more experimental and less refined
+**Note**: The `=trace` hooks (which are only used by `--mm:orc`) are currently more experimental and less refined
 than the other hooks.
 
 
@@ -558,10 +558,10 @@ for expressions of type `lent T` or of type `var T`.
 The cursor pragma
 =================
 
-Under the `--gc:arc|orc`:option: modes Nim's `ref` type is implemented
+Under the `--mm:arc|orc`:option: modes Nim's `ref` type is implemented
 via the same runtime "hooks" and thus via reference counting.
 This means that cyclic structures cannot be freed
-immediately (`--gc:orc`:option: ships with a cycle collector).
+immediately (`--mm:orc`:option: ships with a cycle collector).
 With the `cursor` pragma one can break up cycles declaratively:
 
 .. code-block:: nim

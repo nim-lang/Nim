@@ -44,7 +44,7 @@
     Baz = object
   ```
 - [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
-  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them. 
+  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
 
 ## Compiler changes
 
@@ -54,5 +54,6 @@
 
 ## Tool changes
 
-
+- The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
+  reality better. (Nim moved away from all techniques based on "tracing".)
 
