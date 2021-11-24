@@ -86,6 +86,35 @@ that up to 100 objects are traversed and freed before it checks again. Thus
 highly specialized environments or for older hardware.
 
 
+Thread coordination
+-------------------
+
+When the `NimMain()` function is called Nim initializes the garbage
+collector to the current thread, which is usually the main thread of your
+application. If your C code later spawns a different thread and calls Nim
+code, the garbage collector will fail to work properly and you will crash.
+
+As long as you don't use the threadvar emulation Nim uses native thread
+variables, of which you get a fresh version whenever you create a thread. You
+can then attach a GC to this thread via
+
+.. code-block:: nim
+
+  system.setupForeignThreadGc()
+
+It is **not** safe to disable the garbage collector and enable it after the
+call from your background thread even if the code you are calling is short
+lived.
+
+Before the thread exits, you should tear down the thread's GC to prevent memory
+leaks by calling
+
+.. code-block:: nim
+
+  system.tearDownForeignThreadGc()
+
+
+
 Keeping track of memory
 =======================
 

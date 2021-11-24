@@ -14,54 +14,48 @@ Nim's Memory Management
   "The road to hell is paved with good intentions."
 
 
-Introduction
-============
-
-A memory-management algorithm optimal for every use-case cannot exist.
-Nim provides multiple paradigms for needs ranging from large multi-threaded
-applications, to games, hard-realtime systems and small microcontrollers.
-
-This document describes how the management strategies work;
-How to tune the garbage collectors for your needs, like (soft) `realtime systems`:idx:,
-and how the memory management strategies other than garbage collectors work.
-
-
 Multi-paradigm Memory Management Strategies
 ===========================================
 
 .. default-role:: option
 
+Nim offers multiple different memory management strategies.
 To choose the memory management strategy use the `--mm:` switch.
 
-**The recommended switch is `--mm:orc`.**
+**The recommended switch for newly written Nim code is `--mm:orc`.**
 
 
 ARC/ORC
 -------
 
-`--mm:arc` is roughly comparable to C++'s memory management with `shared_ptr`. However,
-the reference counting operations (= "RC ops") do not use atomic instructions and do not have to --
+`--mm:orc` is a memory management mode primarily based on reference counting. Cycles
+in the object graph are handled by a "cycle collector" which is based on "trial deletion".
+Since algorithms based on "tracing" are not used, the runtime behavior is oblivious to
+the involved heap sizes.
+
+The reference counting operations (= "RC ops") do not use atomic instructions and do not have to --
 instead entire subgraphs are *moved* between threads. The Nim compiler also aggressively
-optimizes away RC ops and exploits `move semantics <destructors.html#move-semantics>`_. The
-default `async`:idx: implementation needs `--mm:orc` and leaks memory with `--mm:arc`!
-
-`--mm:orc` adds a cycle collector based on "trial deletion" on top of `--mm:arc`. It is
-guaranteed that `acyclic`:idx: types are never processed by the cycle collector; this
-means `--mm:orc` remains to be useful in hard realtime settings. However, if you fear the
-cycle collector or you found `--mm:orc`'s code size implications unacceptable
-(ORC produces slightly larger code sizes) feel free to use `--mm:arc` instead.
-
-Both ARC and ORC offer deterministic performance for `hard realtime`:idx: systems, but
-ARC can be easier to reason about for people coming from Ada/C++/C.
+optimizes away RC ops and exploits `move semantics <destructors.html#move-semantics>`_.
 
 Nim performs a fair share of optimizations for ARC/ORC; you can inspect what it did
 to your time critical function via `--expandArc:functionName`.
 
+`--mm:arc` uses the same mechanism as `--mm:orc`, but it leaves out the cycle collector.
+Both ARC and ORC offer deterministic performance for `hard realtime`:idx: systems, but
+ARC can be easier to reason about for people coming from Ada/C++/C -- roughly speaking
+the memory for a variable is freed when it goes "out of scope".
+
+We generally advise you to use the `acyclic` annotation in order to optimize away the
+cycle collector's overhead
+but `--mm:orc` also produces more machine code than `--mm:arc`, so if you're on a target
+where code size matters and you know that your code does not produce cycles, you can
+use `--mm:arc`. Notice that the default `async`:idx: implementation produces cycles
+and leaks memory with `--mm:arc`, in other words, for `async` you need to use `--mm:orc`.
+
+
 
 Other MM modes
 --------------
-
-.. note:: The other memory management strategies are effectively moribund.
 
 .. note:: The default `refc` GC is incremental, thread-local and not "stop-the-world".
 
