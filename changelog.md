@@ -13,6 +13,9 @@
 
 ## Standard library additions and changes
 
+- `macros.parseExpr` and `macros.parseStmt` now accept an optional
+  filename argument for more informative errors.
+
 ## `std/smtp`
 
 - Sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.

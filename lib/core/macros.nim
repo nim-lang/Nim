@@ -511,27 +511,29 @@ proc lineInfo*(arg: NimNode): string =
   ## Return line info in the form `filepath(line, column)`.
   $arg.lineInfoObj
 
-proc internalParseExpr(s: string): NimNode {.
+proc internalParseExpr(s, filename: string): NimNode {.
   magic: "ParseExprToAst", noSideEffect.}
 
-proc internalParseStmt(s: string): NimNode {.
+proc internalParseStmt(s, filename: string): NimNode {.
   magic: "ParseStmtToAst", noSideEffect.}
 
 proc internalErrorFlag*(): string {.magic: "NError", noSideEffect.}
   ## Some builtins set an error flag. This is then turned into a proper
   ## exception. **Note**: Ordinary application code should not call this.
 
-proc parseExpr*(s: string): NimNode {.noSideEffect.} =
+proc parseExpr*(s: string; filename: string = ""): NimNode {.noSideEffect.} =
   ## Compiles the passed string to its AST representation.
   ## Expects a single expression. Raises `ValueError` for parsing errors.
-  result = internalParseExpr(s)
+  ## A filename can be given for more informative errors.
+  result = internalParseExpr(s, filename)
   let x = internalErrorFlag()
   if x.len > 0: raise newException(ValueError, x)
 
-proc parseStmt*(s: string): NimNode {.noSideEffect.} =
+proc parseStmt*(s: string; filename: string = ""): NimNode {.noSideEffect.} =
   ## Compiles the passed string to its AST representation.
   ## Expects one or more statements. Raises `ValueError` for parsing errors.
-  result = internalParseStmt(s)
+  ## A filename can be given for more informative errors.
+  result = internalParseStmt(s, filename)
   let x = internalErrorFlag()
   if x.len > 0: raise newException(ValueError, x)
 

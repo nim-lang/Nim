@@ -1225,9 +1225,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     unused(c, n, dest)
     genBinaryStmtVar(c, n, opcAddSeqElem)
   of mParseExprToAst:
-    genUnaryABC(c, n, dest, opcParseExprToAst)
+    genBinaryABC(c, n, dest, opcParseExprToAst)
   of mParseStmtToAst:
-    genUnaryABC(c, n, dest, opcParseStmtToAst)
+    genBinaryABC(c, n, dest, opcParseStmtToAst)
   of mTypeTrait:
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n.typ)
