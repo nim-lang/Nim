@@ -811,7 +811,7 @@ proc primarySuffix(p: var Parser, r: PNode,
   #|       | DOTLIKEOP optInd symbol generalizedLit?
   #|       | '[' optInd exprColonEqExprList optPar ']'
   #|       | '{' optInd exprColonEqExprList optPar '}'
-  #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
+  #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr (comma expr)* # command syntax
   result = r
 
   # progress guaranteed
@@ -1351,7 +1351,8 @@ proc parseTypeDesc(p: var Parser): PNode =
   result = binaryNot(p, result)
 
 proc parseTypeDefAux(p: var Parser): PNode =
-  #| typeDefAux = simpleExpr ('not' expr)?
+  #| typeDefAux = simpleExpr ('not' expr
+  #|                         | postExprBlocks)?
   result = simpleExpr(p, pmTypeDef)
   result = binaryNot(p, result)
 

@@ -60,7 +60,7 @@ primarySuffix = '(' (exprColonEqExpr comma?)* ')'
       | DOTLIKEOP optInd symbol generalizedLit?
       | '[' optInd exprColonEqExprList optPar ']'
       | '{' optInd exprColonEqExprList optPar '}'
-      | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
+      | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr (comma expr)* # command syntax
 pragma = '{.' optInd (exprColonEqExpr comma?)* optPar ('.}' | '}')
 identVis = symbol OPR?  # postfix position
 identVisDot = symbol '.' optInd symbol OPR?
@@ -93,7 +93,8 @@ primary = operatorB primary primarySuffix* |
           ('var' | 'out' | 'ref' | 'ptr' | 'distinct') primary
         /  prefixOperator* identOrLiteral primarySuffix*
 typeDesc = simpleExpr ('not' expr)?
-typeDefAux = simpleExpr ('not' expr)?
+typeDefAux = simpleExpr ('not' expr
+                        | postExprBlocks)?
 postExprBlocks = ':' stmt? ( IND{=} doBlock
                            | IND{=} 'of' exprList ':' stmt
                            | IND{=} 'elif' expr ':' stmt
