@@ -1552,7 +1552,7 @@ suite "RST/Code highlight":
 
 
 suite "invalid targets":
-  test "invalid target":
+  test "invalid image target":
     let input1 = dedent """.. image:: /images/myimage.jpg
       :target: https://bar.com
       :alt: Alt text for the image"""
@@ -1570,3 +1570,9 @@ suite "invalid targets":
       :alt: Alt text for the image"""
     let output3 = input3.toHtml
     check output3 == """<a class="reference external" href="bar.com"><img src="/images/myimage.jpg" alt="Alt text for the image"/></a>"""
+
+  test "invalid links":
+    check("(([Nim](https://nim-lang.org/)))".toHtml ==
+        """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))""")
+    check("(([Nim](javascript://nim-lang.org/)))".toHtml ==
+        """((<a class="reference external" href="">Nim</a>))""")

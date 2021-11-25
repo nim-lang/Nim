@@ -1200,6 +1200,14 @@ proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string,
     d.escMode = emUrl
     renderRstToOut(d, link, linkStr)
     d.escMode = mode
+  var protocol = ""
+  if scanf(linkStr, "$w:", protocol):
+    # if it has a protocol at all, ensure that it's not 'javascript:' or worse:
+    if cmpIgnoreCase(protocol, "http") == 0 or cmpIgnoreCase(protocol, "https") == 0 or
+        cmpIgnoreCase(protocol, "ftp") == 0:
+      discard "it's fine"
+    else:
+      linkStr = ""
   var textStr = ""
   renderRstToOut(d, text, textStr)
   let nimDocStr = if nimdoc: " nimdoc" else: ""
