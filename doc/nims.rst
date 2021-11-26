@@ -285,7 +285,7 @@ translate text strings on unmodified NimScript:
 
 translations.cfg
 
-.. code-block:: none
+.. code-block::
 
   [cat]
   ES = gato
