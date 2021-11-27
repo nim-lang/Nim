@@ -993,7 +993,7 @@ proc findMainAnchorNim(s: PRstSharedState, signature: PRstNode,
             result.add s
       else:  # when there are many overloads a link like foo_ points to all
              # of them, so selecting the group
-        var foundGroup = true
+        var foundGroup = false
         for s in sList:
           if s.langSym.isGroup:
             result.add s
