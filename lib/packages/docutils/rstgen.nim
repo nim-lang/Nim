@@ -825,6 +825,16 @@ proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
         rstnodeToRefname(n).idS, tmp, $chr(n.level - 1 + ord('A')), tocName])
 
 
+proc safeProtocol(linkStr: var string) =
+  var protocol = ""
+  if scanf(linkStr, "$w:", protocol):
+    # if it has a protocol at all, ensure that it's not 'javascript:' or worse:
+    if cmpIgnoreCase(protocol, "http") == 0 or cmpIgnoreCase(protocol, "https") == 0 or
+        cmpIgnoreCase(protocol, "ftp") == 0:
+      discard "it's fine"
+    else:
+      linkStr = ""
+
 proc renderTocEntry(d: PDoc, e: TocEntry, result: var string) =
   dispA(d.target, result,
     "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n",
@@ -889,15 +899,7 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
 
   # support for `:target:` links for images:
   var target = esc(d.target, getFieldValue(n, "target").strip(), escMode=emUrl)
-
-  var protocol = ""
-  if scanf(target, "$w:", protocol):
-    # if it has a protocol at all, ensure that it's not 'javascript:' or worse:
-    if cmpIgnoreCase(protocol, "http") == 0 or cmpIgnoreCase(protocol, "https") == 0 or
-        cmpIgnoreCase(protocol, "ftp") == 0:
-      discard "it's fine"
-    else:
-      target = ""
+  safeProtocol(target)
 
   if target.len > 0:
     # `htmlOut` needs to be of the following format for link to work for images:
@@ -1200,14 +1202,7 @@ proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string,
     d.escMode = emUrl
     renderRstToOut(d, link, linkStr)
     d.escMode = mode
-  var protocol = ""
-  if scanf(linkStr, "$w:", protocol):
-    # if it has a protocol at all, ensure that it's not 'javascript:' or worse:
-    if cmpIgnoreCase(protocol, "http") == 0 or cmpIgnoreCase(protocol, "https") == 0 or
-        cmpIgnoreCase(protocol, "ftp") == 0:
-      discard "it's fine"
-    else:
-      linkStr = ""
+  safeProtocol(linkStr)
   var textStr = ""
   renderRstToOut(d, text, textStr)
   let nimDocStr = if nimdoc: " nimdoc" else: ""
