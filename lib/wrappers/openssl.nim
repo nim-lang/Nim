@@ -847,3 +847,17 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
     let cert = d2i_X509(certbytes)
     let encoded = cert.i2d_X509()
     assert encoded == certbytes
+
+# Application Layer Protocol Negociation extension (TLS-ALPN, RFC7301)
+# Available in at least OpenSSL 1.1.1 and later, not sure if earlier
+# --Iced Quinn
+
+proc SSL_CTX_set_alpn_protos*(ctx: SslCtx; protos: cstring; protos_len: cuint): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_set_alpn_protos*(ssl: SslPtr; protos: cstring; protos_len: cuint): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_alpn_select_cb*(ctx: SslCtx; cb: proc(ssl: SslPtr; out_proto: ptr cstring; outlen: cstring; in_proto: cstring; inlen: cuint; arg: pointer): cint {.cdecl.}; arg: pointer): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get0_alpn_selected*(ssl: SslPtr; data: ptr cstring; len: ptr cuint) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_next_protos_advertised_cb*(ctx: SslCtx; cb: proc(ssl: SslPtr; out_proto: ptr cstring; outlen: ptr cuint; arg: pointer): cint {.cdecl.}; arg: pointer) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_next_proto_select_cb*(ctx: SslCtx; cb: proc(s: SslPtr; out_proto: cstring; outlen: cstring; in_proto: cstring; inlen: cuint; arg: pointer): cint {.cdecl.}; arg: pointer) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_select_next_proto*(out_proto: ptr cstring; outlen: cstring; server: cstring; server_len: cuint; client: cstring; client_len: cuint): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get0_next_proto_negotiated*(s: SslPtr; data: ptr cstring; len: ptr cuint) {.cdecl, dynlib: DLLSSLName, importc.}
+
