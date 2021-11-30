@@ -32,6 +32,7 @@ foo88
 23 24foo 88
 11
 @[1, 10, 45, 120, 210, 252, 210, 120, 45, 10, 1]
+2
 '''
 joinable: false
 """
@@ -491,3 +492,10 @@ block tnoclosure:
       row = zip(row & @[0], @[0] & row).mapIt(it[0] + it[1])
     echo row
   pascal(10)
+
+block tcapturecdecl:
+  proc capture(p:proc(x:cint):cint {.cdecl.}) =
+    proc f() {.cdecl.} =
+      echo p(1)
+    f()
+  capture(proc(x:cint):cint {.cdecl.} = x + 1)
