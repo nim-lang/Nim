@@ -881,7 +881,7 @@ Funcs and methods
 
 As mentioned in the introduction Nim differentiates between procedures,
 functions, and methods, defined by the `proc`, `func`, and `method` keywords
-respectively. In some ways Nim are a bit more pedantic in its definitions than
+respectively. In some ways, Nim is a bit more pedantic in its definitions than
 other languages.
 
 Functions are closer to the concept of a pure mathematical
