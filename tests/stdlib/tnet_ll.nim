@@ -29,7 +29,6 @@ suite "inet_ntop tests":
     let res = if r == nil: "" else: $r
     check: res == "19.18.17.16"
       
-
   test "IP V6":
     when defined(windows):
       let ipv6Support = (getVersion() and 0xff) > 0x5
