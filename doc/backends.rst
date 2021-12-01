@@ -52,7 +52,7 @@ The commands to compile to either C, C++ or Objective-C are:
 The most significant difference between these commands is that if you look
 into the ``nimcache`` directory you will find ``.c``, ``.cpp`` or ``.m``
 files, other than that all of them will produce a native binary for your
-project.  This allows you to take the generated code and place it directly
+project. This allows you to take the generated code and place it directly
 into a project using any of these languages. Here are some typical command-
 line invocations:
 
@@ -123,7 +123,7 @@ Nim code can interface with the backend through the `Foreign function
 interface <manual.html#foreign-function-interface>`_ mainly through the
 `importc pragma <manual.html#foreign-function-interface-importc-pragma>`_.
 The `importc` pragma is the *generic* way of making backend symbols available
-in Nim and is available in all the target backends (JavaScript too).  The C++
+in Nim and is available in all the target backends (JavaScript too). The C++
 or Objective-C backends have their respective `ImportCpp
 <manual.html#implementation-specific-pragmas-importcpp-pragma>`_ and
 `ImportObjC <manual.html#implementation-specific-pragmas-importobjc-pragma>`_
@@ -246,11 +246,6 @@ Also, C code requires you to specify a forward declaration for functions or
 the compiler will assume certain types for the return value and parameters
 which will likely make your program crash at runtime.
 
-The Nim compiler can generate a C interface header through the `--header`:option:
-command-line switch. The generated header will contain all the exported
-symbols and the `NimMain` proc which you need to call before any other
-Nim code.
-
 
 Nim invocation example from C
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -269,8 +264,9 @@ Create a ``maths.c`` file with the following content:
 
 .. code-block:: c
 
-  #include "fib.h"
   #include <stdio.h>
+
+  extern int fib(int a);
 
   int main(void)
   {
@@ -286,13 +282,12 @@ program:
 
 .. code:: cmd
 
-  nim c --noMain --noLinking --header:fib.h fib.nim
+  nim c --noMain --noLinking fib.nim
   gcc -o m -I$HOME/.cache/nim/fib_d -Ipath/to/nim/lib $HOME/.cache/nim/fib_d/*.c maths.c
 
 The first command runs the Nim compiler with three special options to avoid
-generating a `main()`:c: function in the generated files, avoid linking the
-object files into a final binary, and explicitly generate a header file for C
-integration. All the generated files are placed into the ``nimcache``
+generating a `main()`:c: function in the generated files and to avoid linking the
+object files into a final binary. All the generated files are placed into the ``nimcache``
 directory. That's why the next command compiles the ``maths.c`` source plus
 all the ``.c`` files from ``nimcache``. In addition to this path, you also
 have to tell the C compiler where to find Nim's ``nimbase.h`` header file.
@@ -302,12 +297,12 @@ also ask the Nim compiler to generate a statically linked library:
 
 .. code:: cmd
 
-  nim c --app:staticLib --noMain --header fib.nim
+  nim c --app:staticLib --noMain fib.nim
   gcc -o m -Inimcache -Ipath/to/nim/lib libfib.nim.a maths.c
 
 The Nim compiler will handle linking the source files generated in the
 ``nimcache`` directory into the ``libfib.nim.a`` static library, which you can
-then link into your C program.  Note that these commands are generic and will
+then link into your C program. Note that these commands are generic and will
 vary for each system. For instance, on Linux systems you will likely need to
 use `-ldl`:option: too to link in required dlopen functionality.
 
