@@ -11,6 +11,9 @@
   or define your own `Math.trunc` polyfill using the [`emit` pragma](https://nim-lang.org/docs/manual.html#implementation-specific-pragmas-emit-pragma). Nim uses
   `Math.trunc` for the division and modulo operators for integers.
 
+- Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
+  `experimental:flexibleOptionalParams`.
+
 ## Standard library additions and changes
 
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional
