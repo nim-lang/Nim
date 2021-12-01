@@ -595,8 +595,10 @@ Procedures
 
 To define new commands like `echo <system.html#echo,varargs[typed,]>`_
 and `readLine <io.html#readLine,File>`_ in the examples, the concept of a
-*procedure* is needed. (Some languages call them *methods* or *functions*.)
-In Nim new procedures are defined with the `proc` keyword:
+*procedure* is needed. You might be used to them being called *methods* or
+*functions* in other languages, but Nim
+`differentiates these concepts <tut1.html#procedures-funcs-and-methods>`_. In
+Nim new procedures are defined with the `proc` keyword:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -872,6 +874,30 @@ declarations.
 
 The example also shows that a proc's body can consist of a single expression
 whose value is then returned implicitly.
+
+
+Funcs and methods
+-----------------
+
+As mentioned in the introduction Nim differentiates between procedures,
+functions, and methods, defined by the `proc`, `func`, and `method` keywords
+respectively. In some ways Nim are a bit more pedantic in its definitions than
+othe languages.
+
+Functions are closer to the concept of a pure mathematical
+function, which might be familiar to you if you've ever done functional
+programming. Essentially they can't access global state (except `const`), can't
+produce side-effects (they are tagged with `{.noSideEffects.}`). They can still
+change their mutable arguments, which are those marked as `var` and any `ref`
+objects.
+
+Unlike procedures methods are dynamically dispatched. This sounds a bit
+complicated but is a concept closely related to inheritance and object oriented
+programming. If you overload a procedure (two procedures with the same name but
+different types are said to be overloaded) the procedure to use is determined
+at compile-time. Methods on the other hand depend on objects that inherit from
+the `RootObj`. This is something that will be covered in much greater depth in
+the `second part of the tutorial<tut2.html#object-oriented-programming-dynamic-dispatch>`_.
 
 
 Iterators
