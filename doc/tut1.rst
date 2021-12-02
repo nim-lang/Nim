@@ -886,7 +886,7 @@ other languages.
 
 Functions are closer to the concept of a pure mathematical
 function, which might be familiar to you if you've ever done functional
-programming. Essentially they can't access global state (except `const`), can't
+programming. Essentially they can't access global state (except `const`) and can't
 produce side-effects (they are tagged with `{.noSideEffects.}`). They can still
 change their mutable arguments, which are those marked as `var` and any `ref`
 objects.
