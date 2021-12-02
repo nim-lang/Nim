@@ -896,7 +896,7 @@ complicated, but it is a concept closely related to inheritance and object orien
 programming. If you overload a procedure (two procedures with the same name but
 of different types or with different sets of arguments are said to be overloaded), the procedure to use is determined
 at compile-time. Methods, on the other hand, depend on objects that inherit from
-the `RootObj`. This is something that will be covered in much greater depth in
+the `RootObj`. This is something that is covered in much greater depth in
 the `second part of the tutorial<tut2.html#object-oriented-programming-dynamic-dispatch>`_.
 
 
