@@ -892,7 +892,7 @@ change their mutable arguments, which are those marked as `var` and any `ref`
 objects.
 
 Unlike procedures, methods are dynamically dispatched. This sounds a bit
-complicated but is a concept closely related to inheritance and object oriented
+complicated, but is a concept closely related to inheritance and object oriented
 programming. If you overload a procedure (two procedures with the same name but
 different types are said to be overloaded) the procedure to use is determined
 at compile-time. Methods on the other hand depend on objects that inherit from
