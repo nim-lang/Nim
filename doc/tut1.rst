@@ -894,7 +894,7 @@ objects.
 Unlike procedures, methods are dynamically dispatched. This sounds a bit
 complicated, but is a concept closely related to inheritance and object oriented
 programming. If you overload a procedure (two procedures with the same name but
-different types are said to be overloaded) the procedure to use is determined
+different types are said to be overloaded), the procedure to use is determined
 at compile-time. Methods on the other hand depend on objects that inherit from
 the `RootObj`. This is something that will be covered in much greater depth in
 the `second part of the tutorial<tut2.html#object-oriented-programming-dynamic-dispatch>`_.
