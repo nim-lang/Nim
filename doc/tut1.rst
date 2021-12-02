@@ -886,10 +886,11 @@ other languages.
 
 Functions are closer to the concept of a pure mathematical
 function, which might be familiar to you if you've ever done functional
-programming. Essentially they can't access global state (except `const`) and can't
-produce side-effects (they are tagged with `{.noSideEffects.}`). They can still
-change their mutable arguments, which are those marked as `var` and any `ref`
-objects.
+programming. Essentially they are procedures with additional limitations set on
+them: they can't access global state (except `const`) and can't produce
+side-effects. The `func` keyword is basically an alias for the `proc` tagged
+with `{.noSideEffects.}`). Functions can still change their mutable arguments
+however, which are those marked as `var`, along with any `ref` objects.
 
 Unlike procedures, methods are dynamically dispatched. This sounds a bit
 complicated, but it is a concept closely related to inheritance and object oriented
