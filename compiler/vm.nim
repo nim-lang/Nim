@@ -434,8 +434,10 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       of tyFloat..tyFloat64:
         dest.intVal = int(src.floatVal)
       else:
-        let srcDist = (sizeof(src.intVal) - styp.size) * 8
-        let destDist = (sizeof(dest.intVal) - desttyp.size) * 8
+        let srcSize = getSize(c.config, styp)
+        let destSize = getSize(c.config, desttyp)
+        let srcDist = (sizeof(src.intVal) - srcSize) * 8
+        let destDist = (sizeof(dest.intVal) - destSize) * 8
         var value = cast[BiggestUInt](src.intVal)
         value = (value shl srcDist) shr srcDist
         value = (value shl destDist) shr destDist
