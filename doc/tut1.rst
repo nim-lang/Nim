@@ -598,7 +598,7 @@ and `readLine <io.html#readLine,File>`_ in the examples, the concept of a
 *procedure* is needed. You might be used to them being called *methods* or
 *functions* in other languages, but Nim
 `differentiates these concepts <tut1.html#procedures-funcs-and-methods>`_. In
-Nim new procedures are defined with the `proc` keyword:
+Nim, new procedures are defined with the `proc` keyword:
 
 .. code-block:: nim
     :test: "nim c $1"
