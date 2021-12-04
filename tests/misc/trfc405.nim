@@ -1,3 +1,6 @@
+
+{.experimental: "flexibleOptionalParams".}
+
 # https://github.com/nim-lang/RFCs/issues/405
 
 template main =

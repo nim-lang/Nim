@@ -4,6 +4,10 @@
 ## Changes affecting backward compatibility
 
 
+- Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
+  `experimental:flexibleOptionalParams`.
+
+## Standard library additions and changes
 
 ## Standard library additions and changes
 

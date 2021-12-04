@@ -207,7 +207,8 @@ type
     strictNotNil,
     overloadableEnums,
     strictEffects,
-    unicodeOperators
+    unicodeOperators,
+    flexibleOptionalParams
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
