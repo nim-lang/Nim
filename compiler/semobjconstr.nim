@@ -359,12 +359,17 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
   while objType.kind != tyObject:
     objType = objType.lastSon
     assert objType != nil
-  var constrCtx = initConstrContext(objType, newNodeI(nkObjConstr, info))
-  let initResult = semConstructTypeAux(c, constrCtx, {})
-  assert constrCtx.missingFields.len > 0
-  localError(c.config, info,
-    "The $1 type doesn't have a default value. The following fields must be initialized: $2.",
-    [typeToString(t), listSymbolNames(constrCtx.missingFields)])
+  if objType.kind == tyObject:
+    var constrCtx = initConstrContext(objType, newNodeI(nkObjConstr, info))
+    let initResult = semConstructTypeAux(c, constrCtx, {})
+    if constrCtx.missingFields.len > 0:
+      localError(c.config, info,
+        "The $1 type doesn't have a default value. The following fields must be initialized: $2." % [typeToString(t), listSymbolNames(constrCtx.missingFields)])
+  elif objType.kind == tyDistinct:
+    localError(c.config, info,
+      "The $1 distinct type doesn't have a default value." % typeToString(t))
+  else:
+    assert false, "Must not enter here."
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n[0], nil)
