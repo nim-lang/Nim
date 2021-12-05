@@ -3832,6 +3832,42 @@ executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro
 which enables a more succinct syntax for anonymous procedures resembling
 lambdas as they are in languages like JavaScript, C#, etc.
 
+Do notation
+-----------
+
+As a special convenience notation that keeps most elements of a
+regular proc expression, the `do` keyword can be used to pass
+anonymous procedures to routines:
+
+.. code-block:: nim
+  var cities = @["Frankfurt", "Tokyo", "New York", "Kyiv"]
+
+  sort(cities) do (x, y: string) -> int:
+    cmp(x.len, y.len)
+
+  # Less parentheses using the method plus command syntax:
+  cities = cities.map do (x: string) -> string:
+    "City of " & x
+
+`do` is written after the parentheses enclosing the regular proc params.
+The proc expression represented by the `do` block is appended to the routine
+call as the last argument. In calls using the command syntax, the `do` block
+will bind to the immediately preceding expression rather than the command call.
+
+`do` with a parameter list or pragma list corresponds to an anonymous `proc`,
+however `do` without parameters or pragmas is treated as a normal statement
+list. This allows macros to receive both indented statement lists as an
+argument in inline calls, as well as a direct mirror of Nim's routine syntax.
+
+.. code-block:: nim
+  # Passing a statement list to an inline macro:
+  macroResults.add quote do:
+    if not `ex`:
+      echo `info`, ": Check failed: ", `expString`
+
+  # Processing a routine definition in a macro:
+  rpc(router, "add") do (a, b: int) -> int:
+    result = a + b
 
 Func
 ----
