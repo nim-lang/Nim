@@ -118,6 +118,10 @@
                                                                                                   | `UTC-5 -> -050000`
   `g`          Era: AD or BC                                                                      | `300 AD -> AD`
                                                                                                   | `300 BC -> BC`
+  `w`          The week number of the year (0-53).                                                | `01/01/2021 -> 0`
+                                                                                                  | `12/31/2021 -> 52`
+  `ww`         Same as above but always two digits, 0 is prepended if the week is one digit.      | `01/01/2021 -> 00`
+                                                                                                  | `12/31/2021 -> 52`
   `fff`        Milliseconds display                                                               | `1000000 nanoseconds -> 1`
   `ffffff`     Microseconds display                                                               | `1000000 nanoseconds -> 1000`
   `fffffffff`  Nanoseconds display                                                                | `1000000 nanoseconds -> 1000000`
@@ -287,6 +291,8 @@ type
     ## that the `second` of a `DateTime` will never be a leap second.
   YeardayRange* = range[0..365]
   NanosecondRange* = range[0..999_999_999]
+
+  YearWeekRange = range[0 .. 52]
 
   Time* = object ## Represents a point in time.
     seconds: int64
@@ -1036,6 +1042,21 @@ proc timezone*(dt: DateTime): Timezone {.inline.} =
   assertDateTimeInitialized(dt)
   dt.timezone
 
+proc week*(dt: DateTime): YearWeekRange =
+  # See:
+  # * https://en.wikipedia.org/wiki/ISO_week_date#Calculating_the_week_number_from_a_month_and_day_of_the_month_or_ordinal_date
+  # * https://forum.nim-lang.org/t/6320
+
+  runnableExamples:
+    doAssert dateTime(2021, mJan, 1).week == 0
+    doAssert dateTime(2021, mDec, 31).week == 52
+
+  let dayOfYear = dt.yearday.int + 1
+  let dayOfWeek = dt.weekday.int + 1
+
+  ((10 + dayOfYear - dayOfWeek) / 7).int
+
+
 proc utcOffset*(dt: DateTime): int {.inline.} =
   ## The offset in seconds west of UTC, including
   ## any offset due to DST. Note that the sign of
@@ -1487,7 +1508,8 @@ type
     UUUU
     z, zz, zzz, zzzz
     ZZZ, ZZZZ
-    g
+    g,
+    w, ww
 
     # This is a special value used to mark literal format values.
     # See the doc comment for `TimeFormat.patterns`.
@@ -1642,6 +1664,8 @@ proc stringToPattern(str: string): FormatPattern =
   of "ZZZ": result = ZZZ
   of "ZZZZ": result = ZZZZ
   of "g": result = g
+  of "w": result = w
+  of "ww": result = ww
   else: raise newException(TimeFormatParseError,
                            "'" & str & "' is not a valid pattern")
 
@@ -1773,6 +1797,10 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string,
       else: assert false
   of g:
     result.add if dt.year < 1: "BC" else: "AD"
+  of w:
+    result.add $dt.week
+  of ww:
+    result.add dt.week.intToStr(2)
   of Lit: assert false # Can't happen
 
 proc parsePattern(input: string, pattern: FormatPattern, i: var int,
@@ -1949,6 +1977,12 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
       i.inc 2
     else:
       result = false
+  of w:
+    let weekOfYear = takeInt(1..2)
+    result = weekOfYear in YearWeekRange
+  of ww:
+    let weekOfYear = takeInt(2..2)
+    result = weekOfYear in YearWeekRange
   of Lit: doAssert false, "Can't happen"
 
 proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,

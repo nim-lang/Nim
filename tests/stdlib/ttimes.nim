@@ -433,6 +433,9 @@ block: # ttimes
     check dt.format("yyyy") == "+12346"
     check dt.format("uuuu") == "-12345"
 
+    check dt.format("w") == "0"
+    check dt.format("ww") == "00"
+
     expect ValueError:
       discard initTimeFormat("'")
 
@@ -489,6 +492,15 @@ block: # ttimes
     discard parse("foobar", "'foobar'")
     discard parse("foo'bar", "'foo''''bar'")
     discard parse("'", "''")
+
+    check parse("01/01/0001 1", "MM/dd/yyyy w").year == 1
+    check parse("01/01/0001 01", "MM/dd/yyyy ww").year == 1
+
+    expect TimeParseError:
+      discard parse("01/01/0001 99", "MM/dd/yyyy ww")
+
+    expect TimeParseError:
+      discard parse("01/01/0001 1", "MM/dd/yyyy ww")
 
     parseTestExcp("2000 A", "yyyy g")
 
@@ -646,3 +658,12 @@ block: # ttimes
     doAssert initDuration(milliseconds = 500).inMilliseconds == 500
     doAssert initDuration(milliseconds = -500).inMilliseconds == -500
     doAssert initDuration(nanoseconds = -999999999).inMilliseconds == -999
+
+  block: # week
+    check dateTime(2021, mJan, 1).week == 0
+    check dateTime(2021, mJan, 2).week == 0
+    check dateTime(2021, mJan, 3).week == 0
+    check dateTime(2021, mJan, 4).week == 1
+    check dateTime(2021, mDec, 29).week == 52
+    check dateTime(2021, mDec, 30).week == 52
+    check dateTime(2021, mDec, 31).week == 52
