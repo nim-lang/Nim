@@ -28,6 +28,9 @@ suite "inet_ntop tests":
     let r = inet_ntop(AF_INET, cast[pointer](ip4.s_addr.addr), buff[0].addr, buff.len.int32)
     let res = if r == nil: "" else: $r
     when defined(windows):
+      echo("WINDOWS inet_ntop: ip4: " & repr(ip4))
+      echo("WINDOWS inet_ntop: ip4:s_addr: " & repr(ip4.s_addr))
+      echo("WINDOWS inet_ntop: ip4:ptr: " & repr(cast[ptr array[0..3, uint8]](ip4.s_addr.addr)))
       echo("WINDOWS inet_ntop: buff:len: " & $(buff.len))
       echo("WINDOWS inet_ntop: buff: " & repr(buff))
       echo("WINDOWS inet_ntop: r: " & repr(r))
