@@ -23,10 +23,15 @@ suite "inet_ntop tests":
       discard wsaStartup(0x101'i16, wsa.addr)
   
   test "IP V4":
-    var ip4 = InAddr(s_addr: 0x10111213)
+    var ip4 = InAddr(s_addr: 0x10111213'u32)
     var buff: array[0..255, char]
-    let r = inet_ntop(AF_INET, cast[pointer](ip4.addr), buff[0].addr, buff.len.int32)
+    let r = inet_ntop(AF_INET, cast[pointer](ip4.s_addr.addr), buff[0].addr, buff.len.int32)
     let res = if r == nil: "" else: $r
+    when defined(windows):
+      echo("WINDOWS inet_ntop: buff:len: " & $(buff.len))
+      echo("WINDOWS inet_ntop: buff: " & repr(buff))
+      echo("WINDOWS inet_ntop: r: " & repr(r))
+      echo("WINDOWS inet_ntop: res: " & repr(res))
     check: res == "19.18.17.16"
       
   test "IP V6":
