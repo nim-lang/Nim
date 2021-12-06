@@ -164,7 +164,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mCard: result = newIntNodeT(toInt128(nimsets.cardSet(g.config, a)), n, g)
   of mBitnotI:
     if n.typ.isUnsigned:
-      result = newIntNodeT(bitnot(getInt(a)).maskBytes(int(n.typ.size)), n, g)
+      result = newIntNodeT(bitnot(getInt(a)).maskBytes(int(getSize(g.config, n.typ))), n, g)
     else:
       result = newIntNodeT(bitnot(getInt(a)), n, g)
   of mLengthArray: result = newIntNodeT(lengthOrd(g.config, a.typ), n, g)
@@ -276,23 +276,23 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mBitorI, mOr: result = newIntNodeT(bitor(getInt(a), getInt(b)), n, g)
   of mBitxorI, mXor: result = newIntNodeT(bitxor(getInt(a), getInt(b)), n, g)
   of mAddU:
-    let val = maskBytes(getInt(a) + getInt(b), int(n.typ.size))
+    let val = maskBytes(getInt(a) + getInt(b), int(getSize(g.config, n.typ)))
     result = newIntNodeT(val, n, g)
   of mSubU:
-    let val = maskBytes(getInt(a) - getInt(b), int(n.typ.size))
+    let val = maskBytes(getInt(a) - getInt(b), int(getSize(g.config, n.typ)))
     result = newIntNodeT(val, n, g)
     # echo "subU: ", val, " n: ", n, " result: ", val
   of mMulU:
-    let val = maskBytes(getInt(a) * getInt(b), int(n.typ.size))
+    let val = maskBytes(getInt(a) * getInt(b), int(getSize(g.config, n.typ)))
     result = newIntNodeT(val, n, g)
   of mModU:
-    let argA = maskBytes(getInt(a), int(a.typ.size))
-    let argB = maskBytes(getInt(b), int(a.typ.size))
+    let argA = maskBytes(getInt(a), int(getSize(g.config, a.typ)))
+    let argB = maskBytes(getInt(b), int(getSize(g.config, a.typ)))
     if argB != Zero:
       result = newIntNodeT(argA mod argB, n, g)
   of mDivU:
-    let argA = maskBytes(getInt(a), int(a.typ.size))
-    let argB = maskBytes(getInt(b), int(a.typ.size))
+    let argA = maskBytes(getInt(a), int(getSize(g.config, a.typ)))
+    let argB = maskBytes(getInt(b), int(getSize(g.config, a.typ)))
     if argB != Zero:
       result = newIntNodeT(argA div argB, n, g)
   of mLeSet: result = newIntNodeT(toInt128(ord(containsSets(g.config, a, b))), n, g)
