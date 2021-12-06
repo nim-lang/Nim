@@ -23,14 +23,34 @@ suite "inet_ntop tests":
       discard wsaStartup(0x101'i16, wsa.addr)
   
   test "IP V4":
+    # regular
     var ip4 = InAddr(s_addr: 0x10111213'u32)
+    # direct assign
+    var ip4v2: InAddr
+    ip4v2.s_addr = 0x10111213'u32
+    # pointer cast
+    var ip4v3 = InAddr()
+    var ip4v3_ptr = cast[ptr uint32](ip4v3.addr)
+    ip4v3_ptr[] = 0x10111213'u32
+    # pointer as inaddr
+    var ip4v4_num = 0x10111213'u32
+    var ip4v4: ptr InAddr = cast[ptr InAddr](ip4v4_num.addr())
+
     var buff: array[0..255, char]
     let r = inet_ntop(AF_INET, cast[pointer](ip4.s_addr.addr), buff[0].addr, buff.len.int32)
     let res = if r == nil: "" else: $r
     when defined(windows):
       echo("WINDOWS inet_ntop: ip4: " & repr(ip4))
+      echo("WINDOWS inet_ntop: ip4.s_addr.sizeof: " & $(ip4.s_addr.sizeof()))
       echo("WINDOWS inet_ntop: ip4:s_addr: " & repr(ip4.s_addr))
+      echo("WINDOWS inet_ntop: ip4.s_addr == 0x10111213'u32: " & $(ip4.s_addr == 0x10111213'u32))
       echo("WINDOWS inet_ntop: ip4:ptr: " & repr(cast[ptr array[0..3, uint8]](ip4.s_addr.addr)))
+      echo("WINDOWS inet_ntop: ip4v2:s_addr: " & repr(ip4v2.s_addr))
+      echo("WINDOWS inet_ntop: ip4v2.s_addr == 0x10111213'u32: " & $(ip4v2.s_addr == 0x10111213'u32))
+      echo("WINDOWS inet_ntop: ip4v3:s_addr: " & repr(ip4v3.s_addr))
+      echo("WINDOWS inet_ntop: ip4v3.s_addr == 0x10111213'u32: " & $(ip4v3.s_addr == 0x10111213'u32))
+      echo("WINDOWS inet_ntop: ip4v4:s_addr: " & repr(ip4v4.s_addr))
+      echo("WINDOWS inet_ntop: ip4v4.s_addr == 0x10111213'u32: " & $(ip4v4.s_addr == 0x10111213'u32))
       echo("WINDOWS inet_ntop: buff:len: " & $(buff.len))
       echo("WINDOWS inet_ntop: buff: " & repr(buff))
       echo("WINDOWS inet_ntop: r: " & repr(r))
