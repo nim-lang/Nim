@@ -15,10 +15,10 @@ jobs:
   strategy:
     matrix:
       Linux_amd64:
-        vmImage: 'ubuntu-16.04'
+        vmImage: 'ubuntu-18.04'
         CPU: amd64
       Linux_i386:
-        vmImage: 'ubuntu-16.04'
+        vmImage: 'ubuntu-18.04'
         CPU: i386
       OSX_amd64:
         vmImage: 'macOS-10.15'
@@ -31,7 +31,7 @@ jobs:
         vmImage: 'windows-2019'
         CPU: amd64
       Linux_amd64_pkg:
-        vmImage: 'ubuntu-16.04'
+        vmImage: 'ubuntu-18.04'
         CPU: amd64
         NIM_TEST_PACKAGES: true
       OSX_amd64_pkg:
