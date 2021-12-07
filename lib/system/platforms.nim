@@ -36,7 +36,8 @@ type
     riscv32,                   ## RISC-V 32-bit processor
     riscv64,                   ## RISC-V 64-bit processor
     wasm32,                    ## WASM, 32-bit
-    e2k                        ## MCST Elbrus 2000
+    e2k,                       ## MCST Elbrus 2000
+    loongarch64                ## LoongArch 64-bit processor
 
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
     none, dos, windows, os2, linux, morphos, skyos, solaris,
@@ -95,5 +96,6 @@ const
                elif defined(riscv64): CpuPlatform.riscv64
                elif defined(wasm32): CpuPlatform.wasm32
                elif defined(e2k): CpuPlatform.e2k
+               elif defined(loongarch64): CpuPlatform.loongarch64
                else: CpuPlatform.none
     ## the CPU this program will run on.
