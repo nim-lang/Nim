@@ -57,7 +57,7 @@ pkg "nimfp", true, "nim c -o:nfp -r src/fp.nim"
 # pkg "nimlsp", true
 # pkg "nimly", true
 # pkg "nimongo", true, "nimble test_ci"
-pkg "nimpy", false, "nim c -r tests/nimfrompy.nim"
+# pkg "nimpy", false, "nim c -r tests/nimfrompy.nim"
 # pkg "nimquery"
 pkg "nimsl", true
 pkg "nimsvg"
