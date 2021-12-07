@@ -118,18 +118,6 @@ when defined(windows):
         importc: "_telli64", header: "<io.h>", tags: [].}
       proc c_ftell(f: File): int64 =
         # Taken from https://pt.osdn.net/projects/mingw/scm/git/mingw-org-wsl/blobs/5.4-trunk/mingwrt/mingwex/stdio/ftelli64.c
-        # Emulate _ftelli64() on the basis of the underlying OS data stream
-        # pointer, as returned by the _telli64() function, (which, unlike the
-        # _ftelli64() function, has been exported from all known versions of
-        # MSVCRT.DLL).  Note that, unlike a previous MinGW implementation of the
-        # effectively equivalent ftello64() function, this does not rely on any
-        # undocumented assumptions regarding the content of the opaque fpos_t
-        # data, returned by the fgetpos() function; however, it does still
-        # require the use of fgetpos(), followed by fsetpos(), without moving
-        # the FILE stream pointer, to ensure that the internal buffer associated
-        # with the FILE stream is marked as "clean", and thus that the FILE
-        # stream pointer is synchronized with the underlying OS data stream
-        # pointer, before reading the latter.
         result = -1'i64
         var pos: int64
         if c_fgetpos(f, pos) == 0 and c_fsetpos(f, pos) == 0:
