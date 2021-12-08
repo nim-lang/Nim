@@ -217,7 +217,7 @@ else:
 
 proc atomicInc*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
-    result = atomicAddFetch(memLoc.addr, x, ATOMIC_RELAXED)
+    result = atomicAddFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
   elif someVcc and hasThreadSupport:
     result = addAndFetch(memLoc.addr, x)
     inc(result, x)
@@ -228,9 +228,9 @@ proc atomicInc*(memLoc: var int, x: int = 1): int =
 proc atomicDec*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
     when declared(atomicSubFetch):
-      result = atomicSubFetch(memLoc.addr, x, ATOMIC_RELAXED)
+      result = atomicSubFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
     else:
-      result = atomicAddFetch(memLoc.addr, -x, ATOMIC_RELAXED)
+      result = atomicAddFetch(memLoc.addr, -x, ATOMIC_SEQ_CST)
   elif someVcc and hasThreadSupport:
     result = addAndFetch(memLoc.addr, -x)
     dec(result, x)
