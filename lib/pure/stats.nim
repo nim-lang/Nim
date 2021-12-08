@@ -54,6 +54,7 @@ runnableExamples:
   doAssert statistics.kurtosisS() ~= -0.7000000000000008
 
 from math import FloatClass, sqrt, pow, round
+from algorithm import sorted
 
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
@@ -209,6 +210,13 @@ proc `$`*(a: RunningStat): string =
   result.add ")"
 
 # ---------------------- standalone array/seq stats ---------------------
+
+proc median*[T](x: openArray[T]): float =
+  ## Computes the median of `x`.
+  let sortedX = sorted x
+  if x.len mod 2 == 1:
+      return sortedX[x.len div 2].toFloat
+  return (sortedX[x.len div 2] + sortedX[x.len div 2 - 1]).toFloat / 2.0
 
 proc mean*[T](x: openArray[T]): float =
   ## Computes the mean of `x`.
