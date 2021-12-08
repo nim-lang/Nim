@@ -53,8 +53,8 @@ runnableExamples:
   doAssert statistics.kurtosis() ~= -1.0
   doAssert statistics.kurtosisS() ~= -0.7000000000000008
 
-from math import FloatClass, sqrt, pow, round
-from algorithm import sorted
+from std/math import FloatClass, sqrt, pow, round
+from std/algorithm import sorted
 
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
