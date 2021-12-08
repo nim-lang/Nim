@@ -109,8 +109,22 @@ when defined(windows):
   else:
     proc c_fseek(f: File, offset: int64, whence: cint): cint {.
       importc: "_fseeki64", header: "<stdio.h>", tags: [].}
-    proc c_ftell(f: File): int64 {.
-      importc: "_ftelli64", header: "<stdio.h>", tags: [].}
+    when defined(tcc):
+      proc c_fsetpos(f: File, pos: var int64): int32 {.
+        importc: "fsetpos", header: "<stdio.h>", tags: [].}
+      proc c_fgetpos(f: File, pos: var int64): int32 {.
+        importc: "fgetpos", header: "<stdio.h>", tags: [].}
+      proc c_telli64(f: cint): int64 {.
+        importc: "_telli64", header: "<io.h>", tags: [].}
+      proc c_ftell(f: File): int64 =
+        # Taken from https://pt.osdn.net/projects/mingw/scm/git/mingw-org-wsl/blobs/5.4-trunk/mingwrt/mingwex/stdio/ftelli64.c
+        result = -1'i64
+        var pos: int64
+        if c_fgetpos(f, pos) == 0 and c_fsetpos(f, pos) == 0:
+          result = c_telli64(c_fileno(f))
+    else:
+      proc c_ftell(f: File): int64 {.
+        importc: "_ftelli64", header: "<stdio.h>", tags: [].}
 else:
   proc c_fseek(f: File, offset: int64, whence: cint): cint {.
     importc: "fseeko", header: "<stdio.h>", tags: [].}
