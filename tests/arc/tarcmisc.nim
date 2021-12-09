@@ -30,6 +30,7 @@ ok
 true
 copying
 123
+42
 closed
 destroying variable: 20
 destroying variable: 10
@@ -482,3 +483,17 @@ method testMethod(self: BrokenObject) {.base.} =
 
 let mikasa = BrokenObject()
 mikasa.testMethod()
+
+# bug #19205
+type
+  InputSectionBase* = object of RootObj
+    relocations*: seq[int]   # traced reference. string has a similar SIGSEGV.
+  InputSection* = object of InputSectionBase
+
+proc fooz(sec: var InputSectionBase) =
+  if sec of InputSection:  # this line SIGSEGV.
+    echo 42
+
+var sec = create(InputSection)
+sec[] = InputSection(relocations: newSeq[int]())
+fooz sec[]

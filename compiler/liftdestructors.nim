@@ -941,6 +941,12 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   incl result.flags, sfFromGeneric
   incl result.flags, sfGeneratedOp
 
+proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  let xx = genBuiltin(c, mAccessTypeField, "accessTypeField", x)
+  let yy = genBuiltin(c, mAccessTypeField, "accessTypeField", y)
+  xx.typ = getSysType(c.g, c.info, tyPointer)
+  yy.typ = xx.typ
+  body.add newAsgnStmt(xx, yy)
 
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator): PSym =
@@ -980,6 +986,10 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
       fillStrOp(a, typ, result.ast[bodyPos], d, src)
     else:
       fillBody(a, typ, result.ast[bodyPos], d, src)
+      if tk == tyObject and a.kind in {attachedAsgn, attachedSink, attachedDeepCopy} and not lacksMTypeField(typ):
+        # bug #19205: Do not forget to also copy the hidden type field:
+        genTypeFieldCopy(a, typ, result.ast[bodyPos], d, src)
+
   if not a.canRaise: incl result.flags, sfNeverRaises
   completePartialOp(g, idgen.module, typ, kind, result)
 
