@@ -185,11 +185,13 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
   for it in mitems c.graph.ifaces[fromMod.position].converters:
     if filter:
       loadPackedSym(c.graph, it)
-      addConverter(c, it)
+      if sfExported in it.sym.flags:
+        addConverter(c, it)
   for it in mitems c.graph.ifaces[fromMod.position].patterns:
     if filter:
       loadPackedSym(c.graph, it)
-      addPattern(c, it)
+      if sfExported in it.sym.flags:
+        addPattern(c, it)
   for it in mitems c.graph.ifaces[fromMod.position].pureEnums:
     if filter:
       loadPackedSym(c.graph, it)
