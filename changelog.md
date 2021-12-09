@@ -14,7 +14,7 @@
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
   `experimental:flexibleOptionalParams`.
 
-- Remove `std/sharedstrings` module.
+- `std/sharedstrings` module is removed.
 
 ## Standard library additions and changes
 
