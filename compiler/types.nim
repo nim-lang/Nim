@@ -1700,3 +1700,6 @@ proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
       result = allowPointerToChar
     else:
       discard
+
+proc lacksMTypeField*(typ: PType): bool {.inline.} =
+  (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags
