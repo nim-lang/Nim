@@ -33,7 +33,7 @@ proc c_abort*() {.
 
 when defined(nimBuiltinSetjmp):
   type
-    C_JmpBuf* = array[5, int]
+    C_JmpBuf* = array[5, pointer]
 elif defined(linux) and defined(amd64):
   type
     C_JmpBuf* {.importc: "jmp_buf", header: "<setjmp.h>", bycopy.} = object
@@ -105,10 +105,17 @@ when defined(nimSigSetjmp):
       header: "<setjmp.h>", importc: "sigsetjmp".}
     c_sigsetjmp(jmpb, 0)
 elif defined(nimBuiltinSetjmp):
-  proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
-    importc: "__builtin_longjmp", nodecl.}
-  proc c_setjmp*(jmpb: C_JmpBuf): cint {.
-    importc: "__builtin_setjmp", nodecl.}
+  proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) =
+    # Apple's Clang++ has trouble converting array names to pointers, so we need
+    # to be very explicit here.
+    proc c_builtin_longjmp(jmpb: ptr pointer, retval: cint) {.
+      importc: "__builtin_longjmp", nodecl.}
+    # The second parameter needs to be 1 and sometimes the C/C++ compiler checks it.
+    c_builtin_longjmp(unsafeAddr jmpb[0], 1)
+  proc c_setjmp*(jmpb: C_JmpBuf): cint =
+    proc c_builtin_setjmp(jmpb: ptr pointer): cint {.
+      importc: "__builtin_setjmp", nodecl.}
+    c_builtin_setjmp(unsafeAddr jmpb[0])
 elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
   when defined(windows):
     # No `_longjmp()` on Windows.
