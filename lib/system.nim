@@ -1126,7 +1126,7 @@ const
     ## Possible values:
     ## `"i386"`, `"alpha"`, `"powerpc"`, `"powerpc64"`, `"powerpc64el"`,
     ## `"sparc"`, `"amd64"`, `"mips"`, `"mipsel"`, `"arm"`, `"arm64"`,
-    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`.
+    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, '"loongarch64"'.
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \

@@ -95,6 +95,7 @@ _nim() {
     '*--cpu=sparc64[compile for SPARC64 architecture]' \
     '*--cpu=vm[compile for Nim VM]' \
     '*--cpu=wasm32[compile to WASM 32]' \
+    '*--cpu=loongarch64[compile for LoongArch64 architecture]' \
     '*--gc=refc[use reference counting garbage collection]' \
     '*--gc=arc[use ARC garbage collection]' \
     '*--gc=orc[use ORC garbage collection]' \
