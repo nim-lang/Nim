@@ -60,3 +60,5 @@
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
   reality better. (Nim moved away from all techniques based on "tracing".)
 
+- There is a new switch `--nimMainPrefix:prefix` to influence the `NimMain` that the
+  compiler produces. This is particularly useful for generating static libraries.

@@ -390,6 +390,7 @@ type
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
+    nimMainPrefix*: string
     vmProfileData*: ProfileData
 
 proc parseNimVersion*(a: string): NimVer =

@@ -246,6 +246,9 @@ Also, C code requires you to specify a forward declaration for functions or
 the compiler will assume certain types for the return value and parameters
 which will likely make your program crash at runtime.
 
+The name `NimMain` can be influenced via the `--nimMainPrefix:prefix` switch.
+Use `--nimMainPrefix:MyLib` and the function to call is named `MyLibNimMain`.
+
 
 Nim invocation example from C
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

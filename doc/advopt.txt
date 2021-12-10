@@ -135,6 +135,8 @@ Advanced options:
   --cppCompileToNamespace:namespace
                             use the provided namespace for the generated C++ code,
                             if no namespace is provided "Nim" will be used
+  --nimMainPrefix:prefix    use `{prefix}NimMain` instead of `NimMain` in the produced
+                            C/C++ code
   --expandMacro:MACRO       dump every generated AST from MACRO
   --expandArc:PROCNAME      show how PROCNAME looks like after diverse optimizations
                             before the final backend phase (mostly ARC/ORC specific)
