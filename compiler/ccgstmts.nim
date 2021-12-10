@@ -1330,8 +1330,19 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])
     elif isDefined(p.config, "nimSigSetjmp"):
       linefmt(p, cpsStmts, "$1.status = sigsetjmp($1.context, 0);$n", [safePoint])
+    elif isDefined(p.config, "nimBuiltinSetjmp"):
+      linefmt(p, cpsStmts, "$1.status = __builtin_setjmp($1.context);$n", [safePoint])
     elif isDefined(p.config, "nimRawSetjmp"):
-      linefmt(p, cpsStmts, "$1.status = _setjmp($1.context);$n", [safePoint])
+      if isDefined(p.config, "mswindows"):
+        # The Windows `_setjmp()` takes two arguments, with the second being an
+        # undocumented buffer used by the SEH mechanism for stack unwinding.
+        # Mingw-w64 has been trying to get it right for years, but it's still
+        # prone to stack corruption during unwinding, so we disable that by setting
+        # it to NULL.
+        # More details: https://github.com/status-im/nimbus-eth2/issues/3121
+        linefmt(p, cpsStmts, "$1.status = _setjmp($1.context, 0);$n", [safePoint])
+      else:
+        linefmt(p, cpsStmts, "$1.status = _setjmp($1.context);$n", [safePoint])
     else:
       linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])
     startBlock(p, "if ($1.status == 0) {$n", [safePoint])
