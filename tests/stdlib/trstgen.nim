@@ -398,7 +398,7 @@ Some chapter
 
       Level2
       ------
-      
+
       Level3
       ~~~~~~
 
@@ -407,7 +407,7 @@ Some chapter
 
       More
       ~~~~
-      
+
       Another
       -------
 
@@ -683,7 +683,7 @@ Test1
   test "RST line blocks":
     let input2 = dedent"""
       Paragraph1
-      
+
       |
 
       Paragraph2"""
@@ -704,7 +704,7 @@ Test1
     # check that '|   ' with a few spaces is still parsed as new line
     let input4 = dedent"""
       | xxx
-      |      
+      |
       |     zzz"""
 
     let output4 = input4.toHtml
@@ -1548,3 +1548,30 @@ suite "RST/Code highlight":
 
     check strip(rstToHtml(pythonCode, {}, newStringTable(modeCaseSensitive))) ==
       strip(expected)
+
+
+suite "invalid targets":
+  test "invalid image target":
+    let input1 = dedent """.. image:: /images/myimage.jpg
+      :target: https://bar.com
+      :alt: Alt text for the image"""
+    let output1 = input1.toHtml
+    check output1 == """<a class="reference external" href="https://bar.com"><img src="/images/myimage.jpg" alt="Alt text for the image"/></a>"""
+
+    let input2 = dedent """.. image:: /images/myimage.jpg
+      :target: javascript://bar.com
+      :alt: Alt text for the image"""
+    let output2 = input2.toHtml
+    check output2 == """<img src="/images/myimage.jpg" alt="Alt text for the image"/>"""
+
+    let input3 = dedent """.. image:: /images/myimage.jpg
+      :target: bar.com
+      :alt: Alt text for the image"""
+    let output3 = input3.toHtml
+    check output3 == """<a class="reference external" href="bar.com"><img src="/images/myimage.jpg" alt="Alt text for the image"/></a>"""
+
+  test "invalid links":
+    check("(([Nim](https://nim-lang.org/)))".toHtml ==
+        """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))""")
+    check("(([Nim](javascript://nim-lang.org/)))".toHtml ==
+        """((<a class="reference external" href="">Nim</a>))""")
