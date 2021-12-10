@@ -31,7 +31,10 @@ proc c_abort*() {.
   importc: "abort", header: "<stdlib.h>", noSideEffect, noreturn.}
 
 
-when defined(linux) and defined(amd64):
+when defined(nimBuiltinSetjmp):
+  type
+    C_JmpBuf* = array[5, pointer]
+elif defined(linux) and defined(amd64):
   type
     C_JmpBuf* {.importc: "jmp_buf", header: "<setjmp.h>", bycopy.} = object
         abi: array[200 div sizeof(clong), clong]
@@ -92,18 +95,47 @@ when defined(macosx):
 elif defined(haiku):
   const SIGBUS* = cint(30)
 
-when defined(nimSigSetjmp) and not defined(nimStdSetjmp):
+# "nimRawSetjmp" is defined by default for certain platforms, so we need the
+# "nimStdSetjmp" escape hatch with it.
+when defined(nimSigSetjmp):
   proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
     header: "<setjmp.h>", importc: "siglongjmp".}
-  template c_setjmp*(jmpb: C_JmpBuf): cint =
+  proc c_setjmp*(jmpb: C_JmpBuf): cint =
     proc c_sigsetjmp(jmpb: C_JmpBuf, savemask: cint): cint {.
       header: "<setjmp.h>", importc: "sigsetjmp".}
     c_sigsetjmp(jmpb, 0)
+elif defined(nimBuiltinSetjmp):
+  proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) =
+    # Apple's Clang++ has trouble converting array names to pointers, so we need
+    # to be very explicit here.
+    proc c_builtin_longjmp(jmpb: ptr pointer, retval: cint) {.
+      importc: "__builtin_longjmp", nodecl.}
+    # The second parameter needs to be 1 and sometimes the C/C++ compiler checks it.
+    c_builtin_longjmp(unsafeAddr jmpb[0], 1)
+  proc c_setjmp*(jmpb: C_JmpBuf): cint =
+    proc c_builtin_setjmp(jmpb: ptr pointer): cint {.
+      importc: "__builtin_setjmp", nodecl.}
+    c_builtin_setjmp(unsafeAddr jmpb[0])
 elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
-  proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
-    header: "<setjmp.h>", importc: "_longjmp".}
-  proc c_setjmp*(jmpb: C_JmpBuf): cint {.
-    header: "<setjmp.h>", importc: "_setjmp".}
+  when defined(windows):
+    # No `_longjmp()` on Windows.
+    proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
+      header: "<setjmp.h>", importc: "longjmp".}
+    # The Windows `_setjmp()` takes two arguments, with the second being an
+    # undocumented buffer used by the SEH mechanism for stack unwinding.
+    # Mingw-w64 has been trying to get it right for years, but it's still
+    # prone to stack corruption during unwinding, so we disable that by setting
+    # it to NULL.
+    # More details: https://github.com/status-im/nimbus-eth2/issues/3121
+    proc c_setjmp*(jmpb: C_JmpBuf): cint =
+      proc c_setjmp_win(jmpb: C_JmpBuf, ctx: pointer): cint {.
+        header: "<setjmp.h>", importc: "_setjmp".}
+      c_setjmp_win(jmpb, nil)
+  else:
+    proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
+      header: "<setjmp.h>", importc: "_longjmp".}
+    proc c_setjmp*(jmpb: C_JmpBuf): cint {.
+      header: "<setjmp.h>", importc: "_setjmp".}
 else:
   proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
     header: "<setjmp.h>", importc: "longjmp".}
