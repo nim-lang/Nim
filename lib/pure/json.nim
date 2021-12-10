@@ -884,28 +884,63 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
   of tkNull:
     result = newJNull()
     discard getTok(p)
-  of tkCurlyLe:
-    result = newJObject()
-    discard getTok(p)
-    while p.tok != tkCurlyRi:
-      if p.tok != tkString:
-        raiseParseErr(p, "string literal as key")
-      var key = p.a
-      discard getTok(p)
-      eat(p, tkColon)
-      var val = parseJson(p, rawIntegers, rawFloats)
-      result[key] = val
-      if p.tok != tkComma: break
-      discard getTok(p)
-    eat(p, tkCurlyRi)
-  of tkBracketLe:
-    result = newJArray()
-    discard getTok(p)
-    while p.tok != tkBracketRi:
-      result.add(parseJson(p, rawIntegers, rawFloats))
-      if p.tok != tkComma: break
-      discard getTok(p)
-    eat(p, tkBracketRi)
+  of tkCurlyLe, tkBracketLe:
+    var insertPos: seq[JsonNode] = @[]
+    var key = ""
+    while true:
+      if insertPos.len > 0 and insertPos[^1].kind == JObject and p.tok != tkCurlyRi:
+        if p.tok != tkString:
+          raiseParseErr(p, "string literal as key")
+        else:
+          key = move p.a
+          discard getTok(p)
+          eat(p, tkColon)
+
+      template put(val) =
+        if insertPos.len > 0:
+          if insertPos[^1].kind == JObject:
+            insertPos[^1][key] = val
+          else:
+            insertPos[^1].add val
+
+      case p.tok
+      of tkString, tkInt, tkFloat, tkTrue, tkFalse, tkNull:
+        # this recursion for atoms is fine and could easily be avoided
+        # since it deals with atoms only.
+        let val = parseJson(p, rawIntegers, rawFloats)
+        put val
+        if p.tok == tkComma:
+          discard getTok(p)
+      of tkCurlyLe:
+        let a = newJObject()
+        put a
+        insertPos.add a
+        discard getTok(p)
+      of tkBracketLe:
+        let a = newJArray()
+        put a
+        insertPos.add a
+        discard getTok(p)
+      of tkCurlyRi:
+        if insertPos.len > 0 and insertPos[^1].kind == JObject:
+          result = insertPos.pop
+          discard getTok(p)
+          if insertPos.len == 0: break
+        else:
+          raiseParseErr(p, "{")
+        if p.tok == tkComma:
+          discard getTok(p)
+      of tkBracketRi:
+        if insertPos.len > 0 and insertPos[^1].kind == JArray:
+          result = insertPos.pop
+          discard getTok(p)
+          if insertPos.len == 0: break
+        else:
+          raiseParseErr(p, "{")
+        if p.tok == tkComma:
+          discard getTok(p)
+      else:
+        raiseParseErr(p, "{")
   of tkError, tkCurlyRi, tkBracketRi, tkColon, tkComma, tkEof:
     raiseParseErr(p, "{")
 
