@@ -385,6 +385,10 @@ of your program.
     NimMain() # initialize garbage collector memory, types and stack
 
 
+The name `NimMain` can be influenced via the `--nimMainPrefix:prefix` switch.
+Use `--nimMainPrefix:MyLib` and the function to call is named `MyLibNimMain`.
+
+
 Cross-compilation for iOS
 =========================
 
@@ -412,6 +416,9 @@ of your program.
 
 Note: XCode's "make clean" gets confused about the generated nim.c files,
 so you need to clean those files manually to do a clean build.
+
+The name `NimMain` can be influenced via the `--nimMainPrefix:prefix` switch.
+Use `--nimMainPrefix:MyLib` and the function to call is named `MyLibNimMain`.
 
 
 Cross-compilation for Nintendo Switch
