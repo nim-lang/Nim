@@ -22,6 +22,10 @@ suite "inet_ntop tests":
       var wsa: WSAData
       discard wsaStartup(0x101'i16, wsa.addr)
   
+  test "InAddr test":
+    var ip4 = InAddr(s_addr: 0x10111213'u32)
+    assert ip4.s_addr == 0x10111213'u32
+
   test "IP V4":
     var ip4 = 0x10111213
     var buff: array[0..255, char]
