@@ -163,6 +163,8 @@ nimRawSetjmp                     Use `_setjmp()/_longjmp()` on POSIX and `_setjm
 nimBuiltinSetjmp                 Use `__builtin_setjmp()/__builtin_longjmp()` for setjmp-based
                                  exceptions. This will not work if an exception is being thrown
                                  and caught inside the same procedure. Useful for benchmarking.
+==========================       ============================================
+
 
 Configuration files
 -------------------
