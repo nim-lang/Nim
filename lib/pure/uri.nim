@@ -175,6 +175,8 @@ func parseAuthority(authority: string, result: var Uri) =
       result.isIpv6 = true
     of ']':
       inIPv6 = false
+    of '\0':
+      break
     else:
       if inPort:
         result.port.add(authority[i])
