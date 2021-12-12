@@ -129,3 +129,19 @@ when not defined(windows):
           msg.contains("certificate verify failed")):
           echo "CVerifyPeer exception: " & msg
           check(false)
+
+    test "HttpClient with CVerifyPeerUseEnvVars":
+      const port = 12346.Port
+      let t = spawn runServer(port)
+      sleep(100)
+
+      putEnv("SSL_CERT_FILE", getCurrentDir() / certFile)
+      var client = newHttpClient(sslContext=newContext(verifyMode=CVerifyPeerUseEnvVars))
+      try:
+        log "client: connect"
+        discard client.getContent("https://127.0.0.1:12346")
+      except:
+        let msg = getCurrentExceptionMsg()
+        log "client: exception: " & msg
+        log "getContent should not have raised an exception"
+        fail()

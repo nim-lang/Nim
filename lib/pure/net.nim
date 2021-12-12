@@ -680,7 +680,8 @@ when defineSsl:
           # Scan for certs in known locations. For CVerifyPeerUseEnvVars also scan
           # the SSL_CERT_FILE and SSL_CERT_DIR env vars
           var found = false
-          for fn in scanSSLCertificates():
+          let useEnvVars = (if verifyMode == CVerifyPeerUseEnvVars: true else: false)
+          for fn in scanSSLCertificates(useEnvVars = useEnvVars):
             if newCTX.SSL_CTX_load_verify_locations(fn, nil) == VerifySuccess:
               found = true
               break
