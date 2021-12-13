@@ -649,6 +649,47 @@ proc copy*(p: JsonNode): JsonNode =
 
 # ------------- pretty printing ----------------------------------------------
 
+type
+  JsonIter = object
+    stack: seq[(JsonNode, int)]
+    tos: JsonNode
+    tosLen: int
+    pos: int
+
+proc initJsonIter(j: JsonNode): JsonIter =
+  result = JsonIter(stack: @[], tos: j, tosLen: j.len, pos: 0)
+
+proc push(it: var JsonIter; j: JsonNode) =
+  it.stack.add (it.tos, it.pos)
+  it.tosLen = j.len
+  it.tos = j
+  it.pos = 0
+
+type
+  Action = enum
+    actionElem, actionPop, actionEnd
+
+proc currentAndNext(it: var JsonIter): (JsonNode, string, Action) =
+  if it.pos < it.tosLen:
+    if it.tos.kind == JArray:
+      result = (it.tos.elems[it.pos], "", actionElem)
+    else:
+      var i = 0
+      for k, v in it.tos.fields:
+        if i == it.pos:
+          inc it.pos
+          return (v, k, actionElem)
+        inc i
+    inc it.pos
+  elif it.stack.len > 0:
+    result = (it.tos, "", actionPop)
+    let tmp = it.stack.pop()
+    it.tos = tmp[0]
+    it.pos = tmp[1]
+    it.tosLen = it.tos.len
+  else:
+    result = (nil, "", actionEnd)
+
 proc indent(s: var string, i: int) =
   s.add(spaces(i))
 
@@ -702,24 +743,64 @@ proc toUgly*(result: var string, node: JsonNode) =
   ##
   ## This provides higher efficiency than the `pretty` procedure as it
   ## does **not** attempt to format the resulting JSON to make it human readable.
-  var comma = false
-  case node.kind:
-  of JArray:
-    result.add "["
-    for child in node.elems:
-      if comma: result.add ","
-      else: comma = true
-      result.toUgly child
-    result.add "]"
-  of JObject:
-    result.add "{"
-    for key, value in pairs(node.fields):
-      if comma: result.add ","
-      else: comma = true
-      key.escapeJson(result)
-      result.add ":"
-      result.toUgly value
-    result.add "}"
+  case node.kind
+  of JArray, JObject:
+    if node.kind == JArray:
+      result.add "["
+    else:
+      result.add "{"
+
+    var it = initJsonIter(node)
+    var pendingComma = false
+    while true:
+      let (child, key, action) = currentAndNext(it)
+      case action
+      of actionPop:
+        if child.kind == JArray:
+          result.add "]"
+        else:
+          result.add "}"
+        pendingComma = true
+      of actionEnd: break
+      of actionElem:
+        if pendingComma:
+          result.add ","
+          pendingComma = false
+        if key.len > 0:
+          key.escapeJson(result)
+          result.add ":"
+        case child.kind
+        of JArray:
+          result.add "["
+          it.push child
+          pendingComma = false
+        of JObject:
+          result.add "{"
+          it.push child
+          pendingComma = false
+        of JInt:
+          result.addInt child.num
+          pendingComma = true
+        of JFloat:
+          result.addFloat child.fnum
+          pendingComma = true
+        of JString:
+          if child.isUnquoted:
+            result.add child.str
+          else:
+            escapeJson(child.str, result)
+          pendingComma = true
+        of JBool:
+          result.add(if child.bval: "true" else: "false")
+          pendingComma = true
+        of JNull:
+          result.add "null"
+          pendingComma = true
+
+    if node.kind == JArray:
+      result.add "]"
+    else:
+      result.add "}"
   of JString:
     if node.isUnquoted:
       result.add node.str

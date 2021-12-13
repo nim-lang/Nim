@@ -345,3 +345,11 @@ block:
     doAssert c == "18446744073709552000"
   else:
     doAssert c == "18446744073709551615"
+
+when not defined(js):
+  const
+    dataAsString = """[[], 1, 2, 3, 4, [{"a": 10, "b": 20}, "2", [3.0]], [], false, null, true, [true, false]]"""
+
+  let testData = parseJson(dataAsString)
+
+  doAssert $testData == dataAsString.replace(" ", "")
