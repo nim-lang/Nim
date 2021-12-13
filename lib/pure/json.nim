@@ -667,7 +667,7 @@ proc push(it: var JsonIter; j: JsonNode) =
 
 type
   Action = enum
-    actionElem, actionPop, actionEnd
+    actionElem, actionKeyVal, actionPop, actionEnd
 
 proc currentAndNext(it: var JsonIter): (JsonNode, string, Action) =
   if it.pos < it.tosLen:
@@ -678,7 +678,7 @@ proc currentAndNext(it: var JsonIter): (JsonNode, string, Action) =
       for k, v in it.tos.fields:
         if i == it.pos:
           inc it.pos
-          return (v, k, actionElem)
+          return (v, k, actionKeyVal)
         inc i
     inc it.pos
   elif it.stack.len > 0:
@@ -762,11 +762,11 @@ proc toUgly*(result: var string, node: JsonNode) =
           result.add "}"
         pendingComma = true
       of actionEnd: break
-      of actionElem:
+      of actionElem, actionKeyVal:
         if pendingComma:
           result.add ","
           pendingComma = false
-        if key.len > 0:
+        if action == actionKeyVal:
           key.escapeJson(result)
           result.add ":"
         case child.kind
@@ -815,60 +815,87 @@ proc toUgly*(result: var string, node: JsonNode) =
   of JNull:
     result.add "null"
 
-proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
-              lstArr = false, currIndent = 0) =
+proc toPretty(result: var string, node: JsonNode, indent = 2) =
   case node.kind
-  of JObject:
-    if lstArr: result.indent(currIndent) # Indentation
-    if node.fields.len > 0:
-      result.add("{")
-      result.nl(ml) # New line
-      var i = 0
-      for key, val in pairs(node.fields):
-        if i > 0:
-          result.add(",")
-          result.nl(ml) # New Line
-        inc i
-        # Need to indent more than {
-        result.indent(newIndent(currIndent, indent, ml))
-        escapeJson(key, result)
-        result.add(": ")
-        toPretty(result, val, indent, ml, false,
-                 newIndent(currIndent, indent, ml))
-      result.nl(ml)
-      result.indent(currIndent) # indent the same as {
-      result.add("}")
+  of JArray, JObject:
+    if node.kind == JArray:
+      result.add "["
     else:
-      result.add("{}")
+      result.add "{"
+    var ml = true
+    result.nl(ml)
+    var currIndent = 0
+
+    var it = initJsonIter(node)
+    var pendingComma = false
+    while true:
+      let (child, key, action) = currentAndNext(it)
+      case action
+      of actionPop:
+        result.nl(ml)
+        result.indent currIndent
+        if child.kind == JArray:
+          result.add "]"
+        else:
+          result.add "}"
+        pendingComma = true
+        dec currIndent, indent
+      of actionEnd: break
+      of actionElem, actionKeyVal:
+        if pendingComma:
+          result.add ","
+          result.nl(ml) # New Line
+          pendingComma = false
+        result.indent(newIndent(currIndent, indent, ml))
+        if action == actionKeyVal:
+          key.escapeJson(result)
+          result.add ": "
+        case child.kind
+        of JArray:
+          result.add "["
+          result.nl(ml)
+          it.push child
+          inc currIndent, indent
+          pendingComma = false
+        of JObject:
+          result.add "{"
+          result.nl(ml)
+          it.push child
+          inc currIndent, indent
+          pendingComma = false
+        of JInt:
+          result.addInt child.num
+          pendingComma = true
+        of JFloat:
+          result.addFloat child.fnum
+          pendingComma = true
+        of JString:
+          if child.isUnquoted:
+            result.add child.str
+          else:
+            escapeJson(child.str, result)
+          pendingComma = true
+        of JBool:
+          result.add(if child.bval: "true" else: "false")
+          pendingComma = true
+        of JNull:
+          result.add "null"
+          pendingComma = true
+
+    result.nl(ml)
+    if node.kind == JArray:
+      result.add "]"
+    else:
+      result.add "}"
   of JString:
-    if lstArr: result.indent(currIndent)
     toUgly(result, node)
   of JInt:
-    if lstArr: result.indent(currIndent)
     result.addInt(node.num)
   of JFloat:
-    if lstArr: result.indent(currIndent)
     result.addFloat(node.fnum)
   of JBool:
-    if lstArr: result.indent(currIndent)
     result.add(if node.bval: "true" else: "false")
-  of JArray:
-    if lstArr: result.indent(currIndent)
-    if len(node.elems) != 0:
-      result.add("[")
-      result.nl(ml)
-      for i in 0..len(node.elems)-1:
-        if i > 0:
-          result.add(",")
-          result.nl(ml) # New Line
-        toPretty(result, node.elems[i], indent, ml,
-            true, newIndent(currIndent, indent, ml))
-      result.nl(ml)
-      result.indent(currIndent)
-      result.add("]")
-    else: result.add("[]")
   of JNull:
-    if lstArr: result.indent(currIndent)
     result.add("null")
 
 proc pretty*(node: JsonNode, indent = 2): string =
