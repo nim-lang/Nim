@@ -1,0 +1,3 @@
+[submodule "nsis"]
+	path = nsis
+	url = https://github.com/nim-libs/nsis.git
