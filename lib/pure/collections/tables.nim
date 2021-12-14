@@ -2342,6 +2342,16 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     if val != 0:
       insertImpl()
 
+proc dec*[A](t: var CountTable[A], key: A, val = 1) =
+  ## Decrements `t[key]` by `val` (default: 1).
+  runnableExamples:
+    var a = toCountTable("aaabbbbbbbbbbb")
+    a.dec('a')
+    a.dec('b', 10)
+    doAssert a == toCountTable("aab")
+
+  inc(t, key, -val)
+
 proc len*[A](t: CountTable[A]): int =
   ## Returns the number of keys in `t`.
   result = t.counter
