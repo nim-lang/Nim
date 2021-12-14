@@ -27,11 +27,11 @@ Options:
   -a, --assertions:on|off   turn assertions on|off
   --opt:none|speed|size     optimize not at all or for speed|size
                             Note: use -d:release for a release build!
-  --debugger:native         Use native debugger (gdb)
+  --debugger:native         use native debugger (gdb)
   --app:console|gui|lib|staticlib
                             generate a console app|GUI app|DLL|static library
   -r, --run                 run the compiled program with given arguments
-  --eval:cmd                evaluates nim code directly; e.g.: `nim --eval:"echo 1"`
+  --eval:cmd                evaluate nim code directly; e.g.: `nim --eval:"echo 1"`
                             defaults to `e` (nimscript) but customizable:
                             `nim r --eval:'for a in stdin.lines: echo a'`
   --fullhelp                show all command line switches
