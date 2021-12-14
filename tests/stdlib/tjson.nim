@@ -372,7 +372,8 @@ block:
     [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
 """
 
-  try:
-    discard parseJson(a)
-  except JsonParsingError:
-    doAssert getCurrentExceptionMsg().contains("] expected")
+  when not defined(js):
+    try:
+      discard parseJson(a)
+    except JsonParsingError:
+      doAssert getCurrentExceptionMsg().contains("] expected")
