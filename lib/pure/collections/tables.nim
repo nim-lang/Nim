@@ -1255,6 +1255,24 @@ type
     ## For creating a new empty OrderedTableRef, use `newOrderedTable proc
     ## <#newOrderedTable>`_.
 
+proc firstPositionHidden*[A, B](t: OrderedTable[A, B]): int =
+  ## Undocumented API for iteration. Used by the JSON module.
+  if t.counter > 0:
+    result = t.first
+    while result >= 0 and not isFilled(t.data[result].hcode):
+      result = t.data[result].next
+  else:
+    result = -1
+
+proc nextPositionHidden*[A, B](t: OrderedTable[A, B]; current: int): int =
+  ## Undocumented API for iteration. Used by the JSON module.
+  result = t.data[current].next
+  while result >= 0 and not isFilled(t.data[result].hcode):
+    result = t.data[result].next
+
+proc pairAtHidden*[A, B](t: OrderedTable[A, B]; current: int): (A, B) {.inline.} =
+  ## Undocumented API for iteration. Used by the JSON module.
+  result = (t.data[current].key, t.data[current].val)
 
 # ------------------------------ helpers ---------------------------------
 

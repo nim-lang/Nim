@@ -353,3 +353,13 @@ when not defined(js):
   let testData = parseJson(dataAsString)
 
   doAssert $testData == dataAsString.replace(" ", "")
+
+
+  var testDataB = parseJson"""
+    {"a": 10, "b": 20, "c": 30, "d": 40, "e": 50, "f": 60, "g": 70, "h": 80, "i": 100, "j": 110, "k": 110, "l": 110, "m": 140}
+  """
+
+  testDataB.delete "a"
+  testDataB.delete "j"
+
+  doAssert $testDataB == """{"b":20,"c":30,"d":40,"e":50,"f":60,"g":70,"h":80,"i":100,"k":110,"l":110,"m":140}"""

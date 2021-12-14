@@ -653,40 +653,44 @@ type
   JsonIter = object
     stack: seq[(JsonNode, int)]
     tos: JsonNode
-    tosLen: int
+    tosEnd: int
     pos: int
 
 proc initJsonIter(j: JsonNode): JsonIter =
-  result = JsonIter(stack: @[], tos: j, tosLen: j.len, pos: 0)
+  if j.kind == JArray:
+    result = JsonIter(stack: @[], tos: j, tosEnd: j.len, pos: 0)
+  else:
+    result = JsonIter(stack: @[], tos: j, tosEnd: -1, pos: firstPositionHidden(j.fields))
 
 proc push(it: var JsonIter; j: JsonNode) =
   it.stack.add (it.tos, it.pos)
-  it.tosLen = j.len
   it.tos = j
-  it.pos = 0
+  if j.kind == JArray:
+    it.tosEnd = j.len
+    it.pos = 0
+  else:
+    it.tosEnd = -1
+    it.pos = firstPositionHidden(j.fields)
 
 type
   Action = enum
     actionElem, actionKeyVal, actionPop, actionEnd
 
 proc currentAndNext(it: var JsonIter): (JsonNode, string, Action) =
-  if it.pos < it.tosLen:
+  if it.pos != it.tosEnd:
     if it.tos.kind == JArray:
       result = (it.tos.elems[it.pos], "", actionElem)
+      inc it.pos
     else:
-      var i = 0
-      for k, v in it.tos.fields:
-        if i == it.pos:
-          inc it.pos
-          return (v, k, actionKeyVal)
-        inc i
-    inc it.pos
+      let x = pairAtHidden(it.tos.fields, it.pos)
+      result = (x[1], x[0], actionKeyVal)
+      it.pos = nextPositionHidden(it.tos.fields, it.pos)
   elif it.stack.len > 0:
     result = (it.tos, "", actionPop)
     let tmp = it.stack.pop()
     it.tos = tmp[0]
     it.pos = tmp[1]
-    it.tosLen = it.tos.len
+    it.tosEnd = if it.tos.kind == JArray: it.tos.len else: -1
   else:
     result = (nil, "", actionEnd)
 
