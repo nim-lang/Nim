@@ -2324,8 +2324,14 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
     else:
       insertImpl()
 
-template incTempl[A](t: var CountTable[A], key: A, val = 1) =
+proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## Increments `t[key]` by `val` (default: 1).
+  runnableExamples:
+    var a = toCountTable("aab")
+    a.inc('a')
+    a.inc('b', 10)
+    doAssert a == toCountTable("aaabbbbbbbbbbb")
+
   assert(not t.isSorted, "CountTable must not be used after sorting")
   var index = rawGet(t, key)
   if index >= 0:
@@ -2336,17 +2342,6 @@ template incTempl[A](t: var CountTable[A], key: A, val = 1) =
     if val != 0:
       insertImpl()
 
-
-proc inc*[A](t: var CountTable[A], key: A, val = 1) =
-  ## Increments `t[key]` by `val` (default: 1).
-  runnableExamples:
-    var a = toCountTable("aab")
-    a.inc('a')
-    a.inc('b', 10)
-    doAssert a == toCountTable("aaabbbbbbbbbbb")
-  
-  incTempl(t, key, val)
-
 proc dec*[A](t: var CountTable[A], key: A, val = 1) =
   ## Decrements `t[key]` by `val` (default: 1).
   runnableExamples:
@@ -2355,7 +2350,15 @@ proc dec*[A](t: var CountTable[A], key: A, val = 1) =
     a.dec('b', 10)
     doAssert a == toCountTable("aab")
 
-  incTempl(t, key, -val)
+  assert(not t.isSorted, "CountTable must not be used after sorting")
+  var index = rawGet(t, key)
+  if index >= 0:
+    dec(t.data[index].val, val)
+    if t.data[index].val == 0:
+      delImplIdx(t, index, cntMakeEmpty, cntCellEmpty, cntCellHash)
+  else:
+    if val != 0:
+      insertImpl()
 
 proc len*[A](t: CountTable[A]): int =
   ## Returns the number of keys in `t`.
