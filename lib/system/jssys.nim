@@ -587,7 +587,7 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
     else:
       asm "`result` = (`dest` === null || `dest` === undefined) ? {} : `dest`;"
     nimCopyAux(result, src, ti.node)
-  of tyArrayConstr:
+  of tyArrayConstr, tyArray:
     # In order to prevent a type change (TypedArray -> Array) and to have better copying performance,
     # arrays constructors are considered separately
     asm """
@@ -613,7 +613,7 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
         }
       }
     """
-  of tySequence, tyOpenArray, tyArray:
+  of tySequence, tyOpenArray:
     asm """
       if (`src` === null) {
         `result` = null;
