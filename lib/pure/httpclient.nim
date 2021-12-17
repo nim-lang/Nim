@@ -856,7 +856,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       # that should be appended to the previous header, see bug #19261
       # Also, if there was no header before this, we just ignore the line
       elif prevHeader != "":
-        result.headers.table.mgetOrPut(prevHeader, @[""])[^1].add line.strip()
+        result.headers.table[prevHeader][^1].add line.strip()
 
       if result.headers.len > headerLimit:
         httpError("too many headers")
