@@ -842,21 +842,19 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       # Parse headers
       var name = ""
       var leadingSpaces = skipWhitespace(line, linei)
-      inc(linei, leadingSpaces)
       if leadingSpaces == 0:
         var le = parseUntil(line, name, ':', linei)
-        if le <= 0: httpError("invalid headers")
+        if le <= 0 or le >= line.len: httpError("invalid headers")
         prevHeader = name
         inc(linei, le)
         if line[linei] != ':': httpError("invalid headers")
         inc(linei) # Skip :
-
         result.headers.add(name, line[linei .. ^1].strip())
       # If there are spaces before the header name, it's actually a value
       # that should be appended to the previous header, see bug #19261
       # Also, if there was no header before this, we just ignore the line
       elif prevHeader != "":
-        result.headers.table[prevHeader][^1].add line.strip()
+        result.headers.table[result.headers.toCaseInsensitive(prevHeader)][^1].add line.strip()
 
       if result.headers.len > headerLimit:
         httpError("too many headers")
