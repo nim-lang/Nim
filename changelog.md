@@ -15,11 +15,13 @@
   `experimental:flexibleOptionalParams`.
 
 - `std/sharedstrings` module is removed.
+- Constants `colors.colPaleVioletRed` and `colors.colMediumPurple` changed to match the CSS color standard.
 
 ## Standard library additions and changes
 
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional
   filename argument for more informative errors.
+- Module `colors` expanded with missing colors from the CSS color standard.
 
 ## `std/smtp`
 
