@@ -522,19 +522,22 @@ iterator split*(s: string, sep: Regex; maxsplit = -1): string =
       @["", "this", "is", "an", "example", ""]
   var last = 0
   var splits = maxsplit
-  var x: int
+  var x = -1
+  if len(s) == 0:
+    last = 1
+  if matchLen(s, sep, 0) == 0:
+    x = 0
   while last <= len(s):
     var first = last
     var sepLen = 1
+    if x == 0:
+      inc(last)
     while last < len(s):
       x = matchLen(s, sep, last)
       if x >= 0:
         sepLen = x
         break
       inc(last)
-    if x == 0:
-      if last >= len(s): break
-      inc last
     if splits == 0: last = len(s)
     yield substr(s, first, last-1)
     if splits == 0: break
