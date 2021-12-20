@@ -1718,8 +1718,8 @@ proc extractDocCommentsAndRunnables*(n: NimNode): NimNode =
     case ni.kind
     of nnkCommentStmt:
       result.add ni
-    of nnkCall:
-      if ni[0].kind == nnkIdent and ni[0].strVal == "runnableExamples":
+    of nnkCall, nnkCommand:
+      if ni[0].kind == nnkIdent and ni[0].eqIdent "runnableExamples":
         result.add ni
       else: break
     else: break

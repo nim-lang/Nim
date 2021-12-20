@@ -66,3 +66,23 @@ block: # unpackVarargs
     doAssert call1(toString) == ""
     doAssert call1(toString, 10) == "10"
     doAssert call1(toString, 10, 11) == "1011"
+
+block: # extractDocCommentsAndRunnables
+  macro checkRunnables(prc: untyped) =
+    let runnables = prc.body.extractDocCommentsAndRunnables()
+    doAssert runnables[0][0].eqIdent("runnableExamples")
+
+  macro checkComments(comment: static[string], prc: untyped) =
+    let comments = prc.body.extractDocCommentsAndRunnables()
+    doAssert comments[0].strVal == comment
+
+  proc a() {.checkRunnables.} =
+    runnableExamples: discard
+    discard
+
+  proc b() {.checkRunnables.} =
+    runnableExamples "-d:ssl": discard
+    discard
+
+  proc c() {.checkComments("Hello world").} =
+    ## Hello world
