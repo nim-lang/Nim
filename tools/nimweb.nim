@@ -95,7 +95,6 @@ Options:
   --onlyDocs          build only the documentation
   --git.url           override base url in generated doc links
   --git.commit        override commit/branch in generated doc links 'source'
-  --git.devel         override devel branch in generated doc links 'edit'
 Compile_options:
   will be passed to the Nim compiler
 """
@@ -180,8 +179,6 @@ proc parseCmdLine(c: var TConfigData) =
         c.gitURL = val
       of "git.commit":
         c.nimArgs.add("--git.commit:" & val & " ")
-      of "git.devel":
-        c.nimArgs.add("--git.devel:" & val & " ")
       else:
         echo("Invalid argument '$1'" % [key])
         quit(usage)

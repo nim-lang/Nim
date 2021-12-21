@@ -898,10 +898,9 @@ proc genSeeSrc(d: PDoc, path: string, line: int): string =
         if NimPatch mod 2 == 1: "devel"
         else: "version-$1-$2" % [$NimMajor, $NimMinor]
       let commit = getConfigVar(d.conf, "git.commit", defaultBranch)
-      let develBranch = getConfigVar(d.conf, "git.devel", "devel")
       dispA(d.conf, result, "$1", "", [docItemSeeSrc % [
           "path", path.string, "line", $line, "url", gitUrl,
-          "commit", commit, "devel", develBranch]])
+          "commit", commit]])
 
 proc symbolPriority(k: TSymKind): int =
   result = case k
