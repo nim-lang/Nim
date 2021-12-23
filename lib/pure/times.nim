@@ -829,8 +829,6 @@ proc abs*(a: Duration): Duration =
       initDuration(milliseconds = 1500)
   initDuration(seconds = abs(a.seconds), nanoseconds = -a.nanosecond)
 
-when defined(nimHasCustomLiterals): include includes/duration_lit
-
 #
 # Time
 #
@@ -2651,6 +2649,9 @@ when not defined(js):
         toFloat(ts.tv_nsec.int) / 1_000_000_000
     else:
       result = toFloat(int(getClock())) / toFloat(clocksPerSec)
+
+
+when defined(nimHasCustomLiterals): include includes/duration_lit
 
 
 #
