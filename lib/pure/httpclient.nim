@@ -842,19 +842,22 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       # Parse headers
       var name = ""
       var leadingSpaces = skipWhitespace(line, linei)
-      if leadingSpaces == 0:
-        var le = parseUntil(line, name, ':', linei)
-        if le <= 0 or le >= line.len: httpError("invalid headers")
-        prevHeader = name
-        inc(linei, le)
-        if line[linei] != ':': httpError("invalid headers")
-        inc(linei) # Skip :
-        result.headers.add(name, line[linei .. ^1].strip())
-      # If there are spaces before the header name, it's actually a value
-      # that should be appended to the previous header, see bug #19261
-      # Also, if there was no header before this, we just ignore the line
-      elif prevHeader != "":
-        result.headers.table[result.headers.toCaseInsensitive(prevHeader)][^1].add line.strip()
+      var le = parseUntil(line, name, ':', linei)
+      # We only check lines that have `:` in them and don't have
+      # leading whitespace, so non-header lines are just ignored
+      if le < line.len:
+        if leadingSpaces == 0 and le < line.len:
+          if le <= 0: httpError("invalid headers")
+          prevHeader = name
+          inc(linei, le)
+          if line[linei] != ':': httpError("invalid headers")
+          inc(linei) # Skip :
+          result.headers.add(name, line[linei .. ^1].strip())
+        # If there are spaces before the header name, it's actually a value
+        # that should be appended to the previous header, see bug #19261
+        # Also, if there was no header before this, we just ignore the line
+        elif prevHeader != "":
+          result.headers.table[result.headers.toCaseInsensitive(prevHeader)][^1].add line.strip()
 
       if result.headers.len > headerLimit:
         httpError("too many headers")
