@@ -350,7 +350,7 @@ proc collectImpl(init, body: NimNode): NimNode {.since: (1, 1).} =
   if init != nil and init.kind == nnkCall:
     for i in 1 ..< init.len:
       call.add init[i]
-  result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
+  result = newBlockStmt(newStmtList(newVarStmt(res, call), resBody, res))
 
 macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
   ## Comprehension for seqs/sets/tables.

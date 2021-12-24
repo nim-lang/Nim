@@ -207,6 +207,14 @@ template main() =
       template foo =
         discard collect(newSeq, for i in 1..3: i)
       foo()
+    
+    block: # bug #19287 - collect should make a separate scope
+      let a = collect:
+        let n = 2
+        for i in 1..9:
+          n * i
+      doAssert a == @[2, 4, 6, 8, 10, 12, 14, 16, 18]
+      doAssert not declared(n)
 
 proc mainProc() =
   block: # dump
