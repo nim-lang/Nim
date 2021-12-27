@@ -37,10 +37,10 @@ parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
         | 'when' | 'var' | 'mixin'
 par = '(' optInd
-          ( &parKeyw (ifExpr \ complexOrSimpleStmt) ^+ ';'
-          | ';' (ifExpr \ complexOrSimpleStmt) ^+ ';'
+          ( &parKeyw (ifExpr / complexOrSimpleStmt) ^+ ';'
+          | ';' (ifExpr / complexOrSimpleStmt) ^+ ';'
           | pragmaStmt
-          | simpleExpr ( ('=' expr (';' (ifExpr \ complexOrSimpleStmt) ^+ ';' )? )
+          | simpleExpr ( ('=' expr (';' (ifExpr / complexOrSimpleStmt) ^+ ';' )? )
                        | (':' expr (',' exprColonEqExpr     ^+ ',' )? ) ) )
           optPar ')'
 literal = | INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
