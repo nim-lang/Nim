@@ -23,20 +23,21 @@ check errno_t vs cint
 
 when not defined(windows): discard
 else:
+  type wchar_t  {.importc: "wchar_t".} = int16
+
   proc setEnvironmentVariableA*(lpName, lpValue: cstring): int32 {.
     stdcall, dynlib: "kernel32", importc: "SetEnvironmentVariableA", sideEffect.}
     # same as winlean.setEnvironmentVariableA
 
   proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
   proc c_putenv_s(envname: cstring, envval: cstring): cint {.importc: "_putenv_s", header: "<stdlib.h>".}
-  proc c_wgetenv(varname: WideCString): WideCString {.importc: "_wgetenv", header: "<stdlib.h>".}
+  proc c_wgetenv(varname: ptr wchar_t): ptr wchar_t {.importc: "_wgetenv", header: "<stdlib.h>".}
 
   var errno {.importc, header: "<errno.h>".}: cint
-  type wchar_t  {.importc: "wchar_t".} = int16
   var gWenviron {.importc:"_wenviron".}: ptr ptr wchar_t
     # xxx `ptr UncheckedArray[WideCString]` did not work
 
-  proc mbstowcs_s(pReturnValue: ptr csize_t, wcstr: WideCString, sizeInWords: csize_t, mbstr: cstring, count: csize_t): cint {.importc: "mbstowcs_s", header: "<stdlib.h>".}
+  proc mbstowcs_s(pReturnValue: ptr csize_t, wcstr: ptr wchar_t, sizeInWords: csize_t, mbstr: cstring, count: csize_t): cint {.importc: "mbstowcs_s", header: "<stdlib.h>".}
     # xxx cint vs errno_t?
 
   proc setEnvImpl*(name: cstring, value: cstring, overwrite: cint): cint =
@@ -77,13 +78,15 @@ else:
     if gWenviron != nil:
       # var buf: array[MAX_ENV + 1, WideCString]
       var buf: array[MAX_ENV + 1, Utf16Char]
-      let buf2 = cast[WideCString](buf[0].addr)
+      let buf2 = cast[ptr wchar_t](buf[0].addr)
       var len: csize_t
       if mbstowcs_s(len.addr, buf2, buf.len.csize_t, name, MAX_ENV) != 0:
         errno = EINVAL
         return -1
-      c_wgetenv(buf2)[0] = '\0'.Utf16Char
-      c_wgetenv(buf2)[1] = '='.Utf16Char
+      let ptrToEnv = cast[WideCString](c_wgetenv(buf2))
+      ptrToEnv[0] = '\0'.Utf16Char
+      let ptrToEnv2 = cast[WideCString](c_wgetenv(buf2))
+      ptrToEnv2[1] = '='.Utf16Char
 
     # And now, we have to update the outer environment to have a proper empty value.
     if setEnvironmentVariableA(name, value) == 0:
