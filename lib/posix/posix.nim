@@ -772,6 +772,12 @@ else:
   proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
                      a3: var Timespec): cint {.importc, header: "<signal.h>".}
 
+when defined(sunos) or defined(solaris):
+  # The following compile time flag is needed on Illumos/Solaris to use the POSIX
+  # `sigwait` implementation. See the documentation here:
+  # https://docs.oracle.com/cd/E19455-01/806-5257/gen-75415/index.html
+  {.passc: "-D_POSIX_PTHREAD_SEMANTICS".}
+
 proc sigwait*(a1: var Sigset, a2: var cint): cint {.
   importc, header: "<signal.h>".}
 proc sigwaitinfo*(a1: var Sigset, a2: var SigInfo): cint {.
