@@ -260,7 +260,7 @@ proc contentLength*(response: Response | AsyncResponse): int =
   ## A `ValueError` exception will be raised if the value is not an integer.
   var contentLengthHeader = response.headers.getOrDefault("Content-Length")
   result = contentLengthHeader.parseInt()
-  doAssert(result >= 0 and result <= high(BiggestInt))
+  doAssert result >= 0
 
 proc lastModified*(response: Response | AsyncResponse): DateTime =
   ## Retrieves the specified response's last modified time.
