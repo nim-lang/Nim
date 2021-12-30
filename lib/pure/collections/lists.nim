@@ -531,11 +531,10 @@ proc addMoved*[T](a, b: var SinglyLinkedList[T]) {.since: (1, 5, 1).} =
     assert s == [0, 1, 0, 1, 0, 1]
 
   if b.head != nil:
-    if a.tail != nil:
-      a.tail.next = b.head
     if a.head == nil:
       a.head = b.head
-  if b.tail != nil:
+    else:
+      a.tail.next = b.head
     a.tail = b.tail
   if a.addr != b.addr:
     b.head = nil
