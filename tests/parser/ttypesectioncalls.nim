@@ -120,6 +120,57 @@ StmtList
         IntLit 30
         StmtList
           IntLit 31
+  TypeSection
+    TypeDef
+      Ident "P"
+      Empty
+      Command
+        Ident "call"
+        TupleConstr
+          IntLit 32
+          IntLit 33
+        Infix
+          Ident "+"
+          Infix
+            Ident "*"
+            IntLit 34
+            IntLit 35
+          IntLit 36
+        StmtList
+          IntLit 37
+    TypeDef
+      Ident "R"
+      Empty
+      Command
+        Ident "call"
+        Infix
+          Ident "@"
+          TupleConstr
+            IntLit 38
+            IntLit 39
+          Infix
+            Ident "shl"
+            IntLit 40
+            IntLit 41
+        Infix
+          Ident "-"
+          Infix
+            Ident "*"
+            IntLit 42
+            IntLit 43
+          IntLit 44
+        StmtList
+          IntLit 45
+    TypeDef
+      Ident "S"
+      Empty
+      Command
+        Ident "call"
+        IntLit 46
+        StmtList
+          IntLit 47
+        StmtList
+          IntLit 48
 a: IntLit 1
 a: IntLit 2
 a: StmtList
@@ -160,6 +211,41 @@ a: IntLit 29
 b: IntLit 30
 c: StmtList
   IntLit 31
+a: TupleConstr
+  IntLit 32
+  IntLit 33
+b: Infix
+  Ident "+"
+  Infix
+    Ident "*"
+    IntLit 34
+    IntLit 35
+  IntLit 36
+c: StmtList
+  IntLit 37
+a: Infix
+  Ident "@"
+  TupleConstr
+    IntLit 38
+    IntLit 39
+  Infix
+    Ident "shl"
+    IntLit 40
+    IntLit 41
+b: Infix
+  Ident "-"
+  Infix
+    Ident "*"
+    IntLit 42
+    IntLit 43
+  IntLit 44
+c: StmtList
+  IntLit 45
+a: IntLit 46
+b: StmtList
+  IntLit 47
+c: StmtList
+  IntLit 48
 '''
 """
 import macros
@@ -208,3 +294,12 @@ sections:
     N = call 26, 27: 28
     O = call 29, 30:
       31
+  type
+    P = call (32, 33), 34 * 35 + 36:
+      37
+    R = call (38, 39) @ 40 shl 41, 42 * 43 - 44:
+      45
+    S = call 46:
+      47
+    do:
+      48
