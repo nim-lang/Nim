@@ -171,6 +171,17 @@ StmtList
           IntLit 47
         StmtList
           IntLit 48
+    TypeDef
+      Ident "T"
+      Empty
+      Call
+        Ident "call"
+        StmtList
+          IntLit 49
+        StmtList
+          IntLit 50
+        StmtList
+          IntLit 51
 a: IntLit 1
 a: IntLit 2
 a: StmtList
@@ -246,6 +257,12 @@ b: StmtList
   IntLit 47
 c: StmtList
   IntLit 48
+a: StmtList
+  IntLit 49
+b: StmtList
+  IntLit 50
+c: StmtList
+  IntLit 51
 '''
 """
 import macros
@@ -303,3 +320,9 @@ sections:
       47
     do:
       48
+    T = call:
+      49
+    do:
+      50
+    do:
+      51
