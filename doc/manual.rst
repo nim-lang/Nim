@@ -5018,7 +5018,7 @@ be used:
 
 See also:
 
-- `Shared heap memory management <gc.html>`_.
+- `Shared heap memory management <mm.html>`_.
 
 
 
