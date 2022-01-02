@@ -289,7 +289,11 @@ type
   NanosecondRange* = range[0..999_999_999]
 
   IsoWeekRange* = range[1 .. 53]
+    ## An ISO 8601 calendar week number
   IsoYear* = distinct int
+    ## An ISO 8601 calendar year number
+    ##
+    ## .. warning:: The ISO week-based year can correspond to the following or previous year from 29 December to January 3.
 
   Time* = object ## Represents a point in time.
     seconds: int64
