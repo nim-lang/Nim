@@ -229,6 +229,8 @@ proc peekExitCode*(p: Process): int {.rtl, extern: "nosp$1", tags: [].}
 proc inputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## Returns ``p``'s input stream for writing to.
   ##
+  ## You cannot perform peek/read/setPosition/getPosition operations to this stream.
+  ##
   ## .. warning:: The returned `Stream` should not be closed manually as it
   ##   is closed when closing the Process ``p``.
   ##
@@ -239,7 +241,7 @@ proc inputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
 proc outputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## Returns ``p``'s output stream for reading from.
   ##
-  ## You cannot perform peek/write/setOption operations to this stream.
+  ## You cannot perform peek/write/setPosition/getPosition operations to this stream.
   ## Use `peekableOutputStream proc <#peekableOutputStream,Process>`_
   ## if you need to peek stream.
   ##
@@ -253,7 +255,7 @@ proc outputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
 proc errorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## Returns ``p``'s error stream for reading from.
   ##
-  ## You cannot perform peek/write/setOption operations to this stream.
+  ## You cannot perform peek/write/setPosition/getPosition operations to this stream.
   ## Use `peekableErrorStream proc <#peekableErrorStream,Process>`_
   ## if you need to peek stream.
   ##
@@ -267,7 +269,8 @@ proc errorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
 proc peekableOutputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [], since: (1, 3).}
   ## Returns ``p``'s output stream for reading from.
   ##
-  ## You can peek returned stream.
+  ## You can peek returned stream, but cannot perform
+  ## peekLine/write/setPosition/getPosition operations.
   ##
   ## .. warning:: The returned `Stream` should not be closed manually as it
   ##   is closed when closing the Process ``p``.
@@ -279,7 +282,8 @@ proc peekableOutputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: []
 proc peekableErrorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [], since: (1, 3).}
   ## Returns ``p``'s error stream for reading from.
   ##
-  ## You can run peek operation to returned stream.
+  ## You can peek returned stream, but cannot perform
+  ## peekLine/write/setPosition/getPosition operations.
   ##
   ## .. warning:: The returned `Stream` should not be closed manually as it
   ##   is closed when closing the Process ``p``.
@@ -1487,7 +1491,7 @@ elif not defined(useNimRtl):
                     fileMode: FileMode): owned FileStream =
     var f: File
     if not open(f, handle, fileMode): raiseOSError(osLastError())
-    return newFileStream(f)
+    return newFileStream(f, false)
 
   proc inputStream(p: Process): Stream =
     streamAccess(p)

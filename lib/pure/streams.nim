@@ -199,6 +199,7 @@ proc setPosition*(s: Stream, pos: int) =
     doAssert strm.readLine() == "The first line"
     strm.close()
 
+  assert s.setPositionImpl != nil, "You cannot use setPosition to this Stream"
   s.setPositionImpl(s, pos)
 
 proc getPosition*(s: Stream): int =
@@ -210,6 +211,7 @@ proc getPosition*(s: Stream): int =
     doAssert strm.getPosition() == 15
     strm.close()
 
+  assert s.getPositionImpl != nil, "You cannot use getPosition to this Stream"
   result = s.getPositionImpl(s)
 
 proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
@@ -1322,8 +1324,10 @@ proc fsWriteData(s: Stream, buffer: pointer, bufLen: int) =
 proc fsReadLine(s: Stream, line: var string): bool =
   result = readLine(FileStream(s).f, line)
 
-proc newFileStream*(f: File): owned FileStream =
+proc newFileStream*(f: File; isSeekable = true): owned FileStream =
   ## Creates a new stream from the file `f`.
+  ##
+  ## Set `isSeekable` to false if `f` is a file you cannot seek.
   ##
   ## **Note:** Not available for JS backend.
   ##
@@ -1356,8 +1360,9 @@ proc newFileStream*(f: File): owned FileStream =
   result.f = f
   result.closeImpl = fsClose
   result.atEndImpl = fsAtEnd
-  result.setPositionImpl = fsSetPosition
-  result.getPositionImpl = fsGetPosition
+  if isSeekable:
+    result.setPositionImpl = fsSetPosition
+    result.getPositionImpl = fsGetPosition
   result.readDataStrImpl = fsReadDataStr
   result.readDataImpl = fsReadData
   result.readLineImpl = fsReadLine
