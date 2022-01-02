@@ -25,11 +25,11 @@
 
 - Sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
 
-- Added `IsoWeekRange`, a range type to represent the number of weeks in an ISO week-based year
-- Added `IsoYear`, a distinct int type to prevent bugs from confusing the week-based year and the regular year
+- Added `IsoWeekRange`, a range type to represent the number of weeks in an ISO week-based year.
+- Added `IsoYear`, a distinct int type to prevent bugs from confusing the week-based year and the regular year.
 - Added `initDateTime` in `times` to create a datetime from a weekday, and ISO 8601 week number and week-based year.
 - Added `getIsoWeekAndYear` in `times` to get an ISO week number along with the corresponding ISO week-based year from a datetime.
-- Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year
+- Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year.
 
 ## Language changes
 
