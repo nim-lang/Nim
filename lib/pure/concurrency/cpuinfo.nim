@@ -18,6 +18,9 @@ include "system/inclrtl"
 when defined(posix) and not (defined(macosx) or defined(bsd)):
   import posix
 
+when defined(windows):
+  import std/private/win_getsysteminfo
+
 when defined(freebsd) or defined(macosx):
   {.emit: "#include <sys/types.h>".}
 
@@ -54,8 +57,6 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   ## Returns the number of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
   when defined(windows):
-    import std/private/win_getsysteminfo
-
     var
       si: SYSTEM_INFO
     GetSystemInfo(addr si)
