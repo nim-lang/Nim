@@ -1,5 +1,5 @@
 type
-  SystemInfo* {.final, pure.} = object
+  SystemInfo* = object
     u1: uint32
     dwPageSize: uint32
     lpMinimumApplicationAddress: pointer
