@@ -913,7 +913,7 @@ Let's return to the simple counting example:
     echo i
 
 Can a `countup <system.html#countup.i,T,T,Positive>`_ proc be written that
-supports this loop? Lets try:
+supports this loop? Let's try:
 
 .. code-block:: nim
   proc countup(a, b: int): int =
