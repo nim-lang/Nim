@@ -675,12 +675,12 @@ proc addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 5, 1).} =
     assert s == [0, 1, 0, 1, 0, 1]
 
   if b.head != nil:
-    b.head.prev = a.tail
-  if a.tail != nil:
-    a.tail.next = b.head
-  a.tail = b.tail
-  if a.head == nil:
-    a.head = b.head
+    if a.head == nil:
+      a.head = b.head
+    else:
+      b.head.prev = a.tail
+      a.tail.next = b.head
+    a.tail = b.tail
   if a.addr != b.addr:
     b.head = nil
     b.tail = nil
