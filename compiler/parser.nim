@@ -888,18 +888,9 @@ proc parseOperators(p: var Parser, headNode: PNode,
   # expand while operators have priorities higher than 'limit'
   var opPrec = getPrecedence(p.tok)
   let modeB = if mode == pmTypeDef: pmTypeDesc else: mode
-  var checkObjectTuple = mode == pmTypeDef
   # the operator itself must not start on a new line:
   # progress guaranteed
   while opPrec >= limit and p.tok.indent < 0 and not isUnary(p.tok):
-    if checkObjectTuple:
-      if result.kind == nkObjectTy and result.len != 0:
-        # object typeclass will parse as empty nominal object in typedef
-        result.discardSons()
-      elif result.kind == nkTupleTy and result.len == 0:
-        # tuple typeclass will parse as empty tuple in typedef
-        result.transitionSonsKind(nkTupleClassTy)
-      checkObjectTuple = false
     checkBinary(p)
     let leftAssoc = ord(not isRightAssociative(p.tok))
     var a = newNodeP(nkInfix, p)
@@ -923,7 +914,8 @@ proc simpleExprAux(p: var Parser, limit: int, mode: PrimaryMode): PNode =
     pragmaExp.add result
     pragmaExp.add p.parsePragma
     result = pragmaExp
-  result = parseOperators(p, result, limit, mode)
+  if not (mode == pmTypeDef and result.kind in {nkObjectTy, nkTupleTy}):
+    result = parseOperators(p, result, limit, mode)
 
 proc simpleExpr(p: var Parser, mode = pmNormal): PNode =
   when defined(nimpretty):
