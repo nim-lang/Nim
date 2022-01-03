@@ -281,7 +281,6 @@ proc md5Update*(c: var MD5Context, input: openArray[uint8]) =
   ##
   ## If you use the `toMD5 proc <#toMD5,string>`_, there's no need to call this
   ## function explicitly.
-  #var input = input
   var Index = int((c.count[0] shr 3) and 0x3F)
   c.count[0] = c.count[0] + (uint32(input.len) shl 3)
   if c.count[0] < (uint32(input.len) shl 3): c.count[1] = c.count[1] + 1'u32
@@ -291,7 +290,8 @@ proc md5Update*(c: var MD5Context, input: openArray[uint8]) =
     when false:
       copyMem(addr(c.buffer[Index]), unsafeAddr(input[0]), PartLen)
     else:
-      c.buffer[Index .. Index + PartLen - 1] = input.slice(0, PartLen - 1)
+      {.cast(raises: []).}:
+        c.buffer[Index .. Index + PartLen - 1] = input.slice(0, PartLen - 1)
     transform(c.buffer, c.state)
     var i = PartLen
     while i + 63 < input.len:
@@ -300,12 +300,14 @@ proc md5Update*(c: var MD5Context, input: openArray[uint8]) =
     when false:
       copyMem(addr(c.buffer[0]), unsafeAddr(input[i]), input.len-i)
     else:
-      c.buffer[0 .. input.len - i - 1] = input.slice(i, input.len - 1)
+      {.cast(raises: []).}:
+        c.buffer[0 .. input.len - i - 1] = input.slice(i, input.len - 1)
   else:
     when false:
       copyMem(addr(c.buffer[Index]), unsafeAddr(input[0]), input.len)
     else:
-      c.buffer[Index .. Index + input.len - 1] = input
+      {.cast(raises: []).}:
+        c.buffer[Index .. Index + input.len - 1] = input
 
 proc md5Final*(c: var MD5Context, digest: var MD5Digest) =
   ## Finishes the `MD5Context` and stores the result in `digest`.

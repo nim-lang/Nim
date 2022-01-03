@@ -4,7 +4,7 @@ discard """
 
 import md5
 
-template main =
+proc main() {.raises: [].} =
   doAssert(getMD5("Franz jagt im komplett verwahrlosten Taxi quer durch Bayern") ==
     "a3cca2b2aa1e3b5b3b5aad99a8529074")
   doAssert(getMD5("Frank jagt im komplett verwahrlosten Taxi quer durch Bayern") ==
