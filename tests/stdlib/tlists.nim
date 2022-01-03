@@ -245,6 +245,18 @@ template main =
     doAssert a.toSeq == @[1]
     a.add(2)
     doAssert a.toSeq == @[1, 2]
+  
+  block issue19314: # add (appends a shallow copy)
+    var a: DoublyLinkedList[int]
+    var b: DoublyLinkedList[int]
+
+    doAssert a.toSeq == @[]
+    a.add(1)
+    doAssert a.toSeq == @[1]
+    a.add(b)
+    doAssert a.toSeq == @[1]
+    a.add(2)
+    doAssert a.toSeq == @[1, 2]
 
 static: main()
 main()
