@@ -45,8 +45,8 @@ when defined(windows):
   import std/private/win_getsysteminfo
 
   proc getAllocationGranularity: uint =
-    var sysInfo: SYSTEM_INFO
-    GetSystemInfo(addr sysInfo)
+    var sysInfo: SystemInfo
+    getSystemInfo(addr sysInfo)
     return uint(sysInfo.dwAllocationGranularity)
 
   let allocationGranularity = getAllocationGranularity().int

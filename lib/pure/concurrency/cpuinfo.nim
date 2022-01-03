@@ -58,8 +58,8 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   ## Returns 0 if it cannot be detected.
   when defined(windows):
     var
-      si: SYSTEM_INFO
-    GetSystemInfo(addr si)
+      si: SystemInfo
+    getSystemInfo(addr si)
     result = int(si.dwNumberOfProcessors)
   elif defined(macosx) or defined(bsd):
     var

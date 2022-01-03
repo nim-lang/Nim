@@ -1,5 +1,5 @@
 type
-  SYSTEM_INFO* {.final, pure.} = object
+  SystemInfo* {.final, pure.} = object
     u1: uint32
     dwPageSize: uint32
     lpMinimumApplicationAddress: pointer
@@ -11,5 +11,5 @@ type
     wProcessorLevel: uint16
     wProcessorRevision: uint16
 
-proc GetSystemInfo*(lpSystemInfo: ptr SYSTEM_INFO) {.stdcall,
+proc getSystemInfo*(lpSystemInfo: ptr SystemInfo) {.stdcall,
     dynlib: "kernel32", importc: "GetSystemInfo".}
