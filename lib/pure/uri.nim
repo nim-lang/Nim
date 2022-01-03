@@ -151,9 +151,9 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
       result.add(encodeUrl(val, usePlus))
 
 iterator decodeQuery*(data: string): tuple[key, value: string] =
-  ## Reads and decodes query string `data` and yields the `(key, value)` pairs
+  ## Reads and decodes the query string `data` and yields the `(key, value)` pairs
   ## the data consists of. If compiled with `-d:nimLegacyParseQueryStrict`,
-  ## `UriParseError` is raised when there is an unencoded `=` character in a decoded
+  ## a `UriParseError` is raised when there is an unencoded `=` character in a decoded
   ## value, which was the behavior in Nim < 1.5.1.
   runnableExamples:
     import std/sequtils
