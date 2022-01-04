@@ -1741,6 +1741,13 @@ proc genGetTypeInfoV2(p: BProc, e: PNode, d: var TLoc) =
     # use the dynamic type stored at offset 0:
     putIntoDest(p, d, e, rdMType(p, a, nilCheck))
 
+proc genAccessTypeField(p: BProc; e: PNode; d: var TLoc) =
+  var a: TLoc
+  initLocExpr(p, e[1], a)
+  var nilCheck = Rope(nil)
+  # use the dynamic type stored at offset 0:
+  putIntoDest(p, d, e, rdMType(p, a, nilCheck))
+
 template genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
   initLocExpr(p, n[1], a)
@@ -2449,6 +2456,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mMove: genMove(p, e, d)
   of mDestroy: genDestroy(p, e)
   of mAccessEnv: unaryExpr(p, e, d, "$1.ClE_0")
+  of mAccessTypeField: genAccessTypeField(p, e, d)
   of mSlice: genSlice(p, e, d)
   of mTrace: discard "no code to generate"
   else:

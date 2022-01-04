@@ -154,6 +154,11 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
         inc(i)
         result.add newCall(formatValue, resVar, args[num])
         inc(num)
+      of '^':
+        flushStrLit()
+        inc(i)
+        result.add newCall(formatValue, resVar, args[^1])
+        inc(num)
       of '0'..'9':
         var j = 0
         while true:
@@ -1366,7 +1371,7 @@ proc genMainProc(m: BModule) =
       "}$N$N"
 
     MainProcs =
-      "\tNimMain();$N"
+      "\t$^NimMain();$N"
 
     MainProcsWithResult =
       MainProcs & ("\treturn $1nim_program_result;$N")
@@ -1376,7 +1381,7 @@ proc genMainProc(m: BModule) =
       "}$N$N"
 
     NimMainProc =
-      "N_CDECL(void, NimMain)(void) {$N" &
+      "N_CDECL(void, $5NimMain)(void) {$N" &
         "\tvoid (*volatile inner)(void);$N" &
         "$4" &
         "\tinner = NimMainInner;$N" &
@@ -1456,28 +1461,27 @@ proc genMainProc(m: BModule) =
     if optGenGuiApp in m.config.globalOptions:
       const nimMain = WinNimMain
       appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
     else:
       const nimMain = WinNimDllMain
       appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
   elif m.config.target.targetOS == osGenode:
     const nimMain = GenodeNimMain
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
   elif optGenDynLib in m.config.globalOptions:
     const nimMain = PosixNimDllMain
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
   elif m.config.target.targetOS == osStandalone:
     const nimMain = NimMainBody
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
   else:
     const nimMain = NimMainBody
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode])
-
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
 
   if optNoMain notin m.config.globalOptions:
     if m.config.cppCustomNamespace.len > 0:
@@ -1487,23 +1491,22 @@ proc genMainProc(m: BModule) =
         m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
       if optGenGuiApp in m.config.globalOptions:
         const otherMain = WinCMain
-        appcg(m, m.s[cfsProcs], otherMain, [if m.hcrOn: "*" else: ""])
+        appcg(m, m.s[cfsProcs], otherMain, [if m.hcrOn: "*" else: "", m.config.nimMainPrefix])
       else:
         const otherMain = WinCDllMain
-        appcg(m, m.s[cfsProcs], otherMain, [])
+        appcg(m, m.s[cfsProcs], otherMain, [m.config.nimMainPrefix])
     elif m.config.target.targetOS == osGenode:
       const otherMain = ComponentConstruct
-      appcg(m, m.s[cfsProcs], otherMain, [])
+      appcg(m, m.s[cfsProcs], otherMain, [m.config.nimMainPrefix])
     elif optGenDynLib in m.config.globalOptions:
       const otherMain = PosixCDllMain
-      appcg(m, m.s[cfsProcs], otherMain, [])
+      appcg(m, m.s[cfsProcs], otherMain, [m.config.nimMainPrefix])
     elif m.config.target.targetOS == osStandalone:
       const otherMain = StandaloneCMain
-      appcg(m, m.s[cfsProcs], otherMain, [])
+      appcg(m, m.s[cfsProcs], otherMain, [m.config.nimMainPrefix])
     else:
       const otherMain = PosixCMain
-      appcg(m, m.s[cfsProcs], otherMain, [if m.hcrOn: "*" else: ""])
-
+      appcg(m, m.s[cfsProcs], otherMain, [if m.hcrOn: "*" else: "", m.config.nimMainPrefix])
 
     if m.config.cppCustomNamespace.len > 0:
       m.s[cfsProcs].add openNamespaceNim(m.config.cppCustomNamespace)
@@ -1885,7 +1888,7 @@ proc writeHeader(m: BModule) =
 
   if optGenDynLib in m.config.globalOptions:
     result.add("N_LIB_IMPORT ")
-  result.addf("N_CDECL(void, NimMain)(void);$n", [])
+  result.addf("N_CDECL(void, $1NimMain)(void);$n", [rope m.config.nimMainPrefix])
   if m.config.cppCustomNamespace.len > 0: result.add closeNamespaceNim()
   result.addf("#endif /* $1 */$n", [guard])
   if not writeRope(result, m.filename):

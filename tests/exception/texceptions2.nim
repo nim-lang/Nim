@@ -1,6 +1,6 @@
 discard """
-  disabled: "windows" # no sigsetjmp() there
-  matrix: "-d:nimStdSetjmp; -d:nimSigSetjmp; -d:nimRawSetjmp; -d:nimBuiltinSetjmp"
+  disabled: "posix" # already covered by texceptions.nim
+  matrix: "-d:nimStdSetjmp; -d:nimRawSetjmp; -d:nimBuiltinSetjmp"
   output: '''
 
 BEFORE

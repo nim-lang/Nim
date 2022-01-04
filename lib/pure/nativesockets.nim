@@ -810,7 +810,7 @@ proc accept*(fd: SocketHandle, inheritable = defined(nimInheritHandles)): (Socke
   ## child processes.
   ##
   ## Returns (osInvalidSocket, "") if an error occurred.
-  var sockAddress: Sockaddr
+  var sockAddress: SockAddr
   var addrLen = sizeof(sockAddress).SockLen
   var sock =
     when (defined(linux) or defined(bsd)) and not defined(nimdoc):

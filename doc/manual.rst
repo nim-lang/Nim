@@ -1838,7 +1838,7 @@ A small example:
 cast uncheckedAssign
 --------------------
 
-Some restrictions for case objects can be disabled via a `{.cast(unsafeAssign).}` section:
+Some restrictions for case objects can be disabled via a `{.cast(uncheckedAssign).}` section:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -5018,7 +5018,7 @@ be used:
 
 See also:
 
-- `Shared heap memory management <gc.html>`_.
+- `Shared heap memory management <mm.html>`_.
 
 
 

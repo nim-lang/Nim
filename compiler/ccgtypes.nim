@@ -583,7 +583,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
 
   if typ.kind == tyObject:
     if typ[0] == nil:
-      if (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags:
+      if lacksMTypeField(typ):
         appcg(m, result, " {$n", [])
       else:
         if optTinyRtti in m.config.globalOptions:

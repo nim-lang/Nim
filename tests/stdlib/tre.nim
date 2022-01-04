@@ -108,4 +108,10 @@ proc testAll() =
     doAssert replace("foo", re"", "-") == "-f-o-o-"
     doAssert replace("ooo", re"o", "-") == "---"
 
+  block: # bug #14468
+    accum = @[]
+    for word in split("this is an example", re"\b"):
+      accum.add(word)
+    doAssert(accum == @["this", " ", "is", " ", "an", " ", "example"])
+
 testAll()

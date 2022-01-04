@@ -165,6 +165,22 @@ ignored too. `--define:FOO`:option: and `--define:foo`:option: are identical.
 Compile-time symbols starting with the `nim` prefix are reserved for the
 implementation and should not be used elsewhere.
 
+==========================       ============================================
+Name                             Description
+==========================       ============================================
+nimStdSetjmp                     Use the standard `setjmp()/longjmp()` library
+                                 functions for setjmp-based exceptions. This is
+                                 the default on most platforms.
+nimSigSetjmp                     Use `sigsetjmp()/siglongjmp()` for setjmp-based exceptions.
+nimRawSetjmp                     Use `_setjmp()/_longjmp()` on POSIX and `_setjmp()/longjmp()`
+                                 on Windows, for setjmp-based exceptions. It's the default on
+                                 BSDs and BSD-like platforms, where it's significantly faster
+                                 than the standard functions.
+nimBuiltinSetjmp                 Use `__builtin_setjmp()/__builtin_longjmp()` for setjmp-based
+                                 exceptions. This will not work if an exception is being thrown
+                                 and caught inside the same procedure. Useful for benchmarking.
+==========================       ============================================
+
 
 Configuration files
 -------------------
@@ -371,6 +387,10 @@ of your program.
     NimMain() # initialize garbage collector memory, types and stack
 
 
+The name `NimMain` can be influenced via the `--nimMainPrefix:prefix` switch.
+Use `--nimMainPrefix:MyLib` and the function to call is named `MyLibNimMain`.
+
+
 Cross-compilation for iOS
 =========================
 
@@ -398,6 +418,9 @@ of your program.
 
 Note: XCode's "make clean" gets confused about the generated nim.c files,
 so you need to clean those files manually to do a clean build.
+
+The name `NimMain` can be influenced via the `--nimMainPrefix:prefix` switch.
+Use `--nimMainPrefix:MyLib` and the function to call is named `MyLibNimMain`.
 
 
 Cross-compilation for Nintendo Switch

@@ -124,3 +124,23 @@ block: # SameType
     assert not testTensorInt(x1)
     assert testTensorInt(x2)
     assert not testTensorInt(x3)
+
+block: # extractDocCommentsAndRunnables
+  macro checkRunnables(prc: untyped) =
+    let runnables = prc.body.extractDocCommentsAndRunnables()
+    doAssert runnables[0][0].eqIdent("runnableExamples")
+
+  macro checkComments(comment: static[string], prc: untyped) =
+    let comments = prc.body.extractDocCommentsAndRunnables()
+    doAssert comments[0].strVal == comment
+    
+  proc a() {.checkRunnables.} =
+    runnableExamples: discard
+    discard
+
+  proc b() {.checkRunnables.} =
+    runnableExamples "-d:ssl": discard
+    discard
+    
+  proc c() {.checkComments("Hello world").} =
+    ## Hello world

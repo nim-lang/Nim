@@ -65,6 +65,11 @@ runnableExamples("-r:off"):
   let socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
   socket.sendTo("192.168.0.1", Port(27960), "status\n")
 
+runnableExamples("-r:off"):
+  let socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+  let ip = parseIpAddress("192.168.0.1")
+  doAssert socket.sendTo(ip, Port(27960), "status\c\l") == 8
+
 ## Creating a server
 ## -----------------
 ##
@@ -478,14 +483,14 @@ proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage,
     sl = sizeof(Sockaddr_in).SockLen
     let s = cast[ptr Sockaddr_in](addr sa)
     s.sin_family = typeof(s.sin_family)(toInt(AF_INET))
-    s.sin_port = htons(port)
+    s.sin_port = port
     copyMem(addr s.sin_addr, unsafeAddr address.address_v4[0],
             sizeof(s.sin_addr))
   of IpAddressFamily.IPv6:
     sl = sizeof(Sockaddr_in6).SockLen
     let s = cast[ptr Sockaddr_in6](addr sa)
     s.sin6_family = typeof(s.sin6_family)(toInt(AF_INET6))
-    s.sin6_port = htons(port)
+    s.sin6_port = port
     copyMem(addr s.sin6_addr, unsafeAddr address.address_v6[0],
             sizeof(s.sin6_addr))
 
@@ -675,7 +680,8 @@ when defineSsl:
           # Scan for certs in known locations. For CVerifyPeerUseEnvVars also scan
           # the SSL_CERT_FILE and SSL_CERT_DIR env vars
           var found = false
-          for fn in scanSSLCertificates():
+          let useEnvVars = (if verifyMode == CVerifyPeerUseEnvVars: true else: false)
+          for fn in scanSSLCertificates(useEnvVars = useEnvVars):
             if newCTX.SSL_CTX_load_verify_locations(fn, nil) == VerifySuccess:
               found = true
               break
@@ -1607,11 +1613,12 @@ proc recvLine*(socket: Socket, timeout = -1,
   result = ""
   readLine(socket, result, timeout, flags, maxLength)
 
-proc recvFrom*(socket: Socket, data: var string, length: int,
-               address: var string, port: var Port, flags = 0'i32): int {.
+proc recvFrom*[T: string | IpAddress](socket: Socket, data: var string, length: int,
+               address: var T, port: var Port, flags = 0'i32): int {.
                tags: [ReadIOEffect].} =
   ## Receives data from `socket`. This function should normally be used with
-  ## connection-less sockets (UDP sockets).
+  ## connection-less sockets (UDP sockets). The source address of the data
+  ## packet is stored in the `address` argument as either a string or an IpAddress.
   ##
   ## If an error occurs an OSError exception will be raised. Otherwise the return
   ## value will be the length of data received.
@@ -1620,31 +1627,37 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   ##   so when `socket` is buffered the non-buffered implementation will be
   ##   used. Therefore if `socket` contains something in its buffer this
   ##   function will make no effort to return it.
-  template adaptRecvFromToDomain(domain: Domain) =
+  template adaptRecvFromToDomain(sockAddress: untyped, domain: Domain) =
     var addrLen = sizeof(sockAddress).SockLen
     result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
                       cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
 
     if result != -1:
       data.setLen(result)
-      address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
-      when domain == AF_INET6:
-        port = ntohs(sockAddress.sin6_port).Port
+
+      when typeof(address) is string:
+        address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
+        when domain == AF_INET6:
+          port = ntohs(sockAddress.sin6_port).Port
+        else:
+          port = ntohs(sockAddress.sin_port).Port
       else:
-        port = ntohs(sockAddress.sin_port).Port
+        data.setLen(result)
+        sockAddress.fromSockAddr(addrLen, address, port)
     else:
       raiseOSError(osLastError())
 
   assert(socket.protocol != IPPROTO_TCP, "Cannot `recvFrom` on a TCP socket")
   # TODO: Buffered sockets
   data.setLen(length)
+
   case socket.domain
   of AF_INET6:
     var sockAddress: Sockaddr_in6
-    adaptRecvFromToDomain(AF_INET6)
+    adaptRecvFromToDomain(sockAddress, AF_INET6)
   of AF_INET:
     var sockAddress: Sockaddr_in
-    adaptRecvFromToDomain(AF_INET)
+    adaptRecvFromToDomain(sockAddress, AF_INET)
   else:
     raise newException(ValueError, "Unknown socket address family")
 
@@ -1707,7 +1720,8 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
              tags: [WriteIOEffect].} =
   ## This proc sends `data` to the specified `address`,
   ## which may be an IP address or a hostname, if a hostname is specified
-  ## this function will try each IP of that hostname.
+  ## this function will try each IP of that hostname. This function
+  ## should normally be used with connection-less sockets (UDP sockets).
   ##
   ## If an error occurs an OSError exception will be raised.
   ##
@@ -1741,11 +1755,37 @@ proc sendTo*(socket: Socket, address: string, port: Port,
   ## This proc sends `data` to the specified `address`,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
+  ## 
+  ## Generally for use with connection-less (UDP) sockets.
   ##
   ## If an error occurs an OSError exception will be raised.
   ##
   ## This is the high-level version of the above `sendTo` function.
   socket.sendTo(address, port, cstring(data), data.len, socket.domain)
+
+proc sendTo*(socket: Socket, address: IpAddress, port: Port,
+             data: string, flags = 0'i32): int {.
+              discardable, tags: [WriteIOEffect].} =
+  ## This proc sends `data` to the specified `IpAddress` and returns
+  ## the number of bytes written. 
+  ##
+  ## Generally for use with connection-less (UDP) sockets. 
+  ##
+  ## If an error occurs an OSError exception will be raised.
+  ##
+  ## This is the high-level version of the above `sendTo` function.
+  assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
+  assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
+
+  var sa: Sockaddr_storage
+  var sl: SockLen
+  toSockAddr(address, port, sa, sl)
+  result = sendto(socket.fd, cstring(data), data.len().cint, flags.cint,
+                  cast[ptr SockAddr](addr sa), sl)
+
+  if result == -1'i32:
+    let osError = osLastError()
+    raiseOSError(osError)
 
 
 proc isSsl*(socket: Socket): bool =

@@ -14,14 +14,24 @@
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
   `experimental:flexibleOptionalParams`.
 
+- `std/sharedstrings` module is removed.
+- Constants `colors.colPaleVioletRed` and `colors.colMediumPurple` changed to match the CSS color standard.
+
 ## Standard library additions and changes
 
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional
   filename argument for more informative errors.
+- Module `colors` expanded with missing colors from the CSS color standard.
 
 ## `std/smtp`
 
 - Sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
+
+- Added `IsoWeekRange`, a range type to represent the number of weeks in an ISO week-based year.
+- Added `IsoYear`, a distinct int type to prevent bugs from confusing the week-based year and the regular year.
+- Added `initDateTime` in `times` to create a datetime from a weekday, and ISO 8601 week number and week-based year.
+- Added `getIsoWeekAndYear` in `times` to get an ISO week number along with the corresponding ISO week-based year from a datetime.
+- Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year.
 
 ## Language changes
 
@@ -57,6 +67,9 @@
   ```
 - [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
   meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
+- Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
+  for the right-hand side of type definitions in type sections. Previously
+  they would error with "invalid indentation".
 
 ## Compiler changes
 
@@ -69,3 +82,9 @@
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
   reality better. (Nim moved away from all techniques based on "tracing".)
 
+- Nim now supports Nimble version 0.14 which added support for lock-files. This is done by
+  a simple configuration change setting that you can do yourself too. In `$nim/config/nim.cfg`
+  replace `pkgs` by `pkgs2`.
+
+- There is a new switch `--nimMainPrefix:prefix` to influence the `NimMain` that the
+  compiler produces. This is particularly useful for generating static libraries.

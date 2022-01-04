@@ -523,7 +523,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
   # Proxy auth header.
   if not proxy.isNil and proxy.auth != "":
     let auth = base64.encode(proxy.auth)
-    add(result, "Proxy-Authorization: basic " & auth & httpNewLine)
+    add(result, "Proxy-Authorization: Basic " & auth & httpNewLine)
 
   for key, val in headers:
     add(result, key & ": " & val & httpNewLine)
@@ -869,6 +869,9 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       client.parseBodyFut.addCallback do():
         if client.parseBodyFut.failed:
           client.bodyStream.fail(client.parseBodyFut.error)
+  else:
+    when client is AsyncHttpClient:
+      result.bodyStream.complete()
 
 proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =
