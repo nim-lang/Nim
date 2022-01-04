@@ -68,7 +68,7 @@ doAssert yy == ""
 proc bar(arg: cstring) =
   doAssert arg[0] == '\0'
 
-proc baz(arg: openarray[char]) =
+proc baz(arg: openArray[char]) =
   doAssert arg.len == 0
 
 proc stringCompare() =

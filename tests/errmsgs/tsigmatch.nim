@@ -132,12 +132,12 @@ block:
   echo foo(fun)
 
 block:
-  # bug #10285 Function signature don't match when inside seq/array/openarray
+  # bug #10285 Function signature don't match when inside seq/array/openArray
   # Note: the error message now shows `closure` which helps debugging the issue
   # out why it doesn't match
   proc takesFunc(f: proc (x: int) {.gcsafe, locks: 0.}) =
     echo "takes single Func"
-  proc takesFuncs(fs: openarray[proc (x: int) {.gcsafe, locks: 0.}]) =
+  proc takesFuncs(fs: openArray[proc (x: int) {.gcsafe, locks: 0.}]) =
     echo "takes multiple Func"
   takesFunc(proc (x: int) {.gcsafe, locks: 0.} = echo x)         # works
   takesFuncs([proc (x: int) {.gcsafe, locks: 0.} = echo x])      # fails

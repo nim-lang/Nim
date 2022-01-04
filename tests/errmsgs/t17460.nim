@@ -3,7 +3,7 @@ discard """
   errormsg: "wrong number of variables"
 """
 
-iterator xclusters*[T](a: openarray[T]; s: static[int]): array[s, T] {.inline.} =
+iterator xclusters*[T](a: openArray[T]; s: static[int]): array[s, T] {.inline.} =
   var result: array[s, T] # iterators have no default result variable
   var i = 0
   while i < len(a):

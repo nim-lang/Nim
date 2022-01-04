@@ -38,10 +38,10 @@ joinable: false
 
 
 block tclosure:
-  proc map(n: var openarray[int], fn: proc (x: int): int {.closure}) =
+  proc map(n: var openArray[int], fn: proc (x: int): int {.closure}) =
     for i in 0..n.len-1: n[i] = fn(n[i])
 
-  proc each(n: openarray[int], fn: proc(x: int) {.closure.}) =
+  proc each(n: openArray[int], fn: proc(x: int) {.closure.}) =
     for i in 0..n.len-1:
       fn(n[i])
 

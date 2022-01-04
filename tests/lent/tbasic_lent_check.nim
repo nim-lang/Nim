@@ -39,7 +39,7 @@ template main2 = # bug #15958
     p[] = 20.0
     doAssert byLent(p)[] == 20.0
 
-  proc byLent2[T](a: openarray[T]): lent T = a[0]
+  proc byLent2[T](a: openArray[T]): lent T = a[0]
   doAssert byLent2(a) == 11
   doAssert byLent2(a).unsafeAddr == a[0].unsafeAddr
   doAssert byLent2(b) == 21

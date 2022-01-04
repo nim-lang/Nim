@@ -39,9 +39,9 @@ proc main =
 
 main()
 
-# Test: pass var seq to var openarray
+# Test: pass var seq to var openArray
 var s = @[2, 1]
-proc foo(a: var openarray[int]) = a[0] = 123
+proc foo(a: var openArray[int]) = a[0] = 123
 
 proc bar(s: var seq[int], a: int) =
   doAssert(a == 5)

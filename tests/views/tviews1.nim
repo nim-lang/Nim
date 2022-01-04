@@ -44,7 +44,7 @@ echo foo(x)
 
 type
   F = object
-    oa: openarray[int]
+    oa: openArray[int]
 
 let s1 = @[1,3,4,5,6]
 var test = F(oa: toOpenArray(s1, 0, 2))

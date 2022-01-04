@@ -6,7 +6,7 @@ import strscans, strutils
 proc raiseTestException*() =
   raise newException(Exception, "test")
 
-proc matchStackTrace(actualEntries: openarray[StackTraceEntry], expected: string) =
+proc matchStackTrace(actualEntries: openArray[StackTraceEntry], expected: string) =
   var expectedEntries = newSeq[StackTraceEntry]()
   var i = 0
 

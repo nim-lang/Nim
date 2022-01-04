@@ -230,8 +230,8 @@ block tvarargs_vs_generics:
     echo "direct"
   proc withDirectType[T](arg: T) =
     echo "generic"
-  proc withOpenArray(args: openarray[string]) =
-    echo "openarray"
+  proc withOpenArray(args: openArray[string]) =
+    echo "openArray"
   proc withOpenArray[T](arg: T) =
     echo "generic"
   proc withVarargs(args: varargs[string]) =

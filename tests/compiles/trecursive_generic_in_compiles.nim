@@ -50,7 +50,7 @@ proc `==`*[T](xs, ys: List[T]): bool =
 
 proc asList*[T](xs: varargs[T]): List[T] =
   ## Creates list from varargs
-  proc initListImpl(i: int, xs: openarray[T]): List[T] =
+  proc initListImpl(i: int, xs: openArray[T]): List[T] =
     if i > high(xs):
       Nil[T]()
     else:

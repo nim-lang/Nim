@@ -178,7 +178,7 @@ proc myfuncLoop(x: int): MySeqNonCopyable =
 discard myfuncLoop(3)
 
 #------------------------------------------------------------
-# Move into table via openarray
+# Move into table via openArray
 #------------------------------------------------------------
 
 type

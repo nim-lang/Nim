@@ -43,7 +43,7 @@ proc `=copy`(dst: var NonCopyable, src: NonCopyable) {.error.}
 proc `=sink`(dst: var NonCopyable, src: NonCopyable) =
   dst.x = src.x
 
-iterator lentItems[T](a: openarray[T]): lent T =
+iterator lentItems[T](a: openArray[T]): lent T =
   for i in 0..a.high:
     yield a[i]
 

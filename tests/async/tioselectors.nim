@@ -288,8 +288,8 @@ when not defined(windows):
         events: set[Event]
 
     proc vnode_test(): bool =
-      proc validate(test: openarray[ReadyKey],
-                    check: openarray[valType]): bool =
+      proc validate(test: openArray[ReadyKey],
+                    check: openArray[valType]): bool =
         result = false
         if len(test) == len(check):
           for checkItem in check:

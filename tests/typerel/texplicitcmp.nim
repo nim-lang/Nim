@@ -8,7 +8,7 @@ discard """
 
 import json, tables, algorithm
 
-proc outp(a: openarray[int]) =
+proc outp(a: openArray[int]) =
   stdout.write "["
   for i in a: stdout.write($i & " ")
   stdout.write "]\n"

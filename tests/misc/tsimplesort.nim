@@ -112,7 +112,7 @@ proc initTable*[A, B](initialSize=64): TTable[A, B] =
   result.counter = 0
   newSeq(result.data, initialSize)
 
-proc toTable*[A, B](pairs: openarray[tuple[key: A,
+proc toTable*[A, B](pairs: openArray[tuple[key: A,
                     val: B]]): TTable[A, B] =
   ## creates a new hash table that contains the given `pairs`.
   result = initTable[A, B](nextPowerOfTwo(pairs.len+10))

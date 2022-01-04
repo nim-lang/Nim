@@ -18,7 +18,7 @@ block tlowhigh:
   for i in low(a) .. high(a):
     a[i] = 0
 
-  proc sum(a: openarray[int]): int =
+  proc sum(a: openArray[int]): int =
     result = 0
     for i in low(a)..high(a):
       inc(result, a[i])

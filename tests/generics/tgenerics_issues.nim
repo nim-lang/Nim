@@ -603,7 +603,7 @@ block t7854:
 
 
 block t5864:
-  proc defaultStatic(s: openarray, N: static[int] = 1): int = N
+  proc defaultStatic(s: openArray, N: static[int] = 1): int = N
   proc defaultGeneric[T](a: T = 2): int = a
 
   let a = [1, 2, 3, 4].defaultStatic()

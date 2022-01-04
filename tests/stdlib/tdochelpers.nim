@@ -82,7 +82,7 @@ suite "Integration with Nim":
                               name: "binarysearch",
                               generics: "[T,K]",
                               parameters: @[
-                                ("a", "openarray[T]"),
+                                ("a", "openArray[T]"),
                                 ("key", "K"),
                                 ("cmp", "proc(x:T;y:K):int")],
                               parametersProvided: true,
@@ -96,7 +96,7 @@ suite "Integration with Nim":
                               name: "binarysearch",
                               generics: "[T,K]",
                               parameters: @[
-                                ("a", "openarray[T]"),
+                                ("a", "openArray[T]"),
                                 ("key", "K"),
                                 ("cmp", "proc(x:T;y:K):int")],
                               parametersProvided: true,
@@ -111,7 +111,7 @@ suite "Integration with Nim":
     let expected = LangSymbol(symKind: "func",
                               name: "$",
                               generics: "[T]",
-                              parameters: @[("a", "openarray[T]")],
+                              parameters: @[("a", "openArray[T]")],
                               parametersProvided: true,
                               outType: "string")
     check(input1.toLangSymbol == expected)
@@ -125,7 +125,7 @@ suite "Integration with Nim":
     let expected = LangSymbol(symKind: "func",
                               name: "[]",
                               generics: "[T]",
-                              parameters: @[("a", "openarray[T]"),
+                              parameters: @[("a", "openArray[T]"),
                                             ("idx", "int")],
                               parametersProvided: true,
                               outType: "T")
@@ -147,7 +147,7 @@ suite "Integration with Nim":
     let expected = LangSymbol(symKind: "func",
                               name: "[]",
                               generics: "[T]",
-                              parameters: @[("a", "openarray[T]"),
+                              parameters: @[("a", "openArray[T]"),
                                             ("idx", "int")],
                               parametersProvided: true,
                               outType: "T")
