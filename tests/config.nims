@@ -20,6 +20,9 @@ switch("define", "nimUnittestColor:off")
 
 switch("define", "nimLegacyTypeMismatch")
 
+switch("styleCheck", "usages")
+switch("styleCheck", "error")
+
 hint("Processing", off)
   # dots can cause annoyances; instead, a single test can test `hintProcessing`
 
