@@ -76,13 +76,13 @@ suite "Integration with Nim":
     check(input3.toLangSymbol == expected)
 
   test "advanced proc parsing with Nim identifier normalization":
-    let input = """`proc binarySearch*[T, K](a: openArray[T]; key: K;
+    let input = """`proc binarySearch*[T, K](a: openarray[T]; key: K;
                     cmp: proc (x: T; y: K): int)`_""".rstParseTest
     let expected = LangSymbol(symKind: "proc",
                               name: "binarysearch",
                               generics: "[T,K]",
                               parameters: @[
-                                ("a", "openArray[T]"),
+                                ("a", "openarray[T]"),
                                 ("key", "K"),
                                 ("cmp", "proc(x:T;y:K):int")],
                               parametersProvided: true,
@@ -90,13 +90,13 @@ suite "Integration with Nim":
     check(input.toLangSymbol == expected)
 
   test "the same without proc":
-    let input = """`binarySearch*[T, K](a: openArray[T]; key: K;
+    let input = """`binarySearch*[T, K](a: openarray[T]; key: K;
                     cmp: proc (x: T; y: K): int {.closure.})`_""".rstParseTest
     let expected = LangSymbol(symKind: "",
                               name: "binarysearch",
                               generics: "[T,K]",
                               parameters: @[
-                                ("a", "openArray[T]"),
+                                ("a", "openarray[T]"),
                                 ("key", "K"),
                                 ("cmp", "proc(x:T;y:K):int")],
                               parametersProvided: true,
@@ -111,7 +111,7 @@ suite "Integration with Nim":
     let expected = LangSymbol(symKind: "func",
                               name: "$",
                               generics: "[T]",
-                              parameters: @[("a", "openArray[T]")],
+                              parameters: @[("a", "openarray[T]")],
                               parametersProvided: true,
                               outType: "string")
     check(input1.toLangSymbol == expected)
@@ -125,7 +125,7 @@ suite "Integration with Nim":
     let expected = LangSymbol(symKind: "func",
                               name: "[]",
                               generics: "[T]",
-                              parameters: @[("a", "openArray[T]"),
+                              parameters: @[("a", "openarray[T]"),
                                             ("idx", "int")],
                               parametersProvided: true,
                               outType: "T")
@@ -147,7 +147,7 @@ suite "Integration with Nim":
     let expected = LangSymbol(symKind: "func",
                               name: "[]",
                               generics: "[T]",
-                              parameters: @[("a", "openArray[T]"),
+                              parameters: @[("a", "openarray[T]"),
                                             ("idx", "int")],
                               parametersProvided: true,
                               outType: "T")
