@@ -76,7 +76,7 @@ suite "Integration with Nim":
     check(input3.toLangSymbol == expected)
 
   test "advanced proc parsing with Nim identifier normalization":
-    let input = """`proc binarySearch*[T, K](a: openArray[T]; key: K;
+    let input = """`proc binarySearch*[T, K](a: openarray[T]; key: K;
                     cmp: proc (x: T; y: K): int)`_""".rstParseTest
     let expected = LangSymbol(symKind: "proc",
                               name: "binarysearch",
@@ -90,7 +90,7 @@ suite "Integration with Nim":
     check(input.toLangSymbol == expected)
 
   test "the same without proc":
-    let input = """`binarySearch*[T, K](a: openArray[T]; key: K;
+    let input = """`binarySearch*[T, K](a: openarray[T]; key: K;
                     cmp: proc (x: T; y: K): int {.closure.})`_""".rstParseTest
     let expected = LangSymbol(symKind: "",
                               name: "binarysearch",

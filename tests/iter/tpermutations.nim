@@ -12,7 +12,7 @@ perm: 6778800.0 det: 0.0
 
 import sequtils, sugar
 
-iterator permutations*[T](ys: openarray[T]): tuple[perm: seq[T], sign: int] =
+iterator permutations*[T](ys: openArray[T]): tuple[perm: seq[T], sign: int] =
   var
     d = 1
     c = newSeq[int](ys.len)
