@@ -1052,7 +1052,7 @@ errors.
 
 Lossless `Automatic type conversion`:idx: is performed in expressions where different
 kinds of integer types are used. However, if the type conversion
-would cause loss of information, the ``RangeDefect``:idx: is raised (if the error
+would cause loss of information, the `RangeDefect`:idx: is raised (if the error
 cannot be detected at compile time).
 
 
