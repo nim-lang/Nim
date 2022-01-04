@@ -1778,7 +1778,7 @@ proc sendTo*(socket: Socket, address: IpAddress, port: Port,
   assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
 
   var sa: Sockaddr_storage
-  var sl: Socklen
+  var sl: SockLen
   toSockAddr(address, port, sa, sl)
   result = sendto(socket.fd, cstring(data), data.len().cint, flags.cint,
                   cast[ptr SockAddr](addr sa), sl)
