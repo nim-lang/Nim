@@ -42,11 +42,10 @@ else:
 
   proc setEnvImpl*(name: string, value: string, overwrite: cint): cint =
     const EINVAL = cint(22)
-    let cname = cstring(name)
-    if overwrite == 0 and c_getenv(cname) != nil: return 0
+    if overwrite == 0 and c_getenv(cstring(name)) != nil: return 0
     if value != "":
-      let cenvstring = cstring(name & "=" & value)
-      let e = c_putenv(cenvstring)
+      let envstring = name & "=" & value
+      let e = c_putenv(cstring(envstring))
       if e != 0:
         errno = EINVAL
         return -1
@@ -57,19 +56,19 @@ else:
     SetEnvironmentVariableA doesn't update `_environ`,
     so we have to do these terrible things.
     ]#
-    let cenvstring = cstring(name & "=  ")
-    if c_putenv(cenvstring) != 0:
+    let envstring = name & "=  "
+    if c_putenv(cstring(envstring)) != 0:
       errno = EINVAL
       return -1
     # Here lies the documentation we blatently ignore to make this work.
-    var s = c_getenv(cname)
+    var s = c_getenv(cstring(name))
     s[0] = '\0'
     #[
     This would result in a double null termination, which normally signifies the
     end of the environment variable list, so we stick a completely empty
     environment variable into the list instead.
     ]#
-    s = c_getenv(cname)
+    s = c_getenv(cstring(name))
     s[1] = '='
     #[
     If gWenviron is null, the wide environment has not been initialized
@@ -79,10 +78,10 @@ else:
     ]#
     if gWenviron != nil:
       # var buf: array[MAX_ENV + 1, WideCString]
-      let requiredSize = mbstowcs(nil, cname, 0).int
+      let requiredSize = mbstowcs(nil, cstring(name), 0).int
       var buf = newSeq[Utf16Char](requiredSize + 1)
       let buf2 = cast[ptr wchar_t](buf[0].addr)
-      if mbstowcs(buf2, cname, csize_t(requiredSize + 1)) == csize_t(high(uint)):
+      if mbstowcs(buf2, cstring(name), csize_t(requiredSize + 1)) == csize_t(high(uint)):
         errno = EINVAL
         return -1
       var ptrToEnv = cast[WideCString](c_wgetenv(buf2))
@@ -91,7 +90,7 @@ else:
       ptrToEnv[1] = '='.Utf16Char
 
     # And now, we have to update the outer environment to have a proper empty value.
-    if setEnvironmentVariableA(cname, value) == 0:
+    if setEnvironmentVariableA(cstring(name), cstring(value)) == 0:
       errno = EINVAL
       return -1
     return 0
