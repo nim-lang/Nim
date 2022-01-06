@@ -1618,7 +1618,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   ##   used. Therefore if `socket` contains something in its buffer this
   ##   function will make no effort to return it.
   template adaptRecvFromToDomain(domain: Domain) =
-    var addrLen = sizeof(sockAddress).SockLen
+    var addrLen = SockLen(sizeof(sockAddress))
     result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
                       cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
 
