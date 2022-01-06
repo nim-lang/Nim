@@ -646,6 +646,19 @@ proc testJson() =
     ]
     doAssert (%* a).to(a.typeof) == a
 
+  block:
+    # shorthand property names
+    type
+      Person = object
+        name, address: string
+        number: int
+    let
+      name = "My Name"
+      address = "1 Sesame Street"
+      number = 1234567890
+      p = Person(name: name, address: address, number: number)
+    doAssert (%* {number, name, address}).to(Person) == p
+
 
 testJson()
 static:
