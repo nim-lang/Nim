@@ -121,7 +121,7 @@ when not defined(nimscript):
         ]#
         if key.len == 0 or '=' in key:
           raise newException(OSError, "invalid key, got: " & key)
-        let envToDel: cstring = key & "="
+        let envToDel = key & "="
         if c_putenv(envToDel) != 0'i32: bail
       else:
         if c_unsetenv(key) != 0'i32: bail
