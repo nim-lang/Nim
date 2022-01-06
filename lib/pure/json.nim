@@ -423,9 +423,15 @@ proc toJsonImpl(x: NimNode): NimNode =
       x[i].expectKind nnkExprColonExpr
       result.add newTree(nnkExprColonExpr, x[i][0], toJsonImpl(x[i][1]))
     result = newCall(bindSym("%", brOpen), result)
-  of nnkCurly: # empty object
-    x.expectLen(0)
-    result = newCall(bindSym"newJObject")
+  of nnkCurly: # empty object or shorthand property names
+    if x.len == 0:
+      result = newCall(bindSym"newJObject")
+    else:
+      result = newNimNode(nnkTableConstr)
+      for i in 0 ..< x.len:
+        x[i].expectKind nnkIdent
+        result.add newTree(nnkExprColonExpr, x[i].toStrLit, toJsonImpl(x[i]))
+      result = newCall(bindSym("%", brOpen), result)
   of nnkNilLit:
     result = newCall(bindSym"newJNull")
   of nnkPar:
