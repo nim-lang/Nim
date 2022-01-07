@@ -45,7 +45,7 @@ when not defined(nimscript):
     proc c_getenv(env: cstring): cstring {.
       importc: "getenv", header: "<stdlib.h>".}
     when defined(windows):
-      proc c_putenv_s(envname: cstring, envval: cstring): cint {.importc: "_putenv_s", header: "<stdlib.h>".}
+      proc c_putenv(envstring: cstring): cint {.importc: "_putenv", header: "<stdlib.h>".}
       from std/private/win_setenv import setEnvImpl
     else:
       proc c_setenv(envname: cstring, envval: cstring, overwrite: cint): cint {.importc: "setenv", header: "<stdlib.h>".}
@@ -121,7 +121,8 @@ when not defined(nimscript):
         ]#
         if key.len == 0 or '=' in key:
           raise newException(OSError, "invalid key, got: " & key)
-        if c_putenv_s(key, "") != 0'i32: bail
+        let envToDel = key & "="
+        if c_putenv(cstring envToDel) != 0'i32: bail
       else:
         if c_unsetenv(key) != 0'i32: bail
 
