@@ -114,19 +114,19 @@ when not defined(js):
   template `rawType=`(x: var Any, p: PNimType) =
     x.rawTypePtr = cast[pointer](p)
 
-proc genericAssign(dest, src: pointer, mt: PNimType) {.importcompilerproc.}
+proc genericAssign(dest, src: pointer, mt: PNimType) {.importCompilerProc.}
 
 when not defined(gcDestructors):
-  proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.importcompilerproc.}
-  proc incrSeq(seq: PGenSeq, elemSize, elemAlign: int): PGenSeq {.importcompilerproc.}
-  proc newObj(typ: PNimType, size: int): pointer {.importcompilerproc.}
-  proc newSeq(typ: PNimType, len: int): pointer {.importcompilerproc.}
-  proc objectInit(dest: pointer, typ: PNimType) {.importcompilerproc.}
+  proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.importCompilerProc.}
+  proc incrSeq(seq: PGenSeq, elemSize, elemAlign: int): PGenSeq {.importCompilerProc.}
+  proc newObj(typ: PNimType, size: int): pointer {.importCompilerProc.}
+  proc newSeq(typ: PNimType, len: int): pointer {.importCompilerProc.}
+  proc objectInit(dest: pointer, typ: PNimType) {.importCompilerProc.}
 else:
-  proc nimNewObj(size, align: int): pointer {.importcompilerproc.}
-  proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.importcompilerproc.}
+  proc nimNewObj(size, align: int): pointer {.importCompilerProc.}
+  proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.importCompilerProc.}
   proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
-    importcompilerproc.}
+    importCompilerProc.}
 
 template `+!!`(a, b): untyped = cast[pointer](cast[ByteAddress](a) + b)
 
