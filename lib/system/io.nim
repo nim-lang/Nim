@@ -32,8 +32,8 @@ type
                          ## If the file does not exist, it will not be
                          ## created. The existing file will not be cleared.
     fmAppend             ## Open the file for writing only; append data
-                         ## at the end. If the file exist, it will not be
-                         ## created.
+                         ## at the end. If the file does not exist, it 
+                         ## will not be created.
 
   FileHandle* = cint ## type that represents an OS file handle; this is
                       ## useful for low-level file access
