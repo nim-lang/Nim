@@ -35,7 +35,7 @@ proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailu
 
 pkg "alea", allowFailure = true
 pkg "argparse"
-pkg "arraymancer", "nim c tests/tests_cpu.nim", allowFailure = true
+pkg "arraymancer", "nim c tests/tests_cpu.nim"
 pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim", allowFailure = true
 pkg "asyncthreadpool"
 pkg "awk"
@@ -55,7 +55,7 @@ pkg "chronos", "nim c -r -d:release tests/testall"
 pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --gc:orc"
 pkg "compactdict"
-pkg "comprehension", "nimble test", "https://github.com/alehander42/comprehension"
+pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehension"
 pkg "criterion", allowFailure = true # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
 pkg "datamancer"
 pkg "dashing", "nim c tests/functional.nim"
@@ -63,8 +63,8 @@ pkg "delaunay"
 pkg "docopt"
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
-pkg "fidget", allowFailure = true
-pkg "fragments", "nim c -r fragments/dsl.nim"
+pkg "fidget"
+pkg "fragments", "nim c -r fragments/dsl.nim", allowFailure = true # pending https://github.com/nim-lang/packages/issues/2115 
 pkg "fusion"
 pkg "gara"
 pkg "glob"
@@ -91,7 +91,7 @@ pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
 pkg "nake", "nim c nakefile.nim"
 pkg "neo", "nim c -d:blas=openblas tests/all.nim"
-pkg "nesm", "nimble tests", allowFailure = true # notice plural 'tests'
+pkg "nesm", "nimble tests" # notice plural 'tests'
 pkg "netty"
 pkg "nico", allowFailure = true
 pkg "nicy", "nim c -r src/nicy.nim"
