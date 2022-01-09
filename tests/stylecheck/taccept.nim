@@ -11,7 +11,7 @@ type
 template hello =
   var iD = "string"
   var name: Name
-  echo name.id
-  echo iD
+  doAssert name.id == 0
+  doAssert iD == "string"
 
 hello()
