@@ -22,6 +22,8 @@ type
 
   FileMode* = enum       ## The file mode when opening a file.
     fmRead,              ## Open the file for read access only.
+                         ## If the file does not exist, it will not
+                         ## be created.
     fmWrite,             ## Open the file for write access only.
                          ## If the file does not exist, it will be
                          ## created. Existing files will be cleared!
@@ -32,7 +34,8 @@ type
                          ## If the file does not exist, it will not be
                          ## created. The existing file will not be cleared.
     fmAppend             ## Open the file for writing only; append data
-                         ## at the end.
+                         ## at the end. If the file does not exist, it
+                         ## will be created.
 
   FileHandle* = cint ## type that represents an OS file handle; this is
                       ## useful for low-level file access
