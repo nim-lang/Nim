@@ -270,7 +270,8 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
-    if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
+    # field access (dot expr) will be handled by builtinFieldAccess
+    if not isField and {optStyleHint, optStyleError} * c.config.globalOptions != {}:
       styleCheckUse(c.config, n.info, s)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
