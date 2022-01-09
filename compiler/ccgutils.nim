@@ -120,7 +120,8 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
   assert skResult != s.kind
 
   if tfByRef in pt.flags: return true
-  elif tfByCopy in pt.flags: return false
+  elif tfByCopy in pt.flags and
+      (s.position != 0 or retType == nil or retType.kind != tyLent): return false
   case pt.kind
   of tyObject:
     if s.typ.sym != nil and sfForward in s.typ.sym.flags:
