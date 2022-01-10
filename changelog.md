@@ -11,6 +11,10 @@
 
 ## Standard library additions and changes
 
+- `macros.parseExpr` and `macros.parseStmt` now accept an optional
+  filename argument for more informative errors.
+- Module `colors` expanded with missing colors from the CSS color standard.
+- Fixed `lists.SinglyLinkedList` being broken after removing the last node ([#19353](https://github.com/nim-lang/Nim/pull/19353)).
 
 
 ## Language changes
