@@ -109,8 +109,11 @@ proc differs(conf: ConfigRef; info: TLineInfo; newName: string): string =
   var first = min(info.col.int, line.len)
   if first < 0: return
   #inc first, skipIgnoreCase(line, "proc ", first)
-  if first < line.len and line[first] != '.':
-    while first > 0 and line[first-1] in Letters: dec first
+  if first < line.len:
+    if line[first] != '.':
+      while first > 0 and line[first-1] in Letters: dec first
+    else:
+      inc first
   if first < 0: return
   if first+1 < line.len and line[first] == '`': inc first
 
