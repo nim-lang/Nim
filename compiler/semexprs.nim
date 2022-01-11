@@ -1188,7 +1188,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   let s = getGenSym(c, sym)
   case s.kind
   of skConst:
-    markUsed(c, n.info, s)
+    if n.kind != nkDotExpr: # dotExpr is already checked by builtinFieldAccess
+      markUsed(c, n.info, s)
     onUse(n.info, s)
     let typ = skipTypes(s.typ, abstractInst-{tyTypeDesc})
     case typ.kind
@@ -1249,7 +1250,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     if s.magic == mNimvm:
       localError(c.config, n.info, "illegal context for 'nimvm' magic")
 
-    markUsed(c, n.info, s)
+    if n.kind != nkDotExpr: # dotExpr is already checked by builtinFieldAccess
+      markUsed(c, n.info, s)
     onUse(n.info, s)
     result = newSymNode(s, n.info)
     # We cannot check for access to outer vars for example because it's still
