@@ -1270,7 +1270,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       n.typ = s.typ
       return n
   of skType:
-    markUsed(c, n.info, s)
+    if n.kind != nkDotExpr: # dotExpr is already checked by builtinFieldAccess
+      markUsed(c, n.info, s)
     onUse(n.info, s)
     if s.typ.kind == tyStatic and s.typ.base.kind != tyNone and s.typ.n != nil:
       return s.typ.n
