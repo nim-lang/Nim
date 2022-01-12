@@ -94,12 +94,12 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
   var c = initResults()
 
-  runBasicDLLTest c, r, cat, options
-  runBasicDLLTest c, r, cat, options & " -d:release"
+  runBasicDLLTest c, r, cat, options & " --threads:off"
+  runBasicDLLTest c, r, cat, options & " -d:release --threads:off"
   when not defined(windows):
     # still cannot find a recent Windows version of boehm.dll:
-    runBasicDLLTest c, r, cat, options & " --gc:boehm"
-    runBasicDLLTest c, r, cat, options & " -d:release --gc:boehm"
+    runBasicDLLTest c, r, cat, options & " --gc:boehm --threads:off"
+    runBasicDLLTest c, r, cat, options & " -d:release --gc:boehm --threads:off"
 
 # ------------------------------ GC tests -------------------------------------
 
