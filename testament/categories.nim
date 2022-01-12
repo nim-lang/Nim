@@ -56,7 +56,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   var test1 = makeTest("lib/nimrtl.nim", options & " --threads:off --outdir:tests/dll", cat)
   test1.spec.action = actionCompile
   testSpec c, test1
-  var test2 = makeTest("tests/dll/server.nim", options & rpath, cat)
+  var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
   var test3 = makeTest("lib/nimhcr.nim", options & " --threads:off --outdir:tests/dll" & rpath, cat)
@@ -76,7 +76,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv(libpathenv, libpath)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & rpath, cat)
+  testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
   testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
   testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
@@ -95,7 +95,7 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
   var c = initResults()
 
   runBasicDLLTest c, r, cat, options
-  runBasicDLLTest c, r, cat, options
+  runBasicDLLTest c, r, cat, options & " -d:release"
   when not defined(windows):
     # still cannot find a recent Windows version of boehm.dll:
     runBasicDLLTest c, r, cat, options & " --gc:boehm"
