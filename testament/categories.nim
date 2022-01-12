@@ -53,16 +53,16 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     else:
       ""
 
-  var test1 = makeTest("lib/nimrtl.nim", options & " --outdir:tests/dll", cat)
+  var test1 = makeTest("lib/nimrtl.nim", options & " --threads:off --outdir:tests/dll", cat)
   test1.spec.action = actionCompile
   testSpec c, test1
-  var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
+  var test2 = makeTest("tests/dll/server.nim", options & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
-  var test3 = makeTest("lib/nimhcr.nim", options & " --outdir:tests/dll" & rpath, cat)
+  var test3 = makeTest("lib/nimhcr.nim", options & " --threads:off --outdir:tests/dll" & rpath, cat)
   test3.spec.action = actionCompile
   testSpec c, test3
-  var test4 = makeTest("tests/dll/visibility.nim", options & " --app:lib" & rpath, cat)
+  var test4 = makeTest("tests/dll/visibility.nim", options & " --threads:off --app:lib" & rpath, cat)
   test4.spec.action = actionCompile
   testSpec c, test4
 
@@ -76,14 +76,14 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv(libpathenv, libpath)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
-  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & rpath, cat)
-  testSpec r, makeTest("tests/dll/visibility.nim", options & rpath, cat)
+  testSpec r, makeTest("tests/dll/client.nim", options & rpath, cat)
+  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
+  testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
   if "boehm" notin options:
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
-                                   options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
+                                   options & " --threads:off --forceBuild --hotCodeReloading:on" & rpath, cat)
     let nimcache = nimcacheDir(hcri.name, hcri.options, getTestSpecTarget())
     let cmd = prepareTestCmd(hcri.spec.getCmd, hcri.name,
                                 hcri.options, nimcache, getTestSpecTarget())
@@ -94,12 +94,12 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
   var c = initResults()
 
-  runBasicDLLTest c, r, cat, options & " --threads:off"
-  runBasicDLLTest c, r, cat, options & " -d:release --threads:off"
+  runBasicDLLTest c, r, cat, options
+  runBasicDLLTest c, r, cat, options
   when not defined(windows):
     # still cannot find a recent Windows version of boehm.dll:
-    runBasicDLLTest c, r, cat, options & " --gc:boehm --threads:off"
-    runBasicDLLTest c, r, cat, options & " -d:release --gc:boehm --threads:off"
+    runBasicDLLTest c, r, cat, options & " --gc:boehm"
+    runBasicDLLTest c, r, cat, options & " -d:release --gc:boehm"
 
 # ------------------------------ GC tests -------------------------------------
 
