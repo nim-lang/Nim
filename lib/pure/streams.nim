@@ -135,6 +135,12 @@ type
     flushImpl*: proc (s: Stream)
       {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
 
+  StreamOption* = enum  ## What operation the stream can do.
+    soReadable,         ## You can read data from stream.
+    soWritable,         ## Data can be written to the stream.
+    soSeekable,         ## Read or write position can be changed.
+    soPeekable          ## Can read data without advancing read position.
+
 proc flush*(s: Stream) =
   ## Flushes the buffers that the stream `s` might use.
   ##
@@ -227,6 +233,7 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
     doAssert strm.atEnd() == true
     strm.close()
 
+  assert s.readDataImpl != nil, "You cannot read from this stream"
   result = s.readDataImpl(s, buffer, bufLen)
 
 proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
@@ -304,6 +311,7 @@ proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
     doAssert strm.atEnd() == false
     strm.close()
 
+  assert s.peekDataImpl != nil, "You cannot peek to this stream"
   result = s.peekDataImpl(s, buffer, bufLen)
 
 proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
@@ -325,6 +333,7 @@ proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
     doAssert buffer2 == ['a', 'b', 'c', 'd', 'e', '\x00']
     strm.close()
 
+  assert s.writeDataImpl != nil, "You cannot write to this stream"
   s.writeDataImpl(s, buffer, bufLen)
 
 proc write*[T](s: Stream, x: T) =
@@ -1324,7 +1333,9 @@ proc fsWriteData(s: Stream, buffer: pointer, bufLen: int) =
 proc fsReadLine(s: Stream, line: var string): bool =
   result = readLine(FileStream(s).f, line)
 
-proc newFileStream*(f: File; isSeekable = true): owned FileStream =
+proc newFileStream*(f: File; options:
+    set[StreamOption] = {soReadable, soWritable, soSeekable, soPeekable}):
+  owned FileStream =
   ## Creates a new stream from the file `f`.
   ##
   ## Set `isSeekable` to false if `f` is a file you cannot seek.
@@ -1356,19 +1367,32 @@ proc newFileStream*(f: File; isSeekable = true): owned FileStream =
       ## the third line
       strm.close()
 
+  # You cannot peek if you cannot read.
+  assert not (soReadable notin options and soPeekable in options)
+
   new(result)
   result.f = f
   result.closeImpl = fsClose
   result.atEndImpl = fsAtEnd
-  if isSeekable:
+  if soSeekable in options:
     result.setPositionImpl = fsSetPosition
     result.getPositionImpl = fsGetPosition
-  result.readDataStrImpl = fsReadDataStr
-  result.readDataImpl = fsReadData
-  result.readLineImpl = fsReadLine
-  result.peekDataImpl = fsPeekData
-  result.writeDataImpl = fsWriteData
-  result.flushImpl = fsFlush
+  if soReadable in options:
+    result.readDataStrImpl = fsReadDataStr
+    result.readDataImpl = fsReadData
+    result.readLineImpl = fsReadLine
+    if soPeekable in options:
+      result.peekDataImpl = fsPeekData
+  if soWritable in options:
+    result.writeDataImpl = fsWriteData
+    result.flushImpl = fsFlush
+
+proc fileModeToStreamOption(mode: FileMode): set[StreamOption] =
+  case mode
+  of fmRead: {soReadable, soSeekable, soPeekable}
+  of fmWrite, fmAppend: {soWritable, soSeekable}
+  of fmReadWrite, fmReadWriteExisting:
+    {soReadable, soWritable, soSeekable, soPeekable}
 
 proc newFileStream*(filename: string, mode: FileMode = fmRead,
     bufSize: int = -1): owned FileStream =
@@ -1406,7 +1430,8 @@ proc newFileStream*(filename: string, mode: FileMode = fmRead,
       removeFile("somefile.txt")
 
   var f: File
-  if open(f, filename, mode, bufSize): result = newFileStream(f)
+  if open(f, filename, mode, bufSize):
+    result = newFileStream(f, fileModeToStreamOption(mode))
 
 proc openFileStream*(filename: string, mode: FileMode = fmRead,
     bufSize: int = -1): owned FileStream =
@@ -1438,7 +1463,7 @@ proc openFileStream*(filename: string, mode: FileMode = fmRead,
 
   var f: File
   if open(f, filename, mode, bufSize):
-    return newFileStream(f)
+    return newFileStream(f, fileModeToStreamOption(mode))
   else:
     raise newEIO("cannot open file stream: " & filename)
 

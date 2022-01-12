@@ -569,13 +569,15 @@ when defined(windows) and not defined(useNimRtl):
                               addr bytesWritten, nil)
     if a == 0: raiseOSError(osLastError())
 
-  proc newFileHandleStream(handle: Handle): owned FileHandleStream =
+  proc newFileHandleStream(handle: Handle; isInput: bool): owned FileHandleStream =
     new(result)
     result.handle = handle
     result.closeImpl = hsClose
     result.atEndImpl = hsAtEnd
-    result.readDataImpl = hsReadData
-    result.writeDataImpl = hsWriteData
+    if not isInput:
+      result.readDataImpl = hsReadData
+    else:
+      result.writeDataImpl = hsWriteData
 
   proc buildCommandLine(a: string, args: openArray[string]): string =
     result = quoteShell(a)
@@ -837,31 +839,31 @@ when defined(windows) and not defined(useNimRtl):
   proc inputStream(p: Process): Stream =
     streamAccess(p)
     if p.inStream == nil:
-      p.inStream = newFileHandleStream(p.inHandle)
+      p.inStream = newFileHandleStream(p.inHandle, true)
     result = p.inStream
 
   proc outputStream(p: Process): Stream =
     streamAccess(p)
     if p.outStream == nil:
-      p.outStream = newFileHandleStream(p.outHandle)
+      p.outStream = newFileHandleStream(p.outHandle, false)
     result = p.outStream
 
   proc errorStream(p: Process): Stream =
     streamAccess(p)
     if p.errStream == nil:
-      p.errStream = newFileHandleStream(p.errHandle)
+      p.errStream = newFileHandleStream(p.errHandle, false)
     result = p.errStream
 
   proc peekableOutputStream(p: Process): Stream =
     streamAccess(p)
     if p.outStream == nil:
-      p.outStream = newFileHandleStream(p.outHandle).newPipeOutStream
+      p.outStream = newFileHandleStream(p.outHandle, false).newPipeOutStream
     result = p.outStream
 
   proc peekableErrorStream(p: Process): Stream =
     streamAccess(p)
     if p.errStream == nil:
-      p.errStream = newFileHandleStream(p.errHandle).newPipeOutStream
+      p.errStream = newFileHandleStream(p.errHandle, false).newPipeOutStream
     result = p.errStream
 
   proc execCmd(command: string): int =
@@ -1491,7 +1493,8 @@ elif not defined(useNimRtl):
                     fileMode: FileMode): owned FileStream =
     var f: File
     if not open(f, handle, fileMode): raiseOSError(osLastError())
-    return newFileStream(f, false)
+    return
+      newFileStream(f, if fileMode == fmWrite: {soWritable} else: {soReadable})
 
   proc inputStream(p: Process): Stream =
     streamAccess(p)
