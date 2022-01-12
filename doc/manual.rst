@@ -3502,8 +3502,9 @@ location is `T`, the `addr` operator result is of the type `ptr T`. An
 address is always an untraced reference. Taking the address of an object that
 resides on the stack is **unsafe**, as the pointer may live longer than the
 object on the stack and can thus reference a non-existing object. One can get
-the address of variables, but one can't use it on variables declared through
-`let` statements:
+the address of variables. For easier interoperability with other compiled languages
+such as C, retrieving the address of a `let` variable, a parameter,
+or a `for` loop variable can be accomplished too:
 
 .. code-block:: nim
 
@@ -3515,23 +3516,17 @@ the address of variables, but one can't use it on variables declared through
   # --> ref 0x7fff6b71b670 --> 0x10bb81050"Hello"
   echo cast[ptr string](t3)[]
   # --> Hello
-  # The following line doesn't compile:
+  # The following line also works
   echo repr(addr(t1))
-  # Error: expression has no address
-
 
 The unsafeAddr operator
 -----------------------
 
-For easier interoperability with other compiled languages such as C, retrieving
-the address of a `let` variable, a parameter, or a `for` loop variable can
-be accomplished by using the `unsafeAddr` operation:
+The unsafeAddr operator is an alias for the addr operator and is deprecated:
 
 .. code-block:: nim
-
   let myArray = [1, 2, 3]
   foreignProcThatTakesAnAddr(unsafeAddr myArray)
-
 
 Procedures
 ==========

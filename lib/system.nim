@@ -192,6 +192,13 @@ else:
 
 proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.
+  ## This works even for `let` variables or parameters
+  ## for better interop with C.
+  ##
+  ## .. note:: When you use it to write a wrapper for a C library, you should
+  ## always check that the original library does never write to data behind the
+  ## pointer that is returned from this procedure.
+  ##
   ## Cannot be overloaded.
   ##
   ## See also:
@@ -205,13 +212,13 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ##  echo p[]    # b
   discard
 
-proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
+proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect,
+  deprecated: "'unsafeAddr' is a deprecated alias for 'addr'".} =
   ## Builtin `addr` operator for taking the address of a memory
   ## location. This works even for `let` variables or parameters
-  ## for better interop with C and so it is considered even more
-  ## unsafe than the ordinary `addr <#addr,T>`_.
+  ## for better interop with C.
   ##
-  ## **Note**: When you use it to write a wrapper for a C library, you should
+  ## .. note:: When you use it to write a wrapper for a C library, you should
   ## always check that the original library does never write to data behind the
   ## pointer that is returned from this procedure.
   ##
