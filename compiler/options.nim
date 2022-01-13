@@ -187,7 +187,7 @@ type
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
-    implicitDeref, # dead code; remains here for backwards compatibility
+    implicitDeref, # removed experimental feature; remains here for backwards compatibility
     dotOperators,
     callOperator,
     parallel,
