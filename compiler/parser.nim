@@ -770,7 +770,7 @@ proc identOrLiteral(p: var Parser, mode: PrimaryMode): PNode =
     getTok(p)
   of tkParLe:
     # () constructor
-    if mode in {pmTypeDesc, pmTypeDef}:
+    if false and mode in {pmTypeDesc, pmTypeDef}:
       result = exprColonEqExprList(p, nkPar, tkParRi)
     else:
       result = parsePar(p)
@@ -990,9 +990,9 @@ type
 
 proc parseIdentColonEquals(p: var Parser, flags: DeclaredIdentFlags): PNode =
   #| declColonEquals = identWithPragma (comma identWithPragma)* comma?
-  #|                   (':' optInd typeDesc)? ('=' optInd expr)?
+  #|                   (':' optInd simpleExpr)? ('=' optInd expr)?
   #| identColonEquals = IDENT (comma IDENT)* comma?
-  #|      (':' optInd typeDesc)? ('=' optInd expr)?)
+  #|      (':' optInd simpleExpr)? ('=' optInd expr)?)
   var a: PNode
   result = newNodeP(nkIdentDefs, p)
   # progress guaranteed
@@ -1010,7 +1010,8 @@ proc parseIdentColonEquals(p: var Parser, flags: DeclaredIdentFlags): PNode =
   if p.tok.tokType == tkColon:
     getTok(p)
     optInd(p, result)
-    result.add(parseTypeDesc(p))
+    # mode mostly because of subsequent =
+    result.add(simpleExpr(p, pmTypeDesc))
   else:
     result.add(newNodeP(nkEmpty, p))
     if p.tok.tokType != tkEquals and withBothOptional notin flags:
@@ -1331,7 +1332,7 @@ proc parseTypeDesc(p: var Parser): PNode =
   #| rawTypeDesc = (tupleType | routineType | 'enum' | 'object' |
   #|                 ('var' | 'out' | 'ref' | 'ptr' | 'distinct') typeDesc?)
   #|                 ('not' expr)?
-  #| typeDesc = rawTypeDesc | simpleExpr ('not' expr)?
+  #| typeDesc = rawTypeDesc / simpleExpr
   newlineWasSplitting(p)
   case p.tok.tokType
   of tkTuple:
@@ -1357,14 +1358,14 @@ proc parseTypeDesc(p: var Parser): PNode =
   of tkDistinct: result = parseTypeDescKAux(p, nkDistinctTy, pmTypeDesc)
   else:
     result = simpleExpr(p, pmTypeDesc)
+    return result
   result = binaryNot(p, result)
 
 proc parseTypeDefAux(p: var Parser): PNode =
   #| typeDefAux = ((tupleDecl | routineType |
   #|                  ('ref' | 'ptr') typeDefAux? |
-  #|                  enumDecl | objectDecl | conceptDecl)
-  #|                / (simpleExpr (exprEqExpr ^+ comma postExprBlocks)?))
-  #|              ('not' expr)?
+  #|                  enumDecl | objectDecl | conceptDecl) ('not' expr)?)
+  #|                / (simpleExpr (exprEqExpr ^+ comma postExprBlocks)?)
   case p.tok.tokType
   of tkTuple:
     result = parseTuple(p, true)
@@ -1397,6 +1398,7 @@ proc parseTypeDefAux(p: var Parser): PNode =
           optInd(p, result)
           result.add(commandParam(p, isFirstParam, pmTypeDef))
       result = postExprBlocks(p, result)
+    return result
   result = binaryNot(p, result)
 
 proc makeCall(n: PNode): PNode =
