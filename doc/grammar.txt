@@ -28,6 +28,7 @@ operatorB = OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9 |
 symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
        | IDENT | KEYW
 exprColonEqExpr = expr (':'|'=' expr)?
+exprEqExpr = expr ('=' expr)?
 exprList = expr ^+ comma
 exprColonEqExprList = exprColonEqExpr (comma exprColonEqExpr)* (comma)?
 qualifiedIdent = symbol ('.' optInd symbol)?
@@ -70,14 +71,16 @@ declColonEquals = identWithPragma (comma identWithPragma)* comma?
                   (':' optInd typeDesc)? ('=' optInd expr)?
 identColonEquals = IDENT (comma IDENT)* comma?
      (':' optInd typeDesc)? ('=' optInd expr)?)
-tupleDecl = 'tuple'
-    '[' optInd  (identColonEquals (comma/semicolon)?)*  optPar ']' |
-    COMMENT? (IND{>} identColonEquals (IND{=} identColonEquals)*)?
+tupleType = 'tuple'
+    '[' optInd  (identColonEquals (comma/semicolon)?)*  optPar ']'
+tupleDecl = tupleType |
+    ('tuple' COMMENT? (IND{>} identColonEquals (IND{=} identColonEquals)*)?)
 paramList = '(' declColonEquals ^* (comma/semicolon) ')'
 paramListArrow = paramList? ('->' optInd typeDesc)?
 paramListColon = paramList? (':' optInd typeDesc)?
 doBlock = 'do' paramListArrow pragma? colcom stmt
 routineExpr = ('proc' | 'func' | 'iterator') paramListColon pragma? ('=' COMMENT? stmt)?
+routineType = ('proc' | 'iterator') paramListColon pragma?
 forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
 forExpr = forStmt
 expr = (blockExpr
@@ -88,13 +91,18 @@ expr = (blockExpr
       | tryExpr)
       / simpleExpr
 primary = operatorB primary primarySuffix* |
-          tupleDecl | routineExpr | enumDecl
-          objectDecl | conceptDecl | ('bind' primary)
-          ('var' | 'out' | 'ref' | 'ptr' | 'distinct') primary
+          routineExpr |
+          'bind' primary |
+          rawTypeDesc
         /  prefixOperator* identOrLiteral primarySuffix*
-typeDesc = simpleExpr ('not' expr)?
-typeDefAux = simpleExpr ('not' expr
-                        | postExprBlocks)?
+rawTypeDesc = (tupleType | routineType | 'enum' | 'object' |
+                ('var' | 'out' | 'ref' | 'ptr' | 'distinct') typeDesc?)
+                ('not' expr)?
+typeDesc = rawTypeDesc | simpleExpr ('not' expr)?
+typeDefAux = ((tupleDecl | routineType |
+                 ('ref' | 'ptr') typeDefAux? |
+                 enumDecl | objectDecl | conceptDecl)
+               / exprStmt) ('not' expr)?
 postExprBlocks = ':' stmt? ( IND{=} doBlock
                            | IND{=} 'of' exprList ':' stmt
                            | IND{=} 'elif' expr ':' stmt
@@ -103,7 +111,7 @@ postExprBlocks = ':' stmt? ( IND{=} doBlock
                            | IND{=} 'else' ':' stmt )*
 exprStmt = simpleExpr
          (( '=' optInd expr colonBody? )
-         / ( expr ^+ comma
+         / ( exprEqExpr ^+ comma
              postExprBlocks
            ))?
 importStmt = 'import' optInd expr
