@@ -51,17 +51,17 @@ type
     HttpPatch = "PATCH"      ## Applies partial modifications to a resource.
 
     # WebDAV
-    HttpCopy = "COPY"            ## copy a resource from one uri to another
-    HttpLock = "LOCK"            ## put a lock on a resource
-    HttpMkCol = "MKCOL"          ## create collections
-    HttpMove = "MOVE"            ## move a resource from one URI to another
-    HttpPropFind = "PROPFIND"    ## retrieve properties, stored as XML,
+    HttpCopy = "COPY"            ## Copies a resource from one URI to another.
+    HttpLock = "LOCK"            ## Puts a lock on a resource.
+    HttpMkCol = "MKCOL"          ## Creates collections.
+    HttpMove = "MOVE"            ## Moves a resource from one URI to another.
+    HttpPropFind = "PROPFIND"    ## Retrieve properties, stored as XML,
                                  ## from a web resource. It is also overloaded
                                  ## to allow one to retrieve the collection
-                                 ## structure
-    HttpPropPatch = "PROPPATCH"  ## change and delete multiple properties on a
-                                 ## resource in a single atomic act
-    HttpUnlock = "UNLOCK"        ## remove a lock from a resource        
+                                 ## structure.
+    HttpPropPatch = "PROPPATCH"  ## Changes and deletes multiple properties on a
+                                 ## resource in a single atomic operation.
+    HttpUnlock = "UNLOCK"        ## Removes a lock from a resource.        
 
 const
   Http100* = HttpCode(100)
