@@ -1746,7 +1746,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
               result = isNone
         elif f.base.kind == tyGenericParam:
           # Handling things like `type A[T; Y: static T] = object`
-          if f.base.sons.len > 0: # There is a constraint, handle it
+          if f.base.len > 0: # There is a constraint, handle it
             result = typeRel(c, f.base.lastSon, a, flags)
           else:
             # No constraint
