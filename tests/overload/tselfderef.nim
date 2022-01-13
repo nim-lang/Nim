@@ -13,8 +13,8 @@ proc f(num: int) =
   discard
 
 var intptr: ptr int
-intptr.f() # compiles fine
+intptr[].f() # compiles fine
 
 proc doSomething(self: var SomeObj) =
   var pint: ptr int
-  pint.f() # Error: expression '.(pint, "f")' cannot be called
+  pint[].f() # Error: expression '.(pint, "f")' cannot be called
