@@ -1202,8 +1202,6 @@ proc parseTypeDescKAux(p: var Parser,
   if not isOperator(p.tok) and isExprStart(p):
     if mode == pmTypeDef:
       result.add(parseTypeDefAux(p))
-    elif mode == pmTypeDesc:
-      result.add(parseTypeDesc(p))
     else:
       result.add(primary(p, mode))
   if kind == nkDistinctTy and p.tok.tokType == tkSymbol:
