@@ -1384,7 +1384,8 @@ proc parseTypeDefAux(p: var Parser): PNode =
   #| typeDefAux = ((tupleDecl | routineType |
   #|                  ('ref' | 'ptr') typeDefAux? |
   #|                  enumDecl | objectDecl | conceptDecl)
-  #|                / exprStmt) ('not' expr)?
+  #|                / (simpleExpr (exprEqExpr ^+ comma postExprBlocks)?))
+  #|              ('not' expr)?
   case p.tok.tokType
   of tkTuple:
     result = parseTuple(p, true)
@@ -1524,16 +1525,8 @@ proc parseExprStmt(p: var Parser): PNode =
     result.add(a)
     result.add(b)
   else:
-    # simpleExpr parsed 'p a' from 'p a, b'?
     var isFirstParam = false
-    if p.tok.indent < 0 and p.tok.tokType == tkComma and a.kind == nkCommand:
-      result = a
-      while true:
-        getTok(p)
-        optInd(p, result)
-        result.add(commandParam(p, isFirstParam, pmNormal))
-        if p.tok.tokType != tkComma: break
-    elif p.tok.indent < 0 and isExprStart(p):
+    if p.tok.indent < 0 and isExprStart(p):
       result = newTreeI(nkCommand, a.info, a)
       while true:
         result.add(commandParam(p, isFirstParam, pmNormal))
