@@ -121,7 +121,7 @@
 ##     var id = 1
 ##     ## Data needs to be converted to seq[byte] to be interpreted as binary by bindParams
 ##     var dbuf = newSeq[byte](orig.len*sizeof(float64))
-##     copyMem(unsafeAddr(dbuf[0]), unsafeAddr(orig[0]), dbuf.len)
+##     copyMem(addr(dbuf[0]), addr(orig[0]), dbuf.len)
 ##
 ##     ## Use prepared statement to insert binary data into database
 ##     var insertStmt = db.prepare("INSERT INTO test (id, data) VALUES (?, ?)")
@@ -138,7 +138,7 @@
 ##     let seqSize = int(dataTest.len*sizeof(byte)/sizeof(float64))
 ##     ## Copy binary string data in dataTest into a seq
 ##     var res: seq[float64] = newSeq[float64](seqSize)
-##     copyMem(unsafeAddr(res[0]), addr(dataTest[0]), dataTest.len)
+##     copyMem(addr(res[0]), addr(dataTest[0]), dataTest.len)
 ##
 ##     ## Check datas obtained is identical
 ##     doAssert res == orig
@@ -827,7 +827,7 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte], copy = true
   ## binds a blob to the specified paramIndex.
   ## if copy is true then SQLite makes its own private copy of the data immediately
   let len = val.len
-  if bind_blob(ps.PStmt, paramIdx.int32, val[0].unsafeAddr, len.int32, if copy: SQLITE_TRANSIENT else: SQLITE_STATIC) != SQLITE_OK:
+  if bind_blob(ps.PStmt, paramIdx.int32, val[0].addr, len.int32, if copy: SQLITE_TRANSIENT else: SQLITE_STATIC) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
 macro bindParams*(ps: SqlPrepared, params: varargs[untyped]): untyped {.since: (1, 3).} =
