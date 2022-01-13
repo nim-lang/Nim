@@ -1739,11 +1739,22 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
       if aOrig.kind == tyStatic:
-        if f.base.kind != tyNone:
+        if f.base.kind notin {tyNone, tyGenericParam}:
           result = typeRel(c, f.base, a, flags)
           if result != isNone and f.n != nil:
             if not exprStructuralEquivalent(f.n, aOrig.n):
               result = isNone
+        elif f.base.kind == tyGenericParam:
+          # Handling things like `type A[T; Y: static T] = object`
+          if f.base.len > 0: # There is a constraint, handle it
+            result = typeRel(c, f.base.lastSon, a, flags)
+          else:
+            # No constraint
+            if tfGenericTypeParam in f.flags:
+              result = isGeneric
+            else:
+              # for things like `proc fun[T](a: static[T])`
+              result = typeRel(c, f.base, a, flags)
         else:
           result = isGeneric
         if result != isNone: put(c, f, aOrig)
@@ -1993,7 +2004,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     arg = argSemantized
     a = a
     c = m.c
-
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
