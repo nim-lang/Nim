@@ -39,10 +39,10 @@ block:
   var x: ref int
   new(x)
 
-  x.p(44)
+  x[].p(44)
 
   var indirect = p
-  x.indirect(44)
+  x[].indirect(44)
 
   echo x[]
 
