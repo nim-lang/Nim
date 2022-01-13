@@ -168,6 +168,17 @@ This feature will likely be superseded in the future by support for
 recursive module dependencies.
 
 
+Importing private symbols
+=========================
+
+In some situations, it may be useful to import all symbols (public or private)
+from a module. The syntax `import foo {.all.}` can be used to import all
+symbols from the module `foo`. Note that importing private symbols is
+generally not recommended.
+
+See also the experimental `importutils <importutils.html>`_ module.
+
+
 Code reordering
 ===============
 
