@@ -53,7 +53,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     else:
       ""
 
-  var test1 = makeTest("lib/nimrtl.nim", options & " --threads:off --outdir:tests/dll", cat)
+  var test1 = makeTest("lib/nimrtl.nim", options & " --outdir:tests/dll", cat)
   test1.spec.action = actionCompile
   testSpec c, test1
   var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
