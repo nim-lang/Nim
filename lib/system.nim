@@ -190,7 +190,7 @@ when defined(nimHasDeclaredMagic):
 else:
   proc declaredInScope*(x: untyped): bool {.magic: "DefinedInScope", noSideEffect, compileTime.}
 
-proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
+proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.
   ##
   ## .. note:: This works for `let` variables or parameters
