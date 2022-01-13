@@ -92,6 +92,7 @@ proc parseExprStmt(p: var Parser): PNode
 proc parseBlock(p: var Parser): PNode
 proc primary(p: var Parser, mode: PrimaryMode): PNode
 proc simpleExprAux(p: var Parser, limit: int, mode: PrimaryMode): PNode
+proc parseGStrLit(p: var Parser, a: PNode): PNode
 
 # implementation
 
@@ -469,6 +470,8 @@ proc dotExpr(p: var Parser, a: PNode): PNode =
     result = y
 
 proc dotLikeExpr(p: var Parser, a: PNode): PNode =
+  #| dotLikeExpr = DOTLIKEOP optInd symbol generalizedLit?
+  #|             | DOTLIKEOP optInd symbol '(' (exprColonEqExpr comma?)* ')'
   var info = p.parLineInfo
   result = newNodeI(nkInfix, info)
   optInd(p, result)
@@ -477,6 +480,12 @@ proc dotLikeExpr(p: var Parser, a: PNode): PNode =
   result.add(opNode)
   result.add(a)
   result.add(parseSymbol(p, smAfterDot))
+  if p.tok.tokType == tkParLe and p.tok.strongSpaceA <= 0:
+    let operator = opNode.ident.s & "()"
+    result[0] = newIdentNodeP(getIdent(p.lex.cache, operator), p)
+    exprColonEqExprListAux(p, tkParRi, result)
+  else:
+    result = parseGStrLit(p, result)
 
 proc qualifiedIdent(p: var Parser): PNode =
   #| qualifiedIdent = symbol ('.' optInd symbol)?
@@ -808,7 +817,7 @@ proc primarySuffix(p: var Parser, r: PNode,
                    baseIndent: int, mode: PrimaryMode): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')'
   #|       | '.' optInd symbol ('[:' exprList ']' ( '(' exprColonEqExpr ')' )?)? generalizedLit?
-  #|       | DOTLIKEOP optInd symbol generalizedLit?
+  #|       | dotLikeExpr
   #|       | '[' optInd exprColonEqExprList optPar ']'
   #|       | '{' optInd exprColonEqExprList optPar '}'
   #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr (comma expr)* # command syntax
@@ -861,7 +870,6 @@ proc primarySuffix(p: var Parser, r: PNode,
       if isDotLike2 and p.lex.config.isDefined("nimPreviewDotLikeOps"):
         # synchronize with `tkDot` branch
         result = dotLikeExpr(p, result)
-        result = parseGStrLit(p, result)
       else:
         if isDotLike2:
           parMessage(p, warnDotLikeOps, "dot-like operators will be parsed differently with `-d:nimPreviewDotLikeOps`")
