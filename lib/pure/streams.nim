@@ -333,7 +333,7 @@ proc write*[T](s: Stream, x: T) =
   ##
   ## .. code-block:: Nim
   ##
-  ##     s.writeData(s, addr(x), sizeof(x))
+  ##     s.writeData(s, unsafeAddr(x), sizeof(x))
   runnableExamples:
     var strm = newStringStream("")
     strm.write("abcde")
@@ -341,7 +341,7 @@ proc write*[T](s: Stream, x: T) =
     doAssert strm.readAll() == "abcde"
     strm.close()
 
-  writeData(s, addr(x), sizeof(x))
+  writeData(s, unsafeAddr(x), sizeof(x))
 
 proc write*(s: Stream, x: string) =
   ## Writes the string `x` to the stream `s`. No length field or
@@ -1196,7 +1196,7 @@ else: # after 1.3 or JS not defined
       jsOrVmBlock:
         buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
       do:
-        copyMem(addr buffer[slice.a], addr s.data[s.pos], result)
+        copyMem(unsafeAddr buffer[slice.a], addr s.data[s.pos], result)
       inc(s.pos, result)
     else:
       result = 0

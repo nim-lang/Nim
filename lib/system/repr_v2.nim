@@ -90,7 +90,7 @@ proc repr*(p: pointer): string =
 
 proc repr*(p: proc): string =
   ## repr of a proc as its address
-  repr(cast[ptr pointer](addr p)[])
+  repr(cast[ptr pointer](unsafeAddr p)[])
 
 template repr*(x: distinct): string =
   repr(distinctBase(typeof(x))(x))

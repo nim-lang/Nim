@@ -663,7 +663,7 @@ when useNimNetLite:
       return ""
 
   proc sockAddrToStr(sa: var Sockaddr_in | var Sockaddr_in6): string =
-    result = sockAddrToStr(cast[ptr SockAddr](addr(sa)))
+    result = sockAddrToStr(cast[ptr SockAddr](unsafeAddr(sa)))
 
   proc getAddrString*(sockAddr: ptr SockAddr): string =
     result = sockAddrToStr(sockAddr)

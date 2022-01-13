@@ -163,7 +163,7 @@ proc addChar(s: NimString, c: char): NimString =
       when defined(nimIncrSeqV3):
         result = rawNewStringNoInit(r)
         result.len = s.len
-        copyMem(addr result.data[0], addr(s.data[0]), s.len+1)
+        copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
       else:
         result = cast[NimString](growObj(result,
           sizeof(TGenericSeq) + r + 1))
@@ -213,7 +213,7 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     when defined(nimIncrSeqV3):
       result = rawNewStringNoInit(sp)
       result.len = dest.len
-      copyMem(addr result.data[0], addr(dest.data[0]), dest.len+1)
+      copyMem(addr result.data[0], unsafeAddr(dest.data[0]), dest.len+1)
     else:
       result = cast[NimString](growObj(dest, sizeof(TGenericSeq) + sp + 1))
     result.reserved = sp
@@ -242,7 +242,7 @@ proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
     when defined(nimIncrSeqV3):
       result = rawNewStringNoInit(sp)
       result.len = s.len
-      copyMem(addr result.data[0], addr(s.data[0]), s.len+1)
+      copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
       zeroMem(addr result.data[s.len], newLen - s.len)
       result.reserved = sp
     else:

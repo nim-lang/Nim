@@ -1920,7 +1920,7 @@ proc send*(socket: AsyncFD, data: string,
   ## data has been sent.
   var retFuture = newFuture[void]("send")
   if data.len > 0:
-    let sendFut = socket.send(addr data[0], data.len, flags)
+    let sendFut = socket.send(unsafeAddr data[0], data.len, flags)
     sendFut.callback =
       proc () =
         keepAlive(data)

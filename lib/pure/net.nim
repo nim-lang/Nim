@@ -484,14 +484,14 @@ proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage,
     let s = cast[ptr Sockaddr_in](addr sa)
     s.sin_family = typeof(s.sin_family)(toInt(AF_INET))
     s.sin_port = port
-    copyMem(addr s.sin_addr, addr address.address_v4[0],
+    copyMem(addr s.sin_addr, unsafeAddr address.address_v4[0],
             sizeof(s.sin_addr))
   of IpAddressFamily.IPv6:
     sl = sizeof(Sockaddr_in6).SockLen
     let s = cast[ptr Sockaddr_in6](addr sa)
     s.sin6_family = typeof(s.sin6_family)(toInt(AF_INET6))
     s.sin6_port = port
-    copyMem(addr s.sin6_addr, addr address.address_v6[0],
+    copyMem(addr s.sin6_addr, unsafeAddr address.address_v6[0],
             sizeof(s.sin6_addr))
 
 proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: SockLen,
@@ -516,7 +516,7 @@ proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
     sl: SockLen, address: var IpAddress, port: var Port) {.inline.} =
   ## Converts `SockAddr` and `SockLen` to `IpAddress` and `Port`. Raises
   ## `ObjectConversionDefect` in case of invalid `sa` and `sl` arguments.
-  fromSockAddrAux(cast[ptr Sockaddr_storage](addr sa), sl, address, port)
+  fromSockAddrAux(cast[ptr Sockaddr_storage](unsafeAddr sa), sl, address, port)
 
 when defineSsl:
   CRYPTO_malloc_init()
