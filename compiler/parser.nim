@@ -911,7 +911,7 @@ proc parseOperators(p: var Parser, headNode: PNode,
 proc simpleExprAux(p: var Parser, limit: int, mode: PrimaryMode): PNode =
   result = primary(p, mode)
   if p.tok.tokType == tkCurlyDotLe and (p.tok.indent < 0 or realInd(p)) and
-     mode == pmNormal:
+     mode in {pmNormal, pmSkipCommand}:
     var pragmaExp = newNodeP(nkPragmaExpr, p)
     pragmaExp.add result
     pragmaExp.add p.parsePragma
