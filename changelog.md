@@ -18,7 +18,7 @@
 - Constants `colors.colPaleVioletRed` and `colors.colMediumPurple` changed to match the CSS color standard.
 
 - `addr` is now available for all addressable locations, `unsafeAddr` is deprecated and
-become an alias for `addr`.
+becomes an alias for `addr`.
 
 ## Standard library additions and changes
 
