@@ -14,6 +14,8 @@
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
   `experimental:flexibleOptionalParams`.
 
+- Automatic dereferencing (experimental feature) is removed.
+
 - `std/sharedstrings` module is removed.
 - Constants `colors.colPaleVioletRed` and `colors.colMediumPurple` changed to match the CSS color standard.
 
