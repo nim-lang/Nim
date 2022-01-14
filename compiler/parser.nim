@@ -62,7 +62,8 @@ type
     smNormal, smAllowNil, smAfterDot
 
   PrimaryMode = enum
-    pmNormal, pmTypeDesc, pmTypeDef, pmSkipSuffix, pmCommandStart
+    pmNormal, pmTypeDesc, pmTypeDef, pmSkipSuffix, pmCommandStart,
+    pmTypeDescStart
 
 proc parseAll*(p: var Parser): PNode
 proc closeParser*(p: var Parser)
@@ -269,7 +270,7 @@ proc newIdentNodeP(ident: PIdent, p: Parser): PNode =
 
 proc parseExpr(p: var Parser): PNode
 proc parseStmt(p: var Parser): PNode
-proc parseTypeDesc(p: var Parser): PNode
+proc parseTypeDesc(p: var Parser, fullExpr = false): PNode
 proc parseTypeDefAux(p: var Parser): PNode
 proc parseParamList(p: var Parser, retColon = true): PNode
 
@@ -991,9 +992,9 @@ type
 
 proc parseIdentColonEquals(p: var Parser, flags: DeclaredIdentFlags): PNode =
   #| declColonEquals = identWithPragma (comma identWithPragma)* comma?
-  #|                   (':' optInd simpleExpr)? ('=' optInd expr)?
+  #|                   (':' optInd typeDescExpr)? ('=' optInd expr)?
   #| identColonEquals = IDENT (comma IDENT)* comma?
-  #|      (':' optInd simpleExpr)? ('=' optInd expr)?)
+  #|      (':' optInd typeDescExpr)? ('=' optInd expr)?)
   var a: PNode
   result = newNodeP(nkIdentDefs, p)
   # progress guaranteed
@@ -1011,8 +1012,7 @@ proc parseIdentColonEquals(p: var Parser, flags: DeclaredIdentFlags): PNode =
   if p.tok.tokType == tkColon:
     getTok(p)
     optInd(p, result)
-    # mode mostly because of subsequent =
-    result.add(simpleExpr(p, pmTypeDesc))
+    result.add(parseTypeDesc(p, fullExpr = true))
   else:
     result.add(newNodeP(nkEmpty, p))
     if p.tok.tokType != tkEquals and withBothOptional notin flags:
@@ -1185,8 +1185,9 @@ proc parseTypeDescKAux(p: var Parser,
   getTok(p)
   if p.tok.indent != -1 and p.tok.indent <= p.currInd: return
   optInd(p, result)
+  let isTypedef = mode == pmTypeDef and p.tok.tokType in {tkObject, tkTuple}
   if not isOperator(p.tok) and isExprStart(p):
-    if mode == pmTypeDef:
+    if isTypedef:
       result.add(parseTypeDefAux(p))
     else:
       result.add(primary(p, mode))
@@ -1203,6 +1204,8 @@ proc parseTypeDescKAux(p: var Parser,
     let list = newNodeP(nodeKind, p)
     result.add list
     parseSymbolList(p, list)
+  if mode == pmTypeDef and not isTypedef:
+    result = parseOperators(p, result, -1, mode)
 
 proc parseVarTuple(p: var Parser): PNode
 
@@ -1329,36 +1332,40 @@ proc binaryNot(p: var Parser; a: PNode): PNode =
   else:
     result = a
 
-proc parseTypeDesc(p: var Parser): PNode =
+proc parseTypeDesc(p: var Parser, fullExpr = false): PNode =
   #| rawTypeDesc = (tupleType | routineType | 'enum' | 'object' |
   #|                 ('var' | 'out' | 'ref' | 'ptr' | 'distinct') typeDesc?)
   #|                 ('not' expr)?
-  #| typeDesc = rawTypeDesc / simpleExpr ('not' expr)?
+  #| typeDescExpr = simpleExpr ('not' expr)?
+  #| typeDesc = rawTypeDesc / typeDescExpr
   newlineWasSplitting(p)
-  case p.tok.tokType
-  of tkTuple:
-    result = parseTuple(p, false)
-  of tkProc:
-    result = parseProcExpr(p, false, nkLambda)
-  of tkIterator:
-    result = parseProcExpr(p, false, nkLambda)
-    if result.kind == nkLambda: result.transitionSonsKind(nkIteratorDef)
-    else: result.transitionSonsKind(nkIteratorTy)
-  of tkEnum:
-    result = newNodeP(nkEnumTy, p)
-    getTok(p)
-  of tkObject:
-    result = newNodeP(nkObjectTy, p)
-    getTok(p)
-  of tkConcept:
-    parMessage(p, "the 'concept' keyword is only valid in 'type' sections")
-  of tkVar: result = parseTypeDescKAux(p, nkVarTy, pmTypeDesc)
-  of tkOut: result = parseTypeDescKAux(p, nkMutableTy, pmTypeDesc)
-  of tkRef: result = parseTypeDescKAux(p, nkRefTy, pmTypeDesc)
-  of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, pmTypeDesc)
-  of tkDistinct: result = parseTypeDescKAux(p, nkDistinctTy, pmTypeDesc)
-  else:
+  if fullExpr:
     result = simpleExpr(p, pmTypeDesc)
+  else:
+    case p.tok.tokType
+    of tkTuple:
+      result = parseTuple(p, false)
+    of tkProc:
+      result = parseProcExpr(p, false, nkLambda)
+    of tkIterator:
+      result = parseProcExpr(p, false, nkLambda)
+      if result.kind == nkLambda: result.transitionSonsKind(nkIteratorDef)
+      else: result.transitionSonsKind(nkIteratorTy)
+    of tkEnum:
+      result = newNodeP(nkEnumTy, p)
+      getTok(p)
+    of tkObject:
+      result = newNodeP(nkObjectTy, p)
+      getTok(p)
+    of tkConcept:
+      parMessage(p, "the 'concept' keyword is only valid in 'type' sections")
+    of tkVar: result = parseTypeDescKAux(p, nkVarTy, pmTypeDesc)
+    of tkOut: result = parseTypeDescKAux(p, nkMutableTy, pmTypeDesc)
+    of tkRef: result = parseTypeDescKAux(p, nkRefTy, pmTypeDesc)
+    of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, pmTypeDesc)
+    of tkDistinct: result = parseTypeDescKAux(p, nkDistinctTy, pmTypeDesc)
+    else:
+      result = simpleExpr(p, pmTypeDesc)
   result = binaryNot(p, result)
 
 proc parseTypeDefAux(p: var Parser): PNode =
@@ -1374,12 +1381,9 @@ proc parseTypeDefAux(p: var Parser): PNode =
     result = parseProcExpr(p, false, nkLambda)
     if result.kind == nkLambda: result.transitionSonsKind(nkIteratorDef)
     else: result.transitionSonsKind(nkIteratorTy)
-  of tkRef:
-    result = parseTypeDescKAux(p, nkRefTy, pmTypeDef)
-  of tkPtr:
-    result = parseTypeDescKAux(p, nkPtrTy, pmTypeDef)
-  of tkDistinct:
-    result = parseTypeDescKAux(p, nkDistinctTy, pmTypeDef)
+  of tkRef: result = parseTypeDescKAux(p, nkRefTy, pmTypeDef)
+  of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, pmTypeDef)
+  of tkDistinct: result = parseTypeDescKAux(p, nkDistinctTy, pmTypeDef)
   of tkEnum:
     prettySection:
       result = parseEnum(p)

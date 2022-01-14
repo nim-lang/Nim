@@ -17,7 +17,7 @@ proc forw: int {. .}
 proc lier(): int {.raises: [IO2Error].} = #[tt.Hint
                             ^ 'lier' cannot raise 'IO2Error' [XCannotRaiseY] ]#
   writeLine stdout, "arg" #[tt.Error
-            ^ writeLine stdout, ["arg"] can raise an unlisted exception: ref IOError ]#
+  ^ writeLine stdout, ["arg"] can raise an unlisted exception: ref IOError ]#
 
 proc forw: int =
   raise newException(IOError, "arg")

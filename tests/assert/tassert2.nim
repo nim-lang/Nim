@@ -24,7 +24,7 @@ except AssertionDefect as e:
 try:
   assert false # assert test with no msg
 except AssertionDefect as e:
-  assert e.msg.endsWith "tassert2.nim(25, 10) `false` "
+  assert e.msg.endsWith "tassert2.nim(25, 3) `false` "
 
 try:
   let a = 1

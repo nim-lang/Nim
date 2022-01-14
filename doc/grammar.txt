@@ -68,9 +68,9 @@ identVisDot = symbol '.' optInd symbol OPR?
 identWithPragma = identVis pragma?
 identWithPragmaDot = identVisDot pragma?
 declColonEquals = identWithPragma (comma identWithPragma)* comma?
-                  (':' optInd typeDesc)? ('=' optInd expr)?
+                  (':' optInd typeDescExpr)? ('=' optInd expr)?
 identColonEquals = IDENT (comma IDENT)* comma?
-     (':' optInd typeDesc)? ('=' optInd expr)?)
+     (':' optInd typeDescExpr)? ('=' optInd expr)?)
 tupleType = 'tuple'
     '[' optInd  (identColonEquals (comma/semicolon)?)*  optPar ']'
 tupleDecl = tupleType |
@@ -98,12 +98,12 @@ primary = operatorB primary primarySuffix* |
 rawTypeDesc = (tupleType | routineType | 'enum' | 'object' |
                 ('var' | 'out' | 'ref' | 'ptr' | 'distinct') typeDesc?)
                 ('not' expr)?
-typeDesc = rawTypeDesc | simpleExpr ('not' expr)?
+typeDescExpr = simpleExpr ('not' expr)?
+typeDesc = rawTypeDesc / typeDescExpr
 typeDefAux = ((tupleDecl | routineType |
-                 ('ref' | 'ptr') typeDefAux? |
-                 enumDecl | objectDecl | conceptDecl)
-               / (simpleExpr (exprEqExpr ^+ comma postExprBlocks)?))
-             ('not' expr)?
+                 ('ref' | 'ptr' | 'distinct') typeDefAux? |
+                 enumDecl | objectDecl | conceptDecl) ('not' expr)?)
+               / (simpleExpr (exprEqExpr ^+ comma postExprBlocks)? ('not' expr)?)
 postExprBlocks = ':' stmt? ( IND{=} doBlock
                            | IND{=} 'of' exprList ':' stmt
                            | IND{=} 'elif' expr ':' stmt
