@@ -9,7 +9,7 @@
 
 ## Module for computing [MD5 checksums](https://en.wikipedia.org/wiki/MD5).
 ##
-## **Note:** The procs in this module can be used at compile time.
+## This module also works at compile time and in JavaScript.
 ##
 ## See also
 ## ========
@@ -297,9 +297,10 @@ proc writeBuffer(c: var MD5Context, index: int,
   memOrNot:
     copyMem(addr(c.buffer[index]), unsafeAddr(input[inputIndex]), len)
   do:
-    {.noSideEffect.}:
-      # `[]=` can sometimes track RangeDefect, even though it cannot be raised here
-      c.buffer[index .. index + len - 1] = input.slice(inputIndex, inputIndex + len - 1)
+    # cannot use system.`[]=` for arrays and openarrays as
+    # it can raise RangeDefect which gets tracked
+    for i in 0..<len:
+      c.buffer[index + i] = input[inputIndex + i]
 
 proc md5Update*(c: var MD5Context, input: openArray[uint8]) =
   ## Updates the `MD5Context` with the `input` data.
