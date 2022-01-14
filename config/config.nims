@@ -16,3 +16,5 @@ when defined(nimStrictMode):
     # future work: XDeclaredButNotUsed
 
 switch("define", "nimVersion:" & NimVersion)
+switch("define", "nimPreviewFloatRoundtrip")
+switch("define", "nimPreviewDotLikeOps")
