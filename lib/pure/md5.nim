@@ -297,7 +297,7 @@ proc writeBuffer(c: var MD5Context, index: int,
   memOrNot:
     copyMem(addr(c.buffer[index]), unsafeAddr(input[inputIndex]), len)
   do:
-    {.cast(raises: []).}:
+    {.noSideEffect.}:
       # `[]=` can sometimes track RangeDefect, even though it cannot be raised here
       c.buffer[index .. index + len - 1] = input.slice(inputIndex, inputIndex + len - 1)
 
