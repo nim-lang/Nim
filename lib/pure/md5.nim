@@ -98,32 +98,46 @@ proc decode(dest: var openArray[uint8], src: openArray[uint32]) =
     dest[i+3] = uint8(src[j] shr 24 and 0xff'u32)
     inc(i, 4)
 
-template slice(s: string, a, b): untyped =
-  when nimvm:
-    # toOpenArray is not implemented in VM
-    var s2 = newSeq[uint8](s.len)
-    for i in 0 ..< s2.len:
-      s2[i] = uint8(s[i])
-    s2
-  else:
+const openArrayTest = compiles do:
+  # unreliable check for nim >= 1.4
+  proc foo(x {.noalias.}: pointer) = discard
+  # this is what we actually want to check but it only errors during codegen:
+  discard [1, 2].toOpenArray(0, 1)
+  # this error was removed in #15414 which was only included 1.4 onward
+
+when not openArrayTest:
+  template slice(s: string | cstring, a, b): openArray[uint8] =
     s.toOpenArrayByte(a, b)
 
-template slice(s: cstring, a, b): untyped =
-  when nimvm:
-    # toOpenArray is not implemented in VM
-    slice($s, a, b)
-  else:
-    when defined(js):
-      # toOpenArrayByte for cstring is not implemented in JS
-      slice($s, a, b)
+  template slice(s: openArray[uint8], a, b): openArray[uint8] =
+    s.toOpenArray(a, b)
+else:
+  template slice(s: string, a, b): openArray[uint8] =
+    when nimvm:
+      # toOpenArray is not implemented in VM
+      var s2 = newSeq[uint8](s.len)
+      for i in 0 ..< s2.len:
+        s2[i] = uint8(s[i])
+      s2
     else:
       s.toOpenArrayByte(a, b)
 
-template slice(s: openArray[uint8], a, b): untyped =
-  when nimvm:
-    s[a .. b]
-  else:
-    s.toOpenArray(a, b)
+  template slice(s: cstring, a, b): openArray[uint8] =
+    when nimvm:
+      # toOpenArray is not implemented in VM
+      slice($s, a, b)
+    else:
+      when defined(js):
+        # toOpenArrayByte for cstring is not implemented in JS
+        slice($s, a, b)
+      else:
+        s.toOpenArrayByte(a, b)
+
+  template slice(s: openArray[uint8], a, b): openArray[uint8] =
+    when nimvm:
+      s[a .. b]
+    else:
+      s.toOpenArray(a, b)
 
 const useMem = declared(copyMem)
 
