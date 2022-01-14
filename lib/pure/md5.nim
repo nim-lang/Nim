@@ -98,7 +98,7 @@ proc decode(dest: var openArray[uint8], src: openArray[uint32]) =
     dest[i+3] = uint8(src[j] shr 24 and 0xff'u32)
     inc(i, 4)
 
-template slice(s: string, a, b): openArray[uint8] =
+template slice(s: string, a, b): untyped =
   when nimvm:
     # toOpenArray is not implemented in VM
     var s2 = newSeq[uint8](s.len)
@@ -108,7 +108,7 @@ template slice(s: string, a, b): openArray[uint8] =
   else:
     s.toOpenArrayByte(a, b)
 
-template slice(s: cstring, a, b): openArray[uint8] =
+template slice(s: cstring, a, b): untyped =
   when nimvm:
     # toOpenArray is not implemented in VM
     slice($s, a, b)
@@ -119,7 +119,7 @@ template slice(s: cstring, a, b): openArray[uint8] =
     else:
       s.toOpenArrayByte(a, b)
 
-template slice(s: openArray[uint8], a, b): openArray[uint8] =
+template slice(s: openArray[uint8], a, b): untyped =
   when nimvm:
     s[a .. b]
   else:
@@ -319,8 +319,9 @@ proc md5Update*(c: var MD5Context, input: openArray[uint8]) =
     while i + 63 < input.len:
       transform(input.slice(i, i + 63), c.state)
       inc(i, 64)
-    writeBuffer(c, 0, input, i, input.len - i)
-  else:
+    if i < input.len:
+      writeBuffer(c, 0, input, i, input.len - i)
+  elif input.len > 0:
     writeBuffer(c, Index, input, 0, input.len)
 
 proc md5Final*(c: var MD5Context, digest: var MD5Digest) =
