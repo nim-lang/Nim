@@ -2084,16 +2084,18 @@ This feature is useful if an object should only gain reference semantics:
       data: int
   ```
 
-As a consequence of this syntax, normal expressions starting with `ref`
-or `ptr` must be wrapped in parentheses or some other expression form
-to be used directly in type sections.
+..
+  (This part was true earlier in the PR but is not true anymore)
+  As a consequence of this syntax, normal expressions starting with `ref`
+  or `ptr` must be wrapped in parentheses or some other expression form
+  to be used directly in type sections.
 
-.. code-block:: nim
-  type
-    # invalid
-    IntRef = ref int | ptr int
-    # correct
-    IntRef = (ref int | ptr int)
+  .. code-block:: nim
+    type
+      # invalid
+      IntRef = ref int | ptr int
+      # correct
+      IntRef = (ref int | ptr int)
 
 
 To allocate a new traced object, the built-in procedure `new` has to be used.
