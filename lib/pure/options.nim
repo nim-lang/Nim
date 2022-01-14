@@ -81,10 +81,10 @@ when defined(nimPreviewSlimSystem):
 
 when (NimMajor, NimMinor) >= (1, 1):
   type
-    SomePointer = (ref | ptr | pointer | proc)
+    SomePointer = ref | ptr | pointer | proc
 else:
   type
-    SomePointer = (ref | ptr | pointer)
+    SomePointer = ref | ptr | pointer
 
 type
   Option*[T] = object

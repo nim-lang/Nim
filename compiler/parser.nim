@@ -62,8 +62,7 @@ type
     smNormal, smAllowNil, smAfterDot
 
   PrimaryMode = enum
-    pmNormal, pmTypeDesc, pmTypeDef, pmSkipSuffix, pmCommandStart,
-    pmTypeDescStart
+    pmNormal, pmTypeDesc, pmTypeDef, pmSkipSuffix, pmCommandStart
 
 proc parseAll*(p: var Parser): PNode
 proc closeParser*(p: var Parser)
@@ -271,7 +270,7 @@ proc newIdentNodeP(ident: PIdent, p: Parser): PNode =
 proc parseExpr(p: var Parser): PNode
 proc parseStmt(p: var Parser): PNode
 proc parseTypeDesc(p: var Parser, fullExpr = false): PNode
-proc parseTypeDefAux(p: var Parser): PNode
+proc parseTypeDefValue(p: var Parser): PNode
 proc parseParamList(p: var Parser, retColon = true): PNode
 
 proc isSigilLike(tok: Token): bool {.inline.} =
@@ -910,8 +909,10 @@ proc parseOperators(p: var Parser, headNode: PNode,
     opPrec = getPrecedence(p.tok)
 
 proc simpleExprAux(p: var Parser, limit: int, mode: PrimaryMode): PNode =
+  var mode = mode
   result = primary(p, mode)
-  let mode = if mode == pmCommandStart: pmNormal else: mode
+  if mode == pmCommandStart:
+    mode = pmNormal
   if p.tok.tokType == tkCurlyDotLe and (p.tok.indent < 0 or realInd(p)) and
      mode == pmNormal:
     var pragmaExp = newNodeP(nkPragmaExpr, p)
@@ -1025,10 +1026,9 @@ proc parseIdentColonEquals(p: var Parser, flags: DeclaredIdentFlags): PNode =
     result.add(newNodeP(nkEmpty, p))
 
 proc parseTuple(p: var Parser, indentAllowed = false): PNode =
-  #| tupleType = 'tuple'
-  #|     '[' optInd  (identColonEquals (comma/semicolon)?)*  optPar ']'
+  #| tupleType = 'tuple' '[' optInd (identColonEquals (comma/semicolon)?)* optPar ']'
   #| tupleDecl = tupleType |
-  #|     ('tuple' COMMENT? (IND{>} identColonEquals (IND{=} identColonEquals)*)?)
+  #|     'tuple' COMMENT? (IND{>} identColonEquals (IND{=} identColonEquals)*)?
   result = newNodeP(nkTupleTy, p)
   getTok(p)
   if p.tok.tokType == tkBracketLe:
@@ -1164,7 +1164,7 @@ proc isExprStart(p: Parser): bool =
   of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkFor,
      tkProc, tkFunc, tkIterator, tkBind, tkBuiltInMagics,
      tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCustomLit, tkVar, tkRef, tkPtr,
-     tkTuple, tkObject, tkWhen, tkCase, tkOut, tkTry, tkBlock:
+     tkEnum, tkTuple, tkObject, tkWhen, tkCase, tkOut, tkTry, tkBlock:
     result = true
   else: result = false
 
@@ -1178,8 +1178,7 @@ proc parseSymbolList(p: var Parser, result: PNode) =
     getTok(p)
     optInd(p, s)
 
-proc parseTypeDescKAux(p: var Parser,
-                       kind: TNodeKind,
+proc parseTypeDescKAux(p: var Parser, kind: TNodeKind,
                        mode: PrimaryMode): PNode =
   result = newNodeP(kind, p)
   getTok(p)
@@ -1188,7 +1187,7 @@ proc parseTypeDescKAux(p: var Parser,
   let isTypedef = mode == pmTypeDef and p.tok.tokType in {tkObject, tkTuple}
   if not isOperator(p.tok) and isExprStart(p):
     if isTypedef:
-      result.add(parseTypeDefAux(p))
+      result.add(parseTypeDefValue(p))
     else:
       result.add(primary(p, mode))
   if kind == nkDistinctTy and p.tok.tokType == tkSymbol:
@@ -1210,7 +1209,7 @@ proc parseTypeDescKAux(p: var Parser,
 proc parseVarTuple(p: var Parser): PNode
 
 proc parseFor(p: var Parser): PNode =
-  #| forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
+  #| forStmt = 'for' ((varTuple / identWithPragma) ^+ comma) 'in' expr colcom stmt
   #| forExpr = forStmt
   getTokNoInd(p)
   result = newNodeP(nkForStmt, p)
@@ -1368,19 +1367,13 @@ proc parseTypeDesc(p: var Parser, fullExpr = false): PNode =
       result = simpleExpr(p, pmTypeDesc)
   result = binaryNot(p, result)
 
-proc parseTypeDefAux(p: var Parser): PNode =
-  #| typeDefAux = ((tupleDecl | routineType |
-  #|                  ('ref' | 'ptr' | 'distinct') typeDefAux? |
-  #|                  enumDecl | objectDecl | conceptDecl) ('not' expr)?)
-  #|                / (simpleExpr (exprEqExpr ^+ comma postExprBlocks)? ('not' expr)?)
+proc parseTypeDefValue(p: var Parser): PNode =
+  #| typeDefValue = ((tupleDecl | enumDecl | objectDecl | conceptDecl |
+  #|                  ('ref' | 'ptr' | 'distinct') (tupleDecl | objectDecl))
+  #|                / (simpleExpr (exprEqExpr ^+ comma postExprBlocks)?))
+  #|                ('not' expr)?
   case p.tok.tokType
-  of tkTuple:
-    result = parseTuple(p, true)
-  of tkProc: result = parseProcExpr(p, false, nkLambda)
-  of tkIterator:
-    result = parseProcExpr(p, false, nkLambda)
-    if result.kind == nkLambda: result.transitionSonsKind(nkIteratorDef)
-    else: result.transitionSonsKind(nkIteratorTy)
+  of tkTuple: result = parseTuple(p, true)
   of tkRef: result = parseTypeDescKAux(p, nkRefTy, pmTypeDef)
   of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, pmTypeDef)
   of tkDistinct: result = parseTypeDescKAux(p, nkDistinctTy, pmTypeDef)
@@ -2154,7 +2147,7 @@ proc parseTypeClass(p: var Parser): PNode =
 
 proc parseTypeDef(p: var Parser): PNode =
   #|
-  #| typeDef = identVisDot genericParamList? pragma '=' optInd typeDefAux
+  #| typeDef = identVisDot genericParamList? pragma '=' optInd typeDefValue
   #|             indAndComment?
   result = newNodeP(nkTypeDef, p)
   var identifier = identVis(p, allowDot=true)
@@ -2180,7 +2173,7 @@ proc parseTypeDef(p: var Parser): PNode =
     result.info = parLineInfo(p)
     getTok(p)
     optInd(p, result)
-    result.add(parseTypeDefAux(p))
+    result.add(parseTypeDefValue(p))
   else:
     result.add(p.emptyNode)
   indAndComment(p, result)    # special extension!
