@@ -3522,7 +3522,7 @@ or a `for` loop variable can be accomplished too:
 The unsafeAddr operator
 -----------------------
 
-The unsafeAddr operator is an alias for the addr operator and is deprecated:
+The `unsafeAddr` operator is a deprecated alias for the `addr` operator:
 
 .. code-block:: nim
   let myArray = [1, 2, 3]

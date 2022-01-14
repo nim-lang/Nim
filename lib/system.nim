@@ -194,11 +194,11 @@ proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.
   ##
   ## .. note:: This works for `let` variables or parameters
-  ## for better interop with C. When you use it to write a wrapper
-  ## for a C library and take the address of `let` variables or parameters,
-  ## you should always check that the original library
-  ## does never write to data behind the pointer that is returned from
-  ## this procedure.
+  ##   for better interop with C. When you use it to write a wrapper
+  ##   for a C library and take the address of `let` variables or parameters,
+  ##   you should always check that the original library
+  ##   does never write to data behind the pointer that is returned from
+  ##   this procedure.
   ##
   ## Cannot be overloaded.
   ##
@@ -219,11 +219,11 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect,
   ## location.
   ##
   ## .. note:: This works for `let` variables or parameters
-  ## for better interop with C. When you use it to write a wrapper
-  ## for a C library and take the address of `let` variables or parameters,
-  ## you should always check that the original library
-  ## does never write to data behind the pointer that is returned from
-  ## this procedure.
+  ##   for better interop with C. When you use it to write a wrapper
+  ##   for a C library and take the address of `let` variables or parameters,
+  ##   you should always check that the original library
+  ##   does never write to data behind the pointer that is returned from
+  ##   this procedure.
   ##
   ## Cannot be overloaded.
   discard
