@@ -1181,51 +1181,25 @@ object inheritance syntax involving the `of` keyword:
   the `vtptr` magic produced types bound to `ptr` types.
 
 
-Type bound operations
-=====================
+..
+  deepCopy
+  --------
+  `=deepCopy` is a builtin that is invoked whenever data is passed to
+  a `spawn`'ed proc to ensure memory safety. The programmer can override its
+  behaviour for a specific `ref` or `ptr` type `T`. (Later versions of the
+  language may weaken this restriction.)
 
-There are 4 operations that are bound to a type:
+  The signature has to be:
 
-1. Assignment
-2. Moves
-3. Destruction
-4. Deep copying for communication between threads
+  .. code-block:: nim
 
-These operations can be *overridden* instead of *overloaded*. This means that
-the implementation is automatically lifted to structured types. For instance,
-if the type `T` has an overridden assignment operator `=`, this operator is
-also used for assignments of the type `seq[T]`.
+    proc `=deepCopy`(x: T): T
 
-Since these operations are bound to a type, they have to be bound to a
-nominal type for reasons of simplicity of implementation; this means an
-overridden `deepCopy` for `ref T` is really bound to `T` and not to `ref T`.
-This also means that one cannot override `deepCopy` for both `ptr T` and
-`ref T` at the same time, instead a distinct or object helper type has to be
-used for one pointer type.
+  This mechanism will be used by most data structures that support shared memory,
+  like channels, to implement thread safe automatic memory management.
 
-Assignments, moves and destruction are specified in
-the `destructors <destructors.html>`_ document.
-
-
-deepCopy
---------
-
-`=deepCopy` is a builtin that is invoked whenever data is passed to
-a `spawn`'ed proc to ensure memory safety. The programmer can override its
-behaviour for a specific `ref` or `ptr` type `T`. (Later versions of the
-language may weaken this restriction.)
-
-The signature has to be:
-
-.. code-block:: nim
-
-  proc `=deepCopy`(x: T): T
-
-This mechanism will be used by most data structures that support shared memory,
-like channels, to implement thread safe automatic memory management.
-
-The builtin `deepCopy` can even clone closures and their environments. See
-the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
+  The builtin `deepCopy` can even clone closures and their environments. See
+  the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
 
 
 Dynamic arguments for bindSym
