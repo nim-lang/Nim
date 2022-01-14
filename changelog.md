@@ -71,6 +71,8 @@
   for the right-hand side of type definitions in type sections. Previously
   they would error with "invalid indentation".
 
+- Added `std/oserrors` for OS error reporting.
+
 ## Compiler changes
 
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
