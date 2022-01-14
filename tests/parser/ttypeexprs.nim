@@ -21,3 +21,5 @@ doAssert (ref int + ref float * ref string + ref bool) is
   (ref bool, ((ref float, ref string), ref int))
 type X = ref int + ref float * ref string + ref bool
 doAssert X is (ref bool, ((ref float, ref string), ref int))
+
+type SomePointer = proc | ref | ptr | pointer
