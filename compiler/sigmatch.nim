@@ -1634,6 +1634,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           bindConcreteTypeToUserTypeClass(matched, a)
           if doBind: put(c, f, matched)
           result = isGeneric
+        elif a.len > 0 and a.lastSon == f:
+          # Needed for checking `Y` == `Addable` in the following
+          #[
+            type 
+              Addable = concept a, type A
+                a + a is A
+              MyType[T: Addable; Y: static T] = object
+          ]#
+          result = isGeneric
         else:
           result = isNone
 
