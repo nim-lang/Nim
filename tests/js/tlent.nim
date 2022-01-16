@@ -23,17 +23,6 @@ block:
     t.b
   echo getValues()
 
-# #16073
-
-proc byLent[T](a: T): lent T = a
-let b = @[21,23]
-proc isSame[T](a, b: T): bool {.importjs: "(# == #)".}
-doAssert isSame(byLent(b), b)
-
-let r = new(float)
-r[] = 10.0
-doAssert byLent[ref float](r)[] == 10.0
-
 when false: # still an issue, #16908
   template main =
     iterator fn[T](a:T): lent T = yield a
