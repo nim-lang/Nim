@@ -42,7 +42,7 @@ proc `^`(x: vfloat, exp: static[float]): vfloat =
    pow(x, exp)
  
 proc `$`(x: vfloat): string =
-  let y = cast[ptr float](unsafeAddr x)
+  let y = cast[ptr float](addr x)
   # xxx not sure if intentional in this issue, but this returns ""
   echo y[]
  
