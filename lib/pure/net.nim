@@ -1628,7 +1628,7 @@ proc recvFrom*[T: string | IpAddress](socket: Socket, data: var string, length: 
   ##   used. Therefore if `socket` contains something in its buffer this
   ##   function will make no effort to return it.
   template adaptRecvFromToDomain(sockAddress: untyped, domain: Domain) =
-    var addrLen = sizeof(sockAddress).SockLen
+    var addrLen = SockLen(sizeof(sockAddress))
     result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
                       cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
 
@@ -1778,7 +1778,7 @@ proc sendTo*(socket: Socket, address: IpAddress, port: Port,
   assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
 
   var sa: Sockaddr_storage
-  var sl: Socklen
+  var sl: SockLen
   toSockAddr(address, port, sa, sl)
   result = sendto(socket.fd, cstring(data), data.len().cint, flags.cint,
                   cast[ptr SockAddr](addr sa), sl)

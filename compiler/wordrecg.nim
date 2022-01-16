@@ -41,7 +41,7 @@ type
     wImmediate = "immediate", wConstructor = "constructor", wDestructor = "destructor",
     wDelegator = "delegator", wOverride = "override", wImportCpp = "importcpp",
     wCppNonPod = "cppNonPod",
-    wImportObjC = "importobjc", wImportCompilerProc = "importcompilerproc",
+    wImportObjC = "importobjc", wImportCompilerProc = "importCompilerProc",
     wImportc = "importc", wImportJs = "importjs", wExportc = "exportc", wExportCpp = "exportcpp",
     wExportNims = "exportnims",
     wIncompleteStruct = "incompleteStruct", # deprecated

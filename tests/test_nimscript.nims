@@ -8,47 +8,49 @@ from stdtest/specialpaths import buildDir
 import std/[
   # Core:
   bitops, typetraits, lenientops, macros, volatile,
-  # fails: typeinfo, endians
-  # works but shouldn't: cpuinfo, rlocks, locks
+  # fails due to FFI: typeinfo
+  # fails due to cstring cast/copyMem: endians
+  # works but uses FFI: cpuinfo, rlocks, locks
 
   # Algorithms:
-  algorithm, sequtils,
+  algorithm, enumutils, sequtils, setutils,
 
   # Collections:
   critbits, deques, heapqueue, intsets, lists, options, sets,
-  sharedlist, tables,
-  # fails: sharedtables
+  tables, packedsets,
 
   # Strings:
   editdistance, wordwrap, parseutils, ropes,
   pegs, punycode, strformat, strmisc, strscans, strtabs,
-  strutils, unicode, unidecode,
-  # works but shouldn't: cstrutils, encodings
+  strutils, unicode, unidecode, cstrutils,
+  # works but uses FFI: encodings
 
   # Time handling:
-  # fails: monotimes, times
+  # fails due to FFI: monotimes, times
   # but times.getTime() implemented for VM
 
   # Generic operator system services:
-  os, streams,
-  # fails: distros, dynlib, marshal, memfiles, osproc, terminal
+  os, streams, distros,
+  # fails due to FFI: memfiles, osproc, terminal
+  # works but uses FFI: dynlib
+  # intentionally fails: marshal
 
   # Math libraries:
-  complex, math, mersenne, random, rationals, stats, sums,
-  # works but shouldn't: fenv
+  complex, math, random, rationals, stats, sums,
+  # works but uses FFI: fenv, sysrand
 
   # Internet protocols:
   httpcore, mimetypes, uri,
-  # fails: asyncdispatch, asyncfile, asyncftpclient, asynchttpserver,
+  # fails due to FFI: asyncdispatch, asyncfile, asyncftpclient, asynchttpserver,
   # asyncnet, cgi, cookies, httpclient, nativesockets, net, selectors, smtp
-  # works but shouldn't test: asyncstreams, asyncfutures
+  # works but no need to test: asyncstreams, asyncfutures
 
   # Threading:
-  # fails: threadpool
+  # fails due to FFI: threadpool
 
   # Parsers:
   htmlparser, json, lexbase, parsecfg, parsecsv, parsesql, parsexml,
-  parseopt,
+  parseopt, jsonutils,
 
   # XML processing:
   xmltree, xmlparser,
@@ -57,18 +59,23 @@ import std/[
   htmlgen,
 
   # Hashing:
-  base64, hashes,
-  # fails: md5, oids, sha1
+  base64, hashes, md5,
+  # fails due to cstring cast/times import/endians import: oids
+  # fails due to copyMem/endians import: sha1
 
   # Miscellaneous:
-  colors, sugar, varints,
-  # fails: browsers, coro, logging (times), segfaults, unittest (uses methods)
+  colors, sugar, varints, enumerate, with,
+  # fails due to FFI: browsers, coro, segfaults
+  # fails due to times import/methods: logging
+  # fails due to methods: unittest
 
   # Modules for JS backend:
-  # fails: asyncjs, dom, jsconsole, jscore, jsffi,
+  # fails intentionally: asyncjs, dom, jsconsole, jscore, jsffi, jsbigints,
+  # jsfetch, jsformdata, jsheaders
 
   # Unlisted in lib.html:
-  decls, compilesettings, with, wrapnils
+  decls, compilesettings, wrapnils, effecttraits, genasts,
+  importutils, isolation
 ]
 
 # non-std imports

@@ -37,10 +37,10 @@ parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
         | 'when' | 'var' | 'mixin'
 par = '(' optInd
-          ( &parKeyw (ifExpr \ complexOrSimpleStmt) ^+ ';'
-          | ';' (ifExpr \ complexOrSimpleStmt) ^+ ';'
+          ( &parKeyw (ifExpr / complexOrSimpleStmt) ^+ ';'
+          | ';' (ifExpr / complexOrSimpleStmt) ^+ ';'
           | pragmaStmt
-          | simpleExpr ( ('=' expr (';' (ifExpr \ complexOrSimpleStmt) ^+ ';' )? )
+          | simpleExpr ( ('=' expr (';' (ifExpr / complexOrSimpleStmt) ^+ ';' )? )
                        | (':' expr (',' exprColonEqExpr     ^+ ',' )? ) ) )
           optPar ')'
 literal = | INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
@@ -60,7 +60,7 @@ primarySuffix = '(' (exprColonEqExpr comma?)* ')'
       | DOTLIKEOP optInd symbol generalizedLit?
       | '[' optInd exprColonEqExprList optPar ']'
       | '{' optInd exprColonEqExprList optPar '}'
-      | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
+      | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr (comma expr)* # command syntax
 pragma = '{.' optInd (exprColonEqExpr comma?)* optPar ('.}' | '}')
 identVis = symbol OPR?  # postfix position
 identVisDot = symbol '.' optInd symbol OPR?
@@ -93,7 +93,8 @@ primary = operatorB primary primarySuffix* |
           ('var' | 'out' | 'ref' | 'ptr' | 'distinct') primary
         /  prefixOperator* identOrLiteral primarySuffix*
 typeDesc = simpleExpr ('not' expr)?
-typeDefAux = simpleExpr ('not' expr)?
+typeDefAux = simpleExpr ('not' expr
+                        | postExprBlocks)?
 postExprBlocks = ':' stmt? ( IND{=} doBlock
                            | IND{=} 'of' exprList ':' stmt
                            | IND{=} 'elif' expr ':' stmt

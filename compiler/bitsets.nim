@@ -23,53 +23,40 @@ const
 template modElemSize(arg: untyped): untyped = arg and 7
 template divElemSize(arg: untyped): untyped = arg shr 3
 
-proc bitSetInit*(b: var TBitSet, length: int)
-proc bitSetUnion*(x: var TBitSet, y: TBitSet)
-proc bitSetDiff*(x: var TBitSet, y: TBitSet)
-proc bitSetSymDiff*(x: var TBitSet, y: TBitSet)
-proc bitSetIntersect*(x: var TBitSet, y: TBitSet)
-proc bitSetIncl*(x: var TBitSet, elem: BiggestInt)
-proc bitSetExcl*(x: var TBitSet, elem: BiggestInt)
-proc bitSetIn*(x: TBitSet, e: BiggestInt): bool
-proc bitSetEquals*(x, y: TBitSet): bool
-proc bitSetContains*(x, y: TBitSet): bool
-proc bitSetCard*(x: TBitSet): BiggestInt
-# implementation
-
-proc bitSetIn(x: TBitSet, e: BiggestInt): bool =
+proc bitSetIn*(x: TBitSet, e: BiggestInt): bool =
   result = (x[int(e.divElemSize)] and (One shl e.modElemSize)) != Zero
 
-proc bitSetIncl(x: var TBitSet, elem: BiggestInt) =
+proc bitSetIncl*(x: var TBitSet, elem: BiggestInt) =
   assert(elem >= 0)
   x[int(elem.divElemSize)] = x[int(elem.divElemSize)] or
       (One shl elem.modElemSize)
 
-proc bitSetExcl(x: var TBitSet, elem: BiggestInt) =
+proc bitSetExcl*(x: var TBitSet, elem: BiggestInt) =
   x[int(elem.divElemSize)] = x[int(elem.divElemSize)] and
       not(One shl elem.modElemSize)
 
-proc bitSetInit(b: var TBitSet, length: int) =
+proc bitSetInit*(b: var TBitSet, length: int) =
   newSeq(b, length)
 
-proc bitSetUnion(x: var TBitSet, y: TBitSet) =
+proc bitSetUnion*(x: var TBitSet, y: TBitSet) =
   for i in 0..high(x): x[i] = x[i] or y[i]
 
-proc bitSetDiff(x: var TBitSet, y: TBitSet) =
+proc bitSetDiff*(x: var TBitSet, y: TBitSet) =
   for i in 0..high(x): x[i] = x[i] and not y[i]
 
-proc bitSetSymDiff(x: var TBitSet, y: TBitSet) =
+proc bitSetSymDiff*(x: var TBitSet, y: TBitSet) =
   for i in 0..high(x): x[i] = x[i] xor y[i]
 
-proc bitSetIntersect(x: var TBitSet, y: TBitSet) =
+proc bitSetIntersect*(x: var TBitSet, y: TBitSet) =
   for i in 0..high(x): x[i] = x[i] and y[i]
 
-proc bitSetEquals(x, y: TBitSet): bool =
+proc bitSetEquals*(x, y: TBitSet): bool =
   for i in 0..high(x):
     if x[i] != y[i]:
       return false
   result = true
 
-proc bitSetContains(x, y: TBitSet): bool =
+proc bitSetContains*(x, y: TBitSet): bool =
   for i in 0..high(x):
     if (x[i] and not y[i]) != Zero:
       return false
@@ -96,6 +83,6 @@ const populationCount: array[uint8, uint8] = block:
 
     arr
 
-proc bitSetCard(x: TBitSet): BiggestInt =
+proc bitSetCard*(x: TBitSet): BiggestInt =
   for it in x:
     result.inc int(populationCount[it])

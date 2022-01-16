@@ -36,6 +36,7 @@ Note that `proc` can be used in postfix form: `binarySearch proc`_.
 
 Ref. type like G_ and `type G`_ and `G[T]`_ and `type G*[T]`_.
 
+Group ref. with capital letters works: fN11_ or fn11_
 ]##
 
 include ./utils_helpers
@@ -76,6 +77,11 @@ proc fn8*(): auto =
   1+1
 func fn9*(a: int): int = 42  ## comment
 func fn10*(a: int): int = a  ## comment
+
+# Note capital letter N will be handled correctly in
+# group references like fN11_ or fn11_:
+func fN11*() = discard
+func fN11*(x: int) = discard
 
 # bug #9235
 

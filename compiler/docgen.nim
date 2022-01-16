@@ -1301,7 +1301,8 @@ proc finishGenerateDoc*(d: var PDoc) =
           let tooltip = "$1 ($2 overloads)" % [
                       k.toHumanStr & " " & plainName, $overloadChoices.len]
           addAnchorNim(d.sharedState, refn, tooltip,
-                       LangSymbol(symKind: k.toHumanStr, name: plainName,
+                       LangSymbol(symKind: k.toHumanStr,
+                                  name: nimIdentBackticksNormalize(plainName),
                                   isGroup: true),
                        priority = symbolPriority(k),
                        # select index `0` just to have any meaningful warning:

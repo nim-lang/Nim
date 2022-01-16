@@ -22,12 +22,12 @@ template main2 = # bug #15958
   let b = @[21,23]
   let ss = {1, 2, 3, 5}
   doAssert byLent(a) == [11,12]
-  doAssert byLent(a).unsafeAddr == a.unsafeAddr
+  doAssert byLent(a).addr == a.addr
   doAssert byLent(b) == @[21,23]
   when not defined(js): # pending bug #16073
-    doAssert byLent(b).unsafeAddr == b.unsafeAddr
+    doAssert byLent(b).addr == b.addr
   doAssert byLent(ss) == {1, 2, 3, 5}
-  doAssert byLent(ss).unsafeAddr == ss.unsafeAddr
+  doAssert byLent(ss).addr == ss.addr
 
   let r = new(float)
   r[] = 10.0
@@ -39,11 +39,11 @@ template main2 = # bug #15958
     p[] = 20.0
     doAssert byLent(p)[] == 20.0
 
-  proc byLent2[T](a: openarray[T]): lent T = a[0]
+  proc byLent2[T](a: openArray[T]): lent T = a[0]
   doAssert byLent2(a) == 11
-  doAssert byLent2(a).unsafeAddr == a[0].unsafeAddr
+  doAssert byLent2(a).addr == a[0].addr
   doAssert byLent2(b) == 21
-  doAssert byLent2(b).unsafeAddr == b[0].unsafeAddr
+  doAssert byLent2(b).addr == b[0].addr
 
   proc byLent3[T](a: varargs[T]): lent T = a[1]
   let 

@@ -582,10 +582,10 @@ proc parsePar(p: var Parser): PNode =
   #|         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
   #|         | 'when' | 'var' | 'mixin'
   #| par = '(' optInd
-  #|           ( &parKeyw (ifExpr \ complexOrSimpleStmt) ^+ ';'
-  #|           | ';' (ifExpr \ complexOrSimpleStmt) ^+ ';'
+  #|           ( &parKeyw (ifExpr / complexOrSimpleStmt) ^+ ';'
+  #|           | ';' (ifExpr / complexOrSimpleStmt) ^+ ';'
   #|           | pragmaStmt
-  #|           | simpleExpr ( ('=' expr (';' (ifExpr \ complexOrSimpleStmt) ^+ ';' )? )
+  #|           | simpleExpr ( ('=' expr (';' (ifExpr / complexOrSimpleStmt) ^+ ';' )? )
   #|                        | (':' expr (',' exprColonEqExpr     ^+ ',' )? ) ) )
   #|           optPar ')'
   #
@@ -811,7 +811,7 @@ proc primarySuffix(p: var Parser, r: PNode,
   #|       | DOTLIKEOP optInd symbol generalizedLit?
   #|       | '[' optInd exprColonEqExprList optPar ']'
   #|       | '{' optInd exprColonEqExprList optPar '}'
-  #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
+  #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr (comma expr)* # command syntax
   result = r
 
   # progress guaranteed
@@ -821,14 +821,14 @@ proc primarySuffix(p: var Parser, r: PNode,
     of tkParLe:
       # progress guaranteed
       if p.tok.strongSpaceA > 0:
-        # inside type sections, expressions such as `ref (int, bar)`
-        # are parsed as a nkCommand with a single tuple argument (nkPar)
+        result = commandExpr(p, result, mode)
+        # type sections allow full command syntax
         if mode == pmTypeDef:
-          result = newNodeP(nkCommand, p)
-          result.add r
-          result.add primary(p, pmNormal)
-        else:
-          result = commandExpr(p, result, mode)
+          var isFirstParam = false
+          while p.tok.tokType == tkComma:
+            getTok(p)
+            optInd(p, result)
+            result.add(commandParam(p, isFirstParam, mode))
         break
       result = namedParams(p, result, nkCall, tkParRi)
       if result.len > 1 and result[1].kind == nkExprColonExpr:
@@ -869,9 +869,18 @@ proc primarySuffix(p: var Parser, r: PNode,
           # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
           # solution, but pragmas.nim can't handle that
           result = commandExpr(p, result, mode)
+          if mode == pmTypeDef:
+            var isFirstParam = false
+            while p.tok.tokType == tkComma:
+              getTok(p)
+              optInd(p, result)
+              result.add(commandParam(p, isFirstParam, mode))
         break
     else:
       break
+  # type sections allow post-expr blocks
+  if mode == pmTypeDef:
+    result = postExprBlocks(p, result)
 
 proc parseOperators(p: var Parser, headNode: PNode,
                     limit: int, mode: PrimaryMode): PNode =
@@ -1342,7 +1351,8 @@ proc parseTypeDesc(p: var Parser): PNode =
   result = binaryNot(p, result)
 
 proc parseTypeDefAux(p: var Parser): PNode =
-  #| typeDefAux = simpleExpr ('not' expr)?
+  #| typeDefAux = simpleExpr ('not' expr
+  #|                         | postExprBlocks)?
   result = simpleExpr(p, pmTypeDef)
   result = binaryNot(p, result)
 

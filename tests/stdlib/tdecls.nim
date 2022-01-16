@@ -48,37 +48,37 @@ when false: # pending bug #13887
 ## We can define custom pragmas in user code
 template byUnsafeAddr(lhs, typ, expr) =
   when typ is type(nil):
-    let tmp = unsafeAddr(expr)
+    let tmp = addr(expr)
   else:
-    let tmp: ptr typ = unsafeAddr(expr)
+    let tmp: ptr typ = addr(expr)
   template lhs: untyped = tmp[]
 
 block:
   let s = @["foo", "bar"]
   let a {.byUnsafeAddr.} = s[0]
   doAssert a == "foo"
-  doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
+  doAssert a[0].addr == s[0][0].addr
 
 block: # nkAccQuoted
   # shows using a keyword, which requires nkAccQuoted
   template `cast`(lhs, typ, expr) =
     when typ is type(nil):
-      let tmp = unsafeAddr(expr)
+      let tmp = addr(expr)
     else:
-      let tmp: ptr typ = unsafeAddr(expr)
+      let tmp: ptr typ = addr(expr)
     template lhs: untyped = tmp[]
 
   block:
     let s = @["foo", "bar"]
     let a {.`byUnsafeAddr`.} = s[0]
     doAssert a == "foo"
-    doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
+    doAssert a[0].addr == s[0][0].addr
 
   block:
     let s = @["foo", "bar"]
     let a {.`cast`.} = s[0]
     doAssert a == "foo"
-    doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
+    doAssert a[0].addr == s[0][0].addr
 
 block: # bug #15920
   template foo(lhs, typ, expr) =

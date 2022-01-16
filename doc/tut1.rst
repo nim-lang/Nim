@@ -913,7 +913,7 @@ Let's return to the simple counting example:
     echo i
 
 Can a `countup <system.html#countup.i,T,T,Positive>`_ proc be written that
-supports this loop? Lets try:
+supports this loop? Let's try:
 
 .. code-block:: nim
   proc countup(a, b: int): int =
@@ -1052,7 +1052,7 @@ errors.
 
 Lossless `Automatic type conversion`:idx: is performed in expressions where different
 kinds of integer types are used. However, if the type conversion
-would cause loss of information, the ``RangeDefect``:idx: is raised (if the error
+would cause loss of information, the `RangeDefect`:idx: is raised (if the error
 cannot be detected at compile time).
 
 

@@ -993,7 +993,7 @@ proc findMainAnchorNim(s: PRstSharedState, signature: PRstNode,
             result.add s
       else:  # when there are many overloads a link like foo_ points to all
              # of them, so selecting the group
-        var foundGroup = true
+        var foundGroup = false
         for s in sList:
           if s.langSym.isGroup:
             result.add s
@@ -2822,7 +2822,7 @@ type
   DirFlag = enum
     hasArg, hasOptions, argIsFile, argIsWord
   DirFlags = set[DirFlag]
-  SectionParser = proc (p: var RstParser): PRstNode {.nimcall.}
+  SectionParser = proc (p: var RstParser): PRstNode {.nimcall, gcsafe.}
 
 proc parseDirective(p: var RstParser, k: RstNodeKind, flags: DirFlags): PRstNode =
   ## Parses arguments and options for a directive block.
@@ -2869,7 +2869,7 @@ proc indFollows(p: RstParser): bool =
   result = currentTok(p).kind == tkIndent and currentTok(p).ival > currInd(p)
 
 proc parseBlockContent(p: var RstParser, father: var PRstNode,
-                       contentParser: SectionParser): bool =
+                       contentParser: SectionParser): bool {.gcsafe.} =
   ## parse the final content part of explicit markup blocks (directives,
   ## footnotes, etc). Returns true if succeeded.
   if currentTok(p).kind != tkIndent or indFollows(p):
@@ -3123,7 +3123,7 @@ proc prefix(ftnType: FootnoteType): string =
   of fnAutoSymbol: result = "footnotesym-"
   of fnCitation: result = "citation-"
 
-proc parseFootnote(p: var RstParser): PRstNode =
+proc parseFootnote(p: var RstParser): PRstNode {.gcsafe.} =
   ## Parses footnotes and citations, always returns 2 sons:
   ##
   ## 1) footnote label, always containing rnInner with 1 or more sons

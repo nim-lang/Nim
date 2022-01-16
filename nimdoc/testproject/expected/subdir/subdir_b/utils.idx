@@ -17,6 +17,8 @@ fn7	subdir/subdir_b/utils.html#fn7	utils: fn7()
 fn8	subdir/subdir_b/utils.html#fn8	utils: fn8(): auto	
 fn9	subdir/subdir_b/utils.html#fn9,int	utils: fn9(a: int): int	
 fn10	subdir/subdir_b/utils.html#fn10,int	utils: fn10(a: int): int	
+fN11	subdir/subdir_b/utils.html#fN11	utils: fN11()	
+fN11	subdir/subdir_b/utils.html#fN11,int	utils: fN11(x: int)	
 aEnum	subdir/subdir_b/utils.html#aEnum.t	utils: aEnum(): untyped	
 bEnum	subdir/subdir_b/utils.html#bEnum.t	utils: bEnum(): untyped	
 fromUtilsGen	subdir/subdir_b/utils.html#fromUtilsGen.t	utils: fromUtilsGen(): untyped	

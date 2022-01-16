@@ -190,8 +190,16 @@ when defined(nimHasDeclaredMagic):
 else:
   proc declaredInScope*(x: untyped): bool {.magic: "DefinedInScope", noSideEffect, compileTime.}
 
-proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
+proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.
+  ##
+  ## .. note:: This works for `let` variables or parameters
+  ##   for better interop with C. When you use it to write a wrapper
+  ##   for a C library and take the address of `let` variables or parameters,
+  ##   you should always check that the original library
+  ##   does never write to data behind the pointer that is returned from
+  ##   this procedure.
+  ##
   ## Cannot be overloaded.
   ##
   ## See also:
@@ -205,15 +213,17 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ##  echo p[]    # b
   discard
 
-proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
+proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect,
+  deprecated: "'unsafeAddr' is a deprecated alias for 'addr'".} =
   ## Builtin `addr` operator for taking the address of a memory
-  ## location. This works even for `let` variables or parameters
-  ## for better interop with C and so it is considered even more
-  ## unsafe than the ordinary `addr <#addr,T>`_.
+  ## location.
   ##
-  ## **Note**: When you use it to write a wrapper for a C library, you should
-  ## always check that the original library does never write to data behind the
-  ## pointer that is returned from this procedure.
+  ## .. note:: This works for `let` variables or parameters
+  ##   for better interop with C. When you use it to write a wrapper
+  ##   for a C library and take the address of `let` variables or parameters,
+  ##   you should always check that the original library
+  ##   does never write to data behind the pointer that is returned from
+  ##   this procedure.
   ##
   ## Cannot be overloaded.
   discard

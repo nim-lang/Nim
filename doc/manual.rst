@@ -1838,7 +1838,7 @@ A small example:
 cast uncheckedAssign
 --------------------
 
-Some restrictions for case objects can be disabled via a `{.cast(unsafeAssign).}` section:
+Some restrictions for case objects can be disabled via a `{.cast(uncheckedAssign).}` section:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -3502,8 +3502,9 @@ location is `T`, the `addr` operator result is of the type `ptr T`. An
 address is always an untraced reference. Taking the address of an object that
 resides on the stack is **unsafe**, as the pointer may live longer than the
 object on the stack and can thus reference a non-existing object. One can get
-the address of variables, but one can't use it on variables declared through
-`let` statements:
+the address of variables. For easier interoperability with other compiled languages
+such as C, retrieving the address of a `let` variable, a parameter,
+or a `for` loop variable can be accomplished too:
 
 .. code-block:: nim
 
@@ -3515,23 +3516,17 @@ the address of variables, but one can't use it on variables declared through
   # --> ref 0x7fff6b71b670 --> 0x10bb81050"Hello"
   echo cast[ptr string](t3)[]
   # --> Hello
-  # The following line doesn't compile:
+  # The following line also works
   echo repr(addr(t1))
-  # Error: expression has no address
-
 
 The unsafeAddr operator
 -----------------------
 
-For easier interoperability with other compiled languages such as C, retrieving
-the address of a `let` variable, a parameter, or a `for` loop variable can
-be accomplished by using the `unsafeAddr` operation:
+The `unsafeAddr` operator is a deprecated alias for the `addr` operator:
 
 .. code-block:: nim
-
   let myArray = [1, 2, 3]
   foreignProcThatTakesAnAddr(unsafeAddr myArray)
-
 
 Procedures
 ==========
@@ -3901,6 +3896,18 @@ the operator is in scope (including if it is private).
 
 Type bound operators are:
 `=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`.
+
+These operations can be *overridden* instead of *overloaded*. This means that
+the implementation is automatically lifted to structured types. For instance,
+if the type `T` has an overridden assignment operator `=`, this operator is
+also used for assignments of the type `seq[T]`.
+
+Since these operations are bound to a type, they have to be bound to a
+nominal type for reasons of simplicity of implementation; this means an
+overridden `deepCopy` for `ref T` is really bound to `T` and not to `ref T`.
+This also means that one cannot override `deepCopy` for both `ptr T` and
+`ref T` at the same time, instead a distinct or object helper type has to be
+used for one pointer type.
 
 For more details on some of those procs, see
 `Lifetime-tracking hooks <destructors.html#lifetimeminustracking-hooks>`_.
@@ -5018,7 +5025,7 @@ be used:
 
 See also:
 
-- `Shared heap memory management <gc.html>`_.
+- `Shared heap memory management <mm.html>`_.
 
 
 

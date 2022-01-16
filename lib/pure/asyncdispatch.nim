@@ -1974,11 +1974,11 @@ when defined(posix):
   import posix
 
 when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
-       defined(zephyr) or defined(freertos):
+       defined(solaris) or defined(zephyr) or defined(freertos):
   proc maxDescriptors*(): int {.raises: OSError.} =
     ## Returns the maximum number of active file descriptors for the current
     ## process. This involves a system call. For now `maxDescriptors` is
-    ## supported on the following OSes: Windows, Linux, OSX, BSD.
+    ## supported on the following OSes: Windows, Linux, OSX, BSD, Solaris.
     when defined(windows):
       result = 16_700_000
     elif defined(zephyr) or defined(freertos):
