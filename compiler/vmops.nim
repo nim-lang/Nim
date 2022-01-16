@@ -139,6 +139,7 @@ when defined(nimHasInvariant):
     of backend: result = $conf.backend
     of libPath: result = conf.libpath.string
     of gc: result = $conf.selectedGC
+    of mm: result = $conf.selectedGC
 
   proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
     template copySeq(field: untyped): untyped =
