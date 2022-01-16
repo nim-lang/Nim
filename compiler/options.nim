@@ -99,6 +99,7 @@ type                          # please make sure we have under 32 options
     optSourcemap
     optProfileVM              # enable VM profiler
     optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
+    optShowNonExportedFields  # for documentation: show fields that are not exported
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -982,6 +983,9 @@ proc inclDynlibOverride*(conf: ConfigRef; lib: string) =
 proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
   result = optDynlibOverrideAll in conf.globalOptions or
      conf.dllOverrides.hasKey(lib.canonDynlibName)
+
+proc showNonExportedFields*(conf: ConfigRef) =
+  incl(conf.globalOptions, optShowNonExportedFields)
 
 proc parseIdeCmd*(s: string): IdeCmd =
   case s:

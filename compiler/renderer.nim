@@ -21,7 +21,7 @@ type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
     renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples,
-    renderIr
+    renderIr, renderNonExportedFields
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
     kind*: TokType
@@ -613,7 +613,8 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
       elif inHideable and not isHideable(g.config, n[i]):
         inHideable = false
         put(g, tkHideableEnd, "")
-    gsub(g, n[i])
+    if n[i].kind == nkPostfix: gsub(g, n[i][1])
+    else: gsub(g, n[i])
     if c:
       if g.tokens.len > oldLen:
         putWithSpace(g, separator, $separator)
@@ -1416,9 +1417,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkRecList:
     indentNL(g)
     for i in 0..<n.len:
-      optNL(g)
-      gsub(g, n[i], c)
-      gcoms(g)
+      if n[i][0].kind == nkPostfix or renderNonExportedFields in g.flags:
+        optNL(g)
+        gsub(g, n[i], c)
+        gcoms(g)
     dedent(g)
     putNL(g)
   of nkOfInherit:

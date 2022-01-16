@@ -958,6 +958,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     conf.exc = low(ExceptionSystem)
     defineSymbol(conf.symbols, "noCppExceptions")
+  of "shownonexports":
+    expectNoArg(conf, switch, arg, pass, info)
+    showNonExportedFields(conf)
   of "exceptions":
     case arg.normalize
     of "cpp": conf.exc = excCpp

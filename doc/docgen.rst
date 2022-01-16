@@ -54,6 +54,7 @@ Generate HTML documentation for a whole project:
   # or `$nimcache/htmldocs` with `--usenimcache` which avoids clobbering your sources;
   # and likewise without `--project`.
   # Adding `-r` will open in a browser directly.
+  # Use `--showNonExports` to show non-exported fields of an exported type.
 
 
 Documentation Comments
