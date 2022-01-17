@@ -33,10 +33,6 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## If conversion fails, or `errorCode` is `0` then `""` will be
   ## returned.
   ##
-  ## On Windows, the `-d:useWinAnsi` compilation flag can be used to
-  ## make this procedure use the non-unicode Win API calls to retrieve the
-  ## message.
-  ##
   ## See also:
   ## * `raiseOSError proc`_
   ## * `osLastError proc`_
@@ -51,18 +47,11 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
     discard
   elif defined(windows):
     if errorCode != OSErrorCode(0'i32):
-      when useWinUnicode:
-        var msgbuf: WideCString
-        if formatMessageW(0x00000100 or 0x00001000 or 0x00000200,
-                        nil, errorCode.int32, 0, addr(msgbuf), 0, nil) != 0'i32:
-          result = $msgbuf
-          if msgbuf != nil: localFree(cast[pointer](msgbuf))
-      else:
-        var msgbuf: cstring
-        if formatMessageA(0x00000100 or 0x00001000 or 0x00000200,
-                        nil, errorCode.int32, 0, addr(msgbuf), 0, nil) != 0'i32:
-          result = $msgbuf
-          if msgbuf != nil: localFree(msgbuf)
+      var msgbuf: WideCString
+      if formatMessageW(0x00000100 or 0x00001000 or 0x00000200,
+                      nil, errorCode.int32, 0, addr(msgbuf), 0, nil) != 0'i32:
+        result = $msgbuf
+        if msgbuf != nil: localFree(cast[pointer](msgbuf))
   else:
     if errorCode != OSErrorCode(0'i32):
       result = $c_strerror(errorCode.int32)
