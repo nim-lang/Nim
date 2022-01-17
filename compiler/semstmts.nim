@@ -479,7 +479,7 @@ proc semVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
           # refs https://github.com/nim-lang/Nim/issues/8275
           wrongRedefinition(c, lhs.info, lhs.ident.s, clash.info)
 
-      if whichPragma(it) != wInvalid:
+      if whichPragma(it) != wInvalid or key.kind notin nkIdentKinds:
         # Not a custom pragma
         continue
       else:
@@ -1598,7 +1598,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     let it = n[i]
     let key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
 
-    if whichPragma(it) != wInvalid:
+    if whichPragma(it) != wInvalid or key.kind notin nkIdentKinds:
       # Not a custom pragma
       continue
     else:
