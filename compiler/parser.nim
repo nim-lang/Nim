@@ -481,9 +481,13 @@ proc dotLikeExpr(p: var Parser, a: PNode): PNode =
   result.add(a)
   result.add(parseSymbol(p, smAfterDot))
   if p.tok.tokType == tkParLe and p.tok.strongSpaceA <= 0:
+    var call = newNodeI(nkCall, info)
     let operator = opNode.ident.s & "()"
-    result[0] = newIdentNodeP(getIdent(p.lex.cache, operator), p)
-    exprColonEqExprListAux(p, tkParRi, result)
+    call.add newIdentNodeP(getIdent(p.lex.cache, operator), p)
+    call.add(result[1])
+    call.add(result[2])
+    exprColonEqExprListAux(p, tkParRi, call)
+    result = call
   else:
     result = parseGStrLit(p, result)
 

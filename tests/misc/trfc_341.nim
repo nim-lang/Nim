@@ -7,7 +7,7 @@ import std/options
 macro fn1(a: untyped): string = newLit a.lispRepr
 
 doAssert fn1(a.?b.c) == """(DotExpr (Infix (Ident ".?") (Ident "a") (Ident "b")) (Ident "c"))"""
-doAssert fn1(a.?b(c)) == """(Infix (Ident ".?()") (Ident "a") (Ident "b") (Ident "c"))"""
+doAssert fn1(a.?b(c)) == """(Call (Ident ".?()") (Ident "a") (Ident "b") (Ident "c"))"""
 
 template `.?`(a: JsonNode, b: untyped{ident}): JsonNode =
   a[astToStr(b)]
