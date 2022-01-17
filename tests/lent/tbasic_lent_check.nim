@@ -17,22 +17,26 @@ proc main =
 main()
 
 template main2 = # bug #15958
+  when defined(js):
+    proc sameAddress[T](a, b: T): bool {.importjs: "(# === #)".}
+  else:
+    template sameAddress(a, b): bool = a.unsafeAddr == b.unsafeAddr
   proc byLent[T](a: T): lent T = a
   let a = [11,12]
   let b = @[21,23]
   let ss = {1, 2, 3, 5}
   doAssert byLent(a) == [11,12]
-  doAssert byLent(a).addr == a.addr
+  doAssert sameAddress(byLent(a), a)
   doAssert byLent(b) == @[21,23]
-  when not defined(js): # pending bug #16073
-    doAssert byLent(b).addr == b.addr
+  # pending bug #16073
+  doAssert sameAddress(byLent(b), b)
   doAssert byLent(ss) == {1, 2, 3, 5}
-  doAssert byLent(ss).addr == ss.addr
+  doAssert sameAddress(byLent(ss), ss)
 
   let r = new(float)
   r[] = 10.0
-  when not defined(js): # pending bug #16073
-    doAssert byLent(r)[] == 10.0
+  # bug #16073
+  doAssert byLent(r)[] == 10.0
 
   when not defined(js): # pending bug https://github.com/timotheecour/Nim/issues/372
     let p = create(float)
@@ -41,9 +45,9 @@ template main2 = # bug #15958
 
   proc byLent2[T](a: openArray[T]): lent T = a[0]
   doAssert byLent2(a) == 11
-  doAssert byLent2(a).addr == a[0].addr
+  doAssert sameAddress(byLent2(a), a[0])
   doAssert byLent2(b) == 21
-  doAssert byLent2(b).addr == b[0].addr
+  doAssert sameAddress(byLent2(b), b[0])
 
   proc byLent3[T](a: varargs[T]): lent T = a[1]
   let 
