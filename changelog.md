@@ -28,9 +28,7 @@ becomes an alias for `addr`.
 - Fixed `lists.SinglyLinkedList` being broken after removing the last node ([#19353](https://github.com/nim-lang/Nim/pull/19353)).
 - `md5` now works at compile time and in JavaScript.
 
-## `std/smtp`
-
-- Sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
+- `std/smtp` sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
 
 - Added `IsoWeekRange`, a range type to represent the number of weeks in an ISO week-based year.
 - Added `IsoYear`, a distinct int type to prevent bugs from confusing the week-based year and the regular year.
