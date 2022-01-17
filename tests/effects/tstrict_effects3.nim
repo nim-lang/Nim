@@ -6,6 +6,8 @@ discard """
 
 {.experimental: "strictEffects".}
 
+import nimsuggest/sexp
+
 proc fn(a: int, p1, p2: proc()) {.effectsOf: p1.} =
   if a == 7:
     p1()
