@@ -6,7 +6,6 @@ discard """
 
 {.experimental: "strictEffects".}
 
-
 proc fn(a: int, p1, p2: proc()) {.effectsOf: p1.} =
   if a == 7:
     p1()
