@@ -16,3 +16,6 @@ when defined(nimStrictMode):
     # future work: XDeclaredButNotUsed
 
 switch("define", "nimVersion:" & NimVersion)
+when defined(nimHasEffectsOf):
+  switch("experimental", "strictEffects")
+  switch("warningAsError", "Effect:on")
