@@ -61,3 +61,10 @@ when true: # D20210801T100514:here
       discard ret
     fn()
     static: discard genSym()
+
+block: # issue #10994
+  macro foo(x): untyped = x
+  template bar {.pragma.}
+
+  proc a {.bar.} = discard # works
+  proc b {.bar, foo.} = discard # doesn't
