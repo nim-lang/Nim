@@ -540,12 +540,15 @@ proc semVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
       # since a macro pragma can set pragmas, we process these here again.
       # This is required for SqueakNim-like export pragmas.
       if result.kind in {nkVarSection, nkLetSection, nkConstSection}:
-        let validPragmas =
-          case result.kind
-          of nkVarSection: varPragmas
-          of nkLetSection: letPragmas
-          of nkConstSection: constPragmas
-          else: return # unreachable
+        var validPragmas: TSpecialWords
+        case result.kind
+        of nkVarSection:
+          validPragmas = varPragmas
+        of nkLetSection:
+          validPragmas = letPragmas
+        of nkConstSection:
+          validPragmas = constPragmas
+        else: return # unreachable
         for defs in result:
           for i in 0 ..< defs.len - 2:
             let ex = defs[i]
