@@ -97,7 +97,7 @@ primary = operatorB primary primarySuffix* |
 rawTypeDesc = (tupleType | routineType | 'enum' | 'object' |
                 ('var' | 'out' | 'ref' | 'ptr' | 'distinct') typeDesc?)
                 ('not' expr)?
-typeDescExpr = simpleExpr ('not' expr)?
+typeDescExpr = (routineType / simpleExpr) ('not' expr)?
 typeDesc = rawTypeDesc / typeDescExpr
 typeDefValue = ((tupleDecl | enumDecl | objectDecl | conceptDecl |
                  ('ref' | 'ptr' | 'distinct') (tupleDecl | objectDecl))

@@ -2053,8 +2053,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semProcTypeWithScope(c, n, prev, skProc)
   of nkEnumTy: result = semEnum(c, n, prev)
   of nkType: result = n.typ
-  of nkStmtListType, nkStmtList: result = semStmtListType(c, n, prev)
-  of nkBlockType, nkBlockStmt, nkBlockExpr: result = semBlockType(c, n, prev)
+  of nkStmtListType: result = semStmtListType(c, n, prev)
+  of nkBlockType: result = semBlockType(c, n, prev)
   else:
     result = semTypeExpr(c, n, prev)
     when false:
