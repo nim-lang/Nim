@@ -1298,10 +1298,10 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
     return
 
   case p.tok.tokType
-  of tkProc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkLambda)
-  of tkFunc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkFuncDef)
+  of tkProc: result = parseProcExpr(p, mode != pmTypeDesc, nkLambda)
+  of tkFunc: result = parseProcExpr(p, mode != pmTypeDesc, nkFuncDef)
   of tkIterator:
-    result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkLambda)
+    result = parseProcExpr(p, mode != pmTypeDesc, nkLambda)
     if result.kind == nkLambda: result.transitionSonsKind(nkIteratorDef)
     else: result.transitionSonsKind(nkIteratorTy)
   of tkBind:
@@ -1335,7 +1335,7 @@ proc parseTypeDesc(p: var Parser, fullExpr = false): PNode =
   #| rawTypeDesc = (tupleType | routineType | 'enum' | 'object' |
   #|                 ('var' | 'out' | 'ref' | 'ptr' | 'distinct') typeDesc?)
   #|                 ('not' expr)?
-  #| typeDescExpr = simpleExpr ('not' expr)?
+  #| typeDescExpr = (routineType / simpleExpr) ('not' expr)?
   #| typeDesc = rawTypeDesc / typeDescExpr
   newlineWasSplitting(p)
   if fullExpr:
