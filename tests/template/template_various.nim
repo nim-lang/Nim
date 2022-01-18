@@ -145,8 +145,16 @@ block pattern_with_converter:
 
   doAssert floatDouble(5) == 10.0
 
+block pattern_with_sideeffect:
+  template optMul{`*`(a, 2)}(a: int{noSideEffect}): int = a+a
 
+  var i = 0
+  proc f(): int =
+    i += 1
+    result = 55
 
+  doAssert f() * 2 == 110
+  doAssert i == 1
 
 block procparshadow:
   template something(name: untyped) =
