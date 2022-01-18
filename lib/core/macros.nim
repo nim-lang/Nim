@@ -1373,7 +1373,7 @@ template findChild*(n: NimNode; cond: untyped): NimNode {.dirty.} =
   ##
   ## .. code-block:: nim
   ##   var res = findChild(n, it.kind == nnkPostfix and
-  ##                          it.basename.ident == toNimIdent"foo")
+  ##                          it.basename.ident == ident"foo")
   block:
     var res: NimNode
     for it in n.children:
