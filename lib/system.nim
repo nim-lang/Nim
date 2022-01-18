@@ -213,9 +213,7 @@ proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ##  echo p[]    # b
   discard
 
-{.push warning[Deprecated]: off.}
-proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect,
-  deprecated: "'unsafeAddr' is a deprecated alias for 'addr'".} =
+proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory
   ## location.
   ##
@@ -228,7 +226,6 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect,
   ##
   ## Cannot be overloaded.
   discard
-{.pop.}
 
 type
   `static`*[T] {.magic: "Static".}
