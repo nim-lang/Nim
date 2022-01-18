@@ -122,6 +122,8 @@ func toInt*[T](x: Rational[T]): int =
 
 func `+`*[T](x, y: Rational[T]): Rational[T] =
   ## Adds two rational numbers.
+  if x.num == 0: return y
+  if y.num == 0: return x
   let common = lcm(x.den, y.den)
   result.num = common div x.den * x.num + common div y.den * y.num
   result.den = common
@@ -129,16 +131,20 @@ func `+`*[T](x, y: Rational[T]): Rational[T] =
 
 func `+`*[T](x: Rational[T], y: T): Rational[T] =
   ## Adds the rational `x` to the int `y`.
+  if x.num == 0: return toRational y
   result.num = x.num + y * x.den
   result.den = x.den
 
 func `+`*[T](x: T, y: Rational[T]): Rational[T] =
   ## Adds the int `x` to the rational `y`.
+  if y.num == 0: return toRational x
   result.num = x * y.den + y.num
   result.den = y.den
 
 func `+=`*[T](x: var Rational[T], y: Rational[T]) =
   ## Adds the rational `y` to the rational `x` in-place.
+  if y.num == 0: return
+  if x.num == 0: x = y; return
   let common = lcm(x.den, y.den)
   x.num = common div x.den * x.num + common div y.den * y.num
   x.den = common
@@ -146,6 +152,7 @@ func `+=`*[T](x: var Rational[T], y: Rational[T]) =
 
 func `+=`*[T](x: var Rational[T], y: T) =
   ## Adds the int `y` to the rational `x` in-place.
+  if x.num == 0: x = toRational y
   x.num += y * x.den
 
 func `-`*[T](x: Rational[T]): Rational[T] =
@@ -155,6 +162,8 @@ func `-`*[T](x: Rational[T]): Rational[T] =
 
 func `-`*[T](x, y: Rational[T]): Rational[T] =
   ## Subtracts two rational numbers.
+  if x.num == 0: return -y
+  if y.num == 0: return x
   let common = lcm(x.den, y.den)
   result.num = common div x.den * x.num - common div y.den * y.num
   result.den = common
@@ -162,16 +171,20 @@ func `-`*[T](x, y: Rational[T]): Rational[T] =
 
 func `-`*[T](x: Rational[T], y: T): Rational[T] =
   ## Subtracts the int `y` from the rational `x`.
+  if x.num == 0: return toRational -y
   result.num = x.num - y * x.den
   result.den = x.den
 
 func `-`*[T](x: T, y: Rational[T]): Rational[T] =
   ## Subtracts the rational `y` from the int `x`.
+  if x.num == 0: return toRational x
   result.num = x * y.den - y.num
   result.den = y.den
 
 func `-=`*[T](x: var Rational[T], y: Rational[T]) =
   ## Subtracts the rational `y` from the rational `x` in-place.
+  if y.num == 0: return
+  if x.num == 0: x = -y; return
   let common = lcm(x.den, y.den)
   x.num = common div x.den * x.num - common div y.den * y.num
   x.den = common
@@ -179,34 +192,42 @@ func `-=`*[T](x: var Rational[T], y: Rational[T]) =
 
 func `-=`*[T](x: var Rational[T], y: T) =
   ## Subtracts the int `y` from the rational `x` in-place.
+  if x.num == 0: x = toRational -y
   x.num -= y * x.den
 
 func `*`*[T](x, y: Rational[T]): Rational[T] =
   ## Multiplies two rational numbers.
+  if x.num == 0: return x
+  if y.num == 0: return y
   result.num = x.num * y.num
   result.den = x.den * y.den
   reduce(result)
 
 func `*`*[T](x: Rational[T], y: T): Rational[T] =
   ## Multiplies the rational `x` with the int `y`.
+  if x.num == 0: return x
   result.num = x.num * y
   result.den = x.den
   reduce(result)
 
 func `*`*[T](x: T, y: Rational[T]): Rational[T] =
   ## Multiplies the int `x` with the rational `y`.
+  if y.num == 0: return y
   result.num = x * y.num
   result.den = y.den
   reduce(result)
 
 func `*=`*[T](x: var Rational[T], y: Rational[T]) =
   ## Multiplies the rational `x` by `y` in-place.
+  if x.num == 0: return
+  if y.num == 0: x = y; return
   x.num *= y.num
   x.den *= y.den
   reduce(x)
 
 func `*=`*[T](x: var Rational[T], y: T) =
   ## Multiplies the rational `x` by the int `y` in-place.
+  if x.num == 0: return
   x.num *= y
   reduce(x)
 
@@ -308,6 +329,7 @@ func floorMod*[T: SomeInteger](x, y: Rational[T]): Rational[T] =
 
 func hash*[T](x: Rational[T]): Hash =
   ## Computes the hash for the rational `x`.
+  if x.num == 0: return hash toRational 0
   # reduce first so that hash(x) == hash(y) for x == y
   var copy = x
   reduce(copy)
