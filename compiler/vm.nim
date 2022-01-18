@@ -1387,8 +1387,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node = newNodeI(nkBracket, c.debug[pc])
       regs[ra].node.typ = typ
       newSeq(regs[ra].node.sons, count)
+      let nullValue = getNullValue(regs[ra].node.typ[0], c.debug[pc], c.config)
       for i in 0..<count:
-        regs[ra].node[i] = getNullValue(typ[0], c.debug[pc], c.config)
+        regs[ra].node[i] = nullValue
     of opcNewStr:
       decodeB(rkNode)
       regs[ra].node = newNodeI(nkStrLit, c.debug[pc])
