@@ -1198,7 +1198,7 @@ proc align(address, alignment: int): int =
   else:
     result = (address + (alignment - 1)) and not (alignment - 1)
 
-when defined(noQuit):
+when defined(nimNoQuit):
   proc quit*(errorcode: int = QuitSuccess) = discard "ignoring quit"
     ## Stops the program immediately with an exit code.
     ##
