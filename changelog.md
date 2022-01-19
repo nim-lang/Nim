@@ -17,15 +17,18 @@
 - `std/sharedstrings` module is removed.
 - Constants `colors.colPaleVioletRed` and `colors.colMediumPurple` changed to match the CSS color standard.
 
+- `addr` is now available for all addressable locations, `unsafeAddr` is deprecated and
+becomes an alias for `addr`.
+
 ## Standard library additions and changes
 
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional
   filename argument for more informative errors.
 - Module `colors` expanded with missing colors from the CSS color standard.
+- Fixed `lists.SinglyLinkedList` being broken after removing the last node ([#19353](https://github.com/nim-lang/Nim/pull/19353)).
+- `md5` now works at compile time and in JavaScript.
 
-## `std/smtp`
-
-- Sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
+- `std/smtp` sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
 
 - Added `IsoWeekRange`, a range type to represent the number of weeks in an ISO week-based year.
 - Added `IsoYear`, a distinct int type to prevent bugs from confusing the week-based year and the regular year.
@@ -70,6 +73,8 @@
 - Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
   for the right-hand side of type definitions in type sections. Previously
   they would error with "invalid indentation".
+
+- Added `std/oserrors` for OS error reporting.
 
 ## Compiler changes
 

@@ -7,16 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## Module for computing [MD5 checksums](https://en.wikipedia.org/wiki/MD5).
-##
-## This module also works at compile time and in JavaScript.
-##
-## See also
-## ========
-## * `base64 module<base64.html>`_ implements a Base64 encoder and decoder
-## * `std/sha1 module <sha1.html>`_ for a SHA-1 encoder and decoder
-## * `hashes module<hashes.html>`_ for efficient computations of hash values
-##   for diverse Nim types
+# `std/md5` without VM and JavaScript support, to circumvent a bug with
+# openarrays on Nim < 1.4.
 
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
@@ -98,43 +90,11 @@ proc decode(dest: var openArray[uint8], src: openArray[uint32]) =
     dest[i+3] = uint8(src[j] shr 24 and 0xff'u32)
     inc(i, 4)
 
-template slice(s: string, a, b): openArray[uint8] =
-  when nimvm:
-    # toOpenArray is not implemented in VM
-    var s2 = newSeq[uint8](s.len)
-    for i in 0 ..< s2.len:
-      s2[i] = uint8(s[i])
-    s2
-  else:
-    s.toOpenArrayByte(a, b)
-
-template slice(s: cstring, a, b): openArray[uint8] =
-  when nimvm:
-    # toOpenArray is not implemented in VM
-    slice($s, a, b)
-  else:
-    when defined(js):
-      # toOpenArrayByte for cstring is not implemented in JS
-      slice($s, a, b)
-    else:
-      s.toOpenArrayByte(a, b)
+template slice(s: string | cstring, a, b): openArray[uint8] =
+  s.toOpenArrayByte(a, b)
 
 template slice(s: openArray[uint8], a, b): openArray[uint8] =
-  when nimvm:
-    s[a .. b]
-  else:
-    s.toOpenArray(a, b)
-
-const useMem = declared(copyMem)
-
-template memOrNot(withMem, withoutMem): untyped =
-  when nimvm:
-    withoutMem
-  else:
-    when useMem:
-      withMem
-    else:
-      withoutMem
+  s.toOpenArray(a, b)
 
 proc transform(buffer: openArray[uint8], state: var MD5State) =
   var
@@ -274,10 +234,7 @@ proc `==`*(D1, D2: MD5Digest): bool =
 
 
 proc clearBuffer(c: var MD5Context) {.inline.} =
-  memOrNot:
-    zeroMem(addr(c.buffer), sizeof(MD5Buffer))
-  do:
-    reset(c.buffer)
+  zeroMem(addr(c.buffer), sizeof(MD5Buffer))
 
 proc md5Init*(c: var MD5Context) =
   ## Initializes an `MD5Context`.
@@ -294,13 +251,7 @@ proc md5Init*(c: var MD5Context) =
 
 proc writeBuffer(c: var MD5Context, index: int,
                  input: openArray[uint8], inputIndex, len: int) {.inline.} =
-  memOrNot:
-    copyMem(addr(c.buffer[index]), unsafeAddr(input[inputIndex]), len)
-  do:
-    # cannot use system.`[]=` for arrays and openarrays as
-    # it can raise RangeDefect which gets tracked
-    for i in 0..<len:
-      c.buffer[index + i] = input[inputIndex + i]
+  copyMem(addr(c.buffer[index]), unsafeAddr(input[inputIndex]), len)
 
 proc md5Update*(c: var MD5Context, input: openArray[uint8]) =
   ## Updates the `MD5Context` with the `input` data.

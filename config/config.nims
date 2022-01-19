@@ -3,6 +3,11 @@
 cppDefine "errno"
 cppDefine "unix"
 
+# mangle the macro names in nimbase.h
+cppDefine "NAN_INFINITY"
+cppDefine "INF"
+cppDefine "NAN"
+
 when defined(nimStrictMode):
   # xxx add more flags here, and use `-d:nimStrictMode` in more contexts in CI.
 
