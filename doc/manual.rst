@@ -7811,9 +7811,10 @@ This is translated to:
 
 ------
 
-When multiple macro pragmas are applied to the same definition, the
-compiler will apply them consequently from left to right. Each macro
-will receive as input the output of the previous one.
+When multiple macro pragmas are applied to the same definition, the first one
+from left to right will be evaluated. This macro can then choose to keep
+the remaining macro pragmas in its output, and those will be evaluated in
+the same way.
 
 There are a few more applications of macro pragmas, such as in type,
 variable and constant declarations, but this behavior is considered to be

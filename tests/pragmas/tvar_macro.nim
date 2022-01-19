@@ -72,18 +72,21 @@ block: # with other pragmas
   macro appendToNameAndAdd(name: static string, incr, sec) =
     result = sec
     result[0][0][0] = ident(repr(result[0][0][0]) & name)
+    result[0][0][1].add(ident"deprecated")
     result[0][2] = infix(result[0][2], "+", incr)
 
-  let
+  var
     a = 1
-    foo {.exportc: "exportedFooBar", appendToNameAndAdd("Bar", {'0'..'9'}), deprecated.} = {'a'..'z', 'A'..'Z'}
+    foo {.exportc: "exportedFooBar", appendToNameAndAdd("Bar", {'0'..'9'}), used.} = {'a'..'z', 'A'..'Z'}
     b = 2
   
   doAssert (a, b) == (1, 2)
 
   let importedFooBar {.importc: "exportedFooBar", nodecl.}: set[char]
 
-  doAssert importedFooBar == fooBar 
+  doAssert importedFooBar == fooBar #[tt.Warning
+                            ^ fooBar is deprecated
+  ]#
   
 
 block: # with stropping
