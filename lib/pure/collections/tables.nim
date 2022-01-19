@@ -2499,6 +2499,35 @@ when (NimMajor, NimMinor) <= (1, 0):
       for key, value in table:
         result.inc(key, value)
 
+template updateImpl(t1, t2): untyped =
+  for key, val in t2:
+    t1[key] = val
+
+proc update[A, B](t1: var Table[A,B], t2: Table[A,B]) =
+  ## updates t1 by t2 
+  runnableExamples:
+    var 
+      t1 = {'a': 1, 'b': 2, 'c': 3, 'd': 4}.toTable
+      t2 = {'d': 8, 'e': 5}.toTable
+
+    t1.update t2
+    assert t1 == {'a': 1, 'b': 2, 'c': 3, 'd': 8, 'e': 5}.toTable
+
+  updateImpl(t1, t2)
+
+proc update[A, B](t1: TableRef[A,B], t2: TableRef[A,B]) =
+  ## updates t1 by t2 
+  runnableExamples:
+    var 
+      t1 = {'a': 1, 'b': 2, 'c': 3, 'd': 4}.newTable
+      t2 = {'d': 8, 'e': 5}.newTable
+
+    t1.update t2
+    assert t1 == {'a': 1, 'b': 2, 'c': 3, 'd': 8, 'e': 5}.newTable
+
+  updateImpl(t1, t2)
+
+
 proc `$`*[A](t: CountTable[A]): string =
   ## The `$` operator for count tables. Used internally when calling `echo`
   ## on a table.
