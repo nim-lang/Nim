@@ -2321,6 +2321,7 @@ when notJSnotNims:
     ## Allows you to override the behaviour of your application when CTRL+C
     ## is pressed. Only one such hook is supported.
     ## Example:
+    ##
     ## .. code-block:: Nim
     ##   proc ctrlc() {.noconv.} =
     ##     echo "Ctrl+C fired!"
