@@ -1189,8 +1189,8 @@ proc align(address, alignment: int): int =
   else:
     result = (address + (alignment - 1)) and not (alignment - 1)
 
-when defined(nimdoc):
-  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
+when defined(nimNoQuit):
+  proc quit*(errorcode: int = QuitSuccess) = discard "ignoring quit"
     ## Stops the program immediately with an exit code.
     ##
     ## Before stopping the program the "exit procedures" are called in the
@@ -1213,6 +1213,9 @@ when defined(nimdoc):
     ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
     ##   It does *not* call the garbage collector to free all the memory,
     ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
+
+elif defined(nimdoc):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
 
 elif defined(genode):
   include genode/env
