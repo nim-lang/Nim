@@ -188,12 +188,14 @@ Backticks are used to insert code from `NimNode` symbols into the
 generated expression.
 
 .. code-block:: nim
+
     macro a(i) = quote do: let `i` = 0
     a b
 
 A custom prefix operator can be defined whenever backticks are needed.
 
 .. code-block:: nim
+
     macro a(i) = quote("@") do: assert @i == 0
     let b = 0
     a b
@@ -201,6 +203,7 @@ A custom prefix operator can be defined whenever backticks are needed.
 The injected symbol needs accent quoted when it resolves to a symbol.
 
 .. code-block:: nim
+
     macro a(i) = quote("@") do: let `@i` == 0
     a b
 
@@ -306,6 +309,7 @@ the last line of the macro. It is also the statement that has been
 used to get this output.
 
 .. code-block:: nim
+
   if not (a != b):
     raise newException(AssertionDefect, $a & " != " & $b)
 

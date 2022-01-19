@@ -119,6 +119,7 @@ code purports to catch the `IndexDefect` from an out-of-bounds array access, the
 compiler may instead choose to allow the program to die with a fatal error.
 
 .. code-block:: nim
+
   var a: array[0..1, char]
   let i = 5
   try:
@@ -215,6 +216,7 @@ comment:
 
 
 .. code-block:: nim
+
   i = 0     # This is a single comment over multiple lines.
     # The lexer merges these two pieces.
     # The comment continues here.
@@ -232,6 +234,7 @@ Starting with version 0.13.0 of the language Nim supports multiline comments.
 They look like:
 
 .. code-block:: nim
+
   #[Comment here.
   Multiple lines
   are not a problem.]#
@@ -239,6 +242,7 @@ They look like:
 Multiline comments support nesting:
 
 .. code-block:: nim
+
   #[  #[ Multiline comment in already
      commented out code. ]#
   proc p[T](x: T) = discard
@@ -247,6 +251,7 @@ Multiline comments support nesting:
 Multiline documentation comments also exist and support nesting too:
 
 .. code-block:: nim
+
   proc foo =
     ##[Long documentation comment
        here.
@@ -264,6 +269,7 @@ and underscores, with the following restrictions:
 * two immediate following underscores `__` are not allowed:
 
 .. code-block::
+
   letter ::= 'A'..'Z' | 'a'..'z' | '\x80'..'\xff'
   digit ::= '0'..'9'
   IDENTIFIER ::= letter ( ['_'] (letter | digit) )*
@@ -288,6 +294,7 @@ Identifier equality
 Two identifiers are considered equal if the following algorithm returns true:
 
 .. code-block:: nim
+
   proc sameIdentifier(a, b: string): bool =
     a[0] == b[0] and
       a.replace("_", "").toLowerAscii == b.replace("_", "").toLowerAscii
@@ -324,9 +331,11 @@ If a keyword is enclosed in backticks it loses its keyword property and becomes 
 Examples
 
 .. code-block:: nim
+
   var `var` = "Hello Stropping"
 
 .. code-block:: nim
+
   type Obj = object
     `type`: int
 
@@ -397,6 +406,7 @@ the newline (and the preceding whitespace) is not included in the string. The
 ending of the string literal is defined by the pattern `"""[^"]`, so this:
 
 .. code-block:: nim
+
   """"long string within quotes""""
 
 Produces::
@@ -718,6 +728,7 @@ Binary operators whose first character is `^` are right-associative, all
 other binary operators are left-associative.
 
 .. code-block:: nim
+
   proc `^/`(x, y: float): float =
     # a right-associative division operator
     result = x / y
@@ -769,6 +780,7 @@ Whether an operator is used as a prefix operator is also affected by preceding
 whitespace (this parsing change was introduced with version 0.13.0):
 
 .. code-block:: nim
+
   echo $foo
   # is parsed as
   echo($foo)
@@ -778,9 +790,11 @@ Spacing also determines whether `(a, b)` is parsed as an argument list
 of a call or whether it is parsed as a tuple constructor:
 
 .. code-block:: nim
+
   echo(1, 2) # pass 1 and 2 to echo
 
 .. code-block:: nim
+
   echo (1, 2) # pass the tuple (1, 2) to echo
 
 Dot-like operators
@@ -922,6 +936,7 @@ problem.)
 
 .. code-block:: nim
     :test: "nim c $1"
+
   import std/strformat
 
   var fibN {.compileTime.}: int
@@ -1078,6 +1093,7 @@ smaller type to a larger type (for example `int16 -> int32`). In Nim only
 widening type conversions are *implicit*:
 
 .. code-block:: nim
+
   var myInt16 = 5i16
   var myInt: int
   myInt16 + 34     # of type `int16`
@@ -1100,6 +1116,7 @@ type). To define a subrange type, one must specify its limiting values -- the
 lowest and highest value of the type. For example:
 
 .. code-block:: nim
+
   type
     Subrange = range[0..5]
     PositiveFloat = range[0.0..Inf]
@@ -1164,6 +1181,7 @@ Nim provides the pragmas `nanChecks`:idx: and `infChecks`:idx: to control
 whether the IEEE exceptions are ignored or trap a Nim exception:
 
 .. code-block:: nim
+
   {.nanChecks: on, infChecks: on.}
   var a = 1.0
   var b = 0.0
@@ -1255,6 +1273,7 @@ explicitly given is assigned the value of the previous field + 1.
 An explicit ordered enum can have *holes*:
 
 .. code-block:: nim
+
   type
     TokenType = enum
       a = 2, b = 4, c = 89 # holes are valid
@@ -1330,6 +1349,7 @@ Whenever a user creates a specialized object, implementation of this procedure
 provides for `string` representation.
 
 .. code-block:: nim
+
   type
     Person = object
       name: string
@@ -1380,6 +1400,7 @@ to `cstring` for convenience. If a Nim string is passed to a C-style
 variadic proc, it is implicitly converted to `cstring` too:
 
 .. code-block:: nim
+
   proc printf(formatstr: cstring) {.importc: "printf", varargs,
                                     header: "<stdio.h>".}
 
@@ -1395,6 +1416,7 @@ A `$` proc is defined for cstrings that returns a string. Thus to get a nim
 string from a cstring:
 
 .. code-block:: nim
+
   var str: string = "Hello!"
   var cstr: cstring = str
   var newstr: string = $cstr
@@ -1402,6 +1424,7 @@ string from a cstring:
 `cstring` literals shouldn't be modified.
 
 .. code-block:: nim
+
   var x = cstring"literals"
   x[1] = 'A' # This is wrong!!!
 
@@ -1409,6 +1432,7 @@ If the `cstring` originates from a regular memory (not read-only memory),
 it can be modified:
 
 .. code-block:: nim
+
   var x = "123456"
   var s: cstring = x
   s[0] = 'u' # This is ok
@@ -1522,6 +1546,7 @@ The openarray type cannot be nested: multidimensional openarrays are not
 supported because this is seldom needed and cannot be done efficiently.
 
 .. code-block:: nim
+
   proc testOpenArray(x: openArray[int]) = echo repr(x)
 
   testOpenArray([1,2,3])  # array[]
@@ -6086,6 +6111,7 @@ for tuples, leveraging the existing equality operator for tuples
 
 .. code-block:: nim
     :test: "nim c $1"
+
   import std/macros
 
   macro `case`(n: tuple): untyped =

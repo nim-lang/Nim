@@ -713,6 +713,7 @@ The copy operation is deferred until the first write.
 For example:
 
 .. code-block:: nim
+
   var x = "abc"  # no copy
   var y = x      # no copy
   y[0] = 'h'     # copy
@@ -722,6 +723,7 @@ The abstraction fails for `addr x` because whether the address is going to be us
 `prepareMutation` needs to be called before the "address of" operation. For example:
 
 .. code-block:: nim
+
   var x = "abc"
   var y = x
 

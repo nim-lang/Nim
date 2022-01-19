@@ -235,6 +235,7 @@ These `runnableExamples` are automatically run by `nim doc mymodule.nim`:cmd:
 as well as `testament`:cmd: and guarantee they stay in sync.
 
 .. code-block:: nim
+
   proc addBar*(a: string): string =
     ## Adds "Bar" to `a`.
     runnableExamples:
@@ -253,10 +254,11 @@ not guaranteed to stay in sync, so `runnableExamples` is almost always preferred
     ## Returns "something"
     ##
     ## .. code-block::
+    ##
     ##  echo someProc() # "something"
     result = "something" # single-hash comments do not produce documentation
 
-The ``.. code-block:: nim`` followed by a newline and an indentation instructs the
+The ``.. code-block:: nim`` followed by a blank newline and an indentation instructs the
 `nim doc`:cmd: command to produce syntax-highlighted example code with the
 documentation (``.. code-block::`` is sufficient from inside a nim module).
 
@@ -297,6 +299,7 @@ For example an ``:idx:`` role for referencing a topic ("SQLite" in the
 example below) from `Nim Index`_ can be used in doc comment this way:
 
 .. code-block:: nim
+
   ## A higher level `SQLite`:idx: database wrapper.
 
 .. _`Nim Index`: https://nim-lang.org/docs/theindex.html

@@ -55,6 +55,7 @@ type, the `of` operator can be used.
 
 .. code-block:: nim
     :test: "nim c $1"
+
   type
     Person = ref object of RootObj
       name*: string  # the * means that `name` is accessible from other modules
@@ -99,6 +100,7 @@ Example:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   type
     Node = ref object  # a reference to an object with the following field:
       le, ri: Node     # left and right subtrees
@@ -125,6 +127,7 @@ The syntax for type conversions is `destination_type(expression_to_convert)`
 (like an ordinary call):
 
 .. code-block:: nim
+
   proc getID(x: Person): int =
     Student(x).id
 
@@ -185,6 +188,7 @@ for any type:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   import std/strutils
 
   echo "abc".len # is the same as echo len("abc")
@@ -199,6 +203,7 @@ So "pure object oriented" code is easy to write:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   import std/[strutils, sequtils]
 
   stdout.writeLine("Give a list of numbers (separated by spaces): ")
@@ -240,6 +245,7 @@ The `[]` array access operator can be overloaded to provide
 
 .. code-block:: nim
     :test: "nim c $1"
+
   type
     Vector* = object
       x, y, z: float
@@ -272,6 +278,7 @@ Procedures always use static dispatch. For dynamic dispatch replace the
 
 .. code-block:: nim
     :test: "nim c $1"
+
   type
     Expression = ref object of RootObj ## abstract base class for an expression
     Literal = ref object of Expression
@@ -357,6 +364,7 @@ Raising an exception is done with the `raise` statement:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   var
     e: ref OSError
   new(e)
@@ -368,6 +376,7 @@ is *re-raised*. For the purpose of avoiding repeating this common code pattern,
 the template `newException` in the `system` module can be used:
 
 .. code-block:: nim
+
   raise newException(OSError, "the request to the OS failed")
 
 
@@ -378,6 +387,7 @@ The `try` statement handles exceptions:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   from std/strutils import parseInt
 
   # read the first two lines of a text file that should contain numbers
@@ -424,6 +434,7 @@ If you need to *access* the actual exception object or message inside an
 module. Example:
 
 .. code-block:: nim
+
   try:
     doSomethingHere()
   except:
@@ -444,6 +455,7 @@ instance, if you specify that a proc raises `IOError`, and at some point it
 prevent that proc from compiling. Usage example:
 
 .. code-block:: nim
+
   proc complexProc() {.raises: [IOError, ArithmeticDefect].} =
     ...
 
@@ -476,6 +488,7 @@ containers:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   type
     BinaryTree*[T] = ref object # BinaryTree is a generic type with
                                 # generic param `T`
@@ -541,6 +554,7 @@ There is a special `[:T]` syntax when using generics with the method call syntax
 
 .. code-block:: nim
     :test: "nim c $1"
+
   proc foo[T](i: T) =
     discard
 
@@ -564,6 +578,7 @@ To *invoke* a template, call it like a procedure.
 Example:
 
 .. code-block:: nim
+
   template `!=` (a, b: untyped): untyped =
     # this definition exists in the System module
     not (a == b)
@@ -584,6 +599,7 @@ simple proc for logging:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   const
     debug = true
 
@@ -602,6 +618,7 @@ Turning the `log` proc into a template solves this problem:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   const
     debug = true
 
@@ -652,6 +669,7 @@ Example: Lifting Procs
 
 .. code-block:: nim
     :test: "nim c $1"
+
   import std/math
 
   template liftScalarProc(fname) =

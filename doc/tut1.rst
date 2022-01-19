@@ -42,6 +42,7 @@ We start the tour with a modified "hello world" program:
 
 .. code-block:: Nim
     :test: "nim c $1"
+
   # This is a comment
   echo "What's your name? "
   var name: string = readLine(stdin)
@@ -91,6 +92,7 @@ inference`:idx:). So this will work too:
 
 .. code-block:: Nim
     :test: "nim c $1"
+
   var name = readLine(stdin)
 
 Note that this is basically the only form of type inference that exists in
@@ -136,6 +138,7 @@ hash character `#`. Documentation comments start with `##`:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   # A comment.
 
   var myVariable: int ## a documentation comment
@@ -150,6 +153,7 @@ comments can also be nested.
 
 .. code-block:: nim
     :test: "nim c $1"
+
   #[
   You can have any Nim code text commented
   out inside this with no indentation restrictions.
@@ -176,6 +180,7 @@ The var statement
 The var statement declares a new local or global variable:
 
 .. code-block::
+
   var x, y: int # declares x and y to have the type `int`
 
 Indentation can be used after the `var` keyword to list a whole section of
@@ -183,6 +188,7 @@ variables:
 
 .. code-block::
     :test: "nim c $1"
+
   var
     x, y: int
     # a comment can occur here too
@@ -198,6 +204,7 @@ constant declaration at compile time:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   const x = "abc" # the constant x contains the string "abc"
 
 Indentation can be used after the `const` keyword to list a whole section of
@@ -205,6 +212,7 @@ constants:
 
 .. code-block::
     :test: "nim c $1"
+
   const
     x = 1
     # a comment can occur here too
@@ -219,6 +227,7 @@ symbols are *single assignment* variables: After the initialization their
 value cannot change:
 
 .. code-block::
+
   let x = "abc" # introduces a new variable `x` and binds a value to it
   x = "xyz"     # Illegal: assignment to `x`
 
@@ -227,10 +236,12 @@ that can not be re-assigned, `const` means "enforce compile time evaluation
 and put it into a data section":
 
 .. code-block::
+
   const input = readLine(stdin) # Error: constant expression expected
 
 .. code-block::
     :test: "nim c $1"
+
   let input = readLine(stdin)   # works
 
 
@@ -241,6 +252,7 @@ The assignment statement assigns a new value to a variable or more generally
 to a storage location:
 
 .. code-block::
+
   var x = "abc" # introduces a new variable `x` and assigns a value to it
   x = "xyz"     # assigns a new value to `x`
 
@@ -250,6 +262,7 @@ statement and all the variables will have the same value:
 
 .. code-block::
     :test: "nim c $1"
+
   var x, y = 3  # assigns 3 to the variables `x` and `y`
   echo "x ", x  # outputs "x 3"
   echo "y ", y  # outputs "y 3"
@@ -273,6 +286,7 @@ The if statement is one way to branch the control flow:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   let name = readLine(stdin)
   if name == "":
     echo "Poor soul, you lost your name?"
@@ -295,6 +309,7 @@ a multi-branch:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   let name = readLine(stdin)
   case name
   of "":
@@ -314,6 +329,7 @@ The case statement can deal with integers, other ordinal types, and strings.
 For integers or other ordinal types value ranges are also possible:
 
 .. code-block:: nim
+
   # this statement will be explained later:
   from std/strutils import parseInt
 
@@ -330,6 +346,7 @@ every value that `n` may contain, but the code only handles the values
 the compiler that for every other value nothing should be done:
 
 .. code-block:: nim
+
   ...
   case n
   of 0..2, 4..7: echo "The number is in the set: {0, 1, 2, 4, 5, 6, 7}"
@@ -374,6 +391,7 @@ provides. The example uses the built-in `countup
 
 .. code-block:: nim
     :test: "nim c $1"
+
   echo "Counting to ten: "
   for i in countup(1, 10):
     echo i
@@ -385,6 +403,7 @@ The variable `i` is implicitly declared by the
 1, 2, .., 10. Each value is `echo`-ed. This code does the same:
 
 .. code-block:: nim
+
   echo "Counting to 10: "
   var i = 1
   while i <= 10:
@@ -396,12 +415,14 @@ Since counting up occurs so often in programs, Nim also has a `..
 <system.html#...i,T,T>`_ iterator that does the same:
 
 .. code-block:: nim
+
   for i in 1 .. 10:
     ...
 
 Counting down can be achieved as easily (but is less often needed):
 
 .. code-block:: nim
+
   echo "Counting down from 10 to 1: "
   for i in countdown(10, 1):
     echo i
@@ -412,12 +433,14 @@ Zero-indexed counting has two shortcuts `..<` and `.. ^1`
 counting to one less than the higher index:
 
 .. code-block:: nim
+
   for i in 0 ..< 10:
     ...  # the same as 0 .. 9
 
 or
 
 .. code-block:: nim
+
   var s = "some string"
   for i in 0 ..< s.len:
     ...
@@ -425,6 +448,7 @@ or
 or
 
 .. code-block:: nim
+
   var s = "some string"
   for idx, c in s[0 .. ^1]:
     ... # ^1 is the last element, ^2 would be one before it, and so on
@@ -435,6 +459,7 @@ Other useful iterators for collections (like arrays and sequences) are
 
 .. code-block:: nim
     :test: "nim c $1"
+
   for index, item in ["a","b"].pairs:
     echo item, " at index ", index
   # => a at index 0
@@ -450,6 +475,7 @@ outside the loop:
 .. code-block:: nim
     :test: "nim c $1"
     :status: 1
+
   while false:
     var x = "hi"
   echo x # does not work
@@ -461,6 +487,7 @@ statement can be used to open a new block explicitly:
 .. code-block:: nim
     :test: "nim c $1"
     :status: 1
+
   block myblock:
     var x = "hi"
   echo x # does not work either
@@ -477,6 +504,7 @@ innermost construct, unless a label of a block is given:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   block myblock:
     echo "entering block"
     while true:
@@ -502,6 +530,7 @@ the next iteration immediately:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   for i in 1 .. 5:
     if i <= 3: continue
     echo i # will only print 4 and 5
@@ -551,6 +580,7 @@ contain other statements. To avoid ambiguities, complex statements must always
 be indented, but single simple statements do not:
 
 .. code-block:: nim
+
   # no indentation needed for single-assignment statement:
   if x: x = false
 
@@ -586,6 +616,7 @@ an expression is allowed:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   # computes fac(4) at compile time:
   const fac4 = (var x = 1; for i in 1..4: x *= i; x)
 
@@ -602,6 +633,7 @@ Nim, new procedures are defined with the `proc` keyword:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   proc yes(question: string): bool =
     echo question, " (y/n)"
     while true:
@@ -640,6 +672,7 @@ the exit.
 
 .. code-block:: nim
     :test: "nim c $1"
+
   proc sumTillNegative(x: varargs[int]): int =
     for i in x:
       if i < 0:
@@ -663,6 +696,7 @@ this procedure
 
 .. code-block:: nim
     :test: "nim c $1"
+
   proc helloWorld(): string =
     "Hello, World!"
 
@@ -679,6 +713,7 @@ is possible, and actually an idiom:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   proc printSeq(s: seq, nprinted: int = -1) =
     var nprinted = if nprinted == -1: s.len else: min(nprinted, s.len)
     for i in 0 ..< nprinted:
@@ -689,6 +724,7 @@ caller, a `var` parameter can be used:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   proc divmod(a, b: int; res, remainder: var int) =
     res = a div b        # integer division
     remainder = a mod b  # integer modulo operation
@@ -713,6 +749,7 @@ its return value, a `discard` statement **must** be used. Nim does not
 allow silently throwing away a return value:
 
 .. code-block:: nim
+
   discard yes("May I ask a pointless question?")
 
 
@@ -721,6 +758,7 @@ been declared with the `discardable` pragma:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   proc p(x, y: int): int {.discardable.} =
     return x + y
 
@@ -736,6 +774,7 @@ complex data type. Therefore the arguments to a procedure can be named, so
 that it is clear which argument belongs to which parameter:
 
 .. code-block:: nim
+
   proc createWindow(x, y, width, height: int; title: string;
                     show: bool): Window =
      ...
@@ -748,6 +787,7 @@ does not matter anymore. Mixing named arguments with ordered arguments is
 also possible, but not very readable:
 
 .. code-block:: nim
+
   var w = createWindow(0, 0, title = "My Application",
                        height = 600, width = 800, true)
 
@@ -762,6 +802,7 @@ values`; these are values that are used as arguments if the caller does not
 specify them:
 
 .. code-block:: nim
+
   proc createWindow(x = 0, y = 0, width = 500, height = 700,
                     title = "unknown",
                     show = true): Window =
@@ -782,6 +823,7 @@ Overloaded procedures
 Nim provides the ability to overload procedures similar to C++:
 
 .. code-block:: nim
+
   proc toString(x: int): string =
     result =
       if x < 0: "negative"
@@ -826,6 +868,7 @@ can be `found in the manual <manual.html#syntax-precedence>`_.
 To define a new operator enclose the operator in backticks "`":
 
 .. code-block:: nim
+
   proc `$` (x: myDataType): string = ...
   # now the $ operator also works with myDataType, overloading resolution
   # ensures that $ works for built-in types just like before
@@ -835,6 +878,7 @@ procedure:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   if `==`( `+`(3, 4), 7): echo "true"
 
 
@@ -847,10 +891,12 @@ language that supports metaprogramming as extensively as Nim does.)
 However, this cannot be done for mutually recursive procedures:
 
 .. code-block:: nim
+
   # forward declaration:
   proc even(n: int): bool
 
 .. code-block:: nim
+
   proc odd(n: int): bool =
     assert(n >= 0) # makes sure we don't run into negative recursion
     if n == 0: false
@@ -908,6 +954,7 @@ Let's return to the simple counting example:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   echo "Counting to ten: "
   for i in countup(1, 10):
     echo i
@@ -916,6 +963,7 @@ Can a `countup <system.html#countup.i,T,T,Positive>`_ proc be written that
 supports this loop? Let's try:
 
 .. code-block:: nim
+
   proc countup(a, b: int): int =
     var res = a
     while res <= b:
@@ -930,6 +978,7 @@ and here it is -- our first iterator:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   iterator countup(a, b: int): int =
     var res = a
     while res <= b:
@@ -1031,6 +1080,7 @@ to specify a non-default integer type:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   let
     x = 0     # x is of type `int`
     y = 0'i8  # y is of type `int8`
@@ -1069,6 +1119,7 @@ type:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   var
     x = 0.0      # x is of type `float`
     y = 0.0'f32  # y is of type `float32`
@@ -1091,6 +1142,7 @@ type as a function:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   var
     x: int32 = 1.int32   # same as calling int32(1)
     y: int8  = int8('a') # 'a' == 97'i8
@@ -1113,6 +1165,7 @@ there is a difference between the `$` and `repr` outputs:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   var
     myBool = true
     myCharacter = 'n'
@@ -1138,6 +1191,7 @@ In Nim new types can be defined within a `type` statement:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   type
     biggestInt = int64      # biggest integer type that is available
     biggestFloat = float64  # biggest float type that is available
@@ -1215,6 +1269,7 @@ A subrange type is a range of values from an integer or enumeration type
 
 .. code-block:: nim
     :test: "nim c $1"
+
   type
     MySubrange = range[0..5]
 
@@ -1271,6 +1326,7 @@ valid index.
 
 .. code-block:: nim
     :test: "nim c $1"
+
   type
     Direction = enum
       north, east, south, west
@@ -1296,6 +1352,7 @@ yet another enum, we can add the following lines to add a light tower type
 subdivided into height levels accessed through their integer index:
 
 .. code-block:: nim
+
   type
     LightTower = array[1..10, LevelSetting]
   var
@@ -1315,6 +1372,7 @@ nested nature would be to omit the previous definition of the `LevelSetting`
 type and instead write it embedded directly as the type of the first dimension:
 
 .. code-block:: nim
+
   type
     LightTower = array[1..10, array[north..west, BlinkLights]]
 
@@ -1323,6 +1381,7 @@ to specify a range from zero to the specified index minus one:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   type
     IntArray = array[0..5, int] # an array that is indexed with 0..5
     QuickArray = array[6, int]  # an array that is indexed with 0..5
@@ -1376,6 +1435,7 @@ value. Here the `for` statement is looping over the results from the
 
 .. code-block:: nim
     :test: "nim c $1"
+
   for value in @[3, 4, 5]:
     echo value
   # --> 3
@@ -1404,6 +1464,7 @@ openarray parameter, the index type does not matter.
 
 .. code-block:: nim
     :test: "nim c $1"
+
   var
     fruits:   seq[string]       # reference to a sequence of strings that is initialized with '@[]'
     capitals: array[3, string]  # array of strings with a fixed size
@@ -1432,6 +1493,7 @@ to an array automatically:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   proc myWriteln(f: File, a: varargs[string]) =
     for s in items(a):
       write(f, s)
@@ -1447,6 +1509,7 @@ type conversions in this context:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   proc myWriteln(f: File, a: varargs[string, `$`]) =
     for s in items(a):
       write(f, s)
@@ -1529,6 +1592,7 @@ where all of its fields can be initialized. Unspecified fields will
 get their default value.
 
 .. code-block:: nim
+
   type
     Person = object
       name: string
@@ -1590,6 +1654,7 @@ integer.
 
 .. code-block:: nim
     :test: "nim c $1"
+
   type
     # type representing a person:
     # A person consists of a name and an age.
@@ -1674,6 +1739,7 @@ Tuple unpacking is also supported in for-loops:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   let a = [(10, 'a'), (20, 'b'), (30, 'c')]
 
   for (x, c) in a:
@@ -1749,6 +1815,7 @@ Example:
 
 .. code-block:: nim
     :test: "nim c $1"
+
   proc greet(name: string): string =
     "Hello, " & name & "!"
 
@@ -1786,6 +1853,7 @@ module by using the `import`:idx: statement. Only top-level symbols that are mar
 with an asterisk (`*`) are exported:
 
 .. code-block:: nim
+
   # Module A
   var
     x*, y: int
@@ -1815,14 +1883,17 @@ if it is defined in two (or more) different modules and both modules are
 imported by a third one:
 
 .. code-block:: nim
+
   # Module A
   var x*: string
 
 .. code-block:: nim
+
   # Module B
   var x*: int
 
 .. code-block:: nim
+
   # Module C
   import A, B
   write(stdout, x) # error: x is ambiguous
@@ -1836,14 +1907,17 @@ But this rule does not apply to procedures or iterators. Here the overloading
 rules apply:
 
 .. code-block:: nim
+
   # Module A
   proc x*(a: int): string = $a
 
 .. code-block:: nim
+
   # Module B
   proc x*(a: string): string = $a
 
 .. code-block:: nim
+
   # Module C
   import A, B
   write(stdout, x(3))   # no error: A.x is called
@@ -1861,6 +1935,7 @@ These can be limited by naming symbols that should be excluded using
 the `except` qualifier.
 
 .. code-block:: nim
+
   import mymodule except y
 
 
@@ -1872,6 +1947,7 @@ exported symbols. An alternative that only imports listed symbols is the
 `from import` statement:
 
 .. code-block:: nim
+
   from mymodule import x, y, z
 
 The `from` statement can also force namespace qualification on
@@ -1879,11 +1955,13 @@ symbols, thereby making symbols available, but needing to be qualified
 in order to be used.
 
 .. code-block:: nim
+
   from mymodule import x, y, z
 
   x()           # use x without any qualification
 
 .. code-block:: nim
+
   from mymodule import nil
 
   mymodule.x()  # must qualify x with the module name as prefix
@@ -1894,6 +1972,7 @@ Since module names are generally long to be descriptive, you can also
 define a shorter alias to use when qualifying symbols.
 
 .. code-block:: nim
+
   from mymodule as m import nil
 
   m.x()         # m is aliasing mymodule
@@ -1907,6 +1986,7 @@ importing a module: it merely includes the contents of a file. The `include`
 statement is useful to split up a large module into several files:
 
 .. code-block:: nim
+
   include fileA, fileB, fileC
 
 
