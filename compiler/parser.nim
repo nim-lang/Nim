@@ -1309,8 +1309,8 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
     result.add(a)
     getTok(p)
     optInd(p, a)
-    const identOrLiteralKinds = tkBuiltInMagics +
-      {tkSymbol, tkAccent, tkNil, tkIntLit..tkCustomLit, tkCast, tkOut}
+    const identOrLiteralKinds = tkBuiltInMagics + {tkSymbol, tkAccent, tkNil,
+      tkIntLit..tkCustomLit, tkCast, tkOut, tkParLe, tkBracketLe, tkCurlyLe}
     if isSigil and p.tok.tokType in identOrLiteralKinds:
       let baseInd = p.lex.currLineIndent
       result.add(identOrLiteral(p, mode))
