@@ -364,11 +364,11 @@ else:
       cast[T](atomic_fetch_xor_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
 
   template withLock[T: not Trivial](location: var Atomic[T]; order: MemoryOrder; body: untyped): untyped =
-    while location.guard.testAndSet(moAcquire): discard
+    while testAndSet(location.guard, moAcquire): discard
     try:
       body
     finally:
-      location.guard.clear(moRelease)
+      clear(location.guard, moRelease)
 
   proc load*[T: not Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     withLock(location, order):
