@@ -79,7 +79,7 @@ type
     smNormal, smAllowNil, smAfterDot
 
   PrimaryMode = enum
-    pmNormal, pmTypeDesc, pmTypeDef, pmSkipSuffix, pmCommandStart
+    pmNormal, pmTypeDesc, pmTypeDef, pmTrySimple
 
 proc parseAll*(p: var Parser): PNode
 proc closeParser*(p: var Parser)
@@ -824,12 +824,15 @@ proc commandParam(p: var Parser, isFirstParam: var bool; mode: PrimaryMode): PNo
   isFirstParam = false
 
 proc commandExpr(p: var Parser; r: PNode; mode: PrimaryMode): PNode =
-  result = newNodeP(nkCommand, p)
-  result.add(r)
-  var isFirstParam = true
-  # progress NOT guaranteed
-  p.hasProgress = false
-  result.add commandParam(p, isFirstParam, mode)
+  if mode == pmTrySimple:
+    result = r
+  else:
+    result = newNodeP(nkCommand, p)
+    result.add(r)
+    var isFirstParam = true
+    # progress NOT guaranteed
+    p.hasProgress = false
+    result.add commandParam(p, isFirstParam, mode)
 
 proc isDotLike(tok: Token): bool =
   result = tok.tokType == tkOpr and tok.ident.s.len > 1 and
@@ -842,7 +845,7 @@ proc primarySuffix(p: var Parser, r: PNode,
   #|       | DOTLIKEOP optInd symbol generalizedLit?
   #|       | '[' optInd exprColonEqExprList optPar ']'
   #|       | '{' optInd exprColonEqExprList optPar '}'
-  #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr (comma expr)* # command syntax
+  # XXX strong spaces need to be reflected above
   result = r
 
   # progress guaranteed
@@ -852,8 +855,7 @@ proc primarySuffix(p: var Parser, r: PNode,
     of tkParLe:
       # progress guaranteed
       if p.tok.strongSpaceA:
-        if mode != pmCommandStart:
-          result = commandExpr(p, result, mode)
+        result = commandExpr(p, result, mode)
         break
       result = namedParams(p, result, nkCall, tkParRi)
       if result.len > 1 and result[1].kind == nkExprColonExpr:
@@ -865,15 +867,13 @@ proc primarySuffix(p: var Parser, r: PNode,
     of tkBracketLe:
       # progress guaranteed
       if p.tok.strongSpaceA:
-        if mode != pmCommandStart:
-          result = commandExpr(p, result, mode)
+        result = commandExpr(p, result, mode)
         break
       result = namedParams(p, result, nkBracketExpr, tkBracketRi)
     of tkCurlyLe:
       # progress guaranteed
       if p.tok.strongSpaceA:
-        if mode != pmCommandStart:
-          result = commandExpr(p, result, mode)
+        result = commandExpr(p, result, mode)
         break
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
     of tkSymbol, tkAccent, tkIntLit..tkCustomLit, tkNil, tkCast,
@@ -892,8 +892,7 @@ proc primarySuffix(p: var Parser, r: PNode,
       else:
         if isDotLike2:
           parMessage(p, warnDotLikeOps, "dot-like operators will be parsed differently with `-d:nimPreviewDotLikeOps`")
-        if mode != pmCommandStart and
-          p.inPragma == 0 and (isUnary(p.tok) or p.tok.tokType notin {tkOpr, tkDotDot}):
+        if p.inPragma == 0 and (isUnary(p.tok) or p.tok.tokType notin {tkOpr, tkDotDot}):
           # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
           # solution, but pragmas.nim can't handle that
           result = commandExpr(p, result, mode)
@@ -928,7 +927,7 @@ proc parseOperators(p: var Parser, headNode: PNode,
 proc simpleExprAux(p: var Parser, limit: int, mode: PrimaryMode): PNode =
   var mode = mode
   result = primary(p, mode)
-  if mode == pmCommandStart:
+  if mode == pmTrySimple:
     mode = pmNormal
   if p.tok.tokType == tkCurlyDotLe and (p.tok.indent < 0 or realInd(p)) and
      mode == pmNormal:
@@ -1290,11 +1289,17 @@ proc parseObject(p: var Parser): PNode
 proc parseTypeClass(p: var Parser): PNode
 
 proc primary(p: var Parser, mode: PrimaryMode): PNode =
-  #| primary = operatorB primary primarySuffix* |
-  #|           routineExpr |
-  #|           'bind' primary |
-  #|           rawTypeDesc
-  #|         /  prefixOperator* identOrLiteral primarySuffix*
+  #| simplePrimary = SIGILLIKEOP? identOrLiteral primarySuffix*
+  #| commandStart = &('`'|IDENT|literal|'cast'|'addr'|'type'|'var'|'out'|
+  #|                  'static'|'enum'|'tuple'|'object'|'proc')
+  #| primary = simplePrimary (commandStart expr)*
+  #|         / operatorB primary
+  #|         / routineExpr
+  #|         / rawTypeDesc
+  #|         / prefixOperator primary
+  # XXX strong spaces need to be reflected in commandStart
+
+  # prefix operators:
   if isOperator(p.tok):
     # Note 'sigil like' operators are currently not reflected in the grammar
     # and should be removed for Nim 2.0, I don't think anybody uses them.
@@ -1304,10 +1309,11 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
     result.add(a)
     getTok(p)
     optInd(p, a)
-    if isSigil:
-      #XXX prefix operators
+    const identOrLiteralKinds = tkBuiltInMagics +
+      {tkSymbol, tkAccent, tkNil, tkIntLit..tkCustomLit, tkCast, tkOut}
+    if isSigil and p.tok.tokType in identOrLiteralKinds:
       let baseInd = p.lex.currLineIndent
-      result.add(primary(p, pmSkipSuffix))
+      result.add(identOrLiteral(p, mode))
       result = primarySuffix(p, result, baseInd, mode)
     else:
       result.add(primary(p, pmNormal))
@@ -1324,6 +1330,7 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
     getTok(p)
     result = parseProcExpr(p, mode != pmTypeDesc, nkIteratorDef)
   of tkBind:
+    # legacy syntax, no-op in current nim
     result = newNodeP(nkBind, p)
     getTok(p)
     optInd(p, result)
@@ -1334,8 +1341,7 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
   else:
     let baseInd = p.lex.currLineIndent
     result = identOrLiteral(p, mode)
-    if mode != pmSkipSuffix:
-      result = primarySuffix(p, result, baseInd, mode)
+    result = primarySuffix(p, result, baseInd, mode)
 
 proc binaryNot(p: var Parser; a: PNode): PNode =
   if p.tok.tokType == tkNot:
@@ -1508,12 +1514,10 @@ proc postExprBlocks(p: var Parser, x: PNode): PNode =
       parMessage(p, "expected ':'")
 
 proc parseExprStmt(p: var Parser): PNode =
-  #| exprStmt = simpleExpr
-  #|          (( '=' optInd expr colonBody? )
-  #|          / ( exprEqExpr ^+ comma
-  #|              postExprBlocks
-  #|            ))?
-  var a = simpleExpr(p, pmCommandStart)
+  #| exprStmt = simpleExpr postExprBlocks?
+  #|          / simplePrimary (exprEqExpr ^+ comma) postExprBlocks?
+  #|          / simpleExpr '=' optInd (expr postExprBlocks?)
+  var a = simpleExpr(p, pmTrySimple)
   if p.tok.tokType == tkEquals:
     result = newNodeP(nkAsgn, p)
     getTok(p)
@@ -1524,6 +1528,8 @@ proc parseExprStmt(p: var Parser): PNode =
     result.add(b)
   else:
     var isFirstParam = false
+    # if an expression is starting here, a simplePrimary was parsed and
+    # this is the start of a command
     if p.tok.indent < 0 and isExprStart(p):
       result = newTreeI(nkCommand, a.info, a)
       let baseIndent = p.currInd
