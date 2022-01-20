@@ -48,8 +48,13 @@ proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
-  let ms = s.itemId.module  #getModule(s)
-  result = m.g.modules[ms]
+  # TODO fixme
+  if m.config.symbolFiles == v2Sf:
+    let ms = s.itemId.module  #getModule(s)
+    result = m.g.modules[ms]
+  else:
+    var ms = getModule(s)
+    result = m.g.modules[ms.position]
 
 proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
   result.k = k
