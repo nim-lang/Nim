@@ -7781,9 +7781,10 @@ More examples with custom pragmas:
 Macro pragmas
 -------------
 
-All macros and templates can also be used as pragmas. They can be attached
-to routines (procs, iterators, etc), type names, or type expressions. The
-compiler will perform the following simple syntactic transformations:
+Macros and templates can sometimes be called with the pragma syntax. Cases
+where this is possible include when attached to routine (procs, iterators, etc)
+declarations or routine type expressions. The compiler will perform the
+following simple syntactic transformations:
 
 .. code-block:: nim
   template command(name: string, def: untyped) = discard
@@ -7810,20 +7811,15 @@ This is translated to:
 
 ------
 
-.. code-block:: nim
-  type
-    MyObject {.schema: "schema.protobuf".} = object
+When multiple macro pragmas are applied to the same definition, the first one
+from left to right will be evaluated. This macro can then choose to keep
+the remaining macro pragmas in its output, and those will be evaluated in
+the same way.
 
-This is translated to a call to the `schema` macro with a `nnkTypeDef`
-AST node capturing both the left-hand side and right-hand side of the
-definition. The macro can return a potentially modified `nnkTypeDef` tree
-or multiple `nnkTypeDef` trees contained in a `nnkTypeSection` node
-which will replace the original row in the type section.
-
-When multiple macro pragmas are applied to the same definition, the
-compiler will apply them consequently from left to right. Each macro
-will receive as input the output of the previous one.
-
+There are a few more applications of macro pragmas, such as in type,
+variable and constant declarations, but this behavior is considered to be
+experimental and is documented in the `experimental manual
+<manual_experimental.html#extended-macro-pragmas>` instead.
 
 
 Foreign function interface
