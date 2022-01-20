@@ -36,6 +36,8 @@ becomes an alias for `addr`.
 - Added `getIsoWeekAndYear` in `times` to get an ISO week number along with the corresponding ISO week-based year from a datetime.
 - Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year.
 
+- Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
+
 ## Language changes
 
 - Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
@@ -73,8 +75,6 @@ becomes an alias for `addr`.
 - Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
   for the right-hand side of type definitions in type sections. Previously
   they would error with "invalid indentation".
-
-- Added `std/oserrors` for OS error reporting.
 
 ## Compiler changes
 
