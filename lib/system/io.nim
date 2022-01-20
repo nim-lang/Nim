@@ -445,7 +445,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
           numberOfCharsRead = i
           break
       buffer[numberOfCharsRead] = 0.Utf16Char
-      when defined(nimv2):
+      when false: # defined(nimv2):
         line = $toWideCString(buffer)
       else:
         line = $buffer
