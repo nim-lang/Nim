@@ -61,7 +61,6 @@ primarySuffix = '(' (exprColonEqExpr comma?)* ')'
       | DOTLIKEOP optInd symbol generalizedLit?
       | '[' optInd exprColonEqExprList optPar ']'
       | '{' optInd exprColonEqExprList optPar '}'
-      | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr (comma expr)* # command syntax
 pragma = '{.' optInd (exprColonEqExpr comma?)* optPar ('.}' | '}')
 identVis = symbol OPR?  # postfix position
 identVisDot = symbol '.' optInd symbol OPR?
@@ -89,11 +88,14 @@ expr = (blockExpr
       | forExpr
       | tryExpr)
       / simpleExpr
-primary = operatorB primary primarySuffix* |
-          routineExpr |
-          'bind' primary |
-          rawTypeDesc
-        /  prefixOperator* identOrLiteral primarySuffix*
+simplePrimary = SIGILLIKEOP? identOrLiteral primarySuffix*
+commandStart = &('`'|IDENT|literal|'cast'|'addr'|'type'|'var'|'out'|
+                 'static'|'enum'|'tuple'|'object'|'proc')
+primary = simplePrimary (commandStart expr)*
+        / operatorB primary
+        / routineExpr
+        / rawTypeDesc
+        / prefixOperator primary
 rawTypeDesc = (tupleType | routineType | 'enum' | 'object' |
                 ('var' | 'out' | 'ref' | 'ptr' | 'distinct') typeDesc?)
                 ('not' expr)?
@@ -109,11 +111,9 @@ postExprBlocks = ':' stmt? ( IND{=} doBlock
                            | IND{=} 'except' exprList ':' stmt
                            | IND{=} 'finally' ':' stmt
                            | IND{=} 'else' ':' stmt )*
-exprStmt = simpleExpr
-         (( '=' optInd expr colonBody? )
-         / ( exprEqExpr ^+ comma
-             postExprBlocks
-           ))?
+exprStmt = simpleExpr postExprBlocks?
+         / simplePrimary (exprEqExpr ^+ comma) postExprBlocks?
+         / simpleExpr '=' optInd (expr postExprBlocks?)
 importStmt = 'import' optInd expr
               ((comma expr)*
               / 'except' optInd (expr ^+ comma))
