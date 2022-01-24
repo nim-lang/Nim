@@ -931,7 +931,8 @@ proc getField1Int(d: PDoc, n: PRstNode, fieldName: string): int =
   let nChars = parseInt(value, number)
   if nChars == 0:
     if value.len == 0:
-      err("field $1 requires an argument" % [fieldName])
+      # use a good default value:
+      result = 1
     else:
       err("field $1 requires an integer, but '$2' was given" %
           [fieldName, value])

@@ -143,8 +143,11 @@ proc checkForSideEffects*(n: PNode): TSideEffectAnalysis =
       let s = op.sym
       if sfSideEffect in s.flags:
         return seSideEffect
-      # assume no side effect:
-      result = seNoSideEffect
+      elif tfNoSideEffect in op.typ.flags:
+        result = seNoSideEffect
+      else:
+        # assume side effect:
+        result = seSideEffect
     elif tfNoSideEffect in op.typ.flags:
       # indirect call without side effects:
       result = seNoSideEffect

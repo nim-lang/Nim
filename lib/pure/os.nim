@@ -2888,7 +2888,7 @@ when defined(nimdoc):
 
 elif defined(nimscript): discard
 elif defined(nodejs):
-  type Argv = object of JSRoot
+  type Argv = object of JsRoot
   let argv {.importjs: "process.argv".} : Argv
   proc len(argv: Argv): int {.importjs: "#.length".}
   proc `[]`(argv: Argv, i: int): cstring {.importjs: "#[#]".}

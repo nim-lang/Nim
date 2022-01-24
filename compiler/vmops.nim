@@ -25,7 +25,6 @@ when declared(math.signbit):
 from std/os import getEnv, existsEnv, delEnv, putEnv, envPairs,
   dirExists, fileExists, walkDir, getAppFilename, raiseOSError, osLastError
 
-from std/md5 import getMD5
 from std/times import cpuTime
 from std/hashes import hash
 from std/osproc import nil
@@ -52,9 +51,6 @@ template ioop(op) {.dirty.} =
 
 template macrosop(op) {.dirty.} =
   registerCallback(c, "stdlib.macros." & astToStr(op), `op Wrapper`)
-
-template md5op(op) {.dirty.} =
-  registerCallback(c, "stdlib.md5." & astToStr(op), `op Wrapper`)
 
 template wrap1f_math(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
@@ -139,6 +135,7 @@ when defined(nimHasInvariant):
     of backend: result = $conf.backend
     of libPath: result = conf.libpath.string
     of gc: result = $conf.selectedGC
+    of mm: result = $conf.selectedGC
 
   proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
     template copySeq(field: untyped): untyped =
@@ -211,8 +208,6 @@ proc registerAdditionalOps*(c: PCtx) =
     of 1: setResult(a, round(getFloat(a, 0)))
     of 2: setResult(a, round(getFloat(a, 0), getInt(a, 1).int))
     else: doAssert false, $n
-
-  wrap1s(getMD5, md5op)
 
   proc `mod Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, `mod`(getFloat(a, 0), getFloat(a, 1)))

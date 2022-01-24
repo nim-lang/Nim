@@ -717,7 +717,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "linedir": processOnOffSwitch(conf, {optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch(conf, {optAssert}, arg, pass, info)
   of "threads":
-    if conf.backend == backendJs: discard
+    if conf.backend == backendJs or conf.cmd == cmdNimscript: discard
     else: processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
     #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
   of "tlsemulation": processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
