@@ -10,9 +10,9 @@
 ## This is a part of `system.nim`, you should not manually import it.
 
 
-include inclrtl
+include system/inclrtl
 import std/private/since
-import formatfloat
+import system/formatfloat
 
 # ----------------- IO Part ------------------------------------------------
 type
