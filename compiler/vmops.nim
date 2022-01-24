@@ -47,7 +47,7 @@ template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
 
 template ioop(op) {.dirty.} =
-  registerCallback(c, "stdlib.io." & astToStr(op), `op Wrapper`)
+  registerCallback(c, "stdlib.sysios." & astToStr(op), `op Wrapper`)
 
 template macrosop(op) {.dirty.} =
   registerCallback(c, "stdlib.macros." & astToStr(op), `op Wrapper`)

@@ -187,7 +187,6 @@ proc getDocList(): seq[string] =
 
   # don't ignore these even though in lib/system (not include files)
   const goodSystem = """
-lib/system/io.nim
 lib/system/nimscript.nim
 lib/system/assertions.nim
 lib/system/iterators.nim
