@@ -3129,8 +3129,11 @@ when defined(genode):
 import system/widestrs
 export widestrs
 
-import system/io
-export io
+when not defined(nimPreviewSlimSystem):
+  {.deprecated: """io is about to move out of system; use `-d:nimPreviewSlimSystem` and
+                import `std/sysios`.""".}
+  import std/sysios
+  export sysios
 
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
