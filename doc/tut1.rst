@@ -84,8 +84,8 @@ done with spaces only, tabulators are not allowed.
 
 String literals are enclosed in double-quotes. The `var` statement declares
 a new variable named `name` of type `string` with the value that is
-returned by the `readLine <io.html#readLine,File>`_ procedure. Since the
-compiler knows that `readLine <io.html#readLine,File>`_ returns a string,
+returned by the `readLine <ioutils.html#readLine,File>`_ procedure. Since the
+compiler knows that `readLine <ioutils.html#readLine,File>`_ returns a string,
 you can leave out the type in the declaration (this is called `local type
 inference`:idx:). So this will work too:
 
@@ -97,7 +97,7 @@ Note that this is basically the only form of type inference that exists in
 Nim: it is a good compromise between brevity and readability.
 
 The "hello world" program contains several identifiers that are already known
-to the compiler: `echo`, `readLine <io.html#readLine,File>`_, etc.
+to the compiler: `echo`, `readLine <ioutils.html#readLine,File>`_, etc.
 These built-ins are declared in the system_ module which is implicitly
 imported by any other module.
 
@@ -594,7 +594,7 @@ Procedures
 ==========
 
 To define new commands like `echo <system.html#echo,varargs[typed,]>`_
-and `readLine <io.html#readLine,File>`_ in the examples, the concept of a
+and `readLine <ioutils.html#readLine,File>`_ in the examples, the concept of a
 *procedure* is needed. You might be used to them being called *methods* or
 *functions* in other languages, but Nim
 `differentiates these concepts <tut1.html#procedures-funcs-and-methods>`_. In

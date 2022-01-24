@@ -16,6 +16,8 @@
 ##
 
 include "system/inclrtl"
+when defined(nimPreviewSlimSystem):
+  import std/ioutils
 
 const
   useUnicode = true ## change this to deactivate proper UTF-8 support

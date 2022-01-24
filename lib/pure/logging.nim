@@ -48,7 +48,7 @@
 ## .. warning::
 ##   For loggers that log to a console or to files, only error and fatal
 ##   messages will cause their output buffers to be flushed immediately.
-##   Use the `flushFile proc <io.html#flushFile,File>`_ to flush the buffer
+##   Use the `flushFile proc <ioutils.html#flushFile,File>`_ to flush the buffer
 ##   manually if needed.
 ##
 ## Handlers
@@ -145,6 +145,9 @@
 import strutils, times
 when not defined(js):
   import os
+
+when defined(nimPreviewSlimSystem):
+  import std/ioutils
 
 type
   Level* = enum ## \
@@ -346,7 +349,7 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ##
   ## **Note:** Only error and fatal messages will cause the output buffer
   ## to be flushed immediately. Use the `flushFile proc
-  ## <io.html#flushFile,File>`_ to flush the buffer manually if needed.
+  ## <ioutils.html#flushFile,File>`_ to flush the buffer manually if needed.
   ##
   ## See also:
   ## * `log method<#log.e,FileLogger,Level,varargs[string,]>`_
@@ -422,7 +425,7 @@ when not defined(js):
     ## **Notes:**
     ## * Only error and fatal messages will cause the output buffer
     ##   to be flushed immediately. Use the `flushFile proc
-    ##   <io.html#flushFile,File>`_ to flush the buffer manually if needed.
+    ##   <ioutils.html#flushFile,File>`_ to flush the buffer manually if needed.
     ## * This method is not available for the JavaScript backend.
     ##
     ## See also:
@@ -600,7 +603,7 @@ when not defined(js):
     ## **Notes:**
     ## * Only error and fatal messages will cause the output buffer
     ##   to be flushed immediately. Use the `flushFile proc
-    ##   <io.html#flushFile,File>`_ to flush the buffer manually if needed.
+    ##   <ioutils.html#flushFile,File>`_ to flush the buffer manually if needed.
     ## * This method is not available for the JavaScript backend.
     ##
     ## See also:

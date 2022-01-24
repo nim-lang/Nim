@@ -66,6 +66,9 @@ import colors
 when defined(windows):
   import winlean
 
+when defined(nimPreviewSlimSystem):
+  import std/ioutils
+
 type
   PTerminal = ref object
     trueColorIsSupported: bool
