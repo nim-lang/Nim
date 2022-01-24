@@ -272,16 +272,11 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
 proc freshVarForClosureIter*(g: ModuleGraph; s: PSym; idgen: IdGenerator; owner: PSym): PNode =
   let envParam = getHiddenParam(g, owner)
   let obj = envParam.typ.skipTypes({tyOwned, tyRef, tyPtr})
-  addField(obj, s, g.cache, idgen)
+  let field = addField(obj, s, g.cache, idgen)
 
   var access = newSymNode(envParam)
   assert obj.kind == tyObject
-  let field = getFieldFromObj(obj, s)
-  if field != nil:
-    result = rawIndirectAccess(access, field, s.info)
-  else:
-    localError(g.config, s.info, "internal error: cannot generate fresh variable")
-    result = access
+  result = rawIndirectAccess(access, field, s.info)
 
 # ------------------ new stuff -------------------------------------------
 
