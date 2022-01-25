@@ -1,6 +1,8 @@
 {.experimental: "notnil".}
 
-import macros, asyncmacro, asyncfutures
+# import macros, asyncmacro, asyncfutures
+import asyncmacro, asyncfutures
+import ../../lib/core/macros
 
 block:
   template myAttr() {.pragma.}
@@ -25,11 +27,13 @@ block:
   static:
     doAssert o.myField2.hasCustomPragma(myAttr)
     doAssert(not o.myField1.hasCustomPragma(myAttr))
+    doAssert(not o.myField1.hasCustomPragma(MyObj))
 
   var ogen: MyGenericObj[int]
   static:
     doAssert ogen.myField2.hasCustomPragma(myAttr)
     doAssert(not ogen.myField1.hasCustomPragma(myAttr))
+    doAssert(not ogen.myField1.hasCustomPragma(MyGenericObj))
 
 
 import custom_pragma
