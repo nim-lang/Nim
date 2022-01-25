@@ -1,8 +1,6 @@
 {.experimental: "notnil".}
 
-# import macros, asyncmacro, asyncfutures
-import asyncmacro, asyncfutures
-import ../../lib/core/macros
+import macros, asyncmacro, asyncfutures
 
 block:
   template myAttr() {.pragma.}
