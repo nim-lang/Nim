@@ -628,17 +628,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if pass in {passCmd2, passPP}:
       case arg.normalize
       of "boehm":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcBoehm
         defineSymbol(conf.symbols, "boehmgc")
         incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
-        unregisterArcOrc(conf)
       of "refc":
-        conf.selectedGC = gcRefc
         unregisterArcOrc(conf)
+        conf.selectedGC = gcRefc
       of "markandsweep":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcMarkAndSweep
         defineSymbol(conf.symbols, "gcmarkandsweep")
-        unregisterArcOrc(conf)
       of "destructors", "arc":
         registerArcOrc(pass, conf, false)
       of "orc":
@@ -651,17 +651,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         if pass in {passCmd2, passPP}:
           defineSymbol(conf.symbols, "nimSeqsV2")
       of "go":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcGo
         defineSymbol(conf.symbols, "gogc")
-        unregisterArcOrc(conf)
       of "none":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcNone
         defineSymbol(conf.symbols, "nogc")
-        unregisterArcOrc(conf)
       of "stack", "regions":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcRegions
         defineSymbol(conf.symbols, "gcregions")
-        unregisterArcOrc(conf)
       of "v2": warningOptionNoop(arg)
       else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "warnings", "w":
