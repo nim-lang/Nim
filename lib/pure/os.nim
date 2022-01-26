@@ -3129,6 +3129,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
   ## See also:
   ## * `getAppDir proc`_
   ## * `getCurrentCompilerExe proc`_
+  ## * `paramStr proc`_ for `paramStr(0)`
 
   # Linux: /proc/<pid>/exe
   # Solaris:
