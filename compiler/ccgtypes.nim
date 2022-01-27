@@ -215,13 +215,33 @@ proc isObjLackingTypeField(typ: PType): bool {.inline.} =
   result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
       (typ[0] == nil) or isPureObject(typ))
 
-proc isInvalidReturnType(conf: ConfigRef; rettype: PType): bool =
+proc isInvalidReturnType(conf: ConfigRef; proctype: PType): bool =
   # Arrays and sets cannot be returned by a C procedure, because C is
   # such a poor programming language.
   # We exclude records with refs too. This enhances efficiency and
   # is necessary for proper code generation of assignments.
-  if rettype == nil or ({tfByCopy, tfCDecl} * rettype.flags == {} and
+  let rettype = proctype[0]
+  if rettype == nil or (proctype.callConv in {ccClosure, ccInline, ccNimCall} and
                     getSize(conf, rettype) > conf.target.floatSize*3):
+    result = true
+  else:
+    case mapType(conf, rettype, skResult)
+    of ctArray:
+      result = not (skipTypes(rettype, typedescInst).kind in
+          {tyVar, tyLent, tyRef, tyPtr})
+    of ctStruct:
+      let t = skipTypes(rettype, typedescInst)
+      if rettype.isImportedCppType or t.isImportedCppType: return false
+      result = containsGarbageCollectedRef(t) or
+          (t.kind == tyObject and not isObjLackingTypeField(t))
+    else: result = false
+
+proc isInvalidReturnType2(conf: ConfigRef; rettype: PType): bool =
+  # Arrays and sets cannot be returned by a C procedure, because C is
+  # such a poor programming language.
+  # We exclude records with refs too. This enhances efficiency and
+  # is necessary for proper code generation of assignments.
+  if rettype == nil or getSize(conf, rettype) > conf.target.floatSize*3:
     result = true
   else:
     case mapType(conf, rettype, skResult)
@@ -258,11 +278,11 @@ proc addAbiCheck(m: BModule, t: PType, name: Rope) =
     # see `testCodegenABICheck` for example error message it generates
 
 
-proc fillResult(conf: ConfigRef; param: PNode) =
+proc fillResult(conf: ConfigRef; param: PNode, proctype: PType) =
   fillLoc(param.sym.loc, locParam, param, ~"Result",
           OnStack)
   let t = param.sym.typ
-  if mapReturnType(conf, t) != ctArray and isInvalidReturnType(conf, t):
+  if mapReturnType(conf, t) != ctArray and isInvalidReturnType(conf, proctype):
     incl(param.sym.loc.flags, lfIndirect)
     param.sym.loc.storage = OnUnknown
 
@@ -427,7 +447,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false) =
   params = nil
-  if t[0] == nil or isInvalidReturnType(m.config, t[0]):
+  if t[0] == nil or isInvalidReturnType(m.config, t):
     rettype = ~"void"
   else:
     rettype = getTypeDescAux(m, t[0], check, skResult)
@@ -462,7 +482,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       params.addf(", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
       arr = arr[0].skipTypes({tySink})
-  if t[0] != nil and isInvalidReturnType(m.config, t[0]):
+  if t[0] != nil and isInvalidReturnType(m.config, t):
     var arr = t[0]
     if params != nil: params.add(", ")
     if mapReturnType(m.config, t[0]) != ctArray:

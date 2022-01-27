@@ -570,7 +570,6 @@ type
     tfExplicitCallConv
     tfIsConstructor
     tfEffectSystemWorkaround
-    tfCDecl
 
   TTypeFlags* = set[TTypeFlag]
 
