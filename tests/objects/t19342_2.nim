@@ -1,4 +1,8 @@
-{.compile: "mtest.c".}
+discard """
+  targets: "c cpp"
+"""
+
+{.compile: "m19342.c".}
 
 # bug #19342
 type
