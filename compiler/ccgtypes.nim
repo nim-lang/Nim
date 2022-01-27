@@ -236,25 +236,6 @@ proc isInvalidReturnType(conf: ConfigRef; proctype: PType): bool =
           (t.kind == tyObject and not isObjLackingTypeField(t))
     else: result = false
 
-proc isInvalidReturnType2(conf: ConfigRef; rettype: PType): bool =
-  # Arrays and sets cannot be returned by a C procedure, because C is
-  # such a poor programming language.
-  # We exclude records with refs too. This enhances efficiency and
-  # is necessary for proper code generation of assignments.
-  if rettype == nil or getSize(conf, rettype) > conf.target.floatSize*3:
-    result = true
-  else:
-    case mapType(conf, rettype, skResult)
-    of ctArray:
-      result = not (skipTypes(rettype, typedescInst).kind in
-          {tyVar, tyLent, tyRef, tyPtr})
-    of ctStruct:
-      let t = skipTypes(rettype, typedescInst)
-      if rettype.isImportedCppType or t.isImportedCppType: return false
-      result = containsGarbageCollectedRef(t) or
-          (t.kind == tyObject and not isObjLackingTypeField(t))
-    else: result = false
-
 const
   CallingConvToStr: array[TCallingConvention, string] = ["N_NIMCALL",
     "N_STDCALL", "N_CDECL", "N_SAFECALL",
