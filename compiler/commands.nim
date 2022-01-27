@@ -497,6 +497,32 @@ proc specialDefine(conf: ConfigRef, key: string; pass: TCmdLinePass) =
         optOverflowCheck, optAssert, optStackTrace, optLineTrace, optLineDir}
       conf.globalOptions.excl {optCDebug}
 
+proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
+  if isOrc:
+    conf.selectedGC = gcOrc
+    defineSymbol(conf.symbols, "gcorc")
+  else:
+    conf.selectedGC = gcArc
+    defineSymbol(conf.symbols, "gcarc")
+  
+  defineSymbol(conf.symbols, "gcdestructors")
+  incl conf.globalOptions, optSeqDestructors
+  incl conf.globalOptions, optTinyRtti
+  if pass in {passCmd2, passPP}:
+    defineSymbol(conf.symbols, "nimSeqsV2")
+    defineSymbol(conf.symbols, "nimV2")
+  if conf.exc == excNone and conf.backend != backendCpp:
+    conf.exc = excGoto
+
+proc unregisterArcOrc(conf: ConfigRef) =
+  undefSymbol(conf.symbols, "gcdestructors")
+  undefSymbol(conf.symbols, "gcarc")
+  undefSymbol(conf.symbols, "gcorc")
+  undefSymbol(conf.symbols, "nimSeqsV2")
+  undefSymbol(conf.symbols, "nimV2")
+  excl conf.globalOptions, optSeqDestructors
+  excl conf.globalOptions, optTinyRtti
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var
@@ -602,36 +628,21 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if pass in {passCmd2, passPP}:
       case arg.normalize
       of "boehm":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcBoehm
         defineSymbol(conf.symbols, "boehmgc")
         incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
       of "refc":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcRefc
       of "markandsweep":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcMarkAndSweep
         defineSymbol(conf.symbols, "gcmarkandsweep")
       of "destructors", "arc":
-        conf.selectedGC = gcArc
-        defineSymbol(conf.symbols, "gcdestructors")
-        defineSymbol(conf.symbols, "gcarc")
-        incl conf.globalOptions, optSeqDestructors
-        incl conf.globalOptions, optTinyRtti
-        if pass in {passCmd2, passPP}:
-          defineSymbol(conf.symbols, "nimSeqsV2")
-          defineSymbol(conf.symbols, "nimV2")
-        if conf.exc == excNone and conf.backend != backendCpp:
-          conf.exc = excGoto
+        registerArcOrc(pass, conf, false)
       of "orc":
-        conf.selectedGC = gcOrc
-        defineSymbol(conf.symbols, "gcdestructors")
-        defineSymbol(conf.symbols, "gcorc")
-        incl conf.globalOptions, optSeqDestructors
-        incl conf.globalOptions, optTinyRtti
-        if pass in {passCmd2, passPP}:
-          defineSymbol(conf.symbols, "nimSeqsV2")
-          defineSymbol(conf.symbols, "nimV2")
-        if conf.exc == excNone and conf.backend != backendCpp:
-          conf.exc = excGoto
+        registerArcOrc(pass, conf, true)
       of "hooks":
         conf.selectedGC = gcHooks
         defineSymbol(conf.symbols, "gchooks")
@@ -640,12 +651,15 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         if pass in {passCmd2, passPP}:
           defineSymbol(conf.symbols, "nimSeqsV2")
       of "go":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcGo
         defineSymbol(conf.symbols, "gogc")
       of "none":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcNone
         defineSymbol(conf.symbols, "nogc")
       of "stack", "regions":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcRegions
         defineSymbol(conf.symbols, "gcregions")
       of "v2": warningOptionNoop(arg)
