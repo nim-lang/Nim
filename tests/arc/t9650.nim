@@ -1,5 +1,5 @@
 discard """
-  matrix: "--gc:arc"
+  matrix: "--gc:arc --expandArc:toString"
 """
 
 import typetraits
@@ -63,7 +63,7 @@ proc pop_front*[T](list: var ForwardList[T]) =
   let head = list.first
   list.first = head->next
 
-proc `$`*[T](list: ForwardList[T]): string =
+proc toString*[T](list: ForwardList[T]): string =
   result = "["
   var head = list.first
   while not head.isNil:
@@ -77,11 +77,11 @@ block:
   x.push_front(2)
   x.push_front(3)
 
-  doAssert $x == "[3, 2, 1, ]"
+  doAssert toString(x) == "[3, 2, 1, ]"
 
   x.pop_front()
   x.pop_front()
-  doAssert $x == "[1, ]"
+  doAssert toString(x) == "[1, ]"
 
   x.pop_front()
-  doAssert $x == "[]"
+  doAssert toString(x) == "[]"
