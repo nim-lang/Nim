@@ -30,7 +30,7 @@ import std/[
   # but times.getTime() implemented for VM
 
   # Generic operator system services:
-  os, streams, distros, std/syncio,
+  os, streams, distros, syncio,
   # fails due to FFI: memfiles, osproc, terminal
   # works but uses FFI: dynlib
   # intentionally fails: marshal
