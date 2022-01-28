@@ -92,12 +92,12 @@
 ## See also
 ## ========
 ## * `asyncstreams module <asyncstreams.html>`_
-## * `io module <ioutils.html>`_ for `FileMode enum <ioutils.html#FileMode>`_
+## * `io module <syncio.html>`_ for `FileMode enum <syncio.html#FileMode>`_
 
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
-  import std/ioutils
+  import std/syncio
 
 proc newEIO(msg: string): owned(ref IOError) =
   new(result)
@@ -1334,7 +1334,7 @@ proc newFileStream*(f: File): owned FileStream =
   ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
   ##   from string.
   ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_ is the same
-  ##   as using `open proc <ioutils.html#open,File,string,FileMode,int>`_
+  ##   as using `open proc <syncio.html#open,File,string,FileMode,int>`_
   ##   on Examples.
   ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
   ##   file stream from the file name and the mode.
@@ -1373,7 +1373,7 @@ proc newFileStream*(filename: string, mode: FileMode = fmRead,
   ## Creates a new stream from the file named `filename` with the mode `mode`.
   ##
   ## If the file cannot be opened, `nil` is returned. See the `io module
-  ## <ioutils.html>`_ for a list of available `FileMode enums <ioutils.html#FileMode>`_.
+  ## <syncio.html>`_ for a list of available `FileMode enums <syncio.html#FileMode>`_.
   ##
   ## **Note:**
   ## * **This function returns nil in case of failure.**

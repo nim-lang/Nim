@@ -12,7 +12,7 @@
 import streams, parsexml, strtabs, xmltree
 
 when defined(nimPreviewSlimSystem):
-  import std/ioutils
+  import std/syncio
 
 type
   XmlError* = object of ValueError ## Exception that is raised

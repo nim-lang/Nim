@@ -35,7 +35,7 @@ import std/private/since
 import strutils, pathnorm
 
 when defined(nimPreviewSlimSystem):
-  import std/ioutils
+  import std/syncio
 
 const weirdTarget = defined(nimscript) or defined(js)
 

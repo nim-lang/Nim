@@ -68,7 +68,7 @@
 import lexbase, streams
 
 when defined(nimPreviewSlimSystem):
-  import std/ioutils
+  import std/syncio
 
 type
   CsvRow* = seq[string] ## A row in a CSV file.

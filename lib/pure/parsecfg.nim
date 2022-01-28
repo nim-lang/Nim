@@ -176,7 +176,7 @@ import std/private/decode_helpers
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
-  import std/ioutils
+  import std/syncio
 
 include "system/inclrtl"
 

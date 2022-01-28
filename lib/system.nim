@@ -2680,7 +2680,7 @@ proc slurp*(filename: string): string {.magic: "Slurp".}
   ## This is an alias for `staticRead <#staticRead,string>`_.
 
 proc staticRead*(filename: string): string {.magic: "Slurp".}
-  ## Compile-time `readFile <ioutils.html#readFile,string>`_ proc for easy
+  ## Compile-time `readFile <syncio.html#readFile,string>`_ proc for easy
   ## `resource`:idx: embedding:
   ##
   ## The maximum file size limit that `staticRead` and `slurp` can read is
@@ -3152,9 +3152,9 @@ export widestrs
 
 when not defined(nimPreviewSlimSystem):
   {.deprecated: """io is about to move out of system; use `-d:nimPreviewSlimSystem` and
-                import `std/ioutils`.""".}
-  import std/ioutils
-  export ioutils
+                import `std/syncio`.""".}
+  import std/syncio
+  export syncio
 
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
