@@ -1,5 +1,5 @@
 discard """
-  matrix: "--gc:arc --expandArc:toString"
+  matrix: "--gc:arc"
 """
 
 import typetraits
