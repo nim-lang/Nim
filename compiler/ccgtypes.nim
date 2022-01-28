@@ -215,13 +215,17 @@ proc isObjLackingTypeField(typ: PType): bool {.inline.} =
   result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
       (typ[0] == nil) or isPureObject(typ))
 
-proc isInvalidReturnType(conf: ConfigRef; proctype: PType): bool =
+proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
   # Arrays and sets cannot be returned by a C procedure, because C is
   # such a poor programming language.
   # We exclude records with refs too. This enhances efficiency and
   # is necessary for proper code generation of assignments.
-  let rettype = proctype[0]
-  if rettype == nil or (proctype.callConv in {ccClosure, ccInline, ccNimCall} and
+  var rettype = typ
+  var isAllowedCall = true
+  if isProc:
+    rettype = rettype[0]
+    isAllowedCall = typ.callConv in {ccClosure, ccInline, ccNimCall}
+  if rettype == nil or (isAllowedCall and
                     getSize(conf, rettype) > conf.target.floatSize*3):
     result = true
   else:
