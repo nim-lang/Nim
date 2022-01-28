@@ -34,7 +34,7 @@ proc registerTraverseProc(p: BProc, v: PSym, traverseProc: Rope) =
 proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
   if n.kind == nkEmpty:
     result = false
-  elif n.kind in nkCallKinds and n[0] != nil and n[0].typ.skipTypes(abstractInst).kind == tyProc:
+  elif n.kind in nkCallKinds and n[0] != nil and n[0].typ != nil and n[0].typ.skipTypes(abstractInst).kind == tyProc:
     if isInvalidReturnType(conf, n[0].typ, true):
       # var v = f()
       # is transformed into: var v;  f(addr v)
