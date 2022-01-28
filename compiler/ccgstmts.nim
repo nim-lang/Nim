@@ -35,10 +35,13 @@ proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
   if n.kind == nkEmpty:
     result = false
   elif n.kind in nkCallKinds and n[0] != nil and n[0].typ.skipTypes(abstractInst).kind == tyProc:
-    result = isInvalidReturnType(conf, n[0].typ, true)
-    # var v = f()
-    # is transformed into: var v;  f(addr v)
-    # where 'f' **does not** initialize the result!
+    if isInvalidReturnType(conf, n[0].typ, true):
+      # var v = f()
+      # is transformed into: var v;  f(addr v)
+      # where 'f' **does not** initialize the result!
+      result = false
+    else:
+      result = true
   elif isInvalidReturnType(conf, n.typ, false):
     result = false
   else:
