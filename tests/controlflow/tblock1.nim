@@ -6,6 +6,9 @@ discard """
 # check for forward label and
 # for failure when label is not declared
 
+when defined(nimSlimSystem):
+  import std/syncio
+
 proc main =
   block endLess:
     write(stdout, "Muaahh!\N")
