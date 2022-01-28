@@ -2075,6 +2075,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       incl(s.flags, sfWasForwarded)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
+
   closeScope(c)           # close scope for parameters
   # c.currentScope = oldScope
   popOwner(c)
