@@ -5,6 +5,9 @@
 
 from stdtest/specialpaths import buildDir
 
+when defined(nimSlimSystem):
+  import std/syncio
+
 import std/[
   # Core:
   bitops, typetraits, lenientops, macros, volatile,
@@ -30,7 +33,7 @@ import std/[
   # but times.getTime() implemented for VM
 
   # Generic operator system services:
-  os, streams, distros, syncio,
+  os, streams, distros,
   # fails due to FFI: memfiles, osproc, terminal
   # works but uses FFI: dynlib
   # intentionally fails: marshal
