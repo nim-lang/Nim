@@ -7,6 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
+## This module implements various synchronized I/O operations.
 
 include system/inclrtl
 import std/private/since
