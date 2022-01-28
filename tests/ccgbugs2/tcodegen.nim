@@ -2,6 +2,7 @@ discard """
   targets: "c cpp"
 """
 
+# bug #19094
 type
   X = object
     filler: array[2048, int]
