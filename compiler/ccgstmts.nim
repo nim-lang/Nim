@@ -32,19 +32,16 @@ proc registerTraverseProc(p: BProc, v: PSym, traverseProc: Rope) =
       "$n\t#nimRegisterGlobalMarker($1);$n$n", [traverseProc])
 
 proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
+  let isProc = n.kind in nkCallKinds and n[0].kind == nkSym and n[0].typ.skipTypes(abstractInst).kind == tyProc
   if n.kind == nkEmpty:
     result = false
-  elif n.kind in nkCallKinds and n[0].kind == nkSym and n[0].typ.skipTypes(abstractInst).kind == tyProc and
-                               isInvalidReturnType(conf, n[0].typ):
+  elif isInvalidReturnType(conf, n[0].typ, isProc):
     # var v = f()
     # is transformed into: var v;  f(addr v)
     # where 'f' **does not** initialize the result!
     result = false
   else:
-    if isInvalidReturnType(conf, n.typ, false):
-      result = false
-    else:
-      result = true
+    result = true
 
 proc inExceptBlockLen(p: BProc): int =
   for x in p.nestedTryStmts:
