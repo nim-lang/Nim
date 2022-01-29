@@ -21,3 +21,17 @@ when defined(nimStrictMode):
     # future work: XDeclaredButNotUsed
 
 switch("define", "nimVersion:" & NimVersion)
+
+when defined(solo5):
+  const solo5tender {.strdefine.}: string = "hvt"
+    # Select the tender type. This is does not affect the build, only the link.
+
+  proc isFlags(s: string): bool = s.len > 0 and s[0] == '-'
+  block:
+    let passC = staticExec("pkg-config --cflags solo5-bindings-" & solo5tender)
+    if not passC.isFlags: quit(passC)
+    switch("passC", passC)
+  block:
+    let passL = staticExec("pkg-config --variable=ldflags solo5-bindings-" & solo5tender)
+    if not passL.isFlags: quit(passL)
+    switch("passL", passL)

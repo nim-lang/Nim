@@ -819,6 +819,8 @@ proc cgsym(m: BModule, name: string): Rope =
     result.addActualSuffixForHCR(m.module, sym)
 
 proc generateHeaders(m: BModule) =
+  if m.config.target.targetOS == osSolo5:
+    m.s[cfsHeaders].add("\L#define NIM_SOLO5\L")
   m.s[cfsHeaders].add("\L#include \"nimbase.h\"\L")
 
   for it in m.headerFiles:
@@ -1449,6 +1451,13 @@ proc genMainProc(m: BModule) =
       "\t});$N" &
       "}$N$N"
 
+    Solo5AppMain =
+      "struct solo5_start_info *nim_start_info;$N$N" &
+      "int solo5_app_main(const struct solo5_start_info *start_info) {$N" &
+      "\tnim_start_info = start_info;$N" &
+      MainProcsWithResult &
+      "}$N$N"
+
   if m.config.target.targetOS == osWindows and
       m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
     m.includeHeader("<windows.h>")
@@ -1456,7 +1465,9 @@ proc genMainProc(m: BModule) =
     m.includeHeader("<libc/component.h>")
 
   let initStackBottomCall =
-    if m.config.target.targetOS == osStandalone or m.config.selectedGC == gcNone: "".rope
+    if m.config.target.targetOS in {osStandalone, osSolo5} or m.config.selectedGC == gcNone: "".rope
+    #elif m.config.target.targetOS == osSolo5:
+    #  ropecg(m, "\t#initStackBottomWith(nim_start_info->heap_start);$N", [])
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", [])
   inc(m.labels)
   appcg(m, m.s[cfsProcs], PreMainBody, [m.g.mainDatInit, m.g.otherModsInit])
@@ -1479,7 +1490,7 @@ proc genMainProc(m: BModule) =
     const nimMain = PosixNimDllMain
     appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
-  elif m.config.target.targetOS == osStandalone:
+  elif m.config.target.targetOS in {osStandalone, osSolo5}:
     const nimMain = NimMainBody
     appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
@@ -1508,6 +1519,9 @@ proc genMainProc(m: BModule) =
       appcg(m, m.s[cfsProcs], otherMain, [m.config.nimMainPrefix])
     elif m.config.target.targetOS == osStandalone:
       const otherMain = StandaloneCMain
+      appcg(m, m.s[cfsProcs], otherMain, [m.config.nimMainPrefix])
+    elif m.config.target.targetOS == osSolo5:
+      const otherMain = Solo5AppMain
       appcg(m, m.s[cfsProcs], otherMain, [m.config.nimMainPrefix])
     else:
       const otherMain = PosixCMain
@@ -1599,9 +1613,9 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
   # Initialization of TLS and GC should be done in between
   # systemDatInit and systemInit calls if any
   if sfSystemModule in m.module.flags:
-    if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
+    if emulatedThreadVars(m.config) and m.config.target.targetOS notin {osStandalone, osSolo5}:
       g.mainDatInit.add(ropecg(m, "\t#initThreadVarsEmulation();$N", []))
-    if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
+    if m.config.target.targetOS notin {osStandalone, osSolo5 } and m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
       g.mainDatInit.add(ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", []))
 
   if m.s[cfsInitProc].len > 0:
@@ -2059,7 +2073,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
       # raise dependencies on behalf of genMainProc
       if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
         discard cgsym(m, "initStackBottomWith")
-      if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
+      if emulatedThreadVars(m.config) and m.config.target.targetOS notin {osStandalone, osSolo5}:
         discard cgsym(m, "initThreadVarsEmulation")
 
       if m.g.forwardedProcs.len == 0:

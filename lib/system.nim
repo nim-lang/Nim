@@ -1244,6 +1244,10 @@ elif defined(js) and defined(nodejs) and not defined(nimscript):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
+elif defined(solo5):
+  proc quit*(errorcode: int = QuitSuccess) {.
+    magic: "Exit", importc: "solo5_exit", header: "solo5.h", noreturn.}
+
 else:
   proc quit*(errorcode: int = QuitSuccess) {.
     magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
@@ -2496,7 +2500,7 @@ when defined(js):
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.
-  when defined(nimscript) or defined(js) or (hostOS == "standalone"):
+  when defined(nimscript) or defined(js) or defined(solo5) or (hostOS == "standalone"):
     echo errormsg
   else:
     when nimvm:

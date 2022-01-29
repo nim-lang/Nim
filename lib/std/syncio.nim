@@ -40,7 +40,7 @@ type
                       ## useful for low-level file access
 
 # text file handling:
-when not defined(nimscript) and not defined(js):
+when not defined(nimscript) and not defined(js) and not defined(solo5):
   # duplicated between io and ansi_c
   const stdioUsesMacros = (defined(osx) or defined(freebsd) or defined(
       dragonfly)) and not defined(emscripten)
@@ -836,6 +836,13 @@ when declared(stdout):
         funlockfile(stdout)
       when defined(windows) and compileOption("threads"):
         releaseSys echoLock
+
+elif defined(solo5):
+  import solo5/solo5
+  proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
+    for s in args:
+      console_write(s.cstring, cast[csize_t](s.len))
+    console_write("\n", 1)
 
 
 when defined(windows) and not defined(nimscript) and not defined(js):

@@ -198,7 +198,7 @@ import os, tables, strutils, times, heapqueue, options, asyncstreams
 import options, math, std/monotimes
 import asyncfutures except callSoon
 
-const socketsMissing = defined(nimNoLibc)
+const socketsMissing = defined(solo5)
 when not socketsMissing:
   import nativesockets
 
@@ -214,8 +214,9 @@ export asyncstreams
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
 type
+  TimerHeap = HeapQueue[tuple[finishAt: MonoTime, fut: Future[void]]]
   PDispatcherBase = ref object of RootRef
-    timers*: HeapQueue[tuple[finishAt: MonoTime, fut: Future[void]]]
+    timers*: TimerHeap
     callbacks*: Deque[proc () {.gcsafe.}]
 
 proc processTimers(
@@ -363,6 +364,7 @@ when defined(windows) or defined(nimdoc):
     p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
 
   proc runOnce(timeout = 500): bool =
+    echo "runOnce: ", getMonoTime(), " + ", timeout
     let p = getGlobalDispatcher()
     if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
@@ -1641,6 +1643,77 @@ elif defined(posix):
     data.readList.add(cb)
     p.selector.registerEvent(SelectEvent(ev), data)
 
+elif defined(solo5):
+  import solo5/solo5
+  import solo5/devices
+
+  type
+    DeviceHandler* = proc(h: solo5.Handle)
+    PDispatcher* = ref object of PDispatcherBase
+      handlers: HandleRegistry[DeviceHandler]
+
+  var gDisp: owned PDispatcher ## Global dispatcher
+
+  proc getGlobalDispatcher*(): PDispatcher =
+    if gDisp.isNil: new gDisp
+    gDisp
+
+  proc hasPendingOperations*(): bool =
+    var p = getGlobalDispatcher()
+    (not p.handlers.isEmpty) or p.timers.len != 0 or p.callbacks.len != 0
+      # Once a device handler is set this always returns true.
+
+  proc registerHandler*(h: solo5.Handle; dh: DeviceHandler) =
+    ## Register a device handler with the dispatcher.
+    var disp = getGlobalDispatcher()
+    disp.handlers[h] = dh
+
+  proc processTimers(timers: var TimerHeap; didSomeWork: var bool): MonoTime {.inline.} =
+    # Process expired timers and return the next timer deadline
+    var count = timers.len
+    var now = getMonoTime()
+    while count > 0 and timers[0].finishAt <= now:
+      timers.pop().fut.complete()
+      dec count
+      didSomeWork = true
+      now = getMonoTime()
+    if timers.len > 0:
+      timers[0].finishAt
+    else:
+      high MonoTime
+
+  proc runOnce(deadline: MonoTime): bool =
+    var disp = getGlobalDispatcher()
+    if disp.handlers.isEmpty and disp.timers.len == 0 and disp.callbacks.len == 0:
+      raise newException(Defect,
+        "No devices or timers registered in dispatcher.")
+    var
+      handleSet: HandleSet
+      timerDeadline = processTimers(disp.timers, result)
+    if not result:
+      var yeildDeadline = min(deadline.ticks, timerDeadline.ticks)
+      solo5.yield(solo5.Time yeildDeadline, addr handleSet)
+      for h, handler in disp.handlers.items handleSet:
+        handler(h)
+        result = true
+    processPendingCallbacks(disp, result)
+
+  proc runOnce(timeout: int): bool {.inline.} =
+    runOnce(getMonoTime() + initDuration(milliseconds = timeout))
+
+  proc addTimer*(timeout: int, oneshot: bool, cb: proc() {.gcsafe.}) =
+    var
+      disp = getGlobalDispatcher()
+      fut = newFuture[void]("addTimer")
+    if oneshot:
+      fut.addCallback(cb)
+    else:
+      fut.addCallback do (fut: Future[void]):
+        cb()
+        addTimer(timeout, oneshot, cb)
+          # TODO: reuse the future?
+    disp.timers.push((getMonoTime() + initDuration(milliseconds = timeout), fut))
+
 proc drain*(timeout = 500) =
   ## Waits for completion of **all** events and processes them. Raises `ValueError`
   ## if there are no pending operations. In contrast to `poll` this
@@ -1978,7 +2051,7 @@ proc activeDescriptors*(): int {.inline.} =
   ## event loop. This is a cheap operation that does not involve a system call.
   when defined(windows):
     result = getGlobalDispatcher().handles.len
-  elif not defined(nimdoc):
+  elif not defined(nimdoc) and not defined(solo5):
     result = getGlobalDispatcher().selector.count
 
 when defined(posix):

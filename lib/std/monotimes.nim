@@ -86,6 +86,9 @@ elif defined(windows):
   proc QueryPerformanceFrequency(res: var uint64) {.
     importc: "QueryPerformanceFrequency", stdcall, dynlib: "kernel32".}
 
+elif defined(solo5):
+  import solo5/solo5
+
 proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
   ## Returns the current `MonoTime` timestamp.
   ##
@@ -118,6 +121,8 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
     QueryPerformanceFrequency(freq)
     let queryPerformanceCounterFreq = 1_000_000_000'u64 div freq
     result = MonoTime(ticks: (ticks * queryPerformanceCounterFreq).int64)
+  elif defined(solo5):
+    MonoTime(ticks: int64 clock_monotonic())
 
 proc ticks*(t: MonoTime): int64 =
   ## Returns the raw ticks value from a `MonoTime`. This value always uses

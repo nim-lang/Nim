@@ -225,6 +225,9 @@ when defined(js):
     system.inc(a, b)
   {.pop.}
 
+elif defined(solo5):
+  import solo5/solo5
+
 elif defined(posix):
   import posix
 
@@ -970,6 +973,11 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
     var f {.noinit.}: FILETIME
     getSystemTimeAsFileTime(f)
     result = fromWinTime(rdFileTime(f))
+  elif defined(solo5):
+    let wall = int64 solo5.clockWall()
+    Time(
+      seconds: wall div 1_000_000_000,
+      nanosecond: wall mod 1_000_000)
 
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
   ## Computes the duration between two points in time.
@@ -1276,6 +1284,13 @@ when defined(js):
     result.utcOffset = localDate.getTimezoneOffset() * secondsInMin
     result.time = adjTime + initDuration(seconds = result.utcOffset)
     result.isDst = false
+
+elif defined(solo5):
+  proc localZonedTimeFromTime(time: Time): ZonedTime {.benign.} =
+    result.time = time
+
+  proc localZonedTimeFromAdjTime(adjTime: Time): ZonedTime {.benign.} =
+    result.time = adjTime
 
 else:
   proc toAdjUnix(tm: Tm): int64 =
@@ -2690,6 +2705,8 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
     var secs = i64 div rateDiff
     var subsecs = i64 mod rateDiff
     result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
+  elif defined(solo5):
+    result = 1_000_000_000.0 * float solo5.clockWall()
   elif defined(js):
     result = newDate().getTime() / 1000
   else:

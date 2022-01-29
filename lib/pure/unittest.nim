@@ -113,7 +113,7 @@ import macros, strutils, streams, times, sets, sequtils
 when declared(stdout):
   import os
 
-const useTerminal = not (defined(js) or defined(nimNoLibc))
+const useTerminal = not (defined(js) or defined(solo5))
 
 when useTerminal:
   import terminal

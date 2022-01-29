@@ -174,44 +174,30 @@ proc c_sprintf*(buf, frmt: cstring): cint {.
   importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
-when defined(zephyr) and not defined(zephyrUseLibcMalloc):
-  proc c_malloc*(size: csize_t): pointer {.
-    importc: "k_malloc", header: "<kernel.h>".}
-  proc c_calloc*(nmemb, size: csize_t): pointer {.
-    importc: "k_calloc", header: "<kernel.h>".}
-  proc c_free*(p: pointer) {.
-    importc: "k_free", header: "<kernel.h>".}
-  proc c_realloc*(p: pointer, newsize: csize_t): pointer =
-    # Zephyr's kernel malloc doesn't support realloc
-    result = c_malloc(newSize)
-    # match the ansi c behavior
-    if not result.isNil():
-      copyMem(result, p, newSize)
-      c_free(p)
-else:
-  proc c_malloc*(size: csize_t): pointer {.
-    importc: "malloc", header: "<stdlib.h>".}
-  proc c_calloc*(nmemb, size: csize_t): pointer {.
-    importc: "calloc", header: "<stdlib.h>".}
-  proc c_free*(p: pointer) {.
-    importc: "free", header: "<stdlib.h>".}
-  proc c_realloc*(p: pointer, newsize: csize_t): pointer {.
-    importc: "realloc", header: "<stdlib.h>".}
+proc c_malloc*(size: csize_t): pointer {.
+  importc: "malloc", header: "<stdlib.h>".}
+proc c_calloc*(nmemb, size: csize_t): pointer {.
+  importc: "calloc", header: "<stdlib.h>".}
+proc c_free*(p: pointer) {.
+  importc: "free", header: "<stdlib.h>".}
+proc c_realloc*(p: pointer, newsize: csize_t): pointer {.
+  importc: "realloc", header: "<stdlib.h>".}
 
-proc c_fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): cint {.
-  importc: "fwrite", header: "<stdio.h>".}
+when not defined(solo5):
+  proc c_fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): cint {.
+    importc: "fwrite", header: "<stdio.h>".}
 
-proc c_fflush(f: CFilePtr): cint {.
-  importc: "fflush", header: "<stdio.h>".}
+  proc c_fflush(f: CFilePtr): cint {.
+    importc: "fflush", header: "<stdio.h>".}
 
-proc rawWriteString*(f: CFilePtr, s: cstring, length: int) {.compilerproc, nonReloadable, inline.} =
-  # we cannot throw an exception here!
-  discard c_fwrite(s, 1, cast[csize_t](length), f)
-  discard c_fflush(f)
+  proc rawWriteString*(f: CFilePtr, s: cstring, length: int) {.compilerproc, nonReloadable, inline.} =
+    # we cannot throw an exception here!
+    discard c_fwrite(s, 1, cast[csize_t](length), f)
+    discard c_fflush(f)
 
-proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
-  # we cannot throw an exception here!
-  discard c_fwrite(s, 1, cast[csize_t](s.len), f)
-  discard c_fflush(f)
+  proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
+    # we cannot throw an exception here!
+    discard c_fwrite(s, 1, cast[csize_t](s.len), f)
+    discard c_fflush(f)
 
 {.pop.}

@@ -22,7 +22,8 @@ type
     osNone, osDos, osWindows, osOs2, osLinux, osMorphos, osSkyos, osSolaris,
     osIrix, osNetbsd, osFreebsd, osOpenbsd, osDragonfly, osCrossos, osAix, osPalmos, osQnx,
     osAmiga, osAtari, osNetware, osMacos, osMacosx, osIos, osHaiku, osAndroid, osVxWorks
-    osGenode, osJS, osNimVM, osStandalone, osNintendoSwitch, osFreeRTOS, osZephyr, osAny
+    osGenode, osJS, osNimVM, osStandalone, osNintendoSwitch, osFreeRTOS, osZephyr, osSolo5,
+    osAny
 
 type
   TInfoOSProp* = enum
@@ -189,6 +190,10 @@ const
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
       props: {ospPosix}),
+     (name: "Solo5", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
+      props: {}),
      (name: "Any", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",

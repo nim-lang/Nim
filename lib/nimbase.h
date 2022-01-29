@@ -266,8 +266,12 @@ __AVR__
 
 #define COMMA ,
 
-#include <limits.h>
-#include <stddef.h>
+#ifdef NIM_SOLO5
+#  define CHAR_BIT 8
+#else
+#  include <limits.h>
+#  include <stddef.h>
+#endif
 
 // define NIM_STATIC_ASSERT
 // example use case: CT sizeof for importc types verification
@@ -570,6 +574,11 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, ""
 #  include <tool/gnu/toolMacros.h>
 #elif defined(__FreeBSD__)
 #  include <sys/types.h>
+#endif
+
+#if defined(NIM_SOLO5)
+#include "solo5.h"
+extern struct solo5_start_info *nim_start_info;
 #endif
 
 /* these exist to make the codegen logic simpler */

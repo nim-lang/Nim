@@ -26,7 +26,12 @@ when defined(windows):
   proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
   const ERROR_BAD_EXE_FORMAT = 193
 
-when not defined(windows) or not defined(guiapp):
+when defined(solo5):
+  import solo5/solo5
+  proc writeToStdErr(msg: cstring, length: int) = console_write(msg, csize_t length)
+  proc writeToStdErr(msg: cstring) = console_write(msg, csize_t c_strlen(msg))
+
+elif defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
   proc writeToStdErr(msg: cstring, length: int) =
     rawWriteString(cstderr, msg, length)

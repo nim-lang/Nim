@@ -43,7 +43,7 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
-when not defined(nimNoLibc):
+when not defined(solo5):
   proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
     importc: "strtod", header: "<stdlib.h>", noSideEffect.}
 
@@ -181,7 +181,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
       number = sign * integer.float * powtens[slop] * powtens[absExponent-slop]
       return i - start
 
-  when not defined(nimNoLibc):
+  when not defined(solo5):
     # if failed: slow path with strtod.
     var t: array[500, char] # flaviu says: 325 is the longest reasonable literal
     var ti = 0
