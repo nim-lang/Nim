@@ -265,7 +265,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
   result.cache = cache
   result.outDir = conf.outDir.string
   result.isPureRst = isPureRst
-  var options= {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown}
+  var options= {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown, roSandboxDisabled}
   if not isPureRst: options.incl roNimFile
   result.sharedState = newRstSharedState(
       options, filename.string,

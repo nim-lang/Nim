@@ -47,6 +47,10 @@ proc optionListLabel(opt: string): string =
   opt &
   "</span></tt></div>"
 
+const
+  NoSandboxOpts = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
+
+
 suite "YAML syntax highlighting":
   test "Basics":
     let input = """.. code-block:: yaml
@@ -631,7 +635,9 @@ let x = 1
     let p3 = """<p>Par3 <tt class="docutils literal"><span class="pre">""" & id"value3" & "</span></tt>.</p>"
     let p4 = """<p>Par4 <tt class="docutils literal"><span class="pre">value4</span></tt>.</p>"""
     let expected = p1 & p2 & "\n" & p3 & "\n" & p4
-    check(input.toHtml == expected)
+    check(
+      input.toHtml(NoSandboxOpts) == expected
+    )
 
   test "role directive":
     let input = dedent"""
@@ -642,7 +648,10 @@ let x = 1
          :language: brainhelp
     """
     var warnings = new seq[string]
-    let output = input.toHtml(warnings=warnings)
+    let output = input.toHtml(
+      NoSandboxOpts,
+      warnings=warnings
+    )
     check(warnings[].len == 1 and "language 'brainhelp' not supported" in warnings[0])
 
   test "RST comments":
@@ -1186,7 +1195,9 @@ Test1
       .. tip:: endOf tip
       .. warning:: endOf warning
     """
-    let output0 = input0.toHtml
+    let output0 = input0.toHtml(
+      NoSandboxOpts
+    )
     for a in ["admonition", "attention", "caution", "danger", "error", "hint",
         "important", "note", "tip", "warning" ]:
       doAssert "endOf " & a & "</div>" in output0
@@ -1197,7 +1208,9 @@ Test1
 
       Test paragraph.
     """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml(
+      NoSandboxOpts
+    )
     doAssert "endOfError</div>" in output1
     doAssert "<p>Test paragraph. </p>" in output1
     doAssert "class=\"admonition admonition-error\"" in output1
@@ -1209,7 +1222,9 @@ Test1
 
       Test paragraph.
     """
-    let output2 = input2.toHtml
+    let output2 = input2.toHtml(
+      NoSandboxOpts
+    )
     doAssert "endOfError Test2p.</div>" in output2
     doAssert "<p>Test paragraph. </p>" in output2
     doAssert "class=\"admonition admonition-error\"" in output2
@@ -1217,7 +1232,9 @@ Test1
     let input3 = dedent """
       .. note:: endOfNote
     """
-    let output3 = input3.toHtml
+    let output3 = input3.toHtml(
+      NoSandboxOpts
+    )
     doAssert "endOfNote</div>" in output3
     doAssert "class=\"admonition admonition-info\"" in output3
 
@@ -1302,7 +1319,9 @@ Test1
 
       That was a transition.
     """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml(
+      NoSandboxOpts
+    )
     doAssert "<p id=\"target000\""     in output1
     doAssert "<ul id=\"target001\""    in output1
     doAssert "<ol id=\"target002\""    in output1
@@ -1575,3 +1594,15 @@ suite "invalid targets":
         """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))""")
     check("(([Nim](javascript://nim-lang.org/)))".toHtml ==
         """((<a class="reference external" href="">Nim</a>))""")
+
+suite "local file inclusion":
+  test "cannot include files in sandboxed mode":
+    var error = new string
+    discard ".. include:: ./readme.md".toHtml(error=error)
+    check(error[] == "input(1, 11) Error: disabled directive: 'include'")
+
+  test "code-block file directive is disabled":
+    var error = new string
+    discard ".. code-block:: nim\n    :file: ./readme.md".toHtml(error=error)
+    check(error[] == "input(2, 20) Error: disabled directive: 'file'")
+
