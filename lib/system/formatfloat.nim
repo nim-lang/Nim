@@ -7,14 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
-proc c_memcpy(a, b: pointer, size: csize_t): pointer {.importc: "memcpy", header: "<string.h>", discardable.}
+from system/memory import nimCopyMem
 
 proc addCstringN(result: var string, buf: cstring; buflen: int) =
   # no nimvm support needed, so it doesn't need to be fast here either
   let oldLen = result.len
   let newLen = oldLen + buflen
   result.setLen newLen
-  c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
+  nimCopyMem(result[oldLen].addr, buf, buflen.csize_t)
 
 import dragonbox, schubfach
 
@@ -30,8 +30,9 @@ proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: float32): int
   result = float32ToChars(buf, value, forceTrailingDotZero=true)
   buf[result] = '\0'
 
-proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
-                                    importc: "sprintf", varargs, noSideEffect.}
+when not defined(nimNoLibc):
+  proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
+                                      importc: "sprintf", varargs, noSideEffect.}
 
 proc writeToBuffer(buf: var array[65, char]; value: cstring) =
   var i = 0
@@ -39,42 +40,43 @@ proc writeToBuffer(buf: var array[65, char]; value: cstring) =
     buf[i] = value[i]
     inc i
 
-proc writeFloatToBufferSprintf*(buf: var array[65, char]; value: BiggestFloat): int =
-  ## This is the implementation to format floats.
-  ##
-  ## returns the amount of bytes written to `buf` not counting the
-  ## terminating '\0' character.
-  var n: int = c_sprintf(addr buf, "%.16g", value)
-  var hasDot = false
-  for i in 0..n-1:
-    if buf[i] == ',':
-      buf[i] = '.'
-      hasDot = true
-    elif buf[i] in {'a'..'z', 'A'..'Z', '.'}:
-      hasDot = true
-  if not hasDot:
-    buf[n] = '.'
-    buf[n+1] = '0'
-    buf[n+2] = '\0'
-    result = n + 2
-  else:
-    result = n
-  # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN' or 'nan(ind)'
-  # of '-1.#IND' are produced.
-  # We want to get rid of these here:
-  if buf[n-1] in {'n', 'N', 'D', 'd', ')'}:
-    writeToBuffer(buf, "nan")
-    result = 3
-  elif buf[n-1] == 'F':
-    if buf[0] == '-':
-      writeToBuffer(buf, "-inf")
-      result = 4
+when defined(c_sprintf):
+  proc writeFloatToBufferSprintf*(buf: var array[65, char]; value: BiggestFloat): int =
+    ## This is the implementation to format floats.
+    ##
+    ## returns the amount of bytes written to `buf` not counting the
+    ## terminating '\0' character.
+    var n: int = c_sprintf(addr buf, "%.16g", value)
+    var hasDot = false
+    for i in 0..n-1:
+      if buf[i] == ',':
+        buf[i] = '.'
+        hasDot = true
+      elif buf[i] in {'a'..'z', 'A'..'Z', '.'}:
+        hasDot = true
+    if not hasDot:
+      buf[n] = '.'
+      buf[n+1] = '0'
+      buf[n+2] = '\0'
+      result = n + 2
     else:
-      writeToBuffer(buf, "inf")
+      result = n
+    # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN' or 'nan(ind)'
+    # of '-1.#IND' are produced.
+    # We want to get rid of these here:
+    if buf[n-1] in {'n', 'N', 'D', 'd', ')'}:
+      writeToBuffer(buf, "nan")
       result = 3
+    elif buf[n-1] == 'F':
+      if buf[0] == '-':
+        writeToBuffer(buf, "-inf")
+        result = 4
+      else:
+        writeToBuffer(buf, "inf")
+        result = 3
 
 proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat | float32): int {.inline.} =
-  when defined(nimPreviewFloatRoundtrip):
+  when defined(nimPreviewFloatRoundtrip) or not defined(writeFloatToBufferSprintf):
     writeFloatToBufferRoundtrip(buf, value)
   else:
     writeFloatToBufferSprintf(buf, value)
@@ -92,7 +94,7 @@ proc addFloatSprintf*(result: var string; x: float) =
     doAssert false
   else:
     var buffer {.noinit.}: array[65, char]
-    let n = writeFloatToBufferSprintf(buffer, x)
+    let n = writeFloatToBuffer(buffer, x)
     result.addCstringN(cstring(buffer[0].addr), n)
 
 proc nimFloatToString(a: float): cstring =

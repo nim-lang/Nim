@@ -43,8 +43,9 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
-proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
-  importc: "strtod", header: "<stdlib.h>", noSideEffect.}
+when not defined(nimNoLibc):
+  proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
+    importc: "strtod", header: "<stdlib.h>", noSideEffect.}
 
 const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
@@ -180,36 +181,42 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
       number = sign * integer.float * powtens[slop] * powtens[absExponent-slop]
       return i - start
 
-  # if failed: slow path with strtod.
-  var t: array[500, char] # flaviu says: 325 is the longest reasonable literal
-  var ti = 0
-  let maxlen = t.high - "e+000".len # reserve enough space for exponent
+  when defined(c_strtod):
+    # if failed: slow path with strtod.
+    var t: array[500, char] # flaviu says: 325 is the longest reasonable literal
+    var ti = 0
+    let maxlen = t.high - "e+000".len # reserve enough space for exponent
 
-  let endPos = i
-  result = endPos - start
-  i = start
-  # re-parse without error checking, any error should be handled by the code above.
-  if i < endPos and s[i] == '.': i.inc
-  while i < endPos and s[i] in {'0'..'9','+','-'}:
-    if ti < maxlen:
-      t[ti] = s[i]; inc(ti)
-    inc(i)
-    while i < endPos and s[i] in {'.', '_'}: # skip underscore and decimal point
+    let endPos = i
+    result = endPos - start
+    i = start
+    # re-parse without error checking, any error should be handled by the code above.
+    if i < endPos and s[i] == '.': i.inc
+    while i < endPos and s[i] in {'0'..'9','+','-'}:
+      if ti < maxlen:
+        t[ti] = s[i]; inc(ti)
       inc(i)
+      while i < endPos and s[i] in {'.', '_'}: # skip underscore and decimal point
+        inc(i)
 
-  # insert exponent
-  t[ti] = 'E'
-  inc(ti)
-  t[ti] = if expNegative: '-' else: '+'
-  inc(ti, 4)
+    # insert exponent
+    t[ti] = 'E'
+    inc(ti)
+    t[ti] = if expNegative: '-' else: '+'
+    inc(ti, 4)
 
-  # insert adjusted exponent
-  t[ti-1] = ('0'.ord + absExponent mod 10).char
-  absExponent = absExponent div 10
-  t[ti-2] = ('0'.ord + absExponent mod 10).char
-  absExponent = absExponent div 10
-  t[ti-3] = ('0'.ord + absExponent mod 10).char
-  number = c_strtod(addr t, nil)
+    # insert adjusted exponent
+    t[ti-1] = ('0'.ord + absExponent mod 10).char
+    absExponent = absExponent div 10
+    t[ti-2] = ('0'.ord + absExponent mod 10).char
+    absExponent = absExponent div 10
+    t[ti-3] = ('0'.ord + absExponent mod 10).char
+    number = c_strtod(addr t, nil)
+  else:
+    number = NaN
+    raise newException(
+      FloatInexactDefect,
+      "insufficent precision in platform-specific parser")
 
 when defined(nimHasInvariant):
   {.pop.} # staticBoundChecks
