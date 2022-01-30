@@ -39,6 +39,7 @@ type
     errRstInvalidDirectiveX,
     errRstInvalidField,
     errRstFootnoteMismatch,
+    errRstSandboxedDirective,
     errProveInit, # deadcode
     errGenerated,
     errUser,
