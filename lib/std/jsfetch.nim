@@ -65,7 +65,7 @@ func newResponse*(body: cstring | FormData): Response {.importjs: "(new Response
 func newRequest*(url: cstring): Request {.importjs: "(new Request(#))".}
   ## Constructor for `Request`. This does *not* call `fetch()`. Same as `new Request()`.
 
-func newRequest*(url: cstring, fetchOptions: FetchOptions): Request {.importjs: "(new Request(#, #))".}
+func newRequest*(url: cstring; fetchOptions: FetchOptions): Request {.importjs: "(new Request(#, #))".}
   ## Constructor for `Request` with `fetchOptions`. Same as `fetch(url, fetchOptions)`.
 
 func clone*(self: Response | Request): Response {.importjs: "#.$1()".}
