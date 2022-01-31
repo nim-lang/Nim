@@ -81,7 +81,7 @@ proc formData*(self: Response): Future[FormData] {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Response/formData
 
 proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring;
-    keepalive: bool; redirect = "follow".cstring; referrer = "client".cstring; integrity = "".cstring, headers: Headers = newHeaders()): FetchOptions {.importjs:
+    keepalive: bool; redirect = "follow".cstring; referrer = "client".cstring; integrity = "".cstring; headers: Headers = newHeaders()): FetchOptions {.importjs:
     "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #, headers: #}".}
   ## .. warning:: Unsafe `newfetchOptions`.
 
