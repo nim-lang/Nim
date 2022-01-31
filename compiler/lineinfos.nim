@@ -39,6 +39,7 @@ type
     errRstInvalidDirectiveX,
     errRstInvalidField,
     errRstFootnoteMismatch,
+    errRstSandboxedDirective,
     errProveInit, # deadcode
     errGenerated,
     errUser,
@@ -109,6 +110,7 @@ const
     errRstInvalidDirectiveX: "invalid directive: '$1'",
     errRstInvalidField: "invalid field: $1",
     errRstFootnoteMismatch: "number of footnotes and their references don't match: $1",
+    errRstSandboxedDirective: "disabled directive: '$1'",
     errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
     errUser: "$1",

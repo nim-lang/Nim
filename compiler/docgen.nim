@@ -221,6 +221,7 @@ template declareClosures =
     of meInvalidDirective: k = errRstInvalidDirectiveX
     of meInvalidField: k = errRstInvalidField
     of meFootnoteMismatch: k = errRstFootnoteMismatch
+    of meSandboxedDirective: k = errRstSandboxedDirective
     of mwRedefinitionOfLabel: k = warnRstRedefinitionOfLabel
     of mwUnknownSubstitution: k = warnRstUnknownSubstitutionX
     of mwBrokenLink: k = warnRstBrokenLink
