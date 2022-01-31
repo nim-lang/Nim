@@ -1,5 +1,4 @@
 ## - Fetch for the JavaScript target: https://developer.mozilla.org/docs/Web/API/Fetch_API
-## .. Note:: jsfetch is Experimental.
 when not defined(js):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
 
