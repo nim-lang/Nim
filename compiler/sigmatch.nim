@@ -2237,8 +2237,14 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
         # XXX this is still all wrong: (T, T) should be 2 generic matches
         # and  (int, int) 2 exact matches, etc. Essentially you cannot call
         # typeRel here and expect things to work!
-        let r = typeRel(z, f, arg[i].typ)
+        var r = typeRel(z, f, arg[i].typ)
         incMatches(z, r, 2)
+        if r == isNone:
+          if userConvMatch(c, m, f, a, arg) == nil and f.kind == tyVarargs:
+            if f.n == nil:
+              let baseRel = typeRel(m, base(f), a)
+              if baseRel == isGeneric:
+                r = baseRel
         if r != isNone:
           z.state = csMatch
           case x.state
@@ -2262,6 +2268,9 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       # See tsymchoice_for_expr as an example. 'f.kind == tyUntyped' should match
       # anyway:
       if f.kind in {tyUntyped, tyTyped}: result = arg
+      elif m.calleeSym != nil and m.calleeSym.kind in {skMacro, skTemplate} and
+           f.kind == tyVarargs:
+        result = arg
       else: result = nil
     else:
       # only one valid interpretation found:
