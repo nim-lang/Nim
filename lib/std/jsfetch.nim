@@ -1,5 +1,4 @@
 ## - Fetch for the JavaScript target: https://developer.mozilla.org/docs/Web/API/Fetch_API
-## .. Note:: jsfetch is Experimental.
 when not defined(js):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
 
@@ -12,6 +11,7 @@ type
     keepalive*: bool
     metod* {.importjs: "method".}: cstring
     body*, integrity*, referrer*, mode*, credentials*, cache*, redirect*, referrerPolicy*: cstring
+    headers*: Headers
 
   FetchModes* = enum  ## Mode options.
     fmCors = "cors"
@@ -42,16 +42,13 @@ type
     frpOriginWhenCrossOrigin = "origin-when-cross-origin"
     frpUnsafeUrl = "unsafe-url"
 
-  Body* = ref object of JsRoot  ## https://developer.mozilla.org/en-US/docs/Web/API/Body
-    bodyUsed*: bool
-
   Response* = ref object of JsRoot  ## https://developer.mozilla.org/en-US/docs/Web/API/Response
     bodyUsed*, ok*, redirected*: bool
     typ* {.importjs: "type".}: cstring
     url*, statusText*: cstring
     status*: cint
     headers*: Headers
-    body*: Body
+    body*: cstring
 
   Request* = ref object of JsRoot  ## https://developer.mozilla.org/en-US/docs/Web/API/Request
     bodyUsed*, ok*, redirected*: bool
@@ -59,8 +56,7 @@ type
     url*, statusText*: cstring
     status*: cint
     headers*: Headers
-    body*: Body
-
+    body*: cstring
 
 func newResponse*(body: cstring | FormData): Response {.importjs: "(new Response(#))".}
   ## Constructor for `Response`. This does *not* call `fetch()`. Same as `new Response()`.
@@ -68,30 +64,34 @@ func newResponse*(body: cstring | FormData): Response {.importjs: "(new Response
 func newRequest*(url: cstring): Request {.importjs: "(new Request(#))".}
   ## Constructor for `Request`. This does *not* call `fetch()`. Same as `new Request()`.
 
+func newRequest*(url: cstring; fetchOptions: FetchOptions): Request {.importjs: "(new Request(#, #))".}
+  ## Constructor for `Request` with `fetchOptions`. Same as `fetch(url, fetchOptions)`.
+
 func clone*(self: Response | Request): Response {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Response/clone
 
 proc text*(self: Response): Future[cstring] {.importjs: "#.$1()".}
-  ## https://developer.mozilla.org/en-US/docs/Web/API/Body/text
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Response/text
 
 proc json*(self: Response): Future[JsObject] {.importjs: "#.$1()".}
-  ## https://developer.mozilla.org/en-US/docs/Web/API/Body/json
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Response/json
 
-proc formData*(self: Body): Future[FormData] {.importjs: "#.$1()".}
-  ## https://developer.mozilla.org/en-US/docs/Web/API/Body/formData
+proc formData*(self: Response): Future[FormData] {.importjs: "#.$1()".}
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Response/formData
 
 proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring;
-    keepalive: bool; redirect = "follow".cstring; referrer = "client".cstring; integrity = "".cstring): FetchOptions {.importjs:
-    "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
+    keepalive: bool; redirect = "follow".cstring; referrer = "client".cstring; integrity = "".cstring; headers: Headers = newHeaders()): FetchOptions {.importjs:
+    "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #, headers: #}".}
   ## .. warning:: Unsafe `newfetchOptions`.
 
 func newfetchOptions*(metod: HttpMethod; body: cstring;
     mode: FetchModes; credentials: FetchCredentials; cache: FetchCaches; referrerPolicy: FetchReferrerPolicies;
-    keepalive: bool; redirect = frFollow; referrer = "client".cstring; integrity = "".cstring): FetchOptions =
+    keepalive: bool; redirect = frFollow; referrer = "client".cstring; integrity = "".cstring,
+    headers: Headers = newHeaders()): FetchOptions =
   ## Constructor for `FetchOptions`.
   result = FetchOptions(
-    body: body, mode: $mode, credentials: $credentials, cache: $cache, referrerPolicy: $referrerPolicy,
-    keepalive: keepalive, redirect: $redirect, referrer: referrer, integrity: integrity,
+    body: body, mode: cstring($mode), credentials: cstring($credentials), cache: cstring($cache), referrerPolicy: cstring($referrerPolicy),
+    keepalive: keepalive, redirect: cstring($redirect), referrer: referrer, integrity: integrity,
     metod: (case metod
       of HttpHead:   "HEAD".cstring
       of HttpGet:    "GET".cstring
@@ -109,9 +109,9 @@ proc fetch*(url: cstring | Request): Future[Response] {.importjs: "$1(#)".}
 proc fetch*(url: cstring | Request; options: FetchOptions): Future[Response] {.importjs: "$1(#, #)".}
   ## `fetch()` API that takes a `FetchOptions`, returns a `Future[Response]`.
 
-func toCstring*(self: Request | Response | Body | FetchOptions): cstring {.importjs: "JSON.stringify(#)".}
+func toCstring*(self: Request | Response | FetchOptions): cstring {.importjs: "JSON.stringify(#)".}
 
-func `$`*(self: Request | Response | Body | FetchOptions): string = $toCstring(self)
+func `$`*(self: Request | Response | FetchOptions): string = $toCstring(self)
 
 
 runnableExamples("-r:off"):
@@ -131,7 +131,8 @@ runnableExamples("-r:off"):
       keepalive = false,
       redirect = "follow".cstring,
       referrer = "client".cstring,
-      integrity = "".cstring
+      integrity = "".cstring,
+      headers = newHeaders()
     )
     assert options0.keepalive == false
     assert options0.metod == "POST".cstring
@@ -143,6 +144,7 @@ runnableExamples("-r:off"):
     assert options0.redirect == "follow".cstring
     assert options0.referrer == "client".cstring
     assert options0.integrity == "".cstring
+    assert options0.headers.len == 0
 
   block:
     let options1: FetchOptions = newFetchOptions(
@@ -155,7 +157,8 @@ runnableExamples("-r:off"):
       keepalive = false,
       redirect = frFollow,
       referrer = "client".cstring,
-      integrity = "".cstring
+      integrity = "".cstring,
+      headers = newHeaders()
     )
     assert options1.keepalive == false
     assert options1.metod == $HttpPost
@@ -167,6 +170,7 @@ runnableExamples("-r:off"):
     assert options1.redirect == $frFollow
     assert options1.referrer == "client".cstring
     assert options1.integrity == "".cstring
+    assert options1.headers.len == 0
 
   block:
     let response: Response = newResponse(body = "-. .. --".cstring)
@@ -182,7 +186,7 @@ runnableExamples("-r:off"):
         assert response.ok
         assert response.status == 200.cint
         assert response.headers is Headers
-        assert response.body is Body
+        assert response.body is cstring
 
       discard example()
 
