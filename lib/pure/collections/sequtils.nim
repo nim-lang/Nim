@@ -169,6 +169,24 @@ func cycle*[T](s: openArray[T], n: Natural): seq[T] =
       result[o] = e
       inc o
 
+func upsample*[T](s: openArray[T], n: Natural): seq[T] =
+  ## Returns a new sequence with the items contained in `s` sequentially
+  ## repeated `n` times.
+  ## `n` must be a non-negative number (zero or more).
+  ##
+  runnableExamples:
+    let
+      s = @[1, 2, 3]
+      total = s.upsample(3)
+    assert total == @[1, 1, 1, 2, 2, 2, 3, 3, 3]
+
+  result = newSeq[T](len(s) * n)
+  var i = 0
+  for e in s:
+      for j in 0 ..< n:
+        result[i] = e
+        inc i
+
 proc repeat*[T](x: T, n: Natural): seq[T] =
   ## Returns a new sequence with the item `x` repeated `n` times.
   ## `n` must be a non-negative number (zero or more).
