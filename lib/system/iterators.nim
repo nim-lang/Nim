@@ -21,7 +21,7 @@ iterator items*[T: char](a: openArray[T]): T {.inline.} =
     inc(i)
 
 iterator mitems*[T](a: var openArray[T]): var T {.inline.} =
-  ## Iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that the yielded value can be modified.
   var i = 0
   while i < len(a):
     yield a[i]
@@ -37,7 +37,7 @@ iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
       inc(i)
 
 iterator mitems*[IX, T](a: var array[IX, T]): var T {.inline.} =
-  ## Iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that the yielded value can be modified.
   when a.len > 0:
     var i = low(IX)
     while true:
@@ -84,7 +84,7 @@ iterator items*(a: cstring): char {.inline.} =
         inc(i)
 
 iterator mitems*(a: var cstring): var char {.inline.} =
-  ## Iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that the yielded value can be modified.
   # xxx this should give CT error in js RT.
   runnableExamples:
     from std/sugar import collect
@@ -147,7 +147,7 @@ iterator ritems*[T: char](a: openArray[T]): T {.inline.} =
     dec(i)
 
 iterator mritems*[T](a: var openArray[T]): var T {.inline.} =
-  ## Iterates over each item of `a` in reverse so that you can modify the yielded value.
+  ## Iterates over each item of `a` in reverse so that the yielded value can be modified.
   var i = high(a)
   while i >= low(a):
     yield a[i]
@@ -163,7 +163,7 @@ iterator ritems*[IX, T](a: array[IX, T]): T {.inline.} =
       dec(i)
 
 iterator mritems*[IX, T](a: var array[IX, T]): var T {.inline.} =
-  ## Iterates over each item of `a`in reverse so that you can modify the yielded value.
+  ## Iterates over each item of `a`in reverse so that the yielded value can be modified.
   when a.len > 0:
     var i = high(IX)
     while true:
@@ -210,7 +210,7 @@ iterator ritems*(a: cstring): char {.inline.} =
         dec(i)
 
 iterator mritems*(a: var cstring): var char {.inline.} =
-  ## Iterates over each item of `a` in reverse so that you can modify the yielded value.
+  ## Iterates over each item of `a` in reverse so that the yielded value can be modified.
   # xxx this should give CT error in js RT.
   runnableExamples:
     from std/sugar import collect
@@ -368,7 +368,7 @@ iterator items*[T](a: seq[T]): lent2 T {.inline.} =
     assert(len(a) == L, "the length of the seq changed while iterating over it")
 
 iterator mitems*[T](a: var seq[T]): var T {.inline.} =
-  ## Iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that the yielded value can be modified.
   var i = 0
   let L = len(a)
   while i < L:
@@ -386,7 +386,7 @@ iterator items*(a: string): char {.inline.} =
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
 iterator mitems*(a: var string): var char {.inline.} =
-  ## Iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that the yielded value can be modified.
   var i = 0
   let L = len(a)
   while i < L:
@@ -404,7 +404,7 @@ iterator ritems*[T](a: seq[T]): lent2 T {.inline.} =
     assert(len(a) == L, "the length of the seq changed while iterating over it")
 
 iterator mritems*[T](a: var seq[T]): var T {.inline.} =
-  ## Iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that the yielded value can be modified.
   var i = high(a)
   let L = len(a)
   while i >= low(a):
@@ -422,7 +422,7 @@ iterator ritems*(a: string): char {.inline.} =
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
 iterator mritems*(a: var string): var char {.inline.} =
-  ## Iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that the yielded value can be modified.
   var i = high(a)
   let L = len(a)
   while i >= low(a):
