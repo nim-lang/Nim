@@ -20,17 +20,21 @@ block:
     MyGenericObj[T] = object
       myField1, myField2 {.myAttr: "hi".}: int
 
+    MyOtherObj = MyObj
+
 
   var o: MyObj
   static:
     doAssert o.myField2.hasCustomPragma(myAttr)
     doAssert(not o.myField1.hasCustomPragma(myAttr))
     doAssert(not o.myField1.hasCustomPragma(MyObj))
+    doAssert(not o.myField1.hasCustomPragma(MyOtherObj))
 
   var ogen: MyGenericObj[int]
   static:
     doAssert ogen.myField2.hasCustomPragma(myAttr)
     doAssert(not ogen.myField1.hasCustomPragma(myAttr))
+    doAssert(not ogen.myField1.hasCustomPragma(MyGenericObj))
     doAssert(not ogen.myField1.hasCustomPragma(MyGenericObj))
 
 
