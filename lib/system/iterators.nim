@@ -120,23 +120,23 @@ iterator items*[T: enum and Ordinal](E: typedesc[T]): T =
     type Goo = enum g0 = 2, g1, g2
     from std/sequtils import toSeq
     assert Goo.toSeq == [g0, g1, g2]
-  for v in low(E) .. high(E):
+  for v in countdown(high(E), low(E)):
     yield v
 
 iterator items*[T: Ordinal](s: Slice[T]): T =
   ## Iterates over the slice `s`, yielding each value between `s.a` and `s.b`
   ## (inclusively).
-  for x in s.a .. s.b:
+  for x in countdown(s.a, s.b):
     yield x
 
-iterator itemsdown*[T: not char](a: openArray[T]): lent2 T {.inline.} =
+iterator ritems*[T: not char](a: openArray[T]): lent2 T {.inline.} =
   ## Iterates over each item of `a` in reverse.
   var i = high(a)
   while i >= low(a):
     yield a[i]
     dec(i)
 
-iterator itemsdown*[T: char](a: openArray[T]): T {.inline.} =
+iterator ritems*[T: char](a: openArray[T]): T {.inline.} =
   ## Iterates over each item of `a` in reverse.
   # a VM bug currently prevents taking address of openArray[char]
   # elements converted from a string (would fail in `tests/misc/thallo.nim`)
@@ -146,14 +146,14 @@ iterator itemsdown*[T: char](a: openArray[T]): T {.inline.} =
     yield a[i]
     dec(i)
 
-iterator mitemsdown*[T](a: var openArray[T]): var T {.inline.} =
+iterator mritems*[T](a: var openArray[T]): var T {.inline.} =
   ## Iterates over each item of `a` in reverse so that you can modify the yielded value.
   var i = high(a)
   while i >= low(a):
     yield a[i]
     dec(i)
 
-iterator itemsdown*[IX, T](a: array[IX, T]): T {.inline.} =
+iterator ritems*[IX, T](a: array[IX, T]): T {.inline.} =
   ## Iterates over each item of `a` in reverse.
   when a.len > 0:
     var i = high(IX)
@@ -162,7 +162,7 @@ iterator itemsdown*[IX, T](a: array[IX, T]): T {.inline.} =
       if i < low(IX): break
       dec(i)
 
-iterator mitemsdown*[IX, T](a: var array[IX, T]): var T {.inline.} =
+iterator mritems*[IX, T](a: var array[IX, T]): var T {.inline.} =
   ## Iterates over each item of `a`in reverse so that you can modify the yielded value.
   when a.len > 0:
     var i = high(IX)
@@ -171,7 +171,7 @@ iterator mitemsdown*[IX, T](a: var array[IX, T]): var T {.inline.} =
       if i < low(IX): break
       dec(i)
 
-iterator itemsdown*[T](a: set[T]): T {.inline.} =
+iterator ritems*[T](a: set[T]): T {.inline.} =
   ## Iterates over each element of `a` in reverse. `items` iterates only over the
   ## elements that are really in the set (and not over the ones the set is
   ## able to hold).
@@ -180,7 +180,7 @@ iterator itemsdown*[T](a: set[T]): T {.inline.} =
     if T(i) in a: yield T(i)
     dec(i)
 
-iterator itemsdown*(a: cstring): char {.inline.} =
+iterator ritems*(a: cstring): char {.inline.} =
   ## Iterates over each item of `a` in reverse.
   runnableExamples:
     from std/sequtils import toSeq
@@ -209,7 +209,7 @@ iterator itemsdown*(a: cstring): char {.inline.} =
         yield a[i]
         dec(i)
 
-iterator mitemsdown*(a: var cstring): var char {.inline.} =
+iterator mritems*(a: var cstring): var char {.inline.} =
   ## Iterates over each item of `a` in reverse so that you can modify the yielded value.
   # xxx this should give CT error in js RT.
   runnableExamples:
@@ -217,7 +217,7 @@ iterator mitemsdown*(a: var cstring): var char {.inline.} =
     var a = "abc\0def"
     var b = a.cstring
     let s = collect:
-      for bi in mitemsdown(b):
+      for bi in mritems(b):
         if bi == 'b': bi = 'B'
         bi
     assert s == @['a', 'B', 'c']
@@ -239,7 +239,7 @@ iterator mitemsdown*(a: var cstring): var char {.inline.} =
         yield a[i]
         dec(i)
 
-iterator itemsdown*[T: enum and Ordinal](E: typedesc[T]): T =
+iterator ritems*[T: enum and Ordinal](E: typedesc[T]): T =
   ## Iterates over the values of `E` in reverse.
   ## See also `enumutils.items` for enums with holes.
   runnableExamples:
@@ -249,7 +249,7 @@ iterator itemsdown*[T: enum and Ordinal](E: typedesc[T]): T =
   for v in high(E) .. low(E):
     yield v
 
-iterator itemsdown*[T: Ordinal](s: Slice[T]): T =
+iterator ritems*[T: Ordinal](s: Slice[T]): T =
   ## Iterates over the slice `s` in reverse, yielding each value between `s.b` and `s.a`
   ## (inclusively).
   for x in s.b .. s.a: # ?????
@@ -262,7 +262,8 @@ iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
     yield (i, a[i])
     inc(i)
 
-iterator mpairs*[T](a: var openArray[T]): tuple[key: int, val: var T]{.inline.} =
+iterator mpairs*[T](a: var openArray[T]): tuple[key: int,
+    val: var T]{.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   ## `a[index]` can be modified.
   var i = 0
@@ -279,7 +280,8 @@ iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
       if i >= high(IX): break
       inc(i)
 
-iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.inline.} =
+iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX,
+    val: var T] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   ## `a[index]` can be modified.
   when a.len > 0:
@@ -392,7 +394,7 @@ iterator mitems*(a: var string): var char {.inline.} =
     inc(i)
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
-iterator itemsdown*[T](a: seq[T]): lent2 T {.inline.} =
+iterator ritems*[T](a: seq[T]): lent2 T {.inline.} =
   ## Iterates over each item of `a` in reverse.
   var i = high(a)
   let L = len(a)
@@ -401,7 +403,7 @@ iterator itemsdown*[T](a: seq[T]): lent2 T {.inline.} =
     dec(i)
     assert(len(a) == L, "the length of the seq changed while iterating over it")
 
-iterator mitemsdown*[T](a: var seq[T]): var T {.inline.} =
+iterator mritems*[T](a: var seq[T]): var T {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
   var i = high(a)
   let L = len(a)
@@ -410,7 +412,7 @@ iterator mitemsdown*[T](a: var seq[T]): var T {.inline.} =
     dec(i)
     assert(len(a) == L, "the length of the seq changed while iterating over it")
 
-iterator itemsdown*(a: string): char {.inline.} =
+iterator ritems*(a: string): char {.inline.} =
   ## Iterates over each item of `a`.
   var i = high(a)
   let L = len(a)
@@ -419,7 +421,7 @@ iterator itemsdown*(a: string): char {.inline.} =
     dec(i)
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
-iterator mitemsdown*(a: var string): var char {.inline.} =
+iterator mritems*(a: var string): var char {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
   var i = high(a)
   let L = len(a)
@@ -441,7 +443,8 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
     for v in fields(t): v = default(typeof(v))
     doAssert t == (0, "")
 
-iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[key: string, val: RootObj] {.
+iterator fields*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
+    key: string, val: RootObj] {.
   magic: "Fields", noSideEffect.} =
   ## Iterates over every field of `x` and `y`.
   ##
