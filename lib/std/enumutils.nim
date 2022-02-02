@@ -9,6 +9,7 @@
 
 import macros
 from typetraits import OrdinalEnum, HoleyEnum
+from sequtils import toSeq
 
 # xxx `genEnumCaseStmt` needs tests and runnableExamples
 
@@ -95,6 +96,12 @@ iterator items*[T: HoleyEnum](E: typedesc[T]): T =
     assert A.toSeq == [a0, a1, a2]
     assert B[float].toSeq == [B[float].b0, B[float].b1]
   for a in enumFullRange(E): yield a
+
+iterator ritems*[T: HoleyEnum](E: typedesc[T]): T =
+  ## Iterates over an enum with holes in reverse.
+  let eRange = E.toSeq
+
+  for i in countdown(eRange.high, eRange.low): yield eRange[i]
 
 func span(T: typedesc[HoleyEnum]): int =
   (T.high.ord - T.low.ord) + 1
