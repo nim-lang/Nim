@@ -14,6 +14,12 @@ import posix, times
 # Maximum number of events that can be returned
 const MAX_POLL_EVENTS = 64
 
+const hasEventFds = defined(zephyr) or defined(nimPollHasEventFds)
+
+when hasEventFds:
+  proc eventfd(count: cuint, flags: cint): cint
+     {.cdecl, importc: "eventfd", header: "<sys/eventfd.h>".}
+
 when hasThreadSupport:
   type
     SelectorImpl[T] = object
@@ -184,14 +190,22 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   s.pollRemove(fdi.cint)
 
 proc newSelectEvent*(): SelectEvent =
-  var fds: array[2, cint]
-  if posix.pipe(fds) != 0:
-    raiseIOSelectorsError(osLastError())
-  setNonBlocking(fds[0])
-  setNonBlocking(fds[1])
-  result = cast[SelectEvent](allocShared0(sizeof(SelectEventImpl)))
-  result.rfd = fds[0]
-  result.wfd = fds[1]
+  when not hasEventFds: 
+    var fds: array[2, cint]
+    if posix.pipe(fds) != 0:
+      raiseIOSelectorsError(osLastError())
+    setNonBlocking(fds[0])
+    setNonBlocking(fds[1])
+    result = cast[SelectEvent](allocShared0(sizeof(SelectEventImpl)))
+    result.rfd = fds[0]
+    result.wfd = fds[1]
+  else: 
+    let fdci = eventfd(0, O_CLOEXEC or O_NONBLOCK)
+    if fdci == -1:
+      raiseIOSelectorsError(osLastError())
+    result = cast[SelectEvent](allocShared0(sizeof(SelectEventImpl)))
+    result.rfd = fdci
+    result.wfd = fdci
 
 proc trigger*(ev: SelectEvent) =
   var data: uint64 = 1
@@ -200,7 +214,10 @@ proc trigger*(ev: SelectEvent) =
 
 proc close*(ev: SelectEvent) =
   let res1 = posix.close(ev.rfd)
-  let res2 = posix.close(ev.wfd)
+  let res2 = 
+    when  hasEventFds: 0
+    else: posix.close(ev.wfd)
+
   deallocShared(cast[pointer](ev))
   if res1 != 0 or res2 != 0:
     raiseIOSelectorsError(osLastError())
