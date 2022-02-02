@@ -860,3 +860,15 @@ type
 
 var a: Tile3[int]
 
+block: # Ensure no segfault from constraint
+  type
+    Regex[A: SomeOrdinal] = ref object
+      val: Regex[A]
+    MyConstraint = (seq or enum or set)
+    MyOtherType[A: MyConstraint] = ref object
+      val: MyOtherType[A]
+
+  var
+    a = Regex[int]()
+    b = Regex[bool]()
+    c = MyOtherType[seq[int]]()
