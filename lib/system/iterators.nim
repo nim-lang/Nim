@@ -120,13 +120,13 @@ iterator items*[T: enum and Ordinal](E: typedesc[T]): T =
     type Goo = enum g0 = 2, g1, g2
     from std/sequtils import toSeq
     assert Goo.toSeq == [g0, g1, g2]
-  for v in countdown(high(E), low(E)):
+  for v in low(E) .. high(E):
     yield v
 
 iterator items*[T: Ordinal](s: Slice[T]): T =
   ## Iterates over the slice `s`, yielding each value between `s.a` and `s.b`
   ## (inclusively).
-  for x in countdown(s.a, s.b):
+  for x in s.a .. s.b:
     yield x
 
 iterator ritems*[T: not char](a: openArray[T]): lent2 T {.inline.} =
@@ -240,19 +240,19 @@ iterator mritems*(a: var cstring): var char {.inline.} =
         dec(i)
 
 iterator ritems*[T: enum and Ordinal](E: typedesc[T]): T =
-  ## Iterates over the values of `E` in reverse.
+  ## Iterates over the values of `E`.
   ## See also `enumutils.items` for enums with holes.
   runnableExamples:
     type Goo = enum g0 = 2, g1, g2
     from std/sequtils import toSeq
     assert Goo.toSeq == [g0, g1, g2]
-  for v in high(E) .. low(E):
+  for v in countdown(high(E), low(E)):
     yield v
 
 iterator ritems*[T: Ordinal](s: Slice[T]): T =
-  ## Iterates over the slice `s` in reverse, yielding each value between `s.b` and `s.a`
+  ## Iterates over the slice `s`, yielding each value between `s.a` and `s.b`
   ## (inclusively).
-  for x in s.b .. s.a: # ?????
+  for x in countdown(s.a, s.b):
     yield x
 
 iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
