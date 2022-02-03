@@ -183,9 +183,11 @@ iterator ritems*[T](a: set[T]): T {.inline.} =
 iterator ritems*(a: cstring): char {.inline.} =
   ## Iterates over each item of `a` in reverse.
   runnableExamples:
-    from std/sequtils import toSeq
-    assert toSeq("abc\0def".cstring) == @['a', 'b', 'c']
-    assert toSeq("abc".cstring) == @['a', 'b', 'c']
+    from std/sugar import collect
+    let values = collect(newSeq):
+      for i in "abc\0def".cstring.ritems:
+        i
+    assert values == ['c', 'b', 'a']
   #[
   assert toSeq(nil.cstring) == @[] # xxx fails with SIGSEGV
   this fails with SIGSEGV; unclear whether we want to instead yield nothing
@@ -217,10 +219,11 @@ iterator mritems*(a: var cstring): var char {.inline.} =
     var a = "abc\0def"
     var b = a.cstring
     let s = collect:
-      for bi in mritems(b):
+      for bi in b.mritems:
         if bi == 'b': bi = 'B'
         bi
-    assert s == @['a', 'B', 'c']
+
+    assert s == @['c', 'B', 'a']
     assert b == "aBc"
     assert a == "aBc\0def"
 
@@ -243,9 +246,15 @@ iterator ritems*[T: enum and Ordinal](E: typedesc[T]): T =
   ## Iterates over the values of `E`.
   ## See also `enumutils.items` for enums with holes.
   runnableExamples:
+    from std/sugar import collect
     type Goo = enum g0 = 2, g1, g2
-    from std/sequtils import toSeq
-    assert Goo.toSeq == [g0, g1, g2]
+      
+    let values = collect(newSeq):
+      for i in Goo.ritems:
+        i
+
+    assert values == [g2, g1, g0]
+
   for v in countdown(high(E), low(E)):
     yield v
 
@@ -262,8 +271,7 @@ iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
     yield (i, a[i])
     inc(i)
 
-iterator mpairs*[T](a: var openArray[T]): tuple[key: int,
-    val: var T]{.inline.} =
+iterator mpairs*[T](a: var openArray[T]): tuple[key: int, val: var T]{.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   ## `a[index]` can be modified.
   var i = 0
