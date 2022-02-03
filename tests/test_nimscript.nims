@@ -5,7 +5,7 @@
 
 from stdtest/specialpaths import buildDir
 
-when defined(nimSlimSystem):
+when defined(nimPreviewSlimSystem):
   import std/syncio
 
 import std/[
