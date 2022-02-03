@@ -18,12 +18,15 @@ type
     outputs: seq[ValueType]
     rails: seq[Effect]
 
+const SHAPEPOS = Rectangle(x: 12.0, y: 34.0, width: 56.0, height: 78.0)
+
 var nodes: seq[Node]
 var node: Node = default(Node)
-let shapepos = Rectangle(x: 12.0, y: 34.0, width: 56.0, height: 78.0)
+let shapepos = SHAPEPOS
 node.shapepos = shapepos
 node.inputs.add ValueType(payload:42)
 echo node
 nodes.add node
 echo nodes
-doAssert nodes[0].shapepos.x == shapepos.x
+doAssert nodes[0].shapepos.x == SHAPEPOS.x
+doAssert nodes[0].shapepos == SHAPEPOS
