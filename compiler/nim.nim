@@ -116,7 +116,8 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       if cmdPrefix.len > 0: cmdPrefix.add " "
         # without the `cmdPrefix.len > 0` check, on windows you'd get a cryptic:
         # `The parameter is incorrect`
-      execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
+      let cmd = cmdPrefix & output.quoteShell & ' ' & conf.arguments
+      execExternalProgram(conf, cmd.strip(leading=false,trailing=true))
     of cmdDocLike, cmdRst2html, cmdRst2tex: # bugfix(cmdRst2tex was missing)
       if conf.arguments.len > 0:
         # reserved for future use
