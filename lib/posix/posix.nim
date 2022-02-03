@@ -37,7 +37,7 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
-when defined(nimSlimSystem):
+when defined(nimPreviewSlimSystem):
   import std/syncio
 
 # TODO these constants don't seem to be fetched from a header file for unknown

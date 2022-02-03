@@ -12,7 +12,7 @@
 
 import os, pathnorm
 
-when defined(nimSlimSystem):
+when defined(nimPreviewSlimSystem):
   import std/syncio
 
 type
