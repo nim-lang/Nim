@@ -899,8 +899,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     splitSwitch(conf, arg, key, val, pass, info)
     os.putEnv(key, val)
   of "cc":
-    expectArg(conf, switch, arg, pass, info)
-    setCC(conf, arg, info)
+    if conf.backend != backendJs: # bug #19330
+      expectArg(conf, switch, arg, pass, info)
+      setCC(conf, arg, info)
   of "track":
     expectArg(conf, switch, arg, pass, info)
     track(conf, arg, info)
