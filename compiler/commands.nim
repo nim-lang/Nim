@@ -238,7 +238,7 @@ const
   errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
   errNoneSpeedOrSizeExpectedButXFound = "'none', 'speed' or 'size' expected, but '$1' found"
   errGuiConsoleOrLibExpectedButXFound = "'gui', 'console' or 'lib' expected, but '$1' found"
-  errInvalidExceptionSystem = "'goto', 'setjump', 'cpp' or 'quirky' expected, but '$1' found"
+  errInvalidExceptionSystem = "'goto', 'setjmp', 'cpp' or 'quirky' expected, but '$1' found"
 
 template warningOptionNoop(switch: string) =
   warningDeprecated(conf, info, "'$#' is deprecated, now a noop" % switch)
@@ -899,8 +899,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     splitSwitch(conf, arg, key, val, pass, info)
     os.putEnv(key, val)
   of "cc":
-    expectArg(conf, switch, arg, pass, info)
-    setCC(conf, arg, info)
+    if conf.backend != backendJs: # bug #19330
+      expectArg(conf, switch, arg, pass, info)
+      setCC(conf, arg, info)
   of "track":
     expectArg(conf, switch, arg, pass, info)
     track(conf, arg, info)

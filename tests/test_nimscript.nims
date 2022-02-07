@@ -5,6 +5,9 @@
 
 from stdtest/specialpaths import buildDir
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 import std/[
   # Core:
   bitops, typetraits, lenientops, macros, volatile,

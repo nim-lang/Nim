@@ -843,12 +843,7 @@ suite "Warnings":
               rnInner
                 rnLeaf  'foo'
               rnInner
-                rnLeaf  '#'
-                rnLeaf  'foo'
-                rnLeaf  ','
-                rnLeaf  'string'
-                rnLeaf  ','
-                rnLeaf  'string'
+                rnLeaf  '#foo,string,string'
           rnParagraph  anchor='foo'
             rnLeaf  'Paragraph'
             rnLeaf  '.'
@@ -1256,3 +1251,23 @@ suite "RST inline markup":
           rnLeaf  'my {link example'
           rnLeaf  'http://example.com/bracket_(symbol_[)'
       """)
+
+  test "not a Markdown link":
+    # bug #17340 (27) `f` will be considered as a protocol and blocked as unsafe
+    var warnings = new seq[string]
+    check("[T](f: var Foo)".toAst(warnings = warnings) ==
+      dedent"""
+        rnInner
+          rnLeaf  '['
+          rnLeaf  'T'
+          rnLeaf  ']'
+          rnLeaf  '('
+          rnLeaf  'f'
+          rnLeaf  ':'
+          rnLeaf  ' '
+          rnLeaf  'var'
+          rnLeaf  ' '
+          rnLeaf  'Foo'
+          rnLeaf  ')'
+      """)
+    check(warnings[] == @["input(1, 5) Warning: broken link 'f'"])

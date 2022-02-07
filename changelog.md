@@ -20,6 +20,8 @@
 - `addr` is now available for all addressable locations, `unsafeAddr` is deprecated and
 becomes an alias for `addr`.
 
+- io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`.
+
 ## Standard library additions and changes
 
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional
