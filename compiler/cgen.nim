@@ -48,8 +48,13 @@ proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
-  let ms = s.itemId.module  #getModule(s)
-  result = m.g.modules[ms]
+  # TODO fixme
+  if m.config.symbolFiles == v2Sf:
+    let ms = s.itemId.module  #getModule(s)
+    result = m.g.modules[ms]
+  else:
+    var ms = getModule(s)
+    result = m.g.modules[ms.position]
 
 proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
   result.k = k
@@ -1034,7 +1039,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       internalError(m.config, prc.info, "proc has no result symbol")
     let resNode = prc.ast[resultPos]
     let res = resNode.sym # get result symbol
-    if not isInvalidReturnType(m.config, prc.typ[0]):
+    if not isInvalidReturnType(m.config, prc.typ):
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
       if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(procBody); val != nil):
         var decl = localVarDecl(p, resNode)
@@ -1048,7 +1053,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     else:
-      fillResult(p.config, resNode)
+      fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ[0])
       # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
       # to 'unsureAsgn(result, x)'

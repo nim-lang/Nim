@@ -235,6 +235,12 @@ type
                               ## to Markdown) -- implies `roSupportMarkdown`
     roNimFile                 ## set for Nim files where default interpreted
                               ## text role should be :nim:
+    roSandboxDisabled         ## this option enables certain options
+                              ## (e.g. raw, include)
+                              ## which are disabled by default as they can
+                              ## enable users to read arbitrary data and
+                              ## perform XSS if the parser is used in a web
+                              ## app.
 
   RstParseOptions* = set[RstParseOption]
 
@@ -260,7 +266,8 @@ type
     mwBrokenLink = "broken link '$1'",
     mwUnsupportedLanguage = "language '$1' not supported",
     mwUnsupportedField = "field '$1' not supported",
-    mwRstStyle = "RST style: $1"
+    mwRstStyle = "RST style: $1",
+    meSandboxedDirective = "disabled directive: '$1'",
 
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
                        arg: string) {.closure, gcsafe.} ## what to do in case of an error
@@ -315,6 +322,7 @@ const
     ":geek:": "icon_e_geek",
     ":ugeek:": "icon_e_ugeek"
   }
+  SandboxDirAllowlist = ["image", "code", "code-block"]
 
 type
   TokType = enum
@@ -2822,7 +2830,7 @@ type
   DirFlag = enum
     hasArg, hasOptions, argIsFile, argIsWord
   DirFlags = set[DirFlag]
-  SectionParser = proc (p: var RstParser): PRstNode {.nimcall.}
+  SectionParser = proc (p: var RstParser): PRstNode {.nimcall, gcsafe.}
 
 proc parseDirective(p: var RstParser, k: RstNodeKind, flags: DirFlags): PRstNode =
   ## Parses arguments and options for a directive block.
@@ -2869,7 +2877,7 @@ proc indFollows(p: RstParser): bool =
   result = currentTok(p).kind == tkIndent and currentTok(p).ival > currInd(p)
 
 proc parseBlockContent(p: var RstParser, father: var PRstNode,
-                       contentParser: SectionParser): bool =
+                       contentParser: SectionParser): bool {.gcsafe.} =
   ## parse the final content part of explicit markup blocks (directives,
   ## footnotes, etc). Returns true if succeeded.
   if currentTok(p).kind != tkIndent or indFollows(p):
@@ -2987,10 +2995,14 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
   ##
   ## As an extension this proc will process the ``file`` extension field and if
   ## present will replace the code block with the contents of the referenced
-  ## file.
+  ## file. This behaviour is disabled in sandboxed mode and can be re-enabled
+  ## with the `roSandboxDisabled` flag.
   result = parseDirective(p, rnCodeBlock, {hasArg, hasOptions}, parseLiteralBlock)
   var filename = strip(getFieldValue(result, "file"))
   if filename != "":
+    if roSandboxDisabled notin p.s.options:
+      let tok = p.tok[p.idx-2]
+      rstMessage(p, meSandboxedDirective, "file", tok.line, tok.col)
     var path = p.findRelativeFile(filename)
     if path == "": rstMessage(p, meCannotOpenFile, filename)
     var n = newRstNode(rnLiteralBlock)
@@ -3086,6 +3098,11 @@ proc dirRaw(p: var RstParser): PRstNode =
 
 proc selectDir(p: var RstParser, d: string): PRstNode =
   result = nil
+  let tok = p.tok[p.idx-2] # report on directive in ".. directive::"
+  if roSandboxDisabled notin p.s.options:
+    if d notin SandboxDirAllowlist:
+      rstMessage(p, meSandboxedDirective, d, tok.line, tok.col)
+
   case d
   of "admonition", "attention", "caution": result = dirAdmonition(p, d)
   of "code": result = dirCodeBlock(p)
@@ -3112,7 +3129,6 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   of "title": result = dirTitle(p)
   of "warning": result = dirAdmonition(p, d)
   else:
-    let tok = p.tok[p.idx-2]  # report on directive in ".. directive::"
     rstMessage(p, meInvalidDirective, d, tok.line, tok.col)
 
 proc prefix(ftnType: FootnoteType): string =
@@ -3123,7 +3139,7 @@ proc prefix(ftnType: FootnoteType): string =
   of fnAutoSymbol: result = "footnotesym-"
   of fnCitation: result = "citation-"
 
-proc parseFootnote(p: var RstParser): PRstNode =
+proc parseFootnote(p: var RstParser): PRstNode {.gcsafe.} =
   ## Parses footnotes and citations, always returns 2 sons:
   ##
   ## 1) footnote label, always containing rnInner with 1 or more sons

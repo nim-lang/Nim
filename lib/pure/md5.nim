@@ -9,7 +9,7 @@
 
 ## Module for computing [MD5 checksums](https://en.wikipedia.org/wiki/MD5).
 ##
-## **Note:** The procs in this module can be used at compile time.
+## This module also works at compile time and in JavaScript.
 ##
 ## See also
 ## ========
@@ -34,15 +34,16 @@ type
     buffer: MD5Buffer
 
 const
-  padding: cstring = "\x80\0\0\0" &
-                     "\0\0\0\0\0\0\0\0" &
-                     "\0\0\0\0\0\0\0\0" &
-                     "\0\0\0\0\0\0\0\0" &
-                     "\0\0\0\0\0\0\0\0" &
-                     "\0\0\0\0\0\0\0\0" &
-                     "\0\0\0\0\0\0\0\0" &
-                     "\0\0\0\0\0\0\0\0" &
-                     "\0\0\0\0"
+  padding: array[0..63, uint8] = [
+    0x80'u8, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0
+  ]
 
 proc F(x, y, z: uint32): uint32 {.inline.} =
   result = (x and y) or ((not x) and z)
@@ -79,7 +80,7 @@ proc II(a: var uint32, b, c, d, x: uint32, s: uint8, ac: uint32) =
   rot(a, s)
   a = a + b
 
-proc encode(dest: var MD5Block, src: cstring) =
+proc encode(dest: var MD5Block, src: openArray[uint8]) =
   var j = 0
   for i in 0..high(dest):
     dest[i] = uint32(ord(src[j])) or
@@ -97,10 +98,48 @@ proc decode(dest: var openArray[uint8], src: openArray[uint32]) =
     dest[i+3] = uint8(src[j] shr 24 and 0xff'u32)
     inc(i, 4)
 
-proc transform(buffer: pointer, state: var MD5State) =
+template slice(s: string, a, b): openArray[uint8] =
+  when nimvm:
+    # toOpenArray is not implemented in VM
+    var s2 = newSeq[uint8](s.len)
+    for i in 0 ..< s2.len:
+      s2[i] = uint8(s[i])
+    s2
+  else:
+    s.toOpenArrayByte(a, b)
+
+template slice(s: cstring, a, b): openArray[uint8] =
+  when nimvm:
+    # toOpenArray is not implemented in VM
+    slice($s, a, b)
+  else:
+    when defined(js):
+      # toOpenArrayByte for cstring is not implemented in JS
+      slice($s, a, b)
+    else:
+      s.toOpenArrayByte(a, b)
+
+template slice(s: openArray[uint8], a, b): openArray[uint8] =
+  when nimvm:
+    s[a .. b]
+  else:
+    s.toOpenArray(a, b)
+
+const useMem = declared(copyMem)
+
+template memOrNot(withMem, withoutMem): untyped =
+  when nimvm:
+    withoutMem
+  else:
+    when useMem:
+      withMem
+    else:
+      withoutMem
+
+proc transform(buffer: openArray[uint8], state: var MD5State) =
   var
     myBlock: MD5Block
-  encode(myBlock, cast[cstring](buffer))
+  encode(myBlock, buffer)
   var a = state[0]
   var b = state[1]
   var c = state[2]
@@ -175,9 +214,17 @@ proc transform(buffer: pointer, state: var MD5State) =
   state[3] = state[3] + d
 
 proc md5Init*(c: var MD5Context) {.raises: [], tags: [], gcsafe.}
-proc md5Update*(c: var MD5Context, input: cstring, len: int) {.raises: [],
+proc md5Update*(c: var MD5Context, input: openArray[uint8]) {.raises: [],
     tags: [], gcsafe.}
 proc md5Final*(c: var MD5Context, digest: var MD5Digest) {.raises: [], tags: [], gcsafe.}
+
+proc md5Update*(c: var MD5Context, input: cstring, len: int) {.raises: [],
+    tags: [], gcsafe.} =
+  ## Updates the `MD5Context` with the `input` data of length `len`.
+  ##
+  ## If you use the `toMD5 proc <#toMD5,string>`_, there's no need to call this
+  ## function explicitly.
+  md5Update(c, input.slice(0, len - 1))
 
 
 proc toMD5*(s: string): MD5Digest =
@@ -192,7 +239,7 @@ proc toMD5*(s: string): MD5Digest =
 
   var c: MD5Context
   md5Init(c)
-  md5Update(c, cstring(s), len(s))
+  md5Update(c, s.slice(0, s.len - 1))
   md5Final(c, result)
 
 proc `$`*(d: MD5Digest): string =
@@ -215,7 +262,7 @@ proc getMD5*(s: string): string =
     c: MD5Context
     d: MD5Digest
   md5Init(c)
-  md5Update(c, cstring(s), len(s))
+  md5Update(c, s.slice(0, s.len - 1))
   md5Final(c, d)
   result = $d
 
@@ -225,6 +272,12 @@ proc `==`*(D1, D2: MD5Digest): bool =
     if D1[i] != D2[i]: return false
   return true
 
+
+proc clearBuffer(c: var MD5Context) {.inline.} =
+  memOrNot:
+    zeroMem(addr(c.buffer), sizeof(MD5Buffer))
+  do:
+    reset(c.buffer)
 
 proc md5Init*(c: var MD5Context) =
   ## Initializes an `MD5Context`.
@@ -237,29 +290,39 @@ proc md5Init*(c: var MD5Context) =
   c.state[3] = 0x10325476'u32
   c.count[0] = 0'u32
   c.count[1] = 0'u32
-  zeroMem(addr(c.buffer), sizeof(MD5Buffer))
+  clearBuffer(c)
 
-proc md5Update*(c: var MD5Context, input: cstring, len: int) =
-  ## Updates the `MD5Context` with the `input` data of length `len`.
+proc writeBuffer(c: var MD5Context, index: int,
+                 input: openArray[uint8], inputIndex, len: int) {.inline.} =
+  memOrNot:
+    copyMem(addr(c.buffer[index]), unsafeAddr(input[inputIndex]), len)
+  do:
+    # cannot use system.`[]=` for arrays and openarrays as
+    # it can raise RangeDefect which gets tracked
+    for i in 0..<len:
+      c.buffer[index + i] = input[inputIndex + i]
+
+proc md5Update*(c: var MD5Context, input: openArray[uint8]) =
+  ## Updates the `MD5Context` with the `input` data.
   ##
   ## If you use the `toMD5 proc <#toMD5,string>`_, there's no need to call this
   ## function explicitly.
-  var input = input
   var Index = int((c.count[0] shr 3) and 0x3F)
-  c.count[0] = c.count[0] + (uint32(len) shl 3)
-  if c.count[0] < (uint32(len) shl 3): c.count[1] = c.count[1] + 1'u32
-  c.count[1] = c.count[1] + (uint32(len) shr 29)
+  c.count[0] = c.count[0] + (uint32(input.len) shl 3)
+  if c.count[0] < (uint32(input.len) shl 3): c.count[1] = c.count[1] + 1'u32
+  c.count[1] = c.count[1] + (uint32(input.len) shr 29)
   var PartLen = 64 - Index
-  if len >= PartLen:
-    copyMem(addr(c.buffer[Index]), input, PartLen)
-    transform(addr(c.buffer), c.state)
+  if input.len >= PartLen:
+    writeBuffer(c, Index, input, 0, PartLen)
+    transform(c.buffer, c.state)
     var i = PartLen
-    while i + 63 < len:
-      transform(addr(input[i]), c.state)
+    while i + 63 < input.len:
+      transform(input.slice(i, i + 63), c.state)
       inc(i, 64)
-    copyMem(addr(c.buffer[0]), addr(input[i]), len-i)
-  else:
-    copyMem(addr(c.buffer[Index]), addr(input[0]), len)
+    if i < input.len:
+      writeBuffer(c, 0, input, i, input.len - i)
+  elif input.len > 0:
+    writeBuffer(c, Index, input, 0, input.len)
 
 proc md5Final*(c: var MD5Context, digest: var MD5Digest) =
   ## Finishes the `MD5Context` and stores the result in `digest`.
@@ -273,10 +336,10 @@ proc md5Final*(c: var MD5Context, digest: var MD5Digest) =
   var Index = int((c.count[0] shr 3) and 0x3F)
   if Index < 56: PadLen = 56 - Index
   else: PadLen = 120 - Index
-  md5Update(c, padding, PadLen)
-  md5Update(c, cast[cstring](addr(Bits)), 8)
+  md5Update(c, padding.slice(0, PadLen - 1))
+  md5Update(c, Bits)
   decode(digest, c.state)
-  zeroMem(addr(c), sizeof(MD5Context))
+  clearBuffer(c)
 
 
 when defined(nimHasStyleChecks):

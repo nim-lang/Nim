@@ -190,8 +190,16 @@ when defined(nimHasDeclaredMagic):
 else:
   proc declaredInScope*(x: untyped): bool {.magic: "DefinedInScope", noSideEffect, compileTime.}
 
-proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
+proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.
+  ##
+  ## .. note:: This works for `let` variables or parameters
+  ##   for better interop with C. When you use it to write a wrapper
+  ##   for a C library and take the address of `let` variables or parameters,
+  ##   you should always check that the original library
+  ##   does never write to data behind the pointer that is returned from
+  ##   this procedure.
+  ##
   ## Cannot be overloaded.
   ##
   ## See also:
@@ -207,13 +215,14 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
 
 proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory
-  ## location. This works even for `let` variables or parameters
-  ## for better interop with C and so it is considered even more
-  ## unsafe than the ordinary `addr <#addr,T>`_.
+  ## location.
   ##
-  ## **Note**: When you use it to write a wrapper for a C library, you should
-  ## always check that the original library does never write to data behind the
-  ## pointer that is returned from this procedure.
+  ## .. note:: This works for `let` variables or parameters
+  ##   for better interop with C. When you use it to write a wrapper
+  ##   for a C library and take the address of `let` variables or parameters,
+  ##   you should always check that the original library
+  ##   does never write to data behind the pointer that is returned from
+  ##   this procedure.
   ##
   ## Cannot be overloaded.
   discard
@@ -1189,8 +1198,8 @@ proc align(address, alignment: int): int =
   else:
     result = (address + (alignment - 1)) and not (alignment - 1)
 
-when defined(nimdoc):
-  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
+when defined(nimNoQuit):
+  proc quit*(errorcode: int = QuitSuccess) = discard "ignoring quit"
     ## Stops the program immediately with an exit code.
     ##
     ## Before stopping the program the "exit procedures" are called in the
@@ -1213,6 +1222,9 @@ when defined(nimdoc):
     ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
     ##   It does *not* call the garbage collector to free all the memory,
     ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
+
+elif defined(nimdoc):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
 
 elif defined(genode):
   include genode/env
@@ -2310,6 +2322,15 @@ when notJSnotNims:
   proc setControlCHook*(hook: proc () {.noconv.})
     ## Allows you to override the behaviour of your application when CTRL+C
     ## is pressed. Only one such hook is supported.
+    ## Example:
+    ##
+    ## .. code-block:: Nim
+    ##   proc ctrlc() {.noconv.} =
+    ##     echo "Ctrl+C fired!"
+    ##     # do clean up stuff
+    ##     quit()
+    ##
+    ##   setControlCHook(ctrlc)
 
   when not defined(noSignalHandler) and not defined(useNimRtl):
     proc unsetControlCHook*()
@@ -2659,7 +2680,7 @@ proc slurp*(filename: string): string {.magic: "Slurp".}
   ## This is an alias for `staticRead <#staticRead,string>`_.
 
 proc staticRead*(filename: string): string {.magic: "Slurp".}
-  ## Compile-time `readFile <io.html#readFile,string>`_ proc for easy
+  ## Compile-time `readFile <syncio.html#readFile,string>`_ proc for easy
   ## `resource`:idx: embedding:
   ##
   ## The maximum file size limit that `staticRead` and `slurp` can read is
@@ -3129,8 +3150,11 @@ when defined(genode):
 import system/widestrs
 export widestrs
 
-import system/io
-export io
+when not defined(nimPreviewSlimSystem):
+  {.deprecated: """io is about to move out of system; use `-d:nimPreviewSlimSystem` and
+                import `std/syncio`.""".}
+  import std/syncio
+  export syncio
 
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
