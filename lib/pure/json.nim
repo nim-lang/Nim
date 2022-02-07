@@ -442,7 +442,7 @@ macro `%*`*(x: untyped): untyped =
   ## `%` for every element.
   result = toJsonImpl(x)
 
-proc `==`*(a, b: JsonNode): bool {.noSideEffect.} =
+proc `==`*(a, b: JsonNode): bool {.noSideEffect, raises: [KeyError].} =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
