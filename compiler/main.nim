@@ -25,6 +25,9 @@ import
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
 

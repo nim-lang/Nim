@@ -14,6 +14,9 @@ import ".." / [ast, idents, lineinfos, msgs, ropes, options,
 #import ".." / [renderer, astalgo]
 from os import removeFile, isAbsolute
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   PackedConfig* = object
     backend: TBackend

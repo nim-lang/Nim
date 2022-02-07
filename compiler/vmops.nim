@@ -30,6 +30,8 @@ from std/hashes import hash
 from std/osproc import nil
 from system/formatfloat import addFloatRoundtrip, addFloatSprintf
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 # There are some useful procs in vmconv.
 import vmconv

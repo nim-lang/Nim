@@ -21,6 +21,9 @@ import
   strutils, os, strtabs, streams, cpuinfo, streamwrapper,
   std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 export quoteShell, quoteShellWindows, quoteShellPosix
 
 when defined(windows):

@@ -19,6 +19,9 @@ import
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   let dir = getString(a, 0)
   var result: seq[string] = @[]

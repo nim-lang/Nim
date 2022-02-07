@@ -12,6 +12,9 @@
 
 import ast, msgs, ropes, options, pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   NdiFile* = object
     enabled: bool
