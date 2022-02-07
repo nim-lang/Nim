@@ -28,7 +28,7 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
   is the official Telegram channel. Not bridged to IRC.
 * [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
   topics that includes posts about Nim.
-* [Github Wiki][nim-wiki] - Misc user-contributed content.
+* [GitHub Wiki][nim-wiki] - Misc user-contributed content.
 
 ## Compiling
 
@@ -73,7 +73,7 @@ the installation instructions on the website to do so: https://nim-lang.org/inst
 
 For package maintainers: see [packaging guidelines](https://nim-lang.github.io/Nim/packaging.html).
 
-First, get Nim from github:
+First, get Nim from GitHub:
 
 ```
 git clone https://github.com/nim-lang/Nim.git
