@@ -6,6 +6,9 @@ internal API for now, API subject to change
 
 import std/[os, osproc, strutils, tempfiles]
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 const commitHead* = "HEAD"
 
 template retryCall*(maxRetry = 3, backoffDuration = 1.0, call: untyped): bool =

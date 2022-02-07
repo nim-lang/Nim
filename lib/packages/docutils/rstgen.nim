@@ -44,6 +44,9 @@ import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
 
 import ../../std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 const
   HtmlExt = "html"
   IndexExt* = ".idx"
