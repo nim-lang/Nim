@@ -37,6 +37,9 @@ import
 
 import json, sets, math, tables, intsets, strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   TJSGen = object of PPassContext
     module: PSym
