@@ -40,7 +40,7 @@
 ##   can be done by simply searching for [footnoteName].
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
-  algorithm, parseutils, std/strbasics, strscans
+  algorithm, parseutils, std/strbasics
 
 import ../../std/private/since
 
@@ -890,7 +890,6 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
 
   # support for `:target:` links for images:
   var target = esc(d.target, getFieldValue(n, "target").strip(), escMode=emUrl)
-
   discard safeProtocol(target)
 
   if target.len > 0:
@@ -1195,7 +1194,6 @@ proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string,
     d.escMode = emUrl
     renderRstToOut(d, link, linkStr)
     d.escMode = mode
-
   discard safeProtocol(linkStr)
   var textStr = ""
   renderRstToOut(d, text, textStr)
