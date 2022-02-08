@@ -450,8 +450,7 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
     for v in fields(t): v = default(typeof(v))
     doAssert t == (0, "")
 
-iterator fields*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
-    key: string, val: RootObj] {.
+iterator fields*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[key: string, val: RootObj] {.
   magic: "Fields", noSideEffect.} =
   ## Iterates over every field of `x` and `y`.
   ##
