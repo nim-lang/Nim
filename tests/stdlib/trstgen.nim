@@ -1593,7 +1593,6 @@ suite "invalid targets":
   test "invalid links":
     check("(([Nim](https://nim-lang.org/)))".toHtml ==
         """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))""")
-
     # unknown protocol is treated just like plain text, not a link
     var warnings = new seq[string]
     check("(([Nim](javascript://nim-lang.org/)))".toHtml(warnings=warnings) ==
