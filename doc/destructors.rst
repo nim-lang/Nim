@@ -562,7 +562,6 @@ Under the `--mm:arc|orc`:option: modes Nim's `ref` type is implemented
 via the same runtime "hooks" and thus via reference counting.
 This means that cyclic structures cannot be freed
 immediately (`--mm:orc`:option: ships with a cycle collector).
-
 With the `cursor` pragma one can break up cycles declaratively:
 
 .. code-block:: nim
