@@ -129,7 +129,6 @@ block: # extractDocCommentsAndRunnables
   macro checkRunnables(prc: untyped) =
     let runnables = prc.body.extractDocCommentsAndRunnables()
     doAssert runnables[0][0].eqIdent("runnableExamples")
-
   macro checkComments(comment: static[string], prc: untyped) =
     let comments = prc.body.extractDocCommentsAndRunnables()
     doAssert comments[0].strVal == comment
@@ -143,6 +142,5 @@ block: # extractDocCommentsAndRunnables
     runnableExamples "-d:ssl": discard
     discard
 
-    
   proc c() {.checkComments("Hello world").} =
     ## Hello world
