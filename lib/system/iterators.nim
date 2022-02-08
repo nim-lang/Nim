@@ -288,8 +288,7 @@ iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
       if i >= high(IX): break
       inc(i)
 
-iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX,
-    val: var T] {.inline.} =
+iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   ## `a[index]` can be modified.
   when a.len > 0:
