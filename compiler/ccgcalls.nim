@@ -376,7 +376,7 @@ proc genParams(p: BProc, ri: PNode, typ: PType): Rope =
         if not needTmp[i - 1]:
           needTmp[i - 1] = potentialAlias(n, potentialWrites)
       getPotentialWrites(ri[i], false, potentialWrites)
-    if ri[i].kind == nkHiddenAddr:
+    if ri[i].kind in {nkHiddenAddr, nkAddr}:
       # Optimization: don't use a temp, if we would only take the adress anyway
       needTmp[i - 1] = false
 
