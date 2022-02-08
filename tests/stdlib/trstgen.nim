@@ -1593,8 +1593,15 @@ suite "invalid targets":
   test "invalid links":
     check("(([Nim](https://nim-lang.org/)))".toHtml ==
         """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))""")
-    check("(([Nim](javascript://nim-lang.org/)))".toHtml ==
-        """((<a class="reference external" href="">Nim</a>))""")
+    # unknown protocol is treated just like plain text, not a link
+    var warnings = new seq[string]
+    check("(([Nim](javascript://nim-lang.org/)))".toHtml(warnings=warnings) ==
+        """(([Nim](javascript://nim-lang.org/)))""")
+    check(warnings[] == @["input(1, 9) Warning: broken link 'javascript'"])
+    warnings[].setLen 0
+    check("`Nim <javascript://nim-lang.org/>`_".toHtml(warnings=warnings) ==
+      """Nim &lt;javascript://nim-lang.org/&gt;""")
+    check(warnings[] == @["input(1, 33) Warning: broken link 'javascript'"])
 
 suite "local file inclusion":
   test "cannot include files in sandboxed mode":
