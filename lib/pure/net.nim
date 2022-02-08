@@ -1627,7 +1627,6 @@ proc recvFrom*[T: string | IpAddress](socket: Socket, data: var string, length: 
   ##   so when `socket` is buffered the non-buffered implementation will be
   ##   used. Therefore if `socket` contains something in its buffer this
   ##   function will make no effort to return it.
-
   template adaptRecvFromToDomain(sockAddress: untyped, domain: Domain) =
     var addrLen = SockLen(sizeof(sockAddress))
     result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
