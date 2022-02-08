@@ -294,7 +294,6 @@ const
   colYellow* = Color(0xFFFF00)
   colYellowGreen* = Color(0x9ACD32)
 
-
   colorNames = {
     "aliceblue": colAliceBlue,
     "antiquewhite": colAntiqueWhite,
