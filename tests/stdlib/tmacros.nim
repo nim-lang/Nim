@@ -141,6 +141,6 @@ block: # extractDocCommentsAndRunnables
   proc b() {.checkRunnables.} =
     runnableExamples "-d:ssl": discard
     discard
-  
+    
   proc c() {.checkComments("Hello world").} =
     ## Hello world
