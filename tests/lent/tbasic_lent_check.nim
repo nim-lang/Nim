@@ -28,7 +28,8 @@ template main2 = # bug #15958
   doAssert byLent(a) == [11,12]
   doAssert sameAddress(byLent(a), a)
   doAssert byLent(b) == @[21,23]
-  # bug #16073
+
+  # pending bug #16073
   doAssert sameAddress(byLent(b), b)
   doAssert byLent(ss) == {1, 2, 3, 5}
   doAssert sameAddress(byLent(ss), ss)
@@ -43,7 +44,7 @@ template main2 = # bug #15958
     p[] = 20.0
     doAssert byLent(p)[] == 20.0
 
-  proc byLent2[T](a: openarray[T]): lent T = a[0]
+  proc byLent2[T](a: openArray[T]): lent T = a[0]
   doAssert byLent2(a) == 11
   doAssert sameAddress(byLent2(a), a[0])
   doAssert byLent2(b) == 21

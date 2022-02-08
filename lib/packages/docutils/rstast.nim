@@ -32,7 +32,10 @@ type
     rnFieldName,              # consisting of a field name ...
     rnFieldBody,              # ... and a field body
     rnOptionList, rnOptionListItem, rnOptionGroup, rnOption, rnOptionString,
-    rnOptionArgument, rnDescription, rnLiteralBlock, rnQuotedLiteralBlock,
+    rnOptionArgument, rnDescription, rnLiteralBlock,
+    rnMarkdownBlockQuote,     # a quote starting from punctuation like >>>
+    rnMarkdownBlockQuoteItem, # a quotation block, quote lines starting with
+                              # the same number of chars
     rnLineBlock,              # the | thingie
     rnLineBlockItem,          # a son of rnLineBlock - one line inside it.
                               # When `RstNode` lineIndent="\n" the line's empty
@@ -43,6 +46,7 @@ type
     rnFootnoteGroup,          # footnote group - exists for a purely stylistic
                               # reason: to display a few footnotes as 1 block
     rnStandaloneHyperlink, rnHyperlink, rnRef, rnInternalRef, rnFootnoteRef,
+    rnNimdocRef,              # reference to automatically generated Nim symbol
     rnDirective,              # a general directive
     rnDirArg,                 # a directive argument (for some directives).
                               # here are directives that are not rnDirective:
@@ -100,10 +104,14 @@ type
     of rnFootnote, rnCitation, rnOptionListItem:
       order*: int             ## footnote order (for auto-symbol footnotes and
                               ## auto-numbered ones without a label)
+    of rnMarkdownBlockQuoteItem:
+      quotationDepth*: int    ## number of characters in line prefix
     of rnRef, rnSubstitutionReferences,
         rnInterpretedText, rnField, rnInlineCode, rnCodeBlock, rnFootnoteRef:
       info*: TLineInfo        ## To have line/column info for warnings at
                               ## nodes that are post-processed after parsing
+    of rnNimdocRef:
+      tooltip*: string
     else:
       discard
     anchor*: string           ## anchor, internal link target
@@ -406,6 +414,8 @@ proc treeRepr*(node: PRstNode, indent=0): string =
     result.add "  level=" & $node.level
   of rnFootnote, rnCitation, rnOptionListItem:
     result.add (if node.order == 0:   "" else: "  order=" & $node.order)
+  of rnMarkdownBlockQuoteItem:
+    result.add "  quotationDepth=" & $node.quotationDepth
   else:
     discard
   result.add (if node.anchor == "": "" else: "  anchor='" & node.anchor & "'")

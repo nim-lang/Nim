@@ -101,16 +101,9 @@
 ## Handling Exceptions
 ## -------------------
 ##
-## The most reliable way to handle exceptions is to use `yield` on a future
-## then check the future's `failed` property. For example:
+## You can handle exceptions in the same way as in ordinary Nim code;
+## by using the try statement:
 ##
-## .. code-block:: Nim
-##   var future = sock.recv(100)
-##   yield future
-##   if future.failed:
-##     # Handle exception
-##
-## The `async` procedures also offer limited support for the try statement.
 ##
 ## .. code-block:: Nim
 ##   try:
@@ -119,9 +112,16 @@
 ##   except:
 ##     # Handle exception
 ##
-## Unfortunately the semantics of the try statement may not always be correct,
-## and occasionally the compilation may fail altogether.
-## As such it is better to use the former style when possible.
+##
+##
+## An alternative approach to handling exceptions is to use `yield` on a future
+## then check the future's `failed` property. For example:
+##
+## .. code-block:: Nim
+##   var future = sock.recv(100)
+##   yield future
+##   if future.failed:
+##     # Handle exception
 ##
 ##
 ## Discarding futures
@@ -1973,13 +1973,16 @@ proc activeDescriptors*(): int {.inline.} =
 when defined(posix):
   import posix
 
-when defined(linux) or defined(windows) or defined(macosx) or defined(bsd):
+when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
+       defined(solaris) or defined(zephyr) or defined(freertos):
   proc maxDescriptors*(): int {.raises: OSError.} =
     ## Returns the maximum number of active file descriptors for the current
     ## process. This involves a system call. For now `maxDescriptors` is
-    ## supported on the following OSes: Windows, Linux, OSX, BSD.
+    ## supported on the following OSes: Windows, Linux, OSX, BSD, Solaris.
     when defined(windows):
       result = 16_700_000
+    elif defined(zephyr) or defined(freertos):
+      result = FD_MAX
     else:
       var fdLim: RLimit
       if getrlimit(RLIMIT_NOFILE, fdLim) < 0:

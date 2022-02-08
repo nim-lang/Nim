@@ -60,8 +60,8 @@ type
   MetaEnum* = enum
     metaNone, metaTitle, metaSubtitle, metaAuthor, metaVersion
 
-  EscapeMode = enum  # in Latex text inside options [] and URLs is
-                     # escaped slightly differently than in normal text
+  EscapeMode* = enum  # in Latex text inside options [] and URLs is
+                      # escaped slightly differently than in normal text
     emText, emOption, emUrl  # emText is currently used for code also
 
   RstGenerator* = object of RootObj
@@ -89,6 +89,7 @@ type
     onTestSnippet*: proc (d: var RstGenerator; filename, cmd: string; status: int;
                           content: string)
     escMode*: EscapeMode
+    curQuotationDepth: int
 
   PDoc = var RstGenerator ## Alias to type less.
 
@@ -167,6 +168,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   g.currentSection = ""
   g.id = 0
   g.escMode = emText
+  g.curQuotationDepth = 0
   let fileParts = filename.splitFile
   if fileParts.ext == ".nim":
     g.currentSection = "Module " & fileParts.name
@@ -201,7 +203,9 @@ proc addTexChar(dest: var string, c: char, escMode: EscapeMode) =
   ## All escapes that need to work in text and code blocks (`emText` mode)
   ## should start from \ (to be compatible with fancyvrb/fvextra).
   case c
-  of '_', '$', '&', '#', '%': add(dest, "\\" & c)
+  of '_', '&', '#', '%': add(dest, "\\" & c)
+  # commands \label and \pageref don't accept \$ by some reason but OK with $:
+  of '$': (if escMode == emUrl: add(dest, c) else: add(dest, "\\" & c))
   # \~ and \^ have a special meaning unless they are followed by {}
   of '~', '^': add(dest, "\\" & c & "{}")
   # Latex loves to substitute ` to opening quote, even in texttt mode!
@@ -822,17 +826,6 @@ proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
                    "\\rstov$4[$5]{$3}$2\n", [$n.level,
         rstnodeToRefname(n).idS, tmp, $chr(n.level - 1 + ord('A')), tocName])
 
-
-proc safeProtocol(linkStr: var string) =
-  var protocol = ""
-  if scanf(linkStr, "$w:", protocol):
-    # if it has a protocol at all, ensure that it's not 'javascript:' or worse:
-    if cmpIgnoreCase(protocol, "http") == 0 or cmpIgnoreCase(protocol, "https") == 0 or
-        cmpIgnoreCase(protocol, "ftp") == 0:
-      discard "it's fine"
-    else:
-      linkStr = ""
-
 proc renderTocEntry(d: PDoc, e: TocEntry, result: var string) =
   dispA(d.target, result,
     "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n",
@@ -897,7 +890,8 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
 
   # support for `:target:` links for images:
   var target = esc(d.target, getFieldValue(n, "target").strip(), escMode=emUrl)
-  safeProtocol(target)
+
+  discard safeProtocol(target)
 
   if target.len > 0:
     # `htmlOut` needs to be of the following format for link to work for images:
@@ -1193,24 +1187,31 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
         "$1\n\\end{rstadmonition}\n",
       result)
 
-proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string, external: bool) =
+proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string,
+                     external: bool, nimdoc = false, tooltip="") =
   var linkStr = ""
   block:
     let mode = d.escMode
     d.escMode = emUrl
     renderRstToOut(d, link, linkStr)
     d.escMode = mode
-  safeProtocol(linkStr)
+
+  discard safeProtocol(linkStr)
   var textStr = ""
   renderRstToOut(d, text, textStr)
+  let nimDocStr = if nimdoc: " nimdoc" else: ""
+  var tooltipStr = ""
+  if tooltip != "":
+    tooltipStr = """ title="$1"""" % [ esc(d.target, tooltip) ]
   if external:
     dispA(d.target, result,
-      "<a class=\"reference external\" href=\"$2\">$1</a>",
-      "\\href{$2}{$1}", [textStr, linkStr])
+      "<a class=\"reference external$3\"$4 href=\"$2\">$1</a>",
+      "\\href{$2}{$1}", [textStr, linkStr, nimDocStr, tooltipStr])
   else:
     dispA(d.target, result,
-      "<a class=\"reference internal\" href=\"#$2\">$1</a>",
-      "\\hyperlink{$2}{$1} (p.~\\pageref{$2})", [textStr, linkStr])
+      "<a class=\"reference internal$3\"$4 href=\"#$2\">$1</a>",
+      "\\hyperlink{$2}{$1} (p.~\\pageref{$2})",
+      [textStr, linkStr, nimDocStr, tooltipStr])
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
@@ -1274,8 +1275,31 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnLiteralBlock:
     renderAux(d, n, "<pre$2>$1</pre>\n",
                     "\n\n$2\\begin{rstpre}\n$1\n\\end{rstpre}\n\n", result)
-  of rnQuotedLiteralBlock:
-    doAssert false, "renderRstToOut"
+  of rnMarkdownBlockQuote:
+    d.curQuotationDepth = 1
+    var tmp = ""
+    renderAux(d, n, "$1", "$1", tmp)
+    let itemEnding =
+      if d.target == outHtml: "</blockquote>" else: "\\end{rstquote}"
+    tmp.add itemEnding.repeat(d.curQuotationDepth - 1)
+    dispA(d.target, result,
+        "<blockquote$2 class=\"markdown-quote\">$1</blockquote>\n",
+        "\n\\begin{rstquote}\n$2\n$1\\end{rstquote}\n", [tmp, n.anchor.idS])
+  of rnMarkdownBlockQuoteItem:
+    let addQuotationDepth = n.quotationDepth - d.curQuotationDepth
+    var itemPrefix: string  # start or ending (quotation grey bar on the left)
+    if addQuotationDepth >= 0:
+      let s =
+        if d.target == outHtml: "<blockquote class=\"markdown-quote\">"
+        else: "\\begin{rstquote}"
+      itemPrefix = s.repeat(addQuotationDepth)
+    else:
+      let s =
+        if d.target == outHtml: "</blockquote>"
+        else: "\\end{rstquote}"
+      itemPrefix = s.repeat(-addQuotationDepth)
+    renderAux(d, n, itemPrefix & "<p>$1</p>", itemPrefix & "\n$1", result)
+    d.curQuotationDepth = n.quotationDepth
   of rnLineBlock:
     if n.sons.len == 1 and n.sons[0].lineIndent == "\n":
       # whole line block is one empty line, no need to add extra spacing
@@ -1343,6 +1367,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderHyperlink(d, text=n.sons[0], link=n.sons[0], result, external=true)
   of rnInternalRef:
     renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=false)
+  of rnNimdocRef:
+    renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=false,
+                    nimdoc=true, tooltip=n.tooltip)
   of rnHyperlink:
     renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=true)
   of rnFootnoteRef:

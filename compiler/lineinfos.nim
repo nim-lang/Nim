@@ -39,6 +39,7 @@ type
     errRstInvalidDirectiveX,
     errRstInvalidField,
     errRstFootnoteMismatch,
+    errRstSandboxedDirective,
     errProveInit, # deadcode
     errGenerated,
     errUser,
@@ -50,6 +51,7 @@ type
     warnSmallLshouldNotBeUsed = "SmallLshouldNotBeUsed", warnUnknownMagic = "UnknownMagic",
     warnRstRedefinitionOfLabel = "RedefinitionOfLabel",
     warnRstUnknownSubstitutionX = "UnknownSubstitutionX",
+    warnRstAmbiguousLink = "AmbiguousLink",
     warnRstBrokenLink = "BrokenLink",
     warnRstLanguageXNotSupported = "LanguageXNotSupported",
     warnRstFieldXNotSupported = "FieldXNotSupported",
@@ -109,6 +111,7 @@ const
     errRstInvalidDirectiveX: "invalid directive: '$1'",
     errRstInvalidField: "invalid field: $1",
     errRstFootnoteMismatch: "number of footnotes and their references don't match: $1",
+    errRstSandboxedDirective: "disabled directive: '$1'",
     errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
     errUser: "$1",
@@ -123,6 +126,7 @@ const
     warnUnknownMagic: "unknown magic '$1' might crash the compiler",
     warnRstRedefinitionOfLabel: "redefinition of label '$1'",
     warnRstUnknownSubstitutionX: "unknown substitution '$1'",
+    warnRstAmbiguousLink: "ambiguous doc link $1",
     warnRstBrokenLink: "broken link '$1'",
     warnRstLanguageXNotSupported: "language '$1' not supported",
     warnRstFieldXNotSupported: "field '$1' not supported",

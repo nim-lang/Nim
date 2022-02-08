@@ -145,7 +145,11 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         if sfGenSym in param.flags:
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
     freshGenSyms(c, b, result, orig, symMap)
-    b = semProcBody(c, b)
+    
+    if sfBorrow notin orig.flags: 
+      # We do not want to generate a body for generic borrowed procs.
+      # As body is a sym to the borrowed proc.
+      b = semProcBody(c, b)
     result.ast[bodyPos] = hloBody(c, b)
     excl(result.flags, sfForward)
     trackProc(c, result, result.ast[bodyPos])

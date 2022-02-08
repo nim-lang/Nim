@@ -869,6 +869,9 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       client.parseBodyFut.addCallback do():
         if client.parseBodyFut.failed:
           client.bodyStream.fail(client.parseBodyFut.error)
+  else:
+    when client is AsyncHttpClient:
+      result.bodyStream.complete()
 
 proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =

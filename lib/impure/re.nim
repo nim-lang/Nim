@@ -152,6 +152,9 @@ proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
   ## and the captured
   ## substrings in the array `matches`. If it does not match, nothing
   ## is written into `matches` and `(-1,0)` is returned.
+  ##
+  ## Note: The memory for `matches` needs to be allocated before this function is
+  ## called, otherwise it will just remain empty.
   var
     rtarray = initRtArray[cint]((matches.len+1)*3)
     rawMatches = rtarray.getRawData
@@ -171,6 +174,14 @@ proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
   ## and the captured substrings in the array `matches`.
   ## If it does not match, nothing
   ## is written into `matches` and `(-1,0)` is returned.
+  ##
+  ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
+  runnableExamples:
+    var matches = newSeq[string](1)
+    let (first, last) = findBounds("Hello World", re"(W\w+)", matches)
+    doAssert first == 6
+    doAssert last == 10
+    doAssert matches[0] == "World"
   result = findBounds(cstring(s), pattern, matches,
       min(start, MaxReBufSize), min(s.len, MaxReBufSize))
 
@@ -182,6 +193,8 @@ proc findBounds*(buf: cstring, pattern: Regex,
   ## and the captured substrings in the array `matches`.
   ## If it does not match, nothing is written into `matches` and
   ## `(-1,0)` is returned.
+  ##
+  ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
   var
     rtarray = initRtArray[cint]((matches.len+1)*3)
     rawMatches = rtarray.getRawData
@@ -202,6 +215,14 @@ proc findBounds*(s: string, pattern: Regex,
   ## and the captured substrings in the array `matches`.
   ## If it does not match, nothing is written into `matches` and
   ## `(-1,0)` is returned.
+  ##
+  ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
+  runnableExamples:
+    var matches = newSeq[tuple[first, last: int]](1)
+    let (first, last) = findBounds("Hello World", re"(\w+)", matches)
+    doAssert first == 0
+    doAssert last == 4
+    doAssert matches[0] == (0, 4)
   result = findBounds(cstring(s), pattern, matches,
       min(start, MaxReBufSize), min(s.len, MaxReBufSize))
 
@@ -255,6 +276,8 @@ proc matchLen*(s: string, pattern: Regex, matches: var openArray[string],
   ## the same as `match`, but it returns the length of the match,
   ## if there is no match, `-1` is returned. Note that a match length
   ## of zero can happen.
+  ##
+  ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
   result = matchOrFind(cstring(s), pattern, matches, start.cint, s.len.cint, pcre.ANCHORED)
 
 proc matchLen*(buf: cstring, pattern: Regex, matches: var openArray[string],
@@ -262,6 +285,8 @@ proc matchLen*(buf: cstring, pattern: Regex, matches: var openArray[string],
   ## the same as `match`, but it returns the length of the match,
   ## if there is no match, `-1` is returned. Note that a match length
   ## of zero can happen.
+  ##
+  ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
   return matchOrFind(buf, pattern, matches, start.cint, bufSize.cint, pcre.ANCHORED)
 
 proc matchLen*(s: string, pattern: Regex, start = 0): int {.inline.} =
@@ -292,6 +317,7 @@ proc match*(s: string, pattern: Regex, matches: var openArray[string],
   ## match, nothing is written into `matches` and `false` is
   ## returned.
   ##
+  ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
   runnableExamples:
     import std/sequtils
     var matches: array[2, string]
@@ -306,6 +332,8 @@ proc match*(buf: cstring, pattern: Regex, matches: var openArray[string],
   ## match, nothing is written into `matches` and `false` is
   ## returned.
   ## `buf` has length `bufSize` (not necessarily `'\0'` terminated).
+  ##
+  ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
   result = matchLen(buf, pattern, matches, start, bufSize) != -1
 
 proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
@@ -314,6 +342,8 @@ proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
   ## substrings in the array `matches`. If it does not match, nothing
   ## is written into `matches` and `-1` is returned.
   ## `buf` has length `bufSize` (not necessarily `'\0'` terminated).
+  ##
+  ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
   var
     rtarray = initRtArray[cint]((matches.len+1)*3)
     rawMatches = rtarray.getRawData
@@ -332,6 +362,8 @@ proc find*(s: string, pattern: Regex, matches: var openArray[string],
   ## returns the starting position of `pattern` in `s` and the captured
   ## substrings in the array `matches`. If it does not match, nothing
   ## is written into `matches` and `-1` is returned.
+  ##
+  ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
   result = find(cstring(s), pattern, matches, start, s.len)
 
 proc find*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int =
@@ -433,6 +465,8 @@ proc contains*(s: string, pattern: Regex, start = 0): bool {.inline.} =
 proc contains*(s: string, pattern: Regex, matches: var openArray[string],
               start = 0): bool {.inline.} =
   ## same as `find(s, pattern, matches, start) >= 0`
+  ##
+  ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
   return find(s, pattern, matches, start) >= 0
 
 proc startsWith*(s: string, prefix: Regex): bool {.inline.} =

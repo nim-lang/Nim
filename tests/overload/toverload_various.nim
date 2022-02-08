@@ -264,8 +264,8 @@ proc init*[T](hmctx: HMAC[T], key: ptr byte, ulen: uint) =
   const sizeBlock = hmctx.sizeBlock
   echo sizeBlock
 
-proc hmac*[A, B](HashType: typedesc, key: openarray[A],
-                 data: openarray[B]) =
+proc hmac*[A, B](HashType: typedesc, key: openArray[A],
+                 data: openArray[B]) =
   var ctx: HMAC[HashType]
   ctx.init(nil, 0)
 

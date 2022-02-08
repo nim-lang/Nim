@@ -166,6 +166,12 @@ endif
 ifeq ($(ucpu),riscv64)
   mycpu = riscv64
 endif
+ifeq ($(ucpu),e2k)
+  mycpu = e2k
+endif
+ifeq ($(ucpu),loongarch64)
+  mycpu = loongarch64
+endif
 ifndef mycpu
   $(error unknown CPU architecture: $(ucpu) See makefile.nimf)
 endif

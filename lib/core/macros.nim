@@ -465,12 +465,7 @@ proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
   ## If `rule == brForceOpen` always an `nnkOpenSymChoice` tree is
   ## returned even if the symbol is not ambiguous.
   ##
-  ## Experimental feature:
-  ## use {.experimental: "dynamicBindSym".} to activate it.
-  ## If called from template / regular code, `ident` and `rule` must be
-  ## constant expression / literal value.
-  ## If called from macros / compile time procs / static blocks,
-  ## `ident` and `rule` can be VM computed value.
+  ## See the `manual <manual.html#macros-bindsym>`_ for more details.
 
 proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   magic: "NGenSym", noSideEffect.}
@@ -516,27 +511,29 @@ proc lineInfo*(arg: NimNode): string =
   ## Return line info in the form `filepath(line, column)`.
   $arg.lineInfoObj
 
-proc internalParseExpr(s: string): NimNode {.
+proc internalParseExpr(s, filename: string): NimNode {.
   magic: "ParseExprToAst", noSideEffect.}
 
-proc internalParseStmt(s: string): NimNode {.
+proc internalParseStmt(s, filename: string): NimNode {.
   magic: "ParseStmtToAst", noSideEffect.}
 
 proc internalErrorFlag*(): string {.magic: "NError", noSideEffect.}
   ## Some builtins set an error flag. This is then turned into a proper
   ## exception. **Note**: Ordinary application code should not call this.
 
-proc parseExpr*(s: string): NimNode {.noSideEffect.} =
+proc parseExpr*(s: string; filename: string = ""): NimNode {.noSideEffect.} =
   ## Compiles the passed string to its AST representation.
   ## Expects a single expression. Raises `ValueError` for parsing errors.
-  result = internalParseExpr(s)
+  ## A filename can be given for more informative errors.
+  result = internalParseExpr(s, filename)
   let x = internalErrorFlag()
   if x.len > 0: raise newException(ValueError, x)
 
-proc parseStmt*(s: string): NimNode {.noSideEffect.} =
+proc parseStmt*(s: string; filename: string = ""): NimNode {.noSideEffect.} =
   ## Compiles the passed string to its AST representation.
   ## Expects one or more statements. Raises `ValueError` for parsing errors.
-  result = internalParseStmt(s)
+  ## A filename can be given for more informative errors.
+  result = internalParseStmt(s, filename)
   let x = internalErrorFlag()
   if x.len > 0: raise newException(ValueError, x)
 
@@ -1376,7 +1373,7 @@ template findChild*(n: NimNode; cond: untyped): NimNode {.dirty.} =
   ##
   ## .. code-block:: nim
   ##   var res = findChild(n, it.kind == nnkPostfix and
-  ##                          it.basename.ident == toNimIdent"foo")
+  ##                          it.basename.ident == ident"foo")
   block:
     var res: NimNode
     for it in n.children:
@@ -1496,6 +1493,22 @@ macro expandMacros*(body: typed): untyped =
   echo body.toStrLit
   result = body
 
+proc extractTypeImpl(n: NimNode): NimNode =
+    ## attempts to extract the type definition of the given symbol
+    case n.kind
+    of nnkSym: # can extract an impl
+      result = n.getImpl.extractTypeImpl()
+    of nnkObjectTy, nnkRefTy, nnkPtrTy: result = n
+    of nnkBracketExpr:
+      if n.typeKind == ntyTypeDesc:
+        result = n[1].extractTypeImpl()
+      else:
+        doAssert n.typeKind == ntyGenericInst
+        result = n[0].getImpl()
+    of nnkTypeDef:
+      result = n[2]
+    else: error("Invalid node to retrieve type implementation of: " & $n.kind)
+
 proc customPragmaNode(n: NimNode): NimNode =
   expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkCheckedFieldExpr})
   let
@@ -1504,7 +1517,10 @@ proc customPragmaNode(n: NimNode): NimNode =
   if typ.kind == nnkBracketExpr and typ.len > 1 and typ[1].kind == nnkProcTy:
     return typ[1][1]
   elif typ.typeKind == ntyTypeDesc:
-    let impl = typ[1].getImpl()
+    let impl = getImpl(
+      if kind(typ[1]) == nnkBracketExpr: typ[1][0]
+      else: typ[1]
+    )
     if impl[0].kind == nnkPragmaExpr:
       return impl[0][1]
     else:
@@ -1526,10 +1542,13 @@ proc customPragmaNode(n: NimNode): NimNode =
   if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
     let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
     let typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
-    var typDef = getImpl(if typInst.kind == nnkVarTy: typInst[0] else: typInst)
+    var typDef = getImpl(
+      if typInst.kind in {nnkVarTy, nnkBracketExpr}: typInst[0]
+      else: typInst
+    )
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
-      let typ = typDef[2]
+      let typ = typDef[2].extractTypeImpl()
       typ.expectKind({nnkRefTy, nnkPtrTy, nnkObjectTy})
       let isRef = typ.kind in {nnkRefTy, nnkPtrTy}
       if isRef and typ[0].kind in {nnkSym, nnkBracketExpr}: # defines ref type for another object(e.g. X = ref X)
@@ -1611,7 +1630,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
-      if p.len == 2:
+      if p.len == 2 or (p.len == 3 and p[1].kind == nnkSym and p[1].symKind == nskType):
         result = p[1]
       else:
         let def = p[0].getImpl[3]

@@ -811,7 +811,7 @@ proc primarySuffix(p: var Parser, r: PNode,
   #|       | DOTLIKEOP optInd symbol generalizedLit?
   #|       | '[' optInd exprColonEqExprList optPar ']'
   #|       | '{' optInd exprColonEqExprList optPar '}'
-  #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
+  #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr (comma expr)* # command syntax
   result = r
 
   # progress guaranteed
@@ -821,14 +821,14 @@ proc primarySuffix(p: var Parser, r: PNode,
     of tkParLe:
       # progress guaranteed
       if p.tok.strongSpaceA > 0:
-        # inside type sections, expressions such as `ref (int, bar)`
-        # are parsed as a nkCommand with a single tuple argument (nkPar)
+        result = commandExpr(p, result, mode)
+        # type sections allow full command syntax
         if mode == pmTypeDef:
-          result = newNodeP(nkCommand, p)
-          result.add r
-          result.add primary(p, pmNormal)
-        else:
-          result = commandExpr(p, result, mode)
+          var isFirstParam = false
+          while p.tok.tokType == tkComma:
+            getTok(p)
+            optInd(p, result)
+            result.add(commandParam(p, isFirstParam, mode))
         break
       result = namedParams(p, result, nkCall, tkParRi)
       if result.len > 1 and result[1].kind == nkExprColonExpr:
@@ -869,9 +869,18 @@ proc primarySuffix(p: var Parser, r: PNode,
           # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
           # solution, but pragmas.nim can't handle that
           result = commandExpr(p, result, mode)
+          if mode == pmTypeDef:
+            var isFirstParam = false
+            while p.tok.tokType == tkComma:
+              getTok(p)
+              optInd(p, result)
+              result.add(commandParam(p, isFirstParam, mode))
         break
     else:
       break
+  # type sections allow post-expr blocks
+  if mode == pmTypeDef:
+    result = postExprBlocks(p, result)
 
 proc parseOperators(p: var Parser, headNode: PNode,
                     limit: int, mode: PrimaryMode): PNode =
@@ -1110,11 +1119,14 @@ proc optPragmas(p: var Parser): PNode =
 
 proc parseDoBlock(p: var Parser; info: TLineInfo): PNode =
   #| doBlock = 'do' paramListArrow pragma? colcom stmt
-  let params = parseParamList(p, retColon=false)
+  var params = parseParamList(p, retColon=false)
   let pragmas = optPragmas(p)
   colcom(p, result)
   result = parseStmt(p)
-  if params.kind != nkEmpty:
+  if params.kind != nkEmpty or pragmas.kind != nkEmpty:
+    if params.kind == nkEmpty:
+      params = newNodeP(nkFormalParams, p)
+      params.add(p.emptyNode) # return type
     result = newProcNode(nkDo, info,
       body = result, params = params, name = p.emptyNode, pattern = p.emptyNode,
       genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
@@ -1146,7 +1158,7 @@ proc isExprStart(p: Parser): bool =
   of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkFor,
      tkProc, tkFunc, tkIterator, tkBind, tkBuiltInMagics,
      tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCustomLit, tkVar, tkRef, tkPtr,
-     tkTuple, tkObject, tkWhen, tkCase, tkOut:
+     tkTuple, tkObject, tkWhen, tkCase, tkOut, tkTry, tkBlock:
     result = true
   else: result = false
 
@@ -1339,7 +1351,8 @@ proc parseTypeDesc(p: var Parser): PNode =
   result = binaryNot(p, result)
 
 proc parseTypeDefAux(p: var Parser): PNode =
-  #| typeDefAux = simpleExpr ('not' expr)?
+  #| typeDefAux = simpleExpr ('not' expr
+  #|                         | postExprBlocks)?
   result = simpleExpr(p, pmTypeDef)
   result = binaryNot(p, result)
 
@@ -1381,7 +1394,10 @@ proc postExprBlocks(p: var Parser, x: PNode): PNode =
       if stmtList[0].kind == nkStmtList: stmtList = stmtList[0]
 
       stmtList.flags.incl nfBlockArg
-      if openingParams.kind != nkEmpty:
+      if openingParams.kind != nkEmpty or openingPragmas.kind != nkEmpty:
+        if openingParams.kind == nkEmpty:
+          openingParams = newNodeP(nkFormalParams, p)
+          openingParams.add(p.emptyNode) # return type
         result.add newProcNode(nkDo, stmtList.info, body = stmtList,
                                params = openingParams,
                                name = p.emptyNode, pattern = p.emptyNode,

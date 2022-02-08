@@ -12,7 +12,7 @@ type
 
 proc newDog():PDog = new(result)
 proc newCat():PCat = new(result)
-proc test(a:openarray[PAnimal])=
+proc test(a:openArray[PAnimal])=
   echo("dummy")
 
 #test(newDog(),newCat()) #does not work
