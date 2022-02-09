@@ -5,6 +5,9 @@
 
 from stdtest/specialpaths import buildDir
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 import std/[
   # Core:
   bitops, typetraits, lenientops, macros, volatile,
@@ -59,8 +62,7 @@ import std/[
   htmlgen,
 
   # Hashing:
-  base64, hashes,
-  # fails due to cstring cast/zeroMem/copyMem/moveMem: md5
+  base64, hashes, md5,
   # fails due to cstring cast/times import/endians import: oids
   # fails due to copyMem/endians import: sha1
 

@@ -258,5 +258,18 @@ template main =
     a.add(2)
     doAssert a.toSeq == @[1, 2]
 
+  block RemoveLastNodeFromSinglyLinkedList:
+    var list = initSinglyLinkedList[string]()
+    let n1 = newSinglyLinkedNode("sonic")
+    let n2 = newSinglyLinkedNode("the")
+    let n3 = newSinglyLinkedNode("tiger")
+    let n4 = newSinglyLinkedNode("hedgehog")
+    list.add(n1)
+    list.add(n2)
+    list.add(n3)
+    list.remove(n3)
+    list.add(n4)
+    doAssert list.toSeq == @["sonic", "the", "hedgehog"]
+
 static: main()
 main()

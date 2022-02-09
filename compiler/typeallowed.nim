@@ -233,7 +233,7 @@ proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind =
   case t.kind
   of tyVar:
     result = mutableView
-  of tyLent, tyOpenArray:
+  of tyLent, tyOpenArray, tyVarargs:
     result = immutableView
   of tyGenericInst, tyDistinct, tyAlias, tyInferred, tySink, tyOwned,
      tyUncheckedArray, tySequence, tyArray, tyRef, tyStatic:
