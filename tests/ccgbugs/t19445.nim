@@ -1,5 +1,6 @@
 discard """
   matrix: "--nimcache:tests/ccgbugs/nimcache19445 --cincludes:nimcache19445 --header:m19445"
+  targets: "c"
 """
 
 # bug #19445
