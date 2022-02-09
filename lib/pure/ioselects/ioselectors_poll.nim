@@ -200,7 +200,7 @@ proc newSelectEvent*(): SelectEvent =
     result.rfd = fds[0]
     result.wfd = fds[1]
   else: 
-    let fdci = eventfd(0, O_CLOEXEC or O_NONBLOCK)
+    let fdci = eventfd(0, posix.O_NONBLOCK)
     if fdci == -1:
       raiseIOSelectorsError(osLastError())
     result = cast[SelectEvent](allocShared0(sizeof(SelectEventImpl)))
