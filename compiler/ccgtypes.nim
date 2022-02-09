@@ -466,7 +466,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     if params != nil: params.add(", ")
     if mapReturnType(m.config, t[0]) != ctArray:
       if isHeaderFile in m.flags:
-        # still generates types for `--header` even the type is a pointer
+        # still generates types for `--header`
         params.add(getTypeDescAux(m, arr, check, skResult))
         params.add("*")
       else:
