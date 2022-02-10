@@ -206,8 +206,10 @@ type
       error*: string
 
 proc init(): RocksDBResult[string] =
-  result.ok = true
-  result.value = "ok"
+  result = RocksDBResult[string](ok: true, value: "ok")
+  # fixme: use {.cast(uncheckedAssign).}
+  # result.ok = true
+  # result.value = "ok"
 
 echo init()
 
@@ -221,8 +223,9 @@ type MyObj = object
     of true: x1: string
 
 var a = MyObj(kind: false, x0: 1234)
-a.kind = true
-doAssert(a.x1 == "")
+# fixme: use {.cast(uncheckedAssign).}
+# a.kind = true
+# doAssert(a.x1 == "")
 
 block:
   # bug #15532
