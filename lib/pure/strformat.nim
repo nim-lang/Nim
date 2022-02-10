@@ -23,8 +23,8 @@ This has some surprising effects:
 ]##
 
 runnableExamples:
-  let msg = "hello"
-  assert fmt"{msg}\n" == "hello\\n"
+  let msg = "\nhello"
+  assert fmt"{msg}\n" == "\\nhello\\n"
 
 ##[
 Because the literal is a raw string literal, the `\n` is not interpreted as
@@ -34,13 +34,13 @@ There are multiple ways to get around this, including the use of the `&` operato
 ]##
 
 runnableExamples:
-  let msg = "hello"
+  let msg = "\nhello"
 
-  assert &"{msg}\n" == "hello\n"
+  assert &"{msg}\n" == "\\nhello\n"
 
-  assert fmt"{msg}{'\n'}" == "hello\n"
-  assert fmt("{msg}\n") == "hello\n"
-  assert "{msg}\n".fmt == "hello\n"
+  assert fmt"{msg}{'\n'}" == "\\nhello\n"
+  assert fmt("{msg}\n") == "\\nhello\n"
+  assert "{msg}\n".fmt == "\\nhello\n"
 
 ##[
 The choice of style is up to you.
