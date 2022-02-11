@@ -227,10 +227,36 @@ template tearDownForeignThreadGc* =
   ## With `--gc:arc` a nop.
   discard
 
-proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
-  proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
+type ObjCheckCache = array[0..1, cstring]
 
+proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
+
+proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
   result = strstr(obj.name, subclass) != nil
+
+proc isObjSlowPath(objName: cstring, subclass: cstring, cache: var ObjCheckCache): bool {.compilerRtl, inline.} =
+  if strstr(objName, subclass) != nil:
+    cache[1] = objName
+    result = true
+  else:
+    cache[0] = objName
+    result = false
+
+proc isSameCstring(x, y: cstring): bool {.inline.} =
+  proc strcmp(a, b: cstring): cint {.noSideEffect,
+    importc, header: "<string.h>".}
+  if pointer(x) == pointer(y): result = true
+  elif x.isNil or y.isNil: result = false
+  else: result = strcmp(x, y) == 0
+
+proc isObjWithCache(obj: PNimTypeV2, subclass: cstring, cache: var ObjCheckCache): bool {.compilerRtl.} =
+  let name = obj.name
+  if isSameCstring(cache[0], name):
+    result = false
+  elif isSameCstring(cache[1], name):
+    result = true
+  else:
+    result = isObjSlowPath(name, subclass, cache)
 
 proc chckObj(obj: PNimTypeV2, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:
