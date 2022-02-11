@@ -84,9 +84,9 @@ from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWit
 
 
 const
-  Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
+  Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f', '\x00'}
     ## All the characters that count as whitespace (space, tab, vertical tab,
-    ## carriage return, new line, form feed).
+    ## carriage return, new line, form feed, null byte).
 
   Letters* = {'A'..'Z', 'a'..'z'}
     ## The set of letters.
