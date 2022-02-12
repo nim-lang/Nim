@@ -82,8 +82,9 @@ else:
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
   elif defined(nimV2) or usesDestructors:
-    var allocator {.rtlThreadVar.}: MemRegion
-    instantiateForRegion(allocator)
+    when not defined(useNimRtl):
+      var allocator {.rtlThreadVar.}: MemRegion
+      instantiateForRegion(allocator)
     when defined(gcHooks):
       include "system/gc_hooks"
   elif defined(gcMarkAndSweep):

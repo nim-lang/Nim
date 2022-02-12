@@ -34,6 +34,9 @@ import std/private/since
 
 import strutils, pathnorm
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 const weirdTarget = defined(nimscript) or defined(js)
 
 since (1, 1):
@@ -3216,11 +3219,10 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
     result = rdFileSize(a)
     findClose(resA)
   else:
-    var f: File
-    if open(f, file):
-      result = getFileSize(f)
-      close(f)
-    else: raiseOSError(osLastError(), file)
+    var rawInfo: Stat
+    if stat(file, rawInfo) < 0'i32:
+      raiseOSError(osLastError(), file)
+    rawInfo.st_size
 
 when defined(windows) or weirdTarget:
   type
