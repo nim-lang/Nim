@@ -17,21 +17,28 @@
 - `std/sharedstrings` module is removed.
 - Constants `colors.colPaleVioletRed` and `colors.colMediumPurple` changed to match the CSS color standard.
 
+- `addr` is now available for all addressable locations, `unsafeAddr` is deprecated and
+becomes an alias for `addr`.
+
+- io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`.
+
 ## Standard library additions and changes
 
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional
   filename argument for more informative errors.
 - Module `colors` expanded with missing colors from the CSS color standard.
+- Fixed `lists.SinglyLinkedList` being broken after removing the last node ([#19353](https://github.com/nim-lang/Nim/pull/19353)).
+- `md5` now works at compile time and in JavaScript.
 
-## `std/smtp`
-
-- Sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
+- `std/smtp` sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
 
 - Added `IsoWeekRange`, a range type to represent the number of weeks in an ISO week-based year.
 - Added `IsoYear`, a distinct int type to prevent bugs from confusing the week-based year and the regular year.
 - Added `initDateTime` in `times` to create a datetime from a weekday, and ISO 8601 week number and week-based year.
 - Added `getIsoWeekAndYear` in `times` to get an ISO week number along with the corresponding ISO week-based year from a datetime.
 - Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year.
+
+- Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
 
 ## Language changes
 

@@ -15,7 +15,7 @@ proc test_var(x: var MyObj): var int =
 var x = MyObj(a: 5)
 
 doAssert: test_var(x).addr == x.a.addr
-doAssert: test_lent(x).unsafeAddr == x.a.addr
+doAssert: test_lent(x).addr == x.a.addr
 
 proc varProc(x: var int) =
   x = 100

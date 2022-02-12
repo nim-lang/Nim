@@ -168,6 +168,17 @@ This feature will likely be superseded in the future by support for
 recursive module dependencies.
 
 
+Importing private symbols
+=========================
+
+In some situations, it may be useful to import all symbols (public or private)
+from a module. The syntax `import foo {.all.}` can be used to import all
+symbols from the module `foo`. Note that importing private symbols is
+generally not recommended.
+
+See also the experimental `importutils <importutils.html>`_ module.
+
+
 Code reordering
 ===============
 
@@ -393,6 +404,76 @@ to use this operator.
     doAssert (a.b)(c) == `()`(a.b, c)
 
 
+Extended macro pragmas
+======================
+
+Macro pragmas as described in `the manual <manual.html#userminusdefined-pragmas-macro-pragmas>`_
+can also be applied to type, variable and constant declarations.
+
+For types:
+
+.. code-block:: nim
+  type
+    MyObject {.schema: "schema.protobuf".} = object
+
+This is translated to a call to the `schema` macro with a `nnkTypeDef`
+AST node capturing the left-hand side, remaining pragmas and the right-hand
+side of the definition. The macro can return either a type section or
+another `nnkTypeDef` node, both of which will replace the original row
+in the type section.
+
+In the future, this `nnkTypeDef` argument may be replaced with a unary
+type section node containing the type definition, or some other node that may
+be more convenient to work with. The ability to return nodes other than type
+definitions may also be supported, however currently this is not convenient
+when dealing with mutual type recursion. For now, macros can return an unused
+type definition where the right-hand node is of kind `nnkStmtListType`.
+Declarations in this node will be attached to the same scope as
+the parent scope of the type section.
+
+------
+
+For variables and constants, it is largely the same, except a unary node with
+the same kind as the section containing a single definition is passed to macros,
+and macros can return any expression.
+
+.. code-block:: nim
+  var
+    a = ...
+    b {.importc, foo, nodecl.} = ...
+    c = ...
+
+Assuming `foo` is a macro or a template, this is roughly equivalent to:
+
+.. code-block:: nim
+  var a = ...
+  foo:
+    var b {.importc, nodecl.} = ...
+  var c = ...
+
+
+Symbols as template/macro calls
+===============================
+
+Templates and macros that take no arguments can be called as lone symbols,
+i.e. without parentheses. This is useful for repeated uses of complex
+expressions that cannot conveniently be represented as runtime values.
+
+.. code-block:: nim
+  type Foo = object
+    bar: int
+  
+  var foo = Foo(bar: 10)
+  template bar: untyped = foo.bar
+  assert bar == 10
+  bar = 15
+  assert bar == 15
+
+In the future, this may require more specific information on template or macro
+signatures to be used. Specializations for some applications of this may also
+be introduced to guarantee consistency and circumvent bugs.
+
+
 Not nil annotation
 ==================
 
@@ -592,7 +673,7 @@ has `source` as the owner. A path expression `e` is defined recursively:
 - Object field access `e.field` is a path expression.
 - `system.toOpenArray(e, ...)` is a path expression.
 - Pointer dereference `e[]` is a path expression.
-- An address `addr e`, `unsafeAddr e` is a path expression.
+- An address `addr e` is a path expression.
 - A type conversion `T(e)` is a path expression.
 - A cast expression `cast[T](e)` is a path expression.
 - `f(e, ...)` is a path expression if `f`'s return type is a view type.
@@ -602,7 +683,7 @@ has `source` as the owner. A path expression `e` is defined recursively:
 
 If a view type is used as a return type, the location must borrow from a location
 that is derived from the first parameter that is passed to the proc.
-See `the manual <https://nim-lang.org/docs/manual.html#procedures-var-return-type>`_
+See `the manual <manual.html#procedures-var-return-type>`_
 for details about how this is done for `var T`.
 
 A mutable view can borrow from a mutable location, an immutable view can borrow
@@ -1181,51 +1262,25 @@ object inheritance syntax involving the `of` keyword:
   the `vtptr` magic produced types bound to `ptr` types.
 
 
-Type bound operations
-=====================
+..
+  deepCopy
+  --------
+  `=deepCopy` is a builtin that is invoked whenever data is passed to
+  a `spawn`'ed proc to ensure memory safety. The programmer can override its
+  behaviour for a specific `ref` or `ptr` type `T`. (Later versions of the
+  language may weaken this restriction.)
 
-There are 4 operations that are bound to a type:
+  The signature has to be:
 
-1. Assignment
-2. Moves
-3. Destruction
-4. Deep copying for communication between threads
+  .. code-block:: nim
 
-These operations can be *overridden* instead of *overloaded*. This means that
-the implementation is automatically lifted to structured types. For instance,
-if the type `T` has an overridden assignment operator `=`, this operator is
-also used for assignments of the type `seq[T]`.
+    proc `=deepCopy`(x: T): T
 
-Since these operations are bound to a type, they have to be bound to a
-nominal type for reasons of simplicity of implementation; this means an
-overridden `deepCopy` for `ref T` is really bound to `T` and not to `ref T`.
-This also means that one cannot override `deepCopy` for both `ptr T` and
-`ref T` at the same time, instead a distinct or object helper type has to be
-used for one pointer type.
+  This mechanism will be used by most data structures that support shared memory,
+  like channels, to implement thread safe automatic memory management.
 
-Assignments, moves and destruction are specified in
-the `destructors <destructors.html>`_ document.
-
-
-deepCopy
---------
-
-`=deepCopy` is a builtin that is invoked whenever data is passed to
-a `spawn`'ed proc to ensure memory safety. The programmer can override its
-behaviour for a specific `ref` or `ptr` type `T`. (Later versions of the
-language may weaken this restriction.)
-
-The signature has to be:
-
-.. code-block:: nim
-
-  proc `=deepCopy`(x: T): T
-
-This mechanism will be used by most data structures that support shared memory,
-like channels, to implement thread safe automatic memory management.
-
-The builtin `deepCopy` can even clone closures and their environments. See
-the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
+  The builtin `deepCopy` can even clone closures and their environments. See
+  the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
 
 
 Dynamic arguments for bindSym

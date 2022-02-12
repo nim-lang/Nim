@@ -484,10 +484,10 @@ type
 var address = pointer(nil)
 proc prod(r: var QuadraticExt, b: QuadraticExt) =
   if address == nil:
-    address = unsafeAddr b
+    address = addr b
     prod(r, b)
   else:
-    assert address == unsafeAddr b
+    assert address == addr b
 
 type
   Fp2[N: static int, T] {.byref.} = object
