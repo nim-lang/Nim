@@ -78,8 +78,16 @@ Options:
                        ascending (recent files go last) or descending
 
 * Filter file content:
-  --match:PAT         select files containing a (not displayed) match of PAT
-  --noMatch:PAT       select files not containing any match of PAT
+  --matchFile:PAT, --mf:PAT
+                      select files containing a (not displayed) match of PAT
+  --noMatchFile:PAT, --nf:PAT
+                      reverse: select files not containing any match of PAT
+  --matchContext:PAT, --mc:PAT
+                      select only matches containing a match of PAT in their
+                      surrounding context (multiline with `-c`, `-a`, `-b`)
+  --noMatchContext:PAT, --nc:PAT
+                      reverse: discard matches not containing a match of PAT
+                      in their surrounding context
   --bin:on|off|only   process binary files? (detected by \0 in first 1K bytes)
                       (default: on - binary and text files treated the same way)
   --text, -t          process only text files, the same as `--bin:off`

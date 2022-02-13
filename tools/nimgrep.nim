@@ -110,11 +110,15 @@ type
     pattern: string      # main PATTERN
     checkMatch: string   # --match
     checkNoMatch: string # --nomatch
+    matchContext: seq[string]   # --matchContext, --mc
+    noMatchContext: seq[string] # --noMatchContext, --nc
     checkBin: Bin        # --bin
   SearchOptComp[Pat] = tuple  # a compiled version of the previous
     pattern: Pat
     checkMatch: Pat
     checkNoMatch: Pat
+    matchContext: seq[Pat]
+    noMatchContext: seq[Pat]
   SinglePattern[PAT] = tuple  # compile single pattern for replacef
     pattern: PAT
   Column = tuple  # current column info for the cropping (--limit) feature
@@ -807,6 +811,18 @@ template declareCompiledPatterns(compiledStruct: untyped,
     body
   {.hint[XDeclaredButNotUsed]: on.}
 
+func checkContext(context: string, searchOptC: SearchOptComp[Pattern]): bool =
+  for pat in searchOptC.noMatchContext:
+    if contains(context, pat, 0):
+      return false
+  if searchOptC.matchContext.len > 0:
+    result = false
+    for pat in searchOptC.matchContext:
+      if contains(context, pat, 0):
+        return true
+  else:
+    result = true
+
 iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
                      yieldContents=false): Output =
   var buffer: string
@@ -852,13 +868,39 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
     else:
       var found = false
       var cnt = 0
-      for output in searchFile(searchOptC.pattern, buffer):
-        found = true
-        if optCount notin options:
-          yield output
-        else:
-          if output.kind in {blockFirstMatch, blockNextMatch}:
-            inc(cnt)
+      let skipCheckContext = (searchOpt.noMatchContext.len == 0 and
+                              searchOpt.matchContext.len == 0)
+      if skipCheckContext:
+        for output in searchFile(searchOptC.pattern, buffer):
+          found = true
+          if optCount notin options:
+            yield output
+          else:
+            if output.kind in {blockFirstMatch, blockNextMatch}:
+              inc(cnt)
+      else:
+        var context: string
+        var outputAccumulator: seq[Output]
+        for outp in searchFile(searchOptC.pattern, buffer):
+          if outp.kind in {blockFirstMatch, blockNextMatch}:
+            outputAccumulator.add outp
+            context.add outp.pre
+            context.add outp.match.match
+          elif outp.kind == blockEnd:
+            outputAccumulator.add outp
+            context.add outp.blockEnding
+            # context has been formed, now check it:
+            if checkContext(context, searchOptC):
+              found = true
+              for output in outputAccumulator:
+                if optCount notin options:
+                  yield output
+                else:
+                  if output.kind in {blockFirstMatch, blockNextMatch}:
+                    inc(cnt)
+            context = ""
+            outputAccumulator.setLen 0
+      # end `if skipCheckContext`.
       if optCount in options and cnt > 0:
         yield Output(kind: justCount, matches: cnt)
       if yieldContents and found and optCount notin options:
@@ -1032,6 +1074,8 @@ proc run1Thread() =
     compile1Pattern(searchOpt.pattern, searchOptC.pattern)
     compile1Pattern(searchOpt.checkMatch, searchOptC.checkMatch)
     compile1Pattern(searchOpt.checkNoMatch, searchOptC.checkNoMatch)
+    searchOptC.matchContext.add searchOpt.matchContext.compileArray()
+    searchOptC.noMatchContext.add searchOpt.noMatchContext.compileArray()
     if optPipe in options:
       processFileResult(searchOptC.pattern, "-",
                         processFile(searchOptC, "-",
@@ -1075,6 +1119,8 @@ proc worker(initSearchOpt: SearchOpt) {.thread.} =
     compile1Pattern(searchOpt.pattern, searchOptC.pattern)
     compile1Pattern(searchOpt.checkMatch, searchOptC.checkMatch)
     compile1Pattern(searchOpt.checkNoMatch, searchOptC.checkNoMatch)
+    searchOptC.matchContext.add searchOpt.matchContext.compileArray()
+    searchOptC.noMatchContext.add searchOpt.noMatchContext.compileArray()
     while true:
       let (fileNo, filename) = searchRequestsChan.recv()
       var fileResult: FileResult
@@ -1203,9 +1249,10 @@ for kind, key, val in getopt():
     of "includedir", "include-dir",   "id": walkOpt.includeDir.add val
     of "includefile", "include-file", "if": walkOpt.includeFile.add val
     of "excludefile", "exclude-file", "ef": walkOpt.excludeFile.add val
-    of "match": searchOpt.checkMatch = val
-    of "nomatch":
-      searchOpt.checkNoMatch = val
+    of "matchfile", "match", "mf": searchOpt.checkMatch = val
+    of "nomatchfile", "nomatch", "nf": searchOpt.checkNoMatch = val
+    of "matchcontext", "mc": searchOpt.matchContext.add val
+    of "nomatchcontext", "nc": searchOpt.noMatchContext.add val
     of "bin":
       case val
       of "on": searchOpt.checkBin = biOn
