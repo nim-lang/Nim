@@ -40,6 +40,9 @@ becomes an alias for `addr`.
 
 - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
 
+- Removed deprecated `math.c_frexp`.
+
+
 ## Language changes
 
 - Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
