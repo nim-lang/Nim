@@ -402,5 +402,139 @@ func `$`*(z: Complex): string =
     doAssert $complex(1.0, 2.0) == "(1.0, 2.0)"
 
   result = "(" & $z.re & ", " & $z.im & ")"
+  
+  func `+`*[T](x, y: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise addition of two sequences of complex numbers.
+  assert x.len == y.len
+  
+  for i in 0 ..< x.len:
+    result.add(x[i] + y[i])
+
+func `-`*[T](x, y: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise difference of two sequences of complex numbers.
+  assert x.len == y.len
+  
+  for i in 0 ..< x.len:
+    result.add(x[i] - y[i])
+
+func `+`*[T](s: openArray[Complex[T]], x: Complex[T]): seq[Complex[T]] =
+  ## Element-wise addition of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(e + x)
+
+func `+`*[T](x: Complex[T], s: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise addition of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(x + e)
+
+func `-`*[T](s: openArray[Complex[T]], x: Complex[T]): seq[Complex[T]] =
+  ## Element-wise between a sequence of complex numbers and a complex scalar.
+  for e in s:
+    result.add(e - x)
+
+func `-`*[T](x: Complex[T], s: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise difference between a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(s - e)
+
+func `*`*[T](s: openArray[Complex[T]], x: Complex[T]): seq[Complex[T]] =
+  ## Element-wise multiplication of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(e * x)
+
+func `*`*[T](x: Complex[T], s: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise multiplication of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(x * e)
+
+func `/`*[T](s: openArray[Complex[T]], x: Complex[T]): seq[Complex[T]] =
+  ## Element-wise division of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(e / x)
+
+func `/`*[T](x: Complex[T], s: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise division of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(x / e)
+
+func `+`*[T](s: openArray[Complex[T]], x: SomeFloat): seq[Complex[T]] =
+  ## Element-wise between a sequence of complex numbers and a real scalar.
+  for e in s:
+    result.add(e + complex(x))
+
+func `+`*[T](x: SomeFloat, s: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise difference between a real scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(complex(x) + e)
+
+func `-`*[T](s: openArray[Complex[T]], x: SomeFloat): seq[Complex[T]] =
+  ## Element-wise between a sequence of complex numbers and a real scalar.
+  for e in s:
+    result.add(e - complex(x))
+
+func `-`*[T](x: SomeFloat, s: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise difference between a real scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(complex(x) - e)
+
+func `*`*[T](s: openArray[Complex[T]], x: SomeFloat): seq[Complex[T]] =
+  ## Element-wise multiplication of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(e * x)
+
+func `*`*[T](x: SomeFloat, s: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise multiplication of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(x * e)
+
+func `/`*[T](s: openArray[Complex[T]], x: SomeFloat): seq[Complex[T]] =
+  ## Element-wise division of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(e / x)
+
+func `/`*[T](x: SomeFloat, s: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise division of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(x / e)
+
+func `+`*[T](s: openArray[Complex[T]], x: SomeInteger): seq[Complex[T]] =
+  ## Element-wise between a sequence of complex numbers and a real scalar.
+  for e in s:
+    result.add(e + complex(float(x)))
+
+func `+`*[T](x: SomeInteger, s: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise difference between a real scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(complex(float(x)) + e)
+
+func `-`*[T](s: openArray[Complex[T]], x: SomeInteger): seq[Complex[T]] =
+  ## Element-wise between a sequence of complex numbers and a real scalar.
+  for e in s:
+    result.add(e - complex(float(x)))
+
+func `-`*[T](x: SomeInteger, s: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise difference between a real scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(complex(float(x)) - e)
+
+func `*`*[T](s: openArray[Complex[T]], x: SomeInteger): seq[Complex[T]] =
+  ## Element-wise multiplication of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(e * complex(float(x)))
+
+func `*`*[T](x: SomeInteger, s: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise multiplication of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(complex(float(x)) * e)
+
+func `/`*[T](s: openArray[Complex[T]], x: SomeInteger): seq[Complex[T]] =
+  ## Element-wise division of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(e / complex(float(x)))
+
+func `/`*[T](x: SomeInteger, s: openArray[Complex[T]]): seq[Complex[T]] =
+  ## Element-wise division of a complex scalar and a sequence of complex numbers.
+  for e in s:
+    result.add(complex(float(x)) / e)
 
 {.pop.}
