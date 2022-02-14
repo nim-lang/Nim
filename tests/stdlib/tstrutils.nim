@@ -583,6 +583,17 @@ template main() =
       let g = parseEnum[Foo]("Bar", A)
       doAssert g == A
 
+    block: # bug #19463
+      const CAMPAIGN_TABLE = "wikientries_campaign"
+      const CHARACTER_TABLE = "wikientries_character"
+
+      type Tables = enum
+        a = CAMPAIGN_TABLE,
+        b = CHARACTER_TABLE,
+
+      let myA = CAMPAIGN_TABLE
+      doAssert $parseEnum[Tables](myA) == "wikientries_campaign"
+
     block: # check enum defined in block
       type
         Bar = enum

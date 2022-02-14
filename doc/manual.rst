@@ -3502,8 +3502,9 @@ location is `T`, the `addr` operator result is of the type `ptr T`. An
 address is always an untraced reference. Taking the address of an object that
 resides on the stack is **unsafe**, as the pointer may live longer than the
 object on the stack and can thus reference a non-existing object. One can get
-the address of variables, but one can't use it on variables declared through
-`let` statements:
+the address of variables. For easier interoperability with other compiled languages
+such as C, retrieving the address of a `let` variable, a parameter,
+or a `for` loop variable can be accomplished too:
 
 .. code-block:: nim
 
@@ -3515,23 +3516,17 @@ the address of variables, but one can't use it on variables declared through
   # --> ref 0x7fff6b71b670 --> 0x10bb81050"Hello"
   echo cast[ptr string](t3)[]
   # --> Hello
-  # The following line doesn't compile:
+  # The following line also works
   echo repr(addr(t1))
-  # Error: expression has no address
-
 
 The unsafeAddr operator
 -----------------------
 
-For easier interoperability with other compiled languages such as C, retrieving
-the address of a `let` variable, a parameter, or a `for` loop variable can
-be accomplished by using the `unsafeAddr` operation:
+The `unsafeAddr` operator is a deprecated alias for the `addr` operator:
 
 .. code-block:: nim
-
   let myArray = [1, 2, 3]
   foreignProcThatTakesAnAddr(unsafeAddr myArray)
-
 
 Procedures
 ==========
@@ -3901,6 +3896,18 @@ the operator is in scope (including if it is private).
 
 Type bound operators are:
 `=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`.
+
+These operations can be *overridden* instead of *overloaded*. This means that
+the implementation is automatically lifted to structured types. For instance,
+if the type `T` has an overridden assignment operator `=`, this operator is
+also used for assignments of the type `seq[T]`.
+
+Since these operations are bound to a type, they have to be bound to a
+nominal type for reasons of simplicity of implementation; this means an
+overridden `deepCopy` for `ref T` is really bound to `T` and not to `ref T`.
+This also means that one cannot override `deepCopy` for both `ptr T` and
+`ref T` at the same time, instead a distinct or object helper type has to be
+used for one pointer type.
 
 For more details on some of those procs, see
 `Lifetime-tracking hooks <destructors.html#lifetimeminustracking-hooks>`_.
@@ -7774,9 +7781,10 @@ More examples with custom pragmas:
 Macro pragmas
 -------------
 
-All macros and templates can also be used as pragmas. They can be attached
-to routines (procs, iterators, etc), type names, or type expressions. The
-compiler will perform the following simple syntactic transformations:
+Macros and templates can sometimes be called with the pragma syntax. Cases
+where this is possible include when attached to routine (procs, iterators, etc)
+declarations or routine type expressions. The compiler will perform the
+following simple syntactic transformations:
 
 .. code-block:: nim
   template command(name: string, def: untyped) = discard
@@ -7803,20 +7811,15 @@ This is translated to:
 
 ------
 
-.. code-block:: nim
-  type
-    MyObject {.schema: "schema.protobuf".} = object
+When multiple macro pragmas are applied to the same definition, the first one
+from left to right will be evaluated. This macro can then choose to keep
+the remaining macro pragmas in its output, and those will be evaluated in
+the same way.
 
-This is translated to a call to the `schema` macro with a `nnkTypeDef`
-AST node capturing both the left-hand side and right-hand side of the
-definition. The macro can return a potentially modified `nnkTypeDef` tree
-or multiple `nnkTypeDef` trees contained in a `nnkTypeSection` node
-which will replace the original row in the type section.
-
-When multiple macro pragmas are applied to the same definition, the
-compiler will apply them consequently from left to right. Each macro
-will receive as input the output of the previous one.
-
+There are a few more applications of macro pragmas, such as in type,
+variable and constant declarations, but this behavior is considered to be
+experimental and is documented in the `experimental manual
+<manual_experimental.html#extended-macro-pragmas>` instead.
 
 
 Foreign function interface
