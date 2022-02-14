@@ -44,6 +44,9 @@ becomes an alias for `addr`.
 
 - Changed mimedb to use an `OrderedTable` instead of `OrderedTableRef`, to use it in a const.
 
+- Removed deprecated `math.c_frexp`.
+
+
 ## Language changes
 
 - Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
