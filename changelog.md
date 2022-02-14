@@ -39,6 +39,13 @@ becomes an alias for `addr`.
 - Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year.
 - Remove deprecated `sets.isValid`, `sets.toSet`, `sets.initSet`.
 - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
+- Removed deprecated `oids.oidToString`.
+
+
+- Changed mimedb to use an `OrderedTable` instead of `OrderedTableRef`, to use it in a const.
+
+- Removed deprecated `math.c_frexp`.
+
 
 ## Language changes
 
