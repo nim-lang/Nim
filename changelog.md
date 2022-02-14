@@ -40,6 +40,8 @@ becomes an alias for `addr`.
 
 - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
 
+- Changed mimedb to use an `OrderedTable` instead of `OrderedTableRef`, to use it in a const.
+
 ## Language changes
 
 - Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
