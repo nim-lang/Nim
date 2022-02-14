@@ -2131,7 +2131,7 @@ iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect], noWeirdT
   ## Iterate over all the files and directories that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
-  ## `pattern` is OS dependent, but at least the `"\*.ext"`
+  ## `pattern` is OS dependent, but at least the `"*.ext"`
   ## notation is supported.
   ##
   ## See also:
@@ -2150,7 +2150,7 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTar
   ## Iterate over all the files that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
-  ## `pattern` is OS dependent, but at least the `"\*.ext"`
+  ## `pattern` is OS dependent, but at least the `"*.ext"`
   ## notation is supported.
   ##
   ## See also:
@@ -2167,7 +2167,7 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarg
   ## Iterate over all the directories that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
-  ## `pattern` is OS dependent, but at least the `"\*.ext"`
+  ## `pattern` is OS dependent, but at least the `"*.ext"`
   ## notation is supported.
   ##
   ## See also:
