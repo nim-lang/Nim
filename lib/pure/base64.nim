@@ -56,8 +56,8 @@ runnableExamples:
 ## ========
 ##
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
-## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
-## * `sha1 module<sha1.html>`_ implements a sha1 encoder and decoder
+## * `md5 module<md5.html>`_ for the MD5 checksum algorithm
+## * `sha1 module<sha1.html>`_ for the SHA-1 checksum algorithm
 
 template cbBase(a, b): untyped = [
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',

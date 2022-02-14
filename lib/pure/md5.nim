@@ -13,8 +13,8 @@
 ##
 ## See also
 ## ========
-## * `base64 module<base64.html>`_ implements a Base64 encoder and decoder
-## * `std/sha1 module <sha1.html>`_ for a SHA-1 encoder and decoder
+## * `base64 module<base64.html>`_ for a Base64 encoder and decoder
+## * `std/sha1 module <sha1.html>`_ for the SHA-1 checksum algorithm
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values
 ##   for diverse Nim types
 

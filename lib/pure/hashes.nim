@@ -62,7 +62,7 @@ runnableExamples:
 ## ========
 ## * `md5 module <md5.html>`_ for the MD5 checksum algorithm
 ## * `base64 module <base64.html>`_ for a Base64 encoder and decoder
-## * `std/sha1 module <sha1.html>`_ for a SHA-1 encoder and decoder
+## * `std/sha1 module <sha1.html>`_ for the SHA-1 checksum algorithm
 ## * `tables module <tables.html>`_ for hash tables
 
 import std/private/since
