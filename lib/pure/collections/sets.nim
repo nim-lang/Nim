@@ -591,6 +591,9 @@ proc `$`*[A](s: HashSet[A]): string =
   ##   # --> {no, esc'aping, is " provided}
   dollarImpl()
 
+proc initSet*[A](initialSize = defaultInitialSize): HashSet[A] {.deprecated:
+    "Deprecated since v0.20, use 'initHashSet'".} = initHashSet[A](initialSize)
+
 
 # ---------------------------------------------------------------------
 # --------------------------- OrderedSet ------------------------------
