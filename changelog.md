@@ -37,7 +37,7 @@ becomes an alias for `addr`.
 - Added `initDateTime` in `times` to create a datetime from a weekday, and ISO 8601 week number and week-based year.
 - Added `getIsoWeekAndYear` in `times` to get an ISO week number along with the corresponding ISO week-based year from a datetime.
 - Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year.
-- Remove deprecated `sets.isValid`, `sets.toSet`, `sets.initSet`.
+- Remove deprecated `sets.isValid`, `sets.toSet`.
 - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
 
 ## Language changes
