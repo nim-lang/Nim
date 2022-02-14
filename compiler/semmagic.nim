@@ -14,13 +14,8 @@ proc semAddrArg(c: PContext; n: PNode; isUnsafeAddr = false): PNode =
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
     x.sym.flags.incl(sfAddrTaken)
-  if isAssignable(c, x, isUnsafeAddr) notin {arLValue, arLocalLValue}:
-    # Do not suggest the use of unsafeAddr if this expression already is a
-    # unsafeAddr
-    if isUnsafeAddr:
-      localError(c.config, n.info, errExprHasNoAddress)
-    else:
-      localError(c.config, n.info, errExprHasNoAddress & "; maybe use 'unsafeAddr'")
+  if isAssignable(c, x, true) notin {arLValue, arLocalLValue}:
+    localError(c.config, n.info, errExprHasNoAddress)
   result = x
 
 proc semTypeOf(c: PContext; n: PNode): PNode =

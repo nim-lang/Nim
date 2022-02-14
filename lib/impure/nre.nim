@@ -281,7 +281,7 @@ proc matchesCrLf(pattern: Regex): bool =
   let newlineFlags = flags and (pcre.NEWLINE_CRLF or
                                 pcre.NEWLINE_ANY or
                                 pcre.NEWLINE_ANYCRLF)
-  if newLineFlags > 0u32:
+  if newlineFlags > 0u32:
     return true
 
   # get flags from build config

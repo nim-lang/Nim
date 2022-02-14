@@ -63,7 +63,7 @@ proc fillPages*(mem: UserProcessMemory, start: uint32, data: seq[byte]) =
         #echo cast[uint64](addr mem.pageAccess[i])
         let page = mem.pageAccess[i]
         assert page != nil
-        #copyMem(page, unsafeAddr data[i * 0x1000 - start], 0x1000)
+        #copyMem(page, addr data[i * 0x1000 - start], 0x1000)
 
 const base = 0x00100000
 
