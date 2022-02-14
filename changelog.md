@@ -39,6 +39,10 @@ becomes an alias for `addr`.
 - Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year.
 
 - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
+- Removed deprecated `oids.oidToString`.
+
+
+- Changed mimedb to use an `OrderedTable` instead of `OrderedTableRef`, to use it in a const.
 
 ## Language changes
 

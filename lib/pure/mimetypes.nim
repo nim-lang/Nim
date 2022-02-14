@@ -31,7 +31,7 @@ from strutils import startsWith, toLowerAscii, strip
 
 type
   MimeDB* = object
-    mimes: OrderedTableRef[string, string]
+    mimes: OrderedTable[string, string]
 
 const mimes* = {
   "123": "application/vnd.lotus-1-2-3",
@@ -1904,7 +1904,7 @@ func newMimetypes*(): MimeDB =
   ## Creates a new Mimetypes database. The database will contain the most
   ## common mimetypes.
   {.cast(noSideEffect).}:
-    result.mimes = mimes.newOrderedTable()
+    result.mimes = mimes.toOrderedTable()
 
 func getMimetype*(mimedb: MimeDB, ext: string, default = "text/plain"): string =
   ## Gets mimetype which corresponds to `ext`. Returns `default` if `ext`
