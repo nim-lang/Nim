@@ -25,7 +25,7 @@ export quoteShell, quoteShellWindows, quoteShellPosix
 
 when defined(windows):
   import winlean
-else:
+elif defined(posix):
   import posix
 
 when defined(linux) and defined(useClone):

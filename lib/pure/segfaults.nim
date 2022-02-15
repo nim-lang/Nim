@@ -64,7 +64,7 @@ when defined(windows):
     {.pop.}
     c_signal(SIGSEGV, segfaultHandler)
 
-else:
+elif defined(posix):
   import posix
 
   var sa: Sigaction

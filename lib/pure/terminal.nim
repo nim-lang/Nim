@@ -252,7 +252,7 @@ when defined(windows):
     let term = getTerminal()
     if f == stderr: term.hStderr else: term.hStdout
 
-else:
+elif defined(posix):
   import termios, posix, os, parseutils
 
   proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =

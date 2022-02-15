@@ -64,7 +64,7 @@ when defined(windows):
     if r == cast[typeof(r)](0):
       raiseOSError(osLastError())
 
-else:
+elif defined(posix):
   import posix
 
   let allocationGranularity = sysconf(SC_PAGESIZE)

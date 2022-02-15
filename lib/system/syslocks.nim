@@ -97,7 +97,7 @@ elif defined(genode):
   proc broadcastSysCond(cond: var SysCond) {.
     noSideEffect, importcpp.}
 
-else:
+elif defined(posix):
   type
     SysLockObj {.importc: "pthread_mutex_t", pure, final,
                header: """#include <sys/types.h>

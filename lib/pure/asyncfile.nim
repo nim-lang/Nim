@@ -28,7 +28,7 @@ import asyncdispatch, os
 
 when defined(windows) or defined(nimdoc):
   import winlean
-else:
+elif defined(posix):
   import posix
 
 type

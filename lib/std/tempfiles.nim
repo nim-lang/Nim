@@ -41,7 +41,7 @@ when defined(windows):
 
   proc close_osfandle(fd: cint): cint {.
     importc: "_close", header: "<io.h>".}
-else:
+elif defined(posix):
   import posix
 
   proc c_fdopen(

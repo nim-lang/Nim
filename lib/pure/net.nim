@@ -90,11 +90,19 @@ runnableExamples("-r:off"):
 
 import std/private/since
 
-import nativesockets
 import os, strutils, times, sets, options, std/monotimes
 import ssl_config
-export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
-export Domain, SockType, Protocol
+
+const socketsMissing = defined(nimNoLibc) and not defined(nimdoc)
+
+when socketsMissing:
+  type Port* = distinct uint16
+  proc `$`*(x: Port): string {.borrow.}
+  proc `==`*(x, y: Port): bool {.borrow.}
+else:
+  import nativesockets
+  export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
+  export Domain, SockType, Protocol
 
 const useWinVersion = defined(windows) or defined(nimdoc)
 const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr)
@@ -149,40 +157,41 @@ const
   BufferSize*: int = 4000 ## size of a buffered socket's buffer
   MaxLineLength* = 1_000_000
 
-type
-  SocketImpl* = object     ## socket type
-    fd: SocketHandle
-    isBuffered: bool       # determines whether this socket is buffered.
-    buffer: array[0..BufferSize, char]
-    currPos: int           # current index in buffer
-    bufLen: int            # current length of buffer
-    when defineSsl:
-      isSsl: bool
-      sslHandle: SslPtr
-      sslContext: SslContext
-      sslNoHandshake: bool # True if needs handshake.
-      sslHasPeekChar: bool
-      sslPeekChar: char
-      sslNoShutdown: bool # True if shutdown shouldn't be done.
-    lastError: OSErrorCode ## stores the last error on this socket
-    domain: Domain
-    sockType: SockType
-    protocol: Protocol
+when not socketsMissing:
+  type
+    SocketImpl* = object     ## socket type
+      fd: SocketHandle
+      isBuffered: bool       # determines whether this socket is buffered.
+      buffer: array[0..BufferSize, char]
+      currPos: int           # current index in buffer
+      bufLen: int            # current length of buffer
+      when defineSsl:
+        isSsl: bool
+        sslHandle: SslPtr
+        sslContext: SslContext
+        sslNoHandshake: bool # True if needs handshake.
+        sslHasPeekChar: bool
+        sslPeekChar: char
+        sslNoShutdown: bool # True if shutdown shouldn't be done.
+      lastError: OSErrorCode ## stores the last error on this socket
+      domain: Domain
+      sockType: SockType
+      protocol: Protocol
 
-  Socket* = ref SocketImpl
+    Socket* = ref SocketImpl
 
-  SOBool* = enum ## Boolean socket options.
-    OptAcceptConn, OptBroadcast, OptDebug, OptDontRoute, OptKeepAlive,
-    OptOOBInline, OptReuseAddr, OptReusePort, OptNoDelay
+    SOBool* = enum ## Boolean socket options.
+      OptAcceptConn, OptBroadcast, OptDebug, OptDontRoute, OptKeepAlive,
+      OptOOBInline, OptReuseAddr, OptReusePort, OptNoDelay
 
-  ReadLineResult* = enum ## result for readLineAsync
-    ReadFullLine, ReadPartialLine, ReadDisconnected, ReadNone
+    ReadLineResult* = enum ## result for readLineAsync
+      ReadFullLine, ReadPartialLine, ReadDisconnected, ReadNone
 
-  TimeoutError* = object of CatchableError
+    TimeoutError* = object of CatchableError
 
-  SocketFlag* {.pure.} = enum
-    Peek,
-    SafeDisconn ## Ensures disconnection exceptions (ECONNRESET, EPIPE etc) are not thrown.
+    SocketFlag* {.pure.} = enum
+      Peek,
+      SafeDisconn ## Ensures disconnection exceptions (ECONNRESET, EPIPE etc) are not thrown.
 
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
@@ -203,83 +212,84 @@ type
 when defined(nimHasStyleChecks):
   {.pop.}
 
-proc socketError*(socket: Socket, err: int = -1, async = false,
-                  lastError = (-1).OSErrorCode,
-                  flags: set[SocketFlag] = {}) {.gcsafe.}
+when not socketsMissing:
+  proc socketError*(socket: Socket, err: int = -1, async = false,
+                    lastError = (-1).OSErrorCode,
+                    flags: set[SocketFlag] = {}) {.gcsafe.}
 
-proc isDisconnectionError*(flags: set[SocketFlag],
-    lastError: OSErrorCode): bool =
-  ## Determines whether `lastError` is a disconnection error. Only does this
-  ## if flags contains `SafeDisconn`.
-  when useWinVersion:
-    SocketFlag.SafeDisconn in flags and
-      (lastError.int32 == WSAECONNRESET or
-       lastError.int32 == WSAECONNABORTED or
-       lastError.int32 == WSAENETRESET or
-       lastError.int32 == WSAEDISCON or
-       lastError.int32 == WSAESHUTDOWN or
-       lastError.int32 == ERROR_NETNAME_DELETED)
-  else:
-    SocketFlag.SafeDisconn in flags and
-      (lastError.int32 == ECONNRESET or
-       lastError.int32 == EPIPE or
-       lastError.int32 == ENETRESET)
+  proc isDisconnectionError*(flags: set[SocketFlag],
+      lastError: OSErrorCode): bool =
+    ## Determines whether `lastError` is a disconnection error. Only does this
+    ## if flags contains `SafeDisconn`.
+    when useWinVersion:
+      SocketFlag.SafeDisconn in flags and
+        (lastError.int32 == WSAECONNRESET or
+         lastError.int32 == WSAECONNABORTED or
+         lastError.int32 == WSAENETRESET or
+         lastError.int32 == WSAEDISCON or
+         lastError.int32 == WSAESHUTDOWN or
+         lastError.int32 == ERROR_NETNAME_DELETED)
+    else:
+      SocketFlag.SafeDisconn in flags and
+        (lastError.int32 == ECONNRESET or
+         lastError.int32 == EPIPE or
+         lastError.int32 == ENETRESET)
 
-proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
-  ## Converts the flags into the underlying OS representation.
-  for f in socketFlags:
-    case f
-    of SocketFlag.Peek:
-      result = result or MSG_PEEK
-    of SocketFlag.SafeDisconn: continue
+  proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
+    ## Converts the flags into the underlying OS representation.
+    for f in socketFlags:
+      case f
+      of SocketFlag.Peek:
+        result = result or MSG_PEEK
+      of SocketFlag.SafeDisconn: continue
 
-proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
-    sockType: SockType = SOCK_STREAM,
-    protocol: Protocol = IPPROTO_TCP, buffered = true): owned(Socket) =
-  ## Creates a new socket as specified by the params.
-  assert fd != osInvalidSocket
-  result = Socket(
-    fd: fd,
-    isBuffered: buffered,
-    domain: domain,
-    sockType: sockType,
-    protocol: protocol)
-  if buffered:
-    result.currPos = 0
+  proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
+      sockType: SockType = SOCK_STREAM,
+      protocol: Protocol = IPPROTO_TCP, buffered = true): owned(Socket) =
+    ## Creates a new socket as specified by the params.
+    assert fd != osInvalidSocket
+    result = Socket(
+      fd: fd,
+      isBuffered: buffered,
+      domain: domain,
+      sockType: sockType,
+      protocol: protocol)
+    if buffered:
+      result.currPos = 0
 
-  # Set SO_NOSIGPIPE on OS X.
-  when defined(macosx) and not defined(nimdoc):
-    setSockOptInt(fd, SOL_SOCKET, SO_NOSIGPIPE, 1)
+    # Set SO_NOSIGPIPE on OS X.
+    when defined(macosx) and not defined(nimdoc):
+      setSockOptInt(fd, SOL_SOCKET, SO_NOSIGPIPE, 1)
 
-proc newSocket*(domain, sockType, protocol: cint, buffered = true,
-                inheritable = defined(nimInheritHandles)): owned(Socket) =
-  ## Creates a new socket.
-  ##
-  ## The SocketHandle associated with the resulting Socket will not be
-  ## inheritable by child processes by default. This can be changed via
-  ## the `inheritable` parameter.
-  ##
-  ## If an error occurs OSError will be raised.
-  let fd = createNativeSocket(domain, sockType, protocol, inheritable)
-  if fd == osInvalidSocket:
-    raiseOSError(osLastError())
-  result = newSocket(fd, domain.Domain, sockType.SockType, protocol.Protocol,
-                     buffered)
+  proc newSocket*(domain, sockType, protocol: cint, buffered = true,
+                  inheritable = defined(nimInheritHandles)): owned(Socket) =
+    ## Creates a new socket.
+    ##
+    ## The SocketHandle associated with the resulting Socket will not be
+    ## inheritable by child processes by default. This can be changed via
+    ## the `inheritable` parameter.
+    ##
+    ## If an error occurs OSError will be raised.
+    let fd = createNativeSocket(domain, sockType, protocol, inheritable)
+    if fd == osInvalidSocket:
+      raiseOSError(osLastError())
+    result = newSocket(fd, domain.Domain, sockType.SockType, protocol.Protocol,
+                       buffered)
 
-proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
-                protocol: Protocol = IPPROTO_TCP, buffered = true,
-                inheritable = defined(nimInheritHandles)): owned(Socket) =
-  ## Creates a new socket.
-  ##
-  ## The SocketHandle associated with the resulting Socket will not be
-  ## inheritable by child processes by default. This can be changed via
-  ## the `inheritable` parameter.
-  ##
-  ## If an error occurs OSError will be raised.
-  let fd = createNativeSocket(domain, sockType, protocol, inheritable)
-  if fd == osInvalidSocket:
-    raiseOSError(osLastError())
-  result = newSocket(fd, domain, sockType, protocol, buffered)
+  proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
+                  protocol: Protocol = IPPROTO_TCP, buffered = true,
+                  inheritable = defined(nimInheritHandles)): owned(Socket) =
+    ## Creates a new socket.
+    ##
+    ## The SocketHandle associated with the resulting Socket will not be
+    ## inheritable by child processes by default. This can be changed via
+    ## the `inheritable` parameter.
+    ##
+    ## If an error occurs OSError will be raised.
+    let fd = createNativeSocket(domain, sockType, protocol, inheritable)
+    if fd == osInvalidSocket:
+      raiseOSError(osLastError())
+    result = newSocket(fd, domain, sockType, protocol, buffered)
 
 proc parseIPv4Address(addressStr: string): IpAddress =
   ## Parses IPv4 addresses
@@ -453,8 +463,8 @@ proc parseIPv6Address(addressStr: string): IpAddress =
 proc parseIpAddress*(addressStr: string): IpAddress =
   ## Parses an IP address
   ##
-  ## Raises ValueError on error. 
-  ## 
+  ## Raises ValueError on error.
+  ##
   ## For IPv4 addresses, only the strict form as
   ## defined in RFC 6943 is considered valid, see
   ## https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1.
@@ -474,49 +484,50 @@ proc isIpAddress*(addressStr: string): bool {.tags: [].} =
     return false
   return true
 
-proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage,
-                 sl: var SockLen) =
-  ## Converts `IpAddress` and `Port` to `SockAddr` and `SockLen`
-  let port = htons(uint16(port))
-  case address.family
-  of IpAddressFamily.IPv4:
-    sl = sizeof(Sockaddr_in).SockLen
-    let s = cast[ptr Sockaddr_in](addr sa)
-    s.sin_family = typeof(s.sin_family)(toInt(AF_INET))
-    s.sin_port = port
-    copyMem(addr s.sin_addr, unsafeAddr address.address_v4[0],
-            sizeof(s.sin_addr))
-  of IpAddressFamily.IPv6:
-    sl = sizeof(Sockaddr_in6).SockLen
-    let s = cast[ptr Sockaddr_in6](addr sa)
-    s.sin6_family = typeof(s.sin6_family)(toInt(AF_INET6))
-    s.sin6_port = port
-    copyMem(addr s.sin6_addr, unsafeAddr address.address_v6[0],
-            sizeof(s.sin6_addr))
+when not socketsMissing:
+  proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage,
+                   sl: var SockLen) =
+    ## Converts `IpAddress` and `Port` to `SockAddr` and `SockLen`
+    let port = htons(uint16(port))
+    case address.family
+    of IpAddressFamily.IPv4:
+      sl = sizeof(Sockaddr_in).SockLen
+      let s = cast[ptr Sockaddr_in](addr sa)
+      s.sin_family = typeof(s.sin_family)(toInt(AF_INET))
+      s.sin_port = port
+      copyMem(addr s.sin_addr, unsafeAddr address.address_v4[0],
+              sizeof(s.sin_addr))
+    of IpAddressFamily.IPv6:
+      sl = sizeof(Sockaddr_in6).SockLen
+      let s = cast[ptr Sockaddr_in6](addr sa)
+      s.sin6_family = typeof(s.sin6_family)(toInt(AF_INET6))
+      s.sin6_port = port
+      copyMem(addr s.sin6_addr, unsafeAddr address.address_v6[0],
+              sizeof(s.sin6_addr))
 
-proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: SockLen,
-                     address: var IpAddress, port: var Port) =
-  if sa.ss_family.cint == toInt(AF_INET) and sl == sizeof(Sockaddr_in).SockLen:
-    address = IpAddress(family: IpAddressFamily.IPv4)
-    let s = cast[ptr Sockaddr_in](sa)
-    copyMem(addr address.address_v4[0], addr s.sin_addr,
-            sizeof(address.address_v4))
-    port = ntohs(s.sin_port).Port
-  elif sa.ss_family.cint == toInt(AF_INET6) and
-       sl == sizeof(Sockaddr_in6).SockLen:
-    address = IpAddress(family: IpAddressFamily.IPv6)
-    let s = cast[ptr Sockaddr_in6](sa)
-    copyMem(addr address.address_v6[0], addr s.sin6_addr,
-            sizeof(address.address_v6))
-    port = ntohs(s.sin6_port).Port
-  else:
-    raise newException(ValueError, "Neither IPv4 nor IPv6")
+  proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: SockLen,
+                       address: var IpAddress, port: var Port) =
+    if sa.ss_family.cint == toInt(AF_INET) and sl == sizeof(Sockaddr_in).SockLen:
+      address = IpAddress(family: IpAddressFamily.IPv4)
+      let s = cast[ptr Sockaddr_in](sa)
+      copyMem(addr address.address_v4[0], addr s.sin_addr,
+              sizeof(address.address_v4))
+      port = ntohs(s.sin_port).Port
+    elif sa.ss_family.cint == toInt(AF_INET6) and
+         sl == sizeof(Sockaddr_in6).SockLen:
+      address = IpAddress(family: IpAddressFamily.IPv6)
+      let s = cast[ptr Sockaddr_in6](sa)
+      copyMem(addr address.address_v6[0], addr s.sin6_addr,
+              sizeof(address.address_v6))
+      port = ntohs(s.sin6_port).Port
+    else:
+      raise newException(ValueError, "Neither IPv4 nor IPv6")
 
-proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
-    sl: SockLen, address: var IpAddress, port: var Port) {.inline.} =
-  ## Converts `SockAddr` and `SockLen` to `IpAddress` and `Port`. Raises
-  ## `ObjectConversionDefect` in case of invalid `sa` and `sl` arguments.
-  fromSockAddrAux(cast[ptr Sockaddr_storage](unsafeAddr sa), sl, address, port)
+  proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
+      sl: SockLen, address: var IpAddress, port: var Port) {.inline.} =
+    ## Converts `SockAddr` and `SockLen` to `IpAddress` and `Port`. Raises
+    ## `ObjectConversionDefect` in case of invalid `sa` and `sl` arguments.
+    fromSockAddrAux(cast[ptr Sockaddr_storage](unsafeAddr sa), sl, address, port)
 
 when defineSsl:
   CRYPTO_malloc_init()
@@ -885,156 +896,157 @@ when defineSsl:
       raiseSSLError("sessionIdContext must be shorter than 32 characters")
     SSL_CTX_set_session_id_context(ctx.context, sidCtx, sidCtx.len)
 
-proc getSocketError*(socket: Socket): OSErrorCode =
-  ## Checks `osLastError` for a valid error. If it has been reset it uses
-  ## the last error stored in the socket object.
-  result = osLastError()
-  if result == 0.OSErrorCode:
-    result = socket.lastError
-  if result == 0.OSErrorCode:
-    raiseOSError(result, "No valid socket error code available")
+when not socketsMissing:
+  proc getSocketError*(socket: Socket): OSErrorCode =
+    ## Checks `osLastError` for a valid error. If it has been reset it uses
+    ## the last error stored in the socket object.
+    result = osLastError()
+    if result == 0.OSErrorCode:
+      result = socket.lastError
+    if result == 0.OSErrorCode:
+      raiseOSError(result, "No valid socket error code available")
 
-proc socketError*(socket: Socket, err: int = -1, async = false,
-                  lastError = (-1).OSErrorCode,
-                  flags: set[SocketFlag] = {}) =
-  ## Raises an OSError based on the error code returned by `SSL_get_error`
-  ## (for SSL sockets) and `osLastError` otherwise.
-  ##
-  ## If `async` is `true` no error will be thrown in the case when the
-  ## error was caused by no data being available to be read.
-  ##
-  ## If `err` is not lower than 0 no exception will be raised.
-  ##
-  ## If `flags` contains `SafeDisconn`, no exception will be raised
-  ## when the error was caused by a peer disconnection.
-  when defineSsl:
-    if socket.isSsl:
-      if err <= 0:
-        var ret = SSL_get_error(socket.sslHandle, err.cint)
-        case ret
-        of SSL_ERROR_ZERO_RETURN:
-          raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
-        of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
-          if async:
-            return
-          else: raiseSSLError("Not enough data on socket.")
-        of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
-          if async:
-            return
-          else: raiseSSLError("Not enough data on socket.")
-        of SSL_ERROR_WANT_X509_LOOKUP:
-          raiseSSLError("Function for x509 lookup has been called.")
-        of SSL_ERROR_SYSCALL:
-          # SSL shutdown must not be done if a fatal error occurred.
-          socket.sslNoShutdown = true
-          let osErr = osLastError()
-          if not flags.isDisconnectionError(osErr):
-            var errStr = "IO error has occurred "
-            let sslErr = ERR_peek_last_error()
-            if sslErr == 0 and err == 0:
-              errStr.add "because an EOF was observed that violates the protocol"
-            elif sslErr == 0 and err == -1:
-              errStr.add "in the BIO layer"
-            else:
-              let errStr = $ERR_error_string(sslErr, nil)
-              raiseSSLError(errStr & ": " & errStr)
-            raiseOSError(osErr, errStr)
-        of SSL_ERROR_SSL:
-          # SSL shutdown must not be done if a fatal error occurred.
-          socket.sslNoShutdown = true
-          raiseSSLError()
-        else: raiseSSLError("Unknown Error")
-
-  if err == -1 and not (when defineSsl: socket.isSsl else: false):
-    var lastE = if lastError.int == -1: getSocketError(socket) else: lastError
-    if not flags.isDisconnectionError(lastE):
-      if async:
-        when useWinVersion:
-          if lastE.int32 == WSAEWOULDBLOCK:
-            return
-          else: raiseOSError(lastE)
-        else:
-          if lastE.int32 == EAGAIN or lastE.int32 == EWOULDBLOCK:
-            return
-          else: raiseOSError(lastE)
-      else: raiseOSError(lastE)
-
-proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
-  ## Marks `socket` as accepting connections.
-  ## `Backlog` specifies the maximum length of the
-  ## queue of pending connections.
-  ##
-  ## Raises an OSError error upon failure.
-  if nativesockets.listen(socket.fd, backlog) < 0'i32:
-    raiseOSError(osLastError())
-
-proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
-  tags: [ReadIOEffect].} =
-  ## Binds `address`:`port` to the socket.
-  ##
-  ## If `address` is "" then ADDR_ANY will be bound.
-  var realaddr = address
-  if realaddr == "":
-    case socket.domain
-    of AF_INET6: realaddr = "::"
-    of AF_INET: realaddr = "0.0.0.0"
-    else:
-      raise newException(ValueError,
-        "Unknown socket address family and no address specified to bindAddr")
-
-  var aiList = getAddrInfo(realaddr, port, socket.domain)
-  if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
-    freeaddrinfo(aiList)
-    var address2: string
-    address2.addQuoted address
-    raiseOSError(osLastError(), "address: $# port: $#" % [address2, $port])
-  freeaddrinfo(aiList)
-
-proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
-                 flags = {SocketFlag.SafeDisconn},
-                 inheritable = defined(nimInheritHandles)) {.
-                 tags: [ReadIOEffect], gcsafe, locks: 0.} =
-  ## Blocks until a connection is being made from a client. When a connection
-  ## is made sets `client` to the client socket and `address` to the address
-  ## of the connecting client.
-  ## This function will raise OSError if an error occurs.
-  ##
-  ## The resulting client will inherit any properties of the server socket. For
-  ## example: whether the socket is buffered or not.
-  ##
-  ## The SocketHandle associated with the resulting client will not be
-  ## inheritable by child processes by default. This can be changed via
-  ## the `inheritable` parameter.
-  ##
-  ## The `accept` call may result in an error if the connecting socket
-  ## disconnects during the duration of the `accept`. If the `SafeDisconn`
-  ## flag is specified then this error will not be raised and instead
-  ## accept will be called again.
-  if client.isNil:
-    new(client)
-  let ret = accept(server.fd, inheritable)
-  let sock = ret[0]
-
-  if sock == osInvalidSocket:
-    let err = osLastError()
-    if flags.isDisconnectionError(err):
-      acceptAddr(server, client, address, flags, inheritable)
-    raiseOSError(err)
-  else:
-    address = ret[1]
-    client.fd = sock
-    client.domain = getSockDomain(sock)
-    client.isBuffered = server.isBuffered
-
-    # Handle SSL.
+  proc socketError*(socket: Socket, err: int = -1, async = false,
+                    lastError = (-1).OSErrorCode,
+                    flags: set[SocketFlag] = {}) =
+    ## Raises an OSError based on the error code returned by `SSL_get_error`
+    ## (for SSL sockets) and `osLastError` otherwise.
+    ##
+    ## If `async` is `true` no error will be thrown in the case when the
+    ## error was caused by no data being available to be read.
+    ##
+    ## If `err` is not lower than 0 no exception will be raised.
+    ##
+    ## If `flags` contains `SafeDisconn`, no exception will be raised
+    ## when the error was caused by a peer disconnection.
     when defineSsl:
-      if server.isSsl:
-        # We must wrap the client sock in a ssl context.
+      if socket.isSsl:
+        if err <= 0:
+          var ret = SSL_get_error(socket.sslHandle, err.cint)
+          case ret
+          of SSL_ERROR_ZERO_RETURN:
+            raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
+          of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
+            if async:
+              return
+            else: raiseSSLError("Not enough data on socket.")
+          of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
+            if async:
+              return
+            else: raiseSSLError("Not enough data on socket.")
+          of SSL_ERROR_WANT_X509_LOOKUP:
+            raiseSSLError("Function for x509 lookup has been called.")
+          of SSL_ERROR_SYSCALL:
+            # SSL shutdown must not be done if a fatal error occurred.
+            socket.sslNoShutdown = true
+            let osErr = osLastError()
+            if not flags.isDisconnectionError(osErr):
+              var errStr = "IO error has occurred "
+              let sslErr = ERR_peek_last_error()
+              if sslErr == 0 and err == 0:
+                errStr.add "because an EOF was observed that violates the protocol"
+              elif sslErr == 0 and err == -1:
+                errStr.add "in the BIO layer"
+              else:
+                let errStr = $ERR_error_string(sslErr, nil)
+                raiseSSLError(errStr & ": " & errStr)
+              raiseOSError(osErr, errStr)
+          of SSL_ERROR_SSL:
+            # SSL shutdown must not be done if a fatal error occurred.
+            socket.sslNoShutdown = true
+            raiseSSLError()
+          else: raiseSSLError("Unknown Error")
 
-        server.sslContext.wrapSocket(client)
-        ErrClearError()
-        let ret = SSL_accept(client.sslHandle)
-        socketError(client, ret, false)
+    if err == -1 and not (when defineSsl: socket.isSsl else: false):
+      var lastE = if lastError.int == -1: getSocketError(socket) else: lastError
+      if not flags.isDisconnectionError(lastE):
+        if async:
+          when useWinVersion:
+            if lastE.int32 == WSAEWOULDBLOCK:
+              return
+            else: raiseOSError(lastE)
+          else:
+            if lastE.int32 == EAGAIN or lastE.int32 == EWOULDBLOCK:
+              return
+            else: raiseOSError(lastE)
+        else: raiseOSError(lastE)
+
+  proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
+    ## Marks `socket` as accepting connections.
+    ## `Backlog` specifies the maximum length of the
+    ## queue of pending connections.
+    ##
+    ## Raises an OSError error upon failure.
+    if nativesockets.listen(socket.fd, backlog) < 0'i32:
+      raiseOSError(osLastError())
+
+  proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
+    tags: [ReadIOEffect].} =
+    ## Binds `address`:`port` to the socket.
+    ##
+    ## If `address` is "" then ADDR_ANY will be bound.
+    var realaddr = address
+    if realaddr == "":
+      case socket.domain
+      of AF_INET6: realaddr = "::"
+      of AF_INET: realaddr = "0.0.0.0"
+      else:
+        raise newException(ValueError,
+          "Unknown socket address family and no address specified to bindAddr")
+
+    var aiList = getAddrInfo(realaddr, port, socket.domain)
+    if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
+      freeaddrinfo(aiList)
+      var address2: string
+      address2.addQuoted address
+      raiseOSError(osLastError(), "address: $# port: $#" % [address2, $port])
+    freeaddrinfo(aiList)
+
+  proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
+                   flags = {SocketFlag.SafeDisconn},
+                   inheritable = defined(nimInheritHandles)) {.
+                   tags: [ReadIOEffect], gcsafe, locks: 0.} =
+    ## Blocks until a connection is being made from a client. When a connection
+    ## is made sets `client` to the client socket and `address` to the address
+    ## of the connecting client.
+    ## This function will raise OSError if an error occurs.
+    ##
+    ## The resulting client will inherit any properties of the server socket. For
+    ## example: whether the socket is buffered or not.
+    ##
+    ## The SocketHandle associated with the resulting client will not be
+    ## inheritable by child processes by default. This can be changed via
+    ## the `inheritable` parameter.
+    ##
+    ## The `accept` call may result in an error if the connecting socket
+    ## disconnects during the duration of the `accept`. If the `SafeDisconn`
+    ## flag is specified then this error will not be raised and instead
+    ## accept will be called again.
+    if client.isNil:
+      new(client)
+    let ret = accept(server.fd, inheritable)
+    let sock = ret[0]
+
+    if sock == osInvalidSocket:
+      let err = osLastError()
+      if flags.isDisconnectionError(err):
+        acceptAddr(server, client, address, flags, inheritable)
+      raiseOSError(err)
+    else:
+      address = ret[1]
+      client.fd = sock
+      client.domain = getSockDomain(sock)
+      client.isBuffered = server.isBuffered
+
+      # Handle SSL.
+      when defineSsl:
+        if server.isSsl:
+          # We must wrap the client sock in a ssl context.
+
+          server.sslContext.wrapSocket(client)
+          ErrClearError()
+          let ret = SSL_accept(client.sslHandle)
+          socketError(client, ret, false)
 
 when false: #defineSsl:
   proc acceptAddrSSL*(server: Socket, client: var Socket,
@@ -1089,23 +1101,24 @@ when false: #defineSsl:
       acceptAddrPlain(AcceptNoClient, AcceptSuccess):
         doHandshake()
 
-proc accept*(server: Socket, client: var owned(Socket),
-             flags = {SocketFlag.SafeDisconn},
-             inheritable = defined(nimInheritHandles))
-            {.tags: [ReadIOEffect].} =
-  ## Equivalent to `acceptAddr` but doesn't return the address, only the
-  ## socket.
-  ##
-  ## The SocketHandle associated with the resulting client will not be
-  ## inheritable by child processes by default. This can be changed via
-  ## the `inheritable` parameter.
-  ##
-  ## The `accept` call may result in an error if the connecting socket
-  ## disconnects during the duration of the `accept`. If the `SafeDisconn`
-  ## flag is specified then this error will not be raised and instead
-  ## accept will be called again.
-  var addrDummy = ""
-  acceptAddr(server, client, addrDummy, flags)
+when not socketsMissing:
+  proc accept*(server: Socket, client: var owned(Socket),
+               flags = {SocketFlag.SafeDisconn},
+               inheritable = defined(nimInheritHandles))
+              {.tags: [ReadIOEffect].} =
+    ## Equivalent to `acceptAddr` but doesn't return the address, only the
+    ## socket.
+    ##
+    ## The SocketHandle associated with the resulting client will not be
+    ## inheritable by child processes by default. This can be changed via
+    ## the `inheritable` parameter.
+    ##
+    ## The `accept` call may result in an error if the connecting socket
+    ## disconnects during the duration of the `accept`. If the `SafeDisconn`
+    ## flag is specified then this error will not be raised and instead
+    ## accept will be called again.
+    var addrDummy = ""
+    acceptAddr(server, client, addrDummy, flags)
 
 when defined(posix) and not defined(lwip):
   from posix import Sigset, sigwait, sigismember, sigemptyset, sigaddset,
@@ -1165,108 +1178,109 @@ template blockSigpipe(body: untyped): untyped =
         if sigmask(SIG_UNBLOCK, watchSet, oldSet) == -1:
           raiseOSError(osLastError(), "Couldn't unblock SIGPIPE")
 
-proc close*(socket: Socket, flags = {SocketFlag.SafeDisconn}) =
-  ## Closes a socket.
-  ##
-  ## If `socket` is an SSL/TLS socket, this proc will also send a closure
-  ## notification to the peer. If `SafeDisconn` is in `flags`, failure to do so
-  ## due to disconnections will be ignored. This is generally safe in
-  ## practice. See
-  ## `here <https://security.stackexchange.com/a/82044>`_ for more details.
-  try:
-    when defineSsl:
-      if socket.isSsl and socket.sslHandle != nil:
-        # Don't call SSL_shutdown if the connection has not been fully
-        # established, see:
-        # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
-        if not socket.sslNoShutdown and SSL_in_init(socket.sslHandle) == 0:
-          # As we are closing the underlying socket immediately afterwards,
-          # it is valid, under the TLS standard, to perform a unidirectional
-          # shutdown i.e not wait for the peers "close notify" alert with a second
-          # call to SSL_shutdown
-          blockSigpipe:
-            ErrClearError()
-            let res = SSL_shutdown(socket.sslHandle)
-            if res == 0:
-              discard
-            elif res != 1:
-              let
-                err = osLastError()
-                sslError = SSL_get_error(socket.sslHandle, res)
-
-              # If a close notification is received, failures outside of the
-              # protocol will be returned as SSL_ERROR_ZERO_RETURN instead
-              # of SSL_ERROR_SYSCALL. This fact is deduced by digging into
-              # SSL_get_error() source code.
-              if sslError == SSL_ERROR_ZERO_RETURN or
-                 sslError == SSL_ERROR_SYSCALL:
-                when defined(posix) and not defined(macosx) and
-                     not defined(nimdoc):
-                  if err == EPIPE.OSErrorCode:
-                    # Clear the SIGPIPE that's been raised due to
-                    # the disconnection.
-                    selectSigpipe()
-                else:
-                  discard
-                if not flags.isDisconnectionError(err):
-                  socketError(socket, res, lastError = err, flags = flags)
-              else:
-                socketError(socket, res, lastError = err, flags = flags)
-  finally:
-    when defineSsl:
-      if socket.isSsl and socket.sslHandle != nil:
-        SSL_free(socket.sslHandle)
-        socket.sslHandle = nil
-
-    socket.fd.close()
-    socket.fd = osInvalidSocket
-
-when defined(posix):
-  from posix import TCP_NODELAY
-else:
-  from winlean import TCP_NODELAY
-
-proc toCInt*(opt: SOBool): cint =
-  ## Converts a `SOBool` into its Socket Option cint representation.
-  case opt
-  of OptAcceptConn: SO_ACCEPTCONN
-  of OptBroadcast: SO_BROADCAST
-  of OptDebug: SO_DEBUG
-  of OptDontRoute: SO_DONTROUTE
-  of OptKeepAlive: SO_KEEPALIVE
-  of OptOOBInline: SO_OOBINLINE
-  of OptReuseAddr: SO_REUSEADDR
-  of OptReusePort: SO_REUSEPORT
-  of OptNoDelay: TCP_NODELAY
-
-proc getSockOpt*(socket: Socket, opt: SOBool, level = SOL_SOCKET): bool {.
-  tags: [ReadIOEffect].} =
-  ## Retrieves option `opt` as a boolean value.
-  var res = getSockOptInt(socket.fd, cint(level), toCInt(opt))
-  result = res != 0
-
-proc getLocalAddr*(socket: Socket): (string, Port) =
-  ## Get the socket's local address and port number.
-  ##
-  ## This is high-level interface for `getsockname`:idx:.
-  getLocalAddr(socket.fd, socket.domain)
-
-when not useNimNetLite:
-  proc getPeerAddr*(socket: Socket): (string, Port) =
-    ## Get the socket's peer address and port number.
+when not socketsMissing:
+  proc close*(socket: Socket, flags = {SocketFlag.SafeDisconn}) =
+    ## Closes a socket.
     ##
-    ## This is high-level interface for `getpeername`:idx:.
-    getPeerAddr(socket.fd, socket.domain)
+    ## If `socket` is an SSL/TLS socket, this proc will also send a closure
+    ## notification to the peer. If `SafeDisconn` is in `flags`, failure to do so
+    ## due to disconnections will be ignored. This is generally safe in
+    ## practice. See
+    ## `here <https://security.stackexchange.com/a/82044>`_ for more details.
+    try:
+      when defineSsl:
+        if socket.isSsl and socket.sslHandle != nil:
+          # Don't call SSL_shutdown if the connection has not been fully
+          # established, see:
+          # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
+          if not socket.sslNoShutdown and SSL_in_init(socket.sslHandle) == 0:
+            # As we are closing the underlying socket immediately afterwards,
+            # it is valid, under the TLS standard, to perform a unidirectional
+            # shutdown i.e not wait for the peers "close notify" alert with a second
+            # call to SSL_shutdown
+            blockSigpipe:
+              ErrClearError()
+              let res = SSL_shutdown(socket.sslHandle)
+              if res == 0:
+                discard
+              elif res != 1:
+                let
+                  err = osLastError()
+                  sslError = SSL_get_error(socket.sslHandle, res)
 
-proc setSockOpt*(socket: Socket, opt: SOBool, value: bool,
-    level = SOL_SOCKET) {.tags: [WriteIOEffect].} =
-  ## Sets option `opt` to a boolean value specified by `value`.
-  runnableExamples("-r:off"):
-    let socket = newSocket()
-    socket.setSockOpt(OptReusePort, true)
-    socket.setSockOpt(OptNoDelay, true, level = IPPROTO_TCP.cint)
-  var valuei = cint(if value: 1 else: 0)
-  setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
+                # If a close notification is received, failures outside of the
+                # protocol will be returned as SSL_ERROR_ZERO_RETURN instead
+                # of SSL_ERROR_SYSCALL. This fact is deduced by digging into
+                # SSL_get_error() source code.
+                if sslError == SSL_ERROR_ZERO_RETURN or
+                   sslError == SSL_ERROR_SYSCALL:
+                  when defined(posix) and not defined(macosx) and
+                       not defined(nimdoc):
+                    if err == EPIPE.OSErrorCode:
+                      # Clear the SIGPIPE that's been raised due to
+                      # the disconnection.
+                      selectSigpipe()
+                  else:
+                    discard
+                  if not flags.isDisconnectionError(err):
+                    socketError(socket, res, lastError = err, flags = flags)
+                else:
+                  socketError(socket, res, lastError = err, flags = flags)
+    finally:
+      when defineSsl:
+        if socket.isSsl and socket.sslHandle != nil:
+          SSL_free(socket.sslHandle)
+          socket.sslHandle = nil
+
+      socket.fd.close()
+      socket.fd = osInvalidSocket
+
+  when defined(posix) or useNimNetLite:
+    from posix import TCP_NODELAY
+  else:
+    from winlean import TCP_NODELAY
+
+  proc toCInt*(opt: SOBool): cint =
+    ## Converts a `SOBool` into its Socket Option cint representation.
+    case opt
+    of OptAcceptConn: SO_ACCEPTCONN
+    of OptBroadcast: SO_BROADCAST
+    of OptDebug: SO_DEBUG
+    of OptDontRoute: SO_DONTROUTE
+    of OptKeepAlive: SO_KEEPALIVE
+    of OptOOBInline: SO_OOBINLINE
+    of OptReuseAddr: SO_REUSEADDR
+    of OptReusePort: SO_REUSEPORT
+    of OptNoDelay: TCP_NODELAY
+
+  proc getSockOpt*(socket: Socket, opt: SOBool, level = SOL_SOCKET): bool {.
+    tags: [ReadIOEffect].} =
+    ## Retrieves option `opt` as a boolean value.
+    var res = getSockOptInt(socket.fd, cint(level), toCInt(opt))
+    result = res != 0
+
+  proc getLocalAddr*(socket: Socket): (string, Port) =
+    ## Get the socket's local address and port number.
+    ##
+    ## This is high-level interface for `getsockname`:idx:.
+    getLocalAddr(socket.fd, socket.domain)
+
+  when not useNimNetLite:
+    proc getPeerAddr*(socket: Socket): (string, Port) =
+      ## Get the socket's peer address and port number.
+      ##
+      ## This is high-level interface for `getpeername`:idx:.
+      getPeerAddr(socket.fd, socket.domain)
+
+  proc setSockOpt*(socket: Socket, opt: SOBool, value: bool,
+      level = SOL_SOCKET) {.tags: [WriteIOEffect].} =
+    ## Sets option `opt` to a boolean value specified by `value`.
+    runnableExamples("-r:off"):
+      let socket = newSocket()
+      socket.setSockOpt(OptReusePort, true)
+      socket.setSockOpt(OptNoDelay, true, level = IPPROTO_TCP.cint)
+    var valuei = cint(if value: 1 else: 0)
+    setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
 when defined(nimdoc) or (defined(posix) and not useNimNetLite):
   proc connectUnix*(socket: Socket, path: string) =
@@ -1298,505 +1312,506 @@ when defined(ssl):
     else:
       raiseSSLError("Socket is not an SSL socket.")
 
-proc hasDataBuffered*(s: Socket): bool =
-  ## Determines whether a socket has data buffered.
-  result = false
-  if s.isBuffered:
-    result = s.bufLen > 0 and s.currPos != s.bufLen
+when not socketsMissing:
+  proc hasDataBuffered*(s: Socket): bool =
+    ## Determines whether a socket has data buffered.
+    result = false
+    if s.isBuffered:
+      result = s.bufLen > 0 and s.currPos != s.bufLen
 
-  when defineSsl:
-    if s.isSsl and not result:
-      result = s.sslHasPeekChar
+    when defineSsl:
+      if s.isSsl and not result:
+        result = s.sslHasPeekChar
 
-proc select(readfd: Socket, timeout = 500): int =
-  ## Used for socket operation timeouts.
-  if readfd.hasDataBuffered:
-    return 1
+  proc select(readfd: Socket, timeout = 500): int =
+    ## Used for socket operation timeouts.
+    if readfd.hasDataBuffered:
+      return 1
 
-  var fds = @[readfd.fd]
-  result = selectRead(fds, timeout)
+    var fds = @[readfd.fd]
+    result = selectRead(fds, timeout)
 
-proc isClosed(socket: Socket): bool =
-  socket.fd == osInvalidSocket
+  proc isClosed(socket: Socket): bool =
+    socket.fd == osInvalidSocket
 
-proc uniRecv(socket: Socket, buffer: pointer, size, flags: cint): int =
-  ## Handles SSL and non-ssl recv in a nice package.
-  ##
-  ## In particular handles the case where socket has been closed properly
-  ## for both SSL and non-ssl.
-  result = 0
-  assert(not socket.isClosed, "Cannot `recv` on a closed socket")
-  when defineSsl:
-    if socket.isSsl:
-      ErrClearError()
-      return SSL_read(socket.sslHandle, buffer, size)
+  proc uniRecv(socket: Socket, buffer: pointer, size, flags: cint): int =
+    ## Handles SSL and non-ssl recv in a nice package.
+    ##
+    ## In particular handles the case where socket has been closed properly
+    ## for both SSL and non-ssl.
+    result = 0
+    assert(not socket.isClosed, "Cannot `recv` on a closed socket")
+    when defineSsl:
+      if socket.isSsl:
+        ErrClearError()
+        return SSL_read(socket.sslHandle, buffer, size)
 
-  return recv(socket.fd, buffer, size, flags)
+    return recv(socket.fd, buffer, size, flags)
 
-proc readIntoBuf(socket: Socket, flags: int32): int =
-  result = 0
-  result = uniRecv(socket, addr(socket.buffer), socket.buffer.high, flags)
-  if result < 0:
-    # Save it in case it gets reset (the Nim codegen occasionally may call
-    # Win API functions which reset it).
-    socket.lastError = osLastError()
-  if result <= 0:
-    socket.bufLen = 0
+  proc readIntoBuf(socket: Socket, flags: int32): int =
+    result = 0
+    result = uniRecv(socket, addr(socket.buffer), socket.buffer.high, flags)
+    if result < 0:
+      # Save it in case it gets reset (the Nim codegen occasionally may call
+      # Win API functions which reset it).
+      socket.lastError = osLastError()
+    if result <= 0:
+      socket.bufLen = 0
+      socket.currPos = 0
+      return result
+    socket.bufLen = result
     socket.currPos = 0
-    return result
-  socket.bufLen = result
-  socket.currPos = 0
 
-template retRead(flags, readBytes: int) {.dirty.} =
-  let res = socket.readIntoBuf(flags.int32)
-  if res <= 0:
-    if readBytes > 0:
-      return readBytes
+  template retRead(flags, readBytes: int) {.dirty.} =
+    let res = socket.readIntoBuf(flags.int32)
+    if res <= 0:
+      if readBytes > 0:
+        return readBytes
+      else:
+        return res
+
+  proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [
+      ReadIOEffect].} =
+    ## Receives data from a socket.
+    ##
+    ## **Note**: This is a low-level function, you may be interested in the higher
+    ## level versions of this function which are also named `recv`.
+    if size == 0: return
+    if socket.isBuffered:
+      if socket.bufLen == 0:
+        retRead(0'i32, 0)
+
+      var read = 0
+      while read < size:
+        if socket.currPos >= socket.bufLen:
+          retRead(0'i32, read)
+
+        let chunk = min(socket.bufLen-socket.currPos, size-read)
+        var d = cast[cstring](data)
+        assert size-read >= chunk
+        copyMem(addr(d[read]), addr(socket.buffer[socket.currPos]), chunk)
+        read.inc(chunk)
+        socket.currPos.inc(chunk)
+
+      result = read
     else:
-      return res
+      when defineSsl:
+        if socket.isSsl:
+          if socket.sslHasPeekChar: # TODO: Merge this peek char mess into uniRecv
+            copyMem(data, addr(socket.sslPeekChar), 1)
+            socket.sslHasPeekChar = false
+            if size-1 > 0:
+              var d = cast[cstring](data)
+              result = uniRecv(socket, addr(d[1]), cint(size-1), 0'i32) + 1
+            else:
+              result = 1
+          else:
+            result = uniRecv(socket, data, size.cint, 0'i32)
+        else:
+          result = recv(socket.fd, data, size.cint, 0'i32)
+      else:
+        result = recv(socket.fd, data, size.cint, 0'i32)
+      if result < 0:
+        # Save the error in case it gets reset.
+        socket.lastError = osLastError()
 
-proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [
-    ReadIOEffect].} =
-  ## Receives data from a socket.
-  ##
-  ## **Note**: This is a low-level function, you may be interested in the higher
-  ## level versions of this function which are also named `recv`.
-  if size == 0: return
-  if socket.isBuffered:
-    if socket.bufLen == 0:
-      retRead(0'i32, 0)
+  proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
+               funcName: string): int {.tags: [TimeEffect].} =
+    ## determines the amount of characters that can be read. Result will never
+    ## be larger than `size`. For unbuffered sockets this will be `1`.
+    ## For buffered sockets it can be as big as `BufferSize`.
+    ##
+    ## If this function does not determine that there is data on the socket
+    ## within `timeout` ms, a TimeoutError error will be raised.
+    result = 1
+    if size <= 0: assert false
+    if timeout == -1: return size
+    if socket.isBuffered and socket.bufLen != 0 and
+        socket.bufLen != socket.currPos:
+      result = socket.bufLen - socket.currPos
+      result = min(result, size)
+    else:
+      if timeout - waited.inMilliseconds < 1:
+        raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
+
+      when defineSsl:
+        if socket.isSsl:
+          if socket.hasDataBuffered:
+            # sslPeekChar is present.
+            return 1
+          let sslPending = SSL_pending(socket.sslHandle)
+          if sslPending != 0:
+            return min(sslPending, size)
+
+      var startTime = getMonoTime()
+      let selRet = select(socket, (timeout - waited.inMilliseconds).int)
+      if selRet < 0: raiseOSError(osLastError())
+      if selRet != 1:
+        raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
+      waited += (getMonoTime() - startTime)
+
+  proc recv*(socket: Socket, data: pointer, size: int, timeout: int): int {.
+    tags: [ReadIOEffect, TimeEffect].} =
+    ## overload with a `timeout` parameter in milliseconds.
+    var waited: Duration # duration already waited
 
     var read = 0
     while read < size:
-      if socket.currPos >= socket.bufLen:
-        retRead(0'i32, read)
-
-      let chunk = min(socket.bufLen-socket.currPos, size-read)
+      let avail = waitFor(socket, waited, timeout, size-read, "recv")
       var d = cast[cstring](data)
-      assert size-read >= chunk
-      copyMem(addr(d[read]), addr(socket.buffer[socket.currPos]), chunk)
-      read.inc(chunk)
-      socket.currPos.inc(chunk)
+      assert avail <= size-read
+      result = recv(socket, addr(d[read]), avail)
+      if result == 0: break
+      if result < 0:
+        return result
+      inc(read, result)
 
     result = read
-  else:
-    when defineSsl:
-      if socket.isSsl:
-        if socket.sslHasPeekChar: # TODO: Merge this peek char mess into uniRecv
-          copyMem(data, addr(socket.sslPeekChar), 1)
-          socket.sslHasPeekChar = false
-          if size-1 > 0:
-            var d = cast[cstring](data)
-            result = uniRecv(socket, addr(d[1]), cint(size-1), 0'i32) + 1
-          else:
-            result = 1
-        else:
-          result = uniRecv(socket, data, size.cint, 0'i32)
+
+  proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
+             flags = {SocketFlag.SafeDisconn}): int =
+    ## Higher-level version of `recv`.
+    ##
+    ## Reads **up to** `size` bytes from `socket` into `data`.
+    ##
+    ## For buffered sockets this function will attempt to read all the requested
+    ## data. It will read this data in `BufferSize` chunks.
+    ##
+    ## For unbuffered sockets this function makes no effort to read
+    ## all the data requested. It will return as much data as the operating system
+    ## gives it.
+    ##
+    ## When 0 is returned the socket's connection has been closed.
+    ##
+    ## This function will throw an OSError exception when an error occurs. A value
+    ## lower than 0 is never returned.
+    ##
+    ## A timeout may be specified in milliseconds, if enough data is not received
+    ## within the time specified a TimeoutError exception will be raised.
+    ##
+    ## .. warning:: Only the `SafeDisconn` flag is currently supported.
+    data.setLen(size)
+    result =
+      if timeout == -1:
+        recv(socket, cstring(data), size)
       else:
-        result = recv(socket.fd, data, size.cint, 0'i32)
-    else:
-      result = recv(socket.fd, data, size.cint, 0'i32)
+        recv(socket, cstring(data), size, timeout)
     if result < 0:
-      # Save the error in case it gets reset.
-      socket.lastError = osLastError()
-
-proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
-             funcName: string): int {.tags: [TimeEffect].} =
-  ## determines the amount of characters that can be read. Result will never
-  ## be larger than `size`. For unbuffered sockets this will be `1`.
-  ## For buffered sockets it can be as big as `BufferSize`.
-  ##
-  ## If this function does not determine that there is data on the socket
-  ## within `timeout` ms, a TimeoutError error will be raised.
-  result = 1
-  if size <= 0: assert false
-  if timeout == -1: return size
-  if socket.isBuffered and socket.bufLen != 0 and
-      socket.bufLen != socket.currPos:
-    result = socket.bufLen - socket.currPos
-    result = min(result, size)
-  else:
-    if timeout - waited.inMilliseconds < 1:
-      raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
-
-    when defineSsl:
-      if socket.isSsl:
-        if socket.hasDataBuffered:
-          # sslPeekChar is present.
-          return 1
-        let sslPending = SSL_pending(socket.sslHandle)
-        if sslPending != 0:
-          return min(sslPending, size)
-
-    var startTime = getMonoTime()
-    let selRet = select(socket, (timeout - waited.inMilliseconds).int)
-    if selRet < 0: raiseOSError(osLastError())
-    if selRet != 1:
-      raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
-    waited += (getMonoTime() - startTime)
-
-proc recv*(socket: Socket, data: pointer, size: int, timeout: int): int {.
-  tags: [ReadIOEffect, TimeEffect].} =
-  ## overload with a `timeout` parameter in milliseconds.
-  var waited: Duration # duration already waited
-
-  var read = 0
-  while read < size:
-    let avail = waitFor(socket, waited, timeout, size-read, "recv")
-    var d = cast[cstring](data)
-    assert avail <= size-read
-    result = recv(socket, addr(d[read]), avail)
-    if result == 0: break
-    if result < 0:
-      return result
-    inc(read, result)
-
-  result = read
-
-proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
-           flags = {SocketFlag.SafeDisconn}): int =
-  ## Higher-level version of `recv`.
-  ##
-  ## Reads **up to** `size` bytes from `socket` into `data`.
-  ##
-  ## For buffered sockets this function will attempt to read all the requested
-  ## data. It will read this data in `BufferSize` chunks.
-  ##
-  ## For unbuffered sockets this function makes no effort to read
-  ## all the data requested. It will return as much data as the operating system
-  ## gives it.
-  ##
-  ## When 0 is returned the socket's connection has been closed.
-  ##
-  ## This function will throw an OSError exception when an error occurs. A value
-  ## lower than 0 is never returned.
-  ##
-  ## A timeout may be specified in milliseconds, if enough data is not received
-  ## within the time specified a TimeoutError exception will be raised.
-  ##
-  ## .. warning:: Only the `SafeDisconn` flag is currently supported.
-  data.setLen(size)
-  result =
-    if timeout == -1:
-      recv(socket, cstring(data), size)
+      data.setLen(0)
+      let lastError = getSocketError(socket)
+      socket.socketError(result, lastError = lastError, flags = flags)
     else:
-      recv(socket, cstring(data), size, timeout)
-  if result < 0:
-    data.setLen(0)
-    let lastError = getSocketError(socket)
-    socket.socketError(result, lastError = lastError, flags = flags)
-  else:
-    data.setLen(result)
-
-proc recv*(socket: Socket, size: int, timeout = -1,
-           flags = {SocketFlag.SafeDisconn}): string {.inline.} =
-  ## Higher-level version of `recv` which returns a string.
-  ##
-  ## Reads **up to** `size` bytes from `socket` into the result.
-  ##
-  ## For buffered sockets this function will attempt to read all the requested
-  ## data. It will read this data in `BufferSize` chunks.
-  ##
-  ## For unbuffered sockets this function makes no effort to read
-  ## all the data requested. It will return as much data as the operating system
-  ## gives it.
-  ##
-  ## When `""` is returned the socket's connection has been closed.
-  ##
-  ## This function will throw an OSError exception when an error occurs.
-  ##
-  ## A timeout may be specified in milliseconds, if enough data is not received
-  ## within the time specified a TimeoutError exception will be raised.
-  ##
-  ##
-  ## .. warning:: Only the `SafeDisconn` flag is currently supported.
-  result = newString(size)
-  discard recv(socket, result, size, timeout, flags)
-
-proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
-  if socket.isBuffered:
-    result = 1
-    if socket.bufLen == 0 or socket.currPos > socket.bufLen-1:
-      var res = socket.readIntoBuf(0'i32)
-      if res <= 0:
-        result = res
-
-    c = socket.buffer[socket.currPos]
-  else:
-    when defineSsl:
-      if socket.isSsl:
-        if not socket.sslHasPeekChar:
-          result = uniRecv(socket, addr(socket.sslPeekChar), 1, 0'i32)
-          socket.sslHasPeekChar = true
-
-        c = socket.sslPeekChar
-        return
-    result = recv(socket.fd, addr(c), 1, MSG_PEEK)
-
-proc readLine*(socket: Socket, line: var string, timeout = -1,
-               flags = {SocketFlag.SafeDisconn}, maxLength = MaxLineLength) {.
-  tags: [ReadIOEffect, TimeEffect].} =
-  ## Reads a line of data from `socket`.
-  ##
-  ## If a full line is read `\r\L` is not
-  ## added to `line`, however if solely `\r\L` is read then `line`
-  ## will be set to it.
-  ##
-  ## If the socket is disconnected, `line` will be set to `""`.
-  ##
-  ## An OSError exception will be raised in the case of a socket error.
-  ##
-  ## A timeout can be specified in milliseconds, if data is not received within
-  ## the specified time a TimeoutError exception will be raised.
-  ##
-  ## The `maxLength` parameter determines the maximum amount of characters
-  ## that can be read. The result is truncated after that.
-  ##
-  ## .. warning:: Only the `SafeDisconn` flag is currently supported.
-
-  template addNLIfEmpty() =
-    if line.len == 0:
-      line.add("\c\L")
-
-  template raiseSockError() {.dirty.} =
-    let lastError = getSocketError(socket)
-    if flags.isDisconnectionError(lastError):
-      setLen(line, 0)
-    socket.socketError(n, lastError = lastError, flags = flags)
-    return
-
-  var waited: Duration
-
-  setLen(line, 0)
-  while true:
-    var c: char
-    discard waitFor(socket, waited, timeout, 1, "readLine")
-    var n = recv(socket, addr(c), 1)
-    if n < 0: raiseSockError()
-    elif n == 0: setLen(line, 0); return
-    if c == '\r':
-      discard waitFor(socket, waited, timeout, 1, "readLine")
-      n = peekChar(socket, c)
-      if n > 0 and c == '\L':
-        discard recv(socket, addr(c), 1)
-      elif n <= 0: raiseSockError()
-      addNLIfEmpty()
-      return
-    elif c == '\L':
-      addNLIfEmpty()
-      return
-    add(line, c)
-
-    # Verify that this isn't a DOS attack: #3847.
-    if line.len > maxLength: break
-
-proc recvLine*(socket: Socket, timeout = -1,
-               flags = {SocketFlag.SafeDisconn},
-               maxLength = MaxLineLength): string =
-  ## Reads a line of data from `socket`.
-  ##
-  ## If a full line is read `\r\L` is not
-  ## added to the result, however if solely `\r\L` is read then the result
-  ## will be set to it.
-  ##
-  ## If the socket is disconnected, the result will be set to `""`.
-  ##
-  ## An OSError exception will be raised in the case of a socket error.
-  ##
-  ## A timeout can be specified in milliseconds, if data is not received within
-  ## the specified time a TimeoutError exception will be raised.
-  ##
-  ## The `maxLength` parameter determines the maximum amount of characters
-  ## that can be read. The result is truncated after that.
-  ##
-  ## .. warning:: Only the `SafeDisconn` flag is currently supported.
-  result = ""
-  readLine(socket, result, timeout, flags, maxLength)
-
-proc recvFrom*[T: string | IpAddress](socket: Socket, data: var string, length: int,
-               address: var T, port: var Port, flags = 0'i32): int {.
-               tags: [ReadIOEffect].} =
-  ## Receives data from `socket`. This function should normally be used with
-  ## connection-less sockets (UDP sockets). The source address of the data
-  ## packet is stored in the `address` argument as either a string or an IpAddress.
-  ##
-  ## If an error occurs an OSError exception will be raised. Otherwise the return
-  ## value will be the length of data received.
-  ##
-  ## .. warning:: This function does not yet have a buffered implementation,
-  ##   so when `socket` is buffered the non-buffered implementation will be
-  ##   used. Therefore if `socket` contains something in its buffer this
-  ##   function will make no effort to return it.
-  template adaptRecvFromToDomain(sockAddress: untyped, domain: Domain) =
-    var addrLen = SockLen(sizeof(sockAddress))
-    result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
-                      cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
-
-    if result != -1:
       data.setLen(result)
 
-      when typeof(address) is string:
-        address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
-        when domain == AF_INET6:
-          port = ntohs(sockAddress.sin6_port).Port
-        else:
-          port = ntohs(sockAddress.sin_port).Port
-      else:
-        data.setLen(result)
-        sockAddress.fromSockAddr(addrLen, address, port)
+  proc recv*(socket: Socket, size: int, timeout = -1,
+             flags = {SocketFlag.SafeDisconn}): string {.inline.} =
+    ## Higher-level version of `recv` which returns a string.
+    ##
+    ## Reads **up to** `size` bytes from `socket` into the result.
+    ##
+    ## For buffered sockets this function will attempt to read all the requested
+    ## data. It will read this data in `BufferSize` chunks.
+    ##
+    ## For unbuffered sockets this function makes no effort to read
+    ## all the data requested. It will return as much data as the operating system
+    ## gives it.
+    ##
+    ## When `""` is returned the socket's connection has been closed.
+    ##
+    ## This function will throw an OSError exception when an error occurs.
+    ##
+    ## A timeout may be specified in milliseconds, if enough data is not received
+    ## within the time specified a TimeoutError exception will be raised.
+    ##
+    ##
+    ## .. warning:: Only the `SafeDisconn` flag is currently supported.
+    result = newString(size)
+    discard recv(socket, result, size, timeout, flags)
+
+  proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
+    if socket.isBuffered:
+      result = 1
+      if socket.bufLen == 0 or socket.currPos > socket.bufLen-1:
+        var res = socket.readIntoBuf(0'i32)
+        if res <= 0:
+          result = res
+
+      c = socket.buffer[socket.currPos]
     else:
-      raiseOSError(osLastError())
+      when defineSsl:
+        if socket.isSsl:
+          if not socket.sslHasPeekChar:
+            result = uniRecv(socket, addr(socket.sslPeekChar), 1, 0'i32)
+            socket.sslHasPeekChar = true
 
-  assert(socket.protocol != IPPROTO_TCP, "Cannot `recvFrom` on a TCP socket")
-  # TODO: Buffered sockets
-  data.setLen(length)
+          c = socket.sslPeekChar
+          return
+      result = recv(socket.fd, addr(c), 1, MSG_PEEK)
 
-  case socket.domain
-  of AF_INET6:
-    var sockAddress: Sockaddr_in6
-    adaptRecvFromToDomain(sockAddress, AF_INET6)
-  of AF_INET:
-    var sockAddress: Sockaddr_in
-    adaptRecvFromToDomain(sockAddress, AF_INET)
-  else:
-    raise newException(ValueError, "Unknown socket address family")
+  proc readLine*(socket: Socket, line: var string, timeout = -1,
+                 flags = {SocketFlag.SafeDisconn}, maxLength = MaxLineLength) {.
+    tags: [ReadIOEffect, TimeEffect].} =
+    ## Reads a line of data from `socket`.
+    ##
+    ## If a full line is read `\r\L` is not
+    ## added to `line`, however if solely `\r\L` is read then `line`
+    ## will be set to it.
+    ##
+    ## If the socket is disconnected, `line` will be set to `""`.
+    ##
+    ## An OSError exception will be raised in the case of a socket error.
+    ##
+    ## A timeout can be specified in milliseconds, if data is not received within
+    ## the specified time a TimeoutError exception will be raised.
+    ##
+    ## The `maxLength` parameter determines the maximum amount of characters
+    ## that can be read. The result is truncated after that.
+    ##
+    ## .. warning:: Only the `SafeDisconn` flag is currently supported.
 
-proc skip*(socket: Socket, size: int, timeout = -1) =
-  ## Skips `size` amount of bytes.
-  ##
-  ## An optional timeout can be specified in milliseconds, if skipping the
-  ## bytes takes longer than specified a TimeoutError exception will be raised.
-  ##
-  ## Returns the number of skipped bytes.
-  var waited: Duration
-  var dummy = alloc(size)
-  var bytesSkipped = 0
-  while bytesSkipped != size:
-    let avail = waitFor(socket, waited, timeout, size-bytesSkipped, "skip")
-    bytesSkipped += recv(socket, dummy, avail)
-  dealloc(dummy)
+    template addNLIfEmpty() =
+      if line.len == 0:
+        line.add("\c\L")
 
-proc send*(socket: Socket, data: pointer, size: int): int {.
-  tags: [WriteIOEffect].} =
-  ## Sends data to a socket.
-  ##
-  ## **Note**: This is a low-level version of `send`. You likely should use
-  ## the version below.
-  assert(not socket.isClosed, "Cannot `send` on a closed socket")
-  when defineSsl:
-    if socket.isSsl:
-      ErrClearError()
-      return SSL_write(socket.sslHandle, cast[cstring](data), size)
+    template raiseSockError() {.dirty.} =
+      let lastError = getSocketError(socket)
+      if flags.isDisconnectionError(lastError):
+        setLen(line, 0)
+      socket.socketError(n, lastError = lastError, flags = flags)
+      return
 
-  when useWinVersion or defined(macosx):
-    result = send(socket.fd, data, size.cint, 0'i32)
-  else:
-    when defined(solaris):
-      const MSG_NOSIGNAL = 0
-    result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
+    var waited: Duration
 
-proc send*(socket: Socket, data: string,
-           flags = {SocketFlag.SafeDisconn}) {.tags: [WriteIOEffect].} =
-  ## sends data to a socket.
-  let sent = send(socket, cstring(data), data.len)
-  if sent < 0:
-    let lastError = osLastError()
-    socketError(socket, lastError = lastError, flags = flags)
+    setLen(line, 0)
+    while true:
+      var c: char
+      discard waitFor(socket, waited, timeout, 1, "readLine")
+      var n = recv(socket, addr(c), 1)
+      if n < 0: raiseSockError()
+      elif n == 0: setLen(line, 0); return
+      if c == '\r':
+        discard waitFor(socket, waited, timeout, 1, "readLine")
+        n = peekChar(socket, c)
+        if n > 0 and c == '\L':
+          discard recv(socket, addr(c), 1)
+        elif n <= 0: raiseSockError()
+        addNLIfEmpty()
+        return
+      elif c == '\L':
+        addNLIfEmpty()
+        return
+      add(line, c)
 
-  if sent != data.len:
-    raiseOSError(osLastError(), "Could not send all data.")
+      # Verify that this isn't a DOS attack: #3847.
+      if line.len > maxLength: break
 
-template `&=`*(socket: Socket; data: typed) =
-  ## an alias for 'send'.
-  send(socket, data)
+  proc recvLine*(socket: Socket, timeout = -1,
+                 flags = {SocketFlag.SafeDisconn},
+                 maxLength = MaxLineLength): string =
+    ## Reads a line of data from `socket`.
+    ##
+    ## If a full line is read `\r\L` is not
+    ## added to the result, however if solely `\r\L` is read then the result
+    ## will be set to it.
+    ##
+    ## If the socket is disconnected, the result will be set to `""`.
+    ##
+    ## An OSError exception will be raised in the case of a socket error.
+    ##
+    ## A timeout can be specified in milliseconds, if data is not received within
+    ## the specified time a TimeoutError exception will be raised.
+    ##
+    ## The `maxLength` parameter determines the maximum amount of characters
+    ## that can be read. The result is truncated after that.
+    ##
+    ## .. warning:: Only the `SafeDisconn` flag is currently supported.
+    result = ""
+    readLine(socket, result, timeout, flags, maxLength)
 
-proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
-  ## Safe alternative to `send`. Does not raise an OSError when an error occurs,
-  ## and instead returns `false` on failure.
-  result = send(socket, cstring(data), data.len) == data.len
+  proc recvFrom*[T: string | IpAddress](socket: Socket, data: var string, length: int,
+                 address: var T, port: var Port, flags = 0'i32): int {.
+                 tags: [ReadIOEffect].} =
+    ## Receives data from `socket`. This function should normally be used with
+    ## connection-less sockets (UDP sockets). The source address of the data
+    ## packet is stored in the `address` argument as either a string or an IpAddress.
+    ##
+    ## If an error occurs an OSError exception will be raised. Otherwise the return
+    ## value will be the length of data received.
+    ##
+    ## .. warning:: This function does not yet have a buffered implementation,
+    ##   so when `socket` is buffered the non-buffered implementation will be
+    ##   used. Therefore if `socket` contains something in its buffer this
+    ##   function will make no effort to return it.
+    template adaptRecvFromToDomain(sockAddress: untyped, domain: Domain) =
+      var addrLen = SockLen(sizeof(sockAddress))
+      result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
+                        cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
 
-proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
-             size: int, af: Domain = AF_INET, flags = 0'i32) {.
-             tags: [WriteIOEffect].} =
-  ## This proc sends `data` to the specified `address`,
-  ## which may be an IP address or a hostname, if a hostname is specified
-  ## this function will try each IP of that hostname. This function
-  ## should normally be used with connection-less sockets (UDP sockets).
-  ##
-  ## If an error occurs an OSError exception will be raised.
-  ##
-  ## **Note:** You may wish to use the high-level version of this function
-  ## which is defined below.
-  ##
-  ## **Note:** This proc is not available for SSL sockets.
-  assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
-  assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
-  var aiList = getAddrInfo(address, port, af, socket.sockType, socket.protocol)
-  # try all possibilities:
-  var success = false
-  var it = aiList
-  var result = 0
-  while it != nil:
-    result = sendto(socket.fd, data, size.cint, flags.cint, it.ai_addr,
-                    it.ai_addrlen.SockLen)
-    if result != -1'i32:
-      success = true
-      break
-    it = it.ai_next
+      if result != -1:
+        data.setLen(result)
 
-  let osError = osLastError()
-  freeaddrinfo(aiList)
+        when typeof(address) is string:
+          address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
+          when domain == AF_INET6:
+            port = ntohs(sockAddress.sin6_port).Port
+          else:
+            port = ntohs(sockAddress.sin_port).Port
+        else:
+          data.setLen(result)
+          sockAddress.fromSockAddr(addrLen, address, port)
+      else:
+        raiseOSError(osLastError())
 
-  if not success:
-    raiseOSError(osError)
+    assert(socket.protocol != IPPROTO_TCP, "Cannot `recvFrom` on a TCP socket")
+    # TODO: Buffered sockets
+    data.setLen(length)
 
-proc sendTo*(socket: Socket, address: string, port: Port,
-             data: string) {.tags: [WriteIOEffect].} =
-  ## This proc sends `data` to the specified `address`,
-  ## which may be an IP address or a hostname, if a hostname is specified
-  ## this function will try each IP of that hostname.
-  ## 
-  ## Generally for use with connection-less (UDP) sockets.
-  ##
-  ## If an error occurs an OSError exception will be raised.
-  ##
-  ## This is the high-level version of the above `sendTo` function.
-  socket.sendTo(address, port, cstring(data), data.len, socket.domain)
+    case socket.domain
+    of AF_INET6:
+      var sockAddress: Sockaddr_in6
+      adaptRecvFromToDomain(sockAddress, AF_INET6)
+    of AF_INET:
+      var sockAddress: Sockaddr_in
+      adaptRecvFromToDomain(sockAddress, AF_INET)
+    else:
+      raise newException(ValueError, "Unknown socket address family")
 
-proc sendTo*(socket: Socket, address: IpAddress, port: Port,
-             data: string, flags = 0'i32): int {.
-              discardable, tags: [WriteIOEffect].} =
-  ## This proc sends `data` to the specified `IpAddress` and returns
-  ## the number of bytes written. 
-  ##
-  ## Generally for use with connection-less (UDP) sockets. 
-  ##
-  ## If an error occurs an OSError exception will be raised.
-  ##
-  ## This is the high-level version of the above `sendTo` function.
-  assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
-  assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
+  proc skip*(socket: Socket, size: int, timeout = -1) =
+    ## Skips `size` amount of bytes.
+    ##
+    ## An optional timeout can be specified in milliseconds, if skipping the
+    ## bytes takes longer than specified a TimeoutError exception will be raised.
+    ##
+    ## Returns the number of skipped bytes.
+    var waited: Duration
+    var dummy = alloc(size)
+    var bytesSkipped = 0
+    while bytesSkipped != size:
+      let avail = waitFor(socket, waited, timeout, size-bytesSkipped, "skip")
+      bytesSkipped += recv(socket, dummy, avail)
+    dealloc(dummy)
 
-  var sa: Sockaddr_storage
-  var sl: SockLen
-  toSockAddr(address, port, sa, sl)
-  result = sendto(socket.fd, cstring(data), data.len().cint, flags.cint,
-                  cast[ptr SockAddr](addr sa), sl)
+  proc send*(socket: Socket, data: pointer, size: int): int {.
+    tags: [WriteIOEffect].} =
+    ## Sends data to a socket.
+    ##
+    ## **Note**: This is a low-level version of `send`. You likely should use
+    ## the version below.
+    assert(not socket.isClosed, "Cannot `send` on a closed socket")
+    when defineSsl:
+      if socket.isSsl:
+        ErrClearError()
+        return SSL_write(socket.sslHandle, cast[cstring](data), size)
 
-  if result == -1'i32:
+    when useWinVersion or defined(macosx):
+      result = send(socket.fd, data, size.cint, 0'i32)
+    else:
+      when defined(solaris):
+        const MSG_NOSIGNAL = 0
+      result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
+
+  proc send*(socket: Socket, data: string,
+             flags = {SocketFlag.SafeDisconn}) {.tags: [WriteIOEffect].} =
+    ## sends data to a socket.
+    let sent = send(socket, cstring(data), data.len)
+    if sent < 0:
+      let lastError = osLastError()
+      socketError(socket, lastError = lastError, flags = flags)
+
+    if sent != data.len:
+      raiseOSError(osLastError(), "Could not send all data.")
+
+  template `&=`*(socket: Socket; data: typed) =
+    ## an alias for 'send'.
+    send(socket, data)
+
+  proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
+    ## Safe alternative to `send`. Does not raise an OSError when an error occurs,
+    ## and instead returns `false` on failure.
+    result = send(socket, cstring(data), data.len) == data.len
+
+  proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
+               size: int, af: Domain = AF_INET, flags = 0'i32) {.
+               tags: [WriteIOEffect].} =
+    ## This proc sends `data` to the specified `address`,
+    ## which may be an IP address or a hostname, if a hostname is specified
+    ## this function will try each IP of that hostname. This function
+    ## should normally be used with connection-less sockets (UDP sockets).
+    ##
+    ## If an error occurs an OSError exception will be raised.
+    ##
+    ## **Note:** You may wish to use the high-level version of this function
+    ## which is defined below.
+    ##
+    ## **Note:** This proc is not available for SSL sockets.
+    assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
+    assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
+    var aiList = getAddrInfo(address, port, af, socket.sockType, socket.protocol)
+    # try all possibilities:
+    var success = false
+    var it = aiList
+    var result = 0
+    while it != nil:
+      result = sendto(socket.fd, data, size.cint, flags.cint, it.ai_addr,
+                      it.ai_addrlen.SockLen)
+      if result != -1'i32:
+        success = true
+        break
+      it = it.ai_next
+
     let osError = osLastError()
-    raiseOSError(osError)
+    freeaddrinfo(aiList)
+
+    if not success:
+      raiseOSError(osError)
+
+  proc sendTo*(socket: Socket, address: string, port: Port,
+               data: string) {.tags: [WriteIOEffect].} =
+    ## This proc sends `data` to the specified `address`,
+    ## which may be an IP address or a hostname, if a hostname is specified
+    ## this function will try each IP of that hostname.
+    ##
+    ## Generally for use with connection-less (UDP) sockets.
+    ##
+    ## If an error occurs an OSError exception will be raised.
+    ##
+    ## This is the high-level version of the above `sendTo` function.
+    socket.sendTo(address, port, cstring(data), data.len, socket.domain)
+
+  proc sendTo*(socket: Socket, address: IpAddress, port: Port,
+               data: string, flags = 0'i32): int {.
+                discardable, tags: [WriteIOEffect].} =
+    ## This proc sends `data` to the specified `IpAddress` and returns
+    ## the number of bytes written.
+    ##
+    ## Generally for use with connection-less (UDP) sockets.
+    ##
+    ## If an error occurs an OSError exception will be raised.
+    ##
+    ## This is the high-level version of the above `sendTo` function.
+    assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
+    assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
+
+    var sa: Sockaddr_storage
+    var sl: SockLen
+    toSockAddr(address, port, sa, sl)
+    result = sendto(socket.fd, cstring(data), data.len().cint, flags.cint,
+                    cast[ptr SockAddr](addr sa), sl)
+
+    if result == -1'i32:
+      let osError = osLastError()
+      raiseOSError(osError)
 
 
-proc isSsl*(socket: Socket): bool =
-  ## Determines whether `socket` is a SSL socket.
-  when defineSsl:
-    result = socket.isSsl
-  else:
-    result = false
+  proc isSsl*(socket: Socket): bool =
+    ## Determines whether `socket` is a SSL socket.
+    when defineSsl:
+      result = socket.isSsl
+    else:
+      result = false
 
-proc getFd*(socket: Socket): SocketHandle = return socket.fd
-  ## Returns the socket's file descriptor
+  proc getFd*(socket: Socket): SocketHandle = return socket.fd
+    ## Returns the socket's file descriptor
 
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
@@ -1911,158 +1926,90 @@ proc `$`*(address: IpAddress): string =
 
           printedLastGroup = true
 
-proc dial*(address: string, port: Port,
-           protocol = IPPROTO_TCP, buffered = true): owned(Socket)
-           {.tags: [ReadIOEffect, WriteIOEffect].} =
-  ## Establishes connection to the specified `address`:`port` pair via the
-  ## specified protocol. The procedure iterates through possible
-  ## resolutions of the `address` until it succeeds, meaning that it
-  ## seamlessly works with both IPv4 and IPv6.
-  ## Returns Socket ready to send or receive data.
-  let sockType = protocol.toSockType()
+when not socketsMissing:
+  proc dial*(address: string, port: Port,
+             protocol = IPPROTO_TCP, buffered = true): owned(Socket)
+             {.tags: [ReadIOEffect, WriteIOEffect].} =
+    ## Establishes connection to the specified `address`:`port` pair via the
+    ## specified protocol. The procedure iterates through possible
+    ## resolutions of the `address` until it succeeds, meaning that it
+    ## seamlessly works with both IPv4 and IPv6.
+    ## Returns Socket ready to send or receive data.
+    let sockType = protocol.toSockType()
 
-  let aiList = getAddrInfo(address, port, AF_UNSPEC, sockType, protocol)
+    let aiList = getAddrInfo(address, port, AF_UNSPEC, sockType, protocol)
 
-  var fdPerDomain: array[low(Domain).ord..high(Domain).ord, SocketHandle]
-  for i in low(fdPerDomain)..high(fdPerDomain):
-    fdPerDomain[i] = osInvalidSocket
-  template closeUnusedFds(domainToKeep = -1) {.dirty.} =
-    for i, fd in fdPerDomain:
-      if fd != osInvalidSocket and i != domainToKeep:
-        fd.close()
+    var fdPerDomain: array[low(Domain).ord..high(Domain).ord, SocketHandle]
+    for i in low(fdPerDomain)..high(fdPerDomain):
+      fdPerDomain[i] = osInvalidSocket
+    template closeUnusedFds(domainToKeep = -1) {.dirty.} =
+      for i, fd in fdPerDomain:
+        if fd != osInvalidSocket and i != domainToKeep:
+          fd.close()
 
-  var success = false
-  var lastError: OSErrorCode
-  var it = aiList
-  var domain: Domain
-  var lastFd: SocketHandle
-  while it != nil:
-    let domainOpt = it.ai_family.toKnownDomain()
-    if domainOpt.isNone:
-      it = it.ai_next
-      continue
-    domain = domainOpt.unsafeGet()
-    lastFd = fdPerDomain[ord(domain)]
-    if lastFd == osInvalidSocket:
-      lastFd = createNativeSocket(domain, sockType, protocol)
+    var success = false
+    var lastError: OSErrorCode
+    var it = aiList
+    var domain: Domain
+    var lastFd: SocketHandle
+    while it != nil:
+      let domainOpt = it.ai_family.toKnownDomain()
+      if domainOpt.isNone:
+        it = it.ai_next
+        continue
+      domain = domainOpt.unsafeGet()
+      lastFd = fdPerDomain[ord(domain)]
       if lastFd == osInvalidSocket:
-        # we always raise if socket creation failed, because it means a
-        # network system problem (e.g. not enough FDs), and not an unreachable
-        # address.
-        let err = osLastError()
-        freeaddrinfo(aiList)
-        closeUnusedFds()
-        raiseOSError(err)
-      fdPerDomain[ord(domain)] = lastFd
-    if connect(lastFd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
-      success = true
-      break
-    lastError = osLastError()
-    it = it.ai_next
-  freeaddrinfo(aiList)
-  closeUnusedFds(ord(domain))
-
-  if success:
-    result = newSocket(lastFd, domain, sockType, protocol)
-  elif lastError != 0.OSErrorCode:
-    raiseOSError(lastError)
-  else:
-    raise newException(IOError, "Couldn't resolve address: " & address)
-
-proc connect*(socket: Socket, address: string,
-    port = Port(0)) {.tags: [ReadIOEffect].} =
-  ## Connects socket to `address`:`port`. `Address` can be an IP address or a
-  ## host name. If `address` is a host name, this function will try each IP
-  ## of that host name. `htons` is already performed on `port` so you must
-  ## not do it.
-  ##
-  ## If `socket` is an SSL socket a handshake will be automatically performed.
-  var aiList = getAddrInfo(address, port, socket.domain)
-  # try all possibilities:
-  var success = false
-  var lastError: OSErrorCode
-  var it = aiList
-  while it != nil:
-    if connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
-      success = true
-      break
-    else: lastError = osLastError()
-    it = it.ai_next
-
-  freeaddrinfo(aiList)
-  if not success: raiseOSError(lastError)
-
-  when defineSsl:
-    if socket.isSsl:
-      # RFC3546 for SNI specifies that IP addresses are not allowed.
-      if not isIpAddress(address):
-        # Discard result in case OpenSSL version doesn't support SNI, or we're
-        # not using TLSv1+
-        discard SSL_set_tlsext_host_name(socket.sslHandle, address)
-
-      ErrClearError()
-      let ret = SSL_connect(socket.sslHandle)
-      socketError(socket, ret)
-      when not defined(nimDisableCertificateValidation) and not defined(windows):
-        if not isIpAddress(address):
-          socket.checkCertName(address)
-
-proc connectAsync(socket: Socket, name: string, port = Port(0),
-                  af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
-  ## A variant of `connect` for non-blocking sockets.
-  ##
-  ## This procedure will immediately return, it will not block until a connection
-  ## is made. It is up to the caller to make sure the connection has been established
-  ## by checking (using `select`) whether the socket is writeable.
-  ##
-  ## **Note**: For SSL sockets, the `handshake` procedure must be called
-  ## whenever the socket successfully connects to a server.
-  var aiList = getAddrInfo(name, port, af)
-  # try all possibilities:
-  var success = false
-  var lastError: OSErrorCode
-  var it = aiList
-  while it != nil:
-    var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen)
-    if ret == 0'i32:
-      success = true
-      break
-    else:
+        lastFd = createNativeSocket(domain, sockType, protocol)
+        if lastFd == osInvalidSocket:
+          # we always raise if socket creation failed, because it means a
+          # network system problem (e.g. not enough FDs), and not an unreachable
+          # address.
+          let err = osLastError()
+          freeaddrinfo(aiList)
+          closeUnusedFds()
+          raiseOSError(err)
+        fdPerDomain[ord(domain)] = lastFd
+      if connect(lastFd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
+        success = true
+        break
       lastError = osLastError()
-      when useWinVersion:
-        # Windows EINTR doesn't behave same as POSIX.
-        if lastError.int32 == WSAEWOULDBLOCK:
-          success = true
-          break
-      else:
-        if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
-          success = true
-          break
+      it = it.ai_next
+    freeaddrinfo(aiList)
+    closeUnusedFds(ord(domain))
 
-    it = it.ai_next
+    if success:
+      result = newSocket(lastFd, domain, sockType, protocol)
+    elif lastError != 0.OSErrorCode:
+      raiseOSError(lastError)
+    else:
+      raise newException(IOError, "Couldn't resolve address: " & address)
 
-  freeaddrinfo(aiList)
-  if not success: raiseOSError(lastError)
+  proc connect*(socket: Socket, address: string,
+      port = Port(0)) {.tags: [ReadIOEffect].} =
+    ## Connects socket to `address`:`port`. `Address` can be an IP address or a
+    ## host name. If `address` is a host name, this function will try each IP
+    ## of that host name. `htons` is already performed on `port` so you must
+    ## not do it.
+    ##
+    ## If `socket` is an SSL socket a handshake will be automatically performed.
+    var aiList = getAddrInfo(address, port, socket.domain)
+    # try all possibilities:
+    var success = false
+    var lastError: OSErrorCode
+    var it = aiList
+    while it != nil:
+      if connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
+        success = true
+        break
+      else: lastError = osLastError()
+      it = it.ai_next
 
-proc connect*(socket: Socket, address: string, port = Port(0),
-    timeout: int) {.tags: [ReadIOEffect, WriteIOEffect].} =
-  ## Connects to server as specified by `address` on port specified by `port`.
-  ##
-  ## The `timeout` parameter specifies the time in milliseconds to allow for
-  ## the connection to the server to be made.
-  socket.fd.setBlocking(false)
+    freeaddrinfo(aiList)
+    if not success: raiseOSError(lastError)
 
-  socket.connectAsync(address, port, socket.domain)
-  var s = @[socket.fd]
-  if selectWrite(s, timeout) != 1:
-    raise newException(TimeoutError, "Call to 'connect' timed out.")
-  else:
-    let res = getSockOptInt(socket.fd, SOL_SOCKET, SO_ERROR)
-    if res != 0:
-      raiseOSError(OSErrorCode(res))
-    when defineSsl and not defined(nimdoc):
+    when defineSsl:
       if socket.isSsl:
-        socket.fd.setBlocking(true)
         # RFC3546 for SNI specifies that IP addresses are not allowed.
         if not isIpAddress(address):
           # Discard result in case OpenSSL version doesn't support SNI, or we're
@@ -2072,28 +2019,97 @@ proc connect*(socket: Socket, address: string, port = Port(0),
         ErrClearError()
         let ret = SSL_connect(socket.sslHandle)
         socketError(socket, ret)
-        when not defined(nimDisableCertificateValidation):
+        when not defined(nimDisableCertificateValidation) and not defined(windows):
           if not isIpAddress(address):
             socket.checkCertName(address)
-  socket.fd.setBlocking(true)
 
-proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
-  ## Finds the local IP address, usually assigned to eth0 on LAN or wlan0 on WiFi,
-  ## used to reach an external address. Useful to run local services.
-  ##
-  ## No traffic is sent.
-  ##
-  ## Supports IPv4 and v6.
-  ## Raises OSError if external networking is not set up.
-  runnableExamples("-r:off"):
-    echo getPrimaryIPAddr() # "192.168.1.2"
-  let socket =
-    if dest.family == IpAddressFamily.IPv4:
-      newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+  proc connectAsync(socket: Socket, name: string, port = Port(0),
+                    af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
+    ## A variant of `connect` for non-blocking sockets.
+    ##
+    ## This procedure will immediately return, it will not block until a connection
+    ## is made. It is up to the caller to make sure the connection has been established
+    ## by checking (using `select`) whether the socket is writeable.
+    ##
+    ## **Note**: For SSL sockets, the `handshake` procedure must be called
+    ## whenever the socket successfully connects to a server.
+    var aiList = getAddrInfo(name, port, af)
+    # try all possibilities:
+    var success = false
+    var lastError: OSErrorCode
+    var it = aiList
+    while it != nil:
+      var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen)
+      if ret == 0'i32:
+        success = true
+        break
+      else:
+        lastError = osLastError()
+        when useWinVersion:
+          # Windows EINTR doesn't behave same as POSIX.
+          if lastError.int32 == WSAEWOULDBLOCK:
+            success = true
+            break
+        else:
+          if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
+            success = true
+            break
+
+      it = it.ai_next
+
+    freeaddrinfo(aiList)
+    if not success: raiseOSError(lastError)
+
+  proc connect*(socket: Socket, address: string, port = Port(0),
+      timeout: int) {.tags: [ReadIOEffect, WriteIOEffect].} =
+    ## Connects to server as specified by `address` on port specified by `port`.
+    ##
+    ## The `timeout` parameter specifies the time in milliseconds to allow for
+    ## the connection to the server to be made.
+    socket.fd.setBlocking(false)
+
+    socket.connectAsync(address, port, socket.domain)
+    var s = @[socket.fd]
+    if selectWrite(s, timeout) != 1:
+      raise newException(TimeoutError, "Call to 'connect' timed out.")
     else:
-      newSocket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)
-  try:
-    socket.connect($dest, 80.Port)
-    result = socket.getLocalAddr()[0].parseIpAddress()
-  finally:
-    socket.close()
+      let res = getSockOptInt(socket.fd, SOL_SOCKET, SO_ERROR)
+      if res != 0:
+        raiseOSError(OSErrorCode(res))
+      when defineSsl and not defined(nimdoc):
+        if socket.isSsl:
+          socket.fd.setBlocking(true)
+          # RFC3546 for SNI specifies that IP addresses are not allowed.
+          if not isIpAddress(address):
+            # Discard result in case OpenSSL version doesn't support SNI, or we're
+            # not using TLSv1+
+            discard SSL_set_tlsext_host_name(socket.sslHandle, address)
+
+          ErrClearError()
+          let ret = SSL_connect(socket.sslHandle)
+          socketError(socket, ret)
+          when not defined(nimDisableCertificateValidation):
+            if not isIpAddress(address):
+              socket.checkCertName(address)
+    socket.fd.setBlocking(true)
+
+  proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
+    ## Finds the local IP address, usually assigned to eth0 on LAN or wlan0 on WiFi,
+    ## used to reach an external address. Useful to run local services.
+    ##
+    ## No traffic is sent.
+    ##
+    ## Supports IPv4 and v6.
+    ## Raises OSError if external networking is not set up.
+    runnableExamples("-r:off"):
+      echo getPrimaryIPAddr() # "192.168.1.2"
+    let socket =
+      if dest.family == IpAddressFamily.IPv4:
+        newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+      else:
+        newSocket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)
+    try:
+      socket.connect($dest, 80.Port)
+      result = socket.getLocalAddr()[0].parseIpAddress()
+    finally:
+      socket.close()

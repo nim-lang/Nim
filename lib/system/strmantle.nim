@@ -181,7 +181,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
       number = sign * integer.float * powtens[slop] * powtens[absExponent-slop]
       return i - start
 
-  when defined(c_strtod):
+  when not defined(nimNoLibc):
     # if failed: slow path with strtod.
     var t: array[500, char] # flaviu says: 325 is the longest reasonable literal
     var ti = 0

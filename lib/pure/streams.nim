@@ -1457,7 +1457,7 @@ when false:
   when defined(windows):
     # do not import windows as this increases compile times:
     discard
-  else:
+  elif defined(posix):
     import posix
 
     proc hsSetPosition(s: FileHandleStream, pos: int) =

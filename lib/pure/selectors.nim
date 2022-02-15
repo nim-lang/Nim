@@ -27,7 +27,8 @@
 ##
 ## TODO: `/dev/poll`, `event ports` and filesystem events.
 
-import os, nativesockets
+when not defined(nimNoLibc):
+  import os, nativesockets
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
@@ -232,7 +233,7 @@ when defined(nimdoc):
     ##
     ## For *poll* and *select* selectors `-1` is returned.
 
-else:
+elif not defined(nimNoLibc):
   import strutils
   when hasThreadSupport:
     import locks
@@ -285,7 +286,7 @@ else:
   proc setNonBlocking(fd: cint) {.inline.} =
     setBlocking(fd.SocketHandle, false)
 
-  when not defined(windows):
+  when not defined(windows) and defined(posix):
     import posix
 
     template setKey(s, pident, pevents, pparam, pdata: untyped) =

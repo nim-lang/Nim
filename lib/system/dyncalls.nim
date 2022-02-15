@@ -20,15 +20,15 @@ const
 proc nimLoadLibraryError(path: string) =
   # carefully written to avoid memory allocation:
   const prefix = "could not load: "
-  cstderr.rawWrite(prefix)
-  cstderr.rawWrite(path)
+  writeToStdErr(prefix)
+  writeToStdErr(path)
   when not defined(nimDebugDlOpen) and not defined(windows):
-    cstderr.rawWrite("\n(compile with -d:nimDebugDlOpen for more information)")
+    writeToStdErr("\n(compile with -d:nimDebugDlOpen for more information)")
   when defined(windows):
     const badExe = "\n(bad format; library may be wrong architecture)"
     let loadError = GetLastError()
     if loadError == ERROR_BAD_EXE_FORMAT:
-      cstderr.rawWrite(badExe)
+      writeToStdErr(badExe)
     when defined(guiapp):
       # Because console output is not shown in GUI apps, display the error as a
       # message box instead:
@@ -46,14 +46,14 @@ proc nimLoadLibraryError(path: string) =
       if loadError == ERROR_BAD_EXE_FORMAT and msgLeft >= badExe.len:
         copyMem(msg[msgIdx].addr, badExe.cstring, badExe.len)
       discard MessageBoxA(nil, msg[0].addr, nil, 0)
-  cstderr.rawWrite("\n")
+  writeToStdErr("\n")
   quit(1)
 
 proc procAddrError(name: cstring) {.compilerproc, nonReloadable, hcrInline.} =
   # carefully written to avoid memory allocation:
-  cstderr.rawWrite("could not import: ")
-  cstderr.rawWrite(name)
-  cstderr.rawWrite("\n")
+  writeToStdErr("could not import: ")
+  writeToStdErr(name)
+  writeToStdErr("\n")
   quit(1)
 
 # this code was inspired from Lua's source code:
@@ -98,8 +98,8 @@ when defined(posix):
     when defined(nimDebugDlOpen):
       let error = dlerror()
       if error != nil:
-        cstderr.rawWrite(error)
-        cstderr.rawWrite("\n")
+        writeToStdErr(error)
+        writeToStdErr("\n")
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)
@@ -176,22 +176,22 @@ elif defined(genode):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     raiseAssert("nimGetProcAddr not implemented")
 
-elif defined(nintendoswitch) or defined(freertos) or defined(zephyr):
+elif defined(nintendoswitch) or defined(freertos) or defined(zephyr) or defined(nimNoLibc):
   proc nimUnloadLibrary(lib: LibHandle) =
-    cstderr.rawWrite("nimUnLoadLibrary not implemented")
-    cstderr.rawWrite("\n")
+    writeToStdErr("nimUnLoadLibrary not implemented")
+    writeToStdErr("\n")
     quit(1)
 
   proc nimLoadLibrary(path: string): LibHandle =
-    cstderr.rawWrite("nimLoadLibrary not implemented")
-    cstderr.rawWrite("\n")
+    writeToStdErr("nimLoadLibrary not implemented")
+    writeToStdErr("\n")
     quit(1)
 
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
-    cstderr.rawWrite("nimGetProAddr not implemented")
-    cstderr.rawWrite(name)
-    cstderr.rawWrite("\n")
+    writeToStdErr("nimGetProAddr not implemented")
+    writeToStdErr(name)
+    writeToStdErr("\n")
     quit(1)
 
 else:

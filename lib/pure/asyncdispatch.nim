@@ -198,9 +198,16 @@ import os, tables, strutils, times, heapqueue, options, asyncstreams
 import options, math, std/monotimes
 import asyncfutures except callSoon
 
-import nativesockets, net, deques
+const socketsMissing = defined(nimNoLibc)
+when not socketsMissing:
+  import nativesockets
 
-export Port, SocketFlag
+import net, deques
+
+export Port
+when not socketsMissing:
+  export SocketFlag
+
 export asyncfutures except callSoon
 export asyncstreams
 
@@ -1128,7 +1135,7 @@ when defined(windows) or defined(nimdoc):
     ev.hWaiter = pcd.waitFd
 
   initAll()
-else:
+elif defined(posix):
   import selectors
   from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
                     MSG_NOSIGNAL
@@ -1663,16 +1670,17 @@ template createAsyncNativeSocketImpl(domain, sockType, protocol: untyped,
   result = handle.AsyncFD
   register(result)
 
-proc createAsyncNativeSocket*(domain: cint, sockType: cint,
-                              protocol: cint,
-                              inheritable = defined(nimInheritHandles)): AsyncFD =
-  createAsyncNativeSocketImpl(domain, sockType, protocol, inheritable)
+when not socketsMissing:
+  proc createAsyncNativeSocket*(domain: cint, sockType: cint,
+                                protocol: cint,
+                                inheritable = defined(nimInheritHandles)): AsyncFD =
+    createAsyncNativeSocketImpl(domain, sockType, protocol, inheritable)
 
-proc createAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
-                              sockType: SockType = SOCK_STREAM,
-                              protocol: Protocol = IPPROTO_TCP,
-                              inheritable = defined(nimInheritHandles)): AsyncFD =
-  createAsyncNativeSocketImpl(domain, sockType, protocol, inheritable)
+  proc createAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
+                                sockType: SockType = SOCK_STREAM,
+                                protocol: Protocol = IPPROTO_TCP,
+                                inheritable = defined(nimInheritHandles)): AsyncFD =
+    createAsyncNativeSocketImpl(domain, sockType, protocol, inheritable)
 
 when defined(windows) or defined(nimdoc):
   proc bindToDomain(handle: SocketHandle, domain: Domain) =
@@ -1722,7 +1730,7 @@ when defined(windows) or defined(nimdoc):
         # and the future will be completed/failed there, too.
         GC_unref(ol)
         retFuture.fail(newException(OSError, osErrorMsg(lastError)))
-else:
+elif not socketsMissing:
   proc doConnect(socket: AsyncFD, addrInfo: ptr AddrInfo): owned(Future[void]) =
     let retFuture = newFuture[void]("doConnect")
     result = retFuture
@@ -1754,107 +1762,108 @@ else:
       else:
         retFuture.fail(newException(OSError, osErrorMsg(lastError)))
 
-template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
-                           protocol: Protocol = IPPROTO_RAW) =
-  ## Iterates through the AddrInfo linked list asynchronously
-  ## until the connection can be established.
-  const shouldCreateFd = not declared(fd)
+when not socketsMissing:
+  template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
+                             protocol: Protocol = IPPROTO_RAW) =
+    ## Iterates through the AddrInfo linked list asynchronously
+    ## until the connection can be established.
+    const shouldCreateFd = not declared(fd)
 
-  when shouldCreateFd:
-    let sockType = protocol.toSockType()
+    when shouldCreateFd:
+      let sockType = protocol.toSockType()
 
-    var fdPerDomain: array[low(Domain).ord..high(Domain).ord, AsyncFD]
-    for i in low(fdPerDomain)..high(fdPerDomain):
-      fdPerDomain[i] = osInvalidSocket.AsyncFD
-    template closeUnusedFds(domainToKeep = -1) {.dirty.} =
-      for i, fd in fdPerDomain:
-        if fd != osInvalidSocket.AsyncFD and i != domainToKeep:
-          fd.closeSocket()
+      var fdPerDomain: array[low(Domain).ord..high(Domain).ord, AsyncFD]
+      for i in low(fdPerDomain)..high(fdPerDomain):
+        fdPerDomain[i] = osInvalidSocket.AsyncFD
+      template closeUnusedFds(domainToKeep = -1) {.dirty.} =
+        for i, fd in fdPerDomain:
+          if fd != osInvalidSocket.AsyncFD and i != domainToKeep:
+            fd.closeSocket()
 
-  var lastException: ref Exception
-  var curAddrInfo = addrInfo
-  var domain: Domain
-  when shouldCreateFd:
-    var curFd: AsyncFD
-  else:
-    var curFd = fd
-  proc tryNextAddrInfo(fut: Future[void]) {.gcsafe.} =
-    if fut == nil or fut.failed:
-      if fut != nil:
-        lastException = fut.readError()
+    var lastException: ref Exception
+    var curAddrInfo = addrInfo
+    var domain: Domain
+    when shouldCreateFd:
+      var curFd: AsyncFD
+    else:
+      var curFd = fd
+    proc tryNextAddrInfo(fut: Future[void]) {.gcsafe.} =
+      if fut == nil or fut.failed:
+        if fut != nil:
+          lastException = fut.readError()
 
-      while curAddrInfo != nil:
-        let domainOpt = curAddrInfo.ai_family.toKnownDomain()
-        if domainOpt.isSome:
-          domain = domainOpt.unsafeGet()
-          break
+        while curAddrInfo != nil:
+          let domainOpt = curAddrInfo.ai_family.toKnownDomain()
+          if domainOpt.isSome:
+            domain = domainOpt.unsafeGet()
+            break
+          curAddrInfo = curAddrInfo.ai_next
+
+        if curAddrInfo == nil:
+          freeaddrinfo(addrInfo)
+          when shouldCreateFd:
+            closeUnusedFds()
+          if lastException != nil:
+            retFuture.fail(lastException)
+          else:
+            retFuture.fail(newException(
+              IOError, "Couldn't resolve address: " & address))
+          return
+
+        when shouldCreateFd:
+          curFd = fdPerDomain[ord(domain)]
+          if curFd == osInvalidSocket.AsyncFD:
+            try:
+              curFd = createAsyncNativeSocket(domain, sockType, protocol)
+            except:
+              freeaddrinfo(addrInfo)
+              closeUnusedFds()
+              raise getCurrentException()
+            when defined(windows):
+              curFd.SocketHandle.bindToDomain(domain)
+            fdPerDomain[ord(domain)] = curFd
+
+        doConnect(curFd, curAddrInfo).callback = tryNextAddrInfo
         curAddrInfo = curAddrInfo.ai_next
-
-      if curAddrInfo == nil:
+      else:
         freeaddrinfo(addrInfo)
         when shouldCreateFd:
-          closeUnusedFds()
-        if lastException != nil:
-          retFuture.fail(lastException)
+          closeUnusedFds(ord(domain))
+          retFuture.complete(curFd)
         else:
-          retFuture.fail(newException(
-            IOError, "Couldn't resolve address: " & address))
-        return
+          retFuture.complete()
 
-      when shouldCreateFd:
-        curFd = fdPerDomain[ord(domain)]
-        if curFd == osInvalidSocket.AsyncFD:
-          try:
-            curFd = createAsyncNativeSocket(domain, sockType, protocol)
-          except:
-            freeaddrinfo(addrInfo)
-            closeUnusedFds()
-            raise getCurrentException()
-          when defined(windows):
-            curFd.SocketHandle.bindToDomain(domain)
-          fdPerDomain[ord(domain)] = curFd
+    tryNextAddrInfo(nil)
 
-      doConnect(curFd, curAddrInfo).callback = tryNextAddrInfo
-      curAddrInfo = curAddrInfo.ai_next
+  proc dial*(address: string, port: Port,
+             protocol: Protocol = IPPROTO_TCP): owned(Future[AsyncFD]) =
+    ## Establishes connection to the specified `address`:`port` pair via the
+    ## specified protocol. The procedure iterates through possible
+    ## resolutions of the `address` until it succeeds, meaning that it
+    ## seamlessly works with both IPv4 and IPv6.
+    ## Returns the async file descriptor, registered in the dispatcher of
+    ## the current thread, ready to send or receive data.
+    let retFuture = newFuture[AsyncFD]("dial")
+    result = retFuture
+    let sockType = protocol.toSockType()
+
+    let aiList = getAddrInfo(address, port, Domain.AF_UNSPEC, sockType, protocol)
+    asyncAddrInfoLoop(aiList, noFD, protocol)
+
+  proc connect*(socket: AsyncFD, address: string, port: Port,
+                domain = Domain.AF_INET): owned(Future[void]) =
+    let retFuture = newFuture[void]("connect")
+    result = retFuture
+
+    when defined(windows):
+      verifyPresence(socket)
     else:
-      freeaddrinfo(addrInfo)
-      when shouldCreateFd:
-        closeUnusedFds(ord(domain))
-        retFuture.complete(curFd)
-      else:
-        retFuture.complete()
+      assert getSockDomain(socket.SocketHandle) == domain
 
-  tryNextAddrInfo(nil)
-
-proc dial*(address: string, port: Port,
-           protocol: Protocol = IPPROTO_TCP): owned(Future[AsyncFD]) =
-  ## Establishes connection to the specified `address`:`port` pair via the
-  ## specified protocol. The procedure iterates through possible
-  ## resolutions of the `address` until it succeeds, meaning that it
-  ## seamlessly works with both IPv4 and IPv6.
-  ## Returns the async file descriptor, registered in the dispatcher of
-  ## the current thread, ready to send or receive data.
-  let retFuture = newFuture[AsyncFD]("dial")
-  result = retFuture
-  let sockType = protocol.toSockType()
-
-  let aiList = getAddrInfo(address, port, Domain.AF_UNSPEC, sockType, protocol)
-  asyncAddrInfoLoop(aiList, noFD, protocol)
-
-proc connect*(socket: AsyncFD, address: string, port: Port,
-              domain = Domain.AF_INET): owned(Future[void]) =
-  let retFuture = newFuture[void]("connect")
-  result = retFuture
-
-  when defined(windows):
-    verifyPresence(socket)
-  else:
-    assert getSockDomain(socket.SocketHandle) == domain
-
-  let aiList = getAddrInfo(address, port, domain)
-  when defined(windows):
-    socket.SocketHandle.bindToDomain(domain)
-  asyncAddrInfoLoop(aiList, socket)
+    let aiList = getAddrInfo(address, port, domain)
+    when defined(windows):
+      socket.SocketHandle.bindToDomain(domain)
+    asyncAddrInfoLoop(aiList, socket)
 
 proc sleepAsync*(ms: int | float): owned(Future[void]) =
   ## Suspends the execution of the current async procedure for the next
@@ -1890,48 +1899,50 @@ proc withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =
       if not retFuture.finished: retFuture.complete(false)
   return retFuture
 
-proc accept*(socket: AsyncFD,
-             flags = {SocketFlag.SafeDisconn},
-             inheritable = defined(nimInheritHandles)): owned(Future[AsyncFD]) =
-  ## Accepts a new connection. Returns a future containing the client socket
-  ## corresponding to that connection.
-  ##
-  ## If `inheritable` is false (the default), the resulting client socket
-  ## will not be inheritable by child processes.
-  ##
-  ## The future will complete when the connection is successfully accepted.
-  var retFut = newFuture[AsyncFD]("accept")
-  var fut = acceptAddr(socket, flags, inheritable)
-  fut.callback =
-    proc (future: Future[tuple[address: string, client: AsyncFD]]) =
-      assert future.finished
-      if future.failed:
-        retFut.fail(future.error)
-      else:
-        retFut.complete(future.read.client)
-  return retFut
-
-proc keepAlive(x: string) =
-  discard "mark 'x' as escaping so that it is put into a closure for us to keep the data alive"
-
-proc send*(socket: AsyncFD, data: string,
-           flags = {SocketFlag.SafeDisconn}): owned(Future[void]) =
-  ## Sends `data` to `socket`. The returned future will complete once all
-  ## data has been sent.
-  var retFuture = newFuture[void]("send")
-  if data.len > 0:
-    let sendFut = socket.send(unsafeAddr data[0], data.len, flags)
-    sendFut.callback =
-      proc () =
-        keepAlive(data)
-        if sendFut.failed:
-          retFuture.fail(sendFut.error)
+when not socketsMissing:
+  proc accept*(socket: AsyncFD,
+               flags = {SocketFlag.SafeDisconn},
+               inheritable = defined(nimInheritHandles)): owned(Future[AsyncFD]) =
+    ## Accepts a new connection. Returns a future containing the client socket
+    ## corresponding to that connection.
+    ##
+    ## If `inheritable` is false (the default), the resulting client socket
+    ## will not be inheritable by child processes.
+    ##
+    ## The future will complete when the connection is successfully accepted.
+    var retFut = newFuture[AsyncFD]("accept")
+    var fut = acceptAddr(socket, flags, inheritable)
+    fut.callback =
+      proc (future: Future[tuple[address: string, client: AsyncFD]]) =
+        assert future.finished
+        if future.failed:
+          retFut.fail(future.error)
         else:
-          retFuture.complete()
-  else:
-    retFuture.complete()
+          retFut.complete(future.read.client)
+    return retFut
 
-  return retFuture
+  proc keepAlive(x: string) =
+    discard "mark 'x' as escaping so that it is put into a closure for us to keep the data alive"
+
+  proc send*(socket: AsyncFD, data: string,
+             flags = {SocketFlag.SafeDisconn}): owned(Future[void]) =
+    ## Sends `data` to `socket`. The returned future will complete once all
+    ## data has been sent.
+    when not socketsMissing:
+      var retFuture = newFuture[void]("send")
+      if data.len > 0:
+        let sendFut = socket.send(unsafeAddr data[0], data.len, flags)
+        sendFut.callback =
+          proc () =
+            keepAlive(data)
+            if sendFut.failed:
+              retFuture.fail(sendFut.error)
+            else:
+              retFuture.complete()
+      else:
+        retFuture.complete()
+
+      return retFuture
 
 # -- Await Macro
 include asyncmacro
