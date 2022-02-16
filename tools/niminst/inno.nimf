@@ -20,8 +20,8 @@ Name: english; MessagesFile: compiler:Default.isl
 
 [Files] 
   #for i in low(FileCategory)..fcWindows:
-  #  for f in items(c.cat[i]):
-Source: ${expandFilename(f).toWin}; DestDir: {app}\${splitFile(f).dir.toWin}; Flags: ignoreversion
+  #  for src, dest in c.cat[i].pairs:
+Source: ${expandFilename(src).toWin}; DestDir: {app}\${splitFile(dest).dir.toWin}; Flags: ignoreversion
   #  end for
   #end for
 
@@ -31,8 +31,8 @@ Name: {group}\Console for $c.displayName; Filename: {cmd}
   #else:
 Name: {group}\$c.displayName; Filename: {app}\${c.name}.exe
   #end if
-  #for f in items(c.cat[fcDocStart]):
-Name: {group}\Documentation; Filename: {app}\${f.toWin}
+  #for src in c.cat[fcDocStart].keys:
+Name: {group}\Documentation; Filename: {app}\${src.toWin}
   #end for
 Name: {group}\{cm:UninstallProgram,$c.displayName}; Filename: {uninstallexe}
 

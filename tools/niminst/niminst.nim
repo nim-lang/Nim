@@ -8,8 +8,8 @@
 #
 
 import
-  os, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
-  std / sha1
+  os, strutils, sequtils, tables, parseopt, parsecfg, strtabs, streams, options,
+  debcreation, std / sha1
 
 const
   maxOS = 20 # max number of OSes
@@ -21,6 +21,7 @@ const
   makeFile = "makefile"
   installShFile = "install.sh"
   deinstallShFile = "deinstall.sh"
+  compilerNimbleFile = "compiler.nimble"
 
 type
   AppType = enum appConsole, appGUI
@@ -45,11 +46,11 @@ type
     fcUnix,       # files only for Unix; must be after ``fcWindows``
     fcUnixBin,    # binaries for Unix
     fcDocStart,   # links to documentation for Windows installer
-    fcNimble      # nimble package files to copy to /opt/nimble/pkgs/pkg-ver
+    fcNimble      # nimble package files to copy to /opt/nimble/pkgs
 
   ConfigData = object of RootObj
     actions: set[Action]
-    cat: array[FileCategory, seq[string]]
+    cat: array[FileCategory, OrderedTable[string, string]]
     binPaths, authors, oses, cpus, downloads: seq[string]
     cfiles: array[1..maxOS, array[1..maxCPU, seq[string]]]
     platforms: array[1..maxOS, array[1..maxCPU, bool]]
@@ -62,7 +63,6 @@ type
     app: AppType
     nimArgs: string
     debOpts: TDebOptions
-    nimblePkgName: string
 
 const
   unixDirVars: array[fcConfig..fcLib, string] = [
@@ -71,7 +71,8 @@ const
 
 func iniConfigData(c: var ConfigData) =
   c.actions = {}
-  for i in low(FileCategory)..high(FileCategory): c.cat[i] = @[]
+  for i in low(FileCategory)..high(FileCategory):
+    c.cat[i] = initOrderedTable[string, string]()
   c.binPaths = @[]
   c.authors = @[]
   c.oses = @[]
@@ -225,7 +226,8 @@ func ignoreFile(f, explicit: string, allowHtml: bool): bool =
   result = (ext in ["", ".exe", ".idx", ".o", ".obj", ".dylib"] or
             ext == html or name[0] == '.') and not eqT(f, explicit, tPath)
 
-proc walkDirRecursively(s: var seq[string], root, explicit: string,
+proc walkDirRecursively(s: var OrderedTable[string, string], prefix,
+                        destDir: Option[string], root, explicit: string,
                         allowHtml: bool) =
   let tail = splitPath(root).tail
   if tail == "nimcache" or tail[0] == '.':
@@ -238,24 +240,50 @@ proc walkDirRecursively(s: var seq[string], root, explicit: string,
       case k
       of pcFile, pcLinkToFile:
         if not ignoreFile(f, explicit, allowHtml):
-          add(s, unixToNativePath(f))
+          let source = unixToNativePath(f)
+          var dest = source
+          if prefix.isSome:
+            dest.removePrefix(prefix.get & '/')
+          if destDir.isSome:
+            dest = destDir.get & '/' & dest
+          s[source] = dest
       of pcDir:
-        walkDirRecursively(s, f, explicit, allowHtml)
+        walkDirRecursively(s, prefix, destDir, f, explicit, allowHtml)
       of pcLinkToDir: discard
 
-proc addFiles(s: var seq[string], patterns: seq[string]) =
-  for p in items(patterns):
+proc addFiles(s: var OrderedTable[string, string], prefix,
+              destDir: Option[string], patterns: seq[string]) =
+  ## prefix: Prefix in the source root, will be removed from the destination.
+  ## patterns: Glob patterns to include.
+
+  for item in items(patterns):
+    var p = item
+    if prefix.isSome:
+      p = prefix.get & '/' & item
     if dirExists(p):
-      walkDirRecursively(s, p, p, false)
+      walkDirRecursively(s, prefix, destDir, p, p, false)
     else:
       var i = 0
       for f in walkPattern(p):
         if dirExists(f):
-          walkDirRecursively(s, f, p, false)
+          walkDirRecursively(s, prefix, destDir, f, p, false)
         elif not ignoreFile(f, p, false):
-          add(s, unixToNativePath(f))
+          let source = unixToNativePath(f)
+          var dest = source
+          if prefix.isSome:
+            dest.removePrefix(prefix.get & '/')
+          if destDir.isSome:
+            dest = destDir.get & '/' & dest
+          s[source] = dest
           inc(i)
       if i == 0: echo("[Warning] No file found that matches: " & p)
+
+proc addFiles(s: var OrderedTable[string, string], destDir: string,
+              patterns: seq[string]) =
+  addFiles(s, none(string), option(destDir), patterns)
+
+proc addFiles(s: var OrderedTable[string, string], patterns: seq[string]) =
+  addFiles(s, none(string), none(string), patterns)
 
 proc pathFlags(p: var CfgParser, k, v: string,
                t: var tuple[path, flags: string]) =
@@ -264,7 +292,8 @@ proc pathFlags(p: var CfgParser, k, v: string,
   of "flags": t.flags = v
   else: quit(errorStr(p, "unknown variable: " & k))
 
-proc filesOnly(p: var CfgParser, k, v: string, dest: var seq[string]) =
+proc filesOnly(p: var CfgParser, k, v: string,
+               dest: var OrderedTable[string, string]) =
   case normalize(k)
   of "files": addFiles(dest, split(v, {';'}))
   else: quit(errorStr(p, "unknown variable: " & k))
@@ -403,10 +432,25 @@ proc parseIniFile(c: var ConfigData) =
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "nimble":
           case normalize(k.key)
-          of "pkgname":
-            c.nimblePkgName = v
-          of "pkgfiles":
-            addFiles(c.cat[fcNimble], split(v, {';'}))
+          of "pkg":
+            # split package atom and files
+            let pkg = v.split({':'}, maxsplit = 1)
+            # split name and version
+            let pkgNameVer = pkg[0].rsplit({'@'}, maxsplit = 1)
+            let pkgName = pkgNameVer[0]
+            var pkgVer = c.version
+            if pkgNameVer.len == 2:
+              pkgVer = pkgNameVer[1]
+            let pkgDir = pkgName & '-' & pkgVer
+
+            for item in pkg[1].split({';'}):
+              # split prefix and pattern
+              let pathSpec = item.rsplit({','}, maxsplit = 1)
+              if pathSpec.len == 2:
+                addFiles(c.cat[fcNimble], option(pathSpec[0]), option(pkgDir),
+                         @[pathSpec[1]])
+              else:
+                addFiles(c.cat[fcNimble], pkgDir, @[item])
           else:
             quit(errorStr(p, "invalid key: " & k.key))
         else: quit(errorStr(p, "invalid section: " & section))
@@ -621,18 +665,14 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
         for k, f in walkDir("build" / dir):
           if k == pcFile: processFile(proj / dir / extractFilename(f), f)
   else:
-    for f in items(c.cat[fcWinBin]):
+    for f in c.cat[fcWinBin].keys:
       let filename = f.extractFilename
       processFile(proj / "bin" / filename, f)
 
   let osSpecific = if windowsZip: fcWindows else: fcUnix
-  for cat in items({fcConfig..fcOther, osSpecific, fcNimble}):
+  for cat in items({fcConfig..fcOther, osSpecific}):
     echo("Current category: ", cat)
-    for f in items(c.cat[cat]): processFile(proj / f, f)
-
-  # Copy the .nimble file over
-  let nimbleFile = c.nimblePkgName & ".nimble"
-  processFile(proj / nimbleFile, nimbleFile)
+    for src, dest in c.cat[cat].pairs: processFile(proj / dest, src)
 
   when true:
     let oldDir = getCurrentDir()
@@ -695,7 +735,7 @@ proc debDist(c: var ConfigData) =
       for k, f in walkDir(dir):
         if k == pcFile: copyNimDist(f, dir / extractFilename(f))
   for cat in items({fcConfig..fcOther, fcUnix}):
-    for f in items(c.cat[cat]): copyNimDist(f, f)
+    for f in c.cat[cat].values: copyNimDist(f, f)
 
   # -- Create necessary build files for debhelper.
 
@@ -703,8 +743,9 @@ proc debDist(c: var ConfigData) =
   let mtnEmail = c.vars["mtnemail"]
 
   prepDeb(c.name, c.version, mtnName, mtnEmail, c.debOpts.shortDesc,
-          c.description, c.debOpts.licenses, c.cat[fcUnixBin], c.cat[fcConfig],
-          c.cat[fcDoc], c.cat[fcLib], c.debOpts.buildDepends,
+          c.description, c.debOpts.licenses, toSeq(c.cat[fcUnixBin].keys),
+          toSeq(c.cat[fcConfig].keys), toSeq(c.cat[fcDoc].keys),
+          toSeq(c.cat[fcLib].keys), c.debOpts.buildDepends,
           c.debOpts.pkgDepends)
 
 # ------------------- main ----------------------------------------------------

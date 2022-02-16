@@ -14,9 +14,9 @@ Introduction
 
 niminst is a tool to generate an installer for a Nim program. Currently
 it can create an installer for Windows
-via `Inno Setup <http://www.jrsoftware.org/isinfo.php>`_ as well as
-installation/deinstallation scripts for UNIX. Later versions will support
-Linux' package management systems.
+via `Inno Setup <http://www.jrsoftware.org/isinfo.php>`_ or
+`NSIS <https://nsis.sourceforge.io>`_ as well as installation/deinstallation
+scripts for UNIX. Later versions will support Linux' package management systems.
 
 niminst works by reading a configuration file that contains all the
 information that it needs to generate an installer for the different operating
@@ -184,6 +184,15 @@ Key                    description
 `flags`                Flags to pass to the C Compiler.
                        Example: `flags = "-w"`
 ====================   =======================================================
+
+
+Nimble section
+--------------
+
+The `nimble` section only supports the `Pkg` key. Its format is as follows::
+
+  [nimble]
+  Pkg: "pkgname@pkgver:pattern1;prefix,pattern2"
 
 
 Real-world example

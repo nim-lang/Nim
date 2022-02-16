@@ -110,9 +110,9 @@
 
     ; Write all the files to the output directory.
     #for i in low(FileCategory)..fcWindows:
-    #  for f in items(c.cat[i]):
-         SetOutPath "$INSTDIR\?{splitFile(f).dir.toWin}"
-         File "?{expandFilename(f).toWin}"
+    #  for src, dest in c.cat[i].pairs:
+         SetOutPath "$INSTDIR\?{splitFile(dest).dir.toWin}"
+         File "?{expandFilename(src).toWin}"
     #  end for
     #end for
 

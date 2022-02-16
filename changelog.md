@@ -102,3 +102,5 @@ becomes an alias for `addr`.
 
 - There is a new switch `--nimMainPrefix:prefix` to influence the `NimMain` that the
   compiler produces. This is particularly useful for generating static libraries.
+
+- `niminst` installs Nimble sources.

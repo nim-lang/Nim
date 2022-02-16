@@ -21,7 +21,7 @@ if [ $# -eq 1 ] ; then
       libdir=/usr/lib/?proj
       docdir=/usr/share/?proj/doc
       datadir=/usr/share/?proj/data
-      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
+      nimbleDir="/opt/nimble/pkgs"
       ;;
     "/usr/local/bin")
       bindir=/usr/local/bin
@@ -29,7 +29,7 @@ if [ $# -eq 1 ] ; then
       libdir=/usr/local/lib/?proj
       docdir=/usr/local/share/?proj/doc
       datadir=/usr/local/share/?proj/data
-      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
+      nimbleDir="/opt/nimble/pkgs"
       ;;
     "/opt")
       bindir="/opt/?proj/bin"
@@ -37,7 +37,7 @@ if [ $# -eq 1 ] ; then
       libdir="/opt/?proj/lib"
       docdir="/opt/?proj/doc"
       datadir="/opt/?proj/data"
-      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
+      nimbleDir="/opt/nimble/pkgs"
       ;;
     *)
       bindir="$1/?proj/bin"
@@ -50,11 +50,11 @@ if [ $# -eq 1 ] ; then
   esac
   echo "removing files..."
 
-#for ff in items(c.cat[fcUnixBin]):
+#for ff in c.cat[fcUnixBin].values:
   #let f = ff.toUnix
   rm -f $bindir/?f.skipRoot
 #end for
-#for ff in items(c.cat[fcConfig]):
+#for ff in c.cat[fcConfig].values:
   #let f = ff.toUnix
   rm -f $configdir/?f.skipRoot
 #end for
@@ -63,10 +63,9 @@ if [ $# -eq 1 ] ; then
   rm -rf $libdir
 
   ## Nimble pkg stuff
-  #for f in items(c.cat[fcNimble]):
-    rm -f $nimbleDir/?f.toUnix
-  #end for
-  rm -f $nimbleDir/?{c.nimblePkgName}.nimble
+#for f in c.cat[fcNimble].values:
+  rm -f $nimbleDir/?f.toUnix
+#end for
 
   echo "deinstallation successful"
 else
