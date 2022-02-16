@@ -16,19 +16,20 @@
 ## and should be unpredictable enough for cryptographic applications,
 ## though its exact quality depends on the OS implementation.
 ##
-## | Targets              | Implementation        |
-## | :---                 | ----:                 |
-## | Windows              | `BCryptGenRandom`_    |
-## | Linux                | `getrandom`_          |
-## | MacOSX               | `getentropy`_         |
-## | iOS                  | `SecRandomCopyBytes`_ |
-## | OpenBSD              | `getentropy openbsd`_ |
-## | FreeBSD              | `getrandom freebsd`_  |
-## | JS (Web Browser)     | `getRandomValues`_    |
-## | Node.js              | `randomFillSync`_     |
-## | Other Unix platforms | `/dev/urandom`_       |
+## | Targets              | Implementation                          |
+## | :---                 | ----:                                   |
+## | Windows              | `BCryptGenRandom`_ or `CryptGenRandom`_ |
+## | Linux                | `getrandom`_                            |
+## | MacOSX               | `getentropy`_                           |
+## | iOS                  | `SecRandomCopyBytes`_                   |
+## | OpenBSD              | `getentropy openbsd`_                   |
+## | FreeBSD              | `getrandom freebsd`_                    |
+## | JS (Web Browser)     | `getRandomValues`_                      |
+## | Node.js              | `randomFillSync`_                       |
+## | Other Unix platforms | `/dev/urandom`_                         |
 ##
 ## .. _BCryptGenRandom: https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
+## .. _CryptGenRandom: https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/nf-wincrypt-cryptgenrandom
 ## .. _getrandom: https://man7.org/linux/man-pages/man2/getrandom.2.html
 ## .. _getentropy: https://www.unix.com/man-page/mojave/2/getentropy
 ## .. _SecRandomCopyBytes: https://developer.apple.com/documentation/security/1399291-secrandomcopybytes?language=objc
@@ -134,28 +135,107 @@ when defined(js):
       assign(dest, leftArray, result, left)
 
 elif defined(windows):
+  import std/[dynlib, exitprocs]
+
   type
     PVOID = pointer
     BCRYPT_ALG_HANDLE = PVOID
     PUCHAR = ptr uint8
     NTSTATUS = clong
     ULONG = culong
+    HCRYPTPROV = pointer
+    LPCSTR = cstring
+    DWORD = cuint
+    BOOL = cint
+    BYTE = byte
+
+    BCryptGenRandom = proc(hAlgorithm: BCRYPT_ALG_HANDLE, pbBuffer: PUCHAR, cbBuffer,
+                           dwFlags: ULONG): NTSTATUS {.stdcall, gcsafe.}
+    CryptGenRandom = proc(hProv: HCRYPTPROV, dwLen: DWORD, pbBuffer: ptr BYTE): BOOL {.stdcall,
+                                                                                       gcsafe.}
+    CryptAcquireContextA = proc(phProv: HCRYPTPROV, szContainer, szProvider: LPCSTR, dwProvType,
+                                dwFlags: DWORD): BOOL {.stdcall.}
+    CryptReleaseContext = proc(hProv: HCRYPTPROV, dwFlags: DWORD): BOOL {.stdcall.}
+
+    WinCRngType = enum
+      WinCRngNone, WinCRngBCrypt, WinCRngWinCrypt
+    
+    WinCRng = object
+      libHandle: LibHandle
+      case cRngType: WinCRngType
+      of WinCRngBCrypt:
+        bCryptGenRandom: BCryptGenRandom
+      of WinCRngWinCrypt:
+        cryptGenRandom: CryptGenRandom
+        hProv: HCRYPTPROV
+      of WinCRngNone:
+        discard
 
   const
+    PROV_RSA_FULL = DWORD(0x00000001)
+    CRYPT_VERIFYCONTEXT = DWORD(0xF0000000)
     STATUS_SUCCESS = 0x00000000
     BCRYPT_USE_SYSTEM_PREFERRED_RNG = 0x00000002
 
-  proc bCryptGenRandom(
-    hAlgorithm: BCRYPT_ALG_HANDLE,
-    pbBuffer: PUCHAR,
-    cbBuffer: ULONG,
-    dwFlags: ULONG
-  ): NTSTATUS {.stdcall, importc: "BCryptGenRandom", dynlib: "Bcrypt.dll".}
+  var winCRng = WinCRng(libHandle: nil, cRngType: WinCRngNone)
 
+  proc closeWinCRng() =
+    if winCRng.cRngType == WinCRngWinCrypt:
+      let getProcAddr = symAddr(winCRng.libHandle, "CryptReleaseContext")
+      if not isNil(getProcAddr):
+        let call = cast[CryptReleaseContext](getProcAddr)
+        discard call(winCRng.hProv, DWORD(0))
+    if not isNil(winCRng.libHandle):
+      unloadLib(winCRng.libHandle)
+
+  proc loadBCrypt() =
+    var bcrypt = WinCRng(libHandle: nil, cRngType: WinCRngBCrypt, bCryptGenRandom: nil)
+    bcrypt.libHandle = loadLib("Bcrypt.dll")
+    if not isNil(bcrypt.libHandle):
+      let procAddr = symAddr(bcrypt.libHandle, "BCryptGenRandom")
+      if not isNil(procAddr):
+        var buf: uint
+        bcrypt.bCryptGenRandom = cast[BCryptGenRandom](procAddr)
+        if bcrypt.bCryptGenRandom(nil, cast[PUCHAR](addr buf), ULONG(sizeof(buf)),
+                                  BCRYPT_USE_SYSTEM_PREFERRED_RNG) == STATUS_SUCCESS:
+          winCRng = bcrypt
+    if winCRng.cRngType == WinCRngNone and not isNil(bcrypt.libHandle):
+      unloadLib(bcrypt.libHandle)
+
+  proc loadWinCrypt() =
+    var crypt = WinCRng(libHandle: nil, cRngType: WinCRngWinCrypt, cryptGenRandom: nil, hProv: nil)
+    crypt.libHandle = loadLib("Advapi32.dll")
+    if not isNil(crypt.libHandle):
+      let procAddr = symAddr(crypt.libHandle, "CryptGenRandom")
+      if not isNil(procAddr):
+        let getProcAddr = symAddr(crypt.libHandle, "CryptAcquireContextA")
+        if not isNil(getProcAddr):
+          let cryptAcquireContext = cast[CryptAcquireContextA](getProcAddr)
+          if cryptAcquireContext(addr crypt.hProv, nil, nil, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT) != 0:
+            var buf: uint
+            crypt.cryptGenRandom = cast[CryptGenRandom](procAddr)
+            if crypt.cryptGenRandom(crypt.hProv, sizeof(buf).DWORD, cast[ptr BYTE](addr buf)) != 0:
+              winCRng = crypt
+    if winCRng.cRngType == WinCRngNone and not isNil(crypt.libHandle):
+      unloadLib(crypt.libHandle)
+
+  proc initWinCRng() =
+    loadBCrypt()
+    if winCRng.cRngType == WinCRngNone:
+      loadWinCrypt()
+    addExitProc(closeWinCRng)
 
   proc randomBytes(pbBuffer: pointer, cbBuffer: Natural): int {.inline.} =
-    bCryptGenRandom(nil, cast[PUCHAR](pbBuffer), ULONG(cbBuffer),
-                            BCRYPT_USE_SYSTEM_PREFERRED_RNG)
+    case winCRng.cRngType
+    of WinCRngBCrypt:
+      if winCRng.bCryptGenRandom(nil, cast[PUCHAR](pbBuffer), ULONG(cbBuffer),
+                                 BCRYPT_USE_SYSTEM_PREFERRED_RNG) != STATUS_SUCCESS:
+        result = 1
+    of WinCRngWinCrypt:
+      if winCRng.cryptGenRandom(winCRng.hProv, DWORD(cbBuffer), cast[ptr BYTE](pbBuffer)) == 0:
+        result = 1
+    of WinCRngNone:
+      result = 1
 
   template urandomImpl(result: var int, dest: var openArray[byte]) =
     let size = dest.len
@@ -163,6 +243,8 @@ elif defined(windows):
       return
 
     result = randomBytes(addr dest[0], size)
+  
+  initWinCRng()
 
 elif defined(linux) and not defined(nimNoGetRandom) and not defined(emscripten):
   # TODO using let, pending bootstrap >= 1.4.0
