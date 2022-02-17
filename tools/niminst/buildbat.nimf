@@ -86,7 +86,10 @@ SET /A x=1
 SET /A ERROR=0
 
 :LOOP
-IF EXIST "%tmpDir%\error.error" GOTO :END
+IF EXIST "%tmpDir%\error.error" (
+  SET /A ERROR=1
+  GOTO :END
+)
 
 IF %ccFiles% NEQ "" (
   ECHO 1 > "%tmpDir%\!x!.lock"
@@ -157,7 +160,7 @@ IF !cnt! GTR 1 (
 
 RD "%tmpDir%" /S /Q
 
-EXIT /B
+EXIT /B %ERROR%
 
 REM Functions
 
