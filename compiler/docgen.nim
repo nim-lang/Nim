@@ -1499,9 +1499,10 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    let external = d.destFile.AbsoluteFile
-                    .relativeTo(d.conf.outDir, '/')
-                    .changeFileExt(HtmlExt).string
+    let external = AbsoluteFile(d.destFile)
+      .relativeTo(d.conf.outDir, '/')
+      .changeFileExt(HtmlExt)
+      .string
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
