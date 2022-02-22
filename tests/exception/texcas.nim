@@ -38,6 +38,6 @@ testTryAsExpr(5)
 doAssert(not compiles(
   try: 
     echo 1
-  except [KeyError as ex1, ValueError as ex2]:
+  except KeyError as ex1, ValueError as ex2:
     echo 2
 ))
