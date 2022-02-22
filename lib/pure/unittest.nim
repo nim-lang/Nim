@@ -751,22 +751,38 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
     expect IOError, OSError, ValueError, AssertionDefect:
       defectiveRobot()
 
-  template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
-    try:
-      body
-      checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")
-      fail()
-    except errorTypes:
-      discard
-    except:
-      checkpoint(lineInfoLit & ": Expect Failed, unexpected exception was thrown.")
-      fail()
+  result = newNimNode(nnkStmtList)
+  let lineInfoLit = exceptions[0].lineInfo
+  let tryExpr = newNimNode(nnkTryStmt)
+  tryExpr.add quote do:
+    `body`
+    checkpoint(`lineInfoLit` & ": Expect Failed, no exception was thrown.")
+    fail()
 
-  var errorTypes = newNimNode(nnkBracket)
+  var exceptExceptionBranch = newNimNode(nnkExceptBranch)
   for exp in exceptions:
-    errorTypes.add(exp)
+    exceptExceptionBranch.add(exp)
 
-  result = getAst(expectBody(errorTypes, errorTypes.lineInfo, body))
+
+      # StmtList
+      #   DiscardStmt
+      #     Empty
+
+  var stmtList = newNimNode(nnkStmtList)
+  var discardStmt = newNimNode(nnkDiscardStmt)
+  discardStmt.add newNimNode(nnkEmpty)
+  stmtList.add discardStmt
+  exceptExceptionBranch.add stmtList
+
+  var exceptBranch = newNimNode(nnkExceptBranch)
+  exceptBranch.add quote do:
+    checkpoint(`lineInfoLit` & ": Expect Failed, unexpected exception was thrown.")
+    fail()
+
+  tryExpr.add exceptExceptionBranch
+  tryExpr.add exceptBranch
+  result.add tryExpr
+
 
 proc disableParamFiltering* =
   ## disables filtering tests with the command line params
