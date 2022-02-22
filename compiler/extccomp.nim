@@ -649,8 +649,10 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
       close(f)
 
 proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
+  # we want to generate the hash file unconditionally
+  let extFileChanged = externalFileChanged(conf, c)
   if optForceFullMake notin conf.globalOptions and fileExists(c.obj) and
-      not externalFileChanged(conf, c):
+      not extFileChanged:
     c.flags.incl CfileFlag.Cached
   else:
     # make sure Nim keeps recompiling the external file on reruns
