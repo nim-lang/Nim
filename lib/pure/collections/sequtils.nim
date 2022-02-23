@@ -637,7 +637,7 @@ template filterIt*(s, pred: untyped): untyped =
     assert acceptable == @[-2.0, 24.5, 44.31]
     assert notAcceptable == @[-272.15, 99.9, -113.44]
 
-  var result = newSeq[typeof(s[0])]()
+  var result = newSeq[typeof(s, typeOfIter)]()
   for it {.inject.} in s:
     if pred: result.add(it)
   result
@@ -971,6 +971,12 @@ template foldr*(sequence, operation: untyped): untyped =
     result = operation
   result
 
+template typeofIterItem(s: untyped): untyped =
+  when compiles(for item_s in items(s): discard):
+    typeof(items(s), typeOfIter)
+  else:
+    typeof(s, typeOfIter)
+
 template mapIt*(s: typed, op: untyped): untyped =
   ## Returns a new sequence with the results of the `op` proc applied to every
   ## item in the container `s`.
@@ -994,47 +1000,18 @@ template mapIt*(s: typed, op: untyped): untyped =
       nums = @[1, 2, 3, 4]
       strings = nums.mapIt($(4 * it))
     assert strings == @["4", "8", "12", "16"]
-
-  type OutType = typeof((
+  
+  type OutType = typeof(
     block:
-      var it{.inject.}: typeof(items(s), typeOfIter);
-      op), typeOfProc)
-  when OutType is not (proc):
-    # Here, we avoid to create closures in loops.
-    # This avoids https://github.com/nim-lang/Nim/issues/12625
-    when compiles(s.len):
-      block: # using a block avoids https://github.com/nim-lang/Nim/issues/8580
+      var it{.inject.}: typeofIterItem(s);
+      op
+  )
 
-        # BUG: `evalOnceAs(s2, s, false)` would lead to C compile errors
-        # (`error: use of undeclared identifier`) instead of Nim compile errors
-        evalOnceAs(s2, s, compiles((let _ = s)))
-
-        var i = 0
-        var result = newSeq[OutType](s2.len)
-        for it {.inject.} in s2:
-          result[i] = op
-          i += 1
-        result
-    else:
-      var result: seq[OutType] = @[]
-      # use `items` to avoid https://github.com/nim-lang/Nim/issues/12639
-      for it {.inject.} in items(s):
-        result.add(op)
-      result
-  else:
-    # `op` is going to create closures in loops, let's fallback to `map`.
-    # NOTE: Without this fallback, developers have to define a helper function and
-    # call `map`:
-    #   [1, 2].map((it) => ((x: int) => it + x))
-    # With this fallback, above code can be simplified to:
-    #   [1, 2].mapIt((x: int) => it + x)
-    # In this case, `mapIt` is just syntax sugar for `map`.
-    type InType = typeof(items(s), typeOfIter)
-    # Use a help proc `f` to create closures for each element in `s`
-    let f = proc (x: InType): OutType =
-              let it {.inject.} = x
-              op
-    map(s, f)
+  block:
+    var result: seq[OutType]
+    for it {.inject.} in s:
+      result &= op
+    result
 
 template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable `apply` proc to reduce typing.
