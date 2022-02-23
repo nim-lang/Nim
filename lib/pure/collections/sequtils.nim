@@ -638,7 +638,7 @@ template filterIt*(s, pred: untyped): untyped =
     assert notAcceptable == @[-272.15, 99.9, -113.44]
 
   var result = newSeq[typeof(s[0])]()
-  for it {.inject.} in items(s):
+  for it {.inject.} in s:
     if pred: result.add(it)
   result
 
@@ -726,7 +726,7 @@ template allIt*(s, pred: untyped): bool =
     assert numbers.allIt(it < 9) == false
 
   var result = true
-  for it {.inject.} in items(s):
+  for it {.inject.} in s:
     if not pred:
       result = false
       break
@@ -768,7 +768,7 @@ template anyIt*(s, pred: untyped): bool =
     assert numbers.anyIt(it > 9) == false
 
   var result = false
-  for it {.inject.} in items(s):
+  for it {.inject.} in s:
     if pred:
       result = true
       break
