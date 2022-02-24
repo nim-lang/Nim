@@ -1271,12 +1271,19 @@ proc `name=`*(someProc: NimNode; val: NimNode) =
   else: someProc[0] = val
 
 proc params*(someProc: NimNode): NimNode =
-  someProc.expectRoutine
-  result = someProc[3]
+  if someProc.kind == nnkProcTy:
+    someProc[0]
+  else:
+    someProc.expectRoutine
+    someProc[3]
+
 proc `params=`* (someProc: NimNode; params: NimNode) =
-  someProc.expectRoutine
   expectKind(params, nnkFormalParams)
-  someProc[3] = params
+  if someProc.kind == nnkProcTy:
+    someProc[0] = params
+  else:
+    someProc.expectRoutine
+    someProc[3] = params
 
 proc pragma*(someProc: NimNode): NimNode =
   ## Get the pragma of a proc type.
