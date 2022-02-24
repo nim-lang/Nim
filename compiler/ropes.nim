@@ -66,7 +66,7 @@ type
                        # copy the format strings
                        # though it is not necessary)
   Rope* = ref RopeObj
-  RopeObj*{.acyclic.} = object of RootObj # the empty rope is represented
+  RopeObj*{.acyclic.} = object            # the empty rope is represented
                                           # by nil to safe space
     left, right: Rope
     L: int                    # <= 0 if a leaf
