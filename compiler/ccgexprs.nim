@@ -3127,15 +3127,15 @@ proc genConstTuple(p: BProc, n: PNode; isConst: bool; tup: PType): Rope =
     else: result.add genBracedInit(p, it, isConst, tup[i])
   result.add("}\n")
 
-proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool): Rope {.nodestroy.} =
-  var data = "{{$1, $1 | NIM_STRLIT_FLAG}" % [n.len.rope]
+proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
+  var data = strutils.`%`("{{$1, $1 | NIM_STRLIT_FLAG}", [$n.len])
   let base = t.skipTypes(abstractInst)[0]
   if n.len > 0:
     # array part needs extra curlies:
     data.add(", {")
     for i in 0..<n.len:
-      if i > 0: data.addf(",$n", [])
-      data.add genBracedInit(p, n[i], isConst, base)
+      if i > 0: data.add(",\n")
+      data.add $genBracedInit(p, n[i], isConst, base)
     data.add("}")
   data.add("}")
 
