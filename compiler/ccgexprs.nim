@@ -3127,7 +3127,7 @@ proc genConstTuple(p: BProc, n: PNode; isConst: bool; tup: PType): Rope =
     else: result.add genBracedInit(p, it, isConst, tup[i])
   result.add("}\n")
 
-proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
+proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool): Rope {.nodestroy.} =
   var data = "{{$1, $1 | NIM_STRLIT_FLAG}" % [n.len.rope]
   let base = t.skipTypes(abstractInst)[0]
   if n.len > 0:
