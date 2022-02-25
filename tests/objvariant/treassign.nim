@@ -54,4 +54,5 @@ block:
     # inside the 'cast' section it is allowed to assign to the 't.kind' field directly:
     t.kind = intLit
 
-  t.kind = strLit
+  {.cast(uncheckedAssign).}:
+    t.kind = strLit
