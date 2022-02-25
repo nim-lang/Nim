@@ -763,11 +763,6 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   for exp in exceptions:
     exceptExceptionBranch.add(exp)
 
-
-      # StmtList
-      #   DiscardStmt
-      #     Empty
-
   var stmtList = newNimNode(nnkStmtList)
   var discardStmt = newNimNode(nnkDiscardStmt)
   discardStmt.add newNimNode(nnkEmpty)
