@@ -40,7 +40,7 @@ becomes an alias for `addr`.
 
 - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
 - Removed deprecated `oids.oidToString`.
-
+- Remove define `nimExperimentalAsyncjsThen` for `std/asyncjs.then` and `std/jsfetch`.
 
 - Changed mimedb to use an `OrderedTable` instead of `OrderedTableRef`, to use it in a const.
 - Removed deprecated `jsre.test` and `jsre.toString`.
