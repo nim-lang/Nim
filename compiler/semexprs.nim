@@ -1749,6 +1749,11 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       if a.kind == nkDotCall:
         a.transitionSonsKind(nkCall)
         a = semExprWithType(c, a, {efLValue})
+    elif c.inUncheckedAssignSection > 0 and
+          a.kind in {nkDotExpr, nkCheckedFieldExpr} and
+          a[1].kind == nkSym:
+      a[1].sym.flags.incl sfUncheckedDiscriminant
+
   of nkBracketExpr:
     # a[i] = x
     # --> `[]=`(a, i, x)
