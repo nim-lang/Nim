@@ -29,7 +29,7 @@ proc raiseFieldError(f: string) {.compilerproc, noinline.} =
   ## remove after bootstrap > 1.5.1
   sysFatal(FieldDefect, f)
 
-when defined(gcdestructors):
+when defined(nimV2):
   proc raiseFieldError2(f: string, discVal: int) {.compilerproc, noinline.} =
     ## raised when field is inaccessible given runtime value of discriminant
     sysFatal(FieldError, f & $discVal & "'")
