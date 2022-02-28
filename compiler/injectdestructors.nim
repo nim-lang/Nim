@@ -396,16 +396,15 @@ It is best to factor out piece of object that needs custom destructor into separ
       return
 
     # generate: if le != tmp: `=destroy`(le)
-    when false:
-      let branchDestructor = produceDestructorForDiscriminator(c.graph, objType, leDotExpr[1].sym, n.info, c.idgen)
-      let cond = newNodeIT(nkInfix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
-      cond.add newSymNode(getMagicEqSymForType(c.graph, le.typ, n.info))
-      cond.add le
-      cond.add tmp
-      let notExpr = newNodeIT(nkPrefix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
-      notExpr.add newSymNode(createMagic(c.graph, c.idgen, "not", mNot))
-      notExpr.add cond
-      result.add newTree(nkIfStmt, newTree(nkElifBranch, notExpr, c.genOp(branchDestructor, le)))
+    let branchDestructor = produceDestructorForDiscriminator(c.graph, objType, leDotExpr[1].sym, n.info, c.idgen)
+    let cond = newNodeIT(nkInfix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
+    cond.add newSymNode(getMagicEqSymForType(c.graph, le.typ, n.info))
+    cond.add le
+    cond.add tmp
+    let notExpr = newNodeIT(nkPrefix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
+    notExpr.add newSymNode(createMagic(c.graph, c.idgen, "not", mNot))
+    notExpr.add cond
+    result.add newTree(nkIfStmt, newTree(nkElifBranch, notExpr, c.genOp(branchDestructor, le)))
   result.add newTree(nkFastAsgn, le, tmp)
 
 proc genWasMoved(c: var Con, n: PNode): PNode =

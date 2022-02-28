@@ -1,7 +1,6 @@
 discard """
   cmd: "nim c --gc:arc --exceptions:goto --panics:off $file"
   output: '''
-field error prevented
 prevented!
 caught
 AssertionDefect
@@ -27,10 +26,10 @@ proc helper = doAssert(false)
 
 proc main(i: int) =
   var obj = Obj(kind: kindA, s: "abc")
-  try:
+  {.cast(uncheckedAssign).}:
     obj.kind = kindB
-  except FieldDefect:
-    echo "field error prevented"
+    obj.i = 2
+
   try:
     var objA = ObjA()
     bplease(ObjB(objA))
