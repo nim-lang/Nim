@@ -2796,7 +2796,9 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       var map: SourceMap
       (code, map) = genSourceMap($(code), outFile.string)
       writeFile(outFile.string & ".map", $(%map))
-    discard writeRopeIfNotEqual(code, outFile)
+    if not equalsFile(code, outFile):
+      if not writeRope(code, outFile):
+        rawMessage(m.config, errCannotOpenFile, outFile.string)
 
 
 proc myOpen(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
