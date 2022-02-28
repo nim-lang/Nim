@@ -206,9 +206,9 @@ type
       error*: string
 
 proc init(): RocksDBResult[string] =
-  result = RocksDBResult[string](ok: true, value: "ok")
-  result.ok = true
-  result.value = "ok"
+  {.cast(uncheckedAssign).}:
+    result.ok = true
+    result.value = "ok"
 
 echo init()
 
