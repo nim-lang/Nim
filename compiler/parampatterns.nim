@@ -227,11 +227,14 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
     elif n.sym.kind == skConst and dontInlineConstant(n, n.sym.ast):
       result = arAddressableConst
     elif n.sym.kind in kinds:
-      if owner != nil and owner == n.sym.owner and
-          sfGlobal notin n.sym.flags:
-        result = arLocalLValue
+      if n.sym.kind in {skParam, skLet, skForVar}:
+        result = arAddressableConst
       else:
-        result = arLValue
+        if owner != nil and owner == n.sym.owner and
+            sfGlobal notin n.sym.flags:
+          result = arLocalLValue
+        else:
+          result = arLValue
     elif n.sym.kind == skType:
       let t = n.sym.typ.skipTypes({tyTypeDesc})
       if t.kind in {tyVar}: result = arStrange
