@@ -210,7 +210,7 @@ proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ##  echo p[]    # b
   discard
 
-proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect, deprecated: "use 'addr' instead".} =
+proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory
   ## location.
   ##
