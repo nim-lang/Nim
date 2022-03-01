@@ -45,15 +45,9 @@ template main2 = # bug #15958
 
   proc byLent2[T](a: openArray[T]): lent T = a[0]
   doAssert byLent2(a) == 11
-<<<<<<< HEAD
-  doAssert byLent2(a).addr == a[0].addr
-  doAssert byLent2(b) == 21
-  doAssert byLent2(b).addr == b[0].addr
-=======
   doAssert sameAddress(byLent2(a), a[0])
   doAssert byLent2(b) == 21
   doAssert sameAddress(byLent2(b), b[0])
->>>>>>> upstream/devel
 
   proc byLent3[T](a: varargs[T]): lent T = a[1]
   let 
