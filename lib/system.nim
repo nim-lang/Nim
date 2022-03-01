@@ -202,9 +202,6 @@ proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ##
   ## Cannot be overloaded.
   ##
-  ## See also:
-  ## * `unsafeAddr <#unsafeAddr,T>`_
-  ##
   ## .. code-block:: Nim
   ##  var
   ##    buf: seq[char] = @['a','b','c']
@@ -213,7 +210,7 @@ proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ##  echo p[]    # b
   discard
 
-proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
+proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect, deprecated: "use 'addr' instead".} =
   ## Builtin `addr` operator for taking the address of a memory
   ## location.
   ##
