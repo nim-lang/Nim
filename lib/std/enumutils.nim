@@ -14,7 +14,7 @@ from typetraits import OrdinalEnum, HoleyEnum
 
 macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
             userMin, userMax: static[int], normalizer: static[proc(s :string): string]): untyped =
-  # generates a case stmt, which assigns the correct enum field given
+  # Generates a case stmt, which assigns the correct enum field given
   # a normalized string comparison to the `argSym` input.
   # string normalization is done using passed normalizer.
   # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
@@ -49,7 +49,12 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
       of nnkIntLit:
         fStr = f[0].strVal
         fNum = f[1].intVal
-      else: error("Invalid tuple syntax!", f[1])
+      else:
+        let fAst = f[0].getImpl
+        if fAst.kind == nnkStrLit:
+          fStr = fAst.strVal
+        else:
+          error("Invalid tuple syntax!", f[1])
     else: error("Invalid node for enum type `" & $f.kind & "`!", f)
     # add field if string not already added
     if fNum >= userMin and fNum <= userMax:

@@ -431,7 +431,7 @@ iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline
 iterator lines*(mfile: MemFile, buf: var string, delim = '\l',
     eat = '\r'): string {.inline.} =
   ## Replace contents of passed buffer with each new line, like
-  ## `readLine(File) <io.html#readLine,File,string>`_.
+  ## `readLine(File) <syncio.html#readLine,File,string>`_.
   ## `delim`, `eat`, and delimiting logic is exactly as for `memSlices
   ## <#memSlices.i,MemFile,char,char>`_, but Nim strings are returned.
   ##
@@ -450,7 +450,7 @@ iterator lines*(mfile: MemFile, buf: var string, delim = '\l',
 
 iterator lines*(mfile: MemFile, delim = '\l', eat = '\r'): string {.inline.} =
   ## Return each line in a file as a Nim string, like
-  ## `lines(File) <io.html#lines.i,File>`_.
+  ## `lines(File) <syncio.html#lines.i,File>`_.
   ## `delim`, `eat`, and delimiting logic is exactly as for `memSlices
   ## <#memSlices.i,MemFile,char,char>`_, but Nim strings are returned.
   ##

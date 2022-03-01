@@ -237,6 +237,7 @@ template declareClosures =
     of meInvalidDirective: k = errRstInvalidDirectiveX
     of meInvalidField: k = errRstInvalidField
     of meFootnoteMismatch: k = errRstFootnoteMismatch
+    of meSandboxedDirective: k = errRstSandboxedDirective
     of mwRedefinitionOfLabel: k = warnRstRedefinitionOfLabel
     of mwUnknownSubstitution: k = warnRstUnknownSubstitutionX
     of mwAmbiguousLink: k = warnRstAmbiguousLink
@@ -282,7 +283,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
   result.cache = cache
   result.outDir = conf.outDir.string
   result.isPureRst = isPureRst
-  var options= {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown}
+  var options= {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown, roSandboxDisabled}
   if not isPureRst: options.incl roNimFile
   result.sharedState = newRstSharedState(
       options, filename.string,
@@ -1498,7 +1499,10 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnixPath
+    let external = AbsoluteFile(d.destFile)
+      .relativeTo(d.conf.outDir, '/')
+      .changeFileExt(HtmlExt)
+      .string
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
