@@ -146,3 +146,26 @@ block:
 
   let a: ref A = new(B)
   doAssert $$a[] == "{}" # not "{f: 0}"
+
+template checkMarshal(data: typed) =
+  let orig = data
+  let m = $$orig
+  let old = to[typeof(orig)](m)
+  doAssert data == old
+
+template main() =
+  type
+    Book = object
+      page: int
+      name: string
+
+  let book = Book(page: 12, name: "persona")
+
+  checkMarshal(486)
+  checkMarshal(3.14)
+  checkMarshal("azure sky")
+  checkMarshal(book)
+
+
+static: main()
+main()

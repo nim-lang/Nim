@@ -33,7 +33,7 @@ from system/formatfloat import addFloatRoundtrip, addFloatSprintf
 
 
 # There are some useful procs in vmconv.
-import vmconv
+import vmconv, vmmarshal
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -139,6 +139,7 @@ when defined(nimHasInvariant):
     of backend: result = $conf.backend
     of libPath: result = conf.libpath.string
     of gc: result = $conf.selectedGC
+    of mm: result = $conf.selectedGC
 
   proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
     template copySeq(field: untyped): untyped =
@@ -154,6 +155,9 @@ when defined(nimHasInvariant):
 
 proc stackTrace2(c: PCtx, msg: string, n: PNode) =
   stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, msg, n.info)
+
+
+import astalgo
 
 proc registerAdditionalOps*(c: PCtx) =
 
@@ -349,3 +353,35 @@ proc registerAdditionalOps*(c: PCtx) =
     addFloatSprintf(p.strVal, x)
 
   wrapIterator("stdlib.os.envPairsImplSeq"): envPairs()
+
+  registerCallback c, "stdlib.marshal.to", proc(a: VmArgs) =
+    let typ = a.callbackNode.sym.typ[0]
+    case typ.kind
+    of tyInt..tyInt64, tyUInt..tyUInt64:
+      setResult(a, loadAny(a.getString(0), typ, c.cache, c.config, c.idgen).intVal)
+    of tyFloat..tyFloat128:
+      setResult(a, loadAny(a.getString(0), typ, c.cache, c.config, c.idgen).floatVal)
+    else:
+      setResult(a, loadAny(a.getString(0), typ, c.cache, c.config, c.idgen))
+
+
+  registerCallback c, "stdlib.marshal.$$", proc(a: VmArgs) =
+    let p = a.getReg(0)
+    var res: string
+
+    var node: PNode
+    case p.kind
+    of rkInt:
+      node = newIntNode(nkIntLit, p.intVal)
+    of rkFloat:
+      node = newFloatNode(nkFloatLit, p.floatVal)
+    of rkNode:
+      node = p.node
+    of rkRegisterAddr:
+      node = p.regAddr.node
+    of rkNodeAddr:
+      node = p.nodeAddr[]
+    else: doAssert false
+
+    storeAny(res, a.callbackNode.sym.typ[1], node, c.config)
+    setResult(a, res)
