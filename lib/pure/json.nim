@@ -164,6 +164,9 @@ import hashes, tables, strutils, lexbase, streams, macros, parsejson
 import options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 export
   tables.`$`
 

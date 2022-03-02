@@ -293,19 +293,16 @@ else:
       AtomicInt32 {.importc: "_Atomic NI32".} = int32
       AtomicInt64 {.importc: "_Atomic NI64".} = int64
 
-    template atomicType*(T: typedesc[Trivial]): untyped =
-      # Maps the size of a trivial type to it's internal atomic type
-      when sizeof(T) == 1: AtomicInt8
-      elif sizeof(T) == 2: AtomicInt16
-      elif sizeof(T) == 4: AtomicInt32
-      elif sizeof(T) == 8: AtomicInt64
-
     type
       AtomicFlag* {.importc: "atomic_flag", size: 1.} = object
 
       Atomic*[T] = object
         when T is Trivial:
-          value: T.atomicType
+          # Maps the size of a trivial type to it's internal atomic type
+          when sizeof(T) == 1: value: AtomicInt8
+          elif sizeof(T) == 2: value: AtomicInt16
+          elif sizeof(T) == 4: value: AtomicInt32
+          elif sizeof(T) == 8: value: AtomicInt64
         else:
           nonAtomicValue: T
           guard: AtomicFlag
@@ -364,11 +361,11 @@ else:
       cast[T](atomic_fetch_xor_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
 
   template withLock[T: not Trivial](location: var Atomic[T]; order: MemoryOrder; body: untyped): untyped =
-    while location.guard.testAndSet(moAcquire): discard
+    while testAndSet(location.guard, moAcquire): discard
     try:
       body
     finally:
-      location.guard.clear(moRelease)
+      clear(location.guard, moRelease)
 
   proc load*[T: not Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     withLock(location, order):

@@ -23,6 +23,8 @@ x: some string
 ([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
 ([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
 0
+0
+0
 '''
 """
 
@@ -270,3 +272,61 @@ block: # bug #13511
 
     debugAst:
       add(foo(), component)
+
+block: # bug #15118
+  macro flop(name: static string) =
+    let id = genSym(nskType, "env")
+    let r =
+      nnkStmtList.newTree(
+        nnkTypeSection.newTree(
+          nnkTypeDef.newTree(
+            id,
+            newEmptyNode(),
+            nnkRefTy.newTree(
+              nnkObjectTy.newTree(
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkRecList.newTree(
+                  nnkIdentDefs.newTree(
+                    newIdentNode(name),
+                    newIdentNode("int"),
+                    newEmptyNode()
+                  )
+                )
+              ) 
+            )
+          )
+        ),
+
+        # var f: T
+  
+        nnkVarSection.newTree(
+          nnkIdentDefs.newTree(
+            newIdentNode("f"),
+            id,
+            newEmptyNode()
+          )
+        ),
+
+        # echo f.a
+        nnkCommand.newTree(
+          newIdentNode("new"),
+          newIdentNode("f")
+        ),
+
+        nnkCommand.newTree(
+          newIdentNode("echo"),
+          nnkDotExpr.newTree(
+            newIdentNode("f"),
+            newIdentNode(name)
+          )
+        )
+      )
+    r
+
+
+  block:
+    flop("a")
+
+  block:
+    flop("b")

@@ -83,7 +83,7 @@ block:
   # bug #14576
   # lots of these used to give: Error: internal error: genAddr: 2
   proc byLent[T](a: T): lent T = a
-  proc byPtr[T](a: T): ptr T = a.unsafeAddr
+  proc byPtr[T](a: T): ptr T = a.addr
 
   block:
     let a = (10,11)

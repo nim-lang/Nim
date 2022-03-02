@@ -12,9 +12,9 @@
 ##
 ## See also
 ## ========
-## * `base64 module<base64.html>`_ implements a Base64 encoder and decoder
+## * `base64 module<base64.html>`_ for a Base64 encoder and decoder
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
-## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
+## * `md5 module<md5.html>`_ for the MD5 checksum algorithm
 
 runnableExamples:
   let accessName = secureHash("John Doe")

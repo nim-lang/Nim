@@ -85,9 +85,9 @@ proc bailOut(c: PCtx; tos: PStackFrame) =
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
 
-proc ensureKind(n: var TFullReg, kind: TRegisterKind) =
-  if n.kind != kind:
-    n = TFullReg(kind: kind)
+proc ensureKind(n: var TFullReg, k: TRegisterKind) {.inline.} =
+  if n.kind != k:
+    n = TFullReg(kind: k)
 
 template ensureKind(k: untyped) {.dirty.} =
   ensureKind(regs[ra], k)
@@ -521,6 +521,11 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
 when not defined(nimHasSinkInference):
   {.pragma: nosinks.}
 
+template takeAddress(reg, source) =
+  reg.nodeAddr = addr source
+  when defined(gcDestructors):
+    GC_ref source
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -679,7 +684,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let idx = regs[rc].intVal.int
       let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
       if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
-        regs[ra].nodeAddr = addr src.sons[idx]
+        takeAddress regs[ra], src.sons[idx]
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
     of opcLdStrIdx:
@@ -747,11 +752,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of nkObjConstr:
         let n = src.sons[rc + 1]
         if n.kind == nkExprColonExpr:
-          regs[ra].nodeAddr = addr n.sons[1]
+          takeAddress regs[ra], n.sons[1]
         else:
-          regs[ra].nodeAddr = addr src.sons[rc + 1]
+          takeAddress regs[ra], src.sons[rc + 1]
       else:
-        regs[ra].nodeAddr = addr src.sons[rc]
+        takeAddress regs[ra], src.sons[rc]
     of opcWrObj:
       # a.b = c
       decodeBC(rkNode)
@@ -778,7 +783,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNodeAddr)
       case regs[rb].kind
       of rkNode:
-        regs[ra].nodeAddr = addr(regs[rb].node)
+        takeAddress regs[ra], regs[rb].node
       of rkNodeAddr: # bug #14339
         regs[ra].nodeAddr = regs[rb].nodeAddr
       else:
