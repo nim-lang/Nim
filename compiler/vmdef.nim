@@ -237,7 +237,6 @@ type
     slots*: ptr UncheckedArray[TFullReg]
     currentException*: PNode
     currentLineInfo*: TLineInfo
-    callbackNode*: PNode
   VmCallback* = proc (args: VmArgs) {.closure.}
 
   PCtx* = ref TCtx

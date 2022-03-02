@@ -1224,8 +1224,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         c.callbacks[-prc.offset-2].value(
           VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                  currentException: c.currentExceptionA,
-                 currentLineInfo: c.debug[pc],
-                 callbackNode: bb))
+                 currentLineInfo: c.debug[pc])
+                 )
       elif importcCond(c, prc):
         if compiletimeFFI notin c.config.features:
           globalError(c.config, c.debug[pc], "VM not allowed to do FFI, see `compiletimeFFI`")

@@ -346,18 +346,19 @@ proc registerAdditionalOps*(c: PCtx) =
 
   wrapIterator("stdlib.os.envPairsImplSeq"): envPairs()
 
-  registerCallback c, "stdlib.marshal.to", proc(a: VmArgs) =
-    let typ = a.callbackNode.sym.typ[0]
+  registerCallback c, "stdlib.marshal.toVM", proc(a: VmArgs) =
+    let typ = a.getNode(0).typ
     case typ.kind
     of tyInt..tyInt64, tyUInt..tyUInt64:
-      setResult(a, loadAny(a.getString(0), typ, c.cache, c.config, c.idgen).intVal)
+      setResult(a, loadAny(a.getString(1), typ, c.cache, c.config, c.idgen).intVal)
     of tyFloat..tyFloat128:
-      setResult(a, loadAny(a.getString(0), typ, c.cache, c.config, c.idgen).floatVal)
+      setResult(a, loadAny(a.getString(1), typ, c.cache, c.config, c.idgen).floatVal)
     else:
-      setResult(a, loadAny(a.getString(0), typ, c.cache, c.config, c.idgen))
+      setResult(a, loadAny(a.getString(1), typ, c.cache, c.config, c.idgen))
 
-  registerCallback c, "stdlib.marshal.$$", proc(a: VmArgs) =
-    let p = a.getReg(0)
+  registerCallback c, "stdlib.marshal.loadVM", proc(a: VmArgs) =
+    let typ = a.getNode(0).typ
+    let p = a.getReg(1)
     var res: string
 
     var node: PNode
@@ -375,5 +376,5 @@ proc registerAdditionalOps*(c: PCtx) =
     of rkNodeAddr:
       node = p.nodeAddr[]
 
-    storeAny(res, a.callbackNode.sym.typ[1], node, c.config)
+    storeAny(res, typ, node, c.config)
     setResult(a, res)
