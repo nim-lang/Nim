@@ -363,6 +363,8 @@ proc registerAdditionalOps*(c: PCtx) =
 
     var node: PNode
     case p.kind
+    of rkNone:
+      node = newNode(nkEmpty)
     of rkInt:
       node = newIntNode(nkIntLit, p.intVal)
     of rkFloat:
@@ -373,7 +375,6 @@ proc registerAdditionalOps*(c: PCtx) =
       node = p.regAddr.node
     of rkNodeAddr:
       node = p.nodeAddr[]
-    else: doAssert false
 
     storeAny(res, a.callbackNode.sym.typ[1], node, c.config)
     setResult(a, res)

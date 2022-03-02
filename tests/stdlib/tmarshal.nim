@@ -165,7 +165,8 @@ template main() =
   checkMarshal(3.14)
   checkMarshal("azure sky")
   checkMarshal(book)
-
+  checkMarshal([1, 2, 3])
+  checkMarshal(@[1.5, 2.7, 3.9, 4.2])
 
 static: main()
 main()
