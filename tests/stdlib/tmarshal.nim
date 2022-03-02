@@ -4,12 +4,16 @@ import std/marshal
 
 proc testit[T](x: T): string = $$to[T]($$x)
 
-let test1: array[0..1, array[0..4, string]] = [
-  ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"]]
-doAssert testit(test1) ==
-  """[["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"]]"""
-let test2: tuple[name: string, s: int] = ("tuple test", 56)
-doAssert testit(test2) == """{"Field0": "tuple test", "Field1": 56}"""
+template check1 =
+  let test1: array[0..1, array[0..4, string]] = [
+    ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"]]
+  doAssert testit(test1) ==
+    """[["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"]]"""
+  let test2: tuple[name: string, s: int] = ("tuple test", 56)
+  doAssert testit(test2) == """{"Field0": "tuple test", "Field1": 56}"""
+
+static: check1()
+check1()
 
 type
   TE = enum
@@ -154,7 +158,7 @@ template checkMarshal(data: typed) =
   let old = to[typeof(orig)](m)
   doAssert data == old
 
-proc main() =
+template main() =
   type
     Book = object
       page: int
