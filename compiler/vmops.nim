@@ -356,7 +356,6 @@ proc registerAdditionalOps*(c: PCtx) =
     else:
       setResult(a, loadAny(a.getString(0), typ, c.cache, c.config, c.idgen))
 
-
   registerCallback c, "stdlib.marshal.$$", proc(a: VmArgs) =
     let p = a.getReg(0)
     var res: string

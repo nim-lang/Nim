@@ -150,10 +150,11 @@ block:
 template checkMarshal(data: typed) =
   let orig = data
   let m = $$orig
+
   let old = to[typeof(orig)](m)
   doAssert data == old
 
-template main() =
+proc main() =
   type
     Book = object
       page: int
@@ -167,6 +168,7 @@ template main() =
   checkMarshal(book)
   checkMarshal([1, 2, 3])
   checkMarshal(@[1.5, 2.7, 3.9, 4.2])
+  checkMarshal(@["dream", "is", "possible"])
 
 static: main()
 main()
