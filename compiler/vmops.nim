@@ -157,8 +157,6 @@ proc stackTrace2(c: PCtx, msg: string, n: PNode) =
   stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, msg, n.info)
 
 
-import astalgo
-
 proc registerAdditionalOps*(c: PCtx) =
 
   template wrapIterator(fqname: string, iter: untyped) =
