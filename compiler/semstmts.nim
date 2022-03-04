@@ -232,7 +232,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         inc catchAllExcepts
 
         message(c.config, a.info, warnBareExcept,
-          "bare except: clause; this will become a compile time error in the future")
+          "The bare except clause is deprecated; use `except CatchableError, Defect:` instead")
 
       else:
         # support ``except KeyError, ValueError, ... : body``
