@@ -231,6 +231,9 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         # count number of ``except: body`` blocks
         inc catchAllExcepts
 
+        message(c.config, a.info, warnBareExcept,
+          "bare except: clause; this will become a compile time error in the future")
+
       else:
         # support ``except KeyError, ValueError, ... : body``
         if catchAllExcepts > 0:
