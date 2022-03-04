@@ -4529,8 +4529,10 @@ Example:
       echo "overflow!"
     except ValueError, IOError:
       echo "catch multiple exceptions!"
-    except:
-      echo "Unknown exception!"
+    except CatchableError:
+      echo "Catchable exception!"
+    except Defect:
+      echo "Defect!
     finally:
       close(f)
 
@@ -4565,7 +4567,7 @@ branch always has to be `void`:
   from std/strutils import parseInt
 
   let x = try: parseInt("133a")
-          except: -1
+          except CatchableError, Defect: -1
           finally: echo "hi"
 
 
@@ -4573,7 +4575,9 @@ To prevent confusing code there is a parsing limitation; if the `try`
 follows a `(` it has to be written as a one liner:
 
 .. code-block:: nim
-  let x = (try: parseInt("133a") except: -1)
+  from std/strutils import parseInt
+
+  let x = (try: parseInt("133a") except CatchableError, Defect: -1)
 
 
 Except clauses
@@ -4617,7 +4621,7 @@ error message from `e`, and for such situations, it is enough to use
 .. code-block:: nim
   try:
     # ...
-  except:
+  except CatchableError, Defect:
     echo getCurrentExceptionMsg()
 
 Custom exceptions
@@ -4807,7 +4811,7 @@ An empty `raises` list (`raises: []`) means that no exception may be raised:
     try:
       unsafeCall()
       result = true
-    except:
+    except CatchableError, Defect::
       result = false
 
 
