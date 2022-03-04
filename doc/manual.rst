@@ -4811,7 +4811,7 @@ An empty `raises` list (`raises: []`) means that no exception may be raised:
     try:
       unsafeCall()
       result = true
-    except CatchableError, Defect::
+    except CatchableError, Defect:
       result = false
 
 
