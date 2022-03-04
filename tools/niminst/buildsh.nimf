@@ -164,7 +164,7 @@ esac
 
 case $ucpu in
   *i386* | *i486* | *i586* | *i686* | *bepc* | *i86pc* )
-    if [ isOpenIndiana -eq "yes" ] ; then
+    if [ "$isOpenIndiana" = "yes" ] ; then
       mycpu="amd64"
     else
       mycpu="i386"
