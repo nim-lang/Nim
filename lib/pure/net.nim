@@ -1798,6 +1798,15 @@ proc isSsl*(socket: Socket): bool =
 proc getFd*(socket: Socket): SocketHandle = return socket.fd
   ## Returns the socket's file descriptor
 
+proc getDomain*(socket: Socket): Domain = return socket.domain
+  ## Returns the socket's domain
+
+proc getType*(socket: Socket): SockType = return socket.sockType
+  ## Returns the socket's type
+
+proc getProtocol*(socket: Socket): Protocol = return socket.protocol
+  ## Returns the socket's protocol
+
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
