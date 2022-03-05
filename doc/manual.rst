@@ -4516,6 +4516,7 @@ Try statement
 Example:
 
 .. code-block:: nim
+    :test: "nim c $1"
   # read the first two lines of a text file that should contain numbers
   # and tries to add them
   var
@@ -4532,7 +4533,7 @@ Example:
     except CatchableError:
       echo "Catchable exception!"
     except Defect:
-      echo "Defect!
+      echo "Defect!"
     finally:
       close(f)
 
