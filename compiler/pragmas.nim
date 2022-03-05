@@ -55,7 +55,7 @@ const
     wDeprecated,
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
-    wExperimental, wThis, wUsed, wInvariant, wAssume, wAssert}
+    wExperimental, wThis, wUsed, wInvariant, wAssume, wAssert, wForeign}
   lambdaPragmas* = {FirstCallConv..LastCallConv,
     wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
@@ -1239,6 +1239,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         pragmaEnsures(c, it)
       of wEnforceNoRaises:
         sym.flags.incl sfNeverRaises
+      of wForeign:
+        result = false
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"

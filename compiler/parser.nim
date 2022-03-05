@@ -425,6 +425,24 @@ proc exprList(p: var Parser, endTok: TokType, result: PNode) =
   when defined(nimpretty):
     dec p.em.doIndentMore
 
+proc exprListOrPragmas(p: var Parser, endTok: TokType, result: PNode) =
+  #| exprList = expr ^+ comma
+  when defined(nimpretty):
+    inc p.em.doIndentMore
+  getTok(p)
+  optInd(p, result)
+  if p.tok.tokType == tkCurlyDotLe and p.validInd:
+    result.add(parsePragma(p))
+  # progress guaranteed
+  while (p.tok.tokType != endTok) and (p.tok.tokType != tkEof):
+    var a = parseExpr(p)
+    result.add(a)
+    if p.tok.tokType != tkComma: break
+    getTok(p)
+    optInd(p, a)
+  when defined(nimpretty):
+    dec p.em.doIndentMore
+
 proc exprColonEqExprListAux(p: var Parser, endTok: TokType, result: PNode) =
   assert(endTok in {tkCurlyRi, tkCurlyDotRi, tkBracketRi, tkParRi})
   getTok(p)
@@ -1697,7 +1715,7 @@ proc parseTry(p: var Parser; isExpr: bool): PNode =
     case p.tok.tokType
     of tkExcept:
       b = newNodeP(nkExceptBranch, p)
-      exprList(p, tkColon, b)
+      exprListOrPragmas(p, tkColon, b)
     of tkFinally:
       b = newNodeP(nkFinally, p)
       getTok(p)

@@ -217,7 +217,11 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         # rewrite ``except [a, b, c]: body`` -> ```except a, b, c: body```
         a.sons[0..0] = a[0].sons
 
-      if a.len == 2 and a[0].isInfixAs():
+      if a.len == 2 and a[0].kind == nkPragma:
+        a[0] = a[1]
+        a.sons.setLen(1)
+        inc catchAllExcepts
+      elif a.len == 2 and a[0].isInfixAs():
         # support ``except Exception as ex: body``
         let isImported = semExceptBranchType(a[0][1])
         let symbol = newSymG(skLet, a[0][2], c)
@@ -226,7 +230,6 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         addDecl(c, symbol)
         # Overwrite symbol in AST with the symbol in the symbol table.
         a[0][2] = newSymNode(symbol, a[0][2].info)
-
       elif a.len == 1:
         # count number of ``except: body`` blocks
         inc catchAllExcepts
