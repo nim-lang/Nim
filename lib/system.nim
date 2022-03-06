@@ -1320,10 +1320,10 @@ else:
 
 
 when defined(nimSeqsV2):
-  template movingCopy(a, b) =
+  template movingCopy(a, b: typed) =
     a = move(b)
 else:
-  template movingCopy(a, b) =
+  template movingCopy(a, b: typed) =
     shallowCopy(a, b)
 
 proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
@@ -2550,7 +2550,7 @@ template `..<`*(a, b: untyped): untyped =
   ##     echo i # => 5; 6; 7; 8
   a .. (when b is BackwardsIndex: succ(b) else: pred(b))
 
-template spliceImpl(s, a, L, b: untyped): untyped =
+template spliceImpl(s, a, L, b: typed): untyped =
   # make room for additional elements or cut:
   var shift = b.len - max(0,L)  # ignore negative slice size
   var newLen = s.len + shift
