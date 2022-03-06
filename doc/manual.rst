@@ -4517,6 +4517,7 @@ Example:
 
 .. code-block:: nim
     :test: "nim c $1"
+  from std/strutils import parseInt
   # read the first two lines of a text file that should contain numbers
   # and tries to add them
   var
@@ -4565,6 +4566,7 @@ needs to fit the types of `except` branches, but the type of the `finally`
 branch always has to be `void`:
 
 .. code-block:: nim
+    :test: "nim c $1"
   from std/strutils import parseInt
 
   let x = try: parseInt("133a")
@@ -4576,6 +4578,7 @@ To prevent confusing code there is a parsing limitation; if the `try`
 follows a `(` it has to be written as a one liner:
 
 .. code-block:: nim
+    :test: "nim c $1"
   from std/strutils import parseInt
 
   let x = (try: parseInt("133a") except CatchableError, Defect: -1)
