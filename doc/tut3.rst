@@ -244,7 +244,7 @@ Building Your First Macro
 -------------------------
 
 To give a starting point to writing macros we will show now how to
-implement the `myDebug` macro mentioned earlier. The first thing to
+implement the `myAssert` macro mentioned earlier. The first thing to
 do is to build a simple example of the macro usage, and then just
 print the argument. This way it is possible to get an idea of what a
 correct argument should look like.

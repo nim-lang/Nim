@@ -202,9 +202,6 @@ proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ##
   ## Cannot be overloaded.
   ##
-  ## See also:
-  ## * `unsafeAddr <#unsafeAddr,T>`_
-  ##
   ## .. code-block:: Nim
   ##  var
   ##    buf: seq[char] = @['a','b','c']

@@ -2818,7 +2818,7 @@ The implicit initialization can be avoided for optimization reasons with the
 
 .. code-block:: nim
   var
-    a {.noInit.}: array[0..1023, char]
+    a {.noinit.}: array[0..1023, char]
 
 If a proc is annotated with the `noinit` pragma, this refers to its implicit
 `result` variable:
@@ -6636,7 +6636,7 @@ but accessed at runtime:
   doAssert nameToProc[2][1]() == "baz"
 
 
-noReturn pragma
+noreturn pragma
 ---------------
 The `noreturn` pragma is used to mark a proc that never returns.
 

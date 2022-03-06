@@ -190,12 +190,11 @@ runnableExamples("-r:off"):
 
       discard example()
 
-    when defined(nimExperimentalAsyncjsThen):
-      block:
-        proc example2 {.async.} =
-          await fetch("https://api.github.com/users/torvalds".cstring)
-            .then((response: Response) => response.json())
-            .then((json: JsObject) => console.log(json))
-            .catch((err: Error) => console.log("Request Failed", err))
+    block:
+      proc example2 {.async.} =
+        await fetch("https://api.github.com/users/torvalds".cstring)
+          .then((response: Response) => response.json())
+          .then((json: JsObject) => console.log(json))
+          .catch((err: Error) => console.log("Request Failed", err))
 
-        discard example2()
+      discard example2()
