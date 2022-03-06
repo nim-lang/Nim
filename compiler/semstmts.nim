@@ -215,7 +215,12 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
 
       if a.len == 2 and a[0].kind == nkBracket:
         # rewrite ``except [a, b, c]: body`` -> ```except a, b, c: body```
-        a.sons[0..0] = a[0].sons
+        var tmp1 = a[0].sons
+        var tmp2 = a[1]
+        a.sons.setLen(tmp1.len+1)
+        for i in 0..<tmp1.len:
+          a[i] = tmp1[i]
+        a[^1] = tmp2
 
       if a.len == 2 and a[0].isInfixAs():
         # support ``except Exception as ex: body``
