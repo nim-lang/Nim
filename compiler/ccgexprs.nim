@@ -2932,7 +2932,21 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
      nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt:
     discard
   of nkPragma: genPragma(p, n)
-  of nkPragmaBlock: expr(p, n.lastSon, d)
+  of nkPragmaBlock:
+    var inUncheckedAssignSection = 0
+    let pragmaList = n[0]
+    for pi in pragmaList:
+      if whichPragma(pi) == wCast:
+        case whichPragma(pi[1])
+        of wUncheckedAssign:
+          inUncheckedAssignSection = 1
+        else:
+          discard
+
+    inc p.inUncheckedAssignSection, inUncheckedAssignSection
+    expr(p, n.lastSon, d)
+    dec p.inUncheckedAssignSection, inUncheckedAssignSection
+
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     if n[genericParamsPos].kind == nkEmpty:
       var prc = n[namePos].sym
