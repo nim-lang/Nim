@@ -368,9 +368,9 @@ type
       ## timezones. The `times` module only supplies implementations for the
       ## system's local time and UTC.
     zonedTimeFromTimeImpl: proc (x: Time): ZonedTime
-        {.tags: [], raises: [], benign.}
+        {.tags: [], raises: [], benign, noSideEffect.}
     zonedTimeFromAdjTimeImpl: proc (x: Time): ZonedTime
-        {.tags: [], raises: [], benign.}
+        {.tags: [], raises: [], benign, noSideEffect.}
     name: string
 
   ZonedTime* = object ## Represents a point in time with an associated
@@ -1168,9 +1168,9 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
 proc newTimezone*(
       name: string,
       zonedTimeFromTimeImpl: proc (time: Time): ZonedTime
-          {.tags: [], raises: [], benign.},
+          {.tags: [], raises: [], benign, noSideEffect.},
       zonedTimeFromAdjTimeImpl: proc (adjTime: Time): ZonedTime
-          {.tags: [], raises: [], benign.}
+          {.tags: [], raises: [], benign, noSideEffect.}
     ): owned Timezone =
   ## Create a new `Timezone`.
   ##
