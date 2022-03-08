@@ -4570,7 +4570,7 @@ branch always has to be `void`:
   from std/strutils import parseInt
 
   let x = try: parseInt("133a")
-          except CatchableError, Defect: -1
+          except ValueError: -1
           finally: echo "hi"
 
 
@@ -4581,7 +4581,7 @@ follows a `(` it has to be written as a one liner:
     :test: "nim c $1"
   from std/strutils import parseInt
 
-  let x = (try: parseInt("133a") except CatchableError, Defect: -1)
+  let x = (try: parseInt("133a") except ValueError: -1)
 
 
 Except clauses
