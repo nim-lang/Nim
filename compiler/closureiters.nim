@@ -1351,13 +1351,17 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
   case n.kind
   of nkTryStmt:
     let f = n.lastSon
+    var didAddSomething = false
     if f.kind == nkFinally:
-      c.finallys.add f.lastSon
+      let f2 = f.lastSon
+      if f2.kind != nkBreakStmt:
+        c.finallys.add f.lastSon
+        didAddSomething = true
 
     for i in 0 ..< n.len:
       result[i] = preprocess(c, n[i])
 
-    if f.kind == nkFinally:
+    if didAddSomething:
       discard c.finallys.pop()
 
   of nkWhileStmt, nkBlockStmt:
