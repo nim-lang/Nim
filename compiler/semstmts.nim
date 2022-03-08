@@ -217,7 +217,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         # rewrite ``except [a, b, c]: body`` -> ```except a, b, c: body```
         a.sons[0..0] = a[0].sons
 
-      if a.len == 2 and a[0].kind == nkPragma:
+      if a.len == 2 and a[0].kind == nkPragma and a[0].len == 1 and
+                        whichPragma(a[0][0]) == wForeign:
         a[0] = a[1]
         a.sons.setLen(1)
         inc catchAllExcepts
