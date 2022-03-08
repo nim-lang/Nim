@@ -180,7 +180,6 @@ type
     opcNBindSym, opcNDynBindSym,
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
-    opcMarshalLoad, opcMarshalStore,
     opcSymOwner,
     opcSymIsInstantiationOf
 
@@ -307,8 +306,8 @@ proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.disca
 const
   firstABxInstr* = opcTJmp
   largeInstrs* = { # instructions which use 2 int32s instead of 1:
-    opcSubStr, opcConv, opcCast, opcNewSeq, opcOf,
-    opcMarshalLoad, opcMarshalStore}
+    opcSubStr, opcConv, opcCast, opcNewSeq, opcOf
+    }
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
 

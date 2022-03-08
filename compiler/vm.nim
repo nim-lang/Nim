@@ -15,7 +15,7 @@ import
   std/[strutils, tables, parseutils],
   msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf,
-  vmmarshal, gorgeimpl, lineinfos, btrees, macrocacheimpl,
+  gorgeimpl, lineinfos, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128, vmprofiler
 
 import ast except getstr
@@ -1224,7 +1224,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         c.callbacks[-prc.offset-2].value(
           VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                  currentException: c.currentExceptionA,
-                 currentLineInfo: c.debug[pc]))
+                 currentLineInfo: c.debug[pc])
+                 )
       elif importcCond(c, prc):
         if compiletimeFFI notin c.config.features:
           globalError(c.config, c.debug[pc], "VM not allowed to do FFI, see `compiletimeFFI`")
@@ -2100,18 +2101,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       while typ.kind == tyTypeDesc and typ.len > 0: typ = typ[0]
       createStr regs[ra]
       regs[ra].node.strVal = typ.typeToString(preferExported)
-    of opcMarshalLoad:
-      let ra = instr.regA
-      let rb = instr.regB
-      inc pc
-      let typ = c.types[c.code[pc].regBx - wordExcess]
-      putIntoReg(regs[ra], loadAny(regs[rb].node.strVal, typ, c.cache, c.config, c.idgen))
-    of opcMarshalStore:
-      decodeB(rkNode)
-      inc pc
-      let typ = c.types[c.code[pc].regBx - wordExcess]
-      createStrKeepNode(regs[ra])
-      storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode, c.config)
 
     c.profiler.leave(c)
 
