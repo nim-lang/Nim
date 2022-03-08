@@ -1240,7 +1240,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wEnforceNoRaises:
         sym.flags.incl sfNeverRaises
       of wForeign:
-        result = false
+        discard
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
