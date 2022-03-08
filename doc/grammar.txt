@@ -29,6 +29,7 @@ symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
        | IDENT | KEYW
 exprColonEqExpr = expr (':'|'=' expr)?
 exprList = expr ^+ comma
+exprListOrPragmas = (expr | pragma) ^+ comma
 exprColonEqExprList = exprColonEqExpr (comma exprColonEqExpr)* (comma)?
 qualifiedIdent = symbol ('.' optInd symbol)?
 setOrTableConstr = '{' ((exprColonEqExpr comma)* | ':' ) '}'
@@ -139,10 +140,10 @@ caseStmt = 'case' expr ':'? COMMENT?
             (IND{>} ofBranches DED
             | IND{=} ofBranches)
 tryStmt = 'try' colcom stmt &(IND{=}? 'except'|'finally')
-           (IND{=}? 'except' exprList colcom stmt)*
+           (IND{=}? 'except' exprListOrPragmas colcom stmt)*
            (IND{=}? 'finally' colcom stmt)?
 tryExpr = 'try' colcom stmt &(optInd 'except'|'finally')
-           (optInd 'except' exprList colcom stmt)*
+           (optInd 'except' exprListOrPragmas colcom stmt)*
            (optInd 'finally' colcom stmt)?
 blockStmt = 'block' symbol? colcom stmt
 blockExpr = 'block' symbol? colcom stmt

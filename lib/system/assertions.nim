@@ -99,7 +99,7 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
         code
       wrong = true
     except Exception as e: discard
-    except: raisedForeign()
+    except {.foreign.}: raisedForeign()
   else:
     try:
       if true:
@@ -110,6 +110,6 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
     except Exception as e:
       mixin `$` # alternatively, we could define $cstring in this module
       raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
-    except: raisedForeign()
+    except {.foreign.}: raisedForeign()
   if wrong:
     raiseAssert(begin & " nothing was raised" & msgEnd)

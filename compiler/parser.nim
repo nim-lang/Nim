@@ -426,7 +426,7 @@ proc exprList(p: var Parser, endTok: TokType, result: PNode) =
     dec p.em.doIndentMore
 
 proc exprListOrPragmas(p: var Parser, endTok: TokType, result: PNode) =
-  #| exprList = expr ^+ comma
+  #| exprListOrPragmas = (expr | pragma) ^+ comma
   when defined(nimpretty):
     inc p.em.doIndentMore
   getTok(p)
@@ -1701,10 +1701,10 @@ proc parseCase(p: var Parser): PNode =
 
 proc parseTry(p: var Parser; isExpr: bool): PNode =
   #| tryStmt = 'try' colcom stmt &(IND{=}? 'except'|'finally')
-  #|            (IND{=}? 'except' exprList colcom stmt)*
+  #|            (IND{=}? 'except' exprListOrPragmas colcom stmt)*
   #|            (IND{=}? 'finally' colcom stmt)?
   #| tryExpr = 'try' colcom stmt &(optInd 'except'|'finally')
-  #|            (optInd 'except' exprList colcom stmt)*
+  #|            (optInd 'except' exprListOrPragmas colcom stmt)*
   #|            (optInd 'finally' colcom stmt)?
   result = newNodeP(nkTryStmt, p)
   getTok(p)
