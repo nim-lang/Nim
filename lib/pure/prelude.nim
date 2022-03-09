@@ -25,4 +25,4 @@ when defined(nimdoc) and isMainModule:
   # xxx `nim doc -b:js -d:nodejs --doccmd:-d:nodejs lib/pure/prelude.nim` fails for some reason
   # specific to `nim doc`, but the code otherwise works with nodejs.
 
-import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt]
+import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt, strformat]

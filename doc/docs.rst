@@ -22,8 +22,8 @@ The documentation consists of several documents:
 - | `Tools documentation <tools.html>`_
   | Description of some tools that come with the standard distribution.
 
-- | `GC <gc.html>`_
-  | Additional documentation about Nim's multi-paradigm memory management strategies
+- | `Memory management <mm.html>`_
+  | Additional documentation about Nim's memory management strategies
   | and how to operate them in a realtime setting.
 
 - | `Source code filters <filters.html>`_

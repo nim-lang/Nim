@@ -1,40 +1,33 @@
 #
 #
-#           The Nim Compiler
+#              Nim's Runtime Library
 #        (c) Copyright 2015 Nim Contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-## **Note:** Import `std/sha1` to use this module.
-##
 ## [SHA-1 (Secure Hash Algorithm 1)](https://en.wikipedia.org/wiki/SHA-1)
 ## is a cryptographic hash function which takes an input and produces
 ## a 160-bit (20-byte) hash value known as a message digest.
 ##
-## Basic usage
-## ===========
-##
+## See also
+## ========
+## * `base64 module<base64.html>`_ for a Base64 encoder and decoder
+## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
+## * `md5 module<md5.html>`_ for the MD5 checksum algorithm
+
 runnableExamples:
   let accessName = secureHash("John Doe")
   assert $accessName == "AE6E4D1209F17B460503904FAD297B31E9CF6362"
 
-## .. code-block::
-##   let
-##     a = secureHashFile("myFile.nim")
-##     b = parseSecureHash("10DFAEBF6BFDBC7939957068E2EFACEC4972933C")
-##
-##   if a == b:
-##     echo "Files match"
-##
-## See also
-## ========
-## * `base64 module<base64.html>`_ implements a Base64 encoder and decoder
-## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
-## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
+runnableExamples("-r:off"):
+  let
+    a = secureHashFile("myFile.nim")
+    b = parseSecureHash("10DFAEBF6BFDBC7939957068E2EFACEC4972933C")
+  assert a == b, "files don't match"
 
-import std/strutils
-from std/endians import bigEndian32, bigEndian64
+import strutils
+from endians import bigEndian32, bigEndian64
 
 const Sha1DigestSize = 20
 
@@ -282,3 +275,7 @@ proc `==`*(a, b: SecureHash): bool =
 
   # Not a constant-time comparison, but that's acceptable in this context
   Sha1Digest(a) == Sha1Digest(b)
+
+proc isValidSha1Hash*(s: string): bool =
+  ## Checks if a string is a valid sha1 hash sum.
+  s.len == 40 and allCharsInSet(s, HexDigits)

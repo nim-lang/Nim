@@ -7,6 +7,8 @@ assignees: ''
 
 ---
 
+(Consider writing a PR targetting devel branch after filing this, see [contributing.html](https://nim-lang.github.io/Nim/contributing.html)).
+
 Function `echo` outputs the wrong string.
 
 ### Example

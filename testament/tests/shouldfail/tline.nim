@@ -1,7 +1,7 @@
 discard """
-errormsg: "undeclared identifier: 'undeclared'"
-line: 9
-column: 6
+  errormsg: "undeclared identifier: 'undeclared'"
+  line: 10
+  column: 6
 """
 
 # test should fail because the line directive is wrong

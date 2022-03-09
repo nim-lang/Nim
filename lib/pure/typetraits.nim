@@ -15,16 +15,20 @@
 import std/private/since
 export system.`$` # for backward compatibility
 
-type SomeEnumWithHoles* = (not Ordinal) and enum ## Enum with holes.
+type HoleyEnum* = (not Ordinal) and enum ## Enum with holes.
+type OrdinalEnum* = Ordinal and enum ## Enum without holes.
 
 runnableExamples:
   type A = enum a0 = 2, a1 = 4, a2
   type B = enum b0 = 2, b1, b2
-  assert A is SomeEnumWithHoles
-  assert B isnot SomeEnumWithHoles
-  assert int isnot SomeEnumWithHoles
+  assert A is enum
+  assert A is HoleyEnum
+  assert A isnot OrdinalEnum
+  assert B isnot HoleyEnum
+  assert B is OrdinalEnum
+  assert int isnot HoleyEnum
   type C[T] = enum h0 = 2, h1 = 4
-  assert C[float] is SomeEnumWithHoles
+  assert C[float] is HoleyEnum
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".} =
   ## Returns the name of the given type.
@@ -96,25 +100,42 @@ proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".} =
     doAssert not isNamedTuple((string, int))
     doAssert isNamedTuple(tuple[name: string, age: int])
 
-proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".} =
+template pointerBase*[T](_: typedesc[ptr T | ref T]): typedesc =
+  ## Returns `T` for `ref T | ptr T`.
+  runnableExamples:
+    assert (ref int).pointerBase is int
+    type A = ptr seq[float]
+    assert A.pointerBase is seq[float]
+    assert (ref A).pointerBase is A # not seq[float]
+    assert (var s = "abc"; s[0].addr).typeof.pointerBase is char
+  T
+
+proc distinctBase*(T: typedesc, recursive: static bool = true): typedesc {.magic: "TypeTrait".} =
   ## Returns the base type for distinct types, or the type itself otherwise.
+  ## If `recursive` is false, only the immediate distinct base will be returned.
   ##
   ## **See also:**
-  ## * `distinctBase template <#distinctBase.t,T>`_
+  ## * `distinctBase template <#distinctBase.t,T,static[bool]>`_
   runnableExamples:
     type MyInt = distinct int
+    type MyOtherInt = distinct MyInt
     doAssert distinctBase(MyInt) is int
+    doAssert distinctBase(MyOtherInt) is int
+    doAssert distinctBase(MyOtherInt, false) is MyInt
     doAssert distinctBase(int) is int
 
 since (1, 1):
-  template distinctBase*[T](a: T): untyped =
-    ## Overload of `distinctBase <#distinctBase,typedesc>`_ for values.
+  template distinctBase*[T](a: T, recursive: static bool = true): untyped =
+    ## Overload of `distinctBase <#distinctBase,typedesc,static[bool]>`_ for values.
     runnableExamples:
       type MyInt = distinct int
+      type MyOtherInt = distinct MyInt
       doAssert 12.MyInt.distinctBase == 12
+      doAssert 12.MyOtherInt.distinctBase == 12
+      doAssert 12.MyOtherInt.distinctBase(false) is MyInt
       doAssert 12.distinctBase == 12
     when T is distinct:
-      distinctBase(typeof(a))(a)
+      distinctBase(typeof(a), recursive)(a)
     else: # avoids hint ConvFromXtoItselfNotNeeded
       a
 
@@ -163,7 +184,7 @@ since (1, 3, 5):
 
     typeof(block: (for ai in a: ai))
 
-import std/macros
+import macros
 
 macro enumLen*(T: typedesc[enum]): int =
   ## Returns the number of items in the enum `T`.
@@ -259,3 +280,14 @@ since (1, 1):
 
     type T2 = T
     genericParamsImpl(T2)
+
+
+proc hasClosureImpl(n: NimNode): bool = discard "see compiler/vmops.nim"
+
+proc hasClosure*(fn: NimNode): bool {.since: (1, 5, 1).} =
+  ## Return true if the func/proc/etc `fn` has `closure`.
+  ## `fn` has to be a resolved symbol of kind `nnkSym`. This
+  ## implies that the macro that calls this proc should accept `typed`
+  ## arguments and not `untyped` arguments.
+  expectKind fn, nnkSym
+  result = hasClosureImpl(fn)

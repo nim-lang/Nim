@@ -9,13 +9,13 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
-import std / tables
+import tables
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
 
-import ic / to_packed_ast
+import ic / ic
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -29,19 +29,18 @@ type
 
   POptionEntry* = ref TOptionEntry
   PProcCon* = ref TProcCon
-  TProcCon* = object          # procedure context; also used for top-level
-                              # statements
+  TProcCon* {.acyclic.} = object # procedure context; also used for top-level
+                                 # statements
     owner*: PSym              # the symbol this context belongs to
     resultSym*: PSym          # the result symbol (if we are in a proc)
     selfSym*: PSym            # the 'self' symbol (if available)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
-    inTryStmt*: int           # whether we are in a try statement; works also
-                              # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     mappingExists*: bool
     mapping*: TIdTable
     caseContext*: seq[tuple[n: PNode, idx: int]]
+    localBindStmts*: seq[PNode]
 
   TMatchedConcept* = object
     candidateType*: PType
@@ -53,7 +52,7 @@ type
     inst*: PInstantiation
 
   TExprFlag* = enum
-    efLValue, efWantIterator, efInTypeof,
+    efLValue, efWantIterator, efWantIterable, efInTypeof,
     efNeedStatic,
       # Use this in contexts where a static value is mandatory
     efPreferStatic,
@@ -66,7 +65,7 @@ type
       # you may be in position to supply a better error message
       # to the user.
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
-    efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
+    efWantValue, efOperand, efNoSemCheck,
     efNoEvaluateGeneric, efInCall, efFromHlo, efNoSem2Check,
     efNoUndeclared
       # Use this if undeclared identifiers should not raise an error during
@@ -89,6 +88,9 @@ type
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
     enforceVoidContext*: PType
+      # for `if cond: stmt else: foo`, `foo` will be evaluated under
+      # enforceVoidContext != nil
+    voidType*: PType # for typeof(stmt)
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
     moduleScope*: PScope       # scope for modules
@@ -147,7 +149,6 @@ type
     selfName*: PIdent
     cache*: IdentCache
     graph*: ModuleGraph
-    encoder*: PackedEncoder
     signatures*: TStrTable
     recursiveDep*: string
     suggestionsMade*: bool
@@ -155,8 +156,11 @@ type
     features*: set[Feature]
     inTypeContext*, inConceptDecl*: int
     unusedImports*: seq[(PSym, TLineInfo)]
-    exportIndirections*: HashSet[(int, int)]
+    exportIndirections*: HashSet[(int, int)] # (module.id, symbol.id)
+    importModuleMap*: Table[int, int] # (module.id, module.id)
     lastTLineInfo*: TLineInfo
+    sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
+    inUncheckedAssignSection*: int
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -258,7 +262,9 @@ proc getGenSym*(c: PContext; s: PSym): PSym =
   result = s
 
 proc considerGenSyms*(c: PContext; n: PNode) =
-  if n.kind == nkSym:
+  if n == nil:
+    discard "can happen for nkFormalParams/nkArgList"
+  elif n.kind == nkSym:
     let s = getGenSym(c, n.sym)
     if n.sym != s:
       n.sym = s
@@ -314,9 +320,10 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     assert graph.packed[id].status in {undefined, outdated}
     graph.packed[id].status = storing
     graph.packed[id].module = module
-    initEncoder result.encoder, graph.packed[id].fromDisk, module, graph.config, graph.startupPackedConfig
+    initEncoder graph, module
 
 template packedRepr*(c): untyped = c.graph.packed[c.module.position].fromDisk
+template encoder*(c): untyped = c.graph.encoders[c.module.position]
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   if c.config.symbolFiles != disabledSf:
@@ -340,6 +347,9 @@ proc addConverter*(c: PContext, conv: LazySym) =
   assert conv.sym != nil
   if inclSym(c.converters, conv.sym):
     add(c.graph.ifaces[c.module.position].converters, conv)
+
+proc addConverterDef*(c: PContext, conv: LazySym) =
+  addConverter(c, conv)
   if c.config.symbolFiles != disabledSf:
     addConverter(c.encoder, c.packedRepr, conv.sym)
 
@@ -357,12 +367,12 @@ proc addPattern*(c: PContext, p: LazySym) =
     addTrmacro(c.encoder, c.packedRepr, p.sym)
 
 proc exportSym*(c: PContext; s: PSym) =
-  strTableAdd(c.module.semtab(c.graph), s)
+  strTableAdds(c.graph, c.module, s)
   if c.config.symbolFiles != disabledSf:
     addExported(c.encoder, c.packedRepr, s)
 
 proc reexportSym*(c: PContext; s: PSym) =
-  strTableAdd(c.module.semtab(c.graph), s)
+  strTableAdds(c.graph, c.module, s)
   if c.config.symbolFiles != disabledSf:
     addReexport(c.encoder, c.packedRepr, s)
 
@@ -497,6 +507,25 @@ proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ = errorType(c)
 
+# These mimic localError
+template localErrorNode*(c: PContext, n: PNode, info: TLineInfo, msg: TMsgKind, arg: string): PNode =
+  liMessage(c.config, info, msg, arg, doNothing, instLoc())
+  errorNode(c, n)
+
+template localErrorNode*(c: PContext, n: PNode, info: TLineInfo, arg: string): PNode =
+  liMessage(c.config, info, errGenerated, arg, doNothing, instLoc())
+  errorNode(c, n)
+
+template localErrorNode*(c: PContext, n: PNode, msg: TMsgKind, arg: string): PNode =
+  let n2 = n
+  liMessage(c.config, n2.info, msg, arg, doNothing, instLoc())
+  errorNode(c, n2)
+
+template localErrorNode*(c: PContext, n: PNode, arg: string): PNode =
+  let n2 = n
+  liMessage(c.config, n2.info, errGenerated, arg, doNothing, instLoc())
+  errorNode(c, n2)
+
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind
   dest.owner = getCurrOwner(c)
@@ -532,6 +561,10 @@ proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
 
+proc isTopLevelInsideDeclaration*(c: PContext, sym: PSym): bool {.inline.} =
+  # for routeKinds the scope isn't closed yet:
+  c.currentScope.depthLevel <= 2 + ord(sym.kind in routineKinds)
+
 proc pushCaseContext*(c: PContext, caseNode: PNode) =
   c.p.caseContext.add((caseNode, 0))
 
@@ -559,22 +592,20 @@ proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
   if c.config.symbolFiles != disabledSf:
     storeTypeInst(c.encoder, c.packedRepr, s, inst)
 
-proc saveRodFile*(c: PContext) =
+proc sealRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:
-    for (m, n) in PCtx(c.graph.vm).vmstateDiff:
-      if m == c.module:
-        addPragmaComputation(c, n)
-    if sfSystemModule in c.module.flags:
-      c.graph.systemModuleComplete = true
+    if c.graph.vm != nil:
+      for (m, n) in PCtx(c.graph.vm).vmstateDiff:
+        if m == c.module:
+          addPragmaComputation(c, n)
     c.idgen.sealed = true # no further additions are allowed
-    if c.config.symbolFiles != stressTest:
-      # For stress testing we seek to reload the symbols from memory. This
-      # way much of the logic is tested but the test is reproducible as it does
-      # not depend on the hard disk contents!
-      saveRodFile(toRodFile(c.config, AbsoluteFile toFullPath(c.config, FileIndex c.module.position)),
-                  c.encoder, c.packedRepr)
-    else:
-      # debug code, but maybe a good idea for production? Could reduce the compiler's
-      # memory consumption considerably at the cost of more loads from disk.
-      simulateCachedModule(c.graph, c.module, c.packedRepr)
-      c.graph.packed[c.module.position].status = loaded
+
+proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
+  ## Templates and macros are very special in Nim; these have
+  ## inlining semantics so after semantic checking they leave no trace
+  ## in the sem'checked AST. This is very bad for IDE-like tooling
+  ## ("find all usages of this template" would not work). We need special
+  ## logic to remember macro/template expansions. This is done here and
+  ## delegated to the "rod" file mechanism.
+  if c.config.symbolFiles != disabledSf:
+    storeExpansion(c.encoder, c.packedRepr, info, expandedSym)

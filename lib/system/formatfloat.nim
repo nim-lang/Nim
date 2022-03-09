@@ -7,6 +7,29 @@
 #    distribution, for details about the copyright.
 #
 
+proc c_memcpy(a, b: pointer, size: csize_t): pointer {.importc: "memcpy", header: "<string.h>", discardable.}
+
+proc addCstringN(result: var string, buf: cstring; buflen: int) =
+  # no nimvm support needed, so it doesn't need to be fast here either
+  let oldLen = result.len
+  let newLen = oldLen + buflen
+  result.setLen newLen
+  c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
+
+import dragonbox, schubfach
+
+proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: BiggestFloat): int =
+  ## This is the implementation to format floats.
+  ##
+  ## returns the amount of bytes written to `buf` not counting the
+  ## terminating '\0' character.
+  result = toChars(buf, value, forceTrailingDotZero=true)
+  buf[result] = '\0'
+
+proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: float32): int =
+  result = float32ToChars(buf, value, forceTrailingDotZero=true)
+  buf[result] = '\0'
+
 proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
                                     importc: "sprintf", varargs, noSideEffect.}
 
@@ -16,19 +39,11 @@ proc writeToBuffer(buf: var array[65, char]; value: cstring) =
     buf[i] = value[i]
     inc i
 
-proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat): int =
-  ## This is the implementation to format floats in the Nim
-  ## programming language. The specific format for floating point
-  ## numbers is not specified in the Nim programming language and
-  ## might change slightly in the future, but at least wherever you
-  ## format a float, it should be consistent.
+proc writeFloatToBufferSprintf*(buf: var array[65, char]; value: BiggestFloat): int =
+  ## This is the implementation to format floats.
   ##
   ## returns the amount of bytes written to `buf` not counting the
   ## terminating '\0' character.
-  ##
-  ## * `buf` - A buffer to write into. The buffer does not need to be
-  ##           initialized and it will be overridden.
-  ##
   var n: int = c_sprintf(addr buf, "%.16g", value)
   var hasDot = false
   for i in 0..n-1:
@@ -57,3 +72,61 @@ proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat): int =
     else:
       writeToBuffer(buf, "inf")
       result = 3
+
+proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat | float32): int {.inline.} =
+  when defined(nimPreviewFloatRoundtrip):
+    writeFloatToBufferRoundtrip(buf, value)
+  else:
+    writeFloatToBufferSprintf(buf, value)
+
+proc addFloatRoundtrip*(result: var string; x: float | float32) =
+  when nimvm:
+    doAssert false
+  else:
+    var buffer {.noinit.}: array[65, char]
+    let n = writeFloatToBufferRoundtrip(buffer, x)
+    result.addCstringN(cstring(buffer[0].addr), n)
+
+proc addFloatSprintf*(result: var string; x: float) =
+  when nimvm:
+    doAssert false
+  else:
+    var buffer {.noinit.}: array[65, char]
+    let n = writeFloatToBufferSprintf(buffer, x)
+    result.addCstringN(cstring(buffer[0].addr), n)
+
+proc nimFloatToString(a: float): cstring =
+  ## ensures the result doesn't print like an integer, i.e. return 2.0, not 2
+  # print `-0.0` properly
+  asm """
+    function nimOnlyDigitsOrMinus(n) {
+      return n.toString().match(/^-?\d+$/);
+    }
+    if (Number.isSafeInteger(`a`))
+      `result` = `a` === 0 && 1 / `a` < 0 ? "-0.0" : `a`+".0"
+    else {
+      `result` = `a`+""
+      if(nimOnlyDigitsOrMinus(`result`)){
+        `result` = `a`+".0"
+      }
+    }
+  """
+
+proc addFloat*(result: var string; x: float | float32) {.inline.} =
+  ## Converts float to its string representation and appends it to `result`.
+  runnableExamples:
+    var
+      s = "foo:"
+      b = 45.67
+    s.addFloat(45.67)
+    assert s == "foo:45.67"
+  template impl =
+    when defined(nimPreviewFloatRoundtrip):
+      addFloatRoundtrip(result, x)
+    else:
+      addFloatSprintf(result, x)
+  when defined(js):
+    when nimvm: impl()
+    else:
+      result.add nimFloatToString(x)
+  else: impl()

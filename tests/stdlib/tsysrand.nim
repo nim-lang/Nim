@@ -31,6 +31,4 @@ template main() =
     doAssert urandom(113).len == 113
     doAssert urandom(1234) != urandom(1234) # unlikely to fail in practice
 
-
-static: main()
 main()

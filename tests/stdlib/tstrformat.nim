@@ -1,7 +1,7 @@
 # xxx: test js target
 
 import genericstrformat
-import std/[strformat, strutils, times]
+import std/[strformat, strutils, times, tables, json]
 
 proc main() =
   block: # issue #7632
@@ -284,6 +284,20 @@ proc main() =
     doAssert fmt"{123.456=:>13e}" == "123.456= 1.234560e+02"
     doAssert fmt"{123.456=:13e}" == "123.456= 1.234560e+02"
 
+    let x = 3.14
+    doAssert fmt"{(if x!=0: 1.0/x else: 0):.5}" == "0.31847"
+    doAssert fmt"""{(block:
+      var res: string
+      for i in 1..15:
+        res.add (if i mod 15 == 0: "FizzBuzz"
+          elif i mod 5 == 0: "Buzz"
+          elif i mod 3 == 0: "Fizz"
+          else: $i) & " "
+      res)}""" == "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz "
+
+    doAssert fmt"""{ "\{(" & msg & ")\}" }""" == "{(hello)}"
+    doAssert fmt"""{{({ msg })}}""" == "{(hello)}"
+    doAssert fmt"""{ $(\{msg:1,"world":2\}) }""" == """[("hello", 1), ("world", 2)]"""
   block: # tests for debug format string
     var name = "hello"
     let age = 21
@@ -496,6 +510,50 @@ proc main() =
 
   block: # test low(int64)
     doAssert &"{low(int64):-}" == "-9223372036854775808"
+  block: #expressions plus formatting
+    doAssert fmt"{if true\: 123.456 else\: 0=:>9.3f}" == "if true: 123.456 else: 0=  123.456"
+    doAssert fmt"{(if true: 123.456 else: 0)=}" == "(if true: 123.456 else: 0)=123.456"
+    doAssert fmt"{if true\: 123.456 else\: 0=:9.3f}" == "if true: 123.456 else: 0=  123.456"
+    doAssert fmt"{(if true: 123.456 else: 0)=:9.4f}" == "(if true: 123.456 else: 0)= 123.4560"
+    doAssert fmt"{(if true: 123.456 else: 0)=:>9.0f}" == "(if true: 123.456 else: 0)=     123."
+    doAssert fmt"{if true\: 123.456 else\: 0=:<9.4f}" == "if true: 123.456 else: 0=123.4560 "
 
+    doAssert fmt"""{(case true
+      of false: 0.0
+      of true: 123.456)=:e}""" == """(case true
+      of false: 0.0
+      of true: 123.456)=1.234560e+02"""
+
+    doAssert fmt"""{block\:
+      var res = 0.000123456
+      for _ in 0..5\:
+        res *= 10
+      res=:>13e}""" == """block:
+      var res = 0.000123456
+      for _ in 0..5:
+        res *= 10
+      res= 1.234560e+02"""
+    #side effects
+    var x = 5
+    doAssert fmt"{(x=7;123.456)=:13e}" == "(x=7;123.456)= 1.234560e+02"
+    doAssert x==7
+  block: #curly bracket expressions and tuples
+    proc formatValue(result: var string; value:Table|bool|JsonNode; specifier:string) = result.add $value
+
+    doAssert fmt"""{\{"a"\:1,"b"\:2\}.toTable() = }""" == """{"a":1,"b":2}.toTable() = {"a": 1, "b": 2}"""
+    doAssert fmt"""{(\{3: (1,"hi",0.9),4: (4,"lo",1.1)\}).toTable()}""" == """{3: (1, "hi", 0.9), 4: (4, "lo", 1.1)}"""
+    doAssert fmt"""{ (%* \{"name": "Isaac", "books": ["Robot Dreams"]\}) }""" == """{"name":"Isaac","books":["Robot Dreams"]}"""
+    doAssert """%( \%\* {"name": "Isaac"})*""".fmt('%','*') == """{"name":"Isaac"}"""
+  block: #parens in quotes that fool my syntax highlighter
+    doAssert fmt"{(if true: ')' else: '(')}" == ")"
+    doAssert fmt"{(if true: ']' else: ')')}" == "]"
+    doAssert fmt"""{(if true: "\")\"" else: "\"(")}""" == """")""""
+    doAssert &"""{(if true: "\")" else: "")}""" == "\")"
+    doAssert &"{(if true: \"\\\")\" else: \"\")}" == "\")"
+    doAssert fmt"""{(if true: "')" else: "")}""" == "')"
+    doAssert fmt"""{(if true: "'" & "'" & ')' else: "")}""" == "'')"
+    doAssert &"""{(if true: "'" & "'" & ')' else: "")}""" == "'')"
+    doAssert &"{(if true: \"\'\" & \"'\" & ')' else: \"\")}" == "'')"
+    doAssert fmt"""{(if true: "'" & ')' else: "")}""" == "')"
 # xxx static: main()
 main()

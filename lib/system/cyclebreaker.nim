@@ -53,7 +53,6 @@ depth-first traversal suffices.
 
 ]#
 
-type PT = ptr pointer
 include cellseqs_v2
 
 const
@@ -78,7 +77,7 @@ proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} = discard
 
 type
   GcEnv = object
-    traceStack: CellSeq
+    traceStack: CellSeq[ptr pointer]
 
 proc trace(p: pointer; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
   when false:

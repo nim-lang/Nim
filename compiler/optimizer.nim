@@ -127,11 +127,11 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
         for i in 0 ..< n.len:
           analyse(c, b, n[i])
       else:
-        #[ Test tmatrix.test3:
+        #[ Test destructor/tmatrix.test3:
         Prevent this from being elided. We should probably
         find a better solution...
 
-            `=sink`(b, - (
+            `=sink`(b, -
               let blitTmp = b;
               wasMoved(b);
               blitTmp + a)
@@ -150,7 +150,8 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
       nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
+      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
+      nkTypeOfExpr, nkMixinStmt, nkBindStmt:
     discard "do not follow the construct"
 
   of nkAsgn, nkFastAsgn:
@@ -249,7 +250,8 @@ proc opt(c: Con; n, parent: PNode; parentPos: int) =
   of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
       nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
+      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr,
+      nkMixinStmt, nkBindStmt:
     parent[parentPos] = n
 
   else:

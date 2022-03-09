@@ -91,7 +91,8 @@ proc sameInstantiation(a, b: TInstantiation): bool =
     for i in 0..a.concreteTypes.high:
       if not compareTypes(a.concreteTypes[i], b.concreteTypes[i],
                           flags = {ExactTypeDescValues,
-                                   ExactGcSafety}): return
+                                   ExactGcSafety,
+                                   PickyCAliases}): return
     result = true
 
 proc genericCacheGet(g: ModuleGraph; genericSym: PSym, entry: TInstantiation;
@@ -144,10 +145,14 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         if sfGenSym in param.flags:
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
     freshGenSyms(c, b, result, orig, symMap)
-    b = semProcBody(c, b)
+    
+    if sfBorrow notin orig.flags: 
+      # We do not want to generate a body for generic borrowed procs.
+      # As body is a sym to the borrowed proc.
+      b = semProcBody(c, b)
     result.ast[bodyPos] = hloBody(c, b)
-    trackProc(c, result, result.ast[bodyPos])
     excl(result.flags, sfForward)
+    trackProc(c, result, result.ast[bodyPos])
     dec c.inGenericInst
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
@@ -318,6 +323,14 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   prc.typ = result
   popInfoContext(c.config)
 
+proc fillMixinScope(c: PContext) =
+  var p = c.p
+  while p != nil:
+    for bnd in p.localBindStmts:
+      for n in bnd:
+        addSym(c.currentScope, n.sym)
+    p = p.next
+
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym {.nosinks.} =
   ## Generates a new instance of a generic procedure.
@@ -344,9 +357,13 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   result.ast = n
   pushOwner(c, result)
 
+  # mixin scope:
+  openScope(c)
+  fillMixinScope(c)
+
   openScope(c)
   let gp = n[genericParamsPos]
-  internalAssert c.config, gp.kind != nkEmpty
+  internalAssert c.config, gp.kind == nkGenericParams
   n[namePos] = newSymNode(result)
   pushInfoContext(c.config, info, fn.detailedInfo)
   var entry = TInstantiation.new
@@ -394,6 +411,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popProcCon(c)
   popInfoContext(c.config)
   closeScope(c)           # close scope for parameters
+  closeScope(c)           # close scope for 'mixin' declarations
   popOwner(c)
   c.currentScope = oldScope
   discard c.friendModules.pop()

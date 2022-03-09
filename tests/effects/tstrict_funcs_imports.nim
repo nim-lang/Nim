@@ -84,7 +84,7 @@ import
   parseutils,
   parsexml,
   pathnorm,
-  # pegs,
+  pegs,
   posix_utils,
   prelude,
   punycode,

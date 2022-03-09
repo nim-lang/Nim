@@ -94,7 +94,7 @@ block generic_templates:
 
   var i3: int = t1[int]("xx")
 
-
+from strutils import contains
 
 block tgetast_typeliar:
   proc error(s: string) = quit s
@@ -111,7 +111,9 @@ block tgetast_typeliar:
     var message : NimNode = newLit(condition.repr)
     # echo message
     result = getAst assertOrReturn2(condition, message)
-    echo result.repr
+    # echo result.repr
+    let s = result.repr
+    doAssert """error("Assertion failed:""" in s
 
   proc point(size: int16): tuple[x, y: int16] =
     # returns random point in square area with given `size`

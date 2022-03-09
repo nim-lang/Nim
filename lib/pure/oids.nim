@@ -15,7 +15,7 @@
 ## This implementation calls `initRand()` for the first call of
 ## `genOid`.
 
-import std/[hashes, times, endians, random]
+import hashes, times, endians, random
 from std/private/decode_helpers import handleHexChar
 
 type
@@ -67,11 +67,6 @@ template toStringImpl[T: string | cstring](result: var T, oid: Oid) =
   when T is cstring:
     result[N] = '\0'
 
-proc oidToString*(oid: Oid, str: cstring) {.deprecated: "unsafe; use `$`".} =
-  ## Converts an oid to a string which must have space allocated for 25 elements.
-  # work around a compiler bug:
-  var str = str
-  toStringImpl(str, oid)
 
 proc `$`*(oid: Oid): string =
   ## Converts an OID to a string.

@@ -1,7 +1,7 @@
 discard """
-output: '''
-done
-'''
+  output: '''
+  done
+  '''
 """
 
 echo "broken"

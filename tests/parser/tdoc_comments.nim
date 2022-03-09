@@ -69,3 +69,7 @@ type
 
   MyEnum3* = enum
     value5  ## only document the enum value
+
+# bug #18847
+proc close*() =   ## asdfasdfsdfa
+  discard         ## adsfasdfads

@@ -56,7 +56,7 @@ const
   ariaAttr* = " role "                           ## HTML DOM Aria Attributes
   commonAttr* = coreAttr & eventAttr & ariaAttr  ## HTML DOM Common Attributes
 
-proc getIdent(e: NimNode): string {.compileTime.} =
+proc getIdent(e: NimNode): string =
   case e.kind
   of nnkIdent:
     result = e.strVal.normalize
@@ -75,7 +75,7 @@ proc delete[T](s: var seq[T], attr: T): bool =
     result = true
 
 proc xmlCheckedTag*(argsList: NimNode, tag: string, optAttr = "", reqAttr = "",
-    isLeaf = false): NimNode {.compileTime.} =
+    isLeaf = false): NimNode =
   ## use this procedure to define a new XML tag
 
   # copy the attributes; when iterating over them these lists
@@ -322,7 +322,7 @@ macro html*(e: varargs[untyped]): untyped =
 
 macro hr*(): untyped =
   ## Generates the HTML `hr` element.
-  result = xmlCheckedTag(newNimNode(nnkArglist), "hr", commonAttr, "", true)
+  result = xmlCheckedTag(newNimNode(nnkArgList), "hr", commonAttr, "", true)
 
 macro i*(e: varargs[untyped]): untyped =
   ## Generates the HTML `i` element.
@@ -612,6 +612,10 @@ macro video*(e: varargs[untyped]): untyped =
 macro wbr*(e: varargs[untyped]): untyped =
   ## Generates the HTML `wbr` element.
   result = xmlCheckedTag(e, "wbr", commonAttr, "", true)
+
+macro portal*(e: varargs[untyped]): untyped =
+  ## Generates the HTML `portal` element.
+  result = xmlCheckedTag(e, "portal", "width height type src disabled" & commonAttr, "", false)
 
 
 macro math*(e: varargs[untyped]): untyped =

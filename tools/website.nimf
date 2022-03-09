@@ -188,7 +188,7 @@ runForever()
 					<div>
 						<h4>Community</h4>
 						<a href="https://forum.nim-lang.org">User Forum</a>
-            <a href="http://webchat.freenode.net/?channels=nim">Online IRC</a>
+            <a href="https://web.libera.chat/#nim">Online IRC</a>
             <a href="https://irclogs.nim-lang.org/">IRC Logs</a>
 					</div>
 				</div>

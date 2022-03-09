@@ -45,10 +45,10 @@
 ## ``levelThreshold`` field and the global log filter. The latter can be changed
 ## with the `setLogFilter proc<#setLogFilter,Level>`_.
 ##
-## **Warning:**
-## * For loggers that log to a console or to files, only error and fatal
+## .. warning::
+##   For loggers that log to a console or to files, only error and fatal
 ##   messages will cause their output buffers to be flushed immediately.
-##   Use the `flushFile proc <io.html#flushFile,File>`_ to flush the buffer
+##   Use the `flushFile proc <syncio.html#flushFile,File>`_ to flush the buffer
 ##   manually if needed.
 ##
 ## Handlers
@@ -145,6 +145,9 @@
 import strutils, times
 when not defined(js):
   import os
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 type
   Level* = enum ## \
@@ -346,7 +349,7 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ##
   ## **Note:** Only error and fatal messages will cause the output buffer
   ## to be flushed immediately. Use the `flushFile proc
-  ## <io.html#flushFile,File>`_ to flush the buffer manually if needed.
+  ## <syncio.html#flushFile,File>`_ to flush the buffer manually if needed.
   ##
   ## See also:
   ## * `log method<#log.e,FileLogger,Level,varargs[string,]>`_
@@ -422,7 +425,7 @@ when not defined(js):
     ## **Notes:**
     ## * Only error and fatal messages will cause the output buffer
     ##   to be flushed immediately. Use the `flushFile proc
-    ##   <io.html#flushFile,File>`_ to flush the buffer manually if needed.
+    ##   <syncio.html#flushFile,File>`_ to flush the buffer manually if needed.
     ## * This method is not available for the JavaScript backend.
     ##
     ## See also:
@@ -600,7 +603,7 @@ when not defined(js):
     ## **Notes:**
     ## * Only error and fatal messages will cause the output buffer
     ##   to be flushed immediately. Use the `flushFile proc
-    ##   <io.html#flushFile,File>`_ to flush the buffer manually if needed.
+    ##   <syncio.html#flushFile,File>`_ to flush the buffer manually if needed.
     ## * This method is not available for the JavaScript backend.
     ##
     ## See also:
@@ -794,9 +797,9 @@ template fatal*(args: varargs[string, `$`]) =
 proc addHandler*(handler: Logger) =
   ## Adds a logger to the list of registered handlers.
   ##
-  ## **Warning:** The list of handlers is a thread-local variable. If the given
-  ## handler will be used in multiple threads, this proc should be called in
-  ## each of those threads.
+  ## .. warning:: The list of handlers is a thread-local variable. If the given
+  ##   handler will be used in multiple threads, this proc should be called in
+  ##   each of those threads.
   ##
   ## See also:
   ## * `getHandlers proc<#getHandlers>`_
@@ -820,10 +823,10 @@ proc setLogFilter*(lvl: Level) =
   ## individual logger's ``levelThreshold``. By default, all messages are
   ## logged.
   ##
-  ## **Warning:** The global log filter is a thread-local variable. If logging
-  ## is being performed in multiple threads, this proc should be called in each
-  ## thread unless it is intended that different threads should log at different
-  ## logging levels.
+  ## .. warning:: The global log filter is a thread-local variable. If logging
+  ##   is being performed in multiple threads, this proc should be called in each
+  ##   thread unless it is intended that different threads should log at different
+  ##   logging levels.
   ##
   ## See also:
   ## * `getLogFilter proc<#getLogFilter>`_

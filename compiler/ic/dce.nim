@@ -9,10 +9,10 @@
 
 ## Dead code elimination (=DCE) for IC.
 
-import std / [intsets, tables]
+import std/[intsets, tables]
 import ".." / [ast, options, lineinfos, types]
 
-import packed_ast, to_packed_ast, bitabs
+import packed_ast, ic, bitabs
 
 type
   AliveSyms* = seq[IntSet]
@@ -27,7 +27,7 @@ type
 proc isExportedToC(c: var AliveContext; g: PackedModuleGraph; symId: int32): bool =
   ## "Exported to C" procs are special (these are marked with '.exportc') because these
   ## must not be optimized away!
-  let symPtr = addr g[c.thisModule].fromDisk.sh.syms[symId]
+  let symPtr = unsafeAddr g[c.thisModule].fromDisk.syms[symId]
   let flags = symPtr.flags
   # due to a bug/limitation in the lambda lifting, unused inner procs
   # are not transformed correctly; issue (#411). However, the whole purpose here
@@ -39,7 +39,7 @@ proc isExportedToC(c: var AliveContext; g: PackedModuleGraph; symId: int32): boo
       # XXX: This used to be a condition to:
       #  (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
     if sfCompilerProc in flags:
-      c.compilerProcs[g[c.thisModule].fromDisk.sh.strings[symPtr.name]] = (c.thisModule, symId)
+      c.compilerProcs[g[c.thisModule].fromDisk.strings[symPtr.name]] = (c.thisModule, symId)
 
 template isNotGeneric(n: NodePos): bool = ithSon(tree, n, genericParamsPos).kind == nkEmpty
 
@@ -47,26 +47,31 @@ proc followLater(c: var AliveContext; g: PackedModuleGraph; module: int; item: i
   ## Marks a symbol 'item' as used and later in 'followNow' the symbol's body will
   ## be analysed.
   if not c.alive[module].containsOrIncl(item):
-    let body = g[module].fromDisk.sh.syms[item].ast
+    var body = g[module].fromDisk.syms[item].ast
     if body != emptyNodeId:
-      let opt = g[module].fromDisk.sh.syms[item].options
+      let opt = g[module].fromDisk.syms[item].options
+      if g[module].fromDisk.syms[item].kind in routineKinds:
+        body = NodeId ithSon(g[module].fromDisk.bodies, NodePos body, bodyPos)
       c.stack.add((module, opt, NodePos(body)))
 
     when false:
-      let name = g[module].fromDisk.sh.strings[g[module].fromDisk.sh.syms[item].name]
-      echo "I was called! ", name, " body exists: ", body != emptyNodeId
+      let nid = g[module].fromDisk.syms[item].name
+      if nid != LitId(0):
+        let name = g[module].fromDisk.strings[nid]
+        if name in ["nimFrame", "callDepthLimitReached"]:
+          echo "I was called! ", name, " body exists: ", body != emptyNodeId, " ", module, " ", item
 
 proc requestCompilerProc(c: var AliveContext; g: PackedModuleGraph; name: string) =
   let (module, item) = c.compilerProcs[name]
   followLater(c, g, module, item)
 
 proc loadTypeKind(t: PackedItemId; c: AliveContext; g: PackedModuleGraph; toSkip: set[TTypeKind]): TTypeKind =
-  template kind(t: ItemId): TTypeKind = g[t.module].fromDisk.sh.types[t.item].kind
+  template kind(t: ItemId): TTypeKind = g[t.module].fromDisk.types[t.item].kind
 
   var t2 = translateId(t, g, c.thisModule, c.decoder.config)
   result = t2.kind
   while result in toSkip:
-    t2 = translateId(g[t2.module].fromDisk.sh.types[t2.item].types[^1], g, t2.module, c.decoder.config)
+    t2 = translateId(g[t2.module].fromDisk.types[t2.item].types[^1], g, t2.module, c.decoder.config)
     result = t2.kind
 
 proc rangeCheckAnalysis(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: NodePos) =
@@ -106,7 +111,7 @@ proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: N
     let otherModule = toFileIndexCached(c.decoder, g, c.thisModule, m).int
     followLater(c, g, otherModule, item)
   of nkMacroDef, nkTemplateDef, nkTypeSection, nkTypeOfExpr,
-     nkCommentStmt, nkIteratorDef, nkIncludeStmt,
+     nkCommentStmt, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
      nkFromStmt, nkStaticStmt:
     discard
@@ -116,10 +121,10 @@ proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: N
       aliveCode(c, g, tree, son)
   of nkChckRangeF, nkChckRange64, nkChckRange:
     rangeCheckAnalysis(c, g, tree, n)
-  of nkProcDef, nkConverterDef, nkMethodDef, nkLambda, nkDo, nkFuncDef:
+  of nkProcDef, nkConverterDef, nkMethodDef, nkFuncDef, nkIteratorDef:
     if n.firstSon.kind == nkSym and isNotGeneric(n):
-      if isExportedToC(c, g, n.firstSon.operand):
-        let item = n.operand
+      let item = n.firstSon.operand
+      if isExportedToC(c, g, item):
         # This symbol is alive and everything its body references.
         followLater(c, g, c.thisModule, item)
   else:
@@ -145,6 +150,7 @@ proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveSyms =
       c.thisModule = i
       for p in allNodes(g[i].fromDisk.topLevel):
         aliveCode(c, g, g[i].fromDisk.topLevel, p)
+
   followNow(c, g)
   result = move(c.alive)
 

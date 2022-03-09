@@ -4,8 +4,6 @@ yes
 '''
 """
 
-{.experimental: "caseStmtMacros".}
-
 import macros
 
 macro `case`(n: tuple): untyped =
