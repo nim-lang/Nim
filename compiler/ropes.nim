@@ -329,10 +329,3 @@ proc equalsFile*(r: Rope, filename: AbsoluteFile): bool =
   if result:
     result = equalsFile(r, f)
     close(f)
-
-proc writeRopeIfNotEqual*(r: Rope, filename: AbsoluteFile): bool =
-  # returns true if overwritten
-  if not equalsFile(r, filename):
-    result = writeRope(r, filename)
-  else:
-    result = false
