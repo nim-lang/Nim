@@ -501,7 +501,7 @@ type
     nfHasComment # node has a comment
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 43)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 45)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects

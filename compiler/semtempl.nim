@@ -603,7 +603,12 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     for i in 0..<n.len:
       result[i] = semTemplBodyDirty(c, n[i])
 
+# in semstmts.nim:
+proc semProcAnnotation(c: PContext, prc: PNode; validPragmas: TSpecialWords): PNode
+
 proc semTemplateDef(c: PContext, n: PNode): PNode =
+  result = semProcAnnotation(c, n, templatePragmas)
+  if result != nil: return result
   result = n
   var s: PSym
   if isTopLevel(c):

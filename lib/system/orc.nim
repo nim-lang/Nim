@@ -119,7 +119,7 @@ template orcAssert(cond, msg) =
 when logOrc:
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
 
-proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inline.} =
+proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inl.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
 
@@ -128,7 +128,7 @@ proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inli
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(p, desc)
 
-proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inline.} =
+proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inl.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
     var j = cast[ptr GcEnv](env)

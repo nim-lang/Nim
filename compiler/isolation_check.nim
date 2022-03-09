@@ -71,7 +71,7 @@ proc isValueOnlyType(t: PType): bool =
 
 proc canAlias*(arg, ret: PType): bool =
   if isValueOnlyType(arg):
-    # can alias only with unsafeAddr(arg.x) and we don't care if it is not safe
+    # can alias only with addr(arg.x) and we don't care if it is not safe
     result = false
   else:
     var marker = initIntSet()
