@@ -251,3 +251,26 @@ block:
 
   for x in ff(@[1, 2], @[1, 2, 3]):
     echo x
+
+
+# bug #19575
+
+iterator bb() {.closure.} =
+    while true:
+        try: discard
+        except: break
+        finally: break
+
+var a = bb
+
+iterator cc() {.closure.} =
+    while true:
+        try: discard
+        except:
+          if true:
+            break
+        finally:
+          if true:
+            break
+
+var a2 = cc
