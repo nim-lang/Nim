@@ -7,7 +7,6 @@ is in separate files:
 * `iterators <iterators.html>`_
 * `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
-* `io <io.html>`_
 * `widestrs <widestrs.html>`_
 
 

@@ -17,6 +17,9 @@ when defined(nimHasStyleChecks):
 
 {.passc: "-DWIN32_LEAN_AND_MEAN".}
 
+when defined(nimPreviewSlimSystem):
+  from std/syncio import FileHandle
+
 const
   useWinUnicode* = not defined(useWinAnsi)
 

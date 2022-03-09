@@ -20,6 +20,8 @@
 - `addr` is now available for all addressable locations, `unsafeAddr` is deprecated and
 becomes an alias for `addr`.
 
+- io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`.
+
 ## Standard library additions and changes
 
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional
@@ -35,6 +37,15 @@ becomes an alias for `addr`.
 - Added `initDateTime` in `times` to create a datetime from a weekday, and ISO 8601 week number and week-based year.
 - Added `getIsoWeekAndYear` in `times` to get an ISO week number along with the corresponding ISO week-based year from a datetime.
 - Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year.
+
+- Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
+- Removed deprecated `oids.oidToString`.
+- Remove define `nimExperimentalAsyncjsThen` for `std/asyncjs.then` and `std/jsfetch`.
+
+- Changed mimedb to use an `OrderedTable` instead of `OrderedTableRef`, to use it in a const.
+- Removed deprecated `jsre.test` and `jsre.toString`.
+- Removed deprecated `math.c_frexp`.
+
 
 ## Language changes
 
@@ -73,8 +84,6 @@ becomes an alias for `addr`.
 - Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
   for the right-hand side of type definitions in type sections. Previously
   they would error with "invalid indentation".
-
-- Added `std/oserrors` for OS error reporting.
 
 ## Compiler changes
 

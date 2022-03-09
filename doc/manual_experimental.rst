@@ -404,6 +404,76 @@ to use this operator.
     doAssert (a.b)(c) == `()`(a.b, c)
 
 
+Extended macro pragmas
+======================
+
+Macro pragmas as described in `the manual <manual.html#userminusdefined-pragmas-macro-pragmas>`_
+can also be applied to type, variable and constant declarations.
+
+For types:
+
+.. code-block:: nim
+  type
+    MyObject {.schema: "schema.protobuf".} = object
+
+This is translated to a call to the `schema` macro with a `nnkTypeDef`
+AST node capturing the left-hand side, remaining pragmas and the right-hand
+side of the definition. The macro can return either a type section or
+another `nnkTypeDef` node, both of which will replace the original row
+in the type section.
+
+In the future, this `nnkTypeDef` argument may be replaced with a unary
+type section node containing the type definition, or some other node that may
+be more convenient to work with. The ability to return nodes other than type
+definitions may also be supported, however currently this is not convenient
+when dealing with mutual type recursion. For now, macros can return an unused
+type definition where the right-hand node is of kind `nnkStmtListType`.
+Declarations in this node will be attached to the same scope as
+the parent scope of the type section.
+
+------
+
+For variables and constants, it is largely the same, except a unary node with
+the same kind as the section containing a single definition is passed to macros,
+and macros can return any expression.
+
+.. code-block:: nim
+  var
+    a = ...
+    b {.importc, foo, nodecl.} = ...
+    c = ...
+
+Assuming `foo` is a macro or a template, this is roughly equivalent to:
+
+.. code-block:: nim
+  var a = ...
+  foo:
+    var b {.importc, nodecl.} = ...
+  var c = ...
+
+
+Symbols as template/macro calls
+===============================
+
+Templates and macros that take no arguments can be called as lone symbols,
+i.e. without parentheses. This is useful for repeated uses of complex
+expressions that cannot conveniently be represented as runtime values.
+
+.. code-block:: nim
+  type Foo = object
+    bar: int
+  
+  var foo = Foo(bar: 10)
+  template bar: untyped = foo.bar
+  assert bar == 10
+  bar = 15
+  assert bar == 15
+
+In the future, this may require more specific information on template or macro
+signatures to be used. Specializations for some applications of this may also
+be introduced to guarantee consistency and circumvent bugs.
+
+
 Not nil annotation
 ==================
 
@@ -613,7 +683,7 @@ has `source` as the owner. A path expression `e` is defined recursively:
 
 If a view type is used as a return type, the location must borrow from a location
 that is derived from the first parameter that is passed to the proc.
-See `the manual <https://nim-lang.org/docs/manual.html#procedures-var-return-type>`_
+See `the manual <manual.html#procedures-var-return-type>`_
 for details about how this is done for `var T`.
 
 A mutable view can borrow from a mutable location, an immutable view can borrow
