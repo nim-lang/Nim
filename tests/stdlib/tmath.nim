@@ -437,12 +437,6 @@ template main() =
       doAssert lgamma(-0.0) == Inf
       doAssert lgamma(-1.0) == Inf
 
-      when nimvm: discard
-      else:
-        var exponent: cint
-        doAssert c_frexp(0.0, exponent) == 0.0
-        doAssert c_frexp(-0.0, exponent) == -0.0
-        doAssert classify(c_frexp(-0.0, exponent)) == fcNegZero
 
 static: main()
 main()

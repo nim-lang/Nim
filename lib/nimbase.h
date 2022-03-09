@@ -547,7 +547,7 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
 #endif
 
 // Test to see if Nim and the C compiler agree on the size of a pointer.
-NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "");
+NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "Pointer size mismatch between Nim and C/C++ backend. You probably need to setup the backend compiler for target CPU.");
 
 #ifdef USE_NIM_NAMESPACE
 }

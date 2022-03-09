@@ -48,8 +48,13 @@ proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
-  let ms = s.itemId.module  #getModule(s)
-  result = m.g.modules[ms]
+  # TODO fixme
+  if m.config.symbolFiles == v2Sf:
+    let ms = s.itemId.module  #getModule(s)
+    result = m.g.modules[ms]
+  else:
+    var ms = getModule(s)
+    result = m.g.modules[ms.position]
 
 proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
   result.k = k
@@ -876,7 +881,7 @@ proc containsResult(n: PNode): bool =
       if containsResult(n[i]): return true
 
 const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTemplateDef,
-                  nkMacroDef, nkMixinStmt, nkBindStmt} +
+                  nkMacroDef, nkMixinStmt, nkBindStmt, nkFormalParams} +
                   declarativeDefs
 
 proc easyResultAsgn(n: PNode): PNode =
@@ -1034,7 +1039,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       internalError(m.config, prc.info, "proc has no result symbol")
     let resNode = prc.ast[resultPos]
     let res = resNode.sym # get result symbol
-    if not isInvalidReturnType(m.config, prc.typ[0]):
+    if not isInvalidReturnType(m.config, prc.typ):
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
       if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(procBody); val != nil):
         var decl = localVarDecl(p, resNode)
@@ -1048,7 +1053,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     else:
-      fillResult(p.config, resNode)
+      fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ[0])
       # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
       # to 'unsureAsgn(result, x)'
@@ -1358,16 +1363,25 @@ proc genMainProc(m: BModule) =
     # The use of a volatile function pointer to call Pre/NimMainInner
     # prevents inlining of the NimMainInner function and dependent
     # functions, which might otherwise merge their stack frames.
-    PreMainBody = "$N" &
+
+    PreMainVolatileBody =
+      "\tvoid (*volatile inner)(void);$N" &
+      "\tinner = PreMainInner;$N" &
+      "$1" &
+      "\t(*inner)();$N"
+
+    PreMainNonVolatileBody =
+      "$1" &
+      "\tPreMainInner();$N"
+
+    PreMainBodyStart = "$N" &
       "N_LIB_PRIVATE void PreMainInner(void) {$N" &
       "$2" &
       "}$N$N" &
       PosixCmdLine &
-      "N_LIB_PRIVATE void PreMain(void) {$N" &
-      "\tvoid (*volatile inner)(void);$N" &
-      "\tinner = PreMainInner;$N" &
-      "$1" &
-      "\t(*inner)();$N" &
+      "N_LIB_PRIVATE void PreMain(void) {$N"
+
+    PreMainBodyEnd =
       "}$N$N"
 
     MainProcs =
@@ -1380,16 +1394,31 @@ proc genMainProc(m: BModule) =
         "$1" &
       "}$N$N"
 
-    NimMainProc =
-      "N_CDECL(void, $5NimMain)(void) {$N" &
-        "\tvoid (*volatile inner)(void);$N" &
-        "$4" &
-        "\tinner = NimMainInner;$N" &
-        "$2" &
-        "\t(*inner)();$N" &
+    NimMainVolatileBody =
+      "\tvoid (*volatile inner)(void);$N" &
+      "$4" &
+      "\tinner = NimMainInner;$N" &
+      "$2" &
+      "\t(*inner)();$N"
+
+    NimMainNonVolatileBody =
+      "$4" &
+      "$2" &
+      "\tNimMainInner();$N"
+
+    NimMainProcStart =
+      "N_CDECL(void, $5NimMain)(void) {$N"
+
+    NimMainProcEnd =
       "}$N$N"
 
+    NimMainProc = NimMainProcStart & NimMainVolatileBody & NimMainProcEnd
+
+    NimSlimMainProc = NimMainProcStart & NimMainNonVolatileBody & NimMainProcEnd
+
     NimMainBody = NimMainInner & NimMainProc
+
+    NimSlimMainBody = NimMainInner & NimSlimMainProc
 
     PosixCMain =
       "int main(int argc, char** args, char** env) {$N" &
@@ -1451,10 +1480,13 @@ proc genMainProc(m: BModule) =
     m.includeHeader("<libc/component.h>")
 
   let initStackBottomCall =
-    if m.config.target.targetOS == osStandalone or m.config.selectedGC == gcNone: "".rope
+    if m.config.target.targetOS == osStandalone or m.config.selectedGC in {gcNone, gcArc, gcOrc}: "".rope
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", [])
   inc(m.labels)
-  appcg(m, m.s[cfsProcs], PreMainBody, [m.g.mainDatInit, m.g.otherModsInit])
+  if m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
+    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit])
+  else:
+    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainNonVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit])
 
   if m.config.target.targetOS == osWindows and
       m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
@@ -1479,9 +1511,14 @@ proc genMainProc(m: BModule) =
     appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
   else:
-    const nimMain = NimMainBody
-    appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
+    if m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
+      const nimMain = NimMainBody
+      appcg(m, m.s[cfsProcs], nimMain,
+          [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
+    else:
+      const nimMain = NimSlimMainBody
+      appcg(m, m.s[cfsProcs], nimMain,
+          [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
 
   if optNoMain notin m.config.globalOptions:
     if m.config.cppCustomNamespace.len > 0:
