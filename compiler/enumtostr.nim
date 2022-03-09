@@ -1,6 +1,10 @@
 
 import ast, idents, lineinfos, modulegraphs, magicsys
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: IdGenerator): PSym =
   result = newSym(skProc, getIdent(g.cache, "$"), nextSymId idgen, t.owner, info)
 

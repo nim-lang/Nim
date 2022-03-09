@@ -31,6 +31,9 @@ import
 
 from ast import setUseIc, eqTypeFlags, tfGcSafe, tfNoSideEffect
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
 bootSwitch(usedFFI, hasFFI, "-d:nimHasLibFFI")

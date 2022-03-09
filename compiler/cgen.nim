@@ -17,6 +17,10 @@ import
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
   injectdestructors, astmsgs
 
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when not defined(leanCompiler):
   import spawn, semparallel
 

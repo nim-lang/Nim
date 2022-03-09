@@ -31,6 +31,10 @@ else:
 when defined(linux) and defined(useClone):
   import linux
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
+
 type
   ProcessOption* = enum ## Options that can be passed to `startProcess proc
                         ## <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.

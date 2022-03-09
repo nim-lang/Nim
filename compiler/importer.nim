@@ -15,6 +15,9 @@ import
   modulegraphs, wordrecg, tables
 from strutils import `%`
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
   result = initIntSet()

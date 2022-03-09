@@ -1830,8 +1830,11 @@ when not defined(nimscript):
 when defined(nimV2):
   include system/arc
 
-import system/assertions
-export assertions
+when not defined(nimPreviewSlimSystem):
+  {.deprecated: """assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and
+                import `std/assertions`.""".}
+  import std/assertions
+  export assertions
 
 import system/iterators
 export iterators

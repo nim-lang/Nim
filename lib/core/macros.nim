@@ -10,6 +10,10 @@
 include "system/inclrtl"
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
 ##
