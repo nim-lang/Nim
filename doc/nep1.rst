@@ -1,11 +1,12 @@
-.. default-role:: code
+============================
+Standard Library Style Guide
+============================
 
-==========================================================
-Nim Enhancement Proposal #1 - Standard Library Style Guide
-==========================================================
 :Author: Clay Sweetser, Dominik Picheta
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 
@@ -139,7 +140,7 @@ Naming Conventions
   - rotate and rotated
 
 - When the 'returns transformed copy' version already exists like `strutils.replace`
-  an in-place version should get an `-In` suffix (`replaceIn` for this example).
+  an in-place version should get an ``-In`` suffix (`replaceIn` for this example).
 
 
 - Use `subjectVerb`, not `verbSubject`, e.g.: `fileExists`, not `existsFile`.
@@ -225,8 +226,8 @@ indentation             indent
 Coding Conventions
 ------------------
 
-- The 'return' statement should ideally be used when its control-flow properties
-  are required. Use a procedure's implicit 'result' variable whenever possible.
+- The `return` statement should ideally be used when its control-flow properties
+  are required. Use a procedure's implicit `result` variable whenever possible.
   This improves readability.
 
   .. code-block:: nim
@@ -301,3 +302,12 @@ Miscellaneous
     let a = """foo
     bar
     """
+
+- A getter API for a private field `foo` should preferably be named `foo`, not `getFoo`.
+  A getter-like API should preferably be named `getFoo`, not `foo` if:
+    * the API has side effects
+    * or the cost is not `O(1)`
+  For in between cases, there is no clear guideline.
+
+- Likewise with a setter API, replacing `foo` with `foo=` and `getFoo` with `setFoo`
+  in the above text.

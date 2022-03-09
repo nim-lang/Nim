@@ -207,10 +207,8 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
-  if nimDecRefIsLast(cast[pointer](x)):
-    # XXX this does NOT work for virtual destructors!
-    `=destroy`(x[])
-    nimRawDispose(cast[pointer](x), T.alignOf)
+  var y {.cursor.} = x
+  `=destroy`(y)
 
 proc GC_ref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.

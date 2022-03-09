@@ -1,8 +1,9 @@
-.. default-role:: code
-
 =================
 API naming design
 =================
+
+.. default-role:: code
+.. include:: rstcommon.rst
 
 The API is designed to be **easy to use** and consistent. Ease of use is
 measured by the number of calls to achieve a concrete high-level action.

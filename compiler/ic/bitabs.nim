@@ -36,6 +36,10 @@ const
 
 template idToIdx(x: LitId): int = x.int - idStart
 
+proc hasLitId*[T](t: BiTable[T]; x: LitId): bool =
+  let idx = idToIdx(x)
+  result = idx >= 0 and idx < t.vals.len
+
 proc enlarge[T](t: var BiTable[T]) =
   var n: seq[LitId]
   newSeq(n, len(t.keys) * 2)

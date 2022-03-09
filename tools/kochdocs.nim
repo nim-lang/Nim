@@ -1,6 +1,9 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm, pegs, sequtils
+import os, strutils, osproc, sets, pathnorm, sequtils
+# XXX: Remove this feature check once the csources supports it.
+when defined(nimHasCastPragmaBlocks):
+  import std/pegs
 from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
@@ -8,7 +11,8 @@ const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
   # errormax: subsequent errors are probably consequences of 1st one; a simple
   # bug could cause unlimited number of errors otherwise, hard to debug in CI.
-  nimArgs = "--errormax:3 --hint:Conf:off --hint:Path:off --hint:Processing:off --hint:XDeclaredButNotUsed:off --warning:UnusedImport:off -d:boot --putenv:nimversion=$#" % system.NimVersion
+  docDefines = "-d:nimExperimentalLinenoiseExtra"
+  nimArgs = "--errormax:3 --hint:Conf:off --hint:Path:off --hint:Processing:off --hint:XDeclaredButNotUsed:off --warning:UnusedImport:off -d:boot --putenv:nimversion=$# $#" % [system.NimVersion, docDefines]
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
   webUploadOutput = "web/upload"
@@ -97,8 +101,9 @@ proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   exec cmd
 
-proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "") =
-  let output = outputDir / input.splitFile.name.exe
+proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "", outputName = "") =
+  let outputName2 = if outputName.len == 0: input.splitFile.name.exe else: outputName.exe
+  let output = outputDir / outputName2
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
 
@@ -106,7 +111,10 @@ proc getRst2html(): seq[string] =
   for a in walkDirRecFilter("doc"):
     let path = a.path
     if a.kind == pcFile and path.splitFile.ext == ".rst" and path.lastPathPart notin
-        ["docs.rst", "nimfix.rst"]:
+        ["docs.rst", "nimfix.rst",
+         "docstyle.rst" # docstyle.rst shouldn't be converted to html separately;
+                        # it's included in contributing.rst.
+        ]:
           # maybe we should still show nimfix, could help reviving it
           # `docs` is redundant with `overview`, might as well remove that file?
       result.add path
@@ -121,7 +129,7 @@ tut2.rst
 tut3.rst
 nimc.rst
 niminst.rst
-gc.rst
+mm.rst
 """.splitWhitespace().mapIt("doc" / it)
 
   doc0 = """
@@ -179,7 +187,6 @@ proc getDocList(): seq[string] =
 
   # don't ignore these even though in lib/system (not include files)
   const goodSystem = """
-lib/system/io.nim
 lib/system/nimscript.nim
 lib/system/assertions.nim
 lib/system/iterators.nim
@@ -284,22 +291,28 @@ proc buildDoc(nimArgs, destPath: string) =
 
 proc nim2pdf(src: string, dst: string, nimArgs: string) =
   # xxx expose as a `nim` command or in some other reusable way.
-  let outDir = "build" / "pdflatextmp" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
+  let outDir = "build" / "xelatextmp" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
   # note: this will generate temporary files in gitignored `outDir`: aux toc log out tex
   exec("$# rst2tex $# --outdir:$# $#" % [findNim().quoteShell(), nimArgs, outDir.quoteShell, src.quoteShell])
   let texFile = outDir / src.lastPathPart.changeFileExt("tex")
-  for i in 0..<2: # call LaTeX twice to get cross references right:
-    let pdflatexLog = outDir / "pdflatex.log"
+  for i in 0..<3: # call LaTeX three times to get cross references right:
+    let xelatexLog = outDir / "xelatex.log"
     # `>` should work on windows, if not, we can use `execCmdEx`
-    let cmd = "pdflatex -interaction=nonstopmode -output-directory=$# $# > $#" % [outDir.quoteShell, texFile.quoteShell, pdflatexLog.quoteShell]
-    exec(cmd) # on error, user can inspect `pdflatexLog`
+    let cmd = "xelatex -interaction=nonstopmode -output-directory=$# $# > $#" % [outDir.quoteShell, texFile.quoteShell, xelatexLog.quoteShell]
+    exec(cmd) # on error, user can inspect `xelatexLog`
+    if i == 1:  # build .ind file
+      var texFileBase = texFile
+      texFileBase.removeSuffix(".tex")
+      let cmd = "makeindex $# > $#" % [
+          texFileBase.quoteShell, xelatexLog.quoteShell]
+      exec(cmd)
   moveFile(texFile.changeFileExt("pdf"), dst)
 
 proc buildPdfDoc*(nimArgs, destPath: string) =
   var pdfList: seq[string]
   createDir(destPath)
-  if os.execShellCmd("pdflatex -version") != 0:
-    doAssert false, "pdflatex not found" # or, raise an exception
+  if os.execShellCmd("xelatex -version") != 0:
+    doAssert false, "xelatex not found" # or, raise an exception
   else:
     for src in items(rstPdfList):
       let dst = destPath / src.lastPathPart.changeFileExt("pdf")
@@ -336,7 +349,9 @@ proc buildDocs*(args: string, localOnly = false, localOutDir = "") =
   if not localOnly:
     buildDocsDir(args, webUploadOutput / NimVersion)
 
-    let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
-    args = args.replace(gaFilter)
+    # XXX: Remove this feature check once the csources supports it.
+    when defined(nimHasCastPragmaBlocks):
+      let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
+      args = args.replace(gaFilter)
 
   buildDocsDir(args, localOutDir)

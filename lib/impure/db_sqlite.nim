@@ -152,7 +152,7 @@
 ## Instead, a `seq[string]` is returned for each row.
 ##
 ## The reasoning is as follows:
-## 1. it's close to what many DBs offer natively (char**)
+## 1. it's close to what many DBs offer natively (`char**`:c:)
 ## 2. it hides the number of types that the DB supports
 ##    (int? int64? decimal up to 10 places? geo coords?)
 ## 3. it's convenient when all you do is to forward the data to somewhere else (echo, log, put the data into a new query)
@@ -171,7 +171,7 @@ import sqlite3, macros
 import db_common
 export db_common
 
-import std/private/since
+import std/private/[since, dbutils]
 
 type
   DbConn* = PSqlite3  ## Encapsulates a database connection.
@@ -211,14 +211,7 @@ proc dbQuote*(s: string): string =
   add(result, '\'')
 
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
-  result = ""
-  var a = 0
-  for c in items(string(formatstr)):
-    if c == '?':
-      add(result, dbQuote(args[a]))
-      inc(a)
-    else:
-      add(result, c)
+  dbFormatImpl(formatstr, dbQuote, args)
 
 proc prepare*(db: DbConn; q: string): SqlPrepared {.since: (1, 3).} =
   ## Creates a new `SqlPrepared` statement.
@@ -642,7 +635,7 @@ proc getValue*(db: DbConn,  stmtName: SqlPrepared): string
 
 proc tryInsertID*(db: DbConn, query: SqlQuery,
                   args: varargs[string, `$`]): int64
-                  {.tags: [WriteDbEffect], raises: [].} =
+                  {.tags: [WriteDbEffect], raises: [DbError].} =
   ## Executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   ##
@@ -699,7 +692,7 @@ proc insertID*(db: DbConn, query: SqlQuery,
 
 proc tryInsert*(db: DbConn, query: SqlQuery, pkName: string,
                 args: varargs[string, `$`]): int64
-               {.tags: [WriteDbEffect], raises: [], since: (1, 3).} =
+               {.tags: [WriteDbEffect], raises: [DbError], since: (1, 3).} =
   ## same as tryInsertID
   tryInsertID(db, query, args)
 

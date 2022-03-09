@@ -1,0 +1,5 @@
+version = "0.0.4"
+author = "disruptek"
+description = "don't read too much into it"
+license = "MIT"
+requires "nim >= 1.0.0"

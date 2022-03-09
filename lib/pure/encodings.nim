@@ -7,15 +7,44 @@
 #    distribution, for details about the copyright.
 #
 
-## Converts between different character encodings. On UNIX, this uses
+## Routines for converting between different character encodings. On UNIX, this uses
 ## the `iconv`:idx: library, on Windows the Windows API.
+##
+## The following example shows how to change character encodings.
+runnableExamples:
+  when defined(windows):
+    let
+      orig = "öäüß"
+      # convert `orig` from "UTF-8" to "CP1252"
+      cp1252 = convert(orig, "CP1252", "UTF-8")
+      # convert `cp1252` from "CP1252" to "ibm850"
+      ibm850 = convert(cp1252, "ibm850", "CP1252")
+      current = getCurrentEncoding()
+    assert orig == "\195\182\195\164\195\188\195\159"
+    assert ibm850 == "\148\132\129\225"
+    assert convert(ibm850, current, "ibm850") == orig
+
+## The example below uses a reuseable `EncodingConverter` object which is
+## created by `open` with `destEncoding` and `srcEncoding` specified. You can use
+## `convert` on this object multiple times.
+runnableExamples:
+  when defined(windows):
+    var fromGB2312 = open("utf-8", "gb2312")
+    let first = "\203\173\197\194\163\191\210\187" &
+        "\203\242\209\204\211\234\200\206\198\189\201\250"
+    assert fromGB2312.convert(first) == "谁怕？一蓑烟雨任平生"
+
+    let second = "\211\208\176\215\205\183\200\231" &
+        "\208\194\163\172\199\227\184\199\200\231\185\202"
+    assert fromGB2312.convert(second) == "有白头如新，倾盖如故"
+
 
 import os
 
 when not defined(windows):
   type
     ConverterObj = object
-    EncodingConverter* = ptr ConverterObj ## can convert between two character sets
+    EncodingConverter* = ptr ConverterObj ## Can convert between two character sets.
 
 else:
   type
@@ -24,8 +53,8 @@ else:
       dest, src: CodePage
 
 type
-  EncodingError* = object of ValueError ## exception that is raised
-                                        ## for encoding errors
+  EncodingError* = object of ValueError ## Exception that is raised
+                                        ## for encoding errors.
 
 when defined(windows):
   import parseutils, strutils
@@ -72,6 +101,7 @@ when defined(windows):
       (875, "cp875"),          # IBM EBCDIC Greek Modern
       (932, "shift_jis"),      # ANSI/OEM Japanese; Japanese (Shift-JIS)
       (936, "gb2312"),         # ANSI/OEM Simplified Chinese (PRC, Singapore); Chinese Simplified (GB2312)
+      (936, "gbk"),            # Alias for GB2312 encoding
       (949, "ks_c_5601-1987"), # ANSI/OEM Korean (Unified Hangul Code)
       (950, "big5"),           # ANSI/OEM Traditional Chinese (Taiwan; Hong Kong SAR, PRC); Chinese Traditional (Big5)
       (1026, "IBM1026"),       # IBM EBCDIC Turkish (Latin 5)
@@ -281,8 +311,10 @@ else:
 
   var errno {.importc, header: "<errno.h>".}: cint
 
-  when defined(freebsd) or defined(netbsd):
+  when defined(bsd):
     {.pragma: importIconv, cdecl, header: "<iconv.h>".}
+    when defined(openbsd):
+      {.passL: "-liconv".}
   else:
     {.pragma: importIconv, cdecl, dynlib: iconvDll.}
 
@@ -295,7 +327,7 @@ else:
     importc: "iconv", importIconv.}
 
 proc getCurrentEncoding*(uiApp = false): string =
-  ## retrieves the current encoding. On Unix, always "UTF-8" is returned.
+  ## Retrieves the current encoding. On Unix, "UTF-8" is always returned.
   ## The `uiApp` parameter is Windows specific. If true, the UI's code-page
   ## is returned, if false, the Console's code-page is returned.
   when defined(windows):
@@ -304,7 +336,7 @@ proc getCurrentEncoding*(uiApp = false): string =
     result = "UTF-8"
 
 proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
-  ## opens a converter that can convert from `srcEncoding` to `destEncoding`.
+  ## Opens a converter that can convert from `srcEncoding` to `destEncoding`.
   ## Raises `IOError` if it cannot fulfill the request.
   when not defined(windows):
     result = iconvOpen(destEncoding, srcEncoding)
@@ -323,7 +355,7 @@ proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
         "cannot find encoding " & srcEncoding)
 
 proc close*(c: EncodingConverter) =
-  ## frees the resources the converter `c` holds.
+  ## Frees the resources the converter `c` holds.
   when not defined(windows):
     iconvClose(c)
 
@@ -418,12 +450,13 @@ when defined(windows):
            else: convertFromWideString(codePageTo, wideString)
 
   proc convert*(c: EncodingConverter, s: string): string =
-    ## converts `s` to `destEncoding` that was given to the converter `c`. It
-    ## assumed that `s` is in `srcEncoding`.
-    ## utf-16BE, utf-32 conversions not supported on windows
     result = convertWin(c.src, c.dest, s)
 else:
   proc convert*(c: EncodingConverter, s: string): string =
+    ## Converts `s` to `destEncoding` that was given to the converter `c`. It
+    ## assumes that `s` is in `srcEncoding`.
+    ##
+    ## .. warning:: UTF-16BE and UTF-32 conversions are not supported on Windows.
     result = newString(s.len)
     var inLen = csize_t len(s)
     var outLen = csize_t len(result)
@@ -464,84 +497,13 @@ else:
 
 proc convert*(s: string, destEncoding = "UTF-8",
                          srcEncoding = "CP1252"): string =
-  ## converts `s` to `destEncoding`. It assumed that `s` is in `srcEncoding`.
+  ## Converts `s` to `destEncoding`. It assumed that `s` is in `srcEncoding`.
   ## This opens a converter, uses it and closes it again and is thus more
   ## convenient but also likely less efficient than re-using a converter.
-  ## utf-16BE, utf-32 conversions not supported on windows
+  ##
+  ## .. warning:: UTF-16BE and UTF-32 conversions are not supported on Windows.
   var c = open(destEncoding, srcEncoding)
   try:
     result = convert(c, s)
   finally:
     close(c)
-
-when not defined(testing) and isMainModule:
-  let
-    orig = "öäüß"
-    cp1252 = convert(orig, "CP1252", "UTF-8")
-    ibm850 = convert(cp1252, "ibm850", "CP1252")
-    current = getCurrentEncoding()
-  echo "Original string from source code: ", orig
-  echo "Forced ibm850 encoding: ", ibm850
-  echo "Current encoding: ", current
-  echo "From ibm850 to current: ", convert(ibm850, current, "ibm850")
-
-when not defined(testing) and isMainModule and defined(windows):
-  block should_throw_on_unsupported_conversions:
-    let original = "some string"
-
-    doAssertRaises(EncodingError):
-      discard convert(original, "utf-8", "utf-32")
-
-    doAssertRaises(EncodingError):
-      discard convert(original, "utf-8", "unicodeFFFE")
-
-    doAssertRaises(EncodingError):
-      discard convert(original, "utf-8", "utf-32BE")
-
-    doAssertRaises(EncodingError):
-      discard convert(original, "unicodeFFFE", "utf-8")
-
-    doAssertRaises(EncodingError):
-      discard convert(original, "utf-32", "utf-8")
-
-    doAssertRaises(EncodingError):
-      discard convert(original, "utf-32BE", "utf-8")
-
-  block should_convert_from_utf16_to_utf8:
-    let original = "\x42\x04\x35\x04\x41\x04\x42\x04" # utf-16 little endian test string "тест"
-    let result = convert(original, "utf-8", "utf-16")
-    doAssert(result == "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82")
-
-  block should_convert_from_utf16_to_win1251:
-    let original = "\x42\x04\x35\x04\x41\x04\x42\x04" # utf-16 little endian test string "тест"
-    let result = convert(original, "windows-1251", "utf-16")
-    doAssert(result == "\xf2\xe5\xf1\xf2")
-
-  block should_convert_from_win1251_to_koi8r:
-    let original = "\xf2\xe5\xf1\xf2" # win1251 test string "тест"
-    let result = convert(original, "koi8-r", "windows-1251")
-    doAssert(result == "\xd4\xc5\xd3\xd4")
-
-  block should_convert_from_koi8r_to_win1251:
-    let original = "\xd4\xc5\xd3\xd4" # koi8r test string "тест"
-    let result = convert(original, "windows-1251", "koi8-r")
-    doAssert(result == "\xf2\xe5\xf1\xf2")
-
-  block should_convert_from_utf8_to_win1251:
-    let original = "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82" # utf-8 test string "тест"
-    let result = convert(original, "windows-1251", "utf-8")
-    doAssert(result == "\xf2\xe5\xf1\xf2")
-
-  block should_convert_from_utf8_to_utf16:
-    let original = "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82" # utf-8 test string "тест"
-    let result = convert(original, "utf-16", "utf-8")
-    doAssert(result == "\x42\x04\x35\x04\x41\x04\x42\x04")
-
-  block should_handle_empty_string_for_any_conversion:
-    let original = ""
-    var result = convert(original, "utf-16", "utf-8")
-    doAssert(result == "")
-    result = convert(original, "utf-8", "utf-16")
-    doAssert(result == "")
-    result = convert(original, "windows-1251", "koi8-r")
-    doAssert(result == "")

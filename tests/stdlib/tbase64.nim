@@ -1,14 +1,11 @@
 ﻿discard """
-  output: '''YQ=='''
-  nimout: '''YQ=='''
+  targets: "c js"
 """
-import base64
 
-import base64
-static: echo encode("a")
-echo encode("a")
+import std/base64
 
-proc main() =
+template main() =
+  doAssert encode("a") == "YQ=="
   doAssert encode("Hello World") == "SGVsbG8gV29ybGQ="
   doAssert encode("leasure.") == "bGVhc3VyZS4="
   doAssert encode("easure.") == "ZWFzdXJlLg=="
@@ -38,11 +35,7 @@ proc main() =
     doAssert decode(encodeMIME(t, lineLen=40)) == t
     doAssert decode(encodeMIME(t, lineLen=76)) == t
 
-  const invalid = "SGVsbG\x008gV29ybGQ="
-  try:
-    doAssert decode(invalid) == "will throw error"
-  except ValueError:
-    discard
+  doAssertRaises(ValueError): discard decode("SGVsbG\x008gV29ybGQ=")
 
   block base64urlSafe:
     doAssert encode("c\xf7>", safe = true) == "Y_c-"
@@ -59,4 +52,5 @@ proc main() =
     doAssert encode("", safe = true) == ""
     doAssert encode("the quick brown dog jumps over the lazy fox", safe = true) == "dGhlIHF1aWNrIGJyb3duIGRvZyBqdW1wcyBvdmVyIHRoZSBsYXp5IGZveA=="
 
+static: main()
 main()

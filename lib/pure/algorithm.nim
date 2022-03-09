@@ -131,43 +131,29 @@ proc reverse*[T](a: var openArray[T]) =
   # the max is needed, since a.high is -1 if a is empty
   reverse(a, 0, max(0, a.high))
 
-proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
-  ## Returns the reverse of the slice `a[first..last]`.
-  ##
-  ## If an invalid range is passed, it raises `IndexDefect`.
+proc reversed*[T](a: openArray[T]): seq[T] {.inline.} =
+  ## Returns the elements of `a` in reverse order.
   ##
   ## **See also:**
-  ## * `reverse proc<#reverse,openArray[T],Natural,Natural>`_ reverse a slice
   ## * `reverse proc<#reverse,openArray[T]>`_
   runnableExamples:
-    let
-      a = [1, 2, 3, 4, 5, 6]
-      b = a.reversed(1, 3)
-    assert b == @[4, 3, 2]
-  assert last >= first - 1
-  var i = last - first
-  var x = first.int
-  result = newSeq[T](i + 1)
-  while i >= 0:
-    result[i] = a[x]
-    dec(i)
-    inc(x)
+    assert [10, 11, 12].reversed == @[12, 11, 10]
+    assert seq[string].default.reversed == @[]
+  let n = a.len
+  result.setLen(n)
+  for i in 0..<n: result[i] = a[n - (i + 1)]
 
-proc reversed*[T](a: openArray[T]): seq[T] =
-  ## Returns the reverse of the container `a`.
-  ##
-  ## **See also:**
-  ## * `reverse proc<#reverse,openArray[T],Natural,Natural>`_ reverse a slice
-  ## * `reverse proc<#reverse,openArray[T]>`_
-  runnableExamples:
-    let
-      a = [1, 2, 3, 4, 5, 6]
-      b = reversed(a)
-    assert b == @[6, 5, 4, 3, 2, 1]
-  reversed(a, 0, a.high)
+proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]
+  {.inline, deprecated: "use: `reversed(toOpenArray(a, first, last))`".} =
+  reversed(toOpenArray(a, first, last))
+
+when defined(nimHasEffectsOf):
+  {.experimental: "strictEffects".}
+else:
+  {.pragma: effectsOf.}
 
 proc binarySearch*[T, K](a: openArray[T], key: K,
-                         cmp: proc (x: T, y: K): int {.closure.}): int =
+                         cmp: proc (x: T, y: K): int {.closure.}): int {.effectsOf: cmp.} =
   ## Binary search for `key` in `a`. Return the index of `key` or -1 if not found.
   ## Assumes that `a` is sorted according to `cmp`.
   ##
@@ -229,7 +215,7 @@ const
   onlySafeCode = true
 
 proc lowerBound*[T, K](a: openArray[T], key: K,
-                       cmp: proc(x: T, k: K): int {.closure.}): int =
+                       cmp: proc(x: T, k: K): int {.closure.}): int {.effectsOf: cmp.} =
   ## Returns the index of the first element in `a` that is not less than
   ## (i.e. greater or equal to) `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
@@ -279,7 +265,7 @@ proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
   ## * `upperBound proc<#upperBound,openArray[T],T>`_
 
 proc upperBound*[T, K](a: openArray[T], key: K,
-                       cmp: proc(x: T, k: K): int {.closure.}): int =
+                       cmp: proc(x: T, k: K): int {.closure.}): int {.effectsOf: cmp.} =
   ## Returns the index of the first element in `a` that is greater than
   ## `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
@@ -337,7 +323,7 @@ template `<-`(a, b) =
     copyMem(addr(a), addr(b), sizeof(T))
 
 proc mergeAlt[T](a, b: var openArray[T], lo, m, hi: int,
-              cmp: proc (x, y: T): int {.closure.}, order: SortOrder) =
+              cmp: proc (x, y: T): int {.closure.}, order: SortOrder) {.effectsOf: cmp.} =
   # Optimization: If max(left) <= min(right) there is nothing to do!
   # 1 2 3 4 ## 5 6 7 8
   # -> O(n) for sorted arrays.
@@ -377,7 +363,7 @@ proc mergeAlt[T](a, b: var openArray[T], lo, m, hi: int,
 
 func sort*[T](a: var openArray[T],
               cmp: proc (x, y: T): int {.closure.},
-              order = SortOrder.Ascending) =
+              order = SortOrder.Ascending) {.effectsOf: cmp.} =
   ## Default Nim sort (an implementation of merge sort). The sorting
   ## is guaranteed to be stable (that is, equal elements stay in the same order)
   ## and the worst case is guaranteed to be O(n log n).
@@ -439,7 +425,7 @@ proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a,
   ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
 
 proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
-                order = SortOrder.Ascending): seq[T] =
+                order = SortOrder.Ascending): seq[T] {.effectsOf: cmp.} =
   ## Returns `a` sorted by `cmp` in the specified `order`.
   ##
   ## **See also:**
@@ -516,7 +502,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
 
 func isSorted*[T](a: openArray[T],
                  cmp: proc(x, y: T): int {.closure.},
-                 order = SortOrder.Ascending): bool =
+                 order = SortOrder.Ascending): bool {.effectsOf: cmp.} =
   ## Checks to see whether `a` is already sorted in `order`
   ## using `cmp` for the comparison. The parameters are identical
   ## to `sort`. Requires O(n) time.
@@ -564,7 +550,7 @@ proc isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
 proc merge*[T](
   result: var seq[T],
   x, y: openArray[T], cmp: proc(x, y: T): int {.closure.}
-) {.since: (1, 5, 1).} =
+) {.since: (1, 5, 1), effectsOf: cmp.} =
   ## Merges two sorted `openArray`. `x` and `y` are assumed to be sorted.
   ## If you do not wish to provide your own `cmp`,
   ## you may use `system.cmp` or instead call the overloaded
@@ -657,7 +643,7 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## Produces the Cartesian product of the array.
   ## Every element of the result is a combination of one element from each seq in `x`,
   ## with the ith element coming from `x[i]`.
-  ## 
+  ##
   ## .. warning:: complexity may explode.
   runnableExamples:
     assert product(@[@[1], @[2]]) == @[@[1, 2]]

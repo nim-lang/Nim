@@ -14,7 +14,7 @@ import
   options, idents, wordrecg, strtabs, lineinfos, pathutils, scriptconfig
 
 # ---------------- configuration file parser -----------------------------
-# we use Nim's scanner here to save space and work
+# we use Nim's lexer here to save space and work
 
 proc ppGetTok(L: var Lexer, tok: var Token) =
   # simple filter
@@ -240,13 +240,10 @@ proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile
 
 proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
   setDefaultLibpath(conf)
-
-  var configFiles = newSeq[AbsoluteFile]()
-
   template readConfigFile(path) =
     let configPath = path
     if readConfigFile(configPath, cache, conf):
-      configFiles.add(configPath)
+      conf.configFiles.add(configPath)
 
   template runNimScriptIfExists(path: AbsoluteFile, isMain = false) =
     let p = path # eval once
@@ -256,7 +253,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
       elif conf.projectIsCmd: s = llStreamOpen(conf.cmdInput)
     if s == nil and fileExists(p): s = llStreamOpen(p, fmRead)
     if s != nil:
-      configFiles.add(p)
+      conf.configFiles.add(p)
       runNimScript(cache, p, idgen, freshDefines = false, conf, s)
 
   if optSkipSystemConfigFile notin conf.globalOptions:
@@ -295,14 +292,17 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
   let scriptFile = conf.projectFull.changeFileExt("nims")
   let scriptIsProj = scriptFile == conf.projectFull
   template showHintConf =
-    for filename in configFiles:
+    for filename in conf.configFiles:
       # delayed to here so that `hintConf` is honored
       rawMessage(conf, hintConf, filename.string)
-  if scriptIsProj:
+  if conf.cmd == cmdNimscript:
     showHintConf()
-    configFiles.setLen 0
+    conf.configFiles.setLen 0
   if conf.cmd != cmdIdeTools:
-    runNimScriptIfExists(scriptFile, isMain = true)
+    if conf.cmd == cmdNimscript:
+      runNimScriptIfExists(conf.projectFull, isMain = true)
+    else:
+      runNimScriptIfExists(scriptFile, isMain = true)
   else:
     if not scriptIsProj:
       runNimScriptIfExists(scriptFile, isMain = true)

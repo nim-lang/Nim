@@ -65,7 +65,7 @@
 ##
 ## The following example demonstrates a simple chat server.
 ##
-## .. code-block::nim
+## .. code-block:: Nim
 ##
 ##   import std/[asyncnet, asyncdispatch]
 ##
@@ -103,6 +103,7 @@ export SOBool
 # TODO: Remove duplication introduced by PR #4683.
 
 const defineSsl = defined(ssl) or defined(nimdoc)
+const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr)
 
 when defineSsl:
   import openssl
@@ -178,11 +179,12 @@ proc getLocalAddr*(socket: AsyncSocket): (string, Port) =
   ## This is high-level interface for `getsockname`:idx:.
   getLocalAddr(socket.fd, socket.domain)
 
-proc getPeerAddr*(socket: AsyncSocket): (string, Port) =
-  ## Get the socket's peer address and port number.
-  ##
-  ## This is high-level interface for `getpeername`:idx:.
-  getPeerAddr(socket.fd, socket.domain)
+when not useNimNetLite:
+  proc getPeerAddr*(socket: AsyncSocket): (string, Port) =
+    ## Get the socket's peer address and port number.
+    ##
+    ## This is high-level interface for `getpeername`:idx:.
+    getPeerAddr(socket.fd, socket.domain)
 
 proc newAsyncSocket*(domain, sockType, protocol: cint,
                      buffered = true,
@@ -655,7 +657,7 @@ proc hasDataBuffered*(s: AsyncSocket): bool {.since: (1, 5).} =
   # xxx dedup with std/net
   s.isBuffered and s.bufLen > 0 and s.currPos != s.bufLen
 
-when defined(posix):
+when defined(posix) and not useNimNetLite:
 
   proc connectUnix*(socket: AsyncSocket, path: string): owned(Future[void]) =
     ## Binds Unix socket to `path`.
@@ -736,6 +738,11 @@ proc close*(socket: AsyncSocket) =
         raiseSSLError()
 
 when defineSsl:
+  proc sslHandle*(self: AsyncSocket): SslPtr =
+    ## Retrieve the ssl pointer of `socket`.
+    ## Useful for interfacing with `openssl`.
+    self.sslHandle
+  
   proc wrapSocket*(ctx: SslContext, socket: AsyncSocket) =
     ## Wraps a socket in an SSL context. This function effectively turns
     ## `socket` into an SSL socket.

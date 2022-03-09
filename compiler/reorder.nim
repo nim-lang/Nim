@@ -36,11 +36,8 @@ proc newDepN(id: int, pnode: PNode): DepN =
 proc accQuoted(cache: IdentCache; n: PNode): PIdent =
   var id = ""
   for i in 0..<n.len:
-    let x = n[i]
-    case x.kind
-    of nkIdent: id.add(x.ident.s)
-    of nkSym: id.add(x.sym.name.s)
-    else: discard
+    let ident = n[i].getPIdent
+    if ident != nil: id.add(ident.s)
   result = getIdent(cache, id)
 
 proc addDecl(cache: IdentCache; n: PNode; declares: var IntSet) =

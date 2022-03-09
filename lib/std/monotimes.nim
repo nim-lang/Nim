@@ -10,17 +10,14 @@
 ##[
 The `std/monotimes` module implements monotonic timestamps. A monotonic
 timestamp represents the time that has passed since some system defined
-point in time. The monotonic timestamps are guaranteed to always increase,
+point in time. The monotonic timestamps are guaranteed not to decrease,
 meaning that that the following is guaranteed to work:
 ]##
 
 runnableExamples:
-  import std/os
-
   let a = getMonoTime()
-  sleep(10)
   let b = getMonoTime()
-  assert a < b
+  assert a <= b
 
 ##[
 This is not guaranteed for the `times.Time` type! This means that the
@@ -39,7 +36,7 @@ See also
 * `times module <times.html>`_
 ]##
 
-import std/times
+import times
 
 type
   MonoTime* = object ## Represents a monotonic timestamp.
@@ -77,7 +74,11 @@ when defined(js):
   {.pop.}
 
 elif defined(posix) and not defined(osx):
-  import std/posix
+  import posix
+
+when defined(zephyr):
+  proc k_uptime_ticks(): int64 {.importc: "k_uptime_ticks", header: "<kernel.h>".}
+  proc k_ticks_to_ns_floor64(ticks: int64): int64 {.importc: "k_ticks_to_ns_floor64", header: "<kernel.h>".}
 
 elif defined(windows):
   proc QueryPerformanceCounter(res: var uint64) {.
@@ -101,6 +102,9 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
     mach_timebase_info(machAbsoluteTimeFreq)
     result = MonoTime(ticks: ticks * machAbsoluteTimeFreq.numer div
       machAbsoluteTimeFreq.denom)
+  elif defined(zephyr):
+    let ticks = k_ticks_to_ns_floor64(k_uptime_ticks())
+    result = MonoTime(ticks: ticks)
   elif defined(posix):
     var ts: Timespec
     discard clock_gettime(CLOCK_MONOTONIC, ts)

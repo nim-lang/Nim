@@ -1,5 +1,3 @@
-.. default-role:: code
-
 =========================================
     Internals of the Nim Compiler
 =========================================
@@ -8,6 +6,8 @@
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
   "Abstraction is layering ignorance on top of reality." -- Richard Gabriel
@@ -38,42 +38,61 @@ Path           Purpose
 Bootstrapping the compiler
 ==========================
 
-**Note**: Add ``.`` to your PATH so that `koch` can be used without the `./`.
+**Note**: Add ``.`` to your PATH so that `koch`:cmd: can be used without the ``./``.
 
-Compiling the compiler is a simple matter of running::
+Compiling the compiler is a simple matter of running:
+
+.. code:: cmd
 
   nim c koch.nim
   koch boot -d:release
 
-For a debug version use::
+For a debug version use:
+
+.. code:: cmd
 
   nim c koch.nim
   koch boot
 
 
-And for a debug version compatible with GDB::
+And for a debug version compatible with GDB:
+
+.. code:: cmd
 
   nim c koch.nim
   koch boot --debuginfo --linedir:on
 
-The `koch` program is Nim's maintenance script. It is a replacement for
+The `koch`:cmd: program is Nim's maintenance script. It is a replacement for
 make and shell scripting with the advantage that it is much more portable.
 More information about its options can be found in the `koch <koch.html>`_
 documentation.
 
 
+Reproducible builds
+-------------------
+
+Set the compilation timestamp with the `SOURCE_DATE_EPOCH` environment variable.
+
+.. code:: cmd
+
+  export SOURCE_DATE_EPOCH=$(git log -n 1 --format=%at)
+  koch boot # or `./build_all.sh`
+
+
 Developing the compiler
 =======================
 
-To create a new compiler for each run, use `koch temp`::
+To create a new compiler for each run, use `koch temp`:cmd:\:
+
+.. code:: cmd
 
   koch temp c test.nim
 
-`koch temp` creates a debug build of the compiler, which is useful
+`koch temp`:cmd: creates a debug build of the compiler, which is useful
 to create stacktraces for compiler debugging.
 
 You can of course use GDB or Visual Studio to debug the
-compiler (via `--debuginfo --lineDir:on`). However, there
+compiler (via `--debuginfo --lineDir:on`:option:). However, there
 are also lots of procs that aid in debugging:
 
 
@@ -113,7 +132,7 @@ You can import them directly for debugging:
 The compiler's architecture
 ===========================
 
-Nim uses the classic compiler architecture: A lexer/scanner feds tokens to a
+Nim uses the classic compiler architecture: A lexer/scanner feeds tokens to a
 parser. The parser builds a syntax tree that is used by the code generators.
 This syntax tree is the interface between the parser and the code generator.
 It is essential to understand most of the compiler's code.
@@ -136,16 +155,18 @@ examples how the AST represents each syntactic structure.
 Bisecting for regressions
 =========================
 
-`koch temp` returns 125 as the exit code in case the compiler
-compilation fails. This exit code tells `git bisect` to skip the
-current commit.::
+`koch temp`:cmd: returns 125 as the exit code in case the compiler
+compilation fails. This exit code tells `git bisect`:cmd: to skip the
+current commit:
+
+.. code:: cmd
 
   git bisect start bad-commit good-commit
   git bisect run ./koch temp -r c test-source.nim
 
 You can also bisect using custom options to build the compiler, for example if
 you don't need a debug version of the compiler (which runs slower), you can replace
-`./koch temp` by explicit compilation command, see `Rebuilding the compiler`_.
+`./koch temp`:cmd: by explicit compilation command, see `Bootstrapping the compiler`_.
 
 
 Runtimes
@@ -182,9 +203,45 @@ check that the OS, System modules work and recompile Nim.
 
 The only case where things aren't as easy is when old runtime's garbage
 collectors need some assembler tweaking to work. The default
-implementation uses C's `setjmp` function to store all registers
+implementation uses C's `setjmp`:c: function to store all registers
 on the hardware stack. It may be necessary that the new platform needs to
 replace this generic code by some assembler code.
+
+Files that may need changed for your platform include:
+
+* `compiler/platform.nim`
+  Add os/cpu properties.
+* `lib/system.nim`
+  Add os/cpu to the documentation for `system.hostOS` and `system.hostCPU`.
+* `compiler/options.nim`
+  Add special os/cpu property checks in `isDefined`.
+* `compiler/installer.ini`
+  Add os/cpu to `Project.Platforms` field.
+* `lib/system/platforms.nim`
+  Add os/cpu.
+* `lib/pure/include/osseps.nim`
+  Add os specializations.
+* `lib/pure/distros.nim`
+  Add os, package handler.
+* `tools/niminst/makefile.nimf`
+  Add os/cpu compiler/linker flags.
+* `tools/niminst/buildsh.nimf`
+  Add os/cpu compiler/linker flags.
+
+If the `--os` or `--cpu` options aren't passed to the compiler, then Nim will
+determine the current host os, cpu and endianess from `system.cpuEndian`,
+`system.hostOS` and `system.hostCPU`. Those values are derived from
+`compiler/platform.nim`.
+
+In order for the new platform to be bootstrapped from the `csources`, it must:
+
+* have `compiler/platform.nim` updated
+* have `compiler/installer.ini` updated
+* have `tools/niminst/buildsh.nimf` updated
+* have `tools/niminst/makefile.nimf` updated
+* be backported to the Nim version used by the `csources`
+* the new `csources` must be pushed
+* the new `csources` revision must be updated in `config/build_config.txt`
 
 
 Runtime type information
@@ -207,7 +264,7 @@ Complex assignments
 
 We already know the type information as a graph in the compiler.
 Thus we need to serialize this graph as RTTI for C code generation.
-Look at the file `lib/system/hti.nim` for more information.
+Look at the file ``lib/system/hti.nim`` for more information.
 
 
 Magics and compilerProcs
@@ -368,7 +425,7 @@ pass generates code to setup the environment and to pass it around. However,
 this pass does not change the types! So we have some kind of mismatch here; on
 the one hand the proc expression becomes an explicit tuple, on the other hand
 the tyProc(ccClosure) type is not changed. For C code generation it's also
-important the hidden formal param is `void*` and not something more
+important the hidden formal param is `void*`:c: and not something more
 specialized. However the more specialized env type needs to passed to the
 backend somehow. We deal with this by modifying `s.ast[paramPos]` to contain
 the formal hidden parameter, but not `s.typ`!

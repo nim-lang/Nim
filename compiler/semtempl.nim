@@ -110,9 +110,14 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
 
 proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
   result = copyNode(n)
+  var count = 0
   for i in 0..<n.len:
     toMixin.incl(considerQuotedIdent(c, n[i]).id)
-    result.add symChoice(c, n[i], nil, scForceOpen)
+    let x = symChoice(c, n[i], nil, scForceOpen)
+    inc count, x.len
+    result.add x
+  if count == 0:
+    result = newNodeI(nkEmpty, n.info)
 
 proc replaceIdentBySym(c: PContext; n: var PNode, s: PNode) =
   case n.kind
@@ -130,9 +135,6 @@ type
     scopeN: int
     noGenSym: int
     inTemplateHeader: int
-
-template withBracketExpr(ctx, x, body: untyped) =
-  body
 
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
   case n.kind
@@ -211,9 +213,18 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
     if (n.kind == nkPragmaExpr and n.len >= 2 and n[1].kind == nkPragma):
       let pragmaNode = n[1]
       for i in 0..<pragmaNode.len:
-        openScope(c)
-        pragmaNode[i] = semTemplBody(c,pragmaNode[i])
-        closeScope(c)
+        let ni = pragmaNode[i]
+        # see D20210801T100514
+        var found = false
+        if ni.kind == nkIdent:
+          for a in templatePragmas:
+            if ni.ident == getIdent(c.c.cache, $a):
+              found = true
+              break
+        if not found:
+          openScope(c)
+          pragmaNode[i] = semTemplBody(c, pragmaNode[i])
+          closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
       if n.kind != nkSym:
@@ -239,7 +250,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of OverloadableSyms:
+  of OverloadableSyms-{skEnumField}:
     result = symChoice(c, n, s, scOpen, isField)
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
@@ -250,12 +261,17 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
-    if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNode(s, n.info)
+    if s.kind == skEnumField and overloadableEnums in c.features:
+      result = symChoice(c, n, s, scOpen, isField)
+    elif isField and sfGenSym in s.flags:
+      result = n
+    else:
+      result = newSymNode(s, n.info)
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
-    if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
+    # field access (dot expr) will be handled by builtinFieldAccess
+    if not isField and {optStyleHint, optStyleError} * c.config.globalOptions != {}:
       styleCheckUse(c.config, n.info, s)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
@@ -309,22 +325,26 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   # close scope for parameters
   closeScope(c)
 
-proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
+proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start = 0) =
   for i in start..<n.len:
     var a = n[i]
-    if a.kind == nkCommentStmt: continue
-    if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): illFormedAst(a, c.c.config)
-    checkMinSonsLen(a, 3, c.c.config)
-    when defined(nimsuggest):
-      inc c.c.inTypeContext
-    a[^2] = semTemplBody(c, a[^2])
-    when defined(nimsuggest):
-      dec c.c.inTypeContext
-    a[^1] = semTemplBody(c, a[^1])
-    for j in 0..<a.len-2:
-      addLocalDecl(c, a[j], symKind)
+    case a.kind:
+    of nkCommentStmt: continue
+    of nkIdentDefs, nkVarTuple, nkConstDef:
+      checkMinSonsLen(a, 3, c.c.config)
+      when defined(nimsuggest):
+        inc c.c.inTypeContext
+      a[^2] = semTemplBody(c, a[^2])
+      when defined(nimsuggest):
+        dec c.c.inTypeContext
+      a[^1] = semTemplBody(c, a[^1])
+      for j in 0..<a.len-2:
+        addLocalDecl(c, a[j], symKind)
+    else:
+      illFormedAst(a, c.c.config)
 
-proc semPattern(c: PContext, n: PNode): PNode
+
+proc semPattern(c: PContext, n: PNode; s: PSym): PNode
 
 proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
   result = n
@@ -437,15 +457,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     checkMinSonsLen(n, 1, c.c.config)
     semTemplSomeDecl(c, n, skParam, 1)
     n[0] = semTemplBody(c, n[0])
-  of nkConstSection:
-    for i in 0..<n.len:
-      var a = n[i]
-      if a.kind == nkCommentStmt: continue
-      if (a.kind != nkConstDef): illFormedAst(a, c.c.config)
-      checkSonsLen(a, 3, c.c.config)
-      addLocalDecl(c, a[0], skConst)
-      a[1] = semTemplBody(c, a[1])
-      a[2] = semTemplBody(c, a[2])
+  of nkConstSection: semTemplSomeDecl(c, n, skConst)
   of nkTypeSection:
     for i in 0..<n.len:
       var a = n[i]
@@ -491,9 +503,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent(c.c.cache, "[]"), n.info)
     for i in 0..<n.len: result.add(n[i])
-    let n0 = semTemplBody(c, n[0])
-    withBracketExpr c, n0:
-      result = semTemplBodySons(c, result)
+    result = semTemplBodySons(c, result)
   of nkCurlyExpr:
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
@@ -512,8 +522,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       for i in 0..<a.len: result.add(a[i])
       result.add(b)
       let a0 = semTemplBody(c, a[0])
-      withBracketExpr c, a0:
-        result = semTemplBodySons(c, result)
+      result = semTemplBodySons(c, result)
     of nkCurlyExpr:
       result = newNodeI(nkCall, n.info)
       result.add newIdentNode(getIdent(c.c.cache, "{}="), n.info)
@@ -594,7 +603,12 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     for i in 0..<n.len:
       result[i] = semTemplBodyDirty(c, n[i])
 
+# in semstmts.nim:
+proc semProcAnnotation(c: PContext, prc: PNode; validPragmas: TSpecialWords): PNode
+
 proc semTemplateDef(c: PContext, n: PNode): PNode =
+  result = semProcAnnotation(c, n, templatePragmas)
+  if result != nil: return result
   result = n
   var s: PSym
   if isTopLevel(c):
@@ -609,8 +623,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     if sfSystemModule in s.owner.flags and s.name.s in names or
        s.owner.name.s == "vm" and s.name.s == "stackTrace":
       incl(s.flags, sfCallsite)
-
-  s.ast = n
 
   styleCheckDef(c.config, s)
   onDef(n[namePos].info, s)
@@ -646,10 +658,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     n[genericParamsPos] = n[miscPos][1]
     n[miscPos] = c.graph.emptyNode
   if allUntyped: incl(s.flags, sfAllUntyped)
-  
+
   if n[patternPos].kind != nkEmpty:
-    n[patternPos] = semPattern(c, n[patternPos])
-  
+    n[patternPos] = semPattern(c, n[patternPos], s)
+
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
   ctx.toMixin = initIntSet()
@@ -664,6 +676,12 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   semIdeForTemplateOrGeneric(c, n[bodyPos], ctx.cursorInBody)
   closeScope(c)
   popOwner(c)
+
+  # set the symbol AST after pragmas, at least. This stops pragma that have
+  # been pushed (implicit) to be explicitly added to the template definition
+  # and misapplied to the body. see #18113
+  s.ast = n
+
   if sfCustomPragma in s.flags:
     if n[bodyPos].kind != nkEmpty:
       localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)
@@ -795,7 +813,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     for i in 0..<n.len:
       result[i] = semPatternBody(c, n[i])
 
-proc semPattern(c: PContext, n: PNode): PNode =
+proc semPattern(c: PContext, n: PNode; s: PSym): PNode =
   openScope(c)
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
@@ -810,3 +828,4 @@ proc semPattern(c: PContext, n: PNode): PNode =
     elif result.len == 0:
       localError(c.config, n.info, "a pattern cannot be empty")
   closeScope(c)
+  addPattern(c, LazySym(sym: s))

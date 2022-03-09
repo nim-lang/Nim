@@ -50,6 +50,41 @@ block: # parseIpAddress tests
     expect(ValueError):
       discard parseIpAddress("gggg:cdba:0000:0000:0000:0000:3257:9652")
 
+  block: # ipv4-compatible ipv6 address (embedded ipv4 address)
+    check parseIpAddress("::ffff:10.0.0.23") == parseIpAddress("::ffff:0a00:0017")
+
+  block: # octal number in ipv4 address
+    expect(ValueError):
+      discard parseIpAddress("010.8.8.8")
+    expect(ValueError):
+      discard parseIpAddress("8.010.8.8")
+
+  block: # hexadecimal number in ipv4 address
+    expect(ValueError):
+      discard parseIpAddress("0xc0.168.0.1")
+    expect(ValueError):
+      discard parseIpAddress("192.0xa8.0.1")
+
+  block: # less than 4 numbers in ipv4 address
+    expect(ValueError):
+      discard parseIpAddress("127.0.1")
+
+  block: # octal number in embedded ipv4 address
+    expect(ValueError):
+      discard parseIpAddress("::ffff:010.8.8.8")
+    expect(ValueError):
+      discard parseIpAddress("::ffff:8.010.8.8")
+
+  block: # hexadecimal number in embedded ipv4 address
+    expect(ValueError):
+      discard parseIpAddress("::ffff:0xc0.168.0.1")
+    expect(ValueError):
+      discard parseIpAddress("::ffff:192.0xa8.0.1")
+
+  block: # less than 4 numbers in embedded ipv4 address
+    expect(ValueError):
+      discard parseIpAddress("::ffff:127.0.1")
+
 block: # "IpAddress/Sockaddr conversion"
   proc test(ipaddrstr: string) =
     var ipaddr_1 = parseIpAddress(ipaddrstr)

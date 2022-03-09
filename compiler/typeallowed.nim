@@ -57,7 +57,10 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyVar, tyLent:
     if kind in {skProc, skFunc, skConst} and (views notin c.features):
       result = t
-    elif t.kind == tyLent and kind != skResult and (views notin c.features):
+    elif taIsOpenArray in flags:
+      result = t
+    elif t.kind == tyLent and ((kind != skResult and views notin c.features) or
+                              kind == skParam): # lent can't be used as parameters.
       result = t
     else:
       var t2 = skipTypes(t[0], abstractInst-{tyTypeDesc, tySink})
@@ -96,6 +99,9 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = nil
   of tyUntyped, tyTyped:
     if kind notin {skParam, skResult} or taNoUntyped in flags: result = t
+  of tyIterable:
+    if kind notin {skParam} or taNoUntyped in flags: result = t
+      # tyIterable is only for templates and macros.
   of tyStatic:
     if kind notin {skParam}: result = t
   of tyVoid:
@@ -112,7 +118,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = t
   of tyNil:
     if kind != skConst and kind != skParam: result = t
-  of tyString, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString, tyPointer:
+  of tyString, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCstring, tyPointer:
     result = nil
   of tyOrdinal:
     if kind != skParam: result = t
@@ -120,7 +126,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = typeAllowedAux(marker, lastSon(t), kind, c, flags)
   of tyRange:
     if skipTypes(t[0], abstractInst-{tyTypeDesc}).kind notin
-      {tyChar, tyEnum, tyInt..tyFloat128, tyInt..tyUInt64}: result = t
+      {tyChar, tyEnum, tyInt..tyFloat128, tyInt..tyUInt64, tyRange}: result = t
   of tyOpenArray:
     # you cannot nest openArrays/sinks/etc.
     if (kind != skParam or taIsOpenArray in flags) and views notin c.features:
@@ -227,7 +233,7 @@ proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind =
   case t.kind
   of tyVar:
     result = mutableView
-  of tyLent, tyOpenArray:
+  of tyLent, tyOpenArray, tyVarargs:
     result = immutableView
   of tyGenericInst, tyDistinct, tyAlias, tyInferred, tySink, tyOwned,
      tyUncheckedArray, tySequence, tyArray, tyRef, tyStatic:

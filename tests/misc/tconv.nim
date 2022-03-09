@@ -1,5 +1,11 @@
+discard """
+  matrix: "--warningAsError:EnumConv --warningAsError:CStringConv"
+"""
+
 template reject(x) =
-    static: assert(not compiles(x))
+  static: doAssert(not compiles(x))
+template accept(x) =
+  static: doAssert(compiles(x))
 
 reject:
     const x = int8(300)
@@ -55,3 +61,60 @@ block: # issue 3766
     proc r(x: static[R]) =
       echo x
     r 3.R
+
+
+block: # https://github.com/nim-lang/RFCs/issues/294
+  type Koo = enum k1, k2
+  type Goo = enum g1, g2
+
+  accept: Koo(k2)
+  accept: k2.Koo
+  accept: k2.int.Goo
+
+  reject: Goo(k2)
+  reject: k2.Goo
+  reject: k2.string
+
+  {.push warningAsError[EnumConv]:off.}
+  discard Goo(k2)
+  accept: Goo(k2)
+  accept: k2.Goo
+  reject: k2.string
+  {.pop.}
+
+  reject: Goo(k2)
+  reject: k2.Goo
+
+reject:
+  # bug #18550
+  proc f(c: char): cstring =
+    var x = newString(109*1024*1024)
+    x[0] = c
+    x
+
+{.push warning[AnyEnumConv]:on, warningAsError[AnyEnumConv]:on.}
+
+reject:
+  type
+    Foo = enum
+      one
+      three
+
+  var va = 2
+  var vb = va.Foo
+
+{.pop.}
+
+{.push warningAsError[HoleEnumConv]:on.}
+
+reject:
+  # bug #12815
+  type
+    Hole = enum
+      one = 1
+      three = 3
+
+  var va = 2
+  var vb = va.Hole
+
+{.pop.}
