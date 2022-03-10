@@ -477,8 +477,7 @@ iterator lines*(p: Process): string {.since: (1, 3), tags: [ReadIOEffect].} =
   while true:
     if outp.readLine(line):
       yield line
-    else:
-      if p.peekExitCode != -1: break
+    elif not running(p): break
 
 proc readLines*(p: Process): (seq[string], int) {.since: (1, 3).} =
   ## Convenience function for working with `startProcess` to read data from a
