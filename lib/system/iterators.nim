@@ -1,3 +1,6 @@
+when (NimMajor, NimMinor) > (1, 6):
+  import std/assertions
+
 when defined(nimHasLentIterators) and not defined(nimNoLentIterators):
   template lent2(T): untyped = lent T
 else:

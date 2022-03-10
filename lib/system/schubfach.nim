@@ -12,6 +12,9 @@
 
 import std/private/digitsutils
 
+when (NimMajor, NimMinor) > (1, 6):
+  import std/assertions
+
 
 template sf_Assert(x: untyped): untyped =
   assert(x)

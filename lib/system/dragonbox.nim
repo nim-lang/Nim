@@ -25,6 +25,10 @@
 import std/private/digitsutils
 
 
+when (NimMajor, NimMinor) > (1, 6):
+  import std/assertions
+
+
 const
   dtoaMinBufferLength*: cint = 64
 

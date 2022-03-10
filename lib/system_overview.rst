@@ -5,7 +5,6 @@ The System module imports several separate modules, and their documentation
 is in separate files:
 
 * `iterators <iterators.html>`_
-* `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
 * `widestrs <widestrs.html>`_
 

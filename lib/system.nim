@@ -1830,8 +1830,9 @@ when not defined(nimscript):
 when defined(nimV2):
   include system/arc
 
-import system/assertions
-export assertions
+when (NimMajor, NimMinor) <= (1, 6):
+  import system/assertions
+  export assertions
 
 import system/iterators
 export iterators

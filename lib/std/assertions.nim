@@ -1,7 +1,4 @@
 ## This module provides various assertion utilities.
-##
-## **Note:** This module is reexported by `system` and thus does not need to be
-## imported directly (with `system/assertions`).
 
 when not declared(sysFatal):
   include "system/fatal"
