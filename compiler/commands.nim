@@ -1043,6 +1043,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "NimMajor", "1")
       defineSymbol(conf.symbols, "NimMinor", "2")
       conf.globalOptions.incl optNimV12Emulation
+    of "1.6":
+      defineSymbol(conf.symbols, "NimMajor", "1")
+      defineSymbol(conf.symbols, "NimMinor", "6")
+      conf.globalOptions.incl optNimV16Emulation
     else:
       localError(conf, info, "unknown Nim version; currently supported values are: `1.0`, `1.2`")
     # always be compatible with 1.x.100:

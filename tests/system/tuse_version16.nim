@@ -1,5 +1,5 @@
 discard """
-  matrix: "--useVersion:1.0"
+  matrix: "--useVersion:1.6"
 """
 
 {.warning[UnusedImport]: off.}
@@ -46,4 +46,4 @@ import std/[
 ]
 
 
-doAssert NimVersion == "1.0.100"
+doAssert NimVersion == "1.6.100"
