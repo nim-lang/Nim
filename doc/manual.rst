@@ -5797,11 +5797,6 @@ However, this means that the method call syntax is not available for
   tmp(12)
 
 
-**Note**: The Nim compiler prior to version 1 was more lenient about this
-requirement. Use the `--useVersion:0.19`:option: switch for a transition period.
-
-
-
 Limitations of the method call syntax
 -------------------------------------
 
