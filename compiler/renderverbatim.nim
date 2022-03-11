@@ -1,5 +1,7 @@
 import strutils
 
+import std/assertions
+
 import ast, options, msgs
 
 const isDebug = false

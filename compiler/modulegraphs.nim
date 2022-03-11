@@ -15,6 +15,8 @@ import intsets, tables, hashes, md5_old
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils
 import ic / [packed_ast, ic]
 
+import std/assertions
+
 type
   SigHash* = distinct MD5Digest
 

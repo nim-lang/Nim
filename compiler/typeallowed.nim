@@ -13,6 +13,8 @@
 import
   intsets, ast, renderer, options, semdata, types
 
+import std/assertions
+
 type
   TTypeAllowedFlag* = enum
     taField,

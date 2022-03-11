@@ -14,6 +14,8 @@ import
   idents, lexer, passes, syntaxes, llstream, modulegraphs,
   lineinfos, pathutils, tables
 
+import std/assertions
+
 import ic / replayer
 
 proc resetSystemArtifacts*(g: ModuleGraph) =

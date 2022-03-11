@@ -12,6 +12,8 @@
 
 import os, pathnorm
 
+import std/assertions
+
 when defined(nimPreviewSlimSystem):
   import std/syncio
 

@@ -29,6 +29,8 @@
 
 import tables
 
+import std/assertions
+
 import
   strutils, ast, types, msgs, renderer, vmdef,
   intsets, magicsys, options, lowerings, lineinfos, transf, astmsgs

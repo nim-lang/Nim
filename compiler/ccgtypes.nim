@@ -13,6 +13,8 @@
 
 import sighashes, modulegraphs
 
+import std/assertions
+
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
 
 proc isKeyword(w: PIdent): bool =

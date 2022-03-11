@@ -10,6 +10,8 @@
 import
   os, strutils, options, msgs, tinyc, lineinfos, sequtils
 
+import std/assertions
+
 const tinyPrefix = "dist/nim-tinyc-archive".unixToNativePath
 const nimRoot = currentSourcePath.parentDir.parentDir
 const tinycRoot = nimRoot / tinyPrefix

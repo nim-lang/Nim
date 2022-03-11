@@ -10,6 +10,8 @@
 ## Serialization utilities for the compiler.
 import strutils, math
 
+import std/assertions
+
 # bcc on windows doesn't have C99 functions
 when defined(windows) and defined(bcc):
   {.emit: """#if defined(_MSC_VER) && _MSC_VER < 1900

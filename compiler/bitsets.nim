@@ -10,6 +10,8 @@
 # this unit handles Nim sets; it implements bit sets
 # the code here should be reused in the Nim standard library
 
+import std/assertions
+
 type
   ElemType = byte
   TBitSet* = seq[ElemType]    # we use byte here to avoid issues with

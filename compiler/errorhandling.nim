@@ -12,6 +12,8 @@
 
 import ast, renderer, options, strutils, types
 
+import std/assertions
+
 type
   ErrorKind* = enum ## expand as you need.
     RawTypeMismatchError

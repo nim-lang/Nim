@@ -13,6 +13,8 @@ import
   lineinfos, hashes, options, ropes, idents, int128, tables
 from strutils import toLowerAscii
 
+import std/assertions
+
 export int128
 
 type

@@ -12,6 +12,8 @@
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos, modulegraphs
 
+import std/assertions
+
 from concepts import makeTypeDesc
 
 const tfInstClearedFlags = {tfHasMeta, tfUnresolved}

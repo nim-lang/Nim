@@ -23,6 +23,8 @@ from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
 from nodejs import findNodeJs
 
+import std/assertions
+
 const
   exportSection = skField
   docCmdSkip = "skip"

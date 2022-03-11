@@ -12,6 +12,8 @@
 import std/[intsets, tables]
 import ".." / [ast, options, lineinfos, types]
 
+import std/assertions
+
 import packed_ast, ic, bitabs
 
 type

@@ -13,6 +13,7 @@
 import sets
 import ".." / [ast, modulegraphs]
 import packed_ast, bitabs, ic
+import std/assertions
 
 type
   CheckedContext = object

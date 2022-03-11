@@ -14,6 +14,8 @@ import
   ast, ropes, options, strutils, nimlexbase, cgendata, rodutils,
   intsets, llstream, tables, modulegraphs, pathutils
 
+import std/assertions
+
 # Careful! Section marks need to contain a tabulator so that they cannot
 # be part of C string literals.
 

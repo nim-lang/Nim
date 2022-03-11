@@ -4,6 +4,8 @@ import
   msgs, modulegraphs, syntaxes, options, modulepaths,
   lineinfos
 
+import std/assertions
+
 type
   DepN = ref object
     pnode: PNode

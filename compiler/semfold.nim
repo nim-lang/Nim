@@ -15,6 +15,8 @@ import
   platform, math, msgs, idents, renderer, types,
   commands, magicsys, modulegraphs, strtabs, lineinfos
 
+import std/assertions
+
 from system/memory import nimCStrLen
 
 proc errorType*(g: ModuleGraph): PType =

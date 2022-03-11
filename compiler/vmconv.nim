@@ -1,5 +1,7 @@
 import ast
 
+import std/assertions
+
 template elementType*(T: typedesc): typedesc =
   typeof(block:
     var a: T

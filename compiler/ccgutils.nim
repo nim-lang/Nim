@@ -13,6 +13,8 @@ import
   ast, types, hashes, strutils, msgs, wordrecg,
   platform, trees, options, cgendata
 
+import std/assertions
+
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind
   of nkStmtList:

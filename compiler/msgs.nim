@@ -12,6 +12,8 @@ import
   std/private/miscdollars,
   options, ropes, lineinfos, pathutils, strutils2
 
+import std/assertions
+
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 

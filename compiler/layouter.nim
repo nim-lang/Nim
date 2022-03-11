@@ -10,6 +10,7 @@
 ## Layouter for nimpretty.
 
 import idents, lexer, lineinfos, llstream, options, msgs, strutils, pathutils
+import std/assertions
 
 const
   MinLineLen = 15

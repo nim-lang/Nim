@@ -15,6 +15,8 @@ import
   intsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
 
+import std/assertions
+
 import ic / ic
 
 type

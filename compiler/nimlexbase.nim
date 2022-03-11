@@ -15,6 +15,8 @@
 import
   llstream, strutils
 
+import std/assertions
+
 const
   Lrz* = ' '
   Apo* = '\''

@@ -13,6 +13,8 @@
 
 import sets
 
+import std/assertions
+
 from os import nil
 from std/private/miscdollars import toLocation
 

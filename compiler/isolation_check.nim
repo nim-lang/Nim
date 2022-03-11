@@ -13,6 +13,8 @@
 import
   ast, types, renderer, intsets
 
+import std/assertions
+
 proc canAlias(arg, ret: PType; marker: var IntSet): bool
 
 proc canAliasN(arg: PType; n: PNode; marker: var IntSet): bool =

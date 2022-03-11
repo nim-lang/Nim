@@ -22,6 +22,8 @@ when not defined(leanCompiler):
 
 import strutils except `%` # collides with ropes.`%`
 
+import std/assertions
+
 from ic / ic import ModuleBackendFlag
 import dynlib
 

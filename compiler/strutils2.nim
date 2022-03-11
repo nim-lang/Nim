@@ -8,6 +8,8 @@ Un-necessary allocations are avoided and appropriate algorithms are used at the
 expense of code clarity when justified.
 ]##
 
+import std/assertions
+
 proc dataPointer*[T](a: T): pointer =
   ## same as C++ `data` that works with std::string, std::vector etc.
   ## Note: safe to use when a.len == 0 but whether the result is nil or not

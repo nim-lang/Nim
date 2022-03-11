@@ -32,6 +32,8 @@
 import ast, intsets, lineinfos, renderer
 import std/private/asciitables
 
+import std/assertions
+
 type
   InstrKind* = enum
     goto, fork, def, use

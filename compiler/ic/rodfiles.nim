@@ -15,6 +15,7 @@
 ##     the `ic` or `packed_ast` modules to understand the logical format.
 
 from typetraits import supportsCopyMem
+import std/assertions
 
 ## Overview
 ## ========

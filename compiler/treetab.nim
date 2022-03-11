@@ -12,6 +12,9 @@
 import
   hashes, ast, astalgo, types
 
+import std/assertions
+
+
 proc hashTree*(n: PNode): Hash =
   if n.isNil:
     return

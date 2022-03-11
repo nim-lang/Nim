@@ -14,6 +14,9 @@ import
   vmdef, modulegraphs, idents, os, pathutils,
   passaux, scriptconfig, std/compilesettings
 
+import std/assertions
+
+
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
     mainModule: PSym

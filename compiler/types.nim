@@ -13,6 +13,9 @@ import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
   lineinfos, int128, modulegraphs, astmsgs
 
+import std/assertions
+
+
 type
   TPreferedDesc* = enum
     preferName, # default

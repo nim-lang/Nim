@@ -24,6 +24,8 @@ import
   lowerings, liftlocals,
   modulegraphs, lineinfos
 
+import std/assertions
+
 proc transformBody*(g: ModuleGraph; idgen: IdGenerator, prc: PSym, cache: bool): PNode
 
 import closureiters, lambdalifting

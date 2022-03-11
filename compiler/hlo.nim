@@ -8,6 +8,7 @@
 #
 
 # This include implements the high level optimization pass.
+import std/assertions
 
 proc hlo(c: PContext, n: PNode): PNode
 

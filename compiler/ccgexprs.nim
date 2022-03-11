@@ -9,6 +9,8 @@
 
 # included from cgen.nim
 
+import std/assertions
+
 when defined(nimCompilerStacktraceHints):
   import std/stackframes
 

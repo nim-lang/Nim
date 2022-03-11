@@ -12,6 +12,8 @@
 import
   ast, astalgo, lineinfos, bitsets, types, options
 
+import std/assertions
+
 proc inSet*(s: PNode, elem: PNode): bool =
   assert s.kind == nkCurly
   if s.kind != nkCurly:

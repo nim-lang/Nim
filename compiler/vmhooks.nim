@@ -8,6 +8,7 @@
 #
 
 import pathutils
+import std/assertions
 
 template setX(k, field) {.dirty.} =
   a.slots[a.ra].ensureKind(k)

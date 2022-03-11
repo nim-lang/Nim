@@ -4,6 +4,7 @@
 ## type is for that purpose.
 
 from math import trunc
+import std/assertions
 
 type
   Int128* = object

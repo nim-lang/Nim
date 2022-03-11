@@ -12,6 +12,8 @@
 import
   ast, astalgo, types, trees, intsets
 
+import std/assertions
+
 type
   TAnalysisResult* = enum
     arNo, arMaybe, arYes

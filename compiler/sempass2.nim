@@ -12,6 +12,8 @@ import
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
   modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling, tables
 
+import std/assertions
+
 when defined(useDfa):
   import dfa
 

@@ -58,6 +58,8 @@
 import
   hashes
 
+import std/assertions
+
 from pathutils import AbsoluteFile
 
 type

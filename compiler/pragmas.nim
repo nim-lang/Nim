@@ -14,6 +14,8 @@ import
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter
 
+import std/assertions
+
 from ic / ic import addCompilerProc
 
 const

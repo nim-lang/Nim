@@ -9,6 +9,8 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
+import std/assertions
+
 import ast, tables, ropes, md5_old, modulegraphs
 from hashes import Hash
 import types

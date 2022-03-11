@@ -19,6 +19,8 @@ import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
   wordrecg, lineinfos, pathutils, parseutils
 
+import std/assertions
+
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning
   numChars*: set[char] = {'0'..'9', 'a'..'z', 'A'..'Z'}

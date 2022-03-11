@@ -3,6 +3,8 @@
 
 import hashes, rodfiles
 
+import std/assertions
+
 type
   LitId* = distinct uint32
 

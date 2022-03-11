@@ -8,6 +8,9 @@
 #
 
 import std/[os, strutils, parseopt]
+
+import std/assertions
+
 when defined(windows) and not defined(nimKochBootstrap):
   # remove workaround pending bootstrap >= 1.5.1
   # refs https://github.com/nim-lang/Nim/issues/18334#issuecomment-867114536

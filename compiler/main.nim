@@ -22,6 +22,8 @@ import
   modules,
   modulegraphs, lineinfos, pathutils, vmprofiler
 
+import std/assertions
+
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
 

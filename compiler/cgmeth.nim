@@ -13,6 +13,8 @@ import
   intsets, options, ast, msgs, idents, renderer, types, magicsys,
   sempass2, strutils, modulegraphs, lineinfos
 
+import std/assertions
+
 proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
   var dest = skipTypes(d, abstractPtrs)
   var source = skipTypes(n.typ, abstractPtrs)

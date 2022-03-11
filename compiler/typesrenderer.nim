@@ -9,6 +9,8 @@
 
 import renderer, strutils, ast, types
 
+import std/assertions
+
 const defaultParamSeparator* = ","
 
 template mayNormalize(s: string): string =

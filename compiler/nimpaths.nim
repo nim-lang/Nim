@@ -19,6 +19,8 @@ Unstable API
 
 import os, strutils
 
+import std/assertions
+
 const
   docCss* = "$nimr/doc/nimdoc.css"
   docHackNim* = "$nimr/tools/dochack/dochack.nim"

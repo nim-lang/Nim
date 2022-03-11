@@ -13,6 +13,8 @@ import
   strutils, llstream, ast, idents, lexer, options, msgs, parser,
   filters, filter_tmpl, renderer, lineinfos, pathutils
 
+import std/assertions
+
 export Parser, parseAll, parseTopLevelStmt, closeParser
 
 type

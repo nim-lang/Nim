@@ -33,6 +33,8 @@ import
   llstream, lexer, idents, strutils, ast, msgs, options, lineinfos,
   pathutils
 
+import std/assertions
+
 when defined(nimpretty):
   import layouter
 

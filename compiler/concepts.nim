@@ -13,6 +13,8 @@
 
 import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer, types, intsets
 
+import std/assertions
+
 from magicsys import addSonSkipIntLit
 
 const

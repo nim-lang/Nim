@@ -12,6 +12,8 @@
 
 import ast, msgs, ropes, options, pathutils
 
+import std/assertions
+
 type
   NdiFile* = object
     enabled: bool

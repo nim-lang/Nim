@@ -21,6 +21,8 @@ import
 
 from trees import exprStructuralEquivalent, getRoot
 
+import std/assertions
+
 type
   Con = object
     owner: PSym

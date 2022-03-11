@@ -14,6 +14,8 @@ import ".." / [ast, idents, lineinfos, msgs, ropes, options,
 #import ".." / [renderer, astalgo]
 from os import removeFile, isAbsolute
 
+import std/assertions
+
 type
   PackedConfig* = object
     backend: TBackend

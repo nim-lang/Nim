@@ -15,6 +15,8 @@ import modulegraphs, lineinfos, idents, ast, renderer, semdata,
 
 from trees import isCaseObj
 
+import std/assertions
+
 type
   TLiftCtx = object
     g: ModuleGraph

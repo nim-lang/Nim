@@ -15,6 +15,8 @@ import
   ast, hashes, intsets, strutils, options, lineinfos, ropes, idents, rodutils,
   msgs
 
+import std/assertions
+
 proc hashNode*(p: RootRef): Hash
 proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
   # Convert a tree into its YAML representation; this is used by the

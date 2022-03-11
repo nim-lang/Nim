@@ -20,6 +20,8 @@
 
 import std/packedsets, algorithm, tables
 
+import std/assertions
+
 import ".."/[ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs]
 

@@ -37,6 +37,8 @@ import
 
 import json, sets, math, tables, intsets, strutils
 
+import std/assertions
+
 type
   TJSGen = object of PPassContext
     module: PSym

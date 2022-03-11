@@ -15,6 +15,8 @@ const
 import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs,
   lineinfos
 
+import std/assertions
+
 proc newDeref*(n: PNode): PNode {.inline.} =
   result = newNodeIT(nkHiddenDeref, n.info, n.typ[0])
   result.add n

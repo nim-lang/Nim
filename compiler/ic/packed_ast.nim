@@ -14,6 +14,9 @@
 
 import hashes, tables, strtabs
 import bitabs
+
+import std/assertions
+
 import ".." / [ast, options]
 
 type

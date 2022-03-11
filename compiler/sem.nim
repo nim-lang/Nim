@@ -19,6 +19,8 @@ import
   lowerings, plugins/active, lineinfos, strtabs, int128,
   isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs
 
+import std/assertions
+
 when defined(nimfix):
   import nimfix/prettybase
 

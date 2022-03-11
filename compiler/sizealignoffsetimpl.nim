@@ -9,6 +9,8 @@
 ## e-mail: arne.doering@gmx.net
 ## included from types.nim
 
+import std/assertions
+
 proc align(address, alignment: BiggestInt): BiggestInt =
   result = (address + (alignment - 1)) and not (alignment - 1)
 

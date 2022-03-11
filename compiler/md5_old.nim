@@ -13,6 +13,8 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
+import std/assertions
+
 type
   MD5State = array[0..3, uint32]
   MD5Block = array[0..15, uint32]
