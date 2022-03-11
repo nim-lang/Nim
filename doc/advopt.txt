@@ -161,7 +161,7 @@ Advanced options:
                             enable experimental language feature
   --legacy:$2
                             enable obsolete/legacy language feature
-  --useVersion:1.0|1.2      emulate Nim version X of the Nim compiler, for testing
+  --useVersion:1.0|1.2|1.6  emulate Nim version X of the Nim compiler, for testing
   --benchmarkVM:on|off      turn benchmarking of VM code with cpuTime() on|off
   --profileVM:on|off        turn compile time VM profiler on|off
   --sinkInference:on|off    turn sink parameter inference on|off (default: on)
