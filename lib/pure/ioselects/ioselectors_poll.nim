@@ -11,6 +11,10 @@
 
 import posix, times
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 # Maximum number of events that can be returned
 const MAX_POLL_EVENTS = 64
 

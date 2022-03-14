@@ -50,6 +50,9 @@ runnableExamples:
 
 import std/private/since
 
+since (1, 7):
+  import std/assertions
+
 import
   hashes, strutils
 

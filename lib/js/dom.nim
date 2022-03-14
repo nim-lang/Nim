@@ -1390,6 +1390,10 @@ proc `checked=`*(n: Node; v: bool) {.importcpp: "#.checked = #", nodecl.}
 proc `disabled=`*(n: Node; v: bool) {.importcpp: "#.disabled = #", nodecl.}
 
 when defined(nodejs):
+  import std/private/since
+  since (1, 7):
+    import std/assertions
+
   # we provide a dummy DOM for nodejs for testing purposes
   proc len*(x: Node): int = x.childNodes.len
   proc `[]`*(x: Node; idx: int): Element =

@@ -44,6 +44,9 @@ import httpcore
 from nativesockets import getLocalAddr, Domain, AF_INET, AF_INET6
 import std/private/since
 
+since (1, 7):
+  import std/assertions
+
 export httpcore except parseHeader
 
 const

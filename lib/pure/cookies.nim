@@ -11,6 +11,10 @@
 
 import strtabs, times, options
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 
 type
   SameSite* {.pure.} = enum ## The SameSite cookie attribute.

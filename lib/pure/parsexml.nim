@@ -149,6 +149,10 @@ an HTML document contains.
 import
   strutils, lexbase, streams, unicode
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 # the parser treats ``<br />`` as ``<br></br>``
 
 #  xmlElementCloseEnd, ## ``/>``

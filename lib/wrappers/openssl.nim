@@ -843,6 +843,9 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
 
   when isMainModule:
     # A simple certificate test
+    import std/private/since
+    since (1, 7):
+      import std/assertions
     let certbytes = readFile("certificate.der")
     let cert = d2i_X509(certbytes)
     let encoded = cert.i2d_X509()

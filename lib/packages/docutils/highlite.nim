@@ -59,6 +59,10 @@ import
   strutils
 from algorithm import binarySearch
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 type
   SourceLanguage* = enum
     langNone, langNim, langCpp, langCsharp, langC, langJava,

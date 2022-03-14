@@ -217,6 +217,10 @@ when defined(createNimHcr):
     {.error: "This file has to be compiled as a library!".}
 
   import os, tables, sets, times, strutils, reservedmem, dynlib
+  import std/private/since
+  since (1, 7):
+    import std/assertions
+
 
   template trace(args: varargs[untyped]) =
     when defined(testNimHcr) or defined(traceHcr):

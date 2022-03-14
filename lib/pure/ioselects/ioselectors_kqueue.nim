@@ -11,6 +11,10 @@
 
 import posix, times, kqueue, nativesockets
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 const
   # Maximum number of events that can be returned.
   MAX_KQUEUE_EVENTS = 64

@@ -13,6 +13,10 @@
 
 import deques, streams
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 type
   PipeOutStream*[T] = ref object of T
     # When stream peek operation is called, it reads from base stream

@@ -11,6 +11,10 @@ import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
 import system/stacktraces
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type
   CallbackFunc = proc () {.closure, gcsafe.}

@@ -316,6 +316,10 @@ single letter DSLs.
 import macros, parseutils, unicode
 import strutils except format
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 proc mkDigit(v: int, typ: char): string {.inline.} =
   assert(v < 26)
   if v < 10:

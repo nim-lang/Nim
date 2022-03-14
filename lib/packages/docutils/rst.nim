@@ -225,6 +225,10 @@ import
   std/private/miscdollars, tables, strscans
 from highlite import SourceLanguage, getSourceLanguage
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 type
   RstParseOption* = enum     ## options for the RST parser
     roSupportSmilies,         ## make the RST parser support smilies like ``:)``

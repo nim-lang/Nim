@@ -25,6 +25,10 @@ const
 import strutils, macros
 import std/private/decode_helpers
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 when useUnicode:
   import unicode
   export unicode.`==`

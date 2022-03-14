@@ -172,6 +172,8 @@ import db_common
 export db_common
 
 import std/private/[since, dbutils]
+since (1, 7):
+  import std/assertions
 
 type
   DbConn* = PSqlite3  ## Encapsulates a database connection.

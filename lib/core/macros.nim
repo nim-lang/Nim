@@ -10,6 +10,9 @@
 include "system/inclrtl"
 import std/private/since
 
+since (1, 7):
+  import std/assertions
+
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
 ##

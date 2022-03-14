@@ -10,6 +10,12 @@
 import macros
 from typetraits import OrdinalEnum, HoleyEnum
 
+import std/private/since
+
+since (1, 7):
+  import std/assertions
+
+
 # xxx `genEnumCaseStmt` needs tests and runnableExamples
 
 macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,

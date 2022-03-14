@@ -14,6 +14,10 @@
 import strutils, lexbase, streams, unicode
 import std/private/decode_helpers
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 type
   JsonEventKind* = enum ## enumeration of all events that may occur when parsing
     jsonError,          ## an error occurred during parsing

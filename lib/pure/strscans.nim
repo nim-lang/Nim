@@ -286,6 +286,9 @@ efficiency and perform different checks.
 import macros, parseutils
 import std/private/since
 
+since (1, 7):
+  import std/assertions
+
 proc conditionsToIfChain(n, idx, res: NimNode; start: int): NimNode =
   assert n.kind == nnkStmtList
   if start >= n.len: return newAssignment(res, newLit true)

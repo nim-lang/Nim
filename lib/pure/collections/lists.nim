@@ -59,6 +59,9 @@ runnableExamples:
 
 import std/private/since
 
+since (1, 7):
+  import std/assertions
+
 when not defined(nimHasCursor):
   {.pragma: cursor.}
 

@@ -360,6 +360,10 @@ proc close*(c: EncodingConverter) =
     iconvClose(c)
 
 when defined(windows):
+  import std/private/since
+  since (1, 7):
+    import std/assertions
+
   proc convertToWideString(codePage: CodePage, s: string): string =
     # educated guess of capacity:
     var cap = s.len + s.len shr 2

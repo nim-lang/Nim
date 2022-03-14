@@ -21,6 +21,9 @@ import
   strutils, os, strtabs, streams, cpuinfo, streamwrapper,
   std/private/since
 
+since (1, 7):
+  import std/assertions
+
 export quoteShell, quoteShellWindows, quoteShellPosix
 
 when defined(windows):

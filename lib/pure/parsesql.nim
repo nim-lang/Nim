@@ -15,6 +15,10 @@
 import strutils, lexbase
 import std/private/decode_helpers
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 # ------------------- scanner -------------------------------------------------
 
 type

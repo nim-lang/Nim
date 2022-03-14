@@ -81,6 +81,10 @@
 import asyncdispatch, asyncnet, nativesockets, strutils, parseutils, os, times
 from net import BufferSize
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 type
   AsyncFtpClient* = ref object
     csock*: AsyncSocket

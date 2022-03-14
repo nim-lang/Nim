@@ -39,6 +39,9 @@ runnableExamples:
 import strutils, parseutils, base64
 import std/private/[since, decode_helpers]
 
+since (1, 7):
+  import std/assertions
+
 
 type
   Url* = distinct string

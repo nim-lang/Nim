@@ -199,6 +199,9 @@ runnableExamples:
 import std/private/since
 import hashes, math, algorithm
 
+since (1, 7):
+  import std/assertions
+
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
   KeyValuePairSeq[A, B] = seq[KeyValuePair[A, B]]

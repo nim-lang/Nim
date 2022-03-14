@@ -35,6 +35,8 @@ runnableExamples:
   doAssert toSeq(critbitAsDict.pairs) == @[("key2", 0)]
 
 import std/private/since
+since (1, 7):
+  import std/assertions
 
 type
   NodeObj[T] {.acyclic.} = object

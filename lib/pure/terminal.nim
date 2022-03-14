@@ -65,6 +65,9 @@ import colors
 
 when defined(windows):
   import winlean
+  import std/private/since
+  since (1, 7):
+    import std/assertions
 
 when defined(nimPreviewSlimSystem):
   import std/syncio

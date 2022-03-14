@@ -34,6 +34,10 @@ import macros
 from enumutils import symbolName
 from typetraits import OrdinalEnum
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 when not defined(nimFixedForwardGeneric):
   # xxx remove pending csources_v1 update >= 1.2.0
   proc to[T](node: JsonNode, t: typedesc[T]): T =

@@ -65,6 +65,10 @@ proc addExitProc*(cl: proc() {.noconv.}) =
     gFuns.add Fun(kind: kNoconv, fun2: cl)
 
 when not defined(nimscript):
+  import std/private/since
+  since (1, 7):
+    import std/assertions
+
   proc getProgramResult*(): int =
     when defined(js) and defined(nodejs):
       asm """

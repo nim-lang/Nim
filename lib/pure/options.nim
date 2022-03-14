@@ -70,6 +70,11 @@ supports pattern matching on `Option`s, with the `Some(<pattern>)` and
 
 
 import typetraits
+import std/private/since
+
+since (1, 7):
+  import std/assertions
+
 
 when (NimMajor, NimMinor) >= (1, 1):
   type

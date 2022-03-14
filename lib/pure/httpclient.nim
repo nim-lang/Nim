@@ -221,6 +221,9 @@ import std/[
   asyncnet, asyncdispatch, asyncfile, nativesockets,
 ]
 
+since (1, 7):
+  import std/assertions
+
 export httpcore except parseHeader # TODO: The `except` doesn't work
 
 type

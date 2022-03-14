@@ -33,6 +33,10 @@ import os
 import lists
 include system/timers
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 const defaultStackSize = 512 * 1024
 const useOrcArc = defined(gcArc) or defined(gcOrc)
 

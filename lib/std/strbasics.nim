@@ -11,6 +11,10 @@
 ##
 ## Experimental API, subject to change.
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 const whitespaces = {' ', '\t', '\v', '\r', '\l', '\f'}
 
 proc add*(x: var string, y: openArray[char]) =

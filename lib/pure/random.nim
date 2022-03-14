@@ -75,6 +75,9 @@ runnableExamples:
 import algorithm, math
 import std/private/since
 
+since (1, 7):
+  import std/assertions
+
 include system/inclrtl
 {.push debugger: off.}
 

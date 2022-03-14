@@ -6,6 +6,10 @@ internal API for now, API subject to change
 
 import std/[os, osproc, strutils, tempfiles]
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 const commitHead* = "HEAD"
 
 template retryCall*(maxRetry = 3, backoffDuration = 1.0, call: untyped): bool =

@@ -13,6 +13,8 @@
 ## Unstable API.
 
 import std/private/since
+since (1, 7):
+  import std/assertions
 
 import strutils
 

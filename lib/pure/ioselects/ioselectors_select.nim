@@ -11,6 +11,10 @@
 
 import times, nativesockets
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 when defined(windows):
   import winlean
   when defined(gcc):

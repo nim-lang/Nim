@@ -50,6 +50,10 @@
 import
   hashes, math
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 {.pragma: myShallow.}
 # For "integer-like A" that are too big for intsets/bit-vectors to be practical,
 # it would be best to shrink hcode to the same size as the integer.  Larger

@@ -11,6 +11,10 @@
 
 import strutils, json
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 type
   RstNodeKind* = enum        ## the possible node kinds of an PRstNode
     rnInner,                  # an inner node or a root

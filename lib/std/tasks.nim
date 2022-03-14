@@ -13,6 +13,10 @@
 import std/[macros, isolation, typetraits]
 import system/ansi_c
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 export isolation
 
 

@@ -164,6 +164,7 @@ when isMainModule:
     else:
       quit("cannot write test.txt")
   else:
+    import std/assertions
     block: # correctly parse ../../tests/testdata/doc1.xml
       let filePath = "tests/testdata/doc1.xml"
       var errors: seq[string] = @[]

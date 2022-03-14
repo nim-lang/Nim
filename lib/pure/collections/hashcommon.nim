@@ -10,6 +10,10 @@
 # An `include` file which contains common code for
 # hash sets and tables.
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 const
   growthFactor = 2
 

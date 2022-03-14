@@ -349,7 +349,11 @@ proc getSockDomain*(socket: SocketHandle): Domain =
   else:
     raise newException(IOError, "Unknown socket family in getSockDomain")
 
-when not useNimNetLite: 
+when not useNimNetLite:
+  import std/private/since
+  since (1, 7):
+    import std/assertions
+
   proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
     ## Searches the database from the beginning and finds the first entry for
     ## which the service name specified by `name` matches the s_name member

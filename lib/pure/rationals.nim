@@ -23,6 +23,10 @@ runnableExamples:
 
 import math, hashes
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 type Rational*[T] = object
   ## A rational number, consisting of a numerator `num` and a denominator `den`.
   num*, den*: T

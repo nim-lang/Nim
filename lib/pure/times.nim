@@ -199,6 +199,10 @@
 import strutils, math, options
 
 import std/private/since
+
+since (1, 7):
+  import std/assertions
+
 include "system/inclrtl"
 
 when defined(js):

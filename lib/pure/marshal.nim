@@ -56,6 +56,10 @@ Please contribute a new implementation.""".}
 
 import streams, typeinfo, json, intsets, tables, unicode
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 proc ptrToInt(x: pointer): int {.inline.} =
   result = cast[int](x) # don't skip alignment
 

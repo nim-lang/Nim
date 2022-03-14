@@ -44,6 +44,10 @@ runnableExamples:
     assert mcCounter.value == 3
 
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 type
   CacheSeq* = distinct string
     ## Compile-time sequence of `NimNode`s.

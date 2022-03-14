@@ -7,6 +7,9 @@ to avoid duplication
 import os
 when defined(windows):
   from strutils import replace
+  import std/private/since
+  since (1, 7):
+    import std/assertions
 
 when defined(nimHasEffectsOf):
   {.experimental: "strictEffects".}

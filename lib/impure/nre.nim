@@ -66,6 +66,10 @@ from strutils import `%`
 import options
 from unicode import runeLenAt
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 export options
 
 type

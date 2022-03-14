@@ -24,6 +24,9 @@
 import std/private/since
 import hashes
 
+since (1, 7):
+  import std/assertions
+
 type
   BitScalar = uint
 

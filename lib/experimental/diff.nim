@@ -45,6 +45,10 @@ jkl"""
 
 import tables, strutils
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 type
   Item* = object    ## An Item in the list of differences.
     startA*: int    ## Start Line number in Data A.

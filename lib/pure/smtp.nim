@@ -46,6 +46,10 @@
 import net, strutils, strtabs, base64, os, strutils
 import asyncnet, asyncdispatch
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 export Port
 
 type

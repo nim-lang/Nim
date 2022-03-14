@@ -1,4 +1,4 @@
-when (NimMajor, NimMinor) > (1, 6):
+when NimMajor > 2 or (NimMajor == 1 and NimMinor > 6):
   import std/assertions
 
 when defined(nimHasLentIterators) and not defined(nimNoLentIterators):

@@ -55,6 +55,10 @@ runnableExamples:
 
 from math import FloatClass, sqrt, pow, round
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 {.push checks: off, line_dir: off, stack_trace: off.}

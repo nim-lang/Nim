@@ -82,6 +82,9 @@ include "system/inclrtl"
 import std/private/since
 from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWithImpl, endsWithImpl
 
+since (1, 7):
+  import std/assertions
+
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}

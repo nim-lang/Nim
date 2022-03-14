@@ -14,6 +14,10 @@
 import
   strutils, streams
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 const
   EndOfFile* = '\0' ## end of file marker
   NewLines* = {'\c', '\L'}

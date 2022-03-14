@@ -24,6 +24,10 @@ else:
 
 import os, streams
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 proc newEIO(msg: string): ref IOError =
   new(result)
   result.msg = msg

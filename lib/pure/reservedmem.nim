@@ -20,6 +20,10 @@
 
 from os import raiseOSError, osLastError
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 template distance*(lhs, rhs: pointer): int =
   cast[int](rhs) - cast[int](lhs)
 

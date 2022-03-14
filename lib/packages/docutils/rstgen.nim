@@ -44,6 +44,9 @@ import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
 
 import ../../std/private/since
 
+since (1, 7):
+  import std/assertions
+
 const
   HtmlExt = "html"
   IndexExt* = ".idx"

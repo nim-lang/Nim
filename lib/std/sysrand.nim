@@ -170,6 +170,10 @@ elif defined(linux) and not defined(nimNoGetRandom) and not defined(emscripten):
   const syscallHeader = """#include <unistd.h>
 #include <sys/syscall.h>"""
 
+  import std/private/since
+  since (1, 7):
+    import std/assertions
+
   proc syscall(
     n: clong, buf: pointer, bufLen: cint, flags: cuint
   ): clong {.importc: "syscall", header: syscallHeader.}

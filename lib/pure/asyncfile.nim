@@ -24,6 +24,10 @@
 
 import asyncdispatch, os
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 # TODO: Fix duplication introduced by PR #4683.
 
 when defined(windows) or defined(nimdoc):

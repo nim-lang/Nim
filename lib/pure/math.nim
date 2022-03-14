@@ -60,6 +60,10 @@ import std/private/since
 
 import bitops, fenv
 
+since (1, 7):
+  import std/assertions
+
+
 when defined(c) or defined(cpp):
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.

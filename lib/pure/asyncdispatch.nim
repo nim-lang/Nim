@@ -200,6 +200,10 @@ import asyncfutures except callSoon
 
 import nativesockets, net, deques
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 export Port, SocketFlag
 export asyncfutures except callSoon
 export asyncstreams

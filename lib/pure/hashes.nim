@@ -67,6 +67,9 @@ runnableExamples:
 
 import std/private/since
 
+since (1, 7):
+  import std/assertions
+
 type
   Hash* = int ## A hash value. Hash tables using these values should
               ## always have a size of a power of two so they can use the `and`

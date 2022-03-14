@@ -33,6 +33,9 @@ runnableExamples:
 import std/private/since
 import macros, strtabs, strutils
 
+since (1, 7):
+  import std/assertions
+
 type
   XmlNode* = ref XmlNodeObj ## An XML tree consisting of XML nodes.
     ##

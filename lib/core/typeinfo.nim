@@ -40,6 +40,10 @@ include "system/hti.nim"
 
 {.pop.}
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 type
   AnyKind* = enum       ## The kind of `Any`.
     akNone = 0,         ## invalid

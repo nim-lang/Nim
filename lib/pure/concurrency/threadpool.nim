@@ -23,6 +23,10 @@ when not compileOption("threads"):
 
 import cpuinfo, cpuload, locks, os
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 {.push stackTrace:off.}
 
 type

@@ -15,6 +15,10 @@
 import std/private/since
 export system.`$` # for backward compatibility
 
+since (1, 7):
+  import std/assertions
+
+
 type HoleyEnum* = (not Ordinal) and enum ## Enum with holes.
 type OrdinalEnum* = Ordinal and enum ## Enum without holes.
 

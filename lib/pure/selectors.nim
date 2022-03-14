@@ -234,6 +234,11 @@ when defined(nimdoc):
 
 else:
   import strutils
+
+  import std/private/since
+  since (1, 7):
+    import std/assertions
+
   when hasThreadSupport:
     import locks
 

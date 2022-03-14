@@ -15,6 +15,10 @@
 
 import rstast
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 type
   LangSymbol* = object       ## symbol signature in Nim
     symKind*: string           ## "proc", "const", "type", etc
