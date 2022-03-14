@@ -1,3 +1,5 @@
+import std/assertions
+
 type
   Bytes = distinct seq[byte]
 

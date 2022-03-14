@@ -2,6 +2,8 @@ discard """
   cmd: "nim cpp --gc:arc $file"
 """
 
+import std/assertions
+
 block: # issue #13071
   type MyExcept = object of CatchableError
   proc gun()=

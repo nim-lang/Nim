@@ -1,6 +1,7 @@
 discard """
   targets: "c cpp"
 """
+import std/assertions
 
 var fun0 {.importc.}: int
 proc fun1() {.importc.}

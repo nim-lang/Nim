@@ -112,6 +112,8 @@ destroy
 '''
 """
 
+import std/assertions
+
 # move bug
 type
   TMyObj = object

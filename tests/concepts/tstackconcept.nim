@@ -9,7 +9,7 @@ IMPLICIT VALUE TYPE int int
 IMPLICIT VALUE TYPE NAME INT INT
 '''
 """
-
+import std/assertions
 import typetraits, strutils
 
 template reject(e) =

@@ -3,7 +3,7 @@ discard """
 """
 
 # see also: tdeques, tlists, tcritbits
-
+import std/assertions
 import sets, tables, sequtils
 
 block tapply:

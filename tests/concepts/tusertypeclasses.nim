@@ -8,7 +8,7 @@ int
 (id: @[1, 2, 3], name: @["Vas", "Pas", "NafNaf"], age: @[10, 16, 18])
 '''
 """
-
+import std/assertions
 import typetraits
 
 template reject(expr) = assert(not compiles(x))

@@ -1,3 +1,5 @@
+import std/assertions
+
 type
   Foo = distinct seq[int]
   Bar[N: static[int]] = distinct seq[int]

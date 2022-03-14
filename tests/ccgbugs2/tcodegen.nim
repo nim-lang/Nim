@@ -2,6 +2,8 @@ discard """
   targets: "c cpp"
 """
 
+import std/assertions
+
 # bug #19094
 type
   X = object

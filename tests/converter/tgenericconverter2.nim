@@ -1,5 +1,5 @@
 # bug #3799
-
+import std/assertions
 import strutils
 
 const output = splitLines("""

@@ -1,5 +1,7 @@
 # To test stack overflow message
 
+import std/assertions
+
 proc over(a: int): int =
   if a >= 10:
     assert false

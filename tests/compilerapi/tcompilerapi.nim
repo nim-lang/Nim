@@ -15,6 +15,7 @@ raising VMQuit
 
 import "../../compiler" / [ast, vmdef, vm, nimeval, llstream, lineinfos, options]
 import std / [os]
+import std/assertions
 
 proc initInterpreter(script: string): Interpreter =
   let std = findNimStdLibCompileTime()

@@ -7,6 +7,8 @@ discard """
 # Demonstrates data loss by Nim's AsyncSocket.
 # Just run it, and it will raise an assertion failure within a minute.
 
+import std/assertions
+
 import asyncdispatch, asyncnet, strformat, strutils, sugar
 
 const FrameSize = 9999   # Exact size not important, but larger sizes fail quicker

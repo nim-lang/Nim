@@ -4,6 +4,8 @@ discard """
   file: "asyncmacro.nim"
 """
 
+import std/assertions
+
 doAssert compileOption("threads"), "this test will not do anything useful without --threads:on"
 
 import asyncdispatch

@@ -6,6 +6,8 @@ output: "y"
 
 {.passC: "-march=native".}
 
+import std/assertions
+
 proc isAlignedCheck(p: pointer, alignment: int) = 
   doAssert (cast[uint](p) and uint(alignment - 1)) == 0
 

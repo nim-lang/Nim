@@ -5,7 +5,7 @@ discard """
   exitCode: 1
   cmd: "nim c --newruntime $file"
 """
-
+import std/assertions
 # bug #11350
 
 type

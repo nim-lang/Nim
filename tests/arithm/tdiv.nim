@@ -1,7 +1,7 @@
 discard """
   targets: "c js"
 """
-
+import std/assertions
 
 block divUint64:
   proc divTest() =

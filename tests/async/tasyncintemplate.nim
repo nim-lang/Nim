@@ -12,6 +12,7 @@ discard """
 
 # xxx move to tests/async/tasyncintemplate.nim
 import asyncdispatch
+import std/assertions
 
 block: # bug #16159
   template foo() =

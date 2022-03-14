@@ -3,6 +3,8 @@ discard """
   matrix: "--gc:refc; --gc:arc"
 """
 
+import std/assertions
+
 # bug #7308
 proc foo(x: seq[int32]) =
   var y = newSeq[cint](1)

@@ -3,6 +3,8 @@ discard """
   cmd: "nim c --gc:arc $file"
 """
 
+import std/assertions
+
 proc f1() {.noreturn.} = raise newException(CatchableError, "")
 
 proc f2(y: int): int =

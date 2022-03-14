@@ -5,7 +5,7 @@ R=3 C=3 TE=9 FF=14 FC=20 T=int
 R=3 C=3 T=int
 '''
 """
-
+import std/assertions
 import typetraits
 
 template ok(x) = assert x

@@ -1,4 +1,5 @@
 include compiler/[nimblecmd], sets
+import std/assertions
 
 proc v(s: string): Version = s.newVersion
 

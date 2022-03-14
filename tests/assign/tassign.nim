@@ -27,6 +27,8 @@ GenericT[T] '=' bool
 GenericT[T] '=' bool
 ]#
 
+import std/assertions
+
 block tassign:
 # Test the assignment operator for complex types which need RTTI
   type

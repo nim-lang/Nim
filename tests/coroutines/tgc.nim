@@ -2,6 +2,7 @@ discard """
   matrix: "--gc:refc; --gc:arc; --gc:orc"
   target: "c"
 """
+import std/assertions
 
 when compileOption("gc", "refc") or not defined(openbsd):
   # xxx openbsd gave: stdlib_coro.nim.c:406:22: error: array type 'jmp_buf' (aka 'long [11]') is not assignable (*dest).execContext = src.execContext;

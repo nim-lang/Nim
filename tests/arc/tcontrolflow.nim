@@ -19,6 +19,8 @@ true
 # we use the -d:danger switch to detect uninitialized stack
 # slots more reliably (there shouldn't be any, of course).
 
+import std/assertions
+
 type
   Foo = object
     id: int

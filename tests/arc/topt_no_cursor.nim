@@ -161,6 +161,7 @@ else:
 """
 
 import os
+import std/assertions
 
 type Target = tuple[repo, package, ext: string]
 

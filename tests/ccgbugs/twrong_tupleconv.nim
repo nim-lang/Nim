@@ -1,3 +1,5 @@
+import std/assertions
+
 # bug #1833
 iterator myitems*[T](a: var seq[T]): var T {.inline.} =
   ## iterates over each item of `a` so that you can modify the yielded value.

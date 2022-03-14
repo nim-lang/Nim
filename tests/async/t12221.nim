@@ -1,4 +1,5 @@
 import asyncdispatch, os, times
+import std/assertions
 
 proc doubleSleep(hardSleep: int) {.async.} =
   await sleepAsync(50)

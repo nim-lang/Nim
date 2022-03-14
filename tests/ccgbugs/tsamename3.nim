@@ -1,3 +1,5 @@
+import std/assertions
+
 block: # bug #15526
   block:
     type Foo = ref object

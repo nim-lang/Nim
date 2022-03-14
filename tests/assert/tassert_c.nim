@@ -2,6 +2,7 @@ discard """
   cmd: "nim $target $options --excessiveStackTrace:off $file"
   output: '''true'''
 """
+import std/assertions
 
 const expected = """
 tassert_c.nim(35)        tassert_c
@@ -27,7 +28,6 @@ proc tmatch(x, p: string): bool =
       return false
   while k < x.len and x[k] in {' ', '\L', '\C'}: inc k
   result = i >= p.len and k >= x.len
-
 
 try:
   proc foo() =

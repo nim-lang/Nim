@@ -36,7 +36,7 @@ px
 proc (){.closure, gcsafe, locks: 0.}
 '''
 """
-
+import std/assertions
 
 block tnestedclosure:
   proc main(param: int) =

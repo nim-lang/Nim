@@ -10,7 +10,7 @@ yes int
 string int'''
   joinable: false
 """
-
+import std/assertions
 import hashes
 
 type

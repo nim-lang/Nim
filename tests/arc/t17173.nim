@@ -3,6 +3,7 @@ discard """
 """
 
 import std/strbasics
+import std/assertions
 
 
 var a = "  vhellov   "

@@ -4,7 +4,7 @@ discard """
 """
 
 # bug #2324
-
+import std/assertions
 static: assert defined(cpp), "compile in cpp mode"
 
 {.emit: """

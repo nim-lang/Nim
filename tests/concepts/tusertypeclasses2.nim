@@ -1,3 +1,5 @@
+import std/assertions
+
 block:
   type
     hasFieldX = concept z

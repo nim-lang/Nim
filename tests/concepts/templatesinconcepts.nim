@@ -1,4 +1,5 @@
 import typetraits
+import std/assertions
 
 template typeLen(x): int = x.type.name.len
 

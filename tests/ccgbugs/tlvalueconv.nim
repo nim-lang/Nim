@@ -2,6 +2,8 @@ discard """
   matrix: "--gc:refc; --gc:arc"
 """
 
+import std/assertions
+
 # bug #14160
 
 type

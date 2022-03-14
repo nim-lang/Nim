@@ -1,3 +1,5 @@
+import std/assertions
+
 block:
   proc hello() =
     let NAN_INFINITY = 12

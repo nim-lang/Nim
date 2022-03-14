@@ -2,7 +2,7 @@ discard """
   targets: "c"
   disabled: true
 """
-
+import std/assertions
 import coro
 var
   stackCheckValue = 1100220033

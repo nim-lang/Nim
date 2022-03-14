@@ -3,6 +3,8 @@ discard """
 """
 
 import options
+import std/assertions
+
 type Foo  = ref object
   i:      int
 

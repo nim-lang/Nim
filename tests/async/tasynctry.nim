@@ -10,6 +10,7 @@ success
 targets: "c"
 """
 import asyncdispatch, strutils
+import std/assertions
 
 # Here we are testing the ability to catch exceptions.
 

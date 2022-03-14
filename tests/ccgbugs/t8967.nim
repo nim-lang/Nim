@@ -3,6 +3,7 @@ discard """
 """
 
 import marshal
+import std/assertions
 
 template main() =
   let orig: set[char] = {'A'..'Z'}

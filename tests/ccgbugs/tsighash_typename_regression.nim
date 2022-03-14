@@ -4,6 +4,7 @@ output: '''
 baz
 '''
 """
+import std/assertions
 
 # bug #5147
 

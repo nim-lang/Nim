@@ -16,6 +16,7 @@ Deduplicate: [1, 2, 3, 4, 5, 7]
 2345623456
 '''
 """
+import std/assertions
 
 block tseq2:
   proc `*`(a, b: seq[int]): seq[int] =

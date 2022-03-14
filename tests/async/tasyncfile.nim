@@ -7,6 +7,8 @@ hello humans!
 """
 import asyncfile, asyncdispatch, os
 
+import std/assertions
+
 proc main() {.async.} =
   let fn = getTempDir() / "foobar.txt"
   removeFile(fn)

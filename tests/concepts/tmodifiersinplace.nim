@@ -17,6 +17,8 @@ type
 proc put(x: BadContainer, y: int) = discard
 proc put(x: var GoodContainer, y: int) = discard
 
+import std/assertions
+
 template ok(x) = assert(x)
 template no(x) = assert(not(x))
 

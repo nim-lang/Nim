@@ -1,4 +1,6 @@
 import json, asyncdispatch
+import std/assertions
+
 block: #6100
   let done = newFuture[int]()
   done.complete(1)

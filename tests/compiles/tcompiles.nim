@@ -1,4 +1,5 @@
 # test the new 'compiles' feature:
+import std/assertions
 
 template supports(opr, x: untyped): bool =
   compiles(opr(x)) or compiles(opr(x, x))

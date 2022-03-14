@@ -3,6 +3,7 @@ discard """
 """
 
 # bug #4432
+import std/assertions
 
 import strutils
 

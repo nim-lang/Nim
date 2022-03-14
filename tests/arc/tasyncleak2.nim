@@ -5,6 +5,7 @@ discard """
 
 # issue #15076
 import deques, strutils, asyncdispatch
+import std/assertions
 
 proc doNothing(): Future[void] =
   #[

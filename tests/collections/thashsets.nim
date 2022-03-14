@@ -1,5 +1,5 @@
 import sets, hashes, algorithm
-
+import std/assertions
 
 block setEquality:
   var

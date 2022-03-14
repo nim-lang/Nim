@@ -16,6 +16,8 @@ destroy Foo
 import tables
 import strutils
 
+import std/assertions
+
 const defaultSection = "***"
 
 type

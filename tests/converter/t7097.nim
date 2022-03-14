@@ -1,3 +1,5 @@
+import std/assertions
+
 type
   Byte* = uint8
   Bytes* = seq[Byte]

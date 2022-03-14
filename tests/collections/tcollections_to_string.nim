@@ -7,7 +7,7 @@ import tables
 import deques
 import lists
 import critbits
-
+import std/assertions
 # Tests for tuples
 doAssert $(1, 2, 3) == "(1, 2, 3)"
 doAssert $("1", "2", "3") == """("1", "2", "3")"""

@@ -18,6 +18,7 @@ nimout: "tUnsignedOps OK"
 """
 
 import typetraits
+import std/assertions
 
 
 block tand:

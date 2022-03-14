@@ -23,6 +23,7 @@ joinable: false
 """
 
 import typetraits
+import std/assertions
 
 type
   myseq*[T] = object

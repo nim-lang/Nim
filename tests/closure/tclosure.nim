@@ -35,7 +35,7 @@ foo88
 '''
 joinable: false
 """
-
+import std/assertions
 
 block tclosure:
   proc map(n: var openArray[int], fn: proc (x: int): int {.closure}) =

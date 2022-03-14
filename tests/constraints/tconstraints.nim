@@ -2,7 +2,7 @@ discard """
   errormsg: "type mismatch: got <int literal(232)>"
   line: 16
 """
-
+import std/assertions
 proc myGenericProc[T: object|tuple|ptr|ref|distinct](x: T): string =
   result = $x
 

@@ -7,6 +7,8 @@ discard """
 import asyncdispatch
 import asyncfile
 
+import std/assertions
+
 var asyncStdout = 1.AsyncFD.newAsyncFile()
 proc doStuff: Future[void] {.async.} =
   await asyncStdout.write "hello world\n"

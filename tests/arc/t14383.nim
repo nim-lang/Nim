@@ -25,6 +25,7 @@ destroying: ('third', 12)
 """
 
 import dmodule
+import std/assertions
 
 var val = parseMinValue()
 if val.kind == minDictionary:

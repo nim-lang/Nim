@@ -1,4 +1,5 @@
 import compiler/int128
+import std/assertions
 
 let (a,b) = divMod(Ten,Ten)
 

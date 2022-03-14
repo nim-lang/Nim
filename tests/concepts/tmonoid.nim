@@ -1,7 +1,7 @@
 discard """
   output: '''true'''
 """
-
+import std/assertions
 # bug #3686
 
 type Monoid = concept x, y

@@ -32,7 +32,7 @@ joinable: false
 """
 
 import macros, typetraits, os, posix
-
+import std/assertions
 
 block t5983:
   const currencies = ["USD", "EUR"] # in real code 120 currencies

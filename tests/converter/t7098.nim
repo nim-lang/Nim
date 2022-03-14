@@ -1,6 +1,7 @@
 discard """
 action: compile
 """
+import std/assertions
 
 type
   Byte* = uint8

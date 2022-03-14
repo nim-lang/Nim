@@ -4,6 +4,7 @@ discard """
 """
 
 import std/times
+import std/assertions
 
 block: # bug #17812
   block:

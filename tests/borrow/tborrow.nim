@@ -5,6 +5,8 @@ discard """
 
 # test the new borrow feature that works with generics:
 
+import std/assertions
+
 proc `++`*[T: int | float](a, b: T): T =
   result = a + b
 

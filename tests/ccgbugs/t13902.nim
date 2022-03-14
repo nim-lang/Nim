@@ -1,3 +1,4 @@
+import std/assertions
 
 #issue #13902
 block:

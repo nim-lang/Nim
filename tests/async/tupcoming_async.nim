@@ -6,6 +6,7 @@ OK
 
 when defined(upcoming):
   import asyncdispatch, times, streams, posix
+  import std/assertions
   from ioselectors import ioselSupportedPlatform
 
   proc delayedSet(ev: AsyncEvent, timeout: int): Future[void] {.async.} =

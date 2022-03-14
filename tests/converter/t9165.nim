@@ -1,3 +1,5 @@
+import std/assertions
+
 type ustring = distinct string
 
 converter toUString(s: string): ustring = ustring(s)

@@ -6,6 +6,8 @@ discard """
 x = ['a', 'b', 'c', '0', '1', '2', '3', '4', '5', '6'] and y = ['a', 'b', 'c', '0', '1', '2', '3', '4', '5', '6']'''
 """
 
+import std/assertions
+
 proc `1/1`() = echo(1 div 1)
 template `1/2`() = echo(1 div 2)
 var `1/3` = 1 div 4

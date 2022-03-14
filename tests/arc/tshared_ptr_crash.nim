@@ -5,6 +5,8 @@ discard """
 
 # bug #17893
 
+import std/assertions
+
 type
   SharedPtr*[T] = object
     val: ptr tuple[value: T, atomicCounter: int]

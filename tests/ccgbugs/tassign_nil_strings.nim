@@ -4,6 +4,8 @@ discard """
   ccodecheck: "\\i@'a = ((NimStringDesc*) NIM_NIL)'"
 """
 
+import std/assertions
+
 proc main() =
   var a = "Hello"
   echo a

@@ -5,7 +5,7 @@ z
 e
 '''
 """
-
+import std/assertions
 type
   Reversable*[T] = concept a
     a[int] is T

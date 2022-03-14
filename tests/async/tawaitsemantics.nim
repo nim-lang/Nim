@@ -10,6 +10,7 @@ Awaiting a future raises
 """
 
 import asyncdispatch
+import std/assertions
 
 # This tests the behaviour of 'await' under different circumstances.
 # Specifically, when an awaited future raises an exception then `await` should

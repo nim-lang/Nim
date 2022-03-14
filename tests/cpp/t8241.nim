@@ -2,6 +2,7 @@ discard """
   targets: "cpp"
   action: "compile"
 """
+import std/assertions
 
 proc foo(): cstring {.importcpp: "", dynlib: "".}
 echo foo()

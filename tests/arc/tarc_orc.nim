@@ -2,6 +2,8 @@ discard """
   matrix: "--mm:arc; --mm:orc"
 """
 
+import std/assertions
+
 block:
   type
     PublicKey = array[32, uint8]

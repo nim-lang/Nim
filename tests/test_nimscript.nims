@@ -87,6 +87,8 @@ import stdtest/testutils
 import stdlib/trandom
 import stdlib/tosenv
 
+import std/assertions
+
 echo "Nimscript imports are successful."
 
 block:

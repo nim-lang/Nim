@@ -5,7 +5,7 @@ discard """
 '''
   disabled: "true"
 """
-
+import std/assertions
 import macros, strutils
 
 template accept(e: expr) =

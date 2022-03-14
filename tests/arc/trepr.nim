@@ -15,6 +15,7 @@ ref (member: ref @["hello"])
 # xxx consider merging with `tests/stdlib/trepr.nim` to increase overall test coverage
 
 import tables
+import std/assertions
 
 type
   NimSym = distinct NimNode

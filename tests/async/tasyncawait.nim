@@ -1,5 +1,7 @@
 import asyncdispatch, asyncnet, nativesockets, net, strutils
+import std/assertions
 from stdtest/netutils import bindAvailablePort
+
 var msgCount = 0
 
 const

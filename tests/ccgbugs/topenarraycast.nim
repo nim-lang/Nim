@@ -1,3 +1,5 @@
+import std/assertions
+
 proc foo[T](s: var openArray[T]): T =
   for x in s: result += x
 

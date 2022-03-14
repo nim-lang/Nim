@@ -3,6 +3,7 @@ discard """
 """
 import times, sequtils
 import asyncdispatch
+import std/assertions
 
 const
   taskCount = 10

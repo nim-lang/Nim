@@ -5,6 +5,7 @@ action: compile
 # this test should ensure that the AST doesn't change slightly without it getting noticed.
 
 import ../ast_pattern_matching
+import std/assertions
 
 template expectNimNode(arg: untyped): NimNode = arg
   ## This template here is just to be injected by `myquote`, so that

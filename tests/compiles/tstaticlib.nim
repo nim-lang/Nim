@@ -1,5 +1,5 @@
 import std/[os, osproc, strformat]
-
+import std/assertions
 
 const dir = "tests/compiles"
 const fileName = dir / "mstaticlib.nim"

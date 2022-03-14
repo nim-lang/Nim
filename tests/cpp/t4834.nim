@@ -1,6 +1,7 @@
 discard """
   targets: "cpp"
 """
+import std/assertions
 
 # issue #4834
 block:

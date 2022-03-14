@@ -3,7 +3,7 @@ discard """
 OK'''
   cmd: "nim c --gc:arc $file"
 """
-
+import std/assertions
 # bug #12826
 
 type

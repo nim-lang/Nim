@@ -6,6 +6,8 @@ nim r --threads:on -d:threadsafe tests/m14634.nim
 when not defined(windows):
   import std/selectors
 
+  import std/assertions
+
   type TestData = object
     s1, s2, s3: int
 

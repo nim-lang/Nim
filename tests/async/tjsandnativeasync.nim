@@ -4,6 +4,8 @@ bye'''
 """
 
 import async, times
+import std/assertions
+
 when defined(js):
     proc sleepAsync(t: int): Future[void] =
         var promise = newPromise() do(resolve: proc()):

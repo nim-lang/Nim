@@ -2,6 +2,7 @@ discard """
   output: "All tests passed!"
 """
 import selectors
+import std/assertions
 
 const hasThreadSupport = compileOption("threads")
 

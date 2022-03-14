@@ -14,6 +14,8 @@ myobj destroyed
 '''
 """
 
+import std/assertions
+
 # bug #13102
 
 type

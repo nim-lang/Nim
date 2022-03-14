@@ -1,3 +1,5 @@
+import std/assertions
+
 # Make sure we don't walk cast[T] type section while injecting sinks/destructors
 block:
   type

@@ -7,6 +7,7 @@ discard """
 # bug #13936
 
 import std/atomics
+import std/assertions
 
 const MemBlockSize = 256
 

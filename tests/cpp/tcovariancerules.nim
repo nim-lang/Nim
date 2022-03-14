@@ -19,6 +19,7 @@ dog 1
 dog 2
 '''
 """
+import std/assertions
 
 template accept(x) =
   static: assert(compiles(x))

@@ -38,6 +38,8 @@ destroying variable: 10
   cmd: "nim c --gc:arc --deepcopy:on -d:nimAllocPagesViaMalloc $file"
 """
 
+import std/assertions
+
 proc takeSink(x: sink string): bool = true
 
 proc b(x: sink string): string =

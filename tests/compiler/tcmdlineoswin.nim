@@ -6,7 +6,7 @@ discard """
   disabled: "unix"
   disabled: "posix"
 """
-
+import std/assertions
 import strutils
 
 static:

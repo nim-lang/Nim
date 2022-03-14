@@ -11,6 +11,7 @@ Finished
 '''
 """
 import asyncdispatch
+import std/assertions
 
 var fs = newFutureStream[int]()
 

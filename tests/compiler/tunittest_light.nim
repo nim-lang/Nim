@@ -1,4 +1,5 @@
 import stdtest/unittest_light
+import std/assertions
 
 proc testAssertEquals() =
   assertEquals("foo", "foo")

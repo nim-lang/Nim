@@ -12,6 +12,7 @@ ditto with `--tlsEmulation:on`:
 ]#
 
 import times
+import std/assertions
 
 proc main2(): int =
   var g0 {.threadvar.}: int

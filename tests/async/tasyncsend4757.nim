@@ -1,4 +1,5 @@
 import asyncdispatch, asyncnet
+import std/assertions
 
 var port: Port
 proc createServer() {.async.} =

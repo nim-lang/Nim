@@ -10,6 +10,7 @@ Triggered raises2
 Raising ValueError
 '''
 """
+import std/assertions
 
 # bug #1888
 echo "foo"

@@ -22,6 +22,7 @@ disabled: 32bit
 # D: Dimension
 # M: Max entries in one node
 # LT: leaf type
+import std/assertions
 
 type
   Dim* = static[int]

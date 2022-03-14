@@ -18,7 +18,7 @@ discard """
 after 6 6'''
 joinable: false
 """
-
+import std/assertions
 import typetraits
 
 type

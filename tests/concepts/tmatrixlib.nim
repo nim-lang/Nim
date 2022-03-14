@@ -1,7 +1,7 @@
 discard """
 output: "0"
 """
-
+import std/assertions
 import matrix, matrixalgo
 
 import typetraits # XXX: this should be removed

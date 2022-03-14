@@ -1,3 +1,5 @@
+import std/assertions
+
 type
   Comparable = concept a
     (a < a) is bool

@@ -1,5 +1,6 @@
 import compiler/prefixmatches
 import macros
+import std/assertions
 
 macro check(val, body: untyped): untyped =
   result = newStmtList()

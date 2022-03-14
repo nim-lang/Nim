@@ -4,6 +4,8 @@ discard """
 """
 # test assert and exception handling
 
+import std/assertions
+
 proc callB() = assert(false)
 proc callA() = callB()
 proc callC() = callA()

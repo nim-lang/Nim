@@ -3,6 +3,8 @@ discard """
   cmd: "nim c -r --gc:refc -d:useGcAssert -d:useSysAssert -d:fulldebug -d:smokeCycles $file"
 """
 
+import std/assertions
+
 # bug #9825
 func empty(T: typedesc): T = discard
 const emptyChunk = @(empty(array[10, byte]))

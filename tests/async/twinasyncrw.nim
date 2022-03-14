@@ -1,5 +1,6 @@
 when defined(windows):
   import asyncdispatch, nativesockets, net, strutils, os, winlean
+  import std/assertions
   from stdtest/netutils import bindAvailablePort
   var msgCount = 0
 

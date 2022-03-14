@@ -2,6 +2,7 @@ discard """
   output: "5000"
 """
 import asyncdispatch, nativesockets, net, strutils, os
+import std/assertions
 
 when defined(windows):
   import winlean

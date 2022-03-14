@@ -6,6 +6,8 @@ discard """
 import asyncdispatch, asyncnet, nativesockets, net, strutils
 from stdtest/netutils import bindAvailablePort
 
+import std/assertions
+
 var msgCount = 0
 
 const

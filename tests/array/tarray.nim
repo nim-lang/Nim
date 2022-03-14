@@ -35,6 +35,7 @@ ret:12
 '''
 joinable: false
 """
+import std/assertions
 
 block tarray:
   type

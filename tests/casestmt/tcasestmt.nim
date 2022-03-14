@@ -17,7 +17,7 @@ OK
 ayyydd
 '''
 """
-
+import std/assertions
 
 block arrayconstr:
   const md_extension = [".md", ".markdown"]

@@ -10,6 +10,7 @@ omega 200
 """
 
 import marshal
+import std/assertions
 
 template testit(x) = discard $$to[typeof(x)]($$x)
 

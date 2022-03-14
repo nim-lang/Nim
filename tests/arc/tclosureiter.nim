@@ -3,6 +3,8 @@ discard """
   output: '''(allocCount: 102, deallocCount: 102)'''
 """
 
+import std/assertions
+
 type
   FutureBase = ref object
     someData: string

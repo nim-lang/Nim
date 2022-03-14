@@ -3,7 +3,7 @@ discard """
   output: '''{"vas": "kas", "123": "123"}'''
   targets: "cpp"
 """
-
+import std/assertions
 block: #5979
   var a = 'a'
   var p: pointer = cast[pointer](a)

@@ -2,7 +2,7 @@ discard """
   outputsub: '''ObjectAssignmentDefect'''
   exitcode: "1"
 """
-
+import std/assertions
 import verylongnamehere,verylongnamehere,verylongnamehereverylongnamehereverylong,namehere,verylongnamehere
 
 proc `[]=`() = discard "index setter"

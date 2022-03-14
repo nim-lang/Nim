@@ -3,7 +3,7 @@ discard """
 filling page from 1048576 len 65536'''
   cmd: '''nim c --gc:arc $file'''
 """
-
+import std/assertions
 # bug #12669
 
 type

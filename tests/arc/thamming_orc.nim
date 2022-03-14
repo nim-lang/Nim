@@ -14,6 +14,7 @@ created 491 destroyed 491'''
 # compile with `-d:trace20` to trace creation and destruction of first 20 values.
 
 from math import log2
+import std/assertions
 
 # implement our own basic BigInt so the bigints library isn't necessary...
 type

@@ -13,7 +13,7 @@ deallocating
 '''
 joinable: false
 """
-
+import std/assertions
 type
   SharedPtr*[T] = object
     x: ptr T

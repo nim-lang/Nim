@@ -6,6 +6,7 @@ discard """
 '''
 """
 from strutils import endsWith
+import std/assertions
 
 type
   TLineInfo = tuple[filename: string, line: int, column: int]

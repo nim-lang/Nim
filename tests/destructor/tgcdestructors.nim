@@ -12,7 +12,7 @@ a: @[4, 2, 3]
 true
 (allocCount: 27, deallocCount: 27)'''
 """
-
+import std/assertions
 include system / ansi_c
 
 proc main =

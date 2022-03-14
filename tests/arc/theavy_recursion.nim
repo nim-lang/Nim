@@ -6,6 +6,7 @@ discard """
 # bug #15122
 
 import tables
+import std/assertions
 
 type
   BENodeKind* = enum

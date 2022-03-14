@@ -2,7 +2,7 @@ discard """
   cmd: '''nim c --gc:arc $file'''
   output: '''0'''
 """
-
+import std/assertions
 proc other =
   raise newException(ValueError, "stuff happening")
 

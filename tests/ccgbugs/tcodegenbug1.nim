@@ -12,6 +12,8 @@ caught
 # bug #6960
 
 import sugar
+import std/assertions
+
 type
   Kind = enum None, Just, Huge
   Inner = object

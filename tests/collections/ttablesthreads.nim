@@ -2,7 +2,7 @@ discard """
   cmd: "nim c --threads:on $file"
   output: '''true'''
 """
-
+import std/assertions
 import hashes, tables, sharedtables, algorithm, sequtils
 
 proc sortedPairs[T](t: T): auto = toSeq(t.pairs).sorted

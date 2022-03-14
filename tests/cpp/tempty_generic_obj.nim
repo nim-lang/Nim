@@ -5,7 +5,7 @@ int
 float'''
 disabled: "windows" # pending bug #18011
 """
-
+import std/assertions
 import typetraits
 
 # bug #4625

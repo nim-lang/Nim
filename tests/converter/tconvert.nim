@@ -1,3 +1,4 @@
+import std/assertions
 
 converter FloatConversion64(x: int): float64 = return toFloat(x)
 converter FloatConversion32(x: int): float32 = return toFloat(x)

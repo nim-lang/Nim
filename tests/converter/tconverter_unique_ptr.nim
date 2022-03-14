@@ -3,6 +3,7 @@ discard """
   targets: "c cpp"
   output: ""
 """
+import std/assertions
 
 ## Bugs 9698 and 9699
 

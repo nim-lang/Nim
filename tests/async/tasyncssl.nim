@@ -3,6 +3,7 @@ discard """
 """
 
 import asyncdispatch, asyncnet, net, strutils
+import std/assertions
 import stdtest/testutils
 
 when defined(ssl):

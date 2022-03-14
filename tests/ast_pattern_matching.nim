@@ -475,6 +475,7 @@ macro matchAstRecursive*(ast: NimNode; args: varargs[untyped]): untyped =
 ################################################################################
 
 when isMainModule:
+  import std/assertions
   static:
     let mykinds = {nnkIdent, nnkCall}
 

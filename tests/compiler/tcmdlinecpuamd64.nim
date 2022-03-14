@@ -2,7 +2,7 @@ discard """
   cmd: "nim $target $options --cpu:amd64 $file"
   disabled: "32bit"
 """
-
+import std/assertions
 import strutils
 
 static:

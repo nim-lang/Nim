@@ -1,6 +1,9 @@
 discard """
   output: '''0'''
 """
+
+import std/assertions
+
 static:
   type Obj = object
     field: int

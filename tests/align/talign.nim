@@ -8,6 +8,7 @@ output: "align ok"
 # and newer. On Azure gcc does not default to c++11 yet.
 
 import globalalignas
+import std/assertions
 
 var toplevel1 {.align: 32.} : int32
 var toplevel2 {.align: 32.} : int32

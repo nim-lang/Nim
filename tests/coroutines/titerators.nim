@@ -4,7 +4,7 @@ disabled: true
 """
 
 # Timers are always flakey on the testing servers.
-
+import std/assertions
 import coro
 include system/timers
 

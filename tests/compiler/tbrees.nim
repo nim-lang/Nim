@@ -20,7 +20,7 @@ www.yale.edu: 130.132.143.21
 """
 
 import compiler/btrees
-
+import std/assertions
 import random, tables
 
 proc main =

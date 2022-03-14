@@ -5,6 +5,8 @@ discard """
 
 # issue #6255, feature request
 # arithmetic right shift
+import std/assertions
+
 
 var x1 = -123'i8
 var x2 = -123'i16

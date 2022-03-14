@@ -9,7 +9,7 @@ K=int64 V=string
 K=int V=int
 '''
 """
-
+import std/assertions
 import tables, typetraits
 
 template ok(check) = assert check

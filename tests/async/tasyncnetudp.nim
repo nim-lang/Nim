@@ -1,6 +1,7 @@
 # It is a reproduction of the 'tnewasyncudp' test code, but using a high level
 # of asynchronous procedures. Output: "5000"
 import asyncdispatch, asyncnet, nativesockets, net, strutils
+import std/assertions
 
 var msgCount = 0
 var recvCount = 0

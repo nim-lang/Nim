@@ -1,4 +1,5 @@
 import asyncdispatch
+import std/assertions
 
 proc completeOnReturn(fut: FutureVar[string], x: bool) {.async.} =
   if x:

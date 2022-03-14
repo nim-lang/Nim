@@ -4,6 +4,8 @@ discard """
 2'''
 """
 
+import std/assertions
+
 type
   ObjWithDestructor = object
     a: int

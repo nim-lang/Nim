@@ -133,6 +133,8 @@ proc sequence*(a: openArray[Peg]): Peg =
 when true:
   # bug #12957
 
+  import std/assertions
+
   proc p =
     echo "A"
     let x = sequence([charSet({'a'..'z', 'A'..'Z', '_'}),

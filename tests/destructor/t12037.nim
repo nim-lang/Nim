@@ -5,7 +5,7 @@ showing original type, length, and contents seq[int] 1 @[42]
 copy length and contents 1 @[42]
 '''
 """
-
+import std/assertions
 proc test() =
   var sq1 = @[42]
   echo "showing original type, length, and contents ", sq1.typeof, " ", sq1.len, " ", sq1

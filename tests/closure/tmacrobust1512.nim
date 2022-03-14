@@ -3,6 +3,7 @@ output: ""
 """
 
 import macros, strutils
+import std/assertions
 
 # https://github.com/nim-lang/Nim/issues/1512
 

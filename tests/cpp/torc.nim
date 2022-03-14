@@ -2,7 +2,7 @@ discard """
   targets: "cpp"
   matrix: "--gc:orc"
 """
-
+import std/assertions
 import std/options
 
 # bug #18410

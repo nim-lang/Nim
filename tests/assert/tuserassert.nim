@@ -2,6 +2,8 @@ discard """
   output: "x == 45ugh"
 """
 
+import std/assertions
+
 template myAssert(cond: untyped) =
   when 3 <= 3:
     let c = cond.astToStr

@@ -3,6 +3,7 @@ discard """
 """
 
 import asyncdispatch
+import std/assertions
 
 doAssert(not hasPendingOperations())
 

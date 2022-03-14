@@ -8,7 +8,7 @@ false false
 i == 2
 '''
 """
-
+import std/assertions
 
 block tbreak:
   var
