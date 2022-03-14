@@ -5,7 +5,7 @@ discard """
 @[3]'''
   joinable: false
 """
-
+import std/assertions
 # bug #6434
 
 type

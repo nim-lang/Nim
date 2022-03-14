@@ -2,6 +2,8 @@ discard """
   cmd: "nim $target --debuginfo --hints:on --define:useNimRtl $options $file"
 """
 
+import std/assertions
+
 type
   TNodeKind = enum nkLit, nkSub, nkAdd, nkDiv, nkMul
   TNode = object

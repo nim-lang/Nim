@@ -4,7 +4,7 @@ discard """
 """
 
 # note: this needs `--unhandled-rejections=strict`, see D20210217T215950
-
+import std/assertions
 import std/asyncjs
 from std/sugar import `=>`
 

@@ -6,6 +6,9 @@ output: '''
 '''
 """
 {.experimental: "notnil".}
+
+import std/assertions
+
 type
   MyPointer = distinct pointer
   MyString = distinct string

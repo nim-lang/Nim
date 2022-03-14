@@ -3,7 +3,7 @@ discard """
 """
 
 # This file tests the JavaScript generator
-
+import std/assertions
 import strutils
 
 var

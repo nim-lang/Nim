@@ -18,7 +18,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 #
-
+import std/assertions
 const Lib = "libchipmunk.so.6.1.1"
 
 when defined(MoreNim):

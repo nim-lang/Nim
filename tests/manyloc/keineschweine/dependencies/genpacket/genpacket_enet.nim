@@ -1,6 +1,6 @@
 import macros, macro_dsl, estreams
 from strutils import format
-
+import std/assertions
 template newLenName() =
   let lenName {.inject.} = ^("len" & $lenNames)
   inc(lenNames)

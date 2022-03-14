@@ -1,7 +1,7 @@
 discard """
   output: '''Success'''
 """
-
+import std/assertions
 const romanNumbers1 =
     [
     ("M", 1000), ("D", 500), ("C", 100),

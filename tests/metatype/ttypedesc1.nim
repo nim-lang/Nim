@@ -1,5 +1,5 @@
 import unittest, typetraits
-
+import std/assertions
 type
   TFoo[T, U] = object
     x: T

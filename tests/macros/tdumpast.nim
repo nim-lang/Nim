@@ -1,5 +1,5 @@
 # Dump the contents of a NimNode
-
+import std/assertions
 import macros
 
 block:

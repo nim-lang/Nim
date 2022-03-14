@@ -7,7 +7,7 @@ discard """
 cool
 test'''
 """
-
+import std/assertions
 # bug #5241
 type
   BaseFruit[T] = object of RootObj

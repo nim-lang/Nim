@@ -1,3 +1,5 @@
+import std/assertions
+
 block:
   var x: string
   var y = "foo"

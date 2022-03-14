@@ -27,7 +27,7 @@ Hi Andreas! How do you feel, Rumpf?
 [1, 2, 3, 4, 5, 6]
 '''
 """
-
+import std/assertions
 import
   critbits, sets, strutils, tables, random, algorithm, ropes,
   lists, htmlgen, xmltree, strtabs

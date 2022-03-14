@@ -2,7 +2,7 @@
 We can't merge this test inside a `when defined(cpp)` because some bug that was
 fixed would not trigger in that case.
 ]#
-
+import std/assertions
 import std/compilesettings
 
 static:

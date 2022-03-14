@@ -10,7 +10,7 @@ t9768.nim(23, 11)        foo1
 
 
 
-
+import std/assertions
 
 
 

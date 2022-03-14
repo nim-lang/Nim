@@ -10,7 +10,7 @@ my value A0my value Bconc1valueCabc3abc
 '''
 """
 
-
+import std/assertions
 import macros
 
 block tenum1:

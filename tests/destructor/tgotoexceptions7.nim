@@ -5,7 +5,7 @@ caught
 AssertionDefect
 900'''
 """
-
+import std/assertions
 type
   E = enum
     kindA, kindB

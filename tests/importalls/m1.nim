@@ -1,6 +1,7 @@
 import ./m2
 import ./m3 {.all.} as m3
 from ./m3 as m3Bis import nil
+import std/assertions
 
 doAssert m3h2 == 2
 export m3h2

@@ -5,7 +5,7 @@ discard """
 =destroy
 '''
 """
-
+import std/assertions
 type
   MyOpt[T] = object
     case has: bool:

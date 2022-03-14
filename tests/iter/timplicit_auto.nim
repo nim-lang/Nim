@@ -1,4 +1,5 @@
 # bug #1838
+import std/assertions
 
 type State = enum Empty, Tree, Fire
 

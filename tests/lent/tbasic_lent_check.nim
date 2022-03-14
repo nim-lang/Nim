@@ -2,7 +2,7 @@ discard """
   targets: "c cpp js"
   output: "1"
 """
-
+import std/assertions
 proc viewInto(a: array[4, string]): lent string =
   result = a[0]
 

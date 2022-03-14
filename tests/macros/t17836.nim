@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 # Ensure that `isNil` works in the typed macro context when pass procs.
 
 type

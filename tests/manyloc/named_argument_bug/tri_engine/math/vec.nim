@@ -2,6 +2,8 @@ import
   macros,
   "../config"
 
+import std/assertions
+
 type
   TV2*[T:SomeNumber=TR] = array[0..1, T]
   TV3*[T:SomeNumber=TR] = array[0..2, T]

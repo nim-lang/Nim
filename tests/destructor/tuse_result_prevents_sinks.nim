@@ -2,7 +2,7 @@ discard """
   output: ""
   targets: "c"
 """
-
+import std/assertions
 # bug #9594
 
 type

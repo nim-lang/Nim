@@ -1,3 +1,5 @@
+import std/assertions
+
 # bug #4139
 
 type

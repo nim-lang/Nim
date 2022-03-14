@@ -25,7 +25,7 @@ expression: foo 1
 '''
   errormsg: "type mismatch"
 """
-
+import std/assertions
 
 # line 30
 type Foo = object

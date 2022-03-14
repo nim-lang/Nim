@@ -3,7 +3,7 @@ discard """
 {"columns":[{"t":null},{"t":null}]}
 '''
 """
-
+import std/assertions
 ## Tests javascript object generation
 
 type

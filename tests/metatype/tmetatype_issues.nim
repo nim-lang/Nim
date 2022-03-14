@@ -11,7 +11,7 @@ Bar
 '''
 joinable: false
 """
-
+import std/assertions
 import typetraits, macros
 
 

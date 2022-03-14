@@ -4,7 +4,7 @@ main started: a=10, b=inner-b, c=10, d=some-d, x=16, z=20
 exiting: a=12, b=overriden-b, c=100, msg=bye bye, x=16
 '''
 """
-
+import std/assertions
 import macros, tables
 
 template scopeHolder =

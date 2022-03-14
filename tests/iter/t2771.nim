@@ -1,3 +1,5 @@
+import std/assertions
+
 template t1(i: int): int=
   i+1
 template t2(i: int): int=

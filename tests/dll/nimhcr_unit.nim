@@ -74,7 +74,7 @@ inline_proc implementation #3 40
 43
 '''
 """
-
+import std/assertions
 import macros
 
 macro carryOutTests(callingConv: untyped): untyped =

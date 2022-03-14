@@ -4,7 +4,7 @@ foo1
 foo2
 '''
 """
-
+import std/assertions
 block:
   type
     FooObj[T] = object

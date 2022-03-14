@@ -1,7 +1,7 @@
 discard """
 output: "ok"
 """
-
+import std/assertions
 proc main(): void =
   let a: float32 = 47.11'f32
   doAssert a == 47.11'f32

@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 macro makeEnum(): untyped =
   newTree(nnkEnumTy, newEmptyNode(), ident"a", ident"b", ident"c")
 

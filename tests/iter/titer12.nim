@@ -6,7 +6,7 @@ Selecting 4
 2.0
 '''
 """
-
+import std/assertions
 
 # bug #5522
 import macros, sugar, sequtils

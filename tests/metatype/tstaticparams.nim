@@ -1,7 +1,7 @@
 discard """
   output: "abracadabra\ntest\n3\n15\n4\n2\nfloat\n3\nfloat\nyin\nyang\n2\n4\n4\n2\n3"
 """
-
+import std/assertions
 type
   TFoo[T; Val: static[string]] = object
     data: array[4, T]

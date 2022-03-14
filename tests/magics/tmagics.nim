@@ -10,7 +10,7 @@ true
 '''
 joinable: false
 """
-
+import std/assertions
 block tlowhigh:
   type myEnum = enum e1, e2, e3, e4, e5
   var a: array[myEnum, int]

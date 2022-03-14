@@ -12,7 +12,7 @@ struct A {
   }
 };
 """.}
-
+import std/assertions
 proc fun0*(a: cint): int {.importcpp:"A::$1(@)".}
 proc fun1*(a: var cint): var int {.importcpp:"A::$1(@)".} =
   ## some comment; this test is for #14314

@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 static:
   let nodeA = newCommentStmtNode("this is a comment")
   doAssert nodeA.repr == "## this is a comment"

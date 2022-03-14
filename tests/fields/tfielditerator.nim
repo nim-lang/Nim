@@ -39,7 +39,7 @@ enC
 Z
 '''
 """
-
+import std/assertions
 block titerator1:
   type
     TMyTuple = tuple[a, b: char, x, y: int, z: string]

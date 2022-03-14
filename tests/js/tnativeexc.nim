@@ -1,7 +1,7 @@
 discard """
   action: "run"
 """
-
+import std/assertions
 import jsffi
 
 # Can catch JS exceptions

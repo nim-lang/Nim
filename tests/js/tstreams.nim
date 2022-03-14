@@ -5,7 +5,7 @@ AM
 GROOT
 '''
 """
-
+import std/assertions
 import streams
 
 var s = newStringStream("I\nAM\nGROOT")

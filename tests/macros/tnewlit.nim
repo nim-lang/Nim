@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 type
   MyType = object
     a : int

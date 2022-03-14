@@ -16,7 +16,7 @@ EXCEPT: IOError: hi
 FINALLY
 '''
 """
-
+import std/assertions
 echo ""
 
 proc no_exception =

@@ -11,7 +11,7 @@ Foo
 foo
 '''
 """
-
+import std/assertions
 echo "tdistinct"
 
 block tborrowdot:

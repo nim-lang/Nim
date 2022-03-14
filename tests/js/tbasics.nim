@@ -5,7 +5,7 @@ discard """
 ok
 1'''
 """
-
+import std/assertions
 type
   MyEnum = enum
     A,B,C,D

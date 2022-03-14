@@ -1,6 +1,6 @@
 import
   macros, algorithm, strutils
-
+import std/assertions
 proc normalProc(x: int) =
   echo x
 

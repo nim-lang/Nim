@@ -1,4 +1,6 @@
 include ./m1
+import std/assertions
+
 doAssert compiles(foo1)
 doAssert compiles(mt7.foo1)
 doAssert declared(foo1)

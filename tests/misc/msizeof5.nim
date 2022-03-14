@@ -25,6 +25,8 @@ template ensureCgen(T: typedesc) =
   ## ensures cgen
   var a {.volatile.}: T
 
+import std/assertions
+
 block:
   type Foo1Alias{.importc: "struct Foo1", size: sizeof(cint).} = object
     a: cint

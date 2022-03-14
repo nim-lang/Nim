@@ -36,7 +36,7 @@ b: float
 typeDesc[range[1 .. 5]]; ntyTypeDesc; typeDesc[range[1, 5]]; typeDesc[range[1 .. 5]]
 typeDesc[range]; ntyTypeDesc; typeDesc[range[T]]; typeDesc[range]'''
 """
-
+import std/assertions
 import macros, typetraits
 
 macro checkType(ex: typed): untyped =

@@ -19,7 +19,7 @@ idx out of bounds: 14
 """
 
 {.push boundChecks:on.}
-
+import std/assertions
 # see issue #6532:
 # js backend 0.17.3: array bounds check for non zero based arrays is buggy
 

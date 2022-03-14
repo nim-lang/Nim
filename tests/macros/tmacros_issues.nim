@@ -44,7 +44,7 @@ false
 '''
 """
 
-
+import std/assertions
 import macros, parseutils
 
 

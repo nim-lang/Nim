@@ -1,7 +1,7 @@
 discard """
   output: "XXXXX01234"
 """
-
+import std/assertions
 iterator modPairs(a: var array[0..4,string]): tuple[key: int, val: var string] =
   for i in 0..a.high:
     yield (key: i, val: a[i])

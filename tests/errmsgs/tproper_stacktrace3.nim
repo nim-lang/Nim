@@ -2,7 +2,7 @@ discard """
   outputsub: '''tproper_stacktrace3.nim(21) main'''
   exitcode: 1
 """
-
+import std/assertions
 # bug #5400
 
 type Container = object

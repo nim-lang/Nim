@@ -1,7 +1,7 @@
 discard """
   output: "passed all tests."
 """
-
+import std/assertions
 import strutils
 
 proc c_sprintf(buf, fmt: cstring) {.importc:"sprintf", header: "<stdio.h>", varargs.}

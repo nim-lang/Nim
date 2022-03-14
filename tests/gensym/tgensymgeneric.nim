@@ -8,7 +8,7 @@ discard """
 # not work. Copying the symbol does not work either because we're already
 # the owner of the symbol! What we need to do is to copy the symbol
 # in the generic instantiation process...
-
+import std/assertions
 type
   TA = object
     x: int

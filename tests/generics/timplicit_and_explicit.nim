@@ -1,4 +1,4 @@
-
+import std/assertions
 block: # basic test
   proc doStuff[T](a: SomeInteger): T = discard
   proc doStuff[T;Y](a: SomeInteger, b: Y): Y = discard

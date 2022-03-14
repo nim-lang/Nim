@@ -2,6 +2,7 @@ discard """
   output: '''ok'''
 """
 import strscans, strutils
+import std/assertions
 
 proc raiseTestException*() =
   raise newException(Exception, "test")

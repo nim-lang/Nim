@@ -1,5 +1,5 @@
 import m18235
-
+import std/assertions
 # this must error out because it was never actually exported
 doAssert(not declared(foo))
 doAssert not compiles(foo())

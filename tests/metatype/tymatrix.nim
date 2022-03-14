@@ -1,3 +1,5 @@
+import std/assertions
+
 template reject(e) =
   static: assert(not compiles(e))
 

@@ -47,7 +47,7 @@ discard """
 # - Results are sensitive to locking cost, but we don't
 #   check for proper locking
 #
-
+import std/assertions
 import
   strutils, times
 

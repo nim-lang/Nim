@@ -10,6 +10,7 @@ Pony is dying!'''
 joinable: false
 targets: "c"
 """
+import std/assertions
 
 # bug #4214
 type

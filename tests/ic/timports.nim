@@ -1,4 +1,6 @@
 import mimports
+import std/assertions
+
 doAssert fn1() == 1
 doAssert not declared(hfn3)
 

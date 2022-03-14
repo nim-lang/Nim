@@ -1,7 +1,7 @@
 discard """
   output: '''(x: 'a')'''
 """
-
+import std/assertions
 type
   Bar[T] = object
     x: T

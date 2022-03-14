@@ -8,7 +8,7 @@ First tasks completed.
 Second tasks completed.
 test1'''
 """
-
+import std/assertions
 import strutils, os, std / wordwrap
 
 import system / ansi_c

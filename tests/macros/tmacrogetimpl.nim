@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 # bug #5034
 
 macro copyImpl(srsProc: typed, toSym: untyped) =

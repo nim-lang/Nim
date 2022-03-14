@@ -5,6 +5,8 @@ Hello
 Hello
 '''
 """
+import std/assertions
+
 proc test[T]() =
   try:
     raise newException(T, "Hello")

@@ -1,4 +1,5 @@
 import std/private/jsutils
+import std/assertions
 
 proc main()=
   template fn(a): untyped = jsConstructorName(a)

@@ -1,5 +1,5 @@
 # xxx this test is bad (echo instead of error, etc)
-
+import std/assertions
 import zip/zlib
 
 proc compress*(source: string): string =

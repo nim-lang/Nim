@@ -4,7 +4,7 @@ proc poo(x, y: int) =
   let y = x
   echo ["poo"]'''
 """
-
+import std/assertions
 import macros
 
 const

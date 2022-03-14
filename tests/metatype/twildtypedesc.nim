@@ -6,7 +6,7 @@ discard """
 123
 123'''
 """
-
+import std/assertions
 import strutils
 
 proc unpack(t: typedesc[string], v: string): string = $v

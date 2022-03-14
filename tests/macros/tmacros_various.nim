@@ -28,7 +28,7 @@ x: some string
 '''
 """
 
-
+import std/assertions
 import macros, sugar, macrocache
 
 

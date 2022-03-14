@@ -4,7 +4,7 @@ discard """
 test1 OK
 '''
 """
-
+import std/assertions
 import smart_ptr
 
 type

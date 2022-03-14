@@ -8,7 +8,7 @@ Event { name: 'reloaded: test' }
 Event { name: 'updates: test' }
 '''
 """
-
+import std/assertions
 import jsffi, jsconsole
 
 # Tests for JsObject

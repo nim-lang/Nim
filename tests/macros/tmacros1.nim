@@ -4,7 +4,7 @@ discard """
 {b}
 {a, b}'''
 """
-
+import std/assertions
 import macros
 
 macro outterMacro*(n, blck: untyped): untyped =

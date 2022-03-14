@@ -10,7 +10,7 @@ your
 name
 '''
 """
-
+import std/assertions
 # Test the new iterators
 
 iterator xrange(fromm, to: int, step = 1): int =

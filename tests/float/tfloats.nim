@@ -6,7 +6,7 @@ discard """
 #[
 xxx merge all or most float tests into this file
 ]#
-
+import std/assertions
 import std/[fenv, math, strutils]
 import stdtest/testutils
 

@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 proc t1* = discard
 proc t2 = discard
 

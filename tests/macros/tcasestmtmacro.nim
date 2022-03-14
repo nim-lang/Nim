@@ -3,7 +3,7 @@ discard """
 yes
 '''
 """
-
+import std/assertions
 import macros
 
 macro `case`(n: tuple): untyped =

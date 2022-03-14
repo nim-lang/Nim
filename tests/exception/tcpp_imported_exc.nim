@@ -15,7 +15,7 @@ cpp exception caught
 '''
 disabled: "windows" # pending bug #18011
 """
-
+import std/assertions
 type
   std_exception* {.importcpp: "std::exception", header: "<exception>".} = object
   std_runtime_error* {.importcpp: "std::runtime_error", header: "<stdexcept>".} = object

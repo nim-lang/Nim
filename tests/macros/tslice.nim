@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 macro test(): untyped =
   result = nnkStmtList.newTree()
   let n = nnkStmtList.newTree(

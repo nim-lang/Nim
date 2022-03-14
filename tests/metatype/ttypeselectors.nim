@@ -1,7 +1,7 @@
 discard """
 output: "8\n8\n4"
 """
-
+import std/assertions
 import
   macros, typetraits
 

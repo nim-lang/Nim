@@ -1,7 +1,7 @@
 import
   re, json, strutils, tables, math, os, math_helpers,
   sg_packets, md5, zlib_helpers
-
+import std/assertions
 when defined(NoSFML):
   import server_utils
   type TVector2i = object

@@ -1,3 +1,5 @@
+import std/assertions
+
 # https://github.com/nim-lang/Nim/issues/13524
 template fun(field): untyped = astToStr(field)
 proc test1(): string = fun(nonexistent1)

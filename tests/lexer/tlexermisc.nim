@@ -2,7 +2,7 @@ discard """
   action: run
   output: "equal"
 """
-
+import std/assertions
 var t=0x950412DE
 
 if t==0x950412DE:

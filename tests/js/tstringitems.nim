@@ -5,7 +5,7 @@ c
 d
 e'''
 """
-
+import std/assertions
 block: # bug #2581
   const someVars = [ "Hello" ]
   var someVars2 = [ "Hello" ]

@@ -3,7 +3,7 @@ discard """
 foo
 '''
 """
-
+import std/assertions
 block: # #12672
   var a = @[1]
   let i = 1

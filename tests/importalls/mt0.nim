@@ -1,4 +1,6 @@
 import ./m1 as m
+import std/assertions
+
 doAssert compiles(foo0)
 doAssert not compiles(foo1)
 doAssert foo6b() == 2

@@ -1,6 +1,8 @@
 from ./m1 {.all.} as r1 import foo1
 from ./m1 {.all.} as r2 import foo7
 
+import std/assertions
+
 block: # different symbol kinds
   doAssert foo1 == 2
   doAssert r1.foo1 == 2

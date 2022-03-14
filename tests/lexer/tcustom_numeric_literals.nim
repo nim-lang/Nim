@@ -3,7 +3,7 @@ discard """
 """
 
 # Test tkStrNumLit
-
+import std/assertions
 import std/[macros, strutils]
 import mlexerutils
 

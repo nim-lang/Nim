@@ -7,7 +7,7 @@ generic
 '''
 joinable: false
 """
-
+import std/assertions
 import algorithm, sugar, sequtils, typetraits, asyncdispatch
 
 block tconfusing_arrow:

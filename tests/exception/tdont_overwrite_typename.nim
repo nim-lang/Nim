@@ -3,7 +3,7 @@ discard """
   output: '''Check passed
 Check passed'''
 """
-
+import std/assertions
 # bug #5628
 
 proc checkException(ex: ref Exception) =

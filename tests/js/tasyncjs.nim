@@ -9,7 +9,7 @@ done
 #[
 xxx move this to tests/stdlib/tasyncjs.nim
 ]#
-
+import std/assertions
 import std/asyncjs
 
 block:

@@ -2,6 +2,8 @@ import ./m1 {.all.}
   # D20201209T194412:here keep this as is, without `as`, so that mt8.nim test keeps
   # checking that the original module symbol for `m1` isn't modified and that
   # only the alias in `createModuleAlias` is affected.
+
+import std/assertions
 doAssert declared(m1.foo1)
 doAssert foo1 == 2
 

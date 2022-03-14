@@ -1,3 +1,5 @@
+import std/assertions
+
 block global:
   proc getState(): int =
     var state0 {.global.}: int

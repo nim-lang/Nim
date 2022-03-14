@@ -31,7 +31,7 @@ end
 @[1, 2, 3]
 '''
 """
-
+import std/assertions
 
 import sequtils, strutils
 

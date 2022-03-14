@@ -9,7 +9,7 @@ Another 3 iterations...
 ...
 Found 1 loops (including artificial root node) (3)'''
 """
-
+import std/assertions
 # bug #3184
 
 import tables, sets

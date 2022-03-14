@@ -1,4 +1,6 @@
 import ./m1 {.all.} as m2 except foo1
+import std/assertions
+
 doAssert foo2 == 2
 doAssert not compiles(foo1)
 doAssert m2.foo1 == 2

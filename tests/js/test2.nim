@@ -6,7 +6,7 @@ js 3.14
 -21550
 -21550'''
 """
-
+import std/assertions
 # This file tests the JavaScript generator
 
 doAssert getCurrentException() == nil

@@ -1,5 +1,5 @@
 # xxx consider merging with `tests/stdlib/trepr.nim` to increase overall test coverage
-
+import std/assertions
 block ints:
   let
     na: int8 = -120'i8

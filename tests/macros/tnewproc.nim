@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 macro test(a: untyped): untyped =
   # proc hello*(x: int = 3, y: float32): int {.inline.} = discard
   let

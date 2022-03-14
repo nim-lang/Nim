@@ -9,7 +9,7 @@ Hello from thread
 """
 # Copied from stdlib
 import strutils
-
+import std/assertions
 const
   StackGuardSize = 4096
   ThreadStackMask = 1024*256*sizeof(int)-1

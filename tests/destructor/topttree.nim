@@ -10,7 +10,7 @@ discard """
 8 8'''
 joinable: false
 """
-
+import std/assertions
 import typetraits
 
 type

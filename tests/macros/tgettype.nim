@@ -1,6 +1,6 @@
 import std/macros
 import stdtest/testutils
-
+import std/assertions
 # getType
 
 block:

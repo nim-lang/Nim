@@ -8,7 +8,7 @@ range fail expected
 '''
 """
 import math, fenv
-
+import std/assertions
 type
   Positive = range[0.0..Inf]
   StrictPositive = range[minimumPositiveValue(float)..Inf]

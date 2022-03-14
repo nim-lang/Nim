@@ -1,7 +1,7 @@
 
 import std/macros
 import std/macrocache
-
+import std/assertions
 const myCounter = CacheCounter"myCounter"
 
 proc getUniqueId*(): int {.compileTime.} =

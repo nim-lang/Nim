@@ -1,3 +1,5 @@
+import std/assertions
+
 proc f(x: int): int =
   result = case x
     of 1: 2

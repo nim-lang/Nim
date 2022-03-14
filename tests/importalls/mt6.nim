@@ -1,4 +1,6 @@
 import ./m1 {.all.} as m2
+import std/assertions
+
 doAssert compiles(foo1)
 doAssert compiles(m2.foo1)
 doAssert declared(foo1)

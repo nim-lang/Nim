@@ -1,4 +1,6 @@
 import nativesockets, asyncdispatch, macros
+import std/assertions
+
 var p = newDispatcher()
 var sock = createAsyncNativeSocket()
 

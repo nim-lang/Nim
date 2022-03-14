@@ -1,3 +1,5 @@
+import std/assertions
+
 block: # `.noSideEffect`
   func foo(bar: proc(): int): int = bar()
   var count = 0

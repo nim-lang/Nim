@@ -1,7 +1,7 @@
 discard """
   matrix: "--gc:arc; --gc:refc"
 """
-
+import std/assertions
 proc hello() =
   raise newException(ValueError, "You are wrong")
 

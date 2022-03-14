@@ -5,7 +5,7 @@ Nim: nan (float)
 Nim: nan (double)
 '''
 """
-
+import std/assertions
 let f = NaN
 echo "Nim: ", f
 

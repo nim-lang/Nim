@@ -8,7 +8,7 @@
 ##
 ## Source code for this module can be found at
 ## https://github.com/gradha/argument_parser.
-
+import std/assertions
 import os, strutils, tables, math, parseutils, sequtils, sets, algorithm,
   unicode
 

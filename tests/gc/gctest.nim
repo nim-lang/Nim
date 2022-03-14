@@ -3,7 +3,7 @@ discard """
 """
 
 # Test the garbage collector.
-
+import std/assertions
 import
   strutils
 

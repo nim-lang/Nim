@@ -1,7 +1,7 @@
 discard """
   targets: "c cpp"
 """
-
+import std/assertions
 var closureIterResult = newSeq[int]()
 
 proc checkpoint(arg: int) =

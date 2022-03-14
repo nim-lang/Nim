@@ -14,7 +14,7 @@ bar 12
 asd
 '''
 """
-
+import std/assertions
 # bug #1489
 proc foo(x: int) = echo "foo ", x
 proc bar(y: var int) = echo "bar ", y

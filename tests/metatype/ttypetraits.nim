@@ -1,5 +1,6 @@
 import typetraits
 import macros
+import std/assertions
 
 block: # isNamedTuple
   type Foo1 = (a:1,).type

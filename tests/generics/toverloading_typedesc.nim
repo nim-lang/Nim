@@ -4,7 +4,7 @@ discard """
 """
 import moverloading_typedesc
 import tables
-
+import std/assertions
 type
   LFoo = object
   LBar = object

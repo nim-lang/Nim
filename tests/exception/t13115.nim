@@ -1,4 +1,5 @@
 const msg = "This char is `" & '\0' & "` and works fine!"
+import std/assertions
 
 when defined nim_t13115:
   # bug #13115

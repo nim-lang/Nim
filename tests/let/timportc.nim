@@ -1,7 +1,7 @@
 discard """
 targets: "c cpp js"
 """
-
+import std/assertions
 when defined(c) or defined(cpp):
   {.emit:"""
   const int TEST1 = 123;

@@ -1,6 +1,6 @@
 import streams
 from strutils import repeat
-
+import std/assertions
 proc readPaddedStr*(s: PStream, length: int, padChar = '\0'): string =
   var lastChr = length
   result = s.readStr(length)

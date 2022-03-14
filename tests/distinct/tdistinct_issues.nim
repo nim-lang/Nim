@@ -7,7 +7,7 @@ A
 apr
 '''
 """
-
+import std/assertions
 
 block t4435:
   type

@@ -2,7 +2,7 @@ discard """
   output: "vec2"
 """
 # bug #5131
-
+import std/assertions
 import macros
 
 type

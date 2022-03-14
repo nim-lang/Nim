@@ -4,6 +4,8 @@ after 2 2
 after 2 2
 after 2 2'''
 """
+import std/assertions
+
 # bug #9263
 type
   Matrix* = object

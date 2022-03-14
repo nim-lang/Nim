@@ -8,7 +8,7 @@ foo
 3.14
 '''
 """
-
+import std/assertions
 type
   V = enum
     A, B, C

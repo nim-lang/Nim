@@ -3,7 +3,7 @@ discard """
   output: "ok"
   exitcode: "0"
 """
-
+import std/assertions
 # Test `mod` on float64 both at compiletime and at runtime
 import math
 

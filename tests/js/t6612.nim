@@ -1,7 +1,7 @@
 discard """
   action: "run"
 """
-
+import std/assertions
 proc fillWith(sq: var seq[int], n: int, unused: string) =
   sq = @[n]
 

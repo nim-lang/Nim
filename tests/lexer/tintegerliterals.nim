@@ -1,3 +1,5 @@
+import std/assertions
+
 # test the valid literals
 doAssert 0b10 == 2
 doAssert 0B10 == 2

@@ -6,7 +6,7 @@ discard """
 @[1, 2]
 ~'''
 """
-
+import std/assertions
 # bug #2476
 
 type A = ref object

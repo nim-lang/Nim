@@ -1,6 +1,6 @@
 discard """
 """
-
+import std/assertions
 import macros
 
 proc symToIdent(x: NimNode): NimNode =

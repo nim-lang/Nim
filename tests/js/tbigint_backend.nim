@@ -1,5 +1,5 @@
 import std/private/jsutils
-
+import std/assertions
 
 type JsBigIntImpl {.importc: "bigint".} = int
 type JsBigInt = distinct JsBigIntImpl

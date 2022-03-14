@@ -7,7 +7,7 @@ output: '''
 ]
 '''
 """
-
+import std/assertions
 proc represent(i: int): iterator(): string =
   result = iterator(): string =
     yield $i

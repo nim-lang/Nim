@@ -1,3 +1,5 @@
+import std/assertions
+
 proc moo1(this: int) =
   doAssert this == 42
 

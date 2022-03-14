@@ -3,7 +3,7 @@ discard """
 Match failed: ham'''
 joinable: false
 """
-
+import std/assertions
 # bug #6220
 
 import nre

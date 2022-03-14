@@ -5,7 +5,7 @@ bar instantiated with 1
 bar instantiated with 10
 '''
 """
-
+import std/assertions
 import typetraits
 
 type

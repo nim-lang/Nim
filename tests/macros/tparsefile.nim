@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 static:
   let fn = "mparsefile.nim"
   var raised = false

@@ -1,4 +1,7 @@
 import ./m1 {.all.} as m
+import std/assertions
+
+
 doAssert foo1 == 2
 doAssert m.foo1 == 2
 

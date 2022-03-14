@@ -1,5 +1,5 @@
 # #12671
-
+import std/assertions
 proc foo =
   var x: seq[int]
   doAssertRaises(IndexDefect):

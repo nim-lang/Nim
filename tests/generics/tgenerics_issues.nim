@@ -30,7 +30,7 @@ H:1:0.1
 '''
 joinable: false
 """
-
+import std/assertions
 import macros, sequtils, sets, sugar, tables, typetraits
 
 block t88:

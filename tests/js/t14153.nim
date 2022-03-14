@@ -4,7 +4,7 @@ index 5 not in 0 .. 2
 index 5 not in 0 .. 2
 '''
 """
-
+import std/assertions
 var x = @[1, 2, 3]
 
 try:

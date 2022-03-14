@@ -6,7 +6,7 @@ t
 """
 
 # xxx merge into tasyncjs.nim
-
+import std/assertions
 import asyncjs, macros
 
 macro f*(a: untyped): untyped =

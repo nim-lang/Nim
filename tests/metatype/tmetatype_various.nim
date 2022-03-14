@@ -1,7 +1,7 @@
 discard """
   output: '''[1, 0, 0, 0, 0, 0, 0, 0] CTBool[Ct[system.uint32]]'''
 """
-
+import std/assertions
 block tconstraints:
   proc myGenericProc[T: object|tuple|int|ptr|ref|distinct](x: T): string =
     result = $x

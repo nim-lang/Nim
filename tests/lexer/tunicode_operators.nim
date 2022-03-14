@@ -1,4 +1,5 @@
 #{.experimental: "unicodeOperators".}
+import std/assertions
 
 proc `⊙`(x, y: int): int = x * y
 proc `⊙=`(x: var int, y: int) = x *= y

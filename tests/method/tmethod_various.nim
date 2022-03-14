@@ -4,7 +4,7 @@ do nothing
 HELLO WORLD!
 '''
 """
-
+import std/assertions
 
 # tmethods1
 method somethin(obj: RootObj) {.base.} =

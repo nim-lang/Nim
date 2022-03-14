@@ -3,7 +3,7 @@ action: compile
   cmd: "nim $target --debuginfo --hints:on --define:useNimRtl --app:lib $options $file"
 batchable: false
 """
-
+import std/assertions
 type
   TNodeKind = enum nkLit, nkSub, nkAdd, nkDiv, nkMul
   TNode = object

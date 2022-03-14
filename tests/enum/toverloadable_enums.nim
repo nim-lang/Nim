@@ -7,6 +7,8 @@ joinable: false
 
 {.experimental: "overloadableEnums".}
 
+import std/assertions
+
 type
   E1 = enum
     value1,

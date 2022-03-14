@@ -4,7 +4,7 @@ discard """
 clicked!
 (allocCount: 4, deallocCount: 4)'''
 """
-
+import std/assertions
 import system / ansi_c
 
 type

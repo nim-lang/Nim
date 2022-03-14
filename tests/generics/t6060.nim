@@ -1,5 +1,5 @@
 import tables
-
+import std/assertions
 type MyTab[A,B] = distinct TableRef[A,B]
 
 proc `$`[A,B](t: MyTab[A,B]): string =

@@ -6,6 +6,8 @@ test multiple imports
 import ./m1, m2 {.all.}, ./m3 {.all.}
   # make sure this keeps using `import ./m1` without as.
 
+import std/assertions
+
 # m1 is regularly imported
 doAssert declared(m1.foo0)
 doAssert declared(foo0)

@@ -7,7 +7,7 @@ calling mystuff
 yes
 '''
 """
-
+import std/assertions
 import sugar, macros
 
 proc twoParams(x: (int, int) -> int): int =

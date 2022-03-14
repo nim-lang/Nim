@@ -2,7 +2,7 @@ discard """
   errormsg: "type mismatch: got <string> but expected 'ptr'"
   line: 20
 """
-
+import std/assertions
 import typetraits
 
 type

@@ -1,3 +1,5 @@
+import std/assertions
+
 block: # Replicates #18728
   type
     FlipFlop[A, B] = ref object

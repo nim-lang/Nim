@@ -1,4 +1,5 @@
 import macros
+import std/assertions
 
 macro lispReprStr*(a: untyped): untyped = newLit(a.lispRepr)
 

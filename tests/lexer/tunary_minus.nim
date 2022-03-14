@@ -5,7 +5,7 @@ discard """
 # Test numeric literals and handling of minus symbol
 
 import std/[macros, strutils]
-
+import std/assertions
 import mlexerutils
 
 const one = 1

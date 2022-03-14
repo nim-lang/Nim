@@ -9,6 +9,7 @@ import
   tri_engine/math/circle
 
 import strutils
+import std/assertions
 
 type
   TVert* = tuple[pos: TV2[TR], texCoord: TV2[TR]]

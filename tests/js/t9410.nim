@@ -1,3 +1,5 @@
+import std/assertions
+
 template tests =
   block:
     var i = 0
