@@ -12,8 +12,6 @@
 ## Code specialization instead of the old, incredibly slow 'genericReset'
 ## implementation.
 
-import std/assertions
-
 proc specializeResetT(p: BProc, accessor: Rope, typ: PType)
 
 proc specializeResetN(p: BProc, accessor: Rope, n: PNode;

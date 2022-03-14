@@ -9,8 +9,6 @@
 
 # included from cgen.nim
 
-import std/assertions
-
 const
   RangeExpandLimit = 256      # do not generate ranges
                               # over 'RangeExpandLimit' elements

@@ -35,8 +35,6 @@
 import algorithm, sets, prefixmatches, parseutils, tables
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
-import std/assertions
-
 when defined(nimsuggest):
   import passes, tables, pathutils # importer
 

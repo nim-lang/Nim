@@ -13,8 +13,6 @@
 import
   ast, astalgo, msgs, semdata, types, trees, strutils, lookups
 
-import std/assertions
-
 
 proc equalGenericParams(procA, procB: PNode): bool =
   if procA.len != procB.len: return false

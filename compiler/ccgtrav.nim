@@ -11,8 +11,6 @@
 
 # included from cgen.nim
 
-import std/assertions
-
 type
   TTraversalClosure = object
     p: BProc

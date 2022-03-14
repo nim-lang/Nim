@@ -14,8 +14,6 @@ from std/math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   floor, ceil, `mod`, cbrt, arcsinh, arccosh, arctanh, erf, erfc, gamma,
   lgamma
 
-import std/assertions
-
 from std/sequtils import toSeq
 when declared(math.copySign):
   # pending bug #18762, avoid renaming math

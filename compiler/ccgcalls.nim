@@ -9,8 +9,6 @@
 #
 # included from cgen.nim
 
-import std/assertions
-
 proc canRaiseDisp(p: BProc; n: PNode): bool =
   # we assume things like sysFatal cannot raise themselves
   if n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
