@@ -1,5 +1,5 @@
-
 include std/prelude
+import std/assertions
 
 proc main(input, output: string) =
   type NodeKind = enum

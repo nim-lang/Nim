@@ -1,6 +1,7 @@
 
 include std/prelude
 import intsets
+import std/assertions
 
 type
   NodeKind = enum

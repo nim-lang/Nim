@@ -6,7 +6,7 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-
+import std/assertions
 import
   os, strutils, times, parseopt, parsecfg, streams, strtabs, tables,
   re, htmlgen, macros, md5, osproc, parsecsv, algorithm

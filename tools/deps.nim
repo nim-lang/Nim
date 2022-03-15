@@ -1,5 +1,6 @@
 import os, uri, strformat, strutils
 import std/private/gitutils
+import std/assertions
 
 proc exec(cmd: string) =
   echo "deps.cmd: " & cmd
