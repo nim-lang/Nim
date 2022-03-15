@@ -2,6 +2,7 @@
 deadcode?
 ]#
 import base64, strutils, json, htmlgen, dom, algorithm
+import std/assertions
 
 type
   TData = object
