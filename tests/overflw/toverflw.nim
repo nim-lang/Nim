@@ -3,7 +3,7 @@ discard """
   cmd: "nim $target --overflowChecks:off $options $file"
 """
 # Tests nim's ability to detect overflows
-
+import std/assertions
 {.push overflowChecks: on.}
 
 var

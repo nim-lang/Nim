@@ -21,7 +21,7 @@ discard """
 '''
 targets: "c js"
 """
-
+import std/assertions
 import std/[unittest, sequtils]
 
 proc doThings(spuds: var int): int =

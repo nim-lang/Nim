@@ -1,3 +1,4 @@
+import std/assertions
 # bug #6436
 proc foo(size: int, T: typedesc): seq[T]  {.deprecated.}=
   result = newSeq[T](size)

@@ -1,7 +1,7 @@
 discard """
   targets: "c cpp js"
 """
-
+import std/assertions
 import std/strutils
 
 # bug #6133

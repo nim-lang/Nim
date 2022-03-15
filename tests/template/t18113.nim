@@ -3,7 +3,7 @@
 # substitution.
  
 # bug #18113
-
+import std/assertions
 import sequtils
 
 {.push raises: [Defect].}

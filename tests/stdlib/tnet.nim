@@ -1,7 +1,7 @@
 discard """
 outputsub: ""
 """
-
+import std/assertions
 import net, nativesockets
 import unittest
 

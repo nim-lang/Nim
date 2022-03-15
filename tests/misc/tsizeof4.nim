@@ -1,7 +1,7 @@
 discard """
 disabled: "arm64"
 """
-
+import std/assertions
 # bug #11792
 type
   m256d {.importc: "__m256d", header: "immintrin.h".} = object

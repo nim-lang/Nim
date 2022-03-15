@@ -1,3 +1,5 @@
+import std/assertions
+
 proc someFunc() =
   try:
     raise newException(ValueError, "message")

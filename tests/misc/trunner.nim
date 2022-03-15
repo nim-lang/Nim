@@ -2,7 +2,7 @@ discard """
   targets: "c cpp"
   joinable: false
 """
-
+import std/assertions
 ## tests that don't quite fit the mold and are easier to handle via `execCmdEx`
 ## A few others could be added to here to simplify code.
 ## Note: this test is a bit slow but tests a lot of things; please don't disable.

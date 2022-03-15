@@ -1,7 +1,7 @@
 discard """
   targets: "c cpp js"
 """
-
+import std/assertions
 from std/sequtils import toSeq, map
 from std/sugar import `=>`
 

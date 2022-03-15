@@ -19,7 +19,7 @@ S1
 '''
 """
 # bug #1915
-
+import std/assertions
 import macros
 
 # Test that parameters are properly gensym'ed finally:

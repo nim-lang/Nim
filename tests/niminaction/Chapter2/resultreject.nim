@@ -2,7 +2,7 @@ discard """
   errormsg: "has to be used (or discarded)"
   line: 27
 """
-
+import std/assertions
 # Page 35.
 
 proc implicit: string =

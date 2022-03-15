@@ -266,7 +266,7 @@ c: StmtList
 '''
 """
 import macros
-
+import std/assertions
 macro call(a): untyped =
   echo "a: ", a.treeRepr
   result = ident"int"

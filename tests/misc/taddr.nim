@@ -2,7 +2,7 @@ discard """
   targets: "c cpp js"
   matrix: "; -d:release"
 """
-
+import std/assertions
 type T = object
   x: int
   s: string

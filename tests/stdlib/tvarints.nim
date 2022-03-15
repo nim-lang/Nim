@@ -1,5 +1,5 @@
 import std/varints
-
+import std/assertions
 # xxx doesn't work with js: tvarints.nim(18, 14) `wrLen == rdLen`  [AssertionDefect]
 
 block:

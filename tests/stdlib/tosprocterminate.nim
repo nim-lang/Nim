@@ -3,7 +3,7 @@ discard """
   targets: "c cpp"
   matrix: "--threads:on; "
 """
-
+import std/assertions
 import os, osproc, times, std / monotimes
 
 when defined(windows):

@@ -1,5 +1,5 @@
 # xxx also test on js
-
+import std/assertions
 import std/genasts
 import std/macros
 from std/strformat import `&`

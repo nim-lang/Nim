@@ -1,5 +1,5 @@
 import json
-
+import std/assertions
 type
   Message* = object
     username*: string

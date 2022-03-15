@@ -1,5 +1,5 @@
 import std/stats
-
+import std/assertions
 proc `~=`(x, y: float): bool =
   abs(x - y) < 10e-8
 

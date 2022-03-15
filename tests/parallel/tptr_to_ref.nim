@@ -2,7 +2,7 @@
 
 # Test case for the compiler correctly detecting if a type used by a shared
 # global is gcsafe.
-
+import std/assertions
 import locks, threadpool, osproc
 
 const MAX_WORKERS = 50

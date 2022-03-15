@@ -1,5 +1,5 @@
 import typeinfo
-
+import std/assertions
 type
   TE = enum
     blah, blah2

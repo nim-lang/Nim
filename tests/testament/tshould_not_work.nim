@@ -37,7 +37,7 @@ Failure: reTimeout
 FAIL: tests/shouldfail/tvalgrind.nim
 Failure: reExitcodesDiffer
 """
-
+import std/assertions
 import std/[os,strformat,osproc]
 import stdtest/testutils
 

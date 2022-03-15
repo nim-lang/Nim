@@ -30,7 +30,7 @@ true
 <h1><a href="http://force7.de/nim">Nim</a></h1>
 '''
 """
-
+import std/assertions
 import
   critbits, sets, strutils, tables, random, algorithm, re, ropes,
   segfaults, lists, parsesql, streams, os, htmlgen, xmltree, strtabs

@@ -1,7 +1,7 @@
 discard """
 joinable: false
 """
-
+import std/assertions
 # not joinable because it executes itself with parameters
 import os
 import osproc

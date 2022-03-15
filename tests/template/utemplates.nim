@@ -1,5 +1,5 @@
 import unittest
-
+import std/assertions
 template t(a: int): string = "int"
 template t(a: string): string = "string"
 

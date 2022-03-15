@@ -1,5 +1,5 @@
 # Tests unsigned literals and implicit conversion between uints and ints
-
+import std/assertions
 var h8:uint8 = 128
 var h16:uint16 = 32768
 var h32:uint32 = 2147483648'u32

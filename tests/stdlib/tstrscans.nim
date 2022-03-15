@@ -1,7 +1,7 @@
 discard """
   output: ""
 """
-
+import std/assertions
 import strscans, strutils
 
 block ParsePasswd:

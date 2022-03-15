@@ -16,7 +16,7 @@ discard """
 """
 
 # tests for rst module
-
+import std/assertions
 import ../../lib/packages/docutils/[rstgen, rst, rstast]
 import unittest, strutils
 import std/private/miscdollars

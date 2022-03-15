@@ -5,7 +5,7 @@ discard """
 Success'''
 """
 # Test the different integer operations
-
+import std/assertions
 var testNumber = 0
 
 template test(opr, a, b, c: untyped): untyped =

@@ -8,6 +8,7 @@ discard """
 when not defined(windows):
   echo "OK"
 else:
+  import std/assertions
   {.push gcsafe.}
 
   const CP_UTF8 = 65001'i32

@@ -1,5 +1,5 @@
 # was: appveyor is "out of memory"
-
+import std/assertions
 var x: ptr int
 
 x = cast[ptr int](alloc(7))

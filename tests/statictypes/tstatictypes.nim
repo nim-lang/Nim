@@ -24,7 +24,7 @@ Val1
 '''
 matrix: "--hints:off"
 """
-
+import std/assertions
 import macros
 
 template ok(x) = doAssert(x)

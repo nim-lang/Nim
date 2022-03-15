@@ -21,7 +21,7 @@ world
 typedescDefault
 '''
 """
-
+import std/assertions
 template reject(x) =
   assert(not compiles(x))
 

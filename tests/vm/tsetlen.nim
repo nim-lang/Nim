@@ -1,3 +1,5 @@
+import std/assertions
+
 type Foo = object
   index: int
 

@@ -53,6 +53,7 @@ proc fun*() =
   runnableExamples:
     # only works at top level
     import std/macros
+    import std/assertions
     macro myImport(a: static string): untyped =
       newTree(nnkImportStmt, [newLit a])
     myImport "str" & "utils"
@@ -80,9 +81,11 @@ when true: # issue #12746
 
 when true: # runnableExamples with rdoccmd
   runnableExamples "-d:testFoo -d:testBar":
+    import std/assertions
     doAssert defined(testFoo) and defined(testBar)
     doAssert defined(testFooExternal)
   runnableExamples "-d:testFoo2":
+    import std/assertions
     doAssert defined(testFoo2)
     doAssert not defined(testFoo) # doesn't get confused by other examples
 
@@ -91,12 +94,15 @@ when true: # runnableExamples with rdoccmd
   runnableExamples(): discard
   runnableExamples: discard
   runnableExamples "-r:off": # issue #10731
+    import std/assertions
     doAssert false ## we compile only (-r:off), so this won't be run
   runnableExamples "-b:js":
     import std/compilesettings
+    import std/assertions
     proc startsWith*(s, prefix: cstring): bool {.noSideEffect, importjs: "#.startsWith(#)".}
     doAssert querySetting(backend) == "js"
   runnableExamples "-b:cpp":
+    import std/assertions
     static: doAssert defined(cpp)
     type std_exception {.importcpp: "std::exception", header: "<exception>".} = object
 
@@ -170,6 +176,7 @@ runnableExamples:
 
   # bug #13491
   block:
+    import std/assertions
     proc fun(): int = doAssert false
     doAssertRaises(AssertionDefect, (discard fun()))
 
@@ -178,6 +185,7 @@ runnableExamples:
     foo (discard)
 
   block:
+    import std/assertions
     template fn(body: untyped): untyped = true
     doAssert(fn do: nonexistent)
   import std/macros
@@ -204,7 +212,7 @@ snippet:
 
 .. code-block:: Nim
     :test:
-
+  import std/assertions
   doAssert defined(testFooExternal)
 
 ]##

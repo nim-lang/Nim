@@ -8,7 +8,7 @@ running with pragma
 ran with pragma
 '''
 """
-
+import std/assertions
 template withValue(a, b, c, d, e: untyped) =
   if c:
     d

@@ -1,7 +1,7 @@
 # bug #5540; works in 1.2.0
 # fails in 1.0 (Error: cannot generate VM code for)
 # fails in 0.18.0 (Error: type mismatch: got <type T>)
-
+import std/assertions
 block:
   type
     Fruit = object

@@ -6,7 +6,7 @@ wohoo
 baz
 '''
 """
-
+import std/assertions
 
 block tobject2:
   # Tests the object implementation

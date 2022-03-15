@@ -4,7 +4,7 @@ discard """
 """
 
 # if excessive, could remove 'cpp' from targets
-
+import std/assertions
 from strutils import endsWith, contains, strip
 from std/macros import newLit
 

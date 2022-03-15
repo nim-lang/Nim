@@ -2,7 +2,7 @@ discard """
   output: '''@["", "", "", "", "", "", "", "meh"]'''
   exitcode: "0"
 """
-
+import std/assertions
 when true:
   var ab: string
   ab &= "more"

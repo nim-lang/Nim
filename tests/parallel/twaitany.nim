@@ -1,7 +1,7 @@
 discard """
   output: '''true'''
 """
-
+import std/assertions
 # bug #7638
 import threadpool, os
 

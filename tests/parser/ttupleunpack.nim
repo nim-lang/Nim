@@ -1,3 +1,5 @@
+import std/assertions
+
 proc returnsTuple(): (int, int, int) = (4, 2, 3)
 
 proc main2 =

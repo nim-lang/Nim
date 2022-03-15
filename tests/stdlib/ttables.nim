@@ -1,5 +1,5 @@
 import tables, hashes
-
+import std/assertions
 type
   Person = object
     firstName, lastName: string

@@ -2,7 +2,7 @@ discard """
   targets: "c js"
 """
 
-
+import std/assertions
 import std/[cookies, times, strtabs]
 
 let expire = fromUnix(0) + 1.seconds

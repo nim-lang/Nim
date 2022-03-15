@@ -8,7 +8,7 @@ discard """
 #[
 disabled: see https://github.com/timotheecour/Nim/issues/528
 ]#
-
+import std/assertions
 import strutils
 from net import TimeoutError
 

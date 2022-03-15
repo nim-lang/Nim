@@ -1,3 +1,5 @@
+import std/assertions
+
 static:
   var
     a: ref string

@@ -13,6 +13,8 @@ discard """
 
 {.experimental: "views".}
 
+import std/assertions
+
 proc take(a: openArray[int]) =
   echo a.len
 

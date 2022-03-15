@@ -2,7 +2,7 @@ discard """
   targets: "c cpp js"
   matrix: "--experimental:vmopsDanger"
 """
-
+import std/assertions
 import std/sysrand
 
 

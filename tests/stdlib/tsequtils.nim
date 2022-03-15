@@ -3,7 +3,7 @@ discard """
 """
 
 # xxx move all tests under `main`
-
+import std/assertions
 import std/sequtils
 import strutils
 from algorithm import sorted

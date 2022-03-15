@@ -15,7 +15,7 @@ Test the realtime GC without linking nimrtl.dll/so.
 To build by hand and run the test for 35 minutes:
 `nim r --threads:on -d:runtimeSecs:2100 tests/realtimeGC/tmain.nim`
 ]#
-
+import std/assertions
 import times, os, strformat, strutils
 from stdtest/specialpaths import buildDir
 # import threadpool

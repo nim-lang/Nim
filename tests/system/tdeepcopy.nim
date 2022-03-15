@@ -1,7 +1,7 @@
 discard """
   output: "ok"
 """
-
+import std/assertions
 import tables, lists
 
 type

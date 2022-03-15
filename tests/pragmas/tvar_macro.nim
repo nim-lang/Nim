@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 block: # test usage
   macro modify(sec) =
     result = copy sec

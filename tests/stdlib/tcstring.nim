@@ -2,7 +2,7 @@ discard """
   targets: "c cpp js"
   matrix: "--gc:refc; --gc:arc"
 """
-
+import std/assertions
 from std/sugar import collect
 from stdtest/testutils import whenRuntimeJs, whenVMorJs
 

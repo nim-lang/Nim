@@ -1,7 +1,7 @@
 discard """
   output: '''0'''
 """
-
+import std/assertions
 import std/assertions
 
 static:

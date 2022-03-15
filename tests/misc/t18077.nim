@@ -2,7 +2,7 @@ discard """
   cmd: '''nim doc -d:nimTestsT18077b:4 --doccmd:"-d:nimTestsT18077 -d:nimTestsT18077b:3 --hints:off" $file'''
   action: compile
 """
-
+import std/assertions
 # bug #18077
 
 const nimTestsT18077b {.intdefine.} = 1

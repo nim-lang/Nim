@@ -1,5 +1,5 @@
 import std/[parseutils, sequtils, sugar]
-
+import std/assertions
 
 let input = "$test{}  $this is ${an{  example}}  "
 let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),

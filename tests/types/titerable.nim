@@ -1,7 +1,7 @@
 discard """
   targets: "c js"
 """
-
+import std/assertions
 from stdtest/testutils import accept, reject, whenVMorJs
 
 # toSeq-like templates

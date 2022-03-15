@@ -1,7 +1,7 @@
 discard """
   targets: "c cpp js"
 """
-
+import std/assertions
 import std/strutils
 from stdtest/testutils import disableVm
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed

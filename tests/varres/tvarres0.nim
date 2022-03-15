@@ -7,7 +7,7 @@ discard """
 123456
 '''
 """
-
+import std/assertions
 # Test simple type
 var a = 123
 proc getA(): var int = a

@@ -2,7 +2,7 @@ discard """
   targets: "c cpp"
   output: "OK"
 """
-
+import std/assertions
 type
   GRBase[T] = ref object of RootObj
     val: T

@@ -1,4 +1,4 @@
-
+import std/assertions
 mode = ScriptMode.Whatif
 
 exec "gcc -v"

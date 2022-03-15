@@ -1,7 +1,7 @@
 discard """
   matrix: "--gc:refc; --gc:arc"
 """
-
+import std/assertions
 type
   T = enum
     a

@@ -6,7 +6,7 @@ output: '''
 """
 
 # bug #6406
-
+import std/assertions
 import sequtils
 
 proc remap1(s: seq[int], T: typedesc): seq[T] =

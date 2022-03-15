@@ -1,7 +1,7 @@
 discard """
 disabled: true
 """
-
+import std/assertions
 # CI integration servers are out of memory for this test
 
 const size = 250000000

@@ -34,7 +34,7 @@ cmdArgument key: ok value: ''
 '''
 joinable: false
 """
-
+import std/assertions
 when defined(testament_tparseopt):
   import os
   proc main() =

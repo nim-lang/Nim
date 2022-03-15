@@ -3,7 +3,7 @@ outputsub: ""
 """
 
 # tests for rstgen module.
-
+import std/assertions
 import ../../lib/packages/docutils/rstgen
 import ../../lib/packages/docutils/rst
 import unittest, strutils, strtabs

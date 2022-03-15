@@ -1,5 +1,5 @@
 import std/editdistance
-
+import std/assertions
 doAssert editDistance("", "") == 0
 doAssert editDistance("kitten", "sitting") == 3 # from Wikipedia
 doAssert editDistance("flaw", "lawn") == 2 # from Wikipedia

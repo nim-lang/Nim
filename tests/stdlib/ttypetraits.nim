@@ -3,7 +3,7 @@ discard """
 """
 
 import std/typetraits
-
+import std/assertions
 
 
 macro testClosure(fn: typed, flag: static bool) =

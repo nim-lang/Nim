@@ -2,7 +2,7 @@ discard """
 cmd: "nim c --nimcache:build/myNimCache --nimblePath:myNimblePath --gc:arc $file"
 joinable: false
 """
-
+import std/assertions
 import std/[strutils,compilesettings]
 from std/os import fileExists, `/`
 

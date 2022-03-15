@@ -5,7 +5,7 @@ he, no return type;
 abc a string
 ha'''
 """
-
+import std/assertions
 proc ReturnT[T](x: T): T =
   when T is void:
     echo "he, no return type;"

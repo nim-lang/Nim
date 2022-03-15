@@ -1,6 +1,7 @@
 discard """
   output: '''success'''
 """
+import std/assertions
 var s = "HI"
 
 proc x (zz: openArray[char]) =

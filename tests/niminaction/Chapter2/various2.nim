@@ -2,7 +2,7 @@ discard """
   exitCode: 0
   outputsub: '''42 is greater than 0'''
 """
-
+import std/assertions
 if 42 >= 0:
   echo "42 is greater than 0"
 

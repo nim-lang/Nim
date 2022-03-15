@@ -3,7 +3,7 @@ discard """
 """
 
 # test file read write in vm
-
+import std/assertions
 import os, strutils
 
 const filename  = splitFile(currentSourcePath).dir / "tfile_rw.txt"

@@ -9,7 +9,7 @@ but expression 'nesting + 1' is of type: int
 # bug #9039; this used to hang in 0.19.0
 
 
-
+import std/assertions
 
 
 # line 15

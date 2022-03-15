@@ -1,5 +1,5 @@
 # bug #9091
-
+import std/assertions
 import streams
 
 block:

@@ -1,4 +1,4 @@
-
+import std/assertions
 block: # cmpMem
   type
     SomeHash = array[15, byte]

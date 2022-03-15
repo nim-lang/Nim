@@ -2,7 +2,7 @@ discard """
   output: "done"
 """
 # Test operator precedence:
-
+import std/assertions
 template `@@` (x: untyped): untyped =
   `self`.x
 

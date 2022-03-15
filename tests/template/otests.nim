@@ -1,6 +1,6 @@
 # Fields
 const x = 5
-
+import std/assertions
 
 # Test substring
 static:

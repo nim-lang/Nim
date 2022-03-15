@@ -1,6 +1,6 @@
 import std/[strformat,os,osproc]
 import stdtest/unittest_light
-
+import std/assertions
 proc main(opt: string, expected: string) =
   const nim = getCurrentCompilerExe()
   const file = currentSourcePath().parentDir / "mstackframes.nim"

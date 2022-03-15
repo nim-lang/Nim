@@ -1,4 +1,4 @@
-
+import std/assertions
 type
   AObj = object
     i: int

@@ -1,7 +1,7 @@
 discard """
   exitcode: 0
 """
-
+import std/assertions
 when defined(linux):
   import osproc, os
 

@@ -8,7 +8,7 @@ egerichtetd
 verichtetd
 '''
 """
-
+import std/assertions
 # Test the new slices.
 
 var mystr = "Abgrund"

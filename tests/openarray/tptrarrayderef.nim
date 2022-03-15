@@ -5,7 +5,7 @@ discard """
 OK
 '''
 """
-
+import std/assertions
 var
   arr = [1,2,3]
   arrp = addr(arr)

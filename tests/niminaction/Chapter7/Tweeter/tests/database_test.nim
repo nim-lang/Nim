@@ -1,7 +1,7 @@
 discard """
 outputsub: "All tests finished successfully!"
 """
-
+import std/assertions
 import database, os, times
 
 when true:

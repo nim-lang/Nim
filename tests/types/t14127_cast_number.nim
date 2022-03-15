@@ -1,6 +1,7 @@
 discard """
   targets: "c cpp js"
 """
+import std/assertions
 block: # bug #14127
   template int2uint(T) =
     var a = -1

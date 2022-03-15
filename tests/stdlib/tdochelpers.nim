@@ -6,7 +6,7 @@ discard """
 """
 
 # tests for dochelpers.nim module
-
+import std/assertions
 import ../../lib/packages/docutils/[rstast, rst, dochelpers]
 import unittest
 

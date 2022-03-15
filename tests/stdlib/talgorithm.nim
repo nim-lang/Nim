@@ -4,7 +4,7 @@ discard """
 '''
 """
 #12928,10456
-
+import std/assertions
 import std/[sequtils, algorithm, json, sugar]
 
 proc test() = 

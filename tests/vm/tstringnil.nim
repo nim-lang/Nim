@@ -1,5 +1,5 @@
 # bug #1744
-
+import std/assertions
 import macros
 
 type

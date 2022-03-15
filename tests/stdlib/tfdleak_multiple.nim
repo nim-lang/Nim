@@ -1,7 +1,7 @@
 discard """
 joinable: false
 """
-
+import std/assertions
 import os, osproc, strutils
 
 const Iterations = 200

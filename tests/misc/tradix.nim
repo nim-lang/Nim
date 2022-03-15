@@ -23,7 +23,7 @@ false
 4294967288
 '''
 """
-
+import std/assertions
 # implements and tests an efficient radix tree
 
 ## another method to store an efficient array of pointers:

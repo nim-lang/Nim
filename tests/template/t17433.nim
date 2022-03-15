@@ -3,7 +3,7 @@
 # analysis.
  
 # bug #17433
-
+import std/assertions
 from std/macros import expandMacros
 
 proc bar(a: typedesc): a = default(a)

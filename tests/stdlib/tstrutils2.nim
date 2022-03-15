@@ -1,5 +1,5 @@
 import "$lib/.." / compiler/strutils2
-
+import std/assertions
 block: # setLen
   var a = "abc"
   a.setLen 0

@@ -1,7 +1,7 @@
 discard """
   cmd: "nim c --threads:on $file"
 """
-
+import std/assertions
 import asynchttpserver, httpclient, asyncdispatch, strutils, net
 
 block: # bug #16436

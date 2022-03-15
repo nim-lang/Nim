@@ -15,7 +15,7 @@ joinable: false
 """
 # not joinable because it causes out of memory with --gc:boehm
 import typetraits
-
+import std/assertions
 block t1252:
   echo float32 isnot float64
   echo float32 isnot float

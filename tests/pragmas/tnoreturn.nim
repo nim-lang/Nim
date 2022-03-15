@@ -2,7 +2,7 @@ discard """
 ccodeCheck: "\\i @'__attribute__((noreturn))' .*"
 action: compile
 """
-
+import std/assertions
 proc noret1*(i: int) {.noreturn.} =
   echo i
 

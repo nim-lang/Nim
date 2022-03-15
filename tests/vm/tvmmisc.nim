@@ -1,7 +1,7 @@
 # bug #4462
 import macros
 import os
-
+import std/assertions
 block:
   proc foo(t: typedesc) {.compileTime.} =
     assert sameType(getType(t), getType(int))

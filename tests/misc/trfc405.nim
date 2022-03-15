@@ -1,6 +1,6 @@
 
 {.experimental: "flexibleOptionalParams".}
-
+import std/assertions
 # https://github.com/nim-lang/RFCs/issues/405
 
 template main =

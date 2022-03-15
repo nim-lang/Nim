@@ -1,7 +1,7 @@
 discard """
 disabled: "windows"
 """
-
+import std/assertions
 # If your os is windows and this test fails for you locally, please
 # check what is going wrong.
 

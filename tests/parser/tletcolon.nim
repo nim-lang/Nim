@@ -7,7 +7,7 @@ yes
 yes
 block expression works'''
 """
-
+import std/assertions
 template x(body): untyped =
   body
   44

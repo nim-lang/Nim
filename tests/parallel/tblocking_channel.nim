@@ -4,7 +4,7 @@ disabled: "freebsd"
 """
 # disabled pending bug #15725
 import threadpool, os
-
+import std/assertions
 var chan: Channel[int]
 
 chan.open(2)

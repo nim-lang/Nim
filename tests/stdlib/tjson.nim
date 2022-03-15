@@ -6,7 +6,7 @@ discard """
 #[
 Note: Macro tests are in tests/stdlib/tjsonmacro.nim
 ]#
-
+import std/assertions
 import std/[json,parsejson,strutils]
 from std/math import isNaN
 when not defined(js):

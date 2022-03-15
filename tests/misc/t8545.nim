@@ -1,7 +1,7 @@
 discard """
   targets: "c cpp js"
 """
-
+import std/assertions
 # bug #8545
 
 template bar(a: static[bool]): untyped = int

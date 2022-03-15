@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 {.experimental: "dotOperators".}
 {.experimental: "callOperator".}
 

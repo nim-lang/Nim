@@ -1,7 +1,7 @@
 discard """
   output: "SUCCESS"
 """
-
+import std/assertions
 # A test to ensure that the order in which a variant
 # object is constructed doesn't matter.
 

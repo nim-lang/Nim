@@ -5,7 +5,7 @@ errormsg: "parameter 'a' requires a type"
 nimout: '''
 t15949.nim(20, 14) Error: parameter 'a' requires a type'''
 """
-
+import std/assertions
 
 # line 10
 proc procGood(a, b = 1): (int, int) = (a, b)

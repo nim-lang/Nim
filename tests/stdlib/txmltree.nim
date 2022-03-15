@@ -1,5 +1,5 @@
 import xmltree
-
+import std/assertions
 
 block:
   var

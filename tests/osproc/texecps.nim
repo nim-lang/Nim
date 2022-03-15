@@ -1,7 +1,7 @@
 discard """
 joinable: false
 """
-
+import std/assertions
 import osproc, streams, strutils, os
 
 const NumberOfProcesses = 13

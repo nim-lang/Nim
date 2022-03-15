@@ -1,7 +1,7 @@
 discard """
 joinable: false
 """
-
+import std/assertions
 # bug #16949
 
 when defined case1:

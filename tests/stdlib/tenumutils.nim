@@ -1,7 +1,7 @@
 discard """
   targets: "c js"
 """
-
+import std/assertions
 import std/enumutils
 from std/sequtils import toSeq
 

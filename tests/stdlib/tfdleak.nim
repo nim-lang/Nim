@@ -4,7 +4,7 @@ discard """
   matrix: "; -d:nimInheritHandles"
   joinable: false
 """
-
+import std/assertions
 import os, osproc, strutils, nativesockets, net, selectors, memfiles,
        asyncdispatch, asyncnet
 when defined(windows):

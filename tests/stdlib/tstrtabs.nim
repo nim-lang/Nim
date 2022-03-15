@@ -87,7 +87,7 @@ length of table 81
 value1 = value2
 '''
 """
-
+import std/assertions
 import strtabs
 
 var tab = newStringTable({"key1": "val1", "key2": "val2"},

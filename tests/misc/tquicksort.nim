@@ -1,3 +1,4 @@
+import std/assertions
 proc QuickSort(list: seq[int]): seq[int] =
     if len(list) == 0:
         return @[]

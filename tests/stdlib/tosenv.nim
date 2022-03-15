@@ -3,7 +3,7 @@ discard """
   joinable: false
   targets: "c js cpp"
 """
-
+import std/assertions
 import std/os
 from std/sequtils import toSeq
 import stdtest/testutils

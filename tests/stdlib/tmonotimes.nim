@@ -1,7 +1,7 @@
 discard """
   targets: "c js"
 """
-
+import std/assertions
 import std/[monotimes, times]
 
 let d = initDuration(nanoseconds = 10)

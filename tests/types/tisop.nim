@@ -1,7 +1,7 @@
 discard """
   disabled: true
 """
-
+import std/assertions
 import typetraits
 
 type

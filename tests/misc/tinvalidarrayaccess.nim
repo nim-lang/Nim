@@ -2,6 +2,7 @@ discard """
   errormsg: "index 2 not in 0 .. 1"
   line: 18
 """
+import std/assertions
 block:
   try:
     let a = @[1,2]
@@ -9,7 +10,6 @@ block:
   except Exception as e:
     doAssert e.msg == "index 3 not in 0 .. 1"
       # note: this is not being tested, because the CT error happens before
-
 block:
   type TTestArr = array[0..1, int16]
   var f: TTestArr

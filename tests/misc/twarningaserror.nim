@@ -1,7 +1,7 @@
 discard """
   joinable: false
 """
-
+import std/assertions
 #[
 tests: hintAsError, warningAsError
 ]#

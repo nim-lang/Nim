@@ -2,7 +2,7 @@ discard """
   joinable: false
   disabled: windows
 """
-
+import std/assertions
 import os, osproc, posix, strutils
 
 proc main() =

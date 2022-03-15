@@ -8,7 +8,7 @@ A你好
   disabled: "posix"
   joinable: "false"
 """
-
+import std/assertions
 import winlean
 
 echo "ÄhmÖÜ"

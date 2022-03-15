@@ -1,7 +1,7 @@
 discard """
   targets:  "c js"
 """
-
+import std/assertions
 import std/uri
 from std/uri {.all.} as uri2 import removeDotSegments
 from std/sequtils import toSeq

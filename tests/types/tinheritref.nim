@@ -1,5 +1,5 @@
 # bug #554, #179
-
+import std/assertions
 type T[E] =
   ref object
     elem: E

@@ -3,7 +3,7 @@ discard """
 """
 
 # targets include `cpp` because in the past, there were several cpp-specific bugs with tuples.
-
+import std/assertions
 import std/tables
 
 template main() =

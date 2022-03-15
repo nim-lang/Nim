@@ -1,7 +1,7 @@
 discard """
   targets: "js c cpp"
 """
-
+import std/assertions
 import std/math
 
 const manualTest = false

@@ -1,5 +1,5 @@
 import httpcore, strutils
-
+import std/assertions
 block:
   block HttpCode:
     doAssert $Http418 == "418 I'm a teapot"

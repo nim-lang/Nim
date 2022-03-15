@@ -2,7 +2,7 @@ discard """
   targets: "c cpp"
   matrix: "--gc:refc; --gc:arc"
 """
-
+import std/assertions
 type
   GlobNodeKind = enum
     LiteralIdent,

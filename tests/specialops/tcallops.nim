@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 {.experimental: "callOperator".}
 
 type Foo[T: proc] = object

@@ -1,7 +1,7 @@
 discard """
   errormsg: "number out of range: '0x123'u8'"
 """
-
+import std/assertions
 # Bug #1179
 
 # Unsigneds

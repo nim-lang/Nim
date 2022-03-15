@@ -11,7 +11,7 @@
 ##
 ## See https://github.com/FedericoCeratto/ssl-comparison/blob/master/README.md
 ## for a comparison with other clients.
-
+import std/assertions
 from stdtest/testutils import enableRemoteNetworking
 when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(windows) and not defined(openbsd)):
   # Not supported on Windows due to old openssl version

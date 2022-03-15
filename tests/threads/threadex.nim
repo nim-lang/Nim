@@ -1,7 +1,7 @@
 discard """
   outputsub: "Just a simple text for test"
 """
-
+import std/assertions
 type
   TMsgKind = enum
     mLine, mEof

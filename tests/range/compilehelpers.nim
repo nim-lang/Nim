@@ -1,3 +1,5 @@
+import std/assertions
+
 template accept(e) =
   static: assert(compiles(e))
 

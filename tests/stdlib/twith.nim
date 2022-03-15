@@ -1,5 +1,5 @@
 import std/with
-
+import std/assertions
 type
   Foo = object
     col, pos: string

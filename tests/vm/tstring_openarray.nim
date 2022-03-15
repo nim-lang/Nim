@@ -1,4 +1,4 @@
-
+import std/assertions
 # tests various bug when passing string to openArray argument in VM.
 # bug #6086
 proc map*[T, S](data: openArray[T], op: proc (x: T): S {.closure.}):

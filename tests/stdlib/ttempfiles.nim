@@ -1,7 +1,7 @@
 discard """
   joinable: false # not strictly necessary
 """
-
+import std/assertions
 import std/tempfiles
 import std/[os, nre]
 

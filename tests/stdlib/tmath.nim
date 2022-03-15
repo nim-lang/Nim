@@ -5,7 +5,7 @@ discard """
 
 # xxx: there should be a test with `-d:nimTmathCase2 -d:danger --passc:-ffast-math`,
 # but it requires disabling certain lines with `when not defined(nimTmathCase2)`
-
+import std/assertions
 import std/math
 
 # Function for approximate comparison of floats

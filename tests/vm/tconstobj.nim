@@ -6,7 +6,7 @@ discard """
 [1, 2, 3]
 '''
 """
-
+import std/assertions
 # bug #2774, bug #3195
 type Foo = object
   name: string

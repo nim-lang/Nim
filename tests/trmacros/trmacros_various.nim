@@ -5,7 +5,7 @@ output: '''
 optimized
 '''
 """
-
+import std/assertions
 import macros, pegs
 
 

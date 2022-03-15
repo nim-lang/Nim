@@ -4,6 +4,8 @@ discard """
 3
 3'''
 """
+import std/assertions
+
 # bug #3731
 var list {.compileTime.} = newSeq[int]()
 

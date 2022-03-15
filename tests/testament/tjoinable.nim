@@ -1,7 +1,7 @@
 discard """
   output: "ok"
 """
-
+import std/assertions
 # checks that this is joinable
 # checks that megatest allows duplicate names, see also `tests/misc/tjoinable.nim`
 doAssert defined(testing)

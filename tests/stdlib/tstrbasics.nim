@@ -2,7 +2,7 @@ discard """
   targets: "c cpp js"
   matrix: "--gc:refc; --gc:arc"
 """
-
+import std/assertions
 import std/[strbasics, sugar]
 
 template strip2(input: string, args: varargs[untyped]): untyped =

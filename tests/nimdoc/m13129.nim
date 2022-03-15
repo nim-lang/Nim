@@ -13,6 +13,7 @@ elif defined(c):
 proc main*() =
   runnableExamples:
     import std/compilesettings
+    import std/assertions
     doAssert not defined(m13129Foo1)
     doAssert defined(m13129Foo2)
     doAssert not defined(nimdoc)
@@ -20,6 +21,7 @@ proc main*() =
 
 import std/compilesettings
 when defined nimdoc:
+  import std/assertions
   static:
     doAssert defined(m13129Foo1)
     doAssert not defined(m13129Foo2)
@@ -28,6 +30,7 @@ when defined nimdoc:
 when isMainModule:
   when not defined(js):
     import std/os
+    import std/assertions
     let cache = querySetting(nimcacheDir)
     doAssert cache.len > 0
     let app = getAppFilename()

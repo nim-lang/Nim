@@ -3,7 +3,7 @@ discard """
 b is 5
 x is 12'''
 """
-
+import std/assertions
 proc simple[T](a: T) =
   var
     x = "string here"

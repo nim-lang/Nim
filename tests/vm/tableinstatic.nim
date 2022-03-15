@@ -4,7 +4,7 @@ discard """
 0
 '''
 """
-
+import std/assertions
 import tables
 
 # bug #5327

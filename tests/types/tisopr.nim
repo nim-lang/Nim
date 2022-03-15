@@ -7,7 +7,7 @@ true
 true
 yes'''
 """
-
+import std/assertions
 proc IsVoid[T](): string =
   when T is void:
     result = "yes"

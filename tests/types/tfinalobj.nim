@@ -1,7 +1,7 @@
 discard """
   output: '''abc'''
 """
-
+import std/assertions
 type
   TA = object {.pure, final.}
     x: string

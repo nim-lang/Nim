@@ -16,7 +16,7 @@ one param call to c with 10
 0 4
 '''
 """
-
+import std/assertions
 block:
   type Foo = object
   var a: Foo

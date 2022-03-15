@@ -2,7 +2,7 @@ discard """
   matrix: "--gc:arc --threads:on; --gc:arc --threads:on -d:danger; --threads:on"
   disabled: "freebsd"
 """
-
+import std/assertions
 import httpclient, asynchttpserver, asyncdispatch, asyncfutures
 import net
 

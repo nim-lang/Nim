@@ -1,7 +1,7 @@
 discard """
   output: '''true'''
 """
-
+import std/assertions
 import hashes, math
 
 {.pragma: myShallow.}

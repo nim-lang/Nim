@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 proc createRefType(ident: NimIdent, identDefs: seq[NimNode]): NimNode =
   result = newTree(nnkTypeSection,
     newTree(nnkTypeDef,

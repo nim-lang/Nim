@@ -1,5 +1,5 @@
 import unittest
-
+import std/assertions
 type Obj = object
   foo: int
 

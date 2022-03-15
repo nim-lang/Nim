@@ -8,7 +8,7 @@ test for vmops.nim
 import os
 import math
 import strutils
-
+import std/assertions
 static:
   # TODO: add more tests
   block: #getAppFilename, gorgeEx, gorge

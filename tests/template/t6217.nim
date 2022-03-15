@@ -5,7 +5,7 @@ side effect!
 end
 '''
 """
-
+import std/assertions
 # bug #6217
 
 template optMul{`*`(a, 2)}(a: int{noSideEffect}): int = a+a

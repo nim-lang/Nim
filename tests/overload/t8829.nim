@@ -1,3 +1,4 @@
+import std/assertions
 block:
   let txt = "Hello World"
 

@@ -1,5 +1,5 @@
 import strutils
-
+import std/assertions
 type
   MyEnum = enum
     A,

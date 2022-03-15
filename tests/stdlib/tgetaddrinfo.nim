@@ -4,7 +4,7 @@ discard """
 """
 
 # bug: https://github.com/nim-lang/Nim/issues/10198
-
+import std/assertions
 import nativesockets
 
 block DGRAM_UDP:

@@ -1,7 +1,7 @@
 discard """
   targets: "js"
 """
-
+import std/assertions
 import std/jsbigints
 
 

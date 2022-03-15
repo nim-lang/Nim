@@ -1,7 +1,7 @@
 discard """
   action: run
 """
-
+import std/assertions
 block:
   var x = (a: 5, b: 1)
   x = (3 * x.a + 2 * x.b, x.a + x.b)

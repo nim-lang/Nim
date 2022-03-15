@@ -1,7 +1,7 @@
 discard """
 output: ""
 """
-
+import std/assertions
 import strutils
 
 const x  = [1'i32, -1, -10, 10, -10, 10, -20, 30, -40, 50, 7 shl 28, -(7 shl 28), 7 shl 28, -(7 shl 28)]

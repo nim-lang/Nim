@@ -1,6 +1,6 @@
 # re-enable for windows once libffi can be installed in koch.nim
 # With win32 (not yet win64), libffi on windows works and this test passes.
-
+import std/assertions
 when defined(linux) or defined(bsd):
   {.passL: "-lm".} # for exp
 proc c_exp(a: float64): float64 {.importc: "exp", header: "<math.h>".}

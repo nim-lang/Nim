@@ -2,7 +2,7 @@ discard """
   targets: "c js"
   joinable: false
 """
-
+import std/assertions
 import std/os
 
 var params = paramCount()

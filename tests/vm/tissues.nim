@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 block t9043: # issue #9043
   proc foo[N: static[int]](dims: array[N, int]): string =
     const N1 = N

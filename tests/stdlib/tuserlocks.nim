@@ -1,7 +1,7 @@
 discard """
   matrix: "--threads:on"
 """
-
+import std/assertions
 import std/rlocks
 
 var r: RLock

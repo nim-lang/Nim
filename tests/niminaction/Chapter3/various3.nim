@@ -3,7 +3,7 @@ output: '''
 Future is no longer empty, 42
 '''
 """
-
+import std/assertions
 import threadpool
 proc foo: string = "Dog"
 var x: FlowVar[string] = spawn foo()

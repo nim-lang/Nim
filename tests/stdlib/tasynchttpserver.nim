@@ -4,7 +4,7 @@ discard """
   output: "OK"
   disabled: false
 """
-
+import std/assertions
 import strutils
 from net import TimeoutError
 

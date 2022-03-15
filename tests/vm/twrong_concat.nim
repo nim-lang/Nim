@@ -1,7 +1,7 @@
 discard """
   output: '''success'''
 """
-
+import std/assertions
 # bug #3804
 
 #import sequtils

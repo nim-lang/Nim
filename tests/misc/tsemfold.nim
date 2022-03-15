@@ -1,7 +1,7 @@
 discard """
   action: run
 """
-
+import std/assertions
 doAssertRaises(OverflowDefect): discard low(int8) - 1'i8
 doAssertRaises(OverflowDefect): discard high(int8) + 1'i8
 doAssertRaises(OverflowDefect): discard abs(low(int8))

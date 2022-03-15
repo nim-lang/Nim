@@ -5,7 +5,7 @@ OK
 '''
 """
 import bitops
-
+import std/assertions
 proc main() =
   const U8 = 0b0011_0010'u8
   const I8 = 0b0011_0010'i8

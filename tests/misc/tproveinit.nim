@@ -1,7 +1,7 @@
 discard """
   joinable: false
 """
-
+import std/assertions
 {.warningAsError[ProveInit]:on.}
 template main() =
   proc fn(): var int =

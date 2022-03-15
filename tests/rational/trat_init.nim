@@ -1,6 +1,7 @@
 discard """
   output: '''true'''
 """
+import std/assertions
 import rationals
 var
   z = Rational[int](num: 0, den: 1)

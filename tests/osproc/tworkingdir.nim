@@ -1,7 +1,7 @@
 discard """
   output: ""
 """
-
+import std/assertions
 import osproc, os
 when defined(windows):
   # Windows don't have this issue, so we won't test it.

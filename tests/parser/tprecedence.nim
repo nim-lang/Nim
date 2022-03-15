@@ -4,7 +4,7 @@ true
 defabc 4
 0'''
 """
-
+import std/assertions
 # Test top level semicolon works properly:
 import os; echo "holla"
 

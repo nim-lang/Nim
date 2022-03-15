@@ -3,7 +3,7 @@ discard """
 """
 
 import unidecode
-
+import std/assertions
 import std/unidecode # #14112
 
 loadUnidecodeTable("lib/pure/unidecode/unidecode.dat")

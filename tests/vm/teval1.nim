@@ -2,7 +2,7 @@
 discard """
 nimout: "##"
 """
-
+import std/assertions
 import macros
 
 proc testProc: string {.compileTime.} =

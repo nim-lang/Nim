@@ -1,7 +1,7 @@
 discard """
   matrix: "--styleCheck:error --styleCheck:usages"
 """
-
+import std/assertions
 import asyncdispatch
 
 type

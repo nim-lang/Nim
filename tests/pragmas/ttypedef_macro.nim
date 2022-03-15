@@ -1,5 +1,5 @@
 import macros
-
+import std/assertions
 macro makeref(s): untyped =
   expectKind s, nnkTypeDef
   result = newTree(nnkTypeDef, s[0], s[1], newTree(nnkRefTy, s[2]))

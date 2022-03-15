@@ -6,7 +6,7 @@ discard """
 #[
 tests for: `.cppNonPod`, `--tlsEmulation`
 ]#
-
+import std/assertions
 import std/sugar
 
 block:

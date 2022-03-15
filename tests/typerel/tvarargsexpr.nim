@@ -5,7 +5,7 @@ true'''
 """
 
 #bug #913
-
+import std/assertions
 import macros
 
 macro thirteen(args: varargs[untyped]): int =

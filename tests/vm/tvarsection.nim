@@ -1,7 +1,7 @@
 discard """
   output: '''-1abc'''
 """
-
+import std/assertions
 var
   a {.compileTime.} = 2
   b = -1

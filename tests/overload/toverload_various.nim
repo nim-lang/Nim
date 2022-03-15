@@ -20,7 +20,7 @@ foo1
 '''
 """
 
-
+import std/assertions
 import strutils, sequtils
 
 

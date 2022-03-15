@@ -1,5 +1,5 @@
 # test atomic operations
-
+import std/assertions
 import std/[atomics, bitops]
 
 type

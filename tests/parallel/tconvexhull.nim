@@ -2,7 +2,7 @@ discard """
   output: '''
 '''
 """
-
+import std/assertions
 # parallel convex hull for Nim bigbreak
 # nim c --threads:on -d:release pconvex_hull.nim
 import algorithm, sequtils, threadpool

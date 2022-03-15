@@ -1,7 +1,7 @@
 discard """
   disabled: "posix"
 """
-
+import std/assertions
 # bug 10952, UNC paths
 import os
 

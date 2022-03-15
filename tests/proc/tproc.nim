@@ -4,7 +4,7 @@ Hello
 1
 '''
 """
-
+import std/assertions
 
 block t8357:
   type T = ref int

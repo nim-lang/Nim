@@ -4,6 +4,8 @@ Hello World
 Hello World'''
   joinable: false
 """
+import std/assertions
+
 type MyProc = proc() {.cdecl.}
 type MyProc2 = proc() {.nimcall.}
 type MyProc3 = proc() #{.closure.} is implicit

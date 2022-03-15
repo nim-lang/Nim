@@ -4,7 +4,7 @@ import unicode
 import math
 import pegs
 import streams
-
+import std/assertions
 type
   FormatError = object of CatchableError ## Error in the format string.
 

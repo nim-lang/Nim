@@ -3,7 +3,7 @@ discard """
 """
 
 {.compile: "m19342.c".}
-
+import std/assertions
 # bug #19342
 type
   Node* {.byRef.} = object

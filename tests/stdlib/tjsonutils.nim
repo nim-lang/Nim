@@ -1,7 +1,7 @@
 discard """
   targets: "c cpp js"
 """
-
+import std/assertions
 import std/jsonutils
 import std/json
 from std/math import isNaN, signbit

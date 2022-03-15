@@ -1,4 +1,4 @@
-
+import std/assertions
 block: # bug #2427
   var x = 0'u8
   dec x # OverflowDefect

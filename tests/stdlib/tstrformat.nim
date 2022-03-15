@@ -1,5 +1,5 @@
 # xxx: test js target
-
+import std/assertions
 import genericstrformat
 import std/[strformat, strutils, times, tables, json]
 

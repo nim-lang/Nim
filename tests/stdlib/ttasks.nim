@@ -2,7 +2,7 @@ discard """
   targets: "c cpp"
   matrix: "--gc:orc"
 """
-
+import std/assertions
 import std/[tasks, strformat]
 
 block:

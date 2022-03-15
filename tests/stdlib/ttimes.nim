@@ -1,7 +1,7 @@
 discard """
   targets: "c js"
 """
-
+import std/assertions
 import times, strutils, unittest
 
 when not defined(js):

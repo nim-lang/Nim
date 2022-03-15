@@ -1,7 +1,7 @@
 discard """
   nimout: "static done"
 """
-
+import std/assertions
 # bug #5269
 
 proc assertEq[T](arg0, arg1: T): void =

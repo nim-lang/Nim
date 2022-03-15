@@ -1,5 +1,5 @@
 {.experimental: "notnil".}
-
+import std/assertions
 import macros, asyncmacro, asyncfutures
 
 block:

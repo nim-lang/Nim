@@ -4,7 +4,7 @@ output: '''
 '''
 """
 # bug #7238
-
+import std/assertions
 type ByteArrayBE*[N: static[int]] = array[N, byte]
   ## A byte array that stores bytes in big-endian order
 

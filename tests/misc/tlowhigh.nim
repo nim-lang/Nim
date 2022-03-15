@@ -8,7 +8,7 @@ discard """
 0
 '''
 """
-
+import std/assertions
 var x: range[-1'f32..1'f32]
 doAssert x.low == -1'f32
 doAssert x.high == 1'f32

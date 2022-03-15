@@ -1,5 +1,5 @@
 import std/enumerate
-
+import std/assertions
 let a = @[1, 3, 5, 7]
 
 block:

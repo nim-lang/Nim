@@ -20,7 +20,7 @@ foo4
 '''
 """
 import std/sets
-
+import std/assertions
 #bug #1009
 type
   TAggRgba8* = array[4, byte]

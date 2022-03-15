@@ -1,7 +1,7 @@
 ##[
 tests for misc pragmas that don't need a separate file
 ]##
-
+import std/assertions
 block:
   static: doAssert not defined(tpragmas_misc_def)
   {.undef(tpragmas_misc_def).} # works even if not set

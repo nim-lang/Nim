@@ -1,7 +1,7 @@
 discard """
   output: ''''''
 """
-
+import std/assertions
 type
   MyObj = object
     a: int

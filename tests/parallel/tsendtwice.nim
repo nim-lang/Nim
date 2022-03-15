@@ -11,7 +11,7 @@ ob3 @[]
 """
 
 # bug #4776
-
+import std/assertions
 import tables
 
 type

@@ -2,7 +2,7 @@ discard """
   output: ''''''
   disabled: "true"
 """
-
+import std/assertions
 # All operations involving uint64 are commented out
 # as they're not yet supported.
 # All other operations are handled by implicit conversions from uints to ints

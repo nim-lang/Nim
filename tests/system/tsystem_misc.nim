@@ -29,7 +29,7 @@ discard """
 2
 '''
 """
-
+import std/assertions
 
 block:
   const a2 = $(int)

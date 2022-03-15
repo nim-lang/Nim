@@ -10,7 +10,7 @@ tests/system/tostring.nim into this file, named after dollars.nim
 The goal is to increase test coverage across backends while minimizing test code
 duplication (which always results in weaker test coverage in practice).
 ]#
-
+import std/assertions
 import std/unittest
 template test[T](a: T, expected: string) =
   check $a == expected

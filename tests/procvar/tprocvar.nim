@@ -3,7 +3,7 @@ discard """
 papbpcpdpe7
 '''
 """
-
+import std/assertions
 block genericprocvar:
   proc foo[T](thing: T) =
     discard thing

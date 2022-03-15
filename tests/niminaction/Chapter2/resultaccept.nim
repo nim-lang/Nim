@@ -1,7 +1,7 @@
 discard """
   output: ""
 """
-
+import std/assertions
 # Page 35.
 
 proc implicit: string =

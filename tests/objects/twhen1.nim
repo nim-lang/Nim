@@ -25,7 +25,7 @@ type
       discard
     else:
       discard
-
+import std/assertions
 block:
   var x: Foo[int] = Foo[int](u: 42)
   doAssert x.u == 42

@@ -18,7 +18,7 @@ test no extra complete, loops=2
 1
 '''
 """
-
+import std/assertions
 
 # issue 4675
 import importA  # comment this out to make it work

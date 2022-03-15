@@ -1,6 +1,7 @@
 discard """
   targets: "c cpp js"
 """
+import std/assertions
 template main() =
   block: # bug #8404
     # can conv

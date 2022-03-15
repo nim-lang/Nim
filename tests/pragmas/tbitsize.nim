@@ -1,7 +1,7 @@
 discard """
 ccodeCheck: "\\i @'unsigned int flag:1;' .*"
 """
-
+import std/assertions
 type
   bits* = object
     flag* {.bitsize: 1.}: cuint

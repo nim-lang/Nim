@@ -1,5 +1,5 @@
 import std/wordwrap
-
+import std/assertions
 when true:
   let
     inp = """ this is a long text --  muchlongerthan10chars and here

@@ -1,5 +1,6 @@
 import stdtest/specialpaths
 import std/os
+import std/assertions
 block: # splitTestFile
   doAssert splitTestFile("tests/fakedir/tfakename.nim") == ("fakedir", "tests/fakedir/tfakename.nim".unixToNativePath)
   doAssert splitTestFile("/pathto/tests/fakedir/tfakename.nim") == ("fakedir", "/pathto/tests/fakedir/tfakename.nim".unixToNativePath)

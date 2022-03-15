@@ -25,7 +25,7 @@ Raises
   joinable: false
 """
 # test os path creation, iteration, and deletion
-
+import std/assertions
 import os, strutils, pathnorm
 from stdtest/specialpaths import buildDir
 

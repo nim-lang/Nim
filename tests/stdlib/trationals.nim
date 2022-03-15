@@ -1,5 +1,5 @@
 import std/[rationals, math]
-
+import std/assertions
 template main() =
   var
     z = Rational[int](num: 0, den: 1)

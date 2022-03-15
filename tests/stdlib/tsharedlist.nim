@@ -1,7 +1,7 @@
 discard """
   matrix: "--threads:on"
 """
-
+import std/assertions
 import std/sharedlist
 
 block:

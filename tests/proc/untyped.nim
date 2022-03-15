@@ -2,7 +2,7 @@ discard """
   errormsg: "'untyped' is only allowed in templates and macros or magic procs"
   line: 14
 """
-
+import std/assertions
 # magic procs are allowed with `untyped`
 proc declaredInScope2*(x: untyped): bool {.magic: "DefinedInScope", noSideEffect, compileTime.}
 proc bar(): bool =

@@ -8,7 +8,7 @@ lo
 my awesome concat
 '''
 """
-
+import std/assertions
 
 block tnoalias2:
   # bug #206

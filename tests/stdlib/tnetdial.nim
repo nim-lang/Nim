@@ -3,7 +3,7 @@ discard """
   exitcode: 0
   output: "OK"
 """
-
+import std/assertions
 import os, net, nativesockets, asyncdispatch
 
 ## Test for net.dial

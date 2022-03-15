@@ -4,7 +4,7 @@ Hello sally, managed by bob
 0'''
 """
 # bug #3973
-
+import std/assertions
 type
   EmployeeCode = enum
     ecCode1,

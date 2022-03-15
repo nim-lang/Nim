@@ -8,7 +8,7 @@ done
 '''
 """
 ## line 10
-
+import std/assertions
 template myecho*(a: varargs[untyped]) =
   ## shows a useful debugging echo-like proc that is dependency-free (no dependency
   ## on macros.nim) so can be used in more contexts

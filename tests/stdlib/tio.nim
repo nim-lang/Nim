@@ -1,5 +1,5 @@
 # xxx move to here other tests that belong here; io is a proper module
-
+import std/assertions
 import std/os
 from stdtest/specialpaths import buildDir
 

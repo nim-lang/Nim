@@ -5,7 +5,7 @@ discard """
 """
 
 # bug #1597
-
+import std/assertions
 import strutils, math, threadpool
 
 type

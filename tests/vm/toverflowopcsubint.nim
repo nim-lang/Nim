@@ -1,7 +1,7 @@
 discard """
   errormsg: "over- or underflow"
 """
-
+import std/assertions
 static:
   proc p =
     var

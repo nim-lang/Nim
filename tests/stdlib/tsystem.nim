@@ -1,7 +1,7 @@
 discard """
   targets: "c cpp js"
 """
-
+import std/assertions
 import stdtest/testutils
 
 # TODO: in future work move existing `system` tests here, where they belong

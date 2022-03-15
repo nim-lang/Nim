@@ -1,4 +1,5 @@
 import macros
+import std/assertions
 from stdtest/testutils import disableVM
 type
   Dollar = distinct int

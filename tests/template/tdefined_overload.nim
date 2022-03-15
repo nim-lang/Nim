@@ -8,7 +8,7 @@ discard """
 # if the symbol is 'overloaded' by some variable or procedure, because in
 # that case the argument of `defined` is of kind `nkSym` instead of `nkIdent`
 # (for which was checked in `semexprs.semDefined`).
-
+import std/assertions
 block:
   # check whether a proc with the same name as the argument to `defined`
   # compiles

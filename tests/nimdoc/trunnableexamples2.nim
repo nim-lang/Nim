@@ -7,5 +7,6 @@ joinable: false
 # pending bug #18077, merge back inside trunnableexamples.nim
 when true: # runnableExamples with rdoccmd
   runnableExamples "-d:testFoo -d:testBar":
+    import std/assertions
     doAssert defined(testFoo) and defined(testBar)
     doAssert defined(testFooExternal)

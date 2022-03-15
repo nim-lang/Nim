@@ -2,7 +2,7 @@ discard """
   nimout:    "instantiated for string\ninstantiated for int\ninstantiated for bool"
   output: "int\nseq[string]\nA\nB\n100\ntrue"
 """
-
+import std/assertions
 import typetraits
 
 proc plus(a, b: auto): auto = a + b

@@ -16,7 +16,7 @@ Second readLine raised an exception
 3bbbbbbb
 '''
 """
-
+import std/assertions
 import terminal, colors, re, encodings, strutils, os
 
 

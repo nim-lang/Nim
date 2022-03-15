@@ -1,7 +1,7 @@
 discard """
   output: '''10'''
 """
-
+import std/assertions
 # bug #940
 
 type

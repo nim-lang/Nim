@@ -1,4 +1,4 @@
-
+import std/assertions
 const RANGE = -384.. -127
 
 proc get_values(): (seq[int8], seq[int16], seq[int32]) =

@@ -7,7 +7,7 @@ OK
 macros api OK
 '''
 """
-
+import std/assertions
 # This is for Azure. The keyword ``alignof`` only exists in ``c++11``
 # and newer. On Azure gcc does not default to c++11 yet.
 when defined(cpp) and not defined(windows):

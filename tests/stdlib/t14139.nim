@@ -1,5 +1,5 @@
 import heapqueue
-
+import std/assertions
 var test_queue : HeapQueue[int]
 
 test_queue.push(7)

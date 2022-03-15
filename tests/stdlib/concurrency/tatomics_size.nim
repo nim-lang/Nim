@@ -2,7 +2,7 @@ discard """
   targets: "c cpp"
 """
 import std/atomics
-
+import std/assertions
 block testSize: # issue 12726
   type
     Node = ptr object

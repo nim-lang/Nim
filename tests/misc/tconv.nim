@@ -1,7 +1,7 @@
 discard """
   matrix: "--warningAsError:EnumConv --warningAsError:CStringConv"
 """
-
+import std/assertions
 template reject(x) =
   static: doAssert(not compiles(x))
 template accept(x) =

@@ -1,7 +1,7 @@
 discard """
 action: compile
 """
-
+import std/assertions
 
 var
   e = "abc"

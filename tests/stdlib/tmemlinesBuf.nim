@@ -1,4 +1,5 @@
 import memfiles
+import std/assertions
 var inp = memfiles.open("tests/stdlib/tmemlinesBuf.nim")
 var buffer: string = ""
 var lineCount = 0

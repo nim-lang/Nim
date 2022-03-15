@@ -5,7 +5,7 @@ discard """
 """
 # disabled: pending bug #15713
 import net, nativesockets
-
+import std/assertions
 when defined(posix): import os, posix
 else:
   import winlean

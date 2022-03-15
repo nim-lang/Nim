@@ -1,5 +1,5 @@
 import std/private/globs
-
+import std/assertions
 template main =
   when defined(windows):
     doAssert nativeToUnixPath("C:") == "/C"

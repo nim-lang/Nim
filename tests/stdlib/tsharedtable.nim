@@ -3,7 +3,7 @@ cmd: "nim $target --threads:on $options $file"
 output: '''
 '''
 """
-
+import std/assertions
 import sharedtables
 
 block:

@@ -1,5 +1,5 @@
 # bug #16987
-
+import std/assertions
 proc getNum(a: int): int = a
 
 # Below calls "doAssert getNum(123) == 123" at compile time.

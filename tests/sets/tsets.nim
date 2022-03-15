@@ -1,7 +1,7 @@
 # Test builtin sets
 
 # xxx these tests are not very good, this should be revisited.
-
+import std/assertions
 when defined nimTestsTsetsGenerate:
   # to generate enums for this test
   var ret: string

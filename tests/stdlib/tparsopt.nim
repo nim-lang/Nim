@@ -5,7 +5,7 @@ disabled: true
 # this file has a type in the name, and it does not really test
 # parseopt module, because tester has no support to set arguments. Test the
 # new parseopt module. Therefore it is disabled.
-
+import std/assertions
 import
   parseopt
 

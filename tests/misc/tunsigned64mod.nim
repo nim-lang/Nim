@@ -1,4 +1,4 @@
-
+import std/assertions
 # bug #1638
 
 let v1 = 7

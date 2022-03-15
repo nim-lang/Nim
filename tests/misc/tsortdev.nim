@@ -1,7 +1,7 @@
 discard """
   output: "done tsortdev"
 """
-
+import std/assertions
 import algorithm, strutils
 
 proc cmpPlatforms(a, b: string): int =

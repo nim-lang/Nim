@@ -3,7 +3,7 @@ discard """
 """
 
 {.warning[UnusedImport]: off.}
-
+import std/assertions
 import std/[
   # Core:
   bitops, typetraits, lenientops, macros, volatile,

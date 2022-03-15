@@ -2,7 +2,7 @@ discard """
   output: ""
   targets: "c js"
 """
-
+import std/assertions
 import json, strutils, options, tables
 
 # The definition of the `%` proc needs to be here, since the `% c` calls below

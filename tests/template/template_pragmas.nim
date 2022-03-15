@@ -1,3 +1,4 @@
+import std/assertions
 proc output_x:string {.compileTime.} = "x"
 
 template t =

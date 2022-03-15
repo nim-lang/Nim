@@ -1,5 +1,5 @@
 import db_postgres, strutils
-
+import std/assertions
 
 let db = open("localhost", "dom", "", "test")
 db.exec(sql"DROP TABLE IF EXISTS myTable")

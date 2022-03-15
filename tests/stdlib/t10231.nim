@@ -3,7 +3,7 @@ discard """
   action: run
   exitcode: 0
 """
-
+import std/assertions
 import os
 
 # consider moving this inside tosproc (taking care that it's for cpp mode)

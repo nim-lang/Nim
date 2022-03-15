@@ -1,5 +1,5 @@
 # compute the edit distance between two strings
-
+import std/assertions
 proc editDistance(a, b: string): int =
   var
     c: seq[int]

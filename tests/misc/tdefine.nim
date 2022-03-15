@@ -2,7 +2,7 @@ discard """
 joinable: false
 cmd: "nim c -d:booldef -d:booldef2=false -d:intdef=2 -d:strdef=foobar -r $file"
 """
-
+import std/assertions
 const booldef {.booldefine.} = false
 const booldef2 {.booldefine.} = true
 const intdef {.intdefine.} = 0

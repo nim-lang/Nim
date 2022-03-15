@@ -53,7 +53,7 @@ Event parser output
 
 when defined(nimHasEffectsOf):
   {.experimental: "strictEffects".}
-
+import std/assertions
 import std/[strutils, streams, pegs]
 
 const

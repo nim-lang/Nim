@@ -1,5 +1,5 @@
 import strmisc
-
+import std/assertions
 
 doAssert expandTabs("\t", 4) == "    "
 doAssert expandTabs("\tfoo\t", 4) == "    foo "

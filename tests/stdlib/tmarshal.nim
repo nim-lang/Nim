@@ -1,5 +1,5 @@
 import std/marshal
-
+import std/assertions
 # TODO: add static tests
 
 proc testit[T](x: T): string = $$to[T]($$x)

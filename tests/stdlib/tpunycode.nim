@@ -1,5 +1,5 @@
 import punycode, std/unicode
-
+import std/assertions
 doAssert(decode(encode("", "bücher")) == "bücher")
 doAssert(decode(encode("münchen")) == "münchen")
 doAssert encode("xn--", "münchen") == "xn--mnchen-3ya"

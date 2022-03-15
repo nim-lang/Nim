@@ -2,7 +2,7 @@
 import std/json
 import std/jsonutils
 import std/macros
-
+import std/assertions
 macro fn1(a: untyped): string = newLit a.lispRepr
 
 doAssert fn1(a.?b.c) == """(DotExpr (Infix (Ident ".?") (Ident "a") (Ident "b")) (Ident "c"))"""
