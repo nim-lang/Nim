@@ -8,7 +8,7 @@
 
 ## Simple tool to automate frequent workflows: Can "clone"
 ## a Nimble dependency and its dependencies recursively.
-
+import std/assertions
 import std/[parseopt, strutils, os, osproc, unicode, tables, sets, json, jsonutils]
 import parse_requires, osutils, packagesjson
 

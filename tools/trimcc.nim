@@ -1,5 +1,5 @@
 # Trim C compiler installation to a minimum
-
+import std/assertions
 import strutils, os, pegs, strtabs, math, times
 
 const

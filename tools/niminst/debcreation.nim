@@ -6,7 +6,7 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-
+import std/assertions
 import osproc, times, os, strutils
 
 # http://www.debian.org/doc/manuals/maint-guide/
