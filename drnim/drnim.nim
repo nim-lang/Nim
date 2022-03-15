@@ -21,6 +21,8 @@ import std / [
   parseopt, strutils, os, tables, times, intsets, hashes
 ]
 
+import std/assertions
+
 import ".." / compiler / [
   ast, astalgo, types, renderer,
   commands, options, msgs,

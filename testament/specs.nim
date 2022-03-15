@@ -11,6 +11,9 @@ import sequtils, parseutils, strutils, os, streams, parsecfg,
   tables, hashes, sets
 import compiler/platform
 
+import std/assertions
+
+
 type TestamentData* = ref object
   # better to group globals under 1 object; could group the other ones here too
   batchArg*: string

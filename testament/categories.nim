@@ -15,6 +15,7 @@
 import important_packages
 import std/strformat
 from std/sequtils import filterIt
+import std/assertions
 
 const
   specialCategories = [

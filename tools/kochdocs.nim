@@ -6,6 +6,7 @@ when defined(nimHasCastPragmaBlocks):
   import std/pegs
 from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
+import std/assertions
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"

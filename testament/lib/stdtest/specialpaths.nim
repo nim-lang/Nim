@@ -11,7 +11,7 @@ import "$lib/../compiler/nimpaths" # <- most robust if you want to favor --lib:l
 import "$nim/compiler/nimpaths"
 import compiler/nimpaths
 ]#
-
+import std/assertions
 import os
 
 # Note: all the const paths defined here are known at compile time and valid

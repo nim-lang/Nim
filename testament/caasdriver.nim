@@ -4,7 +4,7 @@ import osproc, streams, os, strutils, re
 ## Compiler as a service tester.
 ##
 ## Please read docs/idetools.txt for information about this.
-
+import std/assertions
 
 type
   TRunMode = enum

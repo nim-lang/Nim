@@ -8,7 +8,7 @@
 #
 
 ## This program verifies Nim against the testcases.
-
+import std/assertions
 import
   strutils, pegs, os, osproc, streams, json, std/exitprocs,
   backend, parseopt, specs, htmlgen, browsers, terminal,

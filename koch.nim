@@ -9,6 +9,10 @@
 #    See doc/koch.txt for documentation.
 #
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 const
   NimbleStableCommit = "d13f3b8ce288b4dc8c34c219a4e050aaeaf43fc9" # master
   # examples of possible values: #head, #ea82b54, 1.2.3

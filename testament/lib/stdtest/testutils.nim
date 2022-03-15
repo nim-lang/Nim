@@ -4,6 +4,7 @@ when defined(nimscript):
 else:
   from std/os import getEnv
 import std/[macros, genasts]
+import std/assertions
 
 template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
   ## API to deal with flaky or failing tests. This avoids disabling entire tests
