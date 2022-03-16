@@ -47,6 +47,10 @@
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
+import std/private/since
+since (1, 7):
+  import std/assertions
+
 when defined(zephyr) or defined(freertos):
   const
     nimThreadStackSize {.intdefine.} = 8192 
