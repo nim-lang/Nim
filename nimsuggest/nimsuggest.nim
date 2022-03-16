@@ -12,6 +12,8 @@
 when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
+import std/assertions
+
 import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
 # Do NOT import suggest. It will lead to weird bugs with
 # suggestionResultHook, because suggest.nim is included by sigmatch.

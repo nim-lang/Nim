@@ -8,7 +8,7 @@
 #
 
 ## **Note:** Import ``nimsuggest/sexp`` to use this module
-
+import std/assertions
 import
   hashes, strutils, lexbase, streams, unicode, macros
 

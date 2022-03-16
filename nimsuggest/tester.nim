@@ -4,7 +4,7 @@
 # crucial difference for Nim's parser.
 # When debugging, to run a single test, use for e.g.:
 # `nim r nimsuggest/tester.nim nimsuggest/tests/tsug_accquote.nim`
-
+import std/assertions
 import os, osproc, strutils, streams, re, sexp, net
 from sequtils import toSeq
 
