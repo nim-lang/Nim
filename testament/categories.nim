@@ -415,12 +415,14 @@ proc makeSupTest(test, options: string, cat: Category, debugInfo = ""): TTest =
 import std/private/gitutils
 
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
+  const packagesDirConfig = "useVersion:1.6"
   let nimbleExe = findExe("nimble")
   doAssert nimbleExe != "", "Cannot run nimble tests: Nimble binary not found."
   doAssert execCmd("$# update" % nimbleExe) == 0, "Cannot run nimble tests: Nimble update failed."
   let packageFileTest = makeSupTest("PackageFileParsed", "", cat)
   let packagesDir = "pkgstemp"
   createDir(packagesDir)
+  writeFile(packagesDir / "nim.cfg", packagesDirConfig)
   var errors = 0
   try:
     let pkgs = listPackages(packageFilter)
