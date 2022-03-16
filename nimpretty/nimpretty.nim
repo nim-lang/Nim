@@ -14,6 +14,8 @@ when not defined(nimpretty):
 
 import ../compiler / [idents, msgs, syntaxes, options, pathutils, layouter]
 
+import std/assertions
+
 import parseopt, strutils, os, sequtils
 
 const
