@@ -94,6 +94,7 @@ template genOid(result: var Oid, incr: var int, fuzz: int32) =
 proc genOid*(): Oid =
   ## Generates a new OID.
   runnableExamples:
+    import std/assertions
     doAssert ($genOid()).len == 24
   runnableExamples("-r:off"):
     echo $genOid() # for example, "5fc7f546ddbbc84800006aaf"

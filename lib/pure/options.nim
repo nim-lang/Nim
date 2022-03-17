@@ -26,6 +26,7 @@ in a string.
 ]##
 
 runnableExamples:
+  import std/assertions
   proc find(haystack: string, needle: char): Option[int] =
     for i, c in haystack:
       if c == needle:
@@ -105,6 +106,7 @@ proc option*[T](val: sink T): Option[T] {.inline.} =
   ## * `some proc <#some,T>`_
   ## * `none proc <#none,typedesc>`_
   runnableExamples:
+    import std/assertions
     type
       Foo = ref object
         a: int
@@ -125,6 +127,7 @@ proc some*[T](val: sink T): Option[T] {.inline.} =
   ## * `none proc <#none,typedesc>`_
   ## * `isSome proc <#isSome,Option[T]>`_
   runnableExamples:
+    import std/assertions
     let a = some("abc")
 
     assert a.isSome
@@ -145,6 +148,7 @@ proc none*(T: typedesc): Option[T] {.inline.} =
   ## * `some proc <#some,T>`_
   ## * `isNone proc <#isNone,Option[T]>`_
   runnableExamples:
+    import std/assertions
     assert none(int).isNone
 
   # the default is the none type
@@ -161,6 +165,7 @@ proc isSome*[T](self: Option[T]): bool {.inline.} =
   ## * `isNone proc <#isNone,Option[T]>`_
   ## * `some proc <#some,T>`_
   runnableExamples:
+    import std/assertions
     assert some(42).isSome
     assert not none(string).isSome
 
@@ -176,6 +181,7 @@ proc isNone*[T](self: Option[T]): bool {.inline.} =
   ## * `isSome proc <#isSome,Option[T]>`_
   ## * `none proc <#none,typedesc>`_
   runnableExamples:
+    import std/assertions
     assert not some(42).isNone
     assert none(string).isNone
 
@@ -191,6 +197,7 @@ proc get*[T](self: Option[T]): lent T {.inline.} =
   ## **See also:**
   ## * `get proc <#get,Option[T],T>`_ with a default return value
   runnableExamples:
+    import std/assertions
     assert some(42).get == 42
     doAssertRaises(UnpackDefect):
       echo none(string).get
@@ -203,6 +210,7 @@ proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
   ## Returns the content of the `Option` or `otherwise` if
   ## the `Option` has no value.
   runnableExamples:
+    import std/assertions
     assert some(42).get(9999) == 42
     assert none(int).get(9999) == 9999
 
@@ -215,6 +223,7 @@ proc get*[T](self: var Option[T]): var T {.inline.} =
   ## Returns the content of the `var Option` mutably. If it has no value,
   ## an `UnpackDefect` exception is raised.
   runnableExamples:
+    import std/assertions
     var
       a = some(42)
       b = none(string)
@@ -234,6 +243,7 @@ proc map*[T](self: Option[T], callback: proc (input: T)) {.inline.} =
   ## * `map proc <#map,Option[T],proc(T)_2>`_ for a version with a callback
   ##   which returns a value
   runnableExamples:
+    import std/assertions
     var d = 0
     proc saveDouble(x: int) =
       d = 2 * x
@@ -257,6 +267,7 @@ proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] {.inli
   ## * `flatMap proc <#flatMap,Option[T],proc(T)>`_ for a version with a
   ##   callback that returns an `Option`
   runnableExamples:
+    import std/assertions
     proc isEven(x: int): bool =
       x mod 2 == 0
 
@@ -274,6 +285,7 @@ proc flatten*[T](self: Option[Option[T]]): Option[T] {.inline.} =
   ## **See also:**
   ## * `flatMap proc <#flatMap,Option[T],proc(T)>`_
   runnableExamples:
+    import std/assertions
     assert flatten(some(some(42))) == some(42)
     assert flatten(none(Option[int])) == none(int)
 
@@ -296,6 +308,7 @@ proc flatMap*[T, R](self: Option[T],
   ## * `flatten proc <#flatten,Option[Option[A]]>`_
   ## * `filter proc <#filter,Option[T],proc(T)>`_
   runnableExamples:
+    import std/assertions
     proc doublePositives(x: int): Option[int] =
       if x > 0:
         some(2 * x)
@@ -317,6 +330,7 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] {.i
   ## **See also:**
   ## * `flatMap proc <#flatMap,Option[A],proc(A)>`_
   runnableExamples:
+    import std/assertions
     proc isEven(x: int): bool =
       x mod 2 == 0
 
@@ -333,6 +347,7 @@ proc `==`*[T](a, b: Option[T]): bool {.inline.} =
   ## Returns `true` if both `Option`s are `none`,
   ## or if they are both `some` and have equal values.
   runnableExamples:
+    import std/assertions
     let
       a = some(42)
       b = none(int)
@@ -351,6 +366,7 @@ proc `==`*[T](a, b: Option[T]): bool {.inline.} =
 proc `$`*[T](self: Option[T]): string =
   ## Get the string representation of the `Option`.
   runnableExamples:
+    import std/assertions
     assert $some(42) == "some(42)"
     assert $none(int) == "none(int)"
 

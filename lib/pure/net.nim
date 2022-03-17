@@ -66,6 +66,7 @@ runnableExamples("-r:off"):
   socket.sendTo("192.168.0.1", Port(27960), "status\n")
 
 runnableExamples("-r:off"):
+  import std/assertions
   let socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
   let ip = parseIpAddress("192.168.0.1")
   doAssert socket.sendTo(ip, Port(27960), "status\c\l") == 8
