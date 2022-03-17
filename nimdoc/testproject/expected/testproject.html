@@ -428,6 +428,7 @@ window.addEventListener('DOMContentLoaded', main);
   <p class="module-desc">This is the top level module.
 <p><strong class="examples_text">Example:</strong></p>
 <pre class="listing"><span class="Keyword">import</span> <span class="Identifier">testproject</span>
+<span class="Keyword">import</span> <span class="Identifier">std</span><span class="Operator">/</span><span class="Identifier">assertions</span>
 <span class="Keyword">import</span> <span class="Identifier">subdir</span> <span class="Operator">/</span> <span class="Identifier">subdir_b</span> <span class="Operator">/</span> <span class="Identifier">utils</span>
 <span class="Identifier">doAssert</span> <span class="Identifier">bar</span><span class="Punctuation">(</span><span class="DecNumber">3</span><span class="Punctuation">,</span> <span class="DecNumber">4</span><span class="Punctuation">)</span> <span class="Operator">==</span> <span class="DecNumber">7</span>
 <span class="Identifier">foo</span><span class="Punctuation">(</span><span class="Identifier">enumValueA</span><span class="Punctuation">,</span> <span class="Identifier">enumValueB</span><span class="Punctuation">)</span>
@@ -781,9 +782,11 @@ came form utils but should be shown where <tt class="docutils literal"><span cla
 
 cp1
 <p><strong class="examples_text">Example:</strong></p>
-<pre class="listing"><span class="Identifier">doAssert</span> <span class="DecNumber">1</span> <span class="Operator">==</span> <span class="DecNumber">1</span> <span class="Comment"># regular comments work here</span></pre>c4
+<pre class="listing"><span class="Keyword">import</span> <span class="Identifier">std</span><span class="Operator">/</span><span class="Identifier">assertions</span>
+<span class="Identifier">doAssert</span> <span class="DecNumber">1</span> <span class="Operator">==</span> <span class="DecNumber">1</span> <span class="Comment"># regular comments work here</span></pre>c4
 <p><strong class="examples_text">Example:</strong></p>
-<pre class="listing"><span class="Comment"># c5 regular comments before 1st token work</span>
+<pre class="listing"><span class="Keyword">import</span> <span class="Identifier">std</span><span class="Operator">/</span><span class="Identifier">assertions</span>
+<span class="Comment"># c5 regular comments before 1st token work</span>
 <span class="Comment"># regular comment</span>
 <span class="LongComment">#[
 nested regular comment
@@ -967,7 +970,8 @@ cz8
 
 
 <p><strong class="examples_text">Example:</strong></p>
-<pre class="listing"><span class="Identifier">doAssert</span> <span class="DecNumber">1</span> <span class="Operator">+</span> <span class="DecNumber">1</span> <span class="Operator">==</span> <span class="DecNumber">2</span></pre>
+<pre class="listing"><span class="Keyword">import</span> <span class="Identifier">std</span><span class="Operator">/</span><span class="Identifier">assertions</span>
+<span class="Identifier">doAssert</span> <span class="DecNumber">1</span> <span class="Operator">+</span> <span class="DecNumber">1</span> <span class="Operator">==</span> <span class="DecNumber">2</span></pre>
 
 </dd>
 </div>
@@ -1097,7 +1101,8 @@ foo3
 
 
 <p><strong class="examples_text">Example:</strong></p>
-<pre class="listing"><span class="Comment"># ok1</span>
+<pre class="listing"><span class="Keyword">import</span> <span class="Identifier">std</span><span class="Operator">/</span><span class="Identifier">assertions</span>
+<span class="Comment"># ok1</span>
 <span class="Identifier">assert</span> <span class="DecNumber">1</span> <span class="Operator">==</span> <span class="DecNumber">1</span>
 <span class="Comment"># ok2</span></pre>
 
@@ -1158,7 +1163,8 @@ foo2
 <p><strong class="examples_text">Example:</strong></p>
 <pre class="listing"><span class="Keyword">discard</span> <span class="DecNumber">1</span></pre>cz16 after
 <p><strong class="examples_text">Example:</strong></p>
-<pre class="listing"><span class="Identifier">doAssert</span> <span class="DecNumber">2</span> <span class="Operator">==</span> <span class="DecNumber">1</span> <span class="Operator">+</span> <span class="DecNumber">1</span></pre>
+<pre class="listing"><span class="Keyword">import</span> <span class="Identifier">std</span><span class="Operator">/</span><span class="Identifier">assertions</span>
+<span class="Identifier">doAssert</span> <span class="DecNumber">2</span> <span class="Operator">==</span> <span class="DecNumber">1</span> <span class="Operator">+</span> <span class="DecNumber">1</span></pre>
 
 </dd>
 </div>
@@ -1216,7 +1222,8 @@ ok3
 
 
 <p><strong class="examples_text">Example:</strong></p>
-<pre class="listing"><span class="Keyword">import</span> <span class="Identifier">std</span><span class="Operator">/</span><span class="Identifier">strutils</span>
+<pre class="listing"><span class="Keyword">import</span> <span class="Identifier">std</span><span class="Operator">/</span><span class="Identifier">assertions</span>
+<span class="Keyword">import</span> <span class="Identifier">std</span><span class="Operator">/</span><span class="Identifier">strutils</span>
 <span class="Comment">## issue #8871 preserve formatting</span>
 <span class="Comment">## line doc comment</span>
 <span class="Comment"># bar</span>
@@ -1289,7 +1296,8 @@ cz15
 <p><strong class="examples_text">Example:</strong></p>
 <pre class="listing"><span class="Keyword">discard</span> <span class="DecNumber">4</span></pre>ok5 ok5b
 <p><strong class="examples_text">Example:</strong></p>
-<pre class="listing"><span class="Identifier">assert</span> <span class="Identifier">true</span></pre>
+<pre class="listing"><span class="Keyword">import</span> <span class="Identifier">std</span><span class="Operator">/</span><span class="Identifier">assertions</span>
+<span class="Identifier">assert</span> <span class="Identifier">true</span></pre>
 <p><strong class="examples_text">Example:</strong></p>
 <pre class="listing"><span class="Keyword">discard</span> <span class="DecNumber">1</span></pre>in or out?
 
