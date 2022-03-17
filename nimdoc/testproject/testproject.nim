@@ -103,10 +103,11 @@ when true:
       1+1
 
 when true:
-  import std/assertions
   # interleaving 0 or more runnableExamples and doc comments, issue #9227
   proc z9*() =
-    runnableExamples: doAssert 1 + 1 == 2
+    runnableExamples:
+      import std/assertions
+      doAssert 1 + 1 == 2
 
   proc z10*() =
     runnableExamples "-d:foobar":

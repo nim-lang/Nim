@@ -7,4 +7,4 @@ for line in lines(inp, buffer):
   lineCount += 1
 
 close(inp)
-doAssert lineCount == 9, $lineCount # this file's number of lines
+doAssert lineCount == 10, $lineCount # this file's number of lines
