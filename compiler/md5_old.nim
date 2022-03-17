@@ -196,6 +196,7 @@ proc toMD5*(s: string): MD5Digest =
   ##   of the `MD5Digest`
   ## * `$ proc <#$,MD5Digest>`_ for converting MD5Digest to string
   runnableExamples:
+    import std/assertions
     assert $toMD5("abc") == "900150983cd24fb0d6963f7d28e17f72"
 
   var c: MD5Context
@@ -217,6 +218,7 @@ proc getMD5*(s: string): string =
   ## **See also:**
   ## * `toMD5 proc <#toMD5,string>`_ which returns the `MD5Digest` of a string
   runnableExamples:
+    import std/assertions
     assert getMD5("abc") == "900150983cd24fb0d6963f7d28e17f72"
 
   var

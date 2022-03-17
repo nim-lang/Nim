@@ -305,6 +305,7 @@ proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
   ## Returns the `type`:idx: of a node in a form matching the way the
   ## type instance was declared in the code.
   runnableExamples:
+    import std/assertions
     type
       Vec[N: static[int], T] = object
         arr: array[N, T]
@@ -328,6 +329,7 @@ proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
   ## type implementation. You can instead use `getImpl` on a symbol if you
   ## want to find the intermediate aliases.
   runnableExamples:
+    import std/assertions
     type
       Vec[N: static[int], T] = object
         arr: array[N, T]
@@ -585,6 +587,7 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
     check 1 + 1 == 2
 
   runnableExamples:
+    import std/assertions
     # example showing how to define a symbol that requires backtick without
     # quoting it.
     var destroyCalled = false
@@ -601,6 +604,7 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
     doAssert destroyCalled
 
   runnableExamples:
+    import std/assertions
     # custom `op`
     var destroyCalled = false
     macro bar(ident) =

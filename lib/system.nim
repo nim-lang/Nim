@@ -70,12 +70,14 @@ proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".
     proc timesTwo*(x: int): int =
       ## This proc doubles a number.
       runnableExamples:
+        import std/assertions
         # at module scope
         const exported* = 123
         assert timesTwo(5) == 10
         block: # at block scope
           defer: echo "done"
       runnableExamples "-d:foo -b:cpp":
+        import std/assertions
         import std/compilesettings
         assert querySetting(backend) == "cpp"
         assert defined(foo)
@@ -93,6 +95,7 @@ proc compileOption*(option: string): bool {.
   ## * `defined <#defined,untyped>`_
   ## * `std/compilesettings module <compilesettings.html>`_
   runnableExamples("--floatChecks:off"):
+    import std/assertions
     static: doAssert not compileOption("floatchecks")
     {.push floatChecks: on.}
     static: doAssert compileOption("floatchecks")
@@ -719,6 +722,7 @@ when not defined(js):
 func len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.magic: "LengthOpenArray".} =
   ## Returns the length of an openArray.
   runnableExamples:
+    import std/assertions
     proc bar[T](a: openArray[T]): int = len(a)
     assert bar([1,2]) == 2
     assert [1,2].len == 2
@@ -726,6 +730,7 @@ func len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.magic: "LengthOpe
 func len*(x: string): int {.magic: "LengthStr".} =
   ## Returns the length of a string.
   runnableExamples:
+    import std/assertions
     assert "abc".len == 3
     assert "".len == 0
     assert string.default.len == 0
@@ -739,6 +744,7 @@ proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.} =
   ## need the byte length of the UTF-8 encoding, convert to string with
   ## `$` first then call `len`.
   runnableExamples:
+    import std/assertions
     doAssert len(cstring"abc") == 3
     doAssert len(cstring r"ab\0c") == 5 # \0 is escaped
     doAssert len(cstring"ab\0c") == 5 # ditto
@@ -753,6 +759,7 @@ func len*(x: (type array)|array): int {.magic: "LengthArray".} =
   ## Returns the length of an array or an array type.
   ## This is roughly the same as `high(T)-low(T)+1`.
   runnableExamples:
+    import std/assertions
     var a = [1, 1, 1]
     assert a.len == 3
     assert array[0, float].len == 0
@@ -761,6 +768,7 @@ func len*(x: (type array)|array): int {.magic: "LengthArray".} =
 func len*[T](x: seq[T]): int {.magic: "LengthSeq".} =
   ## Returns the length of `x`.
   runnableExamples:
+    import std/assertions
     assert @[0, 1].len == 2
     assert seq[int].default.len == 0
     assert newSeq[int](3).len == 3
@@ -772,6 +780,7 @@ func ord*[T: Ordinal|enum](x: T): int {.magic: "Ord".} =
   ## Returns the internal `int` value of `x`, including for enum with holes
   ## and distinct ordinal types.
   runnableExamples:
+    import std/assertions
     assert ord('A') == 65
     type Foo = enum
       f0 = 0, f1 = 3
@@ -782,6 +791,7 @@ func ord*[T: Ordinal|enum](x: T): int {.magic: "Ord".} =
 func chr*(u: range[0..255]): char {.magic: "Chr".} =
   ## Converts `u` to a `char`, same as `char(u)`.
   runnableExamples:
+    import std/assertions
     doAssert chr(65) == 'A'
     doAssert chr(255) == '\255'
     doAssert chr(255) == char(255)
@@ -923,6 +933,7 @@ template disarm*(x: typed) =
 proc `of`*[T, S](x: T, y: typedesc[S]): bool {.magic: "Of", noSideEffect.} =
   ## Checks if `x` is an instance of `y`.
   runnableExamples:
+    import std/assertions
     type
       Base = ref object of RootObj
       Sub1 = ref object of Base
@@ -988,6 +999,7 @@ proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEff
 proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
   ## returns the default value of the type `T`.
   runnableExamples:
+    import std/assertions
     assert (int, float).default == (0, 0.0)
     # note: `var a = default(T)` is usually the same as `var a: T` and (currently) generates
     # a value whose binary representation is all 0, regardless of whether this
@@ -1092,6 +1104,7 @@ proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.} =
   ##
   ## See also `strbasics.add`.
   runnableExamples:
+    import std/assertions
     var tmp = ""
     tmp.add("ab")
     tmp.add("cd")
@@ -1331,6 +1344,7 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## See also:
   ## * `delete <#delete,seq[T],Natural>`_ for preserving the order
   runnableExamples:
+    import std/assertions
     var a = @[10, 11, 12, 13, 14]
     a.del(2)
     assert a == @[10, 11, 14, 13]
@@ -1999,6 +2013,7 @@ when defined(js) or defined(nimdoc):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
     ## Appends `y` to `x` in place.
     runnableExamples:
+      import std/assertions
       var tmp = ""
       tmp.add(cstring("ab"))
       tmp.add(cstring("cd"))
@@ -2161,6 +2176,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
   ## * `del <#del,seq[T],Natural>`_ for O(1) operation
   ##
   runnableExamples:
+    import std/assertions
     var s = @[1, 2, 3, 4, 5]
     s.delete(2)
     doAssert s == @[1, 2, 4, 5]
@@ -2644,6 +2660,7 @@ proc `[]=`*[T; U, V: Ordinal](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   ## If `b.len` is not exactly the number of elements that are referred to
   ## by `x`, a `splice`:idx: is performed.
   runnableExamples:
+    import std/assertions
     var s = @"abcdefgh"
     s[1 .. ^2] = @"xyz"
     assert s == @"axyzh"
@@ -3078,6 +3095,7 @@ proc substr*(s: string, first, last: int): string =
   ## is used instead: This means `substr` can also be used to `cut`:idx:
   ## or `limit`:idx: a string's length.
   runnableExamples:
+    import std/assertions
     let a = "abcdefgh"
     assert a.substr(2, 5) == "cdef"
     assert a.substr(2) == "cdefgh"
@@ -3164,6 +3182,7 @@ when notJSnotNims and not defined(nimSeqsV2):
     ## therefore you should call `prepareMutation` before modifying the strings
     ## via `addr`.
     runnableExamples("--gc:arc"):
+      import std/assertions
       var x = "abc"
       var y = "defgh"
       prepareMutation(y) # without this, you may get a `SIGBUS` or `SIGSEGV`

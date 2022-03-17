@@ -120,6 +120,7 @@ proc cmpDecimalsIgnoreCase(a, b: string): int =
   ## Also handles leading zeros well (however note that leading zeros are
   ## significant when lengths of numbers mismatch, e.g. 'bar08' > 'bar8' !).
   runnableExamples:
+    import std/assertions
     doAssert cmpDecimalsIgnoreCase("uint8", "uint16") < 0
     doAssert cmpDecimalsIgnoreCase("val00032", "val16suffix") > 0
     doAssert cmpDecimalsIgnoreCase("val16suffix", "val16") > 0

@@ -17,6 +17,7 @@
 ## one module, and iterate over its contents in another.
 
 runnableExamples:
+  import std/assertions
   import std/macros
 
   const mcTable = CacheTable"myTable"
@@ -61,6 +62,7 @@ type
 proc value*(c: CacheCounter): int {.magic: "NccValue".} =
   ## Returns the value of a counter `c`.
   runnableExamples:
+    import std/assertions
     static:
       let counter = CacheCounter"valTest"
       # default value is 0
@@ -72,6 +74,7 @@ proc value*(c: CacheCounter): int {.magic: "NccValue".} =
 proc inc*(c: CacheCounter; by = 1) {.magic: "NccInc".} =
   ## Increments the counter `c` with the value `by`.
   runnableExamples:
+    import std/assertions
     static:
       let counter = CacheCounter"incTest"
       inc counter
@@ -82,6 +85,7 @@ proc inc*(c: CacheCounter; by = 1) {.magic: "NccInc".} =
 proc add*(s: CacheSeq; value: NimNode) {.magic: "NcsAdd".} =
   ## Adds `value` to `s`.
   runnableExamples:
+    import std/assertions
     import std/macros
     const mySeq = CacheSeq"addTest"
 
@@ -97,6 +101,7 @@ proc incl*(s: CacheSeq; value: NimNode) {.magic: "NcsIncl".} =
   ##
   ## .. hint:: This doesn't do anything if `value` is already in `s`.
   runnableExamples:
+    import std/assertions
     import std/macros
     const mySeq = CacheSeq"inclTest"
 
@@ -110,6 +115,7 @@ proc incl*(s: CacheSeq; value: NimNode) {.magic: "NcsIncl".} =
 proc len*(s: CacheSeq): int {.magic: "NcsLen".} =
   ## Returns the length of `s`.
   runnableExamples:
+    import std/assertions
     import std/macros
 
     const mySeq = CacheSeq"lenTest"
@@ -124,6 +130,7 @@ proc len*(s: CacheSeq): int {.magic: "NcsLen".} =
 proc `[]`*(s: CacheSeq; i: int): NimNode {.magic: "NcsAt".} =
   ## Returns the `i`th value from `s`.
   runnableExamples:
+    import std/assertions
     import std/macros
 
     const mySeq = CacheSeq"subTest"
@@ -134,6 +141,7 @@ proc `[]`*(s: CacheSeq; i: int): NimNode {.magic: "NcsAt".} =
 iterator items*(s: CacheSeq): NimNode =
   ## Iterates over each item in `s`.
   runnableExamples:
+    import std/assertions
     import std/macros
     const myseq = CacheSeq"itemsTest"
 
@@ -153,6 +161,7 @@ proc `[]=`*(t: CacheTable; key: string, value: NimNode) {.magic: "NctPut".} =
   ## .. warning:: `key` has to be unique! Assigning `value` to a `key` that is already
   ##   in the table will result in a compiler error.
   runnableExamples:
+    import std/assertions
     import std/macros
 
     const mcTable = CacheTable"subTest"
@@ -166,6 +175,7 @@ proc `[]=`*(t: CacheTable; key: string, value: NimNode) {.magic: "NctPut".} =
 proc len*(t: CacheTable): int {.magic: "NctLen".} =
   ## Returns the number of elements in `t`.
   runnableExamples:
+    import std/assertions
     import std/macros
 
     const dataTable = CacheTable"lenTest"
@@ -176,6 +186,7 @@ proc len*(t: CacheTable): int {.magic: "NctLen".} =
 proc `[]`*(t: CacheTable; key: string): NimNode {.magic: "NctGet".} =
   ## Retrieves the `NimNode` value at `t[key]`.
   runnableExamples:
+    import std/assertions
     import std/macros
 
     const mcTable = CacheTable"subTest"
@@ -191,6 +202,7 @@ proc next(t: CacheTable; iter: int): (string, NimNode, int) {.magic: "NctNext".}
 iterator pairs*(t: CacheTable): (string, NimNode) =
   ## Iterates over all `(key, value)` pairs in `t`.
   runnableExamples:
+    import std/assertions
     import std/macros
     const mytabl = CacheTable"values"
 
