@@ -13,6 +13,7 @@
 ## Complex numbers are currently generic over 64-bit or 32-bit floats.
 
 runnableExamples:
+  import std/assertions
   from std/math import almostEqual, sqrt
 
   func almostEqual(a, b: Complex): bool =
@@ -399,6 +400,7 @@ func rect*[T](r, phi: T): Complex[T] =
 func `$`*(z: Complex): string =
   ## Returns `z`'s string representation as `"(re, im)"`.
   runnableExamples:
+    import std/assertions
     doAssert $complex(1.0, 2.0) == "(1.0, 2.0)"
 
   result = "(" & $z.re & ", " & $z.im & ")"

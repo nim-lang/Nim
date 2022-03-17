@@ -50,6 +50,7 @@ func `$`*(self: RegExp): string = $toCstring(self)
 func contains*(pattern: cstring; self: RegExp): bool =
   ## Tests for a substring match in its string parameter.
   runnableExamples:
+    import std/assertions
     let jsregex: RegExp = newRegExp(r"bc$", r"i")
     assert jsregex in r"abc"
     assert jsregex notin r"abcd"
@@ -59,6 +60,7 @@ func contains*(pattern: cstring; self: RegExp): bool =
 func startsWith*(pattern: cstring; self: RegExp): bool =
   ## Tests if string starts with given RegExp
   runnableExamples:
+    import std/assertions
     let jsregex: RegExp = newRegExp(r"abc", r"i")
     assert "abcd".startsWith jsregex
   pattern.contains(newRegExp(("^" & $(self.source)).cstring, self.flags))
@@ -66,12 +68,14 @@ func startsWith*(pattern: cstring; self: RegExp): bool =
 func endsWith*(pattern: cstring; self: RegExp): bool =
   ## Tests if string ends with given RegExp
   runnableExamples:
+    import std/assertions
     let jsregex: RegExp = newRegExp(r"bcd", r"i")
     assert "abcd".endsWith jsregex
   pattern.contains(newRegExp(($(self.source) & "$").cstring, self.flags))
 
 
 runnableExamples:
+  import std/assertions
   let jsregex: RegExp = newRegExp(r"\s+", r"i")
   jsregex.compile(r"\w+", r"i")
   assert "nim javascript".contains jsregex

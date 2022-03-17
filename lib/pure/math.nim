@@ -16,6 +16,7 @@
 ## provide conversion between radians and degrees.
 
 runnableExamples:
+  import std/assertions
   from std/fenv import epsilon
   from std/random import rand
 
@@ -82,6 +83,7 @@ when defined(c) or defined(cpp):
 func binom*(n, k: int): int =
   ## Computes the [binomial coefficient](https://en.wikipedia.org/wiki/Binomial_coefficient).
   runnableExamples:
+    import std/assertions
     doAssert binom(6, 2) == 15
     doAssert binom(-6, 2) == 1
     doAssert binom(6, 0) == 1
@@ -104,6 +106,7 @@ func fac*(n: int): int =
   ## **See also:**
   ## * `prod func <#prod,openArray[T]>`_
   runnableExamples:
+    import std/assertions
     doAssert fac(0) == 1
     doAssert fac(4) == 24
     doAssert fac(10) == 3628800
@@ -159,6 +162,7 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
   ## Returns whether `x` is a `NaN`, more efficiently than via `classify(x) == fcNan`.
   ## Works even with `--passc:-ffast-math`.
   runnableExamples:
+    import std/assertions
     doAssert NaN.isNaN
     doAssert not Inf.isNaN
     doAssert not isNaN(3.1415926)
@@ -196,6 +200,7 @@ when defined(js):
 proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
   ## Returns true if `x` is negative, false otherwise.
   runnableExamples:
+    import std/assertions
     doAssert not signbit(0.0)
     doAssert signbit(-0.0)
     doAssert signbit(-0.1)
@@ -211,6 +216,7 @@ func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
   ## Returns a value with the magnitude of `x` and the sign of `y`;
   ## this works even if x or y are NaN, infinity or zero, all of which can carry a sign.
   runnableExamples:
+    import std/assertions
     doAssert copySign(10.0, 1.0) == 10.0
     doAssert copySign(10.0, -1.0) == -10.0
     doAssert copySign(-Inf, -0.0) == -Inf
@@ -238,6 +244,7 @@ func classify*(x: float): FloatClass =
   ## Returns `x`'s class as specified by the `FloatClass enum<#FloatClass>`_.
   ## Doesn't work with `--passc:-ffast-math`.
   runnableExamples:
+    import std/assertions
     doAssert classify(0.3) == fcNormal
     doAssert classify(0.0) == fcZero
     doAssert classify(0.3 / 0.0) == fcInf
@@ -275,6 +282,7 @@ func almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4): bool {.
   ##
   # taken from: https://en.cppreference.com/w/cpp/types/numeric_limits/epsilon
   runnableExamples:
+    import std/assertions
     doAssert almostEqual(PI, 3.14159265358979)
     doAssert almostEqual(Inf, Inf)
     doAssert not almostEqual(NaN, NaN)
@@ -295,6 +303,7 @@ func isPowerOfTwo*(x: int): bool =
   ## **See also:**
   ## * `nextPowerOfTwo func <#nextPowerOfTwo,int>`_
   runnableExamples:
+    import std/assertions
     doAssert isPowerOfTwo(16)
     doAssert not isPowerOfTwo(5)
     doAssert not isPowerOfTwo(0)
@@ -310,6 +319,7 @@ func nextPowerOfTwo*(x: int): int =
   ## **See also:**
   ## * `isPowerOfTwo func <#isPowerOfTwo,int>`_
   runnableExamples:
+    import std/assertions
     doAssert nextPowerOfTwo(16) == 16
     doAssert nextPowerOfTwo(5) == 8
     doAssert nextPowerOfTwo(0) == 1
@@ -337,6 +347,7 @@ func sum*[T](x: openArray[T]): T =
   ## * `cumsum func <#cumsum,openArray[T]>`_
   ## * `cumsummed func <#cumsummed,openArray[T]>`_
   runnableExamples:
+    import std/assertions
     doAssert sum([1, 2, 3, 4]) == 10
     doAssert sum([-4, 3, 5]) == 4
 
@@ -351,6 +362,7 @@ func prod*[T](x: openArray[T]): T =
   ## * `sum func <#sum,openArray[T]>`_
   ## * `fac func <#fac,int>`_
   runnableExamples:
+    import std/assertions
     doAssert prod([1, 2, 3, 4]) == 24
     doAssert prod([-4, 3, 5]) == -60
 
@@ -366,6 +378,7 @@ func cumsummed*[T](x: openArray[T]): seq[T] =
   ## * `sum func <#sum,openArray[T]>`_
   ## * `cumsum func <#cumsum,openArray[T]>`_ for the in-place version
   runnableExamples:
+    import std/assertions
     doAssert cumsummed([1, 2, 3, 4]) == @[1, 3, 6, 10]
 
   let xLen = x.len
@@ -384,6 +397,7 @@ func cumsum*[T](x: var openArray[T]) =
   ## * `cumsummed func <#cumsummed,openArray[T]>`_ for a version which
   ##   returns a cumsummed sequence
   runnableExamples:
+    import std/assertions
     var a = [1, 2, 3, 4]
     cumsum(a)
     doAssert a == @[1, 3, 6, 10]
@@ -398,6 +412,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `cbrt func <#cbrt,float64>`_ for the cube root
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(sqrt(4.0), 2.0)
       doAssert almostEqual(sqrt(1.44), 1.2)
   func cbrt*(x: float32): float32 {.importc: "cbrtf", header: "<math.h>".}
@@ -407,6 +422,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `sqrt func <#sqrt,float64>`_ for the square root
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(cbrt(8.0), 2.0)
       doAssert almostEqual(cbrt(2.197), 1.3)
       doAssert almostEqual(cbrt(-27.0), -3.0)
@@ -421,6 +437,7 @@ when not defined(js): # C
     ## * `log2 func <#log2,float64>`_
     ## * `exp func <#exp,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(ln(exp(4.0)), 4.0)
       doAssert almostEqual(ln(1.0), 0.0)
       doAssert almostEqual(ln(0.0), -Inf)
@@ -443,6 +460,7 @@ func log*[T: SomeFloat](x, base: T): T =
   ## * `log10 func <#log10,float64>`_
   ## * `log2 func <#log2,float64>`_
   runnableExamples:
+    import std/assertions
     doAssert almostEqual(log(9.0, 3.0), 2.0)
     doAssert almostEqual(log(0.0, 2.0), -Inf)
     doAssert log(-7.0, 4.0).isNaN
@@ -460,6 +478,7 @@ when not defined(js): # C
     ## * `log func <#log,T,T>`_
     ## * `log2 func <#log2,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(log10(100.0) , 2.0)
       doAssert almostEqual(log10(0.0), -Inf)
       doAssert log10(-100.0).isNaN
@@ -470,6 +489,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `ln func <#ln,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(exp(1.0), E)
       doAssert almostEqual(ln(exp(4.0)), 4.0)
       doAssert almostEqual(exp(0.0), 1.0)
@@ -480,6 +500,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `arcsin func <#arcsin,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(sin(PI / 6), 0.5)
       doAssert almostEqual(sin(degToRad(90.0)), 1.0)
   func cos*(x: float32): float32 {.importc: "cosf", header: "<math.h>".}
@@ -489,6 +510,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `arccos func <#arccos,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(cos(2 * PI), 1.0)
       doAssert almostEqual(cos(degToRad(60.0)), 0.5)
   func tan*(x: float32): float32 {.importc: "tanf", header: "<math.h>".}
@@ -498,6 +520,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `arctan func <#arctan,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(tan(degToRad(45.0)), 1.0)
       doAssert almostEqual(tan(PI / 4), 1.0)
   func sinh*(x: float32): float32 {.importc: "sinhf", header: "<math.h>".}
@@ -507,6 +530,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `arcsinh func <#arcsinh,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(sinh(0.0), 0.0)
       doAssert almostEqual(sinh(1.0), 1.175201193643801)
   func cosh*(x: float32): float32 {.importc: "coshf", header: "<math.h>".}
@@ -516,6 +540,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `arccosh func <#arccosh,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(cosh(0.0), 1.0)
       doAssert almostEqual(cosh(1.0), 1.543080634815244)
   func tanh*(x: float32): float32 {.importc: "tanhf", header: "<math.h>".}
@@ -525,6 +550,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `arctanh func <#arctanh,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(tanh(0.0), 0.0)
       doAssert almostEqual(tanh(1.0), 0.7615941559557649)
   func arcsin*(x: float32): float32 {.importc: "asinf", header: "<math.h>".}
@@ -534,6 +560,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `sin func <#sin,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(radToDeg(arcsin(0.0)), 0.0)
       doAssert almostEqual(radToDeg(arcsin(1.0)), 90.0)
   func arccos*(x: float32): float32 {.importc: "acosf", header: "<math.h>".}
@@ -543,6 +570,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `cos func <#cos,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(radToDeg(arccos(0.0)), 90.0)
       doAssert almostEqual(radToDeg(arccos(1.0)), 0.0)
   func arctan*(x: float32): float32 {.importc: "atanf", header: "<math.h>".}
@@ -553,6 +581,7 @@ when not defined(js): # C
     ## * `arctan2 func <#arctan2,float64,float64>`_
     ## * `tan func <#tan,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(arctan(1.0), 0.7853981633974483)
       doAssert almostEqual(radToDeg(arctan(1.0)), 45.0)
   func arctan2*(y, x: float32): float32 {.importc: "atan2f", header: "<math.h>".}
@@ -565,6 +594,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `arctan func <#arctan,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(arctan2(1.0, 0.0), PI / 2.0)
       doAssert almostEqual(radToDeg(arctan2(1.0, 0.0)), 90.0)
   func arcsinh*(x: float32): float32 {.importc: "asinhf", header: "<math.h>".}
@@ -649,6 +679,7 @@ when not defined(js): # C
     ## Computes the length of the hypotenuse of a right-angle triangle with
     ## `x` as its base and `y` as its height. Equivalent to `sqrt(x*x + y*y)`.
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(hypot(3.0, 4.0), 5.0)
   func pow*(x, y: float32): float32 {.importc: "powf", header: "<math.h>".}
   func pow*(x, y: float64): float64 {.importc: "pow", header: "<math.h>".} =
@@ -662,6 +693,7 @@ when not defined(js): # C
     ## * `sqrt func <#sqrt,float64>`_
     ## * `cbrt func <#cbrt,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert almostEqual(pow(100, 1.5), 1000.0)
       doAssert almostEqual(pow(16.0, 0.5), 4.0)
 
@@ -686,6 +718,7 @@ when not defined(js): # C
       ## **See also:**
       ## * `lgamma func <#lgamma,float64>`_ for the natural logarithm of the gamma function
       runnableExamples:
+        import std/assertions
         doAssert almostEqual(gamma(1.0), 1.0)
         doAssert almostEqual(gamma(4.0), 6.0)
         doAssert almostEqual(gamma(11.0), 3628800.0)
@@ -707,6 +740,7 @@ when not defined(js): # C
     ## * `round func <#round,float64>`_
     ## * `trunc func <#trunc,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert floor(2.1)  == 2.0
       doAssert floor(2.9)  == 2.0
       doAssert floor(-3.5) == -4.0
@@ -721,6 +755,7 @@ when not defined(js): # C
     ## * `round func <#round,float64>`_
     ## * `trunc func <#trunc,float64>`_
     runnableExamples:
+      import std/assertions
       doAssert ceil(2.1)  == 3.0
       doAssert ceil(2.9)  == 3.0
       doAssert ceil(-2.1) == -2.0
@@ -795,6 +830,7 @@ when not defined(js): # C
       ## * `ceil func <#ceil,float64>`_
       ## * `trunc func <#trunc,float64>`_
       runnableExamples:
+        import std/assertions
         doAssert round(3.4) == 3.0
         doAssert round(3.5) == 4.0
         doAssert round(4.5) == 5.0
@@ -808,6 +844,7 @@ when not defined(js): # C
       ## * `ceil func <#ceil,float64>`_
       ## * `round func <#round,float64>`_
       runnableExamples:
+        import std/assertions
         doAssert trunc(PI) == 3.0
         doAssert trunc(-1.85) == -1.0
 
@@ -818,6 +855,7 @@ when not defined(js): # C
     ## **See also:**
     ## * `floorMod func <#floorMod,T,T>`_ for Python-like (`%` operator) behavior
     runnableExamples:
+      import std/assertions
       doAssert  6.5 mod  2.5 ==  1.5
       doAssert -6.5 mod  2.5 == -1.5
       doAssert  6.5 mod -2.5 ==  1.5
@@ -850,6 +888,7 @@ else: # JS
   func `mod`*(x, y: float64): float64 {.importjs: "(# % #)".} =
     ## Computes the modulo operation for float values (the remainder of `x` divided by `y`).
     runnableExamples:
+      import std/assertions
       doAssert  6.5 mod  2.5 ==  1.5
       doAssert -6.5 mod  2.5 == -1.5
       doAssert  6.5 mod -2.5 ==  1.5
@@ -866,6 +905,7 @@ func round*[T: float32|float64](x: T, places: int): T =
   ## e.g. `round(54.346, 2) -> 54.350000000000001421…`. If `places` is negative, round
   ## to the left of the decimal place, e.g. `round(537.345, -1) -> 540.0`.
   runnableExamples:
+    import std/assertions
     doAssert round(PI, 2) == 3.14
     doAssert round(PI, 4) == 3.1416
 
@@ -886,6 +926,7 @@ func floorDiv*[T: SomeInteger](x, y: T): T =
   ## * `system.div proc <system.html#div,int,int>`_ for integer division
   ## * `floorMod func <#floorMod,T,T>`_ for Python-like (`%` operator) behavior
   runnableExamples:
+    import std/assertions
     doAssert floorDiv( 13,  3) ==  4
     doAssert floorDiv(-13,  3) == -5
     doAssert floorDiv( 13, -3) == -5
@@ -904,6 +945,7 @@ func floorMod*[T: SomeNumber](x, y: T): T =
   ## * `mod func <#mod,float64,float64>`_
   ## * `floorDiv func <#floorDiv,T,T>`_
   runnableExamples:
+    import std/assertions
     doAssert floorMod( 13,  3) ==  1
     doAssert floorMod(-13,  3) ==  2
     doAssert floorMod( 13, -3) == -2
@@ -915,6 +957,7 @@ func floorMod*[T: SomeNumber](x, y: T): T =
 func euclDiv*[T: SomeInteger](x, y: T): T {.since: (1, 5, 1).} =
   ## Returns euclidean division of `x` by `y`.
   runnableExamples:
+    import std/assertions
     doAssert euclDiv(13, 3) == 4
     doAssert euclDiv(-13, 3) == -5
     doAssert euclDiv(13, -3) == -4
@@ -931,6 +974,7 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
   ## Returns euclidean modulo of `x` by `y`.
   ## `euclMod(x, y)` is non-negative.
   runnableExamples:
+    import std/assertions
     doAssert euclMod(13, 3) == 1
     doAssert euclMod(-13, 3) == 2
     doAssert euclMod(13, -3) == 1
@@ -959,6 +1003,7 @@ func ceilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
   ## * `system.div proc <system.html#div,int,int>`_ for integer division
   ## * `floorDiv func <#floorDiv,T,T>`_ for integer division which rounds down.
   runnableExamples:
+    import std/assertions
     assert ceilDiv(12, 3) ==  4
     assert ceilDiv(13, 3) ==  5
 
@@ -997,6 +1042,7 @@ func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
   ## such that `abs(frac) in 0.5..<1` and `x == frac * 2 ^ exp`, except for special
   ## cases shown below.
   runnableExamples:
+    import std/assertions
     doAssert frexp(8.0) == (0.5, 4)
     doAssert frexp(-8.0) == (-0.5, 4)
     doAssert frexp(0.0) == (0.0, 0)
@@ -1036,6 +1082,7 @@ func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
 func frexp*[T: float32|float64](x: T, exponent: var int): T {.inline.} =
   ## Overload of `frexp` that calls `(result, exponent) = frexp(x)`.
   runnableExamples:
+    import std/assertions
     var x: int
     doAssert frexp(5.0, x) == 0.625
     doAssert x == 3
@@ -1070,6 +1117,7 @@ when not defined(js):
       ## * `log10 func <#log10,float64>`_
       ## * `ln func <#ln,float64>`_
       runnableExamples:
+        import std/assertions
         doAssert almostEqual(log2(8.0), 3.0)
         doAssert almostEqual(log2(1.0), 0.0)
         doAssert almostEqual(log2(0.0), -Inf)
@@ -1084,6 +1132,7 @@ func splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
   ## Both parts have the same sign as `x`.  Analogous to the `modf`
   ## function in C.
   runnableExamples:
+    import std/assertions
     doAssert splitDecimal(5.25) == (intpart: 5.0, floatpart: 0.25)
     doAssert splitDecimal(-2.73) == (intpart: -2.0, floatpart: -0.73)
 
@@ -1103,6 +1152,7 @@ func degToRad*[T: float32|float64](d: T): T {.inline.} =
   ## **See also:**
   ## * `radToDeg func <#radToDeg,T>`_
   runnableExamples:
+    import std/assertions
     doAssert almostEqual(degToRad(180.0), PI)
 
   result = d * T(RadPerDeg)
@@ -1113,6 +1163,7 @@ func radToDeg*[T: float32|float64](d: T): T {.inline.} =
   ## **See also:**
   ## * `degToRad func <#degToRad,T>`_
   runnableExamples:
+    import std/assertions
     doAssert almostEqual(radToDeg(2 * PI), 360.0)
 
   result = d / T(RadPerDeg)
@@ -1125,6 +1176,7 @@ func sgn*[T: SomeNumber](x: T): int {.inline.} =
   ## * `1` for positive numbers and `Inf`,
   ## * `0` for positive zero, negative zero and `NaN`
   runnableExamples:
+    import std/assertions
     doAssert sgn(5) == 1
     doAssert sgn(0) == 0
     doAssert sgn(-4.1) == -1
@@ -1146,6 +1198,7 @@ func `^`*[T: SomeNumber](x: T, y: Natural): T =
   ## * `sqrt func <#sqrt,float64>`_
   ## * `cbrt func <#cbrt,float64>`_
   runnableExamples:
+    import std/assertions
     doAssert -3 ^ 0 == 1
     doAssert -3 ^ 1 == -3
     doAssert -3 ^ 2 == 9
@@ -1177,6 +1230,7 @@ func gcd*[T](x, y: T): T =
   ## * `gcd func <#gcd,SomeInteger,SomeInteger>`_ for an integer version
   ## * `lcm func <#lcm,T,T>`_
   runnableExamples:
+    import std/assertions
     doAssert gcd(13.5, 9.0) == 4.5
 
   var (x, y) = (x, y)
@@ -1193,6 +1247,7 @@ func gcd*(x, y: SomeInteger): SomeInteger =
   ## * `gcd func <#gcd,T,T>`_ for a float version
   ## * `lcm func <#lcm,T,T>`_
   runnableExamples:
+    import std/assertions
     doAssert gcd(12, 8) == 4
     doAssert gcd(17, 63) == 1
 
@@ -1225,6 +1280,7 @@ func gcd*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## **See also:**
   ## * `gcd func <#gcd,T,T>`_ for a version with two arguments
   runnableExamples:
+    import std/assertions
     doAssert gcd(@[13.5, 9.0]) == 4.5
 
   result = x[0]
@@ -1237,6 +1293,7 @@ func lcm*[T](x, y: T): T =
   ## **See also:**
   ## * `gcd func <#gcd,T,T>`_
   runnableExamples:
+    import std/assertions
     doAssert lcm(24, 30) == 120
     doAssert lcm(13, 39) == 39
 
@@ -1245,6 +1302,7 @@ func lcm*[T](x, y: T): T =
 func clamp*[T](val: T, bounds: Slice[T]): T {.since: (1, 5), inline.} =
   ## Like `system.clamp`, but takes a slice, so you can easily clamp within a range.
   runnableExamples:
+    import std/assertions
     assert clamp(10, 1 .. 5) == 5
     assert clamp(1, 1 .. 3) == 1
     type A = enum a0, a1, a2, a3, a4, a5
@@ -1260,6 +1318,7 @@ func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## **See also:**
   ## * `lcm func <#lcm,T,T>`_ for a version with two arguments
   runnableExamples:
+    import std/assertions
     doAssert lcm(@[24, 30]) == 120
 
   result = x[0]

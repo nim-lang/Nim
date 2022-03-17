@@ -222,6 +222,7 @@ macro `.`*(obj: JsObject, field: untyped): JsObject =
   ## Experimental dot accessor (get) for type JsObject.
   ## Returns the value of a property of name `field` from a JsObject `x`.
   runnableExamples:
+    import std/assertions
     let obj = newJsObject()
     obj.a = 20
     assert obj.a.to(int) == 20

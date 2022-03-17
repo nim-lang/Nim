@@ -368,6 +368,7 @@ proc htmlTag*(s: string): HtmlTag =
 proc runeToEntity*(rune: Rune): string =
   ## converts a Rune to its numeric HTML entity equivalent.
   runnableExamples:
+    import std/assertions
     import std/unicode
     doAssert runeToEntity(Rune(0)) == ""
     doAssert runeToEntity(Rune(-1)) == ""
@@ -381,6 +382,7 @@ proc entityToRune*(entity: string): Rune =
   ## or `&#x000DC;` to its UTF-8 equivalent.
   ## Rune(0) is returned if the entity name is unknown.
   runnableExamples:
+    import std/assertions
     import std/unicode
     doAssert entityToRune("") == Rune(0)
     doAssert entityToRune("a") == Rune(0)
@@ -1875,6 +1877,7 @@ proc entityToUtf8*(entity: string): string =
   ## "" is returned if the entity name is unknown. The HTML parser
   ## already converts entities to UTF-8.
   runnableExamples:
+    import std/assertions
     const sigma = "Σ"
     doAssert entityToUtf8("") == ""
     doAssert entityToUtf8("a") == ""

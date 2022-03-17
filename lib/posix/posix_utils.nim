@@ -26,6 +26,7 @@ proc uname*(): Uname =
 
   when defined(posix):
     runnableExamples:
+      import std/assertions
       echo uname().nodename, uname().release, uname().version
       doAssert uname().sysname.len != 0
 

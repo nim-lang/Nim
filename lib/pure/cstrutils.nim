@@ -29,6 +29,7 @@ func startsWith*(s, prefix: cstring): bool {.rtl, extern: "csuStartsWith".} =
   ##
   ## The JS backend uses the native `String.prototype.startsWith` function.
   runnableExamples:
+    import std/assertions
     assert startsWith(cstring"Hello, Nimion", cstring"Hello")
     assert not startsWith(cstring"Hello, Nimion", cstring"Nimion")
     assert startsWith(cstring"Hello", cstring"")
@@ -50,6 +51,7 @@ func endsWith*(s, suffix: cstring): bool {.rtl, extern: "csuEndsWith".} =
   ##
   ## The JS backend uses the native `String.prototype.endsWith` function.
   runnableExamples:
+    import std/assertions
     assert endsWith(cstring"Hello, Nimion", cstring"Nimion")
     assert not endsWith(cstring"Hello, Nimion", cstring"Hello")
     assert endsWith(cstring"Hello", cstring"")
@@ -77,6 +79,7 @@ func cmpIgnoreStyle*(a, b: cstring): int {.rtl, extern: "csuCmpIgnoreStyle".} =
   ## * < 0 if `a < b`
   ## * > 0 if `a > b`
   runnableExamples:
+    import std/assertions
     assert cmpIgnoreStyle(cstring"hello", cstring"H_e_L_Lo") == 0
 
   when nimvm:
@@ -103,6 +106,7 @@ func cmpIgnoreCase*(a, b: cstring): int {.rtl, extern: "csuCmpIgnoreCase".} =
   ## * < 0 if `a < b`
   ## * > 0 if `a > b`
   runnableExamples:
+    import std/assertions
     assert cmpIgnoreCase(cstring"hello", cstring"HeLLo") == 0
     assert cmpIgnoreCase(cstring"echo", cstring"hello") < 0
     assert cmpIgnoreCase(cstring"yellow", cstring"hello") > 0

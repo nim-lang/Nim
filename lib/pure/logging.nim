@@ -288,6 +288,7 @@ proc substituteLog*(frmt: string, level: Level,
   ##   for the RollingFileLogger
   ## * `log template<#log.t,Level,varargs[string,]>`_
   runnableExamples:
+    import std/assertions
     doAssert substituteLog(defaultFmtStr, lvlInfo, "a message") == "INFO a message"
     doAssert substituteLog("$levelid - ", lvlError, "an error") == "E - an error"
     doAssert substituteLog("$levelid", lvlDebug, "error") == "Derror"
@@ -804,6 +805,7 @@ proc addHandler*(handler: Logger) =
   ## See also:
   ## * `getHandlers proc<#getHandlers>`_
   runnableExamples:
+    import std/assertions
     var logger = newConsoleLogger()
     addHandler(logger)
     doAssert logger in getHandlers()
@@ -831,6 +833,7 @@ proc setLogFilter*(lvl: Level) =
   ## See also:
   ## * `getLogFilter proc<#getLogFilter>`_
   runnableExamples:
+    import std/assertions
     setLogFilter(lvlError)
     doAssert getLogFilter() == lvlError
   level = lvl

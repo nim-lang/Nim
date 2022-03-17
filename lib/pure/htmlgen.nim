@@ -786,6 +786,7 @@ macro `annotation-xml`*(e: varargs[untyped]): untyped =
 
 
 runnableExamples:
+  import std/assertions
   let nim = "Nim"
   assert h1(a(href = "https://nim-lang.org", nim)) ==
     """<h1><a href="https://nim-lang.org">Nim</a></h1>"""

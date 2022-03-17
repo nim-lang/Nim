@@ -590,6 +590,7 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ##
   ## `headers` specifies the HTTP Headers.
   runnableExamples:
+    import std/assertions
     import std/strutils
 
     let exampleHtml = newHttpClient().getContent("http://example.com")
@@ -629,6 +630,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ##
   ## `headers` specifies the HTTP Headers.
   runnableExamples:
+    import std/assertions
     import std/[asyncdispatch, strutils]
 
     proc asyncProc(): Future[string] {.async.} =

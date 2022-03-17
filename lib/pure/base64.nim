@@ -23,6 +23,7 @@
 ]##
 
 runnableExamples:
+  import std/assertions
   let encoded = encode("Hello World")
   assert encoded == "SGVsbG8gV29ybGQ="
 
@@ -31,6 +32,7 @@ runnableExamples:
 ##
 
 runnableExamples:
+  import std/assertions
   let encodedInts = encode([1,2,3])
   assert encodedInts == "AQID"
   let encodedChars = encode(['h','e','y'])
@@ -41,6 +43,7 @@ runnableExamples:
 ]##
 
 runnableExamples:
+  import std/assertions
   let decoded = decode("SGVsbG8gV29ybGQ=")
   assert decoded == "Hello World"
 
@@ -49,6 +52,7 @@ runnableExamples:
 ]##
 
 runnableExamples:
+  import std/assertions
   assert encode("c\xf7>", safe = true) == "Y_c-"
   assert encode("c\xf7>", safe = false) == "Y/c+"
 
@@ -157,6 +161,7 @@ proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
   ## * `encode proc<#encode,string>`_ for encoding a string
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
+    import std/assertions
     assert encode(['n', 'i', 'm']) == "bmlt"
     assert encode(@['n', 'i', 'm']) == "bmlt"
     assert encode([1, 2, 3, 4, 5]) == "AQIDBAU="
@@ -177,6 +182,7 @@ proc encode*(s: string, safe = false): string =
   ## * `encode proc<#encode,openArray[T]>`_ for encoding an openarray
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
+    import std/assertions
     assert encode("Hello World") == "SGVsbG8gV29ybGQ="
   encodeImpl()
 
@@ -190,6 +196,7 @@ proc encodeMime*(s: string, lineLen = 75, newLine = "\r\n"): string =
   ## * `encode proc<#encode,string>`_ for encoding a string
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
+    import std/assertions
     assert encodeMime("Hello World", 4, "\n") == "SGVs\nbG8g\nV29y\nbGQ="
   result = newStringOfCap(encodeSize(s.len))
   for i, c in encode(s):
@@ -220,6 +227,7 @@ proc decode*(s: string): string =
   ## * `encode proc<#encode,openArray[T]>`_ for encoding an openarray
   ## * `encode proc<#encode,string>`_ for encoding a string
   runnableExamples:
+    import std/assertions
     assert decode("SGVsbG8gV29ybGQ=") == "Hello World"
     assert decode("  SGVsbG8gV29ybGQ=") == "Hello World"
   if s.len == 0: return

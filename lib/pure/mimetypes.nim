@@ -10,6 +10,7 @@
 ## This module implements a mimetypes database
 
 runnableExamples:
+  import std/assertions
   var m = newMimetypes()
   doAssert m.getMimetype("mp4") == "video/mp4"
   doAssert m.getExt("text/html") == "html"

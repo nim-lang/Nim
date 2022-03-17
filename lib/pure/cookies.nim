@@ -28,6 +28,7 @@ proc parseCookies*(s: string): StringTableRef =
   ## The proc is meant to parse the Cookie header set by a client, not the
   ## "Set-Cookie" header set by servers.
   runnableExamples:
+    import std/assertions
     import std/strtabs
     let cookieJar = parseCookies("a=1; foo=bar")
     assert cookieJar["a"] == "1"

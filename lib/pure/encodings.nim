@@ -13,6 +13,7 @@
 ## The following example shows how to change character encodings.
 runnableExamples:
   when defined(windows):
+    import std/assertions
     let
       orig = "öäüß"
       # convert `orig` from "UTF-8" to "CP1252"
@@ -29,6 +30,7 @@ runnableExamples:
 ## `convert` on this object multiple times.
 runnableExamples:
   when defined(windows):
+    import std/assertions
     var fromGB2312 = open("utf-8", "gb2312")
     let first = "\203\173\197\194\163\191\210\187" &
         "\203\242\209\204\211\234\200\206\198\189\201\250"

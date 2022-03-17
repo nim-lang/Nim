@@ -11,6 +11,7 @@
 {.deprecated: "use `std/random` instead".}
 
 runnableExamples:
+  import std/assertions
   var rand = newMersenneTwister(uint32.high)  ## must be "var"
   doAssert rand.getNum() != rand.getNum()  ## pseudorandom number
 ## See also

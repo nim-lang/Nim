@@ -80,6 +80,7 @@ proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
   ## Useful for identifying what port `self` is bound to, if it
   ## was chosen automatically, for example via `listen(Port(0))`.
   runnableExamples:
+    import std/assertions
     from std/nativesockets import Port
     let server = newAsyncHttpServer()
     server.listen(Port(0))

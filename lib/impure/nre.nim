@@ -24,6 +24,7 @@ when defined(js):
 ## library doesn't work with it due to documented compiler limitations. As
 ## a workaround, use this:
 runnableExamples:
+  import std/assertions
   # either `import std/nre except toSeq` or fully qualify `sequtils.toSeq`:
   import std/sequtils
   iterator iota(n: int): int =
@@ -37,6 +38,7 @@ runnableExamples:
 ##
 ## .. _`some additional terms`: http://pcre.sourceforge.net/license.txt
 runnableExamples:
+  import std/assertions
   import std/sugar
   let vowels = re"[aeoui]"
   let bounds = collect:
@@ -518,6 +520,7 @@ proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[R
   ## Like `find(...)<#find,string,Regex,int>`_, but anchored to the start of the
   ## string.
   runnableExamples:
+    import std/assertions
     assert "foo".match(re"f").isSome
     assert "foo".match(re"o").isNone
 
@@ -535,6 +538,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
   ## Works the same as `find(...)<#find,string,Regex,int>`_, but finds every
   ## non-overlapping match:
   runnableExamples:
+    import std/assertions
     import std/sugar
     assert collect(for a in "2222".findIter(re"22"): a.match) == @["22", "22"]
      # not @["22", "22", "22"]
@@ -605,6 +609,7 @@ proc contains*(str: string, pattern: Regex, start = 0, endpos = int.high): bool 
   ## start positions:
   ## This function is equivalent to `isSome(str.find(pattern, start, endpos))`.
   runnableExamples:
+    import std/assertions
     assert "abc".contains(re"bc")
     assert not "abc".contains(re"cd")
     assert not "abc".contains(re"a", start = 1)
@@ -618,6 +623,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   ## `start` behaves the same as in `find(...)<#find,string,Regex,int>`_.
   ##
   runnableExamples:
+    import std/assertions
     # -  If the match is zero-width, then the string is still split:
     assert "123".split(re"") == @["1", "2", "3"]
 
@@ -731,6 +737,7 @@ proc escapeRe*(str: string): string {.gcsafe.} =
   ##
   ## Escaped char: `\ + * ? [ ^ ] $ ( ) { } = ! < > | : -`
   runnableExamples:
+    import std/assertions
     assert escapeRe("fly+wind") == "fly\\+wind"
     assert escapeRe("!") == "\\!"
     assert escapeRe("nim*") == "nim\\*"

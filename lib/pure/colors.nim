@@ -54,6 +54,7 @@ proc `+`*(a, b: Color): Color =
   ## component cannot overflow (255 is used as a maximum).
   ##
   runnableExamples:
+    import std/assertions
     var
       a = Color(0xaa_00_ff)
       b = Color(0x11_cc_cc)
@@ -68,6 +69,7 @@ proc `-`*(a, b: Color): Color =
   ## component cannot underflow (0 is used as a minimum).
   ##
   runnableExamples:
+    import std/assertions
     var
       a = Color(0xff_33_ff)
       b = Color(0x11_ff_cc)
@@ -79,6 +81,7 @@ proc extractRGB*(a: Color): tuple[r, g, b: range[0..255]] =
   ## Extracts the red/green/blue components of the color `a`.
   ##
   runnableExamples:
+    import std/assertions
     var
       a = Color(0xff_00_ff)
       b = Color(0x00_ff_cc)
@@ -100,6 +103,7 @@ proc intensity*(a: Color, f: float): Color =
   ## dark) to 1.0 (full color intensity).
   ##
   runnableExamples:
+    import std/assertions
     var
       a = Color(0xff_00_ff)
       b = Color(0x00_42_cc)
@@ -122,6 +126,7 @@ template mix*(a, b: Color, fn: untyped): untyped =
   ## it will be saturated to be so.
   ##
   runnableExamples:
+    import std/assertions
     var
       a = Color(0x0a2814)
       b = Color(0x050a03)
@@ -448,6 +453,7 @@ proc `$`*(c: Color): string =
   ## Converts a color into its textual representation.
   ##
   runnableExamples:
+    import std/assertions
     assert $colFuchsia == "#FF00FF"
   result = '#' & toHex(int(c), 6)
 
@@ -461,6 +467,7 @@ proc parseColor*(name: string): Color =
   ## Case insensitive.
   ##
   runnableExamples:
+    import std/assertions
     var
       a = "silver"
       b = "#0179fc"
@@ -481,6 +488,7 @@ proc isColor*(name: string): bool =
   ## prefixed with `#`. Case insensitive.
   ##
   runnableExamples:
+    import std/assertions
     var
       a = "silver"
       b = "#0179fc"
@@ -501,6 +509,7 @@ proc rgb*(r, g, b: range[0..255]): Color =
   ## Constructs a color from RGB values.
   ##
   runnableExamples:
+    import std/assertions
     assert rgb(0, 255, 128) == Color(0x00_ff_80)
 
   result = rawRGB(r, g, b)

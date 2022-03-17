@@ -43,6 +43,7 @@ func nimIdentBackticksNormalize*(s: string): string =
   ## .. Warning:: No checking (e.g. that identifiers cannot start from
   ##    digits or '_', or that number of backticks is even) is performed.
   runnableExamples:
+    import std/assertions
     doAssert nimIdentBackticksNormalize("Foo_bar") == "Foobar"
     doAssert nimIdentBackticksNormalize("FoO BAr") == "Foobar"
     doAssert nimIdentBackticksNormalize("`Foo BAR`") == "Foobar"

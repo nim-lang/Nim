@@ -238,6 +238,7 @@ proc hash*(x: pointer): Hash {.inline.} =
 proc hash*[T](x: ptr[T]): Hash {.inline.} =
   ## Efficient `hash` overload.
   runnableExamples:
+    import std/assertions
     var a: array[10, uint8]
     assert a[0].addr.hash != a[1].addr.hash
     assert cast[pointer](a[0].addr).hash == a[0].addr.hash
@@ -251,6 +252,7 @@ when defined(nimPreviewHashRef) or defined(nimdoc):
     ##    enable hashing `ref`s. It is expected that this behavior
     ##    becomes the new default in upcoming versions.
     runnableExamples("-d:nimPreviewHashRef"):
+      import std/assertions
       type A = ref object
         x: int
       let a = A(x: 3)
@@ -259,6 +261,7 @@ when defined(nimPreviewHashRef) or defined(nimdoc):
       a.x = 4
       assert ha == a.hash # the hash only depends on the address
     runnableExamples("-d:nimPreviewHashRef"):
+      import std/assertions
       # you can overload `hash` if you want to customize semantics
       type A[T] = ref object
         x, y: T
@@ -377,6 +380,7 @@ proc hash*(x: string): Hash =
   ## * `hashIgnoreStyle <#hashIgnoreStyle,string>`_
   ## * `hashIgnoreCase <#hashIgnoreCase,string>`_
   runnableExamples:
+    import std/assertions
     doAssert hash("abracadabra") != hash("AbracadabrA")
 
   when not defined(nimToOpenArrayCString):
@@ -393,6 +397,7 @@ proc hash*(x: string): Hash =
 proc hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
   runnableExamples:
+    import std/assertions
     doAssert hash(cstring"abracadabra") == hash("abracadabra")
     doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
     doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
@@ -420,6 +425,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ##
   ## `hash(myStr, 0, myStr.high)` is equivalent to `hash(myStr)`.
   runnableExamples:
+    import std/assertions
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
@@ -439,6 +445,7 @@ proc hashIgnoreStyle*(x: string): Hash =
   ## **See also:**
   ## * `hashIgnoreCase <#hashIgnoreCase,string>`_
   runnableExamples:
+    import std/assertions
     doAssert hashIgnoreStyle("aBr_aCa_dAB_ra") == hashIgnoreStyle("abracadabra")
     doAssert hashIgnoreStyle("abcdefghi") != hash("abcdefghi")
 
@@ -465,6 +472,7 @@ proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
   ## `hashIgnoreStyle(myBuf, 0, myBuf.high)` is equivalent
   ## to `hashIgnoreStyle(myBuf)`.
   runnableExamples:
+    import std/assertions
     var a = "ABracada_b_r_a"
     doAssert hashIgnoreStyle(a, 0, 3) == hashIgnoreStyle(a, 7, a.high)
 
@@ -489,6 +497,7 @@ proc hashIgnoreCase*(x: string): Hash =
   ## **See also:**
   ## * `hashIgnoreStyle <#hashIgnoreStyle,string>`_
   runnableExamples:
+    import std/assertions
     doAssert hashIgnoreCase("ABRAcaDABRA") == hashIgnoreCase("abRACAdabra")
     doAssert hashIgnoreCase("abcdefghi") != hash("abcdefghi")
 
@@ -509,6 +518,7 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
   ## `hashIgnoreCase(myBuf, 0, myBuf.high)` is equivalent
   ## to `hashIgnoreCase(myBuf)`.
   runnableExamples:
+    import std/assertions
     var a = "ABracadabRA"
     doAssert hashIgnoreCase(a, 0, 3) == hashIgnoreCase(a, 7, 10)
 
@@ -523,6 +533,7 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
 proc hash*[T: tuple | object | proc](x: T): Hash =
   ## Efficient `hash` overload.
   runnableExamples:
+    import std/assertions
     # for `tuple|object`, `hash` must be defined for each component of `x`.
     type Obj = object
       x: int
@@ -535,6 +546,7 @@ proc hash*[T: tuple | object | proc](x: T): Hash =
     proc hash(a: Obj2): Hash = hash((a.x))
     assert hash(Obj2[float](x: 520, y: "Nim")) == hash(Obj2[float](x: 520, y: "Nim2"))
   runnableExamples:
+    import std/assertions
     # proc
     proc fn1() = discard
     const fn1b = fn1
@@ -581,6 +593,7 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
   ##
   ## `hash(myBuf, 0, myBuf.high)` is equivalent to `hash(myBuf)`.
   runnableExamples:
+    import std/assertions
     let a = [1, 2, 5, 1, 2, 6]
     doAssert hash(a, 0, 1) == hash(a, 3, 4)
 

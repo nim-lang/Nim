@@ -99,6 +99,7 @@ since (1, 5):
     ## otherwise use the normal assertions for better user experience.
     ## https://developer.mozilla.org/en-US/docs/Web/API/Console/assert
     runnableExamples:
+      import std/assertions
       console.jsAssert(42 == 42) # OK
       console.jsAssert(42 != 42) # Fail, prints "Assertion failed" and continues
       console.jsAssert('`' == '\n' and '\t' == '\0') # Message correctly formatted

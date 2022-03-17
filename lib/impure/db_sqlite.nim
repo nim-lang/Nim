@@ -203,6 +203,7 @@ proc dbQuote*(s: string): string =
   ## Escapes the `'` (single quote) char to `''`.
   ## Because single quote is used for defining `VARCHAR` in SQL.
   runnableExamples:
+    import std/assertions
     doAssert dbQuote("'") == "''''"
     doAssert dbQuote("A Foobar's pen.") == "'A Foobar''s pen.'"
 

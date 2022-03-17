@@ -153,6 +153,7 @@
 ## of arbitrary types.
 
 runnableExamples:
+  import std/assertions
   ## Note: for JObject, key ordering is preserved, unlike in some languages,
   ## this is convenient for some use cases. Example:
   type Foo = object
@@ -342,6 +343,7 @@ proc `%`*(n: BiggestInt): JsonNode =
 proc `%`*(n: float): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JFloat JsonNode`.
   runnableExamples:
+    import std/assertions
     assert $(%[NaN, Inf, -Inf, 0.0, -0.0, 1.0, 1e-2]) == """["nan","inf","-inf",0.0,-0.0,1.0,0.01]"""
     assert (%NaN).kind == JString
     assert (%0.0).kind == JFloat
@@ -535,6 +537,7 @@ proc `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline, since: (1,
   ##
   ## i.e. `j[^i]` is a shortcut for `j[j.len-i]`.
   runnableExamples:
+    import std/assertions
     let
       j = parseJson("[1,2,3,4,5]")
 
@@ -548,6 +551,7 @@ proc `[]`*[U, V](a: JsonNode, x: HSlice[U, V]): JsonNode =
   ##
   ## Returns the inclusive range `[a[x.a], a[x.b]]`:
   runnableExamples:
+    import std/assertions
     import json
     let arr = %[0,1,2,3,4,5]
     doAssert arr[2..4] == %[2,3,4]
@@ -585,6 +589,7 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## fly (sometimes called `autovivification`:idx:):
   ##
   runnableExamples:
+    import std/assertions
     var myjson = %* {"parent": {"child": {"grandchild": 1}}}
     doAssert myjson{"parent", "child", "grandchild"} == newJInt(1)
 
@@ -804,6 +809,7 @@ proc pretty*(node: JsonNode, indent = 2): string =
   ##
   ## Similar to prettyprint in Python.
   runnableExamples:
+    import std/assertions
     let j = %* {"name": "Isaac", "books": ["Robot Dreams"],
                 "details": {"age": 35, "pi": 3.1415}}
     doAssert pretty(j) == """
@@ -1340,6 +1346,7 @@ when defined(nimFixedForwardGeneric):
     ##   * Not nil annotations are not supported.
     ##
     runnableExamples:
+      import std/assertions
       let jsonNode = parseJson("""
         {
           "person": {

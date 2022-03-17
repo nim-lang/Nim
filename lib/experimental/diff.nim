@@ -13,6 +13,7 @@
 ## - To learn more see `Diff on Wikipedia. <http://wikipedia.org/wiki/Diff>`_
 
 runnableExamples:
+  import std/assertions
   assert diffInt(
     [0, 1, 2, 3, 4, 5, 6, 7, 8],
     [-1, 1, 2, 3, 4, 5, 666, 7, 42]) ==
@@ -21,6 +22,7 @@ runnableExamples:
       Item(startA: 8, startB: 8, deletedA: 1, insertedB: 1)]
 
 runnableExamples:
+  import std/assertions
   # 2 samples of text (from "The Call of Cthulhu" by Lovecraft)
   let txt0 = """
 abc

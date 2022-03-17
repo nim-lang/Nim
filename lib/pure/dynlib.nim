@@ -23,6 +23,7 @@
 ## it quits with a failure error code.
 ##
 runnableExamples:
+  import std/assertions
   type
     GreetFunction = proc (): cstring {.gcsafe, stdcall.}
 

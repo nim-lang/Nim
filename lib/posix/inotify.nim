@@ -90,6 +90,7 @@ iterator inotify_events*(evs: pointer, n: int): ptr InotifyEvent =
 
 runnableExamples:
   when defined(linux):
+    import std/assertions
     let inoty: FileHandle = inotify_init()           ## Create 1 Inotify.
     doAssert inoty >= 0                              ## Check for errors (FileHandle is alias to cint).
     let watchdoge: cint = inotify_add_watch(inoty, ".", IN_ALL_EVENTS) ## Add directory to watchdog.

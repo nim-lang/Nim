@@ -19,6 +19,7 @@
 ## ===========
 ##
 runnableExamples:
+  import std/assertions
   type
     A = object of RootObj
     B = object of A
@@ -276,6 +277,7 @@ proc loadAny(s: Stream, a: Any, t: var Table[BiggestInt, pointer]) =
 proc load*[T](s: Stream, data: var T) =
   ## Loads `data` from the stream `s`. Raises `IOError` in case of an error.
   runnableExamples:
+    import std/assertions
     import std/streams
 
     var s = newStringStream("[1, 3, 5]")
@@ -289,6 +291,7 @@ proc load*[T](s: Stream, data: var T) =
 proc store*[T](s: Stream, data: T) =
   ## Stores `data` into the stream `s`. Raises `IOError` in case of an error.
   runnableExamples:
+    import std/assertions
     import std/streams
 
     var s = newStringStream("")
@@ -311,6 +314,7 @@ proc `$$`*[T](x: T): string =
   ## **Note:** to serialize `x` to JSON use `%x` from the `json` module
   ## or `jsonutils.toJson(x)`.
   runnableExamples:
+    import std/assertions
     type
       Foo = object
         id: int
@@ -336,6 +340,7 @@ proc toVM[T](typ: typedesc[T], data: string): T =
 proc to*[T](data: string): T =
   ## Reads data and transforms it to a type `T` (deserialization, unmarshalling).
   runnableExamples:
+    import std/assertions
     type
       Foo = object
         id: int

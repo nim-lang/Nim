@@ -23,6 +23,7 @@ when defined(js):
 ##
 
 runnableExamples:
+  import std/assertions
   ## Unless specified otherwise, `start` parameter in each proc indicates
   ## where the scan starts, but outputs are relative to the start of the input
   ## string, not to `start`:
@@ -177,6 +178,7 @@ proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
   ##
   ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
   runnableExamples:
+    import std/assertions
     var matches = newSeq[string](1)
     let (first, last) = findBounds("Hello World", re"(W\w+)", matches)
     doAssert first == 6
@@ -218,6 +220,7 @@ proc findBounds*(s: string, pattern: Regex,
   ##
   ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
   runnableExamples:
+    import std/assertions
     var matches = newSeq[tuple[first, last: int]](1)
     let (first, last) = findBounds("Hello World", re"(\w+)", matches)
     doAssert first == 0
@@ -258,6 +261,7 @@ proc findBounds*(s: string, pattern: Regex,
   ##
   ## Note: there is a speed improvement if the matches do not need to be captured.
   runnableExamples:
+    import std/assertions
     assert findBounds("01234abc89", re"abc") == (5,7)
   result = findBounds(cstring(s), pattern,
       min(start, MaxReBufSize), min(s.len, MaxReBufSize))
@@ -295,6 +299,7 @@ proc matchLen*(s: string, pattern: Regex, start = 0): int {.inline.} =
   ## of zero can happen.
   ##
   runnableExamples:
+    import std/assertions
     doAssert matchLen("abcdefg", re"cde", 2) == 3
     doAssert matchLen("abcdefg", re"abcde") == 5
     doAssert matchLen("abcdefg", re"cde") == -1
@@ -319,6 +324,7 @@ proc match*(s: string, pattern: Regex, matches: var openArray[string],
   ##
   ## .. note:: The memory for `matches` needs to be allocated before this function is called, otherwise it will just remain empty.
   runnableExamples:
+    import std/assertions
     import std/sequtils
     var matches: array[2, string]
     if match("abcdefg", re"c(d)ef(g)", matches, 2):
@@ -382,6 +388,7 @@ proc find*(s: string, pattern: Regex, start = 0): int {.inline.} =
   ## returns the starting position of `pattern` in `s`. If it does not
   ## match, `-1` is returned. We start the scan at `start`.
   runnableExamples:
+    import std/assertions
     doAssert find("abcdefg", re"cde") == 2
     doAssert find("abcdefg", re"abc") == 0
     doAssert find("abcdefg", re"zz") == -1 # not found
@@ -441,6 +448,7 @@ template `=~` *(s: string, pattern: Regex): untyped =
   ## This calls `match` with an implicit declared `matches` array that
   ## can be used in the scope of the `=~` call:
   runnableExamples:
+    import std/assertions
     proc parse(line: string): string =
       if line =~ re"\s*(\w+)\s*\=\s*(\w+)": # matches a key=value pair:
         result = $(matches[0], matches[1])
@@ -482,6 +490,7 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   ## Replaces `sub` in `s` by the string `by`. Captures cannot be
   ## accessed in `by`.
   runnableExamples:
+    import std/assertions
     doAssert "var1=key; var2=key2".replace(re"(\w+)=(\w+)") == "; "
     doAssert "var1=key; var2=key2".replace(re"(\w+)=(\w+)", "?") == "?; ?"
   result = ""
@@ -503,6 +512,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation `$i` and `$#` (see strutils.\`%\`).
   runnableExamples:
+    import std/assertions
     doAssert "var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2") ==
       "var1<-keykey; var2<-key2key2"
   result = ""
@@ -551,6 +561,7 @@ iterator split*(s: string, sep: Regex; maxsplit = -1): string =
   ## Substrings are separated by the regular expression `sep`
   ## (and the portion matched by `sep` is not returned).
   runnableExamples:
+    import std/assertions
     import std/sequtils
     doAssert toSeq(split("00232this02939is39an22example111", re"\d+")) ==
       @["", "this", "is", "an", "example", ""]

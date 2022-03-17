@@ -117,6 +117,7 @@ since (1, 5):
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin
     ## `copyWithin` uses shallow copy.
     runnableExamples:
+      import std/assertions
       assert ['a', 'b', 'c', 'd', 'e'].copyWithin(0, 3, 4) == @['d', 'b', 'c', 'd', 'e']
       assert ['a', 'b', 'c', 'd', 'e'].copyWithin(1, 3) == @['a', 'd', 'e', 'd', 'e']
       assert [1, 2, 3, 4, 5].copyWithin(-2) == @[1, 2, 3, 1, 2]

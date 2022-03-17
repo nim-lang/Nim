@@ -64,6 +64,7 @@ when useBuiltinSwap:
     ## Copies `inp` to `outp`, reversing the byte order.
     ## Both buffers are supposed to contain at least 8 bytes.
     runnableExamples:
+      import std/assertions
       var a = [1'u8, 2, 3, 4, 5, 6, 7, 8]
       var b: array[8, uint8]
       swapEndian64(addr b, addr a)
@@ -75,6 +76,7 @@ when useBuiltinSwap:
     ## Copies `inp` to `outp`, reversing the byte order.
     ## Both buffers are supposed to contain at least 4 bytes.
     runnableExamples:
+      import std/assertions
       var a = [1'u8, 2, 3, 4]
       var b: array[4, uint8]
       swapEndian32(addr b, addr a)
@@ -86,6 +88,7 @@ when useBuiltinSwap:
     ## Copies `inp` to `outp`, reversing the byte order.
     ## Both buffers are supposed to contain at least 2 bytes.
     runnableExamples:
+      import std/assertions
       var a = [1'u8, 2]
       var b: array[2, uint8]
       swapEndian16(addr b, addr a)

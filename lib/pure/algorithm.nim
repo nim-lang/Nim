@@ -14,6 +14,7 @@
 ##
 
 runnableExamples:
+  import std/assertions
   type People = tuple
     year: int
     name: string
@@ -61,6 +62,7 @@ proc `*`*(x: int, order: SortOrder): int {.inline.} =
   ## | `== 0` for *equal*,
   ## | `> 0` for *greater than*.
   runnableExamples:
+    import std/assertions
     assert -123 * Descending == 123
     assert 123 * Descending == -123
     assert -123 * Ascending == -123
@@ -79,6 +81,7 @@ proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
   ##
   ## If an invalid range is passed, it raises `IndexDefect`.
   runnableExamples:
+    import std/assertions
     var a: array[6, int]
     a.fill(1, 3, 9)
     assert a == [0, 9, 9, 9, 0, 0]
@@ -90,6 +93,7 @@ proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
 proc fill*[T](a: var openArray[T], value: T) =
   ## Assigns `value` to all elements of the container `a`.
   runnableExamples:
+    import std/assertions
     var a: array[6, int]
     a.fill(9)
     assert a == [9, 9, 9, 9, 9, 9]
@@ -107,6 +111,7 @@ proc reverse*[T](a: var openArray[T], first, last: Natural) =
   ## * `reversed proc<#reversed,openArray[T],Natural,int>`_ reverse a slice and returns a `seq[T]`
   ## * `reversed proc<#reversed,openArray[T]>`_ reverse and returns a `seq[T]`
   runnableExamples:
+    import std/assertions
     var a = [1, 2, 3, 4, 5, 6]
     a.reverse(1, 3)
     assert a == [1, 4, 3, 2, 5, 6]
@@ -127,6 +132,7 @@ proc reverse*[T](a: var openArray[T]) =
   ## * `reversed proc<#reversed,openArray[T],Natural,int>`_ reverse a slice and returns a `seq[T]`
   ## * `reversed proc<#reversed,openArray[T]>`_ reverse and returns a `seq[T]`
   runnableExamples:
+    import std/assertions
     var a = [1, 2, 3, 4, 5, 6]
     a.reverse()
     assert a == [6, 5, 4, 3, 2, 1]
@@ -141,6 +147,7 @@ proc reversed*[T](a: openArray[T]): seq[T] {.inline.} =
   ## **See also:**
   ## * `reverse proc<#reverse,openArray[T]>`_
   runnableExamples:
+    import std/assertions
     assert [10, 11, 12].reversed == @[12, 11, 10]
     assert seq[string].default.reversed == @[]
   let n = a.len
@@ -164,6 +171,7 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
   ## `cmp` is the comparator function to use, the expected return values are
   ## the same as those of system.cmp.
   runnableExamples:
+    import std/assertions
     assert binarySearch(["a", "b", "c", "d"], "d", system.cmp[string]) == 3
     assert binarySearch(["a", "b", "c", "d"], "c", system.cmp[string]) == 2
   let len = a.len
@@ -211,6 +219,7 @@ proc binarySearch*[T](a: openArray[T], key: T): int =
   ## Binary search for `key` in `a`. Return the index of `key` or -1 if not found.
   ## Assumes that `a` is sorted.
   runnableExamples:
+    import std/assertions
     assert binarySearch([0, 1, 2, 3, 4], 4) == 4
     assert binarySearch([0, 1, 2, 3, 4], 2) == 2
   binarySearch(a, key, cmp[T])
@@ -236,6 +245,7 @@ proc lowerBound*[T, K](a: openArray[T], key: K,
   ## * `upperBound proc<#upperBound,openArray[T],K,proc(T,K)>`_ sorted by `cmp` in the specified order
   ## * `upperBound proc<#upperBound,openArray[T],T>`_
   runnableExamples:
+    import std/assertions
     var arr = @[1, 2, 3, 5, 6, 7, 8, 9]
     assert arr.lowerBound(3, system.cmp[int]) == 2
     assert arr.lowerBound(4, system.cmp[int]) == 3
@@ -286,6 +296,7 @@ proc upperBound*[T, K](a: openArray[T], key: K,
   ## * `lowerBound proc<#lowerBound,openArray[T],K,proc(T,K)>`_ sorted by `cmp` in the specified order
   ## * `lowerBound proc<#lowerBound,openArray[T],T>`_
   runnableExamples:
+    import std/assertions
     var arr = @[1, 2, 3, 5, 6, 7, 8, 9]
     assert arr.upperBound(2, system.cmp[int]) == 2
     assert arr.upperBound(3, system.cmp[int]) == 3
@@ -402,6 +413,7 @@ func sort*[T](a: var openArray[T],
   ## * `sorted proc<#sorted,openArray[T]>`_
   ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
   runnableExamples:
+    import std/assertions
     var d = ["boo", "fo", "barr", "qux"]
     proc myCmp(x, y: string): int =
       if x.len() > y.len() or x.len() == y.len(): 1
@@ -437,6 +449,7 @@ proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
   ## * `sort proc<#sort,openArray[T]>`_
   ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
   runnableExamples:
+    import std/assertions
     let
       a = [2, 3, 1, 5, 4]
       b = sorted(a, system.cmp[int])
@@ -458,6 +471,7 @@ proc sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
   ## * `sort proc<#sort,openArray[T]>`_
   ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
   runnableExamples:
+    import std/assertions
     let
       a = [2, 3, 1, 5, 4]
       b = sorted(a)
@@ -483,6 +497,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
   ## * `sorted proc<#sorted,openArray[T],proc(T,T)>`_ sorted by `cmp` in the specified order
   ## * `sorted proc<#sorted,openArray[T]>`_
   runnableExamples:
+    import std/assertions
     type Person = tuple[name: string, age: int]
     var
       p1: Person = (name: "p1", age: 60)
@@ -514,6 +529,7 @@ func isSorted*[T](a: openArray[T],
   ## **See also:**
   ## * `isSorted proc<#isSorted,openArray[T]>`_
   runnableExamples:
+    import std/assertions
     let
       a = [2, 3, 1, 5, 4]
       b = [1, 2, 3, 4, 5]
@@ -537,6 +553,7 @@ proc isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
   ## **See also:**
   ## * `isSorted func<#isSorted,openArray[T],proc(T,T)>`_
   runnableExamples:
+    import std/assertions
     let
       a = [2, 3, 1, 5, 4]
       b = [1, 2, 3, 4, 5]
@@ -566,6 +583,7 @@ proc merge*[T](
   ## **See also:**
   ## * `merge proc<#merge,seq[T],openArray[T],openArray[T]>`_
   runnableExamples:
+    import std/assertions
     let x = @[1, 3, 6]
     let y = @[2, 3, 4]
 
@@ -634,6 +652,7 @@ proc merge*[T](result: var seq[T], x, y: openArray[T]) {.inline, since: (1, 5, 1
   ## **See also:**
   ## * `merge proc<#merge,seq[T],openArray[T],openArray[T],proc(T,T)>`_
   runnableExamples:
+    import std/assertions
     let x = [5, 10, 15, 20, 25]
     let y = [50, 40, 30, 20, 10].sorted
 
@@ -650,6 +669,7 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ##
   ## .. warning:: complexity may explode.
   runnableExamples:
+    import std/assertions
     assert product(@[@[1], @[2]]) == @[@[1, 2]]
     assert product(@[@["A", "K"], @["Q"]]) == @[@["K", "Q"], @["A", "Q"]]
   let xLen = x.len
@@ -691,6 +711,7 @@ proc nextPermutation*[T](x: var openArray[T]): bool {.discardable.} =
   ## **See also:**
   ## * `prevPermutation proc<#prevPermutation,openArray[T]>`_
   runnableExamples:
+    import std/assertions
     var v = @[0, 1, 2, 3]
     assert v.nextPermutation() == true
     assert v == @[0, 1, 3, 2]
@@ -728,6 +749,7 @@ proc prevPermutation*[T](x: var openArray[T]): bool {.discardable.} =
   ## **See also:**
   ## * `nextPermutation proc<#nextPermutation,openArray[T]>`_
   runnableExamples:
+    import std/assertions
     var v = @[0, 1, 2, 3]
     assert v.prevPermutation() == false
     assert v == @[0, 1, 2, 3]
@@ -835,6 +857,7 @@ proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
   ## * `rotateLeft proc<#rotateLeft,openArray[T],int>`_ for a version which rotates the whole container
   ## * `rotatedLeft proc<#rotatedLeft,openArray[T],HSlice[int,int],int>`_ for a version which returns a `seq[T]`
   runnableExamples:
+    import std/assertions
     var a = [0, 1, 2, 3, 4, 5]
     a.rotateLeft(1 .. 4, 3)
     assert a == [0, 4, 1, 2, 3, 5]
@@ -856,6 +879,7 @@ proc rotateLeft*[T](arg: var openArray[T]; dist: int): int {.discardable.} =
   ## * `rotateLeft proc<#rotateLeft,openArray[T],HSlice[int,int],int>`_ for a version which rotates a range
   ## * `rotatedLeft proc<#rotatedLeft,openArray[T],int>`_ for a version which returns a `seq[T]`
   runnableExamples:
+    import std/assertions
     var a = [1, 2, 3, 4, 5]
     a.rotateLeft(2)
     assert a == [3, 4, 5, 1, 2]
@@ -886,6 +910,7 @@ proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
   ## * `rotateLeft proc<#rotateLeft,openArray[T],HSlice[int,int],int>`_ for the in-place version of this proc
   ## * `rotatedLeft proc<#rotatedLeft,openArray[T],int>`_ for a version which rotates the whole container
   runnableExamples:
+    import std/assertions
     var a = @[1, 2, 3, 4, 5]
     a = rotatedLeft(a, 1 .. 4, 3)
     assert a == @[1, 5, 2, 3, 4]
@@ -905,6 +930,7 @@ proc rotatedLeft*[T](arg: openArray[T]; dist: int): seq[T] =
   ## * `rotateLeft proc<#rotateLeft,openArray[T],int>`_ for the in-place version of this proc
   ## * `rotatedLeft proc<#rotatedLeft,openArray[T],HSlice[int,int],int>`_ for a version which rotates a range
   runnableExamples:
+    import std/assertions
     var a = @[1, 2, 3, 4, 5]
     a = rotatedLeft(a, 2)
     assert a == @[3, 4, 5, 1, 2]

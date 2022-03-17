@@ -21,6 +21,7 @@
 ##   approach to storing arbitrary types at runtime, consider using generics.
 
 runnableExamples:
+  import std/assertions
   var x: Any
 
   var i = 42

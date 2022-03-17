@@ -188,6 +188,7 @@ since (1, 5, 1):
     ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
     ## Returns a `Future` from the return type of `onSuccess(T.default)`.
     runnableExamples("-r:off"):
+      import std/assertions
       from std/sugar import `=>`
 
       proc fn(n: int): Future[int] {.async.} =
@@ -234,6 +235,7 @@ since (1, 5, 1):
   proc catch*[T](future: Future[T], onReject: OnReject): Future[void] =
     ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch
     runnableExamples("-r:off"):
+      import std/assertions
       from std/sugar import `=>`
       from std/strutils import contains
 

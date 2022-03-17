@@ -66,6 +66,7 @@ type BitsRange*[T] = range[0..sizeof(T)*8-1]
 func bitsliced*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
   ## Returns an extracted (and shifted) slice of bits from `v`.
   runnableExamples:
+    import std/assertions
     doAssert 0b10111.bitsliced(2 .. 4) == 0b101
     doAssert 0b11100.bitsliced(0 .. 2) == 0b100
     doAssert 0b11100.bitsliced(0 ..< 3) == 0b100
@@ -78,6 +79,7 @@ func bitsliced*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1,
 proc bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
   ## Mutates `v` into an extracted (and shifted) slice of bits from `v`.
   runnableExamples:
+    import std/assertions
     var x = 0b101110
     x.bitslice(2 .. 4)
     doAssert x == 0b011
@@ -90,6 +92,7 @@ proc bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1,
 func toMask*[T: SomeInteger](slice: Slice[int]): T {.inline, since: (1, 3).} =
   ## Creates a bitmask based on a slice of bits.
   runnableExamples:
+    import std/assertions
     doAssert toMask[int32](1 .. 3) == 0b1110'i32
     doAssert toMask[int32](0 .. 3) == 0b1111'i32
 
@@ -107,6 +110,7 @@ proc masked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
   ##
   ## Effectively maps to a `bitand <#bitand.m,T,T,varargs[T]>`_ operation.
   runnableExamples:
+    import std/assertions
     let v = 0b0000_0011'u8
     doAssert v.masked(0b0000_1010'u8) == 0b0000_0010'u8
 
@@ -118,6 +122,7 @@ func masked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3)
   ##
   ## Effectively maps to a `bitand <#bitand.m,T,T,varargs[T]>`_ operation.
   runnableExamples:
+    import std/assertions
     let v = 0b0000_1011'u8
     doAssert v.masked(1 .. 3) == 0b0000_1010'u8
 
@@ -129,6 +134,7 @@ proc mask*[T: SomeInteger](v: var T; mask: T) {.inline, since: (1, 3).} =
   ##
   ## Effectively maps to a `bitand <#bitand.m,T,T,varargs[T]>`_ operation.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_0011'u8
     v.mask(0b0000_1010'u8)
     doAssert v == 0b0000_0010'u8
@@ -141,6 +147,7 @@ proc mask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).
   ##
   ## Effectively maps to a `bitand <#bitand.m,T,T,varargs[T]>`_ operation.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_1011'u8
     v.mask(1 .. 3)
     doAssert v == 0b0000_1010'u8
@@ -152,6 +159,7 @@ func setMasked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
   ##
   ## Effectively maps to a `bitor <#bitor.m,T,T,varargs[T]>`_ operation.
   runnableExamples:
+    import std/assertions
     let v = 0b0000_0011'u8
     doAssert v.setMasked(0b0000_1010'u8) == 0b0000_1011'u8
 
@@ -162,6 +170,7 @@ func setMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1,
   ##
   ## Effectively maps to a `bitor <#bitor.m,T,T,varargs[T]>`_ operation.
   runnableExamples:
+    import std/assertions
     let v = 0b0000_0011'u8
     doAssert v.setMasked(2 .. 3) == 0b0000_1111'u8
 
@@ -172,6 +181,7 @@ proc setMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
   ##
   ## Effectively maps to a `bitor <#bitor.m,T,T,varargs[T]>`_ operation.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_0011'u8
     v.setMask(0b0000_1010'u8)
     doAssert v == 0b0000_1011'u8
@@ -183,6 +193,7 @@ proc setMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 
   ##
   ## Effectively maps to a `bitor <#bitor.m,T,T,varargs[T]>`_ operation.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_0011'u8
     v.setMask(2 .. 3)
     doAssert v == 0b0000_1111'u8
@@ -195,6 +206,7 @@ func clearMasked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
   ## Effectively maps to a `bitand <#bitand.m,T,T,varargs[T]>`_ operation
   ## with an *inverted mask*.
   runnableExamples:
+    import std/assertions
     let v = 0b0000_0011'u8
     doAssert v.clearMasked(0b0000_1010'u8) == 0b0000_0001'u8
 
@@ -206,6 +218,7 @@ func clearMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (
   ## Effectively maps to a `bitand <#bitand.m,T,T,varargs[T]>`_ operation
   ## with an *inverted mask*.
   runnableExamples:
+    import std/assertions
     let v = 0b0000_0011'u8
     doAssert v.clearMasked(1 .. 3) == 0b0000_0001'u8
 
@@ -217,6 +230,7 @@ proc clearMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
   ## Effectively maps to a `bitand <#bitand.m,T,T,varargs[T]>`_ operation
   ## with an *inverted mask*.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_0011'u8
     v.clearMask(0b0000_1010'u8)
     doAssert v == 0b0000_0001'u8
@@ -229,6 +243,7 @@ proc clearMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1
   ## Effectively maps to a `bitand <#bitand.m,T,T,varargs[T]>`_ operation
   ## with an *inverted mask*.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_0011'u8
     v.clearMask(1 .. 3)
     doAssert v == 0b0000_0001'u8
@@ -240,6 +255,7 @@ func flipMasked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
   ##
   ## Effectively maps to a `bitxor <#bitxor.m,T,T,varargs[T]>`_ operation.
   runnableExamples:
+    import std/assertions
     let v = 0b0000_0011'u8
     doAssert v.flipMasked(0b0000_1010'u8) == 0b0000_1001'u8
 
@@ -250,6 +266,7 @@ func flipMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1
   ##
   ## Effectively maps to a `bitxor <#bitxor.m,T,T,varargs[T]>`_ operation.
   runnableExamples:
+    import std/assertions
     let v = 0b0000_0011'u8
     doAssert v.flipMasked(1 .. 3) == 0b0000_1101'u8
 
@@ -260,6 +277,7 @@ proc flipMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
   ##
   ## Effectively maps to a `bitxor <#bitxor.m,T,T,varargs[T]>`_ operation.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_0011'u8
     v.flipMask(0b0000_1010'u8)
     doAssert v == 0b0000_1001'u8
@@ -271,6 +289,7 @@ proc flipMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1,
   ##
   ## Effectively maps to a `bitxor <#bitxor.m,T,T,varargs[T]>`_ operation.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_0011'u8
     v.flipMask(1 .. 3)
     doAssert v == 0b0000_1101'u8
@@ -280,6 +299,7 @@ proc flipMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1,
 proc setBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
   ## Mutates `v`, with the bit at position `bit` set to 1.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_0011'u8
     v.setBit(5'u8)
     doAssert v == 0b0010_0011'u8
@@ -289,6 +309,7 @@ proc setBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
 proc clearBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
   ## Mutates `v`, with the bit at position `bit` set to 0.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_0011'u8
     v.clearBit(1'u8)
     doAssert v == 0b0000_0001'u8
@@ -298,6 +319,7 @@ proc clearBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
 proc flipBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
   ## Mutates `v`, with the bit at position `bit` flipped.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_0011'u8
     v.flipBit(1'u8)
     doAssert v == 0b0000_0001'u8
@@ -311,6 +333,7 @@ proc flipBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
 macro setBits*(v: typed; bits: varargs[typed]): untyped =
   ## Mutates `v`, with the bits at positions `bits` set to 1.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_0011'u8
     v.setBits(3, 5, 7)
     doAssert v == 0b1010_1011'u8
@@ -323,6 +346,7 @@ macro setBits*(v: typed; bits: varargs[typed]): untyped =
 macro clearBits*(v: typed; bits: varargs[typed]): untyped =
   ## Mutates `v`, with the bits at positions `bits` set to 0.
   runnableExamples:
+    import std/assertions
     var v = 0b1111_1111'u8
     v.clearBits(1, 3, 5, 7)
     doAssert v == 0b0101_0101'u8
@@ -335,6 +359,7 @@ macro clearBits*(v: typed; bits: varargs[typed]): untyped =
 macro flipBits*(v: typed; bits: varargs[typed]): untyped =
   ## Mutates `v`, with the bits at positions `bits` set to 0.
   runnableExamples:
+    import std/assertions
     var v = 0b0000_1111'u8
     v.flipBits(1, 3, 5, 7)
     doAssert v == 0b1010_0101'u8
@@ -348,6 +373,7 @@ macro flipBits*(v: typed; bits: varargs[typed]): untyped =
 proc testBit*[T: SomeInteger](v: T; bit: BitsRange[T]): bool {.inline.} =
   ## Returns true if the bit in `v` at positions `bit` is set to 1.
   runnableExamples:
+    import std/assertions
     let v = 0b0000_1111'u8
     doAssert v.testBit(0)
     doAssert not v.testBit(7)
@@ -485,6 +511,7 @@ elif useICC_builtins:
 func countSetBits*(x: SomeInteger): int {.inline.} =
   ## Counts the set bits in an integer (also called `Hamming weight`:idx:).
   runnableExamples:
+    import std/assertions
     doAssert countSetBits(0b0000_0011'u8) == 2
     doAssert countSetBits(0b1010_1010'u8) == 4
 
@@ -498,6 +525,7 @@ func parityBits*(x: SomeInteger): int {.inline.} =
   ## Calculate the bit parity in an integer. If the number of 1-bits
   ## is odd, the parity is 1, otherwise 0.
   runnableExamples:
+    import std/assertions
     doAssert parityBits(0b0000_0000'u8) == 0
     doAssert parityBits(0b0101_0001'u8) == 1
     doAssert parityBits(0b0110_1001'u8) == 0
@@ -522,6 +550,7 @@ func firstSetBit*(x: SomeInteger): int {.inline.} =
   ## If `x` is zero, when `noUndefinedBitOpts` is set, the result is 0,
   ## otherwise the result is undefined.
   runnableExamples:
+    import std/assertions
     doAssert firstSetBit(0b0000_0001'u8) == 1
     doAssert firstSetBit(0b0000_0010'u8) == 2
     doAssert firstSetBit(0b0000_0100'u8) == 3
@@ -566,6 +595,7 @@ func fastLog2*(x: SomeInteger): int {.inline.} =
   ## If `x` is zero, when `noUndefinedBitOpts` is set, the result is -1,
   ## otherwise the result is undefined.
   runnableExamples:
+    import std/assertions
     doAssert fastLog2(0b0000_0001'u8) == 0
     doAssert fastLog2(0b0000_0010'u8) == 1
     doAssert fastLog2(0b0000_0100'u8) == 2
@@ -609,6 +639,7 @@ func countLeadingZeroBits*(x: SomeInteger): int {.inline.} =
   ## **See also:**
   ## * `countTrailingZeroBits proc <#countTrailingZeroBits,SomeInteger>`_
   runnableExamples:
+    import std/assertions
     doAssert countLeadingZeroBits(0b0000_0001'u8) == 7
     doAssert countLeadingZeroBits(0b0000_0010'u8) == 6
     doAssert countLeadingZeroBits(0b0000_0100'u8) == 5
@@ -638,6 +669,7 @@ func countTrailingZeroBits*(x: SomeInteger): int {.inline.} =
   ## **See also:**
   ## * `countLeadingZeroBits proc <#countLeadingZeroBits,SomeInteger>`_
   runnableExamples:
+    import std/assertions
     doAssert countTrailingZeroBits(0b0000_0001'u8) == 0
     doAssert countTrailingZeroBits(0b0000_0010'u8) == 1
     doAssert countTrailingZeroBits(0b0000_0100'u8) == 2
@@ -815,6 +847,7 @@ func rotateLeftBits*[T: SomeUnsignedInt](value: T, shift: range[0..(sizeof(T) * 
 func rotateRightBits*[T: SomeUnsignedInt](value: T, shift: range[0..(sizeof(T) * 8)]): T {.inline.} =
   ## Right-rotate bits in a `value`.
   runnableExamples:
+    import std/assertions
     doAssert rotateRightBits(0b0110_1001'u8, 4) == 0b1001_0110'u8
     doAssert rotateRightBits(0b00111100_11000011'u16, 8) ==
       0b11000011_00111100'u16
@@ -850,6 +883,7 @@ func repeatBits[T: SomeUnsignedInt](x: SomeUnsignedInt; retType: type[T]): T  =
 func reverseBits*[T: SomeUnsignedInt](x: T): T =
   ## Return the bit reversal of x.
   runnableExamples:
+    import std/assertions
     doAssert reverseBits(0b10100100'u8) == 0b00100101'u8
     doAssert reverseBits(0xdd'u8) == 0xbb'u8
     doAssert reverseBits(0xddbb'u16) == 0xddbb'u16
