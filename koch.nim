@@ -564,6 +564,9 @@ proc runCI(cmd: string) =
   let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
     nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release")
+    let f = open("config/config.nims", fmAppend)
+    writeLine(f, """switch("useVersion", "1.6")""")
+    close(f)
     execFold("Test selected Nimble packages", "testament $# pcat nimble-packages" % batchParam)
   else:
     buildTools()
@@ -606,9 +609,9 @@ proc runCI(cmd: string) =
 
     execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
 
-  when not defined(bsd):
-    # the BSDs are overwhelmed already, so only run this test on the other machines:
-    kochExecFold("Boot Nim ORC", "boot -d:release --mm:orc --lib:lib")
+    when not defined(bsd):
+      # the BSDs are overwhelmed already, so only run this test on the other machines:
+      kochExecFold("Boot Nim ORC", "boot -d:release --mm:orc --lib:lib")
 
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)
