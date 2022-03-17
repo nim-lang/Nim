@@ -109,6 +109,7 @@ template fromUtilsGen*(): untyped =
 
   iterator fromUtils1*(): int =
     runnableExamples:
+      import std/assertions
       # ok1
       assert 1 == 1
       # ok2
