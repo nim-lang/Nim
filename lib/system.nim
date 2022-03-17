@@ -1847,7 +1847,7 @@ const
     ## Odd for devel, even for releases.
 
 
-when NimMajor == 1 and NimMinor <= 6 or defined(nimscript):
+when NimMajor == 1 and NimMinor <= 6:
   import std/assertions
   export assertions
 
