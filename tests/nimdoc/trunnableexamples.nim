@@ -178,7 +178,6 @@ runnableExamples:
 
   # bug #13491
   block:
-    import std/assertions
     proc fun(): int = doAssert false
     doAssertRaises(AssertionDefect, (discard fun()))
 
