@@ -3,6 +3,7 @@ import subdir / subdir_b / utils
 
 ## This is the top level module.
 runnableExamples:
+  import std/assertions
   import subdir / subdir_b / utils
   doAssert bar(3, 4) == 7
   foo(enumValueA, enumValueB)
@@ -102,6 +103,7 @@ when true:
       1+1
 
 when true:
+  import std/assertions
   # interleaving 0 or more runnableExamples and doc comments, issue #9227
   proc z9*() =
     runnableExamples: doAssert 1 + 1 == 2
@@ -131,6 +133,7 @@ when true:
   proc bazNonExported() =
     ## out (not exported)
     runnableExamples:
+      import std/assertions
       # BUG: this currently this won't be run since not exported
       # but probably should
       doAssert false
@@ -150,9 +153,12 @@ when true:
 when true: # capture non-doc comments correctly even before 1st token
   proc p1*() =
     ## cp1
-    runnableExamples: doAssert 1 == 1 # regular comments work here
+    runnableExamples:
+      import std/assertions
+      doAssert 1 == 1 # regular comments work here
     ## c4
     runnableExamples:
+      import std/assertions
       # c5 regular comments before 1st token work
       # regular comment
       #[
@@ -285,6 +291,7 @@ when true: # (most) macros
     ## cz16
     ## after
     runnableExamples:
+      import std/assertions
       doAssert 2 == 1 + 1
     # BUG: we should probably render `cz16\nafter` by keeping newline instead or
     # what it currently renders as: `cz16 after`
@@ -301,6 +308,7 @@ when true: # (most) templates
 
   template myfn*() =
     runnableExamples:
+      import std/assertions
       import std/strutils
       ## issue #8871 preserve formatting
       ## line doc comment
@@ -333,7 +341,9 @@ when true: # (most) templates
     runnableExamples: discard 4
     ## ok5
     ## ok5b
-    runnableExamples: assert true
+    runnableExamples:
+      import std/assertions
+      assert true
     runnableExamples: discard 1
 
     ## in or out?

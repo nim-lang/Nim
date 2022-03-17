@@ -7,6 +7,7 @@ doAssert not declared(hfn3)
 #!EDIT!#
 
 import mimports {.all.}
+import std/assertions
 doAssert fn1() == 1
 doAssert declared(hfn3)
 doAssert hfn3() == 3
@@ -21,6 +22,7 @@ doAssert hfnb3() == 3
 #!EDIT!#
 
 from mimports {.all.} import hfn3
+import std/assertions
 doAssert not declared(fn1)
 from mimports {.all.} as bar import fn1
 doAssert fn1() == 1
