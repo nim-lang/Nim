@@ -14,7 +14,6 @@ type
     lineinfo: TLineInfo
   EMyError = ref TMyError
 
-
 # NOTE: when entering newlines, adjust `expectedEnd` outputs
 
 try:

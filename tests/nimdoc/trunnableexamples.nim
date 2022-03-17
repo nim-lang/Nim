@@ -169,6 +169,8 @@ when true: # bug #17835
       # this was giving: Error: runnableExamples must appear before the first non-comment statement
 
 runnableExamples:
+  import std/assertions
+
   block: # bug #17279
     when int.sizeof == 8:
       let x = 0xffffffffffffffff
@@ -185,7 +187,6 @@ runnableExamples:
     foo (discard)
 
   block:
-    import std/assertions
     template fn(body: untyped): untyped = true
     doAssert(fn do: nonexistent)
   import std/macros

@@ -1,4 +1,5 @@
 import macros
+import std/assertions
 
 proc assertEq(arg0,arg1: string): void =
   if arg0 != arg1:

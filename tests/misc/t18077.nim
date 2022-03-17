@@ -16,6 +16,7 @@ static:
     doAssert nimTestsT18077b == 3
 
 runnableExamples:
+  import std/assertions
   const nimTestsT18077b {.intdefine.} = 2
   doAssert nimTestsT18077b == 3
   doAssert defined(nimTestsT18077)

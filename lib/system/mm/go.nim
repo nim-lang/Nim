@@ -1,3 +1,5 @@
+when NimMajor > 2 or (NimMajor == 1 and NimMinor > 6):
+  import std/assertions
 
 when defined(windows):
   const goLib = "libgo.dll"
