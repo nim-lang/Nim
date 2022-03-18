@@ -15,6 +15,7 @@
 ## .. code-block:: nim
 ##    :test:
 ##
+##    import std/assertions
 ##    let logs = @["2019-01-10: OK_", "2019-01-11: FAIL_", "2019-01: aaaa"]
 ##    var outp: seq[string]
 ##
@@ -27,7 +28,7 @@
 ## .. code-block:: nim
 ##    :test:
 ##    from std/strutils import Digits, parseInt
-##
+##    import std/assertions
 ##    let
 ##      input1 = "2019 school start"
 ##      input2 = "3 years back"
@@ -518,6 +519,7 @@ proc parseSaturatedNatural*(s: string, b: var int, start = 0): int {.
   ## The number of processed character is returned.
   ## This is usually what you really want to use instead of `parseInt`:idx:.
   runnableExamples:
+    import std/assertions
     var res = 0
     discard parseSaturatedNatural("848", res)
     doAssert res == 848

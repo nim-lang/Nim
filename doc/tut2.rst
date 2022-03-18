@@ -55,6 +55,7 @@ type, the `of` operator can be used.
 
 .. code-block:: nim
     :test: "nim c $1"
+  import std/assertions
   type
     Person = ref object of RootObj
       name*: string  # the * means that `name` is accessible from other modules
