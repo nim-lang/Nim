@@ -819,6 +819,7 @@ func shiftTypeTo(size: static int, shift: int): auto {.inline.} =
 func rotateLeftBits*[T: SomeUnsignedInt](value: T, shift: range[0..(sizeof(T) * 8)]): T {.inline.} =
   ## Left-rotate bits in a `value`.
   runnableExamples:
+    import std/assertions
     doAssert rotateLeftBits(0b0110_1001'u8, 4) == 0b1001_0110'u8
     doAssert rotateLeftBits(0b00111100_11000011'u16, 8) ==
       0b11000011_00111100'u16

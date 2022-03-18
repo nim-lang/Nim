@@ -735,6 +735,7 @@ proc inSeconds*(dur: Duration): int64 =
 proc inMilliseconds*(dur: Duration): int64 =
   ## Converts the duration to the number of whole milliseconds.
   runnableExamples:
+    import std/assertions
     let dur = initDuration(seconds = -2)
     doAssert dur.inMilliseconds == -2000
   dur.convert(Milliseconds)
@@ -1475,6 +1476,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
 
 proc `+`*(dt: DateTime, dur: Duration): DateTime =
   runnableExamples:
+    import std/assertions
     let dt = dateTime(2017, mMar, 30, 00, 00, 00, 00, utc())
     let dur = initDuration(hours = 5)
     doAssert $(dt + dur) == "2017-03-30T05:00:00Z"
@@ -1483,6 +1485,7 @@ proc `+`*(dt: DateTime, dur: Duration): DateTime =
 
 proc `-`*(dt: DateTime, dur: Duration): DateTime =
   runnableExamples:
+    import std/assertions
     let dt = dateTime(2017, mMar, 30, 00, 00, 00, 00, utc())
     let dur = initDuration(days = 5)
     doAssert $(dt - dur) == "2017-03-25T00:00:00Z"
@@ -2141,6 +2144,7 @@ proc format*(dt: DateTime, f: string, loc: DateTimeLocale = DefaultLocale): stri
   ## See `Parsing and formatting dates`_ for documentation of the
   ## `format` argument.
   runnableExamples:
+    import std/assertions
     let dt = dateTime(2000, mJan, 01, 00, 00, 00, 00, utc())
     doAssert "2000-01-01" == format(dt, "yyyy-MM-dd")
   let dtFormat = initTimeFormat(f)

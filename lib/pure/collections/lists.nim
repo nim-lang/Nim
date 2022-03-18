@@ -165,6 +165,7 @@ proc newDoublyLinkedNode*[T](value: T): DoublyLinkedNode[T] =
 proc newSinglyLinkedNode*[T](value: T): SinglyLinkedNode[T] =
   ## Creates a new singly linked node with the given `value`.
   runnableExamples:
+    import std/assertions
     let n = newSinglyLinkedNode[int](5)
     assert n.value == 5
 

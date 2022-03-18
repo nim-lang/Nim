@@ -2917,6 +2917,7 @@ func stripLineEnd*(s: var string) =
   ## For example, can be useful in conjunction with `osproc.execCmdEx`.
   ## aka: `chomp`:idx:
   runnableExamples:
+    import std/assertions
     var s = "foo\n\n"
     s.stripLineEnd
     doAssert s == "foo\n"

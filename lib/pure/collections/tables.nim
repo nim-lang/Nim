@@ -1886,6 +1886,7 @@ proc newOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTableRef[A
   ## * `initOrderedTable proc<#initOrderedTable>`_ for creating an
   ##   `OrderedTable`
   runnableExamples:
+    var
       a = newOrderedTable[int, string]()
       b = newOrderedTable[char, seq[int]]()
   new(result)

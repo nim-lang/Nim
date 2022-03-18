@@ -250,6 +250,7 @@ proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
   ## Builtin `typeof` operation for accessing the type of an expression.
   ## Since version 0.20.0.
   runnableExamples:
+    import std/assertions
     proc myFoo(): float = 0.0
     iterator myFoo(): string = yield "abc"
     iterator myFoo2(): string = yield "abc"
@@ -1896,6 +1897,7 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
   ## Returns the last item of `s` and decreases `s.len` by one. This treats
   ## `s` as a stack and implements the common *pop* operation.
   runnableExamples:
+    import std/assertions
     var a = @[1, 3, 5, 7]
     let b = pop(a)
     assert b == 7
@@ -2031,6 +2033,7 @@ when defined(js) or defined(nimdoc):
     ## Only implemented for JS backend.
     runnableExamples:
       when defined(js):
+        import std/assertions
         var tmp: cstring = ""
         tmp.add(cstring("ab"))
         tmp.add(cstring("cd"))
@@ -2605,6 +2608,7 @@ proc `[]=`*[T, U: Ordinal](s: var string, x: HSlice[T, U], b: string) =
   ## by `x`, a `splice`:idx: is performed:
   ##
   runnableExamples:
+    import std/assertions
     var s = "abcdefgh"
     s[1 .. ^2] = "xyz"
     assert s == "axyzh"

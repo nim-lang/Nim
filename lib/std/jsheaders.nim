@@ -49,6 +49,7 @@ func len*(self: Headers): int {.importjs: "Array.from(#.entries()).length".}
 
 
 runnableExamples("-r:off"):
+  import std/assertions
 
   block:
     let header: Headers = newHeaders()

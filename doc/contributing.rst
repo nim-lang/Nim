@@ -61,6 +61,7 @@ Sample test:
 
 .. code-block:: nim
 
+  import std/assertions
   block: # foo
     doAssert foo(1) == 10
 
@@ -238,6 +239,7 @@ as well as `testament`:cmd: and guarantee they stay in sync.
   proc addBar*(a: string): string =
     ## Adds "Bar" to `a`.
     runnableExamples:
+      import std/assertions
       assert "baz".addBar == "bazBar"
     result = a & "Bar"
 
@@ -369,6 +371,7 @@ Take advantage of no implicit bool conversion
 
 .. code-block:: nim
 
+  import std/assertions
   doAssert isValid() == true
   doAssert isValid() # preferred
 
@@ -387,6 +390,7 @@ rationale: https://forum.nim-lang.org/t/4089
 
 .. code-block:: nim
 
+  import std/assertions
   quit() # bad in almost all cases
   doAssert() # preferred
 
@@ -396,6 +400,7 @@ tests so they'll be enabled even with `--assertions:off`:option:.
 
 .. code-block:: nim
 
+  import std/assertions
   block: # foo
     assert foo() # bad
     doAssert foo() # preferred
@@ -410,10 +415,12 @@ second example below:
 .. code-block:: nim
 
   runnableExamples:
+    import std/assertions
     doAssert foo() # bad
     assert foo() # preferred
 
   runnableExamples("-d:danger"):
+    import std/assertions
     doAssert foo() # `assert` would be disabled here, so `doAssert` makes more sense
 
 .. _delegate_printing:
@@ -443,6 +450,7 @@ https://github.com/nim-lang/Nim/pull/9335 and https://forum.nim-lang.org/t/4089
 
 .. code-block:: nim
 
+  import std/assertions
   echo foo() # adds a line for testament in `output:` block inside `discard`.
   doAssert foo() == [1, 2] # preferred, except when not possible to do so.
 
