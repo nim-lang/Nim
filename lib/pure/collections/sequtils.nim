@@ -581,12 +581,6 @@ func delete*[T](s: var seq[T]; first, last: Natural) {.deprecated: "use `delete(
   ## Deletes the items of a sequence `s` at positions `first..last`
   ## (including both ends of the range).
   ## This modifies `s` itself, it does not return a copy.
-  runnableExamples("--warning:deprecated:off"):
-    import std/assertions
-    let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
-    var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
-    dest.delete(3, 8)
-    assert outcome == dest
 
   doAssert first <= last
   if first >= s.len:
