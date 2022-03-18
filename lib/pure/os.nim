@@ -2318,7 +2318,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ##
   ## and this code:
   runnableExamples("-r:off"):
-  import std/assertions
+    import std/assertions
     import std/[strutils, sugar]
     # note: order is not guaranteed
     # this also works at compile time
