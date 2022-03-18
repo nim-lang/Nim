@@ -63,6 +63,7 @@ Enum, sets and casting can be used together as in:
 
 .. code-block:: nim
 
+  import std/assertions
   type
     MyFlag* {.size: sizeof(cint).} = enum
       A

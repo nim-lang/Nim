@@ -240,6 +240,7 @@ The `[]` array access operator can be overloaded to provide
 
 .. code-block:: nim
     :test: "nim c $1"
+  import std/assertions
   type
     Vector* = object
       x, y, z: float
@@ -564,6 +565,7 @@ To *invoke* a template, call it like a procedure.
 Example:
 
 .. code-block:: nim
+  import std/assertions
   template `!=` (a, b: untyped): untyped =
     # this definition exists in the System module
     not (a == b)

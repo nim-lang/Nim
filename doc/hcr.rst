@@ -33,6 +33,7 @@ To install SDL2 you can use `nimble install sdl2`:cmd:.
 
   #*** import the hotcodereloading stdlib module ***
   import std/hotcodereloading
+  import std/assertions
 
   var runGame*: bool = true
   var window: WindowPtr

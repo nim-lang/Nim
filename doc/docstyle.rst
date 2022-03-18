@@ -76,6 +76,7 @@ Whenever an example of usage would be helpful to the user, you should include on
     ##  echo execCmdEx("git pull")
     ##  drawOnScreen()
     runnableExamples:
+      import std/assertions
       # `runnableExamples` is usually preferred to ``code-block``, when possible.
       doAssert addThree(3, 125, 6) == -122
     result = x +% y +% z

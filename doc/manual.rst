@@ -327,6 +327,8 @@ Examples
   var `var` = "Hello Stropping"
 
 .. code-block:: nim
+
+  import std/assertions
   type Obj = object
     `type`: int
 
@@ -811,6 +813,7 @@ imperative programming languages:
 .. code-block:: nim
     :test: "nim c $1"
 
+  import std/assertions
   var s = ""
 
   proc p(arg: int): int =
@@ -828,6 +831,7 @@ right-hand side:
 .. code-block:: nim
     :test: "nim c $1"
 
+  import std/assertions
   var v = 0
   proc getI(): int =
     result = v
@@ -858,6 +862,7 @@ reorderings that have been passed to named parameters:
 .. code-block:: nim
     :test: "nim c $1"
 
+  import std/assertions
   var s = ""
 
   proc p(): int =
@@ -1626,6 +1631,7 @@ order. The *names* of the fields also have to be the same.
 
 .. code-block:: nim
 
+  import std/assertions
   type
     Person = tuple[name: string, age: int] # type representing a person:
                                            # it consists of a name and an age.
@@ -1670,6 +1676,7 @@ can be used to determine the object's type. The `of` operator is similar to
 the `instanceof` operator in Java.
 
 .. code-block:: nim
+  import std/assertions
   type
     Person = object of RootObj
       name*: string   # the * means that `name` is accessible from other modules
@@ -2633,6 +2640,7 @@ a parameter typed as `untyped` (for unresolved expressions) or the type class
 `iterable` or `iterable[T]` (after type checking and overload resolution).
 
 .. code-block:: nim
+  import std/assertions
   iterator iota(n: int): int =
     for i in 0..<n: yield i
 
@@ -2857,11 +2865,13 @@ Given the following distinct type definitions:
 The following code blocks will fail to compile:
 
 .. code-block:: nim
+  import std/assertions
   var foo: DistinctFoo
   foo.x = "test"
   doAssert foo.x == "test"
 
 .. code-block:: nim
+  import std/assertions
   var s: DistinctString
   s = "test"
   doAssert s == "test"
@@ -2869,10 +2879,12 @@ The following code blocks will fail to compile:
 But these ones will compile successfully:
 
 .. code-block:: nim
+  import std/assertions
   let foo = DistinctFoo(Foo(x: "test"))
   doAssert foo.x == "test"
 
 .. code-block:: nim
+  import std/assertions
   let s = "test"
   doAssert s == "test"
 
@@ -3130,6 +3142,7 @@ compile-time and the executable.
 Example:
 
 .. code-block:: nim
+  import std/assertions
   proc someProcThatMayRunInCompileTime(): bool =
     when nimvm:
       # This branch is taken at compile time.
@@ -3629,6 +3642,7 @@ Any operator can be called like an ordinary proc with the \`opr\`
 notation. (Thus an operator can have more than two parameters):
 
 .. code-block:: nim
+  import std/assertions
   proc `*+` (a, b, c: int): int =
     # Multiply and add
     result = a * b + c
@@ -3753,6 +3767,7 @@ means `echo f 1, f 2` is parsed as `echo(f(1), f(2))` and not as
 more argument in this case:
 
 .. code-block:: nim
+  import std/assertions
   proc optarg(x: int, y: int = 0): int = x + y
   proc singlearg(x: int): int = 20*x
 
@@ -3874,6 +3889,7 @@ A type bound operator declared for a type applies to the type regardless of whet
 the operator is in scope (including if it is private).
 
 .. code-block:: nim
+  import std/assertions
   # foo.nim:
   var witness* = 0
   type Foo[T] = object
@@ -3935,6 +3951,7 @@ Var parameters
 The type of a parameter may be prefixed with the `var` keyword:
 
 .. code-block:: nim
+  import std/assertions
   proc divmod(a, b: int; res, remainder: var int) =
     res = a div b
     remainder = a mod b
@@ -3953,6 +3970,7 @@ an l-value. Var parameters are implemented as hidden pointers. The
 above example is equivalent to:
 
 .. code-block:: nim
+  import std/assertions
   proc divmod(a, b: int; res, remainder: ptr int) =
     res[] = a div b
     remainder[] = a mod b
@@ -3967,6 +3985,7 @@ In the examples, var parameters or pointers are used to provide two
 return values. This can be done in a cleaner way by returning a tuple:
 
 .. code-block:: nim
+  import std/assertions
   proc divmod(a, b: int): tuple[res, remainder: int] =
     (a div b, a mod b)
 
@@ -3978,6 +3997,7 @@ return values. This can be done in a cleaner way by returning a tuple:
 One can use `tuple unpacking`:idx: to access the tuple's fields:
 
 .. code-block:: nim
+  import std/assertions
   var (x, y) = divmod(8, 5) # tuple unpacking
   assert x == 1
   assert y == 3
@@ -3995,6 +4015,7 @@ A proc, converter, or iterator may return a `var` type which means that the
 returned value is an l-value and can be modified by the caller:
 
 .. code-block:: nim
+  import std/assertions
   var g = 0
 
   proc writeAccessToG(): var int =
@@ -4080,6 +4101,7 @@ observable differences in behavior:
 
 .. code-block:: nim
 
+  import std/assertions
   type
     BigT = array[16, int]
 
@@ -4742,6 +4764,7 @@ caught by reference. Example:
 .. code-block:: nim
     :test: "nim cpp -r $1"
 
+  import std/assertions
   type
     CStdException {.importcpp: "std::exception", header: "<exception>", inheritable.} = object
       ## does not inherit from `RootObj`, so we use `inheritable` instead
@@ -5487,6 +5510,8 @@ The syntax to *invoke* a template is the same as calling a procedure.
 Example:
 
 .. code-block:: nim
+  import std/assertions
+
   template `!=` (a, b: untyped): untyped =
     # this definition exists in the System module
     not (a == b)
@@ -6276,6 +6301,7 @@ passing `typeOfProc` as the second argument to `typeof`:
 .. code-block:: nim
     :test: "nim c $1"
 
+  import std/assertions
   iterator split(s: string): string = discard
   proc split(s: string): seq[string] = discard
 
@@ -6612,6 +6638,7 @@ but accessed at runtime:
 .. code-block:: nim
     :test: "nim c -r $1"
 
+  import std/assertions
   import std/macros
 
   var nameToProc {.compileTime.}: seq[(string, proc (): string {.nimcall.})]
@@ -7841,6 +7868,7 @@ will then be expected to come from C. This can be used to import a C `const`:c:\
 .. code-block::
   {.emit: "const int cconst = 42;".}
 
+  import std/assertions
   let cconst {.importc, nodecl.}: cint
 
   assert cconst == 42

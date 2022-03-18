@@ -56,7 +56,7 @@ not very useful for production, but easy to understand:
 .. code:: console
 
   $ mkdir tests
-  $ echo "assert 42 == 42" > tests/test0.nim
+  $ echo "import std/assertions; assert 42 == 42" > tests/test0.nim
   $ testament run test0.nim
   PASS: tests/test0.nim C                                    ( 0.2 sec)
   $ testament r test0
@@ -180,6 +180,7 @@ Example "template" **to edit** and write a Testament unittest:
     disabled: true    # ...or can disable the test entirely
 
   """
+  import std/assertions
   assert true
   assert 42 == 42, "Assert error message"
 
@@ -202,6 +203,7 @@ Expected to fail:
   discard """
     errormsg: "undeclared identifier: 'not_defined'"
   """
+  import std/assertions
   assert not_defined == "not_defined", "not_defined is not defined"
 
 Non-Zero exit code:
@@ -249,12 +251,13 @@ Compile-time tests:
   discard """
     action: "compile"
   """
+  import std/assertions
   static: assert 9 == 9, "Compile time assert"
 
 Tests without Spec:
 
 .. code-block:: nim
-
+  import std/assertions
   assert 1 == 1
 
 

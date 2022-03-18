@@ -194,6 +194,7 @@ generated expression.
 A custom prefix operator can be defined whenever backticks are needed.
 
 .. code-block:: nim
+    import std/assertions
     macro a(i) = quote("@") do: assert @i == 0
     let b = 0
     a b

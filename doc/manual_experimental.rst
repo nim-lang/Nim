@@ -379,6 +379,7 @@ to use this operator.
 
 .. code-block:: nim
 
+  import std/assertions
   {.experimental: "callOperator".}
 
   template `()`(a: int, b: float): untyped = $(a, b)
@@ -1440,6 +1441,7 @@ Another example:
 
 .. code-block:: nim
 
+  import std/assertions
   proc somefunc(s: string)                 = assert s == "variable"
   proc somefunc(s: string{nkStrLit})       = assert s == "literal"
   proc somefunc(s: string{nkRStrLit})      = assert s == r"raw"
@@ -1531,6 +1533,7 @@ to `&(a, b, c)`:
 
 .. code-block:: nim
 
+  import std/assertions
   var
     calls = 0
 

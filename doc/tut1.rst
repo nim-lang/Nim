@@ -782,6 +782,7 @@ Overloaded procedures
 Nim provides the ability to overload procedures similar to C++:
 
 .. code-block:: nim
+  import std/assertions
   proc toString(x: int): string =
     result =
       if x < 0: "negative"
@@ -851,6 +852,7 @@ However, this cannot be done for mutually recursive procedures:
   proc even(n: int): bool
 
 .. code-block:: nim
+  import std/assertions
   proc odd(n: int): bool =
     assert(n >= 0) # makes sure we don't run into negative recursion
     if n == 0: false
@@ -1404,6 +1406,7 @@ openarray parameter, the index type does not matter.
 
 .. code-block:: nim
     :test: "nim c $1"
+  import std/assertions
   var
     fruits:   seq[string]       # reference to a sequence of strings that is initialized with '@[]'
     capitals: array[3, string]  # array of strings with a fixed size
@@ -1529,6 +1532,7 @@ where all of its fields can be initialized. Unspecified fields will
 get their default value.
 
 .. code-block:: nim
+  import std/assertions
   type
     Person = object
       name: string
@@ -1786,6 +1790,7 @@ module by using the `import`:idx: statement. Only top-level symbols that are mar
 with an asterisk (`*`) are exported:
 
 .. code-block:: nim
+  import std/assertions
   # Module A
   var
     x*, y: int

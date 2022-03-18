@@ -475,12 +475,14 @@ posterior instances of the template.
      Example:
 
      .. code-block:: nim
-       let
-         numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-         odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
-           if x mod 2 == 1:
-             result = true)
-       assert odd_numbers == @[1, 3, 5, 7, 9]"
+
+      import std/assertions
+      let
+        numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
+        odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
+          if x mod 2 == 1:
+            result = true)
+      assert odd_numbers == @[1, 3, 5, 7, 9]"
 
 
 skType

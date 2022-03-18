@@ -32,6 +32,7 @@ written as:
 
 .. code-block:: nim
 
+  import std/assertions
   type
     myseq*[T] = object
       len, cap: int
@@ -722,6 +723,7 @@ The abstraction fails for `addr x` because whether the address is going to be us
 `prepareMutation` needs to be called before the "address of" operation. For example:
 
 .. code-block:: nim
+  import std/assertions
   var x = "abc"
   var y = x
 
