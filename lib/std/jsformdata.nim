@@ -55,6 +55,7 @@ func len*(self: FormData): int {.importjs: "Array.from(#.entries()).length".}
 
 
 runnableExamples("-r:off"):
+  import std/assertions
   let data: FormData = newFormData()
   data["key0"] = "value0".cstring
   data.add("key1".cstring, "value1".cstring)

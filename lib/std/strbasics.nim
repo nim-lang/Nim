@@ -34,6 +34,7 @@ proc add*(x: var string, y: openArray[char]) =
 func stripSlice(s: openArray[char], leading = true, trailing = true, chars: set[char] = whitespaces): Slice[int] =
   ## Returns the slice range of `s` which is stripped `chars`.
   runnableExamples:
+    import std/assertions
     assert stripSlice(" abc  ") == 1 .. 3
   var
     first = 0
@@ -47,6 +48,7 @@ func stripSlice(s: openArray[char], leading = true, trailing = true, chars: set[
 func setSlice*(s: var string, slice: Slice[int]) =
   ## Inplace version of `substr`.
   runnableExamples:
+    import std/assertions
     import std/sugar
 
     var a = "Hello, Nim!"
@@ -97,6 +99,7 @@ func strip*(a: var string, leading = true, trailing = true, chars: set[char] = w
   ## If `trailing` is true (default), trailing `chars` are stripped.
   ## If both are false, the string is unchanged.
   runnableExamples:
+    import std/assertions
     var a = "  vhellov   "
     strip(a)
     assert a == "vhellov"

@@ -91,6 +91,7 @@ func addInt*(result: var string, x: uint64) {.enforceNoRaises.} =
 proc addInt*(result: var string; x: int64) {.enforceNoRaises.} =
   ## Converts integer to its string representation and appends it to `result`.
   runnableExamples:
+    import std/assertions
     var s = "foo"
     s.addInt(45)
     assert s == "foo45"

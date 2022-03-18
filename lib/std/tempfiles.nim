@@ -141,6 +141,7 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[cfile: File, path:
   ##    remove `result.file` when no longer needed.
   ## .. note:: `dir` must exist (empty `dir` will resolve to `getTempDir <os.html#getTempDir>`_).
   runnableExamples:
+    import std/assertions
     import std/os
     doAssertRaises(OSError): discard createTempFile("", "", "nonexistent")
     let (cfile, path) = createTempFile("tmpprefix_", "_end.tmp")
@@ -173,6 +174,7 @@ proc createTempDir*(prefix, suffix: string, dir = ""): string =
   ## .. note:: It is the caller's responsibility to remove the directory when no longer needed.
   ## .. note:: `dir` must exist (empty `dir` will resolve to `getTempDir <os.html#getTempDir>`_).
   runnableExamples:
+    import std/assertions
     import std/os
     doAssertRaises(OSError): discard createTempDir("", "", "nonexistent")
     let dir = createTempDir("tmpprefix_", "_end")

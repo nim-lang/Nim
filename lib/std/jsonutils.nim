@@ -5,6 +5,7 @@ see strtabs.fromJsonHook,toJsonHook for an example.
 ]##
 
 runnableExamples:
+  import std/assertions
   import std/[strtabs,json]
   type Foo = ref object
     t: bool
@@ -355,6 +356,7 @@ proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V
   ## See also:
   ## * `toJsonHook proc<#toJsonHook>`_
   runnableExamples:
+    import std/assertions
     import std/[tables, json]
     var foo: tuple[t: Table[string, int], ot: OrderedTable[string, int]]
     fromJson(foo, parseJson("""
@@ -376,6 +378,7 @@ proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): J
   ## * `fromJsonHook proc<#fromJsonHook,,JsonNode>`_
   # pending PR #9217 use: toSeq(a) instead of `collect` in `runnableExamples`.
   runnableExamples:
+    import std/assertions
     import std/[tables, json, sugar]
     let foo = (
       t: [("two", 2)].toTable,
@@ -397,6 +400,7 @@ proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
   ## See also:
   ## * `toJsonHook proc<#toJsonHook,SomeSet[A]>`_
   runnableExamples:
+    import std/assertions
     import std/[sets, json]
     var foo: tuple[hs: HashSet[string], os: OrderedSet[string]]
     fromJson(foo, parseJson("""
@@ -417,6 +421,7 @@ proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
   ## See also:
   ## * `fromJsonHook proc<#fromJsonHook,SomeSet[A],JsonNode>`_
   runnableExamples:
+    import std/assertions
     import std/[sets, json]
     let foo = (hs: ["hash"].toHashSet, os: ["ordered", "set"].toOrderedSet)
     assert $toJson(foo) == """{"hs":["hash"],"os":["ordered","set"]}"""
@@ -431,6 +436,7 @@ proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
   ## See also:
   ## * `toJsonHook proc<#toJsonHook,Option[T]>`_
   runnableExamples:
+    import std/assertions
     import std/[options, json]
     var opt: Option[string]
     fromJsonHook(opt, parseJson("\"test\""))
@@ -449,6 +455,7 @@ proc toJsonHook*[T](self: Option[T]): JsonNode =
   ## See also:
   ## * `fromJsonHook proc<#fromJsonHook,Option[T],JsonNode>`_
   runnableExamples:
+    import std/assertions
     import std/[options, json]
     let optSome = some("test")
     assert $toJson(optSome) == "\"test\""
@@ -466,6 +473,7 @@ proc fromJsonHook*(a: var StringTableRef, b: JsonNode) =
   ## See also:
   ## * `toJsonHook proc<#toJsonHook,StringTableRef>`_
   runnableExamples:
+    import std/assertions
     import std/[strtabs, json]
     var t = newStringTable(modeCaseSensitive)
     let jsonStr = """{"mode": 0, "table": {"name": "John", "surname": "Doe"}}"""
@@ -484,6 +492,7 @@ proc toJsonHook*(a: StringTableRef): JsonNode =
   ## See also:
   ## * `fromJsonHook proc<#fromJsonHook,StringTableRef,JsonNode>`_
   runnableExamples:
+    import std/assertions
     import std/[strtabs, json]
     let t = newStringTable("name", "John", "surname", "Doe", modeCaseSensitive)
     let jsonStr = """{"mode": "modeCaseSensitive",

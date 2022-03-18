@@ -12,6 +12,7 @@ macro byaddr*(sect) =
   ## For this reason, its behavior is not stable. The current implementation
   ## allows redefinition, but this is not an intended consequence.
   runnableExamples:
+    import std/assertions
     var s = @[10, 11, 12]
     var a {.byaddr.} = s[0]
     a += 100

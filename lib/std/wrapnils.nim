@@ -16,6 +16,7 @@ doAssert ?.default(seq[int])[3] == default(int)
 import macros
 
 runnableExamples:
+  import std/assertions
   type Foo = ref object
     x1: string
     x2: Foo
@@ -36,6 +37,7 @@ runnableExamples:
   assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
 
 runnableExamples:
+  import std/assertions
   # ?. also allows case object
   type B = object
     b0: int
@@ -126,6 +128,7 @@ from options import Option, isSome, get, option, unsafeGet, UnpackDefect
 macro `??.`*(a: typed): Option =
   ## Same as `?.` but returns an `Option`.
   runnableExamples:
+    import std/assertions
     import std/options
     type Foo = ref object
       x1: ref int

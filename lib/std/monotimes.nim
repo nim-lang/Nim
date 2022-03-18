@@ -15,6 +15,7 @@ meaning that that the following is guaranteed to work:
 ]##
 
 runnableExamples:
+  import std/assertions
   let a = getMonoTime()
   let b = getMonoTime()
   assert a <= b

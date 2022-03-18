@@ -38,6 +38,7 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## * `osLastError proc`_
   runnableExamples:
     when defined(linux):
+      import std/assertions
       assert osErrorMsg(OSErrorCode(0)) == ""
       assert osErrorMsg(OSErrorCode(1)) == "Operation not permitted"
       assert osErrorMsg(OSErrorCode(2)) == "No such file or directory"

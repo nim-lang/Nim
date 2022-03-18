@@ -17,6 +17,7 @@ template retryCall*(maxRetry = 3, backoffDuration = 1.0, call: untyped): bool =
   ## duraton of `backoffDuration` seconds.
   ## This is in particular useful for network commands that can fail.
   runnableExamples:
+    import std/assertions
     doAssert not retryCall(maxRetry = 2, backoffDuration = 0.1, false)
     var i = 0
     doAssert: retryCall(maxRetry = 3, backoffDuration = 0.1, (i.inc; i >= 3))
@@ -59,6 +60,7 @@ proc diffStrings*(a, b: string): tuple[output: string, same: bool] =
   ## implementation defined.
   ## See also `experimental.diff`.
   runnableExamples:
+    import std/assertions
     let a = "ok1\nok2\nok3\n"
     let b = "ok1\nok2 alt\nok3\nok4\n"
     let (c, same) = diffStrings(a, b)
@@ -66,6 +68,7 @@ proc diffStrings*(a, b: string): tuple[output: string, same: bool] =
     let (c2, same2) = diffStrings(a, a)
     doAssert same2
   runnableExamples("-r:off"):
+    import std/assertions
     let a = "ok1\nok2\nok3\n"
     let b = "ok1\nok2 alt\nok3\nok4\n"
     echo diffStrings(a, b).output

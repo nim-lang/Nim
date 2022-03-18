@@ -64,6 +64,7 @@ when not defined(nimscript):
       ## * `delEnv proc`_
       ## * `envPairs iterator`_
       runnableExamples:
+        import std/assertions
         assert getEnv("unknownEnv") == ""
         assert getEnv("unknownEnv", "doesn't exist") == "doesn't exist"
 
@@ -81,6 +82,7 @@ when not defined(nimscript):
       ## * `delEnv proc`_
       ## * `envPairs iterator`_
       runnableExamples:
+        import std/assertions
         assert not existsEnv("unknownEnv")
 
       return c_getenv(key) != nil

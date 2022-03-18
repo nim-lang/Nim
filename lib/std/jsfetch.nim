@@ -115,6 +115,7 @@ func `$`*(self: Request | Response | FetchOptions): string = $toCstring(self)
 
 
 runnableExamples("-r:off"):
+  import std/assertions
   import std/[asyncjs, jsconsole, jsheaders, jsformdata]
   from std/httpcore import HttpMethod
   from std/jsffi import JsObject

@@ -10,6 +10,7 @@
 ## This module implements a proc to determine the number of CPUs / cores.
 
 runnableExamples:
+  import std/assertions
   doAssert countProcessors() > 0
 
 

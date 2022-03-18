@@ -106,6 +106,7 @@ template addAllNode(assignParam: NimNode, procParam: NimNode) =
 macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkCallStrLit}): Task =
   ## Converts the call and its arguments to `Task`.
   runnableExamples("--gc:orc"):
+    import std/assertions
     proc hello(a: int) = echo a
 
     let b = toTask hello(13)
@@ -242,6 +243,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
     echo result.repr
 
 runnableExamples("--gc:orc"):
+  import std/assertions
   block:
     var num = 0
     proc hello(a: int) = inc num, a

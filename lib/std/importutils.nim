@@ -23,6 +23,7 @@ when defined(nimImportutilsExample):
 proc privateAccess*(t: typedesc) {.magic: "PrivateAccess".} =
   ## Enables access to private fields of `t` in current scope.
   runnableExamples("-d:nimImportutilsExample"):
+    import std/assertions
     # here we're importing a module containing:
     # type
     #   Foo = object

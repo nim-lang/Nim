@@ -24,6 +24,7 @@ import typetraits, macros
 template toSet*(iter: untyped): untyped =
   ## Returns a built-in set from the elements of the iterable `iter`.
   runnableExamples:
+    import std/assertions
     assert "helloWorld".toSet == {'W', 'd', 'e', 'h', 'l', 'o', 'r'}
     assert toSet([10u16, 20, 30]) == {10u16, 20, 30}
     assert [30u8, 100, 10].toSet == {10u8, 30, 100}
@@ -42,6 +43,7 @@ macro enumElementsAsSet(enm: typed): untyped = result = newNimNode(nnkCurly).add
 func fullSet*[T](U: typedesc[T]): set[T] {.inline.} =
   ## Returns a set containing all elements in `U`.
   runnableExamples:
+    import std/assertions
     assert bool.fullSet == {true, false}
     type A = range[1..3]
     assert A.fullSet == {1.A, 2, 3}
@@ -54,6 +56,7 @@ func fullSet*[T](U: typedesc[T]): set[T] {.inline.} =
 func complement*[T](s: set[T]): set[T] {.inline.} =
   ## Returns the set complement of `a`.
   runnableExamples:
+    import std/assertions
     type Colors = enum
       red, green = 3, blue
     assert complement({red, blue}) == {green}
@@ -65,6 +68,7 @@ func complement*[T](s: set[T]): set[T] {.inline.} =
 func `[]=`*[T](t: var set[T], key: T, val: bool) {.inline.} =
   ## Syntax sugar for `if val: t.incl key else: t.excl key`
   runnableExamples:
+    import std/assertions
     type A = enum
       a0, a1, a2, a3
     var s = {a0, a3}

@@ -28,6 +28,7 @@
 ## Changing `b` does not affect `a` and vice versa:
 
 runnableExamples:
+  import std/assertions
   var
     a = {1: "one", 2: "two"}.toTable  # creates a Table
     b = a
@@ -43,6 +44,7 @@ runnableExamples:
 ## also affect `a`. Both `a` and `b` **ref** the same data structure:
 
 runnableExamples:
+  import std/assertions
   var
     a = {1: "one", 2: "two"}.newTable  # creates a TableRef
     b = a
@@ -64,6 +66,7 @@ runnableExamples:
 
 ## ## Table
 runnableExamples:
+  import std/assertions
   from std/sequtils import zip
 
   let
@@ -96,6 +99,7 @@ runnableExamples:
 ## the insertion order of keys.
 
 runnableExamples:
+  import std/assertions
   let
     a = [('z', 1), ('y', 2), ('x', 3)]
     ot = a.toOrderedTable  # ordered tables
@@ -110,6 +114,7 @@ runnableExamples:
 ## comes handy:
 
 runnableExamples:
+  import std/assertions
   let myString = "abracadabra"
   let letterFrequencies = toCountTable(myString)
   assert $letterFrequencies == "{'a': 5, 'd': 1, 'b': 2, 'r': 2, 'c': 1}"
@@ -119,6 +124,7 @@ runnableExamples:
 ## <#inc,CountTable[A],A,int>`_:
 
 runnableExamples:
+  import std/assertions
   let myString = "abracadabra"
   var letterFrequencies = initCountTable[char]()
   for c in myString:
@@ -158,6 +164,7 @@ runnableExamples:
 ## example implementing only `hash` suffices:
 
 runnableExamples:
+  import std/assertions
   import std/hashes
 
   type
@@ -293,6 +300,7 @@ proc `[]=`*[A, B](t: var Table[A, B], key: A, val: sink B) =
   ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
   ## * `del proc<#del,Table[A,B],A>`_ for removing a key from the table
   runnableExamples:
+    import std/assertions
     var a = initTable[char, int]()
     a['x'] = 7
     a['y'] = 33
@@ -309,6 +317,7 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   ## * `initTable proc<#initTable>`_
   ## * `newTable proc<#newTable,openArray[]>`_ for a `TableRef` version
   runnableExamples:
+    import std/assertions
     let a = [('a', 5), ('b', 9)]
     let b = toTable(a)
     assert b == {'a': 5, 'b': 9}.toTable
@@ -333,6 +342,7 @@ proc `[]`*[A, B](t: Table[A, B], key: A): B =
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_ for checking if a key is in
   ##   the table
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a['a'] == 5
     doAssertRaises(KeyError):
@@ -366,6 +376,7 @@ proc hasKey*[A, B](t: Table[A, B], key: A): bool =
   ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.hasKey('a') == true
     doAssert a.hasKey('z') == false
@@ -377,6 +388,7 @@ proc contains*[A, B](t: Table[A, B], key: A): bool =
   ## Alias of `hasKey proc<#hasKey,Table[A,B],A>`_ for use with
   ## the `in` operator.
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.toTable
     doAssert 'b' in a == true
     doAssert a.contains('z') == false
@@ -394,6 +406,7 @@ proc hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool =
   ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9}.toTable
     if a.hasKeyOrPut('a', 50):
       a['a'] = 99
@@ -416,6 +429,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
   ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
@@ -434,6 +448,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
   ## * `getOrDefault proc<#getOrDefault,Table[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
@@ -460,6 +475,7 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9}.toTable
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
@@ -481,6 +497,7 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
 proc len*[A, B](t: Table[A, B]): int =
   ## Returns the number of keys in `t`.
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.toTable
     doAssert len(a) == 2
 
@@ -510,6 +527,7 @@ proc del*[A, B](t: var Table[A, B], key: A) =
   ## * `pop proc<#pop,Table[A,B],A,B>`_
   ## * `clear proc<#clear,Table[A,B]>`_ to empty the whole table
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9, 'c': 13}.toTable
     a.del('a')
     doAssert a == {'b': 9, 'c': 13}.toTable
@@ -531,6 +549,7 @@ proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   ## * `del proc<#del,Table[A,B],A>`_
   ## * `clear proc<#clear,Table[A,B]>`_ to empty the whole table
   runnableExamples:
+    import std/assertions
     var
       a = {'a': 5, 'b': 9, 'c': 13}.toTable
       i: int
@@ -561,6 +580,7 @@ proc clear*[A, B](t: var Table[A, B]) =
   ## * `del proc<#del,Table[A,B],A>`_
   ## * `pop proc<#pop,Table[A,B],A,B>`_
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9, 'c': 13}.toTable
     doAssert len(a) == 3
     clear(a)
@@ -577,6 +597,7 @@ proc `==`*[A, B](s, t: Table[A, B]): bool =
   ## The `==` operator for hash tables. Returns `true` if the content of both
   ## tables contains the same key-value pairs. Insert order does not matter.
   runnableExamples:
+    import std/assertions
     let
       a = {'a': 5, 'b': 9, 'c': 13}.toTable
       b = {'b': 9, 'c': 13, 'a': 5}.toTable
@@ -598,6 +619,7 @@ template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
   ##
   ## `value` can be modified in the scope of the `withValue` call.
   runnableExamples:
+    import std/assertions
     type
       User = object
         name: string
@@ -633,6 +655,7 @@ template withValue*[A, B](t: var Table[A, B], key: A,
   ##
   ## `value` can be modified in the scope of the `withValue` call.
   runnableExamples:
+    import std/assertions
     type
       User = object
         name: string
@@ -707,6 +730,7 @@ iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
   ## * `pairs iterator<#pairs.i,Table[A,B]>`_
   ## * `mvalues iterator<#mvalues.i,Table[A,B]>`_
   runnableExamples:
+    import std/assertions
     var a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -728,6 +752,7 @@ iterator keys*[A, B](t: Table[A, B]): lent A =
   ## * `pairs iterator<#pairs.i,Table[A,B]>`_
   ## * `values iterator<#values.i,Table[A,B]>`_
   runnableExamples:
+    import std/assertions
     var a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -750,6 +775,7 @@ iterator values*[A, B](t: Table[A, B]): lent B =
   ## * `keys iterator<#keys.i,Table[A,B]>`_
   ## * `mvalues iterator<#mvalues.i,Table[A,B]>`_
   runnableExamples:
+    import std/assertions
     let a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -771,6 +797,7 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
   ## * `mpairs iterator<#mpairs.i,Table[A,B]>`_
   ## * `values iterator<#values.i,Table[A,B]>`_
   runnableExamples:
+    import std/assertions
     var a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -793,6 +820,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
   ## `add proc<#add,Table[A,B],A,sinkB>`_).
   ##
   runnableExamples:
+    import std/assertions
     import std/[sequtils, algorithm]
 
     var a = {'a': 3, 'b': 5}.toTable
@@ -838,6 +866,7 @@ proc newTable*[A, B](pairs: openArray[(A, B)]): TableRef[A, B] =
   ## * `newTable proc<#newTable>`_
   ## * `toTable proc<#toTable,openArray[]>`_ for a `Table` version
   runnableExamples:
+    import std/assertions
     let a = [('a', 5), ('b', 9)]
     let b = newTable(a)
     assert b == {'a': 5, 'b': 9}.newTable
@@ -869,6 +898,7 @@ proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
   ## * `hasKey proc<#hasKey,TableRef[A,B],A>`_ for checking if a key is in
   ##   the table
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.newTable
     doAssert a['a'] == 5
     doAssertRaises(KeyError):
@@ -885,6 +915,7 @@ proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: sink B) =
   ## * `mgetOrPut proc<#mgetOrPut,TableRef[A,B],A,B>`_
   ## * `del proc<#del,TableRef[A,B],A>`_ for removing a key from the table
   runnableExamples:
+    import std/assertions
     var a = newTable[char, int]()
     a['x'] = 7
     a['y'] = 33
@@ -904,6 +935,7 @@ proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
   ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.newTable
     doAssert a.hasKey('a') == true
     doAssert a.hasKey('z') == false
@@ -914,6 +946,7 @@ proc contains*[A, B](t: TableRef[A, B], key: A): bool =
   ## Alias of `hasKey proc<#hasKey,TableRef[A,B],A>`_ for use with
   ## the `in` operator.
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.newTable
     doAssert 'b' in a == true
     doAssert a.contains('z') == false
@@ -931,6 +964,7 @@ proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
   ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9}.newTable
     if a.hasKeyOrPut('a', 50):
       a['a'] = 99
@@ -953,6 +987,7 @@ proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B =
   ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.newTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
@@ -971,6 +1006,7 @@ proc getOrDefault*[A, B](t: TableRef[A, B], key: A, default: B): B =
   ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.newTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
@@ -996,6 +1032,7 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
   ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9}.newTable
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
@@ -1016,6 +1053,7 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
 proc len*[A, B](t: TableRef[A, B]): int =
   ## Returns the number of keys in `t`.
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.newTable
     doAssert len(a) == 2
 
@@ -1041,6 +1079,7 @@ proc del*[A, B](t: TableRef[A, B], key: A) =
   ## * `pop proc<#pop,TableRef[A,B],A,B>`_
   ## * `clear proc<#clear,TableRef[A,B]>`_ to empty the whole table
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9, 'c': 13}.newTable
     a.del('a')
     doAssert a == {'b': 9, 'c': 13}.newTable
@@ -1062,6 +1101,7 @@ proc pop*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
   ## * `del proc<#del,TableRef[A,B],A>`_
   ## * `clear proc<#clear,TableRef[A,B]>`_ to empty the whole table
   runnableExamples:
+    import std/assertions
     var
       a = {'a': 5, 'b': 9, 'c': 13}.newTable
       i: int
@@ -1087,6 +1127,7 @@ proc clear*[A, B](t: TableRef[A, B]) =
   ## * `del proc<#del,Table[A,B],A>`_
   ## * `pop proc<#pop,Table[A,B],A,B>`_
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9, 'c': 13}.newTable
     doAssert len(a) == 3
     clear(a)
@@ -1104,6 +1145,7 @@ proc `==`*[A, B](s, t: TableRef[A, B]): bool =
   ## are `nil`, or neither is `nil` and the content of both tables contains the
   ## same key-value pairs. Insert order does not matter.
   runnableExamples:
+    import std/assertions
     let
       a = {'a': 5, 'b': 9, 'c': 13}.newTable
       b = {'b': 9, 'c': 13, 'a': 5}.newTable
@@ -1153,6 +1195,7 @@ iterator mpairs*[A, B](t: TableRef[A, B]): (A, var B) =
   ## * `pairs iterator<#pairs.i,TableRef[A,B]>`_
   ## * `mvalues iterator<#mvalues.i,TableRef[A,B]>`_
   runnableExamples:
+    import std/assertions
     let a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -1174,6 +1217,7 @@ iterator keys*[A, B](t: TableRef[A, B]): lent A =
   ## * `pairs iterator<#pairs.i,TableRef[A,B]>`_
   ## * `values iterator<#values.i,TableRef[A,B]>`_
   runnableExamples:
+    import std/assertions
     let a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -1196,6 +1240,7 @@ iterator values*[A, B](t: TableRef[A, B]): lent B =
   ## * `keys iterator<#keys.i,TableRef[A,B]>`_
   ## * `mvalues iterator<#mvalues.i,TableRef[A,B]>`_
   runnableExamples:
+    import std/assertions
     let a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -1216,6 +1261,7 @@ iterator mvalues*[A, B](t: TableRef[A, B]): var B =
   ## * `mpairs iterator<#mpairs.i,TableRef[A,B]>`_
   ## * `values iterator<#values.i,TableRef[A,B]>`_
   runnableExamples:
+    import std/assertions
     let a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -1318,6 +1364,7 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
   ## * `newOrderedTable proc<#newOrderedTable>`_ for creating an
   ##   `OrderedTableRef`
   runnableExamples:
+    import std/assertions
     let
       a = initOrderedTable[int, string]()
       b = initOrderedTable[char, seq[int]]()
@@ -1332,6 +1379,7 @@ proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) =
   ## * `mgetOrPut proc<#mgetOrPut,OrderedTable[A,B],A,B>`_
   ## * `del proc<#del,OrderedTable[A,B],A>`_ for removing a key from the table
   runnableExamples:
+    import std/assertions
     var a = initOrderedTable[char, int]()
     a['x'] = 7
     a['y'] = 33
@@ -1349,6 +1397,7 @@ proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for an
   ##   `OrderedTableRef` version
   runnableExamples:
+    import std/assertions
     let a = [('a', 5), ('b', 9)]
     let b = toOrderedTable(a)
     assert b == {'a': 5, 'b': 9}.toOrderedTable
@@ -1373,6 +1422,7 @@ proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
   ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for checking if a
   ##   key is in the table
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a['a'] == 5
     doAssertRaises(KeyError):
@@ -1408,6 +1458,7 @@ proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.hasKey('a') == true
     doAssert a.hasKey('z') == false
@@ -1419,6 +1470,7 @@ proc contains*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## Alias of `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for use with
   ## the `in` operator.
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert 'b' in a == true
     doAssert a.contains('z') == false
@@ -1436,6 +1488,7 @@ proc hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool =
   ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9}.toOrderedTable
     if a.hasKeyOrPut('a', 50):
       a['a'] = 99
@@ -1458,6 +1511,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
   ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
@@ -1476,6 +1530,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
   ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
@@ -1495,6 +1550,7 @@ proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
   ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
@@ -1505,6 +1561,7 @@ proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
 proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
   ## Returns the number of keys in `t`.
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert len(a) == 2
 
@@ -1529,6 +1586,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
   ## * `pop proc<#pop,OrderedTable[A,B],A,B>`_
   ## * `clear proc<#clear,OrderedTable[A,B]>`_ to empty the whole table
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
     a.del('a')
     doAssert a == {'b': 9, 'c': 13}.toOrderedTable
@@ -1565,6 +1623,7 @@ proc pop*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1
   ## * `del proc<#del,OrderedTable[A,B],A>`_
   ## * `clear proc<#clear,OrderedTable[A,B]>`_ to empty the whole table
   runnableExamples:
+    import std/assertions
     var
       a = {'c': 5, 'b': 9, 'a': 13}.toOrderedTable
       i: int
@@ -1590,6 +1649,7 @@ proc clear*[A, B](t: var OrderedTable[A, B]) =
   ## * `del proc<#del,OrderedTable[A,B],A>`_
   ## * `pop proc<#pop,OrderedTable[A,B],A,B>`_
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
     doAssert len(a) == 3
     clear(a)
@@ -1608,6 +1668,7 @@ proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x, y: (A, B)): int,
   ## call but key lookup and insertions remain possible after `sort` (in
   ## contrast to the `sort proc<#sort,CountTable[A]>`_ for count tables).
   runnableExamples:
+    import std/assertions
     import std/[algorithm]
     var a = initOrderedTable[char, int]()
     for i, c in "cab":
@@ -1667,6 +1728,7 @@ proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
   ## The `==` operator for ordered hash tables. Returns `true` if both the
   ## content and the order are equal.
   runnableExamples:
+    import std/assertions
     let
       a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
       b = {'b': 9, 'c': 13, 'a': 5}.toOrderedTable
@@ -1729,6 +1791,7 @@ iterator mpairs*[A, B](t: var OrderedTable[A, B]): (A, var B) =
   ## * `pairs iterator<#pairs.i,OrderedTable[A,B]>`_
   ## * `mvalues iterator<#mvalues.i,OrderedTable[A,B]>`_
   runnableExamples:
+    import std/assertions
     var a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -1750,6 +1813,7 @@ iterator keys*[A, B](t: OrderedTable[A, B]): lent A =
   ## * `pairs iterator<#pairs.i,OrderedTable[A,B]>`_
   ## * `values iterator<#values.i,OrderedTable[A,B]>`_
   runnableExamples:
+    import std/assertions
     var a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -1772,6 +1836,7 @@ iterator values*[A, B](t: OrderedTable[A, B]): lent B =
   ## * `keys iterator<#keys.i,OrderedTable[A,B]>`_
   ## * `mvalues iterator<#mvalues.i,OrderedTable[A,B]>`_
   runnableExamples:
+    import std/assertions
     let a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -1793,6 +1858,7 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
   ## * `mpairs iterator<#mpairs.i,OrderedTable[A,B]>`_
   ## * `values iterator<#values.i,OrderedTable[A,B]>`_
   runnableExamples:
+    import std/assertions
     var a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -1820,7 +1886,6 @@ proc newOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTableRef[A
   ## * `initOrderedTable proc<#initOrderedTable>`_ for creating an
   ##   `OrderedTable`
   runnableExamples:
-    let
       a = newOrderedTable[int, string]()
       b = newOrderedTable[char, seq[int]]()
   new(result)
@@ -1836,6 +1901,7 @@ proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
   ## * `toOrderedTable proc<#toOrderedTable,openArray[]>`_ for an
   ##   `OrderedTable` version
   runnableExamples:
+    import std/assertions
     let a = [('a', 5), ('b', 9)]
     let b = newOrderedTable(a)
     assert b == {'a': 5, 'b': 9}.newOrderedTable
@@ -1861,6 +1927,7 @@ proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
   ## * `hasKey proc<#hasKey,OrderedTableRef[A,B],A>`_ for checking if
   ##   a key is in the table
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.newOrderedTable
     doAssert a['a'] == 5
     doAssertRaises(KeyError):
@@ -1876,6 +1943,7 @@ proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) =
   ## * `mgetOrPut proc<#mgetOrPut,OrderedTableRef[A,B],A,B>`_
   ## * `del proc<#del,OrderedTableRef[A,B],A>`_ for removing a key from the table
   runnableExamples:
+    import std/assertions
     var a = newOrderedTable[char, int]()
     a['x'] = 7
     a['y'] = 33
@@ -1895,6 +1963,7 @@ proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
   ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.newOrderedTable
     doAssert a.hasKey('a') == true
     doAssert a.hasKey('z') == false
@@ -1905,6 +1974,7 @@ proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
   ## Alias of `hasKey proc<#hasKey,OrderedTableRef[A,B],A>`_ for use with
   ## the `in` operator.
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.newOrderedTable
     doAssert 'b' in a == true
     doAssert a.contains('z') == false
@@ -1922,6 +1992,7 @@ proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
   ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9}.newOrderedTable
     if a.hasKeyOrPut('a', 50):
       a['a'] = 99
@@ -1944,6 +2015,7 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
   ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.newOrderedTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
@@ -1962,6 +2034,7 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: B): B =
   ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.newOrderedTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
@@ -1981,6 +2054,7 @@ proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
   ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9}.newOrderedTable
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
@@ -1991,6 +2065,7 @@ proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
 proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   ## Returns the number of keys in `t`.
   runnableExamples:
+    import std/assertions
     let a = {'a': 5, 'b': 9}.newOrderedTable
     doAssert len(a) == 2
 
@@ -2012,6 +2087,7 @@ proc del*[A, B](t: OrderedTableRef[A, B], key: A) =
   ## See also:
   ## * `clear proc<#clear,OrderedTableRef[A,B]>`_ to empty the whole table
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9, 'c': 13}.newOrderedTable
     a.del('a')
     doAssert a == {'b': 9, 'c': 13}.newOrderedTable
@@ -2030,6 +2106,7 @@ proc pop*[A, B](t: OrderedTableRef[A, B], key: A, val: var B): bool {.since: (1,
   ## * `del proc<#del,OrderedTableRef[A,B],A>`_
   ## * `clear proc<#clear,OrderedTableRef[A,B]>`_ to empty the whole table
   runnableExamples:
+    import std/assertions
     var
       a = {'c': 5, 'b': 9, 'a': 13}.newOrderedTable
       i: int
@@ -2049,6 +2126,7 @@ proc clear*[A, B](t: OrderedTableRef[A, B]) =
   ## See also:
   ## * `del proc<#del,OrderedTableRef[A,B],A>`_
   runnableExamples:
+    import std/assertions
     var a = {'a': 5, 'b': 9, 'c': 13}.newOrderedTable
     doAssert len(a) == 3
     clear(a)
@@ -2065,6 +2143,7 @@ proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x, y: (A, B)): int,
   ## call but key lookup and insertions remain possible after `sort` (in
   ## contrast to the `sort proc<#sort,CountTableRef[A]>`_ for count tables).
   runnableExamples:
+    import std/assertions
     import std/[algorithm]
     var a = newOrderedTable[char, int]()
     for i, c in "cab":
@@ -2087,6 +2166,7 @@ proc `==`*[A, B](s, t: OrderedTableRef[A, B]): bool =
   ## tables are `nil`, or neither is `nil` and the content and the order of
   ## both are equal.
   runnableExamples:
+    import std/assertions
     let
       a = {'a': 5, 'b': 9, 'c': 13}.newOrderedTable
       b = {'b': 9, 'c': 13, 'a': 5}.newOrderedTable
@@ -2137,6 +2217,7 @@ iterator mpairs*[A, B](t: OrderedTableRef[A, B]): (A, var B) =
   ## * `pairs iterator<#pairs.i,OrderedTableRef[A,B]>`_
   ## * `mvalues iterator<#mvalues.i,OrderedTableRef[A,B]>`_
   runnableExamples:
+    import std/assertions
     let a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -2158,6 +2239,7 @@ iterator keys*[A, B](t: OrderedTableRef[A, B]): lent A =
   ## * `pairs iterator<#pairs.i,OrderedTableRef[A,B]>`_
   ## * `values iterator<#values.i,OrderedTableRef[A,B]>`_
   runnableExamples:
+    import std/assertions
     let a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -2180,6 +2262,7 @@ iterator values*[A, B](t: OrderedTableRef[A, B]): lent B =
   ## * `keys iterator<#keys.i,OrderedTableRef[A,B]>`_
   ## * `mvalues iterator<#mvalues.i,OrderedTableRef[A,B]>`_
   runnableExamples:
+    import std/assertions
     let a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -2200,6 +2283,7 @@ iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B =
   ## * `mpairs iterator<#mpairs.i,OrderedTableRef[A,B]>`_
   ## * `values iterator<#values.i,OrderedTableRef[A,B]>`_
   runnableExamples:
+    import std/assertions
     let a = {
       'o': @[1, 5, 7, 9],
       'e': @[2, 4, 6, 8]
@@ -2330,6 +2414,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
 proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## Increments `t[key]` by `val` (default: 1).
   runnableExamples:
+    import std/assertions
     var a = toCountTable("aab")
     a.inc('a')
     a.inc('b', 10)
@@ -2408,6 +2493,7 @@ proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
   ## * `pop proc<#pop,CountTable[A],A,int>`_
   ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
   runnableExamples:
+    import std/assertions
     var a = toCountTable("aabbbccccc")
     a.del('b')
     assert a == toCountTable("aaccccc")
@@ -2428,6 +2514,7 @@ proc pop*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).}
   ## * `del proc<#del,CountTable[A],A>`_
   ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
   runnableExamples:
+    import std/assertions
     var a = toCountTable("aabbbccccc")
     var i = 0
     assert a.pop('b', i)
@@ -2464,6 +2551,7 @@ proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
   ## `keys<#keys.i,CountTable[A]>`_, and `values<#values.i,CountTable[A]>`_
   ## to iterate over `t` in the sorted order.
   runnableExamples:
+    import std/assertions
     import std/[algorithm, sequtils]
     var a = toCountTable("abracadabra")
     doAssert a == "aaaaabbrrcd".toCountTable
@@ -2478,6 +2566,7 @@ proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
 proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
   ## Merges the second table into the first one (must be declared as `var`).
   runnableExamples:
+    import std/assertions
     var a = toCountTable("aaabbc")
     let b = toCountTable("bcc")
     a.merge(b)
@@ -2491,6 +2580,7 @@ when (NimMajor, NimMinor) <= (1, 0):
   proc merge*[A](s, t: CountTable[A]): CountTable[A] =
     ## Merges the two tables into a new one.
     runnableExamples:
+      import std/assertions
       let
         a = toCountTable("aaabbc")
         b = toCountTable("bcc")
@@ -2553,6 +2643,7 @@ iterator mpairs*[A](t: var CountTable[A]): (A, var int) =
   ## * `pairs iterator<#pairs.i,CountTable[A]>`_
   ## * `mvalues iterator<#mvalues.i,CountTable[A]>`_
   runnableExamples:
+    import std/assertions
     var a = toCountTable("abracadabra")
     for k, v in mpairs(a):
       v = 2
@@ -2571,6 +2662,7 @@ iterator keys*[A](t: CountTable[A]): lent A =
   ## * `pairs iterator<#pairs.i,CountTable[A]>`_
   ## * `values iterator<#values.i,CountTable[A]>`_
   runnableExamples:
+    import std/assertions
     var a = toCountTable("abracadabra")
     for k in keys(a):
       a[k] = 2
@@ -2590,6 +2682,7 @@ iterator values*[A](t: CountTable[A]): int =
   ## * `keys iterator<#keys.i,CountTable[A]>`_
   ## * `mvalues iterator<#mvalues.i,CountTable[A]>`_
   runnableExamples:
+    import std/assertions
     let a = toCountTable("abracadabra")
     for v in values(a):
       assert v < 10
@@ -2608,6 +2701,7 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
   ## * `mpairs iterator<#mpairs.i,CountTable[A]>`_
   ## * `values iterator<#values.i,CountTable[A]>`_
   runnableExamples:
+    import std/assertions
     var a = toCountTable("abracadabra")
     for v in mvalues(a):
       v = 2
@@ -2675,6 +2769,7 @@ proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
 proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
   ## Increments `t[key]` by `val` (default: 1).
   runnableExamples:
+    import std/assertions
     var a = newCountTable("aab")
     a.inc('a')
     a.inc('b', 10)
@@ -2766,6 +2861,7 @@ proc sort*[A](t: CountTableRef[A], order = SortOrder.Descending) =
 proc merge*[A](s, t: CountTableRef[A]) =
   ## Merges the second table into the first one.
   runnableExamples:
+    import std/assertions
     let
       a = newCountTable("aaabbc")
       b = newCountTable("bcc")
@@ -2829,6 +2925,7 @@ iterator mpairs*[A](t: CountTableRef[A]): (A, var int) =
   ## * `pairs iterator<#pairs.i,CountTableRef[A]>`_
   ## * `mvalues iterator<#mvalues.i,CountTableRef[A]>`_
   runnableExamples:
+    import std/assertions
     let a = newCountTable("abracadabra")
     for k, v in mpairs(a):
       v = 2
@@ -2847,6 +2944,7 @@ iterator keys*[A](t: CountTableRef[A]): A =
   ## * `pairs iterator<#pairs.i,CountTable[A]>`_
   ## * `values iterator<#values.i,CountTable[A]>`_
   runnableExamples:
+    import std/assertions
     let a = newCountTable("abracadabra")
     for k in keys(a):
       a[k] = 2
@@ -2866,6 +2964,7 @@ iterator values*[A](t: CountTableRef[A]): int =
   ## * `keys iterator<#keys.i,CountTableRef[A]>`_
   ## * `mvalues iterator<#mvalues.i,CountTableRef[A]>`_
   runnableExamples:
+    import std/assertions
     let a = newCountTable("abracadabra")
     for v in values(a):
       assert v < 10
@@ -2883,6 +2982,7 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
   ## * `mpairs iterator<#mpairs.i,CountTableRef[A]>`_
   ## * `values iterator<#values.i,CountTableRef[A]>`_
   runnableExamples:
+    import std/assertions
     var a = newCountTable("abracadabra")
     for v in mvalues(a):
       v = 2

@@ -20,6 +20,7 @@ macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
   ## It yields `(count, value)` tuples (which must be immediately unpacked).
   ## The default starting count `0` can be manually overridden if needed.
   runnableExamples:
+    import std/assertions
     let a = [10, 20, 30]
     var b: seq[(int, int)]
     for i, x in enumerate(a):

@@ -12,6 +12,7 @@ iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
   ## **Note**: This fails to count to `low(int)` if T = int for
   ## efficiency reasons.
   runnableExamples:
+    import std/assertions
     import std/sugar
     let x = collect(newSeq):
       for i in countdown(7, 3):
@@ -49,6 +50,7 @@ iterator countup*[T](a, b: T, step: Positive = 1): T {.inline.} =
   ## **Note**: This fails to count to `high(int)` if T = int for
   ## efficiency reasons.
   runnableExamples:
+    import std/assertions
     import std/sugar
     let x = collect(newSeq):
       for i in countup(3, 7):
@@ -78,6 +80,7 @@ iterator `..`*[T](a, b: T): T {.inline.} =
   ## See also:
   ## * [..<](#..<.i,T,T)
   runnableExamples:
+    import std/assertions
     import std/sugar
 
     let x = collect(newSeq):

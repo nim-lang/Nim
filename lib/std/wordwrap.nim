@@ -25,6 +25,7 @@ proc wrapWords*(s: string, maxLineWidth = 80,
                newLine = "\n"): string {.noSideEffect.} =
   ## Word wraps `s`.
   runnableExamples:
+    import std/assertions
     doAssert "12345678901234567890".wrapWords() == "12345678901234567890"
     doAssert "123456789012345678901234567890".wrapWords(20) == "12345678901234567890\n1234567890"
     doAssert "Hello Bob. Hello John.".wrapWords(13, false) == "Hello Bob.\nHello John."

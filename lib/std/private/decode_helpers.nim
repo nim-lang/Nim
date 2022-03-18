@@ -4,6 +4,7 @@ proc handleHexChar*(c: char, x: var int): bool {.inline.} =
   ##
   ## When `c` is hexadecimal, the proc is equal to `x = x shl 4 + hex2Int(c)`.
   runnableExamples:
+    import std/assertions
     var x = 0
     assert handleHexChar('a', x)
     assert x == 10

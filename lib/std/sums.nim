@@ -9,6 +9,7 @@
 ## Accurate summation functions.
 
 runnableExamples:
+  import std/assertions
   import std/math
 
   template `~=`(x, y: float): bool = abs(x - y) < 1e-4

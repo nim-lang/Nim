@@ -4,6 +4,7 @@ proc succ*[T: Ordinal](x: T, y = 1): T {.magic: "Succ", noSideEffect.} =
   ## If such a value does not exist, `OverflowDefect` is raised
   ## or a compile time error occurs.
   runnableExamples:
+    import std/assertions
     assert succ(5) == 6
     assert succ(5, 3) == 8
 
@@ -13,6 +14,7 @@ proc pred*[T: Ordinal](x: T, y = 1): T {.magic: "Pred", noSideEffect.} =
   ## If such a value does not exist, `OverflowDefect` is raised
   ## or a compile time error occurs.
   runnableExamples:
+    import std/assertions
     assert pred(5) == 4
     assert pred(5, 3) == 2
 
@@ -22,6 +24,7 @@ proc inc*[T: Ordinal](x: var T, y = 1) {.magic: "Inc", noSideEffect.} =
   ## If such a value does not exist, `OverflowDefect` is raised or a compile
   ## time error occurs. This is a short notation for: `x = succ(x, y)`.
   runnableExamples:
+    import std/assertions
     var i = 2
     inc(i)
     assert i == 3
@@ -34,6 +37,7 @@ proc dec*[T: Ordinal](x: var T, y = 1) {.magic: "Dec", noSideEffect.} =
   ## If such a value does not exist, `OverflowDefect` is raised or a compile
   ## time error occurs. This is a short notation for: `x = pred(x, y)`.
   runnableExamples:
+    import std/assertions
     var i = 2
     dec(i)
     assert i == 1
@@ -166,6 +170,7 @@ proc `-`*(x: int64): int64 {.magic: "UnaryMinusI64", noSideEffect.}
 proc `not`*(x: int): int {.magic: "BitnotI", noSideEffect.} =
   ## Computes the `bitwise complement` of the integer `x`.
   runnableExamples:
+    import std/assertions
     assert not 0'u8 == 255
     assert not 0'i8 == -1
     assert not 1000'u16 == 64535
@@ -201,6 +206,7 @@ proc `div`*(x, y: int): int {.magic: "DivI", noSideEffect.} =
   ##
   ## This is roughly the same as `math.trunc(x/y).int`.
   runnableExamples:
+    import std/assertions
     assert (1 div 2) == 0
     assert (2 div 2) == 1
     assert (3 div 2) == 1
@@ -218,6 +224,7 @@ proc `mod`*(x, y: int): int {.magic: "ModI", noSideEffect.} =
   ##
   ## This is the same as `x - (x div y) * y`.
   runnableExamples:
+    import std/assertions
     assert (7 mod 5) == 2
     assert (-7 mod 5) == -2
     assert (7 mod -5) == 2
@@ -245,6 +252,7 @@ else:
     ## See also:
     ## * `ashr func<#ashr,int,SomeInteger>`_ for arithmetic shift right
     runnableExamples:
+      import std/assertions
       assert 0b0001_0000'i8 shr 2 == 0b0000_0100'i8
       assert 0b0000_0001'i8 shr 1 == 0b0000_0000'i8
       assert 0b1000_0000'i8 shr 4 == 0b1111_1000'i8
@@ -264,6 +272,7 @@ proc `shl`*(x: int, y: SomeInteger): int {.magic: "ShlI", noSideEffect.} =
   ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
   ## is different than in *C*.
   runnableExamples:
+    import std/assertions
     assert 1'i32 shl 4 == 0x0000_0010
     assert 1'i64 shl 4 == 0x0000_0000_0000_0010
 proc `shl`*(x: int8, y: SomeInteger): int8 {.magic: "ShlI", noSideEffect.}
@@ -281,6 +290,7 @@ proc ashr*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.} =
   ## See also:
   ## * `shr func<#shr,int,SomeInteger>`_
   runnableExamples:
+    import std/assertions
     assert ashr(0b0001_0000'i8, 2) == 0b0000_0100'i8
     assert ashr(0b1000_0000'i8, 8) == 0b1111_1111'i8
     assert ashr(0b1000_0000'i8, 1) == 0b1100_0000'i8
@@ -292,6 +302,7 @@ proc ashr*(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
 proc `and`*(x, y: int): int {.magic: "BitandI", noSideEffect.} =
   ## Computes the `bitwise and` of numbers `x` and `y`.
   runnableExamples:
+    import std/assertions
     assert (0b0011 and 0b0101) == 0b0001
     assert (0b0111 and 0b1100) == 0b0100
 proc `and`*(x, y: int8): int8 {.magic: "BitandI", noSideEffect.}
@@ -302,6 +313,7 @@ proc `and`*(x, y: int64): int64 {.magic: "BitandI", noSideEffect.}
 proc `or`*(x, y: int): int {.magic: "BitorI", noSideEffect.} =
   ## Computes the `bitwise or` of numbers `x` and `y`.
   runnableExamples:
+    import std/assertions
     assert (0b0011 or 0b0101) == 0b0111
     assert (0b0111 or 0b1100) == 0b1111
 proc `or`*(x, y: int8): int8 {.magic: "BitorI", noSideEffect.}
@@ -312,6 +324,7 @@ proc `or`*(x, y: int64): int64 {.magic: "BitorI", noSideEffect.}
 proc `xor`*(x, y: int): int {.magic: "BitxorI", noSideEffect.} =
   ## Computes the `bitwise xor` of numbers `x` and `y`.
   runnableExamples:
+    import std/assertions
     assert (0b0011 xor 0b0101) == 0b0110
     assert (0b0111 xor 0b1100) == 0b1011
 proc `xor`*(x, y: int8): int8 {.magic: "BitxorI", noSideEffect.}

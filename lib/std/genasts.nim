@@ -15,6 +15,7 @@ macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untype
   ## AST that represents it. Local `{.inject.}` symbols (e.g. procs) are captured
   ## unless `kDirtyTemplate in options`.
   runnableExamples:
+    import std/assertions
     # This example shows how one could write a simplified version of `unittest.check`.
     import std/[macros, strutils]
     macro check2(cond: bool): untyped =
@@ -28,6 +29,7 @@ macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untype
     if false: check2 a*2 < a+1 # would error with: 'a * 2 < a + 1'' failed: lhs: '6', rhs: '4'
 
   runnableExamples:
+    import std/assertions
     # This example goes in more details about the capture semantics.
     macro fun(a: string, b: static bool): untyped =
       let c = 'z'

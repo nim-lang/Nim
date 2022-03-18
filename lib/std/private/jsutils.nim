@@ -25,6 +25,7 @@ when defined(js):
     ## Returns the name of the JsObject's JavaScript type as a cstring.
     # xxx replace jsffi.jsTypeOf with this definition and add tests
     runnableExamples:
+      import std/assertions
       import std/[jsffi, jsbigints]
       assert jsTypeOf(1.toJs) == "number"
       assert jsTypeOf(false.toJs) == "boolean"
@@ -33,6 +34,7 @@ when defined(js):
 
   proc jsConstructorName*[T](a: T): cstring =
     runnableExamples:
+      import std/assertions
       import std/jsffi
       let a = array[2, float64].default
       assert jsConstructorName(a) == "Float64Array"
@@ -47,6 +49,7 @@ when defined(js):
 
   proc getProtoName*[T](a: T): cstring {.importjs: "Object.prototype.toString.call(#)".} =
     runnableExamples:
+      import std/assertions
       import std/[jsffi, jsbigints]
       type A = ref object
       assert 1.toJs.getProtoName == "[object Number]"
@@ -62,11 +65,13 @@ when defined(js):
     ## The same as `Number.MAX_SAFE_INTEGER` or `2^53 - 1`.
     ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
   runnableExamples:
+    import std/assertions
     let a {.importjs: "Number.MAX_SAFE_INTEGER".}: int64
     assert a == maxSafeInteger
 
   proc isInteger*[T](x: T): bool {.importjs: "Number.isInteger(#)".} =
     runnableExamples:
+      import std/assertions
       import std/jsffi
       assert 1.isInteger
       assert not 1.5.isInteger
@@ -75,6 +80,7 @@ when defined(js):
 
   proc isSafeInteger*[T](x: T): bool {.importjs: "Number.isSafeInteger(#)".} =
     runnableExamples:
+      import std/assertions
       import std/jsffi
       assert not "123".toJs.isSafeInteger
       assert 123.isSafeInteger

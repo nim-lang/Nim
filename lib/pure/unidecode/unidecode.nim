@@ -54,6 +54,7 @@ proc unidecode*(s: string): string =
   ## Finds the sequence of ASCII characters that is the closest approximation
   ## to the UTF-8 string `s`.
   runnableExamples:
+    import std/assertions
     doAssert unidecode("北京") == "Bei Jing "
     doAssert unidecode("Äußerst") == "Ausserst"
 

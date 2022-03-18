@@ -23,6 +23,7 @@ macro with*(arg: typed; calls: varargs[untyped]): untyped =
   ##
   ## .. caution:: This evaluates `arg` multiple times!
   runnableExamples:
+    import std/assertions
     var x = "yay"
     with x:
       add "abc"

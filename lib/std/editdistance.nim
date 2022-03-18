@@ -17,7 +17,9 @@ proc editDistance*(a, b: string): int {.noSideEffect.} =
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
   ## memory overhead.
-  runnableExamples: static: doAssert editdistance("Kitten", "Bitten") == 1
+  runnableExamples:
+    import std/assertions
+    static: doAssert editdistance("Kitten", "Bitten") == 1
   if len(a) > len(b):
     # make `b` the longer string
     return editDistance(b, a)
@@ -182,7 +184,9 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
   ## memory overhead.
-  runnableExamples: static: doAssert editDistanceAscii("Kitten", "Bitten") == 1
+  runnableExamples:
+    import std/assertions
+    static: doAssert editDistanceAscii("Kitten", "Bitten") == 1
   var len1 = a.len
   var len2 = b.len
   if len1 > len2:

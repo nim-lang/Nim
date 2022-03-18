@@ -2,6 +2,7 @@
 proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.} =
   ## Checks whether values within the *same enum* have the same underlying value.
   runnableExamples:
+    import std/assertions
     type
       Enum1 = enum
         field1 = 3, field2
@@ -15,6 +16,7 @@ proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.} =
 proc `==`*(x, y: pointer): bool {.magic: "EqRef", noSideEffect.} =
   ## Checks for equality between two `pointer` variables.
   runnableExamples:
+    import std/assertions
     var # this is a wildly dangerous example
       a = cast[pointer](0)
       b = cast[pointer](nil)
@@ -29,6 +31,7 @@ proc `==`*(x, y: bool): bool {.magic: "EqB", noSideEffect.}
 proc `==`*[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.} =
   ## Checks for equality between two variables of type `set`.
   runnableExamples:
+    import std/assertions
     assert {1, 2, 2, 3} == {1, 2, 3} # duplication in sets is ignored
 
 proc `==`*[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
@@ -43,6 +46,7 @@ proc `<=`*(x, y: string): bool {.magic: "LeStr", noSideEffect.} =
   ## Compares two strings and returns true if `x` is lexicographically
   ## before `y` (uppercase letters come before lowercase letters).
   runnableExamples:
+    import std/assertions
     let
       a = "abc"
       b = "abd"
@@ -55,6 +59,7 @@ proc `<=`*(x, y: char): bool {.magic: "LeCh", noSideEffect.} =
   ## Compares two chars and returns true if `x` is lexicographically
   ## before `y` (uppercase letters come before lowercase letters).
   runnableExamples:
+    import std/assertions
     let
       a = 'a'
       b = 'b'
@@ -69,6 +74,7 @@ proc `<=`*[T](x, y: set[T]): bool {.magic: "LeSet", noSideEffect.} =
   ## A subset `x` has all of its members in `y` and `y` doesn't necessarily
   ## have more members than `x`. That is, `x` can be equal to `y`.
   runnableExamples:
+    import std/assertions
     let
       a = {3, 5}
       b = {1, 3, 5, 7}
@@ -86,6 +92,7 @@ proc `<`*(x, y: string): bool {.magic: "LtStr", noSideEffect.} =
   ## Compares two strings and returns true if `x` is lexicographically
   ## before `y` (uppercase letters come before lowercase letters).
   runnableExamples:
+    import std/assertions
     let
       a = "abc"
       b = "abd"
@@ -98,6 +105,7 @@ proc `<`*(x, y: char): bool {.magic: "LtCh", noSideEffect.} =
   ## Compares two chars and returns true if `x` is lexicographically
   ## before `y` (uppercase letters come before lowercase letters).
   runnableExamples:
+    import std/assertions
     let
       a = 'a'
       b = 'b'
@@ -112,6 +120,7 @@ proc `<`*[T](x, y: set[T]): bool {.magic: "LtSet", noSideEffect.} =
   ## A strict or proper subset `x` has all of its members in `y` but `y` has
   ## more elements than `y`.
   runnableExamples:
+    import std/assertions
     let
       a = {3, 5}
       b = {1, 3, 5, 7}
@@ -258,6 +267,7 @@ proc clamp*[T](x, a, b: T): T =
   ## **See also:**
   ## `math.clamp` for a version that takes a `Slice[T]` instead.
   runnableExamples:
+    import std/assertions
     assert (1.4).clamp(0.0, 1.0) == 1.0
     assert (0.5).clamp(0.0, 1.0) == 0.5
     assert 4.clamp(1, 3) == max(1, min(3, 4))

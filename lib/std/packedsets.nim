@@ -170,6 +170,7 @@ proc initPackedSet*[A]: PackedSet[A] =
   ## **See also:**
   ## * `toPackedSet proc <#toPackedSet,openArray[A]>`_
   runnableExamples:
+    import std/assertions
     let a = initPackedSet[int]()
     assert len(a) == 0
 
@@ -190,6 +191,7 @@ proc contains*[A](s: PackedSet[A], key: A): bool =
   ##
   ## This allows the usage of the `in` operator.
   runnableExamples:
+    import std/assertions
     type ABCD = enum A, B, C, D
 
     let a = [1, 3, 5].toPackedSet
@@ -225,6 +227,7 @@ proc incl*[A](s: var PackedSet[A], key: A) =
   ## * `incl proc <#incl,PackedSet[A],PackedSet[A]>`_ for including a set
   ## * `containsOrIncl proc <#containsOrIncl,PackedSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var a = initPackedSet[int]()
     a.incl(3)
     a.incl(3)
@@ -255,6 +258,7 @@ proc incl*[A](s: var PackedSet[A], other: PackedSet[A]) =
   ## * `incl proc <#incl,PackedSet[A],A>`_ for including an element
   ## * `containsOrIncl proc <#containsOrIncl,PackedSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var a = [1].toPackedSet
     a.incl([5].toPackedSet)
     assert len(a) == 2
@@ -270,6 +274,7 @@ proc toPackedSet*[A](x: openArray[A]): PackedSet[A] {.since: (1, 3).} =
   ## **See also:**
   ## * `initPackedSet proc <#initPackedSet>`_
   runnableExamples:
+    import std/assertions
     let a = [5, 6, 7, 8, 8].toPackedSet
     assert len(a) == 4
     assert $a == "{5, 6, 7, 8}"
@@ -290,6 +295,7 @@ proc containsOrIncl*[A](s: var PackedSet[A], key: A): bool =
   ## * `incl proc <#incl,PackedSet[A],A>`_ for including an element
   ## * `missingOrExcl proc <#missingOrExcl,PackedSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var a = initPackedSet[int]()
     assert a.containsOrIncl(3) == false
     assert a.containsOrIncl(3) == true
@@ -323,6 +329,7 @@ proc excl*[A](s: var PackedSet[A], key: A) =
   ## * `excl proc <#excl,PackedSet[A],PackedSet[A]>`_ for excluding a set
   ## * `missingOrExcl proc <#missingOrExcl,PackedSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var a = [3].toPackedSet
     a.excl(3)
     a.excl(3)
@@ -341,6 +348,7 @@ proc excl*[A](s: var PackedSet[A], other: PackedSet[A]) =
   ## * `excl proc <#excl,PackedSet[A],A>`_ for excluding an element
   ## * `missingOrExcl proc <#missingOrExcl,PackedSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var a = [1, 5].toPackedSet
     a.excl([5].toPackedSet)
     assert len(a) == 1
@@ -352,6 +360,7 @@ proc excl*[A](s: var PackedSet[A], other: PackedSet[A]) =
 proc len*[A](s: PackedSet[A]): int {.inline.} =
   ## Returns the number of elements in `s`.
   runnableExamples:
+    import std/assertions
     let a = [1, 3, 5].toPackedSet
     assert len(a) == 3
 
@@ -376,6 +385,7 @@ proc missingOrExcl*[A](s: var PackedSet[A], key: A): bool =
   ## * `excl proc <#excl,PackedSet[A],PackedSet[A]>`_ for excluding a set
   ## * `containsOrIncl proc <#containsOrIncl,PackedSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var a = [5].toPackedSet
     assert a.missingOrExcl(5) == false
     assert a.missingOrExcl(5) == true
@@ -387,6 +397,7 @@ proc missingOrExcl*[A](s: var PackedSet[A], key: A): bool =
 proc clear*[A](result: var PackedSet[A]) =
   ## Clears the `PackedSet[A]` back to an empty state.
   runnableExamples:
+    import std/assertions
     var a = [5, 7].toPackedSet
     clear(a)
     assert len(a) == 0
@@ -403,6 +414,7 @@ proc clear*[A](result: var PackedSet[A]) =
 proc isNil*[A](x: PackedSet[A]): bool {.inline.} =
   ## Returns true if `x` is empty, false otherwise.
   runnableExamples:
+    import std/assertions
     var a = initPackedSet[int]()
     assert a.isNil
     a.incl(2)
@@ -416,6 +428,7 @@ proc assign*[A](dest: var PackedSet[A], src: PackedSet[A]) =
   ## Copies `src` to `dest`.
   ## `dest` does not need to be initialized by the `initPackedSet proc <#initPackedSet>`_.
   runnableExamples:
+    import std/assertions
     var
       a = initPackedSet[int]()
       b = initPackedSet[int]()
@@ -457,6 +470,7 @@ proc union*[A](s1, s2: PackedSet[A]): PackedSet[A] =
   ##
   ## The same as `s1 + s2 <#+,PackedSet[A],PackedSet[A]>`_.
   runnableExamples:
+    import std/assertions
     let
       a = [1, 2, 3].toPackedSet
       b = [3, 4, 5].toPackedSet
@@ -472,6 +486,7 @@ proc intersection*[A](s1, s2: PackedSet[A]): PackedSet[A] =
   ##
   ## The same as `s1 * s2 <#*,PackedSet[A],PackedSet[A]>`_.
   runnableExamples:
+    import std/assertions
     let
       a = [1, 2, 3].toPackedSet
       b = [3, 4, 5].toPackedSet
@@ -489,6 +504,7 @@ proc difference*[A](s1, s2: PackedSet[A]): PackedSet[A] =
   ##
   ## The same as `s1 - s2 <#-,PackedSet[A],PackedSet[A]>`_.
   runnableExamples:
+    import std/assertions
     let
       a = [1, 2, 3].toPackedSet
       b = [3, 4, 5].toPackedSet
@@ -504,6 +520,7 @@ proc difference*[A](s1, s2: PackedSet[A]): PackedSet[A] =
 proc symmetricDifference*[A](s1, s2: PackedSet[A]): PackedSet[A] =
   ## Returns the symmetric difference of the sets `s1` and `s2`.
   runnableExamples:
+    import std/assertions
     let
       a = [1, 2, 3].toPackedSet
       b = [3, 4, 5].toPackedSet
@@ -531,6 +548,7 @@ proc `-`*[A](s1, s2: PackedSet[A]): PackedSet[A] {.inline.} =
 proc disjoint*[A](s1, s2: PackedSet[A]): bool =
   ## Returns true if the sets `s1` and `s2` have no items in common.
   runnableExamples:
+    import std/assertions
     let
       a = [1, 2].toPackedSet
       b = [2, 3].toPackedSet
@@ -556,6 +574,7 @@ proc `<=`*[A](s1, s2: PackedSet[A]): bool =
   ## A subset `s1` has all of its elements in `s2`, but `s2` doesn't necessarily
   ## have more elements than `s1`. That is, `s1` can be equal to `s2`.
   runnableExamples:
+    import std/assertions
     let
       a = [1].toPackedSet
       b = [1, 2].toPackedSet
@@ -575,6 +594,7 @@ proc `<`*[A](s1, s2: PackedSet[A]): bool =
   ## A strict or proper subset `s1` has all of its elements in `s2`, but `s2` has
   ## more elements than `s1`.
   runnableExamples:
+    import std/assertions
     let
       a = [1].toPackedSet
       b = [1, 2].toPackedSet
@@ -588,6 +608,7 @@ proc `<`*[A](s1, s2: PackedSet[A]): bool =
 proc `==`*[A](s1, s2: PackedSet[A]): bool =
   ## Returns true if both `s1` and `s2` have the same elements and set size.
   runnableExamples:
+    import std/assertions
     assert [1, 2].toPackedSet == [2, 1].toPackedSet
     assert [1, 2].toPackedSet == [2, 1, 2].toPackedSet
 
@@ -596,6 +617,7 @@ proc `==`*[A](s1, s2: PackedSet[A]): bool =
 proc `$`*[A](s: PackedSet[A]): string =
   ## Converts `s` to a string.
   runnableExamples:
+    import std/assertions
     let a = [1, 2, 3].toPackedSet
     assert $a == "{1, 2, 3}"
 

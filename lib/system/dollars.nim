@@ -1,5 +1,6 @@
 ## `$` is Nim's general way of spelling `toString`:idx:.
 runnableExamples:
+  import std/assertions
   assert $0.1 == "0.1"
   assert $(-2*3) == "-6"
 

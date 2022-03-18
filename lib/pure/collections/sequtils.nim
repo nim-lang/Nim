@@ -587,6 +587,7 @@ func delete*[T](s: var seq[T]; first, last: Natural) {.deprecated: "use `delete(
     var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.delete(3, 8)
     assert outcome == dest
+
   doAssert first <= last
   if first >= s.len:
     return

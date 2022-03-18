@@ -60,6 +60,7 @@ iterator items*[T](a: set[T]): T {.inline.} =
 iterator items*(a: cstring): char {.inline.} =
   ## Iterates over each item of `a`.
   runnableExamples:
+    import std/assertions
     from std/sequtils import toSeq
     assert toSeq("abc\0def".cstring) == @['a', 'b', 'c']
     assert toSeq("abc".cstring) == @['a', 'b', 'c']
@@ -90,6 +91,7 @@ iterator mitems*(a: var cstring): var char {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
   # xxx this should give CT error in js RT.
   runnableExamples:
+    import std/assertions
     from std/sugar import collect
     var a = "abc\0def"
     var b = a.cstring
@@ -120,6 +122,7 @@ iterator items*[T: enum and Ordinal](E: typedesc[T]): T =
   ## Iterates over the values of `E`.
   ## See also `enumutils.items` for enums with holes.
   runnableExamples:
+    import std/assertions
     type Goo = enum g0 = 2, g1, g2
     from std/sequtils import toSeq
     assert Goo.toSeq == [g0, g1, g2]
@@ -278,6 +281,7 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
   ##   The current implementation also has a bug
   ##   that affects symbol binding in the loop body.
   runnableExamples:
+    import std/assertions
     var t = (1, "foo")
     for v in fields(t): v = default(typeof(v))
     doAssert t == (0, "")
@@ -290,6 +294,7 @@ iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[key: string,
   ##   The current implementation also has a bug that affects symbol binding
   ##   in the loop body.
   runnableExamples:
+    import std/assertions
     var t1 = (1, "foo")
     var t2 = default(typeof(t1))
     for v1, v2 in fields(t1, t2): v2 = v1
@@ -332,6 +337,7 @@ iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
   ##   The current implementation also has a bug that affects symbol binding
   ##   in the loop body.
   runnableExamples:
+    import std/assertions
     type Foo = object
       x1: int
       x2: string

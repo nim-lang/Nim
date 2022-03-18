@@ -17,10 +17,12 @@
 ## * `md5 module<md5.html>`_ for the MD5 checksum algorithm
 
 runnableExamples:
+  import std/assertions
   let accessName = secureHash("John Doe")
   assert $accessName == "AE6E4D1209F17B460503904FAD297B31E9CF6362"
 
 runnableExamples("-r:off"):
+  import std/assertions
   let
     a = secureHashFile("myFile.nim")
     b = parseSecureHash("10DFAEBF6BFDBC7939957068E2EFACEC4972933C")
@@ -205,6 +207,7 @@ proc secureHash*(str: openArray[char]): SecureHash =
   ## * `secureHashFile proc <#secureHashFile,string>`_ for generating a `SecureHash` from a file
   ## * `parseSecureHash proc <#parseSecureHash,string>`_ for converting a string `hash` to `SecureHash`
   runnableExamples:
+    import std/assertions
     let hash = secureHash("Hello World")
     assert hash == parseSecureHash("0A4D55A8D778E5022FAB701977C5D840BBC486D0")
 
@@ -241,6 +244,7 @@ proc `$`*(self: SecureHash): string =
   ## **See also:**
   ## * `secureHash proc <#secureHash,openArray[char]>`_ for generating a `SecureHash` from a string
   runnableExamples:
+    import std/assertions
     let hash = secureHash("Hello World")
     assert $hash == "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
 
@@ -255,6 +259,7 @@ proc parseSecureHash*(hash: string): SecureHash =
   ## * `secureHash proc <#secureHash,openArray[char]>`_ for generating a `SecureHash` from a string
   ## * `secureHashFile proc <#secureHashFile,string>`_ for generating a `SecureHash` from a file
   runnableExamples:
+    import std/assertions
     let
       hashStr = "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
       secureHash = secureHash("Hello World")
@@ -266,6 +271,7 @@ proc parseSecureHash*(hash: string): SecureHash =
 proc `==`*(a, b: SecureHash): bool =
   ## Checks if two `SecureHash` values are identical.
   runnableExamples:
+    import std/assertions
     let
       a = secureHash("Hello World")
       b = secureHash("Goodbye World")

@@ -118,6 +118,7 @@ proc nimFloatToString(a: float): cstring =
 proc addFloat*(result: var string; x: float | float32) {.inline.} =
   ## Converts float to its string representation and appends it to `result`.
   runnableExamples:
+    import std/assertions
     var
       s = "foo:"
       b = 45.67

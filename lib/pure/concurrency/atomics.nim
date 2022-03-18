@@ -12,6 +12,7 @@
 ## Unstable API.
 
 runnableExamples:
+  import std/assertions
   # Atomic
   var loc: Atomic[int]
   loc.store(4)

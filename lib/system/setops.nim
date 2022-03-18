@@ -3,6 +3,7 @@ func incl*[T](x: var set[T], y: T) {.magic: "Incl".} =
   ##
   ## This is the same as `x = x + {y}`, but it might be more efficient.
   runnableExamples:
+    import std/assertions
     var a = {1, 3, 5}
     a.incl(2)
     assert a == {1, 2, 3, 5}
@@ -12,6 +13,7 @@ func incl*[T](x: var set[T], y: T) {.magic: "Incl".} =
 template incl*[T](x: var set[T], y: set[T]) =
   ## Includes the set `y` in the set `x`.
   runnableExamples:
+    import std/assertions
     var a = {1, 3, 5, 7}
     var b = {4, 5, 6}
     a.incl(b)
@@ -23,6 +25,7 @@ func excl*[T](x: var set[T], y: T) {.magic: "Excl".} =
   ##
   ## This is the same as `x = x - {y}`, but it might be more efficient.
   runnableExamples:
+    import std/assertions
     var b = {2, 3, 5, 6, 12, 545}
     b.excl(5)
     assert b == {2, 3, 6, 12, 545}
@@ -30,6 +33,7 @@ func excl*[T](x: var set[T], y: T) {.magic: "Excl".} =
 template excl*[T](x: var set[T], y: set[T]) =
   ## Excludes the set `y` from the set `x`.
   runnableExamples:
+    import std/assertions
     var a = {1, 3, 5, 7}
     var b = {3, 4, 5}
     a.excl(b) 
@@ -40,6 +44,7 @@ func card*[T](x: set[T]): int {.magic: "Card".} =
   ## Returns the cardinality of the set `x`, i.e. the number of elements
   ## in the set.
   runnableExamples:
+    import std/assertions
     var a = {1, 3, 5, 7}
     assert card(a) == 4
     var b = {1, 3, 5, 7, 5}
@@ -52,16 +57,19 @@ func len*[T](x: set[T]): int {.magic: "Card".}
 func `*`*[T](x, y: set[T]): set[T] {.magic: "MulSet".} =
   ## This operator computes the intersection of two sets.
   runnableExamples:
+    import std/assertions
     assert {1, 2, 3} * {2, 3, 4} == {2, 3}
 
 func `+`*[T](x, y: set[T]): set[T] {.magic: "PlusSet".} =
   ## This operator computes the union of two sets.
   runnableExamples:
+    import std/assertions
     assert {1, 2, 3} + {2, 3, 4} == {1, 2, 3, 4}
 
 func `-`*[T](x, y: set[T]): set[T] {.magic: "MinusSet".} =
   ## This operator computes the difference of two sets.
   runnableExamples:
+    import std/assertions
     assert {1, 2, 3} - {2, 3, 4} == {1}
 
 func contains*[T](x: set[T], y: T): bool {.magic: "InSet".} =
@@ -74,6 +82,7 @@ func contains*[T](x: set[T], y: T): bool {.magic: "InSet".} =
   ## But for the `in` operator that would be the wrong direction for this
   ## piece of code:
   runnableExamples:
+    import std/assertions
     var s: set[range['a'..'z']] = {'a'..'c'}
     assert s.contains('c')
     assert 'b' in s

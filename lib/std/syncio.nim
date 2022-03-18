@@ -932,6 +932,7 @@ iterator lines*(filename: string): string {.tags: [ReadIOEffect].} =
   ## character(s) are removed from the iterated lines. Example:
   ##
   runnableExamples:
+    import std/assertions
     import std/strutils
 
     proc transformLetters(filename: string) =

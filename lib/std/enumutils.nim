@@ -94,6 +94,7 @@ macro enumNames(a: typed): untyped =
 iterator items*[T: HoleyEnum](E: typedesc[T]): T =
   ## Iterates over an enum with holes.
   runnableExamples:
+    import std/assertions
     type
       A = enum
         a0 = 2
@@ -150,6 +151,7 @@ template symbolRank*[T: enum](a: T): int =
   ## The cost for a `HoleyEnum` is implementation defined, currently optimized
   ## for small enums, otherwise is `O(T.enumLen)`.
   runnableExamples:
+    import std/assertions
     type
       A = enum # HoleyEnum
         a0 = -3
@@ -179,6 +181,7 @@ func symbolName*[T: enum](a: T): string =
   ##
   ## This uses `symbolRank`.
   runnableExamples:
+    import std/assertions
     type B = enum
       b0 = (10, "kb0")
       b1 = "kb1"
