@@ -347,16 +347,6 @@ func `$`*(code: HttpCode): string =
 
 func `==`*(a, b: HttpCode): bool {.borrow.}
 
-proc `==`*(rawCode: string, code: HttpCode): bool
-          {.deprecated: "Deprecated since v1.2; use rawCode == $code instead".} =
-  ## Compare the string form of the status code with a HttpCode
-  ##
-  ## **Note**: According to HTTP/1.1 specification, the reason phrase is
-  ##           optional and should be ignored by the client, making this
-  ##           proc only suitable for comparing the `HttpCode` against the
-  ##           string form of itself.
-  return cmpIgnoreCase(rawCode, $code) == 0
-
 func is1xx*(code: HttpCode): bool {.inline, since: (1, 5).} =
   ## Determines whether `code` is a 1xx HTTP status code.
   runnableExamples:
