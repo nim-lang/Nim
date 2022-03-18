@@ -12,6 +12,7 @@
 ## a denominator. The denominator can not be 0.
 
 runnableExamples:
+  import std/assertions
   let
     r1 = 1 // 2
     r2 = -3 // 4
@@ -38,6 +39,7 @@ func reduce*[T: SomeInteger](x: var Rational[T]) =
   ##
   ## **Note:** This is called automatically by the various operations on rationals.
   runnableExamples:
+    import std/assertions
     var r = Rational[int](num: 2, den: 4) # 1/2
     reduce(r)
     doAssert r.num == 1
@@ -66,6 +68,7 @@ func initRational*[T: SomeInteger](num, den: T): Rational[T] =
 func `//`*[T](num, den: T): Rational[T] =
   ## A friendlier version of `initRational <#initRational,T,T>`_.
   runnableExamples:
+    import std/assertions
     let x = 1 // 3 + 1 // 5
     doAssert x == 8 // 15
 
@@ -74,6 +77,7 @@ func `//`*[T](num, den: T): Rational[T] =
 func `$`*[T](x: Rational[T]): string =
   ## Turns a rational number into a string.
   runnableExamples:
+    import std/assertions
     doAssert $(1 // 2) == "1/2"
 
   result = $x.num & "/" & $x.den
@@ -81,6 +85,7 @@ func `$`*[T](x: Rational[T]): string =
 func toRational*[T: SomeInteger](x: T): Rational[T] =
   ## Converts some integer `x` to a rational number.
   runnableExamples:
+    import std/assertions
     doAssert toRational(42) == 42 // 1
 
   result.num = x
@@ -96,6 +101,7 @@ func toRational*(x: float,
   # David Eppstein / UC Irvine / 8 Aug 1993
   # With corrections from Arno Formella, May 2008
   runnableExamples:
+    import std/assertions
     let x = 1.2
     doAssert x.toRational.toFloat == x
 
@@ -277,6 +283,7 @@ func `==`*(x, y: Rational): bool =
 func abs*[T](x: Rational[T]): Rational[T] =
   ## Returns the absolute value of `x`.
   runnableExamples:
+    import std/assertions
     doAssert abs(1 // 2) == 1 // 2
     doAssert abs(-1 // 2) == 1 // 2
 

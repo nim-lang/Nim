@@ -476,6 +476,7 @@ macro scanTuple*(input: untyped; pattern: static[string]; matcherTypes: varargs[
   ## If using a user defined matcher, provide the types in order they appear after pattern:
   ## `line.scanTuple("${yourMatcher()}", int)`
   runnableExamples:
+    import std/assertions
     let (success, year, month, day, time) = scanTuple("1000-01-01 00:00:00", "$i-$i-$i$s$+")
     if success:
       assert year == 1000

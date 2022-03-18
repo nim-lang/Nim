@@ -22,6 +22,7 @@ func expandTabs*(s: string, tabSize: int = 8): string =
   ## and inserted space, except for newline, which resets the column number
   ## back to 0.
   runnableExamples:
+    import std/assertions
     doAssert expandTabs("\t", 4) == "    "
     doAssert expandTabs("\tfoo\t", 4) == "    foo "
     doAssert expandTabs("a\tb\n\txy\t", 3) == "a  b\n   xy "
@@ -60,6 +61,7 @@ func partition*(s: string, sep: string,
   ## **See also:**
   ## * `rpartition proc <#rpartition,string,string>`_
   runnableExamples:
+    import std/assertions
     doAssert partition("foo:bar:baz", ":") == ("foo", ":", "bar:baz")
     doAssert partition("foo:bar:baz", ":", right = true) == ("foo:bar", ":", "baz")
     doAssert partition("foobar", ":") == ("foobar", "", "")
@@ -80,6 +82,7 @@ func rpartition*(s: string, sep: string): (string, string, string) =
   ## **See also:**
   ## * `partition proc <#partition,string,string,bool>`_
   runnableExamples:
+    import std/assertions
     doAssert rpartition("foo:bar:baz", ":") == ("foo:bar", ":", "baz")
     doAssert rpartition("foobar", ":") == ("", "", "foobar")
 

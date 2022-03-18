@@ -21,6 +21,7 @@
 ## Here is an example of how to use the configuration file parser:
 runnableExamples("-r:off"):
   import std/[strutils, streams]
+  import std/assertions
 
   let configFile = "example.ini"
   var f = newFileStream(configFile, fmRead)
@@ -61,6 +62,7 @@ runnableExamples("-r:off"):
 ]##
 
 runnableExamples:
+  import std/assertions
   var dict = newConfig()
   dict.setSectionKey("","charset", "utf-8")
   dict.setSectionKey("Package", "name", "hello")
@@ -115,6 +117,7 @@ runnableExamples("-r:off"):
 # taken from https://docs.python.org/3/library/configparser.html#supported-ini-file-structure
 runnableExamples:
   import std/streams
+  import std/assertions
 
   var dict = loadConfig(newStringStream("""[Simple Values]
     key=value

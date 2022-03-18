@@ -23,6 +23,7 @@ This has some surprising effects:
 ]##
 
 runnableExamples:
+  import std/assertions
   let msg = "hello"
   assert fmt"{msg}\n" == "hello\\n"
 
@@ -34,6 +35,7 @@ There are multiple ways to get around this, including the use of the `&` operato
 ]##
 
 runnableExamples:
+  import std/assertions
   let msg = "hello"
 
   assert &"{msg}\n" == "hello\n"
@@ -49,6 +51,7 @@ The choice of style is up to you.
 ]##
 
 runnableExamples:
+  import std/assertions
   assert &"""{"abc":>4}""" == " abc"
   assert &"""{"abc":<4}""" == "abc "
 
@@ -57,6 +60,7 @@ runnableExamples:
 ]##
 
 runnableExamples:
+  import std/assertions
   assert fmt"{-12345:08}" == "-0012345"
   assert fmt"{-1:3}" == " -1"
   assert fmt"{-1:03}" == "-01"
@@ -77,6 +81,7 @@ runnableExamples:
 # Expressions
 ]##
 runnableExamples:
+  import std/assertions
   let x = 3.14
   assert fmt"{(if x!=0: 1.0/x else: 0):.5}" == "0.31847"
   assert fmt"""{(block:
@@ -95,6 +100,7 @@ an equal sign and the results of evaluated expression.
 ]##
 
 runnableExamples:
+  import std/assertions
   assert fmt"{123.456=}" == "123.456=123.456"
   assert fmt"{123.456=:>9.3f}" == "123.456=  123.456"
 
@@ -117,6 +123,7 @@ Note that it is space sensitive:
 ]##
 
 runnableExamples:
+  import std/assertions
   let x = "12"
   assert fmt"{x=}" == "x=12"
   assert fmt"{x =:}" == "x =12"
@@ -151,6 +158,7 @@ do not need to be escaped.
 ]##
 
 runnableExamples:
+  import std/assertions
   let x = "hello"
   assert fmt"""{ "\{(" & x & ")\}" }""" == "{(hello)}"
   assert fmt"""{{({ x })}}""" == "{(hello)}"
@@ -675,6 +683,7 @@ proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
 macro fmt*(pattern: static string; openChar: static char, closeChar: static char): string =
   ## Interpolates `pattern` using symbols in scope.
   runnableExamples:
+    import std/assertions
     let x = 7
     assert "var is {x * 2}".fmt == "var is 14"
     assert "var is {{x}}".fmt == "var is {x}" # escape via doubling
@@ -684,6 +693,7 @@ macro fmt*(pattern: static string; openChar: static char, closeChar: static char
     assert fmt"\n" == r"\n" # raw string literal
     assert "\n".fmt == "\n" # regular literal (likewise with `fmt("\n")` or `fmt "\n"`)
   runnableExamples:
+    import std/assertions
     # custom `openChar`, `closeChar`
     let x = 7
     assert "<x>".fmt('<', '>') == "7"
@@ -703,6 +713,7 @@ macro `&`*(pattern: string{lit}): string =
   # more flexible, readable (no confusion with the binary `&`), self-documenting,
   # not to mention #18275, bug #18278.
   runnableExamples:
+    import std/assertions
     let x = 7
     assert &"{x}\n" == "7\n" # regular string literal
     assert &"{x}\n" == "7\n".fmt # `fmt` can be used instead

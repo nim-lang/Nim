@@ -19,6 +19,7 @@
 
 ## ## Combine URIs
 runnableExamples:
+  import std/assertions
   let host = parseUri("https://nim-lang.org")
   assert $host == "https://nim-lang.org"
   assert $(host / "/blog.html") == "https://nim-lang.org/blog.html"
@@ -26,12 +27,14 @@ runnableExamples:
 
 ## ## Access URI item
 runnableExamples:
+  import std/assertions
   let res = parseUri("sftp://127.0.0.1:4343")
   assert isAbsolute(res)
   assert res.port == "4343"
 
 ## ## Data URI Base64
 runnableExamples:
+  import std/assertions
   doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
   doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
@@ -74,6 +77,7 @@ func encodeUrl*(s: string, usePlus = true): string =
   ## **See also:**
   ## * `decodeUrl func<#decodeUrl,string>`_
   runnableExamples:
+    import std/assertions
     assert encodeUrl("https://nim-lang.org") == "https%3A%2F%2Fnim-lang.org"
     assert encodeUrl("https://nim-lang.org/this is a test") == "https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test"
     assert encodeUrl("https://nim-lang.org/this is a test", false) == "https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test"
@@ -102,6 +106,7 @@ func decodeUrl*(s: string, decodePlus = true): string =
   ## **See also:**
   ## * `encodeUrl func<#encodeUrl,string>`_
   runnableExamples:
+    import std/assertions
     assert decodeUrl("https%3A%2F%2Fnim-lang.org") == "https://nim-lang.org"
     assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test") == "https://nim-lang.org/this is a test"
     assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test",
@@ -140,6 +145,7 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
   ## **See also:**
   ## * `encodeUrl func<#encodeUrl,string>`_
   runnableExamples:
+    import std/assertions
     assert encodeQuery({: }) == ""
     assert encodeQuery({"a": "1", "b": "2"}) == "a=1&b=2"
     assert encodeQuery({"a": "1", "b": ""}) == "a=1&b"
@@ -159,6 +165,7 @@ iterator decodeQuery*(data: string): tuple[key, value: string] =
   ## a `UriParseError` is raised when there is an unencoded `=` character in a decoded
   ## value, which was the behavior in Nim < 1.5.1.
   runnableExamples:
+    import std/assertions
     import std/sequtils
     assert toSeq(decodeQuery("foo=1&bar=2=3")) == @[("foo", "1"), ("bar", "2=3")]
     assert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
@@ -249,6 +256,7 @@ func initUri*(isIpv6 = false): Uri =
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
   runnableExamples:
+    import std/assertions
     var uri2 = initUri(isIpv6 = true)
     uri2.scheme = "tcp"
     uri2.hostname = "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
@@ -271,6 +279,7 @@ func parseUri*(uri: string, result: var Uri) =
   ## * `Uri type <#Uri>`_ for available fields in the URI type
   ## * `initUri func <#initUri>`_ for initializing a URI
   runnableExamples:
+    import std/assertions
     var res = initUri()
     parseUri("https://nim-lang.org/docs/manual.html", res)
     assert res.scheme == "https"
@@ -318,6 +327,7 @@ func parseUri*(uri: string): Uri =
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
   runnableExamples:
+    import std/assertions
     let res = parseUri("ftp://Username:Password@Hostname")
     assert res.username == "Username"
     assert res.password == "Password"
@@ -329,6 +339,7 @@ func removeDotSegments(path: string): string =
   ## Collapses `..` and `.` in `path` in a similar way as done in `os.normalizedPath`
   ## Caution: this is buggy.
   runnableExamples:
+    import std/assertions
     assert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/.//./") == "a1/a3/a4/a5/a6/a7/"
     assert removeDotSegments("http://www.ai.") == "http://www.ai."
   # xxx adapt or reuse `pathnorm.normalizePath(path, '/')` to make this more reliable, but
@@ -386,6 +397,7 @@ func combine*(base: Uri, reference: Uri): Uri =
   ## **See also:**
   ## * `/ func <#/,Uri,string>`_ for building URIs
   runnableExamples:
+    import std/assertions
     let foo = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("/baz"))
     assert foo.path == "/baz"
     let bar = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("baz"))
@@ -431,6 +443,7 @@ func combine*(uris: varargs[Uri]): Uri =
   ## **See also:**
   ## * `/ func <#/,Uri,string>`_ for building URIs
   runnableExamples:
+    import std/assertions
     let foo = combine(parseUri("https://nim-lang.org/"), parseUri("docs/"),
         parseUri("manual.html"))
     assert foo.hostname == "nim-lang.org"
@@ -442,6 +455,7 @@ func combine*(uris: varargs[Uri]): Uri =
 func isAbsolute*(uri: Uri): bool =
   ## Returns true if URI is absolute, false otherwise.
   runnableExamples:
+    import std/assertions
     assert parseUri("https://nim-lang.org").isAbsolute
     assert not parseUri("nim-lang").isAbsolute
   return uri.scheme != "" and (uri.hostname != "" or uri.path != "")
@@ -456,6 +470,7 @@ func `/`*(x: Uri, path: string): Uri =
   ## **See also:**
   ## * `combine func <#combine,Uri,Uri>`_
   runnableExamples:
+    import std/assertions
     let foo = parseUri("https://nim-lang.org/foo/bar") / "/baz"
     assert foo.path == "/foo/bar/baz"
     let bar = parseUri("https://nim-lang.org/foo/bar") / "baz"
@@ -483,6 +498,7 @@ func `/`*(x: Uri, path: string): Uri =
 func `?`*(u: Uri, query: openArray[(string, string)]): Uri =
   ## Concatenates the query parameters to the specified URI object.
   runnableExamples:
+    import std/assertions
     let foo = parseUri("https://example.com") / "foo" ? {"bar": "qux"}
     assert $foo == "https://example.com/foo?bar=qux"
   result = u
@@ -491,6 +507,7 @@ func `?`*(u: Uri, query: openArray[(string, string)]): Uri =
 func `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
   runnableExamples:
+    import std/assertions
     assert $parseUri("https://nim-lang.org") == "https://nim-lang.org"
   result = ""
   if u.scheme.len > 0:
@@ -536,6 +553,8 @@ proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3)
   ## * `mimetypes <mimetypes.html>`_ for `mime` argument
   ## * https://tools.ietf.org/html/rfc2397
   ## * https://en.wikipedia.org/wiki/Data_URI_scheme
-  runnableExamples: static: assert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+  runnableExamples:
+    import std/assertions
+    static: assert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
   assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
   result = "data:" & mime & ";charset=" & encoding & ";base64," & base64.encode(data)

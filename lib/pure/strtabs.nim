@@ -12,6 +12,7 @@
 ## style-insensitive mode.
 
 runnableExamples:
+  import std/assertions
   var t = newStringTable()
   t["name"] = "John"
   t["city"] = "Monaco"
@@ -27,6 +28,7 @@ runnableExamples:
 ## all letters are compared case insensitively within the ASCII range
 ## and underscores are ignored.
 runnableExamples:
+  import std/assertions
   var x = newStringTable(modeStyleInsensitive)
   x["first_name"] = "John"
   x["LastName"] = "Doe"
@@ -38,6 +40,7 @@ runnableExamples:
 ## `% <#%25,string,StringTableRef,set[FormatFlag]>`_ for the string table
 ## is also provided.
 runnableExamples:
+  import std/assertions
   var t = {"name": "John", "city": "Monaco"}.newStringTable
   doAssert "${name} lives in ${city}" % t == "John lives in Monaco"
 
@@ -166,6 +169,7 @@ proc `[]`*(t: StringTableRef, key: string): var string {.
   ## * `hasKey proc <#hasKey,StringTableRef,string>`_ for checking if a key
   ##   is in the table
   runnableExamples:
+    import std/assertions
     var t = {"name": "John", "city": "Monaco"}.newStringTable
     doAssert t["name"] == "John"
     doAssertRaises(KeyError):
@@ -186,6 +190,7 @@ proc getOrDefault*(t: StringTableRef; key: string,
   ## * `[]= proc <#[]=,StringTableRef,string,string>`_ for inserting a new
   ##   (key, value) pair in the table
   runnableExamples:
+    import std/assertions
     var t = {"name": "John", "city": "Monaco"}.newStringTable
     doAssert t.getOrDefault("name") == "John"
     doAssert t.getOrDefault("occupation") == ""
@@ -204,6 +209,7 @@ proc hasKey*(t: StringTableRef, key: string): bool {.rtlFunc,
   ## * `getOrDefault proc <#getOrDefault,StringTableRef,string,string>`_
   ## * `contains proc <#contains,StringTableRef,string>`_
   runnableExamples:
+    import std/assertions
     var t = {"name": "John", "city": "Monaco"}.newStringTable
     doAssert t.hasKey("name")
     doAssert not t.hasKey("occupation")
@@ -213,6 +219,7 @@ proc contains*(t: StringTableRef, key: string): bool =
   ## Alias of `hasKey proc <#hasKey,StringTableRef,string>`_ for use with
   ## the `in` operator.
   runnableExamples:
+    import std/assertions
     var t = {"name": "John", "city": "Monaco"}.newStringTable
     doAssert "name" in t
     doAssert "occupation" notin t
@@ -241,6 +248,7 @@ proc `[]=`*(t: StringTableRef, key, val: string) {.
   ## * `[] proc <#[],StringTableRef,string>`_ for retrieving a value of a key
   ## * `del proc <#del,StringTableRef,string>`_ for removing a key from the table
   runnableExamples:
+    import std/assertions
     var t = {"name": "John", "city": "Monaco"}.newStringTable
     t["occupation"] = "teacher"
     doAssert t.hasKey("occupation")
@@ -319,6 +327,7 @@ proc clear*(s: StringTableRef, mode: StringTableMode) {.
   ## See also:
   ## * `del proc <#del,StringTableRef,string>`_ for removing a key from the table
   runnableExamples:
+    import std/assertions
     var t = {"name": "John", "city": "Monaco"}.newStringTable
     clear(t, modeCaseSensitive)
     doAssert len(t) == 0
@@ -343,6 +352,7 @@ proc del*(t: StringTableRef, key: string) =
   ## * `[]= proc <#[]=,StringTableRef,string,string>`_ for inserting a new
   ##   (key, value) pair in the table
   runnableExamples:
+    import std/assertions
     var t = {"name": "John", "city": "Monaco"}.newStringTable
     t.del("name")
     doAssert len(t) == 1
@@ -393,6 +403,7 @@ proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
   rtlFunc, extern: "nstFormat".} =
   ## The `%` operator for string tables.
   runnableExamples:
+    import std/assertions
     var t = {"name": "John", "city": "Monaco"}.newStringTable
     doAssert "${name} lives in ${city}" % t == "John lives in Monaco"
 

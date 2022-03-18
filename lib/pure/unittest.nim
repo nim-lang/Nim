@@ -742,6 +742,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ## The test passes if the raised exception is part of the acceptable
   ## exceptions. Otherwise, it fails.
   runnableExamples:
+    import std/assertions
     import std/[math, random, strutils]
     proc defectiveRobot() =
       randomize()

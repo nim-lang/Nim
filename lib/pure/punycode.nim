@@ -174,6 +174,7 @@ func decode*(encoded: string): string {.raises: [PunyError].} =
   result = $output
 
 runnableExamples:
+  import std/assertions
   static:
     block:
       doAssert encode("") == ""

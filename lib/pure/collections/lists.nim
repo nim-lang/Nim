@@ -19,6 +19,7 @@
 ##
 ## ## Lists
 runnableExamples:
+  import std/assertions
   var list = initDoublyLinkedList[int]()
   let
     a = newDoublyLinkedNode[int](3)
@@ -38,6 +39,7 @@ runnableExamples:
 
 ## ## Rings
 runnableExamples:
+  import std/assertions
   var ring = initSinglyLinkedRing[int]()
   let
     a = newSinglyLinkedNode[int](3)
@@ -153,6 +155,7 @@ proc initDoublyLinkedRing*[T](): DoublyLinkedRing[T] =
 proc newDoublyLinkedNode*[T](value: T): DoublyLinkedNode[T] =
   ## Creates a new doubly linked node with the given `value`.
   runnableExamples:
+    import std/assertions
     let n = newDoublyLinkedNode[int](5)
     assert n.value == 5
 
@@ -171,6 +174,7 @@ proc newSinglyLinkedNode*[T](value: T): SinglyLinkedNode[T] =
 func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a new `SinglyLinkedList` from the members of `elems`.
   runnableExamples:
+    import std/assertions
     from std/sequtils import toSeq
     let a = [1, 2, 3, 4, 5].toSinglyLinkedList
     assert a.toSeq == [1, 2, 3, 4, 5]
@@ -182,6 +186,7 @@ func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (
 func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a new `DoublyLinkedList` from the members of `elems`.
   runnableExamples:
+    import std/assertions
     from std/sequtils import toSeq
     let a = [1, 2, 3, 4, 5].toDoublyLinkedList
     assert a.toSeq == [1, 2, 3, 4, 5]
@@ -211,6 +216,7 @@ iterator items*[T](L: SomeLinkedList[T]): T =
   ## * `mitems iterator <#mitems.i,SomeLinkedList[T]>`_
   ## * `nodes iterator <#nodes.i,SomeLinkedList[T]>`_
   runnableExamples:
+    import std/assertions
     from std/sugar import collect
     from std/sequtils import toSeq
     let a = collect(initSinglyLinkedList):
@@ -227,6 +233,7 @@ iterator items*[T](L: SomeLinkedRing[T]): T =
   ## * `mitems iterator <#mitems.i,SomeLinkedRing[T]>`_
   ## * `nodes iterator <#nodes.i,SomeLinkedRing[T]>`_
   runnableExamples:
+    import std/assertions
     from std/sugar import collect
     from std/sequtils import toSeq
     let a = collect(initSinglyLinkedRing):
@@ -243,6 +250,7 @@ iterator mitems*[T](L: var SomeLinkedList[T]): var T =
   ## * `items iterator <#items.i,SomeLinkedList[T]>`_
   ## * `nodes iterator <#nodes.i,SomeLinkedList[T]>`_
   runnableExamples:
+    import std/assertions
     var a = initSinglyLinkedList[int]()
     for i in 1..5:
       a.add(10 * i)
@@ -260,6 +268,7 @@ iterator mitems*[T](L: var SomeLinkedRing[T]): var T =
   ## * `items iterator <#items.i,SomeLinkedRing[T]>`_
   ## * `nodes iterator <#nodes.i,SomeLinkedRing[T]>`_
   runnableExamples:
+    import std/assertions
     var a = initSinglyLinkedRing[int]()
     for i in 1..5:
       a.add(10 * i)
@@ -278,6 +287,7 @@ iterator nodes*[T](L: SomeLinkedList[T]): SomeLinkedNode[T] =
   ## * `items iterator <#items.i,SomeLinkedList[T]>`_
   ## * `mitems iterator <#mitems.i,SomeLinkedList[T]>`_
   runnableExamples:
+    import std/assertions
     var a = initDoublyLinkedList[int]()
     for i in 1..5:
       a.add(10 * i)
@@ -303,6 +313,7 @@ iterator nodes*[T](L: SomeLinkedRing[T]): SomeLinkedNode[T] =
   ## * `items iterator <#items.i,SomeLinkedRing[T]>`_
   ## * `mitems iterator <#mitems.i,SomeLinkedRing[T]>`_
   runnableExamples:
+    import std/assertions
     var a = initDoublyLinkedRing[int]()
     for i in 1..5:
       a.add(10 * i)
@@ -325,6 +336,7 @@ iterator nodes*[T](L: SomeLinkedRing[T]): SomeLinkedNode[T] =
 proc `$`*[T](L: SomeLinkedCollection[T]): string =
   ## Turns a list into its string representation for logging and printing.
   runnableExamples:
+    import std/assertions
     let a = [1, 2, 3, 4].toSinglyLinkedList
     assert $a == "[1, 2, 3, 4]"
 
@@ -341,6 +353,7 @@ proc find*[T](L: SomeLinkedCollection[T], value: T): SomeLinkedNode[T] =
   ## **See also:**
   ## * `contains proc <#contains,SomeLinkedCollection[T],T>`_
   runnableExamples:
+    import std/assertions
     let a = [9, 8].toSinglyLinkedList
     assert a.find(9).value == 9
     assert a.find(1) == nil
@@ -356,6 +369,7 @@ proc contains*[T](L: SomeLinkedCollection[T], value: T): bool {.inline.} =
   ## **See also:**
   ## * `find proc <#find,SomeLinkedCollection[T],T>`_
   runnableExamples:
+    import std/assertions
     let a = [9, 8].toSinglyLinkedList
     assert a.contains(9)
     assert 8 in a
@@ -371,6 +385,7 @@ proc prepend*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   ## * `prependMoved proc <#prependMoved,T,T>`_
   ##   for moving the second list instead of copying
   runnableExamples:
+    import std/assertions
     from std/sequtils import toSeq
     var a = [4, 5].toSinglyLinkedList
     let b = [1, 2, 3].toSinglyLinkedList
@@ -393,6 +408,7 @@ proc prependMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
   ## * `prepend proc <#prepend,T,T>`_
   ##   for prepending a copy of a list
   runnableExamples:
+    import std/assertions
     import std/[sequtils, enumerate, sugar]
     var
       a = [4, 5].toSinglyLinkedList
@@ -422,6 +438,7 @@ proc add*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) {.inline.} =
   ##   for prepending a node
   ## * `prepend proc <#prepend,SinglyLinkedList[T],T>`_ for prepending a value
   runnableExamples:
+    import std/assertions
     var a = initSinglyLinkedList[int]()
     let n = newSinglyLinkedNode[int](9)
     a.add(n)
@@ -443,6 +460,7 @@ proc add*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
   ##   for prepending a node
   ## * `prepend proc <#prepend,SinglyLinkedList[T],T>`_ for prepending a value
   runnableExamples:
+    import std/assertions
     var a = initSinglyLinkedList[int]()
     a.add(9)
     a.add(8)
@@ -460,6 +478,7 @@ proc prepend*[T](L: var SinglyLinkedList[T],
   ## * `add proc <#add,SinglyLinkedList[T],T>`_ for appending a value
   ## * `prepend proc <#prepend,SinglyLinkedList[T],T>`_ for prepending a value
   runnableExamples:
+    import std/assertions
     var a = initSinglyLinkedList[int]()
     let n = newSinglyLinkedNode[int](9)
     a.prepend(n)
@@ -479,6 +498,7 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
   ## * `prepend proc <#prepend,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
   ##   for prepending a node
   runnableExamples:
+    import std/assertions
     var a = initSinglyLinkedList[int]()
     a.prepend(9)
     a.prepend(8)
@@ -489,6 +509,7 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
 func copy*[T](a: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a shallow copy of `a`.
   runnableExamples:
+    import std/assertions
     from std/sequtils import toSeq
     type Foo = ref object
       x: int
@@ -518,6 +539,7 @@ proc addMoved*[T](a, b: var SinglyLinkedList[T]) {.since: (1, 5, 1).} =
   ## **See also:**
   ## * `add proc <#add,T,T>`_ for adding a copy of a list
   runnableExamples:
+    import std/assertions
     import std/[sequtils, enumerate, sugar]
     var
       a = [1, 2, 3].toSinglyLinkedList
@@ -554,6 +576,7 @@ proc add*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## * `remove proc <#remove,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
+    import std/assertions
     var a = initDoublyLinkedList[int]()
     let n = newDoublyLinkedNode[int](9)
     a.add(n)
@@ -579,6 +602,7 @@ proc add*[T](L: var DoublyLinkedList[T], value: T) =
   ## * `remove proc <#remove,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
+    import std/assertions
     var a = initDoublyLinkedList[int]()
     a.add(9)
     a.add(8)
@@ -597,6 +621,7 @@ proc prepend*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## * `remove proc <#remove,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
+    import std/assertions
     var a = initDoublyLinkedList[int]()
     let n = newDoublyLinkedNode[int](9)
     a.prepend(n)
@@ -622,6 +647,7 @@ proc prepend*[T](L: var DoublyLinkedList[T], value: T) =
   ## * `remove proc <#remove,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
+    import std/assertions
     var a = initDoublyLinkedList[int]()
     a.prepend(9)
     a.prepend(8)
@@ -632,6 +658,7 @@ proc prepend*[T](L: var DoublyLinkedList[T], value: T) =
 func copy*[T](a: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a shallow copy of `a`.
   runnableExamples:
+    import std/assertions
     from std/sequtils import toSeq
     type Foo = ref object
       x: int
@@ -662,6 +689,7 @@ proc addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 5, 1).} =
   ## * `add proc <#add,T,T>`_
   ##   for adding a copy of a list
   runnableExamples:
+    import std/assertions
     import std/[sequtils, enumerate, sugar]
     var
       a = [1, 2, 3].toDoublyLinkedList
@@ -696,6 +724,7 @@ proc add*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
   ##   for moving the second list instead of copying
   runnableExamples:
+    import std/assertions
     from std/sequtils import toSeq
     var a = [1, 2, 3].toSinglyLinkedList
     let b = [4, 5].toSinglyLinkedList
@@ -715,6 +744,7 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]): bool {.disc
   ## Attempting to remove an element not contained in the list is a no-op.
   ## When the list is cyclic, the cycle is preserved after removal.
   runnableExamples:
+    import std/assertions
     import std/[sequtils, enumerate, sugar]
     var a = [0, 1, 2].toSinglyLinkedList
     let n = a.head.next
@@ -752,6 +782,7 @@ proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## otherwise the effects are undefined.
   ## When the list is cyclic, the cycle is preserved after removal.
   runnableExamples:
+    import std/assertions
     import std/[sequtils, enumerate, sugar]
     var a = [0, 1, 2].toSinglyLinkedList
     let n = a.head.next
@@ -784,6 +815,7 @@ proc add*[T](L: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) =
   ##   for prepending a node
   ## * `prepend proc <#prepend,SinglyLinkedRing[T],T>`_ for prepending a value
   runnableExamples:
+    import std/assertions
     var a = initSinglyLinkedRing[int]()
     let n = newSinglyLinkedNode[int](9)
     a.add(n)
@@ -808,6 +840,7 @@ proc add*[T](L: var SinglyLinkedRing[T], value: T) =
   ##   for prepending a node
   ## * `prepend proc <#prepend,SinglyLinkedRing[T],T>`_ for prepending a value
   runnableExamples:
+    import std/assertions
     var a = initSinglyLinkedRing[int]()
     a.add(9)
     a.add(8)
@@ -824,6 +857,7 @@ proc prepend*[T](L: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) =
   ## * `add proc <#add,SinglyLinkedRing[T],T>`_ for appending a value
   ## * `prepend proc <#prepend,SinglyLinkedRing[T],T>`_ for prepending a value
   runnableExamples:
+    import std/assertions
     var a = initSinglyLinkedRing[int]()
     let n = newSinglyLinkedNode[int](9)
     a.prepend(n)
@@ -848,6 +882,7 @@ proc prepend*[T](L: var SinglyLinkedRing[T], value: T) =
   ## * `prepend proc <#prepend,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
   ##   for prepending a node
   runnableExamples:
+    import std/assertions
     var a = initSinglyLinkedRing[int]()
     a.prepend(9)
     a.prepend(8)
@@ -868,6 +903,7 @@ proc add*[T](L: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
   ## * `remove proc <#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
+    import std/assertions
     var a = initDoublyLinkedRing[int]()
     let n = newDoublyLinkedNode[int](9)
     a.add(n)
@@ -895,6 +931,7 @@ proc add*[T](L: var DoublyLinkedRing[T], value: T) =
   ## * `remove proc <#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
+    import std/assertions
     var a = initDoublyLinkedRing[int]()
     a.add(9)
     a.add(8)
@@ -913,6 +950,7 @@ proc prepend*[T](L: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
   ## * `remove proc <#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
+    import std/assertions
     var a = initDoublyLinkedRing[int]()
     let n = newDoublyLinkedNode[int](9)
     a.prepend(n)
@@ -940,6 +978,7 @@ proc prepend*[T](L: var DoublyLinkedRing[T], value: T) =
   ## * `remove proc <#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
+    import std/assertions
     var a = initDoublyLinkedRing[int]()
     a.prepend(9)
     a.prepend(8)
@@ -952,6 +991,7 @@ proc remove*[T](L: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
   ## This function assumes, for the sake of efficiency, that `n` is contained in `L`,
   ## otherwise the effects are undefined.
   runnableExamples:
+    import std/assertions
     var a = initDoublyLinkedRing[int]()
     let n = newDoublyLinkedNode[int](5)
     a.add(n)

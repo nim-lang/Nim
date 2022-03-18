@@ -18,6 +18,7 @@
 ## -----------
 ##
 runnableExamples:
+  import std/assertions
   var heap = [8, 2].toHeapQueue
   heap.push(5)
   # the first element is the lowest element
@@ -33,6 +34,7 @@ runnableExamples:
 ## implemented.
 
 runnableExamples:
+  import std/assertions
   type Job = object
     priority: int
 
@@ -64,6 +66,7 @@ proc initHeapQueue*[T](): HeapQueue[T] =
 proc len*[T](heap: HeapQueue[T]): int {.inline.} =
   ## Returns the number of elements of `heap`.
   runnableExamples:
+    import std/assertions
     let heap = [9, 5, 8].toHeapQueue
     assert heap.len == 3
 
@@ -142,6 +145,7 @@ proc toHeapQueue*[T](x: openArray[T]): HeapQueue[T] {.since: (1, 3).} =
   ## **See also:**
   ## * `initHeapQueue proc <#initHeapQueue>`_
   runnableExamples:
+    import std/assertions
     var heap = [9, 5, 8].toHeapQueue
     assert heap.pop() == 5
     assert heap[0] == 8
@@ -155,6 +159,7 @@ proc pop*[T](heap: var HeapQueue[T]): T =
   ## Pops and returns the smallest item from `heap`,
   ## maintaining the heap invariant.
   runnableExamples:
+    import std/assertions
     var heap = [9, 5, 8].toHeapQueue
     assert heap.pop() == 5
 
@@ -169,6 +174,7 @@ proc pop*[T](heap: var HeapQueue[T]): T =
 proc find*[T](heap: HeapQueue[T], x: T): int {.since: (1, 3).} =
   ## Linear scan to find the index of the item `x` or -1 if not found.
   runnableExamples:
+    import std/assertions
     let heap = [9, 5, 8].toHeapQueue
     assert heap.find(5) == 0
     assert heap.find(9) == 1
@@ -181,6 +187,7 @@ proc find*[T](heap: HeapQueue[T], x: T): int {.since: (1, 3).} =
 proc del*[T](heap: var HeapQueue[T], index: Natural) =
   ## Removes the element at `index` from `heap`, maintaining the heap invariant.
   runnableExamples:
+    import std/assertions
     var heap = [9, 5, 8].toHeapQueue
     heap.del(1)
     assert heap[0] == 5
@@ -202,6 +209,7 @@ proc replace*[T](heap: var HeapQueue[T], item: sink T): T =
   ## **See also:**
   ## * `pushpop proc <#pushpop,HeapQueue[T],sinkT>`_
   runnableExamples:
+    import std/assertions
     var heap = [5, 12].toHeapQueue
     assert heap.replace(6) == 5
     assert heap.len == 2
@@ -218,6 +226,7 @@ proc pushpop*[T](heap: var HeapQueue[T], item: sink T): T =
   ## **See also:**
   ## * `replace proc <#replace,HeapQueue[T],sinkT>`_
   runnableExamples:
+    import std/assertions
     var heap = [5, 12].toHeapQueue
     assert heap.pushpop(6) == 5
     assert heap.len == 2
@@ -232,6 +241,7 @@ proc pushpop*[T](heap: var HeapQueue[T], item: sink T): T =
 proc clear*[T](heap: var HeapQueue[T]) =
   ## Removes all elements from `heap`, making it empty.
   runnableExamples:
+    import std/assertions
     var heap = [9, 5, 8].toHeapQueue
     heap.clear()
     assert heap.len == 0
@@ -241,6 +251,7 @@ proc clear*[T](heap: var HeapQueue[T]) =
 proc `$`*[T](heap: HeapQueue[T]): string =
   ## Turns a heap into its string representation.
   runnableExamples:
+    import std/assertions
     let heap = [1, 2].toHeapQueue
     assert $heap == "[1, 2]"
 

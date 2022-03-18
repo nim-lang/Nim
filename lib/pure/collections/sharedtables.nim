@@ -65,6 +65,7 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
   ## Retrieves the value at `t[key]`.
   ## `value` can be modified in the scope of the `withValue` call.
   runnableExamples:
+    import std/assertions
     var table: SharedTable[string, string]
     init(table)
 
@@ -99,6 +100,7 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
   ## Retrieves the value at `t[key]`.
   ## `value` can be modified in the scope of the `withValue` call.
   runnableExamples:
+    import std/assertions
     var table: SharedTable[string, string]
     init(table)
 

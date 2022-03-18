@@ -20,6 +20,7 @@
 ## ===========
 ##
 runnableExamples:
+  import std/assertions
   # Call randomize() once to initialize the default random number generator.
   # If this is not called, the same results will occur every time these
   # examples are run.
@@ -146,6 +147,7 @@ proc next*(r: var Rand): uint64 =
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   ## * `skipRandomNumbers proc<#skipRandomNumbers,Rand>`_
   runnableExamples("-r:off"):
+    import std/assertions
     var r = initRand(2019)
     assert r.next() == 13223559681708962501'u64 # implementation defined
     assert r.next() == 7229677234260823147'u64 # ditto
@@ -181,6 +183,7 @@ proc skipRandomNumbers*(s: var Rand) =
   ## **See also:**
   ## * `next proc<#next,Rand>`_
   runnableExamples("--threads:on"):
+    import std/assertions
     import std/[random, threadpool]
 
     const spawns = 4
@@ -239,6 +242,7 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
+    import std/assertions
     var r = initRand(123)
     if false:
       assert r.rand(100) == 96 # implementation defined
@@ -262,6 +266,7 @@ proc rand*(max: int): int {.benign.} =
   ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples("-r:off"):
+    import std/assertions
     randomize(123)
     assert [rand(100), rand(100)] == [96, 63] # implementation defined
 
@@ -322,6 +327,7 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
+    import std/assertions
     var r = initRand(345)
     assert r.rand(1..5) <= 5
     assert r.rand(-1.1 .. 1.2) >= -1.1
@@ -351,6 +357,7 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## * `rand proc<#rand,float>`_ that returns a floating point number
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
+    import std/assertions
     randomize(345)
     assert rand(1..6) <= 6
 
@@ -370,6 +377,7 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice
   runnableExamples:
+    import std/assertions
     randomize(567)
     if false: # implementation defined
       assert rand(int8) == -42
@@ -391,6 +399,7 @@ proc sample*[T](r: var Rand; s: set[T]): T =
   ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that uses a
   ##   cumulative distribution function
   runnableExamples:
+    import std/assertions
     var r = initRand(987)
     let s = {1, 3, 5, 7, 9}
     assert r.sample(s) in s
@@ -415,6 +424,7 @@ proc sample*[T](s: set[T]): T =
   ## * `sample proc<#sample,openArray[T],openArray[U]>`_ that uses a
   ##   cumulative distribution function
   runnableExamples:
+    import std/assertions
     randomize(987)
     let s = {1, 3, 5, 7, 9}
     assert sample(s) in s
@@ -430,6 +440,7 @@ proc sample*[T](r: var Rand; a: openArray[T]): T =
   ##   cumulative distribution function
   ## * `sample proc<#sample,Rand,set[T]>`_ for sets
   runnableExamples:
+    import std/assertions
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     var r = initRand(456)
     assert r.sample(marbles) in marbles
@@ -450,6 +461,7 @@ proc sample*[T](a: openArray[T]): lent T =
   ##   cumulative distribution function
   ## * `sample proc<#sample,set[T]>`_ for sets
   runnableExamples:
+    import std/assertions
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     randomize(456)
     assert sample(marbles) in marbles
@@ -475,6 +487,7 @@ proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
   ## * `sample proc<#sample,Rand,openArray[T]>`_ that does not use a CDF
   ## * `sample proc<#sample,Rand,set[T]>`_ for sets
   runnableExamples:
+    import std/assertions
     from std/math import cumsummed
 
     let marbles = ["red", "blue", "green", "yellow", "purple"]
@@ -509,6 +522,7 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
   ## * `sample proc<#sample,openArray[T]>`_ that does not use a CDF
   ## * `sample proc<#sample,set[T]>`_ for sets
   runnableExamples:
+    import std/assertions
     from std/math import cumsummed
 
     let marbles = ["red", "blue", "green", "yellow", "purple"]
@@ -600,6 +614,7 @@ proc shuffle*[T](r: var Rand; x: var openArray[T]) =
   ## **See also:**
   ## * `shuffle proc<#shuffle,openArray[T]>`_ that uses the default RNG
   runnableExamples:
+    import std/assertions
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
     var r = initRand(678)
     r.shuffle(cards)
@@ -621,6 +636,7 @@ proc shuffle*[T](x: var openArray[T]) =
   ## **See also:**
   ## * `shuffle proc<#shuffle,Rand,openArray[T]>`_ that uses a provided state
   runnableExamples:
+    import std/assertions
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
     randomize(678)
     shuffle(cards)

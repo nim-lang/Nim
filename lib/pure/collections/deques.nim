@@ -21,6 +21,7 @@
 ## access, unless your program logic guarantees it indirectly.
 
 runnableExamples:
+  import std/assertions
   var a = [10, 20, 30, 40].toDeque
 
   doAssertRaises(IndexDefect, echo a[4])
@@ -110,6 +111,7 @@ template xBoundsCheck(deq, i) =
 proc `[]`*[T](deq: Deque[T], i: Natural): lent T {.inline.} =
   ## Accesses the `i`-th element of `deq`.
   runnableExamples:
+    import std/assertions
     let a = [10, 20, 30, 40, 50].toDeque
     assert a[0] == 10
     assert a[3] == 40
@@ -122,6 +124,7 @@ proc `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
   ## Accesses the `i`-th element of `deq` and returns a mutable
   ## reference to it.
   runnableExamples:
+    import std/assertions
     var a = [10, 20, 30, 40, 50].toDeque
     inc(a[0])
     assert a[0] == 11
@@ -132,6 +135,7 @@ proc `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
 proc `[]=`*[T](deq: var Deque[T], i: Natural, val: sink T) {.inline.} =
   ## Sets the `i`-th element of `deq` to `val`.
   runnableExamples:
+    import std/assertions
     var a = [10, 20, 30, 40, 50].toDeque
     a[0] = 99
     a[3] = 66
@@ -146,6 +150,7 @@ proc `[]`*[T](deq: Deque[T], i: BackwardsIndex): lent T {.inline.} =
   ##
   ## `deq[^1]` is the last element.
   runnableExamples:
+    import std/assertions
     let a = [10, 20, 30, 40, 50].toDeque
     assert a[^1] == 50
     assert a[^4] == 20
@@ -160,6 +165,7 @@ proc `[]`*[T](deq: var Deque[T], i: BackwardsIndex): var T {.inline.} =
   ##
   ## `deq[^1]` is the last element.
   runnableExamples:
+    import std/assertions
     var a = [10, 20, 30, 40, 50].toDeque
     inc(a[^1])
     assert a[^1] == 51
@@ -172,6 +178,7 @@ proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: sink T) {.inline.} =
   ##
   ## `deq[^1]` is the last element.
   runnableExamples:
+    import std/assertions
     var a = [10, 20, 30, 40, 50].toDeque
     a[^1] = 99
     a[^3] = 77
@@ -187,6 +194,7 @@ iterator items*[T](deq: Deque[T]): lent T =
   ## **See also:**
   ## * `mitems iterator <#mitems.i,Deque[T]>`_
   runnableExamples:
+    import std/assertions
     from std/sequtils import toSeq
 
     let a = [10, 20, 30, 40, 50].toDeque
@@ -203,6 +211,7 @@ iterator mitems*[T](deq: var Deque[T]): var T =
   ## **See also:**
   ## * `items iterator <#items.i,Deque[T]>`_
   runnableExamples:
+    import std/assertions
     var a = [10, 20, 30, 40, 50].toDeque
     assert $a == "[10, 20, 30, 40, 50]"
     for x in mitems(a):
@@ -217,6 +226,7 @@ iterator mitems*[T](deq: var Deque[T]): var T =
 iterator pairs*[T](deq: Deque[T]): tuple[key: int, val: T] =
   ## Yields every `(position, value)`-pair of `deq`.
   runnableExamples:
+    import std/assertions
     from std/sequtils import toSeq
 
     let a = [10, 20, 30].toDeque
@@ -233,6 +243,7 @@ proc contains*[T](deq: Deque[T], item: T): bool {.inline.} =
   ## Usually used via the `in` operator.
   ## It is the equivalent of `deq.find(item) >= 0`.
   runnableExamples:
+    import std/assertions
     let q = [7, 9].toDeque
     assert 7 in q
     assert q.contains(7)
@@ -263,6 +274,7 @@ proc addFirst*[T](deq: var Deque[T], item: sink T) =
   ## **See also:**
   ## * `addLast proc <#addLast,Deque[T],sinkT>`_
   runnableExamples:
+    import std/assertions
     var a = initDeque[int]()
     for i in 1 .. 5:
       a.addFirst(10 * i)
@@ -279,6 +291,7 @@ proc addLast*[T](deq: var Deque[T], item: sink T) =
   ## **See also:**
   ## * `addFirst proc <#addFirst,Deque[T],sinkT>`_
   runnableExamples:
+    import std/assertions
     var a = initDeque[int]()
     for i in 1 .. 5:
       a.addLast(10 * i)
@@ -295,6 +308,7 @@ proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
   ## **See also:**
   ## * `initDeque proc <#initDeque,int>`_
   runnableExamples:
+    import std/assertions
     let a = toDeque([7, 8, 9])
     assert len(a) == 3
     assert $a == "[7, 8, 9]"
@@ -310,6 +324,7 @@ proc peekFirst*[T](deq: Deque[T]): lent T {.inline.} =
   ## * `peekFirst proc <#peekFirst,Deque[T]_2>`_ which returns a mutable reference
   ## * `peekLast proc <#peekLast,Deque[T]>`_
   runnableExamples:
+    import std/assertions
     let a = [10, 20, 30, 40, 50].toDeque
     assert $a == "[10, 20, 30, 40, 50]"
     assert a.peekFirst == 10
@@ -325,6 +340,7 @@ proc peekLast*[T](deq: Deque[T]): lent T {.inline.} =
   ## * `peekLast proc <#peekLast,Deque[T]_2>`_ which returns a mutable reference
   ## * `peekFirst proc <#peekFirst,Deque[T]>`_
   runnableExamples:
+    import std/assertions
     let a = [10, 20, 30, 40, 50].toDeque
     assert $a == "[10, 20, 30, 40, 50]"
     assert a.peekLast == 50
@@ -341,6 +357,7 @@ proc peekFirst*[T](deq: var Deque[T]): var T {.inline, since: (1, 3).} =
   ## * `peekFirst proc <#peekFirst,Deque[T]>`_
   ## * `peekLast proc <#peekLast,Deque[T]_2>`_
   runnableExamples:
+    import std/assertions
     var a = [10, 20, 30, 40, 50].toDeque
     a.peekFirst() = 99
     assert $a == "[99, 20, 30, 40, 50]"
@@ -356,6 +373,7 @@ proc peekLast*[T](deq: var Deque[T]): var T {.inline, since: (1, 3).} =
   ## * `peekFirst proc <#peekFirst,Deque[T]_2>`_
   ## * `peekLast proc <#peekLast,Deque[T]>`_
   runnableExamples:
+    import std/assertions
     var a = [10, 20, 30, 40, 50].toDeque
     a.peekLast() = 99
     assert $a == "[10, 20, 30, 40, 99]"
@@ -373,6 +391,7 @@ proc popFirst*[T](deq: var Deque[T]): T {.inline, discardable.} =
   ## * `popLast proc <#popLast,Deque[T]>`_
   ## * `shrink proc <#shrink,Deque[T],int,int>`_
   runnableExamples:
+    import std/assertions
     var a = [10, 20, 30, 40, 50].toDeque
     assert $a == "[10, 20, 30, 40, 50]"
     assert a.popFirst == 10
@@ -390,6 +409,7 @@ proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
   ## * `popFirst proc <#popFirst,Deque[T]>`_
   ## * `shrink proc <#shrink,Deque[T],int,int>`_
   runnableExamples:
+    import std/assertions
     var a = [10, 20, 30, 40, 50].toDeque
     assert $a == "[10, 20, 30, 40, 50]"
     assert a.popLast == 50
@@ -406,6 +426,7 @@ proc clear*[T](deq: var Deque[T]) {.inline.} =
   ## **See also:**
   ## * `shrink proc <#shrink,Deque[T],int,int>`_
   runnableExamples:
+    import std/assertions
     var a = [10, 20, 30, 40, 50].toDeque
     assert $a == "[10, 20, 30, 40, 50]"
     clear(a)
@@ -427,6 +448,7 @@ proc shrink*[T](deq: var Deque[T], fromFirst = 0, fromLast = 0) =
   ## * `popFirst proc <#popFirst,Deque[T]>`_
   ## * `popLast proc <#popLast,Deque[T]>`_
   runnableExamples:
+    import std/assertions
     var a = [10, 20, 30, 40, 50].toDeque
     assert $a == "[10, 20, 30, 40, 50]"
     a.shrink(fromFirst = 2, fromLast = 1)
@@ -449,6 +471,7 @@ proc shrink*[T](deq: var Deque[T], fromFirst = 0, fromLast = 0) =
 proc `$`*[T](deq: Deque[T]): string =
   ## Turns a deque into its string representation.
   runnableExamples:
+    import std/assertions
     let a = [10, 20, 30].toDeque
     assert $a == "[10, 20, 30]"
 

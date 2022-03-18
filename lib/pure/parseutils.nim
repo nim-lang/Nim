@@ -74,6 +74,7 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0,
   ## too big to fit into ``number``, only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
   runnableExamples:
+    import std/assertions
     var num: int
     doAssert parseBin("0100_1110_0110_1001_1110_1101", num) == 29
     doAssert num == 5138925
@@ -121,6 +122,7 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
   ## too big to fit into ``number``, only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
   runnableExamples:
+    import std/assertions
     var num: int
     doAssert parseOct("0o23464755", num) == 10
     doAssert num == 5138925
@@ -168,6 +170,7 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
   ## too big to fit into ``number``, only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
   runnableExamples:
+    import std/assertions
     var num: int
     doAssert parseHex("4E_69_ED", num) == 8
     doAssert num == 5138925
@@ -213,6 +216,7 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
   ## the number of the parsed characters or 0 in case of an error.
   ## If error, the value of `ident` is not changed.
   runnableExamples:
+    import std/assertions
     var res: string
     doAssert parseIdent("Hello World", res, 0) == 5
     doAssert res == "Hello"
@@ -231,6 +235,7 @@ proc parseIdent*(s: string, start = 0): string =
   ## Parses an identifier and returns it or an empty string in
   ## case of an error.
   runnableExamples:
+    import std/assertions
     doAssert parseIdent("Hello World", 0) == "Hello"
     doAssert parseIdent("Hello World", 1) == "ello"
     doAssert parseIdent("Hello World", 5) == ""
@@ -247,6 +252,7 @@ proc parseChar*(s: string, c: var char, start = 0): int =
   ## In case of error (if start >= s.len) it returns 0
   ## and the value of `c` is unchanged.
   runnableExamples:
+    import std/assertions
     var c: char
     doAssert "nim".parseChar(c, 3) == 0
     doAssert c == '\0'
@@ -260,6 +266,7 @@ proc skipWhitespace*(s: string, start = 0): int {.inline.} =
   ## Skips the whitespace starting at ``s[start]``. Returns the number of
   ## skipped characters.
   runnableExamples:
+    import std/assertions
     doAssert skipWhitespace("Hello World", 0) == 0
     doAssert skipWhitespace(" Hello World", 0) == 1
     doAssert skipWhitespace("Hello World", 5) == 1
@@ -271,6 +278,7 @@ proc skip*(s, token: string, start = 0): int {.inline.} =
   ## Skips the `token` starting at ``s[start]``. Returns the length of `token`
   ## or 0 if there was no `token` at ``s[start]``.
   runnableExamples:
+    import std/assertions
     doAssert skip("2019-01-22", "2019", 0) == 4
     doAssert skip("2019-01-22", "19", 0) == 0
     doAssert skip("2019-01-22", "19", 2) == 2
@@ -285,6 +293,7 @@ proc skip*(s, token: string, start = 0): int {.inline.} =
 proc skipIgnoreCase*(s, token: string, start = 0): int =
   ## Same as `skip` but case is ignored for token matching.
   runnableExamples:
+    import std/assertions
     doAssert skipIgnoreCase("CAPlow", "CAP", 0) == 3
     doAssert skipIgnoreCase("CAPlow", "cap", 0) == 3
   result = 0
@@ -297,6 +306,7 @@ proc skipUntil*(s: string, until: set[char], start = 0): int {.inline.} =
   ## or the end is reached.
   ## Returns number of characters skipped.
   runnableExamples:
+    import std/assertions
     doAssert skipUntil("Hello World", {'W', 'e'}, 0) == 1
     doAssert skipUntil("Hello World", {'W'}, 0) == 6
     doAssert skipUntil("Hello World", {'W', 'd'}, 0) == 6
@@ -308,6 +318,7 @@ proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
   ## or the end is reached.
   ## Returns number of characters skipped.
   runnableExamples:
+    import std/assertions
     doAssert skipUntil("Hello World", 'o', 0) == 4
     doAssert skipUntil("Hello World", 'o', 4) == 0
     doAssert skipUntil("Hello World", 'W', 0) == 6
@@ -319,6 +330,7 @@ proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
   ## Skips all characters while one char from the set `token` is found.
   ## Returns number of characters skipped.
   runnableExamples:
+    import std/assertions
     doAssert skipWhile("Hello World", {'H', 'e'}) == 2
     doAssert skipWhile("Hello World", {'e'}) == 0
     doAssert skipWhile("Hello World", {'W', 'o', 'r'}, 6) == 3
@@ -335,6 +347,7 @@ proc parseUntil*(s: string, token: var string, until: set[char],
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters notin `until`.
   runnableExamples:
+    import std/assertions
     var myToken: string
     doAssert parseUntil("Hello World", myToken, {'W', 'o', 'r'}) == 4
     doAssert myToken == "Hell"
@@ -354,6 +367,7 @@ proc parseUntil*(s: string, token: var string, until: char,
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of any character that is not the `until` character.
   runnableExamples:
+    import std/assertions
     var myToken: string
     doAssert parseUntil("Hello World", myToken, 'W') == 6
     doAssert myToken == "Hello "
@@ -373,6 +387,7 @@ proc parseUntil*(s: string, token: var string, until: string,
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of any character that comes before the `until`  token.
   runnableExamples:
+    import std/assertions
     var myToken: string
     doAssert parseUntil("Hello World", myToken, "Wor") == 6
     doAssert myToken == "Hello "
@@ -400,6 +415,7 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters in `validChars`.
   runnableExamples:
+    import std/assertions
     var myToken: string
     doAssert parseWhile("Hello World", myToken, {'W', 'o', 'r'}, 0) == 0
     doAssert myToken.len() == 0
@@ -415,6 +431,7 @@ proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
   ## Finds the first occurrence of ``first``, then returns everything from there
   ## up to ``second`` (if ``second`` is '\0', then ``first`` is used).
   runnableExamples:
+    import std/assertions
     doAssert captureBetween("Hello World", 'e') == "llo World"
     doAssert captureBetween("Hello World", 'e', 'r') == "llo Wo"
     doAssert captureBetween("Hello World", 'l', start = 6) == "d"
@@ -463,6 +480,7 @@ proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
   ## Result is the number of processed chars or 0 if there is no integer.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
   runnableExamples:
+    import std/assertions
     var res: BiggestInt
     doAssert parseBiggestInt("9223372036854775807", res, 0) == 19
     doAssert res == 9223372036854775807
@@ -479,6 +497,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   ## Result is the number of processed chars or 0 if there is no integer.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
   runnableExamples:
+    import std/assertions
     var res: int
     doAssert parseInt("2019", res, 0) == 4
     doAssert res == 2019
@@ -542,6 +561,7 @@ proc parseBiggestUInt*(s: string, number: var BiggestUInt, start = 0): int {.
   ## into `number`.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
   runnableExamples:
+    import std/assertions
     var res: BiggestUInt
     doAssert parseBiggestUInt("12", res, 0) == 2
     doAssert res == 12
@@ -560,6 +580,7 @@ proc parseUInt*(s: string, number: var uint, start = 0): int {.
   ## into `number`.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
   runnableExamples:
+    import std/assertions
     var res: uint
     doAssert parseUInt("3450", res) == 4
     doAssert res == 3450
@@ -585,6 +606,7 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
   ## Result is the number of processed chars or 0 if there occurred a parsing
   ## error.
   runnableExamples:
+    import std/assertions
     var res: float
     doAssert parseFloat("32", res, 0) == 2
     doAssert res == 32.0
@@ -611,6 +633,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   ## Tokenizes the string `s` into substrings for interpolation purposes.
   ##
   runnableExamples:
+    import std/assertions
     var outp: seq[tuple[kind: InterpolatedKind, value: string]]
     for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
       outp.add (k, v)

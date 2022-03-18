@@ -126,6 +126,7 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
   ## See also:
   ## * `toHashSet proc <#toHashSet,openArray[A]>`_
   runnableExamples:
+    import std/assertions
     var a = initHashSet[int]()
     a.incl(3)
     assert len(a) == 1
@@ -156,6 +157,7 @@ proc contains*[A](s: HashSet[A], key: A): bool =
   ## * `incl proc <#incl,HashSet[A],A>`_
   ## * `containsOrIncl proc <#containsOrIncl,HashSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var values = initHashSet[int]()
     assert(not values.contains(2))
     assert 2 notin values
@@ -175,6 +177,7 @@ proc len*[A](s: HashSet[A]): int =
   ## have not been initialized yet. The proc will return zero as the length
   ## then.
   runnableExamples:
+    import std/assertions
     var a: HashSet[string]
     assert len(a) == 0
     let s = toHashSet([3, 5, 7])
@@ -199,6 +202,7 @@ proc incl*[A](s: var HashSet[A], key: A) =
   ## * `incl proc <#incl,HashSet[A],HashSet[A]>`_ for including other set
   ## * `containsOrIncl proc <#containsOrIncl,HashSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var values = initHashSet[int]()
     values.incl(2)
     values.incl(2)
@@ -216,6 +220,7 @@ proc incl*[A](s: var HashSet[A], other: HashSet[A]) =
   ## * `incl proc <#incl,HashSet[A],A>`_ for including an element
   ## * `containsOrIncl proc <#containsOrIncl,HashSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var
       values = toHashSet([1, 2, 3])
       others = toHashSet([3, 4, 5])
@@ -233,6 +238,7 @@ proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
   ## See also:
   ## * `initHashSet proc <#initHashSet>`_
   runnableExamples:
+    import std/assertions
     let
       a = toHashSet([5, 3, 2])
       b = toHashSet("abracadabra")
@@ -282,6 +288,7 @@ proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## * `incl proc <#incl,HashSet[A],HashSet[A]>`_ for including other set
   ## * `missingOrExcl proc <#missingOrExcl,HashSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var values = initHashSet[int]()
     assert values.containsOrIncl(2) == false
     assert values.containsOrIncl(2) == true
@@ -299,6 +306,7 @@ proc excl*[A](s: var HashSet[A], key: A) =
   ## * `excl proc <#excl,HashSet[A],HashSet[A]>`_ for excluding other set
   ## * `missingOrExcl proc <#missingOrExcl,HashSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var s = toHashSet([2, 3, 6, 7])
     s.excl(2)
     s.excl(2)
@@ -316,6 +324,7 @@ proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
   ## * `excl proc <#excl,HashSet[A],A>`_ for excluding an element
   ## * `missingOrExcl proc <#missingOrExcl,HashSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var
       numbers = toHashSet([1, 2, 3, 4, 5])
       even = toHashSet([2, 4, 6, 8])
@@ -338,6 +347,7 @@ proc missingOrExcl*[A](s: var HashSet[A], key: A): bool =
   ## * `excl proc <#excl,HashSet[A],HashSet[A]>`_ for excluding other set
   ## * `containsOrIncl proc <#containsOrIncl,HashSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var s = toHashSet([2, 3, 6, 7])
     assert s.missingOrExcl(4) == true
     assert s.missingOrExcl(6) == false
@@ -353,6 +363,7 @@ proc pop*[A](s: var HashSet[A]): A =
   ## See also:
   ## * `clear proc <#clear,HashSet[A]>`_
   runnableExamples:
+    import std/assertions
     var s = toHashSet([2, 1])
     assert [s.pop, s.pop] in [[1, 2], [2,1]] # order unspecified
     doAssertRaises(KeyError, echo s.pop)
@@ -373,6 +384,7 @@ proc clear*[A](s: var HashSet[A]) =
   ## See also:
   ## * `pop proc <#pop,HashSet[A]>`_
   runnableExamples:
+    import std/assertions
     var s = toHashSet([3, 5, 7])
     clear(s)
     assert len(s) == 0
@@ -396,6 +408,7 @@ proc union*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## * `difference proc <#difference,HashSet[A],HashSet[A]>`_
   ## * `symmetricDifference proc <#symmetricDifference,HashSet[A],HashSet[A]>`_
   runnableExamples:
+    import std/assertions
     let
       a = toHashSet(["a", "b"])
       b = toHashSet(["b", "c"])
@@ -419,6 +432,7 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## * `difference proc <#difference,HashSet[A],HashSet[A]>`_
   ## * `symmetricDifference proc <#symmetricDifference,HashSet[A],HashSet[A]>`_
   runnableExamples:
+    import std/assertions
     let
       a = toHashSet(["a", "b"])
       b = toHashSet(["b", "c"])
@@ -449,6 +463,7 @@ proc difference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## * `intersection proc <#intersection,HashSet[A],HashSet[A]>`_
   ## * `symmetricDifference proc <#symmetricDifference,HashSet[A],HashSet[A]>`_
   runnableExamples:
+    import std/assertions
     let
       a = toHashSet(["a", "b"])
       b = toHashSet(["b", "c"])
@@ -474,6 +489,7 @@ proc symmetricDifference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## * `intersection proc <#intersection,HashSet[A],HashSet[A]>`_
   ## * `difference proc <#difference,HashSet[A],HashSet[A]>`_
   runnableExamples:
+    import std/assertions
     let
       a = toHashSet(["a", "b"])
       b = toHashSet(["b", "c"])
@@ -504,6 +520,7 @@ proc `-+-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
 proc disjoint*[A](s1, s2: HashSet[A]): bool =
   ## Returns `true` if the sets `s1` and `s2` have no items in common.
   runnableExamples:
+    import std/assertions
     let
       a = toHashSet(["a", "b"])
       b = toHashSet(["b", "c"])
@@ -520,6 +537,7 @@ proc `<`*[A](s, t: HashSet[A]): bool =
   ## A strict or proper subset `s` has all of its members in `t` but `t` has
   ## more elements than `s`.
   runnableExamples:
+    import std/assertions
     let
       a = toHashSet(["a", "b"])
       b = toHashSet(["b", "c"])
@@ -535,6 +553,7 @@ proc `<=`*[A](s, t: HashSet[A]): bool =
   ## A subset `s` has all of its members in `t` and `t` doesn't necessarily
   ## have more members than `s`. That is, `s` can be equal to `t`.
   runnableExamples:
+    import std/assertions
     let
       a = toHashSet(["a", "b"])
       b = toHashSet(["b", "c"])
@@ -553,6 +572,7 @@ proc `<=`*[A](s, t: HashSet[A]): bool =
 proc `==`*[A](s, t: HashSet[A]): bool =
   ## Returns true if both `s` and `t` have the same members and set size.
   runnableExamples:
+    import std/assertions
     var
       a = toHashSet([1, 2])
       b = toHashSet([2, 1])
@@ -566,6 +586,7 @@ proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
   ##
   ## You can use this proc to transform the elements from a set.
   runnableExamples:
+    import std/assertions
     let
       a = toHashSet([1, 2, 3])
       b = a.map(proc (x: int): string = $x)
@@ -608,6 +629,7 @@ proc isValid*[A](s: HashSet[A]): bool {.deprecated:
   ## <#initHashSet>`_ or `init proc <#init,HashSet[A]>`_).
   ##
   runnableExamples:
+    import std/assertions
     proc savePreferences(options: HashSet[string]) =
       assert options.isValid, "Pass an initialized set!"
       # Do stuff here, may crash in release builds!
@@ -663,6 +685,7 @@ proc initOrderedSet*[A](initialSize = defaultInitialSize): OrderedSet[A] =
   ## See also:
   ## * `toOrderedSet proc <#toOrderedSet,openArray[A]>`_
   runnableExamples:
+    import std/assertions
     var a = initOrderedSet[int]()
     a.incl(3)
     assert len(a) == 1
@@ -678,6 +701,7 @@ proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
   ## See also:
   ## * `initOrderedSet proc <#initOrderedSet>`_
   runnableExamples:
+    import std/assertions
     let
       a = toOrderedSet([5, 3, 2])
       b = toOrderedSet("abracadabra")
@@ -698,6 +722,7 @@ proc contains*[A](s: OrderedSet[A], key: A): bool =
   ## * `incl proc <#incl,OrderedSet[A],A>`_
   ## * `containsOrIncl proc <#containsOrIncl,OrderedSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var values = initOrderedSet[int]()
     assert(not values.contains(2))
     assert 2 notin values
@@ -720,6 +745,7 @@ proc incl*[A](s: var OrderedSet[A], key: A) =
   ## * `incl proc <#incl,HashSet[A],OrderedSet[A]>`_ for including other set
   ## * `containsOrIncl proc <#containsOrIncl,OrderedSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var values = initOrderedSet[int]()
     values.incl(2)
     values.incl(2)
@@ -735,6 +761,7 @@ proc incl*[A](s: var HashSet[A], other: OrderedSet[A]) =
   ## * `incl proc <#incl,OrderedSet[A],A>`_ for including an element
   ## * `containsOrIncl proc <#containsOrIncl,OrderedSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var
       values = toHashSet([1, 2, 3])
       others = toOrderedSet([3, 4, 5])
@@ -755,6 +782,7 @@ proc containsOrIncl*[A](s: var OrderedSet[A], key: A): bool =
   ## * `incl proc <#incl,OrderedSet[A],A>`_ for including an element
   ## * `missingOrExcl proc <#missingOrExcl,OrderedSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var values = initOrderedSet[int]()
     assert values.containsOrIncl(2) == false
     assert values.containsOrIncl(2) == true
@@ -771,6 +799,7 @@ proc excl*[A](s: var OrderedSet[A], key: A) =
   ## * `incl proc <#incl,OrderedSet[A],A>`_ for including an element
   ## * `missingOrExcl proc <#missingOrExcl,OrderedSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var s = toOrderedSet([2, 3, 6, 7])
     s.excl(2)
     s.excl(2)
@@ -791,6 +820,7 @@ proc missingOrExcl*[A](s: var OrderedSet[A], key: A): bool =
   ## * `excl proc <#excl,OrderedSet[A],A>`_
   ## * `containsOrIncl proc <#containsOrIncl,OrderedSet[A],A>`_
   runnableExamples:
+    import std/assertions
     var s = toOrderedSet([2, 3, 6, 7])
     assert s.missingOrExcl(4) == true
     assert s.missingOrExcl(6) == false
@@ -804,6 +834,7 @@ proc clear*[A](s: var OrderedSet[A]) =
   ##
   ## `O(n)` operation where `n` is the size of the hash bucket.
   runnableExamples:
+    import std/assertions
     var s = toOrderedSet([3, 5, 7])
     clear(s)
     assert len(s) == 0
@@ -823,6 +854,7 @@ proc len*[A](s: OrderedSet[A]): int {.inline.} =
   ## have not been initialized yet. The proc will return zero as the length
   ## then.
   runnableExamples:
+    import std/assertions
     var a: OrderedSet[string]
     assert len(a) == 0
     let s = toHashSet([3, 5, 7])
@@ -840,6 +872,7 @@ proc card*[A](s: OrderedSet[A]): int {.inline.} =
 proc `==`*[A](s, t: OrderedSet[A]): bool =
   ## Equality for ordered sets.
   runnableExamples:
+    import std/assertions
     let
       a = toOrderedSet([1, 2])
       b = toOrderedSet([2, 1])
@@ -911,6 +944,7 @@ iterator items*[A](s: OrderedSet[A]): A =
 iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
   ## Iterates through (position, value) tuples of OrderedSet `s`.
   runnableExamples:
+    import std/assertions
     let a = toOrderedSet("abracadabra")
     var p = newSeq[(int, char)]()
     for x in pairs(a):

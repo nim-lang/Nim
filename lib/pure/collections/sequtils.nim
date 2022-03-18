@@ -39,6 +39,7 @@
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_.
 
 runnableExamples:
+  import std/assertions
   import std/sugar
 
   # Creating a sequence from 1 to 10, multiplying each member by 2,
@@ -62,6 +63,7 @@ runnableExamples:
 
 
 runnableExamples:
+  import std/assertions
   from std/strutils import join
 
   let
@@ -123,6 +125,7 @@ func concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ##   operation
   ##
   runnableExamples:
+    import std/assertions
     let
       s1 = @[1, 2, 3]
       s2 = @[4, 5]
@@ -143,6 +146,7 @@ func count*[T](s: openArray[T], x: T): int =
   ## Returns the number of occurrences of the item `x` in the container `s`.
   ##
   runnableExamples:
+    import std/assertions
     let
       a = @[1, 2, 2, 3, 2, 4, 2]
       b = "abracadabra"
@@ -160,6 +164,7 @@ func cycle*[T](s: openArray[T], n: Natural): seq[T] =
   ## `n` must be a non-negative number (zero or more).
   ##
   runnableExamples:
+    import std/assertions
     let
       s = @[1, 2, 3]
       total = s.cycle(3)
@@ -177,6 +182,7 @@ proc repeat*[T](x: T, n: Natural): seq[T] =
   ## `n` must be a non-negative number (zero or more).
   ##
   runnableExamples:
+    import std/assertions
     let
       total = repeat(5, 3)
     assert total == @[5, 5, 5]
@@ -192,6 +198,7 @@ func deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
   ## uses a faster algorithm for deduplication.
   ##
   runnableExamples:
+    import std/assertions
     let
       dup1 = @[1, 1, 3, 4, 2, 2, 8, 1, 4]
       dup2 = @["a", "a", "c", "d", "d"]
@@ -217,6 +224,7 @@ func minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   ## Returns the index of the minimum value of `s`.
   ## `T` needs to have a `<` operator.
   runnableExamples:
+    import std/assertions
     let
       a = @[1, 2, 3, 4]
       b = @[6, 5, 4, 3]
@@ -234,6 +242,7 @@ func maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   ## Returns the index of the maximum value of `s`.
   ## `T` needs to have a `<` operator.
   runnableExamples:
+    import std/assertions
     let
       a = @[1, 2, 3, 4]
       b = @[6, 5, 4, 3]
@@ -260,6 +269,7 @@ template zipImpl(s1, s2, retType: untyped): untyped =
     ## named tuples with fields `a` and `b`. For Nim versions 1.1.x and newer,
     ## `zip` returns a seq of unnamed tuples.
     runnableExamples:
+      import std/assertions
       let
         short = @[1, 2, 3]
         long = @[6, 5, 4, 3, 2, 1]
@@ -295,6 +305,7 @@ else:
 proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
   ## Returns a tuple of two sequences split out from a sequence of 2-field tuples.
   runnableExamples:
+    import std/assertions
     let
       zipped = @[(1, 'a'), (2, 'b'), (3, 'c')]
       unzipped1 = @[1, 2, 3]
@@ -325,6 +336,7 @@ func distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## to a thread pool and want to maximize core usage.
   ##
   runnableExamples:
+    import std/assertions
     let numbers = @[1, 2, 3, 4, 5, 6, 7]
     assert numbers.distribute(3) == @[@[1, 2, 3], @[4, 5], @[6, 7]]
     assert numbers.distribute(3, false) == @[@[1, 2, 3], @[4, 5, 6], @[7]]
@@ -380,6 +392,7 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   ## * `apply proc<#apply,openArray[T],proc(T)_2>`_ for the in-place version
   ##
   runnableExamples:
+    import std/assertions
     let
       a = @[1, 2, 3, 4]
       b = map(a, proc(x: int): string = $x)
@@ -402,6 +415,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
   ## * `map proc<#map,openArray[T],proc(T)>`_
   ##
   runnableExamples:
+    import std/assertions
     var a = @["1", "2", "3", "4"]
     apply(a, proc(x: var string) = x &= "42")
     assert a == @["142", "242", "342", "442"]
@@ -422,6 +436,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
   ## * `map proc<#map,openArray[T],proc(T)>`_
   ##
   runnableExamples:
+    import std/assertions
     var a = @["1", "2", "3", "4"]
     apply(a, proc(x: string): string = x & "42")
     assert a == @["142", "242", "342", "442"]
@@ -432,6 +447,7 @@ proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1
   ## Same as `apply` but for a proc that does not return anything
   ## and does not mutate `s` directly.
   runnableExamples:
+    import std/assertions
     var message: string
     apply([0, 1, 2, 3, 4], proc(item: int) = message.addInt item)
     assert message == "01234"
@@ -450,6 +466,7 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T {.ef
   ## * `filterIt template<#filterIt.t,untyped,untyped>`_
   ##
   runnableExamples:
+    import std/assertions
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
     var evens = newSeq[int]()
     for n in filter(numbers, proc (x: int): bool = x mod 2 == 0):
@@ -475,6 +492,7 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
   ## * `keepIf proc<#keepIf,seq[T],proc(T)>`_ for the in-place version
   ##
   runnableExamples:
+    import std/assertions
     let
       colors = @["red", "yellow", "black"]
       f1 = filter(colors, proc(x: string): bool = x.len < 6)
@@ -502,6 +520,7 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
   ## * `filter proc<#filter,openArray[T],proc(T)>`_
   ##
   runnableExamples:
+    import std/assertions
     var floats = @[13.0, 12.5, 5.8, 2.0, 6.1, 9.9, 10.1]
     keepIf(floats, proc(x: float): bool = x > 10)
     assert floats == @[13.0, 12.5, 10.1]
@@ -523,6 +542,7 @@ func delete*[T](s: var seq[T]; slice: Slice[int]) =
   ##
   ## This operation moves all elements after `s[slice]` in linear time.
   runnableExamples:
+    import std/assertions
     var a = @[10, 11, 12, 13, 14]
     doAssertRaises(IndexDefect): a.delete(4..5)
     assert a == @[10, 11, 12, 13, 14]
@@ -562,6 +582,7 @@ func delete*[T](s: var seq[T]; first, last: Natural) {.deprecated: "use `delete(
   ## (including both ends of the range).
   ## This modifies `s` itself, it does not return a copy.
   runnableExamples("--warning:deprecated:off"):
+    import std/assertions
     let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
     var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.delete(3, 8)
@@ -588,6 +609,7 @@ func insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
   ## Note that the elements of `src` and `dest` must be of the same type.
   ##
   runnableExamples:
+    import std/assertions
     var dest = @[1, 1, 1, 1, 1, 1, 1, 1]
     let
       src = @[2, 2, 2, 2, 2, 2]
@@ -633,6 +655,7 @@ template filterIt*(s, pred: untyped): untyped =
   ## * `filter iterator<#filter.i,openArray[T],proc(T)>`_
   ##
   runnableExamples:
+    import std/assertions
     let
       temperatures = @[-272.15, -2.0, 24.5, 44.31, 99.9, -113.44]
       acceptable = temperatures.filterIt(it < 50 and it > -10)
@@ -658,6 +681,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
   ## * `filterIt template<#filterIt.t,untyped,untyped>`_
   ##
   runnableExamples:
+    import std/assertions
     var candidates = @["foo", "bar", "baz", "foobar"]
     candidates.keepItIf(it.len == 3 and it[0] == 'b')
     assert candidates == @["bar", "baz"]
@@ -682,6 +706,7 @@ since (1, 1):
     ## the `it` variable for testing, like: `countIt(@[1, 2, 3], it > 2)`.
     ##
     runnableExamples:
+      import std/assertions
       let numbers = @[-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
       iterator iota(n: int): int =
         for i in 0..<n: yield i
@@ -702,6 +727,7 @@ proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool {.effect
   ## * `any proc<#any,openArray[T],proc(T)>`_
   ##
   runnableExamples:
+    import std/assertions
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
     assert all(numbers, proc (x: int): bool = x < 10) == true
     assert all(numbers, proc (x: int): bool = x < 9) == false
@@ -724,6 +750,7 @@ template allIt*(s, pred: untyped): bool =
   ## * `anyIt template<#anyIt.t,untyped,untyped>`_
   ##
   runnableExamples:
+    import std/assertions
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
     assert numbers.allIt(it < 10) == true
     assert numbers.allIt(it < 9) == false
@@ -744,6 +771,7 @@ proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool {.effect
   ## * `all proc<#all,openArray[T],proc(T)>`_
   ##
   runnableExamples:
+    import std/assertions
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
     assert any(numbers, proc (x: int): bool = x > 8) == true
     assert any(numbers, proc (x: int): bool = x > 9) == false
@@ -766,6 +794,7 @@ template anyIt*(s, pred: untyped): bool =
   ## * `allIt template<#allIt.t,untyped,untyped>`_
   ##
   runnableExamples:
+    import std/assertions
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
     assert numbers.anyIt(it > 8) == true
     assert numbers.anyIt(it > 9) == false
@@ -823,6 +852,7 @@ template toSeq*(iter: untyped): untyped =
   ## a for-loop) into a sequence.
   ##
   runnableExamples:
+    import std/assertions
     let
       myRange = 1..5
       mySet: set[int8] = {5'i8, 3, 1}
@@ -875,6 +905,7 @@ template foldl*(sequence, operation: untyped): untyped =
   ## * `foldr template<#foldr.t,untyped,untyped>`_
   ##
   runnableExamples:
+    import std/assertions
     let
       numbers = @[5, 9, 11]
       addition = foldl(numbers, a + b)
@@ -919,6 +950,7 @@ template foldl*(sequence, operation, first): untyped =
   ## * `foldr template<#foldr.t,untyped,untyped>`_
   ##
   runnableExamples:
+    import std/assertions
     let
       numbers = @[0, 8, 1, 5]
       digits = foldl(numbers, a & (chr(b + ord('0'))), "")
@@ -951,6 +983,7 @@ template foldr*(sequence, operation: untyped): untyped =
   ## * `foldl template<#foldl.t,,,>`_ with a starting parameter
   ##
   runnableExamples:
+    import std/assertions
     let
       numbers = @[5, 9, 11]
       addition = foldr(numbers, a + b)
@@ -993,6 +1026,7 @@ template mapIt*(s: typed, op: untyped): untyped =
   ## * `applyIt template<#applyIt.t,untyped,untyped>`_ for the in-place version
   ##
   runnableExamples:
+    import std/assertions
     let
       nums = @[1, 2, 3, 4]
       strings = nums.mapIt($(4 * it))
@@ -1051,6 +1085,7 @@ template applyIt*(varSeq, op: untyped) =
   ## * `mapIt template<#mapIt.t,typed,untyped>`_
   ##
   runnableExamples:
+    import std/assertions
     var nums = @[1, 2, 3, 4]
     nums.applyIt(it * 3)
     assert nums[0] + nums[3] == 15
@@ -1067,6 +1102,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
   ## Useful for creating "2D" seqs - seqs containing other seqs
   ## or to populate fields of the created seq.
   runnableExamples:
+    import std/assertions
     ## Creates a seq containing 5 bool seqs, each of length of 3.
     var seq2D = newSeqWith(5, newSeq[bool](3))
     assert seq2D.len == 5
@@ -1103,6 +1139,7 @@ macro mapLiterals*(constructor, op: untyped;
   ## or `"abc"` in the specified `constructor` AST. This can
   ## be used to map every array element to some target type:
   runnableExamples:
+    import std/assertions
     let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
     doAssert x is array[4, int]
     doAssert x == [int(0.1), int(1.2), int(2.3), int(3.4)]
@@ -1110,6 +1147,7 @@ macro mapLiterals*(constructor, op: untyped;
   ## everywhere in the `constructor` AST, otherwise only the first level
   ## is considered:
   runnableExamples:
+    import std/assertions
     let a = mapLiterals((1.2, (2.3, 3.4), 4.8), int)
     let b = mapLiterals((1.2, (2.3, 3.4), 4.8), int, nested=false)
     assert a == (1, (2, 3), 4)

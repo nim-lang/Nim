@@ -57,6 +57,7 @@ macro `=>`*(p, b: untyped): untyped =
   ##
   ## .. warning:: Semicolons can not be used to separate procedure arguments.
   runnableExamples:
+    import std/assertions
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
 
     assert passTwoAndTwo((x, y) => x + y) == 4
@@ -138,6 +139,7 @@ macro `->`*(p, b: untyped): untyped =
   ##
   ## .. warning:: Semicolons can not be used to separate procedure arguments.
   runnableExamples:
+    import std/assertions
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
     # is the same as:
     # proc passTwoAndTwo(f: proc (x, y: int): int): int = f(2, 2)
@@ -184,6 +186,7 @@ macro dumpToString*(x: untyped): string =
   ## Returns the content of a statement or expression `x` after semantic analysis,
   ## useful for debugging.
   runnableExamples:
+    import std/assertions
     const a = 1
     let x = 10
     assert dumpToString(a + 2) == "a + 2: 3 = 3"
@@ -217,6 +220,7 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   ## Useful when creating a closure in a loop to capture some local loop variables
   ## by their current iteration values.
   runnableExamples:
+    import std/assertions
     import std/strformat
 
     var myClosure: () -> string
@@ -249,6 +253,7 @@ since (1, 1):
     ##
     ## **Since:** Version 1.2.
     runnableExamples:
+      import std/assertions
       import std/algorithm
 
       let a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -361,6 +366,7 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
   # analyse the body, find the deepest expression 'it' and replace it via
   # 'result.add it'
   runnableExamples:
+    import std/assertions
     import std/[sets, tables]
 
     let data = @["bird", "word"]
@@ -392,6 +398,7 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
 macro collect*(body: untyped): untyped {.since: (1, 5).} =
   ## Same as `collect` but without an `init` parameter.
   runnableExamples:
+    import std/assertions
     import std/[sets, tables]
     let data = @["bird", "word"]
 

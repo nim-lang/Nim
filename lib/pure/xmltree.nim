@@ -10,6 +10,7 @@
 ## A simple XML tree generator.
 ##
 runnableExamples:
+  import std/assertions
   var g = newElement("myTag")
   g.add newText("some text")
   g.add newComment("this is comment")
@@ -80,6 +81,7 @@ proc newElement*(tag: sink string): XmlNode =
   ## * `newXmlTree proc <#newXmlTree,string,openArray[XmlNode],XmlAttributes>`_
   ## * [<> macro](#<>.m,untyped)
   runnableExamples:
+    import std/assertions
     var a = newElement("firstTag")
     a.add newElement("childTag")
     assert a.kind == xnElement
@@ -95,6 +97,7 @@ proc newElement*(tag: sink string): XmlNode =
 proc newText*(text: sink string): XmlNode =
   ## Creates a new ``XmlNode`` of kind ``xnText`` with the text `text`.
   runnableExamples:
+    import std/assertions
     var b = newText("my text")
     assert b.kind == xnText
     assert $b == "my text"
@@ -111,6 +114,7 @@ proc newVerbatimText*(text: sink string): XmlNode {.since: (1, 3).} =
 proc newComment*(comment: sink string): XmlNode =
   ## Creates a new ``XmlNode`` of kind ``xnComment`` with the text `comment`.
   runnableExamples:
+    import std/assertions
     var c = newComment("my comment")
     assert c.kind == xnComment
     assert $c == "<!-- my comment -->"
@@ -121,6 +125,7 @@ proc newComment*(comment: sink string): XmlNode =
 proc newCData*(cdata: sink string): XmlNode =
   ## Creates a new ``XmlNode`` of kind ``xnCData`` with the text `cdata`.
   runnableExamples:
+    import std/assertions
     var d = newCData("my cdata")
     assert d.kind == xnCData
     assert $d == "<![CDATA[my cdata]]>"
@@ -131,6 +136,7 @@ proc newCData*(cdata: sink string): XmlNode =
 proc newEntity*(entity: string): XmlNode =
   ## Creates a new ``XmlNode`` of kind ``xnEntity`` with the text `entity`.
   runnableExamples:
+    import std/assertions
     var e = newEntity("my entity")
     assert e.kind == xnEntity
     assert $e == "&my entity;"
@@ -147,6 +153,7 @@ proc newXmlTree*(tag: sink string, children: openArray[XmlNode],
   ## * [<> macro](#<>.m,untyped)
 
   runnableExamples:
+    import std/assertions
     var g = newElement("myTag")
     g.add newText("some text")
     g.add newComment("this is comment")
@@ -177,6 +184,7 @@ proc text*(n: XmlNode): lent string {.inline.} =
   ## * `tag= proc <#tag=,XmlNode,string>`_ for tag setter
   ## * `innerText proc <#innerText,XmlNode>`_
   runnableExamples:
+    import std/assertions
     var c = newComment("my comment")
     assert $c == "<!-- my comment -->"
     assert c.text == "my comment"
@@ -194,6 +202,7 @@ proc `text=`*(n: XmlNode, text: sink string) {.inline.} =
   ## * `tag proc <#tag,XmlNode>`_ for tag getter
   ## * `tag= proc <#tag=,XmlNode,string>`_ for tag setter
   runnableExamples:
+    import std/assertions
     var e = newEntity("my entity")
     assert $e == "&my entity;"
     e.text = "a new entity text"
@@ -213,6 +222,7 @@ proc tag*(n: XmlNode): lent string {.inline.} =
   ## * `tag= proc <#tag=,XmlNode,string>`_ for tag setter
   ## * `innerText proc <#innerText,XmlNode>`_
   runnableExamples:
+    import std/assertions
     var a = newElement("firstTag")
     a.add newElement("childTag")
     assert $a == """<firstTag>
@@ -233,6 +243,7 @@ proc `tag=`*(n: XmlNode, tag: sink string) {.inline.} =
   ## * `text= proc <#text=,XmlNode,string>`_ for text setter
   ## * `tag proc <#tag,XmlNode>`_ for tag getter
   runnableExamples:
+    import std/assertions
     var a = newElement("firstTag")
     a.add newElement("childTag")
     assert $a == """<firstTag>
@@ -275,6 +286,7 @@ proc innerText*(n: XmlNode): string =
   ## See also:
   ## * `text proc <#text,XmlNode>`_
   runnableExamples:
+    import std/assertions
     var f = newElement("myTag")
     f.add newText("my text")
     f.add newComment("my comment")
@@ -302,6 +314,7 @@ proc add*(father, son: XmlNode) {.inline.} =
   ## * `insert proc <#insert,XmlNode,XmlNode,int>`_
   ## * `delete proc <#delete,XmlNode,Natural>`_
   runnableExamples:
+    import std/assertions
     var f = newElement("myTag")
     f.add newText("my text")
     f.add newElement("sonTag")
@@ -318,6 +331,7 @@ proc insert*(father, son: XmlNode, index: int) {.inline.} =
   ## * `add proc <#add,XmlNode,XmlNode>`_
   ## * `delete proc <#delete,XmlNode,Natural>`_
   runnableExamples:
+    import std/assertions
     var f = newElement("myTag")
     f.add newElement("first")
     f.insert(newElement("second"), 0)
@@ -339,6 +353,7 @@ proc delete*(n: XmlNode, i: Natural) =
   ## * `add proc <#add,XmlNode,XmlNode>`_
   ## * `insert proc <#insert,XmlNode,XmlNode,int>`_
   runnableExamples:
+    import std/assertions
     var f = newElement("myTag")
     f.add newElement("first")
     f.insert(newElement("second"), 0)
@@ -353,6 +368,7 @@ proc delete*(n: XmlNode, i: Natural) =
 proc len*(n: XmlNode): int {.inline.} =
   ## Returns the number of `n`'s children.
   runnableExamples:
+    import std/assertions
     var f = newElement("myTag")
     f.add newElement("first")
     f.insert(newElement("second"), 0)
@@ -362,6 +378,7 @@ proc len*(n: XmlNode): int {.inline.} =
 proc kind*(n: XmlNode): XmlNodeKind {.inline.} =
   ## Returns `n`'s kind.
   runnableExamples:
+    import std/assertions
     var a = newElement("firstTag")
     assert a.kind == xnElement
     var b = newText("my text")
@@ -371,6 +388,7 @@ proc kind*(n: XmlNode): XmlNodeKind {.inline.} =
 proc `[]`*(n: XmlNode, i: int): XmlNode {.inline.} =
   ## Returns the `i`'th child of `n`.
   runnableExamples:
+    import std/assertions
     var f = newElement("myTag")
     f.add newElement("first")
     f.insert(newElement("second"), 0)
@@ -389,6 +407,7 @@ proc clear*(n: var XmlNode) =
   ## Recursively clears all children of an XmlNode.
   ##
   runnableExamples:
+    import std/assertions
     var g = newElement("myTag")
     g.add newText("some text")
     g.add newComment("this is comment")
@@ -417,6 +436,7 @@ iterator items*(n: XmlNode): XmlNode {.inline.} =
   ## Iterates over all direct children of `n`.
 
   runnableExamples:
+    import std/assertions
     var g = newElement("myTag")
     g.add newText("some text")
     g.add newComment("this is comment")
@@ -447,6 +467,7 @@ proc toXmlAttributes*(keyValuePairs: varargs[tuple[key,
   ## Converts `{key: value}` pairs into `XmlAttributes`.
   ##
   runnableExamples:
+    import std/assertions
     let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
     var j = newElement("myTag")
     j.attrs = att
@@ -465,6 +486,7 @@ proc attrs*(n: XmlNode): XmlAttributes {.inline.} =
   ## * `attrsLen proc <#attrsLen,XmlNode>`_ for number of attributes
   ## * `attr proc <#attr,XmlNode,string>`_ for finding an attribute
   runnableExamples:
+    import std/assertions
     var j = newElement("myTag")
     assert j.attrs == nil
     let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
@@ -482,6 +504,7 @@ proc `attrs=`*(n: XmlNode, attr: XmlAttributes) {.inline.} =
   ## * `attrsLen proc <#attrsLen,XmlNode>`_ for number of attributes
   ## * `attr proc <#attr,XmlNode,string>`_ for finding an attribute
   runnableExamples:
+    import std/assertions
     var j = newElement("myTag")
     assert j.attrs == nil
     let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
@@ -499,6 +522,7 @@ proc attrsLen*(n: XmlNode): int {.inline.} =
   ## * `attrs= proc <#attrs=,XmlNode,XmlAttributes>`_ for XmlAttributes setter
   ## * `attr proc <#attr,XmlNode,string>`_ for finding an attribute
   runnableExamples:
+    import std/assertions
     var j = newElement("myTag")
     assert j.attrsLen == 0
     let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
@@ -517,6 +541,7 @@ proc attr*(n: XmlNode, name: string): string =
   ## * `attrs= proc <#attrs=,XmlNode,XmlAttributes>`_ for XmlAttributes setter
   ## * `attrsLen proc <#attrsLen,XmlNode>`_ for number of attributes
   runnableExamples:
+    import std/assertions
     var j = newElement("myTag")
     let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
     j.attrs = att
@@ -579,6 +604,7 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
           addNewLines = true) =
   ## Adds the textual representation of `n` to string `result`.
   runnableExamples:
+    import std/assertions
     var
       a = newElement("firstTag")
       b = newText("my text")
@@ -675,6 +701,7 @@ proc child*(n: XmlNode, name: string): XmlNode =
   ## Finds the first child element of `n` with a name of `name`.
   ## Returns `nil` on failure.
   runnableExamples:
+    import std/assertions
     var f = newElement("myTag")
     f.add newElement("firstSon")
     f.add newElement("secondSon")
@@ -694,6 +721,7 @@ proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode],
   ## Found nodes satisfying the condition will be appended to the `result`
   ## sequence.
   runnableExamples:
+    import std/assertions
     var
       b = newElement("good")
       c = newElement("bad")
@@ -729,6 +757,7 @@ proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode],
 proc findAll*(n: XmlNode, tag: string, caseInsensitive = false): seq[XmlNode] =
   ## A shortcut version to assign in let blocks.
   runnableExamples:
+    import std/assertions
     var
       b = newElement("good")
       c = newElement("bad")

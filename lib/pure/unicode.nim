@@ -35,6 +35,7 @@ template ones(n: untyped): untyped = ((1 shl n)-1)
 proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
   ## Returns the number of runes of the string ``s``.
   runnableExamples:
+    import std/assertions
     let a = "añyóng"
     doAssert a.runeLen == 6
     ## note: a.len == 8
@@ -57,6 +58,7 @@ proc runeLenAt*(s: string, i: Natural): int =
   ## See also:
   ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   runnableExamples:
+    import std/assertions
     let a = "añyóng"
     doAssert a.runeLenAt(0) == 1
     doAssert a.runeLenAt(1) == 2
@@ -157,6 +159,7 @@ proc runeAt*(s: string, i: Natural): Rune =
   ## * `runeStrAtPos proc <#runeStrAtPos,string,Natural>`_
   ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   runnableExamples:
+    import std/assertions
     let a = "añyóng"
     doAssert a.runeAt(1) == "ñ".runeAt(0)
     doAssert a.runeAt(2) == "ñ".runeAt(1)
@@ -260,6 +263,7 @@ proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
   ## * `utf8 iterator <#utf8.i,string>`_
   ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
   runnableExamples:
+    import std/assertions
     let a = "añyóng"
     doAssert a.runeAt(1).toUTF8 == "ñ"
 
@@ -269,6 +273,7 @@ proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
 proc add*(s: var string; c: Rune) =
   ## Adds a rune ``c`` to a string ``s``.
   runnableExamples:
+    import std/assertions
     var s = "abc"
     let c = "ä".runeAt(0)
     s.add(c)
@@ -291,6 +296,7 @@ proc `$`*(runes: seq[Rune]): string =
   ## See also:
   ## * `toRunes <#toRunes,string>`_ for a reverse operation
   runnableExamples:
+    import std/assertions
     let
       someString = "öÑ"
       someRunes = toRunes(someString)
@@ -312,6 +318,7 @@ proc runeOffset*(s: string, pos: Natural, start: Natural = 0): int =
   ## See also:
   ## * `runeReverseOffset proc <#runeReverseOffset,string,Positive>`_
   runnableExamples:
+    import std/assertions
     let a = "añyóng"
     doAssert a.runeOffset(1) == 1
     doAssert a.runeOffset(3) == 4
@@ -390,6 +397,7 @@ proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
   ## the end of the string. If ``len`` is not given it means the longest
   ## possible string.
   runnableExamples:
+    import std/assertions
     let s = "Hänsel  ««: 10,00€"
     doAssert(runeSubStr(s, 0, 2) == "Hä")
     doAssert(runeSubStr(s, 10, 1) == ":")
@@ -432,6 +440,7 @@ proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
 proc `<=%`*(a, b: Rune): bool =
   ## Checks if code point of `a` is smaller or equal to code point of `b`.
   runnableExamples:
+    import std/assertions
     let
       a = "ú".runeAt(0)
       b = "ü".runeAt(0)
@@ -441,6 +450,7 @@ proc `<=%`*(a, b: Rune): bool =
 proc `<%`*(a, b: Rune): bool =
   ## Checks if code point of `a` is smaller than code point of `b`.
   runnableExamples:
+    import std/assertions
     let
       a = "ú".runeAt(0)
       b = "ü".runeAt(0)
@@ -630,6 +640,7 @@ proc isAlpha*(s: string): bool {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Returns true if ``s`` contains all alphabetic runes.
   runnableExamples:
+    import std/assertions
     let a = "añyóng"
     doAssert a.isAlpha
   runeCheck(s, isAlpha)
@@ -638,6 +649,7 @@ proc isSpace*(s: string): bool {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Returns true if ``s`` contains all whitespace runes.
   runnableExamples:
+    import std/assertions
     let a = "\t\l \v\r\f"
     doAssert a.isSpace
   runeCheck(s, isWhiteSpace)
@@ -659,6 +671,7 @@ proc toUpper*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Converts ``s`` into upper-case runes.
   runnableExamples:
+    import std/assertions
     doAssert toUpper("abγ") == "ABΓ"
   convertRune(s, toUpper)
 
@@ -666,6 +679,7 @@ proc toLower*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Converts ``s`` into lower-case runes.
   runnableExamples:
+    import std/assertions
     doAssert toLower("ABΓ") == "abγ"
   convertRune(s, toLower)
 
@@ -676,6 +690,7 @@ proc swapCase*(s: string): string {.noSideEffect,
   ## Returns a new string such that the cases of all runes
   ## are swapped if possible.
   runnableExamples:
+    import std/assertions
     doAssert swapCase("Αlpha Βeta Γamma") == "αLPHA βETA γAMMA"
 
   var
@@ -695,6 +710,7 @@ proc capitalize*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1".} =
   ## Converts the first character of ``s`` into an upper-case rune.
   runnableExamples:
+    import std/assertions
     doAssert capitalize("βeta") == "Βeta"
 
   if len(s) == 0:
@@ -716,6 +732,7 @@ proc translate*(s: string, replacements: proc(key: string): string): string {.
   ## ``replacements`` is any proc that takes a word and returns
   ## a new word to fill it's place.
   runnableExamples:
+    import std/assertions
     proc wordToNumber(s: string): string =
       case s
       of "one": "1"
@@ -768,6 +785,7 @@ proc title*(s: string): string {.noSideEffect,
   ## Returns a new string such that the first character
   ## in each word inside ``s`` is capitalized.
   runnableExamples:
+    import std/assertions
     doAssert title("αlpha βeta γamma") == "Αlpha Βeta Γamma"
 
   var
@@ -816,6 +834,7 @@ proc toRunes*(s: string): seq[Rune] =
   ## See also:
   ## * `$ proc <#$,Rune>`_ for a reverse operation
   runnableExamples:
+    import std/assertions
     let a = toRunes("aáä")
     doAssert a == @["a".runeAt(0), "á".runeAt(0), "ä".runeAt(0)]
 
@@ -845,6 +864,7 @@ proc reversed*(s: string): string =
   ##
   ## Unicode combining characters are correctly interpreted as well.
   runnableExamples:
+    import std/assertions
     assert reversed("Reverse this!") == "!siht esreveR"
     assert reversed("先秦兩漢") == "漢兩秦先"
     assert reversed("as⃝df̅") == "f̅ds⃝a"
@@ -879,6 +899,7 @@ proc graphemeLen*(s: string; i: Natural): Natural =
   ## The number of bytes belonging to byte index ``s[i]``,
   ## including following combining code unit.
   runnableExamples:
+    import std/assertions
     let a = "añyóng"
     doAssert a.graphemeLen(1) == 2 ## ñ
     doAssert a.graphemeLen(2) == 1
@@ -909,6 +930,7 @@ proc lastRune*(s: string; last: int): (Rune, int) =
 proc size*(r: Rune): int {.noSideEffect.} =
   ## Returns the number of bytes the rune ``r`` takes.
   runnableExamples:
+    import std/assertions
     let a = toRunes "aá"
     doAssert size(a[0]) == 1
     doAssert size(a[1]) == 2
@@ -957,6 +979,7 @@ iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
   ##
   ## Substrings are separated by a substring containing only ``seps``.
   runnableExamples:
+    import std/assertions
     import std/sequtils
 
     assert toSeq("hÃllo\lthis\lis an\texample\l是".split) ==
@@ -995,6 +1018,7 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ## Splits the unicode string ``s`` into substrings using a single separator.
   ## Substrings are separated by the rune ``sep``.
   runnableExamples:
+    import std/assertions
     import std/sequtils
 
     assert toSeq(split(";;hÃllo;this;is;an;;example;;;是", ";".runeAt(0))) ==
@@ -1024,6 +1048,7 @@ proc strip*(s: string, leading = true, trailing = true,
   ## If ``trailing`` is true (default), trailing ``runes`` are stripped.
   ## If both are false, the string is returned unchanged.
   runnableExamples:
+    import std/assertions
     let a = "\táñyóng   "
     doAssert a.strip == "áñyóng"
     doAssert a.strip(leading = false) == "\táñyóng"
@@ -1077,6 +1102,7 @@ proc repeat*(c: Rune, count: Natural): string {.noSideEffect,
   ##
   ## The returned string will have a rune-length of ``count``.
   runnableExamples:
+    import std/assertions
     let a = "ñ".runeAt(0)
     doAssert a.repeat(5) == "ñññññ"
 
@@ -1095,6 +1121,7 @@ proc align*(s: string, count: Natural, padding = ' '.Rune): string {.
   ## returned unchanged. If you need to left align a string use the `alignLeft
   ## proc <#alignLeft,string,Natural>`_.
   runnableExamples:
+    import std/assertions
     assert align("abc", 4) == " abc"
     assert align("a", 0) == "a"
     assert align("1232", 6) == "  1232"
@@ -1122,6 +1149,7 @@ proc alignLeft*(s: string, count: Natural, padding = ' '.Rune): string {.
   ## returned unchanged. If you need to right align a string use the `align
   ## proc <#align,string,Natural>`_.
   runnableExamples:
+    import std/assertions
     assert alignLeft("abc", 4) == "abc "
     assert alignLeft("a", 0) == "a"
     assert alignLeft("1232", 6) == "1232  "

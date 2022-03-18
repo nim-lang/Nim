@@ -19,6 +19,7 @@
 ## procedures, iterators and templates for strings.
 
 runnableExamples:
+  import std/assertions
   let
     numbers = @[867, 5309]
     multiLineString = "first line\nsecond line\nthird line"
@@ -38,6 +39,7 @@ runnableExamples:
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_:
 
 runnableExamples:
+  import std/assertions
   from std/sequtils import map
 
   let jenny = "867-5309"
@@ -128,6 +130,7 @@ func isAlphaAscii*(c: char): bool {.rtl, extern: "nsuIsAlphaAsciiChar".} =
   ## This checks a-z, A-Z ASCII characters only.
   ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
   runnableExamples:
+    import std/assertions
     doAssert isAlphaAscii('e') == true
     doAssert isAlphaAscii('E') == true
     doAssert isAlphaAscii('8') == false
@@ -138,6 +141,7 @@ func isAlphaNumeric*(c: char): bool {.rtl, extern: "nsuIsAlphaNumericChar".} =
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
   runnableExamples:
+    import std/assertions
     doAssert isAlphaNumeric('n') == true
     doAssert isAlphaNumeric('8') == true
     doAssert isAlphaNumeric(' ') == false
@@ -148,6 +152,7 @@ func isDigit*(c: char): bool {.rtl, extern: "nsuIsDigitChar".} =
   ##
   ## This checks 0-9 ASCII characters only.
   runnableExamples:
+    import std/assertions
     doAssert isDigit('n') == false
     doAssert isDigit('8') == true
   return c in Digits
@@ -155,6 +160,7 @@ func isDigit*(c: char): bool {.rtl, extern: "nsuIsDigitChar".} =
 func isSpaceAscii*(c: char): bool {.rtl, extern: "nsuIsSpaceAsciiChar".} =
   ## Checks whether or not `c` is a whitespace character.
   runnableExamples:
+    import std/assertions
     doAssert isSpaceAscii('n') == false
     doAssert isSpaceAscii(' ') == true
     doAssert isSpaceAscii('\t') == true
@@ -169,6 +175,7 @@ func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
   ## See also:
   ## * `toLowerAscii func<#toLowerAscii,char>`_
   runnableExamples:
+    import std/assertions
     doAssert isLowerAscii('e') == true
     doAssert isLowerAscii('E') == false
     doAssert isLowerAscii('7') == false
@@ -183,6 +190,7 @@ func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
   ## See also:
   ## * `toUpperAscii func<#toUpperAscii,char>`_
   runnableExamples:
+    import std/assertions
     doAssert isUpperAscii('e') == false
     doAssert isUpperAscii('E') == true
     doAssert isUpperAscii('7') == false
@@ -200,6 +208,7 @@ func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   ## * `isLowerAscii func<#isLowerAscii,char>`_
   ## * `toLowerAscii func<#toLowerAscii,string>`_ for converting a string
   runnableExamples:
+    import std/assertions
     doAssert toLowerAscii('A') == 'a'
     doAssert toLowerAscii('e') == 'e'
   if c in {'A'..'Z'}:
@@ -222,6 +231,7 @@ func toLowerAscii*(s: string): string {.rtl, extern: "nsuToLowerAsciiStr".} =
   ## See also:
   ## * `normalize func<#normalize,string>`_
   runnableExamples:
+    import std/assertions
     doAssert toLowerAscii("FooBar!") == "foobar!"
   toImpl toLowerAscii
 
@@ -237,6 +247,7 @@ func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
   ## * `toUpperAscii func<#toUpperAscii,string>`_ for converting a string
   ## * `capitalizeAscii func<#capitalizeAscii,string>`_
   runnableExamples:
+    import std/assertions
     doAssert toUpperAscii('a') == 'A'
     doAssert toUpperAscii('E') == 'E'
   if c in {'a'..'z'}:
@@ -254,6 +265,7 @@ func toUpperAscii*(s: string): string {.rtl, extern: "nsuToUpperAsciiStr".} =
   ## See also:
   ## * `capitalizeAscii func<#capitalizeAscii,string>`_
   runnableExamples:
+    import std/assertions
     doAssert toUpperAscii("FooBar!") == "FOOBAR!"
   toImpl toUpperAscii
 
@@ -266,6 +278,7 @@ func capitalizeAscii*(s: string): string {.rtl, extern: "nsuCapitalizeAscii".} =
   ## See also:
   ## * `toUpperAscii func<#toUpperAscii,char>`_
   runnableExamples:
+    import std/assertions
     doAssert capitalizeAscii("foo") == "Foo"
     doAssert capitalizeAscii("-bar") == "-bar"
   if s.len == 0: result = ""
@@ -282,6 +295,7 @@ func nimIdentNormalize*(s: string): string =
   ##    <dochelpers.html#nimIdentBackticksNormalize,string>`_ for
   ##    an alternative approach.
   runnableExamples:
+    import std/assertions
     doAssert nimIdentNormalize("Foo_bar") == "Foobar"
   result = newString(s.len)
   if s.len == 0:
@@ -306,6 +320,7 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
   ## See also:
   ## * `toLowerAscii func<#toLowerAscii,string>`_
   runnableExamples:
+    import std/assertions
     doAssert normalize("Foo_bar") == "foobar"
     doAssert normalize("Foo Bar") == "foo bar"
   result = newString(s.len)
@@ -326,6 +341,7 @@ func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
   ## | < 0 if a < b
   ## | > 0 if a > b
   runnableExamples:
+    import std/assertions
     doAssert cmpIgnoreCase("FooBar", "foobar") == 0
     doAssert cmpIgnoreCase("bar", "Foo") < 0
     doAssert cmpIgnoreCase("Foo5", "foo4") > 0
@@ -346,6 +362,7 @@ func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
   ## | < 0 if a < b
   ## | > 0 if a > b
   runnableExamples:
+    import std/assertions
     doAssert cmpIgnoreStyle("foo_bar", "FooBar") == 0
     doAssert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0
   cmpIgnoreStyleImpl(a, b)
@@ -707,6 +724,7 @@ func split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
   ## * `splitLines func<#splitLines,string>`_
   ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   runnableExamples:
+    import std/assertions
     doAssert "a,b,c".split(',') == @["a", "b", "c"]
     doAssert "".split(' ') == @[""]
   accResult(split(s, sep, maxsplit))
@@ -722,6 +740,7 @@ func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
   ## * `splitLines func<#splitLines,string>`_
   ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   runnableExamples:
+    import std/assertions
     doAssert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
     doAssert "".split({' '}) == @[""]
   accResult(split(s, seps, maxsplit))
@@ -739,6 +758,7 @@ func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ## * `splitLines func<#splitLines,string>`_
   ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   runnableExamples:
+    import std/assertions
     doAssert "a,b,c".split(",") == @["a", "b", "c"]
     doAssert "a man a plan a canal panama".split("a ") == @["", "man ", "plan ", "canal panama"]
     doAssert "".split("Elon Musk") == @[""]
@@ -829,6 +849,7 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ## * `splitLines func<#splitLines,string>`_
   ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   runnableExamples:
+    import std/assertions
     doAssert "a  largely    spaced sentence".rsplit(" ", maxsplit = 1) == @[
         "a  largely    spaced", "sentence"]
     doAssert "a,b,c".rsplit(",") == @["a", "b", "c"]
@@ -867,6 +888,7 @@ func toBin*(x: BiggestInt, len: Positive): string {.rtl, extern: "nsuToBin".} =
   ## The resulting string is always `len` characters long. No leading `0b`
   ## prefix is generated.
   runnableExamples:
+    import std/assertions
     let
       a = 29
       b = 257
@@ -891,6 +913,7 @@ func toOct*(x: BiggestInt, len: Positive): string {.rtl, extern: "nsuToOct".} =
   ##
   ## Do not confuse it with `toOctal func<#toOctal,char>`_.
   runnableExamples:
+    import std/assertions
     let
       a = 62
       b = 513
@@ -924,6 +947,7 @@ func toHex*[T: SomeInteger](x: T, len: Positive): string =
   ## The resulting string will be exactly `len` characters long. No prefix like
   ## `0x` is generated. `x` is treated as an unsigned value.
   runnableExamples:
+    import std/assertions
     let
       a = 62'u64
       b = 4097'u64
@@ -937,6 +961,7 @@ func toHex*[T: SomeInteger](x: T, len: Positive): string =
 func toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for `toHex(x, T.sizeof * 2)`
   runnableExamples:
+    import std/assertions
     doAssert toHex(1984'i64) == "00000000000007C0"
     doAssert toHex(1984'i16) == "07C0"
   toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
@@ -950,6 +975,7 @@ func toHex*(s: string): string {.rtl.} =
   ## See also:
   ## * `parseHexStr func<#parseHexStr,string>`_ for the reverse operation
   runnableExamples:
+    import std/assertions
     let
       a = "1"
       b = "A"
@@ -974,6 +1000,7 @@ func toOctal*(c: char): string {.rtl, extern: "nsuToOctal".} =
   ##
   ## Do not confuse it with `toOct func<#toOct,BiggestInt,Positive>`_.
   runnableExamples:
+    import std/assertions
     doAssert toOctal('1') == "061"
     doAssert toOctal('A') == "101"
     doAssert toOctal('a') == "141"
@@ -996,6 +1023,7 @@ func fromBin*[T: SomeInteger](s: string): T =
   ## is too big to fit into a return type, only the value of the rightmost
   ## binary digits of `s` is returned without producing an error.
   runnableExamples:
+    import std/assertions
     let s = "0b_0100_1000_1000_1000_1110_1110_1001_1001"
     doAssert fromBin[int](s) == 1216933529
     doAssert fromBin[int8](s) == 0b1001_1001'i8
@@ -1019,6 +1047,7 @@ func fromOct*[T: SomeInteger](s: string): T =
   ## is too big to fit into a return type, only the value of the rightmost
   ## octal digits of `s` is returned without producing an error.
   runnableExamples:
+    import std/assertions
     let s = "0o_123_456_777"
     doAssert fromOct[int](s) == 21913087
     doAssert fromOct[int8](s) == 0o377'i8
@@ -1042,6 +1071,7 @@ func fromHex*[T: SomeInteger](s: string): T =
   ## is too big to fit into a return type, only the value of the rightmost
   ## hex digits of `s` is returned without producing an error.
   runnableExamples:
+    import std/assertions
     let s = "0x_1235_8df6"
     doAssert fromHex[int](s) == 305499638
     doAssert fromHex[int8](s) == 0xf6'i8
@@ -1061,6 +1091,7 @@ func intToStr*(x: int, minchars: Positive = 1): string {.rtl,
   ## The resulting string will be minimally `minchars` characters long. This is
   ## achieved by adding leading zeros.
   runnableExamples:
+    import std/assertions
     doAssert intToStr(1984) == "1984"
     doAssert intToStr(1984, 6) == "001984"
   result = $abs(x)
@@ -1074,6 +1105,7 @@ func parseInt*(s: string): int {.rtl, extern: "nsuParseInt".} =
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
   runnableExamples:
+    import std/assertions
     doAssert parseInt("-0042") == -42
   result = 0
   let L = parseutils.parseInt(s, result, 0)
@@ -1115,6 +1147,7 @@ func parseFloat*(s: string): float {.rtl, extern: "nsuParseFloat".} =
   ## If `s` is not a valid floating point number, `ValueError` is raised.
   ##`NAN`, `INF`, `-INF` are also supported (case insensitive comparison).
   runnableExamples:
+    import std/assertions
     doAssert parseFloat("3.14") == 3.14
     doAssert parseFloat("inf") == 1.0/0
   result = 0.0
@@ -1129,6 +1162,7 @@ func parseBinInt*(s: string): int {.rtl, extern: "nsuParseBinInt".} =
   ## one of the following optional prefixes: `0b`, `0B`. Underscores within
   ## `s` are ignored.
   runnableExamples:
+    import std/assertions
     let
       a = "0b11_0101"
       b = "111"
@@ -1186,6 +1220,7 @@ func parseHexStr*(s: string): string {.rtl, extern: "nsuParseHexStr".} =
   ## See also:
   ## * `toHex func<#toHex,string>`_ for the reverse operation
   runnableExamples:
+    import std/assertions
     let
       a = "41"
       b = "3161"
@@ -1216,6 +1251,7 @@ func parseBool*(s: string): bool =
   ## 0, off`, then returns `false`.  If `s` is something else a
   ## `ValueError` exception is raised.
   runnableExamples:
+    import std/assertions
     let a = "n"
     doAssert parseBool(a) == false
 
@@ -1231,6 +1267,7 @@ func parseEnum*[T: enum](s: string): T =
   ## Raises `ValueError` for an invalid value in `s`. The comparison is
   ## done in a style insensitive way.
   runnableExamples:
+    import std/assertions
     type
       MyEnum = enum
         first = "1st",
@@ -1251,6 +1288,7 @@ func parseEnum*[T: enum](s: string, default: T): T =
   ## Uses `default` for an invalid value in `s`. The comparison is done in a
   ## style insensitive way.
   runnableExamples:
+    import std/assertions
     type
       MyEnum = enum
         first = "1st",
@@ -1267,6 +1305,7 @@ func repeat*(c: char, count: Natural): string {.rtl, extern: "nsuRepeatChar".} =
   ## Returns a string of length `count` consisting only of
   ## the character `c`.
   runnableExamples:
+    import std/assertions
     let a = 'z'
     doAssert a.repeat(5) == "zzzzz"
   result = newString(count)
@@ -1275,6 +1314,7 @@ func repeat*(c: char, count: Natural): string {.rtl, extern: "nsuRepeatChar".} =
 func repeat*(s: string, n: Natural): string {.rtl, extern: "nsuRepeatStr".} =
   ## Returns string `s` concatenated `n` times.
   runnableExamples:
+    import std/assertions
     doAssert "+ foo +".repeat(3) == "+ foo ++ foo ++ foo +"
 
   result = newStringOfCap(n * s.len)
@@ -1290,6 +1330,7 @@ func spaces*(n: Natural): string {.inline.} =
   ## * `indent func<#indent,string,Natural,string>`_
   ## * `center func<#center,string,int,char>`_
   runnableExamples:
+    import std/assertions
     let
       width = 15
       text1 = "Hello user!"
@@ -1315,6 +1356,7 @@ func align*(s: string, count: Natural, padding = ' '): string {.rtl,
   ## * `indent func<#indent,string,Natural,string>`_
   ## * `center func<#center,string,int,char>`_
   runnableExamples:
+    import std/assertions
     assert align("abc", 4) == " abc"
     assert align("a", 0) == "a"
     assert align("1232", 6) == "  1232"
@@ -1341,6 +1383,7 @@ func alignLeft*(s: string, count: Natural, padding = ' '): string =
   ## * `indent func<#indent,string,Natural,string>`_
   ## * `center func<#center,string,int,char>`_
   runnableExamples:
+    import std/assertions
     assert alignLeft("abc", 4) == "abc "
     assert alignLeft("a", 0) == "a"
     assert alignLeft("1232", 6) == "1232  "
@@ -1368,6 +1411,7 @@ func center*(s: string, width: int, fillChar: char = ' '): string {.rtl,
   ## * `spaces func<#spaces,Natural>`_
   ## * `indent func<#indent,string,Natural,string>`_
   runnableExamples:
+    import std/assertions
     let a = "foo"
     doAssert a.center(2) == "foo"
     doAssert a.center(5) == " foo "
@@ -1402,6 +1446,7 @@ func indent*(s: string, count: Natural, padding: string = " "): string {.rtl,
   ## * `unindent func<#unindent,string,Natural,string>`_
   ## * `dedent func<#dedent,string,Natural>`_
   runnableExamples:
+    import std/assertions
     doAssert indent("First line\c\l and second line.", 2) ==
              "  First line\l   and second line."
   result = ""
@@ -1427,6 +1472,7 @@ func unindent*(s: string, count: Natural = int.high,
   ## * `spaces func<#spaces,Natural>`_
   ## * `indent func<#indent,string,Natural,string>`_
   runnableExamples:
+    import std/assertions
     let x = """
       Hello
         There
@@ -1477,6 +1523,7 @@ func dedent*(s: string, count: Natural = indentation(s)): string {.rtl,
   ## * `spaces func<#spaces,Natural>`_
   ## * `indent func<#indent,string,Natural,string>`_
   runnableExamples:
+    import std/assertions
     let x = """
       Hello
         There
@@ -1492,6 +1539,7 @@ func delete*(s: var string, slice: Slice[int]) =
   ## This operation moves all elements after `s[slice]` in linear time, and
   ## is the string analog to `sequtils.delete`.
   runnableExamples:
+    import std/assertions
     var a = "abcde"
     doAssertRaises(IndexDefect): a.delete(4..5)
     assert a == "abcde"
@@ -1518,6 +1566,7 @@ func delete*(s: var string, slice: Slice[int]) =
 func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete", deprecated: "use `delete(s, first..last)`".} =
   ## Deletes in `s` the characters at positions `first .. last` (both ends included).
   runnableExamples("--warning:deprecated:off"):
+    import std/assertions
     var a = "abracadabra"
 
     a.delete(4, 5)
@@ -1546,6 +1595,7 @@ func startsWith*(s: string, prefix: char): bool {.inline.} =
   ## * `continuesWith func<#continuesWith,string,string,Natural>`_
   ## * `removePrefix func<#removePrefix,string,char>`_
   runnableExamples:
+    import std/assertions
     let a = "abracadabra"
     doAssert a.startsWith('a') == true
     doAssert a.startsWith('b') == false
@@ -1561,6 +1611,7 @@ func startsWith*(s, prefix: string): bool {.rtl, extern: "nsuStartsWith".} =
   ## * `continuesWith func<#continuesWith,string,string,Natural>`_
   ## * `removePrefix func<#removePrefix,string,string>`_
   runnableExamples:
+    import std/assertions
     let a = "abracadabra"
     doAssert a.startsWith("abra") == true
     doAssert a.startsWith("bra") == false
@@ -1574,6 +1625,7 @@ func endsWith*(s: string, suffix: char): bool {.inline.} =
   ## * `continuesWith func<#continuesWith,string,string,Natural>`_
   ## * `removeSuffix func<#removeSuffix,string,char>`_
   runnableExamples:
+    import std/assertions
     let a = "abracadabra"
     doAssert a.endsWith('a') == true
     doAssert a.endsWith('b') == false
@@ -1589,6 +1641,7 @@ func endsWith*(s, suffix: string): bool {.rtl, extern: "nsuEndsWith".} =
   ## * `continuesWith func<#continuesWith,string,string,Natural>`_
   ## * `removeSuffix func<#removeSuffix,string,string>`_
   runnableExamples:
+    import std/assertions
     let a = "abracadabra"
     doAssert a.endsWith("abra") == true
     doAssert a.endsWith("dab") == false
@@ -1604,6 +1657,7 @@ func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
   ## * `startsWith func<#startsWith,string,string>`_
   ## * `endsWith func<#endsWith,string,string>`_
   runnableExamples:
+    import std/assertions
     let a = "abracadabra"
     doAssert a.continuesWith("ca", 4) == true
     doAssert a.continuesWith("ca", 5) == false
@@ -1623,6 +1677,7 @@ func removePrefix*(s: var string, chars: set[char] = Newlines) {.rtl,
   ## See also:
   ## * `removeSuffix func<#removeSuffix,string,set[char]>`_
   runnableExamples:
+    import std/assertions
     var userInput = "\r\n*~Hello World!"
     userInput.removePrefix
     doAssert userInput == "*~Hello World!"
@@ -1646,6 +1701,7 @@ func removePrefix*(s: var string, c: char) {.rtl,
   ## * `removeSuffix func<#removeSuffix,string,char>`_
   ## * `startsWith func<#startsWith,string,char>`_
   runnableExamples:
+    import std/assertions
     var ident = "pControl"
     ident.removePrefix('p')
     doAssert ident == "Control"
@@ -1659,6 +1715,7 @@ func removePrefix*(s: var string, prefix: string) {.rtl,
   ## * `removeSuffix func<#removeSuffix,string,string>`_
   ## * `startsWith func<#startsWith,string,string>`_
   runnableExamples:
+    import std/assertions
     var answers = "yesyes"
     answers.removePrefix("yes")
     doAssert answers == "yes"
@@ -1673,6 +1730,7 @@ func removeSuffix*(s: var string, chars: set[char] = Newlines) {.rtl,
   ## See also:
   ## * `removePrefix func<#removePrefix,string,set[char]>`_
   runnableExamples:
+    import std/assertions
     var userInput = "Hello World!*~\r\n"
     userInput.removeSuffix
     doAssert userInput == "Hello World!*~"
@@ -1697,6 +1755,7 @@ func removeSuffix*(s: var string, c: char) {.rtl,
   ## * `removePrefix func<#removePrefix,string,char>`_
   ## * `endsWith func<#endsWith,string,char>`_
   runnableExamples:
+    import std/assertions
     var table = "users"
     table.removeSuffix('s')
     doAssert table == "user"
@@ -1715,6 +1774,7 @@ func removeSuffix*(s: var string, suffix: string) {.rtl,
   ## * `removePrefix func<#removePrefix,string,string>`_
   ## * `endsWith func<#endsWith,string,string>`_
   runnableExamples:
+    import std/assertions
     var answers = "yeses"
     answers.removeSuffix("es")
     doAssert answers == "yes"
@@ -1737,6 +1797,7 @@ func addSep*(dest: var string, sep = ", ", startLen: Natural = 0) {.inline.} =
   ## `startLen`. The following example creates a string describing
   ## an array of integers.
   runnableExamples:
+    import std/assertions
     var arr = "["
     for x in items([2, 3, 5, 7, 11]):
       addSep(arr, startLen = len("["))
@@ -1749,6 +1810,7 @@ func addSep*(dest: var string, sep = ", ", startLen: Natural = 0) {.inline.} =
 func allCharsInSet*(s: string, theSet: set[char]): bool =
   ## Returns true if every character of `s` is in the set `theSet`.
   runnableExamples:
+    import std/assertions
     doAssert allCharsInSet("aeea", {'a', 'e'}) == true
     doAssert allCharsInSet("", {'a', 'e'}) == true
 
@@ -1762,6 +1824,7 @@ func abbrev*(s: string, possibilities: openArray[string]): int =
   ##
   ## Returns -1 if no item has been found and -2 if multiple items match.
   runnableExamples:
+    import std/assertions
     doAssert abbrev("fac", ["college", "faculty", "industry"]) == 1
     doAssert abbrev("foo", ["college", "faculty", "industry"]) == -1 # Not found
     doAssert abbrev("fac", ["college", "faculty", "faculties"]) == -2 # Ambiguous
@@ -1782,6 +1845,7 @@ func join*(a: openArray[string], sep: string = ""): string {.rtl,
     extern: "nsuJoinSep".} =
   ## Concatenates all strings in the container `a`, separating them with `sep`.
   runnableExamples:
+    import std/assertions
     doAssert join(["A", "B", "Conclusion"], " -> ") == "A -> B -> Conclusion"
 
   if len(a) > 0:
@@ -1799,6 +1863,7 @@ func join*[T: not string](a: openArray[T], sep: string = ""): string =
   ## Converts all elements in the container `a` to strings using `$`,
   ## and concatenates them with `sep`.
   runnableExamples:
+    import std/assertions
     doAssert join([1, 2, 3], " -> ") == "1 -> 2 -> 3"
 
   result = ""
@@ -2058,6 +2123,7 @@ func countLines*(s: string): int {.rtl, extern: "nsuCountLines".} =
   ## See also:
   ## * `splitLines func<#splitLines,string>`_
   runnableExamples:
+    import std/assertions
     doAssert countLines("First line\l and second line.") == 2
   result = 1
   var i = 0
@@ -2220,6 +2286,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
   ## Even though the algorithm works with any string `s`, it is only useful
   ## if `s` contains a number.
   runnableExamples:
+    import std/assertions
     doAssert insertSep("1000000") == "1_000_000"
   result = newStringOfCap(s.len)
   let hasPrefix = isDigit(s[s.low]) == false
@@ -2327,6 +2394,7 @@ func validIdentifier*(s: string): bool {.rtl, extern: "nsuValidIdentifier".} =
   ## A valid identifier starts with a character of the set `IdentStartChars`
   ## and is followed by any number of characters of the set `IdentChars`.
   runnableExamples:
+    import std/assertions
     doAssert "abc_def08".validIdentifier
 
   if s.len > 0 and s[0] in IdentStartChars:
@@ -2361,6 +2429,7 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ##
   ## If `precision == -1`, it tries to format it nicely.
   runnableExamples:
+    import std/assertions
     let x = 123.456
     doAssert x.formatBiggestFloat() == "123.4560000000000"
     doAssert x.formatBiggestFloat(ffDecimal, 4) == "123.4560"
@@ -2434,6 +2503,7 @@ func formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ##
   ## If `precision == -1`, it tries to format it nicely.
   runnableExamples:
+    import std/assertions
     let x = 123.456
     doAssert x.formatFloat() == "123.4560000000000"
     doAssert x.formatFloat(ffDecimal, 4) == "123.4560"
@@ -2447,6 +2517,7 @@ func trimZeros*(x: var string; decimalSep = '.') =
   ##
   ## This modifies `x` itself, it does not return a copy.
   runnableExamples:
+    import std/assertions
     var x = "123.456000000"
     x.trimZeros()
     doAssert x == "123.456"
@@ -2481,6 +2552,7 @@ func formatSize*(bytes: int64,
   ## See also:
   ## * `strformat module<strformat.html>`_ for string interpolation and formatting
   runnableExamples:
+    import std/assertions
     doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
     doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
     doAssert formatSize(4096, includeSpace = true) == "4 KiB"
@@ -2815,6 +2887,7 @@ func strip*(s: string, leading = true, trailing = true,
   ## * `strip proc<strbasics.html#strip,string,set[char]>`_ Inplace version.
   ## * `stripLineEnd func<#stripLineEnd,string>`_
   runnableExamples:
+    import std/assertions
     let a = "  vhellov   "
     let b = strip(a)
     doAssert b == "vhellov"

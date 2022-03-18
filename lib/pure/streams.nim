@@ -147,6 +147,7 @@ proc flush*(s: Stream) =
   ## See also:
   ## * `close proc <#close,Stream>`_
   runnableExamples:
+    import std/assertions
     from std/os import removeFile
 
     var strm = newFileStream("somefile.txt", fmWrite)
@@ -182,6 +183,7 @@ proc atEnd*(s: Stream): bool =
   ## Checks if more data can be read from `s`. Returns ``true`` if all data has
   ## been read.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     var line = ""
     doAssert strm.atEnd() == false
@@ -195,6 +197,7 @@ proc atEnd*(s: Stream): bool =
 proc setPosition*(s: Stream, pos: int) =
   ## Sets the position `pos` of the stream `s`.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     strm.setPosition(4)
     doAssert strm.readLine() == "first line"
@@ -207,6 +210,7 @@ proc setPosition*(s: Stream, pos: int) =
 proc getPosition*(s: Stream): int =
   ## Retrieves the current position in the stream `s`.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     doAssert strm.getPosition() == 0
     discard strm.readLine()
@@ -221,6 +225,7 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## **JS note:** `buffer` is treated as a ``ptr string`` and written to between
   ## ``0..<bufLen``.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("abcde")
     var buffer: array[6, char]
     doAssert strm.readData(addr(buffer), 1024) == 5
@@ -233,6 +238,7 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
 proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
   ## Low level proc that reads data into a string ``buffer`` at ``slice``.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("abcde")
     var buffer = "12345"
     doAssert strm.readDataStr(buffer, 0..3) == 4
@@ -261,6 +267,7 @@ when (NimMajor, NimMinor) >= (1, 3) or not defined(js):
   proc readAll*(s: Stream): string =
     ## Reads all available data.
     runnableExamples:
+      import std/assertions
       var strm = newStringStream("The first line\nthe second line\nthe third line")
       doAssert strm.readAll() == "The first line\nthe second line\nthe third line"
       doAssert strm.atEnd() == true
@@ -298,6 +305,7 @@ proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## **JS note:** `buffer` is treated as a ``ptr string`` and written to between
   ## ``0..<bufLen``.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("abcde")
     var buffer: array[6, char]
     doAssert strm.peekData(addr(buffer), 1024) == 5
@@ -314,6 +322,7 @@ proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
   ## **JS note:** `buffer` is treated as a ``ptr string`` and read between
   ## ``0..<bufLen``.
   runnableExamples:
+    import std/assertions
     ## writeData
     var strm = newStringStream("")
     var buffer = ['a', 'b', 'c', 'd', 'e']
@@ -338,6 +347,7 @@ proc write*[T](s: Stream, x: T) =
   ##
   ##     s.writeData(s, unsafeAddr(x), sizeof(x))
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("")
     strm.write("abcde")
     strm.setPosition(0)
@@ -350,6 +360,7 @@ proc write*(s: Stream, x: string) =
   ## Writes the string `x` to the stream `s`. No length field or
   ## terminating zero is written.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("")
     strm.write("THE FIRST LINE")
     strm.setPosition(0)
@@ -370,6 +381,7 @@ proc write*(s: Stream, args: varargs[string, `$`]) =
   ## Writes one or more strings to the the stream. No length fields or
   ## terminating zeros are written.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("")
     strm.write(1, 2, 3, 4)
     strm.setPosition(0)
@@ -382,6 +394,7 @@ proc writeLine*(s: Stream, args: varargs[string, `$`]) =
   ## Writes one or more strings to the the stream `s` followed
   ## by a new line. No length field or terminating zero is written.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("")
     strm.writeLine(1, 2)
     strm.writeLine(3, 4)
@@ -397,6 +410,7 @@ proc read*[T](s: Stream, result: var T) =
   ##
   ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("012")
     ## readInt
     var i: int8
@@ -416,6 +430,7 @@ proc peek*[T](s: Stream, result: var T) =
   ##
   ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("012")
     ## peekInt
     var i: int8
@@ -436,6 +451,7 @@ proc readChar*(s: Stream): char =
   ## Raises `IOError` if an error occurred.
   ## Returns '\\0' as an EOF marker.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("12\n3")
     doAssert strm.readChar() == '1'
     doAssert strm.readChar() == '2'
@@ -455,6 +471,7 @@ proc peekChar*(s: Stream): char =
   ## Peeks a char from the stream `s`. Raises `IOError` if an error occurred.
   ## Returns '\\0' as an EOF marker.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("12\n3")
     doAssert strm.peekChar() == '1'
     doAssert strm.peekChar() == '1'
@@ -478,6 +495,7 @@ proc readBool*(s: Stream): bool =
   ##
   ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(true)
@@ -503,6 +521,7 @@ proc peekBool*(s: Stream): bool =
   ##
   ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(true)
@@ -526,6 +545,7 @@ proc readInt8*(s: Stream): int8 =
   ##
   ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'i8)
@@ -545,6 +565,7 @@ proc peekInt8*(s: Stream): int8 =
   ##
   ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'i8)
@@ -566,6 +587,7 @@ proc readInt16*(s: Stream): int16 =
   ##
   ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'i16)
@@ -585,6 +607,7 @@ proc peekInt16*(s: Stream): int16 =
   ##
   ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'i16)
@@ -606,6 +629,7 @@ proc readInt32*(s: Stream): int32 =
   ##
   ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'i32)
@@ -625,6 +649,7 @@ proc peekInt32*(s: Stream): int32 =
   ##
   ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'i32)
@@ -646,6 +671,7 @@ proc readInt64*(s: Stream): int64 =
   ##
   ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'i64)
@@ -665,6 +691,7 @@ proc peekInt64*(s: Stream): int64 =
   ##
   ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'i64)
@@ -686,6 +713,7 @@ proc readUint8*(s: Stream): uint8 =
   ##
   ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'u8)
@@ -705,6 +733,7 @@ proc peekUint8*(s: Stream): uint8 =
   ##
   ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'u8)
@@ -726,6 +755,7 @@ proc readUint16*(s: Stream): uint16 =
   ##
   ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'u16)
@@ -745,6 +775,7 @@ proc peekUint16*(s: Stream): uint16 =
   ##
   ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'u16)
@@ -766,6 +797,7 @@ proc readUint32*(s: Stream): uint32 =
   ##
   ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'u32)
@@ -786,6 +818,7 @@ proc peekUint32*(s: Stream): uint32 =
   ##
   ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'u32)
@@ -807,6 +840,7 @@ proc readUint64*(s: Stream): uint64 =
   ##
   ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'u64)
@@ -826,6 +860,7 @@ proc peekUint64*(s: Stream): uint64 =
   ##
   ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'u64)
@@ -847,6 +882,7 @@ proc readFloat32*(s: Stream): float32 =
   ##
   ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'f32)
@@ -866,6 +902,7 @@ proc peekFloat32*(s: Stream): float32 =
   ##
   ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'f32)
@@ -887,6 +924,7 @@ proc readFloat64*(s: Stream): float64 =
   ##
   ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'f64)
@@ -906,6 +944,7 @@ proc peekFloat64*(s: Stream): float64 =
   ##
   ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream()
     ## setup for reading data
     strm.write(1'f64)
@@ -939,6 +978,7 @@ proc readStr*(s: Stream, length: int): string =
   ## Reads a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("abcde")
     doAssert strm.readStr(2) == "ab"
     doAssert strm.readStr(2) == "cd"
@@ -965,6 +1005,7 @@ proc peekStr*(s: Stream, length: int): string =
   ## Peeks a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("abcde")
     doAssert strm.peekStr(2) == "ab"
     ## not "cd
@@ -989,6 +1030,7 @@ proc readLine*(s: Stream, line: var string): bool =
   ## * `peekLine(Stream) proc <#peekLine,Stream>`_
   ## * `peekLine(Stream, string) proc <#peekLine,Stream,string>`_
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     var line = ""
     doAssert strm.readLine(line) == true
@@ -1032,6 +1074,7 @@ proc peekLine*(s: Stream, line: var string): bool =
   ## * `readLine(Stream, string) proc <#readLine,Stream,string>`_
   ## * `peekLine(Stream) proc <#peekLine,Stream>`_
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     var line = ""
     doAssert strm.peekLine(line) == true
@@ -1059,6 +1102,7 @@ proc readLine*(s: Stream): string =
   ## * `peekLine(Stream) proc <#peekLine,Stream>`_
   ## * `peekLine(Stream, string) proc <#peekLine,Stream,string>`_
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     doAssert strm.readLine() == "The first line"
     doAssert strm.readLine() == "the second line"
@@ -1089,6 +1133,7 @@ proc peekLine*(s: Stream): string =
   ## * `readLine(Stream, string) proc <#readLine,Stream,string>`_
   ## * `peekLine(Stream, string) proc <#peekLine,Stream,string>`_
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     doAssert strm.peekLine() == "The first line"
     ## not "the second line"
@@ -1109,6 +1154,7 @@ iterator lines*(s: Stream): string =
   ## * `readLine(Stream) proc <#readLine,Stream>`_
   ## * `readLine(Stream, string) proc <#readLine,Stream,string>`_
   runnableExamples:
+    import std/assertions
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     var lines: seq[string]
     for line in strm.lines():
@@ -1266,6 +1312,7 @@ else: # after 1.3 or JS not defined
     ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
     ##   file stream from the file name and the mode.
     runnableExamples:
+      import std/assertions
       var strm = newStringStream("The first line\nthe second line\nthe third line")
       doAssert strm.readLine() == "The first line"
       doAssert strm.readLine() == "the second line"
@@ -1390,6 +1437,7 @@ proc newFileStream*(filename: string, mode: FileMode = fmRead,
   ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
   ##   file stream from the file name and the mode.
   runnableExamples:
+    import std/assertions
     from std/os import removeFile
     var strm = newFileStream("somefile.txt", fmWrite)
     if not isNil(strm):

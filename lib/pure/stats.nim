@@ -38,6 +38,7 @@
 ## call the numerous statistical procs for the `RunningStat` object:
 
 runnableExamples:
+  import std/assertions
   from std/math import almostEqual
 
   template `~=`(a, b: float): bool = almostEqual(a, b)

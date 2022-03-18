@@ -317,6 +317,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   ## `p.kind` describes what kind of token has been parsed. `p.key` and
   ## `p.val` are set accordingly.
   runnableExamples:
+    import std/assertions
     var p = initOptParser("--left -r:2 file.txt")
     p.next()
     doAssert p.kind == cmdLongOption and p.key == "left"

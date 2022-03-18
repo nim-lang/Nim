@@ -203,6 +203,7 @@ proc processedRows*(self: var CsvParser): int {.inline.} =
   ## But even if `readRow <#readRow,CsvParser,int>`_ arrived at EOF then
   ## processed rows counter is incremented.
   runnableExamples:
+    import std/assertions
     import std/streams
 
     var strm = newStringStream("One,Two,Three\n1,2,3")
@@ -229,6 +230,7 @@ proc readRow*(self: var CsvParser, columns = 0): bool =
   ##
   ## Blank lines are skipped.
   runnableExamples:
+    import std/assertions
     import std/streams
     var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
     var parser: CsvParser
@@ -296,6 +298,7 @@ proc readHeaderRow*(self: var CsvParser) =
   ## See also:
   ## * `rowEntry proc <#rowEntry,CsvParser,string>`_
   runnableExamples:
+    import std/assertions
     import std/streams
 
     var strm = newStringStream("One,Two,Three\n1,2,3")
@@ -325,6 +328,7 @@ proc rowEntry*(self: var CsvParser, entry: string): var string =
   ##
   ## If specified `entry` does not exist, raises KeyError.
   runnableExamples:
+    import std/assertions
     import std/streams
     var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
     var parser: CsvParser

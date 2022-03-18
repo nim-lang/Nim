@@ -23,6 +23,7 @@ type HoleyEnum* = (not Ordinal) and enum ## Enum with holes.
 type OrdinalEnum* = Ordinal and enum ## Enum without holes.
 
 runnableExamples:
+  import std/assertions
   type A = enum a0 = 2, a1 = 4, a2
   type B = enum b0 = 2, b1, b2
   assert A is enum
@@ -39,6 +40,7 @@ proc name*(t: typedesc): string {.magic: "TypeTrait".} =
   ##
   ## Alias for `system.\`$\`(t) <dollars.html#$,typedesc>`_ since Nim v0.20.
   runnableExamples:
+    import std/assertions
     doAssert name(int) == "int"
     doAssert name(seq[string]) == "seq[string]"
 
@@ -46,6 +48,7 @@ proc arity*(t: typedesc): int {.magic: "TypeTrait".} =
   ## Returns the arity of the given type. This is the number of "type"
   ## components or the number of generic parameters a given type `t` has.
   runnableExamples:
+    import std/assertions
     doAssert arity(int) == 0
     doAssert arity(seq[string]) == 1
     doAssert arity(array[3, int]) == 2
@@ -60,6 +63,7 @@ proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".} =
   ## **See also:**
   ## * `stripGenericParams proc <#stripGenericParams,typedesc>`_
   runnableExamples:
+    import std/assertions
     type
       Foo[T] = object
       FooInst = Foo[int]
@@ -86,6 +90,7 @@ proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".} =
   ## instead of producing an error for non-generic types, it will just return
   ## them unmodified.
   runnableExamples:
+    import std/assertions
     type Foo[T] = object
 
     doAssert stripGenericParams(Foo[string]) is Foo
@@ -100,6 +105,7 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
 proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".} =
   ## Returns true for named tuples, false for any other type.
   runnableExamples:
+    import std/assertions
     doAssert not isNamedTuple(int)
     doAssert not isNamedTuple((string, int))
     doAssert isNamedTuple(tuple[name: string, age: int])
@@ -107,6 +113,7 @@ proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".} =
 template pointerBase*[T](_: typedesc[ptr T | ref T]): typedesc =
   ## Returns `T` for `ref T | ptr T`.
   runnableExamples:
+    import std/assertions
     assert (ref int).pointerBase is int
     type A = ptr seq[float]
     assert A.pointerBase is seq[float]
@@ -121,6 +128,7 @@ proc distinctBase*(T: typedesc, recursive: static bool = true): typedesc {.magic
   ## **See also:**
   ## * `distinctBase template <#distinctBase.t,T,static[bool]>`_
   runnableExamples:
+    import std/assertions
     type MyInt = distinct int
     type MyOtherInt = distinct MyInt
     doAssert distinctBase(MyInt) is int
@@ -132,6 +140,7 @@ since (1, 1):
   template distinctBase*[T](a: T, recursive: static bool = true): untyped =
     ## Overload of `distinctBase <#distinctBase,typedesc,static[bool]>`_ for values.
     runnableExamples:
+      import std/assertions
       type MyInt = distinct int
       type MyOtherInt = distinct MyInt
       doAssert 12.MyInt.distinctBase == 12
@@ -149,6 +158,7 @@ since (1, 1):
     ## **See also:**
     ## * `tupleLen template <#tupleLen.t>`_
     runnableExamples:
+      import std/assertions
       doAssert tupleLen((int, int, float, string)) == 4
       doAssert tupleLen(tuple[name: string, age: int]) == 2
 
@@ -158,6 +168,7 @@ since (1, 1):
     ## **See also:**
     ## * `tupleLen proc <#tupleLen,typedesc>`_
     runnableExamples:
+      import std/assertions
       doAssert tupleLen((1, 2)) == 2
 
     tupleLen(typeof(t))
@@ -166,6 +177,7 @@ since (1, 1):
     ## Returns the `i`-th element of `T`.
     # Note: `[]` currently gives: `Error: no generic parameters allowed for ...`
     runnableExamples:
+      import std/assertions
       doAssert get((int, int, float, string), 2) is float
 
     typeof(default(T)[i])
@@ -178,6 +190,7 @@ since (1, 3, 5):
     ## Returns the element type of `a`, which can be any iterable (over which you
     ## can iterate).
     runnableExamples:
+      import std/assertions
       iterator myiter(n: int): auto =
         for i in 0 ..< n:
           yield i
@@ -193,6 +206,7 @@ import macros
 macro enumLen*(T: typedesc[enum]): int =
   ## Returns the number of items in the enum `T`.
   runnableExamples:
+    import std/assertions
     type Foo = enum
       fooItem1
       fooItem2
@@ -266,6 +280,7 @@ since (1, 1):
     ## **Note:** For the builtin array type, the index generic parameter will
     ## **always** become a range type after it's bound to a variable.
     runnableExamples:
+      import std/assertions
       type Foo[T1, T2] = object
 
       doAssert genericParams(Foo[float, string]) is (float, string)

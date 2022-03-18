@@ -12,6 +12,7 @@
 ## working with directories, running shell commands, etc.
 
 runnableExamples:
+  import std/assertions
   let myFile = "/path/to/my/file.nim"
   assert splitPath(myFile) == (head: "/path/to/my", tail: "file.nim")
   when defined(posix):
@@ -129,6 +130,7 @@ proc normalizePathEnd(path: string, trailingSep = false): string =
   ## outplace overload
   runnableExamples:
     when defined(posix):
+      import std/assertions
       assert normalizePathEnd("/lib//.//", trailingSep = true) == "/lib/"
       assert normalizePathEnd("lib/./.", trailingSep = false) == "lib"
       assert normalizePathEnd(".//./.", trailingSep = false) == "."
@@ -165,6 +167,7 @@ proc joinPath*(head, tail: string): string {.
   ## * `uri./ proc <uri.html#/,Uri,string>`_
   runnableExamples:
     when defined(posix):
+      import std/assertions
       assert joinPath("usr", "lib") == "usr/lib"
       assert joinPath("usr", "lib/") == "usr/lib/"
       assert joinPath("usr", "") == "usr"
@@ -208,6 +211,7 @@ proc joinPath*(parts: varargs[string]): string {.noSideEffect,
   ## * `splitPath proc`_
   runnableExamples:
     when defined(posix):
+      import std/assertions
       assert joinPath("a") == "a"
       assert joinPath("a", "b", "c") == "a/b/c"
       assert joinPath("usr/lib", "../../var", "log") == "var/log"
@@ -231,6 +235,7 @@ proc `/`*(head, tail: string): string {.noSideEffect, inline.} =
   ## * `uri./ proc <uri.html#/,Uri,string>`_
   runnableExamples:
     when defined(posix):
+      import std/assertions
       assert "usr" / "" == "usr"
       assert "" / "lib" == "lib"
       assert "" / "/lib" == "/lib"
@@ -251,6 +256,7 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
   ## * `/../ proc`_
   ## * `relativePath proc`_
   runnableExamples:
+    import std/assertions
     assert splitPath("usr/local/bin") == ("usr/local", "bin")
     assert splitPath("usr/local/bin/") == ("usr/local/bin", "")
     assert splitPath("/bin/") == ("/bin", "")
@@ -283,6 +289,7 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raise
   ##
   ## On Windows, network paths are considered absolute too.
   runnableExamples:
+    import std/assertions
     assert not "".isAbsolute
     assert not ".".isAbsolute
     when defined(posix):
@@ -385,6 +392,7 @@ proc relativePath*(path, base: string, sep = DirSep): string {.
   ## * `parentDir proc`_
   ## * `tailDir proc`_
   runnableExamples:
+    import std/assertions
     assert relativePath("/Users/me/bar/z.nim", "/Users/other/bad", '/') == "../../me/bar/z.nim"
     assert relativePath("/Users/me/bar/z.nim", "/Users/other", '/') == "../me/bar/z.nim"
     assert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
@@ -460,6 +468,7 @@ proc relativePath*(path, base: string, sep = DirSep): string {.
 proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
   ## Returns true if `path` is relative to `base`.
   runnableExamples:
+    import std/assertions
     doAssert isRelativeTo("./foo//bar", "foo")
     doAssert isRelativeTo("foo/bar", ".")
     doAssert isRelativeTo("/foo/bar.nim", "/foo/bar.nim")
@@ -490,6 +499,7 @@ proc parentDir*(path: string): string {.
   ## * `tailDir proc`_
   ## * `parentDirs iterator`_
   runnableExamples:
+    import std/assertions
     assert parentDir("") == ""
     when defined(posix):
       assert parentDir("/usr/local/bin") == "/usr/local"
@@ -520,6 +530,7 @@ proc tailDir*(path: string): string {.
   ## * `splitPath proc`_
   ## * `parentDir proc`_
   runnableExamples:
+    import std/assertions
     assert tailDir("/bin") == "bin"
     assert tailDir("bin") == ""
     assert tailDir("bin/") == ""
@@ -540,6 +551,7 @@ proc isRootDir*(path: string): bool {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Checks whether a given `path` is a root directory.
   runnableExamples:
+    import std/assertions
     assert isRootDir("")
     assert isRootDir(".")
     assert isRootDir("/")
@@ -608,6 +620,7 @@ proc `/../`*(head, tail: string): string {.noSideEffect.} =
   ## * `parentDir proc`_
   runnableExamples:
     when defined(posix):
+      import std/assertions
       assert "a/b/c" /../ "d/e" == "a/b/d/e"
       assert "a" /../ "d/e" == "a/d/e"
 
@@ -632,6 +645,7 @@ proc searchExtPos*(path: string): int =
   ## * `changeFileExt proc`_
   ## * `addFileExt proc`_
   runnableExamples:
+    import std/assertions
     assert searchExtPos("a/b/c") == -1
     assert searchExtPos("c.nim") == 1
     assert searchExtPos("a/b/c.nim") == 5
@@ -664,6 +678,7 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   ## * `changeFileExt proc`_
   ## * `addFileExt proc`_
   runnableExamples:
+    import std/assertions
     var (dir, name, ext) = splitFile("usr/local/nimc.html")
     assert dir == "usr/local"
     assert name == "nimc"
@@ -712,6 +727,7 @@ proc extractFilename*(path: string): string {.
   ## * `changeFileExt proc`_
   ## * `addFileExt proc`_
   runnableExamples:
+    import std/assertions
     assert extractFilename("foo/bar/") == ""
     assert extractFilename("foo/bar") == "bar"
     assert extractFilename("foo/bar.baz") == "bar.baz"
@@ -733,6 +749,7 @@ proc lastPathPart*(path: string): string {.
   ## * `changeFileExt proc`_
   ## * `addFileExt proc`_
   runnableExamples:
+    import std/assertions
     assert lastPathPart("foo/bar/") == "bar"
     assert lastPathPart("foo/bar") == "bar"
 
@@ -757,6 +774,7 @@ proc changeFileExt*(filename, ext: string): string {.
   ## * `lastPathPart proc`_
   ## * `addFileExt proc`_
   runnableExamples:
+    import std/assertions
     assert changeFileExt("foo.bar", "baz") == "foo.baz"
     assert changeFileExt("foo.bar", "") == "foo"
     assert changeFileExt("foo", "baz") == "foo.baz"
@@ -781,6 +799,7 @@ proc addFileExt*(filename, ext: string): string {.
   ## * `lastPathPart proc`_
   ## * `changeFileExt proc`_
   runnableExamples:
+    import std/assertions
     assert addFileExt("foo.bar", "baz") == "foo.bar"
     assert addFileExt("foo.bar", "") == "foo.bar"
     assert addFileExt("foo", "baz") == "foo.baz"
@@ -800,6 +819,7 @@ proc cmpPaths*(pathA, pathB: string): int {.
   ## | < 0 if pathA < pathB
   ## | > 0 if pathA > pathB
   runnableExamples:
+    import std/assertions
     when defined(macosx):
       assert cmpPaths("foo", "Foo") == 0
     elif defined(posix):
@@ -889,6 +909,7 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   ## * `getCurrentDir proc`_
   ## * `setCurrentDir proc`_
   runnableExamples:
+    import std/assertions
     assert getHomeDir() == expandTilde("~")
 
   when defined(windows): return getEnv("USERPROFILE") & "\\"
@@ -1031,6 +1052,7 @@ proc expandTilde*(path: string): string {.
   ## * `getCurrentDir proc`_
   ## * `setCurrentDir proc`_
   runnableExamples:
+    import std/assertions
     assert expandTilde("~" / "appname.cfg") == getHomeDir() / "appname.cfg"
     assert expandTilde("~/foo/bar") == getHomeDir() / "foo/bar"
     assert expandTilde("/foo/bar") == "/foo/bar"
@@ -1103,6 +1125,7 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
   proc quoteShellCommand*(args: openArray[string]): string =
     ## Concatenates and quotes shell arguments `args`.
     runnableExamples:
+      import std/assertions
       when defined(posix):
         assert quoteShellCommand(["aaa", "", "c d"]) == "aaa '' 'c d'"
       when defined(windows):
@@ -1447,6 +1470,7 @@ proc absolutePath*(path: string, root = getCurrentDir()): string =
   ## * `normalizedPath proc`_
   ## * `normalizePath proc`_
   runnableExamples:
+    import std/assertions
     assert absolutePath("a") == getCurrentDir() / "a"
 
   if isAbsolute(path): path
@@ -1462,6 +1486,7 @@ proc normalizeExe*(file: var string) {.since: (1, 3, 5).} =
   ## on posix, prepends `./` if `file` doesn't contain `/` and is not `"", ".", ".."`.
   runnableExamples:
     import std/sugar
+    import std/assertions
     when defined(posix):
       doAssert "foo".dup(normalizeExe) == "./foo"
       doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
@@ -1487,6 +1512,7 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ## * `normalizeExe proc`_
   runnableExamples:
     when defined(posix):
+      import std/assertions
       var a = "a///b//..//c///d"
       a.normalizePath()
       assert a == "a/c/d"
@@ -1529,6 +1555,7 @@ proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
   ## * `normalizePath proc`_ for the in-place version
   runnableExamples:
     when defined(posix):
+      import std/assertions
       assert normalizedPath("a///b//..//c///d") == "a/c/d"
   result = pathnorm.normalizePath(path)
 
@@ -2143,6 +2170,7 @@ iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect], noWeirdT
   ## * `walkDir iterator`_
   ## * `walkDirRec iterator`_
   runnableExamples:
+    import std/assertions
     import std/sequtils
     let paths = toSeq(walkPattern("lib/pure/*")) # works on Windows too
     assert "lib/pure/concurrency".unixToNativePath in paths
@@ -2162,6 +2190,7 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTar
   ## * `walkDir iterator`_
   ## * `walkDirRec iterator`_
   runnableExamples:
+    import std/assertions
     import std/sequtils
     assert "lib/pure/os.nim".unixToNativePath in toSeq(walkFiles("lib/pure/*.nim")) # works on Windows too
   walkCommon(pattern, isFile)
@@ -2179,6 +2208,7 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarg
   ## * `walkDir iterator`_
   ## * `walkDirRec iterator`_
   runnableExamples:
+    import std/assertions
     import std/sequtils
     let paths = toSeq(walkDirs("lib/pure/*")) # works on Windows too
     assert "lib/pure/concurrency".unixToNativePath in paths
@@ -2288,6 +2318,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ##
   ## and this code:
   runnableExamples("-r:off"):
+  import std/assertions
     import std/[strutils, sugar]
     # note: order is not guaranteed
     # this also works at compile time
@@ -3448,6 +3479,7 @@ proc isHidden*(path: string): bool {.noWeirdTarget.} =
   ## **Note**: paths are not normalized to determine `isHidden`.
   runnableExamples:
     when defined(posix):
+      import std/assertions
       assert ".foo".isHidden
       assert not ".foo/bar".isHidden
       assert not ".".isHidden
@@ -3504,6 +3536,7 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
   ## It uses `invalidFilenameChars`, `invalidFilenames` and `maxLen` to verify the specified `filename`.
   ##
   runnableExamples:
+    import std/assertions
     assert not isValidFilename(" foo")     # Leading white space
     assert not isValidFilename("foo ")     # Trailing white space
     assert not isValidFilename("foo.")     # Ends with dot

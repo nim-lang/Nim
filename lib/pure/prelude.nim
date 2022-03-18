@@ -12,6 +12,7 @@ when defined(nimdoc) and isMainModule:
   when compileSettings.querySetting(compileSettings.SingleValueSetting.projectFull) == currentSourcePath:
     ## This is an include file that simply imports common modules for your convenience.
     runnableExamples:
+      import std/assertions
       include std/prelude
         # same as:
         # import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt]

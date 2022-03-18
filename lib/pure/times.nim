@@ -419,6 +419,7 @@ proc convert*[T: SomeInteger](unitFrom, unitTo: FixedTimeUnit, quantity: T): T
   ## Convert a quantity of some duration unit to another duration unit.
   ## This proc only deals with integers, so the result might be truncated.
   runnableExamples:
+    import std/assertions
     doAssert convert(Days, Hours, 2) == 48
     doAssert convert(Days, Weeks, 13) == 1 # Truncated
     doAssert convert(Seconds, Milliseconds, -1) == -1000
@@ -441,6 +442,7 @@ proc normalize[T: Duration|Time](seconds, nanoseconds: int64): T =
 proc isLeapYear*(year: int): bool =
   ## Returns true if `year` is a leap year.
   runnableExamples:
+    import std/assertions
     doAssert isLeapYear(2000)
     doAssert not isLeapYear(1900)
   year mod 4 == 0 and (year mod 100 != 0 or year mod 400 == 0)
@@ -449,6 +451,7 @@ proc getDaysInMonth*(month: Month, year: int): int =
   ## Get the number of days in `month` of `year`.
   # http://www.dispersiondesign.com/articles/time/number_of_days_in_a_month
   runnableExamples:
+    import std/assertions
     doAssert getDaysInMonth(mFeb, 2000) == 29
     doAssert getDaysInMonth(mFeb, 2001) == 28
   case month
@@ -501,6 +504,7 @@ proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int):
   ## Returns the day of the year.
   ## Equivalent with `dateTime(year, month, monthday, 0, 0, 0, 0).yearday`.
   runnableExamples:
+    import std/assertions
     doAssert getDayOfYear(1, mJan, 2000) == 0
     doAssert getDayOfYear(10, mJan, 2000) == 9
     doAssert getDayOfYear(10, mFeb, 2000) == 40
@@ -521,6 +525,7 @@ proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay
   ## Returns the day of the week enum from day, month and year.
   ## Equivalent with `dateTime(year, month, monthday, 0, 0, 0, 0).weekday`.
   runnableExamples:
+    import std/assertions
     doAssert getDayOfWeek(13, mJun, 1990) == dWed
     doAssert $getDayOfWeek(13, mJun, 1990) == "Wednesday"
 
@@ -536,6 +541,7 @@ proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay
 proc getDaysInYear*(year: int): int =
   ## Get the number of days in a `year`
   runnableExamples:
+    import std/assertions
     doAssert getDaysInYear(2000) == 366
     doAssert getDaysInYear(2001) == 365
   result = 365 + (if isLeapYear(year): 1 else: 0)
@@ -547,6 +553,7 @@ proc getWeeksInIsoYear*(y: IsoYear): IsoWeekRange {.since: (1, 5).} =
   ## Returns the number of weeks in the specified ISO 8601 week-based year, which can be
   ## either 53 or 52.
   runnableExamples:
+    import std/assertions
     assert getWeeksInIsoYear(IsoYear(2000)) == 52
     assert getWeeksInIsoYear(IsoYear(2001)) == 53
 
@@ -567,6 +574,7 @@ proc getIsoWeekAndYear*(dt: DateTime):
   ##
   ## .. warning:: The ISO week-based year can correspond to the following or previous year from 29 December to January 3.
   runnableExamples:
+    import std/assertions
     assert getIsoWeekAndYear(initDateTime(21, mApr, 2018, 00, 00, 00)) == (isoweek: 16.IsoWeekRange, isoyear: 2018.IsoYear)
     block:
       let (w, y) = getIsoWeekAndYear(initDateTime(30, mDec, 2019, 00, 00, 00))
@@ -646,6 +654,7 @@ proc initDuration*(nanoseconds, microseconds, milliseconds,
                    seconds, minutes, hours, days, weeks: int64 = 0): Duration =
   ## Create a new `Duration <#Duration>`_.
   runnableExamples:
+    import std/assertions
     let dur = initDuration(seconds = 1, milliseconds = 1)
     doAssert dur.inMilliseconds == 1001
     doAssert dur.inSeconds == 1
@@ -686,6 +695,7 @@ template convert(dur: Duration, unit: static[FixedTimeUnit]): int64 =
 proc inWeeks*(dur: Duration): int64 =
   ## Converts the duration to the number of whole weeks.
   runnableExamples:
+    import std/assertions
     let dur = initDuration(days = 8)
     doAssert dur.inWeeks == 1
   dur.convert(Weeks)
@@ -693,6 +703,7 @@ proc inWeeks*(dur: Duration): int64 =
 proc inDays*(dur: Duration): int64 =
   ## Converts the duration to the number of whole days.
   runnableExamples:
+    import std/assertions
     let dur = initDuration(hours = -50)
     doAssert dur.inDays == -2
   dur.convert(Days)
@@ -700,6 +711,7 @@ proc inDays*(dur: Duration): int64 =
 proc inHours*(dur: Duration): int64 =
   ## Converts the duration to the number of whole hours.
   runnableExamples:
+    import std/assertions
     let dur = initDuration(minutes = 60, days = 2)
     doAssert dur.inHours == 49
   dur.convert(Hours)
@@ -707,6 +719,7 @@ proc inHours*(dur: Duration): int64 =
 proc inMinutes*(dur: Duration): int64 =
   ## Converts the duration to the number of whole minutes.
   runnableExamples:
+    import std/assertions
     let dur = initDuration(hours = 2, seconds = 10)
     doAssert dur.inMinutes == 120
   dur.convert(Minutes)
@@ -714,6 +727,7 @@ proc inMinutes*(dur: Duration): int64 =
 proc inSeconds*(dur: Duration): int64 =
   ## Converts the duration to the number of whole seconds.
   runnableExamples:
+    import std/assertions
     let dur = initDuration(hours = 2, milliseconds = 10)
     doAssert dur.inSeconds == 2 * 60 * 60
   dur.convert(Seconds)
@@ -728,6 +742,7 @@ proc inMilliseconds*(dur: Duration): int64 =
 proc inMicroseconds*(dur: Duration): int64 =
   ## Converts the duration to the number of whole microseconds.
   runnableExamples:
+    import std/assertions
     let dur = initDuration(seconds = -2)
     doAssert dur.inMicroseconds == -2000000
   dur.convert(Microseconds)
@@ -735,6 +750,7 @@ proc inMicroseconds*(dur: Duration): int64 =
 proc inNanoseconds*(dur: Duration): int64 =
   ## Converts the duration to the number of whole nanoseconds.
   runnableExamples:
+    import std/assertions
     let dur = initDuration(seconds = -2)
     doAssert dur.inNanoseconds == -2000000000
   dur.convert(Nanoseconds)
@@ -747,6 +763,7 @@ proc toParts*(dur: Duration): DurationParts =
   ##
   ## This procedure is useful for converting `Duration` values to strings.
   runnableExamples:
+    import std/assertions
     var dp = toParts(initDuration(weeks = 2, days = 1))
     doAssert dp[Days] == 1
     doAssert dp[Weeks] == 2
@@ -777,6 +794,7 @@ proc toParts*(dur: Duration): DurationParts =
 proc `$`*(dur: Duration): string =
   ## Human friendly string representation of a `Duration`.
   runnableExamples:
+    import std/assertions
     doAssert $initDuration(seconds = 2) == "2 seconds"
     doAssert $initDuration(weeks = 1, days = 2) == "1 week and 2 days"
     doAssert $initDuration(hours = 1, minutes = 2, seconds = 3) ==
@@ -796,6 +814,7 @@ proc `$`*(dur: Duration): string =
 proc `+`*(a, b: Duration): Duration {.operator, extern: "ntAddDuration".} =
   ## Add two durations together.
   runnableExamples:
+    import std/assertions
     doAssert initDuration(seconds = 1) + initDuration(days = 1) ==
       initDuration(seconds = 1, days = 1)
   addImpl[Duration](a, b)
@@ -803,6 +822,7 @@ proc `+`*(a, b: Duration): Duration {.operator, extern: "ntAddDuration".} =
 proc `-`*(a, b: Duration): Duration {.operator, extern: "ntSubDuration".} =
   ## Subtract a duration from another.
   runnableExamples:
+    import std/assertions
     doAssert initDuration(seconds = 1, days = 1) - initDuration(seconds = 1) ==
       initDuration(days = 1)
   subImpl[Duration](a, b)
@@ -810,6 +830,7 @@ proc `-`*(a, b: Duration): Duration {.operator, extern: "ntSubDuration".} =
 proc `-`*(a: Duration): Duration {.operator, extern: "ntReverseDuration".} =
   ## Reverse a duration.
   runnableExamples:
+    import std/assertions
     doAssert -initDuration(seconds = 1) == initDuration(seconds = -1)
   normalize[Duration](-a.seconds, -a.nanosecond)
 
@@ -820,6 +841,7 @@ proc `<`*(a, b: Duration): bool {.operator, extern: "ntLtDuration".} =
   ## Use `abs(a) < abs(b)` to compare the absolute
   ## duration.
   runnableExamples:
+    import std/assertions
     doAssert initDuration(seconds = 1) < initDuration(seconds = 2)
     doAssert initDuration(seconds = -2) < initDuration(seconds = 1)
     doAssert initDuration(seconds = -2).abs < initDuration(seconds = 1).abs == false
@@ -830,6 +852,7 @@ proc `<=`*(a, b: Duration): bool {.operator, extern: "ntLeDuration".} =
 
 proc `==`*(a, b: Duration): bool {.operator, extern: "ntEqDuration".} =
   runnableExamples:
+    import std/assertions
     let
       d1 = initDuration(weeks = 1)
       d2 = initDuration(days = 7)
@@ -840,6 +863,7 @@ proc `*`*(a: int64, b: Duration): Duration {.operator,
     extern: "ntMulInt64Duration".} =
   ## Multiply a duration by some scalar.
   runnableExamples:
+    import std/assertions
     doAssert 5 * initDuration(seconds = 1) == initDuration(seconds = 5)
     doAssert 3 * initDuration(minutes = 45) == initDuration(hours = 2, minutes = 15)
   normalize[Duration](a * b.seconds, a * b.nanosecond)
@@ -848,6 +872,7 @@ proc `*`*(a: Duration, b: int64): Duration {.operator,
     extern: "ntMulDuration".} =
   ## Multiply a duration by some scalar.
   runnableExamples:
+    import std/assertions
     doAssert initDuration(seconds = 1) * 5 == initDuration(seconds = 5)
     doAssert initDuration(minutes = 45) * 3 == initDuration(hours = 2, minutes = 15)
   b * a
@@ -865,6 +890,7 @@ proc `div`*(a: Duration, b: int64): Duration {.operator,
     extern: "ntDivDuration".} =
   ## Integer division for durations.
   runnableExamples:
+    import std/assertions
     doAssert initDuration(seconds = 3) div 2 ==
       initDuration(milliseconds = 1500)
     doAssert initDuration(minutes = 45) div 30 ==
@@ -884,6 +910,7 @@ proc low*(typ: typedesc[Duration]): Duration =
 
 proc abs*(a: Duration): Duration =
   runnableExamples:
+    import std/assertions
     doAssert initDuration(milliseconds = -1500).abs ==
       initDuration(milliseconds = 1500)
   initDuration(seconds = abs(a.seconds), nanoseconds = -a.nanosecond)
@@ -907,6 +934,7 @@ proc fromUnix*(unix: int64): Time
   ## Convert a unix timestamp (seconds since `1970-01-01T00:00:00Z`)
   ## to a `Time`.
   runnableExamples:
+    import std/assertions
     doAssert $fromUnix(0).utc == "1970-01-01T00:00:00Z"
   initTime(unix, 0)
 
@@ -914,6 +942,7 @@ proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert `t` to a unix timestamp (seconds since `1970-01-01T00:00:00Z`).
   ## See also `toUnixFloat` for subsecond resolution.
   runnableExamples:
+    import std/assertions
     doAssert fromUnix(0).toUnix() == 0
   t.seconds
 
@@ -921,6 +950,7 @@ proc fromUnixFloat(seconds: float): Time {.benign, tags: [], raises: [], noSideE
   ## Convert a unix timestamp in seconds to a `Time`; same as `fromUnix`
   ## but with subsecond resolution.
   runnableExamples:
+    import std/assertions
     doAssert fromUnixFloat(123456.0) == fromUnixFloat(123456)
     doAssert fromUnixFloat(-123456.0) == fromUnixFloat(-123456)
   let secs = seconds.floor
@@ -930,6 +960,7 @@ proc fromUnixFloat(seconds: float): Time {.benign, tags: [], raises: [], noSideE
 proc toUnixFloat(t: Time): float {.benign, tags: [], raises: [].} =
   ## Same as `toUnix` but using subsecond resolution.
   runnableExamples:
+    import std/assertions
     let t = getTime()
     # `<` because of rounding errors
     doAssert abs(t.toUnixFloat().fromUnixFloat - t) < initDuration(nanoseconds = 1000)
@@ -978,6 +1009,7 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
   ## Computes the duration between two points in time.
   runnableExamples:
+    import std/assertions
     doAssert initTime(1000, 100) - initTime(500, 20) ==
       initDuration(minutes = 8, seconds = 20, nanoseconds = 80)
   subImpl[Duration](a, b)
@@ -985,18 +1017,21 @@ proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
 proc `+`*(a: Time, b: Duration): Time {.operator, extern: "ntAddTime".} =
   ## Add a duration of time to a `Time`.
   runnableExamples:
+    import std/assertions
     doAssert (fromUnix(0) + initDuration(seconds = 1)) == fromUnix(1)
   addImpl[Time](a, b)
 
 proc `-`*(a: Time, b: Duration): Time {.operator, extern: "ntSubTime".} =
   ## Subtracts a duration of time from a `Time`.
   runnableExamples:
+    import std/assertions
     doAssert (fromUnix(0) - initDuration(seconds = 1)) == fromUnix(-1)
   subImpl[Time](a, b)
 
 proc `<`*(a, b: Time): bool {.operator, extern: "ntLtTime".} =
   ## Returns true if `a < b`, that is if `a` happened before `b`.
   runnableExamples:
+    import std/assertions
     doAssert initTime(50, 0) < initTime(99, 0)
   ltImpl(a, b)
 
@@ -1108,6 +1143,7 @@ proc utcOffset*(dt: DateTime): int {.inline.} =
 proc isInitialized(dt: DateTime): bool =
   # Returns true if `dt` is not the (invalid) default value for `DateTime`.
   runnableExamples:
+    import std/assertions
     doAssert now().isInitialized
     doAssert not default(DateTime).isInitialized
   dt.monthZero != 0
@@ -1119,6 +1155,7 @@ proc isLeapDay*(dt: DateTime): bool {.since: (1, 1).} =
   ## Returns whether `t` is a leap day, i.e. Feb 29 in a leap year. This matters
   ## as it affects time offset calculations.
   runnableExamples:
+    import std/assertions
     let dt = dateTime(2020, mFeb, 29, 00, 00, 00, 00, utc())
     doAssert dt.isLeapDay
     doAssert dt+1.years-1.years != dt
@@ -1188,6 +1225,7 @@ proc newTimezone*(
   ## unambiguously can be used. Note that the timezones name is used for
   ## checking equality!
   runnableExamples:
+    import std/assertions
     proc utcTzInfo(time: Time): ZonedTime =
       ZonedTime(utcOffset: 0, isDst: false, time: time)
     let utc = newTimezone("Etc/UTC", utcTzInfo, utcTzInfo)
@@ -1228,6 +1266,7 @@ proc `$`*(zone: Timezone): string =
 proc `==`*(zone1, zone2: Timezone): bool =
   ## Two `Timezone`'s are considered equal if their name is equal.
   runnableExamples:
+    import std/assertions
     doAssert local() == local()
     doAssert local() != utc()
   if system.`==`(zone1, zone2):
@@ -1352,6 +1391,7 @@ var localInstance {.threadvar.}: Timezone
 proc utc*(): Timezone =
   ## Get the `Timezone` implementation for the UTC timezone.
   runnableExamples:
+    import std/assertions
     doAssert now().utc.timezone == utc()
     doAssert utc().name == "Etc/UTC"
   if utcInstance.isNil:
@@ -1361,6 +1401,7 @@ proc utc*(): Timezone =
 proc local*(): Timezone =
   ## Get the `Timezone` implementation for the local timezone.
   runnableExamples:
+    import std/assertions
     doAssert now().timezone == local()
     doAssert local().name == "LOCAL"
   if localInstance.isNil:
@@ -1398,6 +1439,7 @@ proc dateTime*(year: int, month: Month, monthday: MonthdayRange,
                zone: Timezone = local()): DateTime =
   ## Create a new `DateTime <#DateTime>`_ in the specified timezone.
   runnableExamples:
+    import std/assertions
     assert $dateTime(2017, mMar, 30, zone = utc()) == "2017-03-30T00:00:00Z"
 
   assertValidDate monthday, month, year
@@ -1418,6 +1460,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    zone: Timezone = local()): DateTime {.deprecated: "use `dateTime`".} =
   ## Create a new `DateTime <#DateTime>`_ in the specified timezone.
   runnableExamples("--warning:deprecated:off"):
+    import std/assertions
     assert $initDateTime(30, mMar, 2017, 00, 00, 00, 00, utc()) == "2017-03-30T00:00:00Z"
   dateTime(year, month, monthday, hour, minute, second, nanosecond, zone)
 
@@ -1426,6 +1469,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    zone: Timezone = local()): DateTime {.deprecated: "use `dateTime`".} =
   ## Create a new `DateTime <#DateTime>`_ in the specified timezone.
   runnableExamples("--warning:deprecated:off"):
+    import std/assertions
     assert $initDateTime(30, mMar, 2017, 00, 00, 00, utc()) == "2017-03-30T00:00:00Z"
   dateTime(year, month, monthday, hour, minute, second, 0, zone)
 
@@ -1448,6 +1492,7 @@ proc `-`*(dt: DateTime, dur: Duration): DateTime =
 proc `-`*(dt1, dt2: DateTime): Duration =
   ## Compute the duration between `dt1` and `dt2`.
   runnableExamples:
+    import std/assertions
     let dt1 = dateTime(2017, mMar, 30, 00, 00, 00, 00, utc())
     let dt2 = dateTime(2017, mMar, 25, 00, 00, 00, 00, utc())
 
@@ -1587,6 +1632,7 @@ const
 proc `$`*(f: TimeFormat): string =
   ## Returns the format string that was used to construct `f`.
   runnableExamples:
+    import std/assertions
     let f = initTimeFormat("yyyy-MM-dd")
     doAssert $f == "yyyy-MM-dd"
   f.formatStr
@@ -1710,6 +1756,7 @@ proc initTimeFormat*(format: string): TimeFormat =
   ## See `Parsing and formatting dates`_ for documentation of the
   ## `format` argument.
   runnableExamples:
+    import std/assertions
     let f = initTimeFormat("yyyy-MM-dd")
     doAssert "2000-01-01" == "2000-01-01".parse(f).format(f)
   result.formatStr = format
@@ -2067,6 +2114,7 @@ proc format*(dt: DateTime, f: TimeFormat,
     loc: DateTimeLocale = DefaultLocale): string {.raises: [].} =
   ## Format `dt` using the format specified by `f`.
   runnableExamples:
+    import std/assertions
     let f = initTimeFormat("yyyy-MM-dd")
     let dt = dateTime(2000, mJan, 01, 00, 00, 00, 00, utc())
     doAssert "2000-01-01" == dt.format(f)
@@ -2116,6 +2164,7 @@ proc format*(time: Time, f: string, zone: Timezone = local()): string
   ## See `Parsing and formatting dates`_ for documentation of the
   ## `f` argument.
   runnableExamples:
+    import std/assertions
     var dt = dateTime(1970, mJan, 01, 00, 00, 00, 00, utc())
     var tm = dt.toTime()
     doAssert format(tm, "yyyy-MM-dd'T'HH:mm:ss", utc()) == "1970-01-01T00:00:00"
@@ -2141,6 +2190,7 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local(),
   ##
   ## Month and day names from the passed in `loc` are used.
   runnableExamples:
+    import std/assertions
     let f = initTimeFormat("yyyy-MM-dd")
     let dt = dateTime(2000, mJan, 01, 00, 00, 00, 00, utc())
     doAssert dt == "2000-01-01".parse(f, utc())
@@ -2184,6 +2234,7 @@ proc parse*(input, f: string, tz: Timezone = local(),
   ## See `Parsing and formatting dates`_ for documentation of the
   ## `f` argument.
   runnableExamples:
+    import std/assertions
     let dt = dateTime(2000, mJan, 01, 00, 00, 00, 00, utc())
     doAssert dt == parse("2000-01-01", "yyyy-MM-dd", utc())
   let dtFormat = initTimeFormat(f)
@@ -2204,6 +2255,7 @@ proc parseTime*(input, f: string, zone: Timezone): Time
   ## See `Parsing and formatting dates`_ for documentation of the
   ## `format` argument.
   runnableExamples:
+    import std/assertions
     let tStr = "1970-01-01T00:00:00+00:00"
     doAssert parseTime(tStr, "yyyy-MM-dd'T'HH:mm:sszzz", utc()) == fromUnix(0)
   parse(input, f, zone).toTime()
@@ -2218,6 +2270,7 @@ proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   ## Converts a `DateTime` object to a string representation.
   ## It uses the format `yyyy-MM-dd'T'HH:mm:sszzz`.
   runnableExamples:
+    import std/assertions
     let dt = dateTime(2000, mJan, 01, 12, 00, 00, 00, utc())
     doAssert $dt == "2000-01-01T12:00:00Z"
     doAssert $default(DateTime) == "Uninitialized DateTime"
@@ -2230,6 +2283,7 @@ proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
   ## Converts a `Time` value to a string representation. It will use the local
   ## time zone and use the format `yyyy-MM-dd'T'HH:mm:sszzz`.
   runnableExamples:
+    import std/assertions
     let dt = dateTime(1970, mJan, 01, 00, 00, 00, 00, local())
     let tm = dt.toTime()
     doAssert $tm == "1970-01-01T00:00:00" & format(dt, "zzz")
@@ -2251,6 +2305,7 @@ proc initTimeInterval*(nanoseconds, microseconds, milliseconds,
   ## You can also use the convenience procedures called `milliseconds`,
   ## `seconds`, `minutes`, `hours`, `days`, `months`, and `years`.
   runnableExamples:
+    import std/assertions
     let day = initTimeInterval(hours = 24)
     let dt = dateTime(2000, mJan, 01, 12, 00, 00, 00, utc())
     doAssert $(dt + day) == "2000-01-02T12:00:00Z"
@@ -2282,6 +2337,7 @@ proc `+`*(ti1, ti2: TimeInterval): TimeInterval =
 proc `-`*(ti: TimeInterval): TimeInterval =
   ## Reverses a time interval
   runnableExamples:
+    import std/assertions
     let day = -initTimeInterval(hours = 24)
     doAssert day.hours == -24
 
@@ -2303,6 +2359,7 @@ proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
   ##
   ## Time components are subtracted one-by-one, see output:
   runnableExamples:
+    import std/assertions
     let ti1 = initTimeInterval(hours = 24)
     let ti2 = initTimeInterval(hours = 4)
     doAssert (ti1 - ti2) == initTimeInterval(hours = 20)
@@ -2338,6 +2395,7 @@ proc between*(startDt, endDt: DateTime): TimeInterval =
   ## - If `startDt.timezone != endDt.timezone`, then the result will be
   ##   equivalent to `between(startDt.utc, endDt.utc)`.
   runnableExamples:
+    import std/assertions
     var a = dateTime(2015, mMar, 25, 12, 0, 0, 00, utc())
     var b = dateTime(2017, mApr, 1, 15, 0, 15, 00, utc())
     var ti = initTimeInterval(years = 2, weeks = 1, hours = 3, seconds = 15)
@@ -2440,6 +2498,7 @@ proc toParts*(ti: TimeInterval): TimeIntervalParts =
   ## This procedure is useful for converting `TimeInterval` values to strings.
   ## E.g. then you need to implement custom interval printing
   runnableExamples:
+    import std/assertions
     var tp = toParts(initTimeInterval(years = 1, nanoseconds = 123))
     doAssert tp[Years] == 1
     doAssert tp[Nanoseconds] == 123
@@ -2452,6 +2511,7 @@ proc toParts*(ti: TimeInterval): TimeIntervalParts =
 proc `$`*(ti: TimeInterval): string =
   ## Get string representation of `TimeInterval`.
   runnableExamples:
+    import std/assertions
     doAssert $initTimeInterval(years = 1, nanoseconds = 123) ==
       "1 year and 123 nanoseconds"
     doAssert $initTimeInterval() == "0 nanoseconds"
@@ -2571,6 +2631,7 @@ proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## So adding one month to `31 October` will result in `31 November`, which
   ## will overflow and result in `1 December`.
   runnableExamples:
+    import std/assertions
     let dt = dateTime(2017, mMar, 30, 00, 00, 00, 00, utc())
     doAssert $(dt + 1.months) == "2017-04-30T00:00:00Z"
     # This is correct and happens due to monthday overflow.
@@ -2594,6 +2655,7 @@ proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## then the `months` component and so on. The returned `DateTime` will
   ## have the same timezone as the input.
   runnableExamples:
+    import std/assertions
     let dt = dateTime(2017, mMar, 30, 00, 00, 00, 00, utc())
     doAssert $(dt - 5.days) == "2017-03-25T00:00:00Z"
 
@@ -2604,6 +2666,7 @@ proc `+`*(time: Time, interval: TimeInterval): Time =
   ## If `interval` contains any years, months, weeks or days the operation
   ## is performed in the local timezone.
   runnableExamples:
+    import std/assertions
     let tm = fromUnix(0)
     doAssert tm + 5.seconds == fromUnix(5)
 
@@ -2617,6 +2680,7 @@ proc `-`*(time: Time, interval: TimeInterval): Time =
   ## If `interval` contains any years, months, weeks or days the operation
   ## is performed in the local timezone.
   runnableExamples:
+    import std/assertions
     let tm = fromUnix(5)
     doAssert tm - 5.seconds == fromUnix(0)
 
@@ -2650,6 +2714,7 @@ proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
   ##
   ## .. warning:: The ISO week-based year can correspond to the following or previous year from 29 December to January 3.
   runnableExamples:
+    import std/assertions
     assert initDateTime(21, mApr, 2018, 00, 00, 00) == initDateTime(dSat, 16, 2018.IsoYear, 00, 00, 00)
     assert initDateTime(30, mDec, 2019, 00, 00, 00) == initDateTime(dMon, 01, 2020.IsoYear, 00, 00, 00)
     assert initDateTime(13, mSep, 2020, 00, 00, 00) == initDateTime(dSun, 37, 2020.IsoYear, 00, 00, 00)

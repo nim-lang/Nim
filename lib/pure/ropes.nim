@@ -134,6 +134,7 @@ proc insertInCache(s: string, tree: Rope): Rope =
 proc rope*(s: string = ""): Rope {.rtl, extern: "nro$1Str".} =
   ## Converts a string to a rope.
   runnableExamples:
+    import std/assertions
     let r = rope("I'm a rope")
     doAssert $r == "I'm a rope"
 
@@ -153,6 +154,7 @@ proc rope*(s: string = ""): Rope {.rtl, extern: "nro$1Str".} =
 proc rope*(i: BiggestInt): Rope {.rtl, extern: "nro$1BiggestInt".} =
   ## Converts an int to a rope.
   runnableExamples:
+    import std/assertions
     let r = rope(429)
     doAssert $r == "429"
 
@@ -161,6 +163,7 @@ proc rope*(i: BiggestInt): Rope {.rtl, extern: "nro$1BiggestInt".} =
 proc rope*(f: BiggestFloat): Rope {.rtl, extern: "nro$1BiggestFloat".} =
   ## Converts a float to a rope.
   runnableExamples:
+    import std/assertions
     let r = rope(4.29)
     doAssert $r == "4.29"
 
@@ -179,6 +182,7 @@ proc disableCache*() {.rtl, extern: "nro$1".} =
 proc `&`*(a, b: Rope): Rope {.rtl, extern: "nroConcRopeRope".} =
   ## The concatenation operator for ropes.
   runnableExamples:
+    import std/assertions
     let r = rope("Hello, ") & rope("Nim!")
     doAssert $r == "Hello, Nim!"
 
@@ -195,6 +199,7 @@ proc `&`*(a, b: Rope): Rope {.rtl, extern: "nroConcRopeRope".} =
 proc `&`*(a: Rope, b: string): Rope {.rtl, extern: "nroConcRopeStr".} =
   ## The concatenation operator for ropes.
   runnableExamples:
+    import std/assertions
     let r = rope("Hello, ") & "Nim!"
     doAssert $r == "Hello, Nim!"
 
@@ -203,6 +208,7 @@ proc `&`*(a: Rope, b: string): Rope {.rtl, extern: "nroConcRopeStr".} =
 proc `&`*(a: string, b: Rope): Rope {.rtl, extern: "nroConcStrRope".} =
   ## The concatenation operator for ropes.
   runnableExamples:
+    import std/assertions
     let r = "Hello, " & rope("Nim!")
     doAssert $r == "Hello, Nim!"
 
@@ -211,6 +217,7 @@ proc `&`*(a: string, b: Rope): Rope {.rtl, extern: "nroConcStrRope".} =
 proc `&`*(a: openArray[Rope]): Rope {.rtl, extern: "nroConcOpenArray".} =
   ## The concatenation operator for an `openArray` of ropes.
   runnableExamples:
+    import std/assertions
     let r = &[rope("Hello, "), rope("Nim"), rope("!")]
     doAssert $r == "Hello, Nim!"
 
@@ -219,6 +226,7 @@ proc `&`*(a: openArray[Rope]): Rope {.rtl, extern: "nroConcOpenArray".} =
 proc add*(a: var Rope, b: Rope) {.rtl, extern: "nro$1Rope".} =
   ## Adds `b` to the rope `a`.
   runnableExamples:
+    import std/assertions
     var r = rope("Hello, ")
     r.add(rope("Nim!"))
     doAssert $r == "Hello, Nim!"
@@ -228,6 +236,7 @@ proc add*(a: var Rope, b: Rope) {.rtl, extern: "nro$1Rope".} =
 proc add*(a: var Rope, b: string) {.rtl, extern: "nro$1Str".} =
   ## Adds `b` to the rope `a`.
   runnableExamples:
+    import std/assertions
     var r = rope("Hello, ")
     r.add("Nim!")
     doAssert $r == "Hello, Nim!"
@@ -238,6 +247,7 @@ proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
   ## Returns the character at position `i` in the rope `r`. This is quite
   ## expensive! Worst-case: O(n). If `i >= r.len or i < 0`, `\0` is returned.
   runnableExamples:
+    import std/assertions
     let r = rope("Hello, Nim!")
 
     doAssert r[0] == 'H'
@@ -261,6 +271,7 @@ proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
 iterator leaves*(r: Rope): string =
   ## Iterates over any leaf string in the rope `r`.
   runnableExamples:
+    import std/assertions
     let r = rope("Hello") & rope(", Nim!")
     let s = ["Hello", ", Nim!"]
     var index = 0
@@ -301,6 +312,7 @@ proc `%`*(frmt: string, args: openArray[Rope]): Rope {.rtl, extern: "nroFormat".
   ## `%` substitution operator for ropes. Does not support the `$identifier`
   ## nor `${identifier}` notations.
   runnableExamples:
+    import std/assertions
     let r1 = "$1 $2 $3" % [rope("Nim"), rope("is"), rope("a great language")]
     doAssert $r1 == "Nim is a great language"
 
@@ -353,6 +365,7 @@ proc `%`*(frmt: string, args: openArray[Rope]): Rope {.rtl, extern: "nroFormat".
 proc addf*(c: var Rope, frmt: string, args: openArray[Rope]) {.rtl, extern: "nro$1".} =
   ## Shortcut for `add(c, frmt % args)`.
   runnableExamples:
+    import std/assertions
     var r = rope("Dash: ")
     r.addf "$1 $2 $3", [rope("Nim"), rope("is"), rope("a great language")]
     doAssert $r == "Dash: Nim is a great language"
