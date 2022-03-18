@@ -22,12 +22,12 @@ when defined(nimStackTraceOverride):
       ## This is the same as the type `uintptr_t` in C.
 
     StackTraceOverrideGetTracebackProc* = proc (): string {.
-      nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.}
+      nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline, noSideEffect.}
     StackTraceOverrideGetProgramCountersProc* = proc (maxLength: cint): seq[cuintptr_t] {.
-      nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.}
+      nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline, noSideEffect.}
     StackTraceOverrideGetDebuggingInfoProc* =
       proc (programCounters: seq[cuintptr_t], maxLength: cint): seq[StackTraceEntry] {.
-        nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.}
+        nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline, noSideEffect.}
 
   # Default procedures (not normally used, because people opting in on this
   # override are supposed to register their own versions).
@@ -66,7 +66,7 @@ when defined(nimStackTraceOverride):
       s.add(StackTraceEntry(programCounter: cast[uint](programCounter)))
 
   # We may have more stack trace lines in the output, due to inlined procedures.
-  proc addDebuggingInfo*(s: seq[StackTraceEntry]): seq[StackTraceEntry] =
+  func addDebuggingInfo*(s: seq[StackTraceEntry]): seq[StackTraceEntry] =
     var programCounters: seq[cuintptr_t]
     # We process program counters in groups from complete stack traces, because
     # we have logic that keeps track of certain functions being inlined or not.
