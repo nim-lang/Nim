@@ -45,6 +45,7 @@ becomes an alias for `addr`.
 - Changed mimedb to use an `OrderedTable` instead of `OrderedTableRef`, to use it in a const.
 - Removed deprecated `jsre.test` and `jsre.toString`.
 - Removed deprecated `math.c_frexp`.
+- Removed deprecated ``` httpcore.`==` ```.
 
 
 ## Language changes
