@@ -584,13 +584,22 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   else:
     # we handle div by zero here so that we know that the compilerproc's
     # result is only for overflows.
+    var needsOverflowCheck = true
     if m in {mDivI, mModI}:
-      linefmt(p, cpsStmts, "if ($1 == 0){ #raiseDivByZero(); $2}$n",
-              [rdLoc(b), raiseInstr(p)])
-
-    let res = binaryArithOverflowRaw(p, t, a, b,
-      if t.kind == tyInt64: prc64[m] else: prc[m])
-    putIntoDest(p, d, e, "($#)($#)" % [getTypeDesc(p.module, e.typ), res])
+      var canBeZero = true
+      if e[2].kind in {nkIntLit..nkUInt64Lit}:
+        canBeZero = e[2].intVal == 0
+        needsOverflowCheck = e[2].intVal == -1
+      if canBeZero:
+        linefmt(p, cpsStmts, "if ($1 == 0){ #raiseDivByZero(); $2}$n",
+                [rdLoc(b), raiseInstr(p)])
+    if needsOverflowCheck:
+      let res = binaryArithOverflowRaw(p, t, a, b,
+        if t.kind == tyInt64: prc64[m] else: prc[m])
+      putIntoDest(p, d, e, "($#)($#)" % [getTypeDesc(p.module, e.typ), res])
+    else:
+      let res = "($1)($2 $3 $4)" % [getTypeDesc(p.module, e.typ), rdLoc(a), rope(opr[m]), rdLoc(b)]
+      putIntoDest(p, d, e, res)
 
 proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   var
