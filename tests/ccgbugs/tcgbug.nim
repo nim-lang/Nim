@@ -91,3 +91,34 @@ proc test(c: Helper): string =
   c.formatted
 
 echo test(Helper(isKind: true, formatted: "ok"))
+
+
+# bug #19613
+
+type
+  Eth2Digest = object
+    data: array[42, byte]
+
+  BlockId* = object
+    root*: Eth2Digest
+
+  BlockSlotId* = object
+    bid*: BlockId
+    slot*: uint64
+
+func init*(T: type BlockSlotId, bid: BlockId, slot: uint64): T =
+  #debugecho "init ", bid, " ", slot
+  BlockSlotId(bid: bid, slot: slot)
+
+proc bug19613 =
+  var x: BlockSlotId
+  x.bid.root.data[0] = 42
+
+  x =
+    if x.slot > 0:
+      BlockSlotId.init(x.bid, x.slot)
+    else:
+      BlockSlotId.init(x.bid, x.slot)
+  doAssert x.bid.root.data[0] == 42
+
+bug19613()
