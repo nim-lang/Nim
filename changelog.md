@@ -47,6 +47,8 @@ becomes an alias for `addr`.
 - Removed deprecated `math.c_frexp`.
 - Removed deprecated ``` httpcore.`==` ```.
 
+- Remove deprecated `osproc.poDemon`, symbol with typo.
+
 
 ## Language changes
 
