@@ -451,7 +451,7 @@ proc execProcesses*(cmds: openArray[string],
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
-iterator lines*(p: Process): string {.since: (1, 3), tags: [ReadIOEffect].} =
+iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), tags: [ReadIOEffect].} =
   ## Convenience iterator for working with `startProcess` to read data from a
   ## background process.
   ##
@@ -474,10 +474,11 @@ iterator lines*(p: Process): string {.since: (1, 3), tags: [ReadIOEffect].} =
   ##     p.close
   var outp = p.outputStream
   var line = newStringOfCap(120)
-  while true:
-    if outp.readLine(line):
-      yield line
-    elif not running(p): break
+  while outp.readLine(line):
+    if keepNewLines:
+      line.add("\n")
+    yield line
+  discard waitForExit(p)
 
 proc readLines*(p: Process): (seq[string], int) {.since: (1, 3).} =
   ## Convenience function for working with `startProcess` to read data from a
