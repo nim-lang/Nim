@@ -250,10 +250,11 @@ template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
   add(s, "\n")
 
 func `$`(stackTraceEntries: seq[StackTraceEntry]): string =
-  when defined(nimStackTraceOverride):
-    let s = addDebuggingInfo(stackTraceEntries)
-  else:
-    let s = stackTraceEntries
+  let s =
+    when defined(nimStackTraceOverride):
+      addDebuggingInfo(stackTraceEntries)
+    else:
+      stackTraceEntries
 
   result = newStringOfCap(2000)
   for i in 0 .. s.len-1:

@@ -70,14 +70,22 @@ when defined(nimStackTraceOverride):
     var programCounters: seq[cuintptr_t]
     # We process program counters in groups from complete stack traces, because
     # we have logic that keeps track of certain functions being inlined or not.
-    for entry in s:
-      if entry.procname.isNil and entry.programCounter != 0:
-        programCounters.add(cast[cuintptr_t](entry.programCounter))
-      elif entry.procname.isNil and (entry.line == reraisedFromBegin or entry.line == reraisedFromEnd):
+
+    # Here we access some global state, which is a side-effect,
+    # but this procedure is used from Exception.`$`, which is excepted to be
+    # a noSideEffect. The callback themself are noSideEffect
+    #
+    # weird syntax, cast(noSideEffect) doesn't work (probably because
+    # we are too early in the standard library)
+    {.cast[noSideEffect](noSideEffect).}:
+      for entry in s:
+        if entry.procname.isNil and entry.programCounter != 0:
+          programCounters.add(cast[cuintptr_t](entry.programCounter))
+        elif entry.procname.isNil and (entry.line == reraisedFromBegin or entry.line == reraisedFromEnd):
+          result.add(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
+          programCounters = @[]
+          result.add(entry)
+        else:
+          result.add(entry)
+      if programCounters.len > 0:
         result.add(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
-        programCounters = @[]
-        result.add(entry)
-      else:
-        result.add(entry)
-    if programCounters.len > 0:
-      result.add(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
