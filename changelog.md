@@ -46,6 +46,7 @@ becomes an alias for `addr`.
 - Removed deprecated `jsre.test` and `jsre.toString`.
 - Removed deprecated `math.c_frexp`.
 - Removed deprecated ``` httpcore.`==` ```.
+- Removed deprecated `std/dom_extensions`.
 
 
 ## Language changes
