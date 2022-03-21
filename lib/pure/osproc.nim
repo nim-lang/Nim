@@ -514,6 +514,7 @@ when not defined(useNimRtl):
     var outp = outputStream(p)
     result = ""
     var line = newStringOfCap(120)
+    # consider `p.lines(keepNewLines=true)` to circumvent `running` busy-wait
     while true:
       # FIXME: converts CR-LF to LF.
       if outp.readLine(line):
@@ -1622,6 +1623,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
     inputStream(p).write(input)
   close inputStream(p)
 
+  # consider `p.lines(keepNewLines=true)` to avoid exit code test
   result = ("", -1)
   var line = newStringOfCap(120)
   while true:
