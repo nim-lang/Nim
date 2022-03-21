@@ -66,11 +66,6 @@ type
 
   Process* = ref ProcessObj ## Represents an operating system process.
 
-const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
-                                         ## used the wrong spelling ("demon").
-                                         ## Now `ProcessOption` uses the correct spelling ("daemon"),
-                                         ## and this is needed just for backward compatibility.
-
 
 proc execProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
