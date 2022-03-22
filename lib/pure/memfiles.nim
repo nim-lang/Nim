@@ -32,7 +32,7 @@ runnableExamples:
 
   var mm_full = memfiles.open(fn, mode = fmRead)
   assert mm_full.size == data.len + 1 # (or fix as needed)
-  echo cast[cstring](mm_full.mem)
+  assert cast[cstring](mm_full.mem) == data
   mm_full.close()
 
 
