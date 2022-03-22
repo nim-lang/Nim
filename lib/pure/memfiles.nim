@@ -15,7 +15,7 @@
 ## It also provides some fast iterators over lines in text files (or
 ## other "line-like", variable length, delimited records).
 
-runnableExamples("-r:off"):
+runnableExamples:
   # Example of how to create a memfile and
   # write data to it and read it again. 
   import memfiles, os
