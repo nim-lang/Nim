@@ -18,7 +18,7 @@
 runnableExamples:
   # An example of how to create a memfile,
   # write data to it and read it again. 
-  import memfiles, os
+  import std/[memfiles, os]
 
   let fn = "/tmp/test.mmap"
 
