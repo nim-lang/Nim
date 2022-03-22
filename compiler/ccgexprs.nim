@@ -589,6 +589,7 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
       var canBeZero = true
       if e[2].kind in {nkIntLit..nkUInt64Lit}:
         canBeZero = e[2].intVal == 0
+      if e[2].kind in {nkIntLit..nkInt64Lit}:
         needsOverflowCheck = e[2].intVal == -1
       if canBeZero:
         linefmt(p, cpsStmts, "if ($1 == 0){ #raiseDivByZero(); $2}$n",
