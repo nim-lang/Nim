@@ -20,7 +20,7 @@ runnableExamples:
   # write data to it and read it again. 
   import std/[memfiles, os]
 
-  let fn = "/tmp/test.mmap"
+  let fn = getTempDir() / "test.mmap"
 
   if fileExists(fn): removeFile(fn)
 
