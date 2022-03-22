@@ -58,6 +58,9 @@ proc beautifyName(s: string, k: TSymKind): string =
     if s[i] == '_':
       if i+1 >= s.len:
         discard "trailing underscores should be stripped off"
+      elif s[i+1] == '_':
+        result.add "__"
+        inc i
       elif i > 0 and s[i-1] in {'A'..'Z'}:
         # don't skip '_' as it's essential for e.g. 'GC_disable'
         result.add('_')

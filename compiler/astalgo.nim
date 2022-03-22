@@ -194,7 +194,15 @@ proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
 proc sameIgnoreBacktickGensymInfo(a, b: string): bool =
   if a[0] != b[0]: return false
   var alen = a.len - 1
-  while alen > 0 and a[alen] != '`': dec(alen)
+  while alen > 1:
+    if a[alen] == '_':
+       if a[alen-1] == '_':
+          dec(alen, 2)
+          break
+       else:
+         dec(alen, 2)
+    else:
+      dec alen
   if alen <= 0: alen = a.len
 
   var i = 1
@@ -224,7 +232,7 @@ proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ##
   ## .. code-block:: nim
   ##
-  ##   result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
+  ##   result.add newIdentNode(getIdent(c.ic, x.name.s & "__gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
   for i in 1..<list.len:
     let it = list[i].sym

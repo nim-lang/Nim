@@ -1,5 +1,5 @@
 discard """
-  errormsg: "redefinition of 'a`gensym"
+  errormsg: "redefinition of 'a__gensym"
   line: 9
 """
 # bug #10180
