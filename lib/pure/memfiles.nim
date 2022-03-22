@@ -22,7 +22,7 @@ runnableExamples:
 
   let fn = getTempDir() / "test.mmap"
 
-  if fileExists(fn): removeFile(fn)
+  removeFile(fn)
 
   var mm = open(fn, mode = fmWrite, newFileSize = 20)
 
