@@ -57,7 +57,8 @@ Advanced options:
   -w:on|off|list, --warnings:on|off|list
                             same as `--hints` but for warnings.
   --warning:X:on|off        ditto
-  --warningAsError:X:on|off ditto
+  --warningAsError:X:on|off
+                            ditto
   --styleCheck:off|hint|error
                             produce hints or errors for Nim identifiers that
                             do not adhere to Nim's official style guide
