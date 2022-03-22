@@ -16,7 +16,7 @@
 ## other "line-like", variable length, delimited records).
 
 runnableExamples:
-  # Example of how to create a memfile and
+  # An example of how to create a memfile,
   # write data to it and read it again. 
   import memfiles, os
 
