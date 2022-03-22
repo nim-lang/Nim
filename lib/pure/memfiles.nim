@@ -31,7 +31,7 @@ runnableExamples:
   mm.close()
 
   var mm_full = memfiles.open(fn, mode = fmRead)
-  echo "size:", mm_full.size
+  assert mm_full.size == data.len + 1 # (or fix as needed)
   echo cast[cstring](mm_full.mem)
   mm_full.close()
 
