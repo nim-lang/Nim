@@ -22,12 +22,12 @@ when defined(nimStackTraceOverride):
       ## This is the same as the type `uintptr_t` in C.
 
     StackTraceOverrideGetTracebackProc* = proc (): string {.
-      nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline, noSideEffect.}
+      nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.}
     StackTraceOverrideGetProgramCountersProc* = proc (maxLength: cint): seq[cuintptr_t] {.
-      nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline, noSideEffect.}
+      nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.}
     StackTraceOverrideGetDebuggingInfoProc* =
       proc (programCounters: seq[cuintptr_t], maxLength: cint): seq[StackTraceEntry] {.
-        nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline, noSideEffect.}
+        nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.}
 
   # Default procedures (not normally used, because people opting in on this
   # override are supposed to register their own versions).
