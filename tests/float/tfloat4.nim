@@ -54,4 +54,10 @@ doAssert 9999999999999999.0 == "9999999999999999.0".parseFloat
 doAssert 0.999999999999999 == ".999999999999999".parseFloat
 doAssert 0.9999999999999999 == ".9999999999999999".parseFloat
 
+# bug #18400
+var s = [-13.888888'f32]
+assert $s[0] == "-13.888888"
+var x = 1.23456789012345'f32
+assert $x == "1.2345679"
+
 echo("passed all tests.")

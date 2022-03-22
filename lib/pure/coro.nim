@@ -21,6 +21,8 @@
 ##
 ## Unstable API.
 
+import system/coro_detection
+
 when not nimCoroutines and not defined(nimdoc):
   when defined(noNimCoroutines):
     {.error: "Coroutines can not be used with -d:noNimCoroutines".}
@@ -273,9 +275,7 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine)))
     coro.execContext = CreateFiberEx(stacksize, stacksize,
       FIBER_FLAG_FLOAT_SWITCH,
-      (proc(p: pointer): void {.stdcall.} = runCurrentTask()),
-      nil)
-    coro.stack.size = stacksize
+      (proc(p: pointer) {.stdcall.} = runCurrentTask()), nil)
   else:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine) + stacksize))
     coro.stack.top = cast[pointer](cast[ByteAddress](coro) + sizeof(Coroutine))
@@ -294,9 +294,9 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
   return coro.reference
 
 proc run*() =
-  initialize()
   ## Starts main coroutine scheduler loop which exits when all coroutines exit.
   ## Calling this proc starts execution of first coroutine.
+  initialize()
   ctx.current = ctx.coroutines.head
   var minDelay: float = 0
   while ctx.current != nil:

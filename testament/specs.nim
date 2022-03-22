@@ -9,6 +9,7 @@
 
 import sequtils, parseutils, strutils, os, streams, parsecfg,
   tables, hashes, sets
+import compiler/platform
 
 type TestamentData* = ref object
   # better to group globals under 1 object; could group the other ones here too
@@ -79,8 +80,6 @@ type
     sortoutput*: bool
     output*: string
     line*, column*: int
-    tfile*: string
-    tline*, tcolumn*: int
     exitCode*: int
     msg*: string
     ccodeCheck*: seq[string]
@@ -90,6 +89,7 @@ type
     targets*: set[TTarget]
     matrix*: seq[string]
     nimout*: string
+    nimoutFull*: bool # whether nimout is all compiler output or a subset
     parseErrors*: string            # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
     unbatchable*: bool
@@ -100,10 +100,11 @@ type
     timeout*: float # in seconds, fractions possible,
                       # but don't rely on much precision
     inlineErrors*: seq[InlineError] # line information to error message
+    debugInfo*: string # debug info to give more context
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
-    result = compilerPrefix & " $target --hints:on -d:testing --clearNimblePath --nimblePath:build/deps/pkgs $options $file"
+    result = compilerPrefix & " $target --hints:on -d:testing --nimblePath:build/deps/pkgs $options $file"
   else:
     result = s.cmd
 
@@ -180,6 +181,7 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
 proc extractSpec(filename: string; spec: var TSpec): string =
   const
     tripleQuote = "\"\"\""
+    specStart = "discard " & tripleQuote
   var s = readFile(filename)
 
   var i = 0
@@ -188,25 +190,34 @@ proc extractSpec(filename: string; spec: var TSpec): string =
   var line = 1
   var col = 1
   while i < s.len:
-    if s.continuesWith(tripleQuote, i):
-      if a < 0: a = i
-      elif b < 0: b = i
-      inc i, 2
-      inc col
+    if (i == 0 or s[i-1] != ' ') and s.continuesWith(specStart, i):
+      # `s[i-1] == '\n'` would not work because of `tests/stdlib/tbase64.nim` which contains BOM (https://en.wikipedia.org/wiki/Byte_order_mark)
+      const lineMax = 10
+      if a != -1:
+        raise newException(ValueError, "testament spec violation: duplicate `specStart` found: " & $(filename, a, b, line))
+      elif line > lineMax:
+        # not overly restrictive, but prevents mistaking some `specStart` as spec if deeep inside a test file
+        raise newException(ValueError, "testament spec violation: `specStart` should be before line $1, or be indented; info: $2" % [$lineMax, $(filename, a, b, line)])
+      i += specStart.len
+      a = i
+    elif a > -1 and b == -1 and s.continuesWith(tripleQuote, i):
+      b = i
+      i += tripleQuote.len
     elif s[i] == '\n':
       inc line
+      inc i
       col = 1
     elif s.continuesWith(inlineErrorMarker, i):
       i = extractErrorMsg(s, i, line, col, spec)
     else:
       inc col
-    inc i
+      inc i
 
-  # look for """ only in the first section
-  if a >= 0 and b > a and a < 40:
-    result = s.substr(a+3, b-1).replace("'''", tripleQuote)
+  if a >= 0 and b > a:
+    result = s.substr(a, b-1).multiReplace({"'''": tripleQuote, "\\31": "\31"})
+  elif a >= 0:
+    raise newException(ValueError, "testament spec violation: `specStart` found but not trailing `tripleQuote`: $1" % $(filename, a, b, line))
   else:
-    #echo "warning: file does not contain spec: " & filename
     result = ""
 
 proc parseTargets*(value: string): set[TTarget] =
@@ -243,6 +254,7 @@ proc parseSpec*(filename: string): TSpec =
   var p: CfgParser
   open(p, ss, filename, 1)
   var flags: HashSet[string]
+  var nimoutFound = false
   while true:
     var e = next(p)
     case e.kind
@@ -277,12 +289,6 @@ proc parseSpec*(filename: string): TSpec =
         if result.msg.len == 0 and result.nimout.len == 0:
           result.parseErrors.addLine "errormsg or msg needs to be specified before column"
         discard parseInt(e.value, result.column)
-      of "tfile":
-        result.tfile = e.value
-      of "tline":
-        discard parseInt(e.value, result.tline)
-      of "tcolumn":
-        discard parseInt(e.value, result.tcolumn)
       of "output":
         if result.outputCheck != ocSubstr:
           result.outputCheck = ocEqual
@@ -305,6 +311,9 @@ proc parseSpec*(filename: string): TSpec =
         result.action = actionReject
       of "nimout":
         result.nimout = e.value
+        nimoutFound = true
+      of "nimoutfull":
+        result.nimoutFull = parseCfgBool(e.value)
       of "batchable":
         result.unbatchable = not parseCfgBool(e.value)
       of "joinable":
@@ -321,42 +330,71 @@ proc parseSpec*(filename: string): TSpec =
           # Valgrind only supports OSX <= 17.x
           result.useValgrind = disabled
       of "disabled":
-        case e.value.normalize
+        let value = e.value.normalize
+        case value
         of "y", "yes", "true", "1", "on": result.err = reDisabled
         of "n", "no", "false", "0", "off": discard
-        of "win", "windows":
+        # These values are defined in `compiler/options.isDefined`
+        of "win":
           when defined(windows): result.err = reDisabled
         of "linux":
           when defined(linux): result.err = reDisabled
         of "bsd":
           when defined(bsd): result.err = reDisabled
-        of "osx", "macosx": # xxx remove `macosx` alias?
+        of "osx":
           when defined(osx): result.err = reDisabled
-        of "unix":
-          when defined(unix): result.err = reDisabled
-        of "posix":
+        of "unix", "posix":
           when defined(posix): result.err = reDisabled
-        of "travis":
+        of "freebsd":
+          when defined(freebsd): result.err = reDisabled
+        of "littleendian":
+          when defined(littleendian): result.err = reDisabled
+        of "bigendian":
+          when defined(bigendian): result.err = reDisabled
+        of "cpu8", "8bit":
+          when defined(cpu8): result.err = reDisabled
+        of "cpu16", "16bit":
+          when defined(cpu16): result.err = reDisabled
+        of "cpu32", "32bit":
+          when defined(cpu32): result.err = reDisabled
+        of "cpu64", "64bit":
+          when defined(cpu64): result.err = reDisabled
+        # These values are for CI environments
+        of "travis": # deprecated
           if isTravis: result.err = reDisabled
-        of "appveyor":
+        of "appveyor": # deprecated
           if isAppVeyor: result.err = reDisabled
         of "azure":
           if isAzure: result.err = reDisabled
-        of "32bit":
-          if sizeof(int) == 4:
-            result.err = reDisabled
-        of "freebsd":
-          when defined(freebsd): result.err = reDisabled
-        of "arm64":
-          when defined(arm64): result.err = reDisabled
-        of "i386":
-          when defined(i386): result.err = reDisabled
-        of "openbsd":
-          when defined(openbsd): result.err = reDisabled
-        of "netbsd":
-          when defined(netbsd): result.err = reDisabled
         else:
-          result.parseErrors.addLine "cannot interpret as a bool: ", e.value
+          # Check whether the value exists as an OS or CPU that is
+          # defined in `compiler/platform`.
+          block checkHost:
+            for os in platform.OS:
+              # Check if the value exists as OS.
+              if value == os.name.normalize:
+                # The value exists; is it the same as the current host?
+                if value == hostOS.normalize:
+                  # The value exists and is the same as the current host,
+                  # so disable the test.
+                  result.err = reDisabled
+                # The value was defined, so there is no need to check further
+                # values or raise an error.
+                break checkHost
+            for cpu in platform.CPU:
+              # Check if the value exists as CPU.
+              if value == cpu.name.normalize:
+                # The value exists; is it the same as the current host?
+                if value == hostCPU.normalize:
+                  # The value exists and is the same as the current host,
+                  # so disable the test.
+                  result.err = reDisabled
+                # The value was defined, so there is no need to check further
+                # values or raise an error.
+                break checkHost
+            # The value doesn't exist as an OS, CPU, or any previous value
+            # defined in this case statement, so raise an error.
+            result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":
         if e.value.startsWith("nim "):
           result.cmd = compilerPrefix & e.value[3..^1]
@@ -394,6 +432,9 @@ proc parseSpec*(filename: string): TSpec =
 
   if skips.anyIt(it in result.file):
     result.err = reDisabled
+
+  if nimoutFound and result.nimout.len == 0 and not result.nimoutFull:
+    result.parseErrors.addLine "empty `nimout` is vacuously true, use `nimoutFull:true` if intentional"
 
   result.inCurrentBatch = isCurrentBatch(testamentData0, filename) or result.unbatchable
   if not result.inCurrentBatch:

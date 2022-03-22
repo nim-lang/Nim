@@ -330,12 +330,16 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
   ## It is implemented just calling `cpuinfo.countProcessors`.
   result = cpuinfo.countProcessors()
 
+when not defined(nimHasEffectsOf):
+  {.pragma: effectsOf.}
+
 proc execProcesses*(cmds: openArray[string],
     options = {poStdErrToStdOut, poParentStreams}, n = countProcessors(),
     beforeRunEvent: proc(idx: int) = nil,
     afterRunEvent: proc(idx: int, p: Process) = nil):
   int {.rtl, extern: "nosp$1",
-        tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect].} =
+        tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect],
+        effectsOf: [beforeRunEvent, afterRunEvent].} =
   ## Executes the commands `cmds` in parallel.
   ## Creates `n` processes that execute in parallel.
   ##
@@ -1595,7 +1599,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##   import std/[strutils, strtabs]
   ##   stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
   ##   doAssert result == ("12", 0)
-  ##   doAssert execCmdEx("ls --nonexistant").exitCode != 0
+  ##   doAssert execCmdEx("ls --nonexistent").exitCode != 0
   ##   when defined(posix):
   ##     assert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
   ##     assert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)

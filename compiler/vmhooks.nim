@@ -36,10 +36,14 @@ proc setResult*(a: VmArgs; v: seq[string]) =
   for x in v: n.add newStrNode(nkStrLit, x)
   a.slots[a.ra].node = n
 
-template getX(k, field) {.dirty.} =
+template getReg(a, i): untyped =
   doAssert i < a.rc-1
-  doAssert a.slots[i+a.rb+1].kind == k
-  result = a.slots[i+a.rb+1].field
+  a.slots[i+a.rb+1].unsafeAddr
+
+template getX(k, field): untyped {.dirty.} =
+  let p = getReg(a, i)
+  doAssert p.kind == k, $p.kind
+  p.field
 
 proc numArgs*(a: VmArgs): int =
   result = a.rc-1
@@ -47,19 +51,17 @@ proc numArgs*(a: VmArgs): int =
 proc getInt*(a: VmArgs; i: Natural): BiggestInt = getX(rkInt, intVal)
 proc getBool*(a: VmArgs; i: Natural): bool = getInt(a, i) != 0
 proc getFloat*(a: VmArgs; i: Natural): BiggestFloat = getX(rkFloat, floatVal)
-proc getString*(a: VmArgs; i: Natural): string =
-  doAssert i < a.rc-1
-  doAssert a.slots[i+a.rb+1].kind == rkNode
-  result = a.slots[i+a.rb+1].node.strVal
-
-proc getNode*(a: VmArgs; i: Natural): PNode =
-  doAssert i < a.rc-1
-  doAssert a.slots[i+a.rb+1].kind == rkNode
-  result = a.slots[i+a.rb+1].node
+proc getNode*(a: VmArgs; i: Natural): PNode = getX(rkNode, node)
+proc getString*(a: VmArgs; i: Natural): string = getX(rkNode, node).strVal
+proc getVar*(a: VmArgs; i: Natural): PNode =
+  let p = getReg(a, i)
+  # depending on whether we come from top-level or proc scope, we need to consider 2 cases
+  case p.kind
+  of rkRegisterAddr: result = p.regAddr.node
+  of rkNodeAddr: result = p.nodeAddr[]
+  else: doAssert false, $p.kind
 
 proc getNodeAddr*(a: VmArgs; i: Natural): PNode =
-  doAssert i < a.rc-1
-  doAssert a.slots[i+a.rb+1].kind == rkNodeAddr
-  let nodeAddr = a.slots[i+a.rb+1].nodeAddr
+  let nodeAddr = getX(rkNodeAddr, nodeAddr)
   doAssert nodeAddr != nil
   result = nodeAddr[]

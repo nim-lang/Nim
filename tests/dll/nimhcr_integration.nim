@@ -1,5 +1,5 @@
 discard """
-  disabled: "openbsd"
+  disabled: "true"
   output: '''
 main: HELLO!
 main: hasAnyModuleChanged? true

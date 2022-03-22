@@ -261,7 +261,7 @@ proc cpDir*(`from`, to: string) {.raises: [OSError].} =
     checkOsError()
 
 proc exec*(command: string) {.
-  raises: [OSError], tags: [ExecIOEffect].} =
+  raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
   ## Executes an external process. If the external process terminates with
   ## a non-zero exit code, an OSError exception is raised.
   ##
@@ -274,7 +274,7 @@ proc exec*(command: string) {.
     checkOsError()
 
 proc exec*(command: string, input: string, cache = "") {.
-  raises: [OSError], tags: [ExecIOEffect].} =
+  raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
   ## Executes an external process. If the external process terminates with
   ## a non-zero exit code, an OSError exception is raised.
   log "exec: " & command:
@@ -284,7 +284,7 @@ proc exec*(command: string, input: string, cache = "") {.
     echo output
 
 proc selfExec*(command: string) {.
-  raises: [OSError], tags: [ExecIOEffect].} =
+  raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
   ## Executes an external command with the current nim/nimble executable.
   ## `Command` must not contain the "nim " part.
   let c = selfExe() & " " & command

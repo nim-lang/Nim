@@ -255,6 +255,50 @@ block:
   doAssert e == @[]
   doAssert f == @[]
 
+
+block: # bug #18310
+  macro t() : untyped =
+    let
+      x = nnkTupleConstr.newTree(newLit(1))
+      y = nnkTupleConstr.newTree(newLit(2))
+    doAssert not (x == y) # not using != intentionally
+    doAssert not(cast[int](x) == cast[int](y))
+    doAssert not(system.`==`(x, y))
+    doAssert system.`==`(x, x)
+  t()
+
+block: # bug #10815
+  type
+    Opcode = enum
+      iChar, iSet
+
+    Inst = object
+      case code: Opcode
+        of iChar:
+          c: char
+        of iSet:
+          cs: set[char]
+
+    Patt = seq[Inst]
+
+
+  proc `$`(p: Patt): string =
+    discard
+
+  proc P(): Patt =
+    result.add Inst(code: iSet)
+
+  const a = P()
+  doAssert $a == ""
+
+when defined osx: # xxx bug https://github.com/nim-lang/Nim/issues/10815#issuecomment-476380734
+  block:
+    type CharSet {.union.} = object
+      cs: set[char]
+      vs: array[4, uint64]
+    const a = Charset(cs: {'a'..'z'})
+    doAssert a.repr.len > 0
+
 import tables
 
 block: # bug #8007
@@ -332,7 +376,7 @@ block: # VM wrong register free causes errors in unrelated code
     in let prc = if not isClosure: bb.sym else: bb[0].sym
     ]#
     proc bar2(head: string): string = "asdf"
-    proc gook(u1: int) = discard
+    proc zook(u1: int) = discard
 
     type PathEntry = object
       kind: int
@@ -341,20 +385,20 @@ block: # VM wrong register free causes errors in unrelated code
     iterator globOpt(): int =
       var u1: int
 
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
-      gook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
+      zook(u1)
 
       var entry = PathEntry()
       entry.path = bar2("")
@@ -509,3 +553,22 @@ block: # bug #8015
     doAssert $viaProc.table[0] == "(kind: Fixed, cost: 999)"
     doAssert viaProc.table[1].handler() == 100
     doAssert viaProc.table[2].handler() == 200
+
+
+# bug #19198
+
+block:
+  type
+    Foo[n: static int] = int
+
+block:
+  static:
+    let x = int 1
+    echo x.type   # Foo
+
+block:
+  static:
+    let x = int 1
+    let y = x + 1
+    # Error: unhandled exception: value out of range: -8 notin 0 .. 65535 [RangeDefect]
+    echo y

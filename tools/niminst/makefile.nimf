@@ -25,7 +25,8 @@ endif
 
 ifeq ($(uos),linux)
   myos = linux
-  LDFLAGS += -ldl -lm
+  ## add -lrt to avoid "undefined reference to `clock_gettime'" with glibc<2.17
+  LDFLAGS += -ldl -lm -lrt
 endif
 ifeq ($(uos),dragonfly)
   myos = freebsd
@@ -156,14 +157,23 @@ endif
 ifeq ($(ucpu),armv7hl)
   mycpu = arm
 endif
+ifeq ($(ucpu),armv8l)
+  mycpu = arm
+endif
 ifeq ($(ucpu),aarch64)
   mycpu = arm64
 endif
 ifeq ($(ucpu),riscv64)
   mycpu = riscv64
 endif
+ifeq ($(ucpu),e2k)
+  mycpu = e2k
+endif
+ifeq ($(ucpu),loongarch64)
+  mycpu = loongarch64
+endif
 ifndef mycpu
-  $(error unknown processor: $(ucpu))
+  $(error unknown CPU architecture: $(ucpu) See makefile.nimf)
 endif
 
 # for osA in 1..c.oses.len:

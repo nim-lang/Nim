@@ -92,7 +92,7 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
     else:
       globalError(conf, n.info, "integer literal must have some int type")
   of nkStrLit..nkTripleStrLit:
-    if x.kind in {tyString, tyCString}:
+    if x.kind in {tyString, tyCstring}:
       n.typ = t
     else:
       globalError(conf, n.info, "string literal must be of some string type")

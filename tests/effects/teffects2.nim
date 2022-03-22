@@ -2,7 +2,7 @@ discard """
   errormsg: "can raise an unlisted exception: ref IOError"
   line: 19
 """
-
+{.push warningAsError[Effect]: on.}
 type
   TObj = object {.pure, inheritable.}
   TObjB = object of TObj
@@ -17,3 +17,4 @@ proc lier(): int {.raises: [IOError].} =
 
 proc forw: int =
   raise newException(IOError, "arg")
+{.pop.}

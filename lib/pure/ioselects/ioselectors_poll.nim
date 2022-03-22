@@ -53,10 +53,7 @@ else:
     body
 
 proc newSelector*[T](): Selector[T] =
-  var a = RLimit()
-  if getrlimit(posix.RLIMIT_NOFILE, a) != 0:
-    raiseIOSelectorsError(osLastError())
-  var maxFD = int(a.rlim_max)
+  var maxFD = maxDescriptors()
 
   when hasThreadSupport:
     result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))

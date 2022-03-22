@@ -15,6 +15,48 @@
 ## code `exitprocs.addExitProc(resetAttributes)` to restore the defaults.
 ## Similarly, if you hide the cursor, make sure to unhide it with
 ## `showCursor` before quitting.
+##
+## Progress bar
+## ============
+##
+## Basic progress bar example:
+runnableExamples("-r:off"):
+  import std/[os, strutils]
+
+  for i in 0..100:
+    stdout.styledWriteLine(fgRed, "0% ", fgWhite, '#'.repeat i, if i > 50: fgGreen else: fgYellow, "\t", $i , "%")
+    sleep 42
+    cursorUp 1
+    eraseLine()
+
+  stdout.resetAttributes()
+
+##[
+## Playing with colorful and styled text
+]##
+
+## Procs like `styledWriteLine`, `styledEcho` etc. have a temporary effect on
+## text parameters. Style parameters only affect the text parameter right after them.
+## After being called, these procs will reset the default style of the terminal.
+## While `setBackGroundColor`, `setForeGroundColor` etc. have a lasting
+## influence on the terminal, you can use `resetAttributes` to
+## reset the default style of the terminal.
+runnableExamples("-r:off"):
+  stdout.styledWriteLine({styleBright, styleBlink, styleUnderscore}, "styled text ")
+  stdout.styledWriteLine(fgRed, "red text ")
+  stdout.styledWriteLine(fgWhite, bgRed, "white text in red background")
+  stdout.styledWriteLine(" ordinary text without style ")
+
+  stdout.setBackGroundColor(bgCyan, true)
+  stdout.setForeGroundColor(fgBlue)
+  stdout.write("blue text in cyan background")
+  stdout.resetAttributes()
+
+  # You can specify multiple text parameters. Style parameters
+  # only affect the text parameter right after them.
+  styledEcho styleBright, fgGreen, "[PASS]", resetStyle, fgGreen, " Yay!"
+
+  stdout.styledWriteLine(fgRed, "red text ", styleBright, "bold red", fgDefault, " bold text")
 
 import macros
 import strformat
@@ -23,6 +65,9 @@ import colors
 
 when defined(windows):
   import winlean
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 type
   PTerminal = ref object
@@ -128,6 +173,7 @@ when defined(windows):
     return 0
 
   proc terminalWidth*(): int =
+    ## Returns the terminal width in columns.
     var w: int = 0
     w = terminalWidthIoctl([getStdHandle(STD_INPUT_HANDLE),
                              getStdHandle(STD_OUTPUT_HANDLE),
@@ -136,6 +182,7 @@ when defined(windows):
     return 80
 
   proc terminalHeight*(): int =
+    ## Returns the terminal height in rows.
     var h: int = 0
     h = terminalHeightIoctl([getStdHandle(STD_INPUT_HANDLE),
                               getStdHandle(STD_OUTPUT_HANDLE),
@@ -347,6 +394,9 @@ when defined(windows):
 
 proc cursorUp*(f: File, count = 1) =
   ## Moves the cursor up by `count` rows.
+  runnableExamples("-r:off"):
+    stdout.cursorUp(2)
+    write(stdout, "Hello World!") # anything written at that location will be erased/replaced with this
   when defined(windows):
     let h = conHandle(f)
     var p = getCursorPos(h)
@@ -357,6 +407,9 @@ proc cursorUp*(f: File, count = 1) =
 
 proc cursorDown*(f: File, count = 1) =
   ## Moves the cursor down by `count` rows.
+  runnableExamples("-r:off"):
+    stdout.cursorDown(2)
+    write(stdout, "Hello World!") # anything written at that location will be erased/replaced with this
   when defined(windows):
     let h = conHandle(f)
     var p = getCursorPos(h)
@@ -367,6 +420,9 @@ proc cursorDown*(f: File, count = 1) =
 
 proc cursorForward*(f: File, count = 1) =
   ## Moves the cursor forward by `count` columns.
+  runnableExamples("-r:off"):
+    stdout.cursorForward(2)
+    write(stdout, "Hello World!") # anything written at that location will be erased/replaced with this
   when defined(windows):
     let h = conHandle(f)
     var p = getCursorPos(h)
@@ -377,6 +433,9 @@ proc cursorForward*(f: File, count = 1) =
 
 proc cursorBackward*(f: File, count = 1) =
   ## Moves the cursor backward by `count` columns.
+  runnableExamples("-r:off"):
+    stdout.cursorBackward(2)
+    write(stdout, "Hello World!") # anything written at that location will be erased/replaced with this
   when defined(windows):
     let h = conHandle(f)
     var p = getCursorPos(h)
@@ -418,6 +477,9 @@ else:
 
 proc eraseLine*(f: File) =
   ## Erases the entire current line.
+  runnableExamples("-r:off"):
+    write(stdout, "never mind")
+    stdout.eraseLine() # nothing will be printed on the screen
   when defined(windows):
     let h = conHandle(f)
     var scrbuf: CONSOLE_SCREEN_BUFFER_INFO
@@ -480,7 +542,7 @@ proc resetAttributes*(f: File) =
     gBG = 0
 
 type
-  Style* = enum        ## different styles for text output
+  Style* = enum        ## Different styles for text output.
     styleBright = 1,   ## bright text
     styleDim,          ## dim text
     styleItalic,       ## italic (or reverse on terminals not supporting)
@@ -534,7 +596,7 @@ proc writeStyled*(txt: string, style: set[Style] = {styleBright}) =
       stdout.write(ansiStyleCode(gBG))
 
 type
-  ForegroundColor* = enum ## terminal's foreground colors
+  ForegroundColor* = enum ## Terminal's foreground colors.
     fgBlack = 30,         ## black
     fgRed,                ## red
     fgGreen,              ## green
@@ -546,7 +608,7 @@ type
     fg8Bit,               ## 256-color (not supported, see `enableTrueColors` instead.)
     fgDefault             ## default terminal foreground color
 
-  BackgroundColor* = enum ## terminal's background colors
+  BackgroundColor* = enum ## Terminal's background colors.
     bgBlack = 40,         ## black
     bgRed,                ## red
     bgGreen,              ## green
@@ -701,14 +763,10 @@ macro styledWrite*(f: File, m: varargs[typed]): untyped =
   ## When some argument is `Style`, `set[Style]`, `ForegroundColor`,
   ## `BackgroundColor` or `TerminalCmd` then it is not sent directly to
   ## `f`, but instead corresponding terminal style proc is called.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   stdout.styledWrite(fgRed, "red text ")
-  ##   stdout.styledWrite(fgGreen, "green text")
-  ##
+  runnableExamples("-r:off"):
+    stdout.styledWrite(fgRed, "red text ")
+    stdout.styledWrite(fgGreen, "green text")
+
   var reset = false
   result = newNimNode(nnkStmtList)
 
@@ -731,14 +789,10 @@ macro styledWrite*(f: File, m: varargs[typed]): untyped =
 
 template styledWriteLine*(f: File, args: varargs[untyped]) =
   ## Calls `styledWrite` and appends a newline at the end.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   proc error(msg: string) =
-  ##     styledWriteLine(stderr, fgRed, "Error: ", resetStyle, msg)
-  ##
+  runnableExamples:
+    proc error(msg: string) =
+      styledWriteLine(stderr, fgRed, "Error: ", resetStyle, msg)
+
   styledWrite(f, args)
   write(f, "\n")
 
@@ -747,7 +801,7 @@ template styledEcho*(args: varargs[untyped]) =
   stdout.styledWriteLine(args)
 
 proc getch*(): char =
-  ## Read a single character from the terminal, blocking until it is entered.
+  ## Reads a single character from the terminal, blocking until it is entered.
   ## The character is not printed to the terminal.
   when defined(windows):
     let fd = getStdHandle(STD_INPUT_HANDLE)
@@ -852,7 +906,7 @@ when defined(windows):
   import os
 
 proc enableTrueColors*() =
-  ## Enable true color.
+  ## Enables true color.
   var term = getTerminal()
   when defined(windows):
     var
@@ -885,7 +939,7 @@ proc enableTrueColors*() =
     term.trueColorIsEnabled = term.trueColorIsSupported
 
 proc disableTrueColors*() =
-  ## Disable true color.
+  ## Disables true color.
   var term = getTerminal()
   when defined(windows):
     if term.trueColorIsSupported:
@@ -902,51 +956,3 @@ proc newTerminal(): owned(PTerminal) =
   new result
   when defined(windows):
     initTerminal(result)
-
-when not defined(testing) and isMainModule:
-  assert ansiStyleCode(styleBright) == "\e[1m"
-  assert ansiStyleCode(styleStrikethrough) == "\e[9m"
-  # exitprocs.addExitProc(resetAttributes)
-  write(stdout, "never mind")
-  stdout.eraseLine()
-  stdout.styledWriteLine({styleBright, styleBlink, styleUnderscore}, "styled text ")
-  stdout.styledWriteLine("italic text ", {styleItalic})
-  stdout.setBackGroundColor(bgCyan, true)
-  stdout.setForeGroundColor(fgBlue)
-  stdout.write("blue text in cyan background")
-  stdout.resetAttributes()
-  echo ""
-  stdout.writeLine("ordinary text")
-  echo "more ordinary text"
-  styledEcho styleBright, fgGreen, "[PASS]", resetStyle, fgGreen, " Yay!"
-  echo "ordinary text again"
-  styledEcho styleBright, fgRed, "[FAIL]", resetStyle, fgRed, " Nay :("
-  echo "ordinary text again"
-  setForeGroundColor(fgGreen)
-  echo "green text"
-  echo "more green text"
-  setForeGroundColor(fgBlue)
-  echo "blue text"
-  resetAttributes()
-  echo "ordinary text"
-
-  stdout.styledWriteLine(fgRed, "red text ")
-  stdout.styledWriteLine(fgWhite, bgRed, "white text in red background")
-  stdout.styledWriteLine(" ordinary text ")
-  stdout.styledWriteLine(fgGreen, "green text")
-
-  writeStyled("underscored text", {styleUnderscore})
-  stdout.styledWrite(fgRed, " red text ")
-  writeStyled("bright text ", {styleBright})
-  echo "ordinary text"
-
-  stdout.styledWrite(fgRed, "red text ")
-  stdout.styledWrite(fgWhite, bgRed, "white text in red background")
-  stdout.styledWrite(" ordinary text ")
-  stdout.styledWrite(fgGreen, "green text")
-  echo ""
-  echo "ordinary text"
-  stdout.styledWriteLine(fgRed, "red text ", styleBright, "bold red", fgDefault, " bold text")
-  stdout.styledWriteLine(bgYellow, "text in yellow bg", styleBright,
-      " bold text in yellow bg", bgDefault, " bold text")
-  echo "ordinary text"

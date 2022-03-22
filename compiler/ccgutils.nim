@@ -10,8 +10,8 @@
 # This module declares some helpers for the C code generator.
 
 import
-  ast, hashes, strutils, msgs, wordrecg,
-  platform, trees, options
+  ast, types, hashes, strutils, msgs, wordrecg,
+  platform, trees, options, cgendata
 
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind
@@ -106,3 +106,39 @@ proc mangle*(name: string): string =
       requiresUnderscore = true
   if requiresUnderscore:
     result.add "_"
+
+proc mapSetType(conf: ConfigRef; typ: PType): TCTypeKind =
+  case int(getSize(conf, typ))
+  of 1: result = ctInt8
+  of 2: result = ctInt16
+  of 4: result = ctInt32
+  of 8: result = ctInt64
+  else: result = ctArray
+
+proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
+  var pt = skipTypes(s.typ, typedescInst)
+  assert skResult != s.kind
+
+  if tfByRef in pt.flags: return true
+  elif tfByCopy in pt.flags: return false
+  case pt.kind
+  of tyObject:
+    if s.typ.sym != nil and sfForward in s.typ.sym.flags:
+      # forwarded objects are *always* passed by pointers for consistency!
+      result = true
+    elif (optByRef in s.options) or (getSize(conf, pt) > conf.target.floatSize * 3):
+      result = true           # requested anyway
+    elif (tfFinal in pt.flags) and (pt[0] == nil):
+      result = false          # no need, because no subtyping possible
+    else:
+      result = true           # ordinary objects are always passed by reference,
+                              # otherwise casting doesn't work
+  of tyTuple:
+    result = (getSize(conf, pt) > conf.target.floatSize*3) or (optByRef in s.options)
+  else:
+    result = false
+  # first parameter and return type is 'lent T'? --> use pass by pointer
+  if s.position == 0 and retType != nil and retType.kind == tyLent:
+    result = not (pt.kind in {tyVar, tyArray, tyOpenArray, tyVarargs, tyRef, tyPtr, tyPointer} or
+      pt.kind == tySet and mapSetType(conf, pt) == ctArray)
+

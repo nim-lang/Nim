@@ -72,7 +72,7 @@ runnableExamples:
 
 import parseutils
 from math import pow, floor, log10
-from algorithm import reverse
+from algorithm import fill, reverse
 import std/enumutils
 
 from unicode import toLower, toUpper
@@ -273,11 +273,17 @@ func nimIdentNormalize*(s: string): string =
   ##
   ## That means to convert to lower case and remove any '_' on all characters
   ## except first one.
+  ##
+  ## .. Warning:: Backticks (`) are not handled: they remain *as is* and
+  ##    spaces are preserved. See `nimIdentBackticksNormalize 
+  ##    <dochelpers.html#nimIdentBackticksNormalize,string>`_ for
+  ##    an alternative approach.
   runnableExamples:
     doAssert nimIdentNormalize("Foo_bar") == "Foobar"
   result = newString(s.len)
-  if s.len > 0:
-    result[0] = s[0]
+  if s.len == 0:
+    return
+  result[0] = s[0]
   var j = 1
   for i in 1..len(s) - 1:
     if s[i] in {'A'..'Z'}:
@@ -1476,12 +1482,39 @@ func dedent*(s: string, count: Natural = indentation(s)): string {.rtl,
     doAssert x == "Hello\n  There\n"
   unindent(s, count, " ")
 
-func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
-  ## Deletes in `s` (must be declared as `var`) the characters at positions
-  ## `first .. last` (both ends included).
+func delete*(s: var string, slice: Slice[int]) =
+  ## Deletes the items `s[slice]`, raising `IndexDefect` if the slice contains
+  ## elements out of range.
   ##
-  ## This modifies `s` itself, it does not return a copy.
+  ## This operation moves all elements after `s[slice]` in linear time, and
+  ## is the string analog to `sequtils.delete`.
   runnableExamples:
+    var a = "abcde"
+    doAssertRaises(IndexDefect): a.delete(4..5)
+    assert a == "abcde"
+    a.delete(4..4)
+    assert a == "abcd"
+    a.delete(1..2)
+    assert a == "ad"
+    a.delete(1..<1) # empty slice
+    assert a == "ad"
+  when compileOption("boundChecks"):
+    if not (slice.a < s.len and slice.a >= 0 and slice.b < s.len):
+      raise newException(IndexDefect, $(slice: slice, len: s.len))
+  if slice.b >= slice.a:
+    var i = slice.a
+    var j = slice.b + 1
+    var newLen = s.len - j + i
+    # if j < s.len: moveMem(addr s[i], addr s[j], s.len - j) # pending benchmark
+    while i < newLen:
+      s[i] = s[j]
+      inc(i)
+      inc(j)
+    setLen(s, newLen)
+
+func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete", deprecated: "use `delete(s, first..last)`".} =
+  ## Deletes in `s` the characters at positions `first .. last` (both ends included).
+  runnableExamples("--warning:deprecated:off"):
     var a = "abracadabra"
 
     a.delete(4, 5)
@@ -1501,7 +1534,6 @@ func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
     inc(i)
     inc(j)
   setLen(s, newLen)
-
 
 func startsWith*(s: string, prefix: char): bool {.inline.} =
   ## Returns true if `s` starts with character `prefix`.
@@ -1760,7 +1792,7 @@ func join*(a: openArray[string], sep: string = ""): string {.rtl,
   else:
     result = ""
 
-func join*[T: not string](a: openArray[T], sep: string = ""): string {.rtl.} =
+func join*[T: not string](a: openArray[T], sep: string = ""): string =
   ## Converts all elements in the container `a` to strings using `$`,
   ## and concatenates them with `sep`.
   runnableExamples:
@@ -1779,17 +1811,7 @@ func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
     extern: "nsuInitSkipTable".} =
   ## Preprocess table `a` for `sub`.
   let m = len(sub)
-  var i = 0
-  while i <= 0xff-7:
-    a[chr(i + 0)] = m
-    a[chr(i + 1)] = m
-    a[chr(i + 2)] = m
-    a[chr(i + 3)] = m
-    a[chr(i + 4)] = m
-    a[chr(i + 5)] = m
-    a[chr(i + 6)] = m
-    a[chr(i + 7)] = m
-    i += 8
+  fill(a, m)
 
   for i in 0 ..< m - 1:
     a[sub[i]] = m - 1 - i
@@ -1826,6 +1848,9 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
   func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
                 importc: "memchr", header: "<string.h>".}
+  func c_strstr(haystack, needle: cstring): cstring {.
+    importc: "strstr", header: "<string.h>".}
+
   const hasCStringBuiltin = true
 else:
   const hasCStringBuiltin = false
@@ -1840,7 +1865,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
   ## Use `s[start..last].rfind` for a `start`-origin index.
   ##
   ## See also:
-  ## * `rfind func<#rfind,string,char,Natural>`_
+  ## * `rfind func<#rfind,string,char,Natural,int>`_
   ## * `replace func<#replace,string,char,char>`_
   let last = if last == 0: s.high else: last
   when nimvm:
@@ -1868,7 +1893,7 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
   ## Use `s[start..last].find` for a `start`-origin index.
   ##
   ## See also:
-  ## * `rfind func<#rfind,string,set[char],Natural>`_
+  ## * `rfind func<#rfind,string,set[char],Natural,int>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
   let last = if last == 0: s.high else: last
   for i in int(start)..last:
@@ -1885,13 +1910,33 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   ## Use `s[start..last].find` for a `start`-origin index.
   ##
   ## See also:
-  ## * `rfind func<#rfind,string,string,Natural>`_
+  ## * `rfind func<#rfind,string,string,Natural,int>`_
   ## * `replace func<#replace,string,string,string>`_
-  if sub.len > s.len: return -1
+  if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
-  var a {.noinit.}: SkipTable
-  initSkipTable(a, sub)
-  result = find(a, s, sub, start, last)
+
+  template useSkipTable {.dirty.} =
+    var a {.noinit.}: SkipTable
+    initSkipTable(a, sub)
+    result = find(a, s, sub, start, last)
+
+  when not hasCStringBuiltin:
+    useSkipTable()
+  else:
+    when nimvm:
+      useSkipTable()
+    else:
+      when hasCStringBuiltin:
+        if last == 0 and s.len > start:
+          let found = c_strstr(s[start].unsafeAddr, sub)
+          if not found.isNil:
+            result = cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+          else:
+            result = -1
+        else:
+          useSkipTable()
+      else:
+        useSkipTable()
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
@@ -1943,6 +1988,8 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
   if sub.len == 0:
+    return -1
+  if sub.len > s.len - start:
     return -1
   let last = if last == -1: s.high else: last
   result = 0
@@ -1998,7 +2045,7 @@ func countLines*(s: string): int {.rtl, extern: "nsuCountLines".} =
   ## Returns the number of lines in the string `s`.
   ##
   ## This is the same as `len(splitLines(s))`, but much more efficient
-  ## because it doesn't modify the string creating temporal objects. Every
+  ## because it doesn't modify the string creating temporary objects. Every
   ## `character literal <manual.html#lexical-analysis-character-literals>`_
   ## newline combination (CR, LF, CR-LF) is supported.
   ##
@@ -2037,7 +2084,7 @@ func contains*(s: string, chars: set[char]): bool =
 
 func replace*(s, sub: string, by = ""): string {.rtl,
     extern: "nsuReplaceStr".} =
-  ## Replaces every occurence of `sub` in `s` by the string `by`.
+  ## Replaces every occurrence of the string `sub` in `s` with the string `by`.
   ##
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
@@ -2079,7 +2126,8 @@ func replace*(s, sub: string, by = ""): string {.rtl,
 
 func replace*(s: string, sub, by: char): string {.rtl,
     extern: "nsuReplaceChar".} =
-  ## Replaces `sub` in `s` by the character `by`.
+  ## Replaces every occurrence of the character `sub` in `s` with the character
+  ## `by`.
   ##
   ## Optimized version of `replace <#replace,string,string,string>`_ for
   ## characters.
@@ -2097,7 +2145,7 @@ func replace*(s: string, sub, by: char): string {.rtl,
 
 func replaceWord*(s, sub: string, by = ""): string {.rtl,
     extern: "nsuReplaceWord".} =
-  ## Replaces `sub` in `s` by the string `by`.
+  ## Replaces every occurrence of the string `sub` in `s` with the string `by`.
   ##
   ## Each occurrence of `sub` has to be surrounded by word boundaries
   ## (comparable to `\b` in regular expressions), otherwise it is not
@@ -2197,13 +2245,21 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
 
 func escape*(s: string, prefix = "\"", suffix = "\""): string {.rtl,
     extern: "nsuEscape".} =
-  ## Escapes a string `s`. See `system.addEscapedChar
-  ## <system.html#addEscapedChar,string,char>`_ for the escaping scheme.
+  ## Escapes a string `s`.
+  ##
+  ## .. note:: The escaping scheme is different from
+  ##    `system.addEscapedChar`.
+  ##
+  ## * replaces `'\0'..'\31'` and `'\127'..'\255'` by `\xHH` where `HH` is its hexadecimal value
+  ## * replaces ``\`` by `\\`
+  ## * replaces `'` by `\'`
+  ## * replaces `"` by `\"`
   ##
   ## The resulting string is prefixed with `prefix` and suffixed with `suffix`.
   ## Both may be empty strings.
   ##
   ## See also:
+  ## * `addEscapedChar proc<system.html#addEscapedChar,string,char>`_
   ## * `unescape func<#unescape,string,string,string>`_ for the opposite
   ##   operation
   result = newStringOfCap(s.len + s.len shr 2)
@@ -2676,7 +2732,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
       add s, formatstr[i]
       inc(i)
 
-func `%` *(formatstr: string, a: openArray[string]): string {.rtl,
+func `%`*(formatstr: string, a: openArray[string]): string {.rtl,
     extern: "nsuFormatOpenArray".} =
   ## Interpolates a format string with the values from `a`.
   ##
@@ -2724,7 +2780,7 @@ func `%` *(formatstr: string, a: openArray[string]): string {.rtl,
   result = newStringOfCap(formatstr.len + a.len shl 4)
   addf(result, formatstr, a)
 
-func `%` *(formatstr, a: string): string {.rtl,
+func `%`*(formatstr, a: string): string {.rtl,
     extern: "nsuFormatSingleElem".} =
   ## This is the same as `formatstr % [a]` (see
   ## `% func<#%25,string,openArray[string]>`_).
@@ -2780,7 +2836,7 @@ func strip*(s: string, leading = true, trailing = true,
   result = substr(s, first, last)
 
 func stripLineEnd*(s: var string) =
-  ## Returns `s` stripped from one of these suffixes:
+  ## Strips one of these suffixes from `s` in-place:
   ## `\r, \n, \r\n, \f, \v` (at most once instance).
   ## For example, can be useful in conjunction with `osproc.execCmdEx`.
   ## aka: `chomp`:idx:

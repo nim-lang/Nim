@@ -1,5 +1,5 @@
 discard """
-cmd: "nim c --nimcache:build/myNimCache --nimblePath:myNimblePath $file"
+cmd: "nim c --nimcache:build/myNimCache --nimblePath:myNimblePath --gc:arc $file"
 joinable: false
 """
 
@@ -12,6 +12,7 @@ template main =
   doAssert "myNimblePath" in nimblePaths.querySettingSeq[0]
   doAssert querySetting(backend) == "c"
   doAssert fileExists(libPath.querySetting / "system.nim")
+  doAssert querySetting(mm) == "arc"
 
 static: main()
 main()

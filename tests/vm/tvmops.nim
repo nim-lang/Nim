@@ -9,16 +9,6 @@ import os
 import math
 import strutils
 
-template forceConst(a: untyped): untyped =
-  ## Force evaluation at CT, useful for example here:
-  ## `callFoo(forceConst(getBar1()), getBar2())`
-  ## instead of:
-  ##  block:
-  ##    const a = getBar1()
-  ##    `callFoo(a, getBar2())`
-  const ret = a
-  ret
-
 static:
   # TODO: add more tests
   block: #getAppFilename, gorgeEx, gorge
@@ -26,7 +16,7 @@ static:
     let ret = gorgeEx(nim & " --version")
     doAssert ret.exitCode == 0
     doAssert ret.output.contains "Nim Compiler"
-    let ret2 = gorgeEx(nim & " --unexistant")
+    let ret2 = gorgeEx(nim & " --nonxistent")
     doAssert ret2.exitCode != 0
     let output3 = gorge(nim & " --version")
     doAssert output3.contains "Nim Compiler"
@@ -51,6 +41,6 @@ static:
 
 block:
   # Check against bugs like #9176
-  doAssert getCurrentCompilerExe() == forceConst(getCurrentCompilerExe())
+  doAssert getCurrentCompilerExe() == getCurrentCompilerExe().static
   if false: #pending #9176
-    doAssert gorgeEx("unexistant") == forceConst(gorgeEx("unexistant"))
+    doAssert gorgeEx("nonxistent") == gorgeEx("nonxistent").static

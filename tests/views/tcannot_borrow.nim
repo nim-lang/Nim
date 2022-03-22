@@ -1,8 +1,7 @@
 discard """
   errormsg: "cannot borrow"
-  nimout: '''tcannot_borrow.nim(21, 7) Error: cannot borrow meh; what it borrows from is potentially mutated
-tcannot_borrow.nim(22, 3) the mutation is here'''
-  line: 21
+  nimout: '''tcannot_borrow.nim(20, 7) Error: cannot borrow meh; what it borrows from is potentially mutated
+tcannot_borrow.nim(21, 3) the mutation is here'''
 """
 
 

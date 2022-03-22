@@ -36,7 +36,7 @@ when defined(ssl):
         inc(clientCount)
         break
       else:
-        if line.startswith("Message "):
+        if line.startsWith("Message "):
           inc(msgCount)
         else:
           doAssert false
