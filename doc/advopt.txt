@@ -56,7 +56,7 @@ Advanced options:
   --hintAsError:X:on|off    turn specific hint X into an error on|off
   -w:on|off|list, --warnings:on|off|list
                             `on|off` enables or disables warnings.
-                            `list` reports which hints are selected.
+                            `list` reports which warnings are selected.
   --warning:X:on|off        turn specific warning X on|off. `warning:X` means `warning:X:on`,
                             as with similar flags. `all` is the set of all warning
                             (only `all:off` is supported).
