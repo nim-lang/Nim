@@ -71,9 +71,8 @@ when defined(nimStackTraceOverride):
     # We process program counters in groups from complete stack traces, because
     # we have logic that keeps track of certain functions being inlined or not.
 
-    # Here we access some global state, which is a side-effect,
-    # but this procedure is used from Exception.`$`, which is excepted to be
-    # a noSideEffect. The callback themself are noSideEffect
+    # This procedure is used from Exception.`$`, which is excepted to be
+    # a noSideEffect, so we hide the side effects under the rug
     #
     # weird syntax, cast(noSideEffect) doesn't work (probably because
     # we are too early in the standard library)
