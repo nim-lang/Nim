@@ -1090,6 +1090,8 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
   else:
     if pass == passCmd1: config.commandArgs.add p.key
     if argsCount == 1:
+      if p.key.endsWith(".nims"):
+        incl(config.globalOptions, optWasNimscript)
       # support UNIX style filenames everywhere for portable build scripts:
       if config.projectName.len == 0:
         config.projectName = unixToNativePath(p.key)
