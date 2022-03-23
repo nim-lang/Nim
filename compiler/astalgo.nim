@@ -194,16 +194,18 @@ proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
 proc sameIgnoreBacktickGensymInfo(a, b: string): bool =
   if a[0] != b[0]: return false
   var alen = a.len - 1
+  var isGenSym = false
   while alen > 1:
     if a[alen] == '_':
        if a[alen-1] == '_':
           dec alen
+          isGenSym = true
           break
        else:
          dec(alen, 2)
     else:
       dec alen
-  if alen <= 0: alen = a.len
+  if not isGenSym and alen == 1 or alen <= 0: alen = a.len
 
   var i = 1
   var j = 1
