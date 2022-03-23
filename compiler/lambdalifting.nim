@@ -14,6 +14,9 @@ import
   idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos,
   transf, liftdestructors, typeallowed
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 discard """
   The basic approach is that captured vars need to be put on the heap and
   that the calling chain needs to be explicitly modelled. Things to consider:

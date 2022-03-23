@@ -13,6 +13,9 @@ import
   llstream, commands, os, strutils, msgs, lexer, ast,
   options, idents, wordrecg, strtabs, lineinfos, pathutils, scriptconfig
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 # ---------------- configuration file parser -----------------------------
 # we use Nim's lexer here to save space and work
 

@@ -16,6 +16,9 @@ import
   syntaxes, modulegraphs, reorder,
   lineinfos, pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   TPassData* = tuple[input: PNode, closeOutput: PNode]
 

@@ -32,6 +32,9 @@
 import ast, intsets, lineinfos, renderer
 import std/private/asciitables
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   InstrKind* = enum
     goto, fork, def, use

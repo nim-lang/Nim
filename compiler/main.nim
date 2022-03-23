@@ -22,6 +22,10 @@ import
   modules,
   modulegraphs, lineinfos, pathutils, vmprofiler
 
+
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
 

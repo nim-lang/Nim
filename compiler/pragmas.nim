@@ -14,6 +14,9 @@ import
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 from ic / ic import addCompilerProc
 
 const

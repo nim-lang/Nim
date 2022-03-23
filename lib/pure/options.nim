@@ -71,6 +71,10 @@ supports pattern matching on `Option`s, with the `Some(<pattern>)` and
 
 import typetraits
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 when (NimMajor, NimMinor) >= (1, 1):
   type
     SomePointer = ref | ptr | pointer | proc
