@@ -136,14 +136,6 @@ proc dirExists*(dir: string): bool {.
   ## Checks if the directory `dir` exists.
   builtin
 
-template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
-  # xxx: warning won't be shown for nimsscript because of current logic handling
-  # `foreignPackageNotes`
-  fileExists(args)
-
-template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
-  dirExists(args)
-
 proc selfExe*(): string =
   ## Returns the currently running nim or nimble executable.
   # TODO: consider making this as deprecated alias of `getCurrentCompilerExe`
