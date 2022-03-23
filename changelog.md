@@ -48,6 +48,8 @@ becomes an alias for `addr`.
 - Removed deprecated ``` httpcore.`==` ```.
 - Removed deprecated `std/dom_extensions`.
 
+- Remove deprecated `osproc.poDemon`, symbol with typo.
+
 
 ## Language changes
 
