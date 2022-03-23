@@ -197,12 +197,12 @@ proc sameIgnoreBacktickGensymInfo(a, b: string): bool =
   var isGenSym = false
   while alen > 1:
     if a[alen] == '_':
-       if a[alen-1] == '_':
-          dec alen
-          isGenSym = true
-          break
-       else:
-         dec(alen, 2)
+      if a[alen-1] == '_':
+        dec alen
+        isGenSym = true
+        break
+      else:
+        dec(alen, 2)
     else:
       dec alen
   if not isGenSym: alen = a.len
