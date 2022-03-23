@@ -1,5 +1,5 @@
 discard """
-  nimout: "var mysym`gensym0: MyType[float32]"
+  nimout: "var mysym__gensym0: MyType[float32]"
   joinable: false
 """
 

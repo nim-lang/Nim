@@ -197,7 +197,7 @@ proc sameIgnoreBacktickGensymInfo(a, b: string): bool =
   while alen > 1:
     if a[alen] == '_':
        if a[alen-1] == '_':
-          dec(alen, 2)
+          dec alen
           break
        else:
          dec(alen, 2)
