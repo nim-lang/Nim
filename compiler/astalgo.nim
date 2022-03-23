@@ -205,7 +205,7 @@ proc sameIgnoreBacktickGensymInfo(a, b: string): bool =
          dec(alen, 2)
     else:
       dec alen
-  if not isGenSym and alen == 1 or alen <= 0: alen = a.len
+  if not isGenSym: alen = a.len
 
   var i = 1
   var j = 1
