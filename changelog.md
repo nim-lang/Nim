@@ -40,14 +40,14 @@ becomes an alias for `addr`.
 
 - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
 - Removed deprecated `oids.oidToString`.
-- Remove define `nimExperimentalAsyncjsThen` for `std/asyncjs.then` and `std/jsfetch`.
+- Removed define `nimExperimentalAsyncjsThen` for `std/asyncjs.then` and `std/jsfetch`.
 
 - Changed mimedb to use an `OrderedTable` instead of `OrderedTableRef`, to use it in a const.
 - Removed deprecated `jsre.test` and `jsre.toString`.
 - Removed deprecated `math.c_frexp`.
 - Removed deprecated ``` httpcore.`==` ```.
 - Removed deprecated `std/dom_extensions`.
-
+- Removed deprecated `std/oswalkdir`.
 - Remove deprecated `osproc.poDemon`, symbol with typo.
 
 
