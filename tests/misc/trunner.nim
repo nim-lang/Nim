@@ -250,7 +250,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     doAssert outp.endsWith expected, outp & "\n" & expected
 
   block: # bug #8219
-    let file = "tests/newconfig/bar/mfmconfigcheck.nims"
+    let file = "tests/newconfig/mconfigcheck.nims"
     var cmd = fmt"{nim} check {file}"
     check execCmdEx(cmd) == ("", 0)
 
