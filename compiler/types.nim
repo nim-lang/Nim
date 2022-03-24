@@ -13,6 +13,9 @@ import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
   lineinfos, int128, modulegraphs, astmsgs
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   TPreferedDesc* = enum
     preferName, # default
@@ -896,6 +899,7 @@ type
     ExactConstraints
     ExactGcSafety
     AllowCommonBase
+    PickyCAliases  # be picky about the distinction between 'cint' and 'int32'
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
 
@@ -1120,15 +1124,20 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     case c.cmp
     of dcEq: return false
     of dcEqIgnoreDistinct:
-      while a.kind == tyDistinct: a = a[0]
-      while b.kind == tyDistinct: b = b[0]
+      a = a.skipTypes({tyDistinct, tyGenericInst})
+      b = b.skipTypes({tyDistinct, tyGenericInst})
       if a.kind != b.kind: return false
     of dcEqOrDistinctOf:
-      while a.kind == tyDistinct: a = a[0]
+      a = a.skipTypes({tyDistinct, tyGenericInst})
       if a.kind != b.kind: return false
 
+  #[
+    The following code should not run in the case either side is an generic alias,
+    but it's not presently possible to distinguish the genericinsts from aliases of
+    objects ie `type A[T] = SomeObject`
+  ]#
   # this is required by tunique_type but makes no sense really:
-  if x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
+  if tyDistinct notin {x.kind, y.kind} and x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
     let
       lhs = x.skipGenericAlias
       rhs = y.skipGenericAlias
@@ -1144,6 +1153,13 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
      tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
     result = sameFlags(a, b)
+    if result and PickyCAliases in c.flags:
+      # additional requirement for the caching of generics for importc'ed types:
+      # the symbols must be identical too:
+      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
+      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
+      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
+        result = symFlagsA == symFlagsB
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
     if result and a.len == b.len and a.len == 1:
@@ -1364,10 +1380,14 @@ type
     efTagsDiffer
     efTagsUnknown
     efLockLevelsDiffer
+    efEffectsDelayed
 
 proc compatibleEffects*(formal, actual: PType): EffectsCompat =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc
+  #if tfEffectSystemWorkaround in actual.flags:
+  #  return efCompat
+
   if formal.n[0].kind != nkEffectList or
      actual.n[0].kind != nkEffectList:
     return efTagsUnknown
@@ -1391,9 +1411,17 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
       # spec requires some exception or tag, but we don't know anything:
       if real.len == 0: return efTagsUnknown
       let res = compatibleEffectsAux(st, real[tagEffects])
-      if not res: return efTagsDiffer
+      if not res:
+        #if tfEffectSystemWorkaround notin actual.flags:
+        return efTagsDiffer
   if formal.lockLevel.ord < 0 or
       actual.lockLevel.ord <= formal.lockLevel.ord:
+
+    for i in 1 ..< min(formal.n.len, actual.n.len):
+      if formal.n[i].sym.flags * {sfEffectsDelayed} != actual.n[i].sym.flags * {sfEffectsDelayed}:
+        result = efEffectsDelayed
+        break
+
     result = efCompat
   else:
     result = efLockLevelsDiffer
@@ -1597,7 +1625,8 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
         msg.add "\n.tag effect is 'any tag allowed'"
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
-
+      of efEffectsDelayed:
+        msg.add "\n.effectsOf annotations differ"
     localError(conf, info, msg)
 
 proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
@@ -1679,3 +1708,6 @@ proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
       result = allowPointerToChar
     else:
       discard
+
+proc lacksMTypeField*(typ: PType): bool {.inline.} =
+  (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags

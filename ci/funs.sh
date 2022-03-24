@@ -74,6 +74,10 @@ _nimBuildCsourcesIfNeeded(){
     makeX=gmake
   elif [ "$unamestr" = 'NetBSD' ]; then
     makeX=gmake
+  elif [ "$unamestr" = 'CROSSOS' ]; then
+    makeX=gmake
+  elif [ "$unamestr" = 'SunOS' ]; then
+    makeX=gmake
   else
     makeX=make
   fi

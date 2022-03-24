@@ -79,10 +79,12 @@ proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
     var p = s +! sizeof(RefHeader)
     cast[TraceProc](desc.traceImpl)(p, addr(j))
 
+include threadids
+
 when logOrc:
   proc writeCell(msg: cstring; s: Cell; desc: PNimTypeV2) =
-    cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld\n",
-      msg, desc.name, s.refId, s.rootIdx, s.rc shr rcShift, s.color)
+    cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld; thread: %ld\n",
+      msg, desc.name, s.refId, s.rootIdx, s.rc shr rcShift, s.color, getThreadId())
 
 proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
   when traceCollector:
@@ -117,7 +119,7 @@ template orcAssert(cond, msg) =
 when logOrc:
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
 
-proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inline.} =
+proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inl.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
 
@@ -126,7 +128,7 @@ proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inli
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(p, desc)
 
-proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inline.} =
+proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inl.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
@@ -419,6 +421,7 @@ proc registerCycle(s: Cell; desc: PNimTypeV2) =
 proc GC_runOrc* =
   ## Forces a cycle collection pass.
   collectCycles()
+  orcAssert roots.len == 0, "roots not empty!"
 
 proc GC_enableOrc*() =
   ## Enables the cycle collector subsystem of `--gc:orc`. This is a `--gc:orc`

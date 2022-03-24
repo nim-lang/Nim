@@ -35,7 +35,7 @@ substrings starting with ``$``. These constructions are available:
 ``$o``              Matches an octal integer. This uses ``parseutils.parseOct``.
 ``$i``              Matches a decimal integer. This uses ``parseutils.parseInt``.
 ``$h``              Matches a hex integer. This uses ``parseutils.parseHex``.
-``$f``              Matches a floating pointer number. Uses ``parseFloat``.
+``$f``              Matches a floating-point number. Uses ``parseFloat``.
 ``$w``              Matches an ASCII identifier: ``[A-Za-z_][A-Za-z_0-9]*``.
 ``$c``              Matches a single ASCII character.
 ``$s``              Skips optional whitespace.

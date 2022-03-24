@@ -11,6 +11,8 @@
 ##
 ## Unstable API.
 
+{.deprecated.}
+
 {.push stackTrace: off.}
 
 import

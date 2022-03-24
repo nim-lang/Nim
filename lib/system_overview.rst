@@ -1,4 +1,5 @@
 .. default-role:: code
+.. include:: ../doc/rstcommon.rst
 
 The System module imports several separate modules, and their documentation
 is in separate files:
@@ -6,7 +7,6 @@ is in separate files:
 * `iterators <iterators.html>`_
 * `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
-* `io <io.html>`_
 * `widestrs <widestrs.html>`_
 
 

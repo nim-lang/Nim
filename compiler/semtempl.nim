@@ -110,9 +110,14 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
 
 proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
   result = copyNode(n)
+  var count = 0
   for i in 0..<n.len:
     toMixin.incl(considerQuotedIdent(c, n[i]).id)
-    result.add symChoice(c, n[i], nil, scForceOpen)
+    let x = symChoice(c, n[i], nil, scForceOpen)
+    inc count, x.len
+    result.add x
+  if count == 0:
+    result = newNodeI(nkEmpty, n.info)
 
 proc replaceIdentBySym(c: PContext; n: var PNode, s: PNode) =
   case n.kind
@@ -245,7 +250,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of OverloadableSyms:
+  of OverloadableSyms-{skEnumField}:
     result = symChoice(c, n, s, scOpen, isField)
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
@@ -256,12 +261,17 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
-    if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNode(s, n.info)
+    if s.kind == skEnumField and overloadableEnums in c.features:
+      result = symChoice(c, n, s, scOpen, isField)
+    elif isField and sfGenSym in s.flags:
+      result = n
+    else:
+      result = newSymNode(s, n.info)
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
-    if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
+    # field access (dot expr) will be handled by builtinFieldAccess
+    if not isField and {optStyleHint, optStyleError} * c.config.globalOptions != {}:
       styleCheckUse(c.config, n.info, s)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
@@ -334,7 +344,7 @@ proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start = 0) =
       illFormedAst(a, c.c.config)
 
 
-proc semPattern(c: PContext, n: PNode): PNode
+proc semPattern(c: PContext, n: PNode; s: PSym): PNode
 
 proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
   result = n
@@ -593,7 +603,12 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     for i in 0..<n.len:
       result[i] = semTemplBodyDirty(c, n[i])
 
+# in semstmts.nim:
+proc semProcAnnotation(c: PContext, prc: PNode; validPragmas: TSpecialWords): PNode
+
 proc semTemplateDef(c: PContext, n: PNode): PNode =
+  result = semProcAnnotation(c, n, templatePragmas)
+  if result != nil: return result
   result = n
   var s: PSym
   if isTopLevel(c):
@@ -645,7 +660,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   if allUntyped: incl(s.flags, sfAllUntyped)
 
   if n[patternPos].kind != nkEmpty:
-    n[patternPos] = semPattern(c, n[patternPos])
+    n[patternPos] = semPattern(c, n[patternPos], s)
 
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
@@ -798,7 +813,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     for i in 0..<n.len:
       result[i] = semPatternBody(c, n[i])
 
-proc semPattern(c: PContext, n: PNode): PNode =
+proc semPattern(c: PContext, n: PNode; s: PSym): PNode =
   openScope(c)
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
@@ -813,3 +828,4 @@ proc semPattern(c: PContext, n: PNode): PNode =
     elif result.len == 0:
       localError(c.config, n.info, "a pattern cannot be empty")
   closeScope(c)
+  addPattern(c, LazySym(sym: s))

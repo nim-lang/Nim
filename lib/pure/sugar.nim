@@ -121,9 +121,9 @@ macro `=>`*(p, b: untyped): untyped =
       else:
         error("Incorrect procedure parameter.", c)
       params.add(identDefs)
-  of nnkIdent:
+  of nnkIdent, nnkOpenSymChoice, nnkClosedSymChoice, nnkSym:
     var identDefs = newNimNode(nnkIdentDefs)
-    identDefs.add(p)
+    identDefs.add(ident $p)
     identDefs.add(ident"auto")
     identDefs.add(newEmptyNode())
     params.add(identDefs)

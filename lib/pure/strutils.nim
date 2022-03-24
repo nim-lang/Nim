@@ -82,6 +82,9 @@ include "system/inclrtl"
 import std/private/since
 from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWithImpl, endsWithImpl
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
@@ -273,11 +276,17 @@ func nimIdentNormalize*(s: string): string =
   ##
   ## That means to convert to lower case and remove any '_' on all characters
   ## except first one.
+  ##
+  ## .. Warning:: Backticks (`) are not handled: they remain *as is* and
+  ##    spaces are preserved. See `nimIdentBackticksNormalize 
+  ##    <dochelpers.html#nimIdentBackticksNormalize,string>`_ for
+  ##    an alternative approach.
   runnableExamples:
     doAssert nimIdentNormalize("Foo_bar") == "Foobar"
   result = newString(s.len)
-  if s.len > 0:
-    result[0] = s[0]
+  if s.len == 0:
+    return
+  result[0] = s[0]
   var j = 1
   for i in 1..len(s) - 1:
     if s[i] in {'A'..'Z'}:
@@ -1859,7 +1868,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
   ## Use `s[start..last].rfind` for a `start`-origin index.
   ##
   ## See also:
-  ## * `rfind func<#rfind,string,char,Natural>`_
+  ## * `rfind func<#rfind,string,char,Natural,int>`_
   ## * `replace func<#replace,string,char,char>`_
   let last = if last == 0: s.high else: last
   when nimvm:
@@ -1887,7 +1896,7 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
   ## Use `s[start..last].find` for a `start`-origin index.
   ##
   ## See also:
-  ## * `rfind func<#rfind,string,set[char],Natural>`_
+  ## * `rfind func<#rfind,string,set[char],Natural,int>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
   let last = if last == 0: s.high else: last
   for i in int(start)..last:
@@ -1904,7 +1913,7 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   ## Use `s[start..last].find` for a `start`-origin index.
   ##
   ## See also:
-  ## * `rfind func<#rfind,string,string,Natural>`_
+  ## * `rfind func<#rfind,string,string,Natural,int>`_
   ## * `replace func<#replace,string,string,string>`_
   if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
@@ -2039,7 +2048,7 @@ func countLines*(s: string): int {.rtl, extern: "nsuCountLines".} =
   ## Returns the number of lines in the string `s`.
   ##
   ## This is the same as `len(splitLines(s))`, but much more efficient
-  ## because it doesn't modify the string creating temporal objects. Every
+  ## because it doesn't modify the string creating temporary objects. Every
   ## `character literal <manual.html#lexical-analysis-character-literals>`_
   ## newline combination (CR, LF, CR-LF) is supported.
   ##

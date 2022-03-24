@@ -1993,8 +1993,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkStmtListType: result = semStmtListType(c, n, prev)
   of nkBlockType: result = semBlockType(c, n, prev)
   else:
-    localError(c.config, n.info, "type expected, but got: " & renderTree(n))
-    result = newOrPrevType(tyError, prev, c)
+    result = semTypeExpr(c, n, prev)
+    when false:
+      localError(c.config, n.info, "type expected, but got: " & renderTree(n))
+      result = newOrPrevType(tyError, prev, c)
   n.typ = result
   dec c.inTypeContext
 
@@ -2076,7 +2078,10 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(c.config, m, tySequence, szUncomputedSize)
     if optSeqDestructors in c.config.globalOptions:
       incl m.typ.flags, tfHasAsgn
-    assert c.graph.sysTypes[tySequence] == nil
+    if defined(nimsuggest) or c.config.cmd == cmdCheck: # bug #18985
+      discard
+    else:
+      assert c.graph.sysTypes[tySequence] == nil
     c.graph.sysTypes[tySequence] = m.typ
   of mOrdinal:
     setMagicIntegral(c.config, m, tyOrdinal, szUncomputedSize)

@@ -20,6 +20,9 @@
 
 import std/packedsets, algorithm, tables
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import ".."/[ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs]
 

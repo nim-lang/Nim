@@ -11,6 +11,9 @@
 
 import tables
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
@@ -160,6 +163,7 @@ type
     importModuleMap*: Table[int, int] # (module.id, module.id)
     lastTLineInfo*: TLineInfo
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
+    inUncheckedAssignSection*: int
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -261,7 +265,9 @@ proc getGenSym*(c: PContext; s: PSym): PSym =
   result = s
 
 proc considerGenSyms*(c: PContext; n: PNode) =
-  if n.kind == nkSym:
+  if n == nil:
+    discard "can happen for nkFormalParams/nkArgList"
+  elif n.kind == nkSym:
     let s = getGenSym(c, n.sym)
     if n.sym != s:
       n.sym = s

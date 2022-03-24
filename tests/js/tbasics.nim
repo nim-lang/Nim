@@ -54,7 +54,7 @@ for x in someGlobal: doAssert(x == 0)
 proc tdefault =
   var x = default(int)
   doAssert(x == 0)
-  proc inner(v: openarray[string]) =
+  proc inner(v: openArray[string]) =
     doAssert(v.len == 0)
 
   inner(default(seq[string]))

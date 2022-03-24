@@ -1,5 +1,8 @@
 import std/private/miscdollars
-from std/os import getEnv
+when defined(nimscript):
+  import std/os # xxx investigate why needed
+else:
+  from std/os import getEnv
 import std/[macros, genasts]
 
 template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
@@ -26,7 +29,7 @@ template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
     msg2.add $expr & " " & msg
     echo msg2
 
-when not defined(js):
+when not defined(js) and not defined(nimscript):
   import std/strutils
 
   proc greedyOrderedSubsetLines*(lhs, rhs: string, allowPrefixMatch = false): bool =

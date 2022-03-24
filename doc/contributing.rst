@@ -10,6 +10,9 @@ Contributing
 
 Contributing happens via "Pull requests" (PR) on github. Every PR needs to be
 reviewed before it can be merged and the Continuous Integration should be green.
+The title of a PR should contain a brief description. If it fixes an issue,
+in addition to the number of the issue, the title should also contain a description 
+of the issue.
 
 The PR has to be approved by two core developers or by Araq.
 

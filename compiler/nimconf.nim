@@ -13,8 +13,11 @@ import
   llstream, commands, os, strutils, msgs, lexer, ast,
   options, idents, wordrecg, strtabs, lineinfos, pathutils, scriptconfig
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 # ---------------- configuration file parser -----------------------------
-# we use Nim's scanner here to save space and work
+# we use Nim's lexer here to save space and work
 
 proc ppGetTok(L: var Lexer, tok: var Token) =
   # simple filter

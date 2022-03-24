@@ -108,10 +108,19 @@ when defined(js):
     a0: 0x69B4C98Cu32,
     a1: 0xFED1DD30u32) # global for backwards compatibility
 else:
-  # racy for multi-threading but good enough for now:
-  var state = Rand(
+  const DefaultRandSeed = Rand(
     a0: 0x69B4C98CB8530805u64,
-    a1: 0xFED1DD3004688D67CAu64) # global for backwards compatibility
+    a1: 0xFED1DD3004688D67CAu64)
+
+  # racy for multi-threading but good enough for now:
+  var state = DefaultRandSeed # global for backwards compatibility
+
+func isValid(r: Rand): bool {.inline.} =
+  ## Check whether state of `r` is valid.
+  ##
+  ## In `xoroshiro128+`, if all bits of `a0` and `a1` are zero,
+  ## they are always zero after calling `next(r: var Rand)`.
+  not (r.a0 == 0 and r.a1 == 0)
 
 since (1, 5):
   template randState*(): untyped =
@@ -617,15 +626,28 @@ proc shuffle*[T](x: var openArray[T]) =
 
   shuffle(state, x)
 
-when not defined(nimscript) and not defined(standalone):
-  import times
+when not defined(standalone):
+  when defined(js):
+    import std/times
+  else:
+    when defined(nimscript):
+      import std/hashes
+    else:
+      import std/[hashes, os, sysrand, monotimes]
+
+      when compileOption("threads"):
+        import locks
+        var baseSeedLock: Lock
+        baseSeedLock.initLock
+
+    var baseState: Rand
 
   proc initRand(): Rand =
-    ## Initializes a new Rand state with a seed based on the current time.
+    ## Initializes a new Rand state.
     ##
     ## The resulting state is independent of the default RNG's state.
     ##
-    ## **Note:** Does not work for NimScript or the compile-time VM.
+    ## **Note:** Does not work for the compile-time VM.
     ##
     ## See also:
     ## * `initRand proc<#initRand,int64>`_ that accepts a seed for a new Rand state
@@ -635,20 +657,50 @@ when not defined(nimscript) and not defined(standalone):
       let time = int64(times.epochTime() * 1000) and 0x7fff_ffff
       result = initRand(time)
     else:
-      let now = times.getTime()
-      result = initRand(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
+      proc getRandomState(): Rand =
+        when defined(nimscript):
+          result = Rand(
+            a0: CompileTime.hash.Ui,
+            a1: CompileDate.hash.Ui)
+          if not result.isValid:
+            result = DefaultRandSeed
+        else:
+          var urand: array[sizeof(Rand), byte]
+
+          for i in 0 .. 7:
+            if sysrand.urandom(urand):
+              copyMem(result.addr, urand[0].addr, sizeof(Rand))
+              if result.isValid:
+                break
+
+          if not result.isValid:
+            # Don't try to get alternative random values from other source like time or process/thread id,
+            # because such code would be never tested and is a liability for security.
+            quit("Failed to initializes baseState in random module as sysrand.urandom doesn't work.")
+
+      when compileOption("threads"):
+        baseSeedLock.withLock:
+          if not baseState.isValid:
+            baseState = getRandomState()
+          result = baseState
+          baseState.skipRandomNumbers
+      else:
+        if not baseState.isValid:
+          baseState = getRandomState()
+        result = baseState
+        baseState.skipRandomNumbers
 
   since (1, 5, 1):
     export initRand
 
   proc randomize*() {.benign.} =
     ## Initializes the default random number generator with a seed based on
-    ## the current time.
+    ## random number source.
     ##
     ## This proc only needs to be called once, and it should be called before
     ## the first usage of procs from this module that use the default RNG.
     ##
-    ## **Note:** Does not work for NimScript or the compile-time VM.
+    ## **Note:** Does not work for the compile-time VM.
     ##
     ## **See also:**
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed

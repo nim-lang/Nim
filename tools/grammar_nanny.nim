@@ -13,6 +13,7 @@ proc checkGrammarFileImpl(cache: IdentCache, config: ConfigRef) =
   var stream = llStreamOpen(data)
   var declaredSyms = initHashSet[string]()
   var usedSyms = initHashSet[string]()
+  usedSyms.incl "module" # 'module' is the start rule.
   if stream != nil:
     declaredSyms.incl "section" # special case for 'section(RULE)' in the grammar
     var

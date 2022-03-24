@@ -584,13 +584,23 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   else:
     # we handle div by zero here so that we know that the compilerproc's
     # result is only for overflows.
+    var needsOverflowCheck = true
     if m in {mDivI, mModI}:
-      linefmt(p, cpsStmts, "if ($1 == 0){ #raiseDivByZero(); $2}$n",
-              [rdLoc(b), raiseInstr(p)])
-
-    let res = binaryArithOverflowRaw(p, t, a, b,
-      if t.kind == tyInt64: prc64[m] else: prc[m])
-    putIntoDest(p, d, e, "($#)($#)" % [getTypeDesc(p.module, e.typ), res])
+      var canBeZero = true
+      if e[2].kind in {nkIntLit..nkUInt64Lit}:
+        canBeZero = e[2].intVal == 0
+      if e[2].kind in {nkIntLit..nkInt64Lit}:
+        needsOverflowCheck = e[2].intVal == -1
+      if canBeZero:
+        linefmt(p, cpsStmts, "if ($1 == 0){ #raiseDivByZero(); $2}$n",
+                [rdLoc(b), raiseInstr(p)])
+    if needsOverflowCheck:
+      let res = binaryArithOverflowRaw(p, t, a, b,
+        if t.kind == tyInt64: prc64[m] else: prc[m])
+      putIntoDest(p, d, e, "($#)($#)" % [getTypeDesc(p.module, e.typ), res])
+    else:
+      let res = "($1)($2 $3 $4)" % [getTypeDesc(p.module, e.typ), rdLoc(a), rope(opr[m]), rdLoc(b)]
+      putIntoDest(p, d, e, res)
 
 proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   var
@@ -894,7 +904,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     let discIndex = rdSetElemLoc(p.config, v, u.t)
     if optTinyRtti in p.config.globalOptions:
       # not sure how to use `genEnumToStr` here
-      if p.config.isDefined("nimVersion140"):
+      if p.config.getStdlibVersion < (1,5,1):
         const code = "{ #raiseFieldError($1); $2} $n"
         linefmt(p, cpsStmts, code, [strLit, raiseInstr(p)])
       else:
@@ -905,7 +915,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
       let first = p.config.firstOrd(disc.sym.typ)
       let firstLit = int64Literal(cast[int](first))
       let discName = genTypeInfo(p.config, p.module, disc.sym.typ, e.info)
-      if p.config.isDefined("nimVersion140"):
+      if p.config.getStdlibVersion < (1,5,1):
         const code = "{ #raiseFieldError($1); $2} $n"
         linefmt(p, cpsStmts, code, [strLit, raiseInstr(p)])
       else:
@@ -1006,14 +1016,14 @@ proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
     # emit range check:
     if optBoundsCheck in p.options:
       linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)){ #raiseIndexError2($1,$2Len_0-1); $3}$n",
-              [rdLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
+              [rdCharLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
     inheritLocation(d, a)
     putIntoDest(p, d, n,
                 ropecg(p.module, "$1[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
   else:
     if optBoundsCheck in p.options:
       linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2.Field1)){ #raiseIndexError2($1,$2.Field1-1); $3}$n",
-              [rdLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
+              [rdCharLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
     inheritLocation(d, a)
     putIntoDest(p, d, n,
                 ropecg(p.module, "$1.Field0[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
@@ -1028,7 +1038,7 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if optBoundsCheck in p.options:
     linefmt(p, cpsStmts,
             "if ((NU)($1) >= (NU)$2){ #raiseIndexError2($1,$2-1); $3}$n",
-            [rdLoc(b), lenExpr(p, a), raiseInstr(p)])
+            [rdCharLoc(b), lenExpr(p, a), raiseInstr(p)])
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = ropecg(p.module, "(*$1)", [a.r])
@@ -1741,6 +1751,13 @@ proc genGetTypeInfoV2(p: BProc, e: PNode, d: var TLoc) =
     # use the dynamic type stored at offset 0:
     putIntoDest(p, d, e, rdMType(p, a, nilCheck))
 
+proc genAccessTypeField(p: BProc; e: PNode; d: var TLoc) =
+  var a: TLoc
+  initLocExpr(p, e[1], a)
+  var nilCheck = Rope(nil)
+  # use the dynamic type stored at offset 0:
+  putIntoDest(p, d, e, rdMType(p, a, nilCheck))
+
 template genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
   initLocExpr(p, n[1], a)
@@ -2335,7 +2352,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr, mUnown: expr(p, e[1], d)
-  of mIsolate: genCall(p, e, d)
+  of mIsolate, mFinished: genCall(p, e, d)
   of mEnumToStr:
     if optTinyRtti in p.config.globalOptions:
       genEnumToStr(p, e, d)
@@ -2449,6 +2466,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mMove: genMove(p, e, d)
   of mDestroy: genDestroy(p, e)
   of mAccessEnv: unaryExpr(p, e, d, "$1.ClE_0")
+  of mAccessTypeField: genAccessTypeField(p, e, d)
   of mSlice: genSlice(p, e, d)
   of mTrace: discard "no code to generate"
   else:
@@ -2924,12 +2942,26 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
      nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt:
     discard
   of nkPragma: genPragma(p, n)
-  of nkPragmaBlock: expr(p, n.lastSon, d)
+  of nkPragmaBlock:
+    var inUncheckedAssignSection = 0
+    let pragmaList = n[0]
+    for pi in pragmaList:
+      if whichPragma(pi) == wCast:
+        case whichPragma(pi[1])
+        of wUncheckedAssign:
+          inUncheckedAssignSection = 1
+        else:
+          discard
+
+    inc p.inUncheckedAssignSection, inUncheckedAssignSection
+    expr(p, n.lastSon, d)
+    dec p.inUncheckedAssignSection, inUncheckedAssignSection
+
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     if n[genericParamsPos].kind == nkEmpty:
       var prc = n[namePos].sym
       if useAliveDataFromDce in p.module.flags:
-        if p.module.alive.contains(prc.itemId.item) and prc.magic in {mNone, mIsolate}:
+        if p.module.alive.contains(prc.itemId.item) and prc.magic in {mNone, mIsolate, mFinished}:
           genProc(p.module, prc)
       elif prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
         if ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or

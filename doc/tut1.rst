@@ -84,8 +84,8 @@ done with spaces only, tabulators are not allowed.
 
 String literals are enclosed in double-quotes. The `var` statement declares
 a new variable named `name` of type `string` with the value that is
-returned by the `readLine <io.html#readLine,File>`_ procedure. Since the
-compiler knows that `readLine <io.html#readLine,File>`_ returns a string,
+returned by the `readLine <syncio.html#readLine,File>`_ procedure. Since the
+compiler knows that `readLine <syncio.html#readLine,File>`_ returns a string,
 you can leave out the type in the declaration (this is called `local type
 inference`:idx:). So this will work too:
 
@@ -97,7 +97,7 @@ Note that this is basically the only form of type inference that exists in
 Nim: it is a good compromise between brevity and readability.
 
 The "hello world" program contains several identifiers that are already known
-to the compiler: `echo`, `readLine <io.html#readLine,File>`_, etc.
+to the compiler: `echo`, `readLine <syncio.html#readLine,File>`_, etc.
 These built-ins are declared in the system_ module which is implicitly
 imported by any other module.
 
@@ -594,9 +594,11 @@ Procedures
 ==========
 
 To define new commands like `echo <system.html#echo,varargs[typed,]>`_
-and `readLine <io.html#readLine,File>`_ in the examples, the concept of a
-*procedure* is needed. (Some languages call them *methods* or *functions*.)
-In Nim new procedures are defined with the `proc` keyword:
+and `readLine <syncio.html#readLine,File>`_ in the examples, the concept of a
+*procedure* is needed. You might be used to them being called *methods* or
+*functions* in other languages, but Nim
+`differentiates these concepts <tut1.html#procedures-funcs-and-methods>`_. In
+Nim, new procedures are defined with the `proc` keyword:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -874,6 +876,31 @@ The example also shows that a proc's body can consist of a single expression
 whose value is then returned implicitly.
 
 
+Funcs and methods
+-----------------
+
+As mentioned in the introduction, Nim differentiates between procedures,
+functions, and methods, defined by the `proc`, `func`, and `method` keywords
+respectively. In some ways, Nim is a bit more pedantic in its definitions than
+other languages.
+
+Functions are closer to the concept of a pure mathematical
+function, which might be familiar to you if you've ever done functional
+programming. Essentially they are procedures with additional limitations set on
+them: they can't access global state (except `const`) and can't produce
+side-effects. The `func` keyword is basically an alias for `proc` tagged
+with `{.noSideEffects.}`. Functions can still change their mutable arguments
+however, which are those marked as `var`, along with any `ref` objects.
+
+Unlike procedures, methods are dynamically dispatched. This sounds a bit
+complicated, but it is a concept closely related to inheritance and object oriented
+programming. If you overload a procedure (two procedures with the same name but
+of different types or with different sets of arguments are said to be overloaded), the procedure to use is determined
+at compile-time. Methods, on the other hand, depend on objects that inherit from
+the `RootObj`. This is something that is covered in much greater depth in
+the `second part of the tutorial<tut2.html#object-oriented-programming-dynamic-dispatch>`_.
+
+
 Iterators
 =========
 
@@ -886,7 +913,7 @@ Let's return to the simple counting example:
     echo i
 
 Can a `countup <system.html#countup.i,T,T,Positive>`_ proc be written that
-supports this loop? Lets try:
+supports this loop? Let's try:
 
 .. code-block:: nim
   proc countup(a, b: int): int =
@@ -1025,7 +1052,7 @@ errors.
 
 Lossless `Automatic type conversion`:idx: is performed in expressions where different
 kinds of integer types are used. However, if the type conversion
-would cause loss of information, the ``RangeDefect``:idx: is raised (if the error
+would cause loss of information, the `RangeDefect`:idx: is raised (if the error
 cannot be detected at compile time).
 
 
@@ -1643,8 +1670,24 @@ variables! For example:
   echo badname
   echo badext
 
+Tuple unpacking is also supported in for-loops:
+
+.. code-block:: nim
+    :test: "nim c $1"
+  let a = [(10, 'a'), (20, 'b'), (30, 'c')]
+
+  for (x, c) in a:
+    echo x
+  # This will output: 10; 20; 30
+
+  # Accessing the index is also possible:
+  for i, (x, c) in a:
+    echo i, c
+  # This will output: 0a; 1b; 2c
+
 Fields of tuples are always public, they don't need to be explicity
 marked to be exported, unlike for example fields in an object type.
+
 
 Reference and pointer types
 ---------------------------
@@ -1675,13 +1718,18 @@ operators perform implicit dereferencing operations for reference types:
     Node = ref object
       le, ri: Node
       data: int
-  var
-    n: Node
-  new(n)
-  n.data = 9
+
+  var n = Node(data: 9)
+  echo n.data
   # no need to write n[].data; in fact n[].data is highly discouraged!
 
-To allocate a new traced object, the built-in procedure `new` must be used.
+To allocate a new traced object, the built-in procedure `new` can be used:
+
+.. code-block:: nim
+
+   var n: Node
+   new(n)
+
 To deal with untraced memory, the procedures `alloc`, `dealloc` and
 `realloc` can be used. The `system <system.html>`_
 module's documentation contains further details.
@@ -1701,15 +1749,17 @@ Example:
 
 .. code-block:: nim
     :test: "nim c $1"
-  proc echoItem(x: int) = echo x
+  proc greet(name: string): string =
+    "Hello, " & name & "!"
 
-  proc forEach(action: proc (x: int)) =
-    const
-      data = [2, 3, 5, 7, 11]
-    for d in items(data):
-      action(d)
+  proc bye(name: string): string =
+    "Goodbye, " & name & "."
 
-  forEach(echoItem)
+  proc communicate(greeting: proc (x: string): string, name: string) =
+    echo greeting(name)
+
+  communicate(greet, "John")
+  communicate(bye, "Mary")
 
 A subtle issue with procedural types is that the calling convention of the
 procedure influences the type compatibility: procedural types are only compatible

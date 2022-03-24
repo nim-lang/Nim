@@ -216,7 +216,7 @@ comment:
 
 .. code-block:: nim
   i = 0     # This is a single comment over multiple lines.
-    # The scanner merges these two pieces.
+    # The lexer merges these two pieces.
     # The comment continues here.
 
 
@@ -497,10 +497,10 @@ backtick token and the character literal. This special case ensures that a decla
 like ``proc `'customLiteral`(s: string)`` is valid. ``proc `'customLiteral`(s: string)``
 is the same as ``proc `'\''customLiteral`(s: string)``.
 
-See also `Custom Numeric Literals <#custom-numeric-literals>`_.
+See also `custom numeric literals <#custom-numeric-literals>`_.
 
 
-Numeric Literals
+Numeric literals
 ----------------
 
 Numeric literals have the form::
@@ -625,7 +625,7 @@ Hence: 0b10000000'u8 == 0x80'u8 == 128, but, 0b10000000'i8 == 0x80'i8 == -1
 instead of causing an overflow error.
 
 
-Custom Numeric Literals
+Custom numeric literals
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 If the suffix is not predefined, then the suffix is assumed to be a call
@@ -698,7 +698,6 @@ The following strings denote other tokens::
 The `slice`:idx: operator `..`:tok: takes precedence over other tokens that
 contain a dot: `{..}` are the three tokens `{`:tok:, `..`:tok:, `}`:tok:
 and not the two tokens `{.`:tok:, `.}`:tok:.
-
 
 
 Syntax
@@ -1182,7 +1181,7 @@ The only operations that are affected by the `floatChecks` pragma are
 the `+`, `-`, `*`, `/` operators for floating-point types.
 
 An implementation should always use the maximum precision available to evaluate
-floating pointer values during semantic analysis; this means expressions like
+floating-point values during semantic analysis; this means expressions like
 `0.09'f32 + 0.01'f32 == 0.09'f64 + 0.01'f64` that are evaluating during
 constant folding are true.
 
@@ -1303,6 +1302,7 @@ as `MyEnum.value`:
   echo MyEnum.amb # OK.
 
 To implement bit fields with enums see `Bit fields <#set-type-bit-fields>`_
+
 
 String type
 -----------
@@ -1624,11 +1624,6 @@ must match the order of the tuple's definition. Different tuple-types are
 *equivalent* if they specify the same fields of the same type in the same
 order. The *names* of the fields also have to be the same.
 
-The assignment operator for tuples copies each component.
-The default assignment operator for objects copies each component. Overloading
-of the assignment operator is described `here
-<manual_experimental.html#type-bound-operations>`_.
-
 .. code-block:: nim
 
   type
@@ -1704,6 +1699,10 @@ introduce new object roots apart from `system.RootObj`.
 
     Student = ref object of Person # Error: inheritance only works with non-final objects
       id: int
+
+The assignment operator for tuples and objects copies each component.
+The methods to override this copying behavior are described `here
+<manual.html#procedures-type-bound-operations>`_.
 
 
 Object construction
@@ -1834,6 +1833,41 @@ A small example:
   # also valid, since unknownKindBounded can only contain the values nkAdd or nkSub
   let unknownKindBounded = range[nkAdd..nkSub](unknownKind)
   z = Node(kind: unknownKindBounded, leftOp: Node(), rightOp: Node())
+
+
+cast uncheckedAssign
+--------------------
+
+Some restrictions for case objects can be disabled via a `{.cast(uncheckedAssign).}` section:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  type
+    TokenKind* = enum
+      strLit, intLit
+    Token = object
+      case kind*: TokenKind
+      of strLit:
+        s*: string
+      of intLit:
+        i*: int64
+
+  proc passToVar(x: var TokenKind) = discard
+
+  var t = Token(kind: strLit, s: "abc")
+
+  {.cast(uncheckedAssign).}:
+    # inside the 'cast' section it is allowed to pass 't.kind' to a 'var T' parameter:
+    passToVar(t.kind)
+
+    # inside the 'cast' section it is allowed to set field 's' even though the
+    # constructed 'kind' field has an unknown value:
+    t = Token(kind: t.kind, s: "abc")
+
+    # inside the 'cast' section it is allowed to assign to the 't.kind' field directly:
+    t.kind = intLit
+
 
 Set type
 --------
@@ -2305,121 +2339,38 @@ describe the type checking done by the compiler.
 
 Type equality
 -------------
+
 Nim uses structural type equivalence for most types. Only for objects,
-enumerations and distinct types name equivalence is used. The following
-algorithm, *in pseudo-code*, determines type equality:
-
-.. code-block:: nim
-  proc typeEqualsAux(a, b: PType,
-                     s: var HashSet[(PType, PType)]): bool =
-    if (a,b) in s: return true
-    incl(s, (a,b))
-    if a.kind == b.kind:
-      case a.kind
-      of int, intXX, float, floatXX, char, string, cstring, pointer,
-          bool, nil, void:
-        # leaf type: kinds identical; nothing more to check
-        result = true
-      of ref, ptr, var, set, seq, openarray:
-        result = typeEqualsAux(a.baseType, b.baseType, s)
-      of range:
-        result = typeEqualsAux(a.baseType, b.baseType, s) and
-          (a.rangeA == b.rangeA) and (a.rangeB == b.rangeB)
-      of array:
-        result = typeEqualsAux(a.baseType, b.baseType, s) and
-                 typeEqualsAux(a.indexType, b.indexType, s)
-      of tuple:
-        if a.tupleLen == b.tupleLen:
-          for i in 0..a.tupleLen-1:
-            if not typeEqualsAux(a[i], b[i], s): return false
-          result = true
-      of object, enum, distinct:
-        result = a == b
-      of proc:
-        result = typeEqualsAux(a.parameterTuple, b.parameterTuple, s) and
-                 typeEqualsAux(a.resultType, b.resultType, s) and
-                 a.callingConvention == b.callingConvention
-
-  proc typeEquals(a, b: PType): bool =
-    var s: HashSet[(PType, PType)] = {}
-    result = typeEqualsAux(a, b, s)
-
-Since types are graphs which can have cycles, the above algorithm needs an
-auxiliary set `s` to detect this case.
-
-
-Type equality modulo type distinction
--------------------------------------
-
-The following algorithm (in pseudo-code) determines whether two types
-are equal with no respect to `distinct` types. For brevity the cycle check
-with an auxiliary set `s` is omitted:
-
-.. code-block:: nim
-  proc typeEqualsOrDistinct(a, b: PType): bool =
-    if a.kind == b.kind:
-      case a.kind
-      of int, intXX, float, floatXX, char, string, cstring, pointer,
-          bool, nil, void:
-        # leaf type: kinds identical; nothing more to check
-        result = true
-      of ref, ptr, var, set, seq, openarray:
-        result = typeEqualsOrDistinct(a.baseType, b.baseType)
-      of range:
-        result = typeEqualsOrDistinct(a.baseType, b.baseType) and
-          (a.rangeA == b.rangeA) and (a.rangeB == b.rangeB)
-      of array:
-        result = typeEqualsOrDistinct(a.baseType, b.baseType) and
-                 typeEqualsOrDistinct(a.indexType, b.indexType)
-      of tuple:
-        if a.tupleLen == b.tupleLen:
-          for i in 0..a.tupleLen-1:
-            if not typeEqualsOrDistinct(a[i], b[i]): return false
-          result = true
-      of distinct:
-        result = typeEqualsOrDistinct(a.baseType, b.baseType)
-      of object, enum:
-        result = a == b
-      of proc:
-        result = typeEqualsOrDistinct(a.parameterTuple, b.parameterTuple) and
-                 typeEqualsOrDistinct(a.resultType, b.resultType) and
-                 a.callingConvention == b.callingConvention
-    elif a.kind == distinct:
-      result = typeEqualsOrDistinct(a.baseType, b)
-    elif b.kind == distinct:
-      result = typeEqualsOrDistinct(a, b.baseType)
+enumerations and distinct types and for generic types name equivalence is used.
 
 
 Subtype relation
 ----------------
-If object `a` inherits from `b`, `a` is a subtype of `b`. This subtype
-relation is extended to the types `var`, `ref`, `ptr`:
 
-.. code-block:: nim
-  proc isSubtype(a, b: PType): bool =
-    if a.kind == b.kind:
-      case a.kind
-      of object:
-        var aa = a.baseType
-        while aa != nil and aa != b: aa = aa.baseType
-        result = aa == b
-      of var, ref, ptr:
-        result = isSubtype(a.baseType, b.baseType)
+If object `a` inherits from `b`, `a` is a subtype of `b`.
 
-.. XXX nil is a special value!
+This subtype relation is extended to the types `var`, `ref`, `ptr`.
+If `A` is a subtype of `B` and `A` and `B` are `object` types then:
 
+- `var A` is a subtype of `var B`
+- `ref A` is a subtype of `ref B`
+- `ptr A` is a subtype of `ptr B`.
 
+**Note**: In later versions of the language the subtype relation might
+be changed to *require* the pointer indirection in order to prevent
+"object slicing".
 
 
 Convertible relation
 --------------------
+
 A type `a` is **implicitly** convertible to type `b` iff the following
 algorithm returns true:
 
 .. code-block:: nim
 
   proc isImplicitlyConvertible(a, b: PType): bool =
-    if isSubtype(a, b) or isCovariant(a, b):
+    if isSubtype(a, b):
       return true
     if isIntLiteral(a):
       return b in {int8, int16, int32, int64, int, uint, uint8, uint16,
@@ -2445,7 +2396,12 @@ algorithm returns true:
       result = b == pointer
     of string:
       result = b == cstring
+    of proc:
+      result = typeEquals(a, b) or compatibleParametersAndEffects(a, b)
 
+We used the predicate `typeEquals(a, b)` for the "type equality" property
+and the predicate `isSubtype(a, b)` for the "subtype relation".
+`compatibleParametersAndEffects(a, b)` is currently not specified.
 
 Implicit conversions are also performed for Nim's `range` type
 constructor.
@@ -2468,7 +2424,9 @@ algorithm returns true:
   proc isExplicitlyConvertible(a, b: PType): bool =
     result = false
     if isImplicitlyConvertible(a, b): return true
-    if typeEqualsOrDistinct(a, b): return true
+    if typeEquals(a, b): return true
+    if a == distinct and typeEquals(a.baseType, b): return true
+    if b == distinct and typeEquals(b.baseType, a): return true
     if isIntegralType(a) and isIntegralType(b): return true
     if isSubtype(a, b) or isSubtype(b, a): return true
 
@@ -2666,6 +2624,7 @@ Varargs matching
 
 See `Varargs <#types-varargs>`_.
 
+
 iterable
 --------
 
@@ -2687,6 +2646,42 @@ a parameter typed as `untyped` (for unresolved expressions) or the type class
   assert toSeq2(5..7) == @[5, 6, 7]
   assert not compiles(toSeq2(@[1,2])) # seq[int] is not an iterable
   assert toSeq2(items(@[1,2])) == @[1, 2] # but items(@[1,2]) is
+
+
+Overload disambiguation
+=======================
+
+For routine calls "overload resolution" is performed. There is a weaker form of
+overload resolution called *overload disambiguation* that is performed when an
+overloaded symbol is used in a context where there is additional type information
+available. Let `p` be an overloaded symbol. These contexts are:
+
+- In a function call `q(..., p, ...)` when the corresponding formal parameter
+  of `q` is a `proc` type. If `q` itself is overloaded then the cartesian product
+  of every interpretation of `q` and `p` must be considered.
+- In an object constructor `Obj(..., field: p, ...)` when `field` is a `proc`
+  type. Analogous rules exist for array/set/tuple constructors.
+- In a declaration like `x: T = p` when `T` is a `proc` type.
+
+As usual, ambiguous matches produce a compile-time error.
+
+Named argument overloading
+--------------------------
+
+Routines with the same type signature can be called individually if
+a parameter has different names between them.
+
+.. code-block:: Nim
+  proc foo(x: int) =
+    echo "Using x: ", x
+  proc foo(y: int) =
+    echo "Using y: ", y
+
+  foo(x = 2) # Using x: 2
+  foo(y = 2) # Using y: 2
+
+Not supplying the parameter name in such cases results in an
+ambiguity error.
 
 
 Statements and expressions
@@ -2823,7 +2818,7 @@ The implicit initialization can be avoided for optimization reasons with the
 
 .. code-block:: nim
   var
-    a {.noInit.}: array[0..1023, char]
+    a {.noinit.}: array[0..1023, char]
 
 If a proc is annotated with the `noinit` pragma, this refers to its implicit
 `result` variable:
@@ -2937,6 +2932,20 @@ Even some code that has side effects is permitted in a static block:
 
   static:
     echo "echo at compile time"
+
+`static` can also be used like a routine.
+
+.. code-block:: nim
+
+  proc getNum(a: int): int = a
+
+  # Below calls "echo getNum(123)" at compile time.
+  static:
+    echo getNum(123)
+
+  # Below call evaluates the "getNum(123)" at compile time, but its
+  # result gets used at run time.
+  echo static(getNum(123))
 
 There are limitations on what Nim code can be executed at compile time;
 see `Restrictions on Compile-Time Execution
@@ -3149,7 +3158,7 @@ Return statement
 Example:
 
 .. code-block:: nim
-  return 40+2
+  return 40 + 2
 
 The `return` statement ends the execution of the current procedure.
 It is only allowed in procedures. If there is an `expr`, this is syntactic
@@ -3493,8 +3502,9 @@ location is `T`, the `addr` operator result is of the type `ptr T`. An
 address is always an untraced reference. Taking the address of an object that
 resides on the stack is **unsafe**, as the pointer may live longer than the
 object on the stack and can thus reference a non-existing object. One can get
-the address of variables, but one can't use it on variables declared through
-`let` statements:
+the address of variables. For easier interoperability with other compiled languages
+such as C, retrieving the address of a `let` variable, a parameter,
+or a `for` loop variable can be accomplished too:
 
 .. code-block:: nim
 
@@ -3506,23 +3516,17 @@ the address of variables, but one can't use it on variables declared through
   # --> ref 0x7fff6b71b670 --> 0x10bb81050"Hello"
   echo cast[ptr string](t3)[]
   # --> Hello
-  # The following line doesn't compile:
+  # The following line also works
   echo repr(addr(t1))
-  # Error: expression has no address
-
 
 The unsafeAddr operator
 -----------------------
 
-For easier interoperability with other compiled languages such as C, retrieving
-the address of a `let` variable, a parameter, or a `for` loop variable can
-be accomplished by using the `unsafeAddr` operation:
+The `unsafeAddr` operator is a deprecated alias for the `addr` operator:
 
 .. code-block:: nim
-
   let myArray = [1, 2, 3]
   foreignProcThatTakesAnAddr(unsafeAddr myArray)
-
 
 Procedures
 ==========
@@ -3552,8 +3556,16 @@ does not provide a value for the argument. The value will be reevaluated
 every time the function is called.
 
 .. code-block:: nim
-  # b is optional with 47 as its default value
+  # b is optional with 47 as its default value.
   proc foo(a: int, b: int = 47): int
+
+Just as the comma propagates the types from right to left until the
+first parameter or until a semicolon is hit, it also propagates the
+default value starting from the parameter declared with it.
+
+.. code-block:: nim
+  # Both a and b are optional with 47 as their default values.
+  proc foo(a, b: int = 47): int
 
 Parameters can be declared mutable and so allow the proc to modify those
 arguments, by using the type modifier `var`.
@@ -3777,8 +3789,8 @@ behavior inside loop bodies. See `closureScope
 <system.html#closureScope.t,untyped>`_ and `capture
 <sugar.html#capture.m,varargs[typed],untyped>`_ for details on how to change this behavior.
 
-Anonymous Procs
----------------
+Anonymous procedures
+--------------------
 
 Unnamed procedures can be used as lambda expressions to pass into other
 procedures:
@@ -3786,8 +3798,8 @@ procedures:
 .. code-block:: nim
   var cities = @["Frankfurt", "Tokyo", "New York", "Kyiv"]
 
-  cities.sort(proc (x,y: string): int =
-      cmp(x.len, y.len))
+  cities.sort(proc (x, y: string): int =
+    cmp(x.len, y.len))
 
 
 Procs as expressions can appear both as nested procs and inside top-level
@@ -3795,6 +3807,42 @@ executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro
 which enables a more succinct syntax for anonymous procedures resembling
 lambdas as they are in languages like JavaScript, C#, etc.
 
+Do notation
+-----------
+
+As a special convenience notation that keeps most elements of a
+regular proc expression, the `do` keyword can be used to pass
+anonymous procedures to routines:
+
+.. code-block:: nim
+  var cities = @["Frankfurt", "Tokyo", "New York", "Kyiv"]
+
+  sort(cities) do (x, y: string) -> int:
+    cmp(x.len, y.len)
+
+  # Less parentheses using the method plus command syntax:
+  cities = cities.map do (x: string) -> string:
+    "City of " & x
+
+`do` is written after the parentheses enclosing the regular proc params.
+The proc expression represented by the `do` block is appended to the routine
+call as the last argument. In calls using the command syntax, the `do` block
+will bind to the immediately preceding expression rather than the command call.
+
+`do` with a parameter list or pragma list corresponds to an anonymous `proc`,
+however `do` without parameters or pragmas is treated as a normal statement
+list. This allows macros to receive both indented statement lists as an
+argument in inline calls, as well as a direct mirror of Nim's routine syntax.
+
+.. code-block:: nim
+  # Passing a statement list to an inline macro:
+  macroResults.add quote do:
+    if not `ex`:
+      echo `info`, ": Check failed: ", `expString`
+  
+  # Processing a routine definition in a macro:
+  rpc(router, "add") do (a, b: int) -> int:
+    result = a + b
 
 Func
 ----
@@ -3848,6 +3896,18 @@ the operator is in scope (including if it is private).
 
 Type bound operators are:
 `=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`.
+
+These operations can be *overridden* instead of *overloaded*. This means that
+the implementation is automatically lifted to structured types. For instance,
+if the type `T` has an overridden assignment operator `=`, this operator is
+also used for assignments of the type `seq[T]`.
+
+Since these operations are bound to a type, they have to be bound to a
+nominal type for reasons of simplicity of implementation; this means an
+overridden `deepCopy` for `ref T` is really bound to `T` and not to `ref T`.
+This also means that one cannot override `deepCopy` for both `ptr T` and
+`ref T` at the same time, instead a distinct or object helper type has to be
+used for one pointer type.
 
 For more details on some of those procs, see
 `Lifetime-tracking hooks <destructors.html#lifetimeminustracking-hooks>`_.
@@ -4395,7 +4455,7 @@ would. For example:
       if n > 0:
         yield n
         for e in toItr(recCountDown(n - 1)):
-            yield e
+          yield e
 
   for i in toItr(recCountDown(6)): # Emits: 6 5 4 3 2 1
     echo i
@@ -4721,6 +4781,11 @@ and rely on functionality of the `x` object to get exception details.
 Effect system
 =============
 
+**Note**: The rules for effect tracking changed with the release of version
+1.6 of the Nim compiler. This section describes the new rules that are activated
+via `--experimental:strictEffects`.
+
+
 Exception tracking
 ------------------
 
@@ -4770,35 +4835,24 @@ possibly raised exceptions; the algorithm operates on `p`'s call graph:
 1. Every indirect call via some proc type `T` is assumed to
    raise `system.Exception` (the base type of the exception hierarchy) and
    thus any exception unless `T` has an explicit `raises` list.
-   However, if the call is of the form `f(...)` where `f` is a parameter of the currently analyzed routine it is ignored. The call is optimistically assumed to have no effect. Rule 2 compensates for this case.
-2. Every expression of some proc type within a call that is not a call
-   itself (and not nil) is assumed to be called indirectly somehow and thus
+   However, if the call is of the form `f(...)` where `f` is a parameter of
+   the currently analyzed routine it is ignored that is marked as `.effectsOf: f`.
+   The call is optimistically assumed to have no effect.
+   Rule 2 compensates for this case.
+2. Every expression `e` of some proc type within a call that is passed to parameter
+   marked as `.effectsOf` is assumed to be called indirectly and thus
    its raises list is added to `p`'s raises list.
 3. Every call to a proc `q` which has an unknown body (due to a forward
-   declaration or an `importc` pragma) is assumed to
+   declaration) is assumed to
    raise `system.Exception` unless `q` has an explicit `raises` list.
+   Procs that are `importc`'ed are assumed to have `.raises: []`, unless explicitly
+   declared otherwise.
 4. Every call to a method `m` is assumed to
    raise `system.Exception` unless `m` has an explicit `raises` list.
 5. For every other call, the analysis can determine an exact `raises` list.
 6. For determining a `raises` list, the `raise` and `try` statements
    of `p` are taken into consideration.
 
-Rules 1-2 ensure the following works:
-
-.. code-block:: nim
-  proc noRaise(x: proc()) {.raises: [].} =
-    # unknown call that might raise anything, but valid:
-    x()
-
-  proc doRaise() {.raises: [IOError].} =
-    raise newException(IOError, "IO")
-
-  proc use() {.raises: [].} =
-    # doesn't compile! Can raise IOError!
-    noRaise(doRaise)
-
-So in many cases a callback does not cause the compiler to be overly
-conservative in its effect analysis.
 
 Exceptions inheriting from `system.Defect` are not tracked with
 the `.raises: []` exception tracking mechanism. This is more consistent with the
@@ -4823,6 +4877,60 @@ with `--panics:on`:option: Defects become unrecoverable errors.
 (Since version 1.4 of the language.)
 
 
+EffectsOf annotation
+--------------------
+
+Rules 1-2 of the exception tracking inference rules (see the previous section)
+ensure the following works:
+
+.. code-block:: nim
+  proc weDontRaiseButMaybeTheCallback(callback: proc()) {.raises: [], effectsOf: callback.} =
+    callback()
+
+  proc doRaise() {.raises: [IOError].} =
+    raise newException(IOError, "IO")
+
+  proc use() {.raises: [].} =
+    # doesn't compile! Can raise IOError!
+    weDontRaiseButMaybeTheCallback(doRaise)
+
+As can be seen from the example, a parameter of type `proc (...)` can be
+annotated as `.effectsOf`. Such a parameter allows for effect polymorphism:
+The proc `weDontRaiseButMaybeTheCallback` raises the exceptions
+that `callback` raises.
+
+So in many cases a callback does not cause the compiler to be overly
+conservative in its effect analysis:
+
+.. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
+  {.push warningAsError[Effect]: on.}
+  {.experimental: "strictEffects".}
+
+  import algorithm
+
+  type
+    MyInt = distinct int
+
+  var toSort = @[MyInt 1, MyInt 2, MyInt 3]
+
+  proc cmpN(a, b: MyInt): int =
+    cmp(a.int, b.int)
+
+  proc harmless {.raises: [].} =
+    toSort.sort cmpN
+
+  proc cmpE(a, b: MyInt): int {.raises: [Exception].} =
+    cmp(a.int, b.int)
+
+  proc harmfull {.raises: [].} =
+    # does not compile, `sort` can now raise Exception
+    toSort.sort cmpE
+
+
+
 Tag tracking
 ------------
 
@@ -4831,7 +4939,7 @@ is an *effect*. Other effects can also be defined. A user defined effect is a
 means to *tag* a routine and to perform checks against this tag:
 
 .. code-block:: nim
-    :test: "nim c $1"
+    :test: "nim c --warningAsError:Effect:on $1"
     :status: 1
 
   type IO = object ## input/output effect
@@ -4846,6 +4954,78 @@ also be attached to a proc type. This affects type compatibility.
 
 The inference for tag tracking is analogous to the inference for
 exception tracking.
+
+
+Side effects
+------------
+
+The `noSideEffect` pragma is used to mark a proc/iterator that can have only
+side effects through parameters. This means that the proc/iterator only changes locations that are
+reachable from its parameters and the return value only depends on the
+parameters. If none of its parameters have the type `var`, `ref`, `ptr`, `cstring`, or `proc`,
+then no locations are modified.
+
+In other words, a routine has no side effects if it does not access a threadlocal
+or global variable and it does not call any routine that has a side effect.
+
+It is a static error to mark a proc/iterator to have no side effect if the compiler cannot verify this.
+
+As a special semantic rule, the built-in `debugEcho
+<system.html#debugEcho,varargs[typed,]>`_ pretends to be free of side effects
+so that it can be used for debugging routines marked as `noSideEffect`.
+
+`func` is syntactic sugar for a proc with no side effects:
+
+.. code-block:: nim
+  func `+` (x, y: int): int
+
+
+To override the compiler's side effect analysis a `{.noSideEffect.}`
+`cast` pragma block can be used:
+
+.. code-block:: nim
+
+  func f() =
+    {.cast(noSideEffect).}:
+      echo "test"
+
+**Side effects are usually inferred. The inference for side effects is
+analogous to the inference for exception tracking.**
+
+
+GC safety effect
+----------------
+
+We call a proc `p` `GC safe`:idx: when it doesn't access any global variable
+that contains GC'ed memory (`string`, `seq`, `ref` or a closure) either
+directly or indirectly through a call to a GC unsafe proc.
+
+**The GC safety property is usually inferred. The inference for GC safety is
+analogous to the inference for exception tracking.**
+
+The `gcsafe`:idx: annotation can be used to mark a proc to be gcsafe,
+otherwise this property is inferred by the compiler. Note that `noSideEffect`
+implies `gcsafe`.
+
+Routines that are imported from C are always assumed to be `gcsafe`.
+
+To override the compiler's gcsafety analysis a `{.cast(gcsafe).}` pragma block can
+be used:
+
+.. code-block:: nim
+
+  var
+    someGlobal: string = "some string here"
+    perThread {.threadvar.}: string
+
+  proc setPerThread() =
+    {.cast(gcsafe).}:
+      deepCopy(perThread, someGlobal)
+
+
+See also:
+
+- `Shared heap memory management <mm.html>`_.
 
 
 
@@ -4954,7 +5134,7 @@ code:
         deletedKeys: seq[bool]
 
 
-Type Classes
+Type classes
 ------------
 
 A type class is a special pseudo-type that can be used to match against
@@ -5617,11 +5797,6 @@ However, this means that the method call syntax is not available for
   tmp(12)
 
 
-**Note**: The Nim compiler prior to version 1 was more lenient about this
-requirement. Use the `--useVersion:0.19`:option: switch for a transition period.
-
-
-
 Limitations of the method call syntax
 -------------------------------------
 
@@ -5684,7 +5859,15 @@ twice:
 While macros enable advanced compile-time code transformations, they
 cannot change Nim's syntax.
 
-Debug Example
+**Style note:** For code readability, it is best to use the least powerful
+programming construct that remains expressive. So the "check list" is:
+
+(1) Use an ordinary proc/iterator, if possible.
+(2) Else: Use a generic proc/iterator, if possible.
+(3) Else: Use a template, if possible.
+(4) Else: Use a macro.
+
+Debug example
 -------------
 
 The following example implements a powerful `debug` command that accepts a
@@ -5742,7 +5925,7 @@ constructor expression. This is why `debug` iterates over all of `args`'s
 children.
 
 
-BindSym
+bindSym
 -------
 
 The above `debug` macro relies on the fact that `write`, `writeLine` and
@@ -5791,43 +5974,38 @@ However, the symbols `write`, `writeLine` and `stdout` are already bound
 and are not looked up again. As the example shows, `bindSym` does work with
 overloaded symbols implicitly.
 
-Case-Of Macro
--------------
+Note that the symbol names passed to `bindSym` have to be constant. The
+experimental feature `dynamicBindSym` (`experimental manual
+<manual_experimental.html#dynamic-arguments-for-bindsym>`_)
+allows this value to be computed dynamically.
 
-In Nim, it is possible to have a macro with the syntax of a *case-of*
-expression just with the difference that all *of-branches* are passed to
-and processed by the macro implementation. It is then up the macro
-implementation to transform the *of-branches* into a valid Nim
-statement. The following example should show how this feature could be
-used for a lexical analyzer.
+Post-statement blocks
+---------------------
+
+Macros can receive `of`, `elif`, `else`, `except`, `finally` and `do`
+blocks (including their different forms such as `do` with routine parameters)
+as arguments if called in statement form.
 
 .. code-block:: nim
-  import std/macros
+  macro performWithUndo(task, undo: untyped) = ...
 
-  macro case_token(args: varargs[untyped]): untyped =
-    echo args.treeRepr
-    # creates a lexical analyzer from regular expressions
-    # ... (implementation is an exercise for the reader ;-)
-    discard
-
-  case_token: # this colon tells the parser it is a macro statement
-  of r"[A-Za-z_]+[A-Za-z_0-9]*":
-    return tkIdentifier
-  of r"0-9+":
-    return tkInteger
-  of r"[\+\-\*\?]+":
-    return tkOperator
+  performWithUndo do:
+    # multiple-line block of code
+    # to perform the task
+  do:
+    # code to undo it
+  
+  let num = 12
+  # a single colon may be used if there is no initial block
+  match (num mod 3, num mod 5):
+  of (0, 0):
+    echo "FizzBuzz"
+  of (0, _):
+    echo "Fizz"
+  of (_, 0):
+    echo "Buzz"
   else:
-    return tkUnknown
-
-
-**Style note**: For code readability, it is best to use the least powerful
-programming construct that still suffices. So the "check list" is:
-
-(1) Use an ordinary proc/iterator, if possible.
-(2) Else: Use a generic proc/iterator, if possible.
-(3) Else: Use a template, if possible.
-(4) Else: Use a macro.
+    echo num
 
 
 For loop macro
@@ -5891,6 +6069,48 @@ Another example:
   # names for `a` and `b` here to avoid redefinition errors
   for a, b in enumerate(10, [1, 2, 3, 5]):
     echo a, " ", b
+
+
+Case statement macros
+---------------------
+
+Macros named `` `case` `` can provide implementations of `case` statements
+for certain types. The following is an example of such an implementation
+for tuples, leveraging the existing equality operator for tuples
+(as provided in `system.==`):
+
+.. code-block:: nim
+    :test: "nim c $1"
+  import std/macros
+
+  macro `case`(n: tuple): untyped =
+    result = newTree(nnkIfStmt)
+    let selector = n[0]
+    for i in 1 ..< n.len:
+      let it = n[i]
+      case it.kind
+      of nnkElse, nnkElifBranch, nnkElifExpr, nnkElseExpr:
+        result.add it
+      of nnkOfBranch:
+        for j in 0..it.len-2:
+          let cond = newCall("==", selector, it[j])
+          result.add newTree(nnkElifBranch, cond, it[^1])
+      else:
+        error "custom 'case' for tuple cannot handle this node", it
+
+  case ("foo", 78)
+  of ("foo", 78): echo "yes"
+  of ("bar", 88): echo "no"
+  else: discard
+
+`case` macros are subject to overload resolution. The type of the
+`case` statement's selector expression is matched against the type
+of the first argument of the `case` macro. Then the complete `case`
+statement is passed in place of the argument and the macro is evaluated.
+
+In other words, the macro needs to transform the full `case` statement
+but only the statement's selector expression is used to determine which
+macro to call.
 
 
 Special Types
@@ -6366,55 +6586,6 @@ This pragma can also take in an optional warning string to relay to developers.
   proc thing(x: bool) {.deprecated: "use thong instead".}
 
 
-noSideEffect pragma
--------------------
-
-The `noSideEffect` pragma is used to mark a proc/iterator that can have only
-side effects through parameters. This means that the proc/iterator only changes locations that are
-reachable from its parameters and the return value only depends on the
-parameters. If none of its parameters have the type `var`, `ref`, `ptr`, `cstring`, or `proc`,
-then no locations are modified.
-
-It is a static error to mark a proc/iterator to have no side effect if the compiler cannot verify this.
-
-As a special semantic rule, the built-in `debugEcho
-<system.html#debugEcho,varargs[typed,]>`_ pretends to be free of side effects
-so that it can be used for debugging routines marked as `noSideEffect`.
-
-`func` is syntactic sugar for a proc with no side effects:
-
-.. code-block:: nim
-  func `+` (x, y: int): int
-
-
-To override the compiler's side effect analysis a `{.noSideEffect.}`
-`cast` pragma block can be used:
-
-.. code-block:: nim
-
-  func f() =
-    {.cast(noSideEffect).}:
-      echo "test"
-
-When a `noSideEffect` proc has proc params `bar`, whether it can be used inside a `noSideEffect` context
-depends on what the compiler knows about `bar`:
-
-.. code-block:: nim
-    :test: "nim c $1"
-
-  func foo(bar: proc(): int): int = bar()
-  var count = 0
-  proc fn1(): int = 1
-  proc fn2(): int = (count.inc; count)
-  func fun1() = discard foo(fn1) # ok because fn1 is inferred as `func`
-  # func fun2() = discard foo(fn2) # would give: Error: 'fun2' can have side effects
-
-  # with callbacks, the compiler is conservative, ie that bar will have side effects
-  var foo2: type(foo) = foo
-  func main() =
-    discard foo(fn1) # ok
-    # discard foo2(fn1) # now this errors
-
 
 compileTime pragma
 ------------------
@@ -6460,7 +6631,7 @@ but accessed at runtime:
   doAssert nameToProc[2][1]() == "baz"
 
 
-noReturn pragma
+noreturn pragma
 ---------------
 The `noreturn` pragma is used to mark a proc that never returns.
 
@@ -6591,11 +6762,11 @@ statement, as seen in stack backtraces:
     if not cond:
       # change run-time line information of the 'raise' statement:
       {.line: instantiationInfo().}:
-        raise newException(EAssertionFailed, msg)
+        raise newException(AssertionDefect, msg)
 
 If the `line` pragma is used with a parameter, the parameter needs be a
 `tuple[filename: string, line: int]`. If it is used without a parameter,
-`system.InstantiationInfo()` is used.
+`system.instantiationInfo()` is used.
 
 
 linearScanEnd pragma
@@ -6829,7 +7000,8 @@ experimental pragma
 The `experimental` pragma enables experimental language features. Depending
 on the concrete feature, this means that the feature is either considered
 too unstable for an otherwise stable release or that the future of the feature
-is uncertain (it may be removed at any time).
+is uncertain (it may be removed at any time). See the
+`experimental manual <manual_experimental.html>`_ for more details.
 
 Example:
 
@@ -6928,6 +7100,21 @@ alignment requirement of the type are ignored.
    main()
 
 This pragma has no effect on the JS backend.
+
+
+Noalias pragma
+==============
+
+Since version 1.4 of the Nim compiler, there is a `.noalias` annotation for variables
+and parameters. It is mapped directly to C/C++'s `restrict`:c: keyword and means that
+the underlying pointer is pointing to a unique location in memory, no other aliases to
+this location exist. It is *unchecked* that this alias restriction is followed. If the
+restriction is violated, the backend optimizer is free to miscompile the code.
+This is an **unsafe** language feature.
+
+Ideally in later versions of the language, the restriction will be enforced at
+compile time. (This is also why the name `noalias` was choosen instead of a more
+verbose name like `unsafeAssumeNoAlias`.)
 
 
 Volatile pragma
@@ -7511,7 +7698,7 @@ Example:
     {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
 
   proc p*(a, b: int): int {.rtl.} =
-    result = a+b
+    result = a + b
 
 In the example, a new pragma named `rtl` is introduced that either imports
 a symbol from a dynamic library or exports the symbol for dynamic library
@@ -7589,9 +7776,10 @@ More examples with custom pragmas:
 Macro pragmas
 -------------
 
-All macros and templates can also be used as pragmas. They can be attached
-to routines (procs, iterators, etc), type names, or type expressions. The
-compiler will perform the following simple syntactic transformations:
+Macros and templates can sometimes be called with the pragma syntax. Cases
+where this is possible include when attached to routine (procs, iterators, etc)
+declarations or routine type expressions. The compiler will perform the
+following simple syntactic transformations:
 
 .. code-block:: nim
   template command(name: string, def: untyped) = discard
@@ -7618,19 +7806,15 @@ This is translated to:
 
 ------
 
-.. code-block:: nim
-  type
-    MyObject {.schema: "schema.protobuf".} = object
+When multiple macro pragmas are applied to the same definition, the first one
+from left to right will be evaluated. This macro can then choose to keep
+the remaining macro pragmas in its output, and those will be evaluated in
+the same way.
 
-This is translated to a call to the `schema` macro with a `nnkTypeDef`
-AST node capturing both the left-hand side and right-hand side of the
-definition. The macro can return a potentially modified `nnkTypeDef` tree
-which will replace the original row in the type section.
-
-When multiple macro pragmas are applied to the same definition, the
-compiler will apply them consequently from left to right. Each macro
-will receive as input the output of the previous one.
-
+There are a few more applications of macro pragmas, such as in type,
+variable and constant declarations, but this behavior is considered to be
+experimental and is documented in the `experimental manual
+<manual_experimental.html#extended-macro-pragmas>` instead.
 
 
 Foreign function interface
@@ -7728,6 +7912,7 @@ instructs the compiler to pass the type by value to procs:
     Vector {.bycopy.} = object
       x, y, z: float
 
+The Nim compiler automatically determines whether a parameter is passed by value or by reference based on the parameter type's size. If a parameter must be passed by value or by reference, (such as when interfacing with a C library) use the bycopy or byref pragmas.
 
 Byref pragma
 ------------
@@ -7850,7 +8035,7 @@ Threads
 
 To enable thread support the `--threads:on`:option: command-line switch needs to
 be used. The system_ module then contains several threading primitives.
-See the `threads <threads.html>`_ and `channels <channels_builtin.html>`_ modules
+See the `channels <channels_builtin.html>`_ modules
 for the low-level thread API. There are also high-level parallelism constructs
 available. See `spawn <manual_experimental.html#parallel-amp-spawn>`_ for
 further details.
@@ -7861,6 +8046,10 @@ collected) heap, and sharing of memory is restricted to global variables. This
 helps to prevent race conditions. GC efficiency is improved quite a lot,
 because the GC never has to stop other threads and see what they reference.
 
+The only way to create a thread is via `spawn` or
+`createThread`. The invoked proc must not use `var` parameters nor must
+any of its parameters contain a `ref` or `closure` type. This enforces
+the *no heap sharing restriction*.
 
 Thread pragma
 -------------
@@ -7874,43 +8063,6 @@ allocated from different (thread-local) heaps.
 A thread proc is passed to `createThread` or `spawn` and invoked
 indirectly; so the `thread` pragma implies `procvar`.
 
-
-GC safety
----------
-
-We call a proc `p` `GC safe`:idx: when it doesn't access any global variable
-that contains GC'ed memory (`string`, `seq`, `ref` or a closure) either
-directly or indirectly through a call to a GC unsafe proc.
-
-The `gcsafe`:idx: annotation can be used to mark a proc to be gcsafe,
-otherwise this property is inferred by the compiler. Note that `noSideEffect`
-implies `gcsafe`. The only way to create a thread is via `spawn` or
-`createThread`. The invoked proc must not use `var` parameters nor must
-any of its parameters contain a `ref` or `closure` type. This enforces
-the *no heap sharing restriction*.
-
-Routines that are imported from C are always assumed to be `gcsafe`.
-To disable the GC-safety checking the `--threadAnalysis:off`:option: command-line
-switch can be used. This is a temporary workaround to ease the porting effort
-from old code to the new threading model.
-
-To override the compiler's gcsafety analysis a `{.cast(gcsafe).}` pragma block can
-be used:
-
-.. code-block:: nim
-
-  var
-    someGlobal: string = "some string here"
-    perThread {.threadvar.}: string
-
-  proc setPerThread() =
-    {.cast(gcsafe).}:
-      deepCopy(perThread, someGlobal)
-
-
-See also:
-
-- `Shared heap memory management <gc.html>`_.
 
 
 Threadvar pragma
@@ -7934,3 +8086,137 @@ Threads and exceptions
 The interaction between threads and exceptions is simple: A *handled* exception
 in one thread cannot affect any other thread. However, an *unhandled* exception
 in one thread terminates the whole *process*.
+
+
+Guards and locks
+================
+
+Nim provides common low level concurrency mechanisms like locks, atomic
+intrinsics or condition variables.
+
+Nim significantly improves on the safety of these features via additional
+pragmas:
+
+1) A `guard`:idx: annotation is introduced to prevent data races.
+2) Every access of a guarded memory location needs to happen in an
+   appropriate `locks`:idx: statement.
+
+
+Guards and locks sections
+-------------------------
+
+Protecting global variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Object fields and global variables can be annotated via a `guard` pragma:
+
+.. code-block:: nim
+
+  var glock: TLock
+  var gdata {.guard: glock.}: int
+
+The compiler then ensures that every access of `gdata` is within a `locks`
+section:
+
+.. code-block:: nim
+
+  proc invalid =
+    # invalid: unguarded access:
+    echo gdata
+
+  proc valid =
+    # valid access:
+    {.locks: [glock].}:
+      echo gdata
+
+Top level accesses to `gdata` are always allowed so that it can be initialized
+conveniently. It is *assumed* (but not enforced) that every top level statement
+is executed before any concurrent action happens.
+
+The `locks` section deliberately looks ugly because it has no runtime
+semantics and should not be used directly! It should only be used in templates
+that also implement some form of locking at runtime:
+
+.. code-block:: nim
+
+  template lock(a: TLock; body: untyped) =
+    pthread_mutex_lock(a)
+    {.locks: [a].}:
+      try:
+        body
+      finally:
+        pthread_mutex_unlock(a)
+
+
+The guard does not need to be of any particular type. It is flexible enough to
+model low level lockfree mechanisms:
+
+.. code-block:: nim
+
+  var dummyLock {.compileTime.}: int
+  var atomicCounter {.guard: dummyLock.}: int
+
+  template atomicRead(x): untyped =
+    {.locks: [dummyLock].}:
+      memoryReadBarrier()
+      x
+
+  echo atomicRead(atomicCounter)
+
+
+The `locks` pragma takes a list of lock expressions `locks: [a, b, ...]`
+in order to support *multi lock* statements. Why these are essential is
+explained in the `lock levels <#guards-and-locks-lock-levels>`_ section.
+
+
+Protecting general locations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The `guard` annotation can also be used to protect fields within an object.
+The guard then needs to be another field within the same object or a
+global variable.
+
+Since objects can reside on the heap or on the stack, this greatly enhances
+the expressivity of the language:
+
+.. code-block:: nim
+
+  type
+    ProtectedCounter = object
+      v {.guard: L.}: int
+      L: TLock
+
+  proc incCounters(counters: var openArray[ProtectedCounter]) =
+    for i in 0..counters.high:
+      lock counters[i].L:
+        inc counters[i].v
+
+The access to field `x.v` is allowed since its guard `x.L`  is active.
+After template expansion, this amounts to:
+
+.. code-block:: nim
+
+  proc incCounters(counters: var openArray[ProtectedCounter]) =
+    for i in 0..counters.high:
+      pthread_mutex_lock(counters[i].L)
+      {.locks: [counters[i].L].}:
+        try:
+          inc counters[i].v
+        finally:
+          pthread_mutex_unlock(counters[i].L)
+
+There is an analysis that checks that `counters[i].L` is the lock that
+corresponds to the protected location `counters[i].v`. This analysis is called
+`path analysis`:idx: because it deals with paths to locations
+like `obj.field[i].fieldB[j]`.
+
+The path analysis is **currently unsound**, but that doesn't make it useless.
+Two paths are considered equivalent if they are syntactically the same.
+
+This means the following compiles (for now) even though it really should not:
+
+.. code-block:: nim
+
+  {.locks: [a[i].L].}:
+    inc i
+    access a[i].v

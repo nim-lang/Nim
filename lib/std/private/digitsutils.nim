@@ -78,14 +78,17 @@ func addIntImpl(result: var string, x: uint64) {.inline.} =
     dec next
   addChars(result, tmp, next, tmp.len - next)
 
-func addInt*(result: var string, x: uint64) =
+when not defined(nimHasEnforceNoRaises):
+  {.pragma: enforceNoRaises.}
+
+func addInt*(result: var string, x: uint64) {.enforceNoRaises.} =
   when nimvm: addIntImpl(result, x)
   else:
     when not defined(js): addIntImpl(result, x)
     else:
       addChars(result, numToString(x))
 
-proc addInt*(result: var string; x: int64) =
+proc addInt*(result: var string; x: int64) {.enforceNoRaises.} =
   ## Converts integer to its string representation and appends it to `result`.
   runnableExamples:
     var s = "foo"
@@ -95,7 +98,7 @@ proc addInt*(result: var string; x: int64) =
     var num: uint64
     if x < 0:
       if x == low(int64):
-        num = uint64(x)
+        num = cast[uint64](x)
       else:
         num = uint64(-x)
       let base = result.len
@@ -110,5 +113,5 @@ proc addInt*(result: var string; x: int64) =
       addChars(result, numToString(x))
     else: impl()
 
-proc addInt*(result: var string; x: int) {.inline.} =
+proc addInt*(result: var string; x: int) {.inline, enforceNoRaises.} =
   addInt(result, int64(x))

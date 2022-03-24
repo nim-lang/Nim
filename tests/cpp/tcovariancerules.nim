@@ -79,16 +79,16 @@ proc wantsCovariantSeq2(s: seq[AnimalRef]) =
 proc wantsCovariantSeq3(s: seq[RefAlias[Animal]]) =
   for a in s: echo a.x
 
-proc wantsCovariantOpenArray(s: openarray[ref Animal]) =
+proc wantsCovariantOpenArray(s: openArray[ref Animal]) =
   for a in s: echo a.x
 
-proc modifiesCovariantOpenArray(s: var openarray[ref Animal]) =
+proc modifiesCovariantOpenArray(s: var openArray[ref Animal]) =
   for a in s: echo a.x
 
-proc modifiesDerivedOpenArray(s: var openarray[ref Dog]) =
+proc modifiesDerivedOpenArray(s: var openArray[ref Dog]) =
   for a in s: echo a.x
 
-proc wantsNonCovariantOpenArray(s: openarray[Animal]) =
+proc wantsNonCovariantOpenArray(s: openArray[Animal]) =
   for a in s: echo a.x
 
 proc wantsCovariantArray(s: array[2, ref Animal]) =

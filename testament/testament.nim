@@ -28,6 +28,7 @@ var useColors = true
 var backendLogging = true
 var simulate = false
 var optVerbose = false
+var useMegatest = true
 
 proc verboseCmd(cmd: string) =
   if optVerbose:
@@ -599,7 +600,6 @@ proc makeRawTest(test, options: string, cat: Category): TTest {.used.} =
 # TODO: fix these files
 const disabledFilesDefault = @[
   "LockFreeHash.nim",
-  "sharedstrings.nim",
   "tableimpl.nim",
   "setimpl.nim",
   "hashcommon.nim",
@@ -645,7 +645,6 @@ proc main() =
   var targetsStr = ""
   var isMainProcess = true
   var skipFrom = ""
-  var useMegatest = true
 
   var p = initOptParser()
   p.next()

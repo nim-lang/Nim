@@ -134,12 +134,6 @@ Collections
 * `sets <sets.html>`_
   Nim hash set support.
 
-* `sharedlist <sharedlist.html>`_
-  Nim shared linked list support. Contains a shared singly-linked list.
-
-* `sharedtables <sharedtables.html>`_
-  Nim shared hash table support. Contains shared tables.
-
 * `tables <tables.html>`_
   Nim hash table support. Contains tables, ordered tables, and count tables.
 
@@ -452,7 +446,7 @@ Hashing
   from the MongoDB interface and it thus binary compatible with a MongoDB OID.
 
 * `sha1 <sha1.html>`_
-  This module implements a sha1 encoder and decoder.
+  This module implements the SHA-1 checksum algorithm.
 
 
 Miscellaneous
