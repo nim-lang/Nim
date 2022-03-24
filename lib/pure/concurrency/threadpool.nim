@@ -322,7 +322,7 @@ var
   currentPoolSize: int
   maxPoolSize = MaxThreadPoolSize
   minPoolSize = 1
-  gSomeReady : Semaphore
+  gSomeReady: Semaphore
   readyWorker: ptr Worker
 
 # A workaround for recursion deadlock issue
