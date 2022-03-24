@@ -252,7 +252,8 @@ tests/newconfig/bar/mfoo.nims""".splitLines
   block: # bug #8219
     let file = "tests/newconfig/mconfigcheck.nims"
     var cmd = fmt"{nim} check {file}"
-    check execCmdEx(cmd) == ("", 0)
+    let (_, exitCode) = execCmdEx(cmd)[1]
+    doAssert exitCode == 0
 
   block: # mfoo2.customext
     let filename = testsDir / "newconfig/foo2/mfoo2.customext"
