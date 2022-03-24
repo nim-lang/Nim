@@ -591,13 +591,11 @@ proc sync*() =
   ## If you need more elaborate waiting, you have to use an explicit barrier.
   while true:
     var count = 0
-    
     for worker in workersData:
       if worker.ready:
         count += 1
       if count >= currentPoolSize:
         return
-      
     sleep(threadpoolWaitMs)
     # We cannot "blockUntil(gSomeReady)" because workers may be shut down between
     # the time we establish that some are not "ready" and the time we wait for a
