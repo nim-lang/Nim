@@ -3492,34 +3492,6 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noWeirdTarget.} =
     discard h.closeHandle
     if res == 0'i32: raiseOSError(osLastError(), file)
 
-func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1), deprecated: "Deprecated since v1.5.1".} =
-  ## Returns true if ``filename`` is valid for crossplatform use.
-  ##
-  ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
-  ## You can pass full paths as argument too, but func only checks filenames.
-  ##
-  ## It uses `invalidFilenameChars`, `invalidFilenames` and `maxLen` to verify the specified `filename`.
-  ##
-  runnableExamples:
-    assert not isValidFilename(" foo")     # Leading white space
-    assert not isValidFilename("foo ")     # Trailing white space
-    assert not isValidFilename("foo.")     # Ends with dot
-    assert not isValidFilename("con.txt")  # "CON" is invalid (Windows)
-    assert not isValidFilename("OwO:UwU")  # ":" is invalid (Mac)
-    assert not isValidFilename("aux.bat")  # "AUX" is invalid (Windows)
-    assert not isValidFilename("")         # Empty string
-    assert not isValidFilename("foo/")     # Filename is empty
-
-  # https://docs.microsoft.com/en-us/dotnet/api/system.io.pathtoolongexception
-  # https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
-  # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
-  result = true
-  let f = filename.splitFile()
-  if unlikely(f.name.len + f.ext.len > maxLen or f.name.len == 0 or
-    f.name[0] == ' ' or f.name[^1] == ' ' or f.name[^1] == '.' or
-    find(f.name, invalidFilenameChars) != -1): return false
-  for invalid in invalidFilenames:
-    if cmpIgnoreCase(f.name, invalid) == 0: return false
 
 # deprecated declarations
 when not defined(nimscript):
