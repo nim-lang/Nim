@@ -49,6 +49,7 @@ becomes an alias for `addr`.
 - Removed deprecated `std/dom_extensions`.
 
 - Remove deprecated `osproc.poDemon`, symbol with typo.
+- Remove deprecated `os.isvalidfilename`.
 
 
 ## Language changes
