@@ -7,7 +7,7 @@ when defined(windows):
 else:
   import posix
 
-when defined(Windows):
+when defined(windows):
   template orig: expr =
     winlean
 else:

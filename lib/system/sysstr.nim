@@ -304,7 +304,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, elemAlign, newLen: int): PGenericS
     when not defined(boehmGC) and not defined(nogc) and
          not defined(gcMarkAndSweep) and not defined(gogc) and
          not defined(gcRegions):
-      when false: # compileOption("gc", "v2"):
+      when false: # deadcode: was used by `compileOption("gc", "v2")`
         for i in newLen..result.len-1:
           let len0 = gch.tempStack.len
           forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),

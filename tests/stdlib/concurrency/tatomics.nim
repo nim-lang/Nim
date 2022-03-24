@@ -1,6 +1,6 @@
 # test atomic operations
 
-import atomics, bitops
+import std/[atomics, bitops]
 
 type
   Object = object
@@ -607,3 +607,23 @@ block clear:
   doAssert not location.testAndSet
   location.clear(moRelease)
   doAssert not location.testAndSet
+
+block: # bug #18844
+  when not defined(cpp): # cpp pending pr #18836
+    type
+      Deprivation = object of RootObj
+        memes: Atomic[int]
+      Zoomer = object
+        dopamine: Deprivation
+
+    block:
+      var x = Deprivation()
+      var y = Zoomer()
+      doAssert x.memes.load == 0
+      doAssert y.dopamine.memes.load == 0
+
+    block:
+      var x: Deprivation
+      var y: Zoomer
+      doAssert x.memes.load == 0
+      doAssert y.dopamine.memes.load == 0

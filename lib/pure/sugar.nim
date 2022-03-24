@@ -11,7 +11,7 @@
 ## macro system.
 
 import std/private/since
-import std/macros
+import macros
 
 proc checkPragma(ex, prag: var NimNode) =
   since (1, 3):
@@ -19,7 +19,7 @@ proc checkPragma(ex, prag: var NimNode) =
       prag = ex[1]
       ex = ex[0]
 
-proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
+proc createProcType(p, b: NimNode): NimNode =
   result = newNimNode(nnkProcTy)
   var
     formalParams = newNimNode(nnkFormalParams).add(b)
@@ -54,7 +54,8 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures. It also supports pragmas.
-  # TODO: xxx pending #13491: uncomment in runnableExamples
+  ##
+  ## .. warning:: Semicolons can not be used to separate procedure arguments.
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
 
@@ -69,8 +70,8 @@ macro `=>`*(p, b: untyped): untyped =
     myBot.call = (name: string) {.noSideEffect.} => "Hello " & name & ", I'm a bot."
     assert myBot.call("John") == "Hello John, I'm a bot."
 
-    # let f = () => (discard) # simplest proc that returns void
-    # f()
+    let f = () => (discard) # simplest proc that returns void
+    f()
 
   var
     params = @[ident"auto"]
@@ -86,16 +87,6 @@ macro `=>`*(p, b: untyped): untyped =
     p = p[1]
 
   checkPragma(p, pragma) # check again after -> transform
-
-  since (1, 3):
-    if p.kind in {nnkCall, nnkObjConstr}:
-      # foo(x, y) => x + y
-      kind = nnkProcDef
-      name = p[0]
-      let newP = newNimNode(nnkPar)
-      for i in 1..<p.len:
-        newP.add(p[i])
-      p = newP
 
   case p.kind
   of nnkPar, nnkTupleConstr:
@@ -130,9 +121,9 @@ macro `=>`*(p, b: untyped): untyped =
       else:
         error("Incorrect procedure parameter.", c)
       params.add(identDefs)
-  of nnkIdent:
+  of nnkIdent, nnkOpenSymChoice, nnkClosedSymChoice, nnkSym:
     var identDefs = newNimNode(nnkIdentDefs)
-    identDefs.add(p)
+    identDefs.add(ident $p)
     identDefs.add(ident"auto")
     identDefs.add(newEmptyNode())
     params.add(identDefs)
@@ -144,6 +135,8 @@ macro `=>`*(p, b: untyped): untyped =
 
 macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types. It also supports pragmas.
+  ##
+  ## .. warning:: Semicolons can not be used to separate procedure arguments.
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
     # is the same as:
@@ -197,7 +190,7 @@ macro dumpToString*(x: untyped): string =
     assert dumpToString(a + x) == "a + x: 1 + x = 11"
     template square(x): untyped = x * x
     assert dumpToString(square(x)) == "square(x): x * x = 100"
-    assert not compiles dumpToString(1 + nonexistant)
+    assert not compiles dumpToString(1 + nonexistent)
     import std/strutils
     assert "failedAssertImpl" in dumpToString(assert true) # example with a statement
   result = newCall(bindSym"dumpToStringImpl")

@@ -13,6 +13,10 @@
 
 import deques, streams
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   PipeOutStream*[T] = ref object of T
     # When stream peek operation is called, it reads from base stream

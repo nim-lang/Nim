@@ -31,6 +31,10 @@ else:
 when defined(linux) and defined(useClone):
   import linux
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
+
 type
   ProcessOption* = enum ## Options that can be passed to `startProcess proc
                         ## <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
@@ -66,11 +70,6 @@ type
 
   Process* = ref ProcessObj ## Represents an operating system process.
 
-const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
-                                         ## used the wrong spelling ("demon").
-                                         ## Now `ProcessOption` uses the correct spelling ("daemon"),
-                                         ## and this is needed just for backward compatibility.
-
 
 proc execProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
@@ -80,9 +79,8 @@ proc execProcess*(command: string, workingDir: string = "",
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
   ##
-  ## **WARNING:** This function uses `poEvalCommand` by default for backwards
-  ## compatibility.
-  ## Make sure to pass options explicitly.
+  ## .. warning:: This function uses `poEvalCommand` by default for backwards
+  ##   compatibility. Make sure to pass options explicitly.
   ##
   ## See also:
   ## * `startProcess proc
@@ -155,9 +153,9 @@ proc startProcess*(command: string, workingDir: string = "",
 proc close*(p: Process) {.rtl, extern: "nosp$1", tags: [WriteIOEffect].}
   ## When the process has finished executing, cleanup related handles.
   ##
-  ## **WARNING:** If the process has not finished executing, this will forcibly
-  ## terminate the process. Doing so may result in zombie processes and
-  ## `pty leaks <http://stackoverflow.com/questions/27021641/how-to-fix-request-failed-on-channel-0>`_.
+  ## .. warning:: If the process has not finished executing, this will forcibly
+  ##   terminate the process. Doing so may result in zombie processes and
+  ##   `pty leaks <http://stackoverflow.com/questions/27021641/how-to-fix-request-failed-on-channel-0>`_.
 
 proc suspend*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Suspends the process `p`.
@@ -215,8 +213,8 @@ proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
     extern: "nosp$1", tags: [].}
   ## Waits for the process to finish and returns `p`'s error code.
   ##
-  ## **WARNING**: Be careful when using `waitForExit` for processes created without
-  ## `poParentStreams` because they may fill output buffers, causing deadlock.
+  ## .. warning:: Be careful when using `waitForExit` for processes created without
+  ##   `poParentStreams` because they may fill output buffers, causing deadlock.
   ##
   ## On posix, if the process has exited because of a signal, 128 + signal
   ## number will be returned.
@@ -230,8 +228,8 @@ proc peekExitCode*(p: Process): int {.rtl, extern: "nosp$1", tags: [].}
 proc inputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## Returns ``p``'s input stream for writing to.
   ##
-  ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## .. warning:: The returned `Stream` should not be closed manually as it
+  ##   is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `outputStream proc <#outputStream,Process>`_
@@ -244,8 +242,8 @@ proc outputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## Use `peekableOutputStream proc <#peekableOutputStream,Process>`_
   ## if you need to peek stream.
   ##
-  ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## .. warning:: The returned `Stream` should not be closed manually as it
+  ##   is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `inputStream proc <#inputStream,Process>`_
@@ -258,8 +256,8 @@ proc errorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## Use `peekableErrorStream proc <#peekableErrorStream,Process>`_
   ## if you need to peek stream.
   ##
-  ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## .. warning:: The returned `Stream` should not be closed manually as it
+  ##   is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `inputStream proc <#inputStream,Process>`_
@@ -270,8 +268,8 @@ proc peekableOutputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: []
   ##
   ## You can peek returned stream.
   ##
-  ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## .. warning:: The returned `Stream` should not be closed manually as it
+  ##   is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `outputStream proc <#outputStream,Process>`_
@@ -282,8 +280,8 @@ proc peekableErrorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [],
   ##
   ## You can run peek operation to returned stream.
   ##
-  ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## .. warning:: The returned `Stream` should not be closed manually as it
+  ##   is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `errorStream proc <#errorStream,Process>`_
@@ -293,8 +291,8 @@ proc inputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
   ## Returns ``p``'s input file handle for writing to.
   ##
-  ## **WARNING**: The returned `FileHandle` should not be closed manually as
-  ## it is closed when closing the Process ``p``.
+  ## .. warning:: The returned `FileHandle` should not be closed manually as
+  ##   it is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `outputHandle proc <#outputHandle,Process>`_
@@ -305,8 +303,8 @@ proc outputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
     tags: [].} =
   ## Returns ``p``'s output file handle for reading from.
   ##
-  ## **WARNING**: The returned `FileHandle` should not be closed manually as
-  ## it is closed when closing the Process ``p``.
+  ## .. warning:: The returned `FileHandle` should not be closed manually as
+  ##   it is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `inputHandle proc <#inputHandle,Process>`_
@@ -317,8 +315,8 @@ proc errorHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
     tags: [].} =
   ## Returns ``p``'s error file handle for reading from.
   ##
-  ## **WARNING**: The returned `FileHandle` should not be closed manually as
-  ## it is closed when closing the Process ``p``.
+  ## .. warning:: The returned `FileHandle` should not be closed manually as
+  ##   it is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `inputHandle proc <#inputHandle,Process>`_
@@ -331,12 +329,16 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
   ## It is implemented just calling `cpuinfo.countProcessors`.
   result = cpuinfo.countProcessors()
 
+when not defined(nimHasEffectsOf):
+  {.pragma: effectsOf.}
+
 proc execProcesses*(cmds: openArray[string],
     options = {poStdErrToStdOut, poParentStreams}, n = countProcessors(),
     beforeRunEvent: proc(idx: int) = nil,
     afterRunEvent: proc(idx: int, p: Process) = nil):
   int {.rtl, extern: "nosp$1",
-        tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect].} =
+        tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect],
+        effectsOf: [beforeRunEvent, afterRunEvent].} =
   ## Executes the commands `cmds` in parallel.
   ## Creates `n` processes that execute in parallel.
   ##
@@ -448,7 +450,7 @@ proc execProcesses*(cmds: openArray[string],
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
-iterator lines*(p: Process): string {.since: (1, 3), tags: [ReadIOEffect].} =
+iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), tags: [ReadIOEffect].} =
   ## Convenience iterator for working with `startProcess` to read data from a
   ## background process.
   ##
@@ -471,11 +473,11 @@ iterator lines*(p: Process): string {.since: (1, 3), tags: [ReadIOEffect].} =
   ##     p.close
   var outp = p.outputStream
   var line = newStringOfCap(120)
-  while true:
-    if outp.readLine(line):
-      yield line
-    else:
-      if p.peekExitCode != -1: break
+  while outp.readLine(line):
+    if keepNewLines:
+      line.add("\n")
+    yield line
+  discard waitForExit(p)
 
 proc readLines*(p: Process): (seq[string], int) {.since: (1, 3).} =
   ## Convenience function for working with `startProcess` to read data from a
@@ -511,6 +513,7 @@ when not defined(useNimRtl):
     var outp = outputStream(p)
     result = ""
     var line = newStringOfCap(120)
+    # consider `p.lines(keepNewLines=true)` to circumvent `running` busy-wait
     while true:
       # FIXME: converts CR-LF to LF.
       if outp.readLine(line):
@@ -522,7 +525,7 @@ when not defined(useNimRtl):
 template streamAccess(p) =
   assert poParentStreams notin p.options, "API usage error: stream access not allowed when you use poParentStreams"
 
-when defined(Windows) and not defined(useNimRtl):
+when defined(windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
   type
     FileHandleStream = ref object of StreamObj
@@ -1596,7 +1599,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##   import std/[strutils, strtabs]
   ##   stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
   ##   doAssert result == ("12", 0)
-  ##   doAssert execCmdEx("ls --nonexistant").exitCode != 0
+  ##   doAssert execCmdEx("ls --nonexistent").exitCode != 0
   ##   when defined(posix):
   ##     assert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
   ##     assert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
@@ -1619,6 +1622,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
     inputStream(p).write(input)
   close inputStream(p)
 
+  # consider `p.lines(keepNewLines=true)` to avoid exit code test
   result = ("", -1)
   var line = newStringOfCap(120)
   while true:

@@ -1,6 +1,6 @@
 #
 #
-#           The Nim Compiler
+#              Nim's Runtime Library
 #        (c) Copyright 2021 Nim Contributors
 #
 #    See the file "copying.txt", included in this
@@ -81,7 +81,7 @@ func setSlice*(s: var string, slice: Slice[int]) =
         impl()
       else:
         when defined(nimSeqsV2):
-          prepareStrMutation(s)
+          prepareMutation(s)
         moveMem(addr s[0], addr s[first], last - first + 1)
   s.setLen(last - first + 1)
 

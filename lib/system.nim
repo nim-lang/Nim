@@ -55,38 +55,64 @@ type
 include "system/basic_types"
 
 
+proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".} =
+  ## A section you should use to mark `runnable example`:idx: code with.
+  ##
+  ## - In normal debug and release builds code within
+  ##   a `runnableExamples` section is ignored.
+  ## - The documentation generator is aware of these examples and considers them
+  ##   part of the `##` doc comment. As the last step of documentation
+  ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
+  ##   compiled and tested. The collected examples are
+  ##   put into their own module to ensure the examples do not refer to
+  ##   non-exported symbols.
+  runnableExamples:
+    proc timesTwo*(x: int): int =
+      ## This proc doubles a number.
+      runnableExamples:
+        # at module scope
+        const exported* = 123
+        assert timesTwo(5) == 10
+        block: # at block scope
+          defer: echo "done"
+      runnableExamples "-d:foo -b:cpp":
+        import std/compilesettings
+        assert querySetting(backend) == "cpp"
+        assert defined(foo)
+      runnableExamples "-r:off": ## this one is only compiled
+         import std/browsers
+         openDefaultBrowser "https://forum.nim-lang.org/"
+      2 * x
+
 proc compileOption*(option: string): bool {.
-  magic: "CompileOption", noSideEffect.}
+  magic: "CompileOption", noSideEffect.} =
   ## Can be used to determine an `on|off` compile-time option.
   ##
   ## See also:
   ## * `compileOption <#compileOption,string,string>`_ for enum options
   ## * `defined <#defined,untyped>`_
   ## * `std/compilesettings module <compilesettings.html>`_
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("floatchecks"):
-  ##     echo "compiled with floating point NaN and Inf checks"
+  runnableExamples("--floatChecks:off"):
+    static: doAssert not compileOption("floatchecks")
+    {.push floatChecks: on.}
+    static: doAssert compileOption("floatchecks")
+    # floating point NaN and Inf checks enabled in this scope
+    {.pop.}
 
 proc compileOption*(option, arg: string): bool {.
-  magic: "CompileOptionArg", noSideEffect.}
+  magic: "CompileOptionArg", noSideEffect.} =
   ## Can be used to determine an enum compile-time option.
   ##
   ## See also:
   ## * `compileOption <#compileOption,string>`_ for `on|off` options
   ## * `defined <#defined,untyped>`_
   ## * `std/compilesettings module <compilesettings.html>`_
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
-  ##     echo "compiled with optimization for size and uses Boehm's GC"
+  runnableExamples:
+    when compileOption("opt", "size") and compileOption("gc", "boehm"):
+      discard "compiled with optimization for size and uses Boehm's GC"
 
 {.push warning[GcMem]: off, warning[Uninit]: off.}
-{.push hints: off.}
+# {.push hints: off.}
 
 proc `or`*(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
   ## Constructs an `or` meta class.
@@ -123,6 +149,10 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
 
+when defined(nimHasIterable):
+  type
+    iterable*[T] {.magic: IterableType.}  ## Represents an expression that yields `T`
+
 when defined(nimHashOrdinalFixed):
   type
     Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
@@ -130,40 +160,10 @@ when defined(nimHashOrdinalFixed):
                                    ## as well as their subtypes. See also
                                    ## `SomeOrdinal`.
 else:
-  # bootstrap <= 0.20.0
+  # bootstrap < 1.2.0
   type
     OrdinalImpl[T] {.magic: Ordinal.}
     Ordinal* = OrdinalImpl | uint | uint64
-
-proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
-  ## A section you should use to mark `runnable example`:idx: code with.
-  ##
-  ## - In normal debug and release builds code within
-  ##   a `runnableExamples` section is ignored.
-  ## - The documentation generator is aware of these examples and considers them
-  ##   part of the `##` doc comment. As the last step of documentation
-  ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
-  ##   compiled and tested. The collected examples are
-  ##   put into their own module to ensure the examples do not refer to
-  ##   non-exported symbols.
-  ##
-  ## Usage:
-  ##
-  ## .. code-block:: Nim
-  ##   proc double*(x: int): int =
-  ##     ## This proc doubles a number.
-  ##     runnableExamples:
-  ##       ## at module scope
-  ##       assert double(5) == 10
-  ##       block: ## at block scope
-  ##         defer: echo "done"
-  ##     result = 2 * x
-  ##     runnableExamples "-d:foo -b:cpp":
-  ##       import std/compilesettings
-  ##       doAssert querySetting(backend) == "cpp"
-  ##     runnableExamples "-r:off": ## this one is only compiled
-  ##        import std/browsers
-  ##        openDefaultBrowser "https://forum.nim-lang.org/"
 
 when defined(nimHasDeclaredMagic):
   proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.}
@@ -190,12 +190,17 @@ when defined(nimHasDeclaredMagic):
 else:
   proc declaredInScope*(x: untyped): bool {.magic: "DefinedInScope", noSideEffect, compileTime.}
 
-proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
+proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.
-  ## Cannot be overloaded.
   ##
-  ## See also:
-  ## * `unsafeAddr <#unsafeAddr,T>`_
+  ## .. note:: This works for `let` variables or parameters
+  ##   for better interop with C. When you use it to write a wrapper
+  ##   for a C library and take the address of `let` variables or parameters,
+  ##   you should always check that the original library
+  ##   does never write to data behind the pointer that is returned from
+  ##   this procedure.
+  ##
+  ## Cannot be overloaded.
   ##
   ## .. code-block:: Nim
   ##  var
@@ -207,13 +212,14 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
 
 proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory
-  ## location. This works even for `let` variables or parameters
-  ## for better interop with C and so it is considered even more
-  ## unsafe than the ordinary `addr <#addr,T>`_.
+  ## location.
   ##
-  ## **Note**: When you use it to write a wrapper for a C library, you should
-  ## always check that the original library does never write to data behind the
-  ## pointer that is returned from this procedure.
+  ## .. note:: This works for `let` variables or parameters
+  ##   for better interop with C. When you use it to write a wrapper
+  ##   for a C library and take the address of `let` variables or parameters,
+  ##   you should always check that the original library
+  ##   does never write to data behind the pointer that is returned from
+  ##   this procedure.
   ##
   ## Cannot be overloaded.
   discard
@@ -344,6 +350,8 @@ proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
 proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
   ## Returns the highest possible index of an array `x`.
   ##
+  ## For empty arrays, the return type is `int`.
+  ##
   ## See also:
   ## * `low(array) <#low,array[I,T]>`_
   ##
@@ -355,6 +363,8 @@ proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
 
 proc high*[I, T](x: typedesc[array[I, T]]): I {.magic: "High", noSideEffect.}
   ## Returns the highest possible index of an array type.
+  ##
+  ## For empty arrays, the return type is `int`.
   ##
   ## See also:
   ## * `low(typedesc[array]) <#low,typedesc[array[I,T]]>`_
@@ -416,6 +426,8 @@ proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
 proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible index of an array `x`.
   ##
+  ## For empty arrays, the return type is `int`.
+  ##
   ## See also:
   ## * `high(array) <#high,array[I,T]>`_
   ##
@@ -427,6 +439,8 @@ proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
 
 proc low*[I, T](x: typedesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible index of an array type.
+  ##
+  ## For empty arrays, the return type is `int`.
   ##
   ## See also:
   ## * `high(typedesc[array]) <#high,typedesc[array[I,T]]>`_
@@ -466,6 +480,7 @@ proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
 proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
   x: sink S) {.noSideEffect, magic: "ArrPut".}
 proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
+proc `=copy`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
 proc arrGet[I: Ordinal;T](a: T; i: I): T {.
   noSideEffect, magic: "ArrGet".}
@@ -478,6 +493,11 @@ proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
 proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
   ## Generic `sink`:idx: implementation that can be overridden.
   shallowCopy(x, y)
+
+when defined(nimHasTrace):
+  proc `=trace`*[T](x: var T; env: pointer) {.inline, magic: "Trace".} =
+    ## Generic `trace`:idx: implementation that can be overridden.
+    discard
 
 type
   HSlice*[T, U] = object   ## "Heterogeneous" slice type.
@@ -497,7 +517,8 @@ proc `..`*[T, U](a: sink T, b: sink U): HSlice[T, U] {.noSideEffect, inline, mag
   ##   echo a[2 .. 3] # @[30, 40]
   result = HSlice[T, U](a: a, b: b)
 
-proc `..`*[T](b: sink T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
+proc `..`*[T](b: sink T): HSlice[int, T]
+  {.noSideEffect, inline, magic: "DotDot", deprecated: "replace `..b` with `0..b`".} =
   ## Unary `slice`:idx: operator that constructs an interval `[default(int), b]`.
   ##
   ## .. code-block:: Nim
@@ -520,13 +541,13 @@ include "system/arithmetics"
 include "system/comparisons"
 
 const
-  appType* {.magic: "AppType"}: string = ""
+  appType* {.magic: "AppType".}: string = ""
     ## A string that describes the application type. Possible values:
     ## `"console"`, `"gui"`, `"lib"`.
 
 include "system/inclrtl"
 
-const NoFakeVars* = defined(nimscript) ## `true` if the backend doesn't support \
+const NoFakeVars = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
 const notJSnotNims = not defined(js) and not defined(nimscript)
@@ -870,8 +891,6 @@ when defined(nimOwnedEnabled) and not defined(nimscript):
   proc unown*[T](x: T): T {.magic: "Unown", noSideEffect.}
     ## Use the expression `x` ignoring its ownership attribute.
 
-  # This is only required to make 0.20 compile with the 0.19 line.
-  template `<//>`*(t: untyped): untyped = owned(t)
 
 else:
   template unown*(x: typed): untyped = x
@@ -893,8 +912,6 @@ else:
     new(r)
     return r
 
-  # This is only required to make 0.20 compile with the 0.19 line.
-  template `<//>`*(t: untyped): untyped = t
 
 template disarm*(x: typed) =
   ## Useful for `disarming` dangling pointers explicitly for `--newruntime`.
@@ -968,7 +985,7 @@ proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEff
   ##   echo @a # => @[1, 3, 5]
   ##   echo @b # => @['f', 'o', 'o']
 
-proc default*(T: typedesc): T {.magic: "Default", noSideEffect.} =
+proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
   ## returns the default value of the type `T`.
   runnableExamples:
     assert (int, float).default == (0, 0.0)
@@ -1089,15 +1106,15 @@ const
     ## True only when accessed in the main module. This works thanks to
     ## compiler magic. It is useful to embed testing code in a module.
 
-  CompileDate* {.magic: "CompileDate"}: string = "0000-00-00"
+  CompileDate* {.magic: "CompileDate".}: string = "0000-00-00"
     ## The date (in UTC) of compilation as a string of the form
     ## `YYYY-MM-DD`. This works thanks to compiler magic.
 
-  CompileTime* {.magic: "CompileTime"}: string = "00:00:00"
+  CompileTime* {.magic: "CompileTime".}: string = "00:00:00"
     ## The time (in UTC) of compilation as a string of the form
     ## `HH:MM:SS`. This works thanks to compiler magic.
 
-  cpuEndian* {.magic: "CpuEndian"}: Endianness = littleEndian
+  cpuEndian* {.magic: "CpuEndian".}: Endianness = littleEndian
     ## The endianness of the target CPU. This is a valuable piece of
     ## information for low-level code only. This works thanks to compiler
     ## magic.
@@ -1115,7 +1132,7 @@ const
     ## Possible values:
     ## `"i386"`, `"alpha"`, `"powerpc"`, `"powerpc64"`, `"powerpc64el"`,
     ## `"sparc"`, `"amd64"`, `"mips"`, `"mipsel"`, `"arm"`, `"arm64"`,
-    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`.
+    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, '"loongarch64"'.
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -1125,7 +1142,6 @@ const
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
-  nimEnableCovariance* = defined(nimEnableCovariance) # or true
 
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
   # tcc doesn't support TLS
@@ -1140,7 +1156,7 @@ when defined(boehmgc):
   elif defined(macosx):
     const boehmLib = "libgc.dylib"
   elif defined(openbsd):
-    const boehmLib = "libgc.so.4.0"
+    const boehmLib = "libgc.so.(4|5).0"
   elif defined(freebsd):
     const boehmLib = "libgc-threaded.so.1"
   else:
@@ -1179,16 +1195,12 @@ proc align(address, alignment: int): int =
   else:
     result = (address + (alignment - 1)) and not (alignment - 1)
 
-when defined(nimdoc):
-  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
+when defined(nimNoQuit):
+  proc quit*(errorcode: int = QuitSuccess) = discard "ignoring quit"
     ## Stops the program immediately with an exit code.
     ##
     ## Before stopping the program the "exit procedures" are called in the
     ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
-    ## `quit` never returns and ignores any exception that may have been raised
-    ## by the quit procedures.  It does *not* call the garbage collector to free
-    ## all the memory, unless a quit procedure calls `GC_fullCollect
-    ## <#GC_fullCollect>`_.
     ##
     ## The proc `quit(QuitSuccess)` is called implicitly when your nim
     ## program finishes without incident for platforms where this is the
@@ -1199,6 +1211,17 @@ when defined(nimdoc):
     ## have any compile time effect. If you need to stop the compiler inside a
     ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
     ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
+    ##
+    ## .. danger:: In almost all cases, in particular in library code, prefer
+    ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
+    ##   `quit` bypasses regular control flow in particular `defer`,
+    ##   `try`, `catch`, `finally` and `destructors`, and exceptions that may have been
+    ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
+    ##   It does *not* call the garbage collector to free all the memory,
+    ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
+
+elif defined(nimdoc):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
 
 elif defined(genode):
   include genode/env
@@ -1307,37 +1330,13 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ##
   ## See also:
   ## * `delete <#delete,seq[T],Natural>`_ for preserving the order
-  ##
-  ## .. code-block:: Nim
-  ##  var i = @[1, 2, 3, 4, 5]
-  ##  i.del(2) # => @[1, 2, 5, 4]
+  runnableExamples:
+    var a = @[10, 11, 12, 13, 14]
+    a.del(2)
+    assert a == @[10, 11, 14, 13]
   let xl = x.len - 1
   movingCopy(x[i], x[xl])
   setLen(x, xl)
-
-proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
-  ## Deletes the item at index `i` by moving all `x[i+1..]` items by one position.
-  ##
-  ## This is an `O(n)` operation.
-  ##
-  ## See also:
-  ## * `del <#delete,seq[T],Natural>`_ for O(1) operation
-  ##
-  ## .. code-block:: Nim
-  ##  var i = @[1, 2, 3, 4, 5]
-  ##  i.delete(2) # => @[1, 2, 4, 5]
-  template defaultImpl =
-    let xl = x.len
-    for j in i.int..xl-2: movingCopy(x[j], x[j+1])
-    setLen(x, xl-1)
-
-  when nimvm:
-    defaultImpl()
-  else:
-    when defined(js):
-      {.emit: "`x`.splice(`i`, 1);".}
-    else:
-      defaultImpl()
 
 proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
   ## Inserts `item` into `x` at position `i`.
@@ -1436,8 +1435,8 @@ type # these work for most platforms:
     ## This is the same as the type `long double` in *C*.
     ## This C type is not supported by Nim's code generator.
 
-  cuchar* {.importc: "unsigned char", nodecl.} = char
-    ## This is the same as the type `unsigned char` in *C*.
+  cuchar* {.importc: "unsigned char", nodecl, deprecated: "use `char` or `uint8` instead".} = char
+    ## Deprecated: Use `uint8` instead.
   cushort* {.importc: "unsigned short", nodecl.} = uint16
     ## This is the same as the type `unsigned short` in *C*.
   cuint* {.importc: "unsigned int", nodecl.} = uint32
@@ -1457,7 +1456,7 @@ type # these work for most platforms:
   PInt32* = ptr int32        ## An alias for `ptr int32`.
 
 proc toFloat*(i: int): float {.noSideEffect, inline.} =
-  ## Converts an integer `i` into a `float`.
+  ## Converts an integer `i` into a `float`. Same as `float(i)`.
   ##
   ## If the conversion fails, `ValueError` is raised.
   ## However, on most platforms the conversion cannot fail.
@@ -1479,7 +1478,8 @@ proc toInt*(f: float): int {.noSideEffect.} =
   ##
   ## Conversion rounds `f` half away from 0, see
   ## `Round half away from zero
-  ## <https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero>`_.
+  ## <https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero>`_,
+  ## as opposed to a type conversion which rounds towards zero.
   ##
   ## Note that some floating point numbers (e.g. infinity or even 1e19)
   ## cannot be accurately converted.
@@ -1792,8 +1792,8 @@ when not defined(js) and defined(nimV2):
       align: int
       name: cstring
       traceImpl: pointer
-      disposeImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
+      flags: int
     PNimTypeV2 = ptr TNimTypeV2
 
 when notJSnotNims and defined(nimSeqsV2):
@@ -1830,8 +1830,11 @@ when not defined(nimscript):
 when defined(nimV2):
   include system/arc
 
-import system/assertions
-export assertions
+when not defined(nimPreviewSlimSystem):
+  {.deprecated: """assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and
+                import `std/assertions`.""".}
+  import std/assertions
+  export assertions
 
 import system/iterators
 export iterators
@@ -1908,25 +1911,7 @@ include "system/gc_interface"
 # we have to compute this here before turning it off in except.nim anyway ...
 const NimStackTrace = compileOption("stacktrace")
 
-template coroutinesSupportedPlatform(): bool =
-  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or
-    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcRegions) or
-    defined(gcMarkAndSweep):
-    false
-  else:
-    true
-
-when defined(nimCoroutines):
-  # Explicit opt-in.
-  when not coroutinesSupportedPlatform():
-    {.error: "Coroutines are not supported on this architecture and/or garbage collector.".}
-  const nimCoroutines* = true
-elif defined(noNimCoroutines):
-  # Explicit opt-out.
-  const nimCoroutines* = false
-else:
-  # Autodetect coroutine support.
-  const nimCoroutines* = false
+import system/coro_detection
 
 {.push checks: off.}
 # obviously we cannot generate checking operations here :-)
@@ -1940,8 +1925,7 @@ when notJSnotNims:
       ## With this hook you can influence exception handling on a global level.
       ## If not nil, every 'raise' statement ends up calling this hook.
       ##
-      ## **Warning**: Ordinary application code should never set this hook!
-      ## You better know what you do when setting this.
+      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
       ##
       ## If `globalRaiseHook` returns false, the exception is caught and does
       ## not propagate further through the call stack.
@@ -1951,8 +1935,7 @@ when notJSnotNims:
       ## thread local level.
       ## If not nil, every 'raise' statement ends up calling this hook.
       ##
-      ## **Warning**: Ordinary application code should never set this hook!
-      ## You better know what you do when setting this.
+      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
       ##
       ## If `localRaiseHook` returns false, the exception
       ## is caught and does not propagate further through the call stack.
@@ -2033,8 +2016,7 @@ elif hasAlloc:
         inc(i)
   {.pop.}
 
-proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
-  benign, sideEffect.}
+proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", benign, sideEffect.}
   ## Writes and flushes the parameters to the standard output.
   ##
   ## Special built-in that takes a variable number of arguments. Each argument
@@ -2151,7 +2133,7 @@ const
     ##   when (NimMajor, NimMinor, NimPatch) >= (1, 3, 1): discard
     # see also std/private/since
 
-  NimMinor* {.intdefine.}: int = 5
+  NimMinor* {.intdefine.}: int = 7
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
@@ -2161,6 +2143,47 @@ const
 
 import system/dollars
 export dollars
+
+when defined(nimAuditDelete):
+  {.pragma: auditDelete, deprecated: "review this call for out of bounds behavior".}
+else:
+  {.pragma: auditDelete.}
+
+proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
+  ## Deletes the item at index `i` by moving all `x[i+1..^1]` items by one position.
+  ##
+  ## This is an `O(n)` operation.
+  ##
+  ## .. note:: With `-d:nimStrictDelete`, an index error is produced when the index passed
+  ##    to it was out of bounds. `-d:nimStrictDelete` will become the default
+  ##    in upcoming versions.
+  ##
+  ## See also:
+  ## * `del <#del,seq[T],Natural>`_ for O(1) operation
+  ##
+  runnableExamples:
+    var s = @[1, 2, 3, 4, 5]
+    s.delete(2)
+    doAssert s == @[1, 2, 4, 5]
+
+  when defined(nimStrictDelete):
+    if i > high(x):
+      # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
+      raise (ref IndexDefect)(msg: "index out of bounds: '" & $i & "' < '" & $x.len & "' failed")
+
+  template defaultImpl =
+    let xl = x.len
+    for j in i.int..xl-2: movingCopy(x[j], x[j+1])
+    setLen(x, xl-1)
+
+  when nimvm:
+    defaultImpl()
+  else:
+    when defined(js):
+      {.emit: "`x`.splice(`i`, 1);".}
+    else:
+      defaultImpl()
+
 
 const
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2299,6 +2322,15 @@ when notJSnotNims:
   proc setControlCHook*(hook: proc () {.noconv.})
     ## Allows you to override the behaviour of your application when CTRL+C
     ## is pressed. Only one such hook is supported.
+    ## Example:
+    ##
+    ## .. code-block:: Nim
+    ##   proc ctrlc() {.noconv.} =
+    ##     echo "Ctrl+C fired!"
+    ##     # do clean up stuff
+    ##     quit()
+    ##
+    ##   setControlCHook(ctrlc)
 
   when not defined(noSignalHandler) and not defined(useNimRtl):
     proc unsetControlCHook*()
@@ -2342,6 +2374,7 @@ when notJSnotNims:
   when hostOS != "standalone" and hostOS != "any":
     include "system/dyncalls"
 
+  import system/countbits_impl
   include "system/sets"
 
   when defined(gogc):
@@ -2388,7 +2421,7 @@ when notJSnotNims and hasAlloc:
     include "system/repr"
 
 when notJSnotNims and hasThreadSupport and hostOS != "standalone":
-  include "system/channels"
+  include "system/channels_builtin"
 
 
 when notJSnotNims and hostOS != "standalone":
@@ -2409,7 +2442,7 @@ when notJSnotNims and hostOS != "standalone":
   proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
     ## Sets the current exception.
     ##
-    ## **Warning**: Only use this if you know what you are doing.
+    ## .. warning:: Only use this if you know what you are doing.
     currException = exc
 elif defined(nimscript):
   proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
@@ -2422,17 +2455,22 @@ when notJSnotNims:
 
   proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw proc pointer of the closure `x`. This is
-    ## useful for interfacing closures with C.
+    ## useful for interfacing closures with C/C++, hash compuations, etc.
     when T is "closure":
+      #[
+      The conversion from function pointer to `void*` is a tricky topic, but this
+      should work at least for c++ >= c++11, e.g. for `dlsym` support.
+      refs: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57869,
+      https://stackoverflow.com/questions/14125474/casts-between-pointer-to-function-and-pointer-to-object-in-c-and-c
+      ]#
       {.emit: """
-      `result` = `x`.ClP_0;
+      `result` = (void*)`x`.ClP_0;
       """.}
     else:
       {.error: "Only closure function and iterator are allowed!".}
 
   proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
-    ## Retrieves the raw environment pointer of the closure `x`. This is
-    ## useful for interfacing closures with C.
+    ## Retrieves the raw environment pointer of the closure `x`. See also `rawProc`.
     when T is "closure":
       {.emit: """
       `result` = `x`.ClE_0;
@@ -2440,7 +2478,7 @@ when notJSnotNims:
     else:
       {.error: "Only closure function and iterator are allowed!".}
 
-  proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
+  proc finished*[T: proc](x: T): bool {.noSideEffect, inline, magic: "Finished".} =
     ## It can be used to determine if a first class iterator has finished.
     when T is "iterator":
       {.emit: """
@@ -2449,16 +2487,12 @@ when notJSnotNims:
     else:
       {.error: "Only closure iterator is allowed!".}
 
+from std/private/digitsutils import addInt
+export addInt
+
 when defined(js):
   include "system/jssys"
   include "system/reprjs"
-
-when defined(js) or defined(nimscript):
-  proc addInt*(result: var string; x: int64) =
-    result.add $x
-
-  proc addFloat*(result: var string; x: float) =
-    result.add $x
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.
@@ -2473,7 +2507,7 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   quit(errorcode)
 
 {.pop.} # checks: off
-{.pop.} # hints: off
+# {.pop.} # hints: off
 
 proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## Division of integers that results in a float.
@@ -2646,7 +2680,7 @@ proc slurp*(filename: string): string {.magic: "Slurp".}
   ## This is an alias for `staticRead <#staticRead,string>`_.
 
 proc staticRead*(filename: string): string {.magic: "Slurp".}
-  ## Compile-time `readFile <io.html#readFile,string>`_ proc for easy
+  ## Compile-time `readFile <syncio.html#readFile,string>`_ proc for easy
   ## `resource`:idx: embedding:
   ##
   ## The maximum file size limit that `staticRead` and `slurp` can read is
@@ -2829,7 +2863,7 @@ when declared(initDebugger):
 proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## Adds a char to string `s` and applies the following escaping:
   ##
-  ## * replaces any `\` by `\\`
+  ## * replaces any ``\`` by `\\`
   ## * replaces any `'` by `\'`
   ## * replaces any `"` by `\"`
   ## * replaces any `\a` by `\\a`
@@ -2838,23 +2872,24 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces any `\n` by `\\n`
   ## * replaces any `\v` by `\\v`
   ## * replaces any `\f` by `\\f`
-  ## * replaces any `\c` by `\\c`
+  ## * replaces any `\r` by `\\r`
   ## * replaces any `\e` by `\\e`
-  ## * replaces any other character not in the set `{'\21..'\126'}
-  ##   by `\xHH` where `HH` is its hexadecimal value.
+  ## * replaces any other character not in the set `{\21..\126}`
+  ##   by `\xHH` where `HH` is its hexadecimal value
   ##
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes.
   ##
-  ## **Note**: This is **not correct** for producing Ansi C code!
+  ## .. warning:: This is **not correct** for producing ANSI C code!
+  ##
   case c
   of '\a': s.add "\\a" # \x07
   of '\b': s.add "\\b" # \x08
   of '\t': s.add "\\t" # \x09
-  of '\L': s.add "\\n" # \x0A
+  of '\n': s.add "\\n" # \x0A
   of '\v': s.add "\\v" # \x0B
   of '\f': s.add "\\f" # \x0C
-  of '\c': s.add "\\c" # \x0D
+  of '\r': (when defined(nimLegacyAddEscapedCharx0D): s.add "\\c" else: s.add "\\r") # \x0D
   of '\e': s.add "\\e" # \x1B
   of '\\': s.add("\\\\")
   of '\'': s.add("\\'")
@@ -2906,7 +2941,7 @@ proc addQuoted*[T](s: var string, x: T) =
     s.addEscapedChar(x)
     s.add("'")
   # prevent temporary string allocation
-  elif T is SomeSignedInt:
+  elif T is SomeInteger:
     s.addInt(x)
   elif T is SomeFloat:
     s.addFloat(x)
@@ -3115,14 +3150,24 @@ when defined(genode):
 import system/widestrs
 export widestrs
 
-import system/io
-export io
+when not defined(nimPreviewSlimSystem):
+  {.deprecated: """io is about to move out of system; use `-d:nimPreviewSlimSystem` and
+                import `std/syncio`.""".}
+  import std/syncio
+  export syncio
 
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
 
 when notJSnotNims and not defined(nimSeqsV2):
-  proc prepareStrMutation*(s: var string) {.inline.} =
+  proc prepareMutation*(s: var string) {.inline.} =
     ## String literals (e.g. "abc", etc) in the ARC/ORC mode are "copy on write",
-    ## therefore you should call `prepareStrMutation` before modifying the strings.
+    ## therefore you should call `prepareMutation` before modifying the strings
+    ## via `addr`.
+    runnableExamples("--gc:arc"):
+      var x = "abc"
+      var y = "defgh"
+      prepareMutation(y) # without this, you may get a `SIGBUS` or `SIGSEGV`
+      moveMem(addr y[0], addr x[0], x.len)
+      assert y == "abcgh"
     discard

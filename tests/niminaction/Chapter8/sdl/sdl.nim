@@ -1,8 +1,8 @@
-when defined(Windows):
+when defined(windows):
   const libName* = "SDL2.dll"
-elif defined(Linux) or defined(freebsd) or defined(netbsd):
+elif defined(linux) or defined(freebsd) or defined(netbsd):
   const libName* = "libSDL2.so"
-elif defined(MacOsX):
+elif defined(macosx):
   const libName* = "libSDL2.dylib"
 elif defined(openbsd):
   const libName* = "libSDL2.so.0.6"

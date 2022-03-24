@@ -72,7 +72,7 @@ block:
     echo a
 
 block t5859:
-  proc flatIterator[T](s: openarray[T]): auto {.noSideEffect.}=
+  proc flatIterator[T](s: openArray[T]): auto {.noSideEffect.}=
     result = iterator(): auto =
       when (T is not seq|array):
         for item in s:

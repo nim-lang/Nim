@@ -29,7 +29,7 @@
 ##    writeLine(stdout, "your password: " & myData["password"])
 ##    writeLine(stdout, "</body></html>")
 
-import std/[strutils, os, strtabs, cookies, uri]
+import strutils, os, strtabs, cookies, uri
 export uri.encodeUrl, uri.decodeUrl
 
 

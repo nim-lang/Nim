@@ -65,7 +65,7 @@
 ##
 ## The following example demonstrates a simple chat server.
 ##
-## .. code-block::nim
+## .. code-block:: Nim
 ##
 ##   import std/[asyncnet, asyncdispatch]
 ##
@@ -103,6 +103,7 @@ export SOBool
 # TODO: Remove duplication introduced by PR #4683.
 
 const defineSsl = defined(ssl) or defined(nimdoc)
+const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr)
 
 when defineSsl:
   import openssl
@@ -178,11 +179,12 @@ proc getLocalAddr*(socket: AsyncSocket): (string, Port) =
   ## This is high-level interface for `getsockname`:idx:.
   getLocalAddr(socket.fd, socket.domain)
 
-proc getPeerAddr*(socket: AsyncSocket): (string, Port) =
-  ## Get the socket's peer address and port number.
-  ##
-  ## This is high-level interface for `getpeername`:idx:.
-  getPeerAddr(socket.fd, socket.domain)
+when not useNimNetLite:
+  proc getPeerAddr*(socket: AsyncSocket): (string, Port) =
+    ## Get the socket's peer address and port number.
+    ##
+    ## This is high-level interface for `getpeername`:idx:.
+    getPeerAddr(socket.fd, socket.domain)
 
 proc newAsyncSocket*(domain, sockType, protocol: cint,
                      buffered = true,
@@ -517,10 +519,9 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
   ## The `maxLength` parameter determines the maximum amount of characters
   ## that can be read. `resString` will be truncated after that.
   ##
-  ## **Warning**: The `Peek` flag is not yet implemented.
+  ## .. warning:: The `Peek` flag is not yet implemented.
   ##
-  ## **Warning**: `recvLineInto` on unbuffered sockets assumes that the
-  ## protocol uses `\r\L` to delimit a new line.
+  ## .. warning:: `recvLineInto` on unbuffered sockets assumes that the protocol uses `\r\L` to delimit a new line.
   assert SocketFlag.Peek notin flags ## TODO:
   result = newFuture[void]("asyncnet.recvLineInto")
 
@@ -611,10 +612,9 @@ proc recvLine*(socket: AsyncSocket,
   ## The `maxLength` parameter determines the maximum amount of characters
   ## that can be read. The result is truncated after that.
   ##
-  ## **Warning**: The `Peek` flag is not yet implemented.
+  ## .. warning:: The `Peek` flag is not yet implemented.
   ##
-  ## **Warning**: `recvLine` on unbuffered sockets assumes that the protocol
-  ## uses `\r\L` to delimit a new line.
+  ## .. warning:: `recvLine` on unbuffered sockets assumes that the protocol uses `\r\L` to delimit a new line.
   assert SocketFlag.Peek notin flags ## TODO:
 
   # TODO: Optimise this
@@ -652,7 +652,12 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
     raiseOSError(osLastError())
   freeaddrinfo(aiList)
 
-when defined(posix):
+proc hasDataBuffered*(s: AsyncSocket): bool {.since: (1, 5).} =
+  ## Determines whether an AsyncSocket has data buffered.
+  # xxx dedup with std/net
+  s.isBuffered and s.bufLen > 0 and s.currPos != s.bufLen
+
+when defined(posix) and not useNimNetLite:
 
   proc connectUnix*(socket: AsyncSocket, path: string): owned(Future[void]) =
     ## Binds Unix socket to `path`.
@@ -733,6 +738,11 @@ proc close*(socket: AsyncSocket) =
         raiseSSLError()
 
 when defineSsl:
+  proc sslHandle*(self: AsyncSocket): SslPtr =
+    ## Retrieve the ssl pointer of `socket`.
+    ## Useful for interfacing with `openssl`.
+    self.sslHandle
+  
   proc wrapSocket*(ctx: SslContext, socket: AsyncSocket) =
     ## Wraps a socket in an SSL context. This function effectively turns
     ## `socket` into an SSL socket.

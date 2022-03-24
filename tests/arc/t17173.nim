@@ -1,5 +1,5 @@
 discard """
-  matrix: "--gc:refc; --gc:arc; --newruntime"
+  matrix: "--gc:refc; --gc:arc"
 """
 
 import std/strbasics

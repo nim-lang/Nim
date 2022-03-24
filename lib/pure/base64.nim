@@ -16,50 +16,48 @@
 ## Each Base64 digit represents exactly 6 bits of data. Three 8-bit
 ## bytes (i.e., a total of 24 bits) can therefore be represented by
 ## four 6-bit Base64 digits.
-##
-## Basic usage
-## ===========
-##
+
+##[
+# Basic usage
 ## Encoding data
-## -------------
-##
-## .. code-block::nim
-##    import std/base64
-##    let encoded = encode("Hello World")
-##    assert encoded == "SGVsbG8gV29ybGQ="
+]##
+
+runnableExamples:
+  let encoded = encode("Hello World")
+  assert encoded == "SGVsbG8gV29ybGQ="
+
 ##
 ## Apart from strings you can also encode lists of integers or characters:
 ##
-## .. code-block::nim
-##    import std/base64
-##    let encodedInts = encode([1,2,3])
-##    assert encodedInts == "AQID"
-##    let encodedChars = encode(['h','e','y'])
-##    assert encodedChars == "aGV5"
-##
-##
+
+runnableExamples:
+  let encodedInts = encode([1,2,3])
+  assert encodedInts == "AQID"
+  let encodedChars = encode(['h','e','y'])
+  assert encodedChars == "aGV5"
+
+##[
 ## Decoding data
-## -------------
-##
-## .. code-block::nim
-##    import std/base64
-##    let decoded = decode("SGVsbG8gV29ybGQ=")
-##    assert decoded == "Hello World"
-##
+]##
+
+runnableExamples:
+  let decoded = decode("SGVsbG8gV29ybGQ=")
+  assert decoded == "Hello World"
+
+##[
 ## URL Safe Base64
-## ---------------
-##
-## .. code-block::nim
-##    import std/base64
-##    doAssert encode("c\xf7>", safe = true) == "Y_c-"
-##    doAssert encode("c\xf7>", safe = false) == "Y/c+"
-##
+]##
+
+runnableExamples:
+  assert encode("c\xf7>", safe = true) == "Y_c-"
+  assert encode("c\xf7>", safe = false) == "Y/c+"
+
 ## See also
 ## ========
 ##
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
-## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
-## * `sha1 module<sha1.html>`_ implements a sha1 encoder and decoder
+## * `md5 module<md5.html>`_ for the MD5 checksum algorithm
+## * `sha1 module<sha1.html>`_ for the SHA-1 checksum algorithm
 
 template cbBase(a, b): untyped = [
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
@@ -134,7 +132,7 @@ template encodeInternal(s, alphabet: typed): untyped =
   result.setLen(outputIndex)
 
 template encodeImpl() {.dirty.} =
-  when nimVM:
+  when nimvm:
     block:
       let lookupTableVM = if safe: cb64safeVM else: cb64VM
       encodeInternal(s, lookupTableVM)

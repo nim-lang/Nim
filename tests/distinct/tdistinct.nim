@@ -1,4 +1,5 @@
 discard """
+  targets: "c js"
   output: '''
 tdistinct
 25
@@ -7,6 +8,7 @@ false
 false
 false
 Foo
+foo
 '''
 """
 
@@ -138,3 +140,64 @@ block tRequiresInit:
   accept:
     let s = "test"
     doAssert s == "test"
+
+block: #17322
+  type
+    A[T] = distinct string
+
+  proc foo(a: var A) =
+    a.string.add "foo"
+
+  type
+    B = distinct A[int]
+
+  var b: B
+  foo(A[int](b))
+  echo A[int](b).string
+  b.string.add "bar"
+  assert b.string == "foobar"
+
+type Foo = distinct string
+
+template main() =
+  # xxx put everything here to test under RT + VM
+  block: # bug #12282
+    block:
+      proc test() =
+        var s: Foo
+        s.string.add('c')
+        doAssert s.string == "c" # was failing
+      test()
+
+    block:
+      proc add(a: var Foo, b: char) {.borrow.}
+      proc test() =
+        var s: Foo
+        s.add('c')
+        doAssert s.string == "c" # was ok
+      test()
+
+    block:
+      proc add(a: var Foo, b: char) {.borrow.}
+      proc test() =
+        var s: string
+        s.Foo.add('c')
+        doAssert s.string == "c" # was failing
+      test()
+    block: #18061
+      type
+        A = distinct (0..100)
+        B = A(0) .. A(10)
+      proc test(b: B) = discard
+      let
+        a = A(10)
+        b = B(a)
+      test(b)
+
+      proc test(a: A) = discard
+      discard cast[B](A(1))
+      var c: B
+
+
+static: main()
+main()

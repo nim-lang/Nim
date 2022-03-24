@@ -100,7 +100,6 @@ proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[string] {.multisync.} =
   ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
   ##
   ## See `checkReply(reply)<#checkReply,AsyncSmtp,string>`_.
-
   result = await smtp.sock.recvLine()
   if smtp.debug:
     echo("S:" & result)
@@ -171,8 +170,7 @@ proc `$`*(msg: Message): string =
   result.add("\c\L")
   result.add(msg.msgBody)
 
-proc newSmtp*(useSsl = false, debug = false,
-              sslContext: SslContext = nil): Smtp =
+proc newSmtp*(useSsl = false, debug = false, sslContext: SslContext = nil): Smtp =
   ## Creates a new `Smtp` instance.
   new result
   result.debug = debug
@@ -186,12 +184,10 @@ proc newSmtp*(useSsl = false, debug = false,
     else:
       {.error: "SMTP module compiled without SSL support".}
 
-proc newAsyncSmtp*(useSsl = false, debug = false,
-                   sslContext: SslContext = nil): AsyncSmtp =
+proc newAsyncSmtp*(useSsl = false, debug = false, sslContext: SslContext = nil): AsyncSmtp =
   ## Creates a new `AsyncSmtp` instance.
   new result
   result.debug = debug
-
   result.sock = newAsyncSocket()
   if useSsl:
     when compiledWithSsl:
@@ -220,7 +216,6 @@ proc checkReply*(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
   ## would need to call when using this module. One exception to
   ## this is if you are implementing any
   ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
-
   var line = await smtp.debugRecv()
   if not line.startsWith(reply):
     await quitExcpt(smtp, "Expected " & reply & " reply, got: " & line)
@@ -230,6 +225,22 @@ proc helo*(smtp: Smtp | AsyncSmtp) {.multisync.} =
   await smtp.debugSend("HELO " & smtp.address & "\c\L")
   await smtp.checkReply("250")
 
+proc recvEhlo(smtp: Smtp | AsyncSmtp): Future[bool] {.multisync.} =
+  ## Skips "250-" lines, read until "250 " found.
+  ## Return `true` if server supports `EHLO`, false otherwise.
+  while true:
+    var line = await smtp.sock.recvLine()
+    if smtp.debug:
+      echo("S:" & line)
+    if line.startsWith("250-"): continue
+    elif line.startsWith("250 "): return true # last line
+    else: return false
+
+proc ehlo*(smtp: Smtp | AsyncSmtp): Future[bool] {.multisync.} =
+  ## Sends EHLO request.
+  await smtp.debugSend("EHLO " & smtp.address & "\c\L")
+  return await smtp.recvEhlo()
+
 proc connect*(smtp: Smtp | AsyncSmtp,
               address: string, port: Port) {.multisync.} =
   ## Establishes a connection with a SMTP server.
@@ -237,7 +248,9 @@ proc connect*(smtp: Smtp | AsyncSmtp,
   smtp.address = address
   await smtp.sock.connect(address, port)
   await smtp.checkReply("220")
-  await smtp.helo()
+  let speaksEsmtp = await smtp.ehlo()
+  if not speaksEsmtp:
+    await smtp.helo()
 
 proc startTls*(smtp: Smtp | AsyncSmtp, sslContext: SslContext = nil) {.multisync.} =
   ## Put the SMTP connection in TLS (Transport Layer Security) mode.
@@ -249,7 +262,9 @@ proc startTls*(smtp: Smtp | AsyncSmtp, sslContext: SslContext = nil) {.multisync
       getSSLContext().wrapConnectedSocket(smtp.sock, handshakeAsClient)
     else:
       sslContext.wrapConnectedSocket(smtp.sock, handshakeAsClient)
-    await smtp.helo()
+    let speaksEsmtp = await smtp.ehlo()
+    if not speaksEsmtp:
+      await smtp.helo()
   else:
     {.error: "SMTP module compiled without SSL support".}
 

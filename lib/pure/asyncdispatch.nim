@@ -42,12 +42,12 @@
 ##
 ## Code to read some data from a socket may look something like this:
 ##
-##   .. code-block::nim
-##      var future = socket.recv(100)
-##      future.addCallback(
-##        proc () =
-##          echo(future.read)
-##      )
+## .. code-block:: Nim
+##    var future = socket.recv(100)
+##    future.addCallback(
+##      proc () =
+##        echo(future.read)
+##    )
 ##
 ## All asynchronous functions returning a `Future` will not block. They
 ## will not however return immediately. An asynchronous function will have
@@ -61,8 +61,8 @@
 ## callback on this future which will be called once the future completes.
 ## All the callback does is write the data stored in the future to `stdout`.
 ## The `read` function is used for this and it checks whether the future
-## completes with an error for you (if it did it will simply raise the
-## error), if there is no error however it returns the value of the future.
+## completes with an error for you (if it did, it will simply raise the
+## error), if there is no error, however, it returns the value of the future.
 ##
 ## Asynchronous procedures
 ## =======================
@@ -101,27 +101,27 @@
 ## Handling Exceptions
 ## -------------------
 ##
-## The most reliable way to handle exceptions is to use `yield` on a future
+## You can handle exceptions in the same way as in ordinary Nim code;
+## by using the try statement:
+##
+##
+## .. code-block:: Nim
+##   try:
+##     let data = await sock.recv(100)
+##     echo("Received ", data)
+##   except:
+##     # Handle exception
+##
+##
+##
+## An alternative approach to handling exceptions is to use `yield` on a future
 ## then check the future's `failed` property. For example:
 ##
-##   .. code-block:: Nim
-##     var future = sock.recv(100)
-##     yield future
-##     if future.failed:
-##       # Handle exception
-##
-## The `async` procedures also offer limited support for the try statement.
-##
-##    .. code-block:: Nim
-##      try:
-##        let data = await sock.recv(100)
-##        echo("Received ", data)
-##      except:
-##        # Handle exception
-##
-## Unfortunately the semantics of the try statement may not always be correct,
-## and occasionally the compilation may fail altogether.
-## As such it is better to use the former style when possible.
+## .. code-block:: Nim
+##   var future = sock.recv(100)
+##   yield future
+##   if future.failed:
+##     # Handle exception
 ##
 ##
 ## Discarding futures
@@ -165,6 +165,34 @@
 ## ================
 ##
 ## * The effect system (`raises: []`) does not work with async procedures.
+##
+##
+## Multiple async backend support
+## ==============================
+##
+## Thanks to its powerful macro support, Nim allows ``async``/``await`` to be
+## implemented in libraries with only minimal support from the language - as
+## such, multiple ``async`` libraries exist, including ``asyncdispatch`` and
+## ``chronos``, and more may come to be developed in the future.
+##
+## Libraries built on top of async/await may wish to support multiple async
+## backends - the best way to do so is to create separate modules for each backend
+## that may be imported side-by-side.
+##
+## An alternative way is to select backend using a global compile flag - this
+## method makes it difficult to compose applications that use both backends as may
+## happen with transitive dependencies, but may be appropriate in some cases -
+## libraries choosing this path should call the flag `asyncBackend`, allowing
+## applications to choose the backend with `-d:asyncBackend=<backend_name>`.
+##
+## Known `async` backends include:
+##
+## * `none` - ``-d:asyncBackend=none`` - disable ``async`` support completely
+## * `asyncdispatch <https://nim-lang.org/docs/asyncdispatch.html> -``-d:asyncBackend=asyncdispatch``
+## * `chronos <https://github.com/status-im/nim-chronos/>` - ``-d:asyncBackend=chronos``
+##
+## ``none`` can be used when a library supports both a synchronous and
+## asynchronous API, to disable the latter.
 
 import os, tables, strutils, times, heapqueue, options, asyncstreams
 import options, math, std/monotimes
@@ -175,8 +203,6 @@ import nativesockets, net, deques
 export Port, SocketFlag
 export asyncfutures except callSoon
 export asyncstreams
-
-#{.injectStmt: newGcInvariant().}
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
@@ -435,7 +461,7 @@ when defined(windows) or defined(nimdoc):
     ## read, or the socket has disconnected in which case the future will
     ## complete with a value of `""`.
     ##
-    ## **Warning**: The `Peek` socket flag is not supported on Windows.
+    ## .. warning:: The `Peek` socket flag is not supported on Windows.
 
 
     # Things to note:
@@ -509,7 +535,7 @@ when defined(windows) or defined(nimdoc):
     ## has disconnected in which case the future will complete with a value of
     ## `0`.
     ##
-    ## **Warning**: The `Peek` socket flag is not supported on Windows.
+    ## .. warning:: The `Peek` socket flag is not supported on Windows.
 
 
     # Things to note:
@@ -572,8 +598,8 @@ when defined(windows) or defined(nimdoc):
     ## Sends `size` bytes from `buf` to `socket`. The returned future
     ## will complete once all data has been sent.
     ##
-    ## **WARNING**: Use it with caution. If `buf` refers to GC'ed object,
-    ## you must use GC_ref/GC_unref calls to avoid early freeing of the buffer.
+    ## .. warning:: Use it with caution. If `buf` refers to GC'ed object,
+    ##   you must use GC_ref/GC_unref calls to avoid early freeing of the buffer.
     verifyPresence(socket)
     var retFuture = newFuture[void]("send")
 
@@ -707,7 +733,7 @@ when defined(windows) or defined(nimdoc):
 
   proc acceptAddr*(socket: AsyncFD, flags = {SocketFlag.SafeDisconn},
                    inheritable = defined(nimInheritHandles)):
-      owned(Future[tuple[address: string, client: AsyncFD]]) =
+      owned(Future[tuple[address: string, client: AsyncFD]]) {.gcsafe.} =
     ## Accepts a new connection. Returns a future containing the client socket
     ## corresponding to that connection and the remote address of the client.
     ## The future will complete when the connection is successfully accepted.
@@ -774,7 +800,7 @@ when defined(windows) or defined(nimdoc):
 
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             completeAccept()
@@ -1024,7 +1050,7 @@ when defined(windows) or defined(nimdoc):
       raiseOSError(osLastError())
 
     var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
-    var flags = WT_EXECUTEINWAITTHREAD.DWORD
+    var flags = WT_EXECUTEINWAITTHREAD.DWORD or WT_EXECUTEONLYONCE.DWORD
 
     proc proccb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
       closeWaitable(hProcess)
@@ -1947,13 +1973,16 @@ proc activeDescriptors*(): int {.inline.} =
 when defined(posix):
   import posix
 
-when defined(linux) or defined(windows) or defined(macosx) or defined(bsd):
+when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
+       defined(solaris) or defined(zephyr) or defined(freertos):
   proc maxDescriptors*(): int {.raises: OSError.} =
     ## Returns the maximum number of active file descriptors for the current
     ## process. This involves a system call. For now `maxDescriptors` is
-    ## supported on the following OSes: Windows, Linux, OSX, BSD.
+    ## supported on the following OSes: Windows, Linux, OSX, BSD, Solaris.
     when defined(windows):
       result = 16_700_000
+    elif defined(zephyr) or defined(freertos):
+      result = FD_MAX
     else:
       var fdLim: RLimit
       if getrlimit(RLIMIT_NOFILE, fdLim) < 0:
