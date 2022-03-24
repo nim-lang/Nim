@@ -1,7 +1,3 @@
-discard """
-  cmd: "nim check $file"
-"""
-
 mode = ScriptMode.Verbose
 proc build() =
   echo "building nim... "
@@ -9,3 +5,4 @@ proc build() =
   echo getCurrentDir()
 
 echo "hello"
+build()

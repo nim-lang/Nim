@@ -249,6 +249,11 @@ tests/newconfig/bar/mfoo.nims""".splitLines
       expected.add &"Hint: used config file '{b}' [Conf]\n"
     doAssert outp.endsWith expected, outp & "\n" & expected
 
+  block: # bug #8219
+    let file = "tests/newconfig/bar/mfmconfigcheck.nims"
+    var cmd = fmt"{nim} check {file}"
+    check execCmdEx(cmd) == ("", 0)
+
   block: # mfoo2.customext
     let filename = testsDir / "newconfig/foo2/mfoo2.customext"
     let cmd = fmt"{nim} e --hint:conf {filename}"
