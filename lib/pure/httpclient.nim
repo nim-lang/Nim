@@ -635,7 +635,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
     let exampleHtml = waitFor asyncProc()
     assert "Example Domain" in exampleHtml
     assert "Pizza" notin exampleHtml
-  
+
   new result
   result.headers = headers
   result.userAgent = userAgent
@@ -1017,7 +1017,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
 
   var data: seq[string]
   if multipart != nil and multipart.content.len > 0:
-    # `format` modifies `client.headers`, see 
+    # `format` modifies `client.headers`, see
     # https://github.com/nim-lang/Nim/pull/18208#discussion_r647036979
     data = await client.format(multipart)
     newHeaders = client.headers.override(headers)
@@ -1060,7 +1060,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   result = await parseResponse(client, getBody)
 
 proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
-              httpMethod: HttpMethod | string = HttpGet, body = "",
+              httpMethod: HttpMethod = HttpGet, body = "",
               headers: HttpHeaders = nil,
               multipart: MultipartData = nil): Future[Response | AsyncResponse]
               {.multisync.} =
@@ -1079,36 +1079,9 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   ##
   ## `headers` are HTTP headers that override the `client.headers` for
   ## this specific request only and will not be persisted.
-  ##
-  ## **Deprecated since v1.5**: use HttpMethod enum instead; string parameter httpMethod is deprecated
   when url is string:
     doAssert(not url.contains({'\c', '\L'}), "url shouldn't contain any newline characters")
     let url = parseUri(url)
-
-  when httpMethod is string:
-    {.warning:
-       "Deprecated since v1.5; use HttpMethod enum instead; string parameter httpMethod is deprecated".}
-    let httpMethod = case httpMethod
-      of "HEAD":
-        HttpHead
-      of "GET":
-        HttpGet
-      of "POST":
-        HttpPost
-      of "PUT":
-        HttpPut
-      of "DELETE":
-        HttpDelete
-      of "TRACE":
-        HttpTrace
-      of "OPTIONS":
-        HttpOptions
-      of "CONNECT":
-        HttpConnect
-      of "PATCH":
-        HttpPatch
-      else:
-        raise newException(ValueError, "Invalid HTTP method name: " & httpMethod)
 
   result = await client.requestAux(url, httpMethod, body, headers, multipart)
 
@@ -1250,7 +1223,7 @@ proc downloadFile*(client: HttpClient, url: Uri | string, filename: string) =
   defer:
     client.getBody = true
   let resp = client.get(url)
-  
+
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
 
@@ -1265,7 +1238,7 @@ proc downloadFileEx(client: AsyncHttpClient,
   ## Downloads `url` and saves it to `filename`.
   client.getBody = false
   let resp = await client.get(url)
-  
+
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
 
