@@ -121,36 +121,21 @@ proc verifyReturnType(typeName: string, node: NimNode = nil) =
     error("Expected return type of 'Future' got '$1'" %
           typeName, node)
 
-macro isInAsync(n: FutureBase): bool =
-  ## Used to provide more useful error messages with 'await'.
-  var owner = n.owner
-  # We're recursing until we find something which could cause `yield FutureBase` to fail
-  while owner.symKind notin {nskProc, nskFunc, nskIterator, nskMacro} and owner.owner != nil:
-    owner = owner.owner
-
-  result = newLit(false)
-
-  # If async, owner should be an iterator returning owned[FutureBase]
-  if owner.symKind == nskIterator:
-    let returnType = owner.getImpl().params[0]
-    if returnType.kind in {nnkCall, nnkCommand, nnkBracketExpr}:
-      let returnsFuture =
-        (returnType[0].eqIdent"owned" and returnType[1].eqIdent"FutureBase") or
-        returnType[0].eqIdent"FutureBase"
-
-      result = newLit(returnsFuture)
-
 template await*(f: typed): untyped {.used.} =
   static:
     error "await expects Future[T], got " & $typeof(f)
 
 template await*[T](f: Future[T]): auto {.used.} =
-  var internalTmpFuture: FutureBase = f
-  when isInAsync(internalTmpFuture):
+  template yieldFuture = yield FutureBase()
+
+  when compiles(yieldFuture):
+    var internalTmpFuture: FutureBase = f
     yield internalTmpFuture
     (cast[typeof(f)](internalTmpFuture)).read()
   else:
-    static: error "Can only 'await' inside a 'async' marked proc."
+    static: error(
+      "Can only 'await' inside a proc marked as 'async'. Use " &
+      "'waitFor' when calling an 'async' proc in a non-async scope instead")
 
 proc asyncSingleProc(prc: NimNode): NimNode =
   ## This macro transforms a single procedure into a closure iterator.
