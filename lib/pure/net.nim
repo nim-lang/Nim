@@ -1963,7 +1963,7 @@ proc dial*(address: string, port: Port,
   closeUnusedFds(ord(domain))
 
   if success:
-    result = newSocket(lastFd, domain, sockType, protocol)
+    result = newSocket(lastFd, domain, sockType, protocol, buffered)
   elif lastError != 0.OSErrorCode:
     raiseOSError(lastError)
   else:
