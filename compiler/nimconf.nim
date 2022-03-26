@@ -298,7 +298,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
   if conf.cmd == cmdNimscript:
     showHintConf()
     conf.configFiles.setLen 0
-  if conf.cmd != cmdIdeTools:
+  if conf.cmd notin {cmdIdeTools, cmdCheck, cmdDump}:
     if conf.cmd == cmdNimscript:
       runNimScriptIfExists(conf.projectFull, isMain = true)
     else:
@@ -308,5 +308,6 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
       runNimScriptIfExists(scriptFile, isMain = true)
     else:
       # 'nimsuggest foo.nims' means to just auto-complete the NimScript file
+      # `nim check foo.nims' means to check the syntax of the NimScript file
       discard
   showHintConf()
