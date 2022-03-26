@@ -71,14 +71,20 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: P
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
-  var temp = newSym(skTemp, getIdent(g.cache, genPrefix), nextSymId(idgen),
-                    owner, value.info, g.config.options)
-  temp.typ = skipTypes(value.typ, abstractInst)
-  incl(temp.flags, sfFromGeneric)
+  var tempAsNode: PNode
+  let avoidTemp = value.kind == nkSym
+  if avoidTemp:
+    tempAsNode = value
+  else:
+    var temp = newSym(skTemp, getIdent(g.cache, genPrefix), nextSymId(idgen),
+                  owner, value.info, g.config.options)
+    temp.typ = skipTypes(value.typ, abstractInst)
+    incl(temp.flags, sfFromGeneric)
+    tempAsNode = newSymNode(temp)
 
   var v = newNodeI(nkVarSection, value.info)
-  let tempAsNode = newSymNode(temp)
-  v.addVar(tempAsNode, value)
+  if not avoidTemp:
+    v.addVar(tempAsNode, value)
   result.add(v)
 
   for i in 0..<n.len-2:
