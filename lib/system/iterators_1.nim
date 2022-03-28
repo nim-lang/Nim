@@ -112,7 +112,6 @@ template dotdotImpl(t) {.dirty.} =
         when t is uint8 | uint16 | uint32 | uint64:
           inc(res)
         else:
-          # bypass overflow checks
           res = res +% 1
 
 dotdotImpl(int64)
