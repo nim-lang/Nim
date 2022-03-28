@@ -11,6 +11,7 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
 [![Join the IRC chat][badge-nim-irc]][nim-irc]
 [![Join the Discord server][badge-nim-discord]][nim-discord]
 [![Join the Gitter chat][badge-nim-gitter]][nim-gitter]
+[![Join the Matrix room](https://img.shields.io/matrix/nim-lang:matrix.org?color=blue&style=flat&logo=matrix)](https://matrix.to/#/#nim-lang:matrix.org)
 [![Get help][badge-nim-forum-gethelp]][nim-forum]
 [![View Nim posts on Stack Overflow][badge-nim-stackoverflow]][nim-stackoverflow-newest]
 [![Follow @nim_lang on Twitter][badge-nim-twitter]][nim-twitter]
@@ -22,11 +23,12 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
   channels there are bridged to IRC.
 * [Gitter][nim-gitter] - an additional place to discuss Nim in real-time. There
   is a bridge between Gitter and the IRC channel.
+* [Matrix][nim-matrix] - the main room to discuss Nim in real-time. [Matrix space][nim-matrix-space] contains a list of rooms, most of them are bridged to IRC.
 * [Telegram][nim-telegram] - an additional place to discuss Nim in real-time. There
   is the official Telegram channel. Not bridged to IRC.
 * [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
   topics that includes posts about Nim.
-* [Github Wiki][nim-wiki] - Misc user-contributed content.
+* [GitHub Wiki][nim-wiki] - Misc user-contributed content.
 
 ## Compiling
 
@@ -71,8 +73,7 @@ the installation instructions on the website to do so: https://nim-lang.org/inst
 
 For package maintainers: see [packaging guidelines](https://nim-lang.github.io/Nim/packaging.html).
 
-
-First, get Nim from github:
+First, get Nim from GitHub:
 
 ```
 git clone https://github.com/nim-lang/Nim.git
@@ -88,6 +89,8 @@ Finally, once you have finished the build steps (on Windows, Mac, or Linux) you
 should add the ``bin`` directory to your PATH.
 
 See also [rebuilding the compiler](doc/intern.rst#rebuilding-the-compiler).
+
+See also [reproducible builds](doc/intern.rst#reproducible-builds).
 
 ## Koch
 
@@ -148,7 +151,7 @@ read [this guide][pull-request-instructions].
 
 Ideally, you should make sure that all tests pass before submitting a pull request.
 However, if you are short on time, you can just run the tests specific to your
-changes by only running the corresponding categories of tests. Travis CI verifies
+changes by only running the corresponding categories of tests. CI verifies
 that all tests pass before allowing the pull request to be accepted, so only
 running specific tests should be harmless.
 Integration tests should go in ``tests/untestable``.
@@ -200,7 +203,7 @@ Nim. You are explicitly permitted to develop commercial applications using Nim.
 
 Please read the [copying.txt](copying.txt) file for more details.
 
-Copyright © 2006-2021 Andreas Rumpf, all rights reserved.
+Copyright © 2006-2022 Andreas Rumpf, all rights reserved.
 
 [nim-site]: https://nim-lang.org
 [nim-forum]: https://forum.nim-lang.org
@@ -212,6 +215,8 @@ Copyright © 2006-2021 Andreas Rumpf, all rights reserved.
 [nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim-lang?sort=newest&pageSize=15
 [nim-discord]: https://discord.gg/nim
 [nim-gitter]: https://gitter.im/nim-lang/Nim
+[nim-matrix]: https://matrix.to/#/#nim-lang:matrix.org
+[nim-matrix-space]: https://matrix.to/#/#nim:envs.net
 [nim-telegram]: https://t.me/nim_lang
 [nim-bountysource]: https://www.bountysource.com/teams/nim
 [nim-bitcoin]: https://blockchain.info/address/1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ
@@ -219,7 +224,6 @@ Copyright © 2006-2021 Andreas Rumpf, all rights reserved.
 [nimsuggest-repo]: https://github.com/nim-lang/nimsuggest
 [csources-repo-deprecated]: https://github.com/nim-lang/csources
 [csources-v1-repo]: https://github.com/nim-lang/csources_v1
-[badge-nim-travisci]: https://img.shields.io/travis/nim-lang/Nim/devel.svg?style=flat-square
 [badge-nim-irc]: https://img.shields.io/badge/chat-on_irc-blue.svg?style=flat-square
 [badge-nim-discord]: https://img.shields.io/discord/371759389889003530?color=blue&label=discord&logo=discord&logoColor=gold&style=flat-square
 [badge-nim-gitter]: https://img.shields.io/badge/chat-on_gitter-blue.svg?style=flat-square

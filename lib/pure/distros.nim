@@ -27,11 +27,11 @@
 ##
 ## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
-from strutils import contains, toLowerAscii
+from std/strutils import contains, toLowerAscii
 
 when not defined(nimscript):
-  from osproc import execProcess
-  from os import existsEnv
+  from std/osproc import execProcess
+  from std/os import existsEnv
 
 type
   Distribution* {.pure.} = enum ## the list of known distributions
@@ -211,7 +211,7 @@ template detectOs*(d: untyped): bool =
   detectOsImpl(Distribution.d)
 
 when not defined(nimble):
-  var foreignDeps: seq[string] = @[]
+  var foreignDeps*: seq[string] = @[]  ## Registered foreign deps.
 
 proc foreignCmd*(cmd: string; requiresSudo = false) =
   ## Registers a foreign command to the internal list of commands

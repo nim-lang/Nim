@@ -30,6 +30,7 @@ ok
 true
 copying
 123
+42
 closed
 destroying variable: 20
 destroying variable: 10
@@ -463,3 +464,36 @@ proc putValue[T](n: T) =
   echo b.n
 
 useForward()
+
+
+# bug #17319
+type
+  BrokenObject = ref object
+    brokenType: seq[int]
+
+proc use(obj: BrokenObject) =
+  discard
+
+method testMethod(self: BrokenObject) {.base.} =
+  iterator testMethodIter() {.closure.} =
+    use(self)
+
+  var nameIterVar = testMethodIter
+  nameIterVar()
+
+let mikasa = BrokenObject()
+mikasa.testMethod()
+
+# bug #19205
+type
+  InputSectionBase* = object of RootObj
+    relocations*: seq[int]   # traced reference. string has a similar SIGSEGV.
+  InputSection* = object of InputSectionBase
+
+proc fooz(sec: var InputSectionBase) =
+  if sec of InputSection:  # this line SIGSEGV.
+    echo 42
+
+var sec = create(InputSection)
+sec[] = InputSection(relocations: newSeq[int]())
+fooz sec[]

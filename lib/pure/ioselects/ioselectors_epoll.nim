@@ -73,10 +73,7 @@ type
 
 proc newSelector*[T](): Selector[T] =
   # Retrieve the maximum fd count (for current OS) via getrlimit()
-  var a = RLimit()
-  if getrlimit(posix.RLIMIT_NOFILE, a) != 0:
-    raiseOSError(osLastError())
-  var maxFD = int(a.rlim_max)
+  var maxFD = maxDescriptors()
   doAssert(maxFD > 0)
   # Start with a reasonable size, checkFd() will grow this on demand
   const numFD = 1024

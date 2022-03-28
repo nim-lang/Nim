@@ -130,7 +130,8 @@ proc unhandledException(e: ref Exception) {.
   when NimStackTrace:
     add(buf, rawWriteStackTrace())
   let cbuf = cstring(buf)
-  framePtr = nil
+  when NimStackTrace:
+    framePtr = nil
   {.emit: """
   if (typeof(Error) !== "undefined") {
     throw new Error(`cbuf`);
@@ -587,17 +588,40 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
     else:
       asm "`result` = (`dest` === null || `dest` === undefined) ? {} : `dest`;"
     nimCopyAux(result, src, ti.node)
-  of tySequence, tyArrayConstr, tyOpenArray, tyArray:
+  of tyArrayConstr, tyArray:
+    # In order to prevent a type change (TypedArray -> Array) and to have better copying performance,
+    # arrays constructors are considered separately
+    asm """
+      if(ArrayBuffer.isView(`src`)) { 
+        if(`dest` === null || `dest` === undefined || `dest`.length != `src`.length) {
+          `dest` = new `src`.constructor(`src`);
+        } else {
+          `dest`.set(`src`, 0);
+        }
+        `result` = `dest`;
+      } else {
+        if (`src` === null) {
+          `result` = null;
+        }
+        else {
+          if (`dest` === null || `dest` === undefined || `dest`.length != `src`.length) {
+            `dest` = new Array(`src`.length);
+          }
+          `result` = `dest`;
+          for (var i = 0; i < `src`.length; ++i) {
+            `result`[i] = nimCopy(`result`[i], `src`[i], `ti`.base);
+          }
+        }
+      }
+    """
+  of tySequence, tyOpenArray:
     asm """
       if (`src` === null) {
         `result` = null;
       }
       else {
-        if (`dest` === null || `dest` === undefined) {
+        if (`dest` === null || `dest` === undefined || `dest`.length != `src`.length) {
           `dest` = new Array(`src`.length);
-        }
-        else {
-          `dest`.length = `src`.length;
         }
         `result` = `dest`;
         for (var i = 0; i < `src`.length; ++i) {
@@ -766,7 +790,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int 
 
 # Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
 # 'Math.trunc' for Nim's ``div`` and ``mod`` operators:
-const jsMathTrunc = """
+when defined(nimJsMathTruncPolyfill):
+  {.emit: """
 if (!Math.trunc) {
   Math.trunc = function(v) {
     v = +v;
@@ -774,5 +799,4 @@ if (!Math.trunc) {
     return (v - v % 1) || (v < 0 ? -0 : v === 0 ? v : 0);
   };
 }
-"""
-when not defined(nodejs): {.emit: jsMathTrunc .}
+""".}

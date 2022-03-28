@@ -122,23 +122,24 @@ proc getTempDirImpl(dir: string): string {.inline.} =
 proc genTempPath*(prefix, suffix: string, dir = ""): string =
   ## Generates a path name in `dir`.
   ##
-  ## If `dir` is empty, (`getTempDir <os.html#getTempDir>`_) will be used.
   ## The path begins with `prefix` and ends with `suffix`.
+  ##
+  ## .. note:: `dir` must exist (empty `dir` will resolve to `getTempDir <os.html#getTempDir>`_).
   let dir = getTempDirImpl(dir)
   result = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
 
 proc createTempFile*(prefix, suffix: string, dir = ""): tuple[cfile: File, path: string] =
   ## Creates a new temporary file in the directory `dir`.
-  ## 
+  ##
   ## This generates a path name using `genTempPath(prefix, suffix, dir)` and
   ## returns a file handle to an open file and the path of that file, possibly after
   ## retrying to ensure it doesn't already exist.
-  ## 
+  ##
   ## If failing to create a temporary file, `OSError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to close `result.cfile` and
   ##    remove `result.file` when no longer needed.
-  ## .. note:: `dir` must exist (empty `dir` will resolve to `getTempDir()`).
+  ## .. note:: `dir` must exist (empty `dir` will resolve to `getTempDir <os.html#getTempDir>`_).
   runnableExamples:
     import std/os
     doAssertRaises(OSError): discard createTempFile("", "", "nonexistent")
@@ -170,7 +171,7 @@ proc createTempDir*(prefix, suffix: string, dir = ""): string =
   ## If failing to create a temporary directory, `OSError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to remove the directory when no longer needed.
-  ## .. note:: `dir` must exist (empty `dir` will resolve to `getTempDir()`).
+  ## .. note:: `dir` must exist (empty `dir` will resolve to `getTempDir <os.html#getTempDir>`_).
   runnableExamples:
     import std/os
     doAssertRaises(OSError): discard createTempDir("", "", "nonexistent")

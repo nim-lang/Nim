@@ -39,7 +39,7 @@ proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
     result = s.name.s.mangle.rope
-    result.add "_"
+    result.add "__"
     result.add m.g.graph.ifaces[s.itemId.module].uniqueName
     result.add "_"
     result.add rope s.itemId.item
@@ -215,12 +215,19 @@ proc isObjLackingTypeField(typ: PType): bool {.inline.} =
   result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
       (typ[0] == nil) or isPureObject(typ))
 
-proc isInvalidReturnType(conf: ConfigRef; rettype: PType): bool =
+proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
   # Arrays and sets cannot be returned by a C procedure, because C is
   # such a poor programming language.
   # We exclude records with refs too. This enhances efficiency and
   # is necessary for proper code generation of assignments.
-  if rettype == nil: result = true
+  var rettype = typ
+  var isAllowedCall = true
+  if isProc:
+    rettype = rettype[0]
+    isAllowedCall = typ.callConv in {ccClosure, ccInline, ccNimCall}
+  if rettype == nil or (isAllowedCall and
+                    getSize(conf, rettype) > conf.target.floatSize*3):
+    result = true
   else:
     case mapType(conf, rettype, skResult)
     of ctArray:
@@ -256,11 +263,11 @@ proc addAbiCheck(m: BModule, t: PType, name: Rope) =
     # see `testCodegenABICheck` for example error message it generates
 
 
-proc fillResult(conf: ConfigRef; param: PNode) =
+proc fillResult(conf: ConfigRef; param: PNode, proctype: PType) =
   fillLoc(param.sym.loc, locParam, param, ~"Result",
           OnStack)
   let t = param.sym.typ
-  if mapReturnType(conf, t) != ctArray and isInvalidReturnType(conf, t):
+  if mapReturnType(conf, t) != ctArray and isInvalidReturnType(conf, proctype):
     incl(param.sym.loc.flags, lfIndirect)
     param.sym.loc.storage = OnUnknown
 
@@ -425,7 +432,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false) =
   params = nil
-  if t[0] == nil or isInvalidReturnType(m.config, t[0]):
+  if t[0] == nil or isInvalidReturnType(m.config, t):
     rettype = ~"void"
   else:
     rettype = getTypeDescAux(m, t[0], check, skResult)
@@ -460,12 +467,17 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       params.addf(", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
       arr = arr[0].skipTypes({tySink})
-  if t[0] != nil and isInvalidReturnType(m.config, t[0]):
+  if t[0] != nil and isInvalidReturnType(m.config, t):
     var arr = t[0]
     if params != nil: params.add(", ")
     if mapReturnType(m.config, t[0]) != ctArray:
-      params.add(getTypeDescWeak(m, arr, check, skResult))
-      params.add("*")
+      if isHeaderFile in m.flags:
+        # still generates types for `--header`
+        params.add(getTypeDescAux(m, arr, check, skResult))
+        params.add("*")
+      else:
+        params.add(getTypeDescWeak(m, arr, check, skResult))
+        params.add("*")
     else:
       params.add(getTypeDescAux(m, arr, check, skResult))
     params.addf(" Result", [])
@@ -582,7 +594,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
 
   if typ.kind == tyObject:
     if typ[0] == nil:
-      if (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags:
+      if lacksMTypeField(typ):
         appcg(m, result, " {$n", [])
       else:
         if optTinyRtti in m.config.globalOptions:

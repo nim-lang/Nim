@@ -290,10 +290,10 @@ block: # bug #10815
 
   const a = P()
   doAssert $a == ""
-  
+
 when defined osx: # xxx bug https://github.com/nim-lang/Nim/issues/10815#issuecomment-476380734
   block:
-    type CharSet {.union.} = object 
+    type CharSet {.union.} = object
       cs: set[char]
       vs: array[4, uint64]
     const a = Charset(cs: {'a'..'z'})
@@ -553,3 +553,22 @@ block: # bug #8015
     doAssert $viaProc.table[0] == "(kind: Fixed, cost: 999)"
     doAssert viaProc.table[1].handler() == 100
     doAssert viaProc.table[2].handler() == 200
+
+
+# bug #19198
+
+block:
+  type
+    Foo[n: static int] = int
+
+block:
+  static:
+    let x = int 1
+    echo x.type   # Foo
+
+block:
+  static:
+    let x = int 1
+    let y = x + 1
+    # Error: unhandled exception: value out of range: -8 notin 0 .. 65535 [RangeDefect]
+    echo y

@@ -61,12 +61,12 @@ type
   Task* = object ## `Task` contains the callback and its arguments.
     callback: proc (args: pointer) {.nimcall, gcsafe.}
     args: pointer
-    destroy: proc (args: pointer) {.nimcall.}
+    destroy: proc (args: pointer) {.nimcall, gcsafe.}
 
 
 proc `=copy`*(x: var Task, y: Task) {.error.}
 
-proc `=destroy`*(t: var Task) {.inline.} =
+proc `=destroy`*(t: var Task) {.inline, gcsafe.} =
   ## Frees the resources allocated for a `Task`.
   if t.args != nil:
     if t.destroy != nil:
@@ -219,7 +219,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
         let `objTemp` = cast[ptr `scratchObjType`](args)
         `functionStmtList`
 
-      proc `destroyName`(args: pointer) {.nimcall.} =
+      proc `destroyName`(args: pointer) {.gcsafe, nimcall.} =
         let `objTemp2` = cast[ptr `scratchObjType`](args)
         `tempNode`
 

@@ -5,6 +5,9 @@
 
 from math import trunc
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   Int128* = object
     udata: array[4, uint32]

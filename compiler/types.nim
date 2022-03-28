@@ -13,6 +13,9 @@ import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
   lineinfos, int128, modulegraphs, astmsgs
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   TPreferedDesc* = enum
     preferName, # default
@@ -896,6 +899,7 @@ type
     ExactConstraints
     ExactGcSafety
     AllowCommonBase
+    PickyCAliases  # be picky about the distinction between 'cint' and 'int32'
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
 
@@ -1120,15 +1124,20 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     case c.cmp
     of dcEq: return false
     of dcEqIgnoreDistinct:
-      while a.kind == tyDistinct: a = a[0]
-      while b.kind == tyDistinct: b = b[0]
+      a = a.skipTypes({tyDistinct, tyGenericInst})
+      b = b.skipTypes({tyDistinct, tyGenericInst})
       if a.kind != b.kind: return false
     of dcEqOrDistinctOf:
-      while a.kind == tyDistinct: a = a[0]
+      a = a.skipTypes({tyDistinct, tyGenericInst})
       if a.kind != b.kind: return false
 
+  #[
+    The following code should not run in the case either side is an generic alias,
+    but it's not presently possible to distinguish the genericinsts from aliases of
+    objects ie `type A[T] = SomeObject`
+  ]#
   # this is required by tunique_type but makes no sense really:
-  if x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
+  if tyDistinct notin {x.kind, y.kind} and x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
     let
       lhs = x.skipGenericAlias
       rhs = y.skipGenericAlias
@@ -1144,6 +1153,13 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
      tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
     result = sameFlags(a, b)
+    if result and PickyCAliases in c.flags:
+      # additional requirement for the caching of generics for importc'ed types:
+      # the symbols must be identical too:
+      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
+      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
+      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
+        result = symFlagsA == symFlagsB
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
     if result and a.len == b.len and a.len == 1:
@@ -1692,3 +1708,6 @@ proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
       result = allowPointerToChar
     else:
       discard
+
+proc lacksMTypeField*(typ: PType): bool {.inline.} =
+  (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags

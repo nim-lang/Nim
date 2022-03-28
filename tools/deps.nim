@@ -22,14 +22,14 @@ proc cloneDependency*(destDirBase: string, url: string, commit = commitHead,
   let name = p.splitFile.name
   var destDir = destDirBase
   if appendRepoName: destDir = destDir / name
-  let destDir2 = destDir.quoteShell
+  let quotedDestDir = destDir.quoteShell
   if not dirExists(destDir):
     # note: old code used `destDir / .git` but that wouldn't prevent git clone
     # from failing
-    execRetry fmt"git clone -q {url} {destDir2}"
+    execRetry fmt"git clone -q {url} {quotedDestDir}"
   if isGitRepo(destDir):
     let oldDir = getCurrentDir()
-    setCurrentDir(destDir2)
+    setCurrentDir(destDir)
     try:
       execRetry "git fetch -q"
       exec fmt"git checkout -q {commit}"

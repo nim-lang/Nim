@@ -160,7 +160,7 @@ when defined(nimHashOrdinalFixed):
                                    ## as well as their subtypes. See also
                                    ## `SomeOrdinal`.
 else:
-  # bootstrap <= 0.20.0
+  # bootstrap < 1.2.0
   type
     OrdinalImpl[T] {.magic: Ordinal.}
     Ordinal* = OrdinalImpl | uint | uint64
@@ -190,12 +190,17 @@ when defined(nimHasDeclaredMagic):
 else:
   proc declaredInScope*(x: untyped): bool {.magic: "DefinedInScope", noSideEffect, compileTime.}
 
-proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
+proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.
-  ## Cannot be overloaded.
   ##
-  ## See also:
-  ## * `unsafeAddr <#unsafeAddr,T>`_
+  ## .. note:: This works for `let` variables or parameters
+  ##   for better interop with C. When you use it to write a wrapper
+  ##   for a C library and take the address of `let` variables or parameters,
+  ##   you should always check that the original library
+  ##   does never write to data behind the pointer that is returned from
+  ##   this procedure.
+  ##
+  ## Cannot be overloaded.
   ##
   ## .. code-block:: Nim
   ##  var
@@ -207,13 +212,14 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
 
 proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory
-  ## location. This works even for `let` variables or parameters
-  ## for better interop with C and so it is considered even more
-  ## unsafe than the ordinary `addr <#addr,T>`_.
+  ## location.
   ##
-  ## **Note**: When you use it to write a wrapper for a C library, you should
-  ## always check that the original library does never write to data behind the
-  ## pointer that is returned from this procedure.
+  ## .. note:: This works for `let` variables or parameters
+  ##   for better interop with C. When you use it to write a wrapper
+  ##   for a C library and take the address of `let` variables or parameters,
+  ##   you should always check that the original library
+  ##   does never write to data behind the pointer that is returned from
+  ##   this procedure.
   ##
   ## Cannot be overloaded.
   discard
@@ -1126,7 +1132,7 @@ const
     ## Possible values:
     ## `"i386"`, `"alpha"`, `"powerpc"`, `"powerpc64"`, `"powerpc64el"`,
     ## `"sparc"`, `"amd64"`, `"mips"`, `"mipsel"`, `"arm"`, `"arm64"`,
-    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`.
+    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, '"loongarch64"'.
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -1189,8 +1195,8 @@ proc align(address, alignment: int): int =
   else:
     result = (address + (alignment - 1)) and not (alignment - 1)
 
-when defined(nimdoc):
-  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
+when defined(nimNoQuit):
+  proc quit*(errorcode: int = QuitSuccess) = discard "ignoring quit"
     ## Stops the program immediately with an exit code.
     ##
     ## Before stopping the program the "exit procedures" are called in the
@@ -1213,6 +1219,9 @@ when defined(nimdoc):
     ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
     ##   It does *not* call the garbage collector to free all the memory,
     ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
+
+elif defined(nimdoc):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
 
 elif defined(genode):
   include genode/env
@@ -1821,8 +1830,11 @@ when not defined(nimscript):
 when defined(nimV2):
   include system/arc
 
-import system/assertions
-export assertions
+when not defined(nimPreviewSlimSystem):
+  {.deprecated: """assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and
+                import `std/assertions`.""".}
+  import std/assertions
+  export assertions
 
 import system/iterators
 export iterators
@@ -2004,8 +2016,7 @@ elif hasAlloc:
         inc(i)
   {.pop.}
 
-proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
-  benign, sideEffect.}
+proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", benign, sideEffect.}
   ## Writes and flushes the parameters to the standard output.
   ##
   ## Special built-in that takes a variable number of arguments. Each argument
@@ -2122,7 +2133,7 @@ const
     ##   when (NimMajor, NimMinor, NimPatch) >= (1, 3, 1): discard
     # see also std/private/since
 
-  NimMinor* {.intdefine.}: int = 5
+  NimMinor* {.intdefine.}: int = 7
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
@@ -2142,6 +2153,10 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
   ## Deletes the item at index `i` by moving all `x[i+1..^1]` items by one position.
   ##
   ## This is an `O(n)` operation.
+  ##
+  ## .. note:: With `-d:nimStrictDelete`, an index error is produced when the index passed
+  ##    to it was out of bounds. `-d:nimStrictDelete` will become the default
+  ##    in upcoming versions.
   ##
   ## See also:
   ## * `del <#del,seq[T],Natural>`_ for O(1) operation
@@ -2307,6 +2322,15 @@ when notJSnotNims:
   proc setControlCHook*(hook: proc () {.noconv.})
     ## Allows you to override the behaviour of your application when CTRL+C
     ## is pressed. Only one such hook is supported.
+    ## Example:
+    ##
+    ## .. code-block:: Nim
+    ##   proc ctrlc() {.noconv.} =
+    ##     echo "Ctrl+C fired!"
+    ##     # do clean up stuff
+    ##     quit()
+    ##
+    ##   setControlCHook(ctrlc)
 
   when not defined(noSignalHandler) and not defined(useNimRtl):
     proc unsetControlCHook*()
@@ -2454,7 +2478,7 @@ when notJSnotNims:
     else:
       {.error: "Only closure function and iterator are allowed!".}
 
-  proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
+  proc finished*[T: proc](x: T): bool {.noSideEffect, inline, magic: "Finished".} =
     ## It can be used to determine if a first class iterator has finished.
     when T is "iterator":
       {.emit: """
@@ -2656,7 +2680,7 @@ proc slurp*(filename: string): string {.magic: "Slurp".}
   ## This is an alias for `staticRead <#staticRead,string>`_.
 
 proc staticRead*(filename: string): string {.magic: "Slurp".}
-  ## Compile-time `readFile <io.html#readFile,string>`_ proc for easy
+  ## Compile-time `readFile <syncio.html#readFile,string>`_ proc for easy
   ## `resource`:idx: embedding:
   ##
   ## The maximum file size limit that `staticRead` and `slurp` can read is
@@ -3126,8 +3150,11 @@ when defined(genode):
 import system/widestrs
 export widestrs
 
-import system/io
-export io
+when not defined(nimPreviewSlimSystem):
+  {.deprecated: """io is about to move out of system; use `-d:nimPreviewSlimSystem` and
+                import `std/syncio`.""".}
+  import std/syncio
+  export syncio
 
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr

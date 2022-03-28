@@ -13,6 +13,9 @@
 import
   ast, types, semdata, sigmatch, idents, aliases, parampatterns, trees
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   TPatternContext = object
     owner: PSym
@@ -36,7 +39,7 @@ proc putLazy(c: PPatternContext, sym: PSym, n: PNode) =
 proc matches(c: PPatternContext, p, n: PNode): bool
 
 proc canonKind(n: PNode): TNodeKind =
-  ## nodekind canonilization for pattern matching
+  ## nodekind canonicalization for pattern matching
   result = n.kind
   case result
   of nkCallKinds: result = nkCall

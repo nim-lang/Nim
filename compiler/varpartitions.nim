@@ -32,6 +32,9 @@ import ast, types, lineinfos, options, msgs, renderer, typeallowed, modulegraphs
 from trees import getMagic, isNoSideEffectPragma, stupidStmtListExpr
 from isolation_check import canAlias
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   AbstractTime = distinct int
 
@@ -479,7 +482,7 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
         # calls do construct, what we construct must be destroyed,
         # so dest cannot be a cursor:
         dest.flags.incl ownsData
-      elif n.typ.kind in {tyLent, tyVar}:
+      elif n.typ.kind in {tyLent, tyVar} and n.len > 1:
         # we know the result is derived from the first argument:
         var roots: seq[(PSym, int)]
         allRoots(n[1], roots, RootEscapes)
@@ -647,13 +650,6 @@ proc deps(c: var Partitions; dest, src: PNode) =
                 when explainCursors: echo "D not a cursor ", d.sym, " reassignedTo ", c.s[srcid].reassignedTo
                 c.s[vid].flags.incl preventCursor
 
-const
-  nodesToIgnoreSet = {nkNone..pred(nkSym), succ(nkSym)..nkNilLit,
-    nkTypeSection, nkProcDef, nkConverterDef,
-    nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
-    nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-    nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
-    nkTypeOfExpr, nkMixinStmt, nkBindStmt}
 
 proc potentialMutationViaArg(c: var Partitions; n: PNode; callee: PType) =
   if constParameters in c.goals and tfNoSideEffect in callee.flags:

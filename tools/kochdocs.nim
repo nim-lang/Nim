@@ -1,6 +1,9 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm, pegs, sequtils
+import os, strutils, osproc, sets, pathnorm, sequtils
+# XXX: Remove this feature check once the csources supports it.
+when defined(nimHasCastPragmaBlocks):
+  import std/pegs
 from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
@@ -8,7 +11,7 @@ const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
   # errormax: subsequent errors are probably consequences of 1st one; a simple
   # bug could cause unlimited number of errors otherwise, hard to debug in CI.
-  docDefines = "-d:nimExperimentalAsyncjsThen -d:nimExperimentalLinenoiseExtra"
+  docDefines = "-d:nimExperimentalLinenoiseExtra"
   nimArgs = "--errormax:3 --hint:Conf:off --hint:Path:off --hint:Processing:off --hint:XDeclaredButNotUsed:off --warning:UnusedImport:off -d:boot --putenv:nimversion=$# $#" % [system.NimVersion, docDefines]
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
@@ -108,7 +111,10 @@ proc getRst2html(): seq[string] =
   for a in walkDirRecFilter("doc"):
     let path = a.path
     if a.kind == pcFile and path.splitFile.ext == ".rst" and path.lastPathPart notin
-        ["docs.rst", "nimfix.rst"]:
+        ["docs.rst", "nimfix.rst",
+         "docstyle.rst" # docstyle.rst shouldn't be converted to html separately;
+                        # it's included in contributing.rst.
+        ]:
           # maybe we should still show nimfix, could help reviving it
           # `docs` is redundant with `overview`, might as well remove that file?
       result.add path
@@ -123,7 +129,7 @@ tut2.rst
 tut3.rst
 nimc.rst
 niminst.rst
-gc.rst
+mm.rst
 """.splitWhitespace().mapIt("doc" / it)
 
   doc0 = """
@@ -181,7 +187,6 @@ proc getDocList(): seq[string] =
 
   # don't ignore these even though in lib/system (not include files)
   const goodSystem = """
-lib/system/io.nim
 lib/system/nimscript.nim
 lib/system/assertions.nim
 lib/system/iterators.nim
@@ -295,6 +300,12 @@ proc nim2pdf(src: string, dst: string, nimArgs: string) =
     # `>` should work on windows, if not, we can use `execCmdEx`
     let cmd = "xelatex -interaction=nonstopmode -output-directory=$# $# > $#" % [outDir.quoteShell, texFile.quoteShell, xelatexLog.quoteShell]
     exec(cmd) # on error, user can inspect `xelatexLog`
+    if i == 1:  # build .ind file
+      var texFileBase = texFile
+      texFileBase.removeSuffix(".tex")
+      let cmd = "makeindex $# > $#" % [
+          texFileBase.quoteShell, xelatexLog.quoteShell]
+      exec(cmd)
   moveFile(texFile.changeFileExt("pdf"), dst)
 
 proc buildPdfDoc*(nimArgs, destPath: string) =
@@ -338,7 +349,9 @@ proc buildDocs*(args: string, localOnly = false, localOutDir = "") =
   if not localOnly:
     buildDocsDir(args, webUploadOutput / NimVersion)
 
-    let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
-    args = args.replace(gaFilter)
+    # XXX: Remove this feature check once the csources supports it.
+    when defined(nimHasCastPragmaBlocks):
+      let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
+      args = args.replace(gaFilter)
 
   buildDocsDir(args, localOutDir)

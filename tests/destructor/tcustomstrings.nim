@@ -75,7 +75,7 @@ proc add*(self: var mystring; y: mystring) =
 proc create*(lit: string): mystring =
   let newLen = lit.len
   ensure(result, newLen)
-  copyMem(addr result.data[result.len], unsafeAddr lit[0], newLen + 1)
+  copyMem(addr result.data[result.len], addr lit[0], newLen + 1)
   result.len = newLen
 
 proc `&`*(a, b: mystring): mystring =

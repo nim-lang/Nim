@@ -164,6 +164,9 @@ import hashes, tables, strutils, lexbase, streams, macros, parsejson
 import options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 export
   tables.`$`
 
@@ -201,6 +204,8 @@ type
       fields*: OrderedTable[string, JsonNode]
     of JArray:
       elems*: seq[JsonNode]
+
+const DepthLimit = 1000
 
 proc newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.
@@ -437,7 +442,7 @@ macro `%*`*(x: untyped): untyped =
   ## `%` for every element.
   result = toJsonImpl(x)
 
-proc `==`*(a, b: JsonNode): bool =
+proc `==`*(a, b: JsonNode): bool {.noSideEffect.} =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
@@ -464,12 +469,16 @@ proc `==`*(a, b: JsonNode): bool =
       if a.fields.len != b.fields.len: return false
       for key, val in a.fields:
         if not b.fields.hasKey(key): return false
-        if b.fields[key] != val: return false
+        when defined(nimHasEffectsOf):
+          {.noSideEffect.}:
+            if b.fields[key] != val: return false
+        else:
+          if b.fields[key] != val: return false
       result = true
 
 proc hash*(n: OrderedTable[string, JsonNode]): Hash {.noSideEffect.}
 
-proc hash*(n: JsonNode): Hash =
+proc hash*(n: JsonNode): Hash {.noSideEffect.} =
   ## Compute the hash for a JSON node
   case n.kind
   of JArray:
@@ -845,7 +854,7 @@ iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   for key, val in mpairs(node.fields):
     yield (key, val)
 
-proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
+proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool, depth = 0): JsonNode =
   ## Parses JSON from a JSON Parser `p`.
   case p.tok
   of tkString:
@@ -881,6 +890,8 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
     result = newJNull()
     discard getTok(p)
   of tkCurlyLe:
+    if depth > DepthLimit:
+      raiseParseErr(p, "}")
     result = newJObject()
     discard getTok(p)
     while p.tok != tkCurlyRi:
@@ -889,16 +900,18 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
       var key = p.a
       discard getTok(p)
       eat(p, tkColon)
-      var val = parseJson(p, rawIntegers, rawFloats)
+      var val = parseJson(p, rawIntegers, rawFloats, depth+1)
       result[key] = val
       if p.tok != tkComma: break
       discard getTok(p)
     eat(p, tkCurlyRi)
   of tkBracketLe:
+    if depth > DepthLimit:
+      raiseParseErr(p, "]")
     result = newJArray()
     discard getTok(p)
     while p.tok != tkBracketRi:
-      result.add(parseJson(p, rawIntegers, rawFloats))
+      result.add(parseJson(p, rawIntegers, rawFloats, depth+1))
       if p.tok != tkComma: break
       discard getTok(p)
     eat(p, tkBracketRi)

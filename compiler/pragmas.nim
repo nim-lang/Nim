@@ -14,6 +14,9 @@ import
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 from ic / ic import addCompilerProc
 
 const
@@ -31,7 +34,7 @@ const
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wEffectsOf, wTags, wLocks, wDelegator, wGcSafe,
     wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
-    wRequires, wEnsures}
+    wRequires, wEnsures, wEnforceNoRaises}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
@@ -44,18 +47,21 @@ const
     wDiscardable, wGensym, wInject, wRaises, wEffectsOf,
     wTags, wLocks, wGcSafe, wRequires, wEnsures}
   exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe, wNoSideEffect}
-  stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangeChecks,
-    wBoundChecks, wOverflowChecks, wNilChecks, wStaticBoundchecks,
-    wStyleChecks, wAssertions,
-    wWarnings, wHints,
-    wLineDir, wStackTrace, wLineTrace, wOptimization, wHint, wWarning, wError,
+  stmtPragmas* = {
+    wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
     wPassl, wPassc, wLocalPassc,
     wDeadCodeElimUnused,  # deprecated, always on
     wDeprecated,
-    wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
+    wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
-    wInjectStmt, wExperimental, wThis, wUsed, wInvariant, wAssume, wAssert}
+    wExperimental, wThis, wUsed, wInvariant, wAssume, wAssert}
+  stmtPragmasTopLevel* = {wChecks, wObjChecks, wFieldChecks, wRangeChecks,
+    wBoundChecks, wOverflowChecks, wNilChecks, wStaticBoundchecks,
+    wStyleChecks, wAssertions,
+    wWarnings, wHints,
+    wLineDir, wStackTrace, wLineTrace, wOptimization,
+    wFloatChecks, wInfChecks, wNanChecks}
   lambdaPragmas* = {FirstCallConv..LastCallConv,
     wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
@@ -650,7 +656,7 @@ proc pragmaRaisesOrTags(c: PContext, n: PNode) =
       x.typ = makeTypeFromExpr(c, x)
     else:
       var t = skipTypes(c.semTypeNode(c, x, nil), skipPtrs)
-      if t.kind != tyObject and not t.isMetaType:
+      if t.kind notin {tyObject, tyOr}:
         localError(c.config, x.info, errGenerated, "invalid type for raises/tags list")
       x.typ = t
 
@@ -1204,12 +1210,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wExportNims:
         if sym == nil: invalidPragma(c, it)
         else: magicsys.registerNimScriptSymbol(c.graph, sym)
-      of wInjectStmt:
-        warningDeprecated(c.config, it.info, "'.injectStmt' pragma is deprecated")
-        if it.kind notin nkPragmaCallKinds or it.len != 2:
-          localError(c.config, it.info, "expression expected")
-        else:
-          it[1] = c.semExpr(c, it[1])
       of wExperimental:
         if not isTopLevel(c):
           localError(c.config, n.info, "'experimental' pragma only valid as toplevel statement or in a 'push' environment")
@@ -1243,6 +1243,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         pragmaProposition(c, it)
       of wEnsures:
         pragmaEnsures(c, it)
+      of wEnforceNoRaises:
+        sym.flags.incl sfNeverRaises
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"

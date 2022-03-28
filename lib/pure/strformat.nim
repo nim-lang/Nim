@@ -316,6 +316,10 @@ single letter DSLs.
 import macros, parseutils, unicode
 import strutils except format
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 proc mkDigit(v: int, typ: char): string {.inline.} =
   assert(v < 26)
   if v < 10:
@@ -574,6 +578,9 @@ template formatValue(result: var string; value: cstring; specifier: string) =
   result.add value
 
 proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
+  template missingCloseChar =
+    error("invalid format string: missing closing character '" & closeChar & "'")
+
   if openChar == ':' or closeChar == ':':
     error "openChar and closeChar must not be ':'"
   var i = 0
@@ -618,6 +625,8 @@ proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
             let start = i
             inc i
             i += f.skipWhitespace(i)
+            if i == f.len:
+              missingCloseChar
             if f[i] == closeChar or f[i] == ':':
               result.add newCall(bindSym"add", res, newLit(subexpr & f[start ..< i]))
             else:
@@ -626,6 +635,9 @@ proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
           else: discard
           subexpr.add f[i]
           inc i
+
+        if i == f.len:
+          missingCloseChar
 
         var x: NimNode
         try:
@@ -639,10 +651,10 @@ proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
           while i < f.len and f[i] != closeChar:
             options.add f[i]
             inc i
+        if i == f.len:
+          missingCloseChar
         if f[i] == closeChar:
           inc i
-        else:
-          doAssert false, "invalid format string: missing '}'"
         result.add newCall(formatSym, res, x, newLit(options))
     elif f[i] == closeChar:
       if i<f.len-1 and f[i+1] == closeChar:

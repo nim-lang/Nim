@@ -29,6 +29,8 @@ type
     dontUseCache, useCache
 
 #proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: TransformBodyFlag): PNode
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 import closureiters, lambdalifting
 
@@ -128,6 +130,14 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   var tc = c.transCon
   if sfBorrow in s.flags and s.kind in routineKinds:
     # simply exchange the symbol:
+    var s = s
+    while true:
+      # Skips over all borrowed procs getting the last proc symbol without an implementation
+      let body = getBody(c.graph, s)
+      if body.kind == nkSym and sfBorrow in body.sym.flags and getBody(c.graph, body.sym).kind == nkSym:
+        s = body.sym
+      else:
+        break
     b = getBody(c.graph, s)
     if b.kind != nkSym: internalError(c.graph.config, n.info, "wrong AST for borrowed symbol")
     b = newSymNode(b.sym, n.info)
@@ -438,12 +448,12 @@ proc transformYield(c: PTransf, n: PNode): PNode =
   else:
     # we need to introduce new local variables:
     result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
-  if result.len > 0:
-    for idx in 0 ..< result.len:
-      var changeNode = result[idx]
-      changeNode.info = c.transCon.forStmt.info
-      for i, child in changeNode:
-        child.info = changeNode.info
+
+  for idx in 0 ..< result.len:
+    var changeNode = result[idx]
+    changeNode.info = c.transCon.forStmt.info
+    for i, child in changeNode:
+      child.info = changeNode.info
 
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
   result = transformSons(c, n)
@@ -746,7 +756,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   pushInfoContext(c.graph.config, n.info)
   inc(c.inlining)
   stmtList.add(transform(c, body))
-  #findWrongOwners(c, stmtList.pnode)
+  #findWrongOwners(c, stmtList.PNode)
   dec(c.inlining)
   popInfoContext(c.graph.config)
   popTransCon(c)
@@ -1067,11 +1077,13 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkAsgn:
     result = transformAsgn(c, n)
   of nkIdentDefs, nkConstDef:
-    result = n
+    result = newTransNode(n)
     result[0] = transform(c, n[0])
     # Skip the second son since it only contains an unsemanticized copy of the
     # variable type used by docgen
-    result[2] = transform(c, n[2])
+    let last = n.len-1
+    for i in 1..<last: result[i] = n[i]
+    result[last] = transform(c, n[last])
     # XXX comment handling really sucks:
     if importantComments(c.graph.config):
       result.comment = n.comment
@@ -1081,8 +1093,10 @@ proc transform(c: PTransf, n: PNode): PNode =
     # (bug #2604). We need to patch this environment here too:
     let a = n[1]
     if a.kind == nkSym:
-      n[1] = transformSymAux(c, a)
-    return n
+      result = copyTree(n)
+      result[1] = transformSymAux(c, a)
+    else:
+      result = n
   of nkExceptBranch:
     result = transformExceptBranch(c, n)
   of nkCheckedFieldExpr:

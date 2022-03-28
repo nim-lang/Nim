@@ -10,6 +10,7 @@ from algorithm import sorted
 
 {.experimental: "strictEffects".}
 {.push warningAsError[Effect]: on.}
+{.experimental: "strictFuncs".}
 
 # helper for testing double substitution side effects which are handled
 # by `evalOnceAs`
@@ -455,6 +456,31 @@ block:
   when not defined(js):
     # xxx: obscure CT error: basic_types.nim(16, 16) Error: internal error: symbol has no generated name: true
     doAssert: iter(3).mapIt(2*it).foldl(a + b) == 6
+
+block: # strictFuncs tests with ref object
+  type Foo = ref object
+
+  let foo1 = Foo()
+  let foo2 = Foo()
+  let foos = @[foo1, foo2]
+
+  # Procedures that are `func`
+  discard concat(foos, foos)
+  discard count(foos, foo1)
+  discard cycle(foos, 3)
+  discard deduplicate(foos)
+  discard minIndex(foos)
+  discard maxIndex(foos)
+  discard distribute(foos, 2)
+  var mutableFoos = foos
+  mutableFoos.delete(0..1)
+  mutableFoos.insert(foos)
+
+  # Some procedures that are `proc`, but were reverted from `func`
+  discard repeat(foo1, 3)
+  discard zip(foos, foos)
+  let fooTuples = @[(foo1, 1), (foo2, 2)]
+  discard unzip(fooTuples)
 
 template main =
   # xxx move all tests here

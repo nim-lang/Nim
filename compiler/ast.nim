@@ -13,6 +13,9 @@ import
   lineinfos, hashes, options, ropes, idents, int128, tables
 from strutils import toLowerAscii
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 export int128
 
 type
@@ -501,7 +504,7 @@ type
     nfHasComment # node has a comment
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 43)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 45)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -656,7 +659,7 @@ type
     mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
     mCharToStr, mBoolToStr,
-    mIntToStr, mInt64ToStr, mFloatToStr, # for -d:nimVersion140
+    mIntToStr, mInt64ToStr, mFloatToStr, # for compiling nimStdlibVersion < 1.5.1 (not bootstrapping)
     mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
@@ -673,7 +676,7 @@ type
     mSwap, mIsNil, mArrToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy, mTrace,
-    mDefault, mUnown, mIsolate, mAccessEnv, mReset,
+    mDefault, mUnown, mFinished, mIsolate, mAccessEnv, mAccessTypeField, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal, mIterableType,
@@ -2102,3 +2105,11 @@ proc skipAddr*(n: PNode): PNode {.inline.} =
 proc isNewStyleConcept*(n: PNode): bool {.inline.} =
   assert n.kind == nkTypeClassTy
   result = n[0].kind == nkEmpty
+
+const
+  nodesToIgnoreSet* = {nkNone..pred(nkSym), succ(nkSym)..nkNilLit,
+    nkTypeSection, nkProcDef, nkConverterDef,
+    nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
+    nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
+    nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
+    nkTypeOfExpr, nkMixinStmt, nkBindStmt}

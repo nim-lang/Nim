@@ -13,6 +13,9 @@ import
   modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling,
   finalast, tables
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when defined(useDfa):
   import dfa
 
@@ -246,9 +249,14 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: Co
     let msgKind = if onlyWarning: warnGcUnsafe2 else: errGenerated
     case u.kind
     of skLet, skVar:
-      message(conf, s.info, msgKind,
-        ("'$#' is not GC-safe as it accesses '$#'" &
-        " which is a global using GC'ed memory") % [s.name.s, u.name.s])
+      if u.typ.skipTypes(abstractInst).kind == tyProc:
+        message(conf, s.info, msgKind,
+          "'$#' is not GC-safe as it calls '$#'" %
+          [s.name.s, u.name.s])
+      else:
+        message(conf, s.info, msgKind,
+          ("'$#' is not GC-safe as it accesses '$#'" &
+          " which is a global using GC'ed memory") % [s.name.s, u.name.s])
     of routineKinds:
       # recursive call *always* produces only a warning so the full error
       # message is printed:
@@ -297,12 +305,11 @@ proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
   if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
       s.magic != mNimvm:
     if s.guard != nil: guardGlobal(a, n, s.guard)
-    if strictEffects notin a.c.features:
-      if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
-          (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
-        #if a.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n)
-        markGcUnsafe(a, s)
-      markSideEffect(a, s, n.info)
+    if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
+        (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
+      #if a.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n)
+      markGcUnsafe(a, s)
+    markSideEffect(a, s, n.info)
   if s.owner != a.owner and s.kind in {skVar, skLet, skForVar, skResult, skParam} and
      {sfGlobal, sfThread} * s.flags == {}:
     a.isInnerProc = true
@@ -848,11 +855,15 @@ proc trackCall(tracked: PEffects; n: PNode) =
         elif isIndirectCall(tracked, a):
           assumeTheWorst(tracked, n, op)
           gcsafeAndSideeffectCheck()
+        else:
+          if strictEffects in tracked.c.features and a.kind == nkSym and
+              a.sym.kind in routineKinds:
+            propagateEffects(tracked, n, a.sym)
       else:
         mergeRaises(tracked, effectList[exceptionEffects], n)
         mergeTags(tracked, effectList[tagEffects], n)
         gcsafeAndSideeffectCheck()
-    if a.kind != nkSym or a.sym.magic != mNBindSym:
+    if a.kind != nkSym or a.sym.magic notin {mNBindSym, mFinished, mExpandToAst, mQuoteAst}:
       for i in 1..<n.len:
         trackOperandForIndirectCall(tracked, n[i], op, i, a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
@@ -877,7 +888,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
         optStaticBoundsCheck in tracked.currOptions:
       checkBounds(tracked, n[1], n[2])
 
-    if a.kind != nkSym or a.sym.magic != mRunnableExamples:
+    if a.kind != nkSym or a.sym.magic notin {mRunnableExamples, mNBindSym, mExpandToAst, mQuoteAst}:
       for i in 0..<n.safeLen:
         track(tracked, n[i])
 
@@ -963,6 +974,8 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.exc = newNodeI(nkArgList, pragma.info)
       bc.exc.add n
+  of wUncheckedAssign:
+    discard "handled in sempass1"
   else:
     localError(tracked.config, pragma.info,
         "invalid pragma block: " & $pragma)
@@ -1420,7 +1433,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let p = s.ast[pragmasPos]
   let raisesSpec = effectSpec(p, wRaises)
   if not isNil(raisesSpec):
-    checkRaisesSpec(g, emitWarnings, raisesSpec, t.exc, "can raise an unlisted exception: ",
+    checkRaisesSpec(g, false, raisesSpec, t.exc, "can raise an unlisted exception: ",
                     hints=on, subtypeRelation, hintsArg=s.ast[0])
     # after the check, use the formal spec:
     effects[exceptionEffects] = raisesSpec
@@ -1429,7 +1442,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
 
   let tagsSpec = effectSpec(p, wTags)
   if not isNil(tagsSpec):
-    checkRaisesSpec(g, emitWarnings, tagsSpec, t.tags, "can have an unlisted effect: ",
+    checkRaisesSpec(g, false, tagsSpec, t.tags, "can have an unlisted effect: ",
                     hints=off, subtypeRelation)
     # after the check, use the formal spec:
     effects[tagEffects] = tagsSpec

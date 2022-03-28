@@ -354,7 +354,7 @@ var onUnhandledException*: (proc (errorMsg: string) {.
   ## The default is to write a stacktrace to `stderr` and then call `quit(1)`.
   ## Unstable API.
 
-proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
+proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy, gcsafe.} =
   when hasSomeStackTrace:
     var buf = newStringOfCap(2000)
     if e.trace.len == 0:
@@ -362,7 +362,8 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     else:
       var trace = $e.trace
       add(buf, trace)
-      `=destroy`(trace)
+      {.gcsafe.}:
+        `=destroy`(trace)
     add(buf, "Error: unhandled exception: ")
     add(buf, e.msg)
     add(buf, " [")
@@ -373,7 +374,8 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
       onUnhandledException(buf)
     else:
       showErrorMessage2(buf)
-    `=destroy`(buf)
+    {.gcsafe.}:
+      `=destroy`(buf)
   else:
     # ugly, but avoids heap allocations :-)
     template xadd(buf, s, slen) =
@@ -387,7 +389,8 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     if e.trace.len != 0:
       var trace = $e.trace
       add(buf, trace)
-      `=destroy`(trace)
+      {.gcsafe.}:
+        `=destroy`(trace)
     add(buf, "Error: unhandled exception: ")
     add(buf, e.msg)
     add(buf, " [")
@@ -398,7 +401,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     else:
       showErrorMessage(buf.addr, L)
 
-proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
+proc reportUnhandledError(e: ref Exception) {.nodestroy, gcsafe.} =
   if unhandledExceptionHook != nil:
     unhandledExceptionHook(e)
   when hostOS != "any":

@@ -12,7 +12,10 @@
 import
   intsets, strutils, options, ast, astalgo, msgs,
   idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos,
-  liftdestructors
+  liftdestructors, typeallowed
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 discard """
   The basic approach is that captured vars need to be put on the heap and
@@ -191,9 +194,7 @@ proc interestingVar(s: PSym): bool {.inline.} =
     s.typ.kind notin {tyStatic, tyTypeDesc}
 
 proc illegalCapture(s: PSym): bool {.inline.} =
-  result = skipTypes(s.typ, abstractInst).kind in
-                   {tyVar, tyOpenArray, tyVarargs, tyLent} or
-      s.kind == skResult
+  result = classifyViewType(s.typ) != noView or s.kind == skResult
 
 proc isInnerProc(s: PSym): bool =
   if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and s.magic == mNone:

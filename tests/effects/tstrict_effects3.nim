@@ -15,3 +15,15 @@ proc fn(a: int, p1, p2: proc()) {.effectsOf: p1.} =
 proc main() {.raises: [ValueError].} =
   fn(1, proc()=discard, proc() = raise newException(IOError, "foo"))
 main()
+
+# bug #19159
+
+import macros
+
+func mkEnter() =
+  template helper =
+    discard
+  when defined pass:
+    helper()
+  else:
+    let ast = getAst(helper())

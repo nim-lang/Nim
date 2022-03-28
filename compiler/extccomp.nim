@@ -16,6 +16,9 @@ import ropes, platform, condsyms, options, msgs, lineinfos, pathutils
 
 import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar]
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
@@ -649,8 +652,10 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
       close(f)
 
 proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
+  # we want to generate the hash file unconditionally
+  let extFileChanged = externalFileChanged(conf, c)
   if optForceFullMake notin conf.globalOptions and fileExists(c.obj) and
-      not externalFileChanged(conf, c):
+      not extFileChanged:
     c.flags.incl CfileFlag.Cached
   else:
     # make sure Nim keeps recompiling the external file on reruns

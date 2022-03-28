@@ -78,7 +78,8 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
 
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   let x = arg.skipConv
-  if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyUntyped:
+  if (x.kind == nkCurly and formal.kind == tySet and formal.base.kind != tyGenericParam) or
+    (x.kind in {nkPar, nkTupleConstr}) and formal.kind notin {tyUntyped, tyBuiltInTypeClass}:
     changeType(c, x, formal, check=true)
   result = arg
   result = skipHiddenSubConv(result, c.graph, c.idgen)
@@ -107,12 +108,13 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     else:
       result = fitNodePostMatch(c, formal, result)
 
-proc fitNodeForLocalVar(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
+proc fitNodeConsiderViewType(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   let a = fitNode(c, formal, arg, info)
   if formal.kind in {tyVar, tyLent}:
     #classifyViewType(formal) != noView:
     result = newNodeIT(nkHiddenAddr, a.info, formal)
     result.add a
+    formal.flags.incl tfVarIsPtr
   else:
    result = a
 
@@ -175,6 +177,12 @@ proc commonType*(c: PContext; x, y: PType): PType =
         result = b #.skipIntLit
       elif a.kind in IntegralTypes and a.n != nil:
         result = a #.skipIntLit
+  elif a.kind == tyProc and b.kind == tyProc:
+    if a.callConv == ccClosure and b.callConv != ccClosure:
+      result = x
+    elif compatibleEffects(a, b) != efCompat or
+        (b.flags * {tfNoSideEffect, tfGcSafe}) < (a.flags * {tfNoSideEffect, tfGcSafe}):
+      result = y
   else:
     var k = tyNone
     if a.kind in {tyRef, tyPtr}:

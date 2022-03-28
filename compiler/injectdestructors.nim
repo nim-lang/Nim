@@ -19,6 +19,9 @@ import
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 from trees import exprStructuralEquivalent, getRoot
 
 type

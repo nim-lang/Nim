@@ -191,7 +191,6 @@ runnableExamples:
 ##
 ## * `json module<json.html>`_ for table-like structure which allows
 ##   heterogeneous members
-## * `sharedtables module<sharedtables.html>`_ for shared hash table support
 ## * `strtabs module<strtabs.html>`_ for efficient hash tables
 ##   mapping from strings to strings
 ## * `hashes module<hashes.html>`_ for helper functions for hashing

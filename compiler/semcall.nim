@@ -703,7 +703,16 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1..<fn.typ.n.len:
     let param = fn.typ.n[i]
-    let t = skipTypes(param.typ, abstractVar-{tyTypeDesc, tyDistinct})
+    const desiredTypes = abstractVar + {tyCompositeTypeClass} - {tyTypeDesc, tyDistinct}
+    #[.
+      # We only want the type not any modifiers such as `ptr`, `var`, `ref` ...
+      # tyCompositeTypeClass is here for
+      # when using something like:
+      type Foo[T] = distinct int
+      proc `$`(f: Foo): string {.borrow.}
+      # We want to skip the `Foo` to get `int`
+    ]#
+    let t = skipTypes(param.typ, desiredTypes)
     if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
     var x: PType
     if param.typ.kind == tyVar:
