@@ -867,6 +867,8 @@ type
       #procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages regarding gcsafe
       semcheckedBody*: PNode   # proc body after semantic checking
+      when not defined(nimOrcic):
+        transformedBody*: PNode  # cached body after transf pass
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
@@ -1718,7 +1720,8 @@ proc transitionRoutineSymKind*(s: PSym, kind: range[skProc..skTemplate]) =
   transitionSymKindCommon(kind)
   s.gcUnsafetyReason = obj.gcUnsafetyReason
   s.semcheckedBody = obj.semcheckedBody
-  #s.transformedBody = obj.transformedBody
+  when not defined(nimOrcic):
+    s.transformedBody = obj.transformedBody
 
 proc transitionToLet*(s: PSym) =
   transitionSymKindCommon(skLet)

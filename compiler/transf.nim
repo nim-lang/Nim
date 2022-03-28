@@ -28,7 +28,9 @@ type
   TransformBodyFlag* = enum
     dontUseCache, useCache
 
-#proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: TransformBodyFlag): PNode
+when not defined(nimOrcic):
+  proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: TransformBodyFlag): PNode
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -115,8 +117,9 @@ proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode): PNode =
 proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
   if s.typ != nil and s.typ.callConv == ccClosure:
-    #if s.kind in routineKinds:
-    #  discard transformBody(c.graph, c.idgen, s, useCache)
+    when not defined(nimOrcic):
+      if s.kind in routineKinds:
+        discard transformBody(c.graph, c.idgen, s, useCache)
     if s.kind == skIterator:
       if c.tooEarly: return n
       else: return liftIterSym(c.graph, n, c.idgen, getCurrOwner(c))
@@ -712,9 +715,10 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   newC.forLoopBody = loopBody
   # this can fail for 'nimsuggest' and 'check':
   if iter.kind != skIterator: return result
-  if c.graph.config.symbolFiles != disabledSf:
-    storeExpansion(c.graph.encoders[c.module.position],
-                   c.graph.packed[c.module.position].fromDisk, call[0].info, iter)
+  when not defined(nimOrcic):
+    if c.graph.config.symbolFiles != disabledSf:
+      storeExpansion(c.graph.encoders[c.module.position],
+                    c.graph.packed[c.module.position].fromDisk, call[0].info, iter)
 
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
@@ -752,7 +756,10 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
 
-  let body = getBody(c.graph, iter) # transformBody(c.graph, c.idgen, iter, useCache)
+  when not defined(nimOrcic):
+    let body = getBody(c.graph, iter)
+  else:
+    let body = transformBody(c.graph, c.idgen, iter, useCache)
   pushInfoContext(c.graph.config, n.info)
   inc(c.inlining)
   stmtList.add(transform(c, body))
@@ -1182,10 +1189,13 @@ template liftDefer(c, root) =
 proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: TransformBodyFlag): PNode =
   assert prc.kind in routineKinds
 
-  if nfTransf in getBody(g, prc).flags or prc.kind in {skTemplate}:
+  if prc.transformedBody != nil:
+    result = prc.transformedBody
+  elif nfTransf in getBody(g, prc).flags or prc.kind in {skTemplate}:
     result = getBody(g, prc)
   else:
-    #prc.transformedBody = newNode(nkEmpty) # protects from recursion
+    when not defined(nimOrcic):
+      prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "", idgen)
     result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen)
     result = processTransf(c, result, prc)
@@ -1197,7 +1207,7 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: Transfo
 
     incl(result.flags, nfTransf)
 
-    when false:
+    when not defined(nimOrcic):
       if flag == useCache or prc.typ.callConv == ccInline:
         # genProc for inline procs will be called multiple times from different modules,
         # it is important to transform exactly once to get sym ids and locations right

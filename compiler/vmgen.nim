@@ -2259,7 +2259,10 @@ proc genProc(c: PCtx; s: PSym): int =
     c.procToCodePos[s.id] = result
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
-    let body = transformBodyForVM(c.graph, c.idgen, s)
+    when not defined(nimOrcic):
+      let body = transformBody(c.graph, c.idgen, s, if not isCompileTimeProc(s): useCache else: dontUseCache)
+    else:
+      let body = transformBodyForVM(c.graph, c.idgen, s)
     #getBody(c.graph, s) #transformBody(c.graph, c.idgen, s, cache = not isCompileTimeProc(s))
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)

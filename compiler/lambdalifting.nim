@@ -14,6 +14,9 @@ import
   idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos,
   liftdestructors, typeallowed
 
+when not defined(nimOrcic):
+  import transf
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -437,7 +440,10 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     if innerProc:
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
-        let body = getBody(c.graph, s) # transformBody(c.graph, c.idgen, s, useCache)
+        when not defined(nimOrcic):
+          let body = transformBody(c.graph, c.idgen, s, useCache)
+        else:
+          let body = getBody(c.graph, s)
         detectCapturedVars(body, s, c)
     let ow = s.skipGenericOwner
     if ow == owner:
@@ -733,12 +739,21 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
         #  echo renderTree(s.getBody, {renderIds})
         let oldInContainer = c.inContainer
         c.inContainer = 0
-        var body = getBody(d.graph, s) #transformBody(d.graph, d.idgen, s, dontUseCache)
-        body = liftCapturedVars(body, s, d, c)
-        if not c.envVars.getOrDefault(s.id).isNil:
-          body = newTree(nkStmtList, rawClosureCreation(s, d, c, n.info), body)
-          finishClosureCreation(s, d, c, n.info, body)
-        setRoutineBody(d.graph, s, body)
+        when not defined(nimOrcic):
+          var body = transformBody(d.graph, d.idgen, s, dontUseCache)
+          body = liftCapturedVars(body, s, d, c)
+          if c.envVars.getOrDefault(s.id).isNil:
+            s.transformedBody = body
+          else:
+            s.transformedBody = newTree(nkStmtList, rawClosureCreation(s, d, c, n.info), body)
+            finishClosureCreation(s, d, c, n.info, s.transformedBody)
+        else:
+          var body = getBody(d.graph, s) #transformBody(d.graph, d.idgen, s, dontUseCache)
+          body = liftCapturedVars(body, s, d, c)
+          if not c.envVars.getOrDefault(s.id).isNil:
+            body = newTree(nkStmtList, rawClosureCreation(s, d, c, n.info), body)
+            finishClosureCreation(s, d, c, n.info, body)
+          setRoutineBody(d.graph, s, body)
         c.inContainer = oldInContainer
 
       if s.typ.callConv == ccClosure:
