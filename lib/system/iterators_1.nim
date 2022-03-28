@@ -104,10 +104,16 @@ template dotdotImpl(t) {.dirty.} =
     ##
     ## See also:
     ## * [..<](#..<.i,T,T)
-    var res = a
-    while res <= b:
-      yield res
-      inc(res)
+    if a <= b:
+      var res = a
+      while true:
+        yield res
+        if res >= b: break
+        when t is uint8 | uint16 | uint32 | uint64:
+          inc(res)
+        else:
+          # bypass overflow checks
+          res = res +% 1
 
 dotdotImpl(int64)
 dotdotImpl(int32)
