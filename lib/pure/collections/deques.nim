@@ -10,10 +10,11 @@
 ## An implementation of a `deque`:idx: (double-ended queue).
 ## The underlying implementation uses a `seq`.
 ##
-## Deques are implicitly initialised as empty, similar to tables and seqs. But
-## trying get an individual value from the deque will result in an `IndexError`
-## if compiled with `boundChecks` turned on. Compiling without this option (or
-## with `-d:danger` which disables it) may return garbage or crash the program.
+## Deques are implicitly initialised as empty, similar to tables and seqs.
+## Trying get an individual value from an empty deque will result in an
+## `IndexError` if compiled with `boundChecks` turned on. Compiling without
+## this option (or with `-d:danger` which disables it) may return garbage or
+## crash the program.
 ##
 ## As such, a check to see if the deque is empty is needed before any
 ## access, unless your program logic guarantees it indirectly.
@@ -49,7 +50,7 @@ runnableExamples:
 
 import std/private/since
 
-import math, hashes
+import std / [math, hashes]
 
 type
   Deque*[T] = object
@@ -65,7 +66,7 @@ const
 
 template initImpl(result: typed, initialCapacity: int) =
   assert isPowerOfTwo(initialCapacity)
-  result.mask = initialCapacity-1
+  result.mask = initialCapacity - 1
   newSeq(result.data, initialCapacity)
 
 template checkIfInitialized(deq: typed) =
@@ -74,7 +75,7 @@ template checkIfInitialized(deq: typed) =
       initImpl(deq, nimDequeDefaultInitialCapacity)
 
 proc initDeque*[T](initialCapacity: int = nimDequeDefaultInitialCapacity): Deque[T] =
-  ## Create a new empty deque with a given capacity. An implicitly defined
+  ## Creates a new empty deque with a given capacity. An implicitly defined
   ## deque will have a capacity of 0 and be grown to fit elements on the first
   ## data insertion.
   ##
@@ -82,7 +83,7 @@ proc initDeque*[T](initialCapacity: int = nimDequeDefaultInitialCapacity): Deque
   ## as a performance optimization. The length of a newly created deque will
   ## still be 0.
   ##
-  ## ``initialCapacity`` must be a power of two (default: 4).
+  ## `initialCapacity` must be a power of two (default: 4).
   ## If you need to accept runtime values for this you could use the
   ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
   ## `math module<math.html>`_.
@@ -92,7 +93,7 @@ proc initDeque*[T](initialCapacity: int = nimDequeDefaultInitialCapacity): Deque
   result.initImpl(initialCapacity)
 
 proc len*[T](deq: Deque[T]): int {.inline.} =
-  ## Return the number of elements in the `deq`.
+  ## Returns the number of elements in the `deq`.
   result = deq.count
 
 template high*[T](deq: Deque[T]): int =
