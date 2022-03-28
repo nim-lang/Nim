@@ -110,3 +110,16 @@ proc parse*(l: JsonLib, s: cstring): JsRoot {.importcpp.}
 since (1, 5):
   func debugger*() {.importjs: "debugger@".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger
+
+  func copyWithin*[T](self: openArray[T]; target: int): seq[T] {.importjs: "#.copyWithin(#)".}
+  func copyWithin*[T](self: openArray[T]; target, start: int): seq[T] {.importjs: "#.copyWithin(#, #)".}
+  func copyWithin*[T](self: openArray[T]; target, start, ends: int): seq[T] {.importjs: "#.copyWithin(#, #, #)".} =
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin
+    ## `copyWithin` uses shallow copy.
+    runnableExamples:
+      assert ['a', 'b', 'c', 'd', 'e'].copyWithin(0, 3, 4) == @['d', 'b', 'c', 'd', 'e']
+      assert ['a', 'b', 'c', 'd', 'e'].copyWithin(1, 3) == @['a', 'd', 'e', 'd', 'e']
+      assert [1, 2, 3, 4, 5].copyWithin(-2) == @[1, 2, 3, 1, 2]
+      assert [1, 2, 3, 4, 5].copyWithin(0, 3) == @[4, 5, 3, 4, 5]
+      assert [1, 2, 3, 4, 5].copyWithin(0, 3, 4) == @[4, 2, 3, 4, 5]
+      assert [1, 2, 3, 4, 5].copyWithin(-2, -3, -1) == @[1, 2, 3, 3, 4]

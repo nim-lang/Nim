@@ -16,6 +16,9 @@ import std/private/since
 
 import strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when defined(windows):
   import winlean
   from os import absolutePath

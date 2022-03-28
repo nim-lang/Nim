@@ -133,6 +133,9 @@ import
   renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos,
   tables, options
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   Ctx = object
     g: ModuleGraph
@@ -414,8 +417,11 @@ proc exprToStmtList(n: PNode): tuple[s, res: PNode] =
 
 
 proc newEnvVarAsgn(ctx: Ctx, s: PSym, v: PNode): PNode =
-  result = newTree(nkFastAsgn, ctx.newEnvVarAccess(s), v)
-  result.info = v.info
+  if isEmptyType(v.typ):
+    result = v
+  else:
+    result = newTree(nkFastAsgn, ctx.newEnvVarAccess(s), v)
+    result.info = v.info
 
 proc addExprAssgn(ctx: Ctx, output, input: PNode, sym: PSym) =
   if input.kind == nkStmtListExpr:
@@ -427,8 +433,7 @@ proc addExprAssgn(ctx: Ctx, output, input: PNode, sym: PSym) =
 
 proc convertExprBodyToAsgn(ctx: Ctx, exprBody: PNode, res: PSym): PNode =
   result = newNodeI(nkStmtList, exprBody.info)
-  if exprBody.typ != nil:
-    ctx.addExprAssgn(result, exprBody, res)
+  ctx.addExprAssgn(result, exprBody, res)
 
 proc newNotCall(g: ModuleGraph; e: PNode): PNode =
   result = newTree(nkCall, newSymNode(g.getSysMagic(e.info, "not", mNot), e.info), e)
@@ -606,6 +611,12 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
             internalError(ctx.g.config, "lowerStmtListExpr(nkCaseStmt): " & $branch.kind)
         result.add(n)
         result.add(ctx.newEnvVarAccess(tmp))
+      elif n[0].kind == nkStmtListExpr:
+        result = newNodeI(nkStmtList, n.info)
+        let (st, ex) = exprToStmtList(n[0])
+        result.add(st)
+        n[0] = ex
+        result.add(n)
 
   of nkCallKinds, nkChckRange, nkChckRangeF, nkChckRange64:
     var ns = false
@@ -1343,13 +1354,15 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
   case n.kind
   of nkTryStmt:
     let f = n.lastSon
+    var didAddSomething = false
     if f.kind == nkFinally:
       c.finallys.add f.lastSon
+      didAddSomething = true
 
     for i in 0 ..< n.len:
       result[i] = preprocess(c, n[i])
 
-    if f.kind == nkFinally:
+    if didAddSomething:
       discard c.finallys.pop()
 
   of nkWhileStmt, nkBlockStmt:
@@ -1376,7 +1389,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
         result = newNodeI(nkStmtList, n.info)
         for i in countdown(c.finallys.high, fin):
           var vars = FreshVarsContext(tab: initTable[int, PSym](), config: c.config, info: n.info, idgen: c.idgen)
-          result.add freshVars(preprocess(c, c.finallys[i]), vars)
+          result.add freshVars(copyTree(c.finallys[i]), vars)
           c.idgen = vars.idgen
         result.add n
   of nkSkip: discard

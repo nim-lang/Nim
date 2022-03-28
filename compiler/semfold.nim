@@ -17,6 +17,9 @@ import
 
 from system/memory import nimCStrLen
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state
   result = newType(tyError, nextTypeId(g.idgen), g.owners[^1])
@@ -133,7 +136,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
   of mCard: result = newIntNodeT(toInt128(nimsets.cardSet(g.config, a)), n, idgen, g)
   of mBitnotI:
     if n.typ.isUnsigned:
-      result = newIntNodeT(bitnot(getInt(a)).maskBytes(int(n.typ.size)), n, idgen, g)
+      result = newIntNodeT(bitnot(getInt(a)).maskBytes(int(getSize(g.config, n.typ))), n, idgen, g)
     else:
       result = newIntNodeT(bitnot(getInt(a)), n, idgen, g)
   of mLengthArray: result = newIntNodeT(lengthOrd(g.config, a.typ), n, idgen, g)
@@ -143,8 +146,8 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
     elif a.kind in {nkStrLit..nkTripleStrLit}:
       if a.typ.kind == tyString:
         result = newIntNodeT(toInt128(a.strVal.len), n, idgen, g)
-      elif a.typ.kind == tyCString:
-        result = newIntNodeT(toInt128(nimCStrLen(a.strVal)), n, idgen, g)
+      elif a.typ.kind == tyCstring:
+        result = newIntNodeT(toInt128(nimCStrLen(a.strVal.cstring)), n, idgen, g)
     else:
       result = newIntNodeT(toInt128(a.len), n, idgen, g)
   of mUnaryPlusI, mUnaryPlusF64: result = a # throw `+` away
@@ -248,23 +251,23 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
   of mBitorI, mOr: result = newIntNodeT(bitor(getInt(a), getInt(b)), n, idgen, g)
   of mBitxorI, mXor: result = newIntNodeT(bitxor(getInt(a), getInt(b)), n, idgen, g)
   of mAddU:
-    let val = maskBytes(getInt(a) + getInt(b), int(n.typ.size))
+    let val = maskBytes(getInt(a) + getInt(b), int(getSize(g.config, n.typ)))
     result = newIntNodeT(val, n, idgen, g)
   of mSubU:
-    let val = maskBytes(getInt(a) - getInt(b), int(n.typ.size))
+    let val = maskBytes(getInt(a) - getInt(b), int(getSize(g.config, n.typ)))
     result = newIntNodeT(val, n, idgen, g)
     # echo "subU: ", val, " n: ", n, " result: ", val
   of mMulU:
-    let val = maskBytes(getInt(a) * getInt(b), int(n.typ.size))
+    let val = maskBytes(getInt(a) * getInt(b), int(getSize(g.config, n.typ)))
     result = newIntNodeT(val, n, idgen, g)
   of mModU:
-    let argA = maskBytes(getInt(a), int(a.typ.size))
-    let argB = maskBytes(getInt(b), int(a.typ.size))
+    let argA = maskBytes(getInt(a), int(getSize(g.config, a.typ)))
+    let argB = maskBytes(getInt(b), int(getSize(g.config, a.typ)))
     if argB != Zero:
       result = newIntNodeT(argA mod argB, n, idgen, g)
   of mDivU:
-    let argA = maskBytes(getInt(a), int(a.typ.size))
-    let argB = maskBytes(getInt(b), int(a.typ.size))
+    let argA = maskBytes(getInt(a), int(getSize(g.config, a.typ)))
+    let argB = maskBytes(getInt(b), int(getSize(g.config, a.typ)))
     if argB != Zero:
       result = newIntNodeT(argA div argB, n, idgen, g)
   of mLeSet: result = newIntNodeT(toInt128(ord(containsSets(g.config, a, b))), n, idgen, g)
@@ -292,13 +295,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
     else: result = newStrNodeT("true", n, g)
   of mFloatToStr: result = newStrNodeT($getFloat(a), n, g)
   of mCStrToStr, mCharToStr:
-    if a.kind == nkBracket:
-      var s = ""
-      for b in a.sons:
-        s.add b.getStrOrChar
-      result = newStrNodeT(s, n, g)
-    else:
-      result = newStrNodeT(getStrOrChar(a), n, g)
+    result = newStrNodeT(getStrOrChar(a), n, g)
   of mStrToStr: result = newStrNodeT(getStrOrChar(a), n, g)
   of mEnumToStr: result = newStrNodeT(ordinalValToString(a, g), n, g)
   of mArrToSeq:
@@ -578,7 +575,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
           result = newIntNodeT(firstOrd(g.config, n[1].typ), n, idgen, g)
       of mHigh:
         if skipTypes(n[1].typ, abstractVar+{tyUserTypeClassInst}).kind notin
-            {tySequence, tyString, tyCString, tyOpenArray, tyVarargs}:
+            {tySequence, tyString, tyCstring, tyOpenArray, tyVarargs}:
           if skipTypes(n[1].typ, abstractVarRange).kind in tyFloat..tyFloat64:
             result = newFloatNodeT(lastFloat(n[1].typ), n, g)
           else:
@@ -685,7 +682,8 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
   of nkDerefExpr, nkHiddenDeref:
     let a = getConstExpr(m, n[0], idgen, g)
     if a != nil and a.kind == nkNilLit:
-       localError(g.config, n.info, "nil dereference is not allowed")
+      result = nil
+      #localError(g.config, n.info, "nil dereference is not allowed")
   of nkCast:
     var a = getConstExpr(m, n[1], idgen, g)
     if a == nil: return

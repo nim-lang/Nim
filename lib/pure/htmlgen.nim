@@ -322,7 +322,7 @@ macro html*(e: varargs[untyped]): untyped =
 
 macro hr*(): untyped =
   ## Generates the HTML `hr` element.
-  result = xmlCheckedTag(newNimNode(nnkArglist), "hr", commonAttr, "", true)
+  result = xmlCheckedTag(newNimNode(nnkArgList), "hr", commonAttr, "", true)
 
 macro i*(e: varargs[untyped]): untyped =
   ## Generates the HTML `i` element.

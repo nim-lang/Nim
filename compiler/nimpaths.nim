@@ -17,7 +17,11 @@ interpolation variables:
 Unstable API
 ]##
 
-import std/[os,strutils]
+import os, strutils
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 const
   docCss* = "$nimr/doc/nimdoc.css"

@@ -3,7 +3,10 @@
 ## hold all from `low(BiggestInt)` to `high(BiggestUInt)`, This
 ## type is for that purpose.
 
-from std/math import trunc
+from math import trunc
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   Int128* = object
@@ -378,7 +381,7 @@ proc `*`*(lhs, rhs: Int128): Int128 =
 proc `*=`*(a: var Int128, b: Int128) =
   a = a * b
 
-import std/bitops
+import bitops
 
 proc fastLog2*(a: Int128): int =
   if a.udata[3] != 0:

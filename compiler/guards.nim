@@ -12,6 +12,9 @@
 import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents,
   saturate, modulegraphs, options, lineinfos, int128
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const
   someEq = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
     mEqStr, mEqSet, mEqCString}
@@ -441,8 +444,14 @@ proc sameTree*(a, b: PNode): bool =
 proc hasSubTree(n, x: PNode): bool =
   if n.sameTree(x): result = true
   else:
-    for i in 0..n.safeLen-1:
-      if hasSubTree(n[i], x): return true
+    case n.kind
+    of nkEmpty..nkNilLit:
+      result = n.sameTree(x)
+    of nkFormalParams:
+      discard
+    else:
+      for i in 0..<n.len:
+        if hasSubTree(n[i], x): return true
 
 proc invalidateFacts*(s: var seq[PNode], n: PNode) =
   # We are able to guard local vars (as opposed to 'let' variables)!

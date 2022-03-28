@@ -163,7 +163,7 @@ when true: #embeddingTest
     """
 
     # Expression template
-    proc test_expression(nums: openarray[int] = []): string =
+    proc test_expression(nums: openArray[int] = []): string =
         var i = 2
         tmpli html"""
             $(no_substitution())
@@ -171,7 +171,7 @@ when true: #embeddingTest
             <div id="age">Age: $($nums[i] & "!!")</div>
         """
 
-    proc test_statements(nums: openarray[int] = []): string =
+    proc test_statements(nums: openArray[int] = []): string =
         tmpli html"""
             $(test_expression(nums))
             $if true {

@@ -86,7 +86,7 @@ Async traceback:
     asyncfutures\.nim\(\d+?\)\s+?read
   \]#
 Exception message: b failure
-Exception type:
+
 
 bar failure
 Async traceback:
@@ -114,7 +114,7 @@ Async traceback:
     asyncfutures\.nim\(\d+?\)\s+?read
   \]#
 Exception message: bar failure
-Exception type:
+
 """
 
 # TODO: is asyncmacro good enough location for fooIter traceback/debugging? just put the callsite info for all?
