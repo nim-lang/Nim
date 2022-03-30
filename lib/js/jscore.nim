@@ -123,3 +123,29 @@ since (1, 5):
       assert [1, 2, 3, 4, 5].copyWithin(0, 3) == @[4, 5, 3, 4, 5]
       assert [1, 2, 3, 4, 5].copyWithin(0, 3, 4) == @[4, 2, 3, 4, 5]
       assert [1, 2, 3, 4, 5].copyWithin(-2, -3, -1) == @[1, 2, 3, 3, 4]
+
+
+since (1, 7):
+  func isFrozen*(obj: auto): bool {.importjs: "Object.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/isFrozen
+
+  func isSealed*(obj: auto): bool {.importjs: "Object.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/isSealed
+
+  func isExtensible*(obj: auto): bool {.importjs: "Object.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/isExtensible
+
+  func preventExtensions*(obj: auto): auto {.importjs: "Object.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/preventExtensions
+
+  func seal*(obj: auto): auto {.importjs: "Object.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/seal
+
+  func freeze*(obj: auto): auto {.importjs: "Object.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/freeze
+
+  func hasOwn*(instance: auto; prop: cstring): bool {.importjs: "Object.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwn
+
+  func defineProperty*(obj: auto; prop: cstring; desc: auto): auto {.importjs: "Object.$1(#, #, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
