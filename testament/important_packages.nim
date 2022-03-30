@@ -64,7 +64,7 @@ pkg "docopt"
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
 pkg "fidget"
-pkg "fragments", "nim c -r fragments/dsl.nim", allowFailure = true # pending https://github.com/nim-lang/packages/issues/2115 
+pkg "fragments", "nim c -r fragments/dsl.nim", allowFailure = true # pending https://github.com/nim-lang/packages/issues/2115
 pkg "fusion"
 pkg "gara"
 pkg "glob"
@@ -158,7 +158,7 @@ pkg "unicodedb", "nim c -d:release -r tests/tests.nim"
 pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "unpack"
 pkg "weave", "nimble test_gc_arc"
-pkg "websocket", "nim c websocket.nim"
+# pkg "websocket", "nim c websocket.nim"  # pending https://github.com/nim-lang/Nim/pull/19644
 pkg "winim", "nim c winim.nim"
 pkg "with"
 pkg "ws", allowFailure = true
