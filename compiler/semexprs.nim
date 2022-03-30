@@ -2769,6 +2769,12 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
 
+proc semPragmaStmt(c: PContext; n: PNode) =
+  if c.p.owner.kind == skModule:
+    pragma(c, c.p.owner, n, stmtPragmas+stmtPragmasTopLevel, true)
+  else:
+    pragma(c, c.p.owner, n, stmtPragmas, true)
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
@@ -3017,7 +3023,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkUsingStmt: result = semUsing(c, n)
   of nkAsmStmt: result = semAsm(c, n)
   of nkYieldStmt: result = semYield(c, n)
-  of nkPragma: pragma(c, c.p.owner, n, stmtPragmas, true)
+  of nkPragma: semPragmaStmt(c, n)
   of nkIteratorDef: result = semIterator(c, n)
   of nkProcDef: result = semProc(c, n)
   of nkFuncDef: result = semFunc(c, n)
