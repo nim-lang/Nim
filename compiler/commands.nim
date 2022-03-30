@@ -508,7 +508,7 @@ proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
   else:
     conf.selectedGC = gcArc
     defineSymbol(conf.symbols, "gcarc")
-  
+
   defineSymbol(conf.symbols, "gcdestructors")
   incl conf.globalOptions, optSeqDestructors
   incl conf.globalOptions, optTinyRtti
@@ -1074,7 +1074,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optEnableDeepCopy}, arg, pass, info)
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
     handleStdinInput(conf)
-  of "nilseqs", "nilchecks", "mainmodule", "m", "symbol", "taintmode", "cs", "deadcodeelim": warningOptionNoop(switch)
+  of "nilseqs", "nilchecks", "mainmodule", "m", "symbol", "taintmode", "cs": warningOptionNoop(switch)
   of "nimmainprefix": conf.nimMainPrefix = arg
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
