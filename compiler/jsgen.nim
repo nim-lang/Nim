@@ -771,9 +771,6 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   if catchBranchesExist:
     p.body.add("++excHandler;\L")
   var tmpFramePtr = rope"F"
-  if optStackTrace notin p.options:
-    tmpFramePtr = p.getTemp(true)
-    line(p, tmpFramePtr & " = framePtr;\L")
   lineF(p, "try {$n", [])
   var a: TCompRes
   gen(p, n[0], a)
@@ -782,7 +779,8 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   if catchBranchesExist:
     p.body.addf("--excHandler;$n} catch (EXCEPTION) {$n var prevJSError = lastJSError;$n" &
         " lastJSError = EXCEPTION;$n --excHandler;$n", [])
-    line(p, "framePtr = $1;$n" % [tmpFramePtr])
+    if hasFrameInfo(p):
+      line(p, "framePtr = $1;$n" % [tmpFramePtr])
   while i < n.len and n[i].kind == nkExceptBranch:
     if n[i].len == 1:
       # general except section:
@@ -841,7 +839,8 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       line(p, "}\L")
     lineF(p, "lastJSError = prevJSError;$n")
   line(p, "} finally {\L")
-  line(p, "framePtr = $1;$n" % [tmpFramePtr])
+  if hasFrameInfo(p):
+    line(p, "framePtr = $1;$n" % [tmpFramePtr])
   if i < n.len and n[i].kind == nkFinally:
     genStmt(p, n[i][0])
   line(p, "}\L")
