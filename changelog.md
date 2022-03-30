@@ -51,6 +51,9 @@ becomes an alias for `addr`.
 - Remove deprecated `osproc.poDemon`, symbol with typo.
 
 
+- Remove deprecated `{.deadCodeElim.}` pragma.
+
+
 ## Language changes
 
 - Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
