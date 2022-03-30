@@ -1878,13 +1878,12 @@ proc withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =
 
   var retFuture = newFuture[bool]("asyncdispatch.`withTimeout`")
   var timeoutFuture = sleepAsync(timeout)
-  fut.callback =
-    proc () =
-      if not retFuture.finished:
-        if fut.failed:
-          retFuture.fail(fut.error)
-        else:
-          retFuture.complete(true)
+  fut.addCallback do ():
+    if not retFuture.finished:
+      if fut.failed:
+        retFuture.fail(fut.error)
+      else:
+        retFuture.complete(true)
   timeoutFuture.callback =
     proc () =
       if not retFuture.finished: retFuture.complete(false)
