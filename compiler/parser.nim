@@ -2401,7 +2401,9 @@ proc parseTopLevelStmt(p: var Parser): PNode =
   while true:
     # nimpretty support here
     if p.tok.indent != 0:
-      if p.firstTok and p.tok.indent < 0: discard
+      if p.firstTok and p.tok.strongSpaceA > 0:
+        parMessage(p, errInvalidIndentation)
+      elif p.firstTok and p.tok.indent < 0: discard
       elif p.tok.tokType != tkSemiColon:
         # special casing for better error messages:
         if p.tok.tokType == tkOpr and p.tok.ident.s == "*":
