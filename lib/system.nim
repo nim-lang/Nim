@@ -1139,6 +1139,12 @@ const
   # emit this flag
   # for string literals, it allows for some optimizations.
 
+  nimDefaultInitialCapacity* {.intdefine.} = 64
+    ## Default initial capacity for various containers
+
+  #defaultInitialSize* {.deprecated: "Use nimDefaultInitialCapacity instead".} = nimDefaultInitialCapacity
+  defaultInitialSize* = nimDefaultInitialCapacity
+
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own

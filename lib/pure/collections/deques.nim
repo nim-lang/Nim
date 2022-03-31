@@ -63,7 +63,7 @@ type
     head, tail, count, mask: int
 
 const
-  nimDequeDefaultInitialCapacity* {.intdefine.} = 4
+  nimDequeDefaultInitialCapacity* {.intdefine.} = 4 # Maybe this should be nimDefaultInitialCapacity as well?
 
 template initImpl(result: typed, initialCapacity: int) =
   assert isPowerOfTwo(initialCapacity)
@@ -313,14 +313,17 @@ proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
   result.head = 0
   result.count = x.len
   result.tail = x.len
-  if x.len.isPowerOfTwo:
-    result.data.add x
-  else:
-    let n = x.len.nextPowerOfTwo
-    result.data = newSeqOfCap[T](n)
-    result.data.add x
-    result.data.setLen n
-  result.mask = result.data.len - 1
+  let n =
+    if x.len.isPowerOfTwo:
+      result.data.add x
+      x.len
+    else:
+      let n = x.len.nextPowerOfTwo
+      result.data = newSeqOfCap[T](n)
+      result.data.add x
+      result.data.setLen x.len
+      n
+  result.mask = n - 1
 
 proc peekFirst*[T](deq: Deque[T]): lent T {.inline.} =
   ## Returns the first element of `deq`, but does not remove it from the deque.
@@ -493,3 +496,9 @@ proc hash*[A](d: Deque[A]): Hash =
   for h in d:
     result = result !& hash(h)
   result = !$result
+
+proc `==`*[A](a, b: Deque[A]): bool =
+  if a.len == b.len:
+    for i in 0..a.high:
+      if not a[i] == b[i]: return false
+    return true

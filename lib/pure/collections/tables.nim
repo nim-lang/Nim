@@ -217,7 +217,7 @@ type
     ## <#newTable>`_.
 
 const
-  nimTableDefaultInitialCapacity* {.intdefine.} = 64
+  nimTableDefaultInitialCapacity* {.intdefine.} = nimDefaultInitialCapacity
 
 # ------------------------------ helpers ---------------------------------
 

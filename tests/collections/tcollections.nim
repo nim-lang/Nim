@@ -4,7 +4,7 @@ discard """
 
 # see also: tdeques, tlists, tcritbits
 
-import sets, tables, sequtils
+import sets, tables, sequtils, deques
 
 block tapply:
   var x = @[1, 2, 3]
