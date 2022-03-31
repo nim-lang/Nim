@@ -16,7 +16,7 @@
 ##
 ## The following syntax is supported when arguments for the `shortNoVal` and
 ## `longNoVal` parameters, which are
-## `described later<#shortnoval-and-longnoval>`_, are not provided:
+## `described later<#nimshortnoval-and-nimlongnoval>`_, are not provided:
 ##
 ## 1. Short options: `-abcd`, `-e:5`, `-e=5`
 ## 2. Long options: `--foo:bar`, `--foo=bar`, `--foo`
