@@ -23,9 +23,13 @@ suite "inet_ntop tests":
       discard wsaStartup(0x101'i16, wsa.addr)
 
   test "IP V4":
-    var ip4 = 0x10111213
+    # regular
+    var ip4 = InAddr()
+    ip4.s_addr = 0x10111213'u32
+    check: ip4.s_addr == 0x10111213'u32
+
     var buff: array[0..255, char]
-    let r = inet_ntop(AF_INET, ip4.addr, buff[0].addr, buff.sizeof.int32)
+    let r = inet_ntop(AF_INET, cast[pointer](ip4.s_addr.addr), buff[0].addr, buff.len.int32)
     let res = if r == nil: "" else: $r
     check: res == "19.18.17.16"
 
