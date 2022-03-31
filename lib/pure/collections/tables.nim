@@ -123,7 +123,7 @@ runnableExamples:
   var letterFrequencies = initCountTable[char]()
   for c in myString:
     letterFrequencies.inc(c)
-  assert $letterFrequencies == "{'d': 1, 'r': 2, 'c': 1, 'a': 5, 'b': 2}"
+  assert $letterFrequencies == "{'d': 1, 'r': 2, 'c': 1, 'b': 2, 'a': 5}"
 
 ##
 ## ----
