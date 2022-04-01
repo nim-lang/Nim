@@ -203,7 +203,7 @@ proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
   ##
   ## `shortNoVal` and `longNoVal` are used to specify which options
   ## do not take values. See the `documentation about these
-  ## parameters<#shortnoval-and-longnoval>`_ for more information on
+  ## parameters<#nimshortnoval-and-nimlongnoval>`_ for more information on
   ## how this affects parsing.
   ##
   ## See also:
@@ -465,7 +465,7 @@ iterator getopt*(cmdline: seq[string] = @[],
   ##
   ## `shortNoVal` and `longNoVal` are used to specify which options
   ## do not take values. See the `documentation about these
-  ## parameters<#shortnoval-and-longnoval>`_ for more information on
+  ## parameters<#nimshortnoval-and-nimlongnoval>`_ for more information on
   ## how this affects parsing.
   ##
   ## There is no need to check for `cmdEnd` while iterating.
