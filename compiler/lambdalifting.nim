@@ -275,16 +275,11 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
 proc freshVarForClosureIter*(g: ModuleGraph; s: PSym; idgen: IdGenerator; owner: PSym): PNode =
   let envParam = getHiddenParam(g, owner)
   let obj = envParam.typ.skipTypes({tyOwned, tyRef, tyPtr})
-  addField(obj, s, g.cache, idgen)
+  let field = addField(obj, s, g.cache, idgen)
 
   var access = newSymNode(envParam)
   assert obj.kind == tyObject
-  let field = getFieldFromObj(obj, s)
-  if field != nil:
-    result = rawIndirectAccess(access, field, s.info)
-  else:
-    localError(g.config, s.info, "internal error: cannot generate fresh variable")
-    result = access
+  result = rawIndirectAccess(access, field, s.info)
 
 # ------------------ new stuff -------------------------------------------
 
@@ -452,7 +447,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
             if s.name.id == getIdent(c.graph.cache, ":state").id:
               obj.n[0].sym.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
             else:
-              addField(obj, s, c.graph.cache, c.idgen)
+              discard addField(obj, s, c.graph.cache, c.idgen)
     # direct or indirect dependency:
     elif (innerProc and s.typ.callConv == ccClosure) or interestingVar(s):
       discard """
@@ -474,7 +469,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       if interestingVar(s) and not c.capturedVars.containsOrIncl(s.id):
         let obj = c.getEnvTypeForOwner(ow, n.info).skipTypes({tyOwned, tyRef, tyPtr})
         #getHiddenParam(owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
-        addField(obj, s, c.graph.cache, c.idgen)
+        discard addField(obj, s, c.graph.cache, c.idgen)
       # create required upFields:
       var w = owner.skipGenericOwner
       if isInnerProc(w) or owner.isIterator:
