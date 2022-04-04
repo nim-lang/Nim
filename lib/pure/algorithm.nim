@@ -224,7 +224,7 @@ proc lowerBound*[T, K](a: openArray[T], key: K,
   ## (i.e. greater or equal to) `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence `thing` and you call
   ## `insert(thing, elm, lowerBound(thing, elm))`
-  ## elm will be inserted and the sequence will still be sorted.
+  ## `elm` will be inserted and the sequence will still be sorted.
   ## Assumes that `a` is sorted according to `cmp`.
   ##
   ## If an invalid range is passed, it raises `IndexDefect`.
@@ -259,7 +259,7 @@ proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
   ## (i.e. greater or equal to) `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence `thing` and you call
   ## `insert(thing, elm, lowerBound(thing, elm))`
-  ## elm will be inserted and the sequence will still be sorted.
+  ## `elm` will be inserted and the sequence will still be sorted.
   ## Assumes that `a` is sorted.
   ##
   ## This version uses the default comparison function `cmp`.
@@ -274,7 +274,7 @@ proc upperBound*[T, K](a: openArray[T], key: K,
   ## `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence `thing` and you call
   ## `insert(thing, elm, upperBound(thing, elm))`
-  ## elm will be inserted and the sequence will still be sorted.
+  ## `elm` will be inserted and the sequence will still be sorted.
   ## Assumes that `a` is sorted according to `cmp`.
   ##
   ## If an invalid range is passed, it raises `IndexDefect`.
@@ -309,7 +309,7 @@ proc upperBound*[T](a: openArray[T], key: T): int = upperBound(a, key, cmp[T])
   ## `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence `thing` and you call
   ## `insert(thing, elm, upperBound(thing, elm))`
-  ## elm will be inserted and the sequence will still be sorted.
+  ## `elm` will be inserted and the sequence will still be sorted.
   ## Assumes that `a` is sorted.
   ##
   ## This version uses the default comparison function `cmp`.
