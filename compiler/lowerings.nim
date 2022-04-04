@@ -221,7 +221,7 @@ proc lookupInRecord(n: PNode, id: ItemId): PSym =
     if n.sym.itemId.module == id.module and n.sym.itemId.item == -abs(id.item): result = n.sym
   else: discard
 
-proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym {.discardable.} =
+proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym =
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
   var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len),

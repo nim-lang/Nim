@@ -444,7 +444,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
             if s.name.id == getIdent(c.graph.cache, ":state").id:
               obj.n[0].sym.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
             else:
-              addField(obj, s, c.graph.cache, c.idgen)
+              discard addField(obj, s, c.graph.cache, c.idgen)
     # direct or indirect dependency:
     elif (innerProc and s.typ.callConv == ccClosure) or interestingVar(s):
       discard """
@@ -466,7 +466,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       if interestingVar(s) and not c.capturedVars.containsOrIncl(s.id):
         let obj = c.getEnvTypeForOwner(ow, n.info).skipTypes({tyOwned, tyRef, tyPtr})
         #getHiddenParam(owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
-        addField(obj, s, c.graph.cache, c.idgen)
+        discard addField(obj, s, c.graph.cache, c.idgen)
       # create required upFields:
       var w = owner.skipGenericOwner
       if isInnerProc(w) or owner.isIterator:
