@@ -222,9 +222,9 @@ proc lowerBound*[T, K](a: openArray[T], key: K,
                        cmp: proc(x: T, k: K): int {.closure.}): int {.effectsOf: cmp.} =
   ## Returns the index of the first element in `a` that is not less than
   ## (i.e. greater or equal to) `key`, or last if no such element is found.
-  ## In other words if you have a sorted sequence and you call
+  ## In other words if you have a sorted sequence `thing` and you call
   ## `insert(thing, elm, lowerBound(thing, elm))`
-  ## the sequence will still be sorted.
+  ## elm will be inserted and the sequence will still be sorted.
   ## Assumes that `a` is sorted according to `cmp`.
   ##
   ## If an invalid range is passed, it raises `IndexDefect`.
@@ -257,9 +257,9 @@ proc lowerBound*[T, K](a: openArray[T], key: K,
 proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
   ## Returns the index of the first element in `a` that is not less than
   ## (i.e. greater or equal to) `key`, or last if no such element is found.
-  ## In other words if you have a sorted sequence and you call
+  ## In other words if you have a sorted sequence `thing` and you call
   ## `insert(thing, elm, lowerBound(thing, elm))`
-  ## the sequence will still be sorted.
+  ## elm will be inserted and the sequence will still be sorted.
   ## Assumes that `a` is sorted.
   ##
   ## This version uses the default comparison function `cmp`.
@@ -272,9 +272,9 @@ proc upperBound*[T, K](a: openArray[T], key: K,
                        cmp: proc(x: T, k: K): int {.closure.}): int {.effectsOf: cmp.} =
   ## Returns the index of the first element in `a` that is greater than
   ## `key`, or last if no such element is found.
-  ## In other words if you have a sorted sequence and you call
+  ## In other words if you have a sorted sequence `thing` and you call
   ## `insert(thing, elm, upperBound(thing, elm))`
-  ## the sequence will still be sorted.
+  ## elm will be inserted and the sequence will still be sorted.
   ## Assumes that `a` is sorted according to `cmp`.
   ##
   ## If an invalid range is passed, it raises `IndexDefect`.
@@ -307,9 +307,9 @@ proc upperBound*[T, K](a: openArray[T], key: K,
 proc upperBound*[T](a: openArray[T], key: T): int = upperBound(a, key, cmp[T])
   ## Returns the index of the first element in `a` that is greater than
   ## `key`, or last if no such element is found.
-  ## In other words if you have a sorted sequence and you call
+  ## In other words if you have a sorted sequence `thing` and you call
   ## `insert(thing, elm, upperBound(thing, elm))`
-  ## the sequence will still be sorted.
+  ## elm will be inserted and the sequence will still be sorted.
   ## Assumes that `a` is sorted.
   ##
   ## This version uses the default comparison function `cmp`.
