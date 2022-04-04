@@ -48,7 +48,7 @@ block:
   var x: ref int = nil
   doAssert cast[int](cast[ptr int](x)) == 0
 
-block:
+block: # cast of nil
   block:
     static:
       let a = cast[pointer](nil)
@@ -71,7 +71,33 @@ block:
     static:
       doAssert cast[RootRef](nil).repr == "nil"
 
-  # Issue #15730, not fixed yet
-  # block:
-  #   static:
-  #     doAssert cast[cstring](nil).repr == "nil"
+  when false: # xxx bug #15730, not fixed yet
+    block:
+      static:
+        doAssert cast[cstring](nil).repr == "nil"
+
+template main() =
+  # xxx move all under here to get tested in VM
+  block: # cast of enum
+    type Koo = enum k1, k2
+    type Goo = enum g1, g2
+    type Boo = enum b1 = -1, b2, b3, b4
+    type Coo = enum c1 = -1i8, c2, c3, c4
+    when nimvm:
+      # xxx: Error: VM does not support 'cast' from tyEnum to tyEnum
+      discard
+    else:
+      doAssert cast[Koo](k2) == k2
+      doAssert cast[Goo](k2) == g2
+      doAssert cast[Goo](k2.ord) == g2
+
+      doAssert b3.ord == 1
+      doAssert cast[Koo](b3) == k2
+      doAssert cast[Boo](k2) == b3
+
+      doAssert c3.ord == 1
+      doAssert cast[Koo](c3) == k2
+      doAssert cast[Coo](k2) == c3
+
+static: main()
+main()

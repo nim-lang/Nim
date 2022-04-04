@@ -16,6 +16,9 @@ import ".." / [ast, modulegraphs, trees, extccomp, btrees,
 
 import tables
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import packed_ast, ic, bitabs
 
 proc replayStateChanges*(module: PSym; g: ModuleGraph) =

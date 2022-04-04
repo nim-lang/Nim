@@ -233,6 +233,43 @@ template main =
     doAssert l.toSeq == [1]
     doAssert l.remove(l.head) == true
     doAssert l.toSeq == []
+  
+  block issue19297: # add (appends a shallow copy)
+    var a: SinglyLinkedList[int]
+    var b: SinglyLinkedList[int]
+
+    doAssert a.toSeq == @[]
+    a.add(1)
+    doAssert a.toSeq == @[1]
+    a.add(b)
+    doAssert a.toSeq == @[1]
+    a.add(2)
+    doAssert a.toSeq == @[1, 2]
+  
+  block issue19314: # add (appends a shallow copy)
+    var a: DoublyLinkedList[int]
+    var b: DoublyLinkedList[int]
+
+    doAssert a.toSeq == @[]
+    a.add(1)
+    doAssert a.toSeq == @[1]
+    a.add(b)
+    doAssert a.toSeq == @[1]
+    a.add(2)
+    doAssert a.toSeq == @[1, 2]
+
+  block RemoveLastNodeFromSinglyLinkedList:
+    var list = initSinglyLinkedList[string]()
+    let n1 = newSinglyLinkedNode("sonic")
+    let n2 = newSinglyLinkedNode("the")
+    let n3 = newSinglyLinkedNode("tiger")
+    let n4 = newSinglyLinkedNode("hedgehog")
+    list.add(n1)
+    list.add(n2)
+    list.add(n3)
+    list.remove(n3)
+    list.add(n4)
+    doAssert list.toSeq == @["sonic", "the", "hedgehog"]
 
 static: main()
 main()

@@ -603,12 +603,10 @@ proc isValid*[A](s: HashSet[A]): bool {.deprecated:
   ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initHashSet>`_ or `init proc <#init,HashSet[A]>`_).
   ##
-  ## **Examples:**
-  ##
-  ## .. code-block ::
-  ##   proc savePreferences(options: HashSet[string]) =
-  ##     assert options.isValid, "Pass an initialized set!"
-  ##     # Do stuff here, may crash in release builds!
+  runnableExamples:
+    proc savePreferences(options: HashSet[string]) =
+      assert options.isValid, "Pass an initialized set!"
+      # Do stuff here, may crash in release builds!
   result = s.data.len > 0
 
 

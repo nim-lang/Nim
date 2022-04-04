@@ -10,23 +10,23 @@
 ## .. warning:: This module was added in Nim 1.6. If you are using it for cryptographic purposes,
 ##   keep in mind that so far this has not been audited by any security professionals,
 ##   therefore may not be secure.
-## 
+##
 ## `std/sysrand` generates random numbers from a secure source provided by the operating system.
-## It is also called Cryptographically secure pseudorandom number generator.
-## It should be unpredictable enough for cryptographic applications,
+## It is a cryptographically secure pseudorandom number generator
+## and should be unpredictable enough for cryptographic applications,
 ## though its exact quality depends on the OS implementation.
 ##
-## | Targets    | Implementation|
-## | :---         | ----:       |
-## | Windows | `BCryptGenRandom`_ |
-## | Linux | `getrandom`_ |
-## | MacOSX | `getentropy`_ |
-## | IOS | `SecRandomCopyBytes`_ |
-## | OpenBSD | `getentropy openbsd`_ |
-## | FreeBSD | `getrandom freebsd`_ |
-## | JS(Web Browser) | `getRandomValues`_ |
-## | Nodejs | `randomFillSync`_ |
-## | Other Unix platforms | `/dev/urandom`_ |
+## | Targets              | Implementation        |
+## | :---                 | ----:                 |
+## | Windows              | `BCryptGenRandom`_    |
+## | Linux                | `getrandom`_          |
+## | MacOSX               | `getentropy`_         |
+## | iOS                  | `SecRandomCopyBytes`_ |
+## | OpenBSD              | `getentropy openbsd`_ |
+## | FreeBSD              | `getrandom freebsd`_  |
+## | JS (Web Browser)     | `getRandomValues`_    |
+## | Node.js              | `randomFillSync`_     |
+## | Other Unix platforms | `/dev/urandom`_       |
 ##
 ## .. _BCryptGenRandom: https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
 ## .. _getrandom: https://man7.org/linux/man-pages/man2/getrandom.2.html
@@ -37,6 +37,11 @@
 ## .. _getRandomValues: https://www.w3.org/TR/WebCryptoAPI/#Crypto-method-getRandomValues
 ## .. _randomFillSync: https://nodejs.org/api/crypto.html#crypto_crypto_randomfillsync_buffer_offset_size
 ## .. _/dev/urandom: https://en.wikipedia.org/wiki//dev/random
+##
+## On a Linux target, a call to the `getrandom` syscall can be avoided (e.g.
+## for targets running kernel version < 3.17) by passing a compile flag of
+## `-d:nimNoGetRandom`. If this flag is passed, sysrand will use `/dev/urandom`
+## as with any other POSIX compliant OS.
 ##
 
 runnableExamples:
@@ -52,13 +57,13 @@ runnableExamples:
 
 
 when not defined(js):
-  import std/os
+  import os
 
 when defined(posix):
-  import std/posix
+  import posix
 
 const
-  batchImplOS = defined(freebsd) or defined(openbsd) or (defined(macosx) and not defined(ios))
+  batchImplOS = defined(freebsd) or defined(openbsd) or defined(zephyr) or (defined(macosx) and not defined(ios))
   batchSize {.used.} = 256
 
 when batchImplOS:
@@ -132,7 +137,7 @@ elif defined(windows):
   type
     PVOID = pointer
     BCRYPT_ALG_HANDLE = PVOID
-    PUCHAR = ptr cuchar
+    PUCHAR = ptr uint8
     NTSTATUS = clong
     ULONG = culong
 
@@ -159,7 +164,7 @@ elif defined(windows):
 
     result = randomBytes(addr dest[0], size)
 
-elif defined(linux):
+elif defined(linux) and not defined(nimNoGetRandom) and not defined(emscripten):
   # TODO using let, pending bootstrap >= 1.4.0
   var SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
   const syscallHeader = """#include <unistd.h>
@@ -195,12 +200,22 @@ elif defined(linux):
 
 elif defined(openbsd):
   proc getentropy(p: pointer, size: cint): cint {.importc: "getentropy", header: "<unistd.h>".}
-    # fills a buffer with high-quality entropy,
+    # Fills a buffer with high-quality entropy,
     # which can be used as input for process-context pseudorandom generators like `arc4random`.
     # The maximum buffer size permitted is 256 bytes.
 
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
     result = getentropy(p, cint(size)).int
+
+elif defined(zephyr):
+  proc sys_csrand_get(dst: pointer, length: csize_t): cint {.importc: "sys_csrand_get", header: "<random/rand32.h>".}
+    # Fill the destination buffer with cryptographically secure
+    # random data values
+    # 
+
+  proc getRandomImpl(p: pointer, size: int): int {.inline.} =
+    # 0 if success, -EIO if entropy reseed error
+    result = sys_csrand_get(p, csize_t(size)).int
 
 elif defined(freebsd):
   type cssize_t {.importc: "ssize_t", header: "<sys/types.h>".} = int
@@ -227,7 +242,7 @@ elif defined(ios):
 
   proc secRandomCopyBytes(
     rnd: SecRandomRef, count: csize_t, bytes: pointer
-    ): cint {.importc: "SecRandomCopyBytes", header: "<Security/SecRandom.h>".}
+  ): cint {.importc: "SecRandomCopyBytes", header: "<Security/SecRandom.h>".}
     ## https://developer.apple.com/documentation/security/1399291-secrandomcopybytes
 
   template urandomImpl(result: var int, dest: var openArray[byte]) =
@@ -243,7 +258,7 @@ elif defined(macosx):
 """
 
   proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: sysrandomHeader.}
-    # getentropy() fills a buffer with random data, which can be used as input 
+    # getentropy() fills a buffer with random data, which can be used as input
     # for process-context pseudorandom generators like arc4random(3).
     # The maximum buffer size permitted is 256 bytes.
 
@@ -292,7 +307,7 @@ proc urandom*(dest: var openArray[byte]): bool =
   ## If the call succeeds, returns `true`.
   ##
   ## If `dest` is empty, `urandom` immediately returns success,
-  ## without calling underlying operating system api.
+  ## without calling the underlying operating system API.
   ##
   ## .. warning:: The code hasn't been audited by cryptography experts and
   ##   is provided as-is without guarantees. Use at your own risks. For production
@@ -310,7 +325,7 @@ proc urandom*(dest: var openArray[byte]): bool =
 
 proc urandom*(size: Natural): seq[byte] {.inline.} =
   ## Returns random bytes suitable for cryptographic use.
-  ## 
+  ##
   ## .. warning:: The code hasn't been audited by cryptography experts and
   ##   is provided as-is without guarantees. Use at your own risks. For production
   ##   systems we advise you to request an external audit.

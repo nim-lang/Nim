@@ -8,22 +8,28 @@ type JsBigInt* = distinct JsBigIntImpl         ## Arbitrary precision integer fo
 
 func big*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
-  when nimvm: doAssert false, "JsBigInt can not be used at compile-time nor static context" else: discard
   runnableExamples:
     doAssert big(1234567890) == big"1234567890"
     doAssert 0b1111100111.big == 0o1747.big and 0o1747.big == 999.big
+  when nimvm: doAssert false, "JsBigInt can not be used at compile-time nor static context" else: discard
+
+func `'big`*(num: cstring): JsBigInt {.importjs: "BigInt(#)".} =
+  ## Constructor for `JsBigInt`.
+  runnableExamples:
+    doAssert -1'big == 1'big - 2'big
+    # supports decimal, binary, octal, hex:
+    doAssert -12'big == big"-12"
+    doAssert 12'big == 12.big
+    doAssert 0b101'big == 0b101.big
+    doAssert 0o701'big == 0o701.big
+    doAssert 0xdeadbeaf'big == 0xdeadbeaf.big
+    doAssert 0xffffffffffffffff'big == (1'big shl 64'big) - 1'big
+    doAssert not compiles(static(12'big))
+  when nimvm: doAssert false, "JsBigInt can not be used at compile-time nor static context" else: discard
 
 func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
-  ## Constructor for `JsBigInt`.
+  ## Alias for `'big`
   when nimvm: doAssert false, "JsBigInt can not be used at compile-time nor static context" else: discard
-  runnableExamples:
-    doAssert big"-1" == big"1" - big"2"
-    # supports decimal, binary, octal, hex:
-    doAssert big"12" == 12.big
-    doAssert big"0b101" == 0b101.big
-    doAssert big"0o701" == 0o701.big
-    doAssert big"0xdeadbeaf" == 0xdeadbeaf.big
-    doAssert big"0xffffffffffffffff" == (1.big shl 64.big) - 1.big
 
 func toCstring*(this: JsBigInt; radix: 2..36): cstring {.importjs: "#.toString(#)".} =
   ## Converts from `JsBigInt` to `cstring` representation.

@@ -7,7 +7,7 @@
 #
 
 ## A set of helpers for the POSIX module.
-## Raw interfaces are in the other posix*.nim files.
+## Raw interfaces are in the other ``posix*.nim`` files.
 
 # Where possible, contribute OS-independent procs in `os <os.html>`_ instead.
 

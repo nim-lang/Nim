@@ -12,7 +12,10 @@
 import
   intsets, strutils, options, ast, astalgo, msgs,
   idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos,
-  transf, liftdestructors
+  transf, liftdestructors, typeallowed
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 discard """
   The basic approach is that captured vars need to be put on the heap and
@@ -191,9 +194,7 @@ proc interestingVar(s: PSym): bool {.inline.} =
     s.typ.kind notin {tyStatic, tyTypeDesc}
 
 proc illegalCapture(s: PSym): bool {.inline.} =
-  result = skipTypes(s.typ, abstractInst).kind in
-                   {tyVar, tyOpenArray, tyVarargs, tyLent} or
-      s.kind == skResult
+  result = classifyViewType(s.typ) != noView or s.kind == skResult
 
 proc isInnerProc(s: PSym): bool =
   if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and s.magic == mNone:
@@ -292,7 +293,7 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   if illegalCapture(s):
     localError(g.config, n.info,
       ("'$1' is of type <$2> which cannot be captured as it would violate memory" &
-       " safety, declared here: $3; using '-d:nimWorkaround14447' helps in some cases") %
+       " safety, declared here: $3; using '-d:nimNoLentIterators' helps in some cases") %
       [s.name.s, typeToString(s.typ), g.config$s.info])
   elif not (owner.typ.callConv == ccClosure or owner.typ.callConv == ccNimCall and tfExplicitCallConv notin owner.typ.flags):
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %

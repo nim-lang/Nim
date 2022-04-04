@@ -11,9 +11,12 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std / [intsets, tables, hashes, md5]
+import intsets, tables, hashes, md5_old
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils
 import ic / [packed_ast, ic]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   SigHash* = distinct MD5Digest
@@ -29,6 +32,7 @@ type
     patterns*: seq[LazySym]
     pureEnums*: seq[LazySym]
     interf: TStrTable
+    interfHidden: TStrTable
     uniqueName*: Rope
 
   Operators* = object
@@ -49,7 +53,7 @@ type
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
-  ModuleGraph* = ref object
+  ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
     encoders*: seq[PackedEncoder]
@@ -160,8 +164,24 @@ proc toBase64a(s: cstring, len: int): string =
     result.add cb64[a shr 2]
     result.add cb64[(a and 3) shl 4]
 
-template semtab*(m: PSym; g: ModuleGraph): TStrTable =
+template interfSelect(iface: Iface, importHidden: bool): TStrTable =
+  var ret = iface.interf.addr # without intermediate ptr, it creates a copy and compiler becomes 15x slower!
+  if importHidden: ret = iface.interfHidden.addr
+  ret[]
+
+template semtab(g: ModuleGraph, m: PSym): TStrTable =
   g.ifaces[m.position].interf
+
+template semtabAll*(g: ModuleGraph, m: PSym): TStrTable =
+  g.ifaces[m.position].interfHidden
+
+proc initStrTables*(g: ModuleGraph, m: PSym) =
+  initStrTable(semtab(g, m))
+  initStrTable(semtabAll(g, m))
+
+proc strTableAdds*(g: ModuleGraph, m: PSym, s: PSym) =
+  strTableAdd(semtab(g, m), s)
+  strTableAdd(semtabAll(g, m), s)
 
 proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
   result = module < g.packed.len and g.packed[module].status == loaded
@@ -187,39 +207,43 @@ type
     modIndex: int
     ti: TIdentIter
     rodIt: RodIter
+    importHidden: bool
 
 proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent): PSym =
   assert m.kind == skModule
   mi.modIndex = m.position
   mi.fromRod = isCachedModule(g, mi.modIndex)
+  mi.importHidden = optImportHidden in m.options
   if mi.fromRod:
-    result = initRodIter(mi.rodIt, g.config, g.cache, g.packed, FileIndex mi.modIndex, name)
+    result = initRodIter(mi.rodIt, g.config, g.cache, g.packed, FileIndex mi.modIndex, name, mi.importHidden)
   else:
-    result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interf, name)
+    result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden), name)
 
 proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
   if mi.fromRod:
     result = nextRodIter(mi.rodIt, g.packed)
   else:
-    result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interf)
+    result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden))
 
 iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
+  let importHidden = optImportHidden in m.options
   if isCachedModule(g, m):
     var rodIt: RodIter
-    var r = initRodIterAllSyms(rodIt, g.config, g.cache, g.packed, FileIndex m.position)
+    var r = initRodIterAllSyms(rodIt, g.config, g.cache, g.packed, FileIndex m.position, importHidden)
     while r != nil:
       yield r
       r = nextRodIter(rodIt, g.packed)
   else:
-    for s in g.ifaces[m.position].interf.data:
+    for s in g.ifaces[m.position].interfSelect(importHidden).data:
       if s != nil:
         yield s
 
 proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
+  let importHidden = optImportHidden in m.options
   if isCachedModule(g, m):
-    result = interfaceSymbol(g.config, g.cache, g.packed, FileIndex(m.position), name)
+    result = interfaceSymbol(g.config, g.cache, g.packed, FileIndex(m.position), name, importHidden)
   else:
-    result = strTableGet(g.ifaces[m.position].interf, name)
+    result = strTableGet(g.ifaces[m.position].interfSelect(importHidden), name)
 
 proc systemModuleSym*(g: ModuleGraph; name: PIdent): PSym =
   result = someSym(g, g.systemModule, name)
@@ -326,6 +350,10 @@ proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
         strTableAdd(g.compilerprocs, result)
       return result
 
+proc loadPackedSym*(g: ModuleGraph; s: var LazySym) =
+  if s.sym == nil:
+    s.sym = loadSymFromId(g.config, g.cache, g.packed, s.id.module, s.id.packed)
+
 proc `$`*(u: SigHash): string =
   toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
 
@@ -339,26 +367,23 @@ proc hash*(u: SigHash): Hash =
 
 proc hash*(x: FileIndex): Hash {.borrow.}
 
+template getPContext(): untyped =
+  when c is PContext: c
+  else: c.c
+
 when defined(nimfind):
   template onUse*(info: TLineInfo; s: PSym) =
-    when compiles(c.c.graph):
-      if c.c.graph.onUsage != nil: c.c.graph.onUsage(c.c.graph, s, info)
-    else:
-      if c.graph.onUsage != nil: c.graph.onUsage(c.graph, s, info)
+    let c = getPContext()
+    if c.graph.onUsage != nil: c.graph.onUsage(c.graph, s, info)
 
   template onDef*(info: TLineInfo; s: PSym) =
-    when compiles(c.c.graph):
-      if c.c.graph.onDefinition != nil: c.c.graph.onDefinition(c.c.graph, s, info)
-    else:
-      if c.graph.onDefinition != nil: c.graph.onDefinition(c.graph, s, info)
+    let c = getPContext()
+    if c.graph.onDefinition != nil: c.graph.onDefinition(c.graph, s, info)
 
   template onDefResolveForward*(info: TLineInfo; s: PSym) =
-    when compiles(c.c.graph):
-      if c.c.graph.onDefinitionResolveForward != nil:
-        c.c.graph.onDefinitionResolveForward(c.c.graph, s, info)
-    else:
-      if c.graph.onDefinitionResolveForward != nil:
-        c.graph.onDefinitionResolveForward(c.graph, s, info)
+    let c = getPContext()
+    if c.graph.onDefinitionResolveForward != nil:
+      c.graph.onDefinitionResolveForward(c.graph, s, info)
 
 else:
   template onUse*(info: TLineInfo; s: PSym) = discard
@@ -388,13 +413,14 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
 
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
                                uniqueName: rope(uniqueModuleName(g.config, FileIndex(m.position))))
-  initStrTable(g.ifaces[m.position].interf)
+  initStrTables(g, m)
 
 proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
   registerModule(g, g.packed[int m].module)
 
-proc initOperators(g: ModuleGraph): Operators =
+proc initOperators*(g: ModuleGraph): Operators =
   # These are safe for IC.
+  # Public because it's used by DrNim.
   result.opLe = createMagic(g, "<=", mLeI)
   result.opLt = createMagic(g, "<", mLtI)
   result.opAnd = createMagic(g, "and", mAnd)
@@ -559,3 +585,15 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
 
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)
+
+from std/strutils import repeat, `%`
+
+proc onProcessing*(graph: ModuleGraph, fileIdx: FileIndex, moduleStatus: string, fromModule: PSym, ) =
+  let conf = graph.config
+  let isNimscript = conf.isDefined("nimscript")
+  if (not isNimscript) or hintProcessing in conf.cmdlineNotes:
+    let path = toFilenameOption(conf, fileIdx, conf.filenameOption)
+    let indent = ">".repeat(graph.importStack.len)
+    let fromModule2 = if fromModule != nil: $fromModule.name.s else: "(toplevel)"
+    let mode = if isNimscript: "(nims) " else: ""
+    rawMessage(conf, hintProcessing, "$#$# $#: $#: $#" % [mode, indent, fromModule2, moduleStatus, path])

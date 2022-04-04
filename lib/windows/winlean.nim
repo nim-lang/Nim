@@ -17,6 +17,9 @@ when defined(nimHasStyleChecks):
 
 {.passc: "-DWIN32_LEAN_AND_MEAN".}
 
+when defined(nimPreviewSlimSystem):
+  from std/syncio import FileHandle
+
 const
   useWinUnicode* = not defined(useWinAnsi)
 
@@ -42,7 +45,7 @@ type
   PULONG_PTR* = ptr uint
   HDC* = Handle
   HGLRC* = Handle
-  BYTE* = cuchar
+  BYTE* = uint8
 
   SECURITY_ATTRIBUTES* {.final, pure.} = object
     nLength*: int32
@@ -478,7 +481,7 @@ type
 
   PSockAddr = ptr SockAddr
 
-  InAddr* {.importc: "IN_ADDR", header: "winsock2.h".} = object
+  InAddr* {.importc: "IN_ADDR", header: "winsock2.h", union.} = object
     s_addr*: uint32  # IP address
 
   Sockaddr_in* {.importc: "SOCKADDR_IN",
@@ -718,12 +721,13 @@ const
 
 # Error Constants
 const
-  ERROR_FILE_NOT_FOUND* = 2
+  ERROR_FILE_NOT_FOUND* = 2 ## https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
   ERROR_PATH_NOT_FOUND* = 3
   ERROR_ACCESS_DENIED* = 5
   ERROR_NO_MORE_FILES* = 18
   ERROR_LOCK_VIOLATION* = 33
   ERROR_HANDLE_EOF* = 38
+  ERROR_FILE_EXISTS* = 80
   ERROR_BAD_ARGUMENTS* = 165
 
 proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,
@@ -926,6 +930,9 @@ proc getSystemTimes*(lpIdleTime, lpKernelTime,
 proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   lpKernelTime, lpUserTime: var FILETIME): WINBOOL {.stdcall,
   dynlib: "kernel32", importc: "GetProcessTimes".}
+
+proc getSystemTimePreciseAsFileTime*(lpSystemTimeAsFileTime: var FILETIME) {.
+  importc: "GetSystemTimePreciseAsFileTime", dynlib: "kernel32", stdcall, sideEffect.}
 
 type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
                       stringBufSize: int32): cstring {.gcsafe, stdcall, tags: [].}
@@ -1139,7 +1146,7 @@ proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
 type
   # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid_identifier_authority
   SID_IDENTIFIER_AUTHORITY* {.importc, header: "<windows.h>".} = object
-    value* {.importc: "Value"}: array[6, BYTE]
+    value* {.importc: "Value".}: array[6, BYTE]
   # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid
   SID* {.importc, header: "<windows.h>".} = object
     Revision: BYTE

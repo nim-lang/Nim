@@ -10,6 +10,8 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
+import tables
+
 import ast, idents, options, modulegraphs, lineinfos
 
 type TInstrType* = uint64
@@ -178,7 +180,6 @@ type
     opcNBindSym, opcNDynBindSym,
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
-    opcMarshalLoad, opcMarshalStore,
     opcSymOwner,
     opcSymIsInstantiationOf
 
@@ -229,8 +230,7 @@ type
   PProc* = ref object
     blocks*: seq[TBlock]    # blocks; temp data structure
     sym*: PSym
-    slots*: array[TRegister, tuple[inUse: bool, kind: TSlotKind]]
-    maxSlots*: int
+    regInfo*: seq[tuple[inUse: bool, kind: TSlotKind]]
 
   VmArgs* = object
     ra*, rb*, rc*: Natural
@@ -266,9 +266,10 @@ type
     profiler*: Profiler
     templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
     vmstateDiff*: seq[(PSym, PNode)] # we remember the "diff" to global state here (feature for IC)
+    procToCodePos*: Table[int, int]
 
   PStackFrame* = ref TStackFrame
-  TStackFrame* = object
+  TStackFrame* {.acyclic.} = object
     prc*: PSym                 # current prc; proc that is evaluated
     slots*: seq[TFullReg]      # parameters passed to the proc + locals;
                               # parameters come first
@@ -305,8 +306,8 @@ proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.disca
 const
   firstABxInstr* = opcTJmp
   largeInstrs* = { # instructions which use 2 int32s instead of 1:
-    opcSubStr, opcConv, opcCast, opcNewSeq, opcOf,
-    opcMarshalLoad, opcMarshalStore}
+    opcSubStr, opcConv, opcCast, opcNewSeq, opcOf
+    }
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
 
