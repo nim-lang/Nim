@@ -1,7 +1,7 @@
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-when defined(nimHasLentIterators) and not defined(nimNoLentIterators):
+when defined(nimHasLentIterators) and not defined(nimNoLentIterators) and defined(gcDestructors):
   template lent2(T): untyped = lent T
 else:
   template lent2(T): untyped = T
