@@ -1,4 +1,5 @@
 discard """
+  matrix: "--gc:arc"
   targets: "c cpp js"
 """
 
