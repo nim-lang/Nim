@@ -1,7 +1,7 @@
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-when defined(nimHasLentIterators) and not defined(nimNoLentIterators) and defined(gcDestructors):
+when defined(nimHasLentIterators) and not defined(nimNoLentIterators):
   template lent2(T): untyped = lent T
 else:
   template lent2(T): untyped = T
@@ -30,14 +30,24 @@ iterator mitems*[T](a: var openArray[T]): var T {.inline.} =
     yield a[i]
     inc(i)
 
-iterator items*[IX, T](a: array[IX, T]): lent2 T {.inline.} =
-  ## Iterates over each item of `a`.
-  when a.len > 0:
-    var i = low(IX)
-    while true:
-      yield a[i]
-      if i >= high(IX): break
-      inc(i)
+when defined(gcDestructors):
+  iterator items*[IX, T](a: array[IX, T]): lent2 T {.inline.} =
+    ## Iterates over each item of `a`.
+    when a.len > 0:
+      var i = low(IX)
+      while true:
+        yield a[i]
+        if i >= high(IX): break
+        inc(i)
+else:
+  iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
+    ## Iterates over each item of `a`.
+    when a.len > 0:
+      var i = low(IX)
+      while true:
+        yield a[i]
+        if i >= high(IX): break
+        inc(i)
 
 iterator mitems*[IX, T](a: var array[IX, T]): var T {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
