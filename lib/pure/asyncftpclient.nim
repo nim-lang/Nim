@@ -257,7 +257,6 @@ proc cdup*(ftp: AsyncFtpClient) {.async.} =
 
 proc getLines(ftp: AsyncFtpClient): Future[string] {.async.} =
   ## Downloads text data in ASCII mode
-  var lines: seq[string]
   assert ftp.dsockConnected
   while ftp.dsockConnected:
     let r = await ftp.dsock.recvLine()
@@ -265,9 +264,8 @@ proc getLines(ftp: AsyncFtpClient): Future[string] {.async.} =
       ftp.dsock.close()
       ftp.dsockConnected = false
     else:
-      lines.add(r)
-  result = lines.join("\n")
-
+      if result.len > 0: result.add "\n"
+      result.add r
   assertReply(await(ftp.expectReply()), "226")
 
 proc listDirs*(ftp: AsyncFtpClient, dir = ""): Future[seq[string]] {.async.} =
