@@ -14,6 +14,9 @@
 import strutils, lexbase, streams, unicode
 import std/private/decode_helpers
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   JsonEventKind* = enum ## enumeration of all events that may occur when parsing
     jsonError,          ## an error occurred during parsing

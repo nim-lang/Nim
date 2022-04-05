@@ -649,7 +649,7 @@ template updateCounters(output: Output) =
 proc printInfo(filename:string, output: Output) =
   case output.kind
   of openError:
-    printError("can not open path " & filename & " " & output.msg)
+    printError("cannot open path '" & filename & "': " & output.msg)
   of rejected:
     if optVerbose in options:
       echo "(rejected: ", output.reason, ")"
@@ -719,6 +719,9 @@ iterator searchFile(pattern: Pattern; buffer: string): Output =
                      pre: pre,
                      match: move(curMi))
     i = t.last+1
+  when typeof(pattern) is Regex:
+    if buffer.len > MaxReBufSize:
+      yield Output(kind: openError, msg: "PCRE size limit is " & $MaxReBufSize)
 
 func detectBin(buffer: string): bool =
   for i in 0 ..< min(1024, buffer.len):

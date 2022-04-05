@@ -1,3 +1,8 @@
+discard """
+  matrix: "--gc:arc --threads:on; --gc:arc --threads:on -d:danger; --threads:on"
+  disabled: "freebsd"
+"""
+
 import httpclient, asynchttpserver, asyncdispatch, asyncfutures
 import net
 
@@ -10,33 +15,38 @@ Transfer-Encoding:chunked
 
 """
 
-template genTest(input, expected) =
-  var sanity = false
-  proc handler(request: Request) {.async.} =
-      doAssert(request.body == expected)
-      doAssert(request.headers.hasKey("Transfer-Encoding"))
-      doAssert(not request.headers.hasKey("Content-Length"))
-      sanity = true
-      await request.respond(Http200, "Good")
+template genTest(input, expected: string) =
+  proc handler(request: Request, future: Future[bool]) {.async, gcsafe.} =
+    doAssert(request.body == expected)
+    doAssert(request.headers.hasKey("Transfer-Encoding"))
+    doAssert(not request.headers.hasKey("Content-Length"))
+    future.complete(true)
+    await request.respond(Http200, "Good")
 
-  proc runSleepLoop(server: AsyncHttpServer) {.async.} = 
+  proc sendData(data: string, port: Port) {.async.} =
+    var socket = newSocket()
+    defer: socket.close()
+
+    socket.connect("127.0.0.1", port)
+    socket.send(data)
+
+  proc runTest(): Future[bool] {.async.} =
+    var handlerFuture = newFuture[bool]("runTest")
+    let data = postBegin & input
+    let server = newAsyncHttpServer()
     server.listen(Port(0))
-    proc wrapper() = 
-      waitFor server.acceptRequest(handler)
-    asyncdispatch.callSoon wrapper
 
-  let server = newAsyncHttpServer()
-  waitFor runSleepLoop(server)
-  let data = postBegin & input
-  var socket = newSocket()
-  socket.connect("127.0.0.1", server.getPort)
-  socket.send(data)
-  waitFor sleepAsync(10)
-  socket.close()
-  server.close()
+    proc wrapper(request: Request): Future[void] {.gcsafe, closure.} =
+      handler(request, handlerFuture)
+    
+    asyncCheck sendData(data, server.getPort)
+    asyncCheck server.acceptRequest(wrapper)
+    doAssert await handlerFuture
+    
+    server.close()
+    return true
 
-  # Verify we ran the handler and its asserts
-  doAssert(sanity)
+  doAssert waitFor runTest()
 
 block:
   const expected = "hello=world"

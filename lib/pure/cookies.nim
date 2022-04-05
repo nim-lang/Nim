@@ -9,7 +9,7 @@
 
 ## This module implements helper procs for parsing Cookies.
 
-import std/[strtabs, times, options]
+import strtabs, times, options
 
 
 type
@@ -25,7 +25,7 @@ proc parseCookies*(s: string): StringTableRef =
   ## "Set-Cookie" header set by servers.
   runnableExamples:
     import std/strtabs
-    let cookieJar = parseCookies("a=1; foo=bar") 
+    let cookieJar = parseCookies("a=1; foo=bar")
     assert cookieJar["a"] == "1"
     assert cookieJar["foo"] == "bar"
 
@@ -46,10 +46,12 @@ proc parseCookies*(s: string): StringTableRef =
 
 proc setCookie*(key, value: string, domain = "", path = "",
                 expires = "", noName = false,
-                secure = false, httpOnly = false, 
+                secure = false, httpOnly = false,
                 maxAge = none(int), sameSite = SameSite.Default): string =
   ## Creates a command in the format of
   ## `Set-Cookie: key=value; Domain=...; ...`
+  ##
+  ## .. tip:: Cookies can be vulnerable. Consider setting `secure=true`, `httpOnly=true` and `sameSite=Strict`.
   result = ""
   if not noName: result.add("Set-Cookie: ")
   result.add key & "=" & value

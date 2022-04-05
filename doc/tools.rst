@@ -1,8 +1,9 @@
-.. default-role:: code
-
 ========================
 Tools available with Nim
 ========================
+
+.. default-role:: code
+.. include:: rstcommon.rst
 
 The standard distribution ships with the following tools:
 
@@ -11,11 +12,11 @@ The standard distribution ships with the following tools:
     document explaining how it works.
 
 - | `Documentation generator <docgen.html>`_
-  | The builtin document generator `nim doc` generates HTML documentation
-    from `.nim` source files.
+  | The builtin document generator `nim doc`:cmd: generates HTML documentation
+    from ``.nim`` source files.
 
 - | `Nimsuggest for IDE support <nimsuggest.html>`_
-  | Through the `nimsuggest` tool, any IDE can query a `.nim` source file
+  | Through the `nimsuggest`:cmd: tool, any IDE can query a ``.nim`` source file
     and obtain useful information like the definition of symbols or suggestions for
     completion.
 
@@ -29,11 +30,11 @@ The standard distribution ships with the following tools:
   | Nim search and replace utility.
 
 - | nimpretty
-  | `nimpretty` is a Nim source code beautifier,
+  | `nimpretty`:cmd: is a Nim source code beautifier,
     to format code according to the official style guide.
 
 - | `testament <https://nim-lang.github.io/Nim/testament.html>`_
-  | `testament` is an advanced automatic *unittests runner* for Nim tests,
+  | `testament`:cmd: is an advanced automatic *unittests runner* for Nim tests,
     is used for the development of Nim itself, offers process isolation for your tests,
     it can generate statistics about test cases, supports multiple targets (C, JS, etc),
     `simulated Dry-Runs <https://en.wikipedia.org/wiki/Dry_run_(testing)>`_,

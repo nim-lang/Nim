@@ -62,7 +62,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        best, alt: var TCandidate,
                        errors: var CandidateErrors,
                        diagnosticsFlag: bool,
-                       errorsEnabled: bool) =
+                       errorsEnabled: bool, flags: TExprFlags) =
   var o: TOverloadIter
   var sym = initOverloadIter(o, c, headSymbol)
   var scope = o.lastOverloadScope
@@ -95,7 +95,11 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       matches(c, n, orig, z)
       if z.state == csMatch:
         # little hack so that iterators are preferred over everything else:
-        if sym.kind == skIterator: inc(z.exactMatches, 200)
+        if sym.kind == skIterator:
+          if not (efWantIterator notin flags and efWantIterable in flags):
+            inc(z.exactMatches, 200)
+          else:
+            dec(z.exactMatches, 200)
         case best.state
         of csEmpty, csNoMatch: best = z
         of csMatch:
@@ -148,6 +152,8 @@ proc effectProblem(f, a: PType; result: var string; c: PContext) =
       of efLockLevelsDiffer:
         result.add "\n  The `.locks` requirements differ. Annotate the " &
             "proc with {.locks: 0.} to get extended error information."
+      of efEffectsDelayed:
+        result.add "\n  The `.effectsOf` annotations differ."
       when defined(drnim):
         if not c.graph.compatibleProps(c.graph, f, a):
           result.add "\n  The `.requires` or `.ensures` properties are incompatible."
@@ -227,11 +233,10 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       of kMissingParam: candidates.add("\n  missing parameter: " & nameParam)
       of kTypeMismatch, kVarNeeded:
         doAssert nArg != nil
-        var wanted = err.firstMismatch.formal.typ
+        let wanted = err.firstMismatch.formal.typ
         doAssert err.firstMismatch.formal != nil
         candidates.add("\n  required type for " & nameParam &  ": ")
-        candidates.add typeToString(wanted)
-        candidates.addDeclaredLocMaybe(c.config, wanted)
+        candidates.addTypeDeclVerboseMaybe(c.config, wanted)
         candidates.add "\n  but expression '"
         if err.firstMismatch.kind == kVarNeeded:
           candidates.add renderNotLValue(nArg)
@@ -239,11 +244,16 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         else:
           candidates.add renderTree(nArg)
           candidates.add "' is of type: "
-          var got = nArg.typ
-          candidates.add typeToString(got)
-          candidates.addDeclaredLocMaybe(c.config, got)
+          let got = nArg.typ
+          candidates.addTypeDeclVerboseMaybe(c.config, got)
           doAssert wanted != nil
-          if got != nil: effectProblem(wanted, got, candidates, c)
+          if got != nil:
+            if got.kind == tyProc and wanted.kind == tyProc:
+              # These are proc mismatches so,
+              # add the extra explict detail of the mismatch
+              candidates.addPragmaAndCallConvMismatch(wanted, got, c.config)
+            effectProblem(wanted, got, candidates, c)
+
       of kUnknown: discard "do not break 'nim check'"
       candidates.add "\n"
       if err.firstMismatch.arg == 1 and nArg.kind == nkTupleConstr and
@@ -264,7 +274,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 
 const
   errTypeMismatch = "type mismatch: got <"
-  errButExpected = "but expected one of: "
+  errButExpected = "but expected one of:"
   errUndeclaredField = "undeclared field: '$1'"
   errUndeclaredRoutine = "attempting to call undeclared routine: '$1'"
   errBadRoutine = "attempting to call routine: '$1'$2"
@@ -272,7 +282,7 @@ const
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
-  # as semOverlodedCall is already pretty slow (and we need this information
+  # as semOverloadedCall is already pretty slow (and we need this information
   # only in case of an error).
   if c.config.m.errorOutputs == {}:
     # fail fast:
@@ -322,7 +332,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
 
   let ident = considerQuotedIdent(c, f, n).s
   if {nfDotField, nfExplicitCall} * n.flags == {nfDotField}:
-    let sym = n[1].typ.sym
+    let sym = n[1].typ.typSym
     var typeHint = ""
     if sym == nil:
       # Perhaps we're in a `compiles(foo.bar)` expression, or
@@ -333,7 +343,8 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       discard
     else:
       typeHint = " for type " & getProcHeader(c.config, sym)
-    result = errUndeclaredField % ident & typeHint & " " & result
+    let suffix = if result.len > 0: " " & result else: ""
+    result = errUndeclaredField % ident & typeHint & suffix
   else:
     if result.len == 0: result = errUndeclaredRoutine % ident
     else: result = errBadRoutine % [ident, result]
@@ -356,7 +367,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   template pickBest(headSymbol) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
                       filter, result, alt, errors, efExplain in flags,
-                      errorsEnabled)
+                      errorsEnabled, flags)
   pickBest(f)
 
   let overloadsState = result.state
@@ -407,8 +418,19 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
-        # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
-        localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
+        template impl() =
+          # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
+          localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
+        if n[0].kind == nkIdent and n[0].ident.s == ".=" and n[2].kind == nkIdent:
+          let sym = n[1].typ.sym
+          if sym == nil:
+            impl()
+          else:
+            let field = n[2].ident.s
+            let msg = errUndeclaredField % field & " for type " & getProcHeader(c.config, sym)
+            localError(c.config, orig[2].info, msg)
+        else:
+          impl()
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
@@ -681,7 +703,16 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1..<fn.typ.n.len:
     let param = fn.typ.n[i]
-    let t = skipTypes(param.typ, abstractVar-{tyTypeDesc, tyDistinct})
+    const desiredTypes = abstractVar + {tyCompositeTypeClass} - {tyTypeDesc, tyDistinct}
+    #[.
+      # We only want the type not any modifiers such as `ptr`, `var`, `ref` ...
+      # tyCompositeTypeClass is here for
+      # when using something like:
+      type Foo[T] = distinct int
+      proc `$`(f: Foo): string {.borrow.}
+      # We want to skip the `Foo` to get `int`
+    ]#
+    let t = skipTypes(param.typ, desiredTypes)
     if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
     var x: PType
     if param.typ.kind == tyVar:

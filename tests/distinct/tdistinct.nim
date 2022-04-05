@@ -8,6 +8,7 @@ false
 false
 false
 Foo
+foo
 '''
 """
 
@@ -140,6 +141,22 @@ block tRequiresInit:
     let s = "test"
     doAssert s == "test"
 
+block: #17322
+  type
+    A[T] = distinct string
+
+  proc foo(a: var A) =
+    a.string.add "foo"
+
+  type
+    B = distinct A[int]
+
+  var b: B
+  foo(A[int](b))
+  echo A[int](b).string
+  b.string.add "bar"
+  assert b.string == "foobar"
+
 type Foo = distinct string
 
 proc main() = # proc instead of template because of MCS/UFCS.
@@ -167,6 +184,20 @@ proc main() = # proc instead of template because of MCS/UFCS.
         s.Foo.add('c')
         doAssert s.string == "c" # was failing
       test()
+    block: #18061
+      type
+        A = distinct (0..100)
+        B = A(0) .. A(10)
+      proc test(b: B) = discard
+      let
+        a = A(10)
+        b = B(a)
+      test(b)
+
+      proc test(a: A) = discard
+      discard cast[B](A(1))
+      var c: B
+
 
   block: # bug #9423
     block:

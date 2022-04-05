@@ -12,6 +12,9 @@
 import msgs, std / sha1, os, osproc, streams, options,
   lineinfos, pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 proc readOutput(p: Process): (string, int) =
   result[0] = ""
   var output = p.outputStream

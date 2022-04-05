@@ -4,12 +4,16 @@ import std/marshal
 
 proc testit[T](x: T): string = $$to[T]($$x)
 
-let test1: array[0..1, array[0..4, string]] = [
-  ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"]]
-doAssert testit(test1) ==
-  """[["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"]]"""
-let test2: tuple[name: string, s: int] = ("tuple test", 56)
-doAssert testit(test2) == """{"Field0": "tuple test", "Field1": 56}"""
+template check1 =
+  let test1: array[0..1, array[0..4, string]] = [
+    ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"]]
+  doAssert testit(test1) ==
+    """[["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"]]"""
+  let test2: tuple[name: string, s: int] = ("tuple test", 56)
+  doAssert testit(test2) == """{"Field0": "tuple test", "Field1": 56}"""
+
+static: check1()
+check1()
 
 type
   TE = enum
@@ -146,3 +150,29 @@ block:
 
   let a: ref A = new(B)
   doAssert $$a[] == "{}" # not "{f: 0}"
+
+template checkMarshal(data: typed) =
+  let orig = data
+  let m = $$orig
+
+  let old = to[typeof(orig)](m)
+  doAssert data == old
+
+template main() =
+  type
+    Book = object
+      page: int
+      name: string
+
+  let book = Book(page: 12, name: "persona")
+
+  checkMarshal(486)
+  checkMarshal(3.14)
+  checkMarshal("azure sky")
+  checkMarshal(book)
+  checkMarshal([1, 2, 3])
+  checkMarshal(@[1.5, 2.7, 3.9, 4.2])
+  checkMarshal(@["dream", "is", "possible"])
+
+static: main()
+main()

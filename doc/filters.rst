@@ -1,9 +1,9 @@
-.. default-role:: code
-
 ===================
 Source Code Filters
 ===================
 
+.. include:: rstcommon.rst
+.. default-role:: code
 .. contents::
 
 A `Source Code Filter (SCF)`  transforms the input character stream to an in-memory
@@ -25,8 +25,8 @@ just like an ordinary procedure call with named or positional arguments. The
 available parameters depend on the invoked filter. Before version 0.12.0 of
 the language `#!` was used instead of `#?`.
 
-**Hint:** With `--hint[codeBegin]:on` or `--verbosity:2`
-(or higher) while compiling or `nim check`, Nim lists the processed code after
+**Hint:** With `--hint:codeBegin:on`:option: or `--verbosity:2`:option:
+(or higher) while compiling or `nim check`:cmd:, Nim lists the processed code after
 each filter application.
 
 Usage
@@ -70,10 +70,10 @@ The replace filter replaces substrings in each line.
 
 Parameters and their defaults:
 
-  `sub: string = ""`
+* `sub: string = ""`
     the substring that is searched for
 
-  `by: string = ""`
+* `by: string = ""`
     the string the substring is replaced with
 
 
@@ -85,14 +85,14 @@ each line.
 
 Parameters and their defaults:
 
-  `startswith: string = ""`
+* `startswith: string = ""`
     strip only the lines that start with *startswith* (ignoring leading
     whitespace). If empty every line is stripped.
 
-  `leading: bool = true`
+* `leading: bool = true`
     strip leading whitespace
 
-  `trailing: bool = true`
+* `trailing: bool = true`
     strip trailing whitespace
 
 
@@ -107,19 +107,19 @@ statements need `end X` delimiters.
 
 Parameters and their defaults:
 
-  `metaChar: char = '#'`
+* `metaChar: char = '#'`
     prefix for a line that contains Nim code
 
-  `subsChar: char = '$'`
+* `subsChar: char = '$'`
     prefix for a Nim expression within a template line
 
-  `conc: string = " & "`
+* `conc: string = " & "`
     the operation for concatenation
 
-  `emit: string = "result.add"`
+* `emit: string = "result.add"`
     the operation to emit a string literal
 
-  `toString: string = "$"`
+* `toString: string = "$"`
     the operation that is applied to each expression
 
 Example::

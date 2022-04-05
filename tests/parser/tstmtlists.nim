@@ -50,6 +50,8 @@ hello
 9
 hello
 10
+lucky
+lucky
 '''
 """
 
@@ -162,4 +164,17 @@ template dim: int =
      int.high
    else:
      int.high)
+
+# lenient indentation:
+
+echo (if 0 == 1:
+  "0 == 1"
+else:
+  "lucky")
+
+# bug #16426
+echo (when 0 == 1:
+  "0 == 1"
+else:
+  "lucky")
 

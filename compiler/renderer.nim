@@ -17,6 +17,9 @@ when defined(nimHasUsed):
 import
   lexer, options, idents, strutils, ast, msgs, lineinfos
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
@@ -50,6 +53,8 @@ type
     fid*: FileIndex
     config*: ConfigRef
     mangler: seq[PSym]
+
+proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string
 
 # We render the source code in a two phases: The first
 # determines how long the subtree will likely be, the second
@@ -185,7 +190,7 @@ proc dedent(g: var TSrcGen) =
 proc put(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
   if kind != tkSpaces:
     addPendingNL(g)
-    if s.len > 0:
+    if s.len > 0 or kind in {tkHideableStart, tkHideableEnd}:
       addTok(g, kind, s, sym)
   else:
     g.pendingWhitespace = s.len
@@ -408,7 +413,7 @@ proc atom(g: TSrcGen; n: PNode): string =
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s
     else: result = "[type node]"
   else:
-    internalError(g.config, "rnimsyn.atom " & $n.kind)
+    internalError(g.config, "renderer.atom " & $n.kind)
     result = ""
 
 proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
@@ -567,11 +572,11 @@ proc initContext(c: var TContext) =
   c.spacing = 0
   c.flags = {}
 
-proc gsub(g: var TSrcGen, n: PNode, c: TContext)
-proc gsub(g: var TSrcGen, n: PNode) =
+proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false)
+proc gsub(g: var TSrcGen, n: PNode, fromStmtList = false) =
   var c: TContext
   initContext(c)
-  gsub(g, n, c)
+  gsub(g, n, c, fromStmtList = fromStmtList)
 
 proc hasCom(n: PNode): bool =
   result = false
@@ -587,13 +592,30 @@ proc putWithSpace(g: var TSrcGen, kind: TokType, s: string) =
   put(g, kind, s)
   put(g, tkSpaces, Space)
 
+proc isHideable(config: ConfigRef, n: PNode): bool =
+  # xxx compare `ident` directly with `getIdent(cache, wRaises)`, but
+  # this requires a `cache`.
+  case n.kind
+  of nkExprColonExpr: result = n[0].kind == nkIdent and n[0].ident.s in ["raises", "tags", "extern", "deprecated"]
+  of nkIdent: result = n.ident.s in ["gcsafe", "deprecated"]
+  else: result = false
+
 proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
                theEnd: int = - 1, separator = tkComma) =
+  let inPragma = g.inPragma == 1 # just the top-level
+  var inHideable = false
   for i in start..n.len + theEnd:
     var c = i < n.len + theEnd
     var sublen = lsub(g, n[i]) + ord(c)
     if not fits(g, g.lineLen + sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
     let oldLen = g.tokens.len
+    if inPragma:
+      if not inHideable and isHideable(g.config, n[i]):
+        inHideable = true
+        put(g, tkHideableStart, "")
+      elif inHideable and not isHideable(g.config, n[i]):
+        inHideable = false
+        put(g, tkHideableEnd, "")
     gsub(g, n[i])
     if c:
       if g.tokens.len > oldLen:
@@ -601,6 +623,9 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
       if shouldRenderComment(g) and hasCom(n[i]):
         gcoms(g)
         optNL(g, ind)
+  if inHideable:
+    put(g, tkHideableEnd, "")
+    inHideable = false
 
 proc gcomma(g: var TSrcGen, n: PNode, c: TContext, start: int = 0,
             theEnd: int = - 1) =
@@ -659,7 +684,7 @@ proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
       if n[i].kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
         gstmts(g, n[i], c, doIndent=false)
       else:
-        gsub(g, n[i])
+        gsub(g, n[i], fromStmtList = true)
       gcoms(g)
     if doIndent: dedent(g)
   else:
@@ -942,14 +967,12 @@ proc skipHiddenNodes(n: PNode): PNode =
     else: break
 
 proc accentedName(g: var TSrcGen, n: PNode) =
+  # This is for cases where ident should've really been a `nkAccQuoted`, e.g. `:tmp`
+  # or if user writes a macro with `ident":foo"`. It's unclear whether these should be legal.
   const backticksNeeded = OpChars + {'[', '{', '\''}
   if n == nil: return
-  let isOperator =
-    if n.kind == nkIdent and n.ident.s.len > 0 and n.ident.s[0] in backticksNeeded: true
-    elif n.kind == nkSym and n.sym.name.s.len > 0 and n.sym.name.s[0] in backticksNeeded: true
-    else: false
-
-  if isOperator:
+  let ident = n.getPIdent
+  if ident != nil and ident.s[0] in backticksNeeded:
     put(g, tkAccent, "`")
     gident(g, n)
     put(g, tkAccent, "`")
@@ -977,11 +1000,11 @@ proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
     put(g, tkParRi, ")")
 
 proc isCustomLit(n: PNode): bool =
-  n.len == 2 and n[0].kind == nkRStrLit and
-    (n[1].kind == nkIdent and n[1].ident.s.startsWith('\'')) or
-    (n[1].kind == nkSym and n[1].sym.name.s.startsWith('\''))
+  if n.len == 2 and n[0].kind == nkRStrLit:
+    let ident = n[1].getPIdent
+    result = ident != nil and ident.s.startsWith('\'')
 
-proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
+proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   if isNil(n): return
   var
     a: TContext
@@ -1018,9 +1041,15 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
         put(g, tkParLe, "(")
         gcomma(g, n, 1, i - 1 - n.len)
         put(g, tkParRi, ")")
-      put(g, tkColon, ":")
+      if fromStmtList:
+        put(g, tkColon, ":")
+      else:
+        put(g, tkSpaces, Space)
+        put(g, tkDo, "do")
+        put(g, tkColon, ":")
       gsub(g, n, i)
-      for j in i+1 ..< n.len:
+      i.inc
+      for j in i ..< n.len:
         optNL(g)
         put(g, tkDo, "do")
         put(g, tkColon, ":")
@@ -1206,12 +1235,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     else:
       gsub(g, n, 0)
       put(g, tkDot, ".")
-      if n.len > 1:
-        accentedName(g, n[1])
+      assert n.len == 2, $n.len
+      accentedName(g, n[1])
   of nkBind:
     putWithSpace(g, tkBind, "bind")
     gsub(g, n, 0)
   of nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString:
+    if renderIds in g.flags:
+      putWithSpace(g, tkAddr, $n.kind)
     gsub(g, n, 0)
   of nkLambda:
     putWithSpace(g, tkProc, "proc")
@@ -1264,10 +1295,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkSpaces, Space)
     infixArgument(g, n, 2)
   of nkPrefix:
-    if n.len > 0 and n[0].kind == nkIdent and n[0].ident.s == "<//>":
-      discard "XXX Remove this hack after 0.20 has been released!"
-    else:
-      gsub(g, n, 0)
+    gsub(g, n, 0)
     if n.len > 1:
       let opr = if n[0].kind == nkIdent: n[0].ident
                 elif n[0].kind == nkSym: n[0].sym.name
@@ -1294,9 +1322,26 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkOpr, "[]")
   of nkAccQuoted:
     put(g, tkAccent, "`")
-    if n.len > 0: gsub(g, n[0])
-    for i in 1..<n.len:
-      put(g, tkSpaces, Space)
+    for i in 0..<n.len:
+      proc getStrVal(n: PNode): string =
+        # pending https://github.com/nim-lang/Nim/pull/17540, use `getStrVal`
+        case n.kind
+        of nkIdent: n.ident.s
+        of nkSym: n.sym.name.s
+        else: ""
+      proc isAlpha(n: PNode): bool =
+        if n.kind in {nkIdent, nkSym}:
+          let tmp = n.getStrVal
+          result = tmp.len > 0 and tmp[0] in {'a'..'z', 'A'..'Z'}
+      var useSpace = false
+      if i == 1 and n[0].kind == nkIdent and n[0].ident.s in ["=", "'"]:
+        if not n[1].isAlpha: # handle `=destroy`, `'big'
+          useSpace = true
+      elif i == 1 and n[1].kind == nkIdent and n[1].ident.s == "=":
+        if not n[0].isAlpha: # handle setters, e.g. `foo=`
+          useSpace = true
+      elif i > 0: useSpace = true
+      if useSpace:  put(g, tkSpaces, Space)
       gsub(g, n[i])
     put(g, tkAccent, "`")
   of nkIfExpr:
@@ -1418,7 +1463,13 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkSpaces, Space)
     putWithSpace(g, tkEquals, "=")
     gsub(g, n, 1)
-  of nkStmtList, nkStmtListExpr, nkStmtListType: gstmts(g, n, emptyContext)
+  of nkStmtList, nkStmtListExpr, nkStmtListType:
+    if n.len == 1 and n[0].kind == nkDiscardStmt:
+      put(g, tkParLe, "(")
+      gsub(g, n[0])
+      put(g, tkParRi, ")")
+    else:
+      gstmts(g, n, emptyContext)
   of nkIfStmt:
     putWithSpace(g, tkIf, "if")
     gif(g, n)
@@ -1651,7 +1702,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gsub(g, n[0], c)
   else:
     #nkNone, nkExplicitTypeListCall:
-    internalError(g.config, n.info, "rnimsyn.gsub(" & $n.kind & ')')
+    internalError(g.config, n.info, "renderer.gsub(" & $n.kind & ')')
 
 proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
   if n == nil: return "<nil tree>"
@@ -1710,15 +1761,3 @@ proc getTokSym*(r: TSrcGen): PSym =
     result = r.tokens[r.idx-1].sym
   else:
     result = nil
-
-proc quoteExpr*(a: string): string {.inline.} =
-  ## can be used for quoting expressions in error msgs.
-  "'" & a & "'"
-
-proc genFieldDefect*(field: PSym, disc: PSym): string =
-  ## this needs to be in a module accessible by jsgen, ccgexprs, and vm to
-  ## provide this error msg FieldDefect; msgs would be better but it does not
-  ## import ast
-  result = field.name.s.quoteExpr & " is not accessible using discriminant " &
-    disc.name.s.quoteExpr & " of type " &
-    disc.owner.name.s.quoteExpr

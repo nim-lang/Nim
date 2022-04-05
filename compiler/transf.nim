@@ -24,6 +24,9 @@ import
   lowerings, liftlocals,
   modulegraphs, lineinfos
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc transformBody*(g: ModuleGraph; idgen: IdGenerator, prc: PSym, cache: bool): PNode
 
 import closureiters, lambdalifting
@@ -124,6 +127,14 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   var tc = c.transCon
   if sfBorrow in s.flags and s.kind in routineKinds:
     # simply exchange the symbol:
+    var s = s
+    while true:
+      # Skips over all borrowed procs getting the last proc symbol without an implementation
+      let body = getBody(c.graph, s)
+      if body.kind == nkSym and sfBorrow in body.sym.flags and getBody(c.graph, body.sym).kind == nkSym:
+        s = body.sym
+      else:
+        break
     b = getBody(c.graph, s)
     if b.kind != nkSym: internalError(c.graph.config, n.info, "wrong AST for borrowed symbol")
     b = newSymNode(b.sym, n.info)
@@ -364,7 +375,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
   if e.typ.isNil: return result # can happen in nimsuggest for unknown reasons
   if c.transCon.forStmt.len != 3:
     e = skipConv(e)
-    if e.kind in {nkPar, nkTupleConstr}:
+    if e.kind == nkTupleConstr:
       for i in 0..<e.len:
         var v = e[i]
         if v.kind == nkExprColonExpr: v = v[1]
@@ -377,19 +388,51 @@ proc transformYield(c: PTransf, n: PNode): PNode =
           let lhs = c.transCon.forStmt[i]
           let rhs = transform(c, v)
           result.add(asgnTo(lhs, rhs))
+    elif e.kind notin {nkAddr, nkHiddenAddr}: # no need to generate temp for address operation
+      # TODO do not use temp for nodes which cannot have side-effects
+      var tmp = newTemp(c, e.typ, e.info)
+      let v = newNodeI(nkVarSection, e.info)
+      v.addVar(tmp, e)
+
+      result.add transform(c, v)
+
+      for i in 0..<c.transCon.forStmt.len - 2:
+        let lhs = c.transCon.forStmt[i]
+        let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
+        result.add(asgnTo(lhs, rhs))
     else:
-      # Unpack the tuple into the loop variables
-      # XXX: BUG: what if `n` is an expression with side-effects?
       for i in 0..<c.transCon.forStmt.len - 2:
         let lhs = c.transCon.forStmt[i]
         let rhs = transform(c, newTupleAccess(c.graph, e, i))
         result.add(asgnTo(lhs, rhs))
   else:
     if c.transCon.forStmt[0].kind == nkVarTuple:
-      for i in 0..<c.transCon.forStmt[0].len-1:
-        let lhs = c.transCon.forStmt[0][i]
-        let rhs = transform(c, newTupleAccess(c.graph, e, i))
-        result.add(asgnTo(lhs, rhs))
+      var notLiteralTuple = false # we don't generate temp for tuples with const value: (1, 2, 3)
+      let ev = e.skipConv
+      if ev.kind == nkTupleConstr:
+        for i in ev:
+          if not isConstExpr(i):
+            notLiteralTuple = true
+            break
+      else:
+        notLiteralTuple = true
+
+      if e.kind notin {nkAddr, nkHiddenAddr} and notLiteralTuple:
+        # TODO do not use temp for nodes which cannot have side-effects
+        var tmp = newTemp(c, e.typ, e.info)
+        let v = newNodeI(nkVarSection, e.info)
+        v.addVar(tmp, e)
+
+        result.add transform(c, v)
+        for i in 0..<c.transCon.forStmt[0].len-1:
+          let lhs = c.transCon.forStmt[0][i]
+          let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
+          result.add(asgnTo(lhs, rhs))
+      else:
+        for i in 0..<c.transCon.forStmt[0].len-1:
+          let lhs = c.transCon.forStmt[0][i]
+          let rhs = transform(c, newTupleAccess(c.graph, e, i))
+          result.add(asgnTo(lhs, rhs))
     else:
       let lhs = c.transCon.forStmt[0]
       let rhs = transform(c, e)
@@ -402,8 +445,9 @@ proc transformYield(c: PTransf, n: PNode): PNode =
   else:
     # we need to introduce new local variables:
     result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
-  if result.len > 0:
-    var changeNode = result[0]
+
+  for idx in 0 ..< result.len:
+    var changeNode = result[idx]
     changeNode.info = c.transCon.forStmt.info
     for i, child in changeNode:
       child.info = changeNode.info
@@ -497,14 +541,14 @@ proc transformConv(c: PTransf, n: PNode): PNode =
     result.typ = takeType(n.typ, n[1].typ, c.graph, c.idgen)
     #echo n.info, " came here and produced ", typeToString(result.typ),
     #   " from ", typeToString(n.typ), " and ", typeToString(n[1].typ)
-  of tyCString:
+  of tyCstring:
     if source.kind == tyString:
       result = newTransNode(nkStringToCString, n, 1)
       result[0] = transform(c, n[1])
     else:
       result = transformSons(c, n)
   of tyString:
-    if source.kind == tyCString:
+    if source.kind == tyCstring:
       result = newTransNode(nkCStringToString, n, 1)
       result[0] = transform(c, n[1])
     else:
@@ -705,7 +749,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   pushInfoContext(c.graph.config, n.info)
   inc(c.inlining)
   stmtList.add(transform(c, body))
-  #findWrongOwners(c, stmtList.pnode)
+  #findWrongOwners(c, stmtList.PNode)
   dec(c.inlining)
   popInfoContext(c.graph.config)
   popTransCon(c)
@@ -986,11 +1030,13 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkAsgn:
     result = transformAsgn(c, n)
   of nkIdentDefs, nkConstDef:
-    result = n
+    result = newTransNode(n)
     result[0] = transform(c, n[0])
     # Skip the second son since it only contains an unsemanticized copy of the
     # variable type used by docgen
-    result[2] = transform(c, n[2])
+    let last = n.len-1
+    for i in 1..<last: result[i] = n[i]
+    result[last] = transform(c, n[last])
     # XXX comment handling really sucks:
     if importantComments(c.graph.config):
       result.comment = n.comment
@@ -1000,8 +1046,10 @@ proc transform(c: PTransf, n: PNode): PNode =
     # (bug #2604). We need to patch this environment here too:
     let a = n[1]
     if a.kind == nkSym:
-      n[1] = transformSymAux(c, a)
-    return n
+      result = copyTree(n)
+      result[1] = transformSymAux(c, a)
+    else:
+      result = n
   of nkExceptBranch:
     result = transformExceptBranch(c, n)
   of nkCheckedFieldExpr:
