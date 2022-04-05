@@ -321,7 +321,7 @@ proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
       let n = x.len.nextPowerOfTwo
       result.data = newSeqOfCap[T](n)
       result.data.add x
-      result.data.setLen x.len
+      result.data.setLen n
       n
   result.mask = n - 1
 

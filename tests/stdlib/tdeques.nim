@@ -183,6 +183,14 @@ proc main() =
     clear(a)
     doAssert len(a) == 0
 
+  block:
+    var a = @[10, 20, 30].toDeque
+    doAssert a.len == 3
+    doAssert a[0] == 10
+    a.addFirst 0
+    a.addLast 40
+    doAssert $a == "[0, 10, 20, 30, 40]"
+
 
 static: main()
 main()
