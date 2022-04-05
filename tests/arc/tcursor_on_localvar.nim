@@ -4,7 +4,10 @@ discard """
 Section: local
   Param: Str
   Param: Bool
-  Param: Floats2'''
+  Param: Floats2
+destroy Foo
+destroy Foo
+'''
   cmd: '''nim c --gc:arc $file'''
 """
 
@@ -123,4 +126,36 @@ when isMainModule:
         for p in cfg.params(s):
             echo "  Param: " & p
 
+# bug #16437
+
+type
+  Foo = object
+  FooRef = ref Foo
+
+  Bar = ref object
+    f: FooRef
+
+proc `=destroy`(o: var Foo) =
+  echo "destroy Foo"
+
+proc testMe(x: Bar) =
+  var c = (if x != nil: x.f else: nil)
+  assert c != nil
+
+proc main =
+  var b = Bar(f: FooRef())
+  testMe(b)
+
+main()
+
+proc testMe2(x: Bar) =
+  var c: FooRef
+  c = (if x != nil: x.f else: nil)
+  assert c != nil
+
+proc main2 =
+  var b = Bar(f: FooRef())
+  testMe2(b)
+
+main2()
 

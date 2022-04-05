@@ -10,20 +10,20 @@
 # Cell seqs for cyclebreaker and cyclicrefs_v2.
 
 type
-  CellTuple = (PT, PNimTypeV2)
-  CellArray = ptr UncheckedArray[CellTuple]
-  CellSeq = object
+  CellTuple[T] = (T, PNimTypeV2)
+  CellArray[T] = ptr UncheckedArray[CellTuple[T]]
+  CellSeq[T] = object
     len, cap: int
-    d: CellArray
+    d: CellArray[T]
 
-proc add(s: var CellSeq, c: PT; t: PNimTypeV2) {.inline.} =
+proc add[T](s: var CellSeq[T], c: T; t: PNimTypeV2) {.inline.} =
   if s.len >= s.cap:
     s.cap = s.cap * 3 div 2
     when compileOption("threads"):
-      var d = cast[CellArray](allocShared(uint(s.cap * sizeof(CellTuple))))
+      var d = cast[CellArray[T]](allocShared(uint(s.cap * sizeof(CellTuple[T]))))
     else:
-      var d = cast[CellArray](alloc(s.cap * sizeof(CellTuple)))
-    copyMem(d, s.d, s.len * sizeof(CellTuple))
+      var d = cast[CellArray[T]](alloc(s.cap * sizeof(CellTuple[T])))
+    copyMem(d, s.d, s.len * sizeof(CellTuple[T]))
     when compileOption("threads"):
       deallocShared(s.d)
     else:
@@ -33,15 +33,15 @@ proc add(s: var CellSeq, c: PT; t: PNimTypeV2) {.inline.} =
   s.d[s.len] = (c, t)
   inc(s.len)
 
-proc init(s: var CellSeq, cap: int = 1024) =
+proc init[T](s: var CellSeq[T], cap: int = 1024) =
   s.len = 0
   s.cap = cap
   when compileOption("threads"):
-    s.d = cast[CellArray](allocShared(uint(s.cap * sizeof(CellTuple))))
+    s.d = cast[CellArray[T]](allocShared(uint(s.cap * sizeof(CellTuple[T]))))
   else:
-    s.d = cast[CellArray](alloc(s.cap * sizeof(CellTuple)))
+    s.d = cast[CellArray[T]](alloc(s.cap * sizeof(CellTuple[T])))
 
-proc deinit(s: var CellSeq) =
+proc deinit[T](s: var CellSeq[T]) =
   if s.d != nil:
     when compileOption("threads"):
       deallocShared(s.d)
@@ -51,6 +51,6 @@ proc deinit(s: var CellSeq) =
   s.len = 0
   s.cap = 0
 
-proc pop(s: var CellSeq): (PT, PNimTypeV2) =
+proc pop[T](s: var CellSeq[T]): (T, PNimTypeV2) =
   result = s.d[s.len-1]
   dec s.len

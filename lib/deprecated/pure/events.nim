@@ -36,6 +36,8 @@
 ##    myobj.SomeEvent.addHandler(handleevent)
 ##    ee.emit(myobj.SomeEvent, genericargs)
 
+{.deprecated.}
+
 type
   EventArgs* = object of RootObj ## Base object for event arguments that are passed to callback functions.
   EventHandler* = tuple[name: string, handlers: seq[proc(e: EventArgs) {.closure.}]] ## An eventhandler for an event.

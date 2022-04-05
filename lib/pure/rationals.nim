@@ -21,7 +21,7 @@ runnableExamples:
   doAssert r1 * r2 == -3 // 8
   doAssert r1 / r2 == -2 // 3
 
-import std/[math, hashes]
+import math, hashes
 
 type Rational*[T] = object
   ## A rational number, consisting of a numerator `num` and a denominator `den`.

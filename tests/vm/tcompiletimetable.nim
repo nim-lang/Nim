@@ -1,12 +1,16 @@
 discard """
-  nimout: '''2
+  nimout: '''
+2
 3
 4:2
 Got Hi
 Got Hey
+'''
+  output:'''
 a
 b
-c'''
+c
+'''
 """
 
 # bug #404

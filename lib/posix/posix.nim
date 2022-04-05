@@ -37,6 +37,9 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 # TODO these constants don't seem to be fetched from a header file for unknown
 #      platforms - where do they come from and why are they here?
 when false:
@@ -151,11 +154,13 @@ proc htons*(a1: uint16): uint16 {.importc, header: "<arpa/inet.h>".}
 proc ntohl*(a1: uint32): uint32 {.importc, header: "<arpa/inet.h>".}
 proc ntohs*(a1: uint16): uint16 {.importc, header: "<arpa/inet.h>".}
 
-proc inet_addr*(a1: cstring): InAddrT {.importc, header: "<arpa/inet.h>".}
-proc inet_ntoa*(a1: InAddr): cstring {.importc, header: "<arpa/inet.h>".}
-proc inet_ntop*(a1: cint, a2: pointer, a3: cstring, a4: int32): cstring {.
+when not defined(zephyr):
+  proc inet_addr*(a1: cstring): InAddrT {.importc, header: "<arpa/inet.h>".}
+  proc inet_ntoa*(a1: InAddr): cstring {.importc, header: "<arpa/inet.h>".}
+
+proc inet_ntop*(a1: cint, a2: pointer | ptr InAddr | ptr In6Addr, a3: cstring, a4: int32): cstring {.
   importc:"(char *)$1", header: "<arpa/inet.h>".}
-proc inet_pton*(a1: cint, a2: cstring, a3: pointer): cint {.
+proc inet_pton*(a1: cint, a2: cstring, a3: pointer | ptr InAddr | ptr In6Addr): cint {.
   importc, header: "<arpa/inet.h>".}
 
 var
@@ -183,13 +188,17 @@ proc dlsym*(a1: pointer, a2: cstring): pointer {.importc, header: "<dlfcn.h>", s
 
 proc creat*(a1: cstring, a2: Mode): cint {.importc, header: "<fcntl.h>", sideEffect.}
 proc fcntl*(a1: cint | SocketHandle, a2: cint): cint {.varargs, importc, header: "<fcntl.h>", sideEffect.}
-proc open*(a1: cstring, a2: cint): cint {.varargs, importc, header: "<fcntl.h>", sideEffect.}
+proc openImpl(a1: cstring, a2: cint): cint {.varargs, importc: "open", header: "<fcntl.h>", sideEffect.}
+proc open*(a1: cstring, a2: cint, mode: Mode | cint = 0.Mode): cint {.inline.} =
+  # prevents bug #17888
+  openImpl(a1, a2, mode)
+
 proc posix_fadvise*(a1: cint, a2, a3: Off, a4: cint): cint {.
   importc, header: "<fcntl.h>".}
 proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
   importc, header: "<fcntl.h>".}
 
-when not defined(haiku) and not defined(OpenBSD):
+when not defined(haiku) and not defined(openbsd):
   proc fmtmsg*(a1: int, a2: cstring, a3: cint,
               a4, a5, a6: cstring): cint {.importc, header: "<fmtmsg.h>".}
 
@@ -447,7 +456,7 @@ proc pthread_spin_unlock*(a1: ptr Pthread_spinlock): cint {.
 proc pthread_testcancel*() {.importc, header: "<pthread.h>".}
 
 
-proc exitnow*(code: int): void {.importc: "_exit", header: "<unistd.h>".}
+proc exitnow*(code: int) {.importc: "_exit", header: "<unistd.h>".}
 proc access*(a1: cstring, a2: cint): cint {.importc, header: "<unistd.h>".}
 proc alarm*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc chdir*(a1: cstring): cint {.importc, header: "<unistd.h>".}
@@ -766,6 +775,13 @@ else:
   proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
                      a3: var Timespec): cint {.importc, header: "<signal.h>".}
 
+when defined(sunos) or defined(solaris):
+  # The following compile time flag is needed on Illumos/Solaris to use the POSIX
+  # `sigwait` implementation. See the documentation here:
+  # https://docs.oracle.com/cd/E19455-01/806-5257/6je9h033k/index.html
+  # https://www.illumos.org/man/2/sigwait
+  {.passc: "-D_POSIX_PTHREAD_SEMANTICS".}
+
 proc sigwait*(a1: var Sigset, a2: var cint): cint {.
   importc, header: "<signal.h>".}
 proc sigwaitinfo*(a1: var Sigset, a2: var SigInfo): cint {.
@@ -1048,16 +1064,16 @@ proc realpath*(name, resolved: cstring): cstring {.
 proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>", sideEffect.}
   ## Creates a unique temporary file.
   ##
-  ## **Warning**: The `tmpl` argument is written to by `mkstemp` and thus
-  ## can't be a string literal. If in doubt make a copy of the cstring before
-  ## passing it in.
+  ## .. warning:: The `tmpl` argument is written to by `mkstemp` and thus
+  ##   can't be a string literal. If in doubt make a copy of the cstring before
+  ##   passing it in.
 
 proc mkstemps*(tmpl: cstring, suffixlen: int): cint {.importc, header: "<stdlib.h>", sideEffect.}
   ## Creates a unique temporary file.
   ##
-  ## **Warning**: The `tmpl` argument is written to by `mkstemps` and thus
-  ## can't be a string literal. If in doubt make a copy of the cstring before
-  ## passing it in.
+  ## .. warning:: The `tmpl` argument is written to by `mkstemps` and thus
+  ##   can't be a string literal. If in doubt make a copy of the cstring before
+  ##   passing it in.
 
 proc mkdtemp*(tmpl: cstring): pointer {.importc, header: "<stdlib.h>", sideEffect.}
 

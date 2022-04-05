@@ -1,5 +1,5 @@
 discard """
-  errormsg: "'myproc' is not GC-safe as it accesses 'global_proc' which is a global using GC'ed memory"
+  errormsg: "'myproc' is not GC-safe as it calls 'global_proc'"
   line: 12
   cmd: "nim $target --hints:on --threads:on $options $file"
 """

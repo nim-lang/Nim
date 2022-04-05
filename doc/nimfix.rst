@@ -1,3 +1,5 @@
+.. default-role:: code
+
 =====================
   Nimfix User Guide
 =====================
@@ -14,12 +16,12 @@ It performs 3 different actions:
 
 1. It makes your code case consistent.
 2. It renames every symbol that has a deprecation rule. So if a module has a
-   rule ``{.deprecated: [TFoo: Foo].}`` then ``TFoo`` is replaced by ``Foo``.
+   rule `{.deprecated: [TFoo: Foo].}` then `TFoo` is replaced by `Foo`.
 3. It can also check that your identifiers adhere to the official style guide
-   and optionally modify them to do so (via ``--styleCheck:auto``).
+   and optionally modify them to do so (via `--styleCheck:auto`).
 
-Note that ``nimfix`` defaults to **overwrite** your code unless you
-use ``--overwriteFiles:off``! But hey, if you do not use a version control
+Note that `nimfix` defaults to **overwrite** your code unless you
+use `--overwriteFiles:off`! But hey, if you do not use a version control
 system by this day and age, your project is already in big trouble.
 
 

@@ -83,10 +83,14 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         not c.isDeclarative:
       c.isDeclarative = true
       isDeclarative = true
-    var res = copyNode(c, templ, actual)
-    for i in 0..<templ.len:
-      evalTemplateAux(templ[i], actual, c, res)
-    result.add res
+    if (not c.isDeclarative) and templ.kind in nkCallKinds and isRunnableExamples(templ[0]):
+      # fixes bug #16993, bug #18054
+      discard
+    else:
+      var res = copyNode(c, templ, actual)
+      for i in 0..<templ.len:
+        evalTemplateAux(templ[i], actual, c, res)
+      result.add res
     if isDeclarative: c.isDeclarative = false
 
 const

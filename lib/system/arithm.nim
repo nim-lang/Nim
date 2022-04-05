@@ -155,7 +155,7 @@ proc absInt(a: int): int {.compilerproc, inline.} =
   raiseOverflow()
 
 const
-  asmVersion = defined(I386) and (defined(vcc) or defined(wcc) or
+  asmVersion = defined(i386) and (defined(vcc) or defined(wcc) or
                defined(dmc) or defined(gcc) or defined(llvm_gcc))
     # my Version of Borland C++Builder does not have
     # tasm32, which is needed for assembler blocks

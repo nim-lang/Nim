@@ -34,6 +34,7 @@ elif defined(linux):
     # Fedora/RHEL
     "/etc/pki/tls/certs",
     # Android
+    "/data/data/com.termux/files/usr/etc/tls/cert.pem",
     "/system/etc/security/cacerts",
   ]
 elif defined(bsd):

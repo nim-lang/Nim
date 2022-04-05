@@ -1,5 +1,5 @@
 import macros
-
+from stdtest/testutils import disableVM
 type
   Dollar = distinct int
   XCoord = distinct int32
@@ -10,6 +10,12 @@ proc `==`(x, y: Dollar): bool {.borrow.}
 proc `==`(x, y: XCoord): bool {.borrow.}
 
 proc dummy[T](x: T): T = x
+
+template roundTrip(a, T) =
+  let a2 = a # sideeffect safe
+  let b = cast[T](a2)
+  let c = cast[type(a2)](b)
+  doAssert c == a2
 
 proc test() =
   let U8 = 0b1011_0010'u8
@@ -98,17 +104,21 @@ proc test() =
     doAssert(cast[int](digit) == raw)
     doAssert(cast[Digit](raw) == digit)
 
-  when defined nimvm:
-    doAssert(not compiles(cast[float](I64A)))
-    doAssert(not compiles(cast[float32](I64A)))
+  block:
+    roundTrip(I64A, float)
+    roundTrip(I8, uint16)
+    roundTrip(I8, uint32)
+    roundTrip(I8, uint64)
+    doAssert cast[uint16](I8) == 65458'u16
+    doAssert cast[uint32](I8) == 4294967218'u32
+    doAssert cast[uint64](I8) == 18446744073709551538'u64
+    doAssert cast[uint32](I64A) == 2571663889'u32
+    doAssert cast[uint16](I64A) == 31249
+    doAssert cast[char](I64A).ord == 17
+    doAssert compiles(cast[float32](I64A))
 
-    doAssert(not compiles(cast[char](I64A)))
-    doAssert(not compiles(cast[uint16](I64A)))
-    doAssert(not compiles(cast[uint32](I64A)))
-
-    doAssert(not compiles(cast[uint16](I8)))
-    doAssert(not compiles(cast[uint32](I8)))
-    doAssert(not compiles(cast[uint64](I8)))
+  disableVM: # xxx Error: VM does not support 'cast' from tyInt64 to tyFloat32
+    doAssert cast[uint32](cast[float32](I64A)) == 2571663889'u32
 
 const prerecordedResults = [
   # cast to char
