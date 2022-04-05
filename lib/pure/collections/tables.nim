@@ -1671,8 +1671,10 @@ proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
 
   if s.counter != t.counter:
     return false
+
   if s.counter == 0 and t.counter == 0:
     return true
+
   var ht = t.first
   var hs = s.first
   while ht >= 0 and hs >= 0:
