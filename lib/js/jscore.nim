@@ -126,26 +126,26 @@ since (1, 5):
 
 
 since (1, 7):
-  func isFrozen*(obj: auto): bool {.importjs: "Object.$1(#)".}
+  func isFrozen*(obj: JsRoot): bool {.importjs: "Object.$1(#)".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/isFrozen
 
-  func isSealed*(obj: auto): bool {.importjs: "Object.$1(#)".}
+  func isSealed*(obj: JsRoot): bool {.importjs: "Object.$1(#)".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/isSealed
 
-  func isExtensible*(obj: auto): bool {.importjs: "Object.$1(#)".}
+  func isExtensible*(obj: JsRoot): bool {.importjs: "Object.$1(#)".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/isExtensible
 
-  func preventExtensions*(obj: auto): auto {.importjs: "Object.$1(#)".}
+  func preventExtensions*(obj: JsRoot): auto {.importjs: "Object.$1(#)".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/preventExtensions
 
-  func seal*(obj: auto): auto {.importjs: "Object.$1(#)".}
+  func seal*(obj: JsRoot): auto {.importjs: "Object.$1(#)".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/seal
 
-  func freeze*(obj: auto): auto {.importjs: "Object.$1(#)".}
+  func freeze*(obj: JsRoot): auto {.importjs: "Object.$1(#)".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/freeze
 
-  func hasOwn*(instance: auto; prop: cstring): bool {.importjs: "Object.$1(#, #)".}
+  func hasOwn*(instance: JsRoot; prop: cstring): bool {.importjs: "Object.$1(#, #)".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwn
 
-  func defineProperty*(obj: auto; prop: cstring; desc: auto): auto {.importjs: "Object.$1(#, #, #)".}
+  func defineProperty*(obj: JsRoot; prop: cstring; descriptor: auto): auto {.importjs: "Object.$1(#, #, #)".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
