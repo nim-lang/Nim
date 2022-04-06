@@ -201,6 +201,10 @@ import strutils, math, options
 import std/private/since
 include "system/inclrtl"
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 when defined(js):
   import jscore
 

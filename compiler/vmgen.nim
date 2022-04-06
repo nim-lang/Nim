@@ -29,6 +29,9 @@
 
 import tables
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import
   strutils, ast, types, msgs, renderer, vmdef,
   intsets, magicsys, options, lowerings, lineinfos, transf, astmsgs

@@ -32,6 +32,9 @@ import ast, types, lineinfos, options, msgs, renderer, typeallowed, modulegraphs
 from trees import getMagic, isNoSideEffectPragma, stupidStmtListExpr
 from isolation_check import canAlias
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   AbstractTime = distinct int
 

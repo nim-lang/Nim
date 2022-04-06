@@ -13,6 +13,9 @@
 import
   intsets, ast, renderer, options, semdata, types
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   TTypeAllowedFlag* = enum
     taField,
