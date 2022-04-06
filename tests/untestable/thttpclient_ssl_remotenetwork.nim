@@ -32,7 +32,7 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
       good, bad, dubious, good_broken, bad_broken, dubious_broken
     CertTest = tuple[url:string, category:Category, desc: string]
 
-  const certificate_tests: array[0..55, CertTest] = [
+  const certificate_tests: array[0..54, CertTest] = [
     ("https://wrong.host.badssl.com/", bad, "wrong.host"),
     ("https://captive-portal.badssl.com/", bad, "captive-portal"),
     ("https://expired.badssl.com/", bad, "expired"),
@@ -43,7 +43,6 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
     ("https://pinning-test.badssl.com/", bad_broken, "pinning-test"),
     ("https://no-common-name.badssl.com/", bad, "no-common-name"),
     ("https://no-subject.badssl.com/", bad, "no-subject"),
-    ("https://incomplete-chain.badssl.com/", dubious, "incomplete-chain"),
     ("https://sha1-intermediate.badssl.com/", bad, "sha1-intermediate"),
     ("https://sha256.badssl.com/", good, "sha256"),
     ("https://sha384.badssl.com/", bad, "sha384"),
