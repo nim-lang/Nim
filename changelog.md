@@ -50,6 +50,8 @@ becomes an alias for `addr`.
 
 - Remove deprecated `osproc.poDemon`, symbol with typo.
 
+- Deprecated `selfExe` for Nimscript.
+
 
 ## Language changes
 
