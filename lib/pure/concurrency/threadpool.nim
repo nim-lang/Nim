@@ -273,6 +273,31 @@ proc blockUntilAny*(flowVars: openArray[FlowVarBase]): int =
   ## to be able to wait on, -1 is returned.
   ##
   ## **Note:** This results in non-deterministic behaviour and should be avoided.
+  runnableExamples("--threads:on"):
+    from std/os import sleep
+
+    proc worker(n: int): int =
+      result = (100*n mod 29) * 7
+      sleep(result) # Pseudo-random: 91, 182, 70, 161, 49, 140, 28, 119, 7, 98
+
+    const N = 10
+    var flowvars = newSeq[FlowVarBase](N)
+    for i in 0..<N:
+      flowvars[i] = spawn worker(i+1)
+
+    var finished = newSeq[(int, int)](N)
+    for i in 0..<N:
+      let fvIdx = flowvars.blockUntilAny()
+      if fvIdx != -1:
+        # Convert the result from FlowVarBase and get inner value:
+        let slept = ^FlowVar[int](flowvars[fvIdx])
+        finished[i] = (fvIdx, slept) # Thread index and its sleep period
+      else:
+        break
+
+    # Order of `finished` should roughly correlate with the length of sleep
+    echo finished
+
   var ai: AwaitInfo
   ai.cv.initSemaphore()
   var conflicts = 0
