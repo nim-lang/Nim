@@ -164,7 +164,7 @@ type
     ##
     ## To initialize it, use the
     ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
-    pos*: int
+    pos: int
     inShortState: bool
     allowWhitespaceAfterColon: bool
     shortNoVal: set[char]
