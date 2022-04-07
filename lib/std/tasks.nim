@@ -111,10 +111,10 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
 
   when compileOption("threads"):
     if not isGcSafe(e[0]):
-      error("'toTask' takes a GC safe call expression")
+      error("'toTask' takes a GC safe call expression", e)
 
   if hasClosure(e[0]):
-    error("closure call is not allowed")
+    error("closure call is not allowed", e)
 
   if e.len > 1:
     let scratchIdent = genSym(kind = nskTemp, ident = "scratch")
@@ -141,17 +141,17 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
         param = param[0]
 
       if param.typeKind in {ntyExpr, ntyStmt}:
-        error("'toTask'ed function cannot have a 'typed' or 'untyped' parameter")
+        error("'toTask'ed function cannot have a 'typed' or 'untyped' parameter", e)
 
       case param.kind
       of nnkVarTy:
-        error("'toTask'ed function cannot have a 'var' parameter")
+        error("'toTask'ed function cannot have a 'var' parameter", e)
       of nnkBracketExpr:
         if param[0].typeKind == ntyTypeDesc:
           callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
         elif param[0].typeKind in {ntyVarargs, ntyOpenArray}:
           if param[1].typeKind in {ntyExpr, ntyStmt}:
-            error("'toTask'ed function cannot have a 'typed' or 'untyped' parameter")
+            error("'toTask'ed function cannot have a 'typed' or 'untyped' parameter", e)
           let
             seqType = nnkBracketExpr.newTree(newIdentNode("seq"), param[1])
             seqCallNode = newcall("@", e[i])
@@ -167,7 +167,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
       of nnkCharLit..nnkNilLit:
         callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
       else:
-        error("not supported type kinds")
+        error("'toTask'ed function cannot have a parameter of " & $param.kind & " kind", e)
 
     let scratchObjType = genSym(kind = nskType, ident = "ScratchObj")
     let scratchObj = nnkTypeSection.newTree(
