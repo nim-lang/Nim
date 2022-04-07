@@ -1505,20 +1505,20 @@ macro expandMacros*(body: typed): untyped =
   result = body
 
 proc extractTypeImpl(n: NimNode): NimNode =
-    ## attempts to extract the type definition of the given symbol
-    case n.kind
-    of nnkSym: # can extract an impl
-      result = n.getImpl.extractTypeImpl()
-    of nnkObjectTy, nnkRefTy, nnkPtrTy: result = n
-    of nnkBracketExpr:
-      if n.typeKind == ntyTypeDesc:
-        result = n[1].extractTypeImpl()
-      else:
-        doAssert n.typeKind == ntyGenericInst
-        result = n[0].getImpl()
-    of nnkTypeDef:
-      result = n[2]
-    else: error("Invalid node to retrieve type implementation of: " & $n.kind)
+  ## attempts to extract the type definition of the given symbol
+  case n.kind
+  of nnkSym: # can extract an impl
+    result = n.getImpl.extractTypeImpl()
+  of nnkObjectTy, nnkRefTy, nnkPtrTy: result = n
+  of nnkBracketExpr:
+    if n.typeKind == ntyTypeDesc:
+      result = n[1].extractTypeImpl()
+    else:
+      doAssert n.typeKind == ntyGenericInst
+      result = n[0].getImpl()
+  of nnkTypeDef:
+    result = n[2]
+  else: error("Invalid node to retrieve type implementation of: " & $n.kind)
 
 proc customPragmaNode(n: NimNode): NimNode =
   expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkCheckedFieldExpr})
