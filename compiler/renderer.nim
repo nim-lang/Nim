@@ -17,6 +17,9 @@ when defined(nimHasUsed):
 import
   lexer, options, idents, strutils, ast, msgs, lineinfos
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,

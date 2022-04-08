@@ -8,6 +8,10 @@ import os
 when defined(windows):
   from strutils import replace
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 when defined(nimHasEffectsOf):
   {.experimental: "strictEffects".}
 else:
