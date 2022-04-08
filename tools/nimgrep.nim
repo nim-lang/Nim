@@ -1113,7 +1113,7 @@ proc runMultiThread() =
     compile1Pattern(searchOpt.pattern, pat.pattern)
     template add1fileResult(fileNo: int, fname: string, fResult: FileResult) =
       storage[fileNo] = (fname, fResult)
-      while storage.haskey(firstUnprocessedFile):
+      while storage.hasKey(firstUnprocessedFile):
         let fileResult = storage[firstUnprocessedFile][1]
         let filename = storage[firstUnprocessedFile][0]
         processFileResult(pat.pattern, filename, fileResult)

@@ -96,6 +96,6 @@ proc main() =
       discard
   echo res
 
-dumpAllocStats:
+dumpAllocstats:
   main()
 

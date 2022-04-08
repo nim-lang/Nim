@@ -24,7 +24,7 @@ type
     letters: seq[string]
     numbers:seq[int]
 
-const data: Tconfig = (@["aa", "bb"], @[11, 22])
+const data: TConfig = (@["aa", "bb"], @[11, 22])
 
 macro mymacro(data: static[TConfig]): untyped =
   echo "letters"

@@ -61,12 +61,12 @@ proc lambdaGen(a, b: float, z: ref m256d) : auto =
 
 var xx = new(m256d)
 xx[] = set1(10)
-isAlignedCheck(xx, alignOf(m256d))
+isAlignedCheck(xx, alignof(m256d))
 
 let f1 = lambdaGen(2.0 , 2.221, xx)
 let f2 = lambdaGen(-1.226 , 3.5, xx)
-isAlignedCheck(f1(xx), alignOf(m256d))
-isAlignedCheck(f2(xx), alignOf(m256d))
+isAlignedCheck(f1(xx), alignof(m256d))
+isAlignedCheck(f2(xx), alignof(m256d))
 
 
 #-----------------------------------------------------------------------------
@@ -77,21 +77,21 @@ type
 
 
 var f: MyAligned
-isAlignedCheck(f.addr, MyAligned.alignOf)
+isAlignedCheck(f.addr, MyAligned.alignof)
 
 var fref = new(MyAligned)
-isAlignedCheck(fref, MyAligned.alignOf)
+isAlignedCheck(fref, MyAligned.alignof)
 
 var fs: seq[MyAligned]
 var fr: seq[RootRef]
 
 for i in 0..1000:
   fs.add MyAligned()
-  isAlignedCheck(fs[^1].addr, MyAligned.alignOf)
+  isAlignedCheck(fs[^1].addr, MyAligned.alignof)
   fs[^1].a = i.float
 
   fr.add new(MyAligned)
-  isAlignedCheck(fr[^1], MyAligned.alignOf)
+  isAlignedCheck(fr[^1], MyAligned.alignof)
   ((ref MyAligned)fr[^1])[].a = i.float
 
 for i in 0..1000:
@@ -107,16 +107,16 @@ proc lambdaTest2(a: MyAligned, z: ref MyAligned): auto =
   let capturingLambda = proc(x: MyAligned): MyAligned =
     var cc: MyAligned
     var bb: MyAligned
-    isAlignedCheck(x1.addr, MyAligned.alignOf)
-    isAlignedCheck(x2.addr, MyAligned.alignOf)
-    isAlignedCheck(cc.addr, MyAligned.alignOf)
-    isAlignedCheck(bb.addr, MyAligned.alignOf)
-    isAlignedCheck(z, MyAligned.alignOf)
+    isAlignedCheck(x1.addr, MyAligned.alignof)
+    isAlignedCheck(x2.addr, MyAligned.alignof)
+    isAlignedCheck(cc.addr, MyAligned.alignof)
+    isAlignedCheck(bb.addr, MyAligned.alignof)
+    isAlignedCheck(z, MyAligned.alignof)
         
     cc.a = x1.a + x1.a + z.a
     bb.a = x2.a - z.a
     
-    isAlignedCheck(result.addr, MyAligned.alignOf)
+    isAlignedCheck(result.addr, MyAligned.alignof)
     result.a = cc.a + bb.a + x2.a
     
   return capturingLambda
@@ -125,8 +125,8 @@ proc lambdaTest2(a: MyAligned, z: ref MyAligned): auto =
 let q1 = lambdaTest2(MyAligned(a: 1.0), (ref MyAligned)(a: 2.0))
 let q2 = lambdaTest2(MyAligned( a: -1.0), (ref MyAligned)(a: -2.0))
 
-isAlignedCheck(rawEnv(q1), MyAligned.alignOf)
-isAlignedCheck(rawEnv(q2), MyAligned.alignOf)
+isAlignedCheck(rawEnv(q1), MyAligned.alignof)
+isAlignedCheck(rawEnv(q2), MyAligned.alignof)
 discard q1(MyAligned(a: 1.0))
 discard q2(MyAligned(a: -1.0))
 
@@ -141,6 +141,6 @@ block:
       s[^1][i] = MyAligned(a: 1.0)
 
     if len > 0:
-      isAlignedCheck(s[^1][0].addr, MyAligned.alignOf)
+      isAlignedCheck(s[^1][0].addr, MyAligned.alignof)
   
 echo "y"

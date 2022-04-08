@@ -16,7 +16,7 @@ proc makeObj(): TTestObj =
 
 const numIter =
   when defined(boehmgc):
-    # super slow because GC_fullcollect() at each iteration; especially
+    # super slow because GC_fullCollect() at each iteration; especially
     # on OSX 10.15 where it takes ~170s
     # `getOccupiedMem` should be constant after each iteration for i >= 3
     1_000
@@ -29,7 +29,7 @@ const numIter =
 proc inProc() =
   for i in 1 .. numIter:
     when defined(gcMarkAndSweep) or defined(boehmgc):
-      GC_fullcollect()
+      GC_fullCollect()
     var obj: TTestObj
     obj = makeObj()
     if getOccupiedMem() > 300_000: quit("still a leak!")

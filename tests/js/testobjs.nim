@@ -52,8 +52,8 @@ type
 var test1 = Test2(columns: @[Column(t: nil), Column(t: nil)])
 let test2 = test1
 
-echo toJSON(test1)
-echo toJSON(test2)
+echo toJson(test1)
+echo toJson(test2)
 
 block issue10005:
   type

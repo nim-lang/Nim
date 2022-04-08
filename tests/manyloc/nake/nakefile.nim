@@ -64,7 +64,7 @@ task "release", "release build":
     ## zip up all the files and such or something useful here
 
 task "testskel", "create skeleton test dir for testing":
-  let dirname = "test-" & $rand(5000)
+  let dirName = "test-" & $rand(5000)
   removeDir dirName
   createDir dirName/"data/fnt"
   copyFile "data/fnt/LiberationMono-Regular", dirName/"data/fnt/LiberationMono-Regular.ttf"
@@ -122,7 +122,7 @@ task "download", "download game assets":
 
   echo "Download binary libs? Only libs for linux are available currently, enjoy the irony.\n",
     "[Y]es [N]o   Source: ", BinLibs
-  case stdin.readline.toLowerAscii
+  case stdin.readLine.toLowerAscii
   of "y", "yes":
     discard ## o_O
   else:

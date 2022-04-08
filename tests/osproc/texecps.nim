@@ -19,7 +19,7 @@ when true:
     var checks = newSeq[string](NumberOfProcesses)
     var commands = newSeq[string](NumberOfProcesses)
     for i in 0..len(commands) - 1:
-      commands[i] = getAppFileName() & " " & $i
+      commands[i] = getAppFilename() & " " & $i
       checks[i] = $i
     let cres = execProcesses(commands, options = {poStdErrToStdOut},
                              afterRunEvent = execCb)

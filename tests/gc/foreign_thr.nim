@@ -31,7 +31,7 @@ when defined(posix):
       tearDownForeignThreadGc()
       result = nil
 
-    var attrs {.noinit.}: PthreadAttr
+    var attrs {.noinit.}: Pthread_attr
     doAssert pthread_attr_init(addr attrs) == 0
     doAssert pthread_attr_setstacksize(addr attrs, ThreadStackSize) == 0
     var tid: Pthread

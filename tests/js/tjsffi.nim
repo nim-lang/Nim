@@ -218,12 +218,12 @@ block:
     console.log e
 
   jslib.on("reloaded") do:
-    console.log jsarguments[0]
+    console.log jsArguments[0]
 
   # this test case is different from the above, because
   # `subscribe` is not overloaded in the current scope
   jslib.subscribe("updates"):
-    console.log jsarguments[0]
+    console.log jsArguments[0]
 
 block:
   doAssert jsUndefined == jsNull

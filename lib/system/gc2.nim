@@ -414,7 +414,7 @@ template takeStartTime(workPackageSize) {.dirty.} =
   when withRealTime:
     var steps = workPackage
     var t0: Ticks
-    if gch.maxPause > 0: t0 = getticks()
+    if gch.maxPause > 0: t0 = getTicks()
 
 template takeTime {.dirty.} =
   when withRealTime: dec steps
@@ -428,7 +428,7 @@ template checkTime {.dirty.} =
     if steps == 0:
       steps = workPackage
       if gch.maxPause > 0:
-        let duration = getticks() - t0
+        let duration = getTicks() - t0
         # the GC's measuring is not accurate and needs some cleanup actions
         # (stack unmarking), so subtract some short amount of time in
         # order to miss deadlines less often:
@@ -639,7 +639,7 @@ proc collectALittle(gch: var GcHeap): bool =
 
 proc collectCTBody(gch: var GcHeap) =
   when withRealTime:
-    let t0 = getticks()
+    let t0 = getTicks()
   sysAssert(allocInv(gch.region), "collectCT: begin")
 
   when not nimCoroutines:
@@ -651,7 +651,7 @@ proc collectCTBody(gch: var GcHeap) =
     gch.stat.maxThreshold = max(gch.stat.maxThreshold, gch.cycleThreshold)
   sysAssert(allocInv(gch.region), "collectCT: end")
   when withRealTime:
-    let duration = getticks() - t0
+    let duration = getTicks() - t0
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
       if gch.maxPause > 0 and duration > gch.maxPause:

@@ -44,7 +44,7 @@ template main() =
         key: K
         value: V
 
-    var q = newseq[Item[int,int]](1)
+    var q = newSeq[Item[int,int]](1)
     let (x,y) = q[0]
 
   block: # bug #2369

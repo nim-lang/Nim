@@ -18,18 +18,18 @@ const identChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
 
 # Procedure Declarations
-proc parse_template(node: NimNode, value: string) {.compiletime.}
+proc parse_template(node: NimNode, value: string) {.compileTime.}
 
 
 # Procedure Definitions
-proc substring(value: string, index: int, length = -1): string {.compiletime.} =
+proc substring(value: string, index: int, length = -1): string {.compileTime.} =
     ## Returns a string at most `length` characters long, starting at `index`.
     return if length < 0:    value.substr(index)
            elif length == 0: ""
            else:             value.substr(index, index + length-1)
 
 
-proc parse_thru_eol(value: string, index: int): int {.compiletime.} =
+proc parse_thru_eol(value: string, index: int): int {.compileTime.} =
     ## Reads until and past the end of the current line, unless
     ## a non-whitespace character is encountered first
     var remainder: string
@@ -38,7 +38,7 @@ proc parse_thru_eol(value: string, index: int): int {.compiletime.} =
         return read + 1
 
 
-proc trim_after_eol(value: var string) {.compiletime.} =
+proc trim_after_eol(value: var string) {.compileTime.} =
     ## Trims any whitespace at end after \n
     var toTrim = 0
     for i in countdown(value.len-1, 0):
@@ -50,7 +50,7 @@ proc trim_after_eol(value: var string) {.compiletime.} =
         value = value.substring(0, value.len - toTrim)
 
 
-proc trim_eol(value: var string) {.compiletime.} =
+proc trim_eol(value: var string) {.compileTime.} =
     ## Removes everything after the last line if it contains nothing but whitespace
     for i in countdown(value.len - 1, 0):
         # If \n, trim and return
@@ -67,7 +67,7 @@ proc trim_eol(value: var string) {.compiletime.} =
         if not (value[i] in [' ', '\t']): break
 
 
-proc detect_indent(value: string, index: int): int {.compiletime.} =
+proc detect_indent(value: string, index: int): int {.compileTime.} =
     ## Detects how indented the line at `index` is.
     # Seek to the beginning of the line.
     var lastChar = index
@@ -80,14 +80,14 @@ proc detect_indent(value: string, index: int): int {.compiletime.} =
             dec(lastChar)
 
 
-proc parse_thru_string(value: string, i: var int, strType = '"') {.compiletime.} =
+proc parse_thru_string(value: string, i: var int, strType = '"') {.compileTime.} =
     ## Parses until ending " or ' is reached.
     inc(i)
     if i < value.len-1:
         inc(i, value.skipUntil({'\\', strType}, i))
 
 
-proc parse_to_close(value: string, index: int, open='(', close=')', opened=0): int {.compiletime.} =
+proc parse_to_close(value: string, index: int, open='(', close=')', opened=0): int {.compileTime.} =
     ## Reads until all opened braces are closed
     ## ignoring any strings "" or ''
     var remainder   = value.substring(index)
@@ -166,7 +166,7 @@ iterator parse_compound_statements(value, identifier: string, index: int): strin
             get_next_ident(["try", "$except", "$finally"])
 
 
-proc parse_complex_stmt(value, identifier: string, index: var int): NimNode {.compiletime.} =
+proc parse_complex_stmt(value, identifier: string, index: var int): NimNode {.compileTime.} =
     ## Parses if/when/try /elif /else /except /finally statements
 
     # Build up complex statement string
@@ -218,7 +218,7 @@ proc parse_complex_stmt(value, identifier: string, index: var int): NimNode {.co
         inc(resultIndex)
 
 
-proc parse_simple_statement(value: string, index: var int): NimNode {.compiletime.} =
+proc parse_simple_statement(value: string, index: var int): NimNode {.compileTime.} =
     ## Parses for/while
 
     # Detect indentation
@@ -252,7 +252,7 @@ proc parse_simple_statement(value: string, index: var int): NimNode {.compiletim
     inc(index, value.parse_thru_eol(index))
 
 
-proc parse_until_symbol(node: NimNode, value: string, index: var int): bool {.compiletime.} =
+proc parse_until_symbol(node: NimNode, value: string, index: var int): bool {.compileTime.} =
     ## Parses a string until a $ symbol is encountered, if
     ## two $$'s are encountered in a row, a split will happen
     ## removing one of the $'s from the resulting output

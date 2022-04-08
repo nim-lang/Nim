@@ -10,7 +10,7 @@ proc genErrors(s: string) =
   if s == "error!":
     raise newException(ESomething, "Test")
   else:
-    raise newException(EsomeotherErr, "bla")
+    raise newException(ESomeOtherErr, "bla")
 
 try:
   genErrors("errssor!")

@@ -44,7 +44,7 @@ proc launchSwarm(name: ptr SockAddr) {.async.} =
                                        nativesockets.SOCK_DGRAM,
                                        Protocol.IPPROTO_UDP)
     if bindAddr(sock.SocketHandle, cast[ptr SockAddr](peeraddr),
-              sizeof(Sockaddr_in).Socklen) < 0'i32:
+              sizeof(Sockaddr_in).SockLen) < 0'i32:
       raiseOSError(osLastError())
     let sockport = getSockName(sock.SocketHandle).int
     k = 0
@@ -95,7 +95,7 @@ proc createServer() {.async.} =
                                        nativesockets.SOCK_DGRAM,
                                        Protocol.IPPROTO_UDP)
   if bindAddr(server.SocketHandle, cast[ptr SockAddr](name),
-              sizeof(Sockaddr_in).Socklen) < 0'i32:
+              sizeof(Sockaddr_in).SockLen) < 0'i32:
     raiseOSError(osLastError())
   asyncCheck readMessages(server)
 

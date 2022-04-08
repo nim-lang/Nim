@@ -15,7 +15,7 @@ type
     vm: RootRef
 
 proc main() =
-  var g = ModuleGraph(vm: new(Pctx))
+  var g = ModuleGraph(vm: new(PCtx))
   PCtx(g.vm) = nil #This generates invalid C code
   doAssert g.vm == nil
 
@@ -24,7 +24,7 @@ main()
 # bug #14325
 
 proc main2() =
-  var g = ModuleGraph(vm: new(Pctx))
+  var g = ModuleGraph(vm: new(PCtx))
   PPassContext(PCtx(g.vm)) = nil #This compiles, but crashes at runtime with gc:arc
   doAssert g.vm == nil
 

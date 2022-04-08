@@ -236,11 +236,11 @@ proc fail*[N, T](message: string, kind: N): Rule[N, T] =
     var startline = start
     var endline = start
     while startline>0:
-      if text[startline] in NewLines:
+      if text[startline] in Newlines:
         break
       startline-=1
     while endline < len(text):
-      if text[endline] in NewLines:
+      if text[endline] in Newlines:
         break
       endline+=1
     let charno = start-startline
@@ -360,7 +360,7 @@ proc `/`*[N, T](rule: Rule[N, T]): Rule[N, T] =
   result = newRule[N, T](parser, rule.kind)
 
 proc `->`*(rule: Rule, production: Rule) =
-  doAssert(not isnil(production.parser), "Right hand side of -> is nil - has the rule been defined yet?")
+  doAssert(not isNil(production.parser), "Right hand side of -> is nil - has the rule been defined yet?")
   rule.parser = production.parser
 
 template grammar*[K](Kind, Text, Symbol: typedesc; default: K, code: untyped): typed {.hint[XDeclaredButNotUsed]: off.} =
@@ -378,9 +378,9 @@ template grammar*[K](Kind, Text, Symbol: typedesc; default: K, code: untyped): t
       let digit {.inject.} = chartest[Kind, Text, Symbol](isDigit, default)
       let lower {.inject.} = chartest[Kind, Text, Symbol](isLowerAscii, default)
       let upper {.inject.} = chartest[Kind, Text, Symbol](isUpperAscii, default)
-      let isspace = proc (x: char): bool = x.isSpaceAscii and not (x in NewLines)
+      let isspace = proc (x: char): bool = x.isSpaceAscii and not (x in Newlines)
       let space {.inject.} = chartest[Kind, Text, Symbol](isspace, default)
-      let isnewline = proc (x: char): bool = x in NewLines
+      let isnewline = proc (x: char): bool = x in Newlines
       let newline {.inject.} = chartest[Kind, Text, Symbol](isnewline, default)
       let alphas {.inject.} = combine(+alpha, default)
       let alphanumerics {.inject.} = combine(+alphanumeric, default)
@@ -388,7 +388,7 @@ template grammar*[K](Kind, Text, Symbol: typedesc; default: K, code: untyped): t
       let lowers {.inject.} = combine(+lower, default)
       let uppers {.inject.} = combine(+upper, default)
       let spaces {.inject.} = combine(+space, default)
-      let newlines {.inject.} = combine(+newline, default)
+      let newLines {.inject.} = combine(+newline, default)
 
     proc any(chars: Text): Rule[Kind, Text] {.inject.} = any[Kind, Text, Symbol](chars, default)
     proc combine(rule: Rule[Kind, Text]): Rule[Kind, Text] {.inject.} = combine[Kind, Text](rule, default)

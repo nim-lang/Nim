@@ -112,7 +112,7 @@ macro c_alignof(arg: untyped): untyped =
     c_offsetof(`typeSym`, member)
 
 macro testAlign(arg:untyped):untyped =
-  let prefix = newLit(arg.lineinfo & "  alignof " & arg.repr & " ")
+  let prefix = newLit(arg.lineInfo & "  alignof " & arg.repr & " ")
   result = quote do:
     let cAlign = c_alignof(`arg`)
     let nimAlign = alignof(`arg`)
@@ -121,7 +121,7 @@ macro testAlign(arg:untyped):untyped =
       failed = true
 
 macro testSize(arg:untyped):untyped =
-  let prefix = newLit(arg.lineinfo & "  sizeof " & arg.repr & " ")
+  let prefix = newLit(arg.lineInfo & "  sizeof " & arg.repr & " ")
   result = quote do:
     let cSize = c_sizeof(`arg`)
     let nimSize = sizeof(`arg`)

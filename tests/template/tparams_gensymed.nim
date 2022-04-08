@@ -25,7 +25,7 @@ import macros
 # Test that parameters are properly gensym'ed finally:
 
 template genNodeKind(kind, name: untyped) =
-  proc name*(children: varargs[NimNode]): NimNode {.compiletime.}=
+  proc name*(children: varargs[NimNode]): NimNode {.compileTime.}=
     result = newNimNode(kind)
     for c in children:
       result.add(c)

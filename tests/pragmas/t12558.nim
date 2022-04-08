@@ -4,10 +4,10 @@ discard """
 
 import sequtils
 
-{.push compile_time.}
+{.push compileTime.}
 
 proc foo =
-  echo map_it([1, 2, 3], $it)
+  echo mapIt([1, 2, 3], $it)
 
 {.pop.}
 

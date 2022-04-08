@@ -247,7 +247,7 @@ proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D,
         b = union(n.a[j].b, b)
       m += margin(b)
       if m < m0:
-        nbest[] = n[]
+        nBest[] = n[]
         lxbest = lx
         m0 = m
   var i0 = -1
@@ -255,22 +255,22 @@ proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D,
   for i in t.m - 1 .. n.a.typeof.high - t.m + 1:
     var b1 = lxbest.b
     for j in 0 ..< i:
-      b1 = union(nbest.a[j].b, b1)
-    var b2 = nbest.a[^1].b
+      b1 = union(nBest.a[j].b, b1)
+    var b2 = nBest.a[^1].b
     for j in i ..< n.a.high:
-      b2 = union(nbest.a[j].b, b2)
+      b2 = union(nBest.a[j].b, b2)
     let o = overlap(b1, b2)
     if o < o0:
       i0 = i
       o0 = o
   n.a[0] = lxbest
   for i in 0 ..< i0:
-    n.a[i + 1] = nbest.a[i]
+    n.a[i + 1] = nBest.a[i]
   new result
   result.level = n.level
   result.parent = n.parent
   for i in i0 .. n.a.high:
-    result.a[i - i0] = nbest.a[i]
+    result.a[i - i0] = nBest.a[i]
   n.numEntries = i0 + 1
   result.numEntries = M - i0
   when n is Node[M, D, RT, LT]:

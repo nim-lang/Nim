@@ -6,7 +6,7 @@ type
   Bar[T] = object
     x: T
 
-proc infer(T: typeDesc): Bar[T] = Bar[T](x: 'a')
+proc infer(T: typedesc): Bar[T] = Bar[T](x: 'a')
 
 let foo = infer(char)
 echo foo

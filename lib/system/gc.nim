@@ -748,7 +748,7 @@ proc collectZCT(gch: var GcHeap): bool =
   when withRealTime:
     var steps = workPackage
     var t0: Ticks
-    if gch.maxPause > 0: t0 = getticks()
+    if gch.maxPause > 0: t0 = getTicks()
   while L[] > 0:
     var c = gch.zct.d[0]
     sysAssert(isAllocatedPtr(gch.region, c), "CollectZCT: isAllocatedPtr")
@@ -785,7 +785,7 @@ proc collectZCT(gch: var GcHeap): bool =
       if steps == 0:
         steps = workPackage
         if gch.maxPause > 0:
-          let duration = getticks() - t0
+          let duration = getTicks() - t0
           # the GC's measuring is not accurate and needs some cleanup actions
           # (stack unmarking), so subtract some short amount of time in
           # order to miss deadlines less often:
@@ -802,7 +802,7 @@ proc unmarkStackAndRegisters(gch: var GcHeap) =
 
 proc collectCTBody(gch: var GcHeap) {.raises: [].} =
   when withRealTime:
-    let t0 = getticks()
+    let t0 = getTicks()
   sysAssert(allocInv(gch.region), "collectCT: begin")
 
   when nimCoroutines:
@@ -828,7 +828,7 @@ proc collectCTBody(gch: var GcHeap) {.raises: [].} =
   sysAssert(allocInv(gch.region), "collectCT: end")
 
   when withRealTime:
-    let duration = getticks() - t0
+    let duration = getTicks() - t0
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
       if gch.maxPause > 0 and duration > gch.maxPause:

@@ -19,12 +19,12 @@ proc `=destroy`(x: var MyVal) =
   if x.f != nil:
     dealloc(x.f)
 
-proc `=sink`(x1: var MyVal, x2: Myval) =
+proc `=sink`(x1: var MyVal, x2: MyVal) =
   if x1.f != x2.f:
     `=destroy`(x1)
     x1.f = x2.f
 
-proc `=`(x1: var MyVal, x2: Myval) =
+proc `=`(x1: var MyVal, x2: MyVal) =
   if x1.f != x2.f:
     `=destroy`(x1)
     x1.f = create(float)

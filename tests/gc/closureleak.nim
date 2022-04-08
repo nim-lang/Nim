@@ -8,7 +8,7 @@ type
     id: int
     fn: proc() {.closure.}
 var foo_counter = 0
-var alive_foos = newseq[int](0)
+var alive_foos = newSeq[int](0)
 
 when defined(gcDestructors):
   proc `=destroy`(some: var TFoo) =
@@ -38,5 +38,5 @@ for i in 0 ..< 10:
   f.fn = proc =
     echo f.id
 
-GC_fullcollect()
+GC_fullCollect()
 echo alive_foos.len <= 3

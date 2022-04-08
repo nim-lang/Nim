@@ -12,7 +12,7 @@ type
 proc `=destroy`*[T](p: var SharedPtr[T]) =
   mixin `=destroy`
   if p.val != nil:
-    if atomicLoadN(addr p.val[].atomicCounter, AtomicConsume) == 0:
+    if atomicLoadN(addr p.val[].atomicCounter, ATOMIC_CONSUME) == 0:
       `=destroy`(p.val[])
       deallocShared(p.val)
     else:

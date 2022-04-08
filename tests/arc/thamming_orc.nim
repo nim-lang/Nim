@@ -135,7 +135,7 @@ iterator hammings(until: int): TriVal =
 
 proc main =
   var s = ""
-  for h in hammings(20): s &= $h.convertTrival2BigInt & " "
+  for h in hammings(20): s &= $h.convertTriVal2BigInt & " "
   doAssert s == "1 2 3 4 5 6 8 9 10 12 15 16 18 20 24 25 27 30 32 36 ",
            "Algorithmic error finding first 20 Hamming numbers!!!"
 

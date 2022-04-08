@@ -372,14 +372,14 @@ proc allocImpl(size: Natural): pointer =
 proc alloc0Impl(size: Natural): pointer =
   result = alloc(size)
   zeroMem(result, size)
-proc reallocImpl(p: pointer, newsize: Natural): pointer =
-  result = c_realloc(p, cast[csize_t](newsize))
+proc reallocImpl(p: pointer, newSize: Natural): pointer =
+  result = c_realloc(p, cast[csize_t](newSize))
   if result == nil: raiseOutOfMem()
-proc realloc0Impl(p: pointer, oldsize, newsize: Natural): pointer =
-  result = c_realloc(p, cast[csize_t](newsize))
+proc realloc0Impl(p: pointer, oldSize, newSize: Natural): pointer =
+  result = c_realloc(p, cast[csize_t](newSize))
   if result == nil: raiseOutOfMem()
-  if newsize > oldsize:
-    zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+  if newSize > oldSize:
+    zeroMem(cast[pointer](cast[int](result) + oldSize), newSize - oldSize)
 proc deallocImpl(p: pointer) = c_free(p)
 
 proc alloc0(r: var MemRegion; size: Natural): pointer =
@@ -400,14 +400,14 @@ proc allocSharedImpl(size: Natural): pointer =
 proc allocShared0Impl(size: Natural): pointer =
   result = alloc(size)
   zeroMem(result, size)
-proc reallocSharedImpl(p: pointer, newsize: Natural): pointer =
-  result = c_realloc(p, cast[csize_t](newsize))
+proc reallocSharedImpl(p: pointer, newSize: Natural): pointer =
+  result = c_realloc(p, cast[csize_t](newSize))
   if result == nil: raiseOutOfMem()
-proc reallocShared0Impl(p: pointer, oldsize, newsize: Natural): pointer =
-  result = c_realloc(p, cast[csize_t](newsize))
+proc reallocShared0Impl(p: pointer, oldSize, newSize: Natural): pointer =
+  result = c_realloc(p, cast[csize_t](newSize))
   if result == nil: raiseOutOfMem()
-  if newsize > oldsize:
-    zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+  if newSize > oldSize:
+    zeroMem(cast[pointer](cast[int](result) + oldSize), newSize - oldSize)
 proc deallocSharedImpl(p: pointer) = c_free(p)
 
 when hasThreadSupport:

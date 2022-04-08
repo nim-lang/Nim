@@ -21,7 +21,7 @@ const numIter =
 
 for i in 1 .. numIter:
   when defined(gcMarkAndSweep) or defined(boehmgc):
-    GC_fullcollect()
+    GC_fullCollect()
   var obj = makeObj()
   if getOccupiedMem() > 300_000: quit("still a leak!")
 #  echo GC_getstatistics()

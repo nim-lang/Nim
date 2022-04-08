@@ -6,7 +6,7 @@ discard """
 
 # bug #19342
 type
-  Node* {.byRef.} = object
+  Node* {.byref.} = object
     data: array[25, cint]
 
 proc myproc(name: cint): Node {.importc: "hello", cdecl.}

@@ -48,7 +48,7 @@ proc main =
     s[i] = register(create())
   # test that we have at least 80% unreachable weak objects by now:
   when defined(gcMarkAndSweep):
-    GC_fullcollect()
+    GC_fullCollect()
   var unreachable = 0
   for i in 0 .. s.high:
     if access(s[i]) == nil: inc unreachable

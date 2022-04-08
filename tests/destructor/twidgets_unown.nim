@@ -68,5 +68,5 @@ proc main =
   if a != nil:
     a()
 
-dumpAllocStats:
+dumpAllocstats:
   main()

@@ -312,13 +312,13 @@ See the following NimScript:
   elif unlikely(false):
     discard
 
-  proc foo() {.compiletime.} = echo NimVersion
+  proc foo() {.compileTime.} = echo NimVersion
 
   static:
     echo CompileDate
 
 
-`likely()`, `unlikely()`, `static:` and `{.compiletime.}`
+`likely()`, `unlikely()`, `static:` and `{.compileTime.}`
 will produce no code at all when run on NimScript,
 but still no error nor warning is produced and the code just works.
 

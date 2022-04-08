@@ -10,7 +10,7 @@ y = @[10]
 
 # bug #2946
 
-proc testSwap(): int {.compiletime.} =
+proc testSwap(): int {.compileTime.} =
   type T = object
     data: seq[int]
   var x: T

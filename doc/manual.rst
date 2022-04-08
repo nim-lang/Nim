@@ -5725,7 +5725,7 @@ template cannot be accessed in the instantiation context:
 
   # so this works:
   let e = "message"
-  raise newException(IoError, e)
+  raise newException(IOError, e)
 
 
 Whether a symbol that is declared in a template is exposed to the instantiation
@@ -7204,18 +7204,18 @@ The `link` pragma can be used to link an additional file with the project:
 
 PassC pragma
 ------------
-The `passc` pragma can be used to pass additional parameters to the C
-compiler like one would using the command-line switch `--passc`:option:\:
+The `passC` pragma can be used to pass additional parameters to the C
+compiler like one would using the command-line switch `--passC`:option:\:
 
 .. code-block:: Nim
-  {.passc: "-Wall -Werror".}
+  {.passC: "-Wall -Werror".}
 
 Note that one can use `gorge` from the `system module <system.html>`_ to
 embed parameters from an external command that will be executed
 during semantic analysis:
 
 .. code-block:: Nim
-  {.passc: gorge("pkg-config --cflags sdl").}
+  {.passC: gorge("pkg-config --cflags sdl").}
 
 
 LocalPassc pragma

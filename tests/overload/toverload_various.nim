@@ -93,7 +93,7 @@ block toverprc:
 
   if false:
     echo "Give a list of numbers (separated by spaces): "
-    var x = stdin.readline.split.map(parseInt).max
+    var x = stdin.readLine.split.map(parseInt).max
     echo x, " is the maximum!"
   echo "another number: ", takeParseInt(parseInt)
 

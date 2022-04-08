@@ -20,7 +20,7 @@ iterator tokenize2(s: string, seps: set[char] = Whitespace): tuple[
         yield (substr(s, i, j-1), false)
     i = j
 
-for word, isSep in tokenize2("ta da", WhiteSpace):
+for word, isSep in tokenize2("ta da", Whitespace):
   var titer2TestVar = 0
   stdout.write(titer2TestVar)
 

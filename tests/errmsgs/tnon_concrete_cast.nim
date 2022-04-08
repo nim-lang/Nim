@@ -41,7 +41,7 @@ proc write[T](rw: var MyReadWrite; value: seq[T]): void =
 
 proc saveBinFile(arg: var MyData, filename: string): void =
   var rw: MyReadWrite
-  rw.memfile = memfileOpen(filename, newFileSize = rw.offset)
+  rw.memfile = memfileopen(filename, newFileSize = rw.offset)
   rw.offset = 0
   rw.write arg.member1
 

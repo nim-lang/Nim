@@ -13,7 +13,7 @@ const MemBlockSize = 256
 type
   ChannelSPSCSingle* = object
     full{.align: 128.}: Atomic[bool]
-    itemSize*: uint8
+    itemsize*: uint8
     buffer*{.align: 8.}: UncheckedArray[byte]
 
 proc `=`(
@@ -27,11 +27,11 @@ proc initialize*(chan: var ChannelSPSCSingle, itemsize: SomeInteger) {.inline.} 
   ## Also due to 128 bytes padding, it automatically takes half
   ## of the default MemBlockSize
   assert itemsize.int in 0 .. int high(uint8)
-  assert itemSize.int +
+  assert itemsize.int +
           sizeof(chan.itemsize) +
           sizeof(chan.full) < MemBlockSize
 
-  chan.itemSize = uint8 itemsize
+  chan.itemsize = uint8 itemsize
   chan.full.store(false, moRelaxed)
 
 func isEmpty*(chan: var ChannelSPSCSingle): bool {.inline.} =
@@ -138,7 +138,7 @@ when isMainModule:
     var threads: array[2, Thread[ThreadArgs]]
 
     var chan = cast[ptr ChannelSPSCSingle](allocShared(MemBlockSize))
-    chan[].initialize(itemSize = sizeof(int))
+    chan[].initialize(itemsize = sizeof(int))
 
     createThread(threads[0], thread_func, ThreadArgs(ID: Receiver, chan: chan))
     createThread(threads[1], thread_func, ThreadArgs(ID: Sender, chan: chan))

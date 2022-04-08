@@ -97,12 +97,12 @@ let
   b = new ObjRef
   c = new RefType
 
-listFields typeOf(a)
-listFields typeOf(b)
-listFields typeOf(c)
+listFields typeof(a)
+listFields typeof(b)
+listFields typeof(c)
 
 proc genericProc(x: object) =
-  listFields typeOf(x)
+  listFields typeof(x)
 
 genericProc a[]
 genericProc b[]

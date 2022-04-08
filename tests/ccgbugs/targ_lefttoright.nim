@@ -29,7 +29,7 @@ template test =
   var b = 1
   say (b += 1; b), (b += 1; b) #2,3
 
-  type C = object {.byRef.}
+  type C = object {.byref.}
     i: int
 
   proc say(a, b: C) =

@@ -496,16 +496,16 @@ else:
 
     var aiList = getAddrInfo("0.0.0.0", Port(13337))
     if bindAddr(server_socket, aiList.ai_addr,
-                aiList.ai_addrlen.Socklen) < 0'i32:
-      freeAddrInfo(aiList)
+                aiList.ai_addrlen.SockLen) < 0'i32:
+      freeaddrinfo(aiList)
       raiseOSError(osLastError())
     discard server_socket.listen()
-    freeAddrInfo(aiList)
+    freeaddrinfo(aiList)
 
     aiList = getAddrInfo("127.0.0.1", Port(13337))
     discard connect(client_socket, aiList.ai_addr,
-                    aiList.ai_addrlen.Socklen)
-    freeAddrInfo(aiList)
+                    aiList.ai_addrlen.SockLen)
+    freeaddrinfo(aiList)
     # for some reason Windows select doesn't return both
     # descriptors from first call, so we need to make 2 calls
     var n = 0
@@ -518,7 +518,7 @@ else:
     assert(len(rcm) == 2)
 
     var sockAddress = SockAddr()
-    var addrLen = sizeof(sockAddress).Socklen
+    var addrLen = sizeof(sockAddress).SockLen
     var server2_socket = accept(server_socket,
                                 cast[ptr SockAddr](addr(sockAddress)),
                                 addr(addrLen))

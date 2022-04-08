@@ -41,7 +41,7 @@ block tarray:
     TMyArray = array[0..2, int]
     TMyRecord = tuple[x, y: int]
     TObj = object
-      arr: TMyarray
+      arr: TMyArray
 
 
   proc sum(a: openArray[int]): int =
@@ -80,7 +80,7 @@ block tarray:
     var arr: array[-1, int]))
 
 
-  proc mul(a, b: TMyarray): TMyArray =
+  proc mul(a, b: TMyArray): TMyArray =
     result = a
     for i in 0..len(a)-1:
       result[i] = a[i] * b[i]

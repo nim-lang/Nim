@@ -18,7 +18,7 @@ c
 import macros, tables, strtabs
 
 var ZOOT{.compileTime.} = initTable[int, int](2)
-var iii {.compiletime.} = 1
+var iii {.compileTime.} = 1
 
 macro zoo: untyped =
   ZOOT[iii] = iii*2

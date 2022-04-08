@@ -40,7 +40,7 @@ block tstreams2:
 block tstreams3:
   try:
     var fs = openFileStream("shouldneverexist.txt")
-  except IoError:
+  except IOError:
     echo "threw exception"
 
   static:

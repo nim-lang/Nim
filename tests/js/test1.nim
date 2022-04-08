@@ -11,7 +11,7 @@ var
 
 proc onButtonClick(inputElement: string) {.exportc.} =
   let v = $inputElement
-  if v.allCharsInSet(WhiteSpace):
+  if v.allCharsInSet(Whitespace):
     echo "only whitespace, hu?"
   else:
     var x = parseInt(v)

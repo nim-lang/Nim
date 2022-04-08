@@ -50,7 +50,7 @@ static:
 #---------------------------------------------------------------
 
 macro check_gen_proc(ex: typed): (bool, bool) =
-  let lenChoice = bindsym"len"
+  let lenChoice = bindSym"len"
   var is_equal = false 
   var is_instance_of = false 
   for child in lenChoice:

@@ -51,13 +51,13 @@ testMyObj()
 # tmultim4
 type Test = object of RootObj
 
-method doMethod(a: ref RootObj) {.base, raises: [IoError].} =
+method doMethod(a: ref RootObj) {.base, raises: [IOError].} =
   quit "override"
 
 method doMethod(a: ref Test) =
   echo "hello"
   if a == nil:
-    raise newException(IoError, "arg")
+    raise newException(IOError, "arg")
 
 proc doProc(a: ref Test) =
   echo "hello"

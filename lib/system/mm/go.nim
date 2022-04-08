@@ -78,8 +78,8 @@ proc deallocImpl(p: pointer) =
 
 proc allocSharedImpl(size: Natural): pointer = allocImpl(size)
 proc allocShared0Impl(size: Natural): pointer = alloc0Impl(size)
-proc reallocSharedImpl(p: pointer, newsize: Natural): pointer = reallocImpl(p, newsize)
-proc reallocShared0Impl(p: pointer, oldsize, newsize: Natural): pointer = realloc0Impl(p, oldsize, newsize)
+proc reallocSharedImpl(p: pointer, newSize: Natural): pointer = reallocImpl(p, newSize)
+proc reallocShared0Impl(p: pointer, oldSize, newSize: Natural): pointer = realloc0Impl(p, oldSize, newSize)
 proc deallocSharedImpl(p: pointer) = deallocImpl(p)
 
 when hasThreadSupport:

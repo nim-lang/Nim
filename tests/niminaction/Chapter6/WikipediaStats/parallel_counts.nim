@@ -45,7 +45,7 @@ proc parseChunk(chunk: string): Stats =
       result = Stats(domainCode: domainCode, pageTitle: pageTitle,
                      countViews: countViews, totalSize: totalSize)
 
-proc readPageCounts(filename: string, chunkSize = 1_000_000) =
+proc readPageCounts(filename: string, chunksize = 1_000_000) =
   var file = open(filename)
   var responses = newSeq[FlowVar[Stats]]()
   var buffer = newString(chunksize)
@@ -55,7 +55,7 @@ proc readPageCounts(filename: string, chunkSize = 1_000_000) =
     let readSize = file.readChars(buffer, oldBufferLen, reqSize) + oldBufferLen
     var chunkLen = readSize
 
-    while chunkLen >= 0 and buffer[chunkLen - 1] notin NewLines:
+    while chunkLen >= 0 and buffer[chunkLen - 1] notin Newlines:
       chunkLen.dec
 
     responses.add(spawn parseChunk(buffer[0 ..< chunkLen]))

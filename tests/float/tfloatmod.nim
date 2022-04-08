@@ -37,40 +37,40 @@ const simpleTestData = [
   ]
 
 const specialCases = [
-  (-Inf, -Inf, Nan),
-  (-Inf, -Pi, Nan),
-  (-Inf, 0.0, Nan),
-  (-Inf, Pi, Nan),
-  (-Inf, Inf, Nan),
-  (-Inf, Nan, Nan),
+  (-Inf, -Inf, NaN),
+  (-Inf, -PI, NaN),
+  (-Inf, 0.0, NaN),
+  (-Inf, PI, NaN),
+  (-Inf, Inf, NaN),
+  (-Inf, NaN, NaN),
   (-PI, -Inf, -PI),
-  (-PI, 0.0, Nan),
+  (-PI, 0.0, NaN),
   (-PI, Inf, -PI),
-  (-PI, Nan, Nan),
+  (-PI, NaN, NaN),
   (-0.0, -Inf, -0.0),
-  (-0.0, 0.0, Nan),
+  (-0.0, 0.0, NaN),
   (-0.0, Inf, -0.0),
-  (-0.0, Nan, Nan),
+  (-0.0, NaN, NaN),
   (0.0, -Inf, 0.0),
-  (0.0, 0.0, Nan),
+  (0.0, 0.0, NaN),
   (0.0, Inf, 0.0),
-  (0.0, Nan, Nan),
+  (0.0, NaN, NaN),
   (PI, -Inf, PI),
-  (PI, 0.0, Nan),
+  (PI, 0.0, NaN),
   (PI, Inf, PI),
-  (PI, Nan, Nan),
-  (Inf, -Inf, Nan),
-  (Inf, -PI, Nan),
-  (Inf, 0.0, Nan),
-  (Inf, PI, Nan),
-  (Inf, Inf, Nan),
-  (Inf, Nan, Nan),
-  (Nan, -Inf, Nan),
-  (Nan, -PI, Nan),
-  (Nan, 0.0, Nan),
-  (Nan, PI, Nan),
-  (Nan, Inf, Nan),
-  (Nan, Nan, Nan)]
+  (PI, NaN, NaN),
+  (Inf, -Inf, NaN),
+  (Inf, -PI, NaN),
+  (Inf, 0.0, NaN),
+  (Inf, PI, NaN),
+  (Inf, Inf, NaN),
+  (Inf, NaN, NaN),
+  (NaN, -Inf, NaN),
+  (NaN, -PI, NaN),
+  (NaN, 0.0, NaN),
+  (NaN, PI, NaN),
+  (NaN, Inf, NaN),
+  (NaN, NaN, NaN)]
 
 const extremeValues = [
   (5.9790119248836734e+200, 1.1258465975523544, 0.6447968302508578),
@@ -93,9 +93,9 @@ proc simpletest() =
     doAssert(r == expected, errmsg(x, y, r, expected))
 
 proc testSpecialCases() =
-  proc isnan(f: float64): bool =
+  proc isNaN(f: float64): bool =
     case classify(f)
-    of fcNan:
+    of fcNaN:
       result = true
     else:
       result = false
@@ -103,7 +103,7 @@ proc testSpecialCases() =
   for tpl in specialCases:
     let(x, y, expected) = tpl
     let r = x mod y
-    doAssert((r == expected) or (r.isnan and expected.isnan),
+    doAssert((r == expected) or (r.isNaN and expected.isNaN),
               errmsg(x, y, r, expected))
 
 proc testExtremeValues() =

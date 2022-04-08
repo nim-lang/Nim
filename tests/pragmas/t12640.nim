@@ -15,7 +15,7 @@ proc doIt(a: openArray[int]) =
   echo a
 
 proc foo() = 
-  var bug {.global, compiletime.}: seq[int]
+  var bug {.global, compileTime.}: seq[int]
   bug = @[1, 2 ,3]
   for i in 0 .. high(bug): echo bug[i]
   doIt(bug)

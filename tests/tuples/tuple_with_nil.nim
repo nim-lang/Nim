@@ -74,23 +74,23 @@ const
 proc write(s: var string; c: char) =
   s.add(c)
 
-proc has(c: Captures; i: range[0..pegs.MaxSubpatterns-1]): bool {.nosideeffect, inline.} =
+proc has(c: Captures; i: range[0..pegs.MaxSubpatterns-1]): bool {.noSideEffect, inline.} =
   ## Tests whether `c` contains a non-empty capture `i`.
   let b = c.bounds(i)
   result = b.first <= b.last
 
-proc get(str: string; c: Captures; i: range[0..MaxSubpatterns-1]; def: char): char {.nosideeffect, inline.} =
+proc get(str: string; c: Captures; i: range[0..MaxSubpatterns-1]; def: char): char {.noSideEffect, inline.} =
   ## If capture `i` is non-empty return that portion of `str` cast
   ## to `char`, otherwise return `def`.
   result = if c.has(i): str[c.bounds(i).first] else: def
 
-proc get(str: string; c: Captures; i: range[0..MaxSubpatterns-1]; def: string; begoff: int = 0): string {.nosideeffect, inline.} =
+proc get(str: string; c: Captures; i: range[0..MaxSubpatterns-1]; def: string; begoff: int = 0): string {.noSideEffect, inline.} =
   ## If capture `i` is non-empty return that portion of `str` as
   ## string, otherwise return `def`.
   let b = c.bounds(i)
   result = if c.has(i): str.substr(b.first + begoff, b.last) else: def
 
-proc get(str: string; c: Captures; i: range[0..MaxSubpatterns-1]; def: int; begoff: int = 0): int {.nosideeffect, inline.} =
+proc get(str: string; c: Captures; i: range[0..MaxSubpatterns-1]; def: int; begoff: int = 0): int {.noSideEffect, inline.} =
   ## If capture `i` is non-empty return that portion of `str`
   ## converted to int, otherwise return `def`.
   if c.has(i):
@@ -98,7 +98,7 @@ proc get(str: string; c: Captures; i: range[0..MaxSubpatterns-1]; def: int; bego
   else:
     result = def
 
-proc parse(fmt: string): Format {.nosideeffect.} =
+proc parse(fmt: string): Format {.noSideEffect.} =
   # Converts the format string `fmt` into a `Format` structure.
   let p =
     sequence(capture(?sequence(anyRune(), &charSet({'<', '>', '=', '^'}))),
@@ -113,7 +113,7 @@ proc parse(fmt: string): Format {.nosideeffect.} =
   # let p=peg"{(_&[<>=^])?}{[<>=^]?}{[-+ ]?}{[#]?}{[0-9]+?}{[,]?}{([.][0-9]+)?}{[bcdeEfFgGnosxX%]?}{(a.*)?}"
 
   var caps: Captures
-  if fmt.rawmatch(p, 0, caps) < 0:
+  if fmt.rawMatch(p, 0, caps) < 0:
     raise newException(FormatError, "Invalid format string")
 
   result.fill = fmt.get(caps, 0, "")
@@ -165,7 +165,7 @@ proc parse(fmt: string): Format {.nosideeffect.} =
 
   result.arysep = fmt.get(caps, 8, "", 1)
 
-proc getalign(fmt: Format; defalign: FmtAlign; slen: int) : tuple[left, right:int] {.nosideeffect.} =
+proc getalign(fmt: Format; defalign: FmtAlign; slen: int) : tuple[left, right:int] {.noSideEffect.} =
   ## Returns the number of left and right padding characters for a
   ## given format alignment and width of the object to be printed.
   ##
@@ -229,7 +229,7 @@ proc writeformat(o: var Writer; s: string; fmt: Format) =
     raise newException(FormatError, "String variable must have 's' format type")
 
   # compute alignment
-  let len = if fmt.precision < 0: runelen(s) else: min(runelen(s), fmt.precision)
+  let len = if fmt.precision < 0: runeLen(s) else: min(runeLen(s), fmt.precision)
   var alg = getalign(fmt, faLeft, len)
   writefill(o, fmt, alg.left)
   var pos = 0
@@ -569,7 +569,7 @@ proc unquoted(s: string): string {.compileTime.} =
     result.add(s.substr(pos, nxt))
     pos = nxt + 2
 
-proc splitfmt(s: string): seq[Part] {.compiletime, nosideeffect.} =
+proc splitfmt(s: string): seq[Part] {.compileTime, noSideEffect.} =
   ## Split format string `s` into a sequence of "parts".
   ##
 
@@ -639,17 +639,17 @@ proc splitfmt(s: string): seq[Part] {.compiletime, nosideeffect.} =
     result.add(fmtpart)
     pos = clpos + 1
 
-proc literal(s: string): NimNode {.compiletime, nosideeffect.} =
+proc literal(s: string): NimNode {.compileTime, noSideEffect.} =
   ## Return the nim literal of string `s`. This handles the case if
   ## `s` is nil.
   result = newLit(s)
 
-proc literal(b: bool): NimNode {.compiletime, nosideeffect.} =
+proc literal(b: bool): NimNode {.compileTime, noSideEffect.} =
   ## Return the nim literal of boolean `b`. This is either `true`
   ## or `false` symbol.
   result = if b: "true".ident else: "false".ident
 
-proc literal[T](x: T): NimNode {.compiletime, nosideeffect.} =
+proc literal[T](x: T): NimNode {.compileTime, noSideEffect.} =
   ## Return the nim literal of value `x`.
   when type(x) is enum:
     result = ($x).ident
@@ -658,7 +658,7 @@ proc literal[T](x: T): NimNode {.compiletime, nosideeffect.} =
 
 proc generatefmt(fmtstr: string;
                  args: var openArray[tuple[arg:NimNode, cnt:int]];
-                 arg: var int;): seq[tuple[val, fmt:NimNode]] {.compiletime.} =
+                 arg: var int;): seq[tuple[val, fmt:NimNode]] {.compileTime.} =
   ## fmtstr
   ##   the format string
   ## args
@@ -716,7 +716,7 @@ proc generatefmt(fmtstr: string;
           # nested format string. Compute the format string by
           # concatenating the parts of the substring.
           for e in generatefmt(part.fmt, args, arg):
-            var newexpr = if part.fmt.len == 0: e.val else: newCall(bindsym"format", e.val, e.fmt)
+            var newexpr = if part.fmt.len == 0: e.val else: newCall(bindSym"format", e.val, e.fmt)
             if fmtexpr != nil and fmtexpr.kind != nnkNilLit:
               fmtexpr = infix(fmtexpr, "&", newexpr)
             else:
@@ -732,20 +732,20 @@ proc generatefmt(fmtstr: string;
     discard
 
 proc addfmtfmt(fmtstr: string; args: NimNode; retvar: NimNode): NimNode {.compileTime.} =
-  var argexprs = newseq[tuple[arg:NimNode; cnt:int]](args.len)
+  var argexprs = newSeq[tuple[arg:NimNode; cnt:int]](args.len)
   result = newNimNode(nnkStmtListExpr)
   # generate let bindings for arguments
   for i in 0..args.len-1:
-    let argsym = gensym(nskLet, "arg" & $i)
+    let argsym = genSym(nskLet, "arg" & $i)
     result.add(newLetStmt(argsym, args[i]))
     argexprs[i].arg = argsym
   # add result values
   var arg = 0
   for e in generatefmt(fmtstr, argexprs, arg):
     if e.fmt == nil or e.fmt.kind == nnkNilLit:
-      result.add(newCall(bindsym"addformat", retvar, e.val))
+      result.add(newCall(bindSym"addformat", retvar, e.val))
     else:
-      result.add(newCall(bindsym"addformat", retvar, e.val, e.fmt))
+      result.add(newCall(bindSym"addformat", retvar, e.val, e.fmt))
   for i, arg in argexprs:
     if arg.cnt == 0:
       warning("Argument " & $(i+1) & " `" & args[i].repr & "` is not used in format string")

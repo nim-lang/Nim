@@ -6,7 +6,7 @@ import strutils
 
 var x = 343
 
-case stdin.readline.parseInt
+case stdin.readLine.parseInt
 of 0:
   echo "most common case"
 of 1:

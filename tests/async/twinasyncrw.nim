@@ -27,7 +27,7 @@ when defined(windows):
     var lastError: OSErrorCode = OSErrorCode(0)
     var it = aiList
     while it != nil:
-      var ret = nativesockets.connect(socket.SocketHandle, it.ai_addr, it.ai_addrlen.Socklen)
+      var ret = nativesockets.connect(socket.SocketHandle, it.ai_addr, it.ai_addrlen.SockLen)
       if ret == 0:
         # Request to connect completed immediately.
         success = true
@@ -43,7 +43,7 @@ when defined(windows):
           success = false
       it = it.ai_next
 
-    freeAddrInfo(aiList)
+    freeaddrinfo(aiList)
     if not success:
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
@@ -131,8 +131,8 @@ when defined(windows):
     proc cb(sock: AsyncFD): bool =
       result = true
       if not retFuture.finished:
-        var sockAddress = Sockaddr()
-        var addrLen = sizeof(sockAddress).Socklen
+        var sockAddress = SockAddr()
+        var addrLen = sizeof(sockAddress).SockLen
         var client = nativesockets.accept(sock.SocketHandle,
                                           cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
         if client == osInvalidSocket:
@@ -210,7 +210,7 @@ when defined(windows):
 
       await winConnect(AsyncFD(sock), "localhost", port)
       await sendMessages(AsyncFD(sock))
-      discard closeSocket(sock)
+      discard closesocket(sock)
 
   proc readMessages(client: AsyncFD) {.async.} =
     while true:

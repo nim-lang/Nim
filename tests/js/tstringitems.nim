@@ -26,7 +26,7 @@ block: # bug #2581
   echo getSomeVar2()
 
 block: # Test compile-time binary data generation, invalid unicode
-  proc signatureMaker(): string {. compiletime .} =
+  proc signatureMaker(): string {.compileTime.} =
     const signatureBytes = [137, 80, 78, 71, 13, 10, 26, 10]
     result = ""
     for c in signatureBytes: result.add chr(c)

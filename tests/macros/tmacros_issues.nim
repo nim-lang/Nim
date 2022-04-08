@@ -132,7 +132,7 @@ block t2211:
 
 
 block t1140:
-  proc parse_until_symbol(node: NimNode, value: string, index: var int): bool {.compiletime.} =
+  proc parse_until_symbol(node: NimNode, value: string, index: var int): bool {.compileTime.} =
     var splitValue: string
     var read = value.parseUntil(splitValue, '$', index)
 
@@ -145,7 +145,7 @@ block t1140:
     if splitValue.len > 0:
         node.insert node.len, newCall("add", ident("result"), newStrLitNode(splitValue))
 
-  proc parse_template(node: NimNode, value: string) {.compiletime.} =
+  proc parse_template(node: NimNode, value: string) {.compileTime.} =
       var index = 0
       while index < value.len and
           parse_until_symbol(node, value, index): discard
@@ -293,7 +293,7 @@ proc foobar(a: static FooBar) =
 proc main() =
   const a: seq[int] = @[1, 2,3]
   # Error: type mismatch: got <array[0..2, int]> but expected 'seq[int]'
-  const fb = Foobar(a: a)
+  const fb = FooBar(a: a)
   foobar(fb)
 main()
 

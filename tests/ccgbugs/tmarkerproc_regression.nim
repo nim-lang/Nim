@@ -37,7 +37,7 @@ proc main =
   var a: array[500, VersionRange]
   for i in 0 ..< 500:
     a[i] = foo($i & "some longer text here " & $i)
-  GC_fullcollect()
+  GC_fullCollect()
   for i in 0 ..< 500:
     let expected = $i & "some longer text here " & $i
     if a[i].ver.string != expected:

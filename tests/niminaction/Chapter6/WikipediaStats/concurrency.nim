@@ -63,7 +63,7 @@ proc readChunks(filename: string, chunksize = 1000000): Stats =
     let readSize = file.readChars(buffer, oldBufferLen, chunksize - oldBufferLen) + oldBufferLen
     var chunkLen = readSize
 
-    while chunkLen >= 0 and buffer[chunkLen - 1] notin NewLines:
+    while chunkLen >= 0 and buffer[chunkLen - 1] notin Newlines:
       # Find where the last line ends
       chunkLen.dec
 

@@ -37,7 +37,7 @@ var `hu "XYZ"` = "yay"
 
 echo prefix(XYZ)
 
-template typedef(name: untyped, typ: typeDesc) {.dirty.} =
+template typedef(name: untyped, typ: typedesc) {.dirty.} =
   type
     `T name`* = typ
     `P name`* = ref `T name`
@@ -55,7 +55,7 @@ type
 proc initFoo(arg: int): Foo =
   result.arg = arg
 
-template create(typ: typeDesc, arg: untyped): untyped = `init typ`(arg)
+template create(typ: typedesc, arg: untyped): untyped = `init typ`(arg)
 
 var ff = Foo.create(12)
 

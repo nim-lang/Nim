@@ -8,12 +8,12 @@ type
   NimEdAppWindowObj = object
     i: int
 
-template gDefineTypeExtended*(tn: typeDesc) =
+template gDefineTypeExtended*(tn: typedesc) =
   discard
 
 gDefineTypeExtended (NimEdAppWindow)
 
-template xxx*(tn: typeDesc, i: int) =
+template xxx*(tn: typedesc, i: int) =
   discard
 
 xxx (NimEdAppWindow, 0)

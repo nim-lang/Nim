@@ -13,10 +13,10 @@ proc setupServerSocket(hostname: string, port: Port): AsyncFD =
     raiseOSError(osLastError())
   setSockOptInt(fd, SOL_SOCKET, SO_REUSEADDR, 1)
   var aiList = getAddrInfo(hostname, port)
-  if bindAddr(fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
-    freeAddrInfo(aiList)
+  if bindAddr(fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
+    freeaddrinfo(aiList)
     raiseOSError(osLastError())
-  freeAddrInfo(aiList)
+  freeaddrinfo(aiList)
   if listen(fd) != 0:
     raiseOSError(osLastError())
   setBlocking(fd, false)

@@ -27,7 +27,7 @@ type
   PGLboolean* = ptr TGLboolean
   PGLbitfield* = ptr TGLbitfield
   TGLbyte* = int8
-  PGLbyte* = ptr TGlbyte
+  PGLbyte* = ptr TGLbyte
   PGLshort* = ptr TGLshort
   PGLint* = ptr TGLint
   PGLsizei* = ptr TGLsizei
@@ -1010,7 +1010,7 @@ proc glClearIndex*(c: TGLfloat){.dynlib: dllname, importc: "glClearIndex".}
 proc glClearStencil*(s: TGLint){.dynlib: dllname, importc: "glClearStencil".}
 proc glClipPlane*(plane: TGLenum, equation: PGLdouble){.dynlib: dllname,
     importc: "glClipPlane".}
-proc glColor3b*(red, green, blue: TGlbyte){.dynlib: dllname,
+proc glColor3b*(red, green, blue: TGLbyte){.dynlib: dllname,
     importc: "glColor3b".}
 proc glColor3bv*(v: PGLbyte){.dynlib: dllname, importc: "glColor3bv".}
 proc glColor3d*(red, green, blue: TGLdouble){.dynlib: dllname,
@@ -1033,7 +1033,7 @@ proc glColor3uiv*(v: PGLuint){.dynlib: dllname, importc: "glColor3uiv".}
 proc glColor3us*(red, green, blue: TGLushort){.dynlib: dllname,
     importc: "glColor3us".}
 proc glColor3usv*(v: PGLushort){.dynlib: dllname, importc: "glColor3usv".}
-proc glColor4b*(red, green, blue, alpha: TGlbyte){.dynlib: dllname,
+proc glColor4b*(red, green, blue, alpha: TGLbyte){.dynlib: dllname,
     importc: "glColor4b".}
 proc glColor4bv*(v: PGLbyte){.dynlib: dllname, importc: "glColor4bv".}
 proc glColor4d*(red, green, blue, alpha: TGLdouble){.dynlib: dllname,
@@ -1278,7 +1278,7 @@ proc glMultMatrixd*(m: PGLdouble){.dynlib: dllname, importc: "glMultMatrixd".}
 proc glMultMatrixf*(m: PGLfloat){.dynlib: dllname, importc: "glMultMatrixf".}
 proc glNewList*(list: TGLuint, mode: TGLenum){.dynlib: dllname,
     importc: "glNewList".}
-proc glNormal3b*(nx, ny, nz: TGlbyte){.dynlib: dllname, importc: "glNormal3b".}
+proc glNormal3b*(nx, ny, nz: TGLbyte){.dynlib: dllname, importc: "glNormal3b".}
 proc glNormal3bv*(v: PGLbyte){.dynlib: dllname, importc: "glNormal3bv".}
 proc glNormal3d*(nx, ny, nz: TGLdouble){.dynlib: dllname, importc: "glNormal3d".}
 proc glNormal3dv*(v: PGLdouble){.dynlib: dllname, importc: "glNormal3dv".}

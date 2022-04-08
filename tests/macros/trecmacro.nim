@@ -10,5 +10,5 @@ macro dump(n: untyped): untyped =
     nil
   else:
     hint($kind(n))
-    for i in countUp(0, len(n)-1):
+    for i in countup(0, len(n)-1):
       nil

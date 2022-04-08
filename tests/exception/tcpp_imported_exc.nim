@@ -23,7 +23,7 @@ type
 
 proc constructStdString(s: cstring): std_string {.importcpp: "std::string(@)", constructor, header: "<string>".}
 
-proc constructRuntimeError(s: stdstring): std_runtime_error {.importcpp: "std::runtime_error(@)", constructor.}
+proc constructRuntimeError(s: std_string): std_runtime_error {.importcpp: "std::runtime_error(@)", constructor.}
 
 proc what(ex: std_runtime_error): cstring {.importcpp: "((char *)#.what())".}
 

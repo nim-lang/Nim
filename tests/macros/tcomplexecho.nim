@@ -21,13 +21,13 @@ proc f1() {.addEcho1.} =
 f1()
 
 # bug #537
-proc test(): seq[NimNode] {.compiletime.} =
+proc test(): seq[NimNode] {.compileTime.} =
   result = @[]
   result.add parseExpr("echo 56")
   result.add parseExpr("echo 123")
   result.add parseExpr("echo 56")
 
-proc foo(): seq[NimNode] {.compiletime.} =
+proc foo(): seq[NimNode] {.compileTime.} =
   result = @[]
   result.add test()
   result.add parseExpr("echo(5+56)")
