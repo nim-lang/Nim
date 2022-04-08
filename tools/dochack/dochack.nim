@@ -1,13 +1,46 @@
 import dom
 import fuzzysearch
 
+
+proc switchTheme(event: Event) =
+  if event.target.checked:
+    document.documentElement.setAttribute("data-theme", "dark")
+    window.localStorage.setItem("theme", "dark")
+  else:
+    document.documentElement.setAttribute("data-theme", "light")
+    window.localStorage.setItem("theme", "light")
+
+
+proc nimThemeSwitch(event: Event) {.exportC.} =
+  var pragmaDots = document.getElementsByClassName("pragmadots")
+  for i in 0..<pragmaDots.len:
+    pragmaDots[i].onclick = proc (event: Event) =
+      # Hide tease
+      event.target.parentNode.style.display = "none"
+      # Show actual
+      event.target.parentNode.nextSibling.style.display = "inline"
+
+  let toggleSwitch = document.querySelector(".theme-switch input[type=\"checkbox\"]")
+
+  if toggleSwitch != nil:
+    toggleSwitch.addEventListener("change", switchTheme, false)
+
+  var currentTheme = window.localStorage.getItem("theme")
+  if currentTheme.len == 0 and window.matchMedia("(prefers-color-scheme: dark)").matches:
+    currentTheme = "dark"
+  if currentTheme.len > 0:
+    document.documentElement.setAttribute("data-theme", currentTheme);
+
+    if currentTheme == "dark" and toggleSwitch != nil:
+      toggleSwitch.checked = true
+
 proc textContent(e: Element): cstring {.
   importcpp: "#.textContent", nodecl.}
 
 proc textContent(e: Node): cstring {.
   importcpp: "#.textContent", nodecl.}
 
-proc tree(tag: string; kids: varargs[Element]): Element =
+proc tree(tag: cstring; kids: varargs[Element]): Element =
   result = document.createElement tag
   for k in kids:
     result.appendChild k
@@ -396,5 +429,6 @@ proc copyToClipboard*() {.exportc.} =
 
     """
     .}
-    
+
 copyToClipboard()
+window.addEventListener("DOMContentLoaded", nimThemeSwitch)
