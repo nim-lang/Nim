@@ -12,8 +12,15 @@
 
 runnableExamples:
   var
-    bs1 = [89, 65, 34, 12].toBSeq
+    bs1 = [189u8, 65u8, 234u8, 120u8].toBSeq
     bs2 = "Hello world !".toBSeq
+    bs3 = @:0b01000101101011001
+    bs4 = @:0b11101100111000110
+    bs5 = bs3 xor bs4
+
+  assert $bs1 == "Bytes Sequence: <BD 41 EA 78>"
+  assert bs2.toHex == "48656C6C6F20776F726C642021"
+  assert bs5.toBin == "000000010101001010011111"
 
 import strutils
 import algorithm
