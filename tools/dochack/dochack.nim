@@ -40,7 +40,7 @@ proc textContent(e: Element): cstring {.
 proc textContent(e: Node): cstring {.
   importcpp: "#.textContent", nodecl.}
 
-proc tree(tag: cstring; kids: varargs[Element]): Element =
+proc tree(tag: string; kids: varargs[Element]): Element =
   result = document.createElement tag
   for k in kids:
     result.appendChild k
