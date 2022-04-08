@@ -8,6 +8,10 @@
 #
 
 import std/[os, strutils, parseopt]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when defined(windows) and not defined(nimKochBootstrap):
   # remove workaround pending bootstrap >= 1.5.1
   # refs https://github.com/nim-lang/Nim/issues/18334#issuecomment-867114536
@@ -116,7 +120,8 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       if cmdPrefix.len > 0: cmdPrefix.add " "
         # without the `cmdPrefix.len > 0` check, on windows you'd get a cryptic:
         # `The parameter is incorrect`
-      execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
+      let cmd = cmdPrefix & output.quoteShell & ' ' & conf.arguments
+      execExternalProgram(conf, cmd.strip(leading=false,trailing=true))
     of cmdDocLike, cmdRst2html, cmdRst2tex: # bugfix(cmdRst2tex was missing)
       if conf.arguments.len > 0:
         # reserved for future use

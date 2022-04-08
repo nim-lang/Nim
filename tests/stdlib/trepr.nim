@@ -64,7 +64,7 @@ template main() =
   doAssert repr(arr) == "[1, 2, 3]"
 
   block: # bug #7878
-    proc reprOpenarray(variable: var openarray[int]): string = repr(variable)
+    proc reprOpenarray(variable: var openArray[int]): string = repr(variable)
     when defined(js): discard # BUG: doesn't work
     else:
       doAssert reprOpenarray(arr) == "[1, 2, 3]"

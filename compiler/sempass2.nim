@@ -12,6 +12,9 @@ import
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
   modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling, tables
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when defined(useDfa):
   import dfa
 

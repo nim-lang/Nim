@@ -27,7 +27,7 @@ block tsqlitebindatas: ## db_sqlite binary data
   db.exec(createTableStr)
 
   var dbuf = newSeq[byte](orig.len*sizeof(float64))
-  copyMem(unsafeAddr(dbuf[0]), unsafeAddr(orig[0]), dbuf.len)
+  copyMem(addr(dbuf[0]), addr(orig[0]), dbuf.len)
 
   var insertStmt = db.prepare("INSERT INTO test (id, name, data) VALUES (?, ?, ?)")
   insertStmt.bindParams(1, origName, dbuf)
@@ -42,7 +42,7 @@ block tsqlitebindatas: ## db_sqlite binary data
   var dataTest = db.getValue(sql"SELECT data FROM test WHERE id = ?", 1)
   let seqSize = int(dataTest.len*sizeof(byte)/sizeof(float64))
   var res: seq[float64] = newSeq[float64](seqSize)
-  copyMem(unsafeAddr(res[0]), addr(dataTest[0]), dataTest.len)
+  copyMem(addr(res[0]), addr(dataTest[0]), dataTest.len)
   doAssert res.len == orig.len
   doAssert res == orig
 
