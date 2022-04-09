@@ -933,21 +933,21 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indent
 proc treeRepr*(n: NimNode): string {.benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
-  ## See also `repr`, `lispRepr`, and `astGenRepr`.
+  ## See also `repr`, `lispRepr`_, and `astGenRepr`_.
   result = ""
   n.treeTraverse(result, isLisp = false, indented = true)
 
 proc lispRepr*(n: NimNode; indented = false): string {.benign.} =
   ## Convert the AST `n` to a human-readable lisp-like string.
   ##
-  ## See also `repr`, `treeRepr`, and `astGenRepr`.
+  ## See also `repr`, `treeRepr`_, and `astGenRepr`_.
   result = ""
   n.treeTraverse(result, isLisp = true, indented = indented)
 
 proc astGenRepr*(n: NimNode): string {.benign.} =
   ## Convert the AST `n` to the code required to generate that AST.
   ##
-  ## See also `repr`, `treeRepr`, and `lispRepr`.
+  ## See also `repr`_, `treeRepr`_, and `lispRepr`_.
 
   const
     NodeKinds = {nnkEmpty, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
@@ -1505,20 +1505,20 @@ macro expandMacros*(body: typed): untyped =
   result = body
 
 proc extractTypeImpl(n: NimNode): NimNode =
-    ## attempts to extract the type definition of the given symbol
-    case n.kind
-    of nnkSym: # can extract an impl
-      result = n.getImpl.extractTypeImpl()
-    of nnkObjectTy, nnkRefTy, nnkPtrTy: result = n
-    of nnkBracketExpr:
-      if n.typeKind == ntyTypeDesc:
-        result = n[1].extractTypeImpl()
-      else:
-        doAssert n.typeKind == ntyGenericInst
-        result = n[0].getImpl()
-    of nnkTypeDef:
-      result = n[2]
-    else: error("Invalid node to retrieve type implementation of: " & $n.kind)
+  ## attempts to extract the type definition of the given symbol
+  case n.kind
+  of nnkSym: # can extract an impl
+    result = n.getImpl.extractTypeImpl()
+  of nnkObjectTy, nnkRefTy, nnkPtrTy: result = n
+  of nnkBracketExpr:
+    if n.typeKind == ntyTypeDesc:
+      result = n[1].extractTypeImpl()
+    else:
+      doAssert n.typeKind == ntyGenericInst
+      result = n[0].getImpl()
+  of nnkTypeDef:
+    result = n[2]
+  else: error("Invalid node to retrieve type implementation of: " & $n.kind)
 
 proc customPragmaNode(n: NimNode): NimNode =
   expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkCheckedFieldExpr})
@@ -1602,7 +1602,7 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
   ## Expands to `true` if expression `n` which is expected to be `nnkDotExpr`
   ## (if checking a field), a proc or a type has custom pragma `cp`.
   ##
-  ## See also `getCustomPragmaVal`.
+  ## See also `getCustomPragmaVal`_.
   ##
   ## .. code-block:: nim
   ##   template myAttr() {.pragma.}
@@ -1626,7 +1626,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ## Expands to value of custom pragma `cp` of expression `n` which is expected
   ## to be `nnkDotExpr`, a proc or a type.
   ##
-  ## See also `hasCustomPragma`
+  ## See also `hasCustomPragma`_.
   ##
   ## .. code-block:: nim
   ##   template serializationKey(key: string) {.pragma.}
