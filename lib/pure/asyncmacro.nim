@@ -133,9 +133,12 @@ template await*[T](f: Future[T]): auto {.used.} =
     yield internalTmpFuture
     (cast[typeof(f)](internalTmpFuture)).read()
   else:
-    static: error(
-      "Can only 'await' inside a proc marked as 'async'. Use " &
-      "'waitFor' when calling an 'async' proc in a non-async scope instead")
+    macro errorAsync(futureError: Future[T]) =
+      error(
+        "Can only 'await' inside a proc marked as 'async'. Use " &
+        "'waitFor' when calling an 'async' proc in a non-async scope instead",
+        futureError)
+    errorAsync(f)
 
 proc asyncSingleProc(prc: NimNode): NimNode =
   ## This macro transforms a single procedure into a closure iterator.
