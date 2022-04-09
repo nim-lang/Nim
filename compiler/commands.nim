@@ -31,6 +31,9 @@ import
 
 from ast import setUseIc, eqTypeFlags, tfGcSafe, tfNoSideEffect
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
 bootSwitch(usedFFI, hasFFI, "-d:nimHasLibFFI")
@@ -1109,6 +1112,8 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
   else:
     if pass == passCmd1: config.commandArgs.add p.key
     if argsCount == 1:
+      if p.key.endsWith(".nims"):
+        incl(config.globalOptions, optWasNimscript)
       # support UNIX style filenames everywhere for portable build scripts:
       if config.projectName.len == 0:
         config.projectName = unixToNativePath(p.key)

@@ -16,6 +16,9 @@ import ropes, platform, condsyms, options, msgs, lineinfos, pathutils
 
 import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar]
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
