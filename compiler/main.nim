@@ -237,6 +237,7 @@ proc mainCommand*(graph: ModuleGraph) =
       if conf.exc == excNone: conf.exc = excCpp
     of backendObjc: discard
     of backendJs:
+      setTarget(conf.target, osJS, cpuJS)
       if conf.hcrOn:
         # XXX: At the moment, system.nim cannot be compiled in JS mode
         # with "-d:useNimRtl". The HCR option has been processed earlier
