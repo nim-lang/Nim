@@ -306,7 +306,7 @@ proc identWithin(n: PNode, s: PIdent): bool =
     if identWithin(n[i], s): return true
   result = n.kind == nkSym and n.sym.name.id == s.id
 
-proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
+proc semIdentDef(c: PContext, n: PNode, kind: TSymKind, reportToNimsuggest = true): PSym =
   if isTopLevel(c):
     result = semIdentWithPragma(c, kind, n, {sfExported})
     incl(result.flags, sfGlobal)
@@ -330,7 +330,8 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
       discard
     result = n.info
   let info = getLineInfo(n)
-  suggestSym(c.graph, info, result, c.graph.usageSym)
+  if reportToNimsuggest:
+    suggestSym(c.graph, info, result, c.graph.usageSym)
 
 proc checkNilable(c: PContext; v: PSym) =
   if {sfGlobal, sfImportc} * v.flags == {sfGlobal} and v.typ.requiresInit:
@@ -660,7 +661,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           if a.kind != nkVarTuple: typ else: tup[j])
         addToVarSection(c, result, n, a)
         continue
-      var v = semIdentDef(c, a[j], symkind)
+      var v = semIdentDef(c, a[j], symkind, false)
       styleCheckDef(c.config, v)
       onDef(a[j].info, v)
       if sfGenSym notin v.flags:
@@ -724,6 +725,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
+
+      suggestSym(c.graph, v.info, v, c.graph.usageSym)
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)

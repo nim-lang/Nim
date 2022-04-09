@@ -10,6 +10,10 @@
 import macros
 from typetraits import OrdinalEnum, HoleyEnum
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 # xxx `genEnumCaseStmt` needs tests and runnableExamples
 
 macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,

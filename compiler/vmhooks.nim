@@ -9,6 +9,9 @@
 
 import pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 template setX(k, field) {.dirty.} =
   a.slots[a.ra].ensureKind(k)
   a.slots[a.ra].field = v

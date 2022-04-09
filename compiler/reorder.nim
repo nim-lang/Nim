@@ -4,6 +4,9 @@ import
   msgs, modulegraphs, syntaxes, options, modulepaths,
   lineinfos
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   DepN = ref object
     pnode: PNode

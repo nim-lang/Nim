@@ -17,6 +17,9 @@ import
 
 from system/memory import nimCStrLen
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state
   result = newType(tyError, nextTypeId(g.idgen), g.owners[^1])
