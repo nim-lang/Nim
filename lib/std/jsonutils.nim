@@ -240,7 +240,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
   elif T is cstring:
     case b.kind
     of JNull: a = nil
-    of JString: a = b.str
+    of JString: a = b.str.cstring
     else: checkJson false, $($T, " ", b)
   elif T is JsonNode: a = b
   elif T is ref | ptr:
