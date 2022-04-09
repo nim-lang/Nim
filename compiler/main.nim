@@ -65,6 +65,8 @@ proc commandCheck(graph: ModuleGraph) =
   if optWasNimscript in conf.globalOptions:
     defineSymbol(conf.symbols, "nimscript")
     defineSymbol(conf.symbols, "nimconfig")
+  elif conf.backend == backendJs:
+    setTarget(conf.target, osJS, cpuJS)
   semanticPasses(graph)  # use an empty backend for semantic checking only
   compileProject(graph)
 
@@ -237,7 +239,6 @@ proc mainCommand*(graph: ModuleGraph) =
       if conf.exc == excNone: conf.exc = excCpp
     of backendObjc: discard
     of backendJs:
-      setTarget(conf.target, osJS, cpuJS)
       if conf.hcrOn:
         # XXX: At the moment, system.nim cannot be compiled in JS mode
         # with "-d:useNimRtl". The HCR option has been processed earlier
