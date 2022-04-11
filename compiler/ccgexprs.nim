@@ -988,12 +988,12 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
     if reifiedOpenArray(arr.lode):
       linefmt(p, cpsStmts,
         "if ($2-$1 != -1 && " &
-        "((NU)($1) >= (NU)($3.Field1) || (NU)($2) >= (NU)($3.Field1))){ #raiseIndexError(); $4}$n",
+        "($1 < 0 || $1 >= $3.Field1 || $2 < 0 || $2 >= $3.Field1)){ #raiseIndexError(); $4}$n",
         [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
     else:
       linefmt(p, cpsStmts,
-        "if ($2-$1 != -1 && " &
-        "((NU)($1) >= (NU)($3Len_0) || (NU)($2) >= (NU)($3Len_0))){ #raiseIndexError(); $4}$n",
+        "if ($2-$1 != -1 && ($1 < 0 || $1 >= $3Len_0 || $2 < 0 || $2 >= $3Len_0))" &
+        "{ #raiseIndexError(); $4}$n",
         [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
   of tyArray:
     let first = intLiteral(firstOrd(p.config, ty))
@@ -1004,7 +1004,7 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
   of tySequence, tyString:
     linefmt(p, cpsStmts,
       "if ($2-$1 != -1 && " &
-      "((NU)($1) >= (NU)$3 || (NU)($2) >= (NU)$3)){ #raiseIndexError(); $4}$n",
+      "($1 < 0 || $1 >= $3 || $2 < 0 || $2 >= $3)){ #raiseIndexError(); $4}$n",
       [rdLoc(a), rdLoc(b), lenExpr(p, arr), raiseInstr(p)])
   else: discard
 
@@ -1015,14 +1015,14 @@ proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if not reifiedOpenArray(x):
     # emit range check:
     if optBoundsCheck in p.options:
-      linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)){ #raiseIndexError2($1,$2Len_0-1); $3}$n",
+      linefmt(p, cpsStmts, "if ($1 < 0 || $1 >= $2Len_0){ #raiseIndexError2($1,$2Len_0-1); $3}$n",
               [rdCharLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
     inheritLocation(d, a)
     putIntoDest(p, d, n,
                 ropecg(p.module, "$1[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
   else:
     if optBoundsCheck in p.options:
-      linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2.Field1)){ #raiseIndexError2($1,$2.Field1-1); $3}$n",
+      linefmt(p, cpsStmts, "if ($1 < 0 || $1 >= $2.Field1){ #raiseIndexError2($1,$2.Field1-1); $3}$n",
               [rdCharLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
     inheritLocation(d, a)
     putIntoDest(p, d, n,
@@ -1037,7 +1037,7 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
     ty = skipTypes(ty.lastSon, abstractVarRange) # emit range check:
   if optBoundsCheck in p.options:
     linefmt(p, cpsStmts,
-            "if ((NU)($1) >= (NU)$2){ #raiseIndexError2($1,$2-1); $3}$n",
+            "if ($1 < 0 || $1 >= $2){ #raiseIndexError2($1,$2-1); $3}$n",
             [rdCharLoc(b), lenExpr(p, a), raiseInstr(p)])
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
