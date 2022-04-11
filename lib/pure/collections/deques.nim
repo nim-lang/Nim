@@ -63,7 +63,7 @@ type
     head, tail, count, mask: int
 
 const
-  nimDequeDefaultInitialCapacity* {.intdefine.} = 4 # Maybe this should be nimDefaultInitialCapacity as well?
+  nimDequeDefaultInitialCapacity* {.intdefine.} = nimDefaultInitialCapacity
 
 template initImpl(result: typed, initialCapacity: int) =
   assert isPowerOfTwo(initialCapacity)

@@ -81,7 +81,7 @@ type
     ## Type union representing `HashSet` or `OrderedSet`.
 
 const
-  nimSetDefaultInitialCapacity* {.intdefine.} = nimDefaultInitialCapacity
+  nimSetDefaultInitialCapacity* {.intdefine.} = nimDefaultInitialCapacity * 16
 
 include setimpl
 

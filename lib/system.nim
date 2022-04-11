@@ -1139,7 +1139,7 @@ const
   # emit this flag
   # for string literals, it allows for some optimizations.
 
-  nimDefaultInitialCapacity* {.intdefine.} = 64
+  nimDefaultInitialCapacity* {.intdefine.} = 4
     ## Default initial capacity for various containers
 
   #defaultInitialSize* {.deprecated: "Use nimDefaultInitialCapacity instead".} = nimDefaultInitialCapacity
