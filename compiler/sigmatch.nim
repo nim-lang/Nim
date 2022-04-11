@@ -1244,7 +1244,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       matchArrayOrSeq(a[0])
     of tyString:
       if f.kind == tyOpenArray:
-        if f[0].kind == tyChar:
+        if f[0].kind == tyChar or typeRel(c, base(f), newTypeS(tyChar, c.c), flags) >= isGeneric:
+          # if it's `openarray[char]` or any other one that'd take it like `openarray[int or char]` or `openarray[not int]`
           result = isConvertible
         elif f[0].kind == tyGenericParam and a.len > 0 and
             typeRel(c, base(f), base(a), flags) >= isGeneric:

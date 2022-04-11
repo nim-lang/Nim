@@ -48,6 +48,14 @@ proc main =
       doAssert testing(mySeq) == mySeq
       doAssert testing(mySeq[2..^2]) == mySeq[2..^2]
 
+  ## Checks that openarrays with typeclasses still accept strings
+  proc doThing(a: openArray[char]) = discard
+  proc doOtherThing(a: openArray[char or int]) = discard
+  proc doOthererThing(a: openArray[not float]) = discard
+
+  doThing("hello")
+  doOtherThing("hello")
+  doOthererThing("hello")
 
 main()
 # static: main() # xxx bug #15952: Error: cannot generate code for: mSlice
