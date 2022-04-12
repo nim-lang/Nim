@@ -670,7 +670,7 @@ proc getaddrinfo*(nodename, servname: cstring, hints: ptr AddrInfo,
                   res: var ptr AddrInfo): cint {.
   stdcall, importc: "getaddrinfo", dynlib: ws2dll.}
 
-proc freeaddrinfo*(ai: ptr AddrInfo) {.
+proc freeAddrInfo*(ai: ptr AddrInfo) {.
   stdcall, importc: "freeaddrinfo", dynlib: ws2dll.}
 
 proc inet_ntoa*(i: InAddr): cstring {.

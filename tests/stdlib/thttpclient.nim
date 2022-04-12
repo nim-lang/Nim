@@ -22,9 +22,9 @@ proc makeIPv6HttpServer(hostname: string, port: Port,
   setSockOptInt(fd, SOL_SOCKET, SO_REUSEADDR, 1)
   var aiList = getAddrInfo(hostname, port, AF_INET6)
   if bindAddr(fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
-    freeaddrinfo(aiList)
+    freeAddrInfo(aiList)
     raiseOSError(osLastError())
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
   if listen(fd) != 0:
     raiseOSError(osLastError())
   setBlocking(fd, false)
