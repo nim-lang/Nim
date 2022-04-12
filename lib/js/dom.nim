@@ -1322,6 +1322,11 @@ type
     `block`*: cstring
     inline*: cstring
 
+  MediaQueryList* = ref MediaQueryListObj
+  MediaQueryListObj {.importc.} = object of EventTargetObj
+    matches*: bool
+    media*: cstring
+
 since (1, 3):
   type
     DomParser* = ref object
@@ -1529,6 +1534,7 @@ proc setTimeout*(w: Window, function: proc (), pause: int): Interval
 proc stop*(w: Window)
 proc requestAnimationFrame*(w: Window, function: proc (time: float)): int
 proc cancelAnimationFrame*(w: Window, id: int)
+proc matchMedia*(w: Window, mediaQueryString: cstring): MediaQueryList
 
 # Node "methods"
 proc appendData*(n: Node, data: cstring)

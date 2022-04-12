@@ -739,6 +739,8 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]): bool {.disc
     if prev.next == nil:
       return false
     prev.next = n.next
+    if L.tail == n:
+      L.tail = prev # update tail if we removed the last node
   true
 
 proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =

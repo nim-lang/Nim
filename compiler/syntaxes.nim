@@ -13,6 +13,9 @@ import
   strutils, llstream, ast, idents, lexer, options, msgs, parser,
   filters, filter_tmpl, renderer, lineinfos, pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 export Parser, parseAll, parseTopLevelStmt, closeParser
 
 type

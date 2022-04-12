@@ -10,6 +10,10 @@
 ## Dead code elimination (=DCE) for IC.
 
 import std/[intsets, tables]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import ".." / [ast, options, lineinfos, types]
 
 import packed_ast, ic, bitabs

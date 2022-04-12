@@ -12,6 +12,9 @@
 import
   ast, astalgo, types, trees, intsets
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   TAnalysisResult* = enum
     arNo, arMaybe, arYes

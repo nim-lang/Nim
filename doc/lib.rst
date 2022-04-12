@@ -446,7 +446,7 @@ Hashing
   from the MongoDB interface and it thus binary compatible with a MongoDB OID.
 
 * `sha1 <sha1.html>`_
-  This module implements a sha1 encoder and decoder.
+  This module implements the SHA-1 checksum algorithm.
 
 
 Miscellaneous
