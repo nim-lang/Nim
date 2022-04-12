@@ -2,7 +2,6 @@ discard """
   cmd: "nim c --threads:on $file"
   exitcode: 0
   output: "OK"
-  disabled: "travis"
 """
 
 import os, net, nativesockets, asyncdispatch

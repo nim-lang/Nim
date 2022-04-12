@@ -6,6 +6,9 @@ This page provide hints on distributing Nim using OS packages.
 
 See `distros <distros.html>`_ for tools to detect Linux distribution at runtime.
 
+See `here <intern.html#bootstrapping-the-compiler-reproducible-builds>`_ for how to
+compile reproducible builds.
+
 Supported architectures
 -----------------------
 
@@ -45,17 +48,18 @@ The Debian package ships bash and ksh completion and manpages that can be reused
 
 Hints on the build process:
 
-::
+.. code:: cmd
 
    # build from C sources and then using koch
-   ./build.sh --os $os_type --cpu $cpu_arch
-   ./bin/nim c koch
+   make -j   # supports parallel build
+   # alternatively: ./build.sh --os $os_type --cpu $cpu_arch
+   ./bin/nim c -d:release koch
    ./koch boot -d:release
 
    # optionally generate docs into doc/html
    ./koch docs
 
-   ./koch tools -d:release
+   ./koch tools
 
    # extract files to be really installed
    ./install.sh <tempdir>
@@ -70,3 +74,4 @@ What to install:
 - Optionally: manpages, documentation, shell completion
 - When installing documentation, .idx files are not required
 - The "compiler" directory contains compiler sources and should not be part of the compiler binary package
+

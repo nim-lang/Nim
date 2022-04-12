@@ -282,7 +282,7 @@
 - Removed the deprecated `asyncdispatch.newAsyncNativeSocket`.
 - Removed the deprecated `dom.releaseEvents` and `dom.captureEvents`.
 
-- Removed `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
+- Removed `sharedlist.initSharedList`, was deprecated and produces undefined behaviour.
 
 - There is a new experimental feature called "strictFuncs" which makes the definition of
   `.noSideEffect` stricter. [See here](manual_experimental.html#stricts-funcs)

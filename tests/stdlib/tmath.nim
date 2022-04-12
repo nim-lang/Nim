@@ -29,10 +29,6 @@ template main() =
       doAssert erf(6.0) > erf(5.0)
       doAssert erfc(6.0) < erfc(5.0)
 
-  when not defined(js) and not defined(windows): # xxx pending bug #17017
-    doAssert gamma(-1.0).isNaN
-
-
   block: # sgn() tests
     doAssert sgn(1'i8) == 1
     doAssert sgn(1'i16) == 1
@@ -46,6 +42,7 @@ template main() =
     doAssert sgn(123.9834'f64) == 1
     doAssert sgn(0'i32) == 0
     doAssert sgn(0'f32) == 0
+    doAssert sgn(-0.0'f64) == 0
     doAssert sgn(NegInf) == -1
     doAssert sgn(Inf) == 1
     doAssert sgn(NaN) == 0
@@ -108,6 +105,46 @@ template main() =
 
     doAssert euclDiv(-9, -3) == 3
     doAssert euclMod(-9, -3) == 0
+
+  block: # ceilDiv
+    doAssert ceilDiv(8,  3) ==  3
+    doAssert ceilDiv(8,  4) ==  2
+    doAssert ceilDiv(8,  5) ==  2
+    doAssert ceilDiv(11, 3) ==  4
+    doAssert ceilDiv(12, 3) ==  4
+    doAssert ceilDiv(13, 3) ==  5
+    doAssert ceilDiv(41, 7) ==  6
+    doAssert ceilDiv(0,  1) ==  0
+    doAssert ceilDiv(1,  1) ==  1
+    doAssert ceilDiv(1,  2) ==  1
+    doAssert ceilDiv(2,  1) ==  2
+    doAssert ceilDiv(2,  2) ==  1
+    doAssert ceilDiv(0, high(int)) == 0
+    doAssert ceilDiv(1, high(int)) == 1
+    doAssert ceilDiv(0, high(int) - 1) == 0
+    doAssert ceilDiv(1, high(int) - 1) == 1
+    doAssert ceilDiv(high(int) div 2, high(int) div 2 + 1) == 1
+    doAssert ceilDiv(high(int) div 2, high(int) div 2 + 2) == 1
+    doAssert ceilDiv(high(int) div 2 + 1, high(int) div 2) == 2
+    doAssert ceilDiv(high(int) div 2 + 2, high(int) div 2) == 2
+    doAssert ceilDiv(high(int) div 2 + 1, high(int) div 2 + 1) == 1
+    doAssert ceilDiv(high(int), 1) == high(int)
+    doAssert ceilDiv(high(int) - 1, 1) == high(int) - 1
+    doAssert ceilDiv(high(int) - 1, 2) == high(int) div 2
+    doAssert ceilDiv(high(int) - 1, high(int)) == 1
+    doAssert ceilDiv(high(int) - 1, high(int) - 1) == 1
+    doAssert ceilDiv(high(int) - 1, high(int) - 2) == 2
+    doAssert ceilDiv(high(int), high(int)) == 1
+    doAssert ceilDiv(high(int), high(int) - 1) == 2
+    doAssert ceilDiv(255'u8,  1'u8) == 255'u8
+    doAssert ceilDiv(254'u8,  2'u8) == 127'u8
+    when not defined(danger):
+      doAssertRaises(AssertionDefect): discard ceilDiv(41,  0)
+      doAssertRaises(AssertionDefect): discard ceilDiv(41, -1)
+      doAssertRaises(AssertionDefect): discard ceilDiv(-1,  1)
+      doAssertRaises(AssertionDefect): discard ceilDiv(-1, -1)
+      doAssertRaises(AssertionDefect): discard ceilDiv(254'u8, 3'u8)
+      doAssertRaises(AssertionDefect): discard ceilDiv(255'u8, 2'u8)
 
   block: # splitDecimal() tests
     doAssert splitDecimal(54.674).intpart == 54.0
@@ -359,8 +396,47 @@ template main() =
     let x: seq[float] = @[]
     doAssert prod(x) == 1.0
 
-  when not defined(windows): # xxx pending bug #17017
-    doAssert sqrt(-1.0).isNaN
+  block: # clamp range
+    doAssert clamp(10, 1..5) == 5
+    doAssert clamp(3, 1..5) == 3
+    doAssert clamp(5, 1..5) == 5
+    doAssert clamp(42.0, 1.0 .. 3.1415926535) == 3.1415926535
+    doAssert clamp(NaN, 1.0 .. 2.0).isNaN
+    doAssert clamp(-Inf, -Inf .. -1.0) == -Inf
+    type A = enum a0, a1, a2, a3, a4, a5
+    doAssert a1.clamp(a2..a4) == a2
+    doAssert clamp((3, 0), (1, 0) .. (2, 9)) == (2, 9)
+
+  block: # edge cases
+    doAssert sqrt(-4.0).isNaN
+
+    doAssert ln(0.0) == -Inf
+    doAssert ln(-0.0) == -Inf
+    doAssert ln(-12.0).isNaN
+
+    doAssert log10(0.0) == -Inf
+    doAssert log10(-0.0) == -Inf
+    doAssert log10(-12.0).isNaN
+
+    doAssert log2(0.0) == -Inf
+    doAssert log2(-0.0) == -Inf
+    doAssert log2(-12.0).isNaN
+
+    when nimvm: discard
+    else:
+      doAssert frexp(0.0) == (0.0, 0)
+      doAssert frexp(-0.0) == (-0.0, 0)
+      doAssert classify(frexp(-0.0)[0]) == fcNegZero
+
+    when not defined(js):
+      doAssert gamma(0.0) == Inf
+      doAssert gamma(-0.0) == -Inf
+      doAssert gamma(-1.0).isNaN
+
+      doAssert lgamma(0.0) == Inf
+      doAssert lgamma(-0.0) == Inf
+      doAssert lgamma(-1.0) == Inf
+
 
 static: main()
 main()

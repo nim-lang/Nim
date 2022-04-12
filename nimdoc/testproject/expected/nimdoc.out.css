@@ -35,7 +35,13 @@ Modified by Boyd Greenfield and narimiran
   --escapeSequence: #c4891b;
   --number: #252dbe;
   --literal: #a4255b;
+  --program: #6060c0;
+  --option: #508000;
   --raw-data: #a4255b;
+
+  --clipboard-image-normal: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' style='color: black' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E %3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' /%3E %3C/svg%3E");
+  --clipboard-image-selected: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' style='color: black' viewBox='0 0 20 20' fill='currentColor'%3E %3Cpath d='M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z' /%3E %3Cpath d='M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z' /%3E %3C/svg%3E");
+  --clipboard-image: var(--clipboard-image-normal)
 }
 
 [data-theme="dark"] {
@@ -63,7 +69,13 @@ Modified by Boyd Greenfield and narimiran
   --escapeSequence: #bd93f9;
   --number: #bd93f9;
   --literal: #f1fa8c;
+  --program: #9090c0;
+  --option: #90b010;
   --raw-data: #8be9fd;
+
+  --clipboard-image-normal: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' style='color: lightgray' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E %3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' /%3E %3C/svg%3E");
+  --clipboard-image-selected: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' style='color: lightgray' viewBox='0 0 20 20' fill='currentColor'%3E %3Cpath d='M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z' /%3E %3Cpath d='M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z' /%3E %3C/svg%3E");
+  --clipboard-image: var(--clipboard-image-normal);
 }
 
 .theme-switch-wrapper {
@@ -230,6 +242,12 @@ select:focus {
 }
 
 /* Docgen styles */
+
+:target {
+  border: 2px solid #B5651D;
+  border-style: dotted;
+}
+
 /* Links */
 a {
   color: var(--anchor);
@@ -243,6 +261,10 @@ a span.Identifier {
 
 a.reference-toplevel {
   font-weight: bold;
+}
+
+a.nimdoc {
+  word-spacing: 0.3em;
 }
 
 a.toc-backref {
@@ -384,6 +406,7 @@ h2 {
   margin-top: 2em; }
 
 h2.subtitle {
+  margin-top: 0em;
   text-align: center; }
 
 h3 {
@@ -510,6 +533,32 @@ div.footnote-label {
   min-width: 1.7em;
 }
 
+div.option-list {
+  border: 0.1em solid var(--border);
+}
+div.option-list-item {
+  padding-left: 12em;
+  padding-right: 0;
+  padding-bottom: 0.3em;
+  padding-top: 0.3em;
+}
+div.odd {
+  background-color: var(--secondary-background);
+}
+div.option-list-label {
+  margin-left: -11.5em;
+  margin-right: 0em;
+  min-width: 11.5em;
+  display: inline-block;
+  vertical-align: top;
+}
+div.option-list-description {
+  width: calc(100% - 1em);
+  padding-left: 1em;
+  padding-right: 0;
+  display: inline-block;
+}
+
 blockquote {
   font-size: 0.9em;
   font-style: italic;
@@ -518,7 +567,12 @@ blockquote {
   border-left: 5px solid #bbc;
 }
 
-.pre {
+blockquote.markdown-quote {
+  font-size: 0.9rem;  /* use rem to avoid recursion */
+  font-style: normal;
+}
+
+.pre, span.tok {
   font-family: "Source Code Pro", Monaco, Menlo, Consolas, "Courier New", monospace;
   font-weight: 500;
   font-size: 0.85em;
@@ -527,6 +581,16 @@ blockquote {
   padding-left: 3px;
   padding-right: 3px;
   border-radius: 4px;
+}
+
+span.tok {
+  border: 1px solid #808080;
+  padding-bottom: 0.1em;
+  margin-right: 0.2em;
+}
+
+.copyToClipBoard {
+  position: relative;
 }
 
 pre {
@@ -547,7 +611,25 @@ pre {
   border: 1px solid var(--border);
   -webkit-border-radius: 6px;
   -moz-border-radius: 6px;
-  border-radius: 6px; }
+  border-radius: 6px; 
+}
+
+.copyToClipBoardBtn {
+  visibility: hidden;
+  position: absolute;
+  width: 24px;
+  border-radius: 4px;
+  background-image: var(--clipboard-image);
+  right: 5px;
+  top: 13px;
+  background-color: var(--secondary-background);
+  padding: 11px;
+  border: 0;
+}
+
+.copyToClipBoard:hover .copyToClipBoardBtn {
+  visibility: visible;
+} 
 
 .pre-scrollable {
   max-height: 340px;
@@ -816,9 +898,6 @@ span.classifier {
 span.classifier-delimiter {
   font-weight: bold; }
 
-span.option {
-  white-space: nowrap; }
-
 span.problematic {
   color: #b30000; }
 
@@ -897,6 +976,29 @@ span.Preprocessor {
 
 span.Directive {
   color: #252dbe; }
+
+span.option {
+  font-weight: bold;
+  font-family: "Source Code Pro", Monaco, Menlo, Consolas, "Courier New", monospace;
+  color: var(--option);
+}
+
+span.Prompt {
+  font-weight: bold;
+  color: red; }
+
+span.ProgramOutput {
+  font-weight: bold;
+  color: #808080; }
+
+span.program {
+  font-weight: bold;
+  color: var(--program);
+  text-decoration: underline;
+  text-decoration-color: var(--hint);
+  text-decoration-thickness: 0.05em;
+  text-underline-offset: 0.15em;
+}
 
 span.Command, span.Rule, span.Hyperlink, span.Label, span.Reference,
 span.Other {

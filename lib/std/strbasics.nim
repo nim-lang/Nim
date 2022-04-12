@@ -1,6 +1,6 @@
 #
 #
-#           The Nim Compiler
+#              Nim's Runtime Library
 #        (c) Copyright 2021 Nim Contributors
 #
 #    See the file "copying.txt", included in this
@@ -80,11 +80,13 @@ func setSlice*(s: var string, slice: Slice[int]) =
       when not declared(moveMem):
         impl()
       else:
+        when defined(nimSeqsV2):
+          prepareMutation(s)
         moveMem(addr s[0], addr s[first], last - first + 1)
   s.setLen(last - first + 1)
 
 func strip*(a: var string, leading = true, trailing = true, chars: set[char] = whitespaces) {.inline.} =
-  ## Inplace version of `strip`. Strips leading or 
+  ## Inplace version of `strip`. Strips leading or
   ## trailing `chars` (default: whitespace characters).
   ##
   ## If `leading` is true (default), leading `chars` are stripped.

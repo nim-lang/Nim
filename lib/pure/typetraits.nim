@@ -15,19 +15,27 @@
 import std/private/since
 export system.`$` # for backward compatibility
 
-type SomeEnumWithHoles* = (not Ordinal) and enum ## Enum with holes.
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
+type HoleyEnum* = (not Ordinal) and enum ## Enum with holes.
+type OrdinalEnum* = Ordinal and enum ## Enum without holes.
 
 runnableExamples:
   type A = enum a0 = 2, a1 = 4, a2
   type B = enum b0 = 2, b1, b2
-  assert A is SomeEnumWithHoles
-  assert B isnot SomeEnumWithHoles
-  assert int isnot SomeEnumWithHoles
+  assert A is enum
+  assert A is HoleyEnum
+  assert A isnot OrdinalEnum
+  assert B isnot HoleyEnum
+  assert B is OrdinalEnum
+  assert int isnot HoleyEnum
   type C[T] = enum h0 = 2, h1 = 4
-  assert C[float] is SomeEnumWithHoles
+  assert C[float] is HoleyEnum
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".} =
-  ## Returns the name of the given type.
+  ## Returns the name of `t`.
   ##
   ## Alias for `system.\`$\`(t) <dollars.html#$,typedesc>`_ since Nim v0.20.
   runnableExamples:
@@ -35,7 +43,7 @@ proc name*(t: typedesc): string {.magic: "TypeTrait".} =
     doAssert name(seq[string]) == "seq[string]"
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".} =
-  ## Returns the arity of the given type. This is the number of "type"
+  ## Returns the arity of `t`. This is the number of "type"
   ## components or the number of generic parameters a given type `t` has.
   runnableExamples:
     doAssert arity(int) == 0
@@ -84,8 +92,7 @@ proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".} =
     doAssert stripGenericParams(int) is int
 
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
-  ## This trait returns true if the type `t` is safe to use for
-  ## `copyMem`:idx:.
+  ## Returns true if `t` is safe to use for `copyMem`:idx:.
   ##
   ## Other languages name a type like these `blob`:idx:.
 
@@ -96,25 +103,42 @@ proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".} =
     doAssert not isNamedTuple((string, int))
     doAssert isNamedTuple(tuple[name: string, age: int])
 
-proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".} =
+template pointerBase*[T](_: typedesc[ptr T | ref T]): typedesc =
+  ## Returns `T` for `ref T | ptr T`.
+  runnableExamples:
+    assert (ref int).pointerBase is int
+    type A = ptr seq[float]
+    assert A.pointerBase is seq[float]
+    assert (ref A).pointerBase is A # not seq[float]
+    assert (var s = "abc"; s[0].addr).typeof.pointerBase is char
+  T
+
+proc distinctBase*(T: typedesc, recursive: static bool = true): typedesc {.magic: "TypeTrait".} =
   ## Returns the base type for distinct types, or the type itself otherwise.
+  ## If `recursive` is false, only the immediate distinct base will be returned.
   ##
   ## **See also:**
-  ## * `distinctBase template <#distinctBase.t,T>`_
+  ## * `distinctBase template <#distinctBase.t,T,static[bool]>`_
   runnableExamples:
     type MyInt = distinct int
+    type MyOtherInt = distinct MyInt
     doAssert distinctBase(MyInt) is int
+    doAssert distinctBase(MyOtherInt) is int
+    doAssert distinctBase(MyOtherInt, false) is MyInt
     doAssert distinctBase(int) is int
 
 since (1, 1):
-  template distinctBase*[T](a: T): untyped =
-    ## Overload of `distinctBase <#distinctBase,typedesc>`_ for values.
+  template distinctBase*[T](a: T, recursive: static bool = true): untyped =
+    ## Overload of `distinctBase <#distinctBase,typedesc,static[bool]>`_ for values.
     runnableExamples:
       type MyInt = distinct int
+      type MyOtherInt = distinct MyInt
       doAssert 12.MyInt.distinctBase == 12
+      doAssert 12.MyOtherInt.distinctBase == 12
+      doAssert 12.MyOtherInt.distinctBase(false) is MyInt
       doAssert 12.distinctBase == 12
     when T is distinct:
-      distinctBase(typeof(a))(a)
+      distinctBase(typeof(a), recursive)(a)
     else: # avoids hint ConvFromXtoItselfNotNeeded
       a
 
@@ -163,7 +187,7 @@ since (1, 3, 5):
 
     typeof(block: (for ai in a: ai))
 
-import std/macros
+import macros
 
 macro enumLen*(T: typedesc[enum]): int =
   ## Returns the number of items in the enum `T`.
@@ -259,3 +283,43 @@ since (1, 1):
 
     type T2 = T
     genericParamsImpl(T2)
+
+
+proc hasClosureImpl(n: NimNode): bool = discard "see compiler/vmops.nim"
+
+proc hasClosure*(fn: NimNode): bool {.since: (1, 5, 1).} =
+  ## Returns true if the func/proc/etc `fn` has `closure`.
+  ## `fn` has to be a resolved symbol of kind `nnkSym`. This
+  ## implies that the macro that calls this proc should accept `typed`
+  ## arguments and not `untyped` arguments.
+  expectKind fn, nnkSym
+  result = hasClosureImpl(fn)
+
+template toUnsigned*(T: typedesc[SomeInteger and not range]): untyped =
+  ## Returns an unsigned type with same bit size as `T`.
+  runnableExamples:
+    assert int8.toUnsigned is uint8
+    assert uint.toUnsigned is uint
+    assert int.toUnsigned is uint
+    # range types are currently unsupported:
+    assert not compiles(toUnsigned(range[0..7]))
+  when T is int8: uint8
+  elif T is int16: uint16
+  elif T is int32: uint32
+  elif T is int64: uint64
+  elif T is int: uint
+  else: T
+
+template toSigned*(T: typedesc[SomeInteger and not range]): untyped =
+  ## Returns a signed type with same bit size as `T`.
+  runnableExamples:
+    assert int8.toSigned is int8
+    assert uint16.toSigned is int16
+    # range types are currently unsupported:
+    assert not compiles(toSigned(range[0..7]))
+  when T is uint8: int8
+  elif T is uint16: int16
+  elif T is uint32: int32
+  elif T is uint64: int64
+  elif T is uint: int
+  else: T

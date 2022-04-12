@@ -21,7 +21,7 @@
 ## In order to begin any sort of transfer of files you must first
 ## connect to an FTP server. You can do so with the `connect` procedure.
 ##
-## .. code-block::nim
+## .. code-block:: Nim
 ##    import std/[asyncdispatch, asyncftpclient]
 ##    proc main() {.async.} =
 ##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
@@ -41,7 +41,7 @@
 ## working directory before you do so with the `pwd` procedure, you can also
 ## instead specify an absolute path.
 ##
-## .. code-block::nim
+## .. code-block:: Nim
 ##    import std/[asyncdispatch, asyncftpclient]
 ##    proc main() {.async.} =
 ##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
@@ -62,7 +62,7 @@
 ## Procs that take an `onProgressChanged` callback will call this every
 ## `progressInterval` milliseconds.
 ##
-## .. code-block::nim
+## .. code-block:: Nim
 ##    import std/[asyncdispatch, asyncftpclient]
 ##
 ##    proc onProgressChanged(total, progress: BiggestInt,

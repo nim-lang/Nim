@@ -31,7 +31,7 @@ const
   CLONE_IO* = 0x80000000'i32
   CLONE_STOPPED* {.deprecated.} = 0x02000000'i32
 
-# fn should be of type proc (a2: pointer): void {.cdecl.}
+# fn should be of type proc (a2: pointer) {.cdecl.}
 proc clone*(fn: pointer; child_stack: pointer; flags: cint;
             arg: pointer; ptid: ptr Pid; tls: pointer;
             ctid: ptr Pid): cint {.importc, header: "<sched.h>".}

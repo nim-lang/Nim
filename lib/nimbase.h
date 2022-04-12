@@ -75,7 +75,8 @@ __AVR__
 #endif
 /* ------------------------------------------------------------------------- */
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__ZEPHYR__)
+/* Zephyr does some magic in it's headers that override the GCC stdlib. This breaks that. */
 #  define _GNU_SOURCE 1
 #endif
 
@@ -325,6 +326,9 @@ typedef unsigned char NIM_BOOL; // best effort
 #endif
 
 NIM_STATIC_ASSERT(sizeof(NIM_BOOL) == 1, ""); // check whether really needed
+NIM_STATIC_ASSERT(CHAR_BIT == 8, "");
+  // fail fast for (rare) environments where this doesn't hold, as some implicit
+  // assumptions would need revisiting (e.g. `uint8` or https://github.com/nim-lang/Nim/pull/18505)
 
 #define NIM_TRUE true
 #define NIM_FALSE false
@@ -543,7 +547,7 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
 #endif
 
 // Test to see if Nim and the C compiler agree on the size of a pointer.
-NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "");
+NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "Pointer size mismatch between Nim and C/C++ backend. You probably need to setup the backend compiler for target CPU.");
 
 #ifdef USE_NIM_NAMESPACE
 }

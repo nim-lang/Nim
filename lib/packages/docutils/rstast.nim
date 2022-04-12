@@ -8,8 +8,6 @@
 #
 
 ## This module implements an AST for the `reStructuredText`:idx: parser.
-##
-## **Note:** Import ``packages/docutils/rstast`` to use this module
 
 import strutils, json
 
@@ -18,6 +16,7 @@ type
     rnInner,                  # an inner node or a root
     rnHeadline,               # a headline
     rnOverline,               # an over- and underlined headline
+    rnMarkdownHeadline,       # a Markdown headline
     rnTransition,             # a transition (the ------------- <hr> thingie)
     rnParagraph,              # a paragraph
     rnBulletList,             # a bullet list
@@ -33,7 +32,10 @@ type
     rnFieldName,              # consisting of a field name ...
     rnFieldBody,              # ... and a field body
     rnOptionList, rnOptionListItem, rnOptionGroup, rnOption, rnOptionString,
-    rnOptionArgument, rnDescription, rnLiteralBlock, rnQuotedLiteralBlock,
+    rnOptionArgument, rnDescription, rnLiteralBlock,
+    rnMarkdownBlockQuote,     # a quote starting from punctuation like >>>
+    rnMarkdownBlockQuoteItem, # a quotation block, quote lines starting with
+                              # the same number of chars
     rnLineBlock,              # the | thingie
     rnLineBlockItem,          # a son of rnLineBlock - one line inside it.
                               # When `RstNode` lineIndent="\n" the line's empty
@@ -44,6 +46,7 @@ type
     rnFootnoteGroup,          # footnote group - exists for a purely stylistic
                               # reason: to display a few footnotes as 1 block
     rnStandaloneHyperlink, rnHyperlink, rnRef, rnInternalRef, rnFootnoteRef,
+    rnNimdocRef,              # reference to automatically generated Nim symbol
     rnDirective,              # a general directive
     rnDirArg,                 # a directive argument (for some directives).
                               # here are directives that are not rnDirective:
@@ -56,12 +59,17 @@ type
                               #     * `file#id <file#id>`_
                               #     * `file#id <file#id>'_
     rnSubstitutionDef,        # a definition of a substitution
-    rnGeneralRole,            # Inline markup:
+    # Inline markup:
+    rnInlineCode,             # interpreted text with code in a known language
+    rnCodeFragment,           # inline code for highlighting with the specified
+                              # class (which cannot be inferred from context)
+    rnUnknownRole,            # interpreted text with an unknown role
     rnSub, rnSup, rnIdx,
     rnEmphasis,               # "*"
     rnStrongEmphasis,         # "**"
     rnTripleEmphasis,         # "***"
-    rnInterpretedText,        # "`"
+    rnInterpretedText,        # "`" an auxiliary role for parsing that will
+                              # be converted into other kinds like rnInlineCode
     rnInlineLiteral,          # "``"
     rnInlineTarget,           # "_`target`"
     rnSubstitutionReferences, # "|"
@@ -70,6 +78,11 @@ type
     rnLeaf                    # a leaf; the node's text field contains the
                               # leaf val
 
+  FileIndex* = distinct int32
+  TLineInfo* = object
+    line*: uint16
+    col*: int16
+    fileIndex*: FileIndex
 
   PRstNode* = ref RstNode    ## an RST node
   RstNodeSeq* = seq[PRstNode]
@@ -84,24 +97,40 @@ type
     of rnAdmonition:
       adType*: string         ## admonition type: "note", "caution", etc. This
                               ## text will set the style and also be displayed
-    of rnOverline, rnHeadline:
-      level*: int             ## level of headings starting from 1 (document
-                              ## title) to larger ones (minor sub-sections)
-    of rnFootnote, rnCitation, rnFootnoteRef:
+    of rnOverline, rnHeadline, rnMarkdownHeadline:
+      level*: int             ## level of headings starting from 1 (main
+                              ## chapter) to larger ones (minor sub-sections)
+                              ## level=0 means it's document title or subtitle
+    of rnFootnote, rnCitation, rnOptionListItem:
       order*: int             ## footnote order (for auto-symbol footnotes and
                               ## auto-numbered ones without a label)
+    of rnMarkdownBlockQuoteItem:
+      quotationDepth*: int    ## number of characters in line prefix
+    of rnRef, rnSubstitutionReferences,
+        rnInterpretedText, rnField, rnInlineCode, rnCodeBlock, rnFootnoteRef:
+      info*: TLineInfo        ## To have line/column info for warnings at
+                              ## nodes that are post-processed after parsing
+    of rnNimdocRef:
+      tooltip*: string
     else:
       discard
     anchor*: string           ## anchor, internal link target
                               ## (aka HTML id tag, aka Latex label/hypertarget)
     sons*: RstNodeSeq        ## the node's sons
 
+proc `==`*(a, b: FileIndex): bool {.borrow.}
+
 proc len*(n: PRstNode): int =
   result = len(n.sons)
 
 proc newRstNode*(kind: RstNodeKind, sons: seq[PRstNode] = @[],
                  anchor = ""): PRstNode =
+  result = PRstNode(kind: kind, sons: sons, anchor: anchor)
+
+proc newRstNode*(kind: RstNodeKind, info: TLineInfo,
+                 sons: seq[PRstNode] = @[]): PRstNode =
   result = PRstNode(kind: kind, sons: sons)
+  result.info = info
 
 proc newRstNode*(kind: RstNodeKind, s: string): PRstNode {.deprecated.} =
   assert kind in {rnLeaf, rnSmiley}
@@ -252,7 +281,7 @@ proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
     result.add(" <")
     renderRstToRst(d, n.sons[1], result)
     result.add(">`_")
-  of rnGeneralRole:
+  of rnUnknownRole:
     result.add('`')
     renderRstToRst(d, n.sons[0],result)
     result.add("`:")
@@ -344,10 +373,26 @@ proc renderRstToJson*(node: PRstNode): string =
   ##   }
   renderRstToJsonNode(node).pretty
 
-proc renderRstToStr*(node: PRstNode, indent=0): string =
-  ## Writes the parsed RST `node` into a compact string
+proc renderRstToText*(node: PRstNode): string =
+  ## minimal text representation of markup node
+  const code = {rnCodeFragment, rnInterpretedText, rnInlineLiteral, rnInlineCode}
+  if node == nil:
+    return ""
+  case node.kind
+  of rnLeaf, rnSmiley:
+    result.add node.text
+  else:
+    if node.kind in code: result.add "`"
+    for i in 0 ..< node.sons.len:
+      if node.kind in {rnInlineCode, rnCodeBlock} and i == 0:
+        continue  # omit language specifier
+      result.add renderRstToText(node.sons[i])
+    if node.kind in code: result.add "`"
+
+proc treeRepr*(node: PRstNode, indent=0): string =
+  ## Writes the parsed RST `node` into an AST tree with compact string
   ## representation in the format (one line per every sub-node):
-  ## ``indent - kind - text - level - order - anchor (if non-zero)``
+  ## ``indent - kind - [text|level|order|adType] - anchor (if non-zero)``
   ## (suitable for debugging of RST parsing).
   if node == nil:
     result.add " ".repeat(indent) & "[nil]\n"
@@ -355,21 +400,25 @@ proc renderRstToStr*(node: PRstNode, indent=0): string =
   result.add " ".repeat(indent) & $node.kind
   case node.kind
   of rnLeaf, rnSmiley:
-    result.add (if node.text == "": "" else: "\t'" & node.text & "'")
+    result.add (if node.text == "": "" else: "  '" & node.text & "'")
   of rnEnumList:
-    result.add "\tlabelFmt=" & node.labelFmt
+    result.add "  labelFmt=" & node.labelFmt
   of rnLineBlockItem:
     var txt: string
-    if node.lineIndent == "\n": txt = "\t(blank line)"
-    else: txt = "\tlineIndent=" & $node.lineIndent.len
+    if node.lineIndent == "\n": txt = "  (blank line)"
+    else: txt = "  lineIndent=" & $node.lineIndent.len
     result.add txt
-  of rnHeadline, rnOverline:
-    result.add (if node.level == 0: "" else: "\tlevel=" & $node.level)
-  of rnFootnote, rnCitation, rnFootnoteRef:
-    result.add (if node.order == 0:   "" else: "\torder=" & $node.order)
+  of rnAdmonition:
+    result.add "  adType=" & node.adType
+  of rnHeadline, rnOverline, rnMarkdownHeadline:
+    result.add "  level=" & $node.level
+  of rnFootnote, rnCitation, rnOptionListItem:
+    result.add (if node.order == 0:   "" else: "  order=" & $node.order)
+  of rnMarkdownBlockQuoteItem:
+    result.add "  quotationDepth=" & $node.quotationDepth
   else:
     discard
-  result.add (if node.anchor == "": "" else: "\tanchor='" & node.anchor & "'")
+  result.add (if node.anchor == "": "" else: "  anchor='" & node.anchor & "'")
   result.add "\n"
   for son in node.sons:
-    result.add renderRstToStr(son, indent=indent+2)
+    result.add treeRepr(son, indent=indent+2)

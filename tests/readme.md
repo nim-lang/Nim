@@ -55,5 +55,4 @@ testing, which is slower).
 The folder ``dll`` contains simple DLL tests.
 
 The folder ``realtimeGC`` contains a test for validating that the realtime GC
-can run properly without linking against the nimrtl.dll/so. It includes a C
-client and platform specific build files for manual compilation.
+can run properly without linking against the nimrtl.dll/so.

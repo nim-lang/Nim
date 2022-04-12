@@ -99,10 +99,11 @@ type
     withinTryWithExcept*: int # required for goto based exception handling
     withinBlockLeaveActions*: int # complex to explain
     sigConflicts*: CountTable[string]
+    inUncheckedAssignSection*: int
 
   TTypeSeq* = seq[PType]
   TypeCache* = Table[SigHash, Rope]
-  TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: PSym]]
+  TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: int32]]
 
   CodegenFlag* = enum
     preventStackTrace,  # true if stack traces need to be prevented
@@ -170,7 +171,6 @@ type
     labels*: Natural          # for generating unique module-scope names
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                              # OpenGL wrapper
-    injectStmt*: Rope
     sigConflicts*: CountTable[SigHash]
     g*: BModuleList
     ndi*: NdiFile
@@ -202,7 +202,7 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.sigConflicts = initCountTable[string]()
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
-  BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),
+  BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: int32]](),
     config: g.config, graph: g, nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =

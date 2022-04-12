@@ -9,7 +9,7 @@ proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.} =
         place1, place2 = 3
     var
       e1 = field1
-      e2 = Enum1(place2)
+      e2 = place2.ord.Enum1
     assert e1 == e2
     assert not compiles(e1 == place2) # raises error
 proc `==`*(x, y: pointer): bool {.magic: "EqRef", noSideEffect.} =
@@ -251,9 +251,12 @@ proc max*[T](x: openArray[T]): T =
 
 proc clamp*[T](x, a, b: T): T =
   ## Limits the value `x` within the interval [a, b].
-  ## This proc is equivalent to but fatser than `max(a, min(b, x))`.
+  ## This proc is equivalent to but faster than `max(a, min(b, x))`.
   ## 
-  ## **Note:** `a <= b` is assumed and will not be checked.
+  ## .. warning:: `a <= b` is assumed and will not be checked (currently).
+  ##
+  ## **See also:**
+  ## `math.clamp` for a version that takes a `Slice[T]` instead.
   runnableExamples:
     assert (1.4).clamp(0.0, 1.0) == 1.0
     assert (0.5).clamp(0.0, 1.0) == 0.5

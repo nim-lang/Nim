@@ -1,8 +1,11 @@
 discard """
-  targets: "c js"
+  matrix: "--gc:refc; --gc:orc"
+  targets: "c cpp js"
 """
 
 import std/deques
+from std/sequtils import toSeq
+
 
 block:
   proc index(self: Deque[int], idx: Natural): int =
@@ -125,7 +128,7 @@ block:
   foo(1, 5)
   foo(3, 2)
 
-import sets
+import std/sets
 
 block t13310:
   proc main() =
@@ -137,3 +140,49 @@ block t13310:
 
   static:
     main()
+
+
+proc main() =
+  block:
+    let a = [10, 20, 30].toDeque
+    doAssert toSeq(a.pairs) == @[(0, 10), (1, 20), (2, 30)]
+
+  block:
+    let q = [7, 9].toDeque
+    doAssert 7 in q
+    doAssert q.contains(7)
+    doAssert 8 notin q
+
+  block:
+    let a = [10, 20, 30, 40, 50].toDeque
+    doAssert $a == "[10, 20, 30, 40, 50]"
+    doAssert a.peekFirst == 10
+    doAssert len(a) == 5
+
+  block:
+    let a = [10, 20, 30, 40, 50].toDeque
+    doAssert $a == "[10, 20, 30, 40, 50]"
+    doAssert a.peekLast == 50
+    doAssert len(a) == 5
+
+  block:
+    var a = [10, 20, 30, 40, 50].toDeque
+    doAssert $a == "[10, 20, 30, 40, 50]"
+    doAssert a.popFirst == 10
+    doAssert $a == "[20, 30, 40, 50]"
+
+  block:
+    var a = [10, 20, 30, 40, 50].toDeque
+    doAssert $a == "[10, 20, 30, 40, 50]"
+    doAssert a.popLast == 50
+    doAssert $a == "[10, 20, 30, 40]"
+
+  block:
+    var a = [10, 20, 30, 40, 50].toDeque
+    doAssert $a == "[10, 20, 30, 40, 50]"
+    clear(a)
+    doAssert len(a) == 0
+
+
+static: main()
+main()
