@@ -13,7 +13,7 @@ block DGRAM_UDP:
   doAssert aiList.ai_addr != nil
   doAssert aiList.ai_addrlen.SockLen == sizeof(Sockaddr_in).SockLen
   doAssert aiList.ai_next == nil
-  freeAddrInfo aiList
+  freeaddrinfo aiList
 
 when defined(posix) and not defined(haiku) and not defined(freebsd) and not defined(openbsd) and not defined(netbsd):
 

@@ -6,7 +6,7 @@ discard """
 
 import parsesql, streams, os
 
-var tree = parseSql(newFileStream(parentDir(currentSourcePath) / "somesql.sql"), "somesql")
-discard renderSql(tree)
+var tree = parseSQL(newFileStream(parentDir(currentSourcePath) / "somesql.sql"), "somesql")
+discard renderSQL(tree)
 
 echo "true"

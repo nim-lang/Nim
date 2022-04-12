@@ -46,7 +46,7 @@ template call(f) =
 proc getUnicodeValue*(path, key: string; handle: HKEY): string =
   let hh = newWideCString path
   let kk = newWideCString key
-  var bufsize: int32
+  var bufSize: int32
   # try a couple of different flag settings:
   var flags: int32 = RRF_RT_ANY
   let err = regGetValue(handle, hh, kk, flags, nil, nil, addr bufsize)

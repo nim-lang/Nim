@@ -3,7 +3,7 @@ discard """
 """
 import parsesql
 
-doAssert treeRepr(parseSql("INSERT INTO STATS VALUES (10, 5.5); ")
+doAssert treeRepr(parseSQL("INSERT INTO STATS VALUES (10, 5.5); ")
 ) == """
 
 nkStmtList
@@ -194,7 +194,7 @@ SET ContactName = 'Alfred Schmidt', City= 'Frankfurt'
 WHERE CustomerID = 1;
 """) == "update Customers set ContactName  = 'Alfred Schmidt' , City  = 'Frankfurt' where CustomerID = 1;"
 
-doAssert treeRepr(parseSql("""UPDATE Customers
+doAssert treeRepr(parseSQL("""UPDATE Customers
                               SET ContactName = 'Alice', City= 'Frankfurt';""")
 ) == """
 
