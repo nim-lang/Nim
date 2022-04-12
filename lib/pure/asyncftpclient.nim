@@ -201,7 +201,7 @@ proc pasv(ftp: AsyncFtpClient) {.async.} =
         ftp.dsock.close()
         raise getCurrentException()
     else:
-      {.error: "TLS support is not available. Cannot connect over TLS. Compile with -d:ssl to enable."}
+      doAssert false, "TLS support is not available. Cannot connect over TLS. Compile with -d:ssl to enable."
 
 proc normalizePathSep(path: string): string =
   return replace(path, '\\', '/')
@@ -228,7 +228,7 @@ proc connect*(ftp: AsyncFtpClient) {.async.} =
         ftp.csock.close()
         raise getCurrentException()
     else:
-      {.error: "TLS support is not available. Cannot connect over TLS. Compile with -d:ssl to enable."}
+      doAssert false, "TLS support is not available. Cannot connect over TLS. Compile with -d:ssl to enable."
 
   if ftp.user != "":
     assertReply(await(ftp.send("USER " & ftp.user)), "230", "331")
@@ -477,9 +477,9 @@ proc newAsyncFtpClient*(address: string, port = Port(21),
       else:
         result.sslContext = sslContext
     else:
-      {.error: "TLS support is not available. Cannot connect over TLS. Compile with -d:ssl to enable."}
+      doAssert false, "TLS support is not available. Cannot connect over TLS. Compile with -d:ssl to enable."
 
-when not defined(testing) and isMainModule:
+when not defined(testing) and defined(ssl) and isMainModule:
   var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
   proc main(ftp: AsyncFtpClient) {.async.} =
     await ftp.connect()
