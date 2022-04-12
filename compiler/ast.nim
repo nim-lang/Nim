@@ -13,6 +13,9 @@ import
   lineinfos, hashes, options, ropes, idents, int128, tables
 from strutils import toLowerAscii
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 export int128
 
 type

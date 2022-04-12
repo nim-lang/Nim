@@ -60,6 +60,10 @@ import
 
 from pathutils import AbsoluteFile
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
+
 type
   FormatStr* = string  # later we may change it to CString for better
                        # performance of the code generator (assignments

@@ -10,6 +10,10 @@
 # An `include` file which contains common code for
 # hash sets and tables.
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 const
   growthFactor = 2
 

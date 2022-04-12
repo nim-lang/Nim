@@ -5797,11 +5797,6 @@ However, this means that the method call syntax is not available for
   tmp(12)
 
 
-**Note**: The Nim compiler prior to version 1 was more lenient about this
-requirement. Use the `--useVersion:0.19`:option: switch for a transition period.
-
-
-
 Limitations of the method call syntax
 -------------------------------------
 
@@ -7917,6 +7912,7 @@ instructs the compiler to pass the type by value to procs:
     Vector {.bycopy.} = object
       x, y, z: float
 
+The Nim compiler automatically determines whether a parameter is passed by value or by reference based on the parameter type's size. If a parameter must be passed by value or by reference, (such as when interfacing with a C library) use the bycopy or byref pragmas.
 
 Byref pragma
 ------------
