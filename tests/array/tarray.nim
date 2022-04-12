@@ -403,7 +403,7 @@ block troofregression:
 
 
 block tunchecked:
-  {.boundchecks: on.}
+  {.boundChecks: on.}
   type Unchecked = UncheckedArray[char]
 
   var x = cast[ptr Unchecked](alloc(100))

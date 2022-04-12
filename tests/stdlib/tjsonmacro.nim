@@ -497,7 +497,7 @@ proc testJson() =
     doAssert array[3, float](t.arr) == [1.0,2.0,7.0]
 
     doAssert MyRef(t.person).name == "boney"
-    doAssert MyObj(t.distFruit).color == 11
+    doAssert MyObj(t.distfruit).color == 11
     doAssert t.dog.name == "honey"
     doAssert t.fruit.color == 10
     doAssert seq[string](t.emails) == @["abc", "123"]

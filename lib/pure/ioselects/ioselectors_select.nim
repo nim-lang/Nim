@@ -53,9 +53,9 @@ else:
 when hasThreadSupport:
   type
     SelectorImpl[T] = object
-      rSet: FdSet
-      wSet: FdSet
-      eSet: FdSet
+      rSet: Fdset
+      wSet: Fdset
+      eSet: Fdset
       maxFD: int
       fds: ptr SharedArray[SelectorKey[T]]
       count*: int
@@ -64,9 +64,9 @@ when hasThreadSupport:
 else:
   type
     SelectorImpl[T] = object
-      rSet: FdSet
-      wSet: FdSet
-      eSet: FdSet
+      rSet: Fdset
+      wSet: Fdset
+      eSet: Fdset
       maxFD: int
       fds: seq[SelectorKey[T]]
       count*: int
@@ -308,7 +308,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
                     results: var openArray[ReadyKey]): int =
   var tv = Timeval()
   var ptv = addr tv
-  var rset, wset, eset: FdSet
+  var rset, wset, eset: Fdset
 
   verifySelectParams(timeout)
 

@@ -168,7 +168,7 @@ proc newRow(L: int): Row =
 
 proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =
   if row != nil:
-    while mysql.fetchRow(sqlres) != nil: discard
+    while mysql.fetch_row(sqlres) != nil: discard
   mysql.freeResult(sqlres)
 
 iterator fastRows*(db: DbConn, query: SqlQuery,
@@ -190,7 +190,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
       backup: Row
     newSeq(result, L)
     while true:
-      row = mysql.fetchRow(sqlres)
+      row = mysql.fetch_row(sqlres)
       if row == nil: break
       for i in 0..L-1:
         setLen(result[i], 0)
@@ -209,7 +209,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     let L = int(mysql.numFields(sqlres))
     var row: cstringArray
     while true:
-      row = mysql.fetchRow(sqlres)
+      row = mysql.fetch_row(sqlres)
       if row == nil: break
       yield InstantRow(row: row, len: L)
     properFreeResult(sqlres, row)
@@ -290,7 +290,7 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
     setColumnInfo(columns, sqlres, L)
     var row: cstringArray
     while true:
-      row = mysql.fetchRow(sqlres)
+      row = mysql.fetch_row(sqlres)
       if row == nil: break
       yield InstantRow(row: row, len: L)
     properFreeResult(sqlres, row)
@@ -317,7 +317,7 @@ proc getRow*(db: DbConn, query: SqlQuery,
   if sqlres != nil:
     var L = int(mysql.numFields(sqlres))
     result = newRow(L)
-    var row = mysql.fetchRow(sqlres)
+    var row = mysql.fetch_row(sqlres)
     if row != nil:
       for i in 0..L-1:
         setLen(result[i], 0)
@@ -335,7 +335,7 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
     var row: cstringArray
     var j = 0
     while true:
-      row = mysql.fetchRow(sqlres)
+      row = mysql.fetch_row(sqlres)
       if row == nil: break
       setLen(result, j+1)
       newSeq(result[j], L)

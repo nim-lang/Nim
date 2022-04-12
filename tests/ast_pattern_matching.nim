@@ -91,7 +91,7 @@ proc `$`*(arg: MatchingError): string =
     "custom condition check failed: " & arg.strVal
 
 
-proc failWithMatchingError*(arg: MatchingError): void {.compileTime, noReturn.} =
+proc failWithMatchingError*(arg: MatchingError): void {.compileTime, noreturn.} =
   error($arg, arg.node)
 
 proc expectValue(arg: NimNode; value: SomeInteger): void {.compileTime.} =

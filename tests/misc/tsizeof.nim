@@ -63,7 +63,7 @@ macro testOffsetOf(a, b: untyped): untyped =
   result = quote do:
     let
       c_offset   = c_offsetof(`a`,`b`)
-      nim_offset = offsetof(`a`,`b`)
+      nim_offset = offsetOf(`a`,`b`)
     if c_offset != nim_offset:
       echo `typeName`, ".", `member`, " offsetError, C: ", c_offset, " nim: ", nim_offset
       failed = true
@@ -75,7 +75,7 @@ proc strAlign(arg: string): string =
     result &= ' '
 
 macro c_offsetof(fieldAccess: typed): int32 =
-  ## Bullet proof implementation that works on actual offsetof operator
+  ## Bullet proof implementation that works on actual offsetOf operator
   ## in the c backend. Assuming of course this implementation is
   ## correct.
   let s = if fieldAccess.kind == nnkCheckedFieldExpr: fieldAccess[0]
@@ -84,7 +84,7 @@ macro c_offsetof(fieldAccess: typed): int32 =
   let b = s[1]
   result = quote do:
     var res: int32
-    {.emit: [res, " = offsetof(", `a`, ", ", `b`, ");"] .}
+    {.emit: [res, " = offsetOf(", `a`, ", ", `b`, ");"] .}
     res
 
 template c_offsetof(t: typedesc, a: untyped): int32 =
@@ -634,7 +634,7 @@ proc payloadCheck() =
 
 payloadCheck()
 
-# offsetof tuple types
+# offsetOf tuple types
 
 type
   MyTupleType = tuple
@@ -655,35 +655,35 @@ type
     else:
       val4,val5: int32
 
-doAssert offsetof(MyTupleType, a) == 0
-doAssert offsetof(MyTupleType, b) == 8
-doAssert offsetof(MyTupleType, c) == 16
+doAssert offsetOf(MyTupleType, a) == 0
+doAssert offsetOf(MyTupleType, b) == 8
+doAssert offsetOf(MyTupleType, c) == 16
 
-doAssert offsetof(MyOtherTupleType, a) == 0
-doAssert offsetof(MyOtherTupleType, b) == 8
+doAssert offsetOf(MyOtherTupleType, a) == 0
+doAssert offsetOf(MyOtherTupleType, b) == 8
 
-# The following expression can only work if the offsetof expression is
+# The following expression can only work if the offsetOf expression is
 # properly forwarded for the C code generator.
-doAssert offsetof(MyOtherTupleType, c) == 16
-doAssert offsetof(Bar, foo) == 4
-doAssert offsetof(MyCaseObject, val1) == 0
-doAssert offsetof(MyCaseObject, kind) == 8
-doAssert offsetof(MyCaseObject, val2) == 12
-doAssert offsetof(MyCaseObject, val3) == 16
-doAssert offsetof(MyCaseObject, val4) == 12
-doAssert offsetof(MyCaseObject, val5) == 16
+doAssert offsetOf(MyOtherTupleType, c) == 16
+doAssert offsetOf(Bar, foo) == 4
+doAssert offsetOf(MyCaseObject, val1) == 0
+doAssert offsetOf(MyCaseObject, kind) == 8
+doAssert offsetOf(MyCaseObject, val2) == 12
+doAssert offsetOf(MyCaseObject, val3) == 16
+doAssert offsetOf(MyCaseObject, val4) == 12
+doAssert offsetOf(MyCaseObject, val5) == 16
 
 template reject(e) =
   static: assert(not compiles(e))
 
 reject:
-  const off1 = offsetof(MyOtherTupleType, c)
+  const off1 = offsetOf(MyOtherTupleType, c)
 
 reject:
-  const off2 = offsetof(MyOtherTupleType, b)
+  const off2 = offsetOf(MyOtherTupleType, b)
 
 reject:
-  const off3 = offsetof(MyCaseObject, kind)
+  const off3 = offsetOf(MyCaseObject, kind)
 
 
 type
@@ -697,23 +697,23 @@ type
 
 # packed case object
 
-doAssert offsetof(MyPackedCaseObject, val1) == 0
-doAssert offsetof(MyPackedCaseObject, val2) == 9
-doAssert offsetof(MyPackedCaseObject, val3) == 13
-doAssert offsetof(MyPackedCaseObject, val4) == 9
-doAssert offsetof(MyPackedCaseObject, val5) == 13
+doAssert offsetOf(MyPackedCaseObject, val1) == 0
+doAssert offsetOf(MyPackedCaseObject, val2) == 9
+doAssert offsetOf(MyPackedCaseObject, val3) == 13
+doAssert offsetOf(MyPackedCaseObject, val4) == 9
+doAssert offsetOf(MyPackedCaseObject, val5) == 13
 
 reject:
-  const off5 = offsetof(MyPackedCaseObject, val2)
+  const off5 = offsetOf(MyPackedCaseObject, val2)
 
 reject:
-  const off6 = offsetof(MyPackedCaseObject, val3)
+  const off6 = offsetOf(MyPackedCaseObject, val3)
 
 reject:
-  const off7 = offsetof(MyPackedCaseObject, val4)
+  const off7 = offsetOf(MyPackedCaseObject, val4)
 
 reject:
-  const off8 = offsetof(MyPackedCaseObject, val5)
+  const off8 = offsetOf(MyPackedCaseObject, val5)
 
 
 type

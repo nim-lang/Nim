@@ -254,10 +254,10 @@ block: # test **
   b = toJs(3.0)
   doAssert to(a ** b, float) == 125.0
   a = toJs(7.0)
-  b = toJS(6.0)
+  b = toJs(6.0)
   doAssert to(a ** b, float) == 117649.0
   a = toJs(8)
-  b = toJS(-2)
+  b = toJs(-2)
   doAssert to(a ** b, float) == 0.015625
 
   a = toJs(1)

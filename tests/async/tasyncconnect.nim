@@ -23,7 +23,7 @@ else:
         await s.connect(testHost, testPort)
 
         var peerAddr: SockAddr
-        var addrSize = Socklen(sizeof(peerAddr))
+        var addrSize = SockLen(sizeof(peerAddr))
         var ret = SocketHandle(s).getpeername(addr(peerAddr), addr(addrSize))
 
         if ret < 0:

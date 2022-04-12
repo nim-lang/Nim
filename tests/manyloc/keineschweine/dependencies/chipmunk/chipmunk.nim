@@ -422,7 +422,7 @@ defProp(PSpace, TTimestamp, collisionPersistence, CollisionPersistence)
 defProp(PSpace, Bool32, enableContactGraph, EnableContactGraph)
 defProp(PSpace, pointer, data, UserData)
 defGetter(PSpace, PBody, staticBody, StaticBody)
-defGetter(PSpace, CpFloat, currDt, CurrentTimeStep)
+defGetter(PSpace, CpFloat, currDT, CurrentTimeStep)
 
 
 #/ returns true from inside a callback and objects cannot be added/removed.

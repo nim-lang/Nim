@@ -37,7 +37,7 @@ globalTable.add("ob3", d)
 
 proc testThread(channel: ptr TableChannel) {.thread.} =
   globalTable = channel[].recv()
-  for k, v in pairs globaltable:
+  for k, v in pairs globalTable:
     echo k, " ", v.someSeq
   var myObj: Base
   deepCopy(myObj, globalTable["ob"])

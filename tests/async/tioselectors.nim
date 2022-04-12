@@ -43,7 +43,7 @@ when not defined(windows):
 
     var aiList = getAddrInfo("0.0.0.0", Port(13337))
     if bindAddr(server_socket, aiList.ai_addr,
-                aiList.ai_addrlen.Socklen) < 0'i32:
+                aiList.ai_addrlen.SockLen) < 0'i32:
       freeAddrInfo(aiList)
       raiseOSError(osLastError())
     if server_socket.listen() == -1:
@@ -52,7 +52,7 @@ when not defined(windows):
 
     aiList = getAddrInfo("127.0.0.1", Port(13337))
     discard posix.connect(client_socket, aiList.ai_addr,
-                          aiList.ai_addrlen.Socklen)
+                          aiList.ai_addrlen.SockLen)
 
     registerHandle(selector, server_socket, {Event.Read}, 0)
     registerHandle(selector, client_socket, {Event.Write}, 0)
@@ -61,7 +61,7 @@ when not defined(windows):
     discard selector.select(100)
 
     var sockAddress: SockAddr
-    var addrLen = sizeof(sockAddress).Socklen
+    var addrLen = sizeof(sockAddress).SockLen
     var server2_socket = accept(server_socket,
                                 cast[ptr SockAddr](addr(sockAddress)),
                                 addr(addrLen))
