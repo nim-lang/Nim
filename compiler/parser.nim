@@ -36,6 +36,9 @@ import
 when defined(nimpretty):
   import layouter
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   Parser* = object            # A Parser object represents a file that
                               # is being parsed

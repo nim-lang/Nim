@@ -84,6 +84,10 @@ import std/private/since
 
 import macros
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 when defined(nimHasEffectsOf):
   {.experimental: "strictEffects".}
 else:

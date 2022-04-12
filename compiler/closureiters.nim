@@ -133,6 +133,9 @@ import
   renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos,
   tables, options
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   Ctx = object
     g: ModuleGraph

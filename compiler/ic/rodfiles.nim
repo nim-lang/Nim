@@ -16,6 +16,9 @@
 
 from typetraits import supportsCopyMem
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 ## Overview
 ## ========
 ## `RodFile` represents a Rod File (versioned binary format), and the

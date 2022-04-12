@@ -22,49 +22,6 @@
 
 <script type="text/javascript" src="../../dochack.js"></script>
 
-<script type="text/javascript">
-function main() {
-  var pragmaDots = document.getElementsByClassName("pragmadots");
-  for (var i = 0; i < pragmaDots.length; i++) {
-    pragmaDots[i].onclick = function(event) {
-      // Hide tease
-      event.target.parentNode.style.display = "none";
-      // Show actual
-      event.target.parentNode.nextElementSibling.style.display = "inline";
-    }
-  }
-
-  function switchTheme(e) {
-      if (e.target.checked) {
-          document.documentElement.setAttribute('data-theme', 'dark');
-          localStorage.setItem('theme', 'dark');
-      } else {
-          document.documentElement.setAttribute('data-theme', 'light');
-          localStorage.setItem('theme', 'light');
-      }
-  }
-
-  const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
-  if (toggleSwitch !== null) {
-    toggleSwitch.addEventListener('change', switchTheme, false);
-  }
-
-  var currentTheme = localStorage.getItem('theme');
-  if (!currentTheme && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    currentTheme = 'dark';
-  }
-  if (currentTheme) {
-    document.documentElement.setAttribute('data-theme', currentTheme);
-
-    if (currentTheme === 'dark' && toggleSwitch !== null) {
-      toggleSwitch.checked = true;
-    }
-  }
-}
-
-window.addEventListener('DOMContentLoaded', main);
-</script>
-
 </head>
 <body>
 <div class="document" id="documentId">

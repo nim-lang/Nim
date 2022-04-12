@@ -29,6 +29,9 @@ runnableExamples("-r:off"):
 import strutils
 from endians import bigEndian32, bigEndian64
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 const Sha1DigestSize = 20
 
 type
