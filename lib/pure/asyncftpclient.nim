@@ -79,10 +79,10 @@
 
 
 import asyncdispatch, asyncnet, nativesockets, strutils, parseutils, os, times
-from net import BufferSize
+from net import BufferSize, SslContext
 
 when defined(ssl):
-  from net import SslContext, SslHandshakeType, newContext, SslCVerifyMode
+  from net import SslHandshakeType, newContext, SslCVerifyMode
   var defaultSslContext {.threadvar.}: SslContext
 
   proc getSSLContext(): SslContext =
