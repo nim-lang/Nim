@@ -9,6 +9,9 @@
 
 # This include implements the high level optimization pass.
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc hlo(c: PContext, n: PNode): PNode
 
 proc evalPattern(c: PContext, n, orig: PNode): PNode =

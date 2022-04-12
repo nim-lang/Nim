@@ -74,3 +74,5 @@ block:
   doAssert(ss.peekLine(str))
   doAssert(str == "uick brown fox jumped over the lazy dog.")
   doAssert(ss.getPosition == 5) # haven't moved
+  ss.setPosition(0) # Ensure we dont error with writing over literals on arc/orc #19707
+  ss.write("hello")

@@ -16,6 +16,9 @@ import
   os, times, osproc, wordrecg, strtabs, modulegraphs,
   pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
 

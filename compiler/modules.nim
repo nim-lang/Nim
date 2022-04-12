@@ -14,6 +14,9 @@ import
   idents, lexer, passes, syntaxes, llstream, modulegraphs,
   lineinfos, pathutils, tables
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 import ic / replayer
 
 proc resetSystemArtifacts*(g: ModuleGraph) =

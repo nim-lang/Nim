@@ -16,6 +16,9 @@ import hashes, tables, strtabs
 import bitabs
 import ".." / [ast, options]
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   SymId* = distinct int32
   ModuleId* = distinct int32

@@ -21,7 +21,7 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
     # we have to be *very* conservative:
     result = canRaiseConservative(n)
 
-proc preventNrvo(p: BProc; le, ri: PNode): bool =
+proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
   proc locationEscapes(p: BProc; le: PNode; inTryStmt: bool): bool =
     var n = le
     while true:
@@ -54,6 +54,11 @@ proc preventNrvo(p: BProc; le, ri: PNode): bool =
     if canRaise(ri[0]) and
         locationEscapes(p, le, p.nestedTryStmts.len > 0):
       message(p.config, le.info, warnObservableStores, $le)
+  # bug #19613 prevent dangerous aliasing too:
+  if dest != nil and dest != le:
+    for i in 1..<ri.len:
+      let r = ri[i]
+      if isPartOf(dest, r) != arNo: return true
 
 proc hasNoInit(call: PNode): bool {.inline.} =
   result = call[0].kind == nkSym and sfNoInit in call[0].sym.flags
@@ -79,7 +84,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
     if isInvalidReturnType(p.config, typ):
       if params != nil: pl.add(~", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
-      if d.k in {locTemp, locNone} or not preventNrvo(p, le, ri):
+      if d.k in {locTemp, locNone} or not preventNrvo(p, d.lode, le, ri):
         # Great, we can use 'd':
         if d.k == locNone: getTemp(p, typ[0], d, needsInit=true)
         elif d.k notin {locTemp} and not hasNoInit(ri):
@@ -442,7 +447,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     if isInvalidReturnType(p.config, typ):
       if ri.len > 1: pl.add(~", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
-      if d.k in {locTemp, locNone} or not preventNrvo(p, le, ri):
+      if d.k in {locTemp, locNone} or not preventNrvo(p, d.lode, le, ri):
         # Great, we can use 'd':
         if d.k == locNone:
           getTemp(p, typ[0], d, needsInit=true)

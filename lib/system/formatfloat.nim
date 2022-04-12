@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc c_memcpy(a, b: pointer, size: csize_t): pointer {.importc: "memcpy", header: "<string.h>", discardable.}
 
 proc addCstringN(result: var string, buf: cstring; buflen: int) =

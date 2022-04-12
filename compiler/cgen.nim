@@ -17,6 +17,10 @@ import
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
   injectdestructors, astmsgs
 
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when not defined(leanCompiler):
   import spawn, semparallel
 
@@ -881,7 +885,7 @@ proc containsResult(n: PNode): bool =
       if containsResult(n[i]): return true
 
 const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTemplateDef,
-                  nkMacroDef, nkMixinStmt, nkBindStmt} +
+                  nkMacroDef, nkMixinStmt, nkBindStmt, nkFormalParams} +
                   declarativeDefs
 
 proc easyResultAsgn(n: PNode): PNode =
