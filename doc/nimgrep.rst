@@ -36,10 +36,10 @@ Command line switches
 Options for filtering can be provided multiple times so they form a list,
 which works as:
 * logical OR for positive filters:
-  `--includeFile`, `--includeDir`, `--matchContext`,
+  `--includeFile`, `--includeDir`, `--includeContext`,
   accepts if *any* pattern from the list is hit
 * logical AND for negative filters:
-  `--excludeFile`, `--excludeDir`, `--noMatchContext`,
+  `--excludeFile`, `--excludeDir`, `--excludeContext`,
   accepts if *no* pattern from the list is hit.
   So patterns are effectively related by OR (`|`:literal:) also:
   `(NOT PAT1) AND (NOT PAT2) == NOT (PAT1|PAT2)`:literal: in pseudo-code.
@@ -53,7 +53,7 @@ E.g. to require that multi-line context of matches has occurences of
 **both** PAT1 and PAT2 use positive lookaheads (`(?=PAT)`:literal:):
 
 .. code:: cmd
-  nimgrep --matchContext:'(?s)(?=.*PAT1)(?=.*PAT2)'
+  nimgrep --includeContext:'(?s)(?=.*PAT1)(?=.*PAT2)'
 
 Meaning of `^`:literal: and `$`:literal:
 ========================================

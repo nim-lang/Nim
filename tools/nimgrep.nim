@@ -108,17 +108,17 @@ type
   SearchOpt = tuple  # used for searching inside a file
     patternSet: bool     # to distinguish uninitialized 'pattern' and empty one
     pattern: string      # main PATTERN
-    checkMatch: string   # --match
-    checkNoMatch: string # --nomatch
-    matchContext: seq[string]   # --matchContext, --mc
-    noMatchContext: seq[string] # --noMatchContext, --nc
+    includeInside: string        # --includeInside
+    excludeInside: string        # --excludeInside
+    includeContext: seq[string]  # --includeContext, --ic
+    excludeContext: seq[string]  # --excludeContext, --ec
     checkBin: Bin        # --bin
   SearchOptComp[Pat] = tuple  # a compiled version of the previous
     pattern: Pat
-    checkMatch: Pat
-    checkNoMatch: Pat
-    matchContext: seq[Pat]
-    noMatchContext: seq[Pat]
+    includeInside: Pat
+    excludeInside: Pat
+    includeContext: seq[Pat]
+    excludeContext: seq[Pat]
   SinglePattern[PAT] = tuple  # compile single pattern for replacef
     pattern: PAT
   Column = tuple  # current column info for the cropping (--limit) feature
@@ -812,12 +812,12 @@ template declareCompiledPatterns(compiledStruct: untyped,
   {.hint[XDeclaredButNotUsed]: on.}
 
 func checkContext(context: string, searchOptC: SearchOptComp[Pattern]): bool =
-  for pat in searchOptC.noMatchContext:
+  for pat in searchOptC.excludeContext:
     if contains(context, pat, 0):
       return false
-  if searchOptC.matchContext.len > 0:
+  if searchOptC.includeContext.len > 0:
     result = false
-    for pat in searchOptC.matchContext:
+    for pat in searchOptC.includeContext:
       if contains(context, pat, 0):
         return true
   else:
@@ -852,13 +852,13 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
         reason = "text file"
 
     if not reject:
-      if searchOpt.checkMatch != "":
-        reject = not contains(buffer, searchOptC.checkMatch, 0)
+      if searchOpt.includeInside != "":
+        reject = not contains(buffer, searchOptC.includeInside, 0)
         reason = "doesn't contain a requested match"
 
     if not reject:
-      if searchOpt.checkNoMatch != "":
-        reject = contains(buffer, searchOptC.checkNoMatch, 0)
+      if searchOpt.excludeInside != "":
+        reject = contains(buffer, searchOptC.excludeInside, 0)
         reason = "contains a forbidden match"
 
     if reject:
@@ -868,8 +868,8 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
     else:
       var found = false
       var cnt = 0
-      let skipCheckContext = (searchOpt.noMatchContext.len == 0 and
-                              searchOpt.matchContext.len == 0)
+      let skipCheckContext = (searchOpt.excludeContext.len == 0 and
+                              searchOpt.includeContext.len == 0)
       if skipCheckContext:
         for output in searchFile(searchOptC.pattern, buffer):
           found = true
@@ -1072,10 +1072,10 @@ template processFileResult(pattern: Pattern; filename: string,
 proc run1Thread() =
   declareCompiledPatterns(searchOptC, SearchOptComp):
     compile1Pattern(searchOpt.pattern, searchOptC.pattern)
-    compile1Pattern(searchOpt.checkMatch, searchOptC.checkMatch)
-    compile1Pattern(searchOpt.checkNoMatch, searchOptC.checkNoMatch)
-    searchOptC.matchContext.add searchOpt.matchContext.compileArray()
-    searchOptC.noMatchContext.add searchOpt.noMatchContext.compileArray()
+    compile1Pattern(searchOpt.includeInside, searchOptC.includeInside)
+    compile1Pattern(searchOpt.excludeInside, searchOptC.excludeInside)
+    searchOptC.includeContext.add searchOpt.includeContext.compileArray()
+    searchOptC.excludeContext.add searchOpt.excludeContext.compileArray()
     if optPipe in options:
       processFileResult(searchOptC.pattern, "-",
                         processFile(searchOptC, "-",
@@ -1117,10 +1117,10 @@ proc worker(initSearchOpt: SearchOpt) {.thread.} =
   searchOpt = initSearchOpt  # init thread-local var
   declareCompiledPatterns(searchOptC, SearchOptComp):
     compile1Pattern(searchOpt.pattern, searchOptC.pattern)
-    compile1Pattern(searchOpt.checkMatch, searchOptC.checkMatch)
-    compile1Pattern(searchOpt.checkNoMatch, searchOptC.checkNoMatch)
-    searchOptC.matchContext.add searchOpt.matchContext.compileArray()
-    searchOptC.noMatchContext.add searchOpt.noMatchContext.compileArray()
+    compile1Pattern(searchOpt.includeInside, searchOptC.includeInside)
+    compile1Pattern(searchOpt.excludeInside, searchOptC.excludeInside)
+    searchOptC.includeContext.add searchOpt.includeContext.compileArray()
+    searchOptC.excludeContext.add searchOpt.excludeContext.compileArray()
     while true:
       let (fileNo, filename) = searchRequestsChan.recv()
       var fileResult: FileResult
@@ -1249,10 +1249,14 @@ for kind, key, val in getopt():
     of "includedir", "include-dir",   "id": walkOpt.includeDir.add val
     of "includefile", "include-file", "if": walkOpt.includeFile.add val
     of "excludefile", "exclude-file", "ef": walkOpt.excludeFile.add val
-    of "matchfile", "match", "mf": searchOpt.checkMatch = val
-    of "nomatchfile", "nomatch", "nf": searchOpt.checkNoMatch = val
-    of "matchcontext", "mc": searchOpt.matchContext.add val
-    of "nomatchcontext", "nc": searchOpt.noMatchContext.add val
+    of "include-inside", "ii",
+       "matchfile", "match", "mf":      # last 3 options are deprecated
+      searchOpt.includeInside = val
+    of "exclude-inside", "ei",
+       "nomatchfile", "nomatch", "nf":  # last 3 options are deprecated
+      searchOpt.excludeInside = val
+    of "includeContext", "ic": searchOpt.includeContext.add val
+    of "excludeContext", "ec": searchOpt.excludeContext.add val
     of "bin":
       case val
       of "on": searchOpt.checkBin = biOn
