@@ -368,12 +368,16 @@ proc genCopyNoCheck(c: var Con; dest, ri: PNode): PNode =
   assert ri.typ != nil
 
 proc genCopy(c: var Con; dest, ri: PNode): PNode =
-  let t = dest.typ
-  if tfHasOwned in t.flags and ri.kind != nkNilLit:
-    # try to improve the error message here:
-    c.checkForErrorPragma(t, ri, "=copy")
-  result = c.genCopyNoCheck(dest, ri)
-  assert ri.typ != nil
+  #assert not isUnpackedTuple(dest), $dest & " = " & $ri
+  if isUnpackedTuple(dest):
+    result = newTree(nkFastAsgn, dest, ri)
+  else:
+    let t = dest.typ
+    if tfHasOwned in t.flags and ri.kind != nkNilLit:
+      # try to improve the error message here:
+      c.checkForErrorPragma(t, ri, "=copy")
+    result = c.genCopyNoCheck(dest, ri)
+    assert ri.typ != nil
 
 proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =
   # discriminator is ordinal value that doesn't need sink destroy
