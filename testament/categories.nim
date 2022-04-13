@@ -459,11 +459,13 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
       r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
 
   except JsonParsingError:
-    echo "[Warning] - Cannot run nimble tests: Invalid package file."
+    errors = 1
     r.addResult(packageFileTest, targetC, "", "Invalid package file", reBuildFailed)
+    raise
   except ValueError:
-    echo "[Warning] - $#" % getCurrentExceptionMsg()
+    errors = 1
     r.addResult(packageFileTest, targetC, "", "Unknown package", reBuildFailed)
+    raise # bug #18805
   finally:
     if errors == 0: removeDir(packagesDir)
 
@@ -541,7 +543,7 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string, ta
 proc isJoinableSpec(spec: TSpec): bool =
   # xxx simplify implementation using a whitelist of fields that are allowed to be
   # set to non-default values (use `fieldPairs`), to avoid issues like bug #16576.
-  result = not spec.sortoutput and
+  result = useMegatest and not spec.sortoutput and
     spec.action == actionRun and
     not fileExists(spec.file.changeFileExt("cfg")) and
     not fileExists(spec.file.changeFileExt("nims")) and
@@ -588,7 +590,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
           except ValueError:
             # e.g. for `tests/navigator/tincludefile.nim` which have multiple
             # specs; this will be handled elsewhere
-            echo "parseSpec failed for: '$1', assuming this will be handled outside of megatest" % file
+            echo "parseSpec raised ValueError for: '$1', assuming this will be handled outside of megatest" % file
             continue
           if isJoinableSpec(spec):
             specs.add spec

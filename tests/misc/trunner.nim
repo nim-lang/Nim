@@ -37,9 +37,9 @@ proc runNimCmd(file, options = "", rtarg = ""): auto =
     echo cmd
     echo result[0] & "\n" & $result[1]
 
-proc runNimCmdChk(file, options = "", rtarg = ""): string =
-  let (ret, status) = runNimCmd(file, options, rtarg = rtarg)
-  doAssert status == 0, $(file, options) & "\n" & ret
+proc runNimCmdChk(file, options = "", rtarg = "", status = 0): string =
+  let (ret, status2) = runNimCmd(file, options, rtarg = rtarg)
+  doAssert status2 == status, $(file, options, status, status2) & "\n" & ret
   ret
 
 proc genShellCmd(filename: string): string =
@@ -249,6 +249,11 @@ tests/newconfig/bar/mfoo.nims""".splitLines
       expected.add &"Hint: used config file '{b}' [Conf]\n"
     doAssert outp.endsWith expected, outp & "\n" & expected
 
+  block: # bug #8219
+    let file = "tests/newconfig/mconfigcheck.nims"
+    let cmd = fmt"{nim} check --hints:off {file}"
+    check execCmdEx(cmd) == ("", 0)
+
   block: # mfoo2.customext
     let filename = testsDir / "newconfig/foo2/mfoo2.customext"
     let cmd = fmt"{nim} e --hint:conf {filename}"
@@ -376,5 +381,15 @@ mused3.nim(13, 8) Warning: imported and not used: 'mused3b' [UnusedImport]
 mused3.nim(75, 10) Hint: duplicate import of 'mused3a'; previous import here: mused3.nim(74, 10) [DuplicateModuleImport]
 """
 
+  block: # FieldDefect
+    proc fn(opt: string, expected: string) =
+      let output = runNimCmdChk("misc/mfield_defect.nim", fmt"-r --warning:all:off --declaredlocs {opt}", status = 1)
+      doAssert expected in output, opt & "\noutput:\n" & output & "expected:\n" & expected
+    fn("-d:case1"): """mfield_defect.nim(25, 15) Error: field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
+    fn("-d:case2 --gc:refc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
+    fn("-d:case1 -b:js"): """mfield_defect.nim(25, 15) Error: field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
+    fn("-d:case2 -b:js"): """field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
+    # 3 instead of k3, because of lack of RTTI
+    fn("-d:case2 --gc:arc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = 3'"""
 else:
   discard # only during debugging, tests added here will run with `-d:nimTestsTrunnerDebugging` enabled

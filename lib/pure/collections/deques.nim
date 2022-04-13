@@ -10,8 +10,9 @@
 ## An implementation of a `deque`:idx: (double-ended queue).
 ## The underlying implementation uses a `seq`.
 ##
-## Note that none of the procs that get an individual value from the deque should be used
-## on an empty deque.
+## .. note:: None of the procs that get an individual value from the deque should be used
+##   on an empty deque.
+##
 ## If compiled with the `boundChecks` option, those procs will raise an `IndexDefect`
 ## on such access. This should not be relied upon, as `-d:danger` or `--checks:off` will
 ## disable those checks and then the procs may return garbage or crash the program.
@@ -85,20 +86,6 @@ proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ## **See also:**
   ## * `toDeque proc <#toDeque,openArray[T]>`_
   result.initImpl(initialSize)
-
-proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
-  ## Creates a new deque that contains the elements of `x` (in the same order).
-  ##
-  ## **See also:**
-  ## * `initDeque proc <#initDeque,int>`_
-  runnableExamples:
-    let a = toDeque([7, 8, 9])
-    assert len(a) == 3
-    assert $a == "[7, 8, 9]"
-
-  result.initImpl(x.len)
-  for item in items(x):
-    result.addLast(item)
 
 proc len*[T](deq: Deque[T]): int {.inline.} =
   ## Returns the number of elements of `deq`.
@@ -198,7 +185,7 @@ iterator items*[T](deq: Deque[T]): lent T =
   ## Yields every element of `deq`.
   ##
   ## **See also:**
-  ## * `mitems iterator <#mitems,Deque[T]>`_
+  ## * `mitems iterator <#mitems.i,Deque[T]>`_
   runnableExamples:
     from std/sequtils import toSeq
 
@@ -214,7 +201,7 @@ iterator mitems*[T](deq: var Deque[T]): var T =
   ## Yields every element of `deq`, which can be modified.
   ##
   ## **See also:**
-  ## * `items iterator <#items,Deque[T]>`_
+  ## * `items iterator <#items.i,Deque[T]>`_
   runnableExamples:
     var a = [10, 20, 30, 40, 50].toDeque
     assert $a == "[10, 20, 30, 40, 50]"
@@ -274,7 +261,7 @@ proc addFirst*[T](deq: var Deque[T], item: sink T) =
   ## Adds an `item` to the beginning of `deq`.
   ##
   ## **See also:**
-  ## * `addLast proc <#addLast,Deque[T],T>`_
+  ## * `addLast proc <#addLast,Deque[T],sinkT>`_
   runnableExamples:
     var a = initDeque[int]()
     for i in 1 .. 5:
@@ -290,7 +277,7 @@ proc addLast*[T](deq: var Deque[T], item: sink T) =
   ## Adds an `item` to the end of `deq`.
   ##
   ## **See also:**
-  ## * `addFirst proc <#addFirst,Deque[T],T>`_
+  ## * `addFirst proc <#addFirst,Deque[T],sinkT>`_
   runnableExamples:
     var a = initDeque[int]()
     for i in 1 .. 5:
@@ -301,6 +288,20 @@ proc addLast*[T](deq: var Deque[T], item: sink T) =
   inc deq.count
   deq.data[deq.tail] = item
   deq.tail = (deq.tail + 1) and deq.mask
+
+proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
+  ## Creates a new deque that contains the elements of `x` (in the same order).
+  ##
+  ## **See also:**
+  ## * `initDeque proc <#initDeque,int>`_
+  runnableExamples:
+    let a = toDeque([7, 8, 9])
+    assert len(a) == 3
+    assert $a == "[7, 8, 9]"
+
+  result.initImpl(x.len)
+  for item in items(x):
+    result.addLast(item)
 
 proc peekFirst*[T](deq: Deque[T]): lent T {.inline.} =
   ## Returns the first element of `deq`, but does not remove it from the deque.

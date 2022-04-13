@@ -38,6 +38,11 @@
 ## .. _randomFillSync: https://nodejs.org/api/crypto.html#crypto_crypto_randomfillsync_buffer_offset_size
 ## .. _/dev/urandom: https://en.wikipedia.org/wiki//dev/random
 ##
+## On a Linux target, a call to the `getrandom` syscall can be avoided (e.g.
+## for targets running kernel version < 3.17) by passing a compile flag of
+## `-d:nimNoGetRandom`. If this flag is passed, sysrand will use `/dev/urandom`
+## as with any other POSIX compliant OS.
+##
 
 runnableExamples:
   doAssert urandom(0).len == 0
@@ -58,7 +63,7 @@ when defined(posix):
   import posix
 
 const
-  batchImplOS = defined(freebsd) or defined(openbsd) or (defined(macosx) and not defined(ios))
+  batchImplOS = defined(freebsd) or defined(openbsd) or defined(zephyr) or (defined(macosx) and not defined(ios))
   batchSize {.used.} = 256
 
 when batchImplOS:
@@ -132,7 +137,7 @@ elif defined(windows):
   type
     PVOID = pointer
     BCRYPT_ALG_HANDLE = PVOID
-    PUCHAR = ptr cuchar
+    PUCHAR = ptr uint8
     NTSTATUS = clong
     ULONG = culong
 
@@ -159,7 +164,7 @@ elif defined(windows):
 
     result = randomBytes(addr dest[0], size)
 
-elif defined(linux):
+elif defined(linux) and not defined(nimNoGetRandom) and not defined(emscripten):
   # TODO using let, pending bootstrap >= 1.4.0
   var SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
   const syscallHeader = """#include <unistd.h>
@@ -201,6 +206,16 @@ elif defined(openbsd):
 
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
     result = getentropy(p, cint(size)).int
+
+elif defined(zephyr):
+  proc sys_csrand_get(dst: pointer, length: csize_t): cint {.importc: "sys_csrand_get", header: "<random/rand32.h>".}
+    # Fill the destination buffer with cryptographically secure
+    # random data values
+    # 
+
+  proc getRandomImpl(p: pointer, size: int): int {.inline.} =
+    # 0 if success, -EIO if entropy reseed error
+    result = sys_csrand_get(p, csize_t(size)).int
 
 elif defined(freebsd):
   type cssize_t {.importc: "ssize_t", header: "<sys/types.h>".} = int

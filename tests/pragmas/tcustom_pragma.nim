@@ -17,10 +17,26 @@ block:
     MyObj = object
       myField1, myField2 {.myAttr: "hi".}: int
 
+    MyGenericObj[T] = object
+      myField1, myField2 {.myAttr: "hi".}: int
+
+    MyOtherObj = MyObj
+
+
   var o: MyObj
   static:
     doAssert o.myField2.hasCustomPragma(myAttr)
     doAssert(not o.myField1.hasCustomPragma(myAttr))
+    doAssert(not o.myField1.hasCustomPragma(MyObj))
+    doAssert(not o.myField1.hasCustomPragma(MyOtherObj))
+
+  var ogen: MyGenericObj[int]
+  static:
+    doAssert ogen.myField2.hasCustomPragma(myAttr)
+    doAssert(not ogen.myField1.hasCustomPragma(myAttr))
+    doAssert(not ogen.myField1.hasCustomPragma(MyGenericObj))
+    doAssert(not ogen.myField1.hasCustomPragma(MyGenericObj))
+
 
 import custom_pragma
 block: # A bit more advanced case
@@ -384,7 +400,7 @@ block:
   discard Hello(a: 1.0, b: 12)
 
 # issue #11511
-block:
+when false:
   template myAttr {.pragma.}
 
   type TObj = object
@@ -395,23 +411,24 @@ block:
     let recList = objTy[2]
     let sym = recList[0]
     assert sym.kind == nnkSym and sym.eqIdent("a")
-    let hasAttr = sym.hasCustomPragma("myAttr")
+    let hasAttr = sym.hasCustomPragma(myAttr)
     newLit(hasAttr)
 
   doAssert hasMyAttr(TObj)
 
-# misc
-{.pragma: haha.}
-{.pragma: hoho.}
-template hehe(key, val: string, haha) {.pragma.}
+when false:
+  # misc
+  {.pragma: haha.}
+  {.pragma: hoho.}
+  template hehe(key, val: string, haha) {.pragma.}
 
-type A {.haha, hoho, haha, hehe("hi", "hu", "he").} = int
+  type A {.haha, hoho, haha, hehe("hi", "hu", "he").} = int
 
-assert A.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
+  assert A.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
 
-template hehe(key, val: int) {.pragma.}
+  template hehe(key, val: int) {.pragma.}
 
-var bb {.haha, hoho, hehe(1, 2), haha, hehe("hi", "hu", "he").} = 3
+  var bb {.haha, hoho, hehe(1, 2), haha, hehe("hi", "hu", "he").} = 3
 
-# left-to-right priority/override order for getCustomPragmaVal
-assert bb.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
+  # left-to-right priority/override order for getCustomPragmaVal
+  assert bb.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")

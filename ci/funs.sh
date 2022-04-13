@@ -74,6 +74,10 @@ _nimBuildCsourcesIfNeeded(){
     makeX=gmake
   elif [ "$unamestr" = 'NetBSD' ]; then
     makeX=gmake
+  elif [ "$unamestr" = 'CROSSOS' ]; then
+    makeX=gmake
+  elif [ "$unamestr" = 'SunOS' ]; then
+    makeX=gmake
   else
     makeX=make
   fi
@@ -120,8 +124,12 @@ nimBuildCsourcesIfNeeded(){
       else
         # Note: using git tags would allow fetching just what's needed, unlike git hashes, e.g.
         # via `git clone -q --depth 1 --branch $tag $nim_csourcesUrl`.
-        echo_run git clone -q --depth 1 $nim_csourcesUrl "$nim_csourcesDir"
-        echo_run git -C "$nim_csourcesDir" checkout $nim_csourcesHash
+        echo_run git clone -q --depth 1 -b $nim_csourcesBranch \
+            $nim_csourcesUrl "$nim_csourcesDir"
+        # old `git` versions don't support -C option, using `cd` explicitly:
+        echo_run cd "$nim_csourcesDir"
+        echo_run git checkout $nim_csourcesHash
+        echo_run cd "$OLDPWD"
         # if needed we could also add: `git reset --hard $nim_csourcesHash`
       fi
       _nimBuildCsourcesIfNeeded "$@"

@@ -1,6 +1,6 @@
 #? stdtmpl
 #proc sunsetTemplate*(current, ticker, content: string,
-#                     tabs: openarray[array[0..1, string]]): string = 
+#                     tabs: openArray[array[0..1, string]]): string = 
 #  result = ""
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">

@@ -60,6 +60,10 @@ import
 
 from pathutils import AbsoluteFile
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
+
 type
   FormatStr* = string  # later we may change it to CString for better
                        # performance of the code generator (assignments
@@ -329,10 +333,3 @@ proc equalsFile*(r: Rope, filename: AbsoluteFile): bool =
   if result:
     result = equalsFile(r, f)
     close(f)
-
-proc writeRopeIfNotEqual*(r: Rope, filename: AbsoluteFile): bool =
-  # returns true if overwritten
-  if not equalsFile(r, filename):
-    result = writeRope(r, filename)
-  else:
-    result = false

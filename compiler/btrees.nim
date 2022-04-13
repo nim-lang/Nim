@@ -10,6 +10,9 @@
 ## BTree implementation with few features, but good enough for the
 ## Nim compiler's needs.
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const
   M = 512    # max children per B-tree node = M-1
              # (must be even and greater than 2)

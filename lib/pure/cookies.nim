@@ -50,6 +50,8 @@ proc setCookie*(key, value: string, domain = "", path = "",
                 maxAge = none(int), sameSite = SameSite.Default): string =
   ## Creates a command in the format of
   ## `Set-Cookie: key=value; Domain=...; ...`
+  ##
+  ## .. tip:: Cookies can be vulnerable. Consider setting `secure=true`, `httpOnly=true` and `sameSite=Strict`.
   result = ""
   if not noName: result.add("Set-Cookie: ")
   result.add key & "=" & value
@@ -73,4 +75,4 @@ proc setCookie*(key, value: string, expires: DateTime|Time,
   ## `Set-Cookie: key=value; Domain=...; ...`
   result = setCookie(key, value, domain, path,
                    format(expires.utc, "ddd',' dd MMM yyyy HH:mm:ss 'GMT'"),
-                   noname, secure, httpOnly, maxAge, sameSite)
+                   noName, secure, httpOnly, maxAge, sameSite)

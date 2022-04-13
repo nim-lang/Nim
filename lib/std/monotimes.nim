@@ -15,8 +15,6 @@ meaning that that the following is guaranteed to work:
 ]##
 
 runnableExamples:
-  import std/os
-
   let a = getMonoTime()
   let b = getMonoTime()
   assert a <= b
@@ -78,6 +76,10 @@ when defined(js):
 elif defined(posix) and not defined(osx):
   import posix
 
+when defined(zephyr):
+  proc k_uptime_ticks(): int64 {.importc: "k_uptime_ticks", header: "<kernel.h>".}
+  proc k_ticks_to_ns_floor64(ticks: int64): int64 {.importc: "k_ticks_to_ns_floor64", header: "<kernel.h>".}
+
 elif defined(windows):
   proc QueryPerformanceCounter(res: var uint64) {.
     importc: "QueryPerformanceCounter", stdcall, dynlib: "kernel32".}
@@ -100,6 +102,9 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
     mach_timebase_info(machAbsoluteTimeFreq)
     result = MonoTime(ticks: ticks * machAbsoluteTimeFreq.numer div
       machAbsoluteTimeFreq.denom)
+  elif defined(zephyr):
+    let ticks = k_ticks_to_ns_floor64(k_uptime_ticks())
+    result = MonoTime(ticks: ticks)
   elif defined(posix):
     var ts: Timespec
     discard clock_gettime(CLOCK_MONOTONIC, ts)

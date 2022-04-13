@@ -47,7 +47,7 @@ import strutils
 
 let arr = ['H','e','l','l','o',' ','W','o','r','l','d','!','\0']
 doAssert $arr == "['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\\x00']"
-doAssert $cstring(unsafeAddr arr) == "Hello World!"
+doAssert $cstring(addr arr) == "Hello World!"
 
 proc takes(c: cstring) =
   doAssert c == cstring""
@@ -68,7 +68,7 @@ doAssert yy == ""
 proc bar(arg: cstring) =
   doAssert arg[0] == '\0'
 
-proc baz(arg: openarray[char]) =
+proc baz(arg: openArray[char]) =
   doAssert arg.len == 0
 
 proc stringCompare() =

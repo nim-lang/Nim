@@ -34,6 +34,9 @@ import macros
 from enumutils import symbolName
 from typetraits import OrdinalEnum
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when not defined(nimFixedForwardGeneric):
   # xxx remove pending csources_v1 update >= 1.2.0
   proc to[T](node: JsonNode, t: typedesc[T]): T =
@@ -78,8 +81,8 @@ proc initToJsonOptions*(): ToJsonOptions =
   ## initializes `ToJsonOptions` with sane options.
   ToJsonOptions(enumMode: joptEnumOrd, jsonNodeMode: joptJsonNodeAsRef)
 
-proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
-template distinctBase[T](a: T): untyped = distinctBase(typeof(a))(a)
+proc distinctBase(T: typedesc, recursive: static bool = true): typedesc {.magic: "TypeTrait".}
+template distinctBase[T](a: T, recursive: static bool = true): untyped = distinctBase(typeof(a), recursive)(a)
 
 macro getDiscriminants(a: typedesc): seq[string] =
   ## return the discriminant keys
@@ -298,6 +301,10 @@ proc jsonTo*(b: JsonNode, T: typedesc, opt = Joptions()): T =
 proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   ## serializes `a` to json; uses `toJsonHook(a: T)` if it's in scope to
   ## customize serialization, see strtabs.toJsonHook for an example.
+  ##
+  ## .. note:: With `-d:nimPreviewJsonutilsHoleyEnum`, `toJson` now can 
+  ##    serialize/deserialize holey enums as regular enums (via `ord`) instead of as strings.
+  ##    It is expected that this behavior becomes the new default in upcoming versions.
   when compiles(toJsonHook(a)): result = toJsonHook(a)
   elif T is object | tuple:
     when T is object or isNamedTuple(T):
@@ -328,7 +335,7 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   elif T is enum:
     case opt.enumMode
     of joptEnumOrd:
-      when T is Ordinal or not defined(nimLegacyJsonutilsHoleyEnum): %(a.ord)
+      when T is Ordinal or defined(nimPreviewJsonutilsHoleyEnum): %(a.ord)
       else: toJson($a, opt)
     of joptEnumSymbol:
       when T is OrdinalEnum:

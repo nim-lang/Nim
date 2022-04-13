@@ -72,6 +72,8 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
 
   result = $e & " (invalid data!)"
 
+include system/repr_impl
+
 type
   PByteArray = ptr UncheckedArray[byte] # array[0xffff, byte]
 

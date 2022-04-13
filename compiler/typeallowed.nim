@@ -13,6 +13,9 @@
 import
   intsets, ast, renderer, options, semdata, types
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   TTypeAllowedFlag* = enum
     taField,
@@ -56,6 +59,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   case t.kind
   of tyVar, tyLent:
     if kind in {skProc, skFunc, skConst} and (views notin c.features):
+      result = t
+    elif taIsOpenArray in flags:
       result = t
     elif t.kind == tyLent and ((kind != skResult and views notin c.features) or
                               kind == skParam): # lent can't be used as parameters.
@@ -124,7 +129,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = typeAllowedAux(marker, lastSon(t), kind, c, flags)
   of tyRange:
     if skipTypes(t[0], abstractInst-{tyTypeDesc}).kind notin
-      {tyChar, tyEnum, tyInt..tyFloat128, tyInt..tyUInt64}: result = t
+      {tyChar, tyEnum, tyInt..tyFloat128, tyInt..tyUInt64, tyRange}: result = t
   of tyOpenArray:
     # you cannot nest openArrays/sinks/etc.
     if (kind != skParam or taIsOpenArray in flags) and views notin c.features:
@@ -231,7 +236,7 @@ proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind =
   case t.kind
   of tyVar:
     result = mutableView
-  of tyLent, tyOpenArray:
+  of tyLent, tyOpenArray, tyVarargs:
     result = immutableView
   of tyGenericInst, tyDistinct, tyAlias, tyInferred, tySink, tyOwned,
      tyUncheckedArray, tySequence, tyArray, tyRef, tyStatic:

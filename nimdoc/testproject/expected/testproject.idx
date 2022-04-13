@@ -6,6 +6,7 @@ C_D	testproject.html#C_D	testproject: C_D
 bar	testproject.html#bar,T,T	testproject: bar[T](a, b: T): T	
 baz	testproject.html#baz,T,T	testproject: baz[T](a, b: T): T	
 buzz	testproject.html#buzz,T,T	testproject: buzz[T](a, b: T): T	
+FooBuzz	testproject.html#FooBuzz	testproject: FooBuzz	
 aVariable	testproject.html#aVariable	testproject: aVariable	
 A	testproject.html#A	testproject: A	
 B	testproject.html#B	testproject: B	

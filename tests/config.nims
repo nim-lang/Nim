@@ -28,9 +28,14 @@ hint("Processing", off)
 # switch("define", "nimTestsEnableFlaky")
 
 # switch("hint", "ConvFromXtoItselfNotNeeded")
+# switch("warningAsError", "InheritFromException") # would require fixing a few tests
 
-# experimental API's are enabled in testament, refs https://github.com/timotheecour/Nim/issues/575
+# experimental APIs are enabled in testament, refs https://github.com/timotheecour/Nim/issues/575
 # sync with `kochdocs.docDefines` or refactor.
 switch("define", "nimExperimentalAsyncjsThen")
-switch("define", "nimExperimentalJsfetch")
 switch("define", "nimExperimentalLinenoiseExtra")
+
+# preview APIs are expected to be the new default in upcoming versions
+switch("define", "nimPreviewFloatRoundtrip")
+switch("define", "nimPreviewJsonutilsHoleyEnum")
+switch("define", "nimPreviewHashRef")

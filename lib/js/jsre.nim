@@ -47,10 +47,6 @@ func toCstring*(self: RegExp): cstring {.importjs: "#.toString()".}
 
 func `$`*(self: RegExp): string = $toCstring(self)
 
-func test*(self: RegExp; pattern: cstring): bool {.importjs: "#.test(#)", deprecated: "Use contains instead".}
-
-func toString*(self: RegExp): cstring {.importjs: "#.toString()", deprecated: "Use toCstring instead".}
-
 func contains*(pattern: cstring; self: RegExp): bool =
   ## Tests for a substring match in its string parameter.
   runnableExamples:

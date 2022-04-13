@@ -1,6 +1,5 @@
 discard """
-  cmd: "nim c --useVersion:1.0 -r $file"
-  output: "1.0.100"
+  matrix: "--useVersion:1.0"
 """
 
 {.warning[UnusedImport]: off.}
@@ -47,4 +46,4 @@ import std/[
 ]
 
 
-echo NimVersion
+doAssert NimVersion == "1.0.100"

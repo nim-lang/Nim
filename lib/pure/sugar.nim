@@ -54,6 +54,8 @@ proc createProcType(p, b: NimNode): NimNode =
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures. It also supports pragmas.
+  ##
+  ## .. warning:: Semicolons can not be used to separate procedure arguments.
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
 
@@ -119,9 +121,9 @@ macro `=>`*(p, b: untyped): untyped =
       else:
         error("Incorrect procedure parameter.", c)
       params.add(identDefs)
-  of nnkIdent:
+  of nnkIdent, nnkOpenSymChoice, nnkClosedSymChoice, nnkSym:
     var identDefs = newNimNode(nnkIdentDefs)
-    identDefs.add(p)
+    identDefs.add(ident $p)
     identDefs.add(ident"auto")
     identDefs.add(newEmptyNode())
     params.add(identDefs)
@@ -133,6 +135,8 @@ macro `=>`*(p, b: untyped): untyped =
 
 macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types. It also supports pragmas.
+  ##
+  ## .. warning:: Semicolons can not be used to separate procedure arguments.
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
     # is the same as:
