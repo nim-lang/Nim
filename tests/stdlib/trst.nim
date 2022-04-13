@@ -408,7 +408,7 @@ suite "RST include directive":
   test "Include whole":
     "other.rst".writeFile("**test1**")
     let input = ".. include:: other.rst"
-    doAssert "<strong>test1</strong>" == rstTohtml(input, {roSandboxDisabled}, defaultConfig())
+    doAssert "<strong>test1</strong>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
   test "Include starting from":
@@ -422,7 +422,7 @@ OtherStart
 .. include:: other.rst
              :start-after: OtherStart
 """
-    check "<em>Visible</em>" == rstTohtml(input, {roSandboxDisabled}, defaultConfig())
+    check "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
   test "Include everything before":
@@ -436,7 +436,7 @@ And this should **NOT** be visible in `docs.html`
 .. include:: other.rst
              :end-before: OtherEnd
 """
-    doAssert "<em>Visible</em>" == rstTohtml(input, {roSandboxDisabled}, defaultConfig())
+    doAssert "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
 
@@ -454,7 +454,7 @@ And this should **NOT** be visible in `docs.html`
              :start-after: OtherStart
              :end-before: OtherEnd
 """
-    check "<em>Visible</em>" == rstTohtml(input, {roSandboxDisabled}, defaultConfig())
+    check "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
 
@@ -474,7 +474,7 @@ And this should **NOT** be visible in `docs.html`
              :start-after: OtherStart
              :end-before: OtherEnd
 """
-    doAssert "<em>Visible</em>" == rstTohtml(input, {roSandboxDisabled}, defaultConfig())
+    doAssert "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
 suite "RST escaping":

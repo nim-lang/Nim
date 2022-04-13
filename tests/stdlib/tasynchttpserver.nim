@@ -111,9 +111,9 @@ proc testCustomContentLength() {.async.} =
 
   runTest(handler, request, test)
 
-waitfor(test200())
-waitfor(test404())
-waitfor(testCustomEmptyHeaders())
-waitfor(testCustomContentLength())
+waitFor(test200())
+waitFor(test404())
+waitFor(testCustomEmptyHeaders())
+waitFor(testCustomContentLength())
 
 echo "OK"

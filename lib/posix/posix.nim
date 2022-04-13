@@ -1012,7 +1012,7 @@ proc endhostent*() {.importc, header: "<netdb.h>".}
 proc endnetent*() {.importc, header: "<netdb.h>".}
 proc endprotoent*() {.importc, header: "<netdb.h>".}
 proc endservent*() {.importc, header: "<netdb.h>".}
-proc freeaddrinfo*(a1: ptr AddrInfo) {.importc, header: "<netdb.h>".}
+proc freeAddrInfo*(a1: ptr AddrInfo) {.importc: "freeaddrinfo", header: "<netdb.h>".}
 
 proc gai_strerror*(a1: cint): cstring {.importc:"(char *)$1", header: "<netdb.h>".}
 

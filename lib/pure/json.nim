@@ -955,12 +955,12 @@ proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats
 
 when defined(js):
   from math import `mod`
-  from std/jsffi import JSObject, `[]`, to
+  from std/jsffi import JsObject, `[]`, to
   from std/private/jsutils import getProtoName, isInteger, isSafeInteger
 
-  proc parseNativeJson(x: cstring): JSObject {.importjs: "JSON.parse(#)".}
+  proc parseNativeJson(x: cstring): JsObject {.importjs: "JSON.parse(#)".}
 
-  proc getVarType(x: JSObject, isRawNumber: var bool): JsonNodeKind =
+  proc getVarType(x: JsObject, isRawNumber: var bool): JsonNodeKind =
     result = JNull
     case $getProtoName(x) # TODO: Implicit returns fail here.
     of "[object Array]": return JArray
@@ -979,12 +979,12 @@ when defined(js):
     of "[object String]": return JString
     else: assert false
 
-  proc len(x: JSObject): int =
+  proc len(x: JsObject): int =
     asm """
       `result` = `x`.length;
     """
 
-  proc convertObject(x: JSObject): JsonNode =
+  proc convertObject(x: JsObject): JsonNode =
     var isRawNumber = false
     case getVarType(x, isRawNumber)
     of JArray:
@@ -997,7 +997,7 @@ when defined(js):
         if (`x`.hasOwnProperty(property)) {
       """
       var nimProperty: cstring
-      var nimValue: JSObject
+      var nimValue: JsObject
       asm "`nimProperty` = property; `nimValue` = `x`[property];"
       result[$nimProperty] = nimValue.convertObject()
       asm "}}"
