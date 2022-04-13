@@ -118,7 +118,7 @@ pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
 pkg "norm", "testament r tests/sqlite/trows.nim"
 pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nimble nimCI"
-pkg "optionsutils", allowFailure = true # pending https://github.com/PMunch/nim-optionsutils/pull/6
+pkg "optionsutils", "nim c --gc:arc src/optionsutils" # pending https://github.com/PMunch/nim-optionsutils/pull/6
 pkg "ormin", "nim c -o:orminn ormin.nim"
 pkg "parsetoml"
 pkg "patty"
