@@ -1271,7 +1271,7 @@ else: # after 1.3 or JS not defined
 
     new(result)
     result.data = s
-    when defined(gcOrc) or defined(gcArc):
+    when declared(prepareMutation):
       prepareMutation(result.data) # Allows us to mutate using `addr` logic like `copyMem`, otherwise it errors.
     result.pos = 0
     result.closeImpl = ssClose
