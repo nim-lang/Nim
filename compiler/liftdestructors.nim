@@ -1109,8 +1109,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
     if canon != orig:
       setAttachedOp(g, idgen.module, orig, k, getAttachedOp(g, canon, k))
 
-  if not isTrival(getAttachedOp(g, orig, attachedDestructor)) and
-         orig.kind notin {tyOpenArray, tyVarargs}:
+  if not isTrival(getAttachedOp(g, orig, attachedDestructor)):
     #or not isTrival(orig.assignment) or
     # not isTrival(orig.sink):
     orig.flags.incl tfHasAsgn
