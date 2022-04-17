@@ -206,12 +206,14 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
 
   var last = n.len - 1
   var catchAllExcepts = 0
+  var noExceptBranch = true
 
   for i in 1..last:
     let a = n[i]
     checkMinSonsLen(a, 1, c.config)
     openScope(c)
     if a.kind == nkExceptBranch:
+      noExceptBranch = false
 
       if a.len == 2 and a[0].kind == nkBracket:
         # rewrite ``except [a, b, c]: body`` -> ```except a, b, c: body```
@@ -264,7 +266,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
     else: dec last
     closeScope(c)
 
-  if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped}:
+  if (isEmptyType(typ) or typ.kind in {tyNil, tyUntyped}) or (noExceptBranch and not isEmptyType(typ)):
     discardCheck(c, n[0], flags)
     for i in 1..<n.len: discardCheck(c, n[i].lastSon, flags)
     if typ == c.enforceVoidContext:
