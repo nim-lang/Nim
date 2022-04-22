@@ -984,11 +984,11 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
 
   var aiList = getAddrInfo(realaddr, port, socket.domain)
   if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
-    freeaddrinfo(aiList)
+    freeAddrInfo(aiList)
     var address2: string
     address2.addQuoted address
     raiseOSError(osLastError(), "address: $# port: $#" % [address2, $port])
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
                  flags = {SocketFlag.SafeDisconn},
@@ -1745,7 +1745,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
     it = it.ai_next
 
   let osError = osLastError()
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
 
   if not success:
     raiseOSError(osError)
@@ -1960,7 +1960,7 @@ proc dial*(address: string, port: Port,
         # network system problem (e.g. not enough FDs), and not an unreachable
         # address.
         let err = osLastError()
-        freeaddrinfo(aiList)
+        freeAddrInfo(aiList)
         closeUnusedFds()
         raiseOSError(err)
       fdPerDomain[ord(domain)] = lastFd
@@ -1969,7 +1969,7 @@ proc dial*(address: string, port: Port,
       break
     lastError = osLastError()
     it = it.ai_next
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
   closeUnusedFds(ord(domain))
 
   if success:
@@ -1999,7 +1999,7 @@ proc connect*(socket: Socket, address: string,
     else: lastError = osLastError()
     it = it.ai_next
 
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
   if not success: raiseOSError(lastError)
 
   when defineSsl:
@@ -2051,7 +2051,7 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
 
     it = it.ai_next
 
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
   if not success: raiseOSError(lastError)
 
 proc connect*(socket: Socket, address: string, port = Port(0),
