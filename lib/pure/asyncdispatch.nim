@@ -141,8 +141,8 @@
 ## \*`waitFor` will block the entire thread, while `await` only blocks the
 ## *current* async procedure and allows other futures to run.
 ##
-## **Note:** You can discard a future after using `await`, as `await` will check
-## for errors itself.
+## .. note:: You can discard a future after using `await`, as `await` will check
+##   for errors itself.
 ##
 ## Examples
 ## ========
