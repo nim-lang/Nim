@@ -12,7 +12,7 @@ see also: tests/osproc/*.nim; consider merging those into a single test here
 
 when defined(case_testfile): # compiled test file for child process
   from posix import exitnow
-  proc c_exit2(code: c_int): void {.importc: "_exit", header: "<unistd.h>".}
+  proc c_exit2(code: cint): void {.importc: "_exit", header: "<unistd.h>".}
   import os
   var a = 0
   proc fun(b = 0) =
