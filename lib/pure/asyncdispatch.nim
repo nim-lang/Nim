@@ -123,15 +123,26 @@
 ##   if future.failed:
 ##     # Handle exception
 ##
-##
-## Discarding futures
+## Handling futures
 ## ==================
 ##
-## Futures should **never** be discarded. This is because they may contain
-## errors. If you do not care for the result of a Future then you should
-## use the `asyncCheck` procedure instead of the `discard` keyword. Note
-## however that this does not wait for completion, and you should use
-## `waitFor` for that purpose.
+## Futures should **never** be discarded directly because they may contain
+## errors. Instead, use `asyncCheck`, `waitFor`, or `await`, e.g., `waitFor
+## someAsyncProc()`. See the below table for when to use each:
+##
+## ================  =====================   ================
+## Procedure         Context                 Blocking
+## ================  =====================   ================
+## `asyncCheck`      non-async and async     non-blocking
+## `waitFor`         non-async               blocking*
+## `await`           async                   blocking*
+## ================  =====================   ================
+##
+## \*`waitFor` will block the entire thread, while `await` only blocks in the
+## *current* async procedure and allow other futures to run.
+##
+## **Note:** You can discard a future after using `await`, as `await` will check
+## for errors itself.
 ##
 ## Examples
 ## ========
