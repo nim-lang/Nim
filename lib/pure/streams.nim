@@ -243,6 +243,9 @@ proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
     result = s.readDataStrImpl(s, buffer, slice)
   else:
     # fallback
+    when declared(prepareMutation):
+      # buffer might potentially be a CoW literal with ARC
+      prepareMutation(buffer)
     result = s.readData(addr buffer[slice.a], slice.b + 1 - slice.a)
 
 template jsOrVmBlock(caseJsOrVm, caseElse: untyped): untyped =
