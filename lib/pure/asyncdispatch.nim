@@ -123,26 +123,42 @@
 ##   if future.failed:
 ##     # Handle exception
 ##
-## Handling futures
+## Discarding futures
 ## ==================
 ##
 ## Futures should **never** be discarded directly because they may contain
-## errors. Instead, use `asyncCheck`, `waitFor`, or `await`, e.g., `waitFor
-## someAsyncProc()`. See the below table for when to use each:
+## errors. If you do not care for the result of a Future then you should use
+## the `asyncCheck` procedure instead of the `discard` keyword. Note that this
+## does not wait for completion, and you should use `waitFor` for that purpose.
 ##
-## ================  =====================   ================
-## Procedure         Context                 Blocking
-## ================  =====================   ================
-## `asyncCheck`      non-async and async     non-blocking
-## `waitFor`         non-async               blocking*
-## `await`           async                   blocking*
-## ================  =====================   ================
+## .. note:: `await` also checks if the future fails, so you can safely discard
+##   its result.
 ##
-## \*`waitFor` will block the entire thread, while `await` only blocks the
-## *current* async procedure and allows other futures to run.
+## Handling futures
+## ================
 ##
-## .. note:: You can discard a future after using `await`, as `await` will check
-##   for errors itself.
+## Many different operations can be used with a future instance to handle
+## its result, but the three primary high-level operations are `asyncCheck`,
+## `waitFor`, and `await`.
+##
+## * `asyncCheck`: Raises an exception if the future fails. It neither waits
+##   for the future to finish nor returns the result of the future.
+## * `waitFor`: Polls the event loop and blocks the current thread until the
+##   future finishes. This is often used to call an async procedure from a
+##   synchronous context.
+## * `await`: Pauses execution in the current async procedure until the future
+##   finishes. While the current procedure is paused, other futures will
+##   continue running. Should be used instead of `waitFor` in an async
+##   procedure.
+##
+## Here is a handy quick reference chart showing their high-level differences:
+## ==============  =====================   =======================
+## Procedure       Context                 Blocking
+## ==============  =====================   =======================
+## `asyncCheck`    non-async and async     non-blocking
+## `waitFor`       non-async               blocks current thread
+## `await`         async                   suspends current proc
+## ==============  =====================   =======================
 ##
 ## Examples
 ## ========
