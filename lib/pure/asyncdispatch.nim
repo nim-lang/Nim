@@ -138,8 +138,8 @@
 ## `await`           async                   blocking*
 ## ================  =====================   ================
 ##
-## \*`waitFor` will block the entire thread, while `await` only blocks in the
-## *current* async procedure and allow other futures to run.
+## \*`waitFor` will block the entire thread, while `await` only blocks the
+## *current* async procedure and allows other futures to run.
 ##
 ## **Note:** You can discard a future after using `await`, as `await` will check
 ## for errors itself.
