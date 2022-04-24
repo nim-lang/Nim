@@ -202,7 +202,7 @@ const
 type
   TSystemCPU* = enum # Also add CPU for in initialization section and
                      # alias conditionals to condsyms (end of module).
-    cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
+    cpuNone, cpuI086, cpuI086big, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
     cpuPowerpc64el, cpuSparc, cpuVm, cpuHppa, cpuIa64, cpuAmd64, cpuMips,
     cpuMipsel, cpuArm, cpuArm64, cpuJS, cpuNimVM, cpuAVR, cpuMSP430,
     cpuSparc64, cpuMips64, cpuMips64el, cpuRiscV32, cpuRiscV64, cpuEsp, cpuWasm32,
@@ -215,6 +215,8 @@ type
 const
   EndianToStr*: array[Endianness, string] = ["littleEndian", "bigEndian"]
   CPU*: array[succ(low(TSystemCPU))..high(TSystemCPU), TInfoCPU] = [
+    (name: "i086", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16),
+    (name: "i086big", intSize: 32, endian: littleEndian, floatSize: 32, bit: 32),
     (name: "i386", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "m68k", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
     (name: "alpha", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),

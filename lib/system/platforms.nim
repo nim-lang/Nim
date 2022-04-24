@@ -13,6 +13,8 @@
 type
   CpuPlatform* {.pure.} = enum ## the CPU this program will run on.
     none,                      ## unknown CPU
+    i086,                      ## 16 bit x86 compatible CPU
+    i086big,                   ## 16 bit x86 compatible CPU, big code and data model
     i386,                      ## 32 bit x86 compatible CPU
     m68k,                      ## M68k based processor
     alpha,                     ## Alpha processor
@@ -72,7 +74,9 @@ const
               else: OsPlatform.none
     ## the OS this program will run on.
 
-  targetCPU* = when defined(i386): CpuPlatform.i386
+  targetCPU* = when defined(i086): CpuPlatform.i086
+               elif defined(i086big): CpuPlatform.i086big
+               elif defined(i386): CpuPlatform.i386
                elif defined(m68k): CpuPlatform.m68k
                elif defined(alpha): CpuPlatform.alpha
                elif defined(powerpc): CpuPlatform.powerpc
