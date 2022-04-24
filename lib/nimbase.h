@@ -133,7 +133,7 @@ __AVR__
        defined __DMC__ || \
        defined __BORLANDC__ )
 #  define NIM_THREADVAR __declspec(thread)
-#elif defined(__TINYC__) || defined(__GENODE__)
+#elif defined(__TINYC__) || defined(__GENODE__) || defined(__WATCOMC__)
 #  define NIM_THREADVAR
 /* note that ICC (linux) and Clang are covered by __GNUC__ */
 #elif defined __GNUC__ || \
@@ -196,7 +196,11 @@ __AVR__
 #  define N_LIB_EXPORT_VAR  __declspec(dllexport)
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
-#  define N_LIB_PRIVATE __attribute__((visibility("hidden")))
+#  if !defined(__WATCOMC__)
+#    define N_LIB_PRIVATE __attribute__((visibility("hidden")))
+#  else
+#    define N_LIB_PRIVATE
+#  endif
 #  if defined(__GNUC__)
 #    define N_CDECL(rettype, name) rettype name
 #    define N_STDCALL(rettype, name) rettype name
@@ -222,8 +226,13 @@ __AVR__
 #    define N_FASTCALL_PTR(rettype, name) rettype (*name)
 #    define N_SAFECALL_PTR(rettype, name) rettype (*name)
 #  endif
-#  define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default")))
-#  define N_LIB_EXPORT_VAR  __attribute__((visibility("default")))
+#  if !defined(__WATCOMC__)
+#    define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default")))
+#    define N_LIB_EXPORT_VAR  __attribute__((visibility("default")))
+#  else
+#    define N_LIB_EXPORT NIM_EXTERNC
+#    define N_LIB_EXPORT_VAR
+#  endif
 #  define N_LIB_IMPORT  extern
 #endif
 
@@ -352,7 +361,7 @@ NIM_STATIC_ASSERT(CHAR_BIT == 8, "");
 #endif
 
 #if defined(__BORLANDC__) || defined(__DMC__) \
-   || defined(__WATCOMC__) || defined(_MSC_VER)
+   || defined(_MSC_VER)
 typedef signed char NI8;
 typedef signed short int NI16;
 typedef signed int NI32;
@@ -361,6 +370,16 @@ typedef __int64 NI64;
 typedef unsigned char NU8;
 typedef unsigned short int NU16;
 typedef unsigned int NU32;
+typedef unsigned __int64 NU64;
+#elif defined(__WATCOMC__)
+typedef signed char NI8;
+typedef signed short int NI16;
+typedef signed long int NI32;
+typedef __int64 NI64;
+/* XXX: Float128? */
+typedef unsigned char NU8;
+typedef unsigned short int NU16;
+typedef unsigned long int NU32;
 typedef unsigned __int64 NU64;
 #elif defined(HAVE_STDINT_H)
 #ifndef USE_NIM_NAMESPACE
@@ -480,6 +499,8 @@ typedef char* NCSTRING;
 /* declared size of a sequence/variable length array: */
 #if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
 #  define SEQ_DECL_SIZE /* empty is correct! */
+#elif defined(__WATCOMC__)
+#  define SEQ_DECL_SIZE 1
 #else
 #  define SEQ_DECL_SIZE 1000000
 #endif
@@ -556,6 +577,10 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "P
 #if defined(_MSC_VER)
 #  define NIM_ALIGN(x)  __declspec(align(x))
 #  define NIM_ALIGNOF(x) __alignof(x)
+#elif defined(__WATCOMC__)
+// FIXME: OpenWatcom does not support setting or retrieving alignment
+#  define NIM_ALIGN(x)
+#  define NIM_ALIGNOF(x) 1
 #else
 #  define NIM_ALIGN(x)  __attribute__((aligned(x)))
 #  define NIM_ALIGNOF(x) __alignof__(x)
