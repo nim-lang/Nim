@@ -804,6 +804,7 @@ when declared(stdout):
     addSysExitProc(proc() {.noconv.} = deinitSys(echoLock))
 
   const stdOutLock = not defined(windows) and
+                     not defined(dos) and
                      not defined(android) and
                      not defined(nintendoswitch) and
                      not defined(freertos) and
