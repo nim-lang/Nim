@@ -635,7 +635,7 @@ proc getValue*(db: DbConn,  stmtName: SqlPrepared): string
 
 proc tryInsertID*(db: DbConn, query: SqlQuery,
                   args: varargs[string, `$`]): int64
-                  {.tags: [WriteDbEffect], raises: [DbError].} =
+                  {.tags: [WriteDbEffect], raises: [].} =
   ## Executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   ##
@@ -650,16 +650,19 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
   ##                            1, "item#1") == -1
   ##    db.close()
   assert(not db.isNil, "Database not connected.")
-  var q = dbFormat(query, args)
-  var stmt: sqlite3.PStmt
   result = -1
-  if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
-    if step(stmt) == SQLITE_DONE:
-      result = last_insert_rowid(db)
-    if finalize(stmt) != SQLITE_OK:
-      result = -1
-  else:
-    discard finalize(stmt)
+  try:
+    var q = dbFormat(query, args)
+    var stmt: sqlite3.PStmt
+    if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
+      if step(stmt) == SQLITE_DONE:
+        result = last_insert_rowid(db)
+      if finalize(stmt) != SQLITE_OK:
+        result = -1
+    else:
+      discard finalize(stmt)
+  except DbError:
+    discard
 
 proc insertID*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =
@@ -692,7 +695,7 @@ proc insertID*(db: DbConn, query: SqlQuery,
 
 proc tryInsert*(db: DbConn, query: SqlQuery, pkName: string,
                 args: varargs[string, `$`]): int64
-               {.tags: [WriteDbEffect], raises: [DbError], since: (1, 3).} =
+               {.tags: [WriteDbEffect], raises: [], since: (1, 3).} =
   ## same as tryInsertID
   tryInsertID(db, query, args)
 
