@@ -52,6 +52,7 @@ becomes an alias for `addr`.
 
 - Deprecated `selfExe` for Nimscript.
 
+- `std/syncio` no longer attempts to lock stdout on the DOS target.
 
 ## Language changes
 
@@ -96,6 +97,11 @@ becomes an alias for `addr`.
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
   without requiring `-d:nimVersion140` which is now a noop.
 
+-  There are new `i086` and `i086big` CPU targets which support 16-bit x86 and its
+   small and big code/data models respectively.
+
+-  Sample cross-compilation configuration for DOS on i086 and i086big with the OpenWatcom C compiler
+   has been added to `$nim/config/nim.cfg`.
 
 ## Tool changes
 
