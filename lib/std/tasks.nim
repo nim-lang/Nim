@@ -85,7 +85,7 @@ template checkIsolate(scratchAssignList: seq[NimNode], procParam, scratchDotExpr
   #   var isoTempB = isolate(literal)
   #   scratch.b = extract(isolateB)
   let isolatedTemp = genSym(nskTemp, "isoTemp")
-  scratchAssignList.add newVarStmt(isolatedTemp, newCall(newidentNode("isolate"), procParam))
+  scratchAssignList.add newVarStmt(isolatedTemp, newCall(newIdentNode("isolate"), procParam))
   scratchAssignList.add newAssignment(scratchDotExpr,
       newCall(newIdentNode("extract"), isolatedTemp))
 
