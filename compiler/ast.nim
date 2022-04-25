@@ -998,6 +998,11 @@ type
 
 template nodeId(n: PNode): int = cast[int](n)
 
+when defined(nimsuggest):
+  proc `==`*[T: PIdObj](a, b: T): bool {.inline.} =
+    system.`==`(a, b) or (not(system.`==`(a, nil)) and not(system.`==`(b, nil)) and a.itemId == b.itemId)
+  proc `==`*(a, b: PType): bool {.inline.} = PIdObj(a) == PIdObj(b)
+
 type Gconfig = object
   # we put comments in a side channel to avoid increasing `sizeof(TNode)`, which
   # reduces memory usage given that `PNode` is the most allocated type by far.
