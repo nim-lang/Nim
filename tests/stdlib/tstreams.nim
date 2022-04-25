@@ -40,7 +40,7 @@ block tstreams2:
 block tstreams3:
   try:
     var fs = openFileStream("shouldneverexist.txt")
-  except IoError:
+  except IOError:
     echo "threw exception"
 
   static:
@@ -76,3 +76,7 @@ block:
   doAssert(ss.getPosition == 5) # haven't moved
   ss.setPosition(0) # Ensure we dont error with writing over literals on arc/orc #19707
   ss.write("hello")
+
+static: # Ensure streams it doesnt break with nimscript on arc/orc #19716
+  let s = newStringStream("a")
+  discard s.data
