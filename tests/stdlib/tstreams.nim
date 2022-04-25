@@ -1,4 +1,5 @@
 discard """
+  matrix: "--gc:refc; --gc:arc"
   input: "Arne"
   output: '''
 Hello! What is your name?
@@ -74,9 +75,13 @@ block:
   doAssert(ss.peekLine(str))
   doAssert(str == "uick brown fox jumped over the lazy dog.")
   doAssert(ss.getPosition == 5) # haven't moved
-  ss.setPosition(0) # Ensure we dont error with writing over literals on arc/orc #19707
+  # bug #19707 - Ensure we dont error with writing over literals on arc/orc
+  ss.setPosition(0)
   ss.write("hello")
+  ss.setPosition(0)
+  doAssert(ss.peekStr(5) == "hello")
 
+# bug #19716
 static: # Ensure streams it doesnt break with nimscript on arc/orc #19716
   let s = newStringStream("a")
-  discard s.data
+  doAssert s.data == "a"
