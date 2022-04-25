@@ -7,7 +7,7 @@ type
     field {.noalias.}: ptr UncheckedArray[int]
 
 proc p(x {.noalias.}: openArray[char]) =
-  var q {.noalias.}: pointer = unsafeAddr(x[0])
+  var q {.noalias.}: pointer = addr(x[0])
 
 var bn: BigNum
 p "abc"

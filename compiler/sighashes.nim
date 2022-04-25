@@ -9,9 +9,13 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, md5, modulegraphs
+import ast, tables, ropes, md5_old, modulegraphs
 from hashes import Hash
 import types
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
 proc `&=`(c: var MD5Context, ch: char) =

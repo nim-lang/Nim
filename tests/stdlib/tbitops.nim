@@ -263,8 +263,8 @@ proc main() =
     doAssert v == 0b1000_0010
     v.flipBit(1)
     doAssert v == 0b1000_0000
-    doAssert v.testbit(7)
-    doAssert not v.testbit(6)
+    doAssert v.testBit(7)
+    doAssert not v.testBit(6)
   block:
     # multi bit operations
     var v: uint8

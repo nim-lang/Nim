@@ -187,9 +187,9 @@
 ##
 ## Known `async` backends include:
 ##
-## * `none` - ``-d:asyncBackend=none`` - disable ``async`` support completely
-## * `asyncdispatch <https://nim-lang.org/docs/asyncdispatch.html> -``-d:asyncBackend=asyncdispatch``
-## * `chronos <https://github.com/status-im/nim-chronos/>` - ``-d:asyncBackend=chronos``
+## * `-d:asyncBackend=none`: disable `async` support completely
+## * `-d:asyncBackend=asyncdispatch`: https://nim-lang.org/docs/asyncdispatch.html
+## * `-d:asyncBackend=chronos`: https://github.com/status-im/nim-chronos/
 ##
 ## ``none`` can be used when a library supports both a synchronous and
 ## asynchronous API, to disable the latter.
@@ -1791,7 +1791,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
         curAddrInfo = curAddrInfo.ai_next
 
       if curAddrInfo == nil:
-        freeaddrinfo(addrInfo)
+        freeAddrInfo(addrInfo)
         when shouldCreateFd:
           closeUnusedFds()
         if lastException != nil:
@@ -1807,7 +1807,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
           try:
             curFd = createAsyncNativeSocket(domain, sockType, protocol)
           except:
-            freeaddrinfo(addrInfo)
+            freeAddrInfo(addrInfo)
             closeUnusedFds()
             raise getCurrentException()
           when defined(windows):
@@ -1817,7 +1817,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
       doConnect(curFd, curAddrInfo).callback = tryNextAddrInfo
       curAddrInfo = curAddrInfo.ai_next
     else:
-      freeaddrinfo(addrInfo)
+      freeAddrInfo(addrInfo)
       when shouldCreateFd:
         closeUnusedFds(ord(domain))
         retFuture.complete(curFd)

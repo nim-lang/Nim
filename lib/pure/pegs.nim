@@ -16,6 +16,8 @@
 ##
 
 include "system/inclrtl"
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 const
   useUnicode = true ## change this to deactivate proper UTF-8 support
@@ -1021,7 +1023,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## Symbols  declared in an *enter* handler can be made visible in the
   ## corresponding *leave* handler by annotating them with an *inject* pragma.
   proc rawParse(s: string, p: Peg, start: int, c: var Captures): int
-      {.genSym.} =
+      {.gensym.} =
 
     # binding from *macros*
     bind strVal
@@ -1056,7 +1058,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
     matchOrParse(parseIt)
     parseIt(s, p, start, c)
 
-  proc parser(s: string): int {.genSym.} =
+  proc parser(s: string): int {.gensym.} =
     # the proc to be returned
     var
       ms: array[MaxSubpatterns, (int, int)]

@@ -37,6 +37,5 @@ switch("define", "nimExperimentalLinenoiseExtra")
 
 # preview APIs are expected to be the new default in upcoming versions
 switch("define", "nimPreviewFloatRoundtrip")
-switch("define", "nimPreviewDotLikeOps")
 switch("define", "nimPreviewJsonutilsHoleyEnum")
 switch("define", "nimPreviewHashRef")

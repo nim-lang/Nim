@@ -222,7 +222,7 @@
 
 import
   os, strutils, rstast, dochelpers, std/enumutils, algorithm, lists, sequtils,
-  std/private/miscdollars, tables
+  std/private/miscdollars, tables, strscans
 from highlite import SourceLanguage, getSourceLanguage
 
 type
@@ -235,6 +235,12 @@ type
                               ## to Markdown) -- implies `roSupportMarkdown`
     roNimFile                 ## set for Nim files where default interpreted
                               ## text role should be :nim:
+    roSandboxDisabled         ## this option enables certain options
+                              ## (e.g. raw, include)
+                              ## which are disabled by default as they can
+                              ## enable users to read arbitrary data and
+                              ## perform XSS if the parser is used in a web
+                              ## app.
 
   RstParseOptions* = set[RstParseOption]
 
@@ -260,7 +266,8 @@ type
     mwBrokenLink = "broken link '$1'",
     mwUnsupportedLanguage = "language '$1' not supported",
     mwUnsupportedField = "field '$1' not supported",
-    mwRstStyle = "RST style: $1"
+    mwRstStyle = "RST style: $1",
+    meSandboxedDirective = "disabled directive: '$1'",
 
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
                        arg: string) {.closure, gcsafe.} ## what to do in case of an error
@@ -315,6 +322,7 @@ const
     ":geek:": "icon_e_geek",
     ":ugeek:": "icon_e_ugeek"
   }
+  SandboxDirAllowlist = ["image", "code", "code-block"]
 
 type
   TokType = enum
@@ -1339,7 +1347,20 @@ proc match(p: RstParser, start: int, expr: string): bool =
     inc i
   result = true
 
-proc fixupEmbeddedRef(n, a, b: PRstNode) =
+proc safeProtocol*(linkStr: var string): string =
+  # Returns link's protocol and, if it's not safe, clears `linkStr`
+  result = ""
+  if scanf(linkStr, "$w:", result):
+    # if it has a protocol at all, ensure that it's not 'javascript:' or worse:
+    if cmpIgnoreCase(result, "http") == 0 or
+        cmpIgnoreCase(result, "https") == 0 or
+        cmpIgnoreCase(result, "ftp") == 0:
+      discard "it's fine"
+    else:
+      linkStr = ""
+
+proc fixupEmbeddedRef(p: var RstParser, n, a, b: PRstNode): bool =
+  # Returns `true` if the link belongs to an allowed protocol
   var sep = - 1
   for i in countdown(n.len - 2, 0):
     if n.sons[i].text == "<":
@@ -1347,7 +1368,15 @@ proc fixupEmbeddedRef(n, a, b: PRstNode) =
       break
   var incr = if sep > 0 and n.sons[sep - 1].text[0] == ' ': 2 else: 1
   for i in countup(0, sep - incr): a.add(n.sons[i])
-  for i in countup(sep + 1, n.len - 2): b.add(n.sons[i])
+  var linkStr = ""
+  for i in countup(sep + 1, n.len - 2): linkStr.add(n.sons[i].addNodes)
+  if linkStr != "":
+    let protocol = safeProtocol(linkStr)
+    result = linkStr != ""
+    if not result:
+      rstMessage(p, mwBrokenLink, protocol,
+                 p.tok[p.idx-3].line, p.tok[p.idx-3].col)
+  b.add newLeaf(linkStr)
 
 proc whichRole(p: RstParser, sym: string): RstNodeKind =
   result = whichRoleAux(sym)
@@ -1399,14 +1428,17 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     if p.tok[p.idx-2].symbol == "`" and p.tok[p.idx-3].symbol == ">":
       var a = newRstNode(rnInner)
       var b = newRstNode(rnInner)
-      fixupEmbeddedRef(n, a, b)
-      if a.len == 0:
-        newKind = rnStandaloneHyperlink
-        newSons = @[b]
-      else:
-        newKind = rnHyperlink
-        newSons = @[a, b]
-        setRef(p, rstnodeToRefname(a), b, implicitHyperlinkAlias)
+      if fixupEmbeddedRef(p, n, a, b):
+        if a.len == 0:  # e.g. `<a_named_relative_link>`_
+          newKind = rnStandaloneHyperlink
+          newSons = @[b]
+        else:  # e.g. `link title <http://site>`_
+          newKind = rnHyperlink
+          newSons = @[a, b]
+          setRef(p, rstnodeToRefname(a), b, implicitHyperlinkAlias)
+      else:  # include as plain text, not a link
+        newKind = rnInner
+        newSons = n.sons
       result = newRstNode(newKind, newSons)
     else:  # some link that will be resolved in `resolveSubs`
       newKind = rnRef
@@ -1615,7 +1647,6 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
   result.add(lb)
 
 proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
-  result = true
   var desc, link = ""
   var i = p.idx
 
@@ -1634,14 +1665,21 @@ proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
 
   parse("]", desc)
   if p.tok[i].symbol != "(": return false
+  let linkIdx = i + 1
   parse(")", link)
-  let child = newRstNode(rnHyperlink)
-  child.add desc
-  child.add link
   # only commit if we detected no syntax error:
-  father.add child
-  p.idx = i
-  result = true
+  let protocol = safeProtocol(link)
+  if link == "":
+    result = false
+    rstMessage(p, mwBrokenLink, protocol,
+               p.tok[linkIdx].line, p.tok[linkIdx].col)
+  else:
+    let child = newRstNode(rnHyperlink)
+    child.add desc
+    child.add link
+    father.add child
+    p.idx = i
+    result = true
 
 proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
   if label.sons.len >= 1 and label.sons[0].kind == rnLeaf and
@@ -2987,10 +3025,14 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
   ##
   ## As an extension this proc will process the ``file`` extension field and if
   ## present will replace the code block with the contents of the referenced
-  ## file.
+  ## file. This behaviour is disabled in sandboxed mode and can be re-enabled
+  ## with the `roSandboxDisabled` flag.
   result = parseDirective(p, rnCodeBlock, {hasArg, hasOptions}, parseLiteralBlock)
   var filename = strip(getFieldValue(result, "file"))
   if filename != "":
+    if roSandboxDisabled notin p.s.options:
+      let tok = p.tok[p.idx-2]
+      rstMessage(p, meSandboxedDirective, "file", tok.line, tok.col)
     var path = p.findRelativeFile(filename)
     if path == "": rstMessage(p, meCannotOpenFile, filename)
     var n = newRstNode(rnLiteralBlock)
@@ -3086,6 +3128,11 @@ proc dirRaw(p: var RstParser): PRstNode =
 
 proc selectDir(p: var RstParser, d: string): PRstNode =
   result = nil
+  let tok = p.tok[p.idx-2] # report on directive in ".. directive::"
+  if roSandboxDisabled notin p.s.options:
+    if d notin SandboxDirAllowlist:
+      rstMessage(p, meSandboxedDirective, d, tok.line, tok.col)
+
   case d
   of "admonition", "attention", "caution": result = dirAdmonition(p, d)
   of "code": result = dirCodeBlock(p)
@@ -3112,7 +3159,6 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   of "title": result = dirTitle(p)
   of "warning": result = dirAdmonition(p, d)
   else:
-    let tok = p.tok[p.idx-2]  # report on directive in ".. directive::"
     rstMessage(p, meInvalidDirective, d, tok.line, tok.col)
 
 proc prefix(ftnType: FootnoteType): string =

@@ -1,7 +1,13 @@
-## This module provides various assertion utilities.
-##
-## **Note:** This module is reexported by `system` and thus does not need to be
-## imported directly (with `system/assertions`).
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2022 Nim contributors
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+## This module implements assertion handling.
 
 when not declared(sysFatal):
   include "system/fatal"

@@ -14,12 +14,17 @@ import
 from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
 from std/private/globs import nativeToUnixPath
+
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
+
 const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2021"
+  copyrightYear* = "2022"
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
@@ -96,6 +101,7 @@ type                          # please make sure we have under 32 options
     optPanics                 # turn panics (sysFatal) into a process termination
     optNimV1Emulation         # emulate Nim v1.0
     optNimV12Emulation        # emulate Nim v1.2
+    optNimV16Emulation        # emulate Nim v1.6
     optSourcemap
     optProfileVM              # enable VM profiler
     optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.

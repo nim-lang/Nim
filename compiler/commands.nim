@@ -31,6 +31,9 @@ import
 
 from ast import setUseIc, eqTypeFlags, tfGcSafe, tfNoSideEffect
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
 bootSwitch(usedFFI, hasFFI, "-d:nimHasLibFFI")
@@ -238,7 +241,7 @@ const
   errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
   errNoneSpeedOrSizeExpectedButXFound = "'none', 'speed' or 'size' expected, but '$1' found"
   errGuiConsoleOrLibExpectedButXFound = "'gui', 'console' or 'lib' expected, but '$1' found"
-  errInvalidExceptionSystem = "'goto', 'setjump', 'cpp' or 'quirky' expected, but '$1' found"
+  errInvalidExceptionSystem = "'goto', 'setjmp', 'cpp' or 'quirky' expected, but '$1' found"
 
 template warningOptionNoop(switch: string) =
   warningDeprecated(conf, info, "'$#' is deprecated, now a noop" % switch)
@@ -332,6 +335,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
     result = contains(conf.options, optTrMacros)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
   of "nilseqs", "nilchecks", "taintmode": warningOptionNoop(switch)
+  of "panics": result = contains(conf.globalOptions, optPanics)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
@@ -497,6 +501,32 @@ proc specialDefine(conf: ConfigRef, key: string; pass: TCmdLinePass) =
         optOverflowCheck, optAssert, optStackTrace, optLineTrace, optLineDir}
       conf.globalOptions.excl {optCDebug}
 
+proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
+  if isOrc:
+    conf.selectedGC = gcOrc
+    defineSymbol(conf.symbols, "gcorc")
+  else:
+    conf.selectedGC = gcArc
+    defineSymbol(conf.symbols, "gcarc")
+  
+  defineSymbol(conf.symbols, "gcdestructors")
+  incl conf.globalOptions, optSeqDestructors
+  incl conf.globalOptions, optTinyRtti
+  if pass in {passCmd2, passPP}:
+    defineSymbol(conf.symbols, "nimSeqsV2")
+    defineSymbol(conf.symbols, "nimV2")
+  if conf.exc == excNone and conf.backend != backendCpp:
+    conf.exc = excGoto
+
+proc unregisterArcOrc(conf: ConfigRef) =
+  undefSymbol(conf.symbols, "gcdestructors")
+  undefSymbol(conf.symbols, "gcarc")
+  undefSymbol(conf.symbols, "gcorc")
+  undefSymbol(conf.symbols, "nimSeqsV2")
+  undefSymbol(conf.symbols, "nimV2")
+  excl conf.globalOptions, optSeqDestructors
+  excl conf.globalOptions, optTinyRtti
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var
@@ -602,36 +632,21 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if pass in {passCmd2, passPP}:
       case arg.normalize
       of "boehm":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcBoehm
         defineSymbol(conf.symbols, "boehmgc")
         incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
       of "refc":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcRefc
       of "markandsweep":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcMarkAndSweep
         defineSymbol(conf.symbols, "gcmarkandsweep")
       of "destructors", "arc":
-        conf.selectedGC = gcArc
-        defineSymbol(conf.symbols, "gcdestructors")
-        defineSymbol(conf.symbols, "gcarc")
-        incl conf.globalOptions, optSeqDestructors
-        incl conf.globalOptions, optTinyRtti
-        if pass in {passCmd2, passPP}:
-          defineSymbol(conf.symbols, "nimSeqsV2")
-          defineSymbol(conf.symbols, "nimV2")
-        if conf.exc == excNone and conf.backend != backendCpp:
-          conf.exc = excGoto
+        registerArcOrc(pass, conf, false)
       of "orc":
-        conf.selectedGC = gcOrc
-        defineSymbol(conf.symbols, "gcdestructors")
-        defineSymbol(conf.symbols, "gcorc")
-        incl conf.globalOptions, optSeqDestructors
-        incl conf.globalOptions, optTinyRtti
-        if pass in {passCmd2, passPP}:
-          defineSymbol(conf.symbols, "nimSeqsV2")
-          defineSymbol(conf.symbols, "nimV2")
-        if conf.exc == excNone and conf.backend != backendCpp:
-          conf.exc = excGoto
+        registerArcOrc(pass, conf, true)
       of "hooks":
         conf.selectedGC = gcHooks
         defineSymbol(conf.symbols, "gchooks")
@@ -640,12 +655,15 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         if pass in {passCmd2, passPP}:
           defineSymbol(conf.symbols, "nimSeqsV2")
       of "go":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcGo
         defineSymbol(conf.symbols, "gogc")
       of "none":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcNone
         defineSymbol(conf.symbols, "nogc")
       of "stack", "regions":
+        unregisterArcOrc(conf)
         conf.selectedGC = gcRegions
         defineSymbol(conf.symbols, "gcregions")
       of "v2": warningOptionNoop(arg)
@@ -885,8 +903,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     splitSwitch(conf, arg, key, val, pass, info)
     os.putEnv(key, val)
   of "cc":
-    expectArg(conf, switch, arg, pass, info)
-    setCC(conf, arg, info)
+    if conf.backend != backendJs: # bug #19330
+      expectArg(conf, switch, arg, pass, info)
+      setCC(conf, arg, info)
   of "track":
     expectArg(conf, switch, arg, pass, info)
     track(conf, arg, info)
@@ -1027,6 +1046,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "NimMajor", "1")
       defineSymbol(conf.symbols, "NimMinor", "2")
       conf.globalOptions.incl optNimV12Emulation
+    of "1.6":
+      defineSymbol(conf.symbols, "NimMajor", "1")
+      defineSymbol(conf.symbols, "NimMinor", "6")
+      conf.globalOptions.incl optNimV16Emulation
     else:
       localError(conf, info, "unknown Nim version; currently supported values are: `1.0`, `1.2`")
     # always be compatible with 1.x.100:
@@ -1089,6 +1112,8 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
   else:
     if pass == passCmd1: config.commandArgs.add p.key
     if argsCount == 1:
+      if p.key.endsWith(".nims"):
+        incl(config.globalOptions, optWasNimscript)
       # support UNIX style filenames everywhere for portable build scripts:
       if config.projectName.len == 0:
         config.projectName = unixToNativePath(p.key)

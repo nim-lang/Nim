@@ -44,6 +44,10 @@ runnableExamples:
 
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   SortOrder* = enum
     Descending, Ascending

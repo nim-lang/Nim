@@ -32,6 +32,9 @@
 import ast, intsets, lineinfos, renderer
 import std/private/asciitables
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   InstrKind* = enum
     goto, fork, def, use
@@ -605,11 +608,11 @@ proc aliases*(obj, field: PNode): AliasKind =
     var n = n
     while true:
       case n.kind
-      of PathKinds0 - {nkDotExpr, nkCheckedFieldExpr, nkBracketExpr}:
+      of PathKinds0 - {nkDotExpr, nkBracketExpr}:
         n = n[0]
       of PathKinds1:
         n = n[1]
-      of nkDotExpr, nkCheckedFieldExpr, nkBracketExpr:
+      of nkDotExpr, nkBracketExpr:
         result.add n
         n = n[0]
       of nkSym:
@@ -642,8 +645,6 @@ proc aliases*(obj, field: PNode): AliasKind =
       if currFieldPath.sym != currObjPath.sym: return no
     of nkDotExpr:
       if currFieldPath[1].sym != currObjPath[1].sym: return no
-    of nkCheckedFieldExpr:
-      if currFieldPath[0][1].sym != currObjPath[0][1].sym: return no
     of nkBracketExpr:
       if currFieldPath[1].kind in nkLiterals and currObjPath[1].kind in nkLiterals:
         if currFieldPath[1].intVal != currObjPath[1].intVal:
