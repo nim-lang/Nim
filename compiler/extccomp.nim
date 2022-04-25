@@ -242,6 +242,32 @@ compiler tcc:
     cppXsupport: "",
     props: {hasSwitchRange, hasComputedGoto, hasGnuAsm})
 
+# OpenWatcom C Compiler
+compiler owcc:
+  result = (
+    name: "owcc",
+    objExt: "o",
+    optSpeed: " -O3",
+    optSize: " -Os",
+    compilerExe: "owcc",
+    cppCompiler: "owcc",
+    compileTmpl: "-c $options $include -o $objfile $file",
+    buildGui: " -mwindows",
+    buildDll: " -shared",
+    buildLib: "wlib $libfile $objfiles",
+    linkerExe: "",
+    linkTmpl: "$buildgui $builddll -o $exefile $objfiles $options",
+    includeCmd: " -I",
+    linkDirCmd: " -L",
+    linkLibCmd: " -l$1",
+    debug: "",
+    pic: "",
+    asmStmtFrmt: "$1 $2",
+    structStmtFmt: "$1 $2", # struct|union [packed] $name
+    produceAsm: gnuAsmListing,
+    cppXsupport: "",
+    props: {hasGnuAsm})
+
 # Your C Compiler
 compiler envcc:
   result = (
@@ -280,7 +306,8 @@ const
     envcc(),
     icl(),
     icc(),
-    clangcl()]
+    clangcl(),
+    owcc()]
 
   hExt* = ".h"
 
