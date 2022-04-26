@@ -1615,8 +1615,11 @@ proc genNewFinalize(p: BProc, e: PNode) =
 
 proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo): Rope =
   if optTinyRtti in p.config.globalOptions:
-    result = ropecg(p.module, "#isObj($1.m_type, $2)",
-      [a, genTypeInfo2Name(p.module, dest)])
+    let ti = genTypeInfo2Name(p.module, dest)
+    inc p.module.labels
+    let cache = "Nim_OfCheck_CACHE" & p.module.labels.rope
+    p.module.s[cfsVars].addf("static NCSTRING $#[2];$n", [cache])
+    result = ropecg(p.module, "#isObjWithCache($#.m_type, $#, $#)", [a, ti, cache])
   else:
     # unfortunately 'genTypeInfoV1' sets tfObjHasKids as a side effect, so we
     # have to call it here first:

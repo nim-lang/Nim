@@ -227,8 +227,11 @@ template tearDownForeignThreadGc* =
   ## With `--gc:arc` a nop.
   discard
 
+type ObjCheckCache = array[0..1, cstring]
+
+proc memcmp(str1, str2: cstring, n: csize_t): cint {.importc, header: "<string.h>".}
+
 func endsWith*(s, suffix: cstring): bool {.inline.} =
-  proc memcmp(str1, str2: cstring, n: csize_t): cint {.importc, header: "<string.h>".}
   if s != nil and suffix != nil:
     let
       sLen = s.len
@@ -239,6 +242,21 @@ func endsWith*(s, suffix: cstring): bool {.inline.} =
 
 proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
   result = endsWith(obj.name, subclass)
+
+proc isObjSlowPath(objName: cstring, subclass: cstring, cache: var ObjCheckCache): bool {.compilerRtl, inline.} =
+  if endsWith(objName, subclass):
+    cache[1] = objName
+    result = true
+  else:
+    cache[0] = objName
+    result = false
+
+proc isObjWithCache(obj: PNimTypeV2, subclass: cstring, cache: var ObjCheckCache): bool {.compilerRtl.} =
+  let name = obj.name
+  if pointer(cache[0]) == pointer(name): result = false
+  elif pointer(cache[1]) == pointer(name): result = true
+  else:
+    result = isObjSlowPath(name, subclass, cache)
 
 proc chckObj(obj: PNimTypeV2, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:
