@@ -227,10 +227,18 @@ template tearDownForeignThreadGc* =
   ## With `--gc:arc` a nop.
   discard
 
-proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
-  proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
+func endsWith*(s, suffix: cstring): bool {.inline.} =
+  proc strncmp(str1, str2: cstring, n: csize_t): cint {.importc, header: "<string.h>".}
+  if s != nil and suffix != nil:
+    let
+      sLen = s.len
+      suffixLen = suffix.len
 
-  result = strstr(obj.name, subclass) != nil
+    if suffixLen <= sLen:
+      result = strncmp(cstring(addr s[sLen - suffixLen]), suffix, csize_t(suffixLen)) == 0
+
+proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
+  result = endsWith(obj.name, subclass)
 
 proc chckObj(obj: PNimTypeV2, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:
