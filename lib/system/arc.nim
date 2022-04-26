@@ -243,8 +243,7 @@ proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
   result = endsWith(obj.name, subclass)
 
 proc isObjSlowPath(obj: PNimTypeV2, subclass: cstring, cache: var ObjCheckCache): bool {.compilerRtl, inline.} =
-  let objName = obj.name
-  if endsWith(objName, subclass):
+  if endsWith(obj.name, subclass):
     cache[1] = obj
     result = true
   else:
