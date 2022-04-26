@@ -228,14 +228,14 @@ template tearDownForeignThreadGc* =
   discard
 
 func endsWith*(s, suffix: cstring): bool {.inline.} =
-  proc strncmp(str1, str2: cstring, n: csize_t): cint {.importc, header: "<string.h>".}
+  proc memcmp(str1, str2: cstring, n: csize_t): cint {.importc, header: "<string.h>".}
   if s != nil and suffix != nil:
     let
       sLen = s.len
       suffixLen = suffix.len
 
     if suffixLen <= sLen:
-      result = strncmp(cstring(addr s[sLen - suffixLen]), suffix, csize_t(suffixLen)) == 0
+      result = memcmp(cstring(addr s[sLen - suffixLen]), suffix, csize_t(suffixLen)) == 0
 
 proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
   result = endsWith(obj.name, subclass)
