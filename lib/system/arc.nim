@@ -231,14 +231,13 @@ type ObjCheckCache = array[0..1, cstring]
 
 proc memcmp(str1, str2: cstring, n: csize_t): cint {.importc, header: "<string.h>".}
 
-func endsWith*(s, suffix: cstring): bool {.inline.} =
-  if s != nil and suffix != nil:
-    let
-      sLen = s.len
-      suffixLen = suffix.len
+func endsWith(s, suffix: cstring): bool {.inline.} =
+  let
+    sLen = s.len
+    suffixLen = suffix.len
 
-    if suffixLen <= sLen:
-      result = memcmp(cstring(addr s[sLen - suffixLen]), suffix, csize_t(suffixLen)) == 0
+  if suffixLen <= sLen:
+    result = memcmp(cstring(addr s[sLen - suffixLen]), suffix, csize_t(suffixLen)) == 0
 
 proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
   result = endsWith(obj.name, subclass)
