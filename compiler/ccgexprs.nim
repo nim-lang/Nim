@@ -1618,7 +1618,7 @@ proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo): Rope =
     let ti = genTypeInfo2Name(p.module, dest)
     inc p.module.labels
     let cache = "Nim_OfCheck_CACHE" & p.module.labels.rope
-    p.module.s[cfsVars].addf("static NCSTRING $#[2];$n", [cache])
+    p.module.s[cfsVars].addf("static TNimTypeV2* $#[2];$n", [cache])
     result = ropecg(p.module, "#isObjWithCache($#.m_type, $#, $#)", [a, ti, cache])
   else:
     # unfortunately 'genTypeInfoV1' sets tfObjHasKids as a side effect, so we
