@@ -1,4 +1,8 @@
-selfExec "c --app:lib samplelib.nim"
+import os
+
+selfExec "c --app:lib " & (projectDir() / "samplelib.nim")
+switch("clibdir", projectDir())
 --clib:samplelib
---clibdir:"."
---passL:"-Wl,-rpath=."
+
+# Make test executable can load sample shared library.
+switch("passL", "-Wl,-rpath=" & projectDir())
