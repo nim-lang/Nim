@@ -5,4 +5,4 @@ switch("clibdir", projectDir())
 --clib:samplelib
 
 # Make test executable can load sample shared library.
-switch("passL", "-Wl,-rpath=" & projectDir())
+switch("passL", "-Wl,-rpath," & projectDir())
