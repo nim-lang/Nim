@@ -137,8 +137,8 @@
 ## Handling futures
 ## ================
 ##
-## Many different operations can be used with a future instance to handle
-## its result, but the three primary high-level operations are `asyncCheck`,
+## There are many different operations that apply to a future.
+## The three primary high-level operations are `asyncCheck`,
 ## `waitFor`, and `await`.
 ##
 ## * `asyncCheck`: Raises an exception if the future fails. It neither waits
