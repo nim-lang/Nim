@@ -129,7 +129,7 @@
 ## Futures should **never** be discarded directly because they may contain
 ## errors. If you do not care for the result of a Future then you should use
 ## the `asyncCheck` procedure instead of the `discard` keyword. Note that this
-## does not wait for completion, and you should use `waitFor` for that purpose.
+## does not wait for completion, and you should use `waitFor` or `await` for that purpose.
 ##
 ## .. note:: `await` also checks if the future fails, so you can safely discard
 ##   its result.
