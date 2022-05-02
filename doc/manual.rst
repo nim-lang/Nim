@@ -7814,7 +7814,7 @@ the same way.
 There are a few more applications of macro pragmas, such as in type,
 variable and constant declarations, but this behavior is considered to be
 experimental and is documented in the `experimental manual
-<manual_experimental.html#extended-macro-pragmas>` instead.
+<manual_experimental.html#extended-macro-pragmas>`_ instead.
 
 
 Foreign function interface
