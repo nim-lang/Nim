@@ -147,7 +147,7 @@
 ##   future finishes. This is often used to call an async procedure from a
 ##   synchronous context and should never be used in an `async` proc.
 ## * `await`: Pauses execution in the current async procedure until the future
-##   finishes. While the current procedure is paused, other futures will
+##   finishes. While the current procedure is paused, other async procedures will
 ##   continue running. Should be used instead of `waitFor` in an async
 ##   procedure.
 ##
