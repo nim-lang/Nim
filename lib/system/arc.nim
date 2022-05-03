@@ -237,7 +237,7 @@ func endsWith(s, suffix: cstring): bool {.inline.} =
     suffixLen = suffix.len
 
   if suffixLen <= sLen:
-    result = memcmp(cstring(addr s[sLen - suffixLen]), suffix, csize_t(suffixLen)) == 0
+    result = memcmp(cstring(unsafeAddr s[sLen - suffixLen]), suffix, csize_t(suffixLen)) == 0
 
 proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
   result = endsWith(obj.name, subclass)
