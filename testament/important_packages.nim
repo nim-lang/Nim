@@ -39,7 +39,7 @@ pkg "arraymancer", "nim c tests/tests_cpu.nim"
 pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim", allowFailure = true
 pkg "asyncthreadpool"
 pkg "awk"
-pkg "bigints", url = "https://github.com/Araq/nim-bigints"
+pkg "bigints"
 pkg "binaryheap", "nim c -r binaryheap.nim"
 pkg "BipBuffer"
 pkg "blscurve", allowFailure = true # pending https://github.com/status-im/nim-blscurve/issues/39
