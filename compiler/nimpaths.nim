@@ -25,11 +25,13 @@ when defined(nimPreviewSlimSystem):
 
 const
   docCss* = "$nimr/doc/nimdoc.css"
+  docCls* = "$nimr/doc/nimdoc.cls"
   docHackNim* = "$nimr/tools/dochack/dochack.nim"
   docHackJs* = docHackNim.changeFileExt("js")
   docHackJsFname* = docHackJs.lastPathPart
   theindexFname* = "theindex.html"
   nimdocOutCss* = "nimdoc.out.css"
+  nimdocOutCls* = "nimdoc.cls"
     # `out` to make it easier to use with gitignore in user's repos
   htmldocsDirname* = "htmldocs"
   dotdotMangle* = "_._"  ## refs #13223
