@@ -1830,6 +1830,7 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
   ## element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ##
   ## See also:
   ## * `initSkipTable func<#initSkipTable,SkipTable,string>`_
   let
