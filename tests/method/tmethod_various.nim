@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:arc; --mm:refc"
   output: '''
 do nothing
 HELLO WORLD!

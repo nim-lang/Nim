@@ -51,6 +51,7 @@ becomes an alias for `addr`.
 - Remove deprecated `osproc.poDemon`, symbol with typo.
 
 - Remove deprecated `httpclient.request` using `string` for `httpMethod` argument.
+- Deprecated `selfExe` for Nimscript.
 
 
 ## Language changes

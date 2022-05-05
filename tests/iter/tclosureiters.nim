@@ -21,6 +21,15 @@ discard """
 2
 70
 0
+(1, 1)
+(1, 2)
+(1, 3)
+(2, 1)
+(2, 2)
+(2, 3)
+(3, 1)
+(3, 2)
+(3, 3)
 '''
 """
 
@@ -152,3 +161,12 @@ var love = iterator: int {.closure.} =
 
 for i in love():
   echo i
+
+# bug #18474
+iterator pairs(): (int, int) {.closure.} =
+  for i in 1..3:
+    for j in 1..3:
+      yield (i, j)
+
+for pair in pairs():
+  echo pair

@@ -1576,7 +1576,11 @@ proc writeOutput*(d: PDoc, useWarning = false, groupedToc = false) =
         outfile.string)
     if not d.wroteSupportFiles: # nimdoc.css + dochack.js
       let nimr = $d.conf.getPrefixDir()
-      copyFile(docCss.interp(nimr = nimr), $d.conf.outDir / nimdocOutCss)
+      case d.target
+      of outHtml:
+        copyFile(docCss.interp(nimr = nimr), $d.conf.outDir / nimdocOutCss)
+      of outLatex:
+        copyFile(docCls.interp(nimr = nimr), $d.conf.outDir / nimdocOutCls)
       if optGenIndex in d.conf.globalOptions:
         let docHackJs2 = getDocHacksJs(nimr, nim = getAppFilename())
         copyFile(docHackJs2, $d.conf.outDir / docHackJs2.lastPathPart)

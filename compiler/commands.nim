@@ -116,7 +116,7 @@ const
   errInvalidCmdLineOption = "invalid command line option: '$1'"
   errOnOrOffExpectedButXFound = "'on' or 'off' expected, but '$1' found"
   errOnOffOrListExpectedButXFound = "'on', 'off' or 'list' expected, but '$1' found"
-  errOffHintsError = "'off', 'hint' or 'error' expected, but '$1' found"
+  errOffHintsError = "'off', 'hint', 'error' or 'usages' expected, but '$1' found"
 
 proc invalidCmdLineOption(conf: ConfigRef; pass: TCmdLinePass, switch: string, info: TLineInfo) =
   if switch == " ": localError(conf, info, errInvalidCmdLineOption % "-")
@@ -508,7 +508,7 @@ proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
   else:
     conf.selectedGC = gcArc
     defineSymbol(conf.symbols, "gcarc")
-  
+
   defineSymbol(conf.symbols, "gcdestructors")
   incl conf.globalOptions, optSeqDestructors
   incl conf.globalOptions, optTinyRtti
@@ -526,6 +526,50 @@ proc unregisterArcOrc(conf: ConfigRef) =
   undefSymbol(conf.symbols, "nimV2")
   excl conf.globalOptions, optSeqDestructors
   excl conf.globalOptions, optTinyRtti
+
+proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
+                info: TLineInfo; conf: ConfigRef) =
+  if conf.backend == backendJs: return # for: bug #16033
+  expectArg(conf, switch, arg, pass, info)
+  if pass in {passCmd2, passPP}:
+    case arg.normalize
+    of "boehm":
+      unregisterArcOrc(conf)
+      conf.selectedGC = gcBoehm
+      defineSymbol(conf.symbols, "boehmgc")
+      incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
+    of "refc":
+      unregisterArcOrc(conf)
+      conf.selectedGC = gcRefc
+    of "markandsweep":
+      unregisterArcOrc(conf)
+      conf.selectedGC = gcMarkAndSweep
+      defineSymbol(conf.symbols, "gcmarkandsweep")
+    of "destructors", "arc":
+      registerArcOrc(pass, conf, false)
+    of "orc":
+      registerArcOrc(pass, conf, true)
+    of "hooks":
+      conf.selectedGC = gcHooks
+      defineSymbol(conf.symbols, "gchooks")
+      incl conf.globalOptions, optSeqDestructors
+      processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
+      if pass in {passCmd2, passPP}:
+        defineSymbol(conf.symbols, "nimSeqsV2")
+    of "go":
+      unregisterArcOrc(conf)
+      conf.selectedGC = gcGo
+      defineSymbol(conf.symbols, "gogc")
+    of "none":
+      unregisterArcOrc(conf)
+      conf.selectedGC = gcNone
+      defineSymbol(conf.symbols, "nogc")
+    of "stack", "regions":
+      unregisterArcOrc(conf)
+      conf.selectedGC = gcRegions
+      defineSymbol(conf.symbols, "gcregions")
+    of "v2": warningOptionNoop(arg)
+    else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
@@ -626,48 +670,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optForceFullMake}, arg, pass, info)
   of "project":
     processOnOffSwitchG(conf, {optWholeProject, optGenIndex}, arg, pass, info)
-  of "gc", "mm":
-    if conf.backend == backendJs: return # for: bug #16033
-    expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd2, passPP}:
-      case arg.normalize
-      of "boehm":
-        unregisterArcOrc(conf)
-        conf.selectedGC = gcBoehm
-        defineSymbol(conf.symbols, "boehmgc")
-        incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
-      of "refc":
-        unregisterArcOrc(conf)
-        conf.selectedGC = gcRefc
-      of "markandsweep":
-        unregisterArcOrc(conf)
-        conf.selectedGC = gcMarkAndSweep
-        defineSymbol(conf.symbols, "gcmarkandsweep")
-      of "destructors", "arc":
-        registerArcOrc(pass, conf, false)
-      of "orc":
-        registerArcOrc(pass, conf, true)
-      of "hooks":
-        conf.selectedGC = gcHooks
-        defineSymbol(conf.symbols, "gchooks")
-        incl conf.globalOptions, optSeqDestructors
-        processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
-        if pass in {passCmd2, passPP}:
-          defineSymbol(conf.symbols, "nimSeqsV2")
-      of "go":
-        unregisterArcOrc(conf)
-        conf.selectedGC = gcGo
-        defineSymbol(conf.symbols, "gogc")
-      of "none":
-        unregisterArcOrc(conf)
-        conf.selectedGC = gcNone
-        defineSymbol(conf.symbols, "nogc")
-      of "stack", "regions":
-        unregisterArcOrc(conf)
-        conf.selectedGC = gcRegions
-        defineSymbol(conf.symbols, "gcregions")
-      of "v2": warningOptionNoop(arg)
-      else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
+  of "gc":
+    warningDeprecated(conf, info, "`gc:option` is deprecated; use `mm:option` instead")
+    processMemoryManagementOption(switch, arg, pass, info, conf)
+  of "mm":
+    processMemoryManagementOption(switch, arg, pass, info, conf)
   of "warnings", "w":
     if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch, conf)

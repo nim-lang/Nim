@@ -417,7 +417,7 @@ Some chapter
 
       """
     var error9Bad = new string
-    let output9Bad = input9bad.toHtml(error=error9Bad)
+    let output9Bad = input9Bad.toHtml(error=error9Bad)
     check(error9Bad[] == "input(15, 1) Error: new section expected (section " &
             "level inconsistent: underline ~~~~~ unexpectedly found, while " &
             "the following intermediate section level(s) are missing on " &
@@ -464,7 +464,7 @@ Some chapter
     rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames = files)
     rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Title0"
-    doAssert rstGenera.meta[metaSubTitle] == "SubTitle0"
+    doAssert rstGenera.meta[metaSubtitle] == "SubTitle0"
     doAssert "<h1 id=\"level1\"><center>Level1</center></h1>" in output
     doAssert "<h2 id=\"level2\">Level2</h2>" in output
     doAssert "<h3 id=\"level3\"><center>Level3</center></h3>" in output
@@ -491,7 +491,7 @@ Some chapter
     rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames=files)
     rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == ""
-    doAssert rstGenera.meta[metaSubTitle] == ""
+    doAssert rstGenera.meta[metaSubtitle] == ""
     doAssert "<h1 id=\"title0\"><center>Title0</center></h1>" in output
     doAssert "<h2 id=\"subtitle0\"><center>SubTitle0</center></h2>" in output
 
@@ -521,7 +521,7 @@ Some chapter
     rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames=files)
     rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Title0"
-    doAssert rstGenera.meta[metaSubTitle] == ""
+    doAssert rstGenera.meta[metaSubtitle] == ""
     doAssert output ==
              "\n<h1 id=\"mysection1a\">MySection1a</h1>" & # RST
              "\n<h1 id=\"mysection1b\">MySection1b</h1>" & # Markdown
