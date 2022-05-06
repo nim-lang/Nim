@@ -278,7 +278,7 @@ func nimIdentNormalize*(s: string): string =
   ## except first one.
   ##
   ## .. Warning:: Backticks (`) are not handled: they remain *as is* and
-  ##    spaces are preserved. See `nimIdentBackticksNormalize 
+  ##    spaces are preserved. See `nimIdentBackticksNormalize
   ##    <dochelpers.html#nimIdentBackticksNormalize,string>`_ for
   ##    an alternative approach.
   runnableExamples:
@@ -1808,11 +1808,15 @@ func join*[T: not string](a: openArray[T], sep: string = ""): string =
     add(result, $x)
 
 type
-  SkipTable* = array[char, int]
+  SkipTable* = array[char, int] ## Character table for efficient substring search.
 
 func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
     extern: "nsuInitSkipTable".} =
-  ## Preprocess table `a` for `sub`.
+  ## Initializes table `a` for efficient search of substring `sub`.
+  ##
+  ## See also:
+  ## * `find func<#find,SkipTable,string,string,Natural,int>`_
+  # TODO: this should be the `default()` initializer for the type.
   let m = len(sub)
   fill(a, m)
 
@@ -1826,6 +1830,9 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
   ## element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ##
+  ## See also:
+  ## * `initSkipTable func<#initSkipTable,SkipTable,string>`_
   let
     last = if last == 0: s.high else: last
     subLast = sub.len - 1
@@ -1865,7 +1872,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].rfind` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `rfind func<#rfind,string,char,Natural,int>`_
@@ -1893,7 +1900,7 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].find` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `rfind func<#rfind,string,set[char],Natural,int>`_
@@ -1910,7 +1917,7 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].find` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `rfind func<#rfind,string,string,Natural,int>`_
@@ -1950,7 +1957,7 @@ func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].find` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `find func<#find,string,char,Natural,int>`_
@@ -1968,7 +1975,7 @@ func rfind*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].rfind` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `find func<#find,string,set[char],Natural,int>`_
@@ -1986,7 +1993,7 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].rfind` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
