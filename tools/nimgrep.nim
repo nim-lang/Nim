@@ -1312,14 +1312,13 @@ for kind, key, val in getopt():
     of "incontext", "in": searchOpt.inContext.add val
     of "!incontext", "notincontext", "!in", "notin":
       searchOpt.notInContext.add val
-    of "bin":  # deprecated option, to use `--text` or `--!text`
+    of "bin":
       case val
       of "on": searchOpt.checkBin = biOn
       of "off": searchOpt.checkBin = biOff
       of "only": searchOpt.checkBin = biOnly
       else: reportError("unknown value for --bin")
-    of "text", "te", "t": searchOpt.checkBin = biOff
-    of "!text", "nottext", "!te", "notte": searchOpt.checkBin = biOnly
+    of "text", "t": searchOpt.checkBin = biOff
     of "count": incl(options, optCount)
     of "sorttime", "sort-time", "s":
       case normalize(val)

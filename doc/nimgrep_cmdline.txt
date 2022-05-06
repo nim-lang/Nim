@@ -68,7 +68,7 @@ Options:
 * Filter files (based on filesystem names):
   --ex[tensions]:EX1|EX2|...
                        only search the files with the given extension(s),
-                       empty one (`--ext`) means files with missing extension
+                       empty one (`--ex`) means files with missing extension
   --!ex[tensions]:EX1|EX2|...
                        exclude files having given extension(s), use empty one to
                        skip files with no extension (like some binary files are)
@@ -90,10 +90,9 @@ Options:
                       select files containing a (not displayed) match of PAT
   --!contentsFile:PAT, --!co:PAT
                       skip files containing a match of PAT
-  --text, --te, -t    process only text files
-                      (default: binary and text files treated the same way)
-  --!text, --!te      process only binary files
-                      (they are detected by presence of \0 in first 1K bytes)
+  --bin:on|off|only   process binary files? (detected by \0 in first 1K bytes)
+                      (default: on - binary and text files treated the same way)
+  --text, -t          process only text files, the same as `--bin:off`
 
 * Filter matches:
   --in[Context]:PAT   select only matches containing a match of PAT in their
