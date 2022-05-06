@@ -87,6 +87,17 @@ when not defined(nimscript):
       if env == nil: return default
       result = $env
 
+    proc getEnv*(key: string; value: var string) {.tags: [ReadEnvEffect].} =
+      ## Same as `getEnv` but stores the value in `value` argument.
+      runnableExamples:
+        var environ = "some default value"
+        putEnv("key", "value")
+        getEnv("key", environ)
+        assert environ == "value"
+
+      let env = c_getenv(key)
+      if env != nil: value = $env
+
     proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
       ## Checks whether the environment variable named `key` exists.
       ## Returns true if it exists, false otherwise.
@@ -130,7 +141,7 @@ when not defined(nimscript):
       ## * `envPairs iterator`_
       template bail = raiseOSError(osLastError(), key)
       when defined(windows):
-        #[ 
+        #[
         # https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/putenv-s-wputenv-s?view=msvc-160
         > You can remove a variable from the environment by specifying an empty string (that is, "") for value_string
         note that nil is not legal
