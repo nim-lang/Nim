@@ -52,6 +52,8 @@ becomes an alias for `addr`.
 
 - Deprecated `selfExe` for Nimscript.
 
+- Added `envvars.getEnv` overload that stores the value in `value` argument.
+
 
 ## Language changes
 
