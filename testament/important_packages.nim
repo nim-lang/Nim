@@ -57,7 +57,7 @@ pkg "combparser", "nimble test --gc:orc"
 pkg "compactdict"
 pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehension"
 pkg "criterion", allowFailure = true # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
-pkg "datamancer"
+# pkg "datamancer"  # See https://github.com/nim-lang/Nim/pull/19775
 pkg "dashing", "nim c tests/functional.nim"
 pkg "delaunay"
 pkg "docopt"
