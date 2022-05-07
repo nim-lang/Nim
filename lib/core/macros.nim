@@ -366,16 +366,6 @@ proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
 
-{.push warnings: off.}
-
-proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'genSym' instead.".}
-
-proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'ident(string)' instead.".}
-
-{.pop.}
-
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
   ## Sets the string value of a string literal or comment.
   ## Setting `strVal` is disallowed for `nnkIdent` and `nnkSym` nodes; a new node
@@ -475,6 +465,11 @@ proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   magic: "NGenSym", noSideEffect.}
   ## Generates a fresh symbol that is guaranteed to be unique. The symbol
   ## needs to occur in a declaration context.
+
+proc callsite*(): NimNode {.magic: "NCallSite", benign, deprecated:
+  "Deprecated since v0.18.1; use `varargs[untyped]` in the macro prototype instead".}
+  ## Returns the AST of the invocation expression that invoked this macro.
+  # see https://github.com/nim-lang/RFCs/issues/387 as candidate replacement.
 
 proc toStrLit*(n: NimNode): NimNode =
   ## Converts the AST `n` to the concrete Nim code and wraps that
