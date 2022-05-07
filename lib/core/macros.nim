@@ -366,6 +366,16 @@ proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
 
+{.push warnings: off.}
+
+proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'genSym' instead.".}
+
+proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'ident(string)' instead.".}
+
+{.pop.}
+
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
   ## Sets the string value of a string literal or comment.
   ## Setting `strVal` is disallowed for `nnkIdent` and `nnkSym` nodes; a new node
@@ -418,15 +428,6 @@ proc newFloatLitNode*(f: BiggestFloat): NimNode =
   ## Creates a float literal node from `f`.
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
-
-{.push warnings: off.}
-
-proc newIdentNode*(i: NimIdent): NimNode {.deprecated: "use ident(string)".} =
-  ## Creates an identifier node from `i`.
-  result = newNimNode(nnkIdent)
-  result.ident = i
-
-{.pop.}
 
 proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect.}
   ## Creates an identifier node from `i`. It is simply an alias for
@@ -661,18 +662,6 @@ proc newCall*(theProc: NimNode, args: varargs[NimNode]): NimNode =
   result = newNimNode(nnkCall)
   result.add(theProc)
   result.add(args)
-
-{.push warnings: off.}
-
-proc newCall*(theProc: NimIdent, args: varargs[NimNode]): NimNode {.deprecated:
-  "Deprecated since v0.18.1; use 'newCall(string, ...)' or 'newCall(NimNode, ...)' instead".} =
-  ## Produces a new call node. `theProc` is the proc that is called with
-  ## the arguments `args[0..]`.
-  result = newNimNode(nnkCall)
-  result.add(newIdentNode(theProc))
-  result.add(args)
-
-{.pop.}
 
 proc newCall*(theProc: string,
               args: varargs[NimNode]): NimNode =
