@@ -251,10 +251,6 @@ proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
   "Deprecated since version 0.18.1; Use 'strVal' instead.".}
   ## Converts a Nim identifier to a string.
 
-proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; Use 'strVal' instead.".}
-  ## Converts a Nim symbol to a string.
-
 {.pop.}
 
 when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform):
