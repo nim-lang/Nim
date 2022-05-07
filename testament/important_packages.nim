@@ -64,7 +64,7 @@ pkg "docopt"
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
 pkg "fidget"
-pkg "fragments", "nim c -r fragments/dsl.nim", allowFailure = true # pending https://github.com/nim-lang/packages/issues/2115 
+pkg "fragments", "nim c -r fragments/dsl.nim", allowFailure = true # pending https://github.com/nim-lang/packages/issues/2115
 pkg "fusion"
 pkg "gara"
 pkg "glob"
@@ -99,7 +99,7 @@ pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
 pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround needed, see D20210308T165435
 pkg "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", "nim c src/nimes.nim"
-pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
+# pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
 pkg "nimgame2", "nim c nimgame2/nimgame.nim"
   # XXX Doesn't work with deprecated 'randomize', will create a PR.
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
