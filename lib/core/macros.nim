@@ -142,10 +142,6 @@ const
 
 {.push warnings: off.}
 
-proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; Use '==' on 'NimNode' instead.".}
-  ## Compares two Nim identifiers.
-
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## Compare two Nim nodes. Return true if nodes are structurally
   ## equivalent. This means two independently created nodes can be equal.
