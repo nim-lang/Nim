@@ -150,10 +150,6 @@ proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## Compare two Nim nodes. Return true if nodes are structurally
   ## equivalent. This means two independently created nodes can be equal.
 
-proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; Use '==(NimNode, NimNode)' instead.".}
-  ## Compares two Nim symbols.
-
 {.pop.}
 
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
@@ -246,6 +242,10 @@ proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
   "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
 
 proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
+
+proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Use 'strVal' instead.".}
+  ## Converts a Nim identifier to a string.
 
 {.pop.}
 
