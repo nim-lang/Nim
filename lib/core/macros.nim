@@ -247,10 +247,6 @@ proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
 
 proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
 
-proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; Use 'strVal' instead.".}
-  ## Converts a Nim identifier to a string.
-
 {.pop.}
 
 when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform):
