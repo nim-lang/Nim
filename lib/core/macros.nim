@@ -122,8 +122,6 @@ type
     nskEnumField, nskForVar, nskLabel,
     nskStub
 
-  TNimSymKinds* {.deprecated.} = set[NimSymKind]
-
 type
   NimIdent* {.deprecated.} = object of RootObj
     ## Represents a Nim identifier in the AST. **Note**: This is only
