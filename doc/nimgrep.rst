@@ -39,23 +39,23 @@ which works as:
   `--filename`, `--dirname`, `--parentPath`, `--inContext`,
   `--contentsFile` accept files/matches if *any* pattern from the list is hit
 * negative filters
-  `--!filename`, `--!dirname`, `--!parentPath`, `--!inContext`,
-  `--!contentsFile` accept files/matches if *no* pattern from the list is hit.
+  `--notfilename`, `--notdirname`, `--notparentPath`, `--notinContext`,
+  `--notcontentsFile` accept files/matches if *no* pattern from the list is hit.
 
 In other words the same filtering option repeated many times means logical OR.
 
 .. Important::
   Different filtering options are related by logical AND: they all must
   be true for a match to be accepted.
-  E.g. `--filename:F --dirname:D1 --!dirname:D2` means
+  E.g. `--filename:F --dirname:D1 --notdirname:D2` means
   `filename(F) AND dirname(D1) AND (NOT dirname(D2))`.
 
 So negative filtering patterns are effectively related by logical OR also:
 `(NOT PAT1) AND (NOT PAT2) == NOT (PAT1 OR PAT2)`:literal: in pseudo-code.
 
 That means you can always use only 1 such an option with logical OR, e.g.
-`--!dirname:PAT1 --!dirname:PAT2` is fully equivalent to
-`--!dirname:'PAT1|PAT2'`.
+`--notdirname:PAT1 --notdirname:PAT2` is fully equivalent to
+`--notdirname:'PAT1|PAT2'`.
 
 .. Note::
    If you want logical AND on patterns you should compose 1 appropriate pattern,
@@ -95,8 +95,8 @@ All examples below use default PCRE Regex patterns:
   from the search:
 
   .. code:: cmd
-    nimgrep --!dirname:'^\.git$' --!dirname:'^\.hg$' --!dirname:'^\.svn$'
-    # short: --!di:'^\.git$' --!di:'^\.hg$' --!di:'^\.svn$'
+    nimgrep --notdirname:'^\.git$' --notdirname:'^\.hg$' --notdirname:'^\.svn$'
+    # short: --ndi:'^\.git$' --ndi:'^\.hg$' --ndi:'^\.svn$'
 
 + To search only in paths containing the `tests`:literal: sub-directory
   recursively:

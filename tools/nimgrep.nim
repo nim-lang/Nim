@@ -1284,33 +1284,33 @@ for kind, key, val in getopt():
       else:
         nWorkers = parseNonNegative(val, key)
     of "extensions", "ex", "ext": walkOpt.extensions.add val.split('|')
-    of "!extensions", "notextensions", "!ex", "notex",
+    of "nextensions", "notextensions", "nex", "notex",
        "noext", "no-ext":  # 2 deprecated options
       walkOpt.notExtensions.add val.split('|')
     of "dirname",  "di":
       walkOpt.dirname.add val
-    of "!dirname", "notdirname", "!di", "notdi",
+    of "ndirname", "notdirname", "ndi", "notdi",
        "excludedir", "ed":  # 2 deprecated options
       walkOpt.notDirname.add val
     of "parentpath", "pa",
        "includedir", "id":  # 2 deprecated options
       walkOpt.parentPath.add val
-    of "!parentpath", "notparentpath", "!pa", "notpa":
+    of "nparentpath", "notparentpath", "npa", "notpa":
       walkOpt.notParentPath.add val
     of "filename", "fi",
        "includefile", "include-file", "if":  # 3 deprecated options
       walkOpt.filename.add val
-    of "!filename", "!fi", "notfilename", "notfi",
+    of "nfilename", "nfi", "notfilename", "notfi",
        "excludefile", "exclude-file", "ef":  # 3 deprecated options
       walkOpt.notFilename.add val
-    of "contentsFile", "co",
+    of "contentsfile", "co",
        "matchfile", "match", "mf":  # 3 deprecated options
       searchOpt.contentsFile.add val
-    of "!contentsfile", "notcontentsfile", "!co", "notco",
+    of "ncontentsfile", "notcontentsfile", "nco", "notco",
        "nomatchfile", "nomatch", "nf":  # 3 options are deprecated
       searchOpt.notContentsFile.add val
     of "incontext", "in": searchOpt.inContext.add val
-    of "!incontext", "notincontext", "!in", "notin":
+    of "nincontext", "notincontext", "nin", "notin":
       searchOpt.notInContext.add val
     of "bin":
       case val
