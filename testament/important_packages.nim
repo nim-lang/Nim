@@ -148,7 +148,7 @@ pkg "synthesis"
 pkg "telebot", "nim c -o:tbot -r src/telebot.nim"
 pkg "tempdir"
 pkg "templates"
-pkg "tensordsl", "nim c -r tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
+# pkg "tensordsl", "nim c -r tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"  # see https://github.com/nim-lang/Nim/pull/19775
 pkg "terminaltables", "nim c src/terminaltables.nim"
 pkg "termstyle", "nim c -r termstyle.nim"
 pkg "timeit"
