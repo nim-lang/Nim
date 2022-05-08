@@ -1,11 +1,3 @@
-discard """
-disabled: false
-"""
-
-# this file has a type in the name, and it does not really test
-# parseopt module, because tester has no support to set arguments. Test the
-# new parseopt module. Therefore it is disabled.
-
 import
   parseopt
 
@@ -59,11 +51,7 @@ block: # bug #19671
   next(x)
   doAssert x.kind == cmdShortOption
   doAssert x.key  == "a"
-  doAssert x.val  == ""
-  next(x)
-  doAssert x.kind == cmdShortOption
-  doAssert x.key  == "b"
-  doAssert x.val  == ""
+  doAssert x.val  == "b"
   next(x)
   doAssert x.kind == cmdShortOption
   doAssert x.key  == "e"
@@ -80,4 +68,10 @@ block: # bug #19671
   doAssert x.kind == cmdArgument
   doAssert x.key  == "file.txt"
   doAssert x.val  == ""
+
+  var r = initOptParser(@["-r1"])
+  next(r)
+  doAssert r.kind == cmdShortOption
+  doAssert r.key  == "r"
+  doAssert r.val  == "1"
 

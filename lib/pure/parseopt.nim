@@ -293,11 +293,12 @@ proc handleShortOption(p: var OptParser; cmd: string) =
   while i < cmd.len and cmd[i] in {'\t', ' '}:
     inc(i)
     p.inShortState = false
-  if i < cmd.len and (cmd[i] in {':', '='} or
-      card(p.shortNoVal) > 0 and p.key[0] notin p.shortNoVal):
-    if i < cmd.len and cmd[i] in {':', '='}:
+  if card(p.shortNoVal) > 0 and p.key[0] in p.shortNoVal:
+    p.pos = i
+  elif i < cmd.len:
+    if cmd[i] in {':', '='}:
       inc(i)
-      delimpos = i
+    delimpos = i
     p.inShortState = false
     while i < cmd.len and cmd[i] in {'\t', ' '}: inc(i)
     if p.allowWhitespaceAfterColon: i = delimpos
