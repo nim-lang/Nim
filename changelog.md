@@ -53,6 +53,9 @@ becomes an alias for `addr`.
 - Deprecated `selfExe` for Nimscript.
 
 
+- Removed deprecated symbols from `std/macros`, deprecated before `1.0`.
+
+
 ## Language changes
 
 - Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
