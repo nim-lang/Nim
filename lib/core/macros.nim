@@ -237,6 +237,8 @@ proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated:
 proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
   "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
 
+proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
+
 proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
   "Deprecated since version 0.18.1; Use 'strVal' instead.".}
   ## Converts a Nim identifier to a string.
