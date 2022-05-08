@@ -24,6 +24,12 @@ template nimgrep(optsAndArgs): untyped =
   ngStdOut = process.outputStream.readAll
   ngStdErr = process.errorStream.readAll
 
+func fixSlash(s: string): string =
+  if DirSep == '/':
+    result = s
+  else:  # on Windows
+    result = s.replace('/', DirSep)
+
 func initString(len = 1000, val = ' '): string =
   result = newString(len)
   for i in 0..<len:
@@ -70,7 +76,7 @@ suite "nimgrep":
     nimgrep "-r --contentsFile:CONTEXTPAT PATTERN"
     check ngExitCode == 0
     check ngStdErr.len == 0
-    check ngStdOut == dedent"""
+    check ngStdOut == fixSlash dedent"""
         ./context_match_filtering:4: PATTERN
         ./context_match_filtering:12: PATTERN
         2 matches
@@ -81,7 +87,7 @@ suite "nimgrep":
     nimgrep "-r --filename:KJKJHSFSFKASHFBKAF PATTERN"
     check ngExitCode == 0
     check ngStdErr.len == 0
-    check ngStdOut == dedent"""
+    check ngStdOut == fixSlash dedent"""
         ./do_not_create_another_file_with_this_pattern_KJKJHSFSFKASHFBKAF:1: PATTERN
         1 matches
         """
@@ -91,7 +97,7 @@ suite "nimgrep":
     nimgrep "-r --dirname:.hid PATTERN"
     check ngExitCode == 0
     check ngStdErr.len == 0
-    check ngStdOut == dedent"""
+    check ngStdOut == fixSlash dedent"""
         .hidden/only_the_pattern:1: PATTERN
         1 matches
         """
@@ -101,7 +107,7 @@ suite "nimgrep":
     nimgrep "-r --dirname:a PATTERN"
     check ngExitCode == 0
     check ngStdErr.len == 0
-    check ngStdOut == dedent"""
+    check ngStdOut == fixSlash dedent"""
         a/b/only_the_pattern:1: PATTERN
         1 matches
         """
@@ -111,12 +117,12 @@ suite "nimgrep":
     nimgrep "-r --dirname:b PATTERN"
     check ngExitCode == 0
     check ngStdErr.len == 0
-    check ngStdOut == dedent"""
+    check ngStdOut == fixSlash dedent"""
         a/b/only_the_pattern:1: PATTERN
         1 matches
         """
 
-  let patterns_without_directory_a_b = dedent"""
+  let patterns_without_directory_a_b = fixSlash dedent"""
         ./context_match_filtering:4: PATTERN
         ./context_match_filtering:12: PATTERN
         ./do_not_create_another_file_with_this_pattern_KJKJHSFSFKASHFBKAF:1: PATTERN
