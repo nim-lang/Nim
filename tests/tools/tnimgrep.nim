@@ -1,3 +1,9 @@
+discard """
+  output: '''
+
+[Suite] nimgrep
+'''
+"""
 import osproc, os, streams, unittest, strutils
 
 #=======
@@ -26,7 +32,6 @@ func initString(len = 1000, val = ' '): string =
 # Create test file hierarchy.
 createDir testFilesRoot
 setCurrentDir testFilesRoot
-echo "Running nimgrep test in ", testFilesRoot
 createDir "a" / "b"
 createDir ".hidden"
 writeFile("do_not_create_another_file_with_this_pattern_KJKJHSFSFKASHFBKAF", "PATTERN")
