@@ -16,7 +16,7 @@ import
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
 
-export Parser, parseAll, parseTopLevelStmt, closeParser
+export Parser, parseAll, parseTopLevelStmt, checkFirstLineIndentation, closeParser
 
 type
   FilterKind = enum

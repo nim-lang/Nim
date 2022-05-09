@@ -1,5 +1,6 @@
 discard """
-output: '''
+  matrix: "--mm:arc; --mm:refc"
+  output: '''
 proc Base
 proc Child
 method Base

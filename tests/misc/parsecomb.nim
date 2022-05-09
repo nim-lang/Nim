@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:arc; --mm:refc"
+"""
+
 type Input[T] = object
   toks: seq[T]
   index: int
