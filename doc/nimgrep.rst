@@ -37,10 +37,10 @@ Options for filtering can be provided multiple times so they form a list,
 which works as:
 * positive filters
   `--filename`, `--dirname`, `--parentPath`, `--inContext`,
-  `--contentsFile` accept files/matches if *any* pattern from the list is hit
+  `--inFile` accept files/matches if *any* pattern from the list is hit
 * negative filters
   `--notfilename`, `--notdirname`, `--notparentPath`, `--notinContext`,
-  `--notcontentsFile` accept files/matches if *no* pattern from the list is hit.
+  `--notinFile` accept files/matches if *no* pattern from the list is hit.
 
 In other words the same filtering option repeated many times means logical OR.
 

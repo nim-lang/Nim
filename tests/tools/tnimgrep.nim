@@ -1,7 +1,9 @@
 discard """
   output: '''
 
-[Suite] nimgrep
+[Suite] nimgrep filesystem
+
+[Suite] nimgrep contents filtering
 '''
 """
 import osproc, os, streams, unittest, strutils
@@ -39,9 +41,11 @@ func initString(len = 1000, val = ' '): string =
 createDir testFilesRoot
 setCurrentDir testFilesRoot
 createDir "a" / "b"
+createDir "c" / "b"
 createDir ".hidden"
 writeFile("do_not_create_another_file_with_this_pattern_KJKJHSFSFKASHFBKAF", "PATTERN")
 writeFile("a" / "b" / "only_the_pattern", "PATTERN")
+writeFile("c" / "b" / "only_the_pattern", "PATTERN")
 writeFile(".hidden" / "only_the_pattern", "PATTERN")
 writeFile("null_in_first_1k", "\0PATTERN")
 writeFile("null_after_first_1k", initString(1000) & "\0")
@@ -71,17 +75,7 @@ writeFile("only_the_pattern.ascii", "PATTERN")
 # tests
 #=======
 
-suite "nimgrep":
-  test "`--contentsFile` with matching file":
-    nimgrep "-r --contentsFile:CONTEXTPAT PATTERN"
-    check ngExitCode == 0
-    check ngStdErr.len == 0
-    check ngStdOut == fixSlash dedent"""
-        ./context_match_filtering:4: PATTERN
-        ./context_match_filtering:12: PATTERN
-        2 matches
-        """
-
+suite "nimgrep filesystem":
 
   test "`--filename` with matching file":
     nimgrep "-r --filename:KJKJHSFSFKASHFBKAF PATTERN"
@@ -102,27 +96,62 @@ suite "nimgrep":
         1 matches
         """
 
+  let only_the_pattern = fixSlash dedent"""
+        a/b/only_the_pattern:1: PATTERN
+        c/b/only_the_pattern:1: PATTERN
+        2 matches
+        """
+
+  let only_a = fixSlash dedent"""
+        a/b/only_the_pattern:1: PATTERN
+        1 matches
+        """
 
   test "`--dirname` with matching grandparent path segment":
     nimgrep "-r --dirname:a PATTERN"
     check ngExitCode == 0
     check ngStdErr.len == 0
-    check ngStdOut == fixSlash dedent"""
-        a/b/only_the_pattern:1: PATTERN
-        1 matches
-        """
+    check ngStdOut == only_a
+
+  test "`--parentPath` with matching grandparent path segment":
+    nimgrep "-r --pa:a PATTERN"
+    check ngExitCode == 0
+    check ngStdErr.len == 0
+    check ngStdOut == only_a
+
+  test "`--parentPath` with matching grandparent path segment":
+    nimgrep "-r --pa:a/b PATTERN".fixSlash
+    check ngExitCode == 0
+    check ngStdErr.len == 0
+    check ngStdOut == only_a
 
 
   test "`--dirname` with matching parent path segment":
     nimgrep "-r --dirname:b PATTERN"
     check ngExitCode == 0
     check ngStdErr.len == 0
-    check ngStdOut == fixSlash dedent"""
-        a/b/only_the_pattern:1: PATTERN
-        1 matches
-        """
+    check ngStdOut == only_the_pattern
+
+  test "`--parentPath` with matching parent path segment":
+    nimgrep "-r --parentPath:b PATTERN"
+    check ngExitCode == 0
+    check ngStdErr.len == 0
+    check ngStdOut == only_the_pattern
+
 
   let patterns_without_directory_a_b = fixSlash dedent"""
+        ./context_match_filtering:4: PATTERN
+        ./context_match_filtering:12: PATTERN
+        ./do_not_create_another_file_with_this_pattern_KJKJHSFSFKASHFBKAF:1: PATTERN
+        ./null_in_first_1k:1: """ & "\0PATTERN\n" & dedent"""
+        ./only_the_pattern.ascii:1: PATTERN
+        ./only_the_pattern.txt:1: PATTERN
+        .hidden/only_the_pattern:1: PATTERN
+        c/b/only_the_pattern:1: PATTERN
+        8 matches
+        """
+
+  let patterns_without_directory_b = fixSlash dedent"""
         ./context_match_filtering:4: PATTERN
         ./context_match_filtering:12: PATTERN
         ./do_not_create_another_file_with_this_pattern_KJKJHSFSFKASHFBKAF:1: PATTERN
@@ -141,6 +170,24 @@ suite "nimgrep":
 
   test "`--ndirname` not matching parent path segment":
     nimgrep "-r --ndirname:b PATTERN"
+    check ngExitCode == 0
+    check ngStdErr.len == 0
+    check ngStdOut == patterns_without_directory_b
+
+  test "`--notParentPath` not matching grandparent path segment":
+    nimgrep "-r --notparentPath:a PATTERN"
+    check ngExitCode == 0
+    check ngStdErr.len == 0
+    check ngStdOut == patterns_without_directory_a_b
+
+  test "`--notParentPath` not matching parent path segment":
+    nimgrep "-r --npa:b PATTERN"
+    check ngExitCode == 0
+    check ngStdErr.len == 0
+    check ngStdOut == patterns_without_directory_b
+
+  test "`--notparentPath` with matching grandparent/parent path segment":
+    nimgrep "-r --npa:a/b PATTERN".fixSlash
     check ngExitCode == 0
     check ngStdErr.len == 0
     check ngStdOut == patterns_without_directory_a_b
@@ -237,6 +284,35 @@ suite "nimgrep":
   #"""
 
 
+suite "nimgrep contents filtering":
+
+  test "`--inFile` with matching file":
+    nimgrep "-r --inf:CONTEXTPAT PATTERN"
+    check ngExitCode == 0
+    check ngStdErr.len == 0
+    check ngStdOut == fixSlash dedent"""
+        ./context_match_filtering:4: PATTERN
+        ./context_match_filtering:12: PATTERN
+        2 matches
+        """
+
+
+  test "`--notinFile` with matching files":
+    nimgrep "-r --ninf:CONTEXTPAT PATTERN"
+    check ngExitCode == 0
+    check ngStdErr.len == 0
+    check ngStdOut == fixSlash dedent"""
+        ./do_not_create_another_file_with_this_pattern_KJKJHSFSFKASHFBKAF:1: PATTERN
+        ./null_in_first_1k:1: """ & "\0PATTERN\n" & dedent"""
+        ./only_the_pattern.ascii:1: PATTERN
+        ./only_the_pattern.txt:1: PATTERN
+        .hidden/only_the_pattern:1: PATTERN
+        a/b/only_the_pattern:1: PATTERN
+        c/b/only_the_pattern:1: PATTERN
+        7 matches
+        """
+
+
   test "`--inContext` with missing context option":
     # Using `--inContext` implies default -c:1 is used
     nimgrep "-r --inContext:CONTEXTPAT PATTERN"
@@ -249,7 +325,7 @@ suite "nimgrep":
     # This tests the scenario where PAT always matches PATTERN and thus
     # has the same effect as excluding the `inContext` option.
     # I'm not sure of the desired behaviour here.
-    nimgrep "--context:2 --inContext:PAT PATTERN context_match_filtering"
+    nimgrep "--context:2 --inc:PAT PATTERN context_match_filtering"
     check ngExitCode == 0
     check ngStdErr.len == 0
     check ngStdOut == dedent"""
@@ -300,7 +376,7 @@ suite "nimgrep":
 
 
   test "`--notinContext` with PAT not matching any of the contexts":
-    nimgrep "--context:1 --notinContext:CONTEXTPAT PATTERN context_match_filtering"
+    nimgrep "--context:1 --ninc:CONTEXTPAT PATTERN context_match_filtering"
     check ngExitCode == 0
     check ngStdErr.len == 0
     check ngStdOut == dedent"""

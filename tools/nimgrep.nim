@@ -112,15 +112,15 @@ type
   SearchOpt = tuple  # used for searching inside a file
     patternSet: bool     # to distinguish uninitialized 'pattern' and empty one
     pattern: string      # main PATTERN
-    contentsFile: seq[string]     # --contentsFile, --co
-    notContentsFile: seq[string]  # --!contentsFile, --!co
-    inContext: seq[string]        # --inContext, --in
-    notInContext: seq[string]     # --!inContext, --!in
+    inFile: seq[string]           # --inFile, --inf
+    notInFile: seq[string]        # --notinFile, --ninf
+    inContext: seq[string]        # --inContext, --inc
+    notInContext: seq[string]     # --notinContext, --ninc
     checkBin: Bin                 # --text, --!text
   SearchOptComp[Pat] = tuple  # a compiled version of the previous
     pattern: Pat
-    contentsFile: seq[Pat]
-    notContentsFile: seq[Pat]
+    inFile: seq[Pat]
+    notInFile: seq[Pat]
     inContext: seq[Pat]
     notInContext: seq[Pat]
   SinglePattern[PAT] = tuple  # compile single pattern for replacef
@@ -871,12 +871,12 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
         reason = "text file"
 
     if not reject:
-      ensureIncluded searchOptC.contentsFile, buffer:
+      ensureIncluded searchOptC.inFile, buffer:
         reject = true
         reason = "doesn't contain a requested match"
 
     if not reject:
-      ensureExcluded searchOptC.notContentsFile, buffer:
+      ensureExcluded searchOptC.notInFile, buffer:
         reject = true
         reason = "contains a forbidden match"
 
@@ -972,7 +972,7 @@ proc isRightDirectory(path: string, walkOptC: WalkOptComp[Pattern]): bool =
   result = true
 
 proc descendToDirectory(path: string, walkOptC: WalkOptComp[Pattern]): bool =
-  ## --!dirname can be checked for directories immediately for optimization to
+  ## --notdirname can be checked for directories immediately for optimization to
   ## prevent descending into undesired directories.
   if walkOptC.notDirname.len > 0:
     let dirname = path.lastPathPart
@@ -1112,8 +1112,8 @@ template processFileResult(pattern: Pattern; filename: string,
 proc run1Thread() =
   declareCompiledPatterns(searchOptC, SearchOptComp):
     compile1Pattern(searchOpt.pattern, searchOptC.pattern)
-    searchOptC.contentsFile.add searchOpt.contentsFile.compileArray()
-    searchOptC.notContentsFile.add searchOpt.notContentsFile.compileArray()
+    searchOptC.inFile.add searchOpt.inFile.compileArray()
+    searchOptC.notInFile.add searchOpt.notInFile.compileArray()
     searchOptC.inContext.add searchOpt.inContext.compileArray()
     searchOptC.notInContext.add searchOpt.notInContext.compileArray()
     if optPipe in options:
@@ -1157,8 +1157,8 @@ proc worker(initSearchOpt: SearchOpt) {.thread.} =
   searchOpt = initSearchOpt  # init thread-local var
   declareCompiledPatterns(searchOptC, SearchOptComp):
     compile1Pattern(searchOpt.pattern, searchOptC.pattern)
-    searchOptC.contentsFile.add searchOpt.contentsFile.compileArray()
-    searchOptC.notContentsFile.add searchOpt.notContentsFile.compileArray()
+    searchOptC.inFile.add searchOpt.inFile.compileArray()
+    searchOptC.notInFile.add searchOpt.notInFile.compileArray()
     searchOptC.inContext.add searchOpt.inContext.compileArray()
     searchOptC.notInContext.add searchOpt.notInContext.compileArray()
     while true:
@@ -1303,14 +1303,14 @@ for kind, key, val in getopt():
     of "nfilename", "nfi", "notfilename", "notfi",
        "excludefile", "exclude-file", "ef":  # 3 deprecated options
       walkOpt.notFilename.add val
-    of "contentsfile", "co",
+    of "infile", "inf",
        "matchfile", "match", "mf":  # 3 deprecated options
-      searchOpt.contentsFile.add val
-    of "ncontentsfile", "notcontentsfile", "nco", "notco",
+      searchOpt.inFile.add val
+    of "ninfile", "notinfile", "ninf", "notinf",
        "nomatchfile", "nomatch", "nf":  # 3 options are deprecated
-      searchOpt.notContentsFile.add val
-    of "incontext", "in": searchOpt.inContext.add val
-    of "nincontext", "notincontext", "nin", "notin":
+      searchOpt.notInFile.add val
+    of "incontext", "inc": searchOpt.inContext.add val
+    of "nincontext", "notincontext", "ninc", "notinc":
       searchOpt.notInContext.add val
     of "bin":
       case val

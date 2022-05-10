@@ -88,18 +88,16 @@ Options:
                        matches pattern PAT
 
 * Filter files (based on file contents):
-  --co[ntentsFile]:PAT
-                      select files containing a (not displayed) match of PAT
-  --notco[ntentsFile]:PAT
-                      skip files containing a match of PAT
+  --inF[ile]:PAT      select files containing a (not displayed) match of PAT
+  --notinF[ile]:PAT   skip files containing a match of PAT
   --bin:on|off|only   process binary files? (detected by \0 in first 1K bytes)
                       (default: on - binary and text files treated the same way)
   --text, -t          process only text files, the same as `--bin:off`
 
 * Filter matches:
-  --in[Context]:PAT   select only matches containing a match of PAT in their
+  --inC[ontext]:PAT   select only matches containing a match of PAT in their
                       surrounding context (multiline with `-c`, `-a`, `-b`)
-  --notin[Context]:PAT
+  --notinC[ontext]:PAT
                       skip matches not containing a match of PAT
                       in their surrounding context
 
