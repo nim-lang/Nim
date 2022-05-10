@@ -1616,7 +1616,7 @@ type conversions in this context:
 
   myWriteln(stdout, 123, "abc", 4.0)
   # is transformed to:
-  myWriteln(stdout, [$123, $"def", $4.0])
+  myWriteln(stdout, [$123, $"abc", $4.0])
 
 In this example `$` is applied to any argument that is passed to the
 parameter `a`. (Note that `$` applied to strings is a nop.)
