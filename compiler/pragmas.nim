@@ -1173,7 +1173,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wLocks:
         if sym == nil: pragmaLockStmt(c, it)
         elif sym.typ == nil: invalidPragma(c, it)
-        else: warningDeprecated(c.config, n.info, "'lock levels' is deprecated, now a noop")
+        else: warningDeprecated(c.config, n.info, "'Lock levels' are deprecated, now a noop")
       of wBitsize:
         if sym == nil or sym.kind != skField:
           invalidPragma(c, it)

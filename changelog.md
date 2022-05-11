@@ -52,7 +52,7 @@ becomes an alias for `addr`.
 
 - Deprecated `selfExe` for Nimscript.
 
-- 'lock levels' is deprecated, now a noop.
+- Lock levels are deprecated, now a noop.
 
 
 ## Language changes
