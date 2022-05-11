@@ -8141,7 +8141,7 @@ that also implement some form of locking at runtime:
 
 .. code-block:: nim
 
-  template lock(a: TLock; body: untyped) =
+  template lock(a: Lock; body: untyped) =
     pthread_mutex_lock(a)
     {.locks: [a].}:
       try:
