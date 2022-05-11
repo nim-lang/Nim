@@ -101,10 +101,10 @@ block:
     doAssert binarySearch(noData, 7) == -1
     let oneData = @[1]
     doAssert binarySearch(oneData, 1) == 0
-    doAssert binarySearch(onedata, 7) == -1
+    doAssert binarySearch(oneData, 7) == -1
     let someData = @[1, 3, 4, 7]
     doAssert binarySearch(someData, 1) == 0
-    doAssert binarySearch(somedata, 7) == 3
+    doAssert binarySearch(someData, 7) == 3
     doAssert binarySearch(someData, -1) == -1
     doAssert binarySearch(someData, 5) == -1
     doAssert binarySearch(someData, 13) == -1

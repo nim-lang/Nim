@@ -645,7 +645,7 @@ proc fixAbstractType(c: PContext, n: PNode) =
         skipTypes(it.typ, abstractVar).kind notin {tyOpenArray, tyVarargs}:
       if skipTypes(it[1].typ, abstractVar).kind in
             {tyNil, tyTuple, tySet} or it[1].isArrayConstr:
-        var s = skipTypes(it.typ, abstractVar)
+        var s = skipTypes(it.typ, abstractVar + tyUserTypeClasses)
         if s.kind != tyUntyped:
           changeType(c, it[1], s, check=true)
         n[i] = it[1]
@@ -1188,7 +1188,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   let s = getGenSym(c, sym)
   case s.kind
   of skConst:
-    markUsed(c, n.info, s)
+    if n.kind != nkDotExpr: # dotExpr is already checked by builtinFieldAccess
+      markUsed(c, n.info, s)
     onUse(n.info, s)
     let typ = skipTypes(s.typ, abstractInst-{tyTypeDesc})
     case typ.kind
@@ -1249,7 +1250,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     if s.magic == mNimvm:
       localError(c.config, n.info, "illegal context for 'nimvm' magic")
 
-    markUsed(c, n.info, s)
+    if n.kind != nkDotExpr: # dotExpr is already checked by builtinFieldAccess
+      markUsed(c, n.info, s)
     onUse(n.info, s)
     result = newSymNode(s, n.info)
     # We cannot check for access to outer vars for example because it's still
@@ -1270,7 +1272,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       n.typ = s.typ
       return n
   of skType:
-    markUsed(c, n.info, s)
+    if n.kind != nkDotExpr: # dotExpr is already checked by builtinFieldAccess
+      markUsed(c, n.info, s)
     onUse(n.info, s)
     if s.typ.kind == tyStatic and s.typ.base.kind != tyNone and s.typ.n != nil:
       return s.typ.n
@@ -1433,8 +1436,10 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         # is the access to a public field or in the same module or in a friend?
         markUsed(c, n[1].info, f)
         onUse(n[1].info, f)
+        let info = n[1].info
         n[0] = makeDeref(n[0])
         n[1] = newSymNode(f) # we now have the correct field
+        n[1].info = info # preserve the original info
         n.typ = f.typ
         if check == nil:
           result = n

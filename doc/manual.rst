@@ -1370,7 +1370,7 @@ cstring type
 The `cstring` type meaning `compatible string` is the native representation
 of a string for the compilation backend. For the C backend the `cstring` type
 represents a pointer to a zero-terminated char array
-compatible with the type `char*` in Ansi C. Its primary purpose lies in easy
+compatible with the type `char*` in ANSI C. Its primary purpose lies in easy
 interfacing with C. The index operation `s[i]` means the i-th *char* of
 `s`; however no bounds checking for `cstring` is performed making the
 index operation unsafe.
@@ -1556,7 +1556,7 @@ type conversions in this context:
 
   myWriteln(stdout, 123, "abc", 4.0)
   # is transformed to:
-  myWriteln(stdout, [$123, $"def", $4.0])
+  myWriteln(stdout, [$123, $"abc", $4.0])
 
 In this example `$` is applied to any argument that is passed to the
 parameter `a`. (Note that `$` applied to strings is a nop.)
@@ -7218,16 +7218,16 @@ during semantic analysis:
   {.passc: gorge("pkg-config --cflags sdl").}
 
 
-LocalPassc pragma
+localPassC pragma
 -----------------
-The `localPassc` pragma can be used to pass additional parameters to the C
+The `localPassC` pragma can be used to pass additional parameters to the C
 compiler, but only for the C/C++ file that is produced from the Nim module
 the pragma resides in:
 
 .. code-block:: Nim
   # Module A.nim
   # Produces: A.nim.cpp
-  {.localPassc: "-Wall -Werror".} # Passed when compiling A.nim.cpp
+  {.localPassC: "-Wall -Werror".} # Passed when compiling A.nim.cpp
 
 
 PassL pragma
@@ -7814,7 +7814,7 @@ the same way.
 There are a few more applications of macro pragmas, such as in type,
 variable and constant declarations, but this behavior is considered to be
 experimental and is documented in the `experimental manual
-<manual_experimental.html#extended-macro-pragmas>` instead.
+<manual_experimental.html#extended-macro-pragmas>`_ instead.
 
 
 Foreign function interface
