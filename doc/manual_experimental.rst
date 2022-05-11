@@ -473,39 +473,39 @@ In the future, this may require more specific information on template or macro
 signatures to be used. Specializations for some applications of this may also
 be introduced to guarantee consistency and circumvent bugs.
 
+..
+  Not nil annotation
+  ==================
 
-Not nil annotation
-==================
+  **Note:** This is an experimental feature. It can be enabled with
+  `{.experimental: "notnil".}`.
 
-**Note:** This is an experimental feature. It can be enabled with
-`{.experimental: "notnil".}`.
+  All types for which `nil` is a valid value can be annotated with the
+  `not nil` annotation to exclude `nil` as a valid value:
 
-All types for which `nil` is a valid value can be annotated with the
-`not nil` annotation to exclude `nil` as a valid value:
+  .. code-block:: nim
 
-.. code-block:: nim
+    {.experimental: "notnil".}
 
-  {.experimental: "notnil".}
+    type
+      PObject = ref TObj not nil
+      TProc = (proc (x, y: int)) not nil
 
-  type
-    PObject = ref TObj not nil
-    TProc = (proc (x, y: int)) not nil
+    proc p(x: PObject) =
+      echo "not nil"
 
-  proc p(x: PObject) =
-    echo "not nil"
+    # compiler catches this:
+    p(nil)
 
-  # compiler catches this:
-  p(nil)
+    # and also this:
+    var x: PObject
+    p(x)
 
-  # and also this:
-  var x: PObject
-  p(x)
+  The compiler ensures that every code path initializes variables which contain
+  non-nilable pointers. The details of this analysis are still to be specified
+  here.
 
-The compiler ensures that every code path initializes variables which contain
-non-nilable pointers. The details of this analysis are still to be specified
-here.
-
-.. include:: manual_experimental_strictnotnil.rst
+  .. include:: manual_experimental_strictnotnil.rst
 
 
 Aliasing restrictions in parameter passing
