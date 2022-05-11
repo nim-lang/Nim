@@ -20,7 +20,7 @@ tproc_mismatch.nim(45, 8) Error: type mismatch: got <proc ()> but expected 'proc
   Pragma mismatch: got '{..}', but expected '{.noSideEffect.}'.
 tproc_mismatch.nim(49, 8) Error: type mismatch: got <proc (a: int){.noSideEffect, gcsafe.}> but expected 'proc (a: float){.closure.}'
 tproc_mismatch.nim(58, 9) Error: type mismatch: got <proc (a: int)> but expected 'proc (a: int){.closure, gcsafe.}'
-  Pragma mismatch: got '{..}', but expected '{.gcsafe.}'.     
+  Pragma mismatch: got '{..}', but expected '{.gcsafe.}'.
 tproc_mismatch.nim(66, 9) Error: type mismatch: got <proc (a: int): int{.nimcall.}> but expected 'proc (a: int): int{.cdecl.}'
   Calling convention mismatch: got '{.nimcall.}', but expected '{.cdecl.}'.
 tproc_mismatch.nim(67, 9) Error: type mismatch: got <proc (a: int): int{.cdecl.}> but expected 'proc (a: int): int{.nimcall.}'
