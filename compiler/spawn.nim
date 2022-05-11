@@ -221,7 +221,7 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
     let fieldname = if i < formals.len: formals[i].sym.name else: tmpName
     var field = newSym(skField, fieldname, nextSymId idgen, objType.owner, n.info, g.config.options)
     field.typ = argType
-    objType.addField(field, g.cache, idgen)
+    discard objType.addField(field, g.cache, idgen)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n[i])
 
     let temp = addLocalVar(g, varSection, varInit, idgen, owner, argType,
@@ -260,17 +260,17 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
       slice[0].typ = getSysType(g, n.info, tyInt) # fake type
       var fieldB = newSym(skField, tmpName, nextSymId idgen, objType.owner, n.info, g.config.options)
       fieldB.typ = getSysType(g, n.info, tyInt)
-      objType.addField(fieldB, g.cache, idgen)
+      discard objType.addField(fieldB, g.cache, idgen)
 
       if getMagic(n) == mSlice:
         let a = genAddrOf(n[1], idgen)
         field.typ = a.typ
-        objType.addField(field, g.cache, idgen)
+        discard objType.addField(field, g.cache, idgen)
         result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)
 
         var fieldA = newSym(skField, tmpName, nextSymId idgen, objType.owner, n.info, g.config.options)
         fieldA.typ = getSysType(g, n.info, tyInt)
-        objType.addField(fieldA, g.cache, idgen)
+        discard objType.addField(fieldA, g.cache, idgen)
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldA), n[2])
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldB), n[3])
 
@@ -281,7 +281,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
       else:
         let a = genAddrOf(n, idgen)
         field.typ = a.typ
-        objType.addField(field, g.cache, idgen)
+        discard objType.addField(field, g.cache, idgen)
         result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldB), genHigh(g, n))
 
@@ -299,7 +299,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
       # it is more efficient to pass a pointer instead:
       let a = genAddrOf(n, idgen)
       field.typ = a.typ
-      objType.addField(field, g.cache, idgen)
+      discard objType.addField(field, g.cache, idgen)
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)
       let threadLocal = addLocalVar(g, varSection, nil, idgen, owner, field.typ,
                                     indirectAccess(castExpr, field, n.info),
@@ -308,7 +308,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
     else:
       # boring case
       field.typ = argType
-      objType.addField(field, g.cache, idgen)
+      discard objType.addField(field, g.cache, idgen)
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n)
       let threadLocal = addLocalVar(g, varSection, varInit,
                                     idgen, owner, field.typ,
@@ -377,7 +377,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     var argType = n[0].typ.skipTypes(abstractInst)
     var field = newSym(skField, getIdent(g.cache, "fn"), nextSymId idgen, owner, n.info, g.config.options)
     field.typ = argType
-    objType.addField(field, g.cache, idgen)
+    discard objType.addField(field, g.cache, idgen)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n[0])
     fn = indirectAccess(castExpr, field, n.info)
   elif fn.kind == nkSym and fn.sym.kind == skIterator:
@@ -399,7 +399,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     typ.rawAddSon(magicsys.getCompilerProc(g, "Barrier").typ)
     var field = newSym(skField, getIdent(g.cache, "barrier"), nextSymId idgen, owner, n.info, g.config.options)
     field.typ = typ
-    objType.addField(field, g.cache, idgen)
+    discard objType.addField(field, g.cache, idgen)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), barrier)
     barrierAsExpr = indirectAccess(castExpr, field, n.info)
 
@@ -407,7 +407,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
   if spawnKind == srFlowVar:
     var field = newSym(skField, getIdent(g.cache, "fv"), nextSymId idgen, owner, n.info, g.config.options)
     field.typ = retType
-    objType.addField(field, g.cache, idgen)
+    discard objType.addField(field, g.cache, idgen)
     fvField = newDotExpr(scratchObj, field)
     fvAsExpr = indirectAccess(castExpr, field, n.info)
     # create flowVar:
@@ -419,7 +419,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     var field = newSym(skField, getIdent(g.cache, "fv"), nextSymId idgen, owner, n.info, g.config.options)
     field.typ = newType(tyPtr, nextTypeId idgen, objType.owner)
     field.typ.rawAddSon(retType)
-    objType.addField(field, g.cache, idgen)
+    discard objType.addField(field, g.cache, idgen)
     fvAsExpr = indirectAccess(castExpr, field, n.info)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), genAddrOf(dest, idgen))
 

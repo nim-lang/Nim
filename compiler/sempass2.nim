@@ -1054,7 +1054,7 @@ proc track(tracked: PEffects, n: PNode) =
     addAsgnFact(tracked.guards, n[0], n[1])
     notNilCheck(tracked, n[1], n[0].typ)
     when false: cstringCheck(tracked, n)
-    if tracked.owner.kind != skMacro:
+    if tracked.owner.kind != skMacro and n[0].typ.kind notin {tyOpenArray, tyVarargs}:
       createTypeBoundOps(tracked, n[0].typ, n.info)
     if n[0].kind != nkSym or not isLocalVar(tracked, n[0].sym):
       checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n[1])

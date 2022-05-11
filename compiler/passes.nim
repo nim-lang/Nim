@@ -150,6 +150,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         processImplicits graph, graph.config.implicitImports, nkImportStmt, a, module
         processImplicits graph, graph.config.implicitIncludes, nkIncludeStmt, a, module
 
+    checkFirstLineIndentation(p)
     while true:
       if graph.stopCompile(): break
       var n = parseTopLevelStmt(p)
