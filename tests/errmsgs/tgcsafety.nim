@@ -1,8 +1,8 @@
 discard """
 cmd: "nim check $file"
-errormsg: "type mismatch: got <AsyncHttpServer, Port, proc (req: Request): Future[system.void]{.locks: <unknown>.}>"
+errormsg: "type mismatch: got <AsyncHttpServer, Port, proc (req: Request): Future[system.void]>"
 nimout: '''
-tgcsafety.nim(31, 18) Error: type mismatch: got <AsyncHttpServer, Port, proc (req: Request): Future[system.void]{.locks: <unknown>.}>
+tgcsafety.nim(32, 18) Error: type mismatch: got <AsyncHttpServer, Port, proc (req: Request): Future[system.void]>
 but expected one of:
 proc serve(server: AsyncHttpServer; port: Port;
            callback: proc (request: Request): Future[void] {.closure, gcsafe.};
@@ -10,7 +10,8 @@ proc serve(server: AsyncHttpServer; port: Port;
     Future[void])
   first type mismatch at position: 3
   required type for callback: proc (request: Request): Future[system.void]{.closure, gcsafe.}
-  but expression 'cb' is of type: proc (req: Request): Future[system.void]{.locks: <unknown>.}
+  but expression 'cb' is of type: proc (req: Request): Future[system.void]
+  Pragma mismatch: got '{..}', but expected '{.gcsafe.}'.     
   This expression is not GC-safe. Annotate the proc with {.gcsafe.} to get extended error information.
 
 expression: serve(server, Port(7898), cb)

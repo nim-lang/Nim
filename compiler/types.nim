@@ -728,9 +728,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if tfThread in t.flags:
         addSep(prag)
         prag.add("gcsafe")
-      if t.lockLevel.ord != UnspecifiedLockLevel.ord:
-        addSep(prag)
-        prag.add("locks: " & $t.lockLevel)
       if prag.len != 0: result.add("{." & prag & ".}")
     of tyVarargs:
       result = typeToStr[t.kind] % typeToString(t[0])
@@ -1379,7 +1376,7 @@ type
     efRaisesUnknown
     efTagsDiffer
     efTagsUnknown
-    efLockLevelsDiffer
+    efLockLevelsDiffer # deadcode
     efEffectsDelayed
 
 proc compatibleEffects*(formal, actual: PType): EffectsCompat =
@@ -1414,17 +1411,14 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
       if not res:
         #if tfEffectSystemWorkaround notin actual.flags:
         return efTagsDiffer
-  if formal.lockLevel.ord < 0 or
-      actual.lockLevel.ord <= formal.lockLevel.ord:
 
-    for i in 1 ..< min(formal.n.len, actual.n.len):
-      if formal.n[i].sym.flags * {sfEffectsDelayed} != actual.n[i].sym.flags * {sfEffectsDelayed}:
-        result = efEffectsDelayed
-        break
+  for i in 1 ..< min(formal.n.len, actual.n.len):
+    if formal.n[i].sym.flags * {sfEffectsDelayed} != actual.n[i].sym.flags * {sfEffectsDelayed}:
+      result = efEffectsDelayed
+      break
 
-    result = efCompat
-  else:
-    result = efLockLevelsDiffer
+  result = efCompat
+
 
 proc isCompileTimeOnly*(t: PType): bool {.inline.} =
   result = t.kind in {tyTypeDesc, tyStatic}
@@ -1560,13 +1554,6 @@ proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel = isNone): (set[ProcCon
       result[1] = isNone
       result[0].incl pcmDifferentCallConv
 
-  if f.lockLevel.ord != UnspecifiedLockLevel.ord and
-     a.lockLevel.ord != UnspecifiedLockLevel.ord:
-       # proctypeRel has more logic to catch this difference,
-       # so dont need to do `rel = isNone`
-       # but it's a pragma mismatch reason which is why it's here
-       result[0].incl pcmLockDifference
-
 proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, conf: ConfigRef) =
   assert formal.kind == tyProc and actual.kind == tyProc
   let (convMismatch, _) = getProcConvMismatch(conf, formal, actual)
@@ -1582,8 +1569,7 @@ proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, c
     of pcmNotGcSafe:
       expectedPragmas.add "gcsafe, "
     of pcmLockDifference:
-      gotPragmas.add("locks: " & $actual.lockLevel & ", ")
-      expectedPragmas.add("locks: " & $formal.lockLevel & ", ")
+      doAssert false, "deadcode, please remove it"
     of pcmNotIterator: discard
 
   if expectedPragmas.len > 0:
@@ -1623,8 +1609,8 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
         msg.add "\n.tag effects differ"
       of efTagsUnknown:
         msg.add "\n.tag effect is 'any tag allowed'"
-      of efLockLevelsDiffer:
-        msg.add "\nlock levels differ"
+      of efLockLevelsDiffer: # deadcode
+        doAssert false, "deadcode"
       of efEffectsDelayed:
         msg.add "\n.effectsOf annotations differ"
     localError(conf, info, msg)

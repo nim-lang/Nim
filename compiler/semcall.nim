@@ -149,9 +149,8 @@ proc effectProblem(f, a: PType; result: var string; c: PContext) =
       of efTagsUnknown:
         result.add "\n  The `.tags` requirements differ. Annotate the " &
             "proc with {.tags: [].} to get extended error information."
-      of efLockLevelsDiffer:
-        result.add "\n  The `.locks` requirements differ. Annotate the " &
-            "proc with {.locks: 0.} to get extended error information."
+      of efLockLevelsDiffer: # deadcode
+        doAssert false, "deadcode"
       of efEffectsDelayed:
         result.add "\n  The `.effectsOf` annotations differ."
       when defined(drnim):

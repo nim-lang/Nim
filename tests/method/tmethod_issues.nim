@@ -140,7 +140,7 @@ type
 
   B = ref object of A
 
-method foo(v: sink A, lst: var seq[A]) {.base,locks:0.} =
+method foo(v: sink A, lst: var seq[A]) {.base.} =
   echo "type A"
   lst.add v
 
