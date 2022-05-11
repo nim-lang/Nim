@@ -8112,7 +8112,9 @@ Object fields and global variables can be annotated via a `guard` pragma:
 
 .. code-block:: nim
 
-  var glock: TLock
+  import std/locks
+
+  var glock: Lock
   var gdata {.guard: glock.}: int
 
 The compiler then ensures that every access of `gdata` is within a `locks`
@@ -8181,10 +8183,12 @@ the expressivity of the language:
 
 .. code-block:: nim
 
+  import std/locks
+
   type
     ProtectedCounter = object
       v {.guard: L.}: int
-      L: TLock
+      L: Lock
 
   proc incCounters(counters: var openArray[ProtectedCounter]) =
     for i in 0..counters.high:
