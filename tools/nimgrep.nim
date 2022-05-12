@@ -110,13 +110,13 @@ type
     parentPath: seq[Pat]
     notParentPath: seq[Pat]
   SearchOpt = tuple  # used for searching inside a file
-    patternSet: bool     # to distinguish uninitialized 'pattern' and empty one
-    pattern: string      # main PATTERN
-    inFile: seq[string]           # --inFile, --inf
-    notInFile: seq[string]        # --notinFile, --ninf
-    inContext: seq[string]        # --inContext, --inc
-    notInContext: seq[string]     # --notinContext, --ninc
-    checkBin: Bin                 # --text, --!text
+    patternSet: bool           # To distinguish uninitialized/empty 'pattern'
+    pattern: string            # Main PATTERN
+    inFile: seq[string]        # --inFile, --inf
+    notInFile: seq[string]     # --notinFile, --ninf
+    inContext: seq[string]     # --inContext, --inc
+    notInContext: seq[string]  # --notinContext, --ninc
+    checkBin: Bin              # --bin, --text
   SearchOptComp[Pat] = tuple  # a compiled version of the previous
     pattern: Pat
     inFile: seq[Pat]
