@@ -125,7 +125,7 @@ pkg "patty"
 pkg "pixie"
 pkg "plotly", "nim c examples/all.nim"
 pkg "pnm"
-pkg "polypbren"
+pkg "polypbren", allowFailure = true
 pkg "prologue", "nimble tcompile"
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim"
 pkg "pylib"
