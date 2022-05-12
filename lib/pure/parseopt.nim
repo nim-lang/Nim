@@ -282,9 +282,7 @@ proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
   result.val = ""
 
 proc handleShortOption(p: var OptParser; cmd: string) =
-  var
-    i = p.pos
-    delimpos = i
+  var i = p.pos
   p.kind = cmdShortOption
   if i < cmd.len:
     add(p.key, cmd[i])
@@ -298,7 +296,7 @@ proc handleShortOption(p: var OptParser; cmd: string) =
   elif i < cmd.len:
     if cmd[i] in {':', '='}:
       inc(i)
-    delimpos = i
+    let delimpos = i
     p.inShortState = false
     while i < cmd.len and cmd[i] in {'\t', ' '}: inc(i)
     if p.allowWhitespaceAfterColon: i = delimpos
@@ -336,9 +334,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     p.kind = cmdEnd
     return
 
-  var
-    i = p.pos
-    delimpos = i
+  var i = p.pos
   while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
   p.pos = i
   setLen(p.key, 0)
@@ -364,7 +360,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
       while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
       if i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {':', '='}:
         inc(i)
-        delimpos = i
+        var delimpos = i
         while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
         # if we're at the end, use the next command line option:
         if i >= p.cmds[p.idx].len and p.idx < p.cmds.len and
