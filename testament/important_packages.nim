@@ -103,7 +103,7 @@ pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
 pkg "nimgame2", "nim c nimgame2/nimgame.nim"
   # XXX Doesn't work with deprecated 'randomize', will create a PR.
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
-pkg "nimlsp", allowFailure = true
+pkg "nimlsp"
 pkg "nimly", "nim c -r tests/test_readme_example.nim"
 pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
@@ -125,7 +125,7 @@ pkg "patty"
 pkg "pixie"
 pkg "plotly", "nim c examples/all.nim"
 pkg "pnm"
-pkg "polypbren"
+pkg "polypbren", allowFailure = true
 pkg "prologue", "nimble tcompile"
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim"
 pkg "pylib"
