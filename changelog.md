@@ -52,6 +52,8 @@ becomes an alias for `addr`.
 
 - Deprecated `selfExe` for Nimscript.
 
+- Removed deprecated module: `securehash`.
+
 
 ## Language changes
 
