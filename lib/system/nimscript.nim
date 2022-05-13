@@ -342,16 +342,16 @@ template withDir*(dir: string; body: untyped): untyped =
   ## Usage example:
   ##
   ## .. code-block:: nim
+  ##   # inside /some/path/
   ##   withDir "foo":
-  ##     # inside foo
-  ##   #back to last dir
-  var curDir = getCurrentDir()
+  ##     # move to /some/path/foo/
+  ##   # back in /some/path/
+  let curDir = getCurrentDir()
   try:
     cd(dir)
     body
   finally:
     cd(curDir)
-
 
 proc writeTask(name, desc: string) =
   if desc.len > 0:

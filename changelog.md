@@ -47,7 +47,7 @@ becomes an alias for `addr`.
 - Removed deprecated `math.c_frexp`.
 - Removed deprecated ``` httpcore.`==` ```.
 - Removed deprecated `std/dom_extensions`.
-
+- Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that takes wrong argument types.
 - Remove deprecated `osproc.poDemon`, symbol with typo.
 
 - Deprecated `selfExe` for Nimscript.
