@@ -12,8 +12,8 @@ proc rsaPublicEncrypt(fr: string): string =
   doAssert rsa != nil
   doAssert BIO_free(bio) >= 0
   result = newString(RSA_size(rsa))
-  let frdata = cast[ptr cuchar](fr.cstring)
-  var todata = cast[ptr cuchar](result.cstring)
+  let frdata = cast[ptr uint8](fr.cstring)
+  var todata = cast[ptr uint8](result.cstring)
   doAssert RSA_public_encrypt(fr.len.cint, frdata, todata, rsa, RSA_PKCS1_PADDING) != -1
   RSA_free(rsa)
 
@@ -26,8 +26,8 @@ proc rasPrivateDecrypt(fr: string): string =
   doAssert BIO_free(bio) >= 0
   let rsaLen = RSA_size(rsa)
   result = newString(rsaLen)
-  let frdata = cast[ptr cuchar](fr.cstring)
-  var todata = cast[ptr cuchar](result.cstring)
+  let frdata = cast[ptr uint8](fr.cstring)
+  var todata = cast[ptr uint8](result.cstring)
   let lenOrig = RSA_private_decrypt(rsaLen, frdata, todata, rsa, RSA_PKCS1_PADDING)
   doAssert lenOrig >= 0 and lenOrig < result.len
   doAssert result[lenOrig] == '\0'

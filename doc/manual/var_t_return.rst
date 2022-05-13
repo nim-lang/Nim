@@ -1,4 +1,5 @@
 .. default-role:: code
+.. include:: ../rstcommon.rst
 
 Memory safety for returning by `var T` is ensured by a simple borrowing
 rule: If `result` does not refer to a location pointing to the heap

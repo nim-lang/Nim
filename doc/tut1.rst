@@ -1,5 +1,3 @@
-.. default-role:: code
-
 =====================
 Nim Tutorial (Part I)
 =====================
@@ -7,6 +5,8 @@ Nim Tutorial (Part I)
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 Introduction
@@ -22,10 +22,14 @@ This document is a tutorial for the programming language *Nim*.
 
 This tutorial assumes that you are familiar with basic programming concepts
 like variables, types, or statements.
-If you would like to have a gentle introduction of those concepts, we recommend
-`Nim Basics tutorial <https://narimiran.github.io/nim-basics/>`_.
-On the other hand, the `manual <manual.html>`_ contains many more examples of
-the advanced language features.
+
+Here are several other resources for learning Nim:
+
+* `Nim Basics tutorial <https://narimiran.github.io/nim-basics/>`_ - a gentle 
+  introduction of the concepts mentioned above
+* `Learn Nim in 5 minutes <https://learnxinyminutes.com/docs/nim/>`_ - quick,
+  five-minute introduction to Nim
+* `The Nim manual <manual.html>`_ - many more examples of the advanced language features
 
 All code examples in this tutorial, as well as the ones found in the rest of
 Nim's documentation, follow the `Nim style guide <nep1.html>`_.
@@ -48,7 +52,7 @@ Save this code to the file "greetings.nim". Now compile and run it::
 
   nim compile --run greetings.nim
 
-With the `--run` `switch <nimc.html#compiler-usage-commandminusline-switches>`_ Nim
+With the ``--run`` `switch <nimc.html#compiler-usage-commandminusline-switches>`_ Nim
 executes the file automatically after compilation. You can give your program
 command-line arguments by appending them after the filename::
 
@@ -58,14 +62,20 @@ Commonly used commands and switches have abbreviations, so you can also use::
 
   nim c -r greetings.nim
 
+This is a **debug version**.
 To compile a release version use::
 
   nim c -d:release greetings.nim
 
 By default, the Nim compiler generates a large number of runtime checks
-aiming for your debugging pleasure. With `-d:release` some checks are
+aiming for your debugging pleasure. With ``-d:release`` some checks are
 `turned off and optimizations are turned on
 <nimc.html#compiler-usage-compileminustime-symbols>`_.
+
+For benchmarking or production code, use the ``-d:release`` switch.
+For comparing the performance with unsafe languages like C, use the ``-d:danger`` switch
+in order to get meaningful, comparable results. Otherwise Nim might be handicapped
+by checks that are **not even available** for C.
 
 Though it should be pretty obvious what the program does, I will explain the
 syntax: statements which are not indented are executed when the program
@@ -74,8 +84,8 @@ done with spaces only, tabulators are not allowed.
 
 String literals are enclosed in double-quotes. The `var` statement declares
 a new variable named `name` of type `string` with the value that is
-returned by the `readLine <io.html#readLine,File>`_ procedure. Since the
-compiler knows that `readLine <io.html#readLine,File>`_ returns a string,
+returned by the `readLine <syncio.html#readLine,File>`_ procedure. Since the
+compiler knows that `readLine <syncio.html#readLine,File>`_ returns a string,
 you can leave out the type in the declaration (this is called `local type
 inference`:idx:). So this will work too:
 
@@ -87,7 +97,7 @@ Note that this is basically the only form of type inference that exists in
 Nim: it is a good compromise between brevity and readability.
 
 The "hello world" program contains several identifiers that are already known
-to the compiler: `echo`, `readLine <io.html#readLine,File>`_, etc.
+to the compiler: `echo`, `readLine <syncio.html#readLine,File>`_, etc.
 These built-ins are declared in the system_ module which is implicitly
 imported by any other module.
 
@@ -104,7 +114,7 @@ String and character literals
 -----------------------------
 
 String literals are enclosed in double-quotes; character literals in single
-quotes. Special characters are escaped with ``\\``: ``\n`` means newline, ``\t``
+quotes. Special characters are escaped with ``\``: ``\n`` means newline, ``\t``
 means tabulator, etc. There are also *raw* string literals:
 
 .. code-block:: Nim
@@ -114,7 +124,7 @@ In raw literals, the backslash is not an escape character.
 
 The third and last way to write string literals is *long-string literals*.
 They are written with three quotes: `""" ... """`; they can span over
-multiple lines and the ``\\`` is not an escape character either. They are very
+multiple lines and the ``\`` is not an escape character either. They are very
 useful for embedding HTML code templates for example.
 
 
@@ -179,37 +189,6 @@ variables:
     a, b, c: string
 
 
-The assignment statement
-========================
-
-The assignment statement assigns a new value to a variable or more generally
-to a storage location:
-
-.. code-block::
-  var x = "abc" # introduces a new variable `x` and assigns a value to it
-  x = "xyz"     # assigns a new value to `x`
-
-`=` is the *assignment operator*. The assignment operator can be
-overloaded. You can declare multiple variables with a single assignment
-statement and all the variables will have the same value:
-
-.. code-block::
-    :test: "nim c $1"
-  var x, y = 3  # assigns 3 to the variables `x` and `y`
-  echo "x ", x  # outputs "x 3"
-  echo "y ", y  # outputs "y 3"
-  x = 42        # changes `x` to 42 without changing `y`
-  echo "x ", x  # outputs "x 42"
-  echo "y ", y  # outputs "y 3"
-
-Note that declaring multiple variables with a single assignment that calls a
-procedure can have unexpected results: the compiler will *unroll* the
-assignments and end up calling the procedure several times. If the result of
-the procedure depends on side effects, your variables may end up having
-different values! For safety use side-effect-free procedures if making multiple
-assignments.
-
-
 Constants
 =========
 
@@ -253,6 +232,30 @@ and put it into a data section":
 .. code-block::
     :test: "nim c $1"
   let input = readLine(stdin)   # works
+
+
+The assignment statement
+========================
+
+The assignment statement assigns a new value to a variable or more generally
+to a storage location:
+
+.. code-block::
+  var x = "abc" # introduces a new variable `x` and assigns a value to it
+  x = "xyz"     # assigns a new value to `x`
+
+`=` is the *assignment operator*. The assignment operator can be
+overloaded. You can declare multiple variables with a single assignment
+statement and all the variables will have the same value:
+
+.. code-block::
+    :test: "nim c $1"
+  var x, y = 3  # assigns 3 to the variables `x` and `y`
+  echo "x ", x  # outputs "x 3"
+  echo "y ", y  # outputs "y 3"
+  x = 42        # changes `x` to 42 without changing `y`
+  echo "x ", x  # outputs "x 42"
+  echo "y ", y  # outputs "y 3"
 
 
 Control flow statements
@@ -320,7 +323,7 @@ For integers or other ordinal types value ranges are also possible:
   of 0..2, 4..7: echo "The number is in the set: {0, 1, 2, 4, 5, 6, 7}"
   of 3, 8: echo "The number is 3 or 8"
 
-However, the above code does not compile: the reason is that you have to cover
+However, the above code **does not compile**: the reason is that you have to cover
 every value that `n` may contain, but the code only handles the values
 `0..8`. Since it is not very practical to list every other possible integer
 (though it is possible thanks to the range notation), we fix this by telling
@@ -356,8 +359,7 @@ The while statement is a simple looping construct:
   var name = readLine(stdin)
   while name == "":
     echo "Please tell me your name: "
-    name = readLine(stdin)
-    # no `var`, because we do not declare a new variable here
+    name = readLine(stdin) # no `var`, because we do not declare a new variable here
 
 The example uses a while loop to keep asking the users for their name, as long
 as the user types in nothing (only presses RETURN).
@@ -387,8 +389,15 @@ The variable `i` is implicitly declared by the
   var i = 1
   while i <= 10:
     echo i
-    inc(i) # increment i by 1
+    inc i # increment i by 1
   # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
+
+Since counting up occurs so often in programs, Nim also has a `..
+<system.html#...i,T,T>`_ iterator that does the same:
+
+.. code-block:: nim
+  for i in 1 .. 10:
+    ...
 
 Counting down can be achieved as easily (but is less often needed):
 
@@ -398,20 +407,13 @@ Counting down can be achieved as easily (but is less often needed):
     echo i
   # --> Outputs 10 9 8 7 6 5 4 3 2 1 on different lines
 
-Since counting up occurs so often in programs, Nim also has a `..
-<system.html#...i,T,T>`_ iterator that does the same:
-
-.. code-block:: nim
-  for i in 1 .. 10:
-    ...
-
 Zero-indexed counting has two shortcuts `..<` and `.. ^1`
 (`backward index operator <system.html#^.t%2Cint>`_) to simplify
 counting to one less than the higher index:
 
 .. code-block:: nim
   for i in 0 ..< 10:
-    ...  # 0 .. 9
+    ...  # the same as 0 .. 9
 
 or
 
@@ -425,7 +427,7 @@ or
 .. code-block:: nim
   var s = "some string"
   for idx, c in s[0 .. ^1]:
-    ...
+    ... # ^1 is the last element, ^2 would be one before it, and so on
 
 Other useful iterators for collections (like arrays and sequences) are
 * `items` and `mitems`, which provides immutable and mutable elements respectively, and
@@ -440,6 +442,7 @@ Other useful iterators for collections (like arrays and sequences) are
 
 Scopes and the block statement
 ------------------------------
+
 Control flow statements have a feature not covered yet: they open a
 new scope. This means that in the following example, `x` is not accessible
 outside the loop:
@@ -467,6 +470,7 @@ The block's *label* (`myblock` in the example) is optional.
 
 Break statement
 ---------------
+
 A block can be left prematurely with a `break` statement. The break statement
 can leave a `while`, `for`, or a `block` statement. It leaves the
 innermost construct, unless a label of a block is given:
@@ -492,15 +496,15 @@ innermost construct, unless a label of a block is given:
 
 Continue statement
 ------------------
+
 Like in many other programming languages, a `continue` statement starts
 the next iteration immediately:
 
 .. code-block:: nim
     :test: "nim c $1"
-  while true:
-    let x = readLine(stdin)
-    if x == "": continue
-    echo x
+  for i in 1 .. 5:
+    if i <= 3: continue
+    echo i # will only print 4 and 5
 
 
 When statement
@@ -530,7 +534,7 @@ differences:
   that belong to the first condition that evaluates to `true`.
 
 The `when` statement is useful for writing platform-specific code, similar to
-the `#ifdef` construct in the C programming language.
+the `#ifdef`:c: construct in the C programming language.
 
 
 Statements and indentation
@@ -590,9 +594,11 @@ Procedures
 ==========
 
 To define new commands like `echo <system.html#echo,varargs[typed,]>`_
-and `readLine <io.html#readLine,File>`_ in the examples, the concept of a
-`procedure` is needed. (Some languages call them *methods* or *functions*.)
-In Nim new procedures are defined with the `proc` keyword:
+and `readLine <syncio.html#readLine,File>`_ in the examples, the concept of a
+*procedure* is needed. You might be used to them being called *methods* or
+*functions* in other languages, but Nim
+`differentiates these concepts <tut1.html#procedures-funcs-and-methods>`_. In
+Nim, new procedures are defined with the `proc` keyword:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -625,8 +631,9 @@ Some terminology: in the example `question` is called a (formal) *parameter*,
 
 Result variable
 ---------------
+
 A procedure that returns a value has an implicit `result` variable declared
-that represents the return value. A `return` statement with no expression is 
+that represents the return value. A `return` statement with no expression is
 shorthand for `return result`. The `result` value is always returned
 automatically at the end of a procedure if there is no `return` statement at
 the exit.
@@ -639,9 +646,9 @@ the exit.
         return
       result = result + i
 
-  echo sumTillNegative() # echos 0
-  echo sumTillNegative(3, 4, 5) # echos 12
-  echo sumTillNegative(3, 4 , -1 , 6) # echos 7
+  echo sumTillNegative() # echoes 0
+  echo sumTillNegative(3, 4, 5) # echoes 12
+  echo sumTillNegative(3, 4 , -1 , 6) # echoes 7
 
 The `result` variable is already implicitly declared at the start of the
 function, so declaring it again with 'var result', for example, would shadow it
@@ -657,12 +664,13 @@ this procedure
 .. code-block:: nim
     :test: "nim c $1"
   proc helloWorld(): string =
-      "Hello, World!"
+    "Hello, World!"
 
 returns the string "Hello, World!".
 
 Parameters
 ----------
+
 Parameters are immutable in the procedure body. By default, their value cannot be
 changed because this allows the compiler to implement parameter passing in the
 most efficient way. If a mutable variable is needed inside the procedure, it has
@@ -699,6 +707,7 @@ a tuple as a return value instead of using var parameters.
 
 Discard statement
 -----------------
+
 To call a procedure that returns a value just for its side effects and ignoring
 its return value, a `discard` statement **must** be used. Nim does not
 allow silently throwing away a return value:
@@ -747,6 +756,7 @@ The compiler checks that each parameter receives exactly one argument.
 
 Default values
 --------------
+
 To make the `createWindow` proc easier to use it should provide `default
 values`; these are values that are used as arguments if the caller does not
 specify them:
@@ -768,6 +778,7 @@ no need to write `title: string = "unknown"`, for example.
 
 Overloaded procedures
 ---------------------
+
 Nim provides the ability to overload procedures similar to C++:
 
 .. code-block:: nim
@@ -788,16 +799,15 @@ Nim provides the ability to overload procedures similar to C++:
 (Note that `toString` is usually the `$ <dollars.html>`_ operator in
 Nim.) The compiler chooses the most appropriate proc for the `toString`
 calls. How this overloading resolution algorithm works exactly is not
-discussed here (it will be specified in the manual soon).  However, it does
-not lead to nasty surprises and is based on a quite simple unification
-algorithm. Ambiguous calls are reported as errors.
+discussed here -- see the manual for details. Ambiguous calls are reported as errors.
 
 
 Operators
 ---------
-The Nim library makes heavy use of overloading - one reason for this is that
+
+The Nim standard library makes heavy use of overloading - one reason for this is that
 each operator like `+` is just an overloaded proc. The parser lets you
-use operators in `infix notation` (`a + b`) or `prefix notation` (`+ a`).
+use operators in *infix notation* (`a + b`) or *prefix notation* (`+ a`).
 An infix operator always receives two arguments, a prefix operator always one.
 (Postfix operators are not possible, because this would be ambiguous: does
 `a @ @ b` mean `(a) @ (@b)` or `(a@) @ (b)`? It always means
@@ -805,13 +815,13 @@ An infix operator always receives two arguments, a prefix operator always one.
 
 Apart from a few built-in keyword operators such as `and`, `or`, `not`,
 operators always consist of these characters:
-``+  -  *  \  /  <  >  =  @  $  ~  &  %  !  ?  ^  .  |``
+`+  -  *  \  /  <  >  =  @  $  ~  &  %  !  ?  ^  .  |`
 
 User-defined operators are allowed. Nothing stops you from defining your own
 `@!?+~` operator, but doing so may reduce readability.
 
 The operator's precedence is determined by its first character. The details
-can be found in the manual.
+can be `found in the manual <manual.html#syntax-precedence>`_.
 
 To define a new operator enclose the operator in backticks "`":
 
@@ -825,7 +835,7 @@ procedure:
 
 .. code-block:: nim
     :test: "nim c $1"
-  if `==`( `+`(3, 4), 7): echo "True"
+  if `==`( `+`(3, 4), 7): echo "true"
 
 
 Forward declarations
@@ -866,6 +876,31 @@ The example also shows that a proc's body can consist of a single expression
 whose value is then returned implicitly.
 
 
+Funcs and methods
+-----------------
+
+As mentioned in the introduction, Nim differentiates between procedures,
+functions, and methods, defined by the `proc`, `func`, and `method` keywords
+respectively. In some ways, Nim is a bit more pedantic in its definitions than
+other languages.
+
+Functions are closer to the concept of a pure mathematical
+function, which might be familiar to you if you've ever done functional
+programming. Essentially they are procedures with additional limitations set on
+them: they can't access global state (except `const`) and can't produce
+side-effects. The `func` keyword is basically an alias for `proc` tagged
+with `{.noSideEffects.}`. Functions can still change their mutable arguments
+however, which are those marked as `var`, along with any `ref` objects.
+
+Unlike procedures, methods are dynamically dispatched. This sounds a bit
+complicated, but it is a concept closely related to inheritance and object oriented
+programming. If you overload a procedure (two procedures with the same name but
+of different types or with different sets of arguments are said to be overloaded), the procedure to use is determined
+at compile-time. Methods, on the other hand, depend on objects that inherit from
+the `RootObj`. This is something that is covered in much greater depth in
+the `second part of the tutorial<tut2.html#object-oriented-programming-dynamic-dispatch>`_.
+
+
 Iterators
 =========
 
@@ -878,7 +913,7 @@ Let's return to the simple counting example:
     echo i
 
 Can a `countup <system.html#countup.i,T,T,Positive>`_ proc be written that
-supports this loop? Lets try:
+supports this loop? Let's try:
 
 .. code-block:: nim
   proc countup(a, b: int): int =
@@ -891,7 +926,7 @@ However, this does not work. The problem is that the procedure should not
 only `return`, but return and **continue** after an iteration has
 finished. This *return and continue* is called a `yield` statement. Now
 the only thing left to do is to replace the `proc` keyword by `iterator`
-and here it is - our first iterator:
+and here it is -- our first iterator:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -909,10 +944,10 @@ important differences:
   `yield` statement).
 * Iterators have no implicit `result` variable.
 * Iterators do not support recursion.
-* Iterators cannot be forward declared, because the compiler must be able to inline an iterator. (This restriction will be gone in a
-  future version of the compiler.)
+* Iterators cannot be forward declared, because the compiler must be able to inline an iterator.
+  (This restriction will be gone in a future version of the compiler.)
 
-However, you can also use a `closure` iterator to get a different set of
+However, you can also use a closure iterator to get a different set of
 restrictions. See `first-class iterators <manual.html#iterators-and-the-for-statement-firstminusclass-iterators>`_
 for details. Iterators can have the same name and parameters as a proc since
 essentially they have their own namespaces. Therefore it is common practice to
@@ -947,7 +982,8 @@ evaluation. For example:
 
 Characters
 ----------
-The `character type` is called `char`. Its size is always one byte, so
+
+The *character type* is called `char`. Its size is always one byte, so
 it cannot represent most UTF-8 characters, but it *can* represent one of the bytes
 that makes up a multi-byte UTF-8 character.
 The reason for this is efficiency: for the overwhelming majority of use-cases,
@@ -963,6 +999,7 @@ Converting from an integer to a `char` is done with the `chr` proc.
 
 Strings
 -------
+
 String variables are **mutable**, so appending to a string
 is possible, and quite efficient. Strings in Nim are both zero-terminated and have a
 length field. A string's length can be retrieved with the builtin `len`
@@ -984,6 +1021,7 @@ A string variable is initialized with the empty string `""`.
 
 Integers
 --------
+
 Nim has these integer types built-in:
 `int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64`.
 
@@ -996,7 +1034,7 @@ to specify a non-default integer type:
   let
     x = 0     # x is of type `int`
     y = 0'i8  # y is of type `int8`
-    z = 0'i64 # z is of type `int64`
+    z = 0'i32 # z is of type `int32`
     u = 0'u   # u is of type `uint`
 
 Most often integers are used for counting objects that reside in memory, so
@@ -1014,12 +1052,13 @@ errors.
 
 Lossless `Automatic type conversion`:idx: is performed in expressions where different
 kinds of integer types are used. However, if the type conversion
-would cause loss of information, the `EOutOfRange`:idx: exception is raised (if the error
+would cause loss of information, the `RangeDefect`:idx: is raised (if the error
 cannot be detected at compile time).
 
 
 Floats
 ------
+
 Nim has these floating-point types built-in: `float float32 float64`.
 
 The default float type is `float`. In the current implementation,
@@ -1046,6 +1085,7 @@ versa. Use the `toInt <system.html#toInt,float>`_ and
 
 Type Conversion
 ---------------
+
 Conversion between numerical types is performed by using the
 type as a function:
 
@@ -1088,7 +1128,7 @@ there is a difference between the `$` and `repr` outputs:
   echo myInteger, ":", repr(myInteger)
   # --> 42:42
   echo myFloat, ":", repr(myFloat)
-  # --> 3.1400000000000001e+00:3.1400000000000001e+00
+  # --> 3.14:3.14
 
 
 Advanced types
@@ -1108,6 +1148,7 @@ Enumeration and object types may only be defined within a
 
 Enumerations
 ------------
+
 A variable of an enumeration type can only be assigned one of the enumeration's specified values.
 These values are a set of ordered symbols. Each symbol is mapped
 to an integer value internally. The first symbol is represented
@@ -1121,7 +1162,7 @@ at runtime by 0, the second by 1, and so on. For example:
       north, east, south, west
 
   var x = south     # `x` is of type `Direction`; its value is `south`
-  echo x            # writes "south" to `stdout`
+  echo x            # prints "south"
 
 All the comparison operators can be used with enumeration types.
 
@@ -1138,6 +1179,7 @@ must be in ascending order.
 
 Ordinal types
 -------------
+
 Enumerations, integer types, `char` and `bool` (and
 subranges) are called ordinal types. Ordinal types have quite
 a few special operations:
@@ -1161,12 +1203,13 @@ Operation             Comment
 
 The `inc <system.html#inc,T,int>`_, `dec <system.html#dec,T,int>`_, `succ
 <system.html#succ,T,int>`_ and `pred <system.html#pred,T,int>`_ operations can
-fail by raising an `EOutOfRange` or `EOverflow` exception. (If the code has been
+fail by raising an `RangeDefect` or `OverflowDefect`. (If the code has been
 compiled with the proper runtime checks turned on.)
 
 
 Subranges
 ---------
+
 A subrange type is a range of values from an integer or enumeration type
 (the base type). Example:
 
@@ -1196,6 +1239,7 @@ Sets
 
 Arrays
 ------
+
 An array is a simple fixed-length container. Each element in
 an array has the same type. The array's index type can be any ordinal type.
 
@@ -1209,13 +1253,13 @@ Arrays can be constructed using `[]`:
   var
     x: IntArray
   x = [1, 2, 3, 4, 5, 6]
-  for i in low(x)..high(x):
+  for i in low(x) .. high(x):
     echo x[i]
 
 The notation `x[i]` is used to access the i-th element of `x`.
 Array access is always bounds checked (at compile-time or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
-`--bound_checks:off` command line switch.
+``--bound_checks:off`` command line switch.
 
 Arrays are value types, like any other Nim type. The assignment operator
 copies the whole array contents.
@@ -1238,7 +1282,7 @@ valid index.
   level[north] = on
   level[south] = slowBlink
   level[east] = fastBlink
-  echo repr(level)  # --> [on, fastBlink, slowBlink, off]
+  echo level        # --> [on, fastBlink, slowBlink, off]
   echo low(level)   # --> north
   echo len(level)   # --> 4
   echo high(level)  # --> west
@@ -1260,7 +1304,7 @@ subdivided into height levels accessed through their integer index:
   tower[1][east] = mediumBlink
   echo len(tower)     # --> 10
   echo len(tower[1])  # --> 4
-  echo repr(tower)    # --> [[slowBlink, mediumBlink, ...more output..
+  echo tower          # --> [[slowBlink, mediumBlink, ...more output..
   # The following lines don't compile due to type mismatch errors
   #tower[north][east] = on
   #tower[0][1] = on
@@ -1287,12 +1331,13 @@ to specify a range from zero to the specified index minus one:
     y: QuickArray
   x = [1, 2, 3, 4, 5, 6]
   y = x
-  for i in low(x)..high(x):
+  for i in low(x) .. high(x):
     echo x[i], y[i]
 
 
 Sequences
 ---------
+
 Sequences are similar to arrays but of dynamic length which may change
 during runtime (like strings). Since sequences are resizable they are always
 allocated on the heap and garbage collected.
@@ -1346,6 +1391,7 @@ value. Here the `for` statement is looping over the results from the
 
 Open arrays
 -----------
+
 **Note**: Openarrays can only be used for parameters.
 
 Often fixed-size arrays turn out to be too inflexible; procedures should be
@@ -1597,7 +1643,7 @@ Even though you don't need to declare a type for a tuple to use it, tuples
 created with different field names will be considered different objects despite
 having the same field types.
 
-Tuples can be *unpacked* during variable assignment (and only then!). This can
+Tuples can be *unpacked* during variable assignment. This can
 be handy to assign directly the fields of the tuples to individually named
 variables. An example of this is the `splitFile <os.html#splitFile,string>`_
 proc from the `os module <os.html>`_ which returns the directory, name, and
@@ -1615,20 +1661,37 @@ variables! For example:
     path = "usr/local/nimc.html"
     (dir, name, ext) = splitFile(path)
     baddir, badname, badext = splitFile(path)
-  echo dir      # outputs `usr/local`
-  echo name     # outputs `nimc`
-  echo ext      # outputs `.html`
+  echo dir      # outputs "usr/local"
+  echo name     # outputs "nimc"
+  echo ext      # outputs ".html"
   # All the following output the same line:
-  # `(dir: usr/local, name: nimc, ext: .html)`
+  # "(dir: usr/local, name: nimc, ext: .html)"
   echo baddir
   echo badname
   echo badext
 
+Tuple unpacking is also supported in for-loops:
+
+.. code-block:: nim
+    :test: "nim c $1"
+  let a = [(10, 'a'), (20, 'b'), (30, 'c')]
+
+  for (x, c) in a:
+    echo x
+  # This will output: 10; 20; 30
+
+  # Accessing the index is also possible:
+  for i, (x, c) in a:
+    echo i, c
+  # This will output: 0a; 1b; 2c
+
 Fields of tuples are always public, they don't need to be explicity
 marked to be exported, unlike for example fields in an object type.
 
+
 Reference and pointer types
 ---------------------------
+
 References (similar to pointers in other programming languages) are a
 way to introduce many-to-one relationships. This means different references can
 point to and modify the same location in memory.
@@ -1638,7 +1701,7 @@ Untraced references are also called *pointers*. Traced references point to
 objects in a garbage-collected heap, untraced references point to
 manually allocated objects or objects elsewhere in memory. Thus
 untraced references are *unsafe*. However, for certain low-level operations
-(e.g., accessing the hardware), untraced references are necessary.
+(e.g. accessing the hardware), untraced references are necessary.
 
 Traced references are declared with the **ref** keyword; untraced references
 are declared with the **ptr** keyword.
@@ -1655,13 +1718,18 @@ operators perform implicit dereferencing operations for reference types:
     Node = ref object
       le, ri: Node
       data: int
-  var
-    n: Node
-  new(n)
-  n.data = 9
+
+  var n = Node(data: 9)
+  echo n.data
   # no need to write n[].data; in fact n[].data is highly discouraged!
 
-To allocate a new traced object, the built-in procedure `new` must be used.
+To allocate a new traced object, the built-in procedure `new` can be used:
+
+.. code-block:: nim
+
+   var n: Node
+   new(n)
+
 To deal with untraced memory, the procedures `alloc`, `dealloc` and
 `realloc` can be used. The `system <system.html>`_
 module's documentation contains further details.
@@ -1671,6 +1739,7 @@ If a reference points to *nothing*, it has the value `nil`.
 
 Procedural type
 ---------------
+
 A procedural type is a (somewhat abstract) pointer to a procedure.
 `nil` is an allowed value for a variable of a procedural type.
 Nim uses procedural types to achieve `functional`:idx: programming
@@ -1680,15 +1749,17 @@ Example:
 
 .. code-block:: nim
     :test: "nim c $1"
-  proc echoItem(x: int) = echo x
+  proc greet(name: string): string =
+    "Hello, " & name & "!"
 
-  proc forEach(action: proc (x: int)) =
-    const
-      data = [2, 3, 5, 7, 11]
-    for d in items(data):
-      action(d)
+  proc bye(name: string): string =
+    "Goodbye, " & name & "."
 
-  forEach(echoItem)
+  proc communicate(greeting: proc (x: string): string, name: string) =
+    echo greeting(name)
+
+  communicate(greet, "John")
+  communicate(bye, "Mary")
 
 A subtle issue with procedural types is that the calling convention of the
 procedure influences the type compatibility: procedural types are only compatible
@@ -1697,6 +1768,7 @@ listed in the `manual <manual.html#types-procedural-type>`_.
 
 Distinct type
 -------------
+
 A Distinct type allows for the creation of a new type that "does not imply a
 subtype relationship between it and its base type".
 You must **explicitly** define all behavior for the distinct type.
@@ -1706,7 +1778,8 @@ Examples are provided in the `manual <manual.html#types-distinct-type>`_.
 
 Modules
 =======
-Nim supports splitting a program into pieces with a module concept.
+
+Nim supports splitting a program into pieces with a *module* concept.
 Each module is in its own file. Modules enable `information hiding`:idx: and
 `separate compilation`:idx:. A module may gain access to the symbols of another
 module by using the `import`:idx: statement. Only top-level symbols that are marked
@@ -1721,7 +1794,7 @@ with an asterisk (`*`) are exported:
     # allocate a new sequence:
     newSeq(result, len(a))
     # multiply two int sequences:
-    for i in 0..len(a)-1: result[i] = a[i] * b[i]
+    for i in 0 ..< len(a): result[i] = a[i] * b[i]
 
   when isMainModule:
     # test the new `*` operator for sequences:
@@ -1828,6 +1901,7 @@ define a shorter alias to use when qualifying symbols.
 
 Include statement
 -----------------
+
 The `include` statement does something fundamentally different than
 importing a module: it merely includes the contents of a file. The `include`
 statement is useful to split up a large module into several files:

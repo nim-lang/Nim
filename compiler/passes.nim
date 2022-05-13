@@ -16,6 +16,9 @@ import
   syntaxes, modulegraphs, reorder,
   lineinfos, pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   TPassData* = tuple[input: PNode, closeOutput: PNode]
 
@@ -147,6 +150,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         processImplicits graph, graph.config.implicitImports, nkImportStmt, a, module
         processImplicits graph, graph.config.implicitIncludes, nkIncludeStmt, a, module
 
+    checkFirstLineIndentation(p)
     while true:
       if graph.stopCompile(): break
       var n = parseTopLevelStmt(p)
@@ -187,4 +191,9 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     closeParser(p)
     if s.kind != llsStdIn: break
   closePasses(graph, a)
+  if graph.config.backend notin {backendC, backendCpp, backendObjc}:
+    # We only write rod files here if no C-like backend is active.
+    # The C-like backends have been patched to support the IC mechanism.
+    # They are responsible for closing the rod files. See `cbackend.nim`.
+    closeRodFile(graph, module)
   result = true

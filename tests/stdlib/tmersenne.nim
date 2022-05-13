@@ -7,5 +7,6 @@ template main() =
   doAssert mt.getNum == 1071751096'u32
   doAssert mt.getNum == 3805347140'u32
 
+
 static: main()
 main()

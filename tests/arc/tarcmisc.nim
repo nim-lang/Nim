@@ -27,11 +27,15 @@ finalizer
 aaaaa
 hello
 ok
+true
+copying
+123
+42
 closed
 destroying variable: 20
 destroying variable: 10
 '''
-  cmd: "nim c --gc:arc --deepcopy:on $file"
+  cmd: "nim c --gc:arc --deepcopy:on -d:nimAllocPagesViaMalloc $file"
 """
 
 proc takeSink(x: sink string): bool = true
@@ -390,3 +394,106 @@ proc newPixelBuffer(): PixelBuffer =
 
 discard newPixelBuffer()
 
+
+# bug #17199
+
+proc passSeq(data: seq[string]) =
+  # used the system.& proc initially
+  let wat = data & "hello"
+
+proc test2 =
+  let name = @["hello", "world"]
+  passSeq(name)
+  doAssert name == @["hello", "world"]
+
+static: test2() # was buggy
+test2()
+
+proc merge(x: sink seq[string], y: sink string): seq[string] =
+  newSeq(result, x.len + 1)
+  for i in 0..x.len-1:
+    result[i] = move(x[i])
+  result[x.len] = move(y)
+
+proc passSeq2(data: seq[string]) =
+  # used the system.& proc initially
+  let wat = merge(data, "hello")
+
+proc test3 =
+  let name = @["hello", "world"]
+  passSeq2(name)
+  doAssert name == @["hello", "world"]
+
+static: test3() # was buggy
+test3()
+
+# bug #17712
+proc t17712 =
+  var ppv = new int
+  discard @[ppv]
+  var el: ref int
+  el = [ppv][0]
+  echo el != nil
+
+t17712()
+
+# bug #18030
+
+type
+  Foo = object
+    n: int
+
+proc `=copy`(dst: var Foo, src: Foo) =
+  echo "copying"
+  dst.n = src.n
+
+proc `=sink`(dst: var Foo, src: Foo) =
+  echo "sinking"
+  dst.n = src.n
+
+var a: Foo
+
+proc putValue[T](n: T)
+
+proc useForward =
+  putValue(123)
+
+proc putValue[T](n: T) =
+  var b = Foo(n:n)
+  a = b
+  echo b.n
+
+useForward()
+
+
+# bug #17319
+type
+  BrokenObject = ref object
+    brokenType: seq[int]
+
+proc use(obj: BrokenObject) =
+  discard
+
+method testMethod(self: BrokenObject) {.base.} =
+  iterator testMethodIter() {.closure.} =
+    use(self)
+
+  var nameIterVar = testMethodIter
+  nameIterVar()
+
+let mikasa = BrokenObject()
+mikasa.testMethod()
+
+# bug #19205
+type
+  InputSectionBase* = object of RootObj
+    relocations*: seq[int]   # traced reference. string has a similar SIGSEGV.
+  InputSection* = object of InputSectionBase
+
+proc fooz(sec: var InputSectionBase) =
+  if sec of InputSection:  # this line SIGSEGV.
+    echo 42
+
+var sec = create(InputSection)
+sec[] = InputSection(relocations: newSeq[int]())
+fooz sec[]

@@ -92,9 +92,12 @@
 ## See also
 ## ========
 ## * `asyncstreams module <asyncstreams.html>`_
-## * `io module <io.html>`_ for `FileMode enum <io.html#FileMode>`_
+## * `io module <syncio.html>`_ for `FileMode enum <syncio.html#FileMode>`_
 
 import std/private/since
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 proc newEIO(msg: string): owned(ref IOError) =
   new(result)
@@ -240,6 +243,9 @@ proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
     result = s.readDataStrImpl(s, buffer, slice)
   else:
     # fallback
+    when declared(prepareMutation):
+      # buffer might potentially be a CoW literal with ARC
+      prepareMutation(buffer)
     result = s.readData(addr buffer[slice.a], slice.b + 1 - slice.a)
 
 template jsOrVmBlock(caseJsOrVm, caseElse: untyped): untyped =
@@ -1252,7 +1258,7 @@ else: # after 1.3 or JS not defined
     var s = StringStream(s)
     s.data = ""
 
-  proc newStringStream*(s: string = ""): owned StringStream =
+  proc newStringStream*(s: sink string = ""): owned StringStream =
     ## Creates a new stream from the string `s`.
     ##
     ## See also:
@@ -1271,6 +1277,11 @@ else: # after 1.3 or JS not defined
 
     new(result)
     result.data = s
+    when nimvm:
+      discard
+    else:
+      when declared(prepareMutation):
+        prepareMutation(result.data) # Allows us to mutate using `addr` logic like `copyMem`, otherwise it errors.
     result.pos = 0
     result.closeImpl = ssClose
     result.atEndImpl = ssAtEnd
@@ -1331,7 +1342,7 @@ proc newFileStream*(f: File): owned FileStream =
   ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
   ##   from string.
   ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_ is the same
-  ##   as using `open proc <io.html#open,File,string,FileMode,int>`_
+  ##   as using `open proc <syncio.html#open,File,string,FileMode,int>`_
   ##   on Examples.
   ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
   ##   file stream from the file name and the mode.
@@ -1370,7 +1381,7 @@ proc newFileStream*(filename: string, mode: FileMode = fmRead,
   ## Creates a new stream from the file named `filename` with the mode `mode`.
   ##
   ## If the file cannot be opened, `nil` is returned. See the `io module
-  ## <io.html>`_ for a list of available `FileMode enums <io.html#FileMode>`_.
+  ## <syncio.html>`_ for a list of available `FileMode enums <syncio.html#FileMode>`_.
   ##
   ## **Note:**
   ## * **This function returns nil in case of failure.**
@@ -1503,6 +1514,7 @@ when false:
       of fmReadWrite: flags = O_RDWR or int(O_CREAT)
       of fmReadWriteExisting: flags = O_RDWR
       of fmAppend: flags = O_WRONLY or int(O_CREAT) or O_APPEND
+      static: doAssert false # handle bug #17888
       var handle = open(filename, flags)
       if handle < 0: raise newEOS("posix.open() call failed")
     result = newFileHandleStream(handle)

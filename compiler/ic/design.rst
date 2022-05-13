@@ -7,12 +7,8 @@ The frontend produces a set of `.rod` files. Every `.nim` module
 produces its own `.rod` file.
 
 - The IR must be a faithful representation of the AST in memory.
-- The backend can do its own caching but doesn't have to.
-- We know by comparing 'nim check compiler/nim' against 'nim c compiler/nim'
-  that 2/3 of the compiler's runtime is spent in the frontend. Hence we
-  implement IC for the frontend first and only later for the backend. The
-  backend will recompile everything until we implement its own caching
-  mechanisms.
+- The backend can do its own caching but doesn't have to. In the
+  current implementation the backend also caches its results.
 
 Advantage of the "set of files" vs the previous global database:
 - By construction, we either read from the `.rod` file or from the

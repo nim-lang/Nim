@@ -460,10 +460,10 @@ proc transformSpawn(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier:
     result = n
 
 proc checkArgs(a: var AnalysisCtx; n: PNode) =
-  discard "too implement"
+  discard "to implement"
 
 proc generateAliasChecks(a: AnalysisCtx; result: PNode) =
-  discard "too implement"
+  discard "to implement"
 
 proc liftParallel*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
   # this needs to be called after the 'for' loop elimination

@@ -73,9 +73,10 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
         q.cap = newCap
         result = q
 
-proc shrink*[T](x: var seq[T]; newLen: Natural) =
+proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
   when nimvm:
-    setLen(x, newLen)
+    {.cast(tags: []).}:
+      setLen(x, newLen)
   else:
     #sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
     when not supportsCopyMem(T):
@@ -124,3 +125,7 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
       if xu.p == nil or xu.p.cap < newlen:
         xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
+
+proc newSeq[T](s: var seq[T], len: Natural) =
+  shrink(s, 0)
+  setLen(s, len)

@@ -1,5 +1,3 @@
-.. default-role:: code
-
 ====================
 Nim Standard Library
 ====================
@@ -7,11 +5,13 @@ Nim Standard Library
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 Nim's library is divided into *pure libraries*, *impure libraries*, and *wrappers*.
 
-Pure libraries do not depend on any external `*.dll` or `lib*.so` binary
+Pure libraries do not depend on any external ``*.dll`` or ``lib*.so`` binary
 while impure libraries do. A wrapper is an impure library that is a very
 low-level interface to a C library.
 
@@ -39,15 +39,18 @@ Automatic imports
 
 * `threads <threads.html>`_
   Basic Nim thread support. **Note:** This is part of the system module. Do not
-  import it explicitly. Enabled with `--threads:on`.
+  import it explicitly. Enabled with `--threads:on`:option:.
 
-* `channels <channels_builtin.html>`_
+* `channels_builtin <channels_builtin.html>`_
   Nim message passing support for threads. **Note:** This is part of the
-  system module. Do not import it explicitly. Enabled with `--threads:on`.
+  system module. Do not import it explicitly. Enabled with `--threads:on`:option:.
 
 
 Core
 ----
+
+* `atomics <atomics.html>`_
+  Types and operations for atomic operations and lockless algorithms.
 
 * `bitops <bitops.html>`_
   Provides a series of low-level methods for bit manipulation.
@@ -66,7 +69,7 @@ Core
 
 * `macrocache <macrocache.html>`_
   Provides an API for macros to collect compile-time information across modules.
-  
+
 * `macros <macros.html>`_
   Contains the AST API and documentation of Nim for writing macros.
 
@@ -90,14 +93,14 @@ Algorithms
 * `algorithm <algorithm.html>`_
   This module implements some common generic algorithms like sort or binary search.
 
-* `std/enumutils <enumutils.html>`_
+* `enumutils <enumutils.html>`_
   This module adds functionality for the built-in `enum` type.
 
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in `seq` type
   which were inspired by functional programming languages.
 
-* `std/setutils <setutils.html>`_
+* `setutils <setutils.html>`_
   This module adds functionality for the built-in `set` type.
 
 
@@ -113,7 +116,7 @@ Collections
   The underlying implementation uses a `seq`.
 
 * `heapqueue <heapqueue.html>`_
-  Implementation of a heap data structure that can be used as a priority queue.
+  Implementation of a binary heap data structure that can be used as a priority queue.
 
 * `intsets <intsets.html>`_
   Efficient implementation of a set of ints as a sparse bit set.
@@ -125,17 +128,11 @@ Collections
 * `options <options.html>`_
   The option type encapsulates an optional value.
 
-* `std/packedsets <packedsets.html>`_
+* `packedsets <packedsets.html>`_
   Efficient implementation of a set of ordinals as a sparse bit set.
 
 * `sets <sets.html>`_
-  Nim hash and bit set support.
-
-* `sharedlist <sharedlist.html>`_
-  Nim shared linked list support. Contains a shared singly-linked list.
-
-* `sharedtables <sharedtables.html>`_
-  Nim shared hash table support. Contains shared tables.
+  Nim hash set support.
 
 * `tables <tables.html>`_
   Nim hash table support. Contains tables, ordered tables, and count tables.
@@ -147,7 +144,7 @@ String handling
 * `cstrutils <cstrutils.html>`_
   Utilities for `cstring` handling.
 
-* `std/editdistance <editdistance.html>`_
+* `editdistance <editdistance.html>`_
   This module contains an algorithm to compute the edit distance between two
   Unicode strings.
 
@@ -167,11 +164,14 @@ String handling
 * `ropes <ropes.html>`_
   This module contains support for a *rope* data type.
   Ropes can represent very long strings efficiently;
-  especially concatenation is done in O(1) instead of O(n).
+  in particular, concatenation is done in O(1) instead of O(n).
+
+* `strbasics <strbasics.html>`_
+  This module provides some high performance string operations.
 
 * `strformat <strformat.html>`_
   Macro based standard string interpolation/formatting. Inspired by
-  Python's `f`-strings.
+  Python's f-strings.
 
 * `strmisc <strmisc.html>`_
   This module contains uncommon string handling operations that do not
@@ -197,14 +197,14 @@ String handling
   It provides a single proc that does Unicode to ASCII transliterations.
   Based on Python's Unidecode module.
 
-* `std/wordwrap <wordwrap.html>`_
+* `wordwrap <wordwrap.html>`_
   This module contains an algorithm to wordwrap a Unicode string.
 
 
 Time handling
 -------------
 
-* `std/monotimes <monotimes.html>`_
+* `monotimes <monotimes.html>`_
   The `monotimes` module implements monotonic timestamps.
 
 * `times <times.html>`_
@@ -266,23 +266,20 @@ Math libraries
 * `math <math.html>`_
   Mathematical operations like cosine, square root.
 
-* `mersenne <mersenne.html>`_
-  Mersenne twister random number generator.
-
 * `random <random.html>`_
   Fast and tiny random number generator.
-
-* `std/sysrand <sysrand.html>`_
-  Cryptographically secure pseudorandom number generator.
 
 * `rationals <rationals.html>`_
   This module implements rational numbers and relevant mathematical operations.
 
 * `stats <stats.html>`_
-  Statistical analysis
+  Statistical analysis.
 
-* `std/sums <sums.html>`_
+* `sums <sums.html>`_
   Accurate summation functions.
+
+* `sysrand <sysrand.html>`_
+  Cryptographically secure pseudorandom number generator.
 
 
 Internet Protocols and Support
@@ -357,7 +354,7 @@ Parsers
 * `json <json.html>`_
   High-performance JSON parser.
 
-* `std/jsonutils <jsonutils.html>`_
+* `jsonutils <jsonutils.html>`_
   This module implements a hookable (de)serialization for arbitrary types.
 
 * `lexbase <lexbase.html>`_
@@ -366,7 +363,7 @@ Parsers
 
 * `parsecfg <parsecfg.html>`_
   The `parsecfg` module implements a high-performance configuration file
-  parser. The configuration file's syntax is similar to the Windows `.ini`
+  parser. The configuration file's syntax is similar to the Windows ``.ini``
   format, but much more powerful, as it is not a line based parser. String
   literals, raw string literals, and triple quote string literals are supported
   as in the Nim programming language.
@@ -433,7 +430,7 @@ Hashing
 -------
 
 * `base64 <base64.html>`_
-  This module implements a base64 encoder and decoder.
+  This module implements a Base64 encoder and decoder.
 
 * `hashes <hashes.html>`_
   This module implements efficient computations of hash values for diverse
@@ -446,10 +443,10 @@ Hashing
   An OID is a global ID that consists of a timestamp,
   a unique counter, and a random value. This combination should suffice to
   produce a globally distributed unique ID. This implementation was extracted
-  from the Mongodb interface and it thus binary compatible with a Mongo OID.
+  from the MongoDB interface and it thus binary compatible with a MongoDB OID.
 
-* `std/sha1 <sha1.html>`_
-  This module implements a sha1 encoder and decoder.
+* `sha1 <sha1.html>`_
+  This module implements the SHA-1 checksum algorithm.
 
 
 Miscellaneous
@@ -465,7 +462,7 @@ Miscellaneous
 * `coro <coro.html>`_
   This module implements experimental coroutines in Nim.
 
-* `std/enumerate <enumerate.html>`_
+* `enumerate <enumerate.html>`_
   This module implements `enumerate` syntactic sugar based on Nim's macro system.
 
 * `logging <logging.html>`_
@@ -480,22 +477,24 @@ Miscellaneous
 * `unittest <unittest.html>`_
   Implements a Unit testing DSL.
 
-* `std/varints <varints.html>`_
+* `varints <varints.html>`_
   Decode variable-length integers that are compatible with SQLite.
 
-* `std/with <with.html>`_
+* `with <with.html>`_
   This module implements the `with` macro for easy function chaining.
 
 
-
-Modules for JS backend
-----------------------
+Modules for the JS backend
+--------------------------
 
 * `asyncjs <asyncjs.html>`_
   Types and macros for writing asynchronous procedures in JavaScript.
 
 * `dom <dom.html>`_
   Declaration of the Document Object Model for the JS backend.
+
+* `jsbigints <jsbigints.html>`_
+  Arbitrary precision integers.
 
 * `jsconsole <jsconsole.html>`_
   Wrapper for the `console` object.
@@ -517,7 +516,6 @@ Regular expressions
 * `re <re.html>`_
   This module contains procedures and operators for handling regular
   expressions. The current implementation uses PCRE.
-
 
 
 Database support
@@ -583,7 +581,7 @@ Database support
 * `mysql <mysql.html>`_
   Contains a wrapper for the mySQL API.
 * `sqlite3 <sqlite3.html>`_
-  Contains a wrapper for SQLite 3 API.
+  Contains a wrapper for the SQLite 3 API.
 * `odbcsql <odbcsql.html>`_
   interface to the ODBC driver.
 
@@ -593,11 +591,3 @@ Network Programming and Internet Protocols
 
 * `openssl <openssl.html>`_
   Wrapper for OpenSSL.
-
-
-
-Unstable
-========
-
-* `atomics <atomics.html>`_
-  Types and operations for atomic operations and lockless algorithms.

@@ -31,6 +31,10 @@ else:
 when defined(linux) and defined(useClone):
   import linux
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
+
 type
   ProcessOption* = enum ## Options that can be passed to `startProcess proc
                         ## <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
@@ -65,11 +69,6 @@ type
     options: set[ProcessOption]
 
   Process* = ref ProcessObj ## Represents an operating system process.
-
-const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
-                                         ## used the wrong spelling ("demon").
-                                         ## Now `ProcessOption` uses the correct spelling ("daemon"),
-                                         ## and this is needed just for backward compatibility.
 
 
 proc execProcess*(command: string, workingDir: string = "",
@@ -330,12 +329,16 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
   ## It is implemented just calling `cpuinfo.countProcessors`.
   result = cpuinfo.countProcessors()
 
+when not defined(nimHasEffectsOf):
+  {.pragma: effectsOf.}
+
 proc execProcesses*(cmds: openArray[string],
     options = {poStdErrToStdOut, poParentStreams}, n = countProcessors(),
     beforeRunEvent: proc(idx: int) = nil,
     afterRunEvent: proc(idx: int, p: Process) = nil):
   int {.rtl, extern: "nosp$1",
-        tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect].} =
+        tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect],
+        effectsOf: [beforeRunEvent, afterRunEvent].} =
   ## Executes the commands `cmds` in parallel.
   ## Creates `n` processes that execute in parallel.
   ##
@@ -447,7 +450,7 @@ proc execProcesses*(cmds: openArray[string],
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
-iterator lines*(p: Process): string {.since: (1, 3), tags: [ReadIOEffect].} =
+iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), tags: [ReadIOEffect].} =
   ## Convenience iterator for working with `startProcess` to read data from a
   ## background process.
   ##
@@ -470,11 +473,11 @@ iterator lines*(p: Process): string {.since: (1, 3), tags: [ReadIOEffect].} =
   ##     p.close
   var outp = p.outputStream
   var line = newStringOfCap(120)
-  while true:
-    if outp.readLine(line):
-      yield line
-    else:
-      if p.peekExitCode != -1: break
+  while outp.readLine(line):
+    if keepNewLines:
+      line.add("\n")
+    yield line
+  discard waitForExit(p)
 
 proc readLines*(p: Process): (seq[string], int) {.since: (1, 3).} =
   ## Convenience function for working with `startProcess` to read data from a
@@ -510,6 +513,7 @@ when not defined(useNimRtl):
     var outp = outputStream(p)
     result = ""
     var line = newStringOfCap(120)
+    # consider `p.lines(keepNewLines=true)` to circumvent `running` busy-wait
     while true:
       # FIXME: converts CR-LF to LF.
       if outp.readLine(line):
@@ -1595,7 +1599,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##   import std/[strutils, strtabs]
   ##   stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
   ##   doAssert result == ("12", 0)
-  ##   doAssert execCmdEx("ls --nonexistant").exitCode != 0
+  ##   doAssert execCmdEx("ls --nonexistent").exitCode != 0
   ##   when defined(posix):
   ##     assert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
   ##     assert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
@@ -1618,6 +1622,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
     inputStream(p).write(input)
   close inputStream(p)
 
+  # consider `p.lines(keepNewLines=true)` to avoid exit code test
   result = ("", -1)
   var line = newStringOfCap(120)
   while true:

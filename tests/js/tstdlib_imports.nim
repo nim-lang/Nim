@@ -7,46 +7,48 @@ discard """
 import std/[
   # Core:
   bitops, typetraits, lenientops, macros, volatile, typeinfo,
-  # fails: endians, rlocks
-  # works but shouldn't: cpuinfo, locks
+  # fails due to FFI: rlocks
+  # fails due to cstring cast/copyMem: endians
+  # works but uses FFI: cpuinfo, locks
 
   # Algorithms:
-  algorithm, sequtils,
+  algorithm, enumutils, sequtils, setutils,
   
   # Collections:
   critbits, deques, heapqueue, intsets, lists, options, sets,
-  sharedlist, tables,
-  # fails: sharedtables
+  tables, packedsets,
 
   # Strings:
   cstrutils, editdistance, wordwrap, parseutils, ropes,
   pegs, punycode, strformat, strmisc, strscans, strtabs,
   strutils, unicode, unidecode,
-  # fails: encodings
+  # fails due to FFI: encodings
 
   # Time handling:
   monotimes, times,
 
   # Generic operator system services:
   os, streams,
-  # fails: distros, dynlib, marshal, memfiles, osproc, terminal
+  # fails intentionally: dynlib, marshal, memfiles
+  # fails due to FFI: osproc, terminal
+  # fails due to osproc import: distros
 
   # Math libraries:
-  complex, math, mersenne, random, rationals, stats, sums,
-  # works but shouldn't: fenv
+  complex, math, random, rationals, stats, sums, sysrand,
+  # works but uses FFI: fenv
 
   # Internet protocols:
   cookies, httpcore, mimetypes, uri,
-  # fails: asyncdispatch, asyncfile, asyncftpclient, asynchttpserver,
+  # fails due to FFI: asyncdispatch, asyncfile, asyncftpclient, asynchttpserver,
   # asyncnet, cgi, httpclient, nativesockets, net, selectors, smtp
-  # works but shouldn't test: asyncstreams, asyncfutures
+  # works but no need to test: asyncstreams, asyncfutures
   
   # Threading:
-  # fails: threadpool
+  # fails due to FFI: threadpool
 
   # Parsers:
   htmlparser, json, lexbase, parsecfg, parsecsv, parsesql, parsexml,
-  parseopt,
+  parseopt, jsonutils,
 
   # XML processing:
   xmltree, xmlparser,
@@ -55,17 +57,19 @@ import std/[
   htmlgen,
 
   # Hashing:
-  base64, hashes,
-  # fails: md5, oids, sha1
+  base64, hashes, md5,
+  # fails due to cstring cast/endians import: oids
+  # fails due to copyMem/endians import: sha1
 
   # Miscellaneous:
-  colors, logging, sugar, unittest, varints,
-  # fails: browsers, coro
-  # works but shouldn't: segfaults
+  colors, logging, sugar, unittest, varints, enumerate, with,
+  # fails due to FFI: browsers, coro
+  # works but uses FFI: segfaults
 
   # Modules for JS backend:
-  asyncjs, dom, jsconsole, jscore, jsffi,
+  asyncjs, dom, jsconsole, jscore, jsffi, jsbigints,
 
   # Unlisted in lib.html:
-  decls, compilesettings, with, wrapnils
+  decls, compilesettings, wrapnils, exitprocs, effecttraits,
+  genasts, importutils, isolation, jsfetch, jsformdata, jsheaders
 ]

@@ -52,14 +52,23 @@ when sslVersion != "":
     from posix import SocketHandle
 
 elif useWinVersion:
-  when not defined(nimOldDlls) and defined(cpu64):
+  when defined(openssl10) or defined(nimOldDlls):
+    when defined(cpu64):
+      const
+        DLLSSLName* = "(ssleay32|ssleay64).dll"
+        DLLUtilName* = "(libeay32|libeay64).dll"
+    else:
+      const
+        DLLSSLName* = "ssleay32.dll"
+        DLLUtilName* = "libeay32.dll"
+  elif defined(cpu64):
     const
       DLLSSLName* = "(libssl-1_1-x64|ssleay64|libssl64).dll"
       DLLUtilName* = "(libcrypto-1_1-x64|libeay64).dll"
   else:
     const
       DLLSSLName* = "(libssl-1_1|ssleay32|libssl32).dll"
-      DLLUtilName* =  "(libcrypto-1_1|libeay32).dll"
+      DLLUtilName* = "(libcrypto-1_1|libeay32).dll"
 
   from winlean import SocketHandle
 else:
@@ -511,16 +520,16 @@ proc OPENSSL_sk_num*(stack: PSTACK): int {.cdecl, dynlib: DLLSSLName, importc.}
 proc OPENSSL_sk_value*(stack: PSTACK, index: int): pointer {.cdecl,
     dynlib: DLLSSLName, importc.}
 
-proc d2i_X509*(px: ptr PX509, i: ptr ptr cuchar, len: cint): PX509 {.cdecl,
+proc d2i_X509*(px: ptr PX509, i: ptr ptr uint8, len: cint): PX509 {.cdecl,
     dynlib: DLLUtilName, importc.}
 
-proc i2d_X509*(cert: PX509; o: ptr ptr cuchar): cint {.cdecl,
+proc i2d_X509*(cert: PX509; o: ptr ptr uint8): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
 
 proc d2i_X509*(b: string): PX509 =
   ## decode DER/BER bytestring into X.509 certificate struct
   var bb = b.cstring
-  let i = cast[ptr ptr cuchar](addr bb)
+  let i = cast[ptr ptr uint8](addr bb)
   let ret = d2i_X509(addr result, i, b.len.cint)
   if ret.isNil:
     raise newException(Exception, "X.509 certificate decoding failed")
@@ -530,7 +539,7 @@ proc i2d_X509*(cert: PX509): string =
   let encoded_length = i2d_X509(cert, nil)
   result = newString(encoded_length)
   var q = result.cstring
-  let o = cast[ptr ptr cuchar](addr q)
+  let o = cast[ptr ptr uint8](addr q)
   let length = i2d_X509(cert, o)
   if length.int <= 0:
     raise newException(Exception, "X.509 certificate encoding failed")
@@ -565,10 +574,9 @@ proc SSL_ctrl*(ssl: SslPtr, cmd: cint, larg: int, parg: pointer): int{.
   cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSL_set_tlsext_host_name*(ssl: SslPtr, name: cstring): int =
-  result = SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, name)
   ## Set the SNI server name extension to be used in a client hello.
   ## Returns 1 if SNI was set, 0 if current SSL configuration doesn't support SNI.
-
+  result = SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, name)
 
 proc SSL_get_servername*(ssl: SslPtr, typ: cint = TLSEXT_NAMETYPE_host_name): cstring {.cdecl, dynlib: DLLSSLName, importc.}
   ## Retrieve the server name requested in the client hello. This can be used
@@ -591,11 +599,11 @@ proc SSL_CTX_set_tlsext_servername_arg*(ctx: SslCtx, arg: pointer): int =
 
 type
   PskClientCallback* = proc (ssl: SslPtr;
-    hint: cstring; identity: cstring; max_identity_len: cuint; psk: ptr cuchar;
+    hint: cstring; identity: cstring; max_identity_len: cuint; psk: ptr uint8;
     max_psk_len: cuint): cuint {.cdecl.}
 
   PskServerCallback* = proc (ssl: SslPtr;
-    identity: cstring; psk: ptr cuchar; max_psk_len: cint): cuint {.cdecl.}
+    identity: cstring; psk: ptr uint8; max_psk_len: cint): cuint {.cdecl.}
 
 proc SSL_CTX_set_psk_client_callback*(ctx: SslCtx; callback: PskClientCallback) {.cdecl, dynlib: DLLSSLName, importc.}
   ## Set callback called when OpenSSL needs PSK (for client).
@@ -664,13 +672,13 @@ proc PEM_read_bio_RSAPublicKey*(bp: BIO, x: ptr PRSA, cb: pem_password_cb, u: po
     dynlib: DLLUtilName, importc.}
 proc PEM_read_bio_RSAPrivateKey*(bp: BIO, x: ptr PRSA, cb: pem_password_cb, u: pointer): PRSA {.cdecl,
     dynlib: DLLUtilName, importc.}
-proc RSA_private_encrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+proc RSA_private_encrypt*(flen: cint, fr: ptr uint8, to: ptr uint8, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
-proc RSA_public_encrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+proc RSA_public_encrypt*(flen: cint, fr: ptr uint8, to: ptr uint8, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
-proc RSA_private_decrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+proc RSA_private_decrypt*(flen: cint, fr: ptr uint8, to: ptr uint8, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
-proc RSA_public_decrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+proc RSA_public_decrypt*(flen: cint, fr: ptr uint8, to: ptr uint8, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
 proc RSA_free*(rsa: PRSA) {.cdecl, dynlib: DLLUtilName, importc.}
 proc RSA_size*(rsa: PRSA): cint {.cdecl, dynlib: DLLUtilName, importc.}
@@ -736,8 +744,8 @@ type
 proc md5_Init*(c: var MD5_CTX): cint{.importc: "MD5_Init".}
 proc md5_Update*(c: var MD5_CTX; data: pointer; len: csize_t): cint{.importc: "MD5_Update".}
 proc md5_Final*(md: cstring; c: var MD5_CTX): cint{.importc: "MD5_Final".}
-proc md5*(d: ptr cuchar; n: csize_t; md: ptr cuchar): ptr cuchar{.importc: "MD5".}
-proc md5_Transform*(c: var MD5_CTX; b: ptr cuchar){.importc: "MD5_Transform".}
+proc md5*(d: ptr uint8; n: csize_t; md: ptr uint8): ptr uint8{.importc: "MD5".}
+proc md5_Transform*(c: var MD5_CTX; b: ptr uint8){.importc: "MD5_Transform".}
 {.pop.}
 
 from strutils import toHex, toLowerAscii
@@ -809,6 +817,8 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
 
   proc X509_check_host*(cert: PX509, name: cstring, namelen: cint, flags:cuint, peername: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
 
+  proc X509_free*(cert: PX509) {.cdecl, dynlib: DLLSSLName, importc.}
+
   # Certificates store
 
   type PX509_STORE* = SslPtr
@@ -837,3 +847,17 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
     let cert = d2i_X509(certbytes)
     let encoded = cert.i2d_X509()
     assert encoded == certbytes
+
+# Application Layer Protocol Negociation extension (TLS-ALPN, RFC7301)
+# Available in at least OpenSSL 1.1.1 and later, not sure if earlier
+# --Iced Quinn
+
+proc SSL_CTX_set_alpn_protos*(ctx: SslCtx; protos: cstring; protos_len: cuint): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_set_alpn_protos*(ssl: SslPtr; protos: cstring; protos_len: cuint): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_alpn_select_cb*(ctx: SslCtx; cb: proc(ssl: SslPtr; out_proto: ptr cstring; outlen: cstring; in_proto: cstring; inlen: cuint; arg: pointer): cint {.cdecl.}; arg: pointer): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get0_alpn_selected*(ssl: SslPtr; data: ptr cstring; len: ptr cuint) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_next_protos_advertised_cb*(ctx: SslCtx; cb: proc(ssl: SslPtr; out_proto: ptr cstring; outlen: ptr cuint; arg: pointer): cint {.cdecl.}; arg: pointer) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_next_proto_select_cb*(ctx: SslCtx; cb: proc(s: SslPtr; out_proto: cstring; outlen: cstring; in_proto: cstring; inlen: cuint; arg: pointer): cint {.cdecl.}; arg: pointer) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_select_next_proto*(out_proto: ptr cstring; outlen: cstring; server: cstring; server_len: cuint; client: cstring; client_len: cuint): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get0_next_proto_negotiated*(s: SslPtr; data: ptr cstring; len: ptr cuint) {.cdecl, dynlib: DLLSSLName, importc.}
+

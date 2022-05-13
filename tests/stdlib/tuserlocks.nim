@@ -1,8 +1,8 @@
 discard """
-  cmd: "nim $target --threads:on $options $file"
+  matrix: "--threads:on"
 """
 
-import rlocks
+import std/rlocks
 
 var r: RLock
 r.initRLock()
@@ -10,4 +10,11 @@ doAssert r.tryAcquire()
 doAssert r.tryAcquire()
 r.release()
 r.release()
+
+block:
+  var x = 12
+  withRLock r:
+    inc x
+  doAssert x == 13
+
 r.deinitRLock()

@@ -1,6 +1,5 @@
 discard """
   errormsg: "cannot instantiate B"
-  line: 20
   nimout: '''
 got: <typedesc[string]>
 but expected: <T: A>

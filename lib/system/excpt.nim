@@ -146,7 +146,7 @@ proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
 
 # some platforms have native support for stack traces:
 const
-  nativeStackTraceSupported* = (defined(macosx) or defined(linux)) and
+  nativeStackTraceSupported = (defined(macosx) or defined(linux)) and
                               not NimStackTrace
   hasSomeStackTrace = NimStackTrace or defined(nimStackTraceOverride) or
     (defined(nativeStackTrace) and nativeStackTraceSupported)
@@ -354,7 +354,7 @@ var onUnhandledException*: (proc (errorMsg: string) {.
   ## The default is to write a stacktrace to `stderr` and then call `quit(1)`.
   ## Unstable API.
 
-proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
+proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy, gcsafe.} =
   when hasSomeStackTrace:
     var buf = newStringOfCap(2000)
     if e.trace.len == 0:
@@ -362,7 +362,8 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     else:
       var trace = $e.trace
       add(buf, trace)
-      `=destroy`(trace)
+      {.gcsafe.}:
+        `=destroy`(trace)
     add(buf, "Error: unhandled exception: ")
     add(buf, e.msg)
     add(buf, " [")
@@ -373,7 +374,8 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
       onUnhandledException(buf)
     else:
       showErrorMessage2(buf)
-    `=destroy`(buf)
+    {.gcsafe.}:
+      `=destroy`(buf)
   else:
     # ugly, but avoids heap allocations :-)
     template xadd(buf, s, slen) =
@@ -387,7 +389,8 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     if e.trace.len != 0:
       var trace = $e.trace
       add(buf, trace)
-      `=destroy`(trace)
+      {.gcsafe.}:
+        `=destroy`(trace)
     add(buf, "Error: unhandled exception: ")
     add(buf, e.msg)
     add(buf, " [")
@@ -398,7 +401,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     else:
       showErrorMessage(buf.addr, L)
 
-proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
+proc reportUnhandledError(e: ref Exception) {.nodestroy, gcsafe.} =
   if unhandledExceptionHook != nil:
     unhandledExceptionHook(e)
   when hostOS != "any":
@@ -444,11 +447,9 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
       {.emit: "throw;".}
     else:
       pushCurrentException(e)
-      {.emit: "throw e;".}
+      {.emit: "throw `e`;".}
   elif defined(nimQuirky) or gotoBasedExceptions:
-    # XXX This check should likely also be done in the setjmp case below.
-    if e != currException:
-      pushCurrentException(e)
+    pushCurrentException(e)
     when gotoBasedExceptions:
       inc nimInErrorMode
   else:
@@ -523,13 +524,10 @@ proc getStackTrace(e: ref Exception): string =
   else:
     result = ""
 
-proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
+proc getStackTraceEntries*(e: ref Exception): lent seq[StackTraceEntry] =
   ## Returns the attached stack trace to the exception `e` as
   ## a `seq`. This is not yet available for the JS backend.
-  when not defined(nimSeqsV2):
-    shallowCopy(result, e.trace)
-  else:
-    result = move(e.trace)
+  e.trace
 
 proc getStackTraceEntries*(): seq[StackTraceEntry] =
   ## Returns the stack trace entries for the current stack trace.
@@ -602,6 +600,9 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     quit 1
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
+  type Sighandler = proc (a: cint) {.noconv, benign.}
+    # xxx factor with ansi_c.CSighandlerT, posix.Sighandler
+
   proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv.} =
     template processSignal(s, action: untyped) {.dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
@@ -652,7 +653,11 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     else:
       quit(1)
 
+  var SIG_IGN {.importc: "SIG_IGN", header: "<signal.h>".}: Sighandler
+
   proc registerSignalHandler() =
+    # xxx `signal` is deprecated and has many caveats, we should use `sigaction` instead, e.g.
+    # https://stackoverflow.com/questions/231912/what-is-the-difference-between-sigaction-and-signal
     c_signal(SIGINT, signalHandler)
     c_signal(SIGSEGV, signalHandler)
     c_signal(SIGABRT, signalHandler)
@@ -661,14 +666,17 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     when declared(SIGBUS):
       c_signal(SIGBUS, signalHandler)
     when declared(SIGPIPE):
-      c_signal(SIGPIPE, signalHandler)
+      when defined(nimLegacySigpipeHandler):
+        c_signal(SIGPIPE, signalHandler)
+      else:
+        c_signal(SIGPIPE, SIG_IGN)
 
   registerSignalHandler() # call it in initialization section
 
 proc setControlCHook(hook: proc () {.noconv.}) =
   # ugly cast, but should work on all architectures:
-  type SignalHandler = proc (sign: cint) {.noconv, benign.}
-  c_signal(SIGINT, cast[SignalHandler](hook))
+  when declared(Sighandler):
+    c_signal(SIGINT, cast[Sighandler](hook))
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
   proc unsetControlCHook() =

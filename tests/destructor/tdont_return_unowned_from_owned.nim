@@ -1,6 +1,7 @@
 discard """
   cmd: "nim check --newruntime --hints:off $file"
-  nimout: '''tdont_return_unowned_from_owned.nim(36, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(Obj)' as the return type
+  nimout: '''
+tdont_return_unowned_from_owned.nim(36, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(Obj)' as the return type
 tdont_return_unowned_from_owned.nim(39, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(Obj)' as the return type
 tdont_return_unowned_from_owned.nim(42, 6) Error: type mismatch: got <Obj>
 but expected one of:
@@ -16,7 +17,6 @@ tdont_return_unowned_from_owned.nim(51, 13) Error: assignment produces a danglin
 tdont_return_unowned_from_owned.nim(55, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(RootRef)' as the return type
 '''
   errormsg: "cannot return an owned pointer as an unowned pointer; use 'owned(RootRef)' as the return type"
-  line: 55
 """
 
 

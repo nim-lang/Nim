@@ -44,7 +44,7 @@ block tarray:
       arr: TMyarray
 
 
-  proc sum(a: openarray[int]): int =
+  proc sum(a: openArray[int]): int =
     result = 0
     var i = 0
     while i < len(a):
@@ -587,3 +587,21 @@ block t12466:
     a[0'u16 + i] = i
   for i in 0'u16 ..< 8'u16:
     a[0'u16 + i] = i
+
+block t17705:
+  # https://github.com/nim-lang/Nim/pull/17705
+  var a = array[0, int].low
+  a = int(a)
+  var b = array[0, int].high
+  b = int(b)
+
+block t18643:
+  # https://github.com/nim-lang/Nim/issues/18643
+  let a: array[0, int] = []
+  var caught = false
+  let b = 9999999
+  try:
+    echo a[b]
+  except IndexDefect:
+    caught = true
+  doAssert caught, "IndexDefect not caught!"

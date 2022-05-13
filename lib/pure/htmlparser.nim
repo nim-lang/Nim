@@ -51,6 +51,9 @@
 
 import strutils, streams, parsexml, xmltree, unicode, strtabs
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   HtmlTag* = enum  ## list of all supported HTML tags; order will always be
                    ## alphabetically
@@ -215,7 +218,7 @@ const
     tagMenu, tagNoframes}
   SingleTags* = {tagArea, tagBase, tagBasefont,
     tagBr, tagCol, tagFrame, tagHr, tagImg, tagIsindex,
-    tagLink, tagMeta, tagParam, tagWbr}
+    tagLink, tagMeta, tagParam, tagWbr, tagSource}
 
 proc allLower(s: string): bool =
   for c in s:

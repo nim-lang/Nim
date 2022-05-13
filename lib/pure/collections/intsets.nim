@@ -8,7 +8,7 @@
 #
 
 ## Specialization of the generic `packedsets module <packedsets.html>`_
-## for ordinal sparse sets.
+## (see its documentation for more examples) for ordinal sparse sets.
 
 import std/private/since
 import std/packedsets

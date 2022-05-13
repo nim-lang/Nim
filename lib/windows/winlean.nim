@@ -17,6 +17,9 @@ when defined(nimHasStyleChecks):
 
 {.passc: "-DWIN32_LEAN_AND_MEAN".}
 
+when defined(nimPreviewSlimSystem):
+  from std/syncio import FileHandle
+
 const
   useWinUnicode* = not defined(useWinAnsi)
 
@@ -42,7 +45,7 @@ type
   PULONG_PTR* = ptr uint
   HDC* = Handle
   HGLRC* = Handle
-  BYTE* = cuchar
+  BYTE* = uint8
 
   SECURITY_ATTRIBUTES* {.final, pure.} = object
     nLength*: int32
@@ -478,7 +481,7 @@ type
 
   PSockAddr = ptr SockAddr
 
-  InAddr* {.importc: "IN_ADDR", header: "winsock2.h".} = object
+  InAddr* {.importc: "IN_ADDR", header: "winsock2.h", union.} = object
     s_addr*: uint32  # IP address
 
   Sockaddr_in* {.importc: "SOCKADDR_IN",
@@ -667,7 +670,7 @@ proc getaddrinfo*(nodename, servname: cstring, hints: ptr AddrInfo,
                   res: var ptr AddrInfo): cint {.
   stdcall, importc: "getaddrinfo", dynlib: ws2dll.}
 
-proc freeaddrinfo*(ai: ptr AddrInfo) {.
+proc freeAddrInfo*(ai: ptr AddrInfo) {.
   stdcall, importc: "freeaddrinfo", dynlib: ws2dll.}
 
 proc inet_ntoa*(i: InAddr): cstring {.
@@ -718,12 +721,13 @@ const
 
 # Error Constants
 const
-  ERROR_FILE_NOT_FOUND* = 2
+  ERROR_FILE_NOT_FOUND* = 2 ## https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
   ERROR_PATH_NOT_FOUND* = 3
   ERROR_ACCESS_DENIED* = 5
   ERROR_NO_MORE_FILES* = 18
   ERROR_LOCK_VIOLATION* = 33
   ERROR_HANDLE_EOF* = 38
+  ERROR_FILE_EXISTS* = 80
   ERROR_BAD_ARGUMENTS* = 165
 
 proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,
@@ -927,6 +931,9 @@ proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   lpKernelTime, lpUserTime: var FILETIME): WINBOOL {.stdcall,
   dynlib: "kernel32", importc: "GetProcessTimes".}
 
+proc getSystemTimePreciseAsFileTime*(lpSystemTimeAsFileTime: var FILETIME) {.
+  importc: "GetSystemTimePreciseAsFileTime", dynlib: "kernel32", stdcall, sideEffect.}
+
 type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
                       stringBufSize: int32): cstring {.gcsafe, stdcall, tags: [].}
 
@@ -1030,7 +1037,7 @@ const
   PROCESS_QUERY_LIMITED_INFORMATION* = 0x00001000'i32
   PROCESS_SET_LIMITED_INFORMATION* = 0x00002000'i32
 type
-  WAITORTIMERCALLBACK* = proc(para1: pointer, para2: int32): void {.stdcall.}
+  WAITORTIMERCALLBACK* = proc(para1: pointer, para2: int32) {.stdcall.}
 
 proc postQueuedCompletionStatus*(CompletionPort: Handle,
                                 dwNumberOfBytesTransferred: DWORD,
@@ -1112,7 +1119,7 @@ else:
        {.stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}
 
 type
-  LPFIBER_START_ROUTINE* = proc (param: pointer): void {.stdcall.}
+  LPFIBER_START_ROUTINE* = proc (param: pointer) {.stdcall.}
 
 const
   FIBER_FLAG_FLOAT_SWITCH* = 0x01
@@ -1121,8 +1128,8 @@ proc CreateFiber*(stackSize: int, fn: LPFIBER_START_ROUTINE, param: pointer): po
 proc CreateFiberEx*(stkCommit: int, stkReserve: int, flags: int32, fn: LPFIBER_START_ROUTINE, param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc ConvertThreadToFiber*(param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc ConvertThreadToFiberEx*(param: pointer, flags: int32): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
-proc DeleteFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
-proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc DeleteFiber*(fiber: pointer) {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc SwitchToFiber*(fiber: pointer) {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "windows.h".}
 
 proc toFILETIME*(t: int64): FILETIME =
@@ -1139,7 +1146,7 @@ proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
 type
   # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid_identifier_authority
   SID_IDENTIFIER_AUTHORITY* {.importc, header: "<windows.h>".} = object
-    value* {.importc: "Value"}: array[6, BYTE]
+    value* {.importc: "Value".}: array[6, BYTE]
   # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid
   SID* {.importc, header: "<windows.h>".} = object
     Revision: BYTE
