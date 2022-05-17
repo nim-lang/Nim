@@ -2792,8 +2792,8 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if sfMainModule in m.module.flags:
     # Add global destructors to the module.
     # This must come before the last call to `myProcess`.
-    for destructorCall in graph.globalDestructors:
-      n.add destructorCall
+    for i in countdown(high(graph.globalDestructors), 0):
+      n.add graph.globalDestructors[i]
   # Process any nodes left over from the last call to `myClose`.
   result = myProcess(b, n)
   # Some codegen is different (such as no stacktraces; see `initProcOptions`)
