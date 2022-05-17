@@ -483,7 +483,11 @@ func `?`*(u: Uri, query: openArray[(string, string)]): Uri =
     let foo = parseUri("https://example.com") / "foo" ? {"bar": "qux"}
     assert $foo == "https://example.com/foo?bar=qux"
   result = u
-  result.query = encodeQuery(query)
+  # Makes sure to keep previous query if found
+  if result.query != "":
+    result.query = result.query & "&" & encodeQuery(query)
+  else:
+    result.query = encodeQuery(query)
 
 func `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.

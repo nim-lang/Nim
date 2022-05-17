@@ -50,6 +50,7 @@ template main() =
       let str = "http://localhost/"
       let test = parseUri(str)
       doAssert test.path == "/"
+      doAssert test.query == ""
 
     block:
       let str = "http://localhost:8080/test"
@@ -284,6 +285,16 @@ template main() =
     block:
       var foo = parseUri("http://example.com") / "foo" ? {"do": "do", "bar": ""}
       var foo1 = parseUri("http://example.com/foo?do=do&bar")
+      doAssert foo == foo1
+    block:
+      # Test multiple query modifications
+      var foo = parseUri("http://example.com") / "foo" ? {"bar": "1"} ? {"baz": "qux"}
+      var foo1 = parseUri("http://example.com/foo?bar=1&baz=qux")
+      doAssert foo == foo1
+    block:
+      # Test empty query passed
+      var foo = parseUri("http://example.com") / "foo" ? {"": ""}
+      var foo1 = parseUri("http://example.com/foo?")
       doAssert foo == foo1
 
   block: # getDataUri, dataUriBase64
