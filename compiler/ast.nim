@@ -576,8 +576,12 @@ type
 
   TTypeFlags* = set[TTypeFlag]
 
-  TSymKind* = enum        # the different symbols (start with the prefix sk);
-                          # order is important for the documentation generator!
+  TSymKind* = enum
+    # Contributors:
+    # Start new fields with the prefix 'sk'.
+    # The order of this enum *MUST* not change. Other modules such as the doc
+    # generator and macros depend on the order.
+    # When extending this enum, also extend `macros.NimSymKind`.
     skUnknown,            # unknown symbol: used for parsing assembler blocks
                           # and first phase symbol lookup in generics
     skConditional,        # symbol for the preprocessor (may become obsolete)
