@@ -485,7 +485,8 @@ func `?`*(u: Uri, query: openArray[(string, string)]): Uri =
   result = u
   # Makes sure to keep previous query if found
   if result.query != "":
-    result.query = result.query & "&" & encodeQuery(query)
+    result.query.add '&'
+    result.query.add encodeQuery(query)
   else:
     result.query = encodeQuery(query)
 
