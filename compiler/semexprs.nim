@@ -645,7 +645,7 @@ proc fixAbstractType(c: PContext, n: PNode) =
         skipTypes(it.typ, abstractVar).kind notin {tyOpenArray, tyVarargs}:
       if skipTypes(it[1].typ, abstractVar).kind in
             {tyNil, tyTuple, tySet} or it[1].isArrayConstr:
-        var s = skipTypes(it.typ, abstractVar)
+        var s = skipTypes(it.typ, abstractVar + tyUserTypeClasses)
         if s.kind != tyUntyped:
           changeType(c, it[1], s, check=true)
         n[i] = it[1]
@@ -1434,8 +1434,10 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         # is the access to a public field or in the same module or in a friend?
         markUsed(c, n[1].info, f)
         onUse(n[1].info, f)
+        let info = n[1].info
         n[0] = makeDeref(n[0])
         n[1] = newSymNode(f) # we now have the correct field
+        n[1].info = info # preserve the original info
         n.typ = f.typ
         if check == nil:
           result = n

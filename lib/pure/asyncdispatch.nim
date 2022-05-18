@@ -123,15 +123,42 @@
 ##   if future.failed:
 ##     # Handle exception
 ##
-##
 ## Discarding futures
 ## ==================
 ##
-## Futures should **never** be discarded. This is because they may contain
-## errors. If you do not care for the result of a Future then you should
-## use the `asyncCheck` procedure instead of the `discard` keyword. Note
-## however that this does not wait for completion, and you should use
-## `waitFor` for that purpose.
+## Futures should **never** be discarded directly because they may contain
+## errors. If you do not care for the result of a Future then you should use
+## the `asyncCheck` procedure instead of the `discard` keyword. Note that this
+## does not wait for completion, and you should use `waitFor` or `await` for that purpose.
+##
+## .. note:: `await` also checks if the future fails, so you can safely discard
+##   its result.
+##
+## Handling futures
+## ================
+##
+## There are many different operations that apply to a future.
+## The three primary high-level operations are `asyncCheck`,
+## `waitFor`, and `await`.
+##
+## * `asyncCheck`: Raises an exception if the future fails. It neither waits
+##   for the future to finish nor returns the result of the future.
+## * `waitFor`: Polls the event loop and blocks the current thread until the
+##   future finishes. This is often used to call an async procedure from a
+##   synchronous context and should never be used in an `async` proc.
+## * `await`: Pauses execution in the current async procedure until the future
+##   finishes. While the current procedure is paused, other async procedures will
+##   continue running. Should be used instead of `waitFor` in an async
+##   procedure.
+##
+## Here is a handy quick reference chart showing their high-level differences:
+## ==============  =====================   =======================
+## Procedure       Context                 Blocking
+## ==============  =====================   =======================
+## `asyncCheck`    non-async and async     non-blocking
+## `waitFor`       non-async               blocks current thread
+## `await`         async                   suspends current proc
+## ==============  =====================   =======================
 ##
 ## Examples
 ## ========
