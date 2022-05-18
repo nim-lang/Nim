@@ -2387,7 +2387,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, result[^1].info, typ))
       asgnExpr.typ = typ
       var hasDefault: bool
-      asgnExpr.sons.add defaultFieldsForTheUninitialized(c.graph, typ.skipTypes({tyGenericInst, tyAlias, tySink}).n, hasDefault)
+      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, typ.skipTypes({tyGenericInst, tyAlias, tySink}).n, hasDefault)
       if hasDefault:
         result = semObjConstr(c, asgnExpr, flags)
   else:

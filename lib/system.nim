@@ -569,6 +569,11 @@ when notJSnotNims and not defined(nimSeqsV2):
   template space(s: PGenericSeq): int {.dirty.} =
     s.reserved and not (seqShallowFlag or strlitFlag)
 
+
+proc newDefaultArray*[T](N: static int, y: T): array[N, T] =
+  for i in 0..N-1:
+    result[i] = y
+
 when notJSnotNims:
   include "system/hti"
 

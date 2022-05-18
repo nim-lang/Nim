@@ -1,6 +1,6 @@
 discard """
   matrix: "-d:nimRangeDefault"
-  targets: "c js"
+  targets: "c cpp js"
 """
 
 import times
@@ -128,14 +128,14 @@ block: # array
   var x {.noinit.}: array[10, Object]
   discard x
 
-block: # tuple
-  var x: ObjectTuple
-  doAssert x.base.value == 12
-  doAssert x.typ == 0
-  doAssert x.obj.time == 1.2
-  doAssert x.obj.date == 0
-  doAssert x.obj.scale == 1
-  doAssert x.obj.value == 12
+# block: # tuple
+#   var x: ObjectTuple
+#   doAssert x.base.value == 12
+#   doAssert x.typ == 0
+#   doAssert x.obj.time == 1.2
+#   doAssert x.obj.date == 0
+#   doAssert x.obj.scale == 1
+#   doAssert x.obj.value == 12
 
 type
   ObjectArray = object

@@ -927,141 +927,6 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
     else:
       result = n
 
-import nimsets
-
-proc caseBranchMatchesExpr(branch, matched: PNode): bool =
-  for i in 0 ..< branch.len-1:
-    if branch[i].kind == nkRange:
-      if overlap(branch[i], matched): return true
-    elif exprStructuralEquivalent(branch[i], matched):
-      return true
-
-proc pickCaseBranch(caseExpr, matched: PNode): int =
-  let endsWithElse = caseExpr[^1].kind == nkElse
-  for i in 1..<caseExpr.len - endsWithElse.int:
-    if caseExpr[i].caseBranchMatchesExpr(matched):
-      return i
-  if endsWithElse:
-    return caseExpr.len - 1
-
-proc defaultFieldsForTheUninitialized*(graph: ModuleGraph, recNode: PNode, hasDefault: var bool): seq[PNode] =
-  case recNode.kind
-  of nkRecList:
-    for field in recNode:
-      result.add defaultFieldsForTheUninitialized(graph, field, hasDefault)
-  of nkRecCase:
-    let discriminator = recNode[0]
-    var selectedBranch: int
-    let defaultValue = discriminator.sym.ast
-    if defaultValue == nil:
-      # None of the branches were explicitly selected by the user and no value
-      # was given to the discrimator. We can assume that it will be initialized
-      # to zero and this will select a particular branch as a result:
-      selectedBranch = recNode.pickCaseBranch newIntNode(nkIntLit#[c.graph]#, 0)
-    else: # Try to use default value
-      selectedBranch = recNode.pickCaseBranch defaultValue
-      result.add newTree(nkExprColonExpr, discriminator, defaultValue)
-    result.add defaultFieldsForTheUninitialized(graph, recNode[selectedBranch][^1], hasDefault)
-  of nkSym:
-    let field = recNode.sym
-    let recType = recNode.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-    if field.ast != nil: #Try to use default value
-      result.add newTree(nkExprColonExpr, recNode, field.ast)
-      hasDefault = true
-    elif recType.kind == tyObject:
-      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, recNode.typ))
-      asgnExpr.typ = recNode.typ
-      asgnExpr.flags.incl nfUseDefaultField
-      asgnExpr.sons.add defaultFieldsForTheUninitialized(graph, recType.n, hasDefault)
-      result.add newTree(nkExprColonExpr, recNode, asgnExpr)
-    elif recType.kind == tyArray and recType[1].skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject:
-      var asgnExpr = newNodeI(nkBracket, recNode.info)
-      asgnExpr.typ = recNode.typ
-      asgnExpr.flags.incl nfUseDefaultField
-      let defaults = defaultFieldsForTheUninitialized(graph, recType[1].skipTypes({tyGenericInst, tyAlias, tySink}).n, hasDefault)
-      var objExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, recType[1]))
-      objExpr.typ = recType[1].skipTypes({tyGenericInst, tyAlias, tySink})
-      objExpr.sons.add defaults # todo create clean?
-
-      # let node = newNode(nkIntLit)
-      # node.intVal = toInt(lengthOrd(graph.config, recType))
-      # let syms = getCompilerProc(graph, "newDefaultArray")
-      # # debug syms
-      # # debug syms.typ
-      # var asgnExpr = newTree(nkCall, newSymNode(getCompilerProc(graph, "newDefaultArray")),
-      #         node,
-      #         objExpr
-      #         )
-      # asgnExpr.typ = recNode.typ
-      # asgnExpr.flags.incl nfUseDefaultField
-
-      asgnExpr.sons.setLen(toInt(lengthOrd(graph.config, recType)))
-      for i in 0..<asgnExpr.sons.len:
-        asgnExpr[i] = objExpr
-      result.add newTree(nkExprColonExpr, recNode,
-        asgnExpr)
-    elif recType.kind == tyTuple:
-      # doAssert false
-      discard
-    elif recType.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
-      let asgnExpr = newIntTypeNode(int64(0), recType)
-      asgnExpr.flags.incl nfUseDefaultField
-      result.add newTree(nkExprColonExpr, recNode,
-              asgnExpr)
-    elif recType.kind in tyFloat..tyFloat64:
-      let asgnExpr = newFloatTypeNode(BiggestFloat(0.0), recType)
-      asgnExpr.flags.incl nfUseDefaultField
-      result.add newTree(nkExprColonExpr, recNode,
-              asgnExpr)
-
-  else:
-    assert false
-
-proc defaultNodeField*(graph: ModuleGraph, a: PNode): PNode =
-  let aTyp = a.typ
-  var hasDefault: bool
-  if aTyp.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject:
-    var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp))
-    asgnExpr.typ = aTyp
-    asgnExpr.sons.add defaultFieldsForTheUninitialized(graph, aTyp.skipTypes({tyGenericInst, tyAlias, tySink}).n, hasDefault)
-    if hasDefault:
-      result = asgnExpr
-  elif aTyp.kind == tyArray and aTyp[1].skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject:
-    var asgnExpr = newNodeI(nkBracket, a.info)
-    asgnExpr.typ = aTyp
-    let defaults = defaultFieldsForTheUninitialized(graph, aTyp[1].skipTypes({tyGenericInst, tyAlias, tySink}).n, hasDefault)
-    for i in 0..<toInt(lengthOrd(graph.config, aTyp)):
-      var objExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp[1]))
-      objExpr.typ = aTyp[1]
-      objExpr.sons.add defaults # todo create clean?
-      asgnExpr.add objExpr
-    if hasDefault:
-      result = asgnExpr
-  elif aTyp.kind == tyTuple:
-    var tupleExpr = newNodeI(nkTupleConstr, a.info)
-    tupleExpr.typ = aTyp
-    for s in aTyp.sons:
-      let sType = s.skipTypes({tyGenericInst, tyAlias, tySink})
-      if sType.kind == tyObject:
-        var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, s))
-        asgnExpr.typ = s
-        asgnExpr.sons.add defaultFieldsForTheUninitialized(graph, sType.n, hasDefault)
-        tupleExpr.add asgnExpr
-      elif sType.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
-        let asgnExpr = newIntTypeNode(int64(0), sType)
-        asgnExpr.flags.incl nfUseDefaultField
-        tupleExpr.add asgnExpr
-      elif sType.kind in tyFloat..tyFloat64:
-        let asgnExpr =
-          if sType.kind == tyFloat32:
-            newFloatNode(nkFloat32Lit, BiggestFloat(0.0))
-          else:
-            newFloatNode(nkFloatLit, BiggestFloat(0.0))
-        asgnExpr.flags.incl nfUseDefaultField
-        tupleExpr.add asgnExpr
-    if hasDefault:
-      result = tupleExpr
-
 proc transform(c: PTransf, n: PNode): PNode =
   when false:
     var oldDeferAnchor: PNode
@@ -1071,19 +936,19 @@ proc transform(c: PTransf, n: PNode): PNode =
       oldDeferAnchor = c.deferAnchor
       c.deferAnchor = n
 
-  if c.genResult:
-    c.genResult = false
-    result = newNodeIT(nkStmtList, n.info, nil)
-    let toInit = c.getCurrOwner().ast[resultPos]
+  # if c.genResult:
+  #   c.genResult = false
+  #   result = newNodeIT(nkStmtList, n.info, nil)
+  #   let toInit = c.getCurrOwner().ast[resultPos]
 
-    if toInit.typ != nil:
-      let field = defaultNodeField(c.graph, toInit)
+  #   if toInit.typ != nil:
+  #     let field = defaultNodeField(c.graph, toInit)
 
-      if field != nil:
-        result.add newTree(nkAsgn, toInit, field)
+  #     if field != nil:
+  #       result.add newTree(nkAsgn, toInit, field)
 
-    result.add transform(c, n)
-    return result
+  #   result.add transform(c, n)
+  #   return result
 
   case n.kind
   of nkSym:

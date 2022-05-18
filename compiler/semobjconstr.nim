@@ -91,15 +91,6 @@ proc semConstrField(c: PContext, flags: TExprFlags,
     assignment.flags.incl nfSem
     return initValue
 
-proc caseBranchMatchesExpr(branch, matched: PNode): bool =
-  for i in 0..<branch.len-1:
-    if branch[i].kind == nkRange:
-      if overlap(branch[i], matched): return true
-    elif exprStructuralEquivalent(branch[i], matched):
-      return true
-
-  return false
-
 proc branchVals(c: PContext, caseNode: PNode, caseIdx: int,
                 isStmtBranch: bool): IntSet =
   if caseNode[caseIdx].kind == nkOfBranch:

@@ -600,7 +600,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       # if {sfThread, sfNoInit} * v.flags != {}: # todo var m1, m2 {threadvar}
       #   discard # todo init threadvar properly
       # else:
-      let field = defaultNodeField(c.graph, a[^2])
+      let field = defaultNodeField(c, a[^2])
       if field != nil:
         a[^1] = field
     if a[^1].kind != nkEmpty:
