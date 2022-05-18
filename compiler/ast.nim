@@ -502,6 +502,7 @@ type
     nfLastRead  # this node is a last read
     nfFirstWrite# this node is a first write
     nfHasComment # node has a comment
+    nfUseDefaultField
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 45)
@@ -1451,6 +1452,17 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
     result = newNode(nkIntLit)
   else: doAssert false, $kind
   result.intVal = intVal
+  result.typ = typ
+
+proc newFloatTypeNode*(floatVal: BiggestFloat, typ: PType): PNode =
+  let kind = skipTypes(typ, abstractVarRange).kind
+  case kind
+  of tyFloat32:
+    result = newNode(nkFloat32Lit)
+  of tyFloat64, tyFloat:
+    result = newNode(nkFloatLit)
+  else: doAssert false, $kind
+  result.floatVal = floatVal
   result.typ = typ
 
 proc newIntTypeNode*(intVal: Int128, typ: PType): PNode =

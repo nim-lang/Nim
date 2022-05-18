@@ -10,6 +10,8 @@
 # This include file implements the semantic checking for magics.
 # included from sem.nim
 
+proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
+
 proc semAddrArg(c: PContext; n: PNode): PNode =
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
@@ -454,6 +456,95 @@ proc semPrivateAccess(c: PContext, n: PNode): PNode =
   c.currentScope.allowPrivateAccess.add t.sym
   result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
 
+
+# import nimsets
+
+
+
+# proc caseBranchMatchesExpr2(branch, matched: PNode): bool =
+#   for i in 0 ..< branch.len-1:
+#     if branch[i].kind == nkRange:
+#       if overlap(branch[i], matched): return true
+#     elif exprStructuralEquivalent(branch[i], matched):
+#       return true
+
+# proc pickCaseBranch2(caseExpr, matched: PNode): int =
+#   let endsWithElse = caseExpr[^1].kind == nkElse
+#   for i in 1..<caseExpr.len - endsWithElse.int:
+#     if caseExpr[i].caseBranchMatchesExpr2(matched):
+#       return i
+#   if endsWithElse:
+#     return caseExpr.len - 1
+
+# proc defaultFieldsForTheUninitialized2*(c: PContext, recNode: PNode, hasDefault: var bool): seq[PNode] =
+#   case recNode.kind
+#   of nkRecList:
+#     for field in recNode:
+#       result.add defaultFieldsForTheUninitialized2(c, field, hasDefault)
+#   of nkRecCase:
+#     let discriminator = recNode[0]
+#     var selectedBranch: int
+#     let defaultValue = discriminator.sym.ast
+#     if defaultValue == nil:
+#       # None of the branches were explicitly selected by the user and no value
+#       # was given to the discrimator. We can assume that it will be initialized
+#       # to zero and this will select a particular branch as a result:
+#       selectedBranch = recNode.pickCaseBranch2 newIntNode(nkIntLit#[c.graph]#, 0)
+#     else: # Try to use default value
+#       selectedBranch = recNode.pickCaseBranch2 defaultValue
+#       result.add newTree(nkExprColonExpr, discriminator, defaultValue)
+#     result.add defaultFieldsForTheUninitialized2(c, recNode[selectedBranch][^1], hasDefault)
+#   of nkSym:
+#     let field = recNode.sym
+#     let recType = recNode.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+#     if field.ast != nil: #Try to use default value
+#       result.add newTree(nkExprColonExpr, recNode, field.ast)
+#       hasDefault = true
+#     elif recType.kind == tyObject:
+#       var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, recNode.typ))
+#       asgnExpr.typ = recNode.typ
+#       asgnExpr.flags.incl nfUseDefaultField
+#       asgnExpr.sons.add defaultFieldsForTheUninitialized2(c, recType.n, hasDefault)
+#       result.add newTree(nkExprColonExpr, recNode, asgnExpr)
+#     elif recType.kind == tyArray and recType[1].skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject:
+#       let defaults = defaultFieldsForTheUninitialized2(c, recType[1].skipTypes({tyGenericInst, tyAlias, tySink}).n, hasDefault)
+#       var objExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, recType[1]))
+#       objExpr.typ = recType[1].skipTypes({tyGenericInst, tyAlias, tySink})
+#       objExpr.sons.add defaults # todo create clean?
+
+#       let node = newNode(nkIntLit)
+#       node.intVal = toInt(lengthOrd(c.graph.config, recType))
+#       var asgnExpr = newTree(nkCall, newSymNode(getSysSym(c.graph, recNode.info, "newDefaultArray"), recNode.info),
+#       # var asgnExpr = newTree(nkCall, newSymNode(getCompilerProc(c.graph, "newDefaultArray")),
+#               node,
+#               objExpr
+#               )
+#       asgnExpr.typ = recNode.typ
+#       asgnExpr.flags.incl nfUseDefaultField
+
+#       # asgnExpr.sons.setLen(toInt(lengthOrd(c, recType)))
+#       # for i in 0..<asgnExpr.sons.len:
+#       #   asgnExpr[i] = objExpr
+#       let asgnExpr2 = semExprWithType(c, asgnExpr)
+#       result.add newTree(nkExprColonExpr, recNode, asgnExpr2)
+
+#     elif recType.kind == tyTuple:
+#       # doAssert false
+#       discard
+#     elif recType.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
+#       let asgnExpr = newIntTypeNode(int64(0), recType)
+#       asgnExpr.flags.incl nfUseDefaultField
+#       result.add newTree(nkExprColonExpr, recNode,
+#               asgnExpr)
+#     elif recType.kind in tyFloat..tyFloat64:
+#       let asgnExpr = newFloatTypeNode(BiggestFloat(0.0), recType)
+#       asgnExpr.flags.incl nfUseDefaultField
+#       result.add newTree(nkExprColonExpr, recNode,
+#               asgnExpr)
+
+#   else:
+#     assert false
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -512,6 +603,23 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result = n
     else:
       result = plugin(c, n)
+  of mNew:
+    result = n
+    let typ = result[^1].typ
+    if typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyRef and typ.skipTypes({tyGenericInst, tyAlias, tySink})[0].kind == tyObject:
+      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, result[^1].info, typ))
+      asgnExpr.typ = typ
+      var hasDefault: bool
+      var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
+      while true:
+        asgnExpr.sons.add defaultFieldsForTheUninitialized(c.graph, t.n, hasDefault)
+        let base = t[0]
+        if base == nil:
+          break
+        t = skipTypes(base, skipPtrs)
+
+      if hasDefault: # todo apply default
+        result = newTree(nkAsgn, result[^1], asgnExpr)
   of mNewFinalize:
     # Make sure the finalizer procedure refers to a procedure
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:

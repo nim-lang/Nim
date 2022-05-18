@@ -777,14 +777,21 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     var a: PNode
     if father.kind != nkRecList and n.len >= 4: a = newNodeI(nkRecList, n.info)
     else: a = newNodeI(nkEmpty, n.info)
-    if n[^1].kind != nkEmpty:
-      localError(c.config, n[^1].info, errInitHereNotAllowed)
     var typ: PType
-    if n[^2].kind == nkEmpty:
+    var hasDefaultField = n[^1].kind != nkEmpty
+    if hasDefaultField:
+      n[^1] = semConstExpr(c, n[^1])
+      typ = n[^1].typ
+      propagateToOwner(rectype, typ)
+    elif n[^2].kind == nkEmpty:
       localError(c.config, n.info, errTypeExpected)
       typ = errorType(c)
     else:
       typ = semTypeNode(c, n[^2], nil)
+      if c.graph.config.isDefined("nimRangeDefault") and typ.skipTypes(abstractInst).kind in {tyRange, tyOrdinal}:
+        n[^1] = newIntNode(nkIntLit, firstOrd(c.config, typ))
+        n[^1].typ = typ
+        hasDefaultField = true
       propagateToOwner(rectype, typ)
     var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner
                      else: rectype.sym
@@ -806,8 +813,12 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       inc(pos)
       if containsOrIncl(check, f.name.id):
         localError(c.config, info, "attempt to redefine: '" & f.name.s & "'")
-      if a.kind == nkEmpty: father.add newSymNode(f)
-      else: a.add newSymNode(f)
+      let fSym = newSymNode(f)
+      if hasDefaultField:
+        fSym.sym.ast = n[^1]
+        fSym.sym.ast.flags.incl nfUseDefaultField
+      if a.kind == nkEmpty: father.add fSym
+      else: a.add fSym
       styleCheckDef(c.config, f)
       onDef(f.info, f)
     if a.kind != nkEmpty: father.add a

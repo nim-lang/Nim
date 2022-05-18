@@ -897,8 +897,6 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
           rawAddSon(typ, result.typ)
           result.typ = typ
 
-proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
-
 proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
                          t: PType): TCandidate =
   initCandidate(c, result, t)
@@ -2380,6 +2378,16 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSizeOf:
     markUsed(c, n.info, s)
     result = semSizeof(c, setMs(n, s))
+  of mDefault:
+    result = semDirectOp(c, n, flags)
+    let typ = result[^1].typ.skipTypes({tyTypeDesc})
+    if typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject:
+      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, result[^1].info, typ))
+      asgnExpr.typ = typ
+      var hasDefault: bool
+      asgnExpr.sons.add defaultFieldsForTheUninitialized(c.graph, typ.skipTypes({tyGenericInst, tyAlias, tySink}).n, hasDefault)
+      if hasDefault:
+        result = semObjConstr(c, asgnExpr, flags)
   else:
     result = semDirectOp(c, n, flags)
 
