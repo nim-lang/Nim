@@ -437,7 +437,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
           if pkg.allowFailure:
             inc r.passed
             inc r.failedButAllowed
-          addResult(r, test, targetC, "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
+          addResult(r, test, targetC, "", "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
           continue
         outp
 
@@ -450,21 +450,21 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
         discard tryCommand("nimble install --depsOnly -y", maxRetries = 3)
       discard tryCommand(pkg.cmd, reFailed = reBuildFailed)
       inc r.passed
-      r.addResult(test, targetC, "", "", reSuccess, allowFailure = pkg.allowFailure)
+      r.addResult(test, targetC, "", "", "", reSuccess, allowFailure = pkg.allowFailure)
 
     errors = r.total - r.passed
     if errors == 0:
-      r.addResult(packageFileTest, targetC, "", "", reSuccess)
+      r.addResult(packageFileTest, targetC, "", "", "", reSuccess)
     else:
-      r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
+      r.addResult(packageFileTest, targetC, "", "", "", reBuildFailed)
 
   except JsonParsingError:
     errors = 1
-    r.addResult(packageFileTest, targetC, "", "Invalid package file", reBuildFailed)
+    r.addResult(packageFileTest, targetC, "", "", "Invalid package file", reBuildFailed)
     raise
   except ValueError:
     errors = 1
-    r.addResult(packageFileTest, targetC, "", "Unknown package", reBuildFailed)
+    r.addResult(packageFileTest, targetC, "", "", "Unknown package", reBuildFailed)
     raise # bug #18805
   finally:
     if errors == 0: removeDir(packagesDir)
