@@ -27,13 +27,13 @@ template main() =
   const tests = ["", "abc", "xyz", "man", "leasure.", "sure.", "easure.",
                  "asure.", longText, testInputExpandsTo76, testInputExpands]
 
-  doAssert encodeMIME("foobarbaz", lineLen=4) == "Zm9v\r\nYmFy\r\nYmF6"
+  doAssert encodeMime("foobarbaz", lineLen=4) == "Zm9v\r\nYmFy\r\nYmF6"
   doAssert decode("Zm9v\r\nYmFy\r\nYmF6") == "foobarbaz"
 
   for t in items(tests):
     doAssert decode(encode(t)) == t
-    doAssert decode(encodeMIME(t, lineLen=40)) == t
-    doAssert decode(encodeMIME(t, lineLen=76)) == t
+    doAssert decode(encodeMime(t, lineLen=40)) == t
+    doAssert decode(encodeMime(t, lineLen=76)) == t
 
   doAssertRaises(ValueError): discard decode("SGVsbG\x008gV29ybGQ=")
 

@@ -1505,23 +1505,23 @@ macro expandMacros*(body: typed): untyped =
   result = body
 
 proc extractTypeImpl(n: NimNode): NimNode =
-    ## attempts to extract the type definition of the given symbol
-    case n.kind
-    of nnkSym: # can extract an impl
-      result = n.getImpl.extractTypeImpl()
-    of nnkObjectTy, nnkRefTy, nnkPtrTy: result = n
-    of nnkBracketExpr:
-      if n.typeKind == ntyTypeDesc:
-        result = n[1].extractTypeImpl()
-      else:
-        doAssert n.typeKind == ntyGenericInst
-        result = n[0].getImpl()
-    of nnkTypeDef:
-      result = n[2]
-    else: error("Invalid node to retrieve type implementation of: " & $n.kind)
+  ## attempts to extract the type definition of the given symbol
+  case n.kind
+  of nnkSym: # can extract an impl
+    result = n.getImpl.extractTypeImpl()
+  of nnkObjectTy, nnkRefTy, nnkPtrTy: result = n
+  of nnkBracketExpr:
+    if n.typeKind == ntyTypeDesc:
+      result = n[1].extractTypeImpl()
+    else:
+      doAssert n.typeKind == ntyGenericInst
+      result = n[0].getImpl()
+  of nnkTypeDef:
+    result = n[2]
+  else: error("Invalid node to retrieve type implementation of: " & $n.kind)
 
 proc customPragmaNode(n: NimNode): NimNode =
-  expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkCheckedFieldExpr})
+  expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkType, nnkCheckedFieldExpr})
   let
     typ = n.getTypeInst()
 
@@ -1532,7 +1532,9 @@ proc customPragmaNode(n: NimNode): NimNode =
       if kind(typ[1]) == nnkBracketExpr: typ[1][0]
       else: typ[1]
     )
-    if impl[0].kind == nnkPragmaExpr:
+    if impl.kind == nnkNilLit:
+      return impl
+    elif impl[0].kind == nnkPragmaExpr:
       return impl[0][1]
     else:
       return impl[0] # handle types which don't have macro at all
@@ -1560,7 +1562,7 @@ proc customPragmaNode(n: NimNode): NimNode =
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
       let typ = typDef[2].extractTypeImpl()
-      typ.expectKind({nnkRefTy, nnkPtrTy, nnkObjectTy})
+      if typ.kind notin {nnkRefTy, nnkPtrTy, nnkObjectTy}: break
       let isRef = typ.kind in {nnkRefTy, nnkPtrTy}
       if isRef and typ[0].kind in {nnkSym, nnkBracketExpr}: # defines ref type for another object(e.g. X = ref X)
         typDef = getImpl(typ[0])

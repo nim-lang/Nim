@@ -26,27 +26,27 @@ else:
                              #include <sys/types.h>
                              #include <unistd.h>"""
 type
-  Fdset {.importc: "fd_set", header: platformHeaders, pure, final.} = object
+  FdSet {.importc: "fd_set", header: platformHeaders, pure, final.} = object
 var
   FD_SETSIZE {.importc: "FD_SETSIZE", header: platformHeaders.}: cint
 
-proc IOFD_SET(fd: SocketHandle, fdset: ptr Fdset)
+proc IOFD_SET(fd: SocketHandle, fdset: ptr FdSet)
      {.cdecl, importc: "FD_SET", header: platformHeaders, inline.}
-proc IOFD_CLR(fd: SocketHandle, fdset: ptr Fdset)
+proc IOFD_CLR(fd: SocketHandle, fdset: ptr FdSet)
      {.cdecl, importc: "FD_CLR", header: platformHeaders, inline.}
-proc IOFD_ZERO(fdset: ptr Fdset)
+proc IOFD_ZERO(fdset: ptr FdSet)
      {.cdecl, importc: "FD_ZERO", header: platformHeaders, inline.}
 
 when defined(windows):
-  proc IOFD_ISSET(fd: SocketHandle, fdset: ptr Fdset): cint
+  proc IOFD_ISSET(fd: SocketHandle, fdset: ptr FdSet): cint
        {.stdcall, importc: "FD_ISSET", header: platformHeaders, inline.}
-  proc ioselect(nfds: cint, readFds, writeFds, exceptFds: ptr Fdset,
+  proc ioselect(nfds: cint, readFds, writeFds, exceptFds: ptr FdSet,
                 timeout: ptr Timeval): cint
        {.stdcall, importc: "select", header: platformHeaders.}
 else:
-  proc IOFD_ISSET(fd: SocketHandle, fdset: ptr Fdset): cint
+  proc IOFD_ISSET(fd: SocketHandle, fdset: ptr FdSet): cint
        {.cdecl, importc: "FD_ISSET", header: platformHeaders, inline.}
-  proc ioselect(nfds: cint, readFds, writeFds, exceptFds: ptr Fdset,
+  proc ioselect(nfds: cint, readFds, writeFds, exceptFds: ptr FdSet,
                 timeout: ptr Timeval): cint
        {.cdecl, importc: "select", header: platformHeaders.}
 

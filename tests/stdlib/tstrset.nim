@@ -50,7 +50,7 @@ proc search(r: PRadixNode, s: string): PRadixNode =
 proc contains*(r: PRadixNode, s: string): bool =
   return search(r, s) != nil
 
-proc testOrincl*(r: var PRadixNode, s: string): bool =
+proc testOrIncl*(r: var PRadixNode, s: string): bool =
   nil
 
 proc incl*(r: var PRadixNode, s: string) = discard testOrIncl(r, s)

@@ -633,8 +633,8 @@ when useNimNetLite:
       INET_ADDRSTRLEN = 16
       INET6_ADDRSTRLEN = 46 # it's actually 46 in both cases
 
-  proc sockAddrToStr(sa: ptr Sockaddr): string {.noinit.} =
-    let af_family = sa.sa_family 
+  proc sockAddrToStr(sa: ptr SockAddr): string {.noinit.} =
+    let af_family = sa.sa_family
     var nl, v4Slice: cint
     var si_addr: ptr InAddr
 

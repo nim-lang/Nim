@@ -39,7 +39,7 @@ pkg "arraymancer", "nim c tests/tests_cpu.nim"
 pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim", allowFailure = true
 pkg "asyncthreadpool"
 pkg "awk"
-pkg "bigints", url = "https://github.com/Araq/nim-bigints"
+pkg "bigints"
 pkg "binaryheap", "nim c -r binaryheap.nim"
 pkg "BipBuffer"
 pkg "blscurve", allowFailure = true # pending https://github.com/status-im/nim-blscurve/issues/39
@@ -100,10 +100,10 @@ pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround need
 pkg "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", "nim c src/nimes.nim"
 pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
-pkg "nimgame2", "nim c -d:nimLegacyConvEnumEnum nimgame2/nimgame.nim"
+pkg "nimgame2", "nim c nimgame2/nimgame.nim"
   # XXX Doesn't work with deprecated 'randomize', will create a PR.
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
-pkg "nimlsp", allowFailure = true
+pkg "nimlsp"
 pkg "nimly", "nim c -r tests/test_readme_example.nim"
 pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
@@ -125,7 +125,7 @@ pkg "patty"
 pkg "pixie"
 pkg "plotly", "nim c examples/all.nim"
 pkg "pnm"
-pkg "polypbren"
+pkg "polypbren", allowFailure = true
 pkg "prologue", "nimble tcompile"
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim"
 pkg "pylib"

@@ -93,7 +93,7 @@ block: # "IpAddress/Sockaddr conversion"
     doAssert($ipaddrstr == $ipaddr_1)
 
     var sockaddr: Sockaddr_storage
-    var socklen: Socklen
+    var socklen: SockLen
     var ipaddr_2: IpAddress
     var port_2: Port
 

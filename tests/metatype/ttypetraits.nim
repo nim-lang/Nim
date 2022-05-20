@@ -1,6 +1,21 @@
 import typetraits
 import macros
 
+block: # toUnsigned, toSigned
+  var a1: toSigned(int16)
+  doAssert a1 is int16
+  var a2: toSigned(uint16)
+  doAssert $a2.typeof == "int16"
+  doAssert toSigned(uint32) is int32
+  doAssert uint64.toSigned is int64
+  doAssert int64.toSigned is int64
+  doAssert int64.toUnsigned is uint64
+  doAssert int.toUnsigned is uint
+  doAssert $uint.toUnsigned == "uint"
+  # disallowed for now
+  doAssert not compiles(toUnsigned(range[0..7]))
+  doAssert not compiles(toSigned(range[0..7]))
+
 block: # isNamedTuple
   type Foo1 = (a:1,).type
   type Foo2 = (Field0:1,).type
