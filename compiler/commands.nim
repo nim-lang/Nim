@@ -262,7 +262,6 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
-    of "v2", "generational": warningOptionNoop(arg)
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
     case arg.normalize
@@ -666,7 +665,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         unregisterArcOrc(conf)
         conf.selectedGC = gcRegions
         defineSymbol(conf.symbols, "gcregions")
-      of "v2": warningOptionNoop(arg)
       else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "warnings", "w":
     if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
