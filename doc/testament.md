@@ -112,7 +112,7 @@ Example "template" **to edit** and write a Testament unittest:
     exitcode: 0
 
     # Provide an `output` string to assert that the test prints to standard out
-    # exatly the expected string. Provide an `outputsub` string to assert that
+    # exactly the expected string. Provide an `outputsub` string to assert that
     # the string given here is a substring of the standard out output of the
     # test.
     output: ""
@@ -139,7 +139,7 @@ Example "template" **to edit** and write a Testament unittest:
     # Can be run in batch mode, or not.
     batchable: true
 
-    # Can be run Joined with other tests to run all togheter, or not.
+    # Can be run Joined with other tests to run all together, or not.
     joinable: true
 
     # On Linux 64-bit machines, whether to use Valgrind to check for bad memory

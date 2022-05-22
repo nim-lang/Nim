@@ -619,7 +619,7 @@ Time handling, especially the `Time` type are also covered by this rule.
 Existing, battle-tested modules stay
 ------------------------------------
 
-Reason: There is no benefit in moving them around just to fullfill some design
+Reason: There is no benefit in moving them around just to fullfil some design
 fashion as in "Nim's core MUST BE SMALL". If you don't like an existing module,
 don't import it. If a compilation target (e.g. JS) cannot support a module,
 document this limitation.
@@ -633,7 +633,7 @@ Syntactic helpers can start as experimental stdlib modules
 
 Reason: Generally speaking as external dependencies they are not exposed
 to enough users so that we can see if the shortcuts provide enough benefit
-or not. Many programmers avoid external dependencies, even moreso for
+or not. Many programmers avoid external dependencies, even more so for
 "tiny syntactic improvements". However, this is only true for really good
 syntactic improvements that have the potential to clean up other parts of
 the Nim library substantially. If in doubt, new stdlib modules should start
@@ -726,7 +726,7 @@ and the old code can be deprecated or it can be published as a Nimble package.
 
 Sometimes, a run-time breaking change is most desirable: For example, a string
 representation of a floating point number that "roundtrips" is much better than
-a string represenation that doesn't. These run-time breaking changes must start in the
+a string representation that doesn't. These run-time breaking changes must start in the
 state "opt-in" via a new `-d:nimPreviewX` or command line flag and then should become
 the new default later, in follow-up versions. This way users can track
 regressions more easily. ("git bisect" is not an acceptable alternative, that's for

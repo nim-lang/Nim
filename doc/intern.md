@@ -398,12 +398,12 @@ Runtime type information
 programming language:
 
 Garbage collection
-  The old GCs use the RTTI for traversing abitrary Nim types, but usually
+  The old GCs use the RTTI for traversing arbitrary Nim types, but usually
   only the `marker` field which contains a proc that does the traversal.
 
 Complex assignments
   Sequences and strings are implemented as
-  pointers to resizeable buffers, but Nim requires copying for
+  pointers to resizable buffers, but Nim requires copying for
   assignments. Apart from RTTI the compiler also generates copy procedures
   as a specialization.
 
@@ -524,7 +524,7 @@ This should produce roughly this code:
   proc add(x: int): tuple[prc, data: EnvX] =
     var ex: EnvX
     ex.x = x
-    result = (labmdaY, ex)
+    result = (lambdaY, ex)
 
   var tmp = add(2)
   var tmp2 = tmp.fn(4, tmp.data)

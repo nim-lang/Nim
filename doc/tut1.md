@@ -1685,7 +1685,7 @@ Tuple unpacking is also supported in for-loops:
     echo i, c
   # This will output: 0a; 1b; 2c
 
-Fields of tuples are always public, they don't need to be explicity
+Fields of tuples are always public, they don't need to be explicitly
 marked to be exported, unlike for example fields in an object type.
 
 

@@ -47,7 +47,7 @@ Options:
                         nimgrep --filenames "" DIRECTORY
                           # Note empty pattern "", lists all files in DIRECTORY
 
-* Interprete patterns:
+* Interpret patterns:
   --peg               PATTERN and PAT are Peg
   --re                PATTERN and PAT are regular expressions (default)
   --rex, -x           use the "extended" syntax for the regular expression

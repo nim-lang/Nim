@@ -502,7 +502,7 @@ The `Rune` type can represent any Unicode character.
 `Rune` is declared in the `unicode module <unicode.html>`_.
 
 A character literal that does not end in `'` is interpreted as `'` if there
-is a preceeding backtick token. There must be no whitespace between the preceeding
+is a preceding backtick token. There must be no whitespace between the preceding
 backtick token and the character literal. This special case ensures that a declaration
 like ``proc `'customLiteral`(s: string)`` is valid. ``proc `'customLiteral`(s: string)``
 is the same as ``proc `'\''customLiteral`(s: string)``.
@@ -567,7 +567,7 @@ be impossible -- `128` is not a valid `int8` value, only `-128` is.
 
 For the `unary_minus` rule there are further restrictions that are not covered
 in the formal grammar. For `-` to be part of the number literal its immediately
-preceeding character has to be in the
+preceding character has to be in the
 set `{' ', '\t', '\n', '\r', ',', ';', '(', '[', '{'}`. This set was designed to
 cover most cases in a natural manner.
 
@@ -2902,7 +2902,7 @@ the variable has been initialized and does not rely on syntactic properties:
     # use x
   ```
 
-`requiresInit` pragma can also be applyied to `distinct` types.
+`requiresInit` pragma can also be applied to `distinct` types.
 
 Given the following distinct type definitions:
 
@@ -4562,7 +4562,7 @@ The call can be made more like an inline iterator with a for loop macro:
     echo f
   ```
 
-Because of full backend function call aparatus involvment, closure iterator
+Because of full backend function call apparatus involvement, closure iterator
 invocation is typically higher cost than inline iterators. Adornment by
 a macro wrapper at the call site like this is a possibly useful reminder.
 
@@ -5052,7 +5052,7 @@ conservative in its effect analysis:
   proc cmpE(a, b: MyInt): int {.raises: [Exception].} =
     cmp(a.int, b.int)
 
-  proc harmfull {.raises: [].} =
+  proc harmful {.raises: [].} =
     # does not compile, `sort` can now raise Exception
     toSort.sort cmpE
   ```
@@ -7976,7 +7976,7 @@ implementation:
       user_id {.dbForeignKey: User.}: int
       read_access: bool
       write_access: bool
-      admin_acess: bool
+      admin_access: bool
   ```
 
 In this example, custom pragmas are used to describe how Nim objects are
