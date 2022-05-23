@@ -845,9 +845,9 @@ proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): Absolu
 proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
   if conf.hasHint(hintCC):
     if optListCmd in conf.globalOptions or conf.verbosity > 1:
-      result = MsgKindToStr[hintCC] % (demanglePackageName(path.splitFile.name) & ": " & compileCmd)
+      result = MsgKindToStr[hintCC] % (demangleModuleName(path.splitFile.name) & ": " & compileCmd)
     else:
-      result = MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
+      result = MsgKindToStr[hintCC] % demangleModuleName(path.splitFile.name)
 
 proc callCCompiler*(conf: ConfigRef) =
   var

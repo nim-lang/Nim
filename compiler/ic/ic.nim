@@ -10,7 +10,7 @@
 import hashes, tables, intsets, std/sha1
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
-  pathutils, condsyms]
+  pathutils, condsyms, packages]
 #import ".." / [renderer, astalgo]
 from os import removeFile, isAbsolute
 
@@ -930,17 +930,6 @@ proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t
       result = g[si].types[t.item]
     assert result.itemId.item > 0
 
-proc newPackage(config: ConfigRef; cache: IdentCache; fileIdx: FileIndex): PSym =
-  let filename = AbsoluteFile toFullPath(config, fileIdx)
-  let name = getIdent(cache, splitFile(filename).name)
-  let info = newLineInfo(fileIdx, 1, 1)
-  let
-    pck = getPackageName(config, filename.string)
-    pck2 = if pck.len > 0: pck else: "unknown"
-    pack = getIdent(cache, pck2)
-  result = newSym(skPackage, getIdent(cache, pck2),
-    ItemId(module: PackageModuleId, item: int32(fileIdx)), nil, info)
-
 proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =
   m.iface = initTable[PIdent, seq[PackedItemId]]()
@@ -968,7 +957,7 @@ proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
                   name: getIdent(cache, splitFile(filename).name),
                   info: newLineInfo(fileIdx, 1, 1),
                   position: int(fileIdx))
-  m.module.owner = newPackage(conf, cache, fileIdx)
+  m.module.owner = getPackage(conf, cache, fileIdx)
   m.module.flags = m.fromDisk.moduleFlags
 
 proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
