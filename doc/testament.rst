@@ -36,7 +36,7 @@ Options
                           (for debugging)
 --failing                 Only show failing/ignored tests
 --targets:"c cpp js objc"
-                          Run tests for specified targets (default: all)
+                          Run tests for specified targets (default: c)
 --nim:path                Use a particular nim executable (default: $PATH/nim)
 --directory:dir           Change to directory dir before reading the tests
                           or doing anything else.
@@ -164,7 +164,7 @@ Example "template" **to edit** and write a Testament unittest:
     # Timeout seconds to run the test. Fractional values are supported.
     timeout: 1.5
 
-    # Targets to run the test into (c, cpp, objc, js).
+    # Targets to run the test into (c, cpp, objc, js). Defaults to c.
     targets: "c js"
 
     # flags with which to run the test, delimited by `;`
