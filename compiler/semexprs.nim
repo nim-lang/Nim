@@ -2599,7 +2599,7 @@ proc semBlock(c: PContext, n: PNode; flags: TExprFlags): PNode =
       labl.owner = c.p.owner
     n[0] = newSymNode(labl, n[0].info)
     suggestSym(c.graph, n[0].info, labl, c.graph.usageSym)
-    styleCheckDef(c.config, labl)
+    styleCheckDef(c, labl)
     onDef(n[0].info, labl)
   n[1] = semExpr(c, n[1], flags)
   n.typ = n[1].typ
