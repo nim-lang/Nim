@@ -280,7 +280,7 @@ proc dispA(target: OutputTarget, dest: var string,
 proc `or`(x, y: string): string {.inline.} =
   result = if x.len == 0: y else: x
 
-proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
+proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string) {.gcsafe.}
   ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
   ##
   ## Before using this proc you need to initialise a ``RstGenerator`` with
@@ -1211,7 +1211,7 @@ proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string,
       "\\hyperlink{$2}{$1} (p.~\\pageref{$2})",
       [textStr, linkStr, nimDocStr, tooltipStr])
 
-proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
+proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) {.gcsafe.} =
   if n == nil: return
   case n.kind
   of rnInner: renderAux(d, n, result)
