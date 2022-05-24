@@ -16,6 +16,9 @@ import
   syntaxes, modulegraphs, reorder,
   lineinfos, pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   TPassData* = tuple[input: PNode, closeOutput: PNode]
 
@@ -147,6 +150,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         processImplicits graph, graph.config.implicitImports, nkImportStmt, a, module
         processImplicits graph, graph.config.implicitIncludes, nkIncludeStmt, a, module
 
+    checkFirstLineIndentation(p)
     while true:
       if graph.stopCompile(): break
       var n = parseTopLevelStmt(p)

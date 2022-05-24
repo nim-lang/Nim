@@ -9,6 +9,10 @@
 
 # This module implements lookup helpers.
 import std/[algorithm, strutils]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
   renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs
@@ -177,14 +181,18 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
   var marked = initIntSet()
+  var symSet = OverloadableSyms
+  if overloadableEnums notin c.features:
+    symSet.excl skEnumField
   result = nil
-  for im in c.imports.mitems:
-    for s in symbols(im, marked, name, c.graph):
-      if result == nil:
-        result = s
-      else:
-        if s.kind notin OverloadableSyms or result.kind notin OverloadableSyms:
+  block outer:
+    for im in c.imports.mitems:
+      for s in symbols(im, marked, name, c.graph):
+        if result == nil:
+          result = s
+        elif s.kind notin symSet or result.kind notin symSet:
           ambiguous = true
+          break outer
 
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
   for scope in allScopes(c.currentScope):
@@ -207,14 +215,16 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
 
 proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
   result = @[]
-  for scope in allScopes(c.currentScope):
-    var ti: TIdentIter
-    var candidate = initIdentIter(ti, scope.symbols, s)
-    while candidate != nil:
-      if candidate.kind in filter:
-        if result.len == 0:
+  block outer:
+    for scope in allScopes(c.currentScope):
+      var ti: TIdentIter
+      var candidate = initIdentIter(ti, scope.symbols, s)
+      while candidate != nil:
+        if candidate.kind in filter:
           result.add candidate
-      candidate = nextIdentIter(ti, scope.symbols)
+          # Break here, because further symbols encountered would be shadowed
+          break outer
+        candidate = nextIdentIter(ti, scope.symbols)
 
   if result.len == 0:
     var marked = initIntSet()
@@ -384,7 +394,7 @@ proc mergeShadowScope*(c: PContext) =
   ##
   ## Merges:
   ## shadow -> shadow: add symbols to the parent but check for redefinitions etc
-  ## shadow -> non-shadow: the above, but also handle exports and all that 
+  ## shadow -> non-shadow: the above, but also handle exports and all that
   let shadowScope = c.currentScope
   c.rawCloseScope
   for sym in shadowScope.symbols:

@@ -1,6 +1,39 @@
 import dom
 import fuzzysearch
 
+
+proc switchTheme(event: Event) =
+  if event.target.checked:
+    document.documentElement.setAttribute("data-theme", "dark")
+    window.localStorage.setItem("theme", "dark")
+  else:
+    document.documentElement.setAttribute("data-theme", "light")
+    window.localStorage.setItem("theme", "light")
+
+
+proc nimThemeSwitch(event: Event) {.exportC.} =
+  var pragmaDots = document.getElementsByClassName("pragmadots")
+  for i in 0..<pragmaDots.len:
+    pragmaDots[i].onclick = proc (event: Event) =
+      # Hide tease
+      event.target.parentNode.style.display = "none"
+      # Show actual
+      event.target.parentNode.nextSibling.style.display = "inline"
+
+  let toggleSwitch = document.querySelector(".theme-switch input[type=\"checkbox\"]")
+
+  if toggleSwitch != nil:
+    toggleSwitch.addEventListener("change", switchTheme, false)
+
+  var currentTheme = window.localStorage.getItem("theme")
+  if currentTheme.len == 0 and window.matchMedia("(prefers-color-scheme: dark)").matches:
+    currentTheme = "dark"
+  if currentTheme.len > 0:
+    document.documentElement.setAttribute("data-theme", currentTheme);
+
+    if currentTheme == "dark" and toggleSwitch != nil:
+      toggleSwitch.checked = true
+
 proc textContent(e: Element): cstring {.
   importcpp: "#.textContent", nodecl.}
 
@@ -341,3 +374,61 @@ proc search*() {.exportc.} =
 
   if timer != nil: clearTimeout(timer)
   timer = setTimeout(wrapper, 400)
+
+proc copyToClipboard*() {.exportc.} =
+    {.emit: """
+
+    function updatePreTags() {
+
+      const allPreTags = document.querySelectorAll("pre")
+    
+      allPreTags.forEach((e) => {
+      
+          const div = document.createElement("div")
+          div.classList.add("copyToClipBoard")
+    
+          const preTag = document.createElement("pre")
+          preTag.innerHTML = e.innerHTML
+    
+          const button = document.createElement("button")
+          button.value = e.textContent.replace('...', '') 
+          button.classList.add("copyToClipBoardBtn")
+          button.style = "cursor: pointer"
+    
+          div.appendChild(preTag)
+          div.appendChild(button)
+    
+          e.outerHTML = div.outerHTML
+      
+      })
+    }
+
+
+    function copyTextToClipboard(e) {
+        const clipBoardContent = e.target.value
+        navigator.clipboard.writeText(clipBoardContent).then(function() {
+            e.target.style.setProperty("--clipboard-image", "var(--clipboard-image-selected)")
+        }, function(err) {
+            console.error("Could not copy text: ", err);
+        });
+    }
+
+    window.addEventListener("click", (e) => {
+        if (e.target.classList.contains("copyToClipBoardBtn")) {
+            copyTextToClipboard(e)
+          }
+    })
+
+    window.addEventListener("mouseover", (e) => {
+        if (e.target.nodeName === "PRE") {
+            e.target.nextElementSibling.style.setProperty("--clipboard-image", "var(--clipboard-image-normal)")
+        }
+    })
+    
+    window.addEventListener("DOMContentLoaded", updatePreTags)
+
+    """
+    .}
+
+copyToClipboard()
+window.addEventListener("DOMContentLoaded", nimThemeSwitch)

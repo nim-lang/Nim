@@ -21,7 +21,7 @@ when false:
     for k, p in os.walkDir(dir, relative=true):
       if k == pcDir and p.len > pkg.len+1 and
           p[pkg.len] == '-' and p.startsWith(pkg):
-        let (_, a) = getPathVersion(p)
+        let (_, a, _) = getPathVersionChecksum(p)
         if bestv.len == 0 or bestv < a:
           bestv = a
           best = dir / p

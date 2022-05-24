@@ -47,6 +47,10 @@ proc optionListLabel(opt: string): string =
   opt &
   "</span></tt></div>"
 
+const
+  NoSandboxOpts = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
+
+
 suite "YAML syntax highlighting":
   test "Basics":
     let input = """.. code-block:: yaml
@@ -237,8 +241,7 @@ not in table"""
 <tr><td>D1 <tt class="docutils literal"><span class="pre">""" & id"code" & " " & op"\|" & """</span></tt></td><td>D2</td></tr>
 <tr><td>E1 | text</td><td></td></tr>
 <tr><td></td><td>F2 without pipe</td></tr>
-</table><p>not in table</p>
-""")
+</table><p>not in table</p>""")
     let input2 = """
 | A1 header | A2 |
 | --- | --- |"""
@@ -399,7 +402,7 @@ Some chapter
 
       Level2
       ------
-      
+
       Level3
       ~~~~~~
 
@@ -408,21 +411,22 @@ Some chapter
 
       More
       ~~~~
-      
+
       Another
       -------
 
       """
     var error9Bad = new string
-    let output9Bad = input9bad.toHtml(error=error9Bad)
+    let output9Bad = input9Bad.toHtml(error=error9Bad)
     check(error9Bad[] == "input(15, 1) Error: new section expected (section " &
             "level inconsistent: underline ~~~~~ unexpectedly found, while " &
             "the following intermediate section level(s) are missing on " &
             "lines 12..15: underline -----)")
 
+  test "RST sections overline":
     # the same as input9good but with overline headings
     # first overline heading has a special meaning: document title
-    let input10 = dedent """
+    let input = dedent """
       ======
       Title0
       ======
@@ -454,22 +458,23 @@ Some chapter
       ~~~~~
 
       """
-    var option: bool
     var rstGenera: RstGenerator
-    var output10: string
-    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", {})
-    rstGenera.renderRstToOut(rstParse(input10, "", 1, 1, option, {}), output10)
+    var output: string
+    let (rst, files, _) = rstParse(input, "", 1, 1, {})
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames = files)
+    rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Title0"
-    doAssert rstGenera.meta[metaSubTitle] == "SubTitle0"
-    doAssert "<h1 id=\"level1\"><center>Level1</center></h1>" in output10
-    doAssert "<h2 id=\"level2\">Level2</h2>" in output10
-    doAssert "<h3 id=\"level3\"><center>Level3</center></h3>" in output10
-    doAssert "<h1 id=\"l1\"><center>L1</center></h1>" in output10
-    doAssert "<h2 id=\"another2\">Another2</h2>" in output10
-    doAssert "<h3 id=\"more3\"><center>More3</center></h3>" in output10
+    doAssert rstGenera.meta[metaSubtitle] == "SubTitle0"
+    doAssert "<h1 id=\"level1\"><center>Level1</center></h1>" in output
+    doAssert "<h2 id=\"level2\">Level2</h2>" in output
+    doAssert "<h3 id=\"level3\"><center>Level3</center></h3>" in output
+    doAssert "<h1 id=\"l1\"><center>L1</center></h1>" in output
+    doAssert "<h2 id=\"another2\">Another2</h2>" in output
+    doAssert "<h3 id=\"more3\"><center>More3</center></h3>" in output
 
+  test "RST sections overline 2":
     # check that a paragraph prevents interpreting overlines as document titles
-    let input11 = dedent """
+    let input = dedent """
       Paragraph
 
       ======
@@ -480,18 +485,19 @@ Some chapter
       SubTitle0
       +++++++++
       """
-    var option11: bool
-    var rstGenera11: RstGenerator
-    var output11: string
-    rstGenera11.initRstGenerator(outHtml, defaultConfig(), "input", {})
-    rstGenera11.renderRstToOut(rstParse(input11, "", 1, 1, option11, {}), output11)
-    doAssert rstGenera11.meta[metaTitle] == ""
-    doAssert rstGenera11.meta[metaSubTitle] == ""
-    doAssert "<h1 id=\"title0\"><center>Title0</center></h1>" in output11
-    doAssert "<h2 id=\"subtitle0\"><center>SubTitle0</center></h2>" in output11
+    var rstGenera: RstGenerator
+    var output: string
+    let (rst, files, _) = rstParse(input, "", 1, 1, {})
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames=files)
+    rstGenera.renderRstToOut(rst, output)
+    doAssert rstGenera.meta[metaTitle] == ""
+    doAssert rstGenera.meta[metaSubtitle] == ""
+    doAssert "<h1 id=\"title0\"><center>Title0</center></h1>" in output
+    doAssert "<h2 id=\"subtitle0\"><center>SubTitle0</center></h2>" in output
 
+  test "RST+Markdown sections":
     # check that RST and Markdown headings don't interfere
-    let input12 = dedent """
+    let input = dedent """
       ======
       Title0
       ======
@@ -509,14 +515,14 @@ Some chapter
       MySection2a
       -----------
       """
-    var option12: bool
-    var rstGenera12: RstGenerator
-    var output12: string
-    rstGenera12.initRstGenerator(outHtml, defaultConfig(), "input", {})
-    rstGenera12.renderRstToOut(rstParse(input12, "", 1, 1, option12, {roSupportMarkdown}), output12)
-    doAssert rstGenera12.meta[metaTitle] == "Title0"
-    doAssert rstGenera12.meta[metaSubTitle] == ""
-    doAssert output12 ==
+    var rstGenera: RstGenerator
+    var output: string
+    let (rst, files, _) = rstParse(input, "", 1, 1, {roSupportMarkdown})
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames=files)
+    rstGenera.renderRstToOut(rst, output)
+    doAssert rstGenera.meta[metaTitle] == "Title0"
+    doAssert rstGenera.meta[metaSubtitle] == ""
+    doAssert output ==
              "\n<h1 id=\"mysection1a\">MySection1a</h1>" & # RST
              "\n<h1 id=\"mysection1b\">MySection1b</h1>" & # Markdown
              "\n<h1 id=\"mysection1c\">MySection1c</h1>" & # RST
@@ -628,8 +634,10 @@ let x = 1
     let p2 = """<p>Par2 <tt class="docutils literal"><span class="pre">value2</span></tt>.</p>"""
     let p3 = """<p>Par3 <tt class="docutils literal"><span class="pre">""" & id"value3" & "</span></tt>.</p>"
     let p4 = """<p>Par4 <tt class="docutils literal"><span class="pre">value4</span></tt>.</p>"""
-    let expected = p1 & p2 & "\n" & p3 & "\n" & p4 & "\n"
-    check(input.toHtml == expected)
+    let expected = p1 & p2 & "\n" & p3 & "\n" & p4
+    check(
+      input.toHtml(NoSandboxOpts) == expected
+    )
 
   test "role directive":
     let input = dedent"""
@@ -640,7 +648,10 @@ let x = 1
          :language: brainhelp
     """
     var warnings = new seq[string]
-    let output = input.toHtml(warnings=warnings)
+    let output = input.toHtml(
+      NoSandboxOpts,
+      warnings=warnings
+    )
     check(warnings[].len == 1 and "language 'brainhelp' not supported" in warnings[0])
 
   test "RST comments":
@@ -653,8 +664,8 @@ Check that comment disappears:
     let output1 = input1.toHtml
     doAssert output1 == "Check that comment disappears:"
 
-  test "RST line blocks":
-    let input1 = """
+  test "RST line blocks + headings":
+    let input = """
 =====
 Test1
 =====
@@ -665,28 +676,29 @@ Test1
 | other line
 
 """
-    var option: bool
     var rstGenera: RstGenerator
-    var output1: string
-    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", {})
-    rstGenera.renderRstToOut(rstParse(input1, "", 1, 1, option, {}), output1)
+    var output: string
+    let (rst, files, _) = rstParse(input, "", 1, 1, {})
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames=files)
+    rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Test1"
       # check that title was not overwritten to '|'
-    doAssert output1 == "<p><br/><br/>line block<br/>other line<br/></p>"
-    let output1l = rstToLatex(input1, {})
+    doAssert output == "<p><br/><br/>line block<br/>other line<br/></p>"
+    let output1l = rstToLatex(input, {})
     doAssert "line block\n\n" in output1l
     doAssert "other line\n\n" in output1l
     doAssert output1l.count("\\vspace") == 2 + 2  # +2 surrounding paddings
 
+  test "RST line blocks":
     let input2 = dedent"""
       Paragraph1
-      
+
       |
 
       Paragraph2"""
 
     let output2 = input2.toHtml
-    doAssert "Paragraph1<p><br/></p> <p>Paragraph2</p>\n" == output2
+    doAssert "Paragraph1<p><br/></p> <p>Paragraph2</p>" == output2
 
     let input3 = dedent"""
       | xxx
@@ -701,7 +713,7 @@ Test1
     # check that '|   ' with a few spaces is still parsed as new line
     let input4 = dedent"""
       | xxx
-      |      
+      |
       |     zzz"""
 
     let output4 = input4.toHtml
@@ -853,7 +865,7 @@ Test1
     check("input(6, 1) Warning: RST style: \n" &
           "not enough indentation on line 6" in warnings8[0])
     doAssert output8 == "Paragraph.<ol class=\"upperalpha simple\">" &
-        "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>\n"
+        "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>"
 
   test "Markdown enumerated lists":
     let input1 = dedent """
@@ -926,7 +938,7 @@ Test1
       Not references[#note]_[1 #]_ [wrong citation]_ and [not&allowed]_.
       """
     let output2 = input2.toHtml
-    doAssert output2 == "Not references[#note]_[1 #]_ [wrong citation]_ and [not&amp;allowed]_. "
+    doAssert output2 == "Not references[#note]_[1 #]_ [wrong citation]_ and [not&amp;allowed]_."
 
     # check that auto-symbol footnotes work:
     let input3 = dedent """
@@ -1034,9 +1046,7 @@ Test1
       """
     var warnings8 = new seq[string]
     let output8 = input8.toHtml(warnings=warnings8)
-    # TODO: the line 1 is arbitrary because reference lines are not preserved
-    check(warnings8[] == @["input(1, 1) Warning: unknown substitution " &
-            "\'citation-som\'"])
+    check(warnings8[] == @["input(3, 7) Warning: broken link 'citation-som'"])
 
     # check that footnote group does not break parsing of other directives:
     let input9 = dedent """
@@ -1053,8 +1063,9 @@ Test1
       Paragraph2 ref `internal anchor`_.
       """
     let output9 = input9.toHtml
-    #doAssert "id=\"internal-anchor\"" in output9
-    #doAssert "internal anchor" notin output9
+    # _`internal anchor` got erased:
+    check "href=\"#internal-anchor\"" notin output9
+    check "href=\"#citation-another\"" in output9
     doAssert output9.count("<hr class=\"footnote\">" &
                            "<div class=\"footnote-group\">") == 1
     doAssert output9.count("<div class=\"footnote-label\">") == 3
@@ -1144,9 +1155,32 @@ Test1
       """
     var error = new string
     let output = input.toHtml(error=error)
-    check(error[] == "input(1, 1) Error: invalid field: " &
+    check(error[] == "input(2, 3) Error: invalid field: " &
                      "extra arguments were given to number-lines: ' let a = 1'")
     check "" == output
+
+  test "code-block warning":
+    let input = dedent """
+      .. code:: Nim
+         :unsupportedField: anything
+
+      .. code:: unsupportedLang
+
+         anything
+
+      ```anotherLang
+      someCode
+      ```
+      """
+    let warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    check(warnings[] == @[
+        "input(2, 4) Warning: field 'unsupportedField' not supported",
+        "input(4, 11) Warning: language 'unsupportedLang' not supported",
+        "input(8, 4) Warning: language 'anotherLang' not supported"
+        ])
+    check(output == "<pre class = \"listing\">anything</pre>" &
+                    "<p><pre class = \"listing\">\nsomeCode\n</pre> </p>")
 
   test "RST admonitions":
     # check that all admonitions are implemented
@@ -1162,7 +1196,9 @@ Test1
       .. tip:: endOf tip
       .. warning:: endOf warning
     """
-    let output0 = input0.toHtml
+    let output0 = input0.toHtml(
+      NoSandboxOpts
+    )
     for a in ["admonition", "attention", "caution", "danger", "error", "hint",
         "important", "note", "tip", "warning" ]:
       doAssert "endOf " & a & "</div>" in output0
@@ -1173,7 +1209,9 @@ Test1
 
       Test paragraph.
     """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml(
+      NoSandboxOpts
+    )
     doAssert "endOfError</div>" in output1
     doAssert "<p>Test paragraph. </p>" in output1
     doAssert "class=\"admonition admonition-error\"" in output1
@@ -1185,7 +1223,9 @@ Test1
 
       Test paragraph.
     """
-    let output2 = input2.toHtml
+    let output2 = input2.toHtml(
+      NoSandboxOpts
+    )
     doAssert "endOfError Test2p.</div>" in output2
     doAssert "<p>Test paragraph. </p>" in output2
     doAssert "class=\"admonition admonition-error\"" in output2
@@ -1193,7 +1233,9 @@ Test1
     let input3 = dedent """
       .. note:: endOfNote
     """
-    let output3 = input3.toHtml
+    let output3 = input3.toHtml(
+      NoSandboxOpts
+    )
     doAssert "endOfNote</div>" in output3
     doAssert "class=\"admonition admonition-info\"" in output3
 
@@ -1278,7 +1320,9 @@ Test1
 
       That was a transition.
     """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml(
+      NoSandboxOpts
+    )
     doAssert "<p id=\"target000\""     in output1
     doAssert "<ul id=\"target001\""    in output1
     doAssert "<ol id=\"target002\""    in output1
@@ -1306,12 +1350,12 @@ Test1
     """
     let output1 = input1.toHtml
     # "target101" should be erased and changed to "section-xyz":
-    doAssert "href=\"#target101\"" notin output1
-    doAssert "id=\"target101\""    notin output1
-    doAssert "href=\"#target102\"" notin output1
-    doAssert "id=\"target102\""    notin output1
-    doAssert "id=\"section-xyz\""     in output1
-    doAssert "href=\"#section-xyz\""  in output1
+    check "href=\"#target101\"" notin output1
+    check "id=\"target101\""    notin output1
+    check "href=\"#target102\"" notin output1
+    check "id=\"target102\""    notin output1
+    check "id=\"section-xyz\""     in output1
+    check "href=\"#section-xyz\""  in output1
 
     let input2 = dedent """
       .. _target300:
@@ -1381,7 +1425,7 @@ Test1
     let output1 = input1.toHtml
     doAssert "id=\"secdot1\"" in output1
     doAssert "id=\"Z2minusothercolonsecplusc-2\"" in output1
-    doAssert "id=\"linkdot1-2021\"" in output1
+    check "id=\"linkdot1-2021\"" in output1
     let ref1 = "<a class=\"reference internal\" href=\"#secdot1\">sec.1</a>"
     let ref2 = "<a class=\"reference internal\" href=\"#Z2minusothercolonsecplusc-2\">2-other:sec+c_2</a>"
     let ref3 = "<a class=\"reference internal\" href=\"#linkdot1-2021\">link.1_2021</a>"
@@ -1477,7 +1521,7 @@ Test1
     check "(3, 15) Warning: " in warnings[1]
     check "language 'py:class' not supported" in warnings[1]
     check("""<p>See function <span class="py:func">spam</span>.</p>""" & "\n" &
-          """<p>See also <span class="py:class">egg</span>. </p>""" & "\n" ==
+          """<p>See also <span class="py:class">egg</span>. </p>""" ==
           output)
 
   test "(not) Roles: check escaping 1":
@@ -1524,3 +1568,49 @@ suite "RST/Code highlight":
 
     check strip(rstToHtml(pythonCode, {}, newStringTable(modeCaseSensitive))) ==
       strip(expected)
+
+
+suite "invalid targets":
+  test "invalid image target":
+    let input1 = dedent """.. image:: /images/myimage.jpg
+      :target: https://bar.com
+      :alt: Alt text for the image"""
+    let output1 = input1.toHtml
+    check output1 == """<a class="reference external" href="https://bar.com"><img src="/images/myimage.jpg" alt="Alt text for the image"/></a>"""
+
+    let input2 = dedent """.. image:: /images/myimage.jpg
+      :target: javascript://bar.com
+      :alt: Alt text for the image"""
+    let output2 = input2.toHtml
+    check output2 == """<img src="/images/myimage.jpg" alt="Alt text for the image"/>"""
+
+    let input3 = dedent """.. image:: /images/myimage.jpg
+      :target: bar.com
+      :alt: Alt text for the image"""
+    let output3 = input3.toHtml
+    check output3 == """<a class="reference external" href="bar.com"><img src="/images/myimage.jpg" alt="Alt text for the image"/></a>"""
+
+  test "invalid links":
+    check("(([Nim](https://nim-lang.org/)))".toHtml ==
+        """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))""")
+    # unknown protocol is treated just like plain text, not a link
+    var warnings = new seq[string]
+    check("(([Nim](javascript://nim-lang.org/)))".toHtml(warnings=warnings) ==
+        """(([Nim](javascript://nim-lang.org/)))""")
+    check(warnings[] == @["input(1, 9) Warning: broken link 'javascript'"])
+    warnings[].setLen 0
+    check("`Nim <javascript://nim-lang.org/>`_".toHtml(warnings=warnings) ==
+      """Nim &lt;javascript://nim-lang.org/&gt;""")
+    check(warnings[] == @["input(1, 33) Warning: broken link 'javascript'"])
+
+suite "local file inclusion":
+  test "cannot include files in sandboxed mode":
+    var error = new string
+    discard ".. include:: ./readme.md".toHtml(error=error)
+    check(error[] == "input(1, 11) Error: disabled directive: 'include'")
+
+  test "code-block file directive is disabled":
+    var error = new string
+    discard ".. code-block:: nim\n    :file: ./readme.md".toHtml(error=error)
+    check(error[] == "input(2, 20) Error: disabled directive: 'file'")
+

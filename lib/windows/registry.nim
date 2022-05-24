@@ -46,26 +46,26 @@ template call(f) =
 proc getUnicodeValue*(path, key: string; handle: HKEY): string =
   let hh = newWideCString path
   let kk = newWideCString key
-  var bufsize: int32
+  var bufSize: int32
   # try a couple of different flag settings:
   var flags: int32 = RRF_RT_ANY
-  let err = regGetValue(handle, hh, kk, flags, nil, nil, addr bufsize)
+  let err = regGetValue(handle, hh, kk, flags, nil, nil, addr bufSize)
   if err != 0:
     var newHandle: HKEY
     call regOpenKeyEx(handle, hh, 0, KEY_READ or KEY_WOW64_64KEY, newHandle)
-    call regGetValue(newHandle, nil, kk, flags, nil, nil, addr bufsize)
+    call regGetValue(newHandle, nil, kk, flags, nil, nil, addr bufSize)
     if bufSize > 0:
-      var res = newWideCString(bufsize)
+      var res = newWideCString(bufSize)
       call regGetValue(newHandle, nil, kk, flags, nil, addr res[0],
-                    addr bufsize)
-      result = res $ bufsize
+                    addr bufSize)
+      result = res $ bufSize
     call regCloseKey(newHandle)
   else:
     if bufSize > 0:
-      var res = newWideCString(bufsize)
+      var res = newWideCString(bufSize)
       call regGetValue(handle, hh, kk, flags, nil, addr res[0],
-                    addr bufsize)
-      result = res $ bufsize
+                    addr bufSize)
+      result = res $ bufSize
 
 proc regSetValue(key: HKEY, lpSubKey, lpValueName: WideCString,
                  dwType: int32; lpData: WideCString; cbData: int32): int32 {.

@@ -1,6 +1,6 @@
 #
 #
-#           The Nim Compiler
+#              Nim's Runtime Library
 #        (c) Copyright 2015 Nim Contributors
 #
 #    See the file "copying.txt", included in this
@@ -12,9 +12,9 @@
 ##
 ## See also
 ## ========
-## * `base64 module<base64.html>`_ implements a Base64 encoder and decoder
+## * `base64 module<base64.html>`_ for a Base64 encoder and decoder
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
-## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
+## * `md5 module<md5.html>`_ for the MD5 checksum algorithm
 
 runnableExamples:
   let accessName = secureHash("John Doe")
@@ -28,6 +28,9 @@ runnableExamples("-r:off"):
 
 import strutils
 from endians import bigEndian32, bigEndian64
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 const Sha1DigestSize = 20
 
@@ -275,3 +278,7 @@ proc `==`*(a, b: SecureHash): bool =
 
   # Not a constant-time comparison, but that's acceptable in this context
   Sha1Digest(a) == Sha1Digest(b)
+
+proc isValidSha1Hash*(s: string): bool =
+  ## Checks if a string is a valid sha1 hash sum.
+  s.len == 40 and allCharsInSet(s, HexDigits)

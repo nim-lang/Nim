@@ -198,7 +198,30 @@ template main() =
     s.removePrefix("")
     doAssert s == "\r\n\r\nhello"
 
-  block: # delete
+  block: # delete(slice)
+    var s = "0123456789ABCDEFGH"
+    delete(s, 4 .. 5)
+    doAssert s == "01236789ABCDEFGH"
+    delete(s, s.len-1 .. s.len-1)
+    doAssert s == "01236789ABCDEFG"
+    delete(s, 0..0)
+    doAssert s == "1236789ABCDEFG"
+    s = ""
+    doAssertRaises(IndexDefect): delete(s, 0..0)
+    doAssert s == ""
+    s = "abc"
+    doAssertRaises(IndexDefect): delete(s, -1 .. -2)
+    doAssertRaises(IndexDefect): delete(s, 2..3)
+    doAssertRaises(IndexDefect): delete(s, 3..2)
+    delete(s, 2..2)
+    doAssert s == "ab"
+    delete(s, 1..0)
+    doAssert s == "ab"
+    delete(s, 0..0)
+    doAssert s == "b"
+
+  block: # delete(first, last)
+    {.push warning[deprecated]:off.}
     var s = "0123456789ABCDEFGH"
     delete(s, 4, 5)
     doAssert s == "01236789ABCDEFGH"
@@ -206,6 +229,7 @@ template main() =
     doAssert s == "01236789ABCDEFG"
     delete(s, 0, 0)
     doAssert s == "1236789ABCDEFG"
+    {.pop.}
 
   block: # find
     doAssert "0123456789ABCDEFGH".find('A') == 10
@@ -559,6 +583,17 @@ template main() =
       let g = parseEnum[Foo]("Bar", A)
       doAssert g == A
 
+    block: # bug #19463
+      const CAMPAIGN_TABLE = "wikientries_campaign"
+      const CHARACTER_TABLE = "wikientries_character"
+
+      type Tables = enum
+        a = CAMPAIGN_TABLE,
+        b = CHARACTER_TABLE,
+
+      let myA = CAMPAIGN_TABLE
+      doAssert $parseEnum[Tables](myA) == "wikientries_campaign"
+
     block: # check enum defined in block
       type
         Bar = enum
@@ -816,6 +851,13 @@ bar
     doAssert s.endsWith('f')
     doAssert s.endsWith('a') == false
     doAssert s.endsWith('\0') == false
+
+  block: # nimIdentNormalize
+    doAssert nimIdentNormalize("") == ""
+    doAssert nimIdentNormalize("foo") == "foo"
+    doAssert nimIdentNormalize("foo_bar") == "foobar"
+    doAssert nimIdentNormalize("Foo_bar") == "Foobar"
+    doAssert nimIdentNormalize("_Foo_bar") == "_foobar"
 
 static: main()
 main()

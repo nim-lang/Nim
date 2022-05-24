@@ -10,8 +10,6 @@
 # this module does the semantic checking of type declarations
 # included from sem.nim
 
-import math
-
 const
   errStringOrIdentNodeExpected = "string or ident node expected"
   errStringLiteralExpected = "string literal expected"
@@ -144,8 +142,13 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     styleCheckDef(c.config, e)
     onDef(e.info, e)
     if sfGenSym notin e.flags:
-      if not isPure: addInterfaceDecl(c, e)
-      else: declarePureEnumField(c, e)
+      if not isPure:
+        if overloadableEnums in c.features:
+          addInterfaceOverloadableSymAt(c, c.currentScope, e)
+        else:
+          addInterfaceDecl(c, e)
+      else:
+        declarePureEnumField(c, e)
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
@@ -240,7 +243,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
 
   if not hasUnknownTypes:
     if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
-      localError(c.config, n.info, "type mismatch")
+      typeMismatch(c.config, n.info, rangeT[0], rangeT[1], n)
+
     elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin {tyFloat..tyFloat128} or
         rangeT[0].kind == tyBool:
       localError(c.config, n.info, "ordinal or float type expected")
@@ -1694,14 +1698,14 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
   result.rawAddSon(base)
   result.flags.incl tfHasStatic
 
-proc semTypeof(c: PContext; n: PNode; prev: PType): PType =
+proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
   let t = semExprWithType(c, n, {efInTypeof})
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
 
-proc semTypeof2(c: PContext; n: PNode; prev: PType): PType =
+proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
   var m = BiggestInt 1 # typeOfIter
   if n.len == 3:
@@ -1725,7 +1729,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTypeOfExpr:
     # for ``typeof(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1, c.config)
-    result = semTypeof(c, n[0], prev)
+    result = semTypeOf(c, n[0], prev)
     if result.kind == tyTypeDesc: result.flags.incl tfExplicit
   of nkPar:
     if n.len == 1: result = semTypeNode(c, n[0], prev)
@@ -1827,9 +1831,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semAnyRef(c, n, tyRef, prev)
       elif op.id == ord(wType):
         checkSonsLen(n, 2, c.config)
-        result = semTypeof(c, n[1], prev)
+        result = semTypeOf(c, n[1], prev)
       elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeOf:
-        result = semTypeof2(c, n, prev)
+        result = semTypeOf2(c, n, prev)
       elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)
       else:
@@ -1989,8 +1993,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkStmtListType: result = semStmtListType(c, n, prev)
   of nkBlockType: result = semBlockType(c, n, prev)
   else:
-    localError(c.config, n.info, "type expected, but got: " & renderTree(n))
-    result = newOrPrevType(tyError, prev, c)
+    result = semTypeExpr(c, n, prev)
+    when false:
+      localError(c.config, n.info, "type expected, but got: " & renderTree(n))
+      result = newOrPrevType(tyError, prev, c)
   n.typ = result
   dec c.inTypeContext
 
@@ -2072,7 +2078,10 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(c.config, m, tySequence, szUncomputedSize)
     if optSeqDestructors in c.config.globalOptions:
       incl m.typ.flags, tfHasAsgn
-    assert c.graph.sysTypes[tySequence] == nil
+    if defined(nimsuggest) or c.config.cmd == cmdCheck: # bug #18985
+      discard
+    else:
+      assert c.graph.sysTypes[tySequence] == nil
     c.graph.sysTypes[tySequence] = m.typ
   of mOrdinal:
     setMagicIntegral(c.config, m, tyOrdinal, szUncomputedSize)

@@ -130,7 +130,8 @@ proc unhandledException(e: ref Exception) {.
   when NimStackTrace:
     add(buf, rawWriteStackTrace())
   let cbuf = cstring(buf)
-  framePtr = nil
+  when NimStackTrace:
+    framePtr = nil
   {.emit: """
   if (typeof(Error) !== "undefined") {
     throw new Error(`cbuf`);
@@ -171,8 +172,8 @@ proc raiseRangeError() {.compilerproc, noreturn.} =
 proc raiseIndexError(i, a, b: int) {.compilerproc, noreturn.} =
   raise newException(IndexDefect, formatErrorIndexBound(int(i), int(a), int(b)))
 
-proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
-  raise newException(FieldDefect, f)
+proc raiseFieldError2(f: string, discVal: string) {.compilerproc, noreturn.} =
+  raise newException(FieldDefect, formatFieldDefect(f, discVal))
 
 proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   asm """
@@ -496,23 +497,6 @@ proc negInt(a: int): int {.compilerproc.} =
 proc negInt64(a: int64): int64 {.compilerproc.} =
   result = a*(-1)
 
-proc nimFloatToString(a: float): cstring {.compilerproc.} =
-  ## ensures the result doesn't print like an integer, i.e. return 2.0, not 2
-  # print `-0.0` properly
-  asm """
-    function nimOnlyDigitsOrMinus(n) {
-      return n.toString().match(/^-?\d+$/);
-    }
-    if (Number.isSafeInteger(`a`))
-      `result` = `a` === 0 && 1 / `a` < 0 ? "-0.0" : `a`+".0"
-    else {
-      `result` = `a`+""
-      if(nimOnlyDigitsOrMinus(`result`)){
-        `result` = `a`+".0"
-      }
-    }
-  """
-
 proc absInt(a: int): int {.compilerproc.} =
   result = if a < 0: a*(-1) else: a
 
@@ -604,17 +588,40 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
     else:
       asm "`result` = (`dest` === null || `dest` === undefined) ? {} : `dest`;"
     nimCopyAux(result, src, ti.node)
-  of tySequence, tyArrayConstr, tyOpenArray, tyArray:
+  of tyArrayConstr, tyArray:
+    # In order to prevent a type change (TypedArray -> Array) and to have better copying performance,
+    # arrays constructors are considered separately
+    asm """
+      if(ArrayBuffer.isView(`src`)) { 
+        if(`dest` === null || `dest` === undefined || `dest`.length != `src`.length) {
+          `dest` = new `src`.constructor(`src`);
+        } else {
+          `dest`.set(`src`, 0);
+        }
+        `result` = `dest`;
+      } else {
+        if (`src` === null) {
+          `result` = null;
+        }
+        else {
+          if (`dest` === null || `dest` === undefined || `dest`.length != `src`.length) {
+            `dest` = new Array(`src`.length);
+          }
+          `result` = `dest`;
+          for (var i = 0; i < `src`.length; ++i) {
+            `result`[i] = nimCopy(`result`[i], `src`[i], `ti`.base);
+          }
+        }
+      }
+    """
+  of tySequence, tyOpenArray:
     asm """
       if (`src` === null) {
         `result` = null;
       }
       else {
-        if (`dest` === null || `dest` === undefined) {
+        if (`dest` === null || `dest` === undefined || `dest`.length != `src`.length) {
           `dest` = new Array(`src`.length);
-        }
-        else {
-          `dest`.length = `src`.length;
         }
         `result` = `dest`;
         for (var i = 0; i < `src`.length; ++i) {
@@ -703,6 +710,7 @@ proc addChar(x: string, c: char) {.compilerproc, asmNoStackFrame.} =
 {.pop.}
 
 proc tenToThePowerOf(b: int): BiggestFloat =
+  # xxx deadcode
   var b = b
   var a = 10.0
   result = 1.0
@@ -782,7 +790,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int 
 
 # Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
 # 'Math.trunc' for Nim's ``div`` and ``mod`` operators:
-const jsMathTrunc = """
+when defined(nimJsMathTruncPolyfill):
+  {.emit: """
 if (!Math.trunc) {
   Math.trunc = function(v) {
     v = +v;
@@ -790,5 +799,4 @@ if (!Math.trunc) {
     return (v - v % 1) || (v < 0 ? -0 : v === 0 ? v : 0);
   };
 }
-"""
-when not defined(nodejs): {.emit: jsMathTrunc .}
+""".}

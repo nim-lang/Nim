@@ -8,7 +8,7 @@
 ## random number generator.
 ## .. note:: The procs in this module work at compile-time.
 
-{.deprecated: "use `std/random` instead.".}
+{.deprecated: "use `std/random` instead".}
 
 runnableExamples:
   var rand = newMersenneTwister(uint32.high)  ## must be "var"

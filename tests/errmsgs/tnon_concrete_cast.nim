@@ -34,7 +34,7 @@ proc write(rw: var MyReadWrite; value: SomeNumber): void =
 proc write[T](rw: var MyReadWrite; value: seq[T]): void =
   rw.write value.len
   let dst  = cast[ptr SomeNumber](cast[uint](rw.memfile.mem) + uint(rw.offset))
-  let src  = cast[pointer](value[0].unsafeAddr)
+  let src  = cast[pointer](value[0].addr)
   let size = sizeof(T) * value.len
   copyMem(dst, src, size)
   rw.offset += size

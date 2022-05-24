@@ -29,9 +29,12 @@
 
 import tables
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import
   strutils, ast, types, msgs, renderer, vmdef,
-  intsets, magicsys, options, lowerings, lineinfos, transf
+  intsets, magicsys, options, lowerings, lineinfos, transf, astmsgs
 
 from modulegraphs import getBody
 
@@ -99,11 +102,6 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
       let idx = x.regBx-wordExcess
       result.addf("\t$#\tr$#, $# ($#)", opc.toStr, x.regA,
         c.constants[idx].renderTree, $idx)
-    elif opc in {opcMarshalLoad, opcMarshalStore}:
-      let y = c.code[i+1]
-      result.addf("\t$#\tr$#, r$#, $#", opc.toStr, x.regA, x.regB,
-        c.types[y.regBx-wordExcess].typeToString)
-      inc i
     else:
       result.addf("\t$#\tr$#, $#", opc.toStr, x.regA, x.regBx-wordExcess)
     result.add("\t# ")
@@ -749,18 +747,20 @@ proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
   # uint is uint64 in the VM, we we only need to mask the result for
   # other unsigned types:
-  if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and t.size < 8):
-    c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
-  elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and t.size < 8):
-    c.gABC(n, opcNarrowS, dest, TRegister(t.size*8))
+  let size = getSize(c.config, t)
+  if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and size < 8):
+    c.gABC(n, opcNarrowU, dest, TRegister(size*8))
+  elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and size < 8):
+    c.gABC(n, opcNarrowS, dest, TRegister(size*8))
 
 proc genNarrowU(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
   # uint is uint64 in the VM, we we only need to mask the result for
   # other unsigned types:
+  let size = getSize(c.config, t)
   if t.kind in {tyUInt8..tyUInt32, tyInt8..tyInt32} or
-    (t.kind in {tyUInt, tyInt} and t.size < 8):
-    c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
+    (t.kind in {tyUInt, tyInt} and size < 8):
+    c.gABC(n, opcNarrowU, dest, TRegister(size*8))
 
 proc genBinaryABCnarrow(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   genBinaryABC(c, n, dest, opc)
@@ -1029,7 +1029,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.genAsgnPatch(n[1], d)
     c.freeTemp(d)
   of mOrd, mChr, mArrToSeq, mUnown: c.gen(n[1], dest)
-  of mIsolate:
+  of mIsolate, mFinished:
     genCall(c, n, dest)
   of mNew, mNewFinalize:
     unused(c, n, dest)
@@ -1088,10 +1088,11 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     genBinaryABC(c, n, dest, opcShlInt)
     # genNarrowU modified
     let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
-    if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and t.size < 8):
-      c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
-    elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and t.size < 8):
-      c.gABC(n, opcSignExtend, dest, TRegister(t.size*8))
+    let size = getSize(c.config, t)
+    if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and size < 8):
+      c.gABC(n, opcNarrowU, dest, TRegister(size*8))
+    elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and size < 8):
+      c.gABC(n, opcSignExtend, dest, TRegister(size*8))
   of mAshrI: genBinaryABC(c, n, dest, opcAshrInt)
   of mBitandI: genBinaryABC(c, n, dest, opcBitandInt)
   of mBitorI: genBinaryABC(c, n, dest, opcBitorInt)
@@ -1125,10 +1126,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     genUnaryABC(c, n, dest, opcBitnotInt)
     #genNarrowU modified, do not narrow signed types
     let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
-    if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and t.size < 8):
-      c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
-  of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
-     mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr:
+    let size = getSize(c.config, t)
+    if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and size < 8):
+      c.gABC(n, opcNarrowU, dest, TRegister(size*8))
+  of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr:
     genConv(c, n, n[1], dest)
   of mEqStr, mEqCString: genBinaryABC(c, n, dest, opcEqStr)
   of mLeStr: genBinaryABC(c, n, dest, opcLeStr)
@@ -1226,9 +1227,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     unused(c, n, dest)
     genBinaryStmtVar(c, n, opcAddSeqElem)
   of mParseExprToAst:
-    genUnaryABC(c, n, dest, opcParseExprToAst)
+    genBinaryABC(c, n, dest, opcParseExprToAst)
   of mParseStmtToAst:
-    genUnaryABC(c, n, dest, opcParseStmtToAst)
+    genBinaryABC(c, n, dest, opcParseStmtToAst)
   of mTypeTrait:
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n.typ)
@@ -1362,7 +1363,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     globalError(c.config, n.info, sizeOfLikeMsg("offsetof"))
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
-  of mDestroy: discard "ignore calls to the default destructor"
+  of mDestroy, mTrace: discard "ignore calls to the default destructor"
   of mMove:
     let arg = n[1]
     let a = c.genx(arg)
@@ -1379,22 +1380,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   else:
     # mGCref, mGCunref,
     globalError(c.config, n.info, "cannot generate code for: " & $m)
-
-proc genMarshalLoad(c: PCtx, n: PNode, dest: var TDest) =
-  ## Signature: proc to*[T](data: string): T
-  if dest < 0: dest = c.getTemp(n.typ)
-  var tmp = c.genx(n[1])
-  c.gABC(n, opcMarshalLoad, dest, tmp)
-  c.gABx(n, opcMarshalLoad, 0, c.genType(n.typ))
-  c.freeTemp(tmp)
-
-proc genMarshalStore(c: PCtx, n: PNode, dest: var TDest) =
-  ## Signature: proc `$$`*[T](x: T): string
-  if dest < 0: dest = c.getTemp(n.typ)
-  var tmp = c.genx(n[1])
-  c.gABC(n, opcMarshalStore, dest, tmp)
-  c.gABx(n, opcMarshalStore, 0, c.genType(n[1].typ))
-  c.freeTemp(tmp)
 
 proc unneededIndirection(n: PNode): bool =
   n.typ.skipTypes(abstractInstOwned-{tyTypeDesc}).kind == tyRef
@@ -1494,7 +1479,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
   # proc foo() = var x ...
   let s = n.sym
   if {sfCompileTime, sfGlobal} <= s.flags: return
-  if s.importcCondVar: return
+  if compiletimeFFI in c.config.features and s.importcCondVar: return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
     # little hack ahead for bug #12612: assume gensym'ed variables
@@ -1743,12 +1728,14 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   let lab1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, rs)
   c.freeTemp(rs)
   let strType = getSysType(c.graph, n.info, tyString)
-  var fieldNameRegister: TDest = c.getTemp(strType)
-  let strLit = newStrNode($accessExpr[1], accessExpr[1].info)
+  var msgReg: TDest = c.getTemp(strType)
+  let fieldName = $accessExpr[1]
+  let msg = genFieldDefect(c.config, fieldName, disc.sym)
+  let strLit = newStrNode(msg, accessExpr[1].info)
   strLit.typ = strType
-  c.genLit(strLit, fieldNameRegister)
-  c.gABC(n, opcInvalidField, fieldNameRegister)
-  c.freeTemp(fieldNameRegister)
+  c.genLit(strLit, msgReg)
+  c.gABC(n, opcInvalidField, msgReg, discVal)
+  c.freeTemp(msgReg)
   c.patch(lab1)
 
 proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
@@ -2049,12 +2036,6 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       elif s.kind == skMethod:
         localError(c.config, n.info, "cannot call method " & s.name.s &
           " at compile time")
-      elif matches(s, "stdlib.marshal.to"):
-        # XXX marshal load&store should not be opcodes, but use the
-        # general callback mechanisms.
-        genMarshalLoad(c, n, dest)
-      elif matches(s, "stdlib.marshal.$$"):
-        genMarshalStore(c, n, dest)
       else:
         genCall(c, n, dest)
         clearDest(c, n, dest)
@@ -2255,8 +2236,16 @@ proc optimizeJumps(c: PCtx; start: int) =
     else: discard
 
 proc genProc(c: PCtx; s: PSym): int =
-  let pos = c.procToCodePos.getOrDefault(s.id)
-  if pos == 0:
+  let
+    pos = c.procToCodePos.getOrDefault(s.id)
+    wasNotGenProcBefore = pos == 0
+    noRegistersAllocated = s.offset == -1
+  if wasNotGenProcBefore or noRegistersAllocated:
+    # xxx: the noRegisterAllocated check is required in order to avoid issues
+    #      where nimsuggest can crash due as a macro with pos will be loaded
+    #      but it doesn't have offsets for register allocations see:
+    #      https://github.com/nim-lang/Nim/issues/18385
+    #      Improvements and further use of IC should remove the need for this.
     #if s.name.s == "outterMacro" or s.name.s == "innerProc":
     #  echo "GENERATING CODE FOR ", s.name.s
     let last = c.code.len-1

@@ -14,7 +14,6 @@
 # R.D. Lins / Information Processing Letters 109 (2008) 71–78
 #
 
-type PT = Cell
 include cellseqs_v2
 
 const
@@ -68,10 +67,10 @@ const
 
 type
   GcEnv = object
-    traceStack: CellSeq
+    traceStack: CellSeq[ptr pointer]
     when useJumpStack:
-      jumpStack: CellSeq   # Lins' jump stack in order to speed up traversals
-    toFree: CellSeq
+      jumpStack: CellSeq[ptr pointer]   # Lins' jump stack in order to speed up traversals
+    toFree: CellSeq[Cell]
     freed, touched, edges, rcSum: int
     keepThreshold: bool
 
@@ -80,10 +79,12 @@ proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
     var p = s +! sizeof(RefHeader)
     cast[TraceProc](desc.traceImpl)(p, addr(j))
 
+include threadids
+
 when logOrc:
   proc writeCell(msg: cstring; s: Cell; desc: PNimTypeV2) =
-    cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld\n",
-      msg, desc.name, s.refId, s.rootIdx, s.rc shr rcShift, s.color)
+    cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld; thread: %ld\n",
+      msg, desc.name, s.refId, s.rootIdx, s.rc shr rcShift, s.color, getThreadId())
 
 proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
   when traceCollector:
@@ -92,13 +93,13 @@ proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
 
   when logOrc: writeCell("free", s, desc)
 
-  if desc.disposeImpl != nil:
-    cast[DisposeProc](desc.disposeImpl)(p)
+  if desc.destructor != nil:
+    cast[DestructorProc](desc.destructor)(p)
 
   when false:
     cstderr.rawWrite desc.name
     cstderr.rawWrite " "
-    if desc.disposeImpl == nil:
+    if desc.destructor == nil:
       cstderr.rawWrite "lacks dispose"
       if desc.traceImpl != nil:
         cstderr.rawWrite ", but has trace\n"
@@ -118,23 +119,23 @@ template orcAssert(cond, msg) =
 when logOrc:
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
 
-proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inline.} =
+proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inl.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
 
     orcAssert strstr(desc.name, "TType") == nil, "following a TType but it's acyclic!"
 
     var j = cast[ptr GcEnv](env)
-    j.traceStack.add(head p[], desc)
+    j.traceStack.add(p, desc)
 
-proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inline.} =
+proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inl.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
-    j.traceStack.add(head p[], cast[ptr PNimTypeV2](p[])[])
+    j.traceStack.add(p, cast[ptr PNimTypeV2](p[])[])
 
 var
-  roots {.threadvar.}: CellSeq
+  roots {.threadvar.}: CellSeq[Cell]
 
 proc unregisterCycle(s: Cell) =
   # swap with the last element. O(1)
@@ -162,7 +163,8 @@ proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   trace(s, desc, j)
   when logOrc: writeCell("root still alive", s, desc)
   while j.traceStack.len > until:
-    let (t, desc) = j.traceStack.pop()
+    let (entry, desc) = j.traceStack.pop()
+    let t = head entry[]
     inc t.rc, rcIncrement
     if t.color != colBlack:
       t.setColor colBlack
@@ -187,7 +189,8 @@ proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
     orcAssert(j.traceStack.len == 0, "markGray: trace stack not empty")
     trace(s, desc, j)
     while j.traceStack.len > 0:
-      let (t, desc) = j.traceStack.pop()
+      let (entry, desc) = j.traceStack.pop()
+      let t = head entry[]
       dec t.rc, rcIncrement
       inc j.edges
       when useJumpStack:
@@ -195,7 +198,7 @@ proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
           t.rc = t.rc or jumpStackFlag
           when traceCollector:
             cprintf("[Now in jumpstack] %p %ld color %ld in jumpstack %ld\n", t, t.rc shr rcShift, t.color, t.rc and jumpStackFlag)
-          j.jumpStack.add(t, desc)
+          j.jumpStack.add(entry, desc)
       if t.color != colGray:
         t.setColor colGray
         inc j.touched
@@ -225,7 +228,8 @@ proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
         # that are still alive; we also need to mark what they
         # refer to as alive:
         while j.jumpStack.len > 0:
-          let (t, desc) = j.jumpStack.pop
+          let (entry, desc) = j.jumpStack.pop
+          let t = head entry[]
           # not in jump stack anymore!
           t.rc = t.rc and not jumpStackFlag
           if t.color == colGray and (t.rc shr rcShift) >= 0:
@@ -239,7 +243,8 @@ proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
       s.setColor(colWhite)
       trace(s, desc, j)
       while j.traceStack.len > 0:
-        let (t, desc) = j.traceStack.pop()
+        let (entry, desc) = j.traceStack.pop()
+        let t = head entry[]
         if t.color == colGray:
           if (t.rc shr rcShift) >= 0:
             scanBlack(t, desc, j)
@@ -249,7 +254,8 @@ proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
               # that are still alive; we also need to mark what they
               # refer to as alive:
               while j.jumpStack.len > 0:
-                let (t, desc) = j.jumpStack.pop
+                let (entry, desc) = j.jumpStack.pop
+                let t = head entry[]
                 # not in jump stack anymore!
                 t.rc = t.rc and not jumpStackFlag
                 if t.color == colGray and (t.rc shr rcShift) >= 0:
@@ -285,7 +291,9 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
     j.toFree.add(s, desc)
     trace(s, desc, j)
     while j.traceStack.len > 0:
-      let (t, desc) = j.traceStack.pop()
+      let (entry, desc) = j.traceStack.pop()
+      let t = head entry[]
+      entry[] = nil # ensure that the destructor does touch moribund objects!
       if t.color == col and t.rootIdx == 0:
         j.toFree.add(t, desc)
         t.setColor(colBlack)
@@ -413,6 +421,7 @@ proc registerCycle(s: Cell; desc: PNimTypeV2) =
 proc GC_runOrc* =
   ## Forces a cycle collection pass.
   collectCycles()
+  orcAssert roots.len == 0, "roots not empty!"
 
 proc GC_enableOrc*() =
   ## Enables the cycle collector subsystem of `--gc:orc`. This is a `--gc:orc`
