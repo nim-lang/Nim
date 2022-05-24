@@ -11,7 +11,7 @@
   or define your own `Math.trunc` polyfill using the [`emit` pragma](https://nim-lang.org/docs/manual.html#implementation-specific-pragmas-emit-pragma). Nim uses
   `Math.trunc` for the division and modulo operators for integers.
 
-- Deprecated `std/sums`
+- Deprecated `std/sums`.
 
 - `cuchar` now aliases `uint8` instead of `char`
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
