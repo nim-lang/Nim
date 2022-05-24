@@ -674,7 +674,6 @@ proc clock_nanosleep*(a1: ClockId, a2: cint, a3: var Timespec,
 proc clock_settime*(a1: ClockId, a2: var Timespec): cint {.
   importc, header: "<time.h>", sideEffect.}
 
-proc `$`*(a: Time): string {.borrow.}
 proc `==`*(a, b: Time): bool {.borrow.}
 proc `-`*(a, b: Time): Time {.borrow.}
 proc ctime*(a1: var Time): cstring {.importc, header: "<time.h>".}
