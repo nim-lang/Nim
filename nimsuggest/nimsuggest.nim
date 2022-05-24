@@ -7,6 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
+import compiler/renderer
+import strformat
+import tables
+import re
+import std/sha1
+import segfaults
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
 when not defined(nimcore):
@@ -43,6 +49,8 @@ Options:
   --debug                 enable debug output
   --log                   enable verbose logging to nimsuggest.log file
   --v1                    use version 1 of the protocol; for backwards compatibility
+  --v2                    use version 2(default) of the protocol
+  --v3                    use version 3 of the protocol
   --refresh               perform automatic refreshes to keep the analysis precise
   --maxresults:N          limit the number of suggestions to N
   --tester                implies --stdin and outputs a line
@@ -75,6 +83,9 @@ var
 
   requests: Channel[string]
   results: Channel[Suggest]
+
+proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, line, col: int;
+  graph: ModuleGraph);
 
 proc writelnToChannel(line: string) =
   results.send(Suggest(section: ideMsg, doc: line))
@@ -137,7 +148,7 @@ proc listEpc(): SexpNode =
     argspecs = sexp("file line column dirtyfile".split(" ").map(newSSymbol))
     docstring = sexp("line starts at 1, column at 0, dirtyfile is optional")
   result = newSList()
-  for command in ["sug", "con", "def", "use", "dus", "chk", "mod"]:
+  for command in ["sug", "con", "def", "use", "dus", "chk", "mod", "globalSymbols", "recompile", "saved"]:
     let
       cmd = sexp(command)
       methodDesc = newSList()
@@ -162,6 +173,10 @@ proc symFromInfo(graph: ModuleGraph; trackPos: TLineInfo): PSym =
 
 proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
              graph: ModuleGraph) =
+  if graph.config.suggestVersion == 3:
+    executeNoHooksV3(cmd, file, dirtyfile, line, col, graph)
+    return
+
   let conf = graph.config
   myLog("cmd: " & $cmd & ", file: " & file.string &
         ", dirtyFile: " & dirtyfile.string &
@@ -436,6 +451,9 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   of "terse": toggle optIdeTerse
   of "known": conf.ideCmd = ideKnown
   of "project": conf.ideCmd = ideProject
+  of "changed": conf.ideCmd = ideChanged
+  of "globalsymbols": conf.ideCmd = ideGlobalSymbols
+  of "recompile": conf.ideCmd = ideRecompile
   else: err()
   var dirtyfile = ""
   var orig = ""
@@ -499,7 +517,7 @@ proc mainThread(graph: ModuleGraph) =
     else:
       os.sleep 250
       idle += 1
-    if idle == 20 and gRefresh:
+    if idle == 20 and gRefresh and conf.suggestVersion != 3:
       # we use some nimsuggest activity to enable a lazy recompile:
       conf.ideCmd = ideChk
       conf.writelnHook = proc (s: string) = discard
@@ -527,7 +545,7 @@ proc mainCommand(graph: ModuleGraph) =
 
   conf.setErrorMaxHighMaybe # honor --errorMax even if it may not make sense here
   # do not print errors, but log them
-  conf.writelnHook = myLog
+  conf.writelnHook = proc (msg: string) = discard
   conf.structuredErrorHook = nil
 
   # compile the project before showing any input so that we already
@@ -584,8 +602,9 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         gMode = mepc
         conf.verbosity = 0          # Port number gotta be first.
       of "debug": incl(conf.globalOptions, optIdeDebug)
-      of "v2": conf.suggestVersion = 0
       of "v1": conf.suggestVersion = 1
+      of "v2": conf.suggestVersion = 0
+      of "v3": conf.suggestVersion = 3
       of "tester":
         gMode = mstdin
         gEmitEof = true
@@ -647,6 +666,164 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if self.loadConfigsAndProcessCmdLine(cache, conf, graph):
     mainCommand(graph)
 
+# v3 start
+
+proc recompileFullProject_v3(graph: ModuleGraph) =
+  myLog "Clean recompile project"
+  graph.resetForBackend()
+  graph.resetSystemArtifacts()
+  graph.vm = nil
+  GC_fullCollect()
+  graph.resetAllModules()
+  graph.compileProject()
+  myLog fmt "Recompilation finished with the following GC stats \n{GC_getStatistics()}"
+
+proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =
+  if projectFileIdx == InvalidFileIdx:
+    myLog "Recompiling partially from root"
+  else:
+    myLog fmt "Recompiling partially starting from {graph.getModule(projectFileIdx)}"
+
+  graph.typeInstCache.clear()
+  graph.procInstCache.clear()
+  GC_fullCollect()
+  try:
+    graph.compileProject(projectFileIdx)
+    myLog fmt "Recompilation finished with the following GC stats\n{GC_getStatistics()}"
+  except Exception as e:
+    myLog fmt "Faield to recompile partially with the following error:\n {e.msg} \n\n {e.getStackTrace()}"
+    graph.recompileFullProject()
+
+proc fileInfoIdx(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
+  var isKnownFile: bool;
+  result = fileInfoIdx(conf, filename, isKnownFile)
+
+proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int):
+    tuple[sym: PSym, info: TLineInfo] =
+  let
+    fileIdx = fileInfoIdx(graph.config, file)
+    trackPos = newLineInfo(fileIdx, line, col)
+  for (sym, info) in graph.suggestSymbolsIter:
+    if isTracked(info, trackPos, sym.name.s.len):
+      return (sym, info)
+
+proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIndex) =
+  let sha = $sha1.secureHashFile(file)
+  if graph.config.m.fileInfos[originalFileIdx.int32].hash != sha:
+    myLog fmt "{file} changed compared to last compilation"
+    graph.markDirty originalFileIdx
+    graph.markClientsDirty originalFileIdx
+  else:
+    myLog fmt "No changes in file {file} compared to last compilation"
+
+proc suggestResultUseOrDef(graph: ModuleGraph, sym: PSym, info: TLineInfo) =
+  let suggest = symToSuggest(graph, sym, isLocal=false,
+                             if sym.info == info:
+                               ideDef
+                             else:
+                               ideUse,
+                             info, 100, PrefixMatch.None, false, 0)
+  suggestResult(graph.config, suggest)
+
+proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, line, col: int;
+    graph: ModuleGraph) =
+  graph.config.writelnHook = proc (s: string) = discard
+  graph.config.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
+    let suggest = Suggest(section: ideChk, filePath: toFullPath(conf, info),
+      line: toLinenumber(info), column: toColumn(info), doc: msg, forth: $sev)
+    graph.suggestErrors.mgetOrPut(info.fileIndex, @[]).add suggest
+  var isKnownFile = true
+  let conf = graph.config
+  conf.ideCmd = cmd
+
+  myLog fmt "cmd: {cmd}, file: {file}[{line}:{col}], dirtyFile: {dirtyfile}"
+
+  msgs.setDirtyFile(
+    conf,
+    fileInfoIdx(conf, file),
+    if dirtyfile.isEmpty: AbsoluteFile"" else: dirtyfile)
+
+  if not dirtyfile.isEmpty:
+    graph.markDirtyIfNeeded(dirtyFile.string, fileInfoIdx(conf, file))
+
+  # these commands require fully compiled project
+  if cmd in {ideUse, ideDus, ideGlobalSymbols, ideChk} and graph.needsCompilation():
+    graph.recompilePartially()
+    # when doing incremental build for the project root we should make sure that
+    # everything is unmarked as no longer beeing dirty in case there is no
+    # longer reference to a particular module. E. g. A depends on B, B is marked
+    # as dirty and A loses B import.
+    graph.unmarkAllDirty()
+
+  # these commands require partially compiled project
+  # TODO: we should should check only if there are downstream
+  elif cmd in {ideSug, ideOutline, ideHighlight, ideDef}:
+    let fileIndex = fileInfoIdx(conf, file)
+    if graph.needsCompilation(fileIndex):
+      graph.recompilePartially(fileIndex)
+
+  case cmd
+  of ideDef:
+    let
+      fileIdx = fileInfoIdx(conf, file)
+      (sym, info) = graph.findSymData(file, line, col)
+    if sym != nil:
+      graph.suggestResultUseOrDef(sym, sym.info)
+  of ideUse, ideDus:
+    let symbol = graph.findSymData(file, line, col).sym
+    if symbol != nil:
+      for (sym, info) in graph.suggestSymbolsIter:
+        if sym == symbol:
+          graph.suggestResultUseOrDef(sym, info)
+  of ideHighlight:
+    let sym = graph.findSymData(file, line, col).sym
+    if sym != nil:
+      let usages = graph
+        .suggestSymbols
+        .getOrDefault(fileInfoIdx(conf, file))
+        .filterIt(it.sym == sym)
+      myLog fmt "Found {usages.len} usages in {file.string}"
+      for (sym, info) in usages:
+        graph.suggestResultUseOrDef(sym, info)
+  of ideRecompile:
+    if file.string != "clean": graph.recompileFullProject_v3()
+    else: graph.recompilePartially()
+  of ideChanged:
+    graph.markDirtyIfNeeded(file.string, fileInfoIdx(conf, file))
+  of ideOutline:
+    let
+      fileIdx = fileInfoIdx(conf, file)
+      module = graph.getModule fileIdx
+      symbols = graph.suggestSymbols
+        .getOrDefault(fileIdx)
+        .filterIt(it.sym.info == it.info and it.sym.owner == module)
+    for (sym, _) in symbols:
+      suggestResult(
+        conf,
+        symToSuggest(graph, sym, false,
+                     ideOutline, sym.info, 100, PrefixMatch.None, false, 0))
+  of ideChk:
+    myLog fmt "Reporting {graph.suggestErrors.len} error(s)"
+    for sug in graph.suggestErrorsIter:
+      suggestResult(graph.config, sug)
+  of ideGlobalSymbols:
+    var counter = 0
+    let reg = re(string(file))
+    for (sym, info) in graph.suggestSymbolsIter:
+      if sfGlobal in sym.flags:
+        if find(cstring(sym.name.s), reg, 0, sym.name.s.len) != -1:
+          inc counter
+          suggestResult(conf,
+                        symToSuggest(graph, sym, isLocal=false,
+                                     ideDef, info, 100, PrefixMatch.None, false, 0))
+        # stop after first 100 results
+        if counter > 100:
+          break
+  else:
+    # TODO ideSug
+    discard
+
+# v3 end
 when isMainModule:
   handleCmdLine(newIdentCache(), newConfigRef())
 else:
