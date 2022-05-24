@@ -69,3 +69,18 @@ proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
     result = InvalidFileIdx
   else:
     result = fileInfoIdx(conf, fullPath)
+
+proc mangleModuleName*(conf: ConfigRef; path: AbsoluteFile): string =
+  ## Mangle a relative module path to avoid path and symbol collisions.
+  ##
+  ## Used by backends that need to generate intermediary files from Nim modules.
+  ## This is needed because the compiler uses a flat cache file hierarchy.
+  ##
+  ## Example:
+  ## `foo-#head/../bar` becomes `@foo-@hhead@s..@sbar`
+  "@m" & relativeTo(path, conf.projectPath).string.multiReplace(
+    {$os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
+
+proc demangleModuleName*(path: string): string =
+  ## Demangle a relative module path.
+  result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@c": ":"})

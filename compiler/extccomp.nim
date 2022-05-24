@@ -13,6 +13,7 @@
 # nim files.
 
 import ropes, platform, condsyms, options, msgs, lineinfos, pathutils
+from modulepaths import mangleModuleName, demangleModuleName
 
 import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar]
 
@@ -370,6 +371,7 @@ proc initVars*(conf: ConfigRef) =
 
 proc completeCfilePath*(conf: ConfigRef; cfile: AbsoluteFile,
                         createSubDir: bool = true): AbsoluteFile =
+  ## Generate the absolute file path to the generated modules.
   result = completeGeneratedFilePath(conf, cfile, createSubDir)
 
 proc toObjFile*(conf: ConfigRef; filename: AbsoluteFile): AbsoluteFile =
@@ -380,7 +382,7 @@ proc addFileToCompile*(conf: ConfigRef; cf: Cfile) =
   conf.toCompile.add(cf)
 
 proc addLocalCompileOption*(conf: ConfigRef; option: string; nimfile: AbsoluteFile) =
-  let key = completeCfilePath(conf, withPackageName(conf, nimfile)).string
+  let key = completeCfilePath(conf, mangleModuleName(conf, nimfile).AbsoluteFile).string
   var value = conf.cfileSpecificOptions.getOrDefault(key)
   if strutils.find(value, option, 0) < 0:
     addOpt(value, option)
@@ -637,7 +639,7 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
   if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
 
-  let hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
+  let hashFile = toGeneratedFile(conf, conf.mangleModuleName(cfile.cname).AbsoluteFile, "sha1")
   let currentHash = footprint(conf, cfile)
   var f: File
   if open(f, hashFile.string, fmRead):

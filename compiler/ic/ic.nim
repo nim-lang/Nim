@@ -13,6 +13,7 @@ import ".." / [ast, idents, lineinfos, msgs, ropes, options,
   pathutils, condsyms, packages]
 #import ".." / [renderer, astalgo]
 from os import removeFile, isAbsolute
+from ".." / modulepaths import mangleModuleName
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -550,6 +551,10 @@ proc loadError(err: RodFileError; filename: AbsoluteFile; config: ConfigRef;) =
   else:
     rawMessage(config, warnCannotOpenFile, filename.string & " reason: " & $err)
     #echo "Error: ", $err, " loading file: ", filename.string
+
+proc toRodFile*(conf: ConfigRef; f: AbsoluteFile; ext = RodExt): AbsoluteFile =
+  result = changeFileExt(completeGeneratedFilePath(conf,
+    mangleModuleName(conf, f).AbsoluteFile), ext)
 
 proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef;
                   ignoreConfig = false): RodFileError =

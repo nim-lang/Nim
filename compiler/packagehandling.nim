@@ -41,19 +41,3 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
     return path.splitFile.name
   else:
     return "unknown"
-
-proc mangleModuleName*(conf: ConfigRef; path: AbsoluteFile): string =
-  # Convert a module's `path` so that 2 modules with same name
-  # in different directory get different name and they can be
-  # placed in a directory.
-  # foo-#head/../bar becomes @foo-@hhead@s..@sbar
-  "@m" & relativeTo(path, conf.projectPath).string.multiReplace(
-    {$os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
-
-proc demangleModuleName*(path: string): string =
-  result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@c": ":"})
-
-proc withPackageName*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
-  let x = getPackageName(conf, path.string)
-  let (p, file, ext) = path.splitFile
-  result = p / RelativeFile(mangleModuleName(conf, path))
