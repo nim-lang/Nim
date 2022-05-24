@@ -13,8 +13,6 @@
 
 - Deprecated `std/sums`.
 
-- `cuchar` now aliases `uint8` instead of `char`.
-
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
   `experimental:flexibleOptionalParams`.
 
