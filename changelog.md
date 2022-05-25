@@ -22,6 +22,8 @@ becomes an alias for `addr`.
 
 - io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`.
 
+- `std/options` is deprecated, use `std/optionals` instead.
+
 ## Standard library additions and changes
 
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional

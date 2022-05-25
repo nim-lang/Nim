@@ -339,17 +339,11 @@ proc `$`*[T](self: Optional[T]): string =
     assert $none(int) == "none(int)"
 
   if self.isSome:
-    when defined(nimLagacyOptionsDollar):
-      result = "Some("
-    else:
-      result = "some("
+    result = "some("
     result.addQuoted self.val
     result.add ")"
   else:
-    when defined(nimLagacyOptionsDollar):
-      result = "None[" & name(T) & "]"
-    else:
-      result = "none(" & name(T) & ")"
+    result = "none(" & name(T) & ")"
 
 proc unsafeGet*[T](self: Optional[T]): lent T {.inline.}=
   ## Returns the value of a `some`. The behavior is undefined for `none`.
