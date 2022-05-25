@@ -40,7 +40,7 @@ runnableExamples:
 The `get` operation demonstrated above returns the underlying value, or
 raises `UnpackDefect` if there is no value. Note that `UnpackDefect`
 inherits from `system.Defect` and should therefore never be caught.
-Instead, rely on checking if the option contains a value with the
+Instead, rely on checking if the optional contains a value with the
 `isSome <#isSome,Optional[T]>`_ and `isNone <#isNone,Optional[T]>`_ procs.
 ]##
 
@@ -60,16 +60,16 @@ type
 
   UnpackDefect* = object of Defect
 
-template maybeOption*[T](_: typedesc[T]): untyped =
+template maybeOptional*[T](_: typedesc[T]): untyped =
   ## Return `T` if T is `ref | ptr | pointer | proc`, else `Optional[T]`
   runnableExamples:
-    assert maybeOption(ref int) is ref int
-    assert maybeOption(int) is Optional[int]
+    assert maybeOptional(ref int) is ref int
+    assert maybeOptional(int) is Optional[int]
   when T is SomePointer: T
   else: Optional[T]
 
-proc option*[T](val: sink T): Optional[T] {.inline.} =
-  ## Can be used to convert a pointer type (`ptr`, `pointer`, `ref` or `proc`) to an option type.
+proc optional*[T](val: sink T): Optional[T] {.inline.} =
+  ## Can be used to convert a pointer type (`ptr`, `pointer`, `ref` or `proc`) to an optional type.
   ## It converts `nil` to `none(T)`. When `T` is no pointer type, this is equivalent to `some(val)`.
   ##
   ## **See also:**
@@ -78,10 +78,10 @@ proc option*[T](val: sink T): Optional[T] {.inline.} =
   runnableExamples:
     type
       Foo = ref object
-    assert option[Foo](nil).isNone
-    assert option(Foo(nil)).isNone
+    assert optional[Foo](nil).isNone
+    assert optional(Foo(nil)).isNone
     assert some(Foo(nil)).isSome
-    assert option(42).isSome
+    assert optional(42).isSome
   when T is SomePointer:
     result.val = val
     result.has = val != nil
@@ -93,7 +93,7 @@ proc some*[T](val: sink T): Optional[T] {.inline.} =
   ## Returns an `Optional` that has the value `val`.
   ##
   ## **See also:**
-  ## * `option proc <#option,T>`_
+  ## * `optional proc <#optional,T>`_
   ## * `none proc <#none,typedesc>`_
   ## * `isSome proc <#isSome,Optional[T]>`_
   runnableExamples:
@@ -103,7 +103,7 @@ proc some*[T](val: sink T): Optional[T] {.inline.} =
 
     let b: ref int = nil
     assert some(b).isSome
-    assert option(b).isNone
+    assert optional(b).isNone
 
   result.has = true
   result.val = val
@@ -112,7 +112,7 @@ proc none*(T: typedesc): Optional[T] {.inline.} =
   ## Returns an `Optional` for this type that has no value.
   ##
   ## **See also:**
-  ## * `option proc <#option,T>`_
+  ## * `optional proc <#optional,T>`_
   ## * `some proc <#some,T>`_
   ## * `isNone proc <#isNone,Optional[T]>`_
   runnableExamples:
@@ -274,7 +274,7 @@ proc flatMap*[T, R](self: Optional[T],
 proc filter*[T](self: Optional[T], callback: proc (input: T): bool): Optional[T] {.inline.} =
   ## Applies a `callback` to the value of the `Optional`.
   ##
-  ## If the `callback` returns `true`, the option is returned as `some`.
+  ## If the `callback` returns `true`, the optional is returned as `some`.
   ## If it returns `false`, it is returned as `none`.
   ##
   ## **See also:**

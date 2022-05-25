@@ -135,17 +135,17 @@ proc main() =
 
     block SomePointer:
       var intref: ref int
-      doAssert(option(intref).isNone)
+      doAssert(optional(intref).isNone)
       intref.new
-      doAssert(option(intref).isSome)
+      doAssert(optional(intref).isSome)
 
-      let tmp = option(intref)
+      let tmp = optional(intref)
       doAssert(sizeof(tmp) > sizeof(ptr int))
 
       var prc = proc (x: int): int = x + 1
-      doAssert(option(prc).isSome)
+      doAssert(optional(prc).isSome)
       prc = nil
-      doAssert(option(prc).isNone)
+      doAssert(optional(prc).isNone)
 
     block:
       doAssert(none[int]().isNone)
