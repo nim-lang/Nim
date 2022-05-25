@@ -22,7 +22,7 @@ becomes an alias for `addr`.
 
 - io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`.
 
-- `std/options` is deprecated, use `std/optionals` instead.
+- `std/options` is deprecated, use the new `std/optionals` module instead.
 
 ## Standard library additions and changes
 

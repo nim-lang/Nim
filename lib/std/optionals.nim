@@ -8,7 +8,7 @@
 #
 
 ##[
-This module implements types which encapsulate an optional value.
+This module implements a type which encapsulate an optional value.
 
 A value of type `Optional[T]` either contains a value `x` (represented as
 `some(x)`) or is empty (`none(T)`).
@@ -121,7 +121,7 @@ proc none*(T: typedesc): Optional[T] {.inline.} =
   # the default is the none type
   discard
 
-proc none*[T]: Optional[T] {.inline.} =
+proc none*[T](): Optional[T] {.inline.} =
   ## Alias for `none(T) <#none,typedesc>`_.
   none(T)
 
