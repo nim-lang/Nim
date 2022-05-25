@@ -125,7 +125,7 @@ Collections
   Nim linked list support. Contains singly and doubly linked lists and
   circular lists ("rings").
 
-* `options <options.html>`_
+* `optionals <optionals.html>`_
   The option type encapsulates an optional value.
 
 * `packedsets <packedsets.html>`_
