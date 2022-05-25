@@ -39,7 +39,7 @@ becomes an alias for `addr`.
 - Added `initDateTime` in `times` to create a datetime from a weekday, and ISO 8601 week number and week-based year.
 - Added `getIsoWeekAndYear` in `times` to get an ISO week number along with the corresponding ISO week-based year from a datetime.
 - Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year.
-
+- Added [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift) for JavaScript targets.
 - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
 - Removed deprecated `oids.oidToString`.
 - Remove define `nimExperimentalAsyncjsThen` for `std/asyncjs.then` and `std/jsfetch`.
