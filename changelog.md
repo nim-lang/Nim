@@ -20,8 +20,6 @@
 - `addr` is now available for all addressable locations, `unsafeAddr` is deprecated and
 becomes an alias for `addr`.
 
-- `std/options` now doesn't special case pointers, and `some(nil).isSome` is now true.
-
 - io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`.
 
 ## Standard library additions and changes
@@ -53,6 +51,8 @@ becomes an alias for `addr`.
 - Remove deprecated `osproc.poDemon`, symbol with typo.
 
 - Deprecated `selfExe` for Nimscript.
+
+- Add `std/optionals` which doesn't special case pointers, and `some(nil).isSome` is now true.
 
 
 ## Language changes
