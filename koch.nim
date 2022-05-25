@@ -142,7 +142,7 @@ proc csource(args: string) =
 proc bundleC2nim(args: string) =
   cloneDependency(distDir, "https://github.com/nim-lang/c2nim.git")
   nimCompile("dist/c2nim/c2nim",
-             options = "--noNimblePath --path:. " & args)
+             options = "--noNimblePath --useVersion:1.6 --path:. " & args)
 
 proc bundleNimbleExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: NimbleStableCommit
@@ -150,7 +150,7 @@ proc bundleNimbleExe(latest: bool, args: string) =
                   commit = commit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
-             options = "-d:release --noNimblePath " & args)
+             options = "-d:release --useVersion:1.6 --noNimblePath " & args)
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
@@ -222,7 +222,13 @@ proc buildTools(args: string = "") =
   # `-d:nimDebugUtils` only makes sense when temporarily editing/debugging compiler
   # `-d:debug` should be changed to a flag that doesn't require re-compiling nim
   # `--opt:speed` is a sensible default even for a debug build, it doesn't affect nim stacktraces
-  nimCompileFold("Compile nim_dbg", "compiler/nim.nim", options = "--opt:speed --stacktrace -d:debug --stacktraceMsgs -d:nimCompilerStacktraceHints " & args, outputName = "nim_dbg")
+  nimCompileFold("Compile nim_dbg", "compiler/nim.nim", options =
+      "--opt:speed --stacktrace -d:debug --stacktraceMsgs -d:nimCompilerStacktraceHints " & args,
+      outputName = "nim_dbg")
+
+  nimCompileFold("Compile atlas", "tools/atlas/atlas.nim", options = "-d:release " & args,
+      outputName = "atlas")
+
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
@@ -553,7 +559,8 @@ proc runCI(cmd: string) =
 
   let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
-    execFold("Test selected Nimble packages", "nim r testament/testament $# pcat nimble-packages" % batchParam)
+    nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release")
+    execFold("Test selected Nimble packages", "testament $# pcat nimble-packages" % batchParam)
   else:
     buildTools()
 
@@ -586,12 +593,18 @@ proc runCI(cmd: string) =
     execFold("Run rst2html tests", "nim r nimdoc/rsttester")
     execFold("Run nimpretty tests", "nim r nimpretty/tester.nim")
     when defined(posix):
+      # refs #18385, build with -d:release instead of -d:danger for testing
+      # We could also skip building nimsuggest in buildTools, or build it with -d:release
+      # in bundleNimsuggest depending on some environment variable when we are in CI. One advantage
+      # of rebuilding is this won't affect bin/nimsuggest when running runCI locally
+      execFold("build nimsuggest_testing", "nim c -o:bin/nimsuggest_testing -d:release nimsuggest/nimsuggest")
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
+    execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
+
   when not defined(bsd):
-    if not doUseCpp:
-      # the BSDs are overwhelmed already, so only run this test on the other machines:
-      kochExecFold("Boot Nim ORC", "boot -d:release --gc:orc --lib:lib")
+    # the BSDs are overwhelmed already, so only run this test on the other machines:
+    kochExecFold("Boot Nim ORC", "boot -d:release --mm:orc --lib:lib")
 
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)

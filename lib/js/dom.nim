@@ -216,11 +216,13 @@ type
     defaultCharset*: cstring
     fgColor*: cstring
     head*: Element
+    hidden*: bool
     lastModified*: cstring
     linkColor*: cstring
     referrer*: cstring
     title*: cstring
     URL*: cstring
+    visibilityState*: cstring
     vlinkColor*: cstring
     anchors*: seq[AnchorElement]
     forms*: seq[FormElement]
@@ -1301,7 +1303,7 @@ type
     width*: int
 
   TimeOut* {.importc.} = ref object of RootObj
-  Interval* {.importc.} = object of RootObj
+  Interval* {.importc.} = ref object of RootObj
 
   AddEventListenerOptions* = object
     capture*: bool
@@ -1321,6 +1323,11 @@ type
     behavior*: cstring
     `block`*: cstring
     inline*: cstring
+
+  MediaQueryList* = ref MediaQueryListObj
+  MediaQueryListObj {.importc.} = object of EventTargetObj
+    matches*: bool
+    media*: cstring
 
 since (1, 3):
   type
@@ -1481,6 +1488,8 @@ else:
 
 proc setTimeout*(action: proc(); ms: int): TimeOut {.importc, nodecl.}
 proc clearTimeout*(t: TimeOut) {.importc, nodecl.}
+proc setInterval*(action: proc(); ms: int): Interval {.importc, nodecl.}
+proc clearInterval*(i: Interval) {.importc, nodecl.}
 
 {.push importcpp.}
 
@@ -1494,8 +1503,8 @@ proc removeEventListener*(et: EventTarget; ev: cstring; cb: proc(ev: Event))
 proc alert*(w: Window, msg: cstring)
 proc back*(w: Window)
 proc blur*(w: Window)
-proc clearInterval*(w: Window, interval: ref Interval)
-proc clearTimeout*(w: Window, timeout: ref TimeOut)
+proc clearInterval*(w: Window, interval: Interval)
+proc clearTimeout*(w: Window, timeout: TimeOut)
 proc close*(w: Window)
 proc confirm*(w: Window, msg: cstring): bool
 proc disableExternalCapture*(w: Window)
@@ -1520,13 +1529,14 @@ proc resizeTo*(w: Window, x, y: int)
 proc routeEvent*(w: Window, event: Event)
 proc scrollBy*(w: Window, x, y: int)
 proc scrollTo*(w: Window, x, y: int)
-proc setInterval*(w: Window, code: cstring, pause: int): ref Interval
-proc setInterval*(w: Window, function: proc (), pause: int): ref Interval
-proc setTimeout*(w: Window, code: cstring, pause: int): ref TimeOut
-proc setTimeout*(w: Window, function: proc (), pause: int): ref Interval
+proc setInterval*(w: Window, code: cstring, pause: int): Interval
+proc setInterval*(w: Window, function: proc (), pause: int): Interval
+proc setTimeout*(w: Window, code: cstring, pause: int): TimeOut
+proc setTimeout*(w: Window, function: proc (), pause: int): Interval
 proc stop*(w: Window)
 proc requestAnimationFrame*(w: Window, function: proc (time: float)): int
 proc cancelAnimationFrame*(w: Window, id: int)
+proc matchMedia*(w: Window, mediaQueryString: cstring): MediaQueryList
 
 # Node "methods"
 proc appendData*(n: Node, data: cstring)
@@ -1769,3 +1779,6 @@ since (1, 3):
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
   proc readAsText*(f: FileReader, b: Blob|File, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText
+
+since (1, 5):
+  proc elementsFromPoint*(n: DocumentOrShadowRoot; x, y: float): seq[Element] {.importcpp.}

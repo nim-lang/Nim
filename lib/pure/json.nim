@@ -164,6 +164,9 @@ import hashes, tables, strutils, lexbase, streams, macros, parsejson
 import options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 export
   tables.`$`
 
@@ -201,6 +204,8 @@ type
       fields*: OrderedTable[string, JsonNode]
     of JArray:
       elems*: seq[JsonNode]
+
+const DepthLimit = 1000
 
 proc newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.
@@ -437,7 +442,7 @@ macro `%*`*(x: untyped): untyped =
   ## `%` for every element.
   result = toJsonImpl(x)
 
-proc `==`*(a, b: JsonNode): bool =
+proc `==`*(a, b: JsonNode): bool {.noSideEffect.} =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
@@ -464,12 +469,16 @@ proc `==`*(a, b: JsonNode): bool =
       if a.fields.len != b.fields.len: return false
       for key, val in a.fields:
         if not b.fields.hasKey(key): return false
-        if b.fields[key] != val: return false
+        when defined(nimHasEffectsOf):
+          {.noSideEffect.}:
+            if b.fields[key] != val: return false
+        else:
+          if b.fields[key] != val: return false
       result = true
 
 proc hash*(n: OrderedTable[string, JsonNode]): Hash {.noSideEffect.}
 
-proc hash*(n: JsonNode): Hash =
+proc hash*(n: JsonNode): Hash {.noSideEffect.} =
   ## Compute the hash for a JSON node
   case n.kind
   of JArray:
@@ -530,6 +539,24 @@ proc `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline, since: (1,
     doAssert j[^2].getInt == 4
 
   `[]`(node, node.len - int(index))
+
+proc `[]`*[U, V](a: JsonNode, x: HSlice[U, V]): JsonNode =
+  ## Slice operation for JArray.
+  ##
+  ## Returns the inclusive range `[a[x.a], a[x.b]]`:
+  runnableExamples:
+    import json
+    let arr = %[0,1,2,3,4,5]
+    doAssert arr[2..4] == %[2,3,4]
+    doAssert arr[2..^2] == %[2,3,4]
+    doAssert arr[^4..^2] == %[2,3,4]
+
+  assert(a.kind == JArray)
+  result = newJArray()
+  let xa = (when x.a is BackwardsIndex: a.len - int(x.a) else: int(x.a))
+  let L = (when x.b is BackwardsIndex: a.len - int(x.b) else: int(x.b)) - xa + 1
+  for i in 0..<L:
+    result.add(a[i + xa])
 
 proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
@@ -827,7 +854,7 @@ iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   for key, val in mpairs(node.fields):
     yield (key, val)
 
-proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
+proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool, depth = 0): JsonNode =
   ## Parses JSON from a JSON Parser `p`.
   case p.tok
   of tkString:
@@ -863,6 +890,8 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
     result = newJNull()
     discard getTok(p)
   of tkCurlyLe:
+    if depth > DepthLimit:
+      raiseParseErr(p, "}")
     result = newJObject()
     discard getTok(p)
     while p.tok != tkCurlyRi:
@@ -871,16 +900,18 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
       var key = p.a
       discard getTok(p)
       eat(p, tkColon)
-      var val = parseJson(p, rawIntegers, rawFloats)
+      var val = parseJson(p, rawIntegers, rawFloats, depth+1)
       result[key] = val
       if p.tok != tkComma: break
       discard getTok(p)
     eat(p, tkCurlyRi)
   of tkBracketLe:
+    if depth > DepthLimit:
+      raiseParseErr(p, "]")
     result = newJArray()
     discard getTok(p)
     while p.tok != tkBracketRi:
-      result.add(parseJson(p, rawIntegers, rawFloats))
+      result.add(parseJson(p, rawIntegers, rawFloats, depth+1))
       if p.tok != tkComma: break
       discard getTok(p)
     eat(p, tkBracketRi)
@@ -927,12 +958,12 @@ proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats
 
 when defined(js):
   from math import `mod`
-  from std/jsffi import JSObject, `[]`, to
+  from std/jsffi import JsObject, `[]`, to
   from std/private/jsutils import getProtoName, isInteger, isSafeInteger
 
-  proc parseNativeJson(x: cstring): JSObject {.importjs: "JSON.parse(#)".}
+  proc parseNativeJson(x: cstring): JsObject {.importjs: "JSON.parse(#)".}
 
-  proc getVarType(x: JSObject, isRawNumber: var bool): JsonNodeKind =
+  proc getVarType(x: JsObject, isRawNumber: var bool): JsonNodeKind =
     result = JNull
     case $getProtoName(x) # TODO: Implicit returns fail here.
     of "[object Array]": return JArray
@@ -951,12 +982,12 @@ when defined(js):
     of "[object String]": return JString
     else: assert false
 
-  proc len(x: JSObject): int =
+  proc len(x: JsObject): int =
     asm """
       `result` = `x`.length;
     """
 
-  proc convertObject(x: JSObject): JsonNode =
+  proc convertObject(x: JsObject): JsonNode =
     var isRawNumber = false
     case getVarType(x, isRawNumber)
     of JArray:
@@ -969,7 +1000,7 @@ when defined(js):
         if (`x`.hasOwnProperty(property)) {
       """
       var nimProperty: cstring
-      var nimValue: JSObject
+      var nimValue: JsObject
       asm "`nimProperty` = property; `nimValue` = `x`[property];"
       result[$nimProperty] = nimValue.convertObject()
       asm "}}"

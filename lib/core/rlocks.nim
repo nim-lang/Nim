@@ -48,7 +48,7 @@ proc release*(lock: var RLock) {.inline.} =
   ## Releases the given lock.
   releaseSys(lock)
 
-template withRLock*(lock: var RLock, code: untyped): untyped =
+template withRLock*(lock: RLock, code: untyped) =
   ## Acquires the given lock and then executes the code.
   acquire(lock)
   {.locks: [lock].}:

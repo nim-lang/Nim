@@ -5,6 +5,8 @@ discard """
 
 [Suite] RST indentation
 
+[Suite] Warnings
+
 [Suite] RST include directive
 
 [Suite] RST escaping
@@ -15,15 +17,13 @@ discard """
 
 # tests for rst module
 
-import ../../lib/packages/docutils/rstgen
-import ../../lib/packages/docutils/rst
-import ../../lib/packages/docutils/rstast
+import ../../lib/packages/docutils/[rstgen, rst, rstast]
 import unittest, strutils
 import std/private/miscdollars
 import os
 
 proc toAst(input: string,
-            rstOptions: RstParseOptions = {roPreferMarkdown, roSupportMarkdown, roNimFile},
+            rstOptions: RstParseOptions = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled},
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
@@ -51,15 +51,421 @@ proc toAst(input: string,
       # we don't find any files in online mode:
       result = ""
 
-    var dummyHasToc = false
-    var rst = rstParse(input, filen, line=LineRstInit, column=ColRstInit,
-                       dummyHasToc, rstOptions, myFindFile, testMsgHandler)
-    result = renderRstToStr(rst)
+    var (rst, _, _) = rstParse(input, filen, line=LineRstInit, column=ColRstInit,
+                               rstOptions, myFindFile, testMsgHandler)
+    result = treeRepr(rst)
   except EParseError as e:
     if e.msg != "":
       result = e.msg
 
 suite "RST parsing":
+  test "References are whitespace-neutral and case-insensitive":
+    # refname is 'lexical-analysis', the same for all the 3 variants:
+    check(dedent"""
+        Lexical Analysis
+        ================
+
+        Ref. `Lexical Analysis`_ or `Lexical analysis`_ or `lexical analysis`_.
+        """.toAst ==
+      dedent"""
+        rnInner
+          rnHeadline  level=1
+            rnLeaf  'Lexical'
+            rnLeaf  ' '
+            rnLeaf  'Analysis'
+          rnParagraph
+            rnLeaf  'Ref'
+            rnLeaf  '.'
+            rnLeaf  ' '
+            rnInternalRef
+              rnInner
+                rnLeaf  'Lexical'
+                rnLeaf  ' '
+                rnLeaf  'Analysis'
+              rnLeaf  'lexical-analysis'
+            rnLeaf  ' '
+            rnLeaf  'or'
+            rnLeaf  ' '
+            rnInternalRef
+              rnInner
+                rnLeaf  'Lexical'
+                rnLeaf  ' '
+                rnLeaf  'analysis'
+              rnLeaf  'lexical-analysis'
+            rnLeaf  ' '
+            rnLeaf  'or'
+            rnLeaf  ' '
+            rnInternalRef
+              rnInner
+                rnLeaf  'lexical'
+                rnLeaf  ' '
+                rnLeaf  'analysis'
+              rnLeaf  'lexical-analysis'
+            rnLeaf  '.'
+            rnLeaf  ' '
+      """)
+
+  test "RST quoted literal blocks":
+    let expected =
+      dedent"""
+        rnInner
+          rnLeaf  'Paragraph'
+          rnLeaf  ':'
+          rnLiteralBlock
+            rnLeaf  '>x'
+        """
+
+    check(dedent"""
+        Paragraph::
+
+        >x""".toAst == expected)
+
+    check(dedent"""
+        Paragraph::
+
+            >x""".toAst == expected)
+
+  test "RST quoted literal blocks, :: at a separate line":
+    let expected =
+      dedent"""
+        rnInner
+          rnInner
+            rnLeaf  'Paragraph'
+          rnLiteralBlock
+            rnLeaf  '>x
+        >>y'
+      """
+
+    check(dedent"""
+        Paragraph
+
+        ::
+
+        >x
+        >>y""".toAst == expected)
+
+    check(dedent"""
+        Paragraph
+
+        ::
+
+          >x
+          >>y""".toAst == expected)
+
+  test "Markdown quoted blocks":
+    check(dedent"""
+        Paragraph.
+        >x""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'Paragraph'
+          rnLeaf  '.'
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=1
+              rnLeaf  'x'
+      """)
+
+    # bug #17987
+    check(dedent"""
+        foo https://github.com/nim-lang/Nim/issues/8258
+
+        > bar""".toAst ==
+      dedent"""
+        rnInner
+          rnInner
+            rnLeaf  'foo'
+            rnLeaf  ' '
+            rnStandaloneHyperlink
+              rnLeaf  'https://github.com/nim-lang/Nim/issues/8258'
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=1
+              rnLeaf  'bar'
+      """)
+
+    let expected = dedent"""
+        rnInner
+          rnLeaf  'Paragraph'
+          rnLeaf  '.'
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=1
+              rnInner
+                rnLeaf  'x1'
+                rnLeaf  ' '
+                rnLeaf  'x2'
+            rnMarkdownBlockQuoteItem  quotationDepth=2
+              rnInner
+                rnLeaf  'y1'
+                rnLeaf  ' '
+                rnLeaf  'y2'
+            rnMarkdownBlockQuoteItem  quotationDepth=1
+              rnLeaf  'z'
+        """
+
+    check(dedent"""
+        Paragraph.
+        >x1 x2
+        >>y1 y2
+        >z""".toAst == expected)
+
+    check(dedent"""
+        Paragraph.
+        > x1 x2
+        >> y1 y2
+        > z""".toAst == expected)
+
+    check(dedent"""
+        >x
+        >y
+        >z""".toAst ==
+      dedent"""
+        rnMarkdownBlockQuote
+          rnMarkdownBlockQuoteItem  quotationDepth=1
+            rnInner
+              rnLeaf  'x'
+              rnLeaf  ' '
+              rnLeaf  'y'
+              rnLeaf  ' '
+              rnLeaf  'z'
+      """)
+
+    check(dedent"""
+        > z
+        > > >y
+        """.toAst ==
+      dedent"""
+        rnMarkdownBlockQuote
+          rnMarkdownBlockQuoteItem  quotationDepth=1
+            rnLeaf  'z'
+          rnMarkdownBlockQuoteItem  quotationDepth=3
+            rnLeaf  'y'
+        """)
+
+  test "Markdown quoted blocks: lazy":
+    let expected = dedent"""
+        rnInner
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=2
+              rnInner
+                rnLeaf  'x'
+                rnLeaf  ' '
+                rnLeaf  'continuation1'
+                rnLeaf  ' '
+                rnLeaf  'continuation2'
+          rnParagraph
+            rnLeaf  'newParagraph'
+      """
+    check(dedent"""
+        >>x
+        continuation1
+        continuation2
+
+        newParagraph""".toAst == expected)
+
+    check(dedent"""
+        >> x
+        continuation1
+        continuation2
+
+        newParagraph""".toAst == expected)
+
+    # however mixing more than 1 non-lazy line and lazy one(s) splits quote
+    # in our parser, which appeared the easiest way to handle such cases:
+    var warnings = new seq[string]
+    check(dedent"""
+        >> x
+        >> continuation1
+        continuation2
+
+        newParagraph""".toAst(warnings=warnings) ==
+      dedent"""
+        rnInner
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=2
+              rnLeaf  'x'
+            rnMarkdownBlockQuoteItem  quotationDepth=2
+              rnInner
+                rnLeaf  'continuation1'
+                rnLeaf  ' '
+                rnLeaf  'continuation2'
+          rnParagraph
+            rnLeaf  'newParagraph'
+        """)
+    check(warnings[] == @[
+        "input(2, 1) Warning: RST style: two or more quoted lines " &
+        "are followed by unquoted line 3"])
+
+  test "Markdown quoted blocks: not lazy":
+    # here is where we deviate from CommonMark specification: 'bar' below is
+    # not considered as continuation of 2-level '>> foo' quote.
+    check(dedent"""
+        >>> foo
+        > bar
+        >> baz
+        """.toAst() ==
+      dedent"""
+        rnMarkdownBlockQuote
+          rnMarkdownBlockQuoteItem  quotationDepth=3
+            rnLeaf  'foo'
+          rnMarkdownBlockQuoteItem  quotationDepth=1
+            rnLeaf  'bar'
+          rnMarkdownBlockQuoteItem  quotationDepth=2
+            rnLeaf  'baz'
+        """)
+
+
+  test "Markdown quoted blocks: inline markup works":
+    check(dedent"""
+        > hi **bold** text
+        """.toAst == dedent"""
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=1
+              rnInner
+                rnLeaf  'hi'
+                rnLeaf  ' '
+                rnStrongEmphasis
+                  rnLeaf  'bold'
+                rnLeaf  ' '
+                rnLeaf  'text'
+        """)
+
+  test "Markdown quoted blocks: blank line separator":
+    let expected = dedent"""
+      rnInner
+        rnMarkdownBlockQuote
+          rnMarkdownBlockQuoteItem  quotationDepth=1
+            rnInner
+              rnLeaf  'x'
+              rnLeaf  ' '
+              rnLeaf  'y'
+        rnMarkdownBlockQuote
+          rnMarkdownBlockQuoteItem  quotationDepth=1
+            rnInner
+              rnLeaf  'z'
+              rnLeaf  ' '
+              rnLeaf  't'
+      """
+    check(dedent"""
+        >x
+        >y
+
+        > z
+        > t""".toAst == expected)
+
+    check(dedent"""
+        >x
+        y
+
+        > z
+         t""".toAst == expected)
+
+  test "Markdown quoted blocks: nested body blocks/elements work #1":
+    let expected = dedent"""
+      rnMarkdownBlockQuote
+        rnMarkdownBlockQuoteItem  quotationDepth=1
+          rnBulletList
+            rnBulletItem
+              rnInner
+                rnLeaf  'x'
+            rnBulletItem
+              rnInner
+                rnLeaf  'y'
+      """
+
+    check(dedent"""
+        > - x
+          - y
+        """.toAst == expected)
+
+    # TODO: if bug #17340 point 28 is resolved then this may work:
+    # check(dedent"""
+    #     > - x
+    #     - y
+    #     """.toAst == expected)
+
+    check(dedent"""
+        > - x
+        > - y
+        """.toAst == expected)
+
+    check(dedent"""
+        >
+        > - x
+        >
+        > - y
+        >
+        """.toAst == expected)
+
+  test "Markdown quoted blocks: nested body blocks/elements work #2":
+    let expected = dedent"""
+      rnAdmonition  adType=note
+        [nil]
+        [nil]
+        rnDefList
+          rnDefItem
+            rnDefName
+              rnLeaf  'deflist'
+              rnLeaf  ':'
+            rnDefBody
+              rnMarkdownBlockQuote
+                rnMarkdownBlockQuoteItem  quotationDepth=2
+                  rnInner
+                    rnLeaf  'quote'
+                    rnLeaf  ' '
+                    rnLeaf  'continuation'
+      """
+
+    check(dedent"""
+        .. Note:: deflist:
+                    >> quote
+                    continuation
+        """.toAst == expected)
+
+    check(dedent"""
+        .. Note::
+           deflist:
+             >> quote
+             continuation
+        """.toAst == expected)
+
+    check(dedent"""
+        .. Note::
+           deflist:
+             >> quote
+             >> continuation
+        """.toAst == expected)
+
+    # spaces are not significant between `>`:
+    check(dedent"""
+        .. Note::
+           deflist:
+             > > quote
+             > > continuation
+        """.toAst == expected)
+
+  test "Markdown quoted blocks: de-indent handled well":
+    check(dedent"""
+        >
+        >   - x
+        >   - y
+        >
+        > Paragraph.
+        """.toAst == dedent"""
+          rnMarkdownBlockQuote
+            rnMarkdownBlockQuoteItem  quotationDepth=1
+              rnInner
+                rnBlockQuote
+                  rnBulletList
+                    rnBulletItem
+                      rnInner
+                        rnLeaf  'x'
+                    rnBulletItem
+                      rnInner
+                        rnLeaf  'y'
+                rnParagraph
+                  rnLeaf  'Paragraph'
+                  rnLeaf  '.'
+          """)
+
   test "option list has priority over definition list":
     check(dedent"""
         --defusages
@@ -181,9 +587,9 @@ suite "RST parsing":
   test "using .. as separator b/w directives and block quotes":
     check(dedent"""
         .. note:: someNote
-    
+
         ..
-    
+
           someBlockQuote""".toAst ==
       dedent"""
         rnInner
@@ -195,6 +601,22 @@ suite "RST parsing":
             rnInner
               rnLeaf  'someBlockQuote'
         """)
+
+  test "no redundant blank lines in literal blocks":
+    check(dedent"""
+      Check::
+
+
+        code
+
+      """.toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'Check'
+          rnLeaf  ':'
+          rnLiteralBlock
+            rnLeaf  'code'
+      """)
 
 suite "RST indentation":
   test "nested bullet lists":
@@ -283,14 +705,14 @@ suite "RST indentation":
     let input1 = dedent"""
       .. code-block:: nim
           :test: "nim c $1"
-      
+
         template additive(typ: typedesc) =
           discard
       """
     let input2 = dedent"""
       .. code-block:: nim
         :test: "nim c $1"
-      
+
         template additive(typ: typedesc) =
           discard
       """
@@ -303,7 +725,7 @@ suite "RST indentation":
     let inputWrong = dedent"""
       .. code-block:: nim
        :test: "nim c $1"
-      
+
          template additive(typ: typedesc) =
            discard
       """
@@ -340,11 +762,106 @@ suite "RST indentation":
     # "template..." should be parsed as a definition list attached to ":test:":
     check inputWrong.toAst != ast
 
+suite "Warnings":
+  test "warnings for broken footnotes/links/substitutions":
+    let input = dedent"""
+      firstParagraph
+
+      footnoteRef [som]_
+
+      link `a broken Link`_
+
+      substitution |undefined subst|
+
+      link short.link_
+
+      lastParagraph
+      """
+    var warnings = new seq[string]
+    let output = input.toAst(warnings=warnings)
+    check(warnings[] == @[
+        "input(3, 14) Warning: broken link 'citation-som'",
+        "input(5, 7) Warning: broken link 'a broken Link'",
+        "input(7, 15) Warning: unknown substitution 'undefined subst'",
+        "input(9, 6) Warning: broken link 'short.link'"
+        ])
+
+  test "With include directive and blank lines at the beginning":
+    "other.rst".writeFile(dedent"""
+
+
+        firstParagraph
+
+        here brokenLink_""")
+    let input = ".. include:: other.rst"
+    var warnings = new seq[string]
+    let output = input.toAst(warnings=warnings)
+    check warnings[] == @["other.rst(5, 6) Warning: broken link 'brokenLink'"]
+    check(output == dedent"""
+      rnInner
+        rnParagraph
+          rnLeaf  'firstParagraph'
+        rnParagraph
+          rnLeaf  'here'
+          rnLeaf  ' '
+          rnRef
+            rnLeaf  'brokenLink'
+      """)
+    removeFile("other.rst")
+
+  test "warnings for ambiguous links (references + anchors)":
+    # Reference like `x`_ generates a link alias x that may clash with others
+    let input = dedent"""
+      Manual reference: `foo <#foo,string,string>`_
+
+      .. _foo:
+
+      Paragraph.
+
+      Ref foo_
+      """
+    var warnings = new seq[string]
+    let output = input.toAst(warnings=warnings)
+    check(warnings[] == @[
+      dedent """
+      input(7, 5) Warning: ambiguous doc link `foo`
+        clash:
+          (3, 8): (manual directive anchor)
+          (1, 45): (implicitly-generated hyperlink alias)"""
+    ])
+    # reference should be resolved to the manually set anchor:
+    check(output ==
+      dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Manual'
+            rnLeaf  ' '
+            rnLeaf  'reference'
+            rnLeaf  ':'
+            rnLeaf  ' '
+            rnHyperlink
+              rnInner
+                rnLeaf  'foo'
+              rnInner
+                rnLeaf  '#foo,string,string'
+          rnParagraph  anchor='foo'
+            rnLeaf  'Paragraph'
+            rnLeaf  '.'
+          rnParagraph
+            rnLeaf  'Ref'
+            rnLeaf  ' '
+            rnInternalRef
+              rnInner
+                rnLeaf  'foo'
+              rnLeaf  'foo'
+            rnLeaf  ' '
+      """)
+
 suite "RST include directive":
   test "Include whole":
     "other.rst".writeFile("**test1**")
     let input = ".. include:: other.rst"
-    doAssert "<strong>test1</strong>" == rstTohtml(input, {}, defaultConfig())
+    doAssert "<strong>test1</strong>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
   test "Include starting from":
@@ -358,7 +875,7 @@ OtherStart
 .. include:: other.rst
              :start-after: OtherStart
 """
-    doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
+    check "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
   test "Include everything before":
@@ -372,7 +889,7 @@ And this should **NOT** be visible in `docs.html`
 .. include:: other.rst
              :end-before: OtherEnd
 """
-    doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
+    doAssert "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
 
@@ -390,7 +907,7 @@ And this should **NOT** be visible in `docs.html`
              :start-after: OtherStart
              :end-before: OtherEnd
 """
-    doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
+    check "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
 
@@ -410,7 +927,7 @@ And this should **NOT** be visible in `docs.html`
              :start-after: OtherStart
              :end-before: OtherEnd
 """
-    doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
+    doAssert "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
 suite "RST escaping":
@@ -734,3 +1251,23 @@ suite "RST inline markup":
           rnLeaf  'my {link example'
           rnLeaf  'http://example.com/bracket_(symbol_[)'
       """)
+
+  test "not a Markdown link":
+    # bug #17340 (27) `f` will be considered as a protocol and blocked as unsafe
+    var warnings = new seq[string]
+    check("[T](f: var Foo)".toAst(warnings = warnings) ==
+      dedent"""
+        rnInner
+          rnLeaf  '['
+          rnLeaf  'T'
+          rnLeaf  ']'
+          rnLeaf  '('
+          rnLeaf  'f'
+          rnLeaf  ':'
+          rnLeaf  ' '
+          rnLeaf  'var'
+          rnLeaf  ' '
+          rnLeaf  'Foo'
+          rnLeaf  ')'
+      """)
+    check(warnings[] == @["input(1, 5) Warning: broken link 'f'"])

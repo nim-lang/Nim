@@ -61,12 +61,12 @@ type
   Task* = object ## `Task` contains the callback and its arguments.
     callback: proc (args: pointer) {.nimcall, gcsafe.}
     args: pointer
-    destroy: proc (args: pointer) {.nimcall.}
+    destroy: proc (args: pointer) {.nimcall, gcsafe.}
 
 
 proc `=copy`*(x: var Task, y: Task) {.error.}
 
-proc `=destroy`*(t: var Task) {.inline.} =
+proc `=destroy`*(t: var Task) {.inline, gcsafe.} =
   ## Frees the resources allocated for a `Task`.
   if t.args != nil:
     if t.destroy != nil:
@@ -85,9 +85,9 @@ template checkIsolate(scratchAssignList: seq[NimNode], procParam, scratchDotExpr
   #   var isoTempB = isolate(literal)
   #   scratch.b = extract(isolateB)
   let isolatedTemp = genSym(nskTemp, "isoTemp")
-  scratchAssignList.add newVarStmt(isolatedTemp, newCall(newidentNode("isolate"), procParam))
+  scratchAssignList.add newVarStmt(isolatedTemp, newCall(newIdentNode("isolate"), procParam))
   scratchAssignList.add newAssignment(scratchDotExpr,
-      newcall(newIdentNode("extract"), isolatedTemp))
+      newCall(newIdentNode("extract"), isolatedTemp))
 
 template addAllNode(assignParam: NimNode, procParam: NimNode) =
   let scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
@@ -111,10 +111,10 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
 
   when compileOption("threads"):
     if not isGcSafe(e[0]):
-      error("'toTask' takes a GC safe call expression")
+      error("'toTask' takes a GC safe call expression", e)
 
   if hasClosure(e[0]):
-    error("closure call is not allowed")
+    error("closure call is not allowed", e)
 
   if e.len > 1:
     let scratchIdent = genSym(kind = nskTemp, ident = "scratch")
@@ -141,20 +141,20 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
         param = param[0]
 
       if param.typeKind in {ntyExpr, ntyStmt}:
-        error("'toTask'ed function cannot have a 'typed' or 'untyped' parameter")
+        error("'toTask'ed function cannot have a 'typed' or 'untyped' parameter", e)
 
       case param.kind
       of nnkVarTy:
-        error("'toTask'ed function cannot have a 'var' parameter")
+        error("'toTask'ed function cannot have a 'var' parameter", e)
       of nnkBracketExpr:
         if param[0].typeKind == ntyTypeDesc:
           callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
         elif param[0].typeKind in {ntyVarargs, ntyOpenArray}:
           if param[1].typeKind in {ntyExpr, ntyStmt}:
-            error("'toTask'ed function cannot have a 'typed' or 'untyped' parameter")
+            error("'toTask'ed function cannot have a 'typed' or 'untyped' parameter", e)
           let
             seqType = nnkBracketExpr.newTree(newIdentNode("seq"), param[1])
-            seqCallNode = newcall("@", e[i])
+            seqCallNode = newCall("@", e[i])
           addAllNode(seqType, seqCallNode)
         else:
           addAllNode(param, e[i])
@@ -167,7 +167,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
       of nnkCharLit..nnkNilLit:
         callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
       else:
-        error("not supported type kinds")
+        error("'toTask'ed function cannot have a parameter of " & $param.kind & " kind", e)
 
     let scratchObjType = genSym(kind = nskType, ident = "ScratchObj")
     let scratchObj = nnkTypeSection.newTree(
@@ -219,7 +219,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
         let `objTemp` = cast[ptr `scratchObjType`](args)
         `functionStmtList`
 
-      proc `destroyName`(args: pointer) {.nimcall.} =
+      proc `destroyName`(args: pointer) {.gcsafe, nimcall.} =
         let `objTemp2` = cast[ptr `scratchObjType`](args)
         `tempNode`
 

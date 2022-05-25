@@ -44,14 +44,7 @@ proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   elif self.supportsStdinFile and conf.projectName == "-":
     handleStdinInput(conf)
   elif conf.projectName != "":
-    try:
-      conf.projectFull = canonicalizePath(conf, AbsoluteFile conf.projectName)
-    except OSError:
-      conf.projectFull = AbsoluteFile conf.projectName
-    let p = splitFile(conf.projectFull)
-    let dir = if p.dir.isEmpty: AbsoluteDir getCurrentDir() else: p.dir
-    conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
-    conf.projectName = p.name
+    setFromProjectName(conf, conf.projectName)
   else:
     conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile getCurrentDir())
 
@@ -71,7 +64,8 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
       if conf.cmd == cmdNimscript: return false
   # now process command line arguments again, because some options in the
   # command line can overwrite the config file's settings
-  extccomp.initVars(conf)
+  if conf.backend != backendJs: # bug #19059
+    extccomp.initVars(conf)
   self.processCmdLine(passCmd2, "", conf)
   if conf.cmd == cmdNone:
     rawMessage(conf, errGenerated, "command missing")

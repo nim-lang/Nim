@@ -12,6 +12,9 @@
 import
   pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 # support `useGnuReadline`, `useLinenoise` for backwards compatibility
 const hasRstdin = (defined(nimUseLinenoise) or defined(useLinenoise) or defined(useGnuReadline)) and
   not defined(windows)

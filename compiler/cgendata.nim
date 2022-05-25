@@ -99,6 +99,7 @@ type
     withinTryWithExcept*: int # required for goto based exception handling
     withinBlockLeaveActions*: int # complex to explain
     sigConflicts*: CountTable[string]
+    inUncheckedAssignSection*: int
 
   TTypeSeq* = seq[PType]
   TypeCache* = Table[SigHash, Rope]
@@ -170,7 +171,6 @@ type
     labels*: Natural          # for generating unique module-scope names
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                              # OpenGL wrapper
-    injectStmt*: Rope
     sigConflicts*: CountTable[SigHash]
     g*: BModuleList
     ndi*: NdiFile

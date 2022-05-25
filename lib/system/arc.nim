@@ -207,10 +207,8 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
-  if nimDecRefIsLast(cast[pointer](x)):
-    # XXX this does NOT work for virtual destructors!
-    `=destroy`(x[])
-    nimRawDispose(cast[pointer](x), T.alignOf)
+  var y {.cursor.} = x
+  `=destroy`(y)
 
 proc GC_ref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
@@ -229,10 +227,34 @@ template tearDownForeignThreadGc* =
   ## With `--gc:arc` a nop.
   discard
 
-proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
-  proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
+type ObjCheckCache = array[0..1, PNimTypeV2]
 
-  result = strstr(obj.name, subclass) != nil
+proc memcmp(str1, str2: cstring, n: csize_t): cint {.importc, header: "<string.h>".}
+
+func endsWith(s, suffix: cstring): bool {.inline.} =
+  let
+    sLen = s.len
+    suffixLen = suffix.len
+
+  if suffixLen <= sLen:
+    result = memcmp(cstring(addr s[sLen - suffixLen]), suffix, csize_t(suffixLen)) == 0
+
+proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
+  result = endsWith(obj.name, subclass)
+
+proc isObjSlowPath(obj: PNimTypeV2, subclass: cstring, cache: var ObjCheckCache): bool {.compilerRtl, inline.} =
+  if endsWith(obj.name, subclass):
+    cache[1] = obj
+    result = true
+  else:
+    cache[0] = obj
+    result = false
+
+proc isObjWithCache(obj: PNimTypeV2, subclass: cstring, cache: var ObjCheckCache): bool {.compilerRtl.} =
+  if cache[0] == obj: result = false
+  elif cache[1] == obj: result = true
+  else:
+    result = isObjSlowPath(obj, subclass, cache)
 
 proc chckObj(obj: PNimTypeV2, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:

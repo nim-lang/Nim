@@ -30,7 +30,7 @@ block:
 block:
   let a0 = addr(obj.f0)
   echo a0[]
-  # let a1 = unsafeAddr(obj.f1)
+  # let a1 = addr(obj.f1)
   # echo a1[]
   doAssertRaises(FieldDefect):
     let a2 = addr(obj.f2)

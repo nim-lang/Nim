@@ -108,10 +108,19 @@ when defined(js):
     a0: 0x69B4C98Cu32,
     a1: 0xFED1DD30u32) # global for backwards compatibility
 else:
-  # racy for multi-threading but good enough for now:
-  var state = Rand(
+  const DefaultRandSeed = Rand(
     a0: 0x69B4C98CB8530805u64,
-    a1: 0xFED1DD3004688D67CAu64) # global for backwards compatibility
+    a1: 0xFED1DD3004688D67CAu64)
+
+  # racy for multi-threading but good enough for now:
+  var state = DefaultRandSeed # global for backwards compatibility
+
+func isValid(r: Rand): bool {.inline.} =
+  ## Check whether state of `r` is valid.
+  ##
+  ## In `xoroshiro128+`, if all bits of `a0` and `a1` are zero,
+  ## they are always zero after calling `next(r: var Rand)`.
+  not (r.a0 == 0 and r.a1 == 0)
 
 since (1, 5):
   template randState*(): untyped =
@@ -204,6 +213,19 @@ proc skipRandomNumbers*(s: var Rand) =
   s.a0 = s0
   s.a1 = s1
 
+proc rand[T: uint | uint64](r: var Rand; max: T): T =
+  # xxx export in future work
+  if max == 0: return
+  else:
+    let max = uint64(max)
+    when T.high.uint64 == uint64.high:
+      if max == uint64.high: return T(next(r))
+    while true:
+      let x = next(r)
+      # avoid `mod` bias
+      if x <= randMax - (randMax mod max):
+        return T(x mod (max + 1))
+
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
@@ -213,15 +235,13 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
-  runnableExamples("-r:off"):
+  runnableExamples:
     var r = initRand(123)
-    assert r.rand(100) == 96 # implementation defined
-
-  if max == 0: return
-  while true:
-    let x = next(r)
-    if x <= randMax - (randMax mod Ui(max)):
-      return int(x mod (uint64(max) + 1u64))
+    if false:
+      assert r.rand(100) == 96 # implementation defined
+  # bootstrap: can't use `runnableExamples("-r:off")`
+  cast[int](rand(r, uint64(max)))
+    # xxx toUnsigned pending https://github.com/nim-lang/Nim/pull/18445
 
 proc rand*(max: int): int {.benign.} =
   ## Returns a random integer in the range `0..max`.
@@ -306,7 +326,10 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   when T is SomeFloat:
     result = rand(r, x.b - x.a) + x.a
   else: # Integers and Enum types
-    result = T(rand(r, int(x.b) - int(x.a)) + int(x.a))
+    when defined(js):
+      result = cast[T](rand(r, cast[uint](x.b) - cast[uint](x.a)) + cast[uint](x.a))
+    else:
+      result = cast[T](rand(r, cast[uint64](x.b) - cast[uint64](x.a)) + cast[uint64](x.a))
 
 proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.
@@ -410,7 +433,7 @@ proc sample*[T](r: var Rand; a: openArray[T]): T =
 
   result = a[r.rand(a.low..a.high)]
 
-proc sample*[T](a: openArray[T]): T =
+proc sample*[T](a: openArray[T]): lent T =
   ## Returns a random element from `a`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
@@ -603,15 +626,28 @@ proc shuffle*[T](x: var openArray[T]) =
 
   shuffle(state, x)
 
-when not defined(nimscript) and not defined(standalone):
-  import times
+when not defined(standalone):
+  when defined(js):
+    import std/times
+  else:
+    when defined(nimscript):
+      import std/hashes
+    else:
+      import std/[hashes, os, sysrand, monotimes]
+
+      when compileOption("threads"):
+        import locks
+        var baseSeedLock: Lock
+        baseSeedLock.initLock
+
+    var baseState: Rand
 
   proc initRand(): Rand =
-    ## Initializes a new Rand state with a seed based on the current time.
+    ## Initializes a new Rand state.
     ##
     ## The resulting state is independent of the default RNG's state.
     ##
-    ## **Note:** Does not work for NimScript or the compile-time VM.
+    ## **Note:** Does not work for the compile-time VM.
     ##
     ## See also:
     ## * `initRand proc<#initRand,int64>`_ that accepts a seed for a new Rand state
@@ -621,20 +657,50 @@ when not defined(nimscript) and not defined(standalone):
       let time = int64(times.epochTime() * 1000) and 0x7fff_ffff
       result = initRand(time)
     else:
-      let now = times.getTime()
-      result = initRand(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
+      proc getRandomState(): Rand =
+        when defined(nimscript):
+          result = Rand(
+            a0: CompileTime.hash.Ui,
+            a1: CompileDate.hash.Ui)
+          if not result.isValid:
+            result = DefaultRandSeed
+        else:
+          var urand: array[sizeof(Rand), byte]
+
+          for i in 0 .. 7:
+            if sysrand.urandom(urand):
+              copyMem(result.addr, urand[0].addr, sizeof(Rand))
+              if result.isValid:
+                break
+
+          if not result.isValid:
+            # Don't try to get alternative random values from other source like time or process/thread id,
+            # because such code would be never tested and is a liability for security.
+            quit("Failed to initializes baseState in random module as sysrand.urandom doesn't work.")
+
+      when compileOption("threads"):
+        baseSeedLock.withLock:
+          if not baseState.isValid:
+            baseState = getRandomState()
+          result = baseState
+          baseState.skipRandomNumbers
+      else:
+        if not baseState.isValid:
+          baseState = getRandomState()
+        result = baseState
+        baseState.skipRandomNumbers
 
   since (1, 5, 1):
     export initRand
 
   proc randomize*() {.benign.} =
     ## Initializes the default random number generator with a seed based on
-    ## the current time.
+    ## random number source.
     ##
     ## This proc only needs to be called once, and it should be called before
     ## the first usage of procs from this module that use the default RNG.
     ##
-    ## **Note:** Does not work for NimScript or the compile-time VM.
+    ## **Note:** Does not work for the compile-time VM.
     ##
     ## **See also:**
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed

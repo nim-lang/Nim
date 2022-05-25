@@ -83,7 +83,7 @@ proc startOfLineInsideTriple(ldata: LineData, line: int): bool =
   if index >= ldata.lines.len: false
   else: ldata.lines[index]
 
-proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
+proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode, indent = 0): string =
   ## TLineInfo.offsetA,offsetB would be cleaner but it's only enabled for nimpretty,
   ## we'd need to check performance impact to enable it for nimdoc.
   var first = n.lastSon.info
@@ -102,7 +102,7 @@ proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
 
   let last = n.lastNodeRec.info
   var info = first
-  var indent = info.col
+  var indent2 = info.col
   let numLines = numLines(conf, info.fileIndex).uint16
   var lastNonemptyPos = 0
 
@@ -118,14 +118,15 @@ proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
     info.line = line
     let src = sourceLine(conf, info)
     let special = startOfLineInsideTriple(ldata, line.int)
-    if line > last.line and not special and not isInIndentationBlock(src, indent):
+    if line > last.line and not special and not isInIndentationBlock(src, indent2):
       break
     if line > first.line: result.add "\n"
     if special:
       result.add src
       lastNonemptyPos = result.len
-    elif src.len > indent:
-      result.add src[indent..^1]
+    elif src.len > indent2:
+      for i in 0..<indent: result.add ' '
+      result.add src[indent2..^1]
       lastNonemptyPos = result.len
   result.setLen lastNonemptyPos
 

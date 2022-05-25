@@ -29,9 +29,6 @@ when defined(windows):
   proc terminateThread(hThread: SysThread, dwExitCode: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "TerminateThread".}
 
-  proc getCurrentThreadId(): int32 {.
-    stdcall, dynlib: "kernel32", importc: "GetCurrentThreadId".}
-
   type
     ThreadVarSlot = distinct int32
 
@@ -155,6 +152,8 @@ else:
       tv_nsec: clong
 
   proc pthread_attr_init(a1: var Pthread_attr): cint {.
+    importc, header: pthreadh.}
+  proc pthread_attr_setstack*(a1: ptr Pthread_attr, a2: pointer, a3: int): cint {.
     importc, header: pthreadh.}
   proc pthread_attr_setstacksize(a1: var Pthread_attr, a2: int): cint {.
     importc, header: pthreadh.}

@@ -81,7 +81,7 @@ proc readMessages(server: AsyncFD) {.async.} =
                                   addr(slen))
     size = 0
     var grammString = $cstring(addr buffer)
-    if grammString.startswith("Message ") and
+    if grammString.startsWith("Message ") and
        saddr.sin_addr.s_addr == nativesockets.ntohl(INADDR_LOOPBACK.uint32):
       await sendTo(server, addr grammString[0], len(grammString),
                    cast[ptr SockAddr](addr saddr), slen)
