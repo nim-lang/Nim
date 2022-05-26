@@ -216,11 +216,13 @@ type
     defaultCharset*: cstring
     fgColor*: cstring
     head*: Element
+    hidden*: bool
     lastModified*: cstring
     linkColor*: cstring
     referrer*: cstring
     title*: cstring
     URL*: cstring
+    visibilityState*: cstring
     vlinkColor*: cstring
     anchors*: seq[AnchorElement]
     forms*: seq[FormElement]
