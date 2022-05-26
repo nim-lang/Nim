@@ -12,8 +12,7 @@
 # from a lineinfos file, to provide generalized procedures to compile
 # nim files.
 
-import ropes, platform, condsyms, options, msgs, lineinfos, pathutils
-from modulepaths import mangleModuleName, demangleModuleName
+import ropes, platform, condsyms, options, msgs, lineinfos, pathutils, modulepaths
 
 import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar]
 

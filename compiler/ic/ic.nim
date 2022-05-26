@@ -10,10 +10,9 @@
 import hashes, tables, intsets, std/sha1
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
-  pathutils, condsyms, packages]
+  pathutils, condsyms, packages, modulepaths]
 #import ".." / [renderer, astalgo]
 from os import removeFile, isAbsolute
-from ".." / modulepaths import mangleModuleName
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]

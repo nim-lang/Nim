@@ -24,9 +24,7 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import ".."/[ast, options, lineinfos, modulegraphs, cgendata, cgen,
-  pathutils, extccomp, msgs]
-
-from ".."/modulepaths import mangleModuleName
+  pathutils, extccomp, msgs, modulepaths]
 
 import packed_ast, ic, dce, rodfiles
 
