@@ -691,7 +691,7 @@ when defined(posix) and not defined(nimscript):
 
 proc open*(f: var File, filename: string,
           mode: FileMode = fmRead,
-          bufSize: int = -1): bool {.tags: [], raises: [], benign.} =
+          bufSize: int = -1): bool {.tags: [], raises: [IOError], benign.} =
   ## Opens a file named `filename` with given `mode`.
   ##
   ## Default mode is readonly. Returns true if the file could be opened.
