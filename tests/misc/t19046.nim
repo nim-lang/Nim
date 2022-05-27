@@ -1,5 +1,6 @@
 discard """
   targets: "c cpp"
+  matrix: "--threads:on"
   disabled: "win"
   disabled: "osx"
   action: compile
