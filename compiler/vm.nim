@@ -1185,6 +1185,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcContainsSet:
       decodeBC(rkInt)
       regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].regToNode))
+    of opcSubStr:
+      decodeBC(rkNode)
+      inc pc
+      assert c.code[pc].opcode == opcSubStr
+      let rd = c.code[pc].regA
+      createStr regs[ra]
+      regs[ra].node.strVal = substr(regs[rb].node.strVal,
+                                    regs[rc].intVal.int, regs[rd].intVal.int)
     of opcParseFloat:
       decodeBC(rkInt)
       inc pc
