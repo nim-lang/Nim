@@ -153,9 +153,9 @@ The library uses a simple naming scheme that makes use of common abbreviations
 to keep the names short but meaningful.
 
 
--------------------     ------------   --------------------------------------
+===================     ============   ======================================
 English word            To use         Notes
--------------------     ------------   --------------------------------------
+===================     ============   ======================================
 initialize              initFoo        initializes a value type `Foo`
 new                     newFoo         initializes a reference type `Foo`
                                        via `new` or a value type `Foo`
@@ -220,7 +220,7 @@ literal                 lit
 string                  str
 identifier              ident
 indentation             indent
--------------------     ------------   --------------------------------------
+===================     ============   ======================================
 
 
 Coding Conventions
