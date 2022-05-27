@@ -324,7 +324,9 @@ const
 proc close*(f: File) {.tags: [], gcsafe.} =
   ## Closes the file.
   if not f.isNil:
-    discard c_fclose(f)
+    let x = c_fclose(f)
+    if x < 0:
+      checkErr(f)
 
 proc readChar*(f: File): char {.tags: [ReadIOEffect].} =
   ## Reads a single character from the stream `f`. Should not be used in
