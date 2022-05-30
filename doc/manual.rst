@@ -6488,6 +6488,19 @@ iterator in which case the overloading resolution takes place:
   write(stdout, x) # not ambiguous: uses the module C's x
 
 
+Packages
+--------
+A collection of modules in a file tree with an ``identifier.nimble`` file in the
+root of the tree is called a Nimble package. A valid package name can only be a
+valid Nim identifier and thus its filename is ``identifier.nimble`` where
+``identifier`` is the desired package name. A module without a ``.nimble`` file
+is assigned the package identifier: `unknown`.
+
+The distinction between packages allows diagnostic compiler messages to be
+scoped to the current project's package vs foreign packages.
+
+
+
 Compiler Messages
 =================
 

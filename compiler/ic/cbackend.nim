@@ -21,7 +21,7 @@
 import std/packedsets, algorithm, tables
 
 import ".."/[ast, options, lineinfos, modulegraphs, cgendata, cgen,
-  pathutils, extccomp, msgs]
+  pathutils, extccomp, msgs, modulepaths]
 
 import packed_ast, ic, dce, rodfiles
 
@@ -61,7 +61,8 @@ proc addFileToLink(config: ConfigRef; m: PSym) =
       if config.backend == backendCpp: ".nim.cpp"
       elif config.backend == backendObjc: ".nim.m"
       else: ".nim.c"
-  let cfile = changeFileExt(completeCfilePath(config, withPackageName(config, filename)), ext)
+  let cfile = changeFileExt(completeCfilePath(config,
+                            mangleModuleName(config, filename).AbsoluteFile), ext)
   let objFile = completeCfilePath(config, toObjFile(config, cfile))
   if fileExists(objFile):
     var cf = Cfile(nimname: m.name.s, cname: cfile,
