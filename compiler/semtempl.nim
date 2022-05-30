@@ -271,7 +271,8 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
     # field access (dot expr) will be handled by builtinFieldAccess
-    styleCheckUse(c, n.info, s)
+    if not isField:
+      styleCheckUse(c, n.info, s)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n

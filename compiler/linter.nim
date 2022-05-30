@@ -96,7 +96,6 @@ template styleCheckDef*(ctx: PContext; info: TLineInfo; sym: PSym; k: TSymKind) 
      hintName in ctx.config.notes and # ignore if name checks are not requested
      ctx.config.belongsToProjectPackage(ctx.module) and # ignore foreign packages
      optStyleUsages notin ctx.config.globalOptions and # ignore if requested to only check name usage
-     sym.kind != skField and # ignore object/tuple fields
      sym.kind != skResult and # ignore `result`
      sym.kind != skTemp and # ignore temporary variables created by the compiler
      sym.name.s[0] in Letters and # ignore operators TODO: what about unicode symbols???
@@ -141,7 +140,6 @@ template styleCheckUse*(ctx: PContext; info: TLineInfo; sym: PSym) =
   if {optStyleHint, optStyleError} * ctx.config.globalOptions != {} and # ignore if styleChecks are off
      hintName in ctx.config.notes and # ignore if name checks are not requested
      ctx.config.belongsToProjectPackage(ctx.module) and # ignore foreign packages
-     sym.kind != skField and # ignore object/tuple fields
      sym.kind != skTemp and # ignore temporary variables created by the compiler
      sym.name.s[0] in Letters and # ignore operators TODO: what about unicode symbols???
      sfAnon notin sym.flags: # ignore temporary variables created by the compiler
