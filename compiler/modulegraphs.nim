@@ -392,8 +392,7 @@ else:
 
     template onDef*(info: TLineInfo; s: PSym) =
       let c = getPContext()
-      if c.graph.config.suggestVersion == 3 and
-          not c.graph.suggestSymbols.getOrDefault(info.fileIndex, @[]).contains (s, info):
+      if c.graph.config.suggestVersion == 3:
         suggestSym(c.graph, info, s, c.graph.usageSym)
 
     template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
@@ -605,8 +604,8 @@ proc needsCompilation*(g: ModuleGraph): bool =
         return true
 
 proc needsCompilation*(g: ModuleGraph, fileIdx: FileIndex): bool =
-  let module = g.ifaces[fileIdx.int32].module
-  if module == nil or g.isDirty(module):
+  let module = g.getModule(fileIdx)
+  if module != nil and g.isDirty(module):
     return true
 
   for i in 0i32..<g.ifaces.len.int32:
