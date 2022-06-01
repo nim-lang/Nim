@@ -42,7 +42,7 @@ type
   `ptr`*[T] {.magic: Pointer.}   ## Built-in generic untraced pointer type.
   `ref`*[T] {.magic: Pointer.}   ## Built-in generic traced pointer type.
 
-  `nil` {.magic: "Nil".}
+  `nil`* {.magic: "Nil".}
 
   void* {.magic: "VoidType".}    ## Meta type to denote the absence of any type.
   auto* {.magic: Expr.}          ## Meta type for automatic type determination.
