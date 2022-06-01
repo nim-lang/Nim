@@ -693,9 +693,10 @@ proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =
     myLog fmt "Recompiling partially starting from {graph.getModule(projectFileIdx)}"
 
   # inst caches are breaking incremental compilation when the cache caches stuff
-  # from changed buffer
-  graph.typeInstCache.clear()
-  graph.procInstCache.clear()
+  # from dirty buffer
+  # TODO: investigate more efficient way to achieve the same
+  # graph.typeInstCache.clear()
+  # graph.procInstCache.clear()
 
   GC_fullCollect()
 
@@ -935,8 +936,9 @@ else:
     if self.loadConfigsAndProcessCmdLine(cache, conf, graph):
       mockCommand(graph)
     if gLogging:
+      log("Search paths:")
       for it in conf.searchPaths:
-        log(it.string)
+        log(" " & it.string)
 
     retval.doStopCompile = proc (): bool = false
     return NimSuggest(graph: retval, idle: 0, cachedMsgs: @[])
