@@ -188,7 +188,7 @@ type
     # as far as usesWriteBarrier() is concerned
 
   IdeCmd* = enum
-    ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
+    ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
     ideRecompile, ideChanged
 
@@ -994,6 +994,7 @@ proc parseIdeCmd*(s: string): IdeCmd =
   of "use": ideUse
   of "dus": ideDus
   of "chk": ideChk
+  of "chkFile": ideChkFile
   of "mod": ideMod
   of "highlight": ideHighlight
   of "outline": ideOutline
@@ -1013,6 +1014,7 @@ proc `$`*(c: IdeCmd): string =
   of ideUse: "use"
   of ideDus: "dus"
   of ideChk: "chk"
+  of ideChkFile: "chkFile"
   of ideMod: "mod"
   of ideNone: "none"
   of ideHighlight: "highlight"

@@ -150,7 +150,7 @@ proc listEpc(): SexpNode =
     argspecs = sexp("file line column dirtyfile".split(" ").map(newSSymbol))
     docstring = sexp("line starts at 1, column at 0, dirtyfile is optional")
   result = newSList()
-  for command in ["sug", "con", "def", "use", "dus", "chk", "mod", "globalSymbols", "recompile", "saved"]:
+  for command in ["sug", "con", "def", "use", "dus", "chk", "mod", "globalSymbols", "recompile", "saved", "chkFile"]:
     let
       cmd = sexp(command)
       methodDesc = newSList()
@@ -456,6 +456,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   of "project": conf.ideCmd = ideProject
   of "changed": conf.ideCmd = ideChanged
   of "globalsymbols": conf.ideCmd = ideGlobalSymbols
+  of "chkfile": conf.ideCmd = ideChkFile
   of "recompile": conf.ideCmd = ideRecompile
   else: err()
   var dirtyfile = ""
@@ -784,7 +785,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     graph.unmarkAllDirty()
 
   # these commands require partially compiled project
-  elif cmd in {ideSug, ideOutline, ideHighlight, ideDef} and
+  elif cmd in {ideSug, ideOutline, ideHighlight, ideDef, ideChkFile} and
        (graph.needsCompilation(fileIndex) or cmd == ideSug):
     # for ideSug use v2 implementation
     if cmd == ideSug:
@@ -838,9 +839,14 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
         symToSuggest(graph, sym, false,
                      ideOutline, sym.info, 100, PrefixMatch.None, false, 0))
   of ideChk:
-    myLog fmt "Reporting {graph.suggestErrors.len} error(s)"
+    myLog fmt "Reporting errors for {graph.suggestErrors.len} file(s)"
     for sug in graph.suggestErrorsIter:
       suggestResult(graph.config, sug)
+  of ideChkFile:
+    let errors = graph.suggestErrors.getOrDefault(fileIndex, @[])
+    myLog fmt "Reporting {errors.len} error(s) for {file.string}"
+    for error in errors:
+      suggestResult(graph.config, error)
   of ideGlobalSymbols:
     var counter = 0
     for (sym, info) in graph.suggestSymbolsIter:
