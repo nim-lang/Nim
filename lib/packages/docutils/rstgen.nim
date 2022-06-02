@@ -1351,15 +1351,16 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     case d.target
     of outHtml:
       let tag = if n.kind == rnTableHeaderCell: "th" else: "td"
-      let spanSpec = (
-        if n.span <= 1: ""
-        else: " colspan=\"" & $n.span & "\" style=\"text-align: center\"")
+      var spanSpec: string
+      if n.span <= 1: spanSpec = ""
+      else:
+        spanSpec = " colspan=\"" & $n.span & "\" style=\"text-align: center\""
       renderAux(d, n, "<$1$2>$$1</$1>" % [tag, spanSpec], "", result)
     of outLatex:
       let text = if n.kind == rnTableHeaderCell: "\\textbf{$1}" else: "$1"
-      let latexStr = (
-          if n.span <= 1: text
-          else: "\\multicolumn{" & $n.span & "}{c}{" & text & "}")
+      var latexStr: string
+      if n.span <= 1: latexStr = text
+      else: latexStr = "\\multicolumn{" & $n.span & "}{c}{" & text & "}"
       renderAux(d, n, "", latexStr, result)
   of rnFootnoteGroup:
     renderAux(d, n,

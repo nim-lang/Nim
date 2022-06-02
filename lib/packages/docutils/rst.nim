@@ -2556,11 +2556,11 @@ proc parseSimpleTableRow(p: var RstParser, cols: RstCols): PRstNode =
   # Consider that columns may be spanning (united by using underline like ----):
   let nextLine = tokenAfterNewline(p)
   var unitedCols: RstCols
-  let afterSpan = (
-    if p.tok[nextLine].kind == tkAdornment and p.tok[nextLine].symbol[0] == '-':
-      getColumns(p, unitedCols, nextLine)
-    else:
-      nextLine)
+  var afterSpan: int
+  if p.tok[nextLine].kind == tkAdornment and p.tok[nextLine].symbol[0] == '-':
+    afterSpan = getColumns(p, unitedCols, nextLine)
+  else:
+    afterSpan = nextLine
   template colEnd(i): int =
     if i == cols.len - 1: high(int)  # last column has no limit
     elif unitedCols.len > 0: unitedCols[i].stop else: cols[i].stop
