@@ -809,27 +809,42 @@ suite "RST tables":
     check(error[] == "input(3, 1) Error: Illformed table: " &
                      "spanning underline does not match main table columns")
 
+  let expTable = dedent"""
+      rnTable  colCount=2
+        rnTableRow
+          rnTableDataCell
+            rnLeaf  'Inputs'
+          rnTableDataCell
+            rnLeaf  'Output'
+      """
+
   test "only tables with `=` columns specs are allowed (1)":
-    var error = new string
+    var warnings = new seq[string]
     check(
       dedent"""
         ------  ------
         Inputs  Output
         ------  ------
-        """.toAst(error=error) == "")
-    check(error[] == "input(1, 1) Error: Illformed table: " &
-                     "only tables with `=` columns specification are allowed")
+        """.toAst(warnings=warnings) ==
+      expTable)
+    check(warnings[] ==
+          @["input(1, 1) Warning: RST style: " &
+              "only tables with `=` columns specification are allowed",
+            "input(3, 1) Warning: RST style: " &
+              "only tables with `=` columns specification are allowed"])
 
   test "only tables with `=` columns specs are allowed (2)":
-    var error = new string
+    var warnings = new seq[string]
     check(
       dedent"""
         ======  ======
         Inputs  Output
         ~~~~~~  ~~~~~~
-        """.toAst(error=error) == "")
-    check(error[] == "input(3, 1) Error: Illformed table: " &
-                     "only tables with `=` columns specification are allowed")
+        """.toAst(warnings=warnings) ==
+      expTable)
+    check(warnings[] ==
+          @["input(3, 1) Warning: RST style: "&
+              "only tables with `=` columns specification are allowed"])
 
 
 suite "RST indentation":

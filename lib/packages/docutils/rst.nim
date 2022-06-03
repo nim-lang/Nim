@@ -2508,10 +2508,10 @@ proc checkColumns(p: RstParser, cols: RstCols) =
   var
     i = p.idx
     col = 0
+  if p.tok[i].symbol[0] != '=':
+    rstMessage(p, mwRstStyle,
+               "only tables with `=` columns specification are allowed")
   for col in 0 ..< cols.len:
-    if p.tok[i].symbol[0] != '=':
-      rstMessage(p, meIllformedTable,
-                 "only tables with `=` columns specification are allowed")
     if tokEnd(p, i) != cols[col].stop:
       rstMessage(p, meIllformedTable,
                  "end of table column #$1 should end at position $2" % [
@@ -2551,7 +2551,7 @@ proc getSpans(p: RstParser, nextLine: int,
                    "spanning underline does not match main table columns",
                    p.tok[nextLine].line, p.tok[nextLine].col)
 
-proc parseSimpleTableRow(p: var RstParser, cols: RstCols): PRstNode =
+proc parseSimpleTableRow(p: var RstParser, cols: RstCols, colChar: char): PRstNode =
   ## Parses 1 row in RST simple table.
   # Consider that columns may be spanning (united by using underline like ----):
   let nextLine = tokenAfterNewline(p)
@@ -2559,6 +2559,10 @@ proc parseSimpleTableRow(p: var RstParser, cols: RstCols): PRstNode =
   var afterSpan: int
   if p.tok[nextLine].kind == tkAdornment and p.tok[nextLine].symbol[0] == '-':
     afterSpan = getColumns(p, unitedCols, nextLine)
+    if unitedCols == cols and p.tok[nextLine].symbol[0] == colChar:
+      # legacy rst.nim compat.: allow punctuation like `----` in main boundaries
+      afterSpan = nextLine
+      unitedCols.setLen 0
   else:
     afterSpan = nextLine
   template colEnd(i): int =
@@ -2614,6 +2618,7 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
   var cols: RstCols
   result = newRstNodeA(p, rnTable)
   let startIdx = getColumns(p, cols, p.idx)
+  let colChar = currentTok(p).symbol[0]
   checkColumns(p, cols)
   p.idx = startIdx
   result.colCount = cols.len
@@ -2630,7 +2635,7 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
         for nCell in 0 ..< result.sons[nRow].len:
           result.sons[nRow].sons[nCell].kind = rnTableHeaderCell
     if currentTok(p).kind == tkEof: break
-    let tabRow = parseSimpleTableRow(p, cols)
+    let tabRow = parseSimpleTableRow(p, cols, colChar)
     result.add tabRow
 
 proc readTableRow(p: var RstParser): ColSeq =
