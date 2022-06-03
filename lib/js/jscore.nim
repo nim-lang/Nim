@@ -132,3 +132,8 @@ since (1, 7):
       var arrai = @[1, 2, 3]
       assert arrai.shift() == 1
       assert arrai == @[2, 3]
+
+  func queueMicrotask*(function: proc) {.importjs: "$1(#)".} =
+    ## * https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask
+    ## * https://developer.mozilla.org/en-US/docs/Web/API/HTML_DOM_API/Microtask_guide
+    runnableExamples: queueMicrotask(proc() = echo "Microtask")
