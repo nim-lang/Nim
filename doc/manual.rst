@@ -363,7 +363,7 @@ contain the following `escape sequences`:idx:\ :
   ``\\``                   `backslash`:idx:
   ``\"``                   `quotation mark`:idx:
   ``\'``                   `apostrophe`:idx:
-  ``\`` '0'..'9'+         `character with decimal value d`:idx:;
+  ``\`` '0'..'9'+          `character with decimal value d`:idx:;
                            all decimal digits directly
                            following are used for the character
   ``\a``                   `alert`:idx:
