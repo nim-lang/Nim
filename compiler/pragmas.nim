@@ -641,12 +641,13 @@ proc pragmaLine(c: PContext, n: PNode) =
     n.info = getInfoContext(c.config, -1)
 
 proc processPragma(c: PContext, n: PNode, i: int) =
+  ## Create and add a new custom pragma `{.pragma: name.}` node to the module's context.
   let it = n[i]
   if it.kind notin nkPragmaCallKinds and it.safeLen == 2: invalidPragma(c, n)
   elif it.safeLen != 2 or it[0].kind != nkIdent or it[1].kind != nkIdent:
     invalidPragma(c, n)
 
-  var userPragma = newSym(skTemplate, it[1].ident, nextSymId(c.idgen), nil, it.info, c.config.options)
+  var userPragma = newSym(skTemplate, it[1].ident, nextSymId(c.idgen), c.module, it.info, c.config.options)
   userPragma.ast = newTreeI(nkPragma, n.info, n.sons[i+1..^1])
   strTableAdd(c.userPragmas, userPragma)
 
