@@ -39,6 +39,7 @@ becomes an alias for `addr`.
 - Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year.
 - Added [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift) for JavaScript targets.
 - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
+- Added `sep` parameter in `std/uri` to specify the query separator.
 - Removed deprecated `oids.oidToString`.
 - Remove define `nimExperimentalAsyncjsThen` for `std/asyncjs.then` and `std/jsfetch`.
 
@@ -51,6 +52,7 @@ becomes an alias for `addr`.
 - Remove deprecated `osproc.poDemon`, symbol with typo.
 - Remove deprecated `os.isvalidfilename`.
 
+- Added [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask) for JavaScript targets.
 - Deprecated `selfExe` for Nimscript.
 
 

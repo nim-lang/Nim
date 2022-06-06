@@ -12,7 +12,7 @@
 ## or stored in a rod-file.
 
 import intsets, tables, hashes, md5_old
-import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils
+import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
 
 when defined(nimPreviewSlimSystem):
@@ -67,7 +67,6 @@ type
 
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
-    modulesPerPackage*: Table[ItemId, TStrTable]
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     suggestMode*: bool # whether we are in nimsuggest mode or not.
@@ -597,3 +596,18 @@ proc onProcessing*(graph: ModuleGraph, fileIdx: FileIndex, moduleStatus: string,
     let fromModule2 = if fromModule != nil: $fromModule.name.s else: "(toplevel)"
     let mode = if isNimscript: "(nims) " else: ""
     rawMessage(conf, hintProcessing, "$#$# $#: $#: $#" % [mode, indent, fromModule2, moduleStatus, path])
+
+proc getPackage*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
+  ## Returns a package symbol for yet to be defined module for fileIdx.
+  ## The package symbol is added to the graph if it doesn't exist.
+  let pkgSym = getPackage(graph.config, graph.cache, fileIdx)
+  # check if the package is already in the graph
+  result = graph.packageSyms.strTableGet(pkgSym.name)
+  if result == nil:
+     # the package isn't in the graph, so create and add it
+    result = pkgSym
+    graph.packageSyms.strTableAdd(pkgSym)
+
+func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
+  ## Check if symbol belongs to the 'stdlib' package.
+  sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
