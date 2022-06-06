@@ -186,6 +186,7 @@ Coding Guidelines
 * Use a space after a colon, but not before it.
 * [deprecated] Start types with a capital `T`, unless they are
   pointers/references which start with `P`.
+* Prefer `import package`:nim: over `from package import symbol`:nim:.
 
 See also the `API naming design <apis.html>`_ document.
 
