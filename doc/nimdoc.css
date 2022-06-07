@@ -168,8 +168,15 @@ body {
 .column:first-child, .columns:first-child {
   margin-left: 0; }
 
+.container .row {
+  display: flex; }
+
 .three.columns {
-  width: 22%; }
+  width: 22%;
+  height: 100vh;
+  position: sticky;
+  top: 0px;
+  overflow-y: auto; }
 
 .nine.columns {
   width: 77.0%; }
