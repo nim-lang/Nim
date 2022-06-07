@@ -232,6 +232,7 @@ template declareClosures =
     of meExpected: k = errXExpected
     of meGridTableNotImplemented: k = errRstGridTableNotImplemented
     of meMarkdownIllformedTable: k = errRstMarkdownIllformedTable
+    of meIllformedTable: k = errRstIllformedTable
     of meNewSectionExpected: k = errRstNewSectionExpected
     of meGeneralParseError: k = errRstGeneralParseError
     of meInvalidDirective: k = errRstInvalidDirectiveX
