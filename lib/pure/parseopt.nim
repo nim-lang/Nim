@@ -49,6 +49,7 @@
 ## Here is an example:
 ##
 ## .. code-block::
+##
 ##   import std/parseopt
 ##
 ##   var p = initOptParser("-ab -e:5 --foo --bar=20 file.txt")
@@ -99,6 +100,7 @@
 ## arguments for those two parameters:
 ##
 ## .. code-block::
+##
 ##   import std/parseopt
 ##
 ##   proc printToken(kind: CmdLineKind, key: string, val: string) =
@@ -387,6 +389,7 @@ when declared(quoteShellCommand):
     ## **Examples:**
     ##
     ## .. code-block::
+    ##
     ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
     ##   while true:
     ##     p.next()
@@ -405,6 +408,7 @@ proc remainingArgs*(p: OptParser): seq[string] {.rtl, extern: "npo$1".} =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
   ##   while true:
   ##     p.next()
@@ -428,6 +432,7 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key,
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   # these are placeholders, of course
   ##   proc writeHelp() = discard
   ##   proc writeVersion() = discard

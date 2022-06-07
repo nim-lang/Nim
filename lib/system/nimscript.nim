@@ -342,6 +342,7 @@ template withDir*(dir: string; body: untyped): untyped =
   ## Usage example:
   ##
   ## .. code-block:: nim
+  ##
   ##   # inside /some/path/
   ##   withDir "foo":
   ##     # move to /some/path/foo/
@@ -392,6 +393,7 @@ when not defined(nimble):
     ## Example:
     ##
     ## .. code-block:: nim
+    ##
     ##  task build, "default build is via the C backend":
     ##    setCommand "c"
     ##
@@ -402,6 +404,7 @@ when not defined(nimble):
     ## Example:
     ##
     ## .. code-block:: nim
+    ##
     ##  task foo, "foo":        # > nim foo
     ##    echo "Running foo"    # Running foo
     ##

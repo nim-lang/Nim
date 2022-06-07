@@ -2067,6 +2067,7 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   discard execShellCmd("ls -la")
   result = exitStatusLikeShell(c_system(command))
 
@@ -2719,6 +2720,7 @@ proc inclFilePermissions*(filename: string,
   ## A convenience proc for:
   ##
   ## .. code-block:: nim
+  ##
   ##   setFilePermissions(filename, getFilePermissions(filename)+permissions)
   setFilePermissions(filename, getFilePermissions(filename)+permissions)
 
@@ -2728,6 +2730,7 @@ proc exclFilePermissions*(filename: string,
   ## A convenience proc for:
   ##
   ## .. code-block:: nim
+  ##
   ##   setFilePermissions(filename, getFilePermissions(filename)-permissions)
   setFilePermissions(filename, getFilePermissions(filename)-permissions)
 
@@ -2852,6 +2855,7 @@ when defined(nimdoc):
     ## **Examples:**
     ##
     ## .. code-block:: nim
+    ##
     ##   when declared(paramCount):
     ##     # Use paramCount() here
     ##   else:
@@ -2884,6 +2888,7 @@ when defined(nimdoc):
     ## **Examples:**
     ##
     ## .. code-block:: nim
+    ##
     ##   when declared(paramStr):
     ##     # Use paramStr() here
     ##   else:
@@ -2985,6 +2990,7 @@ when declared(paramCount) or defined(nimdoc):
     ## **Examples:**
     ##
     ## .. code-block:: nim
+    ##
     ##   when declared(commandLineParams):
     ##     # Use commandLineParams() here
     ##   else:

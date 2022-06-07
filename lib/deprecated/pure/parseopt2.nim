@@ -116,6 +116,7 @@ iterator getopt*(p: var OptParser): GetoptResult =
   ## Example:
   ##
   ## .. code-block:: nim
+  ##
   ##   var p = initOptParser("--left --debug:3 -l=4 -r:2")
   ##   for kind, key, val in p.getopt():
   ##     case kind
@@ -142,6 +143,7 @@ when declared(paramCount):
     ## See above for a more detailed example
     ##
     ## .. code-block:: nim
+    ##
     ##   for kind, key, val in getopt():
     ##     # this will iterate over all arguments passed to the cmdline.
     ##     continue

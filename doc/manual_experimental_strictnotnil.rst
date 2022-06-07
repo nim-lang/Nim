@@ -7,11 +7,13 @@ Strict not nil checking
 **Note:** This feature is experimental, you need to enable it with
 
 .. code-block:: nim
+
   {.experimental: "strictNotNil".}
 
 or 
 
 .. code-block:: cmd
+
   nim c --experimental:strictNotNil <program>
 
 In the second case it would check builtin and imported modules as well.
@@ -40,6 +42,7 @@ not nil
 You can annotate a type where nil isn't a valid value with `not nil`.
 
 .. code-block:: nim
+
     type
       NilableObject = ref object
         a: int
@@ -119,12 +122,14 @@ call args rules
 When we call with arguments, we have two cases when we might change the nilability.
 
 .. code-block:: nim
+
   callByVar(a)
 
 Here `callByVar` can re-assign `a`, so this might change `a`'s nilability, so we change it to `MaybeNil`.
 This is also a possible aliasing `move out` (moving out of a current alias set).
 
 .. code-block:: nim
+
   call(a)
 
 Here `call` can change a field or element of `a`, so if we have a dependant expression of `a` : e.g. `a.field`. Dependats become `MaybeNil`.
@@ -142,6 +147,7 @@ When branches "join" we usually unify their expression maps or/and nilabilities.
 Merging usually merges maps and alias sets: nilabilities are merged like this:
 
 .. code-block:: nim
+
   template union(l: Nilability, r: Nilability): Nilability =
     ## unify two states
     if l == r:
@@ -184,6 +190,7 @@ When we assign an object construction, we should track the fields as well:
 
 
 .. code-block:: nim
+
   var a = Nilable(field: Nilable()) # a : Safe, a.field: Safe
 
 Usually we just track the result of an expression: probably this should apply for elements in other cases as well.
@@ -196,6 +203,7 @@ Unstructured control flow keywords as `return`, `break`, `continue`, `raise` mea
 This means that if there is code after the finishing of the branch, it would be ran if one hasn't hit the direct parent branch of those: so it is similar to an `else`. In those cases we should use the reverse nilabilities for the local to the condition expressions. E.g.
 
 .. code-block:: nim
+
   for a in c:
     if not a.isNil:
       b()
@@ -215,6 +223,7 @@ Assignments and other changes to nilability can move / move out expressions of s
 This means it stops being aliased with its previous aliases.
 
 .. code-block:: nim
+
   var left = b
   left = right # moving left to right
 
@@ -223,6 +232,7 @@ e.g.
 
 
 .. code-block:: nim
+
   var left = b
   left = nil # moving out
 

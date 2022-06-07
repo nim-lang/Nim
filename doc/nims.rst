@@ -119,6 +119,7 @@ NimScript. Similarly, command-line `--FOO:VAL`:option: translates to
 Here are few examples of using the `switch` proc:
 
 .. code-block:: nim
+
   # command-line: --opt:size
   switch("opt", "size")
   # command-line: --define:release or -d:release
@@ -131,6 +132,7 @@ like command-line switches written as-is in the NimScript file. So the
 above example can be rewritten as:
 
 .. code-block:: nim
+
   --opt:size
   --define:release
   --forceBuild
@@ -149,6 +151,7 @@ file to be used as a build tool. The following example defines a
 task `build` that is an alias for the `c`:option: command:
 
 .. code-block:: nim
+
   task build, "builds an example":
     setCommand "c"
 

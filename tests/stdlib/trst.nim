@@ -945,7 +945,7 @@ suite "RST indentation":
         template additive(typ: typedesc) =
           discard
       """
-    let input3 = dedent"""
+    let input3warning = dedent"""
       .. code-block:: nim
          :test: "nim c $1"
          template additive(typ: typedesc) =
@@ -987,9 +987,34 @@ suite "RST indentation":
       """
     check input1.toAst == ast
     check input2.toAst == ast
-    check input3.toAst == ast
+    var error = new string
+    #check input3warning.toAst(error=error) == ast
+    check input3warning.toAst(error=error) == ""
+    check(error[] == "input(3, 1) Error: general parse error")
+
     # "template..." should be parsed as a definition list attached to ":test:":
     check inputWrong.toAst != ast
+
+    # optional args cannot be separated by a blank line with the directive:
+    check(dedent"""
+      .. code-block:: nim
+
+       :test: "nim c $1"
+       template
+      """.toAst == dedent"""
+        rnCodeBlock
+          rnDirArg
+            rnLeaf  'nim'
+          rnFieldList
+            rnField
+              rnFieldName
+                rnLeaf  'default-language'
+              rnFieldBody
+                rnLeaf  'Nim'
+          rnLiteralBlock
+            rnLeaf  ':test: "nim c $1"
+        template'
+      """)
 
 suite "Warnings":
   test "warnings for broken footnotes/links/substitutions":

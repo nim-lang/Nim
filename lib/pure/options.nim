@@ -54,6 +54,7 @@ supports pattern matching on `Option`s, with the `Some(<pattern>)` and
 `None()` patterns.
 
 .. code-block:: nim
+
   {.experimental: "caseStmtMacros".}
 
   import fusion/matching

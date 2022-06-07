@@ -54,6 +54,7 @@ const
 suite "YAML syntax highlighting":
   test "Basics":
     let input = """.. code-block:: yaml
+
     %YAML 1.2
     ---
     a string: string
@@ -78,6 +79,7 @@ suite "YAML syntax highlighting":
 
   test "Block scalars":
     let input = """.. code-block:: yaml
+
     a literal block scalar: |
       some text
       # not a comment
@@ -106,6 +108,7 @@ suite "YAML syntax highlighting":
 
   test "Directives":
     let input = """.. code-block:: yaml
+
     %YAML 1.2
     ---
     %not a directive
@@ -130,6 +133,7 @@ suite "YAML syntax highlighting":
 
   test "Flow Style and Numbers":
     let input = """.. code-block:: yaml
+
     {
       "quoted string": 42,
       'single quoted string': false,
@@ -167,6 +171,7 @@ suite "YAML syntax highlighting":
 
   test "Anchors, Aliases, Tags":
     let input = """.. code-block:: yaml
+
     --- !!map
     !!str string: !<tag:yaml.org,2002:int> 42
     ? &anchor !!seq []:
@@ -182,6 +187,7 @@ suite "YAML syntax highlighting":
 
   test "Edge cases":
     let input = """.. code-block:: yaml
+
     ...
      %a string:
       a:string:not:a:map

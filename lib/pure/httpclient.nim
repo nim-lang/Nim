@@ -17,6 +17,7 @@
 ## `http://google.com`:
 ##
 ## .. code-block:: Nim
+##
 ##   import std/httpclient
 ##   var client = newHttpClient()
 ##   echo client.getContent("http://google.com")
@@ -25,6 +26,7 @@
 ## `AsyncHttpClient`:
 ##
 ## .. code-block:: Nim
+##
 ##   import std/[asyncdispatch, httpclient]
 ##
 ##   proc asyncProc(): Future[string] {.async.} =
@@ -48,6 +50,7 @@
 ## validated to the server.
 ##
 ## .. code-block:: Nim
+##
 ##   var client = newHttpClient()
 ##   var data = newMultipartData()
 ##   data["output"] = "soap12"
@@ -62,6 +65,7 @@
 ## it, you can pass your own via the `mimeDb` parameter to avoid this.
 ##
 ## .. code-block:: Nim
+##
 ##   let mimes = newMimetypes()
 ##   var client = newHttpClient()
 ##   var data = newMultipartData()
@@ -74,6 +78,7 @@
 ## and uses a json object for the body
 ##
 ## .. code-block:: Nim
+##
 ##   import std/[httpclient, json]
 ##
 ##   let client = newHttpClient()
@@ -92,6 +97,7 @@
 ## progress of the HTTP request.
 ##
 ## .. code-block:: Nim
+##
 ##    import std/[asyncdispatch, httpclient]
 ##
 ##    proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
@@ -108,6 +114,7 @@
 ## If you would like to remove the callback simply set it to `nil`.
 ##
 ## .. code-block:: Nim
+##
 ##   client.onProgressChanged = nil
 ##
 ## .. warning:: The `total` reported by httpclient may be 0 in some cases.
@@ -131,6 +138,7 @@
 ## Example of setting SSL verification parameters in a new client:
 ##
 ## .. code-block:: Nim
+##
 ##    import httpclient
 ##    var client = newHttpClient(sslContext=newContext(verifyMode=CVerifyPeer))
 ##
@@ -162,6 +170,7 @@
 ## Here is how to set a timeout when creating an `HttpClient` instance:
 ##
 ## .. code-block:: Nim
+##
 ##    import std/httpclient
 ##
 ##    let client = newHttpClient(timeout = 42)
@@ -176,6 +185,7 @@
 ## Some examples on how to configure a Proxy for `HttpClient`:
 ##
 ## .. code-block:: Nim
+##
 ##    import std/httpclient
 ##
 ##    let myProxy = newProxy("http://myproxy.network")
@@ -184,6 +194,7 @@
 ## Get Proxy URL from environment variables:
 ##
 ## .. code-block:: Nim
+##
 ##    import std/httpclient
 ##
 ##    var url = ""
@@ -208,6 +219,7 @@
 ## Here you can see an example about how to set the `maxRedirects` of `HttpClient`:
 ##
 ## .. code-block:: Nim
+##
 ##    import std/httpclient
 ##
 ##    let client = newHttpClient(maxRedirects = 0)
@@ -397,6 +409,7 @@ proc add*(p: MultipartData, xs: MultipartEntries): MultipartData
   ## added without a filename and without a content type.
   ##
   ## .. code-block:: Nim
+  ##
   ##   data.add({"action": "login", "format": "json"})
   for name, content in xs.items:
     p.add(name, content)
@@ -407,6 +420,7 @@ proc newMultipartData*(xs: MultipartEntries): MultipartData =
   ## directly.
   ##
   ## .. code-block:: Nim
+  ##
   ##   var data = newMultipartData({"action": "login", "format": "json"})
   result = MultipartData()
   for entry in xs:
@@ -423,6 +437,7 @@ proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
   ## manually specify file content, filename and MIME type, use `[]=` instead.
   ##
   ## .. code-block:: Nim
+  ##
   ##   data.addFiles({"uploaded_file": "public/test.html"})
   for name, file in xs.items:
     var contentType: string
@@ -438,6 +453,7 @@ proc `[]=`*(p: MultipartData, name, content: string) {.inline.} =
   ## without a filename and without a content type.
   ##
   ## .. code-block:: Nim
+  ##
   ##   data["username"] = "NimUser"
   p.add(name, content)
 
@@ -447,6 +463,7 @@ proc `[]=`*(p: MultipartData, name: string,
   ## and content manually.
   ##
   ## .. code-block:: Nim
+  ##
   ##   data["uploaded_file"] = ("test.html", "text/html",
   ##     "<html><head></head><body><p>test</p></body></html>")
   p.add(name, file.content, file.name, file.contentType, useStream = false)
@@ -660,6 +677,7 @@ proc getSocket*(client: HttpClient): Socket {.inline.} =
   ## this example shows info about local and remote endpoints
   ##
   ## .. code-block:: Nim
+  ##
   ##   if client.connected:
   ##     echo client.getSocket.getLocalAddr
   ##     echo client.getSocket.getPeerAddr

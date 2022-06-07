@@ -33,6 +33,7 @@ proc repr*(x: char): string {.noSideEffect.} =
   ## converted to an escaped string.
   ##
   ## .. code-block:: Nim
+  ##
   ##   assert repr('c') == "'c'"
   result.add '\''
   # Elides string creations if not needed
@@ -123,6 +124,7 @@ proc repr*[T: tuple|object](x: T): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##   $(23, 45) == "(23, 45)"
   ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
@@ -155,6 +157,7 @@ proc repr*[T](x: set[T]): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##   ${23, 45} == "{23, 45}"
   collectionToRepr(x, "{", ", ", "}")
 
@@ -163,6 +166,7 @@ proc repr*[T](x: seq[T]): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##   $(@[23, 45]) == "@[23, 45]"
   collectionToRepr(x, "@[", ", ", "]")
 
@@ -171,6 +175,7 @@ proc repr*[T, U](x: HSlice[T, U]): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##  $(1 .. 5) == "1 .. 5"
   result = repr(x.a)
   result.add(" .. ")
@@ -185,5 +190,6 @@ proc repr*[T](x: openArray[T]): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
   collectionToRepr(x, "[", ", ", "]")

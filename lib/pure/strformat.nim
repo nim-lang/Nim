@@ -134,6 +134,7 @@ runnableExamples:
 An expression like `&"{key} is {value:arg} {{z}}"` is transformed into:
 
 .. code-block:: nim
+
   var temp = newStringOfCap(educatedCapGuess)
   temp.formatValue(key, "")
   temp.add(" is ")
@@ -273,6 +274,7 @@ Because of the well defined order how templates and macros are
 expanded, strformat cannot expand template arguments:
 
 .. code-block:: nim
+
   template myTemplate(arg: untyped): untyped =
     echo "arg is: ", arg
     echo &"--- {arg} ---"
@@ -290,6 +292,7 @@ identifier that cannot be resolved anymore.
 The workaround for this is to bind the template argument to a new local variable.
 
 .. code-block:: nim
+
   template myTemplate(arg: untyped): untyped =
     block:
       let arg1 {.inject.} = arg

@@ -18,12 +18,14 @@
 ## This is roughly equivalent to the `async` keyword in JavaScript code.
 ##
 ## .. code-block:: nim
+##
 ##  proc loadGame(name: string): Future[Game] {.async.} =
 ##    # code
 ##
 ## should be equivalent to
 ##
 ## .. code-block:: javascript
+##
 ##   async function loadGame(name) {
 ##     // code
 ##   }
@@ -32,12 +34,14 @@
 ## the completion of the `Future`.
 ##
 ## .. code-block:: nim
+##
 ##   var game = await loadGame(name)
 ##
 ## Often, you might work with callback-based API-s. You can wrap them with
 ## asynchronous procedures using promises and `newPromise`:
 ##
 ## .. code-block:: nim
+##
 ##   proc loadGame(name: string): Future[Game] =
 ##     var promise = newPromise() do (resolve: proc(response: Game)):
 ##       cbBasedLoadGame(name) do (game: Game):
@@ -47,6 +51,7 @@
 ## Forward definitions work properly, you just need to always add the `{.async.}` pragma:
 ##
 ## .. code-block:: nim
+##
 ##   proc loadGame(name: string): Future[Game] {.async.}
 ##
 ## JavaScript compatibility

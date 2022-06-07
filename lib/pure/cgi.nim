@@ -251,6 +251,7 @@ proc setTestData*(keysvalues: varargs[string]) =
   ## provide embedded (name, value)-pairs. Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##    setTestData("name", "Hanz", "password", "12345")
   putEnv("REQUEST_METHOD", "GET")
   var i = 0
@@ -268,6 +269,7 @@ proc writeContentType*() =
   ## implements this part of the CGI protocol:
   ##
   ## .. code-block:: Nim
+  ##
   ##     write(stdout, "Content-type: text/html\n\n")
   write(stdout, "Content-type: text/html\n\n")
 

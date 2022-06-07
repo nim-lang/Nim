@@ -43,6 +43,7 @@
 ## Code to read some data from a socket may look something like this:
 ##
 ## .. code-block:: Nim
+##
 ##    var future = socket.recv(100)
 ##    future.addCallback(
 ##      proc () =
@@ -110,6 +111,7 @@
 ##
 ##
 ## .. code-block:: Nim
+##
 ##   try:
 ##     let data = await sock.recv(100)
 ##     echo("Received ", data)
@@ -122,6 +124,7 @@
 ## then check the future's `failed` property. For example:
 ##
 ## .. code-block:: Nim
+##
 ##   var future = sock.recv(100)
 ##   yield future
 ##   if future.failed:

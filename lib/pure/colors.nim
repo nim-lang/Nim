@@ -19,6 +19,7 @@ proc `==` *(a, b: Color): bool {.borrow.}
   ## Compares two colors.
   ##
   ## .. code-block::
+  ##
   ##   var
   ##     a = Color(0xff_00_ff)
   ##     b = colFuchsia

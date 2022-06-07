@@ -52,6 +52,7 @@ details. We use the term `runtime`:idx: to cover both compile-time execution
 and code execution in the executable.
 
 .. code-block:: nim
+
   var a: array[0..1, char]
   let i = 5
   try:
@@ -122,6 +123,7 @@ contain the following `escape sequences`:idx:\ :
 ==================         ===================================================
 
 .. code-block:: nim
+
   """"long string within quotes""""
 
 Produces::
@@ -380,6 +382,7 @@ Example:
    code is the same as it would be with code reordering disabled.
 
    .. code-block:: nim
+
      {.experimental: "codeReordering".}
 
      proc x() =

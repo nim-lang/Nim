@@ -17,6 +17,7 @@
 ## events: one is a python-inspired way; the other is more of a C-style way.
 ##
 ## .. code-block:: Nim
+##
 ##    var ee = initEventEmitter()
 ##    var genericargs: EventArgs
 ##    proc handleevent(e: EventArgs) =

@@ -247,6 +247,7 @@ skConst
 | **Docstring**: always the empty string.
 
 .. code-block:: nim
+
     const SOME_SEQUENCE = @[1, 2]
     --> col 2: $MODULE.SOME_SEQUENCE
         col 3: seq[int]
@@ -261,6 +262,7 @@ skEnumField
 | **Docstring**: always the empty string.
 
 .. code-block:: nim
+
     Open(filename, fmWrite)
     --> col 2: system.FileMode.fmWrite
         col 3: FileMode
@@ -275,6 +277,7 @@ skForVar
 | **Docstring**: always the empty string.
 
 .. code-block:: nim
+
     proc looper(filename = "tests.nim") =
       for letter in filename:
         echo letter
@@ -296,6 +299,7 @@ posterior instances of the iterator.
 | **Docstring**: docstring if available.
 
 .. code-block:: nim
+
     let
       text = "some text"
       letters = toSeq(runes(text))
@@ -312,6 +316,7 @@ skLabel
 | **Docstring**: always the empty string.
 
 .. code-block:: nim
+
     proc test(text: string) =
       var found = -1
       block loops:
@@ -328,6 +333,7 @@ skLet
 | **Docstring**: always the empty string.
 
 .. code-block:: nim
+
     let
       text = "some text"
     --> col 2: $MODULE.text
@@ -348,6 +354,7 @@ posterior instances of the macro.
 | **Docstring**: docstring if available.
 
 .. code-block:: nim
+
     proc testMacro() =
       expect(EArithmetic):
     --> col 2: idetools_api.expect
@@ -385,6 +392,7 @@ This may change in the future.
 | **Docstring**: docstring if available.
 
 .. code-block:: nim
+
     method eval(e: PExpr): int = quit "to override!"
     method eval(e: PLiteral): int = e.x
     method eval(e: PPlusExpr): int = eval(e.a) + eval(e.b)
@@ -402,6 +410,7 @@ skParam
 | **Docstring**: always the empty string.
 
 .. code-block:: nim
+
     proc reader(filename = "tests.nim") =
       let text = readFile(filename)
     --> col 2: $MODULE.reader.filename
@@ -426,6 +435,7 @@ returned by idetools returns also the pragmas for the proc.
 | **Docstring**: docstring if available.
 
 .. code-block:: nim
+
     open(filename, fmWrite)
     --> col 2: system.Open
         col 3: proc (var File, string, FileMode, int): bool
@@ -444,6 +454,7 @@ skResult
 | **Docstring**: always the empty string.
 
 .. code-block:: nim
+
     proc getRandomValue() : int =
       return 4
     --> col 2: $MODULE.getRandomValue.result
@@ -464,6 +475,7 @@ posterior instances of the template.
 | **Docstring**: docstring if available.
 
 .. code-block:: nim
+
     let
       text = "some text"
       letters = toSeq(runes(text))
@@ -472,15 +484,16 @@ posterior instances of the template.
         col 7:
     "Transforms any iterator into a sequence.
 
-     Example:
+Example:
 
-     .. code-block:: nim
-       let
-         numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-         odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
-           if x mod 2 == 1:
-             result = true)
-       assert odd_numbers == @[1, 3, 5, 7, 9]"
+.. code-block:: nim
+
+  let
+    numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
+    odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
+      if x mod 2 == 1:
+        result = true)
+  assert odd_numbers == @[1, 3, 5, 7, 9]"
 
 
 skType
@@ -491,6 +504,7 @@ skType
 | **Docstring**: always the empty string.
 
 .. code-block:: nim
+
     proc writeTempFile() =
       var output: File
     --> col 2: system.File
@@ -506,6 +520,7 @@ skVar
 | **Docstring**: always the empty string.
 
 .. code-block:: nim
+
     proc writeTempFile() =
       var output: File
       output.open("/tmp/somefile", fmWrite)

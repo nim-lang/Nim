@@ -21,6 +21,7 @@
 ## value should be placed. For example:
 ##
 ## .. code-block:: Nim
+##
 ##     sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
 ##
 ##
@@ -31,6 +32,7 @@
 ## ----------------------------------
 ##
 ## .. code-block:: Nim
+##
 ##     import std/db_mysql
 ##     let db = open("localhost", "user", "password", "dbname")
 ##     db.close()
@@ -39,6 +41,7 @@
 ## ----------------
 ##
 ## .. code-block:: Nim
+##
 ##      db.exec(sql"DROP TABLE IF EXISTS myTable")
 ##      db.exec(sql("""CREATE TABLE myTable (
 ##                       id integer,
@@ -48,6 +51,7 @@
 ## --------------
 ##
 ## .. code-block:: Nim
+##
 ##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
 ##             "Dominik")
 ##

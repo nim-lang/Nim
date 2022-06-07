@@ -677,6 +677,7 @@ iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   let a = {
   ##     'o': [1, 5, 7, 9],
   ##     'e': [2, 4, 6, 8]
@@ -1123,6 +1124,7 @@ iterator pairs*[A, B](t: TableRef[A, B]): (A, B) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   let a = {
   ##     'o': [1, 5, 7, 9],
   ##     'e': [2, 4, 6, 8]
@@ -1699,6 +1701,7 @@ iterator pairs*[A, B](t: OrderedTable[A, B]): (A, B) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   let a = {
   ##     'o': [1, 5, 7, 9],
   ##     'e': [2, 4, 6, 8]
@@ -2107,6 +2110,7 @@ iterator pairs*[A, B](t: OrderedTableRef[A, B]): (A, B) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   let a = {
   ##     'o': [1, 5, 7, 9],
   ##     'e': [2, 4, 6, 8]
@@ -2520,6 +2524,7 @@ iterator pairs*[A](t: CountTable[A]): (A, int) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   let a = toCountTable("abracadabra")
   ##
   ##   for k, v in pairs(a):
@@ -2796,6 +2801,7 @@ iterator pairs*[A](t: CountTableRef[A]): (A, int) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   let a = newCountTable("abracadabra")
   ##
   ##   for k, v in pairs(a):

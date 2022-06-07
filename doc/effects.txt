@@ -14,6 +14,7 @@ should not be evaluated at compile time! On other occasions it can
 and should be evaluted:
 
 .. code-block:: nim
+
   proc toUpper(s: string): string =
     result = newString(len(s))
     for i in 0..len(s) - 1:

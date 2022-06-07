@@ -50,6 +50,7 @@ Spacing and Whitespace Conventions
   long sections of code by hand can quickly become tedious.
 
   .. code-block:: nim
+
     # This is bad, as the next time someone comes
     # to edit this code block, they
     # must re-align all the assignments again:
@@ -70,6 +71,7 @@ Naming Conventions
   are not required to.
 
   .. code-block:: nim
+
     # Constants can start with either a lower case or upper case letter.
     const aConstant = 42
     const FooBar = 4.2
@@ -90,6 +92,7 @@ Naming Conventions
   same applies to C/C++ wrappers.
 
   .. code-block:: nim
+
     type
       Handle = object # Will be used most often
         fd: int64
@@ -98,6 +101,7 @@ Naming Conventions
 - Exception and Error types should have the "Error" or "Defect" suffix.
 
   .. code-block:: nim
+
     type
       ValueError = object of CatchableError
       AssertionDefect = object of Defect
@@ -107,6 +111,7 @@ Naming Conventions
   identifying prefix, such as an abbreviation of the enum's name.
 
   .. code-block:: nim
+
     type
       PathComponent = enum
         pcDir
@@ -118,6 +123,7 @@ Naming Conventions
   PascalCase.
 
   .. code-block:: nim
+
     type
       PathComponent {.pure.} = enum
         Dir
@@ -231,6 +237,7 @@ Coding Conventions
   This improves readability.
 
   .. code-block:: nim
+
     proc repeat(text: string, x: int): string =
       result = ""
 
@@ -253,6 +260,7 @@ Conventions for multi-line statements and expressions
   align with the parameters above it.
 
   .. code-block:: nim
+
     type
       LongTupleA = tuple[wordyTupleMemberOne: int, wordyTupleMemberTwo: string,
                          wordyTupleMemberThree: float]
@@ -261,6 +269,7 @@ Conventions for multi-line statements and expressions
   than one line should do the same thing.
 
   .. code-block:: nim
+
     type
       EventCallback = proc (timeReceived: Time, errorCode: int, event: Event,
                             output: var string)
@@ -273,6 +282,7 @@ Conventions for multi-line statements and expressions
   parenthesis (like multi-line procedure declarations).
 
   .. code-block:: nim
+
     startProcess(nimExecutable, currentDirectory, compilerArguments
                  environment, processOptions)
 
@@ -291,6 +301,7 @@ Miscellaneous
   use this:
 
   .. code-block:: nim
+
     let a = """
     foo
     bar
@@ -299,6 +310,7 @@ Miscellaneous
   instead of:
 
   .. code-block:: nim
+
     let a = """foo
     bar
     """

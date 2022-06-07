@@ -18,7 +18,8 @@
 ##
 ## Build and test examples:
 ##
-## .. code-block::
+## .. code-block:: cmd
+##
 ##   ./bin/nim c -d:ssl -p:. -r tests/untestable/tssl.nim
 ##   ./bin/nim c -d:ssl -p:. --dynlibOverride:ssl --passl:-lcrypto --passl:-lssl -r tests/untestable/tssl.nim
 

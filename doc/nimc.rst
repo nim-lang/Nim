@@ -431,6 +431,7 @@ to your usual `nim c`:cmd: or `nim cpp`:cmd: command and set the `passC`:option:
 and `passL`:option: command line switches to something like:
 
 .. code-block:: cmd
+
   nim c ... --d:nimAllocPagesViaMalloc --mm:orc --passC="-I$DEVKITPRO/libnx/include" ...
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
@@ -761,17 +762,20 @@ a procedure call, because the callee returns a new string anyway.
 Thus it is efficient to do:
 
 .. code-block:: Nim
+
   var s = procA() # assignment will not copy the string; procA allocates a new
                   # string already
 
 However, it is not efficient to do:
 
 .. code-block:: Nim
+
   var s = varA    # assignment has to copy the whole string into a new buffer!
 
 For `let` symbols a copy is not always necessary:
 
 .. code-block:: Nim
+
   let s = varA    # may only copy a pointer if it safe to do so
 
 
@@ -779,6 +783,7 @@ If you know what you're doing, you can also mark single-string (or sequence)
 objects as `shallow`:idx:\:
 
 .. code-block:: Nim
+
   var s = "abc"
   shallow(s) # mark 's' as a shallow string
   var x = s  # now might not copy the string!
@@ -792,6 +797,7 @@ if several different string constants are used. So code like this is reasonably
 efficient:
 
 .. code-block:: Nim
+
   case normalize(k.key)
   of "name": c.name = v
   of "displayname": c.displayName = v

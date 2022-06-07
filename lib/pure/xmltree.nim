@@ -772,6 +772,7 @@ macro `<>`*(x: untyped): untyped =
   ## Constructor macro for XML. Example usage:
   ##
   ## .. code-block:: nim
+  ##
   ##   <>a(href="http://nim-lang.org", newText("Nim rules."))
   ##
   ## Produces an XML tree for::

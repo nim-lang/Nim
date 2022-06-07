@@ -31,6 +31,7 @@
 ## ========
 ##
 ## .. code-block:: Nim
+##
 ##   var nim = "Nim"
 ##   echo h1(a(href="https://nim-lang.org", nim))
 ##

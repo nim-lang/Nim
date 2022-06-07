@@ -30,6 +30,7 @@ Installation
 Nimsuggest is part of Nim's core. Build it via:
 
 .. code:: cmd
+
   koch nimsuggest
 
 

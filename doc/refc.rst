@@ -17,6 +17,7 @@ file as well).
 With this switch the garbage collector supports the following operations:
 
 .. code-block:: nim
+
   proc GC_setMaxPause*(maxPauseInUs: int)
   proc GC_step*(us: int, strongAdvice = false, stackSize = -1)
 

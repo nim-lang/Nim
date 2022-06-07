@@ -473,6 +473,7 @@ macro bindMethod*(procedure: typed): auto =
   ## We want to generate roughly this JavaScript:
   ##
   ## .. code-block:: js
+  ##
   ##  var obj = {a: 10};
   ##  obj.someMethod = function() {
   ##    return this.a + 42;
@@ -481,6 +482,7 @@ macro bindMethod*(procedure: typed): auto =
   ## We can achieve this using the `bindMethod` macro:
   ##
   ## .. code-block:: nim
+  ##
   ##  let obj = JsObject{ a: 10 }
   ##  proc someMethodImpl(that: JsObject): int =
   ##    that.a.to(int) + 42

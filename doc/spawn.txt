@@ -29,6 +29,7 @@ the passed expression on the thread pool and returns a `data flow variable`:idx:
 variables at the same time:
 
 .. code-block:: nim
+
   import std/threadpool, ...
 
   # wait until 2 out of 3 servers received the update:
@@ -55,6 +56,7 @@ Parallel statement
 Example:
 
 .. code-block:: nim
+
   # Compute PI in an inefficient way
   import std/[strutils, math, threadpool]
 

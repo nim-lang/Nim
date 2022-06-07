@@ -108,6 +108,7 @@ Compile this example via:
 Now start the program and KEEP it running!
 
 .. code:: cmd
+
   # Unix:
   mymain &
   # or Windows (click on the .exe)
@@ -147,6 +148,7 @@ One can use the special event handlers `beforeCodeReload` and
 the execution of certain statements:
 
 .. code-block:: Nim
+
   var
    settings = initTable[string, string]()
    lastReload: Time
@@ -168,6 +170,7 @@ executed. To prevent this behavior, one can guard the code with the
 `hasModuleChanged()`:idx: API:
 
 .. code-block:: Nim
+
   import mydb
 
   var myCache = initTable[Key, Value]()

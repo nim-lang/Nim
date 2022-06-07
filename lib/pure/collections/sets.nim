@@ -26,6 +26,7 @@
 ##   `symmetric difference <#symmetricDifference,HashSet[A],HashSet[A]>`_
 ##
 ## .. code-block::
+##
 ##   echo toHashSet([9, 5, 1])     # {9, 1, 5}
 ##   echo toOrderedSet([9, 5, 1])  # {9, 5, 1}
 ##
@@ -247,6 +248,7 @@ iterator items*[A](s: HashSet[A]): A =
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
   ## .. code-block::
+  ##
   ##   type
   ##     pair = tuple[a, b: int]
   ##   var
@@ -585,6 +587,7 @@ proc `$`*[A](s: HashSet[A]): string =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   echo toHashSet([2, 4, 5])
   ##   # --> {2, 4, 5}
   ##   echo toHashSet(["no", "esc'aping", "is \" provided"])
@@ -873,6 +876,7 @@ proc `$`*[A](s: OrderedSet[A]): string =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   echo toOrderedSet([2, 4, 5])
   ##   # --> {2, 4, 5}
   ##   echo toOrderedSet(["no", "esc'aping", "is \" provided"])
@@ -888,6 +892,7 @@ iterator items*[A](s: OrderedSet[A]): A =
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
   ## .. code-block::
+  ##
   ##   var a = initOrderedSet[int]()
   ##   for value in [9, 2, 1, 5, 1, 8, 4, 2]:
   ##     a.incl(value)

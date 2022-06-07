@@ -32,6 +32,7 @@ is stored on the stack or not. This is caused by var parameters.
 Consider this example:
 
 .. code-block:: Nim
+
   proc setRef(r: var ref TNode) =
     new(r)
 
@@ -46,6 +47,7 @@ We have to decide at runtime whether the reference is on the stack or not.
 The generated code looks roughly like this:
 
 .. code-block:: C
+
   void setref(TNode** ref) {
     unsureAsgnRef(ref, newObj(TNode_TI, sizeof(TNode)))
   }

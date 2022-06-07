@@ -26,6 +26,7 @@
 ##
 ## .. code-block:: nim
 ##    :test:
+##
 ##    from std/strutils import Digits, parseInt
 ##
 ##    let

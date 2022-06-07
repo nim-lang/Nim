@@ -17,6 +17,7 @@
 ##
 ##
 ## .. code-block:: Nim
+##
 ##   var msg = createMessage("Hello from Nim's SMTP",
 ##                           "Hello!.\n Is this awesome or what?",
 ##                           @["foo@gmail.com"])
@@ -30,6 +31,7 @@
 ##
 ##
 ## .. code-block:: Nim
+##
 ##   var msg = createMessage("Hello from Nim's SMTP",
 ##                           "Hello!.\n Is this awesome or what?",
 ##                           @["foo@gmail.com"])

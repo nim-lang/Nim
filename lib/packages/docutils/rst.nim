@@ -3002,9 +3002,14 @@ proc indFollows(p: RstParser): bool =
   result = currentTok(p).kind == tkIndent and currentTok(p).ival > currInd(p)
 
 proc parseBlockContent(p: var RstParser, father: var PRstNode,
-                       contentParser: SectionParser): bool {.gcsafe.} =
+                       contentParser: SectionParser, requireBlankLine: bool):
+                      bool {.gcsafe.} =
   ## parse the final content part of explicit markup blocks (directives,
   ## footnotes, etc). Returns true if succeeded.
+  if indFollows(p) and requireBlankLine and
+      tkIndent notin {nextTok(p).kind, prevTok(p).kind}:
+    rstMessage(p, meGeneralParseError,
+               "no blank line after directive arguments")
   if currentTok(p).kind != tkIndent or indFollows(p):
     let blockIndent = getWrappableIndent(p)
     pushInd(p, blockIndent)
@@ -3025,7 +3030,9 @@ proc parseDirective(p: var RstParser, k: RstNodeKind, flags: DirFlags,
   ## .. warning:: Any of the 3 children may be nil.
   result = parseDirective(p, k, flags)
   if not isNil(contentParser) and
-      parseBlockContent(p, result, contentParser):
+      parseBlockContent(p, result, contentParser,
+                        requireBlankLine = hasOptions in flags or
+                                           hasArg in flags):
     discard "result is updated by parseBlockContent"
   else:
     result.add(PRstNode(nil))
@@ -3300,7 +3307,8 @@ proc parseFootnote(p: var RstParser): PRstNode {.gcsafe.} =
   addAnchorRst(p, anchor, anchor, reset=true, anchorType=footnoteAnchor)
   result.anchor = anchor
   if currentTok(p).kind == tkWhite: inc p.idx
-  discard parseBlockContent(p, result, parseSectionWrapper)
+  discard parseBlockContent(p, result, parseSectionWrapper,
+                            requireBlankLine=false)
   if result.len < 2:
     result.add nil
 

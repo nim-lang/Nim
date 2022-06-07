@@ -1336,6 +1336,7 @@ since (1, 3):
       ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
       ##
       ## .. code-block:: nim
+      ##
       ##   let prsr = newDomParser()
       ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
 

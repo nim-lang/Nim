@@ -10,6 +10,7 @@
 ## This module implements asynchronous file reading and writing.
 ##
 ## .. code-block:: Nim
+##
 ##    import std/[asyncfile, asyncdispatch, os]
 ##
 ##    proc main() {.async.} =

@@ -413,6 +413,7 @@ can also be applied to type, variable and constant declarations.
 For types:
 
 .. code-block:: nim
+
   type
     MyObject {.schema: "schema.protobuf".} = object
 
@@ -438,6 +439,7 @@ the same kind as the section containing a single definition is passed to macros,
 and macros can return any expression.
 
 .. code-block:: nim
+
   var
     a = ...
     b {.importc, foo, nodecl.} = ...
@@ -446,6 +448,7 @@ and macros can return any expression.
 Assuming `foo` is a macro or a template, this is roughly equivalent to:
 
 .. code-block:: nim
+
   var a = ...
   foo:
     var b {.importc, nodecl.} = ...
@@ -460,6 +463,7 @@ i.e. without parentheses. This is useful for repeated uses of complex
 expressions that cannot conveniently be represented as runtime values.
 
 .. code-block:: nim
+
   type Foo = object
     bar: int
   
@@ -1290,6 +1294,7 @@ This experimental feature allows the symbol name argument of `macros.bindSym`
 to be computed dynamically.
 
 .. code-block:: nim
+
   {.experimental: "dynamicBindSym".}
 
   import macros

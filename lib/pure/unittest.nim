@@ -473,6 +473,7 @@ template suite*(name, body) {.dirty.} =
   ## for EACH test.
   ##
   ## .. code-block:: nim
+  ##
   ##  suite "test suite for addition":
   ##    setup:
   ##      let result = 4

@@ -119,6 +119,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ## Example:
   ##
   ## .. code-block:: nim
+  ##
   ##   var
   ##     mm, mm_full, mm_half: MemFile
   ##
@@ -402,6 +403,7 @@ iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline
   ## Example:
   ##
   ## .. code-block:: nim
+  ##
   ##   var count = 0
   ##   for slice in memSlices(memfiles.open("foo")):
   ##     if slice.size > 0 and cast[cstring](slice.data)[0] != '#':
@@ -438,6 +440,7 @@ iterator lines*(mfile: MemFile, buf: var string, delim = '\l',
   ## Example:
   ##
   ## .. code-block:: nim
+  ##
   ##   var buffer: string = ""
   ##   for line in lines(memfiles.open("foo"), buffer):
   ##     echo line
@@ -457,6 +460,7 @@ iterator lines*(mfile: MemFile, delim = '\l', eat = '\r'): string {.inline.} =
   ## Example:
   ##
   ## .. code-block:: nim
+  ##
   ##   for line in lines(memfiles.open("foo")):
   ##     echo line
 

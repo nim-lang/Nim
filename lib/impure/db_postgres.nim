@@ -21,6 +21,7 @@
 ## value should be placed. For example:
 ##
 ## .. code-block:: Nim
+##
 ##     sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
 ##
 ## **Note**: There are two approaches to parameter substitution support by
@@ -31,6 +32,7 @@
 ## 2. `SqlPrepared` using `$1, $2, $3, ...`
 ##
 ## .. code-block:: Nim
+##
 ##   prepare(db, "myExampleInsert",
 ##           sql"""INSERT INTO myTable
 ##                 (colA, colB, colC)
@@ -47,6 +49,7 @@
 ## To use Unix sockets with `db_postgres`, change the server address to the socket file path:
 ##
 ## .. code-block:: Nim
+##
 ##   import std/db_postgres ## Change "localhost" or "127.0.0.1" to the socket file path
 ##   let db = db_postgres.open("/run/postgresql", "user", "password", "database")
 ##   echo db.getAllRows(sql"SELECT version();")
@@ -64,6 +67,7 @@
 ## ----------------------------------
 ##
 ## .. code-block:: Nim
+##
 ##     import std/db_postgres
 ##     let db = open("localhost", "user", "password", "dbname")
 ##     db.close()
@@ -72,6 +76,7 @@
 ## ----------------
 ##
 ## .. code-block:: Nim
+##
 ##      db.exec(sql"DROP TABLE IF EXISTS myTable")
 ##      db.exec(sql("""CREATE TABLE myTable (
 ##                       id integer,
@@ -81,6 +86,7 @@
 ## --------------
 ##
 ## .. code-block:: Nim
+##
 ##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
 ##             "Dominik")
 import strutils, postgres

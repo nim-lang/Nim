@@ -176,6 +176,7 @@ expression, identifiers are not interpreted as non-terminals, but are
 interpreted as verbatim string:
 
 .. code-block:: nim
+
   abc =~ peg"abc" # is true
 
 So it is not necessary to write ``peg" 'abc' "`` in the above example.
@@ -187,16 +188,19 @@ Examples
 Check if `s` matches Nim's "while" keyword:
 
 .. code-block:: nim
+
   s =~ peg" y'while'"
 
 Exchange (key, val)-pairs:
 
 .. code-block:: nim
+
   "key: val; key2: val2".replacef(peg"{\ident} \s* ':' \s* {\ident}", "$2: $1")
 
 Determine the ``#include``'ed files of a C file:
 
 .. code-block:: nim
+
   for line in lines("myfile.c"):
     if line =~ peg"""s <- ws '#include' ws '"' {[^"]+} '"' ws
                      comment <- '/*' @ '*/' / '//' .*

@@ -40,6 +40,7 @@ proc `$`*(x: char): string {.magic: "CharToStr", noSideEffect.}
   ## converted to a string.
   ##
   ## .. code-block:: Nim
+  ##
   ##   assert $'c' == "c"
 
 proc `$`*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
@@ -65,6 +66,7 @@ proc `$`*(t: typedesc): string {.magic: "TypeTrait".}
   ## `typetraits module <typetraits.html>`_.
   ##
   ## .. code-block:: Nim
+  ##
   ##   doAssert $(typeof(42)) == "int"
   ##   doAssert $(typeof("Foo")) == "string"
   ##   static: doAssert $(typeof(@['A', 'B'])) == "seq[char]"
@@ -91,6 +93,7 @@ proc `$`*[T: tuple|object](x: T): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##   $(23, 45) == "(23, 45)"
   ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
@@ -141,6 +144,7 @@ proc `$`*[T](x: set[T]): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##   ${23, 45} == "{23, 45}"
   collectionToString(x, "{", ", ", "}")
 
@@ -149,6 +153,7 @@ proc `$`*[T](x: seq[T]): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##   $(@[23, 45]) == "@[23, 45]"
   collectionToString(x, "@[", ", ", "]")
 
@@ -157,6 +162,7 @@ proc `$`*[T, U](x: HSlice[T, U]): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##  $(1 .. 5) == "1 .. 5"
   result = $x.a
   result.add(" .. ")
@@ -173,5 +179,6 @@ proc `$`*[T](x: openArray[T]): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
   collectionToString(x, "[", ", ", "]")

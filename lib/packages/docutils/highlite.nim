@@ -14,6 +14,7 @@
 ## You can use this to build your own syntax highlighting, check this example:
 ##
 ## .. code:: Nim
+##
 ##   let code = """for x in $int.high: echo x.ord mod 2 == 0"""
 ##   var toknizr: GeneralTokenizer
 ##   initGeneralTokenizer(toknizr, code)
@@ -35,6 +36,7 @@
 ## The proc `getSourceLanguage` can get the language `enum` from a string:
 ##
 ## .. code:: Nim
+##
 ##   for l in ["C", "c++", "jAvA", "Nim", "c#"]: echo getSourceLanguage(l)
 ##
 ## There is also a `Cmd` pseudo-language supported, which is a simple generic
@@ -43,6 +45,7 @@
 ## at the beginning of line. It supports these operators:
 ##
 ## .. code:: Cmd
+##
 ##    &  &&  |  ||  (  )  ''  ""  ;  # for comments
 ##
 ## Instead of escaping always use quotes like here

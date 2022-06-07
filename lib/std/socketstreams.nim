@@ -32,6 +32,7 @@
 ## ========
 ##
 ## .. code-block:: Nim
+##
 ##  import std/socketstreams
 ##
 ##  var

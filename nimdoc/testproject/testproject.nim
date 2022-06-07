@@ -200,6 +200,7 @@ when true: # tests RST inside comments
     ## * `low2(T) <#low2,T>`_
     ##
     ## .. code-block:: Nim
+    ##
     ##  low(2) # => -9223372036854775808
 
   proc low2*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.} =
@@ -210,6 +211,7 @@ when true: # tests RST inside comments
     ## * `low(T) <#low,T>`_
     ##
     ## .. code-block:: Nim
+    ##
     ##  low2(2) # => -9223372036854775808
     runnableExamples:
       discard "in low2"

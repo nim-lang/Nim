@@ -14,6 +14,7 @@
 ## ===========
 ##
 ## .. code-block:: nim
+##
 ##   import std/parsecsv
 ##   from std/os import paramStr
 ##   from std/streams import newFileStream
@@ -34,6 +35,7 @@
 ## reference for item access with `rowEntry <#rowEntry,CsvParser,string>`_:
 ##
 ## .. code-block:: nim
+##
 ##   import std/parsecsv
 ##
 ##   # Prepare a file

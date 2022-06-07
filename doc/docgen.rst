@@ -69,6 +69,7 @@ Basic Markdown syntax is also supported inside the doc comments.
 Example:
 
 .. code-block:: nim
+
   type Person* = object
     ## This type contains a description of a person
     name: string
@@ -84,6 +85,7 @@ Outputs::
 Field documentation comments can be added to fields like so:
 
 .. code-block:: nim
+
   var numValues: int ## \
     ## `numValues` stores the number of values
 
@@ -104,6 +106,7 @@ won't influence RST formatting.
    (for RST block quote syntax) use backslash \\ before it:
 
    .. code-block:: nim
+
       ## \
       ##
       ##    Block quote at the first line.

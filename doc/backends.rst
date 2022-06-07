@@ -160,6 +160,7 @@ C invocation example
 Create a ``logic.c`` file with the following content:
 
 .. code-block:: c
+
   int addTwoIntegers(int a, int b)
   {
     return a + b;

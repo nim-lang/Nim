@@ -23,6 +23,7 @@ Installation
 Compile nimgrep with the command:
 
 .. code:: cmd
+
   nim c -d:release tools/nimgrep.nim
 
 And copy the executable somewhere in your ``$PATH``.
@@ -41,6 +42,7 @@ All examples below use default PCRE Regex patterns:
 + To search recursively in Nim files using style-insensitive identifiers:
 
   .. code:: cmd
+
     nimgrep --recursive --ext:'nim|nims' --ignoreStyle
     # short: -r --ext:'nim|nims' -y
 
@@ -51,12 +53,14 @@ All examples below use default PCRE Regex patterns:
   from the search:
 
   .. code:: cmd
+
     nimgrep --excludeDir:'^\.git$' --excludeDir:'^\.hg$' --excludeDir:'^\.svn$'
     # short: --ed:'^\.git$' --ed:'^\.hg$' --ed:'^\.svn$'
 
 + To search only in paths containing the `tests` sub-directory recursively::
 
   .. code:: cmd
+
     nimgrep --recursive --includeDir:'(^|/)tests($|/)'
     # short: -r --id:'(^|/)tests($|/)'
 

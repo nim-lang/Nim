@@ -886,6 +886,7 @@ macro mkHandlerTplts(handlers: untyped): untyped =
   # The AST structure of *handlers[0]*:
   #
   # .. code-block::
+  #
   #   StmtList
   #     Call
   #       Ident "pkNonTerminal"
@@ -956,6 +957,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## evaluates an arithmetic expression defined by a simple PEG:
   ##
   ## .. code-block:: nim
+  ##
   ##  import std/[strutils, pegs]
   ##
   ##  let
@@ -1227,6 +1229,7 @@ func replacef*(s: string, sub: Peg, by: string): string {.
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
   ## .. code-block:: nim
+  ##
   ##   "var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2")
   ##
   ## Results in:
@@ -1358,12 +1361,14 @@ iterator split*(s: string, sep: Peg): string =
   ## Examples:
   ##
   ## .. code-block:: nim
+  ##
   ##   for word in split("00232this02939is39an22example111", peg"\d+"):
   ##     writeLine(stdout, word)
   ##
   ## Results in:
   ##
   ## .. code-block:: nim
+  ##
   ##   "this"
   ##   "is"
   ##   "an"

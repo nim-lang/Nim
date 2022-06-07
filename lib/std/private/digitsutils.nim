@@ -20,6 +20,7 @@ const
 # Inspired by https://engineering.fb.com/2013/03/15/developer-tools/three-optimization-tips-for-c
 # Generates:
 # .. code-block:: nim
+#
 #   var res = ""
 #   for i in 0 .. 99:
 #     if i < 10:

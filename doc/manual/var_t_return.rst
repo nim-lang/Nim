@@ -7,6 +7,7 @@ rule: If `result` does not refer to a location pointing to the heap
 then it has to be derived from the routine's first parameter:
 
 .. code-block:: nim
+
   proc forward[T](x: var T): var T =
     result = x # ok, derived from the first parameter.
 

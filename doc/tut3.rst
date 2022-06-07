@@ -189,6 +189,7 @@ generated expression.
 
 .. code-block:: nim
     :test: "nim c $1"
+
     import std/macros
     macro a(i) = quote do:
       let `i` = 0
@@ -200,6 +201,7 @@ A custom prefix operator can be defined whenever backticks are needed.
 
 .. code-block:: nim
     :test: "nim c $1"
+
     import std/macros
     macro a(i) = quote("@") do:
       assert @i == 0
@@ -211,6 +213,7 @@ The injected symbol needs accent quoted when it resolves to a symbol.
 
 .. code-block:: nim
     :test: "nim c $1"
+
     import std/macros
     macro a(i) = quote("@") do:
       let `@i` = 0
@@ -250,6 +253,7 @@ them into the tree.
 The call to `myMacro` will generate the following code:
 
 .. code-block:: nim
+
   echo "Hallo"
   echo MyType(a: 123.456'f64, b: "abcdef")
 
@@ -320,6 +324,7 @@ the last line of the macro. It is also the statement that has been
 used to get this output.
 
 .. code-block:: nim
+
   if not (a != b):
     raise newException(AssertionDefect, $a & " != " & $b)
 

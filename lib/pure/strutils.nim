@@ -118,6 +118,7 @@ const
     ## find **invalid** characters in strings. Example:
     ##
     ## .. code-block:: nim
+    ##
     ##   let invalid = AllChars - Digits
     ##   doAssert "01234".find(invalid) == -1
     ##   doAssert "01A34".find(invalid) == 2
@@ -410,12 +411,14 @@ iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## The code:
   ##
   ## .. code-block:: nim
+  ##
   ##   for word in split(";;this;is;an;;example;;;", ';'):
   ##     writeLine(stdout, word)
   ##
   ## Results in:
   ##
   ## .. code-block::
+  ##
   ##   ""
   ##   ""
   ##   "this"
@@ -441,12 +444,14 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ## Substrings are separated by a substring containing only `seps`.
   ##
   ## .. code-block:: nim
+  ##
   ##   for word in split("this\lis an\texample"):
   ##     writeLine(stdout, word)
   ##
   ## ...generates this output:
   ##
   ## .. code-block::
+  ##
   ##   "this"
   ##   "is"
   ##   "an"
@@ -455,12 +460,14 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ## And the following code:
   ##
   ## .. code-block:: nim
+  ##
   ##   for word in split("this:is;an$example", {';', ':', '$'}):
   ##     writeLine(stdout, word)
   ##
   ## ...produces the same output as the first example. The code:
   ##
   ## .. code-block:: nim
+  ##
   ##   let date = "2012-11-20T22:08:08.398990"
   ##   let separators = {' ', '-', ':', 'T'}
   ##   for number in split(date, separators):
@@ -469,6 +476,7 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ## ...results in:
   ##
   ## .. code-block::
+  ##
   ##   "2012"
   ##   "11"
   ##   "20"
@@ -490,12 +498,14 @@ iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ## The code:
   ##
   ## .. code-block:: nim
+  ##
   ##   for word in split("thisDATAisDATAcorrupted", "DATA"):
   ##     writeLine(stdout, word)
   ##
   ## Results in:
   ##
   ## .. code-block::
+  ##
   ##   "this"
   ##   "is"
   ##   "corrupted"
@@ -539,12 +549,14 @@ iterator rsplit*(s: string, sep: char,
   ## <#split.i,string,char,int>`_ except in reverse order.
   ##
   ## .. code-block:: nim
+  ##
   ##   for piece in "foo:bar".rsplit(':'):
   ##     echo piece
   ##
   ## Results in:
   ##
   ## .. code-block:: nim
+  ##
   ##   "bar"
   ##   "foo"
   ##
@@ -564,12 +576,14 @@ iterator rsplit*(s: string, seps: set[char] = Whitespace,
   ## <#split.i,string,char,int>`_ except in reverse order.
   ##
   ## .. code-block:: nim
+  ##
   ##   for piece in "foo bar".rsplit(WhiteSpace):
   ##     echo piece
   ##
   ## Results in:
   ##
   ## .. code-block:: nim
+  ##
   ##   "bar"
   ##   "foo"
   ##
@@ -589,12 +603,14 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
   ## <#split.i,string,string,int>`_ except in reverse order.
   ##
   ## .. code-block:: nim
+  ##
   ##   for piece in "foothebar".rsplit("the"):
   ##     echo piece
   ##
   ## Results in:
   ##
   ## .. code-block:: nim
+  ##
   ##   "bar"
   ##   "foo"
   ##
@@ -618,12 +634,14 @@ iterator splitLines*(s: string, keepEol = false): string =
   ## Example:
   ##
   ## .. code-block:: nim
+  ##
   ##   for line in splitLines("\nthis\nis\nan\n\nexample\n"):
   ##     writeLine(stdout, line)
   ##
   ## Results in:
   ##
   ## .. code-block:: nim
+  ##
   ##   ""
   ##   "this"
   ##   "is"
@@ -664,6 +682,7 @@ iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
   ## The following code:
   ##
   ## .. code-block:: nim
+  ##
   ##   let s = "  foo \t bar  baz  "
   ##   for ms in [-1, 1, 2, 3]:
   ##     echo "------ maxsplit = ", ms, ":"
@@ -673,6 +692,7 @@ iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
   ## ...results in:
   ##
   ## .. code-block::
+  ##
   ##   ------ maxsplit = -1:
   ##   "foo"
   ##   "bar"
@@ -761,11 +781,13 @@ func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
   ## do the following to get the tail of the path:
   ##
   ## .. code-block:: nim
+  ##
   ##   var tailSplit = rsplit("Root#Object#Method#Index", '#', maxsplit=1)
   ##
   ## Results in `tailSplit` containing:
   ##
   ## .. code-block:: nim
+  ##
   ##   @["Root#Object#Method", "Index"]
   ##
   ## See also:
@@ -789,11 +811,13 @@ func rsplit*(s: string, seps: set[char] = Whitespace,
   ## do the following to get the tail of the path:
   ##
   ## .. code-block:: nim
+  ##
   ##   var tailSplit = rsplit("Root#Object#Method#Index", {'#'}, maxsplit=1)
   ##
   ## Results in `tailSplit` containing:
   ##
   ## .. code-block:: nim
+  ##
   ##   @["Root#Object#Method", "Index"]
   ##
   ## See also:
@@ -816,11 +840,13 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ## do the following to get the tail of the path:
   ##
   ## .. code-block:: nim
+  ##
   ##   var tailSplit = rsplit("Root#Object#Method#Index", "#", maxsplit=1)
   ##
   ## Results in `tailSplit` containing:
   ##
   ## .. code-block:: nim
+  ##
   ##   @["Root#Object#Method", "Index"]
   ##
   ## See also:
@@ -1730,6 +1756,7 @@ func addSep*(dest: var string, sep = ", ", startLen: Natural = 0) {.inline.} =
   ## A shorthand for:
   ##
   ## .. code-block:: nim
+  ##
   ##   if dest.len > startLen: add(dest, sep)
   ##
   ## This is often useful for generating some code where the items need to
@@ -2762,11 +2789,13 @@ func `%`*(formatstr: string, a: openArray[string]): string {.rtl,
   ## This is best explained by an example:
   ##
   ## .. code-block:: nim
+  ##
   ##   "$1 eats $2." % ["The cat", "fish"]
   ##
   ## Results in:
   ##
   ## .. code-block:: nim
+  ##
   ##   "The cat eats fish."
   ##
   ## The substitution variables (the thing after the `$`) are enumerated
@@ -2776,6 +2805,7 @@ func `%`*(formatstr: string, a: openArray[string]): string {.rtl,
   ## variable:
   ##
   ## .. code-block:: nim
+  ##
   ##   "$# eats $#." % ["The cat", "fish"]
   ##
   ## Substitution variables can also be words (that is
@@ -2784,11 +2814,13 @@ func `%`*(formatstr: string, a: openArray[string]): string {.rtl,
   ## An example:
   ##
   ## .. code-block:: nim
+  ##
   ##   "$animal eats $food." % ["animal", "The cat", "food", "fish"]
   ##
   ## Results in:
   ##
   ## .. code-block:: nim
+  ##
   ##   "The cat eats fish."
   ##
   ## The variables are compared with `cmpIgnoreStyle`. `ValueError` is
@@ -2888,12 +2920,14 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
   ## Example:
   ##
   ## .. code-block:: nim
+  ##
   ##   for word in tokenize("  this is an  example  "):
   ##     writeLine(stdout, word)
   ##
   ## Results in:
   ##
   ## .. code-block:: nim
+  ##
   ##   ("  ", true)
   ##   ("this", false)
   ##   (" ", true)

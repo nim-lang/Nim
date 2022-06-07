@@ -22,6 +22,7 @@
 ## connect to an FTP server. You can do so with the `connect` procedure.
 ##
 ## .. code-block:: Nim
+##
 ##    import std/[asyncdispatch, asyncftpclient]
 ##    proc main() {.async.} =
 ##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
@@ -42,6 +43,7 @@
 ## instead specify an absolute path.
 ##
 ## .. code-block:: Nim
+##
 ##    import std/[asyncdispatch, asyncftpclient]
 ##    proc main() {.async.} =
 ##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
@@ -63,6 +65,7 @@
 ## `progressInterval` milliseconds.
 ##
 ## .. code-block:: Nim
+##
 ##    import std/[asyncdispatch, asyncftpclient]
 ##
 ##    proc onProgressChanged(total, progress: BiggestInt,

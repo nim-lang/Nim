@@ -27,6 +27,7 @@
 ## blocking and non-blocking.
 ##
 ## .. code-block:: Nim
+##
 ##   # Be sure to compile with --threads:on.
 ##   # The channels and threads modules are part of system and should not be
 ##   # imported.
@@ -113,6 +114,7 @@
 ## arguments:
 ##
 ## .. code-block:: Nim
+##
 ##   proc worker(channel: ptr Channel[string]) =
 ##     let greeting = channel[].recv()
 ##     echo greeting

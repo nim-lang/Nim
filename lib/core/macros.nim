@@ -1005,12 +1005,14 @@ macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ## For example:
   ##
   ## .. code-block:: nim
+  ##
   ##    dumpTree:
   ##      echo "Hello, World!"
   ##
   ## Outputs:
   ##
   ## .. code-block::
+  ##
   ##    StmtList
   ##      Command
   ##        Ident "echo"
@@ -1029,12 +1031,14 @@ macro dumpLisp*(s: untyped): untyped = echo s.lispRepr(indented = true)
   ## For example:
   ##
   ## .. code-block:: nim
+  ##
   ##    dumpLisp:
   ##      echo "Hello, World!"
   ##
   ## Outputs:
   ##
   ## .. code-block::
+  ##
   ##    (StmtList
   ##     (Command
   ##      (Ident "echo")
@@ -1052,12 +1056,14 @@ macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ## For example:
   ##
   ## .. code-block:: nim
+  ##
   ##    dumpAstGen:
   ##      echo "Hello, World!"
   ##
   ## Outputs:
   ##
   ## .. code-block:: nim
+  ##
   ##    nnkStmtList.newTree(
   ##      nnkCommand.newTree(
   ##        newIdentNode("echo"),
@@ -1383,6 +1389,7 @@ template findChild*(n: NimNode; cond: untyped): NimNode {.dirty.} =
   ## Find the first child node matching condition (or nil).
   ##
   ## .. code-block:: nim
+  ##
   ##   var res = findChild(n, it.kind == nnkPostfix and
   ##                          it.basename.ident == ident"foo")
   block:
@@ -1490,6 +1497,7 @@ macro expandMacros*(body: typed): untyped =
   ## For instance,
   ##
   ## .. code-block:: nim
+  ##
   ##   import std/[sugar, macros]
   ##
   ##   let
@@ -1607,6 +1615,7 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
   ## See also `getCustomPragmaVal`_.
   ##
   ## .. code-block:: nim
+  ##
   ##   template myAttr() {.pragma.}
   ##   type
   ##     MyObj = object
@@ -1631,6 +1640,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ## See also `hasCustomPragma`_.
   ##
   ## .. code-block:: nim
+  ##
   ##   template serializationKey(key: string) {.pragma.}
   ##   type
   ##     MyObj {.serializationKey: "mo".} = object
@@ -1726,6 +1736,7 @@ proc extractDocCommentsAndRunnables*(n: NimNode): NimNode =
   ## Example:
   ##
   ## .. code-block:: nim
+  ##
   ##  import std/macros
   ##  macro transf(a): untyped =
   ##    result = quote do:

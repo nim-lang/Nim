@@ -1610,6 +1610,7 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   ## ``initRstGenerator`` proc. Example:
   ##
   ## .. code-block:: nim
+  ##
   ##   import packages/docutils/rstgen, strtabs
   ##
   ##   echo rstToHtml("*Hello* **world**!", {},

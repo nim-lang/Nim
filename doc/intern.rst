@@ -449,6 +449,7 @@ Proper thunk generation is harder because the proc that is to wrap
 could stem from a complex expression:
 
 .. code-block:: nim
+
   receivesClosure(returnsDefaultCC[i])
 
 A thunk would need to call 'returnsDefaultCC[i]' somehow and that would require
@@ -461,6 +462,7 @@ to pass a proc pointer around via a generic `ref` type.
 Example code:
 
 .. code-block:: nim
+
   proc add(x: int): proc (y: int): int {.closure.} =
     return proc (y: int): int =
       return x + y
@@ -471,6 +473,7 @@ Example code:
 This should produce roughly this code:
 
 .. code-block:: nim
+
   type
     Env = ref object
       x: int # data
@@ -492,6 +495,7 @@ This should produce roughly this code:
 Beware of nesting:
 
 .. code-block:: nim
+
   proc add(x: int): proc (y: int): proc (z: int): int {.closure.} {.closure.} =
     return lambda (y: int): proc (z: int): int {.closure.} =
       return lambda (z: int): int =
@@ -503,6 +507,7 @@ Beware of nesting:
 This should produce roughly this code:
 
 .. code-block:: nim
+
   type
     EnvX = ref object
       x: int # data

@@ -42,6 +42,7 @@ If we use `generateXML` code shown above and call the SCF file `xmlGen.nimf`
 In your `main.nim`:
 
 .. code-block:: nim
+
   include "xmlGen.nimf"
   
   echo generateXML("John Smith","42")
@@ -151,6 +152,7 @@ Example::
 The filter transforms this into:
 
 .. code-block:: nim
+
   proc generateHTMLPage(title, currentTab, content: string,
                         tabs: openArray[string]): string =
     result = ""

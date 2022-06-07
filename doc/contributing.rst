@@ -235,6 +235,7 @@ These `runnableExamples` are automatically run by `nim doc mymodule.nim`:cmd:
 as well as `testament`:cmd: and guarantee they stay in sync.
 
 .. code-block:: nim
+
   proc addBar*(a: string): string =
     ## Adds "Bar" to `a`.
     runnableExamples:
@@ -297,6 +298,7 @@ For example an ``:idx:`` role for referencing a topic ("SQLite" in the
 example below) from `Nim Index`_ can be used in doc comment this way:
 
 .. code-block:: nim
+
   ## A higher level `SQLite`:idx: database wrapper.
 
 .. _`Nim Index`: https://nim-lang.org/docs/theindex.html

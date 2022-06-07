@@ -18,6 +18,7 @@
 ## To get started, first create a logger:
 ##
 ## .. code-block::
+##
 ##   import std/logging
 ##
 ##   var logger = newConsoleLogger()
@@ -31,6 +32,7 @@
 ## <#log.e,ConsoleLogger,Level,varargs[string,]>`_ to log a message:
 ##
 ## .. code-block::
+##
 ##   logger.log(lvlInfo, "a log message")
 ##   # Output: INFO a log message
 ##
@@ -60,6 +62,7 @@
 ## in the following example:
 ##
 ## .. code-block::
+##
 ##   import std/logging
 ##
 ##   var consoleLog = newConsoleLogger()
@@ -76,6 +79,7 @@
 ## to all registered handlers at once.
 ##
 ## .. code-block::
+##
 ##   # This example uses the loggers created above
 ##   log(lvlError, "an error occurred")
 ##   error("an error occurred")  # Equivalent to the above line
@@ -118,6 +122,7 @@
 ## The following example illustrates how to use format strings:
 ##
 ## .. code-block::
+##
 ##   import std/logging
 ##
 ##   var logger = newConsoleLogger(fmtStr="[$time] - $levelname: ")
@@ -361,6 +366,7 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   var consoleLog = newConsoleLogger()
   ##   consoleLog.log(lvlInfo, "this is a message")
   ##   consoleLog.log(lvlError, "error code is: ", 404)
@@ -403,6 +409,7 @@ proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   var normalLog = newConsoleLogger()
   ##   var formatLog = newConsoleLogger(fmtStr=verboseFmtStr)
   ##   var errorLog = newConsoleLogger(levelThreshold=lvlError, useStderr=true)
@@ -438,6 +445,7 @@ when not defined(js):
     ## **Examples:**
     ##
     ## .. code-block::
+    ##
     ##   var fileLog = newFileLogger("messages.log")
     ##   fileLog.log(lvlInfo, "this is a message")
     ##   fileLog.log(lvlError, "error code is: ", 404)
@@ -468,6 +476,7 @@ when not defined(js):
     ## **Examples:**
     ##
     ## .. code-block::
+    ##
     ##   var messages = open("messages.log", fmWrite)
     ##   var formatted = open("formatted.log", fmWrite)
     ##   var errors = open("errors.log", fmWrite)
@@ -504,6 +513,7 @@ when not defined(js):
     ## **Examples:**
     ##
     ## .. code-block::
+    ##
     ##   var normalLog = newFileLogger("messages.log")
     ##   var formatLog = newFileLogger("formatted.log", fmtStr=verboseFmtStr)
     ##   var errorLog = newFileLogger("errors.log", levelThreshold=lvlError)
@@ -563,6 +573,7 @@ when not defined(js):
     ## **Examples:**
     ##
     ## .. code-block::
+    ##
     ##   var normalLog = newRollingFileLogger("messages.log")
     ##   var formatLog = newRollingFileLogger("formatted.log", fmtStr=verboseFmtStr)
     ##   var shortLog = newRollingFileLogger("short.log", maxLines=200)
@@ -616,6 +627,7 @@ when not defined(js):
     ## **Examples:**
     ##
     ## .. code-block::
+    ##
     ##   var rollingLog = newRollingFileLogger("messages.log")
     ##   rollingLog.log(lvlInfo, "this is a message")
     ##   rollingLog.log(lvlError, "error code is: ", 404)
@@ -649,6 +661,7 @@ template log*(level: Level, args: varargs[string, `$`]) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
@@ -678,6 +691,7 @@ template debug*(args: varargs[string, `$`]) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
@@ -699,6 +713,7 @@ template info*(args: varargs[string, `$`]) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
@@ -720,6 +735,7 @@ template notice*(args: varargs[string, `$`]) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
@@ -740,6 +756,7 @@ template warn*(args: varargs[string, `$`]) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
@@ -762,6 +779,7 @@ template error*(args: varargs[string, `$`]) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
@@ -783,6 +801,7 @@ template fatal*(args: varargs[string, `$`]) =
   ## **Examples:**
   ##
   ## .. code-block::
+  ##
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##

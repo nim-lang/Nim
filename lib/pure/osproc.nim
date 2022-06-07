@@ -91,6 +91,7 @@ proc execProcess*(command: string, workingDir: string = "",
   ## Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##  let outp = execProcess("nim", args=["c", "-r", "mytestfile.nim"], options={poUsePath})
   ##  let outp_shell = execProcess("nim c -r mytestfile.nim")
   ##  # Note: outp may have an interleave of text from the nim compile
@@ -113,6 +114,7 @@ proc execCmd*(command: string): int {.rtl, extern: "nosp$1",
   ## Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##  let errC = execCmd("nim c -r mytestfile.nim")
 
 proc startProcess*(command: string, workingDir: string = "",
@@ -460,6 +462,7 @@ iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), tags:
   ## Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##   const opts = {poUsePath, poDaemon, poStdErrToStdOut}
   ##   var ps: seq[Process]
   ##   for prog in ["a", "b"]: # run 2 progs in parallel
@@ -489,6 +492,7 @@ proc readLines*(p: Process): (seq[string], int) {.since: (1, 3).} =
   ## Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##   const opts = {poUsePath, poDaemon, poStdErrToStdOut}
   ##   var ps: seq[Process]
   ##   for prog in ["a", "b"]: # run 2 progs in parallel
@@ -1595,6 +1599,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ## Example:
   ##
   ## .. code-block:: Nim
+  ##
   ##   var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
   ##   import std/[strutils, strtabs]
   ##   stripLineEnd(result[0]) ## portable way to remove trailing newline, if any

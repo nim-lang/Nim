@@ -13,6 +13,7 @@ substrings from an input string. This is often easier than regular expressions.
 Some examples as an appetizer:
 
 .. code-block:: nim
+
   # check if input string matches a triple of integers:
   const input = "(1,2,4)"
   var x, y, z: int
