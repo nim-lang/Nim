@@ -769,7 +769,6 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       return
 
     fileIndex = fileInfoIdx(conf, file)
-    myLog fmt "File {file} mapped to {fileIndex.int}, module = {graph.getModule(fileIndex)}"
     msgs.setDirtyFile(
       conf,
       fileIndex,
