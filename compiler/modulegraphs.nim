@@ -658,7 +658,7 @@ func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
 
 iterator suggestSymbolsIter*(g: ModuleGraph): tuple[sym: PSym, info: TLineInfo] =
   for xs in g.suggestSymbols.values:
-    for x in xs:
+    for x in xs.deduplicate:
       yield x
 
 iterator suggestErrorsIter*(g: ModuleGraph): Suggest =

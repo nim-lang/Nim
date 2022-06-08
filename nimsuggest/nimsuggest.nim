@@ -711,12 +711,15 @@ proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =
     except Exception as e:
       myLog fmt "Failed clean recompilation:\n {e.msg} \n\n {e.getStackTrace()}"
 
+proc fileSymbols(graph: ModuleGraph, fileIdx: FileIndex): seq[tuple[sym: PSym, info: TLineInfo]] =
+  result = graph.suggestSymbols.getOrDefault(fileIdx, @[]).deduplicate
+
 proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int):
     tuple[sym: PSym, info: TLineInfo] =
   let
     fileIdx = fileInfoIdx(graph.config, file)
     trackPos = newLineInfo(fileIdx, line, col)
-  for (sym, info) in graph.suggestSymbolsIter:
+  for (sym, info) in graph.fileSymbols(fileIdx):
     if isTracked(info, trackPos, sym.name.s.len):
       return (sym, info)
 
@@ -810,10 +813,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   of ideHighlight:
     let sym = graph.findSymData(file, line, col).sym
     if sym != nil:
-      let usages = graph
-        .suggestSymbols
-        .getOrDefault(fileIndex, @[])
-        .filterIt(it.sym == sym)
+      let usages = graph.fileSymbols(fileIndex).filterIt(it.sym == sym)
       myLog fmt "Found {usages.len} usages in {file.string}"
       for (sym, info) in usages:
         graph.suggestResult(sym, info)
@@ -828,8 +828,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   of ideOutline:
     let
       module = graph.getModule fileIndex
-      symbols = graph.suggestSymbols
-        .getOrDefault(fileIndex, @[])
+      symbols = graph.fileSymbols(fileIndex)
         .filterIt(it.sym.info == it.info and
                     (it.sym.owner == module or
                      it.sym.kind in searchableSymKinds))

@@ -497,8 +497,7 @@ proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; i
   ## misnamed: should be 'symDeclared'
   let conf = g.config
   when defined(nimsuggest):
-    if not g.suggestSymbols.getOrDefault(info.fileIndex, @[]).contains (s, info):
-      g.suggestSymbols.mgetOrPut(info.fileIndex, @[]).add (s, info)
+    g.suggestSymbols.mgetOrPut(info.fileIndex, @[]).add (s, info)
 
     if conf.suggestVersion == 0:
       if s.allUsages.len == 0:
