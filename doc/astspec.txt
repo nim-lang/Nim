@@ -50,9 +50,9 @@ A leaf of the AST often corresponds to a terminal symbol in the concrete
 syntax. Note that the default ``float`` in Nim maps to ``float64`` such that
 the default AST for a float is ``nnkFloat64Lit`` as below.
 
------------------                ---------------------------------------------
+=================                =============================================
 Nim expression                   Corresponding AST
------------------                ---------------------------------------------
+=================                =============================================
 ``42``                           ``nnkIntLit(intVal = 42)``
 ``42'i8``                        ``nnkInt8Lit(intVal = 42)``
 ``42'i16``                       ``nnkInt16Lit(intVal = 42)``
@@ -72,7 +72,7 @@ Nim expression                   Corresponding AST
 ``nil``                          ``nnkNilLit()``
 ``myIdentifier``                 ``nnkIdent(strVal = "myIdentifier")``
 ``myIdentifier``                 after lookup pass: ``nnkSym(strVal = "myIdentifier", ...)``
------------------                ---------------------------------------------
+=================                =============================================
 
 Identifiers are ``nnkIdent`` nodes. After the name lookup pass these nodes
 get transferred into ``nnkSym`` nodes.
@@ -1211,9 +1211,9 @@ AST:
 In general, declaring types mirrors this syntax (i.e., ``nnkStaticTy`` for
 ``static``, etc.). Examples follow (exceptions marked by ``*``):
 
--------------                ---------------------------------------------
+=============                =============================================
 Nim type                     Corresponding AST
--------------                ---------------------------------------------
+=============                =============================================
 ``static``                   ``nnkStaticTy``
 ``tuple``                    ``nnkTupleTy``
 ``var``                      ``nnkVarTy``
@@ -1226,7 +1226,7 @@ Nim type                     Corresponding AST
 ``proc``                     ``nnkProcTy``
 ``iterator``                 ``nnkIteratorTy``
 ``object``                   ``nnkObjectTy``
--------------                ---------------------------------------------
+=============                =============================================
 
 Take special care when declaring types as ``proc``. The behavior is similar
 to ``Procedure declaration``, below, but does not treat ``nnkGenericParams``.
