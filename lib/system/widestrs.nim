@@ -224,3 +224,6 @@ when defined(nimv2):
 
   proc `$`*(s: WideCStringObj): string =
     $(s.data)
+
+  proc len*(w: WideCStringObj): int {.inline.} =
+    len(w.data)
