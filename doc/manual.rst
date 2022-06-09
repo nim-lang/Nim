@@ -363,7 +363,7 @@ contain the following `escape sequences`:idx:\ :
   ``\\``                   `backslash`:idx:
   ``\"``                   `quotation mark`:idx:
   ``\'``                   `apostrophe`:idx:
-  ``\`` '0'..'9'+         `character with decimal value d`:idx:;
+  ``\`` '0'..'9'+          `character with decimal value d`:idx:;
                            all decimal digits directly
                            following are used for the character
   ``\a``                   `alert`:idx:
@@ -1556,7 +1556,7 @@ type conversions in this context:
 
   myWriteln(stdout, 123, "abc", 4.0)
   # is transformed to:
-  myWriteln(stdout, [$123, $"def", $4.0])
+  myWriteln(stdout, [$123, $"abc", $4.0])
 
 In this example `$` is applied to any argument that is passed to the
 parameter `a`. (Note that `$` applied to strings is a nop.)
@@ -6551,6 +6551,19 @@ iterator in which case the overloading resolution takes place:
   write(stdout, x) # not ambiguous: uses the module C's x
 
 
+Packages
+--------
+A collection of modules in a file tree with an ``identifier.nimble`` file in the
+root of the tree is called a Nimble package. A valid package name can only be a
+valid Nim identifier and thus its filename is ``identifier.nimble`` where
+``identifier`` is the desired package name. A module without a ``.nimble`` file
+is assigned the package identifier: `unknown`.
+
+The distinction between packages allows diagnostic compiler messages to be
+scoped to the current project's package vs foreign packages.
+
+
+
 Compiler Messages
 =================
 
@@ -7814,7 +7827,7 @@ the same way.
 There are a few more applications of macro pragmas, such as in type,
 variable and constant declarations, but this behavior is considered to be
 experimental and is documented in the `experimental manual
-<manual_experimental.html#extended-macro-pragmas>` instead.
+<manual_experimental.html#extended-macro-pragmas>`_ instead.
 
 
 Foreign function interface
@@ -8112,7 +8125,9 @@ Object fields and global variables can be annotated via a `guard` pragma:
 
 .. code-block:: nim
 
-  var glock: TLock
+  import std/locks
+
+  var glock: Lock
   var gdata {.guard: glock.}: int
 
 The compiler then ensures that every access of `gdata` is within a `locks`
@@ -8139,7 +8154,7 @@ that also implement some form of locking at runtime:
 
 .. code-block:: nim
 
-  template lock(a: TLock; body: untyped) =
+  template lock(a: Lock; body: untyped) =
     pthread_mutex_lock(a)
     {.locks: [a].}:
       try:
@@ -8181,10 +8196,12 @@ the expressivity of the language:
 
 .. code-block:: nim
 
+  import std/locks
+
   type
     ProtectedCounter = object
       v {.guard: L.}: int
-      L: TLock
+      L: Lock
 
   proc incCounters(counters: var openArray[ProtectedCounter]) =
     for i in 0..counters.high:
