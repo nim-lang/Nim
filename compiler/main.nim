@@ -65,6 +65,8 @@ proc commandCheck(graph: ModuleGraph) =
   if optWasNimscript in conf.globalOptions:
     defineSymbol(conf.symbols, "nimscript")
     defineSymbol(conf.symbols, "nimconfig")
+  elif conf.backend == backendJs:
+    setTarget(conf.target, osJS, cpuJS)
   semanticPasses(graph)  # use an empty backend for semantic checking only
   compileProject(graph)
 

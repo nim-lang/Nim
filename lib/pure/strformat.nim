@@ -705,6 +705,6 @@ macro `&`*(pattern: string{lit}): string =
   runnableExamples:
     let x = 7
     assert &"{x}\n" == "7\n" # regular string literal
-    assert &"{x}\n" == "7\n".fmt # `fmt` can be used instead
-    assert &"{x}\n" != fmt"7\n" # see `fmt` docs, this would use a raw string literal
+    assert &"{x}\n" == "{x}\n".fmt # `fmt` can be used instead
+    assert &"{x}\n" != fmt"{x}\n" # see `fmt` docs, this would use a raw string literal
   strformatImpl(pattern.strVal, '{', '}')

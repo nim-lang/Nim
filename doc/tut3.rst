@@ -188,21 +188,35 @@ Backticks are used to insert code from `NimNode` symbols into the
 generated expression.
 
 .. code-block:: nim
-    macro a(i) = quote do: let `i` = 0
+    :test: "nim c $1"
+    import std/macros
+    macro a(i) = quote do:
+      let `i` = 0
+
     a b
+    doAssert b == 0
 
 A custom prefix operator can be defined whenever backticks are needed.
 
 .. code-block:: nim
-    macro a(i) = quote("@") do: assert @i == 0
+    :test: "nim c $1"
+    import std/macros
+    macro a(i) = quote("@") do:
+      assert @i == 0
+
     let b = 0
     a b
 
 The injected symbol needs accent quoted when it resolves to a symbol.
 
 .. code-block:: nim
-    macro a(i) = quote("@") do: let `@i` == 0
+    :test: "nim c $1"
+    import std/macros
+    macro a(i) = quote("@") do:
+      let `@i` = 0
+
     a b
+    doAssert b == 0
 
 Make sure to inject only symbols of type `NimNode` into the generated syntax
 tree. You can use `newLit` to convert arbitrary values into

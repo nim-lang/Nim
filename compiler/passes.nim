@@ -14,7 +14,7 @@ import
   options, ast, llstream, msgs,
   idents,
   syntaxes, modulegraphs, reorder,
-  lineinfos, pathutils
+  lineinfos, pathutils, packages
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -104,7 +104,7 @@ const
 
 proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
   # don't be verbose unless the module belongs to the main package:
-  if module.getnimblePkgId == graph.config.mainPackageId:
+  if graph.config.belongsToProjectPackage(module):
     graph.config.notes = graph.config.mainPackageNotes
   else:
     if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes
@@ -113,12 +113,6 @@ proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
 proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
   result = true
   #module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
-
-proc partOfStdlib(x: PSym): bool =
-  var it = x.owner
-  while it != nil and it.kind == skPackage and it.owner != nil:
-    it = it.owner
-  result = it != nil and it.name.s == "stdlib"
 
 proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream): bool {.discardable.} =
@@ -141,7 +135,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
   while true:
     openParser(p, fileIdx, s, graph.cache, graph.config)
 
-    if not partOfStdlib(module) or module.name.s == "distros":
+    if not belongsToStdlib(graph, module) or (belongsToStdlib(graph, module) and module.name.s == "distros"):
       # XXX what about caching? no processing then? what if I change the
       # modules to include between compilation runs? we'd need to track that
       # in ROD files. I think we should enable this feature only
@@ -150,6 +144,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         processImplicits graph, graph.config.implicitImports, nkImportStmt, a, module
         processImplicits graph, graph.config.implicitIncludes, nkIncludeStmt, a, module
 
+    checkFirstLineIndentation(p)
     while true:
       if graph.stopCompile(): break
       var n = parseTopLevelStmt(p)

@@ -74,14 +74,20 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: P
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
-  var temp = newSym(skTemp, getIdent(g.cache, genPrefix), nextSymId(idgen),
-                    owner, value.info, g.config.options)
-  temp.typ = skipTypes(value.typ, abstractInst)
-  incl(temp.flags, sfFromGeneric)
+  var tempAsNode: PNode
+  let avoidTemp = value.kind == nkSym
+  if avoidTemp:
+    tempAsNode = value
+  else:
+    var temp = newSym(skTemp, getIdent(g.cache, genPrefix), nextSymId(idgen),
+                  owner, value.info, g.config.options)
+    temp.typ = skipTypes(value.typ, abstractInst)
+    incl(temp.flags, sfFromGeneric)
+    tempAsNode = newSymNode(temp)
 
   var v = newNodeI(nkVarSection, value.info)
-  let tempAsNode = newSymNode(temp)
-  v.addVar(tempAsNode, value)
+  if not avoidTemp:
+    v.addVar(tempAsNode, value)
   result.add(v)
 
   for i in 0..<n.len-2:
@@ -224,7 +230,7 @@ proc lookupInRecord(n: PNode, id: ItemId): PSym =
     if n.sym.itemId.module == id.module and n.sym.itemId.item == -abs(id.item): result = n.sym
   else: discard
 
-proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator) =
+proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym =
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
   var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len),
@@ -238,6 +244,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator) =
   field.flags = s.flags * {sfCursor}
   obj.n.add newSymNode(field)
   fieldCheck()
+  result = field
 
 proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym {.discardable.} =
   result = lookupInRecord(obj.n, s.itemId)
