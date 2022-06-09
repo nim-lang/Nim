@@ -115,7 +115,6 @@ proc reprArray(a: pointer, typ: PNimType,
   # We prepend @ to seq, the C backend prepends the pointer to the seq.
   result = if typ.kind == tySequence: "@[" else: "["
   var len: int = 0
-  var i: int = 0
 
   {. emit: "`len` = `a`.length;\n" .}
   var dereffed: pointer = a

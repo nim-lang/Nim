@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c --multimethods:off $file"
+  matrix: "--mm:arc --multimethods:off; --mm:refc --multimethods:off"
   output: '''base
 base
 base

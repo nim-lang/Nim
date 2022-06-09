@@ -172,7 +172,7 @@ We might need to check for `strictFuncs` pure funcs and not do that then.
 For field expressions `a.field`, we calculate an integer value based on a hash of the tree and just accept equivalent trees as equivalent expressions.
 
 For item expression `a[index]`, we also calculate an integer value based on a hash of the tree and accept equivalent trees as equivalent expressions: for static values only.
-For now we support only constant indices: we dont track expression with no-const indices. For those we just report a warning even if they are safe for now: one can use a local variable to workaround. For loops this might be annoying: so one should be able to turn off locally the warning using the `{.warning[StrictCheckNotNil]:off}.`.
+For now we support only constant indices: we dont track expression with no-const indices. For those we just report a warning even if they are safe for now: one can use a local variable to workaround. For loops this might be annoying: so one should be able to turn off locally the warning using the `{.warning[StrictNotNil]:off.}`.
 
 For bracket expressions, in the future we might count `a[<any>]` as the same general expression.
 This means we should should the index but otherwise handle it the same for assign (maybe "aliasing" all the non-static elements) and differentiate only for static: e.g. `a[0]` and `a[1]`.
