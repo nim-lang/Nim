@@ -14,6 +14,9 @@ import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
 
 from concepts import makeTypeDesc
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =

@@ -539,6 +539,7 @@ Debugging CI failures, flaky tests, etc
 2. If CI failure seems unrelated to your PR, it could be caused by a flaky test.
    File a bug for it if it isn't already reported. A PR push (or opening/closing PR)
    will re-trigger all CI jobs (even successful ones, which can be wasteful). Instead,
+   request collaboration from the Nim team. The Nim team should
    follow these instructions to only restart the jobs that failed:
 
    * Azure: if on your own fork, it's possible from inside azure console

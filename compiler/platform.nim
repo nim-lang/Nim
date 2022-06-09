@@ -16,6 +16,10 @@
 import
   strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   TSystemOS* = enum # Also add OS in initialization section and alias
                     # conditionals to condsyms (end of module).

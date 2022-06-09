@@ -17,6 +17,9 @@ when defined(nimHasUsed):
 import
   lexer, options, idents, strutils, ast, msgs, lineinfos
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
@@ -162,6 +165,7 @@ proc putNL(g: var TSrcGen) =
 proc optNL(g: var TSrcGen, indent: int) =
   g.pendingNL = indent
   g.lineLen = indent
+  g.col = g.indent
   when defined(nimpretty): g.pendingNewlineCount = 0
 
 proc optNL(g: var TSrcGen) =
@@ -170,6 +174,7 @@ proc optNL(g: var TSrcGen) =
 proc optNL(g: var TSrcGen; a, b: PNode) =
   g.pendingNL = g.indent
   g.lineLen = g.indent
+  g.col = g.indent
   when defined(nimpretty): g.pendingNewlineCount = lineDiff(a, b)
 
 proc indentNL(g: var TSrcGen) =

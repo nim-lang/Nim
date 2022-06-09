@@ -15,7 +15,7 @@ import
   std/[strutils, tables, parseutils],
   msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf,
-  vmmarshal, gorgeimpl, lineinfos, btrees, macrocacheimpl,
+  gorgeimpl, lineinfos, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128, vmprofiler
 
 import ast except getstr
@@ -85,9 +85,9 @@ proc bailOut(c: PCtx; tos: PStackFrame) =
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
 
-proc ensureKind(n: var TFullReg, kind: TRegisterKind) =
-  if n.kind != kind:
-    n = TFullReg(kind: kind)
+proc ensureKind(n: var TFullReg, k: TRegisterKind) {.inline.} =
+  if n.kind != k:
+    n = TFullReg(kind: k)
 
 template ensureKind(k: untyped) {.dirty.} =
   ensureKind(regs[ra], k)
@@ -521,6 +521,11 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
 when not defined(nimHasSinkInference):
   {.pragma: nosinks.}
 
+template takeAddress(reg, source) =
+  reg.nodeAddr = addr source
+  when defined(gcDestructors):
+    GC_ref source
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -679,7 +684,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let idx = regs[rc].intVal.int
       let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
       if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
-        regs[ra].nodeAddr = addr src.sons[idx]
+        takeAddress regs[ra], src.sons[idx]
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
     of opcLdStrIdx:
@@ -747,11 +752,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of nkObjConstr:
         let n = src.sons[rc + 1]
         if n.kind == nkExprColonExpr:
-          regs[ra].nodeAddr = addr n.sons[1]
+          takeAddress regs[ra], n.sons[1]
         else:
-          regs[ra].nodeAddr = addr src.sons[rc + 1]
+          takeAddress regs[ra], src.sons[rc + 1]
       else:
-        regs[ra].nodeAddr = addr src.sons[rc]
+        takeAddress regs[ra], src.sons[rc]
     of opcWrObj:
       # a.b = c
       decodeBC(rkNode)
@@ -778,7 +783,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNodeAddr)
       case regs[rb].kind
       of rkNode:
-        regs[ra].nodeAddr = addr(regs[rb].node)
+        takeAddress regs[ra], regs[rb].node
       of rkNodeAddr: # bug #14339
         regs[ra].nodeAddr = regs[rb].nodeAddr
       else:
@@ -1180,14 +1185,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcContainsSet:
       decodeBC(rkInt)
       regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].regToNode))
-    of opcSubStr:
-      decodeBC(rkNode)
-      inc pc
-      assert c.code[pc].opcode == opcSubStr
-      let rd = c.code[pc].regA
-      createStr regs[ra]
-      regs[ra].node.strVal = substr(regs[rb].node.strVal,
-                                    regs[rc].intVal.int, regs[rd].intVal.int)
     of opcParseFloat:
       decodeBC(rkInt)
       inc pc
@@ -1219,7 +1216,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         c.callbacks[-prc.offset-2].value(
           VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                  currentException: c.currentExceptionA,
-                 currentLineInfo: c.debug[pc]))
+                 currentLineInfo: c.debug[pc])
+                 )
       elif importcCond(c, prc):
         if compiletimeFFI notin c.config.features:
           globalError(c.config, c.debug[pc], "VM not allowed to do FFI, see `compiletimeFFI`")
@@ -2095,18 +2093,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       while typ.kind == tyTypeDesc and typ.len > 0: typ = typ[0]
       createStr regs[ra]
       regs[ra].node.strVal = typ.typeToString(preferExported)
-    of opcMarshalLoad:
-      let ra = instr.regA
-      let rb = instr.regB
-      inc pc
-      let typ = c.types[c.code[pc].regBx - wordExcess]
-      putIntoReg(regs[ra], loadAny(regs[rb].node.strVal, typ, c.cache, c.config, c.idgen))
-    of opcMarshalStore:
-      decodeB(rkNode)
-      inc pc
-      let typ = c.types[c.code[pc].regBx - wordExcess]
-      createStrKeepNode(regs[ra])
-      storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode, c.config)
 
     c.profiler.leave(c)
 

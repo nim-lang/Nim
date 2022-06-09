@@ -15,7 +15,10 @@ import
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
-  injectdestructors, astmsgs
+  injectdestructors, astmsgs, modulepaths
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 when not defined(leanCompiler):
   import spawn, semparallel
@@ -48,8 +51,13 @@ proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
-  let ms = s.itemId.module  #getModule(s)
-  result = m.g.modules[ms]
+  # TODO fixme
+  if m.config.symbolFiles == v2Sf:
+    let ms = s.itemId.module  #getModule(s)
+    result = m.g.modules[ms]
+  else:
+    var ms = getModule(s)
+    result = m.g.modules[ms.position]
 
 proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
   result.k = k
@@ -876,7 +884,7 @@ proc containsResult(n: PNode): bool =
       if containsResult(n[i]): return true
 
 const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTemplateDef,
-                  nkMacroDef, nkMixinStmt, nkBindStmt} +
+                  nkMacroDef, nkMixinStmt, nkBindStmt, nkFormalParams} +
                   declarativeDefs
 
 proc easyResultAsgn(n: PNode): PNode =
@@ -1034,7 +1042,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       internalError(m.config, prc.info, "proc has no result symbol")
     let resNode = prc.ast[resultPos]
     let res = resNode.sym # get result symbol
-    if not isInvalidReturnType(m.config, prc.typ[0]):
+    if not isInvalidReturnType(m.config, prc.typ):
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
       if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(procBody); val != nil):
         var decl = localVarDecl(p, resNode)
@@ -1048,7 +1056,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     else:
-      fillResult(p.config, resNode)
+      fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ[0])
       # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
       # to 'unsureAsgn(result, x)'
@@ -1297,17 +1305,19 @@ proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   if conf.hcrOn: result.add("#define NIM_HOT_CODE_RELOADING\L")
   addNimDefines(result, conf)
 
-proc getSomeNameForModule(m: PSym): Rope =
-  assert m.kind == skModule
-  assert m.owner.kind == skPackage
-  if {sfSystemModule, sfMainModule} * m.flags == {}:
-    result = m.owner.name.s.mangle.rope
-    result.add "_"
-  result.add m.name.s.mangle
+proc getSomeNameForModule(conf: ConfigRef, filename: AbsoluteFile): Rope =
+  ## Returns a mangled module name.
+  result.add mangleModuleName(conf, filename).mangle
+
+proc getSomeNameForModule(m: BModule): Rope =
+  ## Returns a mangled module name.
+  assert m.module.kind == skModule
+  assert m.module.owner.kind == skPackage
+  result.add mangleModuleName(m.g.config, m.filename).mangle
 
 proc getSomeInitName(m: BModule, suffix: string): Rope =
   if not m.hcrOn:
-    result = getSomeNameForModule(m.module)
+    result = getSomeNameForModule(m)
   result.add suffix
 
 proc getInitName(m: BModule): Rope =
@@ -1358,16 +1368,25 @@ proc genMainProc(m: BModule) =
     # The use of a volatile function pointer to call Pre/NimMainInner
     # prevents inlining of the NimMainInner function and dependent
     # functions, which might otherwise merge their stack frames.
-    PreMainBody = "$N" &
+
+    PreMainVolatileBody =
+      "\tvoid (*volatile inner)(void);$N" &
+      "\tinner = PreMainInner;$N" &
+      "$1" &
+      "\t(*inner)();$N"
+
+    PreMainNonVolatileBody =
+      "$1" &
+      "\tPreMainInner();$N"
+
+    PreMainBodyStart = "$N" &
       "N_LIB_PRIVATE void PreMainInner(void) {$N" &
       "$2" &
       "}$N$N" &
       PosixCmdLine &
-      "N_LIB_PRIVATE void PreMain(void) {$N" &
-      "\tvoid (*volatile inner)(void);$N" &
-      "\tinner = PreMainInner;$N" &
-      "$1" &
-      "\t(*inner)();$N" &
+      "N_LIB_PRIVATE void PreMain(void) {$N"
+
+    PreMainBodyEnd =
       "}$N$N"
 
     MainProcs =
@@ -1380,16 +1399,31 @@ proc genMainProc(m: BModule) =
         "$1" &
       "}$N$N"
 
-    NimMainProc =
-      "N_CDECL(void, $5NimMain)(void) {$N" &
-        "\tvoid (*volatile inner)(void);$N" &
-        "$4" &
-        "\tinner = NimMainInner;$N" &
-        "$2" &
-        "\t(*inner)();$N" &
+    NimMainVolatileBody =
+      "\tvoid (*volatile inner)(void);$N" &
+      "$4" &
+      "\tinner = NimMainInner;$N" &
+      "$2" &
+      "\t(*inner)();$N"
+
+    NimMainNonVolatileBody =
+      "$4" &
+      "$2" &
+      "\tNimMainInner();$N"
+
+    NimMainProcStart =
+      "N_CDECL(void, $5NimMain)(void) {$N"
+
+    NimMainProcEnd =
       "}$N$N"
 
+    NimMainProc = NimMainProcStart & NimMainVolatileBody & NimMainProcEnd
+
+    NimSlimMainProc = NimMainProcStart & NimMainNonVolatileBody & NimMainProcEnd
+
     NimMainBody = NimMainInner & NimMainProc
+
+    NimSlimMainBody = NimMainInner & NimSlimMainProc
 
     PosixCMain =
       "int main(int argc, char** args, char** env) {$N" &
@@ -1451,10 +1485,13 @@ proc genMainProc(m: BModule) =
     m.includeHeader("<libc/component.h>")
 
   let initStackBottomCall =
-    if m.config.target.targetOS == osStandalone or m.config.selectedGC == gcNone: "".rope
+    if m.config.target.targetOS == osStandalone or m.config.selectedGC in {gcNone, gcArc, gcOrc}: "".rope
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", [])
   inc(m.labels)
-  appcg(m, m.s[cfsProcs], PreMainBody, [m.g.mainDatInit, m.g.otherModsInit])
+  if m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
+    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit])
+  else:
+    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainNonVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit])
 
   if m.config.target.targetOS == osWindows and
       m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
@@ -1479,9 +1516,14 @@ proc genMainProc(m: BModule) =
     appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
   else:
-    const nimMain = NimMainBody
-    appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
+    if m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
+      const nimMain = NimMainBody
+      appcg(m, m.s[cfsProcs], nimMain,
+          [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
+    else:
+      const nimMain = NimSlimMainBody
+      appcg(m, m.s[cfsProcs], nimMain,
+          [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
 
   if optNoMain notin m.config.globalOptions:
     if m.config.cppCustomNamespace.len > 0:
@@ -1514,11 +1556,11 @@ proc genMainProc(m: BModule) =
 proc registerInitProcs*(g: BModuleList; m: PSym; flags: set[ModuleBackendFlag]) =
   ## Called from the IC backend.
   if HasDatInitProc in flags:
-    let datInit = getSomeNameForModule(m) & "DatInit000"
+    let datInit = getSomeNameForModule(g.config, g.config.toFullPath(m.info.fileIndex).AbsoluteFile) & "DatInit000"
     g.mainModProcs.addf("N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [datInit])
     g.mainDatInit.addf("\t$1();$N", [datInit])
   if HasModuleInitProc in flags:
-    let init = getSomeNameForModule(m) & "Init000"
+    let init = getSomeNameForModule(g.config, g.config.toFullPath(m.info.fileIndex).AbsoluteFile) & "Init000"
     g.mainModProcs.addf("N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [init])
     let initCall = "\t$1();$N" % [init]
     if sfMainModule in m.flags:
@@ -1899,7 +1941,7 @@ proc getCFile(m: BModule): AbsoluteFile =
       if m.compileToCpp: ".nim.cpp"
       elif m.config.backend == backendObjc or sfCompileToObjc in m.module.flags: ".nim.m"
       else: ".nim.c"
-  result = changeFileExt(completeCfilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
+  result = changeFileExt(completeCfilePath(m.config, mangleModuleName(m.config, m.cfilename).AbsoluteFile), ext)
 
 when false:
   proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =

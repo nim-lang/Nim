@@ -49,20 +49,20 @@ contain the following key-value pairs:
 ====================   =======================================================
 Key                    description
 ====================   =======================================================
-`Name`               the project's name; this needs to be a single word
-`DisplayName`        the project's long name; this can contain spaces. If
+`Name`                 the project's name; this needs to be a single word
+`DisplayName`          the project's long name; this can contain spaces. If
                        not specified, this is the same as `Name`.
-`Version`            the project's version
-`OS`                 the OSes to generate C code for; for example:
+`Version`              the project's version
+`OS`                   the OSes to generate C code for; for example:
                        `"windows;linux;macosx"`
-`CPU`                the CPUs to generate C code for; for example:
+`CPU`                  the CPUs to generate C code for; for example:
                        `"i386;amd64;powerpc"`
-`Authors`            the project's authors
-`Description`        the project's description
-`App`                the application's type: "Console" or "GUI". If
+`Authors`              the project's authors
+`Description`          the project's description
+`App`                  the application's type: "Console" or "GUI". If
                        "Console", niminst generates a special batch file
                        for Windows to open up the command-line shell.
-`License`            the filename of the application's license
+`License`              the filename of the application's license
 ====================   =======================================================
 
 
@@ -149,9 +149,9 @@ Possible options are:
 ====================   =======================================================
 Key                    description
 ====================   =======================================================
-`InstallScript`      boolean flag whether an installation shell script
+`InstallScript`        boolean flag whether an installation shell script
                        should be generated. Example: `InstallScript: "Yes"`
-`UninstallScript`    boolean flag whether a de-installation shell script
+`UninstallScript`      boolean flag whether a de-installation shell script
                        should be generated.
                        Example: `UninstallScript: "Yes"`
 ====================   =======================================================

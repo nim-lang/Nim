@@ -166,7 +166,7 @@ current commit:
 
 You can also bisect using custom options to build the compiler, for example if
 you don't need a debug version of the compiler (which runs slower), you can replace
-`./koch temp`:cmd: by explicit compilation command, see `Rebuilding the compiler`_.
+`./koch temp`:cmd: by explicit compilation command, see `Bootstrapping the compiler`_.
 
 
 Runtimes
@@ -186,6 +186,7 @@ Coding Guidelines
 * Use a space after a colon, but not before it.
 * [deprecated] Start types with a capital `T`, unless they are
   pointers/references which start with `P`.
+* Prefer `import package`:nim: over `from package import symbol`:nim:.
 
 See also the `API naming design <apis.html>`_ document.
 
