@@ -140,7 +140,9 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
       n[0] = result
     elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
       var n = result
-      while n.kind in skipForDiscardable: n = n.lastSon
+      while n.kind in skipForDiscardable:
+        if n.kind == nkTryStmt: n = n[0]
+        else: n = n.lastSon
       var s = "expression '" & $n & "' is of type '" &
           result.typ.typeToString & "' and has to be used (or discarded)"
       if result.info.line != n.info.line or
