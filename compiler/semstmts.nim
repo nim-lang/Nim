@@ -140,7 +140,9 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
       n[0] = result
     elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
       var n = result
-      while n.kind in skipForDiscardable: n = n.lastSon
+      while n.kind in skipForDiscardable:
+        if n.kind == nkTryStmt: n = n[0]
+        else: n = n.lastSon
       var s = "expression '" & $n & "' is of type '" &
           result.typ.typeToString & "' and has to be used (or discarded)"
       if result.info.line != n.info.line or
@@ -483,7 +485,7 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
     for i in 0 ..< pragmas.len:
       let it = pragmas[i]
       let key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
-      
+
       when false:
         let lhs = b[0]
         let clash = strTableGet(c.currentScope.symbols, lhs.ident)
