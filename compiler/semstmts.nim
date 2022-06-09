@@ -532,7 +532,7 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
         let m = r[0].sym
         case m.kind
         of skMacro: result = semMacroExpr(c, r, r, m, {})
-        of skTemplate: result = semTemplateExpr(c, r, m, {})
+        of skTemplate: result = semTemplateExpr(c, r, r, m, {})
         else:
           a[lhsPos] = oldExpr
           continue
@@ -964,7 +964,7 @@ proc handleStmtMacro(c: PContext; n, selector: PNode; magicType: string;
     callExpr.add n
     case match.kind
     of skMacro: result = semMacroExpr(c, callExpr, callExpr, match, flags)
-    of skTemplate: result = semTemplateExpr(c, callExpr, match, flags)
+    of skTemplate: result = semTemplateExpr(c, callExpr, callExpr, match, flags)
     else: result = nil
 
 proc handleForLoopMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
@@ -991,7 +991,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
     let toExpand = semResolvedCall(c, r, r.call, {})
     case match.kind
     of skMacro: result = semMacroExpr(c, toExpand, toExpand, match, flags)
-    of skTemplate: result = semTemplateExpr(c, toExpand, match, flags)
+    of skTemplate: result = semTemplateExpr(c, toExpand, toExpand, match, flags)
     else: result = nil
   # this would be the perfectly consistent solution with 'for loop macros',
   # but it kinda sucks for pattern matching as the matcher is not attached to
@@ -1635,7 +1635,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       let m = r[0].sym
       case m.kind
       of skMacro: result = semMacroExpr(c, r, r, m, {})
-      of skTemplate: result = semTemplateExpr(c, r, m, {})
+      of skTemplate: result = semTemplateExpr(c, r, r, m, {})
       else:
         prc[pragmasPos] = n
         continue

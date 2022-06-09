@@ -1708,6 +1708,13 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
 
 proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
   if n == nil: return "<nil tree>"
+  let n =
+    if n.kind notin routineDefs and n.expandedFrom != nil:
+      # Routine defs should use unexpanded AST since source is more confusing
+      # proc(){.async.} is turned into `async(proc)`
+      n.expandedFrom
+    else:
+      n
   var g: TSrcGen
   initSrcGen(g, renderFlags, newPartialConfigRef())
   # do not indent the initial statement list so that

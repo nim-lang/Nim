@@ -271,7 +271,7 @@ proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
-proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
+proc semTemplateExpr(c: PContext, n, nOrig: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode
@@ -501,6 +501,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
     message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
   result = wrapInComesFrom(nOrig.info, sym, result)
   popInfoContext(c.config)
+  result.expandedFrom = nOrig.copyTree
 
 proc forceBool(c: PContext, n: PNode): PNode =
   result = fitNode(c, getSysType(c.graph, n.info, tyBool), n, n.info)

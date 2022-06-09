@@ -25,7 +25,7 @@ const
   errFieldInitTwice = "field initialized twice: '$1'"
   errUndeclaredFieldX = "undeclared field: '$1'"
 
-proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
+proc semTemplateExpr(c: PContext, n, nOrig: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
   rememberExpansion(c, n.info, s)
   let info = getCallLineInfo(n)
@@ -41,6 +41,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
 
   # XXX: A more elaborate line info rewrite might be needed
   result.info = info
+  result.expandedFrom = nOrig
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
@@ -928,7 +929,8 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
   let callee = result[0].sym
   case callee.kind
   of skMacro: result = semMacroExpr(c, result, orig, callee, flags)
-  of skTemplate: result = semTemplateExpr(c, result, callee, flags)
+  of skTemplate:
+    result = semTemplateExpr(c, result, orig, callee, flags)
   else:
     semFinishOperands(c, result)
     activate(c, result)
@@ -1235,7 +1237,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       onUse(info, s)
       result = symChoice(c, n, s, scClosed)
     else:
-      result = semTemplateExpr(c, n, s, flags)
+      result = semTemplateExpr(c, n, n, s, flags)
   of skParam:
     markUsed(c, n.info, s)
     onUse(n.info, s)
@@ -1611,7 +1613,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
           n.transitionSonsKind(nkCall)
           case s.kind
           of skMacro: result = semMacroExpr(c, n, n, s, flags)
-          of skTemplate: result = semTemplateExpr(c, n, s, flags)
+          of skTemplate: result = semTemplateExpr(c, n, n, s, flags)
           else: discard
       of skType:
         result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)

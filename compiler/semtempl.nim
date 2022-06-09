@@ -718,7 +718,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       elif contains(c.toBind, s.id):
         result = symChoice(c.c, n, s, scClosed)
       elif templToExpand(s):
-        result = semPatternBody(c, semTemplateExpr(c.c, n, s, {efNoSemCheck}))
+        result = semPatternBody(c, semTemplateExpr(c.c, n, n, s, {efNoSemCheck}))
       else:
         discard
         # we keep the ident unbound for matching instantiated symbols and
@@ -769,7 +769,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       if s.owner == c.owner and s.kind == skParam: discard
       elif contains(c.toBind, s.id): discard
       elif templToExpand(s):
-        return semPatternBody(c, semTemplateExpr(c.c, n, s, {efNoSemCheck}))
+        return semPatternBody(c, semTemplateExpr(c.c, n, n, s, {efNoSemCheck}))
 
     if n.kind == nkInfix and (let id = considerQuotedIdent(c.c, n[0]); id != nil):
       # we interpret `*` and `|` only as pattern operators if they occur in

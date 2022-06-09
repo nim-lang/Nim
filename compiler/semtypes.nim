@@ -1655,7 +1655,7 @@ proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
             let m = r[0].sym
             case m.kind
             of skMacro: return semMacroExpr(c, r, r, m, {efNoSemCheck})
-            of skTemplate: return semTemplateExpr(c, r, m, {efNoSemCheck})
+            of skTemplate: return semTemplateExpr(c, r, r, m, {efNoSemCheck})
             else: doAssert(false, "cannot happen")
 
 proc semProcTypeWithScope(c: PContext, n: PNode,
