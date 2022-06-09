@@ -914,7 +914,7 @@ template foldl*(sequence, operation, first): untyped =
   ##
   ## The `operation` parameter should be an expression which uses the variables
   ## `a` and `b` for each step of the fold. The `first` parameter is the
-  ## start value (the first `a`) and therefor defines the type of the result.
+  ## start value (the first `a`) and therefore defines the type of the result.
   ##
   ## **See also:**
   ## * `foldr template<#foldr.t,untyped,untyped>`_
