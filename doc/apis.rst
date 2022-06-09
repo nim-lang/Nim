@@ -18,9 +18,9 @@ been renamed to fit this scheme. The ultimate goal is that the programmer can
 *guess* a name.
 
 
--------------------     ------------   --------------------------------------
+===================     ============   ======================================
 English word            To use         Notes
--------------------     ------------   --------------------------------------
+===================     ============   ======================================
 initialize              initT          `init` is used to create a
                                        value type `T`
 new                     newP           `new` is used to create a
@@ -82,4 +82,4 @@ literal                 lit
 string                  str
 identifier              ident
 indentation             indent
--------------------     ------------   --------------------------------------
+===================     ============   ======================================
