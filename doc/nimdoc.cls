@@ -63,7 +63,7 @@
 
 \usepackage{scrextend}  % for the `addmargin` environment
 
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
 \usepackage[urlbordercolor=blue,linkbordercolor=cyan,
             pdfborderstyle={/S/U/W 1}]{hyperref}
 \usepackage{enumitem}  % for option list, enumList, and rstfootnote
@@ -83,6 +83,11 @@
      borderline south={0.05em}{0pt}{lightgray}}
 
 \definecolor{rstframecolor}{rgb}{0.85, 0.8, 0.6}
+
+\usepackage{booktabs}
+\belowrulesep=0ex
+\aboverulesep=0ex
+\renewcommand{\arraystretch}{1.1}
 
 \newtcolorbox{rstprebox}[1][]{blanker, breakable,
      left=3mm, right=3mm, top=1mm, bottom=1mm,
@@ -127,6 +132,7 @@
 \newenvironment{rstoptlist}{%
 \begin{description}[font=\sffamily\bfseries,style=nextline,leftmargin=\rstoptleftmargin,labelwidth=\rstoptlabelwidth]}{\end{description}}
 
+\usepackage{multirow}
 \usepackage{tabulary}  % tables with adjustable cell width and no overflow
 % make tabulary prevent overflows (https://tex.stackexchange.com/a/195088)
 \tymin=60pt

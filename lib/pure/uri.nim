@@ -123,13 +123,13 @@ func decodeUrl*(s: string, decodePlus = true): string =
   setLen(result, j)
 
 func encodeQuery*(query: openArray[(string, string)], usePlus = true,
-    omitEq = true): string =
+    omitEq = true, sep = '&'): string =
   ## Encodes a set of (key, value) parameters into a URL query string.
   ##
   ## Every (key, value) pair is URL-encoded and written as `key=value`. If the
   ## value is an empty string then the `=` is omitted, unless `omitEq` is
   ## false.
-  ## The pairs are joined together by a `&` character.
+  ## The pairs are joined together by the `sep` character.
   ##
   ## The `usePlus` parameter is passed down to the `encodeUrl` function that
   ## is used for the URL encoding of the string values.
@@ -140,9 +140,10 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
     assert encodeQuery({: }) == ""
     assert encodeQuery({"a": "1", "b": "2"}) == "a=1&b=2"
     assert encodeQuery({"a": "1", "b": ""}) == "a=1&b"
+    assert encodeQuery({"a": "1", "b": ""}, omitEq = false, sep = ';') == "a=1;b="
   for elem in query:
-    # Encode the `key = value` pairs and separate them with a '&'
-    if result.len > 0: result.add('&')
+    # Encode the `key = value` pairs and separate them with 'sep'
+    if result.len > 0: result.add(sep)
     let (key, val) = elem
     result.add(encodeUrl(key, usePlus))
     # Omit the '=' if the value string is empty
@@ -150,7 +151,7 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
       result.add('=')
       result.add(encodeUrl(val, usePlus))
 
-iterator decodeQuery*(data: string): tuple[key, value: string] =
+iterator decodeQuery*(data: string, sep = '&'): tuple[key, value: string] =
   ## Reads and decodes the query string `data` and yields the `(key, value)` pairs
   ## the data consists of. If compiled with `-d:nimLegacyParseQueryStrict`,
   ## a `UriParseError` is raised when there is an unencoded `=` character in a decoded
@@ -158,6 +159,7 @@ iterator decodeQuery*(data: string): tuple[key, value: string] =
   runnableExamples:
     import std/sequtils
     assert toSeq(decodeQuery("foo=1&bar=2=3")) == @[("foo", "1"), ("bar", "2=3")]
+    assert toSeq(decodeQuery("foo=1;bar=2=3", ';')) == @[("foo", "1"), ("bar", "2=3")]
     assert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
 
   proc parseData(data: string, i: int, field: var string, sep: char): int =
@@ -186,7 +188,7 @@ iterator decodeQuery*(data: string): tuple[key, value: string] =
       when defined(nimLegacyParseQueryStrict):
         i = parseData(data, i, value, '=')
       else:
-        i = parseData(data, i, value, '&')
+        i = parseData(data, i, value, sep)
     yield (name, value)
     if i < data.len:
       when defined(nimLegacyParseQueryStrict):
