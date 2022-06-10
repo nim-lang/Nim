@@ -24,6 +24,8 @@ becomes an alias for `addr`.
 
 - io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`.
 
+- The `gc:v2` option is removed.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
