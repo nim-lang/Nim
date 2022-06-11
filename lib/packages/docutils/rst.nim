@@ -3008,7 +3008,7 @@ proc parseBlockContent(p: var RstParser, father: var PRstNode,
   ## footnotes, etc). Returns true if succeeded.
   if indFollows(p) and requireBlankLine and
       tkIndent notin {nextTok(p).kind, prevTok(p).kind}:
-    rstMessage(p, meGeneralParseError,
+    rstMessage(p, mwRstStyle,
                "no blank line after directive arguments")
   if currentTok(p).kind != tkIndent or indFollows(p):
     let blockIndent = getWrappableIndent(p)

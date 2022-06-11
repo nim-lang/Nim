@@ -987,15 +987,15 @@ suite "RST indentation":
       """
     check input1.toAst == ast
     check input2.toAst == ast
-    var error = new string
-    #check input3warning.toAst(error=error) == ast
-    check input3warning.toAst(error=error) == ""
-    check(error[] == "input(3, 1) Error: general parse error")
+    var warnings = new seq[string]
+    check input3warning.toAst(warnings=warnings) == ast
+    check(warnings[] == @["input(3, 1) Warning: RST style: " &
+                          "no blank line after directive arguments"])
 
     # "template..." should be parsed as a definition list attached to ":test:":
     check inputWrong.toAst != ast
 
-    # optional args cannot be separated by a blank line with the directive:
+    # optional args cannot be separated by a blank line from their directive:
     check(dedent"""
       .. code-block:: nim
 
