@@ -90,8 +90,9 @@ func newfetchOptions*(metod: HttpMethod; body: cstring;
     keepalive: bool; redirect = frFollow; referrer = "client".cstring; integrity = "".cstring): FetchOptions =
   ## Constructor for `FetchOptions`.
   result = FetchOptions(
-    body: body, mode: $mode, credentials: $credentials, cache: $cache, referrerPolicy: $referrerPolicy,
-    keepalive: keepalive, redirect: $redirect, referrer: referrer, integrity: integrity,
+    body: if metod notin {HttpHead, HttpGet}: body else: nil,
+    mode: cstring($mode), credentials: cstring($credentials), cache: cstring($cache), referrerPolicy: cstring($referrerPolicy),
+    keepalive: keepalive, redirect: cstring($redirect), referrer: referrer, integrity: integrity,
     metod: (case metod
       of HttpHead:   "HEAD".cstring
       of HttpGet:    "GET".cstring
