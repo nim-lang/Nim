@@ -2280,7 +2280,6 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   else:
     var n = x
     if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n[1]
-    n = n.canonValue
     n.flags.incl nfIsRef
     n.typ = x.typ
     result = TFullReg(kind: rkNode, node: n)
