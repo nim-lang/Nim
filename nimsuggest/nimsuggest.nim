@@ -11,7 +11,6 @@ import compiler/renderer
 import strformat
 import tables
 import std/sha1
-import segfaults
 import times
 
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
@@ -499,8 +498,8 @@ proc recompileFullProject(graph: ModuleGraph) =
     graph.resetForBackend()
     graph.resetSystemArtifacts()
     graph.vm = nil
-    GC_fullCollect()
     graph.resetAllModules()
+    GC_fullCollect()
     graph.compileProject()
 
 proc mainThread(graph: ModuleGraph) =
