@@ -20,7 +20,7 @@ when defined(nimStrictMode):
     switch("hintAsError", "ConvFromXtoItselfNotNeeded")
     # future work: XDeclaredButNotUsed
 
-when defined(windows) and (NimMajor, NimMinor) > (1, 0):
+when defined(windows) and not defined(booting):
   # Avoid some rare stack corruption while using exceptions with a SEH-enabled
   # toolchain: https://github.com/nim-lang/Nim/pull/19197
   switch("define", "nimRawSetjmp")
