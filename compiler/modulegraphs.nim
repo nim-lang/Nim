@@ -591,7 +591,12 @@ proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   # every module that *depends* on this file is also dirty:
   for i in 0i32..<g.ifaces.len.int32:
     if g.deps.contains(i.dependsOn(fileIdx.int)):
-      g.markDirty(FileIndex(i))
+      let
+        fi = FileIndex(i)
+        module = g.getModule(fi)
+      if module != nil and not g.isDirty(module):
+        g.markDirty(fi)
+        g.markClientsDirty(fi)
 
 proc needsCompilation*(g: ModuleGraph): bool =
   # every module that *depends* on this file is also dirty:
