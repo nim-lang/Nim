@@ -439,14 +439,11 @@ proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
     c.gABC(n, opcAsgnInt, dest, tmp)
     freeTemp(c, tmp)
 
-proc canonValue*(n: PNode): PNode =
-  result = n
-
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
   #assert(n.kind != nkCall)
   n.flags.incl nfAllConst
-  c.constants.add n.canonValue
+  c.constants.add n
   internalAssert c.config, result < regBxMax
 
 proc sameConstant*(a, b: PNode): bool =
@@ -1857,7 +1854,7 @@ proc genVarSection(c: PCtx; n: PNode) =
           else:
             let sa = getNullValue(s.typ, a.info, c.config)
             #if s.ast.isNil: getNullValue(s.typ, a.info)
-            #else: canonValue(s.ast)
+            #else: s.ast
             assert sa.kind != nkCall
             c.globals.add(sa)
             s.position = c.globals.len
