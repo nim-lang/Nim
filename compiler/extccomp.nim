@@ -434,7 +434,13 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # really: Cross compilation from Linux to Linux for example is entirely
   # reasonable.
   # `optGenMapping` is included here for niminst.
-  result = conf.globalOptions * {optGenScript, optGenMapping} != {}
+  # We use absolute paths for vcc / cl, see issue #19883.
+  let options =
+    if conf.cCompiler == ccVcc:
+      {optGenMapping}
+    else:
+      {optGenScript, optGenMapping}
+  result = conf.globalOptions * options != {}
 
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions
@@ -921,7 +927,7 @@ proc callCCompiler*(conf: ConfigRef) =
         objfiles.add(' ')
         objfiles.add(quoteShell(objFile))
       let mainOutput = if optGenScript notin conf.globalOptions: conf.prepareToWriteOutput
-                       else: AbsoluteFile(conf.projectName)
+                       else: AbsoluteFile(conf.outFile)
 
       linkCmd = getLinkCmd(conf, mainOutput, objfiles, removeStaticFile = true)
       extraCmds = getExtraCmds(conf, mainOutput)
