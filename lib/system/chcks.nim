@@ -16,6 +16,9 @@ proc raiseRangeError(val: BiggestInt) {.compilerproc, noinline.} =
   else:
     sysFatal(RangeDefect, "value out of range: ", $val)
 
+proc raiseIndexError4(l1, h1, h2: int) {.compilerproc, noinline.} =
+  sysFatal(IndexDefect, "index out of bounds: " & $l1 & ".." & $h1 & " notin 0.." & $(h2 - 1))
+
 proc raiseIndexError3(i, a, b: int) {.compilerproc, noinline.} =
   sysFatal(IndexDefect, formatErrorIndexBound(i, a, b))
 
