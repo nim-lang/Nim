@@ -2347,19 +2347,11 @@ enumerations and distinct types and for generic types name equivalence is used.
 Subtype relation
 ----------------
 
-If object `a` inherits from `b`, `a` is a subtype of `b`.
-
-This subtype relation is extended to the types `var`, `ref`, `ptr`.
-If `A` is a subtype of `B` and `A` and `B` are `object` types then:
+If type `A` inherits from `B`, then the following is true:
 
 - `var A` is a subtype of `var B`
 - `ref A` is a subtype of `ref B`
 - `ptr A` is a subtype of `ptr B`.
-
-**Note**: In later versions of the language the subtype relation might
-be changed to *require* the pointer indirection in order to prevent
-"object slicing".
-
 
 Convertible relation
 --------------------
