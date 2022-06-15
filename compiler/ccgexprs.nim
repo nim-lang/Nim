@@ -988,12 +988,12 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
     if reifiedOpenArray(arr.lode):
       linefmt(p, cpsStmts,
         "if ($2-$1 != -1 && " &
-        "($1 < 0 || $1 >= $3.Field1 || $2 < 0 || $2 >= $3.Field1)){ #raiseIndexError4($1, $2, $3.Field1 - 1); $4}$n",
+        "($1 < 0 || $1 >= $3.Field1 || $2 < 0 || $2 >= $3.Field1)){ #raiseIndexError4($1, $2, $3.Field1); $4}$n",
         [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
     else:
       linefmt(p, cpsStmts,
         "if ($2-$1 != -1 && ($1 < 0 || $1 >= $3Len_0 || $2 < 0 || $2 >= $3Len_0))" &
-        "{ #raiseIndexError4($1, $2, $3Len_0 - 1); $4}$n",
+        "{ #raiseIndexError4($1, $2, $3Len_0); $4}$n",
         [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
   of tyArray:
     let first = intLiteral(firstOrd(p.config, ty))
@@ -1004,7 +1004,7 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
   of tySequence, tyString:
     linefmt(p, cpsStmts,
       "if ($2-$1 != -1 && " &
-      "($1 < 0 || $1 >= $3 || $2 < 0 || $2 >= $3)){ #raiseIndexError4($1, $2, $3 - 1); $4}$n",
+      "($1 < 0 || $1 >= $3 || $2 < 0 || $2 >= $3)){ #raiseIndexError4($1, $2, $3); $4}$n",
       [rdLoc(a), rdLoc(b), lenExpr(p, arr), raiseInstr(p)])
   else: discard
 
