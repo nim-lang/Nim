@@ -523,8 +523,7 @@ when not defined(nimHasSinkInference):
 
 template takeAddress(reg, source) =
   reg.nodeAddr = addr source
-  when defined(gcDestructors):
-    GC_ref source
+  GC_ref source
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
@@ -1028,9 +1027,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rc].kind == rkNodeAddr:
           ret = regs[rb].nodeAddr == regs[rc].nodeAddr
         else:
-          ret = ptrEquality(regs[rb].nodeAddr, regs[rc].node)
+          ret = ptrEquality(regs[rb].nodeAddr, regs[rc].regToNode) # todo fixme
       elif regs[rc].kind == rkNodeAddr:
-        ret = ptrEquality(regs[rc].nodeAddr, regs[rb].node)
+        ret = ptrEquality(regs[rc].nodeAddr, regs[rb].regToNode) # todo fixme
       else:
         let nb = regs[rb].node
         let nc = regs[rc].node
