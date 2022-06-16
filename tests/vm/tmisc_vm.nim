@@ -427,3 +427,21 @@ when true:
       echo f
     static: main()
     main()
+
+import tables, strutils
+
+# bug #14553
+const PpcPatterns = @[("aaaa", "bbbb"), ("aaaaa", "bbbbb"), ("aaaaaa", "bbbbbb"), ("aaaaaaa", "bbbbbbb"), ("aaaaaaaa", "bbbbb")]
+
+static:
+    var
+        needSecondIdentifier = initTable[uint32, seq[(string, string)]]()
+
+    for (name, pattern) in PpcPatterns:
+        let
+            firstPart = 0'u32
+            lastPart = "test"
+
+        needSecondIdentifier.mgetOrPut(firstPart, @[]).add((name, pattern))
+
+    doAssert needSecondIdentifier[0] == @[("aaaa", "bbbb"), ("aaaaa", "bbbbb"), ("aaaaaa", "bbbbbb"), ("aaaaaaa", "bbbbbbb"), ("aaaaaaaa", "bbbbb")]
