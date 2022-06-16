@@ -1,7 +1,12 @@
 discard """
+  targets: "c js"
   output: '''
 [127, 127, 0, 255][127, 127, 0, 255]
 (data: 1)
+(2, 1)
+(2, 1)
+(2, 1)
+(f0: 5)
 '''
 
   nimout: '''caught Exception
@@ -26,6 +31,10 @@ z3 a: (lo: 3)
 x1 a: (lo: 3)
 x2 a: (lo: 6)
 x3 a: (lo: 0)
+(2, 1)
+(2, 1)
+(2, 1)
+(f0: 5)
 '''
 """
 import std/sets
@@ -369,3 +378,52 @@ static:
   var y = Stuint(lo: 12)
 
   powmod(x, y)
+
+# bug #16780
+when true:
+  template swap*[T](a, b: var T) =
+    var a2 = addr(a)
+    var b2 = addr(b)
+    var aOld = a2[]
+    a2[] = b2[]
+    b2[] = aOld
+
+  proc rather =
+    block:
+      var a = 1
+      var b = 2
+      swap(a, b)
+      echo (a,b)
+
+    block:
+      type Foo = ref object
+        x: int
+      var a = Foo(x:1)
+      var b = Foo(x:2)
+      swap(a, b)
+      echo (a.x, b.x)
+
+    block:
+      type Foo = object
+        x: int
+      var a = Foo(x:1)
+      var b = Foo(x:2)
+      swap(a, b)
+      echo (a.x,b.x)
+
+  static: rather()
+  rather()
+
+# bug #16020
+when true:
+  block:
+    type Foo = object
+      f0: int
+    proc main=
+      var f = Foo(f0: 3)
+      var f2 = f.addr
+      f2[].f0 += 1
+      f2.f0 += 1
+      echo f
+    static: main()
+    main()
