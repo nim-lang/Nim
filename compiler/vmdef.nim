@@ -213,7 +213,6 @@ type
     slotTempFloat,    # some temporary float
     slotTempStr,      # some temporary string
     slotTempComplex,  # some complex temporary (s.node field is used)
-    slotTempPerm      # slot is temporary but permanent (hack)
 
   TRegisterKind* = enum
     rkNone, rkNode, rkInt, rkFloat, rkRegisterAddr, rkNodeAddr

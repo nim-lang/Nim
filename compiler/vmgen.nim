@@ -1420,7 +1420,7 @@ proc genAddr(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
       gABC(c, n, opcAddrNode, dest, tmp)
       # hack ahead; in order to fix bug #1781 we mark the temporary as
       # permanent, so that it's not used for anything else:
-      c.prc.regInfo[tmp].kind = slotTempPerm
+      # c.prc.regInfo[tmp].kind = slotTempPerm
       # XXX this is still a hack
       #message(c.congig, n.info, warnUser, "suspicious opcode used")
     else:
