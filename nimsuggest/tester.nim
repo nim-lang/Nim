@@ -252,7 +252,10 @@ proc runEpcTest(filename: string): int =
   for cmd in s.startup:
     if not runCmd(cmd, s.dest):
       quit "invalid command: " & cmd
-  let epccmd = s.cmd.replace("--tester", "--epc --v2 --log")
+  let epccmd = if s.cmd.contains("--v3"):
+    s.cmd.replace("--tester", "--epc --log")
+  else:
+    s.cmd.replace("--tester", "--epc --v2 --log")
   let cl = parseCmdLine(epccmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,

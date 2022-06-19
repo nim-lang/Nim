@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import intsets, tables, hashes, md5
+import intsets, tables, hashes, md5, sequtils
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils
 import ic / [packed_ast, ic]
 
@@ -81,6 +81,8 @@ type
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
+    suggestSymbols*: Table[FileIndex, seq[tuple[sym: PSym, info: TLineInfo]]]
+    suggestErrors*: Table[FileIndex, seq[Suggest]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
@@ -383,9 +385,19 @@ when defined(nimfind):
       c.graph.onDefinitionResolveForward(c.graph, s, info)
 
 else:
-  template onUse*(info: TLineInfo; s: PSym) = discard
-  template onDef*(info: TLineInfo; s: PSym) = discard
-  template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
+  when defined(nimsuggest):
+    template onUse*(info: TLineInfo; s: PSym) = discard
+
+    template onDef*(info: TLineInfo; s: PSym) =
+      let c = getPContext()
+      if c.graph.config.suggestVersion == 3:
+        suggestSym(c.graph, info, s, c.graph.usageSym)
+
+    template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
+  else:
+    template onUse*(info: TLineInfo; s: PSym) = discard
+    template onDef*(info: TLineInfo; s: PSym) = discard
+    template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
 
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
@@ -432,8 +444,7 @@ proc initOperators*(g: ModuleGraph): Operators =
   result.opNot = createMagic(g, "not", mNot)
   result.opContains = createMagic(g, "contains", mInSet)
 
-proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
-  result = ModuleGraph()
+proc initModuleGraphFields(result: ModuleGraph) =
   # A module ID of -1 means that the symbol is not attached to a module at all,
   # but to the module graph:
   result.idgen = IdGenerator(module: -1'i32, symId: 0'i32, typeId: 0'i32)
@@ -443,9 +454,9 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.ifaces = @[]
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
-  result.config = config
-  result.cache = cache
   result.owners = @[]
+  result.suggestSymbols = initTable[FileIndex, seq[tuple[sym: PSym, info: TLineInfo]]]()
+  result.suggestErrors = initTable[FileIndex, seq[Suggest]]()
   result.methods = @[]
   initStrTable(result.compilerprocs)
   initStrTable(result.exposed)
@@ -459,6 +470,12 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.operators = initOperators(result)
   result.emittedTypeInfo = initTable[string, FileIndex]()
 
+proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
+  result = ModuleGraph()
+  result.config = config
+  result.cache = cache
+  initModuleGraphFields(result)
+
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)
   g.deps = initIntSet()
@@ -470,6 +487,7 @@ proc resetAllModules*(g: ModuleGraph) =
   g.methods = @[]
   initStrTable(g.compilerprocs)
   initStrTable(g.exposed)
+  initModuleGraphFields(g)
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
   if fileIdx.int32 >= 0:
@@ -548,7 +566,19 @@ proc transitiveClosure(g: var IntSet; n: int) =
 
 proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   let m = g.getModule fileIdx
-  if m != nil: incl m.flags, sfDirty
+  if m != nil:
+    g.suggestSymbols.del(fileIdx)
+    g.suggestErrors.del(fileIdx)
+    incl m.flags, sfDirty
+
+proc unmarkAllDirty*(g: ModuleGraph) =
+  for i in 0i32..<g.ifaces.len.int32:
+    let m = g.ifaces[i].module
+    if m != nil:
+      m.flags.excl sfDirty
+
+proc isDirty*(g: ModuleGraph; m: PSym): bool =
+  result = g.suggestMode and sfDirty in m.flags
 
 proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   # we need to mark its dependent modules D as dirty right away because after
@@ -560,12 +590,31 @@ proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
 
   # every module that *depends* on this file is also dirty:
   for i in 0i32..<g.ifaces.len.int32:
-    let m = g.ifaces[i].module
-    if m != nil and g.deps.contains(i.dependsOn(fileIdx.int)):
-      incl m.flags, sfDirty
+    if g.deps.contains(i.dependsOn(fileIdx.int)):
+      let
+        fi = FileIndex(i)
+        module = g.getModule(fi)
+      if module != nil and not g.isDirty(module):
+        g.markDirty(fi)
+        g.markClientsDirty(fi)
 
-proc isDirty*(g: ModuleGraph; m: PSym): bool =
-  result = g.suggestMode and sfDirty in m.flags
+proc needsCompilation*(g: ModuleGraph): bool =
+  # every module that *depends* on this file is also dirty:
+  for i in 0i32..<g.ifaces.len.int32:
+    let m = g.ifaces[i].module
+    if m != nil:
+      if sfDirty in m.flags:
+        return true
+
+proc needsCompilation*(g: ModuleGraph, fileIdx: FileIndex): bool =
+  let module = g.getModule(fileIdx)
+  if module != nil and g.isDirty(module):
+    return true
+
+  for i in 0i32..<g.ifaces.len.int32:
+    let m = g.ifaces[i].module
+    if m != nil and g.isDirty(m) and g.deps.contains(fileIdx.int32.dependsOn(i)):
+      return true
 
 proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
   result = s.ast[bodyPos]
@@ -594,3 +643,13 @@ proc onProcessing*(graph: ModuleGraph, fileIdx: FileIndex, moduleStatus: string,
     let fromModule2 = if fromModule != nil: $fromModule.name.s else: "(toplevel)"
     let mode = if isNimscript: "(nims) " else: ""
     rawMessage(conf, hintProcessing, "$#$# $#: $#: $#" % [mode, indent, fromModule2, moduleStatus, path])
+
+iterator suggestSymbolsIter*(g: ModuleGraph): tuple[sym: PSym, info: TLineInfo] =
+  for xs in g.suggestSymbols.values:
+    for x in xs.deduplicate:
+      yield x
+
+iterator suggestErrorsIter*(g: ModuleGraph): Suggest =
+  for xs in g.suggestErrors.values:
+    for x in xs:
+      yield x
