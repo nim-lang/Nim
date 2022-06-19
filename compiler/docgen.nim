@@ -1476,6 +1476,7 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
      "sectionTitle", title
   ]
 
+  # Check if the toc has any children
   if d.toc2[kind] != "":
     # Use the dropdown version instead and store the children in the dropdown
     d.toc[kind] = getConfigVar(d.conf, "doc.section.toc") % (sectionValues & @[
