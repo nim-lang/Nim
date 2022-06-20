@@ -116,8 +116,9 @@ elif defined(nimBuiltinSetjmp):
     proc c_builtin_setjmp(jmpb: ptr pointer): cint {.
       importc: "__builtin_setjmp", nodecl.}
     c_builtin_setjmp(unsafeAddr jmpb[0])
+
 elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
-  when defined(windows):
+  when defined(windows) and not defined(vcc):
     # No `_longjmp()` on Windows.
     proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
       header: "<setjmp.h>", importc: "longjmp".}
@@ -127,10 +128,16 @@ elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
     # prone to stack corruption during unwinding, so we disable that by setting
     # it to NULL.
     # More details: https://github.com/status-im/nimbus-eth2/issues/3121
+    when defined(nimHasStyleChecks):
+      {.push styleChecks: off.}
+
     proc c_setjmp*(jmpb: C_JmpBuf): cint =
       proc c_setjmp_win(jmpb: C_JmpBuf, ctx: pointer): cint {.
         header: "<setjmp.h>", importc: "_setjmp".}
       c_setjmp_win(jmpb, nil)
+
+    when defined(nimHasStyleChecks):
+      {.pop.}
   else:
     proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
       header: "<setjmp.h>", importc: "_longjmp".}

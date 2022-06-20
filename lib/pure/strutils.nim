@@ -278,7 +278,7 @@ func nimIdentNormalize*(s: string): string =
   ## except first one.
   ##
   ## .. Warning:: Backticks (`) are not handled: they remain *as is* and
-  ##    spaces are preserved. See `nimIdentBackticksNormalize 
+  ##    spaces are preserved. See `nimIdentBackticksNormalize
   ##    <dochelpers.html#nimIdentBackticksNormalize,string>`_ for
   ##    an alternative approach.
   runnableExamples:
@@ -1808,26 +1808,44 @@ func join*[T: not string](a: openArray[T], sep: string = ""): string =
     add(result, $x)
 
 type
-  SkipTable* = array[char, int]
+  SkipTable* = array[char, int] ## Character table for efficient substring search.
 
 func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
     extern: "nsuInitSkipTable".} =
-  ## Preprocess table `a` for `sub`.
+  ## Initializes table `a` for efficient search of substring `sub`.
+  ##
+  ## See also:
+  ## * `initSkipTable func<#initSkipTable,string>`_
+  ## * `find func<#find,SkipTable,string,string,Natural,int>`_
+  # TODO: this should be the `default()` initializer for the type.
   let m = len(sub)
   fill(a, m)
 
   for i in 0 ..< m - 1:
     a[sub[i]] = m - 1 - i
 
-func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
+func initSkipTable*(sub: string): SkipTable {.noinit, rtl,
+    extern: "nsuInitNewSkipTable".} =
+  ## Returns a new table initialized for `sub`.
+  ##
+  ## See also:
+  ## * `initSkipTable func<#initSkipTable,SkipTable,string>`_
+  ## * `find func<#find,SkipTable,string,string,Natural,int>`_
+  initSkipTable(result, sub)
+
+func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = -1): int {.
     rtl, extern: "nsuFindStrA".} =
   ## Searches for `sub` in `s` inside range `start..last` using preprocessed
   ## table `a`. If `last` is unspecified, it defaults to `s.high` (the last
   ## element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ##
+  ## See also:
+  ## * `initSkipTable func<#initSkipTable,string>`_
+  ## * `initSkipTable func<#initSkipTable,SkipTable,string>`_
   let
-    last = if last == 0: s.high else: last
+    last = if last < 0: s.high else: last
     subLast = sub.len - 1
 
   if subLast == -1:
@@ -1837,6 +1855,7 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
 
   # This is an implementation of the Boyer-Moore Horspool algorithms
   # https://en.wikipedia.org/wiki/Boyer%E2%80%93Moore%E2%80%93Horspool_algorithm
+  result = -1
   var skip = start
 
   while last - skip >= subLast:
@@ -1846,7 +1865,6 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
         return skip
       dec i
     inc skip, a[s[skip + subLast]]
-  return -1
 
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
   func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
@@ -1855,59 +1873,64 @@ when not (defined(js) or defined(nimdoc) or defined(nimscript)):
 else:
   const hasCStringBuiltin = false
 
-func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
+func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuFindChar".} =
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
-  ## If `last` is unspecified, it defaults to `s.high` (the last element).
+  ## If `last` is unspecified or negative, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].rfind` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `rfind func<#rfind,string,char,Natural,int>`_
   ## * `replace func<#replace,string,char,char>`_
-  let last = if last == 0: s.high else: last
-  when nimvm:
+  result = -1
+  let last = if last < 0: s.high else: last
+
+  template findImpl =
     for i in int(start)..last:
-      if sub == s[i]: return i
+      if s[i] == sub:
+        return i
+
+  when nimvm:
+    findImpl()
   else:
     when hasCStringBuiltin:
-      let L = last-start+1
-      if L > 0:
-        let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](L))
+      let length = last-start+1
+      if length > 0:
+        let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](length))
         if not found.isNil:
           return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
     else:
-      for i in int(start)..last:
-        if sub == s[i]: return i
-  return -1
+      findImpl()
 
-func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
+func find*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
     rtl, extern: "nsuFindCharSet".} =
   ## Searches for `chars` in `s` inside range `start..last` (both ends included).
-  ## If `last` is unspecified, it defaults to `s.high` (the last element).
+  ## If `last` is unspecified or negative, it defaults to `s.high` (the last element).
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].find` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `rfind func<#rfind,string,set[char],Natural,int>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
-  let last = if last == 0: s.high else: last
+  result = -1
+  let last = if last < 0: s.high else: last
   for i in int(start)..last:
-    if s[i] in chars: return i
-  return -1
+    if s[i] in chars:
+      return i
 
-func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
+func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuFindStr".} =
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
-  ## If `last` is unspecified, it defaults to `s.high` (the last element).
+  ## If `last` is unspecified or negative, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].find` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `rfind func<#rfind,string,string,Natural,int>`_
@@ -1915,9 +1938,7 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
 
-  var a {.noinit.}: SkipTable
-  initSkipTable(a, sub)
-  result = find(a, s, sub, start, last)
+  result = find(initSkipTable(sub), s, sub, start, last)
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
@@ -1928,7 +1949,7 @@ func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].find` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `find func<#find,string,char,Natural,int>`_
@@ -1946,7 +1967,7 @@ func rfind*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].rfind` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `find func<#find,string,set[char],Natural,int>`_
@@ -1964,7 +1985,7 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].rfind` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
@@ -2092,8 +2113,7 @@ func replace*(s, sub: string, by = ""): string {.rtl,
     # copy the rest:
     add result, substr(s, i)
   else:
-    var a {.noinit.}: SkipTable
-    initSkipTable(a, sub)
+    var a = initSkipTable(sub)
     let last = s.high
     var i = 0
     while true:
@@ -2133,9 +2153,8 @@ func replaceWord*(s, sub: string, by = ""): string {.rtl,
   ## replaced.
   if sub.len == 0: return s
   const wordChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\128'..'\255'}
-  var a {.noinit.}: SkipTable
   result = ""
-  initSkipTable(a, sub)
+  var a = initSkipTable(sub)
   var i = 0
   let last = s.high
   let sublen = sub.len

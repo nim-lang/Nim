@@ -1185,9 +1185,9 @@ subranges) are called ordinal types. Ordinal types have quite
 a few special operations:
 
 
------------------     --------------------------------------------------------
+=================     ========================================================
 Operation             Comment
------------------     --------------------------------------------------------
+=================     ========================================================
 `ord(x)`              returns the integer value that is used to
                       represent `x`'s value
 `inc(x)`              increments `x` by one
@@ -1198,7 +1198,7 @@ Operation             Comment
 `succ(x, n)`          returns the `n`'th successor of `x`
 `pred(x)`             returns the predecessor of `x`
 `pred(x, n)`          returns the `n`'th predecessor of `x`
------------------     --------------------------------------------------------
+=================     ========================================================
 
 
 The `inc <system.html#inc,T,int>`_, `dec <system.html#dec,T,int>`_, `succ
