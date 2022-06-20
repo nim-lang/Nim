@@ -118,7 +118,7 @@ elif defined(nimBuiltinSetjmp):
     c_builtin_setjmp(unsafeAddr jmpb[0])
 
 elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
-  when defined(windows):
+  when defined(windows) and not defined(vcc):
     # No `_longjmp()` on Windows.
     proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
       header: "<setjmp.h>", importc: "longjmp".}
