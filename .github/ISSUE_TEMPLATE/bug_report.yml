@@ -24,7 +24,7 @@ body:
       - RISC (RISC-V)
       - Others (Unknown)
   validations:
-    required: true
+    required: false
 
 - type: dropdown
   id: os
@@ -41,7 +41,7 @@ body:
       - ReactOS
       - Others (Unknown)
   validations:
-    required: true
+    required: false
 
 - type: dropdown
   id: disk
@@ -55,7 +55,7 @@ body:
       - Diskless (Netboot, run from RAM)
       - Others (Unknown)
   validations:
-    required: true
+    required: false
 
 - type: dropdown
   id: ram
@@ -76,7 +76,7 @@ body:
       - Less than 1 Gigabyte
       - Others (Unknown)
   validations:
-    required: true
+    required: false
 
 - type: dropdown
   id: cores
@@ -96,7 +96,7 @@ body:
       - 512 CPU Cores
       - Others (Unknown)
   validations:
-    required: true
+    required: false
 
 - type: dropdown
   id: internet
@@ -113,7 +113,7 @@ body:
       - Offline (No Internet)
       - Others (Unknown)
   validations:
-    required: true
+    required: false
 
 - type: dropdown
   id: browser
@@ -128,7 +128,7 @@ body:
       - Microsoft Internet Explorer (Deprecated)
       - Others (Unknown)
   validations:
-    required: true
+    required: false
 
 - type: dropdown
   id: device
@@ -155,7 +155,7 @@ body:
       - Military machine
       - Others (Unknown)
   validations:
-    required: true
+    required: false
 
 - type: dropdown
   id: country
