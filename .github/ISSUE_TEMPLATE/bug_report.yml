@@ -200,14 +200,6 @@ body:
   validations:
     required: false
 
-- type: textarea
-  id: incompatibility
-  attributes:
-    label: Backwards Compatibility
-    description: If your Bug Report introduces backward-incompatible changes, describe them and propose how to deal with them.
-  validations:
-    required: false
-
 - type: markdown
   attributes:
     value: |
