@@ -8,7 +8,7 @@ body:
   attributes:
     value: |
       - **Please provide a minimal code example that reproduces the Bug!** :bug:
-        Reports with full repro code and descriptive detailed information will likely receive fixes faster.
+        Reports with a reproducible example and descriptive detailed information will likely receive fixes faster.
 
 - type: dropdown
   id: architecture
