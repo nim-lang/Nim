@@ -212,7 +212,6 @@ body:
   attributes:
     value: |
       - Thanks for your contributions!, your Bug report will receive feedback from the community soon...
-      - **Remember to :star: Star the Nim project on GitHub!.**
       - Please check whether the problem still exists in the devel branch, see [rebuilding the compiler](https://nim-lang.github.io/Nim/intern.html#rebuilding-the-compiler).
       - Consider writing a PR targetting devel branch after filing this, see [contributing](https://nim-lang.github.io/Nim/contributing.html).
       - If it's a pre-existing compiler bug, see [Debugging the compiler](https://nim-lang.github.io/Nim/intern.html#debugging-the-compiler)
