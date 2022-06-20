@@ -1,6 +1,6 @@
 import macros
 
-block t9043: # issue #9043
+block t9043: # bug #9043
   proc foo[N: static[int]](dims: array[N, int]): string =
     const N1 = N
     const N2 = dims.len
@@ -26,3 +26,27 @@ block t4952:
     let tree = newTree(nnkExprColonExpr)
     let t = (n: tree)
     doAssert: t.n.kind == tree.kind
+
+
+# bug #19909
+type
+  SinglyLinkedList[T] = ref object
+  SinglyLinkedListObj[T] = ref object
+
+
+proc addMoved[T](a, b: var SinglyLinkedList[T]) =
+  if a.addr != b.addr: discard
+
+proc addMoved[T](a, b: var SinglyLinkedListObj[T]) =
+  if a.addr != b.addr: discard
+
+proc main =
+  var a: SinglyLinkedList[int]; new a
+  var b: SinglyLinkedList[int]; new b
+  a.addMoved b
+
+  var a0: SinglyLinkedListObj[int]
+  var b0: SinglyLinkedListObj[int]
+  a0.addMoved b0
+
+static: main()

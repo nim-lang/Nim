@@ -1010,6 +1010,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkInt)
       template getTyp(n): untyped =
         n.typ.skipTypes(abstractInst)
+      template skipRegisterAddr(n: TFullReg): TFullReg =
+        var tmp = n
+        while tmp.kind == rkRegisterAddr:
+          tmp = tmp.regAddr[]
+        tmp
+
       proc ptrEquality(n1: ptr PNode, n2: PNode): bool =
         ## true if n2.intVal represents a ptr equal to n1
         let p1 = cast[int](n1)
@@ -1023,16 +1029,19 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           return t2.kind in PtrLikeKinds and n2.intVal == p1
         else: return false
 
-      if regs[rb].kind == rkNodeAddr:
-        if regs[rc].kind == rkNodeAddr:
-          ret = regs[rb].nodeAddr == regs[rc].nodeAddr
+      let rbReg = skipRegisterAddr(regs[rb])
+      let rcReg = skipRegisterAddr(regs[rc])
+
+      if rbReg.kind == rkNodeAddr:
+        if rcReg.kind == rkNodeAddr:
+          ret = rbReg.nodeAddr == rcReg.nodeAddr
         else:
-          ret = ptrEquality(regs[rb].nodeAddr, regs[rc].regToNode) # todo fixme
-      elif regs[rc].kind == rkNodeAddr:
-        ret = ptrEquality(regs[rc].nodeAddr, regs[rb].regToNode) # todo fixme
+          ret = ptrEquality(rbReg.nodeAddr, rcReg.node)
+      elif rcReg.kind == rkNodeAddr:
+        ret = ptrEquality(rcReg.nodeAddr, rbReg.node)
       else:
-        let nb = regs[rb].node
-        let nc = regs[rc].node
+        let nb = rbReg.node
+        let nc = rcReg.node
         if nb.kind != nc.kind: discard
         elif (nb == nc) or (nb.kind == nkNilLit): ret = true # intentional
         elif nb.kind in {nkSym, nkTupleConstr, nkClosure} and nb.typ != nil and nb.typ.kind == tyProc and sameConstant(nb, nc):
