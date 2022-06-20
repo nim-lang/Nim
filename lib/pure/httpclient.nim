@@ -1161,7 +1161,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
                                      headers, multipart)
     lastURL = redirectTo
 
-proc responseContent(resp: Response | AsyncResponse): Future[string] {.multisync.} =
+proc responseContent*(resp: Response | AsyncResponse): Future[string] {.multisync.} =
   ## Returns the content of a response as a string.
   ##
   ## A `HttpRequestError` will be raised if the server responds with a
