@@ -7,7 +7,7 @@ body:
 - type: markdown
   attributes:
     value: |
-      - Please provide a minimal code example that illustrates the basic idea behind your Feature request.
+      - Please provide a minimal code example that illustrates the basic idea behind your feature request.
         Reports with full repro code and descriptive detailed information will likely receive feedback faster.
       - There is a separate repository for the detailed RFCs and proposals: https://github.com/nim-lang/RFCs
         If you have a simple feature request, you can post it here using this form,
