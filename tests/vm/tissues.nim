@@ -50,3 +50,27 @@ proc main =
   a0.addMoved b0
 
 static: main()
+
+
+# bug #18641
+
+type A = object
+  ha1: int
+static:
+  var a = A()
+  var a2 = a.addr
+  a2.ha1 = 11
+  doAssert a2.ha1 == 11
+  a.ha1 = 12
+  doAssert a.ha1 == 12
+  doAssert a2.ha1 == 12 # ok
+static:
+  proc fn() =
+    var a = A()
+    var a2 = a.addr
+    a2.ha1 = 11
+    doAssert a2.ha1 == 11
+    a.ha1 = 12
+    doAssert a.ha1 == 12
+    doAssert a2.ha1 == 12 # fails
+  fn()
