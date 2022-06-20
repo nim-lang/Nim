@@ -1,5 +1,5 @@
 name:        "Bug Report"
-description: "Create a new bug report. Have you found an unexpected behavior?, use this form."
+description: "Create a new bug report. Have you found an unexpected behavior? Use this form."
 title:       "Think about the title, twice."
 labels:      ["unconfirmed"]
 body:
