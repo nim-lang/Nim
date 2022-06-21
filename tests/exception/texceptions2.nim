@@ -92,10 +92,10 @@ block:
       result.add(1212)
     try:
       try:
-        raise newException(AssertionDefect, "a")
+        raise newException(AssertionError, "a")
       finally:
         result.add(42)
-    except AssertionDefect:
+    except AssertionError:
       result.add(99)
     finally:
       result.add(10)
