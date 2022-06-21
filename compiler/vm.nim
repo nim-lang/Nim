@@ -642,7 +642,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNodeToReg:
       let ra = instr.regA
       let rb = instr.regB
-      # opcDeref might already have loaded it into a register. XXX Let's hope
+      # opcLdDeref might already have loaded it into a register. XXX Let's hope
       # this is still correct this way:
       if regs[rb].kind != rkNode:
         regs[ra] = regs[rb]
