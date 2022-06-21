@@ -82,7 +82,7 @@ func c_strstr(haystack, needle: cstring): cstring {.
 
 
 func find*(s: cstring, sub: char, start: Natural = 0, last = 0): int =
-  ## Searches for `sub` in `s` inside range `start..last` (both ends included).
+  ## Searches for `sub` in `s` inside the range `start..last` (both ends included).
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
@@ -97,7 +97,7 @@ func find*(s: cstring, sub: char, start: Natural = 0, last = 0): int =
   return -1
 
 func find*(s, sub: cstring, start: Natural = 0, last = 0): int =
-  ## Searches for `sub` in `s` inside range `start..last` (both ends included).
+  ## Searches for `sub` in `s` inside the range `start..last` (both ends included).
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
