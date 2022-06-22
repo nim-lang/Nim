@@ -2851,7 +2851,10 @@ Given the following distinct type definitions:
 
 .. code-block:: nim
   type
-    DistinctObject {.requiresInit, borrow: `.`.} = distinct MyObject
+    Foo = object
+      x: string
+
+    DistinctFoo {.requiresInit, borrow: `.`.} = distinct Foo
     DistinctString {.requiresInit.} = distinct string
 
 The following code blocks will fail to compile:
@@ -2864,7 +2867,7 @@ The following code blocks will fail to compile:
 .. code-block:: nim
   var s: DistinctString
   s = "test"
-  doAssert s == "test"
+  doAssert string(s) == "test"
 
 But these ones will compile successfully:
 
@@ -2873,8 +2876,8 @@ But these ones will compile successfully:
   doAssert foo.x == "test"
 
 .. code-block:: nim
-  let s = "test"
-  doAssert s == "test"
+  let s = DistinctString("test")
+  doAssert string(s) == "test"
 
 Let statement
 -------------
