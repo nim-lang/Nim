@@ -107,7 +107,7 @@ block:
       result.add(-1)
     except ValueError:
       result.add(-1)
-    except IndexDefect:
+    except IndexError:
       result.add(2)
     except:
       result.add(3)
