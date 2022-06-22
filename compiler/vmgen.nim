@@ -1382,9 +1382,6 @@ proc unneededIndirection(n: PNode): bool =
   n.typ.skipTypes(abstractInstOwned-{tyTypeDesc}).kind == tyRef
 
 proc canElimAddr(n: PNode): PNode =
-  if n[0].typ.skipTypes(abstractInst).kind in {tyObject, tyTuple, tyArray}:
-    # objects are reference types in the VM
-    return n[0]
   case n[0].kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     var m = n[0][0]
