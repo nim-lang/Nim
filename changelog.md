@@ -26,6 +26,8 @@ becomes an alias for `addr`.
 
 - The `gc:v2` option is removed.
 
+- `nimPreviewDotLikeOps` is going to be removed or deprecated.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
