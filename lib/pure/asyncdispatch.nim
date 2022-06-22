@@ -98,6 +98,10 @@
 ## `await`. The following section shows different ways that you can handle
 ## exceptions in async procs.
 ##
+## .. caution::
+##     Procedures marked {.async.} do not support mutable parameters such
+##     as `var int`. References such as `ref int` should be used instead.
+##
 ## Handling Exceptions
 ## -------------------
 ##
@@ -192,6 +196,7 @@
 ## ================
 ##
 ## * The effect system (`raises: []`) does not work with async procedures.
+## * Mutable parameters are not supported by async procedures.
 ##
 ##
 ## Multiple async backend support

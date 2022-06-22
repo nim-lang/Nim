@@ -1109,21 +1109,6 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   of nkIdent: a.ident
   else: nil
 
-proc getnimblePkg*(a: PSym): PSym =
-  result = a
-  while result != nil:
-    case result.kind
-    of skModule:
-      result = result.owner
-      assert result.kind == skPackage
-    of skPackage:
-      if result.owner == nil:
-        break
-      else:
-        result = result.owner
-    else:
-      assert false, $result.kind
-
 const
   moduleShift = when defined(cpu32): 20 else: 24
 
@@ -1168,13 +1153,7 @@ when false:
     assert dest.ItemId.item <= src.ItemId.item
     dest = src
 
-proc getnimblePkgId*(a: PSym): int =
-  let b = a.getnimblePkg
-  result = if b == nil: -1 else: b.id
-
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
-#var
-#  gMainPackageId*: int
 
 proc isCallExpr*(n: PNode): bool =
   result = n.kind in nkCallKinds
@@ -1539,7 +1518,7 @@ proc assignType*(dest, src: PType) =
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
-      dest.sym.flags.incl src.sym.flags-{sfExported}
+      dest.sym.flags.incl src.sym.flags-{sfUsed, sfExported}
       if dest.sym.annex == nil: dest.sym.annex = src.sym.annex
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:

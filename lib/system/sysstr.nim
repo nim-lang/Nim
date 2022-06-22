@@ -304,20 +304,10 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, elemAlign, newLen: int): PGenericS
     when not defined(boehmGC) and not defined(nogc) and
          not defined(gcMarkAndSweep) and not defined(gogc) and
          not defined(gcRegions):
-      when false: # deadcode: was used by `compileOption("gc", "v2")`
+      if ntfNoRefs notin extGetCellType(result).base.flags:
         for i in newLen..result.len-1:
-          let len0 = gch.tempStack.len
           forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
-                            extGetCellType(result).base, waPush)
-          let len1 = gch.tempStack.len
-          for i in len0 ..< len1:
-            doDecRef(gch.tempStack.d[i], LocalHeap, MaybeCyclic)
-          gch.tempStack.len = len0
-      else:
-        if ntfNoRefs notin extGetCellType(result).base.flags:
-          for i in newLen..result.len-1:
-            forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
-                              extGetCellType(result).base, waZctDecRef)
+                            extGetCellType(result).base, waZctDecRef)
 
     # XXX: zeroing out the memory can still result in crashes if a wiped-out
     # cell is aliased by another pointer (ie proc parameter or a let variable).

@@ -364,21 +364,5 @@ proc registerAdditionalOps*(c: PCtx) =
     let typ = a.getNode(0).typ
     let p = a.getReg(1)
     var res: string
-
-    var node: PNode
-    case p.kind
-    of rkNone:
-      node = newNode(nkEmpty)
-    of rkInt:
-      node = newIntNode(nkIntLit, p.intVal)
-    of rkFloat:
-      node = newFloatNode(nkFloatLit, p.floatVal)
-    of rkNode:
-      node = p.node
-    of rkRegisterAddr:
-      node = p.regAddr.node
-    of rkNodeAddr:
-      node = p.nodeAddr[]
-
-    storeAny(res, typ, node, c.config)
+    storeAny(res, typ, regToNode(p[]), c.config)
     setResult(a, res)
