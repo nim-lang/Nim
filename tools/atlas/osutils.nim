@@ -3,14 +3,6 @@
 
 import os, strutils, osproc
 
-template withDir*(dir, body) =
-  let oldDir = getCurrentDir()
-  try:
-    setCurrentDir(dir)
-    body
-  finally:
-    setCurrentDir(oldDir)
-
 proc isUrl*(x: string): bool =
   x.startsWith("git://") or x.startsWith("https://") or x.startsWith("http://")
 
@@ -25,7 +17,7 @@ proc cloneUrl*(url, dest: string; cloneUsingHttps: bool): string =
   # github + https + trailing url slash causes a
   # checkout/ls-remote to fail with Repository not found
   var isGithub = false
-  if modUrl.contains("github.com") and modUrl.endswith("/"):
+  if modUrl.contains("github.com") and modUrl.endsWith("/"):
     modUrl = modUrl[0 .. ^2]
     isGithub = true
 

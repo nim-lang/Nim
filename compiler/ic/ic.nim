@@ -10,9 +10,12 @@
 import hashes, tables, intsets, std/sha1
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
-  pathutils, condsyms]
+  pathutils, condsyms, packages, modulepaths]
 #import ".." / [renderer, astalgo]
 from os import removeFile, isAbsolute
+
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
 
 type
   PackedConfig* = object
@@ -94,10 +97,10 @@ proc toString*(tree: PackedTree; n: NodePos; m: PackedModule; nesting: int;
     result.addInt m.numbers[LitId tree.nodes[pos].operand]
   of externUIntLit:
     result.add " "
-    result.add $cast[uint64](m.numbers[LitId tree.nodes[pos].operand])
+    result.addInt cast[uint64](m.numbers[LitId tree.nodes[pos].operand])
   of nkFloatLit..nkFloat128Lit:
     result.add " "
-    result.add $cast[BiggestFloat](m.numbers[LitId tree.nodes[pos].operand])
+    result.addFloat cast[BiggestFloat](m.numbers[LitId tree.nodes[pos].operand])
   else:
     result.add "(\n"
     for i in 1..(nesting+1)*2: result.add ' '
@@ -548,6 +551,10 @@ proc loadError(err: RodFileError; filename: AbsoluteFile; config: ConfigRef;) =
     rawMessage(config, warnCannotOpenFile, filename.string & " reason: " & $err)
     #echo "Error: ", $err, " loading file: ", filename.string
 
+proc toRodFile*(conf: ConfigRef; f: AbsoluteFile; ext = RodExt): AbsoluteFile =
+  result = changeFileExt(completeGeneratedFilePath(conf,
+    mangleModuleName(conf, f).AbsoluteFile), ext)
+
 proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef;
                   ignoreConfig = false): RodFileError =
   var f = rodfiles.open(filename.string)
@@ -927,17 +934,6 @@ proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t
       result = g[si].types[t.item]
     assert result.itemId.item > 0
 
-proc newPackage(config: ConfigRef; cache: IdentCache; fileIdx: FileIndex): PSym =
-  let filename = AbsoluteFile toFullPath(config, fileIdx)
-  let name = getIdent(cache, splitFile(filename).name)
-  let info = newLineInfo(fileIdx, 1, 1)
-  let
-    pck = getPackageName(config, filename.string)
-    pck2 = if pck.len > 0: pck else: "unknown"
-    pack = getIdent(cache, pck2)
-  result = newSym(skPackage, getIdent(cache, pck2),
-    ItemId(module: PackageModuleId, item: int32(fileIdx)), nil, info)
-
 proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =
   m.iface = initTable[PIdent, seq[PackedItemId]]()
@@ -965,7 +961,7 @@ proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
                   name: getIdent(cache, splitFile(filename).name),
                   info: newLineInfo(fileIdx, 1, 1),
                   position: int(fileIdx))
-  m.module.owner = newPackage(conf, cache, fileIdx)
+  m.module.owner = getPackage(conf, cache, fileIdx)
   m.module.flags = m.fromDisk.moduleFlags
 
 proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;

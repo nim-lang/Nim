@@ -32,6 +32,9 @@
 import ast, intsets, lineinfos, renderer
 import std/private/asciitables
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   InstrKind* = enum
     goto, fork, def, use
@@ -308,6 +311,11 @@ when true:
     # We unroll every loop 3 times. We emulate 0, 1, 2 iterations
     # through the loop. We need to prove this is correct for our
     # purposes. But Herb Sutter claims it is. (Proof by authority.)
+    #
+    # EDIT: Actually, we only need to unroll 2 times
+    # because Nim doesn't have a way of breaking/goto-ing into
+    # a loop iteration. Unrolling 2 times is much better for compile
+    # times of nested loops than 3 times, so we do that here.
     #[
     while cond:
       body
@@ -347,12 +355,12 @@ when true:
       # 'while true' is an idiom in Nim and so we produce
       # better code for it:
       withBlock(nil):
-        for i in 0..2:
+        for i in 0..1:
           c.gen(n[1])
     else:
       withBlock(nil):
-        var endings: array[3, TPosition]
-        for i in 0..2:
+        var endings: array[2, TPosition]
+        for i in 0..1:
           c.gen(n[0])
           endings[i] = c.forkI(n)
           c.gen(n[1])
@@ -600,11 +608,11 @@ proc aliases*(obj, field: PNode): AliasKind =
     var n = n
     while true:
       case n.kind
-      of PathKinds0 - {nkDotExpr, nkCheckedFieldExpr, nkBracketExpr}:
+      of PathKinds0 - {nkDotExpr, nkBracketExpr}:
         n = n[0]
       of PathKinds1:
         n = n[1]
-      of nkDotExpr, nkCheckedFieldExpr, nkBracketExpr:
+      of nkDotExpr, nkBracketExpr:
         result.add n
         n = n[0]
       of nkSym:
@@ -637,8 +645,6 @@ proc aliases*(obj, field: PNode): AliasKind =
       if currFieldPath.sym != currObjPath.sym: return no
     of nkDotExpr:
       if currFieldPath[1].sym != currObjPath[1].sym: return no
-    of nkCheckedFieldExpr:
-      if currFieldPath[0][1].sym != currObjPath[0][1].sym: return no
     of nkBracketExpr:
       if currFieldPath[1].kind in nkLiterals and currObjPath[1].kind in nkLiterals:
         if currFieldPath[1].intVal != currObjPath[1].intVal:
@@ -769,6 +775,12 @@ proc gen(c: var Con; n: PNode) =
   of nkCharLit..nkNilLit: discard
   of nkAsgn, nkFastAsgn:
     gen(c, n[1])
+
+    if n[0].kind in PathKinds0:
+      let a = c.skipTrivials(n[0])
+      if a.kind in nkCallKinds:
+        gen(c, a)
+
     # watch out: 'obj[i].f2 = value' sets 'f2' but
     # "uses" 'i'. But we are only talking about builtin array indexing so
     # it doesn't matter and 'x = 34' is NOT a usage of 'x'.

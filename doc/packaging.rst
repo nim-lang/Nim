@@ -6,6 +6,9 @@ This page provide hints on distributing Nim using OS packages.
 
 See `distros <distros.html>`_ for tools to detect Linux distribution at runtime.
 
+See `here <intern.html#bootstrapping-the-compiler-reproducible-builds>`_ for how to
+compile reproducible builds.
+
 Supported architectures
 -----------------------
 
@@ -71,3 +74,4 @@ What to install:
 - Optionally: manpages, documentation, shell completion
 - When installing documentation, .idx files are not required
 - The "compiler" directory contains compiler sources and should not be part of the compiler binary package
+

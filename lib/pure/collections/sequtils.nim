@@ -84,6 +84,15 @@ import std/private/since
 
 import macros
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
+when defined(nimHasEffectsOf):
+  {.experimental: "strictEffects".}
+else:
+  {.pragma: effectsOf.}
+
 macro evalOnceAs(expAlias, exp: untyped,
                  letAssigneable: static[bool]): untyped =
   ## Injects `expAlias` in caller scope, to avoid bugs involving multiple
@@ -164,7 +173,7 @@ func cycle*[T](s: openArray[T], n: Natural): seq[T] =
       result[o] = e
       inc o
 
-func repeat*[T](x: T, n: Natural): seq[T] =
+proc repeat*[T](x: T, n: Natural): seq[T] =
   ## Returns a new sequence with the item `x` repeated `n` times.
   ## `n` must be a non-negative number (zero or more).
   ##
@@ -241,7 +250,7 @@ func maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
 
 
 template zipImpl(s1, s2, retType: untyped): untyped =
-  func zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
+  proc zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
     ## Returns a new sequence with a combination of the two input containers.
     ##
     ## The input containers can be of different types.
@@ -284,7 +293,7 @@ when (NimMajor, NimMinor) <= (1, 0):
 else:
   zipImpl(s1, s2, seq[(S, T)])
 
-func unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
+proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
   ## Returns a tuple of two sequences split out from a sequence of 2-field tuples.
   runnableExamples:
     let
@@ -356,7 +365,7 @@ func distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
       first = last
 
 proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
-                                                            seq[S]{.inline.} =
+                                                            seq[S] {.inline, effectsOf: op.} =
   ## Returns a new sequence with the results of the `op` proc applied to every
   ## item in the container `s`.
   ##
@@ -382,7 +391,7 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
     result[i] = op(s[i])
 
 proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
-                                                              {.inline.} =
+                                                              {.inline, effectsOf: op.} =
   ## Applies `op` to every item in `s`, modifying it directly.
   ##
   ## Note that the container `s` must be declared as a `var`,
@@ -401,7 +410,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
   for i in 0 ..< s.len: op(s[i])
 
 proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
-                                                              {.inline.} =
+                                                              {.inline, effectsOf: op.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
   ## Note that the container `s` must be declared as a `var`
@@ -420,7 +429,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
 
   for i in 0 ..< s.len: s[i] = op(s[i])
 
-proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1, 3).} =
+proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1, 3), effectsOf: op.} =
   ## Same as `apply` but for a proc that does not return anything
   ## and does not mutate `s` directly.
   runnableExamples:
@@ -429,7 +438,7 @@ proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1
     assert message == "01234"
   for i in 0 ..< s.len: op(s[i])
 
-iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
+iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T {.effectsOf: pred.} =
   ## Iterates through a container `s` and yields every item that fulfills the
   ## predicate `pred` (a function that returns a `bool`).
   ##
@@ -453,7 +462,7 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
       yield s[i]
 
 proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
-                                                                  {.inline.} =
+                                                                  {.inline, effectsOf: pred.} =
   ## Returns a new sequence with all the items of `s` that fulfill the
   ## predicate `pred` (a function that returns a `bool`).
   ##
@@ -480,7 +489,7 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
       result.add(s[i])
 
 proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
-                                                                {.inline.} =
+                                                                {.inline, effectsOf: pred.} =
   ## Keeps the items in the passed sequence `s` if they fulfill the
   ## predicate `pred` (a function that returns a `bool`).
   ##
@@ -685,7 +694,7 @@ since (1, 1):
       if pred: result += 1
     result
 
-proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool {.effectsOf: pred.} =
   ## Iterates through a container and checks if every item fulfills the
   ## predicate.
   ##
@@ -727,7 +736,7 @@ template allIt*(s, pred: untyped): bool =
       break
   result
 
-proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool {.effectsOf: pred.} =
   ## Iterates through a container and checks if at least one item
   ## fulfills the predicate.
   ##
@@ -905,7 +914,7 @@ template foldl*(sequence, operation, first): untyped =
   ##
   ## The `operation` parameter should be an expression which uses the variables
   ## `a` and `b` for each step of the fold. The `first` parameter is the
-  ## start value (the first `a`) and therefor defines the type of the result.
+  ## start value (the first `a`) and therefore defines the type of the result.
   ##
   ## **See also:**
   ## * `foldr template<#foldr.t,untyped,untyped>`_

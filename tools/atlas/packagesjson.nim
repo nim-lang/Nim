@@ -1,6 +1,5 @@
 
 import std / [json, os, sets, strutils]
-import osutils
 
 type
   Package* = ref object
@@ -70,7 +69,6 @@ proc search*(pkgList: seq[Package]; terms: seq[string]) =
   var found = false
   template onFound =
     echo pkg
-    echo("")
     found = true
     break forPackage
 
@@ -88,7 +86,6 @@ proc search*(pkgList: seq[Package]; terms: seq[string]) =
               onFound()
     else:
       echo(pkg)
-      echo(" ")
 
   if not found and terms.len > 0:
     echo("No package found.")

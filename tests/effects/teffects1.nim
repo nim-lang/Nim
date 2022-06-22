@@ -6,7 +6,7 @@ teffects1.nim(22, 29) Hint: 'lier' cannot raise 'IO2Error' [XCannotRaiseY]
 teffects1.nim(38, 21) Error: type mismatch: got <proc (x: int): string{.noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
 .raise effects differ'''
 """
-
+{.push warningAsError[Effect]: on.}
 type
   TObj {.pure, inheritable.} = object
   TObjB = object of TObj
@@ -40,4 +40,5 @@ var p: MyProcType = foo #[tt.Error
 type mismatch: got <proc (x: int): string{.noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
 
 ]#
+{.pop.}
 {.pop.}

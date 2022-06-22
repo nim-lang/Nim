@@ -17,6 +17,9 @@ when defined(nimHasUsed):
 import
   lexer, options, idents, strutils, ast, msgs, lineinfos
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
@@ -162,6 +165,7 @@ proc putNL(g: var TSrcGen) =
 proc optNL(g: var TSrcGen, indent: int) =
   g.pendingNL = indent
   g.lineLen = indent
+  g.col = g.indent
   when defined(nimpretty): g.pendingNewlineCount = 0
 
 proc optNL(g: var TSrcGen) =
@@ -170,6 +174,7 @@ proc optNL(g: var TSrcGen) =
 proc optNL(g: var TSrcGen; a, b: PNode) =
   g.pendingNL = g.indent
   g.lineLen = g.indent
+  g.col = g.indent
   when defined(nimpretty): g.pendingNewlineCount = lineDiff(a, b)
 
 proc indentNL(g: var TSrcGen) =
@@ -410,7 +415,7 @@ proc atom(g: TSrcGen; n: PNode): string =
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s
     else: result = "[type node]"
   else:
-    internalError(g.config, "rnimsyn.atom " & $n.kind)
+    internalError(g.config, "renderer.atom " & $n.kind)
     result = ""
 
 proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
@@ -593,8 +598,8 @@ proc isHideable(config: ConfigRef, n: PNode): bool =
   # xxx compare `ident` directly with `getIdent(cache, wRaises)`, but
   # this requires a `cache`.
   case n.kind
-  of nkExprColonExpr: result = n[0].kind == nkIdent and n[0].ident.s in ["raises", "tags", "extern"]
-  of nkIdent: result = n.ident.s in ["gcsafe"]
+  of nkExprColonExpr: result = n[0].kind == nkIdent and n[0].ident.s in ["raises", "tags", "extern", "deprecated"]
+  of nkIdent: result = n.ident.s in ["gcsafe", "deprecated"]
   else: result = false
 
 proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
@@ -1699,7 +1704,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     gsub(g, n[0], c)
   else:
     #nkNone, nkExplicitTypeListCall:
-    internalError(g.config, n.info, "rnimsyn.gsub(" & $n.kind & ')')
+    internalError(g.config, n.info, "renderer.gsub(" & $n.kind & ')')
 
 proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
   if n == nil: return "<nil tree>"
@@ -1758,15 +1763,3 @@ proc getTokSym*(r: TSrcGen): PSym =
     result = r.tokens[r.idx-1].sym
   else:
     result = nil
-
-proc quoteExpr*(a: string): string {.inline.} =
-  ## can be used for quoting expressions in error msgs.
-  "'" & a & "'"
-
-proc genFieldDefect*(field: PSym, disc: PSym): string =
-  ## this needs to be in a module accessible by jsgen, ccgexprs, and vm to
-  ## provide this error msg FieldDefect; msgs would be better but it does not
-  ## import ast
-  result = field.name.s.quoteExpr & " is not accessible using discriminant " &
-    disc.name.s.quoteExpr & " of type " &
-    disc.owner.name.s.quoteExpr

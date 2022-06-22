@@ -17,6 +17,9 @@ when defined(nimHasStyleChecks):
 
 {.passc: "-DWIN32_LEAN_AND_MEAN".}
 
+when defined(nimPreviewSlimSystem):
+  from std/syncio import FileHandle
+
 const
   useWinUnicode* = not defined(useWinAnsi)
 
@@ -478,7 +481,7 @@ type
 
   PSockAddr = ptr SockAddr
 
-  InAddr* {.importc: "IN_ADDR", header: "winsock2.h".} = object
+  InAddr* {.importc: "IN_ADDR", header: "winsock2.h", union.} = object
     s_addr*: uint32  # IP address
 
   Sockaddr_in* {.importc: "SOCKADDR_IN",
@@ -667,7 +670,7 @@ proc getaddrinfo*(nodename, servname: cstring, hints: ptr AddrInfo,
                   res: var ptr AddrInfo): cint {.
   stdcall, importc: "getaddrinfo", dynlib: ws2dll.}
 
-proc freeaddrinfo*(ai: ptr AddrInfo) {.
+proc freeAddrInfo*(ai: ptr AddrInfo) {.
   stdcall, importc: "freeaddrinfo", dynlib: ws2dll.}
 
 proc inet_ntoa*(i: InAddr): cstring {.
@@ -1143,7 +1146,7 @@ proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
 type
   # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid_identifier_authority
   SID_IDENTIFIER_AUTHORITY* {.importc, header: "<windows.h>".} = object
-    value* {.importc: "Value"}: array[6, BYTE]
+    value* {.importc: "Value".}: array[6, BYTE]
   # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid
   SID* {.importc, header: "<windows.h>".} = object
     Revision: BYTE

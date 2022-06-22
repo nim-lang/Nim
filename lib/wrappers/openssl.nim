@@ -93,6 +93,9 @@ else:
 
 import dynlib
 
+{.pragma: lcrypto, cdecl, dynlib: DLLUtilName, importc.}
+{.pragma: lssl, cdecl, dynlib: DLLSSLName, importc.}
+
 type
   SslStruct {.final, pure.} = object
   SslPtr* = ptr SslStruct
@@ -102,7 +105,6 @@ type
   PSTACK* = SslPtr
   PX509* = SslPtr
   PX509_NAME* = SslPtr
-  PEVP_MD* = SslPtr
   PBIO_METHOD* = SslPtr
   BIO* = SslPtr
   EVP_PKEY* = SslPtr
@@ -684,48 +686,48 @@ proc RSA_free*(rsa: PRSA) {.cdecl, dynlib: DLLUtilName, importc.}
 proc RSA_size*(rsa: PRSA): cint {.cdecl, dynlib: DLLUtilName, importc.}
 
 # sha types
-proc EVP_md_null*(): EVP_MD   {.cdecl, importc.}
-proc EVP_md2*(): EVP_MD       {.cdecl, importc.}
-proc EVP_md4*(): EVP_MD       {.cdecl, importc.}
-proc EVP_md5*(): EVP_MD       {.cdecl, importc.}
-proc EVP_sha*(): EVP_MD       {.cdecl, importc.}
-proc EVP_sha1*(): EVP_MD      {.cdecl, importc.}
-proc EVP_dss*(): EVP_MD       {.cdecl, importc.}
-proc EVP_dss1*(): EVP_MD      {.cdecl, importc.}
-proc EVP_ecdsa*(): EVP_MD     {.cdecl, importc.}
-proc EVP_sha224*(): EVP_MD    {.cdecl, importc.}
-proc EVP_sha256*(): EVP_MD    {.cdecl, importc.}
-proc EVP_sha384*(): EVP_MD    {.cdecl, importc.}
-proc EVP_sha512*(): EVP_MD    {.cdecl, importc.}
-proc EVP_mdc2*(): EVP_MD      {.cdecl, importc.}
-proc EVP_ripemd160*(): EVP_MD {.cdecl, importc.}
-proc EVP_whirlpool*(): EVP_MD {.cdecl, importc.}
-proc EVP_MD_size*(md: EVP_MD): cint {.cdecl, importc.}
+proc EVP_md_null*(): EVP_MD   {.lcrypto.}
+proc EVP_md2*(): EVP_MD       {.lcrypto.}
+proc EVP_md4*(): EVP_MD       {.lcrypto.}
+proc EVP_md5*(): EVP_MD       {.lcrypto.}
+proc EVP_sha*(): EVP_MD       {.lcrypto.}
+proc EVP_sha1*(): EVP_MD      {.lcrypto.}
+proc EVP_dss*(): EVP_MD       {.lcrypto.}
+proc EVP_dss1*(): EVP_MD      {.lcrypto.}
+proc EVP_ecdsa*(): EVP_MD     {.lcrypto.}
+proc EVP_sha224*(): EVP_MD    {.lcrypto.}
+proc EVP_sha256*(): EVP_MD    {.lcrypto.}
+proc EVP_sha384*(): EVP_MD    {.lcrypto.}
+proc EVP_sha512*(): EVP_MD    {.lcrypto.}
+proc EVP_mdc2*(): EVP_MD      {.lcrypto.}
+proc EVP_ripemd160*(): EVP_MD {.lcrypto.}
+proc EVP_whirlpool*(): EVP_MD {.lcrypto.}
+proc EVP_MD_size*(md: EVP_MD): cint {.lcrypto.}
 
 # hmac functions
-proc HMAC*(evp_md: EVP_MD; key: pointer; key_len: cint; d: cstring; n: csize_t; md: cstring; md_len: ptr cuint): cstring {.cdecl, importc.}
+proc HMAC*(evp_md: EVP_MD; key: pointer; key_len: cint; d: cstring; n: csize_t; md: cstring; md_len: ptr cuint): cstring {.lcrypto.}
 
 # RSA key functions
-proc PEM_read_bio_PrivateKey*(bp: BIO, x: ptr EVP_PKEY, cb: pointer, u: pointer): EVP_PKEY {.cdecl, importc.}
-proc EVP_PKEY_free*(p: EVP_PKEY)  {.cdecl, importc.}
-proc EVP_DigestSignInit*(ctx: EVP_MD_CTX, pctx: ptr EVP_PKEY_CTX, typ: EVP_MD, e: ENGINE, pkey: EVP_PKEY): cint {.cdecl, importc.}
-proc EVP_DigestInit_ex*(ctx: EVP_MD_CTX, typ: PEVP_MD, engine: SslPtr = nil): cint {.cdecl, importc.}
-proc EVP_DigestUpdate*(ctx: EVP_MD_CTX, data: pointer, len: cuint): cint {.cdecl, importc.}
-proc EVP_DigestFinal_ex*(ctx: EVP_MD_CTX, buffer: pointer, size: ptr cuint): cint {.cdecl, importc.}
-proc EVP_DigestSignFinal*(ctx: EVP_MD_CTX, data: pointer, len: ptr csize_t): cint {.cdecl, importc.}
-proc EVP_PKEY_CTX_new*(pkey: EVP_PKEY, e: ENGINE): EVP_PKEY_CTX {.cdecl, importc.}
-proc EVP_PKEY_CTX_free*(pkeyCtx: EVP_PKEY_CTX) {.cdecl, importc.}
-proc EVP_PKEY_sign_init*(c: EVP_PKEY_CTX): cint {.cdecl, importc.}
+proc PEM_read_bio_PrivateKey*(bp: BIO, x: ptr EVP_PKEY, cb: pointer, u: pointer): EVP_PKEY {.lcrypto.}
+proc EVP_PKEY_free*(p: EVP_PKEY)  {.lcrypto.}
+proc EVP_DigestSignInit*(ctx: EVP_MD_CTX, pctx: ptr EVP_PKEY_CTX, typ: EVP_MD, e: ENGINE, pkey: EVP_PKEY): cint {.lcrypto.}
+proc EVP_DigestInit_ex*(ctx: EVP_MD_CTX, typ: EVP_MD, engine: SslPtr = nil): cint {.lcrypto.}
+proc EVP_DigestUpdate*(ctx: EVP_MD_CTX, data: pointer, len: cuint): cint {.lcrypto.}
+proc EVP_DigestFinal_ex*(ctx: EVP_MD_CTX, buffer: pointer, size: ptr cuint): cint {.lcrypto.}
+proc EVP_DigestSignFinal*(ctx: EVP_MD_CTX, data: pointer, len: ptr csize_t): cint {.lcrypto.}
+proc EVP_PKEY_CTX_new*(pkey: EVP_PKEY, e: ENGINE): EVP_PKEY_CTX {.lcrypto.}
+proc EVP_PKEY_CTX_free*(pkeyCtx: EVP_PKEY_CTX) {.lcrypto.}
+proc EVP_PKEY_sign_init*(c: EVP_PKEY_CTX): cint {.lcrypto.}
 
 when defined(macosx) or defined(windows):
-  proc EVP_MD_CTX_create*(): EVP_MD_CTX {.cdecl, importc.}
-  proc EVP_MD_CTX_destroy*(ctx: EVP_MD_CTX) {.cdecl, importc.}
-  proc EVP_MD_CTX_cleanup*(ctx: EVP_MD_CTX): cint {.cdecl, importc.}
+  proc EVP_MD_CTX_create*(): EVP_MD_CTX {.lcrypto.}
+  proc EVP_MD_CTX_destroy*(ctx: EVP_MD_CTX) {.lcrypto.}
+  proc EVP_MD_CTX_cleanup*(ctx: EVP_MD_CTX): cint {.lcrypto.}
 else:
   # some times you will need this instead:
-  proc EVP_MD_CTX_create*(): EVP_MD_CTX {.cdecl, importc: "EVP_MD_CTX_new".}
-  proc EVP_MD_CTX_destroy*(ctx: EVP_MD_CTX) {.cdecl, importc: "EVP_MD_CTX_free".}
-  proc EVP_MD_CTX_cleanup*(ctx: EVP_MD_CTX): cint {.cdecl, importc: "EVP_MD_CTX_cleanup".}
+  proc EVP_MD_CTX_create*(): EVP_MD_CTX {.cdecl, importc: "EVP_MD_CTX_new", dynlib: DLLUtilName.}
+  proc EVP_MD_CTX_destroy*(ctx: EVP_MD_CTX) {.cdecl, importc: "EVP_MD_CTX_free", dynlib: DLLUtilName.}
+  proc EVP_MD_CTX_cleanup*(ctx: EVP_MD_CTX): cint {.cdecl, importc: "EVP_MD_CTX_cleanup", dynlib: DLLUtilName.}
 
 # <openssl/md5.h>
 type
@@ -847,3 +849,17 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
     let cert = d2i_X509(certbytes)
     let encoded = cert.i2d_X509()
     assert encoded == certbytes
+
+# Application Layer Protocol Negociation extension (TLS-ALPN, RFC7301)
+# Available in at least OpenSSL 1.1.1 and later, not sure if earlier
+# --Iced Quinn
+
+proc SSL_CTX_set_alpn_protos*(ctx: SslCtx; protos: cstring; protos_len: cuint): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_set_alpn_protos*(ssl: SslPtr; protos: cstring; protos_len: cuint): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_alpn_select_cb*(ctx: SslCtx; cb: proc(ssl: SslPtr; out_proto: ptr cstring; outlen: cstring; in_proto: cstring; inlen: cuint; arg: pointer): cint {.cdecl.}; arg: pointer): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get0_alpn_selected*(ssl: SslPtr; data: ptr cstring; len: ptr cuint) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_next_protos_advertised_cb*(ctx: SslCtx; cb: proc(ssl: SslPtr; out_proto: ptr cstring; outlen: ptr cuint; arg: pointer): cint {.cdecl.}; arg: pointer) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_next_proto_select_cb*(ctx: SslCtx; cb: proc(s: SslPtr; out_proto: cstring; outlen: cstring; in_proto: cstring; inlen: cuint; arg: pointer): cint {.cdecl.}; arg: pointer) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_select_next_proto*(out_proto: ptr cstring; outlen: cstring; server: cstring; server_len: cuint; client: cstring; client_len: cuint): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get0_next_proto_negotiated*(s: SslPtr; data: ptr cstring; len: ptr cuint) {.cdecl, dynlib: DLLSSLName, importc.}
+

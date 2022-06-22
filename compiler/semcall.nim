@@ -152,6 +152,8 @@ proc effectProblem(f, a: PType; result: var string; c: PContext) =
       of efLockLevelsDiffer:
         result.add "\n  The `.locks` requirements differ. Annotate the " &
             "proc with {.locks: 0.} to get extended error information."
+      of efEffectsDelayed:
+        result.add "\n  The `.effectsOf` annotations differ."
       when defined(drnim):
         if not c.graph.compatibleProps(c.graph, f, a):
           result.add "\n  The `.requires` or `.ensures` properties are incompatible."
@@ -280,7 +282,7 @@ const
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
-  # as semOverlodedCall is already pretty slow (and we need this information
+  # as semOverloadedCall is already pretty slow (and we need this information
   # only in case of an error).
   if c.config.m.errorOutputs == {}:
     # fail fast:
@@ -701,7 +703,16 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1..<fn.typ.n.len:
     let param = fn.typ.n[i]
-    let t = skipTypes(param.typ, abstractVar-{tyTypeDesc, tyDistinct})
+    const desiredTypes = abstractVar + {tyCompositeTypeClass} - {tyTypeDesc, tyDistinct}
+    #[.
+      # We only want the type not any modifiers such as `ptr`, `var`, `ref` ...
+      # tyCompositeTypeClass is here for
+      # when using something like:
+      type Foo[T] = distinct int
+      proc `$`(f: Foo): string {.borrow.}
+      # We want to skip the `Foo` to get `int`
+    ]#
+    let t = skipTypes(param.typ, desiredTypes)
     if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
     var x: PType
     if param.typ.kind == tyVar:

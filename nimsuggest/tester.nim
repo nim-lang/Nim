@@ -6,6 +6,7 @@
 # `nim r nimsuggest/tester.nim nimsuggest/tests/tsug_accquote.nim`
 
 import os, osproc, strutils, streams, re, sexp, net
+from sequtils import toSeq
 
 type
   Test = object
@@ -23,7 +24,7 @@ import std/compilesettings
 
 proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
-  let nimsug = "bin" / addFileExt("nimsuggest", ExeExt)
+  let nimsug = "bin" / addFileExt("nimsuggest_testing", ExeExt)
   doAssert nimsug.fileExists, nimsug
   const libpath = querySetting(libPath)
   result.filename = filename
@@ -251,7 +252,10 @@ proc runEpcTest(filename: string): int =
   for cmd in s.startup:
     if not runCmd(cmd, s.dest):
       quit "invalid command: " & cmd
-  let epccmd = s.cmd.replace("--tester", "--epc --v2 --log")
+  let epccmd = if s.cmd.contains("--v3"):
+    s.cmd.replace("--tester", "--epc --log")
+  else:
+    s.cmd.replace("--tester", "--epc --v2 --log")
   let cl = parseCmdLine(epccmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
@@ -272,6 +276,7 @@ proc runEpcTest(filename: string): int =
       let a = outp.readAll().strip()
     let port = parseInt(a)
     socket.connect("localhost", Port(port))
+
     for req, resp in items(s.script):
       if not runCmd(req, s.dest):
         socket.sendEpcStr(req)
@@ -279,8 +284,12 @@ proc runEpcTest(filename: string): int =
         if not req.startsWith("mod "):
           let answer = sexpToAnswer(sx)
           doReport(filename, answer, resp, report)
-  finally:
+
     socket.sendEpcStr "return arg"
+      # bugfix: this was in `finally` block, causing the original error to be
+      # potentially masked by another one in case `socket.sendEpcStr` raises
+      # (e.g. if socket couldn't connect in the 1st place)
+  finally:
     close(p)
   if report.len > 0:
     echo "==== EPC ========================================"
@@ -336,8 +345,9 @@ proc main() =
     failures += runTest(xx)
     failures += runEpcTest(xx)
   else:
-    for x in walkFiles(tpath / "t*.nim"):
-      echo "Test ", x
+    let files = toSeq(walkFiles(tpath / "t*.nim"))
+    for i, x in files:
+      echo "$#/$# test: $#" % [$i, $files.len, x]
       when defined(i386):
         if x == "nimsuggest/tests/tmacro_highlight.nim":
           echo "skipping" # workaround bug #17945

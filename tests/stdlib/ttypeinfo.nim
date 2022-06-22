@@ -50,7 +50,7 @@ doAssert($x4[].kind() == "akString")
 
 block:
   # gimme a new scope dammit
-  var myarr: array[0..4, array[0..4, string]] = [
+  var myArr: array[0..4, array[0..4, string]] = [
     ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
     ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
     ["test", "1", "2", "3", "4"]]

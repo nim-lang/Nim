@@ -15,6 +15,9 @@ import
   magicsys, idents, lexer, options, parampatterns, strutils, trees,
   linter, lineinfos, lowerings, modulegraphs, concepts
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   MismatchKind* = enum
     kUnknown, kAlreadyGiven, kUnknownNamedParam, kTypeMismatch, kVarNeeded,
@@ -595,8 +598,7 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     # if f is metatype.
     result = typeRel(c, f, a)
 
-  #               v--- is this correct?
-  if result <= isIntConv or inconsistentVarTypes(f, a):
+  if result <= isSubrange or inconsistentVarTypes(f, a):
     result = isNone
 
   #if result == isEqual:
@@ -625,7 +627,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         return isNone
     elif a[0] != nil:
       return isNone
-    
+
     result = getProcConvMismatch(c.c.config, f, a, result)[1]
 
     when useEffectSystem:
@@ -1635,6 +1637,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           bindConcreteTypeToUserTypeClass(matched, a)
           if doBind: put(c, f, matched)
           result = isGeneric
+        elif a.len > 0 and a.lastSon == f:
+          # Needed for checking `Y` == `Addable` in the following
+          #[
+            type 
+              Addable = concept a, type A
+                a + a is A
+              MyType[T: Addable; Y: static T] = object
+          ]#
+          result = isGeneric
         else:
           result = isNone
 
@@ -1680,7 +1691,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             var aa = a
             while aa.kind in {tyTypeDesc, tyGenericParam} and aa.len > 0:
               aa = lastSon(aa)
-            if aa.kind == tyGenericParam:
+            if aa.kind in {tyGenericParam} + tyTypeClasses:
+              # If the constraint is a genericParam or typeClass this isGeneric
               return isGeneric
             result = typeRel(c, f.base, aa, flags)
             if result > isGeneric: result = isGeneric
@@ -1740,11 +1752,22 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
       if aOrig.kind == tyStatic:
-        if f.base.kind != tyNone:
+        if f.base.kind notin {tyNone, tyGenericParam}:
           result = typeRel(c, f.base, a, flags)
           if result != isNone and f.n != nil:
             if not exprStructuralEquivalent(f.n, aOrig.n):
               result = isNone
+        elif f.base.kind == tyGenericParam:
+          # Handling things like `type A[T; Y: static T] = object`
+          if f.base.len > 0: # There is a constraint, handle it
+            result = typeRel(c, f.base.lastSon, a, flags)
+          else:
+            # No constraint
+            if tfGenericTypeParam in f.flags:
+              result = isGeneric
+            else:
+              # for things like `proc fun[T](a: static[T])`
+              result = typeRel(c, f.base, a, flags)
         else:
           result = isGeneric
         if result != isNone: put(c, f, aOrig)
@@ -1880,6 +1903,16 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   result.add c.graph.emptyNode
   result.add arg
 
+proc isLValue(c: PContext; n: PNode): bool {.inline.} =
+  let aa = isAssignable(nil, n)
+  case aa
+  of arLValue, arLocalLValue, arStrange:
+    result = true
+  of arDiscriminant:
+    result = c.inUncheckedAssignSection > 0
+  else:
+    result = false
+
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                    arg: PNode): PNode =
   result = nil
@@ -1896,7 +1929,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     let constraint = c.converters[i].typ.n[1].sym.constraint
     if not constraint.isNil and not matchNodeKinds(constraint, arg):
       continue
-    if src.kind in {tyVar, tyLent} and not arg.isLValue:
+    if src.kind in {tyVar, tyLent} and not isLValue(c, arg):
       continue
 
     let destIsGeneric = containsGenericType(dest)
@@ -1984,7 +2017,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     arg = argSemantized
     a = a
     c = m.c
-
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
@@ -2197,7 +2229,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     var best = -1
     for i in 0..<arg.len:
       if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
-                                  skIterator, skMacro, skTemplate}:
+                             skIterator, skMacro, skTemplate, skEnumField}:
         copyCandidate(z, m)
         z.callee = arg[i].typ
         if tfUnresolved in z.callee.flags: continue
@@ -2272,6 +2304,8 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
   else:
     result = a
     considerGenSyms(c, result)
+    if result.kind != nkHiddenDeref and result.typ.kind in {tyVar, tyLent} and c.matchedConcept == nil:
+      result = newDeref(result)
 
 proc prepareOperand(c: PContext; a: PNode): PNode =
   if a.typ.isNil:
@@ -2303,6 +2337,17 @@ proc incrIndexType(t: PType) =
 template isVarargsUntyped(x): untyped =
   x.kind == tyVarargs and x[0].kind == tyUntyped
 
+proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
+  # see https://github.com/nim-lang/RFCs/issues/405
+  result = int.high
+  for a2 in countdown(n.len-1, 0):
+    # checking `nfBlockArg in n[a2].flags` wouldn't work inside templates
+    if n[a2].kind != nkStmtList: break
+    let formalLast = m.callee.n[m.callee.n.len - (n.len - a2)]
+    if formalLast.kind == nkSym and formalLast.sym.ast == nil:
+      result = a2
+    else: break
+
 proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
 
   template noMatch() =
@@ -2326,7 +2371,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         if argConverter.typ.kind notin {tyVar}:
           m.firstMismatch.kind = kVarNeeded
           noMatch()
-      elif not n.isLValue:
+      elif not isLValue(c, n):
         m.firstMismatch.kind = kVarNeeded
         noMatch()
 
@@ -2343,7 +2388,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     formalLen = m.callee.n.len
     formal = if formalLen > 1: m.callee.n[1].sym else: nil # current routine parameter
     container: PNode = nil # constructed container
-
+  let firstArgBlock = findFirstArgBlock(m, n)
   while a < n.len:
     c.openShadowScope
 
@@ -2439,6 +2484,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         if m.callee.n[f].kind != nkSym:
           internalError(c.config, n[a].info, "matches")
           noMatch()
+        if flexibleOptionalParams in c.features and a >= firstArgBlock:
+          f = max(f, m.callee.n.len - (n.len - a))
         formal = m.callee.n[f].sym
         m.firstMismatch.kind = kTypeMismatch
         if containsOrIncl(marker, formal.position) and container.isNil:

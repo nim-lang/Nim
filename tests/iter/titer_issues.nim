@@ -135,7 +135,7 @@ block t3837_chained:
 
 
 block t3221_complex:
-  iterator permutations[T](ys: openarray[T]): seq[T] =
+  iterator permutations[T](ys: openArray[T]): seq[T] =
     var
       d = 1
       c = newSeq[int](ys.len)
@@ -228,7 +228,7 @@ block t2023_objiter:
 
 block:
   # bug #13739
-  iterator myIter(arg: openarray[int]): int =
+  iterator myIter(arg: openArray[int]): int =
     var tmp = 0
     let len = arg.len
     while tmp < len:
@@ -251,3 +251,26 @@ block:
 
   for x in ff(@[1, 2], @[1, 2, 3]):
     echo x
+
+
+# bug #19575
+
+iterator bb() {.closure.} =
+    while true:
+        try: discard
+        except: break
+        finally: break
+
+var a = bb
+
+iterator cc() {.closure.} =
+    while true:
+        try: discard
+        except:
+          if true:
+            break
+        finally:
+          if true:
+            break
+
+var a2 = cc

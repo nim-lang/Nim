@@ -64,7 +64,7 @@ proc validJsName(name: string): bool =
     if chr notin {'A'..'Z','a'..'z','_','$','0'..'9'}:
       return false
 
-template mangleJsName(name: cstring): cstring =
+template mangleJsName(name: string): string =
   inc nameCounter
   "mangledName" & $nameCounter
 
@@ -163,28 +163,28 @@ macro jsFromAst*(n: untyped): untyped =
 proc `&`*(a, b: cstring): cstring {.importjs: "(# + #)".}
   ## Concatenation operator for JavaScript strings.
 
-proc `+`  *(x, y: JsObject): JsObject {.importjs: "(# + #)".}
-proc `-`  *(x, y: JsObject): JsObject {.importjs: "(# - #)".}
-proc `*`  *(x, y: JsObject): JsObject {.importjs: "(# * #)".}
-proc `/`  *(x, y: JsObject): JsObject {.importjs: "(# / #)".}
-proc `%`  *(x, y: JsObject): JsObject {.importjs: "(# % #)".}
-proc `+=` *(x, y: JsObject): JsObject {.importjs: "(# += #)", discardable.}
-proc `-=` *(x, y: JsObject): JsObject {.importjs: "(# -= #)", discardable.}
-proc `*=` *(x, y: JsObject): JsObject {.importjs: "(# *= #)", discardable.}
-proc `/=` *(x, y: JsObject): JsObject {.importjs: "(# /= #)", discardable.}
-proc `%=` *(x, y: JsObject): JsObject {.importjs: "(# %= #)", discardable.}
-proc `++` *(x:    JsObject): JsObject {.importjs: "(++#)".}
-proc `--` *(x:    JsObject): JsObject {.importjs: "(--#)".}
-proc `>`  *(x, y: JsObject): JsObject {.importjs: "(# > #)".}
-proc `<`  *(x, y: JsObject): JsObject {.importjs: "(# < #)".}
-proc `>=` *(x, y: JsObject): JsObject {.importjs: "(# >= #)".}
-proc `<=` *(x, y: JsObject): JsObject {.importjs: "(# <= #)".}
-proc `**` *(x, y: JsObject): JsObject {.importjs: "((#) ** #)".}
+proc `+`*(x, y: JsObject): JsObject {.importjs: "(# + #)".}
+proc `-`*(x, y: JsObject): JsObject {.importjs: "(# - #)".}
+proc `*`*(x, y: JsObject): JsObject {.importjs: "(# * #)".}
+proc `/`*(x, y: JsObject): JsObject {.importjs: "(# / #)".}
+proc `%`*(x, y: JsObject): JsObject {.importjs: "(# % #)".}
+proc `+=`*(x, y: JsObject): JsObject {.importjs: "(# += #)", discardable.}
+proc `-=`*(x, y: JsObject): JsObject {.importjs: "(# -= #)", discardable.}
+proc `*=`*(x, y: JsObject): JsObject {.importjs: "(# *= #)", discardable.}
+proc `/=`*(x, y: JsObject): JsObject {.importjs: "(# /= #)", discardable.}
+proc `%=`*(x, y: JsObject): JsObject {.importjs: "(# %= #)", discardable.}
+proc `++`*(x:    JsObject): JsObject {.importjs: "(++#)".}
+proc `--`*(x:    JsObject): JsObject {.importjs: "(--#)".}
+proc `>`*(x, y: JsObject): JsObject {.importjs: "(# > #)".}
+proc `<`*(x, y: JsObject): JsObject {.importjs: "(# < #)".}
+proc `>=`*(x, y: JsObject): JsObject {.importjs: "(# >= #)".}
+proc `<=`*(x, y: JsObject): JsObject {.importjs: "(# <= #)".}
+proc `**`*(x, y: JsObject): JsObject {.importjs: "((#) ** #)".}
   # (#) needed, refs https://github.com/nim-lang/Nim/pull/16409#issuecomment-760550812
 proc `and`*(x, y: JsObject): JsObject {.importjs: "(# && #)".}
-proc `or` *(x, y: JsObject): JsObject {.importjs: "(# || #)".}
+proc `or`*(x, y: JsObject): JsObject {.importjs: "(# || #)".}
 proc `not`*(x:    JsObject): JsObject {.importjs: "(!#)".}
-proc `in` *(x, y: JsObject): JsObject {.importjs: "(# in #)".}
+proc `in`*(x, y: JsObject): JsObject {.importjs: "(# in #)".}
 
 proc `[]`*(obj: JsObject, field: cstring): JsObject {.importjs: getImpl.}
   ## Returns the value of a property of name `field` from a JsObject `obj`.
@@ -233,7 +233,7 @@ macro `.`*(obj: JsObject, field: untyped): JsObject =
       helper(`obj`)
   else:
     if not mangledNames.hasKey($field):
-      mangledNames[$field] = $mangleJsName($field)
+      mangledNames[$field] = mangleJsName($field)
     let importString = "#." & mangledNames[$field]
     result = quote do:
       proc helper(o: JsObject): JsObject
@@ -251,7 +251,7 @@ macro `.=`*(obj: JsObject, field, value: untyped): untyped =
       helper(`obj`, `value`)
   else:
     if not mangledNames.hasKey($field):
-      mangledNames[$field] = $mangleJsName($field)
+      mangledNames[$field] = mangleJsName($field)
     let importString = "#." & mangledNames[$field] & " = #"
     result = quote do:
       proc helper(o: JsObject, v: auto)
@@ -282,7 +282,7 @@ macro `.()`*(obj: JsObject,
     importString = "#." & $field & "(@)"
   else:
     if not mangledNames.hasKey($field):
-      mangledNames[$field] = $mangleJsName($field)
+      mangledNames[$field] = mangleJsName($field)
     importString = "#." & mangledNames[$field] & "(@)"
   result = quote:
     proc helper(o: JsObject): JsObject
@@ -302,7 +302,7 @@ macro `.`*[K: cstring, V](obj: JsAssoc[K, V],
     importString = "#." & $field
   else:
     if not mangledNames.hasKey($field):
-      mangledNames[$field] = $mangleJsName($field)
+      mangledNames[$field] = mangleJsName($field)
     importString = "#." & mangledNames[$field]
   result = quote do:
     proc helper(o: type(`obj`)): `obj`.V
@@ -319,7 +319,7 @@ macro `.=`*[K: cstring, V](obj: JsAssoc[K, V],
     importString = "#." & $field & " = #"
   else:
     if not mangledNames.hasKey($field):
-      mangledNames[$field] = $mangleJsName($field)
+      mangledNames[$field] = mangleJsName($field)
     importString = "#." & mangledNames[$field] & " = #"
   result = quote do:
     proc helper(o: type(`obj`), v: `obj`.V)

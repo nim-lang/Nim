@@ -77,7 +77,8 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
 
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   let x = arg.skipConv
-  if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyUntyped:
+  if (x.kind == nkCurly and formal.kind == tySet and formal.base.kind != tyGenericParam) or
+    (x.kind in {nkPar, nkTupleConstr}) and formal.kind notin {tyUntyped, tyBuiltInTypeClass}:
     changeType(c, x, formal, check=true)
   result = arg
   result = skipHiddenSubConv(result, c.graph, c.idgen)
@@ -90,6 +91,12 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     # error correction:
     result = copyTree(arg)
     result.typ = formal
+  elif arg.kind in nkSymChoices and formal.skipTypes(abstractInst).kind == tyEnum:
+    # Pick the right 'sym' from the sym choice by looking at 'formal' type:
+    for ch in arg:
+      if sameType(ch.typ, formal):
+        return getConstExpr(c.module, ch, c.idgen, c.graph)
+    typeMismatch(c.config, info, formal, arg.typ, arg)
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
@@ -100,12 +107,13 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     else:
       result = fitNodePostMatch(c, formal, result)
 
-proc fitNodeForLocalVar(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
+proc fitNodeConsiderViewType(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   let a = fitNode(c, formal, arg, info)
   if formal.kind in {tyVar, tyLent}:
     #classifyViewType(formal) != noView:
     result = newNodeIT(nkHiddenAddr, a.info, formal)
     result.add a
+    formal.flags.incl tfVarIsPtr
   else:
    result = a
 
@@ -168,6 +176,12 @@ proc commonType*(c: PContext; x, y: PType): PType =
         result = b #.skipIntLit
       elif a.kind in IntegralTypes and a.n != nil:
         result = a #.skipIntLit
+  elif a.kind == tyProc and b.kind == tyProc:
+    if a.callConv == ccClosure and b.callConv != ccClosure:
+      result = x
+    elif compatibleEffects(a, b) != efCompat or
+        (b.flags * {tfNoSideEffect, tfGcSafe}) < (a.flags * {tfNoSideEffect, tfGcSafe}):
+      result = y
   else:
     var k = tyNone
     if a.kind in {tyRef, tyPtr}:
@@ -356,6 +370,8 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
   if e == nil:
     localError(c.config, n.info, errConstExprExpected)
     return n
+  if e.kind in nkSymChoices and e[0].typ.skipTypes(abstractInst).kind == tyEnum:
+    return e
   result = getConstExpr(c.module, e, c.idgen, c.graph)
   if result == nil:
     #if e.kind == nkEmpty: globalError(n.info, errConstExprExpected)
@@ -392,9 +408,10 @@ when not defined(nimHasSinkInference):
 include hlo, seminst, semcall
 
 proc resetSemFlag(n: PNode) =
-  excl n.flags, nfSem
-  for i in 0..<n.safeLen:
-    resetSemFlag(n[i])
+  if n != nil:
+    excl n.flags, nfSem
+    for i in 0..<n.safeLen:
+      resetSemFlag(n[i])
 
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
                        s: PSym, flags: TExprFlags): PNode =

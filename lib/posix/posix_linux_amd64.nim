@@ -334,7 +334,7 @@ type
     si_status*: cint   ## Exit value or signal.
     si_band*: int      ## Band event for SIGPOLL.
     si_value*: SigVal  ## Signal value.
-    pad {.importc: "_pad"}: array[128 - 56, uint8]
+    pad {.importc: "_pad".}: array[128 - 56, uint8]
 
   Nl_item* {.importc: "nl_item", header: "<nl_types.h>".} = cint
   Nl_catd* {.importc: "nl_catd", header: "<nl_types.h>".} = pointer

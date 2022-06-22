@@ -70,6 +70,14 @@ SmallLshouldNotBeUsed            The letter 'l' should not be used as an
                                  identifier.
 EachIdentIsTuple                 The code contains a confusing `var`
                                  declaration.
+CStringConv                      Warn about dangerous implicit conversions
+                                 to `cstring`.
+EnumConv                         Warn about conversions from enum to enum.
+AnyEnumConv                      Warn about any conversions to an enum type.
+HoleEnumConv                     Warn about conversion to an enum with
+                                 holes. These conversions are unsafe.
+ResultUsed                       Warn about the usage of the
+                                 built-in `result` variable.
 User                             Some user-defined warning.
 ==========================       ============================================
 
@@ -156,6 +164,22 @@ ignored too. `--define:FOO`:option: and `--define:foo`:option: are identical.
 
 Compile-time symbols starting with the `nim` prefix are reserved for the
 implementation and should not be used elsewhere.
+
+==========================       ============================================
+Name                             Description
+==========================       ============================================
+nimStdSetjmp                     Use the standard `setjmp()/longjmp()` library
+                                 functions for setjmp-based exceptions. This is
+                                 the default on most platforms.
+nimSigSetjmp                     Use `sigsetjmp()/siglongjmp()` for setjmp-based exceptions.
+nimRawSetjmp                     Use `_setjmp()/_longjmp()` on POSIX and `_setjmp()/longjmp()`
+                                 on Windows, for setjmp-based exceptions. It's the default on
+                                 BSDs and BSD-like platforms, where it's significantly faster
+                                 than the standard functions.
+nimBuiltinSetjmp                 Use `__builtin_setjmp()/__builtin_longjmp()` for setjmp-based
+                                 exceptions. This will not work if an exception is being thrown
+                                 and caught inside the same procedure. Useful for benchmarking.
+==========================       ============================================
 
 
 Configuration files
@@ -309,6 +333,8 @@ To cross-compile for Windows from Linux or macOS using the MinGW-w64 toolchain:
 .. code:: cmd
 
   nim c -d:mingw myproject.nim
+  # `nim r` also works, running the binary via `wine` or `wine64`:
+  nim r -d:mingw --eval:'import os; echo "a" / "b"'
 
 Use `--cpu:i386`:option: or `--cpu:amd64`:option: to switch the CPU architecture.
 
@@ -361,6 +387,10 @@ of your program.
     NimMain() # initialize garbage collector memory, types and stack
 
 
+The name `NimMain` can be influenced via the `--nimMainPrefix:prefix` switch.
+Use `--nimMainPrefix:MyLib` and the function to call is named `MyLibNimMain`.
+
+
 Cross-compilation for iOS
 =========================
 
@@ -389,6 +419,9 @@ of your program.
 Note: XCode's "make clean" gets confused about the generated nim.c files,
 so you need to clean those files manually to do a clean build.
 
+The name `NimMain` can be influenced via the `--nimMainPrefix:prefix` switch.
+Use `--nimMainPrefix:MyLib` and the function to call is named `MyLibNimMain`.
+
 
 Cross-compilation for Nintendo Switch
 =====================================
@@ -398,16 +431,18 @@ to your usual `nim c`:cmd: or `nim cpp`:cmd: command and set the `passC`:option:
 and `passL`:option: command line switches to something like:
 
 .. code-block:: cmd
-  nim c ... --passC="-I$DEVKITPRO/libnx/include" ...
+  nim c ... --d:nimAllocPagesViaMalloc --mm:orc --passC="-I$DEVKITPRO/libnx/include" ...
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
 or setup a ``nim.cfg`` file like so::
 
   #nim.cfg
+  --mm:orc
+  --d:nimAllocPagesViaMalloc
   --passC="-I$DEVKITPRO/libnx/include"
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
-The DevkitPro setup must be the same as the default with their new installer
+The devkitPro setup must be the same as the default with their new installer
 `here for Mac/Linux <https://github.com/devkitPro/pacman/releases>`_ or
 `here for Windows <https://github.com/devkitPro/installer/releases>`_.
 
@@ -418,20 +453,19 @@ For example, with the above-mentioned config:
   nim c --os:nintendoswitch switchhomebrew.nim
 
 This will generate a file called ``switchhomebrew.elf`` which can then be turned into
-an nro file with the `elf2nro`:cmd: tool in the DevkitPro release. Examples can be found at
+an nro file with the `elf2nro`:cmd: tool in the devkitPro release. Examples can be found at
 `the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_.
 
-There are a few things that don't work because the DevkitPro libraries don't support them.
+There are a few things that don't work because the devkitPro libraries don't support them.
 They are:
 
 1. Waiting for a subprocess to finish. A subprocess can be started, but right
    now it can't be waited on, which sort of makes subprocesses a bit hard to use
-2. Dynamic calls. DevkitPro libraries have no dlopen/dlclose functions.
-3. Command line parameters. It doesn't make sense to have these for a console
-   anyways, so no big deal here.
-4. mqueue. Sadly there are no mqueue headers.
-5. ucontext. No headers for these either. No coroutines for now :(
-6. nl_types. No headers for this.
+2. Dynamic calls. Switch OS (Horizon) doesn't support dynamic libraries, so dlopen/dlclose are not available.
+3. mqueue. Sadly there are no mqueue headers.
+4. ucontext. No headers for these either. No coroutines for now :(
+5. nl_types. No headers for this.
+6. As mmap is not supported, the nimAllocPagesViaMalloc option has to be used.
 
 DLL generation
 ==============
@@ -474,10 +508,10 @@ Define                   Effect
 `useMalloc`              Makes Nim use C's `malloc`:idx: instead of Nim's
                          own memory manager, albeit prefixing each allocation with
                          its size to support clearing memory on reallocation.
-                         This only works with `--gc:none`:option:,
-                         `--gc:arc`:option: and `--gc:orc`:option:.
+                         This only works with `--mm:none`:option:,
+                         `--mm:arc`:option: and `--mm:orc`:option:.
 `useRealtimeGC`          Enables support of Nim's GC for *soft* realtime
-                         systems. See the documentation of the `gc <gc.html>`_
+                         systems. See the documentation of the `mm <mm.html>`_
                          for further information.
 `logGC`                  Enable GC logging to stdout.
 `nodejs`                 The JS target is actually ``node.js``.
@@ -603,9 +637,9 @@ A good start is to use the `any` operating target together with the
 
 .. code:: cmd
 
-   nim c --os:any --gc:arc -d:useMalloc [...] x.nim
+   nim c --os:any --mm:arc -d:useMalloc [...] x.nim
 
-- `--gc:arc`:option: will enable the reference counting memory management instead
+- `--mm:arc`:option: will enable the reference counting memory management instead
   of the default garbage collector. This enables Nim to use heap memory which
   is required for strings and seqs, for example.
 
@@ -643,13 +677,46 @@ devices. This allocator gets blocks/pages of memory via a currently undocumented
 `osalloc` API which usually uses POSIX's `mmap` call. On many environments `mmap`
 is not available but C's `malloc` is. You can use the `nimAllocPagesViaMalloc`
 define to use `malloc` instead of `mmap`. `nimAllocPagesViaMalloc` is currently
-only supported with `--gc:arc` or `--gc:orc`. (Since version 1.6)
+only supported with `--mm:arc` or `--mm:orc`. (Since version 1.6)
 
+nimPage256 / nimPage512 / nimPage1k
+===================================
+
+Adjust the page size for Nim's GC allocator. This enables using
+`nimAllocPagesViaMalloc` on devices with less RAM. The default
+page size requires too much RAM to work.
+
+Recommended settings:
+
+- < 32 kB of RAM use `nimPage256`
+
+- < 512 kB of RAM use `nimPage512`
+
+- < 2 MB of RAM use `nimPage1k`
+
+Initial testing hasn't shown much difference between 512B or 1kB page sizes
+in terms of performance or latency. Using `nimPages256` will limit the
+total amount of allocatable RAM.
+
+nimMemAlignTiny
+===============
+
+Sets `MemAlign` to `4` bytes which reduces the memory alignment
+to better match some embedded devices.
+
+Thread stack size
+=================
+
+Nim's thread API provides a simple wrapper around more advanced
+RTOS task features. Customizing the stack size and stack guard size can
+be done by setting `-d:nimThreadStackSize=16384` or `-d:nimThreadStackGuard=32`.
+
+Currently only Zephyr and FreeRTOS support these configurations.
 
 Nim for realtime systems
 ========================
 
-See the documentation of Nim's soft realtime `GC <gc.html>`_ for further
+See the `--mm:arc` or `--mm:orc` memory management settings in `MM <mm.html>`_ for further
 information.
 
 

@@ -16,13 +16,17 @@
 import
   strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   TSystemOS* = enum # Also add OS in initialization section and alias
                     # conditionals to condsyms (end of module).
     osNone, osDos, osWindows, osOs2, osLinux, osMorphos, osSkyos, osSolaris,
-    osIrix, osNetbsd, osFreebsd, osOpenbsd, osDragonfly, osAix, osPalmos, osQnx,
+    osIrix, osNetbsd, osFreebsd, osOpenbsd, osDragonfly, osCrossos, osAix, osPalmos, osQnx,
     osAmiga, osAtari, osNetware, osMacos, osMacosx, osIos, osHaiku, osAndroid, osVxWorks
-    osGenode, osJS, osNimVM, osStandalone, osNintendoSwitch, osFreeRTOS, osAny
+    osGenode, osJS, osNimVM, osStandalone, osNintendoSwitch, osFreeRTOS, osZephyr, osAny
 
 type
   TInfoOSProp* = enum
@@ -105,6 +109,10 @@ const
       scriptExt: ".sh", curDir: ".",
       exeExt: "", extSep: ".",
       props: {ospNeedsPIC, ospPosix}),
+     (name: "CROSSOS", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
+      props: {ospNeedsPIC, ospPosix}),
      (name: "AIX", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
@@ -181,6 +189,10 @@ const
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
       props: {ospPosix}),
+     (name: "Zephyr", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
+      props: {ospPosix}),
      (name: "Any", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
@@ -193,7 +205,8 @@ type
     cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
     cpuPowerpc64el, cpuSparc, cpuVm, cpuHppa, cpuIa64, cpuAmd64, cpuMips,
     cpuMipsel, cpuArm, cpuArm64, cpuJS, cpuNimVM, cpuAVR, cpuMSP430,
-    cpuSparc64, cpuMips64, cpuMips64el, cpuRiscV32, cpuRiscV64, cpuEsp, cpuWasm32
+    cpuSparc64, cpuMips64, cpuMips64el, cpuRiscV32, cpuRiscV64, cpuEsp, cpuWasm32,
+    cpuE2k, cpuLoongArch64
 
 type
   TInfoCPU* = tuple[name: string, intSize: int, endian: Endianness,
@@ -228,7 +241,9 @@ const
     (name: "riscv32", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "riscv64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
     (name: "esp", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
-    (name: "wasm32", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32)]
+    (name: "wasm32", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
+    (name: "e2k", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
+    (name: "loongarch64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64)]
 
 type
   Target* = object

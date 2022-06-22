@@ -15,6 +15,9 @@ import
   ast, hashes, intsets, strutils, options, lineinfos, ropes, idents, rodutils,
   msgs
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc hashNode*(p: RootRef): Hash
 proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
   # Convert a tree into its YAML representation; this is used by the
@@ -585,6 +588,9 @@ proc value(this: var DebugPrinter; value: PNode) =
   this.openCurly
   this.key "kind"
   this.value  value.kind
+  if value.comment.len > 0:
+    this.key "comment"
+    this.value  value.comment
   when defined(useNodeIds):
     this.key "id"
     this.value value.id

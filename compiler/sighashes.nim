@@ -9,14 +9,20 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, md5, modulegraphs
+import ast, tables, ropes, md5_old, modulegraphs
 from hashes import Hash
 import types
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
-proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
+proc `&=`(c: var MD5Context, ch: char) =
+  # XXX suspicious code here; relies on ch being zero terminated?
+  md5Update(c, unsafeAddr ch, 1)
 proc `&=`(c: var MD5Context, r: Rope) =
-  for l in leaves(r): md5Update(c, l, l.len)
+  for l in leaves(r): md5Update(c, l.cstring, l.len)
 proc `&=`(c: var MD5Context, i: BiggestInt) =
   md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))
 proc `&=`(c: var MD5Context, f: BiggestFloat) =
@@ -164,7 +170,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         if t.n.len > 0:
           let oldFlags = symWithFlags.flags
           # Hack to prevent endless recursion
-          # xxx intead, use a hash table to indicate we've already visited a type, which
+          # xxx instead, use a hash table to indicate we've already visited a type, which
           # would also be more efficient.
           symWithFlags.flags.excl {sfAnon, sfGenSym}
           hashTree(c, t.n, flags + {CoHashTypeInsideNode})
@@ -388,7 +394,7 @@ proc idOrSig*(s: PSym, currentModule: string,
               sigCollisions: var CountTable[SigHash]): Rope =
   if s.kind in routineKinds and s.typ != nil:
     # signatures for exported routines are reliable enough to
-    # produce a unique name and this means produced C++ is more stable wrt
+    # produce a unique name and this means produced C++ is more stable regarding
     # Nim changes:
     let sig = hashProc(s)
     result = rope($sig)

@@ -12,9 +12,12 @@
 # from a lineinfos file, to provide generalized procedures to compile
 # nim files.
 
-import ropes, platform, condsyms, options, msgs, lineinfos, pathutils
+import ropes, platform, condsyms, options, msgs, lineinfos, pathutils, modulepaths
 
 import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar]
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -252,7 +255,7 @@ compiler envcc:
     buildGui: "",
     buildDll: " -shared ",
     buildLib: "", # XXX: not supported yet
-    linkerExe: "cc",
+    linkerExe: "",
     linkTmpl: "-o $exefile $buildgui $builddll $objfiles $options",
     includeCmd: " -I",
     linkDirCmd: "", # XXX: not supported yet
@@ -367,6 +370,7 @@ proc initVars*(conf: ConfigRef) =
 
 proc completeCfilePath*(conf: ConfigRef; cfile: AbsoluteFile,
                         createSubDir: bool = true): AbsoluteFile =
+  ## Generate the absolute file path to the generated modules.
   result = completeGeneratedFilePath(conf, cfile, createSubDir)
 
 proc toObjFile*(conf: ConfigRef; filename: AbsoluteFile): AbsoluteFile =
@@ -377,7 +381,7 @@ proc addFileToCompile*(conf: ConfigRef; cf: Cfile) =
   conf.toCompile.add(cf)
 
 proc addLocalCompileOption*(conf: ConfigRef; option: string; nimfile: AbsoluteFile) =
-  let key = completeCfilePath(conf, withPackageName(conf, nimfile)).string
+  let key = completeCfilePath(conf, mangleModuleName(conf, nimfile).AbsoluteFile).string
   var value = conf.cfileSpecificOptions.getOrDefault(key)
   if strutils.find(value, option, 0) < 0:
     addOpt(value, option)
@@ -430,7 +434,13 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # really: Cross compilation from Linux to Linux for example is entirely
   # reasonable.
   # `optGenMapping` is included here for niminst.
-  result = conf.globalOptions * {optGenScript, optGenMapping} != {}
+  # We use absolute paths for vcc / cl, see issue #19883.
+  let options =
+    if conf.cCompiler == ccVcc:
+      {optGenMapping}
+    else:
+      {optGenScript, optGenMapping}
+  result = conf.globalOptions * options != {}
 
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions
@@ -634,7 +644,7 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
   if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
 
-  let hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
+  let hashFile = toGeneratedFile(conf, conf.mangleModuleName(cfile.cname).AbsoluteFile, "sha1")
   let currentHash = footprint(conf, cfile)
   var f: File
   if open(f, hashFile.string, fmRead):
@@ -649,8 +659,10 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
       close(f)
 
 proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
+  # we want to generate the hash file unconditionally
+  let extFileChanged = externalFileChanged(conf, c)
   if optForceFullMake notin conf.globalOptions and fileExists(c.obj) and
-      not externalFileChanged(conf, c):
+      not extFileChanged:
     c.flags.incl CfileFlag.Cached
   else:
     # make sure Nim keeps recompiling the external file on reruns
@@ -665,9 +677,10 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
   addExternalFileToCompile(conf, c)
 
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
-                objfiles: string, isDllBuild: bool): string =
+                objfiles: string, isDllBuild: bool, removeStaticFile: bool): string =
   if optGenStaticLib in conf.globalOptions:
-    removeFile output # fixes: bug #16947
+    if removeStaticFile:
+      removeFile output # fixes: bug #16947
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(output),
                                             "objfiles", objfiles]
   else:
@@ -750,8 +763,9 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
   if optCDebug in conf.globalOptions and conf.cCompiler == ccVcc:
     result.add " /Zi /FS /Od"
 
-template getLinkCmd(conf: ConfigRef; output: AbsoluteFile, objfiles: string): string =
-  getLinkCmd(conf, output, objfiles, optGenDynLib in conf.globalOptions)
+template getLinkCmd(conf: ConfigRef; output: AbsoluteFile, objfiles: string,
+                    removeStaticFile = false): string =
+  getLinkCmd(conf, output, objfiles, optGenDynLib in conf.globalOptions, removeStaticFile)
 
 template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped) =
   try:
@@ -838,9 +852,9 @@ proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): Absolu
 proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
   if conf.hasHint(hintCC):
     if optListCmd in conf.globalOptions or conf.verbosity > 1:
-      result = MsgKindToStr[hintCC] % (demanglePackageName(path.splitFile.name) & ": " & compileCmd)
+      result = MsgKindToStr[hintCC] % (demangleModuleName(path.splitFile.name) & ": " & compileCmd)
     else:
-      result = MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
+      result = MsgKindToStr[hintCC] % demangleModuleName(path.splitFile.name)
 
 proc callCCompiler*(conf: ConfigRef) =
   var
@@ -891,7 +905,7 @@ proc callCCompiler*(conf: ConfigRef) =
         let objFile = conf.getObjFilePath(x)
         let buildDll = idx != mainFileIdx
         let linkTarget = conf.hcrLinkTargetName(objFile, not buildDll)
-        cmds.add(getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll))
+        cmds.add(getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll, removeStaticFile = true))
         # try to remove all .pdb files for the current binary so they don't accumulate endlessly in the nimcache
         # for more info check the comment inside of getLinkCmd() where the /PDB:<filename> MSVC flag is used
         if isVSCompatible(conf):
@@ -913,8 +927,9 @@ proc callCCompiler*(conf: ConfigRef) =
         objfiles.add(' ')
         objfiles.add(quoteShell(objFile))
       let mainOutput = if optGenScript notin conf.globalOptions: conf.prepareToWriteOutput
-                       else: AbsoluteFile(conf.projectName)
-      linkCmd = getLinkCmd(conf, mainOutput, objfiles)
+                       else: AbsoluteFile(conf.outFile)
+
+      linkCmd = getLinkCmd(conf, mainOutput, objfiles, removeStaticFile = true)
       extraCmds = getExtraCmds(conf, mainOutput)
       if optCompileOnly notin conf.globalOptions:
         const MaxCmdLen = when defined(windows): 8_000 else: 32_000

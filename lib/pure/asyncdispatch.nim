@@ -42,12 +42,12 @@
 ##
 ## Code to read some data from a socket may look something like this:
 ##
-##   .. code-block:: Nim
-##      var future = socket.recv(100)
-##      future.addCallback(
-##        proc () =
-##          echo(future.read)
-##      )
+## .. code-block:: Nim
+##    var future = socket.recv(100)
+##    future.addCallback(
+##      proc () =
+##        echo(future.read)
+##    )
 ##
 ## All asynchronous functions returning a `Future` will not block. They
 ## will not however return immediately. An asynchronous function will have
@@ -98,40 +98,71 @@
 ## `await`. The following section shows different ways that you can handle
 ## exceptions in async procs.
 ##
+## .. caution::
+##     Procedures marked {.async.} do not support mutable parameters such
+##     as `var int`. References such as `ref int` should be used instead.
+##
 ## Handling Exceptions
 ## -------------------
 ##
-## The most reliable way to handle exceptions is to use `yield` on a future
+## You can handle exceptions in the same way as in ordinary Nim code;
+## by using the try statement:
+##
+##
+## .. code-block:: Nim
+##   try:
+##     let data = await sock.recv(100)
+##     echo("Received ", data)
+##   except:
+##     # Handle exception
+##
+##
+##
+## An alternative approach to handling exceptions is to use `yield` on a future
 ## then check the future's `failed` property. For example:
 ##
-##   .. code-block:: Nim
-##     var future = sock.recv(100)
-##     yield future
-##     if future.failed:
-##       # Handle exception
-##
-## The `async` procedures also offer limited support for the try statement.
-##
-##    .. code-block:: Nim
-##      try:
-##        let data = await sock.recv(100)
-##        echo("Received ", data)
-##      except:
-##        # Handle exception
-##
-## Unfortunately the semantics of the try statement may not always be correct,
-## and occasionally the compilation may fail altogether.
-## As such it is better to use the former style when possible.
-##
+## .. code-block:: Nim
+##   var future = sock.recv(100)
+##   yield future
+##   if future.failed:
+##     # Handle exception
 ##
 ## Discarding futures
 ## ==================
 ##
-## Futures should **never** be discarded. This is because they may contain
-## errors. If you do not care for the result of a Future then you should
-## use the `asyncCheck` procedure instead of the `discard` keyword. Note
-## however that this does not wait for completion, and you should use
-## `waitFor` for that purpose.
+## Futures should **never** be discarded directly because they may contain
+## errors. If you do not care for the result of a Future then you should use
+## the `asyncCheck` procedure instead of the `discard` keyword. Note that this
+## does not wait for completion, and you should use `waitFor` or `await` for that purpose.
+##
+## .. note:: `await` also checks if the future fails, so you can safely discard
+##   its result.
+##
+## Handling futures
+## ================
+##
+## There are many different operations that apply to a future.
+## The three primary high-level operations are `asyncCheck`,
+## `waitFor`, and `await`.
+##
+## * `asyncCheck`: Raises an exception if the future fails. It neither waits
+##   for the future to finish nor returns the result of the future.
+## * `waitFor`: Polls the event loop and blocks the current thread until the
+##   future finishes. This is often used to call an async procedure from a
+##   synchronous context and should never be used in an `async` proc.
+## * `await`: Pauses execution in the current async procedure until the future
+##   finishes. While the current procedure is paused, other async procedures will
+##   continue running. Should be used instead of `waitFor` in an async
+##   procedure.
+##
+## Here is a handy quick reference chart showing their high-level differences:
+## ==============  =====================   =======================
+## Procedure       Context                 Blocking
+## ==============  =====================   =======================
+## `asyncCheck`    non-async and async     non-blocking
+## `waitFor`       non-async               blocks current thread
+## `await`         async                   suspends current proc
+## ==============  =====================   =======================
 ##
 ## Examples
 ## ========
@@ -165,6 +196,35 @@
 ## ================
 ##
 ## * The effect system (`raises: []`) does not work with async procedures.
+## * Mutable parameters are not supported by async procedures.
+##
+##
+## Multiple async backend support
+## ==============================
+##
+## Thanks to its powerful macro support, Nim allows ``async``/``await`` to be
+## implemented in libraries with only minimal support from the language - as
+## such, multiple ``async`` libraries exist, including ``asyncdispatch`` and
+## ``chronos``, and more may come to be developed in the future.
+##
+## Libraries built on top of async/await may wish to support multiple async
+## backends - the best way to do so is to create separate modules for each backend
+## that may be imported side-by-side.
+##
+## An alternative way is to select backend using a global compile flag - this
+## method makes it difficult to compose applications that use both backends as may
+## happen with transitive dependencies, but may be appropriate in some cases -
+## libraries choosing this path should call the flag `asyncBackend`, allowing
+## applications to choose the backend with `-d:asyncBackend=<backend_name>`.
+##
+## Known `async` backends include:
+##
+## * `-d:asyncBackend=none`: disable `async` support completely
+## * `-d:asyncBackend=asyncdispatch`: https://nim-lang.org/docs/asyncdispatch.html
+## * `-d:asyncBackend=chronos`: https://github.com/status-im/nim-chronos/
+##
+## ``none`` can be used when a library supports both a synchronous and
+## asynchronous API, to disable the latter.
 
 import os, tables, strutils, times, heapqueue, options, asyncstreams
 import options, math, std/monotimes
@@ -705,7 +765,7 @@ when defined(windows) or defined(nimdoc):
 
   proc acceptAddr*(socket: AsyncFD, flags = {SocketFlag.SafeDisconn},
                    inheritable = defined(nimInheritHandles)):
-      owned(Future[tuple[address: string, client: AsyncFD]]) =
+      owned(Future[tuple[address: string, client: AsyncFD]]) {.gcsafe.} =
     ## Accepts a new connection. Returns a future containing the client socket
     ## corresponding to that connection and the remote address of the client.
     ## The future will complete when the connection is successfully accepted.
@@ -772,7 +832,7 @@ when defined(windows) or defined(nimdoc):
 
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             completeAccept()
@@ -1763,7 +1823,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
         curAddrInfo = curAddrInfo.ai_next
 
       if curAddrInfo == nil:
-        freeaddrinfo(addrInfo)
+        freeAddrInfo(addrInfo)
         when shouldCreateFd:
           closeUnusedFds()
         if lastException != nil:
@@ -1779,7 +1839,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
           try:
             curFd = createAsyncNativeSocket(domain, sockType, protocol)
           except:
-            freeaddrinfo(addrInfo)
+            freeAddrInfo(addrInfo)
             closeUnusedFds()
             raise getCurrentException()
           when defined(windows):
@@ -1789,7 +1849,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
       doConnect(curFd, curAddrInfo).callback = tryNextAddrInfo
       curAddrInfo = curAddrInfo.ai_next
     else:
-      freeaddrinfo(addrInfo)
+      freeAddrInfo(addrInfo)
       when shouldCreateFd:
         closeUnusedFds(ord(domain))
         retFuture.complete(curFd)
@@ -1945,13 +2005,16 @@ proc activeDescriptors*(): int {.inline.} =
 when defined(posix):
   import posix
 
-when defined(linux) or defined(windows) or defined(macosx) or defined(bsd):
+when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
+       defined(solaris) or defined(zephyr) or defined(freertos):
   proc maxDescriptors*(): int {.raises: OSError.} =
     ## Returns the maximum number of active file descriptors for the current
     ## process. This involves a system call. For now `maxDescriptors` is
-    ## supported on the following OSes: Windows, Linux, OSX, BSD.
+    ## supported on the following OSes: Windows, Linux, OSX, BSD, Solaris.
     when defined(windows):
       result = 16_700_000
+    elif defined(zephyr) or defined(freertos):
+      result = FD_MAX
     else:
       var fdLim: RLimit
       if getrlimit(RLIMIT_NOFILE, fdLim) < 0:

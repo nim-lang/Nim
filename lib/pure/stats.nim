@@ -42,7 +42,7 @@ runnableExamples:
 
   template `~=`(a, b: float): bool = almostEqual(a, b)
 
-  var statistics: RunningStat  ## Must be var
+  var statistics: RunningStat  # must be var
   statistics.push(@[1.0, 2.0, 1.0, 4.0, 1.0, 4.0, 1.0, 2.0])
   doAssert statistics.n == 8
   doAssert statistics.mean() ~= 2.0
@@ -76,7 +76,7 @@ type
 proc clear*(s: var RunningStat) =
   ## Resets `s`.
   s.n = 0
-  s.min = toBiggestFloat(int.high)
+  s.min = 0.0
   s.max = 0.0
   s.sum = 0.0
   s.mom1 = 0.0
@@ -86,11 +86,14 @@ proc clear*(s: var RunningStat) =
 
 proc push*(s: var RunningStat, x: float) =
   ## Pushes a value `x` for processing.
-  if s.n == 0: s.min = x
+  if s.n == 0:
+    s.min = x
+    s.max = x
+  else:
+    if s.min > x: s.min = x
+    if s.max < x: s.max = x
   inc(s.n)
   # See Knuth TAOCP vol 2, 3rd edition, page 232
-  if s.min > x: s.min = x
-  if s.max < x: s.max = x
   s.sum += x
   let n = toFloat(s.n)
   let delta = x - s.mom1
