@@ -11,6 +11,8 @@
   or define your own `Math.trunc` polyfill using the [`emit` pragma](https://nim-lang.org/docs/manual.html#implementation-specific-pragmas-emit-pragma). Nim uses
   `Math.trunc` for the division and modulo operators for integers.
 
+- Deprecated `std/sums`.
+
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
   `experimental:flexibleOptionalParams`.
 
@@ -21,6 +23,8 @@
 becomes an alias for `addr`.
 
 - io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`.
+
+- The `gc:v2` option is removed.
 
 ## Standard library additions and changes
 

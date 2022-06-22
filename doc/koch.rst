@@ -38,6 +38,9 @@ options:
   unless you are debugging the compiler.
 -d:nimUseLinenoise     Use the linenoise library for interactive mode
                        (not needed on Windows).
+-d:leanCompiler        Produce a compiler without JS codegen or
+                       documentation generator in order to use less RAM
+                       for bootstrapping.
 
 After compilation is finished you will hopefully end up with the nim
 compiler in the `bin` directory. You can add Nim's `bin` directory to
