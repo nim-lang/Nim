@@ -766,7 +766,10 @@ proc traverse(c: var Partitions; n: PNode) =
     #     connect(graph, cursorVar)
     for child in n: traverse(c, child)
 
-    traverse(c, n[0])
+    if n.kind == nkWhileStmt:
+      traverse(c, n[0])
+      # variables in while condition has longer alive time than local variables 
+      # in the while loop body
   else:
     for child in n: traverse(c, child)
 
@@ -855,7 +858,10 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     for child in n: computeLiveRanges(c, child)
     inc c.inLoop
 
-    computeLiveRanges(c, n[0])
+    if n.kind == nkWhileStmt:
+      computeLiveRanges(c, n[0])
+      # variables in while condition has longer alive time than local variables 
+      # in the while loop body
   of nkElifBranch, nkElifExpr, nkElse, nkOfBranch:
     inc c.inConditional
     for child in n: computeLiveRanges(c, child)
