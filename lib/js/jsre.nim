@@ -87,3 +87,5 @@ runnableExamples:
   assert "do1ne".split(jsregex) == @["do".cstring, "ne".cstring]
   jsregex.compile(r"[lw]", r"i")
   assert "hello world".replace(jsregex,"X") == "heXlo world"
+  let digitsRegex: RegExp = newRegExp(r"\d")
+  assert "foo".match(digitsRegex) == @[]
