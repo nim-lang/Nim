@@ -765,6 +765,8 @@ proc traverse(c: var Partitions; n: PNode) =
     #     mutate(graph)
     #     connect(graph, cursorVar)
     for child in n: traverse(c, child)
+
+    traverse(c, n[0])
   else:
     for child in n: traverse(c, child)
 
@@ -852,6 +854,8 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     inc c.inLoop
     for child in n: computeLiveRanges(c, child)
     inc c.inLoop
+
+    computeLiveRanges(c, n[0])
   of nkElifBranch, nkElifExpr, nkElse, nkOfBranch:
     inc c.inConditional
     for child in n: computeLiveRanges(c, child)
