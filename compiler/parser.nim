@@ -471,6 +471,9 @@ proc dotExpr(p: var Parser, a: PNode): PNode =
       exprColonEqExprListAux(p, tkParRi, y)
     result = y
 
+proc simpleExpr(p: var Parser, mode = pmNormal): PNode
+proc parseGStrLit(p: var Parser, a: PNode): PNode
+
 proc dotLikeExpr(p: var Parser, a: PNode): PNode =
   var info = p.parLineInfo
   result = newNodeI(nkInfix, info)
@@ -479,7 +482,19 @@ proc dotLikeExpr(p: var Parser, a: PNode): PNode =
   getTok(p)
   result.add(opNode)
   result.add(a)
-  result.add(parseSymbol(p, smAfterDot))
+  if p.tok.tokType in {tkSymbol, tkAccent}:
+    let symbol = parseSymbol(p, smAfterDot)
+
+    if p.tok.tokType == tkParLe and p.tok.strongSpaceA <= 0:
+      let callNode = newNodeI(nkCall, p.parLineInfo)
+      callNode.add symbol
+      exprColonEqExprListAux(p, tkParRi, callNode)
+      result.add callNode
+    else:
+      result.add symbol
+      result = parseGStrLit(p, result)
+  else:
+    result.add simpleExpr(p)
 
 proc qualifiedIdent(p: var Parser): PNode =
   #| qualifiedIdent = symbol ('.' optInd symbol)?
@@ -551,7 +566,6 @@ proc parseGStrLit(p: var Parser, a: PNode): PNode =
     result = a
 
 proc complexOrSimpleStmt(p: var Parser): PNode
-proc simpleExpr(p: var Parser, mode = pmNormal): PNode
 proc parseIfOrWhenExpr(p: var Parser, kind: TNodeKind): PNode
 
 proc semiStmtList(p: var Parser, result: PNode) =
@@ -864,7 +878,6 @@ proc primarySuffix(p: var Parser, r: PNode,
       if isDotLike2 and p.lex.config.isDefined("nimPreviewDotLikeOps"):
         # synchronize with `tkDot` branch
         result = dotLikeExpr(p, result)
-        result = parseGStrLit(p, result)
       else:
         if isDotLike2:
           parMessage(p, warnDotLikeOps, "dot-like operators will be parsed differently with `-d:nimPreviewDotLikeOps`")
