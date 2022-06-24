@@ -34,8 +34,17 @@ iterator `.++`[T](a: T, b: T): T =
     inc res
     inc res
 
-var collector: seq[int] = @[]
-for i in 0 .++ 8:
-  collector.add i
+block:
+  var collector: seq[int] = @[]
+  for i in 0 .++ 8:
+    collector.add i
 
-doAssert collector == @[0, 2, 4, 6, 8]
+  doAssert collector == @[0, 2, 4, 6, 8]
+
+block:
+  var collector: seq[int] = @[]
+  let x = 0
+  let y = 8
+  for i in x .++ y:
+    collector.add i
+  doAssert collector == @[0, 2, 4, 6, 8]
