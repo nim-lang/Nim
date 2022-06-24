@@ -12,7 +12,7 @@
 import
   ast, magicsys, msgs, options,
   idents, lexer, syntaxes, modulegraphs,
-  lineinfos, pathutils
+  lineinfos, pathutils, modulepaths
 
 proc resetSystemArtifacts*(g: ModuleGraph) =
   magicsys.resetSysTypes(g)

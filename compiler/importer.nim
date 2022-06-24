@@ -244,8 +244,23 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAliasImpl(n[1].ident)
   if result == realModule:
-    # avoids modifying `realModule`, see D20201209T194412 for `import {.all.}`
-    result = createModuleAliasImpl(realModule.name)
+    # A module alias is created using the ident of the specifed module
+    # when is doesn't match the real module's name. This is to support
+    # `nimscript.patchModule` so that qualifying a symbol in a target
+    # module like `target.symbol` matches against the patch module instead
+    # of the target module.
+    #
+    # XXX: I'm not sure why an alias for `realModule` is created. See the
+    #      original comment below.
+    let alias = block:
+      if n.kind == nkIdent and n.ident != realModule.name:
+        n.ident
+      elif n.kind != nkIdent and n.lastSon.ident != realModule.name:
+        n.lastSon.ident
+      else:
+        # avoids modifying `realModule`, see D20201209T194412 for `import {.all.}`
+        realModule.name
+    result = createModuleAliasImpl(alias)
   if importHidden:
     result.options.incl optImportHidden
   c.unusedImports.add((result, n.info))

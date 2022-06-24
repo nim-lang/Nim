@@ -88,11 +88,44 @@ proc patchFile*(package, filename, replacement: string) =
   ## to resolve the filename!
   ## The compiler also performs `path substitution <nimc.html#compiler-usage-commandminusline-switches>`_ on `replacement`.
   ##
+  ## **Caveats:**
+  ## * Cannot be used to replace modules that are one of many with
+  ##   the same name and in the same package.
+  ## * Cannot be used to modify parts of a module and export the rest.
+  ##
+  ## These issues are resolved by `patchModule`.
+  ##
   ## Example:
   ##
   ## .. code-block:: nim
   ##
   ##   patchFile("stdlib", "asyncdispatch", "patches/replacement")
+  discard
+
+proc patchModule*(target, patch: string) =
+  ## Patches a target module.
+  ## This is more than just replacing one module with another. This facilitates
+  ## modifying parts of a module without having to re-implement all of it.
+  ##
+  ## Both `target` and `patch` can be given as absolute paths that include the
+  ## `.nim` extension (`/dir/module.nim`), or they can be relative paths without
+  ## extension (`dir/module`).
+  ##
+  ## Relative target paths are resolved using normal import path resolution.
+  ## Relative patch paths are first resolved against the current script's directory
+  ## and then using normal import path resolution.
+  ##
+  ## **Note:**
+  ## A patch specified by `patchModule` takes precedence over one specified by
+  ## `patchFile`.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   patchModule("std/httpclient", "patches/httpclient")
+  ##
+  ## See `tests/modules/tpatchModule` for a complete example.
   discard
 
 proc getCommand*(): string =

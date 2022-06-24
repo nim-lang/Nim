@@ -366,7 +366,11 @@ type
     jsonBuildFile*: AbsoluteFile
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     nimStdlibVersion*: NimVer
-    dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
+    dllOverrides: StringTableRef
+    moduleOverrides*: StringTableRef
+    moduleOverridePaths*: StringTableRef
+    unresolvedModuleOverrides*: StringTableRef
+    cfileSpecificOptions*: StringTableRef
     projectName*: string # holds a name like 'nim'
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
@@ -548,6 +552,8 @@ proc newConfigRef*(): ConfigRef =
     libpath: AbsoluteDir"", nimcacheDir: AbsoluteDir"",
     dllOverrides: newStringTable(modeCaseInsensitive),
     moduleOverrides: newStringTable(modeStyleInsensitive),
+    moduleOverridePaths: newStringTable(modeStyleInsensitive),
+    unresolvedModuleOverrides: newStringTable(modeStyleInsensitive),
     cfileSpecificOptions: newStringTable(modeCaseSensitive),
     projectName: "", # holds a name like 'nim'
     projectPath: AbsoluteDir"", # holds a path like /home/alice/projects/nim/compiler/
@@ -859,11 +865,36 @@ proc rawFindFile2(conf: ConfigRef; f: RelativeFile): AbsoluteFile =
   result = AbsoluteFile""
 
 template patchModule(conf: ConfigRef) {.dirty.} =
-  if not result.isEmpty and conf.moduleOverrides.len > 0:
-    let key = getPackageName(conf, result.string) & "_" & splitFile(result).name
-    if conf.moduleOverrides.hasKey(key):
-      let ov = conf.moduleOverrides[key]
-      if ov.len > 0: result = AbsoluteFile(ov)
+  ## Checks if replacement or patch modules are defined for a module path.
+  ## This dirty template uses `result` as the target module and `currentModule`
+  ## as the module that is importing the target.
+  ##
+  ## A patch specified by `nimscript.patchModule` takes precedence over one
+  ## specified by `nimscript.patchFile`.
+  ##
+  ## See Also:
+  ## * `nimscript.patchFile`
+  ## * `nimscript.patchModule`
+  ## * `modules.resolveModuleOverridePaths` 
+  if not result.isEmpty:
+    if conf.moduleOverrides.len > 0:
+      # This handles `nimscript.patchFile`.
+      let key = getPackageName(conf, result.string) & "_" & splitFile(result).name
+      if conf.moduleOverrides.hasKey(key):
+        let ov = conf.moduleOverrides[key]
+        if ov.len > 0: result = AbsoluteFile(ov)
+    if conf.moduleOverridePaths.len > 0:
+      # This handles `nimscript.patchModule`.
+      if conf.moduleOverridePaths.hasKey(result.string):
+        let patch = conf.moduleOverridePaths[result.string]
+        # This conditional check is so `findModule` compares the current module
+        # to the patch module so that the patch module can import the module
+        # that it is patching. This is relevant to `nimscript.patchModule` only.
+        when declared(currentModule):
+          if patch != currentModule:
+            result = AbsoluteFile(patch)
+        else:
+          result = AbsoluteFile(patch)
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
   proc isRelativeTo(path, base: string): bool =
@@ -901,7 +932,7 @@ proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = 
   search(conf.searchPaths)
   search(conf.lazyPaths)
 
-proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
+proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false, patch = true): AbsoluteFile =
   if f.isAbsolute:
     result = if f.fileExists: AbsoluteFile(f) else: AbsoluteFile""
   else:
@@ -912,13 +943,14 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
         result = rawFindFile2(conf, RelativeFile f)
         if result.isEmpty:
           result = rawFindFile2(conf, RelativeFile f.toLowerAscii)
-  patchModule(conf)
+  if patch:
+    patchModule(conf)
 
-proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
+proc findModule*(conf: ConfigRef; modulename, currentModule: string, patch = true): AbsoluteFile =
   # returns path to module
   var m = addFileExt(modulename, NimExt)
   if m.startsWith(pkgPrefix):
-    result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
+    result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true, patch = false)
   else:
     if m.startsWith(stdPrefix):
       let stripped = m.substr(stdPrefix.len)
@@ -931,8 +963,9 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
       let currentPath = currentModule.splitFile.dir
       result = AbsoluteFile currentPath / m
     if not fileExists(result):
-      result = findFile(conf, m)
-  patchModule(conf)
+      result = findFile(conf, m, patch = false)
+  if patch:
+    patchModule(conf)
 
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]

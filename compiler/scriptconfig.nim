@@ -175,6 +175,21 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     elif not isAbsolute(val):
       val = vthisDir / val
     conf.moduleOverrides[key] = val
+  cbconf patchModule:
+    # The target module path is resolved after all search paths are defined.
+    # The patch module path first tries to be resolved against the the current
+    # script's path, and then fallsback to normal path resolution like the target.
+    #
+    # See Also:
+    # * `nimscript.patchModule`
+    # * `options.patchModule`
+    # * `modules.resolveModuleOverridePaths`
+    var patch = a.getString(1)
+    if not patch.isAbsolute:
+      patch = vthisDir / addFileExt(patch, NimExt)
+      if not fileExists(patch):
+        patch = a.getString(1)
+    conf.unresolvedModuleOverrides[a.getString(0)] = patch
   cbconf selfExe:
     setResult(a, os.getAppFilename())
   cbconf cppDefine:
