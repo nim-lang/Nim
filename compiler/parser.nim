@@ -482,7 +482,7 @@ proc dotLikeExpr(p: var Parser, a: PNode): PNode =
   getTok(p)
   result.add(opNode)
   result.add(a)
-  if p.tok.tokType in {tkSymbol, tkAccent}:
+  if p.tok.tokType in {tkSymbol, tkAccent, tokKeywordLow..tokKeywordHigh}: # if the tok is a symbol
     let symbol = parseSymbol(p, smAfterDot)
 
     if p.tok.tokType == tkParLe and p.tok.strongSpaceA <= 0:
