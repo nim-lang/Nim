@@ -95,8 +95,6 @@ when defined(macosx):
 elif defined(haiku):
   const SIGBUS* = cint(30)
 
-# "nimRawSetjmp" is defined by default for certain platforms, so we need the
-# "nimStdSetjmp" escape hatch with it.
 when defined(nimSigSetjmp):
   proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
     header: "<setjmp.h>", importc: "siglongjmp".}
@@ -116,8 +114,10 @@ elif defined(nimBuiltinSetjmp):
     proc c_builtin_setjmp(jmpb: ptr pointer): cint {.
       importc: "__builtin_setjmp", nodecl.}
     c_builtin_setjmp(unsafeAddr jmpb[0])
-
 elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
+  # "nimRawSetjmp" is defined by default for certain platforms, so we need the
+  # "nimStdSetjmp" escape hatch with it.
+
   when defined(windows) and not defined(vcc):
     # No `_longjmp()` on Windows.
     proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.

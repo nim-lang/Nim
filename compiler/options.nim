@@ -632,8 +632,9 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "cpu32": result = CPU[conf.target.targetCPU].bit == 32
     of "cpu64": result = CPU[conf.target.targetCPU].bit == 64
     of "nimrawsetjmp":
+      # faster on BSDs, prevents stack corruption on Windows: https://github.com/nim-lang/Nim/pull/19197
       result = conf.target.targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
-                            osDragonfly, osMacosx}
+                            osDragonfly, osMacosx, osWindows}
     else: discard
 
 template quitOrRaise*(conf: ConfigRef, msg = "") =
