@@ -111,6 +111,9 @@ proc patchModule*(target, patch: string) =
   ## `.nim` extension (`/dir/module.nim`), or they can be relative paths without
   ## extension (`dir/module`).
   ##
+  ## Path substitutions `<manual.html#modules-path-substitution>`_ are performed
+  ## before any path resolution is attempted.
+  ##
   ## Relative target paths are resolved using normal import path resolution.
   ## Relative patch paths are first resolved against the current script's directory
   ## and then using normal import path resolution.

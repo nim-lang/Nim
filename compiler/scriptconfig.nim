@@ -176,6 +176,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
       val = vthisDir / val
     conf.moduleOverrides[key] = val
   cbconf patchModule:
+    # First, path substitutions are performed on `target` and `patch`.
     # The target module path is resolved after all search paths are defined.
     # The patch module path first tries to be resolved against the the current
     # script's path, and then fallsback to normal path resolution like the target.
@@ -184,12 +185,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     # * `nimscript.patchModule`
     # * `options.patchModule`
     # * `modules.resolveModuleOverridePaths`
-    var patch = a.getString(1)
+    var patch = pathSubs(conf, a.getString(1), vthisDir)
     if not patch.isAbsolute:
       patch = vthisDir / addFileExt(patch, NimExt)
       if not fileExists(patch):
         patch = a.getString(1)
-    conf.unresolvedModuleOverrides[a.getString(0)] = patch
+    conf.unresolvedModuleOverrides[pathSubs(conf, a.getString(0), vthisDir)] = patch
   cbconf selfExe:
     setResult(a, os.getAppFilename())
   cbconf cppDefine:
