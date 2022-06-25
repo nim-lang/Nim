@@ -10,9 +10,10 @@
 ## This module implements the symbol importing mechanism.
 
 import
-  intsets, ast, astalgo, msgs, options, idents, lookups,
-  semdata, modulepaths, sigmatch, lineinfos, sets,
-  modulegraphs, wordrecg, tables
+  std/[os, intsets, sets, tables],
+  ast, astalgo, msgs, options, idents, lookups,
+  semdata, modulepaths, sigmatch, lineinfos,
+  modulegraphs, wordrecg
 from strutils import `%`
 
 when defined(nimPreviewSlimSystem):
@@ -253,10 +254,18 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
     # XXX: I'm not sure why an alias for `realModule` is created. See the
     #      original comment below.
     let alias = block:
-      if n.kind == nkIdent and n.ident != realModule.name:
-        n.ident
-      elif n.kind != nkIdent and n.lastSon.ident != realModule.name:
-        n.lastSon.ident
+      let ident = block:
+        if n.kind == nkIdent:
+          # import module
+          n.ident
+        elif n.kind == nkStrLit:
+          # import "/path/to/module.nim"
+          getIdent(c.cache, splitFile(n.strVal).name)
+        else:
+          # import dir/module
+          n.lastSon.ident
+      if ident != realModule.name:
+        ident
       else:
         # avoids modifying `realModule`, see D20201209T194412 for `import {.all.}`
         realModule.name
