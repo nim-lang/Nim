@@ -75,10 +75,7 @@ elif useWinVersion:
 
   from winlean import SocketHandle
 else:
-  when defined(osx):
-    const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.46|.47|.48|.10|)"
-  else:
-    const versions = "(.1.1|.48|.47|.46|.45|.44|.43|.41|.39|.38|.10|)"
+  const versions = "(.1.1|)"
 
   when defined(macosx):
     const
