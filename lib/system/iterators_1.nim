@@ -27,7 +27,7 @@ iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
     let z = collect(newSeq):
       for i in countdown(5.uint32, 0.uint32, 2):
         i
-    assert z == @[5, 3, 1]
+    assert z == @[5.uint32, 3, 1]
   when T is IntLikeForCount and T is Ordinal:
     var res = int(a)
     while res >= int(b):
