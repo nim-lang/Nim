@@ -42,7 +42,7 @@ jobs:
               valgrind libc6-dbg libblas-dev xorg-dev
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
-        run: brew install boehmgc make sfml gtk+3
+        run: brew install boehmgc make sfml gtk+3 openssl@1.1
       - name: 'Install dependencies (Windows)'
         if: runner.os == 'Windows'
         shell: bash
@@ -66,4 +66,6 @@ jobs:
 
       - name: 'koch, Run CI'
         shell: bash
-        run: . ci/funs.sh && nimInternalBuildKochAndRunCI
+        run: |
+          export DYLD_LIBRARY_PATH="/usr/local/Cellar/openssl@1.1/1.1.1g/lib:$DYLD_LIBRARY_PATH"
+          . ci/funs.sh && nimInternalBuildKochAndRunCI
