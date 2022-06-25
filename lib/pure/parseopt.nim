@@ -291,13 +291,20 @@ proc handleShortOption(p: var OptParser; cmd: string) =
   while i < cmd.len and cmd[i] in {'\t', ' '}:
     inc(i)
     p.inShortState = false
-  if i < cmd.len and (cmd[i] in {':', '='} or
-      card(p.shortNoVal) > 0 and p.key[0] notin p.shortNoVal):
-    if i < cmd.len and cmd[i] in {':', '='}:
+  if card(p.shortNoVal) > 0 and p.key[0] in p.shortNoVal:
+    p.pos = i
+  elif i < cmd.len:
+    if cmd[i] in {':', '='}:
       inc(i)
+    let delimpos = i
     p.inShortState = false
     while i < cmd.len and cmd[i] in {'\t', ' '}: inc(i)
+    if p.allowWhitespaceAfterColon: i = delimpos
     p.val = substr(cmd, i)
+    # if we're at the end, use the next command line option:
+    if i >= p.cmds[p.idx].len and p.idx + 1 < p.cmds.len and
+        p.allowWhitespaceAfterColon:
+      p.val = p.cmds[p.idx + 1]
     p.pos = 0
     inc p.idx
   else:
@@ -353,13 +360,16 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
       while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
       if i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {':', '='}:
         inc(i)
+        var delimpos = i
         while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
         # if we're at the end, use the next command line option:
         if i >= p.cmds[p.idx].len and p.idx < p.cmds.len and
             p.allowWhitespaceAfterColon:
           inc p.idx
+          delimpos = 0
           i = 0
         if p.idx < p.cmds.len:
+          if p.allowWhitespaceAfterColon: i = delimpos
           p.val = p.cmds[p.idx].substr(i)
       elif len(p.longNoVal) > 0 and p.key notin p.longNoVal and p.idx+1 < p.cmds.len:
         p.val = p.cmds[p.idx+1]
