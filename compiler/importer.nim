@@ -253,7 +253,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
     #
     # XXX: I'm not sure why an alias for `realModule` is created. See the
     #      original comment below.
-    func moduleIdent(node: PNode): PIdent =
+    proc moduleIdent(node: PNode): PIdent =
       if node.kind == nkIdent:
         # import module
         node.ident
