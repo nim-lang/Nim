@@ -19,3 +19,8 @@ proc open*(connection, user, password, database: string): DbConn {.tags: [DbEffe
   discard
 proc getAllRows*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]): seq[Row] =
   @[@["patched!"]]
+
+# Patch an absolute import:
+import "$lib/pure/oids" except genOid
+export oids except genOid
+proc genOid*(): Oid = Oid()

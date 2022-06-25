@@ -20,3 +20,7 @@ doAssert typeof(A.b) is int
 import std/db_postgres
 let db = db_postgres.open("/run/postgresql", "user", "password", "database")
 doAssert db.getAllRows(sql"SELECT version();")[0][0] == "patched!"
+
+# Test patching an absolute import:
+import "$lib/pure/oids"
+doAssert genOid() == genOid() # `genOid` is patched to always return the same value
