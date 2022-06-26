@@ -1,3 +1,8 @@
+discard """
+  batchable: false
+  joinable: false
+"""
+
 # Test `nimscript.patchModule`
 #
 # The other components of this test are:
