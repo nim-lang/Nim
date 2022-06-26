@@ -453,8 +453,8 @@ proc parseIPv6Address(addressStr: string): IpAddress =
 proc parseIpAddress*(addressStr: string): IpAddress =
   ## Parses an IP address
   ##
-  ## Raises ValueError on error. 
-  ## 
+  ## Raises ValueError on error.
+  ##
   ## For IPv4 addresses, only the strict form as
   ## defined in RFC 6943 is considered valid, see
   ## https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1.
@@ -639,7 +639,7 @@ when defineSsl:
       raiseSSLError()
     when not defined(openssl10) and not defined(libressl):
       let sslVersion = getOpenSSLVersion()
-      if sslVersion >= 0x010101000 and not sslVersion == 0x020000000:
+      if sslVersion >= 0x010101000 and sslVersion != 0x020000000:
         # In OpenSSL >= 1.1.1, TLSv1.3 cipher suites can only be configured via
         # this API.
         if newCTX.SSL_CTX_set_ciphersuites(cipherList) != 1:
@@ -1755,7 +1755,7 @@ proc sendTo*(socket: Socket, address: string, port: Port,
   ## This proc sends `data` to the specified `address`,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
-  ## 
+  ##
   ## Generally for use with connection-less (UDP) sockets.
   ##
   ## If an error occurs an OSError exception will be raised.
@@ -1767,9 +1767,9 @@ proc sendTo*(socket: Socket, address: IpAddress, port: Port,
              data: string, flags = 0'i32): int {.
               discardable, tags: [WriteIOEffect].} =
   ## This proc sends `data` to the specified `IpAddress` and returns
-  ## the number of bytes written. 
+  ## the number of bytes written.
   ##
-  ## Generally for use with connection-less (UDP) sockets. 
+  ## Generally for use with connection-less (UDP) sockets.
   ##
   ## If an error occurs an OSError exception will be raised.
   ##

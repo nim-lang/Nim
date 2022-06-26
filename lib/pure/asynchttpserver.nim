@@ -155,7 +155,7 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
-func hasChunkedEncoding(request: Request): bool = 
+func hasChunkedEncoding(request: Request): bool =
   ## Searches for a chunked transfer encoding
   const transferEncoding = "Transfer-Encoding"
 
@@ -294,7 +294,7 @@ proc processRequest(
     while true:
       lineFut.mget.setLen(0)
       lineFut.clean()
-      
+
       # The encoding format alternates between specifying a number of bytes to read
       # and the data to be read, of the previously specified size
       if sizeOrData mod 2 == 0:
