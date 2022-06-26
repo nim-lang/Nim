@@ -1,6 +1,14 @@
 discard """
-  batchable: false
+  nimoutFull: true
   joinable: false
+  nimout: '''
+tpatchModule.nims(22, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
+tpatchModule.nims(25, 12) Warning: cannot open: missingPatch_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
+tpatchModule.nim(21, 11) Hint: ../../lib/pure/httpclient.nim patched with mpatchModule.nim [Patch]
+a/module_name_clashes.nim(3, 12) Hint: b/module_name_clashes.nim patched with mpatchModule.nim [Patch]
+tpatchModule.nim(33, 11) Hint: ../../lib/impure/db_postgres.nim patched with mpatchModule.nim [Patch]
+tpatchModule.nim(38, 8) Hint: ../../lib/pure/oids.nim patched with mpatchModule.nim [Patch]
+'''
 """
 
 # Test `nimscript.patchModule`

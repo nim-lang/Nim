@@ -12,7 +12,7 @@ import
   ast, modules, condsyms,
   options, llstream, lineinfos, vm,
   vmdef, modulegraphs, idents, os, pathutils,
-  scriptconfig, std/compilesettings
+  scriptconfig, std/compilesettings, modulepaths
 
 import pipelines
 

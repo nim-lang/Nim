@@ -316,6 +316,11 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
   graph.config.mainPackageId = packSym.getPackageId
   graph.importStack.add projectFile
 
+  # This is called here so that warnings and hints are handled in
+  # `modulepaths.resolveModulePatches`.
+  prepareConfigNotes(graph, packSym)
+  resolveModulePatches(conf)
+
   if projectFile == systemFileIdx:
     discard graph.compilePipelineModule(projectFile, {sfMainModule, sfSystemModule})
   else:

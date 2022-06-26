@@ -609,6 +609,10 @@ template globalError*(conf: ConfigRef; info: TLineInfo, arg: string) =
 template localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(conf, info, msg, arg, doNothing, instLoc())
 
+template localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, args: openArray[string]) =
+  let arg = msgKindToString(msg) % args
+  liMessage(conf, info, msg, arg, doNothing, instLoc(), isRaw = true)
+
 template localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
   liMessage(conf, info, errGenerated, arg, doNothing, instLoc())
 

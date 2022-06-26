@@ -16,7 +16,7 @@ import
   syntaxes, modulegraphs, reorder,
   lineinfos,
   pipelineutils,
-  modules, pathutils, packages,
+  modules, pathutils, packages, modulepaths
   sem, semdata
 
 import ic/replayer
@@ -89,7 +89,7 @@ proc processImplicits(graph: ModuleGraph; implicits: seq[string], nodeKind: TNod
   let relativeTo = toFullPath(graph.config, m.info)
   for module in items(implicits):
     # implicit imports should not lead to a module importing itself
-    if m.position != resolveMod(graph.config, module, relativeTo).int32:
+    if m.position != resolveModuleToIndex(graph.config, module, relativeTo).int32:
       var importStmt = newNodeI(nodeKind, m.info)
       var str = newStrNode(nkStrLit, module)
       str.info = m.info

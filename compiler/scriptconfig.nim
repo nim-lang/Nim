@@ -14,7 +14,7 @@ import
   ast, modules, idents, condsyms,
   options, llstream, vm, vmdef, commands,
   os, times, osproc, wordrecg, strtabs, modulegraphs,
-  pathutils, pipelines
+  pathutils, pipelines, modulepaths
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -176,21 +176,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
       val = vthisDir / val
     conf.moduleOverrides[key] = val
   cbconf patchModule:
-    # First, path substitutions are performed on `target` and `patch`.
-    # The target module path is resolved after all search paths are defined.
-    # The patch module path first tries to be resolved against the the current
-    # script's path, and then fallsback to normal path resolution like the target.
-    #
-    # See Also:
-    # * `nimscript.patchModule`
-    # * `options.patchModule`
-    # * `modules.resolveModuleOverridePaths`
-    var patch = pathSubs(conf, a.getString(1), vthisDir)
-    if not patch.isAbsolute:
-      patch = vthisDir / addFileExt(patch, NimExt)
-      if not fileExists(patch):
-        patch = a.getString(1)
-    conf.unresolvedModuleOverrides[pathSubs(conf, a.getString(0), vthisDir)] = patch
+    conf.addModulePatch(a.getString(0), a.getString(1), vthisDir, a.currentLineInfo)
   cbconf selfExe:
     setResult(a, os.getAppFilename())
   cbconf cppDefine:

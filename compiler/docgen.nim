@@ -20,7 +20,7 @@ import
   packages/docutils/[rst, rstidx, rstgen, dochelpers],
   json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, tables, nimpaths, renderverbatim, osproc, packages
+  pathutils, tables, nimpaths, renderverbatim, osproc, packages, modulepaths
 import packages/docutils/rstast except FileIndex, TLineInfo
 
 from uri import encodeUrl
@@ -262,7 +262,8 @@ template declareClosures(currentFilename: AbsoluteFile, destFile: string) =
       globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
 
   proc docgenFindFile(s: string): string {.gcsafe.} =
-    result = options.findFile(conf, s).string
+    {.gcsafe.}:
+      result = findFile(conf, s).string
     if result.len == 0:
       result = getCurrentDir() / s
       if not fileExists(result): result = ""
