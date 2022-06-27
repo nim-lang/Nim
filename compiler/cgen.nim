@@ -1358,13 +1358,11 @@ proc genMainProc(m: BModule) =
   else:
     preMainCode.add("\t$1PreMain();\L" % [rope m.config.nimMainPrefix])
 
-  let
-    posixCmdLine = if optNoMain notin m.config.globalOptions:
-        rope"N_LIB_PRIVATE int cmdCount;$N" &
-        rope"N_LIB_PRIVATE char** cmdLine;$N" &
-        rope"N_LIB_PRIVATE char** gEnv;$N"
-      else:
-        rope""
+  var posixCmdLine: Rope
+  if optNoMain notin m.config.globalOptions:
+    posixCmdLine.add "\tN_LIB_PRIVATE int cmdCount;\L"
+    posixCmdLine.add "\tN_LIB_PRIVATE char** cmdLine;\L"
+    posixCmdLine.add "\tN_LIB_PRIVATE char** gEnv;\L"
 
   const
     # The use of a volatile function pointer to call Pre/NimMainInner
