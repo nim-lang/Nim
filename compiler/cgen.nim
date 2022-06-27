@@ -1323,7 +1323,7 @@ proc getSomeInitName(m: BModule, suffix: string): Rope =
 proc getInitName(m: BModule): Rope =
   if sfMainModule in m.module.flags:
     # generate constant name for main module, for "easy" debugging.
-    result = rope"NimMainModule"
+    result = rope(m.config.nimMainPrefix) & rope"NimMainModule"
   else:
     result = getSomeInitName(m, "Init000")
 
@@ -1356,35 +1356,37 @@ proc genMainProc(m: BModule) =
     preMainCode.add("\tinitStackBottomWith_actual((void *)&inner);\L")
     preMainCode.add("\t(*inner)();\L")
   else:
-    preMainCode.add("\tPreMain();\L")
+    preMainCode.add("\t$1PreMain();\L" % [rope m.config.nimMainPrefix])
+
+  let
+    posixCmdLine = if optNoMain notin m.config.globalOptions:
+        rope"N_LIB_PRIVATE int cmdCount;$N" &
+        rope"N_LIB_PRIVATE char** cmdLine;$N" &
+        rope"N_LIB_PRIVATE char** gEnv;$N"
+      else:
+        rope""
 
   const
-    # not a big deal if we always compile these 3 global vars... makes the HCR code easier
-    PosixCmdLine =
-      "N_LIB_PRIVATE int cmdCount;$N" &
-      "N_LIB_PRIVATE char** cmdLine;$N" &
-      "N_LIB_PRIVATE char** gEnv;$N"
-
     # The use of a volatile function pointer to call Pre/NimMainInner
     # prevents inlining of the NimMainInner function and dependent
     # functions, which might otherwise merge their stack frames.
 
     PreMainVolatileBody =
       "\tvoid (*volatile inner)(void);$N" &
-      "\tinner = PreMainInner;$N" &
+      "\tinner = $3PreMainInner;$N" &
       "$1" &
       "\t(*inner)();$N"
 
     PreMainNonVolatileBody =
       "$1" &
-      "\tPreMainInner();$N"
+      "\t$3PreMainInner();$N"
 
     PreMainBodyStart = "$N" &
-      "N_LIB_PRIVATE void PreMainInner(void) {$N" &
+      "N_LIB_PRIVATE void $3PreMainInner(void) {$N" &
       "$2" &
       "}$N$N" &
-      PosixCmdLine &
-      "N_LIB_PRIVATE void PreMain(void) {$N"
+      "$4" &
+      "N_LIB_PRIVATE void $3PreMain(void) {$N"
 
     PreMainBodyEnd =
       "}$N$N"
@@ -1395,21 +1397,21 @@ proc genMainProc(m: BModule) =
     MainProcsWithResult =
       MainProcs & ("\treturn $1nim_program_result;$N")
 
-    NimMainInner = "N_LIB_PRIVATE N_CDECL(void, NimMainInner)(void) {$N" &
+    NimMainInner = "N_LIB_PRIVATE N_CDECL(void, $5NimMainInner)(void) {$N" &
         "$1" &
       "}$N$N"
 
     NimMainVolatileBody =
       "\tvoid (*volatile inner)(void);$N" &
       "$4" &
-      "\tinner = NimMainInner;$N" &
+      "\tinner = $5NimMainInner;$N" &
       "$2" &
       "\t(*inner)();$N"
 
     NimMainNonVolatileBody =
       "$4" &
       "$2" &
-      "\tNimMainInner();$N"
+      "\t$5NimMainInner();$N"
 
     NimMainProcStart =
       "N_CDECL(void, $5NimMain)(void) {$N"
@@ -1489,9 +1491,9 @@ proc genMainProc(m: BModule) =
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", [])
   inc(m.labels)
   if m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
-    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit])
+    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit, m.config.nimMainPrefix, posixCmdLine])
   else:
-    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainNonVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit])
+    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainNonVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit, m.config.nimMainPrefix, posixCmdLine])
 
   if m.config.target.targetOS == osWindows and
       m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
