@@ -832,8 +832,8 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
           newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), info),
           ctx.newTmpResultAccess())
 
-        let retrn = newTree(nkReturnStmt, asgn)
-        newTree(nkIfStmt, branch, newTree(nkElse, retrn))
+        let returnStmt = newTree(nkReturnStmt, asgn)
+        newTree(nkIfStmt, branch, newTree(nkElse, returnStmt))
     else:
       # the others just bubble up
       newTree(nkIfStmt, branch)
