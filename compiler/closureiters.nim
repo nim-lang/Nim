@@ -120,11 +120,11 @@
 # STATE2: # Finally
 #   yield 2
 #   if :unrollFinally: # This node is created by `newEndFinallyNode`
-#     if :curExc.isNil:
-#       return :tmpResult
-#     else:
+#     if not :curExc.isNil:
 #       closureIterSetupExc(nil)
 #       raise
+#     elif [is last finally]: # inner finally will bubble up to the last finally
+#       return :tmpResult
 #   state = -1 # Goto next state. In this case we just exit
 #   break :stateLoop
 
@@ -806,30 +806,37 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
 proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   # Generate the following code:
   #   if :unrollFinally:
-  #       if :curExc.isNil:
-  #         return :tmpResult
-  #       else:
+  #       if not :curExc.isNil:
   #         raise
+  #       elif [is last finally]:
+  #         return :tmpResult
   let curExc = ctx.newCurExcAccess()
   let nilnode = newNode(nkNilLit)
   nilnode.typ = curExc.typ
   let cmp = newTree(nkCall, newSymNode(ctx.g.getSysMagic(info, "==", mEqRef), info), curExc, nilnode)
   cmp.typ = ctx.g.getSysType(info, tyBool)
-
-  let asgn = newTree(nkFastAsgn,
-    newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), info),
-    ctx.newTmpResultAccess())
-
-  let retStmt = newTree(nkReturnStmt, asgn)
-  let branch = newTree(nkElifBranch, cmp, retStmt)
+  let notcmp = newTree(nkCall, newSymNode(ctx.g.getSysMagic(info, "not", mNot), info), cmp)
+  notcmp.typ = ctx.g.getSysType(info, tyBool)
 
   let nullifyExc = newTree(nkCall, newSymNode(ctx.g.getCompilerProc("closureIterSetupExc")), nilnode)
   nullifyExc.info = info
   let raiseStmt = newTree(nkRaiseStmt, curExc)
   raiseStmt.info = info
-  let elseBranch = newTree(nkElse, newTree(nkStmtList, nullifyExc, raiseStmt))
+  let branch = newTree(nkElifBranch, notcmp, newTree(nkStmtList, nullifyExc, raiseStmt))
 
-  let ifBody = newTree(nkIfStmt, branch, elseBranch)
+  let ifBody =
+    if ctx.nearestFinally == 0:
+      block:
+        # the last finally can return
+        let asgn = newTree(nkFastAsgn,
+          newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), info),
+          ctx.newTmpResultAccess())
+
+        let retrn = newTree(nkReturnStmt, asgn)
+        newTree(nkIfStmt, branch, newTree(nkElse, retrn))
+    else:
+      # the others just bubble up
+      newTree(nkIfStmt, branch)
   let elifBranch = newTree(nkElifBranch, ctx.newUnrollFinallyAccess(info), ifBody)
   elifBranch.info = info
   result = newTree(nkIfStmt, elifBranch)
@@ -965,9 +972,7 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
     var exceptBody = ctx.collectExceptState(n)
     var finallyBody = newTree(nkStmtList, getFinallyNode(ctx, n))
     finallyBody = ctx.transformReturnsInTry(finallyBody)
-    if ctx.nearestFinally == 0:
-      # Only the last "finally" must unroll
-      finallyBody.add(ctx.newEndFinallyNode(finallyBody.info))
+    finallyBody.add(ctx.newEndFinallyNode(finallyBody.info))
 
     # The following index calculation is based on the knowledge how state
     # indexes are assigned

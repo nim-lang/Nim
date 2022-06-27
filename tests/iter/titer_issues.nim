@@ -300,7 +300,7 @@ block:
   for _ in p1():
     discard
 
-  # try in try yield
+  # try -> try yield
   iterator p2: int {.closure.} =
     try:
      try:
@@ -314,7 +314,7 @@ block:
   for _ in p2():
     discard
 
-  # try yield in try yield
+  # try yield -> try yield
   iterator p3: int {.closure.} =
     try:
      yield 0
@@ -329,7 +329,7 @@ block:
   for _ in p3():
     discard
 
-  # try in try
+  # try -> try
   iterator p4: int {.closure.} =
     try:
      try:
