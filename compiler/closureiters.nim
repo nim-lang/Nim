@@ -864,6 +864,13 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
 
   of nkSkip:
     discard
+  of nkTryStmt:
+    if n.hasYields:
+      # the inner try will handle theses transformations
+      discard
+    else:
+      for i in 0..<n.len:
+        n[i] = ctx.transformReturnsInTry(n[i])
   else:
     for i in 0..<n.len:
       n[i] = ctx.transformReturnsInTry(n[i])
@@ -958,7 +965,9 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
     var exceptBody = ctx.collectExceptState(n)
     var finallyBody = newTree(nkStmtList, getFinallyNode(ctx, n))
     finallyBody = ctx.transformReturnsInTry(finallyBody)
-    finallyBody.add(ctx.newEndFinallyNode(finallyBody.info))
+    if ctx.nearestFinally == 0:
+      # Only the last "finally" must unroll
+      finallyBody.add(ctx.newEndFinallyNode(finallyBody.info))
 
     # The following index calculation is based on the knowledge how state
     # indexes are assigned

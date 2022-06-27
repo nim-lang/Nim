@@ -29,6 +29,14 @@ end
 9018
 @[1, 2]
 @[1, 2, 3]
+nested finally
+outer finally
+nested finally
+outer finally
+nested finally
+outer finally
+nested finally
+outer finally
 '''
 """
 
@@ -274,3 +282,62 @@ iterator cc() {.closure.} =
             break
 
 var a2 = cc
+
+block:
+  # bug #19911 (return in nested try)
+
+  # try yield -> try
+  iterator p1: int {.closure.} =
+    try:
+     yield 0
+     try:
+       return
+     finally:
+       echo "nested finally"
+    finally:
+      echo "outer finally"
+
+  for _ in p1():
+    discard
+
+  # try in try yield
+  iterator p2: int {.closure.} =
+    try:
+     try:
+       yield 0
+       return
+     finally:
+       echo "nested finally"
+    finally:
+      echo "outer finally"
+
+  for _ in p2():
+    discard
+
+  # try yield in try yield
+  iterator p3: int {.closure.} =
+    try:
+     yield 0
+     try:
+       yield 0
+       return
+     finally:
+       echo "nested finally"
+    finally:
+      echo "outer finally"
+
+  for _ in p3():
+    discard
+
+  # try in try
+  iterator p4: int {.closure.} =
+    try:
+     try:
+       return
+     finally:
+       echo "nested finally"
+    finally:
+      echo "outer finally"
+
+  for _ in p4():
+    discard
