@@ -1,3 +1,7 @@
+discard """
+  targets: "c js"
+"""
+
 import tables, hashes
 
 type
@@ -48,7 +52,7 @@ block: # Ordered table should preserve order after deletion
     doAssert(prev < i)
     prev = i
 
-block: # Deletion from OrderedTable should account for collision groups. See issue #5057.
+block: # Deletion from OrderedTable should account for collision groups. See bug #5057.
   # The bug is reproducible only with exact keys
   const key1 = "boy_jackpot.inGamma"
   const key2 = "boy_jackpot.outBlack"
@@ -122,28 +126,28 @@ block:
   doAssert(not clearTable.hasKey(123123))
   doAssert clearTable.getOrDefault(42) == ""
 
-block: #5482
+block: # bug #5482
   var a = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
   var b = newOrderedTable[string, string](initialSize = 2)
   b["wrong?"] = "foo"
   b["wrong?"] = "foo2"
   doAssert a == b
 
-block: #5482
+block: # bug #5482
   var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
   var b = newOrderedTable[string, string](initialSize = 2)
   b["wrong?"] = "foo"
   b["wrong?"] = "foo2"
   doAssert a == b
 
-block: #5487
+block: # bug #5487
   var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
   var b = newOrderedTable[string, string]()         # notice, default size!
   b["wrong?"] = "foo"
   b["wrong?"] = "foo2"
   doAssert a == b
 
-block: #5487
+block: # bug #5487
   var a = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
   var b = newOrderedTable[string, string]()         # notice, default size!
   b["wrong?"] = "foo"
@@ -159,14 +163,14 @@ block:
   doAssert a == b
   doAssert a == c
 
-block: #6250
+block: # bug #6250
   let
     a = {3: 1}.toOrderedTable
     b = {3: 2}.toOrderedTable
   doAssert((a == b) == false)
   doAssert((b == a) == false)
 
-block: #6250
+block: # bug #6250
   let
     a = {3: 2}.toOrderedTable
     b = {3: 2}.toOrderedTable
@@ -177,7 +181,7 @@ block: # CountTable.smallest
   let t = toCountTable([0, 0, 5, 5, 5])
   doAssert t.smallest == (0, 2)
 
-block: #10065
+block: # bug #10065
   let t = toCountTable("abracadabra")
   doAssert t['z'] == 0
 
@@ -189,7 +193,7 @@ block: #10065
   doAssert t_mut['z'] == 1
   doAssert t_mut.hasKey('z') == true
 
-block: #12813 #13079
+block: # bug #12813 # bug #13079
   var t = toCountTable("abracadabra")
   doAssert len(t) == 5
 
@@ -309,3 +313,16 @@ block countTableWithoutInit:
   d.inc("f")
   merge(d, e)
   doAssert d["f"] == 7
+
+block: # bug #19929
+  type Foo = object
+    a: int
+
+  proc hash(f: Foo): Hash =
+    var h: Hash = 0
+    h = h !& hash(f.a)
+    result = !$h
+  
+  const x = toTable({Foo(a: 5): 0, Foo(a: -5): 1})
+
+  doAssert x[Foo(a: -5)] == 1
