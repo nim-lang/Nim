@@ -493,7 +493,10 @@ proc needsExeExt(conf: ConfigRef): bool {.inline.} =
            (conf.target.hostOS == osWindows)
 
 proc useCpp(conf: ConfigRef; cfile: AbsoluteFile): bool =
-  not cfile.string.endsWith(".c")
+  # List of possible file extensions taken from gcc
+  for ext in [".C", ".cc", ".cpp", ".CPP", ".c++", ".cp", ".cxx"]:
+    if cfile.string.endsWith(ext): return true
+  false
 
 proc envFlags(conf: ConfigRef): string =
   result = if conf.backend == backendCpp:
