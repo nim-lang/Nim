@@ -474,7 +474,7 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
     genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
-  if sfNoInit notin v.flags:
+  if sfNoInit notin v.flags or p.config.selectedGC in {gcArc, gcOrc}:
     # we know it is a local variable and thus on the stack!
     # If ``not immediateAsgn`` it is not initialized in a binding like
     # ``var v = X`` and thus we need to init it.
