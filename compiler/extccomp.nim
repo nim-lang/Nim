@@ -493,7 +493,7 @@ proc needsExeExt(conf: ConfigRef): bool {.inline.} =
            (conf.target.hostOS == osWindows)
 
 proc useCpp(conf: ConfigRef; cfile: AbsoluteFile): bool =
-  conf.backend == backendCpp and not cfile.string.endsWith(".c")
+  not cfile.string.endsWith(".c")
 
 proc envFlags(conf: ConfigRef): string =
   result = if conf.backend == backendCpp:
@@ -560,6 +560,8 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
     # needs to be prepended so that --passc:-std=c++17 can override default.
     # we could avoid allocation by making cFileSpecificOptions inplace
     options = CC[c].cppXsupport & ' ' & options
+    # If any C++ file was compiled, we need to use C++ driver for linking as well
+    incl conf.globalOptions, optMixedMode
 
   var exe = getConfigVar(conf, c, ".exe")
   if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
