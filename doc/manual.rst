@@ -4323,12 +4323,9 @@ Closure iterators and inline iterators have some restrictions:
 1. For now, a closure iterator cannot be executed at compile time.
 2. `return` is allowed in a closure iterator but not in an inline iterator
    (but rarely useful) and ends the iteration.
-3. Neither inline nor closure iterators can be (directly)* recursive.
+3. Inline iterators cannot be recursive.
 4. Neither inline nor closure iterators have the special `result` variable.
 5. Closure iterators are not supported by the JS backend.
-
-(*) Closure iterators can be co-recursive with a factory proc which results
-in similar syntax to a recursive iterator. More details follow.
 
 Iterators that are neither marked `{.closure.}` nor `{.inline.}` explicitly
 default to being inline, but this may change in future versions of the
