@@ -289,13 +289,15 @@ block:
   # try yield -> try
   iterator p1: int {.closure.} =
     try:
-     yield 0
-     try:
-       return
-     finally:
-       echo "nested finally"
+      yield 0
+      try:
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
     finally:
       echo "outer finally"
+    echo "shouldn't run"
 
   for _ in p1():
     discard
@@ -303,13 +305,15 @@ block:
   # try -> try yield
   iterator p2: int {.closure.} =
     try:
-     try:
-       yield 0
-       return
-     finally:
-       echo "nested finally"
+      try:
+        yield 0
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
     finally:
       echo "outer finally"
+    echo "shouldn't run"
 
   for _ in p2():
     discard
@@ -317,14 +321,16 @@ block:
   # try yield -> try yield
   iterator p3: int {.closure.} =
     try:
-     yield 0
-     try:
-       yield 0
-       return
-     finally:
-       echo "nested finally"
+      yield 0
+      try:
+        yield 0
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
     finally:
       echo "outer finally"
+    echo "shouldn't run"
 
   for _ in p3():
     discard
@@ -332,12 +338,14 @@ block:
   # try -> try
   iterator p4: int {.closure.} =
     try:
-     try:
-       return
-     finally:
-       echo "nested finally"
+      try:
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
     finally:
       echo "outer finally"
+    echo "shouldn't run"
 
   for _ in p4():
     discard

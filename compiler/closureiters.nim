@@ -120,11 +120,14 @@
 # STATE2: # Finally
 #   yield 2
 #   if :unrollFinally: # This node is created by `newEndFinallyNode`
-#     if not :curExc.isNil:
+#     if :curExc.isNil:
+#       if nearestFinally == 0:
+#         return :tmpResult
+#       else:
+#         :state = nearestFinally # bubble up
+#     else:
 #       closureIterSetupExc(nil)
 #       raise
-#     elif [is last finally]: # inner finally will bubble up to the last finally
-#       return :tmpResult
 #   state = -1 # Goto next state. In this case we just exit
 #   break :stateLoop
 
@@ -806,37 +809,39 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
 proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   # Generate the following code:
   #   if :unrollFinally:
-  #       if not :curExc.isNil:
+  #       if :curExc.isNil:
+  #         if nearestFinally == 0:
+  #           return :tmpResult
+  #         else:
+  #           :state = nearestFinally # bubble up
+  #       else:
   #         raise
-  #       elif [is last finally]:
-  #         return :tmpResult
   let curExc = ctx.newCurExcAccess()
   let nilnode = newNode(nkNilLit)
   nilnode.typ = curExc.typ
   let cmp = newTree(nkCall, newSymNode(ctx.g.getSysMagic(info, "==", mEqRef), info), curExc, nilnode)
   cmp.typ = ctx.g.getSysType(info, tyBool)
-  let notcmp = newTree(nkCall, newSymNode(ctx.g.getSysMagic(info, "not", mNot), info), cmp)
-  notcmp.typ = ctx.g.getSysType(info, tyBool)
+
+  let retStmt =
+    if ctx.nearestFinally == 0:
+      # last finally, we can return
+      let asgn = newTree(nkFastAsgn,
+        newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), info),
+        ctx.newTmpResultAccess())
+      newTree(nkReturnStmt, asgn)
+    else:
+      # bubble up to next finally
+      newTree(nkGotoState, ctx.g.newIntLit(info, ctx.nearestFinally))
+
+  let branch = newTree(nkElifBranch, cmp, retStmt)
 
   let nullifyExc = newTree(nkCall, newSymNode(ctx.g.getCompilerProc("closureIterSetupExc")), nilnode)
   nullifyExc.info = info
   let raiseStmt = newTree(nkRaiseStmt, curExc)
   raiseStmt.info = info
-  let branch = newTree(nkElifBranch, notcmp, newTree(nkStmtList, nullifyExc, raiseStmt))
+  let elseBranch = newTree(nkElse, newTree(nkStmtList, nullifyExc, raiseStmt))
 
-  let ifBody =
-    if ctx.nearestFinally == 0:
-      block:
-        # the last finally can return
-        let asgn = newTree(nkFastAsgn,
-          newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), info),
-          ctx.newTmpResultAccess())
-
-        let returnStmt = newTree(nkReturnStmt, asgn)
-        newTree(nkIfStmt, branch, newTree(nkElse, returnStmt))
-    else:
-      # the others just bubble up
-      newTree(nkIfStmt, branch)
+  let ifBody = newTree(nkIfStmt, branch, elseBranch)
   let elifBranch = newTree(nkElifBranch, ctx.newUnrollFinallyAccess(info), ifBody)
   elifBranch.info = info
   result = newTree(nkIfStmt, elifBranch)
