@@ -221,3 +221,8 @@ proc main() =
 
 static: main()
 main()
+
+block: # bug #19929
+  const hash1 = hash(-5)
+  let hash2 = hash(-5)
+  doAssert hash1 == hash2

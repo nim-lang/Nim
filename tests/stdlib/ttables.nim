@@ -193,7 +193,7 @@ block: # bug #10065
   doAssert t_mut['z'] == 1
   doAssert t_mut.hasKey('z') == true
 
-block: # bug #12813 # bug #13079
+block: # bug #12813 bug #13079
   var t = toCountTable("abracadabra")
   doAssert len(t) == 5
 
@@ -313,16 +313,3 @@ block countTableWithoutInit:
   d.inc("f")
   merge(d, e)
   doAssert d["f"] == 7
-
-block: # bug #19929
-  type Foo = object
-    a: int
-
-  proc hash(f: Foo): Hash =
-    var h: Hash = 0
-    h = h !& hash(f.a)
-    result = !$h
-  
-  const x = toTable({Foo(a: 5): 0, Foo(a: -5): 1})
-
-  doAssert x[Foo(a: -5)] == 1
