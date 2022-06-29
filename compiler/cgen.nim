@@ -474,7 +474,7 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
     genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
-  if sfNoInit notin v.flags or p.config.selectedGC in {gcArc, gcOrc}:
+  if sfNoInit notin v.flags:
     # we know it is a local variable and thus on the stack!
     # If ``not immediateAsgn`` it is not initialized in a binding like
     # ``var v = X`` and thus we need to init it.
@@ -1064,7 +1064,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       # the 'unsureAsgn' is a nop. If it points to a global variable the
       # global is either 'nil' or points to valid memory and so the RC operation
       # succeeds without touching not-initialized memory.
-      if sfNoInit in prc.flags: discard
+      if sfNoInit in prc.flags and p.config.selectedGC notin {gcArc, gcOrc}: discard
       elif allPathsAsgnResult(procBody) == InitSkippable: discard
       else:
         resetLoc(p, res.loc)
