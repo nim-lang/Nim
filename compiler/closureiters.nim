@@ -878,7 +878,7 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
     discard
   of nkTryStmt:
     if n.hasYields:
-      # the inner try will handle theses transformations
+      # the inner try will handle these transformations
       discard
     else:
       for i in 0..<n.len:
