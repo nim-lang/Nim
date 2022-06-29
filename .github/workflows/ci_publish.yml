@@ -55,13 +55,33 @@ jobs:
         shell: bash
         run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
+      - name: 'Build koch'
+        shell: bash
+        run: nim c koch
+
+      - name: 'Build Nim'
+        shell: bash
+        run: ./koch boot -d:release -d:nimStrictMode --lib:lib
+
+      - name: 'Action'
+        shell: bash
+        run: nim c -r ci/action.nim
+
       - name: 'Comment'
         uses: actions/github-script@v6
         with:
           script: |
-            github.rest.issues.createComment({
+            const fs = require('fs');
+
+            try {
+              const data = fs.readFileSync('ci/results.txt', 'utf8');
+              github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '👋 Thanks for reporting!'
+              body: data
             })
+            } catch (err) {
+              console.error(err);
+            }
+
