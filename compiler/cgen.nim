@@ -1067,6 +1067,8 @@ proc genProcAux(m: BModule, prc: PSym) =
       if sfNoInit in prc.flags and p.config.selectedGC notin {gcArc, gcOrc}: discard
       elif allPathsAsgnResult(procBody) == InitSkippable: discard
       else:
+        if sfNoInit in prc.flags and p.config.selectedGC in {gcArc, gcOrc}:
+          message(m.config, resNode.info, warnNoInitIgnored, "")
         resetLoc(p, res.loc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)

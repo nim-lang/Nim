@@ -78,6 +78,7 @@ type
     warnAnyEnumConv = "AnyEnumConv",
     warnHoleEnumConv = "HoleEnumConv",
     warnCstringConv = "CStringConv",
+    warnNoInitIgnored = "NoInitIgnored"
     warnEffect = "Effect",
     warnUser = "User",
     # hints
@@ -170,6 +171,7 @@ const
     warnAnyEnumConv: "$1",
     warnHoleEnumConv: "$1",
     warnCstringConv: "$1",
+    warnNoInitIgnored: "noInit is ignored",
     warnEffect: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
