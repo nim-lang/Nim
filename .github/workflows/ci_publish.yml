@@ -55,10 +55,8 @@ jobs:
         shell: bash
         run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
-  comment:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/github-script@v6
+      - name: 'Comment'
+        uses: actions/github-script@v6
         with:
           script: |
             github.rest.issues.createComment({
