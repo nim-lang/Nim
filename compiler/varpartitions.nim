@@ -848,7 +848,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     #     connect(graph, cursorVar)
     inc c.inLoop
     for child in n: computeLiveRanges(c, child)
-    inc c.inLoop
+    dec c.inLoop
   of nkElifBranch, nkElifExpr, nkElse, nkOfBranch:
     inc c.inConditional
     for child in n: computeLiveRanges(c, child)
