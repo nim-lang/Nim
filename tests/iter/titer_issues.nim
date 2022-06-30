@@ -41,6 +41,7 @@ In defer
 trying
 exception caught
 finally block
+1
 '''
 """
 
@@ -380,3 +381,15 @@ iterator tryFinally() {.closure.} =
 
 var x = tryFinally
 x()
+
+# bug #16876
+block:
+  iterator a(num: int): int {.closure.} =
+      if num == 1:
+          yield num
+      else:
+          for i in a(num - 1):
+              yield i
+
+  for i in a(5):
+    echo i
