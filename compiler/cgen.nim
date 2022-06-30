@@ -1323,7 +1323,11 @@ proc getSomeInitName(m: BModule, suffix: string): Rope =
 proc getInitName(m: BModule): Rope =
   if sfMainModule in m.module.flags:
     # generate constant name for main module, for "easy" debugging.
+<<<<<<< Updated upstream
     result = rope(m.config.nimMainPrefix) & rope"NimMainModule"
+=======
+    result = ropecg(m, "$1NimMainModule", [m.config.nimMainPrefix])
+>>>>>>> Stashed changes
   else:
     result = getSomeInitName(m, "Init000")
 
@@ -1352,10 +1356,11 @@ proc genMainProc(m: BModule) =
     preMainCode.add("\tvoid* rtl_handle;\L")
     preMainCode.add(loadLib("rtl_handle", "nimGC_setStackBottom"))
     preMainCode.add(hcrGetProcLoadCode(m, "nimGC_setStackBottom", "nimrtl_", "rtl_handle", "nimGetProcAddr"))
-    preMainCode.add("\tinner = PreMain;\L")
+    appcg(m, preMainCode, "\tinner = $^PreMain;\L", [m.config.nimMainPrefix])
     preMainCode.add("\tinitStackBottomWith_actual((void *)&inner);\L")
     preMainCode.add("\t(*inner)();\L")
   else:
+<<<<<<< Updated upstream
     preMainCode.add("\t$1PreMain();\L" % [rope m.config.nimMainPrefix])
 
   var posixCmdLine: Rope
@@ -1365,18 +1370,34 @@ proc genMainProc(m: BModule) =
     posixCmdLine.add "\tN_LIB_PRIVATE char** gEnv;\L"
 
   const
+=======
+    appcg(m, preMainCode, "\t$^PreMain();\L", [m.config.nimMainPrefix])
+
+  const
+    # not a big deal if we always compile these 3 global vars... makes the HCR code easier
+    PosixCmdLine =
+      "N_LIB_PRIVATE int $^cmdCount;$N" &
+      "N_LIB_PRIVATE char** $^cmdLine;$N" &
+      "N_LIB_PRIVATE char** $^gEnv;$N"
+
+>>>>>>> Stashed changes
     # The use of a volatile function pointer to call Pre/NimMainInner
     # prevents inlining of the NimMainInner function and dependent
     # functions, which might otherwise merge their stack frames.
 
     PreMainVolatileBody =
       "\tvoid (*volatile inner)(void);$N" &
+<<<<<<< Updated upstream
       "\tinner = $3PreMainInner;$N" &
+=======
+      "\tinner = $^PreMainInner;$N" &
+>>>>>>> Stashed changes
       "$1" &
       "\t(*inner)();$N"
 
     PreMainNonVolatileBody =
       "$1" &
+<<<<<<< Updated upstream
       "\t$3PreMainInner();$N"
 
     PreMainBodyStart = "$N" &
@@ -1385,6 +1406,16 @@ proc genMainProc(m: BModule) =
       "}$N$N" &
       "$4" &
       "N_LIB_PRIVATE void $3PreMain(void) {$N"
+=======
+      "\t$^PreMainInner();$N"
+
+    PreMainBodyStart = "$N" &
+      "N_LIB_PRIVATE void $^PreMainInner(void) {$N" &
+      "$2" &
+      "}$N$N" &
+      PosixCmdLine &
+      "N_LIB_PRIVATE void $^PreMain(void) {$N"
+>>>>>>> Stashed changes
 
     PreMainBodyEnd =
       "}$N$N"
@@ -1395,24 +1426,36 @@ proc genMainProc(m: BModule) =
     MainProcsWithResult =
       MainProcs & ("\treturn $1nim_program_result;$N")
 
+<<<<<<< Updated upstream
     NimMainInner = "N_LIB_PRIVATE N_CDECL(void, $5NimMainInner)(void) {$N" &
+=======
+    NimMainInner = "N_LIB_PRIVATE N_CDECL(void, $^NimMainInner)(void) {$N" &
+>>>>>>> Stashed changes
         "$1" &
       "}$N$N"
 
     NimMainVolatileBody =
       "\tvoid (*volatile inner)(void);$N" &
       "$4" &
+<<<<<<< Updated upstream
       "\tinner = $5NimMainInner;$N" &
+=======
+      "\tinner = $^NimMainInner;$N" &
+>>>>>>> Stashed changes
       "$2" &
       "\t(*inner)();$N"
 
     NimMainNonVolatileBody =
       "$4" &
       "$2" &
+<<<<<<< Updated upstream
       "\t$5NimMainInner();$N"
+=======
+      "\t$^NimMainInner();$N"
+>>>>>>> Stashed changes
 
     NimMainProcStart =
-      "N_CDECL(void, $5NimMain)(void) {$N"
+      "N_CDECL(void, $^NimMain)(void) {$N"
 
     NimMainProcEnd =
       "}$N$N"
@@ -1427,9 +1470,9 @@ proc genMainProc(m: BModule) =
 
     PosixCMain =
       "int main(int argc, char** args, char** env) {$N" &
-        "\tcmdLine = args;$N" &
-        "\tcmdCount = argc;$N" &
-        "\tgEnv = env;$N" &
+        "\t$^cmdLine = args;$N" &
+        "\t$^cmdCount = argc;$N" &
+        "\t$^gEnv = env;$N" &
         MainProcsWithResult &
       "}$N$N"
 
@@ -1457,7 +1500,7 @@ proc genMainProc(m: BModule) =
     PosixNimDllMain = WinNimDllMain
 
     PosixCDllMain =
-      "N_LIB_PRIVATE void NIM_POSIX_INIT NimMainInit(void) {$N" &
+      "N_LIB_PRIVATE void NIM_POSIX_INIT $^NimMainInit(void) {$N" &
         MainProcs &
       "}$N$N"
 
@@ -1489,9 +1532,15 @@ proc genMainProc(m: BModule) =
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", [])
   inc(m.labels)
   if m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
+<<<<<<< Updated upstream
     appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit, m.config.nimMainPrefix, posixCmdLine])
   else:
     appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainNonVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit, m.config.nimMainPrefix, posixCmdLine])
+=======
+    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit, m.config.nimMainPrefix])
+  else:
+    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainNonVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit, m.config.nimMainPrefix])
+>>>>>>> Stashed changes
 
   if m.config.target.targetOS == osWindows and
       m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
@@ -1621,10 +1670,10 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
       g.mainDatInit.addf("\thcrAddModule($1);\n", [osModulePath])
       g.mainDatInit.add("\tint* cmd_count;\n")
       g.mainDatInit.add("\tchar*** cmd_line;\n")
-      g.mainDatInit.addf("\thcrRegisterGlobal($1, \"cmdCount\", sizeof(cmd_count), NULL, (void**)&cmd_count);$N", [osModulePath])
-      g.mainDatInit.addf("\thcrRegisterGlobal($1, \"cmdLine\", sizeof(cmd_line), NULL, (void**)&cmd_line);$N", [osModulePath])
-      g.mainDatInit.add("\t*cmd_count = cmdCount;\n")
-      g.mainDatInit.add("\t*cmd_line = cmdLine;\n")
+      appcg(m, g.mainDatInit, "\thcrRegisterGlobal($1, \"$2cmdCount\", sizeof(cmd_count), NULL, (void**)&cmd_count);$N", [osModulePath, m.config.nimMainPrefix])
+      appcg(m, g.mainDatInit, "\thcrRegisterGlobal($1, \"$2cmdLine\", sizeof(cmd_line), NULL, (void**)&cmd_line);$N", [osModulePath, m.config.nimMainPrefix])
+      appcg(m, g.mainDatInit, "\t*cmd_count = $1cmdCount;\n", [m.config.nimMainPrefix])
+      appcg(m, g.mainDatInit, "\t*cmd_line = $1cmdLine;\n", [m.config.nimMainPrefix])
     else:
       m.s[cfsInitProc].add(hcrModuleMeta)
     return
