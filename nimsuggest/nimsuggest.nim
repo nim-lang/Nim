@@ -809,8 +809,8 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       let typeSym = sym.typ.sym
       if typeSym != nil:
         graph.suggestResult(typeSym, typeSym.info, ideType)
-      elif sym.typ.sons.len != 0:
-        let genericType = sym.typ.sons[0].sym
+      elif sym.typ.len != 0:
+        let genericType = sym.typ[0].sym
         graph.suggestResult(genericType, genericType.info, ideType)
   of ideUse, ideDus:
     let symbol = graph.findSymData(file, line, col).sym
