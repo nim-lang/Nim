@@ -1177,7 +1177,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp3)
     c.genAsgnPatch(d2AsNode, d2)
     c.freeTemp(d2)
-  of mReset:
+  of mReset, mWasMoved:
     unused(c, n, dest)
     var d = c.genx(n[1])
     # XXX use ldNullOpcode() here?
