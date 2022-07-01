@@ -1367,7 +1367,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "$1.status = __builtin_setjmp($1.context);$n", [safePoint])
     elif isDefined(p.config, "nimRawSetjmp"):
       if isDefined(p.config, "mswindows"):
-        if isDefined(p.config, "vcc"):
+        if isDefined(p.config, "vcc") or isDefined(p.config, "clangcl"):
           # For the vcc compiler, use `setjmp()` with one argument.
           # See https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/setjmp?view=msvc-170
           linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])        
