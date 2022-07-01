@@ -727,10 +727,10 @@ proc genWhileStmt(p: PProc, n: PNode) =
   lineF(p, "Label$1: while (true) {$n", [labl])
   p.nested:
     gen(p, n[0], cond)
-    let items = [cond.res, labl]
-    lineF(p, "if (!$1) {$n", items)
-    p.nested: lineF(p, "break Label$2;$n", items)
-    lineF(p, "}$n", items)
+    let arrai = [cond.res, labl]
+    lineF(p, "if (!$1) {$n", arrai)
+    p.nested: lineF(p, "break Label$2;$n", arrai)
+    lineF(p, "}$n", arrai)
     genStmt(p, n[1])
   lineF(p, "}$n", [labl])
   setLen(p.blocks, p.blocks.len - 1)
@@ -842,12 +842,12 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
     if not generalCatchBranchExists:
       useMagic(p, "reraiseException")
       line(p, "else {\L")
-      line(p, "\treraiseException();\L")
+      p.nested: line(p, "\treraiseException();\L")
       line(p, "}\L")
     lineF(p, "lastJSError = prevJSError;$n")
   line(p, "} finally {\L")
   if hasFrameInfo(p):
-    line(p, "framePtr = $1;$n" % [tmpFramePtr])
+    p.nested: line(p, "framePtr = $1;$n" % [tmpFramePtr])
   if i < n.len and n[i].kind == nkFinally:
     genStmt(p, n[i][0])
   line(p, "}\L")
@@ -928,10 +928,6 @@ proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
     var sym = n[0].sym
     sym.loc.k = locOther
     sym.position = idx+1
-    # Add a comment to make it more human readable and help debugging.
-    let name: string = sym.name.s.escapeJSString
-    if name != ":tmp":
-      lineF(p, "/* block $1 */$n", [name.rope])
   let labl = p.unique
   lineF(p, "Label$1: do {$n", [labl.rope])
   setLen(p.blocks, idx + 1)
@@ -949,10 +945,6 @@ proc genBreakStmt(p: PProc, n: PNode) =
     let sym = n[0].sym
     assert(sym.loc.k == locOther)
     idx = sym.position - 1
-    # Add a comment to make it more human readable and help debugging.
-    let name: string = n[0].sym.name.s.escapeJSString
-    if name != ":tmp":
-      lineF(p, "/* break $1 */$n", [name.rope])
   else:
     # an unnamed 'break' can only break a loop after 'transf' pass:
     idx = p.blocks.len - 1
@@ -1097,10 +1089,10 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       if y.kind == nkCall:
         let tmp = p.getTemp(false)
-        let items = [tmp, a.address, a.res, b.rdLoc]
-        lineF(p, "var $1 = $4;$n", items)
-        lineF(p, "$2 = $1[0];$n", items)
-        lineF(p, "$3 = $1[1];$n", items)
+        let arrai = [tmp, a.address, a.res, b.rdLoc]
+        lineF(p, "var $1 = $4;$n", arrai)
+        lineF(p, "$2 = $1[0];$n", arrai)
+        lineF(p, "$3 = $1[1];$n", arrai)
       elif b.typ == etyBaseIndex:
         lineF(p, "$# = [$#, $#];$n", [a.res, b.address, b.res])
       elif b.typ == etyNone:
@@ -1113,17 +1105,17 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       elif a.typ == etyBaseIndex:
         # array indexing may not map to var type
         if b.address != nil:
-          let items = [a.address, b.address, a.res, b.res]
-          lineF(p, "$1 = $2;$n", items)
-          lineF(p, "$3 = $4;$n", items)
+          let arrai = [a.address, b.address, a.res, b.res]
+          lineF(p, "$1 = $2;$n", arrai)
+          lineF(p, "$3 = $4;$n", arrai)
         else:
           lineF(p, "$1 = $2;$n", [a.address, b.res])
       else:
         internalError(p.config, x.info, $("genAsgn", b.typ, a.typ))
     elif b.address != nil:
-      let items = [a.address, b.address, a.res, b.res]
-      lineF(p, "$1 = $2;$n", items)
-      lineF(p, "$3 = $4;$n", items)
+      let arrai = [a.address, b.address, a.res, b.res]
+      lineF(p, "$1 = $2;$n", arrai)
+      lineF(p, "$3 = $4;$n", arrai)
     else:
       lineF(p, "$1 = $2;$n", [a.address, b.res])
   else:
@@ -1152,15 +1144,15 @@ proc genSwap(p: PProc, n: PNode) =
     let tmp2 = p.getTemp(false)
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       internalError(p.config, n.info, "genSwap")
-    let items = [tmp, a.address, b.address]
-    lineF(p, "var $1 = $2;$n", items)
-    lineF(p, "$2 = $3;$n", items)
-    lineF(p, "$3 = $1;$n", items)
+    let arrai = [tmp, a.address, b.address]
+    lineF(p, "var $1 = $2;$n", arrai)
+    lineF(p, "$2 = $3;$n", arrai)
+    lineF(p, "$3 = $1;$n", arrai)
     tmp = tmp2
-  let items = [tmp, a.res, b.res]
-  lineF(p, "var $1 = $2;$n", items)
-  lineF(p, "$2 = $3;$n", items)
-  lineF(p, "$3 = $1;$n", items)
+  let arrai = [tmp, a.res, b.res]
+  lineF(p, "var $1 = $2;$n", arrai)
+  lineF(p, "$2 = $3;$n", arrai)
+  lineF(p, "$3 = $1;$n", arrai)
 
 proc getFieldPosition(p: PProc; f: PNode): int =
   case f.kind
@@ -1247,9 +1239,10 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
   useMagic(p, "makeNimstrLit")
   useMagic(p, "reprDiscriminant") # no need to offset by firstOrd unlike for cgen
   let msg = genFieldDefect(p.config, field.name.s, disc)
-  lineF(p, "if ($1[$2.$3]$4undefined) { raiseFieldError2(makeNimstrLit($5), reprDiscriminant($2.$3, $6)); }$n",
-    setx.res, tmp, disc.loc.r, if negCheck: ~"!==" else: ~"===",
-    makeJSString(msg), genTypeInfo(p, disc.typ))
+  let arrai = [setx.res, tmp, disc.loc.r, if negCheck: ~"!==" else: ~"===", makeJSString(msg), genTypeInfo(p, disc.typ)]
+  lineF(p, "if ($1[$2.$3]$4undefined) {$n", arrai)
+  p.nested: lineF(p, "raiseFieldError2(makeNimstrLit($5), reprDiscriminant($2.$3, $6));$n", arrai)
+  lineF(p, "}$n", arrai)
 
   if addrTyp != nil and mapType(p, addrTyp) == etyBaseIndex:
     r.typ = etyBaseIndex
@@ -1863,10 +1856,10 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       else:
         if targetBaseIndex:
           let tmp = p.getTemp
-          let items = [tmp, a.res, v.loc.r]
-          lineF(p, "var $1 = $2;$n", items)
-          lineF(p, "var $3 = $1[0];$n", items)
-          lineF(p, "var $3_Idx = $1[1];$n", items)
+          let arrai = [tmp, a.res, v.loc.r]
+          lineF(p, "var $1 = $2;$n", arrai)
+          lineF(p, "var $3 = $1[0];$n", arrai)
+          lineF(p, "var $3_Idx = $1[1];$n", arrai)
         else:
           line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, a.res]))
       return
@@ -1916,9 +1909,9 @@ proc genNew(p: PProc, n: PNode) =
   if mapType(t) == etyObject:
     lineF(p, "$1 = $2;$n", [a.rdLoc, createVar(p, t, false)])
   elif a.typ == etyBaseIndex:
-    let items = [a.address, a.res, createVar(p, t, false)]
-    lineF(p, "$1 = [$3];$n", items)
-    lineF(p, "$2 = 0;$n", items)
+    let arrai = [a.address, a.res, createVar(p, t, false)]
+    lineF(p, "$1 = [$3];$n", arrai)
+    lineF(p, "$2 = 0;$n", arrai)
   else:
     lineF(p, "$1 = [[$2], 0];$n", [a.rdLoc, createVar(p, t, false)])
 
@@ -1927,10 +1920,10 @@ proc genNewSeq(p: PProc, n: PNode) =
   gen(p, n[1], x)
   gen(p, n[2], y)
   let t = skipTypes(n[1].typ, abstractVar)[0]
-  let items = [x.rdLoc, y.rdLoc, createVar(p, t, false)]
-  lineF(p, "$1 = new Array($2);$n", items)
-  lineF(p, "for (var i = 0 ; i < $2 ; ++i) {$n", items)
-  p.nested: lineF(p, "$1[i] = $3;$n", items)
+  let arrai = [x.rdLoc, y.rdLoc, createVar(p, t, false)]
+  lineF(p, "$1 = new Array($2);$n", arrai)
+  lineF(p, "for (var i = 0 ; i < $2 ; ++i) {$n", arrai)
+  p.nested: lineF(p, "$1[i] = $3;$n", arrai)
   line(p, "}")
 
 proc genOrd(p: PProc, n: PNode, r: var TCompRes) =
@@ -2085,8 +2078,15 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
 
     if skipTypes(n[1].typ, abstractVarRange).kind == tyCstring:
       let (b, tmp) = maybeMakeTemp(p, n[2], rhs)
-      r.res = "if (null != $1) { if (null == $2) { $2 = $3; } else { $2 += $3; }}" %
-        [b, lhs.rdLoc, tmp]
+      r.res = """
+      if (null != $1) {
+        if (null == $2) {
+          $2 = $3;
+        } else {
+          $2 += $3;
+        }
+      }
+      """.unindent % [b, lhs.rdLoc, tmp]
     else:
       let (a, tmp) = maybeMakeTemp(p, n[1], lhs)
       r.res = "$1.push.apply($3, $2);" % [a, rhs.rdLoc, tmp]
@@ -2176,8 +2176,15 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     let t = skipTypes(n[1].typ, abstractVar)[0]
     let (a, tmp) = maybeMakeTemp(p, n[1], x)
     let (b, tmp2) = maybeMakeTemp(p, n[2], y)
-    r.res = """if ($1.length < $2) { for (var i = $4.length ; i < $5 ; ++i) { $4.push($3); }}
-               else { $4.length = $5; }""" % [a, b, createVar(p, t, false), tmp, tmp2]
+    r.res = """
+    if ($1.length < $2) {
+      for (var i = $4.length ; i < $5 ; ++i) {
+        $4.push($3);
+      }
+    } else {
+      $4.length = $5;
+    }
+    """.unindent % [a, b, createVar(p, t, false), tmp, tmp2]
     r.kind = resExpr
   of mCard: unaryExpr(p, n, r, "SetCard", "SetCard($1)")
   of mLtSet: binaryExpr(p, n, r, "SetLt", "SetLt($1, $2)")
@@ -2413,8 +2420,13 @@ proc genProcBody(p: PProc, prc: PSym): Rope =
   else:
     result.add(p.body)
   if prc.typ.callConv == ccSysCall:
-    result = ("try {$n$1} catch (e) {$n" &
-      " alert(\"Unhandled exception:\\n\" + e.message + \"\\n\"$n}") % [result]
+    result = """
+    try {
+      $1;
+    } catch (e) {
+      alert("Unhandled exception:\n" + e.message + "\n");
+    }
+    """.unindent % [result]
   if hasFrameInfo(p):
     result.add(frameDestroy(p))
 
