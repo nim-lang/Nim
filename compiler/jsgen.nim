@@ -346,10 +346,12 @@ proc genAnd(p: PProc, a, b: PNode, r: var TCompRes) =
     #     tmp = b
     # tmp
     gen(p, a, x)
-    lineF(p, "if (!$1) $2 = false; else {", [x.rdLoc, r.rdLoc])
+    lineF(p, "if (!$1) {$n", [x.rdLoc])
+    p.nested: lineF(p, "$1 = false;$n", [r.rdLoc])
+    lineF(p, "} else {$n")
     p.nested:
       gen(p, b, y)
-      lineF(p, "$2 = $1;", [y.rdLoc, r.rdLoc])
+      lineF(p, "$2 = $1;$n", [y.rdLoc, r.rdLoc])
     line(p, "}")
 
 proc genOr(p: PProc, a, b: PNode, r: var TCompRes) =
@@ -364,10 +366,12 @@ proc genOr(p: PProc, a, b: PNode, r: var TCompRes) =
     r.res = p.getTemp
     r.kind = resVal
     gen(p, a, x)
-    lineF(p, "if ($1) $2 = true; else {", [x.rdLoc, r.rdLoc])
+    lineF(p, "if ($1) {$n", [x.rdLoc])
+    p.nested: lineF(p, "$1 = true;$n", [r.rdLoc])
+    lineF(p, "} else {$n")
     p.nested:
       gen(p, b, y)
-      lineF(p, "$2 = $1;", [y.rdLoc, r.rdLoc])
+      lineF(p, "$2 = $1;$n", [y.rdLoc, r.rdLoc])
     line(p, "}")
 
 type
@@ -721,10 +725,13 @@ proc genWhileStmt(p: PProc, n: PNode) =
   p.blocks[^1].isLoop = true
   let labl = p.unique.rope
   lineF(p, "Label$1: while (true) {$n", [labl])
-  p.nested: gen(p, n[0], cond)
-  lineF(p, "if (!$1) break Label$2;$n",
-       [cond.res, labl])
-  p.nested: genStmt(p, n[1])
+  p.nested:
+    gen(p, n[0], cond)
+    let items = [cond.res, labl]
+    lineF(p, "if (!$1) {$n", items)
+    p.nested: lineF(p, "break Label$2;$n", items)
+    lineF(p, "}$n", items)
+    genStmt(p, n[1])
   lineF(p, "}$n", [labl])
   setLen(p.blocks, p.blocks.len - 1)
 
@@ -904,7 +911,7 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
         moveInto(p, stmt, r)
         lineF(p, "break;$n", [])
     of nkElse:
-      lineF(p, "default: $n", [])
+      lineF(p, "default:$n", [])
       p.nested:
         gen(p, it[0], stmt)
         moveInto(p, stmt, r)
@@ -921,6 +928,10 @@ proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
     var sym = n[0].sym
     sym.loc.k = locOther
     sym.position = idx+1
+    # Add a comment to make it more human readable and help debugging.
+    let name: string = sym.name.s.escapeJSString
+    if name != ":tmp":
+      lineF(p, "/* block $1 */$n", [name.rope])
   let labl = p.unique
   lineF(p, "Label$1: do {$n", [labl.rope])
   setLen(p.blocks, idx + 1)
@@ -937,7 +948,11 @@ proc genBreakStmt(p: PProc, n: PNode) =
     assert(n[0].kind == nkSym)
     let sym = n[0].sym
     assert(sym.loc.k == locOther)
-    idx = sym.position-1
+    idx = sym.position - 1
+    # Add a comment to make it more human readable and help debugging.
+    let name: string = n[0].sym.name.s.escapeJSString
+    if name != ":tmp":
+      lineF(p, "/* break $1 */$n", [name.rope])
   else:
     # an unnamed 'break' can only break a loop after 'transf' pass:
     idx = p.blocks.len - 1
@@ -996,7 +1011,7 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
         inc(toClose)
       p.nested: gen(p, it[0], cond)
       lineF(p, "if ($1) {$n", [cond.rdLoc])
-      gen(p, it[1], stmt)
+      p.nested: gen(p, it[1], stmt)
     else:
       # else part:
       lineF(p, "else {$n", [])
@@ -1082,7 +1097,10 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       if y.kind == nkCall:
         let tmp = p.getTemp(false)
-        lineF(p, "var $1 = $4; $2 = $1[0]; $3 = $1[1];$n", [tmp, a.address, a.res, b.rdLoc])
+        let items = [tmp, a.address, a.res, b.rdLoc]
+        lineF(p, "var $1 = $4;$n", items)
+        lineF(p, "$2 = $1[0];$n", items)
+        lineF(p, "$3 = $1[1];$n", items)
       elif b.typ == etyBaseIndex:
         lineF(p, "$# = [$#, $#];$n", [a.res, b.address, b.res])
       elif b.typ == etyNone:
@@ -1095,13 +1113,17 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       elif a.typ == etyBaseIndex:
         # array indexing may not map to var type
         if b.address != nil:
-          lineF(p, "$1 = $2; $3 = $4;$n", [a.address, b.address, a.res, b.res])
+          let items = [a.address, b.address, a.res, b.res]
+          lineF(p, "$1 = $2;$n", items)
+          lineF(p, "$3 = $4;$n", items)
         else:
           lineF(p, "$1 = $2;$n", [a.address, b.res])
       else:
         internalError(p.config, x.info, $("genAsgn", b.typ, a.typ))
     elif b.address != nil:
-      lineF(p, "$1 = $2; $3 = $4;$n", [a.address, b.address, a.res, b.res])
+      let items = [a.address, b.address, a.res, b.res]
+      lineF(p, "$1 = $2;$n", items)
+      lineF(p, "$3 = $4;$n", items)
     else:
       lineF(p, "$1 = $2;$n", [a.address, b.res])
   else:
@@ -1130,11 +1152,15 @@ proc genSwap(p: PProc, n: PNode) =
     let tmp2 = p.getTemp(false)
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       internalError(p.config, n.info, "genSwap")
-    lineF(p, "var $1 = $2; $2 = $3; $3 = $1;$n",
-             [tmp, a.address, b.address])
+    let items = [tmp, a.address, b.address]
+    lineF(p, "var $1 = $2;$n", items)
+    lineF(p, "$2 = $3;$n", items)
+    lineF(p, "$3 = $1;$n", items)
     tmp = tmp2
-  lineF(p, "var $1 = $2; $2 = $3; $3 = $1;",
-           [tmp, a.res, b.res])
+  let items = [tmp, a.res, b.res]
+  lineF(p, "var $1 = $2;$n", items)
+  lineF(p, "$2 = $3;$n", items)
+  lineF(p, "$3 = $1;$n", items)
 
 proc getFieldPosition(p: PProc; f: PNode): int =
   case f.kind
@@ -1837,8 +1863,10 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       else:
         if targetBaseIndex:
           let tmp = p.getTemp
-          lineF(p, "var $1 = $2, $3 = $1[0], $3_Idx = $1[1];$n",
-                   [tmp, a.res, v.loc.r])
+          let items = [tmp, a.res, v.loc.r]
+          lineF(p, "var $1 = $2;$n", items)
+          lineF(p, "var $3 = $1[0];$n", items)
+          lineF(p, "var $3_Idx = $1[1];$n", items)
         else:
           line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, a.res]))
       return
@@ -1888,7 +1916,9 @@ proc genNew(p: PProc, n: PNode) =
   if mapType(t) == etyObject:
     lineF(p, "$1 = $2;$n", [a.rdLoc, createVar(p, t, false)])
   elif a.typ == etyBaseIndex:
-    lineF(p, "$1 = [$3]; $2 = 0;$n", [a.address, a.res, createVar(p, t, false)])
+    let items = [a.address, a.res, createVar(p, t, false)]
+    lineF(p, "$1 = [$3];$n", items)
+    lineF(p, "$2 = 0;$n", items)
   else:
     lineF(p, "$1 = [[$2], 0];$n", [a.rdLoc, createVar(p, t, false)])
 
@@ -1897,8 +1927,11 @@ proc genNewSeq(p: PProc, n: PNode) =
   gen(p, n[1], x)
   gen(p, n[2], y)
   let t = skipTypes(n[1].typ, abstractVar)[0]
-  lineF(p, "$1 = new Array($2); for (var i = 0 ; i < $2 ; ++i) { $1[i] = $3; }", [
-    x.rdLoc, y.rdLoc, createVar(p, t, false)])
+  let items = [x.rdLoc, y.rdLoc, createVar(p, t, false)]
+  lineF(p, "$1 = new Array($2);$n", items)
+  lineF(p, "for (var i = 0 ; i < $2 ; ++i) {$n", items)
+  p.nested: lineF(p, "$1[i] = $3;$n", items)
+  line(p, "}")
 
 proc genOrd(p: PProc, n: PNode, r: var TCompRes) =
   case skipTypes(n[1].typ, abstractVar + abstractRange).kind
@@ -1919,9 +1952,9 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   for i in 2..<n.len - 1:
     gen(p, n[i], a)
     if skipTypes(n[i].typ, abstractVarRange).kind == tyChar:
-      r.res.add("[$1]," % [a.res])
+      r.res.add("[$1], " % [a.res])
     else:
-      r.res.add("$1 || []," % [a.res])
+      r.res.add("$1 || [], " % [a.res])
 
   gen(p, n[^1], a)
   if skipTypes(n[^1].typ, abstractVarRange).kind == tyChar:
@@ -2052,7 +2085,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
 
     if skipTypes(n[1].typ, abstractVarRange).kind == tyCstring:
       let (b, tmp) = maybeMakeTemp(p, n[2], rhs)
-      r.res = "if (null != $1) { if (null == $2) $2 = $3; else $2 += $3; }" %
+      r.res = "if (null != $1) { if (null == $2) { $2 = $3; } else { $2 += $3; }}" %
         [b, lhs.rdLoc, tmp]
     else:
       let (a, tmp) = maybeMakeTemp(p, n[1], lhs)
@@ -2143,7 +2176,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     let t = skipTypes(n[1].typ, abstractVar)[0]
     let (a, tmp) = maybeMakeTemp(p, n[1], x)
     let (b, tmp2) = maybeMakeTemp(p, n[2], y)
-    r.res = """if ($1.length < $2) { for (var i = $4.length ; i < $5 ; ++i) $4.push($3); }
+    r.res = """if ($1.length < $2) { for (var i = $4.length ; i < $5 ; ++i) { $4.push($3); }}
                else { $4.length = $5; }""" % [a, b, createVar(p, t, false), tmp, tmp2]
     r.kind = resExpr
   of mCard: unaryExpr(p, n, r, "SetCard", "SetCard($1)")
@@ -2687,7 +2720,7 @@ proc newModule(g: ModuleGraph; module: PSym): BModule =
 
 proc genHeader(): Rope =
   ## Generate the JS header.
-  result = rope("""/* Generated by the Nim Compiler v$1 */
+  result = rope("""/* Generated by the Nim compiler v$1 */
     var framePtr = null;
     var excHandler = 0;
     var lastJSError = null;
