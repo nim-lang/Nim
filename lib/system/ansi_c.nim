@@ -122,7 +122,7 @@ elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
     # No `_longjmp()` on Windows.
     proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
       header: "<setjmp.h>", importc: "longjmp".}
-    when defined(vcc):
+    when defined(vcc) or defined(clangcl):
       proc c_setjmp*(jmpb: C_JmpBuf): cint {.
         header: "<setjmp.h>", importc: "setjmp".}
     else:
