@@ -139,10 +139,14 @@ elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
     when defined(nimHasStyleChecks):
       {.pop.}
   else:
+    # For the vcc compiler, use `longjmp()`
+    # See https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/longjmp?view=msvc-170
     proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
-      header: "<setjmp.h>", importc: "_longjmp".}
+      header: "<setjmp.h>", importc: "longjmp".}
+    # For the vcc compiler, use `setjmp()` with one argument.
+    # See https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/setjmp?view=msvc-170
     proc c_setjmp*(jmpb: C_JmpBuf): cint {.
-      header: "<setjmp.h>", importc: "_setjmp".}
+      header: "<setjmp.h>", importc: "setjmp".}
 else:
   proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
     header: "<setjmp.h>", importc: "longjmp".}
