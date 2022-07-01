@@ -118,35 +118,35 @@ elif defined(nimBuiltinSetjmp):
     c_builtin_setjmp(unsafeAddr jmpb[0])
 
 elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
-  when defined(windows) and not defined(vcc):
+  when defined(windows):
     # No `_longjmp()` on Windows.
     proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
       header: "<setjmp.h>", importc: "longjmp".}
-    # The Windows `_setjmp()` takes two arguments, with the second being an
-    # undocumented buffer used by the SEH mechanism for stack unwinding.
-    # Mingw-w64 has been trying to get it right for years, but it's still
-    # prone to stack corruption during unwinding, so we disable that by setting
-    # it to NULL.
-    # More details: https://github.com/status-im/nimbus-eth2/issues/3121
-    when defined(nimHasStyleChecks):
-      {.push styleChecks: off.}
+    when defined(vcc):
+      proc c_setjmp*(jmpb: C_JmpBuf): cint {.
+        header: "<setjmp.h>", importc: "setjmp".}
+    else:
+      # The Windows `_setjmp()` takes two arguments, with the second being an
+      # undocumented buffer used by the SEH mechanism for stack unwinding.
+      # Mingw-w64 has been trying to get it right for years, but it's still
+      # prone to stack corruption during unwinding, so we disable that by setting
+      # it to NULL.
+      # More details: https://github.com/status-im/nimbus-eth2/issues/3121
+      when defined(nimHasStyleChecks):
+        {.push styleChecks: off.}
 
-    proc c_setjmp*(jmpb: C_JmpBuf): cint =
-      proc c_setjmp_win(jmpb: C_JmpBuf, ctx: pointer): cint {.
-        header: "<setjmp.h>", importc: "_setjmp".}
-      c_setjmp_win(jmpb, nil)
+      proc c_setjmp*(jmpb: C_JmpBuf): cint =
+        proc c_setjmp_win(jmpb: C_JmpBuf, ctx: pointer): cint {.
+          header: "<setjmp.h>", importc: "_setjmp".}
+        c_setjmp_win(jmpb, nil)
 
-    when defined(nimHasStyleChecks):
-      {.pop.}
+      when defined(nimHasStyleChecks):
+        {.pop.}
   else:
-    # For the vcc compiler, use `longjmp()`
-    # See https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/longjmp?view=msvc-170
     proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
-      header: "<setjmp.h>", importc: "longjmp".}
-    # For the vcc compiler, use `setjmp()` with one argument.
-    # See https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/setjmp?view=msvc-170
+      header: "<setjmp.h>", importc: "_longjmp".}
     proc c_setjmp*(jmpb: C_JmpBuf): cint {.
-      header: "<setjmp.h>", importc: "setjmp".}
+      header: "<setjmp.h>", importc: "_setjmp".}
 else:
   proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
     header: "<setjmp.h>", importc: "longjmp".}
