@@ -157,19 +157,25 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
       result.forth = ""
     when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
       result.doc = extractDocComment(g, s)
-  let infox =
-    if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline}:
-      info
-    else:
-      s.info
-  result.filePath = toFullPath(g.config, infox)
-  result.line = toLinenumber(infox)
-  result.column = toColumn(infox)
+  if s.kind == skModule and s.ast.len != 0 and section != ideHighlight:
+    result.filePath = toFullPath(g.config, s.ast[0].info)
+    result.line = 1
+    result.column = 0
+    result.tokenLen = 0
+  else:
+    let infox =
+      if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline}:
+        info
+      else:
+        s.info
+    result.filePath = toFullPath(g.config, infox)
+    result.line = toLinenumber(infox)
+    result.column = toColumn(infox)
+    result.tokenLen = if section != ideHighlight:
+                        s.name.s.len
+                      else:
+                        getTokenLenFromSource(g.config, s.name.s, infox)
   result.version = g.config.suggestVersion
-  result.tokenLen = if section != ideHighlight:
-                      s.name.s.len
-                    else:
-                      getTokenLenFromSource(g.config, s.name.s, infox)
 
 proc `$`*(suggest: Suggest): string =
   result = $suggest.section
