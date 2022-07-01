@@ -29,6 +29,7 @@ end
 9018
 @[1, 2]
 @[1, 2, 3]
+1
 nested finally
 outer finally
 nested finally
@@ -282,6 +283,18 @@ iterator cc() {.closure.} =
             break
 
 var a2 = cc
+
+# bug #16876
+block:
+  iterator a(num: int): int {.closure.} =
+      if num == 1:
+          yield num
+      else:
+          for i in a(num - 1):
+              yield i
+
+  for i in a(5):
+    echo i
 
 block:
   # bug #19911 (return in nested try)
