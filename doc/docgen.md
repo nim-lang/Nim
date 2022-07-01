@@ -35,14 +35,13 @@ Quick start
 
 Generate HTML documentation for a file:
 
-.. code:: cmd
-
+  ```cmd
   nim doc <filename>.nim
+  ```
 
 Generate HTML documentation for a whole project:
 
-.. code:: cmd
-
+  ```cmd
   # delete any htmldocs/*.idx file before starting
   nim doc --project --index:on --git.url:<url> --git.commit:<tag> --outdir:htmldocs <main_filename>.nim
   # this will generate html files, a theindex.html index, css and js under `htmldocs`
@@ -54,7 +53,7 @@ Generate HTML documentation for a whole project:
   # or `$nimcache/htmldocs` with `--usenimcache` which avoids clobbering your sources;
   # and likewise without `--project`.
   # Adding `-r` will open in a browser directly.
-
+  ```
 
 Documentation Comments
 ----------------------
@@ -120,8 +119,8 @@ Example of Nim file input
 The following examples will generate documentation for this sample
 *Nim* module, aptly named ``doc/docgen_sample.nim``:
 
-.. code:: nim
-   :file: docgen_sample.nim
+   ```nim file=docgen_sample.nim
+   ```
 
 All the below commands save their output to ``htmldocs`` directory relative to
 the directory of file;
@@ -137,9 +136,9 @@ optionally, an index file.
 
 The `doc`:option: command:
 
-.. code:: cmd
-
+  ```cmd
   nim doc docgen_sample.nim
+  ```
 
 Partial Output::
   ...
@@ -159,8 +158,7 @@ HTML -> PDF conversion).
 
 The `doc2tex`:option: command:
 
-.. code:: cmd
-
+  ```cmd
   nim doc2tex docgen_sample.nim
   cd htmldocs
   xelatex docgen_sample.tex
@@ -169,6 +167,7 @@ The `doc2tex`:option: command:
   # large documents) to get all labels generated.
   # That depends on this warning in the end of `xelatex` output:
   #   LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+  ```
 
 The output is ``docgen_sample.pdf``.
 
@@ -183,9 +182,9 @@ Note that this tool is built off of the `doc`:option: command
 
 The `jsondoc`:option: command:
 
-.. code:: cmd
-
+  ```cmd
   nim jsondoc docgen_sample.nim
+  ```
 
 Output::
   {
@@ -209,9 +208,9 @@ renamed to `jsondoc0`:option:.
 
 The `jsondoc0`:option: command:
 
-.. code:: cmd
-
+  ```cmd
   nim jsondoc0 docgen_sample.nim
+  ```
 
 Output::
   [
@@ -249,9 +248,9 @@ the anchor [*]_ of Nim symbol that corresponds to link text.
 
 If you have a constant:
 
-.. code:: Nim
-
+   ```Nim
    const pi* = 3.14
+   ```
 
 then it should be referenced in one of the 2 forms:
 
@@ -262,9 +261,9 @@ B. qualified (with symbol kind specification)::
 
 For routine kinds there are more options. Consider this definition:
 
-.. code:: Nim
-
+   ```Nim
    proc foo*(a: int, b: float): string
+   ```
 
 Generally following syntax is allowed for referencing `foo`:
 
@@ -352,11 +351,11 @@ recognized fine::
    (without parameter names, see form A.2 above).
    E.g. for this signature:
 
-   .. code:: Nim
-
+      ```Nim
       proc binarySearch*[T, K](a: openArray[T]; key: K;
                                cmp: proc (x: T; y: K): int {.closure.}): int
                                           ~~    ~~   ~~~~~
+      ```
 
    you cannot use names underlined by `~~` so it must be referenced with
    ``cmp: proc(T, K)``. Hence these forms are valid::
@@ -379,10 +378,10 @@ recognized fine::
 .. Note:: A bit special case is operators
    (as their signature is also defined with `\``):
 
-   .. code:: Nim
-
+      ```Nim
       func `$`(x: MyType): string
       func `[]`*[T](x: openArray[T]): T
+      ```
 
    A short form works without additional backticks::
 
@@ -412,9 +411,9 @@ Related Options
 Project switch
 --------------
 
-.. code:: cmd
-
+  ```cmd
   nim doc --project filename.nim
+  ```
 
 This will recursively generate documentation of all Nim modules imported
 into the input module that belong to the Nimble package that ``filename.nim``
@@ -425,9 +424,9 @@ also be generated.
 Index switch
 ------------
 
-.. code:: cmd
-
+  ```cmd
   nim doc --index:on filename.nim
+  ```
 
 This will generate an index of all the exported symbols in the input Nim
 module, and put it into a neighboring file with the extension of ``.idx``. The
@@ -443,9 +442,9 @@ file.
 See source switch
 -----------------
 
-.. code:: cmd
-
+  ```cmd
   nim doc --git.url:<url> filename.nim
+  ```
 
 With the `git.url`:option: switch the *See source* hyperlink will appear below each
 documented item in your source code pointing to the implementation of that
@@ -490,9 +489,9 @@ supports highlighting of a few other languages supported by the
 
 Usage:
 
-.. code:: cmd
-
+  ```cmd
   nim rst2html docgen.rst
+  ```
 
 Output::
   You're reading it!
@@ -528,7 +527,7 @@ HTML file, most browsers will go to the first one. To differentiate the rest,
 you will need to use the complex name. A complex name for a callable type is
 made up of several parts:
 
-    (**plain symbol**)(**.type**),(**first param**)?(**,param type**)\*
+  (**plain symbol**)(**.type**),(**first param**)?(**,param type**)\*
 
 The first thing to note is that all callable types have at least a comma, even
 if they don't have any parameters. If there are parameters, they are
