@@ -117,3 +117,6 @@ becomes an alias for `addr`.
 
 - There is a new switch `--nimMainPrefix:prefix` to influence the `NimMain` that the
   compiler produces. This is particularly useful for generating static libraries.
+
+- There is a new switch `--depfile:path` to write a GCC-style depfile that can be used with
+  various build systems.

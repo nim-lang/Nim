@@ -47,6 +47,20 @@ proc writeDepsFile(g: ModuleGraph) =
       f.writeLine(toFullPath(g.config, k))
   f.close()
 
+proc writeGccDepfile(conf: ConfigRef) =
+  ## Outputs one `make` rule containing target's file name, a colon, and the
+  ## names of all the dependency files.
+  ## https://github.com/nim-lang/RFCs/issues/463
+  let depfile = open(conf.depfile.string, fmWrite)
+  let target = conf.outFile.string.multiReplace((" ", "\\ "), ("#", "\\#"))
+  depfile.write(conf.outFile.string & ": \\" & '\n')
+  for it in conf.m.fileInfos:
+    let path = it.fullPath.string.multiReplace((" ", "\\ "), ("#", "\\#"))
+    if path.len == 0:
+      continue
+    depfile.write('\t' & path & " \\" & '\n')
+  depfile.close()
+
 proc commandGenDepend(graph: ModuleGraph) =
   semanticPasses(graph)
   registerPass(graph, gendependPass)
@@ -124,6 +138,8 @@ proc commandCompileToC(graph: ModuleGraph) =
     # for now we do not support writing out a .json file with the build instructions when HCR is on
     if not conf.hcrOn:
       extccomp.writeJsonBuildInstructions(conf)
+    if conf.depfile.string.len != 0:
+      writeGccDepfile(conf)
     if optGenScript in graph.config.globalOptions:
       writeDepsFile(graph)
 
@@ -141,6 +157,8 @@ proc commandCompileToJS(graph: ModuleGraph) =
     semanticPasses(graph)
     registerPass(graph, JSgenPass)
     compileProject(graph)
+    if conf.depfile.string.len != 0:
+      writeGccDepfile(conf)
     if optGenScript in conf.globalOptions:
       writeDepsFile(graph)
 

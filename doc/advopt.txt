@@ -33,6 +33,7 @@ Advanced options:
                             find the definition and all usages of a symbol
   -o:FILE, --out:FILE       set the output filename
   --outdir:DIR              set the path where the output file will be written
+  --depfile:FILE            write target dependencies in GCC format
   --usenimcache             will use `outdir=$$nimcache`, whichever it resolves
                             to after all options have been processed
   --stdout:on|off           output to stdout
