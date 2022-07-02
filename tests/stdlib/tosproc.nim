@@ -115,6 +115,12 @@ else: # main driver
     runTest("c_exit2_139", 139)
     runTest("quit_139", 139)
 
+  block execCmdTest:
+    doAssert execCmd("exit 0") == 0
+    doAssert execCmd("exit 1") == 1
+    doAssert execCmd("exit 2") == 2
+    doAssert execCmd("exit 42") == 42
+
   import std/streams
 
   block execProcessTest:
