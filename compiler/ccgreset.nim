@@ -87,6 +87,12 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
     lineCg(p, cpsStmts, "$1 = 0;$n", [accessor])
   of tyCstring, tyPointer, tyPtr, tyVar, tyLent:
     lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [accessor])
+  of tySet:
+    if mapSetType(p.config, typ) == ctArray:
+      lineCg(p, cpsStmts, "#nimZeroMem($1, sizeof($2));$n",
+          [accessor, getTypeDesc(p.module, typ)])
+    else:
+      lineCg(p, cpsStmts, "$1 = 0;$n", [accessor])
   else:
     discard
 
