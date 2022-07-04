@@ -135,11 +135,11 @@ block tRequiresInit:
   reject:
     var s: DistinctString
     s = "test"
-    doAssert s == "test"
+    doAssert string(s) == "test"
 
   accept:
-    let s = "test"
-    doAssert s == "test"
+    let s = DistinctString("test")
+    doAssert string(s) == "test"
 
 block: #17322
   type
