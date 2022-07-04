@@ -88,11 +88,14 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
   of tyCstring, tyPointer, tyPtr, tyVar, tyLent:
     lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [accessor])
   of tySet:
-    if mapSetType(p.config, typ) == ctArray:
+    case mapSetType(p.config, typ)
+    of ctArray:
       lineCg(p, cpsStmts, "#nimZeroMem($1, sizeof($2));$n",
           [accessor, getTypeDesc(p.module, typ)])
-    else:
+    of ctInt8, ctInt16, ctInt32, ctInt64:
       lineCg(p, cpsStmts, "$1 = 0;$n", [accessor])
+    else:
+      doAssert false, "unexpected set type kind"
   else:
     discard
 
