@@ -96,7 +96,8 @@ block:
       a: string
       b: set[Color]
 
-  var fuck = X(b: {Red, Blue})
+  var y = X(b: {Red, Blue})
 
-  doAssert fuck.b == {}
+  reset(y)
+  doAssert y.b == {}
 
