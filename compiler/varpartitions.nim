@@ -856,7 +856,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     #     connect(graph, cursorVar)
     inc c.inLoop
     for child in n: computeLiveRanges(c, child)
-    inc c.inLoop
+    dec c.inLoop
 
     if n.kind == nkWhileStmt:
       computeLiveRanges(c, n[0])
