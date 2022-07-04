@@ -130,7 +130,8 @@ proc unhandledException(e: ref Exception) {.
   when NimStackTrace:
     add(buf, rawWriteStackTrace())
   let cbuf = cstring(buf)
-  framePtr = nil
+  when NimStackTrace:
+    framePtr = nil
   {.emit: """
   if (typeof(Error) !== "undefined") {
     throw new Error(`cbuf`);
@@ -730,10 +731,6 @@ proc parseFloatNative(a: string): float =
   `result` = Number(`a2`);
   """
 
-#[
-xxx how come code like this doesn't give IndexDefect ?
-let z = s[10000] == 'a'
-]#
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int {.compilerproc.} =
   var sign: bool
   var i = start

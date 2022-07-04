@@ -13,6 +13,9 @@
 import
   ast, types, semdata, sigmatch, idents, aliases, parampatterns, trees
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   TPatternContext = object
     owner: PSym

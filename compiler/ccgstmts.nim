@@ -16,7 +16,7 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc getTraverseProc(p: BProc, v: PSym): Rope =
-  if p.config.selectedGC in {gcMarkAndSweep, gcHooks, gcV2, gcRefc} and
+  if p.config.selectedGC in {gcMarkAndSweep, gcHooks, gcRefc} and
       optOwnedRefs notin p.config.globalOptions and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
@@ -32,13 +32,20 @@ proc registerTraverseProc(p: BProc, v: PSym, traverseProc: Rope) =
       "$n\t#nimRegisterGlobalMarker($1);$n$n", [traverseProc])
 
 proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
-  if n.kind == nkEmpty: return false
-  if isInvalidReturnType(conf, n.typ):
-    # var v = f()
-    # is transformed into: var v;  f(addr v)
-    # where 'f' **does not** initialize the result!
-    return false
-  result = true
+  if n.kind == nkEmpty:
+    result = false
+  elif n.kind in nkCallKinds and n[0] != nil and n[0].typ != nil and n[0].typ.skipTypes(abstractInst).kind == tyProc:
+    if isInvalidReturnType(conf, n[0].typ, true):
+      # var v = f()
+      # is transformed into: var v;  f(addr v)
+      # where 'f' **does not** initialize the result!
+      result = false
+    else:
+      result = true
+  elif isInvalidReturnType(conf, n.typ, false):
+    result = false
+  else:
+    result = true
 
 proc inExceptBlockLen(p: BProc): int =
   for x in p.nestedTryStmts:
@@ -1360,13 +1367,18 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "$1.status = __builtin_setjmp($1.context);$n", [safePoint])
     elif isDefined(p.config, "nimRawSetjmp"):
       if isDefined(p.config, "mswindows"):
-        # The Windows `_setjmp()` takes two arguments, with the second being an
-        # undocumented buffer used by the SEH mechanism for stack unwinding.
-        # Mingw-w64 has been trying to get it right for years, but it's still
-        # prone to stack corruption during unwinding, so we disable that by setting
-        # it to NULL.
-        # More details: https://github.com/status-im/nimbus-eth2/issues/3121
-        linefmt(p, cpsStmts, "$1.status = _setjmp($1.context, 0);$n", [safePoint])
+        if isDefined(p.config, "vcc") or isDefined(p.config, "clangcl"):
+          # For the vcc compiler, use `setjmp()` with one argument.
+          # See https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/setjmp?view=msvc-170
+          linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])        
+        else:
+          # The Windows `_setjmp()` takes two arguments, with the second being an
+          # undocumented buffer used by the SEH mechanism for stack unwinding.
+          # Mingw-w64 has been trying to get it right for years, but it's still
+          # prone to stack corruption during unwinding, so we disable that by setting
+          # it to NULL.
+          # More details: https://github.com/status-im/nimbus-eth2/issues/3121
+          linefmt(p, cpsStmts, "$1.status = _setjmp($1.context, 0);$n", [safePoint])
       else:
         linefmt(p, cpsStmts, "$1.status = _setjmp($1.context);$n", [safePoint])
     else:
@@ -1559,7 +1571,7 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   initLocExpr(p, e[0], a)
   getTemp(p, a.t, tmp)
   expr(p, e[1], tmp)
-  if optTinyRtti notin p.config.globalOptions:
+  if optTinyRtti notin p.config.globalOptions and p.inUncheckedAssignSection == 0:
     let field = dotExpr[1].sym
     genDiscriminantCheck(p, a, tmp, dotExpr[0].typ, field)
     message(p.config, e.info, warnCaseTransition)

@@ -17,6 +17,9 @@ import
 
 from system/memory import nimCStrLen
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state
   result = newType(tyError, nextTypeId(g.idgen), g.owners[^1])
@@ -406,7 +409,7 @@ proc foldConv(n, a: PNode; idgen: IdGenerator; g: ModuleGraph; check = false): P
       rangeCheck(n, getInt(result), g)
   of tyFloat..tyFloat64:
     case srcTyp.kind
-    of tyInt..tyInt64, tyEnum, tyBool, tyChar:
+    of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyBool, tyChar:
       result = newFloatNodeT(toFloat64(getOrdValue(a)), n, g)
     else:
       result = a

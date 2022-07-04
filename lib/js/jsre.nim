@@ -33,23 +33,19 @@ func compile*(self: RegExp; pattern: cstring; flags: cstring) {.importjs: "#.com
 func replace*(pattern: cstring; self: RegExp; replacement: cstring): cstring {.importjs: "#.replace(#, #)".}
   ## Returns a new string with some or all matches of a pattern replaced by given replacement
 
-func split*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "#.split(#)".}
+func split*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "(#.split(#) || [])".}
   ## Divides a string into an ordered list of substrings and returns the array
 
-func match*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "#.match(#)".}
+func match*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "(#.match(#) || [])".}
   ## Returns an array of matches of a RegExp against given string
 
-func exec*(self: RegExp; pattern: cstring): seq[cstring] {.importjs: "#.exec(#)".}
+func exec*(self: RegExp; pattern: cstring): seq[cstring] {.importjs: "(#.exec(#) || [])".}
   ## Executes a search for a match in its string parameter.
 
 func toCstring*(self: RegExp): cstring {.importjs: "#.toString()".}
   ## Returns a string representing the RegExp object.
 
 func `$`*(self: RegExp): string = $toCstring(self)
-
-func test*(self: RegExp; pattern: cstring): bool {.importjs: "#.test(#)", deprecated: "Use contains instead".}
-
-func toString*(self: RegExp): cstring {.importjs: "#.toString()", deprecated: "Use toCstring instead".}
 
 func contains*(pattern: cstring; self: RegExp): bool =
   ## Tests for a substring match in its string parameter.
@@ -91,3 +87,5 @@ runnableExamples:
   assert "do1ne".split(jsregex) == @["do".cstring, "ne".cstring]
   jsregex.compile(r"[lw]", r"i")
   assert "hello world".replace(jsregex,"X") == "heXlo world"
+  let digitsRegex: RegExp = newRegExp(r"\d")
+  assert "foo".match(digitsRegex) == @[]

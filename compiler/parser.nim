@@ -36,6 +36,9 @@ import
 when defined(nimpretty):
   import layouter
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   Parser* = object            # A Parser object represents a file that
                               # is being parsed
@@ -2389,6 +2392,10 @@ proc parseAll(p: var Parser): PNode =
       getTok(p)
     if p.tok.indent != 0:
       parMessage(p, errInvalidIndentation)
+
+proc checkFirstLineIndentation*(p: var Parser) =
+  if p.tok.indent != 0 and p.tok.strongSpaceA > 0:
+    parMessage(p, errInvalidIndentation)
 
 proc parseTopLevelStmt(p: var Parser): PNode =
   ## Implements an iterator which, when called repeatedly, returns the next

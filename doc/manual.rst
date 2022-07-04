@@ -363,7 +363,7 @@ contain the following `escape sequences`:idx:\ :
   ``\\``                   `backslash`:idx:
   ``\"``                   `quotation mark`:idx:
   ``\'``                   `apostrophe`:idx:
-  ``\`` '0'..'9'+         `character with decimal value d`:idx:;
+  ``\`` '0'..'9'+          `character with decimal value d`:idx:;
                            all decimal digits directly
                            following are used for the character
   ``\a``                   `alert`:idx:
@@ -1370,7 +1370,7 @@ cstring type
 The `cstring` type meaning `compatible string` is the native representation
 of a string for the compilation backend. For the C backend the `cstring` type
 represents a pointer to a zero-terminated char array
-compatible with the type `char*` in Ansi C. Its primary purpose lies in easy
+compatible with the type `char*` in ANSI C. Its primary purpose lies in easy
 interfacing with C. The index operation `s[i]` means the i-th *char* of
 `s`; however no bounds checking for `cstring` is performed making the
 index operation unsafe.
@@ -1556,7 +1556,7 @@ type conversions in this context:
 
   myWriteln(stdout, 123, "abc", 4.0)
   # is transformed to:
-  myWriteln(stdout, [$123, $"def", $4.0])
+  myWriteln(stdout, [$123, $"abc", $4.0])
 
 In this example `$` is applied to any argument that is passed to the
 parameter `a`. (Note that `$` applied to strings is a nop.)
@@ -2818,7 +2818,7 @@ The implicit initialization can be avoided for optimization reasons with the
 
 .. code-block:: nim
   var
-    a {.noInit.}: array[0..1023, char]
+    a {.noinit.}: array[0..1023, char]
 
 If a proc is annotated with the `noinit` pragma, this refers to its implicit
 `result` variable:
@@ -2851,7 +2851,10 @@ Given the following distinct type definitions:
 
 .. code-block:: nim
   type
-    DistinctObject {.requiresInit, borrow: `.`.} = distinct MyObject
+    Foo = object
+      x: string
+
+    DistinctFoo {.requiresInit, borrow: `.`.} = distinct Foo
     DistinctString {.requiresInit.} = distinct string
 
 The following code blocks will fail to compile:
@@ -2864,7 +2867,7 @@ The following code blocks will fail to compile:
 .. code-block:: nim
   var s: DistinctString
   s = "test"
-  doAssert s == "test"
+  doAssert string(s) == "test"
 
 But these ones will compile successfully:
 
@@ -2873,8 +2876,8 @@ But these ones will compile successfully:
   doAssert foo.x == "test"
 
 .. code-block:: nim
-  let s = "test"
-  doAssert s == "test"
+  let s = DistinctString("test")
+  doAssert string(s) == "test"
 
 Let statement
 -------------
@@ -3502,8 +3505,9 @@ location is `T`, the `addr` operator result is of the type `ptr T`. An
 address is always an untraced reference. Taking the address of an object that
 resides on the stack is **unsafe**, as the pointer may live longer than the
 object on the stack and can thus reference a non-existing object. One can get
-the address of variables, but one can't use it on variables declared through
-`let` statements:
+the address of variables. For easier interoperability with other compiled languages
+such as C, retrieving the address of a `let` variable, a parameter,
+or a `for` loop variable can be accomplished too:
 
 .. code-block:: nim
 
@@ -3515,23 +3519,17 @@ the address of variables, but one can't use it on variables declared through
   # --> ref 0x7fff6b71b670 --> 0x10bb81050"Hello"
   echo cast[ptr string](t3)[]
   # --> Hello
-  # The following line doesn't compile:
+  # The following line also works
   echo repr(addr(t1))
-  # Error: expression has no address
-
 
 The unsafeAddr operator
 -----------------------
 
-For easier interoperability with other compiled languages such as C, retrieving
-the address of a `let` variable, a parameter, or a `for` loop variable can
-be accomplished by using the `unsafeAddr` operation:
+The `unsafeAddr` operator is a deprecated alias for the `addr` operator:
 
 .. code-block:: nim
-
   let myArray = [1, 2, 3]
   foreignProcThatTakesAnAddr(unsafeAddr myArray)
-
 
 Procedures
 ==========
@@ -3901,6 +3899,18 @@ the operator is in scope (including if it is private).
 
 Type bound operators are:
 `=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`.
+
+These operations can be *overridden* instead of *overloaded*. This means that
+the implementation is automatically lifted to structured types. For instance,
+if the type `T` has an overridden assignment operator `=`, this operator is
+also used for assignments of the type `seq[T]`.
+
+Since these operations are bound to a type, they have to be bound to a
+nominal type for reasons of simplicity of implementation; this means an
+overridden `deepCopy` for `ref T` is really bound to `T` and not to `ref T`.
+This also means that one cannot override `deepCopy` for both `ptr T` and
+`ref T` at the same time, instead a distinct or object helper type has to be
+used for one pointer type.
 
 For more details on some of those procs, see
 `Lifetime-tracking hooks <destructors.html#lifetimeminustracking-hooks>`_.
@@ -4316,12 +4326,9 @@ Closure iterators and inline iterators have some restrictions:
 1. For now, a closure iterator cannot be executed at compile time.
 2. `return` is allowed in a closure iterator but not in an inline iterator
    (but rarely useful) and ends the iteration.
-3. Neither inline nor closure iterators can be (directly)* recursive.
+3. Inline iterators cannot be recursive.
 4. Neither inline nor closure iterators have the special `result` variable.
 5. Closure iterators are not supported by the JS backend.
-
-(*) Closure iterators can be co-recursive with a factory proc which results
-in similar syntax to a recursive iterator. More details follow.
 
 Iterators that are neither marked `{.closure.}` nor `{.inline.}` explicitly
 default to being inline, but this may change in future versions of the
@@ -5790,11 +5797,6 @@ However, this means that the method call syntax is not available for
   tmp(12)
 
 
-**Note**: The Nim compiler prior to version 1 was more lenient about this
-requirement. Use the `--useVersion:0.19`:option: switch for a transition period.
-
-
-
 Limitations of the method call syntax
 -------------------------------------
 
@@ -6549,6 +6551,19 @@ iterator in which case the overloading resolution takes place:
   write(stdout, x) # not ambiguous: uses the module C's x
 
 
+Packages
+--------
+A collection of modules in a file tree with an ``identifier.nimble`` file in the
+root of the tree is called a Nimble package. A valid package name can only be a
+valid Nim identifier and thus its filename is ``identifier.nimble`` where
+``identifier`` is the desired package name. A module without a ``.nimble`` file
+is assigned the package identifier: `unknown`.
+
+The distinction between packages allows diagnostic compiler messages to be
+scoped to the current project's package vs foreign packages.
+
+
+
 Compiler Messages
 =================
 
@@ -6629,7 +6644,7 @@ but accessed at runtime:
   doAssert nameToProc[2][1]() == "baz"
 
 
-noReturn pragma
+noreturn pragma
 ---------------
 The `noreturn` pragma is used to mark a proc that never returns.
 
@@ -7216,16 +7231,16 @@ during semantic analysis:
   {.passc: gorge("pkg-config --cflags sdl").}
 
 
-LocalPassc pragma
+localPassC pragma
 -----------------
-The `localPassc` pragma can be used to pass additional parameters to the C
+The `localPassC` pragma can be used to pass additional parameters to the C
 compiler, but only for the C/C++ file that is produced from the Nim module
 the pragma resides in:
 
 .. code-block:: Nim
   # Module A.nim
   # Produces: A.nim.cpp
-  {.localPassc: "-Wall -Werror".} # Passed when compiling A.nim.cpp
+  {.localPassC: "-Wall -Werror".} # Passed when compiling A.nim.cpp
 
 
 PassL pragma
@@ -7774,9 +7789,10 @@ More examples with custom pragmas:
 Macro pragmas
 -------------
 
-All macros and templates can also be used as pragmas. They can be attached
-to routines (procs, iterators, etc), type names, or type expressions. The
-compiler will perform the following simple syntactic transformations:
+Macros and templates can sometimes be called with the pragma syntax. Cases
+where this is possible include when attached to routine (procs, iterators, etc)
+declarations or routine type expressions. The compiler will perform the
+following simple syntactic transformations:
 
 .. code-block:: nim
   template command(name: string, def: untyped) = discard
@@ -7803,20 +7819,15 @@ This is translated to:
 
 ------
 
-.. code-block:: nim
-  type
-    MyObject {.schema: "schema.protobuf".} = object
+When multiple macro pragmas are applied to the same definition, the first one
+from left to right will be evaluated. This macro can then choose to keep
+the remaining macro pragmas in its output, and those will be evaluated in
+the same way.
 
-This is translated to a call to the `schema` macro with a `nnkTypeDef`
-AST node capturing both the left-hand side and right-hand side of the
-definition. The macro can return a potentially modified `nnkTypeDef` tree
-or multiple `nnkTypeDef` trees contained in a `nnkTypeSection` node
-which will replace the original row in the type section.
-
-When multiple macro pragmas are applied to the same definition, the
-compiler will apply them consequently from left to right. Each macro
-will receive as input the output of the previous one.
-
+There are a few more applications of macro pragmas, such as in type,
+variable and constant declarations, but this behavior is considered to be
+experimental and is documented in the `experimental manual
+<manual_experimental.html#extended-macro-pragmas>`_ instead.
 
 
 Foreign function interface
@@ -7914,6 +7925,7 @@ instructs the compiler to pass the type by value to procs:
     Vector {.bycopy.} = object
       x, y, z: float
 
+The Nim compiler automatically determines whether a parameter is passed by value or by reference based on the parameter type's size. If a parameter must be passed by value or by reference, (such as when interfacing with a C library) use the bycopy or byref pragmas.
 
 Byref pragma
 ------------
@@ -8113,7 +8125,9 @@ Object fields and global variables can be annotated via a `guard` pragma:
 
 .. code-block:: nim
 
-  var glock: TLock
+  import std/locks
+
+  var glock: Lock
   var gdata {.guard: glock.}: int
 
 The compiler then ensures that every access of `gdata` is within a `locks`
@@ -8140,7 +8154,7 @@ that also implement some form of locking at runtime:
 
 .. code-block:: nim
 
-  template lock(a: TLock; body: untyped) =
+  template lock(a: Lock; body: untyped) =
     pthread_mutex_lock(a)
     {.locks: [a].}:
       try:
@@ -8182,10 +8196,12 @@ the expressivity of the language:
 
 .. code-block:: nim
 
+  import std/locks
+
   type
     ProtectedCounter = object
       v {.guard: L.}: int
-      L: TLock
+      L: Lock
 
   proc incCounters(counters: var openArray[ProtectedCounter]) =
     for i in 0..counters.high:

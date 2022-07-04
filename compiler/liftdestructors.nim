@@ -15,6 +15,9 @@ import modulegraphs, lineinfos, idents, ast, renderer, semdata,
 
 from trees import isCaseObj
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   TLiftCtx = object
     g: ModuleGraph

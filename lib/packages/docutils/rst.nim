@@ -222,7 +222,7 @@
 
 import
   os, strutils, rstast, dochelpers, std/enumutils, algorithm, lists, sequtils,
-  std/private/miscdollars, tables
+  std/private/miscdollars, tables, strscans
 from highlite import SourceLanguage, getSourceLanguage
 
 type
@@ -235,6 +235,12 @@ type
                               ## to Markdown) -- implies `roSupportMarkdown`
     roNimFile                 ## set for Nim files where default interpreted
                               ## text role should be :nim:
+    roSandboxDisabled         ## this option enables certain options
+                              ## (e.g. raw, include)
+                              ## which are disabled by default as they can
+                              ## enable users to read arbitrary data and
+                              ## perform XSS if the parser is used in a web
+                              ## app.
 
   RstParseOptions* = set[RstParseOption]
 
@@ -249,6 +255,7 @@ type
     meExpected = "'$1' expected",
     meGridTableNotImplemented = "grid table is not implemented",
     meMarkdownIllformedTable = "illformed delimiter row of a Markdown table",
+    meIllformedTable = "Illformed table: $1",
     meNewSectionExpected = "new section expected $1",
     meGeneralParseError = "general parse error",
     meInvalidDirective = "invalid directive: '$1'",
@@ -260,7 +267,8 @@ type
     mwBrokenLink = "broken link '$1'",
     mwUnsupportedLanguage = "language '$1' not supported",
     mwUnsupportedField = "field '$1' not supported",
-    mwRstStyle = "RST style: $1"
+    mwRstStyle = "RST style: $1",
+    meSandboxedDirective = "disabled directive: '$1'",
 
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
                        arg: string) {.closure, gcsafe.} ## what to do in case of an error
@@ -315,6 +323,7 @@ const
     ":geek:": "icon_e_geek",
     ":ugeek:": "icon_e_ugeek"
   }
+  SandboxDirAllowlist = ["image", "code", "code-block"]
 
 type
   TokType = enum
@@ -1339,7 +1348,20 @@ proc match(p: RstParser, start: int, expr: string): bool =
     inc i
   result = true
 
-proc fixupEmbeddedRef(n, a, b: PRstNode) =
+proc safeProtocol*(linkStr: var string): string =
+  # Returns link's protocol and, if it's not safe, clears `linkStr`
+  result = ""
+  if scanf(linkStr, "$w:", result):
+    # if it has a protocol at all, ensure that it's not 'javascript:' or worse:
+    if cmpIgnoreCase(result, "http") == 0 or
+        cmpIgnoreCase(result, "https") == 0 or
+        cmpIgnoreCase(result, "ftp") == 0:
+      discard "it's fine"
+    else:
+      linkStr = ""
+
+proc fixupEmbeddedRef(p: var RstParser, n, a, b: PRstNode): bool =
+  # Returns `true` if the link belongs to an allowed protocol
   var sep = - 1
   for i in countdown(n.len - 2, 0):
     if n.sons[i].text == "<":
@@ -1347,7 +1369,15 @@ proc fixupEmbeddedRef(n, a, b: PRstNode) =
       break
   var incr = if sep > 0 and n.sons[sep - 1].text[0] == ' ': 2 else: 1
   for i in countup(0, sep - incr): a.add(n.sons[i])
-  for i in countup(sep + 1, n.len - 2): b.add(n.sons[i])
+  var linkStr = ""
+  for i in countup(sep + 1, n.len - 2): linkStr.add(n.sons[i].addNodes)
+  if linkStr != "":
+    let protocol = safeProtocol(linkStr)
+    result = linkStr != ""
+    if not result:
+      rstMessage(p, mwBrokenLink, protocol,
+                 p.tok[p.idx-3].line, p.tok[p.idx-3].col)
+  b.add newLeaf(linkStr)
 
 proc whichRole(p: RstParser, sym: string): RstNodeKind =
   result = whichRoleAux(sym)
@@ -1399,14 +1429,17 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     if p.tok[p.idx-2].symbol == "`" and p.tok[p.idx-3].symbol == ">":
       var a = newRstNode(rnInner)
       var b = newRstNode(rnInner)
-      fixupEmbeddedRef(n, a, b)
-      if a.len == 0:
-        newKind = rnStandaloneHyperlink
-        newSons = @[b]
-      else:
-        newKind = rnHyperlink
-        newSons = @[a, b]
-        setRef(p, rstnodeToRefname(a), b, implicitHyperlinkAlias)
+      if fixupEmbeddedRef(p, n, a, b):
+        if a.len == 0:  # e.g. `<a_named_relative_link>`_
+          newKind = rnStandaloneHyperlink
+          newSons = @[b]
+        else:  # e.g. `link title <http://site>`_
+          newKind = rnHyperlink
+          newSons = @[a, b]
+          setRef(p, rstnodeToRefname(a), b, implicitHyperlinkAlias)
+      else:  # include as plain text, not a link
+        newKind = rnInner
+        newSons = n.sons
       result = newRstNode(newKind, newSons)
     else:  # some link that will be resolved in `resolveSubs`
       newKind = rnRef
@@ -1615,7 +1648,6 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
   result.add(lb)
 
 proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
-  result = true
   var desc, link = ""
   var i = p.idx
 
@@ -1634,14 +1666,21 @@ proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
 
   parse("]", desc)
   if p.tok[i].symbol != "(": return false
+  let linkIdx = i + 1
   parse(")", link)
-  let child = newRstNode(rnHyperlink)
-  child.add desc
-  child.add link
   # only commit if we detected no syntax error:
-  father.add child
-  p.idx = i
-  result = true
+  let protocol = safeProtocol(link)
+  if link == "":
+    result = false
+    rstMessage(p, mwBrokenLink, protocol,
+               p.tok[linkIdx].line, p.tok[linkIdx].col)
+  else:
+    let child = newRstNode(rnHyperlink)
+    child.add desc
+    child.add link
+    father.add child
+    p.idx = i
+    result = true
 
 proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
   if label.sons.len >= 1 and label.sons[0].kind == rnLeaf and
@@ -2429,81 +2468,175 @@ proc parseOverline(p: var RstParser): PRstNode =
                anchorType=headlineAnchor)
 
 type
-  IntSeq = seq[int]
-  ColumnLimits = tuple
+  ColSpec = object
+    start, stop: int
+  RstCols = seq[ColSpec]
+  ColumnLimits = tuple  # for Markdown
     first, last: int
   ColSeq = seq[ColumnLimits]
 
-proc tokEnd(p: RstParser): int =
-  result = currentTok(p).col + currentTok(p).symbol.len - 1
+proc tokStart(p: RstParser, idx: int): int =
+  result = p.tok[idx].col
 
-proc getColumns(p: var RstParser, cols: var IntSeq) =
+proc tokStart(p: RstParser): int =
+  result = tokStart(p, p.idx)
+
+proc tokEnd(p: RstParser, idx: int): int =
+  result = p.tok[idx].col + p.tok[idx].symbol.len - 1
+
+proc tokEnd(p: RstParser): int =
+  result = tokEnd(p, p.idx)
+
+proc getColumns(p: RstParser, cols: var RstCols, startIdx: int): int =
+  # Fills table column specification (or separator) `cols` and returns
+  # the next parser index after it.
   var L = 0
+  result = startIdx
   while true:
     inc L
     setLen(cols, L)
-    cols[L - 1] = tokEnd(p)
-    assert(currentTok(p).kind == tkAdornment)
-    inc p.idx
-    if currentTok(p).kind != tkWhite: break
-    inc p.idx
-    if currentTok(p).kind != tkAdornment: break
-  if currentTok(p).kind == tkIndent: inc p.idx
-  # last column has no limit:
-  cols[L - 1] = 32000
+    cols[L - 1].start = tokStart(p, result)
+    cols[L - 1].stop = tokEnd(p, result)
+    assert(p.tok[result].kind == tkAdornment)
+    inc result
+    if p.tok[result].kind != tkWhite: break
+    inc result
+    if p.tok[result].kind != tkAdornment: break
+  if p.tok[result].kind == tkIndent: inc result
+
+proc checkColumns(p: RstParser, cols: RstCols) =
+  var
+    i = p.idx
+    col = 0
+  if p.tok[i].symbol[0] != '=':
+    rstMessage(p, mwRstStyle,
+               "only tables with `=` columns specification are allowed")
+  for col in 0 ..< cols.len:
+    if tokEnd(p, i) != cols[col].stop:
+      rstMessage(p, meIllformedTable,
+                 "end of table column #$1 should end at position $2" % [
+                   $(col+1), $(cols[col].stop+ColRstOffset)],
+                 p.tok[i].line, tokEnd(p, i))
+    inc i
+    if col == cols.len - 1:
+      if p.tok[i].kind == tkWhite:
+        inc i
+      if p.tok[i].kind notin {tkIndent, tkEof}:
+        rstMessage(p, meIllformedTable, "extraneous column specification")
+    elif p.tok[i].kind == tkWhite:
+      inc i
+    else:
+      rstMessage(p, meIllformedTable, "no enough table columns",
+                 p.tok[i].line, p.tok[i].col)
+
+proc getSpans(p: RstParser, nextLine: int,
+              cols: RstCols, unitedCols: RstCols): seq[int] =
+  ## Calculates how many columns a joined cell occupies.
+  if unitedCols.len > 0:
+    result = newSeq[int](unitedCols.len)
+    var
+      iCell = 0
+      jCell = 0
+      uCell = 0
+    while jCell < cols.len:
+      if cols[jCell].stop < unitedCols[uCell].stop:
+        inc jCell
+      elif cols[jCell].stop == unitedCols[uCell].stop:
+        result[uCell] = jCell - iCell + 1
+        iCell = jCell + 1
+        jCell = jCell + 1
+        inc uCell
+      else:
+        rstMessage(p, meIllformedTable,
+                   "spanning underline does not match main table columns",
+                   p.tok[nextLine].line, p.tok[nextLine].col)
+
+proc parseSimpleTableRow(p: var RstParser, cols: RstCols, colChar: char): PRstNode =
+  ## Parses 1 row in RST simple table.
+  # Consider that columns may be spanning (united by using underline like ----):
+  let nextLine = tokenAfterNewline(p)
+  var unitedCols: RstCols
+  var afterSpan: int
+  if p.tok[nextLine].kind == tkAdornment and p.tok[nextLine].symbol[0] == '-':
+    afterSpan = getColumns(p, unitedCols, nextLine)
+    if unitedCols == cols and p.tok[nextLine].symbol[0] == colChar:
+      # legacy rst.nim compat.: allow punctuation like `----` in main boundaries
+      afterSpan = nextLine
+      unitedCols.setLen 0
+  else:
+    afterSpan = nextLine
+  template colEnd(i): int =
+    if i == cols.len - 1: high(int)  # last column has no limit
+    elif unitedCols.len > 0: unitedCols[i].stop else: cols[i].stop
+  template colStart(i): int =
+    if unitedCols.len > 0: unitedCols[i].start else: cols[i].start
+  var row = newSeq[string](if unitedCols.len > 0: unitedCols.len else: cols.len)
+  var spans: seq[int] = getSpans(p, nextLine, cols, unitedCols)
+
+  let line = currentTok(p).line
+  # Iterate over the lines a single cell may span:
+  while true:
+    var nCell = 0
+    # distribute tokens between cells in the current line:
+    while currentTok(p).kind notin {tkIndent, tkEof}:
+      if tokEnd(p) <= colEnd(nCell):
+        if tokStart(p) < colStart(nCell):
+          if currentTok(p).kind != tkWhite:
+            rstMessage(p, meIllformedTable,
+                       "this word crosses table column from the left")
+          else:
+            inc p.idx
+        else:
+          row[nCell].add(currentTok(p).symbol)
+          inc p.idx
+      else:
+        if tokStart(p) < colEnd(nCell) and currentTok(p).kind != tkWhite:
+          rstMessage(p, meIllformedTable,
+                     "this word crosses table column from the right")
+        inc nCell
+    if currentTok(p).kind == tkIndent: inc p.idx
+    if tokEnd(p) <= colEnd(0): break
+    # Continued current cells because the 1st column is empty.
+    if currentTok(p).kind in {tkEof, tkAdornment}:
+      break
+    for nCell in countup(1, high(row)): row[nCell].add('\n')
+  result = newRstNode(rnTableRow)
+  var q: RstParser
+  for uCell in 0 ..< row.len:
+    initParser(q, p.s)
+    q.col = colStart(uCell)
+    q.line = line - 1
+    getTokens(row[uCell], q.tok)
+    let cell = newRstNode(rnTableDataCell)
+    cell.span = if spans.len == 0: 0 else: spans[uCell]
+    cell.add(parseDoc(q))
+    result.add(cell)
+  if afterSpan > p.idx:
+    p.idx = afterSpan
 
 proc parseSimpleTable(p: var RstParser): PRstNode =
-  var
-    cols: IntSeq
-    row: seq[string]
-    i, last, line: int
-    c: char
-    q: RstParser
-    a, b: PRstNode
+  var cols: RstCols
   result = newRstNodeA(p, rnTable)
-  cols = @[]
-  row = @[]
-  a = nil
-  c = currentTok(p).symbol[0]
+  let startIdx = getColumns(p, cols, p.idx)
+  let colChar = currentTok(p).symbol[0]
+  checkColumns(p, cols)
+  p.idx = startIdx
+  result.colCount = cols.len
   while true:
     if currentTok(p).kind == tkAdornment:
-      last = tokenAfterNewline(p)
-      if p.tok[last].kind in {tkEof, tkIndent}:
+      checkColumns(p, cols)
+      p.idx = tokenAfterNewline(p)
+      if currentTok(p).kind in {tkEof, tkIndent}:
         # skip last adornment line:
-        p.idx = last
         break
-      getColumns(p, cols)
-      setLen(row, cols.len)
-      if a != nil:
-        for j in 0 ..< a.len:  # fix rnTableDataCell -> rnTableHeaderCell
-          a.sons[j] = newRstNode(rnTableHeaderCell, a.sons[j].sons)
+      if result.sons.len > 0: result.sons[^1].endsHeader = true
+      # fix rnTableDataCell -> rnTableHeaderCell for previous table rows:
+      for nRow in 0 ..< result.sons.len:
+        for nCell in 0 ..< result.sons[nRow].len:
+          result.sons[nRow].sons[nCell].kind = rnTableHeaderCell
     if currentTok(p).kind == tkEof: break
-    for j in countup(0, high(row)): row[j] = ""
-    # the following while loop iterates over the lines a single cell may span:
-    line = currentTok(p).line
-    while true:
-      i = 0
-      while currentTok(p).kind notin {tkIndent, tkEof}:
-        if tokEnd(p) <= cols[i]:
-          row[i].add(currentTok(p).symbol)
-          inc p.idx
-        else:
-          if currentTok(p).kind == tkWhite: inc p.idx
-          inc i
-      if currentTok(p).kind == tkIndent: inc p.idx
-      if tokEnd(p) <= cols[0]: break
-      if currentTok(p).kind in {tkEof, tkAdornment}: break
-      for j in countup(1, high(row)): row[j].add('\n')
-    a = newRstNode(rnTableRow)
-    for j in countup(0, high(row)):
-      initParser(q, p.s)
-      q.col = cols[j]
-      q.line = line - 1
-      getTokens(row[j], q.tok)
-      b = newRstNode(rnTableDataCell)
-      b.add(parseDoc(q))
-      a.add(b)
-    result.add(a)
+    let tabRow = parseSimpleTableRow(p, cols, colChar)
+    result.add tabRow
 
 proc readTableRow(p: var RstParser): ColSeq =
   if currentTok(p).symbol == "|": inc p.idx
@@ -2536,17 +2669,16 @@ proc isValidDelimiterRow(p: var RstParser, colNum: int): bool =
 proc parseMarkdownTable(p: var RstParser): PRstNode =
   var
     row: ColSeq
-    colNum: int
     a, b: PRstNode
     q: RstParser
   result = newRstNodeA(p, rnMarkdownTable)
 
   proc parseRow(p: var RstParser, cellKind: RstNodeKind, result: PRstNode) =
     row = readTableRow(p)
-    if colNum == 0: colNum = row.len # table header
-    elif row.len < colNum: row.setLen(colNum)
+    if result.colCount == 0: result.colCount = row.len # table header
+    elif row.len < result.colCount: row.setLen(result.colCount)
     a = newRstNode(rnTableRow)
-    for j in 0 ..< colNum:
+    for j in 0 ..< result.colCount:
       b = newRstNode(cellKind)
       initParser(q, p.s)
       q.col = p.col
@@ -2557,7 +2689,8 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
     result.add(a)
 
   parseRow(p, rnTableHeaderCell, result)
-  if not isValidDelimiterRow(p, colNum): rstMessage(p, meMarkdownIllformedTable)
+  if not isValidDelimiterRow(p, result.colCount):
+    rstMessage(p, meMarkdownIllformedTable)
   while predNL(p) and currentTok(p).symbol == "|":
     parseRow(p, rnTableDataCell, result)
 
@@ -2987,10 +3120,14 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
   ##
   ## As an extension this proc will process the ``file`` extension field and if
   ## present will replace the code block with the contents of the referenced
-  ## file.
+  ## file. This behaviour is disabled in sandboxed mode and can be re-enabled
+  ## with the `roSandboxDisabled` flag.
   result = parseDirective(p, rnCodeBlock, {hasArg, hasOptions}, parseLiteralBlock)
   var filename = strip(getFieldValue(result, "file"))
   if filename != "":
+    if roSandboxDisabled notin p.s.options:
+      let tok = p.tok[p.idx-2]
+      rstMessage(p, meSandboxedDirective, "file", tok.line, tok.col)
     var path = p.findRelativeFile(filename)
     if path == "": rstMessage(p, meCannotOpenFile, filename)
     var n = newRstNode(rnLiteralBlock)
@@ -3086,6 +3223,11 @@ proc dirRaw(p: var RstParser): PRstNode =
 
 proc selectDir(p: var RstParser, d: string): PRstNode =
   result = nil
+  let tok = p.tok[p.idx-2] # report on directive in ".. directive::"
+  if roSandboxDisabled notin p.s.options:
+    if d notin SandboxDirAllowlist:
+      rstMessage(p, meSandboxedDirective, d, tok.line, tok.col)
+
   case d
   of "admonition", "attention", "caution": result = dirAdmonition(p, d)
   of "code": result = dirCodeBlock(p)
@@ -3112,7 +3254,6 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   of "title": result = dirTitle(p)
   of "warning": result = dirAdmonition(p, d)
   else:
-    let tok = p.tok[p.idx-2]  # report on directive in ".. directive::"
     rstMessage(p, meInvalidDirective, d, tok.line, tok.col)
 
 proc prefix(ftnType: FootnoteType): string =

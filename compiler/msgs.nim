@@ -12,6 +12,10 @@ import
   std/private/miscdollars,
   options, ropes, lineinfos, pathutils, strutils2
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
+
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
