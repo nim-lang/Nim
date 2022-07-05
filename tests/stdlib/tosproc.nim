@@ -29,6 +29,12 @@ when defined(case_testfile): # compiled test file for child process
     case arg
     of "exit_0":
       if true: quit(0)
+    of "exit_1":
+      if true: quit(1)
+    of "exit_2":
+      if true: quit(2)
+    of "exit_42":
+      if true: quit(42)
     of "exitnow_139":
       if true: exitnow(139)
     of "c_exit2_139":
@@ -116,10 +122,11 @@ else: # main driver
     runTest("quit_139", 139)
 
   block execCmdTest:
-    doAssert execCmd("exit 0") == 0
-    doAssert execCmd("exit 1") == 1
-    doAssert execCmd("exit 2") == 2
-    doAssert execCmd("exit 42") == 42
+    let output = compileNimProg("-d:release -d:case_testfile", "D20220705T221100")
+    doAssert execCmd(output & " exit_0") == 0
+    doAssert execCmd(output & " exit_1") == 1
+    doAssert execCmd(output & " exit_2") == 2
+    doAssert execCmd(output & " exit_42") == 42
 
   import std/streams
 
