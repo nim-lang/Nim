@@ -500,6 +500,15 @@ proc specialDefine(conf: ConfigRef, key: string; pass: TCmdLinePass) =
         optOverflowCheck, optAssert, optStackTrace, optLineTrace, optLineDir}
       conf.globalOptions.excl {optCDebug}
 
+proc initOrcDefines*(conf: ConfigRef) =
+  defineSymbol(conf.symbols, "gcorc")
+  defineSymbol(conf.symbols, "gcdestructors")
+  incl conf.globalOptions, optSeqDestructors
+  incl conf.globalOptions, optTinyRtti
+  defineSymbol(conf.symbols, "nimSeqsV2")
+  defineSymbol(conf.symbols, "nimV2")
+  conf.exc = excGoto
+
 proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
   if isOrc:
     conf.selectedGC = gcOrc
