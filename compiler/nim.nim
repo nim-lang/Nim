@@ -93,6 +93,8 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     return
 
   self.processCmdLineAndProjectPath(conf)
+  if conf.backend notin {backendC, backendCpp, backendObjc}:
+    unregisterArcOrc(conf)
   var graph = newModuleGraph(cache, conf)
   if not self.loadConfigsAndProcessCmdLine(cache, conf, graph):
     return
