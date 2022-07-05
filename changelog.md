@@ -26,6 +26,8 @@ becomes an alias for `addr`.
 
 - The `gc:v2` option is removed.
 
+- The `threads:on` option becomes default.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
