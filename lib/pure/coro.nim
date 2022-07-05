@@ -8,11 +8,11 @@
 #
 
 ## Nim coroutines implementation, supports several context switching methods:
-## --------  ------------
+## ========  ============
 ## ucontext  available on unix and alike (default)
 ## setjmp    available on unix and alike (x86/64 only)
 ## fibers    available and required on windows.
-## --------  ------------
+## ========  ============
 ##
 ## -d:nimCoroutines               Required to build this module.
 ## -d:nimCoroutinesUcontext       Use ucontext backend.

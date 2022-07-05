@@ -53,6 +53,10 @@ import std/private/since
 import
   hashes, strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 when defined(js) or defined(nimscript) or defined(Standalone):
   {.pragma: rtlFunc.}
 else:

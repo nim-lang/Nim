@@ -14,7 +14,7 @@ proc initIPv6Server(hostname: string, port: Port): AsyncFD =
   let fd = createNativeSocket(AF_INET6)
   setSockOptInt(fd, SOL_SOCKET, SO_REUSEADDR, 1)
   var aiList = getAddrInfo(hostname, port, AF_INET6)
-  if bindAddr(fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
+  if bindAddr(fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
     freeAddrInfo(aiList)
     raiseOSError(osLastError())
   freeAddrInfo(aiList)

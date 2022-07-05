@@ -13,6 +13,9 @@
 import
   ast, types, renderer, intsets
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc canAlias(arg, ret: PType; marker: var IntSet): bool
 
 proc canAliasN(arg: PType; n: PNode; marker: var IntSet): bool =
@@ -71,7 +74,7 @@ proc isValueOnlyType(t: PType): bool =
 
 proc canAlias*(arg, ret: PType): bool =
   if isValueOnlyType(arg):
-    # can alias only with unsafeAddr(arg.x) and we don't care if it is not safe
+    # can alias only with addr(arg.x) and we don't care if it is not safe
     result = false
   else:
     var marker = initIntSet()

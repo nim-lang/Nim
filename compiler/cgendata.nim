@@ -99,6 +99,7 @@ type
     withinTryWithExcept*: int # required for goto based exception handling
     withinBlockLeaveActions*: int # complex to explain
     sigConflicts*: CountTable[string]
+    inUncheckedAssignSection*: int
 
   TTypeSeq* = seq[PType]
   TypeCache* = Table[SigHash, Rope]

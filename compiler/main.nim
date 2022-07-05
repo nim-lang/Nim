@@ -22,6 +22,10 @@ import
   modules,
   modulegraphs, lineinfos, pathutils, vmprofiler
 
+
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
 
@@ -58,6 +62,11 @@ proc commandCheck(graph: ModuleGraph) =
   let conf = graph.config
   conf.setErrorMaxHighMaybe
   defineSymbol(conf.symbols, "nimcheck")
+  if optWasNimscript in conf.globalOptions:
+    defineSymbol(conf.symbols, "nimscript")
+    defineSymbol(conf.symbols, "nimconfig")
+  elif conf.backend == backendJs:
+    setTarget(conf.target, osJS, cpuJS)
   semanticPasses(graph)  # use an empty backend for semantic checking only
   compileProject(graph)
 
@@ -363,7 +372,8 @@ proc mainCommand*(graph: ModuleGraph) =
       msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
       for it in conf.searchPaths: msgWriteln(conf, it.string)
-  of cmdCheck: commandCheck(graph)
+  of cmdCheck:
+    commandCheck(graph)
   of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)

@@ -12,9 +12,12 @@
 # from a lineinfos file, to provide generalized procedures to compile
 # nim files.
 
-import ropes, platform, condsyms, options, msgs, lineinfos, pathutils
+import ropes, platform, condsyms, options, msgs, lineinfos, pathutils, modulepaths
 
 import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar]
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -367,6 +370,7 @@ proc initVars*(conf: ConfigRef) =
 
 proc completeCfilePath*(conf: ConfigRef; cfile: AbsoluteFile,
                         createSubDir: bool = true): AbsoluteFile =
+  ## Generate the absolute file path to the generated modules.
   result = completeGeneratedFilePath(conf, cfile, createSubDir)
 
 proc toObjFile*(conf: ConfigRef; filename: AbsoluteFile): AbsoluteFile =
@@ -377,7 +381,7 @@ proc addFileToCompile*(conf: ConfigRef; cf: Cfile) =
   conf.toCompile.add(cf)
 
 proc addLocalCompileOption*(conf: ConfigRef; option: string; nimfile: AbsoluteFile) =
-  let key = completeCfilePath(conf, withPackageName(conf, nimfile)).string
+  let key = completeCfilePath(conf, mangleModuleName(conf, nimfile).AbsoluteFile).string
   var value = conf.cfileSpecificOptions.getOrDefault(key)
   if strutils.find(value, option, 0) < 0:
     addOpt(value, option)
@@ -430,7 +434,13 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # really: Cross compilation from Linux to Linux for example is entirely
   # reasonable.
   # `optGenMapping` is included here for niminst.
-  result = conf.globalOptions * {optGenScript, optGenMapping} != {}
+  # We use absolute paths for vcc / cl, see issue #19883.
+  let options =
+    if conf.cCompiler == ccVcc:
+      {optGenMapping}
+    else:
+      {optGenScript, optGenMapping}
+  result = conf.globalOptions * options != {}
 
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions
@@ -483,7 +493,10 @@ proc needsExeExt(conf: ConfigRef): bool {.inline.} =
            (conf.target.hostOS == osWindows)
 
 proc useCpp(conf: ConfigRef; cfile: AbsoluteFile): bool =
-  conf.backend == backendCpp and not cfile.string.endsWith(".c")
+  # List of possible file extensions taken from gcc
+  for ext in [".C", ".cc", ".cpp", ".CPP", ".c++", ".cp", ".cxx"]:
+    if cfile.string.endsWith(ext): return true
+  false
 
 proc envFlags(conf: ConfigRef): string =
   result = if conf.backend == backendCpp:
@@ -491,14 +504,14 @@ proc envFlags(conf: ConfigRef): string =
           else:
             getEnv("CFLAGS")
 
-proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; cfile: AbsoluteFile): string =
+proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; isCpp: bool): string =
   if compiler == ccEnv:
-    result = if useCpp(conf, cfile):
+    result = if isCpp:
               getEnv("CXX")
             else:
               getEnv("CC")
   else:
-    result = if useCpp(conf, cfile):
+    result = if isCpp:
               CC[compiler].cppCompiler
             else:
               CC[compiler].compilerExe
@@ -537,22 +550,25 @@ proc ccHasSaneOverflow*(conf: ConfigRef): bool =
 
 proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
   result = if CC[compiler].linkerExe.len > 0: CC[compiler].linkerExe
-           elif optMixedMode in conf.globalOptions and conf.backend != backendCpp: CC[compiler].cppCompiler
-           else: getCompilerExe(conf, compiler, AbsoluteFile"")
+           else: getCompilerExe(conf, compiler, optMixedMode in conf.globalOptions or conf.backend == backendCpp)
 
 proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
                          isMainFile = false; produceOutput = false): string =
-  let c = conf.cCompiler
+  let
+    c = conf.cCompiler
+    isCpp = useCpp(conf, cfile.cname)
   # We produce files like module.nim.cpp, so the absolute Nim filename is not
   # cfile.name but `cfile.cname.changeFileExt("")`:
   var options = cFileSpecificOptions(conf, cfile.nimname, cfile.cname.changeFileExt("").string)
-  if useCpp(conf, cfile.cname):
+  if isCpp:
     # needs to be prepended so that --passc:-std=c++17 can override default.
     # we could avoid allocation by making cFileSpecificOptions inplace
     options = CC[c].cppXsupport & ' ' & options
+    # If any C++ file was compiled, we need to use C++ driver for linking as well
+    incl conf.globalOptions, optMixedMode
 
   var exe = getConfigVar(conf, c, ".exe")
-  if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
+  if exe.len == 0: exe = getCompilerExe(conf, c, isCpp)
 
   if needsExeExt(conf): exe = addFileExt(exe, "exe")
   if (optGenDynLib in conf.globalOptions or (conf.hcrOn and not isMainFile)) and
@@ -572,7 +588,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
 
     compilePattern = joinPath(conf.cCompilerPath, exe)
   else:
-    compilePattern = getCompilerExe(conf, c, cfile.cname)
+    compilePattern = getCompilerExe(conf, c, isCpp)
 
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
 
@@ -634,7 +650,7 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
   if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
 
-  let hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
+  let hashFile = toGeneratedFile(conf, conf.mangleModuleName(cfile.cname).AbsoluteFile, "sha1")
   let currentHash = footprint(conf, cfile)
   var f: File
   if open(f, hashFile.string, fmRead):
@@ -649,8 +665,10 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
       close(f)
 
 proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
+  # we want to generate the hash file unconditionally
+  let extFileChanged = externalFileChanged(conf, c)
   if optForceFullMake notin conf.globalOptions and fileExists(c.obj) and
-      not externalFileChanged(conf, c):
+      not extFileChanged:
     c.flags.incl CfileFlag.Cached
   else:
     # make sure Nim keeps recompiling the external file on reruns
@@ -840,9 +858,9 @@ proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): Absolu
 proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
   if conf.hasHint(hintCC):
     if optListCmd in conf.globalOptions or conf.verbosity > 1:
-      result = MsgKindToStr[hintCC] % (demanglePackageName(path.splitFile.name) & ": " & compileCmd)
+      result = MsgKindToStr[hintCC] % (demangleModuleName(path.splitFile.name) & ": " & compileCmd)
     else:
-      result = MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
+      result = MsgKindToStr[hintCC] % demangleModuleName(path.splitFile.name)
 
 proc callCCompiler*(conf: ConfigRef) =
   var
@@ -915,7 +933,7 @@ proc callCCompiler*(conf: ConfigRef) =
         objfiles.add(' ')
         objfiles.add(quoteShell(objFile))
       let mainOutput = if optGenScript notin conf.globalOptions: conf.prepareToWriteOutput
-                       else: AbsoluteFile(conf.projectName)
+                       else: AbsoluteFile(conf.outFile)
 
       linkCmd = getLinkCmd(conf, mainOutput, objfiles, removeStaticFile = true)
       extraCmds = getExtraCmds(conf, mainOutput)

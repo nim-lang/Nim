@@ -29,6 +29,7 @@ end
 9018
 @[1, 2]
 @[1, 2, 3]
+1
 '''
 """
 
@@ -251,3 +252,38 @@ block:
 
   for x in ff(@[1, 2], @[1, 2, 3]):
     echo x
+
+
+# bug #19575
+
+iterator bb() {.closure.} =
+    while true:
+        try: discard
+        except: break
+        finally: break
+
+var a = bb
+
+iterator cc() {.closure.} =
+    while true:
+        try: discard
+        except:
+          if true:
+            break
+        finally:
+          if true:
+            break
+
+var a2 = cc
+
+# bug #16876
+block:
+  iterator a(num: int): int {.closure.} =
+      if num == 1:
+          yield num
+      else:
+          for i in a(num - 1):
+              yield i
+
+  for i in a(5):
+    echo i

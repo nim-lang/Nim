@@ -32,6 +32,9 @@ import ast, types, lineinfos, options, msgs, renderer, typeallowed, modulegraphs
 from trees import getMagic, isNoSideEffectPragma, stupidStmtListExpr
 from isolation_check import canAlias
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   AbstractTime = distinct int
 
@@ -848,7 +851,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     #     connect(graph, cursorVar)
     inc c.inLoop
     for child in n: computeLiveRanges(c, child)
-    inc c.inLoop
+    dec c.inLoop
   of nkElifBranch, nkElifExpr, nkElse, nkOfBranch:
     inc c.inConditional
     for child in n: computeLiveRanges(c, child)

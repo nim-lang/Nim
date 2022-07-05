@@ -1,18 +1,17 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2019 Nim contributors
+#        (c) Copyright 2022 Nim contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## This is a part of `system.nim`, you should not manually import it.
+## This module implements various synchronized I/O operations.
 
-
-include inclrtl
+include system/inclrtl
 import std/private/since
-import formatfloat
+import system/formatfloat
 
 # ----------------- IO Part ------------------------------------------------
 type
@@ -22,6 +21,8 @@ type
 
   FileMode* = enum       ## The file mode when opening a file.
     fmRead,              ## Open the file for read access only.
+                         ## If the file does not exist, it will not
+                         ## be created.
     fmWrite,             ## Open the file for write access only.
                          ## If the file does not exist, it will be
                          ## created. Existing files will be cleared!
@@ -32,7 +33,8 @@ type
                          ## If the file does not exist, it will not be
                          ## created. The existing file will not be cleared.
     fmAppend             ## Open the file for writing only; append data
-                         ## at the end.
+                         ## at the end. If the file does not exist, it
+                         ## will be created.
 
   FileHandle* = cint ## type that represents an OS file handle; this is
                       ## useful for low-level file access
@@ -176,7 +178,7 @@ proc checkErr(f: File) =
 {.push stackTrace: off, profiler: off.}
 proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
   tags: [ReadIOEffect], benign.} =
-  ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
+  ## Reads `len` bytes into the buffer pointed to by `buffer`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
   result = cast[int](c_fread(buffer, 1, cast[csize_t](len), f))
@@ -185,13 +187,13 @@ proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
 proc readBytes*(f: File, a: var openArray[int8|uint8], start,
     len: Natural): int {.
   tags: [ReadIOEffect], benign.} =
-  ## reads `len` bytes into the buffer `a` starting at `a[start]`. Returns
+  ## Reads `len` bytes into the buffer `a` starting at `a[start]`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
   result = readBuffer(f, addr(a[start]), len)
 
 proc readChars*(f: File, a: var openArray[char]): int {.tags: [ReadIOEffect], benign.} =
-  ## reads up to `a.len` bytes into the buffer `a`. Returns
+  ## Reads up to `a.len` bytes into the buffer `a`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `a.len` (if not as many bytes are remaining), but not greater.
   result = readBuffer(f, addr(a[0]), a.len)
@@ -199,7 +201,7 @@ proc readChars*(f: File, a: var openArray[char]): int {.tags: [ReadIOEffect], be
 proc readChars*(f: File, a: var openArray[char], start, len: Natural): int {.
   tags: [ReadIOEffect], benign, deprecated:
     "use other `readChars` overload, possibly via: readChars(toOpenArray(buf, start, len-1))".} =
-  ## reads `len` bytes into the buffer `a` starting at `a[start]`. Returns
+  ## Reads `len` bytes into the buffer `a` starting at `a[start]`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
   if (start + len) > len(a):
@@ -213,7 +215,7 @@ proc write*(f: File, c: cstring) {.tags: [WriteIOEffect], benign.} =
 
 proc writeBuffer*(f: File, buffer: pointer, len: Natural): int {.
   tags: [WriteIOEffect], benign.} =
-  ## writes the bytes of buffer pointed to by the parameter `buffer` to the
+  ## Writes the bytes of buffer pointed to by the parameter `buffer` to the
   ## file `f`. Returns the number of actual written bytes, which may be less
   ## than `len` in case of an error.
   result = cast[int](c_fwrite(buffer, 1, cast[csize_t](len), f))
@@ -221,7 +223,7 @@ proc writeBuffer*(f: File, buffer: pointer, len: Natural): int {.
 
 proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: Natural): int {.
   tags: [WriteIOEffect], benign.} =
-  ## writes the bytes of `a[start..start+len-1]` to the file `f`. Returns
+  ## Writes the bytes of `a[start..start+len-1]` to the file `f`. Returns
   ## the number of actual written bytes, which may be less than `len` in case
   ## of an error.
   var x = cast[ptr UncheckedArray[int8]](a)
@@ -229,7 +231,7 @@ proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: Natural): int {.
 
 proc writeChars*(f: File, a: openArray[char], start, len: Natural): int {.
   tags: [WriteIOEffect], benign.} =
-  ## writes the bytes of `a[start..start+len-1]` to the file `f`. Returns
+  ## Writes the bytes of `a[start..start+len-1]` to the file `f`. Returns
   ## the number of actual written bytes, which may be less than `len` in case
   ## of an error.
   var x = cast[ptr UncheckedArray[int8]](a)
@@ -338,7 +340,7 @@ proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
   discard c_fflush(f)
 
 proc getFileHandle*(f: File): FileHandle =
-  ## returns the file handle of the file `f`. This is only useful for
+  ## Returns the file handle of the file `f`. This is only useful for
   ## platform specific programming.
   ## Note that on Windows this doesn't return the Windows-specific handle,
   ## but the C library's notion of a handle, whatever that means.
@@ -346,7 +348,7 @@ proc getFileHandle*(f: File): FileHandle =
   c_fileno(f)
 
 proc getOsFileHandle*(f: File): FileHandle =
-  ## returns the OS file handle of the file `f`. This is only useful for
+  ## Returns the OS file handle of the file `f`. This is only useful for
   ## platform specific programming.
   when defined(windows):
     result = FileHandle getOsfhandle(cint getFileHandle(f))
@@ -377,7 +379,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
 
 proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
               benign.} =
-  ## reads a line of text from the file `f` into `line`. May throw an IO
+  ## Reads a line of text from the file `f` into `line`. May throw an IO
   ## exception.
   ## A line of text may be delimited by `LF` or `CRLF`. The newline
   ## character(s) are not part of the returned string. Returns `false`
@@ -497,7 +499,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     line.setLen(pos+sp)
 
 proc readLine*(f: File): string {.tags: [ReadIOEffect], benign.} =
-  ## reads a line of text from the file `f`. May throw an IO exception.
+  ## Reads a line of text from the file `f`. May throw an IO exception.
   ## A line of text may be delimited by `LF` or `CRLF`. The newline
   ## character(s) are not part of the returned string.
   result = newStringOfCap(80)
@@ -599,7 +601,7 @@ proc readAll*(file: File): string {.tags: [ReadIOEffect], benign.} =
 
 proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                           tags: [WriteIOEffect], benign.} =
-  ## writes the values `x` to `f` and then writes "\\n".
+  ## Writes the values `x` to `f` and then writes "\\n".
   ## May throw an IO exception.
   for i in items(x):
     write(f, i)
@@ -720,7 +722,7 @@ proc open*(f: var File, filename: string,
 
 proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   tags: [], benign.} =
-  ## reopens the file `f` with given `filename` and `mode`. This
+  ## Reopens the file `f` with given `filename` and `mode`. This
   ## is often used to redirect the `stdin`, `stdout` or `stderr`
   ## file variables.
   ##
@@ -762,19 +764,19 @@ proc open*(filename: string,
     sysFatal(IOError, "cannot open: " & filename)
 
 proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign.} =
-  ## sets the position of the file pointer that is used for read/write
+  ## Sets the position of the file pointer that is used for read/write
   ## operations. The file's first byte has the index zero.
   if c_fseek(f, pos, cint(relativeTo)) != 0:
     raiseEIO("cannot set file position")
 
 proc getFilePos*(f: File): int64 {.benign.} =
-  ## retrieves the current position of the file pointer that is used to
+  ## Retrieves the current position of the file pointer that is used to
   ## read from the file `f`. The file's first byte has the index zero.
   result = c_ftell(f)
   if result < 0: raiseEIO("cannot retrieve file position")
 
 proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.} =
-  ## retrieves the file size (in bytes) of `f`.
+  ## Retrieves the file size (in bytes) of `f`.
   let oldPos = getFilePos(f)
   discard c_fseek(f, 0, 2) # seek the end of the file
   result = getFilePos(f)
@@ -903,7 +905,7 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
     raise newException(IOError, "cannot open: " & filename)
 
 proc readLines*(filename: string, n: Natural): seq[string] =
-  ## read `n` lines from the file named `filename`. Raises an IO exception
+  ## Reads `n` lines from the file named `filename`. Raises an IO exception
   ## in case of an error. Raises EOF if file does not contain at least `n` lines.
   ## Available at compile time. A line of text may be delimited by `LF` or `CRLF`.
   ## The newline character(s) are not part of the returned strings.
@@ -945,7 +947,7 @@ iterator lines*(filename: string): string {.tags: [ReadIOEffect].} =
     close(f)
 
 iterator lines*(f: File): string {.tags: [ReadIOEffect].} =
-  ## Iterate over any line in the file `f`.
+  ## Iterates over any line in the file `f`.
   ##
   ## The trailing newline character(s) are removed from the iterated lines.
   ##

@@ -251,6 +251,10 @@ Generic Operating System Services
   This module contains a few procedures to control the *terminal*
   (also called *console*). The implementation simply uses ANSI escape
   sequences and does not depend on any other module.
+  
+* `tempfiles <tempfiles.html>`_
+  This module provides some utils to generate temporary path names and
+  create temporary files and directories.
 
 
 Math libraries
@@ -446,7 +450,7 @@ Hashing
   from the MongoDB interface and it thus binary compatible with a MongoDB OID.
 
 * `sha1 <sha1.html>`_
-  This module implements a sha1 encoder and decoder.
+  This module implements the SHA-1 checksum algorithm.
 
 
 Miscellaneous

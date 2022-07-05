@@ -409,7 +409,7 @@ macro convertSexp*(x: untyped): untyped =
   ## `%` for every element.
   result = toSexp(x)
 
-proc `==`* (a,b: SexpNode): bool =
+proc `==`* (a, b: SexpNode): bool {.noSideEffect.} =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true

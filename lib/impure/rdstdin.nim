@@ -27,6 +27,7 @@ when defined(windows):
                           tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a line from stdin.
     stdout.write(prompt)
+    stdout.flushFile()
     result = readLine(stdin)
 
   proc readLineFromStdin*(prompt: string, line: var string): bool {.

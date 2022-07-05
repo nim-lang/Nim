@@ -15,6 +15,9 @@ import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer, types,
 
 from magicsys import addSonSkipIntLit
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const
   logBindings = false
 

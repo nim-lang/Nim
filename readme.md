@@ -28,7 +28,7 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
   is the official Telegram channel. Not bridged to IRC.
 * [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
   topics that includes posts about Nim.
-* [Github Wiki][nim-wiki] - Misc user-contributed content.
+* [GitHub Wiki][nim-wiki] - Misc user-contributed content.
 
 ## Compiling
 
@@ -51,8 +51,8 @@ Nim programming language. Those C sources are available within the
 
 Next, to build from source you will need:
 
-  * A C compiler such as ``gcc`` 3.x/later or an alternative such as ``clang``,
-    ``Visual C++`` or ``Intel C++``. It is recommended to use ``gcc`` 3.x or
+  * A C compiler such as ``gcc`` 5.x/later or an alternative such as ``clang``,
+    ``Visual C++`` or ``Intel C++``. It is recommended to use ``gcc`` 5.x or
     later.
   * Either ``git`` or ``wget`` to download the needed source repositories.
   * The ``build-essential`` package when using ``gcc`` on Ubuntu (and likely
@@ -73,7 +73,7 @@ the installation instructions on the website to do so: https://nim-lang.org/inst
 
 For package maintainers: see [packaging guidelines](https://nim-lang.github.io/Nim/packaging.html).
 
-First, get Nim from github:
+First, get Nim from GitHub:
 
 ```
 git clone https://github.com/nim-lang/Nim.git
@@ -203,7 +203,7 @@ Nim. You are explicitly permitted to develop commercial applications using Nim.
 
 Please read the [copying.txt](copying.txt) file for more details.
 
-Copyright © 2006-2021 Andreas Rumpf, all rights reserved.
+Copyright © 2006-2022 Andreas Rumpf, all rights reserved.
 
 [nim-site]: https://nim-lang.org
 [nim-forum]: https://forum.nim-lang.org

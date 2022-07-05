@@ -9,6 +9,10 @@
 
 # This module implements lookup helpers.
 import std/[algorithm, strutils]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
   renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs
