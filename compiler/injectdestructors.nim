@@ -81,10 +81,12 @@ import sets, hashes
 proc hash(n: PNode): Hash = hash(cast[pointer](n))
 
 proc aliasesCached(cache: var Table[(PNode, PNode), AliasKind], obj, field: PNode): AliasKind =
-  let key = (obj, field)
-  if not cache.hasKey(key):
-    cache[key] = aliases(obj, field)
-  cache[key]
+  # let key = (obj, field)
+  # if not cache.hasKey(key):
+  #   cache[key] = aliases(obj, field)
+  # cache[key]
+
+  aliases(obj, field)
 
 type
   State = ref object
