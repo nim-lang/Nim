@@ -80,14 +80,6 @@ import sets, hashes
 
 proc hash(n: PNode): Hash = hash(cast[pointer](n))
 
-proc aliasesCached(cache: var Table[(PNode, PNode), AliasKind], obj, field: PNode): AliasKind =
-  # let key = (obj, field)
-  # if not cache.hasKey(key):
-  #   cache[key] = aliases(obj, field)
-  # cache[key]
-
-  aliases(obj, field)
-
 type
   State = ref object
     lastReads: IntSet
@@ -118,10 +110,6 @@ proc mergeStates(a: var State, b: sink State) =
     a.alreadySeen.incl b.alreadySeen
 
 proc computeLastReadsAndFirstWrites(cfg: ControlFlowGraph) =
-  var cache = initTable[(PNode, PNode), AliasKind]()
-  template aliasesCached(obj, field: PNode): AliasKind =
-    aliasesCached(cache, obj, field)
-
   var cfg = cfg
   preprocessCfg(cfg)
 
@@ -135,11 +123,11 @@ proc computeLastReadsAndFirstWrites(cfg: ControlFlowGraph) =
       of def:
         var potentialLastReadsCopy = state.potentialLastReads
         for r in potentialLastReadsCopy:
-          if cfg[pc].n.aliasesCached(cfg[r].n) == yes:
+          if cfg[pc].n.aliases(cfg[r].n) == yes:
             # the path leads to a redefinition of 's' --> sink 's'.
             state.lastReads.incl r
             state.potentialLastReads.excl r
-          elif cfg[r].n.aliasesCached(cfg[pc].n) != no:
+          elif cfg[r].n.aliases(cfg[pc].n) != no:
             # only partially writes to 's' --> can't sink 's', so this def reads 's'
             # or maybe writes to 's' --> can't sink 's'
             cfg[r].n.comment = '\n' & $pc
@@ -148,7 +136,7 @@ proc computeLastReadsAndFirstWrites(cfg: ControlFlowGraph) =
 
         var alreadySeenThisNode = false
         for s in state.alreadySeen:
-          if cfg[pc].n.aliasesCached(s) != no or s.aliasesCached(cfg[pc].n) != no:
+          if cfg[pc].n.aliases(s) != no or s.aliases(cfg[pc].n) != no:
             alreadySeenThisNode = true; break
         if alreadySeenThisNode: cfg[pc].n.flags.excl nfFirstWrite
         else: cfg[pc].n.flags.incl nfFirstWrite
@@ -159,7 +147,7 @@ proc computeLastReadsAndFirstWrites(cfg: ControlFlowGraph) =
       of use:
         var potentialLastReadsCopy = state.potentialLastReads
         for r in potentialLastReadsCopy:
-          if cfg[pc].n.aliasesCached(cfg[r].n) != no or cfg[r].n.aliasesCached(cfg[pc].n) != no:
+          if cfg[pc].n.aliases(cfg[r].n) != no or cfg[r].n.aliases(cfg[pc].n) != no:
             cfg[r].n.comment = '\n' & $pc
             state.potentialLastReads.excl r
             state.notLastReads.incl r
