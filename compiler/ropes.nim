@@ -87,7 +87,7 @@ proc newRope(data: string = ""): Rope =
   result.data = data
 
 var
-  cache: array[0..2048*2 - 1, Rope]
+  cache {.threadvar.} : array[0..2048*2 - 1, Rope]
 
 proc resetRopeCache* =
   for i in low(cache)..high(cache):
