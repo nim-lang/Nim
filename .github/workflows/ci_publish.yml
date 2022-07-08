@@ -1,4 +1,4 @@
-name: Test
+name: Tracking orc-booting compiler memory usage
 
 on: [pull_request]
 
@@ -10,7 +10,7 @@ jobs:
       matrix:
         os: [ubuntu-20.04]
         cpu: [amd64]
-    name: 'Tracking Orc-booting compiler memory usage'
+    name: '${{ matrix.os }}'
     runs-on: ${{ matrix.os }}
     steps:
       - name: 'Checkout'
