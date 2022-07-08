@@ -10,7 +10,7 @@ jobs:
       matrix:
         os: [ubuntu-20.04]
         cpu: [amd64]
-    name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
+    name: 'Tracking Orc-booting compiler memory usage'
     runs-on: ${{ matrix.os }}
     steps:
       - name: 'Checkout'
