@@ -59,9 +59,9 @@ jobs:
         shell: bash
         run: nim c koch
 
-      # - name: 'Build Nim'
-      #   shell: bash
-      #   run: ./koch boot -d:release -d:nimStrictMode --lib:lib
+      - name: 'Build Nim'
+        shell: bash
+        run: ./koch boot -d:release -d:nimStrictMode --lib:lib
 
       - name: 'Action'
         shell: bash
