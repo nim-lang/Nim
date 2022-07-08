@@ -348,8 +348,8 @@ iterator pairs*(obj: JsObject): (cstring, JsObject) =
   var k: cstring
   var v: JsObject
   {.emit: "for (var `k` in `obj`) {".}
-  {.emit: "  if (!`obj`.hasOwnProperty(`k`)) continue;".}
-  {.emit: "  `v`=`obj`[`k`];".}
+  {.emit: "  if (!`obj`.hasOwnProperty(`k`)) { continue; }".}
+  {.emit: "  `v` = `obj`[`k`];".}
   yield (k, v)
   {.emit: "}".}
 
@@ -357,8 +357,8 @@ iterator items*(obj: JsObject): JsObject =
   ## Yields the `values` of each field in a JsObject, wrapped into a JsObject.
   var v: JsObject
   {.emit: "for (var k in `obj`) {".}
-  {.emit: "  if (!`obj`.hasOwnProperty(k)) continue;".}
-  {.emit: "  `v`=`obj`[k];".}
+  {.emit: "  if (!`obj`.hasOwnProperty(k)) { continue; }".}
+  {.emit: "  `v` = `obj`[k];".}
   yield v
   {.emit: "}".}
 
@@ -366,7 +366,7 @@ iterator keys*(obj: JsObject): cstring =
   ## Yields the `names` of each field in a JsObject.
   var k: cstring
   {.emit: "for (var `k` in `obj`) {".}
-  {.emit: "  if (!`obj`.hasOwnProperty(`k`)) continue;".}
+  {.emit: "  if (!`obj`.hasOwnProperty(`k`)) { continue; }".}
   yield k
   {.emit: "}".}
 
@@ -376,8 +376,8 @@ iterator pairs*[K: JsKey, V](assoc: JsAssoc[K, V]): (K,V) =
   var k: cstring
   var v: V
   {.emit: "for (var `k` in `assoc`) {".}
-  {.emit: "  if (!`assoc`.hasOwnProperty(`k`)) continue;".}
-  {.emit: "  `v`=`assoc`[`k`];".}
+  {.emit: "  if (!`assoc`.hasOwnProperty(`k`)) { continue; }".}
+  {.emit: "  `v` = `assoc`[`k`];".}
   yield (k.toJsKey(K), v)
   {.emit: "}".}
 
@@ -385,8 +385,8 @@ iterator items*[K, V](assoc: JsAssoc[K, V]): V =
   ## Yields the `values` in a JsAssoc.
   var v: V
   {.emit: "for (var k in `assoc`) {".}
-  {.emit: "  if (!`assoc`.hasOwnProperty(k)) continue;".}
-  {.emit: "  `v`=`assoc`[k];".}
+  {.emit: "  if (!`assoc`.hasOwnProperty(k)) { continue; }".}
+  {.emit: "  `v` = `assoc`[k];".}
   yield v
   {.emit: "}".}
 
@@ -394,7 +394,7 @@ iterator keys*[K: JsKey, V](assoc: JsAssoc[K, V]): K =
   ## Yields the `keys` in a JsAssoc.
   var k: cstring
   {.emit: "for (var `k` in `assoc`) {".}
-  {.emit: "  if (!`assoc`.hasOwnProperty(`k`)) continue;".}
+  {.emit: "  if (!`assoc`.hasOwnProperty(`k`)) { continue; }".}
   yield k.toJsKey(K)
   {.emit: "}".}
 

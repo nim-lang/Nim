@@ -66,3 +66,14 @@ proc mainB =
   assert foo.x.y == @[1, 2, 3]
 
 mainB()
+
+
+# bug #15897
+type Outer = ref object 
+  value: int
+type Inner = object
+  owner: var Outer
+  
+var o = Outer(value: 1234)
+var v = Inner(owner: o).owner.value
+doAssert v == 1234
