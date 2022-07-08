@@ -17,7 +17,7 @@ proc main() =
   let (commitHash, _) = execCmdEx("""git log --format="%H" -n 1""")
 
   let welcomeMessage = fmt"""Thanks for your hard work on this PR!
-The lines below are statistics of the Nim compiler built from {commitHash}:
+The lines below are statistics of the Nim compiler built from {commitHash}
 
 {msg}
 """
