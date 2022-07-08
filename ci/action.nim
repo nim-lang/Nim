@@ -14,8 +14,10 @@ proc main() =
     start = rfind(output, "Hint: mm")
   doAssert parseUntil(output, msg, "; proj", start) > 0, output
 
+  let (commitHash, _) = execCmdEx("""git log --format="%H" -n 1""")
+
   let welcomeMessage = fmt"""Thanks for your hard work on this PR!
-The lines below are statistics for the compiler built from your commits:
+The lines below are statistics of the Nim compiler built from {commitHash}:
 
 {msg}
 """
