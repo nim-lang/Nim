@@ -59,13 +59,13 @@ jobs:
         shell: bash
         run: nim c koch
 
-      - name: 'Build Nim'
-        shell: bash
-        run: ./koch boot -d:release -d:nimStrictMode --lib:lib
+      # - name: 'Build Nim'
+      #   shell: bash
+      #   run: ./koch boot -d:release -d:nimStrictMode --lib:lib
 
       - name: 'Action'
         shell: bash
-        run: nim c -r ci/action.nim
+        run: nim c -r -d:release ci/action.nim
 
       - name: 'Comment'
         uses: actions/github-script@v6
