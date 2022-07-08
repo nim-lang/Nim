@@ -74,7 +74,7 @@ jobs:
             const fs = require('fs');
 
             try {
-              const data = fs.readFileSync('ci/results.txt', 'utf8');
+              const data = fs.readFileSync('ci/nimcache/results.txt', 'utf8');
               github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,

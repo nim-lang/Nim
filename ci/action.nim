@@ -1,18 +1,26 @@
-import std/[strformat, os, times, strutils]
+import std/[strutils, os, osproc, parseutils, strformat]
 
-proc bench(body: proc()): float =
-  let t = epochTime()
-  body()
-  result = epochTime() - t
 
 proc main() =
-  let dir = getTempDir()
-  echo dir
   var msg = ""
-  let cmd = "nim c -d:release compiler/nim.nim"
-  let dt = bench(proc() = doAssert execShellCmd(cmd) == 0)
-  msg.add &"build compiler => t: {dt}\n"
-  writeFile "ci/results.txt", msg
+  const cmd = "koch boot --gc:orc -d:release"
+
+  let (output, exitCode) = execCmdEx(cmd)
+
+  doAssert exitCode == 0, output
+
+  var start = rfind(output, "Hint: gc")
+  if start < 0:
+    start = rfind(output, "Hint: mm")
+  doAssert parseUntil(output, msg, "; proj", start) > 0, output
+
+  let welcomeMessage = fmt"""Thanks for your hard work on this PR!
+The lines below are statistics for the compiler built from your commits:
+
+{msg}
+"""
+  createDir "ci/nimcache"
+  writeFile "ci/nimcache/results.txt", welcomeMessage
 
 when isMainModule:
   main()
