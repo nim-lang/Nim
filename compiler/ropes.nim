@@ -86,13 +86,12 @@ proc newRope(data: string = ""): Rope =
   result.L = -data.len
   result.data = data
 
-when not compileOption("threads"):
-  var
-    cache: array[0..2048*2 - 1, Rope]
+var
+  cache {.threadvar.} : array[0..2048*2 - 1, Rope]
 
-  proc resetRopeCache* =
-    for i in low(cache)..high(cache):
-      cache[i] = nil
+proc resetRopeCache* =
+  for i in low(cache)..high(cache):
+    cache[i] = nil
 
 proc ropeInvariant(r: Rope): bool =
   if r == nil:
