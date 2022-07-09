@@ -111,16 +111,13 @@ var gCacheMisses* = 0
 var gCacheIntTries* = 0
 
 proc insertInCache(s: string): Rope =
-  when declared(cache):
-    inc gCacheTries
-    var h = hash(s) and high(cache)
-    result = cache[h]
-    if isNil(result) or result.data != s:
-      inc gCacheMisses
-      result = newRope(s)
-      cache[h] = result
-  else:
+  inc gCacheTries
+  var h = hash(s) and high(cache)
+  result = cache[h]
+  if isNil(result) or result.data != s:
+    inc gCacheMisses
     result = newRope(s)
+    cache[h] = result
 
 proc rope*(s: string): Rope =
   ## Converts a string to a rope.
