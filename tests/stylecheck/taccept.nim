@@ -2,7 +2,7 @@ discard """
   matrix: "--styleCheck:error --styleCheck:usages"
 """
 
-import asyncdispatch
+import std/[asyncdispatch, nre]
 
 type
   Name = object

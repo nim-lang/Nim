@@ -12,6 +12,9 @@
 import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents,
   saturate, modulegraphs, options, lineinfos, int128
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const
   someEq = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
     mEqStr, mEqSet, mEqCString}

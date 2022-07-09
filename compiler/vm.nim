@@ -15,7 +15,7 @@ import
   std/[strutils, tables, parseutils],
   msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf,
-  vmmarshal, gorgeimpl, lineinfos, btrees, macrocacheimpl,
+  gorgeimpl, lineinfos, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128, vmprofiler
 
 import ast except getstr
@@ -523,8 +523,7 @@ when not defined(nimHasSinkInference):
 
 template takeAddress(reg, source) =
   reg.nodeAddr = addr source
-  when defined(gcDestructors):
-    GC_ref source
+  GC_ref source
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
@@ -642,7 +641,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNodeToReg:
       let ra = instr.regA
       let rb = instr.regB
-      # opcDeref might already have loaded it into a register. XXX Let's hope
+      # opcLdDeref might already have loaded it into a register. XXX Let's hope
       # this is still correct this way:
       if regs[rb].kind != rkNode:
         regs[ra] = regs[rb]
@@ -1011,6 +1010,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkInt)
       template getTyp(n): untyped =
         n.typ.skipTypes(abstractInst)
+      template skipRegisterAddr(n: TFullReg): TFullReg =
+        var tmp = n
+        while tmp.kind == rkRegisterAddr:
+          tmp = tmp.regAddr[]
+        tmp
+
       proc ptrEquality(n1: ptr PNode, n2: PNode): bool =
         ## true if n2.intVal represents a ptr equal to n1
         let p1 = cast[int](n1)
@@ -1024,16 +1029,19 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           return t2.kind in PtrLikeKinds and n2.intVal == p1
         else: return false
 
-      if regs[rb].kind == rkNodeAddr:
-        if regs[rc].kind == rkNodeAddr:
-          ret = regs[rb].nodeAddr == regs[rc].nodeAddr
+      let rbReg = skipRegisterAddr(regs[rb])
+      let rcReg = skipRegisterAddr(regs[rc])
+
+      if rbReg.kind == rkNodeAddr:
+        if rcReg.kind == rkNodeAddr:
+          ret = rbReg.nodeAddr == rcReg.nodeAddr
         else:
-          ret = ptrEquality(regs[rb].nodeAddr, regs[rc].node)
-      elif regs[rc].kind == rkNodeAddr:
-        ret = ptrEquality(regs[rc].nodeAddr, regs[rb].node)
+          ret = ptrEquality(rbReg.nodeAddr, rcReg.node)
+      elif rcReg.kind == rkNodeAddr:
+        ret = ptrEquality(rcReg.nodeAddr, rbReg.node)
       else:
-        let nb = regs[rb].node
-        let nc = regs[rc].node
+        let nb = rbReg.node
+        let nc = rcReg.node
         if nb.kind != nc.kind: discard
         elif (nb == nc) or (nb.kind == nkNilLit): ret = true # intentional
         elif nb.kind in {nkSym, nkTupleConstr, nkClosure} and nb.typ != nil and nb.typ.kind == tyProc and sameConstant(nb, nc):
@@ -1185,14 +1193,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcContainsSet:
       decodeBC(rkInt)
       regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].regToNode))
-    of opcSubStr:
-      decodeBC(rkNode)
-      inc pc
-      assert c.code[pc].opcode == opcSubStr
-      let rd = c.code[pc].regA
-      createStr regs[ra]
-      regs[ra].node.strVal = substr(regs[rb].node.strVal,
-                                    regs[rc].intVal.int, regs[rd].intVal.int)
     of opcParseFloat:
       decodeBC(rkInt)
       inc pc
@@ -1224,7 +1224,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         c.callbacks[-prc.offset-2].value(
           VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                  currentException: c.currentExceptionA,
-                 currentLineInfo: c.debug[pc]))
+                 currentLineInfo: c.debug[pc])
+                 )
       elif importcCond(c, prc):
         if compiletimeFFI notin c.config.features:
           globalError(c.config, c.debug[pc], "VM not allowed to do FFI, see `compiletimeFFI`")
@@ -2100,18 +2101,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       while typ.kind == tyTypeDesc and typ.len > 0: typ = typ[0]
       createStr regs[ra]
       regs[ra].node.strVal = typ.typeToString(preferExported)
-    of opcMarshalLoad:
-      let ra = instr.regA
-      let rb = instr.regB
-      inc pc
-      let typ = c.types[c.code[pc].regBx - wordExcess]
-      putIntoReg(regs[ra], loadAny(regs[rb].node.strVal, typ, c.cache, c.config, c.idgen))
-    of opcMarshalStore:
-      decodeB(rkNode)
-      inc pc
-      let typ = c.types[c.code[pc].regBx - wordExcess]
-      createStrKeepNode(regs[ra])
-      storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode, c.config)
 
     c.profiler.leave(c)
 
@@ -2271,7 +2260,6 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   else:
     var n = x
     if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n[1]
-    n = n.canonValue
     n.flags.incl nfIsRef
     n.typ = x.typ
     result = TFullReg(kind: rkNode, node: n)

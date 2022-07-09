@@ -202,9 +202,6 @@ proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ##
   ## Cannot be overloaded.
   ##
-  ## See also:
-  ## * `unsafeAddr <#unsafeAddr,T>`_
-  ##
   ## .. code-block:: Nim
   ##  var
   ##    buf: seq[char] = @['a','b','c']
@@ -1833,8 +1830,11 @@ when not defined(nimscript):
 when defined(nimV2):
   include system/arc
 
-import system/assertions
-export assertions
+when not defined(nimPreviewSlimSystem):
+  {.deprecated: """assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and
+                import `std/assertions`.""".}
+  import std/assertions
+  export assertions
 
 import system/iterators
 export iterators

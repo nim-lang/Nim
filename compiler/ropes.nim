@@ -60,6 +60,10 @@ import
 
 from pathutils import AbsoluteFile
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
+
 type
   FormatStr* = string  # later we may change it to CString for better
                        # performance of the code generator (assignments
@@ -82,13 +86,12 @@ proc newRope(data: string = ""): Rope =
   result.L = -data.len
   result.data = data
 
-when not compileOption("threads"):
-  var
-    cache: array[0..2048*2 - 1, Rope]
+var
+  cache {.threadvar.} : array[0..2048*2 - 1, Rope]
 
-  proc resetRopeCache* =
-    for i in low(cache)..high(cache):
-      cache[i] = nil
+proc resetRopeCache* =
+  for i in low(cache)..high(cache):
+    cache[i] = nil
 
 proc ropeInvariant(r: Rope): bool =
   if r == nil:
@@ -329,10 +332,3 @@ proc equalsFile*(r: Rope, filename: AbsoluteFile): bool =
   if result:
     result = equalsFile(r, f)
     close(f)
-
-proc writeRopeIfNotEqual*(r: Rope, filename: AbsoluteFile): bool =
-  # returns true if overwritten
-  if not equalsFile(r, filename):
-    result = writeRope(r, filename)
-  else:
-    result = false

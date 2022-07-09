@@ -12,6 +12,10 @@ import
   std/private/miscdollars,
   options, ropes, lineinfos, pathutils, strutils2
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
+
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
@@ -673,7 +677,7 @@ proc genSuccessX*(conf: ConfigRef) =
   const debugModeHints = "none (DEBUG BUILD, `-d:release` generates faster code)"
   if conf.cmd in cmdBackends:
     if conf.backend != backendJs:
-      build.add "gc: $#; " % $conf.selectedGC
+      build.add "mm: $#; " % $conf.selectedGC
       if optThreads in conf.globalOptions: build.add "threads: on; "
       build.add "opt: "
       if optOptimizeSpeed in conf.options: build.add "speed"

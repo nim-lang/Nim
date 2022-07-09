@@ -3,6 +3,8 @@ discard """
 
 [Suite] RST parsing
 
+[Suite] RST tables
+
 [Suite] RST indentation
 
 [Suite] Warnings
@@ -618,6 +620,233 @@ suite "RST parsing":
             rnLeaf  'code'
       """)
 
+suite "RST tables":
+
+  test "formatting in tables works":
+    check(
+      dedent"""
+        =========  ===
+        `build`    `a`
+        =========  ===
+        """.toAst ==
+      dedent"""
+        rnTable  colCount=2
+          rnTableRow
+            rnTableDataCell
+              rnInlineCode
+                rnDirArg
+                  rnLeaf  'nim'
+                [nil]
+                rnLiteralBlock
+                  rnLeaf  'build'
+            rnTableDataCell
+              rnInlineCode
+                rnDirArg
+                  rnLeaf  'nim'
+                [nil]
+                rnLiteralBlock
+                  rnLeaf  'a'
+      """)
+
+  test "tables with slightly overflowed cells cause an error (1)":
+    var error = new string
+    check(
+      dedent"""
+        ======   ======
+         Inputs  Output
+        ======   ======
+        """.toAst(error=error) == "")
+    check(error[] == "input(2, 2) Error: Illformed table: " &
+                     "this word crosses table column from the right")
+
+  test "tables with slightly overflowed cells cause an error (2)":
+    var error = new string
+    check("" == dedent"""
+      =====  =====  ======
+      Input  Output
+      =====  =====  ======
+      False  False  False
+      =====  =====  ======
+      """.toAst(error=error))
+    check(error[] == "input(2, 8) Error: Illformed table: " &
+                     "this word crosses table column from the right")
+
+  test "tables with slightly underflowed cells cause an error":
+    var error = new string
+    check("" == dedent"""
+      =====  =====  ======
+      Input Output
+      =====  =====  ======
+      False  False  False
+      =====  =====  ======
+      """.toAst(error=error))
+    check(error[] == "input(2, 7) Error: Illformed table: " &
+                     "this word crosses table column from the left")
+
+  test "tables with unequal underlines should be reported (1)":
+    var error = new string
+    error[] = "none"
+    check("" == dedent"""
+      =====  ======
+      Input  Output
+      =====  ======
+      False  False
+      =====  =======
+      """.toAst(error=error))
+    check(error[] == "input(5, 14) Error: Illformed table: " &
+                     "end of table column #2 should end at position 13")
+
+  test "tables with unequal underlines should be reported (2)":
+    var error = new string
+    check("" == dedent"""
+      =====  ======
+      Input  Output
+      =====  =======
+      False  False
+      =====  ======
+      """.toAst(error=error))
+    check(error[] == "input(3, 14) Error: Illformed table: " &
+                     "end of table column #2 should end at position 13")
+
+  test "tables with empty first cells":
+    check(
+      dedent"""
+          = = =
+          x y z
+              t
+          = = =
+          """.toAst ==
+      dedent"""
+        rnTable  colCount=3
+          rnTableRow
+            rnTableDataCell
+              rnLeaf  'x'
+            rnTableDataCell
+              rnInner
+                rnLeaf  'y'
+                rnLeaf  ' '
+            rnTableDataCell
+              rnInner
+                rnLeaf  'z'
+                rnLeaf  ' '
+                rnLeaf  't'
+        """)
+
+  test "tables with spanning cells & separators":
+    check(
+      dedent"""
+        =====  =====  ======
+           Inputs     Output
+        ------------  ------
+          A      B    A or B
+        =====  =====  ======
+        False  False  False
+        True   False  True
+        -----  -----  ------
+        False  True   True
+        True   True   True
+        =====  =====  ======
+        """.toAst ==
+      dedent"""
+        rnTable  colCount=3
+          rnTableRow
+            rnTableHeaderCell  span=2
+              rnLeaf  'Inputs'
+            rnTableHeaderCell  span=1
+              rnLeaf  'Output'
+          rnTableRow  endsHeader
+            rnTableHeaderCell
+              rnLeaf  'A'
+            rnTableHeaderCell
+              rnLeaf  'B'
+            rnTableHeaderCell
+              rnInner
+                rnLeaf  'A'
+                rnLeaf  ' '
+                rnLeaf  'or'
+                rnLeaf  ' '
+                rnLeaf  'B'
+          rnTableRow
+            rnTableDataCell
+              rnLeaf  'False'
+            rnTableDataCell
+              rnLeaf  'False'
+            rnTableDataCell
+              rnLeaf  'False'
+          rnTableRow
+            rnTableDataCell  span=1
+              rnLeaf  'True'
+            rnTableDataCell  span=1
+              rnLeaf  'False'
+            rnTableDataCell  span=1
+              rnLeaf  'True'
+          rnTableRow
+            rnTableDataCell
+              rnLeaf  'False'
+            rnTableDataCell
+              rnLeaf  'True'
+            rnTableDataCell
+              rnLeaf  'True'
+          rnTableRow
+            rnTableDataCell
+              rnLeaf  'True'
+            rnTableDataCell
+              rnLeaf  'True'
+            rnTableDataCell
+              rnLeaf  'True'
+      """)
+
+  test "tables with spanning cells with uneqal underlines cause an error":
+    var error = new string
+    check(
+      dedent"""
+        =====  =====  ======
+           Inputs     Output
+        ------------- ------
+          A      B    A or B
+        =====  =====  ======
+        """.toAst(error=error) == "")
+    check(error[] == "input(3, 1) Error: Illformed table: " &
+                     "spanning underline does not match main table columns")
+
+  let expTable = dedent"""
+      rnTable  colCount=2
+        rnTableRow
+          rnTableDataCell
+            rnLeaf  'Inputs'
+          rnTableDataCell
+            rnLeaf  'Output'
+      """
+
+  test "only tables with `=` columns specs are allowed (1)":
+    var warnings = new seq[string]
+    check(
+      dedent"""
+        ------  ------
+        Inputs  Output
+        ------  ------
+        """.toAst(warnings=warnings) ==
+      expTable)
+    check(warnings[] ==
+          @["input(1, 1) Warning: RST style: " &
+              "only tables with `=` columns specification are allowed",
+            "input(3, 1) Warning: RST style: " &
+              "only tables with `=` columns specification are allowed"])
+
+  test "only tables with `=` columns specs are allowed (2)":
+    var warnings = new seq[string]
+    check(
+      dedent"""
+        ======  ======
+        Inputs  Output
+        ~~~~~~  ~~~~~~
+        """.toAst(warnings=warnings) ==
+      expTable)
+    check(warnings[] ==
+          @["input(3, 1) Warning: RST style: "&
+              "only tables with `=` columns specification are allowed"])
+
+
 suite "RST indentation":
   test "nested bullet lists":
     let input = dedent """
@@ -861,7 +1090,7 @@ suite "RST include directive":
   test "Include whole":
     "other.rst".writeFile("**test1**")
     let input = ".. include:: other.rst"
-    doAssert "<strong>test1</strong>" == rstTohtml(input, {roSandboxDisabled}, defaultConfig())
+    doAssert "<strong>test1</strong>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
   test "Include starting from":
@@ -875,7 +1104,7 @@ OtherStart
 .. include:: other.rst
              :start-after: OtherStart
 """
-    check "<em>Visible</em>" == rstTohtml(input, {roSandboxDisabled}, defaultConfig())
+    check "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
   test "Include everything before":
@@ -889,7 +1118,7 @@ And this should **NOT** be visible in `docs.html`
 .. include:: other.rst
              :end-before: OtherEnd
 """
-    doAssert "<em>Visible</em>" == rstTohtml(input, {roSandboxDisabled}, defaultConfig())
+    doAssert "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
 
@@ -907,7 +1136,7 @@ And this should **NOT** be visible in `docs.html`
              :start-after: OtherStart
              :end-before: OtherEnd
 """
-    check "<em>Visible</em>" == rstTohtml(input, {roSandboxDisabled}, defaultConfig())
+    check "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
 
@@ -927,7 +1156,7 @@ And this should **NOT** be visible in `docs.html`
              :start-after: OtherStart
              :end-before: OtherEnd
 """
-    doAssert "<em>Visible</em>" == rstTohtml(input, {roSandboxDisabled}, defaultConfig())
+    doAssert "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
 suite "RST escaping":

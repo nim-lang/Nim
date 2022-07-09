@@ -31,8 +31,12 @@ from std/osproc import nil
 from system/formatfloat import addFloatRoundtrip, addFloatSprintf
 
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
+
 # There are some useful procs in vmconv.
-import vmconv
+import vmconv, vmmarshal
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -151,6 +155,7 @@ when defined(nimHasInvariant):
 
 proc stackTrace2(c: PCtx, msg: string, n: PNode) =
   stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, msg, n.info)
+
 
 proc registerAdditionalOps*(c: PCtx) =
 
@@ -344,3 +349,20 @@ proc registerAdditionalOps*(c: PCtx) =
     addFloatSprintf(p.strVal, x)
 
   wrapIterator("stdlib.os.envPairsImplSeq"): envPairs()
+
+  registerCallback c, "stdlib.marshal.toVM", proc(a: VmArgs) =
+    let typ = a.getNode(0).typ
+    case typ.kind
+    of tyInt..tyInt64, tyUInt..tyUInt64:
+      setResult(a, loadAny(a.getString(1), typ, c.cache, c.config, c.idgen).intVal)
+    of tyFloat..tyFloat128:
+      setResult(a, loadAny(a.getString(1), typ, c.cache, c.config, c.idgen).floatVal)
+    else:
+      setResult(a, loadAny(a.getString(1), typ, c.cache, c.config, c.idgen))
+
+  registerCallback c, "stdlib.marshal.loadVM", proc(a: VmArgs) =
+    let typ = a.getNode(0).typ
+    let p = a.getReg(1)
+    var res: string
+    storeAny(res, typ, regToNode(p[]), c.config)
+    setResult(a, res)

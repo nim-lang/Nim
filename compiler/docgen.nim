@@ -16,7 +16,7 @@ import
   packages/docutils/[rst, rstgen, dochelpers],
   json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, tables, nimpaths, renderverbatim, osproc
+  pathutils, tables, nimpaths, renderverbatim, osproc, packages
 import packages/docutils/rstast except FileIndex, TLineInfo
 
 from uri import encodeUrl
@@ -232,6 +232,7 @@ template declareClosures =
     of meExpected: k = errXExpected
     of meGridTableNotImplemented: k = errRstGridTableNotImplemented
     of meMarkdownIllformedTable: k = errRstMarkdownIllformedTable
+    of meIllformedTable: k = errRstIllformedTable
     of meNewSectionExpected: k = errRstNewSectionExpected
     of meGeneralParseError: k = errRstGeneralParseError
     of meInvalidDirective: k = errRstInvalidDirectiveX
@@ -413,9 +414,6 @@ proc getPlainDocstring(n: PNode): string =
       result = getPlainDocstring(n[i])
       if result.len > 0: return
 
-proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
-  result = module.kind == skModule and module.getnimblePkgId == conf.mainPackageId
-
 proc externalDep(d: PDoc; module: PSym): string =
   if optWholeProject in d.conf.globalOptions or d.conf.docRoot.len > 0:
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
@@ -471,7 +469,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var string;
               "\\spanIdentifier{$1}", [escLit, procLink])
       elif s != nil and s.kind in {skType, skVar, skLet, skConst} and
            sfExported in s.flags and s.owner != nil and
-           belongsToPackage(d.conf, s.owner) and d.target == outHtml:
+           belongsToProjectPackage(d.conf, s.owner) and d.target == outHtml:
         let external = externalDep(d, s.owner)
         result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
           [changeFileExt(external, "html"), literal,
@@ -1131,7 +1129,7 @@ proc traceDeps(d: PDoc, it: PNode) =
     for x in it[2]:
       a[2] = x
       traceDeps(d, a)
-  elif it.kind == nkSym and belongsToPackage(d.conf, it.sym):
+  elif it.kind == nkSym and belongsToProjectPackage(d.conf, it.sym):
     let external = externalDep(d, it.sym)
     if d.section[k].finalMarkup != "": d.section[k].finalMarkup.add(", ")
     dispA(d.conf, d.section[k].finalMarkup,
@@ -1141,7 +1139,7 @@ proc traceDeps(d: PDoc, it: PNode) =
 
 proc exportSym(d: PDoc; s: PSym) =
   const k = exportSection
-  if s.kind == skModule and belongsToPackage(d.conf, s):
+  if s.kind == skModule and belongsToProjectPackage(d.conf, s):
     let external = externalDep(d, s)
     if d.section[k].finalMarkup != "": d.section[k].finalMarkup.add(", ")
     dispA(d.conf, d.section[k].finalMarkup,
@@ -1150,7 +1148,7 @@ proc exportSym(d: PDoc; s: PSym) =
                  changeFileExt(external, "html")])
   elif s.kind != skModule and s.owner != nil:
     let module = originatingModule(s)
-    if belongsToPackage(d.conf, module):
+    if belongsToProjectPackage(d.conf, module):
       let
         complexSymbol = complexName(s.kind, s.ast, s.name.s)
         symbolOrId = d.newUniquePlainSymbol(complexSymbol)
@@ -1499,7 +1497,10 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnixPath
+    let external = AbsoluteFile(d.destFile)
+      .relativeTo(d.conf.outDir, '/')
+      .changeFileExt(HtmlExt)
+      .string
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
@@ -1573,7 +1574,11 @@ proc writeOutput*(d: PDoc, useWarning = false, groupedToc = false) =
         outfile.string)
     if not d.wroteSupportFiles: # nimdoc.css + dochack.js
       let nimr = $d.conf.getPrefixDir()
-      copyFile(docCss.interp(nimr = nimr), $d.conf.outDir / nimdocOutCss)
+      case d.target
+      of outHtml:
+        copyFile(docCss.interp(nimr = nimr), $d.conf.outDir / nimdocOutCss)
+      of outLatex:
+        copyFile(docCls.interp(nimr = nimr), $d.conf.outDir / nimdocOutCls)
       if optGenIndex in d.conf.globalOptions:
         let docHackJs2 = getDocHacksJs(nimr, nim = getAppFilename())
         copyFile(docHackJs2, $d.conf.outDir / docHackJs2.lastPathPart)

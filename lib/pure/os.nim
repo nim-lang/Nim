@@ -35,7 +35,7 @@ import std/private/since
 import strutils, pathnorm
 
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
 
 const weirdTarget = defined(nimscript) or defined(js)
 
@@ -2131,7 +2131,7 @@ iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect], noWeirdT
   ## Iterate over all the files and directories that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
-  ## `pattern` is OS dependent, but at least the `"\*.ext"`
+  ## `pattern` is OS dependent, but at least the `"*.ext"`
   ## notation is supported.
   ##
   ## See also:
@@ -2150,7 +2150,7 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTar
   ## Iterate over all the files that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
-  ## `pattern` is OS dependent, but at least the `"\*.ext"`
+  ## `pattern` is OS dependent, but at least the `"*.ext"`
   ## notation is supported.
   ##
   ## See also:
@@ -2167,7 +2167,7 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarg
   ## Iterate over all the directories that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
-  ## `pattern` is OS dependent, but at least the `"\*.ext"`
+  ## `pattern` is OS dependent, but at least the `"*.ext"`
   ## notation is supported.
   ##
   ## See also:
@@ -2383,21 +2383,21 @@ iterator walkDirRec*(dir: string,
   ##
   ## Walking is recursive. `followFilter` controls the behaviour of the iterator:
   ##
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ## yieldFilter             meaning
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ## ``pcFile``              yield real files (default)
   ## ``pcLinkToFile``        yield symbolic links to files
   ## ``pcDir``               yield real directories
   ## ``pcLinkToDir``         yield symbolic links to directories
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ##
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ## followFilter            meaning
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ## ``pcDir``               follow real directories (default)
   ## ``pcLinkToDir``         follow symbolic links to directories
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ##
   ##
   ## See also:
