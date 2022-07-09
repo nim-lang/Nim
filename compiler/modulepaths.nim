@@ -107,8 +107,10 @@ template patchModule(conf: ConfigRef) {.dirty.} =
   ## * `nimscript.patchModule`
   ## * `resolveModulePatches`
   template hintPatched(target, patch) =
-    localError(conf, lineInfo, hintPatch, @[$relativeTo(target, conf.projectPath),
-               $relativeTo(patch, conf.projectPath)])
+    if hintPatch in conf.notes: # skip the `canonicalImport` work if not needed
+      localError(conf, lineInfo, hintPatch, @[
+                canonicalImport(conf, target),
+                canonicalImport(conf, patch)])
   if not result.isEmpty:
     var matched = false
     if conf.modulePatches.len > 0:
