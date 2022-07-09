@@ -198,22 +198,25 @@ proc resolveModulePatches*(conf: ConfigRef) =
   for patch in conf.unresolvedModulePatches:
     var
       resolvedTarget = patch.target
-      resolvedOverride = patch.patch
+      resolvedPatch = patch.patch
     if not patch.target.isAbsolute:
       resolvedTarget = findModule(conf, patch.target, conf.projectFull.string, patch = false).string
       if resolvedTarget.len == 0:
         localError(conf, patch.lineInfo, warnCannotOpen, patch.target)
         continue
-    else:
-      resolvedTarget = patch.target
+    elif not resolvedTarget.fileExists:
+      localError(conf, patch.lineInfo, warnCannotOpen, patch.target)
+      continue
     if not patch.patch.isAbsolute:
-      resolvedOverride = findModule(conf, patch.patch, conf.projectFull.string, patch = false).string
-      if resolvedOverride.len == 0:
+      resolvedPatch = findModule(conf, patch.patch, conf.projectFull.string, patch = false).string
+      if resolvedPatch.len == 0:
         localError(conf, patch.lineInfo, warnCannotOpen, patch.patch)
-    else:
-      resolvedOverride = patch.patch
-    if resolvedTarget.len > 0 and resolvedOverride.len > 0:
-      conf.modulePatches[resolvedTarget] = resolvedOverride
+        continue
+    elif not resolvedTarget.fileExists:
+      localError(conf, patch.lineInfo, warnCannotOpen, patch.patch)
+      continue
+    if resolvedTarget.len > 0 and resolvedPatch.len > 0:
+      conf.modulePatches[resolvedTarget] = resolvedPatch
 
 proc resolveModuleToIndex*(conf: ConfigRef; module, relativeTo: string): FileIndex =
   let fullPath = findModule(conf, module, relativeTo)
