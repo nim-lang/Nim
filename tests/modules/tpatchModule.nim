@@ -2,12 +2,16 @@ discard """
   nimoutFull: true
   joinable: false
   nimout: '''
-tpatchModule.nims(22, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
-tpatchModule.nims(25, 12) Warning: cannot open: missingPatch_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
-tpatchModule.nim(21, 11) Hint: ../../lib/pure/httpclient.nim patched with mpatchModule.nim [Patch]
-a/module_name_clashes.nim(3, 12) Hint: b/module_name_clashes.nim patched with mpatchModule.nim [Patch]
-tpatchModule.nim(33, 11) Hint: ../../lib/impure/db_postgres.nim patched with mpatchModule.nim [Patch]
-tpatchModule.nim(38, 8) Hint: ../../lib/pure/oids.nim patched with mpatchModule.nim [Patch]
+tpatchModule.nims(24, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
+tpatchModule.nims(27, 12) Warning: cannot open: missingPatch_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
+tpatchModule.nims(30, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
+tpatchModule.nims(33, 12) Warning: cannot open:  [CannotOpen]
+tpatchModule.nims(36, 12) Warning: cannot open:  [CannotOpen]
+tpatchModule.nims(39, 12) Warning: cannot open:  [CannotOpen]
+tpatchModule.nim(25, 11) Hint: std/httpclient patched with tests/modules/mpatchModule [Patch]
+a/module_name_clashes.nim(3, 12) Hint: tests/modules/b/module_name_clashes patched with tests/modules/mpatchModule [Patch]
+tpatchModule.nim(37, 11) Hint: std/db_postgres patched with tests/modules/mpatchModule [Patch]
+tpatchModule.nim(42, 8) Hint: std/oids patched with tests/modules/mpatchModule [Patch]
 '''
 """
 
@@ -37,3 +41,18 @@ doAssert db.getAllRows(sql"SELECT version();")[0][0] == "patched!"
 # Test patching an absolute import:
 import "$lib/pure/oids"
 doAssert genOid() == genOid() # `genOid` is patched to always return the same value
+
+# Test how `link` pragma directives are handled:
+{.link: "mpatchModule_pragma_linked_a.lib".}
+proc pragmaLinked: char {.importc.}
+doAssert pragmaLinked() == 'b'
+
+# Test how `compile` pragma directives are handled:
+{.compile: "tpatchModule_pragma_compiled_a.c".}
+proc pragmaCompiled: cchar {.importc, header: "tpatchModule_a.h".}
+doAssert pragmaCompiled() == 'b'
+
+# Test non-module files don't get patched:
+import std/os
+const text = staticRead(".." / "dummy.txt")
+doAssert text == "Just a simple text for test"
