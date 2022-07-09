@@ -22,7 +22,7 @@
 - `addr` is now available for all addressable locations, `unsafeAddr` is deprecated and
 becomes an alias for `addr`.
 
-- io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`.
+- `io` and `assertions` are about to move out of system; use `-d:nimPreviewSlimSystem`, import `std/syncio` and import `std/assertions`.
 
 - The `gc:v2` option is removed.
 
