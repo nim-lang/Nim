@@ -8,7 +8,7 @@
 #
 
 import
-  std/[os, strutils, strtabs, tables],
+  std/[os, strutils, strtabs],
   ast, renderer, msgs, options, idents, lineinfos, pathutils
 
 proc getModuleName*(conf: ConfigRef; n: PNode): string =
@@ -230,7 +230,7 @@ proc addModulePatch*(conf: ConfigRef; target, patch, relativeTo: string; lineInf
   ##
   ## See Also:
   ## * `nimscript.patchModule`
-  ## * `options.patchModule`
+  ## * `patchModule`
   ## * `resolveModulePatches`
   var target = target
   var patch = patch

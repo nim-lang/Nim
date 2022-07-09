@@ -262,8 +262,7 @@ template declareClosures(currentFilename: AbsoluteFile, destFile: string) =
       globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
 
   proc docgenFindFile(s: string): string {.gcsafe.} =
-    {.gcsafe.}:
-      result = findFile(conf, s).string
+    result = findFile(conf, s).string
     if result.len == 0:
       result = getCurrentDir() / s
       if not fileExists(result): result = ""
