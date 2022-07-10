@@ -184,8 +184,13 @@ proc isLastRead(n: PNode; c: var Con): bool =
   let m = dfa.skipConvDfa(n)
   result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or nfLastRead in m.flags
 
-  # first only test if it crashes:
-  let alternativeResult = move_analyser.isLastRead(c.body, n)
+  when defined(nimNewMoveAnalyser):
+    # first only test if it crashes:
+    let oldResult = nfLastRead in m.flags
+    let alternativeResult = move_analyser.isLastRead(c.body, n)
+    if alternativeResult != oldResult:
+      echo "algorithms differ for ", c.graph.config $ n.info, " ", renderTree(n)
+      echo "old algorithm said ", oldResult, " new one said ", alternativeResult
 
 
 proc isFirstWrite(n: PNode; c: var Con): bool =

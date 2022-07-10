@@ -74,9 +74,7 @@ while cond:
 As an approximation we model it as "leaves the scope the variable was declared in".
 Then all we have to do is to model the `loop` construct. We do this by a backwards
 jump. Every backwards jump is run exactly one time. This avoids exponential code
-explosions. A backwards jump is implemented as `Position` node. We only run it once
-because we overwrite the node with an Empty node. This is subtle, but correct for
-nested loops:
+explosions. This is subtle, but correct for nested loops:
 
   while condA:
     x = def
@@ -168,6 +166,7 @@ type
     x: PNode
     root: PSym
     currentBlock, usedInBlock: BlockLevel
+    inTryStmt: int
     blocks: seq[(PSym, BlockLevel)]
     foundDecl: bool
 
@@ -329,6 +328,19 @@ proc traverseWhile(c: var Context; b: var BlockInfo; n: PNode) =
   if distance > 0:
     b.trace.add Instruction(opc: JmpBack, intVal: distance)
 
+proc traverseTry(c: var Context; b: var BlockInfo; n: PNode) =
+  inc c.inTryStmt
+  for ch in items(n):
+    traverse(c, b, ch)
+  dec c.inTryStmt
+
+proc traverseRaise(c: var Context; b: var BlockInfo; n: PNode) =
+  traverse c, b, n[0]
+  if c.inTryStmt == 0:
+    b.leaves = ReturnBlock
+    b.flags.incl containsLeave
+    b.trace.add Instruction(opc: Ret)
+
 proc traverseAsgn(c: var Context; b: var BlockInfo; n: PNode) =
   let le = n[0]
 
@@ -380,6 +392,10 @@ proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
       traverseLocal c, b, ch
   of nkWhileStmt:
     traverseWhile c, b, n
+  of nkTryStmt:
+    traverseTry c, b, n
+  of nkRaiseStmt:
+    traverseRaise c, b, n
   of nodesToIgnoreSet:
     discard
   else:
@@ -417,7 +433,11 @@ proc isLastRead*(n, x: PNode): bool =
                   foundDecl: false,
                   root: root)
   var b = BlockInfo(leaves: NoBlock, writesTo: @[], trace: @[], entryAt: 0, flags: {})
-  beginTraverse(c, b, n, n, -1)
+  if root.kind == skParam:
+    c.foundDecl = true
+    traverse(c, b, n)
+  else:
+    beginTraverse(c, b, n, n, -1)
   if c.foundDecl:
     result = interpret(b.trace, b.entryAt, x)
   else:
