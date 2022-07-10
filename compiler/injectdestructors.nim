@@ -33,6 +33,7 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
     idgen: IdGenerator
+    body: PNode
 
   Scope = object # we do scope-based memory management.
     # a scope is comparable to an nkStmtListExpr like
@@ -181,7 +182,11 @@ proc computeLastReadsAndFirstWrites(cfg: ControlFlowGraph) =
 
 proc isLastRead(n: PNode; c: var Con): bool =
   let m = dfa.skipConvDfa(n)
-  (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or nfLastRead in m.flags
+  result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or nfLastRead in m.flags
+
+  # first only test if it crashes:
+  let alternativeResult = move_analyser.isLastRead(c.body, n)
+
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
   let m = dfa.skipConvDfa(n)
@@ -1119,7 +1124,7 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     shouldDebug = toDebug == owner.name.s or toDebug == "always"
   if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
     return n
-  var c = Con(owner: owner, graph: g, g: constructCfg(owner, n), idgen: idgen)
+  var c = Con(owner: owner, graph: g, g: constructCfg(owner, n), idgen: idgen, body: n)
   dbg:
     echo "\n### ", owner.name.s, ":\nCFG:"
     echoCfg(c.g)

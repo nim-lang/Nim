@@ -395,9 +395,8 @@ proc beginTraverse(c: var Context; b: var BlockInfo; parent, n: PNode; nindex: i
     if v.kind == nkSym and v.sym == c.root:
       c.foundDecl = true
       if parent.kind in {nkStmtList, nkStmtListExpr}:
-        for i in 0 ..< parent.len:
-          if i > nindex:
-            traverse(c, b, parent[i])
+        for i in nindex+1 ..< parent.len:
+          traverse(c, b, parent[i])
       else:
         assert(false, "declaration not in statement list position?")
     else:
@@ -406,10 +405,13 @@ proc beginTraverse(c: var Context; b: var BlockInfo; parent, n: PNode; nindex: i
   of nodesToIgnoreSet:
     discard
   else:
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       beginTraverse(c, b, n, n[i], i)
 
-proc isLastRead*(n, x: PNode; root: PSym): bool =
+proc isLastRead*(n, x: PNode): bool =
+  let root = parampatterns.exprRoot(x)
+  if root == nil: return false
+
   var c = Context(x: x,
                   currentBlock: ReturnBlock, usedInBlock: ReturnBlock, blocks: @[],
                   foundDecl: false,
