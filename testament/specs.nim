@@ -75,6 +75,7 @@ type
     # xxx make sure `isJoinableSpec` takes into account each field here.
     action*: TTestAction
     file*, cmd*: string
+    filename*: string ## Test filename (without path).
     input*: string
     outputCheck*: TOutputCheck
     sortoutput*: bool
@@ -249,6 +250,7 @@ proc isCurrentBatch*(testamentData: TestamentData; filename: string): bool =
 
 proc parseSpec*(filename: string): TSpec =
   result.file = filename
+  result.filename = extractFilename(filename)
   let specStr = extractSpec(filename, result)
   var ss = newStringStream(specStr)
   var p: CfgParser
@@ -439,3 +441,12 @@ proc parseSpec*(filename: string): TSpec =
   result.inCurrentBatch = isCurrentBatch(testamentData0, filename) or result.unbatchable
   if not result.inCurrentBatch:
     result.err = reDisabled
+
+  # Interpolate variables in msgs:
+  template varSub(msg: string): string =
+    msg % ["/", $DirSep, "file", result.filename]
+  result.output = result.output.varSub
+  result.nimout = result.nimout.varSub
+  result.msg = result.msg.varSub
+  for inlineError in result.inlineErrors.mitems:
+    inlineError.msg = inlineError.msg.varSub
