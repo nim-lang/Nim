@@ -17,7 +17,7 @@ import
   intsets, strtabs, ast, astalgo, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
-  varpartitions
+  varpartitions, move_analyser, aliasanalysis
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
