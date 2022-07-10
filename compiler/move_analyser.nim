@@ -407,17 +407,16 @@ proc beginTraverse(c: var Context; b: var BlockInfo; parent, n: PNode; nindex: i
   # location we're interested in:
   case n.kind
   of nkVarSection, nkLetSection:
-    let v = n[0][0]
-    if v.kind == nkSym and v.sym == c.root:
-      c.foundDecl = true
-      if parent.kind in {nkStmtList, nkStmtListExpr}:
-        for i in nindex+1 ..< parent.len:
-          traverse(c, b, parent[i])
-      else:
-        assert(false, "declaration not in statement list position?")
-    else:
-      for ch in items(n):
-        beginTraverse(c, b, parent, ch.lastSon, nindex)
+    for j in 0..<n.len:
+      let v = n[j][0]
+      if v.kind == nkSym and v.sym == c.root:
+        c.foundDecl = true
+        if parent.kind in {nkStmtList, nkStmtListExpr}:
+          for i in nindex+1 ..< parent.len:
+            traverse(c, b, parent[i])
+        else:
+          assert(false, "declaration not in statement list position?")
+        break
   of nodesToIgnoreSet:
     discard
   else:
