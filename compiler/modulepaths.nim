@@ -100,14 +100,8 @@ template patchModulePath(conf: ConfigRef) =
           hintPatched(result, patch)
           result = patch
           matched = true
-    if not matched and conf.moduleOverrides.len > 0:
-      # This handles `nimscript.patchFile`.
-      let key = getPackageName(conf, result.string) & "_" & splitFile(result).name
-      if conf.moduleOverrides.hasKey(key):
-        let ov = AbsoluteFile(conf.moduleOverrides[key])
-        if not ov.isEmpty:
-          hintPatched(result, ov)
-          result = ov
+    if not matched: # This handles `nimscript.patchFile`.
+      patchPath(conf)
 
 proc findModule*(conf: ConfigRef; modulename, currentModule: string,
                  lineInfo = unknownLineInfo, patch = true): AbsoluteFile =
