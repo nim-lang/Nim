@@ -20,7 +20,7 @@ import
   packages/docutils/[rst, rstidx, rstgen, dochelpers],
   json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, tables, nimpaths, renderverbatim, osproc, packages, modulepaths
+  pathutils, tables, nimpaths, renderverbatim, osproc, packages, searchpaths
 import packages/docutils/rstast except FileIndex, TLineInfo
 
 from uri import encodeUrl

@@ -9,7 +9,7 @@
 
 import
   std/[os, strutils, strtabs],
-  ast, renderer, msgs, options, idents, lineinfos, pathutils
+  ast, renderer, msgs, options, idents, lineinfos, pathutils, searchpaths
 
 proc getModuleName*(conf: ConfigRef; n: PNode): string =
   # This returns a short relative module name without the nim extension
@@ -74,38 +74,14 @@ proc demangleModuleName*(path: string): string =
   ## Demangle a relative module path.
   result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@c": ":"})
 
-proc rawFindFile(conf: ConfigRef; f: RelativeFile; suppressStdlib: bool): AbsoluteFile =
-  for it in conf.searchPaths:
-    if suppressStdlib and it.string.startsWith(conf.libpath.string):
-      continue
-    result = it / f
-    if fileExists(result):
-      return canonicalizePath(conf, result)
-  result = AbsoluteFile""
-
-proc rawFindFile2(conf: ConfigRef; f: RelativeFile): AbsoluteFile =
-  for i, it in conf.lazyPaths:
-    result = it / f
-    if fileExists(result):
-      # bring to front
-      for j in countdown(i, 1):
-        swap(conf.lazyPaths[j], conf.lazyPaths[j-1])
-
-      return canonicalizePath(conf, result)
-  result = AbsoluteFile""
-
-template patchModule(conf: ConfigRef) {.dirty.} =
+template patchModulePath(conf: ConfigRef) =
   ## Checks if replacement or patch modules are defined for a module path.
-  ## This dirty template uses `result` as the target module and `currentModule`
-  ## as the module that is importing the target.
   ##
   ## A patch specified by `nimscript.patchModule` takes precedence over one
   ## specified by `nimscript.patchFile`.
   ##
   ## See Also:
-  ## * `nimscript.patchFile`
-  ## * `nimscript.patchModule`
-  ## * `resolveModulePatches`
+  ## * `findModule`
   template hintPatched(target, patch) =
     if hintPatch in conf.notes: # skip the `canonicalImport` work if not needed
       localError(conf, lineInfo, hintPatch, @[
@@ -120,12 +96,7 @@ template patchModule(conf: ConfigRef) {.dirty.} =
         # This conditional check is so `findModule` compares the current module
         # to the patch module so that the patch module can import the module
         # that it is patching. This is relevant to `nimscript.patchModule` only.
-        when declared(currentModule):
-          if patch.string != currentModule:
-            hintPatched(result, patch)
-            result = patch
-            matched = true
-        else:
+        if patch.string != currentModule:
           hintPatched(result, patch)
           result = patch
           matched = true
@@ -138,24 +109,23 @@ template patchModule(conf: ConfigRef) {.dirty.} =
           hintPatched(result, ov)
           result = ov
 
-proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false,
-               lineInfo = unknownLineInfo, patch = true): AbsoluteFile =
-  if f.isAbsolute:
-    result = if f.fileExists: AbsoluteFile(f) else: AbsoluteFile""
-  else:
-    result = rawFindFile(conf, RelativeFile f, suppressStdlib)
-    if result.isEmpty:
-      result = rawFindFile(conf, RelativeFile f.toLowerAscii, suppressStdlib)
-      if result.isEmpty:
-        result = rawFindFile2(conf, RelativeFile f)
-        if result.isEmpty:
-          result = rawFindFile2(conf, RelativeFile f.toLowerAscii)
-  if patch:
-    patchModule(conf)
-
 proc findModule*(conf: ConfigRef; modulename, currentModule: string,
                  lineInfo = unknownLineInfo, patch = true): AbsoluteFile =
-  # returns path to module
+  ## Resolve `modulename` against the module search paths to an absolute file path.
+  ## Special handling is performed when `modulename` is prefixed with either pseudo
+  ## import path: `std`, `pkg`
+  ##
+  ## Params:
+  ## * `suppressStdlib`: When true, then no path in `ConfigRef.searchPaths` that
+  ## is a subpath of `ConfigRef.libdir` is used for path resolution.
+  ## * `lineInfo`: Source location of the path.
+  ## * `patch`: When true, then any matching path overrides defined using
+  ## `nimscript.patchFile` or `nimscript.patchModule` will replace the actual path.
+  ##
+  ## See Also:
+  ## * `searchpaths.findFile`
+  ## * `nimscript.patchFile`
+  ## * `nimscript.patchModule`
   var m = addFileExt(modulename, NimExt)
   if m.startsWith(pkgPrefix):
     result = findFile(conf, m.substr(pkgPrefix.len), true, lineInfo, false)
@@ -167,16 +137,16 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string,
         if fileExists(path):
           result = AbsoluteFile path
           break
-    else: # If prefixed with std/ why would we add the current module path!
+    else:
       let currentPath = currentModule.splitFile.dir
       result = AbsoluteFile currentPath / m
     if not fileExists(result):
       result = findFile(conf, m, lineInfo = lineInfo, patch = false)
   if patch:
-    patchModule(conf)
+    patchModulePath(conf)
 
 proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
-  ## This returns the full canonical path for a given module import
+  ## This returns the index for a given module import.
   let modulename = getModuleName(conf, n)
   let fullPath = findModule(conf, modulename, toFullPath(conf, n.info), lineInfo = n.info)
   if fullPath.isEmpty:
@@ -195,28 +165,22 @@ proc resolveModulePatches*(conf: ConfigRef) =
   ## * `nimscript.patchModule`
   ## * `patchModule`
   ## * `addModulePatch`
+  template resolve(path, result) =
+    if not path.isAbsolute:
+      result = findModule(conf, path, conf.projectFull.string, patch = false).string
+      if result.len == 0:
+        localError(conf, patch.lineInfo, warnCannotOpen, path)
+        continue
+    elif not result.fileExists:
+      localError(conf, patch.lineInfo, warnCannotOpen, path)
+      continue
   for patch in conf.unresolvedModulePatches:
     var
       resolvedTarget = patch.target
       resolvedPatch = patch.patch
-    if not patch.target.isAbsolute:
-      resolvedTarget = findModule(conf, patch.target, conf.projectFull.string, patch = false).string
-      if resolvedTarget.len == 0:
-        localError(conf, patch.lineInfo, warnCannotOpen, patch.target)
-        continue
-    elif not resolvedTarget.fileExists:
-      localError(conf, patch.lineInfo, warnCannotOpen, patch.target)
-      continue
-    if not patch.patch.isAbsolute:
-      resolvedPatch = findModule(conf, patch.patch, conf.projectFull.string, patch = false).string
-      if resolvedPatch.len == 0:
-        localError(conf, patch.lineInfo, warnCannotOpen, patch.patch)
-        continue
-    elif not resolvedTarget.fileExists:
-      localError(conf, patch.lineInfo, warnCannotOpen, patch.patch)
-      continue
-    if resolvedTarget.len > 0 and resolvedPatch.len > 0:
-      conf.modulePatches[resolvedTarget] = resolvedPatch
+    resolve(patch.target, resolvedTarget)
+    resolve(patch.patch, resolvedPatch)
+    conf.modulePatches[resolvedTarget] = resolvedPatch
 
 proc resolveModuleToIndex*(conf: ConfigRef; module, relativeTo: string): FileIndex =
   let fullPath = findModule(conf, module, relativeTo)
