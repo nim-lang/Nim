@@ -42,17 +42,17 @@ doAssert db.getAllRows(sql"SELECT version();")[0][0] == "patched!"
 import "$lib/pure/oids"
 doAssert genOid() == genOid() # `genOid` is patched to always return the same value
 
-# Test how `link` pragma directives are handled:
-{.link: "mpatchModule_pragma_linked_a.lib".}
-proc pragmaLinked: char {.importc.}
-doAssert pragmaLinked() == 'b'
+# # Test how `link` pragma directives are handled:
+# {.link: "mpatchModule_pragma_linked_a.lib".}
+# proc pragmaLinked: char {.importc.}
+# doAssert pragmaLinked() == 'b'
 
-# Test how `compile` pragma directives are handled:
-{.compile: "tpatchModule_pragma_compiled_a.c".}
-proc pragmaCompiled: cchar {.importc, header: "tpatchModule_a.h".}
-doAssert pragmaCompiled() == 'b'
+# # Test how `compile` pragma directives are handled:
+# {.compile: "tpatchModule_pragma_compiled_a.c".}
+# proc pragmaCompiled: cchar {.importc, header: "tpatchModule_a.h".}
+# doAssert pragmaCompiled() == 'b'
 
-# Test non-module files don't get patched:
-import std/os
-const text = staticRead(".." / "dummy.txt")
-doAssert text == "Just a simple text for test"
+# # Test non-module files don't get patched:
+# import std/os
+# const text = staticRead(".." / "dummy.txt")
+# doAssert text == "Just a simple text for test"
