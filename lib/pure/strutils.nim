@@ -206,24 +206,6 @@ func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
     doAssert isUpperAscii('7') == false
   return c in UpperCaseLetters
 
-func isPunctuationAscii*(c: char): bool {.rtl,
-    extern: "nsuIsPunctuationAsciiChar".} =
-  ## Checks whether or not `c` is a Punctuation character.
-  runnableExamples:
-    doAssert isPunctuationAscii('n') == false
-    doAssert isPunctuationAscii('9') == false
-    doAssert isPunctuationAscii('?') == true
-  return c in Punctuations
-
-func isPrintableAscii*(c: char): bool {.rtl,
-    extern: "nsuIsPrintableAsciiChar".} =
-  ## Checks whether or not `c` is a Printables character.
-  runnableExamples:
-    doAssert isPrintableAscii(' ') == true
-    doAssert isPrintableAscii('\xFF') == false
-    doAssert isPrintableAscii('t') == true
-  return c in Printables
-
 func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   ## Returns the lower case version of character `c`.
   ##
