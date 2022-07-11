@@ -67,5 +67,5 @@ jobs:
       - name: 'koch, Run CI'
         shell: bash
         run: |
-          export DYLD_LIBRARY_PATH="/usr/local/Cellar/openssl@1.1/1.1.1g/lib:$DYLD_LIBRARY_PATH"
+          export DYLD_LIBRARY_PATH="/usr/local/Cellar/openssl@1.1/$(ls /usr/local/Cellar/openssl@1.1 | tail -n 1)/lib:$DYLD_LIBRARY_PATH"
           . ci/funs.sh && nimInternalBuildKochAndRunCI
