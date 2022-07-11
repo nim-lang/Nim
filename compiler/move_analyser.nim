@@ -425,6 +425,8 @@ proc beginTraverse(c: var Context; b: var BlockInfo; parent, n: PNode; nindex: i
           else:
             assert(false, "declaration not in statement list position?")
           break
+      if not c.foundDecl:
+        beginTraverse(c, b, parent, ch.lastSon, nindex)
   of nodesToIgnoreSet:
     discard
   else:
@@ -440,7 +442,11 @@ proc isLastRead*(n, x: PNode): bool =
                   foundDecl: false,
                   root: root)
   var b = BlockInfo(leaves: NoBlock, writesTo: @[], trace: @[], entryAt: 0, flags: {})
-  if root.kind in {skParam, skResult}:
+  if root.kind == skResult:
+    c.foundDecl = true
+    traverse(c, b, n)
+    b.trace.add Instruction(opc: Load, mem: newSymNode(root))
+  elif root.kind == skParam:
     c.foundDecl = true
     traverse(c, b, n)
   else:
@@ -448,4 +454,5 @@ proc isLastRead*(n, x: PNode): bool =
   if c.foundDecl:
     result = interpret(b.trace, b.entryAt, x)
   else:
+    #echo "did not find the declaration ", renderTree(n), " ", renderTree(x)
     result = false
