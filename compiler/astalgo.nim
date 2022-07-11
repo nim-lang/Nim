@@ -818,16 +818,16 @@ proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
   # hot spots
   var h = ti.h and high(tab.data)
   var start = h
-  var p = addr tab.data[h]
+  var p {.cursor.} = tab.data[h]
   while p != nil:
     if p.name.id == ti.name.id: break
     h = nextTry(h, high(tab.data))
     if h == start:
       p = nil
       break
-    p = addr tab.data[h]
+    p = tab.data[h]
   if p != nil:
-    result = p[]
+    result = p # increase the count
   else:
     result = nil
   ti.h = nextTry(h, high(tab.data))
