@@ -815,16 +815,22 @@ type
     name*: PIdent
 
 proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
+  # hot spots
   var h = ti.h and high(tab.data)
   var start = h
-  result = tab.data[h]
-  while result != nil:
-    if result.name.id == ti.name.id: break
+  var p {.cursor.} = tab.data[h]
+  while p != nil:
+    if p.name.id == ti.name.id: break
     h = nextTry(h, high(tab.data))
     if h == start:
-      result = nil
+      p = nil
       break
-    result = tab.data[h]
+    p = tab.data[h]
+  if p != nil:
+    result = p
+    GC_ref(result)
+  else:
+    result = nil
   ti.h = nextTry(h, high(tab.data))
 
 proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
