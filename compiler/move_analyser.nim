@@ -407,16 +407,17 @@ proc beginTraverse(c: var Context; b: var BlockInfo; parent, n: PNode; nindex: i
   # location we're interested in:
   case n.kind
   of nkVarSection, nkLetSection:
-    for j in 0..<n.len:
-      let v = n[j][0]
-      if v.kind == nkSym and v.sym == c.root:
-        c.foundDecl = true
-        if parent.kind in {nkStmtList, nkStmtListExpr}:
-          for i in nindex+1 ..< parent.len:
-            traverse(c, b, parent[i])
-        else:
-          assert(false, "declaration not in statement list position?")
-        break
+    for ch in items(n):
+      for j in 0 ..< ch.len - 2:
+        let v = ch[j]
+        if v.kind == nkSym and v.sym == c.root:
+          c.foundDecl = true
+          if parent.kind in {nkStmtList, nkStmtListExpr}:
+            for i in nindex+1 ..< parent.len:
+              traverse(c, b, parent[i])
+          else:
+            assert(false, "declaration not in statement list position?")
+          break
   of nodesToIgnoreSet:
     discard
   else:
@@ -432,7 +433,7 @@ proc isLastRead*(n, x: PNode): bool =
                   foundDecl: false,
                   root: root)
   var b = BlockInfo(leaves: NoBlock, writesTo: @[], trace: @[], entryAt: 0, flags: {})
-  if root.kind == skParam:
+  if root.kind in {skParam, skResult}:
     c.foundDecl = true
     traverse(c, b, n)
   else:
