@@ -377,16 +377,18 @@ proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
       b.entryAt = b.trace.len
       c.usedInBlock = c.currentBlock
   of PathKinds0, PathKinds1:
+    for ch in items(n):
+      traverse(c, b, ch)
     if n == c.x:
       b.flags.incl containsUse
       b.entryAt = b.trace.len
       c.usedInBlock = c.currentBlock
-    for ch in items(n):
-      traverse(c, b, ch)
   of nkReturnStmt:
     traverse c, b, n[0]
     b.leaves = ReturnBlock
     b.flags.incl containsLeave
+    if c.root.kind == skResult:
+      b.trace.add Instruction(opc: Load, mem: newSymNode(c.root))
     b.trace.add Instruction(opc: Ret)
   of nkBreakStmt:
     traverseBreak c, b, n
@@ -462,7 +464,9 @@ proc isLastRead*(n, x: PNode): bool =
   else:
     beginTraverse(c, b, n, n, -1)
   if c.foundDecl:
+    #showVm(b.trace, b.entryAt)
     result = interpret(b.trace, b.entryAt, x)
+    #echo b.flags, " body ", renderTree(n), " x ", renderTree(x)
   else:
     #echo "did not find the declaration ", renderTree(n), " ", renderTree(x)
     result = false
