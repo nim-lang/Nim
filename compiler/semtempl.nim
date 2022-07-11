@@ -283,6 +283,8 @@ proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
+    if result.kind == nkIdent:
+      c.toInject.incl(result.ident.id)
   else:
     for i in 0..<n.safeLen:
       result[i] = semRoutineInTemplName(c, n[i])
