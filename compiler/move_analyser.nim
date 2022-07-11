@@ -98,6 +98,11 @@ type
     of Store, Load:
       mem: PNode
 
+when defined(nimDebugUtils):
+  # this allows inserting debugging utilties in all modules that import `options`
+  # with a single switch, which is useful when debugging compiler.
+  import debugutils, msgs
+
 proc showVm(code: seq[Instruction]; start = 0) =
   var i = start
   while i < code.len:
@@ -107,9 +112,11 @@ proc showVm(code: seq[Instruction]; start = 0) =
     of JmpBack:
       echo "JmpBack ", i - code[i].intVal
     of Store:
-      echo "Store " & renderTree(code[i].mem)
+      echo "Store ", renderTree(code[i].mem)
     of Load:
-      echo "Load " & renderTree(code[i].mem)
+      echo "Load ", renderTree(code[i].mem)
+      when defined(nimDebugUtils):
+        echo getConfigRef() $ code[i].mem.info
     inc i
 
 proc interpret(code: seq[Instruction]; start: int; x: PNode): bool =
@@ -235,7 +242,7 @@ proc traverseIf(c: var Context; b: var BlockInfo; n: PNode) =
     of nkElifBranch, nkElifExpr:
       traverse c, thisBranch, ch[0]
       traverse c, thisBranch, ch[1]
-    of nkElse:
+    of nkElse, nkElseExpr:
       traverse c, thisBranch, ch[0]
       hasElse = true
     else:
@@ -246,9 +253,12 @@ proc traverseIf(c: var Context; b: var BlockInfo; n: PNode) =
   merge c, b, branches
 
 proc traverseConditional(c: var Context; b: var BlockInfo; n: PNode) =
-  var branches: seq[BlockInfo] = @[createBlockInfo(), createBlockInfo()]
-  traverse c, branches[0], n[1]
-  traverse c, branches[1], n[2]
+  # (a and b) is the same as (if a: b else: false)
+  # (a or b) is the same as (if a: true else: b)
+  # Thus we use the current block for `a` and a different one for `b`.
+  var branches: seq[BlockInfo] = @[createBlockInfo()]
+  traverse c, b, n[1]
+  traverse c, branches[0], n[2]
   merge c, b, branches
 
 proc traverseCase(c: var Context; b: var BlockInfo; n: PNode) =
