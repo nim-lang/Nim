@@ -359,13 +359,20 @@ proc traverseLocal(c: var Context; b: var BlockInfo; n: PNode) =
 
 proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
   case n.kind
-  of nkSym, nkDotExpr, nkBracketExpr:
-    if parampatterns.exprRoot(n) == c.root:
+  of nkSym:
+    if n.sym == c.root:
       b.trace.add Instruction(opc: Load, mem: n)
     if n == c.x:
       b.flags.incl containsUse
       b.entryAt = b.trace.len
       c.usedInBlock = c.currentBlock
+  of PathKinds0, PathKinds1:
+    if n == c.x:
+      b.flags.incl containsUse
+      b.entryAt = b.trace.len
+      c.usedInBlock = c.currentBlock
+    for ch in items(n):
+      traverse(c, b, ch)
   of nkReturnStmt:
     traverse c, b, n[0]
     b.leaves = ReturnBlock
