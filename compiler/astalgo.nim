@@ -827,8 +827,7 @@ proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
       break
     p = tab.data[h]
   if p != nil:
-    result = p
-    GC_ref(result)
+    result = p # increase the count
   else:
     result = nil
   ti.h = nextTry(h, high(tab.data))
