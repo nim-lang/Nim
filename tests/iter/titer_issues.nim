@@ -18,6 +18,14 @@ end
 1
 2
 7
+nested finally
+outer finally
+nested finally
+outer finally
+nested finally
+outer finally
+nested finally
+outer finally
 '''
 """
 
@@ -213,3 +221,71 @@ block t2023_objiter:
 
   var o = init()
   echo(o.iter())
+
+
+block:
+  # bug #19911 (return in nested try)
+
+  # try yield -> try
+  iterator p1: int {.closure.} =
+    try:
+      yield 0
+      try:
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
+    finally:
+      echo "outer finally"
+    echo "shouldn't run"
+
+  for _ in p1():
+    discard
+
+  # try -> try yield
+  iterator p2: int {.closure.} =
+    try:
+      try:
+        yield 0
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
+    finally:
+      echo "outer finally"
+    echo "shouldn't run"
+
+  for _ in p2():
+    discard
+
+  # try yield -> try yield
+  iterator p3: int {.closure.} =
+    try:
+      yield 0
+      try:
+        yield 0
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
+    finally:
+      echo "outer finally"
+    echo "shouldn't run"
+
+  for _ in p3():
+    discard
+
+  # try -> try
+  iterator p4: int {.closure.} =
+    try:
+      try:
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
+    finally:
+      echo "outer finally"
+    echo "shouldn't run"
+
+  for _ in p4():
+    discard
