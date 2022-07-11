@@ -1,6 +1,9 @@
 name: Tracking orc-booting compiler memory usage
 
-on: [pull_request]
+on:
+  push:
+    branches:
+      - devel
 
 
 jobs:
