@@ -121,7 +121,10 @@
 #   yield 2
 #   if :unrollFinally: # This node is created by `newEndFinallyNode`
 #     if :curExc.isNil:
-#       return :tmpResult
+#       if nearestFinally == 0:
+#         return :tmpResult
+#       else:
+#         :state = nearestFinally # bubble up
 #     else:
 #       closureIterSetupExc(nil)
 #       raise
@@ -804,7 +807,10 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   # Generate the following code:
   #   if :unrollFinally:
   #       if :curExc.isNil:
-  #         return :tmpResult
+  #         if nearestFinally == 0:
+  #           return :tmpResult
+  #         else:
+  #           :state = nearestFinally # bubble up
   #       else:
   #         raise
   let curExc = ctx.newCurExcAccess()
@@ -813,11 +819,17 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   let cmp = newTree(nkCall, newSymNode(ctx.g.getSysMagic(info, "==", mEqRef), info), curExc, nilnode)
   cmp.typ = ctx.g.getSysType(info, tyBool)
 
-  let asgn = newTree(nkFastAsgn,
-    newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), info),
-    ctx.newTmpResultAccess())
+  let retStmt =
+    if ctx.nearestFinally == 0:
+      # last finally, we can return
+      let asgn = newTree(nkFastAsgn,
+        newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), info),
+        ctx.newTmpResultAccess())
+      newTree(nkReturnStmt, asgn)
+    else:
+      # bubble up to next finally
+      newTree(nkGotoState, ctx.g.newIntLit(info, ctx.nearestFinally))
 
-  let retStmt = newTree(nkReturnStmt, asgn)
   let branch = newTree(nkElifBranch, cmp, retStmt)
 
   let nullifyExc = newTree(nkCall, newSymNode(ctx.g.getCompilerProc("closureIterSetupExc")), nilnode)
@@ -861,6 +873,13 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
 
   of nkSkip:
     discard
+  of nkTryStmt:
+    if n.hasYields:
+      # the inner try will handle these transformations
+      discard
+    else:
+      for i in 0..<n.len:
+        n[i] = ctx.transformReturnsInTry(n[i])
   else:
     for i in 0..<n.len:
       n[i] = ctx.transformReturnsInTry(n[i])
