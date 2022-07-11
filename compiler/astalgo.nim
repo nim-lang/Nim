@@ -814,19 +814,6 @@ type
     h*: Hash           # current hash
     name*: PIdent
 
-# proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
-#   var h = ti.h and high(tab.data)
-#   var start = h
-#   result = tab.data[h]
-#   while result != nil:
-#     if result.name.id == ti.name.id: break
-#     h = nextTry(h, high(tab.data))
-#     if h == start:
-#       result = nil
-#       break
-#     result = tab.data[h]
-#   ti.h = nextTry(h, high(tab.data))
-
 proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
   # hot spots
   var h = ti.h and high(tab.data)
