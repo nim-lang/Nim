@@ -539,6 +539,7 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
     of "refc":
       unregisterArcOrc(conf)
+      defineSymbol(conf.symbols, "gcrefc")
       conf.selectedGC = gcRefc
     of "markandsweep":
       unregisterArcOrc(conf)

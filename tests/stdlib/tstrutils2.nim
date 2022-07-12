@@ -1,10 +1,15 @@
+discard """
+  matrix: "--gc:refc; --gc:orc"
+"""
+
 import "$lib/.." / compiler/strutils2
 
 block: # setLen
   var a = "abc"
   a.setLen 0
   a.setLen 3, isInit = false
-  doAssert a[1] == 'b'
+  when defined(gcRefc):
+    doAssert a[1] == 'b'
   a.setLen 0
   a.setLen 3, isInit = true
   doAssert a[1] == '\0'
