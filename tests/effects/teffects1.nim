@@ -1,10 +1,8 @@
 discard """
   cmd: "nim check $file"
-  nimout: '''teffects1.nim(22, 28) template/generic instantiation from here
-teffects1.nim(23, 13) Error: can raise an unlisted exception: ref IOError
-teffects1.nim(22, 29) Hint: 'lier' cannot raise 'IO2Error' [XCannotRaiseY]
-teffects1.nim(38, 21) Error: type mismatch: got <proc (x: int): string{.noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
-.raise effects differ'''
+  nimout: '''
+teffects1.nim(17, 28) template/generic instantiation from here
+'''
 """
 {.push warningAsError[Effect]: on.}
 type
@@ -19,7 +17,7 @@ proc forw: int {. .}
 proc lier(): int {.raises: [IO2Error].} =
   #[tt.Hint                 ^ 'lier' cannot raise 'IO2Error' [XCannotRaiseY] ]#
   writeLine stdout, "arg" #[tt.Error
-            ^  can raise an unlisted exception: ref IOError
+            ^ writeLine stdout, ["arg"] can raise an unlisted exception: ref IOError
   ]#
 
 proc forw: int =
@@ -38,7 +36,7 @@ proc foo(x: int): string {.raises: [ValueError].} =
 var p: MyProcType = foo #[tt.Error
                     ^
 type mismatch: got <proc (x: int): string{.noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
-
+.raise effects differ
 ]#
 {.pop.}
 {.pop.}

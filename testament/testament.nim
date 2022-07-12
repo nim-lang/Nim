@@ -338,55 +338,25 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
       discard waitForExit(p)
       close(p)
 
-proc checkForInlineErrors(expected, given: TSpec, test: TTest,
-                          target: TTarget, extraOptions: string): bool =
-  result = true
-  if expected.inlineErrors.len > 0:
-    let pegLine = peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' {[^:]*} ':' \s* {.*}"
-    var covered = initIntSet()
-    for line in splitLines(given.nimout):
-
-      if line =~ pegLine:
-        let file = extractFilename(matches[0])
-        let line = try: parseInt(matches[1]) except: -1
-        let col = try: parseInt(matches[2]) except: -1
-        let kind = matches[3]
-        let msg = matches[4]
-
-        if file == expected.filename:
-          var i = 0
-          for x in expected.inlineErrors:
-            if x.line == line and (x.col == col or x.col < 0) and
-                x.kind == kind and x.msg in msg:
-              covered.incl i
-            inc i
-
-    block coverCheck:
-      for j in 0..high(expected.inlineErrors):
-        if j notin covered:
-          var e = test.name
-          e.add '('
-          e.addInt expected.inlineErrors[j].line
-          if expected.inlineErrors[j].col > 0:
-            e.add ", "
-            e.addInt expected.inlineErrors[j].col
-          e.add ") "
-          e.add expected.inlineErrors[j].kind
-          e.add ": "
-          e.add expected.inlineErrors[j].msg
-          result = false
-          break coverCheck
-
+proc toString(inlineError: InlineError, filename: string): string =
+  result.add "$file($line, $col) $kind: $msg" % [
+    "file", filename,
+    "line", $inlineError.line,
+    "col", $inlineError.col,
+    "kind", $inlineError.kind,
+    "msg", $inlineError.msg
+  ]
 
 proc inlineErrorsMsgs(expected: TSpec): string =
   for inlineError in expected.inlineErrors.items:
-    result.addf "$file($line, $col) $kind: $msg\n" % [
-      "file", expected.filename,
-      "line", $inlineError.line,
-      "col", $inlineError.col,
-      "kind", $inlineError.kind,
-      "msg", $inlineError.msg
-    ]
+    result.addLine inlineError.toString(expected.filename)
+
+proc checkForInlineErrors(expected, given: TSpec, test: TTest,
+                          target: TTarget, extraOptions: string): bool =
+  result = true
+  for inlineError in expected.inlineErrors:
+    if inlineError.toString(expected.filename) notin given.nimout:
+      return false
 
 proc nimoutCheck(expected, given: TSpec): bool =
   result = true
@@ -405,9 +375,9 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest,
     r.addResult(test, target, extraOptions, expected.msg, given.msg, reMsgsDiffer)
   elif not nimoutCheck(expected, given):
     r.addResult(test, target, extraOptions, expected.nimout, given.nimout, reMsgsDiffer)
-  elif expected.filename != given.file and
+  elif extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
-    r.addResult(test, target, extraOptions, expected.file, given.file, reFilesDiffer)
+    r.addResult(test, target, extraOptions, expected.filename, given.file, reFilesDiffer)
   elif expected.line != given.line and expected.line != 0 or
        expected.column != given.column and expected.column != 0:
     r.addResult(test, target, extraOptions, $expected.line & ':' & $expected.column,
@@ -545,8 +515,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
               (expected.outputCheck == ocSubstr and expected.output notin bufB):
             given.err = reOutputsDiffer
             r.addResult(test, target, extraOptions, expected.output, bufB, reOutputsDiffer)
-          else:
-            compilerOutputTests(test, target, extraOptions, given, expected, r)
+          compilerOutputTests(test, target, extraOptions, given, expected, r)
   of actionReject:
     cmpMsgs(r, expected, given, test, target, extraOptions)
 

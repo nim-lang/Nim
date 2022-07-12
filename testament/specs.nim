@@ -161,6 +161,7 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
   var msg = ""
   while result < s.len-1:
     if s[result] == '\n':
+      msg.add '\n'
       inc result
       inc line
       col = 1
@@ -444,7 +445,10 @@ proc parseSpec*(filename: string): TSpec =
 
   # Interpolate variables in msgs:
   template varSub(msg: string): string =
-    msg % ["/", $DirSep, "file", result.filename]
+    if '$' in msg:
+      msg % ["/", $DirSep, "file", result.filename]
+    else:
+      msg
   result.output = result.output.varSub
   result.nimout = result.nimout.varSub
   result.msg = result.msg.varSub

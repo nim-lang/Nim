@@ -113,7 +113,7 @@ Example "template" **to edit** and write a Testament unittest:
     # Provide an `output` string to assert that the test prints to standard out
     # exactly the expected string. Provide an `outputsub` string to assert that
     # the string given here is a substring of the standard out output of the
-    # test.
+    # test. (The output includes both the compiler and test execution output.)
     output: ""
     outputsub: ""
 
