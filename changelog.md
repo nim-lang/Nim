@@ -100,7 +100,7 @@ becomes an alias for `addr`.
   for the right-hand side of type definitions in type sections. Previously
   they would error with "invalid indentation".
 
-- Defines the `gcRefc` symbol which allows writting specific code for refc.
+- Defines the `gcRefc` symbol which allows writting specific code for the refc GC.
 
 ## Compiler changes
 
