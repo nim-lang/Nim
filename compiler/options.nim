@@ -502,7 +502,7 @@ when defined(nimDebugUtils):
   export debugutils
 
 proc initConfigRefCommon(conf: ConfigRef) =
-  conf.selectedGC = gcOrc
+  conf.selectedGC = gcUnselected
   conf.verbosity = 1
   conf.hintProcessingDots = true
   conf.options = DefaultOptions

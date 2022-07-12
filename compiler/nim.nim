@@ -87,14 +87,16 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     processCmdLine: processCmdLine
   )
   self.initDefinesProg(conf, "nim_compiler")
-  initOrcDefines(conf)
   if paramCount() == 0:
     writeCommandLineUsage(conf)
     return
 
   self.processCmdLineAndProjectPath(conf)
-  if conf.backend notin {backendC, backendCpp, backendObjc}:
-    unregisterArcOrc(conf)
+  if conf.selectedGC == gcUnselected:
+    conf.selectedGC = gcOrc
+    if conf.backend in {backendC, backendCpp, backendObjc}:
+      initOrcDefines(conf)
+
   var graph = newModuleGraph(cache, conf)
   if not self.loadConfigsAndProcessCmdLine(cache, conf, graph):
     return
