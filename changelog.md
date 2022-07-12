@@ -101,6 +101,9 @@ becomes an alias for `addr`.
 - Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
   for the right-hand side of type definitions in type sections. Previously
   they would error with "invalid indentation".
+- `defined` now accepts identifiers separated by dots, i.e. `defined(a.b.c)`.
+  In the command line, this is defined as `-d:a.b.c`. Older versions can
+  use accents as in ``defined(`a.b.c`)`` to access such defines.
 
 ## Compiler changes
 
