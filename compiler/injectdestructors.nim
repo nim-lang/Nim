@@ -191,6 +191,7 @@ proc isLastRead(n: PNode; c: var Con): bool =
     if alternativeResult != oldResult:
       echo "algorithms differ for ", c.graph.config $ n.info, " ", renderTree(n)
       echo "old algorithm said ", oldResult, " new one said ", alternativeResult
+      doAssert false
 
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
