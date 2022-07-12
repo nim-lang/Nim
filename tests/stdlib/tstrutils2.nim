@@ -8,7 +8,7 @@ block: # setLen
   var a = "abc"
   a.setLen 0
   a.setLen 3, isInit = false
-  when defined(gcRefc):
+  when defined(gcRefc): # bug #19763
     doAssert a[1] == 'b'
   a.setLen 0
   a.setLen 3, isInit = true
