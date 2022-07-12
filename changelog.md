@@ -100,6 +100,8 @@ becomes an alias for `addr`.
   for the right-hand side of type definitions in type sections. Previously
   they would error with "invalid indentation".
 
+- Defines the `gcRefc` symbol which allows writting specific code for refc.
+
 ## Compiler changes
 
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
