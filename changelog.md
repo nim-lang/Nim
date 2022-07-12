@@ -66,6 +66,12 @@ becomes an alias for `addr`.
 
 ## Language changes
 
+- [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
+  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
+- Templates now accept [macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas).
+- Macro pragmas for var/let/const sections have been redesigned in a way that works
+  similarly to routine macro pragmas. The new behavior is documented in the
+  [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#extended-macro-pragmas).
 - Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
   allowing multiple type definitions to be injected in place of the original type definition.
 
@@ -96,8 +102,6 @@ becomes an alias for `addr`.
       x, y, z: int
     Baz = object
   ```
-- [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
-  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
 - Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
   for the right-hand side of type definitions in type sections. Previously
   they would error with "invalid indentation".
