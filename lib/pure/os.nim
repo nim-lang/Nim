@@ -2939,7 +2939,7 @@ elif defined(genode):
 
   proc paramCount*(): int =
     raise newException(OSError, "paramCount is not implemented on Genode")
-elif weirdTarget:
+elif weirdTarget or (defined(posix) and appType == "lib"):
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on current platform")
 
