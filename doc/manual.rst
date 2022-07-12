@@ -2851,7 +2851,10 @@ Given the following distinct type definitions:
 
 .. code-block:: nim
   type
-    DistinctObject {.requiresInit, borrow: `.`.} = distinct MyObject
+    Foo = object
+      x: string
+
+    DistinctFoo {.requiresInit, borrow: `.`.} = distinct Foo
     DistinctString {.requiresInit.} = distinct string
 
 The following code blocks will fail to compile:
@@ -2864,7 +2867,7 @@ The following code blocks will fail to compile:
 .. code-block:: nim
   var s: DistinctString
   s = "test"
-  doAssert s == "test"
+  doAssert string(s) == "test"
 
 But these ones will compile successfully:
 
@@ -2873,8 +2876,8 @@ But these ones will compile successfully:
   doAssert foo.x == "test"
 
 .. code-block:: nim
-  let s = "test"
-  doAssert s == "test"
+  let s = DistinctString("test")
+  doAssert string(s) == "test"
 
 Let statement
 -------------
@@ -4323,12 +4326,9 @@ Closure iterators and inline iterators have some restrictions:
 1. For now, a closure iterator cannot be executed at compile time.
 2. `return` is allowed in a closure iterator but not in an inline iterator
    (but rarely useful) and ends the iteration.
-3. Neither inline nor closure iterators can be (directly)* recursive.
+3. Inline iterators cannot be recursive.
 4. Neither inline nor closure iterators have the special `result` variable.
 5. Closure iterators are not supported by the JS backend.
-
-(*) Closure iterators can be co-recursive with a factory proc which results
-in similar syntax to a recursive iterator. More details follow.
 
 Iterators that are neither marked `{.closure.}` nor `{.inline.}` explicitly
 default to being inline, but this may change in future versions of the
