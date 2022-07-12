@@ -1,13 +1,13 @@
 name: Tracking orc-booting compiler memory usage
 
 on:
-  push:
-    branches:
-      - devel
+  pull_request:
+    types: [closed]
 
 
 jobs:
   build:
+    if: github.event.pull_request.merged == true
     strategy:
       fail-fast: false
       matrix:
