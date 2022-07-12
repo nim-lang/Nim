@@ -850,7 +850,7 @@ when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
     let ret = relativePath(path, base)
     result = path.len > 0 and not ret.startsWith ".."
 
-const stdlibDirs = [
+const stdlibDirs* = [
   "pure", "core", "arch",
   "pure/collections",
   "pure/concurrency",
