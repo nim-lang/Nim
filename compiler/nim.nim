@@ -93,7 +93,6 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 
   self.processCmdLineAndProjectPath(conf)
   if conf.selectedGC == gcUnselected:
-    conf.selectedGC = gcOrc
     if conf.backend in {backendC, backendCpp, backendObjc}:
       initOrcDefines(conf)
 

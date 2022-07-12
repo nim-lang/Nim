@@ -501,6 +501,7 @@ proc specialDefine(conf: ConfigRef, key: string; pass: TCmdLinePass) =
       conf.globalOptions.excl {optCDebug}
 
 proc initOrcDefines*(conf: ConfigRef) =
+  conf.selectedGC = gcOrc
   defineSymbol(conf.symbols, "gcorc")
   defineSymbol(conf.symbols, "gcdestructors")
   incl conf.globalOptions, optSeqDestructors
