@@ -368,7 +368,7 @@ iterator items*[T](c: CritBitTree[T]): string =
   ## Alias for `keys <#keys.i,CritBitTree[T]>`_.
   for x in leaves(c.root): yield x.key
 
-iterator pairs*[T](c: CritBitTree[T]): tuple[key: string, val: lent T] =
+iterator pairs*[T](c: CritBitTree[T]): tuple[key: string, val: T] =
   ## Yields all `(key, value)`-pairs of `c` in the lexicographical order of the
   ## corresponding keys.
   ##
@@ -445,7 +445,7 @@ iterator itemsWithPrefix*[T](c: CritBitTree[T], prefix: string): string =
   for x in leaves(top): yield x.key
 
 iterator pairsWithPrefix*[T](c: CritBitTree[T],
-                             prefix: string): tuple[key: string, val: lent T] =
+                             prefix: string): tuple[key: string, val: T] =
   ## Yields all (key, value)-pairs of `c` starting with `prefix`.
   ##
   ## **See also:**
