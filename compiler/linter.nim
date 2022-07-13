@@ -129,11 +129,7 @@ proc styleCheckUseImpl(conf: ConfigRef; info: TLineInfo; s: PSym) =
   let newName = s.name.s
   let badName = differs(conf, info, newName)
   if badName.len > 0:
-    # special rules for historical reasons
-    let forceHint = # TODO: PR Reviewer: Any clue if this is still needed? (This comment needs removed before commit.)
-      badName == "nnkArgList" and newName == "nnkArglist" or
-      badName == "nnkArglist" and newName == "nnkArgList"
-    lintReport(conf, info, newName, badName, forceHint, "".dup(addDeclaredLoc(conf, s)))
+    lintReport(conf, info, newName, badName, "".dup(addDeclaredLoc(conf, s)))
 
 template styleCheckUse*(ctx: PContext; info: TLineInfo; sym: PSym) =
   ## Check symbol uses match their definition's style.
