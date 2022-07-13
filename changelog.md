@@ -114,6 +114,8 @@ becomes an alias for `addr`.
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
   without requiring `-d:nimVersion140` which is now a noop.
 
+- `--styleCheck` now only applies to the current package.
+
 
 ## Tool changes
 
