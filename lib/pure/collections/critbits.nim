@@ -293,7 +293,7 @@ proc `[]=`*[T](c: var CritBitTree[T], key: string, val: sink T) =
   var n = rawInsert(c, key)
   n.val = val
 
-template get[T](c: CritBitTree[T], key: string): lent T =
+template get[T](c: CritBitTree[T], key: string): T =
   let n = rawGet(c, key)
   if n == nil:
     raise newException(KeyError, "key not found: " & key)
