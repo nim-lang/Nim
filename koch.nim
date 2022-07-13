@@ -549,7 +549,7 @@ proc runCI(cmd: string) =
   # `--lib:lib` is needed for bootstrap on openbsd, for reasons described in
   # https://github.com/nim-lang/Nim/pull/14291 (`getAppFilename` bugsfor older nim on openbsd).
   kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode --lib:lib")
-  kochExecFold("Build with nimNewMoveAnalyser", "nim c -d:release -d:nimNewMoveAnalyser -d:nimStrictMode --lib:lib -o:bin/nim compiler/nim.nim")
+  execFold("Build with nimNewMoveAnalyser", "nim c -d:release -d:nimNewMoveAnalyser -d:nimStrictMode --lib:lib -o:bin/nim compiler/nim.nim")
 
   when false: # debugging: when you need to run only 1 test in CI, use something like this:
     execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
