@@ -546,7 +546,7 @@ proc allowsNil(f: PType): TTypeRelation {.inline.} =
 
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
   result = f.kind != a.kind and
-    (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})
+    (f.kind in {tyVar, tyLent, tySink} and a.kind in {tyVar, tyLent, tySink})
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
