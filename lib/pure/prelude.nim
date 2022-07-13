@@ -12,7 +12,7 @@ when defined(nimdoc) and isMainModule:
   when compileSettings.querySetting(compileSettings.SingleValueSetting.projectFull) == currentSourcePath:
     ## This is an include file that simply imports common modules for your convenience.
     runnableExamples:
-      include std/prelude
+      import std/prelude
         # same as:
         # import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt]
       let x = 1
@@ -26,3 +26,4 @@ when defined(nimdoc) and isMainModule:
   # specific to `nim doc`, but the code otherwise works with nodejs.
 
 import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt, strformat]
+export os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt, strformat
