@@ -86,7 +86,7 @@ compiler gcc:
     linkLibCmd: " -l$1",
     debug: "",
     pic: "-fPIC",
-    asmStmtFrmt: "asm($1);$n",
+    asmStmtFrmt: "__asm__($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
     produceAsm: gnuAsmListing,
     cppXsupport: "-std=gnu++14 -funsigned-char",
