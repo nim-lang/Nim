@@ -4,9 +4,9 @@ discard """
 """
 
 when defined nimTestTpreludeCase1:
-  include std/prelude
+  import std/prelude
 else:
-  include prelude
+  import prelude
 
 template main() =
   doAssert toSeq(1..3) == @[1,2,3]
