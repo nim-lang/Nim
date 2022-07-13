@@ -377,12 +377,26 @@ proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
       b.entryAt = b.trace.len
       c.usedInBlock = c.currentBlock
   of PathKinds0, PathKinds1:
-    for ch in items(n):
-      traverse(c, b, ch)
+    # If n is `obj.f` and c.x is the same then model it as `load obj.f`
+    # instead of `load obj`. This is a bit questionable ("avoid smart solutions")
+    # but much more compatible with the older move analyser that we shipped with 1.6
+    # and earlier.
     if n == c.x:
+      if n.kind notin PathKinds1:
+        for i in 1..<n.len:
+          traverse(c, b, n[i])
+      b.trace.add Instruction(opc: Load, mem: n)
       b.flags.incl containsUse
       b.entryAt = b.trace.len
       c.usedInBlock = c.currentBlock
+    elif exprRoot(n) == c.root:
+      if n.kind notin PathKinds1:
+        for i in 1..<n.len:
+          traverse(c, b, n[i])
+      b.trace.add Instruction(opc: Load, mem: n)
+    else:
+      for ch in items(n):
+        traverse(c, b, ch)
   of nkReturnStmt:
     traverse c, b, n[0]
     b.leaves = ReturnBlock
