@@ -139,7 +139,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       e.flags.incl {sfUsed, sfExported}
 
     result.n.add symNode
-    styleCheckDef(c.config, e)
+    styleCheckDef(c, e)
     onDef(e.info, e)
     if sfGenSym notin e.flags:
       if not isPure:
@@ -476,7 +476,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       else:
         result.n.add newSymNode(field)
         addSonSkipIntLit(result, typ, c.idgen)
-      styleCheckDef(c.config, a[j].info, field)
+      styleCheckDef(c, a[j].info, field)
       onDef(field.info, field)
   if result.n.len == 0: result.n = nil
   if isTupleRecursive(result):
@@ -808,7 +808,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         localError(c.config, info, "attempt to redefine: '" & f.name.s & "'")
       if a.kind == nkEmpty: father.add newSymNode(f)
       else: a.add newSymNode(f)
-      styleCheckDef(c.config, f)
+      styleCheckDef(c, f)
       onDef(f.info, f)
     if a.kind != nkEmpty: father.add a
   of nkSym:
@@ -1315,7 +1315,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       result.n.add newSymNode(arg)
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)
-      styleCheckDef(c.config, a[j].info, arg)
+      styleCheckDef(c, a[j].info, arg)
       onDef(a[j].info, arg)
       if {optNimV1Emulation, optNimV12Emulation} * c.config.globalOptions == {}:
         a[j] = newSymNode(arg)

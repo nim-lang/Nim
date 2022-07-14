@@ -56,13 +56,13 @@ template macrosop(op) {.dirty.} =
 template md5op(op) {.dirty.} =
   registerCallback(c, "stdlib.md5." & astToStr(op), `op Wrapper`)
 
-template wrap1f_math(op) {.dirty.} =
+template wrap1fMath(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     doAssert a.numArgs == 1
     setResult(a, op(getFloat(a, 0)))
   mathop op
 
-template wrap2f_math(op) {.dirty.} =
+template wrap2fMath(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getFloat(a, 0), getFloat(a, 1)))
   mathop op
@@ -170,40 +170,40 @@ proc registerAdditionalOps*(c: PCtx) =
   proc getProjectPathWrapper(a: VmArgs) =
     setResult a, c.config.projectPath.string
 
-  wrap1f_math(sqrt)
-  wrap1f_math(cbrt)
-  wrap1f_math(ln)
-  wrap1f_math(log10)
-  wrap1f_math(log2)
-  wrap1f_math(exp)
-  wrap1f_math(arccos)
-  wrap1f_math(arcsin)
-  wrap1f_math(arctan)
-  wrap1f_math(arcsinh)
-  wrap1f_math(arccosh)
-  wrap1f_math(arctanh)
-  wrap2f_math(arctan2)
-  wrap1f_math(cos)
-  wrap1f_math(cosh)
-  wrap2f_math(hypot)
-  wrap1f_math(sinh)
-  wrap1f_math(sin)
-  wrap1f_math(tan)
-  wrap1f_math(tanh)
-  wrap2f_math(pow)
-  wrap1f_math(trunc)
-  wrap1f_math(floor)
-  wrap1f_math(ceil)
-  wrap1f_math(erf)
-  wrap1f_math(erfc)
-  wrap1f_math(gamma)
-  wrap1f_math(lgamma)
+  wrap1fMath(sqrt)
+  wrap1fMath(cbrt)
+  wrap1fMath(ln)
+  wrap1fMath(log10)
+  wrap1fMath(log2)
+  wrap1fMath(exp)
+  wrap1fMath(arccos)
+  wrap1fMath(arcsin)
+  wrap1fMath(arctan)
+  wrap1fMath(arcsinh)
+  wrap1fMath(arccosh)
+  wrap1fMath(arctanh)
+  wrap2fMath(arctan2)
+  wrap1fMath(cos)
+  wrap1fMath(cosh)
+  wrap2fMath(hypot)
+  wrap1fMath(sinh)
+  wrap1fMath(sin)
+  wrap1fMath(tan)
+  wrap1fMath(tanh)
+  wrap2fMath(pow)
+  wrap1fMath(trunc)
+  wrap1fMath(floor)
+  wrap1fMath(ceil)
+  wrap1fMath(erf)
+  wrap1fMath(erfc)
+  wrap1fMath(gamma)
+  wrap1fMath(lgamma)
 
   when declared(copySign):
-    wrap2f_math(copySign)
+    wrap2fMath(copySign)
 
   when declared(signbit):
-    wrap1f_math(signbit)
+    wrap1fMath(signbit)
 
   registerCallback c, "stdlib.math.round", proc (a: VmArgs) {.nimcall.} =
     let n = a.numArgs

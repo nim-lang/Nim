@@ -119,13 +119,13 @@ template move(a, b: untyped) {.dirty.} = system.shallowCopy(a, b)
 
 proc derefPtrToReg(address: BiggestInt, typ: PType, r: var TFullReg, isAssign: bool): bool =
   # nim bug: `isAssign: static bool` doesn't work, giving odd compiler error
-  template fun(field, T, rkind) =
+  template fun(field, typ, rkind) =
     if isAssign:
-      cast[ptr T](address)[] = T(r.field)
+      cast[ptr typ](address)[] = typ(r.field)
     else:
       r.ensureKind(rkind)
-      let val = cast[ptr T](address)[]
-      when T is SomeInteger | char:
+      let val = cast[ptr typ](address)[]
+      when typ is SomeInteger | char:
         r.field = BiggestInt(val)
       else:
         r.field = val

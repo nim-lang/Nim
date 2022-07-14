@@ -433,7 +433,7 @@ proc semQuantifier(c: PContext; n: PNode): PNode =
       let op = considerQuotedIdent(c, it[0])
       if op.id == ord(wIn):
         let v = newSymS(skForVar, it[1], c)
-        styleCheckDef(c.config, v)
+        styleCheckDef(c, v)
         onDef(it[1].info, v)
         let domain = semExprWithType(c, it[2], {efWantIterator})
         v.typ = domain.typ

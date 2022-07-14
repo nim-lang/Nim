@@ -823,8 +823,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
   let ident = considerQuotedIdent(c, key)
   var userPragma = strTableGet(c.userPragmas, ident)
   if userPragma != nil:
-    if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
-      styleCheckUse(c.config, key.info, userPragma)
+    styleCheckUse(c, key.info, userPragma)
 
     # number of pragmas increase/decrease with user pragma expansion
     inc c.instCounter
@@ -838,8 +837,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
   else:
     let k = whichKeyword(ident)
     if k in validPragmas:
-      if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
-        checkPragmaUse(c.config, key.info, k, ident.s)
+      checkPragmaUse(c.config, key.info, k, ident.s)
       case k
       of wExportc, wExportCpp:
         makeExternExport(c, sym, getOptionalStr(c, it, "$1"), it.info)
