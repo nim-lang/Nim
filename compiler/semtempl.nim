@@ -230,7 +230,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       if n.kind != nkSym:
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
-        styleCheckDef(c.c.config, n.info, local)
+        styleCheckDef(c.c, n.info, local)
         onDef(n.info, local)
         replaceIdentBySym(c.c, n, newSymNode(local, n.info))
         if k == skParam and c.inTemplateHeader > 0:
@@ -271,8 +271,8 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
     # field access (dot expr) will be handled by builtinFieldAccess
-    if not isField and {optStyleHint, optStyleError} * c.config.globalOptions != {}:
-      styleCheckUse(c.config, n.info, s)
+    if not isField:
+      styleCheckUse(c, n.info, s)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n
@@ -297,7 +297,7 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
       var s = newGenSym(k, ident, c)
       s.ast = n
       addPrelimDecl(c.c, s)
-      styleCheckDef(c.c.config, n.info, s)
+      styleCheckDef(c.c, n.info, s)
       onDef(n.info, s)
       n[namePos] = newSymNode(s, n[namePos].info)
     else:
@@ -431,7 +431,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         # labels are always 'gensym'ed:
         let s = newGenSym(skLabel, n[0], c)
         addPrelimDecl(c.c, s)
-        styleCheckDef(c.c.config, s)
+        styleCheckDef(c.c, s)
         onDef(n[0].info, s)
         n[0] = newSymNode(s, n[0].info)
     n[1] = semTemplBody(c, n[1])
@@ -624,7 +624,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
        s.owner.name.s == "vm" and s.name.s == "stackTrace":
       incl(s.flags, sfCallsite)
 
-  styleCheckDef(c.config, s)
+  styleCheckDef(c, s)
   onDef(n[namePos].info, s)
   # check parameter list:
   #s.scope = c.currentScope

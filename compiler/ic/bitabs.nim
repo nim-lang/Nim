@@ -93,13 +93,13 @@ proc getOrIncl*[T](t: var BiTable[T]; v: T): LitId =
   t.vals.add v
 
 
-proc `[]`*[T](t: var BiTable[T]; LitId: LitId): var T {.inline.} =
-  let idx = idToIdx LitId
+proc `[]`*[T](t: var BiTable[T]; litId: LitId): var T {.inline.} =
+  let idx = idToIdx litId
   assert idx < t.vals.len
   result = t.vals[idx]
 
-proc `[]`*[T](t: BiTable[T]; LitId: LitId): lent T {.inline.} =
-  let idx = idToIdx LitId
+proc `[]`*[T](t: BiTable[T]; litId: LitId): lent T {.inline.} =
+  let idx = idToIdx litId
   assert idx < t.vals.len
   result = t.vals[idx]
 
