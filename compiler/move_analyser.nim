@@ -162,6 +162,7 @@ type
     containsUse, containsLeave
 
   BlockInfo = object
+    id: BlockLevel
     leaves: BlockLevel
     writesTo: seq[PNode]
     trace: seq[Instruction]
@@ -183,7 +184,7 @@ proc merge(c: var Context; dest: var BlockInfo; branches: openArray[BlockInfo]) 
   for i in 1 ..< branches.len:
     m = max(m, branches[i].leaves)
     flags = flags + branches[i].flags
-  if m != NoBlock:
+  if m != NoBlock and dest.id >= m:
     dest.leaves = m
   # we synthesize a trace from the alternatives as given in `branches`.
   # There are two case to consider.
@@ -195,8 +196,8 @@ proc merge(c: var Context; dest: var BlockInfo; branches: openArray[BlockInfo]) 
       if containsUse in branches[i].flags:
         selectedBranch = i
         dest.entryAt = dest.trace.len + branches[selectedBranch].entryAt
-        if dest.leaves == NoBlock:
-          dest.leaves = branches[i].leaves
+        #if dest.leaves == NoBlock:
+        #  dest.leaves = branches[i].leaves
         break
   if selectedBranch < 0:
     # assume the worst branch. The worst branch is the one that might perform
@@ -231,7 +232,7 @@ proc merge(c: var Context; dest: var BlockInfo; branches: openArray[BlockInfo]) 
 proc traverse(c: var Context; b: var BlockInfo; n: PNode)
 
 template createBlockInfo(): BlockInfo =
-  BlockInfo(leaves: NoBlock, writesTo: @[], trace: @[], entryAt: 0, flags: b.flags)
+  BlockInfo(id: c.currentBlock, leaves: NoBlock, writesTo: @[], trace: @[], entryAt: 0, flags: b.flags)
 
 proc traverseIf(c: var Context; b: var BlockInfo; n: PNode) =
   var branches: seq[BlockInfo] = @[]
@@ -476,7 +477,7 @@ proc isLastRead*(n, x: PNode): bool =
                   currentBlock: ReturnBlock, usedInBlock: ReturnBlock, blocks: @[],
                   foundDecl: false,
                   root: root)
-  var b = BlockInfo(leaves: NoBlock, writesTo: @[], trace: @[], entryAt: 0, flags: {})
+  var b = BlockInfo(id: c.currentBlock, leaves: NoBlock, writesTo: @[], trace: @[], entryAt: 0, flags: {})
   if root.kind == skResult:
     c.foundDecl = true
     traverse(c, b, n)
