@@ -886,7 +886,8 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     case callee.kind
     of skMacro, skTemplate: discard
     else:
-      if callee.kind == skIterator and callee.id == c.p.owner.id:
+      if callee.kind == skIterator and callee.id == c.p.owner.id and
+          not isClosureIterator(c.p.owner.typ):
         localError(c.config, n.info, errRecursiveDependencyIteratorX % callee.name.s)
         # error correction, prevents endless for loop elimination in transf.
         # See bug #2051:
@@ -1937,11 +1938,23 @@ proc semYield(c: PContext, n: PNode): PNode =
   elif c.p.owner.typ[0] != nil:
     localError(c.config, n.info, errGenerated, "yield statement must yield a value")
 
+proc considerQuotedIdentOrDot(c: PContext, n: PNode, origin: PNode = nil): PIdent =
+  if n.kind == nkDotExpr:
+    let a = considerQuotedIdentOrDot(c, n[0], origin).s
+    let b = considerQuotedIdentOrDot(c, n[1], origin).s
+    var s = newStringOfCap(a.len + b.len + 1)
+    s.add(a)
+    s.add('.')
+    s.add(b)
+    result = getIdent(c.cache, s)
+  else:
+    result = considerQuotedIdent(c, n, origin)
+
 proc semDefined(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2, c.config)
   # we replace this node by a 'true' or 'false' node:
   result = newIntNode(nkIntLit, 0)
-  result.intVal = ord isDefined(c.config, considerQuotedIdent(c, n[1], n).s)
+  result.intVal = ord isDefined(c.config, considerQuotedIdentOrDot(c, n[1], n).s)
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
 

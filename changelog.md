@@ -11,6 +11,8 @@
   or define your own `Math.trunc` polyfill using the [`emit` pragma](https://nim-lang.org/docs/manual.html#implementation-specific-pragmas-emit-pragma). Nim uses
   `Math.trunc` for the division and modulo operators for integers.
 
+- Deprecated `std/sums`.
+
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
   `experimental:flexibleOptionalParams`.
 
@@ -20,7 +22,11 @@
 - `addr` is now available for all addressable locations, `unsafeAddr` is deprecated and
 becomes an alias for `addr`.
 
-- io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`.
+- `io` and `assertions` are about to move out of system; use `-d:nimPreviewSlimSystem`, import `std/syncio` and import `std/assertions`.
+
+- The `gc:v2` option is removed.
+
+- The `threads:on` option becomes the default.
 
 ## Standard library additions and changes
 
@@ -64,6 +70,12 @@ becomes an alias for `addr`.
 
 ## Language changes
 
+- [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
+  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
+- Templates now accept [macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas).
+- Macro pragmas for var/let/const sections have been redesigned in a way that works
+  similarly to routine macro pragmas. The new behavior is documented in the
+  [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#extended-macro-pragmas).
 - Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
   allowing multiple type definitions to be injected in place of the original type definition.
 
@@ -94,11 +106,12 @@ becomes an alias for `addr`.
       x, y, z: int
     Baz = object
   ```
-- [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
-  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
 - Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
   for the right-hand side of type definitions in type sections. Previously
   they would error with "invalid indentation".
+- `defined` now accepts identifiers separated by dots, i.e. `defined(a.b.c)`.
+  In the command line, this is defined as `-d:a.b.c`. Older versions can
+  use accents as in ``defined(`a.b.c`)`` to access such defines.
 
 ## Compiler changes
 
