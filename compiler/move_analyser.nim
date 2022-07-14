@@ -365,6 +365,12 @@ proc traverseAsgn(c: var Context; b: var BlockInfo; n: PNode) =
     b.trace.add Instruction(opc: Store, mem: le)
 
 proc traverseLocal(c: var Context; b: var BlockInfo; n: PNode) =
+  let le = n[0]
+  if le.kind != nkSym:
+    # handle closures' environment `env`.
+    if parampatterns.exprRoot(le) == c.root:
+      b.writesTo.add le
+      b.trace.add Instruction(opc: Store, mem: le)
   traverse(c, b, n.lastSon)
 
 proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
@@ -429,6 +435,9 @@ proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
     traverseTry c, b, n
   of nkRaiseStmt:
     traverseRaise c, b, n
+  of nkWhen:
+    # This should be a "when nimvm" node.
+    traverse(c, b, n[1][0])
   of nodesToIgnoreSet:
     discard
   else:
