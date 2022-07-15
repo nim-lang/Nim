@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+## This module is deprecated. Import the [batteries] module instead.
+##
 ## This is an include file that simply imports common modules for your
 ## convenience:
 ##
