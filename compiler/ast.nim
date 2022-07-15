@@ -512,6 +512,7 @@ type
     tfInheritable,    # is the object inheritable?
     tfHasOwned,       # type contains an 'owned' type and must be moved
     tfEnumHasHoles,   # enum cannot be mapped into a range
+    tfEnumIsUnsigned, # enum has at least one field with an unsigned int value
     tfShallow,        # type can be shallow copied on assignment
     tfThread,         # proc type is marked as ``thread``; alias for ``gcsafe``
     tfFromGeneric,    # type is an instantiation of a generic; this is needed

@@ -752,16 +752,17 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
           (sfImportc in t.sym.flags and t.sym.magic == mNone)):
         m.typeCache[sig] = result
         var size: int
+        var signage = rope(if tfEnumIsUnsigned in t.flags: "U" else: "I")
         if firstOrd(m.config, t) < 0:
-          m.s[cfsTypes].addf("typedef NI32 $1;$n", [result])
+          m.s[cfsTypes].addf("typedef N${2}32 $1;$n", [result, signage])
           size = 4
         else:
           size = int(getSize(m.config, t))
           case size
           of 1: m.s[cfsTypes].addf("typedef NU8 $1;$n", [result])
           of 2: m.s[cfsTypes].addf("typedef NU16 $1;$n", [result])
-          of 4: m.s[cfsTypes].addf("typedef NI32 $1;$n", [result])
-          of 8: m.s[cfsTypes].addf("typedef NI64 $1;$n", [result])
+          of 4: m.s[cfsTypes].addf("typedef N${2}32 $1;$n", [result, signage])
+          of 8: m.s[cfsTypes].addf("typedef N${2}64 $1;$n", [result, signage])
           else: internalError(m.config, t.sym.info, "getTypeDescAux: enum")
         when false:
           let owner = hashOwner(t.sym)
