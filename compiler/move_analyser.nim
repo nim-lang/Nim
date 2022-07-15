@@ -104,20 +104,21 @@ when defined(nimDebugUtils):
   import debugutils, msgs
 
 proc showVm(code: seq[Instruction]; start = 0) =
-  var i = start
+  var i = 0
   while i < code.len:
     case code[i].opc
     of Ret:
-      echo "Ret"
+      echo i, " Ret"
     of JmpBack:
-      echo "JmpBack ", i - code[i].intVal
+      echo i, " JmpBack ", i - code[i].intVal
     of Store:
-      echo "Store ", renderTree(code[i].mem)
+      echo i, " Store ", renderTree(code[i].mem)
     of Load:
-      echo "Load ", renderTree(code[i].mem)
+      echo i, " Load ", renderTree(code[i].mem)
       when defined(nimDebugUtils):
         echo getConfigRef() $ code[i].mem.info
     inc i
+  echo "Start at ", start
 
 proc interpret(code: seq[Instruction]; start: int; x: PNode): bool =
   # small interpreter loop:
