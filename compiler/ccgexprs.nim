@@ -2128,8 +2128,9 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
       discard cgsym(p.module, raiser)
 
       let boundaryCast =
-        if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64} or
-            (n0t.sym != nil and sfSystemModule in n0t.sym.owner.flags and n0t.sym.name.s == "csize"):
+        if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64}:
+          "(NU64)"
+        elif (n0t.sym != nil and sfSystemModule in n0t.sym.owner.flags and n0t.sym.name.s == "csize"):
           "(NI64)"
         else:
           ""
