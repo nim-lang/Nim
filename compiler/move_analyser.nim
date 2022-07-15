@@ -141,7 +141,7 @@ proc interpret(code: seq[Instruction]; start: int; x: PNode): bool =
       # store into the location we are interested in?
       # If we look for the last read of 'x', a store to 'x.field' does not help.
       # But if we look for 'x.field' a store to 'x' does:
-      if aliases(code[i].mem, x) == yes and nonDeterministicJump:
+      if aliases(code[i].mem, x) == yes and not nonDeterministicJump:
         #[ the case `nonDeterministicJump` is required too because if we ever took
            a jump back, the control flow is not deterministic anymore. For example:
 
