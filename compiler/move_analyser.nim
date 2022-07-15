@@ -378,14 +378,14 @@ proc traverseRaise(c: var Context; b: var BlockInfo; n: PNode) =
     b.trace.add Instruction(opc: Ret)
 
 proc traverseAsgn(c: var Context; b: var BlockInfo; n: PNode) =
-  let le = n[0]
+  traverse(c, b, n[1])
 
+  let le = n[0]
   if not isAtom(le):
     # don't forget the case `x[g(use(y))]`:
     for ch in items(le):
       traverse(c, b, ch)
 
-  traverse(c, b, n[1])
   if parampatterns.exprRoot(le) == c.root:
     b.writesTo.add le
     b.trace.add Instruction(opc: Store, mem: le)
