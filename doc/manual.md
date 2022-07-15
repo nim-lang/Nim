@@ -10,9 +10,9 @@ Nim Manual
 .. contents::
 
 
-  "Complexity" seems to be a lot like "energy": you can transfer it from the
-  end-user to one/some of the other players, but the total amount seems to remain
-  pretty much constant for a given task. -- Ran
+> "Complexity" seems to be a lot like "energy": you can transfer it from the
+> end-user to one/some of the other players, but the total amount seems to remain
+> pretty much constant for a given task. -- Ran
 
 
 About this document
@@ -4025,7 +4025,7 @@ In the standard library every name of a routine that returns a `var` type
 starts with the prefix `m` per convention.
 
 
-.. include:: manual/var_t_return.rst
+.. include:: manual/var_t_return.md
 
 Future directions
 ~~~~~~~~~~~~~~~~~

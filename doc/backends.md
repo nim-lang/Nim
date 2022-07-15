@@ -10,7 +10,8 @@
 .. no syntax highlighting here by default:
 
 .. contents::
-  "Heresy grows from idleness." -- Unknown.
+
+> "Heresy grows from idleness." -- Unknown.
 
 
 Introduction

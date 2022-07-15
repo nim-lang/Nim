@@ -10,7 +10,7 @@
 .. include:: rstcommon.rst
 .. contents::
 
-  "Abstraction is layering ignorance on top of reality." -- Richard Gabriel
+> "Abstraction is layering ignorance on top of reality." -- Richard Gabriel
 
 
 Directory structure
@@ -276,8 +276,8 @@ and `exitingDebugSection()`:nim:.
 #. Compile the temp compiler with `--debugger:native -d:nimDebugUtils`:option:
 #. Set your desired breakpoints or watchpoints.
 #. Configure your debugger:
-  * GDB: execute `source tools/compiler.gdb` at startup
-  * LLDB execute `command source tools/compiler.lldb` at startup
+   * GDB: execute `source tools/compiler.gdb` at startup
+   * LLDB execute `command source tools/compiler.lldb` at startup
 #. Use one of the scoping helpers like so:
 
 .. code-block:: nim
