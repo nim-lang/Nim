@@ -88,12 +88,12 @@ explosions. This is subtle, but correct for nested loops:
 
 type
   Opcode = enum
-    JmpBack, Ret, Store, Load
+    JmpBack, Ret, Store, Load, Perhaps
   Instruction = object
     case opc: Opcode
     of JmpBack:
       intVal: int
-    of Ret:
+    of Ret, Perhaps:
       discard
     of Store, Load:
       mem: PNode
@@ -109,6 +109,8 @@ proc showVm(code: seq[Instruction]; start = 0) =
     case code[i].opc
     of Ret:
       echo i, " Ret"
+    of Perhaps:
+      echo i, " Perhaps"
     of JmpBack:
       echo i, " JmpBack ", i - code[i].intVal
     of Store:
@@ -129,8 +131,13 @@ proc interpret(code: seq[Instruction]; start: int; x: PNode): bool =
   while i < code.len:
     case code[i].opc
     of Ret:
-      result = true
-      break
+      if not nonDeterministicJump:
+        result = true
+        break
+      inc i
+    of Perhaps:
+      nonDeterministicJump = true
+      inc i
     of JmpBack:
       # jump back a single time:
       if not jmpsHandled.containsOrIncl(i):
@@ -181,6 +188,9 @@ type
     trace: seq[Instruction]
     entryAt: int
     flags: set[BlockFlag]
+    # problem: we merge `if cond: action` into a linear representation
+    # But some actions are not always run then! We need an opcode like
+    # `Perhaps`!
 
   Context = object
     #g: ModuleGraph
@@ -255,6 +265,7 @@ proc traverseIf(c: var Context; b: var BlockInfo; n: PNode) =
     case ch.kind
     of nkElifBranch, nkElifExpr:
       traverse c, thisBranch, ch[0]
+      thisBranch.trace.add Instruction(opc: Perhaps)
       traverse c, thisBranch, ch[1]
     of nkElse, nkElseExpr:
       traverse c, thisBranch, ch[0]
@@ -288,6 +299,7 @@ proc traverseCase(c: var Context; b: var BlockInfo; n: PNode) =
       traverse(c, thisBranch, ch.lastSon)
     of nkElifBranch:
       traverse c, thisBranch, ch[0]
+      thisBranch.trace.add Instruction(opc: Perhaps)
       traverse c, thisBranch, ch[1]
     of nkElse:
       traverse(c, thisBranch, ch[0])
