@@ -24,7 +24,7 @@ iterator items*[T: char](a: openArray[T]): T {.inline.} =
     inc(i)
 
 iterator mitems*[T](a: var openArray[T]): var T {.inline.} =
-  ## Iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that the yielded value can be modified.
   var i = 0
   while i < len(a):
     yield a[i]
@@ -40,7 +40,7 @@ iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
       inc(i)
 
 iterator mitems*[IX, T](a: var array[IX, T]): var T {.inline.} =
-  ## Iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that the yielded value can be modified.
   when a.len > 0:
     var i = low(IX)
     while true:
@@ -87,7 +87,7 @@ iterator items*(a: cstring): char {.inline.} =
         inc(i)
 
 iterator mitems*(a: var cstring): var char {.inline.} =
-  ## Iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that the yielded value can be modified.
   # xxx this should give CT error in js RT.
   runnableExamples:
     from std/sugar import collect
@@ -130,6 +130,141 @@ iterator items*[T: Ordinal](s: Slice[T]): T =
   ## Iterates over the slice `s`, yielding each value between `s.a` and `s.b`
   ## (inclusively).
   for x in s.a .. s.b:
+    yield x
+
+iterator ritems*[T: not char](a: openArray[T]): lent2 T {.inline.} =
+  ## Iterates over each item of `a` in reverse.
+  var i = high(a)
+  while i >= low(a):
+    yield a[i]
+    dec(i)
+
+iterator ritems*[T: char](a: openArray[T]): T {.inline.} =
+  ## Iterates over each item of `a` in reverse.
+  # a VM bug currently prevents taking address of openArray[char]
+  # elements converted from a string (would fail in `tests/misc/thallo.nim`)
+  # in any case there's no performance advantage of returning char by address.
+  var i = high(a)
+  while i >= low(a):
+    yield a[i]
+    dec(i)
+
+iterator mritems*[T](a: var openArray[T]): var T {.inline.} =
+  ## Iterates over each item of `a` in reverse so that the yielded value can be modified.
+  var i = high(a)
+  while i >= low(a):
+    yield a[i]
+    dec(i)
+
+iterator ritems*[IX, T](a: array[IX, T]): T {.inline.} =
+  ## Iterates over each item of `a` in reverse.
+  when a.len > 0:
+    var i = high(IX)
+    while true:
+      yield a[i]
+      if i < low(IX): break
+      dec(i)
+
+iterator mritems*[IX, T](a: var array[IX, T]): var T {.inline.} =
+  ## Iterates over each item of `a`in reverse so that the yielded value can be modified.
+  when a.len > 0:
+    var i = high(IX)
+    while true:
+      yield a[i]
+      if i < low(IX): break
+      dec(i)
+
+iterator ritems*[T](a: set[T]): T {.inline.} =
+  ## Iterates over each element of `a` in reverse. `items` iterates only over the
+  ## elements that are really in the set (and not over the ones the set is
+  ## able to hold).
+  var i = high(T).int
+  while i > low(T).int:
+    if T(i) in a: yield T(i)
+    dec(i)
+
+iterator ritems*(a: cstring): char {.inline.} =
+  ## Iterates over each item of `a` in reverse.
+  runnableExamples:
+    from std/sugar import collect
+    let values = collect(newSeq):
+      for i in "abc\0def".cstring.ritems:
+        i
+    assert values == ['c', 'b', 'a']
+  #[
+  assert toSeq(nil.cstring) == @[] # xxx fails with SIGSEGV
+  this fails with SIGSEGV; unclear whether we want to instead yield nothing
+  or pay a small price to check for `nil`, a benchmark is needed. Note that
+  other procs support `nil`.
+  ]#
+  template impl() =
+    var i = high(a)
+    let n = low(a)
+    while i >= n:
+      yield a[i]
+      dec(i)
+  when defined(js): impl()
+  else:
+    when nimvm:
+      # xxx `cstring` should behave like c backend instead.
+      impl()
+    else:
+      var i = high(a)
+      while a[i] != '\0':
+        yield a[i]
+        dec(i)
+
+iterator mritems*(a: var cstring): var char {.inline.} =
+  ## Iterates over each item of `a` in reverse so that the yielded value can be modified.
+  # xxx this should give CT error in js RT.
+  runnableExamples:
+    from std/sugar import collect
+    var a = "abc\0def"
+    var b = a.cstring
+    let s = collect:
+      for bi in b.mritems:
+        if bi == 'b': bi = 'B'
+        bi
+
+    assert s == @['c', 'B', 'a']
+    assert b == "aBc"
+    assert a == "aBc\0def"
+
+  template impl() =
+    var i = high(a)
+    let n = low(a)
+    while i >= n:
+      yield a[i]
+      dec(i)
+  when defined(js): impl()
+  else:
+    when nimvm: impl()
+    else:
+      var i = high(a)
+      while a[i] != '\0':
+        yield a[i]
+        dec(i)
+
+iterator ritems*[T: enum and Ordinal](E: typedesc[T]): T =
+  ## Iterates over the values of `E`.
+  ## See also `enumutils.items` for enums with holes.
+  runnableExamples:
+    from std/sugar import collect
+    type Goo = enum g0 = 2, g1, g2
+      
+    let values = collect(newSeq):
+      for i in Goo.ritems:
+        i
+
+    assert values == [g2, g1, g0]
+
+  for v in countdown(high(E), low(E)):
+    yield v
+
+iterator ritems*[T: Ordinal](s: Slice[T]): T =
+  ## Iterates over the slice `s`, yielding each value between `s.a` and `s.b`
+  ## (inclusively).
+  for x in countdown(s.a, s.b):
     yield x
 
 iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
@@ -243,7 +378,7 @@ iterator items*[T](a: seq[T]): lent2 T {.inline.} =
     assert(len(a) == L, "the length of the seq changed while iterating over it")
 
 iterator mitems*[T](a: var seq[T]): var T {.inline.} =
-  ## Iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that the yielded value can be modified.
   var i = 0
   let L = len(a)
   while i < L:
@@ -261,12 +396,48 @@ iterator items*(a: string): char {.inline.} =
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
 iterator mitems*(a: var string): var char {.inline.} =
-  ## Iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that the yielded value can be modified.
   var i = 0
   let L = len(a)
   while i < L:
     yield a[i]
     inc(i)
+    assert(len(a) == L, "the length of the string changed while iterating over it")
+
+iterator ritems*[T](a: seq[T]): lent2 T {.inline.} =
+  ## Iterates over each item of `a` in reverse.
+  var i = high(a)
+  let L = len(a)
+  while i >= low(a):
+    yield a[i]
+    dec(i)
+    assert(len(a) == L, "the length of the seq changed while iterating over it")
+
+iterator mritems*[T](a: var seq[T]): var T {.inline.} =
+  ## Iterates over each item of `a` so that the yielded value can be modified.
+  var i = high(a)
+  let L = len(a)
+  while i >= low(a):
+    yield a[i]
+    dec(i)
+    assert(len(a) == L, "the length of the seq changed while iterating over it")
+
+iterator ritems*(a: string): char {.inline.} =
+  ## Iterates over each item of `a`.
+  var i = high(a)
+  let L = len(a)
+  while i >= low(a):
+    yield a[i]
+    dec(i)
+    assert(len(a) == L, "the length of the string changed while iterating over it")
+
+iterator mritems*(a: var string): var char {.inline.} =
+  ## Iterates over each item of `a` so that the yielded value can be modified.
+  var i = high(a)
+  let L = len(a)
+  while i >= low(a):
+    yield a[i]
+    dec(i)
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
 
@@ -282,7 +453,7 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
     for v in fields(t): v = default(typeof(v))
     doAssert t == (0, "")
 
-iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[key: string, val: RootObj] {.
+iterator fields*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[key: string, val: RootObj] {.
   magic: "Fields", noSideEffect.} =
   ## Iterates over every field of `x` and `y`.
   ##
