@@ -189,8 +189,8 @@ proc isLastRead(n: PNode; c: var Con): bool =
     let oldResult = nfLastRead in m.flags
     let alternativeResult = move_analyser.isLastRead(c.body, n)
     if alternativeResult != oldResult:
-      echo "algorithms differ for ", c.graph.config $ n.info, " ", renderTree(n)
-      echo "old algorithm said ", oldResult, " new one said ", alternativeResult
+      echo "##### algorithms differ for ", c.graph.config $ n.info, " ", renderTree(n)
+      echo "##### old algorithm said ", oldResult, " new one said ", alternativeResult
 
 
 proc isFirstWrite(n: PNode; c: var Con): bool =

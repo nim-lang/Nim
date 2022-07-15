@@ -214,11 +214,13 @@ proc merge(c: var Context; dest: var BlockInfo; branches: openArray[BlockInfo]) 
   # Case: One branch is definitely the active one as it contains the 'use x'
   # that we care about:
   var selectedBranch = -1
+  var foundUsage = false
   if containsUse notin dest.flags:
     for i in 0 ..< branches.len:
       if containsUse in branches[i].flags:
         selectedBranch = i
         dest.entryAt = dest.trace.len + branches[selectedBranch].entryAt
+        foundUsage = true
         #if dest.leaves == NoBlock:
         #  dest.leaves = branches[i].leaves
         break
@@ -235,7 +237,7 @@ proc merge(c: var Context; dest: var BlockInfo; branches: openArray[BlockInfo]) 
   if selectedBranch >= 0:
     dest.trace.add branches[selectedBranch].trace
 
-  if containsLeave notin flags:
+  if containsLeave notin flags and not foundUsage:
     # writes can only be remembered if the blocks don't have `return` or `break`
     # statements:
     for wa in branches[0].writesTo:
