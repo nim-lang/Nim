@@ -18,6 +18,9 @@ import
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+when not defined(nimHasCursor):
+  {.pragma: cursor.}
+
 proc hashNode*(p: RootRef): Hash
 proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
   # Convert a tree into its YAML representation; this is used by the
@@ -815,16 +818,21 @@ type
     name*: PIdent
 
 proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
+  # hot spots
   var h = ti.h and high(tab.data)
   var start = h
-  result = tab.data[h]
-  while result != nil:
-    if result.name.id == ti.name.id: break
+  var p {.cursor.} = tab.data[h]
+  while p != nil:
+    if p.name.id == ti.name.id: break
     h = nextTry(h, high(tab.data))
     if h == start:
-      result = nil
+      p = nil
       break
-    result = tab.data[h]
+    p = tab.data[h]
+  if p != nil:
+    result = p # increase the count
+  else:
+    result = nil
   ti.h = nextTry(h, high(tab.data))
 
 proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
