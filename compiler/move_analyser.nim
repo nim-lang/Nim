@@ -124,6 +124,7 @@ proc interpret(code: seq[Instruction]; start: int; x: PNode): bool =
   var i = start
   result = true
   var jmpsHandled = initIntSet()
+  var nonDeterministicJump = false
   while i < code.len:
     case code[i].opc
     of Ret:
@@ -133,13 +134,24 @@ proc interpret(code: seq[Instruction]; start: int; x: PNode): bool =
       # jump back a single time:
       if not jmpsHandled.containsOrIncl(i):
         i = i - code[i].intVal
+        if i < start: nonDeterministicJump = true
       else:
         inc i
     of Store:
       # store into the location we are interested in?
       # If we look for the last read of 'x', a store to 'x.field' does not help.
       # But if we look for 'x.field' a store to 'x' does:
-      if aliases(code[i].mem, x) == yes:
+      if aliases(code[i].mem, x) == yes and nonDeterministicJump:
+        #[ the case `nonDeterministicJump` is required too because if we ever took
+           a jump back, the control flow is not deterministic anymore. For example:
+
+           while cond:
+             result = value
+             # ^ jump back to this line
+             use result # this is not the last use!
+           useAgain result
+
+        ]#
         result = true
         break
       inc i
