@@ -26,7 +26,7 @@ when defined(nimdoc) and isMainModule:
     ## deprecates.
     ## The differences with prelude are that this module should be imported
     ## (while prelude had to be included), and that it imports a few more modules
-    ## than prelude did.
+    ## than prelude.
     ## 
     ## Importing this module never triggers a UnusedImport warning, even if you
     ## don't use any if the modules it imports.
