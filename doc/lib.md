@@ -17,6 +17,12 @@ low-level interface to a C library.
 
 Read this `document <apis.html>`_ for a quick overview of the API design.
 
+Nim has an extensive standard library, which makes it a "batteries included" language.
+It is possible to import some of the most common and useful standard library modules
+by importing the `batteries <batteries.html>` module. This is useful for small scripts
+and quick programs as well as for beginners that do not know yet which features belong
+to which standard library modules.
+
 
 Nimble
 ======
@@ -44,6 +50,11 @@ Automatic imports
 * `channels_builtin <channels_builtin.html>`_
   Nim message passing support for threads. **Note:** This is part of the
   system module. Do not import it explicitly. Enabled with `--threads:on`:option:.
+
+
+Batteries
+---------
+
 
 
 Core
