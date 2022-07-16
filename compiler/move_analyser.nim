@@ -406,7 +406,7 @@ proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
   of nkSym:
     if n.sym == c.root:
       b.trace.add Instruction(opc: Load, mem: n)
-    if n == c.x:
+    if n == c.x and containsUse notin b.flags:
       b.flags.incl containsUse
       b.entryAt = b.trace.len
       c.usedInBlock = c.currentBlock
@@ -415,7 +415,7 @@ proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
     # instead of `load obj`. This is a bit questionable ("avoid smart solutions")
     # but much more compatible with the older move analyser that we shipped with 1.6
     # and earlier.
-    if n == c.x:
+    if n == c.x and containsUse notin b.flags:
       if n.kind notin PathKinds1:
         for i in 1..<n.len:
           traverse(c, b, n[i])
@@ -492,6 +492,15 @@ proc beginTraverse(c: var Context; b: var BlockInfo; parent, n: PNode; nindex: i
         beginTraverse(c, b, parent, ch.lastSon, nindex)
   of nodesToIgnoreSet:
     discard
+  of nkStmtList:
+    var isNested = false
+    for ch in items(n):
+      if ch.kind == nkStmtList:
+        isNested = true
+        break
+    let flat = if isNested: trees.flattenStmts(n) else: n
+    for i in 0..<flat.safeLen:
+      beginTraverse(c, b, flat, flat[i], i)
   else:
     for i in 0..<n.safeLen:
       beginTraverse(c, b, n, n[i], i)
