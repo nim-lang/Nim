@@ -10,7 +10,7 @@
 when defined(nimdoc) and isMainModule:
   from std/compileSettings import nil
   when compileSettings.querySetting(compileSettings.SingleValueSetting.projectFull) == currentSourcePath:
-    ## This is a module that simply imports common modules for your convenience:
+    ## This is a module that imports commonly used modules for your convenience:
     ##
     ## .. code-block:: nim
     ##   import batteries
