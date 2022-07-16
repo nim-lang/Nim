@@ -50,9 +50,11 @@ becomes an alias for `addr`.
 - Added `sep` parameter in `std/uri` to specify the query separator.
 - Added [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift) for JavaScript targets.
 - Added [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask) for JavaScript targets.
+- Added `std/batteries`, which is similar to prelude (which it deprecates) except that it imports a few more modules.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
+- Deprecated the `prelude` module (which is replaced by the new, importable `batteries` module).
 
 [//]: # "Removals:"
 - Removed deprecated `oids.oidToString`.
