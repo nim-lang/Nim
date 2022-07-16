@@ -377,8 +377,10 @@ proc rand*[T: Ordinal](t: typedesc[T]): T =
       assert rand(range[1..16]) in 1..16
   # pending csources >= 1.4.0 or fixing https://github.com/timotheecour/Nim/issues/251#issuecomment-831599772,
   # use `runnableExamples("-r:off")` instead of `if false`
-  when T is range or T is enum or T is bool:
+  when T is range or T is enum:
     result = rand(state, low(T)..high(T))
+  elif T is bool:
+    result = (1 and state.next) == 1
   else:
     result = cast[T](state.next)
 
