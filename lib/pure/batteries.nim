@@ -12,15 +12,17 @@ when defined(nimdoc) and isMainModule:
   when compileSettings.querySetting(compileSettings.SingleValueSetting.projectFull) == currentSourcePath:
     ## This is a module that imports commonly used modules for your convenience:
     ##
-    ## .. code-block:: nim
+    ## ```nim
     ##   import batteries
+    ## ```
     ##
     ## Same as:
     ##
-    ## .. code-block:: nim
+    ## ```nim
     ##   import std/[os, strutils, times, parseutils, hashes, tables, sets,
     ##     sequtils, parseopt, strformat, sugar, options, strscans, algorithm,
     ##     math]
+    ## ```
     ##
     ## This module is similar to the `prelude module <prelude.html>` which it
     ## deprecates.
