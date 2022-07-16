@@ -24,7 +24,7 @@ when defined(nimdoc) and isMainModule:
     ##
     ## This module is similar to the `prelude module <prelude.html>` which it
     ## deprecates.
-    ## The main differences with prelude are that this module must be imported
+    ## The differences with prelude are that this module should be imported
     ## (while prelude had to be included), and that it imports a few more modules
     ## than prelude did.
     ## 
