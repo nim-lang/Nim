@@ -258,6 +258,15 @@ Tests failed and allowed to fail: $3 / $1 <br />
 Tests skipped: $4 / $1 <br />
 """ % [$x.total, $x.passed, $x.failedButAllowed, $x.skipped]
 
+proc testName(test: TTest, target: TTarget, extraOptions: string, allowFailure: bool): string =
+  var name = test.name.replace(DirSep, '/')
+  name.add ' ' & $target
+  if allowFailure:
+    name.add " (allowed to fail) "
+  if test.options.len > 0: name.add ' ' & test.options
+  if extraOptions.len > 0: name.add ' ' & extraOptions
+  name.strip()
+
 proc addResult(r: var TResults, test: TTest, target: TTarget,
                extraOptions, expected, given: string, successOrig: TResultEnum,
                allowFailure = false, givenSpec: ptr TSpec = nil) =
@@ -265,13 +274,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   # instead of having to pass individual fields, or abusing existing ones like expected vs given.
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
-  var name = test.name.replace(DirSep, '/')
-  name.add ' ' & $target
-  if allowFailure:
-    name.add " (allowed to fail) "
-  if test.options.len > 0: name.add ' ' & test.options
-  if extraOptions.len > 0: name.add ' ' & extraOptions
-
+  let name = testName(test, target, extraOptions, allowFailure)
   let duration = epochTime() - test.startTime
   let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
                 else: successOrig
@@ -470,6 +473,9 @@ proc equalModuloLastNewline(a, b: string): bool =
 proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                     target: TTarget, extraOptions: string, nimcache: string) =
   test.startTime = epochTime()
+  if testName(test, target, extraOptions, false) in skips:
+    test.spec.err = reDisabled
+
   if test.spec.err in {reDisabled, reJoined}:
     r.addResult(test, target, extraOptions, "", "", test.spec.err)
     inc(r.skipped)
