@@ -454,7 +454,7 @@ could stem from a complex expression:
 A thunk would need to call 'returnsDefaultCC[i]' somehow and that would require
 an *additional* closure generation... Ok, not really, but it requires to pass
 the function to call. So we'd end up with 2 indirect calls instead of one.
-Another much more severe problem which this solution is that it's not GC-safe
+Another much more severe problem with this solution is that it's not GC-safe
 to pass a proc pointer around via a generic `ref` type.
 
 
