@@ -353,8 +353,8 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
 
   result = rand(state, x)
 
-proc rand*[T: SomeInteger](t: typedesc[T]): T =
-  ## Returns a random integer in the range `low(T)..high(T)`.
+proc rand*[T: Ordinal](t: typedesc[T]): T =
+  ## Returns a random Ordinal in the range `low(T)..high(T)`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
@@ -368,13 +368,16 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ##   that accepts a slice
   runnableExamples:
     randomize(567)
+    type E = enum a, b, c, d
     if false: # implementation defined
-      assert rand(int8) == -42
-      assert rand(uint32) == 578980729'u32
-      assert rand(range[1..16]) == 11
+      assert rand(E) in a..d
+      assert rand(char) in low(char)..high(char)
+      assert rand(int8) in low(int8)..high(int8)
+      assert rand(uint32) in low(uint32)..high(uint32)
+      assert rand(range[1..16]) in 1..16
   # pending csources >= 1.4.0 or fixing https://github.com/timotheecour/Nim/issues/251#issuecomment-831599772,
   # use `runnableExamples("-r:off")` instead of `if false`
-  when T is range:
+  when T is range or T is enum or T is bool:
     result = rand(state, low(T)..high(T))
   else:
     result = cast[T](state.next)
