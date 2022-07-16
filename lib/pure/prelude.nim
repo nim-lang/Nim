@@ -10,11 +10,13 @@
 when defined(nimdoc) and isMainModule:
   from std/compileSettings import nil
   when compileSettings.querySetting(compileSettings.SingleValueSetting.projectFull) == currentSourcePath:
+    ## This module is deprecated. Import the [batteries] module instead.
+    ##
     ## This is an include file that simply imports common modules for your convenience.
     runnableExamples:
       include std/prelude
         # same as:
-        # import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt]
+        # import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt, strformat]
       let x = 1
       assert "foo $# $#" % [$x, "bar"] == "foo 1 bar"
       assert toSeq(1..3) == @[1, 2, 3]
