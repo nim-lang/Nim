@@ -110,6 +110,8 @@ becomes an alias for `addr`.
   In the command line, this is defined as `-d:a.b.c`. Older versions can
   use accents as in ``defined(`a.b.c`)`` to access such defines.
 
+- Defines the `gcRefc` symbol which allows writing specific code for the refc GC.
+
 ## Compiler changes
 
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,

@@ -1474,10 +1474,21 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
     for item in d.tocSimple[kind].sorted(cmp):
       d.toc2[kind].add item.content
 
-  d.toc[kind] = getConfigVar(d.conf, "doc.section.toc") % [
-      "sectionid", $ord(kind), "sectionTitle", title,
-      "sectionTitleID", $(ord(kind) + 50), "content", d.toc2[kind]]
+  let sectionValues = @[
+     "sectionID", $ord(kind), "sectionTitleID", $(ord(kind) + 50),
+     "sectionTitle", title
+  ]
 
+  # Check if the toc has any children
+  if d.toc2[kind] != "":
+    # Use the dropdown version instead and store the children in the dropdown
+    d.toc[kind] = getConfigVar(d.conf, "doc.section.toc") % (sectionValues & @[
+       "content", d.toc2[kind]
+    ])
+  else:
+    # Just have the link
+    d.toc[kind] =  getConfigVar(d.conf, "doc.section.toc_item") % sectionValues
+    
 proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): string =
   $relativeTo(outDir / linkto, destFile.splitFile().dir, '/')
 
