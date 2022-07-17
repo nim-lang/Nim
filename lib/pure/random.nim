@@ -380,7 +380,7 @@ proc rand*[T: Ordinal](t: typedesc[T]): T =
   when T is range or T is enum:
     result = rand(state, low(T)..high(T))
   elif T is bool:
-    result = bool(state.next shr 63)
+    result = state.next shr 63 == 1 # sign test, works on js
   else:
     result = cast[T](state.next shr (64 - sizeof(T)*8))
 
