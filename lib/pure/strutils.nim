@@ -95,22 +95,17 @@ const
   Letters* = {'A'..'Z', 'a'..'z'}
     ## The set of letters.
 
-  UpperCaseLetters* = {'A'..'Z'}
-    ## The set of uppercase letters.
+  UppercaseLetters* = {'A'..'Z'}
+    ## The set of uppercase ASCII letters.
 
-  LowerCaseLetters* = {'a'..'z'}
-    ## The set of lowercase letters.
+  LowercaseLetters* = {'a'..'z'}
+    ## The set of lowercase ASCII letters.
 
-  Punctuations* = {'!'..'/', ':'..'@', '['..'`', '{'..'~'}
-    ## The set of all special symbols.
+  PunctuationChars* = {'!'..'/', ':'..'@', '['..'`', '{'..'~'}
+    ## The set of all ASCII punctuation characters.
 
-  PrintablesNoWhiteSpace* = {'!'..'~'}
-    ## The set of all printable characters (letters, digits,
-    ## punctuations). No Whitespace.
-
-  Printables* = PrintablesNoWhiteSpace + Whitespace
-    ## The set of all printable characters (letters, digits,
-    ## punctuations, Whitespace).
+  PrintableChars* = Letters + Digits + PunctuationChars + Whitespace
+    ## The set of all printable characters (letters, digits, whitespace, and punctuation characters).
 
   Digits* = {'0'..'9'}
     ## The set of digits.
@@ -190,7 +185,7 @@ func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
     doAssert isLowerAscii('e') == true
     doAssert isLowerAscii('E') == false
     doAssert isLowerAscii('7') == false
-  return c in LowerCaseLetters
+  return c in LowercaseLetters
 
 func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
@@ -204,7 +199,7 @@ func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
     doAssert isUpperAscii('e') == false
     doAssert isUpperAscii('E') == true
     doAssert isUpperAscii('7') == false
-  return c in UpperCaseLetters
+  return c in UppercaseLetters
 
 func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   ## Returns the lower case version of character `c`.
@@ -219,7 +214,7 @@ func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   runnableExamples:
     doAssert toLowerAscii('A') == 'a'
     doAssert toLowerAscii('e') == 'e'
-  if c in UpperCaseLetters:
+  if c in UppercaseLetters:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
@@ -256,7 +251,7 @@ func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
   runnableExamples:
     doAssert toUpperAscii('a') == 'A'
     doAssert toUpperAscii('E') == 'E'
-  if c in LowerCaseLetters:
+  if c in LowercaseLetters:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
@@ -306,7 +301,7 @@ func nimIdentNormalize*(s: string): string =
   result[0] = s[0]
   var j = 1
   for i in 1..len(s) - 1:
-    if s[i] in UpperCaseLetters:
+    if s[i] in UppercaseLetters:
       result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
@@ -328,7 +323,7 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
-    if s[i] in UpperCaseLetters:
+    if s[i] in UppercaseLetters:
       result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
