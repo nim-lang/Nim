@@ -380,9 +380,9 @@ proc rand*[T: Ordinal](t: typedesc[T]): T =
   when T is range or T is enum:
     result = rand(state, low(T)..high(T))
   elif T is bool:
-    result = (state.next and 1) == 1
+    result = cast[T](state.next shr 63)
   else:
-    result = cast[T](state.next)
+    result = cast[T](state.next shr 64 - sizeof(T)*8)
 
 proc sample*[T](r: var Rand; s: set[T]): T =
   ## Returns a random element from the set `s` using the given state.
