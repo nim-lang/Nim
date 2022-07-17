@@ -380,7 +380,7 @@ proc rand*[T: Ordinal](t: typedesc[T]): T =
   when T is range or T is enum:
     result = rand(state, low(T)..high(T))
   elif T is bool:
-    result = (1 and state.next) == 1
+    result = cast[int64](state.next) < 0
   else:
     result = cast[T](state.next)
 
