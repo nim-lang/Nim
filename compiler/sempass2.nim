@@ -189,6 +189,10 @@ proc makeVolatile(a: PEffects; s: PSym) {.inline.} =
   if a.inTryStmt > 0 and a.config.exc == excSetjmp:
     incl(s.flags, sfVolatile)
 
+proc varDecl(a: PEffects; n: PNode) {.inline.} =
+  if n.kind == nkSym:
+    a.scopes[n.sym.id] = a.currentBlock
+
 proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
   if n.kind != nkSym: return
   let s = n.sym
@@ -197,7 +201,23 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
     for x in a.init:
       if x == s.id: return
     a.init.add s.id
-    n.flags.incl nfFirstWrite2
+    if a.scopes.getOrDefault(s.id) == a.currentBlock:
+      #[ Consider this case:
+
+      var x: T
+      while true:
+        if cond:
+          x = T() #1
+        else:
+          x = T() #2
+        use x
+
+      Even though both #1 and #2 are first writes we must use the `=copy`
+      here so that the old value is destroyed because `x`'s destructor is
+      run outside of the while loop. This is why we need the check here that
+      the assignment is done in the same logical block as `x` was declared in.
+      ]#
+      n.flags.incl nfFirstWrite2
 
 proc initVarViaNew(a: PEffects, n: PNode) =
   if n.kind != nkSym: return
@@ -1073,17 +1093,21 @@ proc track(tracked: PEffects, n: PNode) =
             createTypeBoundOps(tracked, child[i].typ, child.info)
         else:
           createTypeBoundOps(tracked, child[0].typ, child.info)
-      if child.kind == nkIdentDefs and last.kind != nkEmpty:
+      if child.kind == nkIdentDefs:
         for i in 0..<child.len-2:
-          initVar(tracked, child[i], volatileCheck=false)
-          addAsgnFact(tracked.guards, child[i], last)
-          notNilCheck(tracked, last, child[i].typ)
-      elif child.kind == nkVarTuple and last.kind != nkEmpty:
+          varDecl(tracked, child[i])
+          if last.kind != nkEmpty:
+            initVar(tracked, child[i], volatileCheck=false)
+            addAsgnFact(tracked.guards, child[i], last)
+            notNilCheck(tracked, last, child[i].typ)
+      elif child.kind == nkVarTuple:
         for i in 0..<child.len-1:
           if child[i].kind == nkEmpty or
             child[i].kind == nkSym and child[i].sym.name.s == "_":
             continue
-          initVar(tracked, child[i], volatileCheck=false)
+          varDecl(tracked, child[i])
+          if last.kind != nkEmpty:
+            initVar(tracked, child[i], volatileCheck=false)
           if last.kind in {nkPar, nkTupleConstr}:
             addAsgnFact(tracked.guards, child[i], last[i])
             notNilCheck(tracked, last[i], child[i].typ)
@@ -1098,6 +1122,7 @@ proc track(tracked: PEffects, n: PNode) =
   of nkBlockStmt, nkBlockExpr: trackBlock(tracked, n[1])
   of nkWhileStmt:
     # 'while true' loop?
+    inc tracked.currentBlock
     if isTrue(n[0]):
       trackBlock(tracked, n[1])
     else:
@@ -1109,8 +1134,10 @@ proc track(tracked: PEffects, n: PNode) =
       track(tracked, n[1])
       setLen(tracked.init, oldState)
       setLen(tracked.guards.s, oldFacts)
+    dec tracked.currentBlock
   of nkForStmt, nkParForStmt:
     # we are very conservative here and assume the loop is never executed:
+    inc tracked.currentBlock
     let oldState = tracked.init.len
 
     let oldFacts = tracked.guards.s.len
@@ -1152,6 +1179,8 @@ proc track(tracked: PEffects, n: PNode) =
     track(tracked, loopBody)
     setLen(tracked.init, oldState)
     setLen(tracked.guards.s, oldFacts)
+    dec tracked.currentBlock
+
   of nkObjConstr:
     when false: track(tracked, n[0])
     let oldFacts = tracked.guards.s.len
@@ -1390,6 +1419,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PC
   t.graph = g
   t.config = g.config
   t.c = c
+  t.currentBlock = 1
 
 proc hasRealBody(s: PSym): bool =
   ## also handles importc procs with runnableExamples, which requires `=`,
@@ -1410,6 +1440,12 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   var t: TEffects
   initEffects(g, inferredEffects, s, t, c)
   rawInitEffects g, effects
+
+  if not isEmptyType(s.typ[0]) and
+     s.kind in {skProc, skFunc, skConverter, skMethod}:
+    var res = s.ast[resultPos].sym # get result symbol
+    t.scopes[res.id] = t.currentBlock
+
   track(t, body)
 
   if s.kind != skMacro:
