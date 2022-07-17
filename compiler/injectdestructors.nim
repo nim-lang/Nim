@@ -195,7 +195,12 @@ proc isLastRead(n: PNode; c: var Con): bool =
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
   let m = dfa.skipConvDfa(n)
-  nfFirstWrite in m.flags
+  result = nfFirstWrite in m.flags
+  when defined(nimNewMoveAnalyser):
+    if (nfFirstWrite in m.flags) != (nfFirstWrite2 in m.flags):
+      echo "----- algorithms differ for ", c.graph.config $ n.info, " ", renderTree(n)
+      echo "----- old algorithm said ", nfFirstWrite in m.flags, " new one said ", nfFirstWrite2 in m.flags
+
 
 proc initialized(code: ControlFlowGraph; pc: int,
                  init, uninit: var IntSet; until: int): int =

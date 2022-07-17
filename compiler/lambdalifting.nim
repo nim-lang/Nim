@@ -248,7 +248,9 @@ proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen
 proc genCreateEnv(env: PNode): PNode =
   var c = newNodeIT(nkObjConstr, env.info, env.typ)
   c.add newNodeIT(nkType, env.info, env.typ)
-  result = newAsgnStmt(env, c)
+  let e = copyTree(env)
+  e.flags.incl nfFirstWrite2
+  result = newAsgnStmt(e, c)
 
 proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))

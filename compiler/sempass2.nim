@@ -66,10 +66,11 @@ type
   TEffects = object
     exc: PNode  # stack of exceptions
     tags: PNode # list of tags
-    bottom, inTryStmt, inExceptOrFinallyStmt, leftPartOfAsgn: int
+    bottom, inTryStmt, inExceptOrFinallyStmt, leftPartOfAsgn, currentBlock: int
     owner: PSym
     ownerModule: PSym
     init: seq[int] # list of initialized variables
+    scopes: Table[int, int] # maps var-id to its scope (see also `currentBlock`).
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
@@ -196,6 +197,7 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
     for x in a.init:
       if x == s.id: return
     a.init.add s.id
+    n.flags.incl nfFirstWrite2
 
 proc initVarViaNew(a: PEffects, n: PNode) =
   if n.kind != nkSym: return
