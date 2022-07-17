@@ -1,14 +1,11 @@
 discard """
-  nimoutFull: false
-  joinable: false
-  varSub: true
   nimout: '''
-tpatchModule.nims(24, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
-tpatchModule.nims(27, 12) Warning: cannot open: missingPatch_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
-tpatchModule.nims(30, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
-tpatchModule.nims(33, 12) Warning: cannot open:  [CannotOpen]
-tpatchModule.nims(36, 12) Warning: cannot open:  [CannotOpen]
-tpatchModule.nims(39, 12) Warning: cannot open:  [CannotOpen]
+tpatchModule.nims(32, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
+tpatchModule.nims(35, 12) Warning: cannot open: missingPatch_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
+tpatchModule.nims(38, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
+tpatchModule.nims(41, 12) Warning: cannot open:  [CannotOpen]
+tpatchModule.nims(44, 12) Warning: cannot open:  [CannotOpen]
+tpatchModule.nims(47, 12) Warning: cannot open:  [CannotOpen]
 a${/}module_name_clashes.nim(3, 12) Hint: tests/modules/b/module_name_clashes patched with tests/modules/mpatchModule [Patch]
 '''
 """
@@ -42,6 +39,19 @@ doAssert db.getAllRows(sql"SELECT version();")[0][0] == "patched!"
 import "$lib/pure/oids" #[tt.Hint
        ^ std/oids patched with tests/modules/mpatchModule [Patch] ]#
 doAssert genOid() == genOid() # `genOid` is patched to always return the same value
+
+# Test using a patch in a foreign package:
+import mpatchModule_f #[tt.Hint
+       ^ tests/modules/mpatchModule_f patched with mpatchModulePkg [Patch] ]#
+doAssert mpatchModule_f.id == "mpatchModulePkg"
+
+# Test using a patch that is also patched:
+import mpatchModule_a #[tt.Hint
+       ^ tests/modules/mpatchModule_a patched with tests/modules/mpatchModule_b [Patch] ]#
+# `mpatchModule_b` is patched by `mpatchModule_c`, but that doesn't affect `mpatchModule_b`
+# patching `mpatchModule_a` unless `mpatchModule_c` is assigned to patch `mpatchModule_a`
+# after `mpatchModule_b` is assigned to patch `mpatchModule_a`.
+doAssert mpatchModule_a.id == "mpatchModule_b"
 
 # # Test how `link` pragma directives are handled:
 # {.link: "mpatchModule_pragma_linked_a.lib".}

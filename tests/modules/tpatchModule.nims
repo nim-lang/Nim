@@ -20,6 +20,20 @@ patchModule("$lib/impure/db_postgres.nim", "$projectpath/mpatchModule.nim")
 # patchFile("stdlib", "oids", "b/module_name_clashes")
 patchModule("oids", "mpatchModule")
 
+# Patch with a module that is in a foreign package:
+--path:mpatchModulePkg
+patchModule("mpatchModule_f", "mpatchModulePkg")
+
+# Try to patch a patch (patch1->patch0->target):
+# This won't patch `mpatchModule_a` with `mpatchModule_c`.
+# This will patch `mpatchModule_b` with `mpatchModule_c`.
+# Patching a patch is achieved by importing a patch with
+# into another patch and then patching the target with it,
+# because later target patch assignments take precedence
+# over earlier ones.
+patchModule("mpatchModule_a", "mpatchModule_b")
+patchModule("mpatchModule_b", "mpatchModule_c")
+
 # Try to patch a missing target:
 patchModule("missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef", "mpatchModule")
 
@@ -41,9 +55,9 @@ patchModule("", "")
 # Try to patch the project module:
 patchModule("tpatchModule", "mpatchModule")
 
-# TODO: test a cycle: patch->target->patch
-
-# TODO: test a patching a patch: patch1->patch0->target
+# Try to patch a target that patches the patch (cycle: patch->target->patch):
+patchModule("mpatchModule_d", "mpatchModule_e")
+patchModule("mpatchModule_e", "mpatchModule_d")
 
 #======================================
 # Test how non-module paths are handled
