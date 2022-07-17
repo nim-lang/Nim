@@ -1423,7 +1423,7 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
         #if tfEffectSystemWorkaround notin actual.flags:
         return efTagsDiffer
 
-    let sn = spec[notTagEffects]
+    let sn = spec[forbiddenEffects]
     if not isNil(sn) and sn.kind != nkArgList:
       if hasIncompatibleEffect(sn, real[tagEffects]):
         writeFile("/tmp/x.log", $formal & "\n" & $real[tagEffects])

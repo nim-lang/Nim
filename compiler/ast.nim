@@ -347,7 +347,7 @@ const
   ensuresEffects* = 2     # 'ensures' annotation
   tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
   pragmasEffects* = 4    # not an effect, but a slot for pragmas in proc type
-  notTagEffects* = 5    # list of illegal effects
+  forbiddenEffects* = 5    # list of illegal effects
   effectListLen* = 6    # list of effects list
   nkLastBlockStmts* = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
                         # these must be last statements in a block

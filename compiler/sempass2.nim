@@ -612,7 +612,7 @@ proc isOwnedProcVar(tracked: PEffects; n: PNode): bool =
 
 proc isNoEffectList(n: PNode): bool {.inline.} =
   assert n.kind == nkEffectList
-  n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil and n[notTagEffects] == nil)
+  n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil and n[forbiddenEffects] == nil)
 
 proc isTrival(caller: PNode): bool {.inline.} =
   result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved, mSwap}
@@ -1337,7 +1337,7 @@ proc checkMethodEffects*(g: ModuleGraph; disp, branch: PSym) =
       "can have an unlisted effect: ", hints=off, subtypeRelation)
   let forbidsSpec = effectSpec(p, wForbids)
   if not isNil(forbidsSpec):
-    checkRaisesSpec(g, false, forbidsSpec, actual[notTagEffects],
+    checkRaisesSpec(g, false, forbidsSpec, actual[forbiddenEffects],
       "has an illegal effect: ", hints=off, subtypeRelation, isForbids=true)
   if sfThread in disp.flags and notGcSafe(branch.typ):
     localError(g.config, branch.info, "base method is GC-safe, but '$1' is not" %
@@ -1378,9 +1378,9 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode; s: PSym = nil) =
 
     let forbidsSpec = effectSpec(n, wForbids)
     if not isNil(forbidsSpec):
-      effects[notTagEffects] = forbidsSpec
+      effects[forbiddenEffects] = forbidsSpec
     elif s != nil and (s.magic != mNone or {sfImportc, sfExportc} * s.flags == {sfImportc}):
-      effects[notTagEffects] = newNodeI(nkArgList, effects.info)
+      effects[forbiddenEffects] = newNodeI(nkArgList, effects.info)
 
     let requiresSpec = propSpec(n, wRequires)
     if not isNil(requiresSpec):
@@ -1398,7 +1398,7 @@ proc rawInitEffects(g: ModuleGraph; effects: PNode) =
   newSeq(effects.sons, effectListLen)
   effects[exceptionEffects] = newNodeI(nkArgList, effects.info)
   effects[tagEffects] = newNodeI(nkArgList, effects.info)
-  effects[notTagEffects] = newNodeI(nkArgList, effects.info)
+  effects[forbiddenEffects] = newNodeI(nkArgList, effects.info)
   effects[requiresEffects] = g.emptyNode
   effects[ensuresEffects] = g.emptyNode
   effects[pragmasEffects] = g.emptyNode
@@ -1408,7 +1408,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PC
 
   t.exc = effects[exceptionEffects]
   t.tags = effects[tagEffects]
-  t.forbids = effects[notTagEffects]
+  t.forbids = effects[forbiddenEffects]
   t.owner = s
   t.ownerModule = s.getModule
   t.init = @[]
@@ -1488,9 +1488,9 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     checkRaisesSpec(g, false, forbidsSpec, t.forbids, "has an illegal effect: ",
                     hints=off, subtypeRelation, isForbids=true)
     # after the check, use the formal spec:
-    effects[notTagEffects] = forbidsSpec
+    effects[forbiddenEffects] = forbidsSpec
   else:
-    effects[notTagEffects] = t.forbids
+    effects[forbiddenEffects] = t.forbids
 
   let requiresSpec = propSpec(p, wRequires)
   if not isNil(requiresSpec):

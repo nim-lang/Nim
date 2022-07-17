@@ -1212,7 +1212,7 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
   let p3 = documentWriteEffect(cache, n, sfWrittenTo, "writes")
   let p4 = documentNewEffect(cache, n)
   let p5 = documentWriteEffect(cache, n, sfEscapes, "escapes")
-  let p6 = documentEffect(cache, n, pragmas, wForbids, notTagEffects)
+  let p6 = documentEffect(cache, n, pragmas, wForbids, forbiddenEffects)
 
   if p1 != nil or p2 != nil or p3 != nil or p4 != nil or p5 != nil or p6 != nil:
     if pragmas.kind == nkEmpty:
