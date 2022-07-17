@@ -1307,6 +1307,8 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
           if isForbids: break
           used.incl(s)
           break search
+        if isForbids:
+          break search
       # XXX call graph analysis would be nice here!
       pushInfoContext(g.config, spec.info)
       var rr = if r.kind == nkRaiseStmt: r[0] else: r
@@ -1337,7 +1339,7 @@ proc checkMethodEffects*(g: ModuleGraph; disp, branch: PSym) =
       "can have an unlisted effect: ", hints=off, subtypeRelation)
   let forbidsSpec = effectSpec(p, wForbids)
   if not isNil(forbidsSpec):
-    checkRaisesSpec(g, false, forbidsSpec, actual[forbiddenEffects],
+    checkRaisesSpec(g, false, forbidsSpec, actual[tagEffects],
       "has an illegal effect: ", hints=off, subtypeRelation, isForbids=true)
   if sfThread in disp.flags and notGcSafe(branch.typ):
     localError(g.config, branch.info, "base method is GC-safe, but '$1' is not" %
@@ -1485,7 +1487,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
 
   let forbidsSpec = effectSpec(p, wForbids)
   if not isNil(forbidsSpec):
-    checkRaisesSpec(g, false, forbidsSpec, t.forbids, "has an illegal effect: ",
+    checkRaisesSpec(g, false, forbidsSpec, t.tags, "has an illegal effect: ",
                     hints=off, subtypeRelation, isForbids=true)
     # after the check, use the formal spec:
     effects[forbiddenEffects] = forbidsSpec
