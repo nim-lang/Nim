@@ -4945,7 +4945,7 @@ means to *tag* a routine and to perform checks against this tag:
   type IO = object ## input/output effect
   proc readLine(): string {.tags: [IO].} = discard
 
-  proc no_IO_please() {.tags: [].} =
+  proc no_effects_please() {.tags: [].} =
     # the compiler prevents this:
     let x = readLine()
 
@@ -4954,6 +4954,24 @@ also be attached to a proc type. This affects type compatibility.
 
 The inference for tag tracking is analogous to the inference for
 exception tracking.
+
+There is also a way which can be used to forbid certain effects:
+
+.. code-block:: nim
+    :test: "nim c --warningAsError:Effect:on $1"
+    :status: 1
+
+  type IO = object ## input/output effect
+  proc readLine(): string {.tags: [IO].} = discard
+  proc echoLine(): void = discard
+
+  proc no_IO_please() {.forbids: [IO].} =
+    # this is OK because it didn't define any tag:
+    echoLine()
+    # the compiler prevents this:
+    let y = readLine()
+
+The `forbids` pragma defines a list if illegal effects - proc types not using that effect are all valid use cases.
 
 
 Side effects

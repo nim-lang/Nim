@@ -67,6 +67,8 @@ becomes an alias for `addr`.
 
 ## Language changes
 
+- [Tag tracking](manual.html#tag-tracking) supports the definition of forbidden tags by the `.forbids`˛pragma
+  it can be used to disable certain effects in proc types
 - [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
   meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
 - Templates now accept [macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas).
