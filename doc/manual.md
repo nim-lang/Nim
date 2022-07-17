@@ -4973,6 +4973,15 @@ There is also a way which can be used to forbid certain effects:
 
 The `forbids` pragma defines a list if illegal effects - proc types not using that effect are all valid use cases.
 
+In the example below, the `ProcType1` procedure type is a subtype of `ProcType1`:
+
+.. code-block:: nim
+  type MyEffect = object
+  type ProcType1 = proc (i: int) {.forbids: [MyEffect].}
+  type ProcType2 = proc (i: int)
+
+Calling `ProcType2` in place of `ProcType1` is valid because `ProcType2` doesn't support any tag, and thus it doesn't allow `MyEffect` either.
+
 
 Side effects
 ------------
