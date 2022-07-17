@@ -1212,8 +1212,9 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
   let p3 = documentWriteEffect(cache, n, sfWrittenTo, "writes")
   let p4 = documentNewEffect(cache, n)
   let p5 = documentWriteEffect(cache, n, sfEscapes, "escapes")
+  let p6 = documentEffect(cache, n, pragmas, wForbids, notTagEffects)
 
-  if p1 != nil or p2 != nil or p3 != nil or p4 != nil or p5 != nil:
+  if p1 != nil or p2 != nil or p3 != nil or p4 != nil or p5 != nil or p6 != nil:
     if pragmas.kind == nkEmpty:
       n[pragmasPos] = newNodeI(nkPragma, n.info)
     if p1 != nil: n[pragmasPos].add p1
@@ -1221,6 +1222,7 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
     if p3 != nil: n[pragmasPos].add p3
     if p4 != nil: n[pragmasPos].add p4
     if p5 != nil: n[pragmasPos].add p5
+    if p6 != nil: n[pragmasPos].add p6
 
 proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
   ## Goes through nim nodes recursively and collects doc comments.
