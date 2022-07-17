@@ -18,7 +18,7 @@ if [ $# -eq 1 ] ; then
   case $1 in
     "--help"|"-h"|"help"|"h")
       echo "?c.displayName installation script"
-      echo "Usage: [sudo] sh install.sh DIR"
+      echo "Usage: [sudo] [env DESTDIR=...] sh install.sh DIR"
       echo "Where DIR may be:"
       echo "  /usr/bin"
       echo "  /usr/local/bin"
@@ -51,9 +51,6 @@ if [ $# -eq 1 ] ; then
       docdir="/opt/?proj/doc"
       datadir="/opt/?proj/data"
       nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
-      mkdir -p /opt/?proj
-      mkdir -p $bindir
-      mkdir -p $configdir
       ;;
     *)
       bindir="$1/?proj/bin"
@@ -62,16 +59,22 @@ if [ $# -eq 1 ] ; then
       docdir="$1/?proj/doc"
       datadir="$1/?proj/data"
       nimbleDir="$1/?proj"
-      mkdir -p $1/?proj
-      mkdir -p $bindir
-      mkdir -p $configdir
       ;;
   esac
 
-  mkdir -p $libdir
-  mkdir -p $docdir
-  mkdir -p $configdir
-  mkdir -p $nimbleDir/
+  bindir="${DESTDIR}${bindir}"
+  configdir="${DESTDIR}${configdir}"
+  libdir="${DESTDIR}${libdir}"
+  docdir="${DESTDIR}${docdir}"
+  datadir="${DESTDIR}${datadir}"
+  nimbleDir="${DESTDIR}${nimbleDir}"
+
+  mkdir -p "$bindir"
+  mkdir -p "$configdir"
+  mkdir -p "$libdir"
+  mkdir -p "$docdir"
+  mkdir -p "$datadir"
+  mkdir -p "$nimbleDir"
   echo "copying files..."
 #var createdDirs = newStringTable()
 #for cat in {fcConfig..fcLib, fcNimble}:
@@ -123,7 +126,7 @@ chmod 644 $nimbleDir/?{c.nimblePkgName}.nimble
   echo "installation successful"
 else
   echo "?c.displayName installation script"
-  echo "Usage: [sudo] sh install.sh DIR"
+  echo "Usage: [sudo] [env DESTDIR=...] sh install.sh DIR"
   echo "Where DIR may be:"
   echo "  /usr/bin"
   echo "  /usr/local/bin"
