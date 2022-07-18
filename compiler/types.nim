@@ -1425,7 +1425,9 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
 
     let sn = spec[forbiddenEffects]
     if not isNil(sn) and sn.kind != nkArgList:
-      if hasIncompatibleEffect(sn, real[tagEffects]):
+      if 0 == real.len:
+        return efTagsUnknown
+      elif hasIncompatibleEffect(sn, real[tagEffects]):
         return efTagsIllegal
 
   if formal.lockLevel.ord < 0 or
