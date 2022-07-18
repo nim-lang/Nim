@@ -523,8 +523,7 @@ when not defined(nimHasSinkInference):
 
 template takeAddress(reg, source) =
   reg.nodeAddr = addr source
-  when defined(gcDestructors):
-    GC_ref source
+  GC_ref source
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
