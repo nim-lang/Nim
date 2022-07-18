@@ -168,7 +168,7 @@ type
   Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = cuint
   Pthread_mutex* {.importc: "pthread_mutex_t", header: "<sys/types.h>",
                    pure, final.} = object
-    abi: array[48 div sizeof(clong), clong]
+    abi: array[40 div sizeof(clong), clong]
   Pthread_mutexattr* {.importc: "pthread_mutexattr_t",
                         header: "<sys/types.h>", pure, final.} = object
     abi: array[4 div sizeof(cint), cint]
