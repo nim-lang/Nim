@@ -570,49 +570,6 @@ proc genReturn(c: var Con; n: PNode) =
 const
   InterestingSyms = {skVar, skResult, skLet, skParam, skForVar, skTemp}
 
-proc skipConvDfa*(n: PNode): PNode =
-  result = n
-  while true:
-    case result.kind
-    of nkObjDownConv, nkObjUpConv:
-      result = result[0]
-    of PathKinds1:
-      result = result[1]
-    else: break
-
-proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
-  var n = orig
-  while true:
-    case n.kind
-    of PathKinds0 - {nkHiddenDeref, nkDerefExpr}:
-      n = n[0]
-    of PathKinds1:
-      n = n[1]
-    of nkHiddenDeref, nkDerefExpr:
-      # We "own" sinkparam[].loc but not ourVar[].location as it is a nasty
-      # pointer indirection.
-      # bug #14159, we cannot reason about sinkParam[].location as it can
-      # still be shared for tyRef.
-      n = n[0]
-      return n.kind == nkSym and n.sym.owner == owner and
-         (n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned})
-    else: break
-  # XXX Allow closure deref operations here if we know
-  # the owner controlled the closure allocation?
-  result = n.kind == nkSym and n.sym.owner == owner and
-    {sfGlobal, sfThread, sfCursor} * n.sym.flags == {} and
-    (n.sym.kind != skParam or isSinkParam(n.sym)) # or n.sym.typ.kind == tyVar)
-  # Note: There is a different move analyzer possible that checks for
-  # consume(param.key); param.key = newValue  for all paths. Then code like
-  #
-  #   let splited = split(move self.root, x)
-  #   self.root = merge(splited.lower, splited.greater)
-  #
-  # could be written without the ``move self.root``. However, this would be
-  # wrong! Then the write barrier for the ``self.root`` assignment would
-  # free the old data and all is lost! Lesson: Don't be too smart, trust the
-  # lower level C++ optimizer to specialize this code.
-
 proc skipTrivials(c: var Con, n: PNode): PNode =
   result = n
   while true:
