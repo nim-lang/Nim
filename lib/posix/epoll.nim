@@ -40,14 +40,14 @@ else:
   {.pragma: epollPacked.}
 
 type
-  EpollData* {.importc: "epoll_data",
+  EpollData* {.importc: "epoll_data_t",
       header: "<sys/epoll.h>", pure, final, union.} = object
     `ptr`* {.importc: "ptr".}: pointer
     fd* {.importc: "fd".}: cint
     u32* {.importc: "u32".}: uint32
     u64* {.importc: "u64".}: uint64
 
-  EpollEvent* {.importc: "epoll_event", header: "<sys/epoll.h>", pure, final, epollPacked.} = object
+  EpollEvent* {.importc: "struct epoll_event", header: "<sys/epoll.h>", pure, final, epollPacked.} = object
     events*: uint32 # Epoll events
     data*: EpollData # User data variable
 
