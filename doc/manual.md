@@ -4971,16 +4971,35 @@ There is also a way which can be used to forbid certain effects:
     # the compiler prevents this:
     let y = readLine()
 
-The `forbids` pragma defines a list if illegal effects - proc types not using that effect are all valid use cases.
-
-In the example below, the `ProcType1` procedure type is a subtype of `ProcType1`:
+The `forbids` pragma defines a list of illegal effects - if any statement
+invokes any of those effects, the compilation will fail.
+Procedure types with any disallowed effect are the subtypes of equal
+procedure types without such lists:
 
 .. code-block:: nim
   type MyEffect = object
-  type ProcType1 = proc (i: int) {.forbids: [MyEffect].}
-  type ProcType2 = proc (i: int)
+  type ProcType1 = proc (i: int): void {.forbids: [MyEffect].}
+  type ProcType2 = proc (i: int): void
 
-Calling `ProcType2` in place of `ProcType1` is valid because `ProcType2` doesn't support any tag, and thus it doesn't allow `MyEffect` either.
+  proc caller1(p: ProcType1): void = p(1)
+  proc caller2(p: ProcType2): void = p(1)
+
+  proc effectful(i: int): void {.tags: [MyEffect].} = echo $i
+  proc effectless(i: int): void {.forbids: [MyEffect].} = echo $i
+
+  proc toBeCalled1(i: int): void = effectful(i)
+  proc toBeCalled2(i: int): void = effectless(i)
+
+  ## this will fail because toBeCalled1 uses MyEffect which was forbidden by ProcType1:
+  caller1(toBeCalled1)
+  ## this is OK because both toBeCalled1 and ProcType1 have the same requirements:
+  caller1(toBeCalled2)
+  ## these are OK because ProcType2 doesn't have any effect requirement:
+  caller2(toBeCalled1)
+  caller2(toBeCalled2)
+
+`ProcType2` is a subtype of `ProcType1`. Unlike with tags, the parent context
+doesn't inherit the forbidden list of effects.
 
 
 Side effects
