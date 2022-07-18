@@ -1426,7 +1426,6 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
     let sn = spec[forbiddenEffects]
     if not isNil(sn) and sn.kind != nkArgList:
       if hasIncompatibleEffect(sn, real[tagEffects]):
-        writeFile("/tmp/x.log", $formal & "\n" & $real[tagEffects])
         return efTagsIllegal
 
   if formal.lockLevel.ord < 0 or
