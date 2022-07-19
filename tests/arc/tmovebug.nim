@@ -1,6 +1,6 @@
 discard """
   cmd: "nim c --gc:arc $file"
-  output: '''5
+  output: '''6
 (w: 5)
 (w: -5)
 c.text = hello
@@ -92,6 +92,7 @@ copy
 destroy
 destroy
 destroy
+sink
 sink
 destroy
 copy
@@ -767,8 +768,7 @@ proc initC(): C =
   C(o: initO())
 
 proc pair(): tuple[a: C, b: C] =
-  result.a = initC() # <- when firstWrite tries to find this node to start its analysis it fails, because injectdestructors uses copyTree/shallowCopy
-  result.b = initC()
+  result = (a: initC(), b: initC())# <- when firstWrite tries to find this node to start its analysis it fails, because injectdestructors uses copyTree/shallowCopy
 
 discard pair()
 

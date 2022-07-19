@@ -1,6 +1,6 @@
 discard """
   cmd: "nim c --gc:arc $file"
-  output: '''5
+  output: '''6
 (w: 5)
 (w: -5)
 c.text = hello

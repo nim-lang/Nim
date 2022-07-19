@@ -56,7 +56,7 @@ _ = (
   blitTmp, ";")
 lvalue = _[0]
 lnext = _[1]
-result.value = move lvalue
+`=sink`(result.value, move lvalue)
 `=destroy`(lnext)
 `=destroy_1`(lvalue)
 -- end of expandArc ------------------------
