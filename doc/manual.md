@@ -4998,8 +4998,7 @@ procedure types without such lists:
   caller2(toBeCalled1)
   caller2(toBeCalled2)
 
-`ProcType2` is a subtype of `ProcType1`. Unlike with tags, the parent context
-doesn't inherit the forbidden list of effects.
+`ProcType2` is a subtype of `ProcType1`. Unlike with tags, the parent context - the function which calls other functions with forbidden effects - doesn't inherit the forbidden list of effects.
 
 
 Side effects
