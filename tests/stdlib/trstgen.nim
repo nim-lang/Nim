@@ -9,8 +9,13 @@ import ../../lib/packages/docutils/rst
 import unittest, strutils, strtabs
 import std/private/miscdollars
 
+const
+  NoSandboxOpts = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
+  preferMarkdown = {roPreferMarkdown, roSupportMarkdown, roNimFile}
+  preferRst = {roSupportMarkdown, roNimFile}
+
 proc toHtml(input: string,
-            rstOptions: RstParseOptions = {roPreferMarkdown, roSupportMarkdown, roNimFile},
+            rstOptions: RstParseOptions = preferMarkdown,
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
@@ -46,9 +51,6 @@ proc optionListLabel(opt: string): string =
   """<div class="option-list-label"><tt><span class="option">""" &
   opt &
   "</span></tt></div>"
-
-const
-  NoSandboxOpts = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
 
 
 suite "YAML syntax highlighting":
@@ -1180,7 +1182,7 @@ Test1
         "input(8, 4) Warning: language 'anotherLang' not supported"
         ])
     check(output == "<pre class = \"listing\">anything</pre>" &
-                    "<p><pre class = \"listing\">\nsomeCode\n</pre> </p>")
+                    "<p><pre class = \"listing\">\nsomeCode</pre> </p>")
 
   test "RST admonitions":
     # check that all admonitions are implemented
@@ -1321,7 +1323,7 @@ Test1
       That was a transition.
     """
     let output1 = input1.toHtml(
-      NoSandboxOpts
+      preferRst
     )
     doAssert "<p id=\"target000\""     in output1
     doAssert "<ul id=\"target001\""    in output1
@@ -1543,7 +1545,7 @@ Test1
             """<td>text</td></tr>""" & "\n</tbody></table>")
 
   test "Field list: body after newline":
-    let output = dedent """
+    let output = dedent"""
       :field:
         text1""".toHtml
     check "<table class=\"docinfo\"" in output

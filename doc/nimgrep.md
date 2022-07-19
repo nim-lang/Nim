@@ -54,7 +54,7 @@ All examples below use default PCRE Regex patterns:
     nimgrep --excludeDir:'^\.git$' --excludeDir:'^\.hg$' --excludeDir:'^\.svn$'
     # short: --ed:'^\.git$' --ed:'^\.hg$' --ed:'^\.svn$'
 
-+ To search only in paths containing the `tests` sub-directory recursively::
++ To search only in paths containing the `tests` sub-directory recursively:
 
   .. code:: cmd
     nimgrep --recursive --includeDir:'(^|/)tests($|/)'
