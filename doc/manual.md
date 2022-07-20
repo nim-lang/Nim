@@ -625,8 +625,7 @@ Hence: 0b10000000'u8 == 0x80'u8 == 128, but, 0b10000000'i8 == 0x80'i8 == -1
 instead of causing an overflow error.
 
 
-Custom numeric literals
-~~~~~~~~~~~~~~~~~~~~~~~
+### Custom numeric literals
 
 If the suffix is not predefined, then the suffix is assumed to be a call
 to a proc, template, macro or other callable identifier that is passed the
@@ -2131,8 +2130,7 @@ reverse operation.
 A distinct type is an ordinal type if its base type is an ordinal type.
 
 
-Modeling currencies
-~~~~~~~~~~~~~~~~~~~~
+### Modeling currencies
 
 A distinct type can be used to model different physical `units`:idx: with a
 numerical base type, for example. The following example models currencies.
@@ -2243,8 +2241,7 @@ certain builtin operations to be lifted:
 Currently, only the dot accessor can be borrowed in this way.
 
 
-Avoiding SQL injection attacks
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+### Avoiding SQL injection attacks
 
 An SQL statement that is passed from Nim to an SQL database might be
 modeled as a string. However, using string templates and filling in the
@@ -3784,8 +3781,7 @@ the closure and its enclosing scope (i.e. any modifications made to them are
 visible in both places). The closure environment may be allocated on the heap
 or on the stack if the compiler determines that this would be safe.
 
-Creating closures in loops
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+### Creating closures in loops
 
 Since closures capture local variables by reference it is often not wanted
 behavior inside loop bodies. See `closureScope
@@ -4027,8 +4023,7 @@ starts with the prefix `m` per convention.
 
 .. include:: manual/var_t_return.md
 
-Future directions
-~~~~~~~~~~~~~~~~~
+### Future directions
 
 Later versions of Nim can be more precise about the borrowing rule with
 a syntax like:
@@ -5353,8 +5348,7 @@ instantiation. The following is not allowed:
 Symbol lookup in generics
 -------------------------
 
-Open and Closed symbols
-~~~~~~~~~~~~~~~~~~~~~~~
+### Open and Closed symbols
 
 The symbol binding rules in generics are slightly subtle: There are "open" and
 "closed" symbols. A "closed" symbol cannot be re-bound in the instantiation
@@ -6503,8 +6497,8 @@ the block in which the declaration occurred. The range where the identifier
 is known is the scope of the identifier. The exact scope of an
 identifier depends on the way it was declared.
 
-Block scope
-~~~~~~~~~~~
+### Block scope
+
 The *scope* of a variable declared in the declaration part of a block
 is valid from the point of declaration until the end of the block. If a
 block contains a second block, in which the identifier is redeclared,
@@ -6514,8 +6508,8 @@ identifier cannot be redefined in the same block, except if valid for
 procedure or iterator overloading purposes.
 
 
-Tuple or object scope
-~~~~~~~~~~~~~~~~~~~~~
+### Tuple or object scope
+
 The field identifiers inside a tuple or object definition are valid in the
 following places:
 
@@ -6523,8 +6517,8 @@ following places:
 * Field designators of a variable of the given tuple/object type.
 * In all descendant types of the object type.
 
-Module scope
-~~~~~~~~~~~~
+### Module scope
+
 All identifiers of a module are valid from the point of declaration until
 the end of the module. Identifiers from indirectly dependent modules are *not*
 available. The `system`:idx: module is automatically imported in every module.
@@ -7363,8 +7357,7 @@ The compiler needs to be told to generate C++ (command `cpp`:option:) for
 this to work. The conditional symbol `cpp` is defined when the compiler
 emits C++ code.
 
-Namespaces
-~~~~~~~~~~
+### Namespaces
 
 The *sloppy interfacing* example uses `.emit` to produce `using namespace`:cpp:
 declarations. It is usually much better to instead refer to the imported name
@@ -7376,8 +7369,7 @@ via the `namespace::identifier`:cpp: notation:
                         importcpp: "irr::IrrlichtDevice".} = object
 
 
-Importcpp for enums
-~~~~~~~~~~~~~~~~~~~
+### Importcpp for enums
 
 When `importcpp` is applied to an enum type the numerical enum values are
 annotated with the C++ enum type, like in this example:
@@ -7385,8 +7377,7 @@ annotated with the C++ enum type, like in this example:
 (This turned out to be the simplest way to implement it.)
 
 
-Importcpp for procs
-~~~~~~~~~~~~~~~~~~~
+### Importcpp for procs
 
 Note that the `importcpp` variant for procs uses a somewhat cryptic pattern
 language for maximum flexibility:
@@ -7476,8 +7467,7 @@ instead:
   let x = newFoo(3, 4)
 
 
-Wrapping constructors
-~~~~~~~~~~~~~~~~~~~~~
+### Wrapping constructors
 
 Sometimes a C++ class has a private copy constructor and so code like
 `Class c = Class(1,2);`:cpp: must not be generated but instead
@@ -7491,8 +7481,7 @@ faster C++ code since construction then doesn't invoke the copy constructor:
   proc constructFoo(a, b: cint): Foo {.importcpp: "Foo(@)", constructor.}
 
 
-Wrapping destructors
-~~~~~~~~~~~~~~~~~~~~
+### Wrapping destructors
 
 Since Nim generates C++ directly, any destructor is called implicitly by the
 C++ compiler at the scope exits. This means that often one can get away with
@@ -7504,8 +7493,7 @@ everything that is required:
   proc destroyFoo(this: var Foo) {.importcpp: "#.~Foo()".}
 
 
-Importcpp for objects
-~~~~~~~~~~~~~~~~~~~~~
+### Importcpp for objects
 
 Generic `importcpp`'ed objects are mapped to C++ templates. This means that
 one can import C++'s templates rather easily without the need for a pattern
@@ -8118,8 +8106,7 @@ pragmas:
 Guards and locks sections
 -------------------------
 
-Protecting global variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+### Protecting global variables
 
 Object fields and global variables can be annotated via a `guard` pragma:
 
@@ -8184,8 +8171,7 @@ in order to support *multi lock* statements. Why these are essential is
 explained in the `lock levels <#guards-and-locks-lock-levels>`_ section.
 
 
-Protecting general locations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+### Protecting general locations
 
 The `guard` annotation can also be used to protect fields within an object.
 The guard then needs to be another field within the same object or a
