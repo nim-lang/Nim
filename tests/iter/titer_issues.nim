@@ -238,7 +238,7 @@ block:
   # bug #13739
   iterator myIter(arg: openarray[int]): int =
     var tmp = 0
-    leten = arg.len
+    let len = arg.len
     while tmp < len:
       yield arg[tmp] * 2
       inc tmp
