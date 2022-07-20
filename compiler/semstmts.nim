@@ -504,13 +504,6 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
       let it = pragmas[i]
       let key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
 
-      when false:
-        let lhs = b[0]
-        let clash = strTableGet(c.currentScope.symbols, lhs.ident)
-        if clash != nil:
-          # refs https://github.com/nim-lang/Nim/issues/8275
-          wrongRedefinition(c, lhs.info, lhs.ident.s, clash.info)
-
       if isPossibleMacroPragma(c, it, key):
         # we transform ``var p {.m, rest.}`` into ``m(do: var p {.rest.})`` and
         # let the semantic checker deal with it:
