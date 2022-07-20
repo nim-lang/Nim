@@ -246,6 +246,10 @@
 - Nim now supports `out` parameters and ["strict definitions"](https://nim-lang.github.io/Nim/manual_experimental.html#strict-definitions-and-nimout-parameters).
 - Nim now offers a [strict mode](https://nim-lang.github.io/Nim/manual_experimental.html#strict-case-objects) for `case objects`.
 
+- `foo a = b` now means `foo(a = b)` rather than `foo(a) = b`. This is consistent
+  with the existing behavior of `foo a, b = c` meaning `foo(a, b = c)`.
+  This decision was made with the assumption that the old syntax was used rarely;
+  if your code used the old syntax, please be aware of this change.
 
 ## Compiler changes
 
