@@ -755,6 +755,32 @@ proc prevPermutation*[T](x: var openArray[T]): bool {.discardable.} =
 
   result = true
 
+proc permutations*[T](x: openArray[T]): seq[seq[T]] = 
+  ## Returns all the permutations of x.
+  runnableExamples:
+    assert permutations([1, 2, 3]) == @[@[1, 2, 3], @[1, 3, 2], @[2, 1, 3], @[2, 3, 1], @[3, 1, 2], @[3, 2, 1]]
+
+  var temp = @x
+  temp.sort()
+  
+  result.add(temp)
+
+  while temp.nextPermutation:
+    result.add(temp)
+
+proc permutations*(s: string): seq[string] = 
+  ## Returns all the permutations of s.
+  runnableExamples:
+    assert permutations("abc") == @["abc", "acb", "bac", "bca", "cab", "cba"]
+
+  var temp = s
+  temp.sort()
+  
+  result.add(temp)
+
+  while temp.nextPermutation:
+    result.add(temp)
+
 proc rotateInternal[T](arg: var openArray[T]; first, middle, last: int): int =
   ## A port of std::rotate from C++.
   ## Ported from [this reference](http://www.cplusplus.com/reference/algorithm/rotate/).
@@ -915,3 +941,27 @@ proc rotatedLeft*[T](arg: openArray[T]; dist: int): seq[T] =
   let argLen = arg.len
   let distLeft = ((dist mod argLen) + argLen) mod argLen
   arg.rotatedInternal(0, distLeft, argLen)
+
+proc rotations*[T](x: openArray[T]): seq[seq[T]] = 
+  ## Returns all the rotations of x.
+  runnableExamples:
+    assert rotations([1, 2, 3]) == @[@[1, 2, 3], @[2, 3, 1], @[3, 1, 2]]
+
+  var temp = @x
+  temp.sort()
+  
+  for i in 0..x.high:
+    result.add(temp)
+    temp.rotateLeft(1)
+
+proc rotations*(s: string): seq[string] = 
+  ## Returns all the rotations of s.
+  runnableExamples:
+    assert rotations("abc") == @["abc", "bca", "cab"]
+
+  var temp = s
+  temp.sort()
+
+  for i in 0..s.high:
+    result.add(temp)
+    temp.rotateLeft(1)
