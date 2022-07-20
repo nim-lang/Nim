@@ -764,10 +764,9 @@ iterator permutations*[T](x: openArray[T]): seq[T] =
   var temp = @x
   temp.sort()
   
-  yield temp
-
-  while temp.nextPermutation:
+  while true:
     yield temp
+    if not temp.nextPermutation: break
 
 proc rotateInternal[T](arg: var openArray[T]; first, middle, last: int): int =
   ## A port of std::rotate from C++.
