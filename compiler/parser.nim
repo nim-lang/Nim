@@ -1393,9 +1393,7 @@ proc parseTypeDefValue(p: var Parser): PNode =
     result = parseTypeClass(p)
   else:
     result = simpleExpr(p, pmTypeDef)
-    if p.tok.tokType == tkNot:
-      result = binaryNot(p, result)
-    else:
+    if p.tok.tokType != tkNot:
       if result.kind == nkCommand:
         var isFirstParam = false
         while p.tok.tokType == tkComma:
