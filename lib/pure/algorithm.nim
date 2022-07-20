@@ -769,20 +769,6 @@ iterator permutations*[T](x: openArray[T]): seq[T] =
   while temp.nextPermutation:
     yield temp
 
-iterator permutations*(s: string): string = 
-  ## Yields all the permutations of s.
-  runnableExamples:
-    import std/sequtils
-    assert permutations("abc").toSeq == @["abc", "acb", "bac", "bca", "cab", "cba"]
-
-  var temp = s
-  temp.sort()
-  
-  yield temp
-
-  while temp.nextPermutation:
-    yield temp
-
 proc rotateInternal[T](arg: var openArray[T]; first, middle, last: int): int =
   ## A port of std::rotate from C++.
   ## Ported from [this reference](http://www.cplusplus.com/reference/algorithm/rotate/).
@@ -954,18 +940,5 @@ iterator rotations*[T](x: openArray[T]): seq[T] =
   temp.sort()
   
   for i in 0..x.high:
-    yield temp
-    temp.rotateLeft(1)
-
-iterator rotations*(s: string): string = 
-  ## Yields all the rotations of s.
-  runnableExamples:
-    import std/sequtils
-    assert rotations("abc").toSeq == @["abc", "bca", "cab"]
-
-  var temp = s
-  temp.sort()
-
-  for i in 0..s.high:
     yield temp
     temp.rotateLeft(1)
