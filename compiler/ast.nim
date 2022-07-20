@@ -337,6 +337,7 @@ const
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
   sfExperimental* = sfOverriden       # module uses the .experimental switch
   sfGoto* = sfOverriden               # var is used for 'goto' code generation
+  sfAliasStyle* = sfConstructor       # alias-style template or macro
   sfWrittenTo* = sfBorrow             # param is assigned to
                                       # currently unimplemented
   sfBase* = sfDiscriminant
