@@ -390,7 +390,7 @@ proc traverseAsgn(c: var Context; b: var BlockInfo; n: PNode) =
     for ch in items(le):
       traverse(c, b, ch)
 
-  if parampatterns.exprRoot(le) == c.root:
+  if parampatterns.exprRoot(le, allowCalls=false) == c.root:
     b.writesTo.add le
     b.trace.add Instruction(opc: Store, mem: le)
 
@@ -398,7 +398,7 @@ proc traverseLocal(c: var Context; b: var BlockInfo; n: PNode) =
   let le = n[0]
   if le.kind != nkSym:
     # handle closures' environment `env`.
-    if parampatterns.exprRoot(le) == c.root:
+    if parampatterns.exprRoot(le, allowCalls=false) == c.root:
       b.writesTo.add le
       b.trace.add Instruction(opc: Store, mem: le)
   traverse(c, b, n.lastSon)
@@ -425,7 +425,7 @@ proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
       b.flags.incl containsUse
       b.entryAt = b.trace.len
       c.usedInBlock = c.currentBlock
-    elif exprRoot(n) == c.root:
+    elif exprRoot(n, allowCalls=false) == c.root:
       if n.kind notin PathKinds1:
         for i in 1..<n.len:
           traverse(c, b, n[i])
@@ -509,7 +509,7 @@ proc beginTraverse(c: var Context; b: var BlockInfo; parent, n: PNode; nindex: i
 
 proc isLastRead*(n, x: PNode; otherUsage: var TLineInfo): bool =
   otherUsage = unknownLineInfo
-  let root = parampatterns.exprRoot(x)
+  let root = parampatterns.exprRoot(x, allowCalls=false)
   if root == nil: return false
 
   var c = Context(x: x,
@@ -528,7 +528,7 @@ proc isLastRead*(n, x: PNode; otherUsage: var TLineInfo): bool =
     beginTraverse(c, b, n, n, -1)
   if c.foundDecl:
     result = interpret(b.trace, b.entryAt, x, otherUsage)
-    #if not result:
+    #if result:
     #  showVm(b.trace, b.entryAt)
     #  echo b.flags, " body ", renderTree(n), " x ", renderTree(x)
     #  echo "and line info is ", otherUsage.line.int, " ", otherUsage.col.int

@@ -82,7 +82,8 @@ proc aliases*(obj, field: PNode): AliasKind =
         result.add n
         n = n[0]
       of nkSym:
-        result.add n; break
+        result.add n
+        break
       else: return no
 
   collectImportantNodes(objImportantNodes, obj)
