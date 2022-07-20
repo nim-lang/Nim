@@ -15,7 +15,7 @@ pkg "bncurve", true
 pkg "c2nim", false, "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "chroma"
-pkg "chronicles", true, "nim c -o:chr -r chronicles.nim"
+pkg "chronicles", true, "nim c --stylecheck:hint -o:chr -r chronicles.nim"
 pkg "chronos", true, "nim c -r -d:release tests/testall"
 pkg "cligen", false, "nim c -o:cligenn -r cligen.nim"
 pkg "coco", true
