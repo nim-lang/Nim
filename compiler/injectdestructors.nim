@@ -19,7 +19,7 @@ import
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions, move_analyser, aliasanalysis
 
-const nimOldMoveAnalyser = false
+const nimOldMoveAnalyser = defined(nimCompareAnalysers)
 
 when nimOldMoveAnalyser:
   import dfa
@@ -40,6 +40,7 @@ type
     uninitComputed: bool
     idgen: IdGenerator
     body: PNode
+    otherUsage: TLineInfo
 
   Scope = object # we do scope-based memory management.
     # a scope is comparable to an nkStmtListExpr like
@@ -193,12 +194,13 @@ proc isLastRead(n: PNode; c: var Con): bool =
     result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or nfLastRead in m.flags
   else:
     let m = skipConvDfa(n)
-    result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or isLastRead(c.body, n)
+    result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or
+      isLastRead(c.body, n, c.otherUsage)
 
   when defined(nimCompareAnalysers):
     # first only test if it crashes:
     let oldResult = nfLastRead in m.flags
-    let alternativeResult = move_analyser.isLastRead(c.body, n)
+    let alternativeResult = move_analyser.isLastRead(c.body, n, c.otherUsage)
     if alternativeResult != oldResult:
       echo "##### algorithms differ for ", c.graph.config $ n.info, " ", renderTree(n)
       echo "##### old algorithm said ", oldResult, " new one said ", alternativeResult
@@ -275,8 +277,10 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
     m.add "; requires a copy because it's not the last read of '"
     m.add renderTree(ri)
     m.add '\''
-    if ri.comment.startsWith('\n'):
+    if c.otherUsage != unknownLineInfo:
+       # ri.comment.startsWith('\n'):
       m.add "; another read is done here: "
+      m.add c.graph.config $ c.otherUsage
       #m.add c.graph.config $ c.g[parseInt(ri.comment[1..^1])].n.info
     elif ri.kind == nkSym and ri.sym.kind == skParam and not isSinkType(ri.sym.typ):
       m.add "; try to make "
@@ -1148,7 +1152,7 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     shouldDebug = toDebug == owner.name.s or toDebug == "always"
   if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
     return n
-  var c = Con(owner: owner, graph: g, idgen: idgen, body: n)
+  var c = Con(owner: owner, graph: g, idgen: idgen, body: n, otherUsage: unknownLineInfo)
   when nimOldMoveAnalyser:
     c.g = constructCfg(owner, n)
 

@@ -24,7 +24,7 @@
 ##
 
 import std / intsets
-import ast, renderer, aliasanalysis, trees, parampatterns
+import ast, renderer, aliasanalysis, trees, parampatterns, lineinfos
 
 type
   BlockLevel = int
@@ -122,7 +122,7 @@ proc showVm(code: seq[Instruction]; start = 0) =
     inc i
   echo "Start at ", start
 
-proc interpret(code: seq[Instruction]; start: int; x: PNode): bool =
+proc interpret(code: seq[Instruction]; start: int; x: PNode; otherUsage: var TLineInfo): bool =
   # small interpreter loop:
   var i = start
   result = true
@@ -169,6 +169,7 @@ proc interpret(code: seq[Instruction]; start: int; x: PNode): bool =
       # situation: we found 'x' and want to know if 'x.field' is the last access.
       # or: we found 'x.field' (which reads 'x' too) and want to know if 'x' is the last access:
       if aliases(code[i].mem, x) != no or aliases(x, code[i].mem) != no:
+        otherUsage = code[i].mem.info
         result = false
         break
       inc i
@@ -230,7 +231,8 @@ proc merge(c: var Context; dest: var BlockInfo; branches: openArray[BlockInfo]) 
     for i in 0 ..< branches.len:
       #if branches[i].trace.len > 0:
       #  showVm(c.p, branches[i].trace, branches[i].entryAt)
-      if not interpret(branches[i].trace, branches[i].entryAt, c.x):
+      var dummy = unknownLineInfo
+      if not interpret(branches[i].trace, branches[i].entryAt, c.x, dummy):
         selectedBranch = i
         # keep b.entryAt as it is
         break
@@ -505,7 +507,8 @@ proc beginTraverse(c: var Context; b: var BlockInfo; parent, n: PNode; nindex: i
     for i in 0..<n.safeLen:
       beginTraverse(c, b, n, n[i], i)
 
-proc isLastRead*(n, x: PNode): bool =
+proc isLastRead*(n, x: PNode; otherUsage: var TLineInfo): bool =
+  otherUsage = unknownLineInfo
   let root = parampatterns.exprRoot(x)
   if root == nil: return false
 
@@ -524,9 +527,11 @@ proc isLastRead*(n, x: PNode): bool =
   else:
     beginTraverse(c, b, n, n, -1)
   if c.foundDecl:
-    #showVm(b.trace, b.entryAt)
-    result = interpret(b.trace, b.entryAt, x)
-    #echo b.flags, " body ", renderTree(n), " x ", renderTree(x)
+    result = interpret(b.trace, b.entryAt, x, otherUsage)
+    #if not result:
+    #  showVm(b.trace, b.entryAt)
+    #  echo b.flags, " body ", renderTree(n), " x ", renderTree(x)
+    #  echo "and line info is ", otherUsage.line.int, " ", otherUsage.col.int
   else:
     #echo "did not find the declaration ", renderTree(n), " ", renderTree(x)
     result = false
