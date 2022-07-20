@@ -377,10 +377,12 @@ proc rand*[T: Ordinal](t: typedesc[T]): T =
       assert rand(range[1..16]) in 1..16
   # pending csources >= 1.4.0 or fixing https://github.com/timotheecour/Nim/issues/251#issuecomment-831599772,
   # use `runnableExamples("-r:off")` instead of `if false`
-  when T is range or T is enum or T is bool:
+  when T is range or T is enum:
     result = rand(state, low(T)..high(T))
+  elif T is bool:
+    result = state.next shr 63 == 1 # sign test, works on js
   else:
-    result = cast[T](state.next)
+    result = cast[T](state.next shr (64 - sizeof(T)*8))
 
 proc sample*[T](r: var Rand; s: set[T]): T =
   ## Returns a random element from the set `s` using the given state.
