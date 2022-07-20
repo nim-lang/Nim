@@ -38,10 +38,10 @@ const
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
-    wDelegator, wExportNims, wUsed, wPragma, wRedefine, wCallsite}
+    wDelegator, wExportNims, wUsed, wPragma, wRedefine, wCallsite, wAlias}
   macroPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wCompilerProc, wNonReloadable, wCore,
-    wDiscardable, wGensym, wInject, wDelegator}
+    wDiscardable, wGensym, wInject, wDelegator, wAlias}
   iteratorPragmas* = declPragmas + {FirstCallConv..LastCallConv, wNoSideEffect, wSideEffect,
     wMagic, wBorrow,
     wDiscardable, wGensym, wInject, wRaises, wEffectsOf,
@@ -1231,6 +1231,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         sym.flags.incl sfNeverRaises
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
+      of wAlias:
+        sym.flags.incl sfAliasStyle
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"

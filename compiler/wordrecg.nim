@@ -87,7 +87,7 @@ type
     wGlobal = "global", wCodegenDecl = "codegenDecl", wUnchecked = "unchecked",
     wGuard = "guard", wLocks = "locks", wPartial = "partial", wExplain = "explain",
     wLiftLocals = "liftlocals", wEnforceNoRaises = "enforceNoRaises", wSystemRaisesDefect = "systemRaisesDefect",
-    wRedefine = "redefine", wCallsite = "callsite",
+    wRedefine = "redefine", wCallsite = "callsite", wAlias = "alias",
 
     wAuto = "auto", wBool = "bool", wCatch = "catch", wChar = "char",
     wClass = "class", wCompl = "compl", wConstCast = "const_cast", wDefault = "default",

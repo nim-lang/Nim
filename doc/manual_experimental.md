@@ -430,8 +430,8 @@ Assuming `foo` is a macro or a template, this is roughly equivalent to:
   ```
 
 
-Symbols as template/macro calls
-===============================
+Alias-style templates and macros
+================================
 
 Templates and macros that take no arguments can be called as lone symbols,
 i.e. without parentheses. This is useful for repeated uses of complex
@@ -448,9 +448,25 @@ expressions that cannot conveniently be represented as runtime values.
   assert bar == 15
   ```
 
-In the future, this may require more specific information on template or macro
-signatures to be used. Specializations for some applications of this may also
-be introduced to guarantee consistency and circumvent bugs.
+These templates/macros can be annotated with the `{.alias.}` pragma
+to denote their intended use, however this annotation is currently
+not required. For templates, this induces the behavior of
+disallowing redefinitions.
+
+.. code-block:: nim
+  type Foo = object
+    bar: int
+  
+  var foo = Foo(bar: 10)
+  template bar: untyped {.alias.} = foo.bar
+  assert bar == 10
+  bar = 15
+  assert bar == 15
+  var foo2 = Foo(bar: -10)
+  # error:
+  template bar: untyped {.alias.} = foo.bar
+
+In the future, this annotation or the lack of it may gain more meanings.
 
 
 Not nil annotation

@@ -236,6 +236,22 @@
 
   ```nim
   let foo: seq[(float, byte, cstring)] = @[(1, 2, "abc")]
+- Alias-style templates and macros can now optionally be annotated with the
+  `{.alias.}` pragma. For templates, this has the behavior of disallowing
+  redefinitions.
+
+  ```nim
+  type Foo = object
+    bar: int
+  
+  var foo = Foo(bar: 10)
+  template bar: untyped {.alias.} = foo.bar
+  assert bar == 10
+  bar = 15
+  assert bar == 15
+  var foo2 = Foo(bar: -10)
+  # error:
+  template bar: untyped {.alias.} = foo.bar
   ```
 
 - `cstring` is now accepted as a selector in `case` statements, removing the
