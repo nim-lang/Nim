@@ -180,7 +180,7 @@ const
 
 type
   BlockFlag = enum
-    containsUse, containsLeave, inCondition
+    containsUse, containsLeave, inCondition, containsBreak
 
   BlockInfo = object
     id: BlockLevel
@@ -336,6 +336,7 @@ proc traverseBreak(c: var Context; b: var BlockInfo; n: PNode) =
   if n[0].kind == nkEmpty:
     if c.blocks.len > 0:
       b.leaves = c.currentBlock
+      b.flags.incl containsBreak
     else:
       b.leaves = ReturnBlock
   else:
@@ -343,6 +344,7 @@ proc traverseBreak(c: var Context; b: var BlockInfo; n: PNode) =
     for i in countdown(high(c.blocks), 0):
       if c.blocks[i][0] == n[0].sym:
         b.leaves = c.blocks[i][1]
+        b.flags.incl containsBreak
         break
   if b.leaves <= ReturnBlock:
     b.trace.add Instruction(opc: Ret)
@@ -379,12 +381,20 @@ proc traverseTry(c: var Context; b: var BlockInfo; n: PNode) =
     traverse(c, b, ch)
   dec c.inTryStmt
 
-proc traverseRaise(c: var Context; b: var BlockInfo; n: PNode) =
-  traverse c, b, n[0]
-  if c.inTryStmt == 0:
+proc handleReturn(c: var Context; b: var BlockInfo) =
+  # it can happen that the block/loop has a `break` that avoids
+  # the return statement. If so we don't track the return:
+  if containsBreak in b.flags:
+    discard "convoluted control flow, give up"
+  else:
     b.leaves = ReturnBlock
     b.flags.incl containsLeave
     b.trace.add Instruction(opc: Ret)
+
+proc traverseRaise(c: var Context; b: var BlockInfo; n: PNode) =
+  traverse c, b, n[0]
+  if c.inTryStmt == 0:
+    handleReturn c, b
 
 proc traverseAsgn(c: var Context; b: var BlockInfo; n: PNode) =
   traverse(c, b, n[1])
@@ -444,11 +454,9 @@ proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
         traverse(c, b, ch)
   of nkReturnStmt:
     traverse c, b, n[0]
-    b.leaves = ReturnBlock
-    b.flags.incl containsLeave
     if c.root.kind == skResult:
       b.trace.add Instruction(opc: Load, mem: newSymNode(c.root))
-    b.trace.add Instruction(opc: Ret)
+    handleReturn c, b
   of nkBreakStmt:
     traverseBreak c, b, n
   of nkIfStmt, nkIfExpr:
