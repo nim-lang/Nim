@@ -22,7 +22,10 @@ proc replaceDeprecated*(conf: ConfigRef; info: TLineInfo; oldSym, newSym: PIdent
   let last = first+identLen(line, first)-1
   if cmpIgnoreStyle(line[first..last], oldSym.s) == 0:
     var x = line.substr(0, first-1) & newSym.s & line.substr(last+1)
-    system.shallowCopy(conf.m.fileInfos[info.fileIndex.int32].lines[info.line.int-1], x)
+    when defined(gcArc) or defined(gcOrc):
+      conf.m.fileInfos[info.fileIndex.int32].lines[info.line.int-1] = move x
+    else:
+      system.shallowCopy(conf.m.fileInfos[info.fileIndex.int32].lines[info.line.int-1], x)
     conf.m.fileInfos[info.fileIndex.int32].dirty = true
     #if newSym.s == "File": writeStackTrace()
 
@@ -35,5 +38,8 @@ proc replaceComment*(conf: ConfigRef; info: TLineInfo) =
   if line[first] != '#': inc first
 
   var x = line.substr(0, first-1) & "discard " & line.substr(first+1).escape
-  system.shallowCopy(conf.m.fileInfos[info.fileIndex.int32].lines[info.line.int-1], x)
+  when defined(gcArc) or defined(gcOrc):
+    system.shallowCopy(conf.m.fileInfos[info.fileIndex.int32].lines[info.line.int-1], x)
+  else:
+    conf.m.fileInfos[info.fileIndex.int32].lines[info.line.int-1] = move x
   conf.m.fileInfos[info.fileIndex.int32].dirty = true

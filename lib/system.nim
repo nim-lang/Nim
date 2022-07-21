@@ -464,17 +464,16 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ##  var str = "Hello world!"
   ##  low(str) # => 0
 
-proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
-  ## Use this instead of `=` for a `shallow copy`:idx:.
-  ##
-  ## The shallow copy only changes the semantics for sequences and strings
-  ## (and types which contain those).
-  ##
-  ## Be careful with the changed semantics though!
-  ## There is a reason why the default assignment does a deep copy of sequences
-  ## and strings.
-  ##
-  ## .. warning:: `shallowCopy` does a deep copy with ARC/ORC.
+when not defined(gcArc) or not defined(gcOrc):
+  proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
+    ## Use this instead of `=` for a `shallow copy`:idx:.
+    ##
+    ## The shallow copy only changes the semantics for sequences and strings
+    ## (and types which contain those).
+    ##
+    ## Be careful with the changed semantics though!
+    ## There is a reason why the default assignment does a deep copy of sequences
+    ## and strings.
 
 # :array|openArray|string|seq|cstring|tuple
 proc `[]`*[I: Ordinal;T](a: T; i: I): T {.

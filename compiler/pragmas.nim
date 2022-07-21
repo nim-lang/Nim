@@ -511,7 +511,10 @@ proc processCompile(c: PContext, n: PNode) =
     n[i] = c.semConstExpr(c, n[i])
     case n[i].kind
     of nkStrLit, nkRStrLit, nkTripleStrLit:
-      shallowCopy(result, n[i].strVal)
+      when defined(gcArc) or defined(gcOrc):
+        result = n[i].strVal
+      else:
+        shallowCopy(result, n[i].strVal)
     else:
       localError(c.config, n.info, errStringLiteralExpected)
       result = ""

@@ -295,7 +295,10 @@ proc store*[T](s: Stream, data: T) =
 
   var stored = initIntSet()
   var d: T
-  shallowCopy(d, data)
+  when defined(gcArc) or defined(gcOrc):
+    d = data
+  else:
+    shallowCopy(d, data)
   storeAny(s, toAny(d), stored)
 
 proc loadVM[T](typ: typedesc[T], x: T): string =
@@ -321,7 +324,10 @@ proc `$$`*[T](x: T): string =
   else:
     var stored = initIntSet()
     var d: T
-    shallowCopy(d, x)
+    when defined(gcArc) or defined(gcOrc):
+      d = x
+    else:
+      shallowCopy(d, x)
     var s = newStringStream()
     storeAny(s, toAny(d), stored)
     result = s.data

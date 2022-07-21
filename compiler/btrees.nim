@@ -88,7 +88,10 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
       if less(key, h.keys[j]): break
       inc j
     for i in countdown(h.entries, j+1):
-      shallowCopy(h.vals[i], h.vals[i-1])
+      when defined(gcArc) or defined(gcOrc):
+        h.vals[i] = h.vals[i-1]
+      else:
+        shallowCopy(h.vals[i], h.vals[i-1])
     h.vals[j] = val
   else:
     var newLink: Node[Key, Val] = nil
