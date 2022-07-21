@@ -180,7 +180,7 @@ const
 
 type
   BlockFlag = enum
-    containsUse, containsLeave
+    containsUse, containsLeave, inCondition
 
   BlockInfo = object
     id: BlockLevel
@@ -189,6 +189,7 @@ type
     trace: seq[Instruction]
     entryAt: int
     flags: set[BlockFlag]
+    inCondition: int
     # problem: we merge `if cond: action` into a linear representation
     # But some actions are not always run then! We need an opcode like
     # `Perhaps`!
@@ -218,7 +219,7 @@ proc merge(c: var Context; dest: var BlockInfo; branches: openArray[BlockInfo]) 
   var foundUsage = false
   if containsUse notin dest.flags:
     for i in 0 ..< branches.len:
-      if containsUse in branches[i].flags:
+      if {containsUse, inCondition} * branches[i].flags == {containsUse}:
         selectedBranch = i
         dest.entryAt = dest.trace.len + branches[selectedBranch].entryAt
         foundUsage = true
@@ -259,7 +260,7 @@ proc merge(c: var Context; dest: var BlockInfo; branches: openArray[BlockInfo]) 
 proc traverse(c: var Context; b: var BlockInfo; n: PNode)
 
 template createBlockInfo(): BlockInfo =
-  BlockInfo(id: c.currentBlock, leaves: NoBlock, writesTo: @[], trace: @[], entryAt: 0, flags: b.flags)
+  BlockInfo(id: c.currentBlock, leaves: NoBlock, writesTo: @[], trace: @[], entryAt: 0, flags: b.flags, inCondition: 0)
 
 proc traverseIf(c: var Context; b: var BlockInfo; n: PNode) =
   var branches: seq[BlockInfo] = @[]
@@ -268,7 +269,9 @@ proc traverseIf(c: var Context; b: var BlockInfo; n: PNode) =
     var thisBranch = createBlockInfo()
     case ch.kind
     of nkElifBranch, nkElifExpr:
+      inc thisBranch.inCondition
       traverse c, thisBranch, ch[0]
+      dec thisBranch.inCondition
       thisBranch.trace.add Instruction(opc: Perhaps)
       traverse c, thisBranch, ch[1]
     of nkElse, nkElseExpr:
@@ -302,7 +305,9 @@ proc traverseCase(c: var Context; b: var BlockInfo; n: PNode) =
     of nkOfBranch:
       traverse(c, thisBranch, ch.lastSon)
     of nkElifBranch:
+      inc thisBranch.inCondition
       traverse c, thisBranch, ch[0]
+      dec thisBranch.inCondition
       thisBranch.trace.add Instruction(opc: Perhaps)
       traverse c, thisBranch, ch[1]
     of nkElse:
@@ -410,6 +415,8 @@ proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
       b.trace.add Instruction(opc: Load, mem: n)
     if n == c.x and containsUse notin b.flags:
       b.flags.incl containsUse
+      if b.inCondition > 0:
+        b.flags.incl inCondition
       b.entryAt = b.trace.len
       c.usedInBlock = c.currentBlock
   of PathKinds0, PathKinds1:
@@ -423,6 +430,8 @@ proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
           traverse(c, b, n[i])
       b.trace.add Instruction(opc: Load, mem: n)
       b.flags.incl containsUse
+      if b.inCondition > 0:
+        b.flags.incl inCondition
       b.entryAt = b.trace.len
       c.usedInBlock = c.currentBlock
     elif exprRoot(n, allowCalls=false) == c.root:
@@ -516,7 +525,9 @@ proc isLastRead*(n, x: PNode; otherUsage: var TLineInfo): bool =
                   currentBlock: ReturnBlock, usedInBlock: ReturnBlock, blocks: @[],
                   foundDecl: false,
                   root: root)
-  var b = BlockInfo(id: c.currentBlock, leaves: NoBlock, writesTo: @[], trace: @[], entryAt: 0, flags: {})
+  var b = BlockInfo(id: c.currentBlock, leaves: NoBlock,
+                    writesTo: @[], trace: @[], entryAt: 0,
+                    flags: {}, inCondition: 0)
   if root.kind == skResult:
     c.foundDecl = true
     traverse(c, b, n)
