@@ -39,7 +39,7 @@ proc replaceComment*(conf: ConfigRef; info: TLineInfo) =
 
   var x = line.substr(0, first-1) & "discard " & line.substr(first+1).escape
   when defined(gcArc) or defined(gcOrc):
-    system.shallowCopy(conf.m.fileInfos[info.fileIndex.int32].lines[info.line.int-1], x)
-  else:
     conf.m.fileInfos[info.fileIndex.int32].lines[info.line.int-1] = move x
+  else:
+    system.shallowCopy(conf.m.fileInfos[info.fileIndex.int32].lines[info.line.int-1], x)
   conf.m.fileInfos[info.fileIndex.int32].dirty = true

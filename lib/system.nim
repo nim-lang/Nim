@@ -493,7 +493,10 @@ proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
   discard
 proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
   ## Generic `sink`:idx: implementation that can be overridden.
-  shallowCopy(x, y)
+  when defined(gcArc) and defined(gcOrc):
+    x = move y
+  else:
+    shallowCopy(x, y)
 
 when defined(nimHasTrace):
   proc `=trace`*[T](x: var T; env: pointer) {.inline, magic: "Trace".} =
@@ -2851,7 +2854,10 @@ when hasAlloc or defined(nimscript):
     setLen(x, xl+item.len)
     var j = xl-1
     while j >= i:
-      shallowCopy(x[j+item.len], x[j])
+      when defined(gcArc) or defined(gcOrc):
+        x[j+item.len] = move x[j]
+      else:
+        shallowCopy(x[j+item.len], x[j])
       dec(j)
     j = 0
     while j < item.len:
