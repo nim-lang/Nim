@@ -464,7 +464,7 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ##  var str = "Hello world!"
   ##  low(str) # => 0
 
-when not defined(gcArc) or not defined(gcOrc):
+when not defined(gcArc) and not defined(gcOrc):
   proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
     ## Use this instead of `=` for a `shallow copy`:idx:.
     ##
