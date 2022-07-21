@@ -581,7 +581,7 @@ Code reviews
 
 
 
-.. include:: docstyle.rst
+.. include:: docstyle.md
 
 
 Evolving the stdlib

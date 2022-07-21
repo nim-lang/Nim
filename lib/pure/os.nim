@@ -1741,7 +1741,7 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## by `src`. On most operating systems, will fail if a link already exists.
   ##
   ## .. warning:: Some OS's (such as Microsoft Windows) restrict the creation
-  ##   of symlinks to root users (administrators) or users with developper mode enabled.
+  ##   of symlinks to root users (administrators) or users with developer mode enabled.
   ##
   ## See also:
   ## * `createHardlink proc`_

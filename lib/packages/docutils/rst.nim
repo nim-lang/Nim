@@ -8,20 +8,23 @@
 #
 
 ## ==================================
-##                rst
+##       packages/docutils/rst
 ## ==================================
 ##
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## Nim-flavored reStructuredText and Markdown
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##
-## This module implements a `reStructuredText`:idx: (RST) parser.
+## This module implements a `reStructuredText`:idx: (RST) and
+## `Markdown`:idx: parser.
 ## A large subset is implemented with some limitations_ and
 ## `Nim-specific features`_.
-## A few `extra features`_ of the `Markdown`:idx: syntax are
-## also supported.
+## Both Markdown and RST are mark-up languages whose goal is to
+## typeset texts with complex structure, formatting and references
+## using simple plaintext representation.
 ##
-## Nim can output the result to HTML [#html]_ or Latex [#latex]_.
+## This module is also embedded into Nim compiler; the compiler can output
+## the result to HTML [#html]_ or Latex [#latex]_.
 ##
 ## .. [#html] commands `nim doc`:cmd: for ``*.nim`` files and
 ##    `nim rst2html`:cmd: for ``*.rst`` files
@@ -29,11 +32,13 @@
 ## .. [#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
 ##    `nim rst2tex`:cmd: for ``*.rst``.
 ##
-## If you are new to RST please consider reading the following:
+## If you are new to Markdown/RST please consider reading the following:
 ##
-## 1) a short `quick introduction`_
-## 2) an `RST reference`_: a comprehensive cheatsheet for RST
-## 3) a more formal 50-page `RST specification`_.
+## 1) `Markdown Basic Syntax`_
+## 2) a long specification of Markdown: `CommonMark Spec`_
+## 3) a short `quick introduction`_ to RST
+## 4) an `RST reference`_: a comprehensive cheatsheet for RST
+## 5) a more formal 50-page `RST specification`_.
 ##
 ## Features
 ## --------
@@ -120,7 +125,13 @@
 ##
 ## * emoji / smiley symbols
 ## * Markdown tables
-## * Markdown code blocks
+## * Markdown code blocks. For them the same additional arguments as for RST
+##   code blocks can be provided (e.g. `test` or `number-lines`) but with
+##   a one-line syntax like this::
+##
+##     ```nim test number-lines=10
+##     echo "ok"
+##     ```
 ## * Markdown links
 ## * Markdown headlines
 ## * Markdown block quotes
@@ -211,6 +222,8 @@
 ## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
 ## generate HTML or Latex strings to embed them into your documents.
 ##
+## .. _Markdown Basic Syntax: https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax
+## .. _CommonMark Spec: https://spec.commonmark.org/0.30
 ## .. _quick introduction: https://docutils.sourceforge.io/docs/user/rst/quickstart.html
 ## .. _RST reference: https://docutils.sourceforge.io/docs/user/rst/quickref.html
 ## .. _RST specification: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html
@@ -253,6 +266,7 @@ type
   MsgKind* = enum          ## the possible messages
     meCannotOpenFile = "cannot open '$1'",
     meExpected = "'$1' expected",
+    meMissingClosing = "$1",
     meGridTableNotImplemented = "grid table is not implemented",
     meMarkdownIllformedTable = "illformed delimiter row of a Markdown table",
     meIllformedTable = "Illformed table: $1",
@@ -323,7 +337,10 @@ const
     ":geek:": "icon_e_geek",
     ":ugeek:": "icon_e_ugeek"
   }
-  SandboxDirAllowlist = ["image", "code", "code-block"]
+  SandboxDirAllowlist = [
+    "image", "code", "code-block", "admonition", "attention", "caution",
+    "container", "contents", "danger", "default-role", "error", "figure",
+    "hint", "important", "index", "note", "role", "tip", "title", "warning"]
 
 type
   TokType = enum
@@ -1616,35 +1633,89 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
       inc p.idx
     else: rstMessage(p, meExpected, postfix, line, col)
 
+proc parseMarkdownCodeblockFields(p: var RstParser): PRstNode =
+  ## Parses additional (after language string) code block parameters
+  ## in a format *suggested* in the `CommonMark Spec`_ with handling of `"`.
+  if currentTok(p).kind == tkIndent:
+    result = nil
+  else:
+    result = newRstNode(rnFieldList)
+  while currentTok(p).kind != tkIndent:
+    if currentTok(p).kind == tkWhite:
+      inc p.idx
+    else:
+      let field = newRstNode(rnField)
+      var fieldName = ""
+      while currentTok(p).kind notin {tkWhite, tkIndent, tkEof} and
+            currentTok(p).symbol != "=":
+        fieldName.add currentTok(p).symbol
+        inc p.idx
+      field.add(newRstNode(rnFieldName, @[newLeaf(fieldName)]))
+      if currentTok(p).kind == tkWhite: inc p.idx
+      let fieldBody = newRstNode(rnFieldBody)
+      if currentTok(p).symbol == "=":
+        inc p.idx
+        if currentTok(p).kind == tkWhite: inc p.idx
+        var fieldValue = ""
+        if currentTok(p).symbol == "\"":
+          while true:
+            fieldValue.add currentTok(p).symbol
+            inc p.idx
+            if currentTok(p).kind == tkEof:
+              rstMessage(p, meExpected, "\"")
+            elif currentTok(p).symbol == "\"":
+              fieldValue.add "\""
+              inc p.idx
+              break
+        else:
+          while currentTok(p).kind notin {tkWhite, tkIndent, tkEof}:
+            fieldValue.add currentTok(p).symbol
+            inc p.idx
+        fieldBody.add newLeaf(fieldValue)
+      field.add(fieldBody)
+      result.add(field)
+
 proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
   result = newRstNodeA(p, rnCodeBlock)
+  let line = curLine(p)
+  let baseCol = currentTok(p).col
+  let baseSym = currentTok(p).symbol  # usually just ```
+  inc p.idx
   result.info = lineInfo(p)
   var args = newRstNode(rnDirArg)
+  var fields: PRstNode = nil
   if currentTok(p).kind == tkWord:
     args.add(newLeaf(p))
     inc p.idx
+    fields = parseMarkdownCodeblockFields(p)
   else:
     args = nil
   var n = newLeaf("")
   while true:
-    case currentTok(p).kind
-    of tkEof:
-      rstMessage(p, meExpected, "```")
+    if currentTok(p).kind == tkEof:
+      rstMessage(p, meMissingClosing,
+                 "$1 (started at line $2)" % [baseSym, $line])
       break
-    of tkPunct, tkAdornment:
-      if currentTok(p).symbol == "```":
-        inc p.idx
-        break
-      else:
-        n.text.add(currentTok(p).symbol)
-        inc p.idx
+    elif nextTok(p).kind in {tkPunct, tkAdornment} and
+         nextTok(p).symbol[0] == baseSym[0] and
+         nextTok(p).symbol.len >= baseSym.len:
+      inc p.idx, 2
+      break
+    elif currentTok(p).kind == tkIndent:
+      n.text.add "\n"
+      if currentTok(p).ival > baseCol:
+        n.text.add " ".repeat(currentTok(p).ival - baseCol)
+      elif currentTok(p).ival < baseCol:
+        rstMessage(p, mwRstStyle,
+                   "unexpected de-indentation in Markdown code block")
+      inc p.idx
     else:
       n.text.add(currentTok(p).symbol)
       inc p.idx
   var lb = newRstNode(rnLiteralBlock)
   lb.add(n)
   result.add(args)
-  result.add(PRstNode(nil))
+  result.add(fields)
   result.add(lb)
 
 proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
@@ -1730,6 +1801,12 @@ proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
     inc i
   p.idx = i
 
+proc isMarkdownCodeBlock(p: RstParser): bool =
+  result = (roSupportMarkdown in p.s.options and
+            currentTok(p).kind in {tkPunct, tkAdornment} and
+            currentTok(p).symbol[0] == '`' and  # tilde ~ is not supported
+            currentTok(p).symbol.len >= 3)
+
 proc parseInline(p: var RstParser, father: PRstNode) =
   var n: PRstNode  # to be used in `if` condition
   let saveIdx = p.idx
@@ -1755,8 +1832,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       addAnchorRst(p, name = linkName(n), refn = refn, reset = true,
                    anchorType=manualInlineAnchor)
       father.add(n)
-    elif roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
-      inc p.idx
+    elif isMarkdownCodeBlock(p):
       father.add(parseMarkdownCodeblock(p))
     elif isInlineMarkupStart(p, "``"):
       var n = newRstNode(rnInlineLiteral)
@@ -1816,8 +1892,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
         return
     parseWordOrRef(p, father)
   of tkAdornment, tkOther, tkWhite:
-    if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
-      inc p.idx
+    if isMarkdownCodeBlock(p):
       father.add(parseMarkdownCodeblock(p))
       return
     if roSupportSmilies in p.s.options:
@@ -2194,7 +2269,7 @@ proc findPipe(p: RstParser, start: int): bool =
 proc whichSection(p: RstParser): RstNodeKind =
   if currentTok(p).kind in {tkAdornment, tkPunct}:
     # for punctuation sequences that can be both tkAdornment and tkPunct
-    if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
+    if isMarkdownCodeBlock(p):
       return rnCodeBlock
     elif currentTok(p).symbol == "::":
       return rnLiteralBlock
@@ -2633,7 +2708,9 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
       # fix rnTableDataCell -> rnTableHeaderCell for previous table rows:
       for nRow in 0 ..< result.sons.len:
         for nCell in 0 ..< result.sons[nRow].len:
-          result.sons[nRow].sons[nCell].kind = rnTableHeaderCell
+          template cell: PRstNode = result.sons[nRow].sons[nCell]
+          cell = PRstNode(kind: rnTableHeaderCell, sons: cell.sons,
+                          span: cell.span, anchor: cell.anchor)
     if currentTok(p).kind == tkEof: break
     let tabRow = parseSimpleTableRow(p, cols, colChar)
     result.add tabRow
@@ -2892,11 +2969,19 @@ proc parseSection(p: var RstParser, result: PRstNode) =
       if currInd(p) == currentTok(p).ival:
         inc p.idx
       elif currentTok(p).ival > currInd(p):
-        pushInd(p, currentTok(p).ival)
-        var a = newRstNodeA(p, rnBlockQuote)
-        parseSection(p, a)
-        result.add(a)
-        popInd(p)
+        if roPreferMarkdown in p.s.options:  # Markdown => normal paragraphs
+          if currentTok(p).ival - currInd(p) >= 4:
+            rstMessage(p, mwRstStyle,
+                       "Markdown indented code not implemented")
+          pushInd(p, currentTok(p).ival)
+          parseSection(p, result)
+          popInd(p)
+        else:  # RST mode => block quotes
+          pushInd(p, currentTok(p).ival)
+          var a = newRstNodeA(p, rnBlockQuote)
+          parseSection(p, a)
+          result.add(a)
+          popInd(p)
       else:
         while currentTok(p).kind != tkEof and nextTok(p).kind == tkIndent:
           inc p.idx  # skip blank lines

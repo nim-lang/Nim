@@ -473,6 +473,8 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
   ## Be careful with the changed semantics though!
   ## There is a reason why the default assignment does a deep copy of sequences
   ## and strings.
+  ##
+  ## .. warning:: `shallowCopy` does a deep copy with ARC/ORC.
 
 # :array|openArray|string|seq|cstring|tuple
 proc `[]`*[I: Ordinal;T](a: T; i: I): T {.

@@ -10,7 +10,8 @@
 .. no syntax highlighting here by default:
 
 .. contents::
-  "Heresy grows from idleness." -- Unknown.
+
+> "Heresy grows from idleness." -- Unknown.
 
 
 Introduction
@@ -269,7 +270,8 @@ Create a ``maths.c`` file with the following content:
 
   #include <stdio.h>
 
-  extern int fib(int a);
+  int fib(int a);
+  void NimMain();
 
   int main(void)
   {
@@ -301,7 +303,7 @@ also ask the Nim compiler to generate a statically linked library:
 .. code:: cmd
 
   nim c --app:staticLib --noMain fib.nim
-  gcc -o m -Inimcache -Ipath/to/nim/lib libfib.nim.a maths.c
+  gcc -o m -Inimcache -Ipath/to/nim/lib maths.c libfib.nim.a
 
 The Nim compiler will handle linking the source files generated in the
 ``nimcache`` directory into the ``libfib.nim.a`` static library, which you can
