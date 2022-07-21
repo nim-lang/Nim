@@ -494,7 +494,7 @@ proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
 proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
   ## Generic `sink`:idx: implementation that can be overridden.
   when defined(gcArc) or defined(gcOrc):
-    x = move y
+    discard
   else:
     shallowCopy(x, y)
 
