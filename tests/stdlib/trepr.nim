@@ -5,7 +5,7 @@ discard """
 
 # if excessive, could remove 'cpp' from targets
 
-from strutils import endsWith, contains, strip
+from strutils import startsWith, endsWith, contains, strip
 from std/macros import newLit
 
 macro deb(a): string = newLit a.repr.strip
@@ -269,6 +269,63 @@ func fn1(): int =
 func fn2(): int =
   ## comment
   result = 1"""
+
+  block: # statement list expression
+    let a = deb:
+      (a; b) + (c; d)
+    
+    doAssert a.startsWith("(a; b) +") and a.endsWith("(c; d)")
+
+  block: # other kinds of block calls
+    let a = deb:
+      foo(a, b, (c; d)):
+        e
+        f
+      do: g
+      of h: i
+      elif j: k
+      except m: n
+      do () -> u: v
+      finally: o
+
+      a + b:
+        c
+        d
+      do:
+        e
+        f
+      else: g
+
+      *a: b
+      do: c
+    
+    doAssert a == """foo(a, b, (c; d)):
+  e
+  f
+do:
+  g
+of h:
+  i
+elif j:
+  k
+except m:
+  n
+do -> u:
+  v
+finally:
+  o
+a + b:
+  c
+  d
+do:
+  e
+  f
+else:
+  g
+*a:
+  b
+do:
+  c"""
 
 static: main()
 main()

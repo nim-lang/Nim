@@ -676,14 +676,14 @@ proc longMode(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): bool =
 
 proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
   if n.kind == nkEmpty: return
-  if n.kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+  if n.kind in {nkStmtList, nkStmtListType}:
     if doIndent: indentNL(g)
     for i in 0..<n.len:
       if i > 0:
         optNL(g, n[i-1], n[i])
       else:
         optNL(g)
-      if n[i].kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+      if n[i].kind in {nkStmtList, nkStmtListType}:
         gstmts(g, n[i], c, doIndent=false)
       else:
         gsub(g, n[i], fromStmtList = true)
@@ -931,6 +931,7 @@ proc doParamsAux(g: var TSrcGen, params: PNode) =
     put(g, tkParRi, ")")
 
   if params.len > 0 and params[0].kind != nkEmpty:
+    put(g, tkSpaces, Space)
     putWithSpace(g, tkOpr, "->")
     gsub(g, params[0])
 
@@ -1001,6 +1002,30 @@ proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
   if needsParenthesis:
     put(g, tkParRi, ")")
 
+const postExprBlocks = {nkStmtList,
+  nkOfBranch, nkElifBranch, nkElse,
+  nkExceptBranch, nkFinally, nkDo}
+
+proc postStatements(g: var TSrcGen, n: PNode, i: int, fromStmtList: bool) =
+  var i = i
+  if n[i].kind == nkStmtList:
+    if fromStmtList:
+      put(g, tkColon, ":")
+    else:
+      put(g, tkSpaces, Space)
+      put(g, tkDo, "do")
+      put(g, tkColon, ":")
+  gsub(g, n, i)
+  i.inc
+  for j in i ..< n.len:
+    if n[j].kind == nkDo:
+      optNL(g)
+    elif n[j].kind == nkStmtList:
+      optNL(g)
+      put(g, tkDo, "do")
+      put(g, tkColon, ":")
+    gsub(g, n, j)
+
 proc isCustomLit(n: PNode): bool =
   if n.len == 2 and n[0].kind == nkRStrLit:
     let ident = n[1].getPIdent
@@ -1035,27 +1060,15 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkCharLit: put(g, tkCharLit, atom(g, n))
   of nkNilLit: put(g, tkNil, atom(g, n))    # complex expressions
   of nkCall, nkConv, nkDotCall, nkPattern, nkObjConstr:
-    if n.len > 1 and n.lastSon.kind in {nkStmtList, nkStmtListExpr}:
+    if n.len > 1 and n.lastSon.kind in postExprBlocks:
       accentedName(g, n[0])
       var i = 1
-      while i < n.len and n[i].kind notin {nkStmtList, nkStmtListExpr}: i.inc
+      while i < n.len and n[i].kind notin postExprBlocks: i.inc
       if i > 1:
         put(g, tkParLe, "(")
         gcomma(g, n, 1, i - 1 - n.len)
         put(g, tkParRi, ")")
-      if fromStmtList:
-        put(g, tkColon, ":")
-      else:
-        put(g, tkSpaces, Space)
-        put(g, tkDo, "do")
-        put(g, tkColon, ":")
-      gsub(g, n, i)
-      i.inc
-      for j in i ..< n.len:
-        optNL(g)
-        put(g, tkDo, "do")
-        put(g, tkColon, ":")
-        gsub(g, n, j)
+      postStatements(g, n, i, fromStmtList)
     elif n.len >= 1:
       case bracketKind(g, n[0])
       of bkBracket:
@@ -1155,14 +1168,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkCommand:
     accentedName(g, n[0])
     put(g, tkSpaces, Space)
-    if n[^1].kind == nkStmtList:
-      for i, child in n:
-        if i > 1 and i < n.len - 1:
-          put(g, tkComma, ",")
-        elif i == n.len - 1:
-          put(g, tkColon, ":")
-        if i > 0:
-          gsub(g, child)
+    if n.len > 1 and n.lastSon.kind in postExprBlocks:
+      var i = 1
+      while i < n.len and n[i].kind notin postExprBlocks: i.inc
+      if i > 1:
+        gcomma(g, n, 1, i - 1 - n.len)
+      postStatements(g, n, i, fromStmtList)
     else:
       gcomma(g, n, 1)
   of nkExprEqExpr, nkAsgn, nkFastAsgn:
@@ -1296,6 +1307,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     else:
       put(g, tkSpaces, Space)
     infixArgument(g, n, 2)
+    if n.len > 3 and n.lastSon.kind in postExprBlocks:
+      var i = 3
+      while i < n.len and n[i].kind notin postExprBlocks: i.inc
+      postStatements(g, n, i, fromStmtList)
   of nkPrefix:
     gsub(g, n, 0)
     if n.len > 1:
@@ -1312,6 +1327,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
         put(g, tkParRi, ")")
       else:
         gsub(g, n[1])
+    if n.len > 2 and n.lastSon.kind in postExprBlocks:
+      var i = 2
+      while i < n.len and n[i].kind notin postExprBlocks: i.inc
+      postStatements(g, n, i, fromStmtList)
   of nkPostfix:
     gsub(g, n, 1)
     gsub(g, n, 0)
@@ -1465,13 +1484,17 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     put(g, tkSpaces, Space)
     putWithSpace(g, tkEquals, "=")
     gsub(g, n, 1)
-  of nkStmtList, nkStmtListExpr, nkStmtListType:
+  of nkStmtList, nkStmtListType:
     if n.len == 1 and n[0].kind == nkDiscardStmt:
       put(g, tkParLe, "(")
       gsub(g, n[0])
       put(g, tkParRi, ")")
     else:
       gstmts(g, n, emptyContext)
+  of nkStmtListExpr:
+    put(g, tkParLe, "(")
+    gsemicolon(g, n)
+    put(g, tkParRi, ")")
   of nkIfStmt:
     putWithSpace(g, tkIf, "if")
     gif(g, n)
@@ -1713,7 +1736,7 @@ proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
   # do not indent the initial statement list so that
   # writeFile("file.nim", repr n)
   # produces working Nim code:
-  if n.kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+  if n.kind in {nkStmtList, nkStmtListType}:
     gstmts(g, n, emptyContext, doIndent = false)
   else:
     gsub(g, n)
