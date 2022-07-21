@@ -89,7 +89,7 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
       inc j
     for i in countdown(h.entries, j+1):
       when defined(gcArc) or defined(gcOrc):
-        h.vals[i] = h.vals[i-1]
+        h.vals[i] = move h.vals[i-1]
       else:
         shallowCopy(h.vals[i], h.vals[i-1])
     h.vals[j] = val
