@@ -11,9 +11,7 @@ try:
   if cond:
     x_cursor = ("different", 54) else:
     x_cursor = ("string here", 80)
-  echo [
-    :tmpD = `$$`(x_cursor)
-    :tmpD]
+  echo [(:tmpD = `$$`(x_cursor); :tmpD)]
 finally:
   `=destroy`(:tmpD)
 -- end of expandArc ------------------------

@@ -8,14 +8,12 @@ var
   jt_cursor
 it_cursor = root
 block :tmp:
-  while (
-    not (it_cursor == nil)):
+  while (not (it_cursor == nil)):
     echo [it_cursor.s]
     it_cursor = it_cursor.ri
 jt_cursor = root
 block :tmp_1:
-  while (
-    not (jt_cursor == nil)):
+  while (not (jt_cursor == nil)):
     var ri_1_cursor
     ri_1_cursor = jt_cursor.ri
     echo [jt_cursor.s]

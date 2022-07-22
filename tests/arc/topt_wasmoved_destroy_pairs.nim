@@ -9,13 +9,9 @@ var
   x
 x = f()
 if cond:
-  add(a):
-    let blitTmp = x
-    blitTmp
+  add(a, (let blitTmp = x; blitTmp))
 else:
-  add(b):
-    let blitTmp_1 = x
-    blitTmp_1
+  add(b, (let blitTmp_1 = x; blitTmp_1))
 `=destroy`(b)
 `=destroy`(a)
 -- end of expandArc ------------------------
@@ -36,21 +32,12 @@ try:
         i_cursor = i_1
         if i_cursor == 2:
           return
-        add(a):
-          wasMoved(:tmpD)
-          `=copy`(:tmpD, x)
-          :tmpD
+        add(a, (wasMoved(:tmpD); `=copy`(:tmpD, x); :tmpD))
         inc i_1, 1
   if cond:
-    add(a):
-      let blitTmp = x
-      wasMoved(x)
-      blitTmp
+    add(a, (let blitTmp = x; wasMoved(x); blitTmp))
   else:
-    add(b):
-      let blitTmp_1 = x
-      wasMoved(x)
-      blitTmp_1
+    add(b, (let blitTmp_1 = x; wasMoved(x); blitTmp_1))
 finally:
   `=destroy`(x)
   `=destroy_1`(b)

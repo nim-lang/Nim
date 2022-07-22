@@ -11,18 +11,12 @@ doing shady stuff...
   cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
   nimout: '''--expandArc: newTarget
 
-splat = splitDrive do:
-  let blitTmp = path
-  blitTmp
+splat = splitDrive((let blitTmp = path; blitTmp))
 :tmp = splat.drive
 wasMoved(splat.drive)
 :tmp_1 = splat.path_1
 wasMoved(splat.path_1)
-result = (
-  let blitTmp_1 = :tmp
-  blitTmp_1,
-  let blitTmp_2 = :tmp_1
-  blitTmp_2)
+result = ((let blitTmp_1 = :tmp; blitTmp_1), (let blitTmp_2 = :tmp_1; blitTmp_2))
 `=destroy`(splat)
 -- end of expandArc ------------------------
 --expandArc: delete
@@ -44,9 +38,7 @@ var
   lnext
   _
 lresult = @[123]
-_ = (
-  let blitTmp = lresult
-  blitTmp, ";")
+_ = ((let blitTmp = lresult; blitTmp), ";")
 lvalue = _[0]
 lnext = _[1]
 result.value = move lvalue
@@ -63,16 +55,9 @@ var
   :tmpD_2
 try:
   it_cursor = x
-  a = (
-    wasMoved(:tmpD)
-    `=copy`(:tmpD, it_cursor.key)
-    :tmpD,
-    wasMoved(:tmpD_1)
-    `=copy`(:tmpD_1, it_cursor.val)
-    :tmpD_1)
-  echo [
-    :tmpD_2 = `$$`(a)
-    :tmpD_2]
+  a = ((wasMoved(:tmpD); `=copy`(:tmpD, it_cursor.key); :tmpD), (
+      wasMoved(:tmpD_1); `=copy`(:tmpD_1, it_cursor.val); :tmpD_1))
+  echo [(:tmpD_2 = `$$`(a); :tmpD_2)]
 finally:
   `=destroy`(:tmpD_2)
   `=destroy_1`(a)
@@ -114,10 +99,7 @@ block :tmp:
     while i < L:
       var :tmpD
       sym = shadowScope.symbols[i]
-      addInterfaceDecl(c):
-        wasMoved(:tmpD)
-        `=copy_1`(:tmpD, sym)
-        :tmpD
+      addInterfaceDecl(c, (wasMoved(:tmpD); `=copy_1`(:tmpD, sym); :tmpD))
       inc(i, 1)
 `=destroy`(shadowScope)
 -- end of expandArc ------------------------
@@ -127,23 +109,15 @@ var par
 this.isValid = fileExists(this.value)
 if dirExists(this.value):
   var :tmpD
-  par = (dir:
-    wasMoved(:tmpD)
-    `=copy`(:tmpD, this.value)
-    :tmpD, front: "") else:
+  par = (dir: (wasMoved(:tmpD); `=copy`(:tmpD, this.value); :tmpD), front: "") else:
   var
     :tmpD_1
     :tmpD_2
     :tmpD_3
-  par = (dir_1: parentDir(this.value), front_1:
-    wasMoved(:tmpD_1)
-    `=copy`(:tmpD_1,
-      :tmpD_3 = splitDrive do:
-        wasMoved(:tmpD_2)
-        `=copy`(:tmpD_2, this.value)
-        :tmpD_2
-      :tmpD_3.path)
-    :tmpD_1)
+  par = (dir_1: parentDir(this.value), front_1: (wasMoved(:tmpD_1); `=copy`(
+      :tmpD_1, (:tmpD_3 = splitDrive((wasMoved(:tmpD_2);
+                                     `=copy`(:tmpD_2, this.value); :tmpD_2));
+                :tmpD_3).path); :tmpD_1))
   `=destroy`(:tmpD_3)
 if dirExists(par.dir):
   `=sink`(this.matchDirs, getSubDirs(par.dir, par.front))

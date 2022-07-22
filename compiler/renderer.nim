@@ -698,11 +698,7 @@ proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
 
 
 proc gcond(g: var TSrcGen, n: PNode) =
-  if n.kind == nkStmtListExpr:
-    put(g, tkParLe, "(")
   gsub(g, n)
-  if n.kind == nkStmtListExpr:
-    put(g, tkParRi, ")")
 
 proc gif(g: var TSrcGen, n: PNode) =
   var c: TContext

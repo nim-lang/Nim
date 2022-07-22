@@ -11,14 +11,8 @@ var
   :tmpD
   :tmpD_1
   :tmpD_2
-data =
-  wasMoved(:tmpD)
-  `=copy`(:tmpD, cast[string](
-    :tmpD_2 = encode(cast[seq[byte]](
-      :tmpD_1 = newString(100)
-      :tmpD_1))
-    :tmpD_2))
-  :tmpD
+data = (wasMoved(:tmpD); `=copy`(:tmpD, cast[string]((:tmpD_2 = encode(cast[seq[
+    byte]]((:tmpD_1 = newString(100); :tmpD_1))); :tmpD_2))); :tmpD)
 `=destroy`(:tmpD_2)
 `=destroy_1`(:tmpD_1)
 `=destroy_1`(data)
@@ -31,12 +25,8 @@ var
   :tmpD
   :tmpD_1
 s = newString(100)
-data =
-  wasMoved(:tmpD)
-  `=copy`(:tmpD, cast[string](
-    :tmpD_1 = encode(toOpenArrayByte(s, 0, len(s) - 1))
-    :tmpD_1))
-  :tmpD
+data = (wasMoved(:tmpD); `=copy`(:tmpD, cast[string]((
+    :tmpD_1 = encode(toOpenArrayByte(s, 0, len(s) - 1)); :tmpD_1))); :tmpD)
 `=destroy`(:tmpD_1)
 `=destroy_1`(data)
 `=destroy_1`(s)
@@ -49,12 +39,8 @@ var
   :tmpD
   :tmpD_1
 s = newSeq(100)
-data =
-  wasMoved(:tmpD)
-  `=copy`(:tmpD, cast[string](
-    :tmpD_1 = encode(s)
-    :tmpD_1))
-  :tmpD
+data = (wasMoved(:tmpD); `=copy`(:tmpD, cast[string]((:tmpD_1 = encode(s); :tmpD_1)));
+        :tmpD)
 `=destroy`(:tmpD_1)
 `=destroy_1`(data)
 `=destroy`(s)
@@ -66,14 +52,8 @@ var
   :tmpD
   :tmpD_1
   :tmpD_2
-data =
-  wasMoved(:tmpD)
-  `=copy`(:tmpD, cast[string](
-    :tmpD_2 = encode do:
-      :tmpD_1 = newSeq(100)
-      :tmpD_1
-    :tmpD_2))
-  :tmpD
+data = (wasMoved(:tmpD); `=copy`(:tmpD, cast[string]((:tmpD_2 = encode((
+    :tmpD_1 = newSeq(100); :tmpD_1)); :tmpD_2))); :tmpD)
 `=destroy`(:tmpD_2)
 `=destroy`(:tmpD_1)
 `=destroy_1`(data)
