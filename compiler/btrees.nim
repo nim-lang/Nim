@@ -69,7 +69,7 @@ proc copyHalf[Key, Val](h, result: Node[Key, Val]) =
   else:
     for j in 0..<Mhalf:
       when defined(gcArc) or defined(gcOrc):
-        result.vals[j] = h.vals[Mhalf + j]
+        result.vals[j] = move h.vals[Mhalf + j]
       else:
         shallowCopy(result.vals[j], h.vals[Mhalf + j])
 
