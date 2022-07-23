@@ -170,7 +170,7 @@ proc processRequest(
   server: AsyncHttpServer,
   req: FutureVar[Request],
   client: AsyncSocket,
-  address: string,
+  address: sink string,
   lineFut: FutureVar[string],
   callback: proc (request: Request): Future[void] {.closure, gcsafe.},
 ): Future[bool] {.async.} =
