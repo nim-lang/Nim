@@ -261,7 +261,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
-    if s.kind == skEnumField and overloadableEnums in c.features:
+    if s.kind == skEnumField and (true or overloadableEnums in c.features):
       result = symChoice(c, n, s, scOpen, isField)
     elif isField and sfGenSym in s.flags:
       result = n

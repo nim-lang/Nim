@@ -143,7 +143,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     onDef(e.info, e)
     if sfGenSym notin e.flags:
       if not isPure:
-        if overloadableEnums in c.features:
+        if true or overloadableEnums in c.features:
           addInterfaceOverloadableSymAt(c, c.currentScope, e)
         else:
           addInterfaceDecl(c, e)
