@@ -491,7 +491,7 @@ proc arrPut[I: Ordinal;T,S](a: T; i: I;
 proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
   ## Generic `destructor`:idx: implementation that can be overridden.
   discard
-proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
+proc `=sink`*[T](x: var T; y: T) {.inline, nodestroy, magic: "Asgn".} =
   ## Generic `sink`:idx: implementation that can be overridden.
   when defined(gcArc) or defined(gcOrc):
     x = y
