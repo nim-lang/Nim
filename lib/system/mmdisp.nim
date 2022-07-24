@@ -45,8 +45,12 @@ else:
 
 proc raiseOutOfMem() {.noinline.} =
   if outOfMemHook != nil: outOfMemHook()
-  cstderr.rawWrite("out of memory\n")
-  quit(1)
+  when hostOS == "standalone":
+    panic("out of memory\n")
+  else:
+    when not defined(nimNoLibc):
+      cstderr.rawWrite("out of memory\n")
+    quit(1)
 
 when defined(boehmgc):
   include system / mm / boehm

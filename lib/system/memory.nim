@@ -51,4 +51,33 @@ proc nimCStrLen*(a: cstring): int {.compilerproc, nonReloadable, inline.} =
       a = cast[ptr byte](cast[uint](a) + 1)
       inc result
 
+proc nimMoveMem*(dest, source: pointer, size: Natural) {.nonReloadable, compilerproc, inline.} =
+  when useLibC:
+    c_memmove(dest, source, cast[csize_t](size))
+  else:
+    let destArray = cast[ptr UncheckedArray[byte]](dest)
+    let sourceArray = cast[ptr UncheckedArray[byte]](source)
+
+    let destAddr = cast[ByteAddress](dest)
+    let sourceAddr = cast[ByteAddress](source)
+
+    if destArray == sourceArray or size == 0:
+      return
+
+    if destArray > sourceArray and destAddr-%sourceAddr <% size.ByteAddress:
+      var index = size - 1;
+      while index>=0:
+        destArray[index] = sourceArray[index]
+        dec index
+      return
+
+    if sourceArray > destArray and sourceAddr-%destAddr <% size.ByteAddress:
+      var index = 0
+      while index < size:
+        destArray[index] = sourceArray[index]
+        inc index
+      return
+
+    nimCopyMem(dest, source, size)
+
 {.pop.}
