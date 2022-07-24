@@ -25,27 +25,28 @@ when not defined(windows): discard
 else:
   type wchar_t  {.importc: "wchar_t".} = int16
 
-  proc setEnvironmentVariableA*(lpName, lpValue: cstring): int32 {.
-    stdcall, dynlib: "kernel32", importc: "SetEnvironmentVariableA", sideEffect.}
+  proc setEnvironmentVariableW*(lpName, lpValue: WideCString): int32 {.
+    stdcall, dynlib: "kernel32", importc: "SetEnvironmentVariableW", sideEffect.}
     # same as winlean.setEnvironmentVariableA
 
-  proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
-  proc c_putenv(envstring: cstring): cint {.importc: "_putenv", header: "<stdlib.h>".}
-  proc c_wgetenv(varname: ptr wchar_t): ptr wchar_t {.importc: "_wgetenv", header: "<stdlib.h>".}
+  proc c_getenv(varname: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
+  proc c_wputenv(envstring: WideCString): cint {.importc: "_wputenv", header: "<stdlib.h>".}
+  proc c_wgetenv(varname: WideCString): WideCString {.importc: "_wgetenv", header: "<stdlib.h>".}
 
   var errno {.importc, header: "<errno.h>".}: cint
-  var gWenviron {.importc: "_wenviron".}: ptr ptr wchar_t
+  var genviron {.importc: "_environ".}: ptr ptr char
     # xxx `ptr UncheckedArray[WideCString]` did not work
 
-  proc mbstowcs(wcstr: ptr wchar_t, mbstr: cstring, count: csize_t): csize_t {.importc: "mbstowcs", header: "<stdlib.h>".}
+  proc wcstombs(wcstr: ptr char, mbstr: WideCString, count: csize_t): csize_t {.importc, header: "<stdlib.h>".}
     # xxx cint vs errno_t?
 
   proc setEnvImpl*(name: string, value: string, overwrite: cint): cint =
     const EINVAL = cint(22)
-    if overwrite == 0 and c_getenv(cstring(name)) != nil: return 0
+    let wideName = name.newWideCString
+    if overwrite == 0 and c_wgetenv(wideName) != nil: return 0
     if value != "":
       let envstring = name & "=" & value
-      let e = c_putenv(cstring(envstring))
+      let e = c_wputenv(envstring.newWideCString)
       if e != 0:
         errno = EINVAL
         return -1
@@ -57,40 +58,46 @@ else:
     so we have to do these terrible things.
     ]#
     let envstring = name & "=  "
-    if c_putenv(cstring(envstring)) != 0:
+    if c_wputenv(newWideCString(envstring)) != 0:
       errno = EINVAL
       return -1
     # Here lies the documentation we blatently ignore to make this work.
-    var s = c_getenv(cstring(name))
-    s[0] = '\0'
+    var s = c_wgetenv(wideName)
+    s[0] = '\0'.Utf16Char
     #[
     This would result in a double null termination, which normally signifies the
     end of the environment variable list, so we stick a completely empty
     environment variable into the list instead.
     ]#
-    s = c_getenv(cstring(name))
-    s[1] = '='
+    s = c_wgetenv(wideName)
+    s[1] = '='.Utf16Char
     #[
-    If gWenviron is null, the wide environment has not been initialized
+    If genviron is null, the MBCS environment has not been initialized
     yet, and we don't need to try to update it. We have to do this otherwise
-    we'd be forcing the initialization and maintenance of the wide environment
+    we'd be forcing the initialization and maintenance of the MBCS environment
     even though it's never actually used in most programs.
     ]#
-    if gWenviron != nil:
-      # var buf: array[MAX_ENV + 1, WideCString]
-      let requiredSize = mbstowcs(nil, cstring(name), 0).int
-      var buf = newSeq[Utf16Char](requiredSize + 1)
-      let buf2 = cast[ptr wchar_t](buf[0].addr)
-      if mbstowcs(buf2, cstring(name), csize_t(requiredSize + 1)) == csize_t(high(uint)):
-        errno = EINVAL
-        return -1
-      var ptrToEnv = cast[WideCString](c_wgetenv(buf2))
-      ptrToEnv[0] = '\0'.Utf16Char
-      ptrToEnv = cast[WideCString](c_wgetenv(buf2))
-      ptrToEnv[1] = '='.Utf16Char
+    if genviron != nil:
+
+      # Wrapping in try-except block, because first `wcstombs` fails with a
+      # "RangeDefect" if the current codepage cannot represent a character in
+      # `wideName`. In this case skip updating MBCS environment.
+      try:
+        let requiredSize = wcstombs(nil, wideName, 0).int
+        var buf = newSeq[char](requiredSize + 1)
+        let buf2 = buf[0].addr
+        if wcstombs(buf2, wideName, csize_t(requiredSize + 1)) == csize_t(high(uint)):
+          errno = EINVAL
+          return -1
+        var ptrToEnv = c_getenv(buf2)
+        ptrToEnv[0] = '\0'
+        ptrToEnv = c_getenv(buf2)
+        ptrToEnv[1] = '='
+      except RangeDefect:
+        discard
 
     # And now, we have to update the outer environment to have a proper empty value.
-    if setEnvironmentVariableA(cstring(name), cstring(value)) == 0:
+    if setEnvironmentVariableW(wideName, value.newWideCString) == 0:
       errno = EINVAL
       return -1
     return 0
