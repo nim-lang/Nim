@@ -79,11 +79,11 @@ else:
     ]#
     if genviron != nil:
 
-      # Wrapping in try-except block, because first `wcstombs` fails with a
-      # "RangeDefect" if the current codepage cannot represent a character in
-      # `wideName`. In this case skip updating MBCS environment.
-      try:
-        let requiredSize = wcstombs(nil, wideName, 0).int
+      # wcstombs returns (size_t) (-1) if any characters cannot be represented
+      # in the current codepage. Skip updating MBCS environment in this case.
+      let requiredSizeS = wcstombs(nil, wideName, 0)
+      if requiredSizeS != high(csize_t):
+        let requiredSize = requiredSizeS.int
         var buf = newSeq[char](requiredSize + 1)
         let buf2 = buf[0].addr
         if wcstombs(buf2, wideName, csize_t(requiredSize + 1)) == csize_t(high(uint)):
@@ -93,8 +93,6 @@ else:
         ptrToEnv[0] = '\0'
         ptrToEnv = c_getenv(buf2)
         ptrToEnv[1] = '='
-      except RangeDefect:
-        discard
 
     # And now, we have to update the outer environment to have a proper empty value.
     if setEnvironmentVariableW(wideName, value.newWideCString) == 0:
