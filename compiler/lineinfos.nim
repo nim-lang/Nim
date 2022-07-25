@@ -32,6 +32,7 @@ type
     # non-fatal errors
     errIllFormedAstX, errCannotOpenFile,
     errXExpected,
+    errRstMissingClosing,
     errRstGridTableNotImplemented,
     errRstMarkdownIllformedTable,
     errRstIllformedTable,
@@ -105,6 +106,7 @@ const
     errIllFormedAstX: "illformed AST: $1",
     errCannotOpenFile: "cannot open '$1'",
     errXExpected: "'$1' expected",
+    errRstMissingClosing: "$1",
     errRstGridTableNotImplemented: "grid table is not implemented",
     errRstMarkdownIllformedTable: "illformed delimiter row of a markdown table",
     errRstIllformedTable: "Illformed table: $1",

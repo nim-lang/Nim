@@ -126,7 +126,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
         # `The parameter is incorrect`
       let cmd = cmdPrefix & output.quoteShell & ' ' & conf.arguments
       execExternalProgram(conf, cmd.strip(leading=false,trailing=true))
-    of cmdDocLike, cmdRst2html, cmdRst2tex: # bugfix(cmdRst2tex was missing)
+    of cmdDocLike, cmdRst2html, cmdRst2tex, cmdMd2html, cmdMd2tex: # bugfix(cmdRst2tex was missing)
       if conf.arguments.len > 0:
         # reserved for future use
         rawMessage(conf, errGenerated, "'$1 cannot handle arguments" % [$conf.cmd])

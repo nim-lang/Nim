@@ -10,9 +10,9 @@ Nim Manual
 .. contents::
 
 
-  "Complexity" seems to be a lot like "energy": you can transfer it from the
-  end-user to one/some of the other players, but the total amount seems to remain
-  pretty much constant for a given task. -- Ran
+> "Complexity" seems to be a lot like "energy": you can transfer it from the
+> end-user to one/some of the other players, but the total amount seems to remain
+> pretty much constant for a given task. -- Ran
 
 
 About this document
@@ -4025,7 +4025,7 @@ In the standard library every name of a routine that returns a `var` type
 starts with the prefix `m` per convention.
 
 
-.. include:: manual/var_t_return.rst
+.. include:: manual/var_t_return.md
 
 Future directions
 ~~~~~~~~~~~~~~~~~
@@ -7215,7 +7215,7 @@ The `link` pragma can be used to link an additional file with the project:
   {.link: "myfile.o".}
 
 
-PassC pragma
+passc pragma
 ------------
 The `passc` pragma can be used to pass additional parameters to the C
 compiler like one would using the command-line switch `--passc`:option:\:
@@ -7243,20 +7243,20 @@ the pragma resides in:
   {.localPassC: "-Wall -Werror".} # Passed when compiling A.nim.cpp
 
 
-PassL pragma
+passl pragma
 ------------
-The `passL` pragma can be used to pass additional parameters to the linker
-like one would be using the command-line switch `--passL`:option:\:
+The `passl` pragma can be used to pass additional parameters to the linker
+like one would be using the command-line switch `--passl`:option:\:
 
 .. code-block:: Nim
-  {.passL: "-lSDLmain -lSDL".}
+  {.passl: "-lSDLmain -lSDL".}
 
 Note that one can use `gorge` from the `system module <system.html>`_ to
 embed parameters from an external command that will be executed
 during semantic analysis:
 
 .. code-block:: Nim
-  {.passL: gorge("pkg-config --libs sdl").}
+  {.passl: gorge("pkg-config --libs sdl").}
 
 
 Emit pragma
@@ -7570,7 +7570,7 @@ allows *sloppy* interfacing with libraries written in Objective C:
 .. code-block:: Nim
   # horrible example of how to interface with GNUStep ...
 
-  {.passL: "-lobjc".}
+  {.passl: "-lobjc".}
   {.emit: """
   #include <objc/Object.h>
   @interface Greeter:Object

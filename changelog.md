@@ -22,9 +22,11 @@
 - `addr` is now available for all addressable locations, `unsafeAddr` is deprecated and
 becomes an alias for `addr`.
 
-- io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`.
+- `io` and `assertions` are about to move out of system; use `-d:nimPreviewSlimSystem`, import `std/syncio` and import `std/assertions`.
 
 - The `gc:v2` option is removed.
+
+- The `threads:on` option becomes the default.
 
 ## Standard library additions and changes
 
@@ -37,6 +39,7 @@ becomes an alias for `addr`.
 - `std/smtp` sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
 - Changed mimedb to use an `OrderedTable` instead of `OrderedTableRef`, to use it in a const.
 - `strutils.find` now use and default to `last=-1` for whole string searches, making limiting it to just the first char (`last=0`) valid.
+- `random.rand` now works with `Ordinal`s.
 
 [//]: # "Additions:"
 - Added `IsoWeekRange`, a range type to represent the number of weeks in an ISO week-based year.
@@ -64,6 +67,12 @@ becomes an alias for `addr`.
 
 ## Language changes
 
+- [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
+  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
+- Templates now accept [macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas).
+- Macro pragmas for var/let/const sections have been redesigned in a way that works
+  similarly to routine macro pragmas. The new behavior is documented in the
+  [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#extended-macro-pragmas).
 - Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
   allowing multiple type definitions to be injected in place of the original type definition.
 
@@ -94,16 +103,21 @@ becomes an alias for `addr`.
       x, y, z: int
     Baz = object
   ```
-- [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
-  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
 - Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
   for the right-hand side of type definitions in type sections. Previously
   they would error with "invalid indentation".
+- `defined` now accepts identifiers separated by dots, i.e. `defined(a.b.c)`.
+  In the command line, this is defined as `-d:a.b.c`. Older versions can
+  use accents as in ``defined(`a.b.c`)`` to access such defines.
+
+- Defines the `gcRefc` symbol which allows writing specific code for the refc GC.
 
 ## Compiler changes
 
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
   without requiring `-d:nimVersion140` which is now a noop.
+
+- `--styleCheck` now only applies to the current package.
 
 
 ## Tool changes
