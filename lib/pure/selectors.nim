@@ -333,8 +333,6 @@ else:
         16_700_000
       elif defined(zephyr) or defined(freertos):
         FD_MAX
-      elif defined(emscripten):
-        1024
       else:
         var fdLim: RLimit
         var res = int(getrlimit(RLIMIT_NOFILE, fdLim))
