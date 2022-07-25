@@ -47,9 +47,9 @@ template main =
 
 main()
 
+when defined(windows):
+  proc c_wgetenv(env: WideCString): WideCString {.importc: "_wgetenv", header: "<stdlib.h>".}
 proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
-proc c_wgetenv(env: WideCString): WideCString {.importc: "_wgetenv", header: "<stdlib.h>".}
-proc c_wputenv(env: WideCString): int32 {.importc: "_wputenv", header: "<stdlib.h>".}
 
 when not defined(js) and not defined(nimscript):
   block: # bug #18533
@@ -60,7 +60,10 @@ when not defined(js) and not defined(nimscript):
     doAssert getEnv("foo") == "fooVal1"
     createThread(thr, threadFunc)
     joinThreads(thr)
-    doAssert getEnv("foo") == $c_wgetenv("foo".newWideCString)
+    when defined(windows):
+      doAssert getEnv("foo") == $c_wgetenv("foo".newWideCString)
+    else:
+      doAssert getEnv("foo") == $c_getenv("foo".cstring)
 
     doAssertRaises(OSError): delEnv("foo=bar")
 
@@ -69,12 +72,13 @@ when defined(windows):
     LC_ALL = 0
     unicodeAnsi = "\xc6" # `unicodeUtf8` in `windows-1252` encoding
 
+  proc c_wputenv(env: WideCString): int32 {.importc: "_wputenv", header: "<stdlib.h>".}
   proc setlocale(category: cint, locale: cstring): cstring {.importc, header: "<locale.h>".}
 
   # Set locale required to represent `unicodeAnsi`
   discard setlocale(LC_ALL, cstring"English_United States.1252")
 
-  block: # Feature #xxx
+  block: # Bug #20083
     # These test that `getEnv`, `putEnv` and `existsEnv` handle Unicode
     # characters correctly. This means that module X in the process calling the
     # CRT environment variable API will get the correct string. Raw CRT API
