@@ -28,6 +28,9 @@ becomes an alias for `addr`.
 
 - The `threads:on` option becomes the default.
 
+- `shallowCopy` is removed for ARC/ORC. Use `move` when possible or combine assignment and
+`sink` for optimization purposes.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
