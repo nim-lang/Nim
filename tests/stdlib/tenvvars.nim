@@ -68,15 +68,10 @@ when not defined(js) and not defined(nimscript):
     doAssertRaises(OSError): delEnv("foo=bar")
 
 when defined(windows):
-  const
-    LC_ALL = 0
-    unicodeAnsi = "\xc6" # `unicodeUtf8` in `windows-1252` encoding
+  import std/encodings
 
+  proc c_putenv(env: cstring): int32 {.importc: "putenv", header: "<stdlib.h>".}
   proc c_wputenv(env: WideCString): int32 {.importc: "_wputenv", header: "<stdlib.h>".}
-  proc setlocale(category: cint, locale: cstring): cstring {.importc, header: "<locale.h>".}
-
-  # Set locale required to represent `unicodeAnsi`
-  discard setlocale(LC_ALL, cstring"English_United States.1252")
 
   block: # Bug #20083
     # These test that `getEnv`, `putEnv` and `existsEnv` handle Unicode
@@ -98,7 +93,6 @@ when defined(windows):
       const envName = "twin_envvars2"
       putEnv(envName, unicodeUtf8)
       doAssert $c_wgetenv(envName.newWideCString) == unicodeUtf8
-      doAssert $c_getenv(envName) == unicodeAnsi
 
     # Env. name containing Unicode characters is retrieved correctly
     block:
@@ -109,37 +103,54 @@ when defined(windows):
 
     # Env. name containing Unicode characters is set correctly
     block:
-      const
-        envName = unicodeUtf8 & "2"
-        envNameAnsi = unicodeAnsi & "2"
+      const envName = unicodeUtf8 & "2"
       putEnv(envName, unicodeUtf8)
       doAssert existsEnv(envName)
       doAssert $c_wgetenv(envName.newWideCString) == unicodeUtf8
-      doAssert $c_getenv(envNameAnsi.cstring) == unicodeAnsi
 
     # Env. name containing Unicode characters and empty value is set correctly
     block:
-      const
-        envName = unicodeUtf8 & "3"
-        envNameAnsi = unicodeAnsi & "3"
+      const envName = unicodeUtf8 & "3"
       putEnv(envName, "")
       doAssert existsEnv(envName)
       doAssert $c_wgetenv(envName.newWideCString) == ""
-      doAssert $c_getenv(envNameAnsi.cstring) == ""
 
-    # Env. name containing Unicode characters and empty value is set correctly;
-    # and, if env. name. characters cannot be represented in codepage, don't
-    # raise an error.
-    #
-    # `win_setenv.nim` converts UTF-16 to ANSI when setting empty env. var. The
-    # Polish_Poland.1250 locale has no representation of `unicodeUtf8`, so the
-    # conversion will fail, but this must not be fatal. It is expected that the
-    # routine ignores updating MBCS environment (`environ` global) and carries
-    # on.
-    block:
-      const envName = unicodeUtf8 & "4"
-      discard setlocale(LC_ALL, cstring"Polish_Poland.1250")
-      putEnv(envName, "")
-      doAssert existsEnv(envName)
-      doAssert $c_wgetenv(envName.newWideCString) == ""
-      doAssert getEnv(envName) == ""
+    # It's hard to test on Windows code pages, because there is no "change
+    # a process' locale" API.
+    if getCurrentEncoding(true) == "windows-1252":
+      const
+        unicodeAnsi = "\xc6" # `unicodeUtf8` in `windows-1252` encoding
+
+      # Test that env. var. ANSI API has correct encoding
+      block:
+        const
+          envName = unicodeUtf8 & "4"
+          envNameAnsi = unicodeAnsi & "4"
+        putEnv(envName, unicodeUtf8)
+        doAssert $c_getenv(envNameAnsi.cstring) == unicodeAnsi
+
+      block:
+        const
+          envName = unicodeUtf8 & "5"
+          envNameAnsi = unicodeAnsi & "5"
+        doAssert c_putenv((envNameAnsi & "=" & unicodeAnsi).cstring) == 0
+        doAssert getEnv(envName) == unicodeUtf8
+
+      # Env. name containing Unicode characters and empty value is set correctly;
+      # and, if env. name. characters cannot be represented in codepage, don't
+      # raise an error.
+      #
+      # `win_setenv.nim` converts UTF-16 to ANSI when setting empty env. var. The
+      # windows-1250 locale has no representation of `abreveUtf8` below, so the
+      # conversion will fail, but this must not be fatal. It is expected that the
+      # routine ignores updating MBCS environment (`environ` global) and carries
+      # on.
+      block:
+        const
+          # "LATIN SMALL LETTER A WITH BREVE" in UTF-8
+          abreveUtf8 = "\xc4\x83"
+          envName = abreveUtf8 & "6"
+        putEnv(envName, "")
+        doAssert existsEnv(envName)
+        doAssert $c_wgetenv(envName.newWideCString) == ""
+        doAssert getEnv(envName) == ""
