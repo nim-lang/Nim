@@ -2764,7 +2764,7 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
   var i = 0
   var a = initOverloadIter(o, c, n)
   while a != nil:
-    if a.kind in OverloadableSyms-{skModule}:
+    if a.kind == skEnumField: #in OverloadableSyms-{skModule}:
       inc(i)
       if i > 1: break
     a = nextOverloadIter(o, c, n)
