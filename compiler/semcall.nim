@@ -155,7 +155,7 @@ proc effectProblem(f, a: PType; result: var string; c: PContext) =
       of efEffectsDelayed:
         result.add "\n  The `.effectsOf` annotations differ."
       of efTagsIllegal:
-        result.add "\n  The `.forbids` requirements catched an illegal tag."
+        result.add "\n  The `.forbids` requirements caught an illegal tag."
       when defined(drnim):
         if not c.graph.compatibleProps(c.graph, f, a):
           result.add "\n  The `.requires` or `.ensures` properties are incompatible."
