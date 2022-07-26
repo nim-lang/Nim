@@ -288,7 +288,7 @@ proc load*[T](s: Stream, data: var T) =
   var tab = initTable[BiggestInt, pointer]()
   loadAny(s, toAny(data), tab)
 
-proc store*[T](s: Stream, data: T) =
+proc store*[T](s: Stream, data: sink T) =
   ## Stores `data` into the stream `s`. Raises `IOError` in case of an error.
   runnableExamples:
     import std/streams
@@ -301,13 +301,16 @@ proc store*[T](s: Stream, data: T) =
 
   var stored = initIntSet()
   var d: T
-  shallowCopy(d, data)
+  when defined(gcArc) or defined(gcOrc):
+    d = data
+  else:
+    shallowCopy(d, data)
   storeAny(s, toAny(d), stored)
 
 proc loadVM[T](typ: typedesc[T], x: T): string =
   discard "the implementation is in the compiler/vmops"
 
-proc `$$`*[T](x: T): string =
+proc `$$`*[T](x: sink T): string =
   ## Returns a string representation of `x` (serialization, marshalling).
   ##
   ## **Note:** to serialize `x` to JSON use `%x` from the `json` module
@@ -327,7 +330,10 @@ proc `$$`*[T](x: T): string =
   else:
     var stored = initIntSet()
     var d: T
-    shallowCopy(d, x)
+    when defined(gcArc) or defined(gcOrc):
+      d = x
+    else:
+      shallowCopy(d, x)
     var s = newStringStream()
     storeAny(s, toAny(d), stored)
     result = s.data

@@ -25,6 +25,9 @@
   or define your own `Math.trunc` polyfill using the [`emit` pragma](https://nim-lang.org/docs/manual.html#implementation-specific-pragmas-emit-pragma). Nim uses
   `Math.trunc` for the division and modulo operators for integers.
 
+- `shallowCopy` is removed for ARC/ORC. Use `move` when possible or combine assignment and
+`sink` for optimization purposes.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
