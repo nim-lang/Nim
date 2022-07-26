@@ -32,7 +32,7 @@ const
     wCompilerProc, wNonReloadable, wCore, wProcVar, wVarargs, wCompileTime, wMerge,
     wBorrow, wImportCompilerProc, wThread,
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
-    wGensym, wInject, wRaises, wEffectsOf, wTags, wLocks, wDelegator, wGcSafe,
+    wGensym, wInject, wRaises, wEffectsOf, wTags, wForbids, wLocks, wDelegator, wGcSafe,
     wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
     wRequires, wEnsures, wEnforceNoRaises}
   converterPragmas* = procPragmas
@@ -45,7 +45,7 @@ const
   iteratorPragmas* = declPragmas + {FirstCallConv..LastCallConv, wNoSideEffect, wSideEffect,
     wMagic, wBorrow,
     wDiscardable, wGensym, wInject, wRaises, wEffectsOf,
-    wTags, wLocks, wGcSafe, wRequires, wEnsures}
+    wTags, wForbids, wLocks, wGcSafe, wRequires, wEnsures}
   exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe, wNoSideEffect}
   stmtPragmas* = {
     wHint, wWarning, wError,
@@ -65,7 +65,7 @@ const
   lambdaPragmas* = {FirstCallConv..LastCallConv,
     wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
-    wRaises, wLocks, wTags, wRequires, wEnsures, wEffectsOf,
+    wRaises, wLocks, wTags, wForbids, wRequires, wEnsures, wEffectsOf,
     wGcSafe, wCodegenDecl, wNoInit, wCompileTime}
   typePragmas* = declPragmas + {wMagic, wAcyclic,
     wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
@@ -85,7 +85,7 @@ const
   paramPragmas* = {wNoalias, wInject, wGensym}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
-                      wThread, wRaises, wEffectsOf, wLocks, wTags, wGcSafe,
+                      wThread, wRaises, wEffectsOf, wLocks, wTags, wForbids, wGcSafe,
                       wRequires, wEnsures}
   forVarPragmas* = {wInject, wGensym}
   allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
@@ -820,7 +820,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     elif not isStatement:
       localError(c.config, n.info, "'cast' pragma only allowed in a statement context")
     case whichPragma(key[1])
-    of wRaises, wTags: pragmaRaisesOrTags(c, key[1])
+    of wRaises, wTags, wForbids: pragmaRaisesOrTags(c, key[1])
     else: discard
     return
   elif key.kind notin nkIdentKinds:
@@ -1184,7 +1184,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if sym == nil: invalidPragma(c, it)
       of wLine: pragmaLine(c, it)
-      of wRaises, wTags: pragmaRaisesOrTags(c, it)
+      of wRaises, wTags, wForbids: pragmaRaisesOrTags(c, it)
       of wLocks:
         if sym == nil: pragmaLockStmt(c, it)
         elif sym.typ == nil: invalidPragma(c, it)

@@ -324,6 +324,8 @@ proc registerAdditionalOps*(c: PCtx) =
     getEffectList(c, a, exceptionEffects)
   registerCallback c, "stdlib.effecttraits.getTagsListImpl", proc (a: VmArgs) =
     getEffectList(c, a, tagEffects)
+  registerCallback c, "stdlib.effecttraits.getForbidsListImpl", proc (a: VmArgs) =
+    getEffectList(c, a, forbiddenEffects)
 
   registerCallback c, "stdlib.effecttraits.isGcSafeImpl", proc (a: VmArgs) =
     let fn = getNode(a, 0)

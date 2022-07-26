@@ -5069,7 +5069,7 @@ means to *tag* a routine and to perform checks against this tag:
   type IO = object ## input/output effect
   proc readLine(): string {.tags: [IO].} = discard
 
-  proc no_IO_please() {.tags: [].} =
+  proc no_effects_please() {.tags: [].} =
     # the compiler prevents this:
     let x = readLine()
   ```
@@ -5079,6 +5079,51 @@ also be attached to a proc type. This affects type compatibility.
 
 The inference for tag tracking is analogous to the inference for
 exception tracking.
+
+There is also a way which can be used to forbid certain effects:
+
+.. code-block:: nim
+    :test: "nim c --warningAsError:Effect:on $1"
+    :status: 1
+
+  type IO = object ## input/output effect
+  proc readLine(): string {.tags: [IO].} = discard
+  proc echoLine(): void = discard
+
+  proc no_IO_please() {.forbids: [IO].} =
+    # this is OK because it didn't define any tag:
+    echoLine()
+    # the compiler prevents this:
+    let y = readLine()
+
+The `forbids` pragma defines a list of illegal effects - if any statement
+invokes any of those effects, the compilation will fail.
+Procedure types with any disallowed effect are the subtypes of equal
+procedure types without such lists:
+
+.. code-block:: nim
+  type MyEffect = object
+  type ProcType1 = proc (i: int): void {.forbids: [MyEffect].}
+  type ProcType2 = proc (i: int): void
+
+  proc caller1(p: ProcType1): void = p(1)
+  proc caller2(p: ProcType2): void = p(1)
+
+  proc effectful(i: int): void {.tags: [MyEffect].} = echo $i
+  proc effectless(i: int): void {.forbids: [MyEffect].} = echo $i
+
+  proc toBeCalled1(i: int): void = effectful(i)
+  proc toBeCalled2(i: int): void = effectless(i)
+
+  ## this will fail because toBeCalled1 uses MyEffect which was forbidden by ProcType1:
+  caller1(toBeCalled1)
+  ## this is OK because both toBeCalled1 and ProcType1 have the same requirements:
+  caller1(toBeCalled2)
+  ## these are OK because ProcType2 doesn't have any effect requirement:
+  caller2(toBeCalled1)
+  caller2(toBeCalled2)
+
+`ProcType2` is a subtype of `ProcType1`. Unlike with tags, the parent context - the function which calls other functions with forbidden effects - doesn't inherit the forbidden list of effects.
 
 
 Side effects
