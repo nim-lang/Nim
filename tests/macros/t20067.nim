@@ -1,7 +1,7 @@
 discard """
   output: '''
 b.defaultVal = foo
-$$c.defaultVal = bar
+$c.defaultVal = bar
 '''
 """
 

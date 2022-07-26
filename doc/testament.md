@@ -234,8 +234,7 @@ for multiple 'Error' messages.
 Output message variable interpolation
 -------------------------------------
 
-`errormsg`, `output`, `nimout`, `outputsub` and inline messages are subject
-to these variable interpolations:
+`errormsg`, `nimout`, and inline messages are subject to these variable interpolations:
 
 * `${/}` - platform's directory separator
 * `$file` - the filename (without directory) of the test

@@ -519,7 +519,6 @@ proc parseSpec*(filename: string): TSpec =
         msg
     else:
       msg
-  result.output = result.output.varSub
   result.nimout = result.nimout.varSub
   result.msg = result.msg.varSub
   for inlineError in result.inlineErrors.mitems:
