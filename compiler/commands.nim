@@ -1022,6 +1022,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "gchooks")
       defineSymbol(conf.symbols, "nimSeqsV2")
       defineSymbol(conf.symbols, "nimOwnedEnabled")
+      conf.exc = excSetjmp # fixed to excSetJmp since ORC defaults to excGoto and
+                           # newruntime is dead
   of "seqsv2":
     processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
     if pass in {passCmd2, passPP}:
