@@ -65,9 +65,9 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
                renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
 
-proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
+proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType = nil): PNode =
   rejectEmptyNode(n)
-  result = semExpr(c, n, flags+{efWantValue})
+  result = semExpr(c, n, flags+{efWantValue}, expectedType)
 
   let
     isEmpty = result.kind == nkEmpty
@@ -82,8 +82,8 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # do not produce another redundant error message:
     result = errorNode(c, n)
 
-proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  result = semExprCheck(c, n, flags)
+proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
+  result = semExprCheck(c, n, flags, expectedType)
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
   elif result.typ == nil or result.typ == c.enforceVoidContext:
@@ -1801,7 +1801,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
                renderTree(a, {renderNoComments}))
   else:
     let lhs = n[0]
-    let rhs = semExprWithType(c, n[1], {})
+    let rhs = semExprWithType(c, n[1], {}, le)
     if lhs.kind == nkSym and lhs.sym.kind == skResult:
       n.typ = c.enforceVoidContext
       if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
@@ -2457,20 +2457,29 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
     result = newNodeI(nkEmpty, n.info)
   if whenNimvm: result.typ = typ
 
-proc semSetConstr(c: PContext, n: PNode): PNode =
+proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
   result = newNodeI(nkCurly, n.info)
   result.typ = newTypeS(tySet, c)
   result.typ.flags.incl tfIsConstructor
+  var expectedElementType: PType = nil
+  if expectedType != nil:
+    let rawExpectedType = expectedType.skipTypes({tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
+    if rawExpectedType.kind == tySet:
+      expectedElementType = rawExpectedType[0]
   if n.len == 0:
-    rawAddSon(result.typ, newTypeS(tyEmpty, c))
+    rawAddSon(result.typ,
+      if expectedElementType != nil: # and expectedElementType is concrete?
+        expectedElementType
+      else:
+        newTypeS(tyEmpty, c))
   else:
     # only semantic checking for all elements, later type checking:
     var typ: PType = nil
     for i in 0..<n.len:
       if isRange(n[i]):
         checkSonsLen(n[i], 3, c.config)
-        n[i][1] = semExprWithType(c, n[i][1])
-        n[i][2] = semExprWithType(c, n[i][2])
+        n[i][1] = semExprWithType(c, n[i][1], {}, expectedElementType)
+        n[i][2] = semExprWithType(c, n[i][2], {}, expectedElementType)
         if typ == nil:
           typ = skipTypes(n[i][1].typ,
                           {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
@@ -2481,7 +2490,7 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
           typ = skipTypes(n[i][0].typ,
                           {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
       else:
-        n[i] = semExprWithType(c, n[i])
+        n[i] = semExprWithType(c, n[i], {}, expectedElementType)
         if typ == nil:
           typ = skipTypes(n[i].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
     if not isOrdinalType(typ, allowEnumWithHoles=true):
@@ -2795,7 +2804,7 @@ proc semPragmaStmt(c: PContext; n: PNode) =
   else:
     pragma(c, c.p.owner, n, stmtPragmas, true)
 
-proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
   when false: # see `tdebugutils`
@@ -2991,7 +3000,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     of paTuplePositions: result = semTupleConstr(c, n, flags)
     of paTupleFields: result = semTupleFieldsConstr(c, n, flags)
     of paSingle: result = semExpr(c, n[0], flags)
-  of nkCurly: result = semSetConstr(c, n)
+  of nkCurly: result = semSetConstr(c, n, expectedType)
   of nkBracket: result = semArrayConstr(c, n, flags)
   of nkObjConstr: result = semObjConstr(c, n, flags)
   of nkLambdaKinds: result = semProcAux(c, n, skProc, lambdaPragmas, flags)
@@ -3027,7 +3036,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkStaticExpr: result = semStaticExpr(c, n[0])
   of nkAsgn: result = semAsgn(c, n)
   of nkBlockStmt, nkBlockExpr: result = semBlock(c, n, flags)
-  of nkStmtList, nkStmtListExpr: result = semStmtList(c, n, flags)
+  of nkStmtList, nkStmtListExpr: result = semStmtList(c, n, flags, expectedType)
   of nkRaiseStmt: result = semRaise(c, n)
   of nkVarSection: result = semVarOrLet(c, n, skVar)
   of nkLetSection: result = semVarOrLet(c, n, skLet)
