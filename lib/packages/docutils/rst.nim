@@ -11,9 +11,9 @@
 ##       packages/docutils/rst
 ## ==================================
 ##
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## ------------------------------------------
 ## Nim-flavored reStructuredText and Markdown
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## ------------------------------------------
 ##
 ## This module implements a `reStructuredText`:idx: (RST) and
 ## `Markdown`:idx: parser.
@@ -290,7 +290,7 @@ type
 
 proc rstnodeToRefname*(n: PRstNode): string
 proc addNodes*(n: PRstNode): string
-proc getFieldValue*(n: PRstNode, fieldname: string): string
+proc getFieldValue*(n: PRstNode, fieldname: string): string {.gcsafe.}
 proc getArgument*(n: PRstNode): string
 
 # ----------------------------- scanner part --------------------------------
@@ -1675,19 +1675,33 @@ proc parseMarkdownCodeblockFields(p: var RstParser): PRstNode =
       field.add(fieldBody)
       result.add(field)
 
+proc mayLoadFile(p: RstParser, result: var PRstNode) =
+  var filename = strip(getFieldValue(result, "file"),
+                       chars = Whitespace + {'"'})
+  if filename != "":
+    if roSandboxDisabled notin p.s.options:
+      let tok = p.tok[p.idx-2]
+      rstMessage(p, meSandboxedDirective, "file", tok.line, tok.col)
+    var path = p.findRelativeFile(filename)
+    if path == "": rstMessage(p, meCannotOpenFile, filename)
+    var n = newRstNode(rnLiteralBlock)
+    n.add newLeaf(readFile(path))
+    result.sons[2] = n
+
 proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
   result = newRstNodeA(p, rnCodeBlock)
+  result.sons.setLen(3)
   let line = curLine(p)
   let baseCol = currentTok(p).col
   let baseSym = currentTok(p).symbol  # usually just ```
   inc p.idx
   result.info = lineInfo(p)
   var args = newRstNode(rnDirArg)
-  var fields: PRstNode = nil
   if currentTok(p).kind == tkWord:
     args.add(newLeaf(p))
     inc p.idx
-    fields = parseMarkdownCodeblockFields(p)
+    result.sons[1] = parseMarkdownCodeblockFields(p)
+    mayLoadFile(p, result)
   else:
     args = nil
   var n = newLeaf("")
@@ -1712,11 +1726,11 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
     else:
       n.text.add(currentTok(p).symbol)
       inc p.idx
-  var lb = newRstNode(rnLiteralBlock)
-  lb.add(n)
-  result.add(args)
-  result.add(fields)
-  result.add(lb)
+  result.sons[0] = args
+  if result.sons[2] == nil:
+    var lb = newRstNode(rnLiteralBlock)
+    lb.add(n)
+    result.sons[2] = lb
 
 proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
   var desc, link = ""
@@ -1802,9 +1816,12 @@ proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
   p.idx = i
 
 proc isMarkdownCodeBlock(p: RstParser): bool =
+  template allowedSymbol: bool =
+    (currentTok(p).symbol[0] == '`' or
+      roPreferMarkdown in p.s.options and currentTok(p).symbol[0] == '~')
   result = (roSupportMarkdown in p.s.options and
             currentTok(p).kind in {tkPunct, tkAdornment} and
-            currentTok(p).symbol[0] == '`' and  # tilde ~ is not supported
+            allowedSymbol and
             currentTok(p).symbol.len >= 3)
 
 proc parseInline(p: var RstParser, father: PRstNode) =
@@ -2580,9 +2597,7 @@ proc getColumns(p: RstParser, cols: var RstCols, startIdx: int): int =
   if p.tok[result].kind == tkIndent: inc result
 
 proc checkColumns(p: RstParser, cols: RstCols) =
-  var
-    i = p.idx
-    col = 0
+  var i = p.idx
   if p.tok[i].symbol[0] != '=':
     rstMessage(p, mwRstStyle,
                "only tables with `=` columns specification are allowed")
@@ -3208,16 +3223,7 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
   ## file. This behaviour is disabled in sandboxed mode and can be re-enabled
   ## with the `roSandboxDisabled` flag.
   result = parseDirective(p, rnCodeBlock, {hasArg, hasOptions}, parseLiteralBlock)
-  var filename = strip(getFieldValue(result, "file"))
-  if filename != "":
-    if roSandboxDisabled notin p.s.options:
-      let tok = p.tok[p.idx-2]
-      rstMessage(p, meSandboxedDirective, "file", tok.line, tok.col)
-    var path = p.findRelativeFile(filename)
-    if path == "": rstMessage(p, meCannotOpenFile, filename)
-    var n = newRstNode(rnLiteralBlock)
-    n.add newLeaf(readFile(path))
-    result.sons[2] = n
+  mayLoadFile(p, result)
 
   # Extend the field block if we are using our custom Nim extension.
   if nimExtension:

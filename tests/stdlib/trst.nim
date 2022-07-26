@@ -471,21 +471,34 @@ suite "RST parsing":
                   rnLeaf  '.'
           """)
 
+  let expectCodeBlock = dedent"""
+      rnCodeBlock
+        [nil]
+        [nil]
+        rnLiteralBlock
+          rnLeaf  '
+      let a = 1
+      ```'
+      """
+
   test "Markdown code blocks with more > 3 backticks":
     check(dedent"""
         ````
         let a = 1
         ```
-        ````""".toAst ==
-      dedent"""
-        rnCodeBlock
-          [nil]
-          [nil]
-          rnLiteralBlock
-            rnLeaf  '
+        ````""".toAst == expectCodeBlock)
+
+  test "Markdown code blocks with ~~~":
+    check(dedent"""
+        ~~~
         let a = 1
-        ```'
-      """)
+        ```
+        ~~~""".toAst == expectCodeBlock)
+    check(dedent"""
+        ~~~~~
+        let a = 1
+        ```
+        ~~~~~""".toAst == expectCodeBlock)
 
   test "Markdown code blocks with Nim-specific arguments":
     check(dedent"""

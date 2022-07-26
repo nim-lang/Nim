@@ -1463,8 +1463,7 @@ The operators `*`,  `**`, `|`, `~` have a special meaning in patterns
 if they are written in infix notation.
 
 
-The `|` operator
-~~~~~~~~~~~~~~~~~~
+### The `|` operator
 
 The `|` operator if used as infix operator creates an ordered choice:
 
@@ -1490,8 +1489,7 @@ semantics anyway. In fact, they can be deactivated with the `--patterns:off`:opt
 command line option or temporarily with the `patterns` pragma.
 
 
-The `{}` operator
-~~~~~~~~~~~~~~~~~~~
+### The `{}` operator
 
 A pattern expression can be bound to a pattern parameter via the `expr{param}`
 notation:
@@ -1504,8 +1502,7 @@ notation:
   echo a
 
 
-The `~` operator
-~~~~~~~~~~~~~~~~~~
+### The `~` operator
 
 The `~` operator is the 'not' operator in patterns:
 
@@ -1523,8 +1520,7 @@ The `~` operator is the 'not' operator in patterns:
   echo a
 
 
-The `*` operator
-~~~~~~~~~~~~~~~~~~
+### The `*` operator
 
 The `*` operator can *flatten* a nested binary expression like `a & b & c`
 to `&(a, b, c)`:
@@ -1559,8 +1555,7 @@ produces:
    `&&`("my", space & "awe", "some ", "concat")
 
 
-The `**` operator
-~~~~~~~~~~~~~~~~~~~
+### The `**` operator
 
 The `**` is much like the `*` operator, except that it gathers not only
 all the arguments, but also the matched operators in reverse polish notation:
