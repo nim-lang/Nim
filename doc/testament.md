@@ -201,8 +201,11 @@ be written inline like so:
   {.warning: "warning!!"} #[tt.Warning
            ^ warning!! [User] ]#
 
-This can be combined with `nimout` when `nimoutFull` is true (default). This
-allows testing for intended messages from other modules as well:
+The opening `#[tt.` marks the message line.
+The `^` marks the message column.
+
+Inline messages can be combined with `nimout` when `nimoutFull` is false (default).
+This allows testing for expected messages from other modules:
 
 .. code-block:: nim
 
@@ -211,6 +214,22 @@ allows testing for intended messages from other modules as well:
   """
   {.warning: "warning!!"} #[tt.Warning
            ^ warning!! [User] ]#
+
+Multiple messages for a line can be checked by delimiting messages with ';':
+
+.. code-block:: nim
+
+  discard """
+    matrix: "--errorMax:0 --styleCheck:error"
+  """
+
+  proc generic_proc*[T](a_a: int) = #[tt.Error
+       ^ 'generic_proc' should be: 'genericProc'; tt.Error
+                        ^ 'a_a' should be: 'aA' ]#
+    discard
+
+Use `--errorMax:0` in `matrix`, or `cmd: "nim check $file"` when testing
+for multiple 'Error' messages.
 
 Output message variable interpolation
 -------------------------------------

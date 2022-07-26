@@ -128,19 +128,59 @@ when not declared(parseCfgBool):
     of "n", "no", "false", "0", "off": result = false
     else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
+proc addLine*(self: var string; a: string) =
+  self.add a
+  self.add "\n"
+
+proc addLine*(self: var string; a, b: string) =
+  self.add a
+  self.add b
+  self.add "\n"
+
 const
-  inlineErrorMarker = "#[tt."
+  inlineErrorKindMarker = "tt."
+  inlineErrorMarker = "#[" & inlineErrorKindMarker
 
 proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var TSpec): int =
+  ## Extract inline error messages.
+  ##
+  ## Can parse a single message for a line:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   proc generic_proc*[T] {.no_destroy, userPragma.} = #[tt.Error
+  ##        ^ 'generic_proc' should be: 'genericProc' [Name] ]#
+  ##
+  ## Can parse multiple messages for a line when they are separated by ';':
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   proc generic_proc*[T] {.no_destroy, userPragma.} = #[tt.Error
+  ##        ^ 'generic_proc' should be: 'genericProc' [Name]; tt.Error
+  ##                           ^ 'no_destroy' should be: 'nodestroy' [Name]; tt.Error
+  ##                                       ^ 'userPragma' should be: 'user_pragma' [template declared in mstyleCheck.nim(10, 9)] [Name] ]#
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   proc generic_proc*[T] {.no_destroy, userPragma.} = #[tt.Error
+  ##        ^ 'generic_proc' should be: 'genericProc' [Name];
+  ##     tt.Error              ^ 'no_destroy' should be: 'nodestroy' [Name];
+  ##     tt.Error                          ^ 'userPragma' should be: 'user_pragma' [template declared in mstyleCheck.nim(10, 9)] [Name] ]#
+  ##
   result = i + len(inlineErrorMarker)
   inc col, len(inlineErrorMarker)
+  let msgLine = line
+  var msgCol = -1
+  var msg = ""
   var kind = ""
-  while result < s.len and s[result] in IdentChars:
-    kind.add s[result]
-    inc result
-    inc col
 
-  var caret = (line, -1)
+  template parseKind =
+    while result < s.len and s[result] in IdentChars:
+      kind.add s[result]
+      inc result
+      inc col
+    if kind notin ["Hint", "Warning", "Error"]:
+      spec.parseErrors.addLine "expected inline message kind: Hint, Warning, Error"
 
   template skipWhitespace =
     while result < s.len and s[result] in Whitespace:
@@ -151,34 +191,69 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
         inc col
       inc result
 
-  skipWhitespace()
-  if result < s.len and s[result] == '^':
-    caret = (line-1, col)
-    inc result
-    inc col
-    skipWhitespace()
+  template parseCaret =
+    if result < s.len and s[result] == '^':
+      msgCol = col
+      inc result
+      inc col
+      skipWhitespace()
+    else:
+      spec.parseErrors.addLine "expected column marker ('^') for inline message"
 
-  var msg = ""
+  template isMsgDelimiter: bool =
+    s[result] == ';' and
+    (block:
+      let nextTokenIdx = result + 1 + parseutils.skipWhitespace(s, result + 1)
+      if s.len > nextTokenIdx + len(inlineErrorKindMarker) and
+         s[nextTokenIdx..(nextTokenIdx + len(inlineErrorKindMarker) - 1)] == inlineErrorKindMarker:
+        true
+      else:
+        false)
+
+  template trimTrailingMsgWhitespace =
+    while msg.len > 0 and msg[^1] in Whitespace:
+      setLen msg, msg.len - 1
+
+  template addInlineError =
+    doAssert msg[^1] notin Whitespace
+    if kind == "Error": spec.action = actionReject
+    spec.inlineErrors.add InlineError(kind: kind, msg: msg, line: msgLine, col: msgCol)
+
+  parseKind()
+  skipWhitespace()
+  parseCaret()
+
   while result < s.len-1:
     if s[result] == '\n':
       msg.add '\n'
       inc result
       inc line
       col = 1
-    elif s[result] == ']' and s[result+1] == '#':
-      while msg.len > 0 and msg[^1] in Whitespace:
-        setLen msg, msg.len - 1
-
+    elif isMsgDelimiter():
+      trimTrailingMsgWhitespace()
       inc result
+      skipWhitespace()
+      addInlineError()
+      inc result, len(inlineErrorKindMarker)
+      inc col, 1 + len(inlineErrorKindMarker)
+      kind.setLen 0
+      msg.setLen 0
+      parseKind()
+      skipWhitespace()
+      parseCaret()
+    elif s[result] == ']' and s[result+1] == '#':
+      trimTrailingMsgWhitespace()
+      inc result, 2
       inc col, 2
-      if kind == "Error": spec.action = actionReject
-      spec.unjoinable = true
-      spec.inlineErrors.add InlineError(kind: kind, msg: msg, line: caret[0], col: caret[1])
+      addInlineError()
       break
     else:
       msg.add s[result]
       inc result
       inc col
+
+  if spec.inlineErrors.len > 0:
+    spec.unjoinable = true
 
 proc extractSpec(filename: string; spec: var TSpec): string =
   const
@@ -230,15 +305,6 @@ proc parseTargets*(value: string): set[TTarget] =
     of "objc": result.incl(targetObjC)
     of "js": result.incl(targetJS)
     else: raise newException(ValueError, "invalid target: '$#'" % v)
-
-proc addLine*(self: var string; a: string) =
-  self.add a
-  self.add "\n"
-
-proc addLine*(self: var string; a, b: string) =
-  self.add a
-  self.add b
-  self.add "\n"
 
 proc initSpec*(filename: string): TSpec =
   result.file = filename
