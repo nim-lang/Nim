@@ -1050,7 +1050,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var typ = commonTypeBegin
   var hasElse = false
   let caseTyp = skipTypes(n[0].typ, abstractVar-{tyTypeDesc})
-  const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool}
+  const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUint64, tyBool}
   case caseTyp.kind
   of shouldChckCovered:
     chckCovered = true
