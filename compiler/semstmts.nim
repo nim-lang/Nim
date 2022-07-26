@@ -2300,7 +2300,7 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
   for p in pragmaList:
     if whichPragma(p) == wCast:
       case whichPragma(p[1])
-      of wGcSafe, wNoSideEffect, wTags, wRaises:
+      of wGcSafe, wNoSideEffect, wTags, wForbids, wRaises:
         discard "handled in sempass2"
       of wUncheckedAssign:
         inUncheckedAssignSection = 1
