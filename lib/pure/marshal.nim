@@ -163,7 +163,10 @@ proc loadAny(p: var JsonParser, a: Any, t: var Table[BiggestInt, pointer]) =
   of akSequence:
     case p.kind
     of jsonNull:
-      setPointer(a, nil)
+      when defined(nimSeqsV2):
+        invokeNewSeq(a, 0)
+      else:
+        setPointer(a, nil)
       next(p)
     of jsonArrayStart:
       next(p)
@@ -230,7 +233,10 @@ proc loadAny(p: var JsonParser, a: Any, t: var Table[BiggestInt, pointer]) =
   of akString:
     case p.kind
     of jsonNull:
-      setPointer(a, nil)
+      when defined(nimSeqsV2):
+        setString(a, "")
+      else:
+        setPointer(a, nil)
       next(p)
     of jsonString:
       setString(a, p.str)
