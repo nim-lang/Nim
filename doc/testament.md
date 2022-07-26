@@ -234,11 +234,13 @@ for multiple 'Error' messages.
 Output message variable interpolation
 -------------------------------------
 
-`errormsg`, `output`, `nimout`, `outputsub` and inline msgs are subject
+`errormsg`, `output`, `nimout`, `outputsub` and inline messages are subject
 to these variable interpolations:
 
 * `${/}` - platform's directory separator
 * `$file` - the filename (without directory) of the test
+
+All other `$` characters need escaped as `$$`.
 
 Cmd variable interpolation
 --------------------------
@@ -255,6 +257,8 @@ The `cmd` option is subject to these variable interpolations:
   discard """
     cmd: "nim $target --nimblePath:./nimbleDir/simplePkgs $options $file"
   """
+
+All other `$` characters need escaped as `$$`.
 
 
 Unit test Examples
