@@ -92,13 +92,15 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     return
 
   self.processCmdLineAndProjectPath(conf)
-  if conf.selectedGC == gcUnselected:
-    if conf.backend in {backendC, backendCpp, backendObjc}:
-      initOrcDefines(conf)
 
   var graph = newModuleGraph(cache, conf)
   if not self.loadConfigsAndProcessCmdLine(cache, conf, graph):
     return
+
+  if conf.selectedGC == gcUnselected:
+    if conf.backend in {backendC, backendCpp, backendObjc}:
+      initOrcDefines(conf)
+
   mainCommand(graph)
   if conf.hasHint(hintGCStats): echo(GC_getStatistics())
   #echo(GC_getStatistics())

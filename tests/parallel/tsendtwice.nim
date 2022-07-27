@@ -7,7 +7,7 @@ ob2 @[]
 ob @[]
 ob3 @[]
 '''
-  cmd: "nim c -r --threads:on $file"
+  matrix: "--deepcopy:on"
 """
 
 # bug #4776

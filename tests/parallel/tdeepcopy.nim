@@ -1,4 +1,5 @@
 discard """
+  matrix: "--deepcopy:on"
   output: '''
 13 abc
 called deepCopy for int
