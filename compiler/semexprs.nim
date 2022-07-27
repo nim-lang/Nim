@@ -196,10 +196,10 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
     else:
       discard
 
-proc isCastable(c: PContext; dst, src: PType): bool =
+proc isCastable(c: PContext; dst, src: PType, info: TLineInfo): bool =
   ## Checks whether the source type can be cast to the destination type.
   ## Casting is very unrestrictive; casts are allowed as long as
-  ## castDest.size >= src.size, and typeAllowed(dst, skParam)
+  ## dst.size >= src.size, and typeAllowed(dst, skParam)
   #const
   #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCstring, tyString,
   #                       tySequence, tyPointer, tyNil, tyOpenArray,
@@ -228,19 +228,21 @@ proc isCastable(c: PContext; dst, src: PType): bool =
     # Just assume the programmer knows what he is doing.
     return true
   if dstSize < 0:
-    result = false
+    return false
   elif srcSize < 0:
-    result = false
+    return false
   elif typeAllowed(dst, skParam, c) != nil:
-    result = false
+    return false
   elif dst.kind == tyProc and dst.callConv == ccClosure:
-    result = src.kind == tyProc and src.callConv == ccClosure
+    return src.kind == tyProc and src.callConv == ccClosure
   else:
     result = (dstSize >= srcSize) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
+    if result and (dstSize > srcSize):
+      message(conf, info, warnCastSizes, "target type is larger than source type")
   if result and src.kind == tyNil:
-    result = dst.size <= conf.target.ptrSize
+    return dst.size <= conf.target.ptrSize
 
 proc isSymChoice(n: PNode): bool {.inline.} =
   result = n.kind in nkSymChoices
@@ -358,8 +360,8 @@ proc semCast(c: PContext, n: PNode): PNode =
   let targetType = semTypeNode(c, n[0], nil)
   let castedExpr = semExprWithType(c, n[1])
   if tfHasMeta in targetType.flags:
-    localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
-  if not isCastable(c, targetType, castedExpr.typ):
+    localError(c.config, n[0].info, "cannot cast to a non-concrete type: '$1'" % $targetType)
+  if not isCastable(c, targetType, castedExpr.typ, n.info):
     let tar = $targetType
     let alt = typeToString(targetType, preferDesc)
     let msg = if tar != alt: tar & "=" & alt else: tar
