@@ -1,5 +1,5 @@
 discard """
-  mtraix: "--mm:refc"
+  matrix: "--mm:refc"
   nimout: '''1
 2
 3

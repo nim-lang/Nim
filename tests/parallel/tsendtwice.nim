@@ -7,7 +7,7 @@ ob2 @[]
 ob @[]
 ob3 @[]
 '''
-  matrix: "--deepcopy:on"
+  matrix: "--mm:refc"
 """
 
 # bug #4776
