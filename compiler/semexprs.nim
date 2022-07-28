@@ -360,7 +360,7 @@ proc semCast(c: PContext, n: PNode): PNode =
   let targetType = semTypeNode(c, n[0], nil)
   let castedExpr = semExprWithType(c, n[1])
   if tfHasMeta in targetType.flags:
-    localError(c.config, n[0].info, "cannot cast to a non-concrete type: '$1'" % $targetType)
+    localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
     let tar = $targetType
     let alt = typeToString(targetType, preferDesc)
