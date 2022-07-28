@@ -79,6 +79,7 @@ type
     warnPtrToCstringConv = "PtrToCstringConv",
     warnEffect = "Effect",
     warnBareExcept = "BareExcept",
+    warnCastSizes = "CastSizes"
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -171,6 +172,7 @@ const
     warnPtrToCstringConv: "unsafe conversion to 'cstring' from '$1'; this will become a compile time error in the future",
     warnEffect: "$1",
     warnBareExcept: "$1",
+    warnCastSizes: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
