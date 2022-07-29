@@ -37,7 +37,7 @@ pkg "alea", allowFailure = true
 pkg "argparse"
 pkg "arraymancer", "nim c tests/tests_cpu.nim"
 pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim", allowFailure = true
-pkg "asyncthreadpool"
+pkg "asyncthreadpool", "nimble test --mm:refc"
 pkg "awk"
 pkg "bigints"
 pkg "binaryheap", "nim c -r binaryheap.nim"
