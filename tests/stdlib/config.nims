@@ -1,2 +1,2 @@
-# switch("styleCheck", "usages")
-# switch("styleCheck", "error")
+switch("styleCheck", "usages")
+switch("styleCheck", "error")
