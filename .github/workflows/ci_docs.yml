@@ -94,7 +94,7 @@ jobs:
 
       - name: 'Build the real compiler'
         shell: bash
-        run: ./koch boot -d:release --mm:refc
+        run: ./koch boot -d:release --gc:refc
 
       - name: 'Build documentation'
         shell: bash
