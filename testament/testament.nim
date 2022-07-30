@@ -351,12 +351,11 @@ proc inlineErrorsMsgs(expected: TSpec): string =
   for inlineError in expected.inlineErrors.items:
     result.addLine inlineError.toString(expected.filename)
 
-proc checkForInlineErrors(expected, given: TSpec, test: TTest,
-                          target: TTarget, extraOptions: string): bool =
-  result = true
+proc checkForInlineErrors(expected, given: TSpec): bool =
   for inlineError in expected.inlineErrors:
     if inlineError.toString(expected.filename) notin given.nimout:
       return false
+  true
 
 proc nimoutCheck(expected, given: TSpec): bool =
   result = true
@@ -368,7 +367,7 @@ proc nimoutCheck(expected, given: TSpec): bool =
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest,
              target: TTarget, extraOptions: string) =
-  if not checkForInlineErrors(expected, given, test, target, extraOptions) or
+  if not checkForInlineErrors(expected, given) or
     (not expected.nimoutFull and not nimoutCheck(expected, given)):
       r.addResult(test, target, extraOptions, expected.nimout & inlineErrorsMsgs(expected), given.nimout, reMsgsDiffer)
   elif strip(expected.msg) notin strip(given.msg):
@@ -430,7 +429,7 @@ proc compilerOutputTests(test: TTest, target: TTarget, extraOptions: string,
       codegenCheck(test, target, expected, expectedmsg, given)
       givenmsg = given.msg
     if not nimoutCheck(expected, given) or
-       not checkForInlineErrors(expected, given, test, target, extraOptions):
+       not checkForInlineErrors(expected, given):
       given.err = reMsgsDiffer
       expectedmsg = expected.nimout & inlineErrorsMsgs(expected)
       givenmsg = given.nimout.strip
