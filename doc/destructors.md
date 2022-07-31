@@ -30,8 +30,7 @@ Motivating example
 With the language mechanisms described here, a custom seq could be
 written as:
 
-.. code-block:: nim
-
+  ```nim
   type
     myseq*[T] = object
       len, cap: int
@@ -91,7 +90,7 @@ written as:
     for i in 0..<result.len: result.data[i] = elems[i]
 
   proc len*[T](x: myseq[T]): int {.inline.} = x.len
-
+  ```
 
 
 Lifetime-tracking hooks
@@ -119,20 +118,18 @@ to return.
 
 The prototype of this hook for a type `T` needs to be:
 
-.. code-block:: nim
-
+  ```nim
   proc `=destroy`(x: var T)
-
+  ```
 
 The general pattern in `=destroy` looks like:
 
-.. code-block:: nim
-
+  ```nim
   proc `=destroy`(x: var T) =
     # first check if 'x' was moved to somewhere else:
     if x.field != nil:
       freeResource(x.field)
-
+  ```
 
 
 `=sink` hook
@@ -149,20 +146,19 @@ provide `=destroy` and `=copy`, the compiler will take care of the rest.
 
 The prototype of this hook for a type `T` needs to be:
 
-.. code-block:: nim
-
+  ```nim
   proc `=sink`(dest: var T; source: T)
-
+  ```
 
 The general pattern in `=sink` looks like:
 
-.. code-block:: nim
+  ```nim
 
   proc `=sink`(dest: var T; source: T) =
     `=destroy`(dest)
     wasMoved(dest)
     dest.field = source.field
-
+  ```
 
 **Note**: `=sink` does not need to check for self-assignments.
 How self-assignments are handled is explained later in this document.
@@ -177,29 +173,27 @@ operations.
 
 The prototype of this hook for a type `T` needs to be:
 
-.. code-block:: nim
-
+  ```nim
   proc `=copy`(dest: var T; source: T)
-
+  ```
 
 The general pattern in `=copy` looks like:
 
-.. code-block:: nim
-
+  ```nim
   proc `=copy`(dest: var T; source: T) =
     # protect against self-assignments:
     if dest.field != source.field:
       `=destroy`(dest)
       wasMoved(dest)
       dest.field = duplicateResource(source.field)
-
+  ```
 
 The `=copy` proc can be marked with the `{.error.}` pragma. Then any assignment
 that otherwise would lead to a copy is prevented at compile-time. This looks like:
 
-.. code-block:: nim
-
+  ```nim
   proc `=copy`(dest: var T; source: T) {.error.}
+  ```
 
 but a custom error message (e.g., `{.error: "custom error".}`) will not be emitted
 by the compiler. Notice that there is no `=` before the `{.error.}` pragma.
@@ -215,9 +209,9 @@ memory or resources, but memory safety is not compromised.
 
 The prototype of this hook for a type `T` needs to be:
 
-.. code-block:: nim
-
+  ```nim
   proc `=trace`(dest: var T; env: pointer)
+  ```
 
 `env` is used by ORC to keep track of its internal state, it should be passed around
 to calls of the built-in `=trace` operation.
@@ -233,8 +227,7 @@ prevent the automatic creation.
 
 The general pattern in using `=destroy` with `=trace` looks like:
 
-.. code-block:: nim
-
+  ```nim
   type
     Test[T] = object
       size: Natural
@@ -255,6 +248,7 @@ The general pattern in using `=destroy` with `=trace` looks like:
       for i in 0 ..< dest.size: `=trace`(dest.arr[i], env)
 
   # following may be other custom "hooks" as required...
+  ```
 
 **Note**: The `=trace` hooks (which are only used by `--mm:orc`) are currently more experimental and less refined
 than the other hooks.
@@ -307,8 +301,7 @@ not a linear type system.
 The employed static analysis is limited and only concerned with local variables;
 however, object and tuple fields are treated as separate entities:
 
-.. code-block:: nim
-
+  ```nim
   proc consume(x: sink Obj) = discard "no implementation"
 
   proc main =
@@ -316,16 +309,16 @@ however, object and tuple fields are treated as separate entities:
     consume tup[0]
     # ok, only tup[0] was consumed, tup[1] is still alive:
     echo tup[1]
-
+  ```
 
 Sometimes it is required to explicitly `move` a value into its final position:
 
-.. code-block:: nim
-
+  ```nim
   proc main =
     var dest, src: array[10, string]
     # ...
     for i in 0..high(dest): dest[i] = move(src[i])
+  ```
 
 An implementation is allowed, but not required to implement even more move
 optimizations (and the current implementation does not).
@@ -344,11 +337,10 @@ use `{.push sinkInference: on.}` ... `{.pop.}`.
 The `.nosinks`:idx: pragma can be used to disable this inference
 for a single routine:
 
-.. code-block:: nim
-
+  ```nim
   proc addX(x: T; child: T) {.nosinks.} =
     x.s.add child
-
+  ```
 
 The details of the inference algorithm are currently undocumented.
 
@@ -456,8 +448,7 @@ The complex case looks like a variant of `x = f(x)`, we consider
 `x = select(rand() < 0.5, x, y)` here:
 
 
-.. code-block:: nim
-
+  ```nim
   proc select(cond: bool; a, b: sink string): string =
     if cond:
       result = a # moves a into result
@@ -469,13 +460,11 @@ The complex case looks like a variant of `x = f(x)`, we consider
     var y = "xyz"
     # possible self-assignment:
     x = select(true, x, y)
-
+  ```
 
 Is transformed into:
 
-
-.. code-block:: nim
-
+  ```nim
   proc select(cond: bool; a, b: sink string): string =
     try:
       if cond:
@@ -506,6 +495,7 @@ Is transformed into:
     finally:
       `=destroy`(y)
       `=destroy`(x)
+  ```
 
 As can be manually verified, this transformation is correct for
 self-assignments.
@@ -527,8 +517,7 @@ that the pointer does not outlive its origin. No destructor call is injected
 for expressions of type `lent T` or of type `var T`.
 
 
-.. code-block:: nim
-
+  ```nim
   type
     Tree = object
       kids: seq[Tree]
@@ -553,6 +542,7 @@ for expressions of type `lent T` or of type `var T`.
     # everything turned into moves:
     let t = construct(@[construct(@[]), construct(@[])])
     echo t[0] # accessor does not copy the element!
+  ```
 
 
 The cursor pragma
@@ -564,12 +554,12 @@ This means that cyclic structures cannot be freed
 immediately (`--mm:orc`:option: ships with a cycle collector).
 With the `cursor` pragma one can break up cycles declaratively:
 
-.. code-block:: nim
-
+  ```nim
   type
     Node = ref object
       left: Node # owning ref
       right {.cursor.}: Node # non-owning ref
+  ```
 
 But please notice that this is not C++'s weak_ptr, it means the right field is not
 involved in the reference counting, it is a raw pointer without runtime checks.
@@ -578,13 +568,12 @@ Automatic reference counting also has the disadvantage that it introduces overhe
 when iterating over linked structures. The `cursor` pragma can also be used
 to avoid this overhead:
 
-.. code-block:: nim
-
+  ```nim
   var it {.cursor.} = listRoot
   while it != nil:
     use(it)
     it = it.next
-
+  ```
 
 In fact, `cursor` more generally prevents object construction/destruction pairs
 and so can also be useful in other contexts. The alternative solution would be to
@@ -609,13 +598,13 @@ words, we do a compile-time copy-on-write analysis.
 This means that "borrowed" views can be written naturally and without explicit pointer
 indirections:
 
-.. code-block:: nim
-
+  ```nim
   proc main(tab: Table[string, string]) =
     let v = tab["key"] # inferred as cursor because 'tab' is not mutated.
     # no copy into 'v', no destruction of 'v'.
     use(v)
     useItAgain(v)
+  ```
 
 
 Hook lifting
@@ -639,8 +628,7 @@ Hook generation
 
 The ability to override a hook leads to a phase ordering problem:
 
-.. code-block:: nim
-
+  ```nim
   type
     Foo[T] = object
 
@@ -651,7 +639,7 @@ The ability to override a hook leads to a phase ordering problem:
 
   proc `=destroy`[T](f: var Foo[T]) =
     discard
-
+  ```
 
 The solution is to define ``proc `=destroy`[T](f: var Foo[T])`` before
 it is used. The compiler generates implicit
@@ -674,8 +662,7 @@ The experimental `nodestroy`:idx: pragma inhibits hook injections. This can be
 used to specialize the object traversal in order to avoid deep recursions:
 
 
-.. code-block:: nim
-
+  ```nim
   type Node = ref object
     x, y: int32
     left, right: Node
@@ -695,6 +682,7 @@ used to specialize the object traversal in order to avoid deep recursions:
     # notice how even the destructor for 's' is not called implicitly
     # anymore thanks to .nodestroy, so we have to call it on our own:
     `=destroy`(s)
+  ```
 
 
 As can be seen from the example, this solution is hardly sufficient and
@@ -712,19 +700,20 @@ The copy operation is deferred until the first write.
 
 For example:
 
-.. code-block:: nim
+  ```nim
   var x = "abc"  # no copy
   var y = x      # no copy
   y[0] = 'h'     # copy
-
+  ```
 
 The abstraction fails for `addr x` because whether the address is going to be used for mutations is unknown.
 `prepareMutation` needs to be called before the "address of" operation. For example:
 
-.. code-block:: nim
+  ```nim
   var x = "abc"
   var y = x
 
   prepareMutation(y)
   moveMem(addr y[0], addr x[0], 3)
   assert y == "abc"
+  ```

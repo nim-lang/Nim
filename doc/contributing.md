@@ -59,8 +59,7 @@ things like `echo "done"`. Don't use `unittest.suite` and `unittest.test`.
 
 Sample test:
 
-.. code-block:: nim
-
+  ```nim
   block: # foo
     doAssert foo(1) == 10
 
@@ -76,6 +75,7 @@ Sample test:
                         @[false, false], @[false, false]]
     # doAssert with `not` can now be done as follows:
     doAssert not (1 == 2)
+  ```
 
 Always refer to a GitHub issue using the following exact syntax: ``bug #1234`` as shown
 above, so that it's consistent and easier to search or for tooling. Some browser
@@ -110,8 +110,7 @@ For a full spec, see here: ``testament/specs.nim``
 
 An example of a test:
 
-.. code-block:: nim
-
+  ```nim
   discard """
     errormsg: "type mismatch: got (PTest)"
   """
@@ -123,6 +122,7 @@ An example of a test:
 
   var buf: PTest
   buf.test()
+  ```
 
 
 Running tests
@@ -130,9 +130,9 @@ Running tests
 
 You can run the tests with
 
-.. code-block:: cmd
-
+  ```cmd
   ./koch tests
+  ```
 
 which will run a good subset of tests. Some tests may fail. If you
 only want to see the output of failing tests, go for
@@ -145,17 +145,17 @@ You can also run only a single category of tests. A category is a subdirectory
 in the ``tests/`` directory. There are a couple of special categories; for a
 list of these, see ``testament/categories.nim``, at the bottom.
 
-.. code:: cmd
-
+  ```cmd
   ./koch tests c lib # compiles / runs stdlib modules, including `isMainModule` tests
   ./koch tests c megatest # runs a set of tests that can be combined into 1
+  ```
 
 To run a single test:
 
-.. code:: cmd
-
+  ```cmd
   ./koch test run <category>/<name>    # e.g.: tuples/ttuples_issues
   ./koch test run tests/stdlib/tos.nim # can also provide relative path
+  ```
 
 For reproducible tests (to reproduce an environment more similar to the one
 run by Continuous Integration on github actions/azure pipelines), you may want to disable your
@@ -174,25 +174,25 @@ The tester can compare two test runs. First, you need to create a
 reference test. You'll also need to the commit id, because that's what
 the tester needs to know in order to compare the two.
 
-.. code:: cmd
-
+  ```cmd
   git checkout devel
   DEVEL_COMMIT=$(git rev-parse HEAD)
   ./koch tests
+  ```
 
 Then switch over to your changes and run the tester again.
 
-.. code:: cmd
-
+  ```cmd
   git checkout your-changes
   ./koch tests
+  ```
 
 Then you can ask the tester to create a ``testresults.html`` which will
 tell you if any new tests passed/failed.
 
-.. code:: cmd
-
+  ```cmd
   ./koch tests --print html $DEVEL_COMMIT
+  ```
 
 
 Deprecation
@@ -201,8 +201,7 @@ Deprecation
 Backward compatibility is important, so instead of a rename you need to deprecate
 the old name and introduce a new name:
 
-.. code-block:: nim
-
+  ```nim
   # for routines (proc/template/macro/iterator) and types:
   proc oldProc(a: int, b: float): bool {.deprecated:
       "deprecated since v1.2.3; use `newImpl: string -> int` instead".} = discard
@@ -214,6 +213,7 @@ the old name and introduce a new name:
   # (likewise with object types and their fields):
   type Bar {.deprecated.} = enum bar0, bar1
   type Barz  = enum baz0, baz1 {.deprecated.}, baz2
+  ```
 
 
 See also `Deprecated <manual.html#pragmas-deprecated-pragma>`_
@@ -234,12 +234,13 @@ test cases (typically 1 to 3 `assert` statements, depending on complexity).
 These `runnableExamples` are automatically run by `nim doc mymodule.nim`:cmd:
 as well as `testament`:cmd: and guarantee they stay in sync.
 
-.. code-block:: nim
+  ```nim
   proc addBar*(a: string): string =
     ## Adds "Bar" to `a`.
     runnableExamples:
       assert "baz".addBar == "bazBar"
     result = a & "Bar"
+  ```
 
 See `parentDir <os.html#parentDir,string>`_ example.
 
@@ -247,47 +248,49 @@ The RestructuredText Nim uses has a special syntax for including code snippets
 embedded in documentation; these are not run by `nim doc`:cmd: and therefore are
 not guaranteed to stay in sync, so `runnableExamples` is almost always preferred:
 
-.. code-block:: nim
-
+  ````nim
   proc someProc*(): string =
     ## Returns "something"
     ##
-    ## .. code-block::
-    ##  echo someProc() # "something"
+    ##   ```
+    ##   echo someProc() # "something"
+    ##   ```
     result = "something" # single-hash comments do not produce documentation
+  ````
 
-The ``.. code-block:: nim`` followed by a newline and an indentation instructs the
+The \`\`\` followed by a newline and an indentation instructs the
 `nim doc`:cmd: command to produce syntax-highlighted example code with the
-documentation (``.. code-block::`` is sufficient from inside a nim module).
+documentation (\`\`\` is sufficient inside a ``.nim`` module, while from
+a ``.md`` one needs to set the language explicitly as \`\`\`nim).
 
 When forward declaration is used, the documentation should be included with the
 first appearance of the proc.
 
-.. code-block:: nim
-
+  ```nim
   proc hello*(): string
     ## Put documentation here
   proc nothing() = discard
   proc hello*(): string =
     ## ignore this
     echo "hello"
+  ```
 
 The preferred documentation style is to begin with a capital letter and use
 the third-person singular. That is, between:
 
-.. code-block:: nim
-
+  ```nim
   proc hello*(): string =
     ## Returns "hello"
     result = "hello"
+  ```
 
 or
 
-.. code-block:: nim
-
+  ```nim
   proc hello*(): string =
     ## say hello
     result = "hello"
+  ```
 
 the first is preferred.
 
@@ -296,8 +299,9 @@ in the postfix form for uniformity, that is after \`text in backticks\`.
 For example an ``:idx:`` role for referencing a topic ("SQLite" in the
 example below) from `Nim Index`_ can be used in doc comment this way:
 
-.. code-block:: nim
+  ```nim
   ## A higher level `SQLite`:idx: database wrapper.
+  ```
 
 .. _`Nim Index`: https://nim-lang.org/docs/theindex.html
 
@@ -355,50 +359,50 @@ New `defined(foo)` symbols need to be prefixed by the nimble package name, or
 by `nim` for symbols in nim sources (e.g. compiler, standard library). This is
 to avoid name conflicts across packages.
 
-.. code-block:: nim
-
+  ```nim
   # if in nim sources
   when defined(allocStats): discard # bad, can cause conflicts
   when defined(nimAllocStats): discard # preferred
   # if in a package `cligen`:
   when defined(debug): discard # bad, can cause conflicts
   when defined(cligenDebug): discard # preferred
+  ```
 
 .. _noimplicitbool:
 Take advantage of no implicit bool conversion
 
-.. code-block:: nim
-
+  ```nim
   doAssert isValid() == true
   doAssert isValid() # preferred
+  ```
 
 .. _design_for_mcs:
 Design with method call syntax chaining in mind
 
-.. code-block:: nim
-
+  ```nim
   proc foo(cond: bool, lines: seq[string]) # bad
   proc foo(lines: seq[string], cond: bool) # preferred
   # can be called as: `getLines().foo(false)`
+  ```
 
 .. _avoid_quit:
 Use exceptions (including `assert` / `doAssert`) instead of `quit`
 rationale: https://forum.nim-lang.org/t/4089
 
-.. code-block:: nim
-
+  ```nim
   quit() # bad in almost all cases
   doAssert() # preferred
+  ```
 
 .. _tests_use_doAssert:
 Use `doAssert` (or `unittest.check`, `unittest.require`), not `assert` in all
 tests so they'll be enabled even with `--assertions:off`:option:.
 
-.. code-block:: nim
-
+  ```nim
   block: # foo
     assert foo() # bad
     doAssert foo() # preferred
+  ```
 
 .. _runnableExamples_use_assert:
 An exception to the above rule is `runnableExamples` and ``code-block`` rst blocks
@@ -407,33 +411,33 @@ instead of `doAssert`. Note that `nim doc -d:danger main`:cmd: won't pass `-d:da
 `runnableExamples`, but `nim doc --doccmd:-d:danger main`:cmd: would, and so would the
 second example below:
 
-.. code-block:: nim
-
+  ```nim
   runnableExamples:
     doAssert foo() # bad
     assert foo() # preferred
 
   runnableExamples("-d:danger"):
     doAssert foo() # `assert` would be disabled here, so `doAssert` makes more sense
+  ```
 
 .. _delegate_printing:
 Delegate printing to caller: return `string` instead of calling `echo`
 rationale: it's more flexible (e.g. allows the caller to call custom printing,
 including prepending location info, writing to log files, etc).
 
-.. code-block:: nim
-
+  ```nim
   proc foo() = echo "bar" # bad
   proc foo(): string = "bar" # preferred (usually)
+  ```
 
 .. _use_Option:
 [Ongoing debate] Consider using Option instead of return bool + var argument,
 unless stack allocation is needed (e.g. for efficiency).
 
-.. code-block:: nim
-
+  ```nim
   proc foo(a: var Bar): bool
   proc foo(): Option[Bar]
+  ```
 
 .. _use_doAssert_not_echo:
 Tests (including in testament) should always prefer assertions over `echo`,
@@ -441,10 +445,10 @@ except when that's not possible. It's more precise, easier for readers and
 maintainers to where expected values refer to. See for example
 https://github.com/nim-lang/Nim/pull/9335 and https://forum.nim-lang.org/t/4089
 
-.. code-block:: nim
-
+  ```nim
   echo foo() # adds a line for testament in `output:` block inside `discard`.
   doAssert foo() == [1, 2] # preferred, except when not possible to do so.
+  ```
 
 
 The `git`:cmd: stuff
@@ -480,10 +484,10 @@ General commit rules
    Always check your changes for whitespace errors using `git diff --check`:cmd:
    or add the following ``pre-commit`` hook:
 
-   .. code:: cmd
-
-      #!/bin/sh
-      git diff --check --cached || exit $?
+     ```cmd
+     #!/bin/sh
+     git diff --check --cached || exit $?
+     ```
 5. Describe your commit and use your common sense.
    Example commit message::
 
@@ -565,10 +569,10 @@ Code reviews
    doesn't help much as it doesn't highlight moves. Instead, you can use something
    like this, see visual results `here <https://github.com/nim-lang/Nim/pull/10431#issuecomment-456968196>`_:
 
-   .. code:: cmd
-
-      git fetch origin pull/10431/head && git checkout FETCH_HEAD
-      git diff --color-moved-ws=allow-indentation-change --color-moved=blocks HEAD^
+     ```cmd
+     git fetch origin pull/10431/head && git checkout FETCH_HEAD
+     git diff --color-moved-ws=allow-indentation-change --color-moved=blocks HEAD^
+     ```
 
 3. In addition, you can view GitHub-like diffs locally to identify what was changed
    within a code block using `diff-highlight`:cmd: or `diff-so-fancy`:cmd:, e.g.:
