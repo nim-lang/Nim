@@ -2875,7 +2875,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if result.typ == nil:
       if (let expected = expectedType.skipTypesOrNil({tyAlias, tyGenericInst});
           expected != nil and expected.kind in {tyInt..tyUInt64}):
-        result.typ = expected
+        result.typ = expectedType
       else:
         setIntLitType(c, result)
   of nkInt8Lit:
@@ -2900,7 +2900,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if result.typ == nil:
       if (let expected = expectedType.skipTypesOrNil({tyAlias, tyGenericInst});
           expected != nil and expected.kind in {tyFloat..tyFloat128}):
-        result.typ = expected
+        result.typ = expectedType
       else:
         result.typ = getSysType(c.graph, n.info, tyFloat64)
   of nkFloat32Lit:

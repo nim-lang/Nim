@@ -39,3 +39,8 @@ block:
   let x8: array[ABC, byte] = [1, 2, 3]
   doAssert x8[a] == 1
   doAssert x8[a] + x8[b] == x8[c]
+
+block:
+  type Foo = object
+    x: BiggestInt
+  let foo = Foo(x: if true: 1 else: 0)
