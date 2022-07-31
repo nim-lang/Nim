@@ -1688,6 +1688,18 @@ proc mayLoadFile(p: RstParser, result: var PRstNode) =
     n.add newLeaf(readFile(path))
     result.sons[2] = n
 
+proc defaultCodeLangNim(p: RstParser, result: var PRstNode) =
+  # Create a field block if the input block didn't have any.
+  if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
+  assert result.sons[1].kind == rnFieldList
+  # Hook the extra field and specify the Nim language as value.
+  var extraNode = newRstNode(rnField, info=lineInfo(p))
+  extraNode.add(newRstNode(rnFieldName))
+  extraNode.add(newRstNode(rnFieldBody))
+  extraNode.sons[0].add newLeaf("default-language")
+  extraNode.sons[1].add newLeaf("Nim")
+  result.sons[1].add(extraNode)
+
 proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
   result = newRstNodeA(p, rnCodeBlock)
   result.sons.setLen(3)
@@ -1731,6 +1743,8 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
     var lb = newRstNode(rnLiteralBlock)
     lb.add(n)
     result.sons[2] = lb
+  if result.sons[0].isNil and roNimFile in p.s.options:
+    defaultCodeLangNim(p, result)
 
 proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
   var desc, link = ""
@@ -3227,16 +3241,7 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
 
   # Extend the field block if we are using our custom Nim extension.
   if nimExtension:
-    # Create a field block if the input block didn't have any.
-    if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
-    assert result.sons[1].kind == rnFieldList
-    # Hook the extra field and specify the Nim language as value.
-    var extraNode = newRstNode(rnField, info=lineInfo(p))
-    extraNode.add(newRstNode(rnFieldName))
-    extraNode.add(newRstNode(rnFieldBody))
-    extraNode.sons[0].add newLeaf("default-language")
-    extraNode.sons[1].add newLeaf("Nim")
-    result.sons[1].add(extraNode)
+    defaultCodeLangNim(p, result)
 
 proc dirContainer(p: var RstParser): PRstNode =
   result = parseDirective(p, rnContainer, {hasArg}, parseSectionWrapper)
