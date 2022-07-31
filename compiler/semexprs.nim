@@ -603,7 +603,8 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
     lastValidIndex = lastOrd(c.config, indexType)
   if n.len == 0:
     rawAddSon(result.typ,
-      if expectedElementType != nil:
+      if expectedElementType != nil and
+          typeAllowed(expectedElementType, skLet, c) == nil:
         expectedElementType
       else:
         newTypeS(tyEmpty, c)) # needs an empty basetype!
@@ -2477,12 +2478,13 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
   result.typ.flags.incl tfIsConstructor
   var expectedElementType: PType = nil
   if (let expected = expectedType.skipTypesOrNil({tyGenericInst,
-      tyVar, tyLent, tyOrdinal, tyAlias, tySink}); expected != nil):
-    if expected.kind == tySet:
-      expectedElementType = expected[0]
+        tyVar, tyLent, tyOrdinal, tyAlias, tySink});
+      expected != nil and expected.kind == tySet):
+    expectedElementType = expected[0]
   if n.len == 0:
     rawAddSon(result.typ,
-      if expectedElementType != nil: # and expectedElementType is concrete?
+      if expectedElementType != nil and
+          typeAllowed(expectedElementType, skLet, c) == nil:
         expectedElementType
       else:
         newTypeS(tyEmpty, c))
