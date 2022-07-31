@@ -43,4 +43,8 @@ block:
 block:
   type Foo = object
     x: BiggestInt
-  let foo = Foo(x: if true: 1 else: 0)
+  var foo: Foo
+  foo.x = case true
+  of true: ord(1)
+  else: 0
+  foo.x = if true: ord(1) else: 0
