@@ -10,6 +10,7 @@
 import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
 import system/stacktraces
+import std/private/globs
 
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type
@@ -328,7 +329,7 @@ proc `$`*(stackTraceEntries: seq[StackTraceEntry]): string =
   var indent = 2
   # Format the entries.
   for entry in entries:
-    let (filename, procname) = getFilenameProcname(entry)
+    var (filename, procname) = getFilenameProcname(entry)
 
     if procname == "":
       if entry.line == reraisedFromBegin:
@@ -337,6 +338,10 @@ proc `$`*(stackTraceEntries: seq[StackTraceEntry]): string =
       elif entry.line == reraisedFromEnd:
         indent.dec(2)
         result.add(spaces(indent) & "]#\n")
+      break
+    elif procname.endsWith("Iter"): # generates more unique suffix?
+      procname.setLen(procname.len-4)
+    elif find(nativeToUnixPath(filename), "lib/pure/async") > 0: # is it stdlib?
       continue
 
     let left = "$#($#)" % [filename, $entry.line]
