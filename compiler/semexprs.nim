@@ -625,6 +625,8 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
 
     let yy = semExprWithType(c, x, expectedType = expectedElementType)
     var typ = yy.typ
+    if expectedElementType == nil:
+      expectedElementType = typ
     result.add yy
     #var typ = skipTypes(result[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal})
     for i in 1..<n.len:
@@ -2499,16 +2501,22 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
         if typ == nil:
           typ = skipTypes(n[i][1].typ,
                           {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
+          if expectedElementType == nil:
+            expectedElementType = typ
         n[i].typ = n[i][2].typ # range node needs type too
       elif n[i].kind == nkRange:
         # already semchecked
         if typ == nil:
           typ = skipTypes(n[i][0].typ,
                           {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
+          if expectedElementType == nil:
+            expectedElementType = typ
       else:
         n[i] = semExprWithType(c, n[i], {}, expectedElementType)
         if typ == nil:
           typ = skipTypes(n[i].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
+          if expectedElementType == nil:
+            expectedElementType = typ
     if not isOrdinalType(typ, allowEnumWithHoles=true):
       localError(c.config, n.info, errOrdinalTypeExpected)
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
