@@ -1677,6 +1677,10 @@ proc transitionIntKind*(n: PNode, kind: range[nkCharLit..nkUInt64Lit]) =
   transitionNodeKindCommon(kind)
   n.intVal = obj.intVal
 
+proc transitionIntToFloatKind*(n: PNode, kind: range[nkFloatLit..nkFloat128Lit]) =
+  transitionNodeKindCommon(kind)
+  n.floatVal = BiggestFloat(obj.intVal)
+
 proc transitionNoneToSym*(n: PNode) =
   transitionNodeKindCommon(nkSym)
 

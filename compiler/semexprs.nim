@@ -599,11 +599,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
   rawAddSon(result.typ, nil)     # index type
   var
     firstIndex, lastIndex: Int128
-    indexType =
-      if expectedIndexType != nil:
-        expectedIndexType
-      else:
-        getSysType(c.graph, n.info, tyInt)
+    indexType = getSysType(c.graph, n.info, tyInt)
     lastValidIndex = lastOrd(c.config, indexType)
   if n.len == 0:
     rawAddSon(result.typ,
@@ -2873,9 +2869,21 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if result.typ == nil: result.typ = getNilType(c)
   of nkIntLit:
     if result.typ == nil:
-      if (let expected = expectedType.skipTypesOrNil({tyAlias, tyGenericInst});
-          expected != nil and expected.kind in {tyInt..tyUInt64}):
+      if (let expected = expectedType.skipTypesOrNil({tyAlias});
+          expected != nil and expected.kind in {tyInt..tyInt64,
+            tyUInt..tyUInt64, tyFloat..tyFloat128}):
         result.typ = expectedType
+        # this is really ugly
+        case expected.kind
+        of tyFloat:
+          n.transitionIntToFloatKind(nkFloatLit)
+        of tyFloat32:
+          n.transitionIntToFloatKind(nkFloat32Lit)
+        of tyFloat64:
+          n.transitionIntToFloatKind(nkFloat64Lit)
+        of tyFloat128:
+          n.transitionIntToFloatKind(nkFloat128Lit)
+        else: discard
       else:
         setIntLitType(c, result)
   of nkInt8Lit:
@@ -2898,7 +2906,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyUInt64)
   of nkFloatLit:
     if result.typ == nil:
-      if (let expected = expectedType.skipTypesOrNil({tyAlias, tyGenericInst});
+      if (let expected = expectedType.skipTypesOrNil({tyAlias});
           expected != nil and expected.kind in {tyFloat..tyFloat128}):
         result.typ = expectedType
       else:

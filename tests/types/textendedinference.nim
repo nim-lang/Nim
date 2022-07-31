@@ -40,6 +40,9 @@ block:
   doAssert x8[a] == 1
   doAssert x8[a] + x8[b] == x8[c]
 
+  let x9: array[-2..2, float] = [0, 1, 2, 3, 4]
+  let x10: array[ABC, byte] = [a: 1, b: 2, c: 3]
+
 block:
   type Foo = object
     x: BiggestInt
