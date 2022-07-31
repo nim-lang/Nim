@@ -334,7 +334,7 @@ proc hashVarSymBody(graph: ModuleGraph, c: var MD5Context, s: PSym) =
     c &= hashNonProc(s)
     # this one works for let and const but not for var. True variables can change value
     # later on. it is user resposibility to hash his global state if required
-    if s.ast != nil and s.ast.kind == nkIdentDefs:
+    if s.ast != nil and s.ast.kind in {nkIdentDefs, nkConstDef}:
       hashBodyTree(graph, c, s.ast[^1])
     else:
       hashBodyTree(graph, c, s.ast)
