@@ -1469,7 +1469,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
     if s.loc.r == nil:
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
     if sfCompileTime in s.flags:
-      genVarInit(p, s, if s.ast != nil: s.ast else: newNodeI(nkEmpty, s.info))
+      genVarInit(p, s, if s.astdef != nil: s.astdef else: newNodeI(nkEmpty, s.info))
     if s.kind == skParam:
       genCopyForParamIfNeeded(p, n)
     let k = mapType(p, s.typ)
@@ -1925,8 +1925,8 @@ proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):
     let oldBody = p.body
     p.body = nil
-    #genLineDir(p, c.ast)
-    genVarInit(p, c, c.ast)
+    #genLineDir(p, c.astdef)
+    genVarInit(p, c, c.astdef)
     p.g.constants.add(p.body)
     p.body = oldBody
 
