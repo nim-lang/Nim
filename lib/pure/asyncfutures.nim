@@ -333,12 +333,9 @@ proc `$`*(stackTraceEntries: seq[StackTraceEntry]): string =
 
     if procname == "":
       if entry.line == reraisedFromBegin:
-        result.add(spaces(indent) & "#[\n")
-        indent.inc(2)
+        break
       elif entry.line == reraisedFromEnd:
-        indent.dec(2)
-        result.add(spaces(indent) & "]#\n")
-      break
+        doAssert false
     elif procname.endsWith("Iter"): # generates more unique suffix?
       procname.setLen(procname.len-4)
     elif find(nativeToUnixPath(filename), "lib/pure/async") > 0: # is it stdlib?
