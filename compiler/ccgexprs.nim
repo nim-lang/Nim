@@ -2709,7 +2709,7 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   let m = p.module
   useHeader(m, sym)
   if sym.loc.k == locNone:
-    fillLoc(sym.loc, locData, sym.ast, mangleName(p.module, sym), OnStatic)
+    fillLoc(sym.loc, locData, sym.astdef, mangleName(p.module, sym), OnStatic)
   if m.hcrOn: incl(sym.loc.flags, lfIndirect)
   result = lfNoDecl notin sym.loc.flags
 
@@ -2734,7 +2734,7 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
   let actualConstName = if q.hcrOn: sym.loc.r & "_const" else: sym.loc.r
   q.s[cfsData].addf("N_LIB_PRIVATE NIM_CONST $1 $2 = $3;$n",
       [getTypeDesc(q, sym.typ), actualConstName,
-      genBracedInit(q.initProc, sym.ast, isConst = true, sym.typ)])
+      genBracedInit(q.initProc, sym.astdef, isConst = true, sym.typ)])
   if q.hcrOn:
     # generate the global pointer with the real name
     q.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(q, sym.loc.t, skVar), sym.loc.r])
@@ -2791,7 +2791,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       putLocIntoDest(p, d, sym.loc)
     of skConst:
       if isSimpleConst(sym.typ):
-        putIntoDest(p, d, n, genLiteral(p, sym.ast, sym.typ), OnStatic)
+        putIntoDest(p, d, n, genLiteral(p, sym.astdef, sym.typ), OnStatic)
       elif useAliveDataFromDce in p.module.flags:
         genConstHeader(p.module, p.module, p, sym)
         assert((sym.loc.r != nil) and (sym.loc.t != nil))

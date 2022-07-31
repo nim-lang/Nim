@@ -811,12 +811,20 @@ proc semConst(c: PContext, n: PNode): PNode =
 
       if a.kind != nkVarTuple:
         setVarType(c, v, typ)
-        v.ast = def               # no need to copy
+        when false:
+          v.ast = def               # no need to copy
         b = newNodeI(nkConstDef, a.info)
         if importantComments(c.config): b.comment = a.comment
-        b.add newSymNode(v)
+        if a[j].kind == nkPragmaExpr:
+          var p = newNodeI(nkPragmaExpr, a.info)
+          p.add newSymNode(v)
+          p.add a[j][1].copyTree
+          b.add p
+        else:
+          b.add newSymNode(v)
         b.add a[1]
         b.add copyTree(def)
+        v.ast = b
       else:
         setVarType(c, v, typ[j])
         v.ast = if def[j].kind != nkExprColonExpr: def[j]

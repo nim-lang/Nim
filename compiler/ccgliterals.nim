@@ -21,7 +21,7 @@ template detectVersion(field, corename) =
     if core == nil or core.kind != skConst:
       m.g.field = 1
     else:
-      m.g.field = toInt(ast.getInt(core.ast))
+      m.g.field = toInt(ast.getInt(core.astdef))
   result = m.g.field
 
 proc detectStrVersion(m: BModule): int =
