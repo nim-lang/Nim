@@ -48,7 +48,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
 proc evalAtCompileTime(c: PContext, n: PNode): PNode
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
-proc semStaticExpr(c: PContext, n: PNode): PNode
+proc semStaticExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode
 proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType
 proc semTypeOf(c: PContext; n: PNode): PNode
 proc computeRequiresInit(c: PContext, t: PType): bool
@@ -365,8 +365,8 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
 const
   errConstExprExpected = "constant expression expected"
 
-proc semConstExpr(c: PContext, n: PNode): PNode =
-  var e = semExprWithType(c, n)
+proc semConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
+  var e = semExprWithType(c, n, expectedType = expectedType)
   if e == nil:
     localError(c.config, n.info, errConstExprExpected)
     return n

@@ -375,7 +375,7 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
   else:
     assert false, "Must not enter here."
 
-proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
+proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var t = semTypeNode(c, n[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
   for child in n: result.add child

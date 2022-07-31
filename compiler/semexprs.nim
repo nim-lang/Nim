@@ -583,21 +583,39 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
   typ[0] = makeRangeType(c, 0, n.len - 1, n.info)
   result = typ
 
-proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
+proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = newNodeI(nkBracket, n.info)
   result.typ = newTypeS(tyArray, c)
+  var expectedElementType, expectedIndexType: PType = nil
+  if (let expected = expectedType.skipTypesOrNil({tyGenericInst,
+      tyVar, tyLent, tyOrdinal, tyAlias, tySink}); expected != nil):
+    case expected.kind
+    of tyArray:
+      expectedIndexType = expected[0]
+      expectedElementType = expected[1]
+    of tyOpenArray:
+      expectedElementType = expected[0]
+    else: discard
   rawAddSon(result.typ, nil)     # index type
   var
     firstIndex, lastIndex: Int128
-    indexType = getSysType(c.graph, n.info, tyInt)
+    indexType =
+      if expectedIndexType != nil:
+        expectedIndexType
+      else:
+        getSysType(c.graph, n.info, tyInt)
     lastValidIndex = lastOrd(c.config, indexType)
   if n.len == 0:
-    rawAddSon(result.typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
+    rawAddSon(result.typ,
+      if expectedElementType != nil:
+        expectedElementType
+      else:
+        newTypeS(tyEmpty, c)) # needs an empty basetype!
     lastIndex = toInt128(-1)
   else:
     var x = n[0]
     if x.kind == nkExprColonExpr and x.len == 2:
-      var idx = semConstExpr(c, x[0])
+      var idx = semConstExpr(c, x[0], expectedIndexType)
       if not isOrdinalType(idx.typ):
         localError(c.config, idx.info, "expected ordinal value for array " &
                    "index, got '$1'" % renderTree(idx))
@@ -608,7 +626,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
         lastValidIndex = lastOrd(c.config, indexType)
         x = x[1]
 
-    let yy = semExprWithType(c, x)
+    let yy = semExprWithType(c, x, expectedType = expectedElementType)
     var typ = yy.typ
     result.add yy
     #var typ = skipTypes(result[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal})
@@ -621,13 +639,13 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
       x = n[i]
       if x.kind == nkExprColonExpr and x.len == 2:
-        var idx = semConstExpr(c, x[0])
+        var idx = semConstExpr(c, x[0], indexType)
         idx = fitNode(c, indexType, idx, x.info)
         if lastIndex+1 != getOrdValue(idx):
           localError(c.config, x.info, "invalid order in array constructor")
         x = x[1]
 
-      let xx = semExprWithType(c, x, {})
+      let xx = semExprWithType(c, x, {}, expectedElementType)
       result.add xx
       typ = commonType(c, typ, xx.typ)
       #n[i] = semExprWithType(c, x, {})
@@ -853,10 +871,10 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     #if result != n:
     #  echo "SUCCESS evaluated at compile time: ", call.renderTree
 
-proc semStaticExpr(c: PContext, n: PNode): PNode =
+proc semStaticExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   inc c.inStaticContext
   openScope(c)
-  let a = semExprWithType(c, n)
+  let a = semExprWithType(c, n, expectedType = expectedType)
   closeScope(c)
   dec c.inStaticContext
   if a.findUnresolvedStatic != nil: return a
@@ -900,7 +918,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
           rawAddSon(typ, result.typ)
           result.typ = typ
 
-proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
+proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode
 
 proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
                          t: PType): TCandidate =
@@ -2462,10 +2480,10 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
   result.typ = newTypeS(tySet, c)
   result.typ.flags.incl tfIsConstructor
   var expectedElementType: PType = nil
-  if expectedType != nil:
-    let rawExpectedType = expectedType.skipTypes({tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-    if rawExpectedType.kind == tySet:
-      expectedElementType = rawExpectedType[0]
+  if (let expected = expectedType.skipTypesOrNil({tyGenericInst,
+      tyVar, tyLent, tyOrdinal, tyAlias, tySink}); expected != nil):
+    if expected.kind == tySet:
+      expectedElementType = expected[0]
   if n.len == 0:
     rawAddSon(result.typ,
       if expectedElementType != nil: # and expectedElementType is concrete?
@@ -2560,7 +2578,7 @@ proc checkPar(c: PContext; n: PNode): TParKind =
           localError(c.config, n[i].info, errNamedExprNotAllowed)
           return paNone
 
-proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
+proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = newNodeI(nkTupleConstr, n.info)
   var typ = newTypeS(tyTuple, c)
   typ.n = newNodeI(nkRecList, n.info) # nkIdentDefs
@@ -2597,7 +2615,7 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 include semobjconstr
 
-proc semBlock(c: PContext, n: PNode; flags: TExprFlags): PNode =
+proc semBlock(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil): PNode =
   result = n
   inc(c.p.nestedBlockCounter)
   checkSonsLen(n, 2, c.config)
@@ -2612,7 +2630,7 @@ proc semBlock(c: PContext, n: PNode; flags: TExprFlags): PNode =
     suggestSym(c.graph, n[0].info, labl, c.graph.usageSym)
     styleCheckDef(c, labl)
     onDef(n[0].info, labl)
-  n[1] = semExpr(c, n[1], flags)
+  n[1] = semExpr(c, n[1], flags, expectedType)
   n.typ = n[1].typ
   if isEmptyType(n.typ): n.transitionSonsKind(nkBlockStmt)
   else: n.transitionSonsKind(nkBlockExpr)
@@ -2678,7 +2696,7 @@ proc semExport(c: PContext, n: PNode): PNode =
 
         s = nextOverloadIter(o, c, a)
 
-proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
+proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var tupexp = semTuplePositionsConstr(c, n, flags)
   var isTupleType: bool
   if tupexp.len > 0: # don't interpret () as type
@@ -2854,7 +2872,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkNilLit:
     if result.typ == nil: result.typ = getNilType(c)
   of nkIntLit:
-    if result.typ == nil: setIntLitType(c, result)
+    if result.typ == nil:
+      if (let expected = expectedType.skipTypesOrNil({tyAlias, tyGenericInst});
+          expected != nil and expected.kind in {tyInt..tyUInt64}):
+        result.typ = expected
+      else:
+        setIntLitType(c, result)
   of nkInt8Lit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyInt8)
   of nkInt16Lit:
@@ -2873,11 +2896,16 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyUInt32)
   of nkUInt64Lit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyUInt64)
-  #of nkFloatLit:
-  #  if result.typ == nil: result.typ = getFloatLitType(result)
+  of nkFloatLit:
+    if result.typ == nil:
+      if (let expected = expectedType.skipTypesOrNil({tyAlias, tyGenericInst});
+          expected != nil and expected.kind in {tyFloat..tyFloat128}):
+        result.typ = expected
+      else:
+        result.typ = getSysType(c.graph, n.info, tyFloat64)
   of nkFloat32Lit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyFloat32)
-  of nkFloat64Lit, nkFloatLit:
+  of nkFloat64Lit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyFloat64)
   of nkFloat128Lit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyFloat128)
@@ -2927,11 +2955,22 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         elif ambig and n.len == 1:
           errorUseQualifier(c, n.info, s)
         elif n.len == 1:
-          result = semObjConstr(c, n, flags)
+          result = semObjConstr(c, n, flags, expectedType)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       of skProc, skFunc, skMethod, skConverter, skIterator:
-        if s.magic == mNone: result = semDirectOp(c, n, flags)
+        if (let expected = expectedType.skipTypesOrNil(
+            {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink});
+            expected != nil and expected.kind in {tySequence, tyOpenArray}) and
+            n.len == 2 and s.name.s == "@" and sfSystemModule in s.owner.flags:
+          # seq type inference
+          # temporary check for now, simply checking s.magic for mArrToSeq
+          # doesn't work sometimes due to openArray overload
+          var arrayType = newType(tyOpenArray, nextTypeId(c.idgen), expected.owner)
+          arrayType.rawAddSon(expected[0])
+          n[1] = semExpr(c, n[1], flags, arrayType)
+          result = semDirectOp(c, n, flags)
+        elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       else:
         #liMessage(n.info, warnUser, renderTree(n));
@@ -2997,12 +3036,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkPar, nkTupleConstr:
     case checkPar(c, n)
     of paNone: result = errorNode(c, n)
-    of paTuplePositions: result = semTupleConstr(c, n, flags)
-    of paTupleFields: result = semTupleFieldsConstr(c, n, flags)
-    of paSingle: result = semExpr(c, n[0], flags)
+    of paTuplePositions: result = semTupleConstr(c, n, flags, expectedType)
+    of paTupleFields: result = semTupleFieldsConstr(c, n, flags, expectedType)
+    of paSingle: result = semExpr(c, n[0], flags, expectedType)
   of nkCurly: result = semSetConstr(c, n, expectedType)
-  of nkBracket: result = semArrayConstr(c, n, flags)
-  of nkObjConstr: result = semObjConstr(c, n, flags)
+  of nkBracket: result = semArrayConstr(c, n, flags, expectedType)
+  of nkObjConstr: result = semObjConstr(c, n, flags, expectedType)
   of nkLambdaKinds: result = semProcAux(c, n, skProc, lambdaPragmas, flags)
   of nkDerefExpr: result = semDeref(c, n)
   of nkAddr:
@@ -3014,7 +3053,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     checkSonsLen(n, 1, c.config)
     n[0] = semExpr(c, n[0], flags)
   of nkCast: result = semCast(c, n)
-  of nkIfExpr, nkIfStmt: result = semIf(c, n, flags)
+  of nkIfExpr, nkIfStmt: result = semIf(c, n, flags, expectedType)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkHiddenCallConv:
     checkSonsLen(n, 2, c.config)
     considerGenSyms(c, n)
@@ -3033,9 +3072,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     # handling of sym choices is context dependent
     # the node is left intact for now
     discard
-  of nkStaticExpr: result = semStaticExpr(c, n[0])
+  of nkStaticExpr: result = semStaticExpr(c, n[0], expectedType)
   of nkAsgn: result = semAsgn(c, n)
-  of nkBlockStmt, nkBlockExpr: result = semBlock(c, n, flags)
+  of nkBlockStmt, nkBlockExpr: result = semBlock(c, n, flags, expectedType)
   of nkStmtList, nkStmtListExpr: result = semStmtList(c, n, flags, expectedType)
   of nkRaiseStmt: result = semRaise(c, n)
   of nkVarSection: result = semVarOrLet(c, n, skVar)
@@ -3044,10 +3083,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkTypeSection: result = semTypeSection(c, n)
   of nkDiscardStmt: result = semDiscard(c, n)
   of nkWhileStmt: result = semWhile(c, n, flags)
-  of nkTryStmt, nkHiddenTryStmt: result = semTry(c, n, flags)
+  of nkTryStmt, nkHiddenTryStmt: result = semTry(c, n, flags, expectedType)
   of nkBreakStmt, nkContinueStmt: result = semBreakOrContinue(c, n)
   of nkForStmt, nkParForStmt: result = semFor(c, n, flags)
-  of nkCaseStmt: result = semCase(c, n, flags)
+  of nkCaseStmt: result = semCase(c, n, flags, expectedType)
   of nkReturnStmt: result = semReturn(c, n)
   of nkUsingStmt: result = semUsing(c, n)
   of nkAsmStmt: result = semAsm(c, n)
