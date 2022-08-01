@@ -546,7 +546,13 @@ proc semCaseBranchRange(c: PContext, t, b: PNode,
   checkSonsLen(b, 3, c.config)
   result = semBranchRange(c, t, b[1], b[2], covered)
 
+proc cstringDollar(c: PContext, n: PNode): PNode =
+  result = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyString))
+  result.add(newSymNode(getSysMagic(c.graph, n.info, "$", mCStrToStr)))
+  result.add(n)
+
 proc semCaseBranchSetElem(c: PContext, t, b: PNode,
+                          selectorType: PType,
                           covered: var Int128): PNode =
   if isRange(b):
     checkSonsLen(b, 3, c.config)
@@ -555,10 +561,13 @@ proc semCaseBranchSetElem(c: PContext, t, b: PNode,
     checkSonsLen(b, 2, c.config)
     result = semBranchRange(c, t, b[0], b[1], covered)
   else:
-    result = fitNode(c, t[0].typ, b, b.info)
+    result = fitNode(c, selectorType, b, b.info)
+    if c.config.backend != backendJs and selectorType.kind == tyCstring:
+      result = cstringDollar(c, result)
     inc(covered)
 
 proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
+                   selectorType: PType,
                    covered: var Int128) =
   let lastIndex = branch.len - 2
   for i in 0..lastIndex:
@@ -576,7 +585,9 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         return
       elif r.kind notin {nkCurly, nkBracket} or r.len == 0:
         checkMinSonsLen(t, 1, c.config)
-        var tmp = fitNode(c, t[0].typ, r, r.info)
+        var tmp = fitNode(c, selectorType, r, r.info)
+        if c.config.backend != backendJs and selectorType.kind == tyCstring:
+          tmp = cstringDollar(c, tmp)
         # the call to fitNode may introduce a call to a converter
         if tmp.kind in {nkHiddenCallConv}: tmp = semConstExpr(c, tmp)
         branch[i] = skipConv(tmp)
@@ -586,11 +597,11 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
           r = deduplicate(c.config, r)
 
         # first element is special and will overwrite: branch[i]:
-        branch[i] = semCaseBranchSetElem(c, t, r[0], covered)
+        branch[i] = semCaseBranchSetElem(c, t, r[0], selectorType, covered)
 
         # other elements have to be added to ``branch``
         for j in 1..<r.len:
-          branch.add(semCaseBranchSetElem(c, t, r[j], covered))
+          branch.add(semCaseBranchSetElem(c, t, r[j], selectorType, covered))
           # caution! last son of branch must be the actions to execute:
           swap(branch[^2], branch[^1])
     checkForOverlap(c, t, i, branchIndex)
@@ -707,7 +718,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     case n[i].kind
     of nkOfBranch:
       checkMinSonsLen(b, 2, c.config)
-      semCaseBranch(c, a, b, i, covered)
+      semCaseBranch(c, a, b, i, typ, covered)
     of nkElse:
       checkSonsLen(b, 1, c.config)
       if chckCovered and covered == toCover(c, a[0].typ):

@@ -955,6 +955,8 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
   case skipTypes(t[0].typ, abstractVarRange).kind
   of tyString:
     genStringCase(p, t, d)
+  of tyCstring:
+    assert false, "cstring case supposed to convert to string in C backend"
   of tyFloat..tyFloat128:
     genCaseGeneric(p, t, d, "if ($1 >= $2 && $1 <= $3) goto $4;$n",
                             "if ($1 == $2) goto $3;$n")

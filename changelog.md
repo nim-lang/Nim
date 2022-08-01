@@ -118,6 +118,8 @@
 
 - Defines the `gcRefc` symbol which allows writing specific code for the refc GC.
 
+- `cstring` is now accepted as a selector in `case` statements.
+
 ## Compiler changes
 
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,

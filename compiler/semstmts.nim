@@ -1059,6 +1059,9 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
       chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
     discard
+  of tyCstring:
+    if c.config.backend != backendJs:
+      n[0] = cstringDollar(c, n[0])
   else:
     popCaseContext(c)
     closeScope(c)
@@ -1077,7 +1080,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
     case x.kind
     of nkOfBranch:
       checkMinSonsLen(x, 2, c.config)
-      semCaseBranch(c, n, x, i, covered)
+      semCaseBranch(c, n, x, i, caseTyp, covered)
       var last = x.len-1
       x[last] = semExprBranchScope(c, x[last])
       typ = commonType(c, typ, x[last])
