@@ -124,7 +124,7 @@ type
     semConstExpr*: proc (c: PContext, n: PNode; expectedType: PType = nil): PNode {.nimcall.} # for the pragmas
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode {.nimcall.}
     semTryExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
-    semTryConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.}
+    semTryConstExpr*: proc (c: PContext, n: PNode; expectedType: PType = nil): PNode {.nimcall.}
     computeRequiresInit*: proc (c: PContext, t: PType): bool {.nimcall.}
     hasUnresolvedArgs*: proc (c: PContext, n: PNode): bool
 

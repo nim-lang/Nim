@@ -1691,7 +1691,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   addParams(c, params, skProc)
   pushProcCon(c, s)
   addResult(c, n, n.typ[0], skProc)
-  s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
+  s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], n.typ[0]))
   trackProc(c, s, s.ast[bodyPos])
   popProcCon(c)
   popOwner(c)
@@ -2113,7 +2113,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # allowed, everything else, including a nullary generic is an error.
         pushProcCon(c, s)
         addResult(c, n, s.typ[0], skProc)
-        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
+        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], s.typ[0]))
         trackProc(c, s, s.ast[bodyPos])
         popProcCon(c)
       elif efOperand notin flags:
@@ -2126,8 +2126,15 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
         maybeAddResult(c, s, n)
+        let resultType = 
+          if s.kind == skMacro:
+            sysTypeFromName(c.graph, n.info, "NimNode")
+          elif not isInlineIterator(s.typ):
+            s.typ[0]
+          else:
+            nil
         # semantic checking also needed with importc in case used in VM
-        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
+        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
         trackProc(c, s, s.ast[bodyPos])
@@ -2304,7 +2311,7 @@ proc setLine(n: PNode, info: TLineInfo) =
     for i in 0..<n.safeLen: setLine(n[i], info)
     n.info = info
 
-proc semPragmaBlock(c: PContext, n: PNode): PNode =
+proc semPragmaBlock(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   checkSonsLen(n, 2, c.config)
   let pragmaList = n[0]
   pragma(c, nil, pragmaList, exprPragmas, isStatement = true)
@@ -2321,7 +2328,7 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
         localError(c.config, p.info, "invalid pragma block: " & $p)
 
   inc c.inUncheckedAssignSection, inUncheckedAssignSection
-  n[1] = semExpr(c, n[1])
+  n[1] = semExpr(c, n[1], expectedType = expectedType)
   dec c.inUncheckedAssignSection, inUncheckedAssignSection
   result = n
   result.typ = n[1].typ

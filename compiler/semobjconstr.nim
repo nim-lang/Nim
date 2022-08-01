@@ -77,7 +77,7 @@ proc semConstrField(c: PContext, flags: TExprFlags,
         "the field '$1' is not accessible." % [field.name.s])
       return
 
-    var initValue = semExprFlagDispatched(c, assignment[1], flags)
+    var initValue = semExprFlagDispatched(c, assignment[1], flags, field.typ)
     if initValue != nil:
       initValue = fitNodeConsiderViewType(c, field.typ, initValue, assignment.info)
     assignment[0] = newSymNode(field)
@@ -382,6 +382,12 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
 
   if t == nil:
     return localErrorNode(c, result, "object constructor needs an object type")
+  
+  if t.skipTypes({tyGenericInst,
+      tyAlias, tySink, tyOwned, tyRef}).kind != tyObject and
+      expectedType != nil and expectedType.skipTypes({tyGenericInst,
+      tyAlias, tySink, tyOwned, tyRef}).kind == tyObject:
+    t = expectedType
 
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   if t.kind == tyRef:

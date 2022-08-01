@@ -41,7 +41,9 @@ block:
   doAssert x8[a] + x8[b] == x8[c]
 
   const x9: array[-2..2, float] = [0, 1, 2, 3, 4]
-  let x10: array[ABC, byte] = [a: 1, b: 2, c: 3]
+  let x10: array[ABC, byte] = block:
+    {.gcsafe.}:
+      [a: 1, b: 2, c: 3]
 
 block:
   type Foo = object
@@ -51,3 +53,24 @@ block:
   of true: ord(1)
   else: 0
   foo.x = if true: ord(1) else: 0
+
+block:
+  type Foo = object
+    x: (float, seq[(byte, seq[byte])])
+    
+  let foo = Foo(x: (1, @{2: @[], 3: @[4, 5]}))
+  doAssert foo.x == (1.0, @{2u8: @[], 3u8: @[4u8, 5]})
+
+block:
+  type Foo = object
+    x: tuple[a: float, b: seq[(byte, seq[byte])]]
+    
+  let foo = Foo(x: (a: 1, b: @{2: @[3, 4], 5: @[]}))
+  doAssert foo.x == (1.0, @{2u8: @[3u8, 4], 5u8: @[]})
+
+block:
+  proc foo(): seq[float] = @[1]
+
+  let fooLamb = proc(): seq[float] = @[1]
+
+  doAssert foo() == fooLamb()
