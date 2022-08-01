@@ -24,8 +24,11 @@ import unittest, strutils
 import std/private/miscdollars
 import os
 
+const preferMarkdown = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
+const preferRst = {roSupportMarkdown, roNimFile, roSandboxDisabled}
+
 proc toAst(input: string,
-            rstOptions: RstParseOptions = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled},
+            rstOptions: RstParseOptions = preferMarkdown,
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
@@ -451,7 +454,7 @@ suite "RST parsing":
         >   - y
         >
         > Paragraph.
-        """.toAst == dedent"""
+        """.toAst(rstOptions = preferRst) == dedent"""
           rnMarkdownBlockQuote
             rnMarkdownBlockQuoteItem  quotationDepth=1
               rnInner
@@ -467,6 +470,111 @@ suite "RST parsing":
                   rnLeaf  'Paragraph'
                   rnLeaf  '.'
           """)
+
+  let expectCodeBlock = dedent"""
+      rnCodeBlock
+        [nil]
+        rnFieldList
+          rnField
+            rnFieldName
+              rnLeaf  'default-language'
+            rnFieldBody
+              rnLeaf  'Nim'
+        rnLiteralBlock
+          rnLeaf  '
+      let a = 1
+      ```'
+      """
+
+  test "Markdown code blocks with more > 3 backticks":
+    check(dedent"""
+        ````
+        let a = 1
+        ```
+        ````""".toAst == expectCodeBlock)
+
+  test "Markdown code blocks with ~~~":
+    check(dedent"""
+        ~~~
+        let a = 1
+        ```
+        ~~~""".toAst == expectCodeBlock)
+    check(dedent"""
+        ~~~~~
+        let a = 1
+        ```
+        ~~~~~""".toAst == expectCodeBlock)
+
+  test "Markdown code blocks with Nim-specific arguments":
+    check(dedent"""
+        ```nim number-lines=1 test
+        let a = 1
+        ```""".toAst ==
+      dedent"""
+        rnCodeBlock
+          rnDirArg
+            rnLeaf  'nim'
+          rnFieldList
+            rnField
+              rnFieldName
+                rnLeaf  'number-lines'
+              rnFieldBody
+                rnLeaf  '1'
+            rnField
+              rnFieldName
+                rnLeaf  'test'
+              rnFieldBody
+          rnLiteralBlock
+            rnLeaf  '
+        let a = 1'
+        """)
+
+    check(dedent"""
+        ```nim test = "nim c $1"  number-lines = 1
+        let a = 1
+        ```""".toAst ==
+      dedent"""
+        rnCodeBlock
+          rnDirArg
+            rnLeaf  'nim'
+          rnFieldList
+            rnField
+              rnFieldName
+                rnLeaf  'test'
+              rnFieldBody
+                rnLeaf  '"nim c $1"'
+            rnField
+              rnFieldName
+                rnLeaf  'number-lines'
+              rnFieldBody
+                rnLeaf  '1'
+          rnLiteralBlock
+            rnLeaf  '
+        let a = 1'
+        """)
+
+  test "additional indentation < 4 spaces is handled fine":
+    check(dedent"""
+        Indentation
+
+          ```nim
+            let a = 1
+          ```""".toAst ==
+      dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Indentation'
+          rnParagraph
+            rnCodeBlock
+              rnDirArg
+                rnLeaf  'nim'
+              [nil]
+              rnLiteralBlock
+                rnLeaf  '
+          let a = 1'
+      """)
+      # | |
+      # |  \ indentation of exactly two spaces before 'let a = 1'
 
   test "option list has priority over definition list":
     check(dedent"""
@@ -562,7 +670,7 @@ suite "RST parsing":
 
          notAcomment1
          notAcomment2
-        someParagraph""".toAst ==
+        someParagraph""".toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnBlockQuote
@@ -570,6 +678,25 @@ suite "RST parsing":
               rnLeaf  'notAcomment1'
               rnLeaf  ' '
               rnLeaf  'notAcomment2'
+          rnParagraph
+            rnLeaf  'someParagraph'
+        """)
+
+  test "check that additional line right after .. ends comment (Markdown mode)":
+    # in Markdown small indentation does not matter so this should
+    # just be split to 2 paragraphs.
+    check(dedent"""
+        ..
+
+         notAcomment1
+         notAcomment2
+        someParagraph""".toAst ==
+      dedent"""
+        rnInner
+          rnInner
+            rnLeaf  'notAcomment1'
+            rnLeaf  ' '
+            rnLeaf  'notAcomment2'
           rnParagraph
             rnLeaf  'someParagraph'
         """)
@@ -592,7 +719,7 @@ suite "RST parsing":
 
         ..
 
-          someBlockQuote""".toAst ==
+          someBlockQuote""".toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnAdmonition  adType=note

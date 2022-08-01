@@ -464,15 +464,16 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ##  var str = "Hello world!"
   ##  low(str) # => 0
 
-proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
-  ## Use this instead of `=` for a `shallow copy`:idx:.
-  ##
-  ## The shallow copy only changes the semantics for sequences and strings
-  ## (and types which contain those).
-  ##
-  ## Be careful with the changed semantics though!
-  ## There is a reason why the default assignment does a deep copy of sequences
-  ## and strings.
+when not defined(gcArc) and not defined(gcOrc):
+  proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
+    ## Use this instead of `=` for a `shallow copy`:idx:.
+    ##
+    ## The shallow copy only changes the semantics for sequences and strings
+    ## (and types which contain those).
+    ##
+    ## Be careful with the changed semantics though!
+    ## There is a reason why the default assignment does a deep copy of sequences
+    ## and strings.
 
 # :array|openArray|string|seq|cstring|tuple
 proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
@@ -490,9 +491,12 @@ proc arrPut[I: Ordinal;T,S](a: T; i: I;
 proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
   ## Generic `destructor`:idx: implementation that can be overridden.
   discard
-proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
+proc `=sink`*[T](x: var T; y: T) {.inline, nodestroy, magic: "Asgn".} =
   ## Generic `sink`:idx: implementation that can be overridden.
-  shallowCopy(x, y)
+  when defined(gcArc) or defined(gcOrc):
+    x = y
+  else:
+    shallowCopy(x, y)
 
 when defined(nimHasTrace):
   proc `=trace`*[T](x: var T; env: pointer) {.inline, magic: "Trace".} =
@@ -2850,7 +2854,10 @@ when hasAlloc or defined(nimscript):
     setLen(x, xl+item.len)
     var j = xl-1
     while j >= i:
-      shallowCopy(x[j+item.len], x[j])
+      when defined(gcArc) or defined(gcOrc):
+        x[j+item.len] = move x[j]
+      else:
+        shallowCopy(x[j+item.len], x[j])
       dec(j)
     j = 0
     while j < item.len:

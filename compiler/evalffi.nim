@@ -110,8 +110,8 @@ proc mapCallConv(conf: ConfigRef, cc: TCallingConvention, info: TLineInfo): TABI
   else:
     globalError(conf, info, "cannot map calling convention to FFI")
 
-template rd(T, p: untyped): untyped = (cast[ptr T](p))[]
-template wr(T, p, v: untyped): untyped = (cast[ptr T](p))[] = v
+template rd(typ, p: untyped): untyped = (cast[ptr typ](p))[]
+template wr(typ, p, v: untyped): untyped = (cast[ptr typ](p))[] = v
 template `+!`(x, y: untyped): untyped =
   cast[pointer](cast[ByteAddress](x) + y)
 
@@ -177,8 +177,8 @@ const maxPackDepth = 20
 var packRecCheck = 0
 
 proc pack(conf: ConfigRef, v: PNode, typ: PType, res: pointer) =
-  template awr(T, v: untyped): untyped =
-    wr(T, res, v)
+  template awr(typ, v: untyped): untyped =
+    wr(typ, res, v)
 
   case typ.kind
   of tyBool: awr(bool, v.intVal != 0)

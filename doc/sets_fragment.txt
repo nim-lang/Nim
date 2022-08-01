@@ -52,8 +52,7 @@ operation             meaning
 `excl(A, elem)`       same as `A = A - {elem}`
 ==================    ========================================================
 
-Bit fields
-~~~~~~~~~~
+### Bit fields
 
 Sets are often used to define a type for the *flags* of a procedure.
 This is a cleaner (and type safe) solution than defining integer

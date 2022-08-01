@@ -13,7 +13,7 @@ Nim Tutorial (Part II)
 Introduction
 ============
 
-  "Repetition renders the ridiculous reasonable." -- Norman Wildberger
+> "Repetition renders the ridiculous reasonable." -- Norman Wildberger
 
 This document is a tutorial for the advanced constructs of the *Nim*
 programming language. **Note that this document is somewhat obsolete as the**

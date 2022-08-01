@@ -1,6 +1,6 @@
 discard """
 joinable: false
-cmd: "nim c -d:booldef -d:booldef2=false -d:intdef=2 -d:strdef=foobar -r $file"
+cmd: "nim c -d:booldef -d:booldef2=false -d:intdef=2 -d:strdef=foobar -d:namespaced.define=false -d:double.namespaced.define -r $file"
 """
 
 const booldef {.booldefine.} = false
@@ -28,3 +28,18 @@ type T = object
         field2: int
     when strdef2 == "abc":
         field3: int
+
+doAssert not defined(booldef3)
+doAssert not defined(intdef2)
+doAssert not defined(strdef2)
+discard T(field1: 1, field2: 2, field3: 3)
+
+doAssert defined(namespaced.define)
+const `namespaced.define` {.booldefine.} = true
+doAssert not `namespaced.define`
+
+doAssert defined(double.namespaced.define)
+const `double.namespaced.define` {.booldefine.} = false
+doAssert `double.namespaced.define`
+
+doAssert not defined(namespaced.butnotdefined)
