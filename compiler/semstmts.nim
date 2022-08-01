@@ -1050,7 +1050,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var typ = commonTypeBegin
   var hasElse = false
   let caseTyp = skipTypes(n[0].typ, abstractVar-{tyTypeDesc})
-  const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool}
+  const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt64, tyBool}
   case caseTyp.kind
   of shouldChckCovered:
     chckCovered = true
@@ -2300,7 +2300,7 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
   for p in pragmaList:
     if whichPragma(p) == wCast:
       case whichPragma(p[1])
-      of wGcSafe, wNoSideEffect, wTags, wRaises:
+      of wGcSafe, wNoSideEffect, wTags, wForbids, wRaises:
         discard "handled in sempass2"
       of wUncheckedAssign:
         inUncheckedAssignSection = 1

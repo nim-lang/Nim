@@ -405,7 +405,7 @@ proc genClosureVar(p: BProc, a: PNode) =
   genLineDir(p, a)
   if immediateAsgn:
     loadInto(p, a[0], a[2], v)
-  else:
+  elif sfNoInit notin a[0][1].sym.flags:
     constructLoc(p, v)
 
 proc genVarStmt(p: BProc, n: PNode) =

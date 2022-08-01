@@ -552,7 +552,7 @@ context1
 
 context2
 """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml(preferRst)
     doAssert "<hr" in output1
 
     let input2 = """
@@ -582,8 +582,13 @@ Test literal block
 ```
 let x = 1
 ``` """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml({roSupportMarkdown, roPreferMarkdown})
     doAssert "<pre" in output1 and "class=\"Keyword\"" notin output1
+
+    # Check Nim highlighting by default in .nim files:
+    let output1nim = input1.toHtml({roSupportMarkdown, roPreferMarkdown,
+                                    roNimFile})
+    doAssert "<pre" in output1nim and "class=\"Keyword\"" in output1nim
 
     let input2 = """
 Parse the block with language specifier:
@@ -1615,4 +1620,9 @@ suite "local file inclusion":
     var error = new string
     discard ".. code-block:: nim\n    :file: ./readme.md".toHtml(error=error)
     check(error[] == "input(2, 20) Error: disabled directive: 'file'")
+
+  test "code-block file directive is disabled - Markdown":
+    var error = new string
+    discard "```nim file = ./readme.md\n```".toHtml(error=error)
+    check(error[] == "input(1, 23) Error: disabled directive: 'file'")
 

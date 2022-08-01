@@ -104,7 +104,7 @@ can run a subset of tests by specifying a category (for example
 ``./koch tests cat async``).
 
 For more information on the ``koch`` build tool please see the documentation
-within the [doc/koch.rst](doc/koch.rst) file.
+within the [doc/koch.md](doc/koch.md) file.
 
 ## Nimble
 
