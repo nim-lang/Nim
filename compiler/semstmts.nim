@@ -1077,7 +1077,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
     case x.kind
     of nkOfBranch:
       checkMinSonsLen(x, 2, c.config)
-      semCaseBranch(c, n, x, i, caseTyp, covered)
+      semCaseBranch(c, n, x, i, covered)
       var last = x.len-1
       x[last] = semExprBranchScope(c, x[last])
       typ = commonType(c, typ, x[last])
