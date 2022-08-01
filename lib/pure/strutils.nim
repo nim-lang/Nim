@@ -80,8 +80,7 @@ export toLower, toUpper
 
 include "system/inclrtl"
 import std/private/since
-from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl,
-    startsWithImpl, endsWithImpl
+from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWithImpl, endsWithImpl
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -94,18 +93,6 @@ const
 
   Letters* = {'A'..'Z', 'a'..'z'}
     ## The set of letters.
-
-  UppercaseLetters* = {'A'..'Z'}
-    ## The set of uppercase ASCII letters.
-
-  LowercaseLetters* = {'a'..'z'}
-    ## The set of lowercase ASCII letters.
-
-  PunctuationChars* = {'!'..'/', ':'..'@', '['..'`', '{'..'~'}
-    ## The set of all ASCII punctuation characters.
-
-  PrintableChars* = Letters + Digits + PunctuationChars + Whitespace
-    ## The set of all printable ASCII characters (letters, digits, whitespace, and punctuation characters).
 
   Digits* = {'0'..'9'}
     ## The set of digits.
@@ -185,7 +172,7 @@ func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
     doAssert isLowerAscii('e') == true
     doAssert isLowerAscii('E') == false
     doAssert isLowerAscii('7') == false
-  return c in LowercaseLetters
+  return c in {'a'..'z'}
 
 func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
@@ -199,7 +186,8 @@ func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
     doAssert isUpperAscii('e') == false
     doAssert isUpperAscii('E') == true
     doAssert isUpperAscii('7') == false
-  return c in UppercaseLetters
+  return c in {'A'..'Z'}
+
 
 func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   ## Returns the lower case version of character `c`.
@@ -214,7 +202,7 @@ func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   runnableExamples:
     doAssert toLowerAscii('A') == 'a'
     doAssert toLowerAscii('e') == 'e'
-  if c in UppercaseLetters:
+  if c in {'A'..'Z'}:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
@@ -251,7 +239,7 @@ func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
   runnableExamples:
     doAssert toUpperAscii('a') == 'A'
     doAssert toUpperAscii('E') == 'E'
-  if c in LowercaseLetters:
+  if c in {'a'..'z'}:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
@@ -301,7 +289,7 @@ func nimIdentNormalize*(s: string): string =
   result[0] = s[0]
   var j = 1
   for i in 1..len(s) - 1:
-    if s[i] in UppercaseLetters:
+    if s[i] in {'A'..'Z'}:
       result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
@@ -323,7 +311,7 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
-    if s[i] in UppercaseLetters:
+    if s[i] in {'A'..'Z'}:
       result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
@@ -1527,8 +1515,7 @@ func delete*(s: var string, slice: Slice[int]) =
       inc(j)
     setLen(s, newLen)
 
-func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete",
-    deprecated: "use `delete(s, first..last)`".} =
+func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete", deprecated: "use `delete(s, first..last)`".} =
   ## Deletes in `s` the characters at positions `first .. last` (both ends included).
   runnableExamples("--warning:deprecated:off"):
     var a = "abracadabra"
@@ -2252,7 +2239,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
     doAssert insertSep("1000000") == "1_000_000"
   result = newStringOfCap(s.len)
   let hasPrefix = isDigit(s[s.low]) == false
-  var idx: int
+  var idx:int
   if hasPrefix:
     result.add s[s.low]
     for i in (s.low + 1)..s.high:
@@ -2266,7 +2253,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
   result.setLen(L + idx)
   var j = 0
   dec(L)
-  for i in countdown(partsLen-1, 0):
+  for i in countdown(partsLen-1,0):
     if j == digits:
       result[L + idx] = sep
       dec(L)
@@ -2367,7 +2354,7 @@ func validIdentifier*(s: string): bool {.rtl, extern: "nsuValidIdentifier".} =
 # floating point formatting:
 when not defined(js):
   func c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
-                                     importc: "sprintf", varargs.}
+                                     importc: "sprintf", varargs}
 
 type
   FloatFormatMode* = enum
