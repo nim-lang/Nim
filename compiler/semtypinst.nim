@@ -35,7 +35,7 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
       if t[0].kind != tyObject or tfFinal in t[0].flags:
         localError(info, errInheritanceOnlyWithNonFinalObjects)
 
-proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
+proc searchInstTypes*(g: ModuleGraph; key: PType): PType {.nodestroy.} =
   let genericTyp = key[0]
   if not (genericTyp.kind == tyGenericBody and
       genericTyp.sym != nil): return
