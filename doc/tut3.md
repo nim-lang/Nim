@@ -13,7 +13,7 @@ Nim Tutorial (Part III)
 Introduction
 ============
 
-  "With Great Power Comes Great Responsibility." -- Spider Man's Uncle
+>  "With Great Power Comes Great Responsibility." -- Spider Man's Uncle
 
 This document is a tutorial about Nim's macro system.
 A macro is a function that is executed at compile-time and transforms

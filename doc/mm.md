@@ -11,7 +11,7 @@ Nim's Memory Management
 ..
 
 
-  "The road to hell is paved with good intentions."
+> "The road to hell is paved with good intentions."
 
 
 Multi-paradigm Memory Management Strategies
