@@ -1145,11 +1145,11 @@ The following floating-point types are pre-defined:
   have the suffix 'fXX.
 
 
-Automatic type conversion in expressions with different kinds
-of floating-point types is performed: See `Convertible relation`_ for further
-details. Arithmetic performed on floating-point types follows the IEEE
-standard. Integer types are not converted to floating-point types automatically
-and vice versa.
+Automatic type conversion in expressions with different kinds of floating-point
+types is performed: See `Convertible relation
+<#type-relations-convertible-relation>`_ for further details. Arithmetic
+performed on floating-point types follows the IEEE standard. Integer types are
+not converted to floating-point types automatically and vice versa.
 
 The IEEE standard defines five types of floating-point exceptions:
 
@@ -3731,9 +3731,9 @@ notation. (Thus an operator can have more than two parameters):
   proc `*+` (a, b, c: int): int =
     # Multiply and add
     result = a * b + c
-  ```
 
   assert `*+`(3, 4, 6) == `+`(`*`(a, b), c)
+  ```
 
 
 Export marker
@@ -4589,7 +4589,8 @@ Converters
 ==========
 
 A converter is like an ordinary proc except that it enhances
-the "implicitly convertible" type relation (see `Convertible relation`_):
+the "implicitly convertible" type relation (see `Convertible relation
+<#type-relations-convertible-relation>`_):
 
   ```nim
   # bad style ahead: Nim is not C.
@@ -7312,7 +7313,7 @@ This pragma has no effect on the JS backend.
 
 
 Noalias pragma
-==============
+--------------
 
 Since version 1.4 of the Nim compiler, there is a `.noalias` annotation for variables
 and parameters. It is mapped directly to C/C++'s `restrict`:c: keyword and means that
