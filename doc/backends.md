@@ -155,8 +155,7 @@ To wrap native code, take a look at the `c2nim tool <https://github.com/nim-lang
 with the process of scanning and transforming header files into a Nim
 interface.
 
-C invocation example
-~~~~~~~~~~~~~~~~~~~~
+### C invocation example
 
 Create a ``logic.c`` file with the following content:
 
@@ -194,8 +193,7 @@ could as well pass ``logic.o``) we could be passing switches to link any other
 static C library.
 
 
-JavaScript invocation example
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+### JavaScript invocation example
 
 Create a ``host.html`` file with the following content:
 
@@ -251,8 +249,7 @@ The name `NimMain` can be influenced via the `--nimMainPrefix:prefix` switch.
 Use `--nimMainPrefix:MyLib` and the function to call is named `MyLibNimMain`.
 
 
-Nim invocation example from C
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+### Nim invocation example from C
 
 Create a ``fib.nim`` file with the following content:
 
@@ -312,8 +309,7 @@ vary for each system. For instance, on Linux systems you will likely need to
 use `-ldl`:option: too to link in required dlopen functionality.
 
 
-Nim invocation example from JavaScript
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+### Nim invocation example from JavaScript
 
 Create a ``mhost.html`` file with the following content:
 
