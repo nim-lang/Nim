@@ -474,7 +474,12 @@ suite "RST parsing":
   let expectCodeBlock = dedent"""
       rnCodeBlock
         [nil]
-        [nil]
+        rnFieldList
+          rnField
+            rnFieldName
+              rnLeaf  'default-language'
+            rnFieldBody
+              rnLeaf  'Nim'
         rnLiteralBlock
           rnLeaf  '
       let a = 1

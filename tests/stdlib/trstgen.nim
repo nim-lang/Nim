@@ -582,8 +582,13 @@ Test literal block
 ```
 let x = 1
 ``` """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml({roSupportMarkdown, roPreferMarkdown})
     doAssert "<pre" in output1 and "class=\"Keyword\"" notin output1
+
+    # Check Nim highlighting by default in .nim files:
+    let output1nim = input1.toHtml({roSupportMarkdown, roPreferMarkdown,
+                                    roNimFile})
+    doAssert "<pre" in output1nim and "class=\"Keyword\"" in output1nim
 
     let input2 = """
 Parse the block with language specifier:
