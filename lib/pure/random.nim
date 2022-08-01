@@ -372,14 +372,14 @@ proc rand*[T: Ordinal](r: var Rand; t: typedesc[T]): T =
   ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice
   when T is range or T is enum:
-    result = rand(state, low(T)..high(T))
+    result = rand(r, low(T)..high(T))
   elif T is bool:
     when defined(js):
-      result = (state.next or 0) < 0
+      result = (r.next or 0) < 0
     else:
-      result = cast[int64](state.next) < 0
+      result = cast[int64](r.next) < 0
   else:
-    result = cast[T](state.next shr (64 - sizeof(T)*8))
+    result = cast[T](r.next shr (64 - sizeof(T)*8))
 
 proc rand*[T: Ordinal](t: typedesc[T]): T =
   ## Returns a random Ordinal in the range `low(T)..high(T)`.
