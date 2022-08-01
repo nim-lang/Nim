@@ -546,11 +546,6 @@ proc semCaseBranchRange(c: PContext, t, b: PNode,
   checkSonsLen(b, 3, c.config)
   result = semBranchRange(c, t, b[1], b[2], covered)
 
-proc cstringDollar(c: PContext, n: PNode): PNode =
-  result = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyString))
-  result.add(newSymNode(getSysMagic(c.graph, n.info, "$", mCStrToStr)))
-  result.add(n)
-
 proc semCaseBranchSetElem(c: PContext, t, b: PNode,
                           selectorType: PType,
                           covered: var Int128): PNode =
