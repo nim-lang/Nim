@@ -896,6 +896,7 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
             case e.kind
             of nkStrLit..nkTripleStrLit: lineF(p, "case $1:$n",
                 [makeJSString(e.strVal, false)])
+            of nkNilLit: lineF(p, "case null:$n", [])
             else: internalError(p.config, e.info, "jsgen.genCaseStmt: 2")
           else:
             gen(p, e, cond)

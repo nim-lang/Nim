@@ -51,6 +51,7 @@ proc eqCstrings(a, b: cstring): bool {.inline, compilerproc.} =
 proc hashCstring(s: cstring): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
   # this used to be used for efficient generation of cstring case statements
+  if s.isNil: return 0
   var h : uint = 0
   var i = 0
   while true:

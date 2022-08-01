@@ -843,8 +843,13 @@ proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
   for i in 0..<b.len - 1:
     assert(b[i].kind != nkRange)
     initLocExpr(p, b[i], x)
-    assert(b[i].kind in {nkStrLit..nkTripleStrLit})
-    var j = int(hashString(p.config, b[i].strVal) and high(branches))
+    var j: int
+    case b[i].kind
+    of nkStrLit..nkTripleStrLit:
+      j = int(hashString(p.config, b[i].strVal) and high(branches))
+    of nkNilLit: j = 0
+    else:
+      assert false, "invalid string case branch node kind"
     if stringKind == tyCstring:
       appcg(p.module, branches[j], "if (#eqCstrings($1, $2)) goto $3;$n",
          [rdLoc(e), rdLoc(x), labl])
