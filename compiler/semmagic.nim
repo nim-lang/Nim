@@ -547,6 +547,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result = semBindSym(c, n)
     else:
       result = semDynamicBindSym(c, n)
+  of mNDynamicBindSym: result = semDynamicBindSym(c, n)
   of mProcCall:
     result = n
     result.typ = n[1].typ

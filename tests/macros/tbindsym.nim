@@ -46,7 +46,7 @@ proc deinitApple(x: Apple) =
 macro wrapObject(obj: typed, n: varargs[untyped]): untyped =
   let m = n[0]
   for x in m:
-    var z = bindSym x
+    var z = dynamicBindSym x
     echo z.repr
 
 wrapObject(Apple):
@@ -60,7 +60,7 @@ type
 
 macro mixer(): untyped =
   let m = "Co" & "ral"
-  let x = bindSym(m)
+  let x = dynamicBindSym(m)
   echo x.repr
   echo getType(x).repr
 

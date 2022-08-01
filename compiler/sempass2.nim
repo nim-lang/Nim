@@ -879,7 +879,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
         mergeRaises(tracked, effectList[exceptionEffects], n)
         mergeTags(tracked, effectList[tagEffects], n)
         gcsafeAndSideeffectCheck()
-    if a.kind != nkSym or a.sym.magic notin {mNBindSym, mFinished, mExpandToAst, mQuoteAst}:
+    if a.kind != nkSym or a.sym.magic notin {mNBindSym, mNDynamicBindSym, mFinished, mExpandToAst, mQuoteAst}:
       for i in 1..<n.len:
         trackOperandForIndirectCall(tracked, n[i], op, i, a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
@@ -904,7 +904,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
         optStaticBoundsCheck in tracked.currOptions:
       checkBounds(tracked, n[1], n[2])
 
-    if a.kind != nkSym or a.sym.magic notin {mRunnableExamples, mNBindSym, mExpandToAst, mQuoteAst}:
+    if a.kind != nkSym or a.sym.magic notin {mRunnableExamples, mNBindSym, mNDynamicBindSym, mExpandToAst, mQuoteAst}:
       for i in 0..<n.safeLen:
         track(tracked, n[i])
 

@@ -1302,6 +1302,9 @@ to be computed dynamically.
   echo callOp("-", 5, 4)
   ```
 
+The proc `dynamicBindSym` may also be used instead of `bindSym`
+to access this behavior without enabling the experimental switch.  
+
 
 Term rewriting macros
 =====================
