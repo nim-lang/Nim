@@ -202,7 +202,7 @@ proc mapReturnType(conf: ConfigRef; typ: PType): TCTypeKind =
   result = mapType(conf, typ, skResult)
 
 proc isImportedType(t: PType): bool =
-  result = t != nil and t.sym != nil and sfImportc in t.sym.flags
+  result = t.sym != nil and sfImportc in t.sym.flags
 
 proc isImportedCppType(t: PType): bool =
   let x = t.skipTypes(irrelevantForBackend)

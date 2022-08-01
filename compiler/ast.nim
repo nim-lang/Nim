@@ -1114,7 +1114,7 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
 const
   moduleShift = when defined(cpu32): 20 else: 24
 
-template id*(a: PIdObj): int =
+proc id*(a: PIdObj): int =
   let x = a
   (x.itemId.module.int shl moduleShift) + x.itemId.item.int
 
