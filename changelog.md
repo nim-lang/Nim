@@ -53,6 +53,9 @@
 - Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
   in `jscore` for JavaScript targets.
+- Added `UppercaseLetters`, `LowercaseLetters` The set of UppercaseLetters and lowercase ASCII letters.
+- Added `PunctuationChars` The set of all ASCII punctuation characters.
+- Added `PrintableChars` The set of all printable ASCII characters (letters, digits, whitespace, and punctuation characters).
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
