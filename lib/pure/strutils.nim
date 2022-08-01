@@ -105,7 +105,7 @@ const
     ## The set of all ASCII punctuation characters.
 
   PrintableChars* = Letters + Digits + PunctuationChars + Whitespace
-    ## The set of all printable characters (letters, digits, whitespace, and punctuation characters).
+    ## The set of all printable ASCII characters (letters, digits, whitespace, and punctuation characters).
 
   Digits* = {'0'..'9'}
     ## The set of digits.
