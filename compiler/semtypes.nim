@@ -562,8 +562,6 @@ proc semCaseBranchSetElem(c: PContext, t, b: PNode,
     result = semBranchRange(c, t, b[0], b[1], covered)
   else:
     result = fitNode(c, selectorType, b, b.info)
-    if c.config.backend != backendJs and selectorType.kind == tyCstring:
-      result = cstringDollar(c, result)
     inc(covered)
 
 proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
@@ -586,10 +584,8 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
       elif r.kind notin {nkCurly, nkBracket} or r.len == 0:
         checkMinSonsLen(t, 1, c.config)
         var tmp = fitNode(c, selectorType, r, r.info)
-        if c.config.backend != backendJs and selectorType.kind == tyCstring:
-          tmp = cstringDollar(c, tmp)
         # the call to fitNode may introduce a call to a converter
-        if tmp.kind in {nkHiddenCallConv}: tmp = semConstExpr(c, tmp)
+        if tmp.kind in {nkHiddenCallConv, nkHiddenStdConv}: tmp = semConstExpr(c, tmp)
         branch[i] = skipConv(tmp)
         inc(covered)
       else:

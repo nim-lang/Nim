@@ -1057,11 +1057,8 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   of tyRange:
     if skipTypes(caseTyp[0], abstractInst).kind in shouldChckCovered:
       chckCovered = true
-  of tyFloat..tyFloat128, tyString, tyError:
+  of tyFloat..tyFloat128, tyString, tyCstring, tyError:
     discard
-  of tyCstring:
-    if c.config.backend != backendJs:
-      n[0] = cstringDollar(c, n[0])
   else:
     popCaseContext(c)
     closeScope(c)
