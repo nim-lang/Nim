@@ -104,9 +104,6 @@ const
   PunctuationChars* = {'!'..'/', ':'..'@', '['..'`', '{'..'~'}
     ## The set of all ASCII punctuation characters.
 
-  PrintableChars* = Letters + Digits + PunctuationChars + Whitespace
-    ## The set of all printable ASCII characters (letters, digits, whitespace, and punctuation characters).
-
   Digits* = {'0'..'9'}
     ## The set of digits.
 
@@ -122,6 +119,9 @@ const
   Newlines* = {'\13', '\10'}
     ## The set of characters a newline terminator can start with (carriage
     ## return, line feed).
+
+  PrintableChars* = Letters + Digits + PunctuationChars + Whitespace
+    ## The set of all printable ASCII characters (letters, digits, whitespace, and punctuation characters).
 
   AllChars* = {'\x00'..'\xFF'}
     ## A set with all the possible characters.
