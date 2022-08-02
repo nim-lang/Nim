@@ -582,8 +582,15 @@ proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
     let viewOrigin = pathExpr(dest, c.owner)
     if viewOrigin != nil and viewOrigin.kind == nkSym:
       let viewSym = viewOrigin.sym
-      case directViewType(viewSym.typ)
-      of mutableView, immutableView:
+      let directView = directViewType(dest[0].typ) # check something like result[first] = toOpenArray(s, first, last-1)
+                                                   # so we don't need to iterate the original type
+      let originSymbolView = directViewType(viewSym.typ) # find the original symbol which preserves the view type
+                                                    #  var foo: var Object = a
+                                                    #  foo.id = 777 # the type of foo is no view, so we need
+                                                    #  to check the original symbol
+      let viewSets = {directView, originSymbolView}
+
+      if viewSets * {mutableView, immutableView} != {}:
         # we do not borrow, but we use the view to mutate the borrowed
         # location:
         let vid = variableId(c, viewSym)
@@ -596,7 +603,8 @@ proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
         else:
           localError(c.g.config, dest.info, "attempt to mutate a borrowed location from an immutable view")
           ]#
-      of noView: discard "nothing to do"
+      else:
+        discard "nothing to do"
 
 proc containsPointer(t: PType): bool =
   proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr}
