@@ -694,28 +694,25 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if def.kind != nkEmpty:
           if sfThread in v.flags: localError(c.config, def.info, errThreadvarCannotInit)
         setVarType(c, v, typ)
+        # this is needed for the evaluation pass, guard checking
+        #  and custom pragmas:
         b = newNodeI(nkIdentDefs, a.info)
         if importantComments(c.config):
           # keep documentation information:
           b.comment = a.comment
-        b.add newSymNode(v)
+        # postfix not generated here (to generate, get rid of it in transf)
+        if a[j].kind == nkPragmaExpr:
+          var p = newNodeI(nkPragmaExpr, a.info)
+          p.add newSymNode(v)
+          p.add a[j][1]
+          b.add p
+        else:
+          b.add newSymNode(v)
         # keep type desc for doc generator
         b.add a[^2]
         b.add copyTree(def)
         addToVarSection(c, result, n, b)
-        # this is needed for the evaluation pass, guard checking
-        #  and custom pragmas:
-        var ast = newNodeI(nkIdentDefs, a.info)
-        if a[j].kind == nkPragmaExpr:
-          var p = newNodeI(nkPragmaExpr, a.info)
-          p.add newSymNode(v)
-          p.add a[j][1].copyTree
-          ast.add p
-        else:
-          ast.add newSymNode(v)
-        ast.add a[^2].copyTree
-        ast.add def
-        v.ast = ast
+        v.ast = b
       else:
         if def.kind in {nkPar, nkTupleConstr}: v.ast = def[j]
         # bug #7663, for 'nim check' this can be a non-tuple:
@@ -815,6 +812,7 @@ proc semConst(c: PContext, n: PNode): PNode =
           v.ast = def               # no need to copy
         b = newNodeI(nkConstDef, a.info)
         if importantComments(c.config): b.comment = a.comment
+        # postfix not generated here (to generate, get rid of it in transf)
         if a[j].kind == nkPragmaExpr:
           var p = newNodeI(nkPragmaExpr, a.info)
           p.add newSymNode(v)
