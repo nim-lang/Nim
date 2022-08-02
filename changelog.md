@@ -53,6 +53,7 @@
 - Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
   in `jscore` for JavaScript targets.
+- Added `UppercaseLetters`, `LowercaseLetters`, `PunctuationChars`, `PrintableChars` sets to `std/strutils`.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
