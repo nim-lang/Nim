@@ -4,7 +4,6 @@ deinitApple
 Coral
 enum
   redCoral, blackCoral
-proc (x: int; y: float): int
 proc (x: int; y: float): int'''
   output: '''TFoo
 TBar'''
@@ -68,18 +67,18 @@ macro mixer(): untyped =
 
 mixer()
 
-# #11496
-proc foo(x: int; y: float): int = x
+block: # #11496
+  proc foo(x: int; y: float): int = x
 
-macro macroA(call: untyped): untyped =
-  let
-    name = call.findChild(it.kind == nnkIdent).strVal
-    inst = name.dynamicBindSym().getTypeInst()
-  echo inst.repr
+  macro macroA(call: untyped): untyped =
+    let
+      name = call.findChild(it.kind == nnkIdent).strVal
+      inst = name.dynamicBindSym().getTypeInst()
+    echo inst.repr
 
-macro macroB(call: untyped): untyped =
-  let inst = call.findChild(it.kind == nnkIdent).strVal.dynamicBindSym().getTypeInst()
-  echo inst.repr
+  #macro macroB(call: untyped): untyped =
+  #  let inst = call.findChild(it.kind == nnkIdent).strVal.#,dynamicBindSym().getTypeInst()
+  #  echo inst.repr
 
-macroA(foo(2, 2'f))
-macroB(foo(2, 2'f))
+  macroA(foo(2, 2'f))
+  #macroB(foo(2, 2'f))
