@@ -495,8 +495,11 @@ proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
   ## 
   ## See also `dynamicBindSym`_.
 
-proc dynamicBindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
+proc dynamicBindSymImpl(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
               magic: "NBindSym", noSideEffect.}
+
+proc dynamicBindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
+              noSideEffect.} =
   ## Creates a node that binds `ident` to a symbol node. The bound symbol
   ## may be an overloaded symbol.
   ## if `ident` is a NimNode, it must have `nnkIdent` kind.
@@ -508,9 +511,11 @@ proc dynamicBindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): Nim
   ## returned even if the symbol is not ambiguous.
   ## 
   ## In contrast to `bindSym`_, `ident` does not have to be a constant value,
-  ## and instead may be a computed value. Note that this behavior is experimental.
+  ## and instead may be a computed value (however still only at compile time).
+  ## Note that this behavior is experimental.
   ##
   ## See the `manual <manual.html#macros-bindsym>`_ for more details.
+  result = dynamicBindSymImpl(ident, rule) # impl call here to work around #11496
 
 proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   magic: "NGenSym", noSideEffect.}
