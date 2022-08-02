@@ -2336,6 +2336,11 @@ proc setLine(n: PNode, info: TLineInfo) =
     for i in 0..<n.safeLen: setLine(n[i], info)
     n.info = info
 
+proc recursiveSetFlag(n: PNode, flag: TNodeFlag) =
+  if n != nil:
+    for i in 0..<n.safeLen: recursiveSetFlag(n[i], flag)
+    incl(n.flags, flag)
+
 proc semPragmaBlock(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   checkSonsLen(n, 2, c.config)
   let pragmaList = n[0]
@@ -2360,7 +2365,7 @@ proc semPragmaBlock(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   for i in 0..<pragmaList.len:
     case whichPragma(pragmaList[i])
     of wLine: setLine(result, pragmaList[i].info)
-    of wNoRewrite: incl(result.flags, nfNoRewrite)
+    of wNoRewrite: recursiveSetFlag(result, nfNoRewrite)
     else: discard
 
 proc semStaticStmt(c: PContext, n: PNode): PNode =
