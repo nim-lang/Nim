@@ -163,7 +163,7 @@ proc newXmlTree*(tag: sink string, children: openArray[XmlNode],
   for i in 0..children.len-1: result.s[i] = children[i]
   result.fAttr = attributes
 
-proc text*(n: XmlNode): lent string {.inline.} =
+proc text*(n: XmlNode): string {.inline.} =
   ## Gets the associated text with the node `n`.
   ##
   ## `n` can be a CDATA, Text, comment, or entity node.
@@ -177,9 +177,22 @@ proc text*(n: XmlNode): lent string {.inline.} =
     var c = newComment("my comment")
     assert $c == "<!-- my comment -->"
     assert c.text == "my comment"
-
-  assert n.k in {xnText, xnComment, xnCData, xnEntity}
-  result = n.fText
+    
+    var e = newElement("elem")
+    e.add newText("some text")
+    assert $e == "<elem>some text</elem>"
+    assert e.text == "some text"
+    
+  case n.k
+    of xnText, xnVerbatimText, xnComment, xnCData, xnEntity:
+      result = n.fText
+    of xnElement:
+      result = ""
+      for n in n.s:
+        if n.k == xnText:
+          result.add(n.fText)
+        else:
+          discard
 
 proc `text=`*(n: XmlNode, text: sink string) {.inline.} =
   ## Sets the associated text with the node `n`.
