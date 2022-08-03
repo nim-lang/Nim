@@ -1528,14 +1528,14 @@ Open arrays
 
 Often fixed size arrays turn out to be too inflexible; procedures should
 be able to deal with arrays of different sizes. The `openarray`:idx: type
-allows this; it can only be used for parameters. Openarrays are always
+allows this; it can only be used for parameters. Open arrays are always
 indexed with an `int` starting at position 0. The `len`, `low`
 and `high` operations are available for open arrays too. Any array with
-a compatible base type can be passed to an openarray parameter, the index
+a compatible base type can be passed to an open array parameter, the index
 type does not matter. In addition to arrays, sequences can also be passed
 to an open array parameter.
 
-The openarray type cannot be nested: multidimensional openarrays are not
+The `openarray` type cannot be nested: multidimensional open arrays are not
 supported because this is seldom needed and cannot be done efficiently.
 
   ```nim
@@ -1548,8 +1548,8 @@ supported because this is seldom needed and cannot be done efficiently.
 Varargs
 -------
 
-A `varargs` parameter is an openarray parameter that additionally
-allows to pass a variable number of arguments to a procedure. The compiler
+A `varargs` parameter is an open array parameter that additionally
+allows a variable number of arguments to be passed to a procedure. The compiler
 converts the list of arguments to an array implicitly:
 
   ```nim
@@ -1563,7 +1563,7 @@ converts the list of arguments to an array implicitly:
   myWriteln(stdout, ["abc", "def", "xyz"])
   ```
 
-This transformation is only done if the varargs parameter is the
+This transformation is only done if the `varargs` parameter is the
 last parameter in the procedure header. It is also possible to perform
 type conversions in this context:
 
