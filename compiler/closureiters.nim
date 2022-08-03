@@ -822,10 +822,13 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   let retStmt =
     if ctx.nearestFinally == 0:
       # last finally, we can return
-      let asgn = newTree(nkFastAsgn,
-        newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), info),
-        ctx.newTmpResultAccess())
-      newTree(nkReturnStmt, asgn)
+      let retValue = if ctx.fn.typ[0].isNil:
+                   ctx.g.emptyNode
+                 else:
+                   newTree(nkFastAsgn,
+                           newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), info),
+                           ctx.newTmpResultAccess())
+      newTree(nkReturnStmt, retValue)
     else:
       # bubble up to next finally
       newTree(nkGotoState, ctx.g.newIntLit(info, ctx.nearestFinally))
