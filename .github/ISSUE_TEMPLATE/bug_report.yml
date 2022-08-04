@@ -11,22 +11,6 @@ body:
         Reports with a reproducible example and descriptive detailed information will likely receive fixes faster.
 
 - type: dropdown
-  id: architecture
-  attributes:
-    label: Architecture
-    description: What is your Hardware Architecture?.
-    options:
-      - x86_64 (Default)
-      - x86_32 (32Bit)
-      - ARM_64 (64Bit)
-      - ARM_32 (32Bit)
-      - AVR, Arduino, ESP32
-      - RISC (RISC-V)
-      - Others (Unknown)
-  validations:
-    required: false
-
-- type: dropdown
   id: os
   attributes:
     label: Operating System
@@ -39,120 +23,6 @@ body:
       - BSD
       - FreeDOS
       - ReactOS
-      - Others (Unknown)
-  validations:
-    required: false
-
-- type: dropdown
-  id: disk
-  attributes:
-    label: Disk
-    description: What is your main Disk Storage?.
-    options:
-      - SSD (Solid, M2, MSATA, NVME)
-      - HDD (SATA, IDE, SCSI, Mechanical)
-      - USB (Flash, USB2, USB3)
-      - Diskless (Netboot, run from RAM)
-      - Others (Unknown)
-  validations:
-    required: false
-
-- type: dropdown
-  id: ram
-  attributes:
-    label: Memory
-    description: What is your total RAM Memory capacity?.
-    options:
-      - 1 Gigabyte
-      - 2 Gigabytes
-      - 4 Gigabytes
-      - 8 Gigabytes
-      - 16 Gigabytes
-      - 32 Gigabytes
-      - 64 Gigabytes
-      - 128 Gigabytes
-      - 256 Gigabytes
-      - 512 Gigabytes
-      - Less than 1 Gigabyte
-      - Others (Unknown)
-  validations:
-    required: false
-
-- type: dropdown
-  id: cores
-  attributes:
-    label: CPU Cores
-    description: What is your total CPU Cores count?.
-    options:
-      - 1 CPU Cores
-      - 2 CPU Cores
-      - 4 CPU Cores
-      - 8 CPU Cores
-      - 16 CPU Cores
-      - 32 CPU Cores
-      - 64 CPU Cores
-      - 128 CPU Cores
-      - 256 CPU Cores
-      - 512 CPU Cores
-      - Others (Unknown)
-  validations:
-    required: false
-
-- type: dropdown
-  id: internet
-  attributes:
-    label: Internet Connection
-    description: What is your Internet connection?.
-    options:
-      - Optical Fiber (very fast)
-      - DSL (aDSL, DSL, etc)
-      - Wifi (WLAN, Wireless)
-      - LAN (RJ45, Local, etc)
-      - Satellite (StarLink, etc)
-      - Mobile (4G, 3G, Edge, etc)
-      - Offline (No Internet)
-      - Others (Unknown)
-  validations:
-    required: false
-
-- type: dropdown
-  id: browser
-  attributes:
-    label: What is your web browser?
-    options:
-      - Chrome/Chromium
-      - Firefox/Firefox Fork
-      - Apple Safari
-      - Microsoft Edge
-      - KDE (Konqueror, Falkon, QtWebkit, etc)
-      - Microsoft Internet Explorer (Deprecated)
-      - Others (Unknown)
-  validations:
-    required: false
-
-- type: dropdown
-  id: device
-  attributes:
-    label: Device
-    description: What kind of computer is it?.
-    options:
-      - Desktop PC
-      - Server PC
-      - Mobile device (Smartphone, Smartwatch, Tablet)
-      - Docker/Qemu (Container)
-      - VirtualBox/Vagrant (Virtual Machine)
-      - Embedded/IOT
-      - Arduino Kit/ESP32 Kit
-      - Game Console (Playstation, XBOX, SteamDeck, Switch)
-      - SmartTV/SmartDisplay/Smartprojector
-      - Drone/Robot/Exoskeleton
-      - ASIC/FPGA/Crypto-mining hardware
-      - PLC/Industrial/heavy machine
-      - Point Of Sale/Kiosk/ATM
-      - Car/Self-Driving/On-Board Computer
-      - Electric scooter/Electric bike
-      - Satellite/MicroSatellite
-      - Military machine
       - Others (Unknown)
   validations:
     required: false
@@ -189,6 +59,14 @@ body:
   attributes:
     label: Possible Solution
     description: Propose a possible solution.
+  validations:
+    required: false
+    
+- type: textarea
+  id: nim-version
+  attributes:
+    label: Nim Version
+    description: Please run `nim -v` on the command line.
   validations:
     required: false
 
