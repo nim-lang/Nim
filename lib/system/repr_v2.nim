@@ -93,7 +93,10 @@ proc repr*(p: proc): string =
   repr(cast[ptr pointer](unsafeAddr p)[])
 
 template repr*(x: distinct): string =
-  repr(distinctBase(typeof(x))(x))
+  when x is range: # hacks for ranges with distinct sub types
+    repr(distinctBase(skipRanges(typeof(x)))(x))
+  else:
+    repr(distinctBase(typeof(x))(x))
 
 template repr*(t: typedesc): string = $t
 

@@ -190,6 +190,9 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
       arg = arg.base.skipTypes(skippedTypes + {tyGenericInst})
       if not rec: break
     result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
+  of "skipRanges":
+    var arg = operand.skipTypes({tyRange})
+    result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
