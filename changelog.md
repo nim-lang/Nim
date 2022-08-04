@@ -118,7 +118,9 @@
 
 - Defines the `gcRefc` symbol which allows writing specific code for the refc GC.
 
-- `cstring` is now accepted as a selector in `case` statements.
+- `cstring` is now accepted as a selector in `case` statements, removing the
+  need to convert to `string`. On the JS backend, this is translated directly
+  to a `switch` statement.
 
 ## Compiler changes
 
