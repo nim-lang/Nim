@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim check --hints:off --warnings:off $file"
+  cmd: "nim check --hints:off --warnings:off --hintAsError:XDeclaredButNotUsed $file"
   joinable: false
 """
 
