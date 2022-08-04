@@ -173,6 +173,7 @@ proc text*(n: XmlNode): lent string {.inline.} =
   ## * `tag proc <#tag,XmlNode>`_ for tag getter
   ## * `tag= proc <#tag=,XmlNode,string>`_ for tag setter
   ## * `innerText proc <#innerText,XmlNode>`_
+  ## * `elemText proc <#text,XmlNode,string>`_
   runnableExamples:
     var c = newComment("my comment")
     assert $c == "<!-- my comment -->"
@@ -209,6 +210,7 @@ proc tag*(n: XmlNode): lent string {.inline.} =
   ## * `text= proc <#text=,XmlNode,string>`_ for text setter
   ## * `tag= proc <#tag=,XmlNode,string>`_ for tag setter
   ## * `innerText proc <#innerText,XmlNode>`_
+  ## * `elemText proc <#text,XmlNode,string>`_
   runnableExamples:
     var a = newElement("firstTag")
     a.add newElement("childTag")
@@ -271,6 +273,7 @@ proc innerText*(n: XmlNode): string =
   ##
   ## See also:
   ## * `text proc <#text,XmlNode>`_
+  ## * `elemText proc <#text,XmlNode,string>`_
   runnableExamples:
     var f = newElement("myTag")
     f.add newText("my text")
@@ -291,6 +294,49 @@ proc innerText*(n: XmlNode): string =
 
   result = ""
   worker(result, n)
+
+proc elemText*(n: XmlNode, separator = ""): string {.inline.} =
+  ## Gets the associated text for an element node `n`.
+  ##
+  ## Finds all the top level text nodes for an element
+  ## and returns a concatenated string of their contents.
+  ## 
+  ## An optional string can be passed to be used as a
+  ## text node separator. 
+  ##
+  ## If there are no text nodes, an empty string is returned.
+  ##
+  ## See also:
+  ## * `text proc <#text,XmlNode>`_ for text getter
+  ## * `tag proc <#tag,XmlNode>`_ for tag getter
+  ## * `innerText proc <#innerText,XmlNode>`_
+  runnableExamples:
+    let x = newElement("top")
+    x.add newText("abc")
+    assert $x == "<top>abc</top>"
+    assert x.elemText == "abc"
+    
+    let c = newElement("child")
+    c.add newText("efg")
+    x.add c
+    assert $x == "<top>abc<child>efg</child></top>"
+    assert x.elemText == "abc"
+    assert x.child("child").elemText == "efg"
+    
+    x.add newText("xyz")
+    assert $x == "<top>abc<child>efg</child>xyz</top>"
+    assert x.elemText == "abcxyz"
+    assert x.elemText(" ") == "abc xyz"
+   
+  assert n.k == xnElement
+  result = ""
+  for i, nn in n.s:
+    if nn.k == xnText:
+      result.add(nn.fText)
+      if i < n.s.len - 1:
+        result.add(separator)
+    else:
+      discard
 
 proc add*(father, son: XmlNode) {.inline.} =
   ## Adds the child `son` to `father`.
