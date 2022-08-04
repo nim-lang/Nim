@@ -6,6 +6,8 @@ proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 proc distinctBase(T: typedesc, recursive: static bool = true): typedesc {.magic: "TypeTrait".}
   ## imported from typetraits
 
+proc skipRanges(T: typedesc): typedesc {.magic: "TypeTrait".}
+
 proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
 
 proc repr*(x: int): string =
