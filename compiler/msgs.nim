@@ -532,7 +532,6 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     sev = Severity.Warning
     ignoreMsg = not conf.hasWarn(msg)
     if not ignoreMsg and msg in conf.warningAsErrors:
-      ignoreMsg = false
       title = ErrorTitle
     else:
       title = WarningTitle
