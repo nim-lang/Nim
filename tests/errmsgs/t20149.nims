@@ -1,0 +1,1 @@
+--hintAsError:XDeclaredButNotUsed
