@@ -28,6 +28,8 @@
 - `shallowCopy` is removed for ARC/ORC. Use `move` when possible or combine assignment and
 `sink` for optimization purposes.
 
+- `nimPreviewDotLikeOps` is going to be removed or deprecated.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
@@ -53,6 +55,7 @@
 - Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
   in `jscore` for JavaScript targets.
+- Added `UppercaseLetters`, `LowercaseLetters`, `PunctuationChars`, `PrintableChars` sets to `std/strutils`.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
