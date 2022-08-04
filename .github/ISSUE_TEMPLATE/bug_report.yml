@@ -11,14 +11,6 @@ body:
         Reports with a reproducible example and descriptive detailed information will likely receive fixes faster.
 
 - type: textarea
-  id: nim-version
-  attributes:
-    label: Nim Version
-    description: Please run `nim -v` on the command line.
-  validations:
-    required: true
-
-- type: textarea
   id: what-happened
   attributes:
     label: What happened?
@@ -26,6 +18,14 @@ body:
       Use DETAILED DESCRIPTIVE information about the problem.
       Here, you go into more details about your Bug report. This section can be a few paragraphs long.
     placeholder: Bug reports with full repro code and detailed information will be fixed faster.
+  validations:
+    required: true
+    
+- type: textarea
+  id: nim-version
+  attributes:
+    label: Nim Version
+    description: Please run `nim -v` on the command line.
   validations:
     required: true
 
