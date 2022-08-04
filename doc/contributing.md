@@ -619,7 +619,7 @@ Time handling, especially the `Time` type are also covered by this rule.
 Existing, battle-tested modules stay
 ------------------------------------
 
-Reason: There is no benefit in moving them around just to fullfil some design
+Reason: There is no benefit in moving them around just to fulfill some design
 fashion as in "Nim's core MUST BE SMALL". If you don't like an existing module,
 don't import it. If a compilation target (e.g. JS) cannot support a module,
 document this limitation.
