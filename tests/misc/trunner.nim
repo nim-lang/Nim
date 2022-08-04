@@ -233,9 +233,9 @@ sub/mmain.idx""", context
     check execCmdEx(cmd) == ("witness\n", 0)
 
   block: # bug #20149
-    let file = testsDir / "misc/t20149.nim"
+    let file = testsDir / "misc/m20149.nim"
     let cmd = fmt"{nim} r --hints:off --nimcache:{nimcache} --hintAsError:XDeclaredButNotUsed {file}"
-    doAssert execCmdEx(cmd) == ("12\n", 0)
+    check execCmdEx(cmd) == ("12\n", 0)
 
   block: # config.nims, nim.cfg, hintConf, bug #16557
     let cmd = fmt"{nim} r --hint:all:off --hint:conf tests/newconfig/bar/mfoo.nim"
