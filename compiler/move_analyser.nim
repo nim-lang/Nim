@@ -180,7 +180,7 @@ const
 
 type
   BlockFlag = enum
-    containsUse, containsLeave, inCondition, containsBreak
+    containsUse, containsLeave, inCondition, containsBreak, useInReturn
 
   BlockInfo = object
     id: BlockLevel
@@ -384,7 +384,7 @@ proc traverseTry(c: var Context; b: var BlockInfo; n: PNode) =
 proc handleReturn(c: var Context; b: var BlockInfo) =
   # it can happen that the block/loop has a `break` that avoids
   # the return statement. If so we don't track the return:
-  if containsBreak in b.flags:
+  if {containsBreak, useInReturn} * b.flags == {}:
     discard "convoluted control flow, give up"
   else:
     b.leaves = ReturnBlock
@@ -392,7 +392,10 @@ proc handleReturn(c: var Context; b: var BlockInfo) =
     b.trace.add Instruction(opc: Ret)
 
 proc traverseRaise(c: var Context; b: var BlockInfo; n: PNode) =
+  let notYet = containsUse notin b.flags
   traverse c, b, n[0]
+  if containsUse in b.flags and notYet:
+    b.flags.incl useInReturn
   if c.inTryStmt == 0:
     handleReturn c, b
 
@@ -453,7 +456,10 @@ proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
       for ch in items(n):
         traverse(c, b, ch)
   of nkReturnStmt:
+    let notYet = containsUse notin b.flags
     traverse c, b, n[0]
+    if containsUse in b.flags and notYet:
+      b.flags.incl useInReturn
     if c.root.kind == skResult:
       b.trace.add Instruction(opc: Load, mem: newSymNode(c.root))
     handleReturn c, b
