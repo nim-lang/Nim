@@ -25,8 +25,8 @@ proc nimThemeSwitch(event: Event) {.exportC.} =
   if toggleSwitch != nil:
     toggleSwitch.addEventListener("change", switchTheme, false)
 
-  var currentTheme = window.localStorage.getItem("theme")
-  if currentTheme.len == 0 and window.matchMedia("(prefers-color-scheme: dark)").matches:
+  var currentTheme = "light"
+  if window.matchMedia("(prefers-color-scheme: dark)").matches:
     currentTheme = "dark"
   if currentTheme.len > 0:
     document.documentElement.setAttribute("data-theme", currentTheme);
