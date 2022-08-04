@@ -1306,12 +1306,12 @@ as `MyEnum.value`:
 
     OtherEnum {.pure.} = enum
       valueX, valueY, valueZ, amb
-  ```
 
 
   echo valueA # MyEnum.valueA
   echo amb    # Error: Unclear whether it's MyEnum.amb or OtherEnum.amb
   echo MyEnum.amb # OK.
+  ```
 
 To implement bit fields with enums see `Bit fields <#set-type-bit-fields>`_
 
@@ -2186,7 +2186,7 @@ Unfortunately, `d + 12.Dollar` is not allowed either,
 because `+` is defined for `int` (among others), not for `Dollar`. So
 a `+` for dollars needs to be defined:
 
-  ```
+  ```nim
   proc `+` (x, y: Dollar): Dollar =
     result = Dollar(int(x) + int(y))
   ```
@@ -2194,7 +2194,7 @@ a `+` for dollars needs to be defined:
 It does not make sense to multiply a dollar with a dollar, but with a
 number without unit; and the same holds for division:
 
-  ```
+  ```nim
   proc `*` (x: Dollar, y: int): Dollar =
     result = Dollar(int(x) * y)
 
