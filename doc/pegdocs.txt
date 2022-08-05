@@ -13,12 +13,12 @@ notation           meaning
 ``A / ... / Z``    Ordered choice: Apply expressions `A`, ..., `Z`, in this
                    order, to the text ahead, until one of them succeeds and
                    possibly consumes some text. Indicate success if one of
-                   expressions succeeded. Otherwise do not consume any text
+                   expressions succeeded. Otherwise, do not consume any text
                    and indicate failure.
 ``A ... Z``        Sequence: Apply expressions `A`, ..., `Z`, in this order,
                    to consume consecutive portions of the text ahead, as long
                    as they succeed. Indicate success if all succeeded.
-                   Otherwise do not consume any text and indicate failure.
+                   Otherwise, do not consume any text and indicate failure.
                    The sequence's precedence is higher than that of ordered
                    choice: ``A B / C`` means ``(A B) / Z`` and
                    not ``A (B / Z)``.
@@ -44,20 +44,20 @@ notation           meaning
 ``E+``             One or more: Apply expression `E` repeatedly to match
                    the text ahead, as long as it succeeds. Consume the matched
                    text (if any) and indicate success if there was at least
-                   one match. Otherwise indicate failure.
+                   one match. Otherwise, indicate failure.
 ``E*``             Zero or more: Apply expression `E` repeatedly to match
                    the text ahead, as long as it succeeds. Consume the matched
                    text (if any). Always indicate success.
 ``E?``             Zero or one: If expression `E` matches the text ahead,
                    consume it. Always indicate success.
 ``[s]``            Character class: If the character ahead appears in the
-                   string `s`, consume it and indicate success. Otherwise
+                   string `s`, consume it and indicate success. Otherwise,
                    indicate failure.
 ``[a-b]``          Character range: If the character ahead is one from the
                    range `a` through `b`, consume it and indicate success.
-                   Otherwise indicate failure.
+                   Otherwise, indicate failure.
 ``'s'``            String: If the text ahead is the string `s`, consume it
-                   and indicate success. Otherwise indicate failure.
+                   and indicate success. Otherwise, indicate failure.
 ``i's'``           String match ignoring case.
 ``y's'``           String match ignoring style.
 ``v's'``           Verbatim string match: Use this to override a global
@@ -66,10 +66,10 @@ notation           meaning
 ``y$j``            String match ignoring style for back reference.
 ``v$j``            Verbatim string match for back reference.
 ``.``              Any character: If there is a character ahead, consume it
-                   and indicate success. Otherwise (that is, at the end of
+                   and indicate success. Otherwise, (that is, at the end of
                    input) indicate failure.
-``_``              Any Unicode character: If there is an UTF-8 character
-                   ahead, consume it and indicate success. Otherwise indicate
+``_``              Any Unicode character: If there is a UTF-8 character
+                   ahead, consume it and indicate success. Otherwise, indicate
                    failure.
 ``@E``             Search: Shorthand for ``(!E .)* E``. (Search loop for the
                    pattern `E`.)
@@ -82,7 +82,7 @@ notation           meaning
                    matching engine.**
 ``\identifier``    Built-in macro for a longer expression.
 ``\ddd``           Character with decimal code *ddd*.
-``\"``, etc        Literal ``"``, etc.
+``\"``, etc.       Literal ``"``, etc.
 ===============    ============================================================
 
 
