@@ -91,7 +91,7 @@ The nature of this executable depends on the compiler implementation; it may,
 for example, be a native binary or JavaScript source code.
 
 In a typical Nim program, most of the code is compiled into the executable.
-However, some of the code may be executed at
+However, some code may be executed at
 `compile-time`:idx:. This can include constant expressions, macro definitions,
 and Nim procedures used by macro definitions. Most of the Nim language is
 supported at compile-time, but there are some restrictions -- see `Restrictions
@@ -114,7 +114,7 @@ provides a means to disable these `runtime checks`:idx:. See the section
 pragmas_ for details.
 
 Whether a panic results in an exception or in a fatal error is
-implementation specific. Thus the following program is invalid; even though the
+implementation specific. Thus, the following program is invalid; even though the
 code purports to catch the `IndexDefect` from an out-of-bounds array access, the
 compiler may instead choose to allow the program to die with a fatal error.
 
@@ -127,7 +127,7 @@ compiler may instead choose to allow the program to die with a fatal error.
     echo "invalid index"
   ```
 
-The current implementation allows to switch between these different behaviors
+The current implementation allows switching between these different behaviors
 via `--panics:on|off`:option:. When panics are turned on, the program dies with a
 panic, if they are turned off the runtime errors are turned into
 exceptions. The benefit of `--panics:on`:option: is that it produces smaller binary
@@ -388,7 +388,7 @@ contain the following `escape sequences`:idx:\ :
 ==================         ===================================================
 
 
-Strings in Nim may contain any 8-bit value, even embedded zeros. However
+Strings in Nim may contain any 8-bit value, even embedded zeros. However,
 some operations may interpret the first binary zero as a terminator.
 
 
@@ -566,7 +566,7 @@ an expression `-128'i8` should be valid and without this special case, this woul
 be impossible -- `128` is not a valid `int8` value, only `-128` is.
 
 For the `unary_minus` rule there are further restrictions that are not covered
-in the formal grammar. For `-` to be part of the number literal its immediately
+in the formal grammar. For `-` to be part of the number literal the immediately
 preceding character has to be in the
 set `{' ', '\t', '\n', '\r', ',', ';', '(', '[', '{'}`. This set was designed to
 cover most cases in a natural manner.
@@ -1224,7 +1224,7 @@ The size of the bool type is one byte.
 Character type
 --------------
 The character type is named `char` in Nim. Its size is one byte.
-Thus it cannot represent a UTF-8 character, but a part of it.
+Thus, it cannot represent a UTF-8 character, but a part of it.
 
 The `Rune` type is used for Unicode characters, it can represent any Unicode
 character. `Rune` is declared in the `unicode module <unicode.html>`_.
@@ -1255,7 +1255,7 @@ Now the following holds::
   ord(Direction.west) == 3
 
 The implied order is: north < east < south < west. The comparison operators can be used
-with enumeration types. Instead of `north` etc, the enum value can also
+with enumeration types. Instead of `north` etc., the enum value can also
 be qualified with the enum type that it resides in, `Direction.north`.
 
 For better interfacing to other programming languages, the fields of enum
@@ -1405,7 +1405,7 @@ memory. For this reason, the implicit conversion will be removed in future
 releases of the Nim compiler. Certain idioms like conversion of a `const` string
 to `cstring` are safe and will remain to be allowed.
 
-A `$` proc is defined for cstrings that returns a string. Thus to get a nim
+A `$` proc is defined for cstrings that returns a string. Thus, to get a nim
 string from a cstring:
 
   ```nim
@@ -1911,7 +1911,7 @@ point to and modify the same location in memory (also called `aliasing`:idx:).
 Nim distinguishes between `traced`:idx: and `untraced`:idx: references.
 Untraced references are also called *pointers*. Traced references point to
 objects of a garbage-collected heap, untraced references point to
-manually allocated objects or objects somewhere else in memory. Thus
+manually allocated objects or objects somewhere else in memory. Thus,
 untraced references are *unsafe*. However, for certain low-level operations
 (accessing the hardware) untraced references are unavoidable.
 
@@ -1922,7 +1922,7 @@ convertible to the `pointer` type.
 An empty subscript `[]` notation can be used to de-refer a reference,
 the `addr` procedure returns the address of an item. An address is always
 an untraced reference.
-Thus the usage of `addr` is an *unsafe* feature.
+Thus, the usage of `addr` is an *unsafe* feature.
 
 The `.` (access a tuple/object field operator)
 and `[]` (array/string/sequence index operator) operators perform implicit
@@ -2119,7 +2119,7 @@ Nim supports these `calling conventions`:idx:\:
     The inline convention means the caller should not call the procedure,
     but inline its code directly. Note that Nim does not inline, but leaves
     this to the C compiler; it generates `__inline` procedures. This is
-    only a hint for the compiler: it may completely ignore it and
+    only a hint for the compiler: it may completely ignore it, and
     it may inline procedures that are not marked as `inline`.
 
 `fastcall`:idx:
@@ -2929,7 +2929,7 @@ The following code blocks will fail to compile:
   doAssert string(s) == "test"
   ```
 
-But these ones will compile successfully:
+But these will compile successfully:
 
   ```nim
   let foo = DistinctFoo(Foo(x: "test"))
@@ -3039,7 +3039,7 @@ Example:
 
 The `if` statement is a simple way to make a branch in the control flow:
 The expression after the keyword `if` is evaluated, if it is true
-the corresponding statements after the `:` are executed. Otherwise
+the corresponding statements after the `:` are executed. Otherwise,
 the expression after the `elif` is evaluated (if there is an
 `elif` branch), if it is true the corresponding statements after
 the `:` are executed. This goes on until the last `elif`. If all
@@ -3583,7 +3583,7 @@ that is a type class (which is non-concrete) would be invalid:
 
 Type casts should not be confused with *type conversions,* as mentioned in the
 prior section. Unlike type conversions, a type cast cannot change the underlying
-bit pattern of the data being casted (aside from that the size of the target type
+bit pattern of the data being cast (aside from that the size of the target type
 may differ from the source type). Casting resembles *type punning* in other
 languages or C++'s `reinterpret_cast`:cpp: and `bit_cast`:cpp: features.
 
@@ -3673,8 +3673,8 @@ arguments, by using the type modifier `var`.
     outp = inp + 47
   ```
 
-If the proc declaration has no body, it is a `forward`:idx: declaration. If the
-proc returns a value, the procedure body can access an implicitly declared
+If the proc declaration doesn't have a body, it is a `forward`:idx: declaration.
+If the proc returns a value, the procedure body can access an implicitly declared
 variable named `result`:idx: that represents the return value. Procs can be
 overloaded. The overloading resolution algorithm determines which proc is the
 best match for the arguments. Example:
@@ -3692,7 +3692,7 @@ best match for the arguments. Example:
       result[i] = toLower(s[i]) # calls toLower for characters; no recursion!
   ```
 
-Calling a procedure can be done in many different ways:
+Calling a procedure can be done in many ways:
 
   ```nim
   proc callme(x, y: int, s: string = "", c: char, b: bool = false) = ...
@@ -4029,7 +4029,7 @@ simplicity (they require specialized semantic checking)::
   declared, defined, definedInScope, compiles, sizeof,
   is, shallowCopy, getAst, astToStr, spawn, procCall
 
-Thus they act more like keywords than like ordinary identifiers; unlike a
+Thus, they act more like keywords than like ordinary identifiers; unlike a
 keyword however, a redefinition may `shadow`:idx: the definition in
 the system_ module. From this list the following should not be written in dot
 notation `x.f` since `x` cannot be type-checked before it gets passed
@@ -4367,7 +4367,7 @@ state are automatically saved between calls. Example:
     echo ch
   ```
 
-The compiler generates code as if the programmer would have written this:
+The compiler generates code as if the programmer had written this:
 
   ```nim
   var i = 0
@@ -4387,7 +4387,7 @@ Implicit items/pairs invocations
 
 If the for loop expression `e` does not denote an iterator and the for loop
 has exactly 1 variable, the for loop expression is rewritten to `items(e)`;
-ie. an `items` iterator is implicitly invoked:
+i.e. an `items` iterator is implicitly invoked:
 
   ```nim
   for x in [1,2,3]: echo x
@@ -4490,7 +4490,7 @@ The builtin `system.finished` can be used to determine if an iterator has
 finished its operation; no exception is raised on an attempt to invoke an
 iterator that has already finished its work.
 
-Note that `system.finished` is error prone to use because it only returns
+Note that `system.finished` is error-prone to use because it only returns
 `true` one iteration after the iterator has finished:
 
   ```nim
@@ -4511,7 +4511,7 @@ Note that `system.finished` is error prone to use because it only returns
   0
   ```
 
-Instead this code has to be used:
+Instead, this code has to be used:
 
   ```nim
   var c = mycount # instantiate the iterator
@@ -5921,7 +5921,7 @@ template parameter, it is an `inject`'ed symbol:
 
 
 The `inject` and `gensym` pragmas are second class annotations; they have
-no semantics outside of a template definition and cannot be abstracted over:
+no semantics outside a template definition and cannot be abstracted over:
 
   ```nim
   {.pragma myInject: inject.}
@@ -5972,7 +5972,7 @@ Limitations of the method call syntax
 
 The expression `x` in `x.f` needs to be semantically checked (that means
 symbol lookup and type checking) before it can be decided that it needs to be
-rewritten to `f(x)`. Therefore the dot syntax has some limitations when it
+rewritten to `f(x)`. Therefore, the dot syntax has some limitations when it
 is used to invoke templates/macros:
 
   ```nim  test = "nim c $1"  status = 1
@@ -6456,7 +6456,7 @@ Modules
 Nim supports splitting a program into pieces by a module concept.
 Each module needs to be in its own file and has its own `namespace`:idx:.
 Modules enable `information hiding`:idx: and `separate compilation`:idx:.
-A module may gain access to symbols of another module by the `import`:idx:
+A module may gain access to the symbols of another module by the `import`:idx:
 statement. `Recursive module dependencies`:idx: are allowed, but are slightly
 subtle. Only top-level symbols that are marked with an asterisk (`*`) are
 exported. A valid module name can only be a valid Nim identifier (and thus its
@@ -6529,7 +6529,7 @@ statement is useful to split up a large module into several files:
   include fileA, fileB, fileC
   ```
 
-The `include` statement can be used outside of the top level, as such:
+The `include` statement can be used outside the top level, as such:
 
   ```nim
   # Module A
@@ -6564,8 +6564,8 @@ in subdirectories:
   import lib/pure/os, "lib/pure/times"
   ```
 
-Note that the module name is still `strutils` and not `lib/pure/strutils`
-and so one **cannot** do:
+Note that the module name is still `strutils` and not `lib/pure/strutils`,
+thus one **cannot** do:
 
   ```nim
   import lib/pure/strutils
@@ -6614,7 +6614,7 @@ It is recommended and preferred but not currently enforced that all stdlib modul
 From import statement
 ---------------------
 
-After the `from` statement, a module name follows followed by
+After the `from` statement, a module name followed by
 an `import` to list the symbols one likes to use without explicit
 full qualification:
 
@@ -6964,7 +6964,7 @@ statement, as seen in stack backtraces:
         raise newException(AssertionDefect, msg)
   ```
 
-If the `line` pragma is used with a parameter, the parameter needs be a
+If the `line` pragma is used with a parameter, the parameter needs to be a
 `tuple[filename: string, line: int]`. If it is used without a parameter,
 `system.instantiationInfo()` is used.
 
@@ -6987,7 +6987,7 @@ statement:
   ```
 
 In the example, the case branches `0` and `1` are much more common than
-the other cases. Therefore the generated assembler code should test for these
+the other cases. Therefore, the generated assembler code should test for these
 values first so that the CPU's branch predictor has a good chance to succeed
 (avoiding an expensive CPU pipeline stall). The other cases might be put into a
 jump table for O(1) overhead but at the cost of a (very likely) pipeline
@@ -7323,14 +7323,14 @@ restriction is violated, the backend optimizer is free to miscompile the code.
 This is an **unsafe** language feature.
 
 Ideally in later versions of the language, the restriction will be enforced at
-compile time. (This is also why the name `noalias` was choosen instead of a more
+compile time. (This is also why the name `noalias` was chosen instead of a more
 verbose name like `unsafeAssumeNoAlias`.)
 
 
 Volatile pragma
 ---------------
 The `volatile` pragma is for variables only. It declares the variable as
-`volatile`:c:, whatever that means in C/C++ (its semantics are not well defined
+`volatile`:c:, whatever that means in C/C++ (its semantics are not well-defined
 in C/C++).
 
 **Note**: This pragma will not exist for the LLVM backend.
@@ -7421,7 +7421,7 @@ The `link` pragma can be used to link an additional file with the project:
 passc pragma
 ------------
 The `passc` pragma can be used to pass additional parameters to the C
-compiler like one would using the command-line switch `--passc`:option:\:
+compiler like one would use the command-line switch `--passc`:option:\:
 
   ```Nim
   {.passc: "-Wall -Werror".}
@@ -8020,7 +8020,7 @@ Macro pragmas
 -------------
 
 Macros and templates can sometimes be called with the pragma syntax. Cases
-where this is possible include when attached to routine (procs, iterators, etc)
+where this is possible include when attached to routine (procs, iterators, etc.)
 declarations or routine type expressions. The compiler will perform the
 following simple syntactic transformations:
 
@@ -8190,7 +8190,7 @@ strings automatically:
 Union pragma
 ------------
 The `union` pragma can be applied to any `object` type. It means all
-of the object's fields are overlaid in memory. This produces a `union`:c:
+of an object's fields are overlaid in memory. This produces a `union`:c:
 instead of a `struct`:c: in the generated C/C++ code. The object declaration
 then must not use inheritance or any GC'ed memory but this is currently not
 checked.
@@ -8435,7 +8435,7 @@ The guard then needs to be another field within the same object or a
 global variable.
 
 Since objects can reside on the heap or on the stack, this greatly enhances
-the expressivity of the language:
+the expressiveness of the language:
 
   ```nim
   import std/locks
