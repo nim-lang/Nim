@@ -368,7 +368,7 @@ to avoid name conflicts across packages.
   when defined(cligenDebug): discard # preferred
   ```
 
-.. _implicitbool:
+.. _noimplicitbool:
 Take advantage of no implicit bool conversion
 
   ```nim
@@ -498,9 +498,10 @@ General commit rules
    (e.g.: partially fixed) and won't close the issue when committed.
 
 6. PR body (not just PR title) should contain references to fixed/referenced GitHub
-   issues, e.g.: ``fix #123`` or ``refs #123``. This is so that you get proper cross-referencing from linked issue to the PR (GitHub won't make those links with just
-   PR title, and commit messages aren't always sufficient to ensure that, e.g.
-   can't be changed after a PR is merged).
+   issues, e.g.: ``fix #123`` or ``refs #123``. This is so that you get proper
+   cross-referencing from linked issue to the PR (GitHub won't make those links
+   with just a PR title, and commit messages aren't always sufficient to ensure
+   that, e.g. can't be changed after a PR is merged).
 
 7. Commits should be always be rebased against devel (so a fast-forward
    merge can happen)
@@ -740,7 +741,8 @@ Compile-time breaking changes
 -----------------------------
 
 Compile-time breaking changes are usually easier to handle, but for large code bases
-they can also involve a large amount of work and can hinder the adoption of a new Nim release.
+they can also involve a large amount of work and can hinder the adoption of a new
+Nim release.
 Additive approaches are to be preferred here as well.
 
 Examples of compile-time breaking changes include (but are not limited to):
