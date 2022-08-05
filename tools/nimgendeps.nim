@@ -7,7 +7,7 @@ proc handleMakeEscape(src: string): string =
     elif src[i] == ' ':
       result.add '\\'
       var j = i - 1
-      while j > 0 and src[j] == '\\':
+      while j >= 0 and src[j] == '\\':
         result.add '\\'
         dec j
     elif src[i] == '$':
