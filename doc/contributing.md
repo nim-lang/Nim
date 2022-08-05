@@ -633,7 +633,7 @@ Syntactic helpers can start as experimental stdlib modules
 
 Reason: Generally speaking as external dependencies they are not exposed
 to enough users so that we can see if the shortcuts provide enough benefit
-or not. Many programmers avoid external dependencies, even more so for
+or not. Many programmers avoid external dependencies, especially for
 "tiny syntactic improvements". However, this is only true for really good
 syntactic improvements that have the potential to clean up other parts of
 the Nim library substantially. If in doubt, new stdlib modules should start
