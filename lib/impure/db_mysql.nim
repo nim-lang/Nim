@@ -117,7 +117,7 @@ when false:
     discard mysql_stmt_close(stmt)
 
 proc dbQuote*(s: string): string =
-  ## DB quotes the string. It doesn't escape `%` and `_`.
+  ## DB quotes the string. Note that this doesn't escape `%` and `_`.
   result = newStringOfCap(s.len + 2)
   result.add "'"
   for c in items(s):
