@@ -10,6 +10,7 @@ proc handleMakeEscape(src: string): string =
       let j = i - 1
       while j > 0 and src[j] == '\\':
         result.add '\\'
+        dec j
     elif src[i] == '$':
       result.add '$'
     result.add src[i]
