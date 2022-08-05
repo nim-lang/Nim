@@ -87,7 +87,7 @@ Bisecting for regressions
 -------------------------
 
 There are often times when there is a bug that is caused by a regression in the
-compiler or stdlib. Bisecting the Nim repo commits is a usefull tool to identify
+compiler or stdlib. Bisecting the Nim repo commits is a useful tool to identify
 what commit introduced the regression.
 
 Even if it's not known whether a bug is caused by a regression, bisection can reduce
@@ -117,7 +117,7 @@ fastest to build a compiler that is instrumented for debugging from an
 existing release build. `koch temp`:cmd: provides a convenient method of doing
 just that.
 
-By default running `koch temp`:cmd: will build a lean version of the compiler
+By default, running `koch temp`:cmd: will build a lean version of the compiler
 with `-d:debug`:option: enabled. The compiler is written to `bin/nim_temp` by
 default. A lean version of the compiler lacks JS and documentation generation.
 
@@ -125,7 +125,7 @@ default. A lean version of the compiler lacks JS and documentation generation.
 with `testament --nim:bin/nim_temp r tests/category/tsometest`:cmd:.
 
 `koch temp`:cmd: will build the temporary compiler with the `-d:debug`:option:
-enabled. Here are compiler options that are of interest for debugging:
+enabled. Here are compiler options that are of interest when debugging:
 
 * `-d:debug`:option:\: enables `assert` statements and stacktraces and all
   runtime checks
@@ -156,11 +156,11 @@ Debug logging
 
 "Printf debugging" is still the most appropriate way to debug many problems
 arising in compiler development. The typical usage of breakpoints to debug
-the code is often less practical, because almost all of the code paths in the
+the code is often less practical, because almost all code paths in the
 compiler will be executed hundreds of times before a particular section of the
 tested program is reached where the newly developed code must be activated.
 
-To work-around this problem, you'll typically introduce an if statement in the
+To work around this problem, you'll typically introduce an if statement in the
 compiler code detecting more precisely the conditions where the tested feature
 is being used. One very common way to achieve this is to use the `mdbg` condition,
 which will be true only in contexts, processing expressions and statements from
@@ -374,7 +374,7 @@ Files that may need changed for your platform include:
   Add os/cpu compiler/linker flags.
 
 If the `--os` or `--cpu` options aren't passed to the compiler, then Nim will
-determine the current host os, cpu and endianess from `system.cpuEndian`,
+determine the current host os, cpu and endianness from `system.cpuEndian`,
 `system.hostOS` and `system.hostCPU`. Those values are derived from
 `compiler/platform.nim`.
 
@@ -408,7 +408,7 @@ Complex assignments
   as a specialization.
 
 We already know the type information as a graph in the compiler.
-Thus we need to serialize this graph as RTTI for C code generation.
+Thus, we need to serialize this graph as RTTI for C code generation.
 Look at the file ``lib/system/hti.nim`` for more information.
 
 
@@ -418,7 +418,7 @@ Magics and compilerProcs
 The `system` module contains the part of the RTL which needs support by
 compiler magic. The C code generator generates the C code for it, just like any other
 module. However, calls to some procedures like `addInt` are inserted by
-the generator. Therefore there is a table (`compilerprocs`)
+the generator. Therefore, there is a table (`compilerprocs`)
 with all symbols that are marked as `compilerproc`. `compilerprocs` are
 needed by the code generator. A `magic` proc is not the same as a
 `compilerproc`: A `magic` is a proc that needs compiler magic for its
@@ -566,12 +566,12 @@ Internals
 ---------
 
 Lambda lifting is implemented as part of the `transf` pass. The `transf`
-pass generates code to setup the environment and to pass it around. However,
+pass generates code to set up the environment and to pass it around. However,
 this pass does not change the types! So we have some kind of mismatch here; on
 the one hand the proc expression becomes an explicit tuple, on the other hand
 the tyProc(ccClosure) type is not changed. For C code generation it's also
 important the hidden formal param is `void*`:c: and not something more
-specialized. However the more specialized env type needs to passed to the
+specialized. However, the more specialized env type needs to passed to the
 backend somehow. We deal with this by modifying `s.ast[paramPos]` to contain
 the formal hidden parameter, but not `s.typ`!
 
@@ -586,14 +586,14 @@ Integer literals
 ----------------
 
 In Nim, there is a redundant way to specify the type of an
-integer literal. First of all, it should be unsurprising that every
+integer literal. First, it should be unsurprising that every
 node has a node kind. The node of an integer literal can be any of the
 following values::
 
     nkIntLit, nkInt8Lit, nkInt16Lit, nkInt32Lit, nkInt64Lit,
     nkUIntLit, nkUInt8Lit, nkUInt16Lit, nkUInt32Lit, nkUInt64Lit
 
-On top of that, there is also the `typ` field for the type. It the
+On top of that, there is also the `typ` field for the type. The
 kind of the `typ` field can be one of the following ones, and it
 should be matching the literal kind::
 
