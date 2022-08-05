@@ -329,14 +329,18 @@ proc elemText*(n: XmlNode, separator = ""): string {.inline.} =
     assert x.elemText(" ") == "abc xyz"
    
   assert n.k == xnElement
+  
+  proc worker(res: var string, n: seq[XmlNode], i: int = 0) =
+    if i < n.len:
+      if n[i].k == xnText:
+        res.add(n[i].fText)
+        if i < n.len - 1:
+          res.add(separator)
+      
+      worker(res, n, i + 1)
+
   result = ""
-  for i, nn in n.s:
-    if nn.k == xnText:
-      result.add(nn.fText)
-      if i < n.s.len - 1:
-        result.add(separator)
-    else:
-      discard
+  worker(result, n.s)
 
 proc add*(father, son: XmlNode) {.inline.} =
   ## Adds the child `son` to `father`.
