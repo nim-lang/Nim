@@ -1,3 +1,5 @@
+{.hint[ConvFromXtoItselfNotNeeded]: off.}
+
 block:
   var s: seq[string] = (discard; @[])
 
@@ -74,3 +76,28 @@ block:
   let fooLamb = proc(): seq[float] = @[1]
 
   doAssert foo() == fooLamb()
+
+block:
+  type Foo[T] = float32
+
+  let x: seq[Foo[int32]] = @[1]
+
+block:
+  type Foo = ref object
+  type Bar[T] = ptr object
+
+  let x1: seq[Foo] = @[nil]
+  let x2: seq[Bar[int]] = @[nil]
+  let x3: seq[cstring] = @[nil]
+
+block:
+  let x: seq[cstring] = @["abc", nil, "def"]
+  doAssert x.len == 3
+  doAssert x[0] == cstring"abc"
+  doAssert x[1].isNil
+  doAssert x[2] == "def".cstring
+
+block: # type conversion
+  let x = seq[(cstring, float32)](@{"abc": 1.0, "def": 2.0})
+  doAssert x[0] == (cstring"abc", 1.0'f32)
+  doAssert x[1] == (cstring"def", 2.0'f32)

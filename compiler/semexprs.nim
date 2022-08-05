@@ -306,7 +306,7 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   if n[1].kind == nkExprEqExpr and
       targetType.skipTypes(abstractPtrs).kind == tyObject:
     localError(c.config, n.info, "object construction uses ':', not '='")
-  var op = semExprWithType(c, n[1]#[, targetType]#)
+  var op = semExprWithType(c, n[1], expectedType = targetType)
   if targetType.kind != tyGenericParam and targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)
     result.add final
@@ -991,11 +991,15 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
         setGenericParams(c, n[0])
         return semDirectOp(c, n, flags)
 
-  let nOrig = n.copyTree
-  semOpAux(c, n)
   var t: PType = nil
   if n[0].typ != nil:
     t = skipTypes(n[0].typ, abstractInst+{tyOwned}-{tyTypeDesc, tyDistinct})
+  if t != nil and t.kind == tyTypeDesc:
+    if n.len == 1: return semObjConstr(c, n, flags, expectedType)
+    return semConv(c, n)
+
+  let nOrig = n.copyTree
+  semOpAux(c, n)
   if t != nil and t.kind == tyProc:
     # This is a proc variable, apply normal overload resolution
     let m = resolveIndirectCall(c, n, nOrig, t)
@@ -1034,9 +1038,6 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       result = m.call
       instGenericConvertersSons(c, result, m)
 
-  elif t != nil and t.kind == tyTypeDesc:
-    if n.len == 1: return semObjConstr(c, n, flags, expectedType)
-    return semConv(c, n)
   else:
     result = overloadedCallOpr(c, n)
     # Now that nkSym does not imply an iteration over the proc/iterator space,
@@ -2887,10 +2888,16 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:
-    if result.typ == nil: result.typ = getNilType(c)
+    if result.typ == nil:
+      result.typ = getNilType(c)
+      if expectedType != nil:
+        var m = newCandidate(c, result.typ)
+        if typeRel(m, expectedType, result.typ) >= isSubtype:
+          result.typ = expectedType
   of nkIntLit:
     if result.typ == nil:
-      if (let expected = expectedType.skipTypesOrNil({tyAlias});
+      if (let expected = expectedType.skipTypesOrNil({tyAlias,
+            tyGenericInst, tyOrdinal, tySink});
           expected != nil and expected.kind in {tyInt..tyInt64,
             tyUInt..tyUInt64, tyFloat..tyFloat128}):
         result.typ = expectedType
@@ -2927,7 +2934,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyUInt64)
   of nkFloatLit:
     if result.typ == nil:
-      if (let expected = expectedType.skipTypesOrNil({tyAlias});
+      if (let expected = expectedType.skipTypesOrNil({tyAlias,
+            tyGenericInst, tyOrdinal, tySink});
           expected != nil and expected.kind in {tyFloat..tyFloat128}):
         result.typ = expectedType
       else:
@@ -2939,7 +2947,13 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkFloat128Lit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyFloat128)
   of nkStrLit..nkTripleStrLit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyString)
+    if result.typ == nil:
+      if (let expected = expectedType.skipTypesOrNil({tyAlias,
+            tyGenericInst, tySink});
+          expected != nil and expected.kind in {tyString, tyCstring}):
+        result.typ = expectedType
+      else:
+        result.typ = getSysType(c.graph, n.info, tyString)
   of nkCharLit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyChar)
   of nkDotExpr:
@@ -2988,13 +3002,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       of skProc, skFunc, skMethod, skConverter, skIterator:
-        if (let expected = expectedType.skipTypesOrNil(
-            {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink});
-            expected != nil and expected.kind in {tySequence, tyOpenArray}) and
-            n.len == 2 and s.name.s == "@" and sfSystemModule in s.owner.flags:
-          # seq type inference
-          # temporary check for now, simply checking s.magic for mArrToSeq
-          # doesn't work sometimes due to openArray overload
+        if s.magic == mArrToSeq and n.len == 2 and
+            (let expected = expectedType.skipTypesOrNil({
+              tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink});
+            expected != nil and expected.kind in {tySequence, tyOpenArray}):
+          # special cased seq type inference
+          # overloading @ disables this unfortunately
           var arrayType = newType(tyOpenArray, nextTypeId(c.idgen), expected.owner)
           arrayType.rawAddSon(expected[0])
           n[1] = semExpr(c, n[1], flags, arrayType)

@@ -974,6 +974,15 @@ proc cmp*(x, y: string): int {.noSideEffect.}
   ## **Note**: The precise result values depend on the used C runtime library and
   ## can differ between operating systems!
 
+proc `@`*[T](a: openArray[T]): seq[T] =
+  ## Turns an *openArray* into a sequence.
+  ##
+  ## This is not as efficient as turning a fixed length array into a sequence
+  ## as it always copies every element of `a`.
+  newSeq(result, a.len)
+  for i in 0..a.len-1: result[i] = a[i]
+
+# this needs to be the lowest overload of @ for seq type inference
 proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
   ## Turns an array into a sequence.
   ##
@@ -1624,15 +1633,6 @@ proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## `== nil`.
-
-
-proc `@`*[T](a: openArray[T]): seq[T] =
-  ## Turns an *openArray* into a sequence.
-  ##
-  ## This is not as efficient as turning a fixed length array into a sequence
-  ## as it always copies every element of `a`.
-  newSeq(result, a.len)
-  for i in 0..a.len-1: result[i] = a[i]
 
 
 when defined(nimSeqsV2):
