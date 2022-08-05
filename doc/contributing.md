@@ -8,7 +8,7 @@ Contributing
 .. contents::
 
 
-Contributing happens via "Pull requests" (PR) on github. Every PR needs to be
+Contributing happens via "Pull requests" (PR) on GitHub. Every PR needs to be
 reviewed before it can be merged and the Continuous Integration should be green.
 The title of a PR should contain a brief description. If it fixes an issue,
 in addition to the number of the issue, the title should also contain a description 
@@ -158,7 +158,7 @@ To run a single test:
   ```
 
 For reproducible tests (to reproduce an environment more similar to the one
-run by Continuous Integration on github actions/azure pipelines), you may want to disable your
+run by Continuous Integration on GitHub actions/azure pipelines), you may want to disable your
 local configuration (e.g. in ``~/.config/nim/nim.cfg``) which may affect some
 tests; this can also be achieved by using
 `export XDG_CONFIG_HOME=pathtoAlternateConfig`:cmd: before running `./koch`:cmd:
@@ -198,8 +198,8 @@ tell you if any new tests passed/failed.
 Deprecation
 ===========
 
-Backward compatibility is important, so instead of a rename you need to deprecate
-the old name and introduce a new name:
+Backwards compatibility is important. When renaming types, procedures, etc. the old name 
+must be marked as deprecated using the `deprecated` pragma:
 
   ```nim
   # for routines (proc/template/macro/iterator) and types:
@@ -310,7 +310,7 @@ Inline monospaced text can be input using \`single backticks\` or
 the latter are not.
 To avoid accidental highlighting follow this rule in ``*.nim`` files:
 
-* use single backticks for fragments of code in Nim and other
+* Use single backticks for fragments of code in Nim and other
   programming languages, including identifiers, in ``*.nim`` files.
 
   For languages other than Nim add a role after final backtick,
@@ -326,12 +326,12 @@ To avoid accidental highlighting follow this rule in ``*.nim`` files:
   Highlight shell commands by ``:cmd:`` role; for command line options use
   ``:option:`` role, e.g.: \`--docInternal\`:option:.
 
-* prefer double backticks otherwise:
+* Use double backticks:
 
-  * for file names: \`\`os.nim\`\`
-  * for fragments of strings **not** enclosed by `"` and `"` and not
+  * For file names: \`\`os.nim\`\`
+  * For fragments of strings **not** enclosed by `"` and `"` and not
     related to code, e.g. text of compiler messages
-  * also when code ends with a standalone ``\`` (otherwise a combination of
+  * When code ends with a standalone ``\`` (otherwise a combination of
     ``\`` and a final \` would get escaped)
 
 .. Note:: ``*.rst`` files have ``:literal:`` as their default role.
@@ -368,7 +368,7 @@ to avoid name conflicts across packages.
   when defined(cligenDebug): discard # preferred
   ```
 
-.. _noimplicitbool:
+.. _implicitness:
 Take advantage of no implicit bool conversion
 
   ```nim
@@ -396,7 +396,7 @@ rationale: https://forum.nim-lang.org/t/4089
 
 .. _tests_use_doAssert:
 Use `doAssert` (or `unittest.check`, `unittest.require`), not `assert` in all
-tests so they'll be enabled even with `--assertions:off`:option:.
+tests, so they'll be enabled even with `--assertions:off`:option:.
 
   ```nim
   block: # foo
@@ -423,7 +423,7 @@ second example below:
 .. _delegate_printing:
 Delegate printing to caller: return `string` instead of calling `echo`
 rationale: it's more flexible (e.g. allows the caller to call custom printing,
-including prepending location info, writing to log files, etc).
+including prepending location info, writing to log files, etc.).
 
   ```nim
   proc foo() = echo "bar" # bad
@@ -476,7 +476,7 @@ General commit rules
    your editor reformatted automatically the code or whatever different reason,
    this should be excluded from the commit.
 
-   *Tip:* Never commit everything as is using `git commit -a`:cmd:, but review
+   *Tip:* Never commit everything as-is using `git commit -a`:cmd:, but review
    carefully your changes with `git add -p`:cmd:.
 
 4. Changes should not introduce any trailing whitespace.
@@ -494,16 +494,15 @@ General commit rules
      Fixes #123; refs #124
 
    indicates that issue ``#123`` is completely fixed (GitHub may automatically
-   close it when the PR is committed), wheres issue ``#124`` is referenced
+   close it when the PR is committed), whereas issue ``#124`` is referenced
    (e.g.: partially fixed) and won't close the issue when committed.
 
-6. PR body (not just PR title) should contain references to fixed/referenced github
-   issues, e.g.: ``fix #123`` or ``refs #123``. This is so that you get proper cross
-   referencing from linked issue to the PR (github won't make those links with just
+6. PR body (not just PR title) should contain references to fixed/referenced GitHub
+   issues, e.g.: ``fix #123`` or ``refs #123``. This is so that you get proper cross-referencing from linked issue to the PR (GitHub won't make those links with just
    PR title, and commit messages aren't always sufficient to ensure that, e.g.
    can't be changed after a PR is merged).
 
-7. Commits should be always be rebased against devel (so a fast forward
+7. Commits should be always be rebased against devel (so a fast-forward
    merge can happen)
 
    e.g.: use `git pull --rebase origin devel`:cmd:. This is to avoid messing up
@@ -523,14 +522,14 @@ Continuous Integration (CI)
 1. Continuous Integration is by default run on every push in a PR; this clogs
    the CI pipeline and affects other PR's; if you don't need it (e.g. for WIP or
    documentation only changes), add ``[skip ci]`` to your commit message title.
-   This convention is supported by our github actions pipelines and our azure pipeline
+   This convention is supported by our GitHub actions pipelines and our azure pipeline
    (using custom logic, which should complete in < 1mn) as well as our former other pipelines:
    `Appveyor <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
    and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_.
 
 2. Consider enabling CI (azure, GitHub actions and builds.sr.ht) in your own Nim fork, and
    waiting for CI to be green in that fork (fixing bugs as needed) before
-   opening your PR in the original Nim repo, so as to reduce CI congestion. Same
+   opening your PR in the original Nim repo, to reduce CI congestion. Same
    applies for updates on a PR: you can test commits on a separate private
    branch before updating the main PR.
 
@@ -547,11 +546,12 @@ Debugging CI failures, flaky tests, etc
    follow these instructions to only restart the jobs that failed:
 
    * Azure: if on your own fork, it's possible from inside azure console
-     (e.g. ``dev.azure.com/username/username/_build/results?buildId=1430&view=results``) via ``rerun failed jobs`` on top.
+     (e.g. ``dev.azure.com/username/username/_build/results?buildId=1430&view=results``) via
+     ``rerun failed jobs`` on top.
      If either on you own fork or in Nim repo, it's possible from inside GitHub UI
      under checks tab, see https://github.com/timotheecour/Nim/issues/211#issuecomment-629751569
    * GitHub actions: under "Checks" tab, click "Re-run jobs" in the right.
-   * builds.sr.ht: create a sourcehut account so you can restart a PR job as illustrated.
+   * builds.sr.ht: create a SourceHut account so that you can restart a PR job as illustrated.
      builds.sr.ht also allows you to ssh to a CI machine which can help a lot for debugging
      issues, see docs in https://man.sr.ht/builds.sr.ht/build-ssh.md and
      https://drewdevault.com/2019/08/19/Introducing-shell-access-for-builds.html; see
@@ -566,7 +566,7 @@ Code reviews
    https://forum.nim-lang.org/t/4317
 
 2. When reviewing large diffs that may involve code moving around, GitHub's interface
-   doesn't help much as it doesn't highlight moves. Instead, you can use something
+   doesn't help much, as it doesn't highlight moves. Instead, you can use something
    like this, see visual results `here <https://github.com/nim-lang/Nim/pull/10431#issuecomment-456968196>`_:
 
      ```cmd
@@ -658,7 +658,7 @@ to existing modules is acceptable. For two reasons:
    ("Why does sequtils lack a `countIt`?
    Because version 1.0 happens to have lacked it? Silly...")
 2. To encourage contributions. Contributors often start with PRs that
-   add simple things and then they stay and also fix bugs. Nim is an
+   add simple things, then they stay and also fix bugs. Nim is an
    open source project and lives from people's contributions and involvement.
    Newly introduced issues have to be balanced against motivating new people. We know where
    to find perfectly designed pieces of software that have no bugs -- these are the systems
@@ -684,7 +684,7 @@ Conventions
 Breaking Changes
 ================
 
-Introducing breaking changes, no matter how well intentioned,
+Introducing breaking changes, no matter how well-intentioned,
 creates long-term problems for the community, in particular those looking to promote
 reusable Nim code in libraries: In the Nim distribution, critical security and bugfixes,
 language changes and community improvements are bundled in a single distribution - it is
@@ -719,10 +719,10 @@ Examples of run-time breaking changes:
   * "Nim's path handling procs like `getXDir` now consistently lack the trailing slash"
   * "Nim's strformat implementation is now more consistent with Python"
 
-Instead write new code that explicitly announces the feature you think we announced but
+Instead, write new code that explicitly announces the feature you think we announced but
 didn't. For example, `strformat` does not say "it's compatible with Python", it
 says "inspired by Python's f-strings". This new code can be submitted to the stdlib
-and the old code can be deprecated or it can be published as a Nimble package.
+and the old code can be deprecated or published as a Nimble package.
 
 Sometimes, a run-time breaking change is most desirable: For example, a string
 representation of a floating point number that "roundtrips" is much better than
@@ -740,7 +740,7 @@ Compile-time breaking changes
 -----------------------------
 
 Compile-time breaking changes are usually easier to handle, but for large code bases
-it can also be much work and it can hinder the adoption of a new Nim release.
+they can also involve a large amount of work and can hinder the adoption of a new Nim release.
 Additive approaches are to be preferred here as well.
 
 Examples of compile-time breaking changes include (but are not limited to):
@@ -748,10 +748,10 @@ Examples of compile-time breaking changes include (but are not limited to):
 * Renaming functions and modules, or moving things. Instead of a direct rename,
   deprecate the old name and introduce a new one.
 * Renaming the parameter names: Thanks to Nim's "named parameter" calling syntax
-  like `f(x = 0, y = 1)` this is a breaking change. Instead live with the existing
+  like `f(x = 0, y = 1)` this is a breaking change. Instead, live with the existing
   parameter names.
 * Adding an enum value to an existing enum. Nim's exhaustive case statements stop
-  compiling after such a change. Instead consider to introduce new `bool`
+  compiling after such a change. Instead, consider to introduce new `bool`
   fields/parameters. This can be impractical though, so we use good judgement
   and our list of "important packages" to see if it doesn't break too much code
   out there in practice.
