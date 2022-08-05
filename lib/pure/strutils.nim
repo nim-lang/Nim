@@ -2698,8 +2698,8 @@ func findNormalized(x: string, inArray: openArray[string]): int =
               # security hole...
   return -1
 
-func invalidFormatString() {.noinline.} =
-  raise newException(ValueError, "invalid format string")
+func invalidFormatString(formatstr: string) {.noinline.} =
+  raise newException(ValueError, "invalid format string: " & formatstr)
 
 func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     extern: "nsuAddf".} =
@@ -2711,7 +2711,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     if formatstr[i] == '$' and i+1 < len(formatstr):
       case formatstr[i+1]
       of '#':
-        if num > a.high: invalidFormatString()
+        if num > a.high: invalidFormatString(formatstr)
         add s, a[num]
         inc i, 2
         inc num
@@ -2727,7 +2727,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
         let idx = if not negative: j-1 else: a.len-j
-        if idx < 0 or idx > a.high: invalidFormatString()
+        if idx < 0 or idx > a.high: invalidFormatString(formatstr)
         add s, a[idx]
       of '{':
         var j = i+2
@@ -2744,22 +2744,22 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
           inc(j)
         if isNumber == 1:
           let idx = if not negative: k-1 else: a.len-k
-          if idx < 0 or idx > a.high: invalidFormatString()
+          if idx < 0 or idx > a.high: invalidFormatString(formatstr)
           add s, a[idx]
         else:
           var x = findNormalized(substr(formatstr, i+2, j-1), a)
           if x >= 0 and x < high(a): add s, a[x+1]
-          else: invalidFormatString()
+          else: invalidFormatString(formatstr)
         i = j+1
       of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
         var j = i+1
         while j < formatstr.len and formatstr[j] in PatternChars: inc(j)
         var x = findNormalized(substr(formatstr, i+1, j-1), a)
         if x >= 0 and x < high(a): add s, a[x+1]
-        else: invalidFormatString()
+        else: invalidFormatString(formatstr)
         i = j
       else:
-        invalidFormatString()
+        invalidFormatString(formatstr)
     else:
       add s, formatstr[i]
       inc(i)
