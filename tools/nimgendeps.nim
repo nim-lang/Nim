@@ -1,13 +1,12 @@
 import std/[osproc, strformat, os, json, strutils, parseopt]
 
-
 proc handleMakeEscape(src: string): string =
   for i in 0..<src.len:
     if src[i] == '#':
       result.add '\\'
     elif src[i] == ' ':
       result.add '\\'
-      let j = i - 1
+      var j = i - 1
       while j > 0 and src[j] == '\\':
         result.add '\\'
         dec j
