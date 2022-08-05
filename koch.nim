@@ -229,6 +229,8 @@ proc buildTools(args: string = "") =
   nimCompileFold("Compile atlas", "tools/atlas/atlas.nim", options = "-d:release " & args,
       outputName = "atlas")
 
+  nimCompileFold("Compile nimgendeps", "tools/nimgendeps.nim", options = "-d:release " & args,
+    outputName = "nimgendeps")
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
