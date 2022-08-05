@@ -368,7 +368,7 @@ to avoid name conflicts across packages.
   when defined(cligenDebug): discard # preferred
   ```
 
-.. _implicitness:
+.. _implicitbool:
 Take advantage of no implicit bool conversion
 
   ```nim
