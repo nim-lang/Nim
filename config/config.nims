@@ -17,7 +17,8 @@ when defined(nimStrictMode):
 
   when defined(nimHasHintAsError):
     # switch("hint", "ConvFromXtoItselfNotNeeded")
-    switch("hintAsError", "ConvFromXtoItselfNotNeeded")
+    when false:
+      switch("hintAsError", "ConvFromXtoItselfNotNeeded")
     # future work: XDeclaredButNotUsed
 
 when defined(windows) and not defined(booting):

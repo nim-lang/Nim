@@ -333,6 +333,7 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
         op = fitNode(c, targetType, op, result.info)
     of convNotNeedeed:
       message(c.config, n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
+      result = result[1]
     of convNotLegal:
       result = fitNode(c, result.typ, result[1], result.info)
       if result == nil:
