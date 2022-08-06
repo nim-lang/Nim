@@ -97,7 +97,8 @@ block:
   doAssert x[1].isNil
   doAssert x[2] == "def".cstring
 
-block: # type conversion
-  let x = seq[(cstring, float32)](@{"abc": 1.0, "def": 2.0})
-  doAssert x[0] == (cstring"abc", 1.0'f32)
-  doAssert x[1] == (cstring"def", 2.0'f32)
+when false: # unsupported
+  block: # type conversion
+    let x = seq[(cstring, float32)](@{"abc": 1.0, "def": 2.0})
+    doAssert x[0] == (cstring"abc", 1.0'f32)
+    doAssert x[1] == (cstring"def", 2.0'f32)
