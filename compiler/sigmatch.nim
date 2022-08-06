@@ -1975,12 +1975,21 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   # XXX we will revisit this issue after 0.10.2 is released
   if f == arg.typ and arg.kind == nkHiddenStdConv: return arg
 
-  var call = newNodeI(nkCall, arg.info)
-  call.add(f.n.copyTree)
-  call.add(arg.copyTree)
-  # XXX: This would be much nicer if we don't use `semTryExpr` and
-  # instead we directly search for overloads with `resolveOverloads`:
-  result = c.semTryExpr(c, call, {efNoSem2Check})
+  var call: PNode
+  var s = qualifiedLookUp(c, f.n, {})
+  # ignore conversion to itself; for example vararags[cstring, cstring]
+  # shouldn't give warnings to cstring parameters.
+  if s != nil and s.kind == skType and sameType(s.typ, arg.typ) and
+              s.typ.sym == arg.typ.sym: # conversion to itself
+    call = arg
+    result = arg
+  else:
+    call = newNodeI(nkCall, arg.info)
+    call.add(f.n.copyTree)
+    call.add(arg.copyTree)
+    # XXX: This would be much nicer if we don't use `semTryExpr` and
+    # instead we directly search for overloads with `resolveOverloads`:
+    result = c.semTryExpr(c, call, {efNoSem2Check})
 
   if result != nil:
     if result.typ == nil: return nil
