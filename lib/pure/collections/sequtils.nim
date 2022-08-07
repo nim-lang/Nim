@@ -1020,7 +1020,7 @@ template mapIt*(s: typed, op: untyped): untyped =
           i += 1
         result
     else:
-      var result: seq[OutType] = @[]
+      var result: seq[OutType]# = @[]
       # use `items` to avoid https://github.com/nim-lang/Nim/issues/12639
       for it {.inject.} in items(s):
         result.add(op)
