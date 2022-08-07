@@ -1,5 +1,3 @@
-{.hint[ConvFromXtoItselfNotNeeded]: off.}
-
 block:
   var s: seq[string] = (discard; @[])
 
@@ -102,3 +100,9 @@ when false: # unsupported
     let x = seq[(cstring, float32)](@{"abc": 1.0, "def": 2.0})
     doAssert x[0] == (cstring"abc", 1.0'f32)
     doAssert x[1] == (cstring"def", 2.0'f32)
+
+block: # enum
+  type Foo {.pure.} = enum a
+  type Bar {.pure.} = enum a, b, c
+
+  var s: seq[Bar] = @[a, b, c]

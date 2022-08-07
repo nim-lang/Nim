@@ -2856,13 +2856,23 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   if nfSem in n.flags: return
   case n.kind
   of nkIdent, nkAccQuoted:
-    let checks = if efNoEvaluateGeneric in flags:
-        {checkUndeclared, checkPureEnumFields}
-      elif efInCall in flags:
-        {checkUndeclared, checkModule, checkPureEnumFields}
-      else:
-        {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
-    var s = qualifiedLookUp(c, n, checks)
+    var s: PSym
+    if (let expected = expectedType.skipTypesOrNil({tyAlias,
+        tyGenericInst, tyOrdinal, tySink});
+        expected != nil and expected.kind == tyEnum):
+      let nameId = considerQuotedIdent(c, n).id
+      for f in expected.n:
+        if f.kind == nkSym and f.sym.name.id == nameId:
+          s = f.sym
+          break
+    if s == nil:
+      let checks = if efNoEvaluateGeneric in flags:
+          {checkUndeclared, checkPureEnumFields}
+        elif efInCall in flags:
+          {checkUndeclared, checkModule, checkPureEnumFields}
+        else:
+          {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
+      s = qualifiedLookUp(c, n, checks)
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
@@ -3003,7 +3013,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       of skProc, skFunc, skMethod, skConverter, skIterator:
-        if s.magic == mArrToSeq and n.len == 2 and
+        if n.len == 2 and s.magic == mArrToSeq and
             (let expected = expectedType.skipTypesOrNil({
               tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink});
             expected != nil and expected.kind in {tySequence, tyOpenArray}):
