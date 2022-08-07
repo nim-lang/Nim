@@ -196,10 +196,10 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
     else:
       discard
 
-proc isCastable(c: PContext; dst, src: PType): bool =
+proc isCastable(c: PContext; dst, src: PType, info: TLineInfo): bool =
   ## Checks whether the source type can be cast to the destination type.
   ## Casting is very unrestrictive; casts are allowed as long as
-  ## castDest.size >= src.size, and typeAllowed(dst, skParam)
+  ## dst.size >= src.size, and typeAllowed(dst, skParam)
   #const
   #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCstring, tyString,
   #                       tySequence, tyPointer, tyNil, tyOpenArray,
@@ -228,19 +228,21 @@ proc isCastable(c: PContext; dst, src: PType): bool =
     # Just assume the programmer knows what he is doing.
     return true
   if dstSize < 0:
-    result = false
+    return false
   elif srcSize < 0:
-    result = false
+    return false
   elif typeAllowed(dst, skParam, c) != nil:
-    result = false
+    return false
   elif dst.kind == tyProc and dst.callConv == ccClosure:
-    result = src.kind == tyProc and src.callConv == ccClosure
+    return src.kind == tyProc and src.callConv == ccClosure
   else:
     result = (dstSize >= srcSize) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
+    if result and (dstSize > srcSize):
+      message(conf, info, warnCastSizes, "target type is larger than source type")
   if result and src.kind == tyNil:
-    result = dst.size <= conf.target.ptrSize
+    return dst.size <= conf.target.ptrSize
 
 proc isSymChoice(n: PNode): bool {.inline.} =
   result = n.kind in nkSymChoices
@@ -359,7 +361,7 @@ proc semCast(c: PContext, n: PNode): PNode =
   let castedExpr = semExprWithType(c, n[1])
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
-  if not isCastable(c, targetType, castedExpr.typ):
+  if not isCastable(c, targetType, castedExpr.typ, n.info):
     let tar = $targetType
     let alt = typeToString(targetType, preferDesc)
     let msg = if tar != alt: tar & "=" & alt else: tar
@@ -886,7 +888,8 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     case callee.kind
     of skMacro, skTemplate: discard
     else:
-      if callee.kind == skIterator and callee.id == c.p.owner.id:
+      if callee.kind == skIterator and callee.id == c.p.owner.id and
+          not isClosureIterator(c.p.owner.typ):
         localError(c.config, n.info, errRecursiveDependencyIteratorX % callee.name.s)
         # error correction, prevents endless for loop elimination in transf.
         # See bug #2051:
@@ -1937,11 +1940,23 @@ proc semYield(c: PContext, n: PNode): PNode =
   elif c.p.owner.typ[0] != nil:
     localError(c.config, n.info, errGenerated, "yield statement must yield a value")
 
+proc considerQuotedIdentOrDot(c: PContext, n: PNode, origin: PNode = nil): PIdent =
+  if n.kind == nkDotExpr:
+    let a = considerQuotedIdentOrDot(c, n[0], origin).s
+    let b = considerQuotedIdentOrDot(c, n[1], origin).s
+    var s = newStringOfCap(a.len + b.len + 1)
+    s.add(a)
+    s.add('.')
+    s.add(b)
+    result = getIdent(c.cache, s)
+  else:
+    result = considerQuotedIdent(c, n, origin)
+
 proc semDefined(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2, c.config)
   # we replace this node by a 'true' or 'false' node:
   result = newIntNode(nkIntLit, 0)
-  result.intVal = ord isDefined(c.config, considerQuotedIdent(c, n[1], n).s)
+  result.intVal = ord isDefined(c.config, considerQuotedIdentOrDot(c, n[1], n).s)
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
 
@@ -2586,7 +2601,7 @@ proc semBlock(c: PContext, n: PNode; flags: TExprFlags): PNode =
       labl.owner = c.p.owner
     n[0] = newSymNode(labl, n[0].info)
     suggestSym(c.graph, n[0].info, labl, c.graph.usageSym)
-    styleCheckDef(c.config, labl)
+    styleCheckDef(c, labl)
     onDef(n[0].info, labl)
   n[1] = semExpr(c, n[1], flags)
   n.typ = n[1].typ

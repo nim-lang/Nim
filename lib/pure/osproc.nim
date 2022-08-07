@@ -1523,7 +1523,7 @@ elif not defined(useNimRtl):
                                      header: "<stdlib.h>".}
 
   proc execCmd(command: string): int =
-    when defined(linux):
+    when defined(posix):
       let tmp = csystem(command)
       result = if tmp == -1: tmp else: exitStatusLikeShell(tmp)
     else:

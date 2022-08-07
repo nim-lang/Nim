@@ -59,10 +59,10 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
-  var test3 = makeTest("lib/nimhcr.nim", options & " --outdir:tests/dll" & rpath, cat)
+  var test3 = makeTest("lib/nimhcr.nim", options & " --threads:off --outdir:tests/dll" & rpath, cat)
   test3.spec.action = actionCompile
   testSpec c, test3
-  var test4 = makeTest("tests/dll/visibility.nim", options & " --app:lib" & rpath, cat)
+  var test4 = makeTest("tests/dll/visibility.nim", options & " --threads:off --app:lib" & rpath, cat)
   test4.spec.action = actionCompile
   testSpec c, test4
 
@@ -77,13 +77,13 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     defer: putEnv(libpathenv, libpath)
 
   testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
-  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & rpath, cat)
-  testSpec r, makeTest("tests/dll/visibility.nim", options & rpath, cat)
+  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
+  testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
   if "boehm" notin options:
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
-                                   options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
+                                   options & " --threads:off --forceBuild --hotCodeReloading:on" & rpath, cat)
     let nimcache = nimcacheDir(hcri.name, hcri.options, getTestSpecTarget())
     let cmd = prepareTestCmd(hcri.spec.getCmd, hcri.name,
                                 hcri.options, nimcache, getTestSpecTarget())
@@ -437,7 +437,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
           if pkg.allowFailure:
             inc r.passed
             inc r.failedButAllowed
-          addResult(r, test, targetC, "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
+          addResult(r, test, targetC, "", "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
           continue
         outp
 
@@ -450,21 +450,21 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
         discard tryCommand("nimble install --depsOnly -y", maxRetries = 3)
       discard tryCommand(pkg.cmd, reFailed = reBuildFailed)
       inc r.passed
-      r.addResult(test, targetC, "", "", reSuccess, allowFailure = pkg.allowFailure)
+      r.addResult(test, targetC, "", "", "", reSuccess, allowFailure = pkg.allowFailure)
 
     errors = r.total - r.passed
     if errors == 0:
-      r.addResult(packageFileTest, targetC, "", "", reSuccess)
+      r.addResult(packageFileTest, targetC, "", "", "", reSuccess)
     else:
-      r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
+      r.addResult(packageFileTest, targetC, "", "", "", reBuildFailed)
 
   except JsonParsingError:
     errors = 1
-    r.addResult(packageFileTest, targetC, "", "Invalid package file", reBuildFailed)
+    r.addResult(packageFileTest, targetC, "", "", "Invalid package file", reBuildFailed)
     raise
   except ValueError:
     errors = 1
-    r.addResult(packageFileTest, targetC, "", "Unknown package", reBuildFailed)
+    r.addResult(packageFileTest, targetC, "", "", "Unknown package", reBuildFailed)
     raise # bug #18805
   finally:
     if errors == 0: removeDir(packagesDir)

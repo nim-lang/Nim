@@ -16,7 +16,7 @@ import
   packages/docutils/[rst, rstgen, dochelpers],
   json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, tables, nimpaths, renderverbatim, osproc
+  pathutils, tables, nimpaths, renderverbatim, osproc, packages
 import packages/docutils/rstast except FileIndex, TLineInfo
 
 from uri import encodeUrl
@@ -88,7 +88,7 @@ type
     jEntriesFinal: JsonNode    # final JSON after RST pass 2 and rendering
     types: TStrTable
     sharedState: PRstSharedState
-    isPureRst: bool
+    standaloneDoc: bool
     conf*: ConfigRef
     cache*: IdentCache
     exampleCounter: int
@@ -230,8 +230,10 @@ template declareClosures =
     case msgKind
     of meCannotOpenFile: k = errCannotOpenFile
     of meExpected: k = errXExpected
+    of meMissingClosing: k = errRstMissingClosing
     of meGridTableNotImplemented: k = errRstGridTableNotImplemented
     of meMarkdownIllformedTable: k = errRstMarkdownIllformedTable
+    of meIllformedTable: k = errRstIllformedTable
     of meNewSectionExpected: k = errRstNewSectionExpected
     of meGeneralParseError: k = errRstGeneralParseError
     of meInvalidDirective: k = errRstInvalidDirectiveX
@@ -275,16 +277,18 @@ proc isLatexCmd(conf: ConfigRef): bool = conf.cmd in {cmdRst2tex, cmdDoc2tex}
 
 proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
                     outExt: string = HtmlExt, module: PSym = nil,
-                    isPureRst = false): PDoc =
+                    standaloneDoc = false, preferMarkdown = true): PDoc =
   declareClosures()
   new(result)
   result.module = module
   result.conf = conf
   result.cache = cache
   result.outDir = conf.outDir.string
-  result.isPureRst = isPureRst
-  var options= {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown, roSandboxDisabled}
-  if not isPureRst: options.incl roNimFile
+  result.standaloneDoc = standaloneDoc
+  var options= {roSupportRawDirective, roSupportMarkdown, roSandboxDisabled}
+  if preferMarkdown:
+    options.incl roPreferMarkdown
+  if not standaloneDoc: options.incl roNimFile
   result.sharedState = newRstSharedState(
       options, filename.string,
       docgenFindFile, compilerMsgHandler)
@@ -332,7 +336,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
       # Make sure the destination directory exists
       createDir(outp.splitFile.dir)
       # Include the current file if we're parsing a nim file
-      let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename.replace("\\", "/")]
+      let importStmt = if d.standaloneDoc: "" else: "import \"$1\"\n" % [d.filename.replace("\\", "/")]
       writeFile(outp, importStmt & content)
 
       proc interpSnippetCmd(cmd: string): string =
@@ -413,9 +417,6 @@ proc getPlainDocstring(n: PNode): string =
       result = getPlainDocstring(n[i])
       if result.len > 0: return
 
-proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
-  result = module.kind == skModule and module.getnimblePkgId == conf.mainPackageId
-
 proc externalDep(d: PDoc; module: PSym): string =
   if optWholeProject in d.conf.globalOptions or d.conf.docRoot.len > 0:
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
@@ -471,7 +472,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var string;
               "\\spanIdentifier{$1}", [escLit, procLink])
       elif s != nil and s.kind in {skType, skVar, skLet, skConst} and
            sfExported in s.flags and s.owner != nil and
-           belongsToPackage(d.conf, s.owner) and d.target == outHtml:
+           belongsToProjectPackage(d.conf, s.owner) and d.target == outHtml:
         let external = externalDep(d, s.owner)
         result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
           [changeFileExt(external, "html"), literal,
@@ -1131,7 +1132,7 @@ proc traceDeps(d: PDoc, it: PNode) =
     for x in it[2]:
       a[2] = x
       traceDeps(d, a)
-  elif it.kind == nkSym and belongsToPackage(d.conf, it.sym):
+  elif it.kind == nkSym and belongsToProjectPackage(d.conf, it.sym):
     let external = externalDep(d, it.sym)
     if d.section[k].finalMarkup != "": d.section[k].finalMarkup.add(", ")
     dispA(d.conf, d.section[k].finalMarkup,
@@ -1141,7 +1142,7 @@ proc traceDeps(d: PDoc, it: PNode) =
 
 proc exportSym(d: PDoc; s: PSym) =
   const k = exportSection
-  if s.kind == skModule and belongsToPackage(d.conf, s):
+  if s.kind == skModule and belongsToProjectPackage(d.conf, s):
     let external = externalDep(d, s)
     if d.section[k].finalMarkup != "": d.section[k].finalMarkup.add(", ")
     dispA(d.conf, d.section[k].finalMarkup,
@@ -1150,7 +1151,7 @@ proc exportSym(d: PDoc; s: PSym) =
                  changeFileExt(external, "html")])
   elif s.kind != skModule and s.owner != nil:
     let module = originatingModule(s)
-    if belongsToPackage(d.conf, module):
+    if belongsToProjectPackage(d.conf, module):
       let
         complexSymbol = complexName(s.kind, s.ast, s.name.s)
         symbolOrId = d.newUniquePlainSymbol(complexSymbol)
@@ -1211,8 +1212,9 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
   let p3 = documentWriteEffect(cache, n, sfWrittenTo, "writes")
   let p4 = documentNewEffect(cache, n)
   let p5 = documentWriteEffect(cache, n, sfEscapes, "escapes")
+  let p6 = documentEffect(cache, n, pragmas, wForbids, forbiddenEffects)
 
-  if p1 != nil or p2 != nil or p3 != nil or p4 != nil or p5 != nil:
+  if p1 != nil or p2 != nil or p3 != nil or p4 != nil or p5 != nil or p6 != nil:
     if pragmas.kind == nkEmpty:
       n[pragmasPos] = newNodeI(nkPragma, n.info)
     if p1 != nil: n[pragmasPos].add p1
@@ -1220,6 +1222,7 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
     if p3 != nil: n[pragmasPos].add p3
     if p4 != nil: n[pragmasPos].add p4
     if p5 != nil: n[pragmasPos].add p5
+    if p6 != nil: n[pragmasPos].add p6
 
 proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
   ## Goes through nim nodes recursively and collects doc comments.
@@ -1357,8 +1360,9 @@ proc finishGenerateDoc*(d: var PDoc) =
       var str: string
       renderRstToOut(d[], resolved, str)
       entry.json[entry.rstField] = %str
-      d.jEntriesFinal.add entry.json
       d.jEntriesPre[i].rst = nil
+
+    d.jEntriesFinal.add entry.json # generates docs
 
 proc add(d: PDoc; j: JsonItem) =
   if j.json != nil or j.rst != nil: d.jEntriesPre.add j
@@ -1473,10 +1477,21 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
     for item in d.tocSimple[kind].sorted(cmp):
       d.toc2[kind].add item.content
 
-  d.toc[kind] = getConfigVar(d.conf, "doc.section.toc") % [
-      "sectionid", $ord(kind), "sectionTitle", title,
-      "sectionTitleID", $(ord(kind) + 50), "content", d.toc2[kind]]
+  let sectionValues = @[
+     "sectionID", $ord(kind), "sectionTitleID", $(ord(kind) + 50),
+     "sectionTitle", title
+  ]
 
+  # Check if the toc has any children
+  if d.toc2[kind] != "":
+    # Use the dropdown version instead and store the children in the dropdown
+    d.toc[kind] = getConfigVar(d.conf, "doc.section.toc") % (sectionValues & @[
+       "content", d.toc2[kind]
+    ])
+  else:
+    # Just have the link
+    d.toc[kind] =  getConfigVar(d.conf, "doc.section.toc_item") % sectionValues
+    
 proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): string =
   $relativeTo(outDir / linkto, destFile.splitFile().dir, '/')
 
@@ -1514,7 +1529,7 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
         "\\\\\\vspace{0.5em}\\large $1", [esc(d.target, d.meta[metaSubtitle])])
 
   var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
-  let bodyname = if d.hasToc and not d.isPureRst and not d.conf.isLatexCmd:
+  let bodyname = if d.hasToc and not d.standaloneDoc and not d.conf.isLatexCmd:
                    groupsection.setLen 0
                    "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
@@ -1628,9 +1643,11 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
   generateIndex(d)
 
 proc commandRstAux(cache: IdentCache, conf: ConfigRef;
-                   filename: AbsoluteFile, outExt: string) =
+                   filename: AbsoluteFile, outExt: string,
+                   preferMarkdown: bool) =
   var filen = addFileExt(filename, "txt")
-  var d = newDocumentor(filen, cache, conf, outExt, isPureRst = true)
+  var d = newDocumentor(filen, cache, conf, outExt, standaloneDoc = true,
+                        preferMarkdown = preferMarkdown)
   let rst = parseRst(readFile(filen.string),
                      line=LineRstInit, column=ColRstInit,
                      conf, d.sharedState)
@@ -1639,11 +1656,13 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
   writeOutput(d)
   generateIndex(d)
 
-proc commandRst2Html*(cache: IdentCache, conf: ConfigRef) =
-  commandRstAux(cache, conf, conf.projectFull, HtmlExt)
+proc commandRst2Html*(cache: IdentCache, conf: ConfigRef,
+                      preferMarkdown=false) =
+  commandRstAux(cache, conf, conf.projectFull, HtmlExt, preferMarkdown)
 
-proc commandRst2TeX*(cache: IdentCache, conf: ConfigRef) =
-  commandRstAux(cache, conf, conf.projectFull, TexExt)
+proc commandRst2TeX*(cache: IdentCache, conf: ConfigRef,
+                     preferMarkdown=false) =
+  commandRstAux(cache, conf, conf.projectFull, TexExt, preferMarkdown)
 
 proc commandJson*(cache: IdentCache, conf: ConfigRef) =
   ## implementation of a deprecated jsondoc0 command
