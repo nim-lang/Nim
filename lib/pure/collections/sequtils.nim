@@ -852,7 +852,7 @@ template toSeq*(iter: untyped): untyped =
           inc i
         result
     else:
-      var result: seq[typeof(iter)] = @[]
+      var result: seq[typeof(iter)]# = @[]
       for x in iter:
         result.add(x)
       result
