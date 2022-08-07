@@ -1,4 +1,5 @@
 discard """
+  targets: "c cpp"
   matrix: "--gc:refc; --gc:arc"
 """
 
@@ -30,3 +31,11 @@ proc main2() =
 
 main2()
 
+type Base* = ref object of RootObj
+method printSpace(c: var Base) {.base.} = discard
+
+type Derived = ref object of Base
+method printSpace(c: var Derived) = discard
+
+var x = Derived()
+printSpace(x)

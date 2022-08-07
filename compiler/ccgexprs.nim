@@ -2632,8 +2632,11 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
               [r, checkFor, raiseInstr(p)])
   if n[0].typ.kind != tyObject:
     if n.isLValue:
+      let skipVarType = n.typ.skipTypes({tyVar}) # make an exception for var ref object
+                                                 # because it is already a pointer,
+                                                 # otherwise C++ compiler would complain.
       putIntoDest(p, d, n,
-                "(*(($1*) (&($2))))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
+                "(*(($1*) (&($2))))" % [getTypeDesc(p.module, skipVarType), rdLoc(a)], a.storage)
     else:
       putIntoDest(p, d, n,
                 "(($1) ($2))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
