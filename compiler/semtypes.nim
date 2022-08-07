@@ -212,12 +212,29 @@ proc semVarOutType(c: PContext, n: PNode, prev: PType; kind: TTypeKind): PType =
   else:
     result = newConstraint(c, kind)
 
+proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
+  if t == nil:
+    return false
+  if cycleDetector.containsOrIncl(t.id):
+    return true
+  case t.kind
+  of tyAlias, tyGenericInst, tyDistinct:
+    return isRecursiveType(t.lastSon, cycleDetector)
+  else:
+    return false
+
+proc isRecursiveType*(t: PType): bool =
+  # handle simple recusive types before typeFinalPass
+  var cycleDetector = initIntSet()
+  isRecursiveType(t, cycleDetector)
+
 proc addSonSkipIntLitChecked(c: PContext; father, son: PType; it: PNode, id: IdGenerator) =
   let s = son.skipIntLit(id)
   father.sons.add(s)
-  if computeSize(c.config, s) == szIllegalRecursion:
+  if isRecursiveType(s):
     localError(c.config, it.info, "illegal recursion in type '" & typeToString(s) & "'")
-  propagateToOwner(father, s)
+  else:
+    propagateToOwner(father, s)
 
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0: return newConstraint(c, tyDistinct)
