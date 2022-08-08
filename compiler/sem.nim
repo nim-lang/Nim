@@ -87,7 +87,7 @@ proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   if arg.typ.isNil:
     localError(c.config, arg.info, "expression has no type: " &
-               renderTree(arg, {renderNoComments}))
+               renderTree(arg, c.expandedMacros, {renderNoComments}))
     # error correction:
     result = copyTree(arg)
     result.typ = formal
@@ -96,11 +96,11 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     for ch in arg:
       if sameType(ch.typ, formal):
         return getConstExpr(c.module, ch, c.idgen, c.graph)
-    typeMismatch(c.config, info, formal, arg.typ, arg)
+    typeMismatch(c.config, info, formal, arg.typ, arg, c.expandedMacros)
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
-      typeMismatch(c.config, info, formal, arg.typ, arg)
+      typeMismatch(c.config, info, formal, arg.typ, arg, c.expandedMacros)
       # error correction:
       result = copyTree(arg)
       result.typ = formal
@@ -271,7 +271,7 @@ proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
-proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
+proc semTemplateExpr(c: PContext, n, nOrig: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode
@@ -447,7 +447,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       var typ = semTypeNode(c, result, nil)
       if typ == nil:
         localError(c.config, result.info, "expression has no type: " &
-                   renderTree(result, {renderNoComments}))
+                   renderTree(result, c.expandedMacros, {renderNoComments}))
         result = newSymNode(errorSym(c, result))
       else:
         result.typ = makeTypeDesc(c, typ)

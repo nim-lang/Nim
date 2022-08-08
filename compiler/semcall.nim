@@ -244,7 +244,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add renderNotLValue(nArg)
           candidates.add "' is immutable, not 'var'"
         else:
-          candidates.add renderTree(nArg)
+          candidates.add renderTree(nArg, c.expandedMacros)
           candidates.add "' is of type: "
           let got = nArg.typ
           candidates.addTypeDeclVerboseMaybe(c.config, got)
@@ -270,7 +270,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     candidates.add($skipped & " other mismatching symbols have been " &
         "suppressed; compile with --showAllMismatches:on to see them\n")
   if maybeWrongSpace:
-    candidates.add("maybe misplaced space between " & renderTree(n[0]) & " and '(' \n")
+    candidates.add("maybe misplaced space between " & renderTree(n[0], c.expandedMacros) & " and '(' \n")
 
   result = (prefer, candidates)
 
@@ -291,7 +291,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     globalError(c.config, n.info, "type mismatch")
     return
   if errors.len == 0:
-    localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree)
+    localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree(c.expandedMacros))
     return
 
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
@@ -437,7 +437,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     elif result.state != csMatch:
       if nfExprCall in n.flags:
         localError(c.config, n.info, "expression '$1' cannot be called" %
-                   renderTree(n, {renderNoComments}))
+                   renderTree(n, c.expandedMacros, {renderNoComments}))
       else:
         if {nfDotField, nfDotSetter} * n.flags != {}:
           # clean up the inserted ops
@@ -501,7 +501,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
     result.typ = generateTypeInstance(c, m.bindings, arg.info,
                                       formal.skipTypes({tyCompositeTypeClass}))
   else:
-    typeMismatch(c.config, arg.info, formal, arg.typ, arg)
+    typeMismatch(c.config, arg.info, formal, arg.typ, arg, c.expandedMacros)
     # error correction:
     result = copyTree(arg)
     result.typ = formal

@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
-  lineinfos, int128, modulegraphs, astmsgs
+  lineinfos, int128, modulegraphs, astmsgs, tables
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -1608,7 +1608,7 @@ proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, c
     message.add "\n  Pragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [gotPragmas, expectedPragmas]
 
 
-proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
+proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode, expandedMacros: Table[PNode, PNode]) =
   if formal.kind != tyError and actual.kind != tyError:
     let actualStr = typeToString(actual)
     let formalStr = typeToString(formal)
@@ -1620,7 +1620,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
     if conf.isDefined("nimLegacyTypeMismatch"):
       msg.add  " got <$1>" % actualStr
     else:
-      msg.add  " got '$1' for '$2'" % [actualStr, n.renderTree]
+      msg.add  " got '$1' for '$2'" % [actualStr, n.renderTree(expandedMacros)]
     if verbose:
       msg.addDeclaredLoc(conf, actual)
       msg.add "\n"

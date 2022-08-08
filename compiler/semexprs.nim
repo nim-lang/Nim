@@ -12,6 +12,7 @@
 
 when defined(nimCompilerStacktraceHints):
   import std/stackframes
+import std/tables # For setting expanded macros
 
 const
   errExprXHasNoType = "expression '$1' has no type (or is ambiguous)"
@@ -25,7 +26,7 @@ const
   errFieldInitTwice = "field initialized twice: '$1'"
   errUndeclaredFieldX = "undeclared field: '$1'"
 
-proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
+proc semTemplateExpr(c: PContext, n, nOrig: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
   rememberExpansion(c, n.info, s)
   let info = getCallLineInfo(n)
@@ -37,8 +38,8 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache,
                         c.templInstCounter, c.idgen, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
+  c.expandedMacros[result] = nOrig
   popInfoContext(c.config)
-
   # XXX: A more elaborate line info rewrite might be needed
   result.info = info
 
@@ -62,7 +63,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = newTypeS(tyVoid, c)
   else:
     localError(c.config, n.info, errExprXHasNoType %
-               renderTree(result, {renderNoComments}))
+               renderTree(result, c.expandedMacros, {renderNoComments}))
     result.typ = errorType(c)
 
 proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
@@ -76,7 +77,7 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if isEmpty or isTypeError:
     # bug #12741, redundant error messages are the lesser evil here:
     localError(c.config, n.info, errExprXHasNoType %
-                renderTree(result, {renderNoComments}))
+                renderTree(result, c.expandedMacros, {renderNoComments}))
 
   if isEmpty:
     # do not produce another redundant error message:
@@ -88,7 +89,7 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = c.voidType
   elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
-                renderTree(result, {renderNoComments}))
+                renderTree(result, c.expandedMacros, {renderNoComments}))
     result.typ = errorType(c)
   elif result.typ.kind == tyError:
     # associates the type error to the current owner
@@ -100,7 +101,7 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExprCheck(c, n, flags)
   if result.typ == nil:
     localError(c.config, n.info, errExprXHasNoType %
-               renderTree(result, {renderNoComments}))
+               renderTree(result, c.expandedMacros, {renderNoComments}))
     result.typ = errorType(c)
 
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
@@ -600,7 +601,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       var idx = semConstExpr(c, x[0])
       if not isOrdinalType(idx.typ):
         localError(c.config, idx.info, "expected ordinal value for array " &
-                   "index, got '$1'" % renderTree(idx))
+                   "index, got '$1'" % renderTree(idx, c.expandedMacros))
       else:
         firstIndex = getOrdValue(idx)
         lastIndex = firstIndex
@@ -931,7 +932,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
   let callee = result[0].sym
   case callee.kind
   of skMacro: result = semMacroExpr(c, result, orig, callee, flags)
-  of skTemplate: result = semTemplateExpr(c, result, callee, flags)
+  of skTemplate: result = semTemplateExpr(c, result, orig, callee, flags)
   else:
     semFinishOperands(c, result)
     activate(c, result)
@@ -1238,7 +1239,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       onUse(info, s)
       result = symChoice(c, n, s, scClosed)
     else:
-      result = semTemplateExpr(c, n, s, flags)
+      result = semTemplateExpr(c, n, n, s, flags)
   of skParam:
     markUsed(c, n.info, s)
     onUse(n.info, s)
@@ -1614,7 +1615,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
           n.transitionSonsKind(nkCall)
           case s.kind
           of skMacro: result = semMacroExpr(c, n, n, s, flags)
-          of skTemplate: result = semTemplateExpr(c, n, s, flags)
+          of skTemplate: result = semTemplateExpr(c, n, n, s, flags)
           else: discard
       of skType:
         result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
@@ -1816,7 +1817,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           c.p.resultSym.typ = rhsTyp
           c.p.owner.typ[0] = rhsTyp
         else:
-          typeMismatch(c.config, n.info, lhs.typ, rhsTyp, rhs)
+          typeMismatch(c.config, n.info, lhs.typ, rhsTyp, rhs, c.expandedMacros)
     borrowCheck(c, n, lhs, rhs)
 
     n[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))
@@ -1985,7 +1986,7 @@ proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
   of nkOpenSymChoice, nkClosedSymChoice:
     result = n[0].sym
   else:
-    localError(c.config, n.info, "identifier expected, but got: " & renderTree(n))
+    localError(c.config, n.info, "identifier expected, but got: " & renderTree(n, c.expandedMacros))
     result = nil
 
 proc semDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
@@ -2638,7 +2639,7 @@ proc semExport(c: PContext, n: PNode): PNode =
     var o: TOverloadIter
     var s = initOverloadIter(o, c, a)
     if s == nil:
-      localError(c.config, a.info, errGenerated, "cannot export: " & renderTree(a))
+      localError(c.config, a.info, errGenerated, "cannot export: " & renderTree(a, c.expandedMacros))
     elif s.kind == skModule:
       # forward everything from that module:
       reexportSym(c, s)
@@ -2651,7 +2652,7 @@ proc semExport(c: PContext, n: PNode): PNode =
     else:
       while s != nil:
         if s.kind == skEnumField:
-          localError(c.config, a.info, errGenerated, "cannot export: " & renderTree(a) &
+          localError(c.config, a.info, errGenerated, "cannot export: " & renderTree(a, c.expandedMacros) &
             "; enum field cannot be exported individually")
         if s.kind in ExportableSymKinds+{skModule} and sfError notin s.flags:
           result.add(newSymNode(s, a.info))
@@ -3102,5 +3103,5 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
                 renderTree(n, {renderNoComments}))
   else:
     localError(c.config, n.info, "invalid expression: " &
-               renderTree(n, {renderNoComments}))
+               renderTree(n, c.expandedMacros, {renderNoComments}))
   if result != nil: incl(result.flags, nfSem)

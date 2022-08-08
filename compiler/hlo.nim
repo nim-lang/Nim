@@ -27,7 +27,7 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
   of skMacro:
     result = semMacroExpr(c, n, orig, s)
   of skTemplate:
-    result = semTemplateExpr(c, n, s, {efFromHlo})
+    result = semTemplateExpr(c, n, orig, s, {efFromHlo})
   else:
     result = semDirectOp(c, n, {})
   if c.config.hasHint(hintPattern):

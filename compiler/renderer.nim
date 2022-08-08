@@ -15,7 +15,9 @@ when defined(nimHasUsed):
   {.used.}
 
 import
-  lexer, options, idents, strutils, ast, msgs, lineinfos
+  lexer, options, idents, strutils, ast, msgs, lineinfos, tables, hashes
+
+proc hash*(node: PNode): Hash = cast[Hash](node)
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -1707,6 +1709,20 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     internalError(g.config, n.info, "renderer.gsub(" & $n.kind & ')')
 
 proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
+  if n == nil: return "<nil tree>"
+  var g: TSrcGen
+  initSrcGen(g, renderFlags, newPartialConfigRef())
+  # do not indent the initial statement list so that
+  # writeFile("file.nim", repr n)
+  # produces working Nim code:
+  if n.kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+    gstmts(g, n, emptyContext, doIndent = false)
+  else:
+    gsub(g, n)
+  result = g.buf
+
+proc renderTree*(n: PNode, expandedMacros: Table[PNode, PNode], renderFlags: TRenderFlags = {}): string =
+  let n = expandedMacros.getOrDefault(n, n)
   if n == nil: return "<nil tree>"
   var g: TSrcGen
   initSrcGen(g, renderFlags, newPartialConfigRef())

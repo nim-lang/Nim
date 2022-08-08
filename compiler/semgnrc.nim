@@ -77,7 +77,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   of skTemplate:
     if macroToExpandSym(s):
       onUse(n.info, s)
-      result = semTemplateExpr(c, n, s, {efNoSemCheck})
+      result = semTemplateExpr(c, n, n, s, {efNoSemCheck})
       result = semGenericStmt(c, result, {}, ctx)
     else:
       result = symChoice(c, n, s, scOpen)
@@ -233,7 +233,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         {withinMixin, withinConcept}*flags == {} and
         fn.kind in {nkIdent, nkAccQuoted} and
         considerQuotedIdent(c, fn).id notin ctx.toMixin:
-      errorUndeclaredIdentifier(c, n.info, fn.renderTree)
+      errorUndeclaredIdentifier(c, n.info, fn.renderTree())
 
     var first = int ord(withinConcept in flags)
     var mixinContext = false
@@ -257,7 +257,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       of skTemplate:
         if macroToExpand(s) and sc.safeLen <= 1:
           onUse(fn.info, s)
-          result = semTemplateExpr(c, n, s, {efNoSemCheck})
+          result = semTemplateExpr(c, n, n, s, {efNoSemCheck})
           result = semGenericStmt(c, result, flags, ctx)
         else:
           n[0] = sc

@@ -326,7 +326,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1; prefer = preferName): st
   for i in startIdx..<n.len:
     var arg = n[i]
     if n[i].kind == nkExprEqExpr:
-      result.add renderTree(n[i][0])
+      result.add renderTree(n[i][0], c.expandedMacros)
       result.add ": "
       if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
         # XXX we really need to 'tryExpr' here!
