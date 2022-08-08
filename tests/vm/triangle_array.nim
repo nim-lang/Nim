@@ -10,4 +10,4 @@ proc initCombinations: array[11, array[11, int]] =
   result[6][6 .. 10] =             [52,53,54,55,56]
 
 const combinations = initCombinations()
-doAssert $combinations[6][10] == "56"
+doAssert combinations[6][10] == 56
