@@ -28,6 +28,8 @@
 - `shallowCopy` is removed for ARC/ORC. Use `move` when possible or combine assignment and
 `sink` for optimization purposes.
 
+- `nimPreviewDotLikeOps` is going to be removed or deprecated.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"

@@ -9,9 +9,7 @@ proc main() =
 
   doAssert exitCode == 0, output
 
-  var start = rfind(output, "Hint: gc")
-  if start < 0:
-    start = rfind(output, "Hint: mm")
+  let start = rfind(output, "Hint: mm")
   doAssert parseUntil(output, msg, "; proj", start) > 0, output
 
   let (commitHash, _) = execCmdEx("""git log --format="%H" -n 1""")
