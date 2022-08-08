@@ -159,24 +159,28 @@ body {
   padding: 0;
   box-sizing: border-box; }
 
-.column,
-.columns {
+.column, .columns {
   width: 100%;
   float: left;
   box-sizing: border-box;
-  margin-left: 1%;
-}
+  margin-left: 1%; }
 
-.column:first-child,
-.columns:first-child {
+.column:first-child, .columns:first-child {
   margin-left: 0; }
 
+.container .row {
+  display: flex; }
+
 .three.columns {
-  width: 22%;
-}
+  width: 25.0%;
+  height: 100vh;
+  position: sticky;
+  top: 0px;
+  overflow-y: auto; }
 
 .nine.columns {
-  width: 77.0%; }
+  width: 75.0%;
+  padding-left: 1.5em; }
 
 .twelve.columns {
   width: 100%;
@@ -269,25 +273,26 @@ a.nimdoc {
 
 a.toc-backref {
   text-decoration: none;
-  color: var(--text); }
+  color: var(--text);
+}
 
 a.link-seesrc {
   color: #607c9f;
   font-size: 0.9em;
-  font-style: italic; }
+  font-style: italic;
+}
 
-a:hover,
-a:focus {
+a:hover, a:focus {
   color: var(--anchor-focus);
-  text-decoration: underline; }
+  text-decoration: underline;
+}
 
 a:hover span.Identifier {
   color: var(--anchor);
 }
 
 
-sub,
-sup {
+sub, sup {
   position: relative;
   font-size: 75%;
   line-height: 0;
@@ -314,8 +319,7 @@ img {
     background: transparent !important;
     box-shadow: none !important; }
 
-  a,
-  a:visited {
+  a, a:visited {
     text-decoration: underline; }
 
   a[href]:after {
@@ -329,16 +333,14 @@ img {
   a[href^="#"]:after {
     content: ""; }
 
-  pre,
-  blockquote {
+  pre, blockquote {
     border: 1px solid #999;
     page-break-inside: avoid; }
 
   thead {
     display: table-header-group; }
 
-  tr,
-  img {
+  tr, img {
     page-break-inside: avoid; }
 
   img {
@@ -353,22 +355,18 @@ img {
   h1.title {
     page-break-before: avoid; }
 
-  p,
-  h2,
-  h3 {
+  p, h2, h3 {
     orphans: 3;
     widows: 3; }
 
-  h2,
-  h3 {
+  h2, h3 {
     page-break-after: avoid; }
 }
 
 
 p {
   margin-top: 0.5em;
-  margin-bottom: 0.5em;
-}
+  margin-bottom: 0.5em; }
 
 small {
   font-size: 85%; }
@@ -376,8 +374,7 @@ small {
 strong {
   font-weight: 600;
   font-size: 0.95em;
-  color: var(--strong);
-}
+  color: var(--strong); }
 
 em {
   font-style: italic; }
@@ -398,8 +395,7 @@ h1.title {
   text-align: center;
   font-weight: 900;
   margin-top: 0.75em;
-  margin-bottom: 0em;
-}
+  margin-bottom: 0em; }
 
 h2 {
   font-size: 1.3em;
@@ -426,36 +422,29 @@ h6 {
   font-size: 1.1em; }
 
 
-ul,
-ol {
+ul, ol {
   padding: 0;
   margin-top: 0.5em;
   margin-left: 0.75em; }
 
-ul ul,
-ul ol,
-ol ol,
-ol ul {
+ul ul, ul ol, ol ol, ol ul {
   margin-bottom: 0;
   margin-left: 1.25em; }
 
 ul.simple > li {
-    list-style-type: circle;
-}
+  list-style-type: circle; }
 
 ul.simple-boot li {
-    list-style-type: none;
-    margin-left: 0em;
-    margin-bottom: 0.5em;
-}
+  list-style-type: none;
+  margin-left: 0em;
+  margin-bottom: 0.5em; }
 
 ol.simple > li, ul.simple > li {
   margin-bottom: 0.2em;
   margin-left: 0.4em }
 
 ul.simple.simple-toc > li {
-    margin-top: 1em;
-}
+  margin-top: 1em; }
 
 ul.simple-toc {
   list-style: none;
@@ -464,8 +453,7 @@ ul.simple-toc {
   margin-top: 1em; }
 
 ul.simple-toc > li {
-    list-style-type: none;
-}
+  list-style-type: none; }
 
 ul.simple-toc-section {
   list-style-type: circle;
@@ -475,12 +463,10 @@ ul.simple-toc-section {
 ul.nested-toc-section {
   list-style-type: circle;
   margin-left: -0.75em;
-  color: var(--text);
-}
+  color: var(--text); }
 
 ul.nested-toc-section > li {
-  margin-left: 1.25em;
-}
+  margin-left: 1.25em; }
 
 
 ol.arabic {
@@ -527,7 +513,8 @@ hr.footnote {
   margin-top: 0.15em;
 }
 div.footnote-group {
-  margin-left: 1em; }
+  margin-left: 1em;
+}
 div.footnote-label {
   display: inline-block;
   min-width: 1.7em;
@@ -611,7 +598,7 @@ pre {
   border: 1px solid var(--border);
   -webkit-border-radius: 6px;
   -moz-border-radius: 6px;
-  border-radius: 6px; 
+  border-radius: 6px;
 }
 
 .copyToClipBoardBtn {
@@ -629,7 +616,7 @@ pre {
 
 .copyToClipBoard:hover .copyToClipBoardBtn {
   visibility: visible;
-} 
+}
 
 .pre-scrollable {
   max-height: 340px;
@@ -694,8 +681,8 @@ table th {
   font-weight: bold; }
 
 table th.docinfo-name {
-    background-color: transparent;
-    text-align: right;
+  background-color: transparent;
+  text-align: right;
 }
 
 table tr:hover {
@@ -712,31 +699,31 @@ table.borderless td, table.borderless th {
   padding: 0 0.5em 0 0 !important; }
 
 .admonition {
-    padding: 0.3em;
-    background-color: var(--secondary-background);
-    border-left: 0.4em solid #7f7f84;
-    margin-bottom: 0.5em;
-    -webkit-box-shadow: 0 5px 8px -6px rgba(0,0,0,.2);
-       -moz-box-shadow: 0 5px 8px -6px rgba(0,0,0,.2);
-            box-shadow: 0 5px 8px -6px rgba(0,0,0,.2);
+  padding: 0.3em;
+  background-color: var(--secondary-background);
+  border-left: 0.4em solid #7f7f84;
+  margin-bottom: 0.5em;
+  -webkit-box-shadow: 0 5px 8px -6px rgba(0,0,0,.2);
+      -moz-box-shadow: 0 5px 8px -6px rgba(0,0,0,.2);
+          box-shadow: 0 5px 8px -6px rgba(0,0,0,.2);
 }
 .admonition-info {
-    border-color: var(--info-background);
+  border-color: var(--info-background);
 }
 .admonition-info-text {
-    color: var(--info-background);
+  color: var(--info-background);
 }
 .admonition-warning {
-    border-color: var(--warning-background);
+  border-color: var(--warning-background);
 }
 .admonition-warning-text {
-    color: var(--warning-background);
+  color: var(--warning-background);
 }
 .admonition-error {
-    border-color: var(--error-background);
+  border-color: var(--error-background);
 }
 .admonition-error-text {
-    color: var(--error-background);
+  color: var(--error-background);
 }
 
 .first {
@@ -770,8 +757,7 @@ div.footer, div.header {
   font-size: smaller; }
 
 div.footer {
-    padding-top: 5em;
-}
+  padding-top: 5em; }
 
 div.line-block {
   display: block;
@@ -790,17 +776,14 @@ div.search_results {
   background-color: var(--third-background);
   margin: 3em;
   padding: 1em;
-  border: 1px solid #4d4d4d;
-}
+  border: 1px solid #4d4d4d; }
 
 div#global-links ul {
   margin-left: 0;
-  list-style-type: none;
-}
+  list-style-type: none; }
 
 div#global-links > simple-boot {
-    margin-left: 3em;
-}
+  margin-left: 3em; }
 
 hr.docutils {
   width: 75%; }
@@ -980,8 +963,7 @@ span.Directive {
 span.option {
   font-weight: bold;
   font-family: "Source Code Pro", Monaco, Menlo, Consolas, "Courier New", monospace;
-  color: var(--option);
-}
+  color: var(--option); }
 
 span.Prompt {
   font-weight: bold;
@@ -997,11 +979,10 @@ span.program {
   text-decoration: underline;
   text-decoration-color: var(--hint);
   text-decoration-thickness: 0.05em;
-  text-underline-offset: 0.15em;
-}
+  text-underline-offset: 0.15em; }
 
-span.Command, span.Rule, span.Hyperlink, span.Label, span.Reference,
-span.Other {
+span.Command, span.Rule, span.Hyperlink,
+span.Label, span.Reference, span.Other {
   color: var(--other); }
 
 /* Pop type, const, proc, and iterator defs in nim def blocks */
@@ -1039,17 +1020,14 @@ span.pragmadots {
   border-radius: 4px;
   margin: 0 2px;
   cursor: pointer;
-  font-size: 0.8em;
-}
+  font-size: 0.8em; }
 
 span.pragmadots:hover {
-  background-color: var(--hint);
-}
+  background-color: var(--hint); }
+
 span.pragmawrap {
-  display: none;
-}
+  display: none; }
 
 span.attachedType {
   display: none;
-  visibility: hidden;
-}
+  visibility: hidden; }

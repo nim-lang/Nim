@@ -20,11 +20,13 @@ when defined(nimStrictMode):
     switch("hintAsError", "ConvFromXtoItselfNotNeeded")
     # future work: XDeclaredButNotUsed
 
+when defined(windows) and not defined(booting):
+  # Avoid some rare stack corruption while using exceptions with a SEH-enabled
+  # toolchain: https://github.com/nim-lang/Nim/pull/19197
+  switch("define", "nimRawSetjmp")
+
 switch("define", "nimVersion:" & NimVersion)
 
 when defined(nimHasEffectsOf):
   switch("experimental", "strictEffects")
   switch("warningAsError", "Effect:on")
-
-switch("define", "nimPreviewDotLikeOps")
-

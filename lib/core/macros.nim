@@ -1360,7 +1360,9 @@ proc `$`*(node: NimNode): string =
   of nnkOpenSymChoice, nnkClosedSymChoice:
     result = $node[0]
   of nnkAccQuoted:
-    result = $node[0]
+    result = ""
+    for i in 0 ..< node.len:
+      result.add(repr(node[i]))
   else:
     badNodeKind node, "$"
 
@@ -1521,7 +1523,7 @@ proc extractTypeImpl(n: NimNode): NimNode =
   else: error("Invalid node to retrieve type implementation of: " & $n.kind)
 
 proc customPragmaNode(n: NimNode): NimNode =
-  expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkCheckedFieldExpr})
+  expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkType, nnkCheckedFieldExpr})
   let
     typ = n.getTypeInst()
 
@@ -1532,7 +1534,9 @@ proc customPragmaNode(n: NimNode): NimNode =
       if kind(typ[1]) == nnkBracketExpr: typ[1][0]
       else: typ[1]
     )
-    if impl[0].kind == nnkPragmaExpr:
+    if impl.kind == nnkNilLit:
+      return impl
+    elif impl[0].kind == nnkPragmaExpr:
       return impl[0][1]
     else:
       return impl[0] # handle types which don't have macro at all
@@ -1560,7 +1564,7 @@ proc customPragmaNode(n: NimNode): NimNode =
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
       let typ = typDef[2].extractTypeImpl()
-      typ.expectKind({nnkRefTy, nnkPtrTy, nnkObjectTy})
+      if typ.kind notin {nnkRefTy, nnkPtrTy, nnkObjectTy}: break
       let isRef = typ.kind in {nnkRefTy, nnkPtrTy}
       if isRef and typ[0].kind in {nnkSym, nnkBracketExpr}: # defines ref type for another object(e.g. X = ref X)
         typDef = getImpl(typ[0])

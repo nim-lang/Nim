@@ -112,6 +112,12 @@ type
                               ## nodes that are post-processed after parsing
     of rnNimdocRef:
       tooltip*: string
+    of rnTable, rnGridTable, rnMarkdownTable:
+      colCount*: int          ## Number of (not-united) cells in the table
+    of rnTableRow:
+      endsHeader*: bool       ## Is last row in the header of table?
+    of rnTableHeaderCell, rnTableDataCell:
+      span*: int              ## Number of table columns that the cell occupies
     else:
       discard
     anchor*: string           ## anchor, internal link target
@@ -416,6 +422,13 @@ proc treeRepr*(node: PRstNode, indent=0): string =
     result.add (if node.order == 0:   "" else: "  order=" & $node.order)
   of rnMarkdownBlockQuoteItem:
     result.add "  quotationDepth=" & $node.quotationDepth
+  of rnTable, rnGridTable, rnMarkdownTable:
+    result.add "  colCount=" & $node.colCount
+  of rnTableHeaderCell, rnTableDataCell:
+    if node.span > 0:
+      result.add "  span=" & $node.span
+  of rnTableRow:
+    if node.endsHeader: result.add "  endsHeader"
   else:
     discard
   result.add (if node.anchor == "": "" else: "  anchor='" & node.anchor & "'")

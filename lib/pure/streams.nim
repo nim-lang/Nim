@@ -243,6 +243,9 @@ proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
     result = s.readDataStrImpl(s, buffer, slice)
   else:
     # fallback
+    when declared(prepareMutation):
+      # buffer might potentially be a CoW literal with ARC
+      prepareMutation(buffer)
     result = s.readData(addr buffer[slice.a], slice.b + 1 - slice.a)
 
 template jsOrVmBlock(caseJsOrVm, caseElse: untyped): untyped =
@@ -1194,6 +1197,11 @@ else: # after 1.3 or JS not defined
 
   proc ssReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
     var s = StringStream(s)
+    when nimvm:
+      discard
+    else:
+      when declared(prepareMutation):
+        prepareMutation(buffer) # buffer might potentially be a CoW literal with ARC
     result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
     if result > 0:
       jsOrVmBlock:
@@ -1274,8 +1282,11 @@ else: # after 1.3 or JS not defined
 
     new(result)
     result.data = s
-    when declared(prepareMutation):
-      prepareMutation(result.data) # Allows us to mutate using `addr` logic like `copyMem`, otherwise it errors.
+    when nimvm:
+      discard
+    else:
+      when declared(prepareMutation):
+        prepareMutation(result.data) # Allows us to mutate using `addr` logic like `copyMem`, otherwise it errors.
     result.pos = 0
     result.closeImpl = ssClose
     result.atEndImpl = ssAtEnd
