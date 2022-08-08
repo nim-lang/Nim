@@ -1483,12 +1483,12 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
       genTupleInfo(m, x, x, result, info)
   of tySequence:
     genTypeInfoAux(m, t, t, result, info)
-    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcV2, gcGo}:
+    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcGo}:
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
-    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcV2, gcGo}:
+    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcGo}:
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)

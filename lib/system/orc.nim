@@ -8,7 +8,7 @@
 #
 
 # Cycle collector based on
-# https://researcher.watson.ibm.com/researcher/files/us-bacon/Bacon01Concurrent.pdf
+# https://www.cs.purdue.edu/homes/hosking/690M/Bacon01Concurrent.pdf
 # And ideas from Lins' in 2008 by the notion of "critical links", see
 # "Cyclic reference counting" by Rafael Dueire Lins
 # R.D. Lins / Information Processing Letters 109 (2008) 71–78

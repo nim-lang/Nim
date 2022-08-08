@@ -1741,7 +1741,7 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## by `src`. On most operating systems, will fail if a link already exists.
   ##
   ## .. warning:: Some OS's (such as Microsoft Windows) restrict the creation
-  ##   of symlinks to root users (administrators) or users with developper mode enabled.
+  ##   of symlinks to root users (administrators) or users with developer mode enabled.
   ##
   ## See also:
   ## * `createHardlink proc`_
@@ -2383,21 +2383,21 @@ iterator walkDirRec*(dir: string,
   ##
   ## Walking is recursive. `followFilter` controls the behaviour of the iterator:
   ##
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ## yieldFilter             meaning
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ## ``pcFile``              yield real files (default)
   ## ``pcLinkToFile``        yield symbolic links to files
   ## ``pcDir``               yield real directories
   ## ``pcLinkToDir``         yield symbolic links to directories
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ##
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ## followFilter            meaning
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ## ``pcDir``               follow real directories (default)
   ## ``pcLinkToDir``         follow symbolic links to directories
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ##
   ##
   ## See also:
@@ -2939,7 +2939,7 @@ elif defined(genode):
 
   proc paramCount*(): int =
     raise newException(OSError, "paramCount is not implemented on Genode")
-elif weirdTarget:
+elif weirdTarget or (defined(posix) and appType == "lib"):
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on current platform")
 

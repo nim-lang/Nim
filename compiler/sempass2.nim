@@ -66,6 +66,7 @@ type
   TEffects = object
     exc: PNode  # stack of exceptions
     tags: PNode # list of tags
+    forbids: PNode # list of tags
     bottom, inTryStmt, inExceptOrFinallyStmt, leftPartOfAsgn: int
     owner: PSym
     ownerModule: PSym
@@ -388,6 +389,12 @@ proc addTag(a: PEffects, e, comesFrom: PNode) =
     if sameType(aa[i].typ.skipTypes(skipPtrs), e.typ.skipTypes(skipPtrs)): return
   throws(a.tags, e, comesFrom)
 
+proc addNotTag(a: PEffects, e, comesFrom: PNode) =
+  var aa = a.forbids
+  for i in 0..<aa.len:
+    if sameType(aa[i].typ.skipTypes(skipPtrs), e.typ.skipTypes(skipPtrs)): return
+  throws(a.forbids, e, comesFrom)
+
 proc mergeRaises(a: PEffects, b, comesFrom: PNode) =
   if b.isNil:
     addRaiseEffect(a, createRaise(a.graph, comesFrom), comesFrom)
@@ -403,6 +410,7 @@ proc mergeTags(a: PEffects, b, comesFrom: PNode) =
 proc listEffects(a: PEffects) =
   for e in items(a.exc):  message(a.config, e.info, hintUser, typeToString(e.typ))
   for e in items(a.tags): message(a.config, e.info, hintUser, typeToString(e.typ))
+  for e in items(a.forbids): message(a.config, e.info, hintUser, typeToString(e.typ))
   #if a.maxLockLevel != 0:
   #  message(e.info, hintUser, "lockLevel: " & a.maxLockLevel)
 
@@ -604,7 +612,7 @@ proc isOwnedProcVar(tracked: PEffects; n: PNode): bool =
 
 proc isNoEffectList(n: PNode): bool {.inline.} =
   assert n.kind == nkEffectList
-  n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil)
+  n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil and n[forbiddenEffects] == nil)
 
 proc isTrival(caller: PNode): bool {.inline.} =
   result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved, mSwap}
@@ -924,14 +932,17 @@ type
     oldLocked: int
     oldLockLevel: TLockLevel
     enforcedGcSafety, enforceNoSideEffects: bool
-    oldExc, oldTags: int
-    exc, tags: PNode
+    oldExc, oldTags, oldForbids: int
+    exc, tags, forbids: PNode
 
 proc createBlockContext(tracked: PEffects): PragmaBlockContext =
+  var oldForbidsLen = 0
+  if tracked.forbids != nil: oldForbidsLen = tracked.forbids.len
   result = PragmaBlockContext(oldLocked: tracked.locked.len,
     oldLockLevel: tracked.currLockLevel,
     enforcedGcSafety: false, enforceNoSideEffects: false,
-    oldExc: tracked.exc.len, oldTags: tracked.tags.len)
+    oldExc: tracked.exc.len, oldTags: tracked.tags.len,
+    oldForbids: oldForbidsLen)
 
 proc applyBlockContext(tracked: PEffects, bc: PragmaBlockContext) =
   if bc.enforcedGcSafety: tracked.inEnforcedGcSafe = true
@@ -952,6 +963,10 @@ proc unapplyBlockContext(tracked: PEffects; bc: PragmaBlockContext) =
     setLen(tracked.tags.sons, bc.oldTags)
     for t in bc.tags:
       addTag(tracked, t, t)
+  if bc.forbids != nil:
+    setLen(tracked.forbids.sons, bc.oldForbids)
+    for t in bc.forbids:
+      addNotTag(tracked, t, t)
 
 proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
   case whichPragma(pragma)
@@ -966,6 +981,13 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.tags = newNodeI(nkArgList, pragma.info)
       bc.tags.add n
+  of wForbids:
+    let n = pragma[1]
+    if n.kind in {nkCurly, nkBracket}:
+      bc.forbids = n
+    else:
+      bc.forbids = newNodeI(nkArgList, pragma.info)
+      bc.forbids.add n
   of wRaises:
     let n = pragma[1]
     if n.kind in {nkCurly, nkBracket}:
@@ -1054,7 +1076,7 @@ proc track(tracked: PEffects, n: PNode) =
     addAsgnFact(tracked.guards, n[0], n[1])
     notNilCheck(tracked, n[1], n[0].typ)
     when false: cstringCheck(tracked, n)
-    if tracked.owner.kind != skMacro:
+    if tracked.owner.kind != skMacro and n[0].typ.kind notin {tyOpenArray, tyVarargs}:
       createTypeBoundOps(tracked, n[0].typ, n.info)
     if n[0].kind != nkSym or not isLocalVar(tracked, n[0].sym):
       checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n[1])
@@ -1274,7 +1296,7 @@ proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
 
 proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg: string, hints: bool;
                      effectPredicate: proc (g: ModuleGraph; a, b: PNode): bool {.nimcall.};
-                     hintsArg: PNode = nil) =
+                     hintsArg: PNode = nil; isForbids: bool = false) =
   # check that any real exception is listed in 'spec'; mark those as used;
   # report any unused exception
   var used = initIntSet()
@@ -1282,7 +1304,10 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
     block search:
       for s in 0..<spec.len:
         if effectPredicate(g, spec[s], r):
+          if isForbids: break
           used.incl(s)
+          break search
+        if isForbids:
           break search
       # XXX call graph analysis would be nice here!
       pushInfoContext(g.config, spec.info)
@@ -1312,6 +1337,10 @@ proc checkMethodEffects*(g: ModuleGraph; disp, branch: PSym) =
   if not isNil(tagsSpec):
     checkRaisesSpec(g, false, tagsSpec, actual[tagEffects],
       "can have an unlisted effect: ", hints=off, subtypeRelation)
+  let forbidsSpec = effectSpec(p, wForbids)
+  if not isNil(forbidsSpec):
+    checkRaisesSpec(g, false, forbidsSpec, actual[tagEffects],
+      "has an illegal effect: ", hints=off, subtypeRelation, isForbids=true)
   if sfThread in disp.flags and notGcSafe(branch.typ):
     localError(g.config, branch.info, "base method is GC-safe, but '$1' is not" %
                                 branch.name.s)
@@ -1349,6 +1378,12 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode; s: PSym = nil) =
     elif s != nil and (s.magic != mNone or {sfImportc, sfExportc} * s.flags == {sfImportc}):
       effects[tagEffects] = newNodeI(nkArgList, effects.info)
 
+    let forbidsSpec = effectSpec(n, wForbids)
+    if not isNil(forbidsSpec):
+      effects[forbiddenEffects] = forbidsSpec
+    elif s != nil and (s.magic != mNone or {sfImportc, sfExportc} * s.flags == {sfImportc}):
+      effects[forbiddenEffects] = newNodeI(nkArgList, effects.info)
+
     let requiresSpec = propSpec(n, wRequires)
     if not isNil(requiresSpec):
       effects[requiresEffects] = requiresSpec
@@ -1365,6 +1400,7 @@ proc rawInitEffects(g: ModuleGraph; effects: PNode) =
   newSeq(effects.sons, effectListLen)
   effects[exceptionEffects] = newNodeI(nkArgList, effects.info)
   effects[tagEffects] = newNodeI(nkArgList, effects.info)
+  effects[forbiddenEffects] = newNodeI(nkArgList, effects.info)
   effects[requiresEffects] = g.emptyNode
   effects[ensuresEffects] = g.emptyNode
   effects[pragmasEffects] = g.emptyNode
@@ -1374,6 +1410,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PC
 
   t.exc = effects[exceptionEffects]
   t.tags = effects[tagEffects]
+  t.forbids = effects[forbiddenEffects]
   t.owner = s
   t.ownerModule = s.getModule
   t.init = @[]
@@ -1447,6 +1484,15 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     effects[tagEffects] = tagsSpec
   else:
     effects[tagEffects] = t.tags
+
+  let forbidsSpec = effectSpec(p, wForbids)
+  if not isNil(forbidsSpec):
+    checkRaisesSpec(g, false, forbidsSpec, t.tags, "has an illegal effect: ",
+                    hints=off, subtypeRelation, isForbids=true)
+    # after the check, use the formal spec:
+    effects[forbiddenEffects] = forbidsSpec
+  else:
+    effects[forbiddenEffects] = t.forbids
 
   let requiresSpec = propSpec(p, wRequires)
   if not isNil(requiresSpec):

@@ -1074,7 +1074,7 @@ proc renderCode(d: PDoc, n: PRstNode, result: var string) =
       blockEnd = "}"
   dispA(d.target, result, blockStart, blockStart, [])
   if params.lang == langNone:
-    if len(params.langStr) > 0:
+    if len(params.langStr) > 0 and params.langStr.toLowerAscii != "none":
       rstMessage(d.filenames, d.msgHandler, n.info, mwUnsupportedLanguage,
                  params.langStr)
     for letter in m.text: escChar(d.target, result, letter, emText)
@@ -1090,10 +1090,6 @@ proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result, "<div>$1</div>", "$1", [tmp])
   else:
     dispA(d.target, result, "<div class=\"$1\">$2</div>", "$2", [arg, tmp])
-
-proc texColumns(n: PRstNode): string =
-  let nColumns = if n.sons.len > 0: len(n.sons[0]) else: 1
-  result = "L".repeat(nColumns)
 
 proc renderField(d: PDoc, n: PRstNode, result: var string) =
   var b = false
@@ -1323,24 +1319,49 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n,
       "<table$2 border=\"1\" class=\"docutils\">$1</table>",
       "\n$2\n\\begin{rsttab}{" &
-        texColumns(n) & "}\n\\hline\n$1\\end{rsttab}", result)
+        "L".repeat(n.colCount) & "}\n\\toprule\n$1" &
+        "\\addlinespace[0.1em]\\bottomrule\n\\end{rsttab}", result)
   of rnTableRow:
     if len(n) >= 1:
-      if d.target == outLatex:
-        #var tmp = ""
-        renderRstToOut(d, n.sons[0], result)
-        for i in countup(1, len(n) - 1):
-          result.add(" & ")
-          renderRstToOut(d, n.sons[i], result)
-        result.add("\\\\\n\\hline\n")
-      else:
+      case d.target
+      of outHtml:
         result.add("<tr>")
         renderAux(d, n, result)
         result.add("</tr>\n")
-  of rnTableDataCell:
-    renderAux(d, n, "<td>$1</td>", "$1", result)
-  of rnTableHeaderCell:
-    renderAux(d, n, "<th>$1</th>", "\\textbf{$1}", result)
+      of outLatex:
+        if n.sons[0].kind == rnTableHeaderCell:
+          result.add "\\rowcolor{gray!15} "
+        var spanLines: seq[(int, int)]
+        var nCell = 0
+        for uCell in 0 .. n.len - 1:
+          renderRstToOut(d, n.sons[uCell], result)
+          if n.sons[uCell].span > 0:
+            spanLines.add (nCell + 1, nCell + n.sons[uCell].span)
+            nCell += n.sons[uCell].span
+          else:
+            nCell += 1
+          if uCell != n.len - 1:
+            result.add(" & ")
+        result.add("\\\\")
+        if n.endsHeader: result.add("\\midrule\n")
+        for (start, stop) in spanLines:
+          result.add("\\cmidrule(lr){$1-$2}" % [$start, $stop])
+        result.add("\n")
+  of rnTableHeaderCell, rnTableDataCell:
+    case d.target
+    of outHtml:
+      let tag = if n.kind == rnTableHeaderCell: "th" else: "td"
+      var spanSpec: string
+      if n.span <= 1: spanSpec = ""
+      else:
+        spanSpec = " colspan=\"" & $n.span & "\" style=\"text-align: center\""
+      renderAux(d, n, "<$1$2>$$1</$1>" % [tag, spanSpec], "", result)
+    of outLatex:
+      let text = if n.kind == rnTableHeaderCell: "\\textbf{$1}" else: "$1"
+      var latexStr: string
+      if n.span <= 1: latexStr = text
+      else: latexStr = "\\multicolumn{" & $n.span & "}{c}{" & text & "}"
+      renderAux(d, n, "", latexStr, result)
   of rnFootnoteGroup:
     renderAux(d, n,
       "<hr class=\"footnote\">" &

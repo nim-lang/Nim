@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:orc; --mm:refc"
+"""
+
 import std/marshal
 
 # TODO: add static tests
@@ -135,6 +139,16 @@ block:
 
   let test = to[LegacyEntry](str)
   doAssert $test == """(numeric: "")"""
+
+block:
+  let str = """{"numeric": null}"""
+
+  type
+    LegacyEntry = object
+      numeric: seq[int]
+
+  var test = to[LegacyEntry](str)
+  doAssert $test == """(numeric: @[])"""
 
 # bug #16022
 block:
