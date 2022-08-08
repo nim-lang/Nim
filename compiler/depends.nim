@@ -16,6 +16,10 @@ import modulegraphs
 import std/[os, strutils, parseutils]
 import std/private/globs
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   TGen = object of PPassContext
     module: PSym

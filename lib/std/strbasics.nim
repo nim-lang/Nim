@@ -11,6 +11,10 @@
 ##
 ## Experimental API, subject to change.
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 const whitespaces = {' ', '\t', '\v', '\r', '\l', '\f'}
 
 proc add*(x: var string, y: openArray[char]) =
