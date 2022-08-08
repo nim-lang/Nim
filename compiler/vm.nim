@@ -114,8 +114,12 @@ template decodeBx(k: untyped) {.dirty.} =
   let rbx = instr.regBx - wordExcess
   ensureKind(k)
 
-template move(a, b: untyped) {.dirty.} = system.shallowCopy(a, b)
-# XXX fix minor 'shallowCopy' overloading bug in compiler
+template move(a, b: untyped) {.dirty.} =
+  when defined(gcArc) or defined(gcOrc):
+    a = move b
+  else:
+    system.shallowCopy(a, b)
+    # XXX fix minor 'shallowCopy' overloading bug in compiler
 
 proc derefPtrToReg(address: BiggestInt, typ: PType, r: var TFullReg, isAssign: bool): bool =
   # nim bug: `isAssign: static bool` doesn't work, giving odd compiler error
