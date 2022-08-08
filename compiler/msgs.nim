@@ -218,11 +218,18 @@ proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) 
 
 proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
   assert fileIdx.int32 >= 0
-  shallowCopy(conf.m.fileInfos[fileIdx.int32].hash, hash)
+  when defined(gcArc) or defined(gcOrc):
+    conf.m.fileInfos[fileIdx.int32].hash = hash
+  else:
+    shallowCopy(conf.m.fileInfos[fileIdx.int32].hash, hash)
+
 
 proc getHash*(conf: ConfigRef; fileIdx: FileIndex): string =
   assert fileIdx.int32 >= 0
-  shallowCopy(result, conf.m.fileInfos[fileIdx.int32].hash)
+  when defined(gcArc) or defined(gcOrc):
+    result = conf.m.fileInfos[fileIdx.int32].hash
+  else:
+    shallowCopy(result, conf.m.fileInfos[fileIdx.int32].hash)
 
 proc toFullPathConsiderDirty*(conf: ConfigRef; fileIdx: FileIndex): AbsoluteFile =
   if fileIdx.int32 < 0:
@@ -622,9 +629,9 @@ template internalAssert*(conf: ConfigRef, e: bool) =
     let arg = info2.toFileLineCol
     internalErrorImpl(conf, unknownLineInfo, arg, info2)
 
-template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, forceHint = false, extraMsg = "") =
+template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, extraMsg = "") =
   let m = "'$1' should be: '$2'$3" % [got, beau, extraMsg]
-  let msg = if optStyleError in conf.globalOptions and not forceHint: errGenerated else: hintName
+  let msg = if optStyleError in conf.globalOptions: errGenerated else: hintName
   liMessage(conf, info, msg, m, doNothing, instLoc())
 
 proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =

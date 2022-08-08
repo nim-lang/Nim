@@ -1733,6 +1733,8 @@ when defined(windows) or defined(nimdoc):
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
+            const SO_UPDATE_CONNECT_CONTEXT = 0x7010
+            socket.SocketHandle.setSockOptInt(SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, 1) # 15022
             retFuture.complete()
           else:
             retFuture.fail(newException(OSError, osErrorMsg(errcode)))

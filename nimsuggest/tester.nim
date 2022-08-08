@@ -282,7 +282,7 @@ proc runEpcTest(filename: string): int =
         socket.sendEpcStr(req)
         let sx = parseSexp(socket.recvEpc())
         if not req.startsWith("mod "):
-          let answer = sexpToAnswer(sx)
+          let answer = if sx[2].kind == SNil: "" else: sexpToAnswer(sx)
           doReport(filename, answer, resp, report)
 
     socket.sendEpcStr "return arg"

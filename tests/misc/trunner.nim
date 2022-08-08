@@ -216,6 +216,23 @@ sub/mmain.idx""", context
       let cmd = fmt"{nim} r --backend:{mode} --hints:off --nimcache:{nimcache} {file}"
       check execCmdEx(cmd) == ("ok3\n", 0)
 
+  block: # nim jsondoc # bug #20132
+    let file = testsDir / "misc/mjsondoc.nim"
+    let output = "nimcache_tjsondoc.json"
+    defer: removeFile(output)
+    let (msg, exitCode) = execCmdEx(fmt"{nim} jsondoc -o:{output} {file}")
+    doAssert exitCode == 0, msg
+
+    let data = parseJson(readFile(output))["entries"]
+    doAssert data.len == 4
+    let doSomething = data[0]
+    doAssert doSomething["name"].getStr == "doSomething"
+    doAssert doSomething["type"].getStr == "skProc"
+    doAssert doSomething["line"].getInt == 1
+    doAssert doSomething["col"].getInt == 0
+    doAssert doSomething["code"].getStr == "proc doSomething(x, y: int): int {.raises: [], tags: [], forbids: [].}"
+
+
   block: # further issues with `--backend`
     let file = testsDir / "misc/mbackend.nim"
     var cmd = fmt"{nim} doc -b:cpp --hints:off --nimcache:{nimcache} {file}"

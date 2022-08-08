@@ -10,7 +10,7 @@
 .. include:: rstcommon.rst
 .. contents::
 
-  "Abstraction is layering ignorance on top of reality." -- Richard Gabriel
+> "Abstraction is layering ignorance on top of reality." -- Richard Gabriel
 
 
 Directory structure
@@ -276,8 +276,8 @@ and `exitingDebugSection()`:nim:.
 #. Compile the temp compiler with `--debugger:native -d:nimDebugUtils`:option:
 #. Set your desired breakpoints or watchpoints.
 #. Configure your debugger:
-  * GDB: execute `source tools/compiler.gdb` at startup
-  * LLDB execute `command source tools/compiler.lldb` at startup
+   * GDB: execute `source tools/compiler.gdb` at startup
+   * LLDB execute `command source tools/compiler.lldb` at startup
 #. Use one of the scoping helpers like so:
 
 .. code-block:: nim
@@ -454,7 +454,7 @@ could stem from a complex expression:
 A thunk would need to call 'returnsDefaultCC[i]' somehow and that would require
 an *additional* closure generation... Ok, not really, but it requires to pass
 the function to call. So we'd end up with 2 indirect calls instead of one.
-Another much more severe problem which this solution is that it's not GC-safe
+Another much more severe problem with this solution is that it's not GC-safe
 to pass a proc pointer around via a generic `ref` type.
 
 
