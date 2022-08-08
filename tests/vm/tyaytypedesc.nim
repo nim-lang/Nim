@@ -14,4 +14,4 @@ const tokenTypeToNodeType = {
   ttWhitespace: ntWhitespace,
 }.enumTable(array[ttWhitespace..ttWhitespace, NodeType])
 
-doAssert $tokenTypeToNodeType[ttWhitespace] == "ntWhitespace"
+doAssert tokenTypeToNodeType[ttWhitespace] == ntWhitespace
