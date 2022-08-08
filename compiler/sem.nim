@@ -17,7 +17,7 @@ import
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
-  isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs
+  isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs, tables
 
 when defined(nimfix):
   import nimfix/prettybase
@@ -500,6 +500,8 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   if c.config.macrosToExpand.hasKey(sym.name.s):
     message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
   result = wrapInComesFrom(nOrig.info, sym, result)
+  if optMacroExpandErrors notin c.config.globalOptions:
+    c.expandedMacros[result] = nOrig
   popInfoContext(c.config)
 
 proc forceBool(c: PContext, n: PNode): PNode =

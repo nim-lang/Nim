@@ -38,7 +38,8 @@ proc semTemplateExpr(c: PContext, n, nOrig: PNode, s: PSym,
   result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache,
                         c.templInstCounter, c.idgen, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
-  c.expandedMacros[result] = nOrig
+  if optMacroExpandErrors notin c.config.globalOptions:
+    c.expandedMacros[result] = nOrig
   popInfoContext(c.config)
   # XXX: A more elaborate line info rewrite might be needed
   result.info = info
@@ -701,7 +702,7 @@ proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
       if aa == arDiscriminant and c.inUncheckedAssignSection > 0:
         discard "allow access within a cast(unsafeAssign) section"
       else:
-        localError(c.config, n.info, errVarForOutParamNeededX % renderNotLValue(n))
+        localError(c.config, n.info, errVarForOutParamNeededX % renderNotLValue(n, c.expandedMacros))
 
 proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
   result = n

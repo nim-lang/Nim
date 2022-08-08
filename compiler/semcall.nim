@@ -160,8 +160,8 @@ proc effectProblem(f, a: PType; result: var string; c: PContext) =
         if not c.graph.compatibleProps(c.graph, f, a):
           result.add "\n  The `.requires` or `.ensures` properties are incompatible."
 
-proc renderNotLValue(n: PNode): string =
-  result = $n
+proc renderNotLValue(n: PNode, expandedMacros: Table[PNode, PNode]): string =
+  result = n.renderTree(expandedMacros)
   let n = if n.kind == nkHiddenDeref: n[0] else: n
   if n.kind == nkHiddenCallConv and n.len > 1:
     result = $n[0] & "(" & result & ")"
@@ -241,7 +241,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         candidates.addTypeDeclVerboseMaybe(c.config, wanted)
         candidates.add "\n  but expression '"
         if err.firstMismatch.kind == kVarNeeded:
-          candidates.add renderNotLValue(nArg)
+          candidates.add renderNotLValue(nArg, c.expandedMacros)
           candidates.add "' is immutable, not 'var'"
         else:
           candidates.add renderTree(nArg, c.expandedMacros)
@@ -300,7 +300,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   result.add('>')
   if candidates != "":
     result.add("\n" & errButExpected & "\n" & candidates)
-  localError(c.config, n.info, result & "\nexpression: " & $n)
+  localError(c.config, n.info, result & "\nexpression: " & n.renderTree(c.expandedMacros))
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
   var errors: CandidateErrors = @[]

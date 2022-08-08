@@ -105,6 +105,7 @@ type                          # please make sure we have under 32 options
     optSourcemap
     optProfileVM              # enable VM profiler
     optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
+    optMacroExpandErrors      # Are macros in errors expanded?
 
   TGlobalOptions* = set[TGlobalOption]
 
