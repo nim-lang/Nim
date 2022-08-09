@@ -15,6 +15,10 @@
 
 import rstast
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
+
 type
   LangSymbol* = object       ## symbol signature in Nim
     symKind*: string           ## "proc", "const", "type", etc

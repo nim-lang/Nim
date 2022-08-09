@@ -11,6 +11,10 @@
 
 import strutils, json
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   RstNodeKind* = enum        ## the possible node kinds of an PRstNode
     rnInner,                  # an inner node or a root

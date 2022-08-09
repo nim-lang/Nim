@@ -32,7 +32,7 @@ from system/formatfloat import addFloatRoundtrip, addFloatSprintf
 
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/syncio
 
 
 # There are some useful procs in vmconv.
