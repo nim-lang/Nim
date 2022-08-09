@@ -19,7 +19,7 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
   result.setLen newLen
   c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
 
-import std/private/[dragonbox, schubfach]
+import dragonbox, schubfach
 
 proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: BiggestFloat): int =
   ## This is the implementation to format floats.
