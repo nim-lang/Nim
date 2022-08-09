@@ -13,6 +13,9 @@ import ast, types, options, tables, dynlib, msgs, lineinfos
 from os import getAppFilename
 import pkg/libffi
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 when defined(windows):
   const libcDll = "msvcrt.dll"
 elif defined(linux):
