@@ -333,7 +333,6 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
         op = fitNode(c, targetType, op, result.info)
     of convNotNeedeed:
       message(c.config, n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
-      result = result[1]
     of convNotLegal:
       result = fitNode(c, result.typ, result[1], result.info)
       if result == nil:
@@ -588,8 +587,8 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
   result = newNodeI(nkBracket, n.info)
   result.typ = newTypeS(tyArray, c)
   var expectedElementType, expectedIndexType: PType = nil
-  if (let expected = expectedType.skipTypesOrNil({tyGenericInst,
-      tyVar, tyLent, tyOrdinal, tyAlias, tySink}); expected != nil):
+  if expectedType != nil:
+    let expected = expectedType.skipTypes(abstractRange-{tyDistinct})
     case expected.kind
     of tyArray:
       expectedIndexType = expected[0]
@@ -2300,7 +2299,7 @@ proc semSizeof(c: PContext, n: PNode): PNode =
   n.typ = getSysType(c.graph, n.info, tyInt)
   result = foldSizeOf(c.config, n, n)
 
-proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
+proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: PType = nil): PNode =
   # this is a hotspot in the compiler!
   result = n
   case s.magic # magics that need special treatment
@@ -2416,6 +2415,15 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSizeOf:
     markUsed(c, n.info, s)
     result = semSizeof(c, setMs(n, s))
+  of mArrToSeq:
+    if n.len == 2 and expectedType != nil and (
+        let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
+        expected.kind in {tySequence, tyOpenArray}):
+      # seq type inference
+      var arrayType = newType(tyOpenArray, nextTypeId(c.idgen), expected.owner)
+      arrayType.rawAddSon(expected[0])
+      n[1] = semExpr(c, n[1], flags, arrayType)
+    result = semDirectOp(c, n, flags)
   else:
     result = semDirectOp(c, n, flags)
 
@@ -2481,9 +2489,9 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
   result.typ = newTypeS(tySet, c)
   result.typ.flags.incl tfIsConstructor
   var expectedElementType: PType = nil
-  if (let expected = expectedType.skipTypesOrNil({tyGenericInst,
-        tyVar, tyLent, tyOrdinal, tyAlias, tySink});
-      expected != nil and expected.kind == tySet):
+  if expectedType != nil and (
+      let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
+      expected.kind == tySet):
     expectedElementType = expected[0]
   if n.len == 0:
     rawAddSon(result.typ,
@@ -2588,10 +2596,11 @@ proc checkPar(c: PContext; n: PNode): TParKind =
 
 proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = newNodeI(nkTupleConstr, n.info)
-  var expected = expectedType.skipTypesOrNil({tyGenericInst,
-      tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-  if expected != nil and (expected.kind != tyTuple or expected.len != n.len):
-    expected = nil
+  var expected: PType = nil
+  if expectedType != nil:
+    expected = expectedType.skipTypes(abstractRange-{tyDistinct})
+    if not (expected.kind == tyTuple and expected.len == n.len):
+      expected = nil
   var typ = newTypeS(tyTuple, c)
   typ.n = newNodeI(nkRecList, n.info) # nkIdentDefs
   var ids = initIntSet()
@@ -2621,10 +2630,11 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType
 proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = n                  # we don't modify n, but compute the type:
   result.transitionSonsKind(nkTupleConstr)
-  var expected = expectedType.skipTypesOrNil({tyGenericInst,
-      tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-  if expected != nil and (expected.kind != tyTuple or expected.len != n.len):
-    expected = nil
+  var expected: PType = nil
+  if expectedType != nil:
+    expected = expectedType.skipTypes(abstractRange-{tyDistinct})
+    if not (expected.kind == tyTuple and expected.len == n.len):
+      expected = nil
   var typ = newTypeS(tyTuple, c)  # leave typ.n nil!
   for i in 0..<n.len:
     let expectedElemType = if expected != nil: expected[i] else: nil
@@ -2850,6 +2860,15 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     defer:
       if isCompilerDebug():
         echo ("<", c.config$n.info, n, ?.result.typ)
+  
+  template directLiteral(typeKind: TTypeKind) =
+    if result.typ == nil:
+      if expectedType != nil and (
+          let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
+          expected.kind == typeKind):
+        result.typ = expectedType
+      else:
+        result.typ = getSysType(c.graph, n.info, typeKind)
 
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
@@ -2857,9 +2876,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   case n.kind
   of nkIdent, nkAccQuoted:
     var s: PSym
-    if (let expected = expectedType.skipTypesOrNil({tyAlias,
-        tyGenericInst, tyOrdinal, tySink});
-        expected != nil and expected.kind == tyEnum):
+    if expectedType != nil and (
+        let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
+        expected.kind == tyEnum):
       let nameId = considerQuotedIdent(c, n).id
       for f in expected.n:
         if f.kind == nkSym and f.sym.name.id == nameId:
@@ -2909,59 +2928,48 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         var m = newCandidate(c, result.typ)
         if typeRel(m, expectedType, result.typ) >= isSubtype:
           result.typ = expectedType
+        # or: result = fitNode(c, expectedType, result, n.info)
   of nkIntLit:
     if result.typ == nil:
-      if (let expected = expectedType.skipTypesOrNil({tyAlias,
-            tyGenericInst, tyOrdinal, tySink});
-          expected != nil and expected.kind in {tyInt..tyInt64,
-            tyUInt..tyUInt64, tyFloat..tyFloat128}):
+      if expectedType != nil and (
+          let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
+          expected.kind in {tyInt..tyInt64,
+            tyUInt..tyUInt64,
+            tyFloat..tyFloat128}):
         result.typ = expectedType
         if expected.kind in {tyFloat..tyFloat128}:
           n.transitionIntToFloatKind(nkFloatLit)
       else:
         setIntLitType(c, result)
-  of nkInt8Lit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyInt8)
-  of nkInt16Lit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyInt16)
-  of nkInt32Lit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyInt32)
-  of nkInt64Lit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyInt64)
-  of nkUIntLit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyUInt)
-  of nkUInt8Lit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyUInt8)
-  of nkUInt16Lit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyUInt16)
-  of nkUInt32Lit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyUInt32)
-  of nkUInt64Lit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyUInt64)
+  of nkInt8Lit: directLiteral(tyInt8)
+  of nkInt16Lit: directLiteral(tyInt16)
+  of nkInt32Lit: directLiteral(tyInt32)
+  of nkInt64Lit: directLiteral(tyInt64)
+  of nkUIntLit: directLiteral(tyUInt)
+  of nkUInt8Lit: directLiteral(tyUInt8)
+  of nkUInt16Lit: directLiteral(tyUInt16)
+  of nkUInt32Lit: directLiteral(tyUInt32)
+  of nkUInt64Lit: directLiteral(tyUInt64)
   of nkFloatLit:
     if result.typ == nil:
-      if (let expected = expectedType.skipTypesOrNil({tyAlias,
-            tyGenericInst, tyOrdinal, tySink});
-          expected != nil and expected.kind in {tyFloat..tyFloat128}):
+      if expectedType != nil and (
+          let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
+          expected.kind in {tyFloat..tyFloat128}):
         result.typ = expectedType
       else:
         result.typ = getSysType(c.graph, n.info, tyFloat64)
-  of nkFloat32Lit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyFloat32)
-  of nkFloat64Lit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyFloat64)
-  of nkFloat128Lit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyFloat128)
+  of nkFloat32Lit: directLiteral(tyFloat32)
+  of nkFloat64Lit: directLiteral(tyFloat64)
+  of nkFloat128Lit: directLiteral(tyFloat128)
   of nkStrLit..nkTripleStrLit:
     if result.typ == nil:
-      if (let expected = expectedType.skipTypesOrNil({tyAlias,
-            tyGenericInst, tySink});
-          expected != nil and expected.kind in {tyString, tyCstring}):
+      if expectedType != nil and (
+          let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
+          expected.kind in {tyString, tyCstring}):
         result.typ = expectedType
       else:
         result.typ = getSysType(c.graph, n.info, tyString)
-  of nkCharLit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyChar)
+  of nkCharLit: directLiteral(tyChar)
   of nkDotExpr:
     result = semFieldAccess(c, n, flags)
     if result.kind == nkDotCall:
@@ -3006,20 +3014,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         elif n.len == 1:
           result = semObjConstr(c, n, flags, expectedType)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
-        else: result = semMagic(c, n, s, flags)
+        else: result = semMagic(c, n, s, flags, expectedType)
       of skProc, skFunc, skMethod, skConverter, skIterator:
-        if n.len == 2 and s.magic == mArrToSeq and
-            (let expected = expectedType.skipTypesOrNil({
-              tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink});
-            expected != nil and expected.kind in {tySequence, tyOpenArray}):
-          # special cased seq type inference
-          # overloading @ disables this unfortunately
-          var arrayType = newType(tyOpenArray, nextTypeId(c.idgen), expected.owner)
-          arrayType.rawAddSon(expected[0])
-          n[1] = semExpr(c, n[1], flags, arrayType)
-          result = semDirectOp(c, n, flags)
-        elif s.magic == mNone: result = semDirectOp(c, n, flags)
-        else: result = semMagic(c, n, s, flags)
+        if s.magic == mNone: result = semDirectOp(c, n, flags)
+        else: result = semMagic(c, n, s, flags, expectedType)
       else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags, expectedType)

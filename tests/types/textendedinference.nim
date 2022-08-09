@@ -44,6 +44,8 @@ block:
   let x10: array[ABC, byte] = block:
     {.gcsafe.}:
       [a: 1, b: 2, c: 3]
+  proc `@`(x: int): int = discard
+  let x11: seq[byte] = system.`@`([1, 2, 3])
 
 block:
   type Foo = object
@@ -95,6 +97,20 @@ block:
   doAssert x[1].isNil
   doAssert x[2] == "def".cstring
 
+block:
+  type Foo = object
+    x: tuple[a: float, b: seq[(byte, seq[cstring])]]
+    
+  let foo = Foo(x: (a: 1, b: @{2: @[nil, "abc"]}))
+  doAssert foo.x == (1.0, @{2u8: @[cstring nil, cstring "abc"]})
+
+block:
+  type Foo = object
+    x: tuple[a: float, b: seq[(byte, seq[ptr int])]]
+    
+  let foo = Foo(x: (a: 1, b: @{2: @[nil, nil]}))
+  doAssert foo.x == (1.0, @{2u8: @[(ptr int)(nil), nil]})
+
 when false: # unsupported
   block: # type conversion
     let x = seq[(cstring, float32)](@{"abc": 1.0, "def": 2.0})
@@ -131,3 +147,37 @@ block: # with generics?
   for a in s3:
     if not a.isNil: s4.add(a(1, 2))
   doAssert s4 == @[4.0, 4, -1]
+
+block: # range types
+  block:
+    let x: set[range[1u8..5u8]] = {1, 3}
+    doAssert x == {range[1u8..5u8](1), 3}
+    doAssert $x == "{1, 3}"
+  block:
+    let x: seq[set[range[1u8..5u8]]] = @[{1, 3}]
+    doAssert x == @[{range[1u8..5u8](1), 3}]
+    doAssert $x[0] == "{1, 3}"
+  block:
+    let x: seq[range[1u8..5u8]] = @[1, 3]
+    doAssert x == @[range[1u8..5u8](1), 3]
+    doAssert $x == "@[1, 3]"
+  block: # already worked before, make sure it still works
+    let x: set[range['a'..'e']] = {'a', 'c'}
+    doAssert x == {range['a'..'e']('a'), 'c'}
+    doAssert $x == "{'a', 'c'}"
+  block: # extended
+    let x: seq[set[range['a'..'e']]] = @[{'a', 'c'}]
+    doAssert x[0] == {range['a'..'e']('a'), 'c'}
+    doAssert $x == "@[{'a', 'c'}]"
+  block:
+    type Foo = object
+      x: (range[1u8..5u8], seq[(range[1f32..5f32], seq[range['a'..'e']])])
+      
+    let foo = Foo(x: (1, @{2: @[], 3: @['c', 'd']}))
+    doAssert foo.x == (range[1u8..5u8](1u8), @{range[1f32..5f32](2f32): @[], 3f32: @[range['a'..'e']('c'), 'd']})
+  block:
+    type Foo = object
+      x: (range[1u8..5u8], seq[(range[1f32..5f32], seq[set[range['a'..'e']]])])
+      
+    let foo = Foo(x: (1, @{2: @[], 3: @[{'c', 'd'}]}))
+    doAssert foo.x == (range[1u8..5u8](1u8), @{range[1f32..5f32](2f32): @[], 3f32: @[{range['a'..'e']('c'), 'd'}]})
