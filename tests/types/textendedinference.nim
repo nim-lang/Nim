@@ -106,3 +106,28 @@ block: # enum
   type Bar {.pure.} = enum a, b, c
 
   var s: seq[Bar] = @[a, b, c]
+
+block: # overload selection
+  proc foo(x, y: int): int = x + y + 1
+  proc foo(x: int): int = x - 1
+  var s: seq[proc (x, y: int): int] = @[nil, foo, foo]
+  var s2: seq[int]
+  for a in s:
+    if not a.isNil: s2.add(a(1, 2))
+  doAssert s2 == @[4, 4]
+
+block: # with generics?
+  proc foo(x, y: int): int = x + y + 1
+  proc foo(x: int): int = x - 1
+  proc bar[T](x, y: T): T = x - y
+  var s: seq[proc (x, y: int): int] = @[nil, foo, foo, bar]
+  var s2: seq[int]
+  for a in s:
+    if not a.isNil: s2.add(a(1, 2))
+  doAssert s2 == @[4, 4, -1]
+  proc foo(x, y: float): float = x + y + 1.0
+  var s3: seq[proc (x, y: float): float] = @[nil, foo, foo, bar]
+  var s4: seq[float]
+  for a in s3:
+    if not a.isNil: s4.add(a(1, 2))
+  doAssert s4 == @[4.0, 4, -1]

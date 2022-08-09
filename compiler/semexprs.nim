@@ -2892,6 +2892,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         result = semSym(c, n, s, flags)
     else:
       result = semSym(c, n, s, flags)
+    if expectedType != nil and isSymChoice(result):
+      result = fitNode(c, expectedType, result, n.info)
+      if result.kind == nkSym:
+        result = semSym(c, result, result.sym, flags)
   of nkSym:
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
@@ -2912,17 +2916,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
           expected != nil and expected.kind in {tyInt..tyInt64,
             tyUInt..tyUInt64, tyFloat..tyFloat128}):
         result.typ = expectedType
-        # this is really ugly
-        case expected.kind
-        of tyFloat:
+        if expected.kind in {tyFloat..tyFloat128}:
           n.transitionIntToFloatKind(nkFloatLit)
-        of tyFloat32:
-          n.transitionIntToFloatKind(nkFloat32Lit)
-        of tyFloat64:
-          n.transitionIntToFloatKind(nkFloat64Lit)
-        of tyFloat128:
-          n.transitionIntToFloatKind(nkFloat128Lit)
-        else: discard
       else:
         setIntLitType(c, result)
   of nkInt8Lit:
