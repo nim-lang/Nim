@@ -42,25 +42,25 @@ Bootstrapping the compiler
 
 Compiling the compiler is a simple matter of running:
 
-.. code:: cmd
-
+  ```cmd
   nim c koch.nim
   koch boot -d:release
+  ```
 
 For a debug version use:
 
-.. code:: cmd
-
+  ```cmd
   nim c koch.nim
   koch boot
+  ```
 
 
 And for a debug version compatible with GDB:
 
-.. code:: cmd
-
+  ```cmd
   nim c koch.nim
   koch boot --debuginfo --linedir:on
+  ```
 
 The `koch`:cmd: program is Nim's maintenance script. It is a replacement for
 make and shell scripting with the advantage that it is much more portable.
@@ -73,10 +73,10 @@ Reproducible builds
 
 Set the compilation timestamp with the `SOURCE_DATE_EPOCH` environment variable.
 
-.. code:: cmd
-
+  ```cmd
   export SOURCE_DATE_EPOCH=$(git log -n 1 --format=%at)
   koch boot # or `./build_all.sh`
+  ```
 
 
 Debugging the compiler
@@ -98,10 +98,10 @@ focus on the changes introduced by that one specific commit.
 compilation fails. This exit code tells `git bisect`:cmd: to skip the
 current commit:
 
-.. code:: cmd
-
+  ```cmd
   git bisect start bad-commit good-commit
   git bisect run ./koch temp -r c test-source.nim
+  ```
 
 You can also bisect using custom options to build the compiler, for example if
 you don't need a debug version of the compiler (which runs slower), you can replace
@@ -141,8 +141,7 @@ enabled. Here are compiler options that are of interest for debugging:
 
 Another method to build and run the compiler is directly through `koch`:cmd:\:
 
-.. code:: cmd
-
+  ```cmd
   koch temp [options] c test.nim
 
   # (will build with js support)
@@ -150,6 +149,7 @@ Another method to build and run the compiler is directly through `koch`:cmd:\:
 
   # (will build with doc support)
   koch temp [options] doc test.nim
+  ```
 
 Debug logging
 -------------
@@ -166,17 +166,16 @@ is being used. One very common way to achieve this is to use the `mdbg` conditio
 which will be true only in contexts, processing expressions and statements from
 the currently compiled main module:
 
-.. code-block:: nim
-
+  ```nim
   # inside some compiler module
   if mdbg:
     debug someAstNode
+  ```
 
 Using the `isCompilerDebug`:nim: condition along with inserting some statements
 into the testcase provides more granular logging:
 
-.. code-block:: nim
-
+  ```nim
   # compilermodule.nim
   if isCompilerDebug():
     debug someAstNode
@@ -186,21 +185,21 @@ into the testcase provides more granular logging:
     {.define(nimCompilerDebug).}
     let a = 2.5 * 3
     {.undef(nimCompilerDebug).}
+  ```
 
 Logging can also be scoped to a specific filename as well. This will of course
 match against every module with that name.
 
-.. code-block:: nim
-
+  ```nim
   if `??`(conf, n.info, "module.nim"):
     debug(n)
+  ```
 
 The above examples also makes use of the `debug`:nim: proc, which is able to
 print a human-readable form of an arbitrary AST tree. Other common ways to print
 information about the internal compiler types include:
 
-.. code-block:: nim
-
+  ```nim
   # pretty print PNode
 
   # pretty prints the Nim ast
@@ -246,23 +245,24 @@ information about the internal compiler types include:
 
   # print the structure of any type
   repr(someVar)
+  ```
 
 Here are some other helpful utilities:
 
-.. code-block:: nim
-
+  ```nim
   # how did execution reach this location?
   writeStackTrace()
+  ```
 
 These procs may not already be imported by the module you're editing.
 You can import them directly for debugging:
 
-.. code-block:: nim
-
+  ```nim
   from astalgo import debug
   from types import typeToString
   from renderer import renderTree
   from msgs import `??`
+  ```
 
 Native debugging
 ----------------
@@ -280,12 +280,12 @@ and `exitingDebugSection()`:nim:.
    * LLDB execute `command source tools/compiler.lldb` at startup
 #. Use one of the scoping helpers like so:
 
-.. code-block:: nim
-
+  ```nim
   if isCompilerDebug():
     enteringDebugSection()
   else:
     exitingDebugSection()
+  ```
 
 A caveat of this method is that all breakpoints and watchpoints are enabled or
 disabled. Also, due to a bug, only breakpoints can be constrained for LLDB.
@@ -448,8 +448,9 @@ Tests with GCC on Amd64 showed that it's really beneficial if the
 Proper thunk generation is harder because the proc that is to wrap
 could stem from a complex expression:
 
-.. code-block:: nim
+  ```nim
   receivesClosure(returnsDefaultCC[i])
+  ```
 
 A thunk would need to call 'returnsDefaultCC[i]' somehow and that would require
 an *additional* closure generation... Ok, not really, but it requires to pass
@@ -460,17 +461,18 @@ to pass a proc pointer around via a generic `ref` type.
 
 Example code:
 
-.. code-block:: nim
+  ```nim
   proc add(x: int): proc (y: int): int {.closure.} =
     return proc (y: int): int =
       return x + y
 
   var add2 = add(2)
   echo add2(5) #OUT 7
+  ```
 
 This should produce roughly this code:
 
-.. code-block:: nim
+  ```nim
   type
     Env = ref object
       x: int # data
@@ -487,11 +489,12 @@ This should produce roughly this code:
   var add2 = add(2)
   let tmp = if add2.data == nil: add2.prc(5) else: add2.prc(5, add2.data)
   echo tmp
+  ```
 
 
 Beware of nesting:
 
-.. code-block:: nim
+  ```nim
   proc add(x: int): proc (y: int): proc (z: int): int {.closure.} {.closure.} =
     return lambda (y: int): proc (z: int): int {.closure.} =
       return lambda (z: int): int =
@@ -499,10 +502,11 @@ Beware of nesting:
 
   var add24 = add(2)(4)
   echo add24(5) #OUT 11
+  ```
 
 This should produce roughly this code:
 
-.. code-block:: nim
+  ```nim
   type
     EnvX = ref object
       x: int # data
@@ -530,6 +534,7 @@ This should produce roughly this code:
   var tmp2 = tmp.fn(4, tmp.data)
   var add24 = tmp2.fn(4, tmp2.data)
   echo add24(5)
+  ```
 
 
 We could get rid of nesting environments by always inlining inner anon procs.
@@ -540,8 +545,7 @@ however.
 Accumulator
 -----------
 
-.. code-block:: nim
-
+  ```nim
   proc getAccumulator(start: int): proc (): int {.closure} =
     var i = start
     return lambda: int =
@@ -560,6 +564,7 @@ Accumulator
     var a = accumulator(3)
     var b = accumulator(4)
     echo a() + b()
+  ```
 
 
 Internals
@@ -614,36 +619,36 @@ keeps the full `int literal(321)` type. Here is an example where that
 difference matters.
 
 
-.. code-block:: nim
+  ```nim
+  proc foo(arg: int8) =
+    echo "def"
 
-   proc foo(arg: int8) =
-     echo "def"
+  const tmp1 = 123
+  foo(tmp1)  # OK
 
-   const tmp1 = 123
-   foo(tmp1)  # OK
-
-   let tmp2 = 123
-   foo(tmp2) # Error
+  let tmp2 = 123
+  foo(tmp2) # Error
+  ```
 
 In a context with multiple overloads, the integer literal kind will
 always prefer the `int` type over all other types. If none of the
 overloads is of type `int`, then there will be an error because of
 ambiguity.
 
-.. code-block:: nim
+  ```nim
+  proc foo(arg: int) =
+    echo "abc"
+  proc foo(arg: int8) =
+    echo "def"
+  foo(123) # output: abc
 
-   proc foo(arg: int) =
-     echo "abc"
-   proc foo(arg: int8) =
-     echo "def"
-   foo(123) # output: abc
+  proc bar(arg: int16) =
+    echo "abc"
+  proc bar(arg: int8) =
+    echo "def"
 
-   proc bar(arg: int16) =
-     echo "abc"
-   proc bar(arg: int8) =
-     echo "def"
-
-   bar(123) # Error ambiguous call
+  bar(123) # Error ambiguous call
+  ```
 
 In the compiler these integer literal types are represented with the
 node kind `nkIntLit`, type kind `tyInt` and the member `n` of the type

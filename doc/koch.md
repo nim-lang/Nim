@@ -8,10 +8,7 @@
 .. include:: rstcommon.rst
 .. contents::
 
-.. raw:: html
-  <blockquote><p>
-  "A great chef is an artist that I truly respect" -- Robert Stack.
-  </p></blockquote>
+> "A great chef is an artist that I truly respect" -- Robert Stack.
 
 
 Introduction
