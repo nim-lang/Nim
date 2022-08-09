@@ -67,7 +67,7 @@ when defined(windows):
   import winlean
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/[syncio, assertions, dollars]
 
 type
   PTerminal = ref object
