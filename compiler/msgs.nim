@@ -13,7 +13,7 @@ import
   options, ropes, lineinfos, pathutils, strutils2
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/[syncio, assertions, dollars]
 
 
 type InstantiationInfo* = typeof(instantiationInfo())

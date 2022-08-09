@@ -16,7 +16,7 @@ import std/private/since
 export system.`$` # for backward compatibility
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 
 type HoleyEnum* = (not Ordinal) and enum ## Enum with holes.

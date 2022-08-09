@@ -11,7 +11,7 @@ import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, iden
 import sequtils, strutils, sets
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 # IMPORTANT: notes not up to date, i'll update this comment again
 #

@@ -30,7 +30,7 @@
 import tables
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 import
   strutils, ast, types, msgs, renderer, vmdef,

@@ -84,7 +84,7 @@ from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl,
     startsWithImpl, endsWithImpl
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 
 const

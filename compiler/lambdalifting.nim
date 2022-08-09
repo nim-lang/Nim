@@ -15,7 +15,7 @@ import
   transf, liftdestructors, typeallowed
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 discard """
   The basic approach is that captured vars need to be put on the heap and

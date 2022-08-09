@@ -11,7 +11,7 @@
 ## Nim compiler's needs.
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 const
   M = 512    # max children per B-tree node = M-1

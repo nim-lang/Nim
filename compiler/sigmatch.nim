@@ -16,7 +16,7 @@ import
   linter, lineinfos, lowerings, modulegraphs, concepts
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 type
   MismatchKind* = enum

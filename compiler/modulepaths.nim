@@ -10,6 +10,9 @@
 import ast, renderer, strutils, msgs, options, idents, os, lineinfos,
   pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 proc getModuleName*(conf: ConfigRef; n: PNode): string =
   # This returns a short relative module name without the nim extension
   # e.g. like "system", "importer" or "somepath/module"

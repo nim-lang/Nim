@@ -19,7 +19,7 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
   result.setLen newLen
   c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
 
-import dragonbox, schubfach
+import std/private/[dragonbox, schubfach]
 
 proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: BiggestFloat): int =
   ## This is the implementation to format floats.
@@ -98,22 +98,23 @@ proc addFloatSprintf*(result: var string; x: float) =
     let n = writeFloatToBufferSprintf(buffer, x)
     result.addCstringN(cstring(buffer[0].addr), n)
 
-proc nimFloatToString(a: float): cstring =
-  ## ensures the result doesn't print like an integer, i.e. return 2.0, not 2
-  # print `-0.0` properly
-  asm """
-    function nimOnlyDigitsOrMinus(n) {
-      return n.toString().match(/^-?\d+$/);
-    }
-    if (Number.isSafeInteger(`a`))
-      `result` = `a` === 0 && 1 / `a` < 0 ? "-0.0" : `a`+".0"
-    else {
-      `result` = `a`+""
-      if(nimOnlyDigitsOrMinus(`result`)){
-        `result` = `a`+".0"
+when defined(js):
+  proc nimFloatToString(a: float): cstring =
+    ## ensures the result doesn't print like an integer, i.e. return 2.0, not 2
+    # print `-0.0` properly
+    asm """
+      function nimOnlyDigitsOrMinus(n) {
+        return n.toString().match(/^-?\d+$/);
       }
-    }
-  """
+      if (Number.isSafeInteger(`a`))
+        `result` = `a` === 0 && 1 / `a` < 0 ? "-0.0" : `a`+".0"
+      else {
+        `result` = `a`+""
+        if(nimOnlyDigitsOrMinus(`result`)){
+          `result` = `a`+".0"
+        }
+      }
+    """
 
 proc addFloat*(result: var string; x: float | float32) {.inline.} =
   ## Converts float to its string representation and appends it to `result`.
@@ -124,7 +125,7 @@ proc addFloat*(result: var string; x: float | float32) {.inline.} =
     s.addFloat(45.67)
     assert s == "foo:45.67"
   template impl =
-    when defined(nimPreviewFloatRoundtrip):
+    when defined(nimPreviewFloatRoundtrip) or defined(nimPreviewSlimSystem):
       addFloatRoundtrip(result, x)
     else:
       addFloatSprintf(result, x)

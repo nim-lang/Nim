@@ -42,7 +42,8 @@ runnableExamples:
 
     unloadLib(lib)
 
-
+when defined(nimPreviewSlimSystem):
+  import std/dollars
 import std/strutils
 
 type

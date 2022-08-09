@@ -12,6 +12,9 @@
 import
   strutils, options, ast, astalgo, msgs, renderer, lineinfos, idents
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 type
   TemplCtx = object
     owner, genSymOwner: PSym

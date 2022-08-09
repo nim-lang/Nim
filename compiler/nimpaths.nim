@@ -20,7 +20,7 @@ Unstable API
 import os, strutils
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 
 const

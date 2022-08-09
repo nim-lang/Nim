@@ -15,7 +15,7 @@ import ".." / [ast, idents, lineinfos, msgs, ropes, options,
 from os import removeFile, isAbsolute
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/[syncio, assertions, dollars]
 
 type
   PackedConfig* = object

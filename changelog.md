@@ -6,8 +6,8 @@
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
 
-- `io` and `assertions` are about to move out of the `system` module.
-  You may instead import `std/syncio` and `std/assertions`.
+- `io`, `assertions` and `dollars` are about to move out of the `system` module.
+  You may instead import `std/syncio`, `std/assertions` and `std/dollars`.
   The `-d:nimPreviewSlimSystem` option makes these imports required.
 
 - The `gc:v2` option is removed.

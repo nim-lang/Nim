@@ -14,7 +14,7 @@ from hashes import Hash
 import types
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)

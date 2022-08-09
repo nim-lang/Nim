@@ -2145,8 +2145,13 @@ const
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 
-import system/dollars
-export dollars
+when not defined(nimPreviewSlimSystem):
+  {.deprecated: """dollars is about to move out of system; use `-d:nimPreviewSlimSystem` and
+              import `std/dollars`.""".}
+  import std/dollars
+  export dollars
+else:
+  import std/dollars
 
 when defined(nimAuditDelete):
   {.pragma: auditDelete, deprecated: "review this call for out of bounds behavior".}

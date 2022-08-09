@@ -33,7 +33,7 @@ import ast, intsets, lineinfos, renderer
 import std/private/asciitables
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 type
   InstrKind* = enum

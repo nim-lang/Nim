@@ -38,7 +38,7 @@ import
 import json, sets, math, tables, intsets, strutils
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, syncio]
+  import std/[assertions, syncio, dollars]
 
 
 type

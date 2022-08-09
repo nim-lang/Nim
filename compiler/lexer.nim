@@ -20,7 +20,7 @@ import
   wordrecg, lineinfos, pathutils, parseutils
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+    import std/[assertions, dollars]
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning

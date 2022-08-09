@@ -13,7 +13,7 @@
 import sets
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 import ".." / [ast, modulegraphs]
 import packed_ast, bitabs, ic

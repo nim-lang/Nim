@@ -14,7 +14,7 @@ import
 from strutils import toLowerAscii
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 export int128
 

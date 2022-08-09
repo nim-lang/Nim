@@ -18,7 +18,7 @@ import
   injectdestructors, astmsgs, modulepaths
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 when not defined(leanCompiler):
   import spawn, semparallel

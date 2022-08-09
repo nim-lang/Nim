@@ -12,6 +12,9 @@
 import std/strutils
 from std/sugar import dup
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 import options, ast, msgs, idents, lineinfos, wordrecg, astmsgs, semdata, packages
 export packages
 

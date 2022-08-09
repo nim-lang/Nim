@@ -13,6 +13,9 @@ import
   ast, astalgo, msgs, platform, idents,
   modulegraphs, lineinfos
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 export createMagic
 
 proc nilOrSysInt*(g: ModuleGraph): PType = g.sysTypes[tyInt]

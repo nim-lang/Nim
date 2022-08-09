@@ -14,6 +14,9 @@ import
 
 from modulegraphs import ModuleGraph, PPassContext
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 type
   VerboseRef = ref object of PPassContext
     config: ConfigRef

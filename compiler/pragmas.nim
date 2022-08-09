@@ -15,7 +15,7 @@ import
   types, lookups, lineinfos, pathutils, linter
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 from ic / ic import addCompilerProc
 

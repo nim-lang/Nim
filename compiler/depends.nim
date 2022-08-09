@@ -17,7 +17,7 @@ import std/[os, strutils, parseutils]
 import std/private/globs
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 
 type

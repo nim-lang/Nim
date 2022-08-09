@@ -16,7 +16,7 @@ import
   msgs
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 when not defined(nimHasCursor):
   {.pragma: cursor.}

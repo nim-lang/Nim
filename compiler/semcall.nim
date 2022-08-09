@@ -12,6 +12,9 @@
 
 from algorithm import sort
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 proc sameMethodDispatcher(a, b: PSym): bool =
   result = false
   if a.kind == skMethod and b.kind == skMethod:

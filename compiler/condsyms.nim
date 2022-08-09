@@ -15,6 +15,9 @@ import
 from options import Feature
 from lineinfos import hintMin, hintMax, warnMin, warnMax
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 proc defineSymbol*(symbols: StringTableRef; symbol: string, value: string = "true") =
   symbols[symbol] = value
 

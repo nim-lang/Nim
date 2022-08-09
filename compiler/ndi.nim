@@ -13,7 +13,7 @@
 import ast, msgs, ropes, options, pathutils
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/[syncio, assertions, dollars]
 
 type
   NdiFile* = object

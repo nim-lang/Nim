@@ -3,6 +3,9 @@ import
   options, vmdef, times, lineinfos, strutils, tables,
   msgs
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 proc enter*(prof: var Profiler, c: PCtx, tos: PStackFrame) {.inline.} =
   if optProfileVM in c.config.globalOptions:
     prof.tEnter = cpuTime()

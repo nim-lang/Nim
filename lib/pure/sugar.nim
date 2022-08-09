@@ -13,6 +13,9 @@
 import std/private/since
 import macros
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 proc checkPragma(ex, prag: var NimNode) =
   since (1, 3):
     if ex.kind == nnkPragmaExpr:

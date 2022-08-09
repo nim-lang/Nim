@@ -18,7 +18,7 @@ import
 from system/memory import nimCStrLen
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state

@@ -32,7 +32,7 @@ when defined(linux) and defined(useClone):
   import linux
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/[syncio, assertions, dollars]
 
 
 type

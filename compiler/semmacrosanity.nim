@@ -12,6 +12,9 @@
 
 import ast, msgs, types, options
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 proc ithField(n: PNode, field: var int): PSym =
   result = nil
   case n.kind

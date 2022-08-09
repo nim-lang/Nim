@@ -202,7 +202,7 @@ import std/private/since
 include "system/inclrtl"
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 
 when defined(js):

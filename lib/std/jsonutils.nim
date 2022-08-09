@@ -35,7 +35,7 @@ from enumutils import symbolName
 from typetraits import OrdinalEnum
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 when not defined(nimFixedForwardGeneric):
   # xxx remove pending csources_v1 update >= 1.2.0

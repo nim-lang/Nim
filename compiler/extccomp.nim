@@ -17,7 +17,7 @@ import ropes, platform, condsyms, options, msgs, lineinfos, pathutils, modulepat
 import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar, parseutils]
 
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, dollars]
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:

@@ -4,7 +4,7 @@
 import hashes, rodfiles
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 type
   LitId* = distinct uint32

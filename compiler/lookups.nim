@@ -11,7 +11,7 @@
 import std/[algorithm, strutils]
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,

@@ -165,7 +165,7 @@ import options # xxx remove this dependency using same approach as https://githu
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/[syncio, assertions, dollars]
 
 export
   tables.`$`

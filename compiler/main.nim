@@ -24,7 +24,7 @@ import
 
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/[syncio, assertions, dollars]
 
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer

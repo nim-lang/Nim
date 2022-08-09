@@ -12,6 +12,8 @@
 include system/inclrtl
 import std/private/since
 import system/formatfloat
+when defined(nimPreviewSlimSystem):
+  import std/dollars
 
 # ----------------- IO Part ------------------------------------------------
 type

@@ -1,5 +1,9 @@
 import os
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
+
 proc findNodeJs*(): string {.inline.} =
   ## Find NodeJS executable and return it as a string.
   result = findExe("nodejs")

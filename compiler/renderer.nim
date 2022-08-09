@@ -18,7 +18,7 @@ import
   lexer, options, idents, strutils, ast, msgs, lineinfos
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/[syncio, assertions, dollars]
 
 type
   TRenderFlag* = enum

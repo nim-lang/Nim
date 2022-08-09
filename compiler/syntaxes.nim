@@ -14,7 +14,7 @@ import
   filters, filter_tmpl, renderer, lineinfos, pathutils
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/[syncio, assertions, dollars]
 
 export Parser, parseAll, parseTopLevelStmt, checkFirstLineIndentation, closeParser
 

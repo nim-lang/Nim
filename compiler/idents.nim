@@ -15,7 +15,7 @@ import
   hashes, wordrecg
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 type
   PIdent* = ref TIdent

@@ -59,6 +59,10 @@ runnableExamples:
 ## * `md5 module<md5.html>`_ for the MD5 checksum algorithm
 ## * `sha1 module<sha1.html>`_ for the SHA-1 checksum algorithm
 
+
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 template cbBase(a, b): untyped = [
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
   'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',

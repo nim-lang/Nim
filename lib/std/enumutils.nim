@@ -11,7 +11,7 @@ import macros
 from typetraits import OrdinalEnum, HoleyEnum
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 
 # xxx `genEnumCaseStmt` needs tests and runnableExamples

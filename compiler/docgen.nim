@@ -24,7 +24,7 @@ from std/private/globs import nativeToUnixPath
 from nodejs import findNodeJs
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, syncio]
+  import std/[assertions, syncio, dollars]
 
 
 const

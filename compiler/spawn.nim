@@ -13,6 +13,9 @@ import ast, types, idents, magicsys, msgs, options, modulegraphs,
   lowerings, liftdestructors, renderer
 from trees import getMagic, getRoot
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 proc callProc(a: PNode): PNode =
   result = newNodeI(nkCall, a.info)
   result.add a

@@ -16,7 +16,7 @@ import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, 
 import ic / [packed_ast, ic]
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 type
   SigHash* = distinct MD5Digest

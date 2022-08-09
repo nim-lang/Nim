@@ -13,6 +13,9 @@
 import strutils, ast, types, msgs, idents, renderer, wordrecg, trees,
   options
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 # we precompile the pattern here for efficiency into some internal
 # stack based VM :-) Why? Because it's fun; I did no benchmarks to see if that
 # actually improves performance.

@@ -137,7 +137,7 @@ import
   tables, options
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 type
   Ctx = object

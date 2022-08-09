@@ -10,7 +10,7 @@
 import std/[os, strutils, parseopt]
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 when defined(windows) and not defined(nimKochBootstrap):
   # remove workaround pending bootstrap >= 1.5.1

@@ -1,5 +1,8 @@
 import os, strformat, strutils, tables, sets, ropes, json, algorithm
 
+when defined(nimPreviewSlimSystem):
+  import std/dollars
+
 type
   SourceNode* = ref object
     line*:      int

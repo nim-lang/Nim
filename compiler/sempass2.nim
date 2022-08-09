@@ -13,7 +13,7 @@ import
   modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling, tables
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 when defined(useDfa):
   import dfa

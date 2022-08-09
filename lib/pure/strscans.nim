@@ -287,7 +287,7 @@ import macros, parseutils
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 
 proc conditionsToIfChain(n, idx, res: NimNode; start: int): NimNode =

@@ -20,7 +20,7 @@ import
   varpartitions
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 from trees import exprStructuralEquivalent, getRoot
 

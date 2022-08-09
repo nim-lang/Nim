@@ -239,7 +239,7 @@ import
 from highlite import SourceLanguage, getSourceLanguage
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, syncio]
+  import std/[assertions, syncio, dollars]
 
 
 type

@@ -12,7 +12,7 @@
 import strutils, json
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, dollars]
 
 
 type
