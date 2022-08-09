@@ -930,7 +930,7 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     genLit(c, n[1], dest)
   else:
     # todo: support cast from tyInt to tyRef
-    globalError(c.config, n.info, "VM does not support 'cast' from " & $src.kind & " to " & $dst.kind)
+    globalError(c.config, n.info, "VM does not support 'cast' from " & $src.kind & " to " & $dst.kind & " with sizes " & $(srcSize, dstSize))
 
 proc genVoidABC(c: PCtx, n: PNode, dest: TDest, opcode: TOpcode) =
   unused(c, n, dest)
