@@ -1337,7 +1337,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcCallSite, dest)
   of mNGenSym: genBinaryABC(c, n, dest, opcGenSym)
-  of mMinI, mMaxI, mAbsI, mDotDot:
+  of mMinI, mMaxI, mAbsI, mDotDot, mOpenArrayToSeq:
     c.genCall(n, dest)
   of mExpandToAst:
     if n.len != 2:

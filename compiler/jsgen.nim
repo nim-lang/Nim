@@ -2101,13 +2101,13 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     # only array literals doesn't need copy
     if n[1].kind == nkBracket:
       genJSArrayConstr(p, n[1], r)
-    elif n[0].sym.ast[bodyPos].kind != nkEmpty:
-      genCall(p, n, r)
     else:
       var x: TCompRes
       gen(p, n[1], x)
       useMagic(p, "nimCopy")
       r.res = "nimCopy(null, $1, $2)" % [x.rdLoc, genTypeInfo(p, n.typ)]
+  of mOpenArrayToSeq:
+    genCall(p, n, r)
   of mDestroy, mTrace: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:

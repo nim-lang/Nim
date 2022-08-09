@@ -1627,8 +1627,8 @@ proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
 
 
 when defined(nimHasTopDownInference):
-  # pretend this is a magic
-  proc `@`*[T](a: openArray[T]): seq[T] {.magic: "ArrToSeq".} =
+  # magic used for seq type inference
+  proc `@`*[T](a: openArray[T]): seq[T] {.magic: "OpenArrayToSeq".} =
     ## Turns an *openArray* into a sequence.
     ##
     ## This is not as efficient as turning a fixed length array into a sequence

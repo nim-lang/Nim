@@ -2415,7 +2415,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: P
   of mSizeOf:
     markUsed(c, n.info, s)
     result = semSizeof(c, setMs(n, s))
-  of mArrToSeq:
+  of mArrToSeq, mOpenArrayToSeq:
     if n.len == 2 and expectedType != nil and (
         let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
         expected.kind in {tySequence, tyOpenArray}):

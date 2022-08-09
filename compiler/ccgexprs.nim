@@ -2439,11 +2439,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mDefault: genDefault(p, e, d)
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)
-  of mArrToSeq:
-    if e[0].sym.ast[bodyPos].kind != nkEmpty:
-      genCall(p, e, d)
-    else:
-      genArrToSeq(p, e, d)
+  of mArrToSeq: genArrToSeq(p, e, d)
+  of mOpenArrayToSeq: genCall(p, e, d)
   of mNLen..mNError, mSlurp..mQuoteAst:
     localError(p.config, e.info, strutils.`%`(errXMustBeCompileTime, e[0].sym.name.s))
   of mSpawn:
