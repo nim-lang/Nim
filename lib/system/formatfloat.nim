@@ -77,7 +77,7 @@ proc writeFloatToBufferSprintf*(buf: var array[65, char]; value: BiggestFloat): 
       result = 3
 
 proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat | float32): int {.inline.} =
-  when defined(nimPreviewFloatRoundtrip):
+  when defined(nimPreviewFloatRoundtrip) or defined(nimPreviewSlimSystem):
     writeFloatToBufferRoundtrip(buf, value)
   else:
     writeFloatToBufferSprintf(buf, value)
