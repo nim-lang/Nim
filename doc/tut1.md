@@ -74,7 +74,7 @@ aiming for your debugging pleasure. With ``-d:release`` some checks are
 
 For benchmarking or production code, use the ``-d:release`` switch.
 For comparing the performance with unsafe languages like C, use the ``-d:danger`` switch
-in order to get meaningful, comparable results. Otherwise Nim might be handicapped
+in order to get meaningful, comparable results. Otherwise, Nim might be handicapped
 by checks that are **not even available** for C.
 
 Though it should be pretty obvious what the program does, I will explain the
@@ -290,8 +290,8 @@ characters.)
 Case statement
 --------------
 
-Another way to branch is provided by the case statement. A case statement is
-a multi-branch:
+Another way to branch is provided by the case statement. A case statement allows
+for multiple branches:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -732,7 +732,7 @@ Named arguments
 
 Often a procedure has many parameters and it is not clear in which order the
 parameters appear. This is especially true for procedures that construct a
-complex data type. Therefore the arguments to a procedure can be named, so
+complex data type. Therefore, the arguments to a procedure can be named, so
 that it is clear which argument belongs to which parameter:
 
 .. code-block:: nim
@@ -893,7 +893,7 @@ with `{.noSideEffects.}`. Functions can still change their mutable arguments
 however, which are those marked as `var`, along with any `ref` objects.
 
 Unlike procedures, methods are dynamically dispatched. This sounds a bit
-complicated, but it is a concept closely related to inheritance and object oriented
+complicated, but it is a concept closely related to inheritance and object-oriented
 programming. If you overload a procedure (two procedures with the same name but
 of different types or with different sets of arguments are said to be overloaded), the procedure to use is determined
 at compile-time. Methods, on the other hand, depend on objects that inherit from
@@ -950,7 +950,7 @@ important differences:
 However, you can also use a closure iterator to get a different set of
 restrictions. See `first-class iterators <manual.html#iterators-and-the-for-statement-firstminusclass-iterators>`_
 for details. Iterators can have the same name and parameters as a proc since
-essentially they have their own namespaces. Therefore it is common practice to
+essentially they have their own namespaces. Therefore, it is common to
 wrap iterators in procs of the same name which accumulate the result of the
 iterator and return it as a sequence, like `split` from the `strutils module
 <strutils.html>`_.
@@ -966,8 +966,8 @@ Booleans
 --------
 
 Nim's boolean type is called `bool` and consists of the two
-pre-defined values `true` and `false`. Conditions in while,
-if, elif, and when statements must be of type bool.
+pre-defined values `true` and `false`. Conditions in `while`,
+`if`, `elif`, and `when` statements must be of type bool.
 
 The operators `not, and, or, xor, <, <=, >, >=, !=, ==` are defined
 for the bool type. The `and` and `or` operators perform short-circuit
@@ -985,7 +985,7 @@ Characters
 
 The *character type* is called `char`. Its size is always one byte, so
 it cannot represent most UTF-8 characters, but it *can* represent one of the bytes
-that makes up a multi-byte UTF-8 character.
+that makes up a multibyte UTF-8 character.
 The reason for this is efficiency: for the overwhelming majority of use-cases,
 the resulting programs will still handle UTF-8 properly as UTF-8 was especially
 designed for this.
@@ -1485,7 +1485,7 @@ slice's bounds can hold any value supported by
 their type, but it is the proc using the slice object which defines what values
 are accepted.
 
-To understand some of the different ways of specifying the indices of
+To understand the different ways of specifying the indices of
 strings, arrays, sequences, etc., it must be remembered that Nim uses
 zero-based indices.
 
@@ -1500,7 +1500,7 @@ indices are
   ^19        ^8    ^2   using ^ syntax
 
 where `b[0 .. ^1]` is equivalent to `b[0 .. b.len-1]` and `b[0 ..< b.len]`, and it
-can be seen that the `^1` provides a short-hand way of specifying the `b.len-1`. See
+can be seen that the `^1` provides a shorthand way of specifying the `b.len-1`. See
 the `backwards index operator <system.html#^.t%2Cint>`_.
 
 In the above example, because the string ends in a period, to get the portion of the
@@ -1685,7 +1685,7 @@ Tuple unpacking is also supported in for-loops:
     echo i, c
   # This will output: 0a; 1b; 2c
 
-Fields of tuples are always public, they don't need to be explicity
+Fields of tuples are always public, they don't need to be explicitly
 marked to be exported, unlike for example fields in an object type.
 
 
@@ -1699,7 +1699,7 @@ point to and modify the same location in memory.
 Nim distinguishes between `traced`:idx: and `untraced`:idx: references.
 Untraced references are also called *pointers*. Traced references point to
 objects in a garbage-collected heap, untraced references point to
-manually allocated objects or objects elsewhere in memory. Thus
+manually allocated objects or objects elsewhere in memory. Thus,
 untraced references are *unsafe*. However, for certain low-level operations
 (e.g. accessing the hardware), untraced references are necessary.
 
