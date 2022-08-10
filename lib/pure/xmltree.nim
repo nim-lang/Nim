@@ -33,6 +33,10 @@ runnableExamples:
 import std/private/since
 import macros, strtabs, strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   XmlNode* = ref XmlNodeObj ## An XML tree consisting of XML nodes.
     ##

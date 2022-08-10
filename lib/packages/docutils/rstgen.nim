@@ -42,6 +42,11 @@
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils, std/strbasics
 
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
+
 import ../../std/private/since
 
 const

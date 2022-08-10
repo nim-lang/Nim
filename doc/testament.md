@@ -8,7 +8,7 @@
 
 Testament is an advanced automatic unittests runner for Nim tests, is used for the development of Nim itself,
 offers process isolation for your tests, it can generate statistics about test cases,
-supports multiple targets (C, C++, ObjectiveC, JavaScript, etc),
+supports multiple targets (C, C++, ObjectiveC, JavaScript, etc.),
 simulated `Dry-Runs <https://en.wikipedia.org/wiki/Dry_run_(testing)>`_,
 has logging, can generate HTML reports, skip tests from a file, and more,
 so can be useful to run your tests, even the most complex ones.
@@ -17,7 +17,7 @@ so can be useful to run your tests, even the most complex ones.
 Test files location
 ===================
 
-By default Testament looks for test files on ``"./tests/*.nim"``.
+By default, Testament looks for test files on ``"./tests/*.nim"``.
 You can overwrite this pattern glob using `pattern <glob>`:option:.
 The default working directory path can be changed using
 `--directory:"folder/subfolder/"`:option:.
@@ -42,7 +42,7 @@ Options
                           or doing anything else.
 --colors:on|off           Turn messages coloring on|off.
 --backendLogging:on|off   Disable or enable backend logging.
-                          By default turned on.
+                          By default, turned on.
 --skipFrom:file           Read tests to skip from ``file`` - one test per
                           line, # comments ignored
 
@@ -88,8 +88,8 @@ you have to run at least 1 test *before* generating a report:
   $ testament html
 
 
-Writing Unitests
-================
+Writing Unit tests
+==================
 
 Example "template" **to edit** and write a Testament unittest:
 
@@ -112,7 +112,7 @@ Example "template" **to edit** and write a Testament unittest:
     exitcode: 0
 
     # Provide an `output` string to assert that the test prints to standard out
-    # exatly the expected string. Provide an `outputsub` string to assert that
+    # exactly the expected string. Provide an `outputsub` string to assert that
     # the string given here is a substring of the standard out output of the
     # test.
     output: ""
@@ -139,7 +139,7 @@ Example "template" **to edit** and write a Testament unittest:
     # Can be run in batch mode, or not.
     batchable: true
 
-    # Can be run Joined with other tests to run all togheter, or not.
+    # Can be run Joined with other tests to run all together, or not.
     joinable: true
 
     # On Linux 64-bit machines, whether to use Valgrind to check for bad memory
@@ -192,8 +192,8 @@ Example "template" **to edit** and write a Testament unittest:
 * `Testament supports inlined error messages on Unittests, basically comments with the expected error directly on the code. <https://github.com/nim-lang/Nim/blob/9a110047cbe2826b1d4afe63e3a1f5a08422b73f/tests/effects/teffects1.nim>`_
 
 
-Unitests Examples
-=================
+Unit test Examples
+==================
 
 Expected to fail:
 
