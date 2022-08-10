@@ -457,6 +457,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   of "globalsymbols": conf.ideCmd = ideGlobalSymbols
   of "chkfile": conf.ideCmd = ideChkFile
   of "recompile": conf.ideCmd = ideRecompile
+  of "type": conf.ideCmd = ideType
   else: err()
   var dirtyfile = ""
   var orig = ""
@@ -786,7 +787,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     graph.unmarkAllDirty()
 
   # these commands require partially compiled project
-  elif cmd in {ideSug, ideOutline, ideHighlight, ideDef, ideChkFile} and
+  elif cmd in {ideSug, ideOutline, ideHighlight, ideDef, ideChkFile, ideType} and
        (graph.needsCompilation(fileIndex) or cmd == ideSug):
     # for ideSug use v2 implementation
     if cmd == ideSug:
@@ -802,6 +803,15 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     let (sym, info) = graph.findSymData(file, line, col)
     if sym != nil:
       graph.suggestResult(sym, sym.info)
+  of ideType:
+    let (sym, _) = graph.findSymData(file, line, col)
+    if sym != nil:
+      let typeSym = sym.typ.sym
+      if typeSym != nil:
+        graph.suggestResult(typeSym, typeSym.info, ideType)
+      elif sym.typ.len != 0:
+        let genericType = sym.typ[0].sym
+        graph.suggestResult(genericType, genericType.info, ideType)
   of ideUse, ideDus:
     let symbol = graph.findSymData(file, line, col).sym
     if symbol != nil:

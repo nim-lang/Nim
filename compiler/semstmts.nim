@@ -375,7 +375,7 @@ proc semUsing(c: PContext; n: PNode): PNode =
       let typ = semTypeNode(c, a[^2], nil)
       for j in 0..<a.len-2:
         let v = semIdentDef(c, a[j], skParam)
-        styleCheckDef(c.config, v)
+        styleCheckDef(c, v)
         onDef(a[j].info, v)
         v.typ = typ
         strTableIncl(c.signatures, v)
@@ -676,7 +676,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       if {sfThread, sfNoInit} * v.flags != {}:
         a[^1] = c.graph.emptyNode
         def = c.graph.emptyNode
-      styleCheckDef(c.config, v)
+      styleCheckDef(c, v)
       onDef(a[j].info, v)
       if sfGenSym notin v.flags:
         if not isDiscardUnderscore(v): addInterfaceDecl(c, v)
@@ -806,7 +806,7 @@ proc semConst(c: PContext, n: PNode): PNode =
       var v = semIdentDef(c, a[j], skConst)
       if sfGenSym notin v.flags: addInterfaceDecl(c, v)
       elif v.owner == nil: v.owner = getCurrOwner(c)
-      styleCheckDef(c.config, v)
+      styleCheckDef(c, v)
       onDef(a[j].info, v)
 
       if a.kind != nkVarTuple:
@@ -831,7 +831,7 @@ include semfields
 proc symForVar(c: PContext, n: PNode): PSym =
   let m = if n.kind == nkPragmaExpr: n[0] else: n
   result = newSymG(skForVar, m, c)
-  styleCheckDef(c.config, result)
+  styleCheckDef(c, result)
   onDef(n.info, result)
   if n.kind == nkPragmaExpr:
     pragma(c, result, n[1], forVarPragmas)
@@ -1062,7 +1062,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var typ = commonTypeBegin
   var hasElse = false
   let caseTyp = skipTypes(n[0].typ, abstractVar-{tyTypeDesc})
-  const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool}
+  const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt64, tyBool}
   case caseTyp.kind
   of shouldChckCovered:
     chckCovered = true
@@ -1457,7 +1457,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     let name = typeSectionTypeName(c, a[0])
     var s = name.sym
     # check the style here after the pragmas have been processed:
-    styleCheckDef(c.config, s)
+    styleCheckDef(c, s)
     # compute the type's size and check for illegal recursions:
     if a[1].kind == nkEmpty:
       var x = a[2]
@@ -2055,7 +2055,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       ("'" & proto.name.s & "' from " & c.config$proto.info &
         " '" & s.name.s & "' from " & c.config$s.info))
 
-  styleCheckDef(c.config, s)
+  styleCheckDef(c, s)
   if hasProto:
     onDefResolveForward(n[namePos].info, proto)
   else:
@@ -2132,7 +2132,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         trackProc(c, s, s.ast[bodyPos])
       else:
         if (s.typ[0] != nil and s.kind != skIterator):
-          addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextSymId c.idgen, nil, n.info))
+          addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextSymId c.idgen, s, n.info))
 
         openScope(c)
         n[bodyPos] = semGenericStmt(c, n[bodyPos])
@@ -2312,7 +2312,7 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
   for p in pragmaList:
     if whichPragma(p) == wCast:
       case whichPragma(p[1])
-      of wGcSafe, wNoSideEffect, wTags, wRaises:
+      of wGcSafe, wNoSideEffect, wTags, wForbids, wRaises:
         discard "handled in sempass2"
       of wUncheckedAssign:
         inUncheckedAssignSection = 1
