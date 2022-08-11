@@ -6,7 +6,7 @@
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
 
-- `io`, `assertions`, `formatfloat` are about to move out of the `system` module. You may instead import `std/syncio`, `std/assertions` and ``formatfloat`.
+- `io`, `assertions`, `formatfloat` are about to move out of the `system` module. You may instead import `std/syncio`, `std/assertions` and `std/formatfloat`.
   The `-d:nimPreviewSlimSystem` option makes these imports required.
 
 - The `gc:v2` option is removed.
