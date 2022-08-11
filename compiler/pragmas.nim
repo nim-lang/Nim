@@ -1216,15 +1216,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if not isTopLevel(c):
           localError(c.config, n.info, "'experimental' pragma only valid as toplevel statement or in a 'push' environment")
         processExperimental(c, it)
-      of wThis:
-        if it.kind in nkPragmaCallKinds and it.len == 2:
-          c.selfName = considerQuotedIdent(c, it[1])
-          message(c.config, n.info, warnDeprecated, "'.this' pragma is deprecated")
-        elif it.kind == nkIdent or it.len == 1:
-          c.selfName = getIdent(c.cache, "self")
-          message(c.config, n.info, warnDeprecated, "'.this' pragma is deprecated")
-        else:
-          localError(c.config, it.info, "'this' pragma is allowed to have zero or one arguments")
       of wNoRewrite:
         noVal(c, it)
       of wBase:

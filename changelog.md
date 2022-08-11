@@ -30,6 +30,8 @@
 
 - `nimPreviewDotLikeOps` is going to be removed or deprecated.
 
+- The `{.this.}` pragma, deprecated since 0.19, has been removed.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
