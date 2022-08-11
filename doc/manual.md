@@ -8317,8 +8317,7 @@ violations of the `no heap sharing restriction`:idx:\: This restriction implies
 that it is invalid to construct a data structure that consists of memory
 allocated from different (thread-local) heaps.
 
-A thread proc is passed to `createThread` or `spawn` and invoked
-indirectly; so the `thread` pragma implies `procvar`.
+A thread proc can be passed to `createThread` or `spawn`.
 
 
 

@@ -260,7 +260,8 @@ type
                       # *OR*: a proc is indirectly called (used as first class)
     sfCompilerProc,   # proc is a compiler proc, that is a C proc that is
                       # needed for the code generator
-    sfProcvar,        # proc can be passed to a proc var
+    sfEscapes         # param escapes
+                      # currently unimplemented
     sfDiscriminant,   # field is a discriminant in a record/object
     sfRequiresInit,   # field must be initialized during construction
     sfDeprecated,     # symbol is deprecated
@@ -331,7 +332,7 @@ const
   sfExperimental* = sfOverriden       # module uses the .experimental switch
   sfGoto* = sfOverriden               # var is used for 'goto' code generation
   sfWrittenTo* = sfBorrow             # param is assigned to
-  sfEscapes* = sfProcvar              # param escapes
+                                      # currently unimplemented
   sfBase* = sfDiscriminant
   sfIsSelf* = sfOverriden             # param is 'self'
   sfCustomPragma* = sfRegister        # symbol is custom pragma template

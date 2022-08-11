@@ -990,8 +990,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wNonReloadable:
         sym.flags.incl sfNonReloadable
       of wProcVar:
+        # old procvar annotation, no longer needed
         noVal(c, it)
-        incl(sym.flags, sfProcvar)
       of wExplain:
         sym.flags.incl sfExplain
       of wDeprecated:
@@ -1040,7 +1040,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThread:
         noVal(c, it)
         incl(sym.flags, sfThread)
-        incl(sym.flags, sfProcvar)
         if sym.typ != nil:
           incl(sym.typ.flags, tfThread)
           if sym.typ.callConv == ccClosure: sym.typ.callConv = ccNimCall
