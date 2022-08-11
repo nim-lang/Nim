@@ -1026,7 +1026,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.genAsgnPatch(n[1], d)
     c.freeTemp(d)
   of mOrd, mChr, mArrToSeq, mUnown: c.gen(n[1], dest)
-  of mIsolate, mFinished:
+  of generatedMagics:
     genCall(c, n, dest)
   of mNew, mNewFinalize:
     unused(c, n, dest)
@@ -1337,7 +1337,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcCallSite, dest)
   of mNGenSym: genBinaryABC(c, n, dest, opcGenSym)
-  of mMinI, mMaxI, mAbsI, mDotDot, mOpenArrayToSeq:
+  of mMinI, mMaxI, mAbsI, mDotDot:
     c.genCall(n, dest)
   of mExpandToAst:
     if n.len != 2:

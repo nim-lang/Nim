@@ -708,8 +708,8 @@ type
     mSymIsInstantiationOf, mNodeId, mPrivateAccess
 
 
-# things that we can evaluate safely at compile time, even if not asked for it:
 const
+  # things that we can evaluate safely at compile time, even if not asked for it:
   ctfeWhitelist* = {mNone, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
     mLengthStr, mLengthArray, mLengthSeq,
@@ -738,6 +738,9 @@ const
     mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInSet, mRepr}
+  
+  generatedMagics* = {mNone, mIsolate, mFinished, mOpenArrayToSeq}
+    ## magics that are generated as normal procs in the backend
 
 type
   ItemId* = object
