@@ -34,6 +34,7 @@ fff
 fff
 3
 mmm
+assign me (sink)
 sink me (sink)
 assign me (not sink)
 sink me (not sink)
