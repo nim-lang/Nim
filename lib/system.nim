@@ -3162,6 +3162,8 @@ when not defined(nimPreviewSlimSystem):
                 import `std/syncio`.""".}
   import std/syncio
   export syncio
+else:
+  import std/syncio
 
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
