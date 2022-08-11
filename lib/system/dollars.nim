@@ -6,8 +6,6 @@ runnableExamples:
 import std/private/digitsutils
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: """formatfloat is about to move out of system; use `-d:nimPreviewSlimSystem` and
-              import `std/formatfloat`.""".}
   import std/formatfloat
   export addFloat
 
