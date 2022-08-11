@@ -592,25 +592,6 @@ proc `$`*[A](s: HashSet[A]): string =
   dollarImpl()
 
 
-proc initSet*[A](initialSize = defaultInitialSize): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use 'initHashSet'".} = initHashSet[A](initialSize)
-
-proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use 'toHashSet'".} = toHashSet[A](keys)
-
-proc isValid*[A](s: HashSet[A]): bool {.deprecated:
-     "Deprecated since v0.20; sets are initialized by default".} =
-  ## Returns `true` if the set has been initialized (with `initHashSet proc
-  ## <#initHashSet>`_ or `init proc <#init,HashSet[A]>`_).
-  ##
-  runnableExamples:
-    proc savePreferences(options: HashSet[string]) =
-      assert options.isValid, "Pass an initialized set!"
-      # Do stuff here, may crash in release builds!
-  result = s.data.len > 0
-
-
-
 # ---------------------------------------------------------------------
 # --------------------------- OrderedSet ------------------------------
 # ---------------------------------------------------------------------
