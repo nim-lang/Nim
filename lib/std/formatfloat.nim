@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2019 Nim contributors
+#        (c) Copyright 2022 Nim contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -19,7 +19,7 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
   result.setLen newLen
   c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
 
-import dragonbox, schubfach
+import std/private/[dragonbox, schubfach]
 
 proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: BiggestFloat): int =
   ## This is the implementation to format floats.
@@ -77,7 +77,7 @@ proc writeFloatToBufferSprintf*(buf: var array[65, char]; value: BiggestFloat): 
       result = 3
 
 proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat | float32): int {.inline.} =
-  when defined(nimPreviewFloatRoundtrip):
+  when defined(nimPreviewFloatRoundtrip) or defined(nimPreviewSlimSystem):
     writeFloatToBufferRoundtrip(buf, value)
   else:
     writeFloatToBufferSprintf(buf, value)
@@ -124,7 +124,7 @@ proc addFloat*(result: var string; x: float | float32) {.inline.} =
     s.addFloat(45.67)
     assert s == "foo:45.67"
   template impl =
-    when defined(nimPreviewFloatRoundtrip):
+    when defined(nimPreviewFloatRoundtrip) or defined(nimPreviewSlimSystem):
       addFloatRoundtrip(result, x)
     else:
       addFloatSprintf(result, x)
@@ -133,3 +133,8 @@ proc addFloat*(result: var string; x: float | float32) {.inline.} =
     else:
       result.add nimFloatToString(x)
   else: impl()
+
+when defined(nimPreviewSlimSystem):
+  func `$`*(x: float | float32): string =
+    ## Outplace version of `addFloat`.
+    result.addFloat(x)

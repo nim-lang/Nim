@@ -44,7 +44,7 @@ import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
 
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, syncio]
+  import std/[assertions, syncio, formatfloat]
 
 
 import ../../std/private/since

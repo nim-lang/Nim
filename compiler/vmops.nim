@@ -28,7 +28,6 @@ from std/os import getEnv, existsEnv, delEnv, putEnv, envPairs,
 from std/times import cpuTime
 from std/hashes import hash
 from std/osproc import nil
-from system/formatfloat import addFloatRoundtrip, addFloatSprintf
 
 
 when defined(nimPreviewSlimSystem):
