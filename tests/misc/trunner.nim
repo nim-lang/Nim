@@ -234,7 +234,7 @@ sub/mmain.idx""", context
 
   block: # nim jsondoc # bug #11953
     let file = testsDir / "misc/mjsondoc.nim"
-    const destDir = "htmldoc"
+    const destDir = "htmldocs"
     removeDir(destDir)
     defer: removeDir(destDir)
     let (msg, exitCode) = execCmdEx(fmt"{nim} jsondoc {file}")
