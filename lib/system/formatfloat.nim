@@ -1,4 +1,6 @@
-{.deprecated: "use `std/formatfloat`"
-
-import std/formatfloat
-export formatfloat
+when not defined(nimPreviewSlimSystem):
+  import std/formatfloat
+  export formatfloat
+  {.deprecated: "use `std/formatfloat`".}
+else:
+  {.error: "use `std/formatfloat`".}
