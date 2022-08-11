@@ -30,6 +30,8 @@
 
 - The `{.this.}` pragma, deprecated since 0.19, has been removed.
 - `nil` is no longer a valid value for distinct pointer types.
+- The `type Foo = object {.final.}` pragma syntax for types, which was
+  deprecated since Nim 0.20.0, has been removed.
 
 ## Standard library additions and changes
 

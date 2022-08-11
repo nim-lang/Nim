@@ -2893,7 +2893,7 @@ the variable has been initialized and does not rely on syntactic properties:
 
   ```nim
   type
-    MyObject = object {.requiresInit.}
+    MyObject {.requiresInit.} = object
 
   proc p() =
     # the following is valid:
