@@ -32,7 +32,8 @@ from std/osproc import nil
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
-
+else:
+  from std/formatfloat import addFloatRoundtrip, addFloatSprintf 
 
 # There are some useful procs in vmconv.
 import vmconv, vmmarshal
