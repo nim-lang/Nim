@@ -7775,7 +7775,7 @@ Produces:
 
     ```nim
     type
-      VectorIterator {.importcpp: "std::vector<'0>::iterator".} [T] = object
+      VectorIterator[T] {.importcpp: "std::vector<'0>::iterator".} = object
 
     var x: VectorIterator[cint]
     ```

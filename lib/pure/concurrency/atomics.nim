@@ -286,7 +286,7 @@ else:
         moSequentiallyConsistent
 
     type
-      # Atomic* {.importcpp: "_Atomic('0)".} [T] = object
+      # Atomic*[T] {.importcpp: "_Atomic('0)".} = object
 
       AtomicInt8 {.importc: "_Atomic NI8".} = int8
       AtomicInt16 {.importc: "_Atomic NI16".} = int16

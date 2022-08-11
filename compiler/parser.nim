@@ -2114,39 +2114,24 @@ proc parseTypeClass(p: var Parser): PNode =
 
 proc parseTypeDef(p: var Parser): PNode =
   #|
-  #| typeDef = identWithPragmaDot genericParamList? '=' optInd typeDefAux
-  #|             indAndComment? / identVisDot genericParamList? pragma '=' optInd typeDefAux
+  #| typeDef = identVisDot genericParamList? pragma '=' optInd typeDefAux
   #|             indAndComment?
   result = newNodeP(nkTypeDef, p)
   var identifier = identVis(p, allowDot=true)
   var identPragma = identifier
   var pragma: PNode
   var genericParam: PNode
-  var noPragmaYet = true
-
-  if p.tok.tokType == tkCurlyDotLe:
-    pragma = optPragmas(p)
-    identPragma = newNodeP(nkPragmaExpr, p)
-    identPragma.add(identifier)
-    identPragma.add(pragma)
-    noPragmaYet = false
 
   if p.tok.tokType == tkBracketLe and p.validInd:
-    if not noPragmaYet:
-      # Deprecated since v0.20.0
-      parMessage(p, warnDeprecated, "pragma before generic parameter list is deprecated")
     genericParam = parseGenericParamList(p)
   else:
     genericParam = p.emptyNode
 
-  if noPragmaYet:
-    pragma = optPragmas(p)
-    if pragma.kind != nkEmpty:
-      identPragma = newNodeP(nkPragmaExpr, p)
-      identPragma.add(identifier)
-      identPragma.add(pragma)
-  elif p.tok.tokType == tkCurlyDotLe:
-    parMessage(p, errGenerated, "pragma already present")
+  pragma = optPragmas(p)
+  if pragma.kind != nkEmpty:
+    identPragma = newNodeP(nkPragmaExpr, p)
+    identPragma.add(identifier)
+    identPragma.add(pragma)
 
   result.add(identPragma)
   result.add(genericParam)
