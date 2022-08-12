@@ -1,10 +1,10 @@
 discard """
-  disabled: true
   errormsg: "ambiguous call"
-  file: "tbind2.nim"
-  line: 12
+  file: "told_bind_expr.nim"
+  line: 13
 """
-# Test the new ``bind`` keyword for templates
+
+# Pre-0.9 deprecated bind expression syntax
 
 proc p1(x: int8, y: int): int = return x + y
 proc p1(x: int, y: int8): int = return x - y

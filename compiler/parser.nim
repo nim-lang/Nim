@@ -1318,11 +1318,10 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
     else:
       parMessage(p, "the 'concept' keyword is only valid in 'type' sections")
   of tkBind:
-    parMessage(p, "bind expression disallowed")
-    #result = newNodeP(nkBind, p)
-    #getTok(p)
-    #optInd(p, result)
-    #result.add(primary(p, pmNormal))
+    result = newNodeP(nkBind, p)
+    getTok(p)
+    optInd(p, result)
+    result.add(primary(p, pmNormal))
   of tkVar: result = parseTypeDescKAux(p, nkVarTy, mode)
   of tkOut:
     # I like this parser extension to be in 1.4 as it still might turn out
@@ -2039,8 +2038,10 @@ proc parseObject(p: var Parser): PNode =
   getTok(p)
   if p.tok.tokType == tkCurlyDotLe and p.validInd:
     # Deprecated since v0.20.0
-    parMessage(p, warnDeprecated, "type pragmas follow the type name; " &
-      "this form of writing pragmas is a legacy syntax kept for compatibility")
+    parMessage(p, warnDeprecated,
+      "pragmas after the `object` keyword is a " &
+      "legacy syntax kept for compatibility; " &
+      "put pragmas after the type name instead")
     result.add(parsePragma(p))
   else:
     result.add(p.emptyNode)
