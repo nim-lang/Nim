@@ -41,10 +41,11 @@ recognize it as Nim source file).
 If we use `generateXML` code shown above and call the SCF file `xmlGen.nimf`
 In your `main.nim`:
 
-.. code-block:: nim
+  ```nim
   include "xmlGen.nimf"
   
   echo generateXML("John Smith","42")
+  ```
 
 Pipe operator
 =============
@@ -150,7 +151,7 @@ Example::
 
 The filter transforms this into:
 
-.. code-block:: nim
+  ```nim
   proc generateHTMLPage(title, currentTab, content: string,
                         tabs: openArray[string]): string =
     result = ""
@@ -173,6 +174,7 @@ The filter transforms this into:
       "    A dollar: $.\n" &
       "  </div>\n" &
       "</body>\n")
+  ```
 
 
 Each line that does not start with the meta character (ignoring leading
