@@ -15,8 +15,8 @@ Attempting to declare a set with a larger type will result in an error:
 
 .. code-block:: nim
 
-  var s: set[int64] # Error: set is too large
-
+  var s: set[int64] # Error: set is too large; use `std/sets` for ordinal types
+                    # with more than 2^16 elements
 **Note:** Nim also offers `hash sets <sets.html>`_ (which you need to import
 with `import sets`), which have no such restrictions.
 
