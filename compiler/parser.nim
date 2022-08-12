@@ -1318,10 +1318,11 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
     else:
       parMessage(p, "the 'concept' keyword is only valid in 'type' sections")
   of tkBind:
-    result = newNodeP(nkBind, p)
-    getTok(p)
-    optInd(p, result)
-    result.add(primary(p, pmNormal))
+    parMessage(p, "bind expression disallowed")
+    #result = newNodeP(nkBind, p)
+    #getTok(p)
+    #optInd(p, result)
+    #result.add(primary(p, pmNormal))
   of tkVar: result = parseTypeDescKAux(p, nkVarTy, mode)
   of tkOut:
     # I like this parser extension to be in 1.4 as it still might turn out
@@ -2036,7 +2037,13 @@ proc parseObject(p: var Parser): PNode =
   #| objectDecl = 'object' ('of' typeDesc)? COMMENT? objectPart
   result = newNodeP(nkObjectTy, p)
   getTok(p)
-  result.add(p.emptyNode) # compatibility with old pragma node
+  if p.tok.tokType == tkCurlyDotLe and p.validInd:
+    # Deprecated since v0.20.0
+    parMessage(p, warnDeprecated, "type pragmas follow the type name; " &
+      "this form of writing pragmas is a legacy syntax kept for compatibility")
+    result.add(parsePragma(p))
+  else:
+    result.add(p.emptyNode)
   if p.tok.tokType == tkOf and p.tok.indent < 0:
     var a = newNodeP(nkOfInherit, p)
     getTok(p)
@@ -2121,14 +2128,29 @@ proc parseTypeDef(p: var Parser): PNode =
   var identPragma = identifier
   var pragma: PNode
   var genericParam: PNode
+  var pragmaAfterName = false
+
+  if p.tok.tokType == tkCurlyDotLe:
+    pragma = optPragmas(p)
+    identPragma = newNodeP(nkPragmaExpr, p)
+    identPragma.add(identifier)
+    identPragma.add(pragma)
+    pragmaAfterName = true
 
   if p.tok.tokType == tkBracketLe and p.validInd:
+    if pragmaAfterName:
+      # Deprecated since v0.20.0
+      parMessage(p, warnDeprecated, "pragma before generic parameter list is" &
+        " a legacy syntax for compatibility, put pragmas after the " &
+        "generic parameter list instead")
     genericParam = parseGenericParamList(p)
   else:
     genericParam = p.emptyNode
 
   pragma = optPragmas(p)
   if pragma.kind != nkEmpty:
+    if pragmaAfterName:
+      parMessage(p, errGenerated, "pragma already present")
     identPragma = newNodeP(nkPragmaExpr, p)
     identPragma.add(identifier)
     identPragma.add(pragma)

@@ -1,4 +1,5 @@
 discard """
+  disabled: true
   errormsg: "ambiguous call"
   file: "tbind2.nim"
   line: 12
