@@ -11,7 +11,7 @@ Iff a proc is side effect free and all its argument are evaluable at
 compile time, it can be evaluated by the compiler. However, really
 difficult is the ``newString`` proc: If it is simply wrapped, it
 should not be evaluated at compile time! On other occasions it can
-and should be evaluted:
+and should be evaluated:
 
 .. code-block:: nim
   proc toUpper(s: string): string =

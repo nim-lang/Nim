@@ -23,6 +23,10 @@ from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
 from nodejs import findNodeJs
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
+
 const
   exportSection = skField
   docCmdSkip = "skip"
