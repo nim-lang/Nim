@@ -62,13 +62,16 @@
 - Deprecated `std/sums`.
 
 [//]: # "Removals:"
-- Removed deprecated `std/sharedstrings`.
+- Removed deprecated module `parseopt2`.
+- Removed deprecated module `sharedstrings`.
+- Removed deprecated module `dom_extensions`.
+- Removed deprecated module `LockFreeHash`.
+- Removed deprecated module `events`.
 - Removed deprecated `oids.oidToString`.
 - Removed define `nimExperimentalAsyncjsThen` for `std/asyncjs.then` and `std/jsfetch`.
 - Removed deprecated `jsre.test` and `jsre.toString`.
 - Removed deprecated `math.c_frexp`.
 - Removed deprecated `` httpcore.`==` ``.
-- Removed deprecated `std/dom_extensions`.
 - Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that takes wrong argument types.
 - Removed deprecated `osproc.poDemon`, symbol with typo.
 
