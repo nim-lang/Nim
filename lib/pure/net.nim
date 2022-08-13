@@ -227,7 +227,7 @@ template timeoutRead(fd: var SocketHandle, timeout = 500): int =
     pollRead(fd, timeout)
 
 template timeoutWrite(fd: var SocketHandle, timeout = 500): int =
-  when defined(windows):
+  when defined(windows) or defined(lwip):
     var fds = @[fd]
     selectWrite(fds, timeout)
   else:
