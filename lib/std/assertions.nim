@@ -95,27 +95,28 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
     doAssertRaises(ValueError): raise newException(ValueError, "Hello World")
     doAssertRaises(CatchableError): raise newException(ValueError, "Hello World")
     doAssertRaises(AssertionDefect): doAssert false
-  var wrong = false
-  const begin = "expected raising '" & astToStr(exception) & "', instead"
-  const msgEnd = " by: " & astToStr(code)
-  template raisedForeign = raiseAssert(begin & " raised foreign exception" & msgEnd)
-  when Exception is exception:
-    try:
-      if true:
-        code
-      wrong = true
-    except Exception as e: discard
-    except: raisedForeign()
-  else:
-    try:
-      if true:
-        code
-      wrong = true
-    except exception:
-      discard
-    except Exception as e:
-      mixin `$` # alternatively, we could define $cstring in this module
-      raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
-    except: raisedForeign()
-  if wrong:
-    raiseAssert(begin & " nothing was raised" & msgEnd)
+  block:
+    var wrong = false
+    const begin = "expected raising '" & astToStr(exception) & "', instead"
+    const msgEnd = " by: " & astToStr(code)
+    template raisedForeign = raiseAssert(begin & " raised foreign exception" & msgEnd)
+    when Exception is exception:
+      try:
+        if true:
+          code
+        wrong = true
+      except Exception as e: discard
+      except: raisedForeign()
+    else:
+      try:
+        if true:
+          code
+        wrong = true
+      except exception:
+        discard
+      except Exception as e:
+        mixin `$` # alternatively, we could define $cstring in this module
+        raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
+      except: raisedForeign()
+    if wrong:
+      raiseAssert(begin & " nothing was raised" & msgEnd)
