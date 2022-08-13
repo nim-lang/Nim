@@ -106,6 +106,33 @@ suite "RST parsing":
               rnLeaf  'desc2'
       """)
 
+  test "no blank line is required before or after Markdown code block":
+    check(dedent"""
+        Some text
+        ```
+        CodeBlock()
+        ```
+        Other text""".toAst ==
+      dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Some'
+            rnLeaf  ' '
+            rnLeaf  'text'
+          rnParagraph
+            rnCodeBlock
+              [nil]
+              [nil]
+              rnLiteralBlock
+                rnLeaf  '
+        CodeBlock()
+        '
+            rnLeaf  ' '
+            rnLeaf  'Other'
+            rnLeaf  ' '
+            rnLeaf  'text'
+      """)
+
   test "option list has priority over definition list":
     check(dedent"""
         defName
