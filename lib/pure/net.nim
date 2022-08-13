@@ -207,31 +207,31 @@ when defined(nimHasStyleChecks):
 when defined(posix):
   from posix import TPollfd, POLLIN, POLLPRI, POLLOUT, POLLWRBAND, Tnfds
 
-  proc pollRead(socket: var SocketHandle, timeout = 500): int =
+  proc pollRead(fd: var SocketHandle, timeout = 500): int =
     var tpollfd: TPollfd
-    tpollfd.fd = cast[cint](socket)
+    tpollfd.fd = cast[cint](fd)
     tpollfd.events = POLLIN or POLLPRI
     result = posix.poll(addr(tpollfd), Tnfds(1), timeout)
 
-  proc pollWrite(socket: var SocketHandle, timeout = 500): int =
+  proc pollWrite(fd: var SocketHandle, timeout = 500): int =
     var tpollfd: TPollfd
-    tpollfd.fd = cast[cint](socket)
+    tpollfd.fd = cast[cint](fd)
     tpollfd.events = POLLOUT or POLLWRBAND
     result = posix.poll(addr(tpollfd), Tnfds(1), timeout)
 
-template timeoutRead(socket: var SocketHandle, timeout = 500): int =
+template timeoutRead(fd: var SocketHandle, timeout = 500): int =
   when defined(windows):
-    var fds = @[socket.fd]
+    var fds = @[fd]
     selectRead(fds, timeout)
   else:
-    pollRead(socket, timeout)
+    pollRead(fd, timeout)
 
-template timeoutWrite(socket: var SocketHandle, timeout = 500): int =
+template timeoutWrite(fd: var SocketHandle, timeout = 500): int =
   when defined(windows):
-    var fds = @[socket.fd]
+    var fds = @[fd]
     selectWrite(fds, timeout)
   else:
-    pollWrite(socket, timeout)
+    pollWrite(fd, timeout)
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode,
