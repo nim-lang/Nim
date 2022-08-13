@@ -1840,8 +1840,7 @@ when defined(nimV2):
   include system/arc
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: """assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and
-                import `std/assertions`.""".}
+  {.deprecated: "assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/assertions`".}
   import std/assertions
   export assertions
 
@@ -3163,8 +3162,7 @@ import system/widestrs
 export widestrs
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: """io is about to move out of system; use `-d:nimPreviewSlimSystem` and
-                import `std/syncio`.""".}
+  {.deprecated: "io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`".}
   import std/syncio
   export syncio
 
