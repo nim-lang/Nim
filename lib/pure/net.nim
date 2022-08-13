@@ -203,6 +203,36 @@ type
 when defined(nimHasStyleChecks):
   {.pop.}
 
+
+when defined(posix):
+  from posix import TPollfd, POLLIN, POLLPRI, POLLOUT, POLLWRBAND, Tnfds
+
+  proc pollRead(socket: var SocketHandle, timeout = 500): int =
+    var tpollfd: TPollfd
+    tpollfd.fd = cast[cint](socket)
+    tpollfd.events = POLLIN or POLLPRI
+    result = posix.poll(addr(tpollfd), Tnfds(1), timeout)
+
+  proc pollWrite(socket: var SocketHandle, timeout = 500): int =
+    var tpollfd: TPollfd
+    tpollfd.fd = cast[cint](socket)
+    tpollfd.events = POLLOUT or POLLWRBAND
+    result = posix.poll(addr(tpollfd), Tnfds(1), timeout)
+
+template timeoutRead(socket: var SocketHandle, timeout = 500): int =
+  when defined(windows):
+    var fds = @[socket.fd]
+    selectRead(fds, timeout)
+  else:
+    pollRead(socket, timeout)
+
+template timeoutWrite(socket: var SocketHandle, timeout = 500): int =
+  when defined(windows):
+    var fds = @[socket.fd]
+    selectWrite(fds, timeout)
+  else:
+    pollWrite(socket, timeout)
+
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode,
                   flags: set[SocketFlag] = {}) {.gcsafe.}
@@ -1313,8 +1343,7 @@ proc select(readfd: Socket, timeout = 500): int =
   if readfd.hasDataBuffered:
     return 1
 
-  var fds = @[readfd.fd]
-  result = selectRead(fds, timeout)
+  result = timeoutRead(readfd.fd, timeout)
 
 proc isClosed(socket: Socket): bool =
   socket.fd == osInvalidSocket
@@ -2063,8 +2092,7 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   socket.fd.setBlocking(false)
 
   socket.connectAsync(address, port, socket.domain)
-  var s = @[socket.fd]
-  if selectWrite(s, timeout) != 1:
+  if timeoutWrite(socket.fd, timeout) != 1:
     raise newException(TimeoutError, "Call to 'connect' timed out.")
   else:
     let res = getSockOptInt(socket.fd, SOL_SOCKET, SO_ERROR)
