@@ -85,7 +85,7 @@ template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
     onFailedAssert(msg):
       raise (ref MyError)(msg: msg, lineinfo: instantiationInfo(-2))
     doAssertRaises(MyError): doAssert false
-  template failedAssertImpl(msgIMPL: string): untyped {.dirty.} =
+  template failedAssertImpl(msgIMPL: string): untyped {.dirty, override.} =
     let msg = msgIMPL
     code
 
@@ -95,28 +95,27 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
     doAssertRaises(ValueError): raise newException(ValueError, "Hello World")
     doAssertRaises(CatchableError): raise newException(ValueError, "Hello World")
     doAssertRaises(AssertionDefect): doAssert false
-  block:
-    var wrong = false
-    const begin = "expected raising '" & astToStr(exception) & "', instead"
-    const msgEnd = " by: " & astToStr(code)
-    template raisedForeign = raiseAssert(begin & " raised foreign exception" & msgEnd)
-    when Exception is exception:
-      try:
-        if true:
-          code
-        wrong = true
-      except Exception as e: discard
-      except: raisedForeign()
-    else:
-      try:
-        if true:
-          code
-        wrong = true
-      except exception:
-        discard
-      except Exception as e:
-        mixin `$` # alternatively, we could define $cstring in this module
-        raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
-      except: raisedForeign()
-    if wrong:
-      raiseAssert(begin & " nothing was raised" & msgEnd)
+  var wrong = false
+  const begin = "expected raising '" & astToStr(exception) & "', instead"
+  const msgEnd = " by: " & astToStr(code)
+  template raisedForeign {.gensym.} = raiseAssert(begin & " raised foreign exception" & msgEnd)
+  when Exception is exception:
+    try:
+      if true:
+        code
+      wrong = true
+    except Exception as e: discard
+    except: raisedForeign()
+  else:
+    try:
+      if true:
+        code
+      wrong = true
+    except exception:
+      discard
+    except Exception as e:
+      mixin `$` # alternatively, we could define $cstring in this module
+      raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
+    except: raisedForeign()
+  if wrong:
+    raiseAssert(begin & " nothing was raised" & msgEnd)
