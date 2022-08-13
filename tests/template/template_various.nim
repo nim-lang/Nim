@@ -274,10 +274,10 @@ parse9:
 block gensym1:
   template x: untyped = -1
   template t1() =
-    template x: untyped {.gensym.} = 1
+    template x: untyped {.gensym, override.} = 1
     echo x()  # 1
   template t2() =
-    template x: untyped = 1  # defaults to {.inject.}
+    template x: untyped {.override.} = 1  # defaults to {.inject.}
     echo x()  # -1  injected x not available during template definition
   t1()
   t2()
