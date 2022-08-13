@@ -219,7 +219,7 @@ when defined(posix) and not defined(lwip):
     tpollfd.events = POLLOUT or POLLWRBAND
     result = posix.poll(addr(tpollfd), Tnfds(1), timeout)
 
-template timeoutRead(fd: var SocketHandle, timeout = 500): int =
+template timeoutReadImpl(fd: var SocketHandle, timeout = 500): int =
   when defined(windows) or defined(lwip):
     var fds = @[fd]
     selectRead(fds, timeout)
@@ -1338,12 +1338,12 @@ proc hasDataBuffered*(s: Socket): bool =
     if s.isSsl and not result:
       result = s.sslHasPeekChar
 
-proc select(readfd: Socket, timeout = 500): int =
+proc timeoutRead(readfd: Socket, timeout = 500): int =
   ## Used for socket operation timeouts.
   if readfd.hasDataBuffered:
     return 1
 
-  result = timeoutRead(readfd.fd, timeout)
+  result = timeoutReadImpl(readfd.fd, timeout)
 
 proc isClosed(socket: Socket): bool =
   socket.fd == osInvalidSocket
@@ -1458,7 +1458,7 @@ proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
           return min(sslPending, size)
 
     var startTime = getMonoTime()
-    let selRet = select(socket, (timeout - waited.inMilliseconds).int)
+    let selRet = timeoutRead(socket, (timeout - waited.inMilliseconds).int)
     if selRet < 0: raiseOSError(osLastError())
     if selRet != 1:
       raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
