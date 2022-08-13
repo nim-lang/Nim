@@ -204,7 +204,7 @@ when defined(nimHasStyleChecks):
   {.pop.}
 
 
-when defined(posix):
+when defined(posix) and not defined(lwip):
   from posix import TPollfd, POLLIN, POLLPRI, POLLOUT, POLLWRBAND, Tnfds
 
   proc pollRead(fd: var SocketHandle, timeout = 500): int =
@@ -220,7 +220,7 @@ when defined(posix):
     result = posix.poll(addr(tpollfd), Tnfds(1), timeout)
 
 template timeoutRead(fd: var SocketHandle, timeout = 500): int =
-  when defined(windows):
+  when defined(windows) or defined(lwip):
     var fds = @[fd]
     selectRead(fds, timeout)
   else:
