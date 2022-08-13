@@ -2024,7 +2024,7 @@ proc expectString(c: PContext, n: PNode): string =
 proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =
   result = newSym(kind, c.cache.idAnon, nextSymId c.idgen, getCurrOwner(c), info)
   if kind == skTemplate:
-    result.flags.add(sfTemplateRedefinition)
+    incl(result.flags, sfTemplateRedefinition)
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   let macroCall = n[1]
