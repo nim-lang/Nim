@@ -335,6 +335,7 @@ const
   sfBase* = sfDiscriminant
   sfIsSelf* = sfOverriden             # param is 'self'
   sfCustomPragma* = sfRegister        # symbol is custom pragma template
+  sfTemplateRedefinition* = sfExportc # symbol is a redefinition of an earlier template
 
 const
   # getting ready for the future expr/stmt merge
