@@ -547,8 +547,8 @@ proc getWeeksInIsoYear*(y: IsoYear): IsoWeekRange {.since: (1, 5).} =
   ## Returns the number of weeks in the specified ISO 8601 week-based year, which can be
   ## either 53 or 52.
   runnableExamples:
-    assert getWeeksInIsoYear(IsoYear(2000)) == 52
-    assert getWeeksInIsoYear(IsoYear(2001)) == 53
+    assert getWeeksInIsoYear(IsoYear(2019)) == 52
+    assert getWeeksInIsoYear(IsoYear(2020)) == 53
 
   var y = int(y)
 
