@@ -46,7 +46,6 @@ type
     module: PSym
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
-    genResult: bool
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
     deferDetected, tooEarly: bool
     graph: ModuleGraph
@@ -935,7 +934,6 @@ proc transform(c: PTransf, n: PNode): PNode =
                   nkBlockStmt, nkBlockExpr}:
       oldDeferAnchor = c.deferAnchor
       c.deferAnchor = n
-
   case n.kind
   of nkSym:
     result = transformSym(c, n)
@@ -1087,7 +1085,6 @@ proc processTransf(c: PTransf, n: PNode, owner: PSym): PNode =
   # nodes into an empty node.
   if nfTransf in n.flags: return n
   pushTransCon(c, newTransCon(owner))
-  c.genResult = c.getCurrOwner().kind in routineKinds and c.transCon.owner.ast.len > resultPos and c.transCon.owner.ast[resultPos] != nil
   result = transform(c, n)
   popTransCon(c)
   incl(result.flags, nfTransf)
