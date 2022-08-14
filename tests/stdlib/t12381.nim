@@ -20,5 +20,6 @@ for i in 0..<100000:
     let e = getCurrentException()
     echo e.name, ": ", e.msg
     if e.msg != "Connection refused":
+      doAssert false
       echo "break=", i
       break
