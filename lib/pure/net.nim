@@ -207,31 +207,25 @@ when defined(nimHasStyleChecks):
 when defined(posix) and not defined(lwip):
   from posix import TPollfd, POLLIN, POLLPRI, POLLOUT, POLLWRBAND, Tnfds
 
-  proc pollRead(fd: var SocketHandle, timeout = 500): int =
+proc timeoutRead(fd: var SocketHandle, timeout = 500): int =
+  when defined(windows) or defined(lwip):
+    var fds = @[fd]
+    selectRead(fds, timeout)
+  else:
     var tpollfd: TPollfd
     tpollfd.fd = cast[cint](fd)
     tpollfd.events = POLLIN or POLLPRI
     result = posix.poll(addr(tpollfd), Tnfds(1), timeout)
 
-  proc pollWrite(fd: var SocketHandle, timeout = 500): int =
-    var tpollfd: TPollfd
-    tpollfd.fd = cast[cint](fd)
-    tpollfd.events = POLLOUT or POLLWRBAND
-    result = posix.poll(addr(tpollfd), Tnfds(1), timeout)
-
-template timeoutReadImpl(fd: var SocketHandle, timeout = 500): int =
-  when defined(windows) or defined(lwip):
-    var fds = @[fd]
-    selectRead(fds, timeout)
-  else:
-    pollRead(fd, timeout)
-
-template timeoutWrite(fd: var SocketHandle, timeout = 500): int =
+proc timeoutWrite(fd: var SocketHandle, timeout = 500): int =
   when defined(windows) or defined(lwip):
     var fds = @[fd]
     selectWrite(fds, timeout)
   else:
-    pollWrite(fd, timeout)
+    var tpollfd: TPollfd
+    tpollfd.fd = cast[cint](fd)
+    tpollfd.events = POLLOUT or POLLWRBAND
+    result = posix.poll(addr(tpollfd), Tnfds(1), timeout)
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode,
@@ -1338,13 +1332,6 @@ proc hasDataBuffered*(s: Socket): bool =
     if s.isSsl and not result:
       result = s.sslHasPeekChar
 
-proc timeoutRead(readfd: Socket, timeout = 500): int =
-  ## Used for socket operation timeouts.
-  if readfd.hasDataBuffered:
-    return 1
-
-  result = timeoutReadImpl(readfd.fd, timeout)
-
 proc isClosed(socket: Socket): bool =
   socket.fd == osInvalidSocket
 
@@ -1458,7 +1445,9 @@ proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
           return min(sslPending, size)
 
     var startTime = getMonoTime()
-    let selRet = timeoutRead(socket, (timeout - waited.inMilliseconds).int)
+    let selRet = if socket.hasDataBuffered: 1
+      else:
+        timeoutRead(socket.fd, (timeout - waited.inMilliseconds).int)
     if selRet < 0: raiseOSError(osLastError())
     if selRet != 1:
       raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
