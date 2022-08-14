@@ -214,14 +214,14 @@ when defined(posix) and not defined(lwip):
     posix.poll(addr(tpollfd), Tnfds(1), timeout)
 
 proc timeoutRead(fd: var SocketHandle, timeout = 500): int =
-  when defined(windows) or defined(lwip):
+  when true or defined(windows) or defined(lwip):
     var fds = @[fd]
     selectRead(fds, timeout)
   else:
     monitorPollEvent(fd, POLLIN or POLLPRI, timeout)
 
 proc timeoutWrite(fd: var SocketHandle, timeout = 500): int =
-  when defined(windows) or defined(lwip):
+  when true or defined(windows) or defined(lwip):
     var fds = @[fd]
     selectWrite(fds, timeout)
   else:
