@@ -207,25 +207,25 @@ when defined(nimHasStyleChecks):
 when defined(posix) and not defined(lwip):
   from posix import TPollfd, POLLIN, POLLPRI, POLLOUT, POLLWRBAND, Tnfds
 
+  template monitorPollEvent(x: var SocketHandle, y: cint, timeout: int): int =
+    var tpollfd: TPollfd
+    tpollfd.fd = cast[cint](x)
+    tpollfd.events = y
+    posix.poll(addr(tpollfd), Tnfds(1), timeout)
+
 proc timeoutRead(fd: var SocketHandle, timeout = 500): int =
   when defined(windows) or defined(lwip):
     var fds = @[fd]
     selectRead(fds, timeout)
   else:
-    var tpollfd: TPollfd
-    tpollfd.fd = cast[cint](fd)
-    tpollfd.events = POLLIN or POLLPRI
-    result = posix.poll(addr(tpollfd), Tnfds(1), timeout)
+    monitorPollEvent(fd, POLLIN or POLLPRI, timeout)
 
 proc timeoutWrite(fd: var SocketHandle, timeout = 500): int =
   when defined(windows) or defined(lwip):
     var fds = @[fd]
     selectWrite(fds, timeout)
   else:
-    var tpollfd: TPollfd
-    tpollfd.fd = cast[cint](fd)
-    tpollfd.events = POLLOUT or POLLWRBAND
-    result = posix.poll(addr(tpollfd), Tnfds(1), timeout)
+    monitorPollEvent(fd, POLLOUT or POLLWRBAND, timeout)
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode,
