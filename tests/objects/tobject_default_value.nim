@@ -1,5 +1,5 @@
 discard """
-  matrix: "-d:nimRangeDefault"
+  matrix: "-d:nimPreviewRangeDefault"
   targets: "c cpp js"
 """
 
