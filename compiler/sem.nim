@@ -565,18 +565,13 @@ proc defaultFieldForArray(c: PContext, recNode: PNode, hasDefault: var bool): PN
     t = skipTypes(base, skipPtrs)
 
   let node = newNode(nkIntLit)
-  node.intVal = toInt(lengthOrd(c.graph.config, recType))
+  node.intVal = toInt64(lengthOrd(c.graph.config, recType))
   result = newTree(nkCall, newSymNode(getSysSym(c.graph, recNode.info, "newDefaultArray"), recNode.info),
-  # var asgnExpr = newTree(nkCall, newSymNode(getCompilerProc(c.graph, "newDefaultArray")),
-          node,
-          objExpr
+          objExpr,
+          node
           )
   result.typ = recNode.typ
   result.flags.incl nfUseDefaultField
-
-  # asgnExpr.sons.setLen(toInt(lengthOrd(c, recType)))
-  # for i in 0..<asgnExpr.sons.len:
-  #   asgnExpr[i] = objExpr
 
 proc defaultFieldForTuple(c: PContext, recNode: PNode, hasDefault: var bool): PNode =
   let recType = recNode.typ.skipTypes({tyGenericInst, tyAlias, tySink})
