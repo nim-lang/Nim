@@ -639,8 +639,6 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
       # asgnExpr.sons.setLen(toInt(lengthOrd(c.graph.config, recType)))
       # for i in 0..<asgnExpr.sons.len:
       #   asgnExpr[i] = objExpr
-      # result.add newTree(nkExprColonExpr, recNode,
-      #   asgnExpr)
     elif recType.kind == tyTuple:
       let asgnExpr = defaultFieldForTuple(c, recNode, hasDefault)
       result.add newTree(nkExprColonExpr, recNode, asgnExpr)
@@ -668,13 +666,9 @@ proc defaultNodeField(c: PContext, a: PNode): PNode =
       result = asgnExpr
   elif aTyp.kind == tyArray and aTyp[1].skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject:
     let asgnExpr = defaultFieldForArray(c, a, hasDefault)
-
-    # asgnExpr.sons.setLen(toInt(lengthOrd(c, recType)))
-    # for i in 0..<asgnExpr.sons.len:
-    #   asgnExpr[i] = objExpr
-    let asgnExpr2 = semExprWithType(c, asgnExpr)
+    let arrayExpr = semExprWithType(c, asgnExpr)
     if hasDefault:
-      result = asgnExpr2
+      result = arrayExpr
   elif aTyp.kind == tyTuple:
     let tupleExpr = defaultFieldForTuple(c, a, hasDefault)
     if hasDefault:
