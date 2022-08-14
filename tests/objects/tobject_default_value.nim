@@ -113,10 +113,6 @@ block:
   doAssert y.value == 12
   doAssert y.data == 73
 
-# block: # object array
-#   var x: ObjectArray
-#   echo x
-
 block:
   var x: Object2
   doAssert x.name.value == 12

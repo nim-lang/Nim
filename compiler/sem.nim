@@ -550,6 +550,59 @@ proc pickCaseBranchIndex(caseExpr, matched: PNode): int =
   if endsWithElse:
     return caseExpr.len - 1
 
+proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: var bool): seq[PNode]
+
+proc defaultFieldForArray(c: PContext, recNode: PNode, hasDefault: var bool): PNode =
+  let recType = recNode.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+  var objExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, recType[1]))
+  objExpr.typ = recType[1].skipTypes({tyGenericInst, tyAlias, tySink})
+  var t = objExpr.typ
+  while true:
+    objExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, hasDefault)
+    let base = t[0]
+    if base == nil:
+      break
+    t = skipTypes(base, skipPtrs)
+
+  let node = newNode(nkIntLit)
+  node.intVal = toInt(lengthOrd(c.graph.config, recType))
+  result = newTree(nkCall, newSymNode(getSysSym(c.graph, recNode.info, "newDefaultArray"), recNode.info),
+  # var asgnExpr = newTree(nkCall, newSymNode(getCompilerProc(c.graph, "newDefaultArray")),
+          node,
+          objExpr
+          )
+  result.typ = recNode.typ
+  result.flags.incl nfUseDefaultField
+
+  # asgnExpr.sons.setLen(toInt(lengthOrd(c, recType)))
+  # for i in 0..<asgnExpr.sons.len:
+  #   asgnExpr[i] = objExpr
+
+proc defaultFieldForTuple(c: PContext, recNode: PNode, hasDefault: var bool): PNode =
+  let recType = recNode.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+  var tupleExpr = newNodeI(nkTupleConstr, recNode.info)
+  tupleExpr.typ = recType
+  for s in recType.sons:
+    let sType = s.skipTypes({tyGenericInst, tyAlias, tySink})
+    if sType.kind == tyObject:
+      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, s))
+      asgnExpr.typ = s
+      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, sType.n, hasDefault)
+      tupleExpr.add asgnExpr
+    elif sType.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
+      let asgnExpr = newIntTypeNode(int64(0), sType)
+      asgnExpr.flags.incl nfUseDefaultField
+      tupleExpr.add asgnExpr
+    elif sType.kind in tyFloat..tyFloat64:
+      let asgnExpr =
+        if sType.kind == tyFloat32:
+          newFloatNode(nkFloat32Lit, BiggestFloat(0.0))
+        else:
+          newFloatNode(nkFloatLit, BiggestFloat(0.0))
+      asgnExpr.flags.incl nfUseDefaultField
+      tupleExpr.add asgnExpr
+  result = tupleExpr
+
 proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: var bool): seq[PNode] =
   case recNode.kind
   of nkRecList:
@@ -581,33 +634,8 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
       asgnExpr.sons.add defaultFieldsForTheUninitialized(c, recType.n, hasDefault)
       result.add newTree(nkExprColonExpr, recNode, asgnExpr)
     elif recType.kind == tyArray and recType[1].skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject:
-      var objExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, recType[1]))
-      objExpr.typ = recType[1].skipTypes({tyGenericInst, tyAlias, tySink})
-      var t = objExpr.typ
-      while true:
-        objExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, hasDefault)
-        let base = t[0]
-        if base == nil:
-          break
-        t = skipTypes(base, skipPtrs)
-
-
-      let node = newNode(nkIntLit)
-      node.intVal = toInt(lengthOrd(c.graph.config, recType))
-      var asgnExpr = newTree(nkCall, newSymNode(getSysSym(c.graph, recNode.info, "newDefaultArray"), recNode.info),
-      # var asgnExpr = newTree(nkCall, newSymNode(getCompilerProc(c.graph, "newDefaultArray")),
-              node,
-              objExpr
-              )
-      asgnExpr.typ = recNode.typ
-      asgnExpr.flags.incl nfUseDefaultField
-
-      # asgnExpr.sons.setLen(toInt(lengthOrd(c, recType)))
-      # for i in 0..<asgnExpr.sons.len:
-      #   asgnExpr[i] = objExpr
-      let asgnExpr2 = semExprWithType(c, asgnExpr)
+      let asgnExpr2 = defaultFieldForArray(c, recNode, hasDefault)
       result.add newTree(nkExprColonExpr, recNode, asgnExpr2)
-
       # asgnExpr.sons.setLen(toInt(lengthOrd(c.graph.config, recType)))
       # for i in 0..<asgnExpr.sons.len:
       #   asgnExpr[i] = objExpr
@@ -640,27 +668,7 @@ proc defaultNodeField(c: PContext, a: PNode): PNode =
     if hasDefault:
       result = asgnExpr
   elif aTyp.kind == tyArray and aTyp[1].skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject:
-    var objExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp[1]))
-    objExpr.typ = aTyp[1].skipTypes({tyGenericInst, tyAlias, tySink})
-    # objExpr.sons.add defaults # todo create clean?
-
-    var t = objExpr.typ
-    while true:
-      objExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, hasDefault)
-      let base = t[0]
-      if base == nil:
-        break
-      t = skipTypes(base, skipPtrs)
-
-    let node = newNode(nkIntLit)
-    node.intVal = toInt(lengthOrd(c.graph.config, aTyp))
-    var asgnExpr = newTree(nkCall, newSymNode(getSysSym(c.graph, a.info, "newDefaultArray"), a.info),
-    # var asgnExpr = newTree(nkCall, newSymNode(getCompilerProc(c.graph, "newDefaultArray")),
-            node,
-            objExpr
-            )
-    asgnExpr.typ = a.typ
-    asgnExpr.flags.incl nfUseDefaultField
+    let asgnExpr = defaultFieldForArray(c, a, hasDefault)
 
     # asgnExpr.sons.setLen(toInt(lengthOrd(c, recType)))
     # for i in 0..<asgnExpr.sons.len:
@@ -669,27 +677,7 @@ proc defaultNodeField(c: PContext, a: PNode): PNode =
     if hasDefault:
       result = asgnExpr2
   elif aTyp.kind == tyTuple:
-    var tupleExpr = newNodeI(nkTupleConstr, a.info)
-    tupleExpr.typ = aTyp
-    for s in aTyp.sons:
-      let sType = s.skipTypes({tyGenericInst, tyAlias, tySink})
-      if sType.kind == tyObject:
-        var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, s))
-        asgnExpr.typ = s
-        asgnExpr.sons.add defaultFieldsForTheUninitialized(c, sType.n, hasDefault)
-        tupleExpr.add asgnExpr
-      elif sType.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
-        let asgnExpr = newIntTypeNode(int64(0), sType)
-        asgnExpr.flags.incl nfUseDefaultField
-        tupleExpr.add asgnExpr
-      elif sType.kind in tyFloat..tyFloat64:
-        let asgnExpr =
-          if sType.kind == tyFloat32:
-            newFloatNode(nkFloat32Lit, BiggestFloat(0.0))
-          else:
-            newFloatNode(nkFloatLit, BiggestFloat(0.0))
-        asgnExpr.flags.incl nfUseDefaultField
-        tupleExpr.add asgnExpr
+    let tupleExpr = defaultFieldForTuple(c, a, hasDefault)
     if hasDefault:
       result = tupleExpr
 
