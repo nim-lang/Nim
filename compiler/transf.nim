@@ -936,20 +936,6 @@ proc transform(c: PTransf, n: PNode): PNode =
       oldDeferAnchor = c.deferAnchor
       c.deferAnchor = n
 
-  # if c.genResult:
-  #   c.genResult = false
-  #   result = newNodeIT(nkStmtList, n.info, nil)
-  #   let toInit = c.getCurrOwner().ast[resultPos]
-
-  #   if toInit.typ != nil:
-  #     let field = defaultNodeField(c.graph, toInit)
-
-  #     if field != nil:
-  #       result.add newTree(nkAsgn, toInit, field)
-
-  #   result.add transform(c, n)
-  #   return result
-
   case n.kind
   of nkSym:
     result = transformSym(c, n)

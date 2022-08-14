@@ -66,11 +66,27 @@ block:
   let y = default(ObjectBase)
   doAssert y.value == 12
 
+  proc hello(): ObjectBase =
+    discard
+
+  let z = hello()
+  doAssert z.value == 12
+
 block:
   var x: Object
   doAssert x.value == 12
   doAssert x.time == 1.2
   doAssert x.scale == 1
+
+  proc hello(): Object =
+    var dummy = 1
+    dummy += 18
+
+  let h1 = hello()
+  doAssert h1.value == 12
+  doAssert h1.time == 1.2
+  doAssert h1.scale == 1
+
   let y = default(Object)
   doAssert y.value == 12
   doAssert y.time == 1.2
