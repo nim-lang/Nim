@@ -573,8 +573,8 @@ when notJSnotNims and not defined(nimSeqsV2):
   template space(s: PGenericSeq): int {.dirty.} =
     s.reserved and not (seqShallowFlag or strlitFlag)
 
-when not defined(nimdoc) and not defined(nimsuggest):
-  proc newDefaultArray*[T](y: T, N: static int): array[N, T] {.compilerproc.} =
+when not defined(nimsuggest):
+  proc newDefaultArray*[T](y: T, N: static int): array[N, T] = # todo fixme
     for i in 0..N-1:
       result[i] = y
 
