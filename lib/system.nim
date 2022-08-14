@@ -3019,17 +3019,6 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   elif x.isNil or y.isNil: result = false
   else: result = strcmp(x, y) == 0
 
-when true: # xxx PRTEMP remove
-  # bug #9149; ensure that 'typeof(nil)' does not match *too* well by using 'typeof(nil) | typeof(nil)',
-  # especially for converters, see tests/overload/tconverter_to_string.nim
-  # Eventually we will be able to remove this hack completely.
-  proc `==`*(x: string; y: typeof(nil) | typeof(nil)): bool {.
-      error: "'nil' is now invalid for 'string'".} =
-    discard
-  proc `==`*(x: typeof(nil) | typeof(nil); y: string): bool {.
-      error: "'nil' is now invalid for 'string'".} =
-    discard
-
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
   ## their current iteration values.
