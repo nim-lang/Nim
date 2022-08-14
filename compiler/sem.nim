@@ -634,16 +634,16 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
       asgnExpr.sons.add defaultFieldsForTheUninitialized(c, recType.n, hasDefault)
       result.add newTree(nkExprColonExpr, recNode, asgnExpr)
     elif recType.kind == tyArray and recType[1].skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject:
-      let asgnExpr2 = defaultFieldForArray(c, recNode, hasDefault)
-      result.add newTree(nkExprColonExpr, recNode, asgnExpr2)
+      let asgnExpr = defaultFieldForArray(c, recNode, hasDefault)
+      result.add newTree(nkExprColonExpr, recNode, asgnExpr)
       # asgnExpr.sons.setLen(toInt(lengthOrd(c.graph.config, recType)))
       # for i in 0..<asgnExpr.sons.len:
       #   asgnExpr[i] = objExpr
       # result.add newTree(nkExprColonExpr, recNode,
       #   asgnExpr)
     elif recType.kind == tyTuple:
-      # doAssert false
-      discard
+      let asgnExpr = defaultFieldForTuple(c, recNode, hasDefault)
+      result.add newTree(nkExprColonExpr, recNode, asgnExpr)
     elif recType.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
       let asgnExpr = newIntTypeNode(int64(0), recType)
       asgnExpr.flags.incl nfUseDefaultField
@@ -654,9 +654,8 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
       asgnExpr.flags.incl nfUseDefaultField
       result.add newTree(nkExprColonExpr, recNode,
               asgnExpr)
-
   else:
-    assert false
+    doAssert false
 
 proc defaultNodeField(c: PContext, a: PNode): PNode =
   let aTyp = a.typ
