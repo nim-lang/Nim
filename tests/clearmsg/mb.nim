@@ -1,2 +1,0 @@
-type
-  typ* = distinct string

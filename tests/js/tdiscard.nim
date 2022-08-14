@@ -1,3 +1,0 @@
-import dom
-
-discard Node()

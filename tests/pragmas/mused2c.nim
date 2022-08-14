@@ -1,1 +1,0 @@
-proc baz*() = discard

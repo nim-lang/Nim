@@ -1,2 +1,0 @@
-import mnamspc2
-

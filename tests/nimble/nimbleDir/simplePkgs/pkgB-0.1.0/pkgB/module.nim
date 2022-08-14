@@ -1,1 +1,0 @@
-proc pkgBTest*(): int64 = 0

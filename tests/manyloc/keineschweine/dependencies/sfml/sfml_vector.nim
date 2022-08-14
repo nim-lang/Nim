@@ -1,1 +1,0 @@
-import sfml, math, strutils

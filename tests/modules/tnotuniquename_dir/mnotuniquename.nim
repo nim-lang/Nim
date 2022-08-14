@@ -1,2 +1,0 @@
-
-proc nested*() = echo "nested"

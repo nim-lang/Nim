@@ -1,6 +1,0 @@
-discard """
-output: "\n"
-"""
-
-echo()
-
