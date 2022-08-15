@@ -140,3 +140,5 @@
 
 - There is a new switch `--nimMainPrefix:prefix` to influence the `NimMain` that the
   compiler produces. This is particularly useful for generating static libraries.
+
+- A new tool, `nimgendeps` is added. It is used to produce a depfile from the input nim file.
