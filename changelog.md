@@ -121,6 +121,12 @@
 
 - Defines the `gcRefc` symbol which allows writing specific code for the refc GC.
 
+- Redefining templates with the same signature implicitly was previously
+  allowed to support certain macro code. A `{.redefine.}` pragma has been
+  added to make this work explicitly, and a warning is generated in the case
+  where it is implicit. This behavior only applies to templates, redefinition
+  is generally disallowed for other symbols.
+
 ## Compiler changes
 
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
