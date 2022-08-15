@@ -44,7 +44,8 @@ block:
   let x10: array[ABC, byte] = block:
     {.gcsafe.}:
       [a: 1, b: 2, c: 3]
-  proc `@`(x: int): int = discard
+  proc `@`(x: float): float = x + 1
+  doAssert @1 == 2
   let x11: seq[byte] = system.`@`([1, 2, 3])
 
 block:
@@ -181,3 +182,14 @@ block: # range types
       
     let foo = Foo(x: (1, @{2: @[], 3: @[{'c', 'd'}]}))
     doAssert foo.x == (range[1u8..5u8](1u8), @{range[1f32..5f32](2f32): @[], 3f32: @[{range['a'..'e']('c'), 'd'}]})
+
+block: # templates
+  template foo: untyped = (1, 2, "abc")
+  let x: (float, byte, cstring) = foo()
+  doAssert x[0] == float(1)
+  doAssert x[1] == byte(2)
+  doAssert x[2] == cstring("abc")
+  let (a, b, c) = x
+  doAssert a == float(1)
+  doAssert b == byte(2)
+  doAssert c == cstring("abc")

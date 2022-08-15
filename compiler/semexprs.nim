@@ -26,7 +26,7 @@ const
   errUndeclaredFieldX = "undeclared field: '$1'"
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
-                     flags: TExprFlags = {}): PNode =
+                     flags: TExprFlags = {}; expectedType: PType = nil): PNode =
   rememberExpansion(c, n.info, s)
   let info = getCallLineInfo(n)
   markUsed(c, info, s)
@@ -36,7 +36,8 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   pushInfoContext(c.config, n.info, s.detailedInfo)
   result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache,
                         c.templInstCounter, c.idgen, efFromHlo in flags)
-  if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
+  if efNoSemCheck notin flags:
+    result = semAfterMacroCall(c, n, result, s, flags, expectedType)
   popInfoContext(c.config)
 
   # XXX: A more elaborate line info rewrite might be needed
@@ -940,15 +941,15 @@ proc setGenericParams(c: PContext, n: PNode) =
   for i in 1..<n.len:
     n[i].typ = semTypeNode(c, n[i], nil)
 
-proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
+proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   if efNoSemCheck notin flags and n.typ != nil and n.typ.kind == tyError:
     return errorNode(c, n)
 
   result = n
   let callee = result[0].sym
   case callee.kind
-  of skMacro: result = semMacroExpr(c, result, orig, callee, flags)
-  of skTemplate: result = semTemplateExpr(c, result, callee, flags)
+  of skMacro: result = semMacroExpr(c, result, orig, callee, flags, expectedType)
+  of skTemplate: result = semTemplateExpr(c, result, callee, flags, expectedType)
   else:
     semFinishOperands(c, result)
     activate(c, result)
@@ -989,7 +990,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       let s = bracketedMacro(n[0])
       if s != nil:
         setGenericParams(c, n[0])
-        return semDirectOp(c, n, flags)
+        return semDirectOp(c, n, flags, expectedType)
 
   var t: PType = nil
   if n[0].typ != nil:
@@ -1056,17 +1057,17 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       return result
   #result = afterCallActions(c, result, nOrig, flags)
   if result[0].kind == nkSym:
-    result = afterCallActions(c, result, nOrig, flags)
+    result = afterCallActions(c, result, nOrig, flags, expectedType)
   else:
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
 
-proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
+proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   # this seems to be a hotspot in the compiler!
   let nOrig = n.copyTree
   #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
-  if result != nil: result = afterCallActions(c, result, nOrig, flags)
+  if result != nil: result = afterCallActions(c, result, nOrig, flags, expectedType)
   else: result = errorNode(c, n)
 
 proc buildEchoStmt(c: PContext, n: PNode): PNode =
@@ -2423,9 +2424,9 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: P
       var arrayType = newType(tyOpenArray, nextTypeId(c.idgen), expected.owner)
       arrayType.rawAddSon(expected[0])
       n[1] = semExpr(c, n[1], flags, arrayType)
-    result = semDirectOp(c, n, flags)
+    result = semDirectOp(c, n, flags, expectedType)
   else:
-    result = semDirectOp(c, n, flags)
+    result = semDirectOp(c, n, flags, expectedType)
 
 proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   # If semCheck is set to false, ``when`` will return the verbatim AST of
@@ -3006,7 +3007,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       #  pretty.checkUse(n[0][1].info, s)
       case s.kind
       of skMacro, skTemplate:
-        result = semDirectOp(c, n, flags)
+        result = semDirectOp(c, n, flags, expectedType)
       of skType:
         # XXX think about this more (``set`` procs)
         let ambig = c.isAmbiguous
@@ -3016,7 +3017,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
           errorUseQualifier(c, n.info, s)
         elif n.len == 1:
           result = semObjConstr(c, n, flags, expectedType)
-        elif s.magic == mNone: result = semDirectOp(c, n, flags)
+        elif s.magic == mNone: result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
       of skProc, skFunc, skMethod, skConverter, skIterator:
         if s.magic == mNone: result = semDirectOp(c, n, flags)
@@ -3029,17 +3030,17 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       # indirectOp can deal with explicit instantiations; the fixes
       # the 'newSeq[T](x)' bug
       setGenericParams(c, n[0])
-      result = semDirectOp(c, n, flags)
+      result = semDirectOp(c, n, flags, expectedType)
     elif nfDotField in n.flags:
-      result = semDirectOp(c, n, flags)
+      result = semDirectOp(c, n, flags, expectedType)
     elif isSymChoice(n[0]):
       let b = asBracketExpr(c, n)
       if b != nil:
-        result = semExpr(c, b, flags)
+        result = semExpr(c, b, flags, expectedType)
       else:
-        result = semDirectOp(c, n, flags)
+        result = semDirectOp(c, n, flags, expectedType)
     else:
-      result = semIndirectOp(c, n, flags)
+      result = semIndirectOp(c, n, flags, expectedType)
 
     if nfDefaultRefsParam in result.flags:
       result = result.copyTree #XXX: Figure out what causes default param nodes to be shared.. (sigmatch bug?)
