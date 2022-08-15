@@ -238,6 +238,10 @@ import
   std/private/miscdollars, tables, strscans
 from highlite import SourceLanguage, getSourceLanguage
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
+
 type
   RstParseOption* = enum     ## options for the RST parser
     roSupportSmilies,         ## make the RST parser support smilies like ``:)``
