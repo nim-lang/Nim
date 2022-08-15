@@ -1833,14 +1833,18 @@ proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
     inc i
   p.idx = i
 
-proc isMarkdownCodeBlock(p: RstParser): bool =
+proc isMarkdownCodeBlock(p: RstParser, idx: int): bool =
+  let tok = p.tok[idx]
   template allowedSymbol: bool =
-    (currentTok(p).symbol[0] == '`' or
-      roPreferMarkdown in p.s.options and currentTok(p).symbol[0] == '~')
+    (tok.symbol[0] == '`' or
+      roPreferMarkdown in p.s.options and tok.symbol[0] == '~')
   result = (roSupportMarkdown in p.s.options and
-            currentTok(p).kind in {tkPunct, tkAdornment} and
+            tok.kind in {tkPunct, tkAdornment} and
             allowedSymbol and
-            currentTok(p).symbol.len >= 3)
+            tok.symbol.len >= 3)
+
+proc isMarkdownCodeBlock(p: RstParser): bool =
+  isMarkdownCodeBlock(p, p.idx)
 
 proc parseInline(p: var RstParser, father: PRstNode) =
   var n: PRstNode  # to be used in `if` condition
@@ -2199,6 +2203,8 @@ proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
   ## check that underline/overline length is enough for the heading.
   ## No support for Unicode.
   if p.tok[adornmentIdx].symbol in ["::", "..", "|"]:
+    return false
+  if isMarkdownCodeBlock(p, adornmentIdx):
     return false
   var headlineLen = 0
   var failure = ""
