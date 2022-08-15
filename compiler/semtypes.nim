@@ -272,17 +272,18 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 2:
     if isRange(n[1]):
       result = semRangeAux(c, n[1], prev)
-      let n = result.n
-      if n[0].kind in {nkCharLit..nkUInt64Lit} and n[0].intVal > 0:
-        incl(result.flags, tfRequiresInit)
-      elif n[1].kind in {nkCharLit..nkUInt64Lit} and n[1].intVal < 0:
-        incl(result.flags, tfRequiresInit)
-      elif n[0].kind in {nkFloatLit..nkFloat64Lit} and
-          n[0].floatVal > 0.0:
-        incl(result.flags, tfRequiresInit)
-      elif n[1].kind in {nkFloatLit..nkFloat64Lit} and
-          n[1].floatVal < 0.0:
-        incl(result.flags, tfRequiresInit)
+      if not isDefined(c.config, "nimPreviewRangeDefault"):
+        let n = result.n
+        if n[0].kind in {nkCharLit..nkUInt64Lit} and n[0].intVal > 0:
+          incl(result.flags, tfRequiresInit)
+        elif n[1].kind in {nkCharLit..nkUInt64Lit} and n[1].intVal < 0:
+          incl(result.flags, tfRequiresInit)
+        elif n[0].kind in {nkFloatLit..nkFloat64Lit} and
+            n[0].floatVal > 0.0:
+          incl(result.flags, tfRequiresInit)
+        elif n[1].kind in {nkFloatLit..nkFloat64Lit} and
+            n[1].floatVal < 0.0:
+          incl(result.flags, tfRequiresInit)
     else:
       if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<":
         localError(c.config, n[0].info, "range types need to be constructed with '..', '..<' is not supported")

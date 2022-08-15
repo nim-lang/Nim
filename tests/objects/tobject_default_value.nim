@@ -129,9 +129,21 @@ block:
   doAssert x.obj.name.time == 1.2
   doAssert x.obj.name.scale == 1
 
-# block: #seq
-#   var x = newSeq[Object](10)
-#   echo x
+when defined(gcArc) or defined(gcOrc):
+  block: #seq
+    var x = newSeq[Object](10)
+    let y = x[0]
+    doAssert y.value == 12
+    doAssert y.time == 1.2
+    doAssert y.scale == 1
+
+  block:
+    var x: seq[Object]
+    setLen(x, 5)
+    let y = x[^1]
+    doAssert y.value == 12
+    doAssert y.time == 1.2
+    doAssert y.scale == 1
 
 block: # array
   var x: array[10, Object]
