@@ -1,5 +1,19 @@
 import std/[osproc, strformat, os, json, strutils, parseopt]
 
+const helpText = """
+Usage:
+  nimgendeps [options] file
+Options:
+  --passNim:options        the compile options passed to the Nim compiler
+  --nim:path               use specified path for nim binary
+  --nimcache:path          use specified path for nimcache
+  --out:path, --o:path     specified path for the generated deps file
+"""
+
+type
+  DepOption = ref object
+    passNim, nimBinary, nimcacheDir, outFile: string
+
 proc handleMakeEscape(src: string): string =
   for i in 0..<src.len:
     if src[i] == '#':
@@ -14,24 +28,26 @@ proc handleMakeEscape(src: string): string =
       result.add '$'
     result.add src[i]
 
-
-proc writeDepfile(src: string, nimOption: var string, outFile: var string) =
+proc writeDepfile(src: string, option: DepOption) =
   let filename = extractFilename(src)
   let jsonFile = filename.changeFileExt("json")
-  let nimcacheDir = getTempDir() / "nimgccdeps"
-  if nimOption.len == 0:
-    nimOption = "c"
-  let (msg, exitCode) = execCmdEx(fmt"nim {nimOption} --d:nimBetterRun --nimcache:{nimcacheDir} {src}")
+  if option.nimcacheDir.len == 0:
+    option.nimcacheDir = getTempDir() / "nimgccdeps"
+  if option.passNim.len == 0:
+    option.passNim = "c"
+  if option.nimBinary.len == 0:
+    option.nimBinary = "nim"
+  let (msg, exitCode) = execCmdEx(fmt"{option.nimBinary} {option.passNim} --d:nimBetterRun --nimcache:{option.nimcacheDir} {src}")
   doAssert exitCode == 0, msg
-  let jsonData = parseJson(readFile(nimcacheDir / jsonFile))
+  let jsonData = parseJson(readFile(option.nimcacheDir / jsonFile))
   let deps = jsonData["depfiles"]
   var f: File
-  if outFile.len == 0:
+  if option.outFile.len == 0:
     f = stdout
   else:
-    f = open(outFile, fmWrite)
+    f = open(option.outFile, fmWrite)
   try:
-    let target = src.handleMakeEscape()
+    let target = src.changeFileExt(when defined(windows): ".exe" else: "").handleMakeEscape()
     f.write(target & ": \\" & '\n')
 
     for i in 0 ..< deps.len-1:
@@ -45,28 +61,45 @@ proc writeDepfile(src: string, nimOption: var string, outFile: var string) =
 
 proc main() =
   var p = initOptParser()
-  var nimOption = ""
+  var passNim = ""
   var outFile = ""
   var src = ""
+  var nimBinary = ""
+  var nimcacheDir = ""
+  var isStop = false
   while true:
     p.next()
     case p.kind
     of cmdEnd: break
     of cmdLongOption:
-      if p.key.cmpIgnoreStyle("passnim") == 0:
-        nimOption = p.val
+      if p.key.cmpIgnoreStyle("passNim") == 0:
+        passNim = p.val
       elif p.key.cmpIgnoreStyle("out") == 0:
         outFile = p.val
+      elif p.key.cmpIgnoreStyle("nim") == 0:
+        nimBinary = p.val
+      elif p.key.cmpIgnoreStyle("nimcache") == 0:
+        nimcacheDir = p.val
+      else:
+        echo "unexpected option: ", p.key
+        isStop = true
+
     of cmdShortOption:
       if p.key == "o":
         outFile = p.val
+      else:
+        echo "unexpected option: ", p.key
+        isStop = true
     of cmdArgument:
       src = p.key
       break
 
-  if src.len == 0:
-    echo "Please provides the input file"
+  if isStop:
+    discard
+  elif src.len == 0:
+    echo helpText
   else:
-    writeDepfile(src, nimOption, outFile)
+    writeDepfile(src, DepOption(passNim: passNim, outFile: outFile,
+                  nimBinary: nimBinary, nimcacheDir: nimcacheDir))
 
 main()
