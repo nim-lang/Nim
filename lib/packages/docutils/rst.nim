@@ -1864,10 +1864,15 @@ proc countTitles(s: PRstSharedState, n: PRstNode) =
         if s.hTitleCnt >= 2:
           break
 
+proc isMarkdownCodeBlock(p: RstParser, idx: int): bool =
+  roSupportMarkdown in p.s.options and p.tok[idx].symbol == "```"
+
 proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
   ## check that underline/overline length is enough for the heading.
   ## No support for Unicode.
   if p.tok[adornmentIdx].symbol in ["::", "..", "|"]:
+    return false
+  if isMarkdownCodeBlock(p, adornmentIdx):
     return false
   var headlineLen = 0
   var failure = ""
@@ -1946,7 +1951,7 @@ proc findPipe(p: RstParser, start: int): bool =
 proc whichSection(p: RstParser): RstNodeKind =
   if currentTok(p).kind in {tkAdornment, tkPunct}:
     # for punctuation sequences that can be both tkAdornment and tkPunct
-    if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
+    if isMarkdownCodeBlock(p, p.idx):
       return rnCodeBlock
     elif currentTok(p).symbol == "::":
       return rnLiteralBlock
