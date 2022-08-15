@@ -573,11 +573,6 @@ when notJSnotNims and not defined(nimSeqsV2):
   template space(s: PGenericSeq): int {.dirty.} =
     s.reserved and not (seqShallowFlag or strlitFlag)
 
-when not defined(nimsuggest):
-  proc newDefaultArray*[T](y: T, N: static int): array[N, T] = # todo fixme
-    for i in 0..N-1:
-      result[i] = y
-
 when notJSnotNims:
   include "system/hti"
 
@@ -3181,3 +3176,7 @@ when notJSnotNims and not defined(nimSeqsV2):
       moveMem(addr y[0], addr x[0], x.len)
       assert y == "abcgh"
     discard
+
+proc newDefaultArray*[T](y: T, N: static int): array[N, T] = # todo fixme
+  for i in 0..N-1:
+    result[i] = y
