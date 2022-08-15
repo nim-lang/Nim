@@ -126,7 +126,9 @@ template await*(f: typed): untyped {.used.} =
     error "await expects Future[T], got " & $typeof(f)
 
 template await*[T](f: Future[T]): auto {.used.} =
-  template yieldFuture {.override.} = yield FutureBase()
+  when not defined(nimHasTemplateRedefinitionPragma):
+    {.pragma: redefine.}
+  template yieldFuture {.redefine.} = yield FutureBase()
 
   when compiles(yieldFuture):
     var internalTmpFuture: FutureBase = f

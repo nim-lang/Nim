@@ -85,7 +85,9 @@ template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
     onFailedAssert(msg):
       raise (ref MyError)(msg: msg, lineinfo: instantiationInfo(-2))
     doAssertRaises(MyError): doAssert false
-  template failedAssertImpl(msgIMPL: string): untyped {.dirty, override.} =
+  when not defined(nimHasTemplateRedefinitionPragma):
+    {.pragma: redefine.}
+  template failedAssertImpl(msgIMPL: string): untyped {.dirty, redefine.} =
     let msg = msgIMPL
     code
 

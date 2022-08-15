@@ -22,7 +22,7 @@ block: # templates can be redefined multiple times
     if not cond: fail(msg)
 
   template assertionFailed(body: untyped) {.dirty.} =
-    template fail(msg: string): typed {.override.} =
+    template fail(msg: string): typed {.redefine.} =
       body
 
   assertionFailed:

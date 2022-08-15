@@ -691,10 +691,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   if proto == nil:
     addInterfaceOverloadableSymAt(c, c.currentScope, s)
   elif not comesFromShadowscope:
-    if {sfTemplateRedefinition, sfGenSym} * s.flags != {}:
-      symTabReplace(c.currentScope.symbols, proto, s)
-    else:
-      wrongRedefinition(c, n.info, proto.name.s, proto.info)
+    if {sfTemplateRedefinition, sfGenSym} * s.flags == {}:
+      #wrongRedefinition(c, n.info, proto.name.s, proto.info)
+      message(c.config, n.info, warnTemplateRedefinition, s.name.s)
+    symTabReplace(c.currentScope.symbols, proto, s)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)
 
