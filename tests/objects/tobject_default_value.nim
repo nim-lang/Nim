@@ -9,11 +9,18 @@ type
   Guess = object
     poi: DateTime
 
+  GuessDistinct = distinct Guess
+
 block:
   var x: Guess
-  discard x
-
   discard Guess()
+
+  var y: GuessDistinct
+
+  discard y
+
+  discard GuessDistinct(x)
+
 
 import mobject_default_value
 
@@ -32,6 +39,11 @@ block:
 type
   ObjectBase = object of RootObj
     value = 12
+
+  ObjectBaseDistinct = distinct ObjectBase
+
+  DinstinctInObject = object
+    data: ObjectBaseDistinct
 
   Object = object of ObjectBase
     time: float = 1.2
@@ -58,6 +70,11 @@ type
   RefInt = ref object of Ref
     data = 73
 
+  Ref2 = ref object of ObjectBase
+
+  RefInt2 = ref object of Ref
+    data = 73
+
 var t {.threadvar.}: Default
 # var m1, m2 {.threadvar.}: Default
 
@@ -75,6 +92,23 @@ block:
 
   let z = hello()
   doAssert z.value == 12
+
+block:
+  var x: ObjectBaseDistinct
+  doAssert ObjectBase(x).value == 12
+  let y = default(ObjectBaseDistinct)
+  doAssert ObjectBase(y).value == 12
+
+  proc hello(): ObjectBaseDistinct =
+    discard
+
+  let z = hello()
+  doAssert ObjectBase(z).value == 12
+
+block:
+  var x: DinstinctInObject
+
+  doAssert ObjectBase(x.data).value == 12
 
 block:
   var x: Object
@@ -114,6 +148,19 @@ block:
 
   var y: RefInt
   new(y)
+  doAssert y.value == 12
+  doAssert y.data == 73
+
+block:
+  var x: Ref2
+  new(x, proc (x: Ref2) {.nimcall.} = discard "call Ref")
+  doAssert x.value == 12, "Ref.value = " & $x.value
+
+  proc call(x: RefInt2) =
+    discard "call RefInt"
+
+  var y: RefInt2
+  new(y, call)
   doAssert y.value == 12
   doAssert y.data == 73
 
@@ -263,6 +310,18 @@ type
     of Yellow:
       time3 = 1.8'f32
       him: int
+
+block:
+  var x = ObjectVarint2(kind: Blue)
+  doAssert x.fill == "123"
+
+block:
+  proc check: ObjectVarint3 =
+    discard
+  var x = check()
+  doAssert x.kind == Blue
+  doAssert x.name == Blue
+  doAssert x.go == 12
 
 block:
   var x: ObjectVarint3

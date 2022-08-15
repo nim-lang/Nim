@@ -552,10 +552,12 @@ proc pickCaseBranchIndex(caseExpr, matched: PNode): int =
 
 proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: var bool): seq[PNode]
 
+const defaultFieldsSkipTypes = {tyGenericInst, tyAlias, tySink, tyDistinct}
+
 proc defaultFieldForArray(c: PContext, recNode: PNode, hasDefault: var bool): PNode =
-  let recType = recNode.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+  let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
   var objExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, recType[1]))
-  objExpr.typ = recType[1].skipTypes({tyGenericInst, tyAlias, tySink})
+  objExpr.typ = recType[1].skipTypes(defaultFieldsSkipTypes)
   var t = objExpr.typ
   while true:
     objExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, hasDefault)
@@ -574,11 +576,11 @@ proc defaultFieldForArray(c: PContext, recNode: PNode, hasDefault: var bool): PN
   result.flags.incl nfUseDefaultField
 
 proc defaultFieldForTuple(c: PContext, recNode: PNode, hasDefault: var bool): PNode =
-  let recType = recNode.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+  let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
   var tupleExpr = newNodeI(nkTupleConstr, recNode.info)
   tupleExpr.typ = recType
   for s in recType.sons:
-    let sType = s.skipTypes({tyGenericInst, tyAlias, tySink})
+    let sType = s.skipTypes(defaultFieldsSkipTypes)
     if sType.kind == tyObject:
       var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, s))
       asgnExpr.typ = s
@@ -618,17 +620,22 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
     result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1], hasDefault)
   of nkSym:
     let field = recNode.sym
-    let recType = recNode.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+    let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
     if field.ast != nil: #Try to use default value
       result.add newTree(nkExprColonExpr, recNode, field.ast)
       hasDefault = true
     elif recType.kind == tyObject:
-      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, recNode.typ))
-      asgnExpr.typ = recNode.typ
+      let recTypeSkipDistinct = recType.skipTypes({tyDistinct})
+      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, recTypeSkipDistinct))
+      asgnExpr.typ = recTypeSkipDistinct
       asgnExpr.flags.incl nfUseDefaultField
       asgnExpr.sons.add defaultFieldsForTheUninitialized(c, recType.n, hasDefault)
+      if recNode.typ.kind == tyDistinct:
+        asgnExpr = newTree(nkConv, newNodeIT(nkType, recNode.info, recNode.typ), asgnExpr)
+        asgnExpr.typ = recNode.typ
+        asgnExpr.flags.incl nfUseDefaultField
       result.add newTree(nkExprColonExpr, recNode, asgnExpr)
-    elif recType.kind == tyArray and recType[1].skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject:
+    elif recType.kind == tyArray and recType[1].skipTypes(defaultFieldsSkipTypes).kind == tyObject:
       let asgnExpr = defaultFieldForArray(c, recNode, hasDefault)
       result.add newTree(nkExprColonExpr, recNode, asgnExpr)
       # asgnExpr.sons.setLen(toInt(lengthOrd(c.graph.config, recType)))
@@ -653,13 +660,17 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
 proc defaultNodeField(c: PContext, a: PNode): PNode =
   let aTyp = a.typ
   var hasDefault: bool
-  if aTyp.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject:
-    var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp))
-    asgnExpr.typ = aTyp
-    asgnExpr.sons.add defaultFieldsForTheUninitialized(c, aTyp.skipTypes({tyGenericInst, tyAlias, tySink}).n, hasDefault)
+  if aTyp.skipTypes(defaultFieldsSkipTypes).kind == tyObject:
+    let aTypSkipDistinct = aTyp.skipTypes({tyDistinct})
+    var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTypSkipDistinct))
+    asgnExpr.typ = aTypSkipDistinct
+    asgnExpr.sons.add defaultFieldsForTheUninitialized(c, aTyp.skipTypes(defaultFieldsSkipTypes).n, hasDefault)
     if hasDefault:
       result = asgnExpr
-  elif aTyp.kind == tyArray and aTyp[1].skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject:
+      if aTyp.kind == tyDistinct:
+        result = newTree(nkConv, newNodeIT(nkType, a.info, aTyp), result)
+        result.typ = aTyp
+  elif aTyp.kind == tyArray and aTyp[1].skipTypes(defaultFieldsSkipTypes).kind == tyObject:
     let asgnExpr = defaultFieldForArray(c, a, hasDefault)
     let arrayExpr = semExprWithType(c, asgnExpr)
     if hasDefault:

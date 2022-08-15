@@ -456,6 +456,24 @@ proc semPrivateAccess(c: PContext, n: PNode): PNode =
   c.currentScope.allowPrivateAccess.add t.sym
   result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
 
+proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
+  result = n
+  let typ = result[1].typ # new(x)
+  if typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyRef and typ.skipTypes({tyGenericInst, tyAlias, tySink})[0].kind == tyObject:
+    var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, result[1].info, typ))
+    asgnExpr.typ = typ
+    var hasDefault: bool
+    var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
+    while true:
+      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, hasDefault)
+      let base = t[0]
+      if base == nil:
+        break
+      t = skipTypes(base, skipPtrs)
+
+    if hasDefault: # todo apply default
+      result = newTree(nkAsgn, result[1], asgnExpr)
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -515,22 +533,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     else:
       result = plugin(c, n)
   of mNew:
-    result = n
-    let typ = result[^1].typ
-    if typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyRef and typ.skipTypes({tyGenericInst, tyAlias, tySink})[0].kind == tyObject:
-      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, result[^1].info, typ))
-      asgnExpr.typ = typ
-      var hasDefault: bool
-      var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
-      while true:
-        asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, hasDefault)
-        let base = t[0]
-        if base == nil:
-          break
-        t = skipTypes(base, skipPtrs)
-
-      if hasDefault: # todo apply default
-        result = newTree(nkAsgn, result[^1], asgnExpr)
+    result = addDefaultFieldForNew(c, n)
   of mNewFinalize:
     # Make sure the finalizer procedure refers to a procedure
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
@@ -555,7 +558,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
           discard "already turned this one into a finalizer"
         else:
           bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
-    result = n
+    result = addDefaultFieldForNew(c, n)
   of mDestroy:
     result = n
     let t = n[1].typ.skipTypes(abstractVar)
