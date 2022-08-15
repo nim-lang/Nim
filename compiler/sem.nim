@@ -581,22 +581,21 @@ proc defaultFieldForTuple(c: PContext, recNode: PNode, hasDefault: var bool): PN
   tupleExpr.typ = recType
   for s in recType.sons:
     let sType = s.skipTypes(defaultFieldsSkipTypes)
+    # todo handle distinct
     if sType.kind == tyObject:
       var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, s))
       asgnExpr.typ = s
       asgnExpr.sons.add defaultFieldsForTheUninitialized(c, sType.n, hasDefault)
       tupleExpr.add asgnExpr
-    elif sType.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
-      let asgnExpr = newIntTypeNode(int64(0), sType)
+    else:
+      let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), s.owner)
+      rawAddSon(asgnType, s)
+      let asgnExpr = newTree(nkCall,
+                      newSymNode(getSysMagic(c.graph, recNode.info, "default", mDefault)),
+                      newNodeIT(nkType, recNode.info, asgnType)
+                     )
       asgnExpr.flags.incl nfUseDefaultField
-      tupleExpr.add asgnExpr
-    elif sType.kind in tyFloat..tyFloat64:
-      let asgnExpr =
-        if sType.kind == tyFloat32:
-          newFloatNode(nkFloat32Lit, BiggestFloat(0.0))
-        else:
-          newFloatNode(nkFloatLit, BiggestFloat(0.0))
-      asgnExpr.flags.incl nfUseDefaultField
+      asgnExpr.typ = s
       tupleExpr.add asgnExpr
   result = tupleExpr
 
