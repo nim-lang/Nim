@@ -631,29 +631,34 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
       asgnExpr.typ = recTypeSkipDistinct
       asgnExpr.flags.incl nfUseDefaultField
       asgnExpr.sons.add defaultFieldsForTheUninitialized(c, recType.n, hasDefault)
-      if recNode.typ.kind == tyDistinct:
-        asgnExpr = newTree(nkConv, newNodeIT(nkType, recNode.info, recNode.typ), asgnExpr)
-        asgnExpr.typ = recNode.typ
-        asgnExpr.flags.incl nfUseDefaultField
-      result.add newTree(nkExprColonExpr, recNode, asgnExpr)
+      if hasDefault:
+        if recNode.typ.kind == tyDistinct:
+          asgnExpr = newTree(nkConv, newNodeIT(nkType, recNode.info, recNode.typ), asgnExpr)
+          asgnExpr.typ = recNode.typ
+          asgnExpr.flags.incl nfUseDefaultField
+        result.add newTree(nkExprColonExpr, recNode, asgnExpr)
     elif recType.kind == tyArray and recType[1].skipTypes(defaultFieldsSkipTypes).kind == tyObject:
       let asgnExpr = defaultFieldForArray(c, recNode, hasDefault)
-      result.add newTree(nkExprColonExpr, recNode, asgnExpr)
+      if hasDefault:
+        result.add newTree(nkExprColonExpr, recNode, asgnExpr)
       # asgnExpr.sons.setLen(toInt(lengthOrd(c.graph.config, recType)))
       # for i in 0..<asgnExpr.sons.len:
       #   asgnExpr[i] = objExpr
     elif recType.kind == tyTuple:
       let asgnExpr = defaultFieldForTuple(c, recNode, hasDefault)
-      result.add newTree(nkExprColonExpr, recNode, asgnExpr)
+      if hasDefault:
+        result.add newTree(nkExprColonExpr, recNode, asgnExpr)
     elif recType.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
       let asgnExpr = newIntTypeNode(int64(0), recType)
       asgnExpr.flags.incl nfUseDefaultField
-      result.add newTree(nkExprColonExpr, recNode,
+      if hasDefault:
+        result.add newTree(nkExprColonExpr, recNode,
               asgnExpr)
     elif recType.kind in tyFloat..tyFloat64:
       let asgnExpr = newFloatTypeNode(BiggestFloat(0.0), recType)
       asgnExpr.flags.incl nfUseDefaultField
-      result.add newTree(nkExprColonExpr, recNode,
+      if hasDefault:
+        result.add newTree(nkExprColonExpr, recNode,
               asgnExpr)
   else:
     doAssert false
