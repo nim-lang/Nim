@@ -140,6 +140,4 @@
   a simple configuration change setting that you can do yourself too. In `$nim/config/nim.cfg`
   replace `pkgs` by `pkgs2`.
 
-
-
 - A new tool, `nimgendeps` is added. It is used to produce a depfile from the input nim file.
