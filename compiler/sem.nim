@@ -648,18 +648,6 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
       let asgnExpr = defaultFieldForTuple(c, recNode, hasDefault)
       if hasDefault:
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
-    elif recType.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
-      let asgnExpr = newIntTypeNode(int64(0), recType)
-      asgnExpr.flags.incl nfUseDefaultField
-      if hasDefault:
-        result.add newTree(nkExprColonExpr, recNode,
-              asgnExpr)
-    elif recType.kind in tyFloat..tyFloat64:
-      let asgnExpr = newFloatTypeNode(BiggestFloat(0.0), recType)
-      asgnExpr.flags.incl nfUseDefaultField
-      if hasDefault:
-        result.add newTree(nkExprColonExpr, recNode,
-              asgnExpr)
   else:
     doAssert false
 

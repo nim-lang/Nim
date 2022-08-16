@@ -789,7 +789,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       typ = errorType(c)
     else:
       typ = semTypeNode(c, n[^2], nil)
-      if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind in {tyRange, tyOrdinal}:
+      if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
         n[^1] = newIntNode(nkIntLit, firstOrd(c.config, typ))
         n[^1].typ = typ
         hasDefaultField = true
