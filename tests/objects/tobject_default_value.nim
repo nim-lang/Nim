@@ -1,5 +1,5 @@
 discard """
-  matrix: "-d:nimPreviewRangeDefault; -d:nimPreviewRangeDefault --mm:orc"
+  matrix: "-d:nimPreviewRangeDefault; -d:nimPreviewRangeDefault --warningAsError:ProveInit --mm:orc"
   targets: "c cpp js"
 """
 
@@ -157,6 +157,18 @@ template main =
       objVal: Obj
 
     doAssert objVal.r == 1
+
+  block: # bug #3608
+    type
+      abc = ref object
+        w: range[2..100]
+
+    proc createABC(): abc =
+      new(result)
+      result.w = 20
+
+    doAssert createABC().w == 20
+  
   block:
     var x: ObjectBase
     doAssert x.value == 12
