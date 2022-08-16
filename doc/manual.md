@@ -6443,7 +6443,7 @@ passing `typeOfProc` as the second argument to `typeof`:
   iterator split(s: string): string = discard
   proc split(s: string): seq[string] = discard
 
-  # since an iterator is the preferred interpretation, `y` has the type `string`:
+  # since an iterator is the preferred interpretation, this has the type `string`:
   assert typeof("a b c".split) is string
 
   assert typeof("a b c".split, typeOfProc) is seq[string]
