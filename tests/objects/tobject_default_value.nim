@@ -82,64 +82,45 @@ block:
   doAssert t.se == 0'i32
 
 block:
-  var x: ObjectBase
-  doAssert x.value == 12
-  let y = default(ObjectBase)
-  doAssert y.value == 12
+  type
+    Color = enum
+      Red, Blue, Yellow
+  
+  type
+    ObjectVarint3 = object # fixme it doesn't work with static
+      case kind: Color = Blue
+      of Red:
+        data1: int = 10
+      of Blue:
+        case name: Color = Blue
+        of Blue:
+          go = 12
+        else:
+          temp = 66
+        fill2 = "123"
+        cry: float
+      of Yellow:
+        time3 = 1.8'f32
+        him: int
+  block:
+    proc check: ObjectVarint3 =
+      discard
+    var x = check()
+    doAssert x.kind == Blue
+    doAssert x.name == Blue
+    doAssert x.go == 12
 
-  proc hello(): ObjectBase =
-    discard
+  block:
+    var x: ObjectVarint3
+    doAssert x.kind == Blue
+    doAssert x.name == Blue
+    doAssert x.go == 12
 
-  let z = hello()
-  doAssert z.value == 12
-
-block:
-  var x: ObjectBaseDistinct
-  doAssert ObjectBase(x).value == 12
-  let y = default(ObjectBaseDistinct)
-  doAssert ObjectBase(y).value == 12
-
-  proc hello(): ObjectBaseDistinct =
-    discard
-
-  let z = hello()
-  doAssert ObjectBase(z).value == 12
-
-block:
-  var x: DinstinctInObject
-
-  doAssert ObjectBase(x.data).value == 12
-
-block:
-  var x: Object
-  doAssert x.value == 12
-  doAssert x.time == 1.2
-  doAssert x.scale == 1
-
-  proc hello(): Object =
-    var dummy = 1
-    dummy += 18
-
-  let h1 = hello()
-  doAssert h1.value == 12
-  doAssert h1.time == 1.2
-  doAssert h1.scale == 1
-
-  let y = default(Object)
-  doAssert y.value == 12
-  doAssert y.time == 1.2
-  doAssert y.scale == 1
-
-  var x1, x2, x3: Object
-  doAssert x1.value == 12
-  doAssert x1.time == 1.2
-  doAssert x1.scale == 1
-  doAssert x2.value == 12
-  doAssert x2.time == 1.2
-  doAssert x2.scale == 1
-  doAssert x3.value == 12
-  doAssert x3.time == 1.2
-  doAssert x3.scale == 1
+  block:
+    var x = ObjectVarint3(kind: Blue, name: Red, temp: 99)
+    doAssert x.kind == Blue
+    doAssert x.name == Red
+    doAssert x.temp == 99
 
 block:
   var x: Ref
@@ -164,172 +145,219 @@ block:
   doAssert y.value == 12
   doAssert y.data == 73
 
-block:
-  var x: Object2
-  doAssert x.name.value == 12
-  doAssert x.name.time == 1.2
-  doAssert x.name.scale == 1
+template main =
+  block:
+    var x: ObjectBase
+    doAssert x.value == 12
+    let y = default(ObjectBase)
+    doAssert y.value == 12
 
-block:
-  var x: Object3
-  doAssert x.obj.name.value == 12
-  doAssert x.obj.name.time == 1.2
-  doAssert x.obj.name.scale == 1
+    proc hello(): ObjectBase =
+      discard
 
-when defined(gcArc) or defined(gcOrc):
-  block: #seq
-    var x = newSeq[Object](10)
+    let z = hello()
+    doAssert z.value == 12
+
+  block:
+    var x: ObjectBaseDistinct
+    doAssert ObjectBase(x).value == 12
+    let y = default(ObjectBaseDistinct)
+    doAssert ObjectBase(y).value == 12
+
+    proc hello(): ObjectBaseDistinct =
+      discard
+
+    let z = hello()
+    doAssert ObjectBase(z).value == 12
+
+  block:
+    var x: DinstinctInObject
+
+    doAssert ObjectBase(x.data).value == 12
+
+  block:
+    var x: Object
+    doAssert x.value == 12
+    doAssert x.time == 1.2
+    doAssert x.scale == 1
+
+    proc hello(): Object =
+      var dummy = 1
+      dummy += 18
+
+    let h1 = hello()
+    doAssert h1.value == 12
+    doAssert h1.time == 1.2
+    doAssert h1.scale == 1
+
+    let y = default(Object)
+    doAssert y.value == 12
+    doAssert y.time == 1.2
+    doAssert y.scale == 1
+
+    var x1, x2, x3: Object
+    doAssert x1.value == 12
+    doAssert x1.time == 1.2
+    doAssert x1.scale == 1
+    doAssert x2.value == 12
+    doAssert x2.time == 1.2
+    doAssert x2.scale == 1
+    doAssert x3.value == 12
+    doAssert x3.time == 1.2
+    doAssert x3.scale == 1
+
+  block:
+    var x: Object2
+    doAssert x.name.value == 12
+    doAssert x.name.time == 1.2
+    doAssert x.name.scale == 1
+
+  block:
+    var x: Object3
+    doAssert x.obj.name.value == 12
+    doAssert x.obj.name.time == 1.2
+    doAssert x.obj.name.scale == 1
+
+  when nimvm:
+    discard "fixme"
+  else:
+    when defined(gcArc) or defined(gcOrc):
+      block: #seq
+        var x = newSeq[Object](10)
+        let y = x[0]
+        doAssert y.value == 12
+        doAssert y.time == 1.2
+        doAssert y.scale == 1
+
+      block:
+        var x: seq[Object]
+        setLen(x, 5)
+        let y = x[^1]
+        doAssert y.value == 12
+        doAssert y.time == 1.2
+        doAssert y.scale == 1
+
+  block: # array
+    var x: array[10, Object]
     let y = x[0]
     doAssert y.value == 12
     doAssert y.time == 1.2
     doAssert y.scale == 1
 
+  block: # array
+    var x {.noinit.}: array[10, Object]
+    discard x
+
+  block: # tuple
+    var x: ObjectTuple
+    doAssert x.base.value == 12
+    doAssert x.typ == 0
+    doAssert x.obj.time == 1.2
+    doAssert x.obj.date == 0
+    doAssert x.obj.scale == 1
+    doAssert x.obj.value == 12
+
+  block: # tuple in object
+    var x: TupleInObject
+    doAssert x.data.base.value == 12
+    doAssert x.data.typ == 0
+    doAssert x.data.obj.time == 1.2
+    doAssert x.data.obj.date == 0
+    doAssert x.data.obj.scale == 1
+    doAssert x.data.obj.value == 12
+    doAssert x.size == 777
+
+  type
+    ObjectArray = object
+      data: array[10, Object]
+
   block:
-    var x: seq[Object]
-    setLen(x, 5)
-    let y = x[^1]
+    var x: ObjectArray
+    let y = x.data[0]
     doAssert y.value == 12
     doAssert y.time == 1.2
     doAssert y.scale == 1
 
-block: # array
-  var x: array[10, Object]
-  let y = x[0]
-  doAssert y.value == 12
-  doAssert y.time == 1.2
-  doAssert y.scale == 1
 
-block: # array
-  var x {.noinit.}: array[10, Object]
-  discard x
+  block:
+    var x: PrellDeque[int]
+    doAssert x.pendingTasks == 0
 
-block: # tuple
-  var x: ObjectTuple
-  doAssert x.base.value == 12
-  doAssert x.typ == 0
-  doAssert x.obj.time == 1.2
-  doAssert x.obj.date == 0
-  doAssert x.obj.scale == 1
-  doAssert x.obj.value == 12
+  type
+    Color = enum
+      Red, Blue, Yellow
 
-block: # tuple in object
-  var x: TupleInObject
-  doAssert x.data.base.value == 12
-  doAssert x.data.typ == 0
-  doAssert x.data.obj.time == 1.2
-  doAssert x.data.obj.date == 0
-  doAssert x.data.obj.scale == 1
-  doAssert x.data.obj.value == 12
-  doAssert x.size == 777
-
-type
-  ObjectArray = object
-    data: array[10, Object]
-
-block:
-  var x: ObjectArray
-  let y = x.data[0]
-  doAssert y.value == 12
-  doAssert y.time == 1.2
-  doAssert y.scale == 1
-
-
-block:
-  var x: PrellDeque[int]
-  doAssert x.pendingTasks == 0
-
-type
-  Color = enum
-    Red, Blue, Yellow
-
-  ObjectVarint = object
-    case kind: Color
-    of Red:
-      data: int = 10
-    of Blue:
-      fill = "123"
-    of Yellow:
-      time = 1.8'f32
-
-  ObjectVarint1 = object
-    case kind: Color = Blue
-    of Red:
-      data1: int = 10
-    of Blue:
-      fill2 = "123"
-      cry: float
-    of Yellow:
-      time3 = 1.8'f32
-      him: int
-
-block:
-  var x = ObjectVarint(kind: Red)
-  doAssert x.kind == Red
-  doAssert x.data == 10
-
-block:
-  var x = ObjectVarint(kind: Blue)
-  doAssert x.kind == Blue
-  doAssert x.fill == "123"
-
-block:
-  var x = ObjectVarint(kind: Yellow)
-  doAssert x.kind == Yellow
-  doAssert typeof(x.time) is float32
-
-block:
-  var x: ObjectVarint1
-  doAssert x.kind == Blue
-  doAssert x.fill2 == "123"
-  x.cry = 326
-
-
-type
-  ObjectVarint2 = object
-    case kind: Color
-    of Red:
-      data: int = 10
-    of Blue:
-      fill = "123"
-    of Yellow:
-      time = 1.8'f32
-
-  ObjectVarint3 = object
-    case kind: Color = Blue
-    of Red:
-      data1: int = 10
-    of Blue:
-      case name: Color = Blue
+    ObjectVarint = object
+      case kind: Color
+      of Red:
+        data: int = 10
       of Blue:
-        go = 12
-      else:
-        temp = 66
-      fill2 = "123"
-      cry: float
-    of Yellow:
-      time3 = 1.8'f32
-      him: int
+        fill = "123"
+      of Yellow:
+        time = 1.8'f32
 
-block:
-  var x = ObjectVarint2(kind: Blue)
-  doAssert x.fill == "123"
+    ObjectVarint1 = object
+      case kind: Color = Blue
+      of Red:
+        data1: int = 10
+      of Blue:
+        fill2 = "123"
+        cry: float
+      of Yellow:
+        time3 = 1.8'f32
+        him: int
 
-block:
-  proc check: ObjectVarint3 =
-    discard
-  var x = check()
-  doAssert x.kind == Blue
-  doAssert x.name == Blue
-  doAssert x.go == 12
+  block:
+    var x = ObjectVarint(kind: Red)
+    doAssert x.kind == Red
+    doAssert x.data == 10
 
-block:
-  var x: ObjectVarint3
-  doAssert x.kind == Blue
-  doAssert x.name == Blue
-  doAssert x.go == 12
+  block:
+    var x = ObjectVarint(kind: Blue)
+    doAssert x.kind == Blue
+    doAssert x.fill == "123"
 
-block:
-  var x = ObjectVarint3(kind: Blue, name: Red, temp: 99)
-  doAssert x.kind == Blue
-  doAssert x.name == Red
-  doAssert x.temp == 99
+  block:
+    var x = ObjectVarint(kind: Yellow)
+    doAssert x.kind == Yellow
+    doAssert typeof(x.time) is float32
+
+  block:
+    var x: ObjectVarint1
+    doAssert x.kind == Blue
+    doAssert x.fill2 == "123"
+    x.cry = 326
+
+  type
+    ObjectVarint2 = object
+      case kind: Color
+      of Red:
+        data: int = 10
+      of Blue:
+        fill = "123"
+      of Yellow:
+        time = 1.8'f32
+
+  block:
+    var x = ObjectVarint2(kind: Blue)
+    doAssert x.fill == "123"
+
+
+proc main1 =
+  var my = @[1, 2, 3, 4, 5]
+  my.setLen(0)
+  my.setLen(5)
+  doAssert my == @[0, 0, 0, 0, 0]
+
+proc main2 =
+  var my = "hello"
+  my.setLen(0)
+  my.setLen(5)
+  doAssert $(@my) == """@['\x00', '\x00', '\x00', '\x00', '\x00']"""
+
+when defined(gcArc) or defined(gcOrc):
+  main1()
+  main2()
+
+static: main()
+main()

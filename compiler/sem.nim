@@ -568,9 +568,10 @@ proc defaultFieldForArray(c: PContext, recNode: PNode, hasDefault: var bool): PN
 
   let node = newNode(nkIntLit)
   node.intVal = toInt64(lengthOrd(c.graph.config, recType))
-  result = newTree(nkCall, newSymNode(getSysSym(c.graph, recNode.info, "newDefaultArray"), recNode.info),
-          objExpr,
-          node
+  result = semExpr(c, newTree(nkCall, newSymNode(getSysSym(c.graph, recNode.info, "newDefaultArray"), recNode.info),
+          node,
+          objExpr
+            )
           )
   result.typ = recNode.typ
   result.flags.incl nfUseDefaultField
@@ -590,10 +591,11 @@ proc defaultFieldForTuple(c: PContext, recNode: PNode, hasDefault: var bool): PN
     else:
       let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), s.owner)
       rawAddSon(asgnType, s)
-      let asgnExpr = newTree(nkCall,
+      let asgnExpr = semExpr(c, newTree(nkCall,
                       newSymNode(getSysMagic(c.graph, recNode.info, "default", mDefault)),
                       newNodeIT(nkType, recNode.info, asgnType)
                      )
+                    )
       asgnExpr.flags.incl nfUseDefaultField
       asgnExpr.typ = s
       tupleExpr.add asgnExpr
