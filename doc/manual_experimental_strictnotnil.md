@@ -61,7 +61,7 @@ You can annotate a type where nil isn't a valid value with `not nil`.
 
 
 If a type can include `nil` as a valid value, dereferencing values of the type
-is checked by the compiler: if a value which might be nil is derefenced, this
+is checked by the compiler: if a value which might be nil is dereferenced, this
 produces a warning by default, you can turn this into an error using
 the compiler options `--warningAsError:strictNotNil`:option:.
 
@@ -76,7 +76,7 @@ Note: test that/TODO for code/manual.
 nilability state
 -----------------
 
-Currently a nilable value can be `Safe`, `MaybeNil` or `Nil` : we use internally `Parent` and `Unreachable` but this is an implementation detail(a parent layer has the actual nilability).
+Currently, a nilable value can be `Safe`, `MaybeNil` or `Nil` : we use internally `Parent` and `Unreachable` but this is an implementation detail(a parent layer has the actual nilability).
 
 - `Safe` means it shouldn't be nil at that point: e.g. after assignment to
   a non-nil value or `not a.isNil` check
@@ -87,7 +87,7 @@ Currently a nilable value can be `Safe`, `MaybeNil` or `Nil` : we use internally
 - `Unreachable` means it shouldn't be possible to access this in this branch:
   so we do generate a warning as well.
 
-We show an error for each dereference (`[]`, `.field`, `[index]` `()` etc) which is of a tracked expression which is
+We show an error for each dereference (`[]`, `.field`, `[index]` `()` etc.) which is of a tracked expression which is
 in `MaybeNil` or `Nil` state.
 
 
@@ -127,14 +127,14 @@ This is also a possible aliasing `move out` (moving out of a current alias set).
 .. code-block:: nim
   call(a)
 
-Here `call` can change a field or element of `a`, so if we have a dependant expression of `a` : e.g. `a.field`. Dependats become `MaybeNil`.
+Here `call` can change a field or element of `a`, so if we have a dependant expression of `a` : e.g. `a.field`. Dependants become `MaybeNil`.
 
 
 branches rules
 ---------------
 
 Branches are the reason we do nil checking like this: with flow checking. 
-Sources of brancing are `if`, `while`, `for`, `and`, `or`, `case`, `try` and combinations with `return`, `break`, `continue` and `raise`
+Sources of branching are `if`, `while`, `for`, `and`, `or`, `case`, `try` and combinations with `return`, `break`, `continue` and `raise`
 
 We create a new layer/"scope" for each branch where we map expressions to nilability. This happens when we "fork": usually on the beginning of a construct.
 When branches "join" we usually unify their expression maps or/and nilabilities.
@@ -164,7 +164,7 @@ We want to track also field(dot) and index(bracket) expressions.
 We track some of those compound expressions which might be nilable as dependants of their bases: `a.field` is changed if `a` is moved (re-assigned), 
 similarly `a[index]` is dependent on `a` and `a.field.field` on `a.field`.
 
-When we move the base, we update dependants to `MaybeNil`. Otherwise we usually start with type nilability.
+When we move the base, we update dependants to `MaybeNil`. Otherwise, we usually start with type nilability.
 
 When we call args, we update the nilability of their dependants to `MaybeNil` as the calls usually can change them.
 We might need to check for `strictFuncs` pure funcs and not do that then.
@@ -172,10 +172,10 @@ We might need to check for `strictFuncs` pure funcs and not do that then.
 For field expressions `a.field`, we calculate an integer value based on a hash of the tree and just accept equivalent trees as equivalent expressions.
 
 For item expression `a[index]`, we also calculate an integer value based on a hash of the tree and accept equivalent trees as equivalent expressions: for static values only.
-For now we support only constant indices: we dont track expression with no-const indices. For those we just report a warning even if they are safe for now: one can use a local variable to workaround. For loops this might be annoying: so one should be able to turn off locally the warning using the `{.warning[StrictNotNil]:off.}`.
+For now, we support only constant indices: we don't track expression with no-const indices. For those we just report a warning even if they are safe for now: one can use a local variable to workaround. For loops this might be annoying: so one should be able to turn off locally the warning using the `{.warning[StrictNotNil]:off.}`.
 
 For bracket expressions, in the future we might count `a[<any>]` as the same general expression.
-This means we should should the index but otherwise handle it the same for assign (maybe "aliasing" all the non-static elements) and differentiate only for static: e.g. `a[0]` and `a[1]`.
+This means we should the index but otherwise handle it the same for assign (maybe "aliasing" all the non-static elements) and differentiate only for static: e.g. `a[0]` and `a[1]`.
 
 element tracking
 -----------------
@@ -193,7 +193,7 @@ unstructured control flow rules
 -------------------------------
 
 Unstructured control flow keywords as `return`, `break`, `continue`, `raise` mean that we jump from a branch out.
-This means that if there is code after the finishing of the branch, it would be ran if one hasn't hit the direct parent branch of those: so it is similar to an `else`. In those cases we should use the reverse nilabilities for the local to the condition expressions. E.g.
+This means that if there is code after the finishing of the branch, it would be run if one hasn't hit the direct parent branch of those: so it is similar to an `else`. In those cases we should use the reverse nilabilities for the local to the condition expressions. E.g.
 
 .. code-block:: nim
   for a in c:
@@ -235,7 +235,7 @@ TODO
 warnings and errors
 ---------------------
 
-We show an error for each dereference (`[]`, `.field`, `[index]` `()` etc) which is of a tracked expression which is
+We show an error for each dereference (`[]`, `.field`, `[index]` `()` etc.) which is of a tracked expression which is
 in `MaybeNil` or `Nil` state.
 
 We might also show a history of the transitions and the reasons for them that might change the nilability of the expression.

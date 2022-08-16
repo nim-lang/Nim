@@ -59,6 +59,10 @@ import
   strutils
 from algorithm import binarySearch
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   SourceLanguage* = enum
     langNone, langNim, langCpp, langCsharp, langC, langJava,

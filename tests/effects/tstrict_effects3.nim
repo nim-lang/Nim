@@ -27,3 +27,20 @@ func mkEnter() =
     helper()
   else:
     let ast = getAst(helper())
+
+
+# bug #6559
+type
+  SafeFn = proc (): void {. raises: [] }
+
+proc ok() {. raises: [] .} = discard
+proc fail() {. raises: [] .}
+
+let f1 : SafeFn = ok
+let f2 : SafeFn = fail
+
+
+proc fail() = discard
+f1()
+f2()
+

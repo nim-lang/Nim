@@ -188,8 +188,10 @@ proc skipRandomNumbers*(s: var Rand) =
 
     proc randomSum(params: tuple[r: Rand, index: int]) {.thread.} =
       var r = params.r
+      var s = 0 # avoid cache thrashing
       for i in 1..numbers:
-        vals[params.index] += r.rand(0..10)
+        s += r.rand(0..10)
+      vals[params.index] = s
 
     var r = initRand(2019)
     for i in 0..<thr.len:

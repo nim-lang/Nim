@@ -23,6 +23,10 @@ from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
 from nodejs import findNodeJs
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
+
 const
   exportSection = skField
   docCmdSkip = "skip"
@@ -1360,8 +1364,9 @@ proc finishGenerateDoc*(d: var PDoc) =
       var str: string
       renderRstToOut(d[], resolved, str)
       entry.json[entry.rstField] = %str
-      d.jEntriesFinal.add entry.json
       d.jEntriesPre[i].rst = nil
+
+    d.jEntriesFinal.add entry.json # generates docs
 
 proc add(d: PDoc; j: JsonItem) =
   if j.json != nil or j.rst != nil: d.jEntriesPre.add j
