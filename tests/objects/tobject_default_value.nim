@@ -146,6 +146,17 @@ block:
   doAssert y.data == 73
 
 template main =
+  block: # bug #16744
+    type
+      R = range[1..10]
+      Obj = object
+        r: R
+
+    var
+      rVal: R  # Works fine
+      objVal: Obj
+
+    doAssert objVal.r == 1
   block:
     var x: ObjectBase
     doAssert x.value == 12
