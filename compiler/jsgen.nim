@@ -2164,7 +2164,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNewSeq: genNewSeq(p, n)
   of mNewSeqOfCap: unaryExpr(p, n, r, "", "[]")
   of mOf: genOf(p, n, r)
-  of mDefault: genDefault(p, n, r)
+  of mDefault, mZeroDefault: genDefault(p, n, r)
   of mReset, mWasMoved: genReset(p, n)
   of mEcho: genEcho(p, n, r)
   of mNLen..mNError, mSlurp, mStaticExec:

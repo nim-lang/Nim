@@ -583,7 +583,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                            tyAlias, tyUserTypeClassInst})
     if seqType.kind == tySequence and seqType.base.requiresInit:
       message(c.config, n.info, warnUnsafeSetLen, typeToString(seqType.base))
-  of mDefault:
+  of mDefault, mZeroDefault:
     result = n
     c.config.internalAssert result[1].typ.kind == tyTypeDesc
     let constructed = result[1].typ.base

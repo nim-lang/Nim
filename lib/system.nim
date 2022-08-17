@@ -1007,6 +1007,9 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
   # note: the doc comment also explains why `default` can't be implemented
   # via: `template default*[T](t: typedesc[T]): T = (var v: T; v)`
 
+func zeroDefault*[T](_: typedesc[T]): T {.magic: "ZeroDefault".} =
+  ## returns the default value of the type `T`.
+
 proc reset*[T](obj: var T) {.noSideEffect.} =
   ## Resets an object `obj` to its default value.
   obj = default(typeof(obj))
