@@ -462,16 +462,15 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
   if typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyRef and typ.skipTypes({tyGenericInst, tyAlias, tySink})[0].kind == tyObject:
     var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, result[1].info, typ))
     asgnExpr.typ = typ
-    var hasDefault: bool
     var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
     while true:
-      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, hasDefault)
+      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n)
       let base = t[0]
       if base == nil:
         break
       t = skipTypes(base, skipPtrs)
 
-    if hasDefault:
+    if asgnExpr.sons.len > 0:
       result = newTree(nkAsgn, result[1], asgnExpr)
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,

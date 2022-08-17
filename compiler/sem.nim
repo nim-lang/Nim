@@ -551,18 +551,18 @@ proc pickCaseBranchIndex(caseExpr, matched: PNode): int =
   if endsWithElse:
     return caseExpr.len - 1
 
-proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: var bool): seq[PNode]
+proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode]
 proc defaultNodeField(c: PContext, a: PNode): PNode
-proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, hasDefault: var bool): PNode
+proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode
 
 const defaultFieldsSkipTypes = {tyGenericInst, tyAlias, tySink, tyDistinct}
 
 
-proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: var bool): seq[PNode] =
+proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
   case recNode.kind
   of nkRecList:
     for field in recNode:
-      result.add defaultFieldsForTheUninitialized(c, field, hasDefault)
+      result.add defaultFieldsForTheUninitialized(c, field)
   of nkRecCase:
     let discriminator = recNode[0]
     var selectedBranch: int
@@ -575,38 +575,38 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
     else: # Try to use default value
       selectedBranch = recNode.pickCaseBranchIndex defaultValue
       result.add newTree(nkExprColonExpr, discriminator, defaultValue)
-    result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1], hasDefault)
+    result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1])
   of nkSym:
     let field = recNode.sym
     let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
     if field.ast != nil: #Try to use default value
       result.add newTree(nkExprColonExpr, recNode, field.ast)
-      hasDefault = true
     elif recType.kind in {tyObject, tyArray}:
-      let asgnExpr = defaultNodeField(c, recNode, recNode.typ, hasDefault)
-      if asgnExpr != nil and hasDefault:
+      let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
+      if asgnExpr != nil:
         asgnExpr.flags.incl nfUseDefaultField
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
     doAssert false
 
-proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, hasDefault: var bool): PNode =
+proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
   let aTypSkip = aTyp.skipTypes(defaultFieldsSkipTypes)
   if aTypSkip.kind == tyObject:
-    let aTypSkipDistinct = aTyp.skipTypes({tyDistinct})
-    var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTypSkipDistinct))
-    asgnExpr.flags.incl nfUseDefaultField
-    asgnExpr.typ = aTypSkipDistinct
-    asgnExpr.sons.add defaultFieldsForTheUninitialized(c, aTyp.skipTypes(defaultFieldsSkipTypes).n, hasDefault)
-    if hasDefault:
+    let child = defaultFieldsForTheUninitialized(c, aTyp.skipTypes(defaultFieldsSkipTypes).n)
+    if child.len > 0:
+      let aTypSkipDistinct = aTyp.skipTypes({tyDistinct})
+      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTypSkipDistinct))
+      asgnExpr.flags.incl nfUseDefaultField
+      asgnExpr.typ = aTypSkipDistinct
+      asgnExpr.sons.add child
       result = semExpr(c, asgnExpr)
       if aTyp.kind == tyDistinct:
         result = newTree(nkConv, newNodeIT(nkType, a.info, aTyp), result)
         result.typ = aTyp
   elif aTypSkip.kind == tyArray:
-    let child = defaultNodeField(c, a, aTypSkip[1], hasDefault)
+    let child = defaultNodeField(c, a, aTypSkip[1])
 
-    if child != nil and hasDefault:
+    if child != nil:
       let node = newNode(nkIntLit)
       node.intVal = toInt64(lengthOrd(c.graph.config, aTypSkip))
       result = semExpr(c, newTree(nkCall, newSymNode(getSysSym(c.graph, a.info, "arrayWith"), a.info),
@@ -617,10 +617,7 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, hasDefault: var bool):
       result.flags.incl nfUseDefaultField
 
 proc defaultNodeField(c: PContext, a: PNode): PNode =
-  var hasDefault: bool
-  let res = defaultNodeField(c, a, a.typ, hasDefault)
-  if hasDefault:
-    result = res
+  result = defaultNodeField(c, a, a.typ)
 
 include semtempl, semgnrc, semstmts, semexprs
 

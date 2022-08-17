@@ -2398,10 +2398,9 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mDefault:
     result = semDirectOp(c, n, flags)
     let typ = result[^1].typ.skipTypes({tyTypeDesc})
-    var hasDefault = false
-    let res = defaultNodeField(c, result[^1], typ, hasDefault)
-    if hasDefault and res != nil:
-      result = res
+    let defaultExpr = defaultNodeField(c, result[^1], typ)
+    if defaultExpr != nil:
+      result = defaultExpr
   else:
     result = semDirectOp(c, n, flags)
 

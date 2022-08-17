@@ -1434,17 +1434,6 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   result.intVal = intVal
   result.typ = typ
 
-proc newFloatTypeNode*(floatVal: BiggestFloat, typ: PType): PNode =
-  let kind = skipTypes(typ, abstractVarRange).kind
-  case kind
-  of tyFloat32:
-    result = newNode(nkFloat32Lit)
-  of tyFloat64, tyFloat:
-    result = newNode(nkFloatLit)
-  else: doAssert false, $kind
-  result.floatVal = floatVal
-  result.typ = typ
-
 proc newIntTypeNode*(intVal: Int128, typ: PType): PNode =
   # XXX: introduce range check
   newIntTypeNode(castToInt64(intVal), typ)
