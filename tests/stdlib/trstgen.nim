@@ -389,7 +389,7 @@ Some chapter
       ~~~~~
 
       """
-    let output9good = input9good.toHtml
+    let output9good = input9good.toHtml(preferRst)
     doAssert "<h1 id=\"level1\">Level1</h1>" in output9good
     doAssert "<h2 id=\"level2\">Level2</h2>" in output9good
     doAssert "<h3 id=\"level3\">Level3</h3>" in output9good
@@ -419,7 +419,7 @@ Some chapter
 
       """
     var error9Bad = new string
-    let output9Bad = input9Bad.toHtml(error=error9Bad)
+    let output9Bad = input9Bad.toHtml(preferRst, error=error9Bad)
     check(error9Bad[] == "input(15, 1) Error: new section expected (section " &
             "level inconsistent: underline ~~~~~ unexpectedly found, while " &
             "the following intermediate section level(s) are missing on " &
