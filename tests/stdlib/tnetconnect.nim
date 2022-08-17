@@ -12,7 +12,7 @@ proc test() =
   proc fn(url: string) =
     let socket = newSocket()
     defer: close(socket)
-    connect(socket, url, Port(443), 5000) # typically 20 could be enough
+    connect(socket, url, Port(443), 10000) # typically 20 could be enough
     send(socket, "GET / HTTP/1.0\nHost: $#\nConnection: close\n\n" % [url])
     wrapSocket(ctx, socket)
 
