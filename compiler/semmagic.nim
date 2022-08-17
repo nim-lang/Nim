@@ -470,7 +470,7 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
         break
       t = skipTypes(base, skipPtrs)
 
-    if asgnExpr.sons.len > 0:
+    if asgnExpr.sons.len > 1:
       result = newTree(nkAsgn, result[1], asgnExpr)
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
