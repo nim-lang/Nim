@@ -1705,7 +1705,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   pushProcCon(c, s)
   addResult(c, n, n.typ[0], skProc)
   s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
-  if s.kind notin {skMacro, skTemplate} and s.magic == mNone:
+  if s.kind notin {skMacro, skTemplate} and s.magic == mNone and sfNoInit notin s.flags:
     addDefaultFieldForResult(c, n, n.typ[0])
   trackProc(c, s, s.ast[bodyPos])
   popProcCon(c)
@@ -2129,7 +2129,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         pushProcCon(c, s)
         addResult(c, n, s.typ[0], skProc)
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
-        if s.kind notin {skMacro, skTemplate} and s.magic == mNone:
+        if s.kind notin {skMacro, skTemplate} and s.magic == mNone and sfNoInit notin s.flags:
           addDefaultFieldForResult(c, n, s.typ[0])
         trackProc(c, s, s.ast[bodyPos])
         popProcCon(c)
@@ -2145,7 +2145,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         maybeAddResult(c, s, n)
         # semantic checking also needed with importc in case used in VM
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
-        if s.kind notin {skMacro, skTemplate} and s.magic == mNone:
+        if s.kind notin {skMacro, skTemplate} and s.magic == mNone and sfNoInit notin s.flags:
           addDefaultFieldForResult(c, n, s.typ[0])
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':

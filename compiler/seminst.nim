@@ -151,6 +151,8 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
       # As body is a sym to the borrowed proc.
       b = semProcBody(c, b)
     result.ast[bodyPos] = hloBody(c, b)
+    if orig.kind notin {skMacro, skTemplate} and orig.magic == mNone and sfNoInit notin orig.flags:
+      addDefaultFieldForResult(c, n, orig.typ[0])
     excl(result.flags, sfForward)
     trackProc(c, result, result.ast[bodyPos])
     dec c.inGenericInst

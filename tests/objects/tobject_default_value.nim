@@ -156,6 +156,7 @@ template main =
       rVal: R  # Works fine
       objVal: Obj
 
+    doAssert rVal == 0 # it should be 1
     doAssert objVal.r == 1
 
   block: # bug #3608
@@ -271,24 +272,25 @@ template main =
     var x {.noinit.}: array[10, Object]
     discard x
 
-  # block: # tuple
-  #   var x: ObjectTuple
-  #   doAssert x.base.value == 12
-  #   doAssert x.typ == 0
-  #   doAssert x.obj.time == 1.2
-  #   doAssert x.obj.date == 0
-  #   doAssert x.obj.scale == 1
-  #   doAssert x.obj.value == 12
+  when false:
+    block: # tuple
+      var x: ObjectTuple
+      doAssert x.base.value == 12
+      doAssert x.typ == 0
+      doAssert x.obj.time == 1.2
+      doAssert x.obj.date == 0
+      doAssert x.obj.scale == 1
+      doAssert x.obj.value == 12
 
-  # block: # tuple in object
-  #   var x: TupleInObject
-  #   doAssert x.data.base.value == 12
-  #   doAssert x.data.typ == 0
-  #   doAssert x.data.obj.time == 1.2
-  #   doAssert x.data.obj.date == 0
-  #   doAssert x.data.obj.scale == 1
-  #   doAssert x.data.obj.value == 12
-  #   doAssert x.size == 777
+    block: # tuple in object
+      var x: TupleInObject
+      doAssert x.data.base.value == 12
+      doAssert x.data.typ == 0
+      doAssert x.data.obj.time == 1.2
+      doAssert x.data.obj.date == 0
+      doAssert x.data.obj.scale == 1
+      doAssert x.data.obj.value == 12
+      doAssert x.size == 777
 
   type
     ObjectArray = object
@@ -364,6 +366,17 @@ template main =
   block:
     var x = ObjectVarint2(kind: Blue)
     doAssert x.fill == "123"
+
+  block:
+    type
+      Default = object
+        id: int = 1
+
+    proc hello[T](): array[10, T] =
+      let x = 1
+      doAssert result[0].id == x
+
+    doAssert hello[Default]()[^1].id == 1
 
 
 proc main1 =

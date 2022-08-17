@@ -42,6 +42,7 @@ proc semOpAux(c: PContext, n: PNode)
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym)
 proc addParams(c: PContext, n: PNode, kind: TSymKind)
 proc maybeAddResult(c: PContext, s: PSym, n: PNode)
+proc addDefaultFieldForResult(c: PContext, n: PNode, t: PType)
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
@@ -582,16 +583,9 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
       result.add newTree(nkExprColonExpr, recNode, field.ast)
       hasDefault = true
     elif recType.kind == tyObject:
-      let recTypeSkipDistinct = recType.skipTypes({tyDistinct})
-      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, recTypeSkipDistinct))
-      asgnExpr.typ = recTypeSkipDistinct
-      asgnExpr.flags.incl nfUseDefaultField
-      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, recType.n, hasDefault)
-      if hasDefault:
-        if recNode.typ.kind == tyDistinct:
-          asgnExpr = newTree(nkConv, newNodeIT(nkType, recNode.info, recNode.typ), asgnExpr)
-          asgnExpr.typ = recNode.typ
-          asgnExpr.flags.incl nfUseDefaultField
+      let asgnExpr = defaultNodeField(c, recNode, recNode.typ, hasDefault)
+      if asgnExpr != nil and hasDefault:
+        asgnExpr.flags.incl nfUseDefaultField
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
     elif recType.kind == tyArray:
       let asgnExpr = defaultNodeField(c, recNode, recType, hasDefault)
@@ -605,6 +599,7 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, hasDefault: var bool):
   if aTypSkip.kind == tyObject:
     let aTypSkipDistinct = aTyp.skipTypes({tyDistinct})
     var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTypSkipDistinct))
+    asgnExpr.flags.incl nfUseDefaultField
     asgnExpr.typ = aTypSkipDistinct
     asgnExpr.sons.add defaultFieldsForTheUninitialized(c, aTyp.skipTypes(defaultFieldsSkipTypes).n, hasDefault)
     if hasDefault:
