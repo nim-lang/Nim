@@ -56,14 +56,14 @@ type
   Object3 = object
     obj: Object2
 
-  ObjectTuple = tuple
-    base: ObjectBase
-    typ: int
-    obj: Object
+  # ObjectTuple = tuple
+  #   base: ObjectBase
+  #   typ: int
+  #   obj: Object
 
-  TupleInObject = object
-    size = 777
-    data: ObjectTuple
+  # TupleInObject = object
+  #   size = 777
+  #   data: ObjectTuple
 
   Ref = ref object of ObjectBase
 
@@ -271,24 +271,24 @@ template main =
     var x {.noinit.}: array[10, Object]
     discard x
 
-  block: # tuple
-    var x: ObjectTuple
-    doAssert x.base.value == 12
-    doAssert x.typ == 0
-    doAssert x.obj.time == 1.2
-    doAssert x.obj.date == 0
-    doAssert x.obj.scale == 1
-    doAssert x.obj.value == 12
+  # block: # tuple
+  #   var x: ObjectTuple
+  #   doAssert x.base.value == 12
+  #   doAssert x.typ == 0
+  #   doAssert x.obj.time == 1.2
+  #   doAssert x.obj.date == 0
+  #   doAssert x.obj.scale == 1
+  #   doAssert x.obj.value == 12
 
-  block: # tuple in object
-    var x: TupleInObject
-    doAssert x.data.base.value == 12
-    doAssert x.data.typ == 0
-    doAssert x.data.obj.time == 1.2
-    doAssert x.data.obj.date == 0
-    doAssert x.data.obj.scale == 1
-    doAssert x.data.obj.value == 12
-    doAssert x.size == 777
+  # block: # tuple in object
+  #   var x: TupleInObject
+  #   doAssert x.data.base.value == 12
+  #   doAssert x.data.typ == 0
+  #   doAssert x.data.obj.time == 1.2
+  #   doAssert x.data.obj.date == 0
+  #   doAssert x.data.obj.scale == 1
+  #   doAssert x.data.obj.value == 12
+  #   doAssert x.size == 777
 
   type
     ObjectArray = object

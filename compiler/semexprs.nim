@@ -2398,17 +2398,10 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mDefault:
     result = semDirectOp(c, n, flags)
     let typ = result[^1].typ.skipTypes({tyTypeDesc})
-    if typ.skipTypes(defaultFieldsSkipTypes).kind == tyObject:
-      let typSkipDistinct = typ.skipTypes({tyDistinct})
-      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, result[^1].info, typSkipDistinct))
-      asgnExpr.typ = typSkipDistinct
-      var hasDefault: bool
-      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, typ.skipTypes(defaultFieldsSkipTypes).n, hasDefault)
-      if hasDefault:
-        result = semObjConstr(c, asgnExpr, flags)
-        if typ.kind == tyDistinct:
-          result = newTree(nkConv, newNodeIT(nkType, n.info, typ), result)
-          result.typ = typ
+    var hasDefault = false
+    let res = defaultNodeField(c, result[^1], typ, hasDefault)
+    if hasDefault and res != nil:
+      result = res
   else:
     result = semDirectOp(c, n, flags)
 

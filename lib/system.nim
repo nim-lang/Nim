@@ -3177,7 +3177,7 @@ when notJSnotNims and not defined(nimSeqsV2):
       assert y == "abcgh"
     discard
 
-proc arrayWith*[T](N: static int, y: T): array[N, T] =
+proc arrayWith*[T](size: static int, y: T): array[size, T] =
   ## Creates a new array filled with `y`.
-  for i in 0..N-1:
+  for i in 0..size-1:
     result[i] = y
