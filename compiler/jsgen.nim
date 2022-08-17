@@ -2274,7 +2274,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, val, a)
     var f = it[0].sym
     if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
-    fieldIDs.incl(lookupFieldAgain(n.typ, f).id)
+    fieldIDs.incl(lookupFieldAgain(n.typ.skipTypes({tyDistinct}), f).id)
 
     let typ = val.typ.skipTypes(abstractInst)
     if a.typ == etyBaseIndex:
