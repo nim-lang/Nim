@@ -597,7 +597,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     var def: PNode = c.graph.emptyNode
     if a[^1].kind == nkEmpty and symkind == skVar and a[^2].typ != nil:
-      let m = copyTree(a[0])
+      # let m = copyTree(a[0])
       # var v = semIdentDef(c, m, symkind, false)
       # if {sfThread, sfNoInit} * v.flags != {}: # todo var m1, m2 {threadvar}
       #   discard # todo init threadvar properly
@@ -1705,7 +1705,8 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   pushProcCon(c, s)
   addResult(c, n, n.typ[0], skProc)
   s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
-  addDefaultFieldForResult(c, n, n.typ[0])
+  if s.kind notin {skMacro, skTemplate} and s.magic == mNone:
+    addDefaultFieldForResult(c, n, n.typ[0])
   trackProc(c, s, s.ast[bodyPos])
   popProcCon(c)
   popOwner(c)

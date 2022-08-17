@@ -551,30 +551,10 @@ proc pickCaseBranchIndex(caseExpr, matched: PNode): int =
     return caseExpr.len - 1
 
 proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: var bool): seq[PNode]
+proc defaultNodeField(c: PContext, a: PNode): PNode
+proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, hasDefault: var bool): PNode
 
 const defaultFieldsSkipTypes = {tyGenericInst, tyAlias, tySink, tyDistinct}
-
-proc defaultFieldForArray(c: PContext, recNode: PNode, hasDefault: var bool): PNode =
-  let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
-  var objExpr = newTree(nkObjConstr, newNodeIT(nkType, recNode.info, recType[1]))
-  objExpr.typ = recType[1].skipTypes(defaultFieldsSkipTypes)
-  var t = objExpr.typ
-  while true:
-    objExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, hasDefault)
-    let base = t[0]
-    if base == nil:
-      break
-    t = skipTypes(base, skipPtrs)
-
-  let node = newNode(nkIntLit)
-  node.intVal = toInt64(lengthOrd(c.graph.config, recType))
-  result = semExpr(c, newTree(nkCall, newSymNode(getSysSym(c.graph, recNode.info, "arrayWith"), recNode.info),
-          node,
-          objExpr
-            )
-          )
-  result.typ = recNode.typ
-  result.flags.incl nfUseDefaultField
 
 proc defaultFieldForTuple(c: PContext, recNode: PNode, hasDefault: var bool): PNode =
   let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
@@ -591,11 +571,10 @@ proc defaultFieldForTuple(c: PContext, recNode: PNode, hasDefault: var bool): PN
     else:
       let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), s.owner)
       rawAddSon(asgnType, s)
-      let asgnExpr = semExpr(c, newTree(nkCall,
+      let asgnExpr = newTree(nkCall,
                       newSymNode(getSysMagic(c.graph, recNode.info, "default", mDefault)),
                       newNodeIT(nkType, recNode.info, asgnType)
                      )
-                    )
       asgnExpr.flags.incl nfUseDefaultField
       asgnExpr.typ = s
       tupleExpr.add asgnExpr
@@ -637,8 +616,8 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
           asgnExpr.typ = recNode.typ
           asgnExpr.flags.incl nfUseDefaultField
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
-    elif recType.kind == tyArray and recType[1].skipTypes(defaultFieldsSkipTypes).kind == tyObject:
-      let asgnExpr = defaultFieldForArray(c, recNode, hasDefault)
+    elif recType.kind == tyArray:
+      let asgnExpr = defaultNodeField(c, recNode, recType, hasDefault)
       if hasDefault:
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
       # asgnExpr.sons.setLen(toInt(lengthOrd(c.graph.config, recType)))
@@ -651,10 +630,9 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
   else:
     doAssert false
 
-proc defaultNodeField(c: PContext, a: PNode): PNode =
-  let aTyp = a.typ
-  var hasDefault: bool
-  if aTyp.skipTypes(defaultFieldsSkipTypes).kind == tyObject:
+proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, hasDefault: var bool): PNode =
+  let aTypSkip = aTyp.skipTypes(defaultFieldsSkipTypes)
+  if aTypSkip.kind == tyObject:
     let aTypSkipDistinct = aTyp.skipTypes({tyDistinct})
     var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTypSkipDistinct))
     asgnExpr.typ = aTypSkipDistinct
@@ -664,15 +642,27 @@ proc defaultNodeField(c: PContext, a: PNode): PNode =
       if aTyp.kind == tyDistinct:
         result = newTree(nkConv, newNodeIT(nkType, a.info, aTyp), result)
         result.typ = aTyp
-  elif aTyp.kind == tyArray and aTyp[1].skipTypes(defaultFieldsSkipTypes).kind == tyObject:
-    let asgnExpr = defaultFieldForArray(c, a, hasDefault)
-    let arrayExpr = semExprWithType(c, asgnExpr)
+  elif aTypSkip.kind == tyArray:
+    let child = defaultNodeField(c, a, aTyp[1], hasDefault)
+
     if hasDefault:
-      result = arrayExpr
-  elif aTyp.kind == tyTuple:
+      let node = newNode(nkIntLit)
+      node.intVal = toInt64(lengthOrd(c.graph.config, aTypSkip))
+      result = newTree(nkCall, newSymNode(getSysSym(c.graph, a.info, "arrayWith"), a.info),
+              node,
+              semExpr(c, child)
+                )
+      result.typ = aTyp
+      result.flags.incl nfUseDefaultField
+  if aTypSkip.kind == tyTuple:
     let tupleExpr = defaultFieldForTuple(c, a, hasDefault)
     if hasDefault:
       result = tupleExpr
+
+proc defaultNodeField(c: PContext, a: PNode): PNode =
+  let aTyp = a.typ
+  var hasDefault: bool
+  defaultNodeField(c, a, a.typ, hasDefault)
 
 include semtempl, semgnrc, semstmts, semexprs
 
