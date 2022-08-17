@@ -1607,7 +1607,8 @@ proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
     addParamOrResult(c, c.p.resultSym, owner)
 
 proc addDefaultFieldForResult(c: PContext, n: PNode, t: PType) =
-  if t != nil and n.len > resultPos and n[resultPos] != nil:
+  if t != nil and n.len > resultPos and n[resultPos] != nil and
+                                c.config.cmd notin cmdDocLike:
     var field = defaultNodeField(c, n[resultPos])
     if field != nil:
       field = semExpr(c, field)

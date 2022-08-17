@@ -568,7 +568,7 @@ proc defaultFieldForArray(c: PContext, recNode: PNode, hasDefault: var bool): PN
 
   let node = newNode(nkIntLit)
   node.intVal = toInt64(lengthOrd(c.graph.config, recType))
-  result = semExpr(c, newTree(nkCall, newSymNode(getSysSym(c.graph, recNode.info, "newDefaultArray"), recNode.info),
+  result = semExpr(c, newTree(nkCall, newSymNode(getSysSym(c.graph, recNode.info, "arrayWith"), recNode.info),
           node,
           objExpr
             )
