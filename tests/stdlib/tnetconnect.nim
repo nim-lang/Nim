@@ -20,8 +20,8 @@ proc test() =
   # * Call to 'connect' timed out. [TimeoutError]
   # * No route to host [OSError]
   try:
-    fn("www.nim-lang.org")
-  except TimeoutError, OSError:
     fn("www.google.com")
+  except TimeoutError, OSError:
+    fn("www.nim-lang.org")
 
 test()

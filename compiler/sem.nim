@@ -582,14 +582,10 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, hasDefault: v
     if field.ast != nil: #Try to use default value
       result.add newTree(nkExprColonExpr, recNode, field.ast)
       hasDefault = true
-    elif recType.kind == tyObject:
+    elif recType.kind in {tyObject, tyArray}:
       let asgnExpr = defaultNodeField(c, recNode, recNode.typ, hasDefault)
       if asgnExpr != nil and hasDefault:
         asgnExpr.flags.incl nfUseDefaultField
-        result.add newTree(nkExprColonExpr, recNode, asgnExpr)
-    elif recType.kind == tyArray:
-      let asgnExpr = defaultNodeField(c, recNode, recType, hasDefault)
-      if asgnExpr != nil and hasDefault:
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
     doAssert false
