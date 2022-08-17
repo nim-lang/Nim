@@ -198,8 +198,7 @@ static C library.
 
 Create a ``host.html`` file with the following content:
 
-.. code-block::
-
+  ```
   <html><body>
   <script type="text/javascript">
   function addTwoIntegers(a, b)
@@ -209,6 +208,7 @@ Create a ``host.html`` file with the following content:
   </script>
   <script type="text/javascript" src="calculator.js"></script>
   </body></html>
+  ```
 
 Create a ``calculator.nim`` file with the following content (or reuse the one
 from the previous section):

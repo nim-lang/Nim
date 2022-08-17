@@ -219,15 +219,15 @@ Command-line settings have priority over configuration file settings.
 The default build of a project is a `debug build`:idx:. To compile a
 `release build`:idx: define the `release` symbol:
 
-.. code:: cmd
-
+  ```cmd
   nim c -d:release myproject.nim
+  ```
 
 To compile a `dangerous release build`:idx: define the `danger` symbol:
 
-.. code:: cmd
-
+  ```cmd
   nim c -d:danger myproject.nim
+  ```
 
 
 Search path handling
@@ -281,9 +281,9 @@ Compiler Selection
 
 To change the compiler from the default compiler (at the command line):
 
-.. code:: cmd
-
+  ```cmd
   nim c --cc:llvm_gcc --compile_only myfile.nim
+  ```
 
 This uses the configuration defined in ``config\nim.cfg`` for `llvm_gcc`:cmd:.
 
@@ -303,18 +303,18 @@ Cross-compilation
 
 To cross compile, use for example:
 
-.. code:: cmd
-
+  ```cmd
   nim c --cpu:i386 --os:linux --compileOnly --genScript myproject.nim
+  ```
 
 Then move the C code and the compile script `compile_myproject.sh`:cmd: to your
 Linux i386 machine and run the script.
 
 Another way is to make Nim invoke a cross compiler toolchain:
 
-.. code:: cmd
-
+  ```cmd
   nim c --cpu:arm --os:linux myproject.nim
+  ```
 
 For cross compilation, the compiler invokes a C compiler named
 like `$cpu.$os.$cc` (for example arm.linux.gcc) and the configuration
@@ -330,22 +330,22 @@ Cross-compilation for Windows
 
 To cross-compile for Windows from Linux or macOS using the MinGW-w64 toolchain:
 
-.. code:: cmd
-
+  ```cmd
   nim c -d:mingw myproject.nim
   # `nim r` also works, running the binary via `wine` or `wine64`:
   nim r -d:mingw --eval:'import os; echo "a" / "b"'
+  ```
 
 Use `--cpu:i386`:option: or `--cpu:amd64`:option: to switch the CPU architecture.
 
 The MinGW-w64 toolchain can be installed as follows:
 
-.. code:: cmd
-
+  ```cmd
   apt install mingw-w64   # Ubuntu
   yum install mingw32-gcc
   yum install mingw64-gcc # CentOS - requires EPEL
   brew install mingw-w64  # OSX
+  ```
 
 
 Cross-compilation for Android
@@ -380,11 +380,11 @@ stuff is done, it's very important to call `NimMain()`:c: in order to
 initialize Nim's garbage collector and to run the top level statements
 of your program.
 
-.. code-block:: Nim
-
+  ```Nim
   proc NimMain() {.importc.}
   proc glfmMain*(display: ptr GLFMDisplay) {.exportc.} =
     NimMain() # initialize garbage collector memory, types and stack
+  ```
 
 
 The name `NimMain` can be influenced via the `--nimMainPrefix:prefix` switch.
@@ -410,11 +410,11 @@ the iOS setup is done, it's very important to call `NimMain()`:c: to
 initialize Nim's garbage collector and to run the top-level statements
 of your program.
 
-.. code-block:: Nim
-
+  ```Nim
   proc NimMain() {.importc.}
   proc glfmMain*(display: ptr GLFMDisplay) {.exportc.} =
     NimMain() # initialize garbage collector memory, types and stack
+  ```
 
 Note: XCode's "make clean" gets confused about the generated nim.c files,
 so you need to clean those files manually to do a clean build.
@@ -430,9 +430,10 @@ Simply add `--os:nintendoswitch`:option:
 to your usual `nim c`:cmd: or `nim cpp`:cmd: command and set the `passC`:option:
 and `passL`:option: command line switches to something like:
 
-.. code-block:: cmd
+  ```cmd
   nim c ... --d:nimAllocPagesViaMalloc --mm:orc --passC="-I$DEVKITPRO/libnx/include" ...
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
+  ```
 
 or setup a ``nim.cfg`` file like so::
 
@@ -448,9 +449,9 @@ The devkitPro setup must be the same as the default with their new installer
 
 For example, with the above-mentioned config:
 
-.. code:: cmd
-
+  ```cmd
   nim c --os:nintendoswitch switchhomebrew.nim
+  ```
 
 This will generate a file called ``switchhomebrew.elf`` which can then be turned into
 an nro file with the `elf2nro`:cmd: tool in the devkitPro release. Examples can be found at
@@ -475,15 +476,15 @@ instance of the GC per process/address space. This instance is contained in
 ``nimrtl.dll``. This means that every generated Nim DLL depends
 on ``nimrtl.dll``. To generate the "nimrtl.dll" file, use the command:
 
-.. code:: cmd
-
+  ```cmd
   nim c -d:release lib/nimrtl.nim
+  ```
 
 To link against ``nimrtl.dll`` use the command:
 
-.. code:: cmd
-
+  ```cmd
   nim c -d:useNimRtl myprog.nim
+  ```
 
 **Note**: Currently the creation of ``nimrtl.dll`` with thread support has
 never been tested and is unlikely to work!
@@ -578,9 +579,9 @@ can be prevented and then via `--passL`:option: the static library can be linked
 against. For instance, to link statically against Lua this command might work
 on Linux:
 
-.. code:: cmd
-
+  ```cmd
   nim c --dynlibOverride:lua --passL:liblua.lib program.nim
+  ```
 
 
 Backend language options
@@ -635,9 +636,9 @@ embedded microprocessors with only a few kilobytes of memory.
 A good start is to use the `any` operating target together with the
 `malloc` memory allocator and the `arc` garbage collector. For example:
 
-.. code:: cmd
-
-   nim c --os:any --mm:arc -d:useMalloc [...] x.nim
+  ```cmd
+  nim c --os:any --mm:arc -d:useMalloc [...] x.nim
+  ```
 
 - `--mm:arc`:option: will enable the reference counting memory management instead
   of the default garbage collector. This enables Nim to use heap memory which
@@ -760,28 +761,32 @@ passed to subroutines. The compiler does not copy strings that are a result of
 a procedure call, because the callee returns a new string anyway.
 Thus it is efficient to do:
 
-.. code-block:: Nim
+  ```Nim
   var s = procA() # assignment will not copy the string; procA allocates a new
                   # string already
+  ```
 
 However, it is not efficient to do:
 
-.. code-block:: Nim
+  ```Nim
   var s = varA    # assignment has to copy the whole string into a new buffer!
+  ```
 
 For `let` symbols a copy is not always necessary:
 
-.. code-block:: Nim
+  ```Nim
   let s = varA    # may only copy a pointer if it safe to do so
+  ```
 
 
 If you know what you're doing, you can also mark single-string (or sequence)
 objects as `shallow`:idx:\:
 
-.. code-block:: Nim
+  ```Nim
   var s = "abc"
   shallow(s) # mark 's' as a shallow string
   var x = s  # now might not copy the string!
+  ```
 
 Usage of `shallow` is always safe once you know the string won't be modified
 anymore, similar to Ruby's `freeze`:idx:.
@@ -791,7 +796,7 @@ The compiler optimizes string case statements: A hashing scheme is used for them
 if several different string constants are used. So code like this is reasonably
 efficient:
 
-.. code-block:: Nim
+  ```Nim
   case normalize(k.key)
   of "name": c.name = v
   of "displayname": c.displayName = v
@@ -807,3 +812,4 @@ efficient:
     else: quit(errorStr(p, "expected: console or gui"))
   of "license": c.license = UnixToNativePath(k.value)
   else: quit(errorStr(p, "unknown variable: " & k.key))
+  ```
