@@ -94,10 +94,8 @@ type
 proc extractItems(x: TocEntry; heading: cstring; items: var seq[Element]) =
   if x == nil: return
   if x.heading != nil and x.heading.textContent == heading:
-    let itl = items.len
-    setLen(items, itl + x.kids.len)
     for i in 0..<x.kids.len:
-      items[itl+i] = x.kids[i].heading
+      items.add x.kids[i].heading
   else:
     for k in x.kids:
       extractItems(k, heading, items)
@@ -134,8 +132,7 @@ proc toHtml(x: TocEntry; isRoot=false): Element =
   if ul.len != 0: result.add ul
   if result.len == 0: result = nil
 
-proc isWhitespace(text: cstring): bool {.asmNoStackFrame.} =
-  {.emit: """return !/\S/.test(`text`);""".}
+proc isWhitespace(text: cstring): bool {.importcpp: r"!/\S/.test(#)".}
 
 proc isWhitespace(x: Element): bool =
   x.nodeName == "#text" and x.textContent.isWhitespace or x.nodeName == "#comment"
@@ -203,7 +200,8 @@ proc mergeTocs(orig, news: TocEntry): TocEntry =
   if result == nil:
     result = news
   else:
-    result.kids.add news.kids
+    for i in 0..<news.kids.len:
+      result.kids.add news.kids[i]
 
 proc buildToc(orig: TocEntry; types, procs: seq[Element]): TocEntry =
   var newStuff = TocEntry(heading: nil, kids: @[], doSort: true)
