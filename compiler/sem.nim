@@ -557,6 +557,35 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode
 
 const defaultFieldsSkipTypes = {tyGenericInst, tyAlias, tySink, tyDistinct}
 
+proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): seq[PNode] =
+  case recNode.kind
+  of nkRecList:
+    for field in recNode:
+      result.add defaultFieldsForTuple(c, field, hasDefault)
+  of nkSym:
+    let field = recNode.sym
+    let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
+    if field.ast != nil: #Try to use default value
+      hasDefault = true
+      result.add newTree(nkExprColonExpr, recNode, field.ast)
+    elif recType.kind in {tyObject, tyArray, tyTuple}:
+      let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
+      if asgnExpr != nil:
+        hasDefault = true
+        asgnExpr.flags.incl nfUseDefaultField
+        result.add newTree(nkExprColonExpr, recNode, asgnExpr)
+    else:
+      let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), recType.owner)
+      rawAddSon(asgnType, recType)
+      let asgnExpr = newTree(nkCall,
+                      newSymNode(getSysMagic(c.graph, recNode.info, "zeroDefault", mZeroDefault)),
+                      newNodeIT(nkType, recNode.info, asgnType)
+                    )
+      asgnExpr.flags.incl nfUseDefaultField
+      asgnExpr.typ = recType
+      result.add newTree(nkExprColonExpr, recNode, asgnExpr)
+  else:
+    doAssert false
 
 proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
   case recNode.kind
@@ -617,31 +646,14 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
       result.flags.incl nfUseDefaultField
   elif aTypSkip.kind == tyTuple:
     var hasDefault = false
-    var children: seq[PNode]
-    for s in aTypSkip.sons:
-      let child = defaultNodeField(c, a, s)
-      if child != nil:
-        hasDefault = true
-      children.add child
-    if hasDefault:
-      result = newNodeI(nkTupleConstr, a.info)
-      result.typ = aTyp
-      var i = 0
-      while i < children.len:
-        let s = children[i]
-        if s != nil:
-          result.add s
-        else:
-          let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), aTypSkip[i].owner)
-          rawAddSon(asgnType, aTypSkip[i])
-          let asgnExpr = newTree(nkCall,
-                          newSymNode(getSysMagic(c.graph, a.info, "zeroDefault", mZeroDefault)),
-                          newNodeIT(nkType, a.info, asgnType)
-                        )
-          asgnExpr.flags.incl nfUseDefaultField
-          asgnExpr.typ = aTypSkip[i]
-          result.add asgnExpr
-        inc i
+    if aTypSkip.n != nil:
+      let children = defaultFieldsForTuple(c, aTypSkip.n, hasDefault)
+      if hasDefault and children.len > 0:
+        result = newNodeI(nkTupleConstr, a.info)
+        result.typ = aTyp
+        result.flags.incl nfUseDefaultField
+        result.sons.add children
+        result = semExpr(c, result)
 
 proc defaultNodeField(c: PContext, a: PNode): PNode =
   result = defaultNodeField(c, a, a.typ)

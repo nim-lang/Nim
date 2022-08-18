@@ -23,7 +23,6 @@ const
   errXExpectsOneTypeParam = "'$1' expects one type parameter"
   errArrayExpectsTwoTypeParams = "array expects two type parameters"
   errInvalidVisibilityX = "invalid visibility: '$1'"
-  errInitHereNotAllowed = "initialization not allowed here"
   errXCannotBeAssignedTo = "'$1' cannot be assigned to"
   errIteratorNotAllowed = "iterators can only be defined at the module's top level"
   errXNeedsReturnType = "$1 needs a return type"
@@ -460,13 +459,19 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     var a = n[i]
     if (a.kind != nkIdentDefs): illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
-    if a[^2].kind != nkEmpty:
+    var hasDefaultField = a[^1].kind != nkEmpty
+    if hasDefaultField:
+      a[^1] = semConstExpr(c, a[^1])
+      typ = a[^1].typ
+    elif a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
+      if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
+        a[^1] = newIntNode(nkIntLit, firstOrd(c.config, typ))
+        a[^1].typ = typ
+        hasDefaultField = true
     else:
       localError(c.config, a.info, errTypeExpected)
       typ = errorType(c)
-    if a[^1].kind != nkEmpty:
-      localError(c.config, a[^1].info, errInitHereNotAllowed)
     for j in 0..<a.len - 2:
       var field = newSymG(skField, a[j], c)
       field.typ = typ
@@ -475,7 +480,11 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       if containsOrIncl(check, field.name.id):
         localError(c.config, a[j].info, "attempt to redefine: '" & field.name.s & "'")
       else:
-        result.n.add newSymNode(field)
+        let fSym = newSymNode(field)
+        if hasDefaultField:
+          fSym.sym.ast = a[^1]
+          fSym.sym.ast.flags.incl nfUseDefaultField
+        result.n.add fSym
         addSonSkipIntLit(result, typ, c.idgen)
       styleCheckDef(c, a[j].info, field)
       onDef(field.info, field)
