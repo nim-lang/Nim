@@ -2,14 +2,14 @@ import dom
 import fuzzysearch
 
 
-proc setTheme(theme: cstring) {.exportC.} =
+proc setTheme(theme: cstring) {.exportc.} =
   document.documentElement.setAttribute("data-theme", theme)
   window.localStorage.setItem("theme", theme)
 
 # set `data-theme` attribute early to prevent white flash
 setTheme((let t = window.localStorage.getItem("theme"); if t.isNil: cstring"auto" else: t))
 
-proc onDOMLoaded(e: Event) {.exportC.} =
+proc onDOMLoaded(e: Event) {.exportc.} =
   # set theme select value
   document.getElementById("theme-select").value = window.localStorage.getItem("theme")
 
