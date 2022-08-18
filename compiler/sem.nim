@@ -568,13 +568,15 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): s
     if field.ast != nil: #Try to use default value
       hasDefault = true
       result.add newTree(nkExprColonExpr, recNode, field.ast)
-    elif recType.kind in {tyObject, tyArray, tyTuple}:
-      let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
-      if asgnExpr != nil:
-        hasDefault = true
-        asgnExpr.flags.incl nfUseDefaultField
-        result.add newTree(nkExprColonExpr, recNode, asgnExpr)
     else:
+      if recType.kind in {tyObject, tyArray, tyTuple}:
+        let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
+        if asgnExpr != nil:
+          hasDefault = true
+          asgnExpr.flags.incl nfUseDefaultField
+          result.add newTree(nkExprColonExpr, recNode, asgnExpr)
+          return
+
       let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), recType.owner)
       rawAddSon(asgnType, recType)
       let asgnExpr = newTree(nkCall,
