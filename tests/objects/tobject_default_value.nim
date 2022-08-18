@@ -81,29 +81,30 @@ var t {.threadvar.}: Default
 block:
   doAssert t.se == 0'i32
 
+block: # ARC/ORC cannot bind destructors twice, so it cannot
+      # be moved into main
+  block:
+    var x: Ref
+    new(x)
+    doAssert x.value == 12, "Ref.value = " & $x.value
 
-block:
-  var x: Ref
-  new(x)
-  doAssert x.value == 12, "Ref.value = " & $x.value
+    var y: RefInt
+    new(y)
+    doAssert y.value == 12
+    doAssert y.data == 73
 
-  var y: RefInt
-  new(y)
-  doAssert y.value == 12
-  doAssert y.data == 73
+  block:
+    var x: Ref2
+    new(x, proc (x: Ref2) {.nimcall.} = discard "call Ref")
+    doAssert x.value == 12, "Ref.value = " & $x.value
 
-block:
-  var x: Ref2
-  new(x, proc (x: Ref2) {.nimcall.} = discard "call Ref")
-  doAssert x.value == 12, "Ref.value = " & $x.value
+    proc call(x: RefInt2) =
+      discard "call RefInt"
 
-  proc call(x: RefInt2) =
-    discard "call RefInt"
-
-  var y: RefInt2
-  new(y, call)
-  doAssert y.value == 12
-  doAssert y.data == 73
+    var y: RefInt2
+    new(y, call)
+    doAssert y.value == 12
+    doAssert y.data == 73
 
 template main {.dirty.} =
   block: # bug #16744
@@ -129,7 +130,7 @@ template main {.dirty.} =
       result.w = 20
 
     doAssert createABC().w == 20
-  
+
   block:
     var x: ObjectBase
     doAssert x.value == 12
@@ -138,6 +139,16 @@ template main {.dirty.} =
 
     proc hello(): ObjectBase =
       discard
+
+    let z = hello()
+    doAssert z.value == 12
+  
+  block:
+    var x = new ObjectBase
+    doAssert x.value == 12
+
+    proc hello(): ref ObjectBase =
+      new result
 
     let z = hello()
     doAssert z.value == 12
@@ -191,10 +202,19 @@ template main {.dirty.} =
     doAssert x3.scale == 1
 
   block:
+    var x = new Object
+    doAssert x[] == default(Object)
+
+  block:
     var x: Object2
     doAssert x.name.value == 12
     doAssert x.name.time == 1.2
     doAssert x.name.scale == 1
+
+  block:
+    var x: ref Object2
+    new x
+    doAssert x[] == default(Object2)
 
   block:
     var x: Object3

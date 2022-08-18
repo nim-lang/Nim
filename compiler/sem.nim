@@ -627,7 +627,6 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
     if child.len > 0:
       let aTypSkipDistinct = aTyp.skipTypes({tyDistinct})
       var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTypSkipDistinct))
-      asgnExpr.flags.incl nfUseDefaultField
       asgnExpr.typ = aTypSkipDistinct
       asgnExpr.sons.add child
       result = semExpr(c, asgnExpr)
@@ -645,7 +644,6 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
               node
                 ))
       result.typ = aTyp
-      result.flags.incl nfUseDefaultField
   elif aTypSkip.kind == tyTuple:
     var hasDefault = false
     if aTypSkip.n != nil:
@@ -653,7 +651,6 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
       if hasDefault and children.len > 0:
         result = newNodeI(nkTupleConstr, a.info)
         result.typ = aTyp
-        result.flags.incl nfUseDefaultField
         result.sons.add children
         result = semExpr(c, result)
 
