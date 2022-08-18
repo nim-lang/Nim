@@ -81,46 +81,6 @@ var t {.threadvar.}: Default
 block:
   doAssert t.se == 0'i32
 
-block:
-  type
-    Color = enum
-      Red, Blue, Yellow
-  
-  type
-    ObjectVarint3 = object # fixme it doesn't work with static
-      case kind: Color = Blue
-      of Red:
-        data1: int = 10
-      of Blue:
-        case name: Color = Blue
-        of Blue:
-          go = 12
-        else:
-          temp = 66
-        fill2 = "123"
-        cry: float
-      of Yellow:
-        time3 = 1.8'f32
-        him: int
-  block:
-    proc check: ObjectVarint3 =
-      discard
-    var x = check()
-    doAssert x.kind == Blue
-    doAssert x.name == Blue
-    doAssert x.go == 12
-
-  block:
-    var x: ObjectVarint3
-    doAssert x.kind == Blue
-    doAssert x.name == Blue
-    doAssert x.go == 12
-
-  block:
-    var x = ObjectVarint3(kind: Blue, name: Red, temp: 99)
-    doAssert x.kind == Blue
-    doAssert x.name == Red
-    doAssert x.temp == 99
 
 block:
   var x: Ref
@@ -145,7 +105,7 @@ block:
   doAssert y.value == 12
   doAssert y.data == 73
 
-template main =
+template main {.dirty.} =
   block: # bug #16744
     type
       R = range[1..10]
@@ -368,6 +328,47 @@ template main =
 
   block:
     type
+      Color = enum
+        Red, Blue, Yellow
+  
+    type
+      ObjectVarint3 = object # fixme it doesn't work with static
+        case kind: Color = Blue
+        of Red:
+          data1: int = 10
+        of Blue:
+          case name: Color = Blue
+          of Blue:
+            go = 12
+          else:
+            temp = 66
+          fill2 = "123"
+          cry: float
+        of Yellow:
+          time3 = 1.8'f32
+          him: int
+    block:
+      proc check: ObjectVarint3 =
+        discard
+      var x = check()
+      doAssert x.kind == Blue
+      doAssert x.name == Blue
+      doAssert x.go == 12
+
+    block:
+      var x: ObjectVarint3
+      doAssert x.kind == Blue
+      doAssert x.name == Blue
+      doAssert x.go == 12
+
+    block:
+      var x = ObjectVarint3(kind: Blue, name: Red, temp: 99)
+      doAssert x.kind == Blue
+      doAssert x.name == Red
+      doAssert x.temp == 99
+
+  block:
+    type
       Default = object
         id: int = 1
 
@@ -377,6 +378,49 @@ template main =
 
     doAssert hello[Default]()[^1].id == 1
 
+  block:
+    type
+      Default = tuple
+        id: int = 1
+
+      Default2 = tuple[id: int = 1]
+
+    var x: Default
+    proc hello(): Default2 = discard
+    doAssert hello().id == x.id
+
+  block:
+    type
+      Default = tuple
+        id: int = 1
+        obj: ObjectBase
+        name: string
+
+      Class = object
+        def: Default
+
+      Member = object
+        def: Default = (id: 777, obj: ObjectBase(), name: "fine")
+
+    block:
+      var x: Default
+      doAssert x.id == 1
+      doAssert x.obj == default(ObjectBase)
+      doAssert x.name == ""
+    
+    block:
+      var x: Class
+      doAssert x.def == default(Default)
+      doAssert x.def.id == 1
+      doAssert x.def.obj == default(ObjectBase)
+      doAssert x.def.name == ""
+
+    when not defined(cpp):
+      block:
+        var x: Member
+        doAssert x.def.id == 777
+        doAssert x.def.obj == default(ObjectBase)
+        doAssert x.def.name == "fine"
 
 proc main1 =
   var my = @[1, 2, 3, 4, 5]
