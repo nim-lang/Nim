@@ -1843,45 +1843,73 @@ import system/iterators
 export iterators
 
 
-proc find*[T, S](a: T, item: S): int {.inline.}=
-  ## Returns the first index of `item` in `a` or -1 if not found. This requires
-  ## appropriate `items` and `==` operations to work.
-  result = 0
-  for i in items(a):
-    if i == item: return
-    inc(result)
-  result = -1
+when defined(js):
+  proc find*[T, S](a: T, item: S): int {.importjs: "#.indexOf(#)".} =
+    ## Returns the first index of `item` in `a` or -1 if not found. This requires
+    ## appropriate `items` and `==` operations to work.
 
-proc contains*[T](a: openArray[T], item: T): bool {.inline.}=
-  ## Returns true if `item` is in `a` or false if not found. This is a shortcut
-  ## for `find(a, item) >= 0`.
-  ##
-  ## This allows the `in` operator: `a.contains(item)` is the same as
-  ## `item in a`.
-  ##
-  ## .. code-block:: Nim
-  ##   var a = @[1, 3, 5]
-  ##   assert a.contains(5)
-  ##   assert 3 in a
-  ##   assert 99 notin a
-  return find(a, item) >= 0
+  proc contains*[T](a: openArray[T], item: T): bool {.importjs: "#.includes(#)".} =
+    ## Returns true if `item` is in `a` or false if not found. This is a shortcut
+    ## for `find(a, item) >= 0`.
+    ##
+    ## This allows the `in` operator: `a.contains(item)` is the same as
+    ## `item in a`.
+    ##
+    ## .. code-block:: Nim
+    ##   var a = @[1, 3, 5]
+    ##   assert a.contains(5)
+    ##   assert 3 in a
+    ##   assert 99 notin a
 
-proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
-  ## Returns the last item of `s` and decreases `s.len` by one. This treats
-  ## `s` as a stack and implements the common *pop* operation.
-  runnableExamples:
-    var a = @[1, 3, 5, 7]
-    let b = pop(a)
-    assert b == 7
-    assert a == @[1, 3, 5]
+  proc pop*[T](s: var seq[T]): T {.importjs: "#.pop()".} =
+    ## Returns the last item of `s` and decreases `s.len` by one. This treats
+    ## `s` as a stack and implements the common *pop* operation.
+    runnableExamples:
+      var a = @[1, 3, 5, 7]
+      let b = pop(a)
+      assert b == 7
+      assert a == @[1, 3, 5]
 
-  var L = s.len-1
-  when defined(nimV2):
-    result = move s[L]
-    shrink(s, L)
-  else:
-    result = s[L]
-    setLen(s, L)
+else:
+  proc find*[T, S](a: T, item: S): int {.inline.}=
+    ## Returns the first index of `item` in `a` or -1 if not found. This requires
+    ## appropriate `items` and `==` operations to work.
+    result = 0
+    for i in items(a):
+      if i == item: return
+      inc(result)
+    result = -1
+
+  proc contains*[T](a: openArray[T], item: T): bool {.inline.}=
+    ## Returns true if `item` is in `a` or false if not found. This is a shortcut
+    ## for `find(a, item) >= 0`.
+    ##
+    ## This allows the `in` operator: `a.contains(item)` is the same as
+    ## `item in a`.
+    ##
+    ## .. code-block:: Nim
+    ##   var a = @[1, 3, 5]
+    ##   assert a.contains(5)
+    ##   assert 3 in a
+    ##   assert 99 notin a
+    return find(a, item) >= 0
+
+  proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
+    ## Returns the last item of `s` and decreases `s.len` by one. This treats
+    ## `s` as a stack and implements the common *pop* operation.
+    runnableExamples:
+      var a = @[1, 3, 5, 7]
+      let b = pop(a)
+      assert b == 7
+      assert a == @[1, 3, 5]
+
+    var L = s.len-1
+    when defined(nimV2):
+      result = move s[L]
+      shrink(s, L)
+    else:
+      result = s[L]
+      setLen(s, L)
 
 proc `==`*[T: tuple|object](x, y: T): bool =
   ## Generic `==` operator for tuples that is lifted from the components.
