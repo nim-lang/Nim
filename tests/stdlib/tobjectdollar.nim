@@ -1,3 +1,9 @@
+discard """
+  matrix: "-d:nimPreviewSlimSystem"
+"""
+
+import std/assertions
+
 type Foo = object
   a, b: int
 
