@@ -31,7 +31,7 @@ else:
 
 template tupleObjectDollar*[T: tuple | object](result: var string, x: T) =
   result = "("
-  const isNamed = T is object or isNamedTuple(T)
+  const isNamed = T is object or isNamedTuple(typeof(T))
   var count {.used.} = 0
   for name, value in fieldPairs(x):
     if count > 0: result.add(", ")
