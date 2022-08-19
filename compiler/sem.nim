@@ -555,7 +555,7 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode]
 proc defaultNodeField(c: PContext, a: PNode): PNode
 proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode
 
-const defaultFieldsSkipTypes = {tyGenericInst, tyAlias, tySink, tyDistinct}
+const defaultFieldsSkipTypes = {tyGenericInst, tyAlias, tySink}
 
 proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): seq[PNode] =
   case recNode.kind
@@ -625,14 +625,10 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
   if aTypSkip.kind == tyObject:
     let child = defaultFieldsForTheUninitialized(c, aTyp.skipTypes(defaultFieldsSkipTypes).n)
     if child.len > 0:
-      let aTypSkipDistinct = aTyp.skipTypes({tyDistinct})
-      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTypSkipDistinct))
-      asgnExpr.typ = aTypSkipDistinct
+      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp))
+      asgnExpr.typ = aTyp
       asgnExpr.sons.add child
       result = semExpr(c, asgnExpr)
-      if aTyp.kind == tyDistinct:
-        result = newTree(nkConv, newNodeIT(nkType, a.info, aTyp), result)
-        result.typ = aTyp
   elif aTypSkip.kind == tyArray:
     let child = defaultNodeField(c, a, aTypSkip[1])
 

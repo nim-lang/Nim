@@ -153,22 +153,23 @@ template main {.dirty.} =
     let z = hello()
     doAssert z.value == 12
 
-  block:
-    var x: ObjectBaseDistinct
-    doAssert ObjectBase(x).value == 12
-    let y = default(ObjectBaseDistinct)
-    doAssert ObjectBase(y).value == 12
+  when false:
+    block:
+      var x: ObjectBaseDistinct
+      doAssert ObjectBase(x).value == 12
+      let y = default(ObjectBaseDistinct)
+      doAssert ObjectBase(y).value == 12
 
-    proc hello(): ObjectBaseDistinct =
-      discard
+      proc hello(): ObjectBaseDistinct =
+        discard
 
-    let z = hello()
-    doAssert ObjectBase(z).value == 12
+      let z = hello()
+      doAssert ObjectBase(z).value == 12
 
-  block:
-    var x: DinstinctInObject
+    block:
+      var x: DinstinctInObject
 
-    doAssert ObjectBase(x.data).value == 12
+      doAssert ObjectBase(x.data).value == 12
 
   block:
     var x: Object
