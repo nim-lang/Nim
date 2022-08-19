@@ -12,7 +12,7 @@
 ## or stored in a rod-file.
 
 import intsets, tables, hashes, md5_old, sequtils
-import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
+import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, modulepaths
 import ic / [packed_ast, ic]
 
 when defined(nimPreviewSlimSystem):
@@ -651,6 +651,17 @@ proc getPackage*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
      # the package isn't in the graph, so create and add it
     result = pkgSym
     graph.packageSyms.strTableAdd(pkgSym)
+  else:
+    let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
+    let name = getIdent(graph.cache, splitFile(filename).name)
+    let info = newLineInfo(fileIdx, 1, 1)
+    # but starting with version 0.20 we now produce a fake Nimble package instead
+    # to resolve the conflicts:
+    let pck3 = mangleModuleName(graph.config, filename)
+    # this makes the new `result`'s owner be the original `result`
+    result = newSym(skPackage, getIdent(graph.cache, pck3), ItemId(module: PackageModuleId, item: int32(fileIdx)), result, info)
+    #initStrTable(packSym.tab)
+    graph.packageSyms.strTableAdd(result)
 
 func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
