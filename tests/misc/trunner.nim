@@ -249,11 +249,17 @@ sub/mmain.idx""", context
     let cmd = fmt"{nim} r -b:cpp --hints:off --nimcache:{nimcache} --warningAsError:ProveInit {file}"
     check execCmdEx(cmd) == ("witness\n", 0)
 
+  block: # bug #20149
+    let file = testsDir / "misc/m20149.nim"
+    let cmd = fmt"{nim} r --hints:off --nimcache:{nimcache} --hintAsError:XDeclaredButNotUsed {file}"
+    check execCmdEx(cmd) == ("12\n", 0)
+
   block: # bug #15316
     let file = testsDir / "misc/m15316.nim"
     let cmd = fmt"{nim} check --hints:off --nimcache:{nimcache} {file}"
     check execCmdEx(cmd) == ("m15316.nim(1, 15) Error: expression expected, but found \')\'\nm15316.nim(2, 1) Error: expected: \':\', but got: \'[EOF]\'\nm15316.nim(2, 1) Error: expression expected, but found \'[EOF]\'\nm15316.nim(2, 1) " &
           "Error: expected: \')\', but got: \'[EOF]\'\nError: illformed AST: \n", 1)
+
 
   block: # config.nims, nim.cfg, hintConf, bug #16557
     let cmd = fmt"{nim} r --hint:all:off --hint:conf tests/newconfig/bar/mfoo.nim"
