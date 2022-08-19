@@ -149,17 +149,17 @@ proc tryExec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
-  return mysql.real_query(PMySQL db, q, q.len) == 0'i32
+  return mysql.real_query(PMySQL db, q.cstring, q.len) == 0'i32
 
 proc rawExec(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) =
   var q = dbFormat(query, args)
-  if mysql.real_query(PMySQL db, q, q.len) != 0'i32: dbError(db)
+  if mysql.real_query(PMySQL db, q.cstring, q.len) != 0'i32: dbError(db)
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
-  if mysql.real_query(PMySQL db, q, q.len) != 0'i32: dbError(db)
+  if mysql.real_query(PMySQL db, q.cstring, q.len) != 0'i32: dbError(db)
 
 proc newRow(L: int): Row =
   newSeq(result, L)
@@ -360,7 +360,7 @@ proc tryInsertId*(db: DbConn, query: SqlQuery,
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   var q = dbFormat(query, args)
-  if mysql.real_query(PMySQL db, q, q.len) != 0'i32:
+  if mysql.real_query(PMySQL db, q.cstring, q.len) != 0'i32:
     result = -1'i64
   else:
     result = mysql.insertId(PMySQL db)
@@ -409,7 +409,7 @@ proc open*(connection, user, password, database: string): DbConn {.
            else: substr(connection, 0, colonPos-1)
     port: int32 = if colonPos < 0: 0'i32
                   else: substr(connection, colonPos+1).parseInt.int32
-  if mysql.realConnect(res, host, user, password, database,
+  if mysql.realConnect(res, host.cstring, user, password, database,
                        port, nil, 0) == nil:
     var errmsg = $mysql.error(res)
     mysql.close(res)
