@@ -176,7 +176,7 @@ const
     warnCstringConv: "$1",
     warnEffect: "$1",
     warnCastSizes: "$1",
-    warnTemplateRedefinition: "template '$1' is implicitly redefined, consider adding explicit .redefine pragma",
+    warnTemplateRedefinition: "template '$1' is implicitly redefined, consider adding an explicit .redefine pragma",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
