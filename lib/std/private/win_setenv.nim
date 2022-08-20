@@ -81,7 +81,7 @@ else:
     ]#
     if genviron != nil:
 
-      # wcstombs returns (size_t) (-1) if any characters cannot be represented
+      # wcstombs returns `high(csize_t)` if any characters cannot be represented
       # in the current codepage. Skip updating MBCS environment in this case.
       # For some reason, second `wcstombs` can find non-convertible characters
       # that the first `wcstombs` cannot.
