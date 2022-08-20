@@ -1604,18 +1604,6 @@ proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.}
   ##   assert((5..2).len == 0)
   result = max(0, ord(x.b) - ord(x.a) + 1)
 
-when true: # PRTEMP: remove?
-  proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", error.}
-    ## Seqs are no longer nil by default, but set and empty.
-    ## Check for zero length instead.
-    ##
-    ## See also:
-    ## * `isNil(string) <#isNil,string>`_
-
-  proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", error.}
-    ## See also:
-    ## * `isNil(seq[T]) <#isNil,seq[T]>`_
-
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
