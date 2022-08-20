@@ -42,11 +42,13 @@ else:
 
   proc setEnvImpl*(name: string, value: string, overwrite: cint): cint =
     const EINVAL = cint(22)
-    let wideName = name.newWideCString
-    if overwrite == 0 and c_wgetenv(wideName) != nil: return 0
+    let wideName = newWideCString(name)
+    if overwrite == 0 and c_wgetenv(wideName) != nil:
+      return 0
+
     if value != "":
       let envstring = name & "=" & value
-      let e = c_wputenv(envstring.newWideCString)
+      let e = c_wputenv(newWideCString(envstring))
       if e != 0:
         errno = EINVAL
         return -1
@@ -63,14 +65,14 @@ else:
       return -1
     # Here lies the documentation we blatently ignore to make this work.
     var s = c_wgetenv(wideName)
-    s[0] = '\0'.Utf16Char
+    s[0] = Utf16Char('\0')
     #[
     This would result in a double null termination, which normally signifies the
     end of the environment variable list, so we stick a completely empty
     environment variable into the list instead.
     ]#
     s = c_wgetenv(wideName)
-    s[1] = '='.Utf16Char
+    s[1] = Utf16Char('=')
     #[
     If genviron is null, the MBCS environment has not been initialized
     yet, and we don't need to try to update it. We have to do this otherwise
