@@ -949,25 +949,6 @@ proc `of`*[T, S](x: T, y: typedesc[S]): bool {.magic: "Of", noSideEffect.} =
     doAssert sub1.Base of Sub1
 
     doAssert not compiles(base of Unrelated)
-
-proc cmp*[T](x, y: T): int =
-  ## Generic compare proc.
-  ##
-  ## Returns:
-  ## * a value less than zero, if `x < y`
-  ## * a value greater than zero, if `x > y`
-  ## * zero, if `x == y`
-  ##
-  ## This is useful for writing generic algorithms without performance loss.
-  ## This generic implementation uses the `==` and `<` operators.
-  ##
-  ## .. code-block:: Nim
-  ##  import std/algorithm
-  ##  echo sorted(@[4, 2, 6, 5, 8, 7], cmp[int])
-  if x == y: return 0
-  if x < y: return -1
-  return 1
-
 proc cmp*(x, y: string): int {.noSideEffect.}
   ## Compare proc for strings. More efficient than the generic version.
   ##
@@ -1868,31 +1849,6 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     result = s[L]
     setLen(s, L)
 
-proc `==`*[T: tuple|object](x, y: T): bool =
-  ## Generic `==` operator for tuples that is lifted from the components.
-  ## of `x` and `y`.
-  for a, b in fields(x, y):
-    if a != b: return false
-  return true
-
-proc `<=`*[T: tuple](x, y: T): bool =
-  ## Generic lexicographic `<=` operator for tuples that is lifted from the
-  ## components of `x` and `y`. This implementation uses `cmp`.
-  for a, b in fields(x, y):
-    var c = cmp(a, b)
-    if c < 0: return true
-    if c > 0: return false
-  return true
-
-proc `<`*[T: tuple](x, y: T): bool =
-  ## Generic lexicographic `<` operator for tuples that is lifted from the
-  ## components of `x` and `y`. This implementation uses `cmp`.
-  for a, b in fields(x, y):
-    var c = cmp(a, b)
-    if c < 0: return true
-    if c > 0: return false
-  return false
-
 
 include "system/gc_interface"
 
@@ -2240,6 +2196,55 @@ when notJSnotNims:
     nimCmpMem(a, b, size) == 0
   proc cmpMem(a, b: pointer, size: Natural): int =
     nimCmpMem(a, b, size)
+
+proc cmp*[T](x, y: T): int =
+  ## Generic compare proc.
+  ##
+  ## Returns:
+  ## * a value less than zero, if `x < y`
+  ## * a value greater than zero, if `x > y`
+  ## * zero, if `x == y`
+  ## 
+  ## Throws ValueError if not (x <= y or y <= x)
+  ##
+  ## This is useful for writing generic algorithms without performance loss.
+  ## This generic implementation uses the `<=` operator.
+  ##
+  ## .. code-block:: Nim
+  ##  import std/algorithm
+  ##  echo sorted(@[4, 2, 6, 5, 8, 7], cmp[int])
+  if x <= y:
+    if y <= x: 0
+    else: -1
+  else:
+    if y <= x: 1
+    else: raise newException(ValueError,
+    "provided value are not totally ordered")
+
+proc `==`*[T: tuple|object](x, y: T): bool =
+  ## Generic `==` operator for tuples that is lifted from the components.
+  ## of `x` and `y`.
+  for a, b in fields(x, y):
+    if a != b: return false
+  return true
+
+proc `<=`*[T: tuple](x, y: T): bool =
+  ## Generic lexicographic `<=` operator for tuples that is lifted from the
+  ## components of `x` and `y`. This implementation uses `cmp`.
+  for a, b in fields(x, y):
+    var c = cmp(a, b)
+    if c < 0: return true
+    if c > 0: return false
+  return true
+
+proc `<`*[T: tuple](x, y: T): bool =
+  ## Generic lexicographic `<` operator for tuples that is lifted from the
+  ## components of `x` and `y`. This implementation uses `cmp`.
+  for a, b in fields(x, y):
+    var c = cmp(a, b)
+    if c < 0: return true
+    if c > 0: return false
+  return false
 
 when not defined(js):
   proc cmp(x, y: string): int =
