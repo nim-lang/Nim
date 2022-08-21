@@ -7,7 +7,9 @@ proc setTheme(theme: cstring) {.exportc.} =
   window.localStorage.setItem("theme", theme)
 
 # set `data-theme` attribute early to prevent white flash
-setTheme((let t = window.localStorage.getItem("theme"); if t.isNil: cstring"auto" else: t))
+setTheme:
+  let t = window.localStorage.getItem("theme")
+  if t.isNil: cstring"auto" else: t
 
 proc onDOMLoaded(e: Event) {.exportc.} =
   # set theme select value
