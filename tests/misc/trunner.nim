@@ -232,6 +232,22 @@ sub/mmain.idx""", context
     doAssert doSomething["col"].getInt == 0
     doAssert doSomething["code"].getStr == "proc doSomething(x, y: int): int {.raises: [], tags: [], forbids: [].}"
 
+  block: # nim jsondoc # bug #11953
+    let file = testsDir / "misc/mjsondoc.nim"
+    let destDir = testsDir / "misc/htmldocs"
+    removeDir(destDir)
+    defer: removeDir(destDir)
+    let (msg, exitCode) = execCmdEx(fmt"{nim} jsondoc {file}")
+    doAssert exitCode == 0, msg
+
+    let data = parseJson(readFile(destDir / "mjsondoc.json"))["entries"]
+    doAssert data.len == 4
+    let doSomething = data[0]
+    doAssert doSomething["name"].getStr == "doSomething"
+    doAssert doSomething["type"].getStr == "skProc"
+    doAssert doSomething["line"].getInt == 1
+    doAssert doSomething["col"].getInt == 0
+    doAssert doSomething["code"].getStr == "proc doSomething(x, y: int): int {.raises: [], tags: [], forbids: [].}"
 
   block: # further issues with `--backend`
     let file = testsDir / "misc/mbackend.nim"
