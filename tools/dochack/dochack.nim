@@ -2,16 +2,19 @@ import dom
 import fuzzysearch
 
 
-proc switchTheme(event: Event) =
-  if event.target.checked:
-    document.documentElement.setAttribute("data-theme", "dark")
-    window.localStorage.setItem("theme", "dark")
-  else:
-    document.documentElement.setAttribute("data-theme", "light")
-    window.localStorage.setItem("theme", "light")
+proc setTheme(theme: cstring) {.exportc.} =
+  document.documentElement.setAttribute("data-theme", theme)
+  window.localStorage.setItem("theme", theme)
 
+# set `data-theme` attribute early to prevent white flash
+setTheme:
+  let t = window.localStorage.getItem("theme")
+  if t.isNil: cstring"auto" else: t
 
-proc nimThemeSwitch(event: Event) {.exportC.} =
+proc onDOMLoaded(e: Event) {.exportc.} =
+  # set theme select value
+  document.getElementById("theme-select").value = window.localStorage.getItem("theme")
+
   for pragmaDots in document.getElementsByClassName("pragmadots"):
     pragmaDots.onclick = proc (event: Event) =
       # Hide tease
@@ -19,19 +22,6 @@ proc nimThemeSwitch(event: Event) {.exportC.} =
       # Show actual
       event.target.parentNode.nextSibling.style.display = "inline"
 
-  let toggleSwitch = document.querySelector(".theme-switch input[type=\"checkbox\"]")
-
-  if toggleSwitch != nil:
-    toggleSwitch.addEventListener("change", switchTheme, false)
-
-  var currentTheme = window.localStorage.getItem("theme")
-  if currentTheme.len == 0 and window.matchMedia("(prefers-color-scheme: dark)").matches:
-    currentTheme = "dark"
-  if currentTheme.len > 0:
-    document.documentElement.setAttribute("data-theme", currentTheme);
-
-    if currentTheme == "dark" and toggleSwitch != nil:
-      toggleSwitch.checked = true
 
 proc tree(tag: cstring; kids: varargs[Element]): Element =
   result = document.createElement tag
@@ -387,4 +377,4 @@ proc copyToClipboard*() {.exportc.} =
     .}
 
 copyToClipboard()
-window.addEventListener("DOMContentLoaded", nimThemeSwitch)
+window.addEventListener("DOMContentLoaded", onDOMLoaded)
