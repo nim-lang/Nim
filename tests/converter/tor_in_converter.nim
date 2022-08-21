@@ -4,7 +4,7 @@ test'''
 """
 # bug #4537
 
-# nim js --d:nodejs
+# nim js -d:nodejs
 
 type
   Str = distinct string

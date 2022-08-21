@@ -63,3 +63,13 @@ proc parse(cts: CTS, jn: JsonNode) =
 
 proc p(x: proc(){.closure.} not nil) = discard
 p(proc(){.closure.} = discard)
+
+# bug #6490
+
+proc p2(a: proc()) =
+    if a.isNil:
+        raise newException(ValueError, "a is nil")
+    else:
+        let b: proc() not nil = a
+
+p2(writeStackTrace)

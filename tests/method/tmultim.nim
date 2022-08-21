@@ -10,6 +10,7 @@ collide: thing, unit |
 do nothing
 '''
   joinable: false
+  disabled: true
 """
 
 

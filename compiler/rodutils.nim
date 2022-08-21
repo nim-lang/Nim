@@ -10,6 +10,9 @@
 ## Serialization utilities for the compiler.
 import strutils, math
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # bcc on windows doesn't have C99 functions
 when defined(windows) and defined(bcc):
   {.emit: """#if defined(_MSC_VER) && _MSC_VER < 1900
@@ -33,10 +36,22 @@ when defined(windows) and defined(bcc):
 
 proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
 
-proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
+
+when not declared(signbit):
+  proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
+  proc signbit*(x: SomeFloat): bool {.inline.} =
+    result = c_signbit(x) != 0
+
+import system/formatfloat
+
+proc toStrMaxPrecision*(f: BiggestFloat | float32): string =
+  const literalPostfix = when f is float32: "f" else: ""
   case classify(f)
   of fcNan:
-    result = "NAN"
+    if signbit(f):
+      result = "-NAN"
+    else:
+      result = "NAN"
   of fcNegZero:
     result = "-0.0" & literalPostfix
   of fcZero:
@@ -46,15 +61,14 @@ proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
   of fcNegInf:
     result = "-INF"
   else:
-    result = newString(81)
-    let n = c_snprintf(result.cstring, result.len.uint, "%#.16e%s", f, literalPostfix.cstring)
-    setLen(result, n)
+    result.addFloatRoundtrip(f)
+    result.add literalPostfix
 
 proc encodeStr*(s: string, result: var string) =
-  for i in 0 ..< len(s):
+  for i in 0..<s.len:
     case s[i]
-    of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
-    else: add(result, '\\' & toHex(ord(s[i]), 2))
+    of 'a'..'z', 'A'..'Z', '0'..'9', '_': result.add(s[i])
+    else: result.add('\\' & toHex(ord(s[i]), 2))
 
 proc hexChar(c: char, xi: var int) =
   case c
@@ -73,30 +87,28 @@ proc decodeStr*(s: cstring, pos: var int): string =
       var xi = 0
       hexChar(s[i-2], xi)
       hexChar(s[i-1], xi)
-      add(result, chr(xi))
+      result.add(chr(xi))
     of 'a'..'z', 'A'..'Z', '0'..'9', '_':
-      add(result, s[i])
+      result.add(s[i])
       inc(i)
     else: break
   pos = i
 
-const
-  chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 {.push overflowChecks: off.}
 
 # since negative numbers require a leading '-' they use up 1 byte. Thus we
 # subtract/add `vintDelta` here to save space for small negative numbers
 # which are common in ROD files:
-const
-  vintDelta = 5
+const vintDelta = 5
 
 template encodeIntImpl(self) =
   var d: char
   var v = x
   var rem = v mod 190
   if rem < 0:
-    add(result, '-')
+    result.add('-')
     v = - (v div 190)
     rem = - rem
   else:
@@ -105,7 +117,7 @@ template encodeIntImpl(self) =
   if idx < 62: d = chars[idx]
   else: d = chr(idx - 62 + 128)
   if v != 0: self(v, result)
-  add(result, d)
+  result.add(d)
 
 proc encodeVBiggestIntAux(x: BiggestInt, result: var string) =
   ## encode a biggest int as a variable length base 190 int.

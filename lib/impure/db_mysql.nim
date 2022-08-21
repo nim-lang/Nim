@@ -16,8 +16,8 @@
 ## Parameter substitution
 ## ======================
 ##
-## All ``db_*`` modules support the same form of parameter substitution.
-## That is, using the ``?`` (question mark) to signify the place where a
+## All `db_*` modules support the same form of parameter substitution.
+## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
 ##
 ## .. code-block:: Nim
@@ -31,7 +31,7 @@
 ## ----------------------------------
 ##
 ## .. code-block:: Nim
-##     import db_mysql
+##     import std/db_mysql
 ##     let db = open("localhost", "user", "password", "dbname")
 ##     db.close()
 ##
@@ -56,7 +56,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import db_mysql, math
+##  import std/[db_mysql, math]
 ##
 ##  let theDb = open("localhost", "nim", "nim", "test")
 ##
@@ -88,6 +88,8 @@ import strutils, mysql
 import db_common
 export db_common
 
+import std/private/since
+
 type
   DbConn* = distinct PMySQL ## encapsulates a database connection
   Row* = seq[string]   ## a row of a dataset. NULL database values will be
@@ -115,11 +117,22 @@ when false:
     discard mysql_stmt_close(stmt)
 
 proc dbQuote*(s: string): string =
-  ## DB quotes the string.
-  result = "'"
+  ## DB quotes the string. Note that this doesn't escape `%` and `_`.
+  result = newStringOfCap(s.len + 2)
+  result.add "'"
   for c in items(s):
-    if c == '\'': add(result, "''")
-    else: add(result, c)
+    # see https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html#mysql-escaping
+    case c
+    of '\0': result.add "\\0"
+    of '\b': result.add "\\b"
+    of '\t': result.add "\\t"
+    of '\l': result.add "\\n"
+    of '\r': result.add "\\r"
+    of '\x1a': result.add "\\Z"
+    of '"': result.add "\\\""
+    of '\'': result.add "\\'"
+    of '\\': result.add "\\\\"
+    else: result.add c
   add(result, '\'')
 
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
@@ -136,17 +149,17 @@ proc tryExec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
-  return mysql.realQuery(PMySQL db, q, q.len) == 0'i32
+  return mysql.real_query(PMySQL db, q.cstring, q.len) == 0'i32
 
 proc rawExec(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) =
   var q = dbFormat(query, args)
-  if mysql.realQuery(PMySQL db, q, q.len) != 0'i32: dbError(db)
+  if mysql.real_query(PMySQL db, q.cstring, q.len) != 0'i32: dbError(db)
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
-  if mysql.realQuery(PMySQL db, q, q.len) != 0'i32: dbError(db)
+  if mysql.real_query(PMySQL db, q.cstring, q.len) != 0'i32: dbError(db)
 
 proc newRow(L: int): Row =
   newSeq(result, L)
@@ -154,7 +167,7 @@ proc newRow(L: int): Row =
 
 proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =
   if row != nil:
-    while mysql.fetchRow(sqlres) != nil: discard
+    while mysql.fetch_row(sqlres) != nil: discard
   mysql.freeResult(sqlres)
 
 iterator fastRows*(db: DbConn, query: SqlQuery,
@@ -165,7 +178,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ## if you require **ALL** the rows.
   ##
   ## Breaking the fastRows() iterator during a loop will cause the next
-  ## database query to raise an [EDb] exception ``Commands out of sync``.
+  ## database query to raise an [EDb] exception `Commands out of sync`.
   rawExec(db, query, args)
   var sqlres = mysql.useResult(PMySQL db)
   if sqlres != nil:
@@ -176,7 +189,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
       backup: Row
     newSeq(result, L)
     while true:
-      row = mysql.fetchRow(sqlres)
+      row = mysql.fetch_row(sqlres)
       if row == nil: break
       for i in 0..L-1:
         setLen(result[i], 0)
@@ -195,7 +208,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     let L = int(mysql.numFields(sqlres))
     var row: cstringArray
     while true:
-      row = mysql.fetchRow(sqlres)
+      row = mysql.fetch_row(sqlres)
       if row == nil: break
       yield InstantRow(row: row, len: L)
     properFreeResult(sqlres, row)
@@ -276,7 +289,7 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
     setColumnInfo(columns, sqlres, L)
     var row: cstringArray
     while true:
-      row = mysql.fetchRow(sqlres)
+      row = mysql.fetch_row(sqlres)
       if row == nil: break
       yield InstantRow(row: row, len: L)
     properFreeResult(sqlres, row)
@@ -303,7 +316,7 @@ proc getRow*(db: DbConn, query: SqlQuery,
   if sqlres != nil:
     var L = int(mysql.numFields(sqlres))
     result = newRow(L)
-    var row = mysql.fetchRow(sqlres)
+    var row = mysql.fetch_row(sqlres)
     if row != nil:
       for i in 0..L-1:
         setLen(result[i], 0)
@@ -321,7 +334,7 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
     var row: cstringArray
     var j = 0
     while true:
-      row = mysql.fetchRow(sqlres)
+      row = mysql.fetch_row(sqlres)
       if row == nil: break
       setLen(result, j+1)
       newSeq(result[j], L)
@@ -347,7 +360,7 @@ proc tryInsertId*(db: DbConn, query: SqlQuery,
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   var q = dbFormat(query, args)
-  if mysql.realQuery(PMySQL db, q, q.len) != 0'i32:
+  if mysql.real_query(PMySQL db, q.cstring, q.len) != 0'i32:
     result = -1'i64
   else:
     result = mysql.insertId(PMySQL db)
@@ -357,6 +370,19 @@ proc insertId*(db: DbConn, query: SqlQuery,
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row.
   result = tryInsertID(db, query, args)
+  if result < 0: dbError(db)
+
+proc tryInsert*(db: DbConn, query: SqlQuery, pkName: string,
+                args: varargs[string, `$`]): int64
+               {.tags: [WriteDbEffect], raises: [], since: (1, 3).} =
+  ## same as tryInsertID
+  tryInsertID(db, query, args)
+
+proc insert*(db: DbConn, query: SqlQuery, pkName: string,
+             args: varargs[string, `$`]): int64
+            {.tags: [WriteDbEffect], since: (1, 3).} =
+  ## same as insertId
+  result = tryInsert(db, query,pkName, args)
   if result < 0: dbError(db)
 
 proc execAffectedRows*(db: DbConn, query: SqlQuery,
@@ -383,7 +409,7 @@ proc open*(connection, user, password, database: string): DbConn {.
            else: substr(connection, 0, colonPos-1)
     port: int32 = if colonPos < 0: 0'i32
                   else: substr(connection, colonPos+1).parseInt.int32
-  if mysql.realConnect(res, host, user, password, database,
+  if mysql.realConnect(res, host.cstring, user, password, database,
                        port, nil, 0) == nil:
     var errmsg = $mysql.error(res)
     mysql.close(res)

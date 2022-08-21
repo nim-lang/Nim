@@ -28,8 +28,8 @@ the passed expression on the thread pool and returns a `data flow variable`:idx:
 **blocking**. However, one can use ``blockUntilAny`` to wait on multiple flow
 variables at the same time:
 
-.. code-block:: nim
-  import threadpool, ...
+  ```nim
+  import std/threadpool, ...
 
   # wait until 2 out of 3 servers received the update:
   proc main =
@@ -40,6 +40,7 @@ variables at the same time:
     assert index >= 0
     responses.del(index)
     discard blockUntilAny(responses)
+  ```
 
 Data flow variables ensure that no data races
 are possible. Due to technical limitations not every type ``T`` is possible in
@@ -54,9 +55,9 @@ Parallel statement
 
 Example:
 
-.. code-block:: nim
+  ```nim
   # Compute PI in an inefficient way
-  import strutils, math, threadpool
+  import std/[strutils, math, threadpool]
 
   proc term(k: float): float = 4 * math.pow(-1, k) / (2*k + 1)
 
@@ -69,6 +70,7 @@ Example:
       result += ch[k]
 
   echo formatFloat(pi(5000))
+  ```
 
 
 The parallel statement is the preferred mechanism to introduce parallelism

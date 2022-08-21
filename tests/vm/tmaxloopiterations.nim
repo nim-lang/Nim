@@ -1,5 +1,5 @@
 discard """
-errormsg: "interpretation requires too many iterations; if you are sure this is not a bug in your code edit compiler/vmdef.MaxLoopIterations and rebuild the compiler"
+errormsg: "interpretation requires too many iterations; if you are sure this is not a bug in your code"
 """
 
 # issue #9829

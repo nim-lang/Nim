@@ -9,7 +9,7 @@ var
   d = "abc"
 
 static:
-  assert a == 2
-  assert c == 3
+  doAssert a == 2
+  doAssert c == 3
 
 echo b, d

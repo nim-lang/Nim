@@ -28,7 +28,30 @@ const doNotUnmap = not (defined(amd64) or defined(i386)) or
                    defined(windows) or defined(nimAllocNoUnmap)
 
 
-when defined(emscripten):
+when defined(nimAllocPagesViaMalloc):
+  when not defined(gcArc) and not defined(gcOrc):
+    {.error: "-d:nimAllocPagesViaMalloc is only supported with --gc:arc or --gc:orc".}
+
+  proc osTryAllocPages(size: int): pointer {.inline.} =
+    let base = c_malloc(csize_t size + PageSize - 1 + sizeof(uint32))
+    if base == nil: raiseOutOfMem()
+    # memory layout: padding + offset (4 bytes) + user_data
+    # in order to deallocate: read offset at user_data - 4 bytes,
+    # then deallocate user_data - offset
+    let offset = PageSize - (cast[int](base) and (PageSize - 1))
+    cast[ptr uint32](base +! (offset - sizeof(uint32)))[] = uint32(offset)
+    result = base +! offset
+
+  proc osAllocPages(size: int): pointer {.inline.} =
+    result = osTryAllocPages(size)
+    if result == nil: raiseOutOfMem()
+
+  proc osDeallocPages(p: pointer, size: int) {.inline.} =
+    # read offset at p - 4 bytes, then deallocate (p - offset) pointer
+    let offset = cast[ptr uint32](p -! sizeof(uint32))[]
+    c_free(p -! offset)
+
+elif defined(emscripten) and not defined(StandaloneHeapSize):
   const
     PROT_READ  = 1             # page can be read
     PROT_WRITE = 2             # page can be written
@@ -77,126 +100,21 @@ when defined(emscripten):
     var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
     munmap(mmapDescr.realPointer, mmapDescr.realSize)
 
-elif defined(genode):
+elif defined(genode) and not defined(StandaloneHeapSize):
   include genode/alloc # osAllocPages, osTryAllocPages, osDeallocPages
 
-elif defined(nintendoswitch):
-
-  import nintendoswitch/switch_memory
-
-  type
-    PSwitchBlock = ptr NSwitchBlock
-    ## This will hold the heap pointer data in a separate
-    ## block of memory that is PageSize bytes above
-    ## the requested memory. It's the only good way
-    ## to pass around data with heap allocations
-    NSwitchBlock {.pure, inheritable.} = object
-      realSize: int
-      heap: pointer           # pointer to main heap alloc
-      heapMirror: pointer     # pointer to virtmem mapped heap
-
-  proc alignSize(size: int): int {.inline.} =
-    ## Align a size integer to be in multiples of PageSize
-    ## The nintendo switch will not allocate memory that is not
-    ## aligned to 0x1000 bytes and will just crash.
-    (size + (PageSize - 1)) and not (PageSize - 1)
-
-  proc deallocate(heapMirror: pointer, heap: pointer, size: int) =
-    # Unmap the allocated memory
-    discard svcUnmapMemory(heapMirror, heap, size.uint64)
-    # These should be called (theoretically), but referencing them crashes the switch.
-    # The above call seems to free all heap memory, so these are not needed.
-    # virtmemFreeMap(nswitchBlock.heapMirror, nswitchBlock.realSize.csize)
-    # free(nswitchBlock.heap)
-
-  proc freeMem(p: pointer) =
-    # Retrieve the switch block data from the pointer we set before
-    # The data is located just sizeof(NSwitchBlock) bytes below
-    # the top of the pointer to the heap
-    let
-      nswitchDescrPos = cast[ByteAddress](p) -% sizeof(NSwitchBlock)
-      nswitchBlock = cast[PSwitchBlock](nswitchDescrPos)
-
-    deallocate(
-      nswitchBlock.heapMirror, nswitchBlock.heap, nswitchBlock.realSize
-    )
-
-  proc storeHeapData(address, heapMirror, heap: pointer, size: int) {.inline.} =
-    ## Store data in the heap for deallocation purposes later
-
-    # the position of our heap pointer data. Since we allocated PageSize extra
-    # bytes, we should have a buffer on top of the requested size of at least
-    # PageSize bytes, which is much larger than sizeof(NSwitchBlock). So we
-    # decrement the address by sizeof(NSwitchBlock) and use that address
-    # to store our pointer data
-    let nswitchBlockPos = cast[ByteAddress](address) -% sizeof(NSwitchBlock)
-
-    # We need to store this in a pointer obj (PSwitchBlock) so that the data sticks
-    # at the address we've chosen. If NSwitchBlock is used here, the data will
-    # be all 0 when we try to retrieve it later.
-    var nswitchBlock = cast[PSwitchBlock](nswitchBlockPos)
-    nswitchBlock.realSize = size
-    nswitchBlock.heap = heap
-    nswitchBlock.heapMirror = heapMirror
-
-  proc getOriginalHeapPosition(address: pointer, difference: int): pointer {.inline.} =
-    ## This function sets the heap back to the originally requested
-    ## size
-    let
-      pos = cast[int](address)
-      newPos = cast[ByteAddress](pos) +% difference
-
-    return cast[pointer](newPos)
-
-  template allocPages(size: int, outOfMemoryStmt: untyped): untyped =
-    # This is to ensure we get a block of memory the requested
-    # size, as well as space to store our structure
-    let realSize = alignSize(size + sizeof(NSwitchBlock))
-
-    let heap = memalign(PageSize, realSize)
-
-    if heap.isNil:
-      outOfMemoryStmt
-
-    let heapMirror = virtmemReserveMap(realSize.csize)
-    result = heapMirror
-
-    let rc = svcMapMemory(heapMirror, heap, realSize.uint64)
-    # Any return code not equal 0 means an error in libnx
-    if rc.uint32 != 0:
-      deallocate(heapMirror, heap, realSize)
-      outOfMemoryStmt
-
-    # set result to be the original size requirement
-    result = getOriginalHeapPosition(result, realSize - size)
-
-    storeHeapData(result, heapMirror, heap, realSize)
-
-  proc osAllocPages(size: int): pointer {.inline.} =
-    allocPages(size):
-      raiseOutOfMem()
-
-  proc osTryAllocPages(size: int): pointer =
-    allocPages(size):
-      return nil
-
-  proc osDeallocPages(p: pointer, size: int) =
-    # Note that in order for the Switch not to crash, a call to
-    # deallocHeap(runFinalizers = true, allowGcAfterwards = false)
-    # must be run before gfxExit(). The Switch requires all memory
-    # to be deallocated before the graphics application has exited.
-    #
-    # gfxExit() can be found in <switch/gfx/gfx.h> in the github
-    # repo https://github.com/switchbrew/libnx
-    when reallyOsDealloc:
-      freeMem(p)
-
-elif defined(posix):
+elif defined(posix) and not defined(StandaloneHeapSize):
   const
     PROT_READ  = 1             # page can be read
     PROT_WRITE = 2             # page can be written
 
-  when defined(macosx) or defined(bsd):
+  when defined(netbsd) or defined(openbsd):
+    # OpenBSD security for setjmp/longjmp coroutines
+    var MAP_STACK {.importc: "MAP_STACK", header: "<sys/mman.h>".}: cint
+  else:
+    const MAP_STACK = 0             # avoid sideeffects
+
+  when defined(macosx) or defined(freebsd):
     const MAP_ANONYMOUS = 0x1000
     const MAP_PRIVATE = 0x02        # Changes are private
   elif defined(solaris):
@@ -210,7 +128,7 @@ elif defined(posix):
   elif defined(haiku):
     const MAP_ANONYMOUS = 0x08
     const MAP_PRIVATE = 0x02
-  else:
+  else:  # posix including netbsd or openbsd
     var
       MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint
       MAP_PRIVATE {.importc: "MAP_PRIVATE", header: "<sys/mman.h>".}: cint
@@ -222,19 +140,19 @@ elif defined(posix):
 
   proc osAllocPages(size: int): pointer {.inline.} =
     result = mmap(nil, cast[csize_t](size), PROT_READ or PROT_WRITE,
-                             MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
+                             MAP_ANONYMOUS or MAP_PRIVATE or MAP_STACK, -1, 0)
     if result == nil or result == cast[pointer](-1):
       raiseOutOfMem()
 
   proc osTryAllocPages(size: int): pointer {.inline.} =
     result = mmap(nil, cast[csize_t](size), PROT_READ or PROT_WRITE,
-                             MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
+                             MAP_ANONYMOUS or MAP_PRIVATE or MAP_STACK, -1, 0)
     if result == cast[pointer](-1): result = nil
 
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
     when reallyOsDealloc: discard munmap(p, cast[csize_t](size))
 
-elif defined(windows):
+elif defined(windows) and not defined(StandaloneHeapSize):
   const
     MEM_RESERVE = 0x2000
     MEM_COMMIT = 0x1000
@@ -274,10 +192,10 @@ elif defined(windows):
         quit 1
     #VirtualFree(p, size, MEM_DECOMMIT)
 
-elif hostOS == "standalone":
+elif hostOS == "standalone" or defined(StandaloneHeapSize):
   const StandaloneHeapSize {.intdefine.}: int = 1024 * PageSize
   var
-    theHeap: array[StandaloneHeapSize, float64] # 'float64' for alignment
+    theHeap: array[StandaloneHeapSize div sizeof(float64), float64] # 'float64' for alignment
     bumpPointer = cast[int](addr theHeap)
 
   proc osAllocPages(size: int): pointer {.inline.} =
@@ -295,5 +213,6 @@ elif hostOS == "standalone":
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
     if bumpPointer-size == cast[int](p):
       dec bumpPointer, size
+
 else:
   {.error: "Port memory manager to your platform".}

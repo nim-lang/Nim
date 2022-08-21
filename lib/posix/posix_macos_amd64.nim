@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}  # dce option deprecated
-
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
@@ -47,7 +45,7 @@ type
       d_type*: int8 ## Type of file; not supported by all filesystem types.
                     ## (not POSIX)
       when defined(linux) or defined(openbsd):
-        d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
+        d_off*: Off  ## Not an offset. Value that `telldir()` would return.
     elif defined(haiku):
       d_pino*: Ino ## Parent inode (only for queries) (not POSIX)
       d_reclen*: cushort ## Length of this record. (not POSIX)
@@ -217,7 +215,11 @@ type
                           ## For a typed memory object, the length in bytes.
                           ## For other file types, the use of this field is
                           ## unspecified.
-    when StatHasNanoseconds:
+    when defined(osx):
+      st_atim* {.importc:"st_atimespec".}: Timespec  ## Time of last access.
+      st_mtim* {.importc:"st_mtimespec".}: Timespec  ## Time of last data modification.
+      st_ctim*  {.importc:"st_ctimespec".}: Timespec  ## Time of last status change.
+    elif StatHasNanoseconds:
       st_atim*: Timespec  ## Time of last access.
       st_mtim*: Timespec  ## Time of last data modification.
       st_ctim*: Timespec  ## Time of last status change.
@@ -225,6 +227,7 @@ type
       st_atime*: Time     ## Time of last access.
       st_mtime*: Time     ## Time of last data modification.
       st_ctime*: Time     ## Time of last status change.
+
     st_blksize*: Blksize  ## A file system-specific preferred I/O block size
                           ## for this object. In some file system types, this
                           ## may vary from file to file.
@@ -408,7 +411,7 @@ type
   IOVec* {.importc: "struct iovec", pure, final,
             header: "<sys/uio.h>".} = object ## struct iovec
     iov_base*: pointer ## Base address of a memory region for input or output.
-    iov_len*: int    ## The size of the memory pointed to by iov_base.
+    iov_len*: csize_t    ## The size of the memory pointed to by iov_base.
 
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr
@@ -554,8 +557,11 @@ when defined(linux) or defined(nimdoc):
 else:
   var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
+when defined(linux) or defined(bsd):
+  var SOCK_CLOEXEC* {.importc, header: "<sys/socket.h>".}: cint
+
 when defined(macosx):
-  # We can't use the NOSIGNAL flag in the ``send`` function, it has no effect
+  # We can't use the NOSIGNAL flag in the `send` function, it has no effect
   # Instead we should use SO_NOSIGPIPE in setsockopt
   const
     MSG_NOSIGNAL* = 0'i32
@@ -589,11 +595,11 @@ when hasSpawnH:
 
 # <sys/wait.h>
 proc WEXITSTATUS*(s: cint): cint {.importc, header: "<sys/wait.h>".}
-  ## Exit code, iff WIFEXITED(s)
+  ## Exit code, if WIFEXITED(s)
 proc WTERMSIG*(s: cint): cint {.importc, header: "<sys/wait.h>".}
-  ## Termination signal, iff WIFSIGNALED(s)
+  ## Termination signal, if WIFSIGNALED(s)
 proc WSTOPSIG*(s: cint): cint {.importc, header: "<sys/wait.h>".}
-  ## Stop signal, iff WIFSTOPPED(s)
+  ## Stop signal, if WIFSTOPPED(s)
 proc WIFEXITED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
   ## True if child exited normally.
 proc WIFSIGNALED*(s: cint): bool {.importc, header: "<sys/wait.h>".}

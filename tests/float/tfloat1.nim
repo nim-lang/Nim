@@ -1,5 +1,5 @@
 discard """
-  outputsub: "Error: unhandled exception: FPU operation caused an overflow [FloatOverflowError]"
+  outputsub: "Error: unhandled exception: FPU operation caused an overflow [FloatOverflowDefect]"
   exitcode: "1"
 """
 # Test new floating point exceptions

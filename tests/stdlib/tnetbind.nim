@@ -1,3 +1,13 @@
+discard """
+joinable: false
+"""
+
+#[
+joinable: false
+otherwise:
+Error: unhandled exception: Address already in use [OSError]
+]#
+
 import net
 
 ## Test for net.bindAddr

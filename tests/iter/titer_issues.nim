@@ -18,6 +18,26 @@ end
 1
 2
 7
+9002
+9004
+9006
+9008
+9010
+9012
+9014
+9016
+9018
+@[1, 2]
+@[1, 2, 3]
+1
+nested finally
+outer finally
+nested finally
+outer finally
+nested finally
+outer finally
+nested finally
+outer finally
 '''
 """
 
@@ -124,7 +144,7 @@ block t3837_chained:
 
 
 block t3221_complex:
-  iterator permutations[T](ys: openarray[T]): seq[T] =
+  iterator permutations[T](ys: openArray[T]): seq[T] =
     var
       d = 1
       c = newSeq[int](ys.len)
@@ -182,7 +202,7 @@ block t3499_keepstate:
       break
 
   # bug #3499 last snippet fixed
-  # bug 705  last snippet fixed
+  # bug #705  last snippet fixed
 
 
 
@@ -213,3 +233,132 @@ block t2023_objiter:
 
   var o = init()
   echo(o.iter())
+
+
+block:
+  # bug #13739
+  iterator myIter(arg: openArray[int]): int =
+    var tmp = 0
+    let len = arg.len
+    while tmp < len:
+      yield arg[tmp] * 2
+      inc tmp
+
+  proc someProc() =
+    var data = [4501,4502,4503,4504,4505,4506,4507,4508,4509]
+    # StmtListExpr should not get special treatment.
+    for x in myIter((discard;data)):
+      echo x
+
+  someProc()
+
+block:
+  # bug #12576
+  iterator ff(sq: varargs[seq[int]]): int =
+    for x in sq:
+      echo x
+
+  for x in ff(@[1, 2], @[1, 2, 3]):
+    echo x
+
+
+# bug #19575
+
+iterator bb() {.closure.} =
+    while true:
+        try: discard
+        except: break
+        finally: break
+
+var a = bb
+
+iterator cc() {.closure.} =
+    while true:
+        try: discard
+        except:
+          if true:
+            break
+        finally:
+          if true:
+            break
+
+var a2 = cc
+
+# bug #16876
+block:
+  iterator a(num: int): int {.closure.} =
+      if num == 1:
+          yield num
+      else:
+          for i in a(num - 1):
+              yield i
+
+  for i in a(5):
+    echo i
+
+block:
+  # bug #19911 (return in nested try)
+
+  # try yield -> try
+  iterator p1: int {.closure.} =
+    try:
+      yield 0
+      try:
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
+    finally:
+      echo "outer finally"
+    echo "shouldn't run"
+
+  for _ in p1():
+    discard
+
+  # try -> try yield
+  iterator p2: int {.closure.} =
+    try:
+      try:
+        yield 0
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
+    finally:
+      echo "outer finally"
+    echo "shouldn't run"
+
+  for _ in p2():
+    discard
+
+  # try yield -> try yield
+  iterator p3: int {.closure.} =
+    try:
+      yield 0
+      try:
+        yield 0
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
+    finally:
+      echo "outer finally"
+    echo "shouldn't run"
+
+  for _ in p3():
+    discard
+
+  # try -> try
+  iterator p4: int {.closure.} =
+    try:
+      try:
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
+    finally:
+      echo "outer finally"
+    echo "shouldn't run"
+
+  for _ in p4():
+    discard

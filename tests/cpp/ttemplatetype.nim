@@ -3,7 +3,7 @@ discard """
 """
 
 type
-  Map {.importcpp: "std::map", header: "<map>".} [T,U] = object
+  Map[T,U] {.importcpp: "std::map", header: "<map>".} = object
 
 proc cInitMap(T: typedesc, U: typedesc): Map[T,U] {.importcpp: "std::map<'*1,'*2>()", nodecl.}
 

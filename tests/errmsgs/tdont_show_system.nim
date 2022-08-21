@@ -1,5 +1,5 @@
 discard """
-  errormsg: "expression 'true' is of type 'bool' and has to be discarded"
+  errormsg: "expression 'true' is of type 'bool' and has to be used (or discarded)"
   line: 13
   file: "tdont_show_system.nim"
 """

@@ -10,7 +10,7 @@ proc callC() = callA()
 
 try:
   callC()
-except AssertionError:
+except AssertionDefect:
   write(stdout, "assertion failure!")
 except:
   write(stdout, "unknown exception!")

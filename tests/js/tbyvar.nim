@@ -1,15 +1,16 @@
 discard """
-  output: '''foo 12
+  output: '''
+foo 12
 bar 12
 2
 foo 12
 bar 12
 2
 12.5
-(nums: @[5, 5, 10, 5, 5, 5, 5, 5, 5, 5])
-(nums: @[5, 5, 50, 5, 5, 5, 5, 5, 5, 5])
-(nums: @[5, 5, 45, 5, 5, 5, 5, 5, 5, 5])
-(nums: @[5, 5, 9, 5, 5, 5, 5, 5, 5, 5])
+(nums: @[5.0, 5.0, 10.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0])
+(nums: @[5.0, 5.0, 50.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0])
+(nums: @[5.0, 5.0, 45.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0])
+(nums: @[5.0, 5.0, 9.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0])
 asd
 '''
 """
@@ -38,9 +39,9 @@ proc main =
 
 main()
 
-# Test: pass var seq to var openarray
+# Test: pass var seq to var openArray
 var s = @[2, 1]
-proc foo(a: var openarray[int]) = a[0] = 123
+proc foo(a: var openArray[int]) = a[0] = 123
 
 proc bar(s: var seq[int], a: int) =
   doAssert(a == 5)

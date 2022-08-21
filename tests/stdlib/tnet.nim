@@ -5,50 +5,85 @@ outputsub: ""
 import net, nativesockets
 import unittest
 
-suite "isIpAddress tests":
-  test "127.0.0.1 is valid":
+block: # isIpAddress tests
+  block: # 127.0.0.1 is valid
     check isIpAddress("127.0.0.1") == true
 
-  test "ipv6 localhost is valid":
+  block: # ipv6 localhost is valid
     check isIpAddress("::1") == true
 
-  test "fqdn is not an ip address":
+  block: # fqdn is not an ip address
     check isIpAddress("example.com") == false
 
-  test "random string is not an ipaddress":
+  block: # random string is not an ipaddress
     check isIpAddress("foo bar") == false
 
-  test "5127.0.0.1 is invalid":
+  block: # 5127.0.0.1 is invalid
     check isIpAddress("5127.0.0.1") == false
 
-  test "ipv6 is valid":
+  block: # ipv6 is valid
     check isIpAddress("2001:cdba:0000:0000:0000:0000:3257:9652") == true
 
-  test "invalid ipv6":
+  block: # invalid ipv6
     check isIpAddress("gggg:cdba:0000:0000:0000:0000:3257:9652") == false
 
 
-suite "parseIpAddress tests":
-  test "127.0.0.1 is valid":
+block: # parseIpAddress tests
+  block: # 127.0.0.1 is valid
     discard parseIpAddress("127.0.0.1")
 
-  test "ipv6 localhost is valid":
+  block: # ipv6 localhost is valid
     discard parseIpAddress("::1")
 
-  test "fqdn is not an ip address":
+  block: # fqdn is not an ip address
     expect(ValueError):
       discard parseIpAddress("example.com")
 
-  test "random string is not an ipaddress":
+  block: # random string is not an ipaddress
     expect(ValueError):
       discard parseIpAddress("foo bar")
 
-  test "ipv6 is valid":
+  block: # ipv6 is valid
     discard parseIpAddress("2001:cdba:0000:0000:0000:0000:3257:9652")
 
-  test "invalid ipv6":
+  block: # invalid ipv6
     expect(ValueError):
       discard parseIpAddress("gggg:cdba:0000:0000:0000:0000:3257:9652")
+
+  block: # ipv4-compatible ipv6 address (embedded ipv4 address)
+    check parseIpAddress("::ffff:10.0.0.23") == parseIpAddress("::ffff:0a00:0017")
+
+  block: # octal number in ipv4 address
+    expect(ValueError):
+      discard parseIpAddress("010.8.8.8")
+    expect(ValueError):
+      discard parseIpAddress("8.010.8.8")
+
+  block: # hexadecimal number in ipv4 address
+    expect(ValueError):
+      discard parseIpAddress("0xc0.168.0.1")
+    expect(ValueError):
+      discard parseIpAddress("192.0xa8.0.1")
+
+  block: # less than 4 numbers in ipv4 address
+    expect(ValueError):
+      discard parseIpAddress("127.0.1")
+
+  block: # octal number in embedded ipv4 address
+    expect(ValueError):
+      discard parseIpAddress("::ffff:010.8.8.8")
+    expect(ValueError):
+      discard parseIpAddress("::ffff:8.010.8.8")
+
+  block: # hexadecimal number in embedded ipv4 address
+    expect(ValueError):
+      discard parseIpAddress("::ffff:0xc0.168.0.1")
+    expect(ValueError):
+      discard parseIpAddress("::ffff:192.0xa8.0.1")
+
+  block: # less than 4 numbers in embedded ipv4 address
+    expect(ValueError):
+      discard parseIpAddress("::ffff:127.0.1")
 
 block: # "IpAddress/Sockaddr conversion"
   proc test(ipaddrstr: string) =
@@ -58,7 +93,7 @@ block: # "IpAddress/Sockaddr conversion"
     doAssert($ipaddrstr == $ipaddr_1)
 
     var sockaddr: Sockaddr_storage
-    var socklen: Socklen
+    var socklen: SockLen
     var ipaddr_2: IpAddress
     var port_2: Port
 

@@ -13,8 +13,8 @@
 ##
 ## Supported syntax:
 ##
-## 1. short options - ``-abcd``, where a, b, c, d are names
-## 2. long option - ``--foo:bar``, ``--foo=bar`` or ``--foo``
+## 1. short options - `-abcd`, where a, b, c, d are names
+## 2. long option - `--foo:bar`, `--foo=bar` or `--foo`
 ## 3. argument - everything else
 
 {.deprecated: "Use the 'parseopt' module instead".}
@@ -29,16 +29,16 @@ type
   CmdLineKind* = enum         ## the detected command line token
     cmdEnd,                   ## end of command line reached
     cmdArgument,              ## argument detected
-    cmdLongOption,            ## a long option ``--option`` detected
-    cmdShortOption            ## a short option ``-c`` detected
+    cmdLongOption,            ## a long option `--option` detected
+    cmdShortOption            ## a short option `-c` detected
   OptParser* =
       object of RootObj ## this object implements the command line parser
     cmd: seq[string]
     pos: int
     remainingShortOptions: string
     kind*: CmdLineKind        ## the detected command line token
-    key*, val*: TaintedString ## key and value pair; ``key`` is the option
-                              ## or the argument, ``value`` is not "" if
+    key*, val*: string        ## key and value pair; `key` is the option
+                              ## or the argument, `value` is not "" if
                               ## the option was given a value
 
 proc initOptParser*(cmdline: seq[string]): OptParser {.rtl.} =
@@ -80,7 +80,7 @@ proc nextOption(p: var OptParser, token: string, allowEmpty: bool) =
 proc next(p: var OptParser) =
   if p.remainingShortOptions.len != 0:
     p.kind = cmdShortOption
-    p.key = TaintedString(p.remainingShortOptions[0..0])
+    p.key = p.remainingShortOptions[0..0]
     p.val = ""
     p.remainingShortOptions = p.remainingShortOptions[1..p.remainingShortOptions.len-1]
     return
@@ -103,13 +103,13 @@ proc next(p: var OptParser) =
     p.key = token
     p.val = ""
 
-proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo2$1".} =
+proc cmdLineRest*(p: OptParser): string {.rtl, extern: "npo2$1".} =
   ## Returns the part of command line string that has not been parsed yet,
   ## properly quoted.
   return p.cmd[p.pos..p.cmd.len-1].quoteShellCommand
 
 type
-  GetoptResult* = tuple[kind: CmdLineKind, key, val: TaintedString]
+  GetoptResult* = tuple[kind: CmdLineKind, key, val: string]
 
 iterator getopt*(p: var OptParser): GetoptResult =
   ## This is an convenience iterator for iterating over the given OptParser object.

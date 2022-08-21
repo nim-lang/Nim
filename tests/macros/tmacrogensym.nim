@@ -1,6 +1,6 @@
 import nativesockets, asyncdispatch, macros
 var p = newDispatcher()
-var sock = newAsyncNativeSocket()
+var sock = createAsyncNativeSocket()
 
 proc convertReturns(node, retFutureSym: NimNode): NimNode {.compileTime.} =
   case node.kind
@@ -27,7 +27,7 @@ macro async2(prc: untyped): untyped =
 
   # -> iterator nameIter(): FutureBase {.closure.} = <proc_body>
   # Changing this line to: newIdentNode($prc[0].ident & "Iter") # will make it work.
-  var iteratorNameSym = genSym(nskIterator, $prc[0].ident & "Iter")
+  var iteratorNameSym = genSym(nskIterator, $prc[0] & "Iter")
   assert iteratorNameSym.symKind == nskIterator
   #var iteratorNameSym = newIdentNode($prc[0].ident & "Iter")
   var procBody = prc[6].convertReturns(retFutureSym)
@@ -39,7 +39,7 @@ macro async2(prc: untyped): untyped =
 
   # -> var nameIterVar = nameIter
   # -> var first = nameIterVar()
-  var varNameIterSym = newIdentNode($prc[0].ident & "IterVar") #genSym(nskVar, $prc[0].ident & "IterVar")
+  var varNameIterSym = newIdentNode($prc[0] & "IterVar") #genSym(nskVar, $prc[0].ident & "IterVar")
   var varNameIter = newVarStmt(varNameIterSym, iteratorNameSym)
   outerProcBody.add varNameIter
   var varFirstSym = genSym(nskVar, "first")
@@ -52,7 +52,7 @@ macro async2(prc: untyped): untyped =
 
   # Remove the 'closure' pragma.
   for i in 0 ..< result[4].len:
-    if result[4][i].ident == !"async":
+    if result[4][i] == newIdentNode("async"):
       result[4].del(i)
 
   result[6] = outerProcBody

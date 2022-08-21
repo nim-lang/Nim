@@ -16,13 +16,17 @@
 import
   strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   TSystemOS* = enum # Also add OS in initialization section and alias
                     # conditionals to condsyms (end of module).
     osNone, osDos, osWindows, osOs2, osLinux, osMorphos, osSkyos, osSolaris,
-    osIrix, osNetbsd, osFreebsd, osOpenbsd, osDragonfly, osAix, osPalmos, osQnx,
+    osIrix, osNetbsd, osFreebsd, osOpenbsd, osDragonfly, osCrossos, osAix, osPalmos, osQnx,
     osAmiga, osAtari, osNetware, osMacos, osMacosx, osIos, osHaiku, osAndroid, osVxWorks
-    osGenode, osJS, osNimVM, osStandalone, osNintendoSwitch
+    osGenode, osJS, osNimVM, osStandalone, osNintendoSwitch, osFreeRTOS, osZephyr, osAny
 
 type
   TInfoOSProp* = enum
@@ -105,6 +109,10 @@ const
       scriptExt: ".sh", curDir: ".",
       exeExt: "", extSep: ".",
       props: {ospNeedsPIC, ospPosix}),
+     (name: "CROSSOS", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
+      props: {ospNeedsPIC, ospPosix}),
      (name: "AIX", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
@@ -177,6 +185,18 @@ const
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
       scriptExt: ".sh", curDir: ".", exeExt: ".elf", extSep: ".",
       props: {ospNeedsPIC, ospPosix}),
+     (name: "FreeRTOS", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
+      props: {ospPosix}),
+     (name: "Zephyr", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
+      props: {ospPosix}),
+     (name: "Any", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
+      props: {}),
      ]
 
 type
@@ -185,16 +205,15 @@ type
     cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
     cpuPowerpc64el, cpuSparc, cpuVm, cpuHppa, cpuIa64, cpuAmd64, cpuMips,
     cpuMipsel, cpuArm, cpuArm64, cpuJS, cpuNimVM, cpuAVR, cpuMSP430,
-    cpuSparc64, cpuMips64, cpuMips64el, cpuRiscV64, cpuWasm32
+    cpuSparc64, cpuMips64, cpuMips64el, cpuRiscV32, cpuRiscV64, cpuEsp, cpuWasm32,
+    cpuE2k, cpuLoongArch64
 
 type
-  TEndian* = enum
-    littleEndian, bigEndian
-  TInfoCPU* = tuple[name: string, intSize: int, endian: TEndian,
+  TInfoCPU* = tuple[name: string, intSize: int, endian: Endianness,
                     floatSize, bit: int]
 
 const
-  EndianToStr*: array[TEndian, string] = ["littleEndian", "bigEndian"]
+  EndianToStr*: array[Endianness, string] = ["littleEndian", "bigEndian"]
   CPU*: array[succ(low(TSystemCPU))..high(TSystemCPU), TInfoCPU] = [
     (name: "i386", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "m68k", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
@@ -206,20 +225,25 @@ const
     (name: "vm", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "hppa", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
     (name: "ia64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
-    (name: "amd64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
+    (name: "amd64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64), # a.k.a. x86_64, covers both amd and intel
     (name: "mips", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
     (name: "mipsel", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "arm", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "arm64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
-    (name: "js", intSize: 32, endian: bigEndian,floatSize: 64,bit: 32),
+    (name: "js", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "nimvm", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
+      # xxx this seems buggy; on a 64bit machine, sizeof(int) is 64 in nimvm.
     (name: "avr", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16),
     (name: "msp430", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16),
     (name: "sparc64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64),
     (name: "mips64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64),
     (name: "mips64el", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
+    (name: "riscv32", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "riscv64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
-    (name: "wasm32", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32)]
+    (name: "esp", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
+    (name: "wasm32", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
+    (name: "e2k", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
+    (name: "loongarch64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64)]
 
 type
   Target* = object
@@ -242,23 +266,23 @@ proc setTarget*(t: var Target; o: TSystemOS, c: TSystemCPU) =
   t.tnl = OS[o].newLine
 
 proc nameToOS*(name: string): TSystemOS =
-  for i in succ(osNone) .. high(TSystemOS):
+  for i in succ(osNone)..high(TSystemOS):
     if cmpIgnoreStyle(name, OS[i].name) == 0:
       return i
   result = osNone
 
 proc listOSnames*(): seq[string] =
-  for i in succ(osNone) .. high(TSystemOS):
+  for i in succ(osNone)..high(TSystemOS):
     result.add OS[i].name
 
 proc nameToCPU*(name: string): TSystemCPU =
-  for i in succ(cpuNone) .. high(TSystemCPU):
+  for i in succ(cpuNone)..high(TSystemCPU):
     if cmpIgnoreStyle(name, CPU[i].name) == 0:
       return i
   result = cpuNone
 
 proc listCPUnames*(): seq[string] =
-  for i in succ(cpuNone) .. high(TSystemCPU):
+  for i in succ(cpuNone)..high(TSystemCPU):
     result.add CPU[i].name
 
 proc setTargetFromSystem*(t: var Target) =

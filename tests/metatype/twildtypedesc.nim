@@ -17,8 +17,8 @@ proc unpack[T](v: string): T =
 
 var s = "123"
 
-assert(unpack[string](s) is string)
-assert(unpack[int](s) is int)
+doAssert(unpack[string](s) is string)
+doAssert(unpack[int](s) is int)
 
 echo unpack[int](s)
 echo unpack[string](s)
@@ -37,7 +37,7 @@ proc unit(t: typedesc[int]): t = 0
 proc unit(t: typedesc[string]): t = ""
 proc unit(t: typedesc[float]): t = 0.0
 
-assert unit(int) == 0
-assert unit(string) == ""
-assert unit(float) == 0.0
+doAssert unit(int) == 0
+doAssert unit(string) == ""
+doAssert unit(float) == 0.0
 

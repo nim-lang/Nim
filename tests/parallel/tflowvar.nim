@@ -4,6 +4,7 @@ bazbearbazbear
 
 1'''
   cmd: "nim $target --threads:on $options $file"
+  disabled: "openbsd"
 """
 
 import threadpool

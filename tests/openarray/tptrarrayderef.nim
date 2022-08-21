@@ -15,14 +15,14 @@ var
   raa = [11,12,13]
 
 #bug #3586
-proc mutate[T](arr:openarray[T], brr: openArray[T]) =
+proc mutate[T](arr:openArray[T], brr: openArray[T]) =
   for i in 0..arr.len-1:
     doAssert(arr[i] == brr[i])
 
 mutate(arr, arr)
 
 #bug #2240
-proc f(a: openarray[int], b: openArray[int]) =
+proc f(a: openArray[int], b: openArray[int]) =
   for i in 0..a.len-1:
    doAssert(a[i] == b[i])
 
@@ -37,7 +37,7 @@ ra[2] = 13
 f(ra[], raa)
 
 #bug #2240b
-proc fillBuffer(buf: var openarray[char]) =
+proc fillBuffer(buf: var openArray[char]) =
   for i in 0..buf.len-1:
     buf[i] = chr(i)
 

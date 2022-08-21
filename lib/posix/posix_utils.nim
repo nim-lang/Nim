@@ -7,13 +7,12 @@
 #
 
 ## A set of helpers for the POSIX module.
-## Raw interfaces are in the other posix*.nim files.
+## Raw interfaces are in the other ``posix*.nim`` files.
 
 # Where possible, contribute OS-independent procs in `os <os.html>`_ instead.
 
-{.deadCodeElim: on.}  # dce option deprecated
-
-import posix
+import posix, parsecfg, os
+import std/private/since
 
 type Uname* = object
   sysname*, nodename*, release*, version*, machine*: string
@@ -80,12 +79,23 @@ proc sendSignal*(pid: Pid, signal: int) =
   if kill(pid, signal.cint) != 0:
     raise newException(OSError, $strerror(errno))
 
-proc mkstemp*(prefix: string): (string, File) =
-  ## Creates a unique temporary file from a prefix string. Adds a six chars suffix.
+proc mkstemp*(prefix: string, suffix=""): (string, File) =
+  ## Creates a unique temporary file from a prefix string. A six-character string
+  ## will be added. If suffix is provided it will be added to the string
   ## The file is created with perms 0600.
   ## Returns the filename and a file opened in r/w mode.
-  var tmpl = cstring(prefix & "XXXXXX")
-  let fd = mkstemp(tmpl)
+  var tmpl = cstring(prefix & "XXXXXX" & suffix)
+  let fd =
+    if len(suffix)==0:
+      when declared(mkostemp):
+        mkostemp(tmpl, O_CLOEXEC)
+      else:
+        mkstemp(tmpl)
+    else:
+      when declared(mkostemps):
+        mkostemps(tmpl, cint(len(suffix)), O_CLOEXEC)
+      else:
+        mkstemps(tmpl, cint(len(suffix)))
   var f: File
   if open(f, fd, fmReadWrite):
     return ($tmpl, f)
@@ -99,3 +109,21 @@ proc mkdtemp*(prefix: string): string =
     raise newException(OSError, $strerror(errno))
   return $tmpl
 
+proc osReleaseFile*(): Config {.since: (1, 5).} =
+  ## Gets system identification from `os-release` file and returns it as a `parsecfg.Config`.
+  ## You also need to import the `parsecfg` module to gain access to this object.
+  ## The `os-release` file is an official Freedesktop.org open standard.
+  ## Available in Linux and BSD distributions, except Android and Android-based Linux.
+  ## `os-release` file is not available on Windows and OS X by design.
+  ## * https://www.freedesktop.org/software/systemd/man/os-release.html
+  runnableExamples:
+    import std/parsecfg
+    when defined(linux):
+      let data = osReleaseFile()
+      echo "OS name: ", data.getSectionValue("", "NAME") ## the data is up to each distro.
+
+  # We do not use a {.strdefine.} because Standard says it *must* be that path.
+  for osReleaseFile in ["/etc/os-release", "/usr/lib/os-release"]:
+    if fileExists(osReleaseFile):
+      return loadConfig(osReleaseFile)
+  raise newException(IOError, "File not found: /etc/os-release, /usr/lib/os-release")

@@ -7,12 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
-## :Author: Alexander Mitchell-Robinson (Amrykid)
+## :Author: Alexander Mitchell-Robinson
 ##
 ## Unstable API.
 ##
 ## This module implements an event system that is not dependent on external
-## graphical toolkits. It was originally called ``NimEE`` because
+## graphical toolkits. It was originally called `NimEE` because
 ## it was inspired by Python's PyEE module. There are two ways you can use
 ## events: one is a python-inspired way; the other is more of a C-style way.
 ##
@@ -35,6 +35,8 @@
 ##    myobj.SomeEvent = initEventHandler("SomeEvent")
 ##    myobj.SomeEvent.addHandler(handleevent)
 ##    ee.emit(myobj.SomeEvent, genericargs)
+
+{.deprecated.}
 
 type
   EventArgs* = object of RootObj ## Base object for event arguments that are passed to callback functions.

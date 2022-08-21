@@ -41,9 +41,9 @@
 ##
 ##
 ## For SSL support this module relies on OpenSSL. If you want to
-## enable SSL, compile with ``-d:ssl``.
+## enable SSL, compile with `-d:ssl`.
 
-import net, strutils, strtabs, base64, os
+import net, strutils, strtabs, base64, os, strutils
 import asyncnet, asyncdispatch
 
 export Port
@@ -60,20 +60,49 @@ type
 
   SmtpBase[SocketType] = ref object
     sock: SocketType
+    address: string
     debug: bool
 
   Smtp* = SmtpBase[Socket]
   AsyncSmtp* = SmtpBase[AsyncSocket]
 
-proc debugSend(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
+proc containsNewline(xs: seq[string]): bool =
+  for x in xs:
+    if x.contains({'\c', '\L'}):
+      return true
+
+proc debugSend*(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
+  ## Sends `cmd` on the socket connected to the SMTP server.
+  ##
+  ## If the `smtp` object was created with `debug` enabled,
+  ## debugSend will invoke `echo("C:" & cmd)` before sending.
+  ##
+  ## This is a lower level proc and not something that you typically
+  ## would need to call when using this module. One exception to
+  ## this is if you are implementing any
+  ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
+
   if smtp.debug:
     echo("C:" & cmd)
   await smtp.sock.send(cmd)
 
-proc debugRecv(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
+proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[string] {.multisync.} =
+  ## Receives a line of data from the socket connected to the
+  ## SMTP server.
+  ##
+  ## If the `smtp` object was created with `debug` enabled,
+  ## debugRecv will invoke `echo("S:" & result.string)` after
+  ## the data is received.
+  ##
+  ## This is a lower level proc and not something that you typically
+  ## would need to call when using this module. One exception to
+  ## this is if you are implementing any
+  ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
+  ##
+  ## See `checkReply(reply)<#checkReply,AsyncSmtp,string>`_.
   result = await smtp.sock.recvLine()
   if smtp.debug:
-    echo("S:" & result.string)
+    echo("S:" & result)
 
 proc quitExcpt(smtp: Smtp, msg: string) =
   smtp.debugSend("QUIT")
@@ -82,19 +111,26 @@ proc quitExcpt(smtp: Smtp, msg: string) =
 const compiledWithSsl = defined(ssl)
 
 when not defined(ssl):
-  type PSSLContext = ref object
-  let defaultSSLContext: PSSLContext = nil
+  let defaultSSLContext: SslContext = nil
 else:
-  var defaultSSLContext {.threadvar.}: SSLContext
+  var defaultSSLContext {.threadvar.}: SslContext
 
-  proc getSSLContext(): SSLContext =
+  proc getSSLContext(): SslContext =
     if defaultSSLContext == nil:
       defaultSSLContext = newContext(verifyMode = CVerifyNone)
     result = defaultSSLContext
 
 proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
-                otherHeaders: openarray[tuple[name, value: string]]): Message =
+                otherHeaders: openArray[tuple[name, value: string]]): Message =
   ## Creates a new MIME compliant message.
+  ##
+  ## You need to make sure that `mSubject`, `mTo` and `mCc` don't contain
+  ## any newline characters. Failing to do so will raise `AssertionDefect`.
+  doAssert(not mSubject.contains({'\c', '\L'}),
+           "'mSubject' shouldn't contain any newline characters")
+  doAssert(not (mTo.containsNewline() or mCc.containsNewline()),
+           "'mTo' and 'mCc' shouldn't contain any newline characters")
+
   result.msgTo = mTo
   result.msgCc = mCc
   result.msgSubject = mSubject
@@ -106,6 +142,13 @@ proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
 proc createMessage*(mSubject, mBody: string, mTo,
                     mCc: seq[string] = @[]): Message =
   ## Alternate version of the above.
+  ##
+  ## You need to make sure that `mSubject`, `mTo` and `mCc` don't contain
+  ## any newline characters. Failing to do so will raise `AssertionDefect`.
+  doAssert(not mSubject.contains({'\c', '\L'}),
+           "'mSubject' shouldn't contain any newline characters")
+  doAssert(not (mTo.containsNewline() or mCc.containsNewline()),
+           "'mTo' and 'mCc' shouldn't contain any newline characters")
   result.msgTo = mTo
   result.msgCc = mCc
   result.msgSubject = mSubject
@@ -113,7 +156,7 @@ proc createMessage*(mSubject, mBody: string, mTo,
   result.msgOtherHeaders = newStringTable()
 
 proc `$`*(msg: Message): string =
-  ## stringify for ``Message``.
+  ## stringify for `Message`.
   result = ""
   if msg.msgTo.len() > 0:
     result = "TO: " & msg.msgTo.join(", ") & "\c\L"
@@ -127,9 +170,8 @@ proc `$`*(msg: Message): string =
   result.add("\c\L")
   result.add(msg.msgBody)
 
-proc newSmtp*(useSsl = false, debug = false,
-              sslContext: SSLContext = nil): Smtp =
-  ## Creates a new ``Smtp`` instance.
+proc newSmtp*(useSsl = false, debug = false, sslContext: SslContext = nil): Smtp =
+  ## Creates a new `Smtp` instance.
   new result
   result.debug = debug
   result.sock = newSocket()
@@ -142,12 +184,10 @@ proc newSmtp*(useSsl = false, debug = false,
     else:
       {.error: "SMTP module compiled without SSL support".}
 
-proc newAsyncSmtp*(useSsl = false, debug = false,
-                   sslContext: SSLContext = nil): AsyncSmtp =
-  ## Creates a new ``AsyncSmtp`` instance.
+proc newAsyncSmtp*(useSsl = false, debug = false, sslContext: SslContext = nil): AsyncSmtp =
+  ## Creates a new `AsyncSmtp` instance.
   new result
   result.debug = debug
-
   result.sock = newAsyncSocket()
   if useSsl:
     when compiledWithSsl:
@@ -166,22 +206,53 @@ proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
       retFuture.fail(newException(ReplyError, msg))
   return retFuture
 
-proc checkReply(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
+proc checkReply*(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
+  ## Calls `debugRecv<#debugRecv,AsyncSmtp>`_ and checks that the received
+  ## data starts with `reply`. If the received data does not start
+  ## with `reply`, then a `QUIT` command will be sent to the SMTP
+  ## server and a `ReplyError` exception will be raised.
+  ##
+  ## This is a lower level proc and not something that you typically
+  ## would need to call when using this module. One exception to
+  ## this is if you are implementing any
+  ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
   var line = await smtp.debugRecv()
-  if not line.startswith(reply):
+  if not line.startsWith(reply):
     await quitExcpt(smtp, "Expected " & reply & " reply, got: " & line)
+
+proc helo*(smtp: Smtp | AsyncSmtp) {.multisync.} =
+  # Sends the HELO request
+  await smtp.debugSend("HELO " & smtp.address & "\c\L")
+  await smtp.checkReply("250")
+
+proc recvEhlo(smtp: Smtp | AsyncSmtp): Future[bool] {.multisync.} =
+  ## Skips "250-" lines, read until "250 " found.
+  ## Return `true` if server supports `EHLO`, false otherwise.
+  while true:
+    var line = await smtp.sock.recvLine()
+    if smtp.debug:
+      echo("S:" & line)
+    if line.startsWith("250-"): continue
+    elif line.startsWith("250 "): return true # last line
+    else: return false
+
+proc ehlo*(smtp: Smtp | AsyncSmtp): Future[bool] {.multisync.} =
+  ## Sends EHLO request.
+  await smtp.debugSend("EHLO " & smtp.address & "\c\L")
+  return await smtp.recvEhlo()
 
 proc connect*(smtp: Smtp | AsyncSmtp,
               address: string, port: Port) {.multisync.} =
   ## Establishes a connection with a SMTP server.
   ## May fail with ReplyError or with a socket error.
+  smtp.address = address
   await smtp.sock.connect(address, port)
-
   await smtp.checkReply("220")
-  await smtp.debugSend("HELO " & address & "\c\L")
-  await smtp.checkReply("250")
+  let speaksEsmtp = await smtp.ehlo()
+  if not speaksEsmtp:
+    await smtp.helo()
 
-proc startTls*(smtp: Smtp | AsyncSmtp, sslContext: SSLContext = nil) {.multisync.} =
+proc startTls*(smtp: Smtp | AsyncSmtp, sslContext: SslContext = nil) {.multisync.} =
   ## Put the SMTP connection in TLS (Transport Layer Security) mode.
   ## May fail with ReplyError
   await smtp.debugSend("STARTTLS\c\L")
@@ -191,6 +262,9 @@ proc startTls*(smtp: Smtp | AsyncSmtp, sslContext: SSLContext = nil) {.multisync
       getSSLContext().wrapConnectedSocket(smtp.sock, handshakeAsClient)
     else:
       sslContext.wrapConnectedSocket(smtp.sock, handshakeAsClient)
+    let speaksEsmtp = await smtp.ehlo()
+    if not speaksEsmtp:
+      await smtp.helo()
   else:
     {.error: "SMTP module compiled without SSL support".}
 
@@ -210,9 +284,14 @@ proc auth*(smtp: Smtp | AsyncSmtp, username, password: string) {.multisync.} =
 
 proc sendMail*(smtp: Smtp | AsyncSmtp, fromAddr: string,
                toAddrs: seq[string], msg: string) {.multisync.} =
-  ## Sends ``msg`` from ``fromAddr`` to the addresses specified in ``toAddrs``.
-  ## Messages may be formed using ``createMessage`` by converting the
+  ## Sends `msg` from `fromAddr` to the addresses specified in `toAddrs`.
+  ## Messages may be formed using `createMessage` by converting the
   ## Message into a string.
+  ##
+  ## You need to make sure that `fromAddr` and `toAddrs` don't contain
+  ## any newline characters. Failing to do so will raise `AssertionDefect`.
+  doAssert(not (toAddrs.containsNewline() or fromAddr.contains({'\c', '\L'})),
+           "'toAddrs' and 'fromAddr' shouldn't contain any newline characters")
 
   await smtp.debugSend("MAIL FROM:<" & fromAddr & ">\c\L")
   await smtp.checkReply("250")

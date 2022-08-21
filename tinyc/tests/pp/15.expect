@@ -1,5 +1,0 @@
-return (long double)d;
-return A+++B;
-return A+ ++B;
-return A+++ +B;
-return 0x1E -1;

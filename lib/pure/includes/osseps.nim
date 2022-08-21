@@ -1,5 +1,5 @@
 # Include file that implements 'DirSep' and friends. Do not import this when
-# you also import ``os.nim``!
+# you also import `os.nim`!
 
 # Improved based on info in 'compiler/platform.nim'
 
@@ -35,12 +35,11 @@ const
 
   AltSep* =
     when doslikeFileSystem: '/'
-    elif defined(haiku): ':'
     else: DirSep
     ## An alternative character used by the operating system to separate
-    ## pathname components, or the same as `DirSep <#DirSep>`_ if only one separator
+    ## pathname components, or the same as DirSep_ if only one separator
     ## character exists. This is set to `'/'` on Windows systems
-    ## where `DirSep <#DirSep>`_ is a backslash (`'\\'`).
+    ## where DirSep_ is a backslash (`'\\'`).
 
   PathSep* =
     when defined(macos) or defined(RISCOS): ','
@@ -48,7 +47,7 @@ const
     elif defined(PalmOS) or defined(MorphOS): ':' # platform has ':' but osseps has ';'
     else: ':'
     ## The character conventionally used by the operating system to separate
-    ## search patch components (as in PATH), such as `':'` for POSIX
+    ## search path components (as in PATH), such as `':'` for POSIX
     ## or `';'` for Windows.
 
   FileSystemCaseSensitive* =
@@ -56,7 +55,7 @@ const
          defined(PalmOS) or defined(MorphOS): false
     else: true
     ## True if the file system is case sensitive, false otherwise. Used by
-    ## `cmpPaths proc <#cmpPaths,string,string>`_ to compare filenames properly.
+    ## `cmpPaths proc`_ to compare filenames properly.
 
   ExeExt* =
     when doslikeFileSystem: "exe"
@@ -89,7 +88,7 @@ const
 
   ExtSep* = '.'
     ## The character which separates the base filename from the extension;
-    ## for example, the `'.'` in ``os.nim``.
+    ## for example, the `'.'` in `os.nim`.
 
   #  MacOS paths
   #  ===========

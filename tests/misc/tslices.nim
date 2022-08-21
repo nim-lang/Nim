@@ -11,10 +11,9 @@ verichtetd
 
 # Test the new slices.
 
-import strutils
-
 var mystr = "Abgrund"
-mystr[..1] = "Zu"
+# mystr[..1] = "Zu" # deprecated
+mystr[0..1] = "Zu"
 
 mystr[4..4] = "5"
 
@@ -23,7 +22,8 @@ type
 
 var myarr: array[TEnum, int] = [1, 2, 3, 4, 5, 6]
 myarr[e1..e3] = myarr[e4..e6]
-myarr[..e3] = myarr[e4..e6]
+# myarr[..e3] = myarr[e4..e6] # deprecated
+myarr[0..e3] = myarr[e4..e6]
 
 for x in items(myarr): stdout.write(x)
 echo()
@@ -46,7 +46,8 @@ echo mystr
 mystr[4..4] = "u"
 
 # test full replacement
-mystr[.. ^2] = "egerichtet"
+# mystr[.. ^2] = "egerichtet"  # deprecated
+mystr[0 .. ^2] = "egerichtet"
 
 echo mystr
 

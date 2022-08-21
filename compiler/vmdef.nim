@@ -10,19 +10,44 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
+import tables
+
 import ast, idents, options, modulegraphs, lineinfos
 
+type TInstrType* = uint64
+
 const
+  regOBits = 8 # Opcode
+  regABits = 16
+  regBBits = 16
+  regCBits = 16
+  regBxBits = 24
+
   byteExcess* = 128 # we use excess-K for immediates
-  wordExcess* = 32768
 
-  MaxLoopIterations* = 10_000_000 # max iterations of all loops
+# Calculate register shifts, masks and ranges
 
+const
+  regOShift* = 0.TInstrType
+  regAShift* = (regOShift + regOBits)
+  regBShift* = (regAShift + regABits)
+  regCShift* = (regBShift + regBBits)
+  regBxShift* = (regAShift + regABits)
+
+  regOMask*  = ((1.TInstrType shl regOBits) - 1)
+  regAMask*  = ((1.TInstrType shl regABits) - 1)
+  regBMask*  = ((1.TInstrType shl regBBits) - 1)
+  regCMask*  = ((1.TInstrType shl regCBits) - 1)
+  regBxMask* = ((1.TInstrType shl regBxBits) - 1)
+
+  wordExcess* = 1 shl (regBxBits-1)
+  regBxMin* = -wordExcess+1
+  regBxMax* =  wordExcess-1
 
 type
-  TRegister* = range[0..255]
-  TDest* = range[-1 .. 255]
-  TInstr* = distinct uint32
+  TRegister* = range[0..regAMask.int]
+  TDest* = range[-1..regAMask.int]
+  TInstr* = distinct TInstrType
 
   TOpcode* = enum
     opcEof,         # end of code
@@ -38,12 +63,16 @@ type
     opcCastIntToFloat64,    # int and float must be of the same byte size
     opcCastFloatToInt32,    # int and float must be of the same byte size
     opcCastFloatToInt64,    # int and float must be of the same byte size
+    opcCastPtrToInt,
+    opcCastIntToPtr,
     opcFastAsgnComplex,
     opcNodeToReg,
 
     opcLdArr,  # a = b[c]
+    opcLdArrAddr, # a = addr(b[c])
     opcWrArr,  # a[b] = c
     opcLdObj,  # a = b.c
+    opcLdObjAddr, # a = addr(b.c)
     opcWrObj,  # a.b = c
     opcAddrReg,
     opcAddrNode,
@@ -51,6 +80,7 @@ type
     opcWrDeref,
     opcWrStrIdx,
     opcLdStrIdx, # a = b[c]
+    opcLdStrIdxAddr,  # a = addr(b[c])
 
     opcAddInt,
     opcAddImmInt,
@@ -58,6 +88,7 @@ type
     opcSubImmInt,
     opcLenSeq,
     opcLenStr,
+    opcLenCstring,
 
     opcIncl, opcInclRange, opcExcl, opcCard, opcMulInt, opcDivInt, opcModInt,
     opcAddFloat, opcSubFloat, opcMulFloat, opcDivFloat,
@@ -68,11 +99,11 @@ type
     opcEqRef, opcEqNimNode, opcSameNodeType,
     opcXor, opcNot, opcUnaryMinusInt, opcUnaryMinusFloat, opcBitnotInt,
     opcEqStr, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
-    opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,
+    opcMulSet, opcPlusSet, opcMinusSet, opcConcatStr,
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcIsNil, opcOf, opcIs,
-    opcSubStr, opcParseFloat, opcConv, opcCast,
-    opcQuit,
+    opcParseFloat, opcConv, opcCast,
+    opcQuit, opcInvalidField,
     opcNarrowS, opcNarrowU,
     opcSignExtend,
 
@@ -142,12 +173,13 @@ type
     opcAsgnConst, # dest = copy(constants[Bx])
     opcLdGlobal,  # dest = globals[Bx]
     opcLdGlobalAddr, # dest = addr(globals[Bx])
+    opcLdGlobalDerefFFI, # dest = globals[Bx][]
+    opcLdGlobalAddrDerefFFI, # globals[Bx][] = ...
 
     opcLdImmInt,  # dest = immediate value
     opcNBindSym, opcNDynBindSym,
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
-    opcMarshalLoad, opcMarshalStore,
     opcSymOwner,
     opcSymIsInstantiationOf
 
@@ -183,15 +215,26 @@ type
     slotTempComplex,  # some complex temporary (s.node field is used)
     slotTempPerm      # slot is temporary but permanent (hack)
 
+  TRegisterKind* = enum
+    rkNone, rkNode, rkInt, rkFloat, rkRegisterAddr, rkNodeAddr
+  TFullReg* = object  # with a custom mark proc, we could use the same
+                      # data representation as LuaJit (tagged NaNs).
+    case kind*: TRegisterKind
+    of rkNone: nil
+    of rkInt: intVal*: BiggestInt
+    of rkFloat: floatVal*: BiggestFloat
+    of rkNode: node*: PNode
+    of rkRegisterAddr: regAddr*: ptr TFullReg
+    of rkNodeAddr: nodeAddr*: ptr PNode
+
   PProc* = ref object
     blocks*: seq[TBlock]    # blocks; temp data structure
     sym*: PSym
-    slots*: array[TRegister, tuple[inUse: bool, kind: TSlotKind]]
-    maxSlots*: int
+    regInfo*: seq[tuple[inUse: bool, kind: TSlotKind]]
 
   VmArgs* = object
     ra*, rb*, rc*: Natural
-    slots*: pointer
+    slots*: ptr UncheckedArray[TFullReg]
     currentException*: PNode
     currentLineInfo*: TLineInfo
   VmCallback* = proc (args: VmArgs) {.closure.}
@@ -220,22 +263,41 @@ type
     config*: ConfigRef
     graph*: ModuleGraph
     oldErrorCount*: int
+    profiler*: Profiler
+    templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
+    vmstateDiff*: seq[(PSym, PNode)] # we remember the "diff" to global state here (feature for IC)
+    procToCodePos*: Table[int, int]
+
+  PStackFrame* = ref TStackFrame
+  TStackFrame* {.acyclic.} = object
+    prc*: PSym                 # current prc; proc that is evaluated
+    slots*: seq[TFullReg]      # parameters passed to the proc + locals;
+                              # parameters come first
+    next*: PStackFrame         # for stacking
+    comesFrom*: int
+    safePoints*: seq[int]      # used for exception handling
+                              # XXX 'break' should perform cleanup actions
+                              # What does the C backend do for it?
+  Profiler* = object
+    tEnter*: float
+    tos*: PStackFrame
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
 
-proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
+proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: IdGenerator): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
-    prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
-    comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "",
-    cache: cache, config: g.config, graph: g)
+    prc: PProc(blocks: @[]), module: module, loopIterations: g.config.maxLoopIterationsVM,
+    comesFromHeuristic: unknownLineInfo, callbacks: @[], errorFlag: "",
+    cache: cache, config: g.config, graph: g, idgen: idgen)
 
-proc refresh*(c: PCtx, module: PSym) =
+proc refresh*(c: PCtx, module: PSym; idgen: IdGenerator) =
   c.module = module
   c.prc = PProc(blocks: @[])
-  c.loopIterations = MaxLoopIterations
+  c.loopIterations = c.config.maxLoopIterationsVM
+  c.idgen = idgen
 
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
   result = c.callbacks.len
@@ -244,18 +306,18 @@ proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.disca
 const
   firstABxInstr* = opcTJmp
   largeInstrs* = { # instructions which use 2 int32s instead of 1:
-    opcSubStr, opcConv, opcCast, opcNewSeq, opcOf,
-    opcMarshalLoad, opcMarshalStore}
+    opcConv, opcCast, opcNewSeq, opcOf
+    }
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
 
 # flag is used to signal opcSeqLen if node is NimNode.
 const nimNodeFlag* = 16
 
-template opcode*(x: TInstr): TOpcode = TOpcode(x.uint32 and 0xff'u32)
-template regA*(x: TInstr): TRegister = TRegister(x.uint32 shr 8'u32 and 0xff'u32)
-template regB*(x: TInstr): TRegister = TRegister(x.uint32 shr 16'u32 and 0xff'u32)
-template regC*(x: TInstr): TRegister = TRegister(x.uint32 shr 24'u32)
-template regBx*(x: TInstr): int = (x.uint32 shr 16'u32).int
+template opcode*(x: TInstr): TOpcode = TOpcode(x.TInstrType shr regOShift and regOMask)
+template regA*(x: TInstr): TRegister = TRegister(x.TInstrType shr regAShift and regAMask)
+template regB*(x: TInstr): TRegister = TRegister(x.TInstrType shr regBShift and regBMask)
+template regC*(x: TInstr): TRegister = TRegister(x.TInstrType shr regCShift and regCMask)
+template regBx*(x: TInstr): int = (x.TInstrType shr regBxShift and regBxMask).int
 
 template jmpDiff*(x: TInstr): int = regBx(x) - wordExcess

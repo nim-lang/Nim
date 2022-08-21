@@ -188,7 +188,7 @@ runForever()
 					<div>
 						<h4>Community</h4>
 						<a href="https://forum.nim-lang.org">User Forum</a>
-            <a href="http://webchat.freenode.net/?channels=nim">Online IRC</a>
+            <a href="https://web.libera.chat/#nim">Online IRC</a>
             <a href="https://irclogs.nim-lang.org/">IRC Logs</a>
 					</div>
 				</div>
@@ -250,7 +250,7 @@ runForever()
 <p>This section lists the companies and individuals that are, very kindly, contributing a
 monthly amount to help sustain Nim's development. For more details take a
 look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campaign</a>.</p>
-<p class="lastUpdate">Last updated: ${getTime().getGMTime().format("dd/MM/yyyy")}</p>
+<p class="lastUpdate">Last updated: ${getTime().utc().format("dd/MM/yyyy")}</p>
 <dl>
 ${generateSponsors(activeSponsors)}
 </dl>

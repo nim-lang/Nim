@@ -8,7 +8,7 @@ import asyncdispatch, net, os, nativesockets
 # bug: https://github.com/nim-lang/Nim/issues/5279
 
 proc setupServerSocket(hostname: string, port: Port): AsyncFD =
-  let fd = newNativeSocket()
+  let fd = createNativeSocket()
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
   setSockOptInt(fd, SOL_SOCKET, SO_REUSEADDR, 1)
@@ -30,7 +30,7 @@ for i in 0..100:
     if not fut.failed:
       fut.read().closeSocket()
 
-  var fd = newAsyncNativeSocket()
+  var fd = createAsyncNativeSocket()
   waitFor fd.connect("localhost", port)
   serverFd.closeSocket()
   fd.closeSocket()

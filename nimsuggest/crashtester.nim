@@ -32,7 +32,7 @@ proc callNimsuggest() =
       if a == DummyEof: break
 
     var line = 0
-    for i in 0..< contents.len:
+    for i in 0 ..< contents.len:
       let slic = contents[0..i]
       writeFile("temp000.nim", slic)
       let (line, col) = getPosition(slic)

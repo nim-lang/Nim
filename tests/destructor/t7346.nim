@@ -2,8 +2,7 @@ discard """
 joinable: false
 """
 
-when not defined(nimNewRuntime):
-  {.error: "This bug could only be reproduced with --newruntime".}
+# This bug could only be reproduced with --newruntime
 
 type
   Obj = object

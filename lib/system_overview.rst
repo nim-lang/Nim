@@ -1,10 +1,12 @@
+.. default-role:: code
+.. include:: ../doc/rstcommon.rst
+
 The System module imports several separate modules, and their documentation
 is in separate files:
 
 * `iterators <iterators.html>`_
 * `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
-* `io <io.html>`_
 * `widestrs <widestrs.html>`_
 
 
@@ -12,8 +14,9 @@ Here is a short overview of the most commonly used functions from the
 `system` module. Function names in the tables below are clickable and
 will take you to the full documentation of the function.
 
-The amount of available functions is much larger. Use the table of contents
-on the left-hand side and/or `Ctrl+F` to navigate through this module.
+There are many more functions available than the ones listed in this overview.
+Use the table of contents on the left-hand side and/or `Ctrl+F` to navigate
+through this module.
 
 
 Strings and characters
@@ -35,7 +38,7 @@ Proc                              Usage
 * `strutils module <strutils.html>`_ for common string functions
 * `strformat module <strformat.html>`_ for string interpolation and formatting
 * `unicode module <unicode.html>`_ for Unicode UTF-8 handling
-* `strscans <strscans.html>`_ for ``scanf`` and ``scanp`` macros, which offer
+* `strscans <strscans.html>`_ for `scanf` and `scanp` macros, which offer
   easier substring extraction than regular expressions
 * `strtabs module <strtabs.html>`_ for efficient hash tables
   (dictionaries, in some programming languages) mapping from strings to strings
@@ -45,24 +48,27 @@ Proc                              Usage
 Seqs
 ----
 
-========================================   ==========================================
-Proc                                       Usage
-========================================   ==========================================
-`newSeq<#newSeq>`_                         Create a new sequence of a given length
-`newSeqOfCap<#newSeqOfCap,Natural>`_       Create a new sequence with zero length
-                                           and a given capacity
-`setLen<#setLen,seq[T][T],Natural>`_       Set the length of a sequence
-`len<#len,seq[T][T]>`_                     Return the length of a sequence
-`@<#@,array[IDX,T]>`_                      Turn an array into a sequence
-`add<#add,seq[T][T],T>`_                   Add an item to the sequence
-`insert<#insert,seq[T][T],T>`_             Insert an item at a specific position
-`delete<#delete,seq[T][T],Natural>`_       Delete an item while preserving the
-                                           order of elements (`O(n)` operation)
-`del<#del,seq[T][T],Natural>`_             `O(1)` removal, doesn't preserve the order
-`pop<#pop,seq[T][T]>`_                     Remove and return last item of a sequence
-`x & y<#&,seq[T][T],seq[T][T]>`_           Concatenate two sequences
-`x[a..b]<#[],openArray[T],HSlice[U,V]>`_   Slice of a sequence (both ends included)
-========================================   ==========================================
+=============================================================  ==========================================
+Proc                                                           Usage
+=============================================================  ==========================================
+`newSeq<#newSeq>`_                                             Create a new sequence of a given length
+`newSeqOfCap<#newSeqOfCap,Natural>`_                           Create a new sequence with zero length
+                                                               and a given capacity
+`setLen<#setLen,seq[T],Natural>`_                              Set the length of a sequence
+`len<#len,seq[T]>`_                                            Return the length of a sequence
+`@<#@,openArray[T]>`_                                          Turn an array into a sequence
+`add<#add,seq[T],sinkT>`_                                      Add an item to the sequence
+`insert<#insert,seq[T],sinkT>`_                                Insert an item at a specific position
+`delete<#delete,seq[T],Natural>`_                              Delete an item while preserving the
+                                                               order of elements (`O(n)` operation)
+`del<#del,seq[T],Natural>`_                                    `O(1)` removal, doesn't preserve the order
+`pop<#pop,seq[T]>`_                                            Remove and return last item of a sequence
+`x & y<#&,seq[T],seq[T]>`_                                     Concatenate two sequences
+`x[a .. b]<#[],openArray[T],HSlice[U: Ordinal,V: Ordinal]>`_   Slice of a sequence (both ends included)
+`x[a .. ^b]<#[],openArray[T],HSlice[U: Ordinal,V: Ordinal]>`_  Slice of a sequence but `b` is a 
+                                                               reversed index (both ends included)
+`x[a ..< b]<#[],openArray[T],HSlice[U: Ordinal,V: Ordinal]>`_  Slice of a sequence (excluded upper bound)
+=============================================================  ==========================================
 
 **See also:**
 * `sequtils module <sequtils.html>`_ for operations on container
@@ -149,19 +155,21 @@ Proc                      Usage
 Misc
 ----
 
-=============================================  ============================================
-Proc                                           Usage
-=============================================  ============================================
-`is<#is,T,S>`_                                 Check if two arguments are of the same type
-`isnot<#isnot.t,untyped,untyped>`_             Negated version of `is`
-`!=<#!%3D.t,untyped,untyped>`_                 Not equals
-`addr<#addr,T>`_                               Take the address of a memory location
-`T and F<#and,bool,bool>`_                     Boolean `and`
-`T or F<#or,bool,bool>`_                       Boolean `or`
-`T xor F<#xor,bool,bool>`_                     Boolean `xor` (exclusive or)
-`not T<#not,bool>`_                            Boolean `not`
-`a .. b<#..,T,U>`_                             Binary slice that constructs an interval
-                                               `[a, b]`
-[a ..< b](#..<.t,untyped,untyped)              Interval `[a, b)` (excluded upper bound)
-[runnableExamples](#runnableExamples,untyped)  Create testable documentation
-=============================================  ============================================
+====================================================  ============================================
+Proc                                                  Usage
+====================================================  ============================================
+`is<#is,T,S>`_                                        Check if two arguments are of the same type
+`isnot<#isnot.t,untyped,untyped>`_                    Negated version of `is`
+`!=<#!%3D.t,untyped,untyped>`_                        Not equals
+`addr<#addr,T>`_                                      Take the address of a memory location
+`T and F<#and,bool,bool>`_                            Boolean `and`
+`T or F<#or,bool,bool>`_                              Boolean `or`
+`T xor F<#xor,bool,bool>`_                            Boolean `xor` (exclusive or)
+`not T<#not,bool>`_                                   Boolean `not`
+`a[^x]<#^.t,int>`_                                    Take the element at the reversed index `x`
+`a .. b<#..,sinkT,sinkU>`_                            Binary slice that constructs an interval
+                                                      `[a, b]`
+`a ..^ b<#..^.t,untyped,untyped>`_                    Interval `[a, b]` but `b` as reversed index
+[a ..< b](#..<.t,untyped,untyped)                     Interval `[a, b)` (excluded upper bound)
+[runnableExamples](#runnableExamples,string,untyped)  Create testable documentation
+====================================================  ============================================

@@ -1,4 +1,6 @@
-image: ubuntu:16.04
+# xxx unused, out of date
+
+image: ubuntu:18.04
 
 stages:
   - pre-build
@@ -54,7 +56,7 @@ test-windows:
   script:
     - call ci\deps.bat
     - nim c testament\tester
-    - testament\tester.exe --pedantic all
+    - testament\tester.exe all
   tags:
     - windows
     - fast

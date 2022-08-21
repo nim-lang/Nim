@@ -26,3 +26,14 @@ var output = represent(s)
 
 for item in output():
   echo item
+
+
+#------------------------------------------------------------------------------
+# Issue #12747
+
+type
+  ABC = ref object
+      arr: array[0x40000, pointer]
+let a = ABC()
+for a in a.arr:
+    assert a == nil

@@ -1,5 +1,5 @@
 discard """
-  errormsg: "expression 'result[1 .. BackwardsIndex(1)]' is of type 'string' and has to be discarded"
+  errormsg: "expression 'result[1 .. BackwardsIndex(1)]' is of type 'string' and has to be used (or discarded)"
   line: 10
 """
 

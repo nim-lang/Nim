@@ -40,7 +40,7 @@ type
     tyPointer,
     tyOpenArray,
     tyString,
-    tyCString,
+    tyCstring,
     tyForward,
     tyInt,
     tyInt8,
@@ -69,7 +69,7 @@ type
     tyAnythingHidden,
     tyStaticHidden,
     tyFromExprHidden,
-    tyOpt,
+    tyOptDeprecated,
     tyVoidHidden
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
@@ -90,6 +90,7 @@ type
     when defined(gcHooks):
       head*: pointer
     size*: int
+    align*: int
     kind: TNimKind
     flags: set[TNimTypeFlag]
     base*: ptr TNimType
@@ -97,6 +98,8 @@ type
     finalizer*: pointer # the finalizer for the type
     marker*: proc (p: pointer, op: int) {.nimcall, benign, tags: [], raises: [].} # marker proc for GC
     deepcopy: proc (p: pointer): pointer {.nimcall, benign, tags: [], raises: [].}
+    when defined(nimSeqsV2):
+      typeInfoV2*: pointer
     when defined(nimTypeNames):
       name: cstring
       nextType: ptr TNimType

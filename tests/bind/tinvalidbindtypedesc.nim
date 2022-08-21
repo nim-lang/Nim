@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got <type float, string>"
+  errormsg: "type mismatch: got <typedesc[float], string>"
   line: 10
 """
 

@@ -18,7 +18,7 @@
 ##
 ## Unstable API.
 
-from ospaths import raiseOSError, osLastError
+from os import raiseOSError, osLastError
 
 template distance*(lhs, rhs: pointer): int =
   cast[int](rhs) - cast[int](lhs)
@@ -42,25 +42,10 @@ type
 
 when defined(windows):
   import winlean
-
-  type
-    SYSTEM_INFO {.final, pure.} = object
-      u1: uint32
-      dwPageSize: uint32
-      lpMinimumApplicationAddress: pointer
-      lpMaximumApplicationAddress: pointer
-      dwActiveProcessorMask: ptr uint32
-      dwNumberOfProcessors: uint32
-      dwProcessorType: uint32
-      dwAllocationGranularity: uint32
-      wProcessorLevel: uint16
-      wProcessorRevision: uint16
-
-  proc getSystemInfo(lpSystemInfo: ptr SYSTEM_INFO) {.stdcall,
-      dynlib: "kernel32", importc: "GetSystemInfo".}
+  import std/private/win_getsysteminfo
 
   proc getAllocationGranularity: uint =
-    var sysInfo: SYSTEM_INFO
+    var sysInfo: SystemInfo
     getSystemInfo(addr sysInfo)
     return uint(sysInfo.dwAllocationGranularity)
 
@@ -76,7 +61,7 @@ when defined(windows):
 
   template check(expr) =
     let r = expr
-    if r == cast[type(r)](0):
+    if r == cast[typeof(r)](0):
       raiseOSError(osLastError())
 
 else:

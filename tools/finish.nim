@@ -41,7 +41,7 @@ proc downloadMingw(): DownloadResult =
   let curl = findExe"curl"
   var cmd: string
   if curl.len > 0:
-    cmd = quoteShell(curl) & " --out " & "dist" / mingw & " " & url
+    cmd = quoteShell(curl) & " --output " & "dist" / mingw & " " & url
   elif fileExists"bin/nimgrab.exe":
     cmd = r"bin\nimgrab.exe " & url & " dist" / mingw
   if cmd.len > 0:
@@ -123,12 +123,11 @@ when defined(windows):
 
   proc addToPathEnv*(e: string) =
     var p = tryGetUnicodeValue(r"Environment", "Path", HKEY_CURRENT_USER)
-    let x = if e.contains(Whitespace): "\"" & e & "\"" else: e
     if p.len > 0:
       p.add ";"
-      p.add x
+      p.add e
     else:
-      p = x
+      p = e
     setUnicodeValue(r"Environment", "Path", p, HKEY_CURRENT_USER)
 
   proc createShortcut(src, dest: string; icon = "") =
@@ -225,6 +224,8 @@ proc main() =
       if x.len == 0: continue
       let y = try: expandFilename(if x[0] == '"' and x[^1] == '"':
                                     substr(x, 1, x.len-2) else: x)
+              except OSError as e:
+                if e.errorCode == 0: x else: ""
               except: ""
       if y.cmpIgnoreCase(nimDesiredPath) == 0:
         nimAlreadyInPath = true

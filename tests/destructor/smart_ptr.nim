@@ -20,12 +20,6 @@ proc `=`*[T](dest: var SharedPtr[T], src: SharedPtr[T]) {.inline.} =
       discard atomicInc(src.val[].atomicCounter)
     dest.val = src.val
 
-proc `=sink`*[T](dest: var SharedPtr[T], src: SharedPtr[T]) {.inline.} =
-  if dest.val != src.val:
-    if dest.val != nil:
-      `=destroy`(dest)
-    dest.val = src.val
-
 proc newSharedPtr*[T](val: sink T): SharedPtr[T] =
   result.val = cast[type(result.val)](allocShared0(sizeof(result.val[])))
   result.val.atomicCounter = 1

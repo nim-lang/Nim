@@ -1,5 +1,5 @@
 discard """
-  outputsub: '''ObjectAssignmentError'''
+  outputsub: '''ObjectAssignmentDefect'''
   exitcode: "1"
 """
 
@@ -423,9 +423,9 @@ proc isValid1*[A](s: HashSet[A]): bool {.deprecated:
   result = s.data.len > 0
   # bug #11468
 
-assert $type(a) == "Option[system.int]"
-foo(a, $type(b), c)
-foo(type(b), c) # this is ok
+assert $typeof(a) == "Option[system.int]"
+foo(a, $typeof(b), c)
+foo(typeof(b), c) # this is ok
 
 proc `<`*[A](s, t: A): bool = discard
 proc `==`*[A](s, t: HashSet[A]): bool = discard
@@ -812,7 +812,7 @@ let foo = if cond:
 
 let a =
   [[aaadsfas, bbb],
-    [ccc, ddd]]
+   [ccc, ddd]]
 
 let b = [
   [aaa, bbb],
@@ -835,3 +835,29 @@ proc f =
   # doesn't break the code, but leaving indentation as is would be nice.
   let x = if true: callingProcWhatever()
           else: callingADifferentProc()
+
+
+type
+  EventKind = enum
+    Stop, StopSuccess, StopError,
+    SymbolChange, TextChange,
+
+  SpinnyEvent = tuple
+    kind: EventKind
+    payload: string
+
+
+type
+  EventKind2 = enum
+    Stop2, StopSuccess2, StopError2,
+    SymbolChange2, TextChange2,
+
+type
+  SpinnyEvent2 = tuple
+    kind: EventKind
+    payload: string
+
+
+proc hid_open*(vendor_id: cushort; product_id: cushort;
+    serial_number: cstring): ptr HidDevice {.
+    importc: "hid_open", dynlib: hidapi.}

@@ -1,8 +1,8 @@
 import unittest, strutils
 include nre
 
-suite "string splitting":
-  test "splitting strings":
+block: # string splitting
+  block: # splitting strings
     check("1 2 3 4 5 6 ".split(re" ") == @["1", "2", "3", "4", "5", "6", ""])
     check("1  2  ".split(re(" ")) == @["1", "", "2", "", ""])
     check("1 2".split(re(" ")) == @["1", "2"])
@@ -10,22 +10,22 @@ suite "string splitting":
     check("".split(re"foo") == @[""])
     check("9".split(re"\son\s") == @["9"])
 
-  test "captured patterns":
+  block: # captured patterns
     check("12".split(re"(\d)") == @["", "1", "", "2", ""])
 
-  test "maxsplit":
+  block: # maxsplit
     check("123".split(re"", maxsplit = 2) == @["1", "23"])
     check("123".split(re"", maxsplit = 1) == @["123"])
     check("123".split(re"", maxsplit = -1) == @["1", "2", "3"])
 
-  test "split with 0-length match":
+  block: # split with 0-length match
     check("12345".split(re("")) == @["1", "2", "3", "4", "5"])
     check("".split(re"") == newSeq[string]())
     check("word word".split(re"\b") == @["word", " ", "word"])
     check("word\r\lword".split(re"(*ANYCRLF)(?m)$") == @["word", "\r\lword"])
     check("слово слово".split(re"(*U)(\b)") == @["", "слово", "", " ", "", "слово", ""])
 
-  test "perl split tests":
+  block: # perl split tests
     check("forty-two"                    .split(re"")      .join(",") == "f,o,r,t,y,-,t,w,o")
     check("forty-two"                    .split(re"", 3)   .join(",") == "f,o,rty-two")
     check("split this string"            .split(re" ")     .join(",") == "split,this,string")
@@ -47,7 +47,7 @@ suite "string splitting":
     check(""                             .split(re"")      .len       == 0)
     check(":"                            .split(re"")      .len       == 1)
 
-  test "start position":
+  block: # start position
     check("abc".split(re"", start = 1) == @["b", "c"])
     check("abc".split(re"", start = 2) == @["c"])
     check("abc".split(re"", start = 3) == newSeq[string]())

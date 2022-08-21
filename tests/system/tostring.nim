@@ -1,7 +1,3 @@
-discard """
-  output: "DONE: tostring.nim"
-"""
-
 doAssert "@[23, 45]" == $(@[23, 45])
 doAssert "[32, 45]" == $([32, 45])
 doAssert """@["", "foo", "bar"]""" == $(@["", "foo", "bar"])
@@ -51,7 +47,7 @@ import strutils
 
 let arr = ['H','e','l','l','o',' ','W','o','r','l','d','!','\0']
 doAssert $arr == "['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\\x00']"
-doAssert $cstring(unsafeAddr arr) == "Hello World!"
+doAssert $cstring(addr arr) == "Hello World!"
 
 proc takes(c: cstring) =
   doAssert c == cstring""
@@ -72,7 +68,7 @@ doAssert yy == ""
 proc bar(arg: cstring) =
   doAssert arg[0] == '\0'
 
-proc baz(arg: openarray[char]) =
+proc baz(arg: openArray[char]) =
   doAssert arg.len == 0
 
 proc stringCompare() =
@@ -83,9 +79,9 @@ proc stringCompare() =
   doAssert b == "bee"
   b.add g
   doAssert b == "bee"
-  c.add 123.456
+  c.addFloat 123.456
   doAssert c == "123.456"
-  d.add 123456
+  d.addInt 123456
   doAssert d == "123456"
 
   doAssert e == ""
@@ -108,7 +104,7 @@ bar(nilstring)
 static:
   stringCompare()
 
-# bug 8847
+# issue #8847
 var a2: cstring = "fo\"o2"
 
 block:
@@ -116,5 +112,14 @@ block:
   s.addQuoted a2
   doAssert s == "\"fo\\\"o2\""
 
-
-echo "DONE: tostring.nim"
+# issue #16650
+template fn() =
+  doAssert len(cstring"ab\0c") == 5
+  doAssert len(cstring("ab\0c")) == 2
+  when nimvm:
+    discard
+  else:
+    let c = cstring("ab\0c")
+    doAssert len(c) == 2
+fn()
+static: fn()

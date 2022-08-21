@@ -47,4 +47,4 @@ macro suite(suiteName, suiteDesc, suiteBloc: untyped): typed =
 # Test above
 suite basics, "Description of such":
   test(t5, ""):
-    assert false
+    doAssert false

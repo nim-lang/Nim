@@ -34,9 +34,6 @@ type
 type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
 
-# not detected by detect.nim, guarded by #ifdef __USE_UNIX98 in glibc
-const SIG_HOLD* = cast[Sighandler](2)
-
 type
   Time* {.importc: "time_t", header: "<time.h>".} = distinct clong
 
@@ -50,7 +47,7 @@ type
     d_ino*: Ino
     d_off*: Off
     d_reclen*: cushort
-    d_type*: int8  # cuchar really!
+    d_type*: int8  # uint8 really!
     d_name*: array[256, cchar]
 
   Tflock* {.importc: "struct flock", final, pure,
@@ -171,7 +168,7 @@ type
   Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = cuint
   Pthread_mutex* {.importc: "pthread_mutex_t", header: "<sys/types.h>",
                    pure, final.} = object
-    abi: array[48 div sizeof(clong), clong]
+    abi: array[40 div sizeof(clong), clong]
   Pthread_mutexattr* {.importc: "pthread_mutexattr_t",
                         header: "<sys/types.h>", pure, final.} = object
     abi: array[4 div sizeof(cint), cint]
@@ -228,7 +225,7 @@ type
     st_mode*: Mode        ## Mode of file (see below).
     st_uid*: Uid          ## User ID of file.
     st_gid*: Gid          ## Group ID of file.
-    pad0: cint
+    pad0 {.importc: "__pad0".}: cint
     st_rdev*: Dev         ## Device ID (if file is character or block special).
     st_size*: Off         ## For regular files, the file size in bytes.
                            ## For symbolic links, the length in bytes of the
@@ -244,8 +241,6 @@ type
     st_atim*: Timespec   ## Time of last access.
     st_mtim*: Timespec   ## Time of last data modification.
     st_ctim*: Timespec   ## Time of last status change.
-    reserved: array[3, clong]
-
 
   Statvfs* {.importc: "struct statvfs", header: "<sys/statvfs.h>",
               final, pure.} = object ## struct statvfs
@@ -339,7 +334,7 @@ type
     si_status*: cint   ## Exit value or signal.
     si_band*: int      ## Band event for SIGPOLL.
     si_value*: SigVal  ## Signal value.
-    pad {.importc: "_pad"}: array[128 - 56, uint8]
+    pad {.importc: "_pad".}: array[128 - 56, uint8]
 
   Nl_item* {.importc: "nl_item", header: "<nl_types.h>".} = cint
   Nl_catd* {.importc: "nl_catd", header: "<nl_types.h>".} = pointer
@@ -572,8 +567,6 @@ var
 
 # Regenerate using detect.nim!
 include posix_linux_amd64_consts
-
-const POSIX_SPAWN_USEVFORK* = cint(0x40)  # needs _GNU_SOURCE!
 
 # <sys/wait.h>
 proc WEXITSTATUS*(s: cint): cint =  (s and 0xff00) shr 8

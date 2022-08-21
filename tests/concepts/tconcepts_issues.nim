@@ -324,15 +324,15 @@ block t6691:
 block t6782:
   type
     Reader = concept c
-      c.read(openarray[byte], int, int) is int
+      c.read(openArray[byte], int, int) is int
     Rdr = concept c
-      c.rd(openarray[byte], int, int) is int
+      c.rd(openArray[byte], int, int) is int
 
   type TestFile = object
 
-  proc read(r: TestFile, dest: openarray[byte], offset: int, limit: int): int =
+  proc read(r: TestFile, dest: openArray[byte], offset: int, limit: int): int =
       result = 0
-  proc rd(r: TestFile, dest: openarray[byte], offset: int, limit: int): int =
+  proc rd(r: TestFile, dest: openArray[byte], offset: int, limit: int): int =
       result = 0
 
   doAssert TestFile is Reader
@@ -397,7 +397,7 @@ block misc_issues:
   echo p2.x is float and p2.y is float # true
 
   # https://github.com/nim-lang/Nim/issues/2018
-  type ProtocolFollower = concept
+  type ProtocolFollower = concept c
     true # not a particularly involved protocol
 
   type ImplementorA = object
@@ -463,5 +463,40 @@ block misc_issues:
 
   proc sayHello(c: Thing) = echo(c.hello)
 
-  var a: Thing = Cat()
+  # used to be 'var a: Thing = Cat()' but that's not valid Nim code
+  # anyway and will be an error soon.
+  var a: Cat = Cat()
   a.sayHello()
+
+
+# bug #16897
+
+type
+  Fp[N: static int, T] = object
+    big: array[N, T]
+
+type
+  QuadraticExt* = concept x
+    ## Quadratic Extension concept (like complex)
+    type BaseField = auto
+    x.c0 is BaseField
+    x.c1 is BaseField
+var address = pointer(nil)
+proc prod(r: var QuadraticExt, b: QuadraticExt) =
+  if address == nil:
+    address = addr b
+    prod(r, b)
+  else:
+    assert address == addr b
+
+type
+  Fp2[N: static int, T] {.byref.} = object
+    c0, c1: Fp[N, T]
+
+# This should be passed by reference,
+# but concepts do not respect the 24 bytes rule
+# or `byref` pragma.
+var r, b: Fp2[6, uint64]
+
+prod(r, b)
+

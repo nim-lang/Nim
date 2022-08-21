@@ -12,19 +12,25 @@
 
 template volatileLoad*[T](src: ptr T): T =
   ## Generates a volatile load of the value stored in the container `src`.
-  ## Note that this only effects code generation on `C` like backends
-  when defined(js):
+  ## Note that this only effects code generation on `C` like backends.
+  when nimvm:
     src[]
   else:
-    var res: T
-    {.emit: [res, " = (*(", type(src[]), " volatile*)", src, ");"].}
-    res
+    when defined(js):
+      src[]
+    else:
+      var res: T
+      {.emit: [res, " = (*(", typeof(src[]), " volatile*)", src, ");"].}
+      res
 
 template volatileStore*[T](dest: ptr T, val: T) =
   ## Generates a volatile store into the container `dest` of the value
   ## `val`. Note that this only effects code generation on `C` like
-  ## backends
-  when defined(js):
+  ## backends.
+  when nimvm:
     dest[] = val
   else:
-    {.emit: ["*((", type(dest[]), " volatile*)(", dest, ")) = ", val, ";"].}
+    when defined(js):
+      dest[] = val
+    else:
+      {.emit: ["*((", typeof(dest[]), " volatile*)(", dest, ")) = ", val, ";"].}

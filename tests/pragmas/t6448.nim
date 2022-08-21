@@ -1,5 +1,5 @@
 discard """
-  errormsg: '''ambiguous call; both foobar.async'''
+  errormsg: '''ambiguous call'''
   line: 10
   disabled: "32bit"
 """

@@ -12,7 +12,9 @@ int32
 4294967295
 2
 0
+tUnsignedOps OK
 '''
+nimout: "tUnsignedOps OK"
 """
 
 import typetraits
@@ -20,10 +22,10 @@ import typetraits
 
 block tand:
   # bug #5216
-  echo(name type((0x0A'i8 and 0x7F'i32) shl 7'i32))
+  echo(name typeof((0x0A'i8 and 0x7F'i32) shl 7'i32))
 
   let i8 = 0x0A'i8
-  echo(name type((i8 and 0x7F'i32) shl 7'i32))
+  echo(name typeof((i8 and 0x7F'i32) shl 7'i32))
 
   echo((0x0A'i8 and 0x7F'i32) shl 7'i32)
 
@@ -167,3 +169,19 @@ block tissue12177:
   echo(a - b)
   echo(a * b)
   echo(a div b)
+
+block tUnsignedOps:
+  proc testUnsignedOps() =
+    let a: int8 = -128
+    let b: int8 = 127
+
+    doAssert b +% 1 == -128
+    doAssert b -% -1 == -128
+    doAssert b *% 2 == -2
+    doAssert a /% 4 == 32
+    doAssert a %% 7 == 2
+    echo "tUnsignedOps OK"
+
+  testUnsignedOps()
+  static:
+    testUnsignedOps()

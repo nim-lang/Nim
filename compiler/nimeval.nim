@@ -10,24 +10,22 @@
 ## exposes the Nim VM to clients.
 import
   ast, astalgo, modules, passes, condsyms,
-  options, sem, semdata, llstream, vm, vmdef,
-  modulegraphs, idents, os, pathutils, passaux,
-  scriptconfig
+  options, sem, llstream, lineinfos, vm,
+  vmdef, modulegraphs, idents, os, pathutils,
+  passaux, scriptconfig, std/compilesettings
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
     mainModule: PSym
     graph: ModuleGraph
     scriptName: string
+    idgen: IdGenerator
 
 iterator exportedSymbols*(i: Interpreter): PSym =
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
-  var it: TTabIter
-  var s = initTabIter(it, i.mainModule.tab)
-  while s != nil:
+  for s in modulegraphs.allSyms(i.graph, i.mainModule):
     yield s
-    s = nextIter(it, i.mainModule.tab)
 
 proc selectUniqueSymbol*(i: Interpreter; name: string;
                          symKinds: set[TSymKind] = {skLet, skVar}): PSym =
@@ -36,14 +34,14 @@ proc selectUniqueSymbol*(i: Interpreter; name: string;
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
   let n = getIdent(i.graph.cache, name)
-  var it: TIdentIter
-  var s = initIdentIter(it, i.mainModule.tab, n)
+  var it: ModuleIter
+  var s = initModuleIter(it, i.graph, i.mainModule, n)
   result = nil
   while s != nil:
     if s.kind in symKinds:
       if result == nil: result = s
       else: return nil # ambiguous
-    s = nextIdentIter(it, i.mainModule.tab)
+    s = nextModuleIter(it, i.graph)
 
 proc selectRoutine*(i: Interpreter; name: string): PSym =
   ## Selects a declared routine (proc/func/etc) from the main module.
@@ -59,6 +57,10 @@ proc callRoutine*(i: Interpreter; routine: PSym; args: openArray[PNode]): PNode 
 proc getGlobalValue*(i: Interpreter; letOrVar: PSym): PNode =
   result = vm.getGlobalValue(PCtx i.graph.vm, letOrVar)
 
+proc setGlobalValue*(i: Interpreter; letOrVar: PSym, val: PNode) =
+  ## Sets a global value to a given PNode, does not do any type checking.
+  vm.setGlobalValue(PCtx i.graph.vm, letOrVar, val)
+
 proc implementRoutine*(i: Interpreter; pkg, module, name: string;
                        impl: proc (a: VmArgs) {.closure, gcsafe.}) =
   assert i != nil
@@ -69,18 +71,21 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
   ## This can also be used to *reload* the script.
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
-  initStrTable(i.mainModule.tab)
+  initStrTables(i.graph, i.mainModule)
   i.mainModule.ast = nil
 
   let s = if scriptStream != nil: scriptStream
           else: llStreamOpen(findFile(i.graph.config, i.scriptName), fmRead)
-  processModule(i.graph, i.mainModule, s)
+  processModule(i.graph, i.mainModule, i.idgen, s)
 
 proc findNimStdLib*(): string =
   ## Tries to find a path to a valid "system.nim" file.
   ## Returns "" on failure.
   try:
     let nimexe = os.findExe("nim")
+      # this can't work with choosenim shims, refs https://github.com/dom96/choosenim/issues/189
+      # it'd need `nim dump --dump.format:json . | jq -r .libpath`
+      # which we should simplify as `nim dump --key:libpath`
     if nimexe.len == 0: return ""
     result = nimexe.splitPath()[0] /../ "lib"
     if not fileExists(result / "system.nim"):
@@ -91,22 +96,23 @@ proc findNimStdLib*(): string =
     return ""
 
 proc findNimStdLibCompileTime*(): string =
-  ## Same as ``findNimStdLib`` but uses source files used at compile time,
+  ## Same as `findNimStdLib` but uses source files used at compile time,
   ## and asserts on error.
-  const sourcePath = currentSourcePath()
-  result = sourcePath.parentDir.parentDir / "lib"
+  result = querySetting(libPath)
   doAssert fileExists(result / "system.nim"), "result:" & result
 
 proc createInterpreter*(scriptName: string;
                         searchPaths: openArray[string];
-                        flags: TSandboxFlags = {}): Interpreter =
+                        flags: TSandboxFlags = {},
+                        defines = @[("nimscript", "true")],
+                        registerOps = true): Interpreter =
   var conf = newConfigRef()
   var cache = newIdentCache()
   var graph = newModuleGraph(cache, conf)
   connectCallbacks(graph)
   initDefines(conf.symbols)
-  defineSymbol(conf.symbols, "nimscript")
-  defineSymbol(conf.symbols, "nimconfig")
+  for define in defines:
+    defineSymbol(conf.symbols, define[0], define[1])
   registerPass(graph, semPass)
   registerPass(graph, evalPass)
 
@@ -116,20 +122,29 @@ proc createInterpreter*(scriptName: string;
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  var vm = newCtx(m, cache, graph)
+  var idgen = idGeneratorFromModule(m)
+  var vm = newCtx(m, cache, graph, idgen)
   vm.mode = emRepl
   vm.features = flags
+  if registerOps:
+    vm.registerAdditionalOps() # Required to register parts of stdlib modules
   graph.vm = vm
   graph.compileSystemModule()
-  result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName)
+  result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName, idgen: idgen)
 
 proc destroyInterpreter*(i: Interpreter) =
   ## destructor.
   discard "currently nothing to do."
 
+proc registerErrorHook*(i: Interpreter, hook:
+                        proc (config: ConfigRef; info: TLineInfo; msg: string;
+                              severity: Severity) {.gcsafe.}) =
+  i.graph.config.structuredErrorHook = hook
+
 proc runRepl*(r: TLLRepl;
               searchPaths: openArray[string];
               supportNimscript: bool) =
+  ## deadcode but please don't remove... might be revived
   var conf = newConfigRef()
   var cache = newIdentCache()
   var graph = newModuleGraph(cache, conf)
@@ -138,8 +153,8 @@ proc runRepl*(r: TLLRepl;
     conf.searchPaths.add(AbsoluteDir p)
     if conf.libpath.isEmpty: conf.libpath = AbsoluteDir p
 
-  conf.cmd = cmdInteractive
-  conf.errorMax = high(int)
+  conf.cmd = cmdInteractive # see also `setCmd`
+  conf.setErrorMaxHighMaybe
   initDefines(conf.symbols)
   defineSymbol(conf.symbols, "nimscript")
   if supportNimscript: defineSymbol(conf.symbols, "nimconfig")
@@ -149,6 +164,8 @@ proc runRepl*(r: TLLRepl;
   registerPass(graph, evalPass)
   var m = graph.makeStdinModule()
   incl(m.flags, sfMainModule)
-  if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph)
+  var idgen = idGeneratorFromModule(m)
+
+  if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph, idgen)
   graph.compileSystemModule()
-  processModule(graph, m, llStreamOpenStdIn(r))
+  processModule(graph, m, idgen, llStreamOpenStdIn(r))

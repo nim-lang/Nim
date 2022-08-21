@@ -1,3 +1,7 @@
+discard """
+batchable: false
+"""
+
 #
 #
 #            Nim's Runtime Library
@@ -16,7 +20,7 @@
 # by storing them on the heap. For procs, we produce on the fly simple
 # trampolines that can be dynamically overwritten to jump to a different
 # target. In the host program, all globals and procs are first registered
-# here with ``hcrRegisterGlobal`` and ``hcrRegisterProc`` and then the
+# here with `hcrRegisterGlobal` and `hcrRegisterProc` and then the
 # returned permanent locations are used in every reference to these symbols
 # onwards.
 #
@@ -196,7 +200,7 @@
 #     block. Perhaps something can be done about this - some way of re-allocating
 #     the state and transferring the old...
 
-when not defined(JS) and (defined(hotcodereloading) or
+when not defined(js) and (defined(hotcodereloading) or
                           defined(createNimHcr) or
                           defined(testNimHcr)):
   const
@@ -205,7 +209,7 @@ when not defined(JS) and (defined(hotcodereloading) or
              else: "so"
   type
     HcrProcGetter* = proc (libHandle: pointer, procName: cstring): pointer {.nimcall.}
-    HcrGcMarkerProc = proc () {.nimcall.}
+    HcrGcMarkerProc = proc () {.nimcall, raises: [].}
     HcrModuleInitializer* = proc () {.nimcall.}
 
 when defined(createNimHcr):
@@ -226,41 +230,41 @@ when defined(createNimHcr):
     when defined(testNimHcr): return ($arg).splitFile.name.splitFile.name
     else: return $arg
 
-  {.pragma: nimhcr, compilerProc, exportc, dynlib.}
+  {.pragma: nimhcr, compilerproc, exportc, dynlib.}
 
-  when hostCPU in ["i386", "amd64"]:
-    type
-      ShortJumpInstruction {.packed.} = object
-        opcode: byte
-        offset: int32
+  # XXX these types are CPU specific and need ARM etc support
+  type
+    ShortJumpInstruction {.packed.} = object
+      opcode: byte
+      offset: int32
 
-      LongJumpInstruction {.packed.} = object
-        opcode1: byte
-        opcode2: byte
-        offset: int32
-        absoluteAddr: pointer
+    LongJumpInstruction {.packed.} = object
+      opcode1: byte
+      opcode2: byte
+      offset: int32
+      absoluteAddr: pointer
 
-    proc writeJump(jumpTableEntry: ptr LongJumpInstruction, targetFn: pointer) =
-      let
-        jumpFrom = jumpTableEntry.shift(sizeof(ShortJumpInstruction))
-        jumpDistance = distance(jumpFrom, targetFn)
+  proc writeJump(jumpTableEntry: ptr LongJumpInstruction, targetFn: pointer) =
+    let
+      jumpFrom = jumpTableEntry.shift(sizeof(ShortJumpInstruction))
+      jumpDistance = distance(jumpFrom, targetFn)
 
-      if abs(jumpDistance) < 0x7fff0000:
-        let shortJump = cast[ptr ShortJumpInstruction](jumpTableEntry)
-        shortJump.opcode = 0xE9 # relative jump
-        shortJump.offset = int32(jumpDistance)
+    if abs(jumpDistance) < 0x7fff0000:
+      let shortJump = cast[ptr ShortJumpInstruction](jumpTableEntry)
+      shortJump.opcode = 0xE9 # relative jump
+      shortJump.offset = int32(jumpDistance)
+    else:
+      jumpTableEntry.opcode1 = 0xff # indirect absolute jump
+      jumpTableEntry.opcode2 = 0x25
+      when hostCPU == "i386":
+        # on x86 we write the absolute address of the following pointer
+        jumpTableEntry.offset = cast[int32](addr jumpTableEntry.absoluteAddr)
       else:
-        jumpTableEntry.opcode1 = 0xff # indirect absolute jump
-        jumpTableEntry.opcode2 = 0x25
-        when hostCPU == "i386":
-          # on x86 we write the absolute address of the following pointer
-          jumpTableEntry.offset = cast[int32](addr jumpTableEntry.absoluteAddr)
-        else:
-          # on x64, we use a relative address for the same location
-          jumpTableEntry.offset = 0
-        jumpTableEntry.absoluteAddr = targetFn
+        # on x64, we use a relative address for the same location
+        jumpTableEntry.offset = 0
+      jumpTableEntry.absoluteAddr = targetFn
 
-  elif hostCPU == "arm":
+  if hostCPU == "arm":
     const jumpSize = 8
   elif hostCPU == "arm64":
     const jumpSize = 16
@@ -419,7 +423,7 @@ when defined(createNimHcr):
     if modules.contains(name):
       unloadDll(name)
     else:
-      modules.add(name, newModuleDesc())
+      modules[name] = newModuleDesc()
 
     let copiedName = name & ".copy." & dllExt
     copyFileWithPermissions(name, copiedName)
@@ -483,7 +487,7 @@ when defined(createNimHcr):
           recursiveDiscovery(modules[curr].imports)
           allModulesOrderedByDFS.add(curr)
           continue
-      loadDll(curr)
+      loadDll(curr.cstring)
       # first load all dependencies of the current module and init it after that
       recursiveDiscovery(modules[curr].imports)
 
@@ -493,20 +497,20 @@ when defined(createNimHcr):
   proc initModules() =
     # first init the pointers to hcr functions and also do the registering of typeinfo globals
     for curr in modulesToInit:
-      initHcrData(curr)
-      initTypeInfoGlobals(curr)
+      initHcrData(curr.cstring)
+      initTypeInfoGlobals(curr.cstring)
     # for now system always gets fully inited before any other module (including when reloading)
-    initPointerData(system)
-    initGlobalScope(system)
+    initPointerData(system.cstring)
+    initGlobalScope(system.cstring)
     # proceed with the DatInit calls - for all modules - including the main one!
     for curr in allModulesOrderedByDFS:
       if curr != system:
-        initPointerData(curr)
+        initPointerData(curr.cstring)
     mainDatInit()
     # execute top-level code (in global scope)
     for curr in modulesToInit:
       if curr != system:
-        initGlobalScope(curr)
+        initGlobalScope(curr.cstring)
     # cleanup old symbols which are gone now
     for curr in modulesToInit:
       cleanupSymbols(curr)
@@ -556,7 +560,7 @@ when defined(createNimHcr):
     inc(generation)
     trace "HCR RELOADING: ", generation
 
-    var traversedHandlerModules = initSet[string]()
+    var traversedHandlerModules = initHashSet[string]()
 
     proc recursiveExecuteHandlers(isBefore: bool, module: string) =
       # do not process an already traversed module
@@ -597,12 +601,12 @@ when defined(createNimHcr):
 
   proc hcrAddModule*(module: cstring) {.nimhcr.} =
     if not modules.contains($module):
-      modules.add($module, newModuleDesc())
+      modules[$module] = newModuleDesc()
 
   proc hcrGeneration*(): int {.nimhcr.} =
     generation
 
-  proc hcrMarkGlobals*() {.nimhcr, nimcall, gcsafe.} =
+  proc hcrMarkGlobals*() {.compilerproc, exportc, dynlib, nimcall, gcsafe.} =
     # This is gcsafe, because it will be registered
     # only in the GC of the main thread.
     {.gcsafe.}:
@@ -612,13 +616,13 @@ when defined(createNimHcr):
             global.markerProc()
 
 elif defined(hotcodereloading) or defined(testNimHcr):
-  when not defined(JS):
+  when not defined(js):
     const
       nimhcrLibname = when defined(windows): "nimhcr." & dllExt
                       elif defined(macosx): "libnimhcr." & dllExt
                       else: "libnimhcr." & dllExt
 
-    {.pragma: nimhcr, compilerProc, importc, dynlib: nimhcrLibname.}
+    {.pragma: nimhcr, compilerproc, importc, dynlib: nimhcrLibname.}
 
     proc hcrRegisterProc*(module: cstring, name: cstring, fn: pointer): pointer {.nimhcr.}
 
@@ -644,10 +648,10 @@ elif defined(hotcodereloading) or defined(testNimHcr):
 
     proc hcrAddEventHandler*(isBefore: bool, cb: proc ()) {.nimhcr.}
 
-    proc hcrMarkGlobals*() {.nimhcr, nimcall, gcsafe.}
+    proc hcrMarkGlobals*() {.raises: [], nimhcr, nimcall, gcsafe.}
 
     when declared(nimRegisterGlobalMarker):
-      nimRegisterGlobalMarker(hcrMarkGlobals)
+      nimRegisterGlobalMarker(cast[GlobalMarkerProc](hcrMarkGlobals))
 
   else:
     proc hcrHasModuleChanged*(moduleHash: string): bool =

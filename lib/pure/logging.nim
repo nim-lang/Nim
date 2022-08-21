@@ -18,7 +18,7 @@
 ## To get started, first create a logger:
 ##
 ## .. code-block::
-##   import logging
+##   import std/logging
 ##
 ##   var logger = newConsoleLogger()
 ##
@@ -45,10 +45,10 @@
 ## ``levelThreshold`` field and the global log filter. The latter can be changed
 ## with the `setLogFilter proc<#setLogFilter,Level>`_.
 ##
-## **Warning:**
-## * For loggers that log to a console or to files, only error and fatal
+## .. warning::
+##   For loggers that log to a console or to files, only error and fatal
 ##   messages will cause their output buffers to be flushed immediately.
-##   Use the `flushFile proc <io.html#flushFile,File>`_ to flush the buffer
+##   Use the `flushFile proc <syncio.html#flushFile,File>`_ to flush the buffer
 ##   manually if needed.
 ##
 ## Handlers
@@ -60,7 +60,7 @@
 ## in the following example:
 ##
 ## .. code-block::
-##   import logging
+##   import std/logging
 ##
 ##   var consoleLog = newConsoleLogger()
 ##   var fileLog = newFileLogger("errors.log", levelThreshold=lvlError)
@@ -118,7 +118,7 @@
 ## The following example illustrates how to use format strings:
 ##
 ## .. code-block::
-##   import logging
+##   import std/logging
 ##
 ##   var logger = newConsoleLogger(fmtStr="[$time] - $levelname: ")
 ##   logger.log(lvlInfo, "this is a message")
@@ -145,6 +145,9 @@
 import strutils, times
 when not defined(js):
   import os
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 type
   Level* = enum ## \
@@ -246,7 +249,7 @@ when not defined(js):
       ## rotation.
       ##
       ## Create a new ``RollingFileLogger`` with the `newRollingFileLogger proc
-      ## <#newRollingFileLogger,FileMode,int,int>`_.
+      ## <#newRollingFileLogger,FileMode,Positive,int>`_.
       ##
       ## **Note:** This logger is not available for the JavaScript backend.
       ##
@@ -287,6 +290,7 @@ proc substituteLog*(frmt: string, level: Level,
   runnableExamples:
     doAssert substituteLog(defaultFmtStr, lvlInfo, "a message") == "INFO a message"
     doAssert substituteLog("$levelid - ", lvlError, "an error") == "E - an error"
+    doAssert substituteLog("$levelid", lvlDebug, "error") == "Derror"
   var msgLen = 0
   for arg in args:
     msgLen += arg.len
@@ -300,7 +304,7 @@ proc substituteLog*(frmt: string, level: Level,
       inc(i)
       var v = ""
       let app = when defined(js): "" else: getAppFilename()
-      while frmt[i] in IdentChars:
+      while i < frmt.len and frmt[i] in IdentChars:
         v.add(toLowerAscii(frmt[i]))
         inc(i)
       case v
@@ -345,7 +349,7 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ##
   ## **Note:** Only error and fatal messages will cause the output buffer
   ## to be flushed immediately. Use the `flushFile proc
-  ## <io.html#flushFile,File>`_ to flush the buffer manually if needed.
+  ## <syncio.html#flushFile,File>`_ to flush the buffer manually if needed.
   ##
   ## See also:
   ## * `log method<#log.e,FileLogger,Level,varargs[string,]>`_
@@ -363,8 +367,13 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   if level >= logging.level and level >= logger.levelThreshold:
     let ln = substituteLog(logger.fmtStr, level, args)
     when defined(js):
-      let cln: cstring = ln
-      {.emit: "console.log(`cln`);".}
+      let cln = ln.cstring
+      case level
+      of lvlDebug: {.emit: "console.debug(`cln`);".}
+      of lvlInfo:  {.emit: "console.info(`cln`);".}
+      of lvlWarn:  {.emit: "console.warn(`cln`);".}
+      of lvlError: {.emit: "console.error(`cln`);".}
+      else:        {.emit: "console.log(`cln`);".}
     else:
       try:
         var handle = stdout
@@ -389,7 +398,7 @@ proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
   ## * `newFileLogger proc<#newFileLogger,File>`_ that uses a file handle
   ## * `newFileLogger proc<#newFileLogger,FileMode,int>`_
   ##   that accepts a filename
-  ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,int,int>`_
+  ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,Positive,int>`_
   ##
   ## **Examples:**
   ##
@@ -416,7 +425,7 @@ when not defined(js):
     ## **Notes:**
     ## * Only error and fatal messages will cause the output buffer
     ##   to be flushed immediately. Use the `flushFile proc
-    ##   <io.html#flushFile,File>`_ to flush the buffer manually if needed.
+    ##   <syncio.html#flushFile,File>`_ to flush the buffer manually if needed.
     ## * This method is not available for the JavaScript backend.
     ##
     ## See also:
@@ -454,7 +463,7 @@ when not defined(js):
     ## * `newConsoleLogger proc<#newConsoleLogger>`_
     ## * `newFileLogger proc<#newFileLogger,FileMode,int>`_
     ##   that accepts a filename
-    ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,int,int>`_
+    ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,Positive,int>`_
     ##
     ## **Examples:**
     ##
@@ -490,7 +499,7 @@ when not defined(js):
     ## See also:
     ## * `newConsoleLogger proc<#newConsoleLogger>`_
     ## * `newFileLogger proc<#newFileLogger,File>`_ that uses a file handle
-    ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,int,int>`_
+    ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,Positive,int>`_
     ##
     ## **Examples:**
     ##
@@ -504,7 +513,6 @@ when not defined(js):
   # ------
 
   proc countLogLines(logger: RollingFileLogger): int =
-    result = 0
     let fp = open(logger.baseName, fmRead)
     for line in fp.lines():
       result.inc()
@@ -531,7 +539,7 @@ when not defined(js):
                             mode: FileMode = fmReadWrite,
                             levelThreshold = lvlAll,
                             fmtStr = defaultFmtStr,
-                            maxLines = 1000,
+                            maxLines: Positive = 1000,
                             bufSize: int = -1): RollingFileLogger =
     ## Creates a new `RollingFileLogger<#RollingFileLogger>`_.
     ##
@@ -595,7 +603,7 @@ when not defined(js):
     ## **Notes:**
     ## * Only error and fatal messages will cause the output buffer
     ##   to be flushed immediately. Use the `flushFile proc
-    ##   <io.html#flushFile,File>`_ to flush the buffer manually if needed.
+    ##   <syncio.html#flushFile,File>`_ to flush the buffer manually if needed.
     ## * This method is not available for the JavaScript backend.
     ##
     ## See also:
@@ -789,9 +797,9 @@ template fatal*(args: varargs[string, `$`]) =
 proc addHandler*(handler: Logger) =
   ## Adds a logger to the list of registered handlers.
   ##
-  ## **Warning:** The list of handlers is a thread-local variable. If the given
-  ## handler will be used in multiple threads, this proc should be called in
-  ## each of those threads.
+  ## .. warning:: The list of handlers is a thread-local variable. If the given
+  ##   handler will be used in multiple threads, this proc should be called in
+  ##   each of those threads.
   ##
   ## See also:
   ## * `getHandlers proc<#getHandlers>`_
@@ -815,10 +823,10 @@ proc setLogFilter*(lvl: Level) =
   ## individual logger's ``levelThreshold``. By default, all messages are
   ## logged.
   ##
-  ## **Warning:** The global log filter is a thread-local variable. If logging
-  ## is being performed in multiple threads, this proc should be called in each
-  ## thread unless it is intended that different threads should log at different
-  ## logging levels.
+  ## .. warning:: The global log filter is a thread-local variable. If logging
+  ##   is being performed in multiple threads, this proc should be called in each
+  ##   thread unless it is intended that different threads should log at different
+  ##   logging levels.
   ##
   ## See also:
   ## * `getLogFilter proc<#getLogFilter>`_

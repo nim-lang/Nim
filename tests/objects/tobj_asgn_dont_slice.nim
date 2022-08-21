@@ -1,5 +1,5 @@
 discard """
-  outputsub: '''ObjectAssignmentError'''
+  outputsub: '''ObjectAssignmentDefect'''
   exitcode: "1"
 """
 

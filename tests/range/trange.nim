@@ -142,3 +142,15 @@ var a: array[4'u, string]
 
 for i in 0..<a.len:
   a[i] = "foo"
+
+# Check range to ordinal conversions
+block:
+  var
+    a: int16
+    b: range[0'i32..45'i32] = 3
+    c: uint16
+    d: range[0'u32..46'u32] = 3
+  a = b
+  c = d
+  doAssert a == b
+  doAssert c == d

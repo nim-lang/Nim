@@ -1,8 +1,8 @@
 discard """
-  outputsub: "129"
+  outputsub: "65"
 """
 
-import os, locks
+import locks
 
 type
   MarkerObj = object
@@ -11,7 +11,7 @@ type
   Marker = ptr MarkerObj
 
 const
-  ThreadsCount = 129
+  ThreadsCount = 65
 
 proc worker(p: Marker) {.thread.} =
   acquire(p.lock)

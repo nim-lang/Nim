@@ -264,9 +264,245 @@ proc init*[T](hmctx: HMAC[T], key: ptr byte, ulen: uint) =
   const sizeBlock = hmctx.sizeBlock
   echo sizeBlock
 
-proc hmac*[A, B](HashType: typedesc, key: openarray[A],
-                 data: openarray[B]) =
+proc hmac*[A, B](HashType: typedesc, key: openArray[A],
+                 data: openArray[B]) =
   var ctx: HMAC[HashType]
   ctx.init(nil, 0)
 
 sha256.hmac("", "")
+
+
+
+# nested generic types
+block:
+  type
+    Foo[T] = object
+      f: T
+    Bar[T] = object
+      b: T
+    Baz[T] = object
+      z: T
+    FooBar[T] = Foo[Bar[T]]
+    FooBarBaz[T] = FooBar[Baz[T]]
+    #Int = int
+    Int = SomeInteger
+    FooBarBazInt = FooBarBaz[Int]
+    FooBarBazX = FooBarBaz[int]
+
+  proc p00(x: Foo): auto = x.f
+  proc p01[T](x: Foo[T]): auto = x.f
+  proc p02[T:Foo](x: T): auto = x.f
+
+  proc p10(x: FooBar): auto = x.f
+  proc p11[T](x: FooBar[T]): auto = x.f
+  proc p12[T:FooBar](x: T): auto = x.f
+  proc p13(x: Foo[Bar]): auto = x.f
+  proc p14[T](x: Foo[Bar[T]]): auto = x.f
+  proc p15[T:Bar](x: Foo[T]): auto = x.f
+  proc p16[T:Foo[Bar]](x: T): auto = x.f
+
+  proc p20(x: FooBarBaz): auto = x.f
+  proc p21[T](x: FooBarBaz[T]): auto = x.f
+  proc p22[T:FooBarBaz](x: T): auto = x.f
+  proc p23(x: FooBar[Baz]): auto = x.f
+  proc p24[T](x: FooBar[Baz[T]]): auto = x.f
+  proc p25[T:Baz](x: FooBar[T]): auto = x.f
+  proc p26[T:FooBar[Baz]](x: T): auto = x.f
+  proc p27(x: Foo[Bar[Baz]]): auto = x.f
+  proc p28[T](x: Foo[Bar[Baz[T]]]): auto = x.f
+  proc p29[T:Baz](x: Foo[Bar[T]]): auto = x.f
+  proc p2A[T:Bar[Baz]](x: Foo[T]): auto = x.f
+  proc p2B[T:Foo[Bar[Baz]]](x: T): auto = x.f
+
+  proc p30(x: FooBarBazInt): auto = x.f
+  proc p31[T:FooBarBazInt](x: T): auto = x.f
+  proc p32(x: FooBarBaz[Int]): auto = x.f
+  proc p33[T:Int](x: FooBarBaz[T]): auto = x.f
+  proc p34[T:FooBarBaz[Int]](x: T): auto = x.f
+  proc p35(x: FooBar[Baz[Int]]): auto = x.f
+  proc p36[T:Int](x: FooBar[Baz[T]]): auto = x.f
+  proc p37[T:Baz[Int]](x: FooBar[T]): auto = x.f
+  proc p38[T:FooBar[Baz[Int]]](x: T): auto = x.f
+  proc p39(x: Foo[Bar[Baz[Int]]]): auto = x.f
+  proc p3A[T:Int](x: Foo[Bar[Baz[T]]]): auto = x.f
+  proc p3B[T:Baz[Int]](x: Foo[Bar[T]]): auto = x.f
+  proc p3C[T:Bar[Baz[Int]]](x: Foo[T]): auto = x.f
+  proc p3D[T:Foo[Bar[Baz[Int]]]](x: T): auto = x.f
+
+  template test(x: typed) =
+    let t00 = p00(x)
+    let t01 = p01(x)
+    let t02 = p02(x)
+    let t10 = p10(x)
+    let t11 = p11(x)
+    let t12 = p12(x)
+    #let t13 = p13(x)
+    let t14 = p14(x)
+    #let t15 = p15(x)
+    #let t16 = p16(x)
+    let t20 = p20(x)
+    let t21 = p21(x)
+    let t22 = p22(x)
+    #let t23 = p23(x)
+    let t24 = p24(x)
+    #let t25 = p25(x)
+    #let t26 = p26(x)
+    #let t27 = p27(x)
+    let t28 = p28(x)
+    #let t29 = p29(x)
+    #let t2A = p2A(x)
+    #let t2B = p2B(x)
+    let t30 = p30(x)
+    let t31 = p31(x)
+    let t32 = p32(x)
+    let t33 = p33(x)
+    let t34 = p34(x)
+    let t35 = p35(x)
+    let t36 = p36(x)
+    let t37 = p37(x)
+    let t38 = p38(x)
+    let t39 = p39(x)
+    let t3A = p3A(x)
+    let t3B = p3B(x)
+    let t3C = p3C(x)
+    let t3D = p3D(x)
+
+  var a: Foo[Bar[Baz[int]]]
+  test(a)
+  var b: FooBar[Baz[int]]
+  test(b)
+  var c: FooBarBaz[int]
+  test(c)
+  var d: FooBarBazX
+  test(d)
+
+
+# overloading on tuples with generic alias
+block:
+  type
+    Foo[F,T] = object
+      exArgs: T
+    FooUn[F,T] = Foo[F,tuple[a:T]]
+    FooBi[F,T1,T2] = Foo[F,tuple[a:T1,b:T2]]
+
+  proc foo1[F,T](x: Foo[F,tuple[a:T]]): int = 1
+  proc foo1[F,T1,T2](x: Foo[F,tuple[a:T1,b:T2]]): int = 2
+  proc foo2[F,T](x: FooUn[F,T]): int = 1
+  proc foo2[F,T1,T2](x: FooBi[F,T1,T2]):int = 2
+
+  template bar1[F,T](x: Foo[F,tuple[a:T]]): int = 1
+  template bar1[F,T1,T2](x: Foo[F,tuple[a:T1,b:T2]]): int = 2
+  template bar2[F,T](x: FooUn[F,T]): int = 1
+  template bar2[F,T1,T2](x: FooBi[F,T1,T2]): int = 2
+
+  proc test(x: auto, n: int) =
+    doAssert(foo1(x) == n)
+    doAssert(foo2(x) == n)
+    doAssert(bar1(x) == n)
+    doAssert(bar2(x) == n)
+
+  var a: Foo[int, tuple[a:int]]
+  test(a, 1)
+  var b: FooUn[int, int]
+  test(b, 1)
+  var c: Foo[int, tuple[a:int,b:int]]
+  test(c, 2)
+  var d: FooBi[int, int, int]
+  test(d, 2)
+
+
+# inheritance and generics
+block:
+  type
+    Foo[T] = object of RootObj
+      x: T
+    Bar[T] = object of Foo[T]
+      y: T
+    Baz[T] = object of Bar[T]
+      z: T
+
+  template t0(x: Foo[int]): int = 0
+  template t0(x: Bar[int]): int = 1
+  template t0(x: Foo[bool or int]): int = 10
+  template t0(x: Bar[bool or int]): int = 11
+  #template t0[T:bool or int](x: Bar[T]): int = 11
+  template t0[T](x: Foo[T]): int = 20
+  template t0[T](x: Bar[T]): int = 21
+  proc p0(x: Foo[int]): int = 0
+  proc p0(x: Bar[int]): int = 1
+  #proc p0(x: Foo[bool or int]): int = 10
+  #proc p0(x: Bar[bool or int]): int = 11
+  proc p0[T](x: Foo[T]): int = 20
+  proc p0[T](x: Bar[T]): int = 21
+
+  var a: Foo[int]
+  var b: Bar[int]
+  var c: Baz[int]
+  var d: Foo[bool]
+  var e: Bar[bool]
+  var f: Baz[bool]
+  var g: Foo[float]
+  var h: Bar[float]
+  var i: Baz[float]
+  doAssert(t0(a) == 0)
+  doAssert(t0(b) == 1)
+  doAssert(t0(c) == 1)
+  doAssert(t0(d) == 10)
+  doAssert(t0(e) == 11)
+  doAssert(t0(f) == 11)
+  doAssert(t0(g) == 20)
+  doAssert(t0(h) == 21)
+  #doAssert(t0(i) == 21)
+  doAssert(p0(a) == 0)
+  doAssert(p0(b) == 1)
+  doAssert(p0(c) == 1)
+  #doAssert(p0(d) == 10)
+  #doAssert(p0(e) == 11)
+  #doAssert(p0(f) == 11)
+  doAssert(p0(g) == 20)
+  doAssert(p0(h) == 21)
+  doAssert(p0(i) == 21)
+
+  #type
+  #  f0 = proc(x:Foo)
+
+
+block:
+  type
+    TilesetCT[n: static[int]] = distinct int
+    TilesetRT = int
+    Tileset = TilesetCT | TilesetRT
+
+  func prepareTileset(tileset: var Tileset) = discard
+
+  func prepareTileset(tileset: Tileset): Tileset =
+    result = tileset
+    result.prepareTileset
+
+  var parsedTileset: TilesetRT
+  prepareTileset(parsedTileset)
+
+
+block:
+  proc p1[T,U: SomeInteger|SomeFloat](x: T, y: U): int|float =
+    when T is SomeInteger and U is SomeInteger:
+      result = int(x) + int(y)
+    else:
+      result = float(x) + float(y)
+  doAssert(p1(1,2) == 3)
+  doAssert(p1(1.0,2) == 3.0)
+  doAssert(p1(1,2.0) == 3.0)
+  doAssert(p1(1.0,2.0) == 3.0)
+
+  type Foo[T,U] = U
+  template F[T,U](t: typedesc[T], x: U): untyped = Foo[T,U](x)
+  proc p2[T; U,V:Foo[T,SomeNumber]](x: U, y: V): T =
+    T(x) + T(y)
+  #proc p2[T; U:Foo[T,SomeNumber], V:Foo[not T,SomeNumber]](x: U, y: V): T =
+  #  T(x) + T(y)
+  doAssert(p2(F(int,1),F(int,2)) == 3)
+  doAssert(p2(F(float,1),F(float,2)) == 3.0)
+  doAssert(p2(F(float,1),F(float,2.0)) == 3.0)
+  doAssert(p2(F(float,1.0),F(float,2)) == 3.0)
+  doAssert(p2(F(float,1.0),F(float,2.0)) == 3.0)
+  #doAssert(p2(F(float,1),F(int,2.0)) == 3.0)

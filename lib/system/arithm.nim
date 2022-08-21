@@ -12,10 +12,10 @@
 
 proc raiseOverflow {.compilerproc, noinline.} =
   # a single proc to reduce code size to a minimum
-  sysFatal(OverflowError, "over- or underflow")
+  sysFatal(OverflowDefect, "over- or underflow")
 
 proc raiseDivByZero {.compilerproc, noinline.} =
-  sysFatal(DivByZeroError, "division by zero")
+  sysFatal(DivByZeroDefect, "division by zero")
 
 when defined(builtinOverflow):
   # Builtin compiler functions for improved performance
@@ -155,7 +155,7 @@ proc absInt(a: int): int {.compilerproc, inline.} =
   raiseOverflow()
 
 const
-  asmVersion = defined(I386) and (defined(vcc) or defined(wcc) or
+  asmVersion = defined(i386) and (defined(vcc) or defined(wcc) or
                defined(dmc) or defined(gcc) or defined(llvm_gcc))
     # my Version of Borland C++Builder does not have
     # tasm32, which is needed for assembler blocks
@@ -409,17 +409,17 @@ when not declared(mulInt):
 # We avoid setting the FPU control word here for compatibility with libraries
 # written in other languages.
 
-proc raiseFloatInvalidOp {.noinline.} =
-  sysFatal(FloatInvalidOpError, "FPU operation caused a NaN result")
+proc raiseFloatInvalidOp {.compilerproc, noinline.} =
+  sysFatal(FloatInvalidOpDefect, "FPU operation caused a NaN result")
 
 proc nanCheck(x: float64) {.compilerproc, inline.} =
   if x != x: raiseFloatInvalidOp()
 
-proc raiseFloatOverflow(x: float64) {.noinline.} =
+proc raiseFloatOverflow(x: float64) {.compilerproc, noinline.} =
   if x > 0.0:
-    sysFatal(FloatOverflowError, "FPU operation caused an overflow")
+    sysFatal(FloatOverflowDefect, "FPU operation caused an overflow")
   else:
-    sysFatal(FloatUnderflowError, "FPU operations caused an underflow")
+    sysFatal(FloatUnderflowDefect, "FPU operations caused an underflow")
 
 proc infCheck(x: float64) {.compilerproc, inline.} =
   if x != 0.0 and x*0.5 == x: raiseFloatOverflow(x)

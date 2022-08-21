@@ -16,14 +16,9 @@ proc reprInt(x: int64): string {.compilerproc.} = return $x
 proc reprFloat(x: float): string {.compilerproc.} = return $x
 
 proc reprPointer(x: pointer): string {.compilerproc.} =
-  when defined(nimNoArrayToCstringConversion):
-    result = newString(60)
-    let n = c_sprintf(addr result[0], "%p", x)
-    setLen(result, n)
-  else:
-    var buf: array[0..59, char]
-    discard c_sprintf(buf, "%p", x)
-    return $buf
+  result = newString(60)
+  let n = c_sprintf(addr result[0], "%p", x)
+  setLen(result, n)
 
 proc reprStrAux(result: var string, s: cstring; len: int) =
   if cast[pointer](s) == nil:
@@ -77,8 +72,10 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
 
   result = $e & " (invalid data!)"
 
+include system/repr_impl
+
 type
-  PByteArray = ptr array[0xffff, byte]
+  PByteArray = ptr UncheckedArray[byte] # array[0xffff, byte]
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
   case typ.kind
@@ -102,6 +99,7 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   of 4: u = cast[ptr uint32](p)[]
   of 8: u = cast[ptr uint64](p)[]
   else:
+    u = uint64(0)
     var a = cast[PByteArray](p)
     for i in 0 .. typ.size*8-1:
       if (uint(a[i shr 3]) and (1'u shl (i and 7))) != 0:
@@ -172,7 +170,7 @@ when not defined(useNimRtl):
 
     template payloadPtr(x: untyped): untyped = cast[PGenericSeq](x).p
   else:
-    const payloadOffset = GenericSeqSize
+    const payloadOffset = GenericSeqSize ## the payload offset always depends on the alignment of the member type.
     template payloadPtr(x: untyped): untyped = x
 
   proc reprSequence(result: var string, p: pointer, typ: PNimType,
@@ -185,7 +183,7 @@ when not defined(useNimRtl):
     var bs = typ.base.size
     for i in 0..cast[PGenericSeq](p).len-1:
       if i > 0: add result, ", "
-      reprAux(result, cast[pointer](cast[ByteAddress](payloadPtr(p)) + payloadOffset + i*bs),
+      reprAux(result, cast[pointer](cast[ByteAddress](payloadPtr(p)) + align(payloadOffset, typ.align) + i*bs),
               typ.base, cl)
     add result, "]"
 
@@ -285,7 +283,7 @@ when not defined(useNimRtl):
     of tyString:
       let sp = cast[ptr string](p)
       reprStrAux(result, sp[].cstring, sp[].len)
-    of tyCString:
+    of tyCstring:
       let cs = cast[ptr cstring](p)[]
       if cs.isNil: add result, "nil"
       else: reprStrAux(result, cs, cs.len)
@@ -324,5 +322,6 @@ when not defined(useNimRtl):
     else:
       var p = p
       reprAux(result, addr(p), typ, cl)
-    add result, "\n"
+    when defined(nimLegacyReprWithNewline): # see PR #16034
+      add result, "\n"
     deinitReprClosure(cl)

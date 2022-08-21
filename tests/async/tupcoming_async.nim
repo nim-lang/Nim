@@ -45,7 +45,7 @@ when defined(upcoming):
     poll()
 
   proc eventTest5298() =
-    # Event must raise `AssertionError` if event was unregistered twice.
+    # Event must raise `AssertionDefect` if event was unregistered twice.
     # Issue #5298.
     let e = newAsyncEvent()
     var eventReceived = false
@@ -57,7 +57,7 @@ when defined(upcoming):
       poll()
     try:
       e.unregister()
-    except AssertionError:
+    except AssertionDefect:
       discard
     e.close()
 

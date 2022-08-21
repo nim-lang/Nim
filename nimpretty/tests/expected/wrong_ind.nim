@@ -2,7 +2,7 @@
 # bug #9505
 
 import std/[
-    strutils, ospaths, os
+    strutils, os
 ]
 import pkg/[
   regex

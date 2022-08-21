@@ -29,11 +29,12 @@ task "test2", "Build release test build test release build":
   if shell("nim", ReleaseDefines, ReleaseTestDefines, "compile", ExeName) == 0:
     shell "."/ExeName
 
-discard """task "dirserver", "build the directory server":
-  withDir "server":
-    if shell("nim", ServerDefines, "compile", "dirserver") != 0:
-      echo "Failed to build the dirserver"
-      quit 1"""
+when false:
+  task "dirserver", "build the directory server":
+    withDir "server":
+      if shell("nim", ServerDefines, "compile", "dirserver") != 0:
+        echo "Failed to build the dirserver"
+        quit 1
 
 task "zoneserver", "build the zone server":
   withDir "enet_server":
@@ -63,7 +64,7 @@ task "release", "release build":
     ## zip up all the files and such or something useful here
 
 task "testskel", "create skeleton test dir for testing":
-  let dirname = "test-"& $random(5000)
+  let dirname = "test-" & $rand(5000)
   removeDir dirName
   createDir dirName/"data/fnt"
   copyFile "data/fnt/LiberationMono-Regular", dirName/"data/fnt/LiberationMono-Regular.ttf"
@@ -77,7 +78,7 @@ task "testskel", "create skeleton test dir for testing":
 task "clean", "cleanup generated files":
   var dirs = @["nimcache", "server"/"nimcache"]
   dirs.apply(proc(x: var string) =
-    if existsDir(x): removeDir(x))
+    if dirExists(x): removeDir(x))
 
 task "download", "download game assets":
   var
@@ -86,7 +87,7 @@ task "download", "download game assets":
     client = newHttpClient()
   path.add DirSep
   path.add(extractFilename(GameAssets))
-  if existsFile(path):
+  if fileExists(path):
     echo "The file already exists\n",
       "[R]emove  [M]ove  [Q]uit  [S]kip    Source: ", GameAssets
     case stdin.readLine.toLowerAscii
@@ -133,7 +134,7 @@ task "download", "download game assets":
   else:  ## this crashes, dunno why
     var
       z: TZipArchive
-      destDir = getCurrentDir()/("unzip"& $random(5000))
+      destDir = getCurrentDir()/("unzip" & $rand(5000))
     if not z.open(path, fmRead):
       echo "Could not open zip, bad download?"
       return

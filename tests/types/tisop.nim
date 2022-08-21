@@ -27,22 +27,22 @@ macro m(t: typedesc): typedesc =
     result = int
 
 var f: TFoo[int, int]
-static: assert(f.y.type.name == "string")
+static: doAssert(f.y.type.name == "string")
 
 when compiles(f.z):
   {.error: "Foo should not have a `z` field".}
 
 proc p(a, b: auto) =
   when a.type is int:
-    static: assert false
+    static: doAssert false
 
   var f: TFoo[m(a.type), b.type]
   static:
-    assert f.x.type.name == "int"
+    doAssert f.x.type.name == "int"
     echo  f.y.type.name
-    assert f.y.type.name == "float"
+    doAssert f.y.type.name == "float"
     echo  f.z.type.name
-    assert f.z.type.name == "float"
+    doAssert f.z.type.name == "float"
 
 p(A, f)
 

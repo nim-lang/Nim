@@ -12,21 +12,56 @@ include system/indexerrors
 
 proc raiseRangeError(val: BiggestInt) {.compilerproc, noinline.} =
   when hostOS == "standalone":
-    sysFatal(RangeError, "value out of range")
+    sysFatal(RangeDefect, "value out of range")
   else:
-    sysFatal(RangeError, "value out of range: ", $val)
+    sysFatal(RangeDefect, "value out of range: ", $val)
+
+proc raiseIndexError4(l1, h1, h2: int) {.compilerproc, noinline.} =
+  sysFatal(IndexDefect, "index out of bounds: " & $l1 & ".." & $h1 & " notin 0.." & $(h2 - 1))
 
 proc raiseIndexError3(i, a, b: int) {.compilerproc, noinline.} =
-  sysFatal(IndexError, formatErrorIndexBound(i, a, b))
+  sysFatal(IndexDefect, formatErrorIndexBound(i, a, b))
 
 proc raiseIndexError2(i, n: int) {.compilerproc, noinline.} =
-  sysFatal(IndexError, formatErrorIndexBound(i, n))
+  sysFatal(IndexDefect, formatErrorIndexBound(i, n))
 
 proc raiseIndexError() {.compilerproc, noinline.} =
-  sysFatal(IndexError, "index out of bounds")
+  sysFatal(IndexDefect, "index out of bounds")
 
 proc raiseFieldError(f: string) {.compilerproc, noinline.} =
-  sysFatal(FieldError, f)
+  ## remove after bootstrap > 1.5.1
+  sysFatal(FieldDefect, f)
+
+when defined(nimV2):
+  proc raiseFieldError2(f: string, discVal: int) {.compilerproc, noinline.} =
+    ## raised when field is inaccessible given runtime value of discriminant
+    sysFatal(FieldError, f & $discVal & "'")
+else:
+  proc raiseFieldError2(f: string, discVal: string) {.compilerproc, noinline.} =
+    ## raised when field is inaccessible given runtime value of discriminant
+    sysFatal(FieldError, formatFieldDefect(f, discVal))
+
+proc raiseRangeErrorI(i, a, b: BiggestInt) {.compilerproc, noinline.} =
+  when defined(standalone):
+    sysFatal(RangeDefect, "value out of range")
+  else:
+    sysFatal(RangeDefect, "value out of range: " & $i & " notin " & $a & " .. " & $b)
+
+proc raiseRangeErrorF(i, a, b: float) {.compilerproc, noinline.} =
+  when defined(standalone):
+    sysFatal(RangeDefect, "value out of range")
+  else:
+    sysFatal(RangeDefect, "value out of range: " & $i & " notin " & $a & " .. " & $b)
+
+proc raiseRangeErrorU(i, a, b: uint64) {.compilerproc, noinline.} =
+  # todo: better error reporting
+  sysFatal(RangeDefect, "value out of range")
+
+proc raiseRangeErrorNoArgs() {.compilerproc, noinline.} =
+  sysFatal(RangeDefect, "value out of range")
+
+proc raiseObjectConversionError() {.compilerproc, noinline.} =
+  sysFatal(ObjectConversionDefect, "invalid object conversion")
 
 proc chckIndx(i, a, b: int): int =
   if i >= a and i <= b:
@@ -50,24 +85,24 @@ proc chckRangeU(i, a, b: uint64): uint64 {.compilerproc.} =
   if i >= a and i <= b:
     return i
   else:
-    sysFatal(RangeError, "value out of range")
+    sysFatal(RangeDefect, "value out of range")
 
 proc chckRangeF(x, a, b: float): float =
   if x >= a and x <= b:
     return x
   else:
     when hostOS == "standalone":
-      sysFatal(RangeError, "value out of range")
+      sysFatal(RangeDefect, "value out of range")
     else:
-      sysFatal(RangeError, "value out of range: ", $x)
+      sysFatal(RangeDefect, "value out of range: ", $x)
 
 proc chckNil(p: pointer) =
   if p == nil:
-    sysFatal(NilAccessError, "attempt to write to a nil address")
+    sysFatal(NilAccessDefect, "attempt to write to a nil address")
 
 proc chckNilDisp(p: pointer) {.compilerproc.} =
   if p == nil:
-    sysFatal(NilAccessError, "cannot dispatch; dispatcher is nil")
+    sysFatal(NilAccessDefect, "cannot dispatch; dispatcher is nil")
 
 when not defined(nimV2):
 
@@ -77,12 +112,12 @@ when not defined(nimV2):
     if x == subclass: return # optimized fast path
     while x != subclass:
       if x == nil:
-        sysFatal(ObjectConversionError, "invalid object conversion")
+        sysFatal(ObjectConversionDefect, "invalid object conversion")
       x = x.base
 
   proc chckObjAsgn(a, b: PNimType) {.compilerproc, inline.} =
     if a != b:
-      sysFatal(ObjectAssignmentError, "invalid object assignment")
+      sysFatal(ObjectAssignmentDefect, "invalid object assignment")
 
   type ObjCheckCache = array[0..1, PNimType]
 
@@ -116,6 +151,5 @@ when not defined(nimV2):
     return true
 
 when defined(nimV2):
-  proc nimFieldDiscriminantCheckV2(oldDiscVal, newDiscVal: uint8) {.compilerproc.} =
-    if oldDiscVal != newDiscVal:
-      sysFatal(FieldError, "assignment to discriminant changes object branch")
+  proc raiseObjectCaseTransition() {.compilerproc.} =
+    sysFatal(FieldDefect, "assignment to discriminant changes object branch")

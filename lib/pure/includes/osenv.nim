@@ -3,227 +3,205 @@
 when not declared(os) and not declared(ospaths):
   {.error: "This is an include file for os.nim!".}
 
-when defined(windows):
-  from parseutils import skipIgnoreCase
+when not defined(nimscript):
+  when defined(nodejs):
+    proc getEnv*(key: string, default = ""): string {.tags: [ReadEnvEffect].} =
+      var ret = default.cstring
+      let key2 = key.cstring
+      {.emit: "const value = process.env[`key2`];".}
+      {.emit: "if (value !== undefined) { `ret` = value };".}
+      result = $ret
 
-proc c_getenv(env: cstring): cstring {.
-  importc: "getenv", header: "<stdlib.h>".}
-proc c_putenv(env: cstring): cint {.
-  importc: "putenv", header: "<stdlib.h>".}
-proc c_unsetenv(env: cstring): cint {.
-  importc: "unsetenv", header: "<stdlib.h>".}
+    proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
+      var key2 = key.cstring
+      var ret: bool
+      {.emit: "`ret` = `key2` in process.env;".}
+      result = ret
 
-# Environment handling cannot be put into RTL, because the ``envPairs``
-# iterator depends on ``environment``.
+    proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
+      var key2 = key.cstring
+      var val2 = val.cstring
+      {.emit: "process.env[`key2`] = `val2`;".}
 
-var
-  envComputed {.threadvar.}: bool
-  environment {.threadvar.}: seq[string]
+    proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
+      var key2 = key.cstring
+      {.emit: "delete process.env[`key2`];".}
 
-when defined(nimV2):
-  proc unpairedEnvAllocs*(): int =
-    result = environment.len
-    if result > 0: inc result
+    iterator envPairsImpl(): tuple[key, value: string] {.tags: [ReadEnvEffect].} =
+      var num: int
+      var keys: RootObj
+      {.emit: "`keys` = Object.keys(process.env); `num` = `keys`.length;".}
+      for i in 0..<num:
+        var key, value: cstring
+        {.emit: "`key` = `keys`[`i`]; `value` = process.env[`key`];".}
+        yield ($key, $value)
 
-when defined(windows) and not defined(nimscript):
-  # because we support Windows GUI applications, things get really
-  # messy here...
-  when useWinUnicode:
-    when defined(cpp):
-      proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
-        importcpp: "(NI16*)wcschr((const wchar_t *)#, #)", header: "<string.h>".}
-    else:
-      proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
-        importc: "wcschr", header: "<string.h>".}
+  # commented because it must keep working with js+VM
+  # elif defined(js):
+  #   {.error: "requires -d:nodejs".}
+
   else:
-    proc strEnd(cstr: cstring, c = 0'i32): cstring {.
-      importc: "strchr", header: "<string.h>".}
 
-  proc getEnvVarsC() =
-    if not envComputed:
-      environment = @[]
-      when useWinUnicode:
-        var
-          env = getEnvironmentStringsW()
-          e = env
-        if e == nil: return # an error occurred
-        while true:
-          var eend = strEnd(e)
-          add(environment, $e)
-          e = cast[WideCString](cast[ByteAddress](eend)+2)
-          if eend[1].int == 0: break
-        discard freeEnvironmentStringsW(env)
-      else:
-        var
-          env = getEnvironmentStringsA()
-          e = env
-        if e == nil: return # an error occurred
-        while true:
-          var eend = strEnd(e)
-          add(environment, $e)
-          e = cast[cstring](cast[ByteAddress](eend)+1)
-          if eend[1] == '\0': break
-        discard freeEnvironmentStringsA(env)
-      envComputed = true
-
-else:
-  const
-    useNSGetEnviron = (defined(macosx) and not defined(ios)) or defined(nimscript)
-
-  when useNSGetEnviron:
-    # From the manual:
-    # Shared libraries and bundles don't have direct access to environ,
-    # which is only available to the loader ld(1) when a complete program
-    # is being linked.
-    # The environment routines can still be used, but if direct access to
-    # environ is needed, the _NSGetEnviron() routine, defined in
-    # <crt_externs.h>, can be used to retrieve the address of environ
-    # at runtime.
-    proc NSGetEnviron(): ptr cstringArray {.
-      importc: "_NSGetEnviron", header: "<crt_externs.h>".}
-  else:
-    var gEnv {.importc: "environ".}: cstringArray
-
-  proc getEnvVarsC() =
-    # retrieves the variables of char** env of C's main proc
-    if not envComputed:
-      environment = @[]
-      when useNSGetEnviron:
-        var gEnv = NSGetEnviron()[]
-      var i = 0
-      while true:
-        if gEnv[i] == nil: break
-        add environment, $gEnv[i]
-        inc(i)
-      envComputed = true
-
-proc findEnvVar(key: string): int =
-  getEnvVarsC()
-  var temp = key & '='
-  for i in 0..high(environment):
     when defined(windows):
-      if skipIgnoreCase(environment[i], temp) == len(temp): return i
+      proc c_putenv(envstring: cstring): cint {.importc: "_putenv", header: "<stdlib.h>".}
+      from std/private/win_setenv import setEnvImpl
+      proc c_wgetenv(varname: WideCString): WideCString {.importc: "_wgetenv",
+          header: "<stdlib.h>".}
+      proc getEnvImpl(env: cstring): WideCString = c_wgetenv(env.newWideCString)
     else:
-      if startsWith(environment[i], temp): return i
-  return -1
+      proc c_getenv(env: cstring): cstring {.
+        importc: "getenv", header: "<stdlib.h>".}
+      proc c_setenv(envname: cstring, envval: cstring, overwrite: cint): cint {.importc: "setenv", header: "<stdlib.h>".}
+      proc c_unsetenv(env: cstring): cint {.importc: "unsetenv", header: "<stdlib.h>".}
+      proc getEnvImpl(env: cstring): cstring = c_getenv(env)
 
-proc getEnv*(key: string, default = ""): TaintedString {.tags: [ReadEnvEffect].} =
-  ## Returns the value of the `environment variable`:idx: named `key`.
-  ##
-  ## If the variable does not exist, `""` is returned. To distinguish
-  ## whether a variable exists or it's value is just `""`, call
-  ## `existsEnv(key) proc <#existsEnv,string>`_.
-  ##
-  ## See also:
-  ## * `existsEnv proc <#existsEnv,string>`_
-  ## * `putEnv proc <#putEnv,string,string>`_
-  ## * `delEnv proc <#delEnv,string>`_
-  ## * `envPairs iterator <#envPairs.i>`_
-  runnableExamples:
-    assert getEnv("unknownEnv") == ""
-    assert getEnv("unknownEnv", "doesn't exist") == "doesn't exist"
+    proc getEnv*(key: string, default = ""): string {.tags: [ReadEnvEffect].} =
+      ## Returns the value of the `environment variable`:idx: named `key`.
+      ##
+      ## If the variable does not exist, `""` is returned. To distinguish
+      ## whether a variable exists or it's value is just `""`, call
+      ## `existsEnv(key) proc`_.
+      ##
+      ## See also:
+      ## * `existsEnv proc`_
+      ## * `putEnv proc`_
+      ## * `delEnv proc`_
+      ## * `envPairs iterator`_
+      runnableExamples:
+        assert getEnv("unknownEnv") == ""
+        assert getEnv("unknownEnv", "doesn't exist") == "doesn't exist"
 
-  when nimvm:
-    discard "built into the compiler"
-  else:
-    var i = findEnvVar(key)
-    if i >= 0:
-      return TaintedString(substr(environment[i], find(environment[i], '=')+1))
-    else:
-      var env = c_getenv(key)
-      if env == nil: return TaintedString(default)
-      result = TaintedString($env)
+      let env = getEnvImpl(key)
+      if env == nil: return default
+      result = $env
 
-proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
-  ## Checks whether the environment variable named `key` exists.
-  ## Returns true if it exists, false otherwise.
-  ##
-  ## See also:
-  ## * `getEnv proc <#getEnv,string,string>`_
-  ## * `putEnv proc <#putEnv,string,string>`_
-  ## * `delEnv proc <#delEnv,string>`_
-  ## * `envPairs iterator <#envPairs.i>`_
-  runnableExamples:
-    assert not existsEnv("unknownEnv")
+    proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
+      ## Checks whether the environment variable named `key` exists.
+      ## Returns true if it exists, false otherwise.
+      ##
+      ## See also:
+      ## * `getEnv proc`_
+      ## * `putEnv proc`_
+      ## * `delEnv proc`_
+      ## * `envPairs iterator`_
+      runnableExamples:
+        assert not existsEnv("unknownEnv")
 
-  when nimvm:
-    discard "built into the compiler"
-  else:
-    if c_getenv(key) != nil: return true
-    else: return findEnvVar(key) >= 0
+      return getEnvImpl(key) != nil
 
-proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
-  ## Sets the value of the `environment variable`:idx: named `key` to `val`.
-  ## If an error occurs, `OSError` is raised.
-  ##
-  ## See also:
-  ## * `getEnv proc <#getEnv,string,string>`_
-  ## * `existsEnv proc <#existsEnv,string>`_
-  ## * `delEnv proc <#delEnv,string>`_
-  ## * `envPairs iterator <#envPairs.i>`_
-
-  # Note: by storing the string in the environment sequence,
-  # we guarantee that we don't free the memory before the program
-  # ends (this is needed for POSIX compliance). It is also needed so that
-  # the process itself may access its modified environment variables!
-  when nimvm:
-    discard "built into the compiler"
-  else:
-    var indx = findEnvVar(key)
-    if indx >= 0:
-      environment[indx] = key & '=' & val
-    else:
-      add environment, (key & '=' & val)
-      indx = high(environment)
-    when defined(windows) and not defined(nimscript):
-      when useWinUnicode:
-        var k = newWideCString(key)
-        var v = newWideCString(val)
-        if setEnvironmentVariableW(k, v) == 0'i32: raiseOSError(osLastError())
+    proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
+      ## Sets the value of the `environment variable`:idx: named `key` to `val`.
+      ## If an error occurs, `OSError` is raised.
+      ##
+      ## See also:
+      ## * `getEnv proc`_
+      ## * `existsEnv proc`_
+      ## * `delEnv proc`_
+      ## * `envPairs iterator`_
+      when defined(windows):
+        if key.len == 0 or '=' in key:
+          raise newException(OSError, "invalid key, got: " & $(key, val))
+        if setEnvImpl(key, val, 1'i32) != 0'i32:
+          raiseOSError(osLastError(), $(key, val))
       else:
-        if setEnvironmentVariableA(key, val) == 0'i32: raiseOSError(osLastError())
-    else:
-      if c_putenv(environment[indx]) != 0'i32:
-        raiseOSError(osLastError())
+        if c_setenv(key, val, 1'i32) != 0'i32:
+          raiseOSError(osLastError(), $(key, val))
 
-proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
-  ## Deletes the `environment variable`:idx: named `key`.
-  ## If an error occurs, `OSError` is raised.
-  ##
-  ## See also:ven
-  ## * `getEnv proc <#getEnv,string,string>`_
-  ## * `existsEnv proc <#existsEnv,string>`_
-  ## * `putEnv proc <#putEnv,string,string>`_
-  ## * `envPairs iterator <#envPairs.i>`_
-  when nimvm:
-    discard "built into the compiler"
-  else:
-    var indx = findEnvVar(key)
-    if indx < 0: return # Do nothing if the env var is not already set
-    when defined(windows) and not defined(nimscript):
-      when useWinUnicode:
-        var k = newWideCString(key)
-        if setEnvironmentVariableW(k, nil) == 0'i32: raiseOSError(osLastError())
+    proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
+      ## Deletes the `environment variable`:idx: named `key`.
+      ## If an error occurs, `OSError` is raised.
+      ##
+      ## See also:ven
+      ## * `getEnv proc`_
+      ## * `existsEnv proc`_
+      ## * `putEnv proc`_
+      ## * `envPairs iterator`_
+      template bail = raiseOSError(osLastError(), key)
+      when defined(windows):
+        #[ 
+        # https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/putenv-s-wputenv-s?view=msvc-160
+        > You can remove a variable from the environment by specifying an empty string (that is, "") for value_string
+        note that nil is not legal
+        ]#
+        if key.len == 0 or '=' in key:
+          raise newException(OSError, "invalid key, got: " & key)
+        let envToDel = key & "="
+        if c_putenv(cstring envToDel) != 0'i32: bail
       else:
-        if setEnvironmentVariableA(key, nil) == 0'i32: raiseOSError(osLastError())
-    else:
-      if c_unsetenv(key) != 0'i32:
-        raiseOSError(osLastError())
-    environment.delete(indx)
+        if c_unsetenv(key) != 0'i32: bail
 
-iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].} =
+    when defined(windows):
+      when useWinUnicode:
+        when defined(cpp):
+          proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.importcpp: "(NI16*)wcschr((const wchar_t *)#, #)",
+              header: "<string.h>".}
+        else:
+          proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.importc: "wcschr",
+              header: "<string.h>".}
+      else:
+        proc strEnd(cstr: cstring, c = 0'i32): cstring {.importc: "strchr",
+            header: "<string.h>".}
+    elif defined(macosx) and not defined(ios) and not defined(emscripten):
+      # From the manual:
+      # Shared libraries and bundles don't have direct access to environ,
+      # which is only available to the loader ld(1) when a complete program
+      # is being linked.
+      # The environment routines can still be used, but if direct access to
+      # environ is needed, the _NSGetEnviron() routine, defined in
+      # <crt_externs.h>, can be used to retrieve the address of environ
+      # at runtime.
+      proc NSGetEnviron(): ptr cstringArray {.importc: "_NSGetEnviron",
+          header: "<crt_externs.h>".}
+    elif defined(haiku):
+      var gEnv {.importc: "environ", header: "<stdlib.h>".}: cstringArray
+    else:
+      var gEnv {.importc: "environ".}: cstringArray
+
+    iterator envPairsImpl(): tuple[key, value: string] {.tags: [ReadEnvEffect].} =
+      when defined(windows):
+        block:
+          template impl(get_fun, typ, size, zero, free_fun) =
+            let env = get_fun()
+            var e = env
+            if e == nil: break
+            while true:
+              let eend = strEnd(e)
+              let kv = $e
+              let p = find(kv, '=')
+              yield (substr(kv, 0, p-1), substr(kv, p+1))
+              e = cast[typ](cast[ByteAddress](eend)+size)
+              if typeof(zero)(eend[1]) == zero: break
+            discard free_fun(env)
+          when useWinUnicode:
+            impl(getEnvironmentStringsW, WideCString, 2, 0, freeEnvironmentStringsW)
+          else:
+            impl(getEnvironmentStringsA, cstring, 1, '\0', freeEnvironmentStringsA)
+      else:
+        var i = 0
+        when defined(macosx) and not defined(ios) and not defined(emscripten):
+          var gEnv = NSGetEnviron()[]
+        while gEnv[i] != nil:
+          let kv = $gEnv[i]
+          inc(i)
+          let p = find(kv, '=')
+          yield (substr(kv, 0, p-1), substr(kv, p+1))
+
+proc envPairsImplSeq(): seq[tuple[key, value: string]] = discard # vmops
+
+iterator envPairs*(): tuple[key, value: string] {.tags: [ReadEnvEffect].} =
   ## Iterate over all `environments variables`:idx:.
   ##
   ## In the first component of the tuple is the name of the current variable stored,
   ## in the second its value.
   ##
-  ## See also:
-  ## * `getEnv proc <#getEnv,string,string>`_
-  ## * `existsEnv proc <#existsEnv,string>`_
-  ## * `putEnv proc <#putEnv,string,string>`_
-  ## * `delEnv proc <#delEnv,string>`_
-  getEnvVarsC()
-  for i in 0..high(environment):
-    var p = find(environment[i], '=')
-    yield (TaintedString(substr(environment[i], 0, p-1)),
-           TaintedString(substr(environment[i], p+1)))
+  ## Works in native backends, nodejs and vm, like the following APIs:
+  ## * `getEnv proc`_
+  ## * `existsEnv proc`_
+  ## * `putEnv proc`_
+  ## * `delEnv proc`_
+  when nimvm:
+    for ai in envPairsImplSeq(): yield ai
+  else:
+    when defined(nimscript): discard
+    else:
+      for ai in envPairsImpl(): yield ai

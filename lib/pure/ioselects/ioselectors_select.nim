@@ -26,27 +26,27 @@ else:
                              #include <sys/types.h>
                              #include <unistd.h>"""
 type
-  Fdset {.importc: "fd_set", header: platformHeaders, pure, final.} = object
+  FdSet {.importc: "fd_set", header: platformHeaders, pure, final.} = object
 var
   FD_SETSIZE {.importc: "FD_SETSIZE", header: platformHeaders.}: cint
 
-proc IOFD_SET(fd: SocketHandle, fdset: ptr Fdset)
+proc IOFD_SET(fd: SocketHandle, fdset: ptr FdSet)
      {.cdecl, importc: "FD_SET", header: platformHeaders, inline.}
-proc IOFD_CLR(fd: SocketHandle, fdset: ptr Fdset)
+proc IOFD_CLR(fd: SocketHandle, fdset: ptr FdSet)
      {.cdecl, importc: "FD_CLR", header: platformHeaders, inline.}
-proc IOFD_ZERO(fdset: ptr Fdset)
+proc IOFD_ZERO(fdset: ptr FdSet)
      {.cdecl, importc: "FD_ZERO", header: platformHeaders, inline.}
 
 when defined(windows):
-  proc IOFD_ISSET(fd: SocketHandle, fdset: ptr Fdset): cint
+  proc IOFD_ISSET(fd: SocketHandle, fdset: ptr FdSet): cint
        {.stdcall, importc: "FD_ISSET", header: platformHeaders, inline.}
-  proc ioselect(nfds: cint, readFds, writeFds, exceptFds: ptr Fdset,
+  proc ioselect(nfds: cint, readFds, writeFds, exceptFds: ptr FdSet,
                 timeout: ptr Timeval): cint
        {.stdcall, importc: "select", header: platformHeaders.}
 else:
-  proc IOFD_ISSET(fd: SocketHandle, fdset: ptr Fdset): cint
+  proc IOFD_ISSET(fd: SocketHandle, fdset: ptr FdSet): cint
        {.cdecl, importc: "FD_ISSET", header: platformHeaders, inline.}
-  proc ioselect(nfds: cint, readFds, writeFds, exceptFds: ptr Fdset,
+  proc ioselect(nfds: cint, readFds, writeFds, exceptFds: ptr FdSet,
                 timeout: ptr Timeval): cint
        {.cdecl, importc: "select", header: platformHeaders.}
 
@@ -58,7 +58,7 @@ when hasThreadSupport:
       eSet: FdSet
       maxFD: int
       fds: ptr SharedArray[SelectorKey[T]]
-      count: int
+      count*: int
       lock: Lock
     Selector*[T] = ptr SelectorImpl[T]
 else:
@@ -69,7 +69,7 @@ else:
       eSet: FdSet
       maxFD: int
       fds: seq[SelectorKey[T]]
-      count: int
+      count*: int
     Selector*[T] = ref SelectorImpl[T]
 
 type
@@ -110,11 +110,12 @@ proc close*[T](s: Selector[T]) =
   when hasThreadSupport:
     deallocSharedArray(s.fds)
     deallocShared(cast[pointer](s))
+    deinitLock(s.lock)
 
 when defined(windows):
   proc newSelectEvent*(): SelectEvent =
-    var ssock = newNativeSocket()
-    var wsock = newNativeSocket()
+    var ssock = createNativeSocket()
+    var wsock = createNativeSocket()
     var rsock: SocketHandle = INVALID_SOCKET
     var saddr = Sockaddr_in()
 
@@ -304,7 +305,7 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
     s.delKey(fd)
 
 proc selectInto*[T](s: Selector[T], timeout: int,
-                    results: var openarray[ReadyKey]): int =
+                    results: var openArray[ReadyKey]): int =
   var tv = Timeval()
   var ptv = addr tv
   var rset, wset, eset: FdSet
@@ -312,7 +313,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
   verifySelectParams(timeout)
 
   if timeout != -1:
-    when defined(genode):
+    when defined(genode) or defined(freertos) or defined(zephyr):
       tv.tv_sec = Time(timeout div 1_000)
     else:
       tv.tv_sec = timeout.int32 div 1_000

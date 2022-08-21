@@ -78,8 +78,11 @@ template decTypeSize(cell, t) =
   when defined(nimTypeNames):
     if t.kind in {tyString, tySequence}:
       let cap = cast[PGenericSeq](cellToUsr(cell)).space
-      let size = if t.kind == tyString: cap+1+GenericSeqSize
-                 else: addInt(mulInt(cap, t.base.size), GenericSeqSize)
+      let size =
+        if t.kind == tyString:
+          cap + 1 + GenericSeqSize
+        else:
+          align(GenericSeqSize, t.base.align) + cap * t.base.size
       atomicDec t.sizes, size+sizeof(Cell)
     else:
       atomicDec t.sizes, t.base.size+sizeof(Cell)
@@ -163,16 +166,16 @@ when defined(nimdoc):
     ## this thread will only be initialized once per thread, no matter how often
     ## it is called.
     ##
-    ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
+    ## This function is available only when `--threads:on` and `--tlsEmulation:off`
     ## switches are used
     discard
 
   proc tearDownForeignThreadGc*() {.gcsafe.} =
-    ## Call this to tear down the GC, previously initialized by ``setupForeignThreadGc``.
+    ## Call this to tear down the GC, previously initialized by `setupForeignThreadGc`.
     ## If GC has not been previously initialized, or has already been torn down, the
     ## call does nothing.
     ##
-    ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
+    ## This function is available only when `--threads:on` and `--tlsEmulation:off`
     ## switches are used
     discard
 elif declared(threadType):
@@ -214,7 +217,7 @@ proc stackSize(stack: ptr GcStack): int {.noinline.} =
   when nimCoroutines:
     var pos = stack.pos
   else:
-    var pos {.volatile.}: pointer
+    var pos {.volatile, noinit.}: pointer
     pos = addr(pos)
 
   if pos != nil:
@@ -226,6 +229,7 @@ proc stackSize(stack: ptr GcStack): int {.noinline.} =
     result = 0
 
 proc stackSize(): int {.noinline.} =
+  result = 0
   for stack in gch.stack.items():
     result = result + stack.stackSize()
 
@@ -269,6 +273,9 @@ when nimCoroutines:
     gch.activeStack = gch.stack.find(bottom)
     gch.activeStack.setPosition(addr(sp))
 
+  proc GC_getActiveStack() : pointer {.cdecl, exportc.} =
+    return gch.activeStack.bottom
+
 when not defined(useNimRtl):
   proc nimGC_setStackBottom(theStackBottom: pointer) =
     # Initializes main stack of the thread.
@@ -296,11 +303,14 @@ when not defined(useNimRtl):
       else:
         gch.stack.bottom = cast[pointer](max(a, b))
 
+    when nimCoroutines:
+      if theStackBottom != nil: gch.stack.bottom = theStackBottom
+
     gch.stack.setPosition(theStackBottom)
 {.pop.}
 
 proc isOnStack(p: pointer): bool =
-  var stackTop {.volatile.}: pointer
+  var stackTop {.volatile, noinit.}: pointer
   stackTop = addr(stackTop)
   var a = cast[ByteAddress](gch.getActiveStack().bottom)
   var b = cast[ByteAddress](stackTop)
@@ -405,7 +415,7 @@ else:
 # end of non-portable code
 # ----------------------------------------------------------------------------
 
-proc prepareDealloc(cell: PCell) =
+proc prepareDealloc(cell: PCell) {.raises: [].} =
   when declared(useMarkForDebug):
     when useMarkForDebug:
       gcAssert(cell notin gch.marked, "Cell still alive!")
@@ -422,10 +432,10 @@ proc prepareDealloc(cell: PCell) =
   decTypeSize(cell, t)
 
 proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
-  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers``
-  ## is true. If ``allowGcAfterwards`` is true, a minimal amount of allocation
+  ## Frees the thread local heap. Runs every finalizer if `runFinalizers`
+  ## is true. If `allowGcAfterwards` is true, a minimal amount of allocation
   ## happens to ensure the GC can continue to work after the call
-  ## to ``deallocHeap``.
+  ## to `deallocHeap`.
   template deallocCell(x) =
     if isCell(x):
       # cast to PCell is correct here:
@@ -448,7 +458,7 @@ proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
     initGC()
 
 type
-  GlobalMarkerProc = proc () {.nimcall, benign.}
+  GlobalMarkerProc = proc () {.nimcall, benign, raises: [].}
 var
   globalMarkersLen {.exportc.}: int
   globalMarkers {.exportc.}: array[0..3499, GlobalMarkerProc]

@@ -1,16 +1,16 @@
 discard """
-  cmd: '''nim cpp --newruntime --threads:on $file'''
+  cmd: '''nim cpp -d:nimAllocStats --newruntime --threads:on $file'''
   output: '''(field: "value")
 Indeed
 axc
 (v: 10)
-0  new: 0
 ...
 destroying GenericObj[T] GenericObj[system.int]
-'''
+test
+(allocCount: 12, deallocCount: 10)
+3'''
 """
 
-import core / allocators
 import system / ansi_c
 
 import tables
@@ -23,8 +23,15 @@ type
 import os
 putEnv("HEAPTRASHING", "Indeed")
 
+let s1 = getAllocStats()
+
+
+proc newTableOwned[A, B](initialSize = defaultInitialSize): owned(TableRef[A, B]) =
+  new(result)
+  result[] = initTable[A, B](initialSize)
+
 proc main =
-  var w = newTable[string, owned Node]()
+  var w = newTableOwned[string, owned Node]()
   w["key"] = Node(field: "value")
   echo w["key"][]
   echo getEnv("HEAPTRASHING")
@@ -86,9 +93,6 @@ proc testWrongAt() =
 
 testWrongAt()
 
-let (a, d) = allocCounters()
-discard cprintf("%ld  new: %ld\n", a - unpairedEnvAllocs() - d, allocs)
-
 #-------------------------------------------------
 type
   Table[A, B] = object
@@ -117,3 +121,35 @@ proc main12() =
   echo "..."
 
 main12()
+
+#####################################################################
+## bug #12827
+type
+  MyObject = object
+    x: string
+    y: seq[string]
+    needs_ref: ref int
+
+proc xx(xml: string): MyObject =
+  let stream = xml
+  result.x  = xml
+  defer: echo stream
+
+
+discard xx("test")
+
+# Windows has 1 extra allocation in `getEnv` - there it allocates parameter to
+# `_wgetenv` (WideCString). Therefore subtract by 1 to match other OSes'
+# allocation.
+when defined(windows):
+  import std/importutils
+  privateAccess(AllocStats)
+  echo getAllocStats() - s1 - AllocStats(allocCount: 1, deallocCount: 1)
+else:
+  echo getAllocStats() - s1
+
+# bug #13457
+var s = "abcde"
+s.setLen(3)
+
+echo s.cstring.len

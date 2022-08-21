@@ -1,5 +1,5 @@
 discard """
-  errmsg: "undeclared identifier: 'z'"
+  errormsg: "undeclared identifier: 'z'"
   line: 11
 """
 

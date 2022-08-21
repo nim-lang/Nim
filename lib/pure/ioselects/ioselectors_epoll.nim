@@ -55,7 +55,7 @@ when hasThreadSupport:
       maxFD: int
       numFD: int
       fds: ptr SharedArray[SelectorKey[T]]
-      count: int
+      count*: int
     Selector*[T] = ptr SelectorImpl[T]
 else:
   type
@@ -64,7 +64,7 @@ else:
       maxFD: int
       numFD: int
       fds: seq[SelectorKey[T]]
-      count: int
+      count*: int
     Selector*[T] = ref SelectorImpl[T]
 type
   SelectEventImpl = object
@@ -73,15 +73,12 @@ type
 
 proc newSelector*[T](): Selector[T] =
   # Retrieve the maximum fd count (for current OS) via getrlimit()
-  var a = RLimit()
-  if getrlimit(posix.RLIMIT_NOFILE, a) != 0:
-    raiseOSError(osLastError())
-  var maxFD = int(a.rlim_max)
+  var maxFD = maxDescriptors()
   doAssert(maxFD > 0)
   # Start with a reasonable size, checkFd() will grow this on demand
   const numFD = 1024
 
-  var epollFD = epoll_create(MAX_EPOLL_EVENTS)
+  var epollFD = epoll_create1(O_CLOEXEC)
   if epollFD < 0:
     raiseOSError(osLastError())
 
@@ -110,10 +107,9 @@ proc close*[T](s: Selector[T]) =
     raiseIOSelectorsError(osLastError())
 
 proc newSelectEvent*(): SelectEvent =
-  let fdci = eventfd(0, 0)
+  let fdci = eventfd(0, O_CLOEXEC or O_NONBLOCK)
   if fdci == -1:
     raiseIOSelectorsError(osLastError())
-  setNonBlocking(fdci)
   result = cast[SelectEvent](allocShared0(sizeof(SelectEventImpl)))
   result.efd = fdci
 
@@ -269,10 +265,9 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
   var
     newTs: Itimerspec
     oldTs: Itimerspec
-  let fdi = timerfd_create(CLOCK_MONOTONIC, 0).int
+  let fdi = timerfd_create(CLOCK_MONOTONIC, O_CLOEXEC or O_NONBLOCK).int
   if fdi == -1:
     raiseIOSelectorsError(osLastError())
-  setNonBlocking(fdi.cint)
 
   s.checkFd(fdi)
   doAssert(s.fds[fdi].ident == InvalidIdent)
@@ -314,10 +309,9 @@ when not defined(android):
     discard sigaddset(nmask, cint(signal))
     blockSignals(nmask, omask)
 
-    let fdi = signalfd(-1, nmask, 0).int
+    let fdi = signalfd(-1, nmask, O_CLOEXEC or O_NONBLOCK).int
     if fdi == -1:
       raiseIOSelectorsError(osLastError())
-    setNonBlocking(fdi.cint)
 
     s.checkFd(fdi)
     doAssert(s.fds[fdi].ident == InvalidIdent)
@@ -341,10 +335,9 @@ when not defined(android):
     discard sigaddset(nmask, posix.SIGCHLD)
     blockSignals(nmask, omask)
 
-    let fdi = signalfd(-1, nmask, 0).int
+    let fdi = signalfd(-1, nmask, O_CLOEXEC or O_NONBLOCK).int
     if fdi == -1:
       raiseIOSelectorsError(osLastError())
-    setNonBlocking(fdi.cint)
 
     s.checkFd(fdi)
     doAssert(s.fds[fdi].ident == InvalidIdent)
@@ -518,7 +511,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
   let fdi = int(fd)
   s.checkFd(fdi)
   if fdi in s:
-    var value = addr(s.getData(fdi))
+    var value = addr(s.fds[fdi].data)
     body
 
 template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
@@ -527,10 +520,10 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
   let fdi = int(fd)
   s.checkFd(fdi)
   if fdi in s:
-    var value = addr(s.getData(fdi))
+    var value = addr(s.fds[fdi].data)
     body1
   else:
     body2
 
 proc getFd*[T](s: Selector[T]): int =
-  return s.epollFd.int
+  return s.epollFD.int

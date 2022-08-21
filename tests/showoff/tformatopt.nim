@@ -37,7 +37,7 @@ macro optFormat{`%`(f, a)}(f: string{lit}, a: openArray[string]): untyped =
   result = newNimNode(nnkBracket)
   let f = f.strVal
   formatImpl(newLit)
-  result = nestList(!"&", result)
+  result = nestList(newIdentNode("&"), result)
 
 template optAdd1{x = y; add(x, z)}(x, y, z: string) =
   x = y & z

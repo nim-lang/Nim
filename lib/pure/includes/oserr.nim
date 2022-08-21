@@ -18,18 +18,18 @@ proc `$`*(err: OSErrorCode): string {.borrow.}
 proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## Converts an OS error code into a human readable string.
   ##
-  ## The error code can be retrieved using the `osLastError proc <#osLastError>`_.
+  ## The error code can be retrieved using the `osLastError proc`_.
   ##
-  ## If conversion fails, or ``errorCode`` is ``0`` then ``""`` will be
+  ## If conversion fails, or `errorCode` is `0` then `""` will be
   ## returned.
   ##
-  ## On Windows, the ``-d:useWinAnsi`` compilation flag can be used to
+  ## On Windows, the `-d:useWinAnsi` compilation flag can be used to
   ## make this procedure use the non-unicode Win API calls to retrieve the
   ## message.
   ##
   ## See also:
-  ## * `raiseOSError proc <#raiseOSError,OSErrorCode,string>`_
-  ## * `osLastError proc <#osLastError>`_
+  ## * `raiseOSError proc`_
+  ## * `osLastError proc`_
   runnableExamples:
     when defined(linux):
       assert osErrorMsg(OSErrorCode(0)) == ""
@@ -39,7 +39,7 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
   result = ""
   when defined(nimscript):
     discard
-  elif defined(Windows):
+  elif defined(windows):
     if errorCode != OSErrorCode(0'i32):
       when useWinUnicode:
         var msgbuf: WideCString
@@ -62,26 +62,26 @@ proc newOSError*(
 ): owned(ref OSError) {.noinline.} =
   ## Creates a new `OSError exception <system.html#OSError>`_.
   ##
-  ## The ``errorCode`` will determine the
-  ## message, `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_ will be used
+  ## The `errorCode` will determine the
+  ## message, `osErrorMsg proc`_ will be used
   ## to get this message.
   ##
-  ## The error code can be retrieved using the `osLastError proc
-  ## <#osLastError>`_.
+  ## The error code can be retrieved using the `osLastError proc`_.
   ##
-  ## If the error code is ``0`` or an error message could not be retrieved,
-  ## the message ``unknown OS error`` will be used.
+  ## If the error code is `0` or an error message could not be retrieved,
+  ## the message `unknown OS error` will be used.
   ##
   ## See also:
-  ## * `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_
-  ## * `osLastError proc <#osLastError>`_
+  ## * `osErrorMsg proc`_
+  ## * `osLastError proc`_
   var e: owned(ref OSError); new(e)
   e.errorCode = errorCode.int32
   e.msg = osErrorMsg(errorCode)
   if additionalInfo.len > 0:
     if e.msg.len > 0 and e.msg[^1] != '\n': e.msg.add '\n'
-    e.msg.add  "Additional info: "
-    e.msg.addQuoted additionalInfo
+    e.msg.add "Additional info: "
+    e.msg.add additionalInfo
+      # don't add trailing `.` etc, which negatively impacts "jump to file" in IDEs.
   if e.msg == "":
     e.msg = "unknown OS error"
   return e
@@ -89,7 +89,7 @@ proc newOSError*(
 proc raiseOSError*(errorCode: OSErrorCode, additionalInfo = "") {.noinline.} =
   ## Raises an `OSError exception <system.html#OSError>`_.
   ##
-  ## Read the description of the `newOSError proc <#newOSError,OSErrorCode,string>`_ to learn
+  ## Read the description of the `newOSError proc`_ to learn
   ## how the exception object is created.
   raise newOSError(errorCode, additionalInfo)
 
@@ -99,22 +99,21 @@ proc osLastError*(): OSErrorCode {.sideEffect.} =
   ##
   ## This procedure is useful in the event when an OS call fails. In that case
   ## this procedure will return the error code describing the reason why the
-  ## OS call failed. The ``OSErrorMsg`` procedure can then be used to convert
+  ## OS call failed. The `OSErrorMsg` procedure can then be used to convert
   ## this code into a string.
   ##
-  ## **Warning**:
-  ## The behaviour of this procedure varies between Windows and POSIX systems.
-  ## On Windows some OS calls can reset the error code to ``0`` causing this
-  ## procedure to return ``0``. It is therefore advised to call this procedure
-  ## immediately after an OS call fails. On POSIX systems this is not a problem.
+  ## .. warning:: The behaviour of this procedure varies between Windows and POSIX systems.
+  ##   On Windows some OS calls can reset the error code to `0` causing this
+  ##   procedure to return `0`. It is therefore advised to call this procedure
+  ##   immediately after an OS call fails. On POSIX systems this is not a problem.
   ##
   ## See also:
-  ## * `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_
-  ## * `raiseOSError proc <#raiseOSError,OSErrorCode,string>`_
+  ## * `osErrorMsg proc`_
+  ## * `raiseOSError proc`_
   when defined(nimscript):
     discard
   elif defined(windows):
-    result = OSErrorCode(getLastError())
+    result = cast[OSErrorCode](getLastError())
   else:
     result = OSErrorCode(errno)
 {.pop.}

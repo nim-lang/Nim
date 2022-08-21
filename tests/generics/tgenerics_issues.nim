@@ -23,6 +23,10 @@ concrete 88
 G:0,1:0.1
 G:0,1:0.1
 H:1:0.1
+0
+(foo: none(seq[Foo]), s: "")
+(foo: some(@[(a: "world", bar: none(Bar))]), s: "hello,")
+@[(a: "hey", bar: none(Bar))]
 '''
 joinable: false
 """
@@ -51,8 +55,8 @@ block t88:
 
   let c = ChildClass[string].new("Base", "Child")
 
-  assert c.baseMethod == "Base"
-  assert c.overriddenMethod == "Child"
+  doAssert c.baseMethod == "Base"
+  doAssert c.overriddenMethod == "Child"
 
 
 
@@ -124,7 +128,7 @@ block t1789:
       bar: array[N, T]
 
   proc `[]`[N, T](f: Bar[N, T], n: range[0..(N - 1)]): T =
-    assert high(n) == N-1
+    doAssert high(n) == N-1
     result = f.bar[n]
 
   var b: Bar[3, int]
@@ -599,7 +603,7 @@ block t7854:
 
 
 block t5864:
-  proc defaultStatic(s: openarray, N: static[int] = 1): int = N
+  proc defaultStatic(s: openArray, N: static[int] = 1): int = N
   proc defaultGeneric[T](a: T = 2): int = a
 
   let a = [1, 2, 3, 4].defaultStatic()
@@ -730,7 +734,7 @@ block t1684:
   proc newDerived(idx: int): DerivedType {.inline.} = DerivedType(idx: idx)
 
   let d = newDerived(2)
-  assert(d.index == 2)
+  doAssert(d.index == 2)
 
 
 
@@ -762,3 +766,109 @@ block t3717:
 
   var f: Foo[Foo[int]]
   discard foo(f)
+
+
+
+block: # issue #9458
+  type
+    Option[T] = object
+      val: T
+      has: bool
+
+    Bar = object
+
+  proc none(T: typedesc): Option[T] =
+    discard
+
+  proc foo[T](self: T; x: Option[Bar] = Bar.none) =
+    discard
+
+  foo(1)
+
+
+# bug #8426
+type
+  MyBool[T: uint] = range[T(0)..T(1)] # Works
+
+var x: MyBool[uint]
+echo x
+
+# x = 2 # correctly prevented
+
+type
+  MyBool2 = range[uint(0)..uint(1)] # Error ordinal or float type expected
+
+
+# bug #10396
+import options, strutils
+
+type
+  Foo {.acyclic.} = object
+    a: string
+    bar: Option[Bar]
+
+  Bar {.acyclic.} = object
+    foo: Option[seq[Foo]]   # if this was just Option[Foo], everything works fine
+    s: string
+
+proc getBar(x: string): Bar
+
+proc intoFoos(ss: seq[string]): seq[Foo] =
+  result = @[]
+  for s in ss:
+    let spl = s.split(',')
+    if spl.len > 1:
+      result.add Foo(a: spl[0],
+                     bar: some(getBar(spl[1])))
+    else:
+      result.add Foo(a: s,
+                     bar: none[Bar]())
+
+proc getBar(x: string): Bar =
+  let spl = x.split(' ')
+  result =
+    if spl.len > 1:
+      Bar(foo: some(spl[1..high(spl)].intoFoos),
+          s: spl[0])
+    else:
+      Bar(foo: none[seq[Foo]](),
+          s: "")
+
+proc fakeReadLine(): string = "hey"
+
+echo getBar(fakeReadLine()) # causes error
+
+echo getBar("hello, world") # causes error
+
+discard $getBar(fakeReadLine()) # causes error
+
+discard $getBar("hello, world") # causes error
+
+discard getBar(fakeReadLine()) # no error
+
+discard getBar("hello, world") # no error
+
+echo intoFoos(fakeReadLine().split(' ')) # no error, works as expected
+
+
+# bug #14990
+type
+  Tile3 = Tile2
+  Tile2 = Tile
+  Tile[n] = object
+    a: n
+
+var a: Tile3[int]
+
+block: # Ensure no segfault from constraint
+  type
+    Regex[A: SomeOrdinal] = ref object
+      val: Regex[A]
+    MyConstraint = (seq or enum or set)
+    MyOtherType[A: MyConstraint] = ref object
+      val: MyOtherType[A]
+
+  var
+    a = Regex[int]()
+    b = Regex[bool]()
+    c = MyOtherType[seq[int]]()

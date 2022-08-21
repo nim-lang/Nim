@@ -1,9 +1,8 @@
 discard """
   errormsg: "'consumer' is not GC-safe as it calls 'track'"
-  line: 28
-  nimout: '''tgc_unsafe2.nim(22, 6) Warning: 'trick' is not GC-safe as it accesses 'global' which is a global using GC'ed memory [GcUnsafe2]
-tgc_unsafe2.nim(26, 6) Warning: 'track' is not GC-safe as it calls 'trick' [GcUnsafe2]
-tgc_unsafe2.nim(28, 6) Error: 'consumer' is not GC-safe as it calls 'track'
+  nimout: '''tgc_unsafe2.nim(21, 6) Warning: 'trick' is not GC-safe as it accesses 'global' which is a global using GC'ed memory [GcUnsafe2]
+tgc_unsafe2.nim(25, 6) Warning: 'track' is not GC-safe as it calls 'trick' [GcUnsafe2]
+tgc_unsafe2.nim(27, 6) Error: 'consumer' is not GC-safe as it calls 'track'
 '''
 """
 

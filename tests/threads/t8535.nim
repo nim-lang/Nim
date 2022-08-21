@@ -22,7 +22,7 @@ import asyncdispatch
 import threadpool
 
 proc f1() =
-  waitFor sleepAsync(100)
+  waitFor sleepAsync(20)
   echo "hello"
 
 spawn f1()

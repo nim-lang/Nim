@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# An ``include`` file for the different hash set implementations.
+# An `include` file for the different hash set implementations.
 
 
 template maxHash(t): untyped = high(t.data)
@@ -16,12 +16,12 @@ template dataLen(t): untyped = len(t.data)
 include hashcommon
 
 template initImpl(s: typed, size: int) =
-  assert isPowerOfTwo(size)
+  let correctSize = slotsNeeded(size)
   when s is OrderedSet:
     s.first = -1
     s.last = -1
   s.counter = 0
-  newSeq(s.data, size)
+  newSeq(s.data, correctSize)
 
 template rawInsertImpl() {.dirty.} =
   if data.len == 0:
@@ -48,7 +48,7 @@ template inclImpl() {.dirty.} =
   var hc: Hash
   var index = rawGet(s, key, hc)
   if index < 0:
-    if mustRehash(len(s.data), s.counter):
+    if mustRehash(s):
       enlarge(s)
       index = rawGetKnownHC(s, key, hc)
     rawInsert(s, s.data, key, hc, -1 - index)
@@ -62,7 +62,7 @@ template containsOrInclImpl() {.dirty.} =
   if index >= 0:
     result = true
   else:
-    if mustRehash(len(s.data), s.counter):
+    if mustRehash(s):
       enlarge(s)
       index = rawGetKnownHC(s, key, hc)
     rawInsert(s, s.data, key, hc, -1 - index)
@@ -86,7 +86,7 @@ proc exclImpl[A](s: var HashSet[A], key: A): bool {.inline.} =
       var j = i # The correctness of this depends on (h+1) in nextTry,
       var r = j # though may be adaptable to other simple sequences.
       s.data[i].hcode = 0 # mark current EMPTY
-      s.data[i].key = default(type(s.data[i].key))
+      s.data[i].key = default(typeof(s.data[i].key))
       doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
         i = (i + 1) and msk # increment mod table size
         if isEmpty(s.data[i].hcode): # end of collision cluster; So all done

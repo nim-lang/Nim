@@ -1,11 +1,14 @@
 discard """
-output: '''
+  matrix: "--mm:arc; --mm:refc"
+  output: '''
 proc Base
 proc Child
 method Base
+method Child
 yield Base
 yield Child
 12
+1
 '''
 """
 
@@ -23,8 +26,7 @@ Base.pr
 Child.pr
 
 Base.me
-when false:
-  Child.me #<- bug #2710
+Child.me #<- bug #2710
 
 for s in Base.it: echo s
 for s in Child.it: echo s #<- bug #2662
@@ -41,3 +43,11 @@ type
   MyRefType = ref MyType
 
 echo sizeof(default(MyRefType)[])
+
+type
+  Foo[T] = object
+    val: T
+
+var x: Foo[int].val
+inc(x)
+echo x

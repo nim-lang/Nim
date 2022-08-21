@@ -1,15 +1,35 @@
-proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
-  ## The stringify operator for an integer argument. Returns `x`
-  ## converted to a decimal string. ``$`` is Nim's general way of
-  ## spelling `toString`:idx:.
+## `$` is Nim's general way of spelling `toString`:idx:.
+runnableExamples:
+  assert $0.1 == "0.1"
+  assert $(-2*3) == "-6"
 
-proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
-  ## The stringify operator for an integer argument. Returns `x`
-  ## converted to a decimal string.
+import std/private/digitsutils
+import system/formatfloat
+export addFloat
 
-proc `$`*(x: float): string {.magic: "FloatToStr", noSideEffect.}
-  ## The stringify operator for a float argument. Returns `x`
-  ## converted to a decimal string.
+proc `$`*(x: int): string {.raises: [].} =
+  ## Outplace version of `addInt`.
+  result.addInt(x)
+
+proc `$`*(x: int64): string {.raises: [].} =
+  ## Outplace version of `addInt`.
+  result.addInt(x)
+
+proc `$`*(x: uint64): string {.raises: [].} =
+  ## Outplace version of `addInt`.
+  addInt(result, x)
+
+# same as old `ctfeWhitelist` behavior, whether or not this is a good idea.
+template gen(T) =
+  # xxx simplify this by supporting this in compiler: int{lit} | uint64{lit} | int64{lit}
+  func `$`*(x: T{lit}): string {.compileTime.} = result.addInt(x)
+gen(int)
+gen(uint64)
+gen(int64)
+
+func `$`*(x: float | float32): string =
+  ## Outplace version of `addFloat`.
+  result.addFloat(x)
 
 proc `$`*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## The stringify operator for a boolean argument. Returns `x`
@@ -29,41 +49,45 @@ proc `$`*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
 proc `$`*(x: string): string {.magic: "StrToStr", noSideEffect.}
   ## The stringify operator for a string argument. Returns `x`
   ## as it is. This operator is useful for generic code, so
-  ## that ``$expr`` also works if ``expr`` is already a string.
+  ## that `$expr` also works if `expr` is already a string.
 
 proc `$`*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## The stringify operator for an enumeration argument. This works for
   ## any enumeration type thanks to compiler magic.
   ##
-  ## If a ``$`` operator for a concrete enumeration is provided, this is
+  ## If a `$` operator for a concrete enumeration is provided, this is
   ## used instead. (In other words: *Overwriting* is possible.)
 
 proc `$`*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type.
   ##
-  ## For more procedures dealing with ``typedesc``, see
+  ## For more procedures dealing with `typedesc`, see
   ## `typetraits module <typetraits.html>`_.
   ##
   ## .. code-block:: Nim
-  ##   doAssert $(type(42)) == "int"
-  ##   doAssert $(type("Foo")) == "string"
-  ##   static: doAssert $(type(@['A', 'B'])) == "seq[char]"
+  ##   doAssert $(typeof(42)) == "int"
+  ##   doAssert $(typeof("Foo")) == "string"
+  ##   static: doAssert $(typeof(@['A', 'B'])) == "seq[char]"
 
+when defined(nimHasIsNamedTuple):
+  proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+else:
+  # for bootstrap; remove after release 1.2
+  proc isNamedTuple(T: typedesc): bool =
+    # Taken from typetraits.
+    when T isnot tuple: result = false
+    else:
+      var t: T
+      for name, _ in t.fieldPairs:
+        when name == "Field0":
+          return compiles(t.Field0)
+        else:
+          return true
+      return false
 
-proc isNamedTuple(T: typedesc): bool =
-  # Taken from typetraits.
-  when T isnot tuple: result = false
-  else:
-    var t: T
-    for name, _ in t.fieldPairs:
-      when name == "Field0":
-        return compiles(t.Field0)
-      else:
-        return true
-    return false
 
 proc `$`*[T: tuple|object](x: T): string =
-  ## Generic ``$`` operator for tuples that is lifted from the components
+  ## Generic `$` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
@@ -71,27 +95,22 @@ proc `$`*[T: tuple|object](x: T): string =
   ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
   result = "("
-  var firstElement = true
   const isNamed = T is object or isNamedTuple(T)
-  when not isNamed:
-    var count = 0
+  var count {.used.} = 0
   for name, value in fieldPairs(x):
-    if not firstElement: result.add(", ")
+    if count > 0: result.add(", ")
     when isNamed:
       result.add(name)
       result.add(": ")
-    else:
-      count.inc
+    count.inc
     when compiles($value):
       when value isnot string and value isnot seq and compiles(value.isNil):
         if value.isNil: result.add "nil"
         else: result.addQuoted(value)
       else:
         result.addQuoted(value)
-      firstElement = false
     else:
       result.add("...")
-      firstElement = false
   when not isNamed:
     if count == 1:
       result.add(",") # $(1,) should print as the semantically legal (1,)
@@ -118,7 +137,7 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
   result.add(suffix)
 
 proc `$`*[T](x: set[T]): string =
-  ## Generic ``$`` operator for sets that is lifted from the components
+  ## Generic `$` operator for sets that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
@@ -126,7 +145,7 @@ proc `$`*[T](x: set[T]): string =
   collectionToString(x, "{", ", ", "}")
 
 proc `$`*[T](x: seq[T]): string =
-  ## Generic ``$`` operator for seqs that is lifted from the components
+  ## Generic `$` operator for seqs that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
@@ -134,7 +153,7 @@ proc `$`*[T](x: seq[T]): string =
   collectionToString(x, "@[", ", ", "]")
 
 proc `$`*[T, U](x: HSlice[T, U]): string =
-  ## Generic ``$`` operator for slices that is lifted from the components
+  ## Generic `$` operator for slices that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
@@ -146,11 +165,11 @@ proc `$`*[T, U](x: HSlice[T, U]): string =
 
 when not defined(nimNoArrayToString):
   proc `$`*[T, IDX](x: array[IDX, T]): string =
-    ## Generic ``$`` operator for arrays that is lifted from the components.
+    ## Generic `$` operator for arrays that is lifted from the components.
     collectionToString(x, "[", ", ", "]")
 
 proc `$`*[T](x: openArray[T]): string =
-  ## Generic ``$`` operator for openarrays that is lifted from the components
+  ## Generic `$` operator for openarrays that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim

@@ -11,6 +11,7 @@
 {.push stackTrace:off, profiler:off.}
 
 const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
+const someVcc = defined(vcc) or defined(clang_cl)
 
 type
   AtomType* = SomeNumber|pointer|ptr|char|bool
@@ -72,7 +73,7 @@ when someGcc and hasThreadSupport:
 
   proc atomicCompareExchangeN*[T: AtomType](p, expected: ptr T, desired: T,
     weak: bool, success_memmodel: AtomMemModel, failure_memmodel: AtomMemModel): bool {.
-    importc: "__atomic_compare_exchange_n ", nodecl.}
+    importc: "__atomic_compare_exchange_n", nodecl.}
     ## This proc implements an atomic compare and exchange operation. This compares the
     ## contents at p with the contents at expected and if equal, writes desired at p.
     ## If they are not equal, the current contents at p is written into expected.
@@ -99,13 +100,13 @@ when someGcc and hasThreadSupport:
   proc atomicSubFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
     importc: "__atomic_sub_fetch", nodecl.}
   proc atomicOrFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_or_fetch ", nodecl.}
+    importc: "__atomic_or_fetch", nodecl.}
   proc atomicAndFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
     importc: "__atomic_and_fetch", nodecl.}
   proc atomicXorFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
     importc: "__atomic_xor_fetch", nodecl.}
   proc atomicNandFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_nand_fetch ", nodecl.}
+    importc: "__atomic_nand_fetch", nodecl.}
 
   ## Perform the operation return the old value, all memory models are valid
   proc atomicFetchAdd*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
@@ -124,8 +125,8 @@ when someGcc and hasThreadSupport:
   proc atomicTestAndSet*(p: pointer, mem: AtomMemModel): bool {.
     importc: "__atomic_test_and_set", nodecl.}
     ## This built-in function performs an atomic test-and-set operation on the byte at p.
-    ## The byte is set to some implementation defined nonzero “set” value and the return
-    ## value is true if and only if the previous contents were “set”.
+    ## The byte is set to some implementation defined nonzero "set" value and the return
+    ## value is true if and only if the previous contents were "set".
     ## All memory models are valid.
 
   proc atomicClear*(p: pointer, mem: AtomMemModel) {.
@@ -163,7 +164,7 @@ when someGcc and hasThreadSupport:
     ## ignore this parameter.
 
   template fence*() = atomicThreadFence(ATOMIC_SEQ_CST)
-elif defined(vcc) and hasThreadSupport:
+elif someVcc and hasThreadSupport:
   type AtomMemModel* = distinct cint
 
   const
@@ -176,8 +177,8 @@ elif defined(vcc) and hasThreadSupport:
 
   proc `==`(x1, x2: AtomMemModel): bool {.borrow.}
 
-  proc readBarrier() {.importc: "_ReadBarrier",  header: "<intrin.h>".}
-  proc writeBarrier() {.importc: "_WriteBarrier",  header: "<intrin.h>".}
+  proc readBarrier() {.importc: "_ReadBarrier", header: "<intrin.h>".}
+  proc writeBarrier() {.importc: "_WriteBarrier", header: "<intrin.h>".}
   proc fence*() {.importc: "_ReadWriteBarrier", header: "<intrin.h>".}
 
   template barrier(mem: AtomMemModel) =
@@ -216,8 +217,8 @@ else:
 
 proc atomicInc*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
-    result = atomicAddFetch(memLoc.addr, x, ATOMIC_RELAXED)
-  elif defined(vcc) and hasThreadSupport:
+    result = atomicAddFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
+  elif someVcc and hasThreadSupport:
     result = addAndFetch(memLoc.addr, x)
     inc(result, x)
   else:
@@ -227,17 +228,17 @@ proc atomicInc*(memLoc: var int, x: int = 1): int =
 proc atomicDec*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
     when declared(atomicSubFetch):
-      result = atomicSubFetch(memLoc.addr, x, ATOMIC_RELAXED)
+      result = atomicSubFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
     else:
-      result = atomicAddFetch(memLoc.addr, -x, ATOMIC_RELAXED)
-  elif defined(vcc) and hasThreadSupport:
+      result = atomicAddFetch(memLoc.addr, -x, ATOMIC_SEQ_CST)
+  elif someVcc and hasThreadSupport:
     result = addAndFetch(memLoc.addr, -x)
     dec(result, x)
   else:
     dec(memLoc, x)
     result = memLoc
 
-when defined(vcc):
+when someVcc:
   when defined(cpp):
     proc interlockedCompareExchange64(p: pointer; exchange, comparand: int64): int64
       {.importcpp: "_InterlockedCompareExchange64(static_cast<NI64 volatile *>(#), #, #)", header: "<intrin.h>".}
@@ -280,10 +281,7 @@ static int __tcc_cas(int *ptr, int oldVal, int newVal)
             : "r" (newVal), "m" (*ptr), "a" (oldVal)
             : "memory");
 
-    if (ret)
-      return 0;
-    else
-      return 1;
+    return ret;
 }
 """.}
   else:
@@ -300,10 +298,7 @@ static int __tcc_cas(int *ptr, int oldVal, int newVal)
             : "r" (newVal), "m" (*ptr), "a" (oldVal)
             : "memory");
 
-    if (ret)
-      return 0;
-    else
-      return 1;
+    return ret;
 }
 """.}
 
@@ -321,7 +316,7 @@ else:
   # XXX is this valid for 'int'?
 
 
-when (defined(x86) or defined(amd64)) and defined(vcc):
+when (defined(x86) or defined(amd64)) and someVcc:
   proc cpuRelax* {.importc: "YieldProcessor", header: "<windows.h>".}
 elif (defined(x86) or defined(amd64)) and (someGcc or defined(bcc)):
   proc cpuRelax* {.inline.} =

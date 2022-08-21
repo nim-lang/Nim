@@ -3,7 +3,7 @@ discard """
 """
 
 # bug #7638
-import threadpool, os, strformat
+import threadpool, os
 
 proc timer(d: int): int =
   #echo fmt"sleeping {d}"
@@ -11,7 +11,7 @@ proc timer(d: int): int =
   #echo fmt"done {d}"
   return d
 
-var durations = [1000, 1500, 2000, 2500, 3000]
+var durations = [1000, 1500, 2000]
 var tasks: seq[FlowVarBase] = @[]
 var results: seq[int] = @[]
 
@@ -25,11 +25,9 @@ while index != -1:
   #echo repr results
   index = blockUntilAny(tasks)
 
-doAssert results.len == 5
+doAssert results.len == 3
 doAssert 1000 in results
 doAssert 1500 in results
 doAssert 2000 in results
-doAssert 2500 in results
-doAssert 3000 in results
 sync()
 echo "true"

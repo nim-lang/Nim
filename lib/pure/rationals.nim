@@ -8,56 +8,93 @@
 #
 
 
-## This module implements rational numbers, consisting of a numerator `num` and
-## a denominator `den`, both of type int. The denominator can not be 0.
+## This module implements rational numbers, consisting of a numerator and
+## a denominator. The denominator can not be 0.
 
-import math
-import hashes
+runnableExamples:
+  let
+    r1 = 1 // 2
+    r2 = -3 // 4
+
+  doAssert r1 + r2 == -1 // 4
+  doAssert r1 - r2 ==  5 // 4
+  doAssert r1 * r2 == -3 // 8
+  doAssert r1 / r2 == -2 // 3
+
+import math, hashes
 
 type Rational*[T] = object
-  ## a rational number, consisting of a numerator and denominator
+  ## A rational number, consisting of a numerator `num` and a denominator `den`.
   num*, den*: T
 
-proc initRational*[T: SomeInteger](num, den: T): Rational[T] =
-  ## Create a new rational number.
-  assert(den != 0, "a denominator of zero value is invalid")
+func reduce*[T: SomeInteger](x: var Rational[T]) =
+  ## Reduces the rational number `x`, so that the numerator and denominator
+  ## have no common divisors other than 1 (and -1).
+  ## If `x` is 0, raises `DivByZeroDefect`.
+  ##
+  ## **Note:** This is called automatically by the various operations on rationals.
+  runnableExamples:
+    var r = Rational[int](num: 2, den: 4) # 1/2
+    reduce(r)
+    doAssert r.num == 1
+    doAssert r.den == 2
+
+  let common = gcd(x.num, x.den)
+  if x.den > 0:
+    x.num = x.num div common
+    x.den = x.den div common
+  elif x.den < 0:
+    x.num = -x.num div common
+    x.den = -x.den div common
+  else:
+    raise newException(DivByZeroDefect, "division by zero")
+
+func initRational*[T: SomeInteger](num, den: T): Rational[T] =
+  ## Creates a new rational number with numerator `num` and denominator `den`.
+  ## `den` must not be 0.
+  ##
+  ## **Note:** `den != 0` is not checked when assertions are turned off.
+  assert(den != 0, "a denominator of zero is invalid")
   result.num = num
   result.den = den
+  reduce(result)
 
-proc `//`*[T](num, den: T): Rational[T] = initRational[T](num, den)
-  ## A friendlier version of `initRational`. Example usage:
-  ##
-  ## .. code-block:: nim
-  ##   var x = 1//3 + 1//5
+func `//`*[T](num, den: T): Rational[T] =
+  ## A friendlier version of `initRational <#initRational,T,T>`_.
+  runnableExamples:
+    let x = 1 // 3 + 1 // 5
+    doAssert x == 8 // 15
 
-proc `$`*[T](x: Rational[T]): string =
-  ## Turn a rational number into a string.
+  initRational[T](num, den)
+
+func `$`*[T](x: Rational[T]): string =
+  ## Turns a rational number into a string.
+  runnableExamples:
+    doAssert $(1 // 2) == "1/2"
+
   result = $x.num & "/" & $x.den
 
-proc toRational*[T: SomeInteger](x: T): Rational[T] =
-  ## Convert some integer `x` to a rational number.
+func toRational*[T: SomeInteger](x: T): Rational[T] =
+  ## Converts some integer `x` to a rational number.
+  runnableExamples:
+    doAssert toRational(42) == 42 // 1
+
   result.num = x
   result.den = 1
 
-proc toRational*(x: float,
+func toRational*(x: float,
                  n: int = high(int) shr (sizeof(int) div 2 * 8)): Rational[int] =
-  ## Calculates the best rational numerator and denominator
-  ## that approximates to `x`, where the denominator is
-  ## smaller than `n` (default is the largest possible
-  ## int to give maximum resolution).
+  ## Calculates the best rational approximation of `x`,
+  ## where the denominator is smaller than `n`
+  ## (default is the largest possible `int` for maximal resolution).
   ##
   ## The algorithm is based on the theory of continued fractions.
-  ##
-  ## .. code-block:: Nim
-  ##  import math, rationals
-  ##  for i in 1..10:
-  ##    let t = (10 ^ (i+3)).int
-  ##    let x = toRational(PI, t)
-  ##    let newPI = x.num / x.den
-  ##    echo x, " ", newPI, " error: ", PI - newPI, "  ", t
-
   # David Eppstein / UC Irvine / 8 Aug 1993
   # With corrections from Arno Formella, May 2008
+  runnableExamples:
+    let x = 1.2
+    doAssert x.toRational.toFloat == x
+
   var
     m11, m22 = 1
     m12, m21 = 0
@@ -69,124 +106,113 @@ proc toRational*(x: float,
     m11 = m12 * ai + m11
     m21 = m22 * ai + m21
     if x == float(ai): break # division by zero
-    x = 1/(x - float(ai))
+    x = 1 / (x - float(ai))
     if x > float(high(int32)): break # representation failure
     ai = int(x)
   result = m11 // m21
 
-proc toFloat*[T](x: Rational[T]): float =
-  ## Convert a rational number `x` to a float.
+func toFloat*[T](x: Rational[T]): float =
+  ## Converts a rational number `x` to a `float`.
   x.num / x.den
 
-proc toInt*[T](x: Rational[T]): int =
-  ## Convert a rational number `x` to an int. Conversion rounds towards 0 if
+func toInt*[T](x: Rational[T]): int =
+  ## Converts a rational number `x` to an `int`. Conversion rounds towards 0 if
   ## `x` does not contain an integer value.
   x.num div x.den
 
-proc reduce*[T: SomeInteger](x: var Rational[T]) =
-  ## Reduce rational `x`.
-  let common = gcd(x.num, x.den)
-  if x.den > 0:
-    x.num = x.num div common
-    x.den = x.den div common
-  elif x.den < 0:
-    x.num = -x.num div common
-    x.den = -x.den div common
-  else:
-    raise newException(DivByZeroError, "division by zero")
-
-proc `+` *[T](x, y: Rational[T]): Rational[T] =
-  ## Add two rational numbers.
+func `+`*[T](x, y: Rational[T]): Rational[T] =
+  ## Adds two rational numbers.
   let common = lcm(x.den, y.den)
   result.num = common div x.den * x.num + common div y.den * y.num
   result.den = common
   reduce(result)
 
-proc `+` *[T](x: Rational[T], y: T): Rational[T] =
-  ## Add rational `x` to int `y`.
+func `+`*[T](x: Rational[T], y: T): Rational[T] =
+  ## Adds the rational `x` to the int `y`.
   result.num = x.num + y * x.den
   result.den = x.den
 
-proc `+` *[T](x: T, y: Rational[T]): Rational[T] =
-  ## Add int `x` to rational `y`.
+func `+`*[T](x: T, y: Rational[T]): Rational[T] =
+  ## Adds the int `x` to the rational `y`.
   result.num = x * y.den + y.num
   result.den = y.den
 
-proc `+=` *[T](x: var Rational[T], y: Rational[T]) =
-  ## Add rational `y` to rational `x`.
+func `+=`*[T](x: var Rational[T], y: Rational[T]) =
+  ## Adds the rational `y` to the rational `x` in-place.
   let common = lcm(x.den, y.den)
   x.num = common div x.den * x.num + common div y.den * y.num
   x.den = common
   reduce(x)
 
-proc `+=` *[T](x: var Rational[T], y: T) =
-  ## Add int `y` to rational `x`.
+func `+=`*[T](x: var Rational[T], y: T) =
+  ## Adds the int `y` to the rational `x` in-place.
   x.num += y * x.den
 
-proc `-` *[T](x: Rational[T]): Rational[T] =
+func `-`*[T](x: Rational[T]): Rational[T] =
   ## Unary minus for rational numbers.
   result.num = -x.num
   result.den = x.den
 
-proc `-` *[T](x, y: Rational[T]): Rational[T] =
-  ## Subtract two rational numbers.
+func `-`*[T](x, y: Rational[T]): Rational[T] =
+  ## Subtracts two rational numbers.
   let common = lcm(x.den, y.den)
   result.num = common div x.den * x.num - common div y.den * y.num
   result.den = common
   reduce(result)
 
-proc `-` *[T](x: Rational[T], y: T): Rational[T] =
-  ## Subtract int `y` from rational `x`.
+func `-`*[T](x: Rational[T], y: T): Rational[T] =
+  ## Subtracts the int `y` from the rational `x`.
   result.num = x.num - y * x.den
   result.den = x.den
 
-proc `-` *[T](x: T, y: Rational[T]): Rational[T] =
-  ## Subtract rational `y` from int `x`.
+func `-`*[T](x: T, y: Rational[T]): Rational[T] =
+  ## Subtracts the rational `y` from the int `x`.
   result.num = x * y.den - y.num
   result.den = y.den
 
-proc `-=` *[T](x: var Rational[T], y: Rational[T]) =
-  ## Subtract rational `y` from rational `x`.
+func `-=`*[T](x: var Rational[T], y: Rational[T]) =
+  ## Subtracts the rational `y` from the rational `x` in-place.
   let common = lcm(x.den, y.den)
   x.num = common div x.den * x.num - common div y.den * y.num
   x.den = common
   reduce(x)
 
-proc `-=` *[T](x: var Rational[T], y: T) =
-  ## Subtract int `y` from rational `x`.
+func `-=`*[T](x: var Rational[T], y: T) =
+  ## Subtracts the int `y` from the rational `x` in-place.
   x.num -= y * x.den
 
-proc `*` *[T](x, y: Rational[T]): Rational[T] =
-  ## Multiply two rational numbers.
+func `*`*[T](x, y: Rational[T]): Rational[T] =
+  ## Multiplies two rational numbers.
   result.num = x.num * y.num
   result.den = x.den * y.den
   reduce(result)
 
-proc `*` *[T](x: Rational[T], y: T): Rational[T] =
-  ## Multiply rational `x` with int `y`.
+func `*`*[T](x: Rational[T], y: T): Rational[T] =
+  ## Multiplies the rational `x` with the int `y`.
   result.num = x.num * y
   result.den = x.den
   reduce(result)
 
-proc `*` *[T](x: T, y: Rational[T]): Rational[T] =
-  ## Multiply int `x` with rational `y`.
+func `*`*[T](x: T, y: Rational[T]): Rational[T] =
+  ## Multiplies the int `x` with the rational `y`.
   result.num = x * y.num
   result.den = y.den
   reduce(result)
 
-proc `*=` *[T](x: var Rational[T], y: Rational[T]) =
-  ## Multiply rationals `y` to `x`.
+func `*=`*[T](x: var Rational[T], y: Rational[T]) =
+  ## Multiplies the rational `x` by `y` in-place.
   x.num *= y.num
   x.den *= y.den
   reduce(x)
 
-proc `*=` *[T](x: var Rational[T], y: T) =
-  ## Multiply int `y` to rational `x`.
+func `*=`*[T](x: var Rational[T], y: T) =
+  ## Multiplies the rational `x` by the int `y` in-place.
   x.num *= y
   reduce(x)
 
-proc reciprocal*[T](x: Rational[T]): Rational[T] =
-  ## Calculate the reciprocal of `x`. (1/x)
+func reciprocal*[T](x: Rational[T]): Rational[T] =
+  ## Calculates the reciprocal of `x` (`1/x`).
+  ## If `x` is 0, raises `DivByZeroDefect`.
   if x.num > 0:
     result.num = x.den
     result.den = x.num
@@ -194,83 +220,94 @@ proc reciprocal*[T](x: Rational[T]): Rational[T] =
     result.num = -x.den
     result.den = -x.num
   else:
-    raise newException(DivByZeroError, "division by zero")
+    raise newException(DivByZeroDefect, "division by zero")
 
-proc `/`*[T](x, y: Rational[T]): Rational[T] =
-  ## Divide rationals `x` by `y`.
+func `/`*[T](x, y: Rational[T]): Rational[T] =
+  ## Divides the rational `x` by the rational `y`.
   result.num = x.num * y.den
   result.den = x.den * y.num
   reduce(result)
 
-proc `/`*[T](x: Rational[T], y: T): Rational[T] =
-  ## Divide rational `x` by int `y`.
+func `/`*[T](x: Rational[T], y: T): Rational[T] =
+  ## Divides the rational `x` by the int `y`.
   result.num = x.num
   result.den = x.den * y
   reduce(result)
 
-proc `/`*[T](x: T, y: Rational[T]): Rational[T] =
-  ## Divide int `x` by Rational `y`.
+func `/`*[T](x: T, y: Rational[T]): Rational[T] =
+  ## Divides the int `x` by the rational `y`.
   result.num = x * y.den
   result.den = y.num
   reduce(result)
 
-proc `/=`*[T](x: var Rational[T], y: Rational[T]) =
-  ## Divide rationals `x` by `y` in place.
+func `/=`*[T](x: var Rational[T], y: Rational[T]) =
+  ## Divides the rational `x` by the rational `y` in-place.
   x.num *= y.den
   x.den *= y.num
   reduce(x)
 
-proc `/=`*[T](x: var Rational[T], y: T) =
-  ## Divide rational `x` by int `y` in place.
+func `/=`*[T](x: var Rational[T], y: T) =
+  ## Divides the rational `x` by the int `y` in-place.
   x.den *= y
   reduce(x)
 
-proc cmp*(x, y: Rational): int {.procvar.} =
-  ## Compares two rationals.
+func cmp*(x, y: Rational): int =
+  ## Compares two rationals. Returns
+  ## * a value less than zero, if `x < y`
+  ## * a value greater than zero, if `x > y`
+  ## * zero, if `x == y`
   (x - y).num
 
-proc `<` *(x, y: Rational): bool =
+func `<`*(x, y: Rational): bool =
+  ## Returns true if `x` is less than `y`.
   (x - y).num < 0
 
-proc `<=` *(x, y: Rational): bool =
+func `<=`*(x, y: Rational): bool =
+  ## Returns tue if `x` is less than or equal to `y`.
   (x - y).num <= 0
 
-proc `==` *(x, y: Rational): bool =
+func `==`*(x, y: Rational): bool =
+  ## Compares two rationals for equality.
   (x - y).num == 0
 
-proc abs*[T](x: Rational[T]): Rational[T] =
+func abs*[T](x: Rational[T]): Rational[T] =
+  ## Returns the absolute value of `x`.
+  runnableExamples:
+    doAssert abs(1 // 2) == 1 // 2
+    doAssert abs(-1 // 2) == 1 // 2
+
   result.num = abs x.num
   result.den = abs x.den
 
-proc `div`*[T: SomeInteger](x, y: Rational[T]): T =
+func `div`*[T: SomeInteger](x, y: Rational[T]): T =
   ## Computes the rational truncated division.
   (x.num * y.den) div (y.num * x.den)
 
-proc `mod`*[T: SomeInteger](x, y: Rational[T]): Rational[T] =
+func `mod`*[T: SomeInteger](x, y: Rational[T]): Rational[T] =
   ## Computes the rational modulo by truncated division (remainder).
-  ## This is same as ``x - (x div y) * y``.
+  ## This is same as `x - (x div y) * y`.
   result = ((x.num * y.den) mod (y.num * x.den)) // (x.den * y.den)
   reduce(result)
 
-proc floorDiv*[T: SomeInteger](x, y: Rational[T]): T =
+func floorDiv*[T: SomeInteger](x, y: Rational[T]): T =
   ## Computes the rational floor division.
   ##
-  ## Floor division is conceptually defined as ``floor(x / y)``.
-  ## This is different from the ``div`` operator, which is defined
-  ## as ``trunc(x / y)``. That is, ``div`` rounds towards ``0`` and ``floorDiv``
+  ## Floor division is conceptually defined as `floor(x / y)`.
+  ## This is different from the `div` operator, which is defined
+  ## as `trunc(x / y)`. That is, `div` rounds towards 0 and `floorDiv`
   ## rounds down.
   floorDiv(x.num * y.den, y.num * x.den)
 
-proc floorMod*[T: SomeInteger](x, y: Rational[T]): Rational[T] =
+func floorMod*[T: SomeInteger](x, y: Rational[T]): Rational[T] =
   ## Computes the rational modulo by floor division (modulo).
   ##
-  ## This is same as ``x - floorDiv(x, y) * y``.
-  ## This proc behaves the same as the ``%`` operator in python.
+  ## This is same as `x - floorDiv(x, y) * y`.
+  ## This func behaves the same as the `%` operator in Python.
   result = floorMod(x.num * y.den, y.num * x.den) // (x.den * y.den)
   reduce(result)
 
-proc hash*[T](x: Rational[T]): Hash =
-  ## Computes hash for rational `x`
+func hash*[T](x: Rational[T]): Hash =
+  ## Computes the hash for the rational `x`.
   # reduce first so that hash(x) == hash(y) for x == y
   var copy = x
   reduce(copy)
@@ -279,100 +316,3 @@ proc hash*[T](x: Rational[T]): Hash =
   h = h !& hash(copy.num)
   h = h !& hash(copy.den)
   result = !$h
-
-when isMainModule:
-  var
-    z = Rational[int](num: 0, den: 1)
-    o = initRational(num = 1, den = 1)
-    a = initRational(1, 2)
-    b = -1 // -2
-    m1 = -1 // 1
-    tt = 10 // 2
-
-  assert(a == a)
-  assert( (a-a) == z)
-  assert( (a+b) == o)
-  assert( (a/b) == o)
-  assert( (a*b) == 1 // 4)
-  assert( (3/a) == 6 // 1)
-  assert( (a/3) == 1 // 6)
-  assert(a*b == 1 // 4)
-  assert(tt*z == z)
-  assert(10*a == tt)
-  assert(a*10 == tt)
-  assert(tt/10 == a)
-  assert(a-m1 == 3 // 2)
-  assert(a+m1 == -1 // 2)
-  assert(m1+tt == 16 // 4)
-  assert(m1-tt == 6 // -1)
-
-  assert(z < o)
-  assert(z <= o)
-  assert(z == z)
-  assert(cmp(z, o) < 0)
-  assert(cmp(o, z) > 0)
-
-  assert(o == o)
-  assert(o >= o)
-  assert(not(o > o))
-  assert(cmp(o, o) == 0)
-  assert(cmp(z, z) == 0)
-  assert(hash(o) == hash(o))
-
-  assert(a == b)
-  assert(a >= b)
-  assert(not(b > a))
-  assert(cmp(a, b) == 0)
-  assert(hash(a) == hash(b))
-
-  var x = 1//3
-
-  x *= 5//1
-  assert(x == 5//3)
-  x += 2 // 9
-  assert(x == 17//9)
-  x -= 9//18
-  assert(x == 25//18)
-  x /= 1//2
-  assert(x == 50//18)
-
-  var y = 1//3
-
-  y *= 4
-  assert(y == 4//3)
-  y += 5
-  assert(y == 19//3)
-  y -= 2
-  assert(y == 13//3)
-  y /= 9
-  assert(y == 13//27)
-
-  assert toRational(5) == 5//1
-  assert abs(toFloat(y) - 0.4814814814814815) < 1.0e-7
-  assert toInt(z) == 0
-
-  when sizeof(int) == 8:
-    assert toRational(0.98765432) == 2111111029 // 2137499919
-    assert toRational(PI) == 817696623 // 260280919
-  when sizeof(int) == 4:
-    assert toRational(0.98765432) == 80 // 81
-    assert toRational(PI) == 355 // 113
-
-  assert toRational(0.1) == 1 // 10
-  assert toRational(0.9) == 9 // 10
-
-  assert toRational(0.0) == 0 // 1
-  assert toRational(-0.25) == 1 // -4
-  assert toRational(3.2) == 16 // 5
-  assert toRational(0.33) == 33 // 100
-  assert toRational(0.22) == 11 // 50
-  assert toRational(10.0) == 10 // 1
-
-  assert (1//1) div (3//10) == 3
-  assert (-1//1) div (3//10) == -3
-  assert (3//10) mod (1//1) == 3//10
-  assert (-3//10) mod (1//1) == -3//10
-  assert floorDiv(1//1, 3//10) == 3
-  assert floorDiv(-1//1, 3//10) == -4
-  assert floorMod(3//10, 1//1) == 3//10
-  assert floorMod(-3//10, 1//1) == 7//10

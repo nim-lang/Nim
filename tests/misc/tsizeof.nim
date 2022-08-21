@@ -74,19 +74,22 @@ proc strAlign(arg: string): string =
   for i in 0 ..< minLen - arg.len:
     result &= ' '
 
-macro c_offsetof(a: typed, b: untyped): int32 =
+macro c_offsetof(fieldAccess: typed): int32 =
   ## Bullet proof implementation that works on actual offsetof operator
   ## in the c backend. Assuming of course this implementation is
   ## correct.
-  let bliteral =
-    if b.kind == nnkStrLit:
-      b
-    else:
-      newLit(repr(b))
+  let s = if fieldAccess.kind == nnkCheckedFieldExpr: fieldAccess[0]
+          else: fieldAccess
+  let a = s[0].getTypeInst
+  let b = s[1]
   result = quote do:
     var res: int32
-    {.emit: [res, " = offsetof(", `a`, ", ", `bliteral`, ");"] .}
+    {.emit: [res, " = offsetof(", `a`, ", ", `b`, ");"] .}
     res
+
+template c_offsetof(t: typedesc, a: untyped): int32 =
+  var x: ptr t
+  c_offsetof(x[].a)
 
 macro c_sizeof(a: typed): int32 =
   ## Bullet proof implementation that works using the sizeof operator
@@ -336,12 +339,37 @@ testinstance:
       a: int32
       b: T
 
-    # this type mixes `packed` with `alignas`.
+    # this type mixes `packed` with `align`.
     MyCustomAlignPackedObject {.objectconfig.} = object
       a: char
-      b {.alignas: 32.}: int32 # alignas overrides `packed` for this field.
+      b {.align: 32.}: int32 # align overrides `packed` for this field.
       c: char
       d: int32  # unaligned
+
+    Kind = enum
+      K1, K2
+  
+    AnotherEnum = enum
+      X1, X2, X3
+
+    MyObject = object
+      s: string
+      case k: Kind
+      of K1: nil
+      of K2:
+          x: float
+          y: int32
+      z: AnotherEnum
+
+    Stack[N: static int, T: object] = object
+      pad: array[128 - sizeof(array[N, ptr T]) - sizeof(int) - sizeof(pointer), byte]
+      stack: array[N, ptr T]
+      len*: int
+      rawMem: ptr array[N, T]
+
+    Stack2[T: object] = object
+      pad: array[128 - sizeof(array[sizeof(T), ptr T]), byte]
+    
 
   const trivialSize = sizeof(TrivialType) # needs to be able to evaluate at compile time
 
@@ -358,6 +386,9 @@ testinstance:
     var go : GenericObject[int64]
     var po : PaddingOfSetEnum33
     var capo: MyCustomAlignPackedObject
+    var issue15516: MyObject
+    var issue12636_1: Stack[5, MyObject]
+    var issue12636_2: Stack2[MyObject]
 
     var
       e1: Enum1
@@ -376,7 +407,7 @@ testinstance:
     else:
       doAssert sizeof(SimpleAlignment) > 10
 
-    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob, capo)
+    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob, capo, issue15516, issue12636_1, issue12636_2)
 
     type
       WithBitsize {.objectconfig.} = object
@@ -496,11 +527,11 @@ type
 
   MyCustomAlignUnion {.union.} = object
     c: char
-    a {.alignas: 32.}: int
+    a {.align: 32.}: int
 
   MyCustomAlignObject = object
     c: char
-    a {.alignas: 32.}: int
+    a {.align: 32.}: int
 
 doAssert sizeof(MyUnionType) == 4
 doAssert sizeof(MyCustomAlignUnion) == 32
@@ -683,3 +714,21 @@ reject:
 
 reject:
   const off8 = offsetof(MyPackedCaseObject, val5)
+
+
+type
+  O0 = object
+  T0 = tuple[]
+
+doAssert sizeof(O0) == 1
+doAssert sizeof(T0) == 1
+
+
+type
+  # this thing may not have padding bytes at the end
+  PackedUnion* {.union, packed.} = object
+    a*: array[11, byte]
+    b*: int64
+
+doAssert sizeof(PackedUnion) == 11
+doAssert alignof(PackedUnion) == 1

@@ -38,7 +38,7 @@ macro autoClose(args: varargs[untyped]): untyped =
       varAssignment.add(varValue)
       variables.add(varAssignment)
 
-      closingCalls.add(newCall(!"close", varName))
+      closingCalls.add(newCall(newIdentNode("close"), varName))
     else:
       error "Using statement: Unexpected expression. Got " &
         $args[i].kind & " instead of assignment."

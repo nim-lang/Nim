@@ -9,6 +9,9 @@
 
 # Compilerprocs for strings that do not depend on the string implementation.
 
+import std/private/digitsutils
+
+
 proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len
@@ -40,72 +43,6 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
-proc addInt*(result: var string; x: int64) =
-  ## Converts integer to its string representation and appends it to `result`.
-  ##
-  ## .. code-block:: Nim
-  ##   var
-  ##     a = "123"
-  ##     b = 45
-  ##   a.addInt(b) # a <- "12345"
-  let base = result.len
-  setLen(result, base + sizeof(x)*4)
-  var i = 0
-  var y = x
-  while true:
-    var d = y div 10
-    result[base+i] = chr(abs(int(y - d*10)) + ord('0'))
-    inc(i)
-    y = d
-    if y == 0: break
-  if x < 0:
-    result[base+i] = '-'
-    inc(i)
-  setLen(result, base+i)
-  # mirror the string:
-  for j in 0..i div 2 - 1:
-    swap(result[base+j], result[base+i-j-1])
-
-proc add*(result: var string; x: int64) {.deprecated:
-  "Deprecated since v0.20, use 'addInt'".} =
-  addInt(result, x)
-
-proc nimIntToStr(x: int): string {.compilerRtl.} =
-  result = newStringOfCap(sizeof(x)*4)
-  result.addInt x
-
-proc addCstringN(result: var string, buf: cstring; buflen: int) =
-  # no nimvm support needed, so it doesn't need to be fast here either
-  let oldLen = result.len
-  let newLen = oldLen + buflen
-  result.setLen newLen
-  copyMem(result[oldLen].addr, buf, buflen)
-
-import formatfloat
-
-proc addFloat*(result: var string; x: float) =
-  ## Converts float to its string representation and appends it to `result`.
-  ##
-  ## .. code-block:: Nim
-  ##   var
-  ##     a = "123"
-  ##     b = 45.67
-  ##   a.addFloat(b) # a <- "12345.67"
-  when nimvm:
-    result.add $x
-  else:
-    var buffer: array[65, char]
-    let n = writeFloatToBuffer(buffer, x)
-    result.addCstringN(cstring(buffer[0].addr), n)
-
-proc add*(result: var string; x: float) {.deprecated:
-  "Deprecated since v0.20, use 'addFloat'".} =
-  addFloat(result, x)
-
-proc nimFloatToStr(f: float): string {.compilerproc.} =
-  result = newStringOfCap(8)
-  result.addFloat f
-
 proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
   importc: "strtod", header: "<stdlib.h>", noSideEffect.}
 
@@ -115,10 +52,13 @@ const
               1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
               1e20, 1e21, 1e22]
 
+when defined(nimHasInvariant):
+  {.push staticBoundChecks: off.}
+
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
                           start = 0): int {.compilerproc.} =
   # This routine attempt to parse float that can parsed quickly.
-  # ie whose integer part can fit inside a 53bits integer.
+  # i.e. whose integer part can fit inside a 53bits integer.
   # their real exponent must also be <= 22. If the float doesn't follow
   # these restrictions, transform the float into this form:
   #  INTEGER * 10 ^ exponent and leave the work to standard `strtod()`.
@@ -128,8 +68,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     i = start
     sign = 1.0
     kdigits, fdigits = 0
-    exponent: int
-    integer: uint64
+    exponent = 0
+    integer = uint64(0)
     fracExponent = 0
     expSign = 1
     firstDigit = -1
@@ -236,7 +176,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     # if exponent is greater try to fit extra exponent above 22 by multiplying
     # integer part is there is space left.
     let slop = 15 - kdigits - fdigits
-    if  absExponent <= 22 + slop and not expNegative:
+    if absExponent <= 22 + slop and not expNegative:
       number = sign * integer.float * powtens[slop] * powtens[absExponent-slop]
       return i - start
 
@@ -245,15 +185,16 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   var ti = 0
   let maxlen = t.high - "e+000".len # reserve enough space for exponent
 
-  result = i - start
+  let endPos = i
+  result = endPos - start
   i = start
   # re-parse without error checking, any error should be handled by the code above.
-  if i < s.len and s[i] == '.': i.inc
-  while i < s.len and s[i] in {'0'..'9','+','-'}:
+  if i < endPos and s[i] == '.': i.inc
+  while i < endPos and s[i] in {'0'..'9','+','-'}:
     if ti < maxlen:
       t[ti] = s[i]; inc(ti)
     inc(i)
-    while i < s.len and s[i] in {'.', '_'}: # skip underscore and decimal point
+    while i < endPos and s[i] in {'.', '_'}: # skip underscore and decimal point
       inc(i)
 
   # insert exponent
@@ -268,15 +209,10 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   t[ti-2] = ('0'.ord + absExponent mod 10).char
   absExponent = absExponent div 10
   t[ti-3] = ('0'.ord + absExponent mod 10).char
+  number = c_strtod(addr t, nil)
 
-  when defined(nimNoArrayToCstringConversion):
-    number = c_strtod(addr t, nil)
-  else:
-    number = c_strtod(t, nil)
-
-proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
-  result = newStringOfCap(sizeof(x)*4)
-  result.addInt x
+when defined(nimHasInvariant):
+  {.pop.} # staticBoundChecks
 
 proc nimBoolToStr(x: bool): string {.compilerRtl.} =
   return if x: "true" else: "false"
@@ -285,22 +221,11 @@ proc nimCharToStr(x: char): string {.compilerRtl.} =
   result = newString(1)
   result[0] = x
 
-proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
-  ## The stringify operator for an unsigned integer argument. Returns `x`
-  ## converted to a decimal string.
-  if x == 0:
-    result = "0"
-  else:
-    result = newString(60)
-    var i = 0
-    var n = x
-    while n != 0:
-      let nn = n div 10'u64
-      result[i] = char(n - 10'u64 * nn + ord('0'))
-      inc i
-      n = nn
-    result.setLen i
-
-    let half = i div 2
-    # Reverse
-    for t in 0 .. half-1: swap(result[t], result[i-t-1])
+when defined(gcDestructors):
+  proc GC_getStatistics*(): string =
+    result = "[GC] total memory: "
+    result.addInt getTotalMem()
+    result.add "\n[GC] occupied memory: "
+    result.addInt getOccupiedMem()
+    result.add '\n'
+    #"[GC] cycle collections: " & $gch.stat.cycleCollections & "\n" &

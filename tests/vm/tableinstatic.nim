@@ -35,4 +35,4 @@ static:
   otherTable["hallo"] = "123"
   otherTable["welt"]  = "456"
 
-  assert otherTable == {"hallo": "123", "welt": "456"}.newTable
+  doAssert otherTable == {"hallo": "123", "welt": "456"}.newTable

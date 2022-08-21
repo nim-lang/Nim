@@ -11,7 +11,7 @@
 # This file contains the minimum required definitions
 # for interacting with the initial Genode environment.
 # It is reserved for use only within the standard
-# library. See ``componentConstructHook`` in the system
+# library. See `componentConstructHook` in the system
 # module for accessing the Genode environment after the
 # standard library has finished initializating.
 #

@@ -7,22 +7,64 @@
 #    distribution, for details about the copyright.
 #
 
-# Efficient set of pointers for the GC (and repr)
+
+#[
+
+Efficient set of pointers for the GC (and repr)
+-----------------------------------------------
+
+The GC depends on an extremely efficient datastructure for storing a
+set of pointers - this is called a `CellSet` in the source code.
+Inserting, deleting and searching are done in constant time. However,
+modifying a `CellSet` during traversal leads to undefined behaviour.
+
+All operations on a CellSet have to perform efficiently. Because a Cellset can
+become huge a hash table alone is not suitable for this.
+
+We use a mixture of bitset and hash table for this. The hash table maps *pages*
+to a page descriptor. The page descriptor contains a bit for any possible cell
+address within this page. So including a cell is done as follows:
+
+- Find the page descriptor for the page the cell belongs to.
+- Set the appropriate bit in the page descriptor indicating that the
+  cell points to the start of a memory block.
+
+Removing a cell is analogous - the bit has to be set to zero.
+Single page descriptors are never deleted from the hash table. This is not
+needed as the data structures needs to be rebuilt periodically anyway.
+
+Complete traversal is done in this way::
+
+  for each page descriptor d:
+    for each bit in d:
+      if bit == 1:
+        traverse the pointer belonging to this bit
+
+]#
+
+when defined(gcOrc) or defined(gcArc):
+  type
+    PCell = Cell
+
+  when not declaredInScope(PageShift):
+    include bitmasks
+
+else:
+  type
+    RefCount = int
+
+    Cell {.pure.} = object
+      refcount: RefCount  # the refcount and some flags
+      typ: PNimType
+      when trackAllocationSource:
+        filename: cstring
+        line: int
+      when useCellIds:
+        id: int
+
+    PCell = ptr Cell
 
 type
-  RefCount = int
-
-  Cell {.pure.} = object
-    refcount: RefCount  # the refcount and some flags
-    typ: PNimType
-    when trackAllocationSource:
-      filename: cstring
-      line: int
-    when useCellIds:
-      id: int
-
-  PCell = ptr Cell
-
   PPageDesc = ptr PageDesc
   BitIndex = range[0..UnitsPerPage-1]
   PageDesc {.final, pure.} = object
@@ -35,39 +77,11 @@ type
     counter, max: int
     head: PPageDesc
     data: PPageDescArray
-  PCellArray = ptr UncheckedArray[PCell]
-  CellSeq {.final, pure.} = object
-    len, cap: int
-    d: PCellArray
 
-# ------------------- cell seq handling ---------------------------------------
-
-proc contains(s: CellSeq, c: PCell): bool {.inline.} =
-  for i in 0 .. s.len-1:
-    if s.d[i] == c: return true
-  return false
-
-proc add(s: var CellSeq, c: PCell) {.inline.} =
-  if s.len >= s.cap:
-    s.cap = s.cap * 3 div 2
-    var d = cast[PCellArray](alloc(s.cap * sizeof(PCell)))
-    copyMem(d, s.d, s.len * sizeof(PCell))
-    dealloc(s.d)
-    s.d = d
-    # XXX: realloc?
-  s.d[s.len] = c
-  inc(s.len)
-
-proc init(s: var CellSeq, cap: int = 1024) =
-  s.len = 0
-  s.cap = cap
-  s.d = cast[PCellArray](alloc0(cap * sizeof(PCell)))
-
-proc deinit(s: var CellSeq) =
-  dealloc(s.d)
-  s.d = nil
-  s.len = 0
-  s.cap = 0
+when defined(gcOrc) or defined(gcArc):
+  discard
+else:
+  include cellseqs_v1
 
 # ------------------- cell set handling ---------------------------------------
 

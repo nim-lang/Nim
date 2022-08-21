@@ -15,6 +15,7 @@ wth
 0
 (total: 6)
 S1
+5
 '''
 """
 # bug #1915
@@ -71,7 +72,7 @@ proc concreteProc(x: int) =
   forStatic i, 0..3:
     echo i
 
-proc genericProc(x: any) =
+proc genericProc(x: auto) =
   forStatic i, 0..3:
     echo i
 
@@ -195,3 +196,201 @@ mystate_machine:
   state_push(S1)
   echo state_current()
   state_pop()
+
+# bug #15075
+block: #Doesn't work
+  template genGenTempl: untyped =
+    proc loop(locals: int)
+    proc loop(locals: int) = discard
+  genGenTempl()
+  let pool = loop
+
+block: #Doesn't work
+  macro genGenMacro: untyped =
+    quote do:
+      proc loop(locals: int)
+      proc loop(locals: int) = discard
+  genGenMacro()
+  let pool = loop
+
+block: #This works
+  proc loop(locals: int)
+  proc loop(locals: int) = discard
+  let pool = loop
+
+#Now somewhat recursive:
+type Cont = ref object of RootObj
+  fn*: proc(c: Cont): Cont {.nimcall.}
+
+block: #Doesn't work
+  template genGenTempl(): untyped =
+    proc loop(locals: Cont): Cont
+    proc loop(locals: Cont): Cont =
+      return Cont(fn: loop)
+    proc doServer(): Cont =
+      return Cont(fn: loop)
+  genGenTempl()
+  discard doServer()
+
+block: #Doesn't work
+  macro genGenMacro(): untyped =
+    quote:
+      proc loop(locals: Cont): Cont
+      proc loop(locals: Cont): Cont =
+        return Cont(fn: loop)
+      proc doServer(): Cont =
+        return Cont(fn: loop)
+  genGenMacro()
+  discard doServer()
+
+block: #This works
+  proc loop(locals: Cont): Cont
+  proc loop(locals: Cont): Cont =
+    return Cont(fn: loop)
+  proc doServer(): Cont =
+    return Cont(fn: loop)
+  discard doServer()
+
+#And fully recursive:
+block: #Doesn't work
+  template genGenTempl: untyped =
+    proc loop(locals: int)
+    proc loop(locals: int) = loop(locals)
+  genGenTempl()
+  let pool = loop
+
+block: #Doesn't work
+  macro genGenMacro: untyped =
+    quote do:
+      proc loop(locals: int)
+      proc loop(locals: int) = loop(locals)
+  genGenMacro()
+  let pool = loop
+
+block: #This works
+  proc loop(locals: int)
+  proc loop(locals: int) = loop(locals)
+  let pool = loop
+
+block:
+  template genAndCallLoop: untyped =
+    proc loop() {.gensym.}
+    proc loop() {.gensym.} =
+      discard
+    loop()
+  genAndCallLoop
+
+block: #Fully recursive and gensymmed:
+  template genGenTempl: untyped =
+    proc loop(locals: int) {.gensym.}
+    proc loop(locals: int) {.gensym.} = loop(locals)
+    let pool = loop
+  genGenTempl()
+
+block: #Make sure gensymmed symbol doesn't overwrite the forward decl
+  proc loop()
+  proc loop() = discard
+  template genAndCallLoop: untyped =
+    proc loop() {.gensym.} =
+      discard
+    loop()
+  genAndCallLoop()
+
+template genLoopDecl: untyped =
+  proc loop()
+template genLoopDef: untyped =
+  proc loop() = discard
+block:
+  genLoopDecl
+  genLoopDef
+  loop()
+block:
+  proc loop()
+  genLoopDef
+  loop()
+block:
+  genLoopDecl
+  proc loop() = discard
+  loop()
+
+block: #Gensymmed sym sharing forward decl
+  macro genGenMacro: untyped =
+    let sym = genSym(nskProc, "loop")
+    nnkStmtList.newTree(
+      newProc(sym, body = newEmptyNode()),
+      newCall(sym),
+      newProc(sym, body = newStmtList()),
+    )
+  genGenMacro
+
+# inject pragma on params
+
+template test(procname, body: untyped): untyped = 
+  proc procname(data {.inject.}: var int = 0) =
+    body
+
+test(hello):
+  echo data
+  data = 3
+
+var data = 5
+
+hello(data)
+
+# bug #5691
+
+template bar(x: typed) = discard
+macro barry(x: typed) = discard
+
+var a = 0
+
+bar:
+  var a = 10
+
+barry:
+  var a = 20
+
+bar:
+  var b = 10
+
+barry:
+  var b = 20
+
+var b = 30
+
+# template bar(x: static int) = discard
+#You may think that this should work:
+# bar((var c = 1; echo "hey"; c))
+# echo c
+#But it must not! Since this would be incorrect:
+# bar((var b = 3; const c = 1; echo "hey"; c))
+# echo b # <- b wouldn't exist
+
+discard not (let xx = 1; true)
+discard xx
+
+template barrel(a: typed): untyped = a
+
+barrel:
+  var aa* = 1
+  var bb = 3
+  export bb
+
+# Test declaredInScope within params
+template test1: untyped =
+  when not declaredInScope(thing):
+    var thing {.inject.}: int
+
+proc chunkedReadLoop =
+  test1
+  test1
+
+template test2: untyped =
+  when not not not declaredInScope(thing):
+    var thing {.inject.}: int
+
+proc chunkedReadLoop2 =
+  test2
+  test2
+
+test1(); test2()

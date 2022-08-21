@@ -1,5 +1,5 @@
 discard """
-  disabled: "macosx"
+  disabled: "true"
   output: '''
 main: HELLO!
 main: hasAnyModuleChanged? true
@@ -35,6 +35,7 @@ max mutual recursion reached!
 bar
    0: after - closure iterator: 0
    0: after - closure iterator: 1
+   0: after - c_2 = [1, 2, 3]
 main: after
               The answer is: 9
 main: hasAnyModuleChanged? true
@@ -52,6 +53,20 @@ main: after
 done
 '''
 """
+
+#[
+xxx disabled: "openbsd" because it would otherwise give:
+/home/build/Nim/lib/nimhcr.nim(532) hcrInit
+/home/build/Nim/lib/nimhcr.nim(503) initModules
+/home/build/Nim/lib/nimhcr.nim(463) initPointerData
+/home/build/Nim/lib/nimhcr.nim(346) hcrRegisterProc
+/home/build/Nim/lib/pure/reservedmem.nim(223) setLen
+/home/build/Nim/lib/pure/reservedmem.nim(97) setLen
+/home/build/Nim/lib/pure/includes/oserr.nim(94) raiseOSError
+Error: unhandled exception: Not supported [OSError]
+
+After instrumenting code, the stacktrace actually points to the call to `check mprotect`
+]#
 
 ## This is perhaps the most complex test in the nim test suite - calling the
 ## compiler on the file itself with the same set or arguments and reloading
@@ -97,6 +112,7 @@ proc compileReloadExecute() =
   #   binary triggers rebuilding itself here it shouldn't rebuild the main module -
   #   that would lead to replacing the main binary executable which is running!
   let cmd = commandLineParams()[0..^1].join(" ").replace(" --forceBuild")
+  doAssert cmd.len > 0
   let (stdout, exitcode) = execCmdEx(cmd)
   if exitcode != 0:
     echo "COMPILATION ERROR!"

@@ -9,9 +9,11 @@
 
 ## This module implements the style checker.
 
-import strutils
+import std/strutils
+from std/sugar import dup
 
-import options, ast, msgs, idents, lineinfos, wordrecg
+import options, ast, msgs, idents, lineinfos, wordrecg, astmsgs, semdata, packages
+export packages
 
 const
   Letters* = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}
@@ -40,7 +42,7 @@ proc beautifyName(s: string, k: TSymKind): string =
              "pointer", "float", "csize", "csize_t", "cdouble", "cchar", "cschar",
              "cshort", "cu", "nil", "typedesc", "auto", "any",
              "range", "openarray", "varargs", "set", "cfloat", "ref", "ptr",
-             "untyped", "typed", "static", "sink", "lent", "type", "owned"]:
+             "untyped", "typed", "static", "sink", "lent", "type", "owned", "iterable"]:
       result.add s[i]
     else:
       result.add toUpperAscii(s[i])
@@ -55,7 +57,9 @@ proc beautifyName(s: string, k: TSymKind): string =
   inc i
   while i < s.len:
     if s[i] == '_':
-      if i > 0 and s[i-1] in {'A'..'Z'}:
+      if i+1 >= s.len:
+        discard "trailing underscores should be stripped off"
+      elif i > 0 and s[i-1] in {'A'..'Z'}:
         # don't skip '_' as it's essential for e.g. 'GC_disable'
         result.add('_')
         inc i
@@ -71,13 +75,9 @@ proc beautifyName(s: string, k: TSymKind): string =
 
 proc differ*(line: string, a, b: int, x: string): string =
   proc substrEq(s: string, pos, last: int, substr: string): bool =
-    var i = 0
-    var length = substr.len
-    while i < length and pos+i <= last and s[pos+i] == substr[i]:
-      inc i
-    return i == length
-
-  let last = min(b, line.len)
+    result = true
+    for i in 0..<substr.len:
+      if pos+i > last or s[pos+i] != substr[i]: return false
 
   result = ""
   if not substrEq(line, a, b, x):
@@ -85,30 +85,33 @@ proc differ*(line: string, a, b: int, x: string): string =
     if cmpIgnoreStyle(y, x) == 0:
       result = y
 
-proc checkStyle(conf: ConfigRef; cache: IdentCache; info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
-  let beau = beautifyName(s, k)
-  if s != beau:
-    lintReport(conf, info, beau, s)
-
 proc nep1CheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
-  # operators stay as they are:
-  if k in {skResult, skTemp} or s.name.s[0] notin Letters: return
-  if k in {skType, skGenericParam} and sfAnon in s.flags: return
-  if s.typ != nil and s.typ.kind == tyTypeDesc: return
-  if {sfImportc, sfExportc} * s.flags != {}: return
-  if optStyleCheck notin s.options: return
   let beau = beautifyName(s.name.s, k)
   if s.name.s != beau:
     lintReport(conf, info, beau, s.name.s)
 
-template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
-  if {optStyleHint, optStyleError} * conf.globalOptions != {}:
-    nep1CheckDefImpl(conf, info, s, k)
+template styleCheckDef*(ctx: PContext; info: TLineInfo; sym: PSym; k: TSymKind) =
+  ## Check symbol definitions adhere to NEP1 style rules.
+  if optStyleCheck in ctx.config.options and # ignore if styleChecks are off
+     hintName in ctx.config.notes and # ignore if name checks are not requested
+     ctx.config.belongsToProjectPackage(ctx.module) and # ignore foreign packages
+     optStyleUsages notin ctx.config.globalOptions and # ignore if requested to only check name usage
+     sym.kind != skResult and # ignore `result`
+     sym.kind != skTemp and # ignore temporary variables created by the compiler
+     sym.name.s[0] in Letters and # ignore operators TODO: what about unicode symbols???
+     k notin {skType, skGenericParam} and # ignore types and generic params
+     (sym.typ == nil or sym.typ.kind != tyTypeDesc) and # ignore `typedesc`
+     {sfImportc, sfExportc} * sym.flags == {} and # ignore FFI
+     sfAnon notin sym.flags: # ignore if created by compiler
+    nep1CheckDefImpl(ctx.config, info, sym, k)
 
-template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym) =
-  styleCheckDef(conf, info, s, s.kind)
-template styleCheckDef*(conf: ConfigRef; s: PSym) =
-  styleCheckDef(conf, s.info, s, s.kind)
+template styleCheckDef*(ctx: PContext; info: TLineInfo; s: PSym) =
+  ## Check symbol definitions adhere to NEP1 style rules.
+  styleCheckDef(ctx, info, s, s.kind)
+
+template styleCheckDef*(ctx: PContext; s: PSym) =
+  ## Check symbol definitions adhere to NEP1 style rules.
+  styleCheckDef(ctx, s.info, s, s.kind)
 
 proc differs(conf: ConfigRef; info: TLineInfo; newName: string): string =
   let line = sourceLine(conf, info)
@@ -122,21 +125,27 @@ proc differs(conf: ConfigRef; info: TLineInfo; newName: string): string =
   let last = first+identLen(line, first)-1
   result = differ(line, first, last, newName)
 
-proc styleCheckUse*(conf: ConfigRef; info: TLineInfo; s: PSym) =
-  if info.fileIndex.int < 0: return
-  # we simply convert it to what it looks like in the definition
-  # for consistency
-
-  # operators stay as they are:
-  if s.kind == skTemp or s.name.s[0] notin Letters or sfAnon in s.flags:
-    return
-
+proc styleCheckUseImpl(conf: ConfigRef; info: TLineInfo; s: PSym) =
   let newName = s.name.s
-  let oldName = differs(conf, info, newName)
-  if oldName.len > 0:
-    lintReport(conf, info, newName, oldName)
+  let badName = differs(conf, info, newName)
+  if badName.len > 0:
+    lintReport(conf, info, newName, badName, "".dup(addDeclaredLoc(conf, s)))
 
-proc checkPragmaUse*(conf: ConfigRef; info: TLineInfo; w: TSpecialWord; pragmaName: string) =
-  let wanted = canonPragmaSpelling(w)
+template styleCheckUse*(ctx: PContext; info: TLineInfo; sym: PSym) =
+  ## Check symbol uses match their definition's style.
+  if {optStyleHint, optStyleError} * ctx.config.globalOptions != {} and # ignore if styleChecks are off
+     hintName in ctx.config.notes and # ignore if name checks are not requested
+     ctx.config.belongsToProjectPackage(ctx.module) and # ignore foreign packages
+     sym.kind != skTemp and # ignore temporary variables created by the compiler
+     sym.name.s[0] in Letters and # ignore operators TODO: what about unicode symbols???
+     sfAnon notin sym.flags: # ignore temporary variables created by the compiler
+    styleCheckUseImpl(ctx.config, info, sym)
+
+proc checkPragmaUseImpl(conf: ConfigRef; info: TLineInfo; w: TSpecialWord; pragmaName: string) =
+  let wanted = $w
   if pragmaName != wanted:
     lintReport(conf, info, wanted, pragmaName)
+
+template checkPragmaUse*(conf: ConfigRef; info: TLineInfo; w: TSpecialWord; pragmaName: string) =
+  if {optStyleHint, optStyleError} * conf.globalOptions != {}:
+    checkPragmaUseImpl(conf, info, w, pragmaName)

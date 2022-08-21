@@ -16,7 +16,18 @@ fpqeew
 <Students>
   <Student Name="Aprilfoo" />
   <Student Name="bar" />
-</Students>'''
+</Students>
+<chapter>
+    <title>This is a Docbook title</title>
+    <para>
+        This is a Docbook paragraph containing <emphasis>emphasized</emphasis>,
+        <literal>literal</literal> and <replaceable>replaceable</replaceable>
+        text. Sometimes scrunched together like this:
+        <literal>literal</literal><replaceable>replaceable</replaceable>
+        and sometimes not:
+        <literal>literal</literal> <replaceable>replaceable</replaceable>
+    </para>
+</chapter>'''
 """
 
 block:
@@ -123,7 +134,7 @@ block:
     x.num += 10
   echo j
 
-import xmltree, xmlparser, streams, strtabs
+import xmltree, xmlparser, parsexml, streams, strtabs
 
 block:
   var d = parseXml(newStringStream """<Students>
@@ -133,4 +144,18 @@ block:
   for x in d.mitems:
     x = <>Student(Name=x.attrs["Name"] & "foo")
   d[1].attrs["Name"] = "bar"
+  echo d
+
+block:
+  var d = parseXml(newStringStream """<chapter>
+    <title>This is a Docbook title</title>
+    <para>
+        This is a Docbook paragraph containing <emphasis>emphasized</emphasis>,
+        <literal>literal</literal> and <replaceable>replaceable</replaceable>
+        text. Sometimes scrunched together like this:
+        <literal>literal</literal><replaceable>replaceable</replaceable>
+        and sometimes not:
+        <literal>literal</literal> <replaceable>replaceable</replaceable>
+    </para>
+</chapter>""",{reportComments, reportWhitespace})
   echo d
