@@ -45,17 +45,7 @@ proc replaceById(id: cstring; newTree: Node) =
   x.parentNode.replaceChild(newTree, x)
   newTree.id = id
 
-proc findNodeWith(x: Element; tag, content: cstring): Element =
-  if x.nodeName == tag and x.textContent == content:
-    return x
-  for i in 0..<x.len:
-    let it = x[i]
-    let y = findNodeWith(it, tag, content)
-    if y != nil: return y
-  return nil
-
 proc clone(e: Element): Element {.importcpp: "#.cloneNode(true)", nodecl.}
-proc parent(e: Element): Element {.importcpp: "#.parentNode", nodecl.}
 proc markElement(x: Element) {.importcpp: "#.__karaxMarker__ = true", nodecl.}
 proc isMarked(x: Element): bool {.
   importcpp: "#.hasOwnProperty('__karaxMarker__')", nodecl.}
@@ -200,7 +190,7 @@ proc buildToc(orig: TocEntry; types, procs: seq[Element]): TocEntry =
     t.markElement()
     for p in procs:
       if not isMarked(p):
-        let xx = getElementsByClass(p.parent, "attachedType")
+        let xx = getElementsByClass(p.parentNode, "attachedType")
         if xx.len == 1 and xx[0].textContent == t.textContent:
           let q = tree("A", text(p.title))
           q.setAttr("href", p.getAttribute("href"))
