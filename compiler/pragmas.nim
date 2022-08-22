@@ -1218,7 +1218,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         processExperimental(c, it)
       of wDoctype:
         if not isTopLevel(c):
-          localError(c.config, n.info, "'doctype' pragma only valid as toplevel statement")
+          localError(c.config, n.info, "\"doctype\" pragma only valid as top-level statement")
       of wThis:
         if it.kind in nkPragmaCallKinds and it.len == 2:
           c.selfName = considerQuotedIdent(c, it[1])

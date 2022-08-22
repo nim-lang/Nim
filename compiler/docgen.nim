@@ -1124,17 +1124,22 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
 
 proc setDoctype(d: PDoc, n: PNode) =
   ## Processes `{.doctype.}` pragma changing Markdown/RST parsing options.
-  if n != nil:
+  if n == nil:
+    return
     if n.len == 2:
       var dt = ""
-      if n[1].kind == nkStrLit:
-        dt = n[1].strVal.toLowerAscii
-      elif n[1].kind == nkIdent:
-        dt = n[1].ident.s.toLowerAscii
+      case n[1].kind
+      of nkStrLit:
+        dt = toLowerAscii(n[1].strVal)
+      of nkIdent:
+        dt = toLowerAscii(n[1].ident.s)
       else:
-        localError(d.conf, n.info, errUser,
-                       "unknown argument type $1 provided to doctype" % [
-                         $n[1].kind])
+        localError(
+          d.conf,
+          n.info,
+          errUser,
+          "unknown argument type $1 provided to doctype" % [$n[1].kind]
+        )
         return
       case dt
       of "markdown":
@@ -1146,12 +1151,23 @@ proc setDoctype(d: PDoc, n: PNode) =
       of "rst":
         d.sharedState.options.excl roSupportMarkdown
         d.sharedState.options.excl roPreferMarkdown
-      else: localError(d.conf, n.info, errUser,
-                       ("unknown doctype value \"$1\", should be from " &
-                        "\"RST\", \"Markdown\", \"RstMarkdown\"") % [dt])
+      else:
+        localError(
+          d.conf,
+          n.info,
+          errUser,
+          (
+            "unknown doctype value \"$1\", should be from " &
+            "\"RST\", \"Markdown\", \"RstMarkdown\""
+          ) % [dt]
+        )
     else:
-      localError(d.conf, n.info, errUser,
-                 "doctype pragma takes exactly 1 argument")
+      localError(
+        d.conf,
+        n.info,
+        errUser,
+        "doctype pragma takes exactly 1 argument"
+      )
 
 proc checkForFalse(n: PNode): bool =
   result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
