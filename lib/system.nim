@@ -1078,6 +1078,9 @@ proc `&`*(x: char, y: string): string {.
   ##
   ## .. code-block:: Nim
   ##   assert('a' & "bc" == "abc")
+  
+# implementation note: These must all have the same magic value "ConStrStr" so
+# that the merge optimization works properly.
 
 proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
   ## Appends `y` to `x` in place.
