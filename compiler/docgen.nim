@@ -1126,48 +1126,39 @@ proc setDoctype(d: PDoc, n: PNode) =
   ## Processes `{.doctype.}` pragma changing Markdown/RST parsing options.
   if n == nil:
     return
-    if n.len == 2:
-      var dt = ""
-      case n[1].kind
-      of nkStrLit:
-        dt = toLowerAscii(n[1].strVal)
-      of nkIdent:
-        dt = toLowerAscii(n[1].ident.s)
-      else:
-        localError(
-          d.conf,
-          n.info,
-          errUser,
-          "unknown argument type $1 provided to doctype" % [$n[1].kind]
-        )
-        return
-      case dt
-      of "markdown":
-        d.sharedState.options.incl roSupportMarkdown
-        d.sharedState.options.incl roPreferMarkdown
-      of "rstmarkdown":
-        d.sharedState.options.incl roSupportMarkdown
-        d.sharedState.options.excl roPreferMarkdown
-      of "rst":
-        d.sharedState.options.excl roSupportMarkdown
-        d.sharedState.options.excl roPreferMarkdown
-      else:
-        localError(
-          d.conf,
-          n.info,
-          errUser,
-          (
-            "unknown doctype value \"$1\", should be from " &
-            "\"RST\", \"Markdown\", \"RstMarkdown\""
-          ) % [dt]
-        )
-    else:
-      localError(
-        d.conf,
-        n.info,
-        errUser,
-        "doctype pragma takes exactly 1 argument"
-      )
+  if n.len != 2:
+    localError(d.conf, n.info, errUser,
+      "doctype pragma takes exactly 1 argument"
+    )
+    return
+  var dt = ""
+  case n[1].kind
+  of nkStrLit:
+    dt = toLowerAscii(n[1].strVal)
+  of nkIdent:
+    dt = toLowerAscii(n[1].ident.s)
+  else:
+    localError(d.conf, n.info, errUser,
+      "unknown argument type $1 provided to doctype" % [$n[1].kind]
+    )
+    return
+  case dt
+  of "markdown":
+    d.sharedState.options.incl roSupportMarkdown
+    d.sharedState.options.incl roPreferMarkdown
+  of "rstmarkdown":
+    d.sharedState.options.incl roSupportMarkdown
+    d.sharedState.options.excl roPreferMarkdown
+  of "rst":
+    d.sharedState.options.excl roSupportMarkdown
+    d.sharedState.options.excl roPreferMarkdown
+  else:
+    localError(d.conf, n.info, errUser,
+      (
+        "unknown doctype value \"$1\", should be from " &
+        "\"RST\", \"Markdown\", \"RstMarkdown\""
+      ) % [dt]
+    )
 
 proc checkForFalse(n: PNode): bool =
   result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
