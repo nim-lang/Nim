@@ -36,7 +36,6 @@ type
                                  # statements
     owner*: PSym              # the symbol this context belongs to
     resultSym*: PSym          # the result symbol (if we are in a proc)
-    selfSym*: PSym            # the 'self' symbol (if available)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
     next*: PProcCon           # used for stacking procedure contexts
@@ -149,7 +148,6 @@ type
     inParallelStmt*: int
     instTypeBoundOp*: proc (c: PContext; dc: PSym; t: PType; info: TLineInfo;
                             op: TTypeAttachedOp; col: int): PSym {.nimcall.}
-    selfName*: PIdent
     cache*: IdentCache
     graph*: ModuleGraph
     signatures*: TStrTable
