@@ -737,7 +737,13 @@ proc derefBlock(p: BProc, e: PNode, d: var TLoc) =
   var n = shallowCopy(e0)
   for i in 0 ..< e0.len - 1:
     n[i] = e0[i]
-  n[e0.len-1] = newTreeIT(nkHiddenDeref, e.info, e.typ, e0[e0.len-1])
+  if p.config.selectedGC in {gcArc, gcOrc} and e0[e0.len-1].kind == nkStmtListExpr:
+    # ARC/ORC can probably create a nkStmtListExpr; we cannot deref it
+    let lastSonNode = e0[e0.len-1][^1]
+    n[e0.len-1] = e0[e0.len-1]
+    n[e0.len-1][^1] = newTreeIT(nkHiddenDeref, lastSonNode.info, e.typ, lastSonNode)
+  else:
+    n[e0.len-1] = newTreeIT(nkHiddenDeref, e.info, e.typ, e0[e0.len-1])
   expr p, n, d
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
