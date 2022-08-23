@@ -6,13 +6,15 @@ Strict not nil checking
 
 **Note:** This feature is experimental, you need to enable it with
 
-.. code-block:: nim
+  ```nim
   {.experimental: "strictNotNil".}
+  ```
 
 or 
 
-.. code-block:: cmd
+  ```cmd
   nim c --experimental:strictNotNil <program>
+  ```
 
 In the second case it would check builtin and imported modules as well.
 
@@ -39,7 +41,7 @@ not nil
 
 You can annotate a type where nil isn't a valid value with `not nil`.
 
-.. code-block:: nim
+  ```nim
     type
       NilableObject = ref object
         a: int
@@ -57,6 +59,7 @@ You can annotate a type where nil isn't a valid value with `not nil`.
       p(x)
     else:
       p(x) # ok
+  ```
 
 
 
@@ -118,14 +121,16 @@ call args rules
 
 When we call with arguments, we have two cases when we might change the nilability.
 
-.. code-block:: nim
+  ```nim
   callByVar(a)
+  ```
 
 Here `callByVar` can re-assign `a`, so this might change `a`'s nilability, so we change it to `MaybeNil`.
 This is also a possible aliasing `move out` (moving out of a current alias set).
 
-.. code-block:: nim
+  ```nim
   call(a)
+  ```
 
 Here `call` can change a field or element of `a`, so if we have a dependant expression of `a` : e.g. `a.field`. Dependants become `MaybeNil`.
 
@@ -141,13 +146,14 @@ When branches "join" we usually unify their expression maps or/and nilabilities.
 
 Merging usually merges maps and alias sets: nilabilities are merged like this:
 
-.. code-block:: nim
+  ```nim
   template union(l: Nilability, r: Nilability): Nilability =
     ## unify two states
     if l == r:
       l
     else:
       MaybeNil
+  ```
 
 Special handling is for `.isNil` and `== nil`, also for `not`, `and` and `or`.
 
@@ -183,8 +189,9 @@ element tracking
 When we assign an object construction, we should track the fields as well: 
 
 
-.. code-block:: nim
+  ```nim
   var a = Nilable(field: Nilable()) # a : Safe, a.field: Safe
+  ```
 
 Usually we just track the result of an expression: probably this should apply for elements in other cases as well.
 Also related to tracking initialization of expressions/fields.
@@ -195,12 +202,13 @@ unstructured control flow rules
 Unstructured control flow keywords as `return`, `break`, `continue`, `raise` mean that we jump from a branch out.
 This means that if there is code after the finishing of the branch, it would be run if one hasn't hit the direct parent branch of those: so it is similar to an `else`. In those cases we should use the reverse nilabilities for the local to the condition expressions. E.g.
 
-.. code-block:: nim
+  ```nim
   for a in c:
     if not a.isNil:
       b()
       break
     code # here a: Nil , because if not, we would have breaked
+  ```
 
 
 aliasing
@@ -214,17 +222,19 @@ Assignments and other changes to nilability can move / move out expressions of s
 `move`: Moving `left` to `right` means we remove `left` from its current set and unify it with the `right`'s set.
 This means it stops being aliased with its previous aliases.
 
-.. code-block:: nim
+  ```nim
   var left = b
   left = right # moving left to right
+  ```
 
 `move out`: Moving out `left` might remove it from the current set and ensure that it's in its own set as a single element.
 e.g.
 
 
-.. code-block:: nim
+  ```nim
   var left = b
   left = nil # moving out
+  ```
 
 
 initialization of non nilable and nilable values

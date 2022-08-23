@@ -91,14 +91,14 @@ in the expression `foo(x)`, `x` needs to be an integer constant,
 but in the macro body `arg` is just like a normal parameter of type
 `int`.
 
-.. code-block:: nim
-
+  ```nim
   import std/macros
 
   macro myMacro(arg: static[int]): untyped =
     echo arg # just an int (7), not `NimNode`
 
   myMacro(1 + 2 * 3)
+  ```
 
 
 Code Blocks as Arguments
@@ -108,12 +108,12 @@ It is possible to pass the last argument of a call expression in a
 separate code block with indentation. For example, the following code
 example is a valid (but not a recommended) way to call `echo`:
 
-.. code-block:: nim
-
+  ```nim
   echo "Hello ":
     let a = "Wor"
     let b = "ld!"
     a & b
+  ```
 
 For macros this way of calling is very useful; syntax trees of arbitrary
 complexity can be passed to macros with this notation.
@@ -134,8 +134,7 @@ and for debug printing of generated syntax tree. `dumpTree` is a
 predefined macro that just prints its argument in a tree representation,
 but does nothing else. Here is an example of such a tree representation:
 
-.. code-block:: nim
-
+  ```nim
   dumpTree:
     var mt: MyType = MyType(a:123.456, b:"abcdef")
 
@@ -153,6 +152,7 @@ but does nothing else. Here is an example of such a tree representation:
   #           ExprColonExpr
   #             Ident "b"
   #             StrLit "abcdef"
+  ```
 
 
 Custom Semantic Checking
@@ -166,10 +166,10 @@ macro evaluation should be caught and create a nice error message.
 the checks need to be more complex, arbitrary error messages can
 be created with the `macros.error` proc.
 
-.. code-block:: nim
-
+  ```nim
   macro myAssert(arg: untyped): untyped =
     arg.expectKind nnkInfix
+  ```
 
 
 Generating Code
@@ -187,36 +187,36 @@ tree with calls to `newTree` and `newLit` the macro
 Backticks are used to insert code from `NimNode` symbols into the
 generated expression.
 
-.. code-block:: nim
-    :test: "nim c $1"
-    import std/macros
-    macro a(i) = quote do:
-      let `i` = 0
+  ```nim  test = "nim c $1"
+  import std/macros
+  macro a(i) = quote do:
+    let `i` = 0
 
-    a b
-    doAssert b == 0
+  a b
+  doAssert b == 0
+  ```
 
 A custom prefix operator can be defined whenever backticks are needed.
 
-.. code-block:: nim
-    :test: "nim c $1"
-    import std/macros
-    macro a(i) = quote("@") do:
-      assert @i == 0
+  ```nim  test = "nim c $1"
+  import std/macros
+  macro a(i) = quote("@") do:
+    assert @i == 0
 
-    let b = 0
-    a b
+  let b = 0
+  a b
+  ```
 
 The injected symbol needs accent quoted when it resolves to a symbol.
 
-.. code-block:: nim
-    :test: "nim c $1"
-    import std/macros
-    macro a(i) = quote("@") do:
-      let `@i` = 0
+  ```nim  test = "nim c $1"
+  import std/macros
+  macro a(i) = quote("@") do:
+    let `@i` = 0
 
-    a b
-    doAssert b == 0
+  a b
+  doAssert b == 0
+  ```
 
 Make sure to inject only symbols of type `NimNode` into the generated syntax
 tree. You can use `newLit` to convert arbitrary values into
@@ -224,9 +224,7 @@ expressions trees of type `NimNode` so that it is safe to inject
 them into the tree.
 
 
-.. code-block:: nim
-    :test: "nim c $1"
-
+  ```nim  test = "nim c $1"
   import std/macros
 
   type
@@ -246,12 +244,14 @@ them into the tree.
       echo `mtLit`
 
   myMacro("Hallo")
+  ```
 
 The call to `myMacro` will generate the following code:
 
-.. code-block:: nim
+  ```nim
   echo "Hallo"
   echo MyType(a: 123.456'f64, b: "abcdef")
+  ```
 
 
 Building Your First Macro
@@ -263,9 +263,7 @@ do is to build a simple example of the macro usage, and then just
 print the argument. This way it is possible to get an idea of what a
 correct argument should look like.
 
-.. code-block:: nim
-    :test: "nim c $1"
-
+  ```nim  test = "nim c $1"
   import std/macros
 
   macro myAssert(arg: untyped): untyped =
@@ -275,13 +273,14 @@ correct argument should look like.
   let b = 2
 
   myAssert(a != b)
+  ```
 
-.. code-block::
-
+  ```
   Infix
     Ident "!="
     Ident "a"
     Ident "b"
+  ```
 
 
 From the output, it is possible to see that the argument is an infix
@@ -289,9 +288,7 @@ operator (node kind is "Infix"), as well as that the two operands are
 at index 1 and 2. With this information, the actual macro can be
 written.
 
-.. code-block:: nim
-    :test: "nim c $1"
-
+  ```nim  test = "nim c $1"
   import std/macros
 
   macro myAssert(arg: untyped): untyped =
@@ -312,6 +309,7 @@ written.
 
   myAssert(a != b)
   myAssert(a == b)
+  ```
 
 
 This is the code that will be generated. To debug what the macro
@@ -319,9 +317,10 @@ actually generated, the statement `echo result.repr` can be used, in
 the last line of the macro. It is also the statement that has been
 used to get this output.
 
-.. code-block:: nim
+  ```nim
   if not (a != b):
     raise newException(AssertionDefect, $a & " != " & $b)
+  ```
 
 With Power Comes Responsibility
 -------------------------------
