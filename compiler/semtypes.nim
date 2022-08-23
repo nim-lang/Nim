@@ -212,10 +212,34 @@ proc semVarOutType(c: PContext, n: PNode, prev: PType; kind: TTypeKind): PType =
   else:
     result = newConstraint(c, kind)
 
+proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
+  if t == nil:
+    return false
+  if cycleDetector.containsOrIncl(t.id):
+    return true
+  case t.kind
+  of tyAlias, tyGenericInst, tyDistinct:
+    return isRecursiveType(t.lastSon, cycleDetector)
+  else:
+    return false
+
+proc isRecursiveType*(t: PType): bool =
+  # handle simple recusive types before typeFinalPass
+  var cycleDetector = initIntSet()
+  isRecursiveType(t, cycleDetector)
+
+proc addSonSkipIntLitChecked(c: PContext; father, son: PType; it: PNode, id: IdGenerator) =
+  let s = son.skipIntLit(id)
+  father.sons.add(s)
+  if isRecursiveType(s):
+    localError(c.config, it.info, "illegal recursion in type '" & typeToString(s) & "'")
+  else:
+    propagateToOwner(father, s)
+
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0: return newConstraint(c, tyDistinct)
   result = newOrPrevType(tyDistinct, prev, c)
-  addSonSkipIntLit(result, semTypeNode(c, n[0], nil), c.idgen)
+  addSonSkipIntLitChecked(c, result, semTypeNode(c, n[0], nil), n[0], c.idgen)
   if n.len > 1: result.n = n[1]
 
 proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
@@ -447,7 +471,8 @@ proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errTypeExpected)
   result = newOrPrevType(tyTuple, prev, c)
   for it in n:
-    addSonSkipIntLit(result, semTypeNode(c, it, nil), c.idgen)
+    let t = semTypeNode(c, it, nil)
+    addSonSkipIntLitChecked(c, result, t, it, c.idgen)
 
 proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var typ: PType
