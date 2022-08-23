@@ -333,7 +333,6 @@ const
   sfWrittenTo* = sfBorrow             # param is assigned to
   sfEscapes* = sfProcvar              # param escapes
   sfBase* = sfDiscriminant
-  sfIsSelf* = sfOverriden             # param is 'self'
   sfCustomPragma* = sfRegister        # symbol is custom pragma template
 
 const

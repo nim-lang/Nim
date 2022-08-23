@@ -1283,33 +1283,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     result = newSymNode(s, n.info)
     result.typ = makeTypeDesc(c, s.typ)
   of skField:
-    var p = c.p
-    while p != nil and p.selfSym == nil:
-      p = p.next
-    if p != nil and p.selfSym != nil:
-      var ty = skipTypes(p.selfSym.typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef,
-                                         tyAlias, tySink, tyOwned})
-      while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct, tyGenericInst, tyAlias})
-      var check: PNode = nil
-      if ty.kind == tyObject:
-        while true:
-          check = nil
-          let f = lookupInRecordAndBuildCheck(c, n, ty.n, s.name, check)
-          if f != nil and fieldVisible(c, f):
-            # is the access to a public field or in the same module or in a friend?
-            doAssert f == s
-            markUsed(c, n.info, f)
-            onUse(n.info, f)
-            result = newNodeIT(nkDotExpr, n.info, f.typ)
-            result.add makeDeref(newSymNode(p.selfSym))
-            result.add newSymNode(f) # we now have the correct field
-            if check != nil:
-              check[0] = result
-              check.typ = result.typ
-              result = check
-            return result
-          if ty[0] == nil: break
-          ty = skipTypes(ty[0], skipPtrs)
     # old code, not sure if it's live code:
     markUsed(c, n.info, s)
     onUse(n.info, s)

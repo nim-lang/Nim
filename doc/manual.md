@@ -790,9 +790,11 @@ of a call or whether it is parsed as a tuple constructor:
 
   ```nim
   echo(1, 2) # pass 1 and 2 to echo
+  ```
 
   ```nim
   echo (1, 2) # pass the tuple (1, 2) to echo
+  ```
 
 Dot-like operators
 ------------------
