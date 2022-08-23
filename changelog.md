@@ -29,6 +29,8 @@
 
 - `nimPreviewDotLikeOps` is going to be removed or deprecated.
 
+- `nil` is no longer a valid value for distinct pointer types.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
