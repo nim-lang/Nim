@@ -731,7 +731,21 @@ proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
       skipTypes(typ, abstractInstOwned).kind in {tyVar} and
       tfVarIsPtr notin skipTypes(typ, abstractInstOwned).flags
 
+proc derefBlock(p: BProc, e: PNode, d: var TLoc) =
+  # We transform (block: x)[] to (block: x[])
+  let e0 = e[0]
+  var n = shallowCopy(e0)
+  for i in 0 ..< e0.len - 1:
+    n[i] = e0[i]
+  n[e0.len-1] = newTreeIT(nkHiddenDeref, e.info, e.typ, e0[e0.len-1])
+  expr p, n, d
+
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
+  if e.kind == nkHiddenDeref and e[0].kind in {nkBlockExpr, nkBlockStmt}:
+    # bug #20107. Watch out to not deref the pointer too late.
+    derefBlock(p, e, d)
+    return
+
   let mt = mapType(p.config, e[0].typ, mapTypeChooser(e[0]))
   if mt in {ctArray, ctPtrToArray} and lfEnforceDeref notin d.flags:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
@@ -1183,7 +1197,7 @@ proc strLoc(p: BProc; d: TLoc): Rope =
 
 proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   #   <Nim code>
-  #   s = 'Hello ' & name & ', how do you feel?' & 'z'
+  #   s = "Hello " & name & ", how do you feel?" & 'z'
   #
   #   <generated C code>
   #  {
@@ -1226,7 +1240,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
 
 proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   #  <Nim code>
-  #  s &= 'Hello ' & name & ', how do you feel?' & 'z'
+  #  s &= "Hello " & name & ", how do you feel?" & 'z'
   #  // BUG: what if s is on the left side too?
   #  <generated C code>
   #  {

@@ -118,22 +118,24 @@ NimScript. Similarly, command-line `--FOO:VAL`:option: translates to
 
 Here are few examples of using the `switch` proc:
 
-.. code-block:: nim
+  ```nim
   # command-line: --opt:size
   switch("opt", "size")
   # command-line: --define:release or -d:release
   switch("define", "release")
   # command-line: --forceBuild
   switch("forceBuild")
+  ```
 
 NimScripts also support `--`:option: templates for convenience, which look
 like command-line switches written as-is in the NimScript file. So the
 above example can be rewritten as:
 
-.. code-block:: nim
+  ```nim
   --opt:size
   --define:release
   --forceBuild
+  ```
 
 **Note**: In general, the *define* switches can also be set in
 NimScripts using `switch` or `--`, as shown in above examples. Few
@@ -148,9 +150,10 @@ The `task` template that the `system` module defines allows a NimScript
 file to be used as a build tool. The following example defines a
 task `build` that is an alias for the `c`:option: command:
 
-.. code-block:: nim
+  ```nim
   task build, "builds an example":
     setCommand "c"
+  ```
 
 
 In fact, as a convention the following tasks should be available:
@@ -184,8 +187,7 @@ NimScript can also be used directly as a portable replacement for Bash and
 Batch files. Use `nim myscript.nims`:cmd: to run ``myscript.nims``. For example,
 installation of Nimble could be accomplished with this simple script:
 
-.. code-block:: nim
-
+  ```nim
   mode = ScriptMode.Verbose
 
   var id = 0
@@ -198,16 +200,17 @@ installation of Nimble could be accomplished with this simple script:
     exec "nim c nimble"
 
   mvFile "nimble" & $id & "/src/nimble".toExe, "bin/nimble".toExe
+  ```
 
 On Unix, you can also use the shebang `#!/usr/bin/env nim`, as long as your filename
 ends with ``.nims``:
 
-.. code-block:: nim
-
+  ```nim
   #!/usr/bin/env nim
   mode = ScriptMode.Silent
 
   echo "hello world"
+  ```
 
 Use `#!/usr/bin/env -S nim --hints:off` to disable hints.
 
@@ -229,8 +232,7 @@ allowing the same script to support a lot of systems.
 
 See the following (incomplete) example:
 
-.. code-block:: nim
-
+  ```nim
   import std/distros
 
   # Architectures.
@@ -256,6 +258,7 @@ See the following (incomplete) example:
     echo "Distro is ArchLinux"
   elif detectOs(Debian):
     echo "Distro is Debian"
+  ```
 
 
 Uniform Syntax
@@ -277,21 +280,21 @@ making it ideal for functional scripting metaprogramming.
 This is an example of a third party module that uses macros and templates to
 translate text strings on unmodified NimScript:
 
-.. code-block:: nim
-
+  ```nim
   import nimterlingua
   nimterlingua("translations.cfg")
   echo "cat"  # Run with -d:RU becomes "kot", -d:ES becomes "gato", ...
+  ```
 
 translations.cfg
 
-.. code-block:: none
-
+  ```none
   [cat]
   ES = gato
   IT = gatto
   RU = kot
   FR = chat
+  ```
 
 
 * `Nimterlingua <https://nimble.directory/pkg/nimterlingua>`_
@@ -305,8 +308,7 @@ but often a graceful and seamless fallback degradation is used.
 
 See the following NimScript:
 
-.. code-block:: nim
-
+  ```nim
   if likely(true):
     discard
   elif unlikely(false):
@@ -316,6 +318,7 @@ See the following NimScript:
 
   static:
     echo CompileDate
+  ```
 
 
 `likely()`, `unlikely()`, `static:` and `{.compiletime.}`

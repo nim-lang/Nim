@@ -53,29 +53,29 @@ Running a single test
 This is a minimal example to understand the basics,
 not very useful for production, but easy to understand:
 
-.. code:: console
-
+  ```console
   $ mkdir tests
   $ echo "assert 42 == 42" > tests/test0.nim
   $ testament run test0.nim
   PASS: tests/test0.nim C                                    ( 0.2 sec)
   $ testament r test0
   PASS: tests/test0.nim C                                    ( 0.2 sec)
+  ```
 
 
 Running all tests from a directory
 ==================================
 
-.. code:: console
-
+  ```console
   $ testament pattern "tests/*.nim"
+  ```
 
 To search for tests deeper in a directory, use
 
-.. code:: console
-
+  ```console
   $ testament pattern "tests/**/*.nim"    # one level deeper
   $ testament pattern "tests/**/**/*.nim" # two levels deeper
+  ```
 
 HTML Reports
 ============
@@ -83,9 +83,9 @@ HTML Reports
 Generate HTML Reports ``testresults.html`` from unittests,
 you have to run at least 1 test *before* generating a report:
 
-.. code:: console
-
+  ```console
   $ testament html
+  ```
 
 
 Writing Unit tests
@@ -93,8 +93,7 @@ Writing Unit tests
 
 Example "template" **to edit** and write a Testament unittest:
 
-.. code-block:: nim
-
+  ```nim
   discard """
 
     # What actions to expect completion on.
@@ -182,6 +181,7 @@ Example "template" **to edit** and write a Testament unittest:
   """
   assert true
   assert 42 == 42, "Assert error message"
+  ```
 
 
 * As you can see the "Spec" is just a `discard """ """`.
@@ -197,26 +197,25 @@ Unit test Examples
 
 Expected to fail:
 
-.. code-block:: nim
-
+  ```nim
   discard """
     errormsg: "undeclared identifier: 'not_defined'"
   """
   assert not_defined == "not_defined", "not_defined is not defined"
+  ```
 
 Non-Zero exit code:
 
-.. code-block:: nim
-
+  ```nim
   discard """
     exitcode: 1
   """
   quit "Non-Zero exit code", 1
+  ```
 
 Standard output checking:
 
-.. code-block:: nim
-
+  ```nim
   discard """
 
     output: '''
@@ -230,32 +229,33 @@ Standard output checking:
 
   """
   for i in 0..5: echo i
+  ```
 
 JavaScript tests:
 
-.. code-block:: nim
-
+  ```nim
   discard """
     targets: "js"
   """
   when defined(js):
     import std/jsconsole
     console.log("My Frontend Project")
+  ```
 
 Compile-time tests:
 
-.. code-block:: nim
-
+  ```nim
   discard """
     action: "compile"
   """
   static: assert 9 == 9, "Compile time assert"
+  ```
 
 Tests without Spec:
 
-.. code-block:: nim
-
+  ```nim
   assert 1 == 1
+  ```
 
 
 See also:
