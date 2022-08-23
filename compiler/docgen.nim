@@ -23,6 +23,10 @@ from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
 from nodejs import findNodeJs
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
+
 const
   exportSection = skField
   docCmdSkip = "skip"
@@ -1613,6 +1617,8 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
   if optStdout in d.conf.globalOptions:
     write(stdout, $content)
   else:
+    let dir = d.destFile.splitFile.dir
+    createDir(dir)
     var f: File
     if open(f, d.destFile, fmWrite):
       write(f, $content)

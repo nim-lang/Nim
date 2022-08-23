@@ -1055,30 +1055,30 @@ proc newStringOfCap*(cap: Natural): string {.
   ## be achieved with the `&` operator or with `add`.
 
 proc `&`*(x: string, y: char): string {.
-  magic: "ConStrStr", noSideEffect, merge.}
+  magic: "ConStrStr", noSideEffect.}
   ## Concatenates `x` with `y`.
   ##
   ## .. code-block:: Nim
   ##   assert("ab" & 'c' == "abc")
 proc `&`*(x, y: char): string {.
-  magic: "ConStrStr", noSideEffect, merge.}
+  magic: "ConStrStr", noSideEffect.}
   ## Concatenates characters `x` and `y` into a string.
   ##
   ## .. code-block:: Nim
   ##   assert('a' & 'b' == "ab")
 proc `&`*(x, y: string): string {.
-  magic: "ConStrStr", noSideEffect, merge.}
+  magic: "ConStrStr", noSideEffect.}
   ## Concatenates strings `x` and `y`.
   ##
   ## .. code-block:: Nim
   ##   assert("ab" & "cd" == "abcd")
 proc `&`*(x: char, y: string): string {.
-  magic: "ConStrStr", noSideEffect, merge.}
+  magic: "ConStrStr", noSideEffect.}
   ## Concatenates `x` with `y`.
   ##
   ## .. code-block:: Nim
   ##   assert('a' & "bc" == "abc")
-
+  
 # implementation note: These must all have the same magic value "ConStrStr" so
 # that the merge optimization works properly.
 
@@ -1604,18 +1604,6 @@ proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.}
   ##   assert((5..2).len == 0)
   result = max(0, ord(x.b) - ord(x.a) + 1)
 
-when true: # PRTEMP: remove?
-  proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", error.}
-    ## Seqs are no longer nil by default, but set and empty.
-    ## Check for zero length instead.
-    ##
-    ## See also:
-    ## * `isNil(string) <#isNil,string>`_
-
-  proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", error.}
-    ## See also:
-    ## * `isNil(seq[T]) <#isNil,seq[T]>`_
-
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
@@ -1835,8 +1823,7 @@ when defined(nimV2):
   include system/arc
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: """assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and
-                import `std/assertions`.""".}
+  {.deprecated: "assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/assertions`".}
   import std/assertions
   export assertions
 
@@ -3020,17 +3007,6 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   elif x.isNil or y.isNil: result = false
   else: result = strcmp(x, y) == 0
 
-when true: # xxx PRTEMP remove
-  # bug #9149; ensure that 'typeof(nil)' does not match *too* well by using 'typeof(nil) | typeof(nil)',
-  # especially for converters, see tests/overload/tconverter_to_string.nim
-  # Eventually we will be able to remove this hack completely.
-  proc `==`*(x: string; y: typeof(nil) | typeof(nil)): bool {.
-      error: "'nil' is now invalid for 'string'".} =
-    discard
-  proc `==`*(x: typeof(nil) | typeof(nil); y: string): bool {.
-      error: "'nil' is now invalid for 'string'".} =
-    discard
-
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
   ## their current iteration values.
@@ -3158,8 +3134,7 @@ import system/widestrs
 export widestrs
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: """io is about to move out of system; use `-d:nimPreviewSlimSystem` and
-                import `std/syncio`.""".}
+  {.deprecated: "io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`".}
   import std/syncio
   export syncio
 

@@ -67,11 +67,12 @@ Basic Markdown syntax is also supported inside the doc comments.
 
 Example:
 
-.. code-block:: nim
+  ```nim
   type Person* = object
     ## This type contains a description of a person
     name: string
     age: int
+  ```
 
 Outputs::
   Person* = object
@@ -82,9 +83,10 @@ Outputs::
 
 Field documentation comments can be added to fields like so:
 
-.. code-block:: nim
+  ```nim
   var numValues: int ## \
     ## `numValues` stores the number of values
+  ```
 
 Note that without the `*` following the name of the type, the documentation for
 this type would not be generated. Documentation will only be generated for
@@ -102,12 +104,13 @@ won't influence RST formatting.
    If you still need to add an additional indentation at the very beginning
    (for RST block quote syntax) use backslash \\ before it:
 
-   .. code-block:: nim
-      ## \
-      ##
-      ##    Block quote at the first line.
-      ##
-      ## Paragraph.
+     ```nim
+     ## \
+     ##
+     ##    Block quote at the first line.
+     ##
+     ## Paragraph.
+     ```
 
 
 Document Types
@@ -248,9 +251,9 @@ the anchor [*]_ of Nim symbol that corresponds to link text.
 
 If you have a constant:
 
-   ```Nim
-   const pi* = 3.14
-   ```
+  ```Nim
+  const pi* = 3.14
+  ```
 
 then it should be referenced in one of the 2 forms:
 
@@ -261,9 +264,9 @@ B. qualified (with symbol kind specification)::
 
 For routine kinds there are more options. Consider this definition:
 
-   ```Nim
-   proc foo*(a: int, b: float): string
-   ```
+  ```Nim
+  proc foo*(a: int, b: float): string
+  ```
 
 Generally following syntax is allowed for referencing `foo`:
 
