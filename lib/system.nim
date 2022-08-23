@@ -2205,7 +2205,7 @@ proc cmp*[T](x, y: T): int =
   ## * a value greater than zero, if `x > y`
   ## * zero, if `x == y`
   ## 
-  ## Throws ValueError if not (x <= y or y <= x)
+  ## Throws a `ValueError` if neither `x <= y` nor `y <= x` is true.
   ##
   ## This is useful for writing generic algorithms without performance loss.
   ## This generic implementation uses the `<=` operator.
