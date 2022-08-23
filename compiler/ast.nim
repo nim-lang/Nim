@@ -334,6 +334,7 @@ const
   sfEscapes* = sfProcvar              # param escapes
   sfBase* = sfDiscriminant
   sfCustomPragma* = sfRegister        # symbol is custom pragma template
+  sfTemplateRedefinition* = sfExportc # symbol is a redefinition of an earlier template
 
 const
   # getting ready for the future expr/stmt merge

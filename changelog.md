@@ -123,6 +123,12 @@
       Baz = object
     ```
 
+- Redefining templates with the same signature implicitly was previously
+  allowed to support certain macro code. A `{.redefine.}` pragma has been
+  added to make this work explicitly, and a warning is generated in the case
+  where it is implicit. This behavior only applies to templates, redefinition
+  is generally disallowed for other symbols.
+
 ## Compiler changes
 
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the

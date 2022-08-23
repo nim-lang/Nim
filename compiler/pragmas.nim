@@ -38,7 +38,7 @@ const
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
-    wDelegator, wExportNims, wUsed, wPragma}
+    wDelegator, wExportNims, wUsed, wPragma, wRedefine}
   macroPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wCompilerProc, wNonReloadable, wCore,
     wDiscardable, wGensym, wInject, wDelegator}
@@ -869,6 +869,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wExtern: setExternName(c, sym, expectStrLit(c, it), it.info)
       of wDirty:
         if sym.kind == skTemplate: incl(sym.flags, sfDirty)
+        else: invalidPragma(c, it)
+      of wRedefine:
+        if sym.kind == skTemplate: incl(sym.flags, sfTemplateRedefinition)
         else: invalidPragma(c, it)
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)

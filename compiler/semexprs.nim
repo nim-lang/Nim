@@ -2112,10 +2112,12 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   ids[0] = newAnonSym(c, skParam, n.info).newSymNode
   processQuotations(c, quotedBlock, op, quotes, ids)
 
+  let dummyTemplateSym = newAnonSym(c, skTemplate, n.info)
+  incl(dummyTemplateSym.flags, sfTemplateRedefinition)
   var dummyTemplate = newProcNode(
     nkTemplateDef, quotedBlock.info, body = quotedBlock,
     params = c.graph.emptyNode,
-    name = newAnonSym(c, skTemplate, n.info).newSymNode,
+    name = dummyTemplateSym.newSymNode,
               pattern = c.graph.emptyNode, genericParams = c.graph.emptyNode,
               pragmas = c.graph.emptyNode, exceptions = c.graph.emptyNode)
 
