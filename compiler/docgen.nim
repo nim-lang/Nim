@@ -293,6 +293,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
   if preferMarkdown:
     options.incl roPreferMarkdown
   if not standaloneDoc: options.incl roNimFile
+  # (options can be changed dynamically in `setDoctype` by `{.doctype.}`)
   result.sharedState = newRstSharedState(
       options, filename.string,
       docgenFindFile, compilerMsgHandler)
@@ -1121,6 +1122,44 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
           param["types"].add %($kind)
         result.json["signature"]["genericParams"].add param
 
+proc setDoctype(d: PDoc, n: PNode) =
+  ## Processes `{.doctype.}` pragma changing Markdown/RST parsing options.
+  if n == nil:
+    return
+  if n.len != 2:
+    localError(d.conf, n.info, errUser,
+      "doctype pragma takes exactly 1 argument"
+    )
+    return
+  var dt = ""
+  case n[1].kind
+  of nkStrLit:
+    dt = toLowerAscii(n[1].strVal)
+  of nkIdent:
+    dt = toLowerAscii(n[1].ident.s)
+  else:
+    localError(d.conf, n.info, errUser,
+      "unknown argument type $1 provided to doctype" % [$n[1].kind]
+    )
+    return
+  case dt
+  of "markdown":
+    d.sharedState.options.incl roSupportMarkdown
+    d.sharedState.options.incl roPreferMarkdown
+  of "rstmarkdown":
+    d.sharedState.options.incl roSupportMarkdown
+    d.sharedState.options.excl roPreferMarkdown
+  of "rst":
+    d.sharedState.options.excl roSupportMarkdown
+    d.sharedState.options.excl roPreferMarkdown
+  else:
+    localError(d.conf, n.info, errUser,
+      (
+        "unknown doctype value \"$1\", should be from " &
+        "\"RST\", \"Markdown\", \"RstMarkdown\""
+      ) % [dt]
+    )
+
 proc checkForFalse(n: PNode): bool =
   result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
 
@@ -1238,6 +1277,8 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
     d.modDeprecationMsg.add(genDeprecationMsg(d, pragmaNode))
+    let doctypeNode = findPragma(n, wDoctype)
+    setDoctype(d, doctypeNode)
   of nkCommentStmt: d.modDescPre.add(genComment(d, n))
   of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
@@ -1373,6 +1414,9 @@ proc add(d: PDoc; j: JsonItem) =
 
 proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
   case n.kind
+  of nkPragma:
+    let doctypeNode = findPragma(n, wDoctype)
+    setDoctype(d, doctypeNode)
   of nkCommentStmt:
     if includeComments:
       d.add JsonItem(rst: genComment(d, n), rstField: "comment",
