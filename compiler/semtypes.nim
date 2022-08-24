@@ -1244,6 +1244,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   var check = initIntSet()
   var counter = 0
 
+  var hasMultipleVarargs = false
   for i in 1..<n.len:
     var a = n[i]
     if a.kind != nkIdentDefs:
@@ -1264,6 +1265,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     if hasType:
       typ = semParamType(c, a[^2], constraint)
+      if typ.kind == tyVarargs:
+        if hasMultipleVarargs:
+          doAssert false
+        else:
+          hasMultipleVarargs = true
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
       if kind in {skProc, skFunc} and (typ.kind == tyTyped or typ.kind == tyUntyped):
         if not isMagic(getCurrOwner(c)):
