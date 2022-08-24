@@ -747,6 +747,9 @@ type
     module*: int32
     item*: int32
 
+proc `$`*(x: ItemId): string =
+  "(module: " & $x.module & ", item: " & $x.item & ")"
+
 proc `==`*(a, b: ItemId): bool {.inline.} =
   a.item == b.item and a.module == b.module
 
