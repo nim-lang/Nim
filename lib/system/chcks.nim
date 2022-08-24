@@ -9,6 +9,8 @@
 
 # Implementation of some runtime checks.
 include system/indexerrors
+when defined(nimPreviewSlimSystem):
+  import std/formatfloat
 
 proc raiseRangeError(val: BiggestInt) {.compilerproc, noinline.} =
   when hostOS == "standalone":
