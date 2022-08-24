@@ -790,9 +790,11 @@ of a call or whether it is parsed as a tuple constructor:
 
   ```nim
   echo(1, 2) # pass 1 and 2 to echo
+  ```
 
   ```nim
   echo (1, 2) # pass the tuple (1, 2) to echo
+  ```
 
 Dot-like operators
 ------------------
@@ -7048,6 +7050,22 @@ immediate pragma
 The immediate pragma is obsolete. See `Typed vs untyped parameters
 <#templates-typed-vs-untyped-parameters>`_.
 
+redefine pragma
+---------------
+
+Redefinition of template symbols with the same signature is allowed.
+This can be made explicit with the `redefine` pragma:
+
+```nim
+template foo: int = 1
+echo foo() # 1
+template foo: int {.redefine.} = 2
+echo foo() # 2
+# warning: implicit redefinition of template
+template foo: int = 3
+```
+
+This is mostly intended for macro generated code. 
 
 compilation option pragmas
 --------------------------

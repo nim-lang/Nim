@@ -1614,13 +1614,23 @@ proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## `== nil`.
 
 
-proc `@`*[T](a: openArray[T]): seq[T] =
-  ## Turns an *openArray* into a sequence.
-  ##
-  ## This is not as efficient as turning a fixed length array into a sequence
-  ## as it always copies every element of `a`.
-  newSeq(result, a.len)
-  for i in 0..a.len-1: result[i] = a[i]
+when defined(nimHasTopDownInference):
+  # magic used for seq type inference
+  proc `@`*[T](a: openArray[T]): seq[T] {.magic: "OpenArrayToSeq".} =
+    ## Turns an *openArray* into a sequence.
+    ##
+    ## This is not as efficient as turning a fixed length array into a sequence
+    ## as it always copies every element of `a`.
+    newSeq(result, a.len)
+    for i in 0..a.len-1: result[i] = a[i]
+else:
+  proc `@`*[T](a: openArray[T]): seq[T] =
+    ## Turns an *openArray* into a sequence.
+    ##
+    ## This is not as efficient as turning a fixed length array into a sequence
+    ## as it always copies every element of `a`.
+    newSeq(result, a.len)
+    for i in 0..a.len-1: result[i] = a[i]
 
 
 when defined(nimSeqsV2):

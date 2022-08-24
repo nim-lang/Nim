@@ -333,8 +333,8 @@ const
   sfWrittenTo* = sfBorrow             # param is assigned to
   sfEscapes* = sfProcvar              # param escapes
   sfBase* = sfDiscriminant
-  sfIsSelf* = sfOverriden             # param is 'self'
   sfCustomPragma* = sfRegister        # symbol is custom pragma template
+  sfTemplateRedefinition* = sfExportc # symbol is a redefinition of an earlier template
 
 const
   # getting ready for the future expr/stmt merge
@@ -674,7 +674,7 @@ type
     mInSet, mRepr, mExit,
     mSetLengthStr, mSetLengthSeq,
     mIsPartOf, mAstToStr, mParallel,
-    mSwap, mIsNil, mArrToSeq,
+    mSwap, mIsNil, mArrToSeq, mOpenArrayToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy, mTrace,
     mDefault, mUnown, mFinished, mIsolate, mAccessEnv, mAccessTypeField, mReset,
@@ -708,8 +708,8 @@ type
     mSymIsInstantiationOf, mNodeId, mPrivateAccess
 
 
-# things that we can evaluate safely at compile time, even if not asked for it:
 const
+  # things that we can evaluate safely at compile time, even if not asked for it:
   ctfeWhitelist* = {mNone, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
     mLengthStr, mLengthArray, mLengthSeq,
@@ -738,11 +738,17 @@ const
     mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInSet, mRepr}
+  
+  generatedMagics* = {mNone, mIsolate, mFinished, mOpenArrayToSeq}
+    ## magics that are generated as normal procs in the backend
 
 type
   ItemId* = object
     module*: int32
     item*: int32
+
+proc `$`*(x: ItemId): string =
+  "(module: " & $x.module & ", item: " & $x.item & ")"
 
 proc `==`*(a, b: ItemId): bool {.inline.} =
   a.item == b.item and a.module == b.module
@@ -1676,6 +1682,10 @@ proc transitionSonsKind*(n: PNode, kind: range[nkComesFrom..nkTupleConstr]) =
 proc transitionIntKind*(n: PNode, kind: range[nkCharLit..nkUInt64Lit]) =
   transitionNodeKindCommon(kind)
   n.intVal = obj.intVal
+
+proc transitionIntToFloatKind*(n: PNode, kind: range[nkFloatLit..nkFloat128Lit]) =
+  transitionNodeKindCommon(kind)
+  n.floatVal = BiggestFloat(obj.intVal)
 
 proc transitionNoneToSym*(n: PNode) =
   transitionNodeKindCommon(nkSym)

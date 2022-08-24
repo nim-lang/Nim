@@ -29,6 +29,9 @@
 
 - `nimPreviewDotLikeOps` is going to be removed or deprecated.
 
+- The `{.this.}` pragma, deprecated since 0.19, has been removed.
+- `nil` is no longer a valid value for distinct pointer types.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
@@ -63,13 +66,16 @@
 - Deprecated `std/sums`.
 
 [//]: # "Removals:"
-- Removed deprecated `std/sharedstrings`.
+- Removed deprecated module `parseopt2`.
+- Removed deprecated module `sharedstrings`.
+- Removed deprecated module `dom_extensions`.
+- Removed deprecated module `LockFreeHash`.
+- Removed deprecated module `events`.
 - Removed deprecated `oids.oidToString`.
 - Removed define `nimExperimentalAsyncjsThen` for `std/asyncjs.then` and `std/jsfetch`.
 - Removed deprecated `jsre.test` and `jsre.toString`.
 - Removed deprecated `math.c_frexp`.
 - Removed deprecated `` httpcore.`==` ``.
-- Removed deprecated `std/dom_extensions`.
 - Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that takes wrong argument types.
 - Removed deprecated `osproc.poDemon`, symbol with typo.
 
@@ -116,6 +122,12 @@
         x, y, z: int
       Baz = object
     ```
+
+- Redefining templates with the same signature implicitly was previously
+  allowed to support certain macro code. A `{.redefine.}` pragma has been
+  added to make this work explicitly, and a warning is generated in the case
+  where it is implicit. This behavior only applies to templates, redefinition
+  is generally disallowed for other symbols.
 
 ## Compiler changes
 

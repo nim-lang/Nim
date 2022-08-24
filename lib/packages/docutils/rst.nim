@@ -586,7 +586,7 @@ type
     filenameToIdx*: Table[string, FileIndex]
     idxToFilename*: seq[string]
   RstSharedState = object
-    options: RstParseOptions    # parsing options
+    options*: RstParseOptions   # parsing options
     hLevels: LevelMap           # hierarchy of heading styles
     hTitleCnt: int              # =0 if no title, =1 if only main title,
                                 # =2 if both title and subtitle are present

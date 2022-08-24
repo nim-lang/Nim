@@ -1305,8 +1305,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if sameDistinctTypes(f, a): result = isEqual
       #elif f.base.kind == tyAnything: result = isGeneric  # issue 4435
       elif c.coerceDistincts: result = typeRel(c, f.base, a, flags)
-    elif a.kind == tyNil and f.base.kind in NilableTypes:
-      result = f.allowsNil # XXX remove this typing rule, it is not in the spec
     elif c.coerceDistincts: result = typeRel(c, f.base, a, flags)
   of tySet:
     if a.kind == tySet:
