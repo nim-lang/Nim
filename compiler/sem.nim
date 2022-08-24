@@ -30,11 +30,11 @@ when defined(nimPreviewSlimSystem):
 
 # implementation
 
-proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
-proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
+proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode
+proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode
 proc semExprNoType(c: PContext, n: PNode): PNode
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
-proc semProcBody(c: PContext, n: PNode): PNode
+proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode
 
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode
 proc changeType(c: PContext; n: PNode, newType: PType, check: bool)
@@ -51,7 +51,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
 proc evalAtCompileTime(c: PContext, n: PNode): PNode
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
-proc semStaticExpr(c: PContext, n: PNode): PNode
+proc semStaticExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode
 proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType
 proc semTypeOf(c: PContext; n: PNode): PNode
 proc computeRequiresInit(c: PContext, t: PType): bool
@@ -272,12 +272,12 @@ proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
   typeAllowedCheck(c, typ.n.info, typ, skProc)
 
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
-proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
+proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
-                     flags: TExprFlags = {}): PNode
+                     flags: TExprFlags = {}; expectedType: PType = nil): PNode
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
-                  flags: TExprFlags = {}): PNode
+                  flags: TExprFlags = {}; expectedType: PType = nil): PNode
 
 proc symFromType(c: PContext; t: PType, info: TLineInfo): PSym =
   if t.sym != nil: return t.sym
@@ -337,8 +337,8 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
          isArrayConstr(arg):
         arg.typ = eOrig.typ
 
-proc tryConstExpr(c: PContext, n: PNode): PNode =
-  var e = semExprWithType(c, n)
+proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
+  var e = semExprWithType(c, n, expectedType = expectedType)
   if e == nil: return
 
   result = getConstExpr(c.module, e, c.idgen, c.graph)
@@ -368,8 +368,8 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
 const
   errConstExprExpected = "constant expression expected"
 
-proc semConstExpr(c: PContext, n: PNode): PNode =
-  var e = semExprWithType(c, n)
+proc semConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
+  var e = semExprWithType(c, n, expectedType = expectedType)
   if e == nil:
     localError(c.config, n.info, errConstExprExpected)
     return n
@@ -391,14 +391,14 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
     else:
       result = fixupTypeAfterEval(c, result, e)
 
-proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags): PNode =
+proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   if efNeedStatic in flags:
     if efPreferNilResult in flags:
-      return tryConstExpr(c, n)
+      return tryConstExpr(c, n, expectedType)
     else:
-      return semConstExpr(c, n)
+      return semConstExpr(c, n, expectedType)
   else:
-    result = semExprWithType(c, n, flags)
+    result = semExprWithType(c, n, flags, expectedType)
     if efPreferStatic in flags:
       var evaluated = getConstExpr(c.module, result, c.idgen, c.graph)
       if evaluated != nil: return evaluated
@@ -417,7 +417,7 @@ proc resetSemFlag(n: PNode) =
       resetSemFlag(n[i])
 
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
-                       s: PSym, flags: TExprFlags): PNode =
+                       s: PSym, flags: TExprFlags; expectedType: PType = nil): PNode =
   ## Semantically check the output of a macro.
   ## This involves processes such as re-checking the macro output for type
   ## coherence, making sure that variables declared with 'let' aren't
@@ -441,10 +441,10 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
     case retType.kind
     of tyUntyped:
       # Not expecting a type here allows templates like in ``tmodulealias.in``.
-      result = semExpr(c, result, flags)
+      result = semExpr(c, result, flags, expectedType)
     of tyTyped:
       # More restrictive version.
-      result = semExprWithType(c, result, flags)
+      result = semExprWithType(c, result, flags, expectedType)
     of tyTypeDesc:
       if result.kind == nkStmtList: result.transitionSonsKind(nkStmtListType)
       var typ = semTypeNode(c, result, nil)
@@ -468,7 +468,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         retType = generateTypeInstance(c, paramTypes,
                                        macroResult.info, retType)
 
-      result = semExpr(c, result, flags)
+      result = semExpr(c, result, flags, expectedType)
       result = fitNode(c, retType, result, result.info)
       #globalError(s.info, errInvalidParamKindX, typeToString(s.typ[0]))
   dec(c.config.evalTemplateCounter)
@@ -479,7 +479,7 @@ const
   errFloatToString = "cannot convert '$1' to '$2'"
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
-                  flags: TExprFlags = {}): PNode =
+                  flags: TExprFlags = {}; expectedType: PType = nil): PNode =
   rememberExpansion(c, nOrig.info, sym)
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
@@ -499,7 +499,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   #  c.evalContext = c.createEvalContext(emStatic)
   result = evalMacroCall(c.module, c.idgen, c.graph, c.templInstCounter, n, nOrig, sym)
   if efNoSemCheck notin flags:
-    result = semAfterMacroCall(c, n, result, sym, flags)
+    result = semAfterMacroCall(c, n, result, sym, flags, expectedType)
   if c.config.macrosToExpand.hasKey(sym.name.s):
     message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
   result = wrapInComesFrom(nOrig.info, sym, result)
@@ -510,7 +510,7 @@ proc forceBool(c: PContext, n: PNode): PNode =
   if result == nil: result = n
 
 proc semConstBoolExpr(c: PContext, n: PNode): PNode =
-  result = forceBool(c, semConstExpr(c, n))
+  result = forceBool(c, semConstExpr(c, n, getSysType(c.graph, n.info, tyBool)))
   if result.kind != nkIntLit:
     localError(c.config, n.info, errConstExprExpected)
 
