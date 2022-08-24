@@ -141,3 +141,4 @@ proc initDefines*(symbols: StringTableRef) =
 
   defineSymbol("nimHasEnforceNoRaises")
   defineSymbol("nimHasWarnBareExcept")
+  defineSymbol("nimHasTopDownInference")

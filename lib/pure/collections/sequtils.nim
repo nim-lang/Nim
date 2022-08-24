@@ -787,7 +787,7 @@ template toSeq1(s: not iterator): untyped =
         i += 1
       result
   else:
-    var result: seq[OutType] = @[]
+    var result: seq[OutType]# = @[]
     for it in s:
       result.add(it)
     result
@@ -804,7 +804,7 @@ template toSeq2(iter: iterator): untyped =
     result
   else:
     type OutType = typeof(iter2())
-    var result: seq[OutType] = @[]
+    var result: seq[OutType]# = @[]
     when compiles(iter2()):
       evalOnceAs(iter4, iter, false)
       let iter3 = iter4()
@@ -848,7 +848,7 @@ template toSeq*(iter: untyped): untyped =
           inc i
         result
     else:
-      var result: seq[typeof(iter)] = @[]
+      var result: seq[typeof(iter)]# = @[]
       for x in iter:
         result.add(x)
       result
@@ -1016,7 +1016,7 @@ template mapIt*(s: typed, op: untyped): untyped =
           i += 1
         result
     else:
-      var result: seq[OutType] = @[]
+      var result: seq[OutType]# = @[]
       # use `items` to avoid https://github.com/nim-lang/Nim/issues/12639
       for it {.inject.} in items(s):
         result.add(op)
