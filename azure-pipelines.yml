@@ -19,7 +19,7 @@ jobs:
   strategy:
     matrix:
       Linux_amd64:
-        vmImage: 'ubuntu-18.04'
+        vmImage: 'ubuntu-20.04'
         CPU: amd64
       # regularly breaks, refs bug #17325
       Linux_i386:
@@ -128,6 +128,13 @@ jobs:
 
     - bash: brew install boehmgc make sfml
       displayName: 'Install dependencies (OSX)'
+      condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Darwin'))
+
+    - bash: |
+        brew install openssl@1.1
+        ln -s $(brew --prefix)/opt/openssl/lib/libcrypto.1.1.dylib /usr/local/lib
+        ln -s $(brew --prefix)/opt/openssl/lib/libssl.1.1.dylib /usr/local/lib/
+      displayName: 'Install OpenSSL (OSX)'
       condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Darwin'))
 
     - bash: |

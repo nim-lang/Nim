@@ -790,9 +790,11 @@ of a call or whether it is parsed as a tuple constructor:
 
   ```nim
   echo(1, 2) # pass 1 and 2 to echo
+  ```
 
   ```nim
   echo (1, 2) # pass the tuple (1, 2) to echo
+  ```
 
 Dot-like operators
 ------------------
@@ -5083,10 +5085,7 @@ exception tracking.
 
 There is also a way which can be used to forbid certain effects:
 
-.. code-block:: nim
-    :test: "nim c --warningAsError:Effect:on $1"
-    :status: 1
-
+  ```nim  test = "nim c --warningAsError:Effect:on $1"  status = 1
   type IO = object ## input/output effect
   proc readLine(): string {.tags: [IO].} = discard
   proc echoLine(): void = discard
@@ -5096,13 +5095,14 @@ There is also a way which can be used to forbid certain effects:
     echoLine()
     # the compiler prevents this:
     let y = readLine()
+  ```
 
 The `forbids` pragma defines a list of illegal effects - if any statement
 invokes any of those effects, the compilation will fail.
 Procedure types with any disallowed effect are the subtypes of equal
 procedure types without such lists:
 
-.. code-block:: nim
+  ```nim
   type MyEffect = object
   type ProcType1 = proc (i: int): void {.forbids: [MyEffect].}
   type ProcType2 = proc (i: int): void
@@ -5123,6 +5123,7 @@ procedure types without such lists:
   ## these are OK because ProcType2 doesn't have any effect requirement:
   caller2(toBeCalled1)
   caller2(toBeCalled2)
+  ```
 
 `ProcType2` is a subtype of `ProcType1`. Unlike with tags, the parent context - the function which calls other functions with forbidden effects - doesn't inherit the forbidden list of effects.
 
@@ -6443,7 +6444,7 @@ passing `typeOfProc` as the second argument to `typeof`:
   iterator split(s: string): string = discard
   proc split(s: string): seq[string] = discard
 
-  # since an iterator is the preferred interpretation, `y` has the type `string`:
+  # since an iterator is the preferred interpretation, this has the type `string`:
   assert typeof("a b c".split) is string
 
   assert typeof("a b c".split, typeOfProc) is seq[string]
@@ -7049,6 +7050,22 @@ immediate pragma
 The immediate pragma is obsolete. See `Typed vs untyped parameters
 <#templates-typed-vs-untyped-parameters>`_.
 
+redefine pragma
+---------------
+
+Redefinition of template symbols with the same signature is allowed.
+This can be made explicit with the `redefine` pragma:
+
+```nim
+template foo: int = 1
+echo foo() # 1
+template foo: int {.redefine.} = 2
+echo foo() # 2
+# warning: implicit redefinition of template
+template foo: int = 3
+```
+
+This is mostly intended for macro generated code. 
 
 compilation option pragmas
 --------------------------
@@ -8079,18 +8096,20 @@ from C. The optional argument is a string containing the C identifier. If
 the argument is missing, the C name is the Nim identifier *exactly as
 spelled*:
 
-.. code-block::
+  ```nim
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
+  ```
 
 When `importc` is applied to a `let` statement it can omit its value which
 will then be expected to come from C. This can be used to import a C `const`:c:\:
 
-.. code-block::
+  ```nim
   {.emit: "const int cconst = 42;".}
 
   let cconst {.importc, nodecl.}: cint
 
   assert cconst == 42
+  ```
 
 Note that this pragma has been abused in the past to also work in the
 JS backend for JS objects and functions. Other backends do provide
@@ -8317,8 +8336,7 @@ violations of the `no heap sharing restriction`:idx:\: This restriction implies
 that it is invalid to construct a data structure that consists of memory
 allocated from different (thread-local) heaps.
 
-A thread proc is passed to `createThread` or `spawn` and invoked
-indirectly; so the `thread` pragma implies `procvar`.
+A thread proc can be passed to `createThread` or `spawn`.
 
 
 

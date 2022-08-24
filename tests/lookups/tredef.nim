@@ -4,7 +4,7 @@ foo(1, "test")
 proc bar(a: int, b: string) = discard
 bar(1, "test")
 
-template foo(a: int, b: string) = bar(a, b)
+template foo(a: int, b: string) {.redefine.} = bar(a, b)
 foo(1, "test")
 
 block:

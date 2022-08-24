@@ -87,7 +87,20 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
     lineCg(p, cpsStmts, "$1 = 0;$n", [accessor])
   of tyCstring, tyPointer, tyPtr, tyVar, tyLent:
     lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [accessor])
-  else:
+  of tySet:
+    case mapSetType(p.config, typ)
+    of ctArray:
+      lineCg(p, cpsStmts, "#nimZeroMem($1, sizeof($2));$n",
+          [accessor, getTypeDesc(p.module, typ)])
+    of ctInt8, ctInt16, ctInt32, ctInt64:
+      lineCg(p, cpsStmts, "$1 = 0;$n", [accessor])
+    else:
+      doAssert false, "unexpected set type kind"
+  of {tyNone, tyEmpty, tyNil, tyUntyped, tyTyped, tyGenericInvocation,
+      tyGenericParam, tyOrdinal, tyRange, tyOpenArray, tyForward, tyVarargs,
+      tyUncheckedArray, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
+      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot,
+      tyAnything, tyStatic, tyFromExpr, tyConcept, tyVoid, tyIterable}:
     discard
 
 proc specializeReset(p: BProc, a: TLoc) =

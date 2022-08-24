@@ -3,7 +3,9 @@ on:
   pull_request:
   push:
     branches:
-      devel
+      - 'devel'
+      - 'version-1-6'
+      - 'version-1-2'
 
 jobs:
   build:
@@ -40,7 +42,10 @@ jobs:
               valgrind libc6-dbg libblas-dev xorg-dev
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
-        run: brew install boehmgc make sfml gtk+3
+        run: |
+          brew install boehmgc make sfml gtk+3 openssl@1.1
+          ln -s $(brew --prefix)/opt/openssl/lib/libcrypto.1.1.dylib /usr/local/lib
+          ln -s $(brew --prefix)/opt/openssl/lib/libssl.1.1.dylib /usr/local/lib/
       - name: 'Install dependencies (Windows)'
         if: runner.os == 'Windows'
         shell: bash
@@ -64,4 +69,5 @@ jobs:
 
       - name: 'koch, Run CI'
         shell: bash
-        run: . ci/funs.sh && nimInternalBuildKochAndRunCI
+        run: |
+          . ci/funs.sh && nimInternalBuildKochAndRunCI

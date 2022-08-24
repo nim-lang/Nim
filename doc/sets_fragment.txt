@@ -13,10 +13,14 @@ range `0 .. MaxSetElements-1` where `MaxSetElements` is currently always
 The reason is that sets are implemented as high performance bit vectors.
 Attempting to declare a set with a larger type will result in an error:
 
-.. code-block:: nim
+```nim
 
   var s: set[int64] # Error: set is too large; use `std/sets` for ordinal types
                     # with more than 2^16 elements
+
+```
+
+
 **Note:** Nim also offers `hash sets <sets.html>`_ (which you need to import
 with `import sets`), which have no such restrictions.
 
@@ -24,7 +28,7 @@ Sets can be constructed via the set constructor: `{}` is the empty set. The
 empty set is type compatible with any concrete set type. The constructor
 can also be used to include elements (and ranges of elements):
 
-.. code-block:: nim
+  ```nim
   type
     CharSet = set[char]
   var
@@ -32,6 +36,7 @@ can also be used to include elements (and ranges of elements):
   x = {'a'..'z', '0'..'9'} # This constructs a set that contains the
                            # letters from 'a' to 'z' and the digits
                            # from '0' to '9'
+  ```
 
 These operations are supported by sets:
 
@@ -60,8 +65,7 @@ constants that have to be `or`'ed together.
 
 Enum, sets and casting can be used together as in:
 
-.. code-block:: nim
-
+  ```nim
   type
     MyFlag* {.size: sizeof(cint).} = enum
       A
@@ -79,6 +83,7 @@ Enum, sets and casting can be used together as in:
   assert toNum({A, C}) == 5
   assert toFlags(0) == {}
   assert toFlags(7) == {A, B, C}
+  ```
 
 Note how the set turns enum values into powers of 2.
 
