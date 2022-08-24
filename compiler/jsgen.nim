@@ -320,6 +320,10 @@ proc isSimpleExpr(p: PProc; n: PNode): bool =
     for c in n:
       if not p.isSimpleExpr(c): return false
     result = true
+  elif n.kind == nkStmtListExpr:
+    for i in 0..<n.len-1:
+      if n[i].kind notin {nkCommentStmt, nkEmpty}: return false
+    result = isSimpleExpr(p, n.lastSon)
   elif n.isAtom:
     result = true
 
