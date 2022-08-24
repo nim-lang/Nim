@@ -315,17 +315,19 @@ proc useMagic(p: PProc, name: string) =
 
 proc isSimpleExpr(p: PProc; n: PNode): bool =
   # calls all the way down --> can stay expression based
-  if n.kind in nkCallKinds+{nkBracketExpr, nkDotExpr, nkPar, nkTupleConstr} or
-      (n.kind in {nkObjConstr, nkBracket, nkCurly}):
+  case n.kind
+  of nkCallKinds, nkBracketExpr, nkDotExpr, nkPar, nkTupleConstr,
+    nkObjConstr, nkBracket, nkCurly:
     for c in n:
       if not p.isSimpleExpr(c): return false
     result = true
-  elif n.kind == nkStmtListExpr:
+  of nkStmtListExpr:
     for i in 0..<n.len-1:
       if n[i].kind notin {nkCommentStmt, nkEmpty}: return false
     result = isSimpleExpr(p, n.lastSon)
-  elif n.isAtom:
-    result = true
+  else:
+    if n.isAtom:
+      result = true
 
 proc getTemp(p: PProc, defineInLocals: bool = true): Rope =
   inc(p.unique)
