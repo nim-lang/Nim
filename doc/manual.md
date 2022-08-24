@@ -6513,8 +6513,8 @@ imported:
 
 
 It is not checked that the `except` list is really exported from the module.
-This feature allows us to compile against different versions of the module
-even though one version does not export some of these identifiers.
+This feature allows us to compile against different versions of the module,
+even when one version does not export some of these identifiers.
 
 The `import` statement is only allowed at the top level.
 
@@ -7161,7 +7161,7 @@ Disabling certain messages
 Nim generates some warnings and hints ("line too long") that may annoy the
 user. A mechanism for disabling certain messages is provided: Each hint
 and warning message is associated with a symbol. This is the message's
-identifier that can be used to enable or disable the message by putting it
+identifier, which can be used to enable or disable the message by putting it
 in brackets following the pragma:
 
   ```Nim
