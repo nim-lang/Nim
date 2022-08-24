@@ -2369,7 +2369,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr, mUnown: expr(p, e[1], d)
-  of mIsolate, mFinished: genCall(p, e, d)
+  of generatedMagics: genCall(p, e, d)
   of mEnumToStr:
     if optTinyRtti in p.config.globalOptions:
       genEnumToStr(p, e, d)
@@ -2978,7 +2978,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     if n[genericParamsPos].kind == nkEmpty:
       var prc = n[namePos].sym
       if useAliveDataFromDce in p.module.flags:
-        if p.module.alive.contains(prc.itemId.item) and prc.magic in {mNone, mIsolate, mFinished}:
+        if p.module.alive.contains(prc.itemId.item) and
+            prc.magic in generatedMagics:
           genProc(p.module, prc)
       elif prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
         if ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or

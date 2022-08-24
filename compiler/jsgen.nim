@@ -1455,7 +1455,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
           s.name.s)
     discard mangleName(p.module, s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic notin {mNone, mIsolate} or
+    if lfNoDecl in s.loc.flags or s.magic notin generatedMagics or
        {sfImportc, sfInfixCall} * s.flags != {}:
       discard
     elif s.kind == skMethod and getBody(p.module.graph, s).kind == nkEmpty:
@@ -2106,6 +2106,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       gen(p, n[1], x)
       useMagic(p, "nimCopy")
       r.res = "nimCopy(null, $1, $2)" % [x.rdLoc, genTypeInfo(p, n.typ)]
+  of mOpenArrayToSeq:
+    genCall(p, n, r)
   of mDestroy, mTrace: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
@@ -2622,7 +2624,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     let s = n[namePos].sym
     discard mangleName(p.module, s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic notin {mNone, mIsolate}: discard
+    if lfNoDecl in s.loc.flags or s.magic notin generatedMagics: discard
     elif not p.g.generatedSyms.containsOrIncl(s.id):
       p.locals.add(genProc(p, s))
   of nkType: r.res = genTypeInfo(p, n.typ)
