@@ -6549,8 +6549,8 @@ The `include` statement can be used outside the top level, as such:
 Module names in imports
 -----------------------
 
-A module alias can be introduced via the `as` keyword (the original module name
-is not accessible then):
+A module alias can be introduced via the `as` keyword, and the original module name
+is not accessible then:
 
   ```nim
   import std/strutils as su, std/sequtils as qu
