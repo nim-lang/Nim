@@ -1077,7 +1077,7 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   if e != nil:
     result.add(newSymNode(e))
   else:
-    result.add localErrorNode(c, n, "system needs: echo")
+    result.add newError(n, "system needs: echo")
   result.add(n)
   result.add(newStrNode(nkStrLit, ": " & n.typ.typeToString))
   result = semExpr(c, result)
@@ -2330,14 +2330,14 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: P
   of mSpawn:
     markUsed(c, n.info, s)
     when defined(leanCompiler):
-      result = localErrorNode(c, n, "compiler was built without 'spawn' support")
+      result = newError(n, "compiler was built without 'spawn' support")
     else:
       result = setMs(n, s)
       for i in 1..<n.len:
         result[i] = semExpr(c, n[i])
 
       if n.len > 1 and n[1].kind notin nkCallKinds:
-        return localErrorNode(c, n, n[1].info, "'spawn' takes a call expression; got: " & $n[1])
+        return newError(n[1], "'spawn' takes a call expression; got: " & $n[1])
 
       let typ = result[^1].typ
       if not typ.isEmptyType:
@@ -2709,7 +2709,7 @@ proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
     # check if either everything or nothing is tyTypeDesc
     for i in 1..<tupexp.len:
       if isTupleType != (tupexp[i].typ.kind == tyTypeDesc):
-        return localErrorNode(c, n, tupexp[i].info, "Mixing types and values in tuples is not allowed.")
+        return newError(tupexp[i], "Mixing types and values in tuples is not allowed.")
   if isTupleType: # expressions as ``(int, string)`` are reinterpret as type expressions
     result = n
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})

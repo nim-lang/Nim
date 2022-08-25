@@ -21,6 +21,7 @@ type
     ExpressionCannotBeCalled
     CustomError
     WrongNumberOfArguments
+    WrongNumberOfVariables
     AmbiguousCall
 
 proc errorSubNode*(n: PNode): PNode =
@@ -68,6 +69,8 @@ proc errorToString*(config: ConfigRef; n: PNode): string =
     result = n[2].strVal
   of WrongNumberOfArguments:
     result = "wrong number of arguments"
+  of WrongNumberOfVariables:
+    result = "wrong number of variables"
   of AmbiguousCall:
     let a = n[2].sym
     let b = n[3].sym
