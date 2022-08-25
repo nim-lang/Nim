@@ -39,6 +39,9 @@ runnableExamples:
 import strutils, parseutils, base64
 import std/private/[since, decode_helpers]
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 type
   Url* = distinct string

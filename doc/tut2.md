@@ -53,8 +53,7 @@ types with inheritance are also marked as `ref` types even though
 this isn't strictly enforced. To check at runtime if an object is of a certain
 type, the `of` operator can be used.
 
-.. code-block:: nim
-    :test: "nim c $1"
+  ```nim  test = "nim c $1"
   type
     Person = ref object of RootObj
       name*: string  # the * means that `name` is accessible from other modules
@@ -70,6 +69,7 @@ type, the `of` operator can be used.
   # object construction:
   student = Student(name: "Anton", age: 5, id: 2)
   echo student[]
+  ```
 
 Inheritance is done with the `object of` syntax. Multiple inheritance is
 currently not supported. If an object type has no suitable ancestor, `RootObj`
@@ -97,8 +97,7 @@ would require arbitrary symbol lookahead which slows down compilation.)
 
 Example:
 
-.. code-block:: nim
-    :test: "nim c $1"
+  ```nim  test = "nim c $1"
   type
     Node = ref object  # a reference to an object with the following field:
       le, ri: Node     # left and right subtrees
@@ -108,6 +107,7 @@ Example:
       name: string     # the symbol's name
       line: int        # the line the symbol was declared in
       code: Node       # the symbol's abstract syntax tree
+  ```
 
 
 Type conversions
@@ -124,9 +124,10 @@ raised.
 The syntax for type conversions is `destination_type(expression_to_convert)`
 (like an ordinary call):
 
-.. code-block:: nim
+  ```nim
   proc getID(x: Person): int =
     Student(x).id
+  ```
 
 The `InvalidObjectConversionDefect` exception is raised if `x` is not a
 `Student`.
@@ -139,9 +140,7 @@ variant types are needed.
 
 An example:
 
-.. code-block:: nim
-    :test: "nim c $1"
-
+  ```nim  test = "nim c $1"
   # This is an example how an abstract syntax tree could be modelled in Nim
   type
     NodeKind = enum  # the different node types
@@ -165,6 +164,7 @@ An example:
   # the following statement raises an `FieldDefect` exception, because
   # n.kind's value does not fit:
   n.strVal = ""
+  ```
 
 As can been seen from the example, an advantage to an object hierarchy is that
 no conversion between different object types is needed. Yet, access to invalid
@@ -183,27 +183,27 @@ If there are no remaining arguments, the parentheses can be omitted:
 This method call syntax is not restricted to objects, it can be used
 for any type:
 
-.. code-block:: nim
-    :test: "nim c $1"
+  ```nim  test = "nim c $1"
   import std/strutils
 
   echo "abc".len # is the same as echo len("abc")
   echo "abc".toUpperAscii()
   echo({'a', 'b', 'c'}.card)
   stdout.writeLine("Hallo") # the same as writeLine(stdout, "Hallo")
+  ```
 
 (Another way to look at the method call syntax is that it provides the missing
 postfix notation.)
 
 So "pure object oriented" code is easy to write:
 
-.. code-block:: nim
-    :test: "nim c $1"
+  ```nim  test = "nim c $1"
   import std/[strutils, sequtils]
 
   stdout.writeLine("Give a list of numbers (separated by spaces): ")
   stdout.write(stdin.readLine.splitWhitespace.map(parseInt).max.`$`)
   stdout.writeLine(" is the maximum!")
+  ```
 
 
 Properties
@@ -213,9 +213,7 @@ Ordinary get-procedures that are called with the *method call syntax* achieve
 the same. But setting a value is different; for this a special setter syntax
 is needed:
 
-.. code-block:: nim
-    :test: "nim c $1"
-
+  ```nim  test = "nim c $1"
   type
     Socket* = ref object of RootObj
       h: int # cannot be accessed from the outside of the module due to missing star
@@ -231,6 +229,7 @@ is needed:
   var s: Socket
   new s
   s.host = 34  # same as `host=`(s, 34)
+  ```
 
 (The example also shows `inline` procedures.)
 
@@ -238,8 +237,7 @@ is needed:
 The `[]` array access operator can be overloaded to provide
 `array properties`:idx:\ :
 
-.. code-block:: nim
-    :test: "nim c $1"
+  ```nim  test = "nim c $1"
   type
     Vector* = object
       x, y, z: float
@@ -259,6 +257,7 @@ The `[]` array access operator can be overloaded to provide
     of 1: result = v.y
     of 2: result = v.z
     else: assert(false)
+  ```
 
 The example is silly, since a vector is better modelled by a tuple which
 already provides `v[]` access.
@@ -270,8 +269,7 @@ Dynamic dispatch
 Procedures always use static dispatch. For dynamic dispatch replace the
 `proc` keyword by `method`:
 
-.. code-block:: nim
-    :test: "nim c $1"
+  ```nim  test = "nim c $1"
   type
     Expression = ref object of RootObj ## abstract base class for an expression
     Literal = ref object of Expression
@@ -291,6 +289,7 @@ Procedures always use static dispatch. For dynamic dispatch replace the
   proc newPlus(a, b: Expression): PlusExpr = PlusExpr(a: a, b: b)
 
   echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
+  ```
 
 Note that in the example the constructors `newLit` and `newPlus` are procs
 because it makes more sense for them to use static binding, but `eval` is a
@@ -302,9 +301,7 @@ method because it requires dynamic binding.
 In a multi-method all parameters that have an object type are used for the
 dispatching:
 
-.. code-block:: nim
-    :test: "nim c --multiMethods:on $1"
-
+  ```nim  test = "nim c --multiMethods:on $1"
   type
     Thing = ref object of RootObj
     Unit = ref object of Thing
@@ -323,6 +320,7 @@ dispatching:
   new a
   new b
   collide(a, b) # output: 2
+  ```
 
 
 As the example demonstrates, invocation of a multi-method cannot be ambiguous:
@@ -355,20 +353,21 @@ Raise statement
 ---------------
 Raising an exception is done with the `raise` statement:
 
-.. code-block:: nim
-    :test: "nim c $1"
+  ```nim  test = "nim c $1"
   var
     e: ref OSError
   new(e)
   e.msg = "the request to the OS failed"
   raise e
+  ```
 
 If the `raise` keyword is not followed by an expression, the last exception
 is *re-raised*. For the purpose of avoiding repeating this common code pattern,
 the template `newException` in the `system` module can be used:
 
-.. code-block:: nim
+  ```nim
   raise newException(OSError, "the request to the OS failed")
+  ```
 
 
 Try statement
@@ -376,8 +375,7 @@ Try statement
 
 The `try` statement handles exceptions:
 
-.. code-block:: nim
-    :test: "nim c $1"
+  ```nim  test = "nim c $1"
   from std/strutils import parseInt
 
   # read the first two lines of a text file that should contain numbers
@@ -401,6 +399,7 @@ The `try` statement handles exceptions:
       raise
     finally:
       close(f)
+  ```
 
 The statements after the `try` are executed unless an exception is
 raised. Then the appropriate `except` part is executed.
@@ -423,7 +422,7 @@ If you need to *access* the actual exception object or message inside an
 <system.html#getCurrentExceptionMsg>`_ procs from the `system <system.html>`_
 module. Example:
 
-.. code-block:: nim
+  ```nim
   try:
     doSomethingHere()
   except:
@@ -431,6 +430,7 @@ module. Example:
       e = getCurrentException()
       msg = getCurrentExceptionMsg()
     echo "Got exception ", repr(e), " with message ", msg
+  ```
 
 
 Annotating procs with raised exceptions
@@ -443,12 +443,13 @@ instance, if you specify that a proc raises `IOError`, and at some point it
 (or one of the procs it calls) starts raising a new exception the compiler will
 prevent that proc from compiling. Usage example:
 
-.. code-block:: nim
+  ```nim
   proc complexProc() {.raises: [IOError, ArithmeticDefect].} =
     ...
 
   proc simpleProc() {.raises: [].} =
     ...
+  ```
 
 Once you have code like this in place, if the list of raised exception changes
 the compiler will stop with an error specifying the line of the proc which
@@ -474,8 +475,7 @@ with `type parameters`:idx:. Generic parameters are written within square
 brackets, for example `Foo[T]`. They are most useful for efficient type safe
 containers:
 
-.. code-block:: nim
-    :test: "nim c $1"
+  ```nim  test = "nim c $1"
   type
     BinaryTree*[T] = ref object # BinaryTree is a generic type with
                                 # generic param `T`
@@ -530,6 +530,7 @@ containers:
   add(root, "world")          # instantiates the second `add` proc
   for str in preorder(root):
     stdout.writeLine(str)
+  ```
 
 The example shows a generic binary tree. Depending on context, the brackets are
 used either to introduce type parameters or to instantiate a generic proc,
@@ -539,8 +540,7 @@ is not hidden and is used in the `preorder` iterator.
 
 There is a special `[:T]` syntax when using generics with the method call syntax:
 
-.. code-block:: nim
-    :test: "nim c $1"
+  ```nim  test = "nim c $1"
   proc foo[T](i: T) =
     discard
 
@@ -549,6 +549,7 @@ There is a special `[:T]` syntax when using generics with the method call syntax
   # i.foo[int]() # Error: expression 'foo(i)' has no type (or is ambiguous)
 
   i.foo[:int]() # Success
+  ```
 
 
 Templates
@@ -563,12 +564,13 @@ To *invoke* a template, call it like a procedure.
 
 Example:
 
-.. code-block:: nim
+  ```nim
   template `!=` (a, b: untyped): untyped =
     # this definition exists in the System module
     not (a == b)
 
   assert(5 != 6) # the compiler rewrites that to: assert(not (5 == 6))
+  ```
 
 The `!=`, `>`, `>=`, `in`, `notin`, `isnot` operators are in fact
 templates: this has the benefit that if you overload the `==` operator,
@@ -582,8 +584,7 @@ for IEEE floating point numbers - NaN breaks basic boolean logic.)
 Templates are especially useful for lazy evaluation purposes. Consider a
 simple proc for logging:
 
-.. code-block:: nim
-    :test: "nim c $1"
+  ```nim  test = "nim c $1"
   const
     debug = true
 
@@ -593,6 +594,7 @@ simple proc for logging:
   var
     x = 4
   log("x has the value: " & $x)
+  ```
 
 This code has a shortcoming: if `debug` is set to false someday, the quite
 expensive `$` and `&` operations are still performed! (The argument
@@ -600,8 +602,7 @@ evaluation for procedures is *eager*).
 
 Turning the `log` proc into a template solves this problem:
 
-.. code-block:: nim
-    :test: "nim c $1"
+  ```nim  test = "nim c $1"
   const
     debug = true
 
@@ -611,6 +612,7 @@ Turning the `log` proc into a template solves this problem:
   var
     x = 4
   log("x has the value: " & $x)
+  ```
 
 The parameters' types can be ordinary types or the meta types `untyped`,
 `typed`, or `type`. `type` suggests that only a type symbol may be given
@@ -622,9 +624,7 @@ If the template has no explicit return type,
 
 To pass a block of statements to a template, use `untyped` for the last parameter:
 
-.. code-block:: nim
-    :test: "nim c $1"
-
+  ```nim  test = "nim c $1"
   template withFile(f: untyped, filename: string, mode: FileMode,
                     body: untyped) =
     let fn = filename
@@ -640,6 +640,7 @@ To pass a block of statements to a template, use `untyped` for the last paramete
   withFile(txt, "ttempl3.txt", fmWrite):
     txt.writeLine("line 1")
     txt.writeLine("line 2")
+  ```
 
 In the example the two `writeLine` statements are bound to the `body`
 parameter. The `withFile` template contains boilerplate code and helps to
@@ -650,8 +651,7 @@ once.
 Example: Lifting Procs
 ----------------------
 
-.. code-block:: nim
-    :test: "nim c $1"
+  `````nim  test = "nim c $1"
   import std/math
 
   template liftScalarProc(fname) =
@@ -660,9 +660,10 @@ Example: Lifting Procs
     ## to provide templated procs that can handle a single
     ## parameter of seq[T] or nested seq[seq[]] or the same type
     ##
-    ## .. code-block:: Nim
-    ##  liftScalarProc(abs)
-    ##  # now abs(@[@[1,-2], @[-2,-3]]) == @[@[1,2], @[2,3]]
+    ##   ```Nim
+    ##   liftScalarProc(abs)
+    ##   # now abs(@[@[1,-2], @[-2,-3]]) == @[@[1,2], @[2,3]]
+    ##   ```
     proc fname[T](x: openarray[T]): auto =
       var temp: T
       type outType = typeof(fname(temp))
@@ -672,6 +673,7 @@ Example: Lifting Procs
 
   liftScalarProc(sqrt)   # make sqrt() work for sequences
   echo sqrt(@[4.0, 16.0, 25.0, 36.0])   # => @[2.0, 4.0, 5.0, 6.0]
+  `````
 
 Compilation to JavaScript
 =========================
