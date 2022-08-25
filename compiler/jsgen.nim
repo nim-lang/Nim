@@ -315,8 +315,10 @@ proc useMagic(p: PProc, name: string) =
 
 proc isSimpleExpr(p: PProc; n: PNode): bool =
   # calls all the way down --> can stay expression based
-  if n.kind in nkCallKinds+{nkBracketExpr, nkDotExpr, nkPar, nkTupleConstr} or
-      (n.kind in {nkObjConstr, nkBracket, nkCurly}):
+  if n.kind in nkCallKinds+{nkBracketExpr, nkDotExpr, nkPar, nkTupleConstr,
+    nkObjConstr, nkBracket, nkCurly,
+    nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr,
+    nkConv, nkHiddenStdConv, nkHiddenSubConv}:
     for c in n:
       if not p.isSimpleExpr(c): return false
     result = true
