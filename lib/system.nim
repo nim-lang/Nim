@@ -2906,7 +2906,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
     s.add(HexChars[int((n and 0xF0) shr 4)])
     s.add(HexChars[int(n and 0xF)])
 
-proc addQuoted*[T](s: var string, x: T) =
+proc addQuoted*[T](s: var string, x: T) {.noSideEffect.} =
   ## Appends `x` to string `s` in place, applying quoting and escaping
   ## if `x` is a string or char.
   ##
