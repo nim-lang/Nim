@@ -23,13 +23,22 @@ iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
       for i in countdown(9, 2, 3):
         i
     assert y == @[9, 6, 3]
-  var res = a
-  if res >= b:
-    yield res
-    let endrange = succ(b, step)
-    while res >= endrange:
-      dec(res, step)
+  when T is (uint|uint64):
+    var res = a
+    while res >= b:
       yield res
+      if res == b: break
+      dec(res, step)
+  elif T is IntLikeForCount and T is Ordinal:
+    var res = int(a)
+    while res >= int(b):
+      yield T(res)
+      dec(res, step)
+  else:
+    var res = a
+    while res >= b:
+      yield res
+      dec(res, step)
 
 iterator countup*[T](a, b: T, step: Positive = 1): T {.inline.} =
   ## Counts from ordinal value `a` to `b` (inclusive) with the given
@@ -52,13 +61,16 @@ iterator countup*[T](a, b: T, step: Positive = 1): T {.inline.} =
         i
     assert y == @[2, 5, 8]
   mixin inc
-  var res = a
-  if res <= b:
-    yield res
-    let endrange = pred(b, step)
-    while res <= endrange:
+  when T is IntLikeForCount and T is Ordinal:
+    var res = int(a)
+    while res <= int(b):
+      yield T(res)
       inc(res, step)
+  else:
+    var res = a
+    while res <= b:
       yield res
+      inc(res, step)
 
 iterator `..`*[T](a, b: T): T {.inline.} =
   ## An alias for `countup(a, b, 1)`.
@@ -74,13 +86,16 @@ iterator `..`*[T](a, b: T): T {.inline.} =
 
     assert x == @[3, 4, 5, 6, 7]
   mixin inc
-  var res = a
-  if res <= b:
-    yield res
-    let endrange = pred(b)
-    while res <= endrange:
+  when T is IntLikeForCount and T is Ordinal:
+    var res = int(a)
+    while res <= int(b):
+      yield T(res)
       inc(res)
+  else:
+    var res = a
+    while res <= b:
       yield res
+      inc(res)
 
 template dotdotImpl(t) {.dirty.} =
   iterator `..`*(a, b: t): t {.inline.} =
@@ -90,12 +105,9 @@ template dotdotImpl(t) {.dirty.} =
     ## See also:
     ## * [..<](#..<.i,T,T)
     var res = a
-    if res <= b:
+    while res <= b:
       yield res
-      let endrange = b.pred
-      while res <= endrange:
-        inc(res)
-        yield res
+      inc(res)
 
 dotdotImpl(int64)
 dotdotImpl(int32)
@@ -104,25 +116,19 @@ dotdotImpl(uint32)
 
 iterator `..<`*[T](a, b: T): T {.inline.} =
   mixin inc
-  var res = a
-  if res < b:
-    yield res
-    let endrange = b.pred
-    while res < endrange:
-      inc(res)
-      yield res
+  var i = a
+  while i < b:
+    yield i
+    inc i
 
 template dotdotLessImpl(t) {.dirty.} =
   iterator `..<`*(a, b: t): t {.inline.} =
     ## A type specialized version of `..<` for convenience so that
     ## mixing integer types works better.
     var res = a
-    if res < b:
+    while res < b:
       yield res
-      let endrange = b.pred
-      while res < endrange:
-        inc(res)
-        yield res
+      inc(res)
 
 dotdotLessImpl(int64)
 dotdotLessImpl(int32)
