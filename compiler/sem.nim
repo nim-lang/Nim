@@ -323,7 +323,7 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       result = evaluated
       let expectedType = eOrig.typ.skipTypes({tyStatic})
       if hasCycle(result):
-        result = newError(eOrig, "the resulting AST is cyclic and cannot be processed further")
+        result = newError(eOrig, eOrig.info, "the resulting AST is cyclic and cannot be processed further")
       else:
         semmacrosanity.annotateType(result, expectedType, c.config)
   else:

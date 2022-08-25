@@ -10,7 +10,7 @@
 ## This module contains support code for new-styled error
 ## handling via an `nkError` node kind.
 
-import ast, renderer, options, strutils, types
+import ast, renderer, options, strutils, types, lineinfos
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -22,6 +22,9 @@ type
     CustomError
     WrongNumberOfArguments
     WrongNumberOfVariables
+    StringLiteralExpected
+    ConstExprExpected
+    StringOrIdentNodeExpected
     AmbiguousCall
 
 proc errorSubNode*(n: PNode): PNode =
@@ -36,7 +39,7 @@ proc errorSubNode*(n: PNode): PNode =
       result = errorSubNode(n[i])
       if result != nil: break
 
-proc newError*(wrongNode: PNode; k: ErrorKind; args: varargs[PNode]): PNode =
+proc newError*(wrongNode: PNode; info: TLineInfo; k: ErrorKind; args: varargs[PNode]): PNode =
   assert wrongNode.kind != nkError
   let innerError = errorSubNode(wrongNode)
   if innerError != nil:
@@ -46,7 +49,7 @@ proc newError*(wrongNode: PNode; k: ErrorKind; args: varargs[PNode]): PNode =
   result.add newIntNode(nkIntLit, ord(k))
   for a in args: result.add a
 
-proc newError*(wrongNode: PNode; msg: string): PNode =
+proc newError*(wrongNode: PNode; info: TLineInfo; msg: string): PNode =
   assert wrongNode.kind != nkError
   let innerError = errorSubNode(wrongNode)
   if innerError != nil:
@@ -71,6 +74,12 @@ proc errorToString*(config: ConfigRef; n: PNode): string =
     result = "wrong number of arguments"
   of WrongNumberOfVariables:
     result = "wrong number of variables"
+  of StringLiteralExpected:
+    result = "string literal expected"
+  of ConstExprExpected:
+    result = "constant expression expected"
+  of StringOrIdentNodeExpected:
+    result = "string or ident node expected"
   of AmbiguousCall:
     let a = n[2].sym
     let b = n[3].sym

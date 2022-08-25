@@ -844,7 +844,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
     if n.len == 3:
       if n[0].kind == nkVarTuple:
         if n[0].len-1 != iterAfterVarLent.len:
-          return newError(n[0], WrongNumberOfVariables)
+          return newError(n, n[0].info, WrongNumberOfVariables)
 
         for i in 0..<n[0].len-1:
           var v = symForVar(c, n[0][i])

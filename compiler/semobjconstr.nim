@@ -381,7 +381,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
   for child in n: result.add child
 
   if t == nil:
-    return newError(result, "object constructor needs an object type")
+    return newError(result, result.info, "object constructor needs an object type")
 
   if t.skipTypes({tyGenericInst,
       tyAlias, tySink, tyOwned, tyRef}).kind != tyObject and
@@ -398,7 +398,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
       # multiple times as long as they don't have closures.
       result.typ.flags.incl tfHasOwned
   if t.kind != tyObject:
-    return newError(result,
+    return newError(result, result.info,
       "object constructor needs an object type".dup(addDeclaredLoc(c.config, t)))
 
   # Check if the object is fully initialized by recursively testing each
