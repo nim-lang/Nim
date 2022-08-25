@@ -918,7 +918,7 @@ proc contains*[A, B](t: TableRef[A, B], key: A): bool =
 
   return hasKey[A, B](t, key)
 
-proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
+proc hasKeyOrPut*[A, B](t: TableRef[A, B], key: A, val: B): bool =
   ## Returns true if `key` is in the table, otherwise inserts `value`.
   ##
   ## See also:
@@ -1909,7 +1909,7 @@ proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
 
   return hasKey[A, B](t, key)
 
-proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
+proc hasKeyOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): bool =
   ## Returns true if `key` is in the table, otherwise inserts `value`.
   ##
   ## See also:
