@@ -2396,9 +2396,8 @@ If `A` is a subtype of `B` and `A` and `B` are `object` types then:
 - `ref A` is a subtype of `ref B`
 - `ptr A` is a subtype of `ptr B`.
 
-**Note**: In later versions of the language the subtype relation might
-be changed to *require* the pointer indirection in order to prevent
-"object slicing".
+**Note**: One of the above pointer-indirections is required for assignment from
+a subtype to its parent type to prevent "object slicing".
 
 
 Convertible relation
