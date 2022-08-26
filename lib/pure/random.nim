@@ -360,7 +360,7 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
 
   result = rand(state, x)
 
-proc rand*[T: Ordinal](r: var Rand; t: typedesc[T]): T =
+proc rand*[T: Ordinal](r: var Rand; t: typedesc[T]): T {.since: (1, 7, 1).} =
   ## Returns a random Ordinal in the range `low(T)..high(T)`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
@@ -379,7 +379,10 @@ proc rand*[T: Ordinal](r: var Rand; t: typedesc[T]): T =
     else:
       result = cast[int64](r.next) < 0
   else:
-    result = cast[T](r.next shr (64 - sizeof(T)*8))
+    when defined(js):
+      result = cast[T](r.next shr (sizeof(uint)*8 - sizeof(T)*8))
+    else:
+      result = cast[T](r.next shr (sizeof(uint64)*8 - sizeof(T)*8))
 
 proc rand*[T: Ordinal](t: typedesc[T]): T =
   ## Returns a random Ordinal in the range `low(T)..high(T)`.
