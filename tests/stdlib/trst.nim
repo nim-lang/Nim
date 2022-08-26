@@ -3,6 +3,8 @@ discard """
 
 [Suite] RST parsing
 
+[Suite] RST tables
+
 [Suite] RST indentation
 
 [Suite] Warnings
@@ -22,8 +24,11 @@ import unittest, strutils
 import std/private/miscdollars
 import os
 
+const preferMarkdown = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
+const preferRst = {roSupportMarkdown, roNimFile, roSandboxDisabled}
+
 proc toAst(input: string,
-            rstOptions: RstParseOptions = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled},
+            rstOptions: RstParseOptions = preferMarkdown,
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
@@ -449,7 +454,7 @@ suite "RST parsing":
         >   - y
         >
         > Paragraph.
-        """.toAst == dedent"""
+        """.toAst(rstOptions = preferRst) == dedent"""
           rnMarkdownBlockQuote
             rnMarkdownBlockQuoteItem  quotationDepth=1
               rnInner
@@ -465,6 +470,150 @@ suite "RST parsing":
                   rnLeaf  'Paragraph'
                   rnLeaf  '.'
           """)
+
+  let expectCodeBlock = dedent"""
+      rnCodeBlock
+        [nil]
+        rnFieldList
+          rnField
+            rnFieldName
+              rnLeaf  'default-language'
+            rnFieldBody
+              rnLeaf  'Nim'
+        rnLiteralBlock
+          rnLeaf  '
+      let a = 1
+      ```'
+      """
+
+  test "Markdown code blocks with more > 3 backticks":
+    check(dedent"""
+        ````
+        let a = 1
+        ```
+        ````""".toAst == expectCodeBlock)
+
+  test "Markdown code blocks with ~~~":
+    check(dedent"""
+        ~~~
+        let a = 1
+        ```
+        ~~~""".toAst == expectCodeBlock)
+    check(dedent"""
+        ~~~~~
+        let a = 1
+        ```
+        ~~~~~""".toAst == expectCodeBlock)
+
+  test "Markdown code blocks with Nim-specific arguments":
+    check(dedent"""
+        ```nim number-lines=1 test
+        let a = 1
+        ```""".toAst ==
+      dedent"""
+        rnCodeBlock
+          rnDirArg
+            rnLeaf  'nim'
+          rnFieldList
+            rnField
+              rnFieldName
+                rnLeaf  'number-lines'
+              rnFieldBody
+                rnLeaf  '1'
+            rnField
+              rnFieldName
+                rnLeaf  'test'
+              rnFieldBody
+          rnLiteralBlock
+            rnLeaf  '
+        let a = 1'
+        """)
+
+    check(dedent"""
+        ```nim test = "nim c $1"  number-lines = 1
+        let a = 1
+        ```""".toAst ==
+      dedent"""
+        rnCodeBlock
+          rnDirArg
+            rnLeaf  'nim'
+          rnFieldList
+            rnField
+              rnFieldName
+                rnLeaf  'test'
+              rnFieldBody
+                rnLeaf  '"nim c $1"'
+            rnField
+              rnFieldName
+                rnLeaf  'number-lines'
+              rnFieldBody
+                rnLeaf  '1'
+          rnLiteralBlock
+            rnLeaf  '
+        let a = 1'
+        """)
+
+  test "additional indentation < 4 spaces is handled fine":
+    check(dedent"""
+        Indentation
+
+          ```nim
+            let a = 1
+          ```""".toAst ==
+      dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Indentation'
+          rnParagraph
+            rnCodeBlock
+              rnDirArg
+                rnLeaf  'nim'
+              [nil]
+              rnLiteralBlock
+                rnLeaf  '
+          let a = 1'
+      """)
+      # | |
+      # |  \ indentation of exactly two spaces before 'let a = 1'
+
+  test "no blank line is required before or after Markdown code block":
+    let inputBacktick = dedent"""
+        Some text
+        ```
+        CodeBlock()
+        ```
+        Other text"""
+    let inputTilde = dedent"""
+        Some text
+        ~~~~~~~~~
+        CodeBlock()
+        ~~~~~~~~~
+        Other text"""
+    let expected = dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Some'
+            rnLeaf  ' '
+            rnLeaf  'text'
+          rnParagraph
+            rnCodeBlock
+              [nil]
+              rnFieldList
+                rnField
+                  rnFieldName
+                    rnLeaf  'default-language'
+                  rnFieldBody
+                    rnLeaf  'Nim'
+              rnLiteralBlock
+                rnLeaf  '
+        CodeBlock()'
+            rnLeaf  ' '
+            rnLeaf  'Other'
+            rnLeaf  ' '
+            rnLeaf  'text'
+      """
+    check inputBacktick.toAst == expected
+    check inputTilde.toAst == expected
 
   test "option list has priority over definition list":
     check(dedent"""
@@ -560,7 +709,7 @@ suite "RST parsing":
 
          notAcomment1
          notAcomment2
-        someParagraph""".toAst ==
+        someParagraph""".toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnBlockQuote
@@ -568,6 +717,25 @@ suite "RST parsing":
               rnLeaf  'notAcomment1'
               rnLeaf  ' '
               rnLeaf  'notAcomment2'
+          rnParagraph
+            rnLeaf  'someParagraph'
+        """)
+
+  test "check that additional line right after .. ends comment (Markdown mode)":
+    # in Markdown small indentation does not matter so this should
+    # just be split to 2 paragraphs.
+    check(dedent"""
+        ..
+
+         notAcomment1
+         notAcomment2
+        someParagraph""".toAst ==
+      dedent"""
+        rnInner
+          rnInner
+            rnLeaf  'notAcomment1'
+            rnLeaf  ' '
+            rnLeaf  'notAcomment2'
           rnParagraph
             rnLeaf  'someParagraph'
         """)
@@ -590,7 +758,7 @@ suite "RST parsing":
 
         ..
 
-          someBlockQuote""".toAst ==
+          someBlockQuote""".toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnAdmonition  adType=note
@@ -617,6 +785,233 @@ suite "RST parsing":
           rnLiteralBlock
             rnLeaf  'code'
       """)
+
+suite "RST tables":
+
+  test "formatting in tables works":
+    check(
+      dedent"""
+        =========  ===
+        `build`    `a`
+        =========  ===
+        """.toAst ==
+      dedent"""
+        rnTable  colCount=2
+          rnTableRow
+            rnTableDataCell
+              rnInlineCode
+                rnDirArg
+                  rnLeaf  'nim'
+                [nil]
+                rnLiteralBlock
+                  rnLeaf  'build'
+            rnTableDataCell
+              rnInlineCode
+                rnDirArg
+                  rnLeaf  'nim'
+                [nil]
+                rnLiteralBlock
+                  rnLeaf  'a'
+      """)
+
+  test "tables with slightly overflowed cells cause an error (1)":
+    var error = new string
+    check(
+      dedent"""
+        ======   ======
+         Inputs  Output
+        ======   ======
+        """.toAst(error=error) == "")
+    check(error[] == "input(2, 2) Error: Illformed table: " &
+                     "this word crosses table column from the right")
+
+  test "tables with slightly overflowed cells cause an error (2)":
+    var error = new string
+    check("" == dedent"""
+      =====  =====  ======
+      Input  Output
+      =====  =====  ======
+      False  False  False
+      =====  =====  ======
+      """.toAst(error=error))
+    check(error[] == "input(2, 8) Error: Illformed table: " &
+                     "this word crosses table column from the right")
+
+  test "tables with slightly underflowed cells cause an error":
+    var error = new string
+    check("" == dedent"""
+      =====  =====  ======
+      Input Output
+      =====  =====  ======
+      False  False  False
+      =====  =====  ======
+      """.toAst(error=error))
+    check(error[] == "input(2, 7) Error: Illformed table: " &
+                     "this word crosses table column from the left")
+
+  test "tables with unequal underlines should be reported (1)":
+    var error = new string
+    error[] = "none"
+    check("" == dedent"""
+      =====  ======
+      Input  Output
+      =====  ======
+      False  False
+      =====  =======
+      """.toAst(error=error))
+    check(error[] == "input(5, 14) Error: Illformed table: " &
+                     "end of table column #2 should end at position 13")
+
+  test "tables with unequal underlines should be reported (2)":
+    var error = new string
+    check("" == dedent"""
+      =====  ======
+      Input  Output
+      =====  =======
+      False  False
+      =====  ======
+      """.toAst(error=error))
+    check(error[] == "input(3, 14) Error: Illformed table: " &
+                     "end of table column #2 should end at position 13")
+
+  test "tables with empty first cells":
+    check(
+      dedent"""
+          = = =
+          x y z
+              t
+          = = =
+          """.toAst ==
+      dedent"""
+        rnTable  colCount=3
+          rnTableRow
+            rnTableDataCell
+              rnLeaf  'x'
+            rnTableDataCell
+              rnInner
+                rnLeaf  'y'
+                rnLeaf  ' '
+            rnTableDataCell
+              rnInner
+                rnLeaf  'z'
+                rnLeaf  ' '
+                rnLeaf  't'
+        """)
+
+  test "tables with spanning cells & separators":
+    check(
+      dedent"""
+        =====  =====  ======
+           Inputs     Output
+        ------------  ------
+          A      B    A or B
+        =====  =====  ======
+        False  False  False
+        True   False  True
+        -----  -----  ------
+        False  True   True
+        True   True   True
+        =====  =====  ======
+        """.toAst ==
+      dedent"""
+        rnTable  colCount=3
+          rnTableRow
+            rnTableHeaderCell  span=2
+              rnLeaf  'Inputs'
+            rnTableHeaderCell  span=1
+              rnLeaf  'Output'
+          rnTableRow  endsHeader
+            rnTableHeaderCell
+              rnLeaf  'A'
+            rnTableHeaderCell
+              rnLeaf  'B'
+            rnTableHeaderCell
+              rnInner
+                rnLeaf  'A'
+                rnLeaf  ' '
+                rnLeaf  'or'
+                rnLeaf  ' '
+                rnLeaf  'B'
+          rnTableRow
+            rnTableDataCell
+              rnLeaf  'False'
+            rnTableDataCell
+              rnLeaf  'False'
+            rnTableDataCell
+              rnLeaf  'False'
+          rnTableRow
+            rnTableDataCell  span=1
+              rnLeaf  'True'
+            rnTableDataCell  span=1
+              rnLeaf  'False'
+            rnTableDataCell  span=1
+              rnLeaf  'True'
+          rnTableRow
+            rnTableDataCell
+              rnLeaf  'False'
+            rnTableDataCell
+              rnLeaf  'True'
+            rnTableDataCell
+              rnLeaf  'True'
+          rnTableRow
+            rnTableDataCell
+              rnLeaf  'True'
+            rnTableDataCell
+              rnLeaf  'True'
+            rnTableDataCell
+              rnLeaf  'True'
+      """)
+
+  test "tables with spanning cells with uneqal underlines cause an error":
+    var error = new string
+    check(
+      dedent"""
+        =====  =====  ======
+           Inputs     Output
+        ------------- ------
+          A      B    A or B
+        =====  =====  ======
+        """.toAst(error=error) == "")
+    check(error[] == "input(3, 1) Error: Illformed table: " &
+                     "spanning underline does not match main table columns")
+
+  let expTable = dedent"""
+      rnTable  colCount=2
+        rnTableRow
+          rnTableDataCell
+            rnLeaf  'Inputs'
+          rnTableDataCell
+            rnLeaf  'Output'
+      """
+
+  test "only tables with `=` columns specs are allowed (1)":
+    var warnings = new seq[string]
+    check(
+      dedent"""
+        ------  ------
+        Inputs  Output
+        ------  ------
+        """.toAst(warnings=warnings) ==
+      expTable)
+    check(warnings[] ==
+          @["input(1, 1) Warning: RST style: " &
+              "only tables with `=` columns specification are allowed",
+            "input(3, 1) Warning: RST style: " &
+              "only tables with `=` columns specification are allowed"])
+
+  test "only tables with `=` columns specs are allowed (2)":
+    var warnings = new seq[string]
+    check(
+      dedent"""
+        ======  ======
+        Inputs  Output
+        ~~~~~~  ~~~~~~
+        """.toAst(warnings=warnings) ==
+      expTable)
+    check(warnings[] ==
+          @["input(3, 1) Warning: RST style: "&
+              "only tables with `=` columns specification are allowed"])
+
 
 suite "RST indentation":
   test "nested bullet lists":

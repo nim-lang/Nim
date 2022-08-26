@@ -11,7 +11,7 @@ include "system/inclrtl"
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, formatfloat]
 
 
 ## This module contains the interface to the compiler's abstract syntax
@@ -1360,7 +1360,9 @@ proc `$`*(node: NimNode): string =
   of nnkOpenSymChoice, nnkClosedSymChoice:
     result = $node[0]
   of nnkAccQuoted:
-    result = $node[0]
+    result = ""
+    for i in 0 ..< node.len:
+      result.add(repr(node[i]))
   else:
     badNodeKind node, "$"
 

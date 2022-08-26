@@ -22,6 +22,8 @@ proc verboseOpen(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext 
   # xxx consider either removing this or keeping for documentation for how to add a pass
   result = VerboseRef(config: graph.config, idgen: idgen)
 
+import std/objectdollar
+
 proc verboseProcess(context: PPassContext, n: PNode): PNode =
   # called from `process` in `processTopLevelStmt`.
   result = n

@@ -33,6 +33,10 @@ runnableExamples:
 import std/private/since
 import macros, strtabs, strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   XmlNode* = ref XmlNodeObj ## An XML tree consisting of XML nodes.
     ##
@@ -552,15 +556,15 @@ proc escape*(s: string): string =
   ##
   ## Escapes these characters:
   ##
-  ## ------------    -------------------
+  ## ============    ===================
   ## char            is converted to
-  ## ------------    -------------------
+  ## ============    ===================
   ##  ``<``          ``&lt;``
   ##  ``>``          ``&gt;``
   ##  ``&``          ``&amp;``
   ##  ``"``          ``&quot;``
   ##  ``'``          ``&apos;``
-  ## ------------    -------------------
+  ## ============    ===================
   ##
   ## You can also use `addEscaped proc <#addEscaped,string,string>`_.
   result = newStringOfCap(s.len)
