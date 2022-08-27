@@ -536,6 +536,63 @@ Some chapter
     let output1 = input1.toHtml
     doAssert output1 == "GC_step"
 
+  test "RST anchors/links to headings":
+    # Currently in TOC mode anchors are modified (for making links from
+    # the TOC unique)
+    let inputNoToc = dedent"""
+        Type relations
+        ==============
+
+        Convertible relation
+        --------------------
+
+        Ref. `Convertible relation`_
+        """
+    let outputNoToc = inputNoToc.toHtml
+    check outputNoToc.count("id=\"type-relations\"") == 1
+    check outputNoToc.count("id=\"convertible-relation\"") == 1
+    check outputNoToc.count("href=\"#convertible-relation\"") == 1
+
+    let inputTocCases = @[
+      dedent"""
+        .. contents::
+
+        Type relations
+        ==============
+
+        Convertible relation
+        --------------------
+
+        Ref. `Convertible relation`_
+
+        Guards and locks
+        ================
+        """,
+      dedent"""
+        Ref. `Convertible relation`_
+
+        .. contents::
+
+        Type relations
+        ==============
+
+        Convertible relation
+        --------------------
+
+        Guards and locks
+        ================
+        """
+    ]
+    for inputToc in inputTocCases:
+      let outputToc = inputToc.toHtml
+      check outputToc.count("id=\"type-relations\"") == 1
+      check outputToc.count("id=\"type-relations-convertible-relation\"") == 1
+      check outputToc.count("id=\"convertible-relation\">") == 0
+      # Besides "Ref.", heading also contains link to itself:
+      check outputToc.count(
+          "href=\"#type-relations-convertible-relation\">") == 2
+      check outputToc.count("href=\"#convertible-relation\"") == 0
+
   test "RST links":
     let input1 = """
 Want to learn about `my favorite programming language`_?

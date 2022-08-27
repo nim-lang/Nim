@@ -556,17 +556,17 @@ type
     footnoteAnchor = "footnote anchor",
     headlineAnchor = "implicitly-generated headline anchor"
   AnchorSubst = object
-    mainAnchor: ref string  # A reference name that will be inserted directly
-                            # into HTML/Latex. It's declared as `ref` because
-                            # it can be shared between aliases.
     info: TLineInfo         # where the anchor was defined
     priority: int
     case kind: range[arInternalRst .. arNim]
     of arInternalRst:
       anchorType: RstAnchorKind
+      target: PRstNode
     of arNim:
       tooltip: string       # displayed tooltip for Nim-generated anchors
       langSym: LangSymbol
+      refname: string     # A reference name that will be inserted directly
+                          # into HTML/Latex.
   AnchorSubstTable = Table[string, seq[AnchorSubst]]
                          # use `seq` to account for duplicate anchors
   FootnoteType = enum
@@ -610,9 +610,14 @@ type
     filenames*: RstFileTable    # map file name <-> FileIndex (for storing
                                 # file names for warnings after 1st stage)
     currFileIdx*: FileIndex     # current index in `filenames`
+    tocPart*: seq[PRstNode]     # all the headings of a document
     hasToc*: bool
 
   PRstSharedState* = ref RstSharedState
+  ManualAnchor = object
+    alias: string     # a (short) name that can substitute the `anchor`
+    anchor: string    # anchor = id = refname
+    info: TLineInfo
   RstParser = object of RootObj
     idx*: int
     tok*: TokenSeq
@@ -622,8 +627,9 @@ type
                                 ## documenation fragment that will be added
                                 ## in case of error/warning reporting to
                                 ## (relative) line/column of the token.
-    curAnchor*: string          # variable to track latest anchor in s.anchors
-    curAnchorName*: string      # corresponding name in human-readable format
+    curAnchors*: seq[ManualAnchor]
+                                ## seq to accumulate aliases for anchors:
+                                ## because RST can have >1 alias per 1 anchor
 
   EParseError* = object of ValueError
 
@@ -705,14 +711,16 @@ proc currFilename(s: PRstSharedState): string =
 proc newRstSharedState*(options: RstParseOptions,
                         filename: string,
                         findFile: FindFileHandler,
-                        msgHandler: MsgHandler): PRstSharedState =
+                        msgHandler: MsgHandler,
+                        hasToc: bool): PRstSharedState =
   let r = defaultRole(options)
   result = PRstSharedState(
       currRole: r,
       currRoleKind: whichRoleAux(r),
       options: options,
       msgHandler: if not isNil(msgHandler): msgHandler else: defaultMsgHandler,
-      findFile: if not isNil(findFile): findFile else: defaultFindFile
+      findFile: if not isNil(findFile): findFile else: defaultFindFile,
+      hasToc: hasToc
   )
   setCurrFilename(result, filename)
 
@@ -961,40 +969,28 @@ proc internalRefPriority(k: RstAnchorKind): int =
   of footnoteAnchor: result = 4
   of headlineAnchor: result = 3
 
-proc addAnchorRst(p: var RstParser, name: string, refn: string, reset: bool,
+proc addAnchorRst(p: var RstParser, name: string, target: PRstNode,
                   anchorType: RstAnchorKind) =
-  ## Adds anchor `refn` with an alias `name` and
-  ## updates the corresponding `curAnchor` / `curAnchorName`.
+  ## Associates node `target` (which has field `anchor`) with an
+  ## alias `name` and updates the corresponding aliases in `p.curAnchors`.
   let prio = internalRefPriority(anchorType)
-  if p.curAnchorName == "":
-    var anchRef = new string
-    anchRef[] = refn
+  for a in p.curAnchors:
+    p.s.anchors.mgetOrPut(a.alias, newSeq[AnchorSubst]()).add(
+        AnchorSubst(kind: arInternalRst, target: target, priority: prio,
+                    info: a.info, anchorType: manualDirectiveAnchor))
+  if name != "":
     p.s.anchors.mgetOrPut(name, newSeq[AnchorSubst]()).add(
-        AnchorSubst(kind: arInternalRst, mainAnchor: anchRef, priority: prio,
+        AnchorSubst(kind: arInternalRst, target: target, priority: prio,
                     info: prevLineInfo(p), anchorType: anchorType))
-  else:
-    # override previous mainAnchor by `ref` in all aliases
-    var anchRef = p.s.anchors[p.curAnchorName][0].mainAnchor
-    anchRef[] = refn
-    p.s.anchors.mgetOrPut(name, newSeq[AnchorSubst]()).add(
-        AnchorSubst(kind: arInternalRst, mainAnchor: anchRef, priority: prio,
-                    info: prevLineInfo(p), anchorType: anchorType))
-  if reset:
-    p.curAnchor = ""
-    p.curAnchorName = ""
-  else:
-    p.curAnchor = refn
-    p.curAnchorName = name
+  p.curAnchors.setLen 0
 
 proc addAnchorNim*(s: var PRstSharedState, refn: string, tooltip: string,
                    langSym: LangSymbol, priority: int,
                    info: TLineInfo) =
-  ## Adds an anchor `refn` (`mainAnchor`), which follows
+  ## Adds an anchor `refn`, which follows
   ## the rule `arNim` (i.e. a symbol in ``*.nim`` file)
-  var anchRef = new string
-  anchRef[] = refn
   s.anchors.mgetOrPut(langSym.name, newSeq[AnchorSubst]()).add(
-      AnchorSubst(kind: arNim, mainAnchor: anchRef, langSym: langSym,
+      AnchorSubst(kind: arNim, refname: refn, langSym: langSym,
                   tooltip: tooltip, priority: priority,
                   info: info))
 
@@ -1166,10 +1162,9 @@ proc getAutoSymbol(s: PRstSharedState, order: int): string =
 proc newRstNodeA(p: var RstParser, kind: RstNodeKind): PRstNode =
   ## create node and consume the current anchor
   result = newRstNode(kind)
-  if p.curAnchor != "":
-    result.anchor = p.curAnchor
-    p.curAnchor = ""
-    p.curAnchorName = ""
+  if p.curAnchors.len > 0:
+    result.anchor = p.curAnchors[0].anchor
+    addAnchorRst(p, "", result, manualDirectiveAnchor)
 
 template newLeaf(s: string): PRstNode = newRstLeaf(s)
 
@@ -1867,8 +1862,8 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       var n = newRstNode(rnInlineTarget)
       inc p.idx
       parseUntil(p, n, "`", false)
-      let refn = rstnodeToRefname(n)
-      addAnchorRst(p, name = linkName(n), refn = refn, reset = true,
+      n.anchor = rstnodeToRefname(n)
+      addAnchorRst(p, name = linkName(n), target = n,
                    anchorType=manualInlineAnchor)
       father.add(n)
     elif isMarkdownCodeBlock(p):
@@ -2557,8 +2552,8 @@ proc parseHeadline(p: var RstParser): PRstNode =
     result.level = getLevel(p, c, hasOverline=false)
     checkHeadingHierarchy(p, result.level)
     p.s.hCurLevel = result.level
-  addAnchorRst(p, linkName(result), rstnodeToRefname(result), reset=true,
-               anchorType=headlineAnchor)
+  addAnchorRst(p, linkName(result), result, anchorType=headlineAnchor)
+  p.s.tocPart.add result
 
 proc parseOverline(p: var RstParser): PRstNode =
   var c = currentTok(p).symbol[0]
@@ -2580,8 +2575,36 @@ proc parseOverline(p: var RstParser): PRstNode =
   if currentTok(p).kind == tkAdornment:
     inc p.idx
     if currentTok(p).kind == tkIndent: inc p.idx
-  addAnchorRst(p, linkName(result), rstnodeToRefname(result), reset=true,
-               anchorType=headlineAnchor)
+  addAnchorRst(p, linkName(result), result, anchorType=headlineAnchor)
+  p.s.tocPart.add result
+
+proc fixHeadlines(s: PRstSharedState) =
+  # Fix up section levels depending on presence of a title and subtitle:
+  for n in s.tocPart:
+    if n.kind in {rnHeadline, rnOverline}:
+      if s.hTitleCnt == 2:
+        if n.level == 1:    # it's the subtitle
+          n.level = 0
+        elif n.level >= 2:  # normal sections, start numbering from 1
+          n.level -= 1
+      elif s.hTitleCnt == 0:
+        n.level += 1
+  # Set headline anchors:
+  for iHeading in 0 .. s.tocPart.high:
+    let n: PRstNode = s.tocPart[iHeading]
+    if n.level >= 1:
+      n.anchor = rstnodeToRefname(n)
+      # Fix anchors for uniqueness if `.. contents::` is present
+      if s.hasToc:
+        # Find the last higher level section for unique reference name
+        var sectionPrefix = ""
+        for i in countdown(iHeading - 1, 0):
+          if s.tocPart[i].level >= 1 and s.tocPart[i].level < n.level:
+            sectionPrefix = rstnodeToRefname(s.tocPart[i]) & "-"
+            break
+        if sectionPrefix != "":
+          n.anchor = sectionPrefix & n.anchor
+  s.tocPart.setLen 0
 
 type
   ColSpec = object
@@ -3269,6 +3292,7 @@ proc dirTitle(p: var RstParser): PRstNode =
 
 proc dirContents(p: var RstParser): PRstNode =
   result = parseDirective(p, rnContents, {hasArg}, nil)
+  p.s.hasToc = true
 
 proc dirIndex(p: var RstParser): PRstNode =
   result = parseDirective(p, rnIndex, {}, parseSectionWrapper)
@@ -3403,7 +3427,7 @@ proc parseFootnote(p: var RstParser): PRstNode {.gcsafe.} =
     anchor.add $p.s.lineFootnoteSym.len
   of fnCitation:
     anchor.add rstnodeToRefname(label)
-  addAnchorRst(p, anchor, anchor, reset=true, anchorType=footnoteAnchor)
+  addAnchorRst(p, anchor, target = result, anchorType = footnoteAnchor)
   result.anchor = anchor
   if currentTok(p).kind == tkWhite: inc p.idx
   discard parseBlockContent(p, result, parseSectionWrapper)
@@ -3437,8 +3461,9 @@ proc parseDotDot(p: var RstParser): PRstNode =
     if currentTok(p).kind == tkWhite: inc p.idx
     var b = untilEol(p)
     if len(b) == 0:  # set internal anchor
-      addAnchorRst(p, linkName(a), rstnodeToRefname(a), reset=false,
-                   anchorType=manualDirectiveAnchor)
+      p.curAnchors.add ManualAnchor(
+        alias: linkName(a), anchor: rstnodeToRefname(a), info: prevLineInfo(p)
+      )
     else:  # external hyperlink
       setRef(p, rstnodeToRefname(a), b, refType=hyperlinkAlias)
   elif match(p, p.idx, " |"):
@@ -3479,6 +3504,7 @@ proc rstParsePass1*(fragment: string,
 proc preparePass2*(s: PRstSharedState, mainNode: PRstNode) =
   ## Records titles in node `mainNode` and orders footnotes.
   countTitles(s, mainNode)
+  fixHeadlines(s)
   orderFootnotes(s)
 
 proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
@@ -3505,14 +3531,15 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
     let substRst = findMainAnchorRst(s, text.addNodes, n.info)
     for subst in substRst:
       foundLinks.add LinkDef(ar: arInternalRst, priority: subst.priority,
-                             target: newLeaf(subst.mainAnchor[]),
+                             target: newLeaf(subst.target.anchor),
                              info: subst.info,
                              tooltip: "(" & $subst.anchorType & ")")
+    # find anchors automatically generated from Nim symbols
     if roNimFile in s.options:
       let substNim = findMainAnchorNim(s, signature=text, n.info)
       for subst in substNim:
         foundLinks.add LinkDef(ar: arNim, priority: subst.priority,
-                               target: newLeaf(subst.mainAnchor[]),
+                               target: newLeaf(subst.refname),
                                info: subst.info, tooltip: subst.tooltip)
     foundLinks.sort(cmp = cmp, order = Descending)
     let linkText = addNodes(n)
@@ -3558,15 +3585,6 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       if e != "": result = newLeaf(e)
       else: rstMessage(s.filenames, s.msgHandler, n.info,
                        mwUnknownSubstitution, key)
-  of rnHeadline, rnOverline:
-    # fix up section levels depending on presence of a title and subtitle
-    if s.hTitleCnt == 2:
-      if n.level == 1:    # it's the subtitle
-        n.level = 0
-      elif n.level >= 2:  # normal sections
-        n.level -= 1
-    elif s.hTitleCnt == 0:
-      n.level += 1
   of rnRef:
     result = resolveLink(s, n)
   of rnFootnote:
@@ -3617,14 +3635,12 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
     # TODO: correctly report ambiguities
     let anchorInfo = findMainAnchorRst(s, refn, n.info)
     if anchorInfo.len != 0:
-      result.add newLeaf(anchorInfo[0].mainAnchor[])  # add link
+      result.add newLeaf(anchorInfo[0].target.anchor)  # add link
     else:
       rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, refn)
       result.add newLeaf(refn)  # add link
   of rnLeaf:
     discard
-  of rnContents:
-    s.hasToc = true
   else:
     var regroup = false
     for i in 0 ..< n.len:
@@ -3656,7 +3672,8 @@ proc rstParse*(text, filename: string,
   ## note that 2nd tuple element should be fed to `initRstGenerator`
   ## argument `filenames` (it is being filled here at least with `filename`
   ## and possibly with other files from RST ``.. include::`` statement).
-  var sharedState = newRstSharedState(options, filename, findFile, msgHandler)
+  var sharedState = newRstSharedState(options, filename, findFile,
+                                      msgHandler, hasToc=false)
   let unresolved = rstParsePass1(text, line, column, sharedState)
   preparePass2(sharedState, unresolved)
   result.node = resolveSubs(sharedState, unresolved)
