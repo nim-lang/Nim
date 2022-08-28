@@ -277,7 +277,8 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
   else:
     result = getOutFile(conf, filename, ext)
 
-proc isLatexCmd(conf: ConfigRef): bool = conf.cmd in {cmdRst2tex, cmdDoc2tex}
+proc isLatexCmd(conf: ConfigRef): bool =
+  conf.cmd in {cmdRst2tex, cmdMd2tex, cmdDoc2tex}
 
 proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
                     outExt: string = HtmlExt, module: PSym = nil,
