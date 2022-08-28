@@ -508,7 +508,11 @@ block ospaths:
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/other/bad", '/') == "../../me/bar/z.nim"
 
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/other", '/') == "../me/bar/z.nim"
-  doAssert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
+
+  # `//` is a UNC path, `/` is the current working directory's drive, so can't
+  # run this test on Windows.
+  when not doslikeFileSystem:
+    doAssert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
   doAssert relativePath("", "/users/moo", '/') == ""
   doAssert relativePath("foo", "", '/') == "foo"
@@ -707,3 +711,29 @@ block: # isAdmin
   if isAzure and defined(windows): doAssert isAdmin()
   # In Azure on POSIX tests run as a normal user
   if isAzure and defined(posix): doAssert not isAdmin()
+
+when doslikeFileSystem:
+  import std/[sequtils, private/ntpath]
+
+  block: # Bug #19103 UNC paths integration test
+
+    # Easiest way of generating a valid, readable and writable UNC path
+    let tempDir = r"\\?\" & getTempDir()
+    doAssert dirExists tempDir
+    createDir tempDir / "test"
+    removeDir tempDir / "test"
+    createDir tempDir / "recursive" / "test"
+    removeDir tempDir / "recursive" / "test"
+
+    let tempDir2 = getTempDir()
+    let (drive, pathNoDrive) = splitDrive(tempDir2)
+    setCurrentDir drive
+    doAssert cmpIgnoreCase(getCurrentDir().splitDrive.drive, drive) == 0
+
+    # Test `\Users` path syntax on Windows by stripping away drive. `\`
+    # resolves to the drive in current working directory. This drive will be
+    # the same as `tempDir2` because of the `setCurrentDir` above.
+    doAssert pathNoDrive[0] == '\\'
+    createDir pathNoDrive / "test"
+    doAssert dirExists pathNoDrive / "test"
+    removeDir pathNoDrive / "test"
