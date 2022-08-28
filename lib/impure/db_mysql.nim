@@ -117,7 +117,7 @@ when false:
     discard mysql_stmt_close(stmt)
 
 proc dbQuote*(s: string): string =
-  ## DB quotes the string.
+  ## DB quotes the string. Note that this doesn't escape `%` and `_`.
   result = newStringOfCap(s.len + 2)
   result.add "'"
   for c in items(s):
@@ -132,7 +132,6 @@ proc dbQuote*(s: string): string =
     of '"': result.add "\\\""
     of '\'': result.add "\\'"
     of '\\': result.add "\\\\"
-    of '_': result.add "\\_"
     else: result.add c
   add(result, '\'')
 
@@ -150,17 +149,17 @@ proc tryExec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
-  return mysql.realQuery(PMySQL db, q, q.len) == 0'i32
+  return mysql.real_query(PMySQL db, q.cstring, q.len) == 0'i32
 
 proc rawExec(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) =
   var q = dbFormat(query, args)
-  if mysql.realQuery(PMySQL db, q, q.len) != 0'i32: dbError(db)
+  if mysql.real_query(PMySQL db, q.cstring, q.len) != 0'i32: dbError(db)
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
-  if mysql.realQuery(PMySQL db, q, q.len) != 0'i32: dbError(db)
+  if mysql.real_query(PMySQL db, q.cstring, q.len) != 0'i32: dbError(db)
 
 proc newRow(L: int): Row =
   newSeq(result, L)
@@ -168,7 +167,7 @@ proc newRow(L: int): Row =
 
 proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =
   if row != nil:
-    while mysql.fetchRow(sqlres) != nil: discard
+    while mysql.fetch_row(sqlres) != nil: discard
   mysql.freeResult(sqlres)
 
 iterator fastRows*(db: DbConn, query: SqlQuery,
@@ -190,7 +189,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
       backup: Row
     newSeq(result, L)
     while true:
-      row = mysql.fetchRow(sqlres)
+      row = mysql.fetch_row(sqlres)
       if row == nil: break
       for i in 0..L-1:
         setLen(result[i], 0)
@@ -209,7 +208,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     let L = int(mysql.numFields(sqlres))
     var row: cstringArray
     while true:
-      row = mysql.fetchRow(sqlres)
+      row = mysql.fetch_row(sqlres)
       if row == nil: break
       yield InstantRow(row: row, len: L)
     properFreeResult(sqlres, row)
@@ -290,7 +289,7 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
     setColumnInfo(columns, sqlres, L)
     var row: cstringArray
     while true:
-      row = mysql.fetchRow(sqlres)
+      row = mysql.fetch_row(sqlres)
       if row == nil: break
       yield InstantRow(row: row, len: L)
     properFreeResult(sqlres, row)
@@ -317,7 +316,7 @@ proc getRow*(db: DbConn, query: SqlQuery,
   if sqlres != nil:
     var L = int(mysql.numFields(sqlres))
     result = newRow(L)
-    var row = mysql.fetchRow(sqlres)
+    var row = mysql.fetch_row(sqlres)
     if row != nil:
       for i in 0..L-1:
         setLen(result[i], 0)
@@ -335,7 +334,7 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
     var row: cstringArray
     var j = 0
     while true:
-      row = mysql.fetchRow(sqlres)
+      row = mysql.fetch_row(sqlres)
       if row == nil: break
       setLen(result, j+1)
       newSeq(result[j], L)
@@ -361,7 +360,7 @@ proc tryInsertId*(db: DbConn, query: SqlQuery,
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   var q = dbFormat(query, args)
-  if mysql.realQuery(PMySQL db, q, q.len) != 0'i32:
+  if mysql.real_query(PMySQL db, q.cstring, q.len) != 0'i32:
     result = -1'i64
   else:
     result = mysql.insertId(PMySQL db)
@@ -410,7 +409,7 @@ proc open*(connection, user, password, database: string): DbConn {.
            else: substr(connection, 0, colonPos-1)
     port: int32 = if colonPos < 0: 0'i32
                   else: substr(connection, colonPos+1).parseInt.int32
-  if mysql.realConnect(res, host, user, password, database,
+  if mysql.realConnect(res, host.cstring, user, password, database,
                        port, nil, 0) == nil:
     var errmsg = $mysql.error(res)
     mysql.close(res)

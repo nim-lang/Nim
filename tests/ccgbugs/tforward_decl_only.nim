@@ -1,7 +1,7 @@
 discard """
 ccodecheck: "\\i !@('struct tyObject_MyRefObject'[0-z]+' {')"
 ccodecheck: "\\i !@('mymoduleInit')"
-ccodecheck: "\\i @('mymoduleDatInit')"
+ccodecheck: "\\i @('atmmymoduledotnim_DatInit000')"
 output: "hello"
 """
 

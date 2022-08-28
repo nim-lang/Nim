@@ -9,7 +9,10 @@ type
 proc createCycle(leaf: string): Node =
   new result
   result.a = result
-  shallowCopy result.leaf, leaf
+  when defined(gcArc) or defined(gcOrc):
+    result.leaf = leaf
+  else:
+    shallowCopy result.leaf, leaf
 
 proc main =
   for i in 0 .. 100_000:

@@ -1,11 +1,32 @@
 import dom
 import fuzzysearch
 
-proc textContent(e: Element): cstring {.
-  importcpp: "#.textContent", nodecl.}
 
-proc textContent(e: Node): cstring {.
-  importcpp: "#.textContent", nodecl.}
+proc setTheme(theme: cstring) {.exportc.} =
+  document.documentElement.setAttribute("data-theme", theme)
+  window.localStorage.setItem("theme", theme)
+
+# set `data-theme` attribute early to prevent white flash
+setTheme:
+  let t = window.localStorage.getItem("theme")
+  if t.isNil: cstring"auto" else: t
+
+proc onDOMLoaded(e: Event) {.exportc.} =
+  # set theme select value
+  document.getElementById("theme-select").value = window.localStorage.getItem("theme")
+
+  var pragmaDots = document.getElementsByClassName("pragmadots")
+  for i in 0..<pragmaDots.len:
+    pragmaDots[i].onclick = proc (event: Event) =
+      # Hide tease
+      event.target.parentNode.style.display = "none"
+      # Show actual
+      event.target.parentNode.nextSibling.style.display = "inline"
+
+
+proc textContent(e: Element): cstring {.importcpp: "#.textContent", nodecl.}
+
+proc textContent(e: Node): cstring {.importcpp: "#.textContent", nodecl.}
 
 proc tree(tag: string; kids: varargs[Element]): Element =
   result = document.createElement tag
@@ -396,5 +417,6 @@ proc copyToClipboard*() {.exportc.} =
 
     """
     .}
-    
+
 copyToClipboard()
+window.addEventListener("DOMContentLoaded", onDOMLoaded)

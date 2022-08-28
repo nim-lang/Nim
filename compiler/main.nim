@@ -65,6 +65,8 @@ proc commandCheck(graph: ModuleGraph) =
   if optWasNimscript in conf.globalOptions:
     defineSymbol(conf.symbols, "nimscript")
     defineSymbol(conf.symbols, "nimconfig")
+  elif conf.backend == backendJs:
+    setTarget(conf.target, osJS, cpuJS)
   semanticPasses(graph)  # use an empty backend for semantic checking only
   compileProject(graph)
 
@@ -274,7 +276,8 @@ proc mainCommand*(graph: ModuleGraph) =
     var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
               else: conf.projectPath
     doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
-    if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex}: ret = ret / htmldocsDir
+    if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex, cmdMd2html, cmdMd2tex}:
+      ret = ret / htmldocsDir
     conf.outDir = ret
 
   ## process all commands
@@ -300,7 +303,7 @@ proc mainCommand*(graph: ModuleGraph) =
       commandDoc2(graph, HtmlExt)
       if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
         commandBuildIndex(conf, $conf.outDir)
-  of cmdRst2html:
+  of cmdRst2html, cmdMd2html:
     # XXX: why are warnings disabled by default for rst2html and rst2tex?
     for warn in rstWarnings:
       conf.setNoteDefaults(warn, true)
@@ -309,16 +312,16 @@ proc mainCommand*(graph: ModuleGraph) =
       conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
       loadConfigs(DocConfig, cache, conf, graph.idgen)
-      commandRst2Html(cache, conf)
-  of cmdRst2tex, cmdDoc2tex:
+      commandRst2Html(cache, conf, preferMarkdown = (conf.cmd == cmdMd2html))
+  of cmdRst2tex, cmdMd2tex, cmdDoc2tex:
     for warn in rstWarnings:
       conf.setNoteDefaults(warn, true)
     when defined(leanCompiler):
       conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
-      if conf.cmd == cmdRst2tex:
+      if conf.cmd in {cmdRst2tex, cmdMd2tex}:
         loadConfigs(DocTexConfig, cache, conf, graph.idgen)
-        commandRst2TeX(cache, conf)
+        commandRst2TeX(cache, conf, preferMarkdown = (conf.cmd == cmdMd2tex))
       else:
         docLikeCmd commandDoc2(graph, TexExt)
   of cmdJsondoc0: docLikeCmd commandJson(cache, conf)

@@ -1259,12 +1259,12 @@ proc findExe*(exe: string, followSymlinks: bool = true;
           while followSymlinks: # doubles as if here
             if x.symlinkExists:
               var r = newString(maxSymlinkLen)
-              var len = readlink(x, r, maxSymlinkLen)
+              var len = readlink(x.cstring, r.cstring, maxSymlinkLen)
               if len < 0:
                 raiseOSError(osLastError(), exe)
               if len > maxSymlinkLen:
                 r = newString(len+1)
-                len = readlink(x, r, len)
+                len = readlink(x.cstring, r.cstring, len)
               setLen(r, len)
               if isAbsolute(r):
                 x = r
@@ -1404,8 +1404,8 @@ when not defined(nimscript):
       var bufsize = 1024 # should be enough
       result = newString(bufsize)
       while true:
-        if getcwd(result, bufsize) != nil:
-          setLen(result, c_strlen(result))
+        if getcwd(result.cstring, bufsize) != nil:
+          setLen(result, c_strlen(result.cstring))
           break
         else:
           let err = osLastError()
@@ -1741,7 +1741,7 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## by `src`. On most operating systems, will fail if a link already exists.
   ##
   ## .. warning:: Some OS's (such as Microsoft Windows) restrict the creation
-  ##   of symlinks to root users (administrators) or users with developper mode enabled.
+  ##   of symlinks to root users (administrators) or users with developer mode enabled.
   ##
   ## See also:
   ## * `createHardlink proc`_
@@ -1774,12 +1774,12 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
     result = symlinkPath
   else:
     result = newString(maxSymlinkLen)
-    var len = readlink(symlinkPath, result, maxSymlinkLen)
+    var len = readlink(symlinkPath, result.cstring, maxSymlinkLen)
     if len < 0:
       raiseOSError(osLastError(), symlinkPath)
     if len > maxSymlinkLen:
       result = newString(len+1)
-      len = readlink(symlinkPath, result, len)
+      len = readlink(symlinkPath, result.cstring, len)
     setLen(result, len)
 
 const hasCCopyfile = defined(osx) and not defined(nimLegacyCopyFile)
@@ -2344,7 +2344,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
             var k = pcFile
 
             template kSetGeneric() =  # pure Posix component `k` resolution
-              if lstat(path, s) < 0'i32: continue  # don't yield
+              if lstat(path.cstring, s) < 0'i32: continue  # don't yield
               elif S_ISDIR(s.st_mode):
                 k = pcDir
               elif S_ISLNK(s.st_mode):
@@ -2383,21 +2383,21 @@ iterator walkDirRec*(dir: string,
   ##
   ## Walking is recursive. `followFilter` controls the behaviour of the iterator:
   ##
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ## yieldFilter             meaning
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ## ``pcFile``              yield real files (default)
   ## ``pcLinkToFile``        yield symbolic links to files
   ## ``pcDir``               yield real directories
   ## ``pcLinkToDir``         yield symbolic links to directories
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ##
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ## followFilter            meaning
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ## ``pcDir``               follow real directories (default)
   ## ``pcLinkToDir``         follow symbolic links to directories
-  ## ---------------------   ---------------------------------------------
+  ## =====================   =============================================
   ##
   ##
   ## See also:
@@ -2939,7 +2939,7 @@ elif defined(genode):
 
   proc paramCount*(): int =
     raise newException(OSError, "paramCount is not implemented on Genode")
-elif weirdTarget:
+elif weirdTarget or (defined(posix) and appType == "lib"):
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on current platform")
 
@@ -3041,10 +3041,10 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
 when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
   proc getApplAux(procPath: string): string =
     result = newString(maxSymlinkLen)
-    var len = readlink(procPath, result, maxSymlinkLen)
+    var len = readlink(procPath, result.cstring, maxSymlinkLen)
     if len > maxSymlinkLen:
       result = newString(len+1)
-      len = readlink(procPath, result, len)
+      len = readlink(procPath, result.cstring, len)
     setLen(result, len)
 
 when not weirdTarget and defined(openbsd):
@@ -3169,7 +3169,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     var size = cuint32(0)
     getExecPath1(nil, size)
     result = newString(int(size))
-    if getExecPath2(result, size):
+    if getExecPath2(result.cstring, size):
       result = "" # error!
     if result.len > 0:
       result = result.expandFilename

@@ -48,7 +48,7 @@ block:
   chk 0.1
   chk Inf
   chk NegInf
-  chk Nan
+  chk NaN
   chk 3.1415926535897932384626433
 
 block:

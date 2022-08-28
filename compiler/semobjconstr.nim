@@ -77,7 +77,7 @@ proc semConstrField(c: PContext, flags: TExprFlags,
         "the field '$1' is not accessible." % [field.name.s])
       return
 
-    var initValue = semExprFlagDispatched(c, assignment[1], flags)
+    var initValue = semExprFlagDispatched(c, assignment[1], flags, field.typ)
     if initValue != nil:
       initValue = fitNodeConsiderViewType(c, field.typ, initValue, assignment.info)
     assignment[0] = newSymNode(field)
@@ -375,13 +375,19 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
   else:
     assert false, "Must not enter here."
 
-proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
+proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var t = semTypeNode(c, n[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
   for child in n: result.add child
 
   if t == nil:
     return localErrorNode(c, result, "object constructor needs an object type")
+  
+  if t.skipTypes({tyGenericInst,
+      tyAlias, tySink, tyOwned, tyRef}).kind != tyObject and
+      expectedType != nil and expectedType.skipTypes({tyGenericInst,
+      tyAlias, tySink, tyOwned, tyRef}).kind == tyObject:
+    t = expectedType
 
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   if t.kind == tyRef:
