@@ -602,7 +602,6 @@ proc makeRawTest(test, options: string, cat: Category): TTest {.used.} =
 
 # TODO: fix these files
 const disabledFilesDefault = @[
-  "LockFreeHash.nim",
   "tableimpl.nim",
   "setimpl.nim",
   "hashcommon.nim",

@@ -464,17 +464,16 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ##  var str = "Hello world!"
   ##  low(str) # => 0
 
-proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
-  ## Use this instead of `=` for a `shallow copy`:idx:.
-  ##
-  ## The shallow copy only changes the semantics for sequences and strings
-  ## (and types which contain those).
-  ##
-  ## Be careful with the changed semantics though!
-  ## There is a reason why the default assignment does a deep copy of sequences
-  ## and strings.
-  ##
-  ## .. warning:: `shallowCopy` does a deep copy with ARC/ORC.
+when not defined(gcArc) and not defined(gcOrc):
+  proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
+    ## Use this instead of `=` for a `shallow copy`:idx:.
+    ##
+    ## The shallow copy only changes the semantics for sequences and strings
+    ## (and types which contain those).
+    ##
+    ## Be careful with the changed semantics though!
+    ## There is a reason why the default assignment does a deep copy of sequences
+    ## and strings.
 
 # :array|openArray|string|seq|cstring|tuple
 proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
@@ -492,9 +491,12 @@ proc arrPut[I: Ordinal;T,S](a: T; i: I;
 proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
   ## Generic `destructor`:idx: implementation that can be overridden.
   discard
-proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
+proc `=sink`*[T](x: var T; y: T) {.inline, nodestroy, magic: "Asgn".} =
   ## Generic `sink`:idx: implementation that can be overridden.
-  shallowCopy(x, y)
+  when defined(gcArc) or defined(gcOrc):
+    x = y
+  else:
+    shallowCopy(x, y)
 
 when defined(nimHasTrace):
   proc `=trace`*[T](x: var T; env: pointer) {.inline, magic: "Trace".} =
@@ -1053,30 +1055,30 @@ proc newStringOfCap*(cap: Natural): string {.
   ## be achieved with the `&` operator or with `add`.
 
 proc `&`*(x: string, y: char): string {.
-  magic: "ConStrStr", noSideEffect, merge.}
+  magic: "ConStrStr", noSideEffect.}
   ## Concatenates `x` with `y`.
   ##
   ## .. code-block:: Nim
   ##   assert("ab" & 'c' == "abc")
 proc `&`*(x, y: char): string {.
-  magic: "ConStrStr", noSideEffect, merge.}
+  magic: "ConStrStr", noSideEffect.}
   ## Concatenates characters `x` and `y` into a string.
   ##
   ## .. code-block:: Nim
   ##   assert('a' & 'b' == "ab")
 proc `&`*(x, y: string): string {.
-  magic: "ConStrStr", noSideEffect, merge.}
+  magic: "ConStrStr", noSideEffect.}
   ## Concatenates strings `x` and `y`.
   ##
   ## .. code-block:: Nim
   ##   assert("ab" & "cd" == "abcd")
 proc `&`*(x: char, y: string): string {.
-  magic: "ConStrStr", noSideEffect, merge.}
+  magic: "ConStrStr", noSideEffect.}
   ## Concatenates `x` with `y`.
   ##
   ## .. code-block:: Nim
   ##   assert('a' & "bc" == "abc")
-
+  
 # implementation note: These must all have the same magic value "ConStrStr" so
 # that the merge optimization works properly.
 
@@ -1602,18 +1604,6 @@ proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.}
   ##   assert((5..2).len == 0)
   result = max(0, ord(x.b) - ord(x.a) + 1)
 
-when true: # PRTEMP: remove?
-  proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", error.}
-    ## Seqs are no longer nil by default, but set and empty.
-    ## Check for zero length instead.
-    ##
-    ## See also:
-    ## * `isNil(string) <#isNil,string>`_
-
-  proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", error.}
-    ## See also:
-    ## * `isNil(seq[T]) <#isNil,seq[T]>`_
-
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
@@ -1624,13 +1614,23 @@ proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## `== nil`.
 
 
-proc `@`*[T](a: openArray[T]): seq[T] =
-  ## Turns an *openArray* into a sequence.
-  ##
-  ## This is not as efficient as turning a fixed length array into a sequence
-  ## as it always copies every element of `a`.
-  newSeq(result, a.len)
-  for i in 0..a.len-1: result[i] = a[i]
+when defined(nimHasTopDownInference):
+  # magic used for seq type inference
+  proc `@`*[T](a: openArray[T]): seq[T] {.magic: "OpenArrayToSeq".} =
+    ## Turns an *openArray* into a sequence.
+    ##
+    ## This is not as efficient as turning a fixed length array into a sequence
+    ## as it always copies every element of `a`.
+    newSeq(result, a.len)
+    for i in 0..a.len-1: result[i] = a[i]
+else:
+  proc `@`*[T](a: openArray[T]): seq[T] =
+    ## Turns an *openArray* into a sequence.
+    ##
+    ## This is not as efficient as turning a fixed length array into a sequence
+    ## as it always copies every element of `a`.
+    newSeq(result, a.len)
+    for i in 0..a.len-1: result[i] = a[i]
 
 
 when defined(nimSeqsV2):
@@ -1833,8 +1833,7 @@ when defined(nimV2):
   include system/arc
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: """assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and
-                import `std/assertions`.""".}
+  {.deprecated: "assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/assertions`".}
   import std/assertions
   export assertions
 
@@ -2852,7 +2851,10 @@ when hasAlloc or defined(nimscript):
     setLen(x, xl+item.len)
     var j = xl-1
     while j >= i:
-      shallowCopy(x[j+item.len], x[j])
+      when defined(gcArc) or defined(gcOrc):
+        x[j+item.len] = move x[j]
+      else:
+        shallowCopy(x[j+item.len], x[j])
       dec(j)
     j = 0
     while j < item.len:
@@ -3015,17 +3017,6 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   elif x.isNil or y.isNil: result = false
   else: result = strcmp(x, y) == 0
 
-when true: # xxx PRTEMP remove
-  # bug #9149; ensure that 'typeof(nil)' does not match *too* well by using 'typeof(nil) | typeof(nil)',
-  # especially for converters, see tests/overload/tconverter_to_string.nim
-  # Eventually we will be able to remove this hack completely.
-  proc `==`*(x: string; y: typeof(nil) | typeof(nil)): bool {.
-      error: "'nil' is now invalid for 'string'".} =
-    discard
-  proc `==`*(x: typeof(nil) | typeof(nil); y: string): bool {.
-      error: "'nil' is now invalid for 'string'".} =
-    discard
-
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
   ## their current iteration values.
@@ -3153,10 +3144,11 @@ import system/widestrs
 export widestrs
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: """io is about to move out of system; use `-d:nimPreviewSlimSystem` and
-                import `std/syncio`.""".}
+  {.deprecated: "io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`".}
   import std/syncio
   export syncio
+else:
+  import std/syncio
 
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr

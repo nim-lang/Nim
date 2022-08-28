@@ -372,34 +372,19 @@ template getPContext(): untyped =
   when c is PContext: c
   else: c.c
 
-when defined(nimfind):
-  template onUse*(info: TLineInfo; s: PSym) =
-    let c = getPContext()
-    if c.graph.onUsage != nil: c.graph.onUsage(c.graph, s, info)
+when defined(nimsuggest):
+  template onUse*(info: TLineInfo; s: PSym) = discard
 
   template onDef*(info: TLineInfo; s: PSym) =
     let c = getPContext()
-    if c.graph.onDefinition != nil: c.graph.onDefinition(c.graph, s, info)
+    if c.graph.config.suggestVersion == 3:
+      suggestSym(c.graph, info, s, c.graph.usageSym)
 
-  template onDefResolveForward*(info: TLineInfo; s: PSym) =
-    let c = getPContext()
-    if c.graph.onDefinitionResolveForward != nil:
-      c.graph.onDefinitionResolveForward(c.graph, s, info)
-
+  template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
 else:
-  when defined(nimsuggest):
-    template onUse*(info: TLineInfo; s: PSym) = discard
-
-    template onDef*(info: TLineInfo; s: PSym) =
-      let c = getPContext()
-      if c.graph.config.suggestVersion == 3:
-        suggestSym(c.graph, info, s, c.graph.usageSym)
-
-    template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
-  else:
-    template onUse*(info: TLineInfo; s: PSym) = discard
-    template onDef*(info: TLineInfo; s: PSym) = discard
-    template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
+  template onUse*(info: TLineInfo; s: PSym) = discard
+  template onDef*(info: TLineInfo; s: PSym) = discard
+  template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
 
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()

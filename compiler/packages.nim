@@ -16,6 +16,10 @@
 
 import "." / [options, ast, lineinfos, idents, pathutils, msgs]
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 proc getPackage*(conf: ConfigRef; cache: IdentCache; fileIdx: FileIndex): PSym =
   ## Return a new package symbol.
   ## 

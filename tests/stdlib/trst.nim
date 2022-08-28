@@ -74,7 +74,7 @@ suite "RST parsing":
         """.toAst ==
       dedent"""
         rnInner
-          rnHeadline  level=1
+          rnHeadline  level=1  anchor='lexical-analysis'
             rnLeaf  'Lexical'
             rnLeaf  ' '
             rnLeaf  'Analysis'
@@ -474,7 +474,12 @@ suite "RST parsing":
   let expectCodeBlock = dedent"""
       rnCodeBlock
         [nil]
-        [nil]
+        rnFieldList
+          rnField
+            rnFieldName
+              rnLeaf  'default-language'
+            rnFieldBody
+              rnLeaf  'Nim'
         rnLiteralBlock
           rnLeaf  '
       let a = 1
@@ -570,6 +575,45 @@ suite "RST parsing":
       """)
       # | |
       # |  \ indentation of exactly two spaces before 'let a = 1'
+
+  test "no blank line is required before or after Markdown code block":
+    let inputBacktick = dedent"""
+        Some text
+        ```
+        CodeBlock()
+        ```
+        Other text"""
+    let inputTilde = dedent"""
+        Some text
+        ~~~~~~~~~
+        CodeBlock()
+        ~~~~~~~~~
+        Other text"""
+    let expected = dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Some'
+            rnLeaf  ' '
+            rnLeaf  'text'
+          rnParagraph
+            rnCodeBlock
+              [nil]
+              rnFieldList
+                rnField
+                  rnFieldName
+                    rnLeaf  'default-language'
+                  rnFieldBody
+                    rnLeaf  'Nim'
+              rnLiteralBlock
+                rnLeaf  '
+        CodeBlock()'
+            rnLeaf  ' '
+            rnLeaf  'Other'
+            rnLeaf  ' '
+            rnLeaf  'text'
+      """
+    check inputBacktick.toAst == expected
+    check inputTilde.toAst == expected
 
   test "option list has priority over definition list":
     check(dedent"""

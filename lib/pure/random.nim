@@ -178,24 +178,33 @@ proc skipRandomNumbers*(s: var Rand) =
   ## **See also:**
   ## * `next proc<#next,Rand>`_
   runnableExamples("--threads:on"):
-    import std/[random, threadpool]
+    import std/random
 
-    const spawns = 4
     const numbers = 100000
 
-    proc randomSum(r: Rand): int =
-      var r = r
+    var
+      thr: array[0..3, Thread[(Rand, int)]]
+      vals: array[0..3, int]
+
+    proc randomSum(params: tuple[r: Rand, index: int]) {.thread.} =
+      var r = params.r
+      var s = 0 # avoid cache thrashing
       for i in 1..numbers:
-        result += r.rand(0..10)
+        s += r.rand(0..10)
+      vals[params.index] = s
 
     var r = initRand(2019)
-    var vals: array[spawns, FlowVar[int]]
-    for val in vals.mitems:
-      val = spawn randomSum(r)
+    for i in 0..<thr.len:
+      createThread(thr[i], randomSum, (r, i))
       r.skipRandomNumbers()
 
+    joinThreads(thr)
+
     for val in vals:
-      doAssert abs(^val - numbers * 5) / numbers < 0.1
+      doAssert abs(val - numbers * 5) / numbers < 0.1
+
+    doAssert vals == [501737, 497901, 500683, 500157]
+
 
   when defined(js):
     const helper = [0xbeac0467u32, 0xd86b048bu32]
@@ -353,6 +362,30 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
 
   result = rand(state, x)
 
+proc rand*[T: Ordinal](r: var Rand; t: typedesc[T]): T {.since: (1, 7, 1).} =
+  ## Returns a random Ordinal in the range `low(T)..high(T)`.
+  ##
+  ## If `randomize <#randomize>`_ has not been called, the sequence of random
+  ## numbers returned from this proc will always be the same.
+  ##
+  ## **See also:**
+  ## * `rand proc<#rand,int>`_ that returns an integer
+  ## * `rand proc<#rand,float>`_ that returns a floating point number
+  ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
+  when T is range or T is enum:
+    result = rand(r, low(T)..high(T))
+  elif T is bool:
+    when defined(js):
+      result = (r.next or 0) < 0
+    else:
+      result = cast[int64](r.next) < 0
+  else:
+    when defined(js):
+      result = cast[T](r.next shr (sizeof(uint)*8 - sizeof(T)*8))
+    else:
+      result = cast[T](r.next shr (sizeof(uint64)*8 - sizeof(T)*8))
+
 proc rand*[T: Ordinal](t: typedesc[T]): T =
   ## Returns a random Ordinal in the range `low(T)..high(T)`.
   ##
@@ -369,20 +402,14 @@ proc rand*[T: Ordinal](t: typedesc[T]): T =
   runnableExamples:
     randomize(567)
     type E = enum a, b, c, d
-    if false: # implementation defined
-      assert rand(E) in a..d
-      assert rand(char) in low(char)..high(char)
-      assert rand(int8) in low(int8)..high(int8)
-      assert rand(uint32) in low(uint32)..high(uint32)
-      assert rand(range[1..16]) in 1..16
-  # pending csources >= 1.4.0 or fixing https://github.com/timotheecour/Nim/issues/251#issuecomment-831599772,
-  # use `runnableExamples("-r:off")` instead of `if false`
-  when T is range or T is enum:
-    result = rand(state, low(T)..high(T))
-  elif T is bool:
-    result = state.next shr 63 == 1 # sign test, works on js
-  else:
-    result = cast[T](state.next shr (64 - sizeof(T)*8))
+
+    assert rand(E) in a..d
+    assert rand(char) in low(char)..high(char)
+    assert rand(int8) in low(int8)..high(int8)
+    assert rand(uint32) in low(uint32)..high(uint32)
+    assert rand(range[1..16]) in 1..16
+
+  result = rand(state, t)
 
 proc sample*[T](r: var Rand; s: set[T]): T =
   ## Returns a random element from the set `s` using the given state.

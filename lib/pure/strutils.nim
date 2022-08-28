@@ -80,7 +80,8 @@ export toLower, toUpper
 
 include "system/inclrtl"
 import std/private/since
-from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWithImpl, endsWithImpl
+from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl,
+    startsWithImpl, endsWithImpl
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -93,6 +94,15 @@ const
 
   Letters* = {'A'..'Z', 'a'..'z'}
     ## The set of letters.
+
+  UppercaseLetters* = {'A'..'Z'}
+    ## The set of uppercase ASCII letters.
+
+  LowercaseLetters* = {'a'..'z'}
+    ## The set of lowercase ASCII letters.
+
+  PunctuationChars* = {'!'..'/', ':'..'@', '['..'`', '{'..'~'}
+    ## The set of all ASCII punctuation characters.
 
   Digits* = {'0'..'9'}
     ## The set of digits.
@@ -109,6 +119,9 @@ const
   Newlines* = {'\13', '\10'}
     ## The set of characters a newline terminator can start with (carriage
     ## return, line feed).
+
+  PrintableChars* = Letters + Digits + PunctuationChars + Whitespace
+    ## The set of all printable ASCII characters (letters, digits, whitespace, and punctuation characters).
 
   AllChars* = {'\x00'..'\xFF'}
     ## A set with all the possible characters.
@@ -172,7 +185,7 @@ func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
     doAssert isLowerAscii('e') == true
     doAssert isLowerAscii('E') == false
     doAssert isLowerAscii('7') == false
-  return c in {'a'..'z'}
+  return c in LowercaseLetters
 
 func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
@@ -186,8 +199,7 @@ func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
     doAssert isUpperAscii('e') == false
     doAssert isUpperAscii('E') == true
     doAssert isUpperAscii('7') == false
-  return c in {'A'..'Z'}
-
+  return c in UppercaseLetters
 
 func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   ## Returns the lower case version of character `c`.
@@ -202,7 +214,7 @@ func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   runnableExamples:
     doAssert toLowerAscii('A') == 'a'
     doAssert toLowerAscii('e') == 'e'
-  if c in {'A'..'Z'}:
+  if c in UppercaseLetters:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
@@ -239,7 +251,7 @@ func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
   runnableExamples:
     doAssert toUpperAscii('a') == 'A'
     doAssert toUpperAscii('E') == 'E'
-  if c in {'a'..'z'}:
+  if c in LowercaseLetters:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
@@ -289,7 +301,7 @@ func nimIdentNormalize*(s: string): string =
   result[0] = s[0]
   var j = 1
   for i in 1..len(s) - 1:
-    if s[i] in {'A'..'Z'}:
+    if s[i] in UppercaseLetters:
       result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
@@ -311,7 +323,7 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
-    if s[i] in {'A'..'Z'}:
+    if s[i] in UppercaseLetters:
       result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
@@ -1515,7 +1527,8 @@ func delete*(s: var string, slice: Slice[int]) =
       inc(j)
     setLen(s, newLen)
 
-func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete", deprecated: "use `delete(s, first..last)`".} =
+func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete",
+    deprecated: "use `delete(s, first..last)`".} =
   ## Deletes in `s` the characters at positions `first .. last` (both ends included).
   runnableExamples("--warning:deprecated:off"):
     var a = "abracadabra"
@@ -2239,7 +2252,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
     doAssert insertSep("1000000") == "1_000_000"
   result = newStringOfCap(s.len)
   let hasPrefix = isDigit(s[s.low]) == false
-  var idx:int
+  var idx: int
   if hasPrefix:
     result.add s[s.low]
     for i in (s.low + 1)..s.high:
@@ -2253,7 +2266,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
   result.setLen(L + idx)
   var j = 0
   dec(L)
-  for i in countdown(partsLen-1,0):
+  for i in countdown(partsLen-1, 0):
     if j == digits:
       result[L + idx] = sep
       dec(L)
@@ -2354,7 +2367,7 @@ func validIdentifier*(s: string): bool {.rtl, extern: "nsuValidIdentifier".} =
 # floating point formatting:
 when not defined(js):
   func c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
-                                     importc: "sprintf", varargs}
+                                     importc: "sprintf", varargs.}
 
 type
   FloatFormatMode* = enum
@@ -2685,8 +2698,8 @@ func findNormalized(x: string, inArray: openArray[string]): int =
               # security hole...
   return -1
 
-func invalidFormatString() {.noinline.} =
-  raise newException(ValueError, "invalid format string")
+func invalidFormatString(formatstr: string) {.noinline.} =
+  raise newException(ValueError, "invalid format string: " & formatstr)
 
 func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     extern: "nsuAddf".} =
@@ -2698,7 +2711,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     if formatstr[i] == '$' and i+1 < len(formatstr):
       case formatstr[i+1]
       of '#':
-        if num > a.high: invalidFormatString()
+        if num > a.high: invalidFormatString(formatstr)
         add s, a[num]
         inc i, 2
         inc num
@@ -2714,7 +2727,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
         let idx = if not negative: j-1 else: a.len-j
-        if idx < 0 or idx > a.high: invalidFormatString()
+        if idx < 0 or idx > a.high: invalidFormatString(formatstr)
         add s, a[idx]
       of '{':
         var j = i+2
@@ -2731,22 +2744,22 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
           inc(j)
         if isNumber == 1:
           let idx = if not negative: k-1 else: a.len-k
-          if idx < 0 or idx > a.high: invalidFormatString()
+          if idx < 0 or idx > a.high: invalidFormatString(formatstr)
           add s, a[idx]
         else:
           var x = findNormalized(substr(formatstr, i+2, j-1), a)
           if x >= 0 and x < high(a): add s, a[x+1]
-          else: invalidFormatString()
+          else: invalidFormatString(formatstr)
         i = j+1
       of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
         var j = i+1
         while j < formatstr.len and formatstr[j] in PatternChars: inc(j)
         var x = findNormalized(substr(formatstr, i+1, j-1), a)
         if x >= 0 and x < high(a): add s, a[x+1]
-        else: invalidFormatString()
+        else: invalidFormatString(formatstr)
         i = j
       else:
-        invalidFormatString()
+        invalidFormatString(formatstr)
     else:
       add s, formatstr[i]
       inc(i)

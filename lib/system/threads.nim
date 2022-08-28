@@ -47,6 +47,9 @@
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const
   hasAllocStack = defined(zephyr) # maybe freertos too?
 

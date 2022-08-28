@@ -389,7 +389,7 @@ Some chapter
       ~~~~~
 
       """
-    let output9good = input9good.toHtml
+    let output9good = input9good.toHtml(preferRst)
     doAssert "<h1 id=\"level1\">Level1</h1>" in output9good
     doAssert "<h2 id=\"level2\">Level2</h2>" in output9good
     doAssert "<h3 id=\"level3\">Level3</h3>" in output9good
@@ -419,7 +419,7 @@ Some chapter
 
       """
     var error9Bad = new string
-    let output9Bad = input9Bad.toHtml(error=error9Bad)
+    let output9Bad = input9Bad.toHtml(preferRst, error=error9Bad)
     check(error9Bad[] == "input(15, 1) Error: new section expected (section " &
             "level inconsistent: underline ~~~~~ unexpectedly found, while " &
             "the following intermediate section level(s) are missing on " &
@@ -536,6 +536,63 @@ Some chapter
     let output1 = input1.toHtml
     doAssert output1 == "GC_step"
 
+  test "RST anchors/links to headings":
+    # Currently in TOC mode anchors are modified (for making links from
+    # the TOC unique)
+    let inputNoToc = dedent"""
+        Type relations
+        ==============
+
+        Convertible relation
+        --------------------
+
+        Ref. `Convertible relation`_
+        """
+    let outputNoToc = inputNoToc.toHtml
+    check outputNoToc.count("id=\"type-relations\"") == 1
+    check outputNoToc.count("id=\"convertible-relation\"") == 1
+    check outputNoToc.count("href=\"#convertible-relation\"") == 1
+
+    let inputTocCases = @[
+      dedent"""
+        .. contents::
+
+        Type relations
+        ==============
+
+        Convertible relation
+        --------------------
+
+        Ref. `Convertible relation`_
+
+        Guards and locks
+        ================
+        """,
+      dedent"""
+        Ref. `Convertible relation`_
+
+        .. contents::
+
+        Type relations
+        ==============
+
+        Convertible relation
+        --------------------
+
+        Guards and locks
+        ================
+        """
+    ]
+    for inputToc in inputTocCases:
+      let outputToc = inputToc.toHtml
+      check outputToc.count("id=\"type-relations\"") == 1
+      check outputToc.count("id=\"type-relations-convertible-relation\"") == 1
+      check outputToc.count("id=\"convertible-relation\">") == 0
+      # Besides "Ref.", heading also contains link to itself:
+      check outputToc.count(
+          "href=\"#type-relations-convertible-relation\">") == 2
+      check outputToc.count("href=\"#convertible-relation\"") == 0
+
   test "RST links":
     let input1 = """
 Want to learn about `my favorite programming language`_?
@@ -582,8 +639,13 @@ Test literal block
 ```
 let x = 1
 ``` """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml({roSupportMarkdown, roPreferMarkdown})
     doAssert "<pre" in output1 and "class=\"Keyword\"" notin output1
+
+    # Check Nim highlighting by default in .nim files:
+    let output1nim = input1.toHtml({roSupportMarkdown, roPreferMarkdown,
+                                    roNimFile})
+    doAssert "<pre" in output1nim and "class=\"Keyword\"" in output1nim
 
     let input2 = """
 Parse the block with language specifier:

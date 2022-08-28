@@ -57,11 +57,11 @@ project. This allows you to take the generated code and place it directly
 into a project using any of these languages. Here are some typical command-
 line invocations:
 
-.. code:: cmd
-
-   nim c hallo.nim
-   nim cpp hallo.nim
-   nim objc hallo.nim
+  ```cmd
+  nim c hallo.nim
+  nim cpp hallo.nim
+  nim objc hallo.nim
+  ```
 
 The compiler commands select the target backend, but if needed you can
 `specify additional switches for cross-compilation
@@ -99,9 +99,9 @@ default is a ``.js`` file that is supposed to be referenced in an ``.html``
 file. However, you can also run the code with `nodejs`:idx:
 (`<http://nodejs.org>`_):
 
-.. code:: cmd
-
+  ```cmd
   nim js -d:nodejs -r examples/hallo.nim
+  ```
 
 If you experience errors saying that `globalThis` is not defined, be
 sure to run a recent version of Node.js (at least 12.0).
@@ -159,21 +159,22 @@ interface.
 
 Create a ``logic.c`` file with the following content:
 
-.. code-block:: c
+  ```c
   int addTwoIntegers(int a, int b)
   {
     return a + b;
   }
+  ```
 
 Create a ``calculator.nim`` file with the following content:
 
-.. code-block:: nim
-
+  ```nim
   {.compile: "logic.c".}
   proc addTwoIntegers(a, b: cint): cint {.importc.}
 
   when isMainModule:
     echo addTwoIntegers(3, 7)
+  ```
 
 With these two files in place, you can run `nim c -r calculator.nim`:cmd: and
 the Nim compiler will compile the ``logic.c`` file in addition to
@@ -182,11 +183,11 @@ run. Another way to link the C file statically and get the same effect would
 be to remove the line with the `compile` pragma and run the following
 typical Unix commands:
 
-.. code:: cmd
-
-    gcc -c logic.c
-    ar rvs mylib.a logic.o
-    nim c --passL:mylib.a -r calculator.nim
+  ```cmd
+  gcc -c logic.c
+  ar rvs mylib.a logic.o
+  nim c --passL:mylib.a -r calculator.nim
+  ```
 
 Just like in this example we pass the path to the ``mylib.a`` library (and we
 could as well pass ``logic.o``) we could be passing switches to link any other
@@ -197,8 +198,7 @@ static C library.
 
 Create a ``host.html`` file with the following content:
 
-.. code-block::
-
+  ```
   <html><body>
   <script type="text/javascript">
   function addTwoIntegers(a, b)
@@ -208,16 +208,17 @@ Create a ``host.html`` file with the following content:
   </script>
   <script type="text/javascript" src="calculator.js"></script>
   </body></html>
+  ```
 
 Create a ``calculator.nim`` file with the following content (or reuse the one
 from the previous section):
 
-.. code-block:: nim
-
+  ```nim
   proc addTwoIntegers(a, b: int): int {.importc.}
 
   when isMainModule:
     echo addTwoIntegers(3, 7)
+  ```
 
 Compile the Nim code to JavaScript with `nim js -o:calculator.js
 calculator.nim`:cmd: and open ``host.html`` in a browser. If the browser supports
@@ -253,18 +254,17 @@ Use `--nimMainPrefix:MyLib` and the function to call is named `MyLibNimMain`.
 
 Create a ``fib.nim`` file with the following content:
 
-.. code-block:: nim
-
+  ```nim
   proc fib(a: cint): cint {.exportc.} =
     if a <= 2:
       result = 1
     else:
       result = fib(a - 1) + fib(a - 2)
+  ```
 
 Create a ``maths.c`` file with the following content:
 
-.. code-block:: c
-
+  ```c
   #include <stdio.h>
 
   int fib(int a);
@@ -277,15 +277,16 @@ Create a ``maths.c`` file with the following content:
       printf("Fib of %d is %d\n", f, fib(f));
     return 0;
   }
+  ```
 
 Now you can run the following Unix like commands to first generate C sources
 from the Nim code, then link them into a static binary along your main C
 program:
 
-.. code:: cmd
-
+  ```cmd
   nim c --noMain --noLinking fib.nim
   gcc -o m -I$HOME/.cache/nim/fib_d -Ipath/to/nim/lib $HOME/.cache/nim/fib_d/*.c maths.c
+  ```
 
 The first command runs the Nim compiler with three special options to avoid
 generating a `main()`:c: function in the generated files and to avoid linking the
@@ -297,10 +298,10 @@ have to tell the C compiler where to find Nim's ``nimbase.h`` header file.
 Instead of depending on the generation of the individual ``.c`` files you can
 also ask the Nim compiler to generate a statically linked library:
 
-.. code:: cmd
-
+  ```cmd
   nim c --app:staticLib --noMain fib.nim
   gcc -o m -Inimcache -Ipath/to/nim/lib maths.c libfib.nim.a
+  ```
 
 The Nim compiler will handle linking the source files generated in the
 ``nimcache`` directory into the ``libfib.nim.a`` static library, which you can
@@ -313,25 +314,25 @@ use `-ldl`:option: too to link in required dlopen functionality.
 
 Create a ``mhost.html`` file with the following content:
 
-.. code-block::
-
+  ```
   <html><body>
   <script type="text/javascript" src="fib.js"></script>
   <script type="text/javascript">
   alert("Fib for 9 is " + fib(9));
   </script>
   </body></html>
+  ```
 
 Create a ``fib.nim`` file with the following content (or reuse the one
 from the previous section):
 
-.. code-block:: nim
-
+  ```nim
   proc fib(a: cint): cint {.exportc.} =
     if a <= 2:
       result = 1
     else:
       result = fib(a - 1) + fib(a - 2)
+  ```
 
 Compile the Nim code to JavaScript with `nim js -o:fib.js fib.nim`:cmd: and
 open ``mhost.html`` in a browser. If the browser supports javascript, you
@@ -378,10 +379,10 @@ from being freed with `GC_ref <system.html#GC_ref,string>`_ and `GC_unref
 A similar thing happens with C code invoking Nim code which returns a
 `cstring`. Consider the following proc:
 
-.. code-block:: nim
-
+  ```nim
   proc gimme(): cstring {.exportc.} =
     result = "Hey there C code! " & $rand(100)
+  ```
 
 Since Nim's reference counting mechanism is not aware of the C code, once the
 `gimme` proc has finished it can reclaim the memory of the `cstring`.
