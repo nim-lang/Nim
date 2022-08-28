@@ -293,7 +293,7 @@ proc nim2pdf(src: string, dst: string, nimArgs: string) =
   # xxx expose as a `nim` command or in some other reusable way.
   let outDir = "build" / "xelatextmp" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
   # note: this will generate temporary files in gitignored `outDir`: aux toc log out tex
-  exec("$# rst2tex $# --outdir:$# $#" % [findNim().quoteShell(), nimArgs, outDir.quoteShell, src.quoteShell])
+  exec("$# md2tex $# --outdir:$# $#" % [findNim().quoteShell(), nimArgs, outDir.quoteShell, src.quoteShell])
   let texFile = outDir / src.lastPathPart.changeFileExt("tex")
   for i in 0..<3: # call LaTeX three times to get cross references right:
     let xelatexLog = outDir / "xelatex.log"
