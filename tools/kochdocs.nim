@@ -121,15 +121,15 @@ proc getMd2html(): seq[string] =
   doAssert "doc/manual/var_t_return.md".unixToNativePath in result # sanity check
 
 const
-  rstPdfList = """
-manual.rst
-lib.rst
-tut1.rst
-tut2.rst
-tut3.rst
-nimc.rst
-niminst.rst
-mm.rst
+  mdPdfList = """
+manual.md
+lib.md
+tut1.md
+tut2.md
+tut3.md
+nimc.md
+niminst.md
+mm.md
 """.splitWhitespace().mapIt("doc" / it)
 
   doc0 = """
@@ -314,7 +314,7 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
   if os.execShellCmd("xelatex -version") != 0:
     doAssert false, "xelatex not found" # or, raise an exception
   else:
-    for src in items(rstPdfList):
+    for src in items(mdPdfList):
       let dst = destPath / src.lastPathPart.changeFileExt("pdf")
       pdfList.add dst
       nim2pdf(src, dst, nimArgs)
