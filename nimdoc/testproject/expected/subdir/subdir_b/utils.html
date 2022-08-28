@@ -27,12 +27,13 @@
       <h1 class="title">subdir/subdir_b/utils</h1>
       <div class="row">
   <div class="three columns">
-    <div class="theme-switch-wrapper">
-      <label class="theme-switch" for="checkbox">
-        <input type="checkbox" id="checkbox" />
-        <div class="slider round"></div>
-      </label>
-      &nbsp;&nbsp;&nbsp; <em>Dark Mode</em>
+    <div class="theme-select-wrapper">
+      <label for="theme-select">Theme:&nbsp;</label>
+      <select id="theme-select" onchange="setTheme(this.value)">
+        <option value="auto">🌗 Match OS</option>
+        <option value="dark">🌑 Dark</option>
+        <option value="light">🌕 Light</option>
+      </select>
     </div>
     <div id="global-links">
       <ul class="simple">
@@ -278,7 +279,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="'big-procs-all">
   <div id="'big,string">
-  <dt><pre><span class="Keyword">func</span> <a href="#%27big%2Cstring"><span class="Identifier">`'big`</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">func</span> <a href="#%27big%2Cstring"><span class="Identifier">`'big`</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     
@@ -323,7 +324,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="f-procs-all">
   <div id="f,G[int]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#f%2CG%5Bint%5D"><span class="Identifier">f</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <a href="utils.html#G"><span class="Identifier">G</span></a><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#f%2CG%5Bint%5D"><span class="Identifier">f</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <a href="utils.html#G"><span class="Identifier">G</span></a><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     There is also variant <a class="reference internal nimdoc" title="proc f(x: G[string])" href="#f,G[string]">f(G[string])</a>
@@ -331,7 +332,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
   </dd>
 </div>
 <div id="f,G[string]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#f%2CG%5Bstring%5D"><span class="Identifier">f</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <a href="utils.html#G"><span class="Identifier">G</span></a><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#f%2CG%5Bstring%5D"><span class="Identifier">f</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <a href="utils.html#G"><span class="Identifier">G</span></a><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     See also <a class="reference internal nimdoc" title="proc f(x: G[int])" href="#f,G[int]">f(G[int])</a>.
@@ -353,7 +354,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="fn2-procs-all">
   <div id="fn2">
-  <dt><pre><span class="Keyword">proc</span> <a href="#fn2"><span class="Identifier">fn2</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#fn2"><span class="Identifier">fn2</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     comment
@@ -361,7 +362,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
   </dd>
 </div>
 <div id="fn2,int">
-  <dt><pre><span class="Keyword">proc</span> <a href="#fn2%2Cint"><span class="Identifier">fn2</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#fn2%2Cint"><span class="Identifier">fn2</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     fn2 comment
@@ -369,7 +370,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
   </dd>
 </div>
 <div id="fn2,int,float">
-  <dt><pre><span class="Keyword">proc</span> <a href="#fn2%2Cint%2Cfloat"><span class="Identifier">fn2</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">y</span><span class="Other">:</span> <span class="Identifier">float</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#fn2%2Cint%2Cfloat"><span class="Identifier">fn2</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">y</span><span class="Other">:</span> <span class="Identifier">float</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     
@@ -380,7 +381,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="fn3-procs-all">
   <div id="fn3">
-  <dt><pre><span class="Keyword">proc</span> <a href="#fn3"><span class="Identifier">fn3</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">auto</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#fn3"><span class="Identifier">fn3</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">auto</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     comment
@@ -391,7 +392,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="fn4-procs-all">
   <div id="fn4">
-  <dt><pre><span class="Keyword">proc</span> <a href="#fn4"><span class="Identifier">fn4</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">auto</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#fn4"><span class="Identifier">fn4</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">auto</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     comment
@@ -402,7 +403,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="fn5-procs-all">
   <div id="fn5">
-  <dt><pre><span class="Keyword">proc</span> <a href="#fn5"><span class="Identifier">fn5</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#fn5"><span class="Identifier">fn5</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     comment
@@ -413,7 +414,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="fn6-procs-all">
   <div id="fn6">
-  <dt><pre><span class="Keyword">proc</span> <a href="#fn6"><span class="Identifier">fn6</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#fn6"><span class="Identifier">fn6</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     comment
@@ -424,7 +425,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="fn7-procs-all">
   <div id="fn7">
-  <dt><pre><span class="Keyword">proc</span> <a href="#fn7"><span class="Identifier">fn7</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#fn7"><span class="Identifier">fn7</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     comment
@@ -435,7 +436,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="fn8-procs-all">
   <div id="fn8">
-  <dt><pre><span class="Keyword">proc</span> <a href="#fn8"><span class="Identifier">fn8</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">auto</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#fn8"><span class="Identifier">fn8</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">auto</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     comment
@@ -446,7 +447,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="fn9-procs-all">
   <div id="fn9,int">
-  <dt><pre><span class="Keyword">func</span> <a href="#fn9%2Cint"><span class="Identifier">fn9</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">func</span> <a href="#fn9%2Cint"><span class="Identifier">fn9</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     comment
@@ -457,7 +458,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="fn10-procs-all">
   <div id="fn10,int">
-  <dt><pre><span class="Keyword">func</span> <a href="#fn10%2Cint"><span class="Identifier">fn10</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">func</span> <a href="#fn10%2Cint"><span class="Identifier">fn10</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     comment
@@ -468,7 +469,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="fN11-procs-all">
   <div id="fN11">
-  <dt><pre><span class="Keyword">func</span> <a href="#fN11"><span class="Identifier">fN11</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">func</span> <a href="#fN11"><span class="Identifier">fN11</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     
@@ -476,7 +477,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
   </dd>
 </div>
 <div id="fN11,int">
-  <dt><pre><span class="Keyword">func</span> <a href="#fN11%2Cint"><span class="Identifier">fN11</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">func</span> <a href="#fN11%2Cint"><span class="Identifier">fN11</span></a><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     
@@ -498,7 +499,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
 </div>
 <div id="someType-procs-all">
   <div id="someType_2">
-  <dt><pre><span class="Keyword">proc</span> <a href="#someType_2"><span class="Identifier">someType</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#someType_2"><span class="Identifier">someType</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     constructor.
@@ -515,7 +516,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
   <dl class="item">
     <div id="fooBar-iterators-all">
   <div id="fooBar.i,seq[SomeType]">
-  <dt><pre><span class="Keyword">iterator</span> <a href="#fooBar.i%2Cseq%5BSomeType%5D"><span class="Identifier">fooBar</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">iterator</span> <a href="#fooBar.i%2Cseq%5BSomeType%5D"><span class="Identifier">fooBar</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="utils.html#SomeType"><span class="Identifier">SomeType</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> </span><span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span>.}</pre></dt>
   <dd>
     
     

@@ -32,6 +32,7 @@ type
     # non-fatal errors
     errIllFormedAstX, errCannotOpenFile,
     errXExpected,
+    errRstMissingClosing,
     errRstGridTableNotImplemented,
     errRstMarkdownIllformedTable,
     errRstIllformedTable,
@@ -79,6 +80,8 @@ type
     warnHoleEnumConv = "HoleEnumConv",
     warnCstringConv = "CStringConv",
     warnEffect = "Effect",
+    warnCastSizes = "CastSizes"
+    warnTemplateRedefinition = "TemplateRedefinition",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -105,6 +108,7 @@ const
     errIllFormedAstX: "illformed AST: $1",
     errCannotOpenFile: "cannot open '$1'",
     errXExpected: "'$1' expected",
+    errRstMissingClosing: "$1",
     errRstGridTableNotImplemented: "grid table is not implemented",
     errRstMarkdownIllformedTable: "illformed delimiter row of a markdown table",
     errRstIllformedTable: "Illformed table: $1",
@@ -171,6 +175,8 @@ const
     warnHoleEnumConv: "$1",
     warnCstringConv: "$1",
     warnEffect: "$1",
+    warnCastSizes: "$1",
+    warnTemplateRedefinition: "template '$1' is implicitly redefined, consider adding an explicit .redefine pragma",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`

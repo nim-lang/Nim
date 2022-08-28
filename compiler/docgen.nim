@@ -23,6 +23,10 @@ from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
 from nodejs import findNodeJs
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
+
 const
   exportSection = skField
   docCmdSkip = "skip"
@@ -88,7 +92,7 @@ type
     jEntriesFinal: JsonNode    # final JSON after RST pass 2 and rendering
     types: TStrTable
     sharedState: PRstSharedState
-    isPureRst: bool
+    standaloneDoc: bool
     conf*: ConfigRef
     cache*: IdentCache
     exampleCounter: int
@@ -230,6 +234,7 @@ template declareClosures =
     case msgKind
     of meCannotOpenFile: k = errCannotOpenFile
     of meExpected: k = errXExpected
+    of meMissingClosing: k = errRstMissingClosing
     of meGridTableNotImplemented: k = errRstGridTableNotImplemented
     of meMarkdownIllformedTable: k = errRstMarkdownIllformedTable
     of meIllformedTable: k = errRstIllformedTable
@@ -276,19 +281,24 @@ proc isLatexCmd(conf: ConfigRef): bool = conf.cmd in {cmdRst2tex, cmdDoc2tex}
 
 proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
                     outExt: string = HtmlExt, module: PSym = nil,
-                    isPureRst = false): PDoc =
+                    standaloneDoc = false, preferMarkdown = true,
+                    hasToc = true): PDoc =
   declareClosures()
   new(result)
   result.module = module
   result.conf = conf
   result.cache = cache
   result.outDir = conf.outDir.string
-  result.isPureRst = isPureRst
-  var options= {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown, roSandboxDisabled}
-  if not isPureRst: options.incl roNimFile
+  result.standaloneDoc = standaloneDoc
+  var options= {roSupportRawDirective, roSupportMarkdown, roSandboxDisabled}
+  if preferMarkdown:
+    options.incl roPreferMarkdown
+  if not standaloneDoc: options.incl roNimFile
+  # (options can be changed dynamically in `setDoctype` by `{.doctype.}`)
+  result.hasToc = hasToc
   result.sharedState = newRstSharedState(
       options, filename.string,
-      docgenFindFile, compilerMsgHandler)
+      docgenFindFile, compilerMsgHandler, hasToc)
   initRstGenerator(result[], (if conf.isLatexCmd: outLatex else: outHtml),
                    conf.configVars, filename.string,
                    docgenFindFile, compilerMsgHandler)
@@ -333,7 +343,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
       # Make sure the destination directory exists
       createDir(outp.splitFile.dir)
       # Include the current file if we're parsing a nim file
-      let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename.replace("\\", "/")]
+      let importStmt = if d.standaloneDoc: "" else: "import \"$1\"\n" % [d.filename.replace("\\", "/")]
       writeFile(outp, importStmt & content)
 
       proc interpSnippetCmd(cmd: string): string =
@@ -1114,6 +1124,44 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
           param["types"].add %($kind)
         result.json["signature"]["genericParams"].add param
 
+proc setDoctype(d: PDoc, n: PNode) =
+  ## Processes `{.doctype.}` pragma changing Markdown/RST parsing options.
+  if n == nil:
+    return
+  if n.len != 2:
+    localError(d.conf, n.info, errUser,
+      "doctype pragma takes exactly 1 argument"
+    )
+    return
+  var dt = ""
+  case n[1].kind
+  of nkStrLit:
+    dt = toLowerAscii(n[1].strVal)
+  of nkIdent:
+    dt = toLowerAscii(n[1].ident.s)
+  else:
+    localError(d.conf, n.info, errUser,
+      "unknown argument type $1 provided to doctype" % [$n[1].kind]
+    )
+    return
+  case dt
+  of "markdown":
+    d.sharedState.options.incl roSupportMarkdown
+    d.sharedState.options.incl roPreferMarkdown
+  of "rstmarkdown":
+    d.sharedState.options.incl roSupportMarkdown
+    d.sharedState.options.excl roPreferMarkdown
+  of "rst":
+    d.sharedState.options.excl roSupportMarkdown
+    d.sharedState.options.excl roPreferMarkdown
+  else:
+    localError(d.conf, n.info, errUser,
+      (
+        "unknown doctype value \"$1\", should be from " &
+        "\"RST\", \"Markdown\", \"RstMarkdown\""
+      ) % [dt]
+    )
+
 proc checkForFalse(n: PNode): bool =
   result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
 
@@ -1209,8 +1257,9 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
   let p3 = documentWriteEffect(cache, n, sfWrittenTo, "writes")
   let p4 = documentNewEffect(cache, n)
   let p5 = documentWriteEffect(cache, n, sfEscapes, "escapes")
+  let p6 = documentEffect(cache, n, pragmas, wForbids, forbiddenEffects)
 
-  if p1 != nil or p2 != nil or p3 != nil or p4 != nil or p5 != nil:
+  if p1 != nil or p2 != nil or p3 != nil or p4 != nil or p5 != nil or p6 != nil:
     if pragmas.kind == nkEmpty:
       n[pragmasPos] = newNodeI(nkPragma, n.info)
     if p1 != nil: n[pragmasPos].add p1
@@ -1218,6 +1267,7 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
     if p3 != nil: n[pragmasPos].add p3
     if p4 != nil: n[pragmasPos].add p4
     if p5 != nil: n[pragmasPos].add p5
+    if p6 != nil: n[pragmasPos].add p6
 
 proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
   ## Goes through nim nodes recursively and collects doc comments.
@@ -1229,6 +1279,8 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
     d.modDeprecationMsg.add(genDeprecationMsg(d, pragmaNode))
+    let doctypeNode = findPragma(n, wDoctype)
+    setDoctype(d, doctypeNode)
   of nkCommentStmt: d.modDescPre.add(genComment(d, n))
   of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
@@ -1289,6 +1341,7 @@ proc finishGenerateDoc*(d: var PDoc) =
     if fragment.isRst:
       firstRst = fragment.rst
       break
+  d.hasToc = d.hasToc or d.sharedState.hasToc
   preparePass2(d.sharedState, firstRst)
 
   # add anchors to overload groups before RST resolution
@@ -1346,7 +1399,6 @@ proc finishGenerateDoc*(d: var PDoc) =
     d.section[k].secItems.clear
   renderItemPre(d, d.modDescPre, d.modDescFinal)
   d.modDescPre.setLen 0
-  d.hasToc = d.hasToc or d.sharedState.hasToc
 
   # Finalize fragments of ``.json`` file
   for i, entry in d.jEntriesPre:
@@ -1355,14 +1407,18 @@ proc finishGenerateDoc*(d: var PDoc) =
       var str: string
       renderRstToOut(d[], resolved, str)
       entry.json[entry.rstField] = %str
-      d.jEntriesFinal.add entry.json
       d.jEntriesPre[i].rst = nil
+
+    d.jEntriesFinal.add entry.json # generates docs
 
 proc add(d: PDoc; j: JsonItem) =
   if j.json != nil or j.rst != nil: d.jEntriesPre.add j
 
 proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
   case n.kind
+  of nkPragma:
+    let doctypeNode = findPragma(n, wDoctype)
+    setDoctype(d, doctypeNode)
   of nkCommentStmt:
     if includeComments:
       d.add JsonItem(rst: genComment(d, n), rstField: "comment",
@@ -1471,10 +1527,21 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
     for item in d.tocSimple[kind].sorted(cmp):
       d.toc2[kind].add item.content
 
-  d.toc[kind] = getConfigVar(d.conf, "doc.section.toc") % [
-      "sectionid", $ord(kind), "sectionTitle", title,
-      "sectionTitleID", $(ord(kind) + 50), "content", d.toc2[kind]]
+  let sectionValues = @[
+     "sectionID", $ord(kind), "sectionTitleID", $(ord(kind) + 50),
+     "sectionTitle", title
+  ]
 
+  # Check if the toc has any children
+  if d.toc2[kind] != "":
+    # Use the dropdown version instead and store the children in the dropdown
+    d.toc[kind] = getConfigVar(d.conf, "doc.section.toc") % (sectionValues & @[
+       "content", d.toc2[kind]
+    ])
+  else:
+    # Just have the link
+    d.toc[kind] =  getConfigVar(d.conf, "doc.section.toc_item") % sectionValues
+    
 proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): string =
   $relativeTo(outDir / linkto, destFile.splitFile().dir, '/')
 
@@ -1512,7 +1579,7 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
         "\\\\\\vspace{0.5em}\\large $1", [esc(d.target, d.meta[metaSubtitle])])
 
   var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
-  let bodyname = if d.hasToc and not d.isPureRst and not d.conf.isLatexCmd:
+  let bodyname = if d.hasToc and not d.standaloneDoc and not d.conf.isLatexCmd:
                    groupsection.setLen 0
                    "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
@@ -1596,6 +1663,8 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
   if optStdout in d.conf.globalOptions:
     write(stdout, $content)
   else:
+    let dir = d.destFile.splitFile.dir
+    createDir(dir)
     var f: File
     if open(f, d.destFile, fmWrite):
       write(f, $content)
@@ -1618,17 +1687,18 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
   handleDocOutputOptions conf
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
-  var d = newDocumentor(conf.projectFull, cache, conf)
-  d.hasToc = true
+  var d = newDocumentor(conf.projectFull, cache, conf, hasToc = true)
   generateDoc(d, ast, ast)
   finishGenerateDoc(d)
   writeOutput(d)
   generateIndex(d)
 
 proc commandRstAux(cache: IdentCache, conf: ConfigRef;
-                   filename: AbsoluteFile, outExt: string) =
+                   filename: AbsoluteFile, outExt: string,
+                   preferMarkdown: bool) =
   var filen = addFileExt(filename, "txt")
-  var d = newDocumentor(filen, cache, conf, outExt, isPureRst = true)
+  var d = newDocumentor(filen, cache, conf, outExt, standaloneDoc = true,
+                        preferMarkdown = preferMarkdown, hasToc = false)
   let rst = parseRst(readFile(filen.string),
                      line=LineRstInit, column=ColRstInit,
                      conf, d.sharedState)
@@ -1637,22 +1707,23 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
   writeOutput(d)
   generateIndex(d)
 
-proc commandRst2Html*(cache: IdentCache, conf: ConfigRef) =
-  commandRstAux(cache, conf, conf.projectFull, HtmlExt)
+proc commandRst2Html*(cache: IdentCache, conf: ConfigRef,
+                      preferMarkdown=false) =
+  commandRstAux(cache, conf, conf.projectFull, HtmlExt, preferMarkdown)
 
-proc commandRst2TeX*(cache: IdentCache, conf: ConfigRef) =
-  commandRstAux(cache, conf, conf.projectFull, TexExt)
+proc commandRst2TeX*(cache: IdentCache, conf: ConfigRef,
+                     preferMarkdown=false) =
+  commandRstAux(cache, conf, conf.projectFull, TexExt, preferMarkdown)
 
 proc commandJson*(cache: IdentCache, conf: ConfigRef) =
   ## implementation of a deprecated jsondoc0 command
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
-  var d = newDocumentor(conf.projectFull, cache, conf)
+  var d = newDocumentor(conf.projectFull, cache, conf, hasToc = true)
   d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
                           status: int; content: string) =
     localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
                warnUser, "the ':test:' attribute is not supported by this backend")
-  d.hasToc = true
   generateJson(d, ast)
   finishGenerateDoc(d)
   let json = d.jEntriesFinal
@@ -1671,12 +1742,11 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
 proc commandTags*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
-  var d = newDocumentor(conf.projectFull, cache, conf)
+  var d = newDocumentor(conf.projectFull, cache, conf, hasToc = true)
   d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
                           status: int; content: string) =
     localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
                warnUser, "the ':test:' attribute is not supported by this backend")
-  d.hasToc = true
   var
     content = ""
   generateTags(d, ast, content)

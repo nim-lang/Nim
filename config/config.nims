@@ -26,4 +26,3 @@ when defined(windows) and not defined(booting):
   switch("define", "nimRawSetjmp")
 
 switch("define", "nimVersion:" & NimVersion)
-switch("define", "nimPreviewDotLikeOps")

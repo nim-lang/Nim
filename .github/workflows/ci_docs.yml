@@ -6,6 +6,7 @@ on:
       - 'compiler/renderverbatim.nim'
       - 'config/nimdoc.cfg'
       - 'doc/**.rst'
+      - 'doc/**.md'
       - 'doc/nimdoc.css'
       - 'lib/**.nim'
       - 'nimdoc/testproject/expected/testproject.html'
@@ -20,6 +21,7 @@ on:
       - 'compiler/renderverbatim.nim'
       - 'config/nimdoc.cfg'
       - 'doc/**.rst'
+      - 'doc/**.md'
       - 'doc/nimdoc.css'
       - 'lib/**.nim'
       - 'nimdoc/testproject/expected/testproject.html'
@@ -40,7 +42,7 @@ jobs:
           - target: windows
             os: windows-2019
           - target: osx
-            os: macos-10.15
+            os: macos-11
 
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
@@ -48,7 +50,7 @@ jobs:
 
     steps:
       - name: 'Checkout'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 2
 
@@ -104,7 +106,7 @@ jobs:
         if: |
           github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
           matrix.target == 'linux'
-        uses: crazy-max/ghaction-github-pages@v1
+        uses: crazy-max/ghaction-github-pages@v3
         with:
           build_dir: doc/html
         env:
