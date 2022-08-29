@@ -790,9 +790,11 @@ of a call or whether it is parsed as a tuple constructor:
 
   ```nim
   echo(1, 2) # pass 1 and 2 to echo
+  ```
 
   ```nim
   echo (1, 2) # pass the tuple (1, 2) to echo
+  ```
 
 Dot-like operators
 ------------------
@@ -2394,9 +2396,8 @@ If `A` is a subtype of `B` and `A` and `B` are `object` types then:
 - `ref A` is a subtype of `ref B`
 - `ptr A` is a subtype of `ptr B`.
 
-**Note**: In later versions of the language the subtype relation might
-be changed to *require* the pointer indirection in order to prevent
-"object slicing".
+**Note**: One of the above pointer-indirections is required for assignment from
+a subtype to its parent type to prevent "object slicing".
 
 
 Convertible relation
@@ -3943,7 +3944,7 @@ argument in inline calls, as well as a direct mirror of Nim's routine syntax.
   macroResults.add quote do:
     if not `ex`:
       echo `info`, ": Check failed: ", `expString`
-  
+
   # Processing a routine definition in a macro:
   rpc(router, "add") do (a, b: int) -> int:
     result = a + b
@@ -5083,10 +5084,7 @@ exception tracking.
 
 There is also a way which can be used to forbid certain effects:
 
-.. code-block:: nim
-    :test: "nim c --warningAsError:Effect:on $1"
-    :status: 1
-
+  ```nim  test = "nim c --warningAsError:Effect:on $1"  status = 1
   type IO = object ## input/output effect
   proc readLine(): string {.tags: [IO].} = discard
   proc echoLine(): void = discard
@@ -5096,13 +5094,14 @@ There is also a way which can be used to forbid certain effects:
     echoLine()
     # the compiler prevents this:
     let y = readLine()
+  ```
 
 The `forbids` pragma defines a list of illegal effects - if any statement
 invokes any of those effects, the compilation will fail.
 Procedure types with any disallowed effect are the subtypes of equal
 procedure types without such lists:
 
-.. code-block:: nim
+  ```nim
   type MyEffect = object
   type ProcType1 = proc (i: int): void {.forbids: [MyEffect].}
   type ProcType2 = proc (i: int): void
@@ -5123,6 +5122,7 @@ procedure types without such lists:
   ## these are OK because ProcType2 doesn't have any effect requirement:
   caller2(toBeCalled1)
   caller2(toBeCalled2)
+  ```
 
 `ProcType2` is a subtype of `ProcType1`. Unlike with tags, the parent context - the function which calls other functions with forbidden effects - doesn't inherit the forbidden list of effects.
 
@@ -6160,7 +6160,7 @@ as arguments if called in statement form.
     # to perform the task
   do:
     # code to undo it
-  
+
   let num = 12
   # a single colon may be used if there is no initial block
   match (num mod 3, num mod 5):
@@ -6443,7 +6443,7 @@ passing `typeOfProc` as the second argument to `typeof`:
   iterator split(s: string): string = discard
   proc split(s: string): seq[string] = discard
 
-  # since an iterator is the preferred interpretation, `y` has the type `string`:
+  # since an iterator is the preferred interpretation, this has the type `string`:
   assert typeof("a b c".split) is string
 
   assert typeof("a b c".split, typeOfProc) is seq[string]
@@ -6499,7 +6499,7 @@ This is best illustrated by an example:
 Import statement
 ----------------
 
-After the `import` statement, a list of module names can follow or a single
+After the `import` keyword, a list of module names can follow or a single
 module name followed by an `except` list to prevent some symbols from being
 imported:
 
@@ -6512,8 +6512,8 @@ imported:
 
 
 It is not checked that the `except` list is really exported from the module.
-This feature allows us to compile against an older version of the module that
-does not export these identifiers.
+This feature allows us to compile against different versions of the module,
+even when one version does not export some of these identifiers.
 
 The `import` statement is only allowed at the top level.
 
@@ -6548,7 +6548,8 @@ The `include` statement can be used outside the top level, as such:
 Module names in imports
 -----------------------
 
-A module alias can be introduced via the `as` keyword:
+A module alias can be introduced via the `as` keyword, after which the original module name
+is inaccessible:
 
   ```nim
   import std/strutils as su, std/sequtils as qu
@@ -6556,8 +6557,7 @@ A module alias can be introduced via the `as` keyword:
   echo su.format("$1", "lalelu")
   ```
 
-The original module name is then not accessible. The notations
-`path/to/module` or `"path/to/module"` can be used to refer to a module
+The notations `path/to/module` or `"path/to/module"` can be used to refer to a module
 in subdirectories:
 
   ```nim
@@ -6614,7 +6614,7 @@ It is recommended and preferred but not currently enforced that all stdlib modul
 From import statement
 ---------------------
 
-After the `from` statement, a module name followed by
+After the `from` keyword, a module name followed by
 an `import` to list the symbols one likes to use without explicit
 full qualification:
 
@@ -7049,6 +7049,22 @@ immediate pragma
 The immediate pragma is obsolete. See `Typed vs untyped parameters
 <#templates-typed-vs-untyped-parameters>`_.
 
+redefine pragma
+---------------
+
+Redefinition of template symbols with the same signature is allowed.
+This can be made explicit with the `redefine` pragma:
+
+```nim
+template foo: int = 1
+echo foo() # 1
+template foo: int {.redefine.} = 2
+echo foo() # 2
+# warning: implicit redefinition of template
+template foo: int = 3
+```
+
+This is mostly intended for macro generated code. 
 
 compilation option pragmas
 --------------------------
@@ -7159,8 +7175,9 @@ Disabling certain messages
 --------------------------
 Nim generates some warnings and hints ("line too long") that may annoy the
 user. A mechanism for disabling certain messages is provided: Each hint
-and warning message contains a symbol in brackets. This is the message's
-identifier that can be used to enable or disable it:
+and warning message is associated with a symbol. This is the message's
+identifier, which can be used to enable or disable the message by putting it
+in brackets following the pragma:
 
   ```Nim
   {.hint[LineTooLong]: off.} # turn off the hint about too long lines
@@ -8079,18 +8096,20 @@ from C. The optional argument is a string containing the C identifier. If
 the argument is missing, the C name is the Nim identifier *exactly as
 spelled*:
 
-.. code-block::
+  ```nim
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
+  ```
 
 When `importc` is applied to a `let` statement it can omit its value which
 will then be expected to come from C. This can be used to import a C `const`:c:\:
 
-.. code-block::
+  ```nim
   {.emit: "const int cconst = 42;".}
 
   let cconst {.importc, nodecl.}: cint
 
   assert cconst == 42
+  ```
 
 Note that this pragma has been abused in the past to also work in the
 JS backend for JS objects and functions. Other backends do provide
@@ -8317,8 +8336,7 @@ violations of the `no heap sharing restriction`:idx:\: This restriction implies
 that it is invalid to construct a data structure that consists of memory
 allocated from different (thread-local) heaps.
 
-A thread proc is passed to `createThread` or `spawn` and invoked
-indirectly; so the `thread` pragma implies `procvar`.
+A thread proc can be passed to `createThread` or `spawn`.
 
 
 

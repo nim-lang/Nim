@@ -72,12 +72,12 @@ Whenever an example of usage would be helpful to the user, you should include on
     ## truncating the result.
     ##
     ##   ```
-    ##   # things that aren't suitable for a `runnableExamples` go in code-block:
+    ##   # things that aren't suitable for a `runnableExamples` go in code block:
     ##   echo execCmdEx("git pull")
     ##   drawOnScreen()
     ##   ```
     runnableExamples:
-      # `runnableExamples` is usually preferred to ``code-block``, when possible.
+      # `runnableExamples` is usually preferred to code blocks, when possible.
       doAssert addThree(3, 125, 6) == -122
     result = x +% y +% z
   ````
