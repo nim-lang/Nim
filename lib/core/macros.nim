@@ -11,7 +11,7 @@ include "system/inclrtl"
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, formatfloat]
 
 
 ## This module contains the interface to the compiler's abstract syntax

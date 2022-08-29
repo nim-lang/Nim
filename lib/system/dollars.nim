@@ -4,8 +4,14 @@ runnableExamples:
   assert $(-2*3) == "-6"
 
 import std/private/[digitsutils, miscdollars]
-import system/formatfloat
-export addFloat
+
+when not defined(nimPreviewSlimSystem):
+  import std/formatfloat
+  export addFloat
+
+  func `$`*(x: float | float32): string =
+    ## Outplace version of `addFloat`.
+    result.addFloat(x)
 
 proc `$`*(x: int): string {.raises: [].} =
   ## Outplace version of `addInt`.
@@ -27,9 +33,6 @@ gen(int)
 gen(uint64)
 gen(int64)
 
-func `$`*(x: float | float32): string =
-  ## Outplace version of `addFloat`.
-  result.addFloat(x)
 
 proc `$`*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## The stringify operator for a boolean argument. Returns `x`

@@ -25,6 +25,9 @@ when defined(nimfix):
 when not defined(leanCompiler):
   import spawn
 
+when defined(nimPreviewSlimSystem):
+  import std/formatfloat
+
 # implementation
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode
