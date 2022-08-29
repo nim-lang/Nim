@@ -260,8 +260,6 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
       assert splitPath("/bin") == ("/", "bin")
     assert splitPath("bin") == ("", "bin")
     assert splitPath("") == ("", "")
-    when doslikeFileSystem:
-      assert splitPath("//?/c:") == ("//?/c:", "")
 
   when doslikeFileSystem:
     let (drive, splitpath) = splitDrive(path)
@@ -374,8 +372,6 @@ proc relativePath*(path, base: string, sep = DirSep): string {.
     assert relativePath("", "/users/moo", '/') == ""
     assert relativePath("foo", ".", '/') == "foo"
     assert relativePath("foo", "foo", '/') == "."
-    when doslikeFileSystem:
-      assert relativePath("//?/c:///Users//me", "//?/c:", '/') == "Users/me"
 
   if path.len == 0: return ""
   var base = if base == ".": "" else: base
@@ -483,13 +479,6 @@ proc parentDir*(path: string): string {.
       assert parentDir("/./foo//./") == "/"
       assert parentDir("a//./") == "."
       assert parentDir("a/b/c/..") == "a"
-      assert parentDir("/") == ""
-    when doslikeFileSystem:
-      assert parentDir(r"\\?\c:") == r""
-      assert parentDir(r"//?/c:/Users") == r"\\?\c:"
-      assert parentDir(r"\\\\localhost\\c$") == r""
-      assert parentDir(r"\Users") == r"\"
-
   result = pathnorm.normalizePath(path)
   when doslikeFileSystem:
     let (drive, splitpath) = splitDrive(result)
@@ -528,10 +517,6 @@ proc tailDir*(path: string): string {.
     assert tailDir("//usr//local//bin//") == "usr//local//bin//"
     assert tailDir("./usr/local/bin") == "usr/local/bin"
     assert tailDir("usr/local/bin") == "local/bin"
-    when doslikeFileSystem:
-      assert tailDir("//?/c:") == ""
-      assert tailDir("//?/c:/Users") == "Users"
-      assert tailDir(r"\\localhost\c$\Windows\System32") == r"Windows\System32"
 
   var i = 0
   when doslikeFileSystem:
@@ -555,10 +540,6 @@ proc isRootDir*(path: string): bool {.
     assert isRootDir("a")
     assert not isRootDir("/a")
     assert not isRootDir("a/b/c")
-    when doslikeFileSystem:
-      assert isRootDir("//?/c:")
-      assert isRootDir("//?/UNC/localhost/c$")
-      assert not isRootDir(r"\\?\c:\Users")
 
   when doslikeFileSystem:
     if splitDrive(path).path == "":
@@ -599,22 +580,6 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
       # a/b
       # a
 
-    when doslikeFileSystem:
-      import std/sequtils
-
-      doAssert parentDirs(r"C:\Users", fromRoot = true).toSeq == @[r"C:\", r"C:\Users"]
-      doAssert parentDirs(r"C:\Users", fromRoot = false).toSeq == @[r"C:\Users", r"C:"]
-      doAssert parentDirs(r"\\?\c:\Users", fromRoot = true).toSeq ==
-        @[r"\\?\c:\", r"\\?\c:\Users"]
-      doAssert parentDirs(r"\\?\c:\Users", fromRoot = false).toSeq ==
-        @[r"\\?\c:\Users", r"\\?\c:"]
-      doAssert parentDirs(r"//localhost/c$/Users", fromRoot = true).toSeq ==
-        @[r"//localhost/c$/", r"//localhost/c$/Users"]
-      doAssert parentDirs(r"//?/UNC/localhost/c$/Users", fromRoot = false).toSeq ==
-        @[r"//?/UNC/localhost/c$/Users", r"\\?\UNC\localhost\c$"]
-      doAssert parentDirs(r"\Users", fromRoot = true).toSeq == @[r"\", r"\Users"]
-      doAssert parentDirs(r"\Users", fromRoot = false).toSeq == @[r"\Users", r"\"]
-
   if not fromRoot:
     var current = path
     if inclusive: yield path
@@ -646,10 +611,6 @@ proc `/../`*(head, tail: string): string {.noSideEffect.} =
     when defined(posix):
       assert "a/b/c" /../ "d/e" == "a/b/d/e"
       assert "a" /../ "d/e" == "a/d/e"
-    when doslikeFileSystem:
-      assert r"//?/c:" /../ "d/e" == r"\\?\c:\d\e"
-      assert r"//?/c:/Users" /../ "d/e" == r"\\?\c:\d\e"
-      assert r"\\localhost\c$" /../ "d/e" == r"\\localhost\c$\d\e"
 
   when doslikeFileSystem:
     let (drive, head) = splitDrive(head)
@@ -724,13 +685,6 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     assert dir == "/"
     assert name == "tmp"
     assert ext == ".txt"
-    when doslikeFileSystem:
-      assert splitFile("//?/c:") == ("//?/c:", "", "")
-      assert splitFile("//?/c:/Users") == ("//?/c:", "Users", "")
-      (dir, name, ext) = splitFile(r"\\localhost\c$\test.txt")
-      assert dir == r"\\localhost\c$"
-      assert name == "test"
-      assert ext == ".txt"
 
   var namePos = 0
   var dotPos = 0

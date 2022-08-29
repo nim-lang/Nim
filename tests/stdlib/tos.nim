@@ -715,7 +715,7 @@ block: # isAdmin
 when doslikeFileSystem:
   import std/[sequtils, private/ntpath]
 
-  block: # Bug #19103 UNC paths integration test
+  block: # Bug #19103 UNC paths
 
     # Easiest way of generating a valid, readable and writable UNC path
     let tempDir = r"\\?\" & getTempDir()
@@ -737,3 +737,41 @@ when doslikeFileSystem:
     createDir pathNoDrive / "test"
     doAssert dirExists pathNoDrive / "test"
     removeDir pathNoDrive / "test"
+
+    doAssert splitPath("//?/c:") == ("//?/c:", "")
+
+    doAssert relativePath("//?/c:///Users//me", "//?/c:", '/') == "Users/me"
+
+    doAssert parentDir(r"\\?\c:") == r""
+    doAssert parentDir(r"//?/c:/Users") == r"\\?\c:"
+    doAssert parentDir(r"\\localhost\c$") == r""
+    doAssert parentDir(r"\Users") == r"\"
+
+    doAssert tailDir("//?/c:") == ""
+    doAssert tailDir("//?/c:/Users") == "Users"
+    doAssert tailDir(r"\\localhost\c$\Windows\System32") == r"Windows\System32"
+
+    doAssert isRootDir("//?/c:")
+    doAssert isRootDir("//?/UNC/localhost/c$")
+    doAssert not isRootDir(r"\\?\c:\Users")
+
+    doAssert parentDirs(r"C:\Users", fromRoot = true).toSeq == @[r"C:\", r"C:\Users"]
+    doAssert parentDirs(r"C:\Users", fromRoot = false).toSeq == @[r"C:\Users", r"C:"]
+    doAssert parentDirs(r"\\?\c:\Users", fromRoot = true).toSeq ==
+      @[r"\\?\c:\", r"\\?\c:\Users"]
+    doAssert parentDirs(r"\\?\c:\Users", fromRoot = false).toSeq ==
+      @[r"\\?\c:\Users", r"\\?\c:"]
+    doAssert parentDirs(r"//localhost/c$/Users", fromRoot = true).toSeq ==
+      @[r"//localhost/c$/", r"//localhost/c$/Users"]
+    doAssert parentDirs(r"//?/UNC/localhost/c$/Users", fromRoot = false).toSeq ==
+      @[r"//?/UNC/localhost/c$/Users", r"\\?\UNC\localhost\c$"]
+    doAssert parentDirs(r"\Users", fromRoot = true).toSeq == @[r"\", r"\Users"]
+    doAssert parentDirs(r"\Users", fromRoot = false).toSeq == @[r"\Users", r"\"]
+
+    doAssert r"//?/c:" /../ "d/e" == r"\\?\c:\d\e"
+    doAssert r"//?/c:/Users" /../ "d/e" == r"\\?\c:\d\e"
+    doAssert r"\\localhost\c$" /../ "d/e" == r"\\localhost\c$\d\e"
+
+    doAssert splitFile("//?/c:") == ("//?/c:", "", "")
+    doAssert splitFile("//?/c:/Users") == ("//?/c:", "Users", "")
+    doAssert splitFile(r"\\localhost\c$\test.txt") == (r"\\localhost\c$", "test", ".txt")
