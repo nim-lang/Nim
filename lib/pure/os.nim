@@ -268,6 +268,7 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
     let stop = drive.len
   else:
     const stop = 0
+
   var sepPos = -1
   for i in countdown(len(path)-1, stop):
     if path[i] in {DirSep, AltSep}:
