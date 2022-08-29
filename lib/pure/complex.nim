@@ -81,6 +81,13 @@ func abs2*[T](z: Complex[T]): T =
   ## that is the squared distance from (0, 0) to `z`.
   ## This is more efficient than `abs(z) ^ 2`.
   result = z.re * z.re + z.im * z.im
+  
+func sgn*[T](z: Complex[T]): Complex[T] =
+  ## Returns the phase of `z` as a unit complex number,
+  ## or 0 if `z` is 0.
+  let a = abs(z)
+  if a != 0:
+    result = z / a
 
 func conjugate*[T](z: Complex[T]): Complex[T] =
   ## Returns the complex conjugate of `z` (`complex(z.re, -z.im)`).
