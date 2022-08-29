@@ -19,16 +19,16 @@ when doslikeFileSystem:
 
   block: # / -> \
     initVars
-    addNormalizePath("//?/c:/./foo//bar/../baz", result, state, '\\')
-    doAssert result == "\\\\?\\c:\\foo\\baz"
+    addNormalizePath(r"//?/c:/./foo//bar/../baz", result, state, '\\')
+    doAssert result == r"\\?\c:\foo\baz"
     addNormalizePath("me", result, state, '\\')
-    doAssert result == "\\\\?\\c:\\foo\\baz\\me"
+    doAssert result == r"\\?\c:\foo\baz\me"
 
   block: # Append path component to UNC drive
     initVars
-    addNormalizePath("//?/c:", result, state, '\\')
-    doAssert result == "\\\\?\\c:"
+    addNormalizePath(r"//?/c:", result, state, '\\')
+    doAssert result == r"\\?\c:"
     addNormalizePath("Users", result, state, '\\')
-    doAssert result == "\\\\?\\c:\\Users"
+    doAssert result == r"\\?\c:\Users"
     addNormalizePath("me", result, state, '\\')
-    doAssert result == "\\\\?\\c:\\Users\\me"
+    doAssert result == r"\\?\c:\Users\me"

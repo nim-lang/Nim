@@ -341,8 +341,12 @@ when doslikeFileSystem:
     assert(isAbsolute(path1))
     assert(isAbsolute(path2))
 
-    result = (isAbsFromCurrentDrive(path1) and isAbsFromCurrentDrive(path2)) or
-      cmpIgnoreCase(splitDrive(path1).drive, splitDrive(path2).drive) == 0
+    if isAbsFromCurrentDrive(path1) and isAbsFromCurrentDrive(path2):
+      result = true
+    elif cmpIgnoreCase(splitDrive(path1).drive, splitDrive(path2).drive) == 0:
+      result = true
+    else:
+      result = false
 
 proc relativePath*(path, base: string, sep = DirSep): string {.
   rtl, extern: "nos$1".} =
@@ -363,7 +367,7 @@ proc relativePath*(path, base: string, sep = DirSep): string {.
   runnableExamples:
     assert relativePath("/Users/me/bar/z.nim", "/Users/other/bad", '/') == "../../me/bar/z.nim"
     assert relativePath("/Users/me/bar/z.nim", "/Users/other", '/') == "../me/bar/z.nim"
-    when not doslikeFileSystem: # `//` means a UNC-path on Windows
+    when not doslikeFileSystem: # On Windows, UNC-paths start with `//`
       assert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
     assert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
     assert relativePath("", "/users/moo", '/') == ""
@@ -480,10 +484,10 @@ proc parentDir*(path: string): string {.
       assert parentDir("a/b/c/..") == "a"
       assert parentDir("/") == ""
     when doslikeFileSystem:
-      assert parentDir("\\\\?\\c:") == ""
-      assert parentDir("//?/c:/Users") == "\\\\?\\c:"
-      assert parentDir("\\\\localhost\\c$") == ""
-      assert parentDir("\\Users") == "\\"
+      assert parentDir(r"\\?\c:") == r""
+      assert parentDir(r"//?/c:/Users") == r"\\?\c:"
+      assert parentDir(r"\\\\localhost\\c$") == r""
+      assert parentDir(r"\Users") == r"\"
 
   result = pathnorm.normalizePath(path)
   when doslikeFileSystem:
@@ -526,7 +530,7 @@ proc tailDir*(path: string): string {.
     when doslikeFileSystem:
       assert tailDir("//?/c:") == ""
       assert tailDir("//?/c:/Users") == "Users"
-      assert tailDir("\\\\localhost\\c$\\Windows\\System32") == "Windows\\System32"
+      assert tailDir(r"\\localhost\c$\Windows\System32") == r"Windows\System32"
 
   var i = 0
   when doslikeFileSystem:
@@ -553,7 +557,7 @@ proc isRootDir*(path: string): bool {.
     when doslikeFileSystem:
       assert isRootDir("//?/c:")
       assert isRootDir("//?/UNC/localhost/c$")
-      assert not isRootDir("\\\\?\\c:\\Users")
+      assert not isRootDir(r"\\?\c:\Users")
 
   when doslikeFileSystem:
     if splitDrive(path).path == "":
@@ -597,18 +601,18 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
     when doslikeFileSystem:
       import std/sequtils
 
-      doAssert parentDirs("C:\\Users", fromRoot = true).toSeq == @["C:\\", "C:\\Users"]
-      doAssert parentDirs("C:\\Users", fromRoot = false).toSeq == @["C:\\Users", "C:"]
-      doAssert parentDirs("\\\\?\\c:\\Users", fromRoot = true).toSeq ==
-        @["\\\\?\\c:\\", "\\\\?\\c:\\Users"]
-      doAssert parentDirs("\\\\?\\c:\\Users", fromRoot = false).toSeq ==
-        @["\\\\?\\c:\\Users", "\\\\?\\c:"]
-      doAssert parentDirs("//localhost/c$/Users", fromRoot = true).toSeq ==
-        @["//localhost/c$/", "//localhost/c$/Users"]
-      doAssert parentDirs("//?/UNC/localhost/c$/Users", fromRoot = false).toSeq ==
-        @["//?/UNC/localhost/c$/Users", "\\\\?\\UNC\\localhost\\c$"]
-      doAssert parentDirs("\\Users", fromRoot = true).toSeq == @["\\", "\\Users"]
-      doAssert parentDirs("\\Users", fromRoot = false).toSeq == @["\\Users", "\\"]
+      doAssert parentDirs(r"C:\Users", fromRoot = true).toSeq == @[r"C:\", r"C:\Users"]
+      doAssert parentDirs(r"C:\Users", fromRoot = false).toSeq == @[r"C:\Users", r"C:"]
+      doAssert parentDirs(r"\\?\c:\Users", fromRoot = true).toSeq ==
+        @[r"\\?\c:\", r"\\?\c:\Users"]
+      doAssert parentDirs(r"\\?\c:\Users", fromRoot = false).toSeq ==
+        @[r"\\?\c:\Users", r"\\?\c:"]
+      doAssert parentDirs(r"//localhost/c$/Users", fromRoot = true).toSeq ==
+        @[r"//localhost/c$/", r"//localhost/c$/Users"]
+      doAssert parentDirs(r"//?/UNC/localhost/c$/Users", fromRoot = false).toSeq ==
+        @[r"//?/UNC/localhost/c$/Users", r"\\?\UNC\localhost\c$"]
+      doAssert parentDirs(r"\Users", fromRoot = true).toSeq == @[r"\", r"\Users"]
+      doAssert parentDirs(r"\Users", fromRoot = false).toSeq == @[r"\Users", r"\"]
 
   if not fromRoot:
     var current = path
@@ -642,9 +646,9 @@ proc `/../`*(head, tail: string): string {.noSideEffect.} =
       assert "a/b/c" /../ "d/e" == "a/b/d/e"
       assert "a" /../ "d/e" == "a/d/e"
     when doslikeFileSystem:
-      assert "//?/c:" /../ "d/e" == "\\\\?\\c:\\d\\e"
-      assert "//?/c:/Users" /../ "d/e" == "\\\\?\\c:\\d\\e"
-      assert "\\\\localhost\\c$" /../ "d/e" == "\\\\localhost\\c$\\d\\e"
+      assert r"//?/c:" /../ "d/e" == r"\\?\c:\d\e"
+      assert r"//?/c:/Users" /../ "d/e" == r"\\?\c:\d\e"
+      assert r"\\localhost\c$" /../ "d/e" == r"\\localhost\c$\d\e"
 
   when doslikeFileSystem:
     let (drive, head) = splitDrive(head)
@@ -722,8 +726,8 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     when doslikeFileSystem:
       assert splitFile("//?/c:") == ("//?/c:", "", "")
       assert splitFile("//?/c:/Users") == ("//?/c:", "Users", "")
-      (dir, name, ext) = splitFile("\\\\localhost\\c$\\test.txt")
-      assert dir == "\\\\localhost\\c$"
+      (dir, name, ext) = splitFile(r"\\localhost\c$\test.txt")
+      assert dir == r"\\localhost\c$"
       assert name == "test"
       assert ext == ".txt"
 

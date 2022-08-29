@@ -27,9 +27,9 @@ func splitDrive*(p: string): tuple[drive, path: string] =
   ## like a POSIX path.
   runnableExamples:
     doAssert splitDrive("C:") == ("C:", "")
-    doAssert splitDrive("C:\\") == ("C:", "\\")
-    doAssert splitDrive("\\\\server\\drive\\foo\\bar") == ("\\\\server\\drive", "\\foo\\bar")
-    doAssert splitDrive("\\\\?\\UNC\\server\\share\\dir") == ("\\\\?\\UNC\\server\\share", "\\dir")
+    doAssert splitDrive(r"C:\") == (r"C:", r"\")
+    doAssert splitDrive(r"\\server\drive\foo\bar") == (r"\\server\drive", r"\foo\bar")
+    doAssert splitDrive(r"\\?\UNC\server\share\dir") == (r"\\?\UNC\server\share", r"\dir")
 
   result = ("", p)
   if p.len < 2:
