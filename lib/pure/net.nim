@@ -696,7 +696,11 @@ when defineSsl:
           var found = false
           let useEnvVars = (if verifyMode == CVerifyPeerUseEnvVars: true else: false)
           for fn in scanSSLCertificates(useEnvVars = useEnvVars):
-            if newCTX.SSL_CTX_load_verify_locations(fn.cstring, nil) == VerifySuccess:
+            if fn.extractFilename == "":
+              if newCTX.SSL_CTX_load_verify_locations(nil, cstring(fn.normalizePathEnd(false))) == VerifySuccess:
+                found = true
+                break
+            elif newCTX.SSL_CTX_load_verify_locations(cstring(fn), nil) == VerifySuccess:
               found = true
               break
           if not found:

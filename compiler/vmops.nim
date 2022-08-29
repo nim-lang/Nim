@@ -28,12 +28,12 @@ from std/os import getEnv, existsEnv, delEnv, putEnv, envPairs,
 from std/times import cpuTime
 from std/hashes import hash
 from std/osproc import nil
-from system/formatfloat import addFloatRoundtrip, addFloatSprintf
 
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
-
+else:
+  from std/formatfloat import addFloatRoundtrip, addFloatSprintf 
 
 # There are some useful procs in vmconv.
 import vmconv, vmmarshal

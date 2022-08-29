@@ -74,7 +74,7 @@ suite "RST parsing":
         """.toAst ==
       dedent"""
         rnInner
-          rnHeadline  level=1
+          rnHeadline  level=1  anchor='lexical-analysis'
             rnLeaf  'Lexical'
             rnLeaf  ' '
             rnLeaf  'Analysis'

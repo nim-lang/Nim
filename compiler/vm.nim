@@ -18,6 +18,9 @@ import
   gorgeimpl, lineinfos, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128, vmprofiler
 
+when defined(nimPreviewSlimSystem):
+  import std/formatfloat
+
 import ast except getstr
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate

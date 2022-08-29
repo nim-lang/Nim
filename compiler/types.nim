@@ -14,7 +14,7 @@ import
   lineinfos, int128, modulegraphs, astmsgs
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, formatfloat]
 
 type
   TPreferedDesc* = enum

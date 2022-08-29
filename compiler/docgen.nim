@@ -277,11 +277,13 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
   else:
     result = getOutFile(conf, filename, ext)
 
-proc isLatexCmd(conf: ConfigRef): bool = conf.cmd in {cmdRst2tex, cmdDoc2tex}
+proc isLatexCmd(conf: ConfigRef): bool =
+  conf.cmd in {cmdRst2tex, cmdMd2tex, cmdDoc2tex}
 
 proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
                     outExt: string = HtmlExt, module: PSym = nil,
-                    standaloneDoc = false, preferMarkdown = true): PDoc =
+                    standaloneDoc = false, preferMarkdown = true,
+                    hasToc = true): PDoc =
   declareClosures()
   new(result)
   result.module = module
@@ -294,9 +296,10 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
     options.incl roPreferMarkdown
   if not standaloneDoc: options.incl roNimFile
   # (options can be changed dynamically in `setDoctype` by `{.doctype.}`)
+  result.hasToc = hasToc
   result.sharedState = newRstSharedState(
       options, filename.string,
-      docgenFindFile, compilerMsgHandler)
+      docgenFindFile, compilerMsgHandler, hasToc)
   initRstGenerator(result[], (if conf.isLatexCmd: outLatex else: outHtml),
                    conf.configVars, filename.string,
                    docgenFindFile, compilerMsgHandler)
@@ -1339,6 +1342,7 @@ proc finishGenerateDoc*(d: var PDoc) =
     if fragment.isRst:
       firstRst = fragment.rst
       break
+  d.hasToc = d.hasToc or d.sharedState.hasToc
   preparePass2(d.sharedState, firstRst)
 
   # add anchors to overload groups before RST resolution
@@ -1396,7 +1400,6 @@ proc finishGenerateDoc*(d: var PDoc) =
     d.section[k].secItems.clear
   renderItemPre(d, d.modDescPre, d.modDescFinal)
   d.modDescPre.setLen 0
-  d.hasToc = d.hasToc or d.sharedState.hasToc
 
   # Finalize fragments of ``.json`` file
   for i, entry in d.jEntriesPre:
@@ -1685,8 +1688,7 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
   handleDocOutputOptions conf
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
-  var d = newDocumentor(conf.projectFull, cache, conf)
-  d.hasToc = true
+  var d = newDocumentor(conf.projectFull, cache, conf, hasToc = true)
   generateDoc(d, ast, ast)
   finishGenerateDoc(d)
   writeOutput(d)
@@ -1697,7 +1699,7 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
                    preferMarkdown: bool) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, cache, conf, outExt, standaloneDoc = true,
-                        preferMarkdown = preferMarkdown)
+                        preferMarkdown = preferMarkdown, hasToc = false)
   let rst = parseRst(readFile(filen.string),
                      line=LineRstInit, column=ColRstInit,
                      conf, d.sharedState)
@@ -1718,12 +1720,11 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
   ## implementation of a deprecated jsondoc0 command
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
-  var d = newDocumentor(conf.projectFull, cache, conf)
+  var d = newDocumentor(conf.projectFull, cache, conf, hasToc = true)
   d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
                           status: int; content: string) =
     localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
                warnUser, "the ':test:' attribute is not supported by this backend")
-  d.hasToc = true
   generateJson(d, ast)
   finishGenerateDoc(d)
   let json = d.jEntriesFinal
@@ -1742,12 +1743,11 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
 proc commandTags*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
-  var d = newDocumentor(conf.projectFull, cache, conf)
+  var d = newDocumentor(conf.projectFull, cache, conf, hasToc = true)
   d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
                           status: int; content: string) =
     localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
                warnUser, "the ':test:' attribute is not supported by this backend")
-  d.hasToc = true
   var
     content = ""
   generateTags(d, ast, content)
