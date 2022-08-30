@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c -d:release -d:danger $file"
+  cmd: "nim c -d:release -d:danger --gc:orc $file"
   output: "42"
 """
 
