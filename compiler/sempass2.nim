@@ -562,7 +562,8 @@ proc procVarCheck(n: PNode; conf: ConfigRef) =
   if n.kind in nkSymChoices:
     for x in n: procVarCheck(x, conf)
   elif n.kind == nkSym and n.sym.magic != mNone and n.sym.kind in routineKinds:
-    localError(conf, n.info, "'$1' cannot be passed to a procvar" % n.sym.name.s)
+    localError(conf, n.info, ("'$1' is a built-in and cannot be used as " &
+      "a first-class procedure") % n.sym.name.s)
 
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
