@@ -64,8 +64,7 @@ template myOpenImpl(ext: untyped) {.dirty.} =
   g.module = module
   g.config = graph.config
   var d = newDocumentor(AbsoluteFile toFullPath(graph.config, FileIndex module.position),
-      graph.cache, graph.config, ext, module)
-  d.hasToc = true
+      graph.cache, graph.config, ext, module, hasToc = true)
   g.doc = d
   result = g
 
