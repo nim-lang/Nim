@@ -128,14 +128,11 @@ when not declared(parseCfgBool):
     of "n", "no", "false", "0", "off": result = false
     else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
-proc addLine*(self: var string; a: string) =
-  self.add a
+proc addLine*(self: var string; pieces: varargs[string]) =
+  for piece in pieces:
+    self.add piece
   self.add "\n"
 
-proc addLine*(self: var string; a, b: string) =
-  self.add a
-  self.add b
-  self.add "\n"
 
 const
   inlineErrorKindMarker = "tt."
