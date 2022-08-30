@@ -50,6 +50,10 @@ type
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
+  SymInfoPair* = object
+    sym*: PSym
+    info*: TLineInfo
+
   ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
@@ -80,7 +84,7 @@ type
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
-    suggestSymbols*: Table[FileIndex, seq[tuple[sym: PSym, info: TLineInfo]]]
+    suggestSymbols*: Table[FileIndex, seq[SymInfoPair]]
     suggestErrors*: Table[FileIndex, seq[Suggest]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     systemModule*: PSym
@@ -371,12 +375,6 @@ template getPContext(): untyped =
 
 when defined(nimsuggest):
   template onUse*(info: TLineInfo; s: PSym) = discard
-
-  template onDef*(info: TLineInfo; s: PSym) =
-    let c = getPContext()
-    if c.graph.config.suggestVersion == 3:
-      suggestSym(c.graph, info, s, c.graph.usageSym)
-
   template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
 else:
   template onUse*(info: TLineInfo; s: PSym) = discard
@@ -439,7 +437,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.owners = @[]
-  result.suggestSymbols = initTable[FileIndex, seq[tuple[sym: PSym, info: TLineInfo]]]()
+  result.suggestSymbols = initTable[FileIndex, seq[SymInfoPair]]()
   result.suggestErrors = initTable[FileIndex, seq[Suggest]]()
   result.methods = @[]
   initStrTable(result.compilerprocs)
@@ -652,3 +650,19 @@ proc getPackage*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
 func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
   sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
+
+proc `==`*(a, b: SymInfoPair): bool =
+  result = a.sym == b.sym and a.info.exactEquals(b.info)
+
+proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): seq[SymInfoPair] =
+  result = graph.suggestSymbols.getOrDefault(fileIdx, @[]).deduplicate
+
+iterator suggestSymbolsIter*(g: ModuleGraph): SymInfoPair =
+  for xs in g.suggestSymbols.values:
+    for x in xs.deduplicate:
+      yield x
+
+iterator suggestErrorsIter*(g: ModuleGraph): Suggest =
+  for xs in g.suggestErrors.values:
+    for x in xs:
+      yield x
