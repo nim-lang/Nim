@@ -2396,9 +2396,8 @@ If `A` is a subtype of `B` and `A` and `B` are `object` types then:
 - `ref A` is a subtype of `ref B`
 - `ptr A` is a subtype of `ptr B`.
 
-**Note**: In later versions of the language the subtype relation might
-be changed to *require* the pointer indirection in order to prevent
-"object slicing".
+**Note**: One of the above pointer-indirections is required for assignment from
+a subtype to its parent type to prevent "object slicing".
 
 
 Convertible relation
@@ -3945,7 +3944,7 @@ argument in inline calls, as well as a direct mirror of Nim's routine syntax.
   macroResults.add quote do:
     if not `ex`:
       echo `info`, ": Check failed: ", `expString`
-  
+
   # Processing a routine definition in a macro:
   rpc(router, "add") do (a, b: int) -> int:
     result = a + b
@@ -6161,7 +6160,7 @@ as arguments if called in statement form.
     # to perform the task
   do:
     # code to undo it
-  
+
   let num = 12
   # a single colon may be used if there is no initial block
   match (num mod 3, num mod 5):
@@ -6500,7 +6499,7 @@ This is best illustrated by an example:
 Import statement
 ----------------
 
-After the `import` statement, a list of module names can follow or a single
+After the `import` keyword, a list of module names can follow or a single
 module name followed by an `except` list to prevent some symbols from being
 imported:
 
@@ -6513,8 +6512,8 @@ imported:
 
 
 It is not checked that the `except` list is really exported from the module.
-This feature allows us to compile against an older version of the module that
-does not export these identifiers.
+This feature allows us to compile against different versions of the module,
+even when one version does not export some of these identifiers.
 
 The `import` statement is only allowed at the top level.
 
@@ -6549,7 +6548,8 @@ The `include` statement can be used outside the top level, as such:
 Module names in imports
 -----------------------
 
-A module alias can be introduced via the `as` keyword:
+A module alias can be introduced via the `as` keyword, after which the original module name
+is inaccessible:
 
   ```nim
   import std/strutils as su, std/sequtils as qu
@@ -6557,8 +6557,7 @@ A module alias can be introduced via the `as` keyword:
   echo su.format("$1", "lalelu")
   ```
 
-The original module name is then not accessible. The notations
-`path/to/module` or `"path/to/module"` can be used to refer to a module
+The notations `path/to/module` or `"path/to/module"` can be used to refer to a module
 in subdirectories:
 
   ```nim
@@ -6615,7 +6614,7 @@ It is recommended and preferred but not currently enforced that all stdlib modul
 From import statement
 ---------------------
 
-After the `from` statement, a module name followed by
+After the `from` keyword, a module name followed by
 an `import` to list the symbols one likes to use without explicit
 full qualification:
 
@@ -7176,8 +7175,9 @@ Disabling certain messages
 --------------------------
 Nim generates some warnings and hints ("line too long") that may annoy the
 user. A mechanism for disabling certain messages is provided: Each hint
-and warning message contains a symbol in brackets. This is the message's
-identifier that can be used to enable or disable it:
+and warning message is associated with a symbol. This is the message's
+identifier, which can be used to enable or disable the message by putting it
+in brackets following the pragma:
 
   ```Nim
   {.hint[LineTooLong]: off.} # turn off the hint about too long lines
