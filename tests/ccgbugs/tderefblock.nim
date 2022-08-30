@@ -1,5 +1,6 @@
 discard """
-  cmd: "nim c -d:release -d:danger --gc:orc $file"
+  cmd: "nim c -d:release -d:danger $file"
+  matrix: ";--gc:orc"
   output: "42"
 """
 
