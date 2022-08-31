@@ -626,16 +626,6 @@ proc onProcessing*(graph: ModuleGraph, fileIdx: FileIndex, moduleStatus: string,
     let mode = if isNimscript: "(nims) " else: ""
     rawMessage(conf, hintProcessing, "$#$# $#: $#: $#" % [mode, indent, fromModule2, moduleStatus, path])
 
-iterator suggestSymbolsIter*(g: ModuleGraph): tuple[sym: PSym, info: TLineInfo] =
-  for xs in g.suggestSymbols.values:
-    for x in xs.deduplicate:
-      yield x
-
-iterator suggestErrorsIter*(g: ModuleGraph): Suggest =
-  for xs in g.suggestErrors.values:
-    for x in xs:
-      yield x
-
 proc getPackage*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   ## Returns a package symbol for yet to be defined module for fileIdx.
   ## The package symbol is added to the graph if it doesn't exist.
