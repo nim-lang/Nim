@@ -230,7 +230,7 @@ sub/mmain.idx""", context
     doAssert doSomething["type"].getStr == "skProc"
     doAssert doSomething["line"].getInt == 1
     doAssert doSomething["col"].getInt == 0
-    doAssert doSomething["code"].getStr == "proc doSomething(x, y: int): int {.raises: [], tags: [], forbids: [].}"
+    doAssert doSomething["code"].getStr == "proc doSomething(x, y: int): int {.raises: [], tags: [].}"
 
 
   block: # further issues with `--backend`
