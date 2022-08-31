@@ -569,7 +569,7 @@ proc processScope(c: var Con; s: var Scope; ret: PNode): PNode =
 
 template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: untyped): PNode =
   assert not ret.typ.isEmptyType
-  var result = newNodeI(nkStmtListExpr, ret.info)
+  var result = newNodeIT(nkStmtListExpr, ret.info, ret.typ)
   # There is a possibility to do this check: s.wasMoved.len > 0 or s.final.len > 0
   # later and use it to eliminate the temporary when theres no need for it, but its
   # tricky because you would have to intercept moveOrCopy at a certain point
