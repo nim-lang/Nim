@@ -735,6 +735,7 @@ proc derefBlock(p: BProc, e: PNode, d: var TLoc) =
   # We transform (block: x)[] to (block: x[])
   let e0 = e[0]
   var n = shallowCopy(e0)
+  n.typ = e.typ
   for i in 0 ..< e0.len - 1:
     n[i] = e0[i]
   n[e0.len-1] = newTreeIT(nkHiddenDeref, e.info, e.typ, e0[e0.len-1])
