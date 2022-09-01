@@ -8,20 +8,23 @@
 #
 
 ## ==================================
-##                rst
+##       packages/docutils/rst
 ## ==================================
 ##
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## ------------------------------------------
 ## Nim-flavored reStructuredText and Markdown
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## ------------------------------------------
 ##
-## This module implements a `reStructuredText`:idx: (RST) parser.
+## This module implements a `reStructuredText`:idx: (RST) and
+## `Markdown`:idx: parser.
 ## A large subset is implemented with some limitations_ and
 ## `Nim-specific features`_.
-## A few `extra features`_ of the `Markdown`:idx: syntax are
-## also supported.
+## Both Markdown and RST are mark-up languages whose goal is to
+## typeset texts with complex structure, formatting and references
+## using simple plaintext representation.
 ##
-## Nim can output the result to HTML [#html]_ or Latex [#latex]_.
+## This module is also embedded into Nim compiler; the compiler can output
+## the result to HTML [#html]_ or Latex [#latex]_.
 ##
 ## .. [#html] commands `nim doc`:cmd: for ``*.nim`` files and
 ##    `nim rst2html`:cmd: for ``*.rst`` files
@@ -29,11 +32,13 @@
 ## .. [#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
 ##    `nim rst2tex`:cmd: for ``*.rst``.
 ##
-## If you are new to RST please consider reading the following:
+## If you are new to Markdown/RST please consider reading the following:
 ##
-## 1) a short `quick introduction`_
-## 2) an `RST reference`_: a comprehensive cheatsheet for RST
-## 3) a more formal 50-page `RST specification`_.
+## 1) `Markdown Basic Syntax`_
+## 2) a long specification of Markdown: `CommonMark Spec`_
+## 3) a short `quick introduction`_ to RST
+## 4) an `RST reference`_: a comprehensive cheatsheet for RST
+## 5) a more formal 50-page `RST specification`_.
 ##
 ## Features
 ## --------
@@ -120,7 +125,13 @@
 ##
 ## * emoji / smiley symbols
 ## * Markdown tables
-## * Markdown code blocks
+## * Markdown code blocks. For them the same additional arguments as for RST
+##   code blocks can be provided (e.g. `test` or `number-lines`) but with
+##   a one-line syntax like this::
+##
+##     ```nim test number-lines=10
+##     echo "ok"
+##     ```
 ## * Markdown links
 ## * Markdown headlines
 ## * Markdown block quotes
@@ -211,6 +222,8 @@
 ## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
 ## generate HTML or Latex strings to embed them into your documents.
 ##
+## .. _Markdown Basic Syntax: https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax
+## .. _CommonMark Spec: https://spec.commonmark.org/0.30
 ## .. _quick introduction: https://docutils.sourceforge.io/docs/user/rst/quickstart.html
 ## .. _RST reference: https://docutils.sourceforge.io/docs/user/rst/quickref.html
 ## .. _RST specification: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html
@@ -224,6 +237,10 @@ import
   os, strutils, rstast, dochelpers, std/enumutils, algorithm, lists, sequtils,
   std/private/miscdollars, tables, strscans
 from highlite import SourceLanguage, getSourceLanguage
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 
 type
   RstParseOption* = enum     ## options for the RST parser
@@ -253,8 +270,10 @@ type
   MsgKind* = enum          ## the possible messages
     meCannotOpenFile = "cannot open '$1'",
     meExpected = "'$1' expected",
+    meMissingClosing = "$1",
     meGridTableNotImplemented = "grid table is not implemented",
     meMarkdownIllformedTable = "illformed delimiter row of a Markdown table",
+    meIllformedTable = "Illformed table: $1",
     meNewSectionExpected = "new section expected $1",
     meGeneralParseError = "general parse error",
     meInvalidDirective = "invalid directive: '$1'",
@@ -275,7 +294,7 @@ type
 
 proc rstnodeToRefname*(n: PRstNode): string
 proc addNodes*(n: PRstNode): string
-proc getFieldValue*(n: PRstNode, fieldname: string): string
+proc getFieldValue*(n: PRstNode, fieldname: string): string {.gcsafe.}
 proc getArgument*(n: PRstNode): string
 
 # ----------------------------- scanner part --------------------------------
@@ -322,7 +341,10 @@ const
     ":geek:": "icon_e_geek",
     ":ugeek:": "icon_e_ugeek"
   }
-  SandboxDirAllowlist = ["image", "code", "code-block"]
+  SandboxDirAllowlist = [
+    "image", "code", "code-block", "admonition", "attention", "caution",
+    "container", "contents", "danger", "default-role", "error", "figure",
+    "hint", "important", "index", "note", "role", "tip", "title", "warning"]
 
 type
   TokType = enum
@@ -534,17 +556,17 @@ type
     footnoteAnchor = "footnote anchor",
     headlineAnchor = "implicitly-generated headline anchor"
   AnchorSubst = object
-    mainAnchor: ref string  # A reference name that will be inserted directly
-                            # into HTML/Latex. It's declared as `ref` because
-                            # it can be shared between aliases.
     info: TLineInfo         # where the anchor was defined
     priority: int
     case kind: range[arInternalRst .. arNim]
     of arInternalRst:
       anchorType: RstAnchorKind
+      target: PRstNode
     of arNim:
       tooltip: string       # displayed tooltip for Nim-generated anchors
       langSym: LangSymbol
+      refname: string     # A reference name that will be inserted directly
+                          # into HTML/Latex.
   AnchorSubstTable = Table[string, seq[AnchorSubst]]
                          # use `seq` to account for duplicate anchors
   FootnoteType = enum
@@ -564,7 +586,7 @@ type
     filenameToIdx*: Table[string, FileIndex]
     idxToFilename*: seq[string]
   RstSharedState = object
-    options: RstParseOptions    # parsing options
+    options*: RstParseOptions   # parsing options
     hLevels: LevelMap           # hierarchy of heading styles
     hTitleCnt: int              # =0 if no title, =1 if only main title,
                                 # =2 if both title and subtitle are present
@@ -588,9 +610,14 @@ type
     filenames*: RstFileTable    # map file name <-> FileIndex (for storing
                                 # file names for warnings after 1st stage)
     currFileIdx*: FileIndex     # current index in `filenames`
+    tocPart*: seq[PRstNode]     # all the headings of a document
     hasToc*: bool
 
   PRstSharedState* = ref RstSharedState
+  ManualAnchor = object
+    alias: string     # a (short) name that can substitute the `anchor`
+    anchor: string    # anchor = id = refname
+    info: TLineInfo
   RstParser = object of RootObj
     idx*: int
     tok*: TokenSeq
@@ -600,8 +627,9 @@ type
                                 ## documenation fragment that will be added
                                 ## in case of error/warning reporting to
                                 ## (relative) line/column of the token.
-    curAnchor*: string          # variable to track latest anchor in s.anchors
-    curAnchorName*: string      # corresponding name in human-readable format
+    curAnchors*: seq[ManualAnchor]
+                                ## seq to accumulate aliases for anchors:
+                                ## because RST can have >1 alias per 1 anchor
 
   EParseError* = object of ValueError
 
@@ -683,14 +711,16 @@ proc currFilename(s: PRstSharedState): string =
 proc newRstSharedState*(options: RstParseOptions,
                         filename: string,
                         findFile: FindFileHandler,
-                        msgHandler: MsgHandler): PRstSharedState =
+                        msgHandler: MsgHandler,
+                        hasToc: bool): PRstSharedState =
   let r = defaultRole(options)
   result = PRstSharedState(
       currRole: r,
       currRoleKind: whichRoleAux(r),
       options: options,
       msgHandler: if not isNil(msgHandler): msgHandler else: defaultMsgHandler,
-      findFile: if not isNil(findFile): findFile else: defaultFindFile
+      findFile: if not isNil(findFile): findFile else: defaultFindFile,
+      hasToc: hasToc
   )
   setCurrFilename(result, filename)
 
@@ -939,40 +969,28 @@ proc internalRefPriority(k: RstAnchorKind): int =
   of footnoteAnchor: result = 4
   of headlineAnchor: result = 3
 
-proc addAnchorRst(p: var RstParser, name: string, refn: string, reset: bool,
+proc addAnchorRst(p: var RstParser, name: string, target: PRstNode,
                   anchorType: RstAnchorKind) =
-  ## Adds anchor `refn` with an alias `name` and
-  ## updates the corresponding `curAnchor` / `curAnchorName`.
+  ## Associates node `target` (which has field `anchor`) with an
+  ## alias `name` and updates the corresponding aliases in `p.curAnchors`.
   let prio = internalRefPriority(anchorType)
-  if p.curAnchorName == "":
-    var anchRef = new string
-    anchRef[] = refn
+  for a in p.curAnchors:
+    p.s.anchors.mgetOrPut(a.alias, newSeq[AnchorSubst]()).add(
+        AnchorSubst(kind: arInternalRst, target: target, priority: prio,
+                    info: a.info, anchorType: manualDirectiveAnchor))
+  if name != "":
     p.s.anchors.mgetOrPut(name, newSeq[AnchorSubst]()).add(
-        AnchorSubst(kind: arInternalRst, mainAnchor: anchRef, priority: prio,
+        AnchorSubst(kind: arInternalRst, target: target, priority: prio,
                     info: prevLineInfo(p), anchorType: anchorType))
-  else:
-    # override previous mainAnchor by `ref` in all aliases
-    var anchRef = p.s.anchors[p.curAnchorName][0].mainAnchor
-    anchRef[] = refn
-    p.s.anchors.mgetOrPut(name, newSeq[AnchorSubst]()).add(
-        AnchorSubst(kind: arInternalRst, mainAnchor: anchRef, priority: prio,
-                    info: prevLineInfo(p), anchorType: anchorType))
-  if reset:
-    p.curAnchor = ""
-    p.curAnchorName = ""
-  else:
-    p.curAnchor = refn
-    p.curAnchorName = name
+  p.curAnchors.setLen 0
 
 proc addAnchorNim*(s: var PRstSharedState, refn: string, tooltip: string,
                    langSym: LangSymbol, priority: int,
                    info: TLineInfo) =
-  ## Adds an anchor `refn` (`mainAnchor`), which follows
+  ## Adds an anchor `refn`, which follows
   ## the rule `arNim` (i.e. a symbol in ``*.nim`` file)
-  var anchRef = new string
-  anchRef[] = refn
   s.anchors.mgetOrPut(langSym.name, newSeq[AnchorSubst]()).add(
-      AnchorSubst(kind: arNim, mainAnchor: anchRef, langSym: langSym,
+      AnchorSubst(kind: arNim, refname: refn, langSym: langSym,
                   tooltip: tooltip, priority: priority,
                   info: info))
 
@@ -1144,10 +1162,9 @@ proc getAutoSymbol(s: PRstSharedState, order: int): string =
 proc newRstNodeA(p: var RstParser, kind: RstNodeKind): PRstNode =
   ## create node and consume the current anchor
   result = newRstNode(kind)
-  if p.curAnchor != "":
-    result.anchor = p.curAnchor
-    p.curAnchor = ""
-    p.curAnchorName = ""
+  if p.curAnchors.len > 0:
+    result.anchor = p.curAnchors[0].anchor
+    addAnchorRst(p, "", result, manualDirectiveAnchor)
 
 template newLeaf(s: string): PRstNode = newRstLeaf(s)
 
@@ -1615,36 +1632,118 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
       inc p.idx
     else: rstMessage(p, meExpected, postfix, line, col)
 
+proc parseMarkdownCodeblockFields(p: var RstParser): PRstNode =
+  ## Parses additional (after language string) code block parameters
+  ## in a format *suggested* in the `CommonMark Spec`_ with handling of `"`.
+  if currentTok(p).kind == tkIndent:
+    result = nil
+  else:
+    result = newRstNode(rnFieldList)
+  while currentTok(p).kind != tkIndent:
+    if currentTok(p).kind == tkWhite:
+      inc p.idx
+    else:
+      let field = newRstNode(rnField)
+      var fieldName = ""
+      while currentTok(p).kind notin {tkWhite, tkIndent, tkEof} and
+            currentTok(p).symbol != "=":
+        fieldName.add currentTok(p).symbol
+        inc p.idx
+      field.add(newRstNode(rnFieldName, @[newLeaf(fieldName)]))
+      if currentTok(p).kind == tkWhite: inc p.idx
+      let fieldBody = newRstNode(rnFieldBody)
+      if currentTok(p).symbol == "=":
+        inc p.idx
+        if currentTok(p).kind == tkWhite: inc p.idx
+        var fieldValue = ""
+        if currentTok(p).symbol == "\"":
+          while true:
+            fieldValue.add currentTok(p).symbol
+            inc p.idx
+            if currentTok(p).kind == tkEof:
+              rstMessage(p, meExpected, "\"")
+            elif currentTok(p).symbol == "\"":
+              fieldValue.add "\""
+              inc p.idx
+              break
+        else:
+          while currentTok(p).kind notin {tkWhite, tkIndent, tkEof}:
+            fieldValue.add currentTok(p).symbol
+            inc p.idx
+        fieldBody.add newLeaf(fieldValue)
+      field.add(fieldBody)
+      result.add(field)
+
+proc mayLoadFile(p: RstParser, result: var PRstNode) =
+  var filename = strip(getFieldValue(result, "file"),
+                       chars = Whitespace + {'"'})
+  if filename != "":
+    if roSandboxDisabled notin p.s.options:
+      let tok = p.tok[p.idx-2]
+      rstMessage(p, meSandboxedDirective, "file", tok.line, tok.col)
+    var path = p.findRelativeFile(filename)
+    if path == "": rstMessage(p, meCannotOpenFile, filename)
+    var n = newRstNode(rnLiteralBlock)
+    n.add newLeaf(readFile(path))
+    result.sons[2] = n
+
+proc defaultCodeLangNim(p: RstParser, result: var PRstNode) =
+  # Create a field block if the input block didn't have any.
+  if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
+  assert result.sons[1].kind == rnFieldList
+  # Hook the extra field and specify the Nim language as value.
+  var extraNode = newRstNode(rnField, info=lineInfo(p))
+  extraNode.add(newRstNode(rnFieldName))
+  extraNode.add(newRstNode(rnFieldBody))
+  extraNode.sons[0].add newLeaf("default-language")
+  extraNode.sons[1].add newLeaf("Nim")
+  result.sons[1].add(extraNode)
+
 proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
   result = newRstNodeA(p, rnCodeBlock)
+  result.sons.setLen(3)
+  let line = curLine(p)
+  let baseCol = currentTok(p).col
+  let baseSym = currentTok(p).symbol  # usually just ```
+  inc p.idx
   result.info = lineInfo(p)
   var args = newRstNode(rnDirArg)
   if currentTok(p).kind == tkWord:
     args.add(newLeaf(p))
     inc p.idx
+    result.sons[1] = parseMarkdownCodeblockFields(p)
+    mayLoadFile(p, result)
   else:
     args = nil
   var n = newLeaf("")
   while true:
-    case currentTok(p).kind
-    of tkEof:
-      rstMessage(p, meExpected, "```")
+    if currentTok(p).kind == tkEof:
+      rstMessage(p, meMissingClosing,
+                 "$1 (started at line $2)" % [baseSym, $line])
       break
-    of tkPunct, tkAdornment:
-      if currentTok(p).symbol == "```":
-        inc p.idx
-        break
-      else:
-        n.text.add(currentTok(p).symbol)
-        inc p.idx
+    elif nextTok(p).kind in {tkPunct, tkAdornment} and
+         nextTok(p).symbol[0] == baseSym[0] and
+         nextTok(p).symbol.len >= baseSym.len:
+      inc p.idx, 2
+      break
+    elif currentTok(p).kind == tkIndent:
+      n.text.add "\n"
+      if currentTok(p).ival > baseCol:
+        n.text.add " ".repeat(currentTok(p).ival - baseCol)
+      elif currentTok(p).ival < baseCol:
+        rstMessage(p, mwRstStyle,
+                   "unexpected de-indentation in Markdown code block")
+      inc p.idx
     else:
       n.text.add(currentTok(p).symbol)
       inc p.idx
-  var lb = newRstNode(rnLiteralBlock)
-  lb.add(n)
-  result.add(args)
-  result.add(PRstNode(nil))
-  result.add(lb)
+  result.sons[0] = args
+  if result.sons[2] == nil:
+    var lb = newRstNode(rnLiteralBlock)
+    lb.add(n)
+    result.sons[2] = lb
+  if result.sons[0].isNil and roNimFile in p.s.options:
+    defaultCodeLangNim(p, result)
 
 proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
   var desc, link = ""
@@ -1729,6 +1828,19 @@ proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
     inc i
   p.idx = i
 
+proc isMarkdownCodeBlock(p: RstParser, idx: int): bool =
+  let tok = p.tok[idx]
+  template allowedSymbol: bool =
+    (tok.symbol[0] == '`' or
+      roPreferMarkdown in p.s.options and tok.symbol[0] == '~')
+  result = (roSupportMarkdown in p.s.options and
+            tok.kind in {tkPunct, tkAdornment} and
+            allowedSymbol and
+            tok.symbol.len >= 3)
+
+proc isMarkdownCodeBlock(p: RstParser): bool =
+  isMarkdownCodeBlock(p, p.idx)
+
 proc parseInline(p: var RstParser, father: PRstNode) =
   var n: PRstNode  # to be used in `if` condition
   let saveIdx = p.idx
@@ -1750,12 +1862,11 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       var n = newRstNode(rnInlineTarget)
       inc p.idx
       parseUntil(p, n, "`", false)
-      let refn = rstnodeToRefname(n)
-      addAnchorRst(p, name = linkName(n), refn = refn, reset = true,
+      n.anchor = rstnodeToRefname(n)
+      addAnchorRst(p, name = linkName(n), target = n,
                    anchorType=manualInlineAnchor)
       father.add(n)
-    elif roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
-      inc p.idx
+    elif isMarkdownCodeBlock(p):
       father.add(parseMarkdownCodeblock(p))
     elif isInlineMarkupStart(p, "``"):
       var n = newRstNode(rnInlineLiteral)
@@ -1815,8 +1926,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
         return
     parseWordOrRef(p, father)
   of tkAdornment, tkOther, tkWhite:
-    if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
-      inc p.idx
+    if isMarkdownCodeBlock(p):
       father.add(parseMarkdownCodeblock(p))
       return
     if roSupportSmilies in p.s.options:
@@ -2089,6 +2199,8 @@ proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
   ## No support for Unicode.
   if p.tok[adornmentIdx].symbol in ["::", "..", "|"]:
     return false
+  if isMarkdownCodeBlock(p, adornmentIdx):
+    return false
   var headlineLen = 0
   var failure = ""
   if p.idx < adornmentIdx:  # check for underline
@@ -2193,7 +2305,7 @@ proc findPipe(p: RstParser, start: int): bool =
 proc whichSection(p: RstParser): RstNodeKind =
   if currentTok(p).kind in {tkAdornment, tkPunct}:
     # for punctuation sequences that can be both tkAdornment and tkPunct
-    if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
+    if isMarkdownCodeBlock(p):
       return rnCodeBlock
     elif currentTok(p).symbol == "::":
       return rnLiteralBlock
@@ -2440,8 +2552,8 @@ proc parseHeadline(p: var RstParser): PRstNode =
     result.level = getLevel(p, c, hasOverline=false)
     checkHeadingHierarchy(p, result.level)
     p.s.hCurLevel = result.level
-  addAnchorRst(p, linkName(result), rstnodeToRefname(result), reset=true,
-               anchorType=headlineAnchor)
+  addAnchorRst(p, linkName(result), result, anchorType=headlineAnchor)
+  p.s.tocPart.add result
 
 proc parseOverline(p: var RstParser): PRstNode =
   var c = currentTok(p).symbol[0]
@@ -2463,85 +2575,207 @@ proc parseOverline(p: var RstParser): PRstNode =
   if currentTok(p).kind == tkAdornment:
     inc p.idx
     if currentTok(p).kind == tkIndent: inc p.idx
-  addAnchorRst(p, linkName(result), rstnodeToRefname(result), reset=true,
-               anchorType=headlineAnchor)
+  addAnchorRst(p, linkName(result), result, anchorType=headlineAnchor)
+  p.s.tocPart.add result
+
+proc fixHeadlines(s: PRstSharedState) =
+  # Fix up section levels depending on presence of a title and subtitle:
+  for n in s.tocPart:
+    if n.kind in {rnHeadline, rnOverline}:
+      if s.hTitleCnt == 2:
+        if n.level == 1:    # it's the subtitle
+          n.level = 0
+        elif n.level >= 2:  # normal sections, start numbering from 1
+          n.level -= 1
+      elif s.hTitleCnt == 0:
+        n.level += 1
+  # Set headline anchors:
+  for iHeading in 0 .. s.tocPart.high:
+    let n: PRstNode = s.tocPart[iHeading]
+    if n.level >= 1:
+      n.anchor = rstnodeToRefname(n)
+      # Fix anchors for uniqueness if `.. contents::` is present
+      if s.hasToc:
+        # Find the last higher level section for unique reference name
+        var sectionPrefix = ""
+        for i in countdown(iHeading - 1, 0):
+          if s.tocPart[i].level >= 1 and s.tocPart[i].level < n.level:
+            sectionPrefix = rstnodeToRefname(s.tocPart[i]) & "-"
+            break
+        if sectionPrefix != "":
+          n.anchor = sectionPrefix & n.anchor
+  s.tocPart.setLen 0
 
 type
-  IntSeq = seq[int]
-  ColumnLimits = tuple
+  ColSpec = object
+    start, stop: int
+  RstCols = seq[ColSpec]
+  ColumnLimits = tuple  # for Markdown
     first, last: int
   ColSeq = seq[ColumnLimits]
 
-proc tokEnd(p: RstParser): int =
-  result = currentTok(p).col + currentTok(p).symbol.len - 1
+proc tokStart(p: RstParser, idx: int): int =
+  result = p.tok[idx].col
 
-proc getColumns(p: var RstParser, cols: var IntSeq) =
+proc tokStart(p: RstParser): int =
+  result = tokStart(p, p.idx)
+
+proc tokEnd(p: RstParser, idx: int): int =
+  result = p.tok[idx].col + p.tok[idx].symbol.len - 1
+
+proc tokEnd(p: RstParser): int =
+  result = tokEnd(p, p.idx)
+
+proc getColumns(p: RstParser, cols: var RstCols, startIdx: int): int =
+  # Fills table column specification (or separator) `cols` and returns
+  # the next parser index after it.
   var L = 0
+  result = startIdx
   while true:
     inc L
     setLen(cols, L)
-    cols[L - 1] = tokEnd(p)
-    assert(currentTok(p).kind == tkAdornment)
-    inc p.idx
-    if currentTok(p).kind != tkWhite: break
-    inc p.idx
-    if currentTok(p).kind != tkAdornment: break
-  if currentTok(p).kind == tkIndent: inc p.idx
-  # last column has no limit:
-  cols[L - 1] = 32000
+    cols[L - 1].start = tokStart(p, result)
+    cols[L - 1].stop = tokEnd(p, result)
+    assert(p.tok[result].kind == tkAdornment)
+    inc result
+    if p.tok[result].kind != tkWhite: break
+    inc result
+    if p.tok[result].kind != tkAdornment: break
+  if p.tok[result].kind == tkIndent: inc result
+
+proc checkColumns(p: RstParser, cols: RstCols) =
+  var i = p.idx
+  if p.tok[i].symbol[0] != '=':
+    rstMessage(p, mwRstStyle,
+               "only tables with `=` columns specification are allowed")
+  for col in 0 ..< cols.len:
+    if tokEnd(p, i) != cols[col].stop:
+      rstMessage(p, meIllformedTable,
+                 "end of table column #$1 should end at position $2" % [
+                   $(col+1), $(cols[col].stop+ColRstOffset)],
+                 p.tok[i].line, tokEnd(p, i))
+    inc i
+    if col == cols.len - 1:
+      if p.tok[i].kind == tkWhite:
+        inc i
+      if p.tok[i].kind notin {tkIndent, tkEof}:
+        rstMessage(p, meIllformedTable, "extraneous column specification")
+    elif p.tok[i].kind == tkWhite:
+      inc i
+    else:
+      rstMessage(p, meIllformedTable, "no enough table columns",
+                 p.tok[i].line, p.tok[i].col)
+
+proc getSpans(p: RstParser, nextLine: int,
+              cols: RstCols, unitedCols: RstCols): seq[int] =
+  ## Calculates how many columns a joined cell occupies.
+  if unitedCols.len > 0:
+    result = newSeq[int](unitedCols.len)
+    var
+      iCell = 0
+      jCell = 0
+      uCell = 0
+    while jCell < cols.len:
+      if cols[jCell].stop < unitedCols[uCell].stop:
+        inc jCell
+      elif cols[jCell].stop == unitedCols[uCell].stop:
+        result[uCell] = jCell - iCell + 1
+        iCell = jCell + 1
+        jCell = jCell + 1
+        inc uCell
+      else:
+        rstMessage(p, meIllformedTable,
+                   "spanning underline does not match main table columns",
+                   p.tok[nextLine].line, p.tok[nextLine].col)
+
+proc parseSimpleTableRow(p: var RstParser, cols: RstCols, colChar: char): PRstNode =
+  ## Parses 1 row in RST simple table.
+  # Consider that columns may be spanning (united by using underline like ----):
+  let nextLine = tokenAfterNewline(p)
+  var unitedCols: RstCols
+  var afterSpan: int
+  if p.tok[nextLine].kind == tkAdornment and p.tok[nextLine].symbol[0] == '-':
+    afterSpan = getColumns(p, unitedCols, nextLine)
+    if unitedCols == cols and p.tok[nextLine].symbol[0] == colChar:
+      # legacy rst.nim compat.: allow punctuation like `----` in main boundaries
+      afterSpan = nextLine
+      unitedCols.setLen 0
+  else:
+    afterSpan = nextLine
+  template colEnd(i): int =
+    if i == cols.len - 1: high(int)  # last column has no limit
+    elif unitedCols.len > 0: unitedCols[i].stop else: cols[i].stop
+  template colStart(i): int =
+    if unitedCols.len > 0: unitedCols[i].start else: cols[i].start
+  var row = newSeq[string](if unitedCols.len > 0: unitedCols.len else: cols.len)
+  var spans: seq[int] = getSpans(p, nextLine, cols, unitedCols)
+
+  let line = currentTok(p).line
+  # Iterate over the lines a single cell may span:
+  while true:
+    var nCell = 0
+    # distribute tokens between cells in the current line:
+    while currentTok(p).kind notin {tkIndent, tkEof}:
+      if tokEnd(p) <= colEnd(nCell):
+        if tokStart(p) < colStart(nCell):
+          if currentTok(p).kind != tkWhite:
+            rstMessage(p, meIllformedTable,
+                       "this word crosses table column from the left")
+          else:
+            inc p.idx
+        else:
+          row[nCell].add(currentTok(p).symbol)
+          inc p.idx
+      else:
+        if tokStart(p) < colEnd(nCell) and currentTok(p).kind != tkWhite:
+          rstMessage(p, meIllformedTable,
+                     "this word crosses table column from the right")
+        inc nCell
+    if currentTok(p).kind == tkIndent: inc p.idx
+    if tokEnd(p) <= colEnd(0): break
+    # Continued current cells because the 1st column is empty.
+    if currentTok(p).kind in {tkEof, tkAdornment}:
+      break
+    for nCell in countup(1, high(row)): row[nCell].add('\n')
+  result = newRstNode(rnTableRow)
+  var q: RstParser
+  for uCell in 0 ..< row.len:
+    initParser(q, p.s)
+    q.col = colStart(uCell)
+    q.line = line - 1
+    getTokens(row[uCell], q.tok)
+    let cell = newRstNode(rnTableDataCell)
+    cell.span = if spans.len == 0: 0 else: spans[uCell]
+    cell.add(parseDoc(q))
+    result.add(cell)
+  if afterSpan > p.idx:
+    p.idx = afterSpan
 
 proc parseSimpleTable(p: var RstParser): PRstNode =
-  var
-    cols: IntSeq
-    row: seq[string]
-    i, last, line: int
-    c: char
-    q: RstParser
-    a, b: PRstNode
+  var cols: RstCols
   result = newRstNodeA(p, rnTable)
-  cols = @[]
-  row = @[]
-  a = nil
-  c = currentTok(p).symbol[0]
+  let startIdx = getColumns(p, cols, p.idx)
+  let colChar = currentTok(p).symbol[0]
+  checkColumns(p, cols)
+  p.idx = startIdx
+  result.colCount = cols.len
   while true:
     if currentTok(p).kind == tkAdornment:
-      last = tokenAfterNewline(p)
-      if p.tok[last].kind in {tkEof, tkIndent}:
+      checkColumns(p, cols)
+      p.idx = tokenAfterNewline(p)
+      if currentTok(p).kind in {tkEof, tkIndent}:
         # skip last adornment line:
-        p.idx = last
         break
-      getColumns(p, cols)
-      setLen(row, cols.len)
-      if a != nil:
-        for j in 0 ..< a.len:  # fix rnTableDataCell -> rnTableHeaderCell
-          a.sons[j] = newRstNode(rnTableHeaderCell, a.sons[j].sons)
+      if result.sons.len > 0: result.sons[^1].endsHeader = true
+      # fix rnTableDataCell -> rnTableHeaderCell for previous table rows:
+      for nRow in 0 ..< result.sons.len:
+        for nCell in 0 ..< result.sons[nRow].len:
+          template cell: PRstNode = result.sons[nRow].sons[nCell]
+          cell = PRstNode(kind: rnTableHeaderCell, sons: cell.sons,
+                          span: cell.span, anchor: cell.anchor)
     if currentTok(p).kind == tkEof: break
-    for j in countup(0, high(row)): row[j] = ""
-    # the following while loop iterates over the lines a single cell may span:
-    line = currentTok(p).line
-    while true:
-      i = 0
-      while currentTok(p).kind notin {tkIndent, tkEof}:
-        if tokEnd(p) <= cols[i]:
-          row[i].add(currentTok(p).symbol)
-          inc p.idx
-        else:
-          if currentTok(p).kind == tkWhite: inc p.idx
-          inc i
-      if currentTok(p).kind == tkIndent: inc p.idx
-      if tokEnd(p) <= cols[0]: break
-      if currentTok(p).kind in {tkEof, tkAdornment}: break
-      for j in countup(1, high(row)): row[j].add('\n')
-    a = newRstNode(rnTableRow)
-    for j in countup(0, high(row)):
-      initParser(q, p.s)
-      q.col = cols[j]
-      q.line = line - 1
-      getTokens(row[j], q.tok)
-      b = newRstNode(rnTableDataCell)
-      b.add(parseDoc(q))
-      a.add(b)
-    result.add(a)
+    let tabRow = parseSimpleTableRow(p, cols, colChar)
+    result.add tabRow
 
 proc readTableRow(p: var RstParser): ColSeq =
   if currentTok(p).symbol == "|": inc p.idx
@@ -2574,17 +2808,16 @@ proc isValidDelimiterRow(p: var RstParser, colNum: int): bool =
 proc parseMarkdownTable(p: var RstParser): PRstNode =
   var
     row: ColSeq
-    colNum: int
     a, b: PRstNode
     q: RstParser
   result = newRstNodeA(p, rnMarkdownTable)
 
   proc parseRow(p: var RstParser, cellKind: RstNodeKind, result: PRstNode) =
     row = readTableRow(p)
-    if colNum == 0: colNum = row.len # table header
-    elif row.len < colNum: row.setLen(colNum)
+    if result.colCount == 0: result.colCount = row.len # table header
+    elif row.len < result.colCount: row.setLen(result.colCount)
     a = newRstNode(rnTableRow)
-    for j in 0 ..< colNum:
+    for j in 0 ..< result.colCount:
       b = newRstNode(cellKind)
       initParser(q, p.s)
       q.col = p.col
@@ -2595,7 +2828,8 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
     result.add(a)
 
   parseRow(p, rnTableHeaderCell, result)
-  if not isValidDelimiterRow(p, colNum): rstMessage(p, meMarkdownIllformedTable)
+  if not isValidDelimiterRow(p, result.colCount):
+    rstMessage(p, meMarkdownIllformedTable)
   while predNL(p) and currentTok(p).symbol == "|":
     parseRow(p, rnTableDataCell, result)
 
@@ -2797,11 +3031,19 @@ proc parseSection(p: var RstParser, result: PRstNode) =
       if currInd(p) == currentTok(p).ival:
         inc p.idx
       elif currentTok(p).ival > currInd(p):
-        pushInd(p, currentTok(p).ival)
-        var a = newRstNodeA(p, rnBlockQuote)
-        parseSection(p, a)
-        result.add(a)
-        popInd(p)
+        if roPreferMarkdown in p.s.options:  # Markdown => normal paragraphs
+          if currentTok(p).ival - currInd(p) >= 4:
+            rstMessage(p, mwRstStyle,
+                       "Markdown indented code not implemented")
+          pushInd(p, currentTok(p).ival)
+          parseSection(p, result)
+          popInd(p)
+        else:  # RST mode => block quotes
+          pushInd(p, currentTok(p).ival)
+          var a = newRstNodeA(p, rnBlockQuote)
+          parseSection(p, a)
+          result.add(a)
+          popInd(p)
       else:
         while currentTok(p).kind != tkEof and nextTok(p).kind == tkIndent:
           inc p.idx  # skip blank lines
@@ -3028,29 +3270,11 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
   ## file. This behaviour is disabled in sandboxed mode and can be re-enabled
   ## with the `roSandboxDisabled` flag.
   result = parseDirective(p, rnCodeBlock, {hasArg, hasOptions}, parseLiteralBlock)
-  var filename = strip(getFieldValue(result, "file"))
-  if filename != "":
-    if roSandboxDisabled notin p.s.options:
-      let tok = p.tok[p.idx-2]
-      rstMessage(p, meSandboxedDirective, "file", tok.line, tok.col)
-    var path = p.findRelativeFile(filename)
-    if path == "": rstMessage(p, meCannotOpenFile, filename)
-    var n = newRstNode(rnLiteralBlock)
-    n.add newLeaf(readFile(path))
-    result.sons[2] = n
+  mayLoadFile(p, result)
 
   # Extend the field block if we are using our custom Nim extension.
   if nimExtension:
-    # Create a field block if the input block didn't have any.
-    if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
-    assert result.sons[1].kind == rnFieldList
-    # Hook the extra field and specify the Nim language as value.
-    var extraNode = newRstNode(rnField, info=lineInfo(p))
-    extraNode.add(newRstNode(rnFieldName))
-    extraNode.add(newRstNode(rnFieldBody))
-    extraNode.sons[0].add newLeaf("default-language")
-    extraNode.sons[1].add newLeaf("Nim")
-    result.sons[1].add(extraNode)
+    defaultCodeLangNim(p, result)
 
 proc dirContainer(p: var RstParser): PRstNode =
   result = parseDirective(p, rnContainer, {hasArg}, parseSectionWrapper)
@@ -3068,6 +3292,7 @@ proc dirTitle(p: var RstParser): PRstNode =
 
 proc dirContents(p: var RstParser): PRstNode =
   result = parseDirective(p, rnContents, {hasArg}, nil)
+  p.s.hasToc = true
 
 proc dirIndex(p: var RstParser): PRstNode =
   result = parseDirective(p, rnIndex, {}, parseSectionWrapper)
@@ -3202,7 +3427,7 @@ proc parseFootnote(p: var RstParser): PRstNode {.gcsafe.} =
     anchor.add $p.s.lineFootnoteSym.len
   of fnCitation:
     anchor.add rstnodeToRefname(label)
-  addAnchorRst(p, anchor, anchor, reset=true, anchorType=footnoteAnchor)
+  addAnchorRst(p, anchor, target = result, anchorType = footnoteAnchor)
   result.anchor = anchor
   if currentTok(p).kind == tkWhite: inc p.idx
   discard parseBlockContent(p, result, parseSectionWrapper)
@@ -3236,8 +3461,9 @@ proc parseDotDot(p: var RstParser): PRstNode =
     if currentTok(p).kind == tkWhite: inc p.idx
     var b = untilEol(p)
     if len(b) == 0:  # set internal anchor
-      addAnchorRst(p, linkName(a), rstnodeToRefname(a), reset=false,
-                   anchorType=manualDirectiveAnchor)
+      p.curAnchors.add ManualAnchor(
+        alias: linkName(a), anchor: rstnodeToRefname(a), info: prevLineInfo(p)
+      )
     else:  # external hyperlink
       setRef(p, rstnodeToRefname(a), b, refType=hyperlinkAlias)
   elif match(p, p.idx, " |"):
@@ -3278,6 +3504,7 @@ proc rstParsePass1*(fragment: string,
 proc preparePass2*(s: PRstSharedState, mainNode: PRstNode) =
   ## Records titles in node `mainNode` and orders footnotes.
   countTitles(s, mainNode)
+  fixHeadlines(s)
   orderFootnotes(s)
 
 proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
@@ -3304,14 +3531,15 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
     let substRst = findMainAnchorRst(s, text.addNodes, n.info)
     for subst in substRst:
       foundLinks.add LinkDef(ar: arInternalRst, priority: subst.priority,
-                             target: newLeaf(subst.mainAnchor[]),
+                             target: newLeaf(subst.target.anchor),
                              info: subst.info,
                              tooltip: "(" & $subst.anchorType & ")")
+    # find anchors automatically generated from Nim symbols
     if roNimFile in s.options:
       let substNim = findMainAnchorNim(s, signature=text, n.info)
       for subst in substNim:
         foundLinks.add LinkDef(ar: arNim, priority: subst.priority,
-                               target: newLeaf(subst.mainAnchor[]),
+                               target: newLeaf(subst.refname),
                                info: subst.info, tooltip: subst.tooltip)
     foundLinks.sort(cmp = cmp, order = Descending)
     let linkText = addNodes(n)
@@ -3357,15 +3585,6 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       if e != "": result = newLeaf(e)
       else: rstMessage(s.filenames, s.msgHandler, n.info,
                        mwUnknownSubstitution, key)
-  of rnHeadline, rnOverline:
-    # fix up section levels depending on presence of a title and subtitle
-    if s.hTitleCnt == 2:
-      if n.level == 1:    # it's the subtitle
-        n.level = 0
-      elif n.level >= 2:  # normal sections
-        n.level -= 1
-    elif s.hTitleCnt == 0:
-      n.level += 1
   of rnRef:
     result = resolveLink(s, n)
   of rnFootnote:
@@ -3416,14 +3635,12 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
     # TODO: correctly report ambiguities
     let anchorInfo = findMainAnchorRst(s, refn, n.info)
     if anchorInfo.len != 0:
-      result.add newLeaf(anchorInfo[0].mainAnchor[])  # add link
+      result.add newLeaf(anchorInfo[0].target.anchor)  # add link
     else:
       rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, refn)
       result.add newLeaf(refn)  # add link
   of rnLeaf:
     discard
-  of rnContents:
-    s.hasToc = true
   else:
     var regroup = false
     for i in 0 ..< n.len:
@@ -3455,7 +3672,8 @@ proc rstParse*(text, filename: string,
   ## note that 2nd tuple element should be fed to `initRstGenerator`
   ## argument `filenames` (it is being filled here at least with `filename`
   ## and possibly with other files from RST ``.. include::`` statement).
-  var sharedState = newRstSharedState(options, filename, findFile, msgHandler)
+  var sharedState = newRstSharedState(options, filename, findFile,
+                                      msgHandler, hasToc=false)
   let unresolved = rstParsePass1(text, line, column, sharedState)
   preparePass2(sharedState, unresolved)
   result.node = resolveSubs(sharedState, unresolved)

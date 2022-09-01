@@ -84,7 +84,8 @@ proc mangleLocalName(p: BProc; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
     var key = s.name.s.mangle
-    shallow(key)
+    when not defined(nimSeqsV2):
+      shallow(key)
     let counter = p.sigConflicts.getOrDefault(key)
     result = key.rope
     if s.kind == skTemp:
@@ -102,7 +103,8 @@ proc scopeMangledParam(p: BProc; param: PSym) =
   ## generate unique identifiers reliably (consider that ``var a = a`` is
   ## even an idiom in Nim).
   var key = param.name.s.mangle
-  shallow(key)
+  when not defined(nimSeqsV2):
+    shallow(key)
   p.sigConflicts.inc(key)
 
 const
@@ -1483,12 +1485,12 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
       genTupleInfo(m, x, x, result, info)
   of tySequence:
     genTypeInfoAux(m, t, t, result, info)
-    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcV2, gcGo}:
+    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcGo}:
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
-    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcV2, gcGo}:
+    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcGo}:
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)

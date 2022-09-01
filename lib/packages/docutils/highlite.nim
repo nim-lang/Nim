@@ -59,6 +59,10 @@ import
   strutils
 from algorithm import binarySearch
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   SourceLanguage* = enum
     langNone, langNim, langCpp, langCsharp, langC, langJava,
@@ -125,9 +129,7 @@ proc initGeneralTokenizer*(g: var GeneralTokenizer, buf: cstring) =
   g.length = 0
   g.state = low(TokenClass)
   g.lang = low(SourceLanguage)
-  var pos = 0                     # skip initial whitespace:
-  while g.buf[pos] in {' ', '\t'..'\r'}: inc(pos)
-  g.pos = pos
+  g.pos = 0
 
 proc initGeneralTokenizer*(g: var GeneralTokenizer, buf: string) =
   initGeneralTokenizer(g, cstring(buf))

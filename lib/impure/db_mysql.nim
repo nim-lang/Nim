@@ -19,10 +19,9 @@
 ## All `db_*` modules support the same form of parameter substitution.
 ## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
-##
-## .. code-block:: Nim
-##     sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
-##
+##   ```
+##   sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
+##   ```
 ##
 ## Examples
 ## ========
@@ -30,57 +29,60 @@
 ## Opening a connection to a database
 ## ----------------------------------
 ##
-## .. code-block:: Nim
-##     import std/db_mysql
-##     let db = open("localhost", "user", "password", "dbname")
-##     db.close()
+##   ```
+##   import std/db_mysql
+##   let db = open("localhost", "user", "password", "dbname")
+##   db.close()
+##   ```
 ##
 ## Creating a table
 ## ----------------
 ##
-## .. code-block:: Nim
-##      db.exec(sql"DROP TABLE IF EXISTS myTable")
-##      db.exec(sql("""CREATE TABLE myTable (
-##                       id integer,
-##                       name varchar(50) not null)"""))
+##   ```
+##   db.exec(sql"DROP TABLE IF EXISTS myTable")
+##   db.exec(sql("""CREATE TABLE myTable (
+##                    id integer,
+##                    name varchar(50) not null)"""))
+##   ```
 ##
 ## Inserting data
 ## --------------
 ##
-## .. code-block:: Nim
-##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
-##             "Dominik")
+##   ```
+##   db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
+##           "Dominik")
+##   ```
 ##
 ## Larger example
 ## --------------
 ##
-## .. code-block:: Nim
+##   ```
+##   import std/[db_mysql, math]
 ##
-##  import std/[db_mysql, math]
+##   let theDb = open("localhost", "nim", "nim", "test")
 ##
-##  let theDb = open("localhost", "nim", "nim", "test")
+##   theDb.exec(sql"Drop table if exists myTestTbl")
+##   theDb.exec(sql("create table myTestTbl (" &
+##       " Id    INT(11)     NOT NULL AUTO_INCREMENT PRIMARY KEY, " &
+##       " Name  VARCHAR(50) NOT NULL, " &
+##       " i     INT(11), " &
+##       " f     DECIMAL(18,10))"))
 ##
-##  theDb.exec(sql"Drop table if exists myTestTbl")
-##  theDb.exec(sql("create table myTestTbl (" &
-##      " Id    INT(11)     NOT NULL AUTO_INCREMENT PRIMARY KEY, " &
-##      " Name  VARCHAR(50) NOT NULL, " &
-##      " i     INT(11), " &
-##      " f     DECIMAL(18,10))"))
+##   theDb.exec(sql"START TRANSACTION")
+##   for i in 1..1000:
+##     theDb.exec(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
+##           "Item#" & $i, i, sqrt(i.float))
+##   theDb.exec(sql"COMMIT")
 ##
-##  theDb.exec(sql"START TRANSACTION")
-##  for i in 1..1000:
-##    theDb.exec(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
-##          "Item#" & $i, i, sqrt(i.float))
-##  theDb.exec(sql"COMMIT")
+##   for x in theDb.fastRows(sql"select * from myTestTbl"):
+##     echo x
 ##
-##  for x in theDb.fastRows(sql"select * from myTestTbl"):
-##    echo x
+##   let id = theDb.tryInsertId(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
+##           "Item#1001", 1001, sqrt(1001.0))
+##   echo "Inserted item: ", theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
 ##
-##  let id = theDb.tryInsertId(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
-##          "Item#1001", 1001, sqrt(1001.0))
-##  echo "Inserted item: ", theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
-##
-##  theDb.close()
+##   theDb.close()
+##   ```
 
 
 import strutils, mysql
@@ -117,7 +119,7 @@ when false:
     discard mysql_stmt_close(stmt)
 
 proc dbQuote*(s: string): string =
-  ## DB quotes the string.
+  ## DB quotes the string. Note that this doesn't escape `%` and `_`.
   result = newStringOfCap(s.len + 2)
   result.add "'"
   for c in items(s):
@@ -132,7 +134,6 @@ proc dbQuote*(s: string): string =
     of '"': result.add "\\\""
     of '\'': result.add "\\'"
     of '\\': result.add "\\\\"
-    of '_': result.add "\\_"
     else: result.add c
   add(result, '\'')
 
@@ -150,17 +151,17 @@ proc tryExec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
-  return mysql.real_query(PMySQL db, q, q.len) == 0'i32
+  return mysql.real_query(PMySQL db, q.cstring, q.len) == 0'i32
 
 proc rawExec(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) =
   var q = dbFormat(query, args)
-  if mysql.real_query(PMySQL db, q, q.len) != 0'i32: dbError(db)
+  if mysql.real_query(PMySQL db, q.cstring, q.len) != 0'i32: dbError(db)
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
-  if mysql.real_query(PMySQL db, q, q.len) != 0'i32: dbError(db)
+  if mysql.real_query(PMySQL db, q.cstring, q.len) != 0'i32: dbError(db)
 
 proc newRow(L: int): Row =
   newSeq(result, L)
@@ -361,7 +362,7 @@ proc tryInsertId*(db: DbConn, query: SqlQuery,
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   var q = dbFormat(query, args)
-  if mysql.real_query(PMySQL db, q, q.len) != 0'i32:
+  if mysql.real_query(PMySQL db, q.cstring, q.len) != 0'i32:
     result = -1'i64
   else:
     result = mysql.insertId(PMySQL db)
@@ -410,7 +411,7 @@ proc open*(connection, user, password, database: string): DbConn {.
            else: substr(connection, 0, colonPos-1)
     port: int32 = if colonPos < 0: 0'i32
                   else: substr(connection, colonPos+1).parseInt.int32
-  if mysql.realConnect(res, host, user, password, database,
+  if mysql.realConnect(res, host.cstring, user, password, database,
                        port, nil, 0) == nil:
     var errmsg = $mysql.error(res)
     mysql.close(res)
