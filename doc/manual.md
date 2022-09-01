@@ -1432,6 +1432,8 @@ it can be modified:
   s[0] = 'u' # This is ok
   ```
 
+`cstring` values may also be used in case statements like strings.
+
 Structured types
 ----------------
 A variable of a structured type can hold multiple values at the same
@@ -3097,6 +3099,9 @@ all possible values that `expr` can hold occur in a *slicelist*, a static error 
 This holds only for expressions of ordinal types.
 "All possible values" of `expr` are determined by `expr`'s type.
 To suppress the static error an `else: discard` should be used.
+
+Only ordinal types, floats, strings and cstrings are allowed as values
+in case statements.
 
 For non-ordinal types, it is not possible to list every possible value and so
 these always require an `else` part.

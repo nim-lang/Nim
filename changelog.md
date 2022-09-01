@@ -136,6 +136,10 @@
   let foo: seq[(float, byte, cstring)] = @[(1, 2, "abc")]
   ```
 
+- `cstring` is now accepted as a selector in `case` statements, removing the
+  need to convert to `string`. On the JS backend, this is translated directly
+  to a `switch` statement.
+
 ## Compiler changes
 
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
