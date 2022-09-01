@@ -1,6 +1,5 @@
 discard """
-cmd: "nim check $file"
-action: "reject"
+action: compile
 """
 
 import tables
