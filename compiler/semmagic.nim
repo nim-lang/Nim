@@ -10,6 +10,8 @@
 # This include file implements the semantic checking for magics.
 # included from sem.nim
 
+import std/tables
+
 proc semAddrArg(c: PContext; n: PNode): PNode =
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
@@ -384,7 +386,8 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   # Replace nkDerefExpr by nkHiddenDeref
   # nkDeref is for 'ref T':  x[].field
   # nkHiddenDeref is for 'var T': x<hidden deref [] here>.field
-  proc transform(c: PContext; procSym: PSym; n: PNode; old, fresh: PType; oldParam, newParam: PSym): PNode =
+  proc transform(c: PContext; procSym: PSym; n: PNode; old, fresh: PType; oldParam, newParam: PSym,
+                 bindings: var Table[ItemId, PSym]): PNode =
     result = shallowCopy(n)
     if sameTypeOrNil(n.typ, old):
       result.typ = fresh
@@ -392,10 +395,14 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
       if n.sym == oldParam:
         result.sym = newParam
       elif n.sym.owner == orig:
-        result.sym = copySym(n.sym, nextSymId c.idgen)
-        result.sym.owner = procSym
+        if n.sym.itemId notin bindings:
+          result.sym = copySym(n.sym, nextSymId c.idgen)
+          bindings[n.sym.itemId] = result.sym
+          result.sym.owner = procSym
+        else:
+          result.sym = bindings[n.sym.itemId]
     for i in 0 ..< safeLen(n):
-      result[i] = transform(c, procSym, n[i], old, fresh, oldParam, newParam)
+      result[i] = transform(c, procSym, n[i], old, fresh, oldParam, newParam, bindings)
     #if n.kind == nkDerefExpr and sameType(n[0].typ, old):
     #  result =
 
@@ -409,7 +416,8 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   let newParam = newSym(skParam, oldParam.name, nextSymId c.idgen, result, result.info)
   newParam.typ = newParamType
   # proc body:
-  result.ast = transform(c, result, orig.ast, origParamType, newParamType, oldParam, newParam)
+  var bindings = initTable[ItemId, PSym]()
+  result.ast = transform(c, result, orig.ast, origParamType, newParamType, oldParam, newParam, bindings)
   # proc signature:
   result.typ = newProcType(result.info, nextTypeId c.idgen, result)
   result.typ.addParam newParam
