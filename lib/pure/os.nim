@@ -3493,6 +3493,39 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noWeirdTarget.} =
     if res == 0'i32: raiseOSError(osLastError(), file)
 
 
+func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1).} =
+  ## Returns `true` if `filename` is valid for crossplatform use.
+  ##
+  ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
+  ## It uses `invalidFilenameChars`, `invalidFilenames` and `maxLen` to verify the specified `filename`.
+  ##
+  ## See also:
+  ##
+  ## * https://docs.microsoft.com/en-us/dotnet/api/system.io.pathtoolongexception
+  ## * https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+  ## * https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
+  ##
+  ## .. warning:: This only checks filenames, not whole paths
+  ##    (because basically you can mount anything as a path on Linux).
+  runnableExamples:
+    assert not isValidFilename(" foo")     # Leading white space
+    assert not isValidFilename("foo ")     # Trailing white space
+    assert not isValidFilename("foo.")     # Ends with dot
+    assert not isValidFilename("con.txt")  # "CON" is invalid (Windows)
+    assert not isValidFilename("OwO:UwU")  # ":" is invalid (Mac)
+    assert not isValidFilename("aux.bat")  # "AUX" is invalid (Windows)
+    assert not isValidFilename("")         # Empty string
+    assert not isValidFilename("foo/")     # Filename is empty
+
+  result = true
+  let f = filename.splitFile()
+  if unlikely(f.name.len + f.ext.len > maxLen or f.name.len == 0 or
+    f.name[0] == ' ' or f.name[^1] == ' ' or f.name[^1] == '.' or
+    find(f.name, invalidFilenameChars) != -1): return false
+  for invalid in invalidFilenames:
+    if cmpIgnoreCase(f.name, invalid) == 0: return false
+
+
 # deprecated declarations
 when not defined(nimscript):
   when not defined(js): # `noNimJs` doesn't work with templates, this should improve.
