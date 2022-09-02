@@ -136,4 +136,4 @@ since (1, 7):
   func queueMicrotask*(function: proc) {.importjs: "$1(#)".} =
     ## * https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask
     ## * https://developer.mozilla.org/en-US/docs/Web/API/HTML_DOM_API/Microtask_guide
-    runnableExamples: queueMicrotask(proc() = echo "Microtask")
+    runnableExamples"-r:off": queueMicrotask(proc() = echo "Microtask")

@@ -334,7 +334,7 @@ proc `[]`*(row: InstantRow, col: int): string {.inline.} =
 
 proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
   ## Return cstring of given column of the row
-  row.row[index]
+  row.row[index].cstring
 
 proc len*(row: InstantRow): int {.inline.} =
   ## Returns number of columns in the row

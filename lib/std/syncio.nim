@@ -11,7 +11,7 @@
 
 include system/inclrtl
 import std/private/since
-import system/formatfloat
+import std/formatfloat
 
 # ----------------- IO Part ------------------------------------------------
 type

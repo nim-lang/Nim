@@ -461,7 +461,7 @@ proc genCase(c: var Con; n: PNode) =
   #    elsePart
   #  Lend:
   let isExhaustive = skipTypes(n[0].typ,
-    abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString}
+    abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString, tyCstring}
 
   # we generate endings as a set of chained gotos, this is a bit awkward but it
   # ensures when recursively traversing the CFG for various analysis, we don't

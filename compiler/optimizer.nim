@@ -178,7 +178,7 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
 
   of nkCaseStmt:
     let isExhaustive = skipTypes(n[0].typ,
-      abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString} or
+      abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString, tyCstring} or
       n[^1].kind == nkElse
 
     analyse(c, b, n[0])
