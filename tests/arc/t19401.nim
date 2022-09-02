@@ -8,12 +8,16 @@ delete foo
 """
 
 type Foo = ref object
+  data: int
 proc delete(self: Foo) 
 proc newFoo: Foo =
   let x = 12
   discard x
   new(result, delete)
-proc delete(self: Foo) = echo("delete Foo")
+  result.data = x
+proc delete(self: Foo) =
+  doAssert self.data == 12
+  echo("delete foo")
 
 if isMainModule:
   proc test() =
@@ -23,5 +27,6 @@ if isMainModule:
     discard x2
     var x3: Foo
     new(x3, delete)
+    x3.data = 12
     discard x3
   test()
