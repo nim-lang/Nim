@@ -45,6 +45,7 @@
 - `strutils.find` now uses and defaults to `last = -1` for whole string searches,
   making limiting it to just the first char (`last = 0`) valid.
 - `random.rand` now works with `Ordinal`s.
+- Undeprecated `os.isvalidfilename`.
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
@@ -77,12 +78,6 @@
 - Removed deprecated `math.c_frexp`.
 - Removed deprecated `` httpcore.`==` ``.
 - Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that takes wrong argument types.
-- Remove deprecated `osproc.poDemon`, symbol with typo.
-- Undeprecated `os.isvalidfilename`.
-
-- Added [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask) for JavaScript targets.
-- Deprecated `selfExe` for Nimscript.
-
 - Removed deprecated `osproc.poDemon`, symbol with typo.
 
 ## Language changes
@@ -168,4 +163,3 @@
 - Nim now supports Nimble version 0.14 which added support for lock-files. This is done by
   a simple configuration change setting that you can do yourself too. In `$nim/config/nim.cfg`
   replace `pkgs` by `pkgs2`.
-
