@@ -78,7 +78,7 @@
 - Removed deprecated `` httpcore.`==` ``.
 - Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that takes wrong argument types.
 - Remove deprecated `osproc.poDemon`, symbol with typo.
-- Remove deprecated `os.isvalidfilename`.
+- Undeprecated `os.isvalidfilename`.
 
 - Added [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask) for JavaScript targets.
 - Deprecated `selfExe` for Nimscript.
@@ -134,10 +134,10 @@
   added to make this work explicitly, and a warning is generated in the case
   where it is implicit. This behavior only applies to templates, redefinition
   is generally disallowed for other symbols.
-  
+
 - A new form of type inference called [top-down inference](https://nim-lang.github.io/Nim/manual_experimental.html#topminusdown-type-inference)
   has been implemented for a variety of basic cases. For example, code like the following now compiles:
-  
+
   ```nim
   let foo: seq[(float, byte, cstring)] = @[(1, 2, "abc")]
   ```
@@ -150,7 +150,7 @@
 
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
   reality better. (Nim moved away from all techniques based on "tracing".)
-  
+
 - Defines the `gcRefc` symbol which allows writing specific code for the refc GC.
 
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
