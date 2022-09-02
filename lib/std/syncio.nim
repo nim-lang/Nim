@@ -324,9 +324,7 @@ const
 proc close*(f: File) {.tags: [], gcsafe.} =
   ## Closes the file.
   if not f.isNil:
-    let x = c_fclose(f)
-    if x < 0:
-      checkErr(f)
+    discard c_fclose(f)
 
 proc readChar*(f: File): char {.tags: [ReadIOEffect].} =
   ## Reads a single character from the stream `f`. Should not be used in
@@ -691,7 +689,7 @@ when defined(posix) and not defined(nimscript):
 
 proc open*(f: var File, filename: string,
           mode: FileMode = fmRead,
-          bufSize: int = -1): bool {.tags: [], raises: [IOError], benign.} =
+          bufSize: int = -1): bool {.tags: [], raises: [], benign.} =
   ## Opens a file named `filename` with given `mode`.
   ##
   ## Default mode is readonly. Returns true if the file could be opened.
