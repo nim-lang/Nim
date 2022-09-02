@@ -537,9 +537,13 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
         else:
           if sfForward in fin.flags:
             let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), nextSymId c.idgen, fin.owner, fin.info)
+            let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, nextSymId c.idgen))
             wrapperSym.flags.incl sfUsed
-            let wrapper = c.semExpr(c, newProcNode(nkProcDef, fin.info, body = newTree(nkCall, newSymNode(fin), fin.ast[paramsPos][1][0]),
-              params = fin.ast[paramsPos], name = newSymNode(wrapperSym), pattern = c.graph.emptyNode,
+            let wrapper = c.semExpr(c, newProcNode(nkProcDef, fin.info, body = newTree(nkCall, newSymNode(fin), selfSymNode),
+              params = nkFormalParams.newTree(c.graph.emptyNode,
+                      newTree(nkIdentDefs, selfSymNode, fin.ast[paramsPos][1][1], c.graph.emptyNode)
+                      ),
+              name = newSymNode(wrapperSym), pattern = c.graph.emptyNode,
               genericParams = c.graph.emptyNode, pragmas = c.graph.emptyNode, exceptions = c.graph.emptyNode), {})
             var transFormedSym = turnFinalizerIntoDestructor(c, wrapperSym, wrapper.info)
             transFormedSym.owner = fin
