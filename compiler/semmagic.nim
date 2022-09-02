@@ -535,7 +535,15 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
             getAttachedOp(c.graph, t, attachedDestructor).owner == fin:
           discard "already turned this one into a finalizer"
         else:
-          bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
+          if sfForward in fin.flags:
+            # todo change the name
+            let wrapperSym = newSym(skProc, getIdent(c.graph.cache, "wrapper_" & fin.name.s), nextSymId c.idgen, fin.owner, fin.info)
+            let wrapper = c.semExpr(c, newProcNode(nkProcDef, fin.info, body = newTree(nkCall, newSymNode(fin), fin.ast[paramsPos][1][0]),
+              params = fin.ast[paramsPos], name = newSymNode(wrapperSym), pattern = c.graph.emptyNode,
+              genericParams = c.graph.emptyNode, pragmas = c.graph.emptyNode, exceptions = c.graph.emptyNode), {})
+            bindTypeHook(c, turnFinalizerIntoDestructor(c, wrapperSym, wrapper.info), n, attachedDestructor)
+          else:
+            bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
     result = n
   of mDestroy:
     result = n
