@@ -1,11 +1,11 @@
 discard """
   nimout: '''
-tpatchModule.nims(32, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
-tpatchModule.nims(35, 12) Warning: cannot open: missingPatch_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
 tpatchModule.nims(38, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
-tpatchModule.nims(41, 12) Warning: cannot open:  [CannotOpen]
-tpatchModule.nims(44, 12) Warning: cannot open:  [CannotOpen]
+tpatchModule.nims(41, 12) Warning: cannot open: missingPatch_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
+tpatchModule.nims(44, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
 tpatchModule.nims(47, 12) Warning: cannot open:  [CannotOpen]
+tpatchModule.nims(50, 12) Warning: cannot open:  [CannotOpen]
+tpatchModule.nims(53, 12) Warning: cannot open:  [CannotOpen]
 a${/}module_name_clashes.nim(3, 12) Hint: tests/modules/b/module_name_clashes patched with tests/modules/mpatchModule [Patch]
 '''
 """

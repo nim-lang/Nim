@@ -89,9 +89,8 @@ proc patchFile*(package, filename, replacement: string) =
   ## The compiler also performs `path substitution <nimc.html#compiler-usage-commandminusline-switches>`_ on `replacement`.
   ##
   ## **Caveats:**
-  ## * Cannot be used to replace modules that are one of many with
-  ##   the same name and in the same package.
-  ## * Cannot be used to modify parts of a module and export the rest.
+  ## * Cannot patch identically named modules of the same package.
+  ## * Patch modules cannot import or include the module they are patching.
   ##
   ## These issues are resolved by `patchModule`.
   ##

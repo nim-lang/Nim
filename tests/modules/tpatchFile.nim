@@ -1,5 +1,3 @@
-
-
 # Test `nimscript.patchFile`
 #
 # The other components of this test are:
@@ -21,4 +19,4 @@ doAssert id == "mpatchFile"
 # Test non-module files don't get patched:
 import std/os
 const text = staticRead("tests"/"dummy.txt")
-doAssert text != "Just a simple text for test"
+doAssert text == "Just a simple text for test"

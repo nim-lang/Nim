@@ -27,8 +27,8 @@ patchModule("mpatchModule_f", "mpatchModulePkg")
 # Try to patch a patch (patch1->patch0->target):
 # This won't patch `mpatchModule_a` with `mpatchModule_c`.
 # This will patch `mpatchModule_b` with `mpatchModule_c`.
-# Patching a patch is achieved by importing a patch with
-# into another patch and then patching the target with it,
+# Patching a patch is achieved by importing a patch into
+# another patch and then patching the target with it,
 # because later target patch assignments take precedence
 # over earlier ones.
 patchModule("mpatchModule_a", "mpatchModule_b")
