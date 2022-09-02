@@ -367,7 +367,7 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   if level >= logging.level and level >= logger.levelThreshold:
     let ln = substituteLog(logger.fmtStr, level, args)
     when defined(js):
-      let cln: cstring = ln
+      let cln = ln.cstring
       case level
       of lvlDebug: {.emit: "console.debug(`cln`);".}
       of lvlInfo:  {.emit: "console.info(`cln`);".}

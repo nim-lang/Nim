@@ -260,7 +260,8 @@ type
                       # *OR*: a proc is indirectly called (used as first class)
     sfCompilerProc,   # proc is a compiler proc, that is a C proc that is
                       # needed for the code generator
-    sfProcvar,        # proc can be passed to a proc var
+    sfEscapes         # param escapes
+                      # currently unimplemented
     sfDiscriminant,   # field is a discriminant in a record/object
     sfRequiresInit,   # field must be initialized during construction
     sfDeprecated,     # symbol is deprecated
@@ -331,10 +332,10 @@ const
   sfExperimental* = sfOverriden       # module uses the .experimental switch
   sfGoto* = sfOverriden               # var is used for 'goto' code generation
   sfWrittenTo* = sfBorrow             # param is assigned to
-  sfEscapes* = sfProcvar              # param escapes
+                                      # currently unimplemented
   sfBase* = sfDiscriminant
-  sfIsSelf* = sfOverriden             # param is 'self'
   sfCustomPragma* = sfRegister        # symbol is custom pragma template
+  sfTemplateRedefinition* = sfExportc # symbol is a redefinition of an earlier template
 
 const
   # getting ready for the future expr/stmt merge
@@ -347,7 +348,8 @@ const
   ensuresEffects* = 2     # 'ensures' annotation
   tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
   pragmasEffects* = 4    # not an effect, but a slot for pragmas in proc type
-  effectListLen* = 5    # list of effects list
+  forbiddenEffects* = 5    # list of illegal effects
+  effectListLen* = 6    # list of effects list
   nkLastBlockStmts* = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
                         # these must be last statements in a block
 
@@ -673,7 +675,7 @@ type
     mInSet, mRepr, mExit,
     mSetLengthStr, mSetLengthSeq,
     mIsPartOf, mAstToStr, mParallel,
-    mSwap, mIsNil, mArrToSeq,
+    mSwap, mIsNil, mArrToSeq, mOpenArrayToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy, mTrace,
     mDefault, mUnown, mFinished, mIsolate, mAccessEnv, mAccessTypeField, mReset,
@@ -707,8 +709,8 @@ type
     mSymIsInstantiationOf, mNodeId, mPrivateAccess
 
 
-# things that we can evaluate safely at compile time, even if not asked for it:
 const
+  # things that we can evaluate safely at compile time, even if not asked for it:
   ctfeWhitelist* = {mNone, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
     mLengthStr, mLengthArray, mLengthSeq,
@@ -737,11 +739,17 @@ const
     mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInSet, mRepr}
+  
+  generatedMagics* = {mNone, mIsolate, mFinished, mOpenArrayToSeq}
+    ## magics that are generated as normal procs in the backend
 
 type
   ItemId* = object
     module*: int32
     item*: int32
+
+proc `$`*(x: ItemId): string =
+  "(module: " & $x.module & ", item: " & $x.item & ")"
 
 proc `==`*(a, b: ItemId): bool {.inline.} =
   a.item == b.item and a.module == b.module
@@ -1675,6 +1683,10 @@ proc transitionSonsKind*(n: PNode, kind: range[nkComesFrom..nkTupleConstr]) =
 proc transitionIntKind*(n: PNode, kind: range[nkCharLit..nkUInt64Lit]) =
   transitionNodeKindCommon(kind)
   n.intVal = obj.intVal
+
+proc transitionIntToFloatKind*(n: PNode, kind: range[nkFloatLit..nkFloat128Lit]) =
+  transitionNodeKindCommon(kind)
+  n.floatVal = BiggestFloat(obj.intVal)
 
 proc transitionNoneToSym*(n: PNode) =
   transitionNodeKindCommon(nkSym)

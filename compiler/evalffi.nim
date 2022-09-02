@@ -65,16 +65,16 @@ proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
     if (lib.isNil or lib.kind == libHeader) and not gExeHandle.isNil:
       libPathMsg = "current exe: " & getAppFilename() & " nor libc: " & libcDll
       # first try this exe itself:
-      theAddr = gExeHandle.symAddr(name)
+      theAddr = gExeHandle.symAddr(name.cstring)
       # then try libc:
       if theAddr.isNil:
         let dllhandle = getDll(conf, gDllCache, libcDll, sym.info)
-        theAddr = dllhandle.symAddr(name)
+        theAddr = dllhandle.symAddr(name.cstring)
     elif not lib.isNil:
       let dll = if lib.kind == libHeader: libcDll else: lib.path.strVal
       libPathMsg = dll
       let dllhandle = getDll(conf, gDllCache, dll, sym.info)
-      theAddr = dllhandle.symAddr(name)
+      theAddr = dllhandle.symAddr(name.cstring)
     if theAddr.isNil: globalError(conf, sym.info,
       "cannot import symbol: " & name & " from " & libPathMsg)
     result.intVal = cast[ByteAddress](theAddr)
@@ -110,8 +110,8 @@ proc mapCallConv(conf: ConfigRef, cc: TCallingConvention, info: TLineInfo): TABI
   else:
     globalError(conf, info, "cannot map calling convention to FFI")
 
-template rd(T, p: untyped): untyped = (cast[ptr T](p))[]
-template wr(T, p, v: untyped): untyped = (cast[ptr T](p))[] = v
+template rd(typ, p: untyped): untyped = (cast[ptr typ](p))[]
+template wr(typ, p, v: untyped): untyped = (cast[ptr typ](p))[] = v
 template `+!`(x, y: untyped): untyped =
   cast[pointer](cast[ByteAddress](x) + y)
 
@@ -177,8 +177,8 @@ const maxPackDepth = 20
 var packRecCheck = 0
 
 proc pack(conf: ConfigRef, v: PNode, typ: PType, res: pointer) =
-  template awr(T, v: untyped): untyped =
-    wr(T, res, v)
+  template awr(typ, v: untyped): untyped =
+    wr(typ, res, v)
 
   case typ.kind
   of tyBool: awr(bool, v.intVal != 0)

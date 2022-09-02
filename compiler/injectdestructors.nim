@@ -80,12 +80,6 @@ import sets, hashes
 
 proc hash(n: PNode): Hash = hash(cast[pointer](n))
 
-proc aliasesCached(cache: var Table[(PNode, PNode), AliasKind], obj, field: PNode): AliasKind =
-  let key = (obj, field)
-  if not cache.hasKey(key):
-    cache[key] = aliases(obj, field)
-  cache[key]
-
 type
   State = ref object
     lastReads: IntSet
@@ -116,9 +110,8 @@ proc mergeStates(a: var State, b: sink State) =
     a.alreadySeen.incl b.alreadySeen
 
 proc computeLastReadsAndFirstWrites(cfg: ControlFlowGraph) =
-  var cache = initTable[(PNode, PNode), AliasKind]()
   template aliasesCached(obj, field: PNode): AliasKind =
-    aliasesCached(cache, obj, field)
+    aliases(obj, field)
 
   var cfg = cfg
   preprocessCfg(cfg)
@@ -576,7 +569,7 @@ proc processScope(c: var Con; s: var Scope; ret: PNode): PNode =
 
 template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: untyped): PNode =
   assert not ret.typ.isEmptyType
-  var result = newNodeI(nkStmtListExpr, ret.info)
+  var result = newNodeIT(nkStmtListExpr, ret.info, ret.typ)
   # There is a possibility to do this check: s.wasMoved.len > 0 or s.final.len > 0
   # later and use it to eliminate the temporary when theres no need for it, but its
   # tricky because you would have to intercept moveOrCopy at a certain point

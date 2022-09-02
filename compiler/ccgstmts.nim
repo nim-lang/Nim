@@ -16,7 +16,7 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc getTraverseProc(p: BProc, v: PSym): Rope =
-  if p.config.selectedGC in {gcMarkAndSweep, gcHooks, gcV2, gcRefc} and
+  if p.config.selectedGC in {gcMarkAndSweep, gcHooks, gcRefc} and
       optOwnedRefs notin p.config.globalOptions and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
@@ -405,7 +405,7 @@ proc genClosureVar(p: BProc, a: PNode) =
   genLineDir(p, a)
   if immediateAsgn:
     loadInto(p, a[0], a[2], v)
-  else:
+  elif sfNoInit notin a[0][1].sym.flags:
     constructLoc(p, v)
 
 proc genVarStmt(p: BProc, n: PNode) =
@@ -837,17 +837,27 @@ template genCaseGeneric(p: BProc, t: PNode, d: var TLoc,
   fixLabel(p, lend)
 
 proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
+                         stringKind: TTypeKind,
                          branches: var openArray[Rope]) =
   var x: TLoc
   for i in 0..<b.len - 1:
     assert(b[i].kind != nkRange)
     initLocExpr(p, b[i], x)
-    assert(b[i].kind in {nkStrLit..nkTripleStrLit})
-    var j = int(hashString(p.config, b[i].strVal) and high(branches))
-    appcg(p.module, branches[j], "if (#eqStrings($1, $2)) goto $3;$n",
+    var j: int
+    case b[i].kind
+    of nkStrLit..nkTripleStrLit:
+      j = int(hashString(p.config, b[i].strVal) and high(branches))
+    of nkNilLit: j = 0
+    else:
+      assert false, "invalid string case branch node kind"
+    if stringKind == tyCstring:
+      appcg(p.module, branches[j], "if (#eqCstrings($1, $2)) goto $3;$n",
+         [rdLoc(e), rdLoc(x), labl])
+    else:
+      appcg(p.module, branches[j], "if (#eqStrings($1, $2)) goto $3;$n",
          [rdLoc(e), rdLoc(x), labl])
 
-proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
+proc genStringCase(p: BProc, t: PNode, stringKind: TTypeKind, d: var TLoc) =
   # count how many constant strings there are in the case:
   var strings = 0
   for i in 1..<t.len:
@@ -863,13 +873,17 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
       inc(p.labels)
       if t[i].kind == nkOfBranch:
         genCaseStringBranch(p, t[i], a, "LA" & rope(p.labels) & "_",
-                            branches)
+                            stringKind, branches)
       else:
         # else statement: nothing to do yet
         # but we reserved a label, which we use later
         discard
-    linefmt(p, cpsStmts, "switch (#hashString($1) & $2) {$n",
-            [rdLoc(a), bitMask])
+    if stringKind == tyCstring:
+      linefmt(p, cpsStmts, "switch (#hashCstring($1) & $2) {$n",
+              [rdLoc(a), bitMask])
+    else:
+      linefmt(p, cpsStmts, "switch (#hashString($1) & $2) {$n",
+              [rdLoc(a), bitMask])
     for j in 0..high(branches):
       if branches[j] != nil:
         lineF(p, cpsStmts, "case $1: $n$2break;$n",
@@ -881,7 +895,10 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
     var lend = genCaseSecondPass(p, t, d, labId, t.len-1)
     fixLabel(p, lend)
   else:
-    genCaseGeneric(p, t, d, "", "if (#eqStrings($1, $2)) goto $3;$n")
+    if stringKind == tyCstring:
+      genCaseGeneric(p, t, d, "", "if (#eqCstrings($1, $2)) goto $3;$n")
+    else:
+      genCaseGeneric(p, t, d, "", "if (#eqStrings($1, $2)) goto $3;$n")
 
 proc branchHasTooBigRange(b: PNode): bool =
   for it in b:
@@ -954,7 +971,9 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
     getTemp(p, t.typ, d)
   case skipTypes(t[0].typ, abstractVarRange).kind
   of tyString:
-    genStringCase(p, t, d)
+    genStringCase(p, t, tyString, d)
+  of tyCstring:
+    genStringCase(p, t, tyCstring, d)
   of tyFloat..tyFloat128:
     genCaseGeneric(p, t, d, "if ($1 >= $2 && $1 <= $3) goto $4;$n",
                             "if ($1 == $2) goto $3;$n")
@@ -1367,13 +1386,18 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "$1.status = __builtin_setjmp($1.context);$n", [safePoint])
     elif isDefined(p.config, "nimRawSetjmp"):
       if isDefined(p.config, "mswindows"):
-        # The Windows `_setjmp()` takes two arguments, with the second being an
-        # undocumented buffer used by the SEH mechanism for stack unwinding.
-        # Mingw-w64 has been trying to get it right for years, but it's still
-        # prone to stack corruption during unwinding, so we disable that by setting
-        # it to NULL.
-        # More details: https://github.com/status-im/nimbus-eth2/issues/3121
-        linefmt(p, cpsStmts, "$1.status = _setjmp($1.context, 0);$n", [safePoint])
+        if isDefined(p.config, "vcc") or isDefined(p.config, "clangcl"):
+          # For the vcc compiler, use `setjmp()` with one argument.
+          # See https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/setjmp?view=msvc-170
+          linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])        
+        else:
+          # The Windows `_setjmp()` takes two arguments, with the second being an
+          # undocumented buffer used by the SEH mechanism for stack unwinding.
+          # Mingw-w64 has been trying to get it right for years, but it's still
+          # prone to stack corruption during unwinding, so we disable that by setting
+          # it to NULL.
+          # More details: https://github.com/status-im/nimbus-eth2/issues/3121
+          linefmt(p, cpsStmts, "$1.status = _setjmp($1.context, 0);$n", [safePoint])
       else:
         linefmt(p, cpsStmts, "$1.status = _setjmp($1.context);$n", [safePoint])
     else:
