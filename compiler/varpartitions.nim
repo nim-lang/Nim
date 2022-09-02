@@ -494,7 +494,9 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
         # this list is subtle, we try to answer the question if after 'dest = f(src)'
         # there is a connection betwen 'src' and 'dest' so that mutations to 'src'
         # also reflect 'dest':
-        if magic in {mNone, mMove, mSlice, mAppendStrCh, mAppendStrStr, mAppendSeqElem, mArrToSeq}:
+        if magic in {mNone, mMove, mSlice,
+            mAppendStrCh, mAppendStrStr, mAppendSeqElem,
+            mArrToSeq, mOpenArrayToSeq}:
           for i in 1..<n.len:
             # we always have to assume a 'select(...)' like mechanism.
             # But at least we do filter out simple POD types from the
@@ -851,7 +853,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     #     connect(graph, cursorVar)
     inc c.inLoop
     for child in n: computeLiveRanges(c, child)
-    inc c.inLoop
+    dec c.inLoop
   of nkElifBranch, nkElifExpr, nkElse, nkOfBranch:
     inc c.inConditional
     for child in n: computeLiveRanges(c, child)

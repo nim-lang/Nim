@@ -731,7 +731,22 @@ proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
       skipTypes(typ, abstractInstOwned).kind in {tyVar} and
       tfVarIsPtr notin skipTypes(typ, abstractInstOwned).flags
 
+proc derefBlock(p: BProc, e: PNode, d: var TLoc) =
+  # We transform (block: x)[] to (block: x[])
+  let e0 = e[0]
+  var n = shallowCopy(e0)
+  n.typ = e.typ
+  for i in 0 ..< e0.len - 1:
+    n[i] = e0[i]
+  n[e0.len-1] = newTreeIT(nkHiddenDeref, e.info, e.typ, e0[e0.len-1])
+  expr p, n, d
+
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
+  if e.kind == nkHiddenDeref and e[0].kind in {nkBlockExpr, nkBlockStmt}:
+    # bug #20107. Watch out to not deref the pointer too late.
+    derefBlock(p, e, d)
+    return
+
   let mt = mapType(p.config, e[0].typ, mapTypeChooser(e[0]))
   if mt in {ctArray, ctPtrToArray} and lfEnforceDeref notin d.flags:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
@@ -988,12 +1003,12 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
     if reifiedOpenArray(arr.lode):
       linefmt(p, cpsStmts,
         "if ($2-$1 != -1 && " &
-        "($1 < 0 || $1 >= $3.Field1 || $2 < 0 || $2 >= $3.Field1)){ #raiseIndexError(); $4}$n",
+        "($1 < 0 || $1 >= $3.Field1 || $2 < 0 || $2 >= $3.Field1)){ #raiseIndexError4($1, $2, $3.Field1); $4}$n",
         [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
     else:
       linefmt(p, cpsStmts,
         "if ($2-$1 != -1 && ($1 < 0 || $1 >= $3Len_0 || $2 < 0 || $2 >= $3Len_0))" &
-        "{ #raiseIndexError(); $4}$n",
+        "{ #raiseIndexError4($1, $2, $3Len_0); $4}$n",
         [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
   of tyArray:
     let first = intLiteral(firstOrd(p.config, ty))
@@ -1004,7 +1019,7 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
   of tySequence, tyString:
     linefmt(p, cpsStmts,
       "if ($2-$1 != -1 && " &
-      "($1 < 0 || $1 >= $3 || $2 < 0 || $2 >= $3)){ #raiseIndexError(); $4}$n",
+      "($1 < 0 || $1 >= $3 || $2 < 0 || $2 >= $3)){ #raiseIndexError4($1, $2, $3); $4}$n",
       [rdLoc(a), rdLoc(b), lenExpr(p, arr), raiseInstr(p)])
   else: discard
 
@@ -1183,7 +1198,7 @@ proc strLoc(p: BProc; d: TLoc): Rope =
 
 proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   #   <Nim code>
-  #   s = 'Hello ' & name & ', how do you feel?' & 'z'
+  #   s = "Hello " & name & ", how do you feel?" & 'z'
   #
   #   <generated C code>
   #  {
@@ -1226,7 +1241,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
 
 proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   #  <Nim code>
-  #  s &= 'Hello ' & name & ', how do you feel?' & 'z'
+  #  s &= "Hello " & name & ", how do you feel?" & 'z'
   #  // BUG: what if s is on the left side too?
   #  <generated C code>
   #  {
@@ -2355,7 +2370,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr, mUnown: expr(p, e[1], d)
-  of mIsolate, mFinished: genCall(p, e, d)
+  of generatedMagics: genCall(p, e, d)
   of mEnumToStr:
     if optTinyRtti in p.config.globalOptions:
       genEnumToStr(p, e, d)
@@ -2964,7 +2979,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     if n[genericParamsPos].kind == nkEmpty:
       var prc = n[namePos].sym
       if useAliveDataFromDce in p.module.flags:
-        if p.module.alive.contains(prc.itemId.item) and prc.magic in {mNone, mIsolate, mFinished}:
+        if p.module.alive.contains(prc.itemId.item) and
+            prc.magic in generatedMagics:
           genProc(p.module, prc)
       elif prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
         if ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or

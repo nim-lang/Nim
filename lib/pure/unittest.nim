@@ -704,7 +704,9 @@ macro check*(conditions: untyped): untyped =
     result = quote do:
       block:
         `assigns`
-        if not `check`:
+        if `check`:
+          discard
+        else:
           checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
           `printOuts`
           fail()
@@ -720,7 +722,9 @@ macro check*(conditions: untyped): untyped =
     let callLit = checked.toStrLit
 
     result = quote do:
-      if not `checked`:
+      if `checked`:
+        discard
+      else:
         checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
         fail()
 

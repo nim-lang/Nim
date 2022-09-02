@@ -695,8 +695,7 @@ proc replace*(str: string, pattern: Regex,
   ## each match and the return value is the replacement value.
   ##
   ## If `subproc` is a `proc (string): string`, then it is executed with the
-  ## full text of the match and and the return value is the replacement
-  ## value.
+  ## full text of the match and the return value is the replacement value.
   ##
   ## If `subproc` is a string, the syntax is as follows:
   ##
