@@ -837,17 +837,27 @@ template genCaseGeneric(p: BProc, t: PNode, d: var TLoc,
   fixLabel(p, lend)
 
 proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
+                         stringKind: TTypeKind,
                          branches: var openArray[Rope]) =
   var x: TLoc
   for i in 0..<b.len - 1:
     assert(b[i].kind != nkRange)
     initLocExpr(p, b[i], x)
-    assert(b[i].kind in {nkStrLit..nkTripleStrLit})
-    var j = int(hashString(p.config, b[i].strVal) and high(branches))
-    appcg(p.module, branches[j], "if (#eqStrings($1, $2)) goto $3;$n",
+    var j: int
+    case b[i].kind
+    of nkStrLit..nkTripleStrLit:
+      j = int(hashString(p.config, b[i].strVal) and high(branches))
+    of nkNilLit: j = 0
+    else:
+      assert false, "invalid string case branch node kind"
+    if stringKind == tyCstring:
+      appcg(p.module, branches[j], "if (#eqCstrings($1, $2)) goto $3;$n",
+         [rdLoc(e), rdLoc(x), labl])
+    else:
+      appcg(p.module, branches[j], "if (#eqStrings($1, $2)) goto $3;$n",
          [rdLoc(e), rdLoc(x), labl])
 
-proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
+proc genStringCase(p: BProc, t: PNode, stringKind: TTypeKind, d: var TLoc) =
   # count how many constant strings there are in the case:
   var strings = 0
   for i in 1..<t.len:
@@ -863,13 +873,17 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
       inc(p.labels)
       if t[i].kind == nkOfBranch:
         genCaseStringBranch(p, t[i], a, "LA" & rope(p.labels) & "_",
-                            branches)
+                            stringKind, branches)
       else:
         # else statement: nothing to do yet
         # but we reserved a label, which we use later
         discard
-    linefmt(p, cpsStmts, "switch (#hashString($1) & $2) {$n",
-            [rdLoc(a), bitMask])
+    if stringKind == tyCstring:
+      linefmt(p, cpsStmts, "switch (#hashCstring($1) & $2) {$n",
+              [rdLoc(a), bitMask])
+    else:
+      linefmt(p, cpsStmts, "switch (#hashString($1) & $2) {$n",
+              [rdLoc(a), bitMask])
     for j in 0..high(branches):
       if branches[j] != nil:
         lineF(p, cpsStmts, "case $1: $n$2break;$n",
@@ -881,7 +895,10 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
     var lend = genCaseSecondPass(p, t, d, labId, t.len-1)
     fixLabel(p, lend)
   else:
-    genCaseGeneric(p, t, d, "", "if (#eqStrings($1, $2)) goto $3;$n")
+    if stringKind == tyCstring:
+      genCaseGeneric(p, t, d, "", "if (#eqCstrings($1, $2)) goto $3;$n")
+    else:
+      genCaseGeneric(p, t, d, "", "if (#eqStrings($1, $2)) goto $3;$n")
 
 proc branchHasTooBigRange(b: PNode): bool =
   for it in b:
@@ -954,7 +971,9 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
     getTemp(p, t.typ, d)
   case skipTypes(t[0].typ, abstractVarRange).kind
   of tyString:
-    genStringCase(p, t, d)
+    genStringCase(p, t, tyString, d)
+  of tyCstring:
+    genStringCase(p, t, tyCstring, d)
   of tyFloat..tyFloat128:
     genCaseGeneric(p, t, d, "if ($1 >= $2 && $1 <= $3) goto $4;$n",
                             "if ($1 == $2) goto $3;$n")

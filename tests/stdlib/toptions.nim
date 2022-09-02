@@ -4,6 +4,9 @@ discard """
 
 import std/[json, options]
 
+when defined(nimPreviewSlimSystem):
+  import std/objectdollar
+
 
 # RefPerson is used to test that overloaded `==` operator is not called by
 # options. It is defined here in the global scope, because otherwise the test

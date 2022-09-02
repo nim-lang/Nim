@@ -78,7 +78,7 @@ try:
     `=copy`(:tmpD_1, it_cursor.val)
     :tmpD_1)
   echo [
-    :tmpD_2 = `$`(a)
+    :tmpD_2 = `$$`(a)
     :tmpD_2]
 finally:
   `=destroy`(:tmpD_2)
