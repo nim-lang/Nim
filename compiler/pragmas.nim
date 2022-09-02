@@ -38,7 +38,7 @@ const
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
-    wDelegator, wExportNims, wUsed, wPragma}
+    wDelegator, wExportNims, wUsed, wPragma, wRedefine}
   macroPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wCompilerProc, wNonReloadable, wCore,
     wDiscardable, wGensym, wInject, wDelegator}
@@ -55,7 +55,7 @@ const
     wDeprecated,
     wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
-    wExperimental, wThis, wUsed, wInvariant, wAssume, wAssert}
+    wExperimental, wDoctype, wThis, wUsed, wInvariant, wAssume, wAssert}
   stmtPragmasTopLevel* = {wChecks, wObjChecks, wFieldChecks, wRangeChecks,
     wBoundChecks, wOverflowChecks, wNilChecks, wStaticBoundchecks,
     wStyleChecks, wAssertions,
@@ -870,6 +870,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wDirty:
         if sym.kind == skTemplate: incl(sym.flags, sfDirty)
         else: invalidPragma(c, it)
+      of wRedefine:
+        if sym.kind == skTemplate: incl(sym.flags, sfTemplateRedefinition)
+        else: invalidPragma(c, it)
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wCppNonPod:
@@ -990,8 +993,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wNonReloadable:
         sym.flags.incl sfNonReloadable
       of wProcVar:
+        # old procvar annotation, no longer needed
         noVal(c, it)
-        incl(sym.flags, sfProcvar)
       of wExplain:
         sym.flags.incl sfExplain
       of wDeprecated:
@@ -1040,7 +1043,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThread:
         noVal(c, it)
         incl(sym.flags, sfThread)
-        incl(sym.flags, sfProcvar)
         if sym.typ != nil:
           incl(sym.typ.flags, tfThread)
           if sym.typ.callConv == ccClosure: sym.typ.callConv = ccNimCall
@@ -1216,15 +1218,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if not isTopLevel(c):
           localError(c.config, n.info, "'experimental' pragma only valid as toplevel statement or in a 'push' environment")
         processExperimental(c, it)
-      of wThis:
-        if it.kind in nkPragmaCallKinds and it.len == 2:
-          c.selfName = considerQuotedIdent(c, it[1])
-          message(c.config, n.info, warnDeprecated, "'.this' pragma is deprecated")
-        elif it.kind == nkIdent or it.len == 1:
-          c.selfName = getIdent(c.cache, "self")
-          message(c.config, n.info, warnDeprecated, "'.this' pragma is deprecated")
-        else:
-          localError(c.config, it.info, "'this' pragma is allowed to have zero or one arguments")
+      of wDoctype:
+        if not isTopLevel(c):
+          localError(c.config, n.info, "\"doctype\" pragma only valid as top-level statement")
       of wNoRewrite:
         noVal(c, it)
       of wBase:

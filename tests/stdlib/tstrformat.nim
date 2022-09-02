@@ -3,6 +3,9 @@
 import genericstrformat
 import std/[strformat, strutils, times, tables, json]
 
+when defined(nimPreviewSlimSystem):
+  import std/objectdollar
+
 proc main() =
   block: # issue #7632
     doAssert works(5) == "formatted  5"

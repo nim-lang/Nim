@@ -735,6 +735,7 @@ proc derefBlock(p: BProc, e: PNode, d: var TLoc) =
   # We transform (block: x)[] to (block: x[])
   let e0 = e[0]
   var n = shallowCopy(e0)
+  n.typ = e.typ
   for i in 0 ..< e0.len - 1:
     n[i] = e0[i]
   n[e0.len-1] = newTreeIT(nkHiddenDeref, e.info, e.typ, e0[e0.len-1])
@@ -1197,7 +1198,7 @@ proc strLoc(p: BProc; d: TLoc): Rope =
 
 proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   #   <Nim code>
-  #   s = 'Hello ' & name & ', how do you feel?' & 'z'
+  #   s = "Hello " & name & ", how do you feel?" & 'z'
   #
   #   <generated C code>
   #  {
@@ -1240,7 +1241,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
 
 proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   #  <Nim code>
-  #  s &= 'Hello ' & name & ', how do you feel?' & 'z'
+  #  s &= "Hello " & name & ", how do you feel?" & 'z'
   #  // BUG: what if s is on the left side too?
   #  <generated C code>
   #  {
@@ -2369,7 +2370,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr, mUnown: expr(p, e[1], d)
-  of mIsolate, mFinished: genCall(p, e, d)
+  of generatedMagics: genCall(p, e, d)
   of mEnumToStr:
     if optTinyRtti in p.config.globalOptions:
       genEnumToStr(p, e, d)
@@ -2978,7 +2979,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     if n[genericParamsPos].kind == nkEmpty:
       var prc = n[namePos].sym
       if useAliveDataFromDce in p.module.flags:
-        if p.module.alive.contains(prc.itemId.item) and prc.magic in {mNone, mIsolate, mFinished}:
+        if p.module.alive.contains(prc.itemId.item) and
+            prc.magic in generatedMagics:
           genProc(p.module, prc)
       elif prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
         if ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or

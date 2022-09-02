@@ -6,8 +6,7 @@
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
 
-- `io` and `assertions` are about to move out of the `system` module.
-  You may instead import `std/syncio` and `std/assertions`.
+- `io`, `assertions`, `formatfloat`, and `` dollars.`$` `` for objects are about to move out of the `system` module. You may instead import `std/syncio`, `std/assertions`, `std/formatfloat` and `std/objectdollar`.
   The `-d:nimPreviewSlimSystem` option makes these imports required.
 
 - The `gc:v2` option is removed.
@@ -28,6 +27,9 @@
 `sink` for optimization purposes.
 
 - `nimPreviewDotLikeOps` is going to be removed or deprecated.
+
+- The `{.this.}` pragma, deprecated since 0.19, has been removed.
+- `nil` is no longer a valid value for distinct pointer types.
 
 ## Standard library additions and changes
 
@@ -57,19 +59,23 @@
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
   in `jscore` for JavaScript targets.
 - Added `UppercaseLetters`, `LowercaseLetters`, `PunctuationChars`, `PrintableChars` sets to `std/strutils`.
+- Added `complex.sgn` for obtaining the phase of complex numbers.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
 - Deprecated `std/sums`.
 
 [//]: # "Removals:"
-- Removed deprecated `std/sharedstrings`.
+- Removed deprecated module `parseopt2`.
+- Removed deprecated module `sharedstrings`.
+- Removed deprecated module `dom_extensions`.
+- Removed deprecated module `LockFreeHash`.
+- Removed deprecated module `events`.
 - Removed deprecated `oids.oidToString`.
 - Removed define `nimExperimentalAsyncjsThen` for `std/asyncjs.then` and `std/jsfetch`.
 - Removed deprecated `jsre.test` and `jsre.toString`.
 - Removed deprecated `math.c_frexp`.
 - Removed deprecated `` httpcore.`==` ``.
-- Removed deprecated `std/dom_extensions`.
 - Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that takes wrong argument types.
 - Removed deprecated `osproc.poDemon`, symbol with typo.
 
@@ -116,6 +122,23 @@
         x, y, z: int
       Baz = object
     ```
+
+- Redefining templates with the same signature implicitly was previously
+  allowed to support certain macro code. A `{.redefine.}` pragma has been
+  added to make this work explicitly, and a warning is generated in the case
+  where it is implicit. This behavior only applies to templates, redefinition
+  is generally disallowed for other symbols.
+  
+- A new form of type inference called [top-down inference](https://nim-lang.github.io/Nim/manual_experimental.html#topminusdown-type-inference)
+  has been implemented for a variety of basic cases. For example, code like the following now compiles:
+  
+  ```nim
+  let foo: seq[(float, byte, cstring)] = @[(1, 2, "abc")]
+  ```
+
+- `cstring` is now accepted as a selector in `case` statements, removing the
+  need to convert to `string`. On the JS backend, this is translated directly
+  to a `switch` statement.
 
 ## Compiler changes
 

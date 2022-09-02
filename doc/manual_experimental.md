@@ -124,6 +124,64 @@ ambiguous, a static error will be produced.
   p value2
   ```
 
+Top-down type inference
+=======================
+
+In expressions such as:
+
+```nim
+let a: T = ex
+```
+
+Normally, the compiler type checks the expression `ex` by itself, then
+attempts to statically convert the type-checked expression to the given type
+`T` as much as it can, while making sure it matches the type. The extent of
+this process is limited however due to the expression usually having
+an assumed type that might clash with the given type.
+
+With top-down type inference, the expression is type checked with the
+extra knowledge that it is supposed to be of type `T`. For example,
+the following code is does not compile with the former method, but
+compiles with top-down type inference:
+
+```nim
+let foo: (float, uint8, cstring) = (1, 2, "abc")
+```
+
+The tuple expression has an expected type of `(float, uint8, cstring)`.
+Since it is a tuple literal, we can use this information to assume the types
+of its elements. The expected types for the expressions `1`, `2` and `"abc"`
+are respectively `float`, `uint8`, and `cstring`; and these expressions can be
+statically converted to these types.
+
+Without this information, the type of the tuple expression would have been
+assumed to be `(int, int, string)`. Thus the type of the tuple expression
+would not match the type of the variable, and an error would be given.
+
+The extent of this varies, but there are some notable special cases.
+
+Sequence literals
+-----------------
+
+Top-down type inference applies to sequence literals.
+
+```nim
+let x: seq[seq[float]] = @[@[1, 2, 3], @[4, 5, 6]]
+```
+
+This behavior is tied to the `@` overloads in the `system` module,
+so overloading `@` can disable this behavior. This can be circumvented by
+specifying the `` system.`@` `` overload. 
+
+```nim
+proc `@`(x: string): string = "@" & x
+
+# does not compile:
+let x: seq[float] = @[1, 2, 3]
+# compiles:
+let x: seq[float] = system.`@`([1, 2, 3])
+```
+
 
 Package level objects
 =====================

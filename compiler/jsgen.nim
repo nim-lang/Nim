@@ -320,6 +320,10 @@ proc isSimpleExpr(p: PProc; n: PNode): bool =
     for c in n:
       if not p.isSimpleExpr(c): return false
     result = true
+  elif n.kind == nkStmtListExpr:
+    for i in 0..<n.len-1:
+      if n[i].kind notin {nkCommentStmt, nkEmpty}: return false
+    result = isSimpleExpr(p, n.lastSon)
   elif n.isAtom:
     result = true
 
@@ -869,8 +873,9 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
     totalRange = 0
   genLineDir(p, n)
   gen(p, n[0], cond)
-  let stringSwitch = skipTypes(n[0].typ, abstractVar).kind == tyString
-  if stringSwitch:
+  let typeKind = skipTypes(n[0].typ, abstractVar).kind
+  let anyString = typeKind in {tyString, tyCstring}
+  if typeKind == tyString:
     useMagic(p, "toJSStr")
     lineF(p, "switch (toJSStr($1)) {$n", [cond.rdLoc])
   else:
@@ -895,10 +900,11 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
             lineF(p, "case $1:$n", [cond.rdLoc])
             inc(v.intVal)
         else:
-          if stringSwitch:
+          if anyString:
             case e.kind
             of nkStrLit..nkTripleStrLit: lineF(p, "case $1:$n",
                 [makeJSString(e.strVal, false)])
+            of nkNilLit: lineF(p, "case null:$n", [])
             else: internalError(p.config, e.info, "jsgen.genCaseStmt: 2")
           else:
             gen(p, e, cond)
@@ -1455,7 +1461,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
           s.name.s)
     discard mangleName(p.module, s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic notin {mNone, mIsolate} or
+    if lfNoDecl in s.loc.flags or s.magic notin generatedMagics or
        {sfImportc, sfInfixCall} * s.flags != {}:
       discard
     elif s.kind == skMethod and getBody(p.module.graph, s).kind == nkEmpty:
@@ -2106,6 +2112,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       gen(p, n[1], x)
       useMagic(p, "nimCopy")
       r.res = "nimCopy(null, $1, $2)" % [x.rdLoc, genTypeInfo(p, n.typ)]
+  of mOpenArrayToSeq:
+    genCall(p, n, r)
   of mDestroy, mTrace: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
@@ -2266,6 +2274,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   r.kind = resExpr
   var initList : Rope
   var fieldIDs = initIntSet()
+  let nTyp = n.typ.skipTypes(abstractInst)
   for i in 1..<n.len:
     if i > 1: initList.add(", ")
     var it = n[i]
@@ -2274,7 +2283,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, val, a)
     var f = it[0].sym
     if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
-    fieldIDs.incl(lookupFieldAgain(n.typ, f).id)
+    fieldIDs.incl(lookupFieldAgain(nTyp, f).id)
 
     let typ = val.typ.skipTypes(abstractInst)
     if a.typ == etyBaseIndex:
@@ -2622,7 +2631,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     let s = n[namePos].sym
     discard mangleName(p.module, s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic notin {mNone, mIsolate}: discard
+    if lfNoDecl in s.loc.flags or s.magic notin generatedMagics: discard
     elif not p.g.generatedSyms.containsOrIncl(s.id):
       p.locals.add(genProc(p, s))
   of nkType: r.res = genTypeInfo(p, n.typ)

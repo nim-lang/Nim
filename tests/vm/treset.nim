@@ -1,6 +1,3 @@
-discard """
-  output: '''0'''
-"""
 static:
   type Obj = object
     field: int
@@ -48,6 +45,6 @@ proc main =
 
   var x = 4
   x = default(int)
-  echo x
+  doAssert x == 0
 
 main()
