@@ -536,7 +536,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
           discard "already turned this one into a finalizer"
         else:
           if sfForward in fin.flags:
-            let wrapperSym = newSym(skProc, c.graph.cache.idAnon, nextSymId c.idgen, fin.owner, fin.info)
+            let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), nextSymId c.idgen, fin.owner, fin.info)
             wrapperSym.flags.incl sfUsed
             let wrapper = c.semExpr(c, newProcNode(nkProcDef, fin.info, body = newTree(nkCall, newSymNode(fin), fin.ast[paramsPos][1][0]),
               params = fin.ast[paramsPos], name = newSymNode(wrapperSym), pattern = c.graph.emptyNode,
