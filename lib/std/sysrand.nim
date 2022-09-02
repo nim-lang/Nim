@@ -170,9 +170,8 @@ elif defined(linux) and not defined(nimNoGetRandom) and not defined(emscripten):
   const syscallHeader = """#include <unistd.h>
 #include <sys/syscall.h>"""
 
-  proc syscall(
-    n: clong, buf: pointer, bufLen: cint, flags: cuint
-  ): clong {.importc: "syscall", header: syscallHeader.}
+  proc syscall(n: clong): clong {.
+      importc: "syscall", varargs, header: syscallHeader.}
     #  When reading from the urandom source (GRND_RANDOM is not set),
     #  getrandom() will block until the entropy pool has been
     #  initialized (unless the GRND_NONBLOCK flag was specified).  If a
@@ -211,7 +210,7 @@ elif defined(zephyr):
   proc sys_csrand_get(dst: pointer, length: csize_t): cint {.importc: "sys_csrand_get", header: "<random/rand32.h>".}
     # Fill the destination buffer with cryptographically secure
     # random data values
-    # 
+    #
 
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
     # 0 if success, -EIO if entropy reseed error

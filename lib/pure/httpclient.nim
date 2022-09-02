@@ -19,7 +19,10 @@
 ## .. code-block:: Nim
 ##   import std/httpclient
 ##   var client = newHttpClient()
-##   echo client.getContent("http://google.com")
+##   try:
+##     echo client.getContent("http://google.com")
+##   finally:
+##     client.close()
 ##
 ## The same action can also be performed asynchronously, simply use the
 ## `AsyncHttpClient`:
@@ -29,7 +32,10 @@
 ##
 ##   proc asyncProc(): Future[string] {.async.} =
 ##     var client = newAsyncHttpClient()
-##     return await client.getContent("http://example.com")
+##     try:
+##       return await client.getContent("http://example.com")
+##     finally:
+##       client.close()
 ##
 ##   echo waitFor asyncProc()
 ##
@@ -53,8 +59,10 @@
 ##   data["output"] = "soap12"
 ##   data["uploaded_file"] = ("test.html", "text/html",
 ##     "<html><head></head><body><p>test</p></body></html>")
-##
-##   echo client.postContent("http://validator.w3.org/check", multipart=data)
+##   try:
+##     echo client.postContent("http://validator.w3.org/check", multipart=data)
+##   finally:
+##     client.close()
 ##
 ## To stream files from disk when performing the request, use `addFiles`.
 ##
@@ -66,8 +74,10 @@
 ##   var client = newHttpClient()
 ##   var data = newMultipartData()
 ##   data.addFiles({"uploaded_file": "test.html"}, mimeDb = mimes)
-##
-##   echo client.postContent("http://validator.w3.org/check", multipart=data)
+##   try:
+##     echo client.postContent("http://validator.w3.org/check", multipart=data)
+##   finally:
+##     client.close()
 ##
 ## You can also make post requests with custom headers.
 ## This example sets `Content-Type` to `application/json`
@@ -81,8 +91,11 @@
 ##   let body = %*{
 ##       "data": "some text"
 ##   }
-##   let response = client.request("http://some.api", httpMethod = HttpPost, body = $body)
-##   echo response.status
+##   try:
+##     let response = client.request("http://some.api", httpMethod = HttpPost, body = $body)
+##     echo response.status
+##   finally:
+##     client.close()
 ##
 ## Progress reporting
 ## ==================
@@ -101,7 +114,10 @@
 ##    proc asyncProc() {.async.} =
 ##      var client = newAsyncHttpClient()
 ##      client.onProgressChanged = onProgressChanged
-##      discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+##      try:
+##        discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+##      finally:
+##        client.close()
 ##
 ##    waitFor asyncProc()
 ##

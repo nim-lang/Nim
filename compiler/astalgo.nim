@@ -18,6 +18,9 @@ import
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+when not defined(nimHasCursor):
+  {.pragma: cursor.}
+
 proc hashNode*(p: RootRef): Hash
 proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
   # Convert a tree into its YAML representation; this is used by the
@@ -224,11 +227,10 @@ proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ## Named parameters are special because a named parameter can be
   ## gensym'ed and then they have '\`<number>' suffix that we need to
   ## ignore, see compiler / evaltempl.nim, snippet:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```
   ##   result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
+  ##   ```
   for i in 1..<list.len:
     let it = list[i].sym
     if it.name.id == ident.id or
@@ -815,16 +817,21 @@ type
     name*: PIdent
 
 proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
+  # hot spots
   var h = ti.h and high(tab.data)
   var start = h
-  result = tab.data[h]
-  while result != nil:
-    if result.name.id == ti.name.id: break
+  var p {.cursor.} = tab.data[h]
+  while p != nil:
+    if p.name.id == ti.name.id: break
     h = nextTry(h, high(tab.data))
     if h == start:
-      result = nil
+      p = nil
       break
-    result = tab.data[h]
+    p = tab.data[h]
+  if p != nil:
+    result = p # increase the count
+  else:
+    result = nil
   ti.h = nextTry(h, high(tab.data))
 
 proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
