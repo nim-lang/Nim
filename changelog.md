@@ -6,7 +6,7 @@
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
 
-- `io`, `assertions`, `formatfloat` are about to move out of the `system` module. You may instead import `std/syncio`, `std/assertions` and `std/formatfloat`.
+- `io`, `assertions`, `formatfloat`, and `` dollars.`$` `` for objects are about to move out of the `system` module. You may instead import `std/syncio`, `std/assertions`, `std/formatfloat` and `std/objectdollar`.
   The `-d:nimPreviewSlimSystem` option makes these imports required.
 
 - The `gc:v2` option is removed.
@@ -30,6 +30,8 @@
 
 - The `{.this.}` pragma, deprecated since 0.19, has been removed.
 - `nil` is no longer a valid value for distinct pointer types.
+- Removed two type pragma syntaxes deprecated since 0.20, namely
+  `type Foo = object {.final.}`, and `type Foo {.final.} [T] = object`.
 
 ## Standard library additions and changes
 
@@ -59,6 +61,7 @@
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
   in `jscore` for JavaScript targets.
 - Added `UppercaseLetters`, `LowercaseLetters`, `PunctuationChars`, `PrintableChars` sets to `std/strutils`.
+- Added `complex.sgn` for obtaining the phase of complex numbers.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
@@ -127,6 +130,17 @@
   added to make this work explicitly, and a warning is generated in the case
   where it is implicit. This behavior only applies to templates, redefinition
   is generally disallowed for other symbols.
+  
+- A new form of type inference called [top-down inference](https://nim-lang.github.io/Nim/manual_experimental.html#topminusdown-type-inference)
+  has been implemented for a variety of basic cases. For example, code like the following now compiles:
+  
+  ```nim
+  let foo: seq[(float, byte, cstring)] = @[(1, 2, "abc")]
+  ```
+
+- `cstring` is now accepted as a selector in `case` statements, removing the
+  need to convert to `string`. On the JS backend, this is translated directly
+  to a `switch` statement.
 
 ## Compiler changes
 
