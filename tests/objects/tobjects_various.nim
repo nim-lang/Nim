@@ -31,7 +31,7 @@ block tobject2:
 
 block tofopr:
   type
-    TMyType = object {.inheritable.}
+    TMyType {.inheritable.} = object
       len: int
       data: string
 
