@@ -1,11 +1,6 @@
 discard """
 """
 
-# This module contains derivative work of Python's `Lib/test/test_ntpath.py`
-# module. This is attributed to the PSF-2.0 license with the given notice:
-#
-# Copyright (c) 2001-2022 Python Software Foundation; All Rights Reserved
-
 import std/private/ntpath
 
 block: # From Python's `Lib/test/test_ntpath.py`

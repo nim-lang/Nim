@@ -1,7 +1,4 @@
-# This module contains derivative work of Python's `ntpath.py` module. This is
-# attributed to the PSF-2.0 license with the given notice:
-#
-# Copyright (c) 2001-2022 Python Software Foundation; All Rights Reserved
+# This module is inspired by Python's `ntpath.py` module.
 
 import std/[
   strutils,
