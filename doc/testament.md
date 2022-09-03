@@ -113,7 +113,7 @@ Example "template" **to edit** and write a Testament unittest:
     # Provide an `output` string to assert that the test prints to standard out
     # exactly the expected string. Provide an `outputsub` string to assert that
     # the string given here is a substring of the standard out output of the
-    # test.
+    # test (the output includes both the compiler and test execution output).
     output: ""
     outputsub: ""
 
@@ -153,8 +153,7 @@ Example "template" **to edit** and write a Testament unittest:
     # Command the test should use to run. If left out or an empty string is
     # provided, the command is taken to be:
     # "nim $target --hints:on -d:testing --nimblePath:build/deps/pkgs $options $file"
-    # You can use the $target, $options, and $file placeholders in your own
-    # command, too.
+    # Subject to variable interpolation.
     cmd: "nim c -r $file"
 
     # Maximum generated temporary intermediate code file size for the test.
@@ -189,7 +188,76 @@ Example "template" **to edit** and write a Testament unittest:
 * `This is not the full spec of Testament, check the Testament Spec on GitHub, see parseSpec(). <https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L238>`_
 * `Nim itself uses Testament, so there are plenty of test examples. <https://github.com/nim-lang/Nim/tree/devel/tests>`_
 * Has some built-in CI compatibility, like Azure Pipelines, etc.
-* `Testament supports inlined error messages on Unittests, basically comments with the expected error directly on the code. <https://github.com/nim-lang/Nim/blob/9a110047cbe2826b1d4afe63e3a1f5a08422b73f/tests/effects/teffects1.nim>`_
+
+
+Inline hints, warnings and errors (notes)
+-----------------------------------------
+
+Testing the line, column, kind and message of hints, warnings and errors can
+be written inline like so:
+
+.. code-block:: nim
+
+  {.warning: "warning!!"} #[tt.Warning
+           ^ warning!! [User] ]#
+
+The opening `#[tt.` marks the message line.
+The `^` marks the message column.
+
+Inline messages can be combined with `nimout` when `nimoutFull` is false (default).
+This allows testing for expected messages from other modules:
+
+.. code-block:: nim
+
+  discard """
+    nimout: "config.nims(1, 1) Hint: some hint message [User]"
+  """
+  {.warning: "warning!!"} #[tt.Warning
+           ^ warning!! [User] ]#
+
+Multiple messages for a line can be checked by delimiting messages with ';':
+
+.. code-block:: nim
+
+  discard """
+    matrix: "--errorMax:0 --styleCheck:error"
+  """
+
+  proc generic_proc*[T](a_a: int) = #[tt.Error
+       ^ 'generic_proc' should be: 'genericProc'; tt.Error
+                        ^ 'a_a' should be: 'aA' ]#
+    discard
+
+Use `--errorMax:0` in `matrix`, or `cmd: "nim check $file"` when testing
+for multiple 'Error' messages.
+
+Output message variable interpolation
+-------------------------------------
+
+`errormsg`, `nimout`, and inline messages are subject to these variable interpolations:
+
+* `${/}` - platform's directory separator
+* `$file` - the filename (without directory) of the test
+
+All other `$` characters need escaped as `$$`.
+
+Cmd variable interpolation
+--------------------------
+
+The `cmd` option is subject to these variable interpolations:
+
+* `$target` - the compilation target, e.g. `c`.
+* `$options` - the options for the compiler.
+* `$file` - the file path of the test.
+* `$filedir` - the directory of the test file.
+
+.. code-block:: nim
+
+  discard """
+    cmd: "nim $target --nimblePath:./nimbleDir/simplePkgs $options $file"
+  """
+
+All other `$` characters need escaped as `$$`.
 
 
 Unit test Examples

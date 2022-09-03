@@ -1067,7 +1067,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
   of tyRange:
     if skipTypes(caseTyp[0], abstractInst).kind in shouldChckCovered:
       chckCovered = true
-  of tyFloat..tyFloat128, tyString, tyError:
+  of tyFloat..tyFloat128, tyString, tyCstring, tyError:
     discard
   else:
     popCaseContext(c)
