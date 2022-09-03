@@ -15,11 +15,10 @@
 #   this doesn't matter. However it matters for strings and other complex
 #   types that use the 'node' field; the reason is that slots are
 #   re-used in a register based VM. Example:
-#
-#.. code-block:: nim
-#   let s = a & b  # no matter what, create fresh node
-#   s = a & b  # no matter what, keep the node
-#
+#     ```nim
+#     let s = a & b  # no matter what, create fresh node
+#     s = a & b  # no matter what, keep the node
+#     ```
 # Also *stores* into non-temporary memory need to perform deep copies:
 # a.b = x.y
 # We used to generate opcAsgn for the *load* of 'x.y' but this is clearly

@@ -603,7 +603,9 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         checkMinSonsLen(t, 1, c.config)
         var tmp = fitNode(c, t[0].typ, r, r.info)
         # the call to fitNode may introduce a call to a converter
-        if tmp.kind in {nkHiddenCallConv}: tmp = semConstExpr(c, tmp)
+        if tmp.kind == nkHiddenCallConv or
+            (tmp.kind == nkHiddenStdConv and t[0].typ.kind == tyCstring):
+          tmp = semConstExpr(c, tmp)
         branch[i] = skipConv(tmp)
         inc(covered)
       else:
