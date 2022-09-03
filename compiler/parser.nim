@@ -2036,15 +2036,7 @@ proc parseObject(p: var Parser): PNode =
   #| objectDecl = 'object' ('of' typeDesc)? COMMENT? objectPart
   result = newNodeP(nkObjectTy, p)
   getTok(p)
-  if p.tok.tokType == tkCurlyDotLe and p.validInd:
-    # Deprecated since v0.20.0
-    parMessage(p, warnDeprecated,
-      "pragmas after the `object` keyword is a " &
-      "legacy syntax kept for compatibility; " &
-      "put pragmas after the type name instead")
-    result.add(parsePragma(p))
-  else:
-    result.add(p.emptyNode)
+  result.add(p.emptyNode) # compatibility with old pragma node
   if p.tok.tokType == tkOf and p.tok.indent < 0:
     var a = newNodeP(nkOfInherit, p)
     getTok(p)
@@ -2129,29 +2121,14 @@ proc parseTypeDef(p: var Parser): PNode =
   var identPragma = identifier
   var pragma: PNode
   var genericParam: PNode
-  var pragmaAfterName = false
-
-  if p.tok.tokType == tkCurlyDotLe:
-    pragma = optPragmas(p)
-    identPragma = newNodeP(nkPragmaExpr, p)
-    identPragma.add(identifier)
-    identPragma.add(pragma)
-    pragmaAfterName = true
 
   if p.tok.tokType == tkBracketLe and p.validInd:
-    if pragmaAfterName:
-      # Deprecated since v0.20.0
-      parMessage(p, warnDeprecated, "pragma before generic parameter list is" &
-        " a legacy syntax for compatibility, put pragmas after the " &
-        "generic parameter list instead")
     genericParam = parseGenericParamList(p)
   else:
     genericParam = p.emptyNode
 
   pragma = optPragmas(p)
   if pragma.kind != nkEmpty:
-    if pragmaAfterName:
-      parMessage(p, errGenerated, "pragma already present")
     identPragma = newNodeP(nkPragmaExpr, p)
     identPragma.add(identifier)
     identPragma.add(pragma)
