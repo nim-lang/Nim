@@ -2893,7 +2893,7 @@ the variable has been initialized and does not rely on syntactic properties:
 
   ```nim
   type
-    MyObject = object {.requiresInit.}
+    MyObject {.requiresInit.} = object
 
   proc p() =
     # the following is valid:
@@ -7775,7 +7775,7 @@ Produces:
 
     ```nim
     type
-      VectorIterator {.importcpp: "std::vector<'0>::iterator".} [T] = object
+      VectorIterator[T] {.importcpp: "std::vector<'0>::iterator".} = object
 
     var x: VectorIterator[cint]
     ```
