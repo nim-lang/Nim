@@ -85,7 +85,7 @@ block: # with other pragmas
   let importedFooBar {.importc: "exportedFooBar", nodecl.}: set[char]
 
   doAssert importedFooBar == fooBar #[tt.Warning
-                            ^ fooBar is deprecated
+                             ^ fooBar is deprecated
   ]#
   
 
