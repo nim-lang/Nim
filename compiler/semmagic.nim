@@ -547,6 +547,13 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
               genericParams = c.graph.emptyNode, pragmas = c.graph.emptyNode, exceptions = c.graph.emptyNode), {})
             var transFormedSym = turnFinalizerIntoDestructor(c, wrapperSym, wrapper.info)
             transFormedSym.owner = fin
+            if c.config.backend == backendCpp or sfCompileToCpp in c.module.flags:
+              let origParamType = transFormedSym.ast[bodyPos][1].typ
+              let selfSymbolType = makePtrType(c, origParamType.skipTypes(abstractPtrs))
+              let selfPtr = newNodeI(nkHiddenAddr, transFormedSym.ast[bodyPos][1].info)
+              selfPtr.add transFormedSym.ast[bodyPos][1]
+              selfPtr.typ = selfSymbolType
+              transFormedSym.ast[bodyPos][1] = c.semExpr(c, selfPtr)
             bindTypeHook(c, transFormedSym, n, attachedDestructor)
           else:
             bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
