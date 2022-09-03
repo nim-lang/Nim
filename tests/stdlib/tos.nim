@@ -681,3 +681,32 @@ block: # isAdmin
   if isAzure and defined(windows): doAssert isAdmin()
   # In Azure on POSIX tests run as a normal user
   if isAzure and defined(posix): doAssert not isAdmin()
+
+
+# https://github.com/nim-lang/Nim/pull/19643#issuecomment-1235102314
+block: # isValidFilename
+  # Negative Tests.
+  doAssert not isValidFilename("abcd", maxLen = 2)
+  doAssert not isValidFilename("0123456789", maxLen = 8)
+  doAssert not isValidFilename("con")
+  doAssert not isValidFilename("aux")
+  doAssert not isValidFilename("prn")
+  doAssert not isValidFilename("OwO|UwU")
+  doAssert not isValidFilename(" foo")
+  doAssert not isValidFilename("foo ")
+  doAssert not isValidFilename("foo.")
+  doAssert not isValidFilename("con.txt")
+  doAssert not isValidFilename("aux.bat")
+  doAssert not isValidFilename("prn.exe")
+  doAssert not isValidFilename("nim>.nim")
+  doAssert not isValidFilename(" foo.log")
+  # Positive Tests.
+  doAssert isValidFilename("abcd", maxLen = 42.Positive)
+  doAssert isValidFilename("c0n")
+  doAssert isValidFilename("foo.aux")
+  doAssert isValidFilename("bar.prn")
+  doAssert isValidFilename("OwO_UwU")
+  doAssert isValidFilename("cron")
+  doAssert isValidFilename("ux.bat")
+  doAssert isValidFilename("nim.nim")
+  doAssert isValidFilename("foo.log")
