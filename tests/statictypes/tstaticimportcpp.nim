@@ -23,12 +23,12 @@ struct SimpleStruct {
 """ .}
 
 type
-  GenericIntType {.importcpp: "GenericIntType<'0, '1>".} [N: static[int]; T] = object
+  GenericIntType[N: static[int]; T] {.importcpp: "GenericIntType<'0, '1>".} = object
     data: array[N, T]
 
-  GenericIntTypeAlt {.importcpp: "GenericIntType".} [N: static[int]; T] = object
+  GenericIntTypeAlt[N: static[int]; T] {.importcpp: "GenericIntType".} = object
 
-  GenericTType {.importcpp: "GenericTType<'0>".} [T] = object
+  GenericTType[T] {.importcpp: "GenericTType<'0>".} = object
     field: T
 
   GenInt4 = GenericIntType[4, int]
