@@ -875,8 +875,9 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
     totalRange = 0
   genLineDir(p, n)
   gen(p, n[0], cond)
-  let stringSwitch = skipTypes(n[0].typ, abstractVar).kind == tyString
-  if stringSwitch:
+  let typeKind = skipTypes(n[0].typ, abstractVar).kind
+  let anyString = typeKind in {tyString, tyCstring}
+  if typeKind == tyString:
     useMagic(p, "toJSStr")
     lineF(p, "switch (toJSStr($1)) {$n", [cond.rdLoc])
   else:
@@ -901,10 +902,11 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
             lineF(p, "case $1:$n", [cond.rdLoc])
             inc(v.intVal)
         else:
-          if stringSwitch:
+          if anyString:
             case e.kind
             of nkStrLit..nkTripleStrLit: lineF(p, "case $1:$n",
                 [makeJSString(e.strVal, false)])
+            of nkNilLit: lineF(p, "case null:$n", [])
             else: internalError(p.config, e.info, "jsgen.genCaseStmt: 2")
           else:
             gen(p, e, cond)

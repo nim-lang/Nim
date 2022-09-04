@@ -10,7 +10,7 @@ const
   Whitespace = {' ', '\t', '\n', '\r'}
 
 proc split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): Table[int, openArray[char]] #[tt.Error
-      'result' borrows from the immutable location 's' and attempts to mutate it
+^ 'result' borrows from the immutable location 's' and attempts to mutate it
     ]# =
   var last = 0
   var splits = maxsplit
@@ -35,7 +35,7 @@ proc `$`(x: openArray[char]): string =
 
 proc otherTest(x: int) =
   var y: var int = x #[tt.Error
-    'y' borrows from the immutable location 'x' and attempts to mutate it
+      ^ 'y' borrows from the immutable location 'x' and attempts to mutate it
   ]#
   y = 3
 

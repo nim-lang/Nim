@@ -12,7 +12,7 @@ method somethin(obj: RootObj) {.base.} =
   echo "do nothing"
 
 type
-  TNode* = object {.inheritable.}
+  TNode* {.inheritable.} = object
   PNode* = ref TNode
 
   PNodeFoo* = ref object of TNode
@@ -30,7 +30,7 @@ o.somethin()
 
 # tmproto
 type
-  Obj1 = ref object {.inheritable.}
+  Obj1 {.inheritable.} = ref object
   Obj2 = ref object of Obj1
 
 method beta(x: Obj1): int {.base.}
