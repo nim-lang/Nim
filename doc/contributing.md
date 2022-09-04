@@ -336,7 +336,7 @@ To avoid accidental highlighting follow this rule in ``*.nim`` files:
 
 .. Note:: ``*.rst`` files have ``:literal:`` as their default role.
           So for them the rule above is only applicable if the ``:nim:`` role
-          is set up manually as the default [*]_::
+          is set up manually as the default \[*]::
 
             .. role:: nim(code)
                :language: nim
@@ -345,7 +345,7 @@ To avoid accidental highlighting follow this rule in ``*.nim`` files:
           The first 2 lines are for other RST implementations,
           including Github one.
 
-          .. [*] this is fulfilled when ``doc/rstcommon.rst`` is included.
+          \[*] this is fulfilled when ``doc/rstcommon.rst`` is included.
 
 Best practices
 ==============
@@ -431,7 +431,7 @@ including prepending location info, writing to log files, etc.).
   ```
 
 .. _use_Option:
-[Ongoing debate] Consider using Option instead of return bool + var argument,
+(Ongoing debate) Consider using Option instead of return bool + var argument,
 unless stack allocation is needed (e.g. for efficiency).
 
   ```nim

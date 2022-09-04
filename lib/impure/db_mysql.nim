@@ -180,7 +180,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ## if you require **ALL** the rows.
   ##
   ## Breaking the fastRows() iterator during a loop will cause the next
-  ## database query to raise an [EDb] exception `Commands out of sync`.
+  ## database query to raise an `EDb` exception `Commands out of sync`.
   rawExec(db, query, args)
   var sqlres = mysql.useResult(PMySQL db)
   if sqlres != nil:
@@ -203,7 +203,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
   ## Same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within the iterator body.
+  ## on demand using `[]`. Returned handle is valid only within the iterator body.
   rawExec(db, query, args)
   var sqlres = mysql.useResult(PMySQL db)
   if sqlres != nil:
@@ -283,7 +283,7 @@ proc setColumnInfo(columns: var DbColumns; res: PRES; L: int) =
 iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
                       args: varargs[string, `$`]): InstantRow =
   ## Same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within the iterator body.
+  ## on demand using `[]`. Returned handle is valid only within the iterator body.
   rawExec(db, query, args)
   var sqlres = mysql.useResult(PMySQL db)
   if sqlres != nil:

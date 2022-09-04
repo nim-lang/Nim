@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------------------------------
 ##  This file contains an implementation of the Schubfach algorithm as described in
 ##
-##  [1] Raffaello Giulietti, "The Schubfach way to render doubles",
+##  \[1] Raffaello Giulietti, "The Schubfach way to render doubles",
 ##      https://drive.google.com/open?id=1luHhyQF9zKlM8yJ1nebU0OgVYhfC6CBN
 # --------------------------------------------------------------------------------------------------
 

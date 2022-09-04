@@ -37,7 +37,7 @@
 ##
 ## * The same goes for footnotes/citations links: they point to themselves.
 ##   No backreferences are generated since finding all references of a footnote
-##   can be done by simply searching for [footnoteName].
+##   can be done by simply searching for ``[footnoteName]``.
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils, std/strbasics
@@ -1372,7 +1372,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
           "</div> &ensp; $1\n</div>\n",
       "\\item[\\textsuperscript{[$3]}]$2 $1\n",
       [body, n.anchor.idS, mark, n.anchor])
-  of rnRef:
+  of rnPandocRef:
+    renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=false)
+  of rnRstRef:
     renderHyperlink(d, text=n.sons[0], link=n.sons[0], result, external=false)
   of rnStandaloneHyperlink:
     renderHyperlink(d, text=n.sons[0], link=n.sons[0], result, external=true)
