@@ -7,7 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.doctype: rst}  # TODO: remove when migration to Markdown is ready
 ## ==================================
 ##       packages/docutils/rst
 ## ==================================
@@ -25,12 +24,12 @@
 ## using simple plaintext representation.
 ##
 ## This module is also embedded into Nim compiler; the compiler can output
-## the result to HTML [#html]_ or Latex [#latex]_.
+## the result to HTML \[#html] or Latex \[#latex].
 ##
-## .. [#html] commands `nim doc`:cmd: for ``*.nim`` files and
+## \[#html] commands `nim doc`:cmd: for ``*.nim`` files and
 ##    `nim rst2html`:cmd: for ``*.rst`` files
 ##
-## .. [#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
+## \[#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
 ##    `nim rst2tex`:cmd: for ``*.rst``.
 ##
 ## If you are new to Markdown/RST please consider reading the following:
@@ -85,8 +84,8 @@
 ##
 ## Additional Nim-specific features:
 ##
-## * directives: ``code-block`` [cmp:Sphinx]_, ``title``,
-##   ``index`` [cmp:Sphinx]_
+## * directives: ``code-block`` \[cmp:Sphinx], ``title``,
+##   ``index`` \[cmp:Sphinx]
 ## * predefined roles
 ##   - ``:nim:`` (default), ``:c:`` (C programming language),
 ##     ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
@@ -100,9 +99,9 @@
 ##     - ``:cmd:`` for commands and common shells syntax
 ##     - ``:console:`` the same  for interactive sessions
 ##       (commands should be prepended by ``$``)
-##     - ``:program:`` for executable names [cmp:Sphinx]_
+##     - ``:program:`` for executable names \[cmp:Sphinx]
 ##       (one can just use ``:cmd:`` on single word)
-##     - ``:option:`` for command line options [cmp:Sphinx]_
+##     - ``:option:`` for command line options \[cmp:Sphinx]
 ##   - ``:tok:``, a role for highlighting of programming language tokens
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
 ## * ``:idx:`` role for \`interpreted text\` to include the link to this
@@ -116,7 +115,7 @@
 ##   Here the dummy `//` will disappear, while options `compile`:option:
 ##   and `doc`:option: will be left in the final document.
 ##
-## .. [cmp:Sphinx] similar but different from the directives of
+## \[cmp:Sphinx] similar but different from the directives of
 ##    Python `Sphinx directives`_ and `Sphinx roles`_ extensions
 ##
 ## .. _`extra features`:
