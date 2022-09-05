@@ -712,8 +712,10 @@ block: # isAdmin
   # In Azure on POSIX tests run as a normal user
   if isAzure and defined(posix): doAssert not isAdmin()
 
+import std/sequtils
+
 when doslikeFileSystem:
-  import std/[sequtils, private/ntpath]
+  import std/private/ntpath
 
   block: # Bug #19103 UNC paths
 
@@ -775,3 +777,15 @@ when doslikeFileSystem:
     doAssert splitFile("//?/c:") == ("//?/c:", "", "")
     doAssert splitFile("//?/c:/Users") == ("//?/c:", "Users", "")
     doAssert splitFile(r"\\localhost\c$\test.txt") == (r"\\localhost\c$", "test", ".txt")
+
+else:
+  block: # parentDirs
+    doAssert parentDirs("/home", fromRoot=true).toSeq == @["/", "/home"]
+    doAssert parentDirs("/home", fromRoot=false).toSeq == @["/home", "/"]
+    doAssert parentDirs("home", fromRoot=true).toSeq == @["home"]
+    doAssert parentDirs("home", fromRoot=false).toSeq == @["home"]
+
+    doAssert parentDirs("/home/user", fromRoot=true).toSeq == @["/", "/home/", "/home/user"]
+    doAssert parentDirs("/home/user", fromRoot=false).toSeq == @["/home/user", "/home", "/"]
+    doAssert parentDirs("home/user", fromRoot=true).toSeq == @["home/", "home/user"]
+    doAssert parentDirs("home/user", fromRoot=false).toSeq == @["home/user", "home"]
