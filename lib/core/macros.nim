@@ -1077,7 +1077,7 @@ proc newPar*(exprs: NimNode): NimNode =
   ## Create a new parentheses-enclosed expression.
   newNimNode(nnkPar).add(exprs)
 
-proc newPar*(exprs: varargs[NimNode]): NimNode {.error:
+proc newPar*(exprs: varargs[NimNode]): NimNode {.deprecated:
         "don't use newPar/nnkPar to construct tuple expressions; use nnkTupleConstr instead".}
 
 proc newBlockStmt*(label, body: NimNode): NimNode =
