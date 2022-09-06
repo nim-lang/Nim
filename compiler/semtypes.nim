@@ -143,10 +143,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     onDef(e.info, e)
     if sfGenSym notin e.flags:
       if not isPure:
-        if overloadableEnums in c.features:
-          addInterfaceOverloadableSymAt(c, c.currentScope, e)
-        else:
-          addInterfaceDecl(c, e)
+        addInterfaceOverloadableSymAt(c, c.currentScope, e)
       else:
         declarePureEnumField(c, e)
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
@@ -603,7 +600,9 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         checkMinSonsLen(t, 1, c.config)
         var tmp = fitNode(c, t[0].typ, r, r.info)
         # the call to fitNode may introduce a call to a converter
-        if tmp.kind in {nkHiddenCallConv}: tmp = semConstExpr(c, tmp)
+        if tmp.kind == nkHiddenCallConv or
+            (tmp.kind == nkHiddenStdConv and t[0].typ.kind == tyCstring):
+          tmp = semConstExpr(c, tmp)
         branch[i] = skipConv(tmp)
         inc(covered)
       else:

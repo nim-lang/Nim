@@ -12,7 +12,7 @@ import strutils
 
 type
   PNode[T,D] = ref TNode[T,D]
-  TItem {.acyclic, pure, final, shallow.} [T,D] = object
+  TItem[T,D] {.acyclic, pure, final, shallow.} = object
         key: T
         value: D
         node: PNode[T,D]
@@ -20,7 +20,7 @@ type
           val_set: bool
 
   TItems[T,D] = seq[ref TItem[T,D]]
-  TNode {.acyclic, pure, final, shallow.} [T,D] = object
+  TNode[T,D] {.acyclic, pure, final, shallow.} = object
         slots: TItems[T,D]
         left: PNode[T,D]
         count: int32

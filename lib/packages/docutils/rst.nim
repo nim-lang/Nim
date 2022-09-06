@@ -24,12 +24,12 @@
 ## using simple plaintext representation.
 ##
 ## This module is also embedded into Nim compiler; the compiler can output
-## the result to HTML [#html]_ or Latex [#latex]_.
+## the result to HTML \[#html] or Latex \[#latex].
 ##
-## .. [#html] commands `nim doc`:cmd: for ``*.nim`` files and
+## \[#html] commands `nim doc`:cmd: for ``*.nim`` files and
 ##    `nim rst2html`:cmd: for ``*.rst`` files
 ##
-## .. [#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
+## \[#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
 ##    `nim rst2tex`:cmd: for ``*.rst``.
 ##
 ## If you are new to Markdown/RST please consider reading the following:
@@ -84,8 +84,8 @@
 ##
 ## Additional Nim-specific features:
 ##
-## * directives: ``code-block`` [cmp:Sphinx]_, ``title``,
-##   ``index`` [cmp:Sphinx]_
+## * directives: ``code-block`` \[cmp:Sphinx], ``title``,
+##   ``index`` \[cmp:Sphinx]
 ## * predefined roles
 ##   - ``:nim:`` (default), ``:c:`` (C programming language),
 ##     ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
@@ -99,9 +99,9 @@
 ##     - ``:cmd:`` for commands and common shells syntax
 ##     - ``:console:`` the same  for interactive sessions
 ##       (commands should be prepended by ``$``)
-##     - ``:program:`` for executable names [cmp:Sphinx]_
+##     - ``:program:`` for executable names \[cmp:Sphinx]
 ##       (one can just use ``:cmd:`` on single word)
-##     - ``:option:`` for command line options [cmp:Sphinx]_
+##     - ``:option:`` for command line options \[cmp:Sphinx]
 ##   - ``:tok:``, a role for highlighting of programming language tokens
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
 ## * ``:idx:`` role for \`interpreted text\` to include the link to this
@@ -115,7 +115,7 @@
 ##   Here the dummy `//` will disappear, while options `compile`:option:
 ##   and `doc`:option: will be left in the final document.
 ##
-## .. [cmp:Sphinx] similar but different from the directives of
+## \[cmp:Sphinx] similar but different from the directives of
 ##    Python `Sphinx directives`_ and `Sphinx roles`_ extensions
 ##
 ## .. _`extra features`:
@@ -1458,7 +1458,7 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
         newSons = n.sons
       result = newRstNode(newKind, newSons)
     else:  # some link that will be resolved in `resolveSubs`
-      newKind = rnRef
+      newKind = rnRstRef
       result = newRstNode(newKind, sons=newSons, info=n.info)
   elif match(p, p.idx, ":w:"):
     # a role:
@@ -1552,7 +1552,7 @@ proc parseWordOrRef(p: var RstParser, father: PRstNode) =
     while currentTok(p).kind in {tkWord, tkPunct}:
       if currentTok(p).kind == tkPunct:
         if isInlineMarkupEnd(p, "_", exact=true):
-          reference = newRstNode(rnRef, info=lineInfo(p, saveIdx))
+          reference = newRstNode(rnRstRef, info=lineInfo(p, saveIdx))
           break
         if not validRefnamePunct(currentTok(p).symbol):
           break
@@ -1746,7 +1746,9 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
     defaultCodeLangNim(p, result)
 
 proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
-  var desc, link = ""
+  # Parses Markdown link. If it's Pandoc auto-link then its second
+  # son (target) will be in tokenized format (rnInner with leafs).
+  var desc = newRstNode(rnInner)
   var i = p.idx
 
   var parensStack: seq[char]
@@ -1754,31 +1756,59 @@ proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
     parensStack.setLen 0
     inc i # skip begin token
     while true:
-      if p.tok[i].kind in {tkEof, tkIndent}: return false
+      if p.tok[i].kind == tkEof: return false
+      if p.tok[i].kind == tkIndent and p.tok[i+1].kind == tkIndent:
+        return false
       let isClosing = checkParen(p.tok[i], parensStack)
       if p.tok[i].symbol == endToken and not isClosing:
         break
-      dest.add p.tok[i].symbol
+      let symbol = if p.tok[i].kind == tkIndent: " " else: p.tok[i].symbol
+      when dest is string: dest.add symbol
+      else: dest.add newLeaf(symbol)
       inc i
     inc i # skip end token
 
   parse("]", desc)
-  if p.tok[i].symbol != "(": return false
-  let linkIdx = i + 1
-  parse(")", link)
-  # only commit if we detected no syntax error:
-  let protocol = safeProtocol(link)
-  if link == "":
-    result = false
-    rstMessage(p, mwBrokenLink, protocol,
-               p.tok[linkIdx].line, p.tok[linkIdx].col)
-  else:
-    let child = newRstNode(rnHyperlink)
-    child.add desc
-    child.add link
-    father.add child
+  if p.tok[i].symbol == "(":
+    var link = ""
+    let linkIdx = i + 1
+    parse(")", link)
+    # only commit if we detected no syntax error:
+    let protocol = safeProtocol(link)
+    if link == "":
+      result = false
+      rstMessage(p, mwBrokenLink, protocol,
+                 p.tok[linkIdx].line, p.tok[linkIdx].col)
+    else:
+      let child = newRstNode(rnHyperlink)
+      child.add newLeaf(desc.addNodes)
+      child.add link
+      father.add child
+      p.idx = i
+      result = true
+  elif roPreferMarkdown in p.s.options:
+    # Use Pandoc's implicit_header_references extension
+    var n = newRstNode(rnPandocRef)
+    if p.tok[i].symbol == "[":
+      var link = newRstNode(rnInner)
+      let targetIdx = i + 1
+      parse("]", link)
+      n.add desc
+      if link.len != 0:  # [description][target]
+        n.add link
+        n.info = lineInfo(p, targetIdx)
+      else:              # [description=target][]
+        n.add desc
+        n.info = lineInfo(p, p.idx + 1)
+    else:                # [description=target]
+      n.add desc
+      n.add desc  # target is the same as description
+      n.info = lineInfo(p, p.idx + 1)
+    father.add n
     p.idx = i
     result = true
+  else:
+    result = false
 
 proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
   if label.sons.len >= 1 and label.sons[0].kind == rnLeaf and
@@ -3510,6 +3540,13 @@ proc preparePass2*(s: PRstSharedState, mainNode: PRstNode) =
 proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
     # Associate this link alias with its target and change node kind to
     # rnHyperlink or rnInternalRef appropriately.
+    var desc, alias: PRstNode
+    if n.kind == rnPandocRef:  # link like [desc][alias]
+      desc = n.sons[0]
+      alias = n.sons[1]
+    else:  # n.kind == rnRstRef, link like `desc=alias`_
+      desc = n
+      alias = n
     type LinkDef = object
       ar: AnchorRule
       priority: int
@@ -3521,14 +3558,13 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
       if result == 0:
         result = cmp(x.target, y.target)
     var foundLinks: seq[LinkDef]
-    let text = newRstNode(rnInner, n.sons)
-    let refn = rstnodeToRefname(n)
+    let refn = rstnodeToRefname(alias)
     var hyperlinks = findRef(s, refn)
     for y in hyperlinks:
       foundLinks.add LinkDef(ar: arHyperlink, priority: refPriority(y.kind),
                              target: y.value, info: y.info,
                              tooltip: "(" & $y.kind & ")")
-    let substRst = findMainAnchorRst(s, text.addNodes, n.info)
+    let substRst = findMainAnchorRst(s, alias.addNodes, n.info)
     for subst in substRst:
       foundLinks.add LinkDef(ar: arInternalRst, priority: subst.priority,
                              target: newLeaf(subst.target.anchor),
@@ -3536,19 +3572,19 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
                              tooltip: "(" & $subst.anchorType & ")")
     # find anchors automatically generated from Nim symbols
     if roNimFile in s.options:
-      let substNim = findMainAnchorNim(s, signature=text, n.info)
+      let substNim = findMainAnchorNim(s, signature=alias, n.info)
       for subst in substNim:
         foundLinks.add LinkDef(ar: arNim, priority: subst.priority,
                                target: newLeaf(subst.refname),
                                info: subst.info, tooltip: subst.tooltip)
     foundLinks.sort(cmp = cmp, order = Descending)
-    let linkText = addNodes(n)
+    let linkText = addNodes(desc)
     if foundLinks.len >= 1:
       let kind = if foundLinks[0].ar == arHyperlink: rnHyperlink
                  elif foundLinks[0].ar == arNim: rnNimdocRef
                  else: rnInternalRef
       result = newRstNode(kind)
-      result.sons = @[text, foundLinks[0].target]
+      result.sons = @[newRstNode(rnInner, desc.sons), foundLinks[0].target]
       if kind == rnNimdocRef: result.tooltip = foundLinks[0].tooltip
       if foundLinks.len > 1:  # report ambiguous link
         var targets = newSeq[string]()
@@ -3585,7 +3621,7 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       if e != "": result = newLeaf(e)
       else: rstMessage(s.filenames, s.msgHandler, n.info,
                        mwUnknownSubstitution, key)
-  of rnRef:
+  of rnRstRef, rnPandocRef:
     result = resolveLink(s, n)
   of rnFootnote:
     var (fnType, num) = getFootnoteType(n.sons[0])

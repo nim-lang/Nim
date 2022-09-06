@@ -163,18 +163,7 @@ func `/`*[T](x: T; y: Complex[T]): Complex[T] =
 
 func `/`*[T](x, y: Complex[T]): Complex[T] =
   ## Divides two complex numbers.
-  var r, den: T
-  if abs(y.re) < abs(y.im):
-    r = y.re / y.im
-    den = y.im + r * y.re
-    result.re = (x.re * r + x.im) / den
-    result.im = (x.im * r - x.re) / den
-  else:
-    r = y.im / y.re
-    den = y.re + r * y.im
-    result.re = (x.re + r * x.im) / den
-    result.im = (x.im - r * x.re) / den
-
+  x * conjugate(y) / abs2(y)
 
 func `+=`*[T](x: var Complex[T]; y: Complex[T]) =
   ## Adds `y` to `x`.

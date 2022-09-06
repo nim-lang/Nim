@@ -1,5 +1,5 @@
 type
-  Base[T] = ref object {.inheritable.}
+  Base[T] {.inheritable.} = ref object
     value*: T
 
   Derived[T] = ref object of Base[T]

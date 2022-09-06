@@ -1173,7 +1173,7 @@ suite "Warnings":
       lastParagraph
       """
     var warnings = new seq[string]
-    let output = input.toAst(warnings=warnings)
+    let output = input.toAst(rstOptions=preferRst, warnings=warnings)
     check(warnings[] == @[
         "input(3, 14) Warning: broken link 'citation-som'",
         "input(5, 7) Warning: broken link 'a broken Link'",
@@ -1199,7 +1199,7 @@ suite "Warnings":
         rnParagraph
           rnLeaf  'here'
           rnLeaf  ' '
-          rnRef
+          rnRstRef
             rnLeaf  'brokenLink'
       """)
     removeFile("other.rst")
@@ -1558,7 +1558,7 @@ suite "RST inline markup":
 
   test "no punctuation in the end of a standalone URI is allowed":
     check(dedent"""
-        [see (http://no.org)], end""".toAst ==
+        [see (http://no.org)], end""".toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnLeaf  '['
@@ -1605,6 +1605,19 @@ suite "RST inline markup":
           rnLeaf  ' '
           rnLeaf  'end'
         """)
+
+  test "Markdown-style link can be split to a few lines":
+    check(dedent"""
+        is [term-rewriting
+        macros](manual.html#term-rewriting-macros)""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'is'
+          rnLeaf  ' '
+          rnHyperlink
+            rnLeaf  'term-rewriting macros'
+            rnLeaf  'manual.html#term-rewriting-macros'
+      """)
 
   test "URL with balanced parentheses (Markdown rule)":
     # 2 balanced parens, 1 unbalanced:

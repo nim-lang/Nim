@@ -1432,6 +1432,8 @@ it can be modified:
   s[0] = 'u' # This is ok
   ```
 
+`cstring` values may also be used in case statements like strings.
+
 Structured types
 ----------------
 A variable of a structured type can hold multiple values at the same
@@ -2860,11 +2862,11 @@ ref or pointer type             nil
 procedural type                 nil
 sequence                        `@[]`
 string                          `""`
-tuple[x: A, y: B, ...]          (default(A), default(B), ...)
+`tuple[x: A, y: B, ...]`        (default(A), default(B), ...)
                                 (analogous for objects)
-array[0..., T]                  [default(T), ...]
-range[T]                        default(T); this may be out of the valid range
-T = enum                        cast[T]\(0); this may be an invalid value
+`array[0..., T]`                `[default(T), ...]`
+`range[T]`                      default(T); this may be out of the valid range
+T = enum                        `cast[T](0)`; this may be an invalid value
 ============================    ==============================================
 
 
@@ -2891,7 +2893,7 @@ the variable has been initialized and does not rely on syntactic properties:
 
   ```nim
   type
-    MyObject = object {.requiresInit.}
+    MyObject {.requiresInit.} = object
 
   proc p() =
     # the following is valid:
@@ -3097,6 +3099,9 @@ all possible values that `expr` can hold occur in a *slicelist*, a static error 
 This holds only for expressions of ordinal types.
 "All possible values" of `expr` are determined by `expr`'s type.
 To suppress the static error an `else: discard` should be used.
+
+Only ordinal types, floats, strings and cstrings are allowed as values
+in case statements.
 
 For non-ordinal types, it is not possible to list every possible value and so
 these always require an `else` part.
@@ -7770,7 +7775,7 @@ Produces:
 
     ```nim
     type
-      VectorIterator {.importcpp: "std::vector<'0>::iterator".} [T] = object
+      VectorIterator[T] {.importcpp: "std::vector<'0>::iterator".} = object
 
     var x: VectorIterator[cint]
     ```
