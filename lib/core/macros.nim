@@ -1073,9 +1073,12 @@ proc newStmtList*(stmts: varargs[NimNode]): NimNode =
   ## Create a new statement list.
   result = newNimNode(nnkStmtList).add(stmts)
 
-proc newPar*(exprs: varargs[NimNode]): NimNode =
+proc newPar*(exprs: NimNode): NimNode =
   ## Create a new parentheses-enclosed expression.
   newNimNode(nnkPar).add(exprs)
+
+proc newPar*(exprs: varargs[NimNode]): NimNode {.error:
+        "don't use newPar/nnkPar to construct tuple expressions; use nnkTupleConstr instead".}
 
 proc newBlockStmt*(label, body: NimNode): NimNode =
   ## Create a new block statement with label.
