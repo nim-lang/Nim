@@ -239,19 +239,30 @@
 - Alias-style templates and macros can now optionally be annotated with the
   `{.alias.}` pragma. For templates, this has the behavior of disallowing
   redefinitions.
+- The `{.alias.}` pragma has been added to annotate templates and macros
+  meant to be used in [alias-style](https://nim-lang.github.io/Nim/manual_experimental.html#aliasminusstyle-templates-and-macros).
+  Currently the only semantic behavior of this pragma is that templates with
+  it cannot be implicitly redefined.
 
   ```nim
   type Foo = object
     bar: int
   
   var foo = Foo(bar: 10)
-  template bar: untyped {.alias.} = foo.bar
+  template bar: int {.alias.} = foo.bar
   assert bar == 10
   bar = 15
   assert bar == 15
   var foo2 = Foo(bar: -10)
-  # error:
-  template bar: untyped {.alias.} = foo.bar
+  # redefinition error:
+  template bar: int {.alias.} = foo.bar
+  ```
+  
+- A new form of type inference called [top-down inference](https://nim-lang.github.io/Nim/manual_experimental.html#topminusdown-type-inference)
+  has been implemented for a variety of basic cases. For example, code like the following now compiles:
+  
+  ```nim
+  let foo: seq[(float, byte, cstring)] = @[(1, 2, "abc")]
   ```
 
 - `cstring` is now accepted as a selector in `case` statements, removing the

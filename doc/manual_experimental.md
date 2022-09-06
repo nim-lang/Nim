@@ -442,7 +442,7 @@ expressions that cannot conveniently be represented as runtime values.
     bar: int
 
   var foo = Foo(bar: 10)
-  template bar: untyped = foo.bar
+  template bar: int = foo.bar
   assert bar == 10
   bar = 15
   assert bar == 15
@@ -450,21 +450,21 @@ expressions that cannot conveniently be represented as runtime values.
 
 These templates/macros can be annotated with the `{.alias.}` pragma
 to denote their intended use, however this annotation is currently
-not required. For templates, this induces the behavior of
-disallowing redefinitions.
+not required. This disallows implicit redefinitions for templates.
 
-.. code-block:: nim
+  ```nim
   type Foo = object
     bar: int
   
   var foo = Foo(bar: 10)
-  template bar: untyped {.alias.} = foo.bar
+  template bar: int {.alias.} = foo.bar
   assert bar == 10
   bar = 15
   assert bar == 15
   var foo2 = Foo(bar: -10)
-  # error:
-  template bar: untyped {.alias.} = foo.bar
+  # redefinition error:
+  template bar: int {.alias.} = foo.bar
+  ```
 
 In the future, this annotation or the lack of it may gain more meanings.
 
