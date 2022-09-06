@@ -156,6 +156,9 @@ block fileOperations:
   doAssert fileExists("../dest/a/file.txt")
   removeDir("../dest")
 
+  # createDir should not fail if `dir` is empty
+  createDir("")
+
   # Symlink handling in `copyFile`, `copyFileWithPermissions`, `copyFileToDir`,
   # `copyDir`, `copyDirWithPermissions`, `moveFile`, and `moveDir`.
   block:

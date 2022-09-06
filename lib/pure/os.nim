@@ -2553,6 +2553,8 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1",
   ## * `copyDir proc`_
   ## * `copyDirWithPermissions proc`_
   ## * `moveDir proc`_
+  if dir == "":
+    return
   var omitNext = isAbsolute(dir)
   for p in parentDirs(dir, fromRoot=true):
     if omitNext:
