@@ -89,8 +89,6 @@ No Unicode normalization step is performed.
 Overloadable enum value names
 =============================
 
-Enabled via `{.experimental: "overloadableEnums".}`.
-
 Enum value names are overloadable, much like routines. If both of the enums
 `T` and `U` have a member named `foo`, then the identifier `foo` corresponds
 to a choice between `T.foo` and `U.foo`. During overload resolution,
@@ -98,7 +96,6 @@ the correct type of `foo` is decided from the context. If the type of `foo` is
 ambiguous, a static error will be produced.
 
   ```nim  test = "nim c $1"
-  {.experimental: "overloadableEnums".}
 
   type
     E1 = enum
@@ -123,6 +120,9 @@ ambiguous, a static error will be produced.
 
   p value2
   ```
+
+Previously required `{.experimental: "overloadableEnums".}` to enable,
+now always enabled.
 
 Top-down type inference
 =======================

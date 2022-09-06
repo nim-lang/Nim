@@ -2862,11 +2862,11 @@ ref or pointer type             nil
 procedural type                 nil
 sequence                        `@[]`
 string                          `""`
-tuple[x: A, y: B, ...]          (default(A), default(B), ...)
+`tuple[x: A, y: B, ...]`        (default(A), default(B), ...)
                                 (analogous for objects)
-array[0..., T]                  [default(T), ...]
-range[T]                        default(T); this may be out of the valid range
-T = enum                        cast[T]\(0); this may be an invalid value
+`array[0..., T]`                `[default(T), ...]`
+`range[T]`                      default(T); this may be out of the valid range
+T = enum                        `cast[T](0)`; this may be an invalid value
 ============================    ==============================================
 
 

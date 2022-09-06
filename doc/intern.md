@@ -328,7 +328,7 @@ Coding Guidelines
 * Max line length is 100 characters.
 * Provide spaces around binary operators if that enhances readability.
 * Use a space after a colon, but not before it.
-* [deprecated] Start types with a capital `T`, unless they are
+* (deprecated) Start types with a capital `T`, unless they are
   pointers/references which start with `P`.
 * Prefer `import package`:nim: over `from package import symbol`:nim:.
 
