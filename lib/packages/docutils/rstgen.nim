@@ -417,13 +417,13 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
         [id, term])
 
 type
-  IndexEntry = object
-    keyword: string
-    link: string
-    linkTitle: string ## contains a prettier text for the href
-    linkDesc: string ## the title attribute of the final href
+  IndexEntry* = object
+    keyword*: string
+    link*: string
+    linkTitle*: string ## contains a prettier text for the href
+    linkDesc*: string ## the title attribute of the final href
 
-  IndexedDocs = Table[IndexEntry, seq[IndexEntry]] ## \
+  IndexedDocs* = Table[IndexEntry, seq[IndexEntry]] ## \
     ## Contains the index sequences for doc types.
     ##
     ## The key is a *fake* IndexEntry which will contain the title of the
@@ -625,7 +625,7 @@ proc generateModuleJumps(modules: seq[string]): string =
 
   result.add(chunks.join(", ") & ".<br/>")
 
-proc readIndexDir(dir: string):
+proc readIndexDir*(dir: string):
     tuple[modules: seq[string], symbols: seq[IndexEntry], docs: IndexedDocs] =
   ## Walks `dir` reading ``.idx`` files converting them in IndexEntry items.
   ##
@@ -691,8 +691,6 @@ proc readIndexDir(dir: string):
         title.linkTitle = "doc_toc_" & $result.docs.len
         result.docs[title] = fileEntries
 
-  sort(result.modules, system.cmp)
-
 proc mergeIndexes*(dir: string): string =
   ## Merges all index files in `dir` and returns the generated index as HTML.
   ##
@@ -722,6 +720,7 @@ proc mergeIndexes*(dir: string): string =
   ## Returns the merged and sorted indices into a single HTML block which can
   ## be further embedded into nimdoc templates.
   var (modules, symbols, docs) = readIndexDir(dir)
+  sort(modules, system.cmp)
 
   result = ""
   # Generate a quick jump list of documents.
