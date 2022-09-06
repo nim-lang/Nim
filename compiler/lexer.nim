@@ -973,7 +973,7 @@ proc getPrecedence*(tok: Token): int =
 
     # arrow like?
     if tok.ident.s.len > 1 and tok.ident.s[^1] == '>' and
-      tok.ident.s[^2] in {'-', '~', '='}: return 1
+      tok.ident.s[^2] in {'-', '~', '='}: return 0
 
     template considerAsgn(value: untyped) =
       result = if tok.ident.s[^1] == '=': 1 else: value
