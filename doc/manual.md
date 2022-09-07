@@ -638,7 +638,7 @@ instead of causing an overflow error.
 ### Custom numeric literals
 
 If the suffix is not predefined, then the suffix is assumed to be a call
-to a proc, template, macro or other callable identifier that is passed the
+to a procedure, template, macro or other callable identifier that is passed the
 string containing the literal. The callable identifier needs to be declared
 with a special ``'`` prefix:
 
@@ -1332,8 +1332,8 @@ conversion can be done in O(1) and without any allocations.
 The assignment operator for strings always copies the string.
 The `&` operator concatenates strings.
 
-Most native Nim types support conversion to strings with the special `$` proc.
-When calling the `echo` proc, for example, the built-in stringify operation
+Most native Nim types support conversion to strings with the special `$` procedure.
+When calling the `echo` procedure, for example, the built-in stringify operation
 for the parameter is called:
 
   ```nim
@@ -1359,7 +1359,7 @@ provides for `string` representation.
 
 While `$p.name` can also be used, the `$` operation on a string does
 nothing. Note that we cannot rely on automatic conversion from an `int` to
-a `string` like we can for the `echo` proc.
+a `string` like we can for the `echo` procedure.
 
 Strings are compared by their lexicographical order. All comparison operators
 are available. Strings can be indexed like arrays (lower bound is 0). Unlike
@@ -1392,7 +1392,7 @@ index operation unsafe.
 
 A Nim `string` is implicitly convertible
 to `cstring` for convenience. If a Nim string is passed to a C-style
-variadic proc, it is implicitly converted to `cstring` too:
+variadic procedure, it is implicitly converted to `cstring` too:
 
   ```nim
   proc printf(formatstr: cstring) {.importc: "printf", varargs,
@@ -1407,7 +1407,7 @@ memory. For this reason, the implicit conversion will be removed in future
 releases of the Nim compiler. Certain idioms like conversion of a `const` string
 to `cstring` are safe and will remain to be allowed.
 
-A `$` proc is defined for cstrings that returns a string. Thus, to get a nim
+A `$` procedure is defined for cstrings that returns a string. Thus, to get a nim
 string from a cstring:
 
   ```nim
@@ -1479,13 +1479,13 @@ Example:
   let z = [1.0, 2, 3, 4] # the type of z is array[0..3, float]
   ```
 
-The lower bound of an array or sequence may be received by the built-in proc
+The lower bound of an array or sequence may be received by the built-in procedure
 `low()`, the higher bound by `high()`. The length may be
 received by `len()`. `low()` for a sequence or an open array always returns
 0, as this is the first valid index.
-One can append elements to a sequence with the `add()` proc or the `&`
+One can append elements to a sequence with the `add()` procedure or the `&`
 operator, and remove (and get) the last element of a sequence with the
-`pop()` proc.
+`pop()` procedure.
 
 The notation `x[i]` can be used to access the i-th element of `x`.
 
@@ -1597,7 +1597,7 @@ not wrapped in another implicit array construction:
 
 `varargs[typed]` is treated specially: It matches a variable list of arguments
 of arbitrary type but *always* constructs an implicit array. This is required
-so that the builtin `echo` proc does what is expected:
+so that the builtin `echo` procedure does what is expected:
 
   ```nim
   proc echo*(x: varargs[typed, `$`]) {...}
@@ -2037,7 +2037,7 @@ memory manually:
 
 Without the `reset` call the memory allocated for the `d.s` string would
 never be freed. The example also demonstrates two important features for
-low-level programming: the `sizeof` proc returns the size of a type or value
+low-level programming: the `sizeof` procedure returns the size of a type or value
 in bytes. The `cast` operator can circumvent the type system: the compiler
 is forced to treat the result of the `alloc0` call (which returns an untyped
 pointer) as if it would have the type `ptr Data`. Casting should only be
@@ -2089,7 +2089,7 @@ A subtle issue with procedural types is that the calling convention of the
 procedure influences the type compatibility: procedural types are only
 compatible if they have the same calling convention. As a special extension,
 a procedure of the calling convention `nimcall` can be passed to a parameter
-that expects a proc of the calling convention `closure`.
+that expects a procedure of the calling convention `closure`.
 
 Nim supports these `calling conventions`:idx:\:
 
@@ -2100,8 +2100,8 @@ Nim supports these `calling conventions`:idx:\:
 `closure`:idx:
     is the default calling convention for a **procedural type** that lacks
     any pragma annotations. It indicates that the procedure has a hidden
-    implicit parameter (an *environment*). Proc vars that have the calling
-    convention `closure` take up two machine words: One for the proc pointer
+    implicit parameter (an *environment*). Procedure variables that have the calling
+    convention `closure` take up two machine words: One for the procedure pointer
     and another one for the pointer to implicitly passed environment.
 
 `stdcall`:idx:
@@ -2146,8 +2146,8 @@ Nim supports these `calling conventions`:idx:\:
 
 Most calling conventions exist only for the Windows 32-bit platform.
 
-The default calling convention is `nimcall`, unless it is an inner proc (a
-proc inside of a proc). For an inner proc an analysis is performed whether it
+The default calling convention is `nimcall`, unless it is an inner procedure (a
+`proc` inside of a `proc`). For an inner procedure an analysis is performed whether it
 accesses its environment. If it does so, it has the calling convention
 `closure`, otherwise it has the calling convention `nimcall`.
 
@@ -2221,7 +2221,7 @@ it generates the above trivial implementations:
   ```
 
 The `borrow` pragma makes the compiler use the same implementation as
-the proc that deals with the distinct type's base type, so no code is
+the procedure that deals with the distinct type's base type, so no code is
 generated.
 
 But it seems all this boilerplate code needs to be repeated for the `Euro`
@@ -2780,7 +2780,7 @@ when ignoring this value is known not to cause problems.
 Ignoring the return value of a procedure without using a discard statement is
 a static error.
 
-The return value can be ignored implicitly if the called proc/iterator has
+The return value can be ignored implicitly if the called procedure/iterator has
 been declared with the `discardable`:idx: pragma:
 
   ```nim
@@ -2878,7 +2878,7 @@ The implicit initialization can be avoided for optimization reasons with the
     a {.noinit.}: array[0..1023, char]
   ```
 
-If a proc is annotated with the `noinit` pragma, this refers to its implicit
+If a procedure is annotated with the `noinit` pragma, this refers to its implicit
 `result` variable:
 
   ```nim
@@ -3250,7 +3250,7 @@ sugar for:
 
 
 `return` without an expression is a short notation for `return result` if
-the proc has a return type. The `result`:idx: variable is always the return
+the procedure has a return type. The `result`:idx: variable is always the return
 value of the procedure. It is automatically declared by the compiler. As all
 variables, `result` is initialized to (binary) zero:
 
@@ -3540,7 +3540,7 @@ type name replaces the procedure name. A type conversion is always
 safe in the sense that a failure to convert a type to another
 results in an exception (if it cannot be determined statically).
 
-Ordinary procs are often preferred over type conversions in Nim: For instance,
+Ordinary procedures are often preferred over type conversions in Nim: For instance,
 `$` is the `toString` operator by convention and `toFloat` and `toInt`
 can be used to convert from floating-point to integer or vice versa.
 
@@ -3669,7 +3669,7 @@ default value starting from the parameter declared with it.
   proc foo(a, b: int = 47): int
   ```
 
-Parameters can be declared mutable and so allow the proc to modify those
+Parameters can be declared mutable and so allow the procedure to modify those
 arguments, by using the type modifier `var`.
 
   ```nim
@@ -3679,10 +3679,10 @@ arguments, by using the type modifier `var`.
     outp = inp + 47
   ```
 
-If the proc declaration doesn't have a body, it is a `forward`:idx: declaration.
-If the proc returns a value, the procedure body can access an implicitly declared
-variable named `result`:idx: that represents the return value. Procs can be
-overloaded. The overloading resolution algorithm determines which proc is the
+If the procedure declaration doesn't have a body, it is a `forward`:idx: declaration. If the
+procedure returns a value, the procedure body can access an implicitly declared
+variable named `result`:idx: that represents the return value. Procedures can be
+overloaded. The overloading resolution algorithm determines which procedure is the
 best match for the arguments. Example:
 
   ```nim
@@ -3730,7 +3730,7 @@ the operator's position within an expression.) There is no way to declare
 postfix operators: all postfix operators are built-in and handled by the
 grammar explicitly.
 
-Any operator can be called like an ordinary proc with the \`opr\`
+Any operator can be called like an ordinary procedure with the \`opr\`
 notation. (Thus an operator can have more than two parameters):
 
   ```nim
@@ -3830,7 +3830,7 @@ different; for this, a special setter syntax is needed:
   s.host = 34  # same as `host=`(s, 34)
   ```
 
-A proc defined as `f=` (with the trailing `=`) is called
+A procedure defined as `f=` (with the trailing `=`) is called
 a `setter`:idx:. A setter can be called explicitly via the common
 backticks notation:
 
@@ -3847,7 +3847,7 @@ backticks notation:
 named `f` or if `f` is not visible in the current module. These rules
 ensure that object fields and accessors can have the same name. Within the
 module `x.f` is then always interpreted as field access and outside the
-module it is interpreted as an accessor proc call.
+module it is interpreted as an accessor procedure call.
 
 
 Command invocation syntax
@@ -3882,7 +3882,7 @@ Closures
 --------
 
 Procedures can appear at the top level in a module as well as inside other
-scopes, in which case they are called nested procs. A nested proc can access
+scopes, in which case they are called nested procedures. A nested procedure can access
 local variables from its enclosing scope and if it does so it becomes a
 closure. Any captured variables are stored in a hidden additional argument
 to the closure (its environment) and they are accessed by reference by both
@@ -3911,7 +3911,7 @@ procedures:
   ```
 
 
-Procs as expressions can appear both as nested procs and inside top-level
+Procedures as expressions can appear both as nested procedures and inside top-level
 executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro
 which enables a more succinct syntax for anonymous procedures resembling
 lambdas as they are in languages like JavaScript, C#, etc.
@@ -3920,7 +3920,7 @@ Do notation
 -----------
 
 As a special convenience notation that keeps most elements of a
-regular proc expression, the `do` keyword can be used to pass
+regular procedure expression, the `do` keyword can be used to pass
 anonymous procedures to routines:
 
   ```nim
@@ -3934,8 +3934,8 @@ anonymous procedures to routines:
     "City of " & x
   ```
 
-`do` is written after the parentheses enclosing the regular proc params.
-The proc expression represented by the `do` block is appended to the routine
+`do` is written after the parentheses enclosing the regular procedure parameters.
+The procedure expression represented by the `do` block is appended to the routine
 call as the last argument. In calls using the command syntax, the `do` block
 will bind to the immediately preceding expression rather than the command call.
 
@@ -3958,7 +3958,7 @@ argument in inline calls, as well as a direct mirror of Nim's routine syntax.
 Func
 ----
 
-The `func` keyword introduces a shortcut for a `noSideEffect`:idx: proc.
+The `func` keyword introduces a shortcut for a `noSideEffect`:idx: procedure.
 
   ```nim
   func binarySearch[T](a: openArray[T]; elem: T): int
@@ -4023,13 +4023,13 @@ This also means that one cannot override `deepCopy` for both `ptr T` and
 `ref T` at the same time, instead a distinct or object helper type has to be
 used for one pointer type.
 
-For more details on some of those procs, see
+For more details on some of those procedures, see
 `Lifetime-tracking hooks <destructors.html#lifetimeminustracking-hooks>`_.
 
 Nonoverloadable builtins
 ------------------------
 
-The following built-in procs cannot be overloaded for reasons of implementation
+The following built-in procdures cannot be overloaded for reasons of implementation
 simplicity (they require specialized semantic checking)::
 
   declared, defined, definedInScope, compiles, sizeof,
@@ -4109,7 +4109,7 @@ free to pass arguments by reference if it considers it can speed up execution.
 Var return type
 ---------------
 
-A proc, converter, or iterator may return a `var` type which means that the
+A procedure, converter, or iterator may return a `var` type which means that the
 returned value is an l-value and can be modified by the caller:
 
   ```nim
@@ -4274,7 +4274,7 @@ type.
   echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
   ```
 
-In the example the constructors `newLit` and `newPlus` are procs
+In the example the constructors `newLit` and `newPlus` are procedures
 because they should use static binding, but `eval` is a method because it
 requires dynamic binding.
 
@@ -4534,7 +4534,7 @@ field.
 
 Closure iterators are *resumable functions* and so one has to provide the
 arguments to every call. To get around this limitation one can capture
-parameters of an outer factory proc:
+parameters of an outer factory procedure:
 
   ```nim
   proc mycount(a, b: int): iterator (): int =
@@ -4594,7 +4594,7 @@ See also see `iterable <#overloading-resolution-iterable>`_ for passing iterator
 Converters
 ==========
 
-A converter is like an ordinary proc except that it enhances
+A converter is like an ordinary procedure except that it enhances
 the "implicitly convertible" type relation (see `Convertible relation
 <#type-relations-convertible-relation>`_):
 
@@ -4927,7 +4927,7 @@ Exception tracking
 ------------------
 
 Nim supports exception tracking. The `raises`:idx: pragma can be used
-to explicitly define which exceptions a proc/iterator/method/converter is
+to explicitly define which exceptions a procedure/iterator/method/converter is
 allowed to raise. The compiler verifies this:
 
   ```nim  test = "nim c $1"
@@ -4948,7 +4948,7 @@ An empty `raises` list (`raises: []`) means that no exception may be raised:
   ```
 
 
-A `raises` list can also be attached to a proc type. This affects type
+A `raises` list can also be attached to a procedure type. This affects type
 compatibility:
 
   ```nim  test = "nim c $1"  status = 1
@@ -4967,20 +4967,20 @@ compatibility:
 For a routine `p`, the compiler uses inference rules to determine the set of
 possibly raised exceptions; the algorithm operates on `p`'s call graph:
 
-1. Every indirect call via some proc type `T` is assumed to
+1. Every indirect call via some procedure type `T` is assumed to
    raise `system.Exception` (the base type of the exception hierarchy) and
    thus any exception unless `T` has an explicit `raises` list.
    However, if the call is of the form `f(...)` where `f` is a parameter of
    the currently analyzed routine it is ignored that is marked as `.effectsOf: f`.
    The call is optimistically assumed to have no effect.
    Rule 2 compensates for this case.
-2. Every expression `e` of some proc type within a call that is passed to parameter
+2. Every expression `e` of some procedure type within a call that is passed to parameter
    marked as `.effectsOf` is assumed to be called indirectly and thus
    its raises list is added to `p`'s raises list.
-3. Every call to a proc `q` which has an unknown body (due to a forward
+3. Every call to a procedure `q` which has an unknown body (due to a forward
    declaration) is assumed to
    raise `system.Exception` unless `q` has an explicit `raises` list.
-   Procs that are `importc`'ed are assumed to have `.raises: []`, unless explicitly
+   Procedures that are `importc`'ed are assumed to have `.raises: []`, unless explicitly
    declared otherwise.
 4. Every call to a method `m` is assumed to
    raise `system.Exception` unless `m` has an explicit `raises` list.
@@ -5032,7 +5032,7 @@ ensure the following works:
 
 As can be seen from the example, a parameter of type `proc (...)` can be
 annotated as `.effectsOf`. Such a parameter allows for effect polymorphism:
-The proc `weDontRaiseButMaybeTheCallback` raises the exceptions
+The procedure `weDontRaiseButMaybeTheCallback` raises the exceptions
 that `callback` raises.
 
 So in many cases a callback does not cause the compiler to be overly
@@ -5082,7 +5082,7 @@ means to *tag* a routine and to perform checks against this tag:
   ```
 
 A tag has to be a type name. A `tags` list - like a `raises` list - can
-also be attached to a proc type. This affects type compatibility.
+also be attached to a procedure type. This affects type compatibility.
 
 The inference for tag tracking is analogous to the inference for
 exception tracking.
@@ -5135,8 +5135,8 @@ procedure types without such lists:
 Side effects
 ------------
 
-The `noSideEffect` pragma is used to mark a proc/iterator that can have only
-side effects through parameters. This means that the proc/iterator only changes locations that are
+The `noSideEffect` pragma is used to mark a procedure/iterator that can have only
+side effects through parameters. This means that the procedure/iterator only changes locations that are
 reachable from its parameters and the return value only depends on the
 parameters. If none of its parameters have the type `var`, `ref`, `ptr`, `cstring`, or `proc`,
 then no locations are modified.
@@ -5144,13 +5144,13 @@ then no locations are modified.
 In other words, a routine has no side effects if it does not access a threadlocal
 or global variable and it does not call any routine that has a side effect.
 
-It is a static error to mark a proc/iterator to have no side effect if the compiler cannot verify this.
+It is a static error to mark a procedure/iterator to have no side effect if the compiler cannot verify this.
 
 As a special semantic rule, the built-in `debugEcho
 <system.html#debugEcho,varargs[typed,]>`_ pretends to be free of side effects
 so that it can be used for debugging routines marked as `noSideEffect`.
 
-`func` is syntactic sugar for a proc with no side effects:
+`func` is syntactic sugar for a procedure with no side effects:
 
   ```nim
   func `+` (x, y: int): int
@@ -5173,14 +5173,14 @@ analogous to the inference for exception tracking.**
 GC safety effect
 ----------------
 
-We call a proc `p` `GC safe`:idx: when it doesn't access any global variable
+We call a procedure `p` `GC safe`:idx: when it doesn't access any global variable
 that contains GC'ed memory (`string`, `seq`, `ref` or a closure) either
-directly or indirectly through a call to a GC unsafe proc.
+directly or indirectly through a call to a GC unsafe procedure.
 
 **The GC safety property is usually inferred. The inference for GC safety is
 analogous to the inference for exception tracking.**
 
-The `gcsafe`:idx: annotation can be used to mark a proc to be gcsafe,
+The `gcsafe`:idx: annotation can be used to mark a procedure to be gcsafe,
 otherwise this property is inferred by the compiler. Note that `noSideEffect`
 implies `gcsafe`.
 
@@ -5230,9 +5230,9 @@ appears in.
 Generics
 ========
 
-Generics are Nim's means to parametrize procs, iterators or types with
+Generics are Nim's means to parametrize procedures, iterators or types with
 `type parameters`:idx:. Depending on the context, the brackets are used either to
-introduce type parameters or to instantiate a generic proc, iterator, or type.
+introduce type parameters or to instantiate a generic procedure, iterator, or type.
 
 The following example shows how a generic binary tree can be modeled:
 
@@ -5326,7 +5326,7 @@ type class           matches
 `tuple`              any tuple type
 
 `enum`               any enumeration
-`proc`               any proc type
+`proc`               any procedure type
 `ref`                any `ref` type
 `ptr`                any `ptr` type
 `var`                any `var` type
@@ -5404,7 +5404,7 @@ A type class can be used directly as the parameter's type.
 
 Procedures utilizing type classes in such a manner are considered to be
 `implicitly generic`:idx:. They will be instantiated once for each unique
-combination of param types used within the program.
+combination of parameter types used within the program.
 
 By default, during overload resolution, each named type class will bind to
 exactly one concrete type. We call such type classes `bind once`:idx: types.
@@ -5421,10 +5421,10 @@ Here is an example taken directly from the system module to illustrate this:
   ```
 
 Alternatively, the `distinct` type modifier can be applied to the type class
-to allow each param matching the type class to bind to a different type. Such
+to allow each parameter matching the type class to bind to a different type. Such
 type classes are called `bind many`:idx: types.
 
-Procs written with the implicitly generic style will often need to refer to the
+Procedures written with the implicitly generic style will often need to refer to the
 type parameters of the matched generic type. They can be easily accessed using
 the dot syntax:
 
@@ -5650,7 +5650,7 @@ instantiations cross multiple different modules:
   genericB O()
   ```
 
-In module B has an `init` proc from module C in its scope that is not
+In module B has an `init` procedure from module C in its scope that is not
 taken into account when `genericB` is instantiated which leads to the
 instantiation of `genericA`. The solution is to `forward`:idx: these
 symbols by a `bind` statement inside `genericB`.
@@ -6021,7 +6021,7 @@ top to bottom and left to right. Instead, semantic analysis happens at least
 twice:
 
 * Semantic analysis recognizes and resolves the macro invocation.
-* The compiler executes the macro body (which may invoke other procs).
+* The compiler executes the macro body (which may invoke other procedures).
 * It replaces the AST of the macro invocation with the AST returned by the macro.
 * It repeats semantic analysis of that region of the code.
 * If the AST returned by the macro contains other macro invocations,
@@ -6033,8 +6033,8 @@ cannot change Nim's syntax.
 **Style note:** For code readability, it is best to use the least powerful
 programming construct that remains expressive. So the "check list" is:
 
-(1) Use an ordinary proc/iterator, if possible.
-(2) Else: Use a generic proc/iterator, if possible.
+(1) Use an ordinary procedure/iterator, if possible.
+(2) Else: Use a generic procedure/iterator, if possible.
 (3) Else: Use a template, if possible.
 (4) Else: Use a macro.
 
@@ -6305,11 +6305,11 @@ As their name suggests, static parameters must be constant expressions:
   ```
 
 
-For the purposes of code generation, all static params are treated as
-generic params - the proc will be compiled separately for each unique
+For the purposes of code generation, all static parameters are treated as
+generic parameters - the procedure will be compiled separately for each unique
 supplied value (or combination of values).
 
-Static params can also appear in the signatures of generic types:
+Static parameters can also appear in the signatures of generic types:
 
   ```nim
   type
@@ -6325,7 +6325,7 @@ Static params can also appear in the signatures of generic types:
   ```
 
 Please note that `static T` is just a syntactic convenience for the underlying
-generic type `static[T]`. The type param can be omitted to obtain the type
+generic type `static[T]`. The type parameter can be omitted to obtain the type
 class of all constant expressions. A more specific type class can be created by
 instantiating `static` with another type class.
 
@@ -6350,12 +6350,12 @@ all values must have a type, `typedesc` is considered their special type.
 
 `typedesc` acts as a generic type. For instance, the type of the symbol
 `int` is `typedesc[int]`. Just like with regular generic types, when the
-generic param is omitted, `typedesc` denotes the type class of all types.
+generic parameter is omitted, `typedesc` denotes the type class of all types.
 As a syntactic convenience, one can also use `typedesc` as a modifier.
 
-Procs featuring `typedesc` params are considered implicitly generic.
+Procedures featuring `typedesc` parameters are considered implicitly generic.
 They will be instantiated for each unique combination of supplied types,
-and within the body of the proc, the name of each param will refer to
+and within the body of the procedure, the name of each parameter will refer to
 the bound concrete type:
 
   ```nim
@@ -6367,14 +6367,14 @@ the bound concrete type:
   var tree = new(BinaryTree[int])
   ```
 
-When multiple type params are present, they will bind freely to different
-types. To force a bind-once behavior, one can use an explicit generic param:
+When multiple type parameters are present, they will bind freely to different
+types. To force a bind-once behavior, one can use an explicit generic parameter:
 
   ```nim
   proc acceptOnlyTypePairs[T, U](A, B: typedesc[T]; C, D: typedesc[U])
   ```
 
-Once bound, type params can appear in the rest of the proc signature:
+Once bound, type parameters can appear in the rest of the procedure signature:
 
   ```nim  test = "nim c $1"
   template declareVariableWithType(T: typedesc, value: T) =
@@ -6385,7 +6385,7 @@ Once bound, type params can appear in the rest of the proc signature:
 
 
 Overload resolution can be further influenced by constraining the set
-of types that will match the type param. This works in practice by
+of types that will match the type parameter. This works in practice by
 attaching attributes to types via templates. The constraint can be a
 concrete type or a type class.
 
@@ -6438,7 +6438,7 @@ operator):
   ```
 
 
-If `typeof` is used to determine the result type of a proc/iterator/converter
+If `typeof` is used to determine the result type of a procedure/iterator/converter
 call `c(X)` (where `X` stands for a possibly empty list of arguments), the
 interpretation, where `c` is an iterator, is preferred over the
 other interpretations, but this behavior can be changed by
@@ -6788,9 +6788,9 @@ This pragma can also take in an optional warning string to relay to developers.
 
 compileTime pragma
 ------------------
-The `compileTime` pragma is used to mark a proc or variable to be used only
+The `compileTime` pragma is used to mark a procedure or variable to be used only
 during compile-time execution. No code will be generated for it. Compile-time
-procs are useful as helpers for macros. Since version 0.12.0 of the language, a
+procedures are useful as helpers for macros. Since version 0.12.0 of the language, a
 proc that uses `system.NimNode` within its parameter types is implicitly
 declared `compileTime`:
 
@@ -6833,7 +6833,7 @@ but accessed at runtime:
 
 noreturn pragma
 ---------------
-The `noreturn` pragma is used to mark a proc that never returns.
+The `noreturn` pragma is used to mark a procedure that never returns.
 
 
 acyclic pragma
@@ -6909,13 +6909,13 @@ requires full qualification.
 
 asmNoStackFrame pragma
 ----------------------
-A proc can be marked with the `asmNoStackFrame` pragma to tell the compiler
-it should not generate a stack frame for the proc. There are also no exit
+A procedure can be marked with the `asmNoStackFrame` pragma to tell the compiler
+it should not generate a stack frame for the procedure. There are also no exit
 statements like `return result;` generated and the generated C function is
 declared as `__declspec(naked)`:c: or `__attribute__((naked))`:c: (depending on
 the used C compiler).
 
-**Note**: This pragma should only be used by procs which consist solely of
+**Note**: This pragma should only be used by procedures which consist solely of
 assembler statements.
 
 error pragma
@@ -6925,7 +6925,7 @@ with the given content. The compilation does not necessarily abort after an erro
 though.
 
 The `error` pragma can also be used to
-annotate a symbol (like an iterator or proc). The *usage* of the symbol then
+annotate a symbol (like an iterator or procedure). The *usage* of the symbol then
 triggers a static error. This is especially useful to rule out that some
 operation is valid due to overloading and type conversions:
 
@@ -7074,7 +7074,7 @@ This is mostly intended for macro generated code.
 compilation option pragmas
 --------------------------
 The listed pragmas here can be used to override the code generation options
-for a proc/method/converter.
+for a procedure/method/converter.
 
 The implementation currently provides the following possible options (various
 others may be added later).
@@ -7160,7 +7160,7 @@ for example) it may provide benefits.
 
 global pragma
 -------------
-The `global` pragma can be applied to a variable within a proc to instruct
+The `global` pragma can be applied to a variable within a procedure to instruct
 the compiler to store it in a global location and initialize it once at program
 startup.
 
@@ -7170,8 +7170,8 @@ startup.
     result = s.match(pattern)
   ```
 
-When used within a generic proc, a separate unique global variable will be
-created for each instantiation of the proc. The order of initialization of
+When used within a generic procedure, a separate unique global variable will be
+created for each instantiation of the procedure. The order of initialization of
 the created global variables within a module is not defined, but all of them
 will be initialized after any top-level variables in their originating module
 and before any variable in a module that imports it.
@@ -7360,7 +7360,7 @@ in C/C++).
 
 nodecl pragma
 -------------
-The `nodecl` pragma can be applied to almost any symbol (variable, proc,
+The `nodecl` pragma can be applied to almost any symbol (variable, procedure,
 type, etc.) and is sometimes useful for interoperability with C:
 It tells Nim that it should not generate a declaration for the symbol in
 the C code. For example:
@@ -7618,9 +7618,9 @@ annotated with the C++ enum type, like in this example:
 (This turned out to be the simplest way to implement it.)
 
 
-### Importcpp for procs
+### Importcpp for procedures
 
-Note that the `importcpp` variant for procs uses a somewhat cryptic pattern
+Note that the `importcpp` variant for procedures uses a somewhat cryptic pattern
 language for maximum flexibility:
 
 - A hash ``#`` symbol is replaced by the first or next argument.
@@ -7721,7 +7721,7 @@ instead:
 Sometimes a C++ class has a private copy constructor and so code like
 `Class c = Class(1,2);`:cpp: must not be generated but instead
 `Class c(1,2);`:cpp:.
-For this purpose the Nim proc that wraps a C++ constructor needs to be
+For this purpose the Nim procedure that wraps a C++ constructor needs to be
 annotated with the `constructor`:idx: pragma. This pragma also helps to generate
 faster C++ code since construction then doesn't invoke the copy constructor:
 
@@ -7771,7 +7771,7 @@ Produces:
 
 - If more precise control is needed, the apostrophe `'` can be used in the
   supplied pattern to denote the concrete type parameters of the generic type.
-  See the usage of the apostrophe operator in proc patterns for more details.
+  See the usage of the apostrophe operator in procedure patterns for more details.
 
     ```nim
     type
@@ -7853,7 +7853,7 @@ CodegenDecl pragma
 
 The `codegenDecl` pragma can be used to directly influence Nim's code
 generator. It receives a format string that determines how the variable
-or proc is declared in the generated code.
+or procedure is declared in the generated code.
 
 For variables, $1 in the format string represents the type of the variable
 and $2 is the name of the variable.
@@ -8009,7 +8009,7 @@ overload resolution rules for templates. Therefore, it is possible to have
 default values for arguments, pass by name, varargs, etc.
 
 Custom pragmas can be used in all locations where ordinary pragmas can be
-specified. It is possible to annotate procs, templates, type and variable
+specified. It is possible to annotate procedures, templates, type and variable
 definitions, statements, etc.
 
 The macros module includes helpers which can be used to simplify custom pragma
@@ -8042,7 +8042,7 @@ Macro pragmas
 -------------
 
 Macros and templates can sometimes be called with the pragma syntax. Cases
-where this is possible include when attached to routine (procs, iterators, etc.)
+where this is possible include when attached to routine (procedures, iterators, etc.)
 declarations or routine type expressions. The compiler will perform the
 following simple syntactic transformations:
 
@@ -8096,7 +8096,7 @@ are documented here.
 
 Importc pragma
 --------------
-The `importc` pragma provides a means to import a proc or a variable
+The `importc` pragma provides a means to import a procedure or a variable
 from C. The optional argument is a string containing the C identifier. If
 the argument is missing, the C name is the Nim identifier *exactly as
 spelled*:
@@ -8180,7 +8180,7 @@ Bycopy pragma
 -------------
 
 The `bycopy` pragma can be applied to an object or tuple type and
-instructs the compiler to pass the type by value to procs:
+instructs the compiler to pass the type by value to procedures:
 
   ```nim
   type
@@ -8194,13 +8194,13 @@ Byref pragma
 ------------
 
 The `byref` pragma can be applied to an object or tuple type and instructs
-the compiler to pass the type by reference (hidden pointer) to procs.
+the compiler to pass the type by reference (hidden pointer) to procedures.
 
 
 Varargs pragma
 --------------
 The `varargs` pragma can be applied to procedures only (and procedure
-types). It tells Nim that the proc can take a variable number of parameters
+types). It tells Nim that the procedure can take a variable number of parameters
 after the last specified parameter. Nim string values will be converted to C
 strings automatically:
 
@@ -8328,14 +8328,14 @@ helps to prevent race conditions. GC efficiency is improved quite a lot,
 because the GC never has to stop other threads and see what they reference.
 
 The only way to create a thread is via `spawn` or
-`createThread`. The invoked proc must not use `var` parameters nor must
+`createThread`. The invoked procedure must not use `var` parameters nor must
 any of its parameters contain a `ref` or `closure` type. This enforces
 the *no heap sharing restriction*.
 
 Thread pragma
 -------------
 
-A proc that is executed as a new thread of execution should be marked by the
+A procedure that is executed as a new thread of execution should be marked by the
 `thread` pragma for reasons of readability. The compiler checks for
 violations of the `no heap sharing restriction`:idx:\: This restriction implies
 that it is invalid to construct a data structure that consists of memory
