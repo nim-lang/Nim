@@ -1067,7 +1067,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
   of tyRange:
     if skipTypes(caseTyp[0], abstractInst).kind in shouldChckCovered:
       chckCovered = true
-  of tyFloat..tyFloat128, tyString, tyError:
+  of tyFloat..tyFloat128, tyString, tyCstring, tyError:
     discard
   else:
     popCaseContext(c)
@@ -1327,6 +1327,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     if s.magic == mNone and a[2].kind == nkEmpty:
       localError(c.config, a.info, errImplOfXexpected % s.name.s)
     if s.magic != mNone: processMagicType(c, s)
+    let oldFlags = s.typ.flags
     if a[1].kind != nkEmpty:
       # We have a generic type declaration here. In generic types,
       # symbol lookup needs to be done here.
@@ -1354,6 +1355,13 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       if body != nil:
         body.sym = s
         body.size = -1 # could not be computed properly
+        if body.kind == tyObject:
+          # add flags applied to generic type to object (nominal) type
+          incl(body.flags, oldFlags)
+          # {.inheritable, final.} is already disallowed, but
+          # object might have been assumed to be final
+          if tfInheritable in oldFlags and tfFinal in body.flags:
+            excl(body.flags, tfFinal)
         s.typ[^1] = body
         if tfCovariant in s.typ.flags:
           checkCovariantParamsUsages(c, s.typ)
@@ -1405,6 +1413,13 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       internalAssert c.config, st.kind in {tyPtr, tyRef}
       internalAssert c.config, st.lastSon.sym == nil
       incl st.flags, tfRefsAnonObj
+      let objTy = st.lastSon
+      # add flags for `ref object` etc to underlying `object`
+      incl(objTy.flags, oldFlags)
+      # {.inheritable, final.} is already disallowed, but
+      # object might have been assumed to be final
+      if tfInheritable in oldFlags and tfFinal in objTy.flags:
+        excl(objTy.flags, tfFinal)
       let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
                        nextSymId c.idgen, getCurrOwner(c), s.info)
       let symNode = newSymNode(obj)
@@ -1420,8 +1435,8 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       obj.ast[2] = a[2][0]
       if sfPure in s.flags:
         obj.flags.incl sfPure
-      obj.typ = st.lastSon
-      st.lastSon.sym = obj
+      obj.typ = objTy
+      objTy.sym = obj
 
 proc checkForMetaFields(c: PContext; n: PNode) =
   proc checkMeta(c: PContext; n: PNode; t: PType) =

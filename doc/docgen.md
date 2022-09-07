@@ -245,9 +245,9 @@ underscore `_` to a *link text*.
 Link text is either one word or a group of words enclosed by backticks `\``
 (for a one word case backticks are usually omitted).
 Link text will be displayed *as is* while *link target* will be set to
-the anchor [*]_ of Nim symbol that corresponds to link text.
+the anchor \[*] of Nim symbol that corresponds to link text.
 
-.. [*] anchors' format is described in `HTML anchor generation`_ section below.
+[*] anchors' format is described in `HTML anchor generation`_ section below.
 
 If you have a constant:
 
