@@ -450,7 +450,7 @@ expressions that cannot conveniently be represented as runtime values.
 
 These templates/macros can be annotated with the `{.alias.}` pragma
 to denote their intended use, however this annotation is currently
-not required. This disallows implicit redefinitions for templates.
+not required.
 
   ```nim
   type Foo = object
@@ -462,9 +462,9 @@ not required. This disallows implicit redefinitions for templates.
   bar = 15
   assert bar == 15
   var foo2 = Foo(bar: -10)
-  # redefinition error:
-  template bar: int {.alias.} = foo.bar
   ```
+
+Templates marked `{.alias.}` cannot be `implicitly redefined <manual.html#pragmas-redefine-pragma>`_.
 
 In the future, this annotation or the lack of it may gain more meanings.
 
