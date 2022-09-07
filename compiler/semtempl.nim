@@ -250,8 +250,14 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of OverloadableSyms:
+  of OverloadableSyms-{skTemplate,skMacro}:
     result = symChoice(c, n, s, scOpen, isField)
+  of skTemplate, skMacro:
+    result = symChoice(c, n, s, scOpen, isField)
+    if result.kind == nkSym:
+      # template/macro symbols might need to be semchecked again
+      # prepareOperand etc don't do this without setting the type to nil
+      result.typ = nil
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
@@ -269,10 +275,6 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     # field access (dot expr) will be handled by builtinFieldAccess
     if not isField:
       styleCheckUse(c, n.info, s)
-  if result.kind == nkSym:
-    # symbols resolved in templates might need to be semchecked again
-    # sometimes this doesn't happen without setting the type to nil
-    result.typ = nil
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n
