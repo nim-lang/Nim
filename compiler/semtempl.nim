@@ -269,6 +269,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     # field access (dot expr) will be handled by builtinFieldAccess
     if not isField:
       styleCheckUse(c, n.info, s)
+  result.typ = nil # for typ.isNil checks that sem this node again
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n
