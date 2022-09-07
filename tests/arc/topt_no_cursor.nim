@@ -134,13 +134,17 @@ if dirExists(this.value):
   var
     :tmpD_1
     :tmpD_2
+    :tmpD_3
   par = (dir_1: parentDir(this.value), front_1:
     wasMoved(:tmpD_1)
     `=copy`(:tmpD_1,
-      :tmpD_2 = splitPath(this.value)
-      :tmpD_2.tail)
+      :tmpD_3 = splitPath do:
+        wasMoved(:tmpD_2)
+        `=copy`(:tmpD_2, this.value)
+        :tmpD_2
+      :tmpD_3.tail)
     :tmpD_1)
-  `=destroy`(:tmpD_2)
+  `=destroy`(:tmpD_3)
 if dirExists(par.dir):
   `=sink`(this.matchDirs, getSubDirs(par.dir, par.front))
 else:
