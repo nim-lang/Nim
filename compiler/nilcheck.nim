@@ -551,7 +551,7 @@ template event(b: History): string =
   of TAssign: "assigns a value which might be nil"
   of TVarArg: "passes it as a var arg which might change to nil"
   of TResult: "it is nil by default"
-  of TType: "it has ref type"
+  of TransitionKind.TType: "it has ref type"
   of TSafe: "it is safe here as it returns false for isNil"
   of TPotentialAlias: "it might be changed directly or through an alias"
   of TDependant: "it might be changed because its base might be changed"
