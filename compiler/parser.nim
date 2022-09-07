@@ -1276,12 +1276,13 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
   #| simplePrimary = SIGILLIKEOP? identOrLiteral primarySuffix*
   #| commandStart = &('`'|IDENT|literal|'cast'|'addr'|'type'|'var'|'out'|
   #|                  'static'|'enum'|'tuple'|'object'|'proc')
-  #| primary = simplePrimary (commandStart expr)*
+  #| primary = simplePrimary (commandStart expr)
   #|         / operatorB primary
   #|         / routineExpr
   #|         / rawTypeDesc
   #|         / prefixOperator primary
   # XXX strong spaces need to be reflected in commandStart
+  # command part is handled in the primarySuffix proc
 
   # prefix operators:
   if isOperator(p.tok):
