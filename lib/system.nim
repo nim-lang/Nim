@@ -30,7 +30,7 @@ type
 # 'float64' is now an alias to 'float'; this solves many problems
 
 type
-  char* {.magic: Char.}         ## Built-in 8 bit character type (unsigned).
+  char* {.magic: Char.}         ## Built-in 8 bit character type.
   string* {.magic: String.}     ## Built-in string type.
   cstring* {.magic: Cstring.}   ## Built-in cstring (*compatible string*) type.
   pointer* {.magic: Pointer.}   ## Built-in pointer type, use the `addr`
