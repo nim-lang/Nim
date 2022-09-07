@@ -543,14 +543,18 @@ proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
   fromSockAddrAux(cast[ptr Sockaddr_storage](unsafeAddr sa), sl, address, port)
 
 when defineSsl:
-  # OpenSSL >= 1.1.0 does not need explicit init.
+  CRYPTO_malloc_init()
+  doAssert SslLibraryInit() == 1
+  SSL_load_error_strings()
+  ERR_load_BIO_strings()
+  OpenSSL_add_all_algorithms()
 
   proc sslHandle*(self: Socket): SslPtr =
     ## Retrieve the ssl pointer of `socket`.
     ## Useful for interfacing with `openssl`.
     self.sslHandle
 
-  proc raiseSSLError*(s = "") {.raises: [SslError].}=
+  proc raiseSSLError*(s = "") =
     ## Raises a new SSL error.
     if s != "":
       raise newException(SslError, s)
@@ -615,7 +619,9 @@ when defineSsl:
                    caDir = "", caFile = ""): SslContext =
     ## Creates an SSL context.
     ##
-    ## protVersion is currently unsed.
+    ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
+    ## are available with the addition of `protSSLv23` which allows for
+    ## compatibility with all of them.
     ##
     ## There are three options for verify mode:
     ## `CVerifyNone`: certificates are not verified;
@@ -642,12 +648,16 @@ when defineSsl:
     ## or using ECDSA:
     ## - `openssl ecparam -out mykey.pem -name secp256k1 -genkey`
     ## - `openssl req -new -key mykey.pem -x509 -nodes -days 365 -out mycert.pem`
-    let mtd = TLS_method()
-    if mtd == nil:
-      raiseSSLError("Failed to create TLS context")
-    var newCTX = SSL_CTX_new(mtd)
-    if newCTX == nil:
-      raiseSSLError("Failed to create TLS context")
+    var newCTX: SslCtx
+    case protVersion
+    of protSSLv23:
+      newCTX = SSL_CTX_new(SSLv23_method()) # SSlv2,3 and TLS1 support.
+    of protSSLv2:
+      raiseSSLError("SSLv2 is no longer secure and has been deprecated, use protSSLv23")
+    of protSSLv3:
+      raiseSSLError("SSLv3 is no longer secure and has been deprecated, use protSSLv23")
+    of protTLSv1:
+      newCTX = SSL_CTX_new(TLSv1_method())
 
     if newCTX.SSL_CTX_set_cipher_list(cipherList) != 1:
       raiseSSLError()
@@ -806,28 +816,24 @@ when defineSsl:
     if SSL_set_fd(socket.sslHandle, socket.fd) != 1:
       raiseSSLError()
 
-  proc checkCertName(socket: Socket, hostname: string) {.raises: [SslError], tags:[RootEffect].} =
+  proc checkCertName(socket: Socket, hostname: string) =
     ## Check if the certificate Subject Alternative Name (SAN) or Subject CommonName (CN) matches hostname.
     ## Wildcards match only in the left-most label.
     ## When name starts with a dot it will be matched by a certificate valid for any subdomain
     when not defined(nimDisableCertificateValidation) and not defined(windows):
       assert socket.isSsl
-      try:
-        let certificate = socket.sslHandle.SSL_get_peer_certificate()
-        if certificate.isNil:
-          raiseSSLError("No SSL certificate found.")
+      let certificate = socket.sslHandle.SSL_get_peer_certificate()
+      if certificate.isNil:
+        raiseSSLError("No SSL certificate found.")
 
-        const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
-        # https://www.openssl.org/docs/man1.1.1/man3/X509_check_host.html
-        let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
-          X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
-        # https://www.openssl.org/docs/man1.1.1/man3/SSL_get_peer_certificate.html
-        X509_free(certificate)
-        if match != 1:
-          raiseSSLError("SSL Certificate check failed.")
-
-      except LibraryError:
-        raiseSSLError("SSL import failed")
+      const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
+      # https://www.openssl.org/docs/man1.1.1/man3/X509_check_host.html
+      let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
+        X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
+      # https://www.openssl.org/docs/man1.1.1/man3/SSL_get_peer_certificate.html
+      X509_free(certificate)
+      if match != 1:
+        raiseSSLError("SSL Certificate check failed.")
 
   proc wrapConnectedSocket*(ctx: SslContext, socket: Socket,
                             handshake: SslHandshakeType,
@@ -854,7 +860,6 @@ when defineSsl:
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
       when not defined(nimDisableCertificateValidation) and not defined(windows):
-        # FIXME: this should be skipped on CVerifyNone
         if hostname.len > 0 and not isIpAddress(hostname):
           socket.checkCertName(hostname)
     of handshakeAsServer:
@@ -1310,7 +1315,7 @@ when defined(nimdoc) or (defined(posix) and not useNimNetLite):
           (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
-when defineSsl:
+when defined(ssl):
   proc gotHandshake*(socket: Socket): bool =
     ## Determines whether a handshake has occurred between a client (`socket`)
     ## and the server that `socket` is connected to.
@@ -1997,7 +2002,7 @@ proc dial*(address: string, port: Port,
     raise newException(IOError, "Couldn't resolve address: " & address)
 
 proc connect*(socket: Socket, address: string,
-    port = Port(0)) {.tags: [ReadIOEffect, RootEffect].} =
+    port = Port(0)) {.tags: [ReadIOEffect].} =
   ## Connects socket to `address`:`port`. `Address` can be an IP address or a
   ## host name. If `address` is a host name, this function will try each IP
   ## of that host name. `htons` is already performed on `port` so you must
@@ -2072,7 +2077,7 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
   if not success: raiseOSError(lastError)
 
 proc connect*(socket: Socket, address: string, port = Port(0),
-    timeout: int) {.tags: [ReadIOEffect, WriteIOEffect, RootEffect].} =
+    timeout: int) {.tags: [ReadIOEffect, WriteIOEffect].} =
   ## Connects to server as specified by `address` on port specified by `port`.
   ##
   ## The `timeout` parameter specifies the time in milliseconds to allow for
