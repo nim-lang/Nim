@@ -1266,7 +1266,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       typ = semParamType(c, a[^2], constraint)
       if typ.kind == tyVarargs:
         if hasMultipleVarargs:
-          doAssert false
+          localError(c.config, a[^2].info, "Multiple varargs parameters are disallowed")
         else:
           hasMultipleVarargs = true
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
