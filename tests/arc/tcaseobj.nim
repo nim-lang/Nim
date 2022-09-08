@@ -11,6 +11,7 @@ end
 prevented
 (ok: true, value: "ok")
 myobj destroyed
+@[(kind: P, pChildren: @[])]
 '''
 """
 
@@ -244,3 +245,27 @@ block:
 
   doAssert j1.x1 == 2
   doAssert j0.x0 == 2
+
+# ------------------------------------
+# bug #20305
+
+type
+  ContentNodeKind = enum
+    P, Br, Text
+  ContentNode = object
+    case kind: ContentNodeKind
+    of P: pChildren: seq[ContentNode]
+    of Br: discard
+    of Text: textStr: string
+
+proc bug20305 =
+  var x = ContentNode(kind: P, pChildren: @[
+    ContentNode(kind: P, pChildren: @[ContentNode(kind: Text, textStr: "brrr")])
+  ])
+  x.pChildren.add ContentNode(kind: Br)
+  x.pChildren.del(0)
+  {.cast(uncheckedAssign).}:
+    x.pChildren[0].kind = P
+  echo x.pChildren
+
+bug20305()
