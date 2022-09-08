@@ -7856,7 +7856,7 @@ generator. It receives a format string that determines how the variable
 or proc is declared in the generated code.
 
 For variables, $1 in the format string represents the type of the variable,
-$2 is the name of the variable, and each appearance of $# represents $1/$2/...
+$2 is the name of the variable, and each appearance of $# represents $1/$2
 respectively according to its position.
 
 The following Nim code:
@@ -7873,7 +7873,8 @@ will generate this C code:
   ```
 
 For procedures, $1 is the return type of the procedure, $2 is the name of
-the procedure, and $3 is the parameter list.
+the procedure, $3 is the parameter list, and each appearance of $# represents
+$1/$2/$3 respectively according to its position.
 
 The following nim code:
 
