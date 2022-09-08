@@ -7855,8 +7855,9 @@ The `codegenDecl` pragma can be used to directly influence Nim's code
 generator. It receives a format string that determines how the variable
 or proc is declared in the generated code.
 
-For variables, $1 in the format string represents the type of the variable
-and $2 is the name of the variable.
+For variables, $1 in the format string represents the type of the variable,
+$2 is the name of the variable, and each appearance of $# represents $1/$2/...
+respectively according to its position.
 
 The following Nim code:
 
