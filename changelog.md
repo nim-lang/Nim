@@ -36,6 +36,7 @@
 - [Overloadable enums](https://nim-lang.github.io/Nim/manual_experimental.html#overloadable-enum-value-names)
   are no longer experimental.
 
+- Multiple varargs are not allowed, consider using openArray as an alternative.
 ## Standard library additions and changes
 
 [//]: # "Changes:"
