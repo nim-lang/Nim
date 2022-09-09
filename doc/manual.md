@@ -7893,9 +7893,9 @@ will generate this code:
 `cppNonPod` pragma
 ------------------
 
-The `.cppNonPod` pragma should be used for non-POD `importcpp` types so that they
+The `cppNonPod` pragma should be used for non-POD `importcpp` types so that they
 work properly (in particular regarding constructor and destructor) for
-`.threadvar` variables. This requires `--tlsEmulation:off`:option:.
+`threadvar` variables. This requires `--tlsEmulation:off`:option:.
 
   ```nim
   type Foo {.cppNonPod, importcpp, header: "funs.h".} = object
@@ -8126,6 +8126,8 @@ is not set to C, other pragmas are available:
  * `importcpp <manual.html#implementation-specific-pragmas-importcpp-pragma>`_
  * `importobjc <manual.html#implementation-specific-pragmas-importobjc-pragma>`_
  * `importjs <manual.html#implementation-specific-pragmas-importjs-pragma>`_
+
+The string literal passed to `importc` can be a format string:
 
   ```Nim
   proc p(s: cstring) {.importc: "prefix$1".}
