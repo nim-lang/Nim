@@ -10,8 +10,8 @@ begin
 end
 prevented
 (ok: true, value: "ok")
-myobj destroyed
 @[(kind: P, pChildren: @[])]
+myobj destroyed
 '''
 """
 
