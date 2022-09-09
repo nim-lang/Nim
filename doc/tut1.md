@@ -22,14 +22,14 @@ like variables, types, or statements.
 
 Here are several other resources for learning Nim:
 
-* `Nim Basics tutorial <https://narimiran.github.io/nim-basics/>`_ - a gentle 
+* [Nim Basics tutorial](https://narimiran.github.io/nim-basics/) - a gentle 
   introduction of the concepts mentioned above
-* `Learn Nim in 5 minutes <https://learnxinyminutes.com/docs/nim/>`_ - quick,
+* [Learn Nim in 5 minutes](https://learnxinyminutes.com/docs/nim/) - quick,
   five-minute introduction to Nim
-* `The Nim manual <manual.html>`_ - many more examples of the advanced language features
+* [The Nim manual](manual.html) - many more examples of the advanced language features
 
 All code examples in this tutorial, as well as the ones found in the rest of
-Nim's documentation, follow the `Nim style guide <nep1.html>`_.
+Nim's documentation, follow the [Nim style guide](nep1.html).
 
 
 The first program
@@ -49,7 +49,7 @@ Save this code to the file "greetings.nim". Now compile and run it::
 
   nim compile --run greetings.nim
 
-With the ``--run`` `switch <nimc.html#compiler-usage-commandminusline-switches>`_ Nim
+With the ``--run`` [switch](nimc.html#compiler-usage-commandminusline-switches) Nim
 executes the file automatically after compilation. You can give your program
 command-line arguments by appending them after the filename::
 
@@ -66,8 +66,8 @@ To compile a release version use::
 
 By default, the Nim compiler generates a large number of runtime checks
 aiming for your debugging pleasure. With ``-d:release`` some checks are
-`turned off and optimizations are turned on
-<nimc.html#compiler-usage-compileminustime-symbols>`_.
+[turned off and optimizations are turned on](
+nimc.html#compiler-usage-compileminustime-symbols).
 
 For benchmarking or production code, use the ``-d:release`` switch.
 For comparing the performance with unsafe languages like C, use the ``-d:danger`` switch
@@ -81,8 +81,8 @@ done with spaces only, tabulators are not allowed.
 
 String literals are enclosed in double-quotes. The `var` statement declares
 a new variable named `name` of type `string` with the value that is
-returned by the `readLine <syncio.html#readLine,File>`_ procedure. Since the
-compiler knows that `readLine <syncio.html#readLine,File>`_ returns a string,
+returned by the [readLine](syncio.html#readLine,File) procedure. Since the
+compiler knows that [readLine](syncio.html#readLine,File) returns a string,
 you can leave out the type in the declaration (this is called `local type
 inference`:idx:). So this will work too:
 
@@ -94,8 +94,8 @@ Note that this is basically the only form of type inference that exists in
 Nim: it is a good compromise between brevity and readability.
 
 The "hello world" program contains several identifiers that are already known
-to the compiler: `echo`, `readLine <syncio.html#readLine,File>`_, etc.
-These built-ins are declared in the system_ module which is implicitly
+to the compiler: `echo`, [readLine](syncio.html#readLine,File), etc.
+These built-ins are declared in the [system](system.html) module which is implicitly
 imported by any other module.
 
 
@@ -340,7 +340,7 @@ the compiler that for every other value nothing should be done:
   else: discard
   ```
 
-The empty `discard statement <#procedures-discard-statement>`_ is a *do
+The empty [discard statement] is a *do
 nothing* statement. The compiler knows that a case statement with an else part
 cannot fail and thus the error disappears. Note that it is impossible to cover
 all possible string values: that is why string cases always need an `else`
@@ -372,8 +372,8 @@ For statement
 -------------
 
 The `for` statement is a construct to loop over any element an *iterator*
-provides. The example uses the built-in `countup
-<system.html#countup.i,T,T,Positive>`_ iterator:
+provides. The example uses the built-in [countup](
+system.html#countup.i,T,T,Positive) iterator:
 
   ```nim  test = "nim c $1"
   echo "Counting to ten: "
@@ -383,8 +383,8 @@ provides. The example uses the built-in `countup
   ```
 
 The variable `i` is implicitly declared by the
-`for` loop and has the type `int`, because that is what `countup
-<system.html#countup.i,T,T,Positive>`_ returns. `i` runs through the values
+`for` loop and has the type `int`, because that is what [countup](
+system.html#countup.i,T,T,Positive) returns. `i` runs through the values
 1, 2, .., 10. Each value is `echo`-ed. This code does the same:
 
   ```nim
@@ -396,8 +396,8 @@ The variable `i` is implicitly declared by the
   # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
   ```
 
-Since counting up occurs so often in programs, Nim also has a `..
-<system.html#...i,T,T>`_ iterator that does the same:
+Since counting up occurs so often in programs, Nim also has a [..](
+system.html#...i,T,T) iterator that does the same:
 
   ```nim
   for i in 1 .. 10:
@@ -414,7 +414,7 @@ Counting down can be achieved as easily (but is less often needed):
   ```
 
 Zero-indexed counting has two shortcuts `..<` and `.. ^1`
-(`backward index operator <system.html#^.t%2Cint>`_) to simplify
+([backward index operator](system.html#^.t%2Cint)) to simplify
 counting to one less than the higher index:
 
   ```nim
@@ -600,11 +600,11 @@ an expression is allowed:
 Procedures
 ==========
 
-To define new commands like `echo <system.html#echo,varargs[typed,]>`_
-and `readLine <syncio.html#readLine,File>`_ in the examples, the concept of a
+To define new commands like [echo](system.html#echo,varargs[typed,])
+and [readLine](syncio.html#readLine,File) in the examples, the concept of a
 *procedure* is needed. You might be used to them being called *methods* or
 *functions* in other languages, but Nim
-`differentiates these concepts <tut1.html#procedures-funcs-and-methods>`_. In
+[differentiates these concepts](tut1.html#procedures-funcs-and-methods). In
 Nim, new procedures are defined with the `proc` keyword:
 
   ```nim  test = "nim c $1"
@@ -808,7 +808,7 @@ Nim provides the ability to overload procedures similar to C++:
   assert toString(true) == "yep"    # calls the toString(x: bool) proc
   ```
 
-(Note that `toString` is usually the `$ <dollars.html>`_ operator in
+(Note that `toString` is usually the [$](dollars.html) operator in
 Nim.) The compiler chooses the most appropriate proc for the `toString`
 calls. How this overloading resolution algorithm works exactly is not
 discussed here -- see the manual for details. Ambiguous calls are reported as errors.
@@ -833,7 +833,7 @@ User-defined operators are allowed. Nothing stops you from defining your own
 `@!?+~` operator, but doing so may reduce readability.
 
 The operator's precedence is determined by its first character. The details
-can be `found in the manual <manual.html#syntax-precedence>`_.
+can be [found in the manual](manual.html#syntax-precedence).
 
 To define a new operator enclose the operator in backticks "`":
 
@@ -882,7 +882,7 @@ Here `odd` depends on `even` and vice versa. Thus `even` needs to be
 introduced to the compiler before it is completely defined. The syntax for
 such a forward declaration is simple: just omit the `=` and the
 procedure's body. The `assert` just adds border conditions, and will be
-covered later in `Modules`_ section.
+covered later in [Modules] section.
 
 Later versions of the language will weaken the requirements for forward
 declarations.
@@ -913,7 +913,7 @@ programming. If you overload a procedure (two procedures with the same name but
 of different types or with different sets of arguments are said to be overloaded), the procedure to use is determined
 at compile-time. Methods, on the other hand, depend on objects that inherit from
 the `RootObj`. This is something that is covered in much greater depth in
-the `second part of the tutorial<tut2.html#object-oriented-programming-dynamic-dispatch>`_.
+the [second part of the tutorial](tut2.html#object-oriented-programming-dynamic-dispatch).
 
 
 Iterators
@@ -927,7 +927,7 @@ Let's return to the simple counting example:
     echo i
   ```
 
-Can a `countup <system.html#countup.i,T,T,Positive>`_ proc be written that
+Can a [countup](system.html#countup.i,T,T,Positive) proc be written that
 supports this loop? Let's try:
 
   ```nim
@@ -964,12 +964,13 @@ important differences:
   (This restriction will be gone in a future version of the compiler.)
 
 However, you can also use a closure iterator to get a different set of
-restrictions. See `first-class iterators <manual.html#iterators-and-the-for-statement-firstminusclass-iterators>`_
+restrictions. See [first-class iterators](
+manual.html#iterators-and-the-for-statement-firstminusclass-iterators)
 for details. Iterators can have the same name and parameters as a proc since
 essentially they have their own namespaces. Therefore, it is common to
 wrap iterators in procs of the same name which accumulate the result of the
-iterator and return it as a sequence, like `split` from the `strutils module
-<strutils.html>`_.
+iterator and return it as a sequence, like `split` from the [strutils module](
+strutils.html).
 
 
 Basic types
@@ -1095,8 +1096,8 @@ floats and follow the IEEE-754 standard.
 
 Automatic type conversion in expressions with different kinds of floating-point types is performed: the smaller type is converted to the larger. Integer
 types are **not** converted to floating-point types automatically, nor vice
-versa. Use the `toInt <system.html#toInt,float>`_ and
-`toFloat <system.html#toFloat,int>`_ procs for these conversions.
+versa. Use the [toInt](system.html#toInt,float) and
+[toFloat](system.html#toFloat,int) procs for these conversions.
 
 
 Type Conversion
@@ -1117,13 +1118,13 @@ type as a function:
 Internal type representation
 ============================
 
-As mentioned earlier, the built-in `$ <dollars.html>`_ (stringify) operator
+As mentioned earlier, the built-in [$](dollars.html) (stringify) operator
 turns any basic type into a string, which you can then print to the console
 using the `echo` proc. However, advanced types, and your own custom types,
 won't work with the `$` operator until you define it for them.
 Sometimes you just want to debug the current value of a complex type without
-having to write its `$` operator.  You can use then the `repr
-<system.html#repr,T>`_ proc which works with any type and even complex data
+having to write its `$` operator.  You can use then the [repr](
+system.html#repr,T) proc which works with any type and even complex data
 graphs with cycles. The following example shows that even for basic types
 there is a difference between the `$` and `repr` outputs:
 
@@ -1216,8 +1217,8 @@ Operation             Comment
 =================     ========================================================
 
 
-The `inc <system.html#inc,T,int>`_, `dec <system.html#dec,T,int>`_, `succ
-<system.html#succ,T,int>`_ and `pred <system.html#pred,T,int>`_ operations can
+The [inc](system.html#inc,T,int), [dec](system.html#dec,T,int), [succ](
+system.html#succ,T,int) and [pred](system.html#pred,T,int) operations can
 fail by raising an `RangeDefect` or `OverflowDefect`. (If the code has been
 compiled with the proper runtime checks turned on.)
 
@@ -1239,8 +1240,8 @@ to 5. Assigning any other value to a variable of type `MySubrange` is a
 compile-time or runtime error. Assignments from the base type to one of its
 subrange types (and vice versa) are allowed.
 
-The `system` module defines the important `Natural <system.html#Natural>`_
-type as `range[0..high(int)]` (`high <system.html#high,typedesc[T]>`_ returns
+The `system` module defines the important [Natural](system.html#Natural)
+type as `range[0..high(int)]` ([high](system.html#high,typedesc[T]) returns
 the maximal value). Other programming languages may suggest the use of unsigned
 integers for natural numbers. This is often **unwise**: you don't want unsigned
 arithmetic (which wraps around) just because the numbers cannot be negative.
@@ -1278,9 +1279,9 @@ checks can be disabled via pragmas or invoking the compiler with the
 Arrays are value types, like any other Nim type. The assignment operator
 copies the whole array contents.
 
-The built-in `len <system.html#len,TOpenArray>`_ proc returns the array's
-length. `low(a) <system.html#low,openArray[T]>`_ returns the lowest valid index
-for the array `a` and `high(a) <system.html#high,openArray[T]>`_ the highest
+The built-in [len](system.html#len,TOpenArray) proc returns the array's
+length. [low(a)](system.html#low,openArray[T]) returns the lowest valid index
+for the array `a` and [high(a)](system.html#high,openArray[T]) the highest
 valid index.
 
   ```nim  test = "nim c $1"
@@ -1358,14 +1359,14 @@ Sequences are similar to arrays but of dynamic length which may change
 during runtime (like strings). Since sequences are resizable they are always
 allocated on the heap and garbage collected.
 
-Sequences are always indexed with an `int` starting at position 0.  The `len
-<system.html#len,seq[T]>`_, `low <system.html#low,openArray[T]>`_ and `high
-<system.html#high,openArray[T]>`_ operations are available for sequences too.
+Sequences are always indexed with an `int` starting at position 0.  The [len](
+system.html#len,seq[T]), [low](system.html#low,openArray[T]) and [high](
+system.html#high,openArray[T]) operations are available for sequences too.
 The notation `x[i]` can be used to access the i-th element of `x`.
 
 Sequences can be constructed by the array constructor `[]` in conjunction
 with the array to sequence operator `@`. Another way to allocate space for
-a sequence is to call the built-in `newSeq <system.html#newSeq>`_ procedure.
+a sequence is to call the built-in [newSeq](system.html#newSeq) procedure.
 
 A sequence may be passed to an openarray parameter.
 
@@ -1382,12 +1383,12 @@ Sequence variables are initialized with `@[]`.
 The `for` statement can be used with one or two variables when used with a
 sequence. When you use the one variable form, the variable will hold the value
 provided by the sequence. The `for` statement is looping over the results
-from the `items() <iterators.html#items.i,seq[T]>`_ iterator from the `system
-<system.html>`_ module.  But if you use the two-variable form, the first
+from the [items()](iterators.html#items.i,seq[T]) iterator from the [system](
+system.html) module.  But if you use the two-variable form, the first
 variable will hold the index position and the second variable will hold the
 value. Here the `for` statement is looping over the results from the
-`pairs() <iterators.html#pairs.i,seq[T]>`_ iterator from the `system
-<system.html>`_ module.  Examples:
+[pairs()](iterators.html#pairs.i,seq[T]) iterator from the [system](
+system.html) module.  Examples:
 
   ```nim  test = "nim c $1"
   for value in @[3, 4, 5]:
@@ -1412,8 +1413,8 @@ Open arrays
 Often fixed-size arrays turn out to be too inflexible; procedures should be
 able to deal with arrays of different sizes. The `openarray`:idx: type allows
 this. Openarrays are always indexed with an `int` starting at position 0.
-The `len <system.html#len,TOpenArray>`_, `low <system.html#low,openArray[T]>`_
-and `high <system.html#high,openArray[T]>`_ operations are available for open
+The [len](system.html#len,TOpenArray), [low](system.html#low,openArray[T])
+and [high](system.html#high,openArray[T]) operations are available for open
 arrays too.  Any array with a compatible base type can be passed to an
 openarray parameter, the index type does not matter.
 
@@ -1471,8 +1472,8 @@ type conversions in this context:
   myWriteln(stdout, [$123, $"abc", $4.0])
   ```
 
-In this example `$ <dollars.html>`_ is applied to any argument that is passed
-to the parameter `a`. Note that `$ <dollars.html>`_ applied to strings is a
+In this example [$](dollars.html) is applied to any argument that is passed
+to the parameter `a`. Note that [$](dollars.html) applied to strings is a
 nop.
 
 
@@ -1515,7 +1516,7 @@ indices are
 
 where `b[0 .. ^1]` is equivalent to `b[0 .. b.len-1]` and `b[0 ..< b.len]`, and it
 can be seen that the `^1` provides a shorthand way of specifying the `b.len-1`. See
-the `backwards index operator <system.html#^.t%2Cint>`_.
+the [backwards index operator](system.html#^.t%2Cint).
 
 In the above example, because the string ends in a period, to get the portion of the
 string that is "useless" and replace it with "useful".
@@ -1526,7 +1527,7 @@ string that is "useless" and replace it with "useful".
 Note 1: alternate ways of writing this are `b[^8 .. ^2] = "useful"` or
 as `b[11 .. b.len-2] = "useful"` or as `b[11 ..< b.len-1] = "useful"`.
 
-Note 2: As the `^` template returns a `distinct int <manual.html#types-distinct-type>`_
+Note 2: As the `^` template returns a [distinct int](manual.html#types-distinct-type)
 of type `BackwardsIndex`, we can have a `lastIndex` constant defined as `const lastIndex = ^1`,
 and later used as `b[0 .. lastIndex]`.
 
@@ -1659,8 +1660,8 @@ having the same field types.
 
 Tuples can be *unpacked* during variable assignment. This can
 be handy to assign directly the fields of the tuples to individually named
-variables. An example of this is the `splitFile <os.html#splitFile,string>`_
-proc from the `os module <os.html>`_ which returns the directory, name, and
+variables. An example of this is the [splitFile](os.html#splitFile,string)
+proc from the [os module](os.html) which returns the directory, name, and
 extension of a path at the same time. For tuple unpacking to work you must
 use parentheses around the values you want to assign the unpacking to,
 otherwise, you will be assigning the same value to all the individual
@@ -1743,7 +1744,7 @@ To allocate a new traced object, the built-in procedure `new` can be used:
   ```
 
 To deal with untraced memory, the procedures `alloc`, `dealloc` and
-`realloc` can be used. The `system <system.html>`_
+`realloc` can be used. The [system](system.html)
 module's documentation contains further details.
 
 If a reference points to *nothing*, it has the value `nil`.
@@ -1776,7 +1777,7 @@ Example:
 A subtle issue with procedural types is that the calling convention of the
 procedure influences the type compatibility: procedural types are only compatible
 if they have the same calling convention. The different calling conventions are
-listed in the `manual <manual.html#types-procedural-type>`_.
+listed in the [manual](manual.html#types-procedural-type).
 
 Distinct type
 -------------
@@ -1786,7 +1787,7 @@ subtype relationship between it and its base type".
 You must **explicitly** define all behavior for the distinct type.
 To help with this, both the distinct type and its base type can cast from one
 type to the other.
-Examples are provided in the `manual <manual.html#types-distinct-type>`_.
+Examples are provided in the [manual](manual.html#types-distinct-type).
 
 Modules
 =======
@@ -1940,7 +1941,7 @@ Part 2
 ======
 
 So, now that we are done with the basics, let's see what Nim offers apart
-from a nice syntax for procedural programming: `Part II <tut2.html>`_
+from a nice syntax for procedural programming: [Part II](tut2.html)
 
 
 .. _strutils: strutils.html

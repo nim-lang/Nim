@@ -21,7 +21,7 @@ Attempting to declare a set with a larger type will result in an error:
 ```
 
 
-**Note:** Nim also offers `hash sets <sets.html>`_ (which you need to import
+**Note:** Nim also offers [hash sets](sets.html) (which you need to import
 with `import sets`), which have no such restrictions.
 
 Sets can be constructed via the set constructor: `{}` is the empty set. The
@@ -90,4 +90,4 @@ Note how the set turns enum values into powers of 2.
 If using enums and sets with C, use distinct cint.
 
 For interoperability with C see also the
-`bitsize pragma <manual.html#implementation-specific-pragmas-bitsize-pragma>`_.
+[bitsize pragma](manual.html#implementation-specific-pragmas-bitsize-pragma).
