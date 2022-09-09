@@ -1,5 +1,5 @@
 discard """
-  output: '''(repo: "", package: "meo", ext: "")
+  output: '''(package: "", ext: "meo")
 doing shady stuff...
 3
 6
@@ -11,24 +11,17 @@ doing shady stuff...
   cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
   nimout: '''--expandArc: newTarget
 
-var
-  splat
-  :tmp
-  :tmp_1
-  :tmp_2
-splat = splitFile(path)
-:tmp = splat.dir
-wasMoved(splat.dir)
-:tmp_1 = splat.name
-wasMoved(splat.name)
-:tmp_2 = splat.ext
-wasMoved(splat.ext)
+splat = splitDrive do:
+  let blitTmp = path
+  blitTmp
+:tmp = splat.drive
+wasMoved(splat.drive)
+:tmp_1 = splat.path_1
+wasMoved(splat.path_1)
 result = (
-  let blitTmp = :tmp
-  blitTmp,
-  let blitTmp_1 = :tmp_1
+  let blitTmp_1 = :tmp
   blitTmp_1,
-  let blitTmp_2 = :tmp_2
+  let blitTmp_2 = :tmp_1
   blitTmp_2)
 `=destroy`(splat)
 -- end of expandArc ------------------------
@@ -78,7 +71,7 @@ try:
     `=copy`(:tmpD_1, it_cursor.val)
     :tmpD_1)
   echo [
-    :tmpD_2 = `$`(a)
+    :tmpD_2 = `$$`(a)
     :tmpD_2]
 finally:
   `=destroy`(:tmpD_2)
@@ -160,13 +153,13 @@ else:
 -- end of expandArc ------------------------'''
 """
 
-import os
+import os, std/private/ntpath
 
-type Target = tuple[repo, package, ext: string]
+type Target = tuple[package, ext: string]
 
 proc newTarget*(path: string): Target =
-  let splat = path.splitFile
-  result = (repo: splat.dir, package: splat.name, ext: splat.ext)
+  let splat = path.splitDrive
+  result = (package: splat.drive, ext: splat.path)
 
 echo newTarget("meo")
 

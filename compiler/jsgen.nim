@@ -315,17 +315,19 @@ proc useMagic(p: PProc, name: string) =
 
 proc isSimpleExpr(p: PProc; n: PNode): bool =
   # calls all the way down --> can stay expression based
-  if n.kind in nkCallKinds+{nkBracketExpr, nkDotExpr, nkPar, nkTupleConstr} or
-      (n.kind in {nkObjConstr, nkBracket, nkCurly}):
+  case n.kind
+  of nkCallKinds, nkBracketExpr, nkDotExpr, nkPar, nkTupleConstr,
+    nkObjConstr, nkBracket, nkCurly:
     for c in n:
       if not p.isSimpleExpr(c): return false
     result = true
-  elif n.kind == nkStmtListExpr:
+  of nkStmtListExpr:
     for i in 0..<n.len-1:
       if n[i].kind notin {nkCommentStmt, nkEmpty}: return false
     result = isSimpleExpr(p, n.lastSon)
-  elif n.isAtom:
-    result = true
+  else:
+    if n.isAtom:
+      result = true
 
 proc getTemp(p: PProc, defineInLocals: bool = true): Rope =
   inc(p.unique)
@@ -873,8 +875,9 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
     totalRange = 0
   genLineDir(p, n)
   gen(p, n[0], cond)
-  let stringSwitch = skipTypes(n[0].typ, abstractVar).kind == tyString
-  if stringSwitch:
+  let typeKind = skipTypes(n[0].typ, abstractVar).kind
+  let anyString = typeKind in {tyString, tyCstring}
+  if typeKind == tyString:
     useMagic(p, "toJSStr")
     lineF(p, "switch (toJSStr($1)) {$n", [cond.rdLoc])
   else:
@@ -899,10 +902,11 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
             lineF(p, "case $1:$n", [cond.rdLoc])
             inc(v.intVal)
         else:
-          if stringSwitch:
+          if anyString:
             case e.kind
             of nkStrLit..nkTripleStrLit: lineF(p, "case $1:$n",
                 [makeJSString(e.strVal, false)])
+            of nkNilLit: lineF(p, "case null:$n", [])
             else: internalError(p.config, e.info, "jsgen.genCaseStmt: 2")
           else:
             gen(p, e, cond)

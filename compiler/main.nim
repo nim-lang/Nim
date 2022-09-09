@@ -325,7 +325,11 @@ proc mainCommand*(graph: ModuleGraph) =
       else:
         docLikeCmd commandDoc2(graph, TexExt)
   of cmdJsondoc0: docLikeCmd commandJson(cache, conf)
-  of cmdJsondoc: docLikeCmd commandDoc2(graph, JsonExt)
+  of cmdJsondoc:
+    docLikeCmd():
+      commandDoc2(graph, JsonExt)
+      if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
+        commandBuildIndexJson(conf, $conf.outDir)
   of cmdCtags: docLikeCmd commandTags(cache, conf)
   of cmdBuildindex: docLikeCmd commandBuildIndex(conf, $conf.projectFull, conf.outFile)
   of cmdGendepend: commandGenDepend(graph)
