@@ -74,7 +74,7 @@ suite "RST parsing":
         """.toAst ==
       dedent"""
         rnInner
-          rnHeadline  level=1
+          rnHeadline  level=1  anchor='lexical-analysis'
             rnLeaf  'Lexical'
             rnLeaf  ' '
             rnLeaf  'Analysis'
@@ -575,6 +575,45 @@ suite "RST parsing":
       """)
       # | |
       # |  \ indentation of exactly two spaces before 'let a = 1'
+
+  test "no blank line is required before or after Markdown code block":
+    let inputBacktick = dedent"""
+        Some text
+        ```
+        CodeBlock()
+        ```
+        Other text"""
+    let inputTilde = dedent"""
+        Some text
+        ~~~~~~~~~
+        CodeBlock()
+        ~~~~~~~~~
+        Other text"""
+    let expected = dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Some'
+            rnLeaf  ' '
+            rnLeaf  'text'
+          rnParagraph
+            rnCodeBlock
+              [nil]
+              rnFieldList
+                rnField
+                  rnFieldName
+                    rnLeaf  'default-language'
+                  rnFieldBody
+                    rnLeaf  'Nim'
+              rnLiteralBlock
+                rnLeaf  '
+        CodeBlock()'
+            rnLeaf  ' '
+            rnLeaf  'Other'
+            rnLeaf  ' '
+            rnLeaf  'text'
+      """
+    check inputBacktick.toAst == expected
+    check inputTilde.toAst == expected
 
   test "option list has priority over definition list":
     check(dedent"""
@@ -1134,13 +1173,29 @@ suite "Warnings":
       lastParagraph
       """
     var warnings = new seq[string]
-    let output = input.toAst(warnings=warnings)
+    let output = input.toAst(rstOptions=preferRst, warnings=warnings)
     check(warnings[] == @[
         "input(3, 14) Warning: broken link 'citation-som'",
         "input(5, 7) Warning: broken link 'a broken Link'",
         "input(7, 15) Warning: unknown substitution 'undefined subst'",
         "input(9, 6) Warning: broken link 'short.link'"
         ])
+
+  test "Pandoc Markdown concise link warning points to target":
+    var warnings = new seq[string]
+    check(
+      "ref [here][target]".toAst(warnings=warnings) ==
+      dedent"""
+        rnInner
+          rnLeaf  'ref'
+          rnLeaf  ' '
+          rnPandocRef
+            rnInner
+              rnLeaf  'here'
+            rnInner
+              rnLeaf  'target'
+      """)
+    check warnings[] == @["input(1, 12) Warning: broken link 'target'"]
 
   test "With include directive and blank lines at the beginning":
     "other.rst".writeFile(dedent"""
@@ -1160,7 +1215,7 @@ suite "Warnings":
         rnParagraph
           rnLeaf  'here'
           rnLeaf  ' '
-          rnRef
+          rnRstRef
             rnLeaf  'brokenLink'
       """)
     removeFile("other.rst")
@@ -1519,7 +1574,7 @@ suite "RST inline markup":
 
   test "no punctuation in the end of a standalone URI is allowed":
     check(dedent"""
-        [see (http://no.org)], end""".toAst ==
+        [see (http://no.org)], end""".toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnLeaf  '['
@@ -1566,6 +1621,19 @@ suite "RST inline markup":
           rnLeaf  ' '
           rnLeaf  'end'
         """)
+
+  test "Markdown-style link can be split to a few lines":
+    check(dedent"""
+        is [term-rewriting
+        macros](manual.html#term-rewriting-macros)""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'is'
+          rnLeaf  ' '
+          rnHyperlink
+            rnLeaf  'term-rewriting macros'
+            rnLeaf  'manual.html#term-rewriting-macros'
+      """)
 
   test "URL with balanced parentheses (Markdown rule)":
     # 2 balanced parens, 1 unbalanced:

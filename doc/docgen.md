@@ -14,7 +14,7 @@ Introduction
 ============
 
 This document describes the `documentation generation tools`:idx: built into
-the `Nim compiler <nimc.html>`_, which can generate HTML, Latex and JSON output
+the [Nim compiler](nimc.html), which can generate HTML, Latex and JSON output
 from input ``.nim`` files and projects, as well as HTML and LaTeX from input RST
 (reStructuredText) files. The output documentation will include the module
 dependencies (`import`), any top-level documentation comments (`##`), and
@@ -59,19 +59,20 @@ Documentation Comments
 ----------------------
 
 Any comments which are preceded by a double-hash (`##`), are interpreted as
-documentation.  Comments are parsed as RST (see `reference
-<http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_), providing
+documentation.  Comments are parsed as RST (see [reference](
+http://docutils.sourceforge.net/docs/user/rst/quickref.html)), providing
 Nim module authors the ability to easily generate richly formatted
 documentation with only their well-documented code!
 Basic Markdown syntax is also supported inside the doc comments.
 
 Example:
 
-.. code-block:: nim
+  ```nim
   type Person* = object
     ## This type contains a description of a person
     name: string
     age: int
+  ```
 
 Outputs::
   Person* = object
@@ -82,9 +83,10 @@ Outputs::
 
 Field documentation comments can be added to fields like so:
 
-.. code-block:: nim
+  ```nim
   var numValues: int ## \
     ## `numValues` stores the number of values
+  ```
 
 Note that without the `*` following the name of the type, the documentation for
 this type would not be generated. Documentation will only be generated for
@@ -102,12 +104,13 @@ won't influence RST formatting.
    If you still need to add an additional indentation at the very beginning
    (for RST block quote syntax) use backslash \\ before it:
 
-   .. code-block:: nim
-      ## \
-      ##
-      ##    Block quote at the first line.
-      ##
-      ## Paragraph.
+     ```nim
+     ## \
+     ##
+     ##    Block quote at the first line.
+     ##
+     ## Paragraph.
+     ```
 
 
 Document Types
@@ -145,7 +148,7 @@ Partial Output::
   proc helloWorld(times: int) {.raises: [], tags: [].}
   ...
 
-The full output can be seen here: `docgen_sample.html <docgen_sample.html>`_.
+The full output can be seen here: [docgen_sample.html](docgen_sample.html).
 It runs after semantic checking and includes pragmas attached implicitly by the
 compiler.
 
@@ -242,15 +245,15 @@ underscore `_` to a *link text*.
 Link text is either one word or a group of words enclosed by backticks `\``
 (for a one word case backticks are usually omitted).
 Link text will be displayed *as is* while *link target* will be set to
-the anchor [*]_ of Nim symbol that corresponds to link text.
+the anchor \[*] of Nim symbol that corresponds to link text.
 
-.. [*] anchors' format is described in `HTML anchor generation`_ section below.
+\[*] anchors' format is described in [HTML anchor generation] section below.
 
 If you have a constant:
 
-   ```Nim
-   const pi* = 3.14
-   ```
+  ```Nim
+  const pi* = 3.14
+  ```
 
 then it should be referenced in one of the 2 forms:
 
@@ -261,9 +264,9 @@ B. qualified (with symbol kind specification)::
 
 For routine kinds there are more options. Consider this definition:
 
-   ```Nim
-   proc foo*(a: int, b: float): string
-   ```
+  ```Nim
+  proc foo*(a: int, b: float): string
+  ```
 
 Generally following syntax is allowed for referencing `foo`:
 
@@ -432,11 +435,11 @@ This will generate an index of all the exported symbols in the input Nim
 module, and put it into a neighboring file with the extension of ``.idx``. The
 index file is line-oriented (newlines have to be escaped). Each line
 represents a tab-separated record of several columns, the first two mandatory,
-the rest optional. See the `Index (idx) file format`_ section for details.
+the rest optional. See the [Index (idx) file format] section for details.
 
 Once index files have been generated for one or more modules, the Nim
 compiler command `buildIndex directory` can be run to go over all the index
-files in the specified directory to generate a `theindex.html <theindex.html>`_
+files in the specified directory to generate a [theindex.html](theindex.html)
 file.
 
 See source switch
@@ -485,7 +488,7 @@ the `rst2html`:option: and `rst2tex`:option: commands. Documents like this one a
 initially written in a dialect of RST which adds support for Nim source code
 highlighting with the ``.. code-block:: nim`` prefix. ``code-block`` also
 supports highlighting of a few other languages supported by the
-`packages/docutils/highlite module <highlite.html>`_.
+[packages/docutils/highlite module](highlite.html).
 
 Usage:
 
@@ -547,38 +550,38 @@ Callable type    Suffix
 
 The relationship of type to suffix is made by the proc `complexName` in the
 ``compiler/docgen.nim`` file. Here are some examples of complex names for
-symbols in the `system module <system.html>`_.
+symbols in the [system module](system.html).
 
 * `type SomeSignedInt = int | int8 | int16 | int32 | int64` **=>**
-  `#SomeSignedInt <system.html#SomeSignedInt>`_
+  [#SomeSignedInt](system.html#SomeSignedInt)
 * `var globalRaiseHook: proc (e: ref E_Base): bool {.nimcall.}` **=>**
-  `#globalRaiseHook <system.html#globalRaiseHook>`_
+  [#globalRaiseHook](system.html#globalRaiseHook)
 * `const NimVersion = "0.0.0"` **=>**
-  `#NimVersion <system.html#NimVersion>`_
+  [#NimVersion](system.html#NimVersion)
 * `proc getTotalMem(): int {.rtl, raises: [], tags: [].}` **=>**
-  `#getTotalMem, <system.html#getTotalMem>`_
+  [#getTotalMem](system.html#getTotalMem)
 * `proc len[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}` **=>**
-  `#len,seq[T] <system.html#len,seq[T]>`_
+  [#len,seq[T]](system.html#len,seq[T])
 * `iterator pairs[T](a: seq[T]): tuple[key: int, val: T] {.inline.}` **=>**
-  `#pairs.i,seq[T] <iterators.html#pairs.i,seq[T]>`_
+  [#pairs.i,seq[T]](iterators.html#pairs.i,seq[T])
 * `template newException[](exceptn: typedesc; message: string;
     parentException: ref Exception = nil): untyped` **=>**
-  `#newException.t,typedesc,string,ref.Exception
-  <system.html#newException.t,typedesc,string,ref.Exception>`_
+  [#newException.t,typedesc,string,ref.Exception](
+  system.html#newException.t,typedesc,string,ref.Exception)
 
 
 Index (idx) file format
 =======================
 
-Files with the ``.idx`` extension are generated when you use the `Index
-switch <#related-options-index-switch>`_ along with commands to generate
+Files with the ``.idx`` extension are generated when you use the [Index
+switch] along with commands to generate
 documentation from source or text files. You can programmatically generate
-indices with the `setIndexTerm()
-<rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string>`_
+indices with the [setIndexTerm()](
+rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string)
 and `writeIndexFile() <rstgen.html#writeIndexFile,RstGenerator,string>`_ procs.
 The purpose of `idx` files is to hold the interesting symbols and their HTML
 references so they can be later concatenated into a big index file with
-`mergeIndexes() <rstgen.html#mergeIndexes,string>`_.  This section documents
+[mergeIndexes()](rstgen.html#mergeIndexes,string).  This section documents
 the file format in detail.
 
 Index files are line-oriented and tab-separated (newline and tab characters
@@ -623,16 +626,16 @@ final index, and TOC entries found in ``.nim`` files are discarded.
 Additional resources
 ====================
 
-* `Nim Compiler User Guide <nimc.html#compiler-usage-commandminusline-switches>`_
+* [Nim Compiler User Guide](nimc.html#compiler-usage-commandminusline-switches)
 
-* Documentation for `rst module <rst.html>`_ -- Nim RST/Markdown parser.
+* Documentation for [rst module](rst.html) -- Nim RST/Markdown parser.
 
-* `RST Quick Reference
-  <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_
+* [RST Quick Reference](
+  http://docutils.sourceforge.net/docs/user/rst/quickref.html)
 
 The output for HTML and LaTeX comes from the ``config/nimdoc.cfg`` and
 ``config/nimdoc.tex.cfg`` configuration files. You can add and modify these
 files to your project to change the look of the docgen output.
 
-You can import the `packages/docutils/rstgen module <rstgen.html>`_ in your
+You can import the [packages/docutils/rstgen module](rstgen.html) in your
 programs if you want to reuse the compiler's documentation generation procs.

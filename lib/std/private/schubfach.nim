@@ -3,12 +3,12 @@
 ##  Distributed under the Boost Software License, Version 1.0.
 ##   (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
-## --------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 ##  This file contains an implementation of the Schubfach algorithm as described in
 ##
-##  [1] Raffaello Giulietti, "The Schubfach way to render doubles",
+##  \[1] Raffaello Giulietti, "The Schubfach way to render doubles",
 ##      https://drive.google.com/open?id=1luHhyQF9zKlM8yJ1nebU0OgVYhfC6CBN
-## --------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 
 import std/private/digitsutils
 
@@ -19,9 +19,9 @@ when defined(nimPreviewSlimSystem):
 template sf_Assert(x: untyped): untyped =
   assert(x)
 
-## ==================================================================================================
-##
-## ==================================================================================================
+# ==================================================================================================
+#
+# ==================================================================================================
 
 type
   ValueType = float32
@@ -68,7 +68,7 @@ proc isZero(this: Single): bool {.noSideEffect.} =
 proc signBit(this: Single): int {.noSideEffect.} =
   return int((this.bits and signMask) != 0)
 
-## ==================================================================================================
+# ==================================================================================================
 ##  Returns floor(x / 2^n).
 ##
 ##  Technically, right-shift of negative integers is implementation defined...

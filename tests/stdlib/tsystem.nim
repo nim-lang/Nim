@@ -74,3 +74,30 @@ template main =
 
 static: main()
 main()
+
+# bug #19967
+block:
+  type
+    X = object
+      a: string
+      b: set[char]
+
+  var y = X(b: {'a'})
+
+  reset(y)
+
+  doAssert y.b == {}
+
+block:
+  type
+    Color = enum
+      Red, Blue, Yellow
+    X = object
+      a: string
+      b: set[Color]
+
+  var y = X(b: {Red, Blue})
+
+  reset(y)
+  doAssert y.b == {}
+

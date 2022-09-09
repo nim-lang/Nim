@@ -250,7 +250,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of OverloadableSyms-{skEnumField}:
+  of OverloadableSyms:
     result = symChoice(c, n, s, scOpen, isField)
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
@@ -261,12 +261,8 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
-    if s.kind == skEnumField and overloadableEnums in c.features:
-      result = symChoice(c, n, s, scOpen, isField)
-    elif isField and sfGenSym in s.flags:
-      result = n
-    else:
-      result = newSymNode(s, n.info)
+    if isField and sfGenSym in s.flags: result = n
+    else: result = newSymNode(s, n.info)
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
@@ -691,6 +687,9 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   if proto == nil:
     addInterfaceOverloadableSymAt(c, c.currentScope, s)
   elif not comesFromShadowscope:
+    if {sfTemplateRedefinition, sfGenSym} * s.flags == {}:
+      #wrongRedefinition(c, n.info, proto.name.s, proto.info)
+      message(c.config, n.info, warnTemplateRedefinition, s.name.s)
     symTabReplace(c.currentScope.symbols, proto, s)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)

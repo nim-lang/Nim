@@ -569,7 +569,7 @@ proc processScope(c: var Con; s: var Scope; ret: PNode): PNode =
 
 template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: untyped): PNode =
   assert not ret.typ.isEmptyType
-  var result = newNodeI(nkStmtListExpr, ret.info)
+  var result = newNodeIT(nkStmtListExpr, ret.info, ret.typ)
   # There is a possibility to do this check: s.wasMoved.len > 0 or s.final.len > 0
   # later and use it to eliminate the temporary when theres no need for it, but its
   # tricky because you would have to intercept moveOrCopy at a certain point
@@ -1014,6 +1014,26 @@ proc sameLocation*(a, b: PNode): bool =
     of nkHiddenStdConv, nkHiddenSubConv: sameLocation(a[1], b)
     else: false
 
+proc genFieldAccessSideEffects(c: var Con; dest, ri: PNode, isDecl: bool): PNode =
+  # with side effects
+  var temp = newSym(skLet, getIdent(c.graph.cache, "bracketTmp"), nextSymId c.idgen, c.owner, ri[1].info)
+  temp.typ = ri[1].typ
+  var v = newNodeI(nkLetSection, ri[1].info)
+  let tempAsNode = newSymNode(temp)
+
+  var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
+  vpart[0] = tempAsNode
+  vpart[1] = newNodeI(nkEmpty, tempAsNode.info)
+  vpart[2] = ri[1]
+  v.add(vpart)
+
+  var newAccess = copyNode(ri)
+  newAccess.add ri[0]
+  newAccess.add tempAsNode
+
+  var snk = c.genSink(dest, newAccess, isDecl)
+  result = newTree(nkStmtList, v, snk, c.genWasMoved(newAccess))
+
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNode =
   if sameLocation(dest, ri):
     # rule (self-assignment-removal):
@@ -1037,8 +1057,11 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
       elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
         if aliases(dest, ri) == no:
           # Rule 3: `=sink`(x, z); wasMoved(z)
-          var snk = c.genSink(dest, ri, isDecl)
-          result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+          if isAtom(ri[1]):
+            var snk = c.genSink(dest, ri, isDecl)
+            result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+          else:
+            result = genFieldAccessSideEffects(c, dest, ri, isDecl)
         else:
           result = c.genSink(dest, destructiveMoveVar(ri, c, s), isDecl)
       else:

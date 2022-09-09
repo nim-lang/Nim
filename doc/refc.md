@@ -16,9 +16,10 @@ defined via `--define:useRealtimeGC`:option: (you can put this into your config
 file as well).
 With this switch the garbage collector supports the following operations:
 
-.. code-block:: nim
+  ```nim
   proc GC_setMaxPause*(maxPauseInUs: int)
   proc GC_step*(us: int, strongAdvice = false, stackSize = -1)
+  ```
 
 The unit of the parameters `maxPauseInUs` and `us` is microseconds.
 
@@ -98,9 +99,9 @@ As long as you don't use the threadvar emulation Nim uses native thread
 variables, of which you get a fresh version whenever you create a thread. You
 can then attach a GC to this thread via
 
-.. code-block:: nim
-
+  ```nim
   system.setupForeignThreadGc()
+  ```
 
 It is **not** safe to disable the garbage collector and enable it after the
 call from your background thread even if the code you are calling is short
@@ -109,10 +110,9 @@ lived.
 Before the thread exits, you should tear down the thread's GC to prevent memory
 leaks by calling
 
-.. code-block:: nim
-
+  ```nim
   system.tearDownForeignThreadGc()
-
+  ```
 
 
 Keeping track of memory

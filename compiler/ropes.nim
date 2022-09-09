@@ -61,7 +61,7 @@ import
 from pathutils import AbsoluteFile
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, syncio]
+  import std/[assertions, syncio, formatfloat]
 
 
 type

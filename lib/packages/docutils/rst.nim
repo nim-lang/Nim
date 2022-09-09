@@ -24,12 +24,12 @@
 ## using simple plaintext representation.
 ##
 ## This module is also embedded into Nim compiler; the compiler can output
-## the result to HTML [#html]_ or Latex [#latex]_.
+## the result to HTML \[#html] or Latex \[#latex].
 ##
-## .. [#html] commands `nim doc`:cmd: for ``*.nim`` files and
+## \[#html] commands `nim doc`:cmd: for ``*.nim`` files and
 ##    `nim rst2html`:cmd: for ``*.rst`` files
 ##
-## .. [#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
+## \[#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
 ##    `nim rst2tex`:cmd: for ``*.rst``.
 ##
 ## If you are new to Markdown/RST please consider reading the following:
@@ -84,8 +84,8 @@
 ##
 ## Additional Nim-specific features:
 ##
-## * directives: ``code-block`` [cmp:Sphinx]_, ``title``,
-##   ``index`` [cmp:Sphinx]_
+## * directives: ``code-block`` \[cmp:Sphinx], ``title``,
+##   ``index`` \[cmp:Sphinx]
 ## * predefined roles
 ##   - ``:nim:`` (default), ``:c:`` (C programming language),
 ##     ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
@@ -99,9 +99,9 @@
 ##     - ``:cmd:`` for commands and common shells syntax
 ##     - ``:console:`` the same  for interactive sessions
 ##       (commands should be prepended by ``$``)
-##     - ``:program:`` for executable names [cmp:Sphinx]_
+##     - ``:program:`` for executable names \[cmp:Sphinx]
 ##       (one can just use ``:cmd:`` on single word)
-##     - ``:option:`` for command line options [cmp:Sphinx]_
+##     - ``:option:`` for command line options \[cmp:Sphinx]
 ##   - ``:tok:``, a role for highlighting of programming language tokens
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
 ## * ``:idx:`` role for \`interpreted text\` to include the link to this
@@ -115,7 +115,7 @@
 ##   Here the dummy `//` will disappear, while options `compile`:option:
 ##   and `doc`:option: will be left in the final document.
 ##
-## .. [cmp:Sphinx] similar but different from the directives of
+## \[cmp:Sphinx] similar but different from the directives of
 ##    Python `Sphinx directives`_ and `Sphinx roles`_ extensions
 ##
 ## .. _`extra features`:
@@ -237,6 +237,10 @@ import
   os, strutils, rstast, dochelpers, std/enumutils, algorithm, lists, sequtils,
   std/private/miscdollars, tables, strscans
 from highlite import SourceLanguage, getSourceLanguage
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 
 type
   RstParseOption* = enum     ## options for the RST parser
@@ -552,17 +556,17 @@ type
     footnoteAnchor = "footnote anchor",
     headlineAnchor = "implicitly-generated headline anchor"
   AnchorSubst = object
-    mainAnchor: ref string  # A reference name that will be inserted directly
-                            # into HTML/Latex. It's declared as `ref` because
-                            # it can be shared between aliases.
     info: TLineInfo         # where the anchor was defined
     priority: int
     case kind: range[arInternalRst .. arNim]
     of arInternalRst:
       anchorType: RstAnchorKind
+      target: PRstNode
     of arNim:
       tooltip: string       # displayed tooltip for Nim-generated anchors
       langSym: LangSymbol
+      refname: string     # A reference name that will be inserted directly
+                          # into HTML/Latex.
   AnchorSubstTable = Table[string, seq[AnchorSubst]]
                          # use `seq` to account for duplicate anchors
   FootnoteType = enum
@@ -582,7 +586,7 @@ type
     filenameToIdx*: Table[string, FileIndex]
     idxToFilename*: seq[string]
   RstSharedState = object
-    options: RstParseOptions    # parsing options
+    options*: RstParseOptions   # parsing options
     hLevels: LevelMap           # hierarchy of heading styles
     hTitleCnt: int              # =0 if no title, =1 if only main title,
                                 # =2 if both title and subtitle are present
@@ -606,9 +610,14 @@ type
     filenames*: RstFileTable    # map file name <-> FileIndex (for storing
                                 # file names for warnings after 1st stage)
     currFileIdx*: FileIndex     # current index in `filenames`
+    tocPart*: seq[PRstNode]     # all the headings of a document
     hasToc*: bool
 
   PRstSharedState* = ref RstSharedState
+  ManualAnchor = object
+    alias: string     # a (short) name that can substitute the `anchor`
+    anchor: string    # anchor = id = refname
+    info: TLineInfo
   RstParser = object of RootObj
     idx*: int
     tok*: TokenSeq
@@ -618,8 +627,9 @@ type
                                 ## documenation fragment that will be added
                                 ## in case of error/warning reporting to
                                 ## (relative) line/column of the token.
-    curAnchor*: string          # variable to track latest anchor in s.anchors
-    curAnchorName*: string      # corresponding name in human-readable format
+    curAnchors*: seq[ManualAnchor]
+                                ## seq to accumulate aliases for anchors:
+                                ## because RST can have >1 alias per 1 anchor
 
   EParseError* = object of ValueError
 
@@ -701,14 +711,16 @@ proc currFilename(s: PRstSharedState): string =
 proc newRstSharedState*(options: RstParseOptions,
                         filename: string,
                         findFile: FindFileHandler,
-                        msgHandler: MsgHandler): PRstSharedState =
+                        msgHandler: MsgHandler,
+                        hasToc: bool): PRstSharedState =
   let r = defaultRole(options)
   result = PRstSharedState(
       currRole: r,
       currRoleKind: whichRoleAux(r),
       options: options,
       msgHandler: if not isNil(msgHandler): msgHandler else: defaultMsgHandler,
-      findFile: if not isNil(findFile): findFile else: defaultFindFile
+      findFile: if not isNil(findFile): findFile else: defaultFindFile,
+      hasToc: hasToc
   )
   setCurrFilename(result, filename)
 
@@ -957,40 +969,28 @@ proc internalRefPriority(k: RstAnchorKind): int =
   of footnoteAnchor: result = 4
   of headlineAnchor: result = 3
 
-proc addAnchorRst(p: var RstParser, name: string, refn: string, reset: bool,
+proc addAnchorRst(p: var RstParser, name: string, target: PRstNode,
                   anchorType: RstAnchorKind) =
-  ## Adds anchor `refn` with an alias `name` and
-  ## updates the corresponding `curAnchor` / `curAnchorName`.
+  ## Associates node `target` (which has field `anchor`) with an
+  ## alias `name` and updates the corresponding aliases in `p.curAnchors`.
   let prio = internalRefPriority(anchorType)
-  if p.curAnchorName == "":
-    var anchRef = new string
-    anchRef[] = refn
+  for a in p.curAnchors:
+    p.s.anchors.mgetOrPut(a.alias, newSeq[AnchorSubst]()).add(
+        AnchorSubst(kind: arInternalRst, target: target, priority: prio,
+                    info: a.info, anchorType: manualDirectiveAnchor))
+  if name != "":
     p.s.anchors.mgetOrPut(name, newSeq[AnchorSubst]()).add(
-        AnchorSubst(kind: arInternalRst, mainAnchor: anchRef, priority: prio,
+        AnchorSubst(kind: arInternalRst, target: target, priority: prio,
                     info: prevLineInfo(p), anchorType: anchorType))
-  else:
-    # override previous mainAnchor by `ref` in all aliases
-    var anchRef = p.s.anchors[p.curAnchorName][0].mainAnchor
-    anchRef[] = refn
-    p.s.anchors.mgetOrPut(name, newSeq[AnchorSubst]()).add(
-        AnchorSubst(kind: arInternalRst, mainAnchor: anchRef, priority: prio,
-                    info: prevLineInfo(p), anchorType: anchorType))
-  if reset:
-    p.curAnchor = ""
-    p.curAnchorName = ""
-  else:
-    p.curAnchor = refn
-    p.curAnchorName = name
+  p.curAnchors.setLen 0
 
 proc addAnchorNim*(s: var PRstSharedState, refn: string, tooltip: string,
                    langSym: LangSymbol, priority: int,
                    info: TLineInfo) =
-  ## Adds an anchor `refn` (`mainAnchor`), which follows
+  ## Adds an anchor `refn`, which follows
   ## the rule `arNim` (i.e. a symbol in ``*.nim`` file)
-  var anchRef = new string
-  anchRef[] = refn
   s.anchors.mgetOrPut(langSym.name, newSeq[AnchorSubst]()).add(
-      AnchorSubst(kind: arNim, mainAnchor: anchRef, langSym: langSym,
+      AnchorSubst(kind: arNim, refname: refn, langSym: langSym,
                   tooltip: tooltip, priority: priority,
                   info: info))
 
@@ -1162,10 +1162,9 @@ proc getAutoSymbol(s: PRstSharedState, order: int): string =
 proc newRstNodeA(p: var RstParser, kind: RstNodeKind): PRstNode =
   ## create node and consume the current anchor
   result = newRstNode(kind)
-  if p.curAnchor != "":
-    result.anchor = p.curAnchor
-    p.curAnchor = ""
-    p.curAnchorName = ""
+  if p.curAnchors.len > 0:
+    result.anchor = p.curAnchors[0].anchor
+    addAnchorRst(p, "", result, manualDirectiveAnchor)
 
 template newLeaf(s: string): PRstNode = newRstLeaf(s)
 
@@ -1459,7 +1458,7 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
         newSons = n.sons
       result = newRstNode(newKind, newSons)
     else:  # some link that will be resolved in `resolveSubs`
-      newKind = rnRef
+      newKind = rnRstRef
       result = newRstNode(newKind, sons=newSons, info=n.info)
   elif match(p, p.idx, ":w:"):
     # a role:
@@ -1553,7 +1552,7 @@ proc parseWordOrRef(p: var RstParser, father: PRstNode) =
     while currentTok(p).kind in {tkWord, tkPunct}:
       if currentTok(p).kind == tkPunct:
         if isInlineMarkupEnd(p, "_", exact=true):
-          reference = newRstNode(rnRef, info=lineInfo(p, saveIdx))
+          reference = newRstNode(rnRstRef, info=lineInfo(p, saveIdx))
           break
         if not validRefnamePunct(currentTok(p).symbol):
           break
@@ -1747,7 +1746,9 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
     defaultCodeLangNim(p, result)
 
 proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
-  var desc, link = ""
+  # Parses Markdown link. If it's Pandoc auto-link then its second
+  # son (target) will be in tokenized format (rnInner with leafs).
+  var desc = newRstNode(rnInner)
   var i = p.idx
 
   var parensStack: seq[char]
@@ -1755,31 +1756,59 @@ proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
     parensStack.setLen 0
     inc i # skip begin token
     while true:
-      if p.tok[i].kind in {tkEof, tkIndent}: return false
+      if p.tok[i].kind == tkEof: return false
+      if p.tok[i].kind == tkIndent and p.tok[i+1].kind == tkIndent:
+        return false
       let isClosing = checkParen(p.tok[i], parensStack)
       if p.tok[i].symbol == endToken and not isClosing:
         break
-      dest.add p.tok[i].symbol
+      let symbol = if p.tok[i].kind == tkIndent: " " else: p.tok[i].symbol
+      when dest is string: dest.add symbol
+      else: dest.add newLeaf(symbol)
       inc i
     inc i # skip end token
 
   parse("]", desc)
-  if p.tok[i].symbol != "(": return false
-  let linkIdx = i + 1
-  parse(")", link)
-  # only commit if we detected no syntax error:
-  let protocol = safeProtocol(link)
-  if link == "":
-    result = false
-    rstMessage(p, mwBrokenLink, protocol,
-               p.tok[linkIdx].line, p.tok[linkIdx].col)
-  else:
-    let child = newRstNode(rnHyperlink)
-    child.add desc
-    child.add link
-    father.add child
+  if p.tok[i].symbol == "(":
+    var link = ""
+    let linkIdx = i + 1
+    parse(")", link)
+    # only commit if we detected no syntax error:
+    let protocol = safeProtocol(link)
+    if link == "":
+      result = false
+      rstMessage(p, mwBrokenLink, protocol,
+                 p.tok[linkIdx].line, p.tok[linkIdx].col)
+    else:
+      let child = newRstNode(rnHyperlink)
+      child.add newLeaf(desc.addNodes)
+      child.add link
+      father.add child
+      p.idx = i
+      result = true
+  elif roPreferMarkdown in p.s.options:
+    # Use Pandoc's implicit_header_references extension
+    var n = newRstNode(rnPandocRef)
+    if p.tok[i].symbol == "[":
+      var link = newRstNode(rnInner)
+      let targetIdx = i + 1
+      parse("]", link)
+      n.add desc
+      if link.len != 0:  # [description][target]
+        n.add link
+        n.info = lineInfo(p, targetIdx)
+      else:              # [description=target][]
+        n.add desc
+        n.info = lineInfo(p, p.idx + 1)
+    else:                # [description=target]
+      n.add desc
+      n.add desc  # target is the same as description
+      n.info = lineInfo(p, p.idx + 1)
+    father.add n
     p.idx = i
     result = true
+  else:
+    result = false
 
 proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
   if label.sons.len >= 1 and label.sons[0].kind == rnLeaf and
@@ -1829,14 +1858,18 @@ proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
     inc i
   p.idx = i
 
-proc isMarkdownCodeBlock(p: RstParser): bool =
+proc isMarkdownCodeBlock(p: RstParser, idx: int): bool =
+  let tok = p.tok[idx]
   template allowedSymbol: bool =
-    (currentTok(p).symbol[0] == '`' or
-      roPreferMarkdown in p.s.options and currentTok(p).symbol[0] == '~')
+    (tok.symbol[0] == '`' or
+      roPreferMarkdown in p.s.options and tok.symbol[0] == '~')
   result = (roSupportMarkdown in p.s.options and
-            currentTok(p).kind in {tkPunct, tkAdornment} and
+            tok.kind in {tkPunct, tkAdornment} and
             allowedSymbol and
-            currentTok(p).symbol.len >= 3)
+            tok.symbol.len >= 3)
+
+proc isMarkdownCodeBlock(p: RstParser): bool =
+  isMarkdownCodeBlock(p, p.idx)
 
 proc parseInline(p: var RstParser, father: PRstNode) =
   var n: PRstNode  # to be used in `if` condition
@@ -1859,8 +1892,8 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       var n = newRstNode(rnInlineTarget)
       inc p.idx
       parseUntil(p, n, "`", false)
-      let refn = rstnodeToRefname(n)
-      addAnchorRst(p, name = linkName(n), refn = refn, reset = true,
+      n.anchor = rstnodeToRefname(n)
+      addAnchorRst(p, name = linkName(n), target = n,
                    anchorType=manualInlineAnchor)
       father.add(n)
     elif isMarkdownCodeBlock(p):
@@ -2195,6 +2228,8 @@ proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
   ## check that underline/overline length is enough for the heading.
   ## No support for Unicode.
   if p.tok[adornmentIdx].symbol in ["::", "..", "|"]:
+    return false
+  if isMarkdownCodeBlock(p, adornmentIdx):
     return false
   var headlineLen = 0
   var failure = ""
@@ -2547,8 +2582,8 @@ proc parseHeadline(p: var RstParser): PRstNode =
     result.level = getLevel(p, c, hasOverline=false)
     checkHeadingHierarchy(p, result.level)
     p.s.hCurLevel = result.level
-  addAnchorRst(p, linkName(result), rstnodeToRefname(result), reset=true,
-               anchorType=headlineAnchor)
+  addAnchorRst(p, linkName(result), result, anchorType=headlineAnchor)
+  p.s.tocPart.add result
 
 proc parseOverline(p: var RstParser): PRstNode =
   var c = currentTok(p).symbol[0]
@@ -2570,8 +2605,36 @@ proc parseOverline(p: var RstParser): PRstNode =
   if currentTok(p).kind == tkAdornment:
     inc p.idx
     if currentTok(p).kind == tkIndent: inc p.idx
-  addAnchorRst(p, linkName(result), rstnodeToRefname(result), reset=true,
-               anchorType=headlineAnchor)
+  addAnchorRst(p, linkName(result), result, anchorType=headlineAnchor)
+  p.s.tocPart.add result
+
+proc fixHeadlines(s: PRstSharedState) =
+  # Fix up section levels depending on presence of a title and subtitle:
+  for n in s.tocPart:
+    if n.kind in {rnHeadline, rnOverline}:
+      if s.hTitleCnt == 2:
+        if n.level == 1:    # it's the subtitle
+          n.level = 0
+        elif n.level >= 2:  # normal sections, start numbering from 1
+          n.level -= 1
+      elif s.hTitleCnt == 0:
+        n.level += 1
+  # Set headline anchors:
+  for iHeading in 0 .. s.tocPart.high:
+    let n: PRstNode = s.tocPart[iHeading]
+    if n.level >= 1:
+      n.anchor = rstnodeToRefname(n)
+      # Fix anchors for uniqueness if `.. contents::` is present
+      if s.hasToc:
+        # Find the last higher level section for unique reference name
+        var sectionPrefix = ""
+        for i in countdown(iHeading - 1, 0):
+          if s.tocPart[i].level >= 1 and s.tocPart[i].level < n.level:
+            sectionPrefix = rstnodeToRefname(s.tocPart[i]) & "-"
+            break
+        if sectionPrefix != "":
+          n.anchor = sectionPrefix & n.anchor
+  s.tocPart.setLen 0
 
 type
   ColSpec = object
@@ -3259,6 +3322,7 @@ proc dirTitle(p: var RstParser): PRstNode =
 
 proc dirContents(p: var RstParser): PRstNode =
   result = parseDirective(p, rnContents, {hasArg}, nil)
+  p.s.hasToc = true
 
 proc dirIndex(p: var RstParser): PRstNode =
   result = parseDirective(p, rnIndex, {}, parseSectionWrapper)
@@ -3393,7 +3457,7 @@ proc parseFootnote(p: var RstParser): PRstNode {.gcsafe.} =
     anchor.add $p.s.lineFootnoteSym.len
   of fnCitation:
     anchor.add rstnodeToRefname(label)
-  addAnchorRst(p, anchor, anchor, reset=true, anchorType=footnoteAnchor)
+  addAnchorRst(p, anchor, target = result, anchorType = footnoteAnchor)
   result.anchor = anchor
   if currentTok(p).kind == tkWhite: inc p.idx
   discard parseBlockContent(p, result, parseSectionWrapper)
@@ -3427,8 +3491,9 @@ proc parseDotDot(p: var RstParser): PRstNode =
     if currentTok(p).kind == tkWhite: inc p.idx
     var b = untilEol(p)
     if len(b) == 0:  # set internal anchor
-      addAnchorRst(p, linkName(a), rstnodeToRefname(a), reset=false,
-                   anchorType=manualDirectiveAnchor)
+      p.curAnchors.add ManualAnchor(
+        alias: linkName(a), anchor: rstnodeToRefname(a), info: prevLineInfo(p)
+      )
     else:  # external hyperlink
       setRef(p, rstnodeToRefname(a), b, refType=hyperlinkAlias)
   elif match(p, p.idx, " |"):
@@ -3469,11 +3534,19 @@ proc rstParsePass1*(fragment: string,
 proc preparePass2*(s: PRstSharedState, mainNode: PRstNode) =
   ## Records titles in node `mainNode` and orders footnotes.
   countTitles(s, mainNode)
+  fixHeadlines(s)
   orderFootnotes(s)
 
 proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
     # Associate this link alias with its target and change node kind to
     # rnHyperlink or rnInternalRef appropriately.
+    var desc, alias: PRstNode
+    if n.kind == rnPandocRef:  # link like [desc][alias]
+      desc = n.sons[0]
+      alias = n.sons[1]
+    else:  # n.kind == rnRstRef, link like `desc=alias`_
+      desc = n
+      alias = n
     type LinkDef = object
       ar: AnchorRule
       priority: int
@@ -3485,33 +3558,33 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
       if result == 0:
         result = cmp(x.target, y.target)
     var foundLinks: seq[LinkDef]
-    let text = newRstNode(rnInner, n.sons)
-    let refn = rstnodeToRefname(n)
+    let refn = rstnodeToRefname(alias)
     var hyperlinks = findRef(s, refn)
     for y in hyperlinks:
       foundLinks.add LinkDef(ar: arHyperlink, priority: refPriority(y.kind),
                              target: y.value, info: y.info,
                              tooltip: "(" & $y.kind & ")")
-    let substRst = findMainAnchorRst(s, text.addNodes, n.info)
+    let substRst = findMainAnchorRst(s, alias.addNodes, n.info)
     for subst in substRst:
       foundLinks.add LinkDef(ar: arInternalRst, priority: subst.priority,
-                             target: newLeaf(subst.mainAnchor[]),
+                             target: newLeaf(subst.target.anchor),
                              info: subst.info,
                              tooltip: "(" & $subst.anchorType & ")")
+    # find anchors automatically generated from Nim symbols
     if roNimFile in s.options:
-      let substNim = findMainAnchorNim(s, signature=text, n.info)
+      let substNim = findMainAnchorNim(s, signature=alias, n.info)
       for subst in substNim:
         foundLinks.add LinkDef(ar: arNim, priority: subst.priority,
-                               target: newLeaf(subst.mainAnchor[]),
+                               target: newLeaf(subst.refname),
                                info: subst.info, tooltip: subst.tooltip)
     foundLinks.sort(cmp = cmp, order = Descending)
-    let linkText = addNodes(n)
+    let aliasStr = addNodes(alias)
     if foundLinks.len >= 1:
       let kind = if foundLinks[0].ar == arHyperlink: rnHyperlink
                  elif foundLinks[0].ar == arNim: rnNimdocRef
                  else: rnInternalRef
       result = newRstNode(kind)
-      result.sons = @[text, foundLinks[0].target]
+      result.sons = @[newRstNode(rnInner, desc.sons), foundLinks[0].target]
       if kind == rnNimdocRef: result.tooltip = foundLinks[0].tooltip
       if foundLinks.len > 1:  # report ambiguous link
         var targets = newSeq[string]()
@@ -3525,10 +3598,10 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
           targets.add t
         rstMessage(s.filenames, s.msgHandler, n.info, mwAmbiguousLink,
                    "`$1`\n  clash:\n$2" % [
-                     linkText, targets.join("\n")])
+                     aliasStr, targets.join("\n")])
     else:  # nothing found
       result = n
-      rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, linkText)
+      rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, aliasStr)
 
 proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
   ## Makes pass 2 of RST parsing.
@@ -3548,16 +3621,7 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       if e != "": result = newLeaf(e)
       else: rstMessage(s.filenames, s.msgHandler, n.info,
                        mwUnknownSubstitution, key)
-  of rnHeadline, rnOverline:
-    # fix up section levels depending on presence of a title and subtitle
-    if s.hTitleCnt == 2:
-      if n.level == 1:    # it's the subtitle
-        n.level = 0
-      elif n.level >= 2:  # normal sections
-        n.level -= 1
-    elif s.hTitleCnt == 0:
-      n.level += 1
-  of rnRef:
+  of rnRstRef, rnPandocRef:
     result = resolveLink(s, n)
   of rnFootnote:
     var (fnType, num) = getFootnoteType(n.sons[0])
@@ -3607,14 +3671,12 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
     # TODO: correctly report ambiguities
     let anchorInfo = findMainAnchorRst(s, refn, n.info)
     if anchorInfo.len != 0:
-      result.add newLeaf(anchorInfo[0].mainAnchor[])  # add link
+      result.add newLeaf(anchorInfo[0].target.anchor)  # add link
     else:
       rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, refn)
       result.add newLeaf(refn)  # add link
   of rnLeaf:
     discard
-  of rnContents:
-    s.hasToc = true
   else:
     var regroup = false
     for i in 0 ..< n.len:
@@ -3646,7 +3708,8 @@ proc rstParse*(text, filename: string,
   ## note that 2nd tuple element should be fed to `initRstGenerator`
   ## argument `filenames` (it is being filled here at least with `filename`
   ## and possibly with other files from RST ``.. include::`` statement).
-  var sharedState = newRstSharedState(options, filename, findFile, msgHandler)
+  var sharedState = newRstSharedState(options, filename, findFile,
+                                      msgHandler, hasToc=false)
   let unresolved = rstParsePass1(text, line, column, sharedState)
   preparePass2(sharedState, unresolved)
   result.node = resolveSubs(sharedState, unresolved)

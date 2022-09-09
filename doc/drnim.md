@@ -22,11 +22,11 @@ DrNim's command-line options are the same as the Nim compiler's.
 DrNim currently only checks the sections of your code that are marked
 via `staticBoundChecks: on`:
 
-.. code-block:: nim
-
+  ```nim
   {.push staticBoundChecks: on.}
   # <--- code section here ---->
   {.pop.}
+  ```
 
 DrNim currently only tries to prove array indexing or subrange checks,
 overflow errors are *not* prevented. Overflows will be checked for in
@@ -53,8 +53,7 @@ Motivating Example
 The follow example highlights what DrNim can easily do, even
 without additional annotations:
 
-.. code-block:: nim
-
+  ```nim
   {.push staticBoundChecks: on.}
 
   proc sum(a: openArray[int]): int =
@@ -64,6 +63,7 @@ without additional annotations:
   {.pop.}
 
   echo sum([1, 2, 3])
+  ```
 
 This program contains a famous "index out of bounds" bug. DrNim
 detects it and produces the following error message::
@@ -125,8 +125,7 @@ Example: insertionSort
 
 **Note**: This example does not yet work with DrNim.
 
-.. code-block:: nim
-
+  ```nim
   import std / logic
 
   proc insertionSort(a: var openArray[int]) {.
@@ -142,6 +141,7 @@ Example: insertionSort
         {.invariant: forall(j in 1..k, i in 0..<j, j == t or a[i] <= a[j]).}
         swap a[t], a[t-1]
         dec t
+  ```
 
 Unfortunately, the invariants required to prove that this code is correct take more
 code than the imperative instructions. However, this effort can be compensated
@@ -155,14 +155,14 @@ This is required, but not sufficient to describe that a `sort` operation
 was performed. For example, the same postcondition is true for this proc
 which doesn't sort at all:
 
-.. code-block:: nim
-
+  ```nim
   import std / logic
 
   proc insertionSort(a: var openArray[int]) {.
       ensures: forall(i in 1..<a.len, a[i-1] <= a[i]).} =
     # does not sort, overwrites `a`'s contents!
     for i in 0..<a.len: a[i] = i
+  ```
 
 
 

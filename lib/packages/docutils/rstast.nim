@@ -11,6 +11,10 @@
 
 import strutils, json
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   RstNodeKind* = enum        ## the possible node kinds of an PRstNode
     rnInner,                  # an inner node or a root
@@ -45,7 +49,10 @@ type
     rnCitation,               # similar to footnote, so use rnFootnote instead
     rnFootnoteGroup,          # footnote group - exists for a purely stylistic
                               # reason: to display a few footnotes as 1 block
-    rnStandaloneHyperlink, rnHyperlink, rnRef, rnInternalRef, rnFootnoteRef,
+    rnStandaloneHyperlink, rnHyperlink,
+    rnRstRef,                 # RST reference like `section name`_
+    rnPandocRef,              # Pandoc Markdown reference like [section name]
+    rnInternalRef, rnFootnoteRef,
     rnNimdocRef,              # reference to automatically generated Nim symbol
     rnDirective,              # a general directive
     rnDirArg,                 # a directive argument (for some directives).
@@ -106,7 +113,7 @@ type
                               ## auto-numbered ones without a label)
     of rnMarkdownBlockQuoteItem:
       quotationDepth*: int    ## number of characters in line prefix
-    of rnRef, rnSubstitutionReferences,
+    of rnRstRef, rnPandocRef, rnSubstitutionReferences,
         rnInterpretedText, rnField, rnInlineCode, rnCodeBlock, rnFootnoteRef:
       info*: TLineInfo        ## To have line/column info for warnings at
                               ## nodes that are post-processed after parsing
@@ -277,7 +284,7 @@ proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
     inc(d.indent, 2)
     renderRstSons(d, n, result)
     dec(d.indent, 2)
-  of rnRef:
+  of rnRstRef:
     result.add("`")
     renderRstSons(d, n, result)
     result.add("`_")

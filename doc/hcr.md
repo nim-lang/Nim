@@ -26,8 +26,7 @@ code when `F9` is pressed. The important lines are marked with `#***`.
 To install SDL2 you can use `nimble install sdl2`:cmd:.
 
 
-.. code-block:: nim
-
+  ```nim
   # logic.nim
   import sdl2
 
@@ -83,10 +82,10 @@ To install SDL2 you can use `nimble install sdl2`:cmd:.
     discard renderer.fillRect(rect)
     delay(16)
     renderer.present()
+  ```
 
 
-.. code-block:: nim
-
+  ```nim
   # mymain.nim
   import logic
 
@@ -97,42 +96,44 @@ To install SDL2 you can use `nimble install sdl2`:cmd:.
     destroy()
 
   main()
+  ```
 
 
 Compile this example via:
 
-```cmd
+  ```cmd
   nim c --hotcodereloading:on mymain.nim
-```
+  ```
 
 Now start the program and KEEP it running!
 
-.. code:: cmd
+  ```cmd
   # Unix:
   mymain &
   # or Windows (click on the .exe)
   mymain.exe
   # edit
+  ```
 
 For example, change the line:
 
-```nim
+  ```nim
   discard renderer.setDrawColor(255, 128, 128, 0)
-```
+  ```
 
 into:
 
-```nim
+  ```nim
   discard renderer.setDrawColor(255, 255, 128, 0)
-```
+  ```
 
 (This will change the color of the rectangle.)
 
 Then recompile the project, but do not restart or quit the mymain.exe program!
 
-```cmd
+  ```cmd
   nim c --hotcodereloading:on mymain.nim
-```
+  ```
 
 Now give the `mymain` SDL window the focus, press F9, and watch the
 updated version of the program.
@@ -146,7 +147,7 @@ One can use the special event handlers `beforeCodeReload` and
 `afterCodeReload` to reset the state of a particular variable or to force
 the execution of certain statements:
 
-.. code-block:: Nim
+  ```Nim
   var
    settings = initTable[string, string]()
    lastReload: Time
@@ -159,6 +160,7 @@ the execution of certain statements:
   afterCodeReload:
     lastReload = now()
     resetProgramState()
+  ```
 
 On each code reload, Nim will first execute all `beforeCodeReload`:idx:
 handlers registered in the previous version of the program and then all
@@ -167,7 +169,7 @@ that any handlers appearing in modules that weren't reloaded will also be
 executed. To prevent this behavior, one can guard the code with the
 `hasModuleChanged()`:idx: API:
 
-.. code-block:: Nim
+  ```Nim
   import mydb
 
   var myCache = initTable[Key, Value]()
@@ -175,6 +177,7 @@ executed. To prevent this behavior, one can guard the code with the
   afterCodeReload:
     if hasModuleChanged(mydb):
       resetCache(myCache)
+  ```
 
 The hot code reloading is based on dynamic library hot swapping in the native
 targets and direct manipulation of the global namespace in the JavaScript
@@ -203,8 +206,7 @@ runtime demands of the example code above. An example of compiling
 ``nimhcr.nim`` and ``nimrtl.nim`` when the source dir of Nim is installed
 with choosenim follows.
 
-.. code:: console
-
+  ```console
   # Unix/MacOS
   # Make sure you are in the directory containing your .nim files
   $ cd your-source-directory
@@ -215,6 +217,7 @@ with choosenim follows.
 
   # verify that you have two files named libnimhcr and libnimrtl in your
   # source directory (.dll for Windows, .so for Unix, .dylib for MacOS)
+  ```
 
 All modules of the project will be compiled to separate dynamic link
 libraries placed in the `nimcache` directory. Please note that during
