@@ -3929,7 +3929,7 @@ anonymous procedures to routines:
     "City of " & x
   ```
 
-`do` is written after the parentheses enclosing the regular proc params.
+`do` is written after the parentheses enclosing the regular proc parameters.
 The proc expression represented by the `do` block is appended to the routine
 call as the last argument. In calls using the command syntax, the `do` block
 will bind to the immediately preceding expression rather than the command call.
@@ -5234,7 +5234,7 @@ The following example shows how a generic binary tree can be modeled:
   ```nim  test = "nim c $1"
   type
     BinaryTree*[T] = ref object # BinaryTree is a generic type with
-                                # generic param `T`
+                                # generic parameter `T`
       le, ri: BinaryTree[T]     # left and right subtrees; may be nil
       data: T                   # the data stored in a node
 
@@ -5399,7 +5399,7 @@ A type class can be used directly as the parameter's type.
 
 Procedures utilizing type classes in such a manner are considered to be
 `implicitly generic`:idx:. They will be instantiated once for each unique
-combination of param types used within the program.
+combination of parameter types used within the program.
 
 By default, during overload resolution, each named type class will bind to
 exactly one concrete type. We call such type classes `bind once`:idx: types.
@@ -5416,7 +5416,7 @@ Here is an example taken directly from the system module to illustrate this:
   ```
 
 Alternatively, the `distinct` type modifier can be applied to the type class
-to allow each param matching the type class to bind to a different type. Such
+to allow each parameter matching the type class to bind to a different type. Such
 type classes are called `bind many`:idx: types.
 
 Procs written with the implicitly generic style will often need to refer to the
@@ -5911,7 +5911,7 @@ template parameter, it is an `inject`'ed symbol:
   ```nim
   template withFile(f, fn, mode: untyped, actions: untyped): untyped =
     block:
-      var f: File  # since 'f' is a template param, it's injected implicitly
+      var f: File  # since 'f' is a template parameter, it's injected implicitly
       ...
 
   withFile(txt, "ttempl3.txt", fmWrite):
@@ -6300,11 +6300,11 @@ As their name suggests, static parameters must be constant expressions:
   ```
 
 
-For the purposes of code generation, all static params are treated as
-generic params - the proc will be compiled separately for each unique
+For the purposes of code generation, all static parameters are treated as
+generic parameters - the proc will be compiled separately for each unique
 supplied value (or combination of values).
 
-Static params can also appear in the signatures of generic types:
+Static parameters can also appear in the signatures of generic types:
 
   ```nim
   type
@@ -6320,7 +6320,7 @@ Static params can also appear in the signatures of generic types:
   ```
 
 Please note that `static T` is just a syntactic convenience for the underlying
-generic type `static[T]`. The type param can be omitted to obtain the type
+generic type `static[T]`. The type parameter can be omitted to obtain the type
 class of all constant expressions. A more specific type class can be created by
 instantiating `static` with another type class.
 
@@ -6345,12 +6345,12 @@ all values must have a type, `typedesc` is considered their special type.
 
 `typedesc` acts as a generic type. For instance, the type of the symbol
 `int` is `typedesc[int]`. Just like with regular generic types, when the
-generic param is omitted, `typedesc` denotes the type class of all types.
+generic parameter is omitted, `typedesc` denotes the type class of all types.
 As a syntactic convenience, one can also use `typedesc` as a modifier.
 
-Procs featuring `typedesc` params are considered implicitly generic.
+Procs featuring `typedesc` parameters are considered implicitly generic.
 They will be instantiated for each unique combination of supplied types,
-and within the body of the proc, the name of each param will refer to
+and within the body of the proc, the name of each parameter will refer to
 the bound concrete type:
 
   ```nim
@@ -6362,14 +6362,14 @@ the bound concrete type:
   var tree = new(BinaryTree[int])
   ```
 
-When multiple type params are present, they will bind freely to different
-types. To force a bind-once behavior, one can use an explicit generic param:
+When multiple type parameters are present, they will bind freely to different
+types. To force a bind-once behavior, one can use an explicit generic parameter:
 
   ```nim
   proc acceptOnlyTypePairs[T, U](A, B: typedesc[T]; C, D: typedesc[U])
   ```
 
-Once bound, type params can appear in the rest of the proc signature:
+Once bound, type parameters can appear in the rest of the proc signature:
 
   ```nim  test = "nim c $1"
   template declareVariableWithType(T: typedesc, value: T) =
@@ -6380,7 +6380,7 @@ Once bound, type params can appear in the rest of the proc signature:
 
 
 Overload resolution can be further influenced by constraining the set
-of types that will match the type param. This works in practice by
+of types that will match the type parameter. This works in practice by
 attaching attributes to types via templates. The constraint can be a
 concrete type or a type class.
 
