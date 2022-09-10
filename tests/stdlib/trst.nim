@@ -1181,6 +1181,22 @@ suite "Warnings":
         "input(9, 6) Warning: broken link 'short.link'"
         ])
 
+  test "Pandoc Markdown concise link warning points to target":
+    var warnings = new seq[string]
+    check(
+      "ref [here][target]".toAst(warnings=warnings) ==
+      dedent"""
+        rnInner
+          rnLeaf  'ref'
+          rnLeaf  ' '
+          rnPandocRef
+            rnInner
+              rnLeaf  'here'
+            rnInner
+              rnLeaf  'target'
+      """)
+    check warnings[] == @["input(1, 12) Warning: broken link 'target'"]
+
   test "With include directive and blank lines at the beginning":
     "other.rst".writeFile(dedent"""
 
