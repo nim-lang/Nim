@@ -17,7 +17,7 @@
 
 include "system/inclrtl"
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
 
 const
   useUnicode = true ## change this to deactivate proper UTF-8 support

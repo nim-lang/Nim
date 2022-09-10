@@ -108,11 +108,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       result = n
     onUse(n.info, s)
   of skEnumField:
-    if overloadableEnums in c.features:
-      result = symChoice(c, n, s, scOpen)
-    else:
-      result = newSymNode(s, n.info)
-      onUse(n.info, s)
+    result = symChoice(c, n, s, scOpen)
   else:
     result = newSymNode(s, n.info)
     onUse(n.info, s)
