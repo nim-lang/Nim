@@ -213,7 +213,7 @@ type
     strictFuncs,
     views,
     strictNotNil,
-    overloadableEnums,
+    overloadableEnums, # not experimental anymore
     strictEffects,
     unicodeOperators,
     flexibleOptionalParams

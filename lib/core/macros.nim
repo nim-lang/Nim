@@ -167,7 +167,7 @@ template `^^`(n: NimNode, i: untyped): untyped =
 
 proc `[]`*[T, U: Ordinal](n: NimNode, x: HSlice[T, U]): seq[NimNode] =
   ## Slice operation for NimNode.
-  ## Returns a seq of child of `n` who inclusive range [n[x.a], n[x.b]].
+  ## Returns a seq of child of `n` who inclusive range `[n[x.a], n[x.b]]`.
   let xa = n ^^ x.a
   let L = (n ^^ x.b) - xa + 1
   result = newSeq[NimNode](L)
@@ -1033,7 +1033,12 @@ proc newStmtList*(stmts: varargs[NimNode]): NimNode =
   ## Create a new statement list.
   result = newNimNode(nnkStmtList).add(stmts)
 
-proc newPar*(exprs: varargs[NimNode]): NimNode =
+proc newPar*(exprs: NimNode): NimNode =
+  ## Create a new parentheses-enclosed expression.
+  newNimNode(nnkPar).add(exprs)
+
+proc newPar*(exprs: varargs[NimNode]): NimNode {.deprecated:
+        "don't use newPar/nnkPar to construct tuple expressions; use nnkTupleConstr instead".} =
   ## Create a new parentheses-enclosed expression.
   newNimNode(nnkPar).add(exprs)
 
