@@ -377,7 +377,7 @@ proc `$`*(ms: MemSlice): string {.inline.} =
   copyMem(addr(result[0]), ms.data, ms.size)
 
 iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline.} =
-  ## Iterates over [optional `eat`] `delim`-delimited slices in MemFile `mfile`.
+  ## Iterates over \[optional `eat`] `delim`-delimited slices in MemFile `mfile`.
   ##
   ## Default parameters parse lines ending in either Unix(\\l) or Windows(\\r\\l)
   ## style on on a line-by-line basis.  I.e., not every line needs the same ending.

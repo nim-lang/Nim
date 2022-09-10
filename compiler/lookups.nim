@@ -182,8 +182,6 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
   var marked = initIntSet()
   var symSet = OverloadableSyms
-  if overloadableEnums notin c.features:
-    symSet.excl skEnumField
   result = nil
   block outer:
     for im in c.imports.mitems:
