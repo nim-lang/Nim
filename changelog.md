@@ -33,6 +33,9 @@
 - Removed two type pragma syntaxes deprecated since 0.20, namely
   `type Foo = object {.final.}`, and `type Foo {.final.} [T] = object`.
 
+- [Overloadable enums](https://nim-lang.github.io/Nim/manual_experimental.html#overloadable-enum-value-names)
+  are no longer experimental.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
