@@ -3578,7 +3578,7 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
                                target: newLeaf(subst.refname),
                                info: subst.info, tooltip: subst.tooltip)
     foundLinks.sort(cmp = cmp, order = Descending)
-    let linkText = addNodes(desc)
+    let aliasStr = addNodes(alias)
     if foundLinks.len >= 1:
       let kind = if foundLinks[0].ar == arHyperlink: rnHyperlink
                  elif foundLinks[0].ar == arNim: rnNimdocRef
@@ -3598,10 +3598,10 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
           targets.add t
         rstMessage(s.filenames, s.msgHandler, n.info, mwAmbiguousLink,
                    "`$1`\n  clash:\n$2" % [
-                     linkText, targets.join("\n")])
+                     aliasStr, targets.join("\n")])
     else:  # nothing found
       result = n
-      rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, linkText)
+      rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, aliasStr)
 
 proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
   ## Makes pass 2 of RST parsing.
