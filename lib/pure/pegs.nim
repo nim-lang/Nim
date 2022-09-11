@@ -768,14 +768,17 @@ template matchOrParse(mopProc: untyped) =
     of pkCapturedSearch:
       enter(pkCapturedSearch, s, p, start)
       var idx = c.ml # reserve a slot for the subpattern
-      inc(c.ml)
       result = 0
       while start+result <= s.len:
         var x = mopProc(s, p.sons[0], start+result, c)
         if x >= 0:
           if idx < MaxSubpatterns:
+            if idx != c.ml:
+              for i in countdown(c.ml, idx):
+                c.matches[i+1] = c.matches[i]
             c.matches[idx] = (start, start+result-1)
           #else: silently ignore the capture
+          inc(c.ml)
           inc(result, x)
           leave(pkCapturedSearch, s, p, start, result)
           return
