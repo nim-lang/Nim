@@ -9,8 +9,6 @@ proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 proc distinctBase(T: typedesc, recursive: static bool = true): typedesc {.magic: "TypeTrait".}
   ## imported from typetraits
 
-proc skipRanges(T: typedesc): typedesc {.magic: "TypeTrait".}
-
 proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
 
 proc repr*(x: int): string =
@@ -98,10 +96,7 @@ proc repr*(p: proc): string =
   repr(cast[ptr pointer](unsafeAddr p)[])
 
 template repr*(x: distinct): string =
-  when x is range: # hacks for ranges with distinct sub types
-    repr(distinctBase(skipRanges(typeof(x)))(x))
-  else:
-    repr(distinctBase(typeof(x))(x))
+  repr(distinctBase(typeof(x))(x))
 
 template repr*(t: typedesc): string = $t
 
