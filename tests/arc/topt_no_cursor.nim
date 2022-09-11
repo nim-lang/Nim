@@ -133,7 +133,7 @@ if dirExists(this.value):
     :tmpD, front: "") else:
   var
     :tmpD_1
-    :tmpD_2
+    :tmpD_3
   par = (dir_1: parentDir(this.value), front_1:
     wasMoved(:tmpD_1)
     `=copy`(:tmpD_1,
@@ -143,7 +143,7 @@ if dirExists(this.value):
         :tmpD_2
       :tmpD_3.path)
     :tmpD_1)
-  `=destroy`(:tmpD_2)
+  `=destroy`(:tmpD_3)
 if dirExists(par.dir):
   `=sink`(this.matchDirs, getSubDirs(par.dir, par.front))
 else:
