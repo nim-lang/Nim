@@ -133,6 +133,7 @@ if dirExists(this.value):
     :tmpD, front: "") else:
   var
     :tmpD_1
+    :tmpD_2
     :tmpD_3
   par = (dir_1: parentDir(this.value), front_1:
     wasMoved(:tmpD_1)
