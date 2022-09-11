@@ -45,30 +45,30 @@ Or::
     nim idetools --trackDirty:DIRTY_FILE,FILE,LINE,COL <switches> proj.nim
 
 `proj.nim`
-    This is the main *project* filename. Most of the time you will
+:   This is the main *project* filename. Most of the time you will
     pass in the same as **FILE**, but for bigger projects this is
     the file which is used as main entry point for the program, the
     one which users compile to generate a final binary.
 
 `<switches>`
-    This would be any of the other idetools available options, like
+:   This would be any of the other idetools available options, like
     `--def` or `--suggest` explained in the following sections.
 
 `COL`
-    An integer with the column you are going to query. For the
+:   An integer with the column you are going to query. For the
     compiler columns start at zero, so the first column will be
     **0** and the last in an 80 column terminal will be **79**.
 
 `LINE`
-    An integer with the line you are going to query. For the compiler
+:   An integer with the line you are going to query. For the compiler
     lines start at **1**.
 
 `FILE`
-    The file you want to perform the query on. Usually you will
+:   The file you want to perform the query on. Usually you will
     pass in the same value as **proj.nim**.
 
 `DIRTY_FILE`
-    The **FILE** parameter is enough for static analysis, but IDEs
+:   The **FILE** parameter is enough for static analysis, but IDEs
     tend to have *unsaved buffers* where the user may still be in
     the middle of typing a line. In such situations the IDE can
     save the current contents to a temporary file and then use the

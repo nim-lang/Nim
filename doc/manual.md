@@ -1023,24 +1023,24 @@ Pre-defined integer types
 These integer types are pre-defined:
 
 `int`
-  the generic signed integer type; its size is platform-dependent and has the
+: the generic signed integer type; its size is platform-dependent and has the
   same size as a pointer. This type should be used in general. An integer
   literal that has no type suffix is of this type if it is in the range
   `low(int32)..high(int32)` otherwise the literal's type is `int64`.
 
 `int`\ XX
-  additional signed integer types of XX bits use this naming scheme
+: additional signed integer types of XX bits use this naming scheme
   (example: int16 is a 16-bit wide integer).
   The current implementation supports `int8`, `int16`, `int32`, `int64`.
   Literals of these types have the suffix 'iXX.
 
 `uint`
-  the generic `unsigned integer`:idx: type; its size is platform-dependent and
+: the generic `unsigned integer`:idx: type; its size is platform-dependent and
   has the same size as a pointer. An integer literal with the type
   suffix `'u` is of this type.
 
 `uint`\ XX
-  additional unsigned integer types of XX bits use this naming scheme
+: additional unsigned integer types of XX bits use this naming scheme
   (example: uint16 is a 16-bit wide unsigned integer).
   The current implementation supports `uint8`, `uint16`, `uint32`,
   `uint64`. Literals of these types have the suffix 'uXX.
@@ -1135,12 +1135,12 @@ Pre-defined floating-point types
 The following floating-point types are pre-defined:
 
 `float`
-  the generic floating-point type; its size used to be platform-dependent,
+: the generic floating-point type; its size used to be platform-dependent,
   but now it is always mapped to `float64`.
   This type should be used in general.
 
 `float`\ XX
-  an implementation may define additional floating-point types of XX bits using
+: an implementation may define additional floating-point types of XX bits using
   this naming scheme (example: `float64` is a 64-bit wide float). The current
   implementation supports `float32` and `float64`. Literals of these types
   have the suffix 'fXX.
@@ -2092,52 +2092,52 @@ that expects a proc of the calling convention `closure`.
 Nim supports these `calling conventions`:idx:\:
 
 `nimcall`:idx:
-    is the default convention used for a Nim **proc**. It is the
+:   is the default convention used for a Nim **proc**. It is the
     same as `fastcall`, but only for C compilers that support `fastcall`.
 
 `closure`:idx:
-    is the default calling convention for a **procedural type** that lacks
+:   is the default calling convention for a **procedural type** that lacks
     any pragma annotations. It indicates that the procedure has a hidden
     implicit parameter (an *environment*). Proc vars that have the calling
     convention `closure` take up two machine words: One for the proc pointer
     and another one for the pointer to implicitly passed environment.
 
 `stdcall`:idx:
-    This is the stdcall convention as specified by Microsoft. The generated C
+:   This is the stdcall convention as specified by Microsoft. The generated C
     procedure is declared with the `__stdcall` keyword.
 
 `cdecl`:idx:
-    The cdecl convention means that a procedure shall use the same convention
+:   The cdecl convention means that a procedure shall use the same convention
     as the C compiler. Under Windows the generated C procedure is declared with
     the `__cdecl` keyword.
 
 `safecall`:idx:
-    This is the safecall convention as specified by Microsoft. The generated C
+:   This is the safecall convention as specified by Microsoft. The generated C
     procedure is declared with the `__safecall` keyword. The word *safe*
     refers to the fact that all hardware registers shall be pushed to the
     hardware stack.
 
 `inline`:idx:
-    The inline convention means the caller should not call the procedure,
+:   The inline convention means the caller should not call the procedure,
     but inline its code directly. Note that Nim does not inline, but leaves
     this to the C compiler; it generates `__inline` procedures. This is
     only a hint for the compiler: it may completely ignore it, and
     it may inline procedures that are not marked as `inline`.
 
 `fastcall`:idx:
-    Fastcall means different things to different C compilers. One gets whatever
+:   Fastcall means different things to different C compilers. One gets whatever
     the C `__fastcall` means.
 
 `thiscall`:idx:
-    This is the thiscall calling convention as specified by Microsoft, used on
+:   This is the thiscall calling convention as specified by Microsoft, used on
     C++ class member functions on the x86 architecture.
 
 `syscall`:idx:
-    The syscall convention is the same as `__syscall`:c: in C. It is used for
+:   The syscall convention is the same as `__syscall`:c: in C. It is used for
     interrupts.
 
 `noconv`:idx:
-    The generated C code will not have any explicit calling convention and thus
+:   The generated C code will not have any explicit calling convention and thus
     use the C compiler's default calling convention. This is needed because
     Nim's default calling convention for procedures is `fastcall` to
     improve speed.
