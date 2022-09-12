@@ -997,12 +997,12 @@ func toOctal*(c: char): string {.rtl, extern: "nsuToOctal".} =
     result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
 
-func fromChar*[T: SomeInteger](ch: char): T =
+func parseDigit*[T: SomeInteger](ch: char): T =
   ## converts char to corresponding digit, related to `isDigit <#isDigit,char>`_
   runnableExamples:
-    assert fromChar[int8]('6') == 6
+    assert parseDigit[int8]('6') == 6
     doAssertRaises ValueError:
-      discard fromChar[int8]('a')
+      discard parseDigit[int8]('a')
 
   if not isDigit(ch):
     raise newException(ValueError, "invalid digit: " & ch)
