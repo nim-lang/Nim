@@ -1001,10 +1001,11 @@ func fromChar*[T: SomeInteger](ch: char): T =
   ## converts char to corresponding digit, related to `isDigit <#isDigit,char>`_
   runnableExamples:
     assert fromChar[int8]('6') == 6
-    doAssertRaises AssertionDefect:
+    doAssertRaises ValueError:
       discard fromChar[int8]('a')
 
-  assert isDigit(ch)
+  if not isDigit(ch):
+    raise newException(ValueError, "invalid digit: " & ch)
   T(ord(ch) - ord('0'))
 
 func fromBin*[T: SomeInteger](s: string): T =
