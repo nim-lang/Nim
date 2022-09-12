@@ -997,6 +997,15 @@ func toOctal*(c: char): string {.rtl, extern: "nsuToOctal".} =
     result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
 
+func fromChar[T: SomeInteger](ch: char): T =
+  runnableExamples:
+    assert fromChar[int8]('6') == 6
+    doAssertRaises AssertionDefect:
+      fromChar[int8]('a')
+
+  assert isDigit(ch)
+  T(ord(ch) - ord('0'))
+
 func fromBin*[T: SomeInteger](s: string): T =
   ## Parses a binary integer value from a string `s`.
   ##
