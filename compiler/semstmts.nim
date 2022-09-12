@@ -1006,7 +1006,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
 
   var errors: CandidateErrors
   var r = resolveOverloads(c, toResolve, toResolve, {skTemplate, skMacro}, {},
-                           errors, false)
+                           errors, false, true)
   if r.state == csMatch:
     var match = r.calleeSym
     markUsed(c, n[0].info, match)
@@ -1019,6 +1019,10 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
     of skMacro: result = semMacroExpr(c, toExpand, toExpand, match, flags)
     of skTemplate: result = semTemplateExpr(c, toExpand, match, flags)
     else: result = nil
+  elif r.state == csNoMatch:
+    result = nil
+  if result == nil:
+    localError(c.config, n[0].info, errSelectorMustBeOfCertainTypes)
   # this would be the perfectly consistent solution with 'for loop macros',
   # but it kinda sucks for pattern matching as the matcher is not attached to
   # a type then:
@@ -1093,7 +1097,6 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
     result = handleCaseStmtMacro(c, n, flags)
     if result != nil:
       return result
-    localError(c.config, n[0].info, errSelectorMustBeOfCertainTypes)
     return
   for i in 1..<n.len:
     setCaseContextIdx(c, i)
@@ -2425,6 +2428,8 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
   #  dec last
   for i in 0..<n.len:
     var x = semExpr(c, n[i], flags, if i == n.len - 1: expectedType else: nil)
+    if x == nil:
+      continue
     n[i] = x
     if c.matchedConcept != nil and x.typ != nil and
         (nfFromTemplate notin n.flags or i != last):

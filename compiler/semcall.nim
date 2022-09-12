@@ -351,7 +351,8 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds, flags: TExprFlags,
                       errors: var CandidateErrors,
-                      errorsEnabled: bool): TCandidate =
+                      errorsEnabled: bool,
+                      fastReturn = false): TCandidate =
   var initialBinding: PNode
   var alt: TCandidate
   var f = n[0]
@@ -402,6 +403,9 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
         template impl() =
+          result.state = csNoMatch
+          if fastReturn:
+            return
           # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
           localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
         if n[0].kind == nkIdent and n[0].ident.s == ".=" and n[2].kind == nkIdent:
