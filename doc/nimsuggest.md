@@ -63,10 +63,10 @@ a location. A query location consists of:
 
 
 ``file.nim``
-    This is the name of the module or include file the query refers to.
+:   This is the name of the module or include file the query refers to.
 
 ``dirtyfile.nim``
-    This is optional.
+:   This is optional.
 
     The `file` parameter is enough for static analysis, but IDEs
     tend to have *unsaved buffers* where the user may still be in
@@ -77,11 +77,11 @@ a location. A query location consists of:
 
 
 ``line``
-    An integer with the line you are going to query. For the compiler
+:   An integer with the line you are going to query. For the compiler
     lines start at **1**.
 
 ``col``
-    An integer with the column you are going to query. For the
+:   An integer with the column you are going to query. For the
     compiler columns start at **0**.
 
 

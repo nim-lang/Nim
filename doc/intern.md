@@ -328,7 +328,7 @@ Coding Guidelines
 * Max line length is 100 characters.
 * Provide spaces around binary operators if that enhances readability.
 * Use a space after a colon, but not before it.
-* [deprecated] Start types with a capital `T`, unless they are
+* (deprecated) Start types with a capital `T`, unless they are
   pointers/references which start with `P`.
 * Prefer `import package`:nim: over `from package import symbol`:nim:.
 
@@ -398,11 +398,11 @@ Runtime type information
 programming language:
 
 Garbage collection
-  The old GCs use the RTTI for traversing arbitrary Nim types, but usually
+: The old GCs use the RTTI for traversing arbitrary Nim types, but usually
   only the `marker` field which contains a proc that does the traversal.
 
 Complex assignments
-  Sequences and strings are implemented as
+: Sequences and strings are implemented as
   pointers to resizable buffers, but Nim requires copying for
   assignments. Apart from RTTI the compiler also generates copy procedures
   as a specialization.

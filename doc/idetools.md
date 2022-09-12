@@ -45,30 +45,30 @@ Or::
     nim idetools --trackDirty:DIRTY_FILE,FILE,LINE,COL <switches> proj.nim
 
 `proj.nim`
-    This is the main *project* filename. Most of the time you will
+:   This is the main *project* filename. Most of the time you will
     pass in the same as **FILE**, but for bigger projects this is
     the file which is used as main entry point for the program, the
     one which users compile to generate a final binary.
 
 `<switches>`
-    This would be any of the other idetools available options, like
+:   This would be any of the other idetools available options, like
     `--def` or `--suggest` explained in the following sections.
 
 `COL`
-    An integer with the column you are going to query. For the
+:   An integer with the column you are going to query. For the
     compiler columns start at zero, so the first column will be
     **0** and the last in an 80 column terminal will be **79**.
 
 `LINE`
-    An integer with the line you are going to query. For the compiler
+:   An integer with the line you are going to query. For the compiler
     lines start at **1**.
 
 `FILE`
-    The file you want to perform the query on. Usually you will
+:   The file you want to perform the query on. Usually you will
     pass in the same value as **proj.nim**.
 
 `DIRTY_FILE`
-    The **FILE** parameter is enough for static analysis, but IDEs
+:   The **FILE** parameter is enough for static analysis, but IDEs
     tend to have *unsaved buffers* where the user may still be in
     the middle of typing a line. In such situations the IDE can
     save the current contents to a temporary file and then use the
@@ -239,7 +239,7 @@ symbol for which idetools returns valid output.
 skConst
 -------
 
-| **Third column**: module + [n scope nesting] + const name.
+| **Third column**: module + \[n scope nesting] + const name.
 | **Fourth column**: the type of the const value.
 | **Docstring**: always the empty string.
 
@@ -254,7 +254,7 @@ skConst
 skEnumField
 -----------
 
-| **Third column**: module + [n scope nesting] + enum type + enum field name.
+| **Third column**: module + \[n scope nesting] + enum type + enum field name.
 | **Fourth column**: enum type grouping other enum fields.
 | **Docstring**: always the empty string.
 
@@ -269,7 +269,7 @@ skEnumField
 skForVar
 --------
 
-| **Third column**: module + [n scope nesting] + var name.
+| **Third column**: module + \[n scope nesting] + var name.
 | **Fourth column**: type of the var.
 | **Docstring**: always the empty string.
 
@@ -291,7 +291,7 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the iterator.
 
-| **Third column**: module + [n scope nesting] + iterator name.
+| **Third column**: module + \[n scope nesting] + iterator name.
 | **Fourth column**: signature of the iterator including return type.
 | **Docstring**: docstring if available.
 
@@ -308,7 +308,7 @@ posterior instances of the iterator.
 skLabel
 -------
 
-| **Third column**: module + [n scope nesting] + name.
+| **Third column**: module + \[n scope nesting] + name.
 | **Fourth column**: always the empty string.
 | **Docstring**: always the empty string.
 
@@ -325,7 +325,7 @@ skLabel
 skLet
 -----
 
-| **Third column**: module + [n scope nesting] + let name.
+| **Third column**: module + \[n scope nesting] + let name.
 | **Fourth column**: the type of the let variable.
 | **Docstring**: always the empty string.
 
@@ -346,7 +346,7 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the macro.
 
-| **Third column**: module + [n scope nesting] + macro name.
+| **Third column**: module + \[n scope nesting] + macro name.
 | **Fourth column**: signature of the macro including return type.
 | **Docstring**: docstring if available.
 
@@ -384,7 +384,7 @@ Note that at the moment the word `proc` is returned for the
 signature of the found method instead of the expected `method`.
 This may change in the future.
 
-| **Third column**: module + [n scope nesting] + method name.
+| **Third column**: module + \[n scope nesting] + method name.
 | **Fourth column**: signature of the method including return type.
 | **Docstring**: docstring if available.
 
@@ -402,7 +402,7 @@ This may change in the future.
 skParam
 -------
 
-| **Third column**: module + [n scope nesting] + param name.
+| **Third column**: module + \[n scope nesting] + param name.
 | **Fourth column**: the type of the parameter.
 | **Docstring**: always the empty string.
 
@@ -427,7 +427,7 @@ While at the language level a proc is differentiated from others
 by the parameters and return value, the signature of the proc
 returned by idetools returns also the pragmas for the proc.
 
-| **Third column**: module + [n scope nesting] + proc name.
+| **Third column**: module + \[n scope nesting] + proc name.
 | **Fourth column**: signature of the proc including return type.
 | **Docstring**: docstring if available.
 
@@ -446,7 +446,7 @@ returned by idetools returns also the pragmas for the proc.
 skResult
 --------
 
-| **Third column**: module + [n scope nesting] + result.
+| **Third column**: module + \[n scope nesting] + result.
 | **Fourth column**: the type of the result.
 | **Docstring**: always the empty string.
 
@@ -467,7 +467,7 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the template.
 
-| **Third column**: module + [n scope nesting] + template name.
+| **Third column**: module + \[n scope nesting] + template name.
 | **Fourth column**: signature of the template including return type.
 | **Docstring**: docstring if available.
 
@@ -496,7 +496,7 @@ posterior instances of the template.
 skType
 ------
 
-| **Third column**: module + [n scope nesting] + type name.
+| **Third column**: module + \[n scope nesting] + type name.
 | **Fourth column**: the type.
 | **Docstring**: always the empty string.
 
@@ -512,7 +512,7 @@ skType
 skVar
 -----
 
-| **Third column**: module + [n scope nesting] + var name.
+| **Third column**: module + \[n scope nesting] + var name.
 | **Fourth column**: the type of the var.
 | **Docstring**: always the empty string.
 

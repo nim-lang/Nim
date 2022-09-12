@@ -13,7 +13,7 @@
 # included from testament.nim
 
 import important_packages
-import std/strformat
+import std/[strformat, strutils]
 from std/sequtils import filterIt
 
 const
@@ -448,7 +448,10 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
           let describeOutput = tryCommand("git describe --tags --abbrev=0")
           discard tryCommand("git checkout $#" % [describeOutput.strip.quoteShell])
         discard tryCommand("nimble install --depsOnly -y", maxRetries = 3)
-      discard tryCommand(pkg.cmd, reFailed = reBuildFailed)
+      let cmds = pkg.cmd.split(';')
+      for i in 0 ..< cmds.len - 1:
+        discard tryCommand(cmds[i], maxRetries = 3)
+      discard tryCommand(cmds[^1], reFailed = reBuildFailed)
       inc r.passed
       r.addResult(test, targetC, "", "", "", reSuccess, allowFailure = pkg.allowFailure)
 

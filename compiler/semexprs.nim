@@ -2798,7 +2798,7 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
   var i = 0
   var a = initOverloadIter(o, c, n)
   while a != nil:
-    if a.kind in OverloadableSyms-{skModule}:
+    if a.kind == skEnumField:
       inc(i)
       if i > 1: break
     a = nextOverloadIter(o, c, n)
@@ -2814,7 +2814,7 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
     result = newNodeIT(nkClosedSymChoice, info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
     while a != nil:
-      if a.kind in OverloadableSyms-{skModule}:
+      if a.kind == skEnumField:
         incl(a.flags, sfUsed)
         markOwnerModuleAsUsed(c, a)
         result.add newSymNode(a, info)
@@ -2882,10 +2882,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       if optOwnedRefs in c.config.globalOptions:
         result.typ = makeVarType(c, result.typ, tyOwned)
     of skEnumField:
-      if overloadableEnums in c.features:
-        result = enumFieldSymChoice(c, n, s)
-      else:
-        result = semSym(c, n, s, flags)
+      result = enumFieldSymChoice(c, n, s)
     else:
       result = semSym(c, n, s, flags)
     if expectedType != nil and isSymChoice(result):
