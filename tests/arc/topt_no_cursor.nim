@@ -138,11 +138,11 @@ if dirExists(this.value):
   par = (dir_1: parentDir(this.value), front_1:
     wasMoved(:tmpD_1)
     `=copy`(:tmpD_1,
-      :tmpD_3 = splitPath do:
+      :tmpD_3 = splitDrive do:
         wasMoved(:tmpD_2)
         `=copy`(:tmpD_2, this.value)
         :tmpD_2
-      :tmpD_3.tail)
+      :tmpD_3.path)
     :tmpD_1)
   `=destroy`(:tmpD_3)
 if dirExists(par.dir):
@@ -357,7 +357,7 @@ proc getSubDirs(parent, front: string): seq[string] = @[]
 method check(this: Foo) {.base.} =
   this.isValid = fileExists(this.value)
   let par = if dirExists(this.value): (dir: this.value, front: "")
-            else: (dir: parentDir(this.value), front: splitPath(this.value).tail)
+            else: (dir: parentDir(this.value), front: splitDrive(this.value).path)
   if dirExists(par.dir):
     this.matchDirs = getSubDirs(par.dir, par.front)
   else:
