@@ -1,4 +1,5 @@
 import httpcore, strutils
+import std/assertions
 
 block:
   block HttpCode:

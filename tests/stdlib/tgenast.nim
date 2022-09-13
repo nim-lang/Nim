@@ -3,6 +3,7 @@
 import std/genasts
 import std/macros
 from std/strformat import `&`
+import std/assertions
 import ./mgenast
 
 proc main =

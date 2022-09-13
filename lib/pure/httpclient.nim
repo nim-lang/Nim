@@ -237,6 +237,9 @@ import std/[
   asyncnet, asyncdispatch, asyncfile, nativesockets,
 ]
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 export httpcore except parseHeader # TODO: The `except` doesn't work
 
 type

@@ -25,7 +25,7 @@
 import asyncdispatch, os
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, syncio]
 
 # TODO: Fix duplication introduced by PR #4683.
 

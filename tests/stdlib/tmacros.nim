@@ -5,6 +5,7 @@ See also:
 ]#
 
 import std/macros
+import std/assertions
 
 block: # hasArgOfName
   macro m(u: untyped): untyped =
