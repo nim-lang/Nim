@@ -411,10 +411,13 @@ macro collect*(body: untyped): untyped {.since: (1, 5).} =
       for i, d in data.pairs: {i: d}
     assert m == {0: "bird", 1: "word"}.toTable
 
-    # avoid `collect` when `sequtils.toSeq` suffices:
-    assert collect(for i in 1..3: i*i) == @[1, 4, 9] # ok in this case
-    assert collect(for i in 1..3: i) == @[1, 2, 3] # overkill in this case
-    from std/sequtils import toSeq
-    assert toSeq(1..3) == @[1, 2, 3] # simpler
+    # avoid `collect` when `sequtils` methods suffice:
+    # overkill:
+    assert collect(for i in 1..3: i*i) == @[1, 4, 9]
+    assert collect(for i in 1..3: i) == @[1, 2, 3]
+    # simpler:
+    from std/sequtils import mapIt, toSeq
+    assert mapIt(1..3, it*it) == @[1, 4, 9]
+    assert toSeq(1..3) == @[1, 2, 3]
 
   result = collectImpl(nil, body)
