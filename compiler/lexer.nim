@@ -78,6 +78,11 @@ type
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr, tkHideableStart, tkHideableEnd
 
   TokTypes* = set[TokType]
+  CommentKind = enum
+    empty
+    singlePound
+    doublePound
+    poundSquare
 
 const
   weakTokens = {tkComma, tkSemiColon, tkColon,
@@ -107,6 +112,7 @@ type
     literal*: string          # the parsed (string) literal; and
                               # documentation comments are here too
     line*, col*: int
+    commentKind: CommentKind
     when defined(nimpretty):
       offsetA*, offsetB*: int # used for pretty printing so that literals
                               # like 0b01 or  r"\L" are unaffected
@@ -153,7 +159,18 @@ proc `$`*(tok: Token): string =
   case tok.tokType
   of tkIntLit..tkInt64Lit: $tok.iNumber
   of tkFloatLit..tkFloat64Lit: $tok.fNumber
-  of tkInvalid, tkStrLit..tkCharLit, tkComment: tok.literal
+  of tkInvalid, tkStrLit..tkCharLit: tok.literal
+  of tkComment: (
+    case tok.commentKind
+    of singlePound:
+      "#"
+    of doublePound:
+      "##"
+    of poundSquare:
+      "#["
+    else:
+      ""
+  ) & " " & tok.literal
   of tkParLe..tkColon, tkEof, tkAccent: $tok.tokType
   else:
     if tok.ident != nil:
@@ -1090,6 +1107,11 @@ proc skipMultiLineComment(L: var Lexer; tok: var Token; start: int;
 proc scanComment(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tok.tokType = tkComment
+  tok.commentKind = singlePound
+  if L.buf[pos+1] == '#':
+    tok.commentKind = doublePound
+  elif L.buf[pos+1] == '[':
+    tok.commentKind = poundSquare
   # iNumber contains the number of '\n' in the token
   tok.iNumber = 0
   assert L.buf[pos+1] == '#'
