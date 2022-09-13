@@ -11,6 +11,10 @@
 
 import strutils, json
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   RstNodeKind* = enum        ## the possible node kinds of an PRstNode
     rnInner,                  # an inner node or a root
@@ -23,7 +27,7 @@ type
     rnBulletItem,             # a bullet item
     rnEnumList,               # an enumerated list
     rnEnumItem,               # an enumerated item
-    rnDefList,                # a definition list
+    rnDefList, rnMdDefList,   # a definition list (RST/Markdown)
     rnDefItem,                # an item of a definition list consisting of ...
     rnDefName,                # ... a name part ...
     rnDefBody,                # ... and a body part ...
@@ -45,7 +49,10 @@ type
     rnCitation,               # similar to footnote, so use rnFootnote instead
     rnFootnoteGroup,          # footnote group - exists for a purely stylistic
                               # reason: to display a few footnotes as 1 block
-    rnStandaloneHyperlink, rnHyperlink, rnRef, rnInternalRef, rnFootnoteRef,
+    rnStandaloneHyperlink, rnHyperlink,
+    rnRstRef,                 # RST reference like `section name`_
+    rnPandocRef,              # Pandoc Markdown reference like [section name]
+    rnInternalRef, rnFootnoteRef,
     rnNimdocRef,              # reference to automatically generated Nim symbol
     rnDirective,              # a general directive
     rnDirArg,                 # a directive argument (for some directives).
@@ -106,12 +113,18 @@ type
                               ## auto-numbered ones without a label)
     of rnMarkdownBlockQuoteItem:
       quotationDepth*: int    ## number of characters in line prefix
-    of rnRef, rnSubstitutionReferences,
+    of rnRstRef, rnPandocRef, rnSubstitutionReferences,
         rnInterpretedText, rnField, rnInlineCode, rnCodeBlock, rnFootnoteRef:
       info*: TLineInfo        ## To have line/column info for warnings at
                               ## nodes that are post-processed after parsing
     of rnNimdocRef:
       tooltip*: string
+    of rnTable, rnGridTable, rnMarkdownTable:
+      colCount*: int          ## Number of (not-united) cells in the table
+    of rnTableRow:
+      endsHeader*: bool       ## Is last row in the header of table?
+    of rnTableHeaderCell, rnTableDataCell:
+      span*: int              ## Number of table columns that the cell occupies
     else:
       discard
     anchor*: string           ## anchor, internal link target
@@ -271,7 +284,7 @@ proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
     inc(d.indent, 2)
     renderRstSons(d, n, result)
     dec(d.indent, 2)
-  of rnRef:
+  of rnRstRef:
     result.add("`")
     renderRstSons(d, n, result)
     result.add("`_")
@@ -416,6 +429,13 @@ proc treeRepr*(node: PRstNode, indent=0): string =
     result.add (if node.order == 0:   "" else: "  order=" & $node.order)
   of rnMarkdownBlockQuoteItem:
     result.add "  quotationDepth=" & $node.quotationDepth
+  of rnTable, rnGridTable, rnMarkdownTable:
+    result.add "  colCount=" & $node.colCount
+  of rnTableHeaderCell, rnTableDataCell:
+    if node.span > 0:
+      result.add "  span=" & $node.span
+  of rnTableRow:
+    if node.endsHeader: result.add "  endsHeader"
   else:
     discard
   result.add (if node.anchor == "": "" else: "  anchor='" & node.anchor & "'")

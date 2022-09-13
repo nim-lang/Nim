@@ -30,7 +30,7 @@ Positional arguments, from left to right:
 
 
    For any given DIRECTORY nimgrep searches only its immediate files without
-   traversing sub-directories unless `--recursive` is specified.
+   traversing subdirectories unless `--recursive` is specified.
 
 In replacement mode we require all 3 positional arguments to avoid damaging.
 
@@ -52,9 +52,9 @@ Options:
   --rex, -x           use the "extended" syntax for the regular expression
                       so that whitespace is not significant
   --word, -w          matches should have word boundaries (buggy for pegs!)
-  --ignoreCase, -i    be case insensitive in PATTERN and PAT
+  --ignoreCase, -i    be case-insensitive in PATTERN and PAT
   --ignoreStyle, -y   be style insensitive in PATTERN and PAT
-  .. Note:: PATERN and patterns PAT (see below in other options) are all either
+  .. Note:: PATTERN and patterns PAT (see below in other options) are all either
      Regex or Peg simultaneously and options `--rex`, `--word`, `--ignoreCase`,
      and `--ignoreStyle` are applied to all of them.
 

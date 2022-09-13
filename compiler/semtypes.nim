@@ -17,7 +17,7 @@ const
   errWrongNumberOfVariables = "wrong number of variables"
   errInvalidOrderInEnumX = "invalid order in enum '$1'"
   errOrdinalTypeExpected = "ordinal type expected"
-  errSetTooBig = "set is too large"
+  errSetTooBig = "set is too large; use `std/sets` for ordinal types with more than 2^16 elements"
   errBaseTypeMustBeOrdinal = "base type of a set must be an ordinal"
   errInheritanceOnlyWithNonFinalObjects = "inheritance only works with non-final objects"
   errXExpectsOneTypeParam = "'$1' expects one type parameter"
@@ -139,14 +139,11 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       e.flags.incl {sfUsed, sfExported}
 
     result.n.add symNode
-    styleCheckDef(c.config, e)
+    styleCheckDef(c, e)
     onDef(e.info, e)
     if sfGenSym notin e.flags:
       if not isPure:
-        if overloadableEnums in c.features:
-          addInterfaceOverloadableSymAt(c, c.currentScope, e)
-        else:
-          addInterfaceDecl(c, e)
+        addInterfaceOverloadableSymAt(c, c.currentScope, e)
       else:
         declarePureEnumField(c, e)
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
@@ -212,10 +209,34 @@ proc semVarOutType(c: PContext, n: PNode, prev: PType; kind: TTypeKind): PType =
   else:
     result = newConstraint(c, kind)
 
+proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
+  if t == nil:
+    return false
+  if cycleDetector.containsOrIncl(t.id):
+    return true
+  case t.kind
+  of tyAlias, tyGenericInst, tyDistinct:
+    return isRecursiveType(t.lastSon, cycleDetector)
+  else:
+    return false
+
+proc isRecursiveType*(t: PType): bool =
+  # handle simple recusive types before typeFinalPass
+  var cycleDetector = initIntSet()
+  isRecursiveType(t, cycleDetector)
+
+proc addSonSkipIntLitChecked(c: PContext; father, son: PType; it: PNode, id: IdGenerator) =
+  let s = son.skipIntLit(id)
+  father.sons.add(s)
+  if isRecursiveType(s):
+    localError(c.config, it.info, "illegal recursion in type '" & typeToString(s) & "'")
+  else:
+    propagateToOwner(father, s)
+
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0: return newConstraint(c, tyDistinct)
   result = newOrPrevType(tyDistinct, prev, c)
-  addSonSkipIntLit(result, semTypeNode(c, n[0], nil), c.idgen)
+  addSonSkipIntLitChecked(c, result, semTypeNode(c, n[0], nil), n[0], c.idgen)
   if n.len > 1: result.n = n[1]
 
 proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
@@ -447,7 +468,8 @@ proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errTypeExpected)
   result = newOrPrevType(tyTuple, prev, c)
   for it in n:
-    addSonSkipIntLit(result, semTypeNode(c, it, nil), c.idgen)
+    let t = semTypeNode(c, it, nil)
+    addSonSkipIntLitChecked(c, result, t, it, c.idgen)
 
 proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var typ: PType
@@ -476,7 +498,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       else:
         result.n.add newSymNode(field)
         addSonSkipIntLit(result, typ, c.idgen)
-      styleCheckDef(c.config, a[j].info, field)
+      styleCheckDef(c, a[j].info, field)
       onDef(field.info, field)
   if result.n.len == 0: result.n = nil
   if isTupleRecursive(result):
@@ -578,7 +600,9 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         checkMinSonsLen(t, 1, c.config)
         var tmp = fitNode(c, t[0].typ, r, r.info)
         # the call to fitNode may introduce a call to a converter
-        if tmp.kind in {nkHiddenCallConv}: tmp = semConstExpr(c, tmp)
+        if tmp.kind == nkHiddenCallConv or
+            (tmp.kind == nkHiddenStdConv and t[0].typ.kind == tyCstring):
+          tmp = semConstExpr(c, tmp)
         branch[i] = skipConv(tmp)
         inc(covered)
       else:
@@ -808,7 +832,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         localError(c.config, info, "attempt to redefine: '" & f.name.s & "'")
       if a.kind == nkEmpty: father.add newSymNode(f)
       else: a.add newSymNode(f)
-      styleCheckDef(c.config, f)
+      styleCheckDef(c, f)
       onDef(f.info, f)
     if a.kind != nkEmpty: father.add a
   of nkSym:
@@ -1315,7 +1339,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       result.n.add newSymNode(arg)
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)
-      styleCheckDef(c.config, a[j].info, arg)
+      styleCheckDef(c, a[j].info, arg)
       onDef(a[j].info, arg)
       if {optNimV1Emulation, optNimV12Emulation} * c.config.globalOptions == {}:
         a[j] = newSymNode(arg)

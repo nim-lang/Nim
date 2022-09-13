@@ -15,8 +15,7 @@ import
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
-  injectdestructors, astmsgs
-
+  injectdestructors, astmsgs, modulepaths
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -967,7 +966,7 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
     if containsResult(n[0]): return InitRequired
     result = InitSkippable
     var exhaustive = skipTypes(n[0].typ,
-        abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString}
+        abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString, tyCstring}
     for i in 1..<n.len:
       let it = n[i]
       allPathsInBranch(it.lastSon)
@@ -1306,23 +1305,25 @@ proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   if conf.hcrOn: result.add("#define NIM_HOT_CODE_RELOADING\L")
   addNimDefines(result, conf)
 
-proc getSomeNameForModule(m: PSym): Rope =
-  assert m.kind == skModule
-  assert m.owner.kind == skPackage
-  if {sfSystemModule, sfMainModule} * m.flags == {}:
-    result = m.owner.name.s.mangle.rope
-    result.add "_"
-  result.add m.name.s.mangle
+proc getSomeNameForModule(conf: ConfigRef, filename: AbsoluteFile): Rope =
+  ## Returns a mangled module name.
+  result.add mangleModuleName(conf, filename).mangle
+
+proc getSomeNameForModule(m: BModule): Rope =
+  ## Returns a mangled module name.
+  assert m.module.kind == skModule
+  assert m.module.owner.kind == skPackage
+  result.add mangleModuleName(m.g.config, m.filename).mangle
 
 proc getSomeInitName(m: BModule, suffix: string): Rope =
   if not m.hcrOn:
-    result = getSomeNameForModule(m.module)
+    result = getSomeNameForModule(m)
   result.add suffix
 
 proc getInitName(m: BModule): Rope =
   if sfMainModule in m.module.flags:
     # generate constant name for main module, for "easy" debugging.
-    result = rope"NimMainModule"
+    result = rope(m.config.nimMainPrefix) & rope"NimMainModule"
   else:
     result = getSomeInitName(m, "Init000")
 
@@ -1355,35 +1356,35 @@ proc genMainProc(m: BModule) =
     preMainCode.add("\tinitStackBottomWith_actual((void *)&inner);\L")
     preMainCode.add("\t(*inner)();\L")
   else:
-    preMainCode.add("\tPreMain();\L")
+    preMainCode.add("\t$1PreMain();\L" % [rope m.config.nimMainPrefix])
+
+  var posixCmdLine: Rope
+  if optNoMain notin m.config.globalOptions:
+    posixCmdLine.add "\tN_LIB_PRIVATE int cmdCount;\L"
+    posixCmdLine.add "\tN_LIB_PRIVATE char** cmdLine;\L"
+    posixCmdLine.add "\tN_LIB_PRIVATE char** gEnv;\L"
 
   const
-    # not a big deal if we always compile these 3 global vars... makes the HCR code easier
-    PosixCmdLine =
-      "N_LIB_PRIVATE int cmdCount;$N" &
-      "N_LIB_PRIVATE char** cmdLine;$N" &
-      "N_LIB_PRIVATE char** gEnv;$N"
-
     # The use of a volatile function pointer to call Pre/NimMainInner
     # prevents inlining of the NimMainInner function and dependent
     # functions, which might otherwise merge their stack frames.
 
     PreMainVolatileBody =
       "\tvoid (*volatile inner)(void);$N" &
-      "\tinner = PreMainInner;$N" &
+      "\tinner = $3PreMainInner;$N" &
       "$1" &
       "\t(*inner)();$N"
 
     PreMainNonVolatileBody =
       "$1" &
-      "\tPreMainInner();$N"
+      "\t$3PreMainInner();$N"
 
     PreMainBodyStart = "$N" &
-      "N_LIB_PRIVATE void PreMainInner(void) {$N" &
+      "N_LIB_PRIVATE void $3PreMainInner(void) {$N" &
       "$2" &
       "}$N$N" &
-      PosixCmdLine &
-      "N_LIB_PRIVATE void PreMain(void) {$N"
+      "$4" &
+      "N_LIB_PRIVATE void $3PreMain(void) {$N"
 
     PreMainBodyEnd =
       "}$N$N"
@@ -1394,21 +1395,21 @@ proc genMainProc(m: BModule) =
     MainProcsWithResult =
       MainProcs & ("\treturn $1nim_program_result;$N")
 
-    NimMainInner = "N_LIB_PRIVATE N_CDECL(void, NimMainInner)(void) {$N" &
+    NimMainInner = "N_LIB_PRIVATE N_CDECL(void, $5NimMainInner)(void) {$N" &
         "$1" &
       "}$N$N"
 
     NimMainVolatileBody =
       "\tvoid (*volatile inner)(void);$N" &
       "$4" &
-      "\tinner = NimMainInner;$N" &
+      "\tinner = $5NimMainInner;$N" &
       "$2" &
       "\t(*inner)();$N"
 
     NimMainNonVolatileBody =
       "$4" &
       "$2" &
-      "\tNimMainInner();$N"
+      "\t$5NimMainInner();$N"
 
     NimMainProcStart =
       "N_CDECL(void, $5NimMain)(void) {$N"
@@ -1488,9 +1489,9 @@ proc genMainProc(m: BModule) =
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", [])
   inc(m.labels)
   if m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
-    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit])
+    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit, m.config.nimMainPrefix, posixCmdLine])
   else:
-    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainNonVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit])
+    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainNonVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit, m.config.nimMainPrefix, posixCmdLine])
 
   if m.config.target.targetOS == osWindows and
       m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
@@ -1555,11 +1556,11 @@ proc genMainProc(m: BModule) =
 proc registerInitProcs*(g: BModuleList; m: PSym; flags: set[ModuleBackendFlag]) =
   ## Called from the IC backend.
   if HasDatInitProc in flags:
-    let datInit = getSomeNameForModule(m) & "DatInit000"
+    let datInit = getSomeNameForModule(g.config, g.config.toFullPath(m.info.fileIndex).AbsoluteFile) & "DatInit000"
     g.mainModProcs.addf("N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [datInit])
     g.mainDatInit.addf("\t$1();$N", [datInit])
   if HasModuleInitProc in flags:
-    let init = getSomeNameForModule(m) & "Init000"
+    let init = getSomeNameForModule(g.config, g.config.toFullPath(m.info.fileIndex).AbsoluteFile) & "Init000"
     g.mainModProcs.addf("N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [init])
     let initCall = "\t$1();$N" % [init]
     if sfMainModule in m.flags:
@@ -1940,7 +1941,7 @@ proc getCFile(m: BModule): AbsoluteFile =
       if m.compileToCpp: ".nim.cpp"
       elif m.config.backend == backendObjc or sfCompileToObjc in m.module.flags: ".nim.m"
       else: ".nim.c"
-  result = changeFileExt(completeCfilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
+  result = changeFileExt(completeCfilePath(m.config, mangleModuleName(m.config, m.cfilename).AbsoluteFile), ext)
 
 when false:
   proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
@@ -2093,7 +2094,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
         discard cgsym(m, "rawWrite")
 
       # raise dependencies on behalf of genMainProc
-      if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
+      if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
         discard cgsym(m, "initStackBottomWith")
       if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
         discard cgsym(m, "initThreadVarsEmulation")

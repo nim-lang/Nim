@@ -54,7 +54,7 @@ Options:
   --verbose                 print commands (compiling and running tests)
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
-  --targets:"c cpp js objc" run tests for specified targets (default: all)
+  --targets:"c cpp js objc" run tests for specified targets (default: c)
   --nim:path                use a particular nim executable (default: $$PATH/nim)
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
   --colors:on|off           Turn messages coloring on|off.
@@ -258,18 +258,23 @@ Tests failed and allowed to fail: $3 / $1 <br />
 Tests skipped: $4 / $1 <br />
 """ % [$x.total, $x.passed, $x.failedButAllowed, $x.skipped]
 
-proc addResult(r: var TResults, test: TTest, target: TTarget,
-               expected, given: string, successOrig: TResultEnum, allowFailure = false, givenSpec: ptr TSpec = nil) =
-  # instead of `ptr TSpec` we could also use `Option[TSpec]`; passing `givenSpec` makes it easier to get what we need
-  # instead of having to pass individual fields, or abusing existing ones like expected vs given.
-  # test.name is easier to find than test.name.extractFilename
-  # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
+proc testName(test: TTest, target: TTarget, extraOptions: string, allowFailure: bool): string =
   var name = test.name.replace(DirSep, '/')
   name.add ' ' & $target
   if allowFailure:
     name.add " (allowed to fail) "
   if test.options.len > 0: name.add ' ' & test.options
+  if extraOptions.len > 0: name.add ' ' & extraOptions
+  name.strip()
 
+proc addResult(r: var TResults, test: TTest, target: TTarget,
+               extraOptions, expected, given: string, successOrig: TResultEnum,
+               allowFailure = false, givenSpec: ptr TSpec = nil) =
+  # instead of `ptr TSpec` we could also use `Option[TSpec]`; passing `givenSpec` makes it easier to get what we need
+  # instead of having to pass individual fields, or abusing existing ones like expected vs given.
+  # test.name is easier to find than test.name.extractFilename
+  # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
+  let name = testName(test, target, extraOptions, allowFailure)
   let duration = epochTime() - test.startTime
   let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
                 else: successOrig
@@ -333,45 +338,24 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
       discard waitForExit(p)
       close(p)
 
-proc checkForInlineErrors(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget) =
-  let pegLine = peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' {[^:]*} ':' \s* {.*}"
-  var covered = initIntSet()
-  for line in splitLines(given.nimout):
+proc toString(inlineError: InlineError, filename: string): string =
+  result.add "$file($line, $col) $kind: $msg" % [
+    "file", filename,
+    "line", $inlineError.line,
+    "col", $inlineError.col,
+    "kind", $inlineError.kind,
+    "msg", $inlineError.msg
+  ]
 
-    if line =~ pegLine:
-      let file = extractFilename(matches[0])
-      let line = try: parseInt(matches[1]) except: -1
-      let col = try: parseInt(matches[2]) except: -1
-      let kind = matches[3]
-      let msg = matches[4]
+proc inlineErrorsMsgs(expected: TSpec): string =
+  for inlineError in expected.inlineErrors.items:
+    result.addLine inlineError.toString(expected.filename)
 
-      if file == extractFilename test.name:
-        var i = 0
-        for x in expected.inlineErrors:
-          if x.line == line and (x.col == col or x.col < 0) and
-              x.kind == kind and x.msg in msg:
-            covered.incl i
-          inc i
-
-  block coverCheck:
-    for j in 0..high(expected.inlineErrors):
-      if j notin covered:
-        var e = test.name
-        e.add '('
-        e.addInt expected.inlineErrors[j].line
-        if expected.inlineErrors[j].col > 0:
-          e.add ", "
-          e.addInt expected.inlineErrors[j].col
-        e.add ") "
-        e.add expected.inlineErrors[j].kind
-        e.add ": "
-        e.add expected.inlineErrors[j].msg
-
-        r.addResult(test, target, e, given.nimout, reMsgsDiffer)
-        break coverCheck
-
-    r.addResult(test, target, "", given.msg, reSuccess)
-    inc(r.passed)
+proc checkForInlineErrors(expected, given: TSpec): bool =
+  for inlineError in expected.inlineErrors:
+    if inlineError.toString(expected.filename) notin given.nimout:
+      return false
+  true
 
 proc nimoutCheck(expected, given: TSpec): bool =
   result = true
@@ -381,22 +365,24 @@ proc nimoutCheck(expected, given: TSpec): bool =
   elif expected.nimout.len > 0 and not greedyOrderedSubsetLines(expected.nimout, given.nimout):
     result = false
 
-proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget) =
-  if expected.inlineErrors.len > 0:
-    checkForInlineErrors(r, expected, given, test, target)
+proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest,
+             target: TTarget, extraOptions: string) =
+  if not checkForInlineErrors(expected, given) or
+    (not expected.nimoutFull and not nimoutCheck(expected, given)):
+      r.addResult(test, target, extraOptions, expected.nimout & inlineErrorsMsgs(expected), given.nimout, reMsgsDiffer)
   elif strip(expected.msg) notin strip(given.msg):
-    r.addResult(test, target, expected.msg, given.msg, reMsgsDiffer)
+    r.addResult(test, target, extraOptions, expected.msg, given.msg, reMsgsDiffer)
   elif not nimoutCheck(expected, given):
-    r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer)
+    r.addResult(test, target, extraOptions, expected.nimout, given.nimout, reMsgsDiffer)
   elif extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
-    r.addResult(test, target, expected.file, given.file, reFilesDiffer)
+    r.addResult(test, target, extraOptions, expected.filename, given.file, reFilesDiffer)
   elif expected.line != given.line and expected.line != 0 or
        expected.column != given.column and expected.column != 0:
-    r.addResult(test, target, $expected.line & ':' & $expected.column,
+    r.addResult(test, target, extraOptions, $expected.line & ':' & $expected.column,
                       $given.line & ':' & $given.column, reLinesDiffer)
   else:
-    r.addResult(test, target, expected.msg, given.msg, reSuccess)
+    r.addResult(test, target, extraOptions, expected.msg, given.msg, reSuccess)
     inc(r.passed)
 
 proc generatedFile(test: TTest, target: TTarget): string =
@@ -434,38 +420,29 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     given.err = reCodeNotFound
     echo getCurrentExceptionMsg()
 
-proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
-                         expected: TSpec; r: var TResults) =
+proc compilerOutputTests(test: TTest, target: TTarget, extraOptions: string,
+                         given: var TSpec, expected: TSpec; r: var TResults) =
   var expectedmsg: string = ""
   var givenmsg: string = ""
   if given.err == reSuccess:
     if expected.needsCodegenCheck:
       codegenCheck(test, target, expected, expectedmsg, given)
       givenmsg = given.msg
-    if not nimoutCheck(expected, given):
+    if not nimoutCheck(expected, given) or
+       not checkForInlineErrors(expected, given):
       given.err = reMsgsDiffer
-      expectedmsg = expected.nimout
+      expectedmsg = expected.nimout & inlineErrorsMsgs(expected)
       givenmsg = given.nimout.strip
   else:
     givenmsg = "$ " & given.cmd & '\n' & given.nimout
   if given.err == reSuccess: inc(r.passed)
-  r.addResult(test, target, expectedmsg, givenmsg, given.err)
+  r.addResult(test, target, extraOptions, expectedmsg, givenmsg, given.err)
 
 proc getTestSpecTarget(): TTarget =
   if getEnv("NIM_COMPILE_TO_CPP", "false") == "true":
     result = targetCpp
   else:
     result = targetC
-
-proc checkDisabled(r: var TResults, test: TTest): bool =
-  if test.spec.err in {reDisabled, reJoined}:
-    # targetC is a lie, but parameter is required
-    r.addResult(test, targetC, "", "", test.spec.err)
-    inc(r.skipped)
-    inc(r.total)
-    result = false
-  else:
-    result = true
 
 var count = 0
 
@@ -474,30 +451,32 @@ proc equalModuloLastNewline(a, b: string): bool =
   result = a == b or b.endsWith("\n") and a == b[0 ..< ^1]
 
 proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
-                    target: TTarget, nimcache: string, extraOptions = "") =
+                    target: TTarget, extraOptions: string, nimcache: string) =
   test.startTime = epochTime()
-  template callNimCompilerImpl(): untyped =
-    # xxx this used to also pass: `--stdout --hint:Path:off`, but was done inconsistently
-    # with other branches
-    callNimCompiler(expected.getCmd, test.name, test.options, nimcache, target, extraOptions)
+  if testName(test, target, extraOptions, false) in skips:
+    test.spec.err = reDisabled
+
+  if test.spec.err in {reDisabled, reJoined}:
+    r.addResult(test, target, extraOptions, "", "", test.spec.err)
+    inc(r.skipped)
+    return
+  var given = callNimCompiler(expected.getCmd, test.name, test.options, nimcache, target, extraOptions)
   case expected.action
   of actionCompile:
-    var given = callNimCompilerImpl()
-    compilerOutputTests(test, target, given, expected, r)
+    compilerOutputTests(test, target, extraOptions, given, expected, r)
   of actionRun:
-    var given = callNimCompilerImpl()
     if given.err != reSuccess:
-      r.addResult(test, target, "", "$ " & given.cmd & '\n' & given.nimout, given.err, givenSpec = given.addr)
+      r.addResult(test, target, extraOptions, "", "$ " & given.cmd & '\n' & given.nimout, given.err, givenSpec = given.addr)
     else:
       let isJsTarget = target == targetJS
       var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
       if not fileExists(exeFile):
-        r.addResult(test, target, expected.output,
+        r.addResult(test, target, extraOptions, expected.output,
                     "executable not found: " & exeFile, reExeNotFound)
       else:
         let nodejs = if isJsTarget: findNodeJs() else: ""
         if isJsTarget and nodejs == "":
-          r.addResult(test, target, expected.output, "nodejs binary not in PATH",
+          r.addResult(test, target, extraOptions, expected.output, "nodejs binary not in PATH",
                       reExeNotFound)
         else:
           var exeCmd: string
@@ -528,24 +507,22 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
             else:
               buf
           if exitCode != expected.exitCode:
-            r.addResult(test, target, "exitcode: " & $expected.exitCode,
+            r.addResult(test, target, extraOptions, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode & "\n\nOutput:\n" &
                               bufB, reExitcodesDiffer)
           elif (expected.outputCheck == ocEqual and not expected.output.equalModuloLastNewline(bufB)) or
               (expected.outputCheck == ocSubstr and expected.output notin bufB):
             given.err = reOutputsDiffer
-            r.addResult(test, target, expected.output, bufB, reOutputsDiffer)
-          else:
-            compilerOutputTests(test, target, given, expected, r)
+            r.addResult(test, target, extraOptions, expected.output, bufB, reOutputsDiffer)
+          compilerOutputTests(test, target, extraOptions, given, expected, r)
   of actionReject:
-    let given = callNimCompilerImpl()
-    cmpMsgs(r, expected, given, test, target)
+    cmpMsgs(r, expected, given, test, target, extraOptions)
 
-proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = "") =
+proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions: string) =
   for target in expected.targets:
     inc(r.total)
     if target notin gTargets:
-      r.addResult(test, target, "", "", reDisabled)
+      r.addResult(test, target, extraOptions, "", "", reDisabled)
       inc(r.skipped)
     elif simulate:
       inc count
@@ -553,16 +530,15 @@ proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = 
     else:
       let nimcache = nimcacheDir(test.name, test.options, target)
       var testClone = test
-      testSpecHelper(r, testClone, expected, target, nimcache, extraOptions)
+      testSpecHelper(r, testClone, expected, target, extraOptions, nimcache)
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
   if expected.parseErrors.len > 0:
     # targetC is a lie, but a parameter is required
-    r.addResult(test, targetC, "", expected.parseErrors, reInvalidSpec)
+    r.addResult(test, targetC, "", "", expected.parseErrors, reInvalidSpec)
     inc(r.total)
     return
-  if not checkDisabled(r, test): return
 
   expected.targets.incl targets
   # still no target specified at all
@@ -572,14 +548,13 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
     for m in test.spec.matrix:
       targetHelper(r, test, expected, m)
   else:
-    targetHelper(r, test, expected)
+    targetHelper(r, test, expected, "")
 
 proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) {.used.} =
-  if not checkDisabled(r, test): return
   for target in test.spec.targets:
     inc(r.total)
     var testClone = test
-    testSpecHelper(r, testClone, test.spec, target, nimcache)
+    testSpecHelper(r, testClone, test.spec, target, "", nimcache)
 
 proc makeTest(test, options: string, cat: Category): TTest =
   result.cat = cat
@@ -599,7 +574,6 @@ proc makeRawTest(test, options: string, cat: Category): TTest {.used.} =
 
 # TODO: fix these files
 const disabledFilesDefault = @[
-  "LockFreeHash.nim",
   "tableimpl.nim",
   "setimpl.nim",
   "hashcommon.nim",
