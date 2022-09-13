@@ -2064,7 +2064,22 @@ proc getWrappableIndent(p: RstParser): int =
     elif nextIndent >= currentTok(p).col: # may be a definition list [case.2]
       result = currentTok(p).col
     else:
-      result = nextIndent                 #                          [case.3]
+      result = nextIndent                 # allow parsing next lines [case.3]
+
+proc getMdBlockIndent(p: RstParser): int =
+  ## Markdown version of `getWrappableIndent`.
+  if currentTok(p).kind == tkIndent:
+    result = currentTok(p).ival
+  else:
+    var nextIndent = p.tok[tokenAfterNewline(p)-1].ival
+    # TODO: Markdown-compliant definition should allow nextIndent == currInd(p):
+    if nextIndent <= currInd(p):           # parse only this line
+      result = currentTok(p).col
+    else:
+      result = nextIndent                 # allow parsing next lines [case.3]
+
+template isRst(p: RstParser): bool = roPreferMarkdown notin p.s.options
+template isMd(p: RstParser): bool = roPreferMarkdown in p.s.options
 
 proc parseField(p: var RstParser): PRstNode =
   ## Returns a parsed rnField node.
@@ -2309,6 +2324,39 @@ proc isDefList(p: RstParser): bool =
       p.tok[j].kind in {tkWord, tkOther, tkPunct} and
       p.tok[j - 2].symbol != "::"
 
+proc `$`(t: Token): string =  # for debugging only
+  result = "(" & $t.kind & " line=" & $t.line & " col=" & $t.col
+  if t.kind == tkIndent: result = result & " ival=" & $t.ival & ")"
+  else: result = result & " symbol=" & t.symbol & ")"
+
+proc skipNewlines(p: RstParser, j: int): int =
+  result = j
+  while p.tok[result].kind != tkEof and p.tok[result].kind == tkIndent:
+    inc result  # skip blank lines
+
+proc skipNewlines(p: var RstParser) =
+  p.idx = skipNewlines(p, p.idx)
+
+const maxMdRelInd = 3  ## In Markdown: maximum indentation that does not yet
+                       ## make the indented block a code
+
+proc isMdRelInd(outerInd, nestedInd: int): bool =
+  result = outerInd <= nestedInd and nestedInd <= outerInd + maxMdRelInd
+
+proc isMdDefBody(p: RstParser, j: int, termCol: int): bool =
+  let defCol = p.tok[j].col
+  result = p.tok[j].symbol == ":" and
+    isMdRelInd(termCol, defCol) and
+    p.tok[j+1].kind == tkWhite and
+    p.tok[j+2].kind in {tkWord, tkOther, tkPunct}
+
+proc isMdDefListItem(p: RstParser, idx: int): bool =
+  var j = tokenAfterNewline(p, idx)
+  j = skipNewlines(p, j)
+  let termCol = p.tok[j].col
+  result = isMdRelInd(currInd(p), termCol) and
+      isMdDefBody(p, j, termCol)
+
 proc isOptionList(p: RstParser): bool =
   result = match(p, p.idx, "-w") or match(p, p.idx, "--w") or
            match(p, p.idx, "/w") or match(p, p.idx, "//w")
@@ -2381,8 +2429,10 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnEnumList
     elif isOptionList(p):
       result = rnOptionList
-    elif isDefList(p):
+    elif isRst(p) and isDefList(p):
       result = rnDefList
+    elif isMd(p) and isMdDefListItem(p, p.idx):
+      result = rnMdDefList
     else:
       result = rnParagraph
   of tkWord, tkOther, tkWhite:
@@ -2391,7 +2441,9 @@ proc whichSection(p: RstParser): RstNodeKind =
       if isAdornmentHeadline(p, tokIdx): result = rnHeadline
       else: result = rnParagraph
     elif match(p, p.idx, "e) ") or match(p, p.idx, "e. "): result = rnEnumList
-    elif isDefList(p): result = rnDefList
+    elif isRst(p) and isDefList(p): result = rnDefList
+    elif isMd(p) and isMdDefListItem(p, p.idx):
+      result = rnMdDefList
     else: result = rnParagraph
   else: result = rnLeaf
 
@@ -2921,6 +2973,36 @@ proc parseOptionList(p: var RstParser): PRstNode =
       if currentTok(p).kind != tkEof: dec p.idx  # back to tkIndent
       break
 
+proc parseMdDefinitionList(p: var RstParser): PRstNode =
+  ## Parses (Pandoc/kramdown/PHPextra) Mardkown definition lists.
+  result = newRstNodeA(p, rnMdDefList)
+  let termCol = currentTok(p).col
+  while true:
+    var item = newRstNode(rnDefItem)
+    var term = newRstNode(rnDefName)
+    parseLine(p, term)
+    skipNewlines(p)
+    inc p.idx, 2  # skip ":" and space
+    item.add(term)
+    while true:
+      var def = newRstNode(rnDefBody)
+      let indent = getMdBlockIndent(p)
+      pushInd(p, indent)
+      parseSection(p, def)
+      popInd(p)
+      item.add(def)
+      let j = skipNewlines(p, p.idx)
+      if isMdDefBody(p, j, termCol):  # parse next definition body
+        p.idx = j + 2  # skip ":" and space
+      else:
+        break
+    result.add(item)
+    let j = skipNewlines(p, p.idx)
+    if p.tok[j].col == termCol and isMdDefListItem(p, j):
+      p.idx = j  # parse next item
+    else:
+      break
+
 proc parseDefinitionList(p: var RstParser): PRstNode =
   result = nil
   var j = tokenAfterNewline(p) - 1
@@ -3094,6 +3176,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
     of rnLeaf: rstMessage(p, meNewSectionExpected, "(syntax error)")
     of rnParagraph: discard
     of rnDefList: a = parseDefinitionList(p)
+    of rnMdDefList: a = parseMdDefinitionList(p)
     of rnFieldList:
       if p.idx > 0: dec p.idx
       a = parseFields(p)
@@ -3119,9 +3202,6 @@ proc parseSectionWrapper(p: var RstParser): PRstNode =
   parseSection(p, result)
   while result.kind == rnInner and result.len == 1:
     result = result.sons[0]
-
-proc `$`(t: Token): string =
-  result = $t.kind & ' ' & t.symbol
 
 proc parseDoc(p: var RstParser): PRstNode =
   result = parseSectionWrapper(p)
