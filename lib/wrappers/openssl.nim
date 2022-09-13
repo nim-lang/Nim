@@ -37,7 +37,7 @@ const useWinVersion = defined(windows) or defined(nimdoc)
 # Having two different openSSL loaded version causes a crash.
 # Use this compile time define to force the openSSL version that your other dynamic libraries want.
 const sslVersion {.strdefine.}: string = ""
-const openssl3 = sslVersion.startsWith('3')
+const useOpenssl3* = sslVersion.startsWith('3')
 when sslVersion != "":
   when defined(macosx):
     const
@@ -271,7 +271,7 @@ proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 
 when compileOption("dynlibOverride", "ssl"):
   # Static linking
-  when not openssl3:
+  when not useOpenssl3:
     proc OPENSSL_init_ssl*(opts: uint64, settings: uint8): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_library_init*(): cint {.discardable.} =
       ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0
@@ -360,7 +360,7 @@ else:
     let method2Proc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe, raises: [].}](methodSym)
     return method2Proc()
 
-  when not openssl3:
+  when not useOpenssl3:
     proc SSL_library_init*(): cint {.discardable.} =
       ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0 otherwise
       ## SSL_library_init
@@ -785,7 +785,7 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
   # proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 =
   #  loadPSSLMethod("SSL_get_peer_certificate", "SSL_get1_peer_certificate")
 
-  when openssl3:
+  when useOpenssl3:
     proc SSL_get1_peer_certificate*(ssl: SslCtx): PX509 {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 =
       SSL_get1_peer_certificate(ssl)
