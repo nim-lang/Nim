@@ -2890,3 +2890,18 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
     if t.data[h].val != 0:
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
+
+proc hash*[K,V](s: Table[K,V]): Hash =
+  for p in pairs(s):
+    result = result xor hash(p)
+  result = !$result
+
+proc hash*[K,V](s: OrderedTable[K,V]): Hash =
+  for p in pairs(s):
+    result = result xor hash(p)
+  result = !$result
+
+proc hash*[V](s: CountTable[V]): Hash =
+  for p in pairs(s):
+    result = result xor hash(p)
+  result = !$result
