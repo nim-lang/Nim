@@ -1023,24 +1023,24 @@ Pre-defined integer types
 These integer types are pre-defined:
 
 `int`
-  the generic signed integer type; its size is platform-dependent and has the
+: the generic signed integer type; its size is platform-dependent and has the
   same size as a pointer. This type should be used in general. An integer
   literal that has no type suffix is of this type if it is in the range
   `low(int32)..high(int32)` otherwise the literal's type is `int64`.
 
 `int`\ XX
-  additional signed integer types of XX bits use this naming scheme
+: additional signed integer types of XX bits use this naming scheme
   (example: int16 is a 16-bit wide integer).
   The current implementation supports `int8`, `int16`, `int32`, `int64`.
   Literals of these types have the suffix 'iXX.
 
 `uint`
-  the generic `unsigned integer`:idx: type; its size is platform-dependent and
+: the generic `unsigned integer`:idx: type; its size is platform-dependent and
   has the same size as a pointer. An integer literal with the type
   suffix `'u` is of this type.
 
 `uint`\ XX
-  additional unsigned integer types of XX bits use this naming scheme
+: additional unsigned integer types of XX bits use this naming scheme
   (example: uint16 is a 16-bit wide unsigned integer).
   The current implementation supports `uint8`, `uint16`, `uint32`,
   `uint64`. Literals of these types have the suffix 'uXX.
@@ -1135,12 +1135,12 @@ Pre-defined floating-point types
 The following floating-point types are pre-defined:
 
 `float`
-  the generic floating-point type; its size used to be platform-dependent,
+: the generic floating-point type; its size used to be platform-dependent,
   but now it is always mapped to `float64`.
   This type should be used in general.
 
 `float`\ XX
-  an implementation may define additional floating-point types of XX bits using
+: an implementation may define additional floating-point types of XX bits using
   this naming scheme (example: `float64` is a 64-bit wide float). The current
   implementation supports `float32` and `float64`. Literals of these types
   have the suffix 'fXX.
@@ -2092,52 +2092,52 @@ that expects a proc of the calling convention `closure`.
 Nim supports these `calling conventions`:idx:\:
 
 `nimcall`:idx:
-    is the default convention used for a Nim **proc**. It is the
+:   is the default convention used for a Nim **proc**. It is the
     same as `fastcall`, but only for C compilers that support `fastcall`.
 
 `closure`:idx:
-    is the default calling convention for a **procedural type** that lacks
+:   is the default calling convention for a **procedural type** that lacks
     any pragma annotations. It indicates that the procedure has a hidden
     implicit parameter (an *environment*). Proc vars that have the calling
     convention `closure` take up two machine words: One for the proc pointer
     and another one for the pointer to implicitly passed environment.
 
 `stdcall`:idx:
-    This is the stdcall convention as specified by Microsoft. The generated C
+:   This is the stdcall convention as specified by Microsoft. The generated C
     procedure is declared with the `__stdcall` keyword.
 
 `cdecl`:idx:
-    The cdecl convention means that a procedure shall use the same convention
+:   The cdecl convention means that a procedure shall use the same convention
     as the C compiler. Under Windows the generated C procedure is declared with
     the `__cdecl` keyword.
 
 `safecall`:idx:
-    This is the safecall convention as specified by Microsoft. The generated C
+:   This is the safecall convention as specified by Microsoft. The generated C
     procedure is declared with the `__safecall` keyword. The word *safe*
     refers to the fact that all hardware registers shall be pushed to the
     hardware stack.
 
 `inline`:idx:
-    The inline convention means the caller should not call the procedure,
+:   The inline convention means the caller should not call the procedure,
     but inline its code directly. Note that Nim does not inline, but leaves
     this to the C compiler; it generates `__inline` procedures. This is
     only a hint for the compiler: it may completely ignore it, and
     it may inline procedures that are not marked as `inline`.
 
 `fastcall`:idx:
-    Fastcall means different things to different C compilers. One gets whatever
+:   Fastcall means different things to different C compilers. One gets whatever
     the C `__fastcall` means.
 
 `thiscall`:idx:
-    This is the thiscall calling convention as specified by Microsoft, used on
+:   This is the thiscall calling convention as specified by Microsoft, used on
     C++ class member functions on the x86 architecture.
 
 `syscall`:idx:
-    The syscall convention is the same as `__syscall`:c: in C. It is used for
+:   The syscall convention is the same as `__syscall`:c: in C. It is used for
     interrupts.
 
 `noconv`:idx:
-    The generated C code will not have any explicit calling convention and thus
+:   The generated C code will not have any explicit calling convention and thus
     use the C compiler's default calling convention. This is needed because
     Nim's default calling convention for procedures is `fastcall` to
     improve speed.
@@ -3929,7 +3929,7 @@ anonymous procedures to routines:
     "City of " & x
   ```
 
-`do` is written after the parentheses enclosing the regular proc params.
+`do` is written after the parentheses enclosing the regular proc parameters.
 The proc expression represented by the `do` block is appended to the routine
 call as the last argument. In calls using the command syntax, the `do` block
 will bind to the immediately preceding expression rather than the command call.
@@ -5234,7 +5234,7 @@ The following example shows how a generic binary tree can be modeled:
   ```nim  test = "nim c $1"
   type
     BinaryTree*[T] = ref object # BinaryTree is a generic type with
-                                # generic param `T`
+                                # generic parameter `T`
       le, ri: BinaryTree[T]     # left and right subtrees; may be nil
       data: T                   # the data stored in a node
 
@@ -5399,7 +5399,7 @@ A type class can be used directly as the parameter's type.
 
 Procedures utilizing type classes in such a manner are considered to be
 `implicitly generic`:idx:. They will be instantiated once for each unique
-combination of param types used within the program.
+combination of parameter types used within the program.
 
 By default, during overload resolution, each named type class will bind to
 exactly one concrete type. We call such type classes `bind once`:idx: types.
@@ -5416,7 +5416,7 @@ Here is an example taken directly from the system module to illustrate this:
   ```
 
 Alternatively, the `distinct` type modifier can be applied to the type class
-to allow each param matching the type class to bind to a different type. Such
+to allow each parameter matching the type class to bind to a different type. Such
 type classes are called `bind many`:idx: types.
 
 Procs written with the implicitly generic style will often need to refer to the
@@ -5911,7 +5911,7 @@ template parameter, it is an `inject`'ed symbol:
   ```nim
   template withFile(f, fn, mode: untyped, actions: untyped): untyped =
     block:
-      var f: File  # since 'f' is a template param, it's injected implicitly
+      var f: File  # since 'f' is a template parameter, it's injected implicitly
       ...
 
   withFile(txt, "ttempl3.txt", fmWrite):
@@ -6300,11 +6300,11 @@ As their name suggests, static parameters must be constant expressions:
   ```
 
 
-For the purposes of code generation, all static params are treated as
-generic params - the proc will be compiled separately for each unique
+For the purposes of code generation, all static parameters are treated as
+generic parameters - the proc will be compiled separately for each unique
 supplied value (or combination of values).
 
-Static params can also appear in the signatures of generic types:
+Static parameters can also appear in the signatures of generic types:
 
   ```nim
   type
@@ -6320,7 +6320,7 @@ Static params can also appear in the signatures of generic types:
   ```
 
 Please note that `static T` is just a syntactic convenience for the underlying
-generic type `static[T]`. The type param can be omitted to obtain the type
+generic type `static[T]`. The type parameter can be omitted to obtain the type
 class of all constant expressions. A more specific type class can be created by
 instantiating `static` with another type class.
 
@@ -6345,12 +6345,12 @@ all values must have a type, `typedesc` is considered their special type.
 
 `typedesc` acts as a generic type. For instance, the type of the symbol
 `int` is `typedesc[int]`. Just like with regular generic types, when the
-generic param is omitted, `typedesc` denotes the type class of all types.
+generic parameter is omitted, `typedesc` denotes the type class of all types.
 As a syntactic convenience, one can also use `typedesc` as a modifier.
 
-Procs featuring `typedesc` params are considered implicitly generic.
+Procs featuring `typedesc` parameters are considered implicitly generic.
 They will be instantiated for each unique combination of supplied types,
-and within the body of the proc, the name of each param will refer to
+and within the body of the proc, the name of each parameter will refer to
 the bound concrete type:
 
   ```nim
@@ -6362,14 +6362,14 @@ the bound concrete type:
   var tree = new(BinaryTree[int])
   ```
 
-When multiple type params are present, they will bind freely to different
-types. To force a bind-once behavior, one can use an explicit generic param:
+When multiple type parameters are present, they will bind freely to different
+types. To force a bind-once behavior, one can use an explicit generic parameter:
 
   ```nim
   proc acceptOnlyTypePairs[T, U](A, B: typedesc[T]; C, D: typedesc[U])
   ```
 
-Once bound, type params can appear in the rest of the proc signature:
+Once bound, type parameters can appear in the rest of the proc signature:
 
   ```nim  test = "nim c $1"
   template declareVariableWithType(T: typedesc, value: T) =
@@ -6380,7 +6380,7 @@ Once bound, type params can appear in the rest of the proc signature:
 
 
 Overload resolution can be further influenced by constraining the set
-of types that will match the type param. This works in practice by
+of types that will match the type parameter. This works in practice by
 attaching attributes to types via templates. The constraint can be a
 concrete type or a type class.
 
