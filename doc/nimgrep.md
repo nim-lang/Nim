@@ -34,13 +34,29 @@ Command line switches
 
 .. include:: nimgrep_cmdline.txt
 
+Path filter options
+-------------------
+
+Let us assume we have file `dirA/dirB/dirC/file.nim`.
+Filesystem path options will match for these parts of the path:
+
+| option              | matches for                        |
+| :------------------ | :--------------------------------  |
+| `--[not]extensions` | ``nim``                            |
+| `--[not]filename`   | ``file.nim``                       |
+| `--[not]dirname`    | ``dirA`` and ``dirB`` and ``dirC`` |
+| `--[not]dirpath`    | ``dirA/dirB/dirC``                 |
+
+Combining multiple filter options together and negating them
+------------------------------------------------------------
+
 Options for filtering can be provided multiple times so they form a list,
 which works as:
 * positive filters
-  `--filename`, `--dirname`, `--parentPath`, `--inContext`,
+  `--filename`, `--dirname`, `--dirpath`, `--inContext`,
   `--inFile` accept files/matches if *any* pattern from the list is hit
 * negative filters
-  `--notfilename`, `--notdirname`, `--notparentPath`, `--notinContext`,
+  `--notfilename`, `--notdirname`, `--notdirpath`, `--notinContext`,
   `--notinFile` accept files/matches if *no* pattern from the list is hit.
 
 In other words the same filtering option repeated many times means logical OR.
@@ -63,9 +79,9 @@ That means you can always use only 1 such an option with logical OR, e.g.
    possibly combined with multi-line mode `(?s)`:literal:.
    E.g. to require that multi-line context of matches has occurences of
    **both** PAT1 and PAT2 use positive lookaheads (`(?=PAT)`:literal:):
-   
-   .. code:: cmd
+     ```cmd
      nimgrep --inContext:'(?s)(?=.*PAT1)(?=.*PAT2)'
+     ```
 
 Meaning of `^`:literal: and `$`:literal:
 ========================================
@@ -104,8 +120,8 @@ All examples below use default PCRE Regex patterns:
     ```cmd
     nimgrep --recursive --dirname:'^tests$'
     # short: -r --di:'^tests$'
-    # or using --parentPath:
-    nimgrep --recursive --parentPath:'(^|/)tests($|/)'
+    # or using --dirpath:
+    nimgrep --recursive --dirpath:'(^|/)tests($|/)'
     # short: -r --pa:'(^|/)tests($|/)'
     ```
 + Nimgrep can search multi-line, e.g. to find files containing `import`:literal:

@@ -6,6 +6,8 @@ discard """
 [Suite] nimgrep contents filtering
 '''
 """
+## Authors: quantimnot, a-mr
+
 import osproc, os, streams, unittest, strutils
 
 #=======
@@ -113,14 +115,14 @@ suite "nimgrep filesystem":
     check ngStdErr.len == 0
     check ngStdOut == only_a
 
-  test "`--parentPath` with matching grandparent path segment":
-    nimgrep "-r --pa:a PATTERN"
+  test "`--dirpath` with matching grandparent path segment":
+    nimgrep "-r --dirp:a PATTERN"
     check ngExitCode == 0
     check ngStdErr.len == 0
     check ngStdOut == only_a
 
-  test "`--parentPath` with matching grandparent path segment":
-    nimgrep "-r --pa:a/b PATTERN".fixSlash
+  test "`--dirpath` with matching grandparent path segment":
+    nimgrep "-r --dirpath:a/b PATTERN".fixSlash
     check ngExitCode == 0
     check ngStdErr.len == 0
     check ngStdOut == only_a
@@ -132,8 +134,8 @@ suite "nimgrep filesystem":
     check ngStdErr.len == 0
     check ngStdOut == only_the_pattern
 
-  test "`--parentPath` with matching parent path segment":
-    nimgrep "-r --parentPath:b PATTERN"
+  test "`--dirpath` with matching parent path segment":
+    nimgrep "-r --dirpath:b PATTERN"
     check ngExitCode == 0
     check ngStdErr.len == 0
     check ngStdOut == only_the_pattern
@@ -174,20 +176,20 @@ suite "nimgrep filesystem":
     check ngStdErr.len == 0
     check ngStdOut == patterns_without_directory_b
 
-  test "`--notParentPath` not matching grandparent path segment":
-    nimgrep "-r --notparentPath:a PATTERN"
+  test "`--notdirpath` not matching grandparent path segment":
+    nimgrep "-r --notdirpath:a PATTERN"
     check ngExitCode == 0
     check ngStdErr.len == 0
     check ngStdOut == patterns_without_directory_a_b
 
-  test "`--notParentPath` not matching parent path segment":
-    nimgrep "-r --npa:b PATTERN"
+  test "`--notdirpath` not matching parent path segment":
+    nimgrep "-r --ndirp:b PATTERN"
     check ngExitCode == 0
     check ngStdErr.len == 0
     check ngStdOut == patterns_without_directory_b
 
-  test "`--notparentPath` with matching grandparent/parent path segment":
-    nimgrep "-r --npa:a/b PATTERN".fixSlash
+  test "`--notdirpath` with matching grandparent/parent path segment":
+    nimgrep "-r --ndirp:a/b PATTERN".fixSlash
     check ngExitCode == 0
     check ngStdErr.len == 0
     check ngStdOut == patterns_without_directory_a_b

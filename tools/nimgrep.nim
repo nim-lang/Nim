@@ -98,8 +98,8 @@ type
     notExtensions: seq[string]
     filename: seq[string]
     notFilename: seq[string]
-    parentPath: seq[string]
-    notParentPath: seq[string]
+    dirPath: seq[string]
+    notDirPath: seq[string]
     dirname : seq[string]
     notDirname : seq[string]
   WalkOptComp[Pat] = tuple  # a compiled version of the previous
@@ -107,8 +107,8 @@ type
     notFilename: seq[Pat]
     dirname : seq[Pat]
     notDirname : seq[Pat]
-    parentPath: seq[Pat]
-    notParentPath: seq[Pat]
+    dirPath: seq[Pat]
+    notDirPath: seq[Pat]
   SearchOpt = tuple  # used for searching inside a file
     patternSet: bool           # To distinguish uninitialized/empty 'pattern'
     pattern: string            # Main PATTERN
@@ -929,7 +929,7 @@ proc hasRightPath(path: string, walkOptC: WalkOptComp[Pattern]): bool =
   if not (
       walkOpt.extensions.len > 0 or walkOpt.notExtensions.len > 0 or
       walkOpt.filename.len > 0 or walkOpt.notFilename.len > 0 or
-      walkOpt.notParentPath.len > 0 or walkOpt.parentPath.len > 0):
+      walkOpt.notDirPath.len > 0 or walkOpt.dirPath.len > 0):
     return true
   let filename = path.lastPathPart
   let ex = filename.splitFile.ext.substr(1) # skip leading '.'
@@ -947,9 +947,9 @@ proc hasRightPath(path: string, walkOptC: WalkOptComp[Pattern]): bool =
   ensureExcluded walkOptC.notFilename, filename:
     return false
   let parent = path.parentDir
-  ensureExcluded walkOptC.notParentPath, parent:
+  ensureExcluded walkOptC.notDirPath, parent:
     return false
-  ensureIncluded walkOptC.parentPath, parent:
+  ensureIncluded walkOptC.dirPath, parent:
     return false
   result = true
 
@@ -1029,11 +1029,11 @@ iterator walkRec(paths: seq[string]): tuple[error: string, filename: string]
          {.closure.} =
   declareCompiledPatterns(walkOptC, WalkOptComp):
     walkOptC.notFilename.add walkOpt.notFilename.compileArray()
-    walkOptC.filename.add walkOpt.filename.compileArray()
-    walkOptC.dirname.add  walkOpt.dirname.compileArray()
+    walkOptC.filename.add    walkOpt.filename.compileArray()
+    walkOptC.dirname.add     walkOpt.dirname.compileArray()
     walkOptC.notDirname.add  walkOpt.notDirname.compileArray()
-    walkOptC.parentPath.add  walkOpt.parentPath.compileArray()
-    walkOptC.notParentPath.add  walkOpt.notParentPath.compileArray()
+    walkOptC.dirPath.add     walkOpt.dirPath.compileArray()
+    walkOptC.notDirPath.add  walkOpt.notDirPath.compileArray()
     for path in paths:
       if dirExists(path):
         for p in walkDirBasic(path, walkOptC):
@@ -1292,11 +1292,11 @@ for kind, key, val in getopt():
     of "ndirname", "notdirname", "ndi", "notdi",
        "excludedir", "ed":  # 2 deprecated options
       walkOpt.notDirname.add val
-    of "parentpath", "pa",
+    of "dirpath", "dirp",
        "includedir", "id":  # 2 deprecated options
-      walkOpt.parentPath.add val
-    of "nparentpath", "notparentpath", "npa", "notpa":
-      walkOpt.notParentPath.add val
+      walkOpt.dirPath.add val
+    of "ndirpath", "notdirpath", "ndirp", "notdirp":
+      walkOpt.notDirPath.add val
     of "filename", "fi",
        "includefile", "include-file", "if":  # 3 deprecated options
       walkOpt.filename.add val

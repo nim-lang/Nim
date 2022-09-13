@@ -65,7 +65,7 @@ Options:
                        order files by the last modification time (default: off):
                        ascending (recent files go last) or descending
 
-* Filter files (based on filesystem names):
+* Filter files (based on filesystem paths):
 
   .. Hint:: Instead of `not` you can type just `n` for negative options below.
 
@@ -81,10 +81,9 @@ Options:
                        that matches pattern PAT
   --notdi[rname]:PAT   do not descend into directories whose name (not path)
                        matches pattern PAT
-  --pa[rentPath]:PAT   select only files whose whole relative directory path
+  --dirp[ath]:PAT      select only files whose whole relative directory path
                        matches pattern PAT
-  --notpa[rentPath]:PAT
-                       skip files whose whole relative directory path
+  --notdirp[ath]:PAT   skip files whose whole relative directory path
                        matches pattern PAT
 
 * Filter files (based on file contents):
