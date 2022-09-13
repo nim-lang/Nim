@@ -180,15 +180,15 @@ The square brackets `[]` indicate an optional element.
 The optional `align` flag can be one of the following:
 
 `<`
-    Forces the field to be left-aligned within the available
+:   Forces the field to be left-aligned within the available
     space. (This is the default for strings.)
 
 `>`
-    Forces the field to be right-aligned within the available space.
+:   Forces the field to be right-aligned within the available space.
     (This is the default for numbers.)
 
 `^`
-    Forces the field to be centered within the available space.
+:   Forces the field to be centered within the available space.
 
 Note that unless a minimum field width is defined, the field width
 will always be the same size as the data to fill it, so that the alignment
