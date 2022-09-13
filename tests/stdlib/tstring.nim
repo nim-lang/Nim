@@ -4,6 +4,7 @@ discard """
 
 from std/sequtils import toSeq, map
 from std/sugar import `=>`
+import std/assertions
 
 proc tester[T](x: T) =
   let test = toSeq(0..4).map(i => newSeq[int]())

@@ -98,6 +98,9 @@
 import std/private/since
 import asyncdispatch, nativesockets, net, os
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 export SOBool
 
 # TODO: Remove duplication introduced by PR #4683.

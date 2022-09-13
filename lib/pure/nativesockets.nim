@@ -16,6 +16,8 @@ import os, options
 import std/private/since
 import std/strbasics
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}

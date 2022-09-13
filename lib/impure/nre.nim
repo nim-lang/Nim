@@ -66,6 +66,9 @@ from strutils import `%`
 import options
 from unicode import runeLenAt
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 export options
 
 type

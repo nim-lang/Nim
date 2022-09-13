@@ -1,5 +1,5 @@
 import std/oids
-
+import std/assertions
 
 block: # genOid
   let x = genOid()

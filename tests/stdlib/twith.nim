@@ -1,4 +1,5 @@
 import std/with
+import std/assertions
 
 type
   Foo = object

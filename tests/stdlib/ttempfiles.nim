@@ -4,6 +4,7 @@ discard """
 
 import std/tempfiles
 import std/[os, nre]
+import std/assertions
 
 const
   prefix = "D20210502T100442" # safety precaution to only affect files/dirs with this prefix

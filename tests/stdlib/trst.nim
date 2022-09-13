@@ -23,6 +23,7 @@ import ../../lib/packages/docutils/[rstgen, rst, rstast]
 import unittest, strutils
 import std/private/miscdollars
 import os
+import std/[assertions, syncio]
 
 const preferMarkdown = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
 const preferRst = {roSupportMarkdown, roNimFile, roSandboxDisabled}

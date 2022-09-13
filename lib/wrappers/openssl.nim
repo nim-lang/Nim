@@ -25,6 +25,9 @@
 #
 from strutils import startsWith
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 

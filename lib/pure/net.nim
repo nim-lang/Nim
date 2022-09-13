@@ -90,6 +90,9 @@ runnableExamples("-r:off"):
 
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import nativesockets
 import os, strutils, times, sets, options, std/monotimes
 import ssl_config

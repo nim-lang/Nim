@@ -15,6 +15,9 @@
 import strutils, lexbase
 import std/private/decode_helpers
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # ------------------- scanner -------------------------------------------------
 
 type

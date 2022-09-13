@@ -39,7 +39,8 @@ runnableExamples:
     assert fromGB2312.convert(second) == "有白头如新，倾盖如故"
 
 
-import os
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 when not defined(windows):
   type

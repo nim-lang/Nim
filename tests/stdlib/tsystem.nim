@@ -3,6 +3,7 @@ discard """
 """
 
 import stdtest/testutils
+import std/assertions
 
 # TODO: in future work move existing `system` tests here, where they belong
 
