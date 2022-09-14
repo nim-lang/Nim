@@ -8,6 +8,27 @@ cppDefine "NAN_INFINITY"
 cppDefine "INF"
 cppDefine "NAN"
 
+import std/os
+
+when not defined(mimallocDynamic):
+  let
+    mimallocPath = "lib" / "system" / "mm" / "mimalloc" 
+    # Quote the paths so we support paths with spaces
+    # TODO: Is there a better way of doing this?
+    mimallocStatic = "mimallocStatic=\"" & (mimallocPath / "src" / "static.c") & '"'
+    mimallocIncludePath = "mimallocIncludePath=\"" & (mimallocPath / "include") & '"'
+
+  # So we can compile mimalloc from the patched files
+  switch("define", mimallocStatic)
+  switch("define", mimallocIncludePath)
+
+# Not sure if we really need those or not, but Mimalloc uses them
+case get("cc")
+of "gcc", "clang", "icc", "icl":
+  switch("passC", "-ftls-model=initial-exec -fno-builtin-malloc")
+else:
+  discard
+
 when defined(nimStrictMode):
   # xxx add more flags here, and use `-d:nimStrictMode` in more contexts in CI.
 

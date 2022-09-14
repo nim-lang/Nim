@@ -8,7 +8,6 @@ else:
   # Specifically for VCC which has different syntax
   {.passc: "/DNDEBUG".}
   {.passl: "psapi.lib bcrypt.lib advapi32.lib".}
-  
 
 when defined(mimallocDynamic):
   {.passl: "-lmimalloc".}

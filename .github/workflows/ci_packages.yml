@@ -43,9 +43,7 @@ jobs:
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
         run: |
-          brew install boehmgc make sfml gtk+3 openssl@1.1
-          ln -s $(brew --prefix)/opt/openssl/lib/libcrypto.1.1.dylib /usr/local/lib
-          ln -s $(brew --prefix)/opt/openssl/lib/libssl.1.1.dylib /usr/local/lib/
+          brew install boehmgc make sfml gtk+3
       - name: 'Install dependencies (Windows)'
         if: runner.os == 'Windows'
         shell: bash
