@@ -4,7 +4,6 @@
 The System module imports several separate modules, and their documentation
 is in separate files:
 
-* `compilation <compilation.html>`_
 * `iterators <iterators.html>`_
 * `exceptions <exceptions.html>`_
 * `assertions <assertions.html>`_

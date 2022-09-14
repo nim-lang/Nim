@@ -24,8 +24,7 @@
 
 include "system/basic_types"
 
-import system/compilation
-export compilation
+include "system/compilation"
 
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 # {.push hints: off.}
