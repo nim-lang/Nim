@@ -71,42 +71,6 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## Converts the AST of `x` into a string representation. This is very useful
   ## for debugging.
 
-proc instantiationInfo*(index = -1, fullPaths = false): tuple[
-  filename: string, line: int, column: int] {.magic: "InstantiationInfo", noSideEffect.}
-  ## Provides access to the compiler's instantiation stack line information
-  ## of a template.
-  ##
-  ## While similar to the `caller info`:idx: of other languages, it is determined
-  ## at compile time.
-  ##
-  ## This proc is mostly useful for meta programming (eg. `assert` template)
-  ## to retrieve information about the current filename and line number.
-  ## Example:
-  ##
-  ##   ```
-  ##   import std/strutils
-  ##
-  ##   template testException(exception, code: untyped): typed =
-  ##     try:
-  ##       let pos = instantiationInfo()
-  ##       discard(code)
-  ##       echo "Test failure at $1:$2 with '$3'" % [pos.filename,
-  ##         $pos.line, astToStr(code)]
-  ##       assert false, "A test expecting failure succeeded?"
-  ##     except exception:
-  ##       discard
-  ##
-  ##   proc tester(pos: int): int =
-  ##     let
-  ##       a = @[1, 2, 3]
-  ##     result = a[pos]
-  ##
-  ##   when isMainModule:
-  ##     testException(IndexDefect, tester(30))
-  ##     testException(IndexDefect, tester(1))
-  ##     # --> Test failure at example.nim:20 with 'tester(1)'
-  ##   ```
-
 proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".} =
   ## A section you should use to mark `runnable example`:idx: code with.
   ##
