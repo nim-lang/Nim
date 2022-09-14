@@ -2779,8 +2779,11 @@ proc `&=`*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
 template `&=`*(x, y: typed) =
   ## Generic 'sink' operator for Nim.
   ##
+  ## For files an alias for `write`.
   ## If not specialized further, an alias for `add`.
   add(x, y)
+when declared(File):
+  template `&=`*(f: File, x: typed) = write(f, x)
 
 template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## Returns the full file-system path of the current source.
