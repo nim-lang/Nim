@@ -233,7 +233,7 @@ from a module. The syntax `import foo {.all.}` can be used to import all
 symbols from the module `foo`. Note that importing private symbols is
 generally not recommended.
 
-See also the experimental `importutils <importutils.html>`_ module.
+See also the experimental [importutils](importutils.html) module.
 
 
 Code reordering
@@ -464,7 +464,7 @@ to use this operator.
 Extended macro pragmas
 ======================
 
-Macro pragmas as described in `the manual <manual.html#userminusdefined-pragmas-macro-pragmas>`_
+Macro pragmas as described in [the manual](manual.html#userminusdefined-pragmas-macro-pragmas)
 can also be applied to type, variable and constant declarations.
 
 For types:
@@ -630,7 +630,7 @@ For example:
 
 
 The algorithm behind this analysis is described in
-the `view types section <#view-types-algorithm>`_.
+the [view types algorithm].
 
 
 View types
@@ -744,7 +744,7 @@ has `source` as the owner. A path expression `e` is defined recursively:
 
 If a view type is used as a return type, the location must borrow from a location
 that is derived from the first parameter that is passed to the proc.
-See `the manual <manual.html#procedures-var-return-type>`_
+See [the manual](manual.html#procedures-var-return-type)
 for details about how this is done for `var T`.
 
 A mutable view can borrow from a mutable location, an immutable view can borrow
@@ -785,7 +785,7 @@ The scope of the view does not matter:
 
 
 The analysis requires as much precision about mutations as is reasonably obtainable,
-so it is more effective with the experimental `strict funcs <#strict-funcs>`_
+so it is more effective with the experimental [strict funcs]
 feature. In other words `--experimental:views`:option: works better
 with `--experimental:strictFuncs`:option:.
 
@@ -1340,7 +1340,7 @@ object inheritance syntax involving the `of` keyword:
   like channels, to implement thread safe automatic memory management.
 
   The builtin `deepCopy` can even clone closures and their environments. See
-  the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
+  the documentation of [spawn][spawn statement] for details.
 
 
 Dynamic arguments for bindSym
@@ -1771,7 +1771,7 @@ Nim has two flavors of parallelism:
 
 Nim has a builtin thread pool that can be used for CPU intensive tasks. For
 IO intensive tasks the `async` and `await` features should be
-used instead. Both parallel and spawn need the `threadpool <threadpool.html>`_
+used instead. Both parallel and spawn need the [threadpool](threadpool.html)
 module to work.
 
 Somewhat confusingly, `spawn` is also used in the `parallel` statement
