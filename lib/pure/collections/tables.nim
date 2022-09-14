@@ -2893,15 +2893,15 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
 
 proc hash*[K,V](s: Table[K,V]): Hash =
   for p in pairs(s):
-    result = result xor hash(p)
+    result = result !& hash(p)
   result = !$result
 
 proc hash*[K,V](s: OrderedTable[K,V]): Hash =
   for p in pairs(s):
-    result = result xor hash(p)
+    result = result !& hash(p)
   result = !$result
 
 proc hash*[V](s: CountTable[V]): Hash =
   for p in pairs(s):
-    result = result xor hash(p)
+    result = result !& hash(p)
   result = !$result
