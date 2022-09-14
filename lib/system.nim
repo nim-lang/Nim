@@ -24,8 +24,8 @@
 
 include "system/basic_types"
 
-# could import but don't want separate documentation page
-include "system/compilation"
+import system/compilation
+export compilation
 
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 # {.push hints: off.}
@@ -460,8 +460,63 @@ type
            ## However, objects that have no ancestor are also allowed.
   RootRef* = ref RootObj ## Reference to `RootObj`.
 
+const NimStackTraceMsgs =
+  when defined(nimHasStacktraceMsgs): compileOption("stacktraceMsgs")
+  else: false
 
-include "system/exceptions"
+type
+  RootEffect* {.compilerproc.} = object of RootObj ## \
+    ## Base effect class.
+    ##
+    ## Each effect should inherit from `RootEffect` unless you know what
+    ## you're doing.
+
+type
+  StackTraceEntry* = object ## In debug mode exceptions store the stack trace that led
+                            ## to them. A `StackTraceEntry` is a single entry of the
+                            ## stack trace.
+    procname*: cstring      ## Name of the proc that is currently executing.
+    line*: int              ## Line number of the proc that is currently executing.
+    filename*: cstring      ## Filename of the proc that is currently executing.
+    when NimStackTraceMsgs:
+      frameMsg*: string     ## When a stacktrace is generated in a given frame and
+                            ## rendered at a later time, we should ensure the stacktrace
+                            ## data isn't invalidated; any pointer into PFrame is
+                            ## subject to being invalidated so shouldn't be stored.
+    when defined(nimStackTraceOverride):
+      programCounter*: uint ## Program counter - will be used to get the rest of the info,
+                            ## when `$` is called on this type. We can't use
+                            ## "cuintptr_t" in here.
+      procnameStr*, filenameStr*: string ## GC-ed alternatives to "procname" and "filename"
+
+  Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
+    ## Base exception class.
+    ##
+    ## Each exception has to inherit from `Exception`. See the full `exception
+    ## hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
+    parent*: ref Exception ## Parent exception (can be used as a stack).
+    name*: cstring         ## The exception's name is its Nim identifier.
+                           ## This field is filled automatically in the
+                           ## `raise` statement.
+    msg* {.exportc: "message".}: string ## The exception's message. Not
+                                        ## providing an exception message
+                                        ## is bad style.
+    when defined(js):
+      trace: string
+    else:
+      trace: seq[StackTraceEntry]
+    up: ref Exception # used for stacking exceptions. Not exported!
+
+  Defect* = object of Exception ## \
+    ## Abstract base class for all exceptions that Nim's runtime raises
+    ## but that are strictly uncatchable as they can also be mapped to
+    ## a `quit` / `trap` / `exit` operation.
+
+  CatchableError* = object of Exception ## \
+    ## Abstract class for all exceptions that are catchable.
+
+import system/exceptions
+export exceptions
 
 when defined(js) or defined(nimdoc):
   type
@@ -1220,7 +1275,8 @@ type
     ## is the signed integer type that should be used for converting
     ## pointers to integer addresses for readability.
 
-include "system/misc_num"
+import system/misc_num
+export misc_num
 
 type
   cstringArray* {.importc: "char**", nodecl.} = ptr UncheckedArray[cstring]

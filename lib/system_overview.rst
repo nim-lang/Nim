@@ -4,10 +4,14 @@
 The System module imports several separate modules, and their documentation
 is in separate files:
 
+* `compilation <compilation.html>`_
 * `iterators <iterators.html>`_
+* `exceptions <exceptions.html>`_
 * `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
 * `widestrs <widestrs.html>`_
+* `backwardsindex <backwardsindex.html>`_
+* `misc_num <misc_num.html>`_
 
 
 Here is a short overview of the most commonly used functions from the
