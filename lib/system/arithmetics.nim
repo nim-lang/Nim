@@ -466,3 +466,49 @@ proc `*=`*[T: SomeInteger](x: var T, y: T) {.
   inline, noSideEffect.} =
   ## Binary `*=` operator for integers.
   x = x * y
+
+# floating point operations:
+proc `+`*(x: float32): float32 {.magic: "UnaryPlusF64", noSideEffect.}
+proc `-`*(x: float32): float32 {.magic: "UnaryMinusF64", noSideEffect.}
+proc `+`*(x, y: float32): float32 {.magic: "AddF64", noSideEffect.}
+proc `-`*(x, y: float32): float32 {.magic: "SubF64", noSideEffect.}
+proc `*`*(x, y: float32): float32 {.magic: "MulF64", noSideEffect.}
+proc `/`*(x, y: float32): float32 {.magic: "DivF64", noSideEffect.}
+
+proc `+`*(x: float): float {.magic: "UnaryPlusF64", noSideEffect.}
+proc `-`*(x: float): float {.magic: "UnaryMinusF64", noSideEffect.}
+proc `+`*(x, y: float): float {.magic: "AddF64", noSideEffect.}
+proc `-`*(x, y: float): float {.magic: "SubF64", noSideEffect.}
+proc `*`*(x, y: float): float {.magic: "MulF64", noSideEffect.}
+proc `/`*(x, y: float): float {.magic: "DivF64", noSideEffect.}
+
+proc `==`*(x, y: float32): bool {.magic: "EqF64", noSideEffect.}
+proc `<=`*(x, y: float32): bool {.magic: "LeF64", noSideEffect.}
+proc `<`  *(x, y: float32): bool {.magic: "LtF64", noSideEffect.}
+
+proc `==`*(x, y: float): bool {.magic: "EqF64", noSideEffect.}
+proc `<=`*(x, y: float): bool {.magic: "LeF64", noSideEffect.}
+proc `<`*(x, y: float): bool {.magic: "LtF64", noSideEffect.}
+
+proc `+=`*[T: float|float32|float64] (x: var T, y: T) {.
+  inline, noSideEffect.} =
+  ## Increments in place a floating point number.
+  x = x + y
+
+proc `-=`*[T: float|float32|float64] (x: var T, y: T) {.
+  inline, noSideEffect.} =
+  ## Decrements in place a floating point number.
+  x = x - y
+
+proc `*=`*[T: float|float32|float64] (x: var T, y: T) {.
+  inline, noSideEffect.} =
+  ## Multiplies in place a floating point number.
+  x = x * y
+
+proc `/=`*(x: var float64, y: float64) {.inline, noSideEffect.} =
+  ## Divides in place a floating point number.
+  x = x / y
+
+proc `/=`*[T: float|float32](x: var T, y: T) {.inline, noSideEffect.} =
+  ## Divides in place a floating point number.
+  x = x / y
