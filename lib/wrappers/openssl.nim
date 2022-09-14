@@ -10,7 +10,7 @@
 ## OpenSSL wrapper. Supports OpenSSL >= 1.1.0 dynamically (as default) or statically linked
 ## using `--dynlibOverride:ssl`.
 ##
-## To use openSSL 3 set the symbol: -d:sslVersion=3
+## To use openSSL 3, either set `-d:sslVersion=3` or `-d:useOpenssl3`.
 ##
 ## Build and test examples:
 ##
@@ -37,7 +37,7 @@ const useWinVersion = defined(windows) or defined(nimdoc)
 # Having two different openSSL loaded version causes a crash.
 # Use this compile time define to force the openSSL version that your other dynamic libraries want.
 const sslVersion {.strdefine.}: string = ""
-const useOpenssl3* = sslVersion.startsWith('3')
+const useOpenssl3* {.booldefine.} = sslVersion.startsWith('3')
 when sslVersion != "":
   when defined(macosx):
     const
@@ -78,9 +78,9 @@ elif useWinVersion:
 else:
   # same list of versions but ordered differently?
   when defined(osx):
-    const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.46|.47|.48|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
+    const versions = "(.3|.1.1|.38|.39|.41|.43|.44|.45|.46|.47|.48|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
   else:
-    const versions = "(.1.1|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|.48|.47|.46|.45|.44|.43|.41|.39|.38|.10|)"
+    const versions = "(.3|.1.1|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|.48|.47|.46|.45|.44|.43|.41|.39|.38|.10|)"
 
   when defined(macosx):
     const
