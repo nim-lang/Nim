@@ -15,7 +15,7 @@ discard """
 
 when not defined(windows):
   # Disabled on Windows due to old OpenSSL version
-
+  import std/formatfloat
   import
     httpclient,
     net,
