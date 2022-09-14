@@ -8,6 +8,7 @@ discard """
 """
 
 
+
 # bug #6736
 import std/unittest
 

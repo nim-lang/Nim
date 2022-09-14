@@ -1,5 +1,5 @@
 import std/with
-import std/assertions
+import std/[assertions, formatfloat]
 
 type
   Foo = object
