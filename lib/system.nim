@@ -1841,10 +1841,13 @@ when not defined(nimscript):
 when defined(nimV2):
   include system/arc
 
+
+import system/assertions
+export assertions
+
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: "assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/assertions`".}
-  import std/assertions
-  export assertions
+  include std/assertions
+
 
 import system/iterators
 export iterators
@@ -2774,11 +2777,8 @@ proc `&=`*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
 template `&=`*(x, y: typed) =
   ## Generic 'sink' operator for Nim.
   ##
-  ## For files an alias for `write`.
   ## If not specialized further, an alias for `add`.
   add(x, y)
-when declared(File):
-  template `&=`*(f: File, x: typed) = write(f, x)
 
 template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## Returns the full file-system path of the current source.
@@ -3156,9 +3156,7 @@ import system/widestrs
 export widestrs
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: "io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`".}
-  import std/syncio
-  export syncio
+  include std/syncio
 else:
   import std/syncio
 

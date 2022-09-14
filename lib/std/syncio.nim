@@ -13,10 +13,14 @@ include system/inclrtl
 import std/private/since
 import std/formatfloat
 
+when declared(ThisIsSystem):
+  {.push deprecated: "about to move out of system, import `std/syncio` instead; use `-d:nimPreviewSlimSystem` to enforce import".}
+
 # ----------------- IO Part ------------------------------------------------
+when not declared(CFile):
+  type CFile {.importc: "FILE", header: "<stdio.h>",
+               incompleteStruct.} = object
 type
-  CFile {.importc: "FILE", header: "<stdio.h>",
-          incompleteStruct.} = object
   File* = ptr CFile ## The type representing a file handle.
 
   FileMode* = enum       ## The file mode when opening a file.
@@ -793,10 +797,12 @@ proc setStdIoUnbuffered*() {.tags: [], benign.} =
 
 when declared(stdout):
   when defined(windows) and compileOption("threads"):
-    proc addSysExitProc(quitProc: proc() {.noconv.}) {.importc: "atexit", header: "<stdlib.h>".}
+    when not declared(addSysExitProc):
+      proc addSysExitProc(quitProc: proc() {.noconv.}) {.importc: "atexit", header: "<stdlib.h>".}
 
-    const insideRLocksModule = false
-    include "system/syslocks"
+    when not declared(insideRLocksModule):
+      const insideRLocksModule = false
+      include "system/syslocks"
 
 
     var echoLock: SysLock
@@ -960,3 +966,10 @@ iterator lines*(f: File): string {.tags: [ReadIOEffect].} =
         result.lines += 1
   var res = newStringOfCap(80)
   while f.readLine(res): yield res
+
+template `&=`*(f: File, x: typed) =
+  ## An alias for `write`.
+  write(f, x)
+
+when declared(ThisIsSystem):
+  {.pop.}
