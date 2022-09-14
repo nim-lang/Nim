@@ -12,9 +12,6 @@
 
 import std/private/digitsutils
 
-when defined(nimPreviewSlimSystem):
-  import std/assertions
-
 
 template sf_Assert(x: untyped): untyped =
   assert(x)

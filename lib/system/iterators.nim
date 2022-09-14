@@ -1,6 +1,3 @@
-when defined(nimPreviewSlimSystem):
-  import std/assertions
-
 when defined(nimHasLentIterators) and not defined(nimNoLentIterators):
   template lent2(T): untyped = lent T
 else:

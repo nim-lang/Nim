@@ -24,9 +24,6 @@
 
 import std/private/digitsutils
 
-when defined(nimPreviewSlimSystem):
-  import std/assertions
-
 const
   dtoaMinBufferLength*: cint = 64
 
