@@ -13,9 +13,6 @@ include system/inclrtl
 import std/private/since
 import std/formatfloat
 
-when declared(ThisIsSystem):
-  {.push deprecated: "about to move out of system, import `std/syncio` instead; use `-d:nimPreviewSlimSystem` to enforce import".}
-
 # ----------------- IO Part ------------------------------------------------
 when not declared(CFile):
   type CFile {.importc: "FILE", header: "<stdio.h>",
@@ -970,6 +967,3 @@ iterator lines*(f: File): string {.tags: [ReadIOEffect].} =
 template `&=`*(f: File, x: typed) =
   ## An alias for `write`.
   write(f, x)
-
-when declared(ThisIsSystem):
-  {.pop.}

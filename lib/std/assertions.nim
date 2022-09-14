@@ -9,9 +9,6 @@
 
 ## This module implements extended assertion support.
 
-when declared(ThisIsSystem):
-  {.push deprecated: "about to move out of system, import `std/assertions` instead; use `-d:nimPreviewSlimSystem` to enforce import".}
-
 import std/private/assertionimpl
 
 export raiseAssert, failedAssertImpl
@@ -63,6 +60,3 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
     except: raisedForeign()
   if wrong:
     raiseAssert(begin & " nothing was raised" & msgEnd)
-
-when declared(ThisIsSystem):
-  {.pop.}
