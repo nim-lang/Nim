@@ -395,8 +395,8 @@ proc newNimNode*(kind: NimNodeKind,
   ## you are transforming.
 
 proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.} =
-  ## Creates a new Ast node by copying the node `n`. It doesn't copy the children node of
-  ## the node `n`.
+  ## Creates a new AST node by copying the node `n`. Note that unlike `copyNimTree`,
+  ## child nodes of `n` are not copied.
   runnableExamples:
     macro foo(x: typed) =
       var s = copyNimNode(x)
@@ -408,8 +408,8 @@ proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.} =
       echo x
 
 proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.} =
-  ## Creates a new Ast node by copying the node `n`. It copies the whole tree of
-  ## the node `n`.
+  ## Creates a new AST node by recursively copying the node `n`. Note that
+  ## unlike `copyNimNode`, this copies `n`, the children of `n`, etc.
   runnableExamples:
     macro foo(x: typed) =
       var s = copyNimTree(x)
