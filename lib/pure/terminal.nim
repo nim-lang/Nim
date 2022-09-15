@@ -673,9 +673,9 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright = false) =
       0, # bg8Bit not supported, see `enableTrueColors` instead.
       0] # unused
     if bg == bgDefault:
-      discard setConsoleTextAttribute(h, cast[int16](cast[uint16](old) or cast[uint16](defaultForegroundColor)))
+      discard setConsoleTextAttribute(h, cast[int16](cast[uint16](old) or cast[uint16](defaultBackgroundColor)))
     else:
-      discard setConsoleTextAttribute(h, cast[int16](cast[uint16](old) or cast[uint16](lookup[fg])))
+      discard setConsoleTextAttribute(h, cast[int16](cast[uint16](old) or cast[uint16](lookup[bg])))
   else:
     gBG = ord(bg)
     if bright: inc(gBG, 60)
