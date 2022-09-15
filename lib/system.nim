@@ -512,33 +512,11 @@ type
   CatchableError* = object of Exception ## \
     ## Abstract class for all exceptions that are catchable.
 
-import system/exceptions
-export exceptions
-
-when not defined(nimPreviewSlimSystem):
-  type
-    ArithmeticError* {.deprecated: "See corresponding Defect".} = ArithmeticDefect
-    DivByZeroError* {.deprecated: "See corresponding Defect".} = DivByZeroDefect
-    OverflowError* {.deprecated: "See corresponding Defect".} = OverflowDefect
-    AccessViolationError* {.deprecated: "See corresponding Defect".} = AccessViolationDefect
-    AssertionError* {.deprecated: "See corresponding Defect".} = AssertionDefect
-    OutOfMemError* {.deprecated: "See corresponding Defect".} = OutOfMemDefect
-    IndexError* {.deprecated: "See corresponding Defect".} = IndexDefect
-
-    FieldError* {.deprecated: "See corresponding Defect".} = FieldDefect
-    RangeError* {.deprecated: "See corresponding Defect".} = RangeDefect
-    StackOverflowError* {.deprecated: "See corresponding Defect".} = StackOverflowDefect
-    ReraiseError* {.deprecated: "See corresponding Defect".} = ReraiseDefect
-    ObjectAssignmentError* {.deprecated: "See corresponding Defect".} = ObjectAssignmentDefect
-    ObjectConversionError* {.deprecated: "See corresponding Defect".} = ObjectConversionDefect
-    FloatingPointError* {.deprecated: "See corresponding Defect".} = FloatingPointDefect
-    FloatInvalidOpError* {.deprecated: "See corresponding Defect".} = FloatInvalidOpDefect
-    FloatDivByZeroError* {.deprecated: "See corresponding Defect".} = FloatDivByZeroDefect
-    FloatOverflowError* {.deprecated: "See corresponding Defect".} = FloatOverflowDefect
-    FloatUnderflowError* {.deprecated: "See corresponding Defect".} = FloatUnderflowDefect
-    FloatInexactError* {.deprecated: "See corresponding Defect".} = FloatInexactDefect
-    DeadThreadError* {.deprecated: "See corresponding Defect".} = DeadThreadDefect
-    NilAccessError* {.deprecated: "See corresponding Defect".} = NilAccessDefect
+when defined(nimIcIntegrityChecks):
+  include "system/exceptions"
+else:
+  import system/exceptions
+  export exceptions
 
 when defined(js) or defined(nimdoc):
   type
@@ -1077,7 +1055,8 @@ when defined(boehmgc):
     const boehmLib = "libgc.so.1"
   {.pragma: boehmGC, noconv, dynlib: boehmLib.}
 
-type TaintedString* {.deprecated: "Deprecated since 1.5".} = string
+when not defined(nimPreviewSlimSystem):
+  type TaintedString* {.deprecated: "Deprecated since 1.5".} = string
 
 
 when defined(profiler) and not defined(nimscript):
@@ -1894,12 +1873,6 @@ proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
   ## for debugging routines marked as `noSideEffect
   ## <manual.html#pragmas-nosideeffect-pragma>`_.
 
-template newException*(exceptn: typedesc, message: string;
-                       parentException: ref Exception = nil): untyped =
-  ## Creates an exception object of type `exceptn` and sets its `msg` field
-  ## to `message`. Returns the new exception object.
-  (ref exceptn)(msg: message, parent: parentException)
-
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
     if s == nil or s.len == 0: result = cstring""
@@ -2324,26 +2297,7 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
 {.pop.} # checks: off
 # {.pop.} # hints: off
 
-import system/backwardsindex
-export backwardsindex except `^^`
-
-template `..^`*(a, b: untyped): untyped =
-  ## A shortcut for `.. ^` to avoid the common gotcha that a space between
-  ## '..' and '^' is required.
-  a .. ^b
-
-template `..<`*(a, b: untyped): untyped =
-  ## A shortcut for `a .. pred(b)`.
-  ##   ```
-  ##   for i in 5 ..< 9:
-  ##     echo i # => 5; 6; 7; 8
-  ##   ```
-  a .. (when b is BackwardsIndex: succ(b) else: pred(b))
-
-template `[]`*(s: string; i: int): char = arrGet(s, i)
-template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
-
-include "system/slice"
+include "system/indices"
 
 proc `&=`*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ## Appends in place to a string.
@@ -2390,14 +2344,26 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
     if (s.reserved and strlitFlag) == 0:
       s.reserved = s.reserved or seqShallowFlag
 
-when defined(nimV2):
-  import system/repr_v2
-  export repr_v2
+type
+  NimNodeObj = object
+
+  NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
+    ## Represents a Nim AST node. Macros operate on this type.
+
+type
+  ForLoopStmt* {.compilerproc.} = object ## \
+    ## A special type that marks a macro as a `for-loop macro`:idx:.
+    ## See `"For Loop Macro" <manual.html#macros-for-loop-macro>`_.
 
 macro varargsLen*(x: varargs[untyped]): int {.since: (1, 1).} =
   ## returns number of variadic arguments in `x`
   proc varargsLenImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
   varargsLenImpl(x)
+
+when defined(nimV2):
+  import system/repr_v2
+  export repr_v2
+
 when hasAlloc or defined(nimscript):
   proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
     ## Inserts `item` into `x` at position `i`.

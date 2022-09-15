@@ -9,7 +9,6 @@ is in separate files:
 * `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
 * `widestrs <widestrs.html>`_
-* `backwardsindex <backwardsindex.html>`_
 * `ctypes <ctypes.html>`_
 
 

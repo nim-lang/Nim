@@ -14,6 +14,25 @@ const
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 
+{.push profiler: off.}
+let nimvm* {.magic: "Nimvm", compileTime.}: bool = false
+  ## May be used only in `when` expression.
+  ## It is true in Nim VM context and false otherwise.
+{.pop.}
+
+const
+  isMainModule* {.magic: "IsMainModule".}: bool = false
+    ## True only when accessed in the main module. This works thanks to
+    ## compiler magic. It is useful to embed testing code in a module.
+
+  CompileDate* {.magic: "CompileDate".}: string = "0000-00-00"
+    ## The date (in UTC) of compilation as a string of the form
+    ## `YYYY-MM-DD`. This works thanks to compiler magic.
+
+  CompileTime* {.magic: "CompileTime".}: string = "00:00:00"
+    ## The time (in UTC) of compilation as a string of the form
+    ## `HH:MM:SS`. This works thanks to compiler magic.
+
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
@@ -193,33 +212,3 @@ proc gorgeEx*(command: string, input = "", cache = ""): tuple[output: string,
   ## Similar to `gorge <#gorge,string,string,string>`_ but also returns the
   ## precious exit code.
   discard
-
-type
-  NimNodeObj = object
-
-  NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
-    ## Represents a Nim AST node. Macros operate on this type.
-
-type
-  ForLoopStmt* {.compilerproc.} = object ## \
-    ## A special type that marks a macro as a `for-loop macro`:idx:.
-    ## See `"For Loop Macro" <manual.html#macros-for-loop-macro>`_.
-
-{.push profiler: off.}
-let nimvm* {.magic: "Nimvm", compileTime.}: bool = false
-  ## May be used only in `when` expression.
-  ## It is true in Nim VM context and false otherwise.
-{.pop.}
-
-const
-  isMainModule* {.magic: "IsMainModule".}: bool = false
-    ## True only when accessed in the main module. This works thanks to
-    ## compiler magic. It is useful to embed testing code in a module.
-
-  CompileDate* {.magic: "CompileDate".}: string = "0000-00-00"
-    ## The date (in UTC) of compilation as a string of the form
-    ## `YYYY-MM-DD`. This works thanks to compiler magic.
-
-  CompileTime* {.magic: "CompileTime".}: string = "00:00:00"
-    ## The time (in UTC) of compilation as a string of the form
-    ## `HH:MM:SS`. This works thanks to compiler magic.

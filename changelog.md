@@ -20,6 +20,7 @@
     `DeadThreadError`, `NilAccessError`
   - Legacy unsigned conversion operations: `ze`, `ze64`,
     `toU8`, `toU16`, `toU32`
+  - `TaintedString`
   - `PInt32`, `PInt64`, `PFloat32`, `PFloat64`
 
 - The `gc:v2` option is removed.

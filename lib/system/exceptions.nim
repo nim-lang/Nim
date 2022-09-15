@@ -7,6 +7,7 @@ type
   WriteIOEffect* = object of IOEffect  ## Effect describing a write IO operation.
   ExecIOEffect* = object of IOEffect   ## Effect describing an executing IO operation.
 
+type
   IOError* = object of CatchableError ## \
     ## Raised if an IO error occurred.
   EOFError* = object of IOError ## \
@@ -94,3 +95,34 @@ type
     ## Raised on dereferences of `nil` pointers.
     ##
     ## This is only raised if the `segfaults module <segfaults.html>`_ was imported!
+
+template newException*(exceptn: typedesc, message: string;
+                       parentException: ref Exception = nil): untyped =
+  ## Creates an exception object of type `exceptn` and sets its `msg` field
+  ## to `message`. Returns the new exception object.
+  (ref exceptn)(msg: message, parent: parentException)
+
+when not defined(nimPreviewSlimSystem):
+  type
+    ArithmeticError* {.deprecated: "See corresponding Defect".} = ArithmeticDefect
+    DivByZeroError* {.deprecated: "See corresponding Defect".} = DivByZeroDefect
+    OverflowError* {.deprecated: "See corresponding Defect".} = OverflowDefect
+    AccessViolationError* {.deprecated: "See corresponding Defect".} = AccessViolationDefect
+    AssertionError* {.deprecated: "See corresponding Defect".} = AssertionDefect
+    OutOfMemError* {.deprecated: "See corresponding Defect".} = OutOfMemDefect
+    IndexError* {.deprecated: "See corresponding Defect".} = IndexDefect
+
+    FieldError* {.deprecated: "See corresponding Defect".} = FieldDefect
+    RangeError* {.deprecated: "See corresponding Defect".} = RangeDefect
+    StackOverflowError* {.deprecated: "See corresponding Defect".} = StackOverflowDefect
+    ReraiseError* {.deprecated: "See corresponding Defect".} = ReraiseDefect
+    ObjectAssignmentError* {.deprecated: "See corresponding Defect".} = ObjectAssignmentDefect
+    ObjectConversionError* {.deprecated: "See corresponding Defect".} = ObjectConversionDefect
+    FloatingPointError* {.deprecated: "See corresponding Defect".} = FloatingPointDefect
+    FloatInvalidOpError* {.deprecated: "See corresponding Defect".} = FloatInvalidOpDefect
+    FloatDivByZeroError* {.deprecated: "See corresponding Defect".} = FloatDivByZeroDefect
+    FloatOverflowError* {.deprecated: "See corresponding Defect".} = FloatOverflowDefect
+    FloatUnderflowError* {.deprecated: "See corresponding Defect".} = FloatUnderflowDefect
+    FloatInexactError* {.deprecated: "See corresponding Defect".} = FloatInexactDefect
+    DeadThreadError* {.deprecated: "See corresponding Defect".} = DeadThreadDefect
+    NilAccessError* {.deprecated: "See corresponding Defect".} = NilAccessDefect
