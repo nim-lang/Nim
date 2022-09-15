@@ -5517,7 +5517,7 @@ generic. `typedesc` has its own set of rules:
 
 
 A parameter of type `typedesc` is itself usable as a type. If it is used
-as a type, it's the underlying type. (In other words, one level
+as a type, it's the underlying type. In other words, one level
 of "typedesc"-ness is stripped off:
 
   ```nim
@@ -5696,7 +5696,7 @@ Example:
 
   ```nim
   template `!=` (a, b: untyped): untyped =
-    # this definition exists in the System module
+    # this definition exists in the system module
     not (a == b)
 
   assert(5 != 6) # the compiler rewrites that to: assert(not (5 == 6))
@@ -6168,9 +6168,9 @@ The macro call expands to:
   writeLine(stdout, x)
   ```
 
-However, the symbols `write`, `writeLine` and `stdout` are already bound
-and are not looked up again. As the example shows, `bindSym` does work with
-overloaded symbols implicitly.
+In this version of `debug`, the symbols `write`, `writeLine` and `stdout`
+are already bound and are not looked up again. As the example shows, `bindSym`
+does work with overloaded symbols implicitly.
 
 Note that the symbol names passed to `bindSym` have to be constant. The
 experimental feature `dynamicBindSym` ([experimental manual](
