@@ -212,7 +212,7 @@ proc semOrd(c: PContext, n: PNode): PNode =
   if isOrdinalType(parType, allowEnumWithHoles=true):
     discard
   else:
-    localError(c.config, n.info, errOrdinalTypeExpected)
+    localError(c.config, n.info, errOrdinalTypeExpected % typeToString(parType, preferDesc))
     result.typ = errorType(c)
 
 proc semBindSym(c: PContext, n: PNode): PNode =
