@@ -241,7 +241,12 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       newSons(result, n.len)
       if start > 0:
         result[0] = n[0]
+      let recursionLimit = cl.recursionLimit
       for i in start..<n.len:
+        if n.kind == nkRecList:
+          # Reset the recursion limit for each object field
+          # Mitigates https://github.com/nim-lang/Nim/issues/20348
+          cl.recursionLimit = recursionLimit
         result[i] = replaceTypeVarsN(cl, n[i])
 
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
