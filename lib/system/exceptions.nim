@@ -1,4 +1,4 @@
-
+## Exception and effect types used in Nim code.
 
 type
   TimeEffect* = object of RootEffect   ## Time effect.

@@ -78,8 +78,6 @@ proc `and`*(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
 proc `not`*(a: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
   ## Constructs an `not` meta class.
 
-proc `|`*(a, b: typedesc): typedesc = discard
-
 when defined(nimHasIterable):
   type
     iterable*[T] {.magic: IterableType.}  ## Represents an expression that yields `T`
@@ -1269,32 +1267,125 @@ when not defined(nimV2):
     ##   echo repr(i) # => 0x1055ed050[1, 2, 3, 4, 5]
     ##   ```
 
-type
-  ByteAddress* = int
-    ## is the signed integer type that should be used for converting
-    ## pointers to integer addresses for readability.
+import system/ctypes
+export ctypes
 
-import system/misc_num
-export misc_num
+const
+  Inf* = 0x7FF0000000000000'f64
+    ## Contains the IEEE floating point value of positive infinity.
+  NegInf* = 0xFFF0000000000000'f64
+    ## Contains the IEEE floating point value of negative infinity.
+  NaN* = 0x7FF7FFFFFFFFFFFF'f64
+    ## Contains an IEEE floating point value of *Not A Number*.
+    ##
+    ## Note that you cannot compare a floating point value to this value
+    ## and expect a reasonable result - use the `isNaN` or `classify` procedure
+    ## in the `math module <math.html>`_ for checking for NaN.
 
-type
-  cstringArray* {.importc: "char**", nodecl.} = ptr UncheckedArray[cstring]
-    ## This is binary compatible to the type `char**` in *C*. The array's
-    ## high value is large enough to disable bounds checking in practice.
-    ## Use `cstringArrayToSeq proc <#cstringArrayToSeq,cstringArray,Natural>`_
-    ## to convert it into a `seq[string]`.
+proc high*(T: typedesc[SomeFloat]): T = Inf
+proc low*(T: typedesc[SomeFloat]): T = NegInf
 
-when not defined(nimPreviewSlimSystem):
-  # pollutes namespace
-  type
-    PFloat32* {.deprecated: "use `ptr float32`".} = ptr float32
-      ## An alias for `ptr float32`.
-    PFloat64* {.deprecated: "use `ptr float64`".} = ptr float64
-      ## An alias for `ptr float64`.
-    PInt64* {.deprecated: "use `ptr int64`".} = ptr int64
-      ## An alias for `ptr int64`.
-    PInt32* {.deprecated: "use `ptr int32`".} = ptr int32
-      ## An alias for `ptr int32`.
+proc toFloat*(i: int): float {.noSideEffect, inline.} =
+  ## Converts an integer `i` into a `float`. Same as `float(i)`.
+  ##
+  ## If the conversion fails, `ValueError` is raised.
+  ## However, on most platforms the conversion cannot fail.
+  ##
+  ##   ```
+  ##   let
+  ##     a = 2
+  ##     b = 3.7
+  ##
+  ##   echo a.toFloat + b # => 5.7
+  ##   ```
+  float(i)
+
+proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.noSideEffect, inline.} =
+  ## Same as `toFloat <#toFloat,int>`_ but for `BiggestInt` to `BiggestFloat`.
+  BiggestFloat(i)
+
+proc toInt*(f: float): int {.noSideEffect.} =
+  ## Converts a floating point number `f` into an `int`.
+  ##
+  ## Conversion rounds `f` half away from 0, see
+  ## `Round half away from zero
+  ## <https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero>`_,
+  ## as opposed to a type conversion which rounds towards zero.
+  ##
+  ## Note that some floating point numbers (e.g. infinity or even 1e19)
+  ## cannot be accurately converted.
+  ##   ```
+  ##   doAssert toInt(0.49) == 0
+  ##   doAssert toInt(0.5) == 1
+  ##   doAssert toInt(-0.5) == -1 # rounding is symmetrical
+  ##   ```
+  if f >= 0: int(f+0.5) else: int(f-0.5)
+
+proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
+  ## Same as `toInt <#toInt,float>`_ but for `BiggestFloat` to `BiggestInt`.
+  if f >= 0: BiggestInt(f+0.5) else: BiggestInt(f-0.5)
+
+proc `/`*(x, y: int): float {.inline, noSideEffect.} =
+  ## Division of integers that results in a float.
+  ##   ```
+  ##   echo 7 / 5 # => 1.4
+  ##   ```
+  ##
+  ## See also:
+  ## * `div <system.html#div,int,int>`_
+  ## * `mod <system.html#mod,int,int>`_
+  result = toFloat(x) / toFloat(y)
+
+{.push stackTrace: off.}
+
+when defined(js):
+  proc js_abs[T: SomeNumber](x: T): T {.importc: "Math.abs".}
+else:
+  proc c_fabs(x: cdouble): cdouble {.importc: "fabs", header: "<math.h>".}
+  proc c_fabsf(x: cfloat): cfloat {.importc: "fabsf", header: "<math.h>".}
+
+proc abs*[T: float64 | float32](x: T): T {.noSideEffect, inline.} =
+  when nimvm:
+    if x < 0.0: result = -x
+    elif x == 0.0: result = 0.0 # handle 0.0, -0.0
+    else: result = x # handle NaN, > 0
+  else:
+    when defined(js): result = js_abs(x)
+    else:
+      when T is float64:
+        result = c_fabs(x)
+      else:
+        result = c_fabsf(x)
+
+func abs*(x: int): int {.magic: "AbsI", inline.} =
+  if x < 0: -x else: x
+func abs*(x: int8): int8 {.magic: "AbsI", inline.} =
+  if x < 0: -x else: x
+func abs*(x: int16): int16 {.magic: "AbsI", inline.} =
+  if x < 0: -x else: x
+func abs*(x: int32): int32 {.magic: "AbsI", inline.} =
+  if x < 0: -x else: x
+func abs*(x: int64): int64 {.magic: "AbsI", inline.} =
+  ## Returns the absolute value of `x`.
+  ##
+  ## If `x` is `low(x)` (that is -MININT for its type),
+  ## an overflow exception is thrown (if overflow checking is turned on).
+  result = if x < 0: -x else: x
+
+proc min*(x, y: float32): float32 {.noSideEffect, inline.} =
+  if x <= y or y != y: x else: y
+proc min*(x, y: float64): float64 {.noSideEffect, inline.} =
+  if x <= y or y != y: x else: y
+proc max*(x, y: float32): float32 {.noSideEffect, inline.} =
+  if y <= x or y != y: x else: y
+proc max*(x, y: float64): float64 {.noSideEffect, inline.} =
+  if y <= x or y != y: x else: y
+proc min*[T: not SomeFloat](x, y: T): T {.inline.} =
+  if x <= y: x else: y
+proc max*[T: not SomeFloat](x, y: T): T {.inline.} =
+  if y <= x: x else: y
+
+{.pop.} # stackTrace: off
 
 proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".}
@@ -1335,6 +1426,9 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
 
 
 include "system/memalloc"
+
+
+proc `|`*(a, b: typedesc): typedesc = discard
 
 include "system/iterators_1"
 
@@ -2589,7 +2683,7 @@ when defined(genode):
 import system/widestrs
 export widestrs
 
-when declared(cstdout):
+when notJSnotNims:
   when defined(windows) and compileOption("threads"):
     when not declared(addSysExitProc):
       proc addSysExitProc(quitProc: proc() {.noconv.}) {.importc: "atexit", header: "<stdlib.h>".}

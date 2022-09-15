@@ -167,7 +167,7 @@ when not useWinVersion:
 
 else:
   proc toInt(domain: Domain): cint =
-    result = toU32(ord(domain)).cint
+    result = cast[cint](uint32(ord(domain)))
 
   proc toKnownDomain*(family: cint): Option[Domain] =
     ## Converts the platform-dependent `cint` to the Domain or none(),
@@ -373,9 +373,9 @@ when not useNimNetLite:
     ##
     ## On posix this will search through the `/etc/services` file.
     when useWinVersion:
-      var s = winlean.getservbyport(ze(int16(port)).cint, proto)
+      var s = winlean.getservbyport(uint16(port).cint, proto)
     else:
-      var s = posix.getservbyport(ze(int16(port)).cint, proto)
+      var s = posix.getservbyport(uint16(port).cint, proto)
     if s == nil: raiseOSError(osLastError(), "Service not found.")
     result.name = $s.s_name
     result.aliases = cstringArrayToSeq(s.s_aliases)

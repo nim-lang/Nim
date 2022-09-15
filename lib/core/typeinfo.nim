@@ -87,7 +87,7 @@ type
       rawTypePtr: pointer
 
   ppointer = ptr pointer
-  pbyteArray = ptr array[0xffff, int8]
+  pbyteArray = ptr array[0xffff, uint8]
 
 when not defined(gcDestructors):
   type
@@ -135,10 +135,10 @@ proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
   var d: int
   let a = cast[ByteAddress](aa)
   case n.typ.size
-  of 1: d = ze(cast[ptr int8](a +% n.offset)[])
-  of 2: d = ze(cast[ptr int16](a +% n.offset)[])
-  of 4: d = int(cast[ptr int32](a +% n.offset)[])
-  of 8: d = int(cast[ptr int64](a +% n.offset)[])
+  of 1: d = int(cast[ptr uint8](a +% n.offset)[])
+  of 2: d = int(cast[ptr uint16](a +% n.offset)[])
+  of 4: d = int(cast[ptr uint32](a +% n.offset)[])
+  of 8: d = int(cast[ptr uint64](a +% n.offset)[])
   else: assert(false)
   return d
 
@@ -480,8 +480,8 @@ proc getBiggestInt*(x: Any): BiggestInt =
   of tyChar: result = BiggestInt(cast[ptr char](x.value)[])
   of tyEnum, tySet:
     case t.size
-    of 1: result = ze64(cast[ptr int8](x.value)[])
-    of 2: result = ze64(cast[ptr int16](x.value)[])
+    of 1: result = int64(cast[ptr uint8](x.value)[])
+    of 2: result = int64(cast[ptr uint16](x.value)[])
     of 4: result = BiggestInt(cast[ptr int32](x.value)[])
     of 8: result = BiggestInt(cast[ptr int64](x.value)[])
     else: assert false
@@ -505,8 +505,8 @@ proc setBiggestInt*(x: Any, y: BiggestInt) =
   of tyChar: cast[ptr char](x.value)[] = chr(y.int)
   of tyEnum, tySet:
     case t.size
-    of 1: cast[ptr int8](x.value)[] = toU8(y.int)
-    of 2: cast[ptr int16](x.value)[] = toU16(y.int)
+    of 1: cast[ptr uint8](x.value)[] = uint8(y.int)
+    of 2: cast[ptr uint16](x.value)[] = uint16(y.int)
     of 4: cast[ptr int32](x.value)[] = int32(y)
     of 8: cast[ptr int64](x.value)[] = y
     else: assert false
@@ -687,14 +687,14 @@ iterator elements*(x: Any): int =
   # "typ.slots.len" field is for sets the "first" field
   var u: int64
   case typ.size
-  of 1: u = ze64(cast[ptr int8](p)[])
-  of 2: u = ze64(cast[ptr int16](p)[])
-  of 4: u = ze64(cast[ptr int32](p)[])
+  of 1: u = int64(cast[ptr uint8](p)[])
+  of 2: u = int64(cast[ptr uint16](p)[])
+  of 4: u = int64(cast[ptr uint32](p)[])
   of 8: u = cast[ptr int64](p)[]
   else:
     let a = cast[pbyteArray](p)
     for i in 0 .. typ.size*8-1:
-      if (ze(a[i div 8]) and (1 shl (i mod 8))) != 0:
+      if (int(a[i div 8]) and (1 shl (i mod 8))) != 0:
         yield i + typ.node.len
   if typ.size <= 8:
     for i in 0..sizeof(int64)*8-1:
@@ -723,4 +723,4 @@ proc inclSetElement*(x: Any, elem: int) =
     a[] = a[] or (1'i64 shl e)
   else:
     var a = cast[pbyteArray](p)
-    a[e shr 3] = toU8(a[e shr 3] or (1 shl (e and 7)))
+    a[e shr 3] = a[e shr 3] or uint8(1 shl (e and 7))

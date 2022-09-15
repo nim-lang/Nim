@@ -422,10 +422,10 @@ else:
     importc: "GetCommandLineA", stdcall, dynlib: "kernel32", sideEffect.}
 
 proc rdFileTime*(f: FILETIME): int64 =
-  result = ze64(f.dwLowDateTime) or (ze64(f.dwHighDateTime) shl 32)
+  result = int64(cast[uint32](f.dwLowDateTime)) or (int64(cast[uint32](f.dwHighDateTime)) shl 32)
 
 proc rdFileSize*(f: WIN32_FIND_DATA): int64 =
-  result = ze64(f.nFileSizeLow) or (ze64(f.nFileSizeHigh) shl 32)
+  result = int64(cast[uint32](f.nFileSizeLow)) or (int64(cast[uint32](f.nFileSizeHigh)) shl 32)
 
 proc getSystemTimeAsFileTime*(lpSystemTimeAsFileTime: var FILETIME) {.
   importc: "GetSystemTimeAsFileTime", dynlib: "kernel32", stdcall, sideEffect.}

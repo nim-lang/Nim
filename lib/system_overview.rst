@@ -10,7 +10,7 @@ is in separate files:
 * `dollars <dollars.html>`_
 * `widestrs <widestrs.html>`_
 * `backwardsindex <backwardsindex.html>`_
-* `misc_num <misc_num.html>`_
+* `ctypes <ctypes.html>`_
 
 
 Here is a short overview of the most commonly used functions from the
