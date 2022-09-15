@@ -6168,9 +6168,9 @@ The macro call expands to:
   writeLine(stdout, x)
   ```
 
-However, the symbols `write`, `writeLine` and `stdout` are already bound
-and are not looked up again. As the example shows, `bindSym` does work with
-overloaded symbols implicitly.
+In this version of `debug`, the symbols `write`, `writeLine` and `stdout`
+are already bound and are not looked up again. As the example shows, `bindSym`
+does work with overloaded symbols implicitly.
 
 Note that the symbol names passed to `bindSym` have to be constant. The
 experimental feature `dynamicBindSym` ([experimental manual](
