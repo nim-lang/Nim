@@ -2,9 +2,7 @@ trigger:
   branches:
     include:
     - 'devel'
-    - 'version-1-6'
-    - 'version-1-2'
-    - 'version-1-0'
+    - 'version-*
 pr:
   branches:
     include:
