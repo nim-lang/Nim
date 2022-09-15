@@ -6,18 +6,8 @@
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
 
-- Certain definitions from the default `system` module have been moved to
-  the following new modules:
-
-  - `std/syncio`
-  - `std/assertions`
-  - `std/formatfloat`
-  - `std/objectdollar`
-
-  In the future, these definitions will be removed from the `system` module,
-  and their respective modules will have to be imported to use them.
-  Currently, to make these imports required, the `-d:nimPreviewSlimSystem` option
-  may be used.
+- `io`, `assertions`, `formatfloat`, and `` dollars.`$` `` for objects are about to move out of the `system` module. You may instead import `std/syncio`, `std/assertions`, `std/formatfloat` and `std/objectdollar`.
+  The `-d:nimPreviewSlimSystem` option makes these imports required.
 
 - The `gc:v2` option is removed.
 
