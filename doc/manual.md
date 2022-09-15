@@ -1313,6 +1313,38 @@ as `MyEnum.value`:
   echo MyEnum.amb # OK.
   ```
 
+Enum value names are overloadable, much like routines. If both of the enums
+`T` and `U` have a member named `foo`, then the identifier `foo` corresponds
+to a choice between `T.foo` and `U.foo`. During overload resolution,
+the correct type of `foo` is decided from the context. If the type of `foo` is
+ambiguous, a static error will be produced.
+
+  ```nim  test = "nim c $1"
+
+  type
+    E1 = enum
+      value1,
+      value2
+    E2 = enum
+      value1,
+      value2 = 4
+
+  const
+    Lookuptable = [
+      E1.value1: "1",
+      # no need to qualify value2, known to be E1.value2
+      value2: "2"
+    ]
+
+  proc p(e: E1) =
+    # disambiguation in 'case' statements:
+    case e
+    of value1: echo "A"
+    of value2: echo "B"
+
+  p value2
+  ```
+
 To implement bit fields with enums see [Bit fields].
 
 
