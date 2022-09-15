@@ -5517,7 +5517,7 @@ generic. `typedesc` has its own set of rules:
 
 
 A parameter of type `typedesc` is itself usable as a type. If it is used
-as a type, it's the underlying type. (In other words, one level
+as a type, it's the underlying type. In other words, one level
 of "typedesc"-ness is stripped off:
 
   ```nim
@@ -5696,7 +5696,7 @@ Example:
 
   ```nim
   template `!=` (a, b: untyped): untyped =
-    # this definition exists in the System module
+    # this definition exists in the system module
     not (a == b)
 
   assert(5 != 6) # the compiler rewrites that to: assert(not (5 == 6))
