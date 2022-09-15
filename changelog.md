@@ -9,6 +9,19 @@
 - `io`, `assertions`, `formatfloat`, and `` dollars.`$` `` for objects are about to move out of the `system` module. You may instead import `std/syncio`, `std/assertions`, `std/formatfloat` and `std/objectdollar`.
   The `-d:nimPreviewSlimSystem` option makes these imports required.
 
+- With `-d:nimPreviewSlimSystem`, the following deprecated symbols in
+  the `system` module are also removed:
+  - Defect types with `Error` suffix instead of `Defect`:
+    `ArithmeticError`, `DivByZeroError`, `OverflowError`,
+    `AccessViolationError`, `AssertionError`, `OutOfMemError`, `IndexError`,
+    `FieldError`, `RangeError`, `StackOverflowError`, `ReraiseError`,
+    `ObjectAssignmentError`, `ObjectConversionError`, `FloatingPointError`,
+    `FloatOverflowError`, `FloatUnderflowError`, `FloatInexactError`,
+    `DeadThreadError`, `NilAccessError`
+  - Legacy unsigned conversion operations: `ze`, `ze64`,
+    `toU8`, `toU16`, `toU32`
+  - `PInt32`, `PInt64`, `PFloat32`, `PFloat64`
+
 - The `gc:v2` option is removed.
 
 - The `threads:on` option is now the default.

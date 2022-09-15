@@ -1270,6 +1270,11 @@ when not defined(nimV2):
 import system/ctypes
 export ctypes
 
+when not defined(nimPreviewSlimSystem):
+  type
+    csize* {.importc: "size_t", nodecl, deprecated: "use `csize_t` instead".} = int
+      ## This isn't the same as `size_t` in *C*. Don't use it.
+
 const
   Inf* = 0x7FF0000000000000'f64
     ## Contains the IEEE floating point value of positive infinity.

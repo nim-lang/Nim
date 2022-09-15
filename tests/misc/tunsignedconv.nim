@@ -60,6 +60,9 @@ discard $(x1,)
 let n: csize = 1 # xxx should that be csize_t or is that essential here?
 doAssert $n.int32 == "1"
 
+let n2: csize_t = 1
+doAssert $n2.int32 == "1"
+
 # bug #14616
 
 let limit = 1'u64

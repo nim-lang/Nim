@@ -45,8 +45,6 @@ type # these work for most platforms:
     ## This is the same as the type `short` in *C*.
   cint* {.importc: "int", nodecl.} = int32
     ## This is the same as the type `int` in *C*.
-  csize* {.importc: "size_t", nodecl, deprecated: "use `csize_t` instead".} = int
-    ## This isn't the same as `size_t` in *C*. Don't use it.
   csize_t* {.importc: "size_t", nodecl.} = uint
     ## This is the same as the type `size_t` in *C*.
   clonglong* {.importc: "long long", nodecl.} = int64
