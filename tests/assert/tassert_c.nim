@@ -4,8 +4,8 @@ discard """
 """
 
 const expected = """
-tassert_c.nim(35)       tassert_c
-tassert_c.nim(34)       foo
+tassert_c.nim(35)        tassert_c
+tassert_c.nim(34)        foo
 assertionimpl.nim(*)    failedAssertImpl
 assertionimpl.nim(*)    raiseAssert
 fatal.nim(*)            sysFatal"""
