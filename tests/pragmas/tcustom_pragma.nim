@@ -383,6 +383,13 @@ block:
 
   discard Hello(a: 1.0, b: 12)
 
+# custom pragma on iterators
+block:
+  template prag {.pragma.}
+  {.push prag.}
+  proc hello = discard
+  iterator hello2: int = discard
+
 # issue #11511
 when false:
   template myAttr {.pragma.}
