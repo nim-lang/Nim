@@ -96,12 +96,6 @@ type
     ##
     ## This is only raised if the `segfaults module <segfaults.html>`_ was imported!
 
-template newException*(exceptn: typedesc, message: string;
-                       parentException: ref Exception = nil): untyped =
-  ## Creates an exception object of type `exceptn` and sets its `msg` field
-  ## to `message`. Returns the new exception object.
-  (ref exceptn)(msg: message, parent: parentException)
-
 when not defined(nimPreviewSlimSystem):
   type
     ArithmeticError* {.deprecated: "See corresponding Defect".} = ArithmeticDefect
