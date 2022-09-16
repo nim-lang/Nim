@@ -123,7 +123,7 @@ pkg "ormin", "nim c -o:orminn ormin.nim"
 pkg "parsetoml"
 pkg "patty"
 pkg "pixie"
-pkg "plotly", "nim c examples/all.nim"
+# pkg "plotly", "nim c examples/all.nim"  # see https://github.com/nim-lang/Nim/pull/19642
 pkg "pnm"
 pkg "polypbren", allowFailure = true
 pkg "prologue", "nimble tcompile"
