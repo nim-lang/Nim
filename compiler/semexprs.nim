@@ -2504,7 +2504,7 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
           if expectedElementType == nil:
             expectedElementType = typ
     if not isOrdinalType(typ, allowEnumWithHoles=true):
-      localError(c.config, n.info, errOrdinalTypeExpected)
+      localError(c.config, n.info, errOrdinalTypeExpected % typeToString(typ, preferDesc))
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
     elif lengthOrd(c.config, typ) > MaxSetElements:
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)

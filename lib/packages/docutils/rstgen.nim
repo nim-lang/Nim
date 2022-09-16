@@ -1212,7 +1212,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnBulletItem, rnEnumItem:
     renderAux(d, n, "<li$2>$1</li>\n", "\\item $2$1\n", result)
   of rnEnumList: renderEnumList(d, n, result)
-  of rnDefList:
+  of rnDefList, rnMdDefList:
     renderAux(d, n, "<dl$2 class=\"docutils\">$1</dl>\n",
                     "\\begin{description}\n$2\n$1\\end{description}\n", result)
   of rnDefItem: renderAux(d, n, result)
