@@ -345,10 +345,10 @@ block troofregression:
       echo "Failure ", a, " != ", b
 
   check typeof(4 ...< 1), "HSlice[system.int, system.int]"
-  check typeof(4 ...< ^1), "HSlice[system.int, backwardsindex.BackwardsIndex]"
-  check typeof(4 ... pred(^1)), "HSlice[system.int, backwardsindex.BackwardsIndex]"
+  check typeof(4 ...< ^1), "HSlice[system.int, system.BackwardsIndex]"
+  check typeof(4 ... pred(^1)), "HSlice[system.int, system.BackwardsIndex]"
   check typeof(4 ... mypred(8)), "HSlice[system.int, system.int]"
-  check typeof(4 ... mypred(^1)), "HSlice[system.int, backwardsindex.BackwardsIndex]"
+  check typeof(4 ... mypred(^1)), "HSlice[system.int, system.BackwardsIndex]"
 
   var rot = 8
 

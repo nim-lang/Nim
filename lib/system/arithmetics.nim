@@ -324,14 +324,6 @@ proc `-`*(x, y: float): float {.magic: "SubF64", noSideEffect.}
 proc `*`*(x, y: float): float {.magic: "MulF64", noSideEffect.}
 proc `/`*(x, y: float): float {.magic: "DivF64", noSideEffect.}
 
-proc `==`*(x, y: float32): bool {.magic: "EqF64", noSideEffect.}
-proc `<=`*(x, y: float32): bool {.magic: "LeF64", noSideEffect.}
-proc `<`  *(x, y: float32): bool {.magic: "LtF64", noSideEffect.}
-
-proc `==`*(x, y: float): bool {.magic: "EqF64", noSideEffect.}
-proc `<=`*(x, y: float): bool {.magic: "LeF64", noSideEffect.}
-proc `<`*(x, y: float): bool {.magic: "LtF64", noSideEffect.}
-
 proc `+=`*[T: float|float32|float64] (x: var T, y: T) {.
   inline, noSideEffect.} =
   ## Increments in place a floating point number.

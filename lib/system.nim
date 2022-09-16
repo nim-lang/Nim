@@ -1381,33 +1381,21 @@ func abs*(x: int64): int64 {.magic: "AbsI", inline.} =
   ## an overflow exception is thrown (if overflow checking is turned on).
   result = if x < 0: -x else: x
 
-proc min*(x, y: float32): float32 {.noSideEffect, inline.} =
-  if x <= y or y != y: x else: y
-proc min*(x, y: float64): float64 {.noSideEffect, inline.} =
-  if x <= y or y != y: x else: y
-proc max*(x, y: float32): float32 {.noSideEffect, inline.} =
-  if y <= x or y != y: x else: y
-proc max*(x, y: float64): float64 {.noSideEffect, inline.} =
-  if y <= x or y != y: x else: y
-proc min*[T: not SomeFloat](x, y: T): T {.inline.} =
-  if x <= y: x else: y
-proc max*[T: not SomeFloat](x, y: T): T {.inline.} =
-  if y <= x: x else: y
-
 {.pop.} # stackTrace: off
 
-proc addQuitProc*(quitProc: proc() {.noconv.}) {.
-  importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".}
-  ## Adds/registers a quit procedure.
-  ##
-  ## Each call to `addQuitProc` registers another quit procedure. Up to 30
-  ## procedures can be registered. They are executed on a last-in, first-out
-  ## basis (that is, the last function registered is the first to be executed).
-  ## `addQuitProc` raises an EOutOfIndex exception if `quitProc` cannot be
-  ## registered.
-  # Support for addQuitProc() is done by Ansi C's facilities here.
-  # In case of an unhandled exception the exit handlers should
-  # not be called explicitly! The user may decide to do this manually though.
+when not defined(nimPreviewSlimSystem):
+  proc addQuitProc*(quitProc: proc() {.noconv.}) {.
+    importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".}
+    ## Adds/registers a quit procedure.
+    ##
+    ## Each call to `addQuitProc` registers another quit procedure. Up to 30
+    ## procedures can be registered. They are executed on a last-in, first-out
+    ## basis (that is, the last function registered is the first to be executed).
+    ## `addQuitProc` raises an EOutOfIndex exception if `quitProc` cannot be
+    ## registered.
+    # Support for addQuitProc() is done by Ansi C's facilities here.
+    # In case of an unhandled exception the exit handlers should
+    # not be called explicitly! The user may decide to do this manually though.
 
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## Swaps the values `a` and `b`.
