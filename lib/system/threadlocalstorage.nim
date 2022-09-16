@@ -139,16 +139,9 @@ else:
                        header: "<pthread.h>".} = object
       ThreadVarSlot {.importc: "pthread_key_t",
                      header: "<pthread.h>".} = cint
-  elif defined(macos):
-    type
-      SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = pointer
-      Pthread_attr {.importc: "pthread_attr_t",
-                       header: "<sys/types.h>".} = object
-      ThreadVarSlot {.importc: "pthread_key_t",
-                     header: "<sys/types.h>".} = object
   else:
     type
-      SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = object
+      SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = distinct pointer
       Pthread_attr {.importc: "pthread_attr_t",
                        header: "<sys/types.h>".} = object
       ThreadVarSlot {.importc: "pthread_key_t",
