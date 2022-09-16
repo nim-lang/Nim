@@ -2,6 +2,7 @@
 
 
 ## Changes affecting backward compatibility
+- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response, it followed Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously raise `ValueError`.  
 
 - The `Math.trunc` polyfill for targeting Internet Explorer was
   previously emitted for every JavaScript output file except if
