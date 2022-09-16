@@ -1313,6 +1313,38 @@ as `MyEnum.value`:
   echo MyEnum.amb # OK.
   ```
 
+Enum value names are overloadable, much like routines. If both of the enums
+`T` and `U` have a member named `foo`, then the identifier `foo` corresponds
+to a choice between `T.foo` and `U.foo`. During overload resolution,
+the correct type of `foo` is decided from the context. If the type of `foo` is
+ambiguous, a static error will be produced.
+
+  ```nim  test = "nim c $1"
+
+  type
+    E1 = enum
+      value1,
+      value2
+    E2 = enum
+      value1,
+      value2 = 4
+
+  const
+    Lookuptable = [
+      E1.value1: "1",
+      # no need to qualify value2, known to be E1.value2
+      value2: "2"
+    ]
+
+  proc p(e: E1) =
+    # disambiguation in 'case' statements:
+    case e
+    of value1: echo "A"
+    of value2: echo "B"
+
+  p value2
+  ```
+
 To implement bit fields with enums see [Bit fields].
 
 
@@ -5485,7 +5517,7 @@ generic. `typedesc` has its own set of rules:
 
 
 A parameter of type `typedesc` is itself usable as a type. If it is used
-as a type, it's the underlying type. (In other words, one level
+as a type, it's the underlying type. In other words, one level
 of "typedesc"-ness is stripped off:
 
   ```nim
@@ -5664,7 +5696,7 @@ Example:
 
   ```nim
   template `!=` (a, b: untyped): untyped =
-    # this definition exists in the System module
+    # this definition exists in the system module
     not (a == b)
 
   assert(5 != 6) # the compiler rewrites that to: assert(not (5 == 6))
@@ -6136,9 +6168,9 @@ The macro call expands to:
   writeLine(stdout, x)
   ```
 
-However, the symbols `write`, `writeLine` and `stdout` are already bound
-and are not looked up again. As the example shows, `bindSym` does work with
-overloaded symbols implicitly.
+In this version of `debug`, the symbols `write`, `writeLine` and `stdout`
+are already bound and are not looked up again. As the example shows, `bindSym`
+does work with overloaded symbols implicitly.
 
 Note that the symbol names passed to `bindSym` have to be constant. The
 experimental feature `dynamicBindSym` ([experimental manual](
