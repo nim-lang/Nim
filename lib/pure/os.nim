@@ -2553,25 +2553,14 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1",
   ## * `copyDir proc`_
   ## * `copyDirWithPermissions proc`_
   ## * `moveDir proc`_
-  var omitNext = false
-  when doslikeFileSystem:
-    var start = 1
-    if isAbsolute(dir):
-      omitNext = true
-      start = dir.splitDrive.drive.len + 1
-  else:
-    let start = 1
-  for i in start.. dir.len-1:
-    if dir[i] in {DirSep, AltSep}:
-      if omitNext:
-        omitNext = false
-      else:
-        discard existsOrCreateDir(substr(dir, 0, i-1))
-
-  # The loop does not create the dir itself if it doesn't end in separator
-  if dir.len > 0 and not omitNext and
-     dir[^1] notin {DirSep, AltSep}:
-    discard existsOrCreateDir(dir)
+  if dir == "":
+    return
+  var omitNext = isAbsolute(dir)
+  for p in parentDirs(dir, fromRoot=true):
+    if omitNext:
+      omitNext = false
+    else:
+      discard existsOrCreateDir(p)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadDirEffect, WriteIOEffect, ReadIOEffect], benign, noWeirdTarget.} =

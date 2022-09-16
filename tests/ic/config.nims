@@ -1,2 +1,2 @@
 when defined(windows):
-  --threads:off
+  --tlsEmulation:off
