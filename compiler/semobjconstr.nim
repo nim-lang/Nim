@@ -398,15 +398,12 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
       # multiple times as long as they don't have closures.
       result.typ.flags.incl tfHasOwned
   if t.kind != tyObject:
-    if t.kind == tyGenericBody:
-      localError(
-        c.config,
-        n.info,
-        "cannot instantiate: '" &
+    return localErrorNode(c, result, if t.kind != tyGenericBody:
+      "object constructor needs an object type".dup(addDeclaredLoc(c.config, t))
+      else: "cannot instantiate: '" &
         typeToString(t, preferDesc) &
-        "'; Maybe generic arguments are missing?")
-    return localErrorNode(c, result,
-      "object constructor needs an object type".dup(addDeclaredLoc(c.config, t)))
+        "'; Maybe generic arguments are missing?"
+      )
 
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different
