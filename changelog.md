@@ -55,12 +55,6 @@
   making limiting it to just the first char (`last = 0`) valid.
 - `random.rand` now works with `Ordinal`s.
 
-- Added `IsoWeekRange`, a range type to represent the number of weeks in an ISO week-based year.
-- Added `IsoYear`, a distinct int type to prevent bugs from confusing the week-based year and the regular year.
-- Added `initDateTime` in `times` to create a datetime from a weekday, and ISO 8601 week number and week-based year.
-- Added `getIsoWeekAndYear` in `times` to get an ISO week number along with the corresponding ISO week-based year from a datetime.
-- Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year.
-- Added `capacity` for `string` and `seq` to return the current capacity, see https://github.com/nim-lang/RFCs/issues/460
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
   - Added `IsoWeekRange`, a range type for weeks in a week-based year.
@@ -75,6 +69,7 @@
   in `jscore` for JavaScript targets.
 - Added `UppercaseLetters`, `LowercaseLetters`, `PunctuationChars`, `PrintableChars` sets to `std/strutils`.
 - Added `complex.sgn` for obtaining the phase of complex numbers.
+- Added `capacity` for `string` and `seq` to return the current capacity, see https://github.com/nim-lang/RFCs/issues/460
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
@@ -143,10 +138,10 @@
   added to make this work explicitly, and a warning is generated in the case
   where it is implicit. This behavior only applies to templates, redefinition
   is generally disallowed for other symbols.
-  
+
 - A new form of type inference called [top-down inference](https://nim-lang.github.io/Nim/manual_experimental.html#topminusdown-type-inference)
   has been implemented for a variety of basic cases. For example, code like the following now compiles:
-  
+
   ```nim
   let foo: seq[(float, byte, cstring)] = @[(1, 2, "abc")]
   ```
@@ -159,7 +154,7 @@
 
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
   reality better. (Nim moved away from all techniques based on "tracing".)
-  
+
 - Defines the `gcRefc` symbol which allows writing specific code for the refc GC.
 
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
@@ -177,4 +172,3 @@
 - Nim now supports Nimble version 0.14 which added support for lock-files. This is done by
   a simple configuration change setting that you can do yourself too. In `$nim/config/nim.cfg`
   replace `pkgs` by `pkgs2`.
-
