@@ -544,6 +544,12 @@ proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
 
 when defineSsl:
   # OpenSSL >= 1.1.0 does not need explicit init.
+  when not useOpenssl3:
+    CRYPTO_malloc_init()
+    doAssert SslLibraryInit() == 1
+    SSL_load_error_strings()
+    ERR_load_BIO_strings()
+    OpenSSL_add_all_algorithms()
 
   proc sslHandle*(self: Socket): SslPtr =
     ## Retrieve the ssl pointer of `socket`.
