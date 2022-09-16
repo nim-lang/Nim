@@ -141,7 +141,7 @@ else:
                      header: "<pthread.h>".} = cint
   else:
     type
-      SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = distinct pointer
+      SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = int
       Pthread_attr {.importc: "pthread_attr_t",
                        header: "<sys/types.h>".} = object
       ThreadVarSlot {.importc: "pthread_key_t",
