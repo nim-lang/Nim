@@ -24,12 +24,12 @@
 ## using simple plaintext representation.
 ##
 ## This module is also embedded into Nim compiler; the compiler can output
-## the result to HTML [#html]_ or Latex [#latex]_.
+## the result to HTML \[#html] or Latex \[#latex].
 ##
-## .. [#html] commands `nim doc`:cmd: for ``*.nim`` files and
+## \[#html] commands `nim doc`:cmd: for ``*.nim`` files and
 ##    `nim rst2html`:cmd: for ``*.rst`` files
 ##
-## .. [#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
+## \[#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
 ##    `nim rst2tex`:cmd: for ``*.rst``.
 ##
 ## If you are new to Markdown/RST please consider reading the following:
@@ -84,8 +84,8 @@
 ##
 ## Additional Nim-specific features:
 ##
-## * directives: ``code-block`` [cmp:Sphinx]_, ``title``,
-##   ``index`` [cmp:Sphinx]_
+## * directives: ``code-block`` \[cmp:Sphinx], ``title``,
+##   ``index`` \[cmp:Sphinx]
 ## * predefined roles
 ##   - ``:nim:`` (default), ``:c:`` (C programming language),
 ##     ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
@@ -99,9 +99,9 @@
 ##     - ``:cmd:`` for commands and common shells syntax
 ##     - ``:console:`` the same  for interactive sessions
 ##       (commands should be prepended by ``$``)
-##     - ``:program:`` for executable names [cmp:Sphinx]_
+##     - ``:program:`` for executable names \[cmp:Sphinx]
 ##       (one can just use ``:cmd:`` on single word)
-##     - ``:option:`` for command line options [cmp:Sphinx]_
+##     - ``:option:`` for command line options \[cmp:Sphinx]
 ##   - ``:tok:``, a role for highlighting of programming language tokens
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
 ## * ``:idx:`` role for \`interpreted text\` to include the link to this
@@ -115,7 +115,7 @@
 ##   Here the dummy `//` will disappear, while options `compile`:option:
 ##   and `doc`:option: will be left in the final document.
 ##
-## .. [cmp:Sphinx] similar but different from the directives of
+## \[cmp:Sphinx] similar but different from the directives of
 ##    Python `Sphinx directives`_ and `Sphinx roles`_ extensions
 ##
 ## .. _`extra features`:
@@ -1458,7 +1458,7 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
         newSons = n.sons
       result = newRstNode(newKind, newSons)
     else:  # some link that will be resolved in `resolveSubs`
-      newKind = rnRef
+      newKind = rnRstRef
       result = newRstNode(newKind, sons=newSons, info=n.info)
   elif match(p, p.idx, ":w:"):
     # a role:
@@ -1552,7 +1552,7 @@ proc parseWordOrRef(p: var RstParser, father: PRstNode) =
     while currentTok(p).kind in {tkWord, tkPunct}:
       if currentTok(p).kind == tkPunct:
         if isInlineMarkupEnd(p, "_", exact=true):
-          reference = newRstNode(rnRef, info=lineInfo(p, saveIdx))
+          reference = newRstNode(rnRstRef, info=lineInfo(p, saveIdx))
           break
         if not validRefnamePunct(currentTok(p).symbol):
           break
@@ -1746,7 +1746,9 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
     defaultCodeLangNim(p, result)
 
 proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
-  var desc, link = ""
+  # Parses Markdown link. If it's Pandoc auto-link then its second
+  # son (target) will be in tokenized format (rnInner with leafs).
+  var desc = newRstNode(rnInner)
   var i = p.idx
 
   var parensStack: seq[char]
@@ -1754,31 +1756,59 @@ proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
     parensStack.setLen 0
     inc i # skip begin token
     while true:
-      if p.tok[i].kind in {tkEof, tkIndent}: return false
+      if p.tok[i].kind == tkEof: return false
+      if p.tok[i].kind == tkIndent and p.tok[i+1].kind == tkIndent:
+        return false
       let isClosing = checkParen(p.tok[i], parensStack)
       if p.tok[i].symbol == endToken and not isClosing:
         break
-      dest.add p.tok[i].symbol
+      let symbol = if p.tok[i].kind == tkIndent: " " else: p.tok[i].symbol
+      when dest is string: dest.add symbol
+      else: dest.add newLeaf(symbol)
       inc i
     inc i # skip end token
 
   parse("]", desc)
-  if p.tok[i].symbol != "(": return false
-  let linkIdx = i + 1
-  parse(")", link)
-  # only commit if we detected no syntax error:
-  let protocol = safeProtocol(link)
-  if link == "":
-    result = false
-    rstMessage(p, mwBrokenLink, protocol,
-               p.tok[linkIdx].line, p.tok[linkIdx].col)
-  else:
-    let child = newRstNode(rnHyperlink)
-    child.add desc
-    child.add link
-    father.add child
+  if p.tok[i].symbol == "(":
+    var link = ""
+    let linkIdx = i + 1
+    parse(")", link)
+    # only commit if we detected no syntax error:
+    let protocol = safeProtocol(link)
+    if link == "":
+      result = false
+      rstMessage(p, mwBrokenLink, protocol,
+                 p.tok[linkIdx].line, p.tok[linkIdx].col)
+    else:
+      let child = newRstNode(rnHyperlink)
+      child.add newLeaf(desc.addNodes)
+      child.add link
+      father.add child
+      p.idx = i
+      result = true
+  elif roPreferMarkdown in p.s.options:
+    # Use Pandoc's implicit_header_references extension
+    var n = newRstNode(rnPandocRef)
+    if p.tok[i].symbol == "[":
+      var link = newRstNode(rnInner)
+      let targetIdx = i + 1
+      parse("]", link)
+      n.add desc
+      if link.len != 0:  # [description][target]
+        n.add link
+        n.info = lineInfo(p, targetIdx)
+      else:              # [description=target][]
+        n.add desc
+        n.info = lineInfo(p, p.idx + 1)
+    else:                # [description=target]
+      n.add desc
+      n.add desc  # target is the same as description
+      n.info = lineInfo(p, p.idx + 1)
+    father.add n
     p.idx = i
     result = true
+  else:
+    result = false
 
 proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
   if label.sons.len >= 1 and label.sons[0].kind == rnLeaf and
@@ -2034,7 +2064,22 @@ proc getWrappableIndent(p: RstParser): int =
     elif nextIndent >= currentTok(p).col: # may be a definition list [case.2]
       result = currentTok(p).col
     else:
-      result = nextIndent                 #                          [case.3]
+      result = nextIndent                 # allow parsing next lines [case.3]
+
+proc getMdBlockIndent(p: RstParser): int =
+  ## Markdown version of `getWrappableIndent`.
+  if currentTok(p).kind == tkIndent:
+    result = currentTok(p).ival
+  else:
+    var nextIndent = p.tok[tokenAfterNewline(p)-1].ival
+    # TODO: Markdown-compliant definition should allow nextIndent == currInd(p):
+    if nextIndent <= currInd(p):           # parse only this line
+      result = currentTok(p).col
+    else:
+      result = nextIndent                 # allow parsing next lines [case.3]
+
+template isRst(p: RstParser): bool = roPreferMarkdown notin p.s.options
+template isMd(p: RstParser): bool = roPreferMarkdown in p.s.options
 
 proc parseField(p: var RstParser): PRstNode =
   ## Returns a parsed rnField node.
@@ -2279,6 +2324,39 @@ proc isDefList(p: RstParser): bool =
       p.tok[j].kind in {tkWord, tkOther, tkPunct} and
       p.tok[j - 2].symbol != "::"
 
+proc `$`(t: Token): string =  # for debugging only
+  result = "(" & $t.kind & " line=" & $t.line & " col=" & $t.col
+  if t.kind == tkIndent: result = result & " ival=" & $t.ival & ")"
+  else: result = result & " symbol=" & t.symbol & ")"
+
+proc skipNewlines(p: RstParser, j: int): int =
+  result = j
+  while p.tok[result].kind != tkEof and p.tok[result].kind == tkIndent:
+    inc result  # skip blank lines
+
+proc skipNewlines(p: var RstParser) =
+  p.idx = skipNewlines(p, p.idx)
+
+const maxMdRelInd = 3  ## In Markdown: maximum indentation that does not yet
+                       ## make the indented block a code
+
+proc isMdRelInd(outerInd, nestedInd: int): bool =
+  result = outerInd <= nestedInd and nestedInd <= outerInd + maxMdRelInd
+
+proc isMdDefBody(p: RstParser, j: int, termCol: int): bool =
+  let defCol = p.tok[j].col
+  result = p.tok[j].symbol == ":" and
+    isMdRelInd(termCol, defCol) and
+    p.tok[j+1].kind == tkWhite and
+    p.tok[j+2].kind in {tkWord, tkOther, tkPunct}
+
+proc isMdDefListItem(p: RstParser, idx: int): bool =
+  var j = tokenAfterNewline(p, idx)
+  j = skipNewlines(p, j)
+  let termCol = p.tok[j].col
+  result = isMdRelInd(currInd(p), termCol) and
+      isMdDefBody(p, j, termCol)
+
 proc isOptionList(p: RstParser): bool =
   result = match(p, p.idx, "-w") or match(p, p.idx, "--w") or
            match(p, p.idx, "/w") or match(p, p.idx, "//w")
@@ -2351,8 +2429,10 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnEnumList
     elif isOptionList(p):
       result = rnOptionList
-    elif isDefList(p):
+    elif isRst(p) and isDefList(p):
       result = rnDefList
+    elif isMd(p) and isMdDefListItem(p, p.idx):
+      result = rnMdDefList
     else:
       result = rnParagraph
   of tkWord, tkOther, tkWhite:
@@ -2361,7 +2441,9 @@ proc whichSection(p: RstParser): RstNodeKind =
       if isAdornmentHeadline(p, tokIdx): result = rnHeadline
       else: result = rnParagraph
     elif match(p, p.idx, "e) ") or match(p, p.idx, "e. "): result = rnEnumList
-    elif isDefList(p): result = rnDefList
+    elif isRst(p) and isDefList(p): result = rnDefList
+    elif isMd(p) and isMdDefListItem(p, p.idx):
+      result = rnMdDefList
     else: result = rnParagraph
   else: result = rnLeaf
 
@@ -2891,6 +2973,36 @@ proc parseOptionList(p: var RstParser): PRstNode =
       if currentTok(p).kind != tkEof: dec p.idx  # back to tkIndent
       break
 
+proc parseMdDefinitionList(p: var RstParser): PRstNode =
+  ## Parses (Pandoc/kramdown/PHPextra) Mardkown definition lists.
+  result = newRstNodeA(p, rnMdDefList)
+  let termCol = currentTok(p).col
+  while true:
+    var item = newRstNode(rnDefItem)
+    var term = newRstNode(rnDefName)
+    parseLine(p, term)
+    skipNewlines(p)
+    inc p.idx, 2  # skip ":" and space
+    item.add(term)
+    while true:
+      var def = newRstNode(rnDefBody)
+      let indent = getMdBlockIndent(p)
+      pushInd(p, indent)
+      parseSection(p, def)
+      popInd(p)
+      item.add(def)
+      let j = skipNewlines(p, p.idx)
+      if isMdDefBody(p, j, termCol):  # parse next definition body
+        p.idx = j + 2  # skip ":" and space
+      else:
+        break
+    result.add(item)
+    let j = skipNewlines(p, p.idx)
+    if p.tok[j].col == termCol and isMdDefListItem(p, j):
+      p.idx = j  # parse next item
+    else:
+      break
+
 proc parseDefinitionList(p: var RstParser): PRstNode =
   result = nil
   var j = tokenAfterNewline(p) - 1
@@ -3064,6 +3176,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
     of rnLeaf: rstMessage(p, meNewSectionExpected, "(syntax error)")
     of rnParagraph: discard
     of rnDefList: a = parseDefinitionList(p)
+    of rnMdDefList: a = parseMdDefinitionList(p)
     of rnFieldList:
       if p.idx > 0: dec p.idx
       a = parseFields(p)
@@ -3089,9 +3202,6 @@ proc parseSectionWrapper(p: var RstParser): PRstNode =
   parseSection(p, result)
   while result.kind == rnInner and result.len == 1:
     result = result.sons[0]
-
-proc `$`(t: Token): string =
-  result = $t.kind & ' ' & t.symbol
 
 proc parseDoc(p: var RstParser): PRstNode =
   result = parseSectionWrapper(p)
@@ -3510,6 +3620,13 @@ proc preparePass2*(s: PRstSharedState, mainNode: PRstNode) =
 proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
     # Associate this link alias with its target and change node kind to
     # rnHyperlink or rnInternalRef appropriately.
+    var desc, alias: PRstNode
+    if n.kind == rnPandocRef:  # link like [desc][alias]
+      desc = n.sons[0]
+      alias = n.sons[1]
+    else:  # n.kind == rnRstRef, link like `desc=alias`_
+      desc = n
+      alias = n
     type LinkDef = object
       ar: AnchorRule
       priority: int
@@ -3521,14 +3638,13 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
       if result == 0:
         result = cmp(x.target, y.target)
     var foundLinks: seq[LinkDef]
-    let text = newRstNode(rnInner, n.sons)
-    let refn = rstnodeToRefname(n)
+    let refn = rstnodeToRefname(alias)
     var hyperlinks = findRef(s, refn)
     for y in hyperlinks:
       foundLinks.add LinkDef(ar: arHyperlink, priority: refPriority(y.kind),
                              target: y.value, info: y.info,
                              tooltip: "(" & $y.kind & ")")
-    let substRst = findMainAnchorRst(s, text.addNodes, n.info)
+    let substRst = findMainAnchorRst(s, alias.addNodes, n.info)
     for subst in substRst:
       foundLinks.add LinkDef(ar: arInternalRst, priority: subst.priority,
                              target: newLeaf(subst.target.anchor),
@@ -3536,19 +3652,19 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
                              tooltip: "(" & $subst.anchorType & ")")
     # find anchors automatically generated from Nim symbols
     if roNimFile in s.options:
-      let substNim = findMainAnchorNim(s, signature=text, n.info)
+      let substNim = findMainAnchorNim(s, signature=alias, n.info)
       for subst in substNim:
         foundLinks.add LinkDef(ar: arNim, priority: subst.priority,
                                target: newLeaf(subst.refname),
                                info: subst.info, tooltip: subst.tooltip)
     foundLinks.sort(cmp = cmp, order = Descending)
-    let linkText = addNodes(n)
+    let aliasStr = addNodes(alias)
     if foundLinks.len >= 1:
       let kind = if foundLinks[0].ar == arHyperlink: rnHyperlink
                  elif foundLinks[0].ar == arNim: rnNimdocRef
                  else: rnInternalRef
       result = newRstNode(kind)
-      result.sons = @[text, foundLinks[0].target]
+      result.sons = @[newRstNode(rnInner, desc.sons), foundLinks[0].target]
       if kind == rnNimdocRef: result.tooltip = foundLinks[0].tooltip
       if foundLinks.len > 1:  # report ambiguous link
         var targets = newSeq[string]()
@@ -3562,10 +3678,10 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
           targets.add t
         rstMessage(s.filenames, s.msgHandler, n.info, mwAmbiguousLink,
                    "`$1`\n  clash:\n$2" % [
-                     linkText, targets.join("\n")])
+                     aliasStr, targets.join("\n")])
     else:  # nothing found
       result = n
-      rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, linkText)
+      rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, aliasStr)
 
 proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
   ## Makes pass 2 of RST parsing.
@@ -3585,7 +3701,7 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       if e != "": result = newLeaf(e)
       else: rstMessage(s.filenames, s.msgHandler, n.info,
                        mwUnknownSubstitution, key)
-  of rnRef:
+  of rnRstRef, rnPandocRef:
     result = resolveLink(s, n)
   of rnFootnote:
     var (fnType, num) = getFootnoteType(n.sons[0])

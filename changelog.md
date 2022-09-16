@@ -30,10 +30,19 @@
 
 - The `{.this.}` pragma, deprecated since 0.19, has been removed.
 - `nil` is no longer a valid value for distinct pointer types.
+- Removed two type pragma syntaxes deprecated since 0.20, namely
+  `type Foo = object {.final.}`, and `type Foo {.final.} [T] = object`.
+
+- [Overloadable enums](https://nim-lang.github.io/Nim/manual_experimental.html#overloadable-enum-value-names)
+  are no longer experimental.
+
+- Static linking against OpenSSL versions below 1.1, previously done by
+  setting `-d:openssl10`, is no longer supported.
 
 ## Standard library additions and changes
 
 [//]: # "Changes:"
+- OpenSSL version 3 is now supported by setting either `-d:sslVersion=3` or `-d:useOpenssl3`.
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional
   filename argument for more informative errors.
 - Module `colors` expanded with missing colors from the CSS color standard.

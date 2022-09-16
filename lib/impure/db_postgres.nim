@@ -271,7 +271,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
   ## same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within iterator body.
+  ## on demand using `[]`. Returned handle is valid only within iterator body.
   setupSingeRowQuery(db, query, args)
   fetchinstantRows(db)
 
@@ -279,7 +279,7 @@ iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
   ## same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within iterator body.
+  ## on demand using `[]`. Returned handle is valid only within iterator body.
   setupSingeRowQuery(db, stmtName, args)
   fetchinstantRows(db)
 

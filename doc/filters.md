@@ -72,10 +72,10 @@ The replace filter replaces substrings in each line.
 Parameters and their defaults:
 
 * `sub: string = ""`
-    the substring that is searched for
+  : the substring that is searched for
 
 * `by: string = ""`
-    the string the substring is replaced with
+  : the string the substring is replaced with
 
 
 Strip filter
@@ -87,14 +87,14 @@ each line.
 Parameters and their defaults:
 
 * `startswith: string = ""`
-    strip only the lines that start with *startswith* (ignoring leading
+  : strip only the lines that start with *startswith* (ignoring leading
     whitespace). If empty every line is stripped.
 
 * `leading: bool = true`
-    strip leading whitespace
+  : strip leading whitespace
 
 * `trailing: bool = true`
-    strip trailing whitespace
+  : strip trailing whitespace
 
 
 StdTmpl filter
@@ -109,19 +109,19 @@ statements need `end X` delimiters.
 Parameters and their defaults:
 
 * `metaChar: char = '#'`
-    prefix for a line that contains Nim code
+  : prefix for a line that contains Nim code
 
 * `subsChar: char = '$'`
-    prefix for a Nim expression within a template line
+  : prefix for a Nim expression within a template line
 
 * `conc: string = " & "`
-    the operation for concatenation
+  : the operation for concatenation
 
 * `emit: string = "result.add"`
-    the operation to emit a string literal
+  : the operation to emit a string literal
 
 * `toString: string = "$"`
-    the operation that is applied to each expression
+  : the operation that is applied to each expression
 
 Example::
 
