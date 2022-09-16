@@ -134,14 +134,14 @@ else:
                     header: "<sys/types.h>".} = distinct cuint
   elif defined(openbsd) and defined(amd64):
     type
-      SysThread* {.importc: "pthread_t", header: "<pthread.h>".} = object
+      SysThread* {.importc: "pthread_t", header: "<pthread.h>".} = ptr object
       Pthread_attr {.importc: "pthread_attr_t",
                        header: "<pthread.h>".} = object
       ThreadVarSlot {.importc: "pthread_key_t",
                      header: "<pthread.h>".} = cint
   else:
     type
-      SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = object
+      SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = ptr object
       Pthread_attr {.importc: "pthread_attr_t",
                        header: "<sys/types.h>".} = object
       ThreadVarSlot {.importc: "pthread_key_t",
