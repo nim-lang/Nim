@@ -159,24 +159,6 @@ proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
     assert encode([1, 2, 3, 4, 5]) == "AQIDBAU="
   encodeImpl()
 
-# proc encode*(s: string, safe = false): string =
-#   ## Encodes `s` into base64 representation.
-#   ##
-#   ## This procedure encodes a string.
-#   ##
-#   ## If `safe` is `true` then it will encode using the
-#   ## URL-Safe and Filesystem-safe standard alphabet characters,
-#   ## which substitutes `-` instead of `+` and `_` instead of `/`.
-#   ## * https://en.wikipedia.org/wiki/Base64#URL_applications
-#   ## * https://tools.ietf.org/html/rfc4648#page-7
-#   ##
-#   ## **See also:**
-#   ## * `encode proc<#encode,openArray[T]>`_ for encoding an openarray
-#   ## * `decode proc<#decode,string>`_ for decoding a string
-#   runnableExamples:
-#     assert encode("Hello World") == "SGVsbG8gV29ybGQ="
-#   encodeImpl()
-
 proc encodeMime*(s: string, lineLen = 75, newLine = "\r\n"): string =
   ## Encodes `s` into base64 representation as lines.
   ## Used in email MIME format, use `lineLen` and `newline`.
