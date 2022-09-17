@@ -125,11 +125,16 @@ case $uos in
     ;;
   *darwin* )
     myos="macosx"
-    CC="clang"
     LINK_FLAGS="$LINK_FLAGS -ldl -lm"
     if [ "$HOSTTYPE" = "x86_64" ] ; then
       ucpu="amd64"
     fi
+    case $ucpu in
+      *i386*|*amd64*|*aarch64*|*arm64*)
+        CC="clang" ;;
+      *ppc*)
+        CC="gcc" ;;
+    esac
     ;;
   *aix* )
     myos="aix"
@@ -188,9 +193,27 @@ case $ucpu in
     if [ "$myos" = "linux" ] ; then
       COMP_FLAGS="$COMP_FLAGS -m64"
       LINK_FLAGS="$LINK_FLAGS -m64"
+    elif [ "$myos" = "freebsd" ] ; then
+      COMP_FLAGS="$COMP_FLAGS -m64"
+      LINK_FLAGS="$LINK_FLAGS -m64"
+    elif [ "$myos" = "macosx" ] ; then
+      COMP_FLAGS="$COMP_FLAGS -arch ppc64"
+      LINK_FLAGS="$LINK_FLAGS -arch ppc64"
     fi
     mycpu="powerpc64" ;;
-  *power*|*ppc* )
+  *ppc )
+    if [ "$myos" = "linux" ] ; then
+      COMP_FLAGS="$COMP_FLAGS -m32"
+      LINK_FLAGS="$LINK_FLAGS -m32"
+    elif [ "$myos" = "freebsd" ] ; then
+      COMP_FLAGS="$COMP_FLAGS -m32"
+      LINK_FLAGS="$LINK_FLAGS -m32"
+    elif [ "$myos" = "macosx" ] ; then
+      COMP_FLAGS="$COMP_FLAGS -arch ppc"
+      LINK_FLAGS="$LINK_FLAGS -arch ppc"
+    fi
+    mycpu="powerpc" ;;
+  *power* )
     if [ "$myos" = "freebsd" ] ; then
       if [ "$ucpu" != "powerpc" ] ; then
         COMP_FLAGS="$COMP_FLAGS -m64"
