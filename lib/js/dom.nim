@@ -1817,7 +1817,7 @@ since (1, 7):
     ## https://developer.mozilla.org/en-US/docs/Web/API/Element/hasPointerCapture
 
   proc releasePointerCapture*(self: Node; pointerId: SomeNumber) {.importjs: "#.$1(#)".}
-    ## hhttps://developer.mozilla.org/en-US/docs/Web/API/Element/releasePointerCapture
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/releasePointerCapture
 
   proc requestPointerLock*(self: Node) {.importjs: "#.$1()".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/Element/requestPointerLock
