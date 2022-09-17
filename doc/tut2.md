@@ -17,7 +17,7 @@ Introduction
 
 This document is a tutorial for the advanced constructs of the *Nim*
 programming language. **Note that this document is somewhat obsolete as the**
-`manual <manual.html>`_ **contains many more examples of the advanced language
+[manual](manual.html) **contains many more examples of the advanced language
 features.**
 
 
@@ -27,8 +27,8 @@ Pragmas
 Pragmas are Nim's method to give the compiler additional information/
 commands without introducing a massive number of new keywords. Pragmas are
 enclosed in the special `{.` and `.}` curly dot brackets. This tutorial
-does not cover pragmas. See the `manual <manual.html#pragmas>`_ or `user guide
-<nimc.html#additional-features>`_ for a description of the available
+does not cover pragmas. See the [manual](manual.html#pragmas) or [user guide](
+nimc.html#additional-features) for a description of the available
 pragmas.
 
 
@@ -337,7 +337,7 @@ Exceptions
 ==========
 
 In Nim exceptions are objects. By convention, exception types are
-suffixed with 'Error'. The `system <system.html>`_ module defines an
+suffixed with 'Error'. The [system](system.html) module defines an
 exception hierarchy that you might want to stick to. Exceptions derive from
 `system.Exception`, which provides the common interface.
 
@@ -417,9 +417,9 @@ the rest of the procedure - that is not within a `finally` clause -
 is not executed (if an exception occurs).
 
 If you need to *access* the actual exception object or message inside an
-`except` branch you can use the `getCurrentException()
-<system.html#getCurrentException>`_ and `getCurrentExceptionMsg()
-<system.html#getCurrentExceptionMsg>`_ procs from the `system <system.html>`_
+`except` branch you can use the [getCurrentException()](
+system.html#getCurrentException) and [getCurrentExceptionMsg()](
+system.html#getCurrentExceptionMsg) procs from the [system](system.html)
 module. Example:
 
   ```nim
@@ -464,7 +464,7 @@ tracking is part of Nim's effect system). Another more roundabout way to
 find out the list of exceptions raised by a proc is to use the Nim ``doc``
 command which generates documentation for a whole module and decorates all
 procs with the list of raised exceptions. You can read more about Nim's
-`effect system and related pragmas in the manual <manual.html#effect-system>`_.
+[effect system and related pragmas in the manual](manual.html#effect-system).
 
 
 Generics
@@ -694,4 +694,4 @@ JavaScript-compatible code you should remember the following:
 Part 3
 ======
 
-The next part is entirely about metaprogramming via macros: `Part III <tut3.html>`_
+The next part is entirely about metaprogramming via macros: [Part III](tut3.html).
