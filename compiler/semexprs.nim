@@ -965,6 +965,15 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
   if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
 
+proc stripVoidArgs(n: PNode) =
+  var idx = newSeqOfCap[int](n.sons.len)
+  for i,s in n.sons:
+    if s.typ.kind == tyVoid:
+      idx.add i 
+  let idxEnd = idx.len - 1
+  for i,_ in idx:
+    delete n.sons,idx[idxEnd - i]
+
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = nil
   checkMinSonsLen(n, 1, c.config)
@@ -1003,6 +1012,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
   semOpAux(c, n)
   if t != nil and t.kind == tyProc:
     # This is a proc variable, apply normal overload resolution
+    stripVoidArgs(n)
     let m = resolveIndirectCall(c, n, nOrig, t)
     if m.state != csMatch:
       if c.config.m.errorOutputs == {}:
