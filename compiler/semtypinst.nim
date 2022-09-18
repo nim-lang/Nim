@@ -499,7 +499,7 @@ proc propagateFieldFlags(t: PType, n: PNode) =
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   template bailout =
-    if cl.recursionLimit > 100:
+    if cl.recursionLimit > 500:
       # bail out, see bug #2509. But note this caching is in general wrong,
       # look at this example where TwoVectors should not share the generic
       # instantiations (bug #3112):
