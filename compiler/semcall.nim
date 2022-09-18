@@ -482,8 +482,9 @@ proc inferWithMetatype(c: PContext, formal: PType,
     # This almost exactly replicates the steps taken by the compiler during
     # param matching. It performs an embarrassing amount of back-and-forth
     # type jugling, but it's the price to pay for consistency and correctness
-    result.typ = generateTypeInstance(c, m.bindings, arg.info,
-                                      formal.skipTypes({tyCompositeTypeClass}))
+    # result.typ = generateTypeInstance(c, m.bindings, arg.info,
+    #                                   formal.skipTypes({tyCompositeTypeClass}))
+    result.typ = arg.typ
   else:
     typeMismatch(c.config, arg.info, formal, arg.typ, arg)
     # error correction:
