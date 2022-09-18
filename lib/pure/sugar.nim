@@ -391,6 +391,10 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
 
 macro collect*(body: untyped): untyped {.since: (1, 5).} =
   ## Same as `collect` but without an `init` parameter.
+  ##
+  ## **See also:**
+  ## * `sequtils.toSeq proc<sequtils.html#toSeq.t%2Cuntyped>`_
+  ## * `sequtils.mapIt template<sequtils.html#mapIt.t%2Ctyped%2Cuntyped>`_
   runnableExamples:
     import std/[sets, tables]
     let data = @["bird", "word"]
@@ -410,14 +414,5 @@ macro collect*(body: untyped): untyped {.since: (1, 5).} =
     let m = collect:
       for i, d in data.pairs: {i: d}
     assert m == {0: "bird", 1: "word"}.toTable
-
-    # avoid `collect` when `sequtils` methods suffice:
-    # overkill:
-    assert collect(for i in 1..3: i*i) == @[1, 4, 9]
-    assert collect(for i in 1..3: i) == @[1, 2, 3]
-    # simpler:
-    from std/sequtils import mapIt, toSeq
-    assert mapIt(1..3, it*it) == @[1, 4, 9]
-    assert toSeq(1..3) == @[1, 2, 3]
 
   result = collectImpl(nil, body)
