@@ -73,7 +73,8 @@
   `after`, `before`, `closest`, `append`, `hasAttributeNS`, `removeAttributeNS`,
   `hasPointerCapture`, `releasePointerCapture`, `requestPointerLock`,
   `replaceChildren`, `replaceWith`, `scrollIntoViewIfNeeded`, `setHTML`,
-  `toggleAttribute`, `matches` to `std/dom`.
+  `toggleAttribute`, and `matches` to `std/dom`.
+- Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
