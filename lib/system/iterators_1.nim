@@ -1,5 +1,3 @@
-import std/private/since
-
 when sizeof(int) <= 2:
   type IntLikeForCount = int|int8|int16|char|bool|uint8|enum
 else:
@@ -173,24 +171,22 @@ iterator `||`*[S, T](a: S, b: T, step: Positive, annotation: static string = "pa
   discard
 
 
-since (1, 7):
-
-  iterator backoff*[T: SomeInteger](a, b: T; factor: T): T =
-    ## Simple `exponential backoff <https://en.wikipedia.org/wiki/Exponential_backoff>`_
-    runnableExamples:
-      block:
-        var temp: seq[int]
-        for i in backoff(1, 9, 2): temp.add i
-        assert temp == [1, 2, 4, 8]
-      block:
-        var temp: seq[int]
-        for i in backoff(1, 1_000_000, 5): temp.add i
-        assert temp == [1, 5, 25, 125, 625, 3125, 15625, 78125, 390625]
-    # range[SomeInteger] is not allowed instead of a,b.
-    assert b > a, "b must be greater than a."
-    assert factor > T(1), "Factor must be greater than 1."
-    assert a > default(T), "a must not be zero."
-    var temp = a
-    while temp <= b:
-      yield temp
-      temp *= factor
+iterator backoff*[T: SomeInteger](a, b: T; factor: T): T =
+  ## Simple `exponential backoff <https://en.wikipedia.org/wiki/Exponential_backoff>`_
+  runnableExamples:
+    block:
+      var temp: seq[int]
+      for i in backoff(1, 9, 2): temp.add i
+      assert temp == [1, 2, 4, 8]
+    block:
+      var temp: seq[int]
+      for i in backoff(1, 1_000_000, 5): temp.add i
+      assert temp == [1, 5, 25, 125, 625, 3125, 15625, 78125, 390625]
+  # range[SomeInteger] is not allowed instead of a,b.
+  assert b > a, "b must be greater than a."
+  assert factor > T(1), "Factor must be greater than 1."
+  assert a > default(T), "a must not be zero."
+  var temp = a
+  while temp <= b:
+    yield temp
+    temp *= factor
