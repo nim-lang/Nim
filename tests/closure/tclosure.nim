@@ -242,10 +242,10 @@ block doNotation:
   b.onFocusLost:
     echo "lost focus 1"
 
-  b.onFocusLost do:
+  b.onFocusLost do ():
     echo "lost focus 2"
 
-  b.onUserEvent("UserEvent 1") do:
+  b.onUserEvent("UserEvent 1") do ():
     discard
 
   b.onUserEvent "UserEvent 2":

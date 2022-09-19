@@ -77,6 +77,6 @@ block tissue7104:
       sp():
           inc i
           echo "ok ", i
-          sp do:
+          sp do ():
               inc i
               echo "ok ", i
