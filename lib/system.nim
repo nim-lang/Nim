@@ -966,7 +966,7 @@ proc cmp*[T](x, y: T): int =
   if x < y: return -1
   return 1
 
-func cmp*(x, y: string): int
+proc cmp*(x, y: string): int {.noSideEffect.}
   ## Compare proc for strings. More efficient than the generic version.
   ##
   ## **Note**: The precise result values depend on the used C runtime library and
