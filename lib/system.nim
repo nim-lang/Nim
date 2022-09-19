@@ -1722,7 +1722,7 @@ func astToStr*[T](x: T): string {.magic: "AstToStr".}
   ## for debugging.
 
 proc instantiationInfo*(index = -1, fullPaths = false): tuple[
-  func: string, line: int, column: int] {.magic: "InstantiationInfo".}
+  filename: string, line: int, column: int] {.magic: "InstantiationInfo".}
   ## Provides access to the compiler's instantiation stack line information
   ## of a template.
   ##
