@@ -1,3 +1,5 @@
+import std/private/since
+
 when sizeof(int) <= 2:
   type IntLikeForCount = int|int8|int16|char|bool|uint8|enum
 else:
@@ -16,7 +18,7 @@ iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
     let x = collect(newSeq):
       for i in countdown(7, 3):
         i
-    
+
     assert x == @[7, 6, 5, 4, 3]
 
     let y = collect(newseq):
@@ -53,7 +55,7 @@ iterator countup*[T](a, b: T, step: Positive = 1): T {.inline.} =
     let x = collect(newSeq):
       for i in countup(3, 7):
         i
-    
+
     assert x == @[3, 4, 5, 6, 7]
 
     let y = collect(newseq):
@@ -169,3 +171,26 @@ iterator `||`*[S, T](a: S, b: T, step: Positive, annotation: static string = "pa
   ## versions of `||` will get proper support by Nim's code generator
   ## and GC.
   discard
+
+
+since (1, 7):
+
+  iterator backoff*[T: SomeInteger](a, b: T; factor: T): T =
+    ## Simple `exponential backoff <https://en.wikipedia.org/wiki/Exponential_backoff>`_
+    runnableExamples:
+      block:
+        var temp: seq[int]
+        for i in backoff(1, 9, 2): temp.add i
+        assert temp == [1, 2, 4, 8]
+      block:
+        var temp: seq[int]
+        for i in backoff(1, 1_000_000, 5): temp.add i
+        assert temp == [1, 5, 25, 125, 625, 3125, 15625, 78125, 390625]
+    # range[SomeInteger] is not allowed instead of a,b.
+    assert b > a, "b must be greater than a."
+    assert factor > T(1), "Factor must be greater than 1."
+    assert a > default(T), "a must not be zero."
+    var temp = a
+    while temp <= b:
+      yield temp
+      temp *= factor
