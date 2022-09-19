@@ -1,4 +1,4 @@
-when defined(nimPreviewSlimSystem):
+when not defined(nimPreviewSlimSystem):
   import std/assertions
 
 when sizeof(int) <= 2:
