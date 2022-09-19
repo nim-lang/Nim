@@ -1,3 +1,6 @@
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when sizeof(int) <= 2:
   type IntLikeForCount = int|int8|int16|char|bool|uint8|enum
 else:
@@ -183,12 +186,9 @@ iterator backoff*[T: SomeInteger](a, b: T; factor: T): T =
       for i in backoff(1, 1_000_000, 5): temp.add i
       assert temp == [1, 5, 25, 125, 625, 3125, 15625, 78125, 390625]
   # range[SomeInteger] is not allowed instead of a,b.
-  if not(b > a):
-    raise newException(ValueError, "b must be greater than a.")
-  if not(factor > T(1)):
-    raise newException(ValueError, "Factor must be greater than 1.")
-  if not(a > default(T)):
-    raise newException(ValueError, "a must not be zero.")
+  assert b > a, "b must be greater than a."
+  assert factor > T(1), "Factor must be greater than 1."
+  assert a > default(T), "a must not be zero."
   var temp = a
   while temp <= b:
     yield temp
