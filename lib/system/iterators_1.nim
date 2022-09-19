@@ -172,24 +172,3 @@ iterator `||`*[S, T](a: S, b: T, step: Positive, annotation: static string = "pa
   ## versions of `||` will get proper support by Nim's code generator
   ## and GC.
   discard
-
-
-iterator backoff*[T: SomeInteger](a, b: T; factor: T): T =
-  ## Simple `exponential backoff <https://en.wikipedia.org/wiki/Exponential_backoff>`_
-  runnableExamples:
-    block:
-      var temp: seq[int]
-      for i in backoff(1, 9, 2): temp.add i
-      assert temp == [1, 2, 4, 8]
-    block:
-      var temp: seq[int]
-      for i in backoff(1, 1_000_000, 5): temp.add i
-      assert temp == [1, 5, 25, 125, 625, 3125, 15625, 78125, 390625]
-  # range[SomeInteger] is not allowed instead of a,b.
-  assert b > a, "b must be greater than a."
-  assert factor > T(1), "Factor must be greater than 1."
-  assert a > default(T), "a must not be zero."
-  var temp = a
-  while temp <= b:
-    yield temp
-    temp *= factor

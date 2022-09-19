@@ -340,3 +340,24 @@ iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
     for name, v1, v2 in fieldPairs(a1, a2):
       when name == "x2": v2 = v1
     doAssert a2 == Foo(x1: 0, x2: "abc")
+
+
+iterator backoff*[T: SomeInteger](a, b: T; factor: T): T =
+  ## Simple `exponential backoff <https://en.wikipedia.org/wiki/Exponential_backoff>`_
+  runnableExamples:
+    block:
+      var temp: seq[int]
+      for i in backoff(1, 9, 2): temp.add i
+      assert temp == [1, 2, 4, 8]
+    block:
+      var temp: seq[int]
+      for i in backoff(1, 1_000_000, 5): temp.add i
+      assert temp == [1, 5, 25, 125, 625, 3125, 15625, 78125, 390625]
+  # range[SomeInteger] is not allowed instead of a,b.
+  assert b > a, "b must be greater than a."
+  assert factor > T(1), "Factor must be greater than 1."
+  assert a > default(T), "a must not be zero."
+  var temp = a
+  while temp <= b:
+    yield temp
+    temp *= factor
