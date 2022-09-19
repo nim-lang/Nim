@@ -26,7 +26,7 @@
 - `shallowCopy` is removed for ARC/ORC. Use `move` when possible or combine assignment and
 `sink` for optimization purposes.
 
-- `nimPreviewDotLikeOps` is going to be removed or deprecated.
+- The `nimPreviewDotLikeOps` define is going to be removed or deprecated.
 
 - The `{.this.}` pragma, deprecated since 0.19, has been removed.
 - `nil` is no longer a valid value for distinct pointer types.
@@ -35,6 +35,8 @@
 
 - [Overloadable enums](https://nim-lang.github.io/Nim/manual_experimental.html#overloadable-enum-value-names)
   are no longer experimental.
+
+- the `nimIncrSeqV3` define is removed.
 
 ## Standard library additions and changes
 
