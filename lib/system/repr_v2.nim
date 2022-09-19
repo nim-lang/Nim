@@ -11,6 +11,8 @@ proc distinctBase(T: typedesc, recursive: static bool = true): typedesc {.magic:
 
 proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
 
+proc repr*(x: typeof(nil) | typeof(nil)): string = "nil"
+
 proc repr*(x: int): string =
   ## Same as $x
   $x

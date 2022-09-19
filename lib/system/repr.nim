@@ -12,6 +12,7 @@
 when not defined(useNimRtl):
   proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl, gcsafe.}
 
+proc reprNil(): string {.compilerproc.} = return "nil"
 proc reprInt(x: int64): string {.compilerproc.} = return $x
 proc reprFloat(x: float): string {.compilerproc.} = return $x
 

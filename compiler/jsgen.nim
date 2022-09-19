@@ -1986,6 +1986,8 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
     genReprAux(p, n, r, "reprPointer")
   of tyOpenArray, tyVarargs:
     genReprAux(p, n, r, "reprJSONStringify")
+  of tyNil:
+    genReprAux(p, n, r, "reprNil")
   else:
     genReprAux(p, n, r, "reprAny", genTypeInfo(p, t))
   r.kind = resExpr

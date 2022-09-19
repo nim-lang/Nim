@@ -138,6 +138,7 @@ block:
     doAssert $(4294967295'u32) == "4294967295"
 
 proc main()=
+  doAssert $nil == "nil"
   block:
     let a = -0.0
     doAssert $a == "-0.0"

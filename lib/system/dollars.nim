@@ -13,6 +13,7 @@ when not defined(nimPreviewSlimSystem):
     ## Outplace version of `addFloat`.
     result.addFloat(x)
 
+proc `$`*(x: typeof(nil) | typeof(nil)): string = "nil"
 proc `$`*(x: int): string {.raises: [].} =
   ## Outplace version of `addInt`.
   result.addInt(x)

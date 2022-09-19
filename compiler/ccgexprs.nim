@@ -1722,10 +1722,12 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, e,
         ropecg(p.module, "#reprOpenArray($1, $2)", [rdLoc(b),
         genTypeInfoV1(p.module, elemType(t), e.info)]), a.storage)
-  of tyCstring, tyArray, tyRef, tyPtr, tyPointer, tyNil, tySequence:
+  of tyCstring, tyArray, tyRef, tyPtr, tyPointer, tySequence:
     putIntoDest(p, d, e,
                 ropecg(p.module, "#reprAny($1, $2)", [
                 rdLoc(a), genTypeInfoV1(p.module, t, e.info)]), a.storage)
+  of tyNil:
+    putIntoDest(p, d, e, ropecg(p.module, "#reprNil()", []), a.storage)
   of tyEmpty, tyVoid:
     localError(p.config, e.info, "'repr' doesn't support 'void' type")
   else:
