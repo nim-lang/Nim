@@ -394,8 +394,31 @@ proc newNimNode*(kind: NimNodeKind,
   ## produced code crashes. You should ensure that it is set to a node that
   ## you are transforming.
 
-proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.}
-proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
+proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.} =
+  ## Creates a new AST node by copying the node `n`. Note that unlike `copyNimTree`,
+  ## child nodes of `n` are not copied.
+  runnableExamples:
+    macro foo(x: typed) =
+      var s = copyNimNode(x)
+      doAssert s.len == 0
+      doAssert s.kind == nnkStmtList
+
+    foo:
+      let x = 12
+      echo x
+
+proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.} =
+  ## Creates a new AST node by recursively copying the node `n`. Note that
+  ## unlike `copyNimNode`, this copies `n`, the children of `n`, etc.
+  runnableExamples:
+    macro foo(x: typed) =
+      var s = copyNimTree(x)
+      doAssert s.len == 2
+      doAssert s.kind == nnkStmtList
+
+    foo:
+      let x = 12
+      echo x
 
 proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
   ## Writes an error message at compile time. The optional `n: NimNode`
