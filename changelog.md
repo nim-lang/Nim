@@ -29,8 +29,8 @@
 - `nimPreviewDotLikeOps` is going to be removed or deprecated.
 
 - The `{.this.}` pragma, deprecated since 0.19, has been removed.
-- "`nil` literals can no longer be directly assigned to variables or fields of `distinct` pointer types. They must be converted instead.
-  ```
+- `nil` literals can no longer be directly assigned to variables or fields of `distinct` pointer types. They must be converted instead.
+  ```nim
   type Foo = distinct ptr int
 
   # Before:
