@@ -239,7 +239,7 @@ block doNotation:
   b.onClick do (e: Event):
     echo "click at ", e.x, ",", e.y
 
-  b.onFocusLost:
+  b.onFocusLost do ():
     echo "lost focus 1"
 
   b.onFocusLost do ():
@@ -248,10 +248,10 @@ block doNotation:
   b.onUserEvent("UserEvent 1") do ():
     discard
 
-  b.onUserEvent "UserEvent 2":
+  onUserEvent(b, "UserEvent 2") do ():
     discard
 
-  b.onUserEvent("UserEvent 3"):
+  b.onUserEvent("UserEvent 3") do ():
     discard
 
   b.onUserEvent("UserEvent 4", () => echo "event 4")
