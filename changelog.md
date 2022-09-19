@@ -69,6 +69,11 @@
   in `jscore` for JavaScript targets.
 - Added `UppercaseLetters`, `LowercaseLetters`, `PunctuationChars`, `PrintableChars` sets to `std/strutils`.
 - Added `complex.sgn` for obtaining the phase of complex numbers.
+- Added `insertAdjacentText`, `insertAdjacentElement`, `insertAdjacentHTML`,
+  `after`, `before`, `closest`, `append`, `hasAttributeNS`, `removeAttributeNS`,
+  `hasPointerCapture`, `releasePointerCapture`, `requestPointerLock`,
+  `replaceChildren`, `replaceWith`, `scrollIntoViewIfNeeded`, `setHTML`,
+  `toggleAttribute`, and `matches` to `std/dom`.
 - Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
 
 [//]: # "Deprecations:"
@@ -172,4 +177,3 @@
 - Nim now supports Nimble version 0.14 which added support for lock-files. This is done by
   a simple configuration change setting that you can do yourself too. In `$nim/config/nim.cfg`
   replace `pkgs` by `pkgs2`.
-
