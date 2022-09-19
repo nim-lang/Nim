@@ -47,8 +47,8 @@ template `+!`(p: pointer, s: int): pointer =
 template `-!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) -% s)
 
-proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
-    noSideEffect, raises: [], compilerRtl.} =
+func prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
+  raises: [], compilerRtl.} =
   {.noSideEffect.}:
     let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
     if addlen <= 0:
@@ -96,7 +96,7 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   for i in oldLen .. newLen-1:
     xu.p.data[i] = value
 
-proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffect, nodestroy.} =
+func add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", nodestroy.} =
   ## Generic proc for adding a data item `y` to a container `x`.
   ##
   ## For containers that have an order, `add` means *append*. New generic

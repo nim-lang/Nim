@@ -66,8 +66,8 @@ proc hashCstring(s: cstring): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
-proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
-  importc: "strtod", header: "<stdlib.h>", noSideEffect.}
+func c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
+  importc: "strtod", header: "<stdlib.h>".}
 
 const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
