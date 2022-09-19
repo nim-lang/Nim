@@ -1,3 +1,6 @@
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when sizeof(int) <= 2:
   type IntLikeForCount = int|int8|int16|char|bool|uint8|enum
 else:
