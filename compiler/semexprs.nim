@@ -2400,6 +2400,10 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: P
       arrayType.rawAddSon(expected[0])
       n[1] = semExpr(c, n[1], flags, arrayType)
     result = semDirectOp(c, n, flags, expectedType)
+  of mDefault:
+    if n[1].typ.kind != tyTypeDesc:
+      n[1] = getTypeDescNode(c, n[1].typ, n[1].sym, n[1].info)
+    result = semDirectOp(c, n, flags, expectedType)
   else:
     result = semDirectOp(c, n, flags, expectedType)
 
