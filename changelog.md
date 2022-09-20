@@ -26,7 +26,7 @@
 - `shallowCopy` is removed for ARC/ORC. Use `move` when possible or combine assignment and
 `sink` for optimization purposes.
 
-- `nimPreviewDotLikeOps` is going to be removed or deprecated.
+- The `nimPreviewDotLikeOps` define is going to be removed or deprecated.
 
 - The `{.this.}` pragma, deprecated since 0.19, has been removed.
 - `nil` literals can no longer be directly assigned to variables or fields of `distinct` pointer types. They must be converted instead.
@@ -43,6 +43,8 @@
 
 - [Overloadable enums](https://nim-lang.github.io/Nim/manual_experimental.html#overloadable-enum-value-names)
   are no longer experimental.
+
+- Removed the `nimIncrSeqV3` define.
 
 - Static linking against OpenSSL versions below 1.1, previously done by
   setting `-d:openssl10`, is no longer supported.
