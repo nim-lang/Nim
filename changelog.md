@@ -29,7 +29,15 @@
 - `nimPreviewDotLikeOps` is going to be removed or deprecated.
 
 - The `{.this.}` pragma, deprecated since 0.19, has been removed.
-- `nil` is no longer a valid value for distinct pointer types.
+- `nil` literals can no longer be directly assigned to variables or fields of `distinct` pointer types. They must be converted instead.
+  ```nim
+  type Foo = distinct ptr int
+
+  # Before:
+  var x: Foo = nil
+  # After:
+  var x: Foo = Foo(nil)
+  ```
 - Removed two type pragma syntaxes deprecated since 0.20, namely
   `type Foo = object {.final.}`, and `type Foo {.final.} [T] = object`.
 
