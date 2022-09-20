@@ -4248,15 +4248,9 @@ observable differences in behavior:
   ```
 
 
-However, the current implementation produces a warning in these cases.
-There are different ways to deal with this warning:
-
-1. Disable the warning via `{.push warning[ObservableStores]: off.}` ... `{.pop.}`.
-   Then one may need to ensure that `p` only raises *before* any stores to `result`
-   happen.
-
-2. One can use a temporary helper variable, for example instead of `x = p(8)`
-   use `let tmp = p(8); x = tmp`.
+The compiler can produce a warning in these cases, but this warning is
+turned off as default in current implementation. It can be enabled
+temporarily via `{.push warning[ObservableStores]: on.}` ... `{.pop.}`.
 
 
 Overloading of the subscript operator
