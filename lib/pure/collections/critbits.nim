@@ -63,7 +63,7 @@ func len*[T](c: CritBitTree[T]): int {.inline.} =
 
   result = c.count
 
-proc rawGet[T](c: CritBitTree[T], key: string): Node[T] =
+proc rawGet[T](c: CritBitTree[T], key: string): Node[T]=
   var it = c.root
   while it != nil:
     if not it.isLeaf:
@@ -71,7 +71,11 @@ proc rawGet[T](c: CritBitTree[T], key: string): Node[T] =
       let dir = (1 + (ch.ord or it.otherBits.ord)) shr 8
       it = it.child[dir]
     else:
-      return if it.key == key: it else: nil
+      let itKey = it.key
+      if itKey == key:
+        return it
+      else:
+        nil
 
 func contains*[T](c: CritBitTree[T], key: string): bool {.inline.} =
   ## Returns true if `c` contains the given `key`.
