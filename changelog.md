@@ -26,15 +26,25 @@
 - `shallowCopy` is removed for ARC/ORC. Use `move` when possible or combine assignment and
 `sink` for optimization purposes.
 
-- `nimPreviewDotLikeOps` is going to be removed or deprecated.
+- The `nimPreviewDotLikeOps` define is going to be removed or deprecated.
 
 - The `{.this.}` pragma, deprecated since 0.19, has been removed.
-- `nil` is no longer a valid value for distinct pointer types.
+- `nil` literals can no longer be directly assigned to variables or fields of `distinct` pointer types. They must be converted instead.
+  ```nim
+  type Foo = distinct ptr int
+
+  # Before:
+  var x: Foo = nil
+  # After:
+  var x: Foo = Foo(nil)
+  ```
 - Removed two type pragma syntaxes deprecated since 0.20, namely
   `type Foo = object {.final.}`, and `type Foo {.final.} [T] = object`.
 
 - [Overloadable enums](https://nim-lang.github.io/Nim/manual_experimental.html#overloadable-enum-value-names)
   are no longer experimental.
+
+- Removed the `nimIncrSeqV3` define.
 
 - Static linking against OpenSSL versions below 1.1, previously done by
   setting `-d:openssl10`, is no longer supported.
@@ -69,6 +79,12 @@
   in `jscore` for JavaScript targets.
 - Added `UppercaseLetters`, `LowercaseLetters`, `PunctuationChars`, `PrintableChars` sets to `std/strutils`.
 - Added `complex.sgn` for obtaining the phase of complex numbers.
+- Added `insertAdjacentText`, `insertAdjacentElement`, `insertAdjacentHTML`,
+  `after`, `before`, `closest`, `append`, `hasAttributeNS`, `removeAttributeNS`,
+  `hasPointerCapture`, `releasePointerCapture`, `requestPointerLock`,
+  `replaceChildren`, `replaceWith`, `scrollIntoViewIfNeeded`, `setHTML`,
+  `toggleAttribute`, and `matches` to `std/dom`.
+- Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
@@ -137,10 +153,10 @@
   added to make this work explicitly, and a warning is generated in the case
   where it is implicit. This behavior only applies to templates, redefinition
   is generally disallowed for other symbols.
-  
+
 - A new form of type inference called [top-down inference](https://nim-lang.github.io/Nim/manual_experimental.html#topminusdown-type-inference)
   has been implemented for a variety of basic cases. For example, code like the following now compiles:
-  
+
   ```nim
   let foo: seq[(float, byte, cstring)] = @[(1, 2, "abc")]
   ```
@@ -153,7 +169,7 @@
 
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
   reality better. (Nim moved away from all techniques based on "tracing".)
-  
+
 - Defines the `gcRefc` symbol which allows writing specific code for the refc GC.
 
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
@@ -171,4 +187,3 @@
 - Nim now supports Nimble version 0.14 which added support for lock-files. This is done by
   a simple configuration change setting that you can do yourself too. In `$nim/config/nim.cfg`
   replace `pkgs` by `pkgs2`.
-
