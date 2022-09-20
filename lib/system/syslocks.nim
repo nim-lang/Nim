@@ -49,21 +49,21 @@ when defined(windows):
   proc deinitSys(L: var SysLock) {.importc: "DeleteCriticalSection",
                                    header: "<windows.h>".}
 
-  func initializeConditionVariable(
+  proc initializeConditionVariable(
     conditionVariable: var SysCond
-  ) {.stdcall, dynlib: "kernel32", importc: "InitializeConditionVariable".}
+  ) {.stdcall, noSideEffect, dynlib: "kernel32", importc: "InitializeConditionVariable".}
 
-  func sleepConditionVariableCS(
+  proc sleepConditionVariableCS(
     conditionVariable: var SysCond,
     PCRITICAL_SECTION: var SysLock,
     dwMilliseconds: int
-  ): int32 {.stdcall, dynlib: "kernel32", importc: "SleepConditionVariableCS".}
+  ): int32 {.stdcall, noSideEffect, dynlib: "kernel32", importc: "SleepConditionVariableCS".}
 
 
-  func signalSysCond(hEvent: var SysCond) {.stdcall,
+  proc signalSysCond(hEvent: var SysCond) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "WakeConditionVariable".}
 
-  func broadcastSysCond(hEvent: var SysCond) {.stdcall,
+  proc broadcastSysCond(hEvent: var SysCond) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "WakeAllConditionVariable".}
 
   proc initSysCond(cond: var SysCond) {.inline.} =
@@ -84,15 +84,18 @@ elif defined(genode):
 
   proc initSysLock(L: var SysLock) = discard
   proc deinitSys(L: var SysLock) = discard
-  func acquireSys(L: var SysLock) {.importcpp.}
-  func tryAcquireSys(L: var SysLock): bool {.importcpp.}
-  func releaseSys(L: var SysLock) {.importcpp.}
+  proc acquireSys(L: var SysLock) {.noSideEffect, importcpp.}
+  proc tryAcquireSys(L: var SysLock): bool {.noSideEffect, importcpp.}
+  proc releaseSys(L: var SysLock) {.noSideEffect, importcpp.}
 
   proc initSysCond(L: var SysCond) = discard
   proc deinitSysCond(L: var SysCond) = discard
-  func waitSysCond(cond: var SysCond, lock: var SysLock) {.importcpp.}
-  func signalSysCond(cond: var SysCond) {.importcpp.}
-  func broadcastSysCond(cond: var SysCond) {.importcpp.}
+  proc waitSysCond(cond: var SysCond, lock: var SysLock) {.
+    noSideEffect, importcpp.}
+  proc signalSysCond(cond: var SysCond) {.
+    noSideEffect, importcpp.}
+  proc broadcastSysCond(cond: var SysCond) {.
+    noSideEffect, importcpp.}
 
 else:
   type
@@ -122,17 +125,17 @@ else:
 
     SysLockType = distinct cint
 
-  func initSysLockAux(L: var SysLockObj, attr: ptr SysLockAttr) {.
-    importc: "pthread_mutex_init", header: "<pthread.h>".}
-  func deinitSysAux(L: var SysLockObj) {.
+  proc initSysLockAux(L: var SysLockObj, attr: ptr SysLockAttr) {.
+    importc: "pthread_mutex_init", header: "<pthread.h>", noSideEffect.}
+  proc deinitSysAux(L: var SysLockObj) {.noSideEffect,
     importc: "pthread_mutex_destroy", header: "<pthread.h>".}
 
-  func acquireSysAux(L: var SysLockObj) {.
+  proc acquireSysAux(L: var SysLockObj) {.noSideEffect,
     importc: "pthread_mutex_lock", header: "<pthread.h>".}
-  func tryAcquireSysAux(L: var SysLockObj): cint {.
+  proc tryAcquireSysAux(L: var SysLockObj): cint {.noSideEffect,
     importc: "pthread_mutex_trylock", header: "<pthread.h>".}
 
-  func releaseSysAux(L: var SysLockObj) {.
+  proc releaseSysAux(L: var SysLockObj) {.noSideEffect,
     importc: "pthread_mutex_unlock", header: "<pthread.h>".}
 
   when defined(ios):
@@ -182,23 +185,23 @@ else:
   when insideRLocksModule:
     let SysLockType_Reentrant {.importc: "PTHREAD_MUTEX_RECURSIVE",
       header: "<pthread.h>".}: SysLockType
-    func initSysLockAttr(a: var SysLockAttr) {.
-      importc: "pthread_mutexattr_init", header: "<pthread.h>".}
-    func setSysLockType(a: var SysLockAttr, t: SysLockType) {.
-      importc: "pthread_mutexattr_settype", header: "<pthread.h>".}
+    proc initSysLockAttr(a: var SysLockAttr) {.
+      importc: "pthread_mutexattr_init", header: "<pthread.h>", noSideEffect.}
+    proc setSysLockType(a: var SysLockAttr, t: SysLockType) {.
+      importc: "pthread_mutexattr_settype", header: "<pthread.h>", noSideEffect.}
 
   else:
-    func initSysCondAux(cond: var SysCondObj, cond_attr: ptr SysCondAttr = nil) {.
-      importc: "pthread_cond_init", header: "<pthread.h>".}
-    func deinitSysCondAux(cond: var SysCondObj) {.
+    proc initSysCondAux(cond: var SysCondObj, cond_attr: ptr SysCondAttr = nil) {.
+      importc: "pthread_cond_init", header: "<pthread.h>", noSideEffect.}
+    proc deinitSysCondAux(cond: var SysCondObj) {.noSideEffect,
       importc: "pthread_cond_destroy", header: "<pthread.h>".}
 
-    func waitSysCondAux(cond: var SysCondObj, lock: var SysLockObj): cint {.
-      importc: "pthread_cond_wait", header: "<pthread.h>".}
-    func signalSysCondAux(cond: var SysCondObj) {.
-      importc: "pthread_cond_signal", header: "<pthread.h>".}
-    func broadcastSysCondAux(cond: var SysCondObj) {.
-      importc: "pthread_cond_broadcast", header: "<pthread.h>".}
+    proc waitSysCondAux(cond: var SysCondObj, lock: var SysLockObj): cint {.
+      importc: "pthread_cond_wait", header: "<pthread.h>", noSideEffect.}
+    proc signalSysCondAux(cond: var SysCondObj) {.
+      importc: "pthread_cond_signal", header: "<pthread.h>", noSideEffect.}
+    proc broadcastSysCondAux(cond: var SysCondObj) {.
+      importc: "pthread_cond_broadcast", header: "<pthread.h>", noSideEffect.}
 
     when defined(ios):
       proc initSysCond(cond: var SysCond, cond_attr: ptr SysCondAttr = nil) =

@@ -1,5 +1,5 @@
 when notJSnotNims:
-  func zeroMem*(p: pointer, size: Natural) {.inline,
+  proc zeroMem*(p: pointer, size: Natural) {.inline, noSideEffect,
     tags: [], locks: 0, raises: [].}
     ## Overwrites the contents of the memory at `p` with the value 0.
     ##
@@ -24,7 +24,7 @@ when notJSnotNims:
     ## and is thus somewhat more safe than `copyMem`. Like any procedure
     ## dealing with raw memory this is still **unsafe**, though.
 
-  func equalMem*(a, b: pointer, size: Natural): bool {.inline,
+  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect,
     tags: [], locks: 0, raises: [].}
     ## Compares the memory blocks `a` and `b`. `size` bytes will
     ## be compared.
@@ -33,7 +33,7 @@ when notJSnotNims:
     ## otherwise. Like any procedure dealing with raw memory this is
     ## **unsafe**.
 
-  func cmpMem*(a, b: pointer, size: Natural): int {.inline,
+  proc cmpMem*(a, b: pointer, size: Natural): int {.inline, noSideEffect,
     tags: [], locks: 0, raises: [].}
     ## Compares the memory blocks `a` and `b`. `size` bytes will
     ## be compared.
