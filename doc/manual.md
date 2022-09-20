@@ -4325,7 +4325,7 @@ dispatching:
     Unit = ref object of Thing
       x: int
 
-  method collide(a, b: Thing) {.inline.} =
+  method collide(a, b: Thing) {.base, inline.} =
     quit "to override!"
 
   method collide(a: Thing, b: Unit) {.inline.} =
