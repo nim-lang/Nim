@@ -129,6 +129,9 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
 
   result = newNodeI(nkArgList, n.info)
   for i in 1..givenRegularParams:
+    if s.typ != nil and n[i].typ != nil:
+      if n[i].kind in nkIntLit..nkUInt64Lit and skipTypes(s.typ[i], abstractVarRange).kind in {tyInt..tyInt64} + {tyUInt..tyUInt64}:
+        n[i] = newIntTypeNode(n[i].intVal,s.typ[i])
     result.add n[i]
 
   # handle parameters with default values, which were
