@@ -1,54 +1,20 @@
-when not defined(vcc):
-  # Generic GCC-like arguments
-  {.passc: "-DNDEBUG -fvisibility=hidden".}
-  # shell32 user32 aren't needed for static linking from my testing
-  when defined(windows):
-    {.passl: "-lpsapi -lbcrypt -ladvapi32".}
-else:
-  # Specifically for VCC which has different syntax
-  {.passc: "/DNDEBUG".}
-  {.passl: "psapi.lib bcrypt.lib advapi32.lib".}
-  
-
-when defined(mimallocDynamic):
-  {.passl: "-lmimalloc".}
-else:
-  const
-    mimallocStatic {.strdefine.} = "empty"
-    mimallocIncludePath {.strdefine.} = "empty"
-    # Can't import std/strutils in this file so we unquote the manual way
-    mimallocStaticNoQuote = block:
-      var c: string
-      for i in 1..<mimallocStatic.len - 1:
-        c.add mimallocStatic[i]
-      c
-
-  {.passc: "-I" & mimallocIncludePath.}
-  {.passl: "-I" & mimallocIncludePath.}
-  {.compile: mimallocStaticNoQuote.}
 
 {.push stackTrace: off.}
 
-proc mi_malloc(size: csize_t): pointer {.importc, header: "mimalloc.h".}
-proc mi_calloc(nmemb: csize_t, size: csize_t): pointer {.importc, header: "mimalloc.h".}
-proc mi_realloc(pt: pointer, size: csize_t): pointer {.importc, header: "mimalloc.h".}
-proc mi_free(p: pointer) {.importc, header: "mimalloc.h".}
-
-
 proc allocImpl(size: Natural): pointer =
-  result = mi_malloc(size.csize_t)
+  result = c_malloc(size.csize_t)
   when defined(zephyr):
     if result == nil:
       raiseOutOfMem()
 
 proc alloc0Impl(size: Natural): pointer =
-  result = mi_calloc(size.csize_t, 1)
+  result = c_calloc(size.csize_t, 1)
   when defined(zephyr):
     if result == nil:
       raiseOutOfMem()
 
 proc reallocImpl(p: pointer, newSize: Natural): pointer =
-  result = mi_realloc(p, newSize.csize_t)
+  result = c_realloc(p, newSize.csize_t)
   when defined(zephyr):
     if result == nil:
       raiseOutOfMem()
@@ -59,7 +25,7 @@ proc realloc0Impl(p: pointer, oldsize, newSize: Natural): pointer =
     zeroMem(cast[pointer](cast[int](result) + oldSize), newSize - oldSize)
 
 proc deallocImpl(p: pointer) =
-  mi_free(p)
+  c_free(p)
 
 
 # The shared allocators map on the regular ones

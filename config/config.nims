@@ -9,17 +9,16 @@ cppDefine "INF"
 cppDefine "NAN"
 
 
-when not defined(mimallocDynamic):
-  let
-    mimallocPath = "lib/system/mm/mimalloc/"
-    # Quote the paths so we support paths with spaces
-    # TODO: Is there a better way of doing this?
-    mimallocStatic = "mimallocStatic=\"" & (mimallocPath & "src/static.c") & '"'
-    mimallocIncludePath = "mimallocIncludePath=\"" & (mimallocPath & "/include") & '"'
 
-  # So we can compile mimalloc from the patched files
-  switch("define", mimallocStatic)
-  switch("define", mimallocIncludePath)
+let
+  mimallocPath = "lib/system/mm/mimalloc/"
+  # Quote the paths so we support paths with spaces
+  mimallocStatic = "mimallocStatic=\"" & (mimallocPath & "src/static.c") & '"'
+  mimallocIncludePath = "mimallocIncludePath=\"" & (mimallocPath & "/include") & '"'
+
+# So we can compile mimalloc from the patched files
+switch("define", mimallocStatic)
+switch("define", mimallocIncludePath)
 
 # Not sure if we really need those or not, but Mimalloc uses them
 case get("cc")
