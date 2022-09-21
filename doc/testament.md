@@ -9,7 +9,7 @@
 Testament is an advanced automatic unittests runner for Nim tests, is used for the development of Nim itself,
 offers process isolation for your tests, it can generate statistics about test cases,
 supports multiple targets (C, C++, ObjectiveC, JavaScript, etc.),
-simulated `Dry-Runs <https://en.wikipedia.org/wiki/Dry_run_(testing)>`_,
+simulated [Dry-Runs](https://en.wikipedia.org/wiki/Dry_run_(testing)),
 has logging, can generate HTML reports, skip tests from a file, and more,
 so can be useful to run your tests, even the most complex ones.
 
@@ -185,8 +185,10 @@ Example "template" **to edit** and write a Testament unittest:
 
 * As you can see the "Spec" is just a `discard """ """`.
 * Spec has sane defaults, so you don't need to provide them all, any simple assert will work just fine.
-* `This is not the full spec of Testament, check the Testament Spec on GitHub, see parseSpec(). <https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L238>`_
-* `Nim itself uses Testament, so there are plenty of test examples. <https://github.com/nim-lang/Nim/tree/devel/tests>`_
+* This is not the full spec of Testament, check [the Testament Spec on GitHub,
+  see parseSpec()](https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L315).
+* Nim itself uses Testament, so [there are plenty of test examples](
+  https://github.com/nim-lang/Nim/tree/devel/tests).
 * Has some built-in CI compatibility, like Azure Pipelines, etc.
 
 
@@ -195,11 +197,10 @@ Inline hints, warnings and errors (notes)
 
 Testing the line, column, kind and message of hints, warnings and errors can
 be written inline like so:
-
-.. code-block:: nim
-
+  ```nim
   {.warning: "warning!!"} #[tt.Warning
            ^ warning!! [User] ]#
+  ```
 
 The opening `#[tt.` marks the message line.
 The `^` marks the message column.
@@ -207,18 +208,17 @@ The `^` marks the message column.
 Inline messages can be combined with `nimout` when `nimoutFull` is false (default).
 This allows testing for expected messages from other modules:
 
-.. code-block:: nim
-
+  ```nim
   discard """
     nimout: "config.nims(1, 1) Hint: some hint message [User]"
   """
   {.warning: "warning!!"} #[tt.Warning
            ^ warning!! [User] ]#
+  ```
 
 Multiple messages for a line can be checked by delimiting messages with ';':
 
-.. code-block:: nim
-
+  ```nim
   discard """
     matrix: "--errorMax:0 --styleCheck:error"
   """
@@ -227,6 +227,7 @@ Multiple messages for a line can be checked by delimiting messages with ';':
        ^ 'generic_proc' should be: 'genericProc'; tt.Error
                         ^ 'a_a' should be: 'aA' ]#
     discard
+  ```
 
 Use `--errorMax:0` in `matrix`, or `cmd: "nim check $file"` when testing
 for multiple 'Error' messages.
@@ -327,4 +328,4 @@ Tests without Spec:
 
 
 See also:
-* `Unittest <unittest.html>`_
+* [Unittest](unittest.html)

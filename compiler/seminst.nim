@@ -54,7 +54,8 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
           # later by semAsgn in return type inference scenario
           t = q.typ
         else:
-          localError(c.config, a.info, errCannotInstantiateX % s.name.s)
+          if q.typ.kind != tyCompositeTypeClass:
+            localError(c.config, a.info, errCannotInstantiateX % s.name.s)
           t = errorType(c)
       elif t.kind in {tyGenericParam, tyConcept}:
         localError(c.config, a.info, errCannotInstantiateX % q.name.s)
