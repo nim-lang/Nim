@@ -10,6 +10,8 @@ int
 '''
 """
 
+# todo wait for https://github.com/nim-lang/Nim/pull/20380
+
 import typetraits
 
 template reject(expr) = assert(not compiles(x))
