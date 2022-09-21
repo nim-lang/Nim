@@ -4248,9 +4248,14 @@ observable differences in behavior:
   ```
 
 
-The compiler can produce a warning in these cases, but this warning is
-turned off as default in current implementation. It can be enabled
-temporarily via `{.push warning[ObservableStores]: on.}` ... `{.pop.}`.
+The compiler can produce a warning in these cases, however this behavior is
+turned off by default. It can be enabled for arbitrary sections of code via
+the `warning[ObservableStores]` and `push`/`pop` pragmas:
+```
+`{.push warning[ObservableStores]: on.}`
+  ...
+`{.pop.}`
+```
 
 
 Overloading of the subscript operator
