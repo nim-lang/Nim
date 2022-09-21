@@ -4249,14 +4249,15 @@ observable differences in behavior:
 
 
 The compiler can produce a warning in these cases, however this behavior is
-turned off by default. It can be enabled for arbitrary sections of code via
-the `warning[ObservableStores]` and `push`/`pop` pragmas:
-```
-`{.push warning[ObservableStores]: on.}`
-  ...
-`{.pop.}`
-```
+turned off by default. It can be enabled for a section of code via the
+`warning[ObservableStores]` and `push`/`pop` pragmas. Take the above code
+as an example:
 
+  ```nim
+  {.push warning[ObservableStores]: on.}
+  main()
+  {.pop.}
+  ```
 
 Overloading of the subscript operator
 -------------------------------------
