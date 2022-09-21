@@ -160,3 +160,11 @@ proc main() =
 
 main()
 
+block: # bug #20391
+  type Container[T] = ref object of RootRef
+    item: T
+
+  let a = Container[int]()
+
+  doAssert a of Container[int]
+  doAssert not (a of Container[string])
