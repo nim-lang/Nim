@@ -531,7 +531,7 @@ proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
   if conf.exc == excNone and conf.backend != backendCpp:
     conf.exc = excGoto
 
-proc unregisterArcOrc*(conf: ConfigRef) =
+proc unregisterArcOrc(conf: ConfigRef) =
   undefSymbol(conf.symbols, "gcdestructors")
   undefSymbol(conf.symbols, "gcarc")
   undefSymbol(conf.symbols, "gcorc")
