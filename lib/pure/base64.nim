@@ -84,10 +84,13 @@ template encodeInternal(s, alphabet: typed): untyped =
 
   result.setLen(encodeSize(s.len))
 
+  let
+    padding = s.len mod 3
+    inputEnds = s.len - padding
+
   var
     inputIndex = 0
     outputIndex = 0
-    inputEnds = s.len - s.len mod 3
     n: uint32
     b: uint32
 
@@ -113,7 +116,6 @@ template encodeInternal(s, alphabet: typed): untyped =
     outputChar(n shr 6)
     outputChar(n shr 0)
 
-  var padding = s.len mod 3
   if padding == 1:
     inputByte(b shl 16)
     outputChar(n shr 18)
