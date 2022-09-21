@@ -402,7 +402,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
       "object constructor needs an object type".dup(addDeclaredLoc(c.config, t))
       else: "cannot instantiate: '" &
         typeToString(t, preferDesc) &
-        "'; Maybe generic arguments are missing?"
+        "'; the object's generic parameters cannot be inferred and must be explicitly given"
       )
 
   # Check if the object is fully initialized by recursively testing each
