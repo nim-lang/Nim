@@ -1280,7 +1280,7 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
   var it = t
   while it != nil:
     it = it.skipTypes(skipPtrs)
-    if it.sym != nil:
+    if it.sym != nil and tfFromGeneric notin it.flags:
       var m = it.sym.owner
       while m != nil and m.kind != skModule: m = m.owner
       if m == nil or sfSystemModule in m.flags:
