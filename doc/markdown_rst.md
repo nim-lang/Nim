@@ -2,14 +2,33 @@
 Nim-flavored Markdown and reStructuredText
 ==========================================
 
-Both `Markdown`:idx: and `reStructuredText`:idx: (RST) are markup
-languages whose goal is to
-typeset texts with complex structure, formatting and references
-using simple plaintext representation.
-A large subset is implemented with some limitations_ and
-`Nim-specific features`_.
+:Author: Andrey Makarov
+:Version: |nimversion|
 
-This module is also embedded into Nim compiler; the compiler can output
+.. default-role:: code
+.. include:: rstcommon.rst
+.. contents::
+
+Both `Markdown`:idx: (md) and `reStructuredText`:idx: (RST) are markup
+languages whose goal is to typeset texts with complex structure,
+formatting and references using simple plaintext representation.
+
+Command line usage
+==================
+
+Usage (to convert Markdown into HTML):
+
+  ```cmd
+  nim md2html markdown_rst.md
+  ```
+
+Output::
+  You're reading it!
+
+The `md2tex`:option: command is invoked identically to `md2html`:option:,
+but outputs a ``.tex`` file instead of ``.html``.
+
+These tools embedded into Nim compiler; the compiler can output
 the result to HTML \[#html] or Latex \[#latex].
 
 \[#html] commands `nim doc`:cmd: for ``*.nim`` files and
@@ -18,16 +37,37 @@ the result to HTML \[#html] or Latex \[#latex].
 \[#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
    `nim rst2tex`:cmd: for ``*.rst``.
 
+Full list of supported commands:
+
+===================   ======================   ============   ==============
+command               runs on...               input format   output format
+===================   ======================   ============   ==============
+`nim md2html`:cmd:    standalone md files      ``.md``        ``.html`` HTML
+`nim md2tex`:cmd:     same                     same           ``.tex`` LaTeX
+`nim rst2html`:cmd:   standalone rst files     ``.rst``       ``.html`` HTML
+`nim rst2tex`:cmd:    same                     same           ``.tex`` LaTeX
+`nim doc`:cmd:        documentation comments   ``.nim``       ``.html`` HTML
+`nim doc2tex`:cmd:    same                     same           ``.tex`` LaTeX
+`nim jsondoc`:cmd:    same                     same           ``.json`` JSON
+===================   ======================   ============   ==============
+
+
+Basic markup
+============
+
 If you are new to Markdown/RST please consider reading the following:
 
-1) `Markdown Basic Syntax`_
-2) a long specification of Markdown: `CommonMark Spec`_
-3) a short `quick introduction`_ to RST
-4) an `RST reference`_: a comprehensive cheatsheet for RST
-5) a more formal 50-page `RST specification`_.
+1) [Markdown Basic Syntax]
+2) a long specification of Markdown: [CommonMark Spec]
+3) a short [quick introduction] to RST
+4) an [RST reference]: a comprehensive cheatsheet for RST
+5) a more formal 50-page [RST specification].
 
 Features
 --------
+
+A large subset is implemented with some [limitations] and
+[additional Nim-specific features].
 
 Supported standard RST features:
 
@@ -47,7 +87,7 @@ Supported standard RST features:
   + quoted literal blocks
   + line blocks
   + simple tables
-  + directives (see official documentation in `RST directives list`_):
+  + directives (see official documentation in [RST directives list]):
     - ``image``, ``figure`` for including images and videos
     - ``code``
     - ``contents`` (table of contents), ``container``, ``raw``
@@ -63,19 +103,18 @@ Supported standard RST features:
     internal links (inline and outline)
   + \`interpreted text\` with roles ``:literal:``, ``:strong:``,
     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:superscript:``
-    (see `RST roles list`_ for description).
+    (see [RST roles list] for description).
   + inline internal targets
 
-.. _`Nim-specific features`:
-
-Additional Nim-specific features:
+Additional Nim-specific features
+--------------------------------
 
 * directives: ``code-block`` \[cmp:Sphinx], ``title``,
   ``index`` \[cmp:Sphinx]
 * predefined roles
   - ``:nim:`` (default), ``:c:`` (C programming language),
     ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
-    That is every language that `highlite <highlite.html>`_ supports.
+    That is every language that [highlite](highlite.html) supports.
     They turn on appropriate syntax highlighting in inline code.
 
     .. Note:: default role for Nim files is ``:nim:``,
@@ -91,7 +130,7 @@ Additional Nim-specific features:
   - ``:tok:``, a role for highlighting of programming language tokens
 * ***triple emphasis*** (bold and italic) using \*\*\*
 * ``:idx:`` role for \`interpreted text\` to include the link to this
-  text into an index (example: `Nim index`_).
+  text into an index (example: [Nim index]).
 * double slash `//` in option lists serves as a prefix for any option that
   starts from a word (without any leading symbols like `-`, `--`, `/`)::
 
@@ -102,12 +141,12 @@ Additional Nim-specific features:
   and `doc`:option: will be left in the final document.
 
 \[cmp:Sphinx] similar but different from the directives of
-   Python `Sphinx directives`_ and `Sphinx roles`_ extensions
+   Python [Sphinx directives] and [Sphinx roles] extensions
 
-.. _`extra features`:
+Extra features
+--------------
 
-Optional additional features, turned on by ``options: RstParseOption`` in
-`proc rstParse`_:
+Optional additional features, by default turned on:
 
 * emoji / smiley symbols
 * Markdown tables
@@ -187,23 +226,25 @@ Limitations
   - no roman numerals in enumerated lists
   - no doctest blocks
   - no grid tables
-  - some directives are missing (check official `RST directives list`_):
+  - some directives are missing (check official [RST directives list]):
     ``parsed-literal``, ``sidebar``, ``topic``, ``math``, ``rubric``,
     ``epigraph``, ``highlights``, ``pull-quote``, ``compound``,
     ``table``, ``csv-table``, ``list-table``, ``section-numbering``,
     ``header``, ``footer``, ``meta``, ``class``
     - no ``role`` directives and no custom interpreted text roles
-    - some standard roles are not supported (check `RST roles list`_)
+    - some standard roles are not supported (check [RST roles list])
     - no generic admonition support
 * inline markup
   - no simple-inline-markup
   - no embedded aliases
 
-Usage
------
+Additional resources
+--------------------
 
-See `Nim DocGen Tools Guide <docgen.html>`_ for the details about
-`nim doc`:cmd:, `nim rst2html`:cmd: and `nim rst2tex`:cmd: commands.
+* See [Nim DocGen Tools Guide](docgen.html) for the details about
+  `nim doc`:cmd: command and idiosyncrasies of documentation markup in
+  ``.nim`` files and Nim programming language projects.
+* See also documentation for [rst module](rst.html) -- Nim RST/Markdown parser.
 
 .. _Markdown Basic Syntax: https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax
 .. _CommonMark Spec: https://spec.commonmark.org/0.30

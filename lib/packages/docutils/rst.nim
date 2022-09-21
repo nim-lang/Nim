@@ -9,11 +9,16 @@
 
 ## This module implements a `reStructuredText`:idx: (RST) and
 ## `Markdown`:idx: parser.
+## User's manual on supported markup syntax and command line usage can be
+## found in [Nim-flavored Markdown and reStructuredText](markdown_rst.html).
 ##
-## See [Nim-flavored Markdown and reStructuredText](markdown_rst.html)
-## for the list of implemented features of these markup languages.
-## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
-## generate HTML or Latex strings to embed them into your documents.
+## * See also [Nim DocGen Tools Guide](docgen.html) for handling of
+##   ``.nim`` files.
+## * See also [packages/docutils/rstgen module](rstgen.html) to know how to
+##   generate HTML or Latex strings (for embedding them into custom documents).
+##
+## Choice between Markdown and RST as well as optional additional features are
+## turned on by passing ``options:`` [RstParseOptions] to [proc rstParse].
 
 import
   os, strutils, rstast, dochelpers, std/enumutils, algorithm, lists, sequtils,
