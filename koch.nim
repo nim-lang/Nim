@@ -606,7 +606,7 @@ proc runCI(cmd: string) =
     # the BSDs are overwhelmed already, so only run this test on the other machines:
     kochExecFold("Boot Nim ORC", "boot -d:release --mm:orc --lib:lib")
 
-    kochExecFold("Boot Nim ORC with mimalloc", "boot -d:release --mm:orc --lib:lib -d:useMalloc")
+    kochExecFold("Boot Nim ORC with mimalloc", "boot -d:release --mm:orc --lib:lib -d:useMimalloc")
 
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)
