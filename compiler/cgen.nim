@@ -634,7 +634,7 @@ proc genProcPrototype(m: BModule, sym: PSym)
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc intLiteral(i: BiggestInt): Rope
 proc genLiteral(p: BProc, n: PNode): Rope
-proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope
+proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Rope; argsCounter: var int)
 proc raiseExit(p: BProc)
 
 proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =

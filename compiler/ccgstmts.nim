@@ -337,13 +337,13 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       var tmp: TLoc
       if value.kind in nkCallKinds and value[0].kind == nkSym and
            sfConstructor in value[0].sym.flags:
-        var params: Rope
+        var params = Rope(nil)
+        var argsCounter = 0
         let typ = skipTypes(value[0].typ, abstractInst)
         assert(typ.kind == tyProc)
         for i in 1..<value.len:
-          if params != nil: params.add(~", ")
           assert(typ.len == typ.n.len)
-          params.add(genOtherArg(p, value, i, typ))
+          genOtherArg(p, value, i, typ, params, argsCounter)
         if params == nil:
           lineF(p, cpsStmts, "$#;$n", [decl])
         else:
