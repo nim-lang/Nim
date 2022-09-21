@@ -75,7 +75,7 @@ proc rawGet[T](c: CritBitTree[T], key: string): Node[T]=
       if itKey == key:
         return it
       else:
-        nil
+        return nil
 
 func contains*[T](c: CritBitTree[T], key: string): bool {.inline.} =
   ## Returns true if `c` contains the given `key`.
