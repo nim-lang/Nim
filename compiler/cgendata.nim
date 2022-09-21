@@ -27,6 +27,7 @@ type
     cfsFieldInfo,             # section for field information
     cfsTypeInfo,              # section for type information (ag ABI checks)
     cfsProcHeaders,           # section for C procs prototypes
+    cfsStrData,               # section for constant string literals
     cfsData,                  # section for C constant data
     cfsVars,                  # section for C variable declarations
     cfsProcs,                 # section for C procs that are not inline

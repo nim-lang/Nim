@@ -15,21 +15,22 @@ const
   stringCaseThreshold = 8
     # above X strings a hash-switch for strings is generated
 
-proc getTraverseProc(p: BProc, v: PSym): Rope =
+proc registerTraverseProc(p: BProc, v: PSym) =
+  var traverseProc = Rope(nil)
   if p.config.selectedGC in {gcMarkAndSweep, gcHooks, gcRefc} and
       optOwnedRefs notin p.config.globalOptions and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
-    result = genTraverseProcForGlobal(p.module, v, v.info)
+    traverseProc = genTraverseProcForGlobal(p.module, v, v.info)
 
-proc registerTraverseProc(p: BProc, v: PSym, traverseProc: Rope) =
-  if sfThread in v.flags:
-    appcg(p.module, p.module.preInitProc.procSec(cpsInit),
-      "$n\t#nimRegisterThreadLocalMarker($1);$n$n", [traverseProc])
-  else:
-    appcg(p.module, p.module.preInitProc.procSec(cpsInit),
-      "$n\t#nimRegisterGlobalMarker($1);$n$n", [traverseProc])
+  if traverseProc != nil and not p.hcrOn:
+    if sfThread in v.flags:
+      appcg(p.module, p.module.preInitProc.procSec(cpsInit),
+        "$n\t#nimRegisterThreadLocalMarker($1);$n$n", [traverseProc])
+    else:
+      appcg(p.module, p.module.preInitProc.procSec(cpsInit),
+        "$n\t#nimRegisterGlobalMarker($1);$n$n", [traverseProc])
 
 proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
   if n.kind == nkEmpty:
@@ -97,13 +98,10 @@ proc genVarTuple(p: BProc, n: PNode) =
     let vn = n[i]
     let v = vn.sym
     if sfCompileTime in v.flags: continue
-    var traverseProc: Rope
     if sfGlobal in v.flags:
       assignGlobalVar(p, vn, nil)
       genObjectInit(p, cpsInit, v.typ, v.loc, constructObj)
-      traverseProc = getTraverseProc(p, v)
-      if traverseProc != nil and not p.hcrOn:
-        registerTraverseProc(p, v, traverseProc)
+      registerTraverseProc(p, v)
     else:
       assignLocalVar(p, vn)
       initLocalVar(p, v, immediateAsgn=isAssignedImmediately(p.config, n[^1]))
@@ -115,7 +113,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n[i].sym)]
     putLocIntoDest(p, v.loc, field)
     if forHcr or isGlobalInBlock:
-      hcrGlobals.add((loc: v.loc, tp: if traverseProc == nil: ~"NULL" else: traverseProc))
+      hcrGlobals.add((loc: v.loc, tp: ~"NULL"))
 
   if forHcr:
     # end the block where the tuple gets initialized
@@ -145,12 +143,12 @@ proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
     a.flags.incl(lfEnforceDeref)
     expr(p, ri, a)
 
-proc assignLabel(b: var TBlock): Rope {.inline.} =
+proc assignLabel(b: var TBlock; result: var Rope) {.inline.} =
   b.label = "LA" & b.id.rope
-  result = b.label
+  result.add b.label
 
-proc blockBody(b: var TBlock): Rope =
-  result = b.sections[cpsLocals]
+proc blockBody(b: var TBlock; result: var Rope) =
+  result.add b.sections[cpsLocals]
   if b.frameLen > 0:
     result.addf("FR_.len+=$1;$n", [b.frameLen.rope])
   result.add(b.sections[cpsInit])
@@ -159,7 +157,7 @@ proc blockBody(b: var TBlock): Rope =
 proc endBlock(p: BProc, blockEnd: Rope) =
   let topBlock = p.blocks.len-1
   # the block is merged into the parent block
-  p.blocks[topBlock-1].sections[cpsStmts].add(p.blocks[topBlock].blockBody)
+  p.blocks[topBlock].blockBody(p.blocks[topBlock-1].sections[cpsStmts])
   setLen(p.blocks, topBlock)
   # this is done after the block is popped so $n is
   # properly indented when pretty printing is enabled
@@ -279,17 +277,15 @@ proc genGotoVar(p: BProc; value: PNode) =
   else:
     lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
 
-proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
+proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; result: var Rope)
 
-proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
+proc potentialValueInit(p: BProc; v: PSym; value: PNode; result: var Rope) =
   if lfDynamicLib in v.loc.flags or sfThread in v.flags or p.hcrOn:
-    result = nil
+    discard "nothing to do"
   elif sfGlobal in v.flags and value != nil and isDeepConstExpr(value, p.module.compileToCpp) and
       p.withinLoop == 0 and not containsGarbageCollectedRef(v.typ):
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
-    result = genBracedInit(p, value, isConst = false, v.typ)
-  else:
-    result = nil
+    genBracedInit(p, value, isConst = false, v.typ, result)
 
 proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   if sfGoto in v.flags:
@@ -297,8 +293,8 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     genGotoVar(p, value)
     return
   var targetProc = p
-  var traverseProc: Rope
-  let valueAsRope = potentialValueInit(p, v, value)
+  var valueAsRope = Rope(nil)
+  potentialValueInit(p, v, value, valueAsRope)
   if sfGlobal in v.flags:
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and
         value.kind == nkEmpty and
@@ -328,9 +324,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
     if sfExportc in v.flags and p.module.g.generatedHeader != nil:
       genVarPrototype(p.module.g.generatedHeader, vn)
-    traverseProc = getTraverseProc(p, v)
-    if traverseProc != nil and not p.hcrOn:
-      registerTraverseProc(p, v, traverseProc)
+    registerTraverseProc(p, v)
   else:
     let imm = isAssignedImmediately(p.config, value)
     if imm and p.module.compileToCpp and p.splitDecls == 0 and
@@ -361,7 +355,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     assignLocalVar(p, vn)
     initLocalVar(p, v, imm)
 
-  if traverseProc == nil: traverseProc = ~"NULL"
+  let traverseProc = ~"NULL"
   # If the var is in a block (control flow like if/while or a block) in global scope just
   # register the so called "global" so it can be used later on. There is no need to close
   # and reopen of if (nim_hcr_do_init_) blocks because we are in one already anyway.
@@ -614,8 +608,9 @@ proc genWhileStmt(p: BProc, t: PNode) =
       p.blocks[p.breakIdx].isLoop = true
       initLocExpr(p, t[0], a)
       if (t[0].kind != nkIntLit) or (t[0].intVal == 0):
-        let label = assignLabel(p.blocks[p.breakIdx])
-        lineF(p, cpsStmts, "if (!$1) goto $2;$n", [rdLoc(a), label])
+        lineF(p, cpsStmts, "if (!$1) goto ", [rdLoc(a)])
+        assignLabel(p.blocks[p.breakIdx], p.s(cpsStmts))
+        lineF(p, cpsStmts, ";$n", [])
       genStmts(p, loopBody)
 
       if optProfiler in p.options:
@@ -702,12 +697,12 @@ proc genBreakStmt(p: BProc, t: PNode) =
     while idx >= 0 and not p.blocks[idx].isLoop: dec idx
     if idx < 0 or not p.blocks[idx].isLoop:
       internalError(p.config, t.info, "no loop to break")
-  let label = assignLabel(p.blocks[idx])
+  p.blocks[idx].label = "LA" & p.blocks[idx].id.rope
   blockLeaveActions(p,
     p.nestedTryStmts.len - p.blocks[idx].nestedTryStmts,
     p.inExceptBlockLen - p.blocks[idx].nestedExceptStmts)
   genLineDir(p, t)
-  lineF(p, cpsStmts, "goto $1;$n", [label])
+  lineF(p, cpsStmts, "goto $1;$n", [p.blocks[idx].label])
 
 proc raiseExit(p: BProc) =
   assert p.config.exc == excGoto
@@ -729,21 +724,19 @@ proc finallyActions(p: BProc) =
     if finallyBlock != nil:
       genSimpleBlock(p, finallyBlock[0])
 
-proc raiseInstr(p: BProc): Rope =
+proc raiseInstr(p: BProc; result: var Rope) =
   if p.config.exc == excGoto:
     let L = p.nestedTryStmts.len
     if L == 0:
       p.flags.incl beforeRetNeeded
       # easy case, simply goto 'ret':
-      result = ropecg(p.module, "goto BeforeRet_;$n", [])
+      result.add ropecg(p.module, "goto BeforeRet_;$n", [])
     else:
       # raise inside an 'except' must go to the finally block,
       # raise outside an 'except' block must go to the 'except' list.
-      result = ropecg(p.module, "goto LA$1_;$n",
+      result.add ropecg(p.module, "goto LA$1_;$n",
         [p.nestedTryStmts[L-1].label])
       # + ord(p.nestedTryStmts[L-1].inExcept)])
-  else:
-    result = nil
 
 proc genRaiseStmt(p: BProc, t: PNode) =
   if t[0].kind != nkEmpty:
@@ -775,9 +768,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       line(p, cpsStmts, ~"throw;$n")
     else:
       linefmt(p, cpsStmts, "#reraiseException();$n", [])
-  let gotoInstr = raiseInstr(p)
-  if gotoInstr != nil:
-    line(p, cpsStmts, gotoInstr)
+  raiseInstr(p, p.s(cpsStmts))
 
 template genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
                           rangeFormat, eqFormat: FormatStr, labl: TLabel) =
@@ -1389,7 +1380,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
         if isDefined(p.config, "vcc") or isDefined(p.config, "clangcl"):
           # For the vcc compiler, use `setjmp()` with one argument.
           # See https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/setjmp?view=msvc-170
-          linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])        
+          linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])
         else:
           # The Windows `_setjmp()` takes two arguments, with the second being an
           # undocumented buffer used by the SEH mechanism for stack unwinding.
@@ -1466,7 +1457,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
   if not quirkyExceptions:
     linefmt(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", [safePoint])
 
-proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
+proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false; result: var Rope) =
   var res = ""
   for it in t.sons:
     case it.kind
@@ -1513,12 +1504,13 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
           result.add("\\n\"\n")
   else:
     res.add("\L")
-    result = res.rope
+    result.add res.rope
 
 proc genAsmStmt(p: BProc, t: PNode) =
   assert(t.kind == nkAsmStmt)
   genLineDir(p, t)
-  var s = genAsmOrEmitStmt(p, t, isAsmStmt=true)
+  var s = Rope(nil)
+  genAsmOrEmitStmt(p, t, isAsmStmt=true, s)
   # see bug #2362, "top level asm statements" seem to be a mis-feature
   # but even if we don't do this, the example in #2362 cannot possibly
   # work:
@@ -1537,7 +1529,8 @@ proc determineSection(n: PNode): TCFileSection =
     elif sec.startsWith("/*INCLUDESECTION*/"): result = cfsHeaders
 
 proc genEmit(p: BProc, t: PNode) =
-  var s = genAsmOrEmitStmt(p, t[1])
+  var s = Rope(nil)
+  genAsmOrEmitStmt(p, t[1], false, s)
   if p.prc == nil:
     # top level emit pragma?
     let section = determineSection(t[1])

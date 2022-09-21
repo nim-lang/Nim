@@ -35,7 +35,7 @@ proc detectSeqVersion(m: BModule): int =
 proc genStringLiteralDataOnlyV1(m: BModule, s: string): Rope =
   discard cgsym(m, "TGenericSeq")
   result = getTempName(m)
-  m.s[cfsData].addf("STRING_LITERAL($1, $2, $3);$n",
+  m.s[cfsStrData].addf("STRING_LITERAL($1, $2, $3);$n",
        [result, makeCString(s), rope(s.len)])
 
 proc genStringLiteralV1(m: BModule; n: PNode): Rope =
@@ -54,7 +54,7 @@ proc genStringLiteralV1(m: BModule; n: PNode): Rope =
 # ------ Version 2: destructor based strings and seqs -----------------------
 
 proc genStringLiteralDataOnlyV2(m: BModule, s: string; result: Rope; isConst: bool) =
-  m.s[cfsData].addf("static $4 struct {$n" &
+  m.s[cfsStrData].addf("static $4 struct {$n" &
        "  NI cap; NIM_CHAR data[$2+1];$n" &
        "} $1 = { $2 | NIM_STRLIT_FLAG, $3 };$n",
        [result, rope(s.len), makeCString(s),
@@ -69,11 +69,11 @@ proc genStringLiteralV2(m: BModule; n: PNode; isConst: bool): Rope =
     discard cgsym(m, "NimStrPayload")
     discard cgsym(m, "NimStringV2")
     # string literal not found in the cache:
-    m.s[cfsData].addf("static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
+    m.s[cfsStrData].addf("static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
           [result, rope(n.strVal.len), pureLit, rope(if isConst: "const" else: "")])
   else:
     result = getTempName(m)
-    m.s[cfsData].addf("static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
+    m.s[cfsStrData].addf("static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
           [result, rope(n.strVal.len), m.tmpBase & rope(id),
           rope(if isConst: "const" else: "")])
 

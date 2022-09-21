@@ -287,7 +287,7 @@ proc genLineDir(p: BProc, t: PNode) =
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(conf: ConfigRef): bool {.inline.}
 proc genProc(m: BModule, prc: PSym)
-proc raiseInstr(p: BProc): Rope
+proc raiseInstr(p: BProc; result: var Rope)
 
 template compileToCpp(m: BModule): untyped =
   m.config.backend == backendCpp or sfCompileToCpp in m.module.flags
