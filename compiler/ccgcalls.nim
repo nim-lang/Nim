@@ -614,10 +614,10 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Rope) =
 proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Rope) =
   var i = 0
   var j = 1
-  var argsCounter = 0
   while i < pat.len:
     case pat[i]
     of '@':
+      var argsCounter = 0
       for k in j..<ri.len:
         genOtherArg(p, ri, k, typ, result, argsCounter)
       inc i
@@ -628,10 +628,11 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Ro
           let typ = skipTypes(ri[0].typ, abstractInst)
           if pat[i+1] == '+': genArgNoParam(p, ri[0], result)
           result.add(~"(")
-          var argsCounterB = 0
           if 1 < ri.len:
+            var argsCounterB = 0
             genOtherArg(p, ri, 1, typ, result, argsCounterB)
           for k in j+1..<ri.len:
+            var argsCounterB = 0
             genOtherArg(p, ri, k, typ, result, argsCounterB)
           result.add(~")")
         else:
@@ -644,9 +645,9 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Ro
         var arg = ri[j].skipAddrDeref
         while arg.kind in {nkAddr, nkHiddenAddr, nkObjDownConv}: arg = arg[0]
         genArgNoParam(p, arg, result)
-        inc argsCounter
         #result.add debugTree(arg, 0, 10)
       else:
+        var argsCounter = 0
         genOtherArg(p, ri, j, typ, result, argsCounter)
       inc j
       inc i
@@ -702,7 +703,6 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
     var argsCounter = 0
     if 1 < ri.len:
       genThisArg(p, ri, 1, typ, pl)
-      inc argsCounter
     pl.add(op.r)
     var params = Rope(nil)
     for i in 2..<ri.len:

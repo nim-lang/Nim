@@ -1336,7 +1336,7 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
     typeName = rope("NIM_NIL")
 
   discard cgsym(m, "TNimTypeV2")
-  m.s[cfsData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
+  m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
   let destroyImpl = genHook(m, t, info, attachedDestructor)
   let traceImpl = genHook(m, t, info, attachedTrace)
 
