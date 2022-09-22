@@ -65,8 +65,6 @@
 - `strutils.find` now uses and defaults to `last = -1` for whole string searches,
   making limiting it to just the first char (`last = 0`) valid.
 - `random.rand` now works with `Ordinal`s.
-- `std/oids` now uses `int64` to store time internally (before it was int32), the length of
-  the string form of `Oid` changes from 24 to 32.
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
