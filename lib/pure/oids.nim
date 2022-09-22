@@ -50,9 +50,8 @@ proc parseOid*(str: cstring): Oid =
 proc `$`*(oid: Oid): string =
   ## Converts an OID to a string.
   const hex = "0123456789abcdef"
-  const N = 32
 
-  result.setLen N
+  result.setLen 32
 
   var o = oid
   var bytes = cast[cstring](addr(o))
