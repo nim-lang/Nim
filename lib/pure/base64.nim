@@ -168,7 +168,7 @@ proc encodeMime*(s: string, lineLen = 75, newLine = "\r\n"): string =
   ## This procedure encodes a string according to MIME spec.
   ##
   ## **See also:**
-  ## * `encode proc<#encode,string>`_ for encoding a string
+  ## * `encode proc<#encode,openArray[T]>`_ for encoding an openArray
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encodeMime("Hello World", 4, "\n") == "SGVs\nbG8g\nV29y\nbGQ="
@@ -199,7 +199,6 @@ proc decode*(s: string): string =
   ##
   ## **See also:**
   ## * `encode proc<#encode,openArray[T]>`_ for encoding an openarray
-  ## * `encode proc<#encode,string>`_ for encoding a string
   runnableExamples:
     assert decode("SGVsbG8gV29ybGQ=") == "Hello World"
     assert decode("  SGVsbG8gV29ybGQ=") == "Hello World"
