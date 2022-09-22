@@ -554,7 +554,9 @@ proc genComputedGoto(p: BProc; n: PNode) =
         return
 
       let val = getOrdValue(it[j])
-      lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(toInt64(val)+id+1)])
+      var lit = Rope(nil)
+      intLiteral(toInt64(val)+id+1, lit)
+      lineF(p, cpsStmts, "TMP$#_:$n", [lit])
 
     genStmts(p, it.lastSon)
 
@@ -877,8 +879,10 @@ proc genStringCase(p: BProc, t: PNode, stringKind: TTypeKind, d: var TLoc) =
               [rdLoc(a), bitMask])
     for j in 0..high(branches):
       if branches[j] != nil:
+        var lit = Rope(nil)
+        intLiteral(j, lit)
         lineF(p, cpsStmts, "case $1: $n$2break;$n",
-             [intLiteral(j), branches[j]])
+             [lit, branches[j]])
     lineF(p, cpsStmts, "}$n", []) # else statement:
     if t[^1].kind != nkOfBranch:
       lineF(p, cpsStmts, "goto LA$1_;$n", [rope(p.labels)])
@@ -912,16 +916,22 @@ proc genCaseRange(p: BProc, branch: PNode) =
   for j in 0..<branch.len-1:
     if branch[j].kind == nkRange:
       if hasSwitchRange in CC[p.config.cCompiler].props:
-        lineF(p, cpsStmts, "case $1 ... $2:$n", [
-            genLiteral(p, branch[j][0]),
-            genLiteral(p, branch[j][1])])
+        var litA = Rope(nil)
+        var litB = Rope(nil)
+        genLiteral(p, branch[j][0], litA)
+        genLiteral(p, branch[j][1], litB)
+        lineF(p, cpsStmts, "case $1 ... $2:$n", [litA, litB])
       else:
         var v = copyNode(branch[j][0])
         while v.intVal <= branch[j][1].intVal:
-          lineF(p, cpsStmts, "case $1:$n", [genLiteral(p, v)])
+          var litA = Rope(nil)
+          genLiteral(p, v, litA)
+          lineF(p, cpsStmts, "case $1:$n", [litA])
           inc(v.intVal)
     else:
-      lineF(p, cpsStmts, "case $1:$n", [genLiteral(p, branch[j])])
+      var litA = Rope(nil)
+      genLiteral(p, branch[j], litA)
+      lineF(p, cpsStmts, "case $1:$n", [litA])
 
 proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
   # analyse 'case' statement:
@@ -1555,10 +1565,12 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
   if not containsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1",
           [discriminatorTableDecl(p.module, t, field)])
+  var lit = Rope(nil)
+  intLiteral(toInt64(lengthOrd(p.config, field.typ))+1, lit)
   lineCg(p, cpsStmts,
         "#FieldDiscriminantCheck((NI)(NU)($1), (NI)(NU)($2), $3, $4);$n",
         [rdLoc(a), rdLoc(tmp), discriminatorTableName(p.module, t, field),
-         intLiteral(toInt64(lengthOrd(p.config, field.typ))+1)])
+         lit])
 
 when false:
   proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLoc) =

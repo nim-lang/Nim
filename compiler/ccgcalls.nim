@@ -173,8 +173,10 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, 
       result = ("($3*)(($1)+($2))" % [rdLoc(a), rdLoc(b), dest],
                 lengthExpr)
     else:
+      var lit = Rope(nil)
+      intLiteral(first, lit)
       result = ("($4*)($1)+(($2)-($3))" %
-        [rdLoc(a), rdLoc(b), intLiteral(first), dest],
+        [rdLoc(a), rdLoc(b), lit, dest],
         lengthExpr)
   of tyOpenArray, tyVarargs:
     if reifiedOpenArray(q[1]):
