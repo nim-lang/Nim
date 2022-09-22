@@ -29,7 +29,7 @@ previous settings):
    ``$project.nim``. This file can be skipped with the same
    `--skipProjCfg`:option: command line option.
 
-For available procs and implementation details see `nimscript <nimscript.html>`_.
+For available procs and implementation details see [nimscript](nimscript.html).
 
 
 Limitations
@@ -61,52 +61,53 @@ Standard library modules
 
 At least the following standard library modules are available:
 
-* `macros <macros.html>`_
-* `os <os.html>`_
-* `strutils <strutils.html>`_
-* `math <math.html>`_
-* `distros <distros.html>`_
-* `sugar <sugar.html>`_
-* `algorithm <algorithm.html>`_
-* `base64 <base64.html>`_
-* `bitops <bitops.html>`_
-* `chains <chains.html>`_
-* `colors <colors.html>`_
-* `complex <complex.html>`_
-* `htmlgen <htmlgen.html>`_
-* `httpcore <httpcore.html>`_
-* `lenientops <lenientops.html>`_
-* `mersenne <mersenne.html>`_
-* `options <options.html>`_
-* `parseutils <parseutils.html>`_
-* `punycode <punycode.html>`_
-* `random <punycode.html>`_
-* `stats <stats.html>`_
-* `strformat <strformat.html>`_
-* `strmisc <strmisc.html>`_
-* `strscans <strscans.html>`_
-* `unicode <unicode.html>`_
-* `uri <uri.html>`_
-* `std/editdistance <editdistance.html>`_
-* `std/wordwrap <wordwrap.html>`_
-* `std/sums <sums.html>`_
-* `parsecsv <parsecsv.html>`_
-* `parsecfg <parsecfg.html>`_
-* `parsesql <parsesql.html>`_
-* `xmlparser <xmlparser.html>`_
-* `htmlparser <htmlparser.html>`_
-* `ropes <ropes.html>`_
-* `json <json.html>`_
-* `parsejson <parsejson.html>`_
-* `strtabs <strtabs.html>`_
-* `unidecode <unidecode.html>`_
+* [macros](macros.html)
+* [os](os.html)
+* [strutils](strutils.html)
+* [math](math.html)
+* [distros](distros.html)
+* [sugar](sugar.html)
+* [algorithm](algorithm.html)
+* [base64](base64.html)
+* [bitops](bitops.html)
+* [chains](chains.html)
+* [colors](colors.html)
+* [complex](complex.html)
+* [htmlgen](htmlgen.html)
+* [httpcore](httpcore.html)
+* [lenientops](lenientops.html)
+* [mersenne](mersenne.html)
+* [options](options.html)
+* [parseutils](parseutils.html)
+* [punycode](punycode.html)
+* [random](punycode.html)
+* [stats](stats.html)
+* [strformat](strformat.html)
+* [strmisc](strmisc.html)
+* [strscans](strscans.html)
+* [unicode](unicode.html)
+* [uri](uri.html)
+* [std/editdistance](editdistance.html)
+* [std/wordwrap](wordwrap.html)
+* [std/sums](sums.html)
+* [parsecsv](parsecsv.html)
+* [parsecfg](parsecfg.html)
+* [parsesql](parsesql.html)
+* [xmlparser](xmlparser.html)
+* [htmlparser](htmlparser.html)
+* [ropes](ropes.html)
+* [json](json.html)
+* [parsejson](parsejson.html)
+* [strtabs](strtabs.html)
+* [unidecode](unidecode.html)
 
-In addition to the standard Nim syntax (`system <system.html>`_ module),
+In addition to the standard Nim syntax ([system](system.html) module),
 NimScripts support the procs and templates defined in the
-`nimscript <nimscript.html>`_ module too.
+[nimscript](nimscript.html) module too.
 
 See also:
-* `Check the tests for more information about modules compatible with NimScript. <https://github.com/nim-lang/Nim/blob/devel/tests/test_nimscript.nims>`_
+* [Check the tests for more information about modules compatible with NimScript](
+  https://github.com/nim-lang/Nim/blob/devel/tests/test_nimscript.nims)
 
 
 NimScript as a configuration file
@@ -169,14 +170,14 @@ Task          Description
 =========     ===================================================
 
 
-Look at the module `distros <distros.html>`_ for some support of the
+Look at the module [distros](distros.html) for some support of the
 OS's native package managers.
 
 
 Nimble integration
 ==================
 
-See the `Nimble readme <https://github.com/nim-lang/nimble#readme>`_
+See the [Nimble readme](https://github.com/nim-lang/nimble#readme)
 for more information.
 
 
@@ -297,7 +298,7 @@ translations.cfg
   ```
 
 
-* `Nimterlingua <https://nimble.directory/pkg/nimterlingua>`_
+* [Nimterlingua](https://nimble.directory/pkg/nimterlingua)
 
 
 Graceful Fallback
@@ -329,14 +330,15 @@ Evolving Scripting language
 ---------------------------
 
 NimScript evolves together with Nim,
-`occasionally new features might become available on NimScript <https://github.com/nim-lang/Nim/pulls?utf8=%E2%9C%93&q=nimscript>`_ ,
+[occasionally new features might become available on NimScript](
+https://github.com/nim-lang/Nim/pulls?utf8=%E2%9C%93&q=nimscript),
 adapted from compiled Nim or added as new features on both.
 
 Scripting Language with a Package Manager
 -----------------------------------------
 
 You can create your own modules to be compatible with NimScript,
-and check `Nimble <https://nimble.directory>`_
+and check [Nimble](https://nimble.directory)
 to search for third party modules that may work on NimScript.
 
 DevOps Scripting
@@ -345,4 +347,5 @@ DevOps Scripting
 You can use NimScript to deploy to production, run tests, build projects, do benchmarks,
 generate documentation, and all kinds of DevOps/SysAdmin specific tasks.
 
-* `An example of a third party NimScript that can be used as a project-agnostic tool. <https://github.com/kaushalmodi/nim_config#list-available-tasks>`_
+* [An example of a third party NimScript that can be used as a project-agnostic
+  tool.](https://github.com/kaushalmodi/nim_config#list-available-tasks)

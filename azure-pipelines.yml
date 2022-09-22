@@ -1,7 +1,8 @@
 trigger:
   branches:
     include:
-    - '*'
+    - 'devel'
+    - 'version-*'
 pr:
   branches:
     include:
