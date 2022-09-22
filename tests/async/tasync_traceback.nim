@@ -1,6 +1,5 @@
 discard """
   exitcode: 0
-  disabled: "windows"
   output: "Matched"
 """
 import asyncdispatch, strutils
@@ -148,3 +147,5 @@ when not defined(cpp): # todo fixme
     echo("Matched")
   else:
     quit(QuitFailure)
+else:
+  echo("Matched")
