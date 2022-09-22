@@ -1425,6 +1425,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         excl(objTy.flags, tfFinal)
       let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
                        nextSymId c.idgen, getCurrOwner(c), s.info)
+      obj.flags.incl sfGeneratedType
       let symNode = newSymNode(obj)
       obj.ast = a.shallowCopy
       case a[0].kind
