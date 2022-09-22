@@ -180,7 +180,7 @@ proc encode*(s: string, safe = false): string =
     assert encode("Hello World") == "SGVsbG8gV29ybGQ="
   encodeImpl()
 
-proc encodeMime*(s: string, lineLen = 75, newLine = "\r\n"): string =
+proc encodeMime*(s: string, lineLen = 75.Positive, newLine = "\r\n"): string =
   ## Encodes `s` into base64 representation as lines.
   ## Used in email MIME format, use `lineLen` and `newline`.
   ##
@@ -191,11 +191,25 @@ proc encodeMime*(s: string, lineLen = 75, newLine = "\r\n"): string =
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encodeMime("Hello World", 4, "\n") == "SGVs\nbG8g\nV29y\nbGQ="
-  result = newStringOfCap(encodeSize(s.len))
-  for i, c in encode(s):
-    if i != 0 and (i mod lineLen == 0):
-      result.add(newLine)
-    result.add(c)
+  template cpy(l, src, idx) =
+    b = l
+    while i < b:
+      result[i] = src[idx]
+      inc i
+      inc idx
+
+  if s.len == 0: return
+  let e = encode(s)
+  if e.len <= lineLen or newLine.len == 0:
+    return e
+  result = newString(e.len + newLine.len * (e.len div lineLen))
+  var i, j, k, b: int
+  let nd = e.len - lineLen
+  while j < nd:
+    cpy(i + lineLen, e, j)
+    cpy(i + newLine.len, newLine, k)
+    k = 0
+  cpy(result.len, e, j)
 
 proc initDecodeTable*(): array[256, char] =
   # computes a decode table at compile time
