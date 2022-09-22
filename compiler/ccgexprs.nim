@@ -2793,10 +2793,12 @@ proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
 proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
   # add a suffix for hcr - will later init the global pointer with this data
   let actualConstName = if q.hcrOn: sym.loc.r & "_const" else: sym.loc.r
-  q.s[cfsData].addf("N_LIB_PRIVATE NIM_CONST $1 $2 = ",
-      [getTypeDesc(q, sym.typ), actualConstName])
-  genBracedInit(q.initProc, sym.ast, isConst = true, sym.typ, q.s[cfsData])
-  q.s[cfsData].addf(";$n", [])
+  var data = Rope(nil)
+  data.addf("N_LIB_PRIVATE NIM_CONST $1 $2 = ",
+           [getTypeDesc(q, sym.typ), actualConstName])
+  genBracedInit(q.initProc, sym.ast, isConst = true, sym.typ, data)
+  data.addf(";$n", [])
+  q.s[cfsData].add data
   if q.hcrOn:
     # generate the global pointer with the real name
     q.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(q, sym.loc.t, skVar), sym.loc.r])
