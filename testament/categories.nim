@@ -105,9 +105,9 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
   template testWithoutMs(filename: untyped) =
-    testSpec r, makeTest("tests/gc" / filename, options, cat)
+    testSpec r, makeTest("tests/gc" / filename, options & "--mm:refc", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release -d:useRealtimeGC", cat)
+                  " -d:release -d:useRealtimeGC --mm:refc", cat)
     when filename != "gctest":
       testSpec r, makeTest("tests/gc" / filename, options &
                     " --gc:orc", cat)
