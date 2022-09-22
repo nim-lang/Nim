@@ -93,6 +93,7 @@ proc nep1CheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
 template styleCheckDef*(ctx: PContext; info: TLineInfo; sym: PSym; k: TSymKind) =
   ## Check symbol definitions adhere to NEP1 style rules.
   if optStyleCheck in ctx.config.options and # ignore if styleChecks are off
+     {optStyleHint, optStyleError} * ctx.config.globalOptions != {} and # check only if hint/error is enabled
      hintName in ctx.config.notes and # ignore if name checks are not requested
      ctx.config.belongsToProjectPackage(ctx.module) and # ignore foreign packages
      optStyleUsages notin ctx.config.globalOptions and # ignore if requested to only check name usage
