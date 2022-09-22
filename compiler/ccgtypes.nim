@@ -1045,11 +1045,11 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
          [nameHcr])
 
   if m.hcrOn:
-    m.s[cfsData].addf("static TNimType* $1;$n", [name])
+    m.s[cfsStrData].addf("static TNimType* $1;$n", [name])
     m.hcrCreateTypeInfosProc.addf("\thcrRegisterGlobal($2, \"$1\", sizeof(TNimType), NULL, (void**)&$1);$n",
          [name, getModuleDllPath(m, m.module)])
   else:
-    m.s[cfsData].addf("N_LIB_PRIVATE TNimType $1;$n", [name])
+    m.s[cfsStrData].addf("N_LIB_PRIVATE TNimType $1;$n", [name])
 
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope;
                     info: TLineInfo) =

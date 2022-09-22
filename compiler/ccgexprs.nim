@@ -2616,9 +2616,10 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
   if isConstClosure(n):
     inc(p.module.labels)
     var tmp = "CNSTCLOSURE" & rope(p.module.labels)
-    p.module.s[cfsData].addf("static NIM_CONST $1 $2 = ", [getTypeDesc(p.module, n.typ), tmp])
-    genBracedInit(p, n, isConst = true, n.typ, p.module.s[cfsData])
-    p.module.s[cfsData].addf(";$n", [])
+    var data = "static NIM_CONST $1 $2 = " % [getTypeDesc(p.module, n.typ), tmp]
+    genBracedInit(p, n, isConst = true, n.typ, data)
+    data.addf(";$n", [])
+    p.module.s[cfsData].add data
     putIntoDest(p, d, n, tmp, OnStatic)
   else:
     var tmp, a, b: TLoc
