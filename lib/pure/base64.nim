@@ -202,7 +202,7 @@ proc encodeMime*(s: string, lineLen = 75.Positive, newLine = "\r\n"): string =
   let e = encode(s)
   if e.len <= lineLen or newLine.len == 0:
     return e
-  result = newString(e.len + newLine.len * (e.len div lineLen))
+  result = newString(e.len + newLine.len * ((e.len div lineLen) - int(e.len mod lineLen == 0)))
   var i, j, k, b: int
   let nd = e.len - lineLen
   while j < nd:
