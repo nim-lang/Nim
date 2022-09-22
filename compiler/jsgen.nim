@@ -1749,7 +1749,7 @@ proc arrayTypeForElemType(typ: PType): string =
   of tyInt8: "Int8Array"
   of tyUInt, tyUInt32: "Uint32Array"
   of tyUInt16: "Uint16Array"
-  of tyUInt8: "Uint8Array"
+  of tyUInt8, tyChar: "Uint8Array"
   of tyFloat32: "Float32Array"
   of tyFloat64, tyFloat: "Float64Array"
   else: ""
