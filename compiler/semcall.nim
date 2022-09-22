@@ -416,6 +416,12 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
             let msg = errUndeclaredField % field & " for type " & getProcHeader(c.config, sym)
             localError(c.config, orig[2].info, msg)
         else:
+          if n.kind == nkCall and n[0].kind == nkDotExpr:
+            let name = renderTree(n[0][1], {renderNoComments})
+            let o = renderTree(n[0][0], {renderNoComments})
+            localError(c.config, n.info, "field access '$1' conflicts with procedure call '$2', rename the field or call as '$2($3,...)'" % [
+                   renderTree(n[0], {renderNoComments}), name, o])
+            return
           impl()
       return
     elif result.state != csMatch:
