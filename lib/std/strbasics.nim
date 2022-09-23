@@ -11,6 +11,10 @@
 ##
 ## Experimental API, subject to change.
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 const whitespaces = {' ', '\t', '\v', '\r', '\l', '\f'}
 
 proc add*(x: var string, y: openArray[char]) =
@@ -46,7 +50,7 @@ func setSlice*(s: var string, slice: Slice[int]) =
     import std/sugar
 
     var a = "Hello, Nim!"
-    doassert a.dup(setSlice(7 .. 9)) == "Nim"
+    doAssert a.dup(setSlice(7 .. 9)) == "Nim"
     doAssert a.dup(setSlice(0 .. 0)) == "H"
     doAssert a.dup(setSlice(0 .. 1)) == "He"
     doAssert a.dup(setSlice(0 .. 10)) == a

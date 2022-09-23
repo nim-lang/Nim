@@ -80,7 +80,8 @@ export toLower, toUpper
 
 include "system/inclrtl"
 import std/private/since
-from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWithImpl, endsWithImpl
+from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl,
+    startsWithImpl, endsWithImpl
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -93,6 +94,15 @@ const
 
   Letters* = {'A'..'Z', 'a'..'z'}
     ## The set of letters.
+
+  UppercaseLetters* = {'A'..'Z'}
+    ## The set of uppercase ASCII letters.
+
+  LowercaseLetters* = {'a'..'z'}
+    ## The set of lowercase ASCII letters.
+
+  PunctuationChars* = {'!'..'/', ':'..'@', '['..'`', '{'..'~'}
+    ## The set of all ASCII punctuation characters.
 
   Digits* = {'0'..'9'}
     ## The set of digits.
@@ -109,6 +119,9 @@ const
   Newlines* = {'\13', '\10'}
     ## The set of characters a newline terminator can start with (carriage
     ## return, line feed).
+
+  PrintableChars* = Letters + Digits + PunctuationChars + Whitespace
+    ## The set of all printable ASCII characters (letters, digits, whitespace, and punctuation characters).
 
   AllChars* = {'\x00'..'\xFF'}
     ## A set with all the possible characters.
@@ -172,7 +185,7 @@ func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
     doAssert isLowerAscii('e') == true
     doAssert isLowerAscii('E') == false
     doAssert isLowerAscii('7') == false
-  return c in {'a'..'z'}
+  return c in LowercaseLetters
 
 func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
@@ -186,8 +199,7 @@ func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
     doAssert isUpperAscii('e') == false
     doAssert isUpperAscii('E') == true
     doAssert isUpperAscii('7') == false
-  return c in {'A'..'Z'}
-
+  return c in UppercaseLetters
 
 func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   ## Returns the lower case version of character `c`.
@@ -202,7 +214,7 @@ func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   runnableExamples:
     doAssert toLowerAscii('A') == 'a'
     doAssert toLowerAscii('e') == 'e'
-  if c in {'A'..'Z'}:
+  if c in UppercaseLetters:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
@@ -239,7 +251,7 @@ func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
   runnableExamples:
     doAssert toUpperAscii('a') == 'A'
     doAssert toUpperAscii('E') == 'E'
-  if c in {'a'..'z'}:
+  if c in LowercaseLetters:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
@@ -278,7 +290,7 @@ func nimIdentNormalize*(s: string): string =
   ## except first one.
   ##
   ## .. Warning:: Backticks (`) are not handled: they remain *as is* and
-  ##    spaces are preserved. See `nimIdentBackticksNormalize 
+  ##    spaces are preserved. See `nimIdentBackticksNormalize
   ##    <dochelpers.html#nimIdentBackticksNormalize,string>`_ for
   ##    an alternative approach.
   runnableExamples:
@@ -289,7 +301,7 @@ func nimIdentNormalize*(s: string): string =
   result[0] = s[0]
   var j = 1
   for i in 1..len(s) - 1:
-    if s[i] in {'A'..'Z'}:
+    if s[i] in UppercaseLetters:
       result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
@@ -311,7 +323,7 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
-    if s[i] in {'A'..'Z'}:
+    if s[i] in UppercaseLetters:
       result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
@@ -1515,7 +1527,8 @@ func delete*(s: var string, slice: Slice[int]) =
       inc(j)
     setLen(s, newLen)
 
-func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete", deprecated: "use `delete(s, first..last)`".} =
+func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete",
+    deprecated: "use `delete(s, first..last)`".} =
   ## Deletes in `s` the characters at positions `first .. last` (both ends included).
   runnableExamples("--warning:deprecated:off"):
     var a = "abracadabra"
@@ -1808,26 +1821,44 @@ func join*[T: not string](a: openArray[T], sep: string = ""): string =
     add(result, $x)
 
 type
-  SkipTable* = array[char, int]
+  SkipTable* = array[char, int] ## Character table for efficient substring search.
 
 func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
     extern: "nsuInitSkipTable".} =
-  ## Preprocess table `a` for `sub`.
+  ## Initializes table `a` for efficient search of substring `sub`.
+  ##
+  ## See also:
+  ## * `initSkipTable func<#initSkipTable,string>`_
+  ## * `find func<#find,SkipTable,string,string,Natural,int>`_
+  # TODO: this should be the `default()` initializer for the type.
   let m = len(sub)
   fill(a, m)
 
   for i in 0 ..< m - 1:
     a[sub[i]] = m - 1 - i
 
-func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
+func initSkipTable*(sub: string): SkipTable {.noinit, rtl,
+    extern: "nsuInitNewSkipTable".} =
+  ## Returns a new table initialized for `sub`.
+  ##
+  ## See also:
+  ## * `initSkipTable func<#initSkipTable,SkipTable,string>`_
+  ## * `find func<#find,SkipTable,string,string,Natural,int>`_
+  initSkipTable(result, sub)
+
+func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = -1): int {.
     rtl, extern: "nsuFindStrA".} =
   ## Searches for `sub` in `s` inside range `start..last` using preprocessed
   ## table `a`. If `last` is unspecified, it defaults to `s.high` (the last
   ## element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ##
+  ## See also:
+  ## * `initSkipTable func<#initSkipTable,string>`_
+  ## * `initSkipTable func<#initSkipTable,SkipTable,string>`_
   let
-    last = if last == 0: s.high else: last
+    last = if last < 0: s.high else: last
     subLast = sub.len - 1
 
   if subLast == -1:
@@ -1837,6 +1868,7 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
 
   # This is an implementation of the Boyer-Moore Horspool algorithms
   # https://en.wikipedia.org/wiki/Boyer%E2%80%93Moore%E2%80%93Horspool_algorithm
+  result = -1
   var skip = start
 
   while last - skip >= subLast:
@@ -1846,7 +1878,6 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
         return skip
       dec i
     inc skip, a[s[skip + subLast]]
-  return -1
 
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
   func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
@@ -1858,59 +1889,64 @@ when not (defined(js) or defined(nimdoc) or defined(nimscript)):
 else:
   const hasCStringBuiltin = false
 
-func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
+func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuFindChar".} =
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
-  ## If `last` is unspecified, it defaults to `s.high` (the last element).
+  ## If `last` is unspecified or negative, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].rfind` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `rfind func<#rfind,string,char,Natural,int>`_
   ## * `replace func<#replace,string,char,char>`_
-  let last = if last == 0: s.high else: last
-  when nimvm:
+  result = -1
+  let last = if last < 0: s.high else: last
+
+  template findImpl =
     for i in int(start)..last:
-      if sub == s[i]: return i
+      if s[i] == sub:
+        return i
+
+  when nimvm:
+    findImpl()
   else:
     when hasCStringBuiltin:
-      let L = last-start+1
-      if L > 0:
-        let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](L))
+      let length = last-start+1
+      if length > 0:
+        let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](length))
         if not found.isNil:
           return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
     else:
-      for i in int(start)..last:
-        if sub == s[i]: return i
-  return -1
+      findImpl()
 
-func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
+func find*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
     rtl, extern: "nsuFindCharSet".} =
   ## Searches for `chars` in `s` inside range `start..last` (both ends included).
-  ## If `last` is unspecified, it defaults to `s.high` (the last element).
+  ## If `last` is unspecified or negative, it defaults to `s.high` (the last element).
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].find` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `rfind func<#rfind,string,set[char],Natural,int>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
-  let last = if last == 0: s.high else: last
+  result = -1
+  let last = if last < 0: s.high else: last
   for i in int(start)..last:
-    if s[i] in chars: return i
-  return -1
+    if s[i] in chars:
+      return i
 
-func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
+func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuFindStr".} =
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
-  ## If `last` is unspecified, it defaults to `s.high` (the last element).
+  ## If `last` is unspecified or negative, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].find` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `rfind func<#rfind,string,string,Natural,int>`_
@@ -1918,28 +1954,23 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
 
-  template useSkipTable {.dirty.} =
-    var a {.noinit.}: SkipTable
-    initSkipTable(a, sub)
-    result = find(a, s, sub, start, last)
+  template useSkipTable =
+    result = find(initSkipTable(sub), s, sub, start, last)
 
-  when not hasCStringBuiltin:
+  when nimvm:
     useSkipTable()
   else:
-    when nimvm:
-      useSkipTable()
-    else:
-      when hasCStringBuiltin:
-        if last == 0 and s.len > start:
-          let found = c_strstr(s[start].unsafeAddr, sub)
-          if not found.isNil:
-            result = cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+    when hasCStringBuiltin:
+      if last < 0 and start < s.len:
+        let found = c_strstr(s[start].unsafeAddr, sub)
+        result = if not found.isNil:
+            cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
           else:
-            result = -1
-        else:
-          useSkipTable()
+            -1
       else:
         useSkipTable()
+    else:
+      useSkipTable()
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
@@ -1950,7 +1981,7 @@ func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].find` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `find func<#find,string,char,Natural,int>`_
@@ -1968,7 +1999,7 @@ func rfind*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].rfind` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `find func<#find,string,set[char],Natural,int>`_
@@ -1986,7 +2017,7 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   ## Otherwise the index returned is relative to `s[0]`, not `start`.
-  ## Use `s[start..last].rfind` for a `start`-origin index.
+  ## Subtract `start` from the result for a `start`-origin index.
   ##
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
@@ -2114,8 +2145,7 @@ func replace*(s, sub: string, by = ""): string {.rtl,
     # copy the rest:
     add result, substr(s, i)
   else:
-    var a {.noinit.}: SkipTable
-    initSkipTable(a, sub)
+    var a = initSkipTable(sub)
     let last = s.high
     var i = 0
     while true:
@@ -2155,9 +2185,8 @@ func replaceWord*(s, sub: string, by = ""): string {.rtl,
   ## replaced.
   if sub.len == 0: return s
   const wordChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\128'..'\255'}
-  var a {.noinit.}: SkipTable
   result = ""
-  initSkipTable(a, sub)
+  var a = initSkipTable(sub)
   var i = 0
   let last = s.high
   let sublen = sub.len
@@ -2223,7 +2252,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
     doAssert insertSep("1000000") == "1_000_000"
   result = newStringOfCap(s.len)
   let hasPrefix = isDigit(s[s.low]) == false
-  var idx:int
+  var idx: int
   if hasPrefix:
     result.add s[s.low]
     for i in (s.low + 1)..s.high:
@@ -2237,7 +2266,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
   result.setLen(L + idx)
   var j = 0
   dec(L)
-  for i in countdown(partsLen-1,0):
+  for i in countdown(partsLen-1, 0):
     if j == digits:
       result[L + idx] = sep
       dec(L)
@@ -2338,7 +2367,7 @@ func validIdentifier*(s: string): bool {.rtl, extern: "nsuValidIdentifier".} =
 # floating point formatting:
 when not defined(js):
   func c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
-                                     importc: "sprintf", varargs}
+                                     importc: "sprintf", varargs.}
 
 type
   FloatFormatMode* = enum
@@ -2669,8 +2698,8 @@ func findNormalized(x: string, inArray: openArray[string]): int =
               # security hole...
   return -1
 
-func invalidFormatString() {.noinline.} =
-  raise newException(ValueError, "invalid format string")
+func invalidFormatString(formatstr: string) {.noinline.} =
+  raise newException(ValueError, "invalid format string: " & formatstr)
 
 func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     extern: "nsuAddf".} =
@@ -2682,7 +2711,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     if formatstr[i] == '$' and i+1 < len(formatstr):
       case formatstr[i+1]
       of '#':
-        if num > a.high: invalidFormatString()
+        if num > a.high: invalidFormatString(formatstr)
         add s, a[num]
         inc i, 2
         inc num
@@ -2698,7 +2727,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
         let idx = if not negative: j-1 else: a.len-j
-        if idx < 0 or idx > a.high: invalidFormatString()
+        if idx < 0 or idx > a.high: invalidFormatString(formatstr)
         add s, a[idx]
       of '{':
         var j = i+2
@@ -2715,22 +2744,22 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
           inc(j)
         if isNumber == 1:
           let idx = if not negative: k-1 else: a.len-k
-          if idx < 0 or idx > a.high: invalidFormatString()
+          if idx < 0 or idx > a.high: invalidFormatString(formatstr)
           add s, a[idx]
         else:
           var x = findNormalized(substr(formatstr, i+2, j-1), a)
           if x >= 0 and x < high(a): add s, a[x+1]
-          else: invalidFormatString()
+          else: invalidFormatString(formatstr)
         i = j+1
       of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
         var j = i+1
         while j < formatstr.len and formatstr[j] in PatternChars: inc(j)
         var x = findNormalized(substr(formatstr, i+1, j-1), a)
         if x >= 0 and x < high(a): add s, a[x+1]
-        else: invalidFormatString()
+        else: invalidFormatString(formatstr)
         i = j
       else:
-        invalidFormatString()
+        invalidFormatString(formatstr)
     else:
       add s, formatstr[i]
       inc(i)

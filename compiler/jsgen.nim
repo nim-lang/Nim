@@ -37,6 +37,10 @@ import
 
 import json, sets, math, tables, intsets, strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
+
 type
   TJSGen = object of PPassContext
     module: PSym
@@ -311,13 +315,19 @@ proc useMagic(p: PProc, name: string) =
 
 proc isSimpleExpr(p: PProc; n: PNode): bool =
   # calls all the way down --> can stay expression based
-  if n.kind in nkCallKinds+{nkBracketExpr, nkDotExpr, nkPar, nkTupleConstr} or
-      (n.kind in {nkObjConstr, nkBracket, nkCurly}):
+  case n.kind
+  of nkCallKinds, nkBracketExpr, nkDotExpr, nkPar, nkTupleConstr,
+    nkObjConstr, nkBracket, nkCurly:
     for c in n:
       if not p.isSimpleExpr(c): return false
     result = true
-  elif n.isAtom:
-    result = true
+  of nkStmtListExpr:
+    for i in 0..<n.len-1:
+      if n[i].kind notin {nkCommentStmt, nkEmpty}: return false
+    result = isSimpleExpr(p, n.lastSon)
+  else:
+    if n.isAtom:
+      result = true
 
 proc getTemp(p: PProc, defineInLocals: bool = true): Rope =
   inc(p.unique)
@@ -771,9 +781,6 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   if catchBranchesExist:
     p.body.add("++excHandler;\L")
   var tmpFramePtr = rope"F"
-  if optStackTrace notin p.options:
-    tmpFramePtr = p.getTemp(true)
-    line(p, tmpFramePtr & " = framePtr;\L")
   lineF(p, "try {$n", [])
   var a: TCompRes
   gen(p, n[0], a)
@@ -782,7 +789,8 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   if catchBranchesExist:
     p.body.addf("--excHandler;$n} catch (EXCEPTION) {$n var prevJSError = lastJSError;$n" &
         " lastJSError = EXCEPTION;$n --excHandler;$n", [])
-    line(p, "framePtr = $1;$n" % [tmpFramePtr])
+    if hasFrameInfo(p):
+      line(p, "framePtr = $1;$n" % [tmpFramePtr])
   while i < n.len and n[i].kind == nkExceptBranch:
     if n[i].len == 1:
       # general except section:
@@ -841,7 +849,8 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       line(p, "}\L")
     lineF(p, "lastJSError = prevJSError;$n")
   line(p, "} finally {\L")
-  line(p, "framePtr = $1;$n" % [tmpFramePtr])
+  if hasFrameInfo(p):
+    line(p, "framePtr = $1;$n" % [tmpFramePtr])
   if i < n.len and n[i].kind == nkFinally:
     genStmt(p, n[i][0])
   line(p, "}\L")
@@ -862,14 +871,19 @@ proc genRaiseStmt(p: PProc, n: PNode) =
 
 proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
   var
-    cond, stmt: TCompRes
+    a, b, cond, stmt: TCompRes
     totalRange = 0
   genLineDir(p, n)
   gen(p, n[0], cond)
-  let stringSwitch = skipTypes(n[0].typ, abstractVar).kind == tyString
-  if stringSwitch:
+  let typeKind = skipTypes(n[0].typ, abstractVar).kind
+  var transferRange = false
+  let anyString = typeKind in {tyString, tyCstring}
+  case typeKind
+  of tyString:
     useMagic(p, "toJSStr")
     lineF(p, "switch (toJSStr($1)) {$n", [cond.rdLoc])
+  of tyFloat..tyFloat128:
+    transferRange = true
   else:
     lineF(p, "switch ($1) {$n", [cond.rdLoc])
   if not isEmptyType(n.typ):
@@ -877,41 +891,75 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
     r.res = getTemp(p)
   for i in 1..<n.len:
     let it = n[i]
+    let itLen = it.len
     case it.kind
     of nkOfBranch:
-      for j in 0..<it.len - 1:
+      if transferRange:
+        if i == 1:
+          lineF(p, "if (", [])
+        else:
+          lineF(p, "else if (", [])
+      for j in 0..<itLen - 1:
         let e = it[j]
         if e.kind == nkRange:
-          var v = copyNode(e[0])
-          inc(totalRange, int(e[1].intVal - v.intVal))
-          if totalRange > 65535:
-            localError(p.config, n.info,
-                       "Your case statement contains too many branches, consider using if/else instead!")
-          while v.intVal <= e[1].intVal:
-            gen(p, v, cond)
-            lineF(p, "case $1:$n", [cond.rdLoc])
-            inc(v.intVal)
+          if transferRange:
+            gen(p, e[0], a)
+            gen(p, e[1], b)
+            if j != itLen - 2:
+              lineF(p, "$1 >= $2 && $1 <= $3 || $n", [cond.rdLoc, a.rdLoc, b.rdLoc])
+            else: 
+              lineF(p, "$1 >= $2 && $1 <= $3", [cond.rdLoc, a.rdLoc, b.rdLoc])
+          else:
+            var v = copyNode(e[0])
+            inc(totalRange, int(e[1].intVal - v.intVal))
+            if totalRange > 65535:
+              localError(p.config, n.info,
+                        "Your case statement contains too many branches, consider using if/else instead!")
+            while v.intVal <= e[1].intVal:
+              gen(p, v, cond)
+              lineF(p, "case $1:$n", [cond.rdLoc])
+              inc(v.intVal)
         else:
-          if stringSwitch:
+          if anyString:
             case e.kind
             of nkStrLit..nkTripleStrLit: lineF(p, "case $1:$n",
                 [makeJSString(e.strVal, false)])
+            of nkNilLit: lineF(p, "case null:$n", [])
             else: internalError(p.config, e.info, "jsgen.genCaseStmt: 2")
           else:
-            gen(p, e, cond)
-            lineF(p, "case $1:$n", [cond.rdLoc])
+            if transferRange:
+              gen(p, e, a)
+              if j != itLen - 2:
+                lineF(p, "$1 == $2 || $n", [cond.rdLoc, a.rdLoc])
+              else:
+                lineF(p, "$1 == $2", [cond.rdLoc, a.rdLoc])
+            else:
+              gen(p, e, a)
+              lineF(p, "case $1:$n", [a.rdLoc])
+      if transferRange:
+        lineF(p, "){", [])
       p.nested:
         gen(p, lastSon(it), stmt)
         moveInto(p, stmt, r)
-        lineF(p, "break;$n", [])
+        if transferRange:
+          lineF(p, "}$n", [])
+        else:
+          lineF(p, "break;$n", [])
     of nkElse:
-      lineF(p, "default: $n", [])
+      if transferRange:
+         lineF(p, "else{$n", [])
+      else:
+        lineF(p, "default: $n", [])
       p.nested:
         gen(p, it[0], stmt)
         moveInto(p, stmt, r)
-        lineF(p, "break;$n", [])
+        if transferRange:
+           lineF(p, "}$n", [])
+        else:
+          lineF(p, "break;$n", [])
     else: internalError(p.config, it.info, "jsgen.genCaseStmt")
-  lineF(p, "}$n", [])
+  if not transferRange:
+    lineF(p, "}$n", [])
 
 proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
   inc(p.unique)
@@ -923,12 +971,12 @@ proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
     sym.loc.k = locOther
     sym.position = idx+1
   let labl = p.unique
-  lineF(p, "Label$1: do {$n", [labl.rope])
+  lineF(p, "Label$1: {$n", [labl.rope])
   setLen(p.blocks, idx + 1)
   p.blocks[idx].id = - p.unique # negative because it isn't used yet
   gen(p, n[1], r)
   setLen(p.blocks, idx)
-  lineF(p, "} while (false);$n", [labl.rope])
+  lineF(p, "};$n", [labl.rope])
 
 proc genBreakStmt(p: PProc, n: PNode) =
   var idx: int
@@ -1452,7 +1500,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
           s.name.s)
     discard mangleName(p.module, s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic notin {mNone, mIsolate} or
+    if lfNoDecl in s.loc.flags or s.magic notin generatedMagics or
        {sfImportc, sfInfixCall} * s.flags != {}:
       discard
     elif s.kind == skMethod and getBody(p.module.graph, s).kind == nkEmpty:
@@ -2103,6 +2151,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       gen(p, n[1], x)
       useMagic(p, "nimCopy")
       r.res = "nimCopy(null, $1, $2)" % [x.rdLoc, genTypeInfo(p, n.typ)]
+  of mOpenArrayToSeq:
+    genCall(p, n, r)
   of mDestroy, mTrace: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
@@ -2263,6 +2313,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   r.kind = resExpr
   var initList : Rope
   var fieldIDs = initIntSet()
+  let nTyp = n.typ.skipTypes(abstractInst)
   for i in 1..<n.len:
     if i > 1: initList.add(", ")
     var it = n[i]
@@ -2271,7 +2322,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, val, a)
     var f = it[0].sym
     if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
-    fieldIDs.incl(lookupFieldAgain(n.typ, f).id)
+    fieldIDs.incl(lookupFieldAgain(nTyp, f).id)
 
     let typ = val.typ.skipTypes(abstractInst)
     if a.typ == etyBaseIndex:
@@ -2375,9 +2426,9 @@ proc genProcBody(p: PProc, prc: PSym): Rope =
   else:
     result = nil
   if p.beforeRetNeeded:
-    result.add p.indentLine(~"BeforeRet: do {$n")
+    result.add p.indentLine(~"BeforeRet: {$n")
     result.add p.body
-    result.add p.indentLine(~"} while (false);$n")
+    result.add p.indentLine(~"};$n")
   else:
     result.add(p.body)
   if prc.typ.callConv == ccSysCall:
@@ -2393,6 +2444,7 @@ proc optionalLine(p: Rope): Rope =
     return p & "\L"
 
 proc genProc(oldProc: PProc, prc: PSym): Rope =
+  ## Generate a JS procedure ('function').
   var
     resultSym: PSym
     a: TCompRes
@@ -2618,7 +2670,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     let s = n[namePos].sym
     discard mangleName(p.module, s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic notin {mNone, mIsolate}: discard
+    if lfNoDecl in s.loc.flags or s.magic notin generatedMagics: discard
     elif not p.g.generatedSyms.containsOrIncl(s.id):
       p.locals.add(genProc(p, s))
   of nkType: r.res = genTypeInfo(p, n.typ)
@@ -2674,6 +2726,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   else: internalError(p.config, n.info, "gen: unknown node type: " & $n.kind)
 
 proc newModule(g: ModuleGraph; module: PSym): BModule =
+  ## Create a new JS backend module node.
   new(result)
   result.module = module
   result.sigConflicts = initCountTable[SigHash]()
@@ -2685,6 +2738,7 @@ proc newModule(g: ModuleGraph; module: PSym): BModule =
     PGlobals(g.backend).inSystem = true
 
 proc genHeader(): Rope =
+  ## Generate the JS header.
   result = rope("""/* Generated by the Nim Compiler v$1 */
     var framePtr = null;
     var excHandler = 0;
@@ -2715,6 +2769,8 @@ proc addHcrInitGuards(p: PProc, n: PNode,
     genStmt(p, n)
 
 proc genModule(p: PProc, n: PNode) =
+  ## Generate the JS module code.
+  ## Called for each top level node in a Nim module.
   if optStackTrace in p.options:
     p.body.add(frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
@@ -2743,6 +2799,7 @@ proc genModule(p: PProc, n: PNode) =
     p.body.add(frameDestroy(p))
 
 proc myProcess(b: PPassContext, n: PNode): PNode =
+  ## Generate JS code for a node.
   result = n
   let m = BModule(b)
   if passes.skipCodegen(m.config, n): return n
@@ -2755,6 +2812,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   p.g.code.add(p.body)
 
 proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
+  ## Combine source code from all nodes.
   let globals = PGlobals(graph.backend)
   for prc in globals.forwarded:
     if not globals.generatedSyms.containsOrIncl(prc.id):
@@ -2780,28 +2838,41 @@ proc getClassName(t: PType): Rope =
   else: result = rope(s.name.s)
 
 proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
-  result = myProcess(b, n)
+  ## Finalize JS code generation of a Nim module.
+  ## Param `n` may contain nodes returned from the last module close call.
   var m = BModule(b)
   if sfMainModule in m.module.flags:
-    for destructorCall in graph.globalDestructors:
-      n.add destructorCall
+    # Add global destructors to the module.
+    # This must come before the last call to `myProcess`.
+    for i in countdown(high(graph.globalDestructors), 0):
+      n.add graph.globalDestructors[i]
+  # Process any nodes left over from the last call to `myClose`.
+  result = myProcess(b, n)
+  # Some codegen is different (such as no stacktraces; see `initProcOptions`)
+  # when `std/system` is being processed.
   if sfSystemModule in m.module.flags:
     PGlobals(graph.backend).inSystem = false
+  # Check if codegen should continue before any files are generated.
+  # It may bail early is if too many errors have been raised.
   if passes.skipCodegen(m.config, n): return n
+  # Nim modules are compiled into a single JS file.
+  # If this is the main module, then this is the final call to `myClose`.
   if sfMainModule in m.module.flags:
     var code = genHeader() & wholeCode(graph, m)
     let outFile = m.config.prepareToWriteOutput()
-
+    # Generate an optional source map.
     if optSourcemap in m.config.globalOptions:
       var map: SourceMap
       (code, map) = genSourceMap($(code), outFile.string)
       writeFile(outFile.string & ".map", $(%map))
+    # Check if the generated JS code matches the output file, or else
+    # write it to the file.
     if not equalsFile(code, outFile):
       if not writeRope(code, outFile):
         rawMessage(m.config, errCannotOpenFile, outFile.string)
 
-
 proc myOpen(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
+  ## Create the JS backend pass context `BModule` for a Nim module.
   result = newModule(graph, s)
   result.idgen = idgen
 

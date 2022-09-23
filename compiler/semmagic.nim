@@ -212,7 +212,7 @@ proc semOrd(c: PContext, n: PNode): PNode =
   if isOrdinalType(parType, allowEnumWithHoles=true):
     discard
   else:
-    localError(c.config, n.info, errOrdinalTypeExpected)
+    localError(c.config, n.info, errOrdinalTypeExpected % typeToString(parType, preferDesc))
     result.typ = errorType(c)
 
 proc semBindSym(c: PContext, n: PNode): PNode =
@@ -428,7 +428,7 @@ proc semQuantifier(c: PContext; n: PNode): PNode =
       let op = considerQuotedIdent(c, it[0])
       if op.id == ord(wIn):
         let v = newSymS(skForVar, it[1], c)
-        styleCheckDef(c.config, v)
+        styleCheckDef(c, v)
         onDef(it[1].info, v)
         let domain = semExprWithType(c, it[2], {efWantIterator})
         v.typ = domain.typ

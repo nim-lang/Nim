@@ -74,3 +74,90 @@ template main =
 
 static: main()
 main()
+
+# bug #19967
+block:
+  type
+    X = object
+      a: string
+      b: set[char]
+
+  var y = X(b: {'a'})
+
+  reset(y)
+
+  doAssert y.b == {}
+
+block:
+  type
+    X = object
+      a: string
+      b: int
+
+  var y = X(b: 1314)
+
+  reset(y)
+
+  doAssert y.b == 0
+
+block:
+  type
+    X = object
+      a: string
+      b: float
+
+  var y = X(b: 1314.521)
+
+  reset(y)
+
+  doAssert y.b == 0.0
+
+block:
+  type
+    X = object
+      a: string
+      b: string
+
+  var y = X(b: "1314")
+
+  reset(y)
+
+  doAssert y.b == ""
+
+block:
+  type
+    X = object
+      a: string
+      b: seq[int]
+
+  var y = X(b: @[1, 3])
+
+  reset(y)
+
+  doAssert y.b == @[]
+
+block:
+  type
+    X = object
+      a: string
+      b: tuple[a: int, b: string]
+
+  var y = X(b: (1, "cc"))
+
+  reset(y)
+
+  doAssert y.b == (0, "")
+
+block:
+  type
+    Color = enum
+      Red, Blue, Yellow
+    X = object
+      a: string
+      b: set[Color]
+
+  var y = X(b: {Red, Blue})
+
+  reset(y)
+  doAssert y.b == {}
+

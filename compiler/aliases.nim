@@ -77,24 +77,29 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
   ## cases:
   ##
   ## YES-cases:
+  ##  ```
   ##  x    <| x   # for general trees
   ##  x[]  <| x
   ##  x[i] <| x
   ##  x.f  <| x
+  ##  ```
   ##
   ## NO-cases:
+  ## ```
   ## x           !<| y    # depending on type and symbol kind
   ## x[constA]   !<| x[constB]
   ## x.f         !<| x.g
   ## x.f         !<| y.f  iff x !<= y
+  ## ```
   ##
   ## MAYBE-cases:
   ##
+  ##  ```
   ##  x[] ?<| y[]   iff compatible type
   ##
   ##
   ##  x[]  ?<| y  depending on type
-  ##
+  ##  ```
   if a.kind == b.kind:
     case a.kind
     of nkSym:

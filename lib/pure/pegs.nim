@@ -17,7 +17,7 @@
 
 include "system/inclrtl"
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
 
 const
   useUnicode = true ## change this to deactivate proper UTF-8 support
@@ -838,10 +838,13 @@ template matchOrParse(mopProc: untyped) =
         var idx = c.ml # reserve a slot for the subpattern
         result = mopProc(s, p.sons[0], start, c)
         if result >= 0:
-          inc(c.ml)
           if idx < MaxSubpatterns:
+            if idx != c.ml:
+              for i in countdown(c.ml, idx):
+                c.matches[i+1] = c.matches[i]
             c.matches[idx] = (start, start+result-1)
           #else: silently ignore the capture
+          inc(c.ml)
       leave(pkCapture, s, p, start, result)
     of pkBackRef:
       enter(pkBackRef, s, p, start)
@@ -1023,7 +1026,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## Symbols  declared in an *enter* handler can be made visible in the
   ## corresponding *leave* handler by annotating them with an *inject* pragma.
   proc rawParse(s: string, p: Peg, start: int, c: var Captures): int
-      {.genSym.} =
+      {.gensym.} =
 
     # binding from *macros*
     bind strVal
@@ -1058,7 +1061,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
     matchOrParse(parseIt)
     parseIt(s, p, start, c)
 
-  proc parser(s: string): int {.genSym.} =
+  proc parser(s: string): int {.gensym.} =
     # the proc to be returned
     var
       ms: array[MaxSubpatterns, (int, int)]

@@ -1,6 +1,6 @@
 # Include file that implements 'getEnv' and friends. Do not import it!
 
-when not declared(os) and not declared(ospaths):
+when not declared(os):
   {.error: "This is an include file for os.nim!".}
 
 when not defined(nimscript):
@@ -42,14 +42,18 @@ when not defined(nimscript):
 
   else:
 
-    proc c_getenv(env: cstring): cstring {.
-      importc: "getenv", header: "<stdlib.h>".}
     when defined(windows):
       proc c_putenv(envstring: cstring): cint {.importc: "_putenv", header: "<stdlib.h>".}
       from std/private/win_setenv import setEnvImpl
+      proc c_wgetenv(varname: WideCString): WideCString {.importc: "_wgetenv",
+          header: "<stdlib.h>".}
+      proc getEnvImpl(env: cstring): WideCString = c_wgetenv(env.newWideCString)
     else:
+      proc c_getenv(env: cstring): cstring {.
+        importc: "getenv", header: "<stdlib.h>".}
       proc c_setenv(envname: cstring, envval: cstring, overwrite: cint): cint {.importc: "setenv", header: "<stdlib.h>".}
-    proc c_unsetenv(env: cstring): cint {.importc: "unsetenv", header: "<stdlib.h>".}
+      proc c_unsetenv(env: cstring): cint {.importc: "unsetenv", header: "<stdlib.h>".}
+      proc getEnvImpl(env: cstring): cstring = c_getenv(env)
 
     proc getEnv*(key: string, default = ""): string {.tags: [ReadEnvEffect].} =
       ## Returns the value of the `environment variable`:idx: named `key`.
@@ -67,7 +71,7 @@ when not defined(nimscript):
         assert getEnv("unknownEnv") == ""
         assert getEnv("unknownEnv", "doesn't exist") == "doesn't exist"
 
-      let env = c_getenv(key)
+      let env = getEnvImpl(key)
       if env == nil: return default
       result = $env
 
@@ -83,7 +87,7 @@ when not defined(nimscript):
       runnableExamples:
         assert not existsEnv("unknownEnv")
 
-      return c_getenv(key) != nil
+      return getEnvImpl(key) != nil
 
     proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
       ## Sets the value of the `environment variable`:idx: named `key` to `val`.
