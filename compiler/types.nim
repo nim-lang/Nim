@@ -14,7 +14,7 @@ import
   lineinfos, int128, modulegraphs, astmsgs
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, formatfloat]
 
 type
   TPreferedDesc* = enum
@@ -1372,6 +1372,13 @@ proc compatibleEffectsAux(se, re: PNode): bool =
       return false
   result = true
 
+proc hasIncompatibleEffect(se, re: PNode): bool =
+  if re.isNil: return false
+  for r in items(re):
+    for s in items(se):
+      if safeInheritanceDiff(r.typ, s.typ) != high(int):
+        return true
+
 type
   EffectsCompat* = enum
     efCompat
@@ -1381,6 +1388,7 @@ type
     efTagsUnknown
     efLockLevelsDiffer
     efEffectsDelayed
+    efTagsIllegal
 
 proc compatibleEffects*(formal, actual: PType): EffectsCompat =
   # for proc type compatibility checking:
@@ -1414,6 +1422,14 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
       if not res:
         #if tfEffectSystemWorkaround notin actual.flags:
         return efTagsDiffer
+
+    let sn = spec[forbiddenEffects]
+    if not isNil(sn) and sn.kind != nkArgList:
+      if 0 == real.len:
+        return efTagsUnknown
+      elif hasIncompatibleEffect(sn, real[tagEffects]):
+        return efTagsIllegal
+
   if formal.lockLevel.ord < 0 or
       actual.lockLevel.ord <= formal.lockLevel.ord:
 
@@ -1627,6 +1643,8 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
         msg.add "\nlock levels differ"
       of efEffectsDelayed:
         msg.add "\n.effectsOf annotations differ"
+      of efTagsIllegal:
+        msg.add "\n.notTag catched an illegal effect"
     localError(conf, info, msg)
 
 proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =

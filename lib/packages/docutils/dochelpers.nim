@@ -15,6 +15,10 @@
 
 import rstast
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
+
 type
   LangSymbol* = object       ## symbol signature in Nim
     symKind*: string           ## "proc", "const", "type", etc
@@ -78,7 +82,7 @@ proc toLangSymbol*(linkText: PRstNode): LangSymbol =
   ##
   ## This proc should be kept in sync with the `renderTypes` proc from
   ## ``compiler/typesrenderer.nim``.
-  assert linkText.kind in {rnRef, rnInner}
+  assert linkText.kind in {rnRstRef, rnInner}
 
   const NimDefs = ["proc", "func", "macro", "method", "iterator",
                    "template", "converter", "const", "type", "var",

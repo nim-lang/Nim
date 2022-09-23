@@ -487,7 +487,7 @@ when defined(createNimHcr):
           recursiveDiscovery(modules[curr].imports)
           allModulesOrderedByDFS.add(curr)
           continue
-      loadDll(curr)
+      loadDll(curr.cstring)
       # first load all dependencies of the current module and init it after that
       recursiveDiscovery(modules[curr].imports)
 
@@ -497,20 +497,20 @@ when defined(createNimHcr):
   proc initModules() =
     # first init the pointers to hcr functions and also do the registering of typeinfo globals
     for curr in modulesToInit:
-      initHcrData(curr)
-      initTypeInfoGlobals(curr)
+      initHcrData(curr.cstring)
+      initTypeInfoGlobals(curr.cstring)
     # for now system always gets fully inited before any other module (including when reloading)
-    initPointerData(system)
-    initGlobalScope(system)
+    initPointerData(system.cstring)
+    initGlobalScope(system.cstring)
     # proceed with the DatInit calls - for all modules - including the main one!
     for curr in allModulesOrderedByDFS:
       if curr != system:
-        initPointerData(curr)
+        initPointerData(curr.cstring)
     mainDatInit()
     # execute top-level code (in global scope)
     for curr in modulesToInit:
       if curr != system:
-        initGlobalScope(curr)
+        initGlobalScope(curr.cstring)
     # cleanup old symbols which are gone now
     for curr in modulesToInit:
       cleanupSymbols(curr)

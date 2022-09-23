@@ -1,5 +1,6 @@
 discard """
 action: compile
+matrix: "--threads:off"
 """
 
 import asyncdispatch, times

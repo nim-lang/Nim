@@ -150,7 +150,7 @@ proc bundleNimbleExe(latest: bool, args: string) =
                   commit = commit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
-             options = "-d:release --useVersion:1.6 --noNimblePath " & args)
+             options = "-d:release --mm:refc --useVersion:1.6 --noNimblePath " & args)
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
@@ -332,9 +332,9 @@ proc boot(args: string) =
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
     # jsonbuild then uses the $project.json file to build the Nim binary.
-    exec "$# $# $# --nimcache:$# $# --compileOnly compiler" / "nim.nim" %
+    exec "$# $# $# --nimcache:$# $# --noNimblePath --compileOnly compiler" / "nim.nim" %
       [nimi, bootOptions, extraOption, smartNimcache, args]
-    exec "$# jsonscript --nimcache:$# $# compiler" / "nim.nim" %
+    exec "$# jsonscript --noNimblePath --nimcache:$# $# compiler" / "nim.nim" %
       [nimi, smartNimcache, args]
 
     if sameFileContent(output, i.thVersion):
@@ -548,7 +548,7 @@ proc runCI(cmd: string) =
   # boot without -d:nimHasLibFFI to make sure this still works
   # `--lib:lib` is needed for bootstrap on openbsd, for reasons described in
   # https://github.com/nim-lang/Nim/pull/14291 (`getAppFilename` bugsfor older nim on openbsd).
-  kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode --lib:lib")
+  kochExecFold("Boot in release mode", "boot -d:release --gc:refc -d:nimStrictMode --lib:lib")
 
   when false: # debugging: when you need to run only 1 test in CI, use something like this:
     execFold("debugging test", "nim r tests/stdlib/tosproc.nim")

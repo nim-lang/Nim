@@ -157,19 +157,25 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
       result.forth = ""
     when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
       result.doc = extractDocComment(g, s)
-  let infox =
-    if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline}:
-      info
-    else:
-      s.info
-  result.filePath = toFullPath(g.config, infox)
-  result.line = toLinenumber(infox)
-  result.column = toColumn(infox)
+  if s.kind == skModule and s.ast.len != 0 and section != ideHighlight:
+    result.filePath = toFullPath(g.config, s.ast[0].info)
+    result.line = 1
+    result.column = 0
+    result.tokenLen = 0
+  else:
+    let infox =
+      if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline}:
+        info
+      else:
+        s.info
+    result.filePath = toFullPath(g.config, infox)
+    result.line = toLinenumber(infox)
+    result.column = toColumn(infox)
+    result.tokenLen = if section != ideHighlight:
+                        s.name.s.len
+                      else:
+                        getTokenLenFromSource(g.config, s.name.s, infox)
   result.version = g.config.suggestVersion
-  result.tokenLen = if section != ideHighlight:
-                      s.name.s.len
-                    else:
-                      getTokenLenFromSource(g.config, s.name.s, infox)
 
 proc `$`*(suggest: Suggest): string =
   result = $suggest.section
@@ -497,7 +503,7 @@ proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; i
   ## misnamed: should be 'symDeclared'
   let conf = g.config
   when defined(nimsuggest):
-    g.suggestSymbols.mgetOrPut(info.fileIndex, @[]).add (s, info)
+    g.suggestSymbols.mgetOrPut(info.fileIndex, @[]).add SymInfoPair(sym: s, info: info)
 
     if conf.suggestVersion == 0:
       if s.allUsages.len == 0:
@@ -598,8 +604,7 @@ proc markUsed(c: PContext; info: TLineInfo; s: PSym) =
     if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
     suggestSym(c.graph, info, s, c.graph.usageSym, false)
-  if {optStyleHint, optStyleError} * conf.globalOptions != {}:
-    styleCheckUse(conf, info, s)
+  styleCheckUse(c, info, s)
   markOwnerModuleAsUsed(c, s)
 
 proc safeSemExpr*(c: PContext, n: PNode): PNode =
@@ -694,3 +699,16 @@ proc suggestSentinel*(c: PContext) =
 
   dec(c.compilesContextId)
   produceOutput(outputs, c.config)
+
+when defined(nimsuggest):
+  proc onDef(graph: ModuleGraph, s: PSym, info: TLineInfo) =
+    if graph.config.suggestVersion == 3 and info.exactEquals(s.info):
+       suggestSym(graph, info, s, graph.usageSym)
+
+  template getPContext(): untyped =
+    when c is PContext: c
+    else: c.c
+
+  template onDef*(info: TLineInfo; s: PSym) =
+    let c = getPContext()
+    onDef(c.graph, s, info)

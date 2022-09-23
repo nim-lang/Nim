@@ -1,7 +1,3 @@
-discard """
-  output: "ntWhitespace"
-"""
-
 # bug #3357
 
 type NodeType* = enum
@@ -18,4 +14,4 @@ const tokenTypeToNodeType = {
   ttWhitespace: ntWhitespace,
 }.enumTable(array[ttWhitespace..ttWhitespace, NodeType])
 
-echo tokenTypeToNodeType[ttWhitespace]
+doAssert tokenTypeToNodeType[ttWhitespace] == ntWhitespace

@@ -241,7 +241,8 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym
   assert t.kind != tyTyped
   propagateToOwner(obj, t)
   field.position = obj.n.len
-  field.flags = s.flags * {sfCursor}
+  # sfNoInit flag for skField is used in closureiterator codegen
+  field.flags = s.flags * {sfCursor, sfNoInit}
   obj.n.add newSymNode(field)
   fieldCheck()
   result = field

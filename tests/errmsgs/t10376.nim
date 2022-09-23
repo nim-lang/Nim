@@ -1,6 +1,7 @@
 discard """
+  matrix: "--mm:refc"
   errormsg: "finalizer must be a direct reference to a proc"
-  line: 29
+  line: 30
 """
 
 type

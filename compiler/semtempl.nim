@@ -78,7 +78,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     result = newNodeIT(kind, info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
     while a != nil:
-      if a.kind != skModule and (not isField or sfGenSym notin s.flags):
+      if a.kind != skModule and (not isField or sfGenSym notin a.flags):
         incl(a.flags, sfUsed)
         markOwnerModuleAsUsed(c, a)
         result.add newSymNode(a, info)
@@ -230,7 +230,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       if n.kind != nkSym:
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
-        styleCheckDef(c.c.config, n.info, local)
+        styleCheckDef(c.c, n.info, local)
         onDef(n.info, local)
         replaceIdentBySym(c.c, n, newSymNode(local, n.info))
         if k == skParam and c.inTemplateHeader > 0:
@@ -250,8 +250,14 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of OverloadableSyms-{skEnumField}:
+  of OverloadableSyms-{skTemplate,skMacro}:
     result = symChoice(c, n, s, scOpen, isField)
+  of skTemplate, skMacro:
+    result = symChoice(c, n, s, scOpen, isField)
+    if result.kind == nkSym:
+      # template/macro symbols might need to be semchecked again
+      # prepareOperand etc don't do this without setting the type to nil
+      result.typ = nil
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
@@ -261,18 +267,14 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
-    if s.kind == skEnumField and overloadableEnums in c.features:
-      result = symChoice(c, n, s, scOpen, isField)
-    elif isField and sfGenSym in s.flags:
-      result = n
-    else:
-      result = newSymNode(s, n.info)
+    if isField and sfGenSym in s.flags: result = n
+    else: result = newSymNode(s, n.info)
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
     # field access (dot expr) will be handled by builtinFieldAccess
-    if not isField and {optStyleHint, optStyleError} * c.config.globalOptions != {}:
-      styleCheckUse(c.config, n.info, s)
+    if not isField:
+      styleCheckUse(c, n.info, s)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n
@@ -297,7 +299,7 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
       var s = newGenSym(k, ident, c)
       s.ast = n
       addPrelimDecl(c.c, s)
-      styleCheckDef(c.c.config, n.info, s)
+      styleCheckDef(c.c, n.info, s)
       onDef(n.info, s)
       n[namePos] = newSymNode(s, n[namePos].info)
     else:
@@ -431,7 +433,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         # labels are always 'gensym'ed:
         let s = newGenSym(skLabel, n[0], c)
         addPrelimDecl(c.c, s)
-        styleCheckDef(c.c.config, s)
+        styleCheckDef(c.c, s)
         onDef(n[0].info, s)
         n[0] = newSymNode(s, n[0].info)
     n[1] = semTemplBody(c, n[1])
@@ -624,7 +626,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
        s.owner.name.s == "vm" and s.name.s == "stackTrace":
       incl(s.flags, sfCallsite)
 
-  styleCheckDef(c.config, s)
+  styleCheckDef(c, s)
   onDef(n[namePos].info, s)
   # check parameter list:
   #s.scope = c.currentScope
@@ -691,6 +693,9 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   if proto == nil:
     addInterfaceOverloadableSymAt(c, c.currentScope, s)
   elif not comesFromShadowscope:
+    if {sfTemplateRedefinition, sfGenSym} * s.flags == {}:
+      #wrongRedefinition(c, n.info, proto.name.s, proto.info)
+      message(c.config, n.info, warnTemplateRedefinition, s.name.s)
     symTabReplace(c.currentScope.symbols, proto, s)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)
