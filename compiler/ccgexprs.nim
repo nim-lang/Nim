@@ -2686,9 +2686,10 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
   if isConstClosure(n):
     inc(p.module.labels)
     var tmp = "CNSTCLOSURE" & rope(p.module.labels)
-    p.module.s[cfsData].addf("static NIM_CONST $1 $2 = ", [getTypeDesc(p.module, n.typ), tmp])
-    genBracedInit(p, n, isConst = true, n.typ, p.module.s[cfsData])
-    p.module.s[cfsData].addf(";$n", [])
+    var data = "static NIM_CONST $1 $2 = " % [getTypeDesc(p.module, n.typ), tmp]
+    genBracedInit(p, n, isConst = true, n.typ, data)
+    data.addf(";$n", [])
+    p.module.s[cfsData].add data
     putIntoDest(p, d, n, tmp, OnStatic)
   else:
     var tmp, a, b: TLoc
@@ -2865,10 +2866,12 @@ proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
 proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
   # add a suffix for hcr - will later init the global pointer with this data
   let actualConstName = if q.hcrOn: sym.loc.r & "_const" else: sym.loc.r
-  q.s[cfsData].addf("N_LIB_PRIVATE NIM_CONST $1 $2 = ",
-      [getTypeDesc(q, sym.typ), actualConstName])
-  genBracedInit(q.initProc, sym.ast, isConst = true, sym.typ, q.s[cfsData])
-  q.s[cfsData].addf(";$n", [])
+  var data = Rope(nil)
+  data.addf("N_LIB_PRIVATE NIM_CONST $1 $2 = ",
+           [getTypeDesc(q, sym.typ), actualConstName])
+  genBracedInit(q.initProc, sym.ast, isConst = true, sym.typ, data)
+  data.addf(";$n", [])
+  q.s[cfsData].add data
   if q.hcrOn:
     # generate the global pointer with the real name
     q.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(q, sym.loc.t, skVar), sym.loc.r])
@@ -3410,7 +3413,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
       let payload = getTempName(p.module)
       let ctype = getTypeDesc(p.module, typ[0])
       let arrLen = n.len
-      appcg(p.module, cfsData,
+      appcg(p.module, cfsStrData,
         "static $5 $1 $3[$2] = $4;$n", [
         ctype, arrLen, payload, data,
         if isConst: "const" else: ""])

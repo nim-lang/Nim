@@ -1045,11 +1045,11 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
          [nameHcr])
 
   if m.hcrOn:
-    m.s[cfsData].addf("static TNimType* $1;$n", [name])
+    m.s[cfsStrData].addf("static TNimType* $1;$n", [name])
     m.hcrCreateTypeInfosProc.addf("\thcrRegisterGlobal($2, \"$1\", sizeof(TNimType), NULL, (void**)&$1);$n",
          [name, getModuleDllPath(m, m.module)])
   else:
-    m.s[cfsData].addf("N_LIB_PRIVATE TNimType $1;$n", [name])
+    m.s[cfsStrData].addf("N_LIB_PRIVATE TNimType $1;$n", [name])
 
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope;
                     info: TLineInfo) =
@@ -1280,7 +1280,7 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
   var it = t
   while it != nil:
     it = it.skipTypes(skipPtrs)
-    if it.sym != nil:
+    if it.sym != nil and tfFromGeneric notin it.flags:
       var m = it.sym.owner
       while m != nil and m.kind != skModule: m = m.owner
       if m == nil or sfSystemModule in m.flags:
@@ -1336,7 +1336,7 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
     typeName = rope("NIM_NIL")
 
   discard cgsym(m, "TNimTypeV2")
-  m.s[cfsData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
+  m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
   let destroyImpl = genHook(m, t, info, attachedDestructor)
   let traceImpl = genHook(m, t, info, attachedTrace)
 
