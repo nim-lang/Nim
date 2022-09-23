@@ -1247,7 +1247,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
     else:
-      if sym == nil or (sym.kind in {skVar, skLet, skParam,
+      if sym == nil or (sym.kind in {skVar, skLet, skParam, skIterator,
                         skField, skProc, skFunc, skConverter, skMethod, skType}):
         n[i] = semCustomPragma(c, it)
       elif sym != nil:

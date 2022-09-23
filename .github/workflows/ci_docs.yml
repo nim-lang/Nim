@@ -30,6 +30,10 @@ on:
       - '.github/workflows/ci_docs.yml'
       - 'koch.nim'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     strategy:
@@ -96,7 +100,7 @@ jobs:
 
       - name: 'Build the real compiler'
         shell: bash
-        run: ./koch boot -d:release
+        run: ./koch boot -d:release --gc:refc
 
       - name: 'Build documentation'
         shell: bash

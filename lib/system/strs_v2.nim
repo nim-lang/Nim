@@ -175,3 +175,19 @@ proc prepareMutation*(s: var string) {.inline.} =
   {.cast(noSideEffect).}:
     let s = unsafeAddr s
     nimPrepareStrMutationV2(cast[ptr NimStringV2](s)[])
+
+
+template capacityImpl(str: NimStringV2): int =
+  if str.p != nil: str.p.cap else: 0
+
+func capacity*(self: string): int {.inline.} =
+  ## Returns the current capacity of the string.
+  # See https://github.com/nim-lang/RFCs/issues/460
+  runnableExamples:
+    var str = newStringOfCap(cap = 42)
+    str.add "Nim"
+    assert str.capacity == 42
+
+  {.cast(noSideEffect).}:
+    let str = unsafeAddr self
+    result = capacityImpl(cast[ptr NimStringV2](str)[])

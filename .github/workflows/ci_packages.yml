@@ -7,6 +7,10 @@ on:
       - 'version-1-6'
       - 'version-1-2'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     strategy:
