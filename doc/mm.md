@@ -22,6 +22,9 @@ Multi-paradigm Memory Management Strategies
 Nim offers multiple different memory management strategies.
 To choose the memory management strategy use the `--mm:` switch.
 
+**The recommended switch for newly written Nim code is `--mm:orc`.**
+
+
 ARC/ORC
 -------
 
