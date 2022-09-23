@@ -385,19 +385,21 @@ proc genParams(p: BProc, ri: PNode, typ: PType; result: var Rope) =
       # Optimization: don't use a temp, if we would only take the address anyway
       needTmp[i - 1] = false
 
-  var needsComma = false
+  var oldLen = result.len
   for i in 1..<ri.len:
     if i < typ.len:
       assert(typ.n[i].kind == nkSym)
       let paramType = typ.n[i]
       if not paramType.typ.isCompileTimeOnly:
-        if needsComma: result.add(~", ")
+        if oldLen != result.len:
+          result.add(~", ")
+          oldLen = result.len
         genArg(p, ri[i], paramType.sym, ri, result, needTmp[i-1])
-        needsComma = true
     else:
-      if needsComma: result.add(~", ")
+      if oldLen != result.len:
+        result.add(~", ")
+        oldLen = result.len
       genArgNoParam(p, ri[i], result, needTmp[i-1])
-      needsComma = true
 
 proc addActualSuffixForHCR(res: var Rope, module: PSym, sym: PSym) =
   if sym.flags * {sfImportc, sfNonReloadable} == {} and sym.loc.k == locProc and
