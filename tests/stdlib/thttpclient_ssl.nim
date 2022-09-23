@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim $target --threads:on -d:ssl $options $file"
+  cmd: "nim $target --mm:refc -d:ssl $options $file"
   disabled: "openbsd"
 """
 

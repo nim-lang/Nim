@@ -94,8 +94,8 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
   var c = initResults()
 
-  runBasicDLLTest c, r, cat, options
-  runBasicDLLTest c, r, cat, options & " -d:release"
+  runBasicDLLTest c, r, cat, options & " --mm:refc"
+  runBasicDLLTest c, r, cat, options & " -d:release --mm:refc"
   when not defined(windows):
     # still cannot find a recent Windows version of boehm.dll:
     runBasicDLLTest c, r, cat, options & " --gc:boehm"
@@ -105,9 +105,9 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
   template testWithoutMs(filename: untyped) =
-    testSpec r, makeTest("tests/gc" / filename, options, cat)
+    testSpec r, makeTest("tests/gc" / filename, options & "--mm:refc", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release -d:useRealtimeGC", cat)
+                  " -d:release -d:useRealtimeGC --mm:refc", cat)
     when filename != "gctest":
       testSpec r, makeTest("tests/gc" / filename, options &
                     " --gc:orc", cat)

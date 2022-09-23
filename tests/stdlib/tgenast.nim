@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:orc; --mm:refc"
+"""
+
 # xxx also test on js
 
 import std/genasts
