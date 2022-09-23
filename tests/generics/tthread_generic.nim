@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim $target --hints:on --threads:on $options $file"
+  matrix: "--mm:refc; --mm:orc"
   action: compile
 """
 
