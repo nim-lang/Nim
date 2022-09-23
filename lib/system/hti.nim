@@ -40,7 +40,7 @@ type
     tyPointer,
     tyOpenArray,
     tyString,
-    tyCString,
+    tyCstring,
     tyForward,
     tyInt,
     tyInt8,

@@ -19,7 +19,7 @@ when defined(nimStackTraceOverride):
   ## Procedure types for overriding the default stack trace.
   type
     cuintptr_t* {.importc: "uintptr_t", nodecl.} = uint
-      ## This is the same as the type ``uintptr_t`` in C.
+      ## This is the same as the type `uintptr_t` in C.
 
     StackTraceOverrideGetTracebackProc* = proc (): string {.
       nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.}

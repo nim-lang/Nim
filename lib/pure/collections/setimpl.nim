@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# An ``include`` file for the different hash set implementations.
+# An `include` file for the different hash set implementations.
 
 
 template maxHash(t): untyped = high(t.data)

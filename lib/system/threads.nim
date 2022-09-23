@@ -11,7 +11,7 @@
 ##
 ## **Note**: This is part of the system module. Do not import it directly.
 ## To activate thread support you need to compile
-## with the ``--threads:on`` command line switch.
+## with the `--threads:on`:option: command line switch.
 ##
 ## Nim's memory model for threads is quite different from other common
 ## programming languages (C, Pascal): Each thread has its own
@@ -24,7 +24,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import locks
+##  import std/locks
 ##
 ##  var
 ##    thr: array[0..4, Thread[tuple[a,b: int]]]
@@ -41,23 +41,44 @@
 ##  for i in 0..high(thr):
 ##    createThread(thr[i], threadFunc, (i*10, i*10+5))
 ##  joinThreads(thr)
-## 
+##
 ##  deinitLock(L)
 
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const
-  StackGuardSize = 4096
-  ThreadStackMask =
-    when defined(genode):
-      1024*64*sizeof(int)-1
-    else:
-      1024*256*sizeof(int)-1
-  ThreadStackSize = ThreadStackMask+1 - StackGuardSize
+  hasAllocStack = defined(zephyr) # maybe freertos too?
+
+when hasAllocStack or defined(zephyr) or defined(freertos):
+  const
+    nimThreadStackSize {.intdefine.} = 8192 
+    nimThreadStackGuard {.intdefine.} = 128
+
+    StackGuardSize = nimThreadStackGuard 
+    ThreadStackSize = nimThreadStackSize - nimThreadStackGuard 
+else:
+  const
+    StackGuardSize = 4096
+    ThreadStackMask =
+      when defined(genode):
+        1024*64*sizeof(int)-1
+      else:
+        1024*256*sizeof(int)-1
+
+    ThreadStackSize = ThreadStackMask+1 - StackGuardSize
 
 #const globalsSlot = ThreadVarSlot(0)
 #sysAssert checkSlot.int == globalsSlot.int
+
+# Zephyr doesn't include this properly without some help
+when defined(zephyr):
+  {.emit: """/*INCLUDESECTION*/
+  #include <pthread.h>
+  """.}
 
 # create for the main thread. Note: do not insert this data into the list
 # of all threads; it's not to be stopped etc.
@@ -89,6 +110,10 @@ type
     else:
       dataFn: proc (m: TArg) {.nimcall, gcsafe.}
       data: TArg
+    when hasAllocStack:
+      rawStack: pointer
+
+proc `=copy`*[TArg](x: var Thread[TArg], y: Thread[TArg]) {.error.}
 
 var
   threadDestructionHandlers {.rtlThreadVar.}: seq[proc () {.closure, gcsafe, raises: [].}]
@@ -97,7 +122,7 @@ proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
   ## Registers a *thread local* handler that is called at the thread's
   ## destruction.
   ##
-  ## A thread is destructed when the ``.thread`` proc returns
+  ## A thread is destructed when the `.thread` proc returns
   ## normally or when it raises an exception. Note that unhandled exceptions
   ## in a thread nevertheless cause the whole process to die.
   threadDestructionHandlers.add handler
@@ -150,6 +175,8 @@ else:
       threadTrouble()
     finally:
       afterThreadRuns()
+      when hasAllocStack:
+        deallocShared(thrd.rawStack)
 
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
   when defined(boehmgc):
@@ -188,7 +215,7 @@ when defined(windows):
     threadProcWrapperBody(closure)
     # implicitly return 0
 elif defined(genode):
-   proc threadProcWrapper[TArg](closure: pointer) {.noconv.} =
+  proc threadProcWrapper[TArg](closure: pointer) {.noconv.} =
     threadProcWrapperBody(closure)
 else:
   proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} =
@@ -261,7 +288,7 @@ when hostOS == "windows":
     ## Creates a new thread `t` and starts its execution.
     ##
     ## Entry point is the proc `tp`.
-    ## `param` is passed to `tp`. `TArg` can be ``void`` if you
+    ## `param` is passed to `tp`. `TArg` can be `void` if you
     ## don't need to pass any data to the thread.
     t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
 
@@ -310,7 +337,7 @@ else:
     ## Creates a new thread `t` and starts its execution.
     ##
     ## Entry point is the proc `tp`. `param` is passed to `tp`.
-    ## `TArg` can be ``void`` if you
+    ## `TArg` can be `void` if you
     ## don't need to pass any data to the thread.
     t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
 
@@ -319,7 +346,15 @@ else:
     when hasSharedHeap: t.core.stackSize = ThreadStackSize
     var a {.noinit.}: Pthread_attr
     doAssert pthread_attr_init(a) == 0
-    let setstacksizeResult = pthread_attr_setstacksize(a, ThreadStackSize)
+    when hasAllocStack:
+      var
+        rawstk = allocShared0(ThreadStackSize + StackGuardSize)
+        stk = cast[pointer](cast[uint](rawstk) + StackGuardSize)
+      let setstacksizeResult = pthread_attr_setstack(addr a, stk, ThreadStackSize)
+      t.rawStack = rawstk
+    else:
+      let setstacksizeResult = pthread_attr_setstacksize(a, ThreadStackSize)
+
     when not defined(ios):
       # This fails on iOS
       doAssert(setstacksizeResult == 0)
@@ -341,94 +376,5 @@ else:
 proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)
 
-# we need to cache current threadId to not perform syscall all the time
-var threadId {.threadvar.}: int
-
-when defined(windows):
-  proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
-    if threadId == 0:
-      threadId = int(getCurrentThreadId())
-    result = threadId
-
-elif defined(linux):
-  proc syscall(arg: clong): clong {.varargs, importc: "syscall", header: "<unistd.h>".}
-  when defined(amd64):
-    const NR_gettid = clong(186)
-  else:
-    var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: clong
-
-  proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
-    if threadId == 0:
-      threadId = int(syscall(NR_gettid))
-    result = threadId
-
-elif defined(dragonfly):
-  proc lwp_gettid(): int32 {.importc, header: "unistd.h".}
-
-  proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
-    if threadId == 0:
-      threadId = int(lwp_gettid())
-    result = threadId
-
-elif defined(openbsd):
-  proc getthrid(): int32 {.importc: "getthrid", header: "<unistd.h>".}
-
-  proc getThreadId*(): int =
-    ## get the ID of the currently running thread.
-    if threadId == 0:
-      threadId = int(getthrid())
-    result = threadId
-
-elif defined(netbsd):
-  proc lwp_self(): int32 {.importc: "_lwp_self", header: "<lwp.h>".}
-
-  proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
-    if threadId == 0:
-      threadId = int(lwp_self())
-    result = threadId
-
-elif defined(freebsd):
-  proc syscall(arg: cint, arg0: ptr cint): cint {.varargs, importc: "syscall", header: "<unistd.h>".}
-  var SYS_thr_self {.importc:"SYS_thr_self", header:"<sys/syscall.h>"}: cint
-
-  proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
-    var tid = 0.cint
-    if threadId == 0:
-      discard syscall(SYS_thr_self, addr tid)
-      threadId = tid
-    result = threadId
-
-elif defined(macosx):
-  proc syscall(arg: cint): cint {.varargs, importc: "syscall", header: "<unistd.h>".}
-  var SYS_thread_selfid {.importc:"SYS_thread_selfid", header:"<sys/syscall.h>".}: cint
-
-  proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
-    if threadId == 0:
-      threadId = int(syscall(SYS_thread_selfid))
-    result = threadId
-
-elif defined(solaris):
-  type thread_t {.importc: "thread_t", header: "<thread.h>".} = distinct int
-  proc thr_self(): thread_t {.importc, header: "<thread.h>".}
-
-  proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
-    if threadId == 0:
-      threadId = int(thr_self())
-    result = threadId
-
-elif defined(haiku):
-  type thr_id {.importc: "thread_id", header: "<OS.h>".} = distinct int32
-  proc find_thread(name: cstring): thr_id {.importc, header: "<OS.h>".}
-
-  proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
-    if threadId == 0:
-      threadId = int(find_thread(nil))
-    result = threadId
+when not defined(gcOrc):
+  include threadids

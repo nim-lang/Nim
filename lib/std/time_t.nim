@@ -11,7 +11,7 @@ when defined(nimdoc):
   type
     Impl = distinct int64
     Time* = Impl ## \
-      ## Wrapper for ``time_t``. On posix, this is an alias to ``posix.Time``.
+      ## Wrapper for `time_t`. On posix, this is an alias to `posix.Time`.
 elif defined(windows):
   when defined(i386) and defined(gcc):
     type Time* {.importc: "time_t", header: "<time.h>".} = distinct int32

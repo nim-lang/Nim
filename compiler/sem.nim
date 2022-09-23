@@ -17,7 +17,7 @@ import
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
-  isolation_check, typeallowed, modulegraphs, enumtostr
+  isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs
 
 when defined(nimfix):
   import nimfix/prettybase
@@ -25,18 +25,20 @@ when defined(nimfix):
 when not defined(leanCompiler):
   import spawn
 
+when defined(nimPreviewSlimSystem):
+  import std/formatfloat
+
 # implementation
 
-proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
-proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
+proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode
+proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode
 proc semExprNoType(c: PContext, n: PNode): PNode
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
-proc semProcBody(c: PContext, n: PNode): PNode
+proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode
 
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode
 proc changeType(c: PContext; n: PNode, newType: PType, check: bool)
 
-proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType
 proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode
 proc semOpAux(c: PContext, n: PNode)
@@ -49,7 +51,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
 proc evalAtCompileTime(c: PContext, n: PNode): PNode
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
-proc semStaticExpr(c: PContext, n: PNode): PNode
+proc semStaticExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode
 proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType
 proc semTypeOf(c: PContext; n: PNode): PNode
 proc computeRequiresInit(c: PContext, t: PType): bool
@@ -78,7 +80,8 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
 
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   let x = arg.skipConv
-  if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyUntyped:
+  if (x.kind == nkCurly and formal.kind == tySet and formal.base.kind != tyGenericParam) or
+    (x.kind in {nkPar, nkTupleConstr}) and formal.kind notin {tyUntyped, tyBuiltInTypeClass}:
     changeType(c, x, formal, check=true)
   result = arg
   result = skipHiddenSubConv(result, c.graph, c.idgen)
@@ -91,6 +94,12 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     # error correction:
     result = copyTree(arg)
     result.typ = formal
+  elif arg.kind in nkSymChoices and formal.skipTypes(abstractInst).kind == tyEnum:
+    # Pick the right 'sym' from the sym choice by looking at 'formal' type:
+    for ch in arg:
+      if sameType(ch.typ, formal):
+        return getConstExpr(c.module, ch, c.idgen, c.graph)
+    typeMismatch(c.config, info, formal, arg.typ, arg)
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
@@ -100,6 +109,16 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
       result.typ = formal
     else:
       result = fitNodePostMatch(c, formal, result)
+
+proc fitNodeConsiderViewType(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
+  let a = fitNode(c, formal, arg, info)
+  if formal.kind in {tyVar, tyLent}:
+    #classifyViewType(formal) != noView:
+    result = newNodeIT(nkHiddenAddr, a.info, formal)
+    result.add a
+    formal.flags.incl tfVarIsPtr
+  else:
+   result = a
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode
@@ -160,6 +179,12 @@ proc commonType*(c: PContext; x, y: PType): PType =
         result = b #.skipIntLit
       elif a.kind in IntegralTypes and a.n != nil:
         result = a #.skipIntLit
+  elif a.kind == tyProc and b.kind == tyProc:
+    if a.callConv == ccClosure and b.callConv != ccClosure:
+      result = x
+    elif compatibleEffects(a, b) != efCompat or
+        (b.flags * {tfNoSideEffect, tfGcSafe}) < (a.flags * {tfNoSideEffect, tfGcSafe}):
+      result = y
   else:
     var k = tyNone
     if a.kind in {tyRef, tyPtr}:
@@ -247,12 +272,12 @@ proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
   typeAllowedCheck(c, typ.n.info, typ, skProc)
 
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
-proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
+proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
-                     flags: TExprFlags = {}): PNode
+                     flags: TExprFlags = {}; expectedType: PType = nil): PNode
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
-                  flags: TExprFlags = {}): PNode
+                  flags: TExprFlags = {}; expectedType: PType = nil): PNode
 
 proc symFromType(c: PContext; t: PType, info: TLineInfo): PSym =
   if t.sym != nil: return t.sym
@@ -297,8 +322,7 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       result = evaluated
       let expectedType = eOrig.typ.skipTypes({tyStatic})
       if hasCycle(result):
-        globalError(c.config, eOrig.info, "the resulting AST is cyclic and cannot be processed further")
-        result = errorNode(c, eOrig)
+        result = localErrorNode(c, eOrig, "the resulting AST is cyclic and cannot be processed further")
       else:
         semmacrosanity.annotateType(result, expectedType, c.config)
   else:
@@ -313,8 +337,8 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
          isArrayConstr(arg):
         arg.typ = eOrig.typ
 
-proc tryConstExpr(c: PContext, n: PNode): PNode =
-  var e = semExprWithType(c, n)
+proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
+  var e = semExprWithType(c, n, expectedType = expectedType)
   if e == nil: return
 
   result = getConstExpr(c.module, e, c.idgen, c.graph)
@@ -344,11 +368,13 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
 const
   errConstExprExpected = "constant expression expected"
 
-proc semConstExpr(c: PContext, n: PNode): PNode =
-  var e = semExprWithType(c, n)
+proc semConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
+  var e = semExprWithType(c, n, expectedType = expectedType)
   if e == nil:
     localError(c.config, n.info, errConstExprExpected)
     return n
+  if e.kind in nkSymChoices and e[0].typ.skipTypes(abstractInst).kind == tyEnum:
+    return e
   result = getConstExpr(c.module, e, c.idgen, c.graph)
   if result == nil:
     #if e.kind == nkEmpty: globalError(n.info, errConstExprExpected)
@@ -365,14 +391,14 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
     else:
       result = fixupTypeAfterEval(c, result, e)
 
-proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags): PNode =
+proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   if efNeedStatic in flags:
     if efPreferNilResult in flags:
-      return tryConstExpr(c, n)
+      return tryConstExpr(c, n, expectedType)
     else:
-      return semConstExpr(c, n)
+      return semConstExpr(c, n, expectedType)
   else:
-    result = semExprWithType(c, n, flags)
+    result = semExprWithType(c, n, flags, expectedType)
     if efPreferStatic in flags:
       var evaluated = getConstExpr(c.module, result, c.idgen, c.graph)
       if evaluated != nil: return evaluated
@@ -385,12 +411,13 @@ when not defined(nimHasSinkInference):
 include hlo, seminst, semcall
 
 proc resetSemFlag(n: PNode) =
-  excl n.flags, nfSem
-  for i in 0..<n.safeLen:
-    resetSemFlag(n[i])
+  if n != nil:
+    excl n.flags, nfSem
+    for i in 0..<n.safeLen:
+      resetSemFlag(n[i])
 
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
-                       s: PSym, flags: TExprFlags): PNode =
+                       s: PSym, flags: TExprFlags; expectedType: PType = nil): PNode =
   ## Semantically check the output of a macro.
   ## This involves processes such as re-checking the macro output for type
   ## coherence, making sure that variables declared with 'let' aren't
@@ -414,10 +441,10 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
     case retType.kind
     of tyUntyped:
       # Not expecting a type here allows templates like in ``tmodulealias.in``.
-      result = semExpr(c, result, flags)
+      result = semExpr(c, result, flags, expectedType)
     of tyTyped:
       # More restrictive version.
-      result = semExprWithType(c, result, flags)
+      result = semExprWithType(c, result, flags, expectedType)
     of tyTypeDesc:
       if result.kind == nkStmtList: result.transitionSonsKind(nkStmtListType)
       var typ = semTypeNode(c, result, nil)
@@ -441,7 +468,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         retType = generateTypeInstance(c, paramTypes,
                                        macroResult.info, retType)
 
-      result = semExpr(c, result, flags)
+      result = semExpr(c, result, flags, expectedType)
       result = fitNode(c, retType, result, result.info)
       #globalError(s.info, errInvalidParamKindX, typeToString(s.typ[0]))
   dec(c.config.evalTemplateCounter)
@@ -452,7 +479,8 @@ const
   errFloatToString = "cannot convert '$1' to '$2'"
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
-                  flags: TExprFlags = {}): PNode =
+                  flags: TExprFlags = {}; expectedType: PType = nil): PNode =
+  rememberExpansion(c, nOrig.info, sym)
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
   let info = getCallLineInfo(n)
@@ -471,7 +499,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   #  c.evalContext = c.createEvalContext(emStatic)
   result = evalMacroCall(c.module, c.idgen, c.graph, c.templInstCounter, n, nOrig, sym)
   if efNoSemCheck notin flags:
-    result = semAfterMacroCall(c, n, result, sym, flags)
+    result = semAfterMacroCall(c, n, result, sym, flags, expectedType)
   if c.config.macrosToExpand.hasKey(sym.name.s):
     message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
   result = wrapInComesFrom(nOrig.info, sym, result)
@@ -482,15 +510,35 @@ proc forceBool(c: PContext, n: PNode): PNode =
   if result == nil: result = n
 
 proc semConstBoolExpr(c: PContext, n: PNode): PNode =
-  result = forceBool(c, semConstExpr(c, n))
+  result = forceBool(c, semConstExpr(c, n, getSysType(c.graph, n.info, tyBool)))
   if result.kind != nkIntLit:
     localError(c.config, n.info, errConstExprExpected)
-
 
 proc semGenericStmt(c: PContext, n: PNode): PNode
 proc semConceptBody(c: PContext, n: PNode): PNode
 
-include semtypes, semtempl, semgnrc, semstmts, semexprs
+include semtypes
+
+proc setGenericParamsMisc(c: PContext; n: PNode) =
+  ## used by call defs (procs, templates, macros, ...) to analyse their generic
+  ## params, and store the originals in miscPos for better error reporting.
+  let orig = n[genericParamsPos]
+
+  doAssert orig.kind in {nkEmpty, nkGenericParams}
+
+  if n[genericParamsPos].kind == nkEmpty:
+    n[genericParamsPos] = newNodeI(nkGenericParams, n.info)
+  else:
+    # we keep the original params around for better error messages, see
+    # issue https://github.com/nim-lang/Nim/issues/1713
+    n[genericParamsPos] = semGenericParamList(c, orig)
+
+  if n[miscPos].kind == nkEmpty:
+    n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
+  else:
+    n[miscPos][1] = orig
+
+include semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =
   for i in c.lastGenericIdx..<c.generics.len:
@@ -506,6 +554,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
   var c = newContext(graph, module)
   c.idgen = idgen
   c.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
+  c.voidType = newType(tyVoid, nextTypeId(idgen), nil)
 
   if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
@@ -642,7 +691,7 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     result.add(c.module.ast)
   popOwner(c)
   popProcCon(c)
-  saveRodFile(c)
+  sealRodFile(c)
 
 const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true)

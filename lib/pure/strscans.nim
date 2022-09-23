@@ -35,7 +35,7 @@ substrings starting with ``$``. These constructions are available:
 ``$o``              Matches an octal integer. This uses ``parseutils.parseOct``.
 ``$i``              Matches a decimal integer. This uses ``parseutils.parseInt``.
 ``$h``              Matches a hex integer. This uses ``parseutils.parseHex``.
-``$f``              Matches a floating pointer number. Uses ``parseFloat``.
+``$f``              Matches a floating-point number. Uses ``parseFloat``.
 ``$w``              Matches an ASCII identifier: ``[A-Za-z_][A-Za-z_0-9]*``.
 ``$c``              Matches a single ASCII character.
 ``$s``              Skips optional whitespace.
@@ -52,7 +52,7 @@ substrings starting with ``$``. These constructions are available:
 =================   ========================================================
 
 Even though ``$*`` and ``$+`` look similar to the regular expressions ``.*``
-and ``.+`` they work quite differently, there is no non-deterministic
+and ``.+``, they work quite differently. There is no non-deterministic
 state machine involved and the matches are non-greedy. ``[$*]``
 matches ``[xyz]`` via ``parseutils.parseUntil``.
 
@@ -175,7 +175,7 @@ overloaded to handle both single characters and sets of character.
 
 .. code-block:: nim
 
-  import streams
+  import std/streams
 
   template atom(input: Stream; idx: int; c: char): bool =
     ## Used in scanp for the matching of atoms (usually chars).
@@ -285,6 +285,10 @@ efficiency and perform different checks.
 
 import macros, parseutils
 import std/private/since
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 proc conditionsToIfChain(n, idx, res: NimNode; start: int): NimNode =
   assert n.kind == nnkStmtList
@@ -508,7 +512,7 @@ macro scanTuple*(input: untyped; pattern: static[string]; matcherTypes: varargs[
           inc userMatches
       else: discard
     inc p
-  result.add newPar(newCall(ident("scanf"), input, newStrLitNode(pattern)))
+  result.add nnkTupleConstr.newTree(newCall(ident("scanf"), input, newStrLitNode(pattern)))
   for arg in arguments:
     result[^1][0].add arg
     result[^1].add arg
@@ -577,13 +581,14 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
     of nnkCallKinds:
       # *{'A'..'Z'} !! s.add(!_)
       template buildWhile(input, idx, init, cond, action): untyped =
+        mixin hasNxt
         while hasNxt(input, idx):
           init
           if not cond: break
           action
 
       # (x) a  # bind action a to (x)
-      if it[0].kind == nnkPar and it.len == 2:
+      if it[0].kind in {nnkPar, nnkTupleConstr} and it.len == 2:
         result = atm(it[0], input, idx, placeholder(it[1], input, idx))
       elif it.kind == nnkInfix and it[0].eqIdent"->":
         # bind matching to some action:

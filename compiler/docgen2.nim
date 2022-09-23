@@ -11,7 +11,7 @@
 # semantic checking.
 
 import
-  options, ast, msgs, passes, docgen, lineinfos, pathutils
+  options, ast, msgs, passes, docgen, lineinfos, pathutils, packages
 
 from modulegraphs import ModuleGraph, PPassContext
 
@@ -23,7 +23,7 @@ type
   PGen = ref TGen
 
 proc shouldProcess(g: PGen): bool =
-  (optWholeProject in g.doc.conf.globalOptions and g.module.getnimblePkgId == g.doc.conf.mainPackageId) or
+  (optWholeProject in g.doc.conf.globalOptions and g.doc.conf.belongsToProjectPackage(g.module)) or
       sfMainModule in g.module.flags or g.config.projectMainIdx == g.module.info.fileIndex
 
 template closeImpl(body: untyped) {.dirty.} =
@@ -31,6 +31,7 @@ template closeImpl(body: untyped) {.dirty.} =
   let useWarning = sfMainModule notin g.module.flags
   let groupedToc = true
   if shouldProcess(g):
+    finishGenerateDoc(g.doc)
     body
     try:
       generateIndex(g.doc)
@@ -63,18 +64,22 @@ template myOpenImpl(ext: untyped) {.dirty.} =
   g.module = module
   g.config = graph.config
   var d = newDocumentor(AbsoluteFile toFullPath(graph.config, FileIndex module.position),
-      graph.cache, graph.config, ext, module)
-  d.hasToc = true
+      graph.cache, graph.config, ext, module, hasToc = true)
   g.doc = d
   result = g
 
 proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   myOpenImpl(HtmlExt)
 
+proc myOpenTex(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
+  myOpenImpl(TexExt)
+
 proc myOpenJson(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   myOpenImpl(JsonExt)
 
 const docgen2Pass* = makePass(open = myOpen, process = processNode, close = close)
+const docgen2TexPass* = makePass(open = myOpenTex, process = processNode,
+                                 close = close)
 const docgen2JsonPass* = makePass(open = myOpenJson, process = processNodeJson,
                                   close = closeJson)
 

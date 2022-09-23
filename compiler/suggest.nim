@@ -32,7 +32,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, sets, prefixmatches, lineinfos, parseutils, linter
+import algorithm, sets, prefixmatches, parseutils, tables
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
 when defined(nimsuggest):
@@ -112,12 +112,12 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
     if ident[^1] == '=' and ident[0] in linter.Letters:
       if sourceIdent != "=":
         result = 0
-    elif sourceIdent.len > ident.len and sourceIdent[..ident.high] == ident:
+    elif sourceIdent.len > ident.len and sourceIdent[0..ident.high] == ident:
       result = ident.len
     elif sourceIdent != ident:
       result = 0
 
-proc symToSuggest(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info: TLineInfo;
+proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info: TLineInfo;
                   quality: range[0..100]; prefix: PrefixMatch;
                   inTypeContext: bool; scope: int;
                   useSuppliedInfo = false): Suggest =
@@ -157,19 +157,25 @@ proc symToSuggest(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info:
       result.forth = ""
     when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
       result.doc = extractDocComment(g, s)
-  let infox =
-    if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline}:
-      info
-    else:
-      s.info
-  result.filePath = toFullPath(g.config, infox)
-  result.line = toLinenumber(infox)
-  result.column = toColumn(infox)
+  if s.kind == skModule and s.ast.len != 0 and section != ideHighlight:
+    result.filePath = toFullPath(g.config, s.ast[0].info)
+    result.line = 1
+    result.column = 0
+    result.tokenLen = 0
+  else:
+    let infox =
+      if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline}:
+        info
+      else:
+        s.info
+    result.filePath = toFullPath(g.config, infox)
+    result.line = toLinenumber(infox)
+    result.column = toColumn(infox)
+    result.tokenLen = if section != ideHighlight:
+                        s.name.s.len
+                      else:
+                        getTokenLenFromSource(g.config, s.name.s, infox)
   result.version = g.config.suggestVersion
-  result.tokenLen = if section != ideHighlight:
-                      s.name.s.len
-                    else:
-                      getTokenLenFromSource(g.config, s.name.s, infox)
 
 proc `$`*(suggest: Suggest): string =
   result = $suggest.section
@@ -203,14 +209,14 @@ proc `$`*(suggest: Suggest): string =
     result.add(sep)
     when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
       result.add(suggest.doc.escape)
-    if suggest.version == 0:
+    if suggest.version in {0, 3}:
       result.add(sep)
       result.add($suggest.quality)
       if suggest.section == ideSug:
         result.add(sep)
         result.add($suggest.prefix)
 
-proc suggestResult(conf: ConfigRef; s: Suggest) =
+proc suggestResult*(conf: ConfigRef; s: Suggest) =
   if not isNil(conf.suggestionResultHook):
     conf.suggestionResultHook(s)
   else:
@@ -253,10 +259,17 @@ proc filterSymNoOpr(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline
 proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
   let fmoduleId = getModule(f).id
   result = sfExported in f.flags or fmoduleId == c.module.id
-  for module in c.friendModules:
-    if fmoduleId == module.id:
-      result = true
-      break
+
+  if not result:
+    for module in c.friendModules:
+      if fmoduleId == module.id: return true
+    if f.kind == skField:
+      var symObj = f.owner
+      if symObj.typ.kind in {tyRef, tyPtr}:
+        symObj = symObj.typ[0].sym
+      for scope in allScopes(c.currentScope):
+        for sym in scope.allowPrivateAccess:
+          if symObj.id == sym.id: return true
 
 proc getQuality(s: PSym): range[0..100] =
   result = 100
@@ -417,7 +430,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
         t = skipTypes(t[0], skipPtrs)
     elif typ.kind == tyTuple and typ.n != nil:
       suggestSymList(c, typ.n, field, n.info, outputs)
-    
+
     suggestOperations(c, n, field, orig, outputs)
     if typ != orig:
       suggestOperations(c, n, field, typ, outputs)
@@ -475,7 +488,7 @@ proc findDefinition(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym
   if s.isNil: return
   if isTracked(info, g.config.m.trackPos, s.name.s.len) or (s == usageSym and sfForward notin s.flags):
     suggestResult(g.config, symToSuggest(g, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0, useSuppliedInfo = s == usageSym))
-    if sfForward notin s.flags:
+    if sfForward notin s.flags and g.config.suggestVersion != 3:
       suggestQuit()
     else:
       usageSym = s
@@ -490,6 +503,8 @@ proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; i
   ## misnamed: should be 'symDeclared'
   let conf = g.config
   when defined(nimsuggest):
+    g.suggestSymbols.mgetOrPut(info.fileIndex, @[]).add SymInfoPair(sym: s, info: info)
+
     if conf.suggestVersion == 0:
       if s.allUsages.len == 0:
         s.allUsages = @[info]
@@ -565,7 +580,8 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
     var i = 0
     while i <= high(c.unusedImports):
       let candidate = c.unusedImports[i][0]
-      if candidate == module or c.exportIndirections.contains((candidate.id, s.id)):
+      if candidate == module or c.importModuleMap.getOrDefault(candidate.id, int.low) == module.id or
+        c.exportIndirections.contains((candidate.id, s.id)):
         # mark it as used:
         c.unusedImports.del(i)
       else:
@@ -588,8 +604,7 @@ proc markUsed(c: PContext; info: TLineInfo; s: PSym) =
     if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
     suggestSym(c.graph, info, s, c.graph.usageSym, false)
-  if {optStyleHint, optStyleError} * conf.globalOptions != {}:
-    styleCheckUse(conf, info, s)
+  styleCheckUse(c, info, s)
   markOwnerModuleAsUsed(c, s)
 
 proc safeSemExpr*(c: PContext, n: PNode): PNode =
@@ -684,3 +699,16 @@ proc suggestSentinel*(c: PContext) =
 
   dec(c.compilesContextId)
   produceOutput(outputs, c.config)
+
+when defined(nimsuggest):
+  proc onDef(graph: ModuleGraph, s: PSym, info: TLineInfo) =
+    if graph.config.suggestVersion == 3 and info.exactEquals(s.info):
+       suggestSym(graph, info, s, graph.usageSym)
+
+  template getPContext(): untyped =
+    when c is PContext: c
+    else: c.c
+
+  template onDef*(info: TLineInfo; s: PSym) =
+    let c = getPContext()
+    onDef(c.graph, s, info)

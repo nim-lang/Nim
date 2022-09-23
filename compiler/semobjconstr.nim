@@ -11,6 +11,8 @@
 
 # included from sem.nim
 
+from sugar import dup
+
 type
   ObjConstrContext = object
     typ: PType               # The constructed type
@@ -75,9 +77,9 @@ proc semConstrField(c: PContext, flags: TExprFlags,
         "the field '$1' is not accessible." % [field.name.s])
       return
 
-    var initValue = semExprFlagDispatched(c, assignment[1], flags)
+    var initValue = semExprFlagDispatched(c, assignment[1], flags, field.typ)
     if initValue != nil:
-      initValue = fitNode(c, field.typ, initValue, assignment.info)
+      initValue = fitNodeConsiderViewType(c, field.typ, initValue, assignment.info)
     assignment[0] = newSymNode(field)
     assignment[1] = initValue
     assignment.flags.incl nfSem
@@ -198,20 +200,22 @@ proc semConstructFields(c: PContext, n: PNode,
 
     if selectedBranch != -1:
       template badDiscriminatorError =
-        let fields = fieldsPresentInBranch(selectedBranch)
-        localError(c.config, constrCtx.initExpr.info,
-          ("cannot prove that it's safe to initialize $1 with " &
-          "the runtime value for the discriminator '$2' ") %
-          [fields, discriminator.sym.name.s])
+        if c.inUncheckedAssignSection == 0:
+          let fields = fieldsPresentInBranch(selectedBranch)
+          localError(c.config, constrCtx.initExpr.info,
+            ("cannot prove that it's safe to initialize $1 with " &
+            "the runtime value for the discriminator '$2' ") %
+            [fields, discriminator.sym.name.s])
         mergeInitStatus(result, initNone)
 
       template wrongBranchError(i) =
-        let fields = fieldsPresentInBranch(i)
-        localError(c.config, constrCtx.initExpr.info,
-          "a case selecting discriminator '$1' with value '$2' " &
-          "appears in the object construction, but the field(s) $3 " &
-          "are in conflict with this value.",
-          [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
+        if c.inUncheckedAssignSection == 0:
+          let fields = fieldsPresentInBranch(i)
+          localError(c.config, constrCtx.initExpr.info,
+            ("a case selecting discriminator '$1' with value '$2' " &
+            "appears in the object construction, but the field(s) $3 " &
+            "are in conflict with this value.") %
+            [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
 
       template valuesInConflictError(valsDiff) =
         localError(c.config, discriminatorVal.info, ("possible values " &
@@ -220,8 +224,7 @@ proc semConstructFields(c: PContext, n: PNode,
           valsDiff.renderAsType(n[0].typ)])
 
       let branchNode = n[selectedBranch]
-      let flags = flags*{efAllowDestructor} + {efPreferStatic,
-                                               efPreferNilResult}
+      let flags = {efPreferStatic, efPreferNilResult}
       var discriminatorVal = semConstrField(c, flags,
                                             discriminator.sym,
                                             constrCtx.initExpr)
@@ -250,9 +253,10 @@ proc semConstructFields(c: PContext, n: PNode,
             badDiscriminatorError()
         elif discriminatorVal.sym.kind notin {skLet, skParam} or
             discriminatorVal.sym.typ.kind in {tyVar}:
-          localError(c.config, discriminatorVal.info,
-            "runtime discriminator must be immutable if branch fields are " &
-            "initialized, a 'let' binding is required.")
+          if c.inUncheckedAssignSection == 0:
+            localError(c.config, discriminatorVal.info,
+              "runtime discriminator must be immutable if branch fields are " &
+              "initialized, a 'let' binding is required.")
         elif ctorCase[ctorIdx].kind == nkElifBranch:
           localError(c.config, discriminatorVal.info, "branch initialization " &
             "with a runtime discriminator is not supported inside of an " &
@@ -362,25 +366,28 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
   if objType.kind == tyObject:
     var constrCtx = initConstrContext(objType, newNodeI(nkObjConstr, info))
     let initResult = semConstructTypeAux(c, constrCtx, {})
-    assert constrCtx.missingFields.len > 0
-    localError(c.config, info,
-      "The $1 type doesn't have a default value. The following fields must " &
-      "be initialized: $2.",
-      [typeToString(t), listSymbolNames(constrCtx.missingFields)])
+    if constrCtx.missingFields.len > 0:
+      localError(c.config, info,
+        "The $1 type doesn't have a default value. The following fields must be initialized: $2." % [typeToString(t), listSymbolNames(constrCtx.missingFields)])
   elif objType.kind == tyDistinct:
     localError(c.config, info,
-      "The $1 distinct type doesn't have a default value.", [typeToString(t)])
+      "The $1 distinct type doesn't have a default value." % typeToString(t))
   else:
     assert false, "Must not enter here."
 
-proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
+proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var t = semTypeNode(c, n[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
   for child in n: result.add child
 
   if t == nil:
-    localError(c.config, n.info, errGenerated, "object constructor needs an object type")
-    return
+    return localErrorNode(c, result, "object constructor needs an object type")
+  
+  if t.skipTypes({tyGenericInst,
+      tyAlias, tySink, tyOwned, tyRef}).kind != tyObject and
+      expectedType != nil and expectedType.skipTypes({tyGenericInst,
+      tyAlias, tySink, tyOwned, tyRef}).kind == tyObject:
+    t = expectedType
 
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   if t.kind == tyRef:
@@ -391,20 +398,26 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # multiple times as long as they don't have closures.
       result.typ.flags.incl tfHasOwned
   if t.kind != tyObject:
-    localError(c.config, n.info, errGenerated, "object constructor needs an object type")
-    return
+    return localErrorNode(c, result, if t.kind != tyGenericBody:
+      "object constructor needs an object type".dup(addDeclaredLoc(c.config, t))
+      else: "cannot instantiate: '" &
+        typeToString(t, preferDesc) &
+        "'; the object's generic parameters cannot be inferred and must be explicitly given"
+      )
 
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different
   # branches will be reported as an error):
   var constrCtx = initConstrContext(t, result)
   let initResult = semConstructTypeAux(c, constrCtx, flags)
+  var hasError = false # needed to split error detect/report for better msgs
 
   # It's possible that the object was not fully initialized while
   # specifying a .requiresInit. pragma:
   if constrCtx.missingFields.len > 0:
+    hasError = true
     localError(c.config, result.info,
-      "The $1 type requires the following fields to be initialized: $2.",
+      "The $1 type requires the following fields to be initialized: $2." %
       [t.sym.name.s, listSymbolNames(constrCtx.missingFields)])
 
   # Since we were traversing the object fields, it's possible that
@@ -415,6 +428,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if nfSem notin field.flags:
       if field.kind != nkExprColonExpr:
         invalidObjConstr(c, field)
+        hasError = true
         continue
       let id = considerQuotedIdent(c, field[0])
       # This node was not processed. There are two possible reasons:
@@ -423,10 +437,16 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
         let prevId = considerQuotedIdent(c, result[j][0])
         if prevId.id == id.id:
           localError(c.config, field.info, errFieldInitTwice % id.s)
-          return
+          hasError = true
+          break
       # 2) No such field exists in the constructed type
-      localError(c.config, field.info, errUndeclaredFieldX % id.s)
-      return
+      let msg = errUndeclaredField % id.s & " for type " & getProcHeader(c.config, t.sym)
+      localError(c.config, field.info, msg)
+      hasError = true
+      break
 
   if initResult == initFull:
     incl result.flags, nfAllFieldsSet
+
+  # wrap in an error see #17437
+  if hasError: result = errorNode(c, result)

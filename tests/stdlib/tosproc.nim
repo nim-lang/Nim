@@ -12,7 +12,7 @@ see also: tests/osproc/*.nim; consider merging those into a single test here
 
 when defined(case_testfile): # compiled test file for child process
   from posix import exitnow
-  proc c_exit2(code: c_int): void {.importc: "_exit", header: "<unistd.h>".}
+  proc c_exit2(code: cint): void {.importc: "_exit", header: "<unistd.h>".}
   import os
   var a = 0
   proc fun(b = 0) =
@@ -29,6 +29,12 @@ when defined(case_testfile): # compiled test file for child process
     case arg
     of "exit_0":
       if true: quit(0)
+    of "exit_1":
+      if true: quit(1)
+    of "exit_2":
+      if true: quit(2)
+    of "exit_42":
+      if true: quit(42)
     of "exitnow_139":
       if true: exitnow(139)
     of "c_exit2_139":
@@ -114,6 +120,13 @@ else: # main driver
     runTest("exitnow_139", 139)
     runTest("c_exit2_139", 139)
     runTest("quit_139", 139)
+
+  block execCmdTest:
+    let output = compileNimProg("-d:release -d:case_testfile", "D20220705T221100")
+    doAssert execCmd(output & " exit_0") == 0
+    doAssert execCmd(output & " exit_1") == 1
+    doAssert execCmd(output & " exit_2") == 2
+    doAssert execCmd(output & " exit_42") == 42
 
   import std/streams
 
@@ -206,8 +219,8 @@ else: # main driver
       var line = newStringOfCap(120)
       while true:
         if outp.readLine(line):
-          result[0].string.add(line.string)
-          result[0].string.add("\n")
+          result[0].add(line)
+          result[0].add("\n")
         else:
           result[1] = peekExitCode(p)
           if result[1] != -1: break
@@ -272,10 +285,29 @@ else: # main driver
     stripLineEnd(result[0])
     doAssert result == ("12", 0)
     when not defined(windows):
-      doAssert execCmdEx("ls --nonexistant").exitCode != 0
+      doAssert execCmdEx("ls --nonexistent").exitCode != 0
     when false:
       # bug: on windows, this raises; on posix, passes
-      doAssert execCmdEx("nonexistant").exitCode != 0
+      doAssert execCmdEx("nonexistent").exitCode != 0
     when defined(posix):
       doAssert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
       doAssert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
+
+  block: # bug #17749
+    let output = compileNimProg("-d:case_testfile4", "D20210417T011153")
+    var p = startProcess(output, dir)
+    let inp = p.inputStream
+    var count = 0
+    when defined(windows):
+      # xxx we should make osproc.hsWriteData raise IOError on windows, consistent
+      # with posix; we could also (in addition) make IOError a subclass of OSError.
+      type SIGPIPEError = OSError
+    else:
+      type SIGPIPEError = IOError
+    doAssertRaises(SIGPIPEError):
+      for i in 0..<100000:
+        count.inc
+        inp.writeLine "ok" # was giving SIGPIPE and crashing
+    doAssert count >= 100
+    doAssert waitForExit(p) == QuitFailure
+    close(p) # xxx isn't that missing in other places?

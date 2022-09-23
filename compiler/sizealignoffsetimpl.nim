@@ -40,15 +40,15 @@ proc inc(arg: var OffsetAccum; value: int) =
   else:
     arg.offset += value
 
-proc alignmentMax(a,b: int): int =
+proc alignmentMax(a, b: int): int =
   if unlikely(a == szIllegalRecursion or b == szIllegalRecursion): raiseIllegalTypeRecursion()
   if a == szUnknownSize or b == szUnknownSize:
     szUnknownSize
   else:
-    max(a,b)
+    max(a, b)
 
 proc align(arg: var OffsetAccum; value: int) =
-  if unlikely(value == szIllegalRecursion):  raiseIllegalTypeRecursion()
+  if unlikely(value == szIllegalRecursion): raiseIllegalTypeRecursion()
   if value == szUnknownSize or arg.maxAlign == szUnknownSize or arg.offset == szUnknownSize:
     arg.maxAlign = szUnknownSize
     arg.offset = szUnknownSize
@@ -112,7 +112,7 @@ proc setOffsetsToUnknown(n: PNode) =
     for i in 0..<n.safeLen:
       setOffsetsToUnknown(n[i])
 
-proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, accum: var OffsetAccum) =
+proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; packed: bool; accum: var OffsetAccum) =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
   assert n != nil
@@ -196,6 +196,11 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; packed: bo
     accum.offset = szUnknownSize
 
 proc computeSizeAlign(conf: ConfigRef; typ: PType) =
+  template setSize(typ, s) =
+    typ.size = s
+    typ.align = s
+    typ.paddingAtEnd = 0
+
   ## computes and sets ``size`` and ``align`` members of ``typ``
   assert typ != nil
   let hasSize = typ.size != szUncomputedSize
@@ -242,7 +247,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     else:
       typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
-  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent:
+  of tyCstring, tySequence, tyPtr, tyRef, tyVar, tyLent:
     let base = typ.lastSon
     if base == typ:
       # this is not the correct location to detect ``type A = ptr A``
@@ -258,14 +263,14 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
 
   of tyArray:
     computeSizeAlign(conf, typ[1])
-    let elemSize = typ[1].size 
+    let elemSize = typ[1].size
     let len = lengthOrd(conf, typ[0])
     if elemSize < 0:
       typ.size = elemSize
       typ.align = int16(elemSize)
     elif len < 0:
       typ.size = szUnknownSize
-      typ.align = szUnknownSize    
+      typ.align = szUnknownSize
     else:
       typ.size = toInt64Checked(len * int32(elemSize), szTooBigSize)
       typ.align = typ[1].align
@@ -375,10 +380,8 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo
           localError(conf, info, "union type may not have an object header")
           accum = OffsetAccum(offset: szUnknownSize, maxAlign: szUnknownSize)
-        elif tfPacked in typ.flags:
-          computeUnionObjectOffsetsFoldFunction(conf, typ.n, true, accum)
         else:
-          computeUnionObjectOffsetsFoldFunction(conf, typ.n, false, accum)
+          computeUnionObjectOffsetsFoldFunction(conf, typ.n, tfPacked in typ.flags, accum)
       elif tfPacked in typ.flags:
         accum.maxAlign = 1
         computeObjectOffsetsFoldFunction(conf, typ.n, true, accum)
@@ -445,6 +448,16 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = szUnknownSize
       typ.align = szUnknownSize
       typ.paddingAtEnd = szUnknownSize
+  of tyInt, tyUInt:
+    setSize typ, conf.target.intSize.int16
+  of tyBool, tyChar, tyUInt8, tyInt8:
+    setSize typ, 1
+  of tyInt16, tyUInt16:
+    setSize typ, 2
+  of tyInt32, tyUInt32, tyFloat32:
+    setSize typ, 4
+  of tyInt64, tyUInt64, tyFloat64, tyFloat:
+    setSize typ, 8
   else:
     typ.size = szUnknownSize
     typ.align = szUnknownSize
@@ -482,7 +495,7 @@ template foldOffsetOf*(conf: ConfigRef; n: PNode; fallback: PNode): PNode =
   ## Returns an int literal node of the given offsetof expression in `n`.
   ## Falls back to `fallback`, if the `offsetof` expression can't be processed.
   let config = conf
-  let node : PNode = n
+  let node = n
   var dotExpr: PNode
   block findDotExpr:
     if node[1].kind == nkDotExpr:

@@ -9,6 +9,18 @@
 
 ## Wrapper for the `console` object for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
+##
+## Styled Messages
+## ===============
+##
+## CSS-styled messages in the browser are useful for debugging purposes.
+## To use them, prefix the message with one or more `%c`,
+## and provide the CSS style as the last argument.
+## The amount of `%c`'s must match the amount of CSS-styled strings.
+##
+runnableExamples("-r:off"):
+  console.log "%c My Debug Message", "color: red" # Notice the "%c"
+  console.log "%c My Debug %c Message", "color: red", "font-size: 2em"
 
 import std/private/since, std/private/miscdollars  # toLocation
 
@@ -75,7 +87,7 @@ since (1, 5):
   func getMsg(info: InstantiationInfo; msg: string): string =
     var temp = ""
     temp.toLocation(info.filename, info.line, info.column + 1)
-    result.addQuoted(temp)
+    result.addQuoted("[jsAssert] " & temp)
     result.add ','
     result.addQuoted(msg)
 
@@ -97,6 +109,17 @@ since (1, 5):
       msg = getMsg(loc, astToStr(assertion)).cstring
     {.line: loc.}:
       {.emit: ["console.assert(", assertion, ", ", msg, ");"].}
+
+  func dir*(console: Console; obj: auto) {.importcpp.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Console/dir
+
+  func dirxml*(console: Console; obj: auto) {.importcpp.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Console/dirxml
+
+  func timeStamp*(console: Console; label: cstring) {.importcpp.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Console/timeStamp
+    ##
+    ## ..warning:: non-standard
 
 
 var console* {.importc, nodecl.}: Console

@@ -11,27 +11,32 @@
 #import vmdeps, vm
 from std/math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
-  floor, ceil, `mod`
-
+  floor, ceil, `mod`, cbrt, arcsinh, arccosh, arctanh, erf, erfc, gamma,
+  lgamma
+from std/sequtils import toSeq
 when declared(math.copySign):
-  from std/math import copySign
+  # pending bug #18762, avoid renaming math
+  from std/math as math2 import copySign
 
 when declared(math.signbit):
-  from std/math import signbit
+  # ditto
+  from std/math as math3 import signbit
 
-from std/os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir,
-                   getAppFilename, raiseOSError, osLastError
+from std/os import getEnv, existsEnv, delEnv, putEnv, envPairs,
+  dirExists, fileExists, walkDir, getAppFilename, raiseOSError, osLastError
 
-from std/md5 import getMD5
 from std/times import cpuTime
 from std/hashes import hash
 from std/osproc import nil
-from std/sysrand import urandom
 
-from sighashes import symBodyDigest
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+else:
+  from std/formatfloat import addFloatRoundtrip, addFloatSprintf 
 
 # There are some useful procs in vmconv.
-import vmconv
+import vmconv, vmmarshal
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -46,21 +51,18 @@ template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
 
 template ioop(op) {.dirty.} =
-  registerCallback(c, "stdlib.io." & astToStr(op), `op Wrapper`)
+  registerCallback(c, "stdlib.syncio." & astToStr(op), `op Wrapper`)
 
 template macrosop(op) {.dirty.} =
   registerCallback(c, "stdlib.macros." & astToStr(op), `op Wrapper`)
 
-template md5op(op) {.dirty.} =
-  registerCallback(c, "stdlib.md5." & astToStr(op), `op Wrapper`)
-
-template wrap1f_math(op) {.dirty.} =
+template wrap1fMath(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     doAssert a.numArgs == 1
     setResult(a, op(getFloat(a, 0)))
   mathop op
 
-template wrap2f_math(op) {.dirty.} =
+template wrap2fMath(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getFloat(a, 0), getFloat(a, 1)))
   mathop op
@@ -136,6 +138,8 @@ when defined(nimHasInvariant):
     of ccompilerPath: result = conf.cCompilerPath
     of backend: result = $conf.backend
     of libPath: result = conf.libpath.string
+    of gc: result = $conf.selectedGC
+    of mm: result = $conf.selectedGC
 
   proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
     template copySeq(field: untyped): untyped =
@@ -149,7 +153,17 @@ when defined(nimHasInvariant):
     of cincludes: copySeq(conf.cIncludes)
     of clibs: copySeq(conf.cLibs)
 
+proc stackTrace2(c: PCtx, msg: string, n: PNode) =
+  stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, msg, n.info)
+
+
 proc registerAdditionalOps*(c: PCtx) =
+
+  template wrapIterator(fqname: string, iter: untyped) =
+    registerCallback c, fqname, proc(a: VmArgs) =
+      setResult(a, toLit(toSeq(iter)))
+
+
   proc gorgeExWrapper(a: VmArgs) =
     let ret = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
                          a.currentLineInfo, c.config)
@@ -158,32 +172,40 @@ proc registerAdditionalOps*(c: PCtx) =
   proc getProjectPathWrapper(a: VmArgs) =
     setResult a, c.config.projectPath.string
 
-  wrap1f_math(sqrt)
-  wrap1f_math(ln)
-  wrap1f_math(log10)
-  wrap1f_math(log2)
-  wrap1f_math(exp)
-  wrap1f_math(arccos)
-  wrap1f_math(arcsin)
-  wrap1f_math(arctan)
-  wrap2f_math(arctan2)
-  wrap1f_math(cos)
-  wrap1f_math(cosh)
-  wrap2f_math(hypot)
-  wrap1f_math(sinh)
-  wrap1f_math(sin)
-  wrap1f_math(tan)
-  wrap1f_math(tanh)
-  wrap2f_math(pow)
-  wrap1f_math(trunc)
-  wrap1f_math(floor)
-  wrap1f_math(ceil)
+  wrap1fMath(sqrt)
+  wrap1fMath(cbrt)
+  wrap1fMath(ln)
+  wrap1fMath(log10)
+  wrap1fMath(log2)
+  wrap1fMath(exp)
+  wrap1fMath(arccos)
+  wrap1fMath(arcsin)
+  wrap1fMath(arctan)
+  wrap1fMath(arcsinh)
+  wrap1fMath(arccosh)
+  wrap1fMath(arctanh)
+  wrap2fMath(arctan2)
+  wrap1fMath(cos)
+  wrap1fMath(cosh)
+  wrap2fMath(hypot)
+  wrap1fMath(sinh)
+  wrap1fMath(sin)
+  wrap1fMath(tan)
+  wrap1fMath(tanh)
+  wrap2fMath(pow)
+  wrap1fMath(trunc)
+  wrap1fMath(floor)
+  wrap1fMath(ceil)
+  wrap1fMath(erf)
+  wrap1fMath(erfc)
+  wrap1fMath(gamma)
+  wrap1fMath(lgamma)
 
   when declared(copySign):
-    wrap2f_math(copySign)
+    wrap2fMath(copySign)
 
   when declared(signbit):
-    wrap1f_math(signbit)
+    wrap1fMath(signbit)
 
   registerCallback c, "stdlib.math.round", proc (a: VmArgs) {.nimcall.} =
     let n = a.numArgs
@@ -191,8 +213,6 @@ proc registerAdditionalOps*(c: PCtx) =
     of 1: setResult(a, round(getFloat(a, 0)))
     of 2: setResult(a, round(getFloat(a, 0), getInt(a, 1).int))
     else: doAssert false, $n
-
-  wrap1s(getMD5, md5op)
 
   proc `mod Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, `mod`(getFloat(a, 0), getFloat(a, 1)))
@@ -202,6 +222,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2s(getEnv, osop)
     wrap1s(existsEnv, osop)
     wrap2svoid(putEnv, osop)
+    wrap1svoid(delEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
     wrapDangerous(writeFile, ioop)
@@ -229,16 +250,17 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
-      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
-                  "symBodyHash() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
+      stackTrace2(c, "symBodyHash() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
     setResult(a, $symBodyDigest(c.graph, n.sym))
 
   registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
-      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
-                  "isExported() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
+      stackTrace2(c, "isExported() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
     setResult(a, sfExported in n.sym.flags)
+
+  registerCallback c, "stdlib.vmutils.vmTrace", proc (a: VmArgs) =
+    c.config.isVmTrace = getBool(a, 0)
 
   proc hashVmImpl(a: VmArgs) =
     var res = hashes.hash(a.getString(0), a.getInt(1).int, a.getInt(2).int)
@@ -288,17 +310,22 @@ proc registerAdditionalOps*(c: PCtx) =
 
   proc getEffectList(c: PCtx; a: VmArgs; effectIndex: int) =
     let fn = getNode(a, 0)
+    var list = newNodeI(nkBracket, fn.info)
     if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].len >= effectListLen and
         fn.typ.n[0][effectIndex] != nil:
-      var list = newNodeI(nkBracket, fn.info)
       for e in fn.typ.n[0][effectIndex]:
         list.add opMapTypeInstToAst(c.cache, e.typ.skipTypes({tyRef}), e.info, c.idgen)
-      setResult(a, list)
+    else:
+      list.add newIdentNode(getIdent(c.cache, "UncomputedEffects"), fn.info)
+
+    setResult(a, list)
 
   registerCallback c, "stdlib.effecttraits.getRaisesListImpl", proc (a: VmArgs) =
     getEffectList(c, a, exceptionEffects)
   registerCallback c, "stdlib.effecttraits.getTagsListImpl", proc (a: VmArgs) =
     getEffectList(c, a, tagEffects)
+  registerCallback c, "stdlib.effecttraits.getForbidsListImpl", proc (a: VmArgs) =
+    getEffectList(c, a, forbiddenEffects)
 
   registerCallback c, "stdlib.effecttraits.isGcSafeImpl", proc (a: VmArgs) =
     let fn = getNode(a, 0)
@@ -309,34 +336,35 @@ proc registerAdditionalOps*(c: PCtx) =
     setResult(a, (fn.typ != nil and tfNoSideEffect in fn.typ.flags) or
                  (fn.kind == nkSym and fn.sym.kind == skFunc))
 
-  if vmopsDanger in c.config.features:
-    proc urandomImpl(a: VmArgs) =
-      doAssert a.numArgs == 1
-      let kind = a.slots[a.rb+1].kind
-      case kind
-      of rkInt:
-        setResult(a, urandom(a.getInt(0)).toLit)
-      of rkNode, rkNodeAddr:
-        let n =
-          if kind == rkNode:
-            a.getNode(0)
-          else:
-            a.getNodeAddr(0)
+  registerCallback c, "stdlib.typetraits.hasClosureImpl", proc (a: VmArgs) =
+    let fn = getNode(a, 0)
+    setResult(a, fn.kind == nkClosure or (fn.typ != nil and fn.typ.callConv == ccClosure))
 
-        let length = n.len
+  registerCallback c, "stdlib.formatfloat.addFloatRoundtrip", proc(a: VmArgs) =
+    let p = a.getVar(0)
+    let x = a.getFloat(1)
+    addFloatRoundtrip(p.strVal, x)
 
-        ## TODO refactor using vmconv.fromLit
-        var res = newSeq[uint8](length)
-        for i in 0 ..< length:
-          res[i] = byte(n[i].intVal)
+  registerCallback c, "stdlib.formatfloat.addFloatSprintf", proc(a: VmArgs) =
+    let p = a.getVar(0)
+    let x = a.getFloat(1)
+    addFloatSprintf(p.strVal, x)
 
-        let isSuccess = urandom(res)
+  wrapIterator("stdlib.os.envPairsImplSeq"): envPairs()
 
-        for i in 0 ..< length:
-          n[i].intVal = BiggestInt(res[i])
+  registerCallback c, "stdlib.marshal.toVM", proc(a: VmArgs) =
+    let typ = a.getNode(0).typ
+    case typ.kind
+    of tyInt..tyInt64, tyUInt..tyUInt64:
+      setResult(a, loadAny(a.getString(1), typ, c.cache, c.config, c.idgen).intVal)
+    of tyFloat..tyFloat128:
+      setResult(a, loadAny(a.getString(1), typ, c.cache, c.config, c.idgen).floatVal)
+    else:
+      setResult(a, loadAny(a.getString(1), typ, c.cache, c.config, c.idgen))
 
-        setResult(a, isSuccess)
-      else:
-        doAssert false, $kind
-
-    registerCallback c, "stdlib.sysrand.urandom", urandomImpl
+  registerCallback c, "stdlib.marshal.loadVM", proc(a: VmArgs) =
+    let typ = a.getNode(0).typ
+    let p = a.getReg(1)
+    var res: string
+    storeAny(res, typ, regToNode(p[]), c.config)
+    setResult(a, res)

@@ -54,7 +54,7 @@ Please use alternative packages for serialization.
 It is possible to reimplement this module using generics and type traits.
 Please contribute a new implementation.""".}
 
-import std/[streams, typeinfo, json, intsets, tables, unicode]
+import streams, typeinfo, json, intsets, tables, unicode
 
 proc ptrToInt(x: pointer): int {.inline.} =
   result = cast[int](x) # don't skip alignment
@@ -163,7 +163,10 @@ proc loadAny(p: var JsonParser, a: Any, t: var Table[BiggestInt, pointer]) =
   of akSequence:
     case p.kind
     of jsonNull:
-      setPointer(a, nil)
+      when defined(nimSeqsV2):
+        invokeNewSeq(a, 0)
+      else:
+        setPointer(a, nil)
       next(p)
     of jsonArrayStart:
       next(p)
@@ -230,7 +233,10 @@ proc loadAny(p: var JsonParser, a: Any, t: var Table[BiggestInt, pointer]) =
   of akString:
     case p.kind
     of jsonNull:
-      setPointer(a, nil)
+      when defined(nimSeqsV2):
+        setString(a, "")
+      else:
+        setPointer(a, nil)
       next(p)
     of jsonString:
       setString(a, p.str)
@@ -282,7 +288,7 @@ proc load*[T](s: Stream, data: var T) =
   var tab = initTable[BiggestInt, pointer]()
   loadAny(s, toAny(data), tab)
 
-proc store*[T](s: Stream, data: T) =
+proc store*[T](s: Stream, data: sink T) =
   ## Stores `data` into the stream `s`. Raises `IOError` in case of an error.
   runnableExamples:
     import std/streams
@@ -295,10 +301,16 @@ proc store*[T](s: Stream, data: T) =
 
   var stored = initIntSet()
   var d: T
-  shallowCopy(d, data)
+  when defined(gcArc) or defined(gcOrc):
+    d = data
+  else:
+    shallowCopy(d, data)
   storeAny(s, toAny(d), stored)
 
-proc `$$`*[T](x: T): string =
+proc loadVM[T](typ: typedesc[T], x: T): string =
+  discard "the implementation is in the compiler/vmops"
+
+proc `$$`*[T](x: sink T): string =
   ## Returns a string representation of `x` (serialization, marshalling).
   ##
   ## **Note:** to serialize `x` to JSON use `%x` from the `json` module
@@ -313,12 +325,21 @@ proc `$$`*[T](x: T): string =
     let y = $$x
     assert y == """{"id": 1, "bar": "baz"}"""
 
-  var stored = initIntSet()
-  var d: T
-  shallowCopy(d, x)
-  var s = newStringStream()
-  storeAny(s, toAny(d), stored)
-  result = s.data
+  when nimvm:
+    result = loadVM(T, x)
+  else:
+    var stored = initIntSet()
+    var d: T
+    when defined(gcArc) or defined(gcOrc):
+      d = x
+    else:
+      shallowCopy(d, x)
+    var s = newStringStream()
+    storeAny(s, toAny(d), stored)
+    result = s.data
+
+proc toVM[T](typ: typedesc[T], data: string): T =
+  discard "the implementation is in the compiler/vmops"
 
 proc to*[T](data: string): T =
   ## Reads data and transforms it to a type `T` (deserialization, unmarshalling).
@@ -335,5 +356,8 @@ proc to*[T](data: string): T =
     assert z.id == 1
     assert z.bar == "baz"
 
-  var tab = initTable[BiggestInt, pointer]()
-  loadAny(newStringStream(data), toAny(result), tab)
+  when nimvm:
+    result = toVM(T, data)
+  else:
+    var tab = initTable[BiggestInt, pointer]()
+    loadAny(newStringStream(data), toAny(result), tab)

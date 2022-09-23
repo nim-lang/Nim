@@ -216,11 +216,13 @@ type
     defaultCharset*: cstring
     fgColor*: cstring
     head*: Element
+    hidden*: bool
     lastModified*: cstring
     linkColor*: cstring
     referrer*: cstring
     title*: cstring
     URL*: cstring
+    visibilityState*: cstring
     vlinkColor*: cstring
     anchors*: seq[AnchorElement]
     forms*: seq[FormElement]
@@ -1301,7 +1303,7 @@ type
     width*: int
 
   TimeOut* {.importc.} = ref object of RootObj
-  Interval* {.importc.} = object of RootObj
+  Interval* {.importc.} = ref object of RootObj
 
   AddEventListenerOptions* = object
     capture*: bool
@@ -1316,6 +1318,16 @@ type
     ## see: `docs<https://developer.mozilla.org/en-US/docs/Web/API/FontFaceSet>`_
     ready*: FontFaceSetReady
     onloadingdone*: proc(event: Event)
+
+  ScrollIntoViewOptions* = object
+    behavior*: cstring
+    `block`*: cstring
+    inline*: cstring
+
+  MediaQueryList* = ref MediaQueryListObj
+  MediaQueryListObj {.importc.} = object of EventTargetObj
+    matches*: bool
+    media*: cstring
 
 since (1, 3):
   type
@@ -1378,6 +1390,9 @@ proc `class=`*(n: Node; v: cstring) {.importcpp: "#.className = #", nodecl.}
 
 proc value*(n: Node): cstring {.importcpp: "#.value", nodecl.}
 proc `value=`*(n: Node; v: cstring) {.importcpp: "#.value = #", nodecl.}
+
+proc checked*(n: Node): bool {.importcpp: "#.checked", nodecl.}
+proc `checked=`*(n: Node; v: bool) {.importcpp: "#.checked = #", nodecl.}
 
 proc `disabled=`*(n: Node; v: bool) {.importcpp: "#.disabled = #", nodecl.}
 
@@ -1473,6 +1488,8 @@ else:
 
 proc setTimeout*(action: proc(); ms: int): TimeOut {.importc, nodecl.}
 proc clearTimeout*(t: TimeOut) {.importc, nodecl.}
+proc setInterval*(action: proc(); ms: int): Interval {.importc, nodecl.}
+proc clearInterval*(i: Interval) {.importc, nodecl.}
 
 {.push importcpp.}
 
@@ -1486,8 +1503,8 @@ proc removeEventListener*(et: EventTarget; ev: cstring; cb: proc(ev: Event))
 proc alert*(w: Window, msg: cstring)
 proc back*(w: Window)
 proc blur*(w: Window)
-proc clearInterval*(w: Window, interval: ref Interval)
-proc clearTimeout*(w: Window, timeout: ref TimeOut)
+proc clearInterval*(w: Window, interval: Interval)
+proc clearTimeout*(w: Window, timeout: TimeOut)
 proc close*(w: Window)
 proc confirm*(w: Window, msg: cstring): bool
 proc disableExternalCapture*(w: Window)
@@ -1496,7 +1513,9 @@ proc find*(w: Window, text: cstring, caseSensitive = false,
            backwards = false)
 proc focus*(w: Window)
 proc forward*(w: Window)
-proc getComputedStyle*(w: Window, e: Node, pe:Node = nil): Style
+proc getComputedStyle*(w: Window, e: Node, pe: Node = nil): Style
+  ## .. warning:: The returned Style may or may not be read-only at run-time in the browser. getComputedStyle is performance costly.
+
 proc handleEvent*(w: Window, e: Event)
 proc home*(w: Window)
 proc moveBy*(w: Window, x, y: int)
@@ -1510,13 +1529,14 @@ proc resizeTo*(w: Window, x, y: int)
 proc routeEvent*(w: Window, event: Event)
 proc scrollBy*(w: Window, x, y: int)
 proc scrollTo*(w: Window, x, y: int)
-proc setInterval*(w: Window, code: cstring, pause: int): ref Interval
-proc setInterval*(w: Window, function: proc (), pause: int): ref Interval
-proc setTimeout*(w: Window, code: cstring, pause: int): ref TimeOut
-proc setTimeout*(w: Window, function: proc (), pause: int): ref Interval
+proc setInterval*(w: Window, code: cstring, pause: int): Interval
+proc setInterval*(w: Window, function: proc (), pause: int): Interval
+proc setTimeout*(w: Window, code: cstring, pause: int): TimeOut
+proc setTimeout*(w: Window, function: proc (), pause: int): Interval
 proc stop*(w: Window)
 proc requestAnimationFrame*(w: Window, function: proc (time: float)): int
 proc cancelAnimationFrame*(w: Window, id: int)
+proc matchMedia*(w: Window, mediaQueryString: cstring): MediaQueryList
 
 # Node "methods"
 proc appendData*(n: Node, data: cstring)
@@ -1533,6 +1553,7 @@ proc removeAttribute*(n: Node, attr: cstring)
 proc removeAttributeNode*(n, attr: Node)
 proc replaceData*(n: Node, start, len: int, text: cstring)
 proc scrollIntoView*(n: Node)
+proc scrollIntoView*(n: Node, options: ScrollIntoViewOptions)
 proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
 proc querySelector*(n: Node, selectors: cstring): Element
@@ -1756,5 +1777,65 @@ since (1, 3):
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsBinaryString
   proc readAsDataURL*(f: FileReader, b: Blob) {.importcpp: "#.readAsDataURL(#)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
-  proc readAsText*(f: FileReader, b: Blob, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
+  proc readAsText*(f: FileReader, b: Blob|File, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText
+
+since (1, 5):
+  proc elementsFromPoint*(n: DocumentOrShadowRoot; x, y: float): seq[Element] {.importcpp.}
+
+
+since (1, 7):
+
+  proc insertAdjacentText*(self: Node; position, data: cstring) {.importjs: "#.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/insertAdjacentText
+
+  proc insertAdjacentElement*(self: Node; position: cstring; element: Node) {.importjs: "#.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/insertAdjacentElement
+
+  proc insertAdjacentHTML*(self: Node; position, html: cstring) {.importjs: "#.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/insertAdjacentHTML
+
+  proc after*(self: Node; element: Node): Node {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/after
+
+  proc before*(self: Node; element: Node): Node {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/before
+
+  proc append*(self: Node; element: Node): Node {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/append
+
+  proc closest*(self: Node; cssSelector: cstring): Node {.importjs: "#.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/closest
+
+  proc hasAttributeNS*(self: Node; namespace, localName: cstring): bool {.importjs: "(#.$1(#, #) || false)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/hasAttributeNS
+
+  proc removeAttributeNS*(self: Node; namespace, attributeName: cstring) {.importjs: "#.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/removeAttributeNS
+
+  proc hasPointerCapture*(self: Node; pointerId: SomeNumber): bool {.importjs: "(#.$1(#) || false)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/hasPointerCapture
+
+  proc releasePointerCapture*(self: Node; pointerId: SomeNumber) {.importjs: "#.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/releasePointerCapture
+
+  proc requestPointerLock*(self: Node) {.importjs: "#.$1()".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/requestPointerLock
+
+  proc replaceChildren*(self: Node; replacements: Node) {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceChildren
+
+  proc replaceWith*(self: Node; replacements: Node) {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceWith
+
+  proc scrollIntoViewIfNeeded*(self: Node; centerIfNeeded: bool) {.importjs: "#.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoViewIfNeeded
+
+  proc setHTML*(self: Node; html: cstring) {.importjs: "#.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/setHTML
+
+  proc toggleAttribute*(self: Node; name: cstring; force = false): bool {.importjs: "(#.$1(#, #) || false)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/toggleAttribute
+
+  proc matches*(self: Node; cssSelector: cstring): bool {.importjs: "(#.$1(#) || false)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/matches

@@ -1,4 +1,8 @@
-import std/monotimes, times
+discard """
+  targets: "c js"
+"""
+
+import std/[monotimes, times]
 
 let d = initDuration(nanoseconds = 10)
 let t1 = getMonoTime()

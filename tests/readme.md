@@ -27,25 +27,6 @@ Options:
 There are certain spec keys that imply ``run``, including ``output`` and
 ``outputsub``.
 
-## cmd
-
-Specifies the Nim command to use for compiling the test.
-
-There are a number of variables that are replaced in this spec option:
-
-* ``$target`` - the compilation target, e.g. ``c``.
-* ``$options`` - the options for the compiler.
-* ``$file`` - the filename of the test.
-* ``$filedir`` - the directory of the test file.
-
-Example:
-
-```nim
-discard """
-  cmd: "nim $target --nimblePath:./nimbleDir/simplePkgs $options $file"
-"""
-```
-
 # Categories
 
 Each folder under this directory represents a test category, which can be
@@ -55,5 +36,4 @@ testing, which is slower).
 The folder ``dll`` contains simple DLL tests.
 
 The folder ``realtimeGC`` contains a test for validating that the realtime GC
-can run properly without linking against the nimrtl.dll/so. It includes a C
-client and platform specific build files for manual compilation.
+can run properly without linking against the nimrtl.dll/so.

@@ -47,7 +47,8 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimparsebiggestfloatmagic") # deadcode
   defineSymbol("nimalias") # deadcode
   defineSymbol("nimlocks") # deadcode
-  defineSymbol("nimnode") # deadcode pending tests/deps/opengl-1.1.0/opengl.nim
+  defineSymbol("nimnode") # deadcode pending `nimnode` reference in opengl package
+    # refs https://github.com/nim-lang/opengl/pull/79
   defineSymbol("nimvarargstyped") # deadcode
   defineSymbol("nimtypedescfixed") # deadcode
   defineSymbol("nimKnowsNimvm") # deadcode
@@ -69,7 +70,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimVmExportFixed") # deadcode
   defineSymbol("nimHasSymOwnerInMacro") # deadcode
   defineSymbol("nimNewRuntime") # deadcode
-  defineSymbol("nimIncrSeqV3") # xxx: turn this into deadcode
+  defineSymbol("nimIncrSeqV3") # deadcode
   defineSymbol("nimAshr") # deadcode
   defineSymbol("nimNoNilSeqs") # deadcode
   defineSymbol("nimNoNilSeqs2") # deadcode
@@ -128,3 +129,17 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasJsBigIntBackend")
   defineSymbol("nimHasWarningAsError")
   defineSymbol("nimHasHintAsError")
+  defineSymbol("nimHasSpellSuggest")
+  defineSymbol("nimHasCustomLiterals")
+  defineSymbol("nimHasUnifiedTuple")
+  defineSymbol("nimHasIterable")
+  defineSymbol("nimHasTypeofVoid")
+  defineSymbol("nimHasDragonBox")
+  defineSymbol("nimHasHintAll")
+  defineSymbol("nimHasTrace")
+  defineSymbol("nimHasEffectsOf")
+
+  defineSymbol("nimHasEnforceNoRaises")
+  defineSymbol("nimHasTopDownInference")
+  defineSymbol("nimHasTemplateRedefinitionPragma")
+  defineSymbol("nimHasCstringCase")

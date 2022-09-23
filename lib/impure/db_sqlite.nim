@@ -35,7 +35,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##    import db_sqlite
+##    import std/db_sqlite
 ##
 ##    # user, password, database name can be empty.
 ##    # These params are not used on db_sqlite module.
@@ -66,7 +66,7 @@
 ##
 ## .. code-block:: nim
 ##
-##    import db_sqlite, math
+##    import std/[db_sqlite, math]
 ##
 ##    let db = open("mytest.db", "", "", "")
 ##
@@ -99,7 +99,7 @@
 ##
 ## .. code-block:: nim
 ##
-##   import random
+##   import std/random
 ##
 ##   ## Generate random float datas
 ##   var orig = newSeq[float64](150)
@@ -152,9 +152,9 @@
 ## Instead, a `seq[string]` is returned for each row.
 ##
 ## The reasoning is as follows:
-## 1. it's close to what many DBs offer natively (char**)
+## 1. it's close to what many DBs offer natively (`char**`:c:)
 ## 2. it hides the number of types that the DB supports
-## (int? int64? decimal up to 10 places? geo coords?)
+##    (int? int64? decimal up to 10 places? geo coords?)
 ## 3. it's convenient when all you do is to forward the data to somewhere else (echo, log, put the data into a new query)
 ##
 ## See also
@@ -171,7 +171,7 @@ import sqlite3, macros
 import db_common
 export db_common
 
-import std/private/since
+import std/private/[since, dbutils]
 
 type
   DbConn* = PSqlite3  ## Encapsulates a database connection.
@@ -211,14 +211,7 @@ proc dbQuote*(s: string): string =
   add(result, '\'')
 
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
-  result = ""
-  var a = 0
-  for c in items(string(formatstr)):
-    if c == '?':
-      add(result, dbQuote(args[a]))
-      inc(a)
-    else:
-      add(result, c)
+  dbFormatImpl(formatstr, dbQuote, args)
 
 proc prepare*(db: DbConn; q: string): SqlPrepared {.since: (1, 3).} =
   ## Creates a new `SqlPrepared` statement.
@@ -242,7 +235,7 @@ proc tryExec*(db: DbConn, query: SqlQuery,
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   var stmt: sqlite3.PStmt
-  if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
+  if prepare_v2(db, q.cstring, q.len.cint, stmt, nil) == SQLITE_OK:
     let x = step(stmt)
     if x in {SQLITE_DONE, SQLITE_ROW}:
       result = finalize(stmt) == SQLITE_OK
@@ -285,7 +278,7 @@ proc setupQuery(db: DbConn, query: SqlQuery,
                 args: varargs[string]): PStmt =
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
-  if prepare_v2(db, q, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
+  if prepare_v2(db, q.cstring, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
 
 proc setupQuery(db: DbConn, stmtName: SqlPrepared): SqlPrepared {.since: (1, 3).} =
   assert(not db.isNil, "Database not connected.")
@@ -642,7 +635,7 @@ proc getValue*(db: DbConn,  stmtName: SqlPrepared): string
 
 proc tryInsertID*(db: DbConn, query: SqlQuery,
                   args: varargs[string, `$`]): int64
-                  {.tags: [WriteDbEffect], raises: [].} =
+                  {.tags: [WriteDbEffect], raises: [DbError].} =
   ## Executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   ##
@@ -660,7 +653,7 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
   var q = dbFormat(query, args)
   var stmt: sqlite3.PStmt
   result = -1
-  if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
+  if prepare_v2(db, q.cstring, q.len.cint, stmt, nil) == SQLITE_OK:
     if step(stmt) == SQLITE_DONE:
       result = last_insert_rowid(db)
     if finalize(stmt) != SQLITE_OK:
@@ -699,7 +692,7 @@ proc insertID*(db: DbConn, query: SqlQuery,
 
 proc tryInsert*(db: DbConn, query: SqlQuery, pkName: string,
                 args: varargs[string, `$`]): int64
-               {.tags: [WriteDbEffect], raises: [], since: (1, 3).} =
+               {.tags: [WriteDbEffect], raises: [DbError], since: (1, 3).} =
   ## same as tryInsertID
   tryInsertID(db, query, args)
 
@@ -707,7 +700,7 @@ proc insert*(db: DbConn, query: SqlQuery, pkName: string,
              args: varargs[string, `$`]): int64
             {.tags: [WriteDbEffect], since: (1, 3).} =
   ## same as insertId
-  result = tryInsert(db, query,pkName, args)
+  result = tryInsert(db, query, pkName, args)
   if result < 0: dbError(db)
 
 proc execAffectedRows*(db: DbConn, query: SqlQuery,

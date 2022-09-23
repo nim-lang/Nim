@@ -8,6 +8,10 @@
 #
 
 # This include implements the high level optimization pass.
+# included from sem.nim
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 proc hlo(c: PContext, n: PNode): PNode
 

@@ -17,6 +17,9 @@ when defined(nimHasStyleChecks):
 
 {.passc: "-DWIN32_LEAN_AND_MEAN".}
 
+when defined(nimPreviewSlimSystem):
+  from std/syncio import FileHandle
+
 const
   useWinUnicode* = not defined(useWinAnsi)
 
@@ -25,6 +28,7 @@ when useWinUnicode:
 else:
   type WinChar* = char
 
+# See https://docs.microsoft.com/en-us/windows/win32/winprog/windows-data-types
 type
   Handle* = int
   LONG* = int32
@@ -33,6 +37,7 @@ type
   WINBOOL* = int32
     ## `WINBOOL` uses opposite convention as posix, !=0 meaning success.
     # xxx this should be distinct int32, distinct would make code less error prone
+  PBOOL* = ptr WINBOOL
   DWORD* = int32
   PDWORD* = ptr DWORD
   LPINT* = ptr int32
@@ -40,6 +45,7 @@ type
   PULONG_PTR* = ptr uint
   HDC* = Handle
   HGLRC* = Handle
+  BYTE* = uint8
 
   SECURITY_ATTRIBUTES* {.final, pure.} = object
     nLength*: int32
@@ -136,6 +142,10 @@ const
 
   HANDLE_FLAG_INHERIT* = 0x00000001'i32
 
+proc isSuccess*(a: WINBOOL): bool {.inline.} =
+  ## Returns true if `a != 0`. Windows uses a different convention than POSIX,
+  ## where `a == 0` is commonly used on success.
+  a != 0
 proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
     stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}
 proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
@@ -471,7 +481,7 @@ type
 
   PSockAddr = ptr SockAddr
 
-  InAddr* {.importc: "IN_ADDR", header: "winsock2.h".} = object
+  InAddr* {.importc: "IN_ADDR", header: "winsock2.h", union.} = object
     s_addr*: uint32  # IP address
 
   Sockaddr_in* {.importc: "SOCKADDR_IN",
@@ -660,7 +670,7 @@ proc getaddrinfo*(nodename, servname: cstring, hints: ptr AddrInfo,
                   res: var ptr AddrInfo): cint {.
   stdcall, importc: "getaddrinfo", dynlib: ws2dll.}
 
-proc freeaddrinfo*(ai: ptr AddrInfo) {.
+proc freeAddrInfo*(ai: ptr AddrInfo) {.
   stdcall, importc: "freeaddrinfo", dynlib: ws2dll.}
 
 proc inet_ntoa*(i: InAddr): cstring {.
@@ -711,12 +721,13 @@ const
 
 # Error Constants
 const
-  ERROR_FILE_NOT_FOUND* = 2
+  ERROR_FILE_NOT_FOUND* = 2 ## https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
   ERROR_PATH_NOT_FOUND* = 3
   ERROR_ACCESS_DENIED* = 5
   ERROR_NO_MORE_FILES* = 18
   ERROR_LOCK_VIOLATION* = 33
   ERROR_HANDLE_EOF* = 38
+  ERROR_FILE_EXISTS* = 80
   ERROR_BAD_ARGUMENTS* = 165
 
 proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,
@@ -920,6 +931,9 @@ proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   lpKernelTime, lpUserTime: var FILETIME): WINBOOL {.stdcall,
   dynlib: "kernel32", importc: "GetProcessTimes".}
 
+proc getSystemTimePreciseAsFileTime*(lpSystemTimeAsFileTime: var FILETIME) {.
+  importc: "GetSystemTimePreciseAsFileTime", dynlib: "kernel32", stdcall, sideEffect.}
+
 type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
                       stringBufSize: int32): cstring {.gcsafe, stdcall, tags: [].}
 
@@ -1023,7 +1037,7 @@ const
   PROCESS_QUERY_LIMITED_INFORMATION* = 0x00001000'i32
   PROCESS_SET_LIMITED_INFORMATION* = 0x00002000'i32
 type
-  WAITORTIMERCALLBACK* = proc(para1: pointer, para2: int32): void {.stdcall.}
+  WAITORTIMERCALLBACK* = proc(para1: pointer, para2: int32) {.stdcall.}
 
 proc postQueuedCompletionStatus*(CompletionPort: Handle,
                                 dwNumberOfBytesTransferred: DWORD,
@@ -1105,7 +1119,7 @@ else:
        {.stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}
 
 type
-  LPFIBER_START_ROUTINE* = proc (param: pointer): void {.stdcall.}
+  LPFIBER_START_ROUTINE* = proc (param: pointer) {.stdcall.}
 
 const
   FIBER_FLAG_FLOAT_SWITCH* = 0x01
@@ -1114,8 +1128,8 @@ proc CreateFiber*(stackSize: int, fn: LPFIBER_START_ROUTINE, param: pointer): po
 proc CreateFiberEx*(stkCommit: int, stkReserve: int, flags: int32, fn: LPFIBER_START_ROUTINE, param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc ConvertThreadToFiber*(param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc ConvertThreadToFiberEx*(param: pointer, flags: int32): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
-proc DeleteFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
-proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc DeleteFiber*(fiber: pointer) {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc SwitchToFiber*(fiber: pointer) {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "windows.h".}
 
 proc toFILETIME*(t: int64): FILETIME =
@@ -1128,6 +1142,43 @@ type
 proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
                  lpLastAccessTime: LPFILETIME, lpLastWriteTime: LPFILETIME): WINBOOL
      {.stdcall, dynlib: "kernel32", importc: "SetFileTime".}
+
+type
+  # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid_identifier_authority
+  SID_IDENTIFIER_AUTHORITY* {.importc, header: "<windows.h>".} = object
+    value* {.importc: "Value".}: array[6, BYTE]
+  # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid
+  SID* {.importc, header: "<windows.h>".} = object
+    Revision: BYTE
+    SubAuthorityCount: BYTE
+    IdentifierAuthority: SID_IDENTIFIER_AUTHORITY
+    SubAuthority: ptr ptr DWORD
+  PSID* = ptr SID
+
+const
+  # https://docs.microsoft.com/en-us/windows/win32/secauthz/sid-components
+  # https://github.com/mirror/mingw-w64/blob/84c950bdab7c999ace49fe8383856be77f88c4a8/mingw-w64-headers/include/winnt.h#L2994
+  SECURITY_NT_AUTHORITY* = [BYTE(0), BYTE(0), BYTE(0), BYTE(0), BYTE(0), BYTE(5)]
+  SECURITY_BUILTIN_DOMAIN_RID* = 32
+  DOMAIN_ALIAS_RID_ADMINS* = 544
+
+proc allocateAndInitializeSid*(pIdentifierAuthority: ptr SID_IDENTIFIER_AUTHORITY,
+                               nSubAuthorityCount: BYTE,
+                               nSubAuthority0: DWORD,
+                               nSubAuthority1: DWORD,
+                               nSubAuthority2: DWORD,
+                               nSubAuthority3: DWORD,
+                               nSubAuthority4: DWORD,
+                               nSubAuthority5: DWORD,
+                               nSubAuthority6: DWORD,
+                               nSubAuthority7: DWORD,
+                               pSid: ptr PSID): WINBOOL
+     {.stdcall, dynlib: "Advapi32", importc: "AllocateAndInitializeSid".}
+proc checkTokenMembership*(tokenHandle: Handle, sidToCheck: PSID,
+                           isMember: PBOOL): WINBOOL
+     {.stdcall, dynlib: "Advapi32", importc: "CheckTokenMembership".}
+proc freeSid*(pSid: PSID): PSID
+     {.stdcall, dynlib: "Advapi32", importc: "FreeSid".}
 
 when defined(nimHasStyleChecks):
   {.pop.} # {.push styleChecks: off.}

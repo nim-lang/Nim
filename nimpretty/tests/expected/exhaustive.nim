@@ -856,3 +856,8 @@ type
   SpinnyEvent2 = tuple
     kind: EventKind
     payload: string
+
+
+proc hid_open*(vendor_id: cushort; product_id: cushort;
+    serial_number: cstring): ptr HidDevice {.
+    importc: "hid_open", dynlib: hidapi.}

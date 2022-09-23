@@ -133,8 +133,8 @@ proc matchLengthKind*(arg: NimNode; kind: NimNodeKind; length: int): MatchingErr
   matchLengthKind(arg, {kind}, length)
 
 proc matchValue(arg: NimNode; kind: set[NimNodeKind]; value: SomeInteger): MatchingError {.compileTime.} =
-  let kindFail   = not(kind.card == 0 or arg.kind in kind)
-  let valueFail  = arg.intVal != int(value)
+  template kindFail: bool  = not(kind.card == 0 or arg.kind in kind)
+  template valueFail: bool = arg.intVal != int(value)
   if kindFail or valueFail:
     result.node = arg
     result.kind = WrongKindValue
@@ -561,7 +561,7 @@ when isMainModule:
         echo "got the ident m"
 
     testRecCase:
-      type Obj[T] = object {.inheritable.}
+      type Obj[T] {.inheritable.} = object
         name: string
         case isFat: bool
         of true:

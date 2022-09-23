@@ -13,24 +13,24 @@
 import unicode
 
 proc editDistance*(a, b: string): int {.noSideEffect.} =
-  ## Returns the **unicode-rune** edit distance between ``a`` and ``b``.
+  ## Returns the **unicode-rune** edit distance between `a` and `b`.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
   ## memory overhead.
   runnableExamples: static: doAssert editdistance("Kitten", "Bitten") == 1
   if len(a) > len(b):
-    # make ``b`` the longer string
+    # make `b` the longer string
     return editDistance(b, a)
   # strip common prefix
   var
-    iStart = 0 ## The character starting index of the first rune in both strings ``a`` and ``b``
+    iStart = 0 ## The character starting index of the first rune in both strings `a` and `b`
     iNextA = 0
     iNextB = 0
     runeA, runeB: Rune
-    lenRunesA = 0 ## The number of relevant runes in string ``a``.
-    lenRunesB = 0 ## The number of relevant runes in string ``b``.
+    lenRunesA = 0 ## The number of relevant runes in string `a`.
+    lenRunesB = 0 ## The number of relevant runes in string `b`.
   block commonPrefix:
-    # ``a`` is the shorter string
+    # `a` is the shorter string
     while iStart < len(a):
       iNextA = iStart
       a.fastRuneAt(iNextA, runeA, doInc = true)
@@ -44,9 +44,9 @@ proc editDistance*(a, b: string): int {.noSideEffect.} =
   var
     # we know that we are either at the start of the strings
     # or that the current value of runeA is not equal to runeB
-    # => start search for common suffix after the current rune (``i_next_*``)
-    iEndA = iNextA ## The exclusive upper index bound of string ``a``.
-    iEndB = iNextB ## The exclusive upper index bound of string ``b``.
+    # => start search for common suffix after the current rune (`i_next_*`)
+    iEndA = iNextA ## The exclusive upper index bound of string `a`.
+    iEndB = iNextB ## The exclusive upper index bound of string `b`.
     iCurrentA = iNextA
     iCurrentB = iNextB
   block commonSuffix:
@@ -69,8 +69,8 @@ proc editDistance*(a, b: string): int {.noSideEffect.} =
         addRunesB = 0
       iCurrentA = iNextA
       iCurrentB = iNextB
-    if iCurrentA >= len(a): # ``a`` exhausted
-      if iCurrentB < len(b): # ``b`` not exhausted
+    if iCurrentA >= len(a): # `a` exhausted
+      if iCurrentB < len(b): # `b` not exhausted
         iEndA = iCurrentA
         iEndB = iCurrentB
         inc(lenRunesA, addRunesA)
@@ -79,7 +79,7 @@ proc editDistance*(a, b: string): int {.noSideEffect.} =
           b.fastRuneAt(iEndB, runeB)
           inc(lenRunesB)
           if iEndB >= len(b): break
-    elif iCurrentB >= len(b): # ``b`` exhausted and ``a`` not exhausted
+    elif iCurrentB >= len(b): # `b` exhausted and `a` not exhausted
       iEndA = iCurrentA
       iEndB = iCurrentB
       inc(lenRunesA, addRunesA)

@@ -10,16 +10,14 @@
 # this module does the semantic checking of type declarations
 # included from sem.nim
 
-import math
-
 const
   errStringOrIdentNodeExpected = "string or ident node expected"
   errStringLiteralExpected = "string literal expected"
   errIntLiteralExpected = "integer literal expected"
   errWrongNumberOfVariables = "wrong number of variables"
   errInvalidOrderInEnumX = "invalid order in enum '$1'"
-  errOrdinalTypeExpected = "ordinal type expected"
-  errSetTooBig = "set is too large"
+  errOrdinalTypeExpected = "ordinal type expected; given: $1"
+  errSetTooBig = "set is too large; use `std/sets` for ordinal types with more than 2^16 elements"
   errBaseTypeMustBeOrdinal = "base type of a set must be an ordinal"
   errInheritanceOnlyWithNonFinalObjects = "inheritance only works with non-final objects"
   errXExpectsOneTypeParam = "'$1' expects one type parameter"
@@ -95,21 +93,21 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       of tyTuple:
         if v.len == 2:
           strVal = v[1] # second tuple part is the string value
-          if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCString}:
+          if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCstring}:
             if not isOrdinalType(v[0].typ, allowEnumWithHoles=true):
-              localError(c.config, v[0].info, errOrdinalTypeExpected & "; given: " & typeToString(v[0].typ, preferDesc))
+              localError(c.config, v[0].info, errOrdinalTypeExpected % typeToString(v[0].typ, preferDesc))
             x = toInt64(getOrdValue(v[0])) # first tuple part is the ordinal
             n[i][1][0] = newIntTypeNode(x, getSysType(c.graph, unknownLineInfo, tyInt))
           else:
             localError(c.config, strVal.info, errStringLiteralExpected)
         else:
           localError(c.config, v.info, errWrongNumberOfVariables)
-      of tyString, tyCString:
+      of tyString, tyCstring:
         strVal = v
         x = counter
       else:
         if not isOrdinalType(v.typ, allowEnumWithHoles=true):
-          localError(c.config, v.info, errOrdinalTypeExpected & "; given: " & typeToString(v.typ, preferDesc))
+          localError(c.config, v.info, errOrdinalTypeExpected % typeToString(v.typ, preferDesc))
         x = toInt64(getOrdValue(v))
         n[i][1] = newIntTypeNode(x, getSysType(c.graph, unknownLineInfo, tyInt))
       if i != 1:
@@ -138,15 +136,16 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
-      incl(e.flags, sfUsed)
-      incl(e.flags, sfExported)
-      if not isPure: exportSym(c, e)
+      e.flags.incl {sfUsed, sfExported}
+
     result.n.add symNode
-    styleCheckDef(c.config, e)
+    styleCheckDef(c, e)
     onDef(e.info, e)
     if sfGenSym notin e.flags:
-      if not isPure: addDecl(c, e)
-      else: declarePureEnumField(c, e)
+      if not isPure:
+        addInterfaceOverloadableSymAt(c, c.currentScope, e)
+      else:
+        declarePureEnumField(c, e)
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
@@ -164,7 +163,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = lastSon(base)
     if base.kind notin {tyGenericParam, tyGenericInvocation}:
       if not isOrdinalType(base, allowEnumWithHoles = true):
-        localError(c.config, n.info, errOrdinalTypeExpected)
+        localError(c.config, n.info, errOrdinalTypeExpected % typeToString(base, preferDesc))
       elif lengthOrd(c.config, base) > MaxSetElements:
         localError(c.config, n.info, errSetTooBig)
   else:
@@ -200,7 +199,9 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
 proc semVarOutType(c: PContext, n: PNode, prev: PType; kind: TTypeKind): PType =
   if n.len == 1:
     result = newOrPrevType(kind, prev, c)
-    var base = semTypeNode(c, n[0], nil).skipTypes({tyTypeDesc})
+    var base = semTypeNode(c, n[0], nil)
+    if base.kind == tyTypeDesc and not isSelf(base):
+      base = base[0]
     if base.kind == tyVar:
       localError(c.config, n.info, "type 'var var' is not allowed")
       base = base[0]
@@ -208,10 +209,34 @@ proc semVarOutType(c: PContext, n: PNode, prev: PType; kind: TTypeKind): PType =
   else:
     result = newConstraint(c, kind)
 
+proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
+  if t == nil:
+    return false
+  if cycleDetector.containsOrIncl(t.id):
+    return true
+  case t.kind
+  of tyAlias, tyGenericInst, tyDistinct:
+    return isRecursiveType(t.lastSon, cycleDetector)
+  else:
+    return false
+
+proc isRecursiveType*(t: PType): bool =
+  # handle simple recusive types before typeFinalPass
+  var cycleDetector = initIntSet()
+  isRecursiveType(t, cycleDetector)
+
+proc addSonSkipIntLitChecked(c: PContext; father, son: PType; it: PNode, id: IdGenerator) =
+  let s = son.skipIntLit(id)
+  father.sons.add(s)
+  if isRecursiveType(s):
+    localError(c.config, it.info, "illegal recursion in type '" & typeToString(s) & "'")
+  else:
+    propagateToOwner(father, s)
+
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0: return newConstraint(c, tyDistinct)
   result = newOrPrevType(tyDistinct, prev, c)
-  addSonSkipIntLit(result, semTypeNode(c, n[0], nil), c.idgen)
+  addSonSkipIntLitChecked(c, result, semTypeNode(c, n[0], nil), n[0], c.idgen)
   if n.len > 1: result.n = n[1]
 
 proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
@@ -239,7 +264,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
 
   if not hasUnknownTypes:
     if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
-      localError(c.config, n.info, "type mismatch")
+      typeMismatch(c.config, n.info, rangeT[0], rangeT[1], n)
+
     elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin {tyFloat..tyFloat128} or
         rangeT[0].kind == tyBool:
       localError(c.config, n.info, "ordinal or float type expected")
@@ -253,8 +279,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     else:
       result.n.add semConstExpr(c, range[i])
 
-  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[0].floatVal) == fcNan) or
-      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[1].floatVal) == fcNan):
+  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and result.n[0].floatVal.isNaN) or
+      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and result.n[1].floatVal.isNaN):
     localError(c.config, n.info, "NaN is not a valid start or end for a range")
 
   if weakLeValue(result.n[0], result.n[1]) == impNo:
@@ -297,7 +323,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
       result = makeRangeWithStaticExpr(c, e.typ.n)
     elif e.kind in {nkIntLit..nkUInt64Lit}:
       if e.intVal < 0:
-        localError(c.config, n[1].info,
+        localError(c.config, n.info,
           "Array length can't be negative, but was " & $e.intVal)
       result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
     elif e.kind == nkSym and e.typ.kind == tyStatic:
@@ -305,12 +331,12 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
         return semArrayIndex(c, e.sym.ast)
       if not isOrdinalType(e.typ.lastSon):
         let info = if n.safeLen > 1: n[1].info else: n.info
-        localError(c.config, info, errOrdinalTypeExpected)
+        localError(c.config, info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
       result = makeRangeWithStaticExpr(c, e)
       if c.inGenericContext > 0: result.flags.incl tfUnresolved
     elif e.kind in (nkCallKinds + {nkBracketExpr}) and hasUnresolvedArgs(c, e):
       if not isOrdinalType(e.typ.skipTypes({tyStatic, tyAlias, tyGenericInst, tySink})):
-        localError(c.config, n[1].info, errOrdinalTypeExpected)
+        localError(c.config, n[1].info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
       # This is an int returning call, depending on an
       # yet unknown generic param (see tgenericshardcases).
       # We are going to construct a range type that will be
@@ -339,7 +365,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
       if indxB.skipTypes({tyRange}).kind in {tyUInt, tyUInt64}:
         discard
       elif not isOrdinalType(indxB):
-        localError(c.config, n[1].info, errOrdinalTypeExpected)
+        localError(c.config, n[1].info, errOrdinalTypeExpected % typeToString(indxB, preferDesc))
       elif enumHasHoles(indxB):
         localError(c.config, n[1].info, "enum '$1' has holes" %
                    typeToString(indxB.skipTypes({tyRange})))
@@ -354,13 +380,22 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errArrayExpectsTwoTypeParams)
     result = newOrPrevType(tyError, prev, c)
 
+proc semIterableType(c: PContext, n: PNode, prev: PType): PType =
+  result = newOrPrevType(tyIterable, prev, c)
+  if n.len == 2:
+    let base = semTypeNode(c, n[1], nil)
+    addSonSkipIntLit(result, base, c.idgen)
+  else:
+    localError(c.config, n.info, errXExpectsOneTypeParam % "iterable")
+    result = newOrPrevType(tyError, prev, c)
+
 proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tyOrdinal, prev, c)
   if n.len == 2:
     var base = semTypeNode(c, n[1], nil)
     if base.kind != tyGenericParam:
       if not isOrdinalType(base):
-        localError(c.config, n[1].info, errOrdinalTypeExpected)
+        localError(c.config, n[1].info, errOrdinalTypeExpected % typeToString(base, preferDesc))
     addSonSkipIntLit(result, base, c.idgen)
   else:
     localError(c.config, n.info, errXExpectsOneTypeParam % "ordinal")
@@ -433,7 +468,8 @@ proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errTypeExpected)
   result = newOrPrevType(tyTuple, prev, c)
   for it in n:
-    addSonSkipIntLit(result, semTypeNode(c, it, nil), c.idgen)
+    let t = semTypeNode(c, it, nil)
+    addSonSkipIntLitChecked(c, result, t, it, c.idgen)
 
 proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var typ: PType
@@ -462,7 +498,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       else:
         result.n.add newSymNode(field)
         addSonSkipIntLit(result, typ, c.idgen)
-      styleCheckDef(c.config, a[j].info, field)
+      styleCheckDef(c, a[j].info, field)
       onDef(field.info, field)
   if result.n.len == 0: result.n = nil
   if isTupleRecursive(result):
@@ -564,7 +600,9 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         checkMinSonsLen(t, 1, c.config)
         var tmp = fitNode(c, t[0].typ, r, r.info)
         # the call to fitNode may introduce a call to a converter
-        if tmp.kind in {nkHiddenCallConv}: tmp = semConstExpr(c, tmp)
+        if tmp.kind == nkHiddenCallConv or
+            (tmp.kind == nkHiddenStdConv and t[0].typ.kind == tyCstring):
+          tmp = semConstExpr(c, tmp)
         branch[i] = skipConv(tmp)
         inc(covered)
       else:
@@ -794,7 +832,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         localError(c.config, info, "attempt to redefine: '" & f.name.s & "'")
       if a.kind == nkEmpty: father.add newSymNode(f)
       else: a.add newSymNode(f)
-      styleCheckDef(c.config, f)
+      styleCheckDef(c, f)
       onDef(f.info, f)
     if a.kind != nkEmpty: father.add a
   of nkSym:
@@ -842,7 +880,7 @@ proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
     addInheritedFields(c, check, pos, obj[0].skipGenericInvocation)
   addInheritedFieldsAux(c, check, pos, obj.n)
 
-proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PType =
+proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType =
   if n.len == 0:
     return newConstraint(c, tyObject)
   var check = initIntSet()
@@ -878,8 +916,9 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PTy
   if n.kind != nkObjectTy: internalError(c.config, n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
   rawAddSon(result, realBase)
-  if realBase == nil and isInheritable:
+  if realBase == nil and tfInheritable in flags:
     result.flags.incl tfInheritable
+  if tfAcyclic in flags: result.flags.incl tfAcyclic
   if result.n.isNil:
     result.n = newNodeI(nkRecList, n.info)
   else:
@@ -904,8 +943,8 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1, c.config)
     let body = n.lastSon
-    var t = if prev != nil and body.kind == nkObjectTy and tfInheritable in prev.flags:
-              semObjectNode(c, body, nil, isInheritable=true)
+    var t = if prev != nil and body.kind == nkObjectTy:
+              semObjectNode(c, body, nil, prev.flags)
             else:
               semTypeNode(c, body, nil)
     if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
@@ -1025,7 +1064,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   var paramTypId = if not anon and paramType.sym != nil: paramType.sym.name
                    else: nil
 
-  case paramType.kind:
+  case paramType.kind
   of tyAnything:
     result = addImplicitGeneric(c, newTypeS(tyGenericParam, c), nil, info, genericParams, paramName)
 
@@ -1154,7 +1193,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result = recurse(expanded, true)
 
   of tyUserTypeClasses, tyBuiltInTypeClass, tyCompositeTypeClass,
-     tyAnd, tyOr, tyNot:
+     tyAnd, tyOr, tyNot, tyConcept:
     result = addImplicitGeneric(c,
         copyType(paramType, nextTypeId c.idgen, getCurrOwner(c)), paramTypId,
         info, genericParams, paramName)
@@ -1169,6 +1208,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   else: discard
 
 proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
+  ## Semchecks the type of parameters.
   if n.kind == nkCurlyExpr:
     result = semTypeNode(c, n[0], nil)
     constraint = semNodeKindConstraints(n, c.config, 1)
@@ -1224,14 +1264,15 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if hasType:
       typ = semParamType(c, a[^2], constraint)
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
-      if kind == skProc and (typ.kind == tyTyped or typ.kind == tyUntyped):
+      if kind in {skProc, skFunc} and (typ.kind == tyTyped or typ.kind == tyUntyped):
         if not isMagic(getCurrOwner(c)):
           localError(c.config, a[^2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros or magic procs")
+
 
     if hasDefault:
       def = a[^1]
       block determineType:
-        if genericParams != nil and genericParams.len > 0:
+        if genericParams.isGenericParams:
           def = semGenericStmt(c, def)
           if hasUnresolvedArgs(c, def):
             def.typ = makeTypeFromExpr(c, def.copyTree)
@@ -1282,7 +1323,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         let param = strTableGet(c.signatures, arg.name)
         if param != nil: typ = param.typ
         else:
-          localError(c.config, a.info, "typeless parameters are obsolete")
+          localError(c.config, a.info, "parameter '$1' requires a type" % arg.name.s)
           typ = errorType(c)
       let lifted = liftParamType(c, kind, genericParams, typ,
                                  arg.name.s, arg.info)
@@ -1298,7 +1339,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       result.n.add newSymNode(arg)
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)
-      styleCheckDef(c.config, a[j].info, arg)
+      styleCheckDef(c, a[j].info, arg)
       onDef(a[j].info, arg)
       if {optNimV1Emulation, optNimV12Emulation} * c.config.globalOptions == {}:
         a[j] = newSymNode(arg)
@@ -1359,7 +1400,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           result.flags.excl tfHasMeta
       result.n.typ = r
 
-  if genericParams != nil and genericParams.len > 0:
+  if genericParams.isGenericParams:
     for n in genericParams:
       if {sfUsed, sfAnon} * n.sym.flags == {}:
         result.flags.incl tfUnresolved
@@ -1449,9 +1490,9 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     matches(c, n, copyTree(n), m)
 
     if m.state != csMatch:
-      let err = "cannot instantiate " & typeToString(t) & "\n" &
-                "got: <" & describeArgs(c, n) & ">\n" &
-                "but expected: <" & describeArgs(c, t.n, 0) & ">"
+      var err = "cannot instantiate "
+      err.addTypeHeader(c.config, t)
+      err.add "\ngot: <$1>\nbut expected: <$2>" % [describeArgs(c, n), describeArgs(c, t.n, 0)]
       localError(c.config, n.info, errGenerated, err)
       return newOrPrevType(tyError, prev, c)
 
@@ -1548,6 +1589,12 @@ template modifierTypeKindOfNode(n: PNode): TTypeKind =
 
 proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.len == 0: return newConstraint(c, tyTypeClass)
+  if isNewStyleConcept(n):
+    result = newOrPrevType(tyConcept, prev, c)
+    result.flags.incl tfCheckedForDestructor
+    result.n = semConceptDeclaration(c, n)
+    return result
+
   let
     pragmas = n[1]
     inherited = n[2]
@@ -1658,7 +1705,7 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
     # we construct a fake 'nkProcDef' for the 'mergePragmas' inside 'implicitPragmas'...
     s.ast = newTree(nkProcDef, newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info),
         newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info))
-    implicitPragmas(c, s, n, {wTags, wRaises})
+    implicitPragmas(c, s, n.info, {wTags, wRaises})
     when useEffectSystem: setEffectsForProcType(c.graph, result, s.ast[pragmasPos])
   closeScope(c)
 
@@ -1675,14 +1722,14 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
   result.rawAddSon(base)
   result.flags.incl tfHasStatic
 
-proc semTypeof(c: PContext; n: PNode; prev: PType): PType =
+proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
   let t = semExprWithType(c, n, {efInTypeof})
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
 
-proc semTypeof2(c: PContext; n: PNode; prev: PType): PType =
+proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
   var m = BiggestInt 1 # typeOfIter
   if n.len == 3:
@@ -1706,7 +1753,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTypeOfExpr:
     # for ``typeof(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1, c.config)
-    result = semTypeof(c, n[0], prev)
+    result = semTypeOf(c, n[0], prev)
     if result.kind == tyTypeDesc: result.flags.incl tfExplicit
   of nkPar:
     if n.len == 1: result = semTypeNode(c, n[0], prev)
@@ -1808,9 +1855,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semAnyRef(c, n, tyRef, prev)
       elif op.id == ord(wType):
         checkSonsLen(n, 2, c.config)
-        result = semTypeof(c, n[1], prev)
+        result = semTypeOf(c, n[1], prev)
       elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeOf:
-        result = semTypeof2(c, n, prev)
+        result = semTypeOf2(c, n, prev)
       elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)
       else:
@@ -1834,6 +1881,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mRange: result = semRange(c, n, prev)
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
+    of mIterableType: result = semIterableType(c, n, prev)
     of mSeq:
       result = semContainer(c, n, tySequence, "seq", prev)
       if optSeqDestructors in c.config.globalOptions:
@@ -1936,7 +1984,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           localError(c.config, n.info, "type expected, but got symbol '$1' of kind '$2'" %
             [s.name.s, s.kind.toHumanStr])
       result = newOrPrevType(tyError, prev, c)
-  of nkObjectTy: result = semObjectNode(c, n, prev, isInheritable=false)
+  of nkObjectTy: result = semObjectNode(c, n, prev, {})
   of nkTupleTy: result = semTuple(c, n, prev)
   of nkTupleClassTy: result = newConstraint(c, tyTuple)
   of nkTypeClassTy: result = semTypeClass(c, n, prev)
@@ -1969,8 +2017,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkStmtListType: result = semStmtListType(c, n, prev)
   of nkBlockType: result = semBlockType(c, n, prev)
   else:
-    localError(c.config, n.info, "type expected, but got: " & renderTree(n))
-    result = newOrPrevType(tyError, prev, c)
+    result = semTypeExpr(c, n, prev)
+    when false:
+      localError(c.config, n.info, "type expected, but got: " & renderTree(n))
+      result = newOrPrevType(tyError, prev, c)
   n.typ = result
   dec c.inTypeContext
 
@@ -2016,7 +2066,7 @@ proc processMagicType(c: PContext, m: PSym) =
     if optSeqDestructors in c.config.globalOptions:
       incl m.typ.flags, tfHasAsgn
   of mCstring:
-    setMagicIntegral(c.config, m, tyCString, c.config.target.ptrSize)
+    setMagicIntegral(c.config, m, tyCstring, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
   of mPointer: setMagicIntegral(c.config, m, tyPointer, c.config.target.ptrSize)
   of mNil: setMagicType(c.config, m, tyNil, c.config.target.ptrSize)
@@ -2052,10 +2102,16 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(c.config, m, tySequence, szUncomputedSize)
     if optSeqDestructors in c.config.globalOptions:
       incl m.typ.flags, tfHasAsgn
-    assert c.graph.sysTypes[tySequence] == nil
+    if defined(nimsuggest) or c.config.cmd == cmdCheck: # bug #18985
+      discard
+    else:
+      assert c.graph.sysTypes[tySequence] == nil
     c.graph.sysTypes[tySequence] = m.typ
   of mOrdinal:
     setMagicIntegral(c.config, m, tyOrdinal, szUncomputedSize)
+    rawAddSon(m.typ, newTypeS(tyNone, c))
+  of mIterableType:
+    setMagicIntegral(c.config, m, tyIterable, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
     incl m.typ.flags, tfTriggersCompileTime

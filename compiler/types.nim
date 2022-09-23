@@ -11,7 +11,10 @@
 
 import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
-  lineinfos, int128, modulegraphs
+  lineinfos, int128, modulegraphs, astmsgs
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, formatfloat]
 
 type
   TPreferedDesc* = enum
@@ -26,7 +29,38 @@ type
       # most useful, shows: symbol + resolved symbols if it differs, e.g.:
       # tuple[a: MyInt{int}, b: float]
 
+  TTypeRelation* = enum      # order is important!
+    isNone, isConvertible,
+    isIntConv,
+    isSubtype,
+    isSubrange,              # subrange of the wanted type; no type conversion
+                             # but apart from that counts as ``isSubtype``
+    isBothMetaConvertible    # generic proc parameter was matched against
+                             # generic type, e.g., map(mySeq, x=>x+1),
+                             # maybe recoverable by rerun if the parameter is
+                             # the proc's return value
+    isInferred,              # generic proc was matched against a concrete type
+    isInferredConvertible,   # same as above, but requiring proc CC conversion
+    isGeneric,
+    isFromIntLit,            # conversion *from* int literal; proven safe
+    isEqual
+
+  ProcConvMismatch* = enum
+    pcmNoSideEffect
+    pcmNotGcSafe
+    pcmLockDifference
+    pcmNotIterator
+    pcmDifferentCallConv
+
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
+
+proc addTypeDeclVerboseMaybe*(result: var string, conf: ConfigRef; typ: PType) =
+  if optDeclaredLocs in conf.globalOptions:
+    result.add typeToString(typ, preferMixed)
+    result.addDeclaredLoc(conf, typ)
+  else:
+    result.add typeToString(typ)
+
 template `$`*(typ: PType): string = typeToString(typ)
 
 proc base*(t: PType): PType =
@@ -65,9 +99,6 @@ const
                   tyAlias, tyInferred, tySink, tyLent, tyOwned}
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal, tyTypeDesc,
                     tyAlias, tyInferred, tySink, tyOwned}
-  # see also ast.abstractVarRange
-  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
-                   tyInferred, tySink, tyOwned}
   abstractInstOwned* = abstractInst + {tyOwned}
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
                tyInferred, tySink, tyLent, tyOwned}
@@ -122,23 +153,6 @@ proc isIntLit*(t: PType): bool {.inline.} =
 
 proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
-
-proc addDeclaredLoc*(result: var string, conf: ConfigRef; sym: PSym) =
-  result.add " [$1 declared in $2]" % [sym.kind.toHumanStr, toFileLineCol(conf, sym.info)]
-
-proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; sym: PSym) =
-  if optDeclaredLocs in conf.globalOptions and sym != nil:
-    addDeclaredLoc(result, conf, sym)
-
-proc addDeclaredLoc(result: var string, conf: ConfigRef; typ: PType) =
-  let typ = typ.skipTypes(abstractInst - {tyRange})
-  result.add " [$1" % typ.kind.toHumanStr
-  if typ.sym != nil:
-    result.add " declared in " & toFileLineCol(conf, typ.sym.info)
-  result.add "]"
-
-proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; typ: PType) =
-  if optDeclaredLocs in conf.globalOptions: addDeclaredLoc(result, conf, typ)
 
 proc addTypeHeader*(result: var string, conf: ConfigRef; typ: PType; prefer: TPreferedDesc = preferMixed; getDeclarationPath = true) =
   result.add typeToString(typ, prefer)
@@ -379,13 +393,13 @@ proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
   if tfAcyclic in t.flags: return
   case t.kind
   of tyTuple, tyObject, tyRef, tySequence, tyArray, tyOpenArray, tyVarargs:
-    if not containsOrIncl(marker, t.id):
+    if t.id == startId:
+      result = true
+    elif not containsOrIncl(marker, t.id):
       for i in 0..<t.len:
         result = canFormAcycleAux(marker, t[i], startId)
         if result: return
       if t.n != nil: result = canFormAcycleNode(marker, t.n, startId)
-    else:
-      result = t.id == startId
     # Inheritance can introduce cyclic types, however this is not relevant
     # as the type that is passed to 'new' is statically known!
     # er but we use it also for the write barrier ...
@@ -401,7 +415,8 @@ proc isFinal*(t: PType): bool =
 
 proc canFormAcycle*(typ: PType): bool =
   var marker = initIntSet()
-  result = canFormAcycleAux(marker, typ, typ.id)
+  let t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
+  result = canFormAcycleAux(marker, t, t.id)
 
 proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
                    closure: RootRef): PType
@@ -460,8 +475,8 @@ const
     "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
-    "and", "or", "not", "any", "static", "TypeFromExpr", "out ",
-    "void"]
+    "and", "or", "not", "any", "static", "TypeFromExpr", "concept", # xxx bugfix
+    "void", "iterable"]
 
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
   preferGenericArg, preferResolved, preferMixed}
@@ -503,7 +518,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = typeToString(t[0])
       elif prefer in {preferResolved, preferMixed}:
         case t.kind
-        of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCString}:
+        of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCstring}:
           result = typeToStr[t.kind]
         of tyGenericBody:
           result = typeToString(t.lastSon)
@@ -645,6 +660,11 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     of tyDistinct:
       result = "distinct " & typeToString(t[0],
         if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
+    of tyIterable:
+      # xxx factor this pattern
+      result = "iterable"
+      if t.len > 0:
+        result &= "[" & typeToString(t[0]) & ']'
     of tyTuple:
       # we iterate over t.sons here, because t.n may be nil
       if t.n != nil:
@@ -757,7 +777,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
-  of tyUncheckedArray, tyCString:
+  of tyUncheckedArray, tyCstring:
     result = Zero
   else:
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
@@ -879,6 +899,7 @@ type
     ExactConstraints
     ExactGcSafety
     AllowCommonBase
+    PickyCAliases  # be picky about the distinction between 'cint' and 'int32'
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
 
@@ -1103,15 +1124,20 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     case c.cmp
     of dcEq: return false
     of dcEqIgnoreDistinct:
-      while a.kind == tyDistinct: a = a[0]
-      while b.kind == tyDistinct: b = b[0]
+      a = a.skipTypes({tyDistinct, tyGenericInst})
+      b = b.skipTypes({tyDistinct, tyGenericInst})
       if a.kind != b.kind: return false
     of dcEqOrDistinctOf:
-      while a.kind == tyDistinct: a = a[0]
+      a = a.skipTypes({tyDistinct, tyGenericInst})
       if a.kind != b.kind: return false
 
+  #[
+    The following code should not run in the case either side is an generic alias,
+    but it's not presently possible to distinguish the genericinsts from aliases of
+    objects ie `type A[T] = SomeObject`
+  ]#
   # this is required by tunique_type but makes no sense really:
-  if x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
+  if tyDistinct notin {x.kind, y.kind} and x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
     let
       lhs = x.skipGenericAlias
       rhs = y.skipGenericAlias
@@ -1124,9 +1150,16 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     return true
 
   case a.kind
-  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
+  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
      tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
     result = sameFlags(a, b)
+    if result and PickyCAliases in c.flags:
+      # additional requirement for the caching of generics for importc'ed types:
+      # the symbols must be identical too:
+      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
+      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
+      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
+        result = symFlagsA == symFlagsB
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
     if result and a.len == b.len and a.len == 1:
@@ -1191,11 +1224,12 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a[0], b[0], c) and
         sameValue(a.n[0], b.n[0]) and
         sameValue(a.n[1], b.n[1])
-  of tyGenericInst, tyAlias, tyInferred:
+  of tyGenericInst, tyAlias, tyInferred, tyIterable:
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyOptDeprecated: doAssert false
+  of tyConcept:
+    result = exprStructuralEquivalent(a.n, b.n)
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1271,6 +1305,7 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
     a = a[i]
   result = a.kind == last
 
+
 include sizealignoffsetimpl
 
 proc computeSize*(conf: ConfigRef; typ: PType): BiggestInt =
@@ -1337,6 +1372,13 @@ proc compatibleEffectsAux(se, re: PNode): bool =
       return false
   result = true
 
+proc hasIncompatibleEffect(se, re: PNode): bool =
+  if re.isNil: return false
+  for r in items(re):
+    for s in items(se):
+      if safeInheritanceDiff(r.typ, s.typ) != high(int):
+        return true
+
 type
   EffectsCompat* = enum
     efCompat
@@ -1345,10 +1387,15 @@ type
     efTagsDiffer
     efTagsUnknown
     efLockLevelsDiffer
+    efEffectsDelayed
+    efTagsIllegal
 
 proc compatibleEffects*(formal, actual: PType): EffectsCompat =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc
+  #if tfEffectSystemWorkaround in actual.flags:
+  #  return efCompat
+
   if formal.n[0].kind != nkEffectList or
      actual.n[0].kind != nkEffectList:
     return efTagsUnknown
@@ -1372,9 +1419,25 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
       # spec requires some exception or tag, but we don't know anything:
       if real.len == 0: return efTagsUnknown
       let res = compatibleEffectsAux(st, real[tagEffects])
-      if not res: return efTagsDiffer
+      if not res:
+        #if tfEffectSystemWorkaround notin actual.flags:
+        return efTagsDiffer
+
+    let sn = spec[forbiddenEffects]
+    if not isNil(sn) and sn.kind != nkArgList:
+      if 0 == real.len:
+        return efTagsUnknown
+      elif hasIncompatibleEffect(sn, real[tagEffects]):
+        return efTagsIllegal
+
   if formal.lockLevel.ord < 0 or
       actual.lockLevel.ord <= formal.lockLevel.ord:
+
+    for i in 1 ..< min(formal.n.len, actual.n.len):
+      if formal.n[i].sym.flags * {sfEffectsDelayed} != actual.n[i].sym.flags * {sfEffectsDelayed}:
+        result = efEffectsDelayed
+        break
+
     result = efCompat
   else:
     result = efLockLevelsDiffer
@@ -1483,6 +1546,68 @@ proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
   else:
     result = n
 
+proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel = isNone): (set[ProcConvMismatch], TTypeRelation) =
+  ## Returns a set of the reason of mismatch, and the relation for conversion.
+  result[1] = rel
+  if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
+    # Formal is pure, but actual is not
+    result[0].incl pcmNoSideEffect
+    result[1] = isNone
+
+  if tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {} and
+    optThreadAnalysis in c.globalOptions:
+    # noSideEffect implies ``tfThread``!
+    result[0].incl pcmNotGcSafe
+    result[1] = isNone
+
+  if f.flags * {tfIterator} != a.flags * {tfIterator}:
+    # One of them is an iterator so not convertible
+    result[0].incl pcmNotIterator
+    result[1] = isNone
+
+  if f.callConv != a.callConv:
+    # valid to pass a 'nimcall' thingie to 'closure':
+    if f.callConv == ccClosure and a.callConv == ccNimCall:
+      case result[1]
+      of isInferred: result[1] = isInferredConvertible
+      of isBothMetaConvertible: result[1] = isBothMetaConvertible
+      elif result[1] != isNone: result[1] = isConvertible
+    else:
+      result[1] = isNone
+      result[0].incl pcmDifferentCallConv
+
+  if f.lockLevel.ord != UnspecifiedLockLevel.ord and
+     a.lockLevel.ord != UnspecifiedLockLevel.ord:
+       # proctypeRel has more logic to catch this difference,
+       # so dont need to do `rel = isNone`
+       # but it's a pragma mismatch reason which is why it's here
+       result[0].incl pcmLockDifference
+
+proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, conf: ConfigRef) =
+  assert formal.kind == tyProc and actual.kind == tyProc
+  let (convMismatch, _) = getProcConvMismatch(conf, formal, actual)
+  var
+    gotPragmas = ""
+    expectedPragmas = ""
+  for reason in convMismatch:
+    case reason
+    of pcmDifferentCallConv:
+      message.add "\n  Calling convention mismatch: got '{.$1.}', but expected '{.$2.}'." % [$actual.callConv, $formal.callConv]
+    of pcmNoSideEffect:
+      expectedPragmas.add "noSideEffect, "
+    of pcmNotGcSafe:
+      expectedPragmas.add "gcsafe, "
+    of pcmLockDifference:
+      gotPragmas.add("locks: " & $actual.lockLevel & ", ")
+      expectedPragmas.add("locks: " & $formal.lockLevel & ", ")
+    of pcmNotIterator: discard
+
+  if expectedPragmas.len > 0:
+    gotPragmas.setLen(max(0, gotPragmas.len - 2)) # Remove ", "
+    expectedPragmas.setLen(max(0, expectedPragmas.len - 2)) # Remove ", "
+    message.add "\n  Pragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [gotPragmas, expectedPragmas]
+
+
 proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
     let actualStr = typeToString(actual)
@@ -1503,6 +1628,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
     if verbose: msg.addDeclaredLoc(conf, formal)
 
     if formal.kind == tyProc and actual.kind == tyProc:
+      msg.addPragmaAndCallConvMismatch(formal, actual, conf)
       case compatibleEffects(formal, actual)
       of efCompat: discard
       of efRaisesDiffer:
@@ -1515,6 +1641,10 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
         msg.add "\n.tag effect is 'any tag allowed'"
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
+      of efEffectsDelayed:
+        msg.add "\n.effectsOf annotations differ"
+      of efTagsIllegal:
+        msg.add "\n.notTag catched an illegal effect"
     localError(conf, info, msg)
 
 proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
@@ -1571,3 +1701,31 @@ proc isSinkTypeForParam*(t: PType): bool =
         result = false
       else:
         result = true
+
+proc lookupFieldAgain*(ty: PType; field: PSym): PSym =
+  var ty = ty
+  while ty != nil:
+    ty = ty.skipTypes(skipPtrs)
+    assert(ty.kind in {tyTuple, tyObject})
+    result = lookupInRecord(ty.n, field.name)
+    if result != nil: break
+    ty = ty[0]
+  if result == nil: result = field
+
+proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
+  let t = t.skipTypes(abstractInst)
+  if t.kind == tyPtr:
+    let pointsTo = t[0].skipTypes(abstractInst)
+    case pointsTo.kind
+    of tyUncheckedArray:
+      result = pointsTo[0].kind == tyChar
+    of tyArray:
+      result = pointsTo[1].kind == tyChar and firstOrd(nil, pointsTo[0]) == 0 and
+        skipTypes(pointsTo[0], {tyRange}).kind in {tyInt..tyInt64}
+    of tyChar:
+      result = allowPointerToChar
+    else:
+      discard
+
+proc lacksMTypeField*(typ: PType): bool {.inline.} =
+  (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags

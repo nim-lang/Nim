@@ -26,7 +26,7 @@ var x = [[1, 2, 3], [4, 5, 6]]
 for y in iter1(x[0]): write(stdout, $y)
 writeLine(stdout, "")
 
-# ensure closure and inline iterators have the same behaviour wrt
+# ensure closure and inline iterators have the same behaviour regarding
 # parameter passing
 
 iterator clo(a: int): int {.closure.} =

@@ -37,7 +37,7 @@
 ## ----------------------------------
 ##
 ## .. code-block:: Nim
-##     import db_odbc
+##     import std/db_odbc
 ##     var db = open("localhost", "user", "password", "dbname")
 ##     db.close()
 ##
@@ -62,7 +62,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import db_odbc, math
+##  import std/[db_odbc, math]
 ##
 ##  var theDb = open("localhost", "nim", "nim", "test")
 ##
@@ -168,7 +168,7 @@ proc dbError*(db: var DbConn) {.
     raise e
 
 proc sqlCheck(db: var DbConn, resVal: TSqlSmallInt) {.raises: [DbError]} =
-  ## Wrapper that raises [EDb] if `resVal` is neither SQL_SUCCESS or SQL_NO_DATA
+  ## Wrapper that raises `EDb` if `resVal` is neither SQL_SUCCESS or SQL_NO_DATA
   if resVal notIn [SQL_SUCCESS, SQL_NO_DATA]: dbError(db)
 
 proc sqlGetDBMS(db: var DbConn): string {.
@@ -304,7 +304,7 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                 {.tags: [ReadDbEffect, WriteDbEffect].} =
   ## Same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within the iterator body.
+  ## on demand using `[]`. Returned handle is valid only within the iterator body.
   var
     rowRes: Row = @[]
     sz: TSqlLen = 0
@@ -334,7 +334,7 @@ proc `[]`*(row: InstantRow, col: int): string {.inline.} =
 
 proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
   ## Return cstring of given column of the row
-  row.row[index]
+  row.row[index].cstring
 
 proc len*(row: InstantRow): int {.inline.} =
   ## Returns number of columns in the row

@@ -13,6 +13,10 @@
 
 import deques, streams
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   PipeOutStream*[T] = ref object of T
     # When stream peek operation is called, it reads from base stream
@@ -89,7 +93,7 @@ proc newPipeOutStream*[T](s: sink (ref T)): owned PipeOutStream[T] =
   ## Example:
   ##
   ## .. code-block:: Nim
-  ##   import osproc, streamwrapper
+  ##   import std/[osproc, streamwrapper]
   ##   var
   ##     p = startProcess(exePath)
   ##     outStream = p.outputStream().newPipeOutStream()

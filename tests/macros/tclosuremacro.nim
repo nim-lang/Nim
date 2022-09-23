@@ -5,8 +5,6 @@ calling mystuff
 yes
 calling mystuff
 yes
-calling sugarWithPragma
-sugarWithPragma called
 '''
 """
 
@@ -40,7 +38,7 @@ proc pass2(f: (int, int) -> int): (int) -> int =
 
 doAssert pass2((x, y) => x + y)(4) == 6
 
-fun(x, y: int) {.noSideEffect.} => x + y
+const fun = (x, y: int) {.noSideEffect.} => x + y
 
 doAssert typeof(fun) is (proc (x, y: int): int {.nimcall.})
 doAssert fun(3, 4) == 7
@@ -70,9 +68,7 @@ m:
   proc mystuff() =
     echo "yes"
 
-sugarWithPragma() {.m.} => echo "sugarWithPragma called"
-
-typedParamAndPragma(x, y: int) {.used.} -> int => x + y
+const typedParamAndPragma = (x, y: int) -> int => x + y
 doAssert typedParamAndPragma(1, 2) == 3
 
 type
@@ -82,5 +78,3 @@ type
 var myBot = Bot()
 myBot.call = () {.noSideEffect.} => "I'm a bot."
 doAssert myBot.call() == "I'm a bot."
-
-

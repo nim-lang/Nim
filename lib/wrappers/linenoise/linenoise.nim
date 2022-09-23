@@ -16,7 +16,7 @@ type
 
 {.compile: "linenoise.c".}
 
-proc setCompletionCallback*(a2: ptr CompletionCallback) {.
+proc setCompletionCallback*(a2: CompletionCallback) {.
     importc: "linenoiseSetCompletionCallback".}
 proc addCompletion*(a2: ptr Completions; a3: cstring) {.
     importc: "linenoiseAddCompletion".}
@@ -32,17 +32,17 @@ proc printKeyCodes*() {.importc: "linenoisePrintKeyCodes".}
 
 proc free*(s: cstring) {.importc: "free", header: "<stdlib.h>".}
 
-when defined nimExperimentalLinenoiseExtra:
+when defined(nimExperimentalLinenoiseExtra) and not defined(windows):
   # C interface
-  type linenoiseStatus = enum
+  type LinenoiseStatus = enum
     linenoiseStatus_ctrl_unknown
     linenoiseStatus_ctrl_C
     linenoiseStatus_ctrl_D
 
-  type linenoiseData* = object
-    status: linenoiseStatus
+  type LinenoiseData* = object
+    status: LinenoiseStatus
 
-  proc linenoiseExtra(prompt: cstring, data: ptr linenoiseData): cstring {.importc.}
+  proc linenoiseExtra(prompt: cstring, data: ptr LinenoiseData): cstring {.importc.}
 
   # stable nim interface
   type Status* = enum
@@ -58,15 +58,14 @@ when defined nimExperimentalLinenoiseExtra:
     ## line editing API that allows returning the line entered and an indicator
     ## of which control key was entered, allowing user to distinguish between
     ## for example ctrl-C vs ctrl-D.
-    runnableExamples("-d:nimExperimentalLinenoiseExtra"):
-      if false:
-        var ret: ReadLineResult
-        while true:
-          readLineStatus("name: ", ret) # ctrl-D will exit, ctrl-C will go to next prompt
-          if ret.line.len > 0: echo ret.line
-          if ret.status == lnCtrlD: break
-        echo "exiting"
-    var data: linenoiseData
+    runnableExamples("-d:nimExperimentalLinenoiseExtra -r:off"):
+      var ret: ReadLineResult
+      while true:
+        readLineStatus("name: ", ret) # ctrl-D will exit, ctrl-C will go to next prompt
+        if ret.line.len > 0: echo ret.line
+        if ret.status == lnCtrlD: break
+      echo "exiting"
+    var data: LinenoiseData
     let buf = linenoiseExtra(prompt, data.addr)
     result.line = $buf
     free(buf)

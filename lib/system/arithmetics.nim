@@ -385,7 +385,7 @@ proc `*`*(x, y: uint64): uint64 {.magic: "MulU", noSideEffect.}
 
 proc `div`*(x, y: uint): uint {.magic: "DivU", noSideEffect.}
   ## Computes the integer division for unsigned integers.
-  ## This is roughly the same as ``trunc(x/y)``.
+  ## This is roughly the same as `trunc(x/y)`.
 proc `div`*(x, y: uint8): uint8 {.magic: "DivU", noSideEffect.}
 proc `div`*(x, y: uint16): uint16 {.magic: "DivU", noSideEffect.}
 proc `div`*(x, y: uint32): uint32 {.magic: "DivU", noSideEffect.}
@@ -393,7 +393,7 @@ proc `div`*(x, y: uint64): uint64 {.magic: "DivU", noSideEffect.}
 
 proc `mod`*(x, y: uint): uint {.magic: "ModU", noSideEffect.}
   ## Computes the integer modulo operation (remainder) for unsigned integers.
-  ## This is the same as ``x - (x div y) * y``.
+  ## This is the same as `x - (x div y) * y`.
 proc `mod`*(x, y: uint8): uint8 {.magic: "ModU", noSideEffect.}
 proc `mod`*(x, y: uint16): uint16 {.magic: "ModU", noSideEffect.}
 proc `mod`*(x, y: uint32): uint32 {.magic: "ModU", noSideEffect.}

@@ -26,7 +26,7 @@
 ##
 ## .. code-block:: nim
 ##    :test:
-##    from strutils import Digits, parseInt
+##    from std/strutils import Digits, parseInt
 ##
 ##    let
 ##      input1 = "2019 school start"

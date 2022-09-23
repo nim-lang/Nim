@@ -462,6 +462,9 @@ var RLIMIT_NOFILE* {.importc: "RLIMIT_NOFILE", header: "<sys/resource.h>".}: cin
 
 # <sys/select.h>
 var FD_SETSIZE* {.importc: "FD_SETSIZE", header: "<sys/select.h>".}: cint
+when defined(zephyr):
+  # Zephyr specific hardcoded value
+  var FD_MAX* {.importc: "CONFIG_POSIX_MAX_FDS ", header: "<sys/select.h>".}: cint
 
 # <sys/socket.h>
 var MSG_CTRUNC* {.importc: "MSG_CTRUNC", header: "<sys/socket.h>".}: cint
@@ -487,10 +490,15 @@ var SO_SNDTIMEO* {.importc: "SO_SNDTIMEO", header: "<sys/socket.h>".}: cint
 var SO_TYPE* {.importc: "SO_TYPE", header: "<sys/socket.h>".}: cint
 var SOCK_DGRAM* {.importc: "SOCK_DGRAM", header: "<sys/socket.h>".}: cint
 var SOCK_RAW* {.importc: "SOCK_RAW", header: "<sys/socket.h>".}: cint
-var SOCK_SEQPACKET* {.importc: "SOCK_SEQPACKET", header: "<sys/socket.h>".}: cint
+when defined(zephyr):
+  const SOCK_SEQPACKET* = cint(5)
+  var SOMAXCONN* {.importc: "CONFIG_NET_SOCKETS_POLL_MAX", header: "<sys/socket.h>".}: cint
+else:
+  var SOCK_SEQPACKET* {.importc: "SOCK_SEQPACKET", header: "<sys/socket.h>".}: cint
+  var SOMAXCONN* {.importc: "SOMAXCONN", header: "<sys/socket.h>".}: cint
+
 var SOCK_STREAM* {.importc: "SOCK_STREAM", header: "<sys/socket.h>".}: cint
 var SOL_SOCKET* {.importc: "SOL_SOCKET", header: "<sys/socket.h>".}: cint
-var SOMAXCONN* {.importc: "SOMAXCONN", header: "<sys/socket.h>".}: cint
 var MSG_PEEK* {.importc: "MSG_PEEK", header: "<sys/socket.h>".}: cint
 var MSG_TRUNC* {.importc: "MSG_TRUNC", header: "<sys/socket.h>".}: cint
 var MSG_WAITALL* {.importc: "MSG_WAITALL", header: "<sys/socket.h>".}: cint

@@ -13,6 +13,8 @@
 ##
 ## Tested on these OSes: Linux, Windows, OSX
 
+# xxx possibly broken on arm64, see bug #17178
+
 {.used.}
 
 # do allocate memory upfront:
@@ -28,7 +30,7 @@ when defined(windows):
 
   const
     EXCEPTION_ACCESS_VIOLATION = DWORD(0xc0000005'i32)
-    EXCEPTION_CONTINUE_SEARCH = Long(0)
+    EXCEPTION_CONTINUE_SEARCH = LONG(0)
 
   type
     PEXCEPTION_RECORD = ptr object

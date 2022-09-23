@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``parsesql`` module implements a high performance SQL file
+## The `parsesql` module implements a high performance SQL file
 ## parser. It parses PostgreSQL syntax and the SQL ANSI standard.
 ##
 ## Unstable API.
@@ -982,7 +982,7 @@ proc parseInsert(p: var SqlParser): SqlNode =
     parseParIdentList(p, n)
     result.add n
   else:
-    result.add(nil)
+    result.add(newNode(nkNone))
   if isKeyw(p, "default"):
     getTok(p)
     eat(p, "values")
@@ -1017,7 +1017,7 @@ proc parseUpdate(p: var SqlParser): SqlNode =
   if isKeyw(p, "where"):
     result.add(parseWhere(p))
   else:
-    result.add(nil)
+    result.add(newNode(nkNone))
 
 proc parseDelete(p: var SqlParser): SqlNode =
   getTok(p)
@@ -1029,7 +1029,7 @@ proc parseDelete(p: var SqlParser): SqlNode =
   if isKeyw(p, "where"):
     result.add(parseWhere(p))
   else:
-    result.add(nil)
+    result.add(newNode(nkNone))
 
 proc parseSelect(p: var SqlParser): SqlNode =
   getTok(p)
@@ -1451,7 +1451,7 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     s.addKeyw("enum")
     rs(n, s)
 
-proc renderSQL*(n: SqlNode, upperCase = false): string =
+proc renderSql*(n: SqlNode, upperCase = false): string =
   ## Converts an SQL abstract syntax tree to its string representation.
   var s: SqlWriter
   s.buffer = ""
@@ -1460,8 +1460,8 @@ proc renderSQL*(n: SqlNode, upperCase = false): string =
   return s.buffer
 
 proc `$`*(n: SqlNode): string =
-  ## an alias for `renderSQL`.
-  renderSQL(n)
+  ## an alias for `renderSql`.
+  renderSql(n)
 
 proc treeReprAux(s: SqlNode, level: int, result: var string) =
   result.add('\n')
@@ -1493,7 +1493,7 @@ proc open(p: var SqlParser, input: Stream, filename: string) =
   p.tok.literal = ""
   getTok(p)
 
-proc parseSQL*(input: Stream, filename: string): SqlNode =
+proc parseSql*(input: Stream, filename: string): SqlNode =
   ## parses the SQL from `input` into an AST and returns the AST.
   ## `filename` is only used for error messages.
   ## Syntax errors raise an `SqlParseError` exception.
@@ -1504,8 +1504,8 @@ proc parseSQL*(input: Stream, filename: string): SqlNode =
   finally:
     close(p)
 
-proc parseSQL*(input: string, filename = ""): SqlNode =
+proc parseSql*(input: string, filename = ""): SqlNode =
   ## parses the SQL from `input` into an AST and returns the AST.
   ## `filename` is only used for error messages.
   ## Syntax errors raise an `SqlParseError` exception.
-  parseSQL(newStringStream(input), "")
+  parseSql(newStringStream(input), "")

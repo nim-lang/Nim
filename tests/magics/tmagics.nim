@@ -18,7 +18,7 @@ block tlowhigh:
   for i in low(a) .. high(a):
     a[i] = 0
 
-  proc sum(a: openarray[int]): int =
+  proc sum(a: openArray[int]): int =
     result = 0
     for i in low(a)..high(a):
       inc(result, a[i])
@@ -55,3 +55,11 @@ block t9442:
   GC_unref(v2)
   GC_ref(v3)
   GC_unref(v3)
+
+block: # bug #6499
+  let x = (chr, 0)
+  doAssert x[1] == 0
+
+block: # bug #12229
+  proc foo(T: typedesc) = discard
+  foo(ref)

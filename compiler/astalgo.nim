@@ -15,6 +15,12 @@ import
   ast, hashes, intsets, strutils, options, lineinfos, ropes, idents, rodutils,
   msgs
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+when not defined(nimHasCursor):
+  {.pragma: cursor.}
+
 proc hashNode*(p: RootRef): Hash
 proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
   # Convert a tree into its YAML representation; this is used by the
@@ -221,11 +227,10 @@ proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ## Named parameters are special because a named parameter can be
   ## gensym'ed and then they have '\`<number>' suffix that we need to
   ## ignore, see compiler / evaltempl.nim, snippet:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```
   ##   result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
+  ##   ```
   for i in 1..<list.len:
     let it = list[i].sym
     if it.name.id == ident.id or
@@ -585,6 +590,9 @@ proc value(this: var DebugPrinter; value: PNode) =
   this.openCurly
   this.key "kind"
   this.value  value.kind
+  if value.comment.len > 0:
+    this.key "comment"
+    this.value  value.comment
   when defined(useNodeIds):
     this.key "id"
     this.value value.id
@@ -759,9 +767,9 @@ proc strTableAdd*(t: var TStrTable, n: PSym) =
 
 proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
                                  onConflictKeepOld = false): PSym =
-  # returns true if n is already in the string table:
-  # It is essential that `n` is written nevertheless!
-  # This way the newest redefinition is picked by the semantic analyses!
+  # if `t` has a conflicting symbol (same identifier as `n`), return it
+  # otherwise return `nil`. Incl `n` to `t` unless `onConflictKeepOld = true`
+  # and a conflict was found.
   assert n.name != nil
   var h: Hash = n.name.h and high(t.data)
   var replaceSlot = -1
@@ -777,9 +785,10 @@ proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
       replaceSlot = h
     h = nextTry(h, high(t.data))
   if replaceSlot >= 0:
+    result = t.data[replaceSlot] # found it
     if not onConflictKeepOld:
       t.data[replaceSlot] = n # overwrite it with newer definition!
-    return t.data[replaceSlot] # found it
+    return result # but return the old one
   elif mustRehash(t.data.len, t.counter):
     strTableEnlarge(t)
     strTableRawInsert(t.data, n)
@@ -808,16 +817,21 @@ type
     name*: PIdent
 
 proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
+  # hot spots
   var h = ti.h and high(tab.data)
   var start = h
-  result = tab.data[h]
-  while result != nil:
-    if result.name.id == ti.name.id: break
+  var p {.cursor.} = tab.data[h]
+  while p != nil:
+    if p.name.id == ti.name.id: break
     h = nextTry(h, high(tab.data))
     if h == start:
-      result = nil
+      p = nil
       break
-    result = tab.data[h]
+    p = tab.data[h]
+  if p != nil:
+    result = p # increase the count
+  else:
+    result = nil
   ti.h = nextTry(h, high(tab.data))
 
 proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =

@@ -32,7 +32,7 @@ when defined(nimv2):
       else:
         dealloc(a.data)
 
-  proc `=`(a: var WideCStringObj; b: WideCStringObj) {.error.}
+  proc `=copy`(a: var WideCStringObj; b: WideCStringObj) {.error.}
 
   proc `=sink`(a: var WideCStringObj; b: WideCStringObj) =
     a.bytes = b.bytes
@@ -171,7 +171,7 @@ proc newWideCString*(s: cstring): WideCStringObj =
   result = newWideCString(s, s.len)
 
 proc newWideCString*(s: string): WideCStringObj =
-  result = newWideCString(s, s.len)
+  result = newWideCString(cstring s, s.len)
 
 proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
   result = newStringOfCap(estimate + estimate shr 2)
@@ -224,3 +224,6 @@ when defined(nimv2):
 
   proc `$`*(s: WideCStringObj): string =
     $(s.data)
+
+  proc len*(w: WideCStringObj): int {.inline.} =
+    len(w.data)

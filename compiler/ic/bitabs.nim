@@ -3,6 +3,9 @@
 
 import hashes, rodfiles
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   LitId* = distinct uint32
 
@@ -35,6 +38,10 @@ const
   ## TODO: explain why
 
 template idToIdx(x: LitId): int = x.int - idStart
+
+proc hasLitId*[T](t: BiTable[T]; x: LitId): bool =
+  let idx = idToIdx(x)
+  result = idx >= 0 and idx < t.vals.len
 
 proc enlarge[T](t: var BiTable[T]) =
   var n: seq[LitId]
@@ -86,13 +93,13 @@ proc getOrIncl*[T](t: var BiTable[T]; v: T): LitId =
   t.vals.add v
 
 
-proc `[]`*[T](t: var BiTable[T]; LitId: LitId): var T {.inline.} =
-  let idx = idToIdx LitId
+proc `[]`*[T](t: var BiTable[T]; litId: LitId): var T {.inline.} =
+  let idx = idToIdx litId
   assert idx < t.vals.len
   result = t.vals[idx]
 
-proc `[]`*[T](t: BiTable[T]; LitId: LitId): lent T {.inline.} =
-  let idx = idToIdx LitId
+proc `[]`*[T](t: BiTable[T]; litId: LitId): lent T {.inline.} =
+  let idx = idToIdx litId
   assert idx < t.vals.len
   result = t.vals[idx]
 

@@ -1,5 +1,5 @@
 ============================
-Nim's documenation system
+Nim's documentation system
 ============================
 
 This folder contains Nim's documentation. The documentation

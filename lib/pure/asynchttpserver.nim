@@ -14,35 +14,34 @@
 ## application in production you should use a reverse proxy (for example nginx)
 ## instead of allowing users to connect directly to this server.
 
-runnableExamples:
-  # This example will create an HTTP server on port 8080. The server will
-  # respond to all requests with a `200 OK` response code and "Hello World"
-  # as the response body. Run locally with:
-  # `nim doc --doccmd:-d:nimAsyncHttpServerEnableTest --lib:lib lib/pure/asynchttpserver.nim`
-  import asyncdispatch
-  if defined(nimAsyncHttpServerEnableTest):
-    proc main {.async.} =
-      const port = 8080
-      var server = newAsyncHttpServer()
-      proc cb(req: Request) {.async.} =
-        echo (req.reqMethod, req.url, req.headers)
-        let headers = {"Content-type": "text/plain; charset=utf-8"}
-        await req.respond(Http200, "Hello World", headers.newHttpHeaders())
+runnableExamples("-r:off"):
+  # This example will create an HTTP server on an automatically chosen port.
+  # It will respond to all requests with a `200 OK` response code and "Hello World"
+  # as the response body.
+  import std/asyncdispatch
+  proc main {.async.} =
+    var server = newAsyncHttpServer()
+    proc cb(req: Request) {.async.} =
+      echo (req.reqMethod, req.url, req.headers)
+      let headers = {"Content-type": "text/plain; charset=utf-8"}
+      await req.respond(Http200, "Hello World", headers.newHttpHeaders())
 
-      echo "test this with: curl localhost:" & $port & "/"
-      server.listen(Port(port))
-      while true:
-        if server.shouldAcceptRequest():
-          await server.acceptRequest(cb)
-        else:
-          # too many concurrent connections, `maxFDs` exceeded
-          # wait 500ms for FDs to be closed
-          await sleepAsync(500)
+    server.listen(Port(0)) # or Port(8080) to hardcode the standard HTTP port.
+    let port = server.getPort
+    echo "test this with: curl localhost:" & $port.uint16 & "/"
+    while true:
+      if server.shouldAcceptRequest():
+        await server.acceptRequest(cb)
+      else:
+        # too many concurrent connections, `maxFDs` exceeded
+        # wait 500ms for FDs to be closed
+        await sleepAsync(500)
 
-    waitFor main()
+  waitFor main()
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
+from nativesockets import getLocalAddr, Domain, AF_INET, AF_INET6
 import std/private/since
 
 export httpcore except parseHeader
@@ -72,25 +71,22 @@ type
     maxBody: int ## The maximum content-length that will be read for the body.
     maxFDs: int
 
-func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
-  ## Returns the ``AsyncHttpServer``s internal ``AsyncSocket`` instance.
-  ## 
-  ## Useful for identifying what port the AsyncHttpServer is bound to, if it
-  ## was chosen automatically.
+proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
+  ## Returns the port `self` was bound to.
+  ##
+  ## Useful for identifying what port `self` is bound to, if it
+  ## was chosen automatically, for example via `listen(Port(0))`.
   runnableExamples:
-    from asyncdispatch import Port
-    from asyncnet import getFd
-    from nativesockets import getLocalAddr, AF_INET
+    from std/nativesockets import Port
     let server = newAsyncHttpServer()
-    server.listen(Port(0)) # Socket is not bound until this point
-    let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
-    doAssert uint16(port) > 0
+    server.listen(Port(0))
+    assert server.getPort.uint16 > 0
     server.close()
-  a.socket
+  result = getLocalAddr(self.socket)[1]
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
-  ## Creates a new ``AsyncHttpServer`` instance.
+  ## Creates a new `AsyncHttpServer` instance.
   result = AsyncHttpServer(reuseAddr: reuseAddr, reusePort: reusePort, maxBody: maxBody)
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
@@ -105,15 +101,15 @@ proc sendHeaders*(req: Request, headers: HttpHeaders): Future[void] =
 
 proc respond*(req: Request, code: HttpCode, content: string,
               headers: HttpHeaders = nil): Future[void] =
-  ## Responds to the request with the specified ``HttpCode``, headers and
+  ## Responds to the request with the specified `HttpCode`, headers and
   ## content.
   ##
   ## This procedure will **not** close the client socket.
   ##
   ## Example:
   ##
-  ## .. code-block::nim
-  ##    import json
+  ## .. code-block:: Nim
+  ##    import std/json
   ##    proc handler(req: Request) {.async.} =
   ##      if req.url.path == "/hello-world":
   ##        let msg = %* {"message": "Hello World"}
@@ -138,7 +134,7 @@ proc respond*(req: Request, code: HttpCode, content: string,
   result = req.client.send(msg)
 
 proc respondError(req: Request, code: HttpCode): Future[void] =
-  ## Responds to the request with the specified ``HttpCode``.
+  ## Responds to the request with the specified `HttpCode`.
   let content = $code
   var msg = "HTTP/1.1 " & content & "\c\L"
 
@@ -174,7 +170,7 @@ proc processRequest(
   server: AsyncHttpServer,
   req: FutureVar[Request],
   client: AsyncSocket,
-  address: string,
+  address: sink string,
   lineFut: FutureVar[string],
   callback: proc (request: Request): Future[void] {.closure, gcsafe.},
 ): Future[bool] {.async.} =
@@ -188,7 +184,10 @@ proc processRequest(
   # \n
   request.headers.clear()
   request.body = ""
-  request.hostname.shallowCopy(address)
+  when defined(gcArc) or defined(gcOrc):
+    request.hostname = address
+  else:
+    request.hostname.shallowCopy(address)
   assert client != nil
   request.client = client
 
@@ -366,7 +365,9 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
     let retry = await processRequest(
       server, request, client, address, lineFut, callback
     )
-    if not retry: break
+    if not retry:
+      client.close()
+      break
 
 const
   nimMaxDescriptorsFallback* {.intdefine.} = 16_000 ## fallback value for \
@@ -374,13 +375,13 @@ const
     ## This can be set on the command line during compilation
     ## via `-d:nimMaxDescriptorsFallback=N`
 
-proc listen*(server: AsyncHttpServer; port: Port; address = "") =
+proc listen*(server: AsyncHttpServer; port: Port; address = ""; domain = AF_INET) =
   ## Listen to the given port and address.
   when declared(maxDescriptors):
     server.maxFDs = try: maxDescriptors() except: nimMaxDescriptorsFallback
   else:
     server.maxFDs = nimMaxDescriptorsFallback
-  server.socket = newAsyncSocket()
+  server.socket = newAsyncSocket(domain)
   if server.reuseAddr:
     server.socket.setSockOpt(OptReuseAddr, true)
   if server.reusePort:
@@ -406,7 +407,8 @@ proc acceptRequest*(server: AsyncHttpServer,
 proc serve*(server: AsyncHttpServer, port: Port,
             callback: proc (request: Request): Future[void] {.closure, gcsafe.},
             address = "";
-            assumedDescriptorsPerRequest = -1) {.async.} =
+            assumedDescriptorsPerRequest = -1;
+            domain = AF_INET) {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.
   ##
@@ -419,7 +421,7 @@ proc serve*(server: AsyncHttpServer, port: Port,
   ##
   ## You should prefer to call `acceptRequest` instead with a custom server
   ## loop so that you're in control over the error handling and logging.
-  listen server, port, address
+  listen server, port, address, domain
   while true:
     if shouldAcceptRequest(server, assumedDescriptorsPerRequest):
       var (address, client) = await server.socket.acceptAddr()
