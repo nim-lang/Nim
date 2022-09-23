@@ -3,7 +3,7 @@ discard """
 """
 
 type
-  TA = object {.pure, final.}
+  TA {.pure, final.} = object
     x: string
 
 var

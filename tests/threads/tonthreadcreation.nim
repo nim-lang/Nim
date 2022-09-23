@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc --deepcopy:on"
   output: '''some string here
 dying some string here'''
 """

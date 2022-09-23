@@ -503,7 +503,7 @@ proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; i
   ## misnamed: should be 'symDeclared'
   let conf = g.config
   when defined(nimsuggest):
-    g.suggestSymbols.mgetOrPut(info.fileIndex, @[]).add (s, info)
+    g.suggestSymbols.mgetOrPut(info.fileIndex, @[]).add SymInfoPair(sym: s, info: info)
 
     if conf.suggestVersion == 0:
       if s.allUsages.len == 0:
@@ -699,3 +699,16 @@ proc suggestSentinel*(c: PContext) =
 
   dec(c.compilesContextId)
   produceOutput(outputs, c.config)
+
+when defined(nimsuggest):
+  proc onDef(graph: ModuleGraph, s: PSym, info: TLineInfo) =
+    if graph.config.suggestVersion == 3 and info.exactEquals(s.info):
+       suggestSym(graph, info, s, graph.usageSym)
+
+  template getPContext(): untyped =
+    when c is PContext: c
+    else: c.c
+
+  template onDef*(info: TLineInfo; s: PSym) =
+    let c = getPContext()
+    onDef(c.graph, s, info)

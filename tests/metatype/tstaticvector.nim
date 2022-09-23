@@ -1,9 +1,10 @@
 discard """
+  matrix: "--mm:orc"
   output: '''0
 0
 2
 100
-30.0 [data = [2.0]]
+30.0 TVec[1, system.float32](data: [2.0])
 '''
 """
 

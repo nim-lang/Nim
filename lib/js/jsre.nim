@@ -20,6 +20,7 @@ type RegExp* = ref object of JsRoot
   lastParen*: cstring    ## Ditto.
   leftContext*: cstring  ## Ditto.
   rightContext*: cstring ## Ditto.
+  hasIndices*: bool      ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices
 
 
 func newRegExp*(pattern: cstring; flags: cstring): RegExp {.importjs: "new RegExp(@)".}

@@ -216,7 +216,7 @@ must be marked as deprecated using the `deprecated` pragma:
   ```
 
 
-See also `Deprecated <manual.html#pragmas-deprecated-pragma>`_
+See also [Deprecated](manual.html#pragmas-deprecated-pragma)
 pragma in the manual.
 
 
@@ -242,7 +242,7 @@ as well as `testament`:cmd: and guarantee they stay in sync.
     result = a & "Bar"
   ```
 
-See `parentDir <os.html#parentDir,string>`_ example.
+See [parentDir](os.html#parentDir,string) example.
 
 The RestructuredText Nim uses has a special syntax for including code snippets
 embedded in documentation; these are not run by `nim doc`:cmd: and therefore are
@@ -297,7 +297,7 @@ the first is preferred.
 When you specify an *RST role* (highlighting/interpretation marker) do it
 in the postfix form for uniformity, that is after \`text in backticks\`.
 For example an ``:idx:`` role for referencing a topic ("SQLite" in the
-example below) from `Nim Index`_ can be used in doc comment this way:
+example below) from [Nim Index] can be used in doc comment this way:
 
   ```nim
   ## A higher level `SQLite`:idx: database wrapper.
@@ -336,7 +336,7 @@ To avoid accidental highlighting follow this rule in ``*.nim`` files:
 
 .. Note:: ``*.rst`` files have ``:literal:`` as their default role.
           So for them the rule above is only applicable if the ``:nim:`` role
-          is set up manually as the default [*]_::
+          is set up manually as the default \[*]::
 
             .. role:: nim(code)
                :language: nim
@@ -345,7 +345,7 @@ To avoid accidental highlighting follow this rule in ``*.nim`` files:
           The first 2 lines are for other RST implementations,
           including Github one.
 
-          .. [*] this is fulfilled when ``doc/rstcommon.rst`` is included.
+          \[*] this is fulfilled when ``doc/rstcommon.rst`` is included.
 
 Best practices
 ==============
@@ -431,7 +431,7 @@ including prepending location info, writing to log files, etc.).
   ```
 
 .. _use_Option:
-[Ongoing debate] Consider using Option instead of return bool + var argument,
+(Ongoing debate) Consider using Option instead of return bool + var argument,
 unless stack allocation is needed (e.g. for efficiency).
 
   ```nim
@@ -466,8 +466,8 @@ General commit rules
 
 2. If you introduce changes which affect backward compatibility,
    make breaking changes, or have PR which is tagged as ``[feature]``,
-   the changes should be mentioned in `the changelog
-   <https://github.com/nim-lang/Nim/blob/devel/changelog.md>`_.
+   the changes should be mentioned in [the changelog](
+   https://github.com/nim-lang/Nim/blob/devel/changelog.md).
 
 3. All changes introduced by the commit (diff lines) must be related to the
    subject of the commit.
@@ -525,8 +525,10 @@ Continuous Integration (CI)
    documentation only changes), add ``[skip ci]`` to your commit message title.
    This convention is supported by our GitHub actions pipelines and our azure pipeline
    (using custom logic, which should complete in < 1mn) as well as our former other pipelines:
-   `Appveyor <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
-   and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_.
+   [Appveyor](
+   https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message)
+   and [Travis](
+   https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build).
 
 2. Consider enabling CI (azure, GitHub actions and builds.sr.ht) in your own Nim fork, and
    waiting for CI to be green in that fork (fixing bugs as needed) before
@@ -568,7 +570,8 @@ Code reviews
 
 2. When reviewing large diffs that may involve code moving around, GitHub's interface
    doesn't help much, as it doesn't highlight moves. Instead, you can use something
-   like this, see visual results `here <https://github.com/nim-lang/Nim/pull/10431#issuecomment-456968196>`_:
+   like this, see visual results [here](
+   https://github.com/nim-lang/Nim/pull/10431#issuecomment-456968196):
 
      ```cmd
      git fetch origin pull/10431/head && git checkout FETCH_HEAD

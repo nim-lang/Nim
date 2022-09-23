@@ -6,7 +6,7 @@ Nim has two flavors of parallelism:
 1) `Structured`:idx parallelism via the ``parallel`` statement.
 2) `Unstructured`:idx: parallelism via the standalone ``spawn`` statement.
 
-Both need the `threadpool <threadpool.html>`_ module to work.
+Both need the [threadpool](threadpool.html) module to work.
 
 Somewhat confusingly, ``spawn`` is also used in the ``parallel`` statement
 with slightly different semantics. ``spawn`` always takes a call expression of

@@ -67,7 +67,7 @@ type
     exc: PNode  # stack of exceptions
     tags: PNode # list of tags
     forbids: PNode # list of tags
-    bottom, inTryStmt, inExceptOrFinallyStmt, leftPartOfAsgn: int
+    bottom, inTryStmt, inExceptOrFinallyStmt, leftPartOfAsgn, inIfStmt: int
     owner: PSym
     ownerModule: PSym
     init: seq[int] # list of initialized variables
@@ -681,10 +681,11 @@ proc breaksBlock(n: PNode): bool =
 
 proc trackCase(tracked: PEffects, n: PNode) =
   track(tracked, n[0])
+  inc tracked.inIfStmt
   let oldState = tracked.init.len
   let oldFacts = tracked.guards.s.len
   let stringCase = n[0].typ != nil and skipTypes(n[0].typ,
-        abstractVarRange-{tyTypeDesc}).kind in {tyFloat..tyFloat128, tyString}
+        abstractVarRange-{tyTypeDesc}).kind in {tyFloat..tyFloat128, tyString, tyCstring}
   let interesting = not stringCase and interestingCaseExpr(n[0]) and
         tracked.config.hasWarn(warnProveField)
   var inter: TIntersection = @[]
@@ -707,9 +708,11 @@ proc trackCase(tracked: PEffects, n: PNode) =
       if count >= toCover: tracked.init.add id
     # else we can't merge
   setLen(tracked.guards.s, oldFacts)
+  dec tracked.inIfStmt
 
 proc trackIf(tracked: PEffects, n: PNode) =
   track(tracked, n[0][0])
+  inc tracked.inIfStmt
   let oldFacts = tracked.guards.s.len
   addFact(tracked.guards, n[0][0])
   let oldState = tracked.init.len
@@ -740,6 +743,7 @@ proc trackIf(tracked: PEffects, n: PNode) =
       if count >= toCover: tracked.init.add id
     # else we can't merge as it is not exhaustive
   setLen(tracked.guards.s, oldFacts)
+  dec tracked.inIfStmt
 
 proc trackBlock(tracked: PEffects, n: PNode) =
   if n.kind in {nkStmtList, nkStmtListExpr}:
@@ -818,6 +822,10 @@ proc passedToEffectsDelayedParam(tracked: PEffects; n: PNode) =
         if tfNoSideEffect notin t.flags:
           markSideEffect(tracked, n, n.info)
 ]#
+
+proc checkForSink(tracked: PEffects; n: PNode) =
+  if tracked.inIfStmt == 0:
+    checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n)
 
 proc trackCall(tracked: PEffects; n: PNode) =
   template gcsafeAndSideeffectCheck() =
@@ -918,7 +926,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
       case op[i].kind
       of tySink:
         createTypeBoundOps(tracked,  op[i][0], n.info)
-        checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n[i])
+        checkForSink(tracked, n[i])
       of tyVar:
         tracked.hasDangerousAssign = true
       #of tyOut:
@@ -1080,7 +1088,7 @@ proc track(tracked: PEffects, n: PNode) =
     if tracked.owner.kind != skMacro and n[0].typ.kind notin {tyOpenArray, tyVarargs}:
       createTypeBoundOps(tracked, n[0].typ, n.info)
     if n[0].kind != nkSym or not isLocalVar(tracked, n[0].sym):
-      checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n[1])
+      checkForSink(tracked, n[1])
       if not tracked.hasDangerousAssign and n[0].kind != nkSym:
         tracked.hasDangerousAssign = true
   of nkVarSection, nkLetSection:
@@ -1187,9 +1195,9 @@ proc track(tracked: PEffects, n: PNode) =
       if x.kind == nkExprColonExpr:
         if x[0].kind == nkSym:
           notNilCheck(tracked, x[1], x[0].sym.typ)
-        checkForSink(tracked.config, tracked.c.idgen, tracked.owner, x[1])
+        checkForSink(tracked, x[1])
       else:
-        checkForSink(tracked.config, tracked.c.idgen, tracked.owner, x)
+        checkForSink(tracked, x)
     setLen(tracked.guards.s, oldFacts)
     if tracked.owner.kind != skMacro:
       # XXX n.typ can be nil in runnableExamples, we need to do something about it.
@@ -1204,7 +1212,7 @@ proc track(tracked: PEffects, n: PNode) =
           createTypeBoundOps(tracked, n[i][0].typ, n.info)
         else:
           createTypeBoundOps(tracked, n[i].typ, n.info)
-      checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n[i])
+      checkForSink(tracked, n[i])
   of nkPragmaBlock:
     let pragmaList = n[0]
     var bc = createBlockContext(tracked)
@@ -1271,7 +1279,7 @@ proc track(tracked: PEffects, n: PNode) =
   of nkBracket:
     for i in 0..<n.safeLen:
       track(tracked, n[i])
-      checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n[i])
+      checkForSink(tracked, n[i])
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked, n.typ, n.info)
   of nkBracketExpr:

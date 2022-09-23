@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------------------------------
 ##  This file contains an implementation of the Schubfach algorithm as described in
 ##
-##  [1] Raffaello Giulietti, "The Schubfach way to render doubles",
+##  \[1] Raffaello Giulietti, "The Schubfach way to render doubles",
 ##      https://drive.google.com/open?id=1luHhyQF9zKlM8yJ1nebU0OgVYhfC6CBN
 # --------------------------------------------------------------------------------------------------
 
@@ -78,19 +78,23 @@ proc floorDivPow2(x: int32; n: int32): int32 {.inline.} =
   return x shr n
 
 ##  Returns floor(log_10(2^e))
+##  ```c
 ##  static inline int32_t FloorLog10Pow2(int32_t e)
 ##  {
 ##      SF_ASSERT(e >= -1500);
 ##      SF_ASSERT(e <=  1500);
 ##      return FloorDivPow2(e * 1262611, 22);
 ##  }
+##  ```
 ##  Returns floor(log_10(3/4 2^e))
+##  ```c
 ##  static inline int32_t FloorLog10ThreeQuartersPow2(int32_t e)
 ##  {
 ##      SF_ASSERT(e >= -1500);
 ##      SF_ASSERT(e <=  1500);
 ##      return FloorDivPow2(e * 1262611 - 524031, 22);
 ##  }
+##  ```
 ##  Returns floor(log_2(10^e))
 
 proc floorLog2Pow10(e: int32): int32 {.inline.} =
