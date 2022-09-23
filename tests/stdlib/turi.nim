@@ -141,6 +141,21 @@ template main() =
       doAssert test.port == ""
       doAssert test.path == "/foo/bar/baz.txt"
 
+  block: # urlencodeIRI
+    doAssert urlencodeIRI("a\tb\nc\0d猫e") == "a%09b%0Ac%00d%E7%8C%ABe"
+
+  block: # safeParseUri
+    doAssert $safeParseUri("https://user:pass@foo/path") == "https://user:pass@foo/path"
+    doAssertRaises(UriParseError):
+      echo repr safeParseUri("foo/猫", acceptIRI=false)
+    doAssertRaises(UriParseError):
+      echo repr safeParseUri("a\0b", acceptIRI=false)
+    doAssertRaises(UriParseError):
+      echo repr safeParseUri("a\0b")
+    doAssertRaises(UriParseError):
+      echo repr safeParseUri("https://a.org\0b.com/", acceptIRI=true)
+    doAssert $safeParseUri("https://foo.com/foo/\0猫", acceptIRI=true) == "https://foo.com/%2Ffoo%2F%00%E7%8C%AB"
+
   block: # combine
     block:
       let concat = combine(parseUri("http://google.com/foo/bar/"), parseUri("baz"))
