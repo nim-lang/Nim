@@ -89,14 +89,14 @@ proc genLiteral(p: BProc, n: PNode, ty: PType; result: var Rope) =
             else: skipTypes(ty, abstractVarRange + {tyStatic, tyUserTypeClass, tyUserTypeClassInst}).kind
     case k
     of tyNil:
-      result.add genNilStringLiteral(p.module, n.info)
+      genNilStringLiteral(p.module, n.info, result)
     of tyString:
       # with the new semantics for not 'nil' strings, we can map "" to nil and
       # save tons of allocations:
       if n.strVal.len == 0 and optSeqDestructors notin p.config.globalOptions:
-        result.add genNilStringLiteral(p.module, n.info)
+        genNilStringLiteral(p.module, n.info, result)
       else:
-        result.add genStringLiteral(p.module, n)
+        genStringLiteral(p.module, n, result)
     else:
       result.add makeCString(n.strVal)
   of nkFloatLit, nkFloat64Lit:
@@ -930,7 +930,8 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
       # passing around `TLineInfo` + the set of files in the project.
       msg.add toFileLineCol(p.config, e.info) & " "
     msg.add genFieldDefect(p.config, field.name.s, disc.sym)
-    let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
+    var strLit = Rope(nil)
+    genStringLiteral(p.module, newStrNode(nkStrLit, msg), strLit)
 
     ## discriminant check
     template fun(code) = linefmt(p, cpsStmts, code, [rdLoc(test)])
@@ -3423,7 +3424,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
       genConstObjConstr(p, n, isConst, result)
     of tyString, tyCstring:
       if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit and ty == tyString:
-        result.add genStringLiteralV2Const(p.module, n, isConst)
+        genStringLiteralV2Const(p.module, n, isConst, result)
       else:
         var d: TLoc
         initLocExpr(p, n, d)

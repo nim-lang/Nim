@@ -716,11 +716,15 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
         if i > 0: loadlib.add("||")
         let n = newStrNode(nkStrLit, s[i])
         n.info = lib.path.info
-        appcg(m, loadlib, "($1 = #nimLoadLibrary($2))$n",
-              [tmp, genStringLiteral(m, n)])
+        appcg(m, loadlib, "($1 = #nimLoadLibrary(", [tmp])
+        genStringLiteral(m, n, loadlib)
+        loadlib.addf "))$n", []
       appcg(m, m.s[cfsDynLibInit],
-            "if (!($1)) #nimLoadLibraryError($2);$n",
-            [loadlib, genStringLiteral(m, lib.path)])
+            "if (!($1)) #nimLoadLibraryError(",
+            [loadlib])
+      genStringLiteral(m, lib.path, m.s[cfsDynLibInit])
+      m.s[cfsDynLibInit].addf ");$n", []
+
     else:
       var p = newProc(nil, m)
       p.options.excl optStackTrace
@@ -1344,9 +1348,11 @@ proc genMainProc(m: BModule) =
       assert prc != nil
       let n = newStrNode(nkStrLit, prc.annex.path.strVal)
       n.info = prc.annex.path.info
+      var strLit = Rope(nil)
+      genStringLiteral(m, n, strLit)
       appcg(m, result, "\tif (!($1 = #nimLoadLibrary($2)))$N" &
                        "\t\t#nimLoadLibraryError($2);$N",
-                       [handle, genStringLiteral(m, n)])
+                       [handle, strLit])
 
     preMainCode.add(loadLib("hcr_handle", "hcrGetProc"))
     preMainCode.add("\tvoid* rtl_handle;\L")
