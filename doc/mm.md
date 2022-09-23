@@ -25,10 +25,7 @@ To choose the memory management strategy use the `--mm:` switch.
 ARC/ORC
 -------
 
-ORC is the default memory management strategy. `--mm:orc` is a memory management mode primarily based on reference counting. Cycles
-in the object graph are handled by a "cycle collector" which is based on "trial deletion".
-Since algorithms based on "tracing" are not used, the runtime behavior is oblivious to
-the involved heap sizes.
+ORC is the default memory management strategy. `--mm:orc` is a memory management mode primarily based on reference counting. Cycles in the object graph are handled by a "cycle collector" which is based on "trial deletion". Since algorithms based on "tracing" are not used, the runtime behavior is oblivious to the involved heap sizes.
 
 The reference counting operations (= "RC ops") do not use atomic instructions and do not have to --
 instead entire subgraphs are *moved* between threads. The Nim compiler also aggressively
@@ -57,7 +54,8 @@ Other MM modes
 .. note:: The `refc` GC is incremental, thread-local and not "stop-the-world".
 
 --mm:refc    It's a deferred reference counting based garbage collector
-  with a simple Mark&Sweep backup GC in order to collect cycles. Heaps are thread-local. [This document](refc.html) contains further information.
+  with a simple Mark&Sweep backup GC in order to collect cycles.
+  Heaps are thread-local. [This document](refc.html) contains further information.
 --mm:markAndSweep  Simple Mark-And-Sweep based garbage collector.
   Heaps are thread-local.
 --mm:boehm    Boehm based garbage collector, it offers a shared heap.
