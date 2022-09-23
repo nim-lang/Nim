@@ -1816,7 +1816,7 @@ proc rdMType(p: BProc; a: TLoc; nilCheck: var Rope; result: var Rope; enforceV1 
   var derefs = rdLoc(a)
   var t = skipTypes(a.t, abstractInst)
   while t.kind in {tyVar, tyLent, tyPtr, tyRef}:
-    if t.kind notin {tyVar, tyLent}: nilCheck = result
+    if t.kind notin {tyVar, tyLent}: nilCheck = derefs
     if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
       derefs = "(*$1)" % [derefs]
     t = skipTypes(t.lastSon, abstractInst)
