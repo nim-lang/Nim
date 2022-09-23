@@ -20,16 +20,6 @@ from input ``.nim`` files and projects, as well as HTML and LaTeX from input RST
 dependencies (`import`), any top-level documentation comments (`##`), and
 exported symbols (`*`), including procedures, types, and variables.
 
-===================   ======================   ============   ==============
-command               runs on...               input format   output format
-===================   ======================   ============   ==============
-`nim doc`:cmd:        documentation comments   ``.nim``       ``.html`` HTML
-`nim doc2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
-`nim jsondoc`:cmd:    ″                        ″              ``.json`` JSON
-`nim rst2html`:cmd:   standalone rst files     ``.rst``       ``.html`` HTML
-`nim rst2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
-===================   ======================   ============   ==============
-
 Quick start
 -----------
 
@@ -490,18 +480,8 @@ highlighting with the ``.. code-block:: nim`` prefix. ``code-block`` also
 supports highlighting of a few other languages supported by the
 [packages/docutils/highlite module](highlite.html).
 
-Usage:
-
-  ```cmd
-  nim rst2html docgen.rst
-  ```
-
-Output::
-  You're reading it!
-
-The `rst2tex`:option: command is invoked identically to `rst2html`:option:,
-but outputs a ``.tex`` file instead of ``.html``.
-
+See [Markdown and RST markup languages](markdown_rst.html) for
+usage of those commands.
 
 HTML anchor generation
 ======================
@@ -628,10 +608,9 @@ Additional resources
 
 * [Nim Compiler User Guide](nimc.html#compiler-usage-commandminusline-switches)
 
-* Documentation for [rst module](rst.html) -- Nim RST/Markdown parser.
-
-* [RST Quick Reference](
-  http://docutils.sourceforge.net/docs/user/rst/quickref.html)
+* already mentioned documentation for
+  [Markdown and RST markup languages](markdown_rst.html), which also
+  contains the list of implemented features of these markup languages.
 
 The output for HTML and LaTeX comes from the ``config/nimdoc.cfg`` and
 ``config/nimdoc.tex.cfg`` configuration files. You can add and modify these

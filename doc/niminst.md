@@ -14,7 +14,7 @@ Introduction
 
 niminst is a tool to generate an installer for a Nim program. Currently
 it can create an installer for Windows
-via `Inno Setup <http://www.jrsoftware.org/isinfo.php>`_ as well as
+via [Inno Setup](http://www.jrsoftware.org/isinfo.php) as well as
 installation/deinstallation scripts for UNIX. Later versions will support
 Linux' package management systems.
 
@@ -26,7 +26,7 @@ systems.
 Configuration file
 ==================
 
-niminst uses the Nim `parsecfg <parsecfg.html>`_ module to parse the
+niminst uses the Nim [parsecfg](parsecfg.html) module to parse the
 configuration file. Here's an example of how the syntax looks like:
 
 .. include:: mytest.cfg

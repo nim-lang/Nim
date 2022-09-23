@@ -499,17 +499,20 @@ proc propagateFieldFlags(t: PType, n: PNode) =
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   template bailout =
-    if cl.recursionLimit > 100:
-      # bail out, see bug #2509. But note this caching is in general wrong,
-      # look at this example where TwoVectors should not share the generic
-      # instantiations (bug #3112):
-
-      # type
-      #   Vector[N: static[int]] = array[N, float64]
-      #   TwoVectors[Na, Nb: static[int]] = (Vector[Na], Vector[Nb])
-      result = PType(idTableGet(cl.localCache, t))
-      if result != nil: return result
-    inc cl.recursionLimit
+    if t.sym != nil and sfGeneratedType in t.sym.flags:
+      # Only consider the recursion limit if the symbol is a type with generic
+      # parameters that have not been explicitly supplied, typechecking should
+      # terminate when generic parameters are explicitly supplied.
+      if cl.recursionLimit > 100:
+        # bail out, see bug #2509. But note this caching is in general wrong,
+        # look at this example where TwoVectors should not share the generic
+        # instantiations (bug #3112):
+        # type
+        #   Vector[N: static[int]] = array[N, float64]
+        #   TwoVectors[Na, Nb: static[int]] = (Vector[Na], Vector[Nb])
+        result = PType(idTableGet(cl.localCache, t))
+        if result != nil: return result
+      inc cl.recursionLimit
 
   result = t
   if t == nil: return
