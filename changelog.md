@@ -50,6 +50,9 @@
 - Static linking against OpenSSL versions below 1.1, previously done by
   setting `-d:openssl10`, is no longer supported.
 
+- ORC becomes the default memory management strategy (used to be refc gc). Use
+  `--mm:refc` for a transition period.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
