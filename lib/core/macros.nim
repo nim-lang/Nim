@@ -211,15 +211,13 @@ template `or`*(x, y: NimNode): NimNode =
   else:
     y
 
-proc add*(father, child: NimNode): NimNode {.magic: "NAdd", discardable,
+proc add*(father, child: NimNode) {.magic: "NAdd",
   noSideEffect, locks: 0.}
-  ## Adds the `child` to the `father` node. Returns the
-  ## father node so that calls can be nested.
+  ## Adds the `child` to the `father` node.
 
-proc add*(father: NimNode, children: varargs[NimNode]): NimNode {.
-  magic: "NAddMultiple", discardable, noSideEffect, locks: 0.}
+proc add*(father: NimNode, children: varargs[NimNode]) {.
+  magic: "NAddMultiple", noSideEffect, locks: 0.}
   ## Adds each child of `children` to the `father` node.
-  ## Returns the `father` node so that calls can be nested.
 
 proc del*(father: NimNode, idx = 0, n = 1) {.magic: "NDel", noSideEffect.}
   ## Deletes `n` children of `father` starting at index `idx`.

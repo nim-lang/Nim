@@ -1588,7 +1588,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
         u.add(regs[rc].node)
-      regs[ra].node = u
     of opcNAddMultiple:
       decodeBC(rkNode)
       let x = regs[rc].node
@@ -1599,7 +1598,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
         for i in 0..<x.len: u.add(x[i])
-      regs[ra].node = u
     of opcNKind:
       decodeB(rkInt)
       regs[ra].intVal = ord(regs[rb].node.kind)
