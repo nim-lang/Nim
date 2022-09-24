@@ -19,7 +19,7 @@ block tenum1:
   en = a
 
   # Bug #4066
-  macro genEnum(): untyped = newNimNode(nnkEnumTy).add(newEmptyNode(), newIdentNode("geItem1"))
+  macro genEnum(): untyped = newTree(nnkEnumTy, newEmptyNode(), newIdentNode("geItem1"))
   type GeneratedEnum = genEnum()
   doAssert(type(geItem1) is GeneratedEnum)
 

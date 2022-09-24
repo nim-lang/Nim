@@ -7,7 +7,7 @@ macro macro_bug*(s: untyped) =
   var params = s.params
 
   let genericParams = s[2]
-  result = newNimNode(nnkProcDef).add(
+  result = newTree(nnkProcDef,
     s.name, s[1], genericParams, params, pragma(s), newEmptyNode())
 
   # don't really do anything

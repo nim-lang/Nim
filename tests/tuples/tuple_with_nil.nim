@@ -709,7 +709,7 @@ proc generatefmt(fmtstr: string;
           argexpr = newDotExpr(argexpr, part.field.ident)
         # possible array access
         if part.index < int.high:
-          argexpr = newNimNode(nnkBracketExpr).add(argexpr, newLit(part.index))
+          argexpr = newTree(nnkBracketExpr, argexpr, newLit(part.index))
         # now the expression for the format data
         var fmtexpr: NimNode
         if part.nested:
@@ -725,7 +725,7 @@ proc generatefmt(fmtstr: string;
           # literal format string, precompute the format data
           fmtexpr = newNimNode(nnkPar)
           for field, val in part.fmt.parse.fieldPairs:
-            fmtexpr.add(newNimNode(nnkExprColonExpr).add(field.ident, literal(val)))
+            fmtexpr.add(newTree(nnkExprColonExpr, field.ident, literal(val)))
         # add argument
         result.add((argexpr, fmtexpr))
   finally:

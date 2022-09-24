@@ -81,7 +81,9 @@ proc processBody(node, retFutureSym: NimNode, futureVarIdents: seq[NimNode]): Ni
       else:
         result.add newCall(newIdentNode("complete"), retFutureSym, x)
 
-    result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
+    let retStmt = newNimNode(nnkReturnStmt, node)
+    retStmt.add newNilLit()
+    result.add retStmt
     return # Don't process the children of this return stmt
   of RoutineNodes-{nnkTemplateDef}:
     # skip all the nested procedure definitions
@@ -195,12 +197,13 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   var subRetType =
     if returnType.kind == nnkEmpty: newIdentNode("void")
     else: baseType
+  let bracketBody = newNimNode(nnkBracketExpr, prc.body)
+  bracketBody.add(
+          newIdentNode("newFuture"),
+          subRetType)
   outerProcBody.add(
     newVarStmt(retFutureSym,
-      newCall(
-        newNimNode(nnkBracketExpr, prc.body).add(
-          newIdentNode("newFuture"),
-          subRetType),
+      newCall(bracketBody,
       newLit(prcName)))) # Get type from return type of this proc
 
   # -> iterator nameIter(): FutureBase {.closure.} =
@@ -248,7 +251,9 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     outerProcBody.add procCb
 
     # -> return retFuture
-    outerProcBody.add newNimNode(nnkReturnStmt, prc.body[^1]).add(retFutureSym)
+    let retStmt = newNimNode(nnkReturnStmt, prc.body[^1])
+    retStmt.add(retFutureSym)
+    outerProcBody.add retStmt
 
   result = prc
   # Add discardable pragma.

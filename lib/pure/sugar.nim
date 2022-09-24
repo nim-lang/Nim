@@ -22,7 +22,7 @@ proc checkPragma(ex, prag: var NimNode) =
 proc createProcType(p, b: NimNode): NimNode =
   result = newNimNode(nnkProcTy)
   var
-    formalParams = newNimNode(nnkFormalParams).add(b)
+    formalParams = newTree(nnkFormalParams, b)
     p = p
     prag = newEmptyNode()
 

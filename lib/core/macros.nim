@@ -1092,52 +1092,55 @@ proc newEmptyNode*(): NimNode {.noSideEffect.} =
 
 proc newStmtList*(stmts: varargs[NimNode]): NimNode =
   ## Create a new statement list.
-  result = newNimNode(nnkStmtList).add(stmts)
+  result = newTree(nnkStmtList, stmts)
 
 proc newPar*(exprs: NimNode): NimNode =
   ## Create a new parentheses-enclosed expression.
-  newNimNode(nnkPar).add(exprs)
+  newTree(nnkPar, exprs)
 
 proc newPar*(exprs: varargs[NimNode]): NimNode {.deprecated:
         "don't use newPar/nnkPar to construct tuple expressions; use nnkTupleConstr instead".} =
   ## Create a new parentheses-enclosed expression.
-  newNimNode(nnkPar).add(exprs)
+  newTree(nnkPar, exprs)
 
 proc newBlockStmt*(label, body: NimNode): NimNode =
   ## Create a new block statement with label.
-  return newNimNode(nnkBlockStmt).add(label, body)
+  return newTree(nnkBlockStmt, label, body)
 
 proc newBlockStmt*(body: NimNode): NimNode =
   ## Create a new block: stmt.
-  return newNimNode(nnkBlockStmt).add(newEmptyNode(), body)
+  return newTree(nnkBlockStmt, newEmptyNode(), body)
 
 proc newVarStmt*(name, value: NimNode): NimNode =
   ## Create a new var stmt.
-  return newNimNode(nnkVarSection).add(
-    newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
+  return newTree(nnkVarSection,
+    newTree(nnkIdentDefs, name, newNimNode(nnkEmpty), value)
+    )
 
 proc newLetStmt*(name, value: NimNode): NimNode =
   ## Create a new let stmt.
-  return newNimNode(nnkLetSection).add(
-    newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
+  return newTree(nnkLetSection,
+    newTree(nnkIdentDefs, name, newNimNode(nnkEmpty), value)
+    )
 
 proc newConstStmt*(name, value: NimNode): NimNode =
   ## Create a new const stmt.
-  newNimNode(nnkConstSection).add(
-    newNimNode(nnkConstDef).add(name, newNimNode(nnkEmpty), value))
+  newTree(nnkConstSection,
+    newTree(nnkConstDef, name, newNimNode(nnkEmpty), value)
+    )
 
 proc newAssignment*(lhs, rhs: NimNode): NimNode =
-  return newNimNode(nnkAsgn).add(lhs, rhs)
+  return newTree(nnkAsgn, lhs, rhs)
 
 proc newDotExpr*(a, b: NimNode): NimNode =
   ## Create new dot expression.
   ## a.dot(b) -> `a.b`
-  return newNimNode(nnkDotExpr).add(a, b)
+  return newTree(nnkDotExpr, a, b)
 
 proc newColonExpr*(a, b: NimNode): NimNode =
   ## Create new colon expression.
   ## newColonExpr(a, b) -> `a: b`
-  newNimNode(nnkExprColonExpr).add(a, b)
+  newTree(nnkExprColonExpr, a, b)
 
 proc newIdentDefs*(name, kind: NimNode;
                    default = newEmptyNode()): NimNode =
@@ -1153,7 +1156,7 @@ proc newIdentDefs*(name, kind: NimNode;
   ## identifier is being assigned a value. Example:
   ##
   ##   ```
-  ##   var varSection = newNimNode(nnkVarSection).add(
+  ##   var varSection = newTree(nnkVarSection,
   ##     newIdentDefs(ident("a"), ident("string")),
   ##     newIdentDefs(ident("b"), newEmptyNode(), newLit(3)))
   ##   # --> var
@@ -1162,13 +1165,13 @@ proc newIdentDefs*(name, kind: NimNode;
   ##   ```
   ##
   ## If you need to create multiple identifiers you need to use the lower level
-  ## `newNimNode`:
+  ## `newTree`:
   ##   ```
-  ##   result = newNimNode(nnkIdentDefs).add(
+  ##   result = newTree(nnkIdentDefs,
   ##     ident("a"), ident("b"), ident("c"), ident("string"),
   ##       newStrLitNode("Hello"))
   ##   ```
-  newNimNode(nnkIdentDefs).add(name, kind, default)
+  newTree(nnkIdentDefs, name, kind, default)
 
 proc newNilLit*(): NimNode =
   ## New nil literal shortcut.
@@ -1203,11 +1206,11 @@ proc newProc*(name = newEmptyNode();
   if procType notin RoutineNodes:
     error("Expected one of " & $RoutineNodes & ", got " & $procType)
   pragmas.expectKind({nnkEmpty, nnkPragma})
-  result = newNimNode(procType).add(
+  result = newTree(procType,
     name,
     newEmptyNode(),
     newEmptyNode(),
-    newNimNode(nnkFormalParams).add(params),
+    newTree(nnkFormalParams, params),
     pragmas,
     newEmptyNode(),
     body)
@@ -1246,25 +1249,27 @@ proc newEnum*(name: NimNode, fields: openArray[NimNode],
   for field in fields:
     expectKind field, {nnkIdent, nnkEnumFieldDef}
 
-  let enumBody = newNimNode(nnkEnumTy).add(newEmptyNode()).add(fields)
+  let enumBody = newNimNode(nnkEnumTy)
+  enumBody.add(newEmptyNode())
+  enumBody.add(fields)
   var typeDefArgs = [name, newEmptyNode(), enumBody]
 
   if public:
-    let postNode = newNimNode(nnkPostfix).add(
+    let postNode = newTree(nnkPostfix,
       newIdentNode("*"), typeDefArgs[0])
 
     typeDefArgs[0] = postNode
 
   if pure:
-    let pragmaNode = newNimNode(nnkPragmaExpr).add(
+    let pragmaNode = newTree(nnkPragmaExpr,
       typeDefArgs[0],
-      add(newNimNode(nnkPragma), newIdentNode("pure")))
+      newTree(nnkPragma, newIdentNode("pure")))
 
     typeDefArgs[0] = pragmaNode
 
   let
-    typeDef   = add(newNimNode(nnkTypeDef), typeDefArgs)
-    typeSect  = add(newNimNode(nnkTypeSection), typeDef)
+    typeDef   = newTree(nnkTypeDef, typeDefArgs)
+    typeSect  = newTree(nnkTypeSection, typeDef)
 
   return typeSect
 
@@ -1441,14 +1446,14 @@ proc `basename=`*(a: NimNode; val: string) =
       repr(a), a)
 
 proc postfix*(node: NimNode; op: string): NimNode =
-  newNimNode(nnkPostfix).add(ident(op), node)
+  newTree(nnkPostfix, ident(op), node)
 
 proc prefix*(node: NimNode; op: string): NimNode =
-  newNimNode(nnkPrefix).add(ident(op), node)
+  newTree(nnkPrefix, ident(op), node)
 
 proc infix*(a: NimNode; op: string;
             b: NimNode): NimNode =
-  newNimNode(nnkInfix).add(ident(op), a, b)
+  newTree(nnkInfix, ident(op), a, b)
 
 proc unpackPostfix*(node: NimNode): tuple[node: NimNode; op: string] =
   node.expectKind nnkPostfix

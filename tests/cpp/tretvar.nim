@@ -27,7 +27,7 @@ proc make_unique_str(a: cstring): stdUniquePtr[stdString] {.importcpp: "std::mak
 macro `.()`*[T](this: stdUniquePtr[T], name: untyped, args: varargs[untyped]): untyped =
   result = nnkCall.newTree(
     nnkDotExpr.newTree(
-      newNimNode(nnkPar).add(prefix(this, "*")),
+      newTree(nnkPar, prefix(this, "*")),
       name
     )
   )

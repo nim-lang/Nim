@@ -490,7 +490,7 @@ macro scanTuple*(input: untyped; pattern: static[string]; matcherTypes: varargs[
   result = newStmtList()
   template addVar(typ: string) =
     let varIdent = ident("temp" & $arguments.len)
-    result.add(newNimNode(nnkVarSection).add(newIdentDefs(varIdent, ident(typ), newEmptyNode())))
+    result.add(newTree(nnkVarSection, newIdentDefs(varIdent, ident(typ), newEmptyNode())))
     arguments.add(varIdent)
   while p < pattern.len:
     if pattern[p] == '$':

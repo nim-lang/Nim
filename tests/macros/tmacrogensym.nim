@@ -21,7 +21,7 @@ macro async2(prc: untyped): untyped =
   outerProcBody.add(
     newVarStmt(retFutureSym,
       newCall(
-        newNimNode(nnkBracketExpr).add(
+        newTree(nnkBracketExpr,
           newIdentNode("newFuture"),
           prc[3][0][1])))) # Get type from return type of this proc.
 
@@ -34,7 +34,7 @@ macro async2(prc: untyped): untyped =
 
   var closureIterator = newProc(iteratorNameSym, [newIdentNode("FutureBase")],
                                 procBody, nnkIteratorDef)
-  closureIterator[4] = newNimNode(nnkPragma).add(newIdentNode("closure"))
+  closureIterator[4] = newTree(nnkPragma, newIdentNode("closure"))
   outerProcBody.add(closureIterator)
 
   # -> var nameIterVar = nameIter

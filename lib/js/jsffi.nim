@@ -498,13 +498,13 @@ macro bindMethod*(procedure: typed): auto =
         procedure
     args = rawProc[3].copyNimTree.replaceSyms
     thisType = args[1][1]
-    params = newNimNode(nnkFormalParams).add(args[0])
+    params = newTree(nnkFormalParams, args[0])
     body = newNimNode(nnkLambda)
     this = newIdentNode("this")
     # construct the `this` parameter:
     thisQuote = quote do:
       var `this` {.nodecl, importc: "this".}: `thisType`
-    call = newNimNode(nnkCall).add(rawProc[0], thisQuote[0][0][0])
+    call = newTree(nnkCall, rawProc[0], thisQuote[0][0][0])
   # construct the procedure call inside the method
   if args.len > 2:
     for idx in 2..args.len-1:

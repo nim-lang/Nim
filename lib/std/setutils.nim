@@ -36,7 +36,7 @@ template toSet*(iter: untyped): untyped =
     incl(result, x)
   result
 
-macro enumElementsAsSet(enm: typed): untyped = result = newNimNode(nnkCurly).add(enm.getType[1][1..^1])
+macro enumElementsAsSet(enm: typed): untyped = result = newTree(nnkCurly, enm.getType[1][1..^1])
 
 # func fullSet*(T: typedesc): set[T] {.inline.} = # xxx would give: Error: ordinal type expected
 func fullSet*[T](U: typedesc[T]): set[T] {.inline.} =

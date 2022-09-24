@@ -836,7 +836,7 @@ macro bindParams*(ps: SqlPrepared, params: varargs[untyped]): untyped {.since: (
   let preparedStatement = genSym()
   result = newStmtList()
   # Store `ps` in a temporary variable. This prevents `ps` from being evaluated every call.
-  result.add newNimNode(nnkLetSection).add(newIdentDefs(preparedStatement, newEmptyNode(), ps))
+  result.add newTree(nnkLetSection, newIdentDefs(preparedStatement, newEmptyNode(), ps))
   for idx, param in params:
     if param.kind != nnkNilLit:
       result.add newCall(bindParam, preparedStatement, newIntLitNode idx + 1, param)

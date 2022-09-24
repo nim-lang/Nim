@@ -38,19 +38,19 @@ type Mapped[Input; predicate: static[string]] = object
 
 macro map(input, predicate: untyped): untyped =
   let predicate = callsite()[2]
-  newNimNode(nnkObjConstr).add(
-    newNimNode(nnkBracketExpr).add(
+  newTree(nnkObjConstr,
+    newTree(nnkBracketExpr,
       ident"Mapped",
-      newNimNode(nnkTypeOfExpr).add(input),
+      newTree(nnkTypeOfExpr, input),
       newLit(refExpr(predicate))),
-    newNimNode(nnkExprColonExpr).add(
+    newTree(nnkExprColonExpr,
       ident"input", input))
 
 proc `[]`(m: Mapped, i: int): auto =
   macro buildResult: untyped =
     newCall(
       derefExpr(m.predicate),
-      newNimNode(nnkBracketExpr).add(
+      newTree(nnkBracketExpr,
         newDotExpr(ident"m", ident"input"),
         ident"i"))
   buildResult()

@@ -65,7 +65,7 @@ when false:
       v = genSym()
 
     for c in swizzle:
-      values.add newNimNode(nnkBracketExpr).add(
+      values.add newTree(nnkBracketExpr,
         v, c.swizzleIdx.newIntLitNode)
 
     return quote do:
