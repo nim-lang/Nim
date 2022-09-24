@@ -438,6 +438,34 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       globalError(c.config, n.info, errGenerated, "ambiguous call")
     elif c.config.errorCounter == 0:
       # don't cascade errors
+      var al = result.callee.n.sons.len
+      var bl = alt.callee.n.sons.len
+      var el = n.sons.len
+
+      var e = newSeq[PType](el - 1)
+      for i, s in n.sons[1 ..< el]:
+        e[i] = s.typ
+ 
+      var aDiff = 0
+      var bDiff = 0
+      var aa: PType
+      for i, s in result.callee.n.sons[1 ..< al]:
+        aa = s.typ
+        while aa.kind in {tyTypeDesc, tyGenericParam} and aa.len > 0:
+          aa = lastSon(aa)
+        if typeRel(result, aa, e[i]) == isNone:
+          inc aDiff
+      for i, s in alt.callee.n.sons[1 ..< bl]:
+        aa = s.typ
+        while aa.kind in {tyTypeDesc, tyGenericParam} and aa.len > 0:
+          aa = lastSon(aa)
+        if typeRel(alt, aa, e[i]) == isNone:
+          inc bDiff
+
+      if aDiff > bDiff:
+        return alt
+      elif aDiff < bDiff:
+        return result
       var args = "("
       for i in 1..<n.len:
         if i > 1: args.add(", ")

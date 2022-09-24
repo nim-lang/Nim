@@ -2,11 +2,11 @@ discard """
 action: compile
 """
 
-proc foo[T: SomeFloat](x: T) = discard
+proc foo[T6407: SomeFloat](y: T6407):int = 0
 
-proc foo[T: SomeInteger](x: T) = discard
+proc foo[T6407: SomeInteger](y: T6407):int = 1
 
-proc boo[T](x: T) =
-  foo[T](x)
+proc boo[T6407](x: T6407):int =
+  foo[T6407](x)
 
-boo(1)
+doAssert boo(1) == 1
