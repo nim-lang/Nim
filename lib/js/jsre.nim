@@ -37,6 +37,9 @@ func replace*(pattern: cstring; self: RegExp; replacement: cstring): cstring {.i
 func split*(pattern: cstring; self: RegExp | cstring): seq[cstring] {.importjs: "(#.split(#) || [])".}
   ## Divides a string into an ordered list of substrings and returns the array
 
+func split*(pattern: cstring; self: RegExp | cstring, limit: int): seq[cstring] {.importjs: "(#.split(@) || [])".}
+  ## Divides a string into an ordered list of substrings and returns the array with a limit on the number of substrings to be included in the array.
+
 func match*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "(#.match(#) || [])".}
   ## Returns an array of matches of a RegExp against given string
 
