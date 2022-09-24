@@ -89,7 +89,7 @@ runnableExamples:
   assert "dabc".endsWith jsregex
   jsregex.compile(r"\d", r"i")
   assert "do1ne".split(jsregex) == @["do".cstring, "ne".cstring]
-  assert "do1ne".split("1", 1) == @["do".cstring]
+  assert "do1ne".split("1".cstring, 1) == @["do".cstring]
   jsregex.compile(r"[lw]", r"i")
   assert "hello world".replace(jsregex,"X") == "heXlo world"
   let digitsRegex: RegExp = newRegExp(r"\d")
