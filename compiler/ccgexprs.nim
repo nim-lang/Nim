@@ -2844,7 +2844,8 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   let m = p.module
   useHeader(m, sym)
   if sym.loc.k == locNone:
-    fillLoc(sym.loc, locData, sym.ast, mangleName(p.module, sym), OnStatic)
+    fillBackendName(p.module, sym)
+    fillLoc(sym.loc, locData, sym.ast, OnStatic)
   if m.hcrOn: incl(sym.loc.flags, lfIndirect)
   result = lfNoDecl notin sym.loc.flags
 

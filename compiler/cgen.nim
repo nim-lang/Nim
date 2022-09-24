@@ -66,13 +66,20 @@ proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
   result.r = nil
   result.flags = {}
 
-proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) =
+proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) {.inline.} =
   # fills the loc if it is not already initialized
   if a.k == locNone:
     a.k = k
     a.lode = lode
     a.storage = s
     if a.r == nil: a.r = r
+
+proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) {.inline.} =
+  # fills the loc if it is not already initialized
+  if a.k == locNone:
+    a.k = k
+    a.lode = lode
+    a.storage = s
 
 proc t(a: TLoc): PType {.inline.} =
   if a.lode.kind == nkSym:
@@ -524,7 +531,8 @@ proc getIntTemp(p: BProc, result: var TLoc) =
 proc localVarDecl(p: BProc; n: PNode): Rope =
   let s = n.sym
   if s.loc.k == locNone:
-    fillLoc(s.loc, locLocalVar, n, mangleLocalName(p, s), OnStack)
+    fillLocalName(p, s)
+    fillLoc(s.loc, locLocalVar, n, OnStack)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
     result.addf("NIM_ALIGN($1) ", [rope(s.alignment)])
@@ -561,7 +569,8 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   let s = n.sym
   if s.loc.k == locNone:
-    fillLoc(s.loc, locGlobalVar, n, mangleName(p.module, s), OnHeap)
+    fillBackendName(p.module, s)
+    fillLoc(s.loc, locGlobalVar, n, OnHeap)
     if treatGlobalDifferentlyForHCR(p.module, s): incl(s.loc.flags, lfIndirect)
 
   if lfDynamicLib in s.loc.flags:
@@ -617,7 +626,8 @@ proc assignParam(p: BProc, s: PSym, retType: PType) =
 proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
   if sym.loc.k == locNone:
-    fillLoc(sym.loc, locProc, n, mangleName(m, sym), OnStack)
+    fillBackendName(m, sym)
+    fillLoc(sym.loc, locProc, n, OnStack)
 
 proc getLabel(p: BProc): TLabel =
   inc(p.labels)
@@ -1257,7 +1267,8 @@ proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
   let sym = n.sym
   useHeader(m, sym)
-  fillLoc(sym.loc, locGlobalVar, n, mangleName(m, sym), OnHeap)
+  fillBackendName(m, sym)
+  fillLoc(sym.loc, locGlobalVar, n, OnHeap)
   if treatGlobalDifferentlyForHCR(m, sym): incl(sym.loc.flags, lfIndirect)
 
   if (lfNoDecl in sym.loc.flags) or contains(m.declaredThings, sym.id):
