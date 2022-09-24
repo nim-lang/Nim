@@ -13,8 +13,6 @@
 
 import sighashes, modulegraphs
 
-proc genProcHeader(m: BModule, prc: PSym; asPtr: bool = false): Rope
-
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
   # it's more efficient to test the whole Nim keywords range
@@ -963,21 +961,11 @@ proc isReloadable(m: BModule, prc: PSym): bool =
 proc isNonReloadable(m: BModule, prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
-  var
-    rettype, params: Rope
+proc genProcHeader(m: BModule, prc: PSym; result: var Rope; asPtr: bool = false) =
   # using static is needed for inline procs
-  if lfExportLib in prc.loc.flags:
-    if isHeaderFile in m.flags:
-      result.add "N_LIB_IMPORT "
-    else:
-      result.add "N_LIB_EXPORT "
-  elif prc.typ.callConv == ccInline or asPtr or isNonReloadable(m, prc):
-    result.add "static "
-  elif sfImportc notin prc.flags:
-    result.add "N_LIB_PRIVATE "
   var check = initIntSet()
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
+  var rettype, params: Rope
   genProcParams(m, prc.typ, rettype, params, check)
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix
@@ -988,12 +976,21 @@ proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
   # careful here! don't access ``prc.ast`` as that could reload large parts of
   # the object graph!
   if prc.constraint.isNil:
+    if lfExportLib in prc.loc.flags:
+      if isHeaderFile in m.flags:
+        result.add "N_LIB_IMPORT "
+      else:
+        result.add "N_LIB_EXPORT "
+    elif prc.typ.callConv == ccInline or asPtr or isNonReloadable(m, prc):
+      result.add "static "
+    elif sfImportc notin prc.flags:
+      result.add "N_LIB_PRIVATE "
     result.addf("$1$2($3, $4)$5",
          [rope(CallingConvToStr[prc.typ.callConv]), asPtrStr, rettype, name,
          params])
   else:
     let asPtrStr = if asPtr: (rope("(*") & name & ")") else: name
-    result = runtimeFormat(prc.cgDeclFrmt, [rettype, asPtrStr, params])
+    result.add runtimeFormat(prc.cgDeclFrmt, [rettype, asPtrStr, params])
 
 # ------------------ type info generation -------------------------------------
 

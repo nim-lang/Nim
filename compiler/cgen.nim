@@ -1033,7 +1033,8 @@ proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
 
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
-  var header = genProcHeader(m, prc)
+  var header = Rope(nil)
+  genProcHeader(m, prc, header)
   var returnStmt: Rope = nil
   assert(prc.ast != nil)
 
@@ -1146,7 +1147,8 @@ proc genProcPrototype(m: BModule, sym: PSym) =
              [mangleDynLibProc(sym), getTypeDesc(m, sym.loc.t), getModuleDllPath(m, sym)])
   elif not containsOrIncl(m.declaredProtos, sym.id):
     let asPtr = isReloadable(m, sym)
-    var header = genProcHeader(m, sym, asPtr)
+    var header = Rope(nil)
+    genProcHeader(m, sym, header, asPtr)
     if not asPtr:
       if isNoReturn(m, sym) and hasDeclspec in extccomp.CC[m.config.cCompiler].props:
         header = "__declspec(noreturn) " & header
