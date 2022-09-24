@@ -499,15 +499,14 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
                         rectype: PType,
-                        check: var IntSet, unionPrefix = ""): Rope =
-  result = nil
+                        check: var IntSet; result: var Rope; unionPrefix = "") =
   case n.kind
   of nkRecList:
     for i in 0..<n.len:
-      result.add(genRecordFieldsAux(m, n[i], rectype, check, unionPrefix))
+      genRecordFieldsAux(m, n[i], rectype, check, result, unionPrefix)
   of nkRecCase:
     if n[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
-    result.add(genRecordFieldsAux(m, n[0], rectype, check, unionPrefix))
+    genRecordFieldsAux(m, n[0], rectype, check, result, unionPrefix)
     # prefix mangled name with "_U" to avoid clashes with other field names,
     # since identifiers are not allowed to start with '_'
     var unionBody: Rope = nil
@@ -517,7 +516,8 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
         let k = lastSon(n[i])
         if k.kind != nkSym:
           let structName = "_" & mangleRecFieldName(m, n[0].sym) & "_" & $i
-          let a = genRecordFieldsAux(m, k, rectype, check, unionPrefix & $structName & ".")
+          var a = Rope(nil)
+          genRecordFieldsAux(m, k, rectype, check, a, unionPrefix & $structName & ".")
           if a != nil:
             if tfPacked notin rectype.flags:
               unionBody.add("struct {")
@@ -531,7 +531,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
             if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
               unionBody.addf("#pragma pack(pop)$n", [])
         else:
-          unionBody.add(genRecordFieldsAux(m, k, rectype, check, unionPrefix))
+          genRecordFieldsAux(m, k, rectype, check, unionBody, unionPrefix)
       else: internalError(m.config, "genRecordFieldsAux(record case branch)")
     if unionBody != nil:
       result.addf("union{$n$1};$n", [unionBody])
@@ -565,7 +565,8 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
 proc getRecordFields(m: BModule, typ: PType, check: var IntSet): Rope =
-  result = genRecordFieldsAux(m, typ.n, typ, check)
+  result = Rope(nil)
+  genRecordFieldsAux(m, typ.n, typ, check, result)
 
 proc fillObjectFields*(m: BModule; typ: PType) =
   # sometimes generic objects are not consistently merged. We patch over
