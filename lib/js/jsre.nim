@@ -33,7 +33,7 @@ func compile*(self: RegExp; pattern: cstring; flags: cstring) {.importjs: "#.com
 func replace*(pattern: cstring; self: RegExp; replacement: cstring): cstring {.importjs: "#.replace(#, #)".}
   ## Returns a new string with some or all matches of a pattern replaced by given replacement
 
-func split*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "#.split(#)".}
+func split*(pattern: cstring; self: RegExp | cstring; limit: int): seq[cstring] {.importjs: "#.split(@)".}
   ## Divides a string into an ordered list of substrings and returns the array
 
 func match*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "#.match(#)".}
@@ -89,5 +89,6 @@ runnableExamples:
   assert "dabc".endsWith jsregex
   jsregex.compile(r"\d", r"i")
   assert "do1ne".split(jsregex) == @["do".cstring, "ne".cstring]
+  assert "do1ne".split("1", 1) == @["do".cstring]
   jsregex.compile(r"[lw]", r"i")
   assert "hello world".replace(jsregex,"X") == "heXlo world"
