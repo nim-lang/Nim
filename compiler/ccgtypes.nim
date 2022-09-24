@@ -13,7 +13,7 @@
 
 import sighashes, modulegraphs
 
-proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
+proc genProcHeader(m: BModule, prc: PSym; asPtr: bool = false): Rope
 
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -1300,7 +1300,7 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
 
 proc isTrivialProc(g: ModuleGraph; s: PSym): bool {.inline.} = getBody(g, s).len == 0
 
-proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
+proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result: var Rope) =
   let theProc = getAttachedOp(m.g.graph, t, op)
   if theProc != nil and not isTrivialProc(m.g.graph, theProc):
     # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
@@ -1311,7 +1311,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
         theProc.name.s & " needs to have the 'nimcall' calling convention")
 
     genProc(m, theProc)
-    result = theProc.loc.r
+    result.add theProc.loc.r
 
     when false:
       if not canFormAcycle(t) and op == attachedTrace:
@@ -1323,7 +1323,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
         # unfortunately this check is wrong for an object type that only contains
         # .cursor fields like 'Node' inside 'cycleleak'.
         internalError(m.config, info, "no attached trace proc found")
-    result = rope("NIM_NIL")
+    result.add rope("NIM_NIL")
 
 proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =
   var typeName: Rope
@@ -1337,15 +1337,21 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
 
   discard cgsym(m, "TNimTypeV2")
   m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
-  let destroyImpl = genHook(m, t, info, attachedDestructor)
-  let traceImpl = genHook(m, t, info, attachedTrace)
 
   var flags = 0
   if not canFormAcycle(t): flags = flags or 1
 
-  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.name = $4;$n; $1.traceImpl = (void*)$5; $1.flags = $6;", [
-    name, destroyImpl, getTypeDesc(m, t), typeName,
-    traceImpl, rope(flags)])
+  var typeEntry = Rope(nil)
+  addf(typeEntry, "$1.destructor = (void*)", [name])
+  genHook(m, t, info, attachedDestructor, typeEntry)
+
+  addf(typeEntry, "; $1.traceImpl = (void*)", [name])
+  genHook(m, t, info, attachedTrace, typeEntry)
+
+  addf(typeEntry, "; $1.name = $2;$n; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.flags = $4;",
+    [name, typeName, getTypeDesc(m, t), rope(flags)])
+
+  m.s[cfsTypeInit3].add typeEntry
 
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
