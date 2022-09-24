@@ -1038,7 +1038,7 @@ proc transform(c: PTransf, n: PNode): PNode =
     result = transformAsgn(c, n)
   of nkIdentDefs, nkConstDef:
     result = newTransNode(n)
-    result[0] = transform(c, if n[0].kind == nkPragmaExpr: n[0][0] else: n[0])
+    result[0] = transform(c, skipPragmaExpr(n[0]))
     # Skip the second son since it only contains an unsemanticized copy of the
     # variable type used by docgen
     let last = n.len-1

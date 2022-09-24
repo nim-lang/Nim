@@ -1244,6 +1244,14 @@ proc extractPragma*(s: PSym): PNode =
         result = s.ast[0][1]
   assert result == nil or result.kind == nkPragma
 
+proc skipPragmaExpr*(n: PNode): PNode =
+  ## if pragma expr, give the node the pragmas are applied to,
+  ## otherwise give node itself
+  if n.kind == nkPragmaExpr:
+    result = n[0]
+  else:
+    result = n
+
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
