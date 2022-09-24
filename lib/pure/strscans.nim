@@ -507,7 +507,7 @@ macro scanTuple*(input: untyped; pattern: static[string]; matcherTypes: varargs[
       of '{':
         if userMatches < matcherTypes.len:
           let varIdent = ident("temp" & $arguments.len)
-          result.add(newNimNode(nnkVarSection).add(newIdentDefs(varIdent, matcherTypes[userMatches], newEmptyNode())))
+          result.add(newTree(nnkVarSection, newIdentDefs(varIdent, matcherTypes[userMatches], newEmptyNode())))
           arguments.add(varIdent)
           inc userMatches
       else: discard
