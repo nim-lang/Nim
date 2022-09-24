@@ -156,3 +156,24 @@ block: # bug #19020
   static:
     doAssert $bar.getCustomPragmaVal(typ) == "foo"
   doAssert $bar.getCustomPragmaVal(typ) == "foo"
+
+# bug #14665
+macro test_14665*(): untyped =
+  let b = @[1, 2, 3, 4]
+
+  result = nnkStmtList.newTree()
+  var i = 0
+  while i < b.len:
+    if false:
+      # this quote do is mandatory, removing it fixes the problem
+      result.add quote do:
+        let testtest = 5
+    else:
+      result.add quote do:
+        let test = 6
+      inc i
+      # removing this continue fixes the problem too
+      continue
+    inc i
+
+test_14665()
