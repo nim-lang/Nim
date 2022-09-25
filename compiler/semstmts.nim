@@ -432,7 +432,7 @@ proc hasEmpty(typ: PType): bool =
       result = result or hasEmpty(s)
 
 proc hasNone(typ: PType): bool =
-  if typ.kind in {tySequence, tyArray, tySet}:
+  if typ.kind in {tySequence, tyArray, tySet, tyLent, tyOpenArray}:
     result = typ.lastSon.kind == tyNone
 
 proc hasUnresolvedParams(n: PNode; flags: TExprFlags): bool =
@@ -1537,8 +1537,19 @@ proc checkForMetaFields(c: PContext; n: PNode) =
   of nkSym:
     let t = n.sym.typ
     case t.kind
-    of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyLent, tyPtr, tyRef,
-       tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tySink, tyOwned:
+    of tySink:
+      hasError = true
+      localError(c.config, n.info, "cannot use $1 as a field type" % toHumanStr(t.kind))
+    of tyOpenArray, tyLent:
+      if views in c.features:
+        if t.hasNone():
+          hasError = true
+          localError(c.config, n.info, "$1 expects one type parameter" % toHumanStr(t.kind))
+      else:
+        hasError = true
+        localError(c.config, n.info, "cannot use $1 as a field type" % toHumanStr(t.kind))
+    of tySequence, tySet, tyArray, tyVar, tyPtr, tyRef,
+       tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tyOwned:
       let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
       if t.hasNone():
         hasError = true

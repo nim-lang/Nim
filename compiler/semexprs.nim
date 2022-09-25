@@ -1280,14 +1280,15 @@ proc readTypeParameter(c: PContext, typ: PType,
 
 proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   proc symCheck(sym: PSym; c: PContext) =
-    if sym.typ.hasNone():
-      case sym.typ.kind
-      of tyArray:
+    case sym.typ.kind
+    of tyArray:
+      if sym.typ.hasNone():
         localError(c.config, sym.info, errArrayExpectsTwoTypeParams)
-      of tySequence, tySet:
+    of tySequence, tySet:
+      if sym.typ.hasNone():
         localError(c.config, sym.info, "$1 expects one type parameter" % toHumanStr(sym.typ.kind))
-      else:
-        discard
+    else:
+      discard
 
   let s = getGenSym(c, sym)
   case s.kind
