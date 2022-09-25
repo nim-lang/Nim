@@ -225,9 +225,11 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
   result.add newCall(ident"rope", resVar)
 
 proc indentLine(p: BProc, r: Rope): Rope =
-  result = r
+  result = newRopeAppender()
   for i in 0..<p.blocks.len:
-    prepend(result, "\t".rope)
+    result.add "\t".rope
+  result.add r
+  freeze result
 
 template appcg(m: BModule, c: var Rope, frmt: FormatStr,
            args: untyped) =
@@ -1043,7 +1045,7 @@ proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
 
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
-  var header = Rope(nil)
+  var header = newRopeAppender()
   genProcHeader(m, prc, header)
   var returnStmt: Rope = nil
   assert(prc.ast != nil)
@@ -1157,7 +1159,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
              [mangleDynLibProc(sym), getTypeDesc(m, sym.loc.t), getModuleDllPath(m, sym)])
   elif not containsOrIncl(m.declaredProtos, sym.id):
     let asPtr = isReloadable(m, sym)
-    var header = Rope(nil)
+    var header = newRopeAppender()
     genProcHeader(m, sym, header, asPtr)
     if not asPtr:
       if isNoReturn(m, sym) and hasDeclspec in extccomp.CC[m.config.cCompiler].props:
@@ -1361,7 +1363,7 @@ proc genMainProc(m: BModule) =
       assert prc != nil
       let n = newStrNode(nkStrLit, prc.annex.path.strVal)
       n.info = prc.annex.path.info
-      var strLit = Rope(nil)
+      var strLit = newRopeAppender()
       genStringLiteral(m, n, strLit)
       appcg(m, result, "\tif (!($1 = #nimLoadLibrary($2)))$N" &
                        "\t\t#nimLoadLibraryError($2);$N",
@@ -1887,6 +1889,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.typeInfoMarker = initTable[SigHash, Rope]()
   result.sigConflicts = initCountTable[SigHash]()
   result.initProc = newProc(nil, result)
+  for i in low(result.s)..high(result.s): result.s[i] = newRopeAppender()
   result.initProc.options = initProcOptions(result)
   result.preInitProc = newProc(nil, result)
   result.preInitProc.flags.incl nimErrorFlagDisabled

@@ -55,7 +55,9 @@ proc inExceptBlockLen(p: BProc): int =
 proc startBlockInternal(p: BProc): int {.discardable.} =
   inc(p.labels)
   result = p.blocks.len
-  setLen(p.blocks, result + 1)
+
+  p.blocks.add initBlock()
+
   p.blocks[result].id = p.labels
   p.blocks[result].nestedTryStmts = p.nestedTryStmts.len.int16
   p.blocks[result].nestedExceptStmts = p.inExceptBlockLen.int16
@@ -337,7 +339,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       var tmp: TLoc
       if value.kind in nkCallKinds and value[0].kind == nkSym and
            sfConstructor in value[0].sym.flags:
-        var params = Rope(nil)
+        var params = newRopeAppender()
         var argsCounter = 0
         let typ = skipTypes(value[0].typ, abstractInst)
         assert(typ.kind == tyProc)
@@ -554,7 +556,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
         return
 
       let val = getOrdValue(it[j])
-      var lit = Rope(nil)
+      var lit = newRopeAppender()
       intLiteral(toInt64(val)+id+1, lit)
       lineF(p, cpsStmts, "TMP$#_:$n", [lit])
 
@@ -879,7 +881,7 @@ proc genStringCase(p: BProc, t: PNode, stringKind: TTypeKind, d: var TLoc) =
               [rdLoc(a), bitMask])
     for j in 0..high(branches):
       if branches[j] != nil:
-        var lit = Rope(nil)
+        var lit = newRopeAppender()
         intLiteral(j, lit)
         lineF(p, cpsStmts, "case $1: $n$2break;$n",
              [lit, branches[j]])
@@ -916,20 +918,20 @@ proc genCaseRange(p: BProc, branch: PNode) =
   for j in 0..<branch.len-1:
     if branch[j].kind == nkRange:
       if hasSwitchRange in CC[p.config.cCompiler].props:
-        var litA = Rope(nil)
-        var litB = Rope(nil)
+        var litA = newRopeAppender()
+        var litB = newRopeAppender()
         genLiteral(p, branch[j][0], litA)
         genLiteral(p, branch[j][1], litB)
         lineF(p, cpsStmts, "case $1 ... $2:$n", [litA, litB])
       else:
         var v = copyNode(branch[j][0])
         while v.intVal <= branch[j][1].intVal:
-          var litA = Rope(nil)
+          var litA = newRopeAppender()
           genLiteral(p, v, litA)
           lineF(p, cpsStmts, "case $1:$n", [litA])
           inc(v.intVal)
     else:
-      var litA = Rope(nil)
+      var litA = newRopeAppender()
       genLiteral(p, branch[j], litA)
       lineF(p, cpsStmts, "case $1:$n", [litA])
 
@@ -1065,7 +1067,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "#popCurrentException();$n", [])
       endBlock(p)
     else:
-      var orExpr = Rope(nil)
+      var orExpr = newRopeAppender()
       var exvar = PNode(nil)
       for j in 0..<t[i].len - 1:
         var typeNode = t[i][j]
@@ -1076,7 +1078,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
         if isImportedException(typeNode.typ, p.config):
           hasImportedCppExceptions = true
         else:
-          if orExpr != nil: orExpr.add("||")
+          if orExpr.len != 0: orExpr.add("||")
           let checkFor = if optTinyRtti in p.config.globalOptions:
             genTypeInfo2Name(p.module, typeNode.typ)
           else:
@@ -1084,7 +1086,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
           appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
-      if orExpr != nil:
+      if orExpr.len != 0:
         if hasIf:
           startBlock(p, "else if ($1) {$n", [orExpr])
         else:
@@ -1517,7 +1519,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false; result: var Rope) =
 proc genAsmStmt(p: BProc, t: PNode) =
   assert(t.kind == nkAsmStmt)
   genLineDir(p, t)
-  var s = Rope(nil)
+  var s = newRopeAppender()
   genAsmOrEmitStmt(p, t, isAsmStmt=true, s)
   # see bug #2362, "top level asm statements" seem to be a mis-feature
   # but even if we don't do this, the example in #2362 cannot possibly
@@ -1537,7 +1539,7 @@ proc determineSection(n: PNode): TCFileSection =
     elif sec.startsWith("/*INCLUDESECTION*/"): result = cfsHeaders
 
 proc genEmit(p: BProc, t: PNode) =
-  var s = Rope(nil)
+  var s = newRopeAppender()
   genAsmOrEmitStmt(p, t[1], false, s)
   if p.prc == nil:
     # top level emit pragma?
@@ -1563,7 +1565,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
   if not containsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1",
           [discriminatorTableDecl(p.module, t, field)])
-  var lit = Rope(nil)
+  var lit = newRopeAppender()
   intLiteral(toInt64(lengthOrd(p.config, field.typ))+1, lit)
   lineCg(p, cpsStmts,
         "#FieldDiscriminantCheck((NI)(NU)($1), (NI)(NU)($2), $3, $4);$n",

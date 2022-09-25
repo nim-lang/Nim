@@ -130,7 +130,7 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   else:
     when defined(debugSigHashes):
       # check consistency:
-      var tn = Rope(nil)
+      var tn = newRopeAppender()
       typ.typeName(tn)
       assert($typ.loc.r == $(tn & $sig))
   result = typ.loc.r
@@ -516,7 +516,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
         let k = lastSon(n[i])
         if k.kind != nkSym:
           let structName = "_" & mangleRecFieldName(m, n[0].sym) & "_" & $i
-          var a = Rope(nil)
+          var a = newRopeAppender()
           genRecordFieldsAux(m, k, rectype, check, a, unionPrefix & $structName & ".")
           if a != nil:
             if tfPacked notin rectype.flags:
@@ -565,7 +565,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
 proc getRecordFields(m: BModule, typ: PType, check: var IntSet): Rope =
-  result = Rope(nil)
+  result = newRopeAppender()
   genRecordFieldsAux(m, typ.n, typ, check, result)
 
 proc fillObjectFields*(m: BModule; typ: PType) =
@@ -1341,7 +1341,7 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
   var flags = 0
   if not canFormAcycle(t): flags = flags or 1
 
-  var typeEntry = Rope(nil)
+  var typeEntry = newRopeAppender()
   addf(typeEntry, "$1.destructor = (void*)", [name])
   genHook(m, t, info, attachedDestructor, typeEntry)
 

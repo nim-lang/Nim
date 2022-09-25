@@ -82,7 +82,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
   var typ = skipTypes(ri[0].typ, abstractInst)
   if typ[0] != nil:
     if isInvalidReturnType(p.config, typ):
-      if params != nil: pl.add(~", ")
+      if params.len != 0: pl.add(~", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not preventNrvo(p, d.lode, le, ri):
         # Great, we can use 'd':
@@ -173,7 +173,7 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, 
       result = ("($3*)(($1)+($2))" % [rdLoc(a), rdLoc(b), dest],
                 lengthExpr)
     else:
-      var lit = Rope(nil)
+      var lit = newRopeAppender()
       intLiteral(first, lit)
       result = ("($4*)($1)+(($2)-($3))" %
         [rdLoc(a), rdLoc(b), lit, dest],
@@ -417,7 +417,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(typ.kind == tyProc)
   assert(typ.len == typ.n.len)
 
-  var params = Rope(nil)
+  var params = newRopeAppender()
   genParams(p, ri, typ, params)
 
   var callee = rdLoc(op)
@@ -428,7 +428,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
 proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
   proc addComma(r: Rope): Rope =
-    if r == nil: r else: r & ~", "
+    if r.len == 0: r else: r & ~", "
 
   const PatProc = "$1.ClE_0? $1.ClP_0($3$1.ClE_0):(($4)($1.ClP_0))($2)"
   const PatIter = "$1.ClP_0($3$1.ClE_0)" # we know the env exists
@@ -441,7 +441,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(typ.kind == tyProc)
   assert(typ.len == typ.n.len)
 
-  var pl = Rope(nil)
+  var pl = newRopeAppender()
   genParams(p, ri, typ, pl)
 
   template genCallPattern {.dirty.} =
@@ -680,7 +680,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   let pat = ri[0].sym.loc.r.data
   internalAssert p.config, pat.len > 0
   if pat.contains({'#', '(', '@', '\''}):
-    var pl = Rope(nil)
+    var pl = newRopeAppender()
     genPatternCall(p, ri, pat, typ, pl)
     # simpler version of 'fixupCall' that works with the pl+params combination:
     var typ = skipTypes(ri[0].typ, abstractInst)
@@ -703,12 +703,12 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
       pl.add(~";$n")
       line(p, cpsStmts, pl)
   else:
-    var pl = Rope(nil)
+    var pl = newRopeAppender()
     var argsCounter = 0
     if 1 < ri.len:
       genThisArg(p, ri, 1, typ, pl)
     pl.add(op.r)
-    var params = Rope(nil)
+    var params = newRopeAppender()
     for i in 2..<ri.len:
       assert(typ.len == typ.n.len)
       genOtherArg(p, ri, i, typ, params, argsCounter)

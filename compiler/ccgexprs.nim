@@ -561,9 +561,9 @@ template binaryArithOverflowRaw(p: BProc, t: PType, a, b: TLoc;
   linefmt p, cpsStmts, "};$n", []
 
   if size < p.config.target.intSize or t.kind in {tyRange, tyEnum}:
-    var first = Rope(nil)
+    var first = newRopeAppender()
     intLiteral(firstOrd(p.config, t), first)
-    var last = Rope(nil)
+    var last = newRopeAppender()
     intLiteral(lastOrd(p.config, t), last)
     linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3){ #raiseOverflow(); ",
             [result, first, last])
@@ -626,7 +626,7 @@ proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   initLocExpr(p, e[1], a)
   t = skipTypes(e.typ, abstractRange)
   if optOverflowCheck in p.options:
-    var first = Rope(nil)
+    var first = newRopeAppender()
     intLiteral(firstOrd(p.config, t), first)
     linefmt(p, cpsStmts, "if ($1 == $2){ #raiseOverflow(); ",
             [rdLoc(a), first])
@@ -886,21 +886,25 @@ proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope;
 proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc
   genRecordFieldAux(p, e, d, a)
-  var r = rdLoc(a)
+  var r = newRopeAppender()
+  r.add rdLoc(a)
   var f = e[1].sym
   let ty = skipTypes(a.t, abstractInstOwned + tyUserTypeClasses)
   if ty.kind == tyTuple:
     # we found a unique tuple type which lacks field information
     # so we use Field$i
-    r.addf(".Field$1", [rope(f.position)])
+    r.add ".Field"
+    r.add rope(f.position)
     putIntoDest(p, d, e, r, a.storage)
   else:
     var rtyp: PType
     let field = lookupFieldAgain(p, ty, f, r, addr rtyp)
     if field.loc.r == nil and rtyp != nil: fillObjectFields(p.module, rtyp)
     if field.loc.r == nil: internalError(p.config, e.info, "genRecordField 3 " & typeToString(ty))
-    r.addf(".$1", [field.loc.r])
+    r.add "."
+    r.add field.loc.r
     putIntoDest(p, d, e, r, a.storage)
+  r.freeze
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 
@@ -917,7 +921,8 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     initLoc(test, locNone, it, OnStack)
     initLocExpr(p, it[1], u)
     initLoc(v, locExpr, disc, OnUnknown)
-    v.r = obj
+    v.r = newRopeAppender()
+    v.r.add obj
     v.r.add(".")
     v.r.add(disc.sym.loc.r)
     genInExprAux(p, it, u, v, test)
@@ -930,7 +935,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
       # passing around `TLineInfo` + the set of files in the project.
       msg.add toFileLineCol(p.config, e.info) & " "
     msg.add genFieldDefect(p.config, field.name.s, disc.sym)
-    var strLit = Rope(nil)
+    var strLit = newRopeAppender()
     genStringLiteral(p.module, newStrNode(nkStrLit, msg), strLit)
 
     ## discriminant check
@@ -938,7 +943,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     if op.magic == mNot: fun("if ($1) ") else: fun("if (!($1)) ")
 
     ## call raiseFieldError2 on failure
-    var discIndex = Rope(nil)
+    var discIndex = newRopeAppender()
     rdSetElemLoc(p.config, v, u.t, discIndex)
     if optTinyRtti in p.config.globalOptions:
       # not sure how to use `genEnumToStr` here
@@ -952,7 +957,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     else:
       # complication needed for signed types
       let first = p.config.firstOrd(disc.sym.typ)
-      var firstLit = Rope(nil)
+      var firstLit = newRopeAppender()
       int64Literal(cast[int](first), firstLit)
       let discName = genTypeInfo(p.config, p.module, disc.sym.typ, e.info)
       if p.config.getStdlibVersion < (1,5,1):
@@ -971,15 +976,18 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
     var a: TLoc
     genRecordFieldAux(p, e[0], d, a)
     let ty = skipTypes(a.t, abstractInst + tyUserTypeClasses)
-    var r = rdLoc(a)
+    var r = newRopeAppender()
+    r.add rdLoc(a)
     let f = e[0][1].sym
     let field = lookupFieldAgain(p, ty, f, r)
     if field.loc.r == nil: fillObjectFields(p.module, ty)
     if field.loc.r == nil:
       internalError(p.config, e.info, "genCheckedRecordField") # generate the checks:
     genFieldCheck(p, e, r, field)
-    r.add(ropecg(p.module, ".$1", [field.loc.r]))
+    r.add(".")
+    r.add field.loc.r
     putIntoDest(p, d, e[0], r, a.storage)
+    r.freeze
   else:
     genRecordField(p, e[0], d)
 
@@ -996,7 +1004,7 @@ proc genArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   initLocExpr(p, x, a)
   initLocExpr(p, y, b)
   var ty = skipTypes(a.t, abstractVarRange + abstractPtrs + tyUserTypeClasses)
-  var first = Rope(nil)
+  var first = newRopeAppender()
   intLiteral(firstOrd(p.config, ty), first)
   # emit range check:
   if optBoundsCheck in p.options and ty.kind != tyUncheckedArray:
@@ -1004,14 +1012,14 @@ proc genArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
       # semantic pass has already checked for const index expressions
       if firstOrd(p.config, ty) == 0 and lastOrd(p.config, ty) >= 0:
         if (firstOrd(p.config, b.t) < firstOrd(p.config, ty)) or (lastOrd(p.config, b.t) > lastOrd(p.config, ty)):
-          var last = Rope(nil)
+          var last = newRopeAppender()
           intLiteral(lastOrd(p.config, ty), last)
           linefmt(p, cpsStmts, "if ((NU)($1) > (NU)($2)){ #raiseIndexError2($1, $2); ",
                   [rdCharLoc(b), last])
           raiseInstr(p, p.s(cpsStmts))
           linefmt p, cpsStmts, "}$n", []
       else:
-        var last = Rope(nil)
+        var last = newRopeAppender()
         intLiteral(lastOrd(p.config, ty), last)
         linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3){ #raiseIndexError3($1, $2, $3); ",
                 [rdCharLoc(b), first, last])
@@ -1052,9 +1060,9 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
     linefmt p, cpsStmts, "}$n", []
 
   of tyArray:
-    var first = Rope(nil)
+    var first = newRopeAppender()
     intLiteral(firstOrd(p.config, ty), first)
-    var last = Rope(nil)
+    var last = newRopeAppender()
     intLiteral(lastOrd(p.config, ty), last)
     linefmt(p, cpsStmts,
       "if ($2-$1 != -1 && " &
@@ -1609,7 +1617,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   elif d.k == locNone:
     getTemp(p, n.typ, d)
 
-  var lit = Rope(nil)
+  var lit = newRopeAppender()
   intLiteral(n.len, lit)
   if optSeqDestructors in p.config.globalOptions:
     let seqtype = n.typ
@@ -1621,7 +1629,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
     genNewSeqAux(p, dest[], lit, n.len == 0)
   for i in 0..<n.len:
     initLoc(arr, locExpr, n[i], OnHeap)
-    var lit = Rope(nil)
+    var lit = newRopeAppender()
     intLiteral(i, lit)
     arr.r = ropecg(p.module, "$1$3[$2]", [rdLoc(dest[]), lit, dataField(p)])
     arr.storage = OnHeap            # we know that sequences are on the heap
@@ -1649,7 +1657,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
       [rdLoc d, L, getTypeDesc(p.module, seqtype.lastSon),
       getSeqPayloadType(p.module, seqtype)])
   else:
-    var lit = Rope(nil)
+    var lit = newRopeAppender()
     intLiteral(L, lit)
     genNewSeqAux(p, d, lit, L == 0)
   initLocExpr(p, n[1], a)
@@ -1657,7 +1665,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   if L < 10:
     for i in 0..<L:
       initLoc(elem, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), OnHeap)
-      var lit = Rope(nil)
+      var lit = newRopeAppender()
       intLiteral(i, lit)
       elem.r = ropecg(p.module, "$1$3[$2]", [rdLoc(d), lit, dataField(p)])
       elem.storage = OnHeap # we know that sequences are on the heap
@@ -1742,9 +1750,9 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     globalError(p.config, x.info,
       "no 'of' operator available for pure objects")
 
-  var ro = Rope(nil)
+  var ro = newRopeAppender()
   genOfHelper(p, dest, r, x.info, ro)
-  var ofExpr = Rope(nil)
+  var ofExpr = newRopeAppender()
   ofExpr.add "("
   if nilCheck != nil:
     ofExpr.add "("
@@ -1847,7 +1855,7 @@ proc genGetTypeInfoV2(p: BProc, e: PNode, d: var TLoc) =
     initLocExpr(p, e[1], a)
     var nilCheck = Rope(nil)
     # use the dynamic type stored at offset 0:
-    var rt = Rope(nil)
+    var rt = newRopeAppender()
     rdMType(p, a, nilCheck, rt)
     putIntoDest(p, d, e, rt)
 
@@ -1856,7 +1864,7 @@ proc genAccessTypeField(p: BProc; e: PNode; d: var TLoc) =
   initLocExpr(p, e[1], a)
   var nilCheck = Rope(nil)
   # use the dynamic type stored at offset 0:
-  var rt = Rope(nil)
+  var rt = newRopeAppender()
   rdMType(p, a, nilCheck, rt)
   putIntoDest(p, d, e, rt)
 
@@ -2010,7 +2018,7 @@ proc fewCmps(conf: ConfigRef; s: PNode): bool =
     result = s.len <= 8  # 8 seems to be a good value
 
 template binaryExprIn(p: BProc, e: PNode, a, b, d: var TLoc, frmt: string) =
-  var elem = Rope(nil)
+  var elem = newRopeAppender()
   rdSetElemLoc(p.config, b, a.t, elem)
   putIntoDest(p, d, e, frmt % [rdLoc(a), elem])
 
@@ -2027,7 +2035,7 @@ template binaryStmtInExcl(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   assert(d.k == locNone)
   initLocExpr(p, e[1], a)
   initLocExpr(p, e[2], b)
-  var elem = Rope(nil)
+  var elem = newRopeAppender()
   rdSetElemLoc(p.config, b, a.t, elem)
   lineF(p, cpsStmts, frmt, [rdLoc(a), elem])
 
@@ -2222,9 +2230,9 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
 
     # emit range check:
     if n0t.kind in {tyUInt, tyUInt64}:
-      var first = Rope(nil)
+      var first = newRopeAppender()
       genLiteral(p, n[1], dest, first)
-      var last = Rope(nil)
+      var last = newRopeAppender()
       genLiteral(p, n[2], dest, last)
       linefmt(p, cpsStmts, "if ($1 > ($5)($3)){ #raiseRangeErrorNoArgs(); ",
         [rdCharLoc(a), first, last,
@@ -2246,9 +2254,9 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
           "(NI64)"
         else:
           ""
-      var first = Rope(nil)
+      var first = newRopeAppender()
       genLiteral(p, n[1], dest, first)
-      var last = Rope(nil)
+      var last = newRopeAppender()
       genLiteral(p, n[2], dest, last)
       linefmt(p, cpsStmts, "if ($5($1) < $2 || $5($1) > $3){ $4($1, $2, $3); ",
         [rdCharLoc(a), first, last,
@@ -2611,7 +2619,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
   var
     a, b, idx: TLoc
   if nfAllConst in e.flags:
-    var elem = Rope(nil)
+    var elem = newRopeAppender()
     genSetNode(p, e, elem)
     putIntoDest(p, d, e, elem)
   else:
@@ -2625,16 +2633,16 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
           getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), idx) # our counter
           initLocExpr(p, it[0], a)
           initLocExpr(p, it[1], b)
-          var aa = Rope(nil)
+          var aa = newRopeAppender()
           rdSetElemLoc(p.config, a, e.typ, aa)
-          var bb = Rope(nil)
+          var bb = newRopeAppender()
           rdSetElemLoc(p.config, b, e.typ, bb)
           lineF(p, cpsStmts, "for ($1 = $3; $1 <= $4; $1++) $n" &
               "$2[(NU)($1)>>3] |=(1U<<((NU)($1)&7U));$n", [rdLoc(idx), rdLoc(d),
               aa, bb])
         else:
           initLocExpr(p, it, a)
-          var aa = Rope(nil)
+          var aa = newRopeAppender()
           rdSetElemLoc(p.config, a, e.typ, aa)
           lineF(p, cpsStmts, "$1[(NU)($2)>>3] |=(1U<<((NU)($2)&7U));$n",
                [rdLoc(d), aa])
@@ -2647,9 +2655,9 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
           getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), idx) # our counter
           initLocExpr(p, it[0], a)
           initLocExpr(p, it[1], b)
-          var aa = Rope(nil)
+          var aa = newRopeAppender()
           rdSetElemLoc(p.config, a, e.typ, aa)
-          var bb = Rope(nil)
+          var bb = newRopeAppender()
           rdSetElemLoc(p.config, b, e.typ, bb)
 
           lineF(p, cpsStmts, "for ($1 = $3; $1 <= $4; $1++) $n" &
@@ -2657,7 +2665,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
               rdLoc(idx), rdLoc(d), aa, bb, rope(ts)])
         else:
           initLocExpr(p, it, a)
-          var aa = Rope(nil)
+          var aa = newRopeAppender()
           rdSetElemLoc(p.config, a, e.typ, aa)
           lineF(p, cpsStmts,
                "$1 |=(($3)(1)<<(($2)%(sizeof($3)*8)));$n",
@@ -2715,7 +2723,7 @@ proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
     if d.k == locNone: getTemp(p, n.typ, d)
     for i in 0..<n.len:
       initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), d.storage)
-      var lit = Rope(nil)
+      var lit = newRopeAppender()
       intLiteral(i, lit)
       arr.r = "$1[$2]" % [rdLoc(d), lit]
       expr(p, n[i], arr)
@@ -2763,7 +2771,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
   let dest = skipTypes(n.typ, abstractPtrs)
   if optObjCheck in p.options and not isObjLackingTypeField(dest):
     var nilCheck = Rope(nil)
-    var r = Rope(nil)
+    var r = newRopeAppender()
     rdMType(p, a, nilCheck, r)
     let checkFor = if optTinyRtti in p.config.globalOptions:
                      genTypeInfo2Name(p.module, dest)
@@ -2868,7 +2876,7 @@ proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
 proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
   # add a suffix for hcr - will later init the global pointer with this data
   let actualConstName = if q.hcrOn: sym.loc.r & "_const" else: sym.loc.r
-  var data = Rope(nil)
+  var data = newRopeAppender()
   data.addf("N_LIB_PRIVATE NIM_CONST $1 $2 = ",
            [getTypeDesc(q, sym.typ), actualConstName])
   genBracedInit(q.initProc, sym.ast, isConst = true, sym.typ, data)
@@ -2930,7 +2938,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       putLocIntoDest(p, d, sym.loc)
     of skConst:
       if isSimpleConst(sym.typ):
-        var lit = Rope(nil)
+        var lit = newRopeAppender()
         genLiteral(p, sym.ast, sym.typ, lit)
         putIntoDest(p, d, n, lit, OnStatic)
       elif useAliveDataFromDce in p.module.flags:
@@ -2984,15 +2992,15 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     else: internalError(p.config, n.info, "expr(" & $sym.kind & "); unknown symbol")
   of nkNilLit:
     if not isEmptyType(n.typ):
-      var lit = Rope(nil)
+      var lit = newRopeAppender()
       genLiteral(p, n, lit)
       putIntoDest(p, d, n, lit)
   of nkStrLit..nkTripleStrLit:
-    var lit = Rope(nil)
+    var lit = newRopeAppender()
     genLiteral(p, n, lit)
     putDataIntoDest(p, d, n, lit)
   of nkIntLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkCharLit:
-    var lit = Rope(nil)
+    var lit = newRopeAppender()
     genLiteral(p, n, lit)
     putIntoDest(p, d, n, lit)
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand,
@@ -3014,7 +3022,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         genCall(p, n, d)
   of nkCurly:
     if isDeepConstExpr(n) and n.len != 0:
-      var lit = Rope(nil)
+      var lit = newRopeAppender()
       genSetNode(p, n, lit)
       putIntoDest(p, d, n, lit)
     else:
@@ -3409,7 +3417,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
       if n.kind != nkBracket:
         internalError(p.config, n.info, "const openArray expression is not an array construction")
 
-      var data = Rope(nil)
+      var data = newRopeAppender()
       genConstSimpleList(p, n, isConst, data)
 
       let payload = getTempName(p.module)

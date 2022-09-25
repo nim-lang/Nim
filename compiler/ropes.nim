@@ -9,51 +9,12 @@
 
 # Ropes for the C code generator
 #
-#  Ropes are a data structure that represents a very long string
-#  efficiently; especially concatenation is done in O(1) instead of O(N).
-#  Ropes make use a lazy evaluation: They are essentially concatenation
-#  trees that are only flattened when converting to a native Nim
-#  string or when written to disk. The empty string is represented by a
-#  nil pointer.
-#  A little picture makes everything clear:
-#
-#  "this string" & " is internally " & "represented as"
-#
-#             con  -- inner nodes do not contain raw data
-#            /   \
-#           /     \
-#          /       \
-#        con       "represented as"
-#       /   \
-#      /     \
-#     /       \
-#    /         \
-#   /           \
-#"this string"  " is internally "
-#
-#  Note that this is the same as:
-#  "this string" & (" is internally " & "represented as")
-#
-#             con
-#            /   \
-#           /     \
-#          /       \
-# "this string"    con
-#                 /   \
-#                /     \
-#               /       \
-#              /         \
-#             /           \
-#" is internally "        "represented as"
-#
-#  The 'con' operator is associative! This does not matter however for
-#  the algorithms we use for ropes.
-#
-#  Note that the left and right pointers are not needed for leaves.
-#  Leaves have relatively high memory overhead (~30 bytes on a 32
-#  bit machines) and we produce many of them. This is why we cache and
-#  share leaves across different rope trees.
-#  To cache them they are inserted in a `cache` array.
+# Ropes are a data structure that represents a very long string
+# efficiently; especially concatenation is done in O(1) instead of O(N).
+# Ropes make use a lazy evaluation: They are essentially concatenation
+# trees that are only flattened when converting to a native Nim
+# string or when written to disk. The empty string is represented by a
+# nil pointer.
 
 import
   hashes
@@ -69,12 +30,11 @@ type
                        # performance of the code generator (assignments
                        # copy the format strings
                        # though it is not necessary)
-  Rope* = ref RopeObj
-  RopeObj*{.acyclic.} = object of RootObj # the empty rope is represented
-                                          # by nil to safe space
-    left, right: Rope
-    L: int                    # <= 0 if a leaf
+  Rope* {.acyclic.} = ref object
+    kids: seq[Rope]
+    L: int                         # <= 0 if a leaf
     data*: string
+    unique: bool  # is not shared and can appended more efficiently
 
 proc len*(a: Rope): int =
   ## the rope's length
@@ -82,9 +42,12 @@ proc len*(a: Rope): int =
   else: result = abs a.L
 
 proc newRope(data: string = ""): Rope =
-  new(result)
-  result.L = -data.len
-  result.data = data
+  result = Rope(kids: @[], L: -data.len, data: data, unique: false)
+
+proc newRopeAppender*(): Rope =
+  result = Rope(kids: @[], L: 0, data: "", unique: true)
+
+proc freeze*(r: Rope) {.inline.} = r.unique = false
 
 when compileOption("tlsEmulation"): # fixme: be careful if you want to make ropes support multiple threads
   var
@@ -96,19 +59,6 @@ else:
 proc resetRopeCache* =
   for i in low(cache)..high(cache):
     cache[i] = nil
-
-proc ropeInvariant(r: Rope): bool =
-  if r == nil:
-    result = true
-  else:
-    result = true #
-                  #    if r.data <> snil then
-                  #      result := true
-                  #    else begin
-                  #      result := (r.left <> nil) and (r.right <> nil);
-                  #      if result then result := ropeInvariant(r.left);
-                  #      if result then result := ropeInvariant(r.right);
-                  #    end
 
 var gCacheTries* = 0
 var gCacheMisses* = 0
@@ -129,7 +79,6 @@ proc rope*(s: string): Rope =
     result = nil
   else:
     result = insertInCache(s)
-  assert(ropeInvariant(result))
 
 proc rope*(i: BiggestInt): Rope =
   ## Converts an int to a rope.
@@ -146,10 +95,7 @@ proc `&`*(a, b: Rope): Rope =
   elif b == nil:
     result = a
   else:
-    result = newRope()
-    result.L = abs(a.L) + abs(b.L)
-    result.left = a
-    result.right = b
+    result = Rope(kids: @[a, b], L: abs(a.L) + abs(b.L), data: "", unique: false)
 
 proc `&`*(a: Rope, b: string): Rope =
   ## the concatenation operator for ropes.
@@ -159,30 +105,50 @@ proc `&`*(a: string, b: Rope): Rope =
   ## the concatenation operator for ropes.
   result = rope(a) & b
 
-proc `&`*(a: openArray[Rope]): Rope =
-  ## the concatenation operator for an openarray of ropes.
-  for i in 0..high(a): result = result & a[i]
-
 proc add*(a: var Rope, b: Rope) =
   ## adds `b` to the rope `a`.
-  a = a & b
+  if b.len == 0: return
+  if a == nil:
+    a = Rope(kids: b.kids, L: b.L, data: b.data, unique: false)
+  elif a.L <= 0 or not a.unique:
+    # promote a literal to a container:
+    let old = a
+    a = Rope(kids: @[old, b], L: abs(old.L) + abs(b.L), data: "", unique: old.unique)
+  else:
+    a.L += b.len
+    a.kids.add b
+
+when false:
+  proc dup*(b: Rope): Rope =
+    if b == nil:
+      result = nil
+    else:
+      result = Rope(kids: b.kids, L: b.L, data: b.data, unique: false)
 
 proc add*(a: var Rope, b: string) =
   ## adds `b` to the rope `a`.
-  a = a & b
+  a.add rope(b)
+
+proc `&`*(a: openArray[Rope]): Rope =
+  ## the concatenation operator for an openarray of ropes.
+  result = nil
+  for i in 0..high(a): result.add a[i]
 
 iterator leaves*(r: Rope): string =
   ## iterates over any leaf string in the rope `r`.
   if r != nil:
-    var stack = @[r]
+    var stack = @[(r, 0)]
     while stack.len > 0:
-      var it = stack.pop
-      while it.left != nil:
-        assert it.right != nil
-        stack.add(it.right)
-        it = it.left
-        assert(it != nil)
-      yield it.data
+      let (r, i) = stack[^1]
+      if r.L <= 0:
+        yield r.data
+        discard stack.pop
+      else:
+        if i < r.kids.len:
+          inc stack[^1][1]
+          stack.add (r.kids[i], 0)
+        else:
+          discard stack.pop
 
 iterator items*(r: Rope): char =
   ## iterates over any character in the rope `r`.
@@ -210,14 +176,15 @@ proc `$`*(r: Rope): string =
 
 proc ropeConcat*(a: varargs[Rope]): Rope =
   # not overloaded version of concat to speed-up `rfmt` a little bit
-  for i in 0..high(a): result = result & a[i]
+  result = nil
+  for i in 0..high(a): result.add a[i]
 
 proc prepend*(a: var Rope, b: Rope) = a = b & a
 proc prepend*(a: var Rope, b: string) = a = b & a
 
 proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
   var i = 0
-  result = nil
+  result = newRopeAppender()
   var num = 0
   while i < frmt.len:
     if frmt[i] == '$':
@@ -270,7 +237,7 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
       else: break
     if i - 1 >= start:
       result.add(substr(frmt, start, i - 1))
-  assert(ropeInvariant(result))
+  result.unique = false
 
 proc `%`*(frmt: static[FormatStr], args: openArray[Rope]): Rope =
   runtimeFormat(frmt, args)
