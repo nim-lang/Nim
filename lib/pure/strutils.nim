@@ -2022,7 +2022,8 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
   if sub.len == 0:
-    return -1
+    let rightIndex: Natural = if last < 0: s.len else: last
+    return max(start, rightIndex)
   if sub.len > s.len - start:
     return -1
   let last = if last == -1: s.high else: last
