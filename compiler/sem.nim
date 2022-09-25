@@ -17,7 +17,8 @@ import
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
-  isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs
+  isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs,
+  errorhandling
 
 when defined(nimfix):
   import nimfix/prettybase
@@ -322,7 +323,7 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       result = evaluated
       let expectedType = eOrig.typ.skipTypes({tyStatic})
       if hasCycle(result):
-        result = localErrorNode(c, eOrig, "the resulting AST is cyclic and cannot be processed further")
+        result = newError(eOrig, eOrig.info, "the resulting AST is cyclic and cannot be processed further")
       else:
         semmacrosanity.annotateType(result, expectedType, c.config)
   else:
