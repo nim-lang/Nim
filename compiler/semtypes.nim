@@ -189,6 +189,8 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tyVarargs, prev, c)
   if n.len == 2 or n.len == 3:
     var base = semTypeNode(c, n[1], nil)
+    if base.kind == tyBuiltInTypeClass:
+      localError(c.config, n.info, errTIsNotAConcreteType % base.typeToString)
     addSonSkipIntLit(result, base, c.idgen)
     if n.len == 3:
       result.n = newIdentNode(considerQuotedIdent(c, n[2]), n[2].info)
