@@ -12,6 +12,8 @@
 
 - The `gc:v2` option is removed.
 
+- The `mainmodule` and `m` options are removed.
+
 - The `threads:on` option is now the default.
 
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
