@@ -1742,16 +1742,22 @@ proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: v
     t = t[0]
 
 proc arrayTypeForElemType(typ: PType): string =
-  # XXX This should also support tyEnum and tyBool
+  let typ = typ.skipTypes(abstractRange)
   case typ.kind
   of tyInt, tyInt32: "Int32Array"
   of tyInt16: "Int16Array"
   of tyInt8: "Int8Array"
   of tyUInt, tyUInt32: "Uint32Array"
   of tyUInt16: "Uint16Array"
-  of tyUInt8: "Uint8Array"
+  of tyUInt8, tyChar, tyBool: "Uint8Array"
   of tyFloat32: "Float32Array"
   of tyFloat64, tyFloat: "Float64Array"
+  of tyEnum:
+    case typ.size
+    of 1: "Uint8Array"
+    of 2: "Uint16Array"
+    of 4: "Uint32Array"
+    else: ""
   else: ""
 
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
