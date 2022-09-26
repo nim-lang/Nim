@@ -389,7 +389,7 @@ Some chapter
       ~~~~~
 
       """
-    let output9good = input9good.toHtml
+    let output9good = input9good.toHtml(preferRst)
     doAssert "<h1 id=\"level1\">Level1</h1>" in output9good
     doAssert "<h2 id=\"level2\">Level2</h2>" in output9good
     doAssert "<h3 id=\"level3\">Level3</h3>" in output9good
@@ -419,7 +419,7 @@ Some chapter
 
       """
     var error9Bad = new string
-    let output9Bad = input9Bad.toHtml(error=error9Bad)
+    let output9Bad = input9Bad.toHtml(preferRst, error=error9Bad)
     check(error9Bad[] == "input(15, 1) Error: new section expected (section " &
             "level inconsistent: underline ~~~~~ unexpectedly found, while " &
             "the following intermediate section level(s) are missing on " &
@@ -536,6 +536,63 @@ Some chapter
     let output1 = input1.toHtml
     doAssert output1 == "GC_step"
 
+  test "RST anchors/links to headings":
+    # Currently in TOC mode anchors are modified (for making links from
+    # the TOC unique)
+    let inputNoToc = dedent"""
+        Type relations
+        ==============
+
+        Convertible relation
+        --------------------
+
+        Ref. `Convertible relation`_
+        """
+    let outputNoToc = inputNoToc.toHtml
+    check outputNoToc.count("id=\"type-relations\"") == 1
+    check outputNoToc.count("id=\"convertible-relation\"") == 1
+    check outputNoToc.count("href=\"#convertible-relation\"") == 1
+
+    let inputTocCases = @[
+      dedent"""
+        .. contents::
+
+        Type relations
+        ==============
+
+        Convertible relation
+        --------------------
+
+        Ref. `Convertible relation`_
+
+        Guards and locks
+        ================
+        """,
+      dedent"""
+        Ref. `Convertible relation`_
+
+        .. contents::
+
+        Type relations
+        ==============
+
+        Convertible relation
+        --------------------
+
+        Guards and locks
+        ================
+        """
+    ]
+    for inputToc in inputTocCases:
+      let outputToc = inputToc.toHtml
+      check outputToc.count("id=\"type-relations\"") == 1
+      check outputToc.count("id=\"type-relations-convertible-relation\"") == 1
+      check outputToc.count("id=\"convertible-relation\">") == 0
+      # Besides "Ref.", heading also contains link to itself:
+      check outputToc.count(
+          "href=\"#type-relations-convertible-relation\">") == 2
+      check outputToc.count("href=\"#convertible-relation\"") == 0
+
   test "RST links":
     let input1 = """
 Want to learn about `my favorite programming language`_?
@@ -552,7 +609,7 @@ context1
 
 context2
 """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml(preferRst)
     doAssert "<hr" in output1
 
     let input2 = """
@@ -582,8 +639,13 @@ Test literal block
 ```
 let x = 1
 ``` """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml({roSupportMarkdown, roPreferMarkdown})
     doAssert "<pre" in output1 and "class=\"Keyword\"" notin output1
+
+    # Check Nim highlighting by default in .nim files:
+    let output1nim = input1.toHtml({roSupportMarkdown, roPreferMarkdown,
+                                    roNimFile})
+    doAssert "<pre" in output1nim and "class=\"Keyword\"" in output1nim
 
     let input2 = """
 Parse the block with language specifier:
@@ -921,7 +983,7 @@ Test1
 
       Ref. [#note]_
       """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml(preferRst)
     doAssert output1.count(">[1]</a>") == 1
     doAssert output1.count(">[2]</a>") == 2
     doAssert "href=\"#footnote-note\"" in output1
@@ -939,7 +1001,7 @@ Test1
 
       Not references[#note]_[1 #]_ [wrong citation]_ and [not&allowed]_.
       """
-    let output2 = input2.toHtml
+    let output2 = input2.toHtml(preferRst)
     doAssert output2 == "Not references[#note]_[1 #]_ [wrong citation]_ and [not&amp;allowed]_."
 
     # check that auto-symbol footnotes work:
@@ -955,7 +1017,7 @@ Test1
 
       And [*]_.
       """
-    let output3 = input3.toHtml
+    let output3 = input3.toHtml(preferRst)
     # both references and footnotes. Footnotes have link to themselves.
     doAssert output3.count("href=\"#footnotesym-1\">[*]</a>") == 2
     doAssert output3.count("href=\"#footnotesym-2\">[**]</a>") == 2
@@ -985,7 +1047,7 @@ Test1
 
       Ref. [#note]_ and [#]_ and [#]_.
       """
-    let output4 = input4.toHtml
+    let output4 = input4.toHtml(preferRst)
     doAssert ">[-1]" notin output1
     let order = @[
         "footnote-3", "[3]", "Manual1.",
@@ -1010,7 +1072,7 @@ Test1
       Ref. [#note]_
       """
     var error5 = new string
-    let output5 = input5.toHtml(error=error5)
+    let output5 = input5.toHtml(preferRst, error=error5)
     check(error5[] == "input(1, 1) Error: mismatch in number of footnotes " &
             "and their refs: 1 (lines 2) != 0 (lines ) for auto-numbered " &
             "footnotes")
@@ -1024,7 +1086,7 @@ Test1
       Ref. [*]_
       """
     var error6 = new string
-    let output6 = input6.toHtml(error=error6)
+    let output6 = input6.toHtml(preferRst, error=error6)
     check(error6[] == "input(1, 1) Error: mismatch in number of footnotes " &
             "and their refs: 1 (lines 3) != 2 (lines 2, 6) for auto-symbol " &
             "footnotes")
@@ -1034,7 +1096,7 @@ Test1
 
       Ref. [some:citation-2020]_.
       """
-    let output7 = input7.toHtml
+    let output7 = input7.toHtml(preferRst)
     doAssert output7.count("href=\"#citation-somecoloncitationminus2020\"") == 2
     doAssert output7.count("[Some:CITATION-2020]") == 1
     doAssert output7.count("[some:citation-2020]") == 1
@@ -1047,7 +1109,7 @@ Test1
       Ref. [som]_.
       """
     var warnings8 = new seq[string]
-    let output8 = input8.toHtml(warnings=warnings8)
+    let output8 = input8.toHtml(preferRst, warnings=warnings8)
     check(warnings8[] == @["input(3, 7) Warning: broken link 'citation-som'"])
 
     # check that footnote group does not break parsing of other directives:
@@ -1083,7 +1145,7 @@ Test1
 
             .. [Third] Citation.
       """
-    let output10 = input10.toHtml
+    let output10 = input10.toHtml(preferRst)
     doAssert output10.count("<hr class=\"footnote\">" &
                             "<div class=\"footnote-group\">") == 3
     doAssert output10.count("<div class=\"footnote-label\">") == 3
@@ -1103,7 +1165,7 @@ Test1
       .. [#] Body3
       .. [2] Body2.
       """
-    let output12 = input12.toHtml
+    let output12 = input12.toHtml(preferRst)
     let orderAuto = @[
         "#footnoteauto-1", "[1]",
         "#footnoteauto-2", "[3]",
@@ -1615,4 +1677,9 @@ suite "local file inclusion":
     var error = new string
     discard ".. code-block:: nim\n    :file: ./readme.md".toHtml(error=error)
     check(error[] == "input(2, 20) Error: disabled directive: 'file'")
+
+  test "code-block file directive is disabled - Markdown":
+    var error = new string
+    discard "```nim file = ./readme.md\n```".toHtml(error=error)
+    check(error[] == "input(1, 23) Error: disabled directive: 'file'")
 

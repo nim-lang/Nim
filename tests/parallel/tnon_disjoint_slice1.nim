@@ -1,6 +1,7 @@
 discard """
+  matrix: "--mm:refc"
   errormsg: "cannot prove (i)..(i) disjoint from (i + 1)..(i + 1)"
-  line: 20
+  line: 21
 """
 
 import threadpool

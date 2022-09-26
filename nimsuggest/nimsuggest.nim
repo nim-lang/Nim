@@ -711,17 +711,16 @@ proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =
     except Exception as e:
       myLog fmt "Failed clean recompilation:\n {e.msg} \n\n {e.getStackTrace()}"
 
-proc fileSymbols(graph: ModuleGraph, fileIdx: FileIndex): seq[tuple[sym: PSym, info: TLineInfo]] =
-  result = graph.suggestSymbols.getOrDefault(fileIdx, @[]).deduplicate
-
 proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int):
-    tuple[sym: PSym, info: TLineInfo] =
+    ref SymInfoPair =
   let
     fileIdx = fileInfoIdx(graph.config, file)
     trackPos = newLineInfo(fileIdx, line, col)
-  for (sym, info) in graph.fileSymbols(fileIdx):
-    if isTracked(info, trackPos, sym.name.s.len):
-      return (sym, info)
+  for s in graph.fileSymbols(fileIdx):
+    if isTracked(s.info, trackPos, s.sym.name.s.len):
+      new(result)
+      result[] = s
+      break
 
 proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIndex) =
   let sha = $sha1.secureHashFile(file)
@@ -735,7 +734,7 @@ proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIn
 proc suggestResult(graph: ModuleGraph, sym: PSym, info: TLineInfo, defaultSection = ideNone) =
   let section = if defaultSection != ideNone:
                   defaultSection
-                elif sym.info == info:
+                elif sym.info.exactEquals(info):
                   ideDef
                 else:
                   ideUse
@@ -800,31 +799,31 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
 
   case cmd
   of ideDef:
-    let (sym, info) = graph.findSymData(file, line, col)
-    if sym != nil:
-      graph.suggestResult(sym, sym.info)
+    let s = graph.findSymData(file, line, col)
+    if not s.isNil:
+      graph.suggestResult(s.sym, s.sym.info)
   of ideType:
-    let (sym, _) = graph.findSymData(file, line, col)
-    if sym != nil:
-      let typeSym = sym.typ.sym
+    let s = graph.findSymData(file, line, col)
+    if not s.isNil:
+      let typeSym = s.sym.typ.sym
       if typeSym != nil:
         graph.suggestResult(typeSym, typeSym.info, ideType)
-      elif sym.typ.len != 0:
-        let genericType = sym.typ[0].sym
+      elif s.sym.typ.len != 0:
+        let genericType = s.sym.typ[0].sym
         graph.suggestResult(genericType, genericType.info, ideType)
   of ideUse, ideDus:
-    let symbol = graph.findSymData(file, line, col).sym
-    if symbol != nil:
-      for (sym, info) in graph.suggestSymbolsIter:
-        if sym == symbol:
-          graph.suggestResult(sym, info)
+    let symbol = graph.findSymData(file, line, col)
+    if not symbol.isNil:
+      for s in graph.suggestSymbolsIter:
+        if s.sym == symbol.sym:
+          graph.suggestResult(s.sym, s.info)
   of ideHighlight:
-    let sym = graph.findSymData(file, line, col).sym
-    if sym != nil:
-      let usages = graph.fileSymbols(fileIndex).filterIt(it.sym == sym)
+    let sym = graph.findSymData(file, line, col)
+    if not sym.isNil:
+      let usages = graph.fileSymbols(fileIndex).filterIt(it.sym == sym.sym)
       myLog fmt "Found {usages.len} usages in {file.string}"
-      for (sym, info) in usages:
-        graph.suggestResult(sym, info)
+      for s in usages:
+        graph.suggestResult(s.sym, s.info)
   of ideRecompile:
     graph.recompileFullProject()
   of ideChanged:
@@ -837,14 +836,12 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     let
       module = graph.getModule fileIndex
       symbols = graph.fileSymbols(fileIndex)
-        .filterIt(it.sym.info == it.info and
+        .filterIt(it.sym.info.exactEquals(it.info) and
                     (it.sym.owner == module or
                      it.sym.kind in searchableSymKinds))
-    for (sym, _) in symbols:
-      suggestResult(
-        conf,
-        symToSuggest(graph, sym, false,
-                     ideOutline, sym.info, 100, PrefixMatch.None, false, 0))
+
+    for s in symbols:
+      graph.suggestResult(s.sym, s.info, ideOutline)
   of ideChk:
     myLog fmt "Reporting errors for {graph.suggestErrors.len} file(s)"
     for sug in graph.suggestErrorsIter:
@@ -856,13 +853,12 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       suggestResult(graph.config, error)
   of ideGlobalSymbols:
     var counter = 0
-    for (sym, info) in graph.suggestSymbolsIter:
-      if sfGlobal in sym.flags or sym.kind in searchableSymKinds:
-        if contains(sym.name.s, file.string):
+    for s in graph.suggestSymbolsIter:
+      if (sfGlobal in s.sym.flags or s.sym.kind in searchableSymKinds) and
+          s.sym.info == s.info:
+        if contains(s.sym.name.s, file.string):
           inc counter
-          suggestResult(conf,
-                        symToSuggest(graph, sym, isLocal=false,
-                                     ideDef, info, 100, PrefixMatch.None, false, 0))
+          graph.suggestResult(s.sym, s.info)
         # stop after first 100 results
         if counter > 100:
           break

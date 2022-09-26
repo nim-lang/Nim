@@ -28,12 +28,12 @@ from std/os import getEnv, existsEnv, delEnv, putEnv, envPairs,
 from std/times import cpuTime
 from std/hashes import hash
 from std/osproc import nil
-from system/formatfloat import addFloatRoundtrip, addFloatSprintf
 
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
-
+  import std/syncio
+else:
+  from std/formatfloat import addFloatRoundtrip, addFloatSprintf 
 
 # There are some useful procs in vmconv.
 import vmconv, vmmarshal
@@ -324,6 +324,8 @@ proc registerAdditionalOps*(c: PCtx) =
     getEffectList(c, a, exceptionEffects)
   registerCallback c, "stdlib.effecttraits.getTagsListImpl", proc (a: VmArgs) =
     getEffectList(c, a, tagEffects)
+  registerCallback c, "stdlib.effecttraits.getForbidsListImpl", proc (a: VmArgs) =
+    getEffectList(c, a, forbiddenEffects)
 
   registerCallback c, "stdlib.effecttraits.isGcSafeImpl", proc (a: VmArgs) =
     let fn = getNode(a, 0)
