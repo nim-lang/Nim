@@ -77,12 +77,12 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
                callee, params: Rope) =
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri[0])
   genLineDir(p, ri)
-  var pl = callee & ~"(" & params
+  var pl = callee & "(" & params
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)
   if typ[0] != nil:
     if isInvalidReturnType(p.config, typ):
-      if params.len != 0: pl.add(~", ")
+      if params.len != 0: pl.add(", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not preventNrvo(p, d.lode, le, ri):
         # Great, we can use 'd':
@@ -91,18 +91,18 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
           # reset before pass as 'result' var:
           discard "resetLoc(p, d)"
         pl.add(addrLoc(p.config, d))
-        pl.add(~");$n")
+        pl.add(");\n")
         line(p, cpsStmts, pl)
       else:
         var tmp: TLoc
         getTemp(p, typ[0], tmp, needsInit=true)
         pl.add(addrLoc(p.config, tmp))
-        pl.add(~");$n")
+        pl.add(");\n")
         line(p, cpsStmts, pl)
         genAssignment(p, d, tmp, {}) # no need for deep copying
       if canRaise: raiseExit(p)
     else:
-      pl.add(~")")
+      pl.add(")")
       if p.module.compileToCpp:
         if lfSingleUse in d.flags:
           # do not generate spurious temporaries for C++! For C we're better off
@@ -140,7 +140,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         if canRaise: raiseExit(p)
         genAssignment(p, d, tmp, {})
   else:
-    pl.add(~");$n")
+    pl.add(");\n")
     line(p, cpsStmts, pl)
     if canRaise: raiseExit(p)
 
@@ -394,12 +394,12 @@ proc genParams(p: BProc, ri: PNode, typ: PType; result: var Rope) =
       let paramType = typ.n[i]
       if not paramType.typ.isCompileTimeOnly:
         if oldLen != result.len:
-          result.add(~", ")
+          result.add(", ")
           oldLen = result.len
         genArg(p, ri[i], paramType.sym, ri, result, needTmp[i-1])
     else:
       if oldLen != result.len:
-        result.add(~", ")
+        result.add(", ")
         oldLen = result.len
       genArgNoParam(p, ri[i], result, needTmp[i-1])
 
@@ -428,7 +428,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
 proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
   proc addComma(r: Rope): Rope =
-    if r.len == 0: r else: r & ~", "
+    if r.len == 0: r else: r & ", "
 
   const PatProc = "$1.ClE_0? $1.ClP_0($3$1.ClE_0):(($4)($1.ClP_0))($2)"
   const PatIter = "$1.ClP_0($3$1.ClE_0)" # we know the env exists
@@ -454,7 +454,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri[0])
   if typ[0] != nil:
     if isInvalidReturnType(p.config, typ):
-      if ri.len > 1: pl.add(~", ")
+      if ri.len > 1: pl.add(", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not preventNrvo(p, d.lode, le, ri):
         # Great, we can use 'd':
@@ -510,18 +510,18 @@ proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Rope;
     if paramType.typ.isCompileTimeOnly:
       discard
     elif typ[i].kind in {tyVar} and ri[i].kind == nkHiddenAddr:
-      if argsCounter > 0: result.add ~", "
+      if argsCounter > 0: result.add ", "
       genArgNoParam(p, ri[i][0], result)
       inc argsCounter
     else:
-      if argsCounter > 0: result.add ~", "
+      if argsCounter > 0: result.add ", "
       genArgNoParam(p, ri[i], result) #, typ.n[i].sym)
       inc argsCounter
   else:
     if tfVarargs notin typ.flags:
       localError(p.config, ri.info, "wrong argument count")
     else:
-      if argsCounter > 0: result.add ~", "
+      if argsCounter > 0: result.add ", "
       genArgNoParam(p, ri[i], result)
       inc argsCounter
 
@@ -631,14 +631,14 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Ro
         if ri.kind in nkCallKinds:
           let typ = skipTypes(ri[0].typ, abstractInst)
           if pat[i+1] == '+': genArgNoParam(p, ri[0], result)
-          result.add(~"(")
+          result.add("(")
           if 1 < ri.len:
             var argsCounterB = 0
             genOtherArg(p, ri, 1, typ, result, argsCounterB)
           for k in j+1..<ri.len:
             var argsCounterB = 0
             genOtherArg(p, ri, k, typ, result, argsCounterB)
-          result.add(~")")
+          result.add(")")
         else:
           localError(p.config, ri.info, "call expression expected for C++ pattern")
         inc i
@@ -659,7 +659,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Ro
       var idx, stars: int
       if scanCppGenericSlot(pat, i, idx, stars):
         var t = resolveStarsInCppType(typ, idx, stars)
-        if t == nil: result.add(~"void")
+        if t == nil: result.add("void")
         else: result.add(getTypeDesc(p.module, t))
     else:
       let start = i
@@ -700,7 +700,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
         list.r = pl
         genAssignment(p, d, list, {}) # no need for deep copying
     else:
-      pl.add(~";$n")
+      pl.add(";\n")
       line(p, cpsStmts, pl)
   else:
     var pl = newRopeAppender()
@@ -718,7 +718,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # generates a crappy ObjC call
   var op: TLoc
   initLocExpr(p, ri[0], op)
-  var pl = ~"["
+  var pl = "["
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)
   assert(typ.kind == tyProc)
@@ -732,16 +732,16 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     start = 1
     pl.add(op.r)
     if ri.len > 1:
-      pl.add(~": ")
+      pl.add(": ")
       genArg(p, ri[1], typ.n[1].sym, ri, pl)
       start = 2
   else:
     if ri.len > 1:
       genArg(p, ri[1], typ.n[1].sym, ri, pl)
-      pl.add(~" ")
+      pl.add(" ")
     pl.add(op.r)
     if ri.len > 2:
-      pl.add(~": ")
+      pl.add(": ")
       genArg(p, ri[2], typ.n[2].sym, ri, pl)
   for i in start..<ri.len:
     assert(typ.len == typ.n.len)
@@ -749,30 +749,30 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       internalError(p.config, ri.info, "varargs for objective C method?")
     assert(typ.n[i].kind == nkSym)
     var param = typ.n[i].sym
-    pl.add(~" ")
+    pl.add(" ")
     pl.add(param.name.s)
-    pl.add(~": ")
+    pl.add(": ")
     genArg(p, ri[i], param, ri, pl)
   if typ[0] != nil:
     if isInvalidReturnType(p.config, typ):
-      if ri.len > 1: pl.add(~" ")
+      if ri.len > 1: pl.add(" ")
       # beware of 'result = p(result)'. We always allocate a temporary:
       if d.k in {locTemp, locNone}:
         # We already got a temp. Great, special case it:
         if d.k == locNone: getTemp(p, typ[0], d, needsInit=true)
-        pl.add(~"Result: ")
+        pl.add("Result: ")
         pl.add(addrLoc(p.config, d))
-        pl.add(~"];$n")
+        pl.add("];\n")
         line(p, cpsStmts, pl)
       else:
         var tmp: TLoc
         getTemp(p, typ[0], tmp, needsInit=true)
         pl.add(addrLoc(p.config, tmp))
-        pl.add(~"];$n")
+        pl.add("];\n")
         line(p, cpsStmts, pl)
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
-      pl.add(~"]")
+      pl.add("]")
       if d.k == locNone: getTemp(p, typ[0], d)
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
@@ -780,7 +780,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       list.r = pl
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
-    pl.add(~"];$n")
+    pl.add("];\n")
     line(p, cpsStmts, pl)
 
 proc notYetAlive(n: PNode): bool {.inline.} =

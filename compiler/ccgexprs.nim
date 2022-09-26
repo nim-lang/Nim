@@ -24,7 +24,7 @@ proc int64Literal(i: BiggestInt; result: var Rope) =
   if i > low(int64):
     result.add "IL64($1)" % [rope(i)]
   else:
-    result.add ~"(IL64(-9223372036854775807) - IL64(1))"
+    result.add "(IL64(-9223372036854775807) - IL64(1))"
 
 proc uint64Literal(i: uint64; result: var Rope) = result.add rope($i & "ULL")
 
@@ -33,11 +33,11 @@ proc intLiteral(i: BiggestInt; result: var Rope) =
     result.add rope(i)
   elif i == low(int32):
     # Nim has the same bug for the same reasons :-)
-    result.add ~"(-2147483647 -1)"
+    result.add "(-2147483647 -1)"
   elif i > low(int64):
     result.add "IL64($1)" % [rope(i)]
   else:
-    result.add ~"(IL64(-9223372036854775807) - IL64(1))"
+    result.add "(IL64(-9223372036854775807) - IL64(1))"
 
 proc intLiteral(i: Int128; result: var Rope) =
   intLiteral(toInt64(i), result)
@@ -58,8 +58,8 @@ proc genLiteral(p: BProc, n: PNode, ty: PType; result: var Rope) =
     of tyChar, tyNil:
       intLiteral(n.intVal, result)
     of tyBool:
-      if n.intVal != 0: result.add ~"NIM_TRUE"
-      else: result.add ~"NIM_FALSE"
+      if n.intVal != 0: result.add "NIM_TRUE"
+      else: result.add "NIM_FALSE"
     of tyInt64: int64Literal(n.intVal, result)
     of tyUInt64: uint64Literal(uint64(n.intVal), result)
     else:
@@ -1742,7 +1742,7 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   discard getTypeDesc(p.module, t)
   if not p.module.compileToCpp:
     while t.kind == tyObject and t[0] != nil:
-      r.add(~".Sup")
+      r.add(".Sup")
       t = skipTypes(t[0], skipPtrs)
   if isObjLackingTypeField(t):
     globalError(p.config, x.info,
@@ -3398,7 +3398,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
         # leading to duplicate code like this:
         # "{NIM_NIL,NIM_NIL}, {NIM_NIL,NIM_NIL}"
         if n[0].kind == nkNilLit:
-          result.add ~"{NIM_NIL,NIM_NIL}"
+          result.add "{NIM_NIL,NIM_NIL}"
         else:
           var d: TLoc
           initLocExpr(p, n[0], d)

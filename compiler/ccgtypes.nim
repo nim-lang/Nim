@@ -258,7 +258,7 @@ proc addAbiCheck(m: BModule, t: PType, name: Rope) =
 
 
 proc fillResult(conf: ConfigRef; param: PNode, proctype: PType) =
-  fillLoc(param.sym.loc, locParam, param, ~"Result",
+  fillLoc(param.sym.loc, locParam, param, "Result",
           OnStack)
   let t = param.sym.typ
   if mapReturnType(conf, t) != ctArray and isInvalidReturnType(conf, proctype):
@@ -427,29 +427,29 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
                    weakDep=false) =
   params = ""
   if t[0] == nil or isInvalidReturnType(m.config, t):
-    rettype = ~"void"
+    rettype = "void"
   else:
     rettype = getTypeDescAux(m, t[0], check, skResult)
   for i in 1..<t.n.len:
     if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
     var param = t.n[i].sym
     if isCompileTimeOnly(param.typ): continue
-    if params != "": params.add(~", ")
+    if params != "": params.add(", ")
     fillParamName(m, param)
     fillLoc(param.loc, locParam, t.n[i],
             param.paramStorageLoc)
     if ccgIntroducedPtr(m.config, param, t[0]):
       params.add(getTypeDescWeak(m, param.typ, check, skParam))
-      params.add(~"*")
+      params.add("*")
       incl(param.loc.flags, lfIndirect)
       param.loc.storage = OnUnknown
     elif weakDep:
       params.add(getTypeDescWeak(m, param.typ, check, skParam))
     else:
       params.add(getTypeDescAux(m, param.typ, check, skParam))
-    params.add(~" ")
+    params.add(" ")
     if sfNoalias in param.flags:
-      params.add(~"NIM_NOALIAS ")
+      params.add("NIM_NOALIAS ")
     params.add(param.loc.r)
     # declare the len field for open arrays:
     var arr = param.typ.skipTypes({tyGenericInst})
@@ -543,7 +543,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
-      let noAlias = if sfNoalias in field.flags: ~" NIM_NOALIAS" else: ""
+      let noAlias = if sfNoalias in field.flags: " NIM_NOALIAS" else: ""
 
       let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
       if fieldType.kind == tyUncheckedArray:
@@ -838,7 +838,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
 
       template addResultType(ty: untyped) =
         if ty == nil or ty.kind == tyVoid:
-          result.add(~"void")
+          result.add("void")
         elif ty.kind == tyStatic:
           internalAssert m.config, ty.n != nil
           result.add ty.n.renderTree
@@ -872,7 +872,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
       # The resulting type will include commas and these won't play well
       # with the C macros for defining procs such as N_NIMCALL. We must
       # create a typedef for the type and use it in the proc signature:
-      let typedefName = ~"TY" & $sig
+      let typedefName = "TY" & $sig
       m.s[cfsTypes].addf("typedef $1 $2;$n", [result, typedefName])
       m.typeCache[sig] = typedefName
       result = typedefName

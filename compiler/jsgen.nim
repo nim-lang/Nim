@@ -1269,7 +1269,7 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
   useMagic(p, "reprDiscriminant") # no need to offset by firstOrd unlike for cgen
   let msg = genFieldDefect(p.config, field.name.s, disc)
   lineF(p, "if ($1[$2.$3]$4undefined) { raiseFieldError2(makeNimstrLit($5), reprDiscriminant($2.$3, $6)); }$n",
-    setx.res, tmp, disc.loc.r, if negCheck: ~"!==" else: ~"===",
+    setx.res, tmp, disc.loc.r, if negCheck: "!==" else: "===",
     makeJSString(msg), genTypeInfo(p, disc.typ))
 
   if addrTyp != nil and mapType(p, addrTyp) == etyBaseIndex:
@@ -1823,7 +1823,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     internalError(p.config, "createVar: " & $t.kind)
     result = ""
 
-template returnType: untyped = ~""
+template returnType: untyped = ""
 
 proc genVarInit(p: PProc, v: PSym, n: PNode) =
   var
@@ -2423,9 +2423,9 @@ proc genProcBody(p: PProc, prc: PSym): Rope =
   else:
     result = ""
   if p.beforeRetNeeded:
-    result.add p.indentLine(~"BeforeRet: {$n")
+    result.add p.indentLine("BeforeRet: {\n")
     result.add p.body
-    result.add p.indentLine(~"};$n")
+    result.add p.indentLine("};\n")
   else:
     result.add(p.body)
   if prc.typ.callConv == ccSysCall:
@@ -2494,7 +2494,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
               optionalLine(p.indentLine(returnStmt))])
   else:
     # if optLineDir in p.config.options:
-      # result.add(~"\L")
+      # result.add("\L")
 
     if p.config.hcrOn:
       # Here, we introduce thunks that create the equivalent of a jump table
@@ -2517,7 +2517,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
 
   dec p.extraIndent
   result.add p.indentLine(def)
-  result.add p.indentLine(~"}$n")
+  result.add p.indentLine("}\n")
 
   #if gVerbosity >= 3:
   #  echo "END   generated code for: " & prc.name.s
@@ -2565,7 +2565,7 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
         r.res = "($1 - ($2 $3))" % [rope minuend, r.res, trimmer]
   elif (src.kind == tyPtr and mapType(p, src) == etyObject) and dest.kind == tyPointer:
     r.address = r.res
-    r.res = ~"null"
+    r.res = "null"
     r.typ = etyBaseIndex
   elif (dest.kind == tyPtr and mapType(p, dest) == etyObject) and src.kind == tyPointer:
     r.res = r.address

@@ -115,7 +115,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n[i].sym)]
     putLocIntoDest(p, v.loc, field)
     if forHcr or isGlobalInBlock:
-      hcrGlobals.add((loc: v.loc, tp: ~"NULL"))
+      hcrGlobals.add((loc: v.loc, tp: "NULL"))
 
   if forHcr:
     # end the block where the tuple gets initialized
@@ -357,7 +357,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     assignLocalVar(p, vn)
     initLocalVar(p, v, imm)
 
-  let traverseProc = ~"NULL"
+  let traverseProc = "NULL"
   # If the var is in a block (control flow like if/while or a block) in global scope just
   # register the so called "global" so it can be used later on. There is no need to close
   # and reopen of if (nim_hcr_do_init_) blocks because we are in one already anyway.
@@ -769,7 +769,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     genLineDir(p, t)
     # reraise the last exception:
     if p.config.exc == excCpp:
-      line(p, cpsStmts, ~"throw;$n")
+      line(p, cpsStmts, "throw;\n")
     else:
       linefmt(p, cpsStmts, "#reraiseException();$n", [])
   raiseInstr(p, p.s(cpsStmts))
@@ -1231,7 +1231,7 @@ proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =
       # finally requires catch all presence
       startBlock(p, "catch (...) {$n")
       genStmts(p, t[^1][0])
-      line(p, cpsStmts, ~"throw;$n")
+      line(p, cpsStmts, "throw;\n")
       endBlock(p)
 
     genSimpleBlock(p, t[^1][0])

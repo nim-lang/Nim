@@ -7,25 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
-# Ropes for the C code generator
-#
-# Ropes are a data structure that represents a very long string
-# efficiently; especially concatenation is done in O(1) instead of O(N).
-# Ropes make use a lazy evaluation: They are essentially concatenation
-# trees that are only flattened when converting to a native Nim
-# string or when written to disk. The empty string is represented by a
-# nil pointer.
+# Ropes for the C code generator. Ropes are mapped to `string` directly nowadays.
 
-import
-  hashes
+import hashes
 
 from pathutils import AbsoluteFile
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio, formatfloat]
-
-const
-  PayloadSize = 16
 
 type
   FormatStr* = string  # later we may change it to CString for better
@@ -34,9 +23,8 @@ type
                        # though it is not necessary)
   Rope* = string
 
-proc newRopeAppender*(): string =
+proc newRopeAppender*(): string {.inline.} =
   result = newString(0)
-  #Rope(L: 0, unique: true, kind: Container, kids: @[])
 
 proc freeze*(r: Rope) {.inline.} = discard
 
@@ -129,17 +117,6 @@ proc `%`*(frmt: static[FormatStr], args: openArray[Rope]): Rope =
 template addf*(c: var Rope, frmt: FormatStr, args: openArray[Rope]) =
   ## shortcut for ``add(c, frmt % args)``.
   c.add(frmt % args)
-
-when true:
-  template `~`*(r: string): Rope = r % []
-else:
-  {.push stack_trace: off, line_trace: off.}
-  proc `~`*(r: static[string]): Rope =
-    # this is the new optimized "to rope" operator
-    # the mnemonic is that `~` looks a bit like a rope :)
-    var r {.global.} = r % []
-    return r
-  {.pop.}
 
 const
   bufSize = 1024              # 1 KB is reasonable

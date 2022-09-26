@@ -280,7 +280,7 @@ proc genLineDir(p: BProc, t: PNode) =
   let line = t.info.safeLineNm
 
   if optEmbedOrigSrc in p.config.globalOptions:
-    p.s(cpsStmts).add(~"//" & sourceLine(p.config, t.info) & "\L")
+    p.s(cpsStmts).add("//" & sourceLine(p.config, t.info) & "\L")
   genCLineDir(p.s(cpsStmts), toFullPath(p.config, t.info), line, p.config)
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
@@ -1145,10 +1145,10 @@ proc genProcAux(m: BModule, prc: PSym) =
     if beforeRetNeeded in p.flags: generatedProc.add("{")
     generatedProc.add(p.s(cpsInit))
     generatedProc.add(p.s(cpsStmts))
-    if beforeRetNeeded in p.flags: generatedProc.add(~"\t}BeforeRet_: ;$n")
+    if beforeRetNeeded in p.flags: generatedProc.add("\t}BeforeRet_: ;\n")
     if optStackTrace in prc.options: generatedProc.add(deinitFrame(p))
     generatedProc.add(returnStmt)
-    generatedProc.add(~"}$N")
+    generatedProc.add("}\n")
   m.s[cfsProcs].add(generatedProc)
   if isReloadable(m, prc):
     m.s[cfsDynLibInit].addf("\t$1 = ($3) hcrRegisterProc($4, \"$1\", (void*)$2);$n",
@@ -1774,7 +1774,7 @@ proc genInitCode(m: BModule) =
     # Give this small function its own scope
     prc.addf("{$N", [])
     # Keep a bogus frame in case the code needs one
-    prc.add(~"\tTFrame FR_; FR_.len = 0;$N")
+    prc.add("\tTFrame FR_; FR_.len = 0;\n")
 
     writeSection(preInitProc, cpsLocals)
     writeSection(preInitProc, cpsInit, m.hcrOn)
@@ -1800,13 +1800,13 @@ proc genInitCode(m: BModule) =
         var procname = makeCString(m.module.name.s)
         prc.add(initFrame(m.initProc, procname, quotedFilename(m.config, m.module.info)))
       else:
-        prc.add(~"\tTFrame FR_; FR_.len = 0;$N")
+        prc.add("\tTFrame FR_; FR_.len = 0;\n")
 
     writeSection(initProc, cpsInit, m.hcrOn)
     writeSection(initProc, cpsStmts)
 
     if beforeRetNeeded in m.initProc.flags:
-      prc.add(~"\tBeforeRet_: ;$n")
+      prc.add("\tBeforeRet_: ;\n")
 
     if sfMainModule in m.module.flags and m.config.exc == excGoto:
       if getCompilerProc(m.g.graph, "nimTestErrorFlag") != nil:
