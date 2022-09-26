@@ -34,182 +34,39 @@ type
                        # though it is not necessary)
   RopeKind = enum
     LongLeaf, ShortLeaf, Container
-  Rope* {.acyclic.} = ref object
-    L: int
-    unique: bool  # is not shared and can appended more efficiently
-    case kind: RopeKind
-    of LongLeaf:
-      data: string
-    of ShortLeaf:
-      payload: array[PayloadSize, char]
-    of Container:
-      kids: seq[Rope]
+  Rope* = string
 
-proc len*(a: Rope): int =
-  ## the rope's length
-  if a == nil: result = 0
-  else: result = a.L
+proc newRopeAppender*(): string =
+  result = newString(0)
+  #Rope(L: 0, unique: true, kind: Container, kids: @[])
 
-proc toPayload(s: string): array[PayloadSize, char] =
-  copyMem(addr result, unsafeAddr(s[0]), s.len)
+proc freeze*(r: Rope) {.inline.} = discard
 
-proc fromPayload(r: Rope): string =
-  result = newString(r.L)
-  copyMem(addr result[0], unsafeAddr r.payload, r.L)
+proc resetRopeCache* = discard
 
-proc newRope(data: string = ""): Rope {.inline.} =
-  if data.len <= PayloadSize:
-    result = Rope(L: data.len, unique: false, kind: ShortLeaf, payload: toPayload(data))
-  else:
-    result = Rope(L: data.len, unique: false, kind: LongLeaf, data: data)
-
-proc newRopeAppender*(): Rope =
-  result = Rope(L: 0, unique: true, kind: Container, kids: @[])
-
-proc freeze*(r: Rope) {.inline.} = r.unique = false
-
-when compileOption("tlsEmulation"): # fixme: be careful if you want to make ropes support multiple threads
-  var
-    cache: array[0..2048*2 - 1, Rope]
-else:
-  var
-    cache {.threadvar.} : array[0..2048*2 - 1, Rope]
-
-proc resetRopeCache* =
-  for i in low(cache)..high(cache):
-    cache[i] = nil
-
-var gCacheTries* = 0
-var gCacheMisses* = 0
-var gCacheIntTries* = 0
-
-proc leafEqual(r: Rope; s: string): bool =
-  if r.kind == LongLeaf:
-    result = r.data == s
-  else:
-    assert r.kind == ShortLeaf
-    result = r.L == s.len and equalMem(unsafeAddr r.payload, unsafeAddr s[0], r.L)
-
-proc insertInCache(s: string): Rope =
-  inc gCacheTries
-  var h = hash(s) and high(cache)
-  result = cache[h]
-  if isNil(result) or not leafEqual(result, s):
-    inc gCacheMisses
-    result = newRope(s)
-    cache[h] = result
-
-proc rope*(s: string): Rope =
-  ## Converts a string to a rope.
-  if s.len == 0:
-    result = nil
-  else:
-    if s.len <= PayloadSize:
-      result = insertInCache(s)
-    else:
-      result = newRope(s)
+template rope*(s: string): string = s
 
 proc rope*(i: BiggestInt): Rope =
   ## Converts an int to a rope.
-  inc gCacheIntTries
   result = rope($i)
 
 proc rope*(f: BiggestFloat): Rope =
   ## Converts a float to a rope.
   result = rope($f)
 
-proc `&`*(a, b: Rope): Rope =
-  if a == nil:
-    result = b
-  elif b == nil:
-    result = a
-  else:
-    result = Rope(L: a.L + b.L, unique: false, kind: Container, kids: @[a, b])
-
-proc `&`*(a: Rope, b: string): Rope =
-  ## the concatenation operator for ropes.
-  result = a & rope(b)
-
-proc `&`*(a: string, b: Rope): Rope =
-  ## the concatenation operator for ropes.
-  result = rope(a) & b
-
-proc add*(a: var Rope, b: Rope) =
-  ## adds `b` to the rope `a`.
-  if b.len == 0: return
-  if a == nil:
-    a = Rope(L: b.L, unique: false, kind: Container, kids: @[b])
-  elif a.kind != Container or not a.unique:
-    # promote a literal to a container:
-    let old = a
-    a = Rope(L: old.L + b.L, unique: old.unique, kind: Container, kids: @[old, b])
-  else:
-    a.L += b.len
-    a.kids.add b
-
-when false:
-  proc dup*(b: Rope): Rope =
-    if b == nil:
-      result = nil
-    else:
-      result = Rope(kids: b.kids, L: b.L, data: b.data, unique: false)
-
-proc add*(a: var Rope, b: string) =
-  ## adds `b` to the rope `a`.
-  a.add rope(b)
-
-proc `&`*(a: openArray[Rope]): Rope =
-  ## the concatenation operator for an openarray of ropes.
-  result = nil
-  for i in 0..high(a): result.add a[i]
-
-iterator leaves*(r: Rope): string =
-  ## iterates over any leaf string in the rope `r`.
-  if r != nil:
-    var stack = @[(r, 0)]
-    while stack.len > 0:
-      let (r, i) = stack[^1]
-      case r.kind
-      of ShortLeaf, LongLeaf:
-        yield (if r.kind == LongLeaf: r.data else: fromPayload(r))
-        discard stack.pop
-      of Container:
-        if i < r.kids.len:
-          inc stack[^1][1]
-          stack.add (r.kids[i], 0)
-        else:
-          discard stack.pop
-
-iterator items*(r: Rope): char =
-  ## iterates over any character in the rope `r`.
-  for s in leaves(r):
-    for c in items(s): yield c
-
 proc writeRope*(f: File, r: Rope) =
   ## writes a rope to a file.
-  for s in leaves(r): write(f, s)
+  write(f, r)
 
 proc writeRope*(head: Rope, filename: AbsoluteFile): bool =
   var f: File
   if open(f, filename.string, fmWrite):
-    if head != nil: writeRope(f, head)
+    writeRope(f, head)
     close(f)
     result = true
   else:
     result = false
 
-proc `$`*(r: Rope): string =
-  ## converts a rope back to a string.
-  result = newString(r.len)
-  setLen(result, 0)
-  for s in leaves(r): result.add(s)
-
-proc ropeConcat*(a: varargs[Rope]): Rope =
-  # not overloaded version of concat to speed-up `rfmt` a little bit
-  result = nil
-  for i in 0..high(a): result.add a[i]
-
-proc prepend*(a: var Rope, b: Rope) = a = b & a
 proc prepend*(a: var Rope, b: string) = a = b & a
 
 proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
@@ -267,7 +124,6 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
       else: break
     if i - 1 >= start:
       result.add(substr(frmt, start, i - 1))
-  result.unique = false
 
 proc `%`*(frmt: static[FormatStr], args: openArray[Rope]): Rope =
   runtimeFormat(frmt, args)
@@ -290,7 +146,7 @@ else:
 const
   bufSize = 1024              # 1 KB is reasonable
 
-proc equalsFile*(r: Rope, f: File): bool =
+proc equalsFile*(s: Rope, f: File): bool =
   ## returns true if the contents of the file `f` equal `r`.
   var
     buf: array[bufSize, char]
@@ -299,7 +155,7 @@ proc equalsFile*(r: Rope, f: File): bool =
     btotal = 0
     rtotal = 0
 
-  for s in leaves(r):
+  when true:
     var spos = 0
     rtotal += s.len
     while spos < s.len:

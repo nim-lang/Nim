@@ -16,7 +16,7 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc registerTraverseProc(p: BProc, v: PSym) =
-  var traverseProc = Rope(nil)
+  var traverseProc = ""
   if p.config.selectedGC in {gcMarkAndSweep, gcHooks, gcRefc} and
       optOwnedRefs notin p.config.globalOptions and
       containsGarbageCollectedRef(v.loc.t):
@@ -81,7 +81,7 @@ proc genVarTuple(p: BProc, n: PNode) =
 
   # check only the first son
   var forHcr = treatGlobalDifferentlyForHCR(p.module, n[0].sym)
-  let hcrCond = if forHcr: getTempName(p.module) else: nil
+  let hcrCond = if forHcr: getTempName(p.module) else: ""
   var hcrGlobals: seq[tuple[loc: TLoc, tp: Rope]]
   # determine if the tuple is constructed at top-level scope or inside of a block (if/while/block)
   let isGlobalInBlock = forHcr and p.blocks.len > 2
@@ -101,7 +101,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     let v = vn.sym
     if sfCompileTime in v.flags: continue
     if sfGlobal in v.flags:
-      assignGlobalVar(p, vn, nil)
+      assignGlobalVar(p, vn, "")
       genObjectInit(p, cpsInit, v.typ, v.loc, constructObj)
       registerTraverseProc(p, v)
     else:
@@ -295,7 +295,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     genGotoVar(p, value)
     return
   var targetProc = p
-  var valueAsRope = Rope(nil)
+  var valueAsRope = ""
   potentialValueInit(p, v, value, valueAsRope)
   if sfGlobal in v.flags:
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and
@@ -880,7 +880,7 @@ proc genStringCase(p: BProc, t: PNode, stringKind: TTypeKind, d: var TLoc) =
       linefmt(p, cpsStmts, "switch (#hashString($1) & $2) {$n",
               [rdLoc(a), bitMask])
     for j in 0..high(branches):
-      if branches[j] != nil:
+      if branches[j] != "":
         var lit = newRopeAppender()
         intLiteral(j, lit)
         lineF(p, cpsStmts, "case $1: $n$2break;$n",
@@ -945,7 +945,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
   var lend = if splitPoint > 0: genIfForCaseUntil(p, n, d,
                     rangeFormat = "if ($1 >= $2 && $1 <= $3) goto $4;$n",
                     eqFormat = "if ($1 == $2) goto $3;$n",
-                    splitPoint, a) else: nil
+                    splitPoint, a) else: ""
 
   # generate switch part (might be empty):
   if splitPoint+1 < n.len:
@@ -966,7 +966,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
     if (hasAssume in CC[p.config.cCompiler].props) and not hasDefault:
       lineF(p, cpsStmts, "default: __assume(0);$n", [])
     lineF(p, cpsStmts, "}$n", [])
-  if lend != nil: fixLabel(p, lend)
+  if lend != "": fixLabel(p, lend)
 
 proc genCase(p: BProc, t: PNode, d: var TLoc) =
   genLineDir(p, t)
