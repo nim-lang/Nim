@@ -285,9 +285,9 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
   elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
     if n.kind in {nkCharLit..nkNilLit}:
-      result.add addrLoc(p.config, literalsNeedsTmp(p, a))
+      addAddrLoc(p.config, literalsNeedsTmp(p, a), result)
     else:
-      result.add addrLoc(p.config, withTmpIfNeeded(p, a, needsTmp))
+      addAddrLoc(p.config, withTmpIfNeeded(p, a, needsTmp), result)
   elif p.module.compileToCpp and param.typ.kind in {tyVar} and
       n.kind == nkHiddenAddr:
     initLocExprSingleUse(p, n[0], a)
@@ -297,12 +297,12 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
     if callee.kind == nkSym and
         {sfImportc, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportc} and
         {lfHeader, lfNoDecl} * callee.sym.loc.flags != {}:
-      result.add addrLoc(p.config, a)
+      addAddrLoc(p.config, a, result)
     else:
-      result.add rdLoc(a)
+      addRdLoc(a, result)
   else:
     initLocExprSingleUse(p, n, a)
-    result.add rdLoc(withTmpIfNeeded(p, a, needsTmp))
+    addRdLoc(withTmpIfNeeded(p, a, needsTmp), result)
   #assert result != nil
 
 proc genArgNoParam(p: BProc, n: PNode; result: var Rope; needsTmp = false) =
@@ -311,7 +311,7 @@ proc genArgNoParam(p: BProc, n: PNode; result: var Rope; needsTmp = false) =
     genArgStringToCString(p, n, result, needsTmp)
   else:
     initLocExprSingleUse(p, n, a)
-    result.add rdLoc(withTmpIfNeeded(p, a, needsTmp))
+    addRdLoc(withTmpIfNeeded(p, a, needsTmp), result)
 
 from dfa import aliases, AliasKind
 

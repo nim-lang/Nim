@@ -1189,7 +1189,7 @@ proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
   genLineDir(p, t)
-  discard cgsym(p.module, "popCurrentExceptionEx")
+  cgsym(p.module, "popCurrentExceptionEx")
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   p.nestedTryStmts.add((fin, false, 0.Natural))
   startBlock(p, "try {$n")
@@ -1378,7 +1378,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
   else:
     p.flags.incl noSafePoints
   genLineDir(p, t)
-  discard cgsym(p.module, "Exception")
+  cgsym(p.module, "Exception")
   var safePoint: Rope
   if not quirkyExceptions:
     safePoint = getTempName(p.module)

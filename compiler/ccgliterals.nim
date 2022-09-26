@@ -33,7 +33,7 @@ proc detectSeqVersion(m: BModule): int =
 # ----- Version 1: GC'ed strings and seqs --------------------------------
 
 proc genStringLiteralDataOnlyV1(m: BModule, s: string; result: var Rope) =
-  discard cgsym(m, "TGenericSeq")
+  cgsym(m, "TGenericSeq")
   let tmp = getTempName(m)
   result.add tmp
   m.s[cfsStrData].addf("STRING_LITERAL($1, $2, $3);$n",
@@ -69,8 +69,8 @@ proc genStringLiteralV2(m: BModule; n: PNode; isConst: bool; result: var Rope) =
     genStringLiteralDataOnlyV2(m, n.strVal, pureLit, isConst)
     let tmp = getTempName(m)
     result.add tmp
-    discard cgsym(m, "NimStrPayload")
-    discard cgsym(m, "NimStringV2")
+    cgsym(m, "NimStrPayload")
+    cgsym(m, "NimStringV2")
     # string literal not found in the cache:
     m.s[cfsStrData].addf("static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
           [tmp, rope(n.strVal.len), pureLit, rope(if isConst: "const" else: "")])
@@ -86,8 +86,8 @@ proc genStringLiteralV2Const(m: BModule; n: PNode; isConst: bool; result: var Ro
   var pureLit: Rope
   if id == m.labels:
     pureLit = getTempName(m)
-    discard cgsym(m, "NimStrPayload")
-    discard cgsym(m, "NimStringV2")
+    cgsym(m, "NimStrPayload")
+    cgsym(m, "NimStringV2")
     # string literal not found in the cache:
     genStringLiteralDataOnlyV2(m, n.strVal, pureLit, isConst)
   else:

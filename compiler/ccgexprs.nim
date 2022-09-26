@@ -886,8 +886,7 @@ proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope;
 proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc
   genRecordFieldAux(p, e, d, a)
-  var r = newRopeAppender()
-  r.add rdLoc(a)
+  var r = rdLoc(a)
   var f = e[1].sym
   let ty = skipTypes(a.t, abstractInstOwned + tyUserTypeClasses)
   if ty.kind == tyTuple:
@@ -976,8 +975,7 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
     var a: TLoc
     genRecordFieldAux(p, e[0], d, a)
     let ty = skipTypes(a.t, abstractInst + tyUserTypeClasses)
-    var r = newRopeAppender()
-    r.add rdLoc(a)
+    var r = rdLoc(a)
     let f = e[0][1].sym
     let field = lookupFieldAgain(p, ty, f, r)
     if field.loc.r == "": fillObjectFields(p.module, ty)
@@ -1719,7 +1717,7 @@ proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Ro
                                 tfObjHasKids notin dest.flags):
       result.add "$1.m_type == $2" % [a, ti]
     else:
-      discard cgsym(p.module, "TNimType")
+      cgsym(p.module, "TNimType")
       inc p.module.labels
       let cache = "Nim_OfCheck_CACHE" & p.module.labels.rope
       p.module.s[cfsVars].addf("static TNimType* $#[2];$n", [cache])
@@ -1840,7 +1838,7 @@ proc rdMType(p: BProc; a: TLoc; nilCheck: var Rope; result: var Rope; enforceV1 
     result.add "->typeInfoV1"
 
 proc genGetTypeInfo(p: BProc, e: PNode, d: var TLoc) =
-  discard cgsym(p.module, "TNimType")
+  cgsym(p.module, "TNimType")
   let t = e[1].typ
   # ordinary static type information
   putIntoDest(p, d, e, genTypeInfoV1(p.module, t, e.info))
@@ -2246,7 +2244,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
         of tyUInt..tyUInt64, tyChar: "raiseRangeErrorU"
         of tyFloat..tyFloat128: "raiseRangeErrorF"
         else: "raiseRangeErrorI"
-      discard cgsym(p.module, raiser)
+      cgsym(p.module, raiser)
 
       let boundaryCast =
         if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64} or
@@ -2564,7 +2562,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       let wasDeclared = containsOrIncl(p.module.declaredProtos, prc.id)
       # Make the function behind the magic get actually generated - this will
       # not lead to a forward declaration! The genCall will lead to one.
-      discard cgsym(p.module, $opr.loc.r)
+      cgsym(p.module, $opr.loc.r)
       # make sure we have pointer-initialising code for hot code reloading
       if not wasDeclared and p.hcrOn:
         p.module.s[cfsDynLibInit].addf("\t$1 = ($2) hcrGetProc($3, \"$1\");$n",

@@ -284,11 +284,11 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyString:
     case detectStrVersion(m)
     of 2:
-      discard cgsym(m, "NimStrPayload")
-      discard cgsym(m, "NimStringV2")
+      cgsym(m, "NimStrPayload")
+      cgsym(m, "NimStringV2")
       result = typeNameOrLiteral(m, typ, "NimStringV2")
     else:
-      discard cgsym(m, "NimStringDesc")
+      cgsym(m, "NimStringDesc")
       result = typeNameOrLiteral(m, typ, "NimStringDesc*")
   of tyCstring: result = typeNameOrLiteral(m, typ, "NCSTRING")
   of tyBool: result = typeNameOrLiteral(m, typ, "NIM_BOOL")
@@ -1029,7 +1029,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   #else echo("can contain a cycle: " & typeToString(typ))
   if flags != 0:
     m.s[cfsTypeInit3].addf("$1.flags = $2;$n", [nameHcr, rope(flags)])
-  discard cgsym(m, "TNimType")
+  cgsym(m, "TNimType")
   if isDefined(m.config, "nimTypeNames"):
     var typename = typeToString(if origType.typeInst != nil: origType.typeInst
                                 else: origType, preferName)
@@ -1037,7 +1037,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
       typename = "anon ref object from " & m.config$origType.skipTypes(skipPtrs).sym.info
     m.s[cfsTypeInit3].addf("$1.name = $2;$n",
         [nameHcr, makeCString typename])
-    discard cgsym(m, "nimTypeRoot")
+    cgsym(m, "nimTypeRoot")
     m.s[cfsTypeInit3].addf("$1.nextType = nimTypeRoot; nimTypeRoot=&$1;$n",
          [nameHcr])
 
@@ -1074,7 +1074,7 @@ proc discriminatorTableName(m: BModule, objtype: PType, d: PSym): Rope =
 proc rope(arg: Int128): Rope = rope($arg)
 
 proc discriminatorTableDecl(m: BModule, objtype: PType, d: PSym): Rope =
-  discard cgsym(m, "TNimNode")
+  cgsym(m, "TNimNode")
   var tmp = discriminatorTableName(m, objtype, d)
   result = "TNimNode* $1[$2];$n" % [tmp, rope(lengthOrd(m.config, d.typ)+1)]
 
@@ -1332,7 +1332,7 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
   else:
     typeName = rope("NIM_NIL")
 
-  discard cgsym(m, "TNimTypeV2")
+  cgsym(m, "TNimTypeV2")
   m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
 
   var flags = 0
@@ -1367,7 +1367,7 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
 
   let marker = m.g.typeInfoMarkerV2.getOrDefault(sig)
   if marker.str != "":
-    discard cgsym(m, "TNimTypeV2")
+    cgsym(m, "TNimTypeV2")
     declareNimType(m, "TNimTypeV2", marker.str, marker.owner)
     # also store in local type section:
     m.typeInfoMarkerV2[sig] = marker.str
@@ -1381,7 +1381,7 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
     # make sure the type info is created in the owner module
     discard genTypeInfoV2(m.g.modules[owner], origType, info)
     # reference the type info as extern here
-    discard cgsym(m, "TNimTypeV2")
+    cgsym(m, "TNimTypeV2")
     declareNimType(m, "TNimTypeV2", result, owner)
     return prefixTI.rope & result & ")".rope
 
@@ -1438,8 +1438,8 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
 
   let marker = m.g.typeInfoMarker.getOrDefault(sig)
   if marker.str != "":
-    discard cgsym(m, "TNimType")
-    discard cgsym(m, "TNimNode")
+    cgsym(m, "TNimType")
+    cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", marker.str, marker.owner)
     # also store in local type section:
     m.typeInfoMarker[sig] = marker.str
@@ -1450,8 +1450,8 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
 
   let old = m.g.graph.emittedTypeInfo.getOrDefault($result)
   if old != FileIndex(0):
-    discard cgsym(m, "TNimType")
-    discard cgsym(m, "TNimNode")
+    cgsym(m, "TNimType")
+    cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", result, old.int)
     return prefixTI.rope & result & ")".rope
 
@@ -1460,8 +1460,8 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
     # make sure the type info is created in the owner module
     discard genTypeInfoV1(m.g.modules[owner], origType, info)
     # reference the type info as extern here
-    discard cgsym(m, "TNimType")
-    discard cgsym(m, "TNimNode")
+    cgsym(m, "TNimType")
+    cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", result, owner)
     return prefixTI.rope & result & ")".rope
   else:

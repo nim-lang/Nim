@@ -103,7 +103,8 @@ proc useHeader(m: BModule, sym: PSym) =
     let str = getStr(sym.annex.path)
     m.includeHeader(str)
 
-proc cgsym(m: BModule, name: string): Rope
+proc cgsym(m: BModule, name: string)
+proc cgsymValue(m: BModule, name: string): Rope
 
 proc getCFile(m: BModule): AbsoluteFile
 
@@ -200,7 +201,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
       var ident = newLit(substr(frmt, i, j-1))
       i = j
       flushStrLit()
-      result.add newCall(formatValue, resVar, newCall(ident"cgsym", m, ident))
+      result.add newCall(formatValue, resVar, newCall(ident"cgsymValue", m, ident))
     elif frmt[i] == '#' and frmt[i+1] == '$':
       inc(i, 2)
       var j = 0
@@ -209,7 +210,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
         inc(i)
       let ident = args[j-1]
       flushStrLit()
-      result.add newCall(formatValue, resVar, newCall(ident"cgsym", m, ident))
+      result.add newCall(formatValue, resVar, newCall(ident"cgsymValue", m, ident))
     var start = i
     while i < frmt.len:
       if frmt[i] != '$' and frmt[i] != '#': inc(i)
@@ -300,10 +301,18 @@ proc getTempName(m: BModule): Rope =
 
 proc rdLoc(a: TLoc): Rope =
   # 'read' location (deref if indirect)
-  result = a.r
-  if lfIndirect in a.flags: result = "(*$1)" % [result]
+  if lfIndirect in a.flags:
+    result = "(*" & a.r & ")"
+  else:
+    result = a.r
 
-proc lenField(p: BProc): Rope =
+proc addRdLoc(a: TLoc; result: var Rope) =
+  if lfIndirect in a.flags:
+    result.add "(*" & a.r & ")"
+  else:
+    result.add a.r
+
+proc lenField(p: BProc): Rope {.inline.} =
   result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
 
 proc lenExpr(p: BProc; a: TLoc): Rope =
@@ -328,16 +337,24 @@ template mapTypeChooser(n: PNode): TSymKind =
 
 template mapTypeChooser(a: TLoc): TSymKind = mapTypeChooser(a.lode)
 
-proc addrLoc(conf: ConfigRef; a: TLoc): Rope =
-  result = a.r
+proc addAddrLoc(conf: ConfigRef; a: TLoc; result: var Rope) =
   if lfIndirect notin a.flags and mapType(conf, a.t, mapTypeChooser(a)) != ctArray:
-    result = "(&" & result & ")"
+    result.add "(&" & a.r & ")"
+  else:
+    result.add a.r
+
+proc addrLoc(conf: ConfigRef; a: TLoc): Rope =
+  if lfIndirect notin a.flags and mapType(conf, a.t, mapTypeChooser(a)) != ctArray:
+    result = "(&" & a.r & ")"
+  else:
+    result = a.r
 
 proc byRefLoc(p: BProc; a: TLoc): Rope =
-  result = a.r
   if lfIndirect notin a.flags and mapType(p.config, a.t, mapTypeChooser(a)) != ctArray and not
       p.module.compileToCpp:
-    result = "(&" & result & ")"
+    result = "(&" & a.r & ")"
+  else:
+    result = a.r
 
 proc rdCharLoc(a: TLoc): Rope =
   # read a location that may need a char-cast:
@@ -419,7 +436,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
   let typ = skipTypes(loc.t, abstractVarRange)
   if isImportedCppType(typ): return
   if optSeqDestructors in p.config.globalOptions and typ.kind in {tyString, tySequence}:
-    assert rdLoc(loc) != ""
+    assert loc.r != ""
 
     let atyp = skipTypes(loc.t, abstractInst)
     if atyp.kind in {tyVar, tyLent}:
@@ -677,11 +694,11 @@ proc initFrame(p: BProc, procname, filename: Rope): Rope =
   if p.module.s[cfsFrameDefines].len == 0:
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
 
-  discard cgsym(p.module, "nimFrame")
+  cgsym(p.module, "nimFrame")
   result = ropecg(p.module, "\tnimfr_($1, $2);$n", [procname, filename])
 
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
-  discard cgsym(p.module, "nimFrame")
+  cgsym(p.module, "nimFrame")
   p.blocks[0].sections[cpsLocals].addf("TFrame $1;$n", [frame])
   result = ropecg(p.module, "\t$1.procname = $2; $1.filename = $3; " &
                       " $1.line = $4; $1.len = -1; nimFrame(&$1);$n",
@@ -813,18 +830,25 @@ proc symInDynamicLibPartial(m: BModule, sym: PSym) =
   sym.loc.r = mangleDynLibProc(sym)
   sym.typ.sym = nil           # generate a new name
 
-proc cgsym(m: BModule, name: string): Rope =
+proc cgsymImpl(m: BModule; sym: PSym) {.inline.} =
+  case sym.kind
+  of skProc, skFunc, skMethod, skConverter, skIterator: genProc(m, sym)
+  of skVar, skResult, skLet: genVarPrototype(m, newSymNode sym)
+  of skType: discard getTypeDesc(m, sym.typ)
+  else: internalError(m.config, "cgsym: " & $sym.kind)
+
+proc cgsym(m: BModule, name: string) =
   let sym = magicsys.getCompilerProc(m.g.graph, name)
   if sym != nil:
-    case sym.kind
-    of skProc, skFunc, skMethod, skConverter, skIterator: genProc(m, sym)
-    of skVar, skResult, skLet: genVarPrototype(m, newSymNode sym)
-    of skType: discard getTypeDesc(m, sym.typ)
-    else: internalError(m.config, "cgsym: " & name & ": " & $sym.kind)
+    cgsymImpl m, sym
   else:
-    # we used to exclude the system module from this check, but for DLL
-    # generation support this sloppyness leads to hard to detect bugs, so
-    # we're picky here for the system module too:
+    rawMessage(m.config, errGenerated, "system module needs: " & name)
+
+proc cgsymValue(m: BModule, name: string): Rope =
+  let sym = magicsys.getCompilerProc(m.g.graph, name)
+  if sym != nil:
+    cgsymImpl m, sym
+  else:
     rawMessage(m.config, errGenerated, "system module needs: " & name)
   result = sym.loc.r
   if m.hcrOn and sym != nil and sym.kind in {skProc..skIterator}:
@@ -855,12 +879,12 @@ proc generateHeaders(m: BModule) =
 #undef unix
 """)
 
-proc openNamespaceNim(namespace: string): Rope =
+proc openNamespaceNim(namespace: string; result: var Rope) =
   result.add("namespace ")
   result.add(namespace)
   result.add(" {\L")
 
-proc closeNamespaceNim(): Rope =
+proc closeNamespaceNim(result: var Rope) =
   result.add("}\L")
 
 proc closureSetup(p: BProc, prc: PSym) =
@@ -1171,7 +1195,7 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
     # dependency to a compilerproc:
-    discard cgsym(m, prc.name.s)
+    cgsym(m, prc.name.s)
     return
   if lfNoDecl in prc.loc.flags:
     fillProcLoc(m, prc.ast[namePos])
@@ -1541,7 +1565,8 @@ proc genMainProc(m: BModule) =
 
   if optNoMain notin m.config.globalOptions:
     if m.config.cppCustomNamespace.len > 0:
-      m.s[cfsProcs].add closeNamespaceNim() & "using namespace " & m.config.cppCustomNamespace & ";\L"
+      closeNamespaceNim(m.s[cfsProcs])
+      m.s[cfsProcs].add "using namespace " & m.config.cppCustomNamespace & ";\L"
 
     if m.config.target.targetOS == osWindows and
         m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
@@ -1565,7 +1590,7 @@ proc genMainProc(m: BModule) =
       appcg(m, m.s[cfsProcs], otherMain, [if m.hcrOn: "*" else: "", m.config.nimMainPrefix])
 
     if m.config.cppCustomNamespace.len > 0:
-      m.s[cfsProcs].add openNamespaceNim(m.config.cppCustomNamespace)
+      openNamespaceNim(m.config.cppCustomNamespace, m.s[cfsProcs])
 
 proc registerInitProcs*(g: BModuleList; m: PSym; flags: set[ModuleBackendFlag]) =
   ## Called from the IC backend.
@@ -1839,7 +1864,7 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
   generateHeaders(m)
   result.add(m.s[cfsHeaders])
   if m.config.cppCustomNamespace.len > 0:
-    result.add openNamespaceNim(m.config.cppCustomNamespace)
+    openNamespaceNim(m.config.cppCustomNamespace, result)
   if m.s[cfsFrameDefines].len > 0:
     result.add(m.s[cfsFrameDefines])
   else:
@@ -1858,7 +1883,7 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
     result.add(m.s[cfsDatInitProc])
 
   if m.config.cppCustomNamespace.len > 0:
-    result.add closeNamespaceNim()
+    closeNamespaceNim(result)
 
   if moduleIsEmpty:
     result = ""
@@ -1940,13 +1965,14 @@ proc writeHeader(m: BModule) =
   generateThreadLocalStorage(m)
   for i in cfsHeaders..cfsProcs:
     result.add(m.s[i])
-    if m.config.cppCustomNamespace.len > 0 and i == cfsHeaders: result.add openNamespaceNim(m.config.cppCustomNamespace)
+    if m.config.cppCustomNamespace.len > 0 and i == cfsHeaders:
+      openNamespaceNim(m.config.cppCustomNamespace, result)
   result.add(m.s[cfsInitProc])
 
   if optGenDynLib in m.config.globalOptions:
     result.add("N_LIB_IMPORT ")
   result.addf("N_CDECL(void, $1NimMain)(void);$n", [rope m.config.nimMainPrefix])
-  if m.config.cppCustomNamespace.len > 0: result.add closeNamespaceNim()
+  if m.config.cppCustomNamespace.len > 0: closeNamespaceNim(result)
   result.addf("#endif /* $1 */$n", [guard])
   if not writeRope(result, m.filename):
     rawMessage(m.config, errCannotOpenFile, m.filename.string)
@@ -2076,7 +2102,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
     # phase ordering problem here: We need to announce this
     # dependency to 'nimTestErrorFlag' before system.c has been written to disk.
     if m.config.exc == excGoto and getCompilerProc(graph, "nimTestErrorFlag") != nil:
-      discard cgsym(m, "nimTestErrorFlag")
+      cgsym(m, "nimTestErrorFlag")
 
     if {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
       for i in countdown(high(graph.globalDestructors), 0):
@@ -2092,7 +2118,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
 
     if m.hcrOn:
       # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
-      discard cgsym(m, "programResult")
+      cgsym(m, "programResult")
       if m.inHcrInitGuard:
         endBlock(m.initProc)
 
@@ -2102,17 +2128,17 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
         # so it can load the HCR runtime and later pass the library handle to the HCR runtime which
         # will in turn pass it to the other modules it initializes so they can initialize the
         # register/get procs so they don't have to have the definitions of these functions as well
-        discard cgsym(m, "nimLoadLibrary")
-        discard cgsym(m, "nimLoadLibraryError")
-        discard cgsym(m, "nimGetProcAddr")
-        discard cgsym(m, "procAddrError")
-        discard cgsym(m, "rawWrite")
+        cgsym(m, "nimLoadLibrary")
+        cgsym(m, "nimLoadLibraryError")
+        cgsym(m, "nimGetProcAddr")
+        cgsym(m, "procAddrError")
+        cgsym(m, "rawWrite")
 
       # raise dependencies on behalf of genMainProc
       if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
-        discard cgsym(m, "initStackBottomWith")
+        cgsym(m, "initStackBottomWith")
       if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
-        discard cgsym(m, "initThreadVarsEmulation")
+        cgsym(m, "initThreadVarsEmulation")
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
