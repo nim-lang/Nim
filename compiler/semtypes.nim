@@ -1961,7 +1961,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     let s = getGenSym(c, n.sym)
     if s.typ != nil and (s.kind == skType or s.typ.kind == tyTypeDesc):
       var t =
-        if s.kind == skType:
+        if s.kind == skType or s.kind == skParam:
           s.typ
         else:
           internalAssert c.config, s.typ.base.kind != tyNone and prev == nil
