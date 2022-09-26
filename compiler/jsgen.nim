@@ -118,7 +118,7 @@ proc indentLine(p: PProc, r: Rope): Rope =
     if p.up == nil or p.up.prc != p.prc.owner:
       break
     p = p.up
-  result = repeat(' ', ind) & r
+  result = repeat(' ', ind*2) & r
 
 template line(p: PProc, added: string) =
   p.body.add(indentLine(p, rope(added)))

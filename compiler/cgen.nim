@@ -221,12 +221,9 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
   flushStrLit()
   result.add newCall(ident"rope", resVar)
 
-proc indentLine(p: BProc, r: Rope): Rope =
-  result = newRopeAppender()
+proc addIndent(p: BProc; result: var Rope) =
   for i in 0..<p.blocks.len:
     result.add "\t".rope
-  result.add r
-  freeze result
 
 template appcg(m: BModule, c: var Rope, frmt: FormatStr,
            args: untyped) =
@@ -241,19 +238,23 @@ template appcg(p: BProc, sec: TCProcSection, frmt: FormatStr,
   p.s(sec).add(ropecg(p.module, frmt, args))
 
 template line(p: BProc, sec: TCProcSection, r: string) =
-  p.s(sec).add(indentLine(p, r.rope))
+  addIndent p, p.s(sec)
+  p.s(sec).add(r)
 
 template lineF(p: BProc, sec: TCProcSection, frmt: FormatStr,
               args: untyped) =
-  p.s(sec).add(indentLine(p, frmt % args))
+  addIndent p, p.s(sec)
+  p.s(sec).add(frmt % args)
 
 template lineCg(p: BProc, sec: TCProcSection, frmt: FormatStr,
                args: untyped) =
-  p.s(sec).add(indentLine(p, ropecg(p.module, frmt, args)))
+  addIndent p, p.s(sec)
+  p.s(sec).add(ropecg(p.module, frmt, args))
 
 template linefmt(p: BProc, sec: TCProcSection, frmt: FormatStr,
              args: untyped) =
-  p.s(sec).add(indentLine(p, ropecg(p.module, frmt, args)))
+  addIndent p, p.s(sec)
+  p.s(sec).add(ropecg(p.module, frmt, args))
 
 proc safeLineNm(info: TLineInfo): int =
   result = toLinenumber(info)
