@@ -78,8 +78,6 @@ proc fillLocalName(p: BProc; s: PSym) =
   #assert sfGlobal notin s.flags
   if s.loc.r == "":
     var key = s.name.s.mangle
-    when not defined(nimSeqsV2):
-      shallow(key)
     let counter = p.sigConflicts.getOrDefault(key)
     var result = key.rope
     if s.kind == skTemp:
@@ -97,8 +95,6 @@ proc scopeMangledParam(p: BProc; param: PSym) =
   ## generate unique identifiers reliably (consider that ``var a = a`` is
   ## even an idiom in Nim).
   var key = param.name.s.mangle
-  when not defined(nimSeqsV2):
-    shallow(key)
   p.sigConflicts.inc(key)
 
 const

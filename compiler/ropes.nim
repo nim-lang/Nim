@@ -32,8 +32,6 @@ type
                        # performance of the code generator (assignments
                        # copy the format strings
                        # though it is not necessary)
-  RopeKind = enum
-    LongLeaf, ShortLeaf, Container
   Rope* = string
 
 proc newRopeAppender*(): string =

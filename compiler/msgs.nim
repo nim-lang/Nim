@@ -10,7 +10,9 @@
 import
   std/[strutils, os, tables, terminal, macros, times],
   std/private/miscdollars,
-  options, ropes, lineinfos, pathutils, strutils2
+  options, lineinfos, pathutils, strutils2
+
+import ropes except `%`
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
