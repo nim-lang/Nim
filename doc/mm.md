@@ -28,7 +28,11 @@ To choose the memory management strategy use the `--mm:` switch.
 ARC/ORC
 -------
 
-ORC is the default memory management strategy. `--mm:orc` is a memory management mode primarily based on reference counting. Cycles in the object graph are handled by a "cycle collector" which is based on "trial deletion". Since algorithms based on "tracing" are not used, the runtime behavior is oblivious to the involved heap sizes.
+ORC is the default memory management strategy. It is a memory
+management mode primarily based on reference counting. Reference cycles are
+handled by a cycle collection mechanism based on "trial deletion".
+Since algorithms based on "tracing" are not used, a program's stack size will
+not impact memory management performance.
 
 The reference counting operations (= "RC ops") do not use atomic instructions and do not have to --
 instead entire subgraphs are *moved* between threads. The Nim compiler also aggressively
