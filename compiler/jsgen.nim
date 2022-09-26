@@ -907,7 +907,7 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
             gen(p, e[1], b)
             if j != itLen - 2:
               lineF(p, "$1 >= $2 && $1 <= $3 || $n", [cond.rdLoc, a.rdLoc, b.rdLoc])
-            else: 
+            else:
               lineF(p, "$1 >= $2 && $1 <= $3", [cond.rdLoc, a.rdLoc, b.rdLoc])
           else:
             var v = copyNode(e[0])
@@ -1661,7 +1661,7 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   let f = n[0].sym
   if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
   if sfInfixCall in f.flags:
-    let pat = n[0].sym.loc.r.data
+    let pat = $n[0].sym.loc.r
     internalAssert p.config, pat.len > 0
     if pat.contains({'#', '(', '@'}):
       var typ = skipTypes(n[0].typ, abstractInst)

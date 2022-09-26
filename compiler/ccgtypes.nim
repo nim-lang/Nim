@@ -835,7 +835,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
            [foo, result, rope(n)])
   of tyObject, tyTuple:
     if isImportedCppType(t) and origTyp.kind == tyGenericInst:
-      let cppName = getTypeName(m, t, sig)
+      let cppNameAsRope = getTypeName(m, t, sig)
+      let cppName = $cppNameAsRope
       var i = 0
       var chunkStart = 0
 
@@ -848,12 +849,12 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
         else:
           result.add getTypeDescAux(m, ty, check, kind)
 
-      while i < cppName.data.len:
-        if cppName.data[i] == '\'':
+      while i < cppName.len:
+        if cppName[i] == '\'':
           var chunkEnd = i-1
           var idx, stars: int
-          if scanCppGenericSlot(cppName.data, i, idx, stars):
-            result.add cppName.data.substr(chunkStart, chunkEnd)
+          if scanCppGenericSlot(cppName, i, idx, stars):
+            result.add cppName.substr(chunkStart, chunkEnd)
             chunkStart = i
 
             let typeInSlot = resolveStarsInCppType(origTyp, idx + 1, stars)
@@ -862,9 +863,9 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
           inc i
 
       if chunkStart != 0:
-        result.add cppName.data.substr(chunkStart)
+        result.add cppName.substr(chunkStart)
       else:
-        result = cppName & "<"
+        result = cppNameAsRope & "<"
         for i in 1..<origTyp.len-1:
           if i > 1: result.add(" COMMA ")
           addResultType(origTyp[i])

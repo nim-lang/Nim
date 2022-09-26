@@ -677,7 +677,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(typ.kind == tyProc)
   assert(typ.len == typ.n.len)
   # don't call '$' here for efficiency:
-  let pat = ri[0].sym.loc.r.data
+  let pat = $ri[0].sym.loc.r
   internalAssert p.config, pat.len > 0
   if pat.contains({'#', '(', '@', '\''}):
     var pl = newRopeAppender()
@@ -725,7 +725,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   assert(typ.len == typ.n.len)
 
   # don't call '$' here for efficiency:
-  let pat = ri[0].sym.loc.r.data
+  let pat = $ri[0].sym.loc.r
   internalAssert p.config, pat.len > 0
   var start = 3
   if ' ' in pat:

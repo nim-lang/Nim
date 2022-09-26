@@ -24,28 +24,47 @@ from pathutils import AbsoluteFile
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio, formatfloat]
 
+const
+  PayloadSize = 16
 
 type
   FormatStr* = string  # later we may change it to CString for better
                        # performance of the code generator (assignments
                        # copy the format strings
                        # though it is not necessary)
+  RopeKind = enum
+    LongLeaf, ShortLeaf, Container
   Rope* {.acyclic.} = ref object
-    kids: seq[Rope]
-    L: int                         # <= 0 if a leaf
-    data*: string
+    L: int
     unique: bool  # is not shared and can appended more efficiently
+    case kind: RopeKind
+    of LongLeaf:
+      data: string
+    of ShortLeaf:
+      payload: array[PayloadSize, char]
+    of Container:
+      kids: seq[Rope]
 
 proc len*(a: Rope): int =
   ## the rope's length
   if a == nil: result = 0
-  else: result = abs a.L
+  else: result = a.L
 
-proc newRope(data: string = ""): Rope =
-  result = Rope(kids: @[], L: -data.len, data: data, unique: false)
+proc toPayload(s: string): array[PayloadSize, char] =
+  copyMem(addr result, unsafeAddr(s[0]), s.len)
+
+proc fromPayload(r: Rope): string =
+  result = newString(r.L)
+  copyMem(addr result[0], unsafeAddr r.payload, r.L)
+
+proc newRope(data: string = ""): Rope {.inline.} =
+  if data.len <= PayloadSize:
+    result = Rope(L: data.len, unique: false, kind: ShortLeaf, payload: toPayload(data))
+  else:
+    result = Rope(L: data.len, unique: false, kind: LongLeaf, data: data)
 
 proc newRopeAppender*(): Rope =
-  result = Rope(kids: @[], L: 0, data: "", unique: true)
+  result = Rope(L: 0, unique: true, kind: Container, kids: @[])
 
 proc freeze*(r: Rope) {.inline.} = r.unique = false
 
@@ -64,11 +83,18 @@ var gCacheTries* = 0
 var gCacheMisses* = 0
 var gCacheIntTries* = 0
 
+proc leafEqual(r: Rope; s: string): bool =
+  if r.kind == LongLeaf:
+    result = r.data == s
+  else:
+    assert r.kind == ShortLeaf
+    result = r.L == s.len and equalMem(unsafeAddr r.payload, unsafeAddr s[0], r.L)
+
 proc insertInCache(s: string): Rope =
   inc gCacheTries
   var h = hash(s) and high(cache)
   result = cache[h]
-  if isNil(result) or result.data != s:
+  if isNil(result) or not leafEqual(result, s):
     inc gCacheMisses
     result = newRope(s)
     cache[h] = result
@@ -78,7 +104,10 @@ proc rope*(s: string): Rope =
   if s.len == 0:
     result = nil
   else:
-    result = insertInCache(s)
+    if s.len <= PayloadSize:
+      result = insertInCache(s)
+    else:
+      result = newRope(s)
 
 proc rope*(i: BiggestInt): Rope =
   ## Converts an int to a rope.
@@ -95,7 +124,7 @@ proc `&`*(a, b: Rope): Rope =
   elif b == nil:
     result = a
   else:
-    result = Rope(kids: @[a, b], L: abs(a.L) + abs(b.L), data: "", unique: false)
+    result = Rope(L: a.L + b.L, unique: false, kind: Container, kids: @[a, b])
 
 proc `&`*(a: Rope, b: string): Rope =
   ## the concatenation operator for ropes.
@@ -109,11 +138,11 @@ proc add*(a: var Rope, b: Rope) =
   ## adds `b` to the rope `a`.
   if b.len == 0: return
   if a == nil:
-    a = Rope(kids: b.kids, L: b.L, data: b.data, unique: false)
-  elif a.L <= 0 or not a.unique:
+    a = Rope(L: b.L, unique: false, kind: Container, kids: @[b])
+  elif a.kind != Container or not a.unique:
     # promote a literal to a container:
     let old = a
-    a = Rope(kids: @[old, b], L: abs(old.L) + abs(b.L), data: "", unique: old.unique)
+    a = Rope(L: old.L + b.L, unique: old.unique, kind: Container, kids: @[old, b])
   else:
     a.L += b.len
     a.kids.add b
@@ -140,10 +169,11 @@ iterator leaves*(r: Rope): string =
     var stack = @[(r, 0)]
     while stack.len > 0:
       let (r, i) = stack[^1]
-      if r.L <= 0:
-        yield r.data
+      case r.kind
+      of ShortLeaf, LongLeaf:
+        yield (if r.kind == LongLeaf: r.data else: fromPayload(r))
         discard stack.pop
-      else:
+      of Container:
         if i < r.kids.len:
           inc stack[^1][1]
           stack.add (r.kids[i], 0)
