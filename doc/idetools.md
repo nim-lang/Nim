@@ -10,24 +10,21 @@
 .. contents::
 
 
-.. raw:: html
-  <blockquote><p>
-  "yes, I'm the creator" -- Araq, 2013-07-26 19:28:32.
-  </p></blockquote>
+> "yes, I'm the creator" -- Araq, 2013-07-26 19:28:32.
 
-Note: this is mostly outdated, see instead `nimsuggest <nimsuggest.html>`_
+Note: this is mostly outdated, see instead [nimsuggest](nimsuggest.html)
 
 Nim differs from many other compilers in that it is really fast,
 and being so fast makes it suited to provide external queries for
 text editors about the source code being written. Through the
-`idetools` command of `the compiler <nimc.html>`_, any IDE
+`idetools` command of [the compiler](nimc.html), any IDE
 can query a `.nim` source file and obtain useful information like
 definition of symbols or suggestions for completion.
 
 This document will guide you through the available options. If you
 want to look at practical examples of idetools support you can look
-at the test files found in the `Test suite`_ or `various editor
-integrations <https://github.com/Araq/Nim/wiki/Editor-Support>`_
+at the test files found in the [Test suite] or [various editor
+integrations](https://github.com/Araq/Nim/wiki/Editor-Support)
 already available.
 
 
@@ -48,30 +45,30 @@ Or::
     nim idetools --trackDirty:DIRTY_FILE,FILE,LINE,COL <switches> proj.nim
 
 `proj.nim`
-    This is the main *project* filename. Most of the time you will
+:   This is the main *project* filename. Most of the time you will
     pass in the same as **FILE**, but for bigger projects this is
     the file which is used as main entry point for the program, the
     one which users compile to generate a final binary.
 
 `<switches>`
-    This would be any of the other idetools available options, like
+:   This would be any of the other idetools available options, like
     `--def` or `--suggest` explained in the following sections.
 
 `COL`
-    An integer with the column you are going to query. For the
+:   An integer with the column you are going to query. For the
     compiler columns start at zero, so the first column will be
     **0** and the last in an 80 column terminal will be **79**.
 
 `LINE`
-    An integer with the line you are going to query. For the compiler
+:   An integer with the line you are going to query. For the compiler
     lines start at **1**.
 
 `FILE`
-    The file you want to perform the query on. Usually you will
+:   The file you want to perform the query on. Usually you will
     pass in the same value as **proj.nim**.
 
 `DIRTY_FILE`
-    The **FILE** parameter is enough for static analysis, but IDEs
+:   The **FILE** parameter is enough for static analysis, but IDEs
     tend to have *unsaved buffers* where the user may still be in
     the middle of typing a line. In such situations the IDE can
     save the current contents to a temporary file and then use the
@@ -127,8 +124,8 @@ to the case insensitiveness of the language (plus underscores as
 separators!).
 
 The typical usage scenario for this option is to call it after the
-user has typed the dot character for `the object oriented call
-syntax <tut2.html#object-oriented-programming-method-call-syntax>`_.
+user has typed the dot character for [the object oriented call
+syntax](tut2.html#object-oriented-programming-method-call-syntax).
 Idetools will try to return the suggestions sorted first by scope
 (from innermost to outermost) and then by item name.
 
@@ -199,7 +196,7 @@ of text it thinks necessary plus an empty line to indicate the end
 of the answer.
 
 You can find examples of client/server communication in the idetools
-tests found in the `Test suite`_.
+tests found in the [Test suite].
 
 
 Parsing idetools output
@@ -242,45 +239,48 @@ symbol for which idetools returns valid output.
 skConst
 -------
 
-| **Third column**: module + [n scope nesting] + const name.
+| **Third column**: module + \[n scope nesting] + const name.
 | **Fourth column**: the type of the const value.
 | **Docstring**: always the empty string.
 
-.. code-block:: nim
-    const SOME_SEQUENCE = @[1, 2]
-    --> col 2: $MODULE.SOME_SEQUENCE
-        col 3: seq[int]
-        col 7: ""
+  ```nim
+  const SOME_SEQUENCE = @[1, 2]
+  --> col 2: $MODULE.SOME_SEQUENCE
+      col 3: seq[int]
+      col 7: ""
+  ```
 
 
 skEnumField
 -----------
 
-| **Third column**: module + [n scope nesting] + enum type + enum field name.
+| **Third column**: module + \[n scope nesting] + enum type + enum field name.
 | **Fourth column**: enum type grouping other enum fields.
 | **Docstring**: always the empty string.
 
-.. code-block:: nim
-    Open(filename, fmWrite)
-    --> col 2: system.FileMode.fmWrite
-        col 3: FileMode
-        col 7: ""
+  ```nim
+  Open(filename, fmWrite)
+  --> col 2: system.FileMode.fmWrite
+      col 3: FileMode
+      col 7: ""
+  ```
 
 
 skForVar
 --------
 
-| **Third column**: module + [n scope nesting] + var name.
+| **Third column**: module + \[n scope nesting] + var name.
 | **Fourth column**: type of the var.
 | **Docstring**: always the empty string.
 
-.. code-block:: nim
-    proc looper(filename = "tests.nim") =
-      for letter in filename:
-        echo letter
-    --> col 2: $MODULE.looper.letter
-        col 3: char
-        col 7: ""
+  ```nim
+  proc looper(filename = "tests.nim") =
+    for letter in filename:
+      echo letter
+  --> col 2: $MODULE.looper.letter
+      col 3: char
+      col 7: ""
+  ```
 
 
 skIterator, skClosureIterator
@@ -291,48 +291,51 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the iterator.
 
-| **Third column**: module + [n scope nesting] + iterator name.
+| **Third column**: module + \[n scope nesting] + iterator name.
 | **Fourth column**: signature of the iterator including return type.
 | **Docstring**: docstring if available.
 
-.. code-block:: nim
-    let
-      text = "some text"
-      letters = toSeq(runes(text))
-    --> col 2: unicode.runes
-        col 3: iterator (string): Rune
-        col 7: "iterates over any unicode character of the string `s`."
+  ```nim
+  let
+    text = "some text"
+    letters = toSeq(runes(text))
+  --> col 2: unicode.runes
+      col 3: iterator (string): Rune
+      col 7: "iterates over any unicode character of the string `s`."
+  ```
 
 
 skLabel
 -------
 
-| **Third column**: module + [n scope nesting] + name.
+| **Third column**: module + \[n scope nesting] + name.
 | **Fourth column**: always the empty string.
 | **Docstring**: always the empty string.
 
-.. code-block:: nim
-    proc test(text: string) =
-      var found = -1
-      block loops:
-    --> col 2: $MODULE.test.loops
-        col 3: ""
-        col 7: ""
+  ```nim
+  proc test(text: string) =
+    var found = -1
+    block loops:
+  --> col 2: $MODULE.test.loops
+      col 3: ""
+      col 7: ""
+  ```
 
 
 skLet
 -----
 
-| **Third column**: module + [n scope nesting] + let name.
+| **Third column**: module + \[n scope nesting] + let name.
 | **Fourth column**: the type of the let variable.
 | **Docstring**: always the empty string.
 
-.. code-block:: nim
-    let
-      text = "some text"
-    --> col 2: $MODULE.text
-        col 3: string
-        col 7: ""
+  ```nim
+  let
+    text = "some text"
+  --> col 2: $MODULE.text
+      col 3: string
+      col 7: ""
+  ```
 
 
 skMacro
@@ -343,16 +346,17 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the macro.
 
-| **Third column**: module + [n scope nesting] + macro name.
+| **Third column**: module + \[n scope nesting] + macro name.
 | **Fourth column**: signature of the macro including return type.
 | **Docstring**: docstring if available.
 
-.. code-block:: nim
-    proc testMacro() =
-      expect(EArithmetic):
-    --> col 2: idetools_api.expect
-        col 3: proc (varargs[expr], stmt): stmt
-        col 7: ""
+  ```nim
+  proc testMacro() =
+    expect(EArithmetic):
+  --> col 2: idetools_api.expect
+      col 3: proc (varargs[expr], stmt): stmt
+      col 7: ""
+  ```
 
 
 skMethod
@@ -363,8 +367,8 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the method.
 
-Methods imply `dynamic dispatch
-<tut2.html#object-oriented-programming-dynamic-dispatch>`_ and
+Methods imply [dynamic dispatch](
+tut2.html#object-oriented-programming-dynamic-dispatch) and
 idetools performs a static analysis on the code. For this reason
 idetools may not return the definition of the correct method you
 are querying because it may be impossible to know until the code
@@ -380,33 +384,35 @@ Note that at the moment the word `proc` is returned for the
 signature of the found method instead of the expected `method`.
 This may change in the future.
 
-| **Third column**: module + [n scope nesting] + method name.
+| **Third column**: module + \[n scope nesting] + method name.
 | **Fourth column**: signature of the method including return type.
 | **Docstring**: docstring if available.
 
-.. code-block:: nim
-    method eval(e: PExpr): int = quit "to override!"
-    method eval(e: PLiteral): int = e.x
-    method eval(e: PPlusExpr): int = eval(e.a) + eval(e.b)
-    echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
-    --> col 2: $MODULE.eval
-        col 3: proc (PPlusExpr): int
-        col 7: ""
+  ```nim
+  method eval(e: PExpr): int = quit "to override!"
+  method eval(e: PLiteral): int = e.x
+  method eval(e: PPlusExpr): int = eval(e.a) + eval(e.b)
+  echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
+  --> col 2: $MODULE.eval
+      col 3: proc (PPlusExpr): int
+      col 7: ""
+  ```
 
 
 skParam
 -------
 
-| **Third column**: module + [n scope nesting] + param name.
+| **Third column**: module + \[n scope nesting] + param name.
 | **Fourth column**: the type of the parameter.
 | **Docstring**: always the empty string.
 
-.. code-block:: nim
-    proc reader(filename = "tests.nim") =
-      let text = readFile(filename)
-    --> col 2: $MODULE.reader.filename
-        col 3: string
-        col 7: ""
+  ```nim
+  proc reader(filename = "tests.nim") =
+    let text = readFile(filename)
+  --> col 2: $MODULE.reader.filename
+      col 3: string
+      col 7: ""
+  ```
 
 
 skProc
@@ -421,34 +427,36 @@ While at the language level a proc is differentiated from others
 by the parameters and return value, the signature of the proc
 returned by idetools returns also the pragmas for the proc.
 
-| **Third column**: module + [n scope nesting] + proc name.
+| **Third column**: module + \[n scope nesting] + proc name.
 | **Fourth column**: signature of the proc including return type.
 | **Docstring**: docstring if available.
 
-.. code-block:: nim
-    open(filename, fmWrite)
-    --> col 2: system.Open
-        col 3: proc (var File, string, FileMode, int): bool
-        col 7:
-    "Opens a file named `filename` with given `mode`.
+  ```nim
+  open(filename, fmWrite)
+  --> col 2: system.Open
+      col 3: proc (var File, string, FileMode, int): bool
+      col 7:
+  "Opens a file named `filename` with given `mode`.
 
-     Default mode is readonly. Returns true iff the file could be opened.
-     This throws no exception if the file could not be opened."
+   Default mode is readonly. Returns true iff the file could be opened.
+   This throws no exception if the file could not be opened."
+  ```
 
 
 skResult
 --------
 
-| **Third column**: module + [n scope nesting] + result.
+| **Third column**: module + \[n scope nesting] + result.
 | **Fourth column**: the type of the result.
 | **Docstring**: always the empty string.
 
-.. code-block:: nim
-    proc getRandomValue() : int =
-      return 4
-    --> col 2: $MODULE.getRandomValue.result
-        col 3: int
-        col 7: ""
+  ```nim
+  proc getRandomValue() : int =
+    return 4
+  --> col 2: $MODULE.getRandomValue.result
+      col 3: int
+      col 7: ""
+  ```
 
 
 skTemplate
@@ -459,11 +467,11 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the template.
 
-| **Third column**: module + [n scope nesting] + template name.
+| **Third column**: module + \[n scope nesting] + template name.
 | **Fourth column**: signature of the template including return type.
 | **Docstring**: docstring if available.
 
-.. code-block:: nim
+  `````nim
     let
       text = "some text"
       letters = toSeq(runes(text))
@@ -474,45 +482,49 @@ posterior instances of the template.
 
      Example:
 
-     .. code-block:: nim
+       ```nim
        let
          numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
          odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
            if x mod 2 == 1:
              result = true)
        assert odd_numbers == @[1, 3, 5, 7, 9]"
+       ```
+  `````
 
 
 skType
 ------
 
-| **Third column**: module + [n scope nesting] + type name.
+| **Third column**: module + \[n scope nesting] + type name.
 | **Fourth column**: the type.
 | **Docstring**: always the empty string.
 
-.. code-block:: nim
-    proc writeTempFile() =
-      var output: File
-    --> col 2: system.File
-        col 3: File
-        col 7: ""
+  ```nim
+  proc writeTempFile() =
+    var output: File
+  --> col 2: system.File
+      col 3: File
+      col 7: ""
+  ```
 
 
 skVar
 -----
 
-| **Third column**: module + [n scope nesting] + var name.
+| **Third column**: module + \[n scope nesting] + var name.
 | **Fourth column**: the type of the var.
 | **Docstring**: always the empty string.
 
-.. code-block:: nim
-    proc writeTempFile() =
-      var output: File
-      output.open("/tmp/somefile", fmWrite)
-      output.write("test")
-    --> col 2: $MODULE.writeTempFile.output
-        col 3: File
-        col 7: ""
+  ```nim
+  proc writeTempFile() =
+    var output: File
+    output.open("/tmp/somefile", fmWrite)
+    output.write("test")
+  --> col 2: $MODULE.writeTempFile.output
+      col 3: File
+      col 7: ""
+  ```
 
 
 Test suite
@@ -578,7 +590,7 @@ All the `tests/caas/*.txt` files encode a session with the compiler:
   modes, you can prefix a line with the mode and the line will be
   processed only in that mode.
 
-* The rest of the line is treated as a `regular expression <re.html>`_,
+* The rest of the line is treated as a [regular expression](re.html),
   so be careful escaping metacharacters like parenthesis.
 
 Before the line is processed as a regular expression, some basic

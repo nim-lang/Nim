@@ -101,7 +101,8 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
 
   try:
     canon = canonicalizePath(conf, filename)
-    shallow(canon.string)
+    when not defined(nimSeqsV2):
+      shallow(canon.string)
   except OSError:
     canon = filename
     # The compiler uses "filenames" such as `command line` or `stdin`
@@ -418,12 +419,12 @@ To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 f
           [conf.command, "intern.html#debugging-the-compiler".createDocLink], conf.unitSep)
   quit 1
 
-proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) =
+proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, ignoreMsg: bool) =
   if msg in fatalMsgs:
     if conf.cmd == cmdIdeTools: log(s)
     quit(conf, msg)
   if msg >= errMin and msg <= errMax or
-      (msg in warnMin..hintMax and msg in conf.warningAsErrors):
+      (msg in warnMin..hintMax and msg in conf.warningAsErrors and not ignoreMsg):
     inc(conf.errorCounter)
     conf.exitcode = 1'i8
     if conf.errorCounter >= conf.errorMax:
@@ -531,8 +532,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
   of warnMin..warnMax:
     sev = Severity.Warning
     ignoreMsg = not conf.hasWarn(msg)
-    if msg in conf.warningAsErrors:
-      ignoreMsg = false
+    if not ignoreMsg and msg in conf.warningAsErrors:
       title = ErrorTitle
     else:
       title = WarningTitle
@@ -542,8 +542,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
   of hintMin..hintMax:
     sev = Severity.Hint
     ignoreMsg = not conf.hasHint(msg)
-    if msg in conf.warningAsErrors:
-      ignoreMsg = false
+    if not ignoreMsg and msg in conf.warningAsErrors:
       title = ErrorTitle
     else:
       title = HintTitle
@@ -569,7 +568,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
             " compiler msg initiated here", KindColor,
             KindFormat % $hintMsgOrigin,
             resetStyle, conf.unitSep)
-  handleError(conf, msg, eh, s)
+  handleError(conf, msg, eh, s, ignoreMsg)
   if msg in fatalMsgs:
     # most likely would have died here but just in case, we restore state
     conf.m.errorOutputs = errorOutputsOld

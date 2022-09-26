@@ -61,7 +61,7 @@ import
 from pathutils import AbsoluteFile
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, syncio]
+  import std/[assertions, syncio, formatfloat]
 
 
 type
@@ -86,8 +86,12 @@ proc newRope(data: string = ""): Rope =
   result.L = -data.len
   result.data = data
 
-var
-  cache {.threadvar.} : array[0..2048*2 - 1, Rope]
+when compileOption("tlsEmulation"): # fixme: be careful if you want to make ropes support multiple threads
+  var
+    cache: array[0..2048*2 - 1, Rope]
+else:
+  var
+    cache {.threadvar.} : array[0..2048*2 - 1, Rope]
 
 proc resetRopeCache* =
   for i in low(cache)..high(cache):

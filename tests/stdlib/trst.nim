@@ -74,7 +74,7 @@ suite "RST parsing":
         """.toAst ==
       dedent"""
         rnInner
-          rnHeadline  level=1
+          rnHeadline  level=1  anchor='lexical-analysis'
             rnLeaf  'Lexical'
             rnLeaf  ' '
             rnLeaf  'Analysis'
@@ -423,21 +423,21 @@ suite "RST parsing":
         .. Note:: deflist:
                     >> quote
                     continuation
-        """.toAst == expected)
+        """.toAst(rstOptions = preferRst) == expected)
 
     check(dedent"""
         .. Note::
            deflist:
              >> quote
              continuation
-        """.toAst == expected)
+        """.toAst(rstOptions = preferRst) == expected)
 
     check(dedent"""
         .. Note::
            deflist:
              >> quote
              >> continuation
-        """.toAst == expected)
+        """.toAst(rstOptions = preferRst) == expected)
 
     # spaces are not significant between `>`:
     check(dedent"""
@@ -445,7 +445,7 @@ suite "RST parsing":
            deflist:
              > > quote
              > > continuation
-        """.toAst == expected)
+        """.toAst(rstOptions = preferRst) == expected)
 
   test "Markdown quoted blocks: de-indent handled well":
     check(dedent"""
@@ -474,7 +474,12 @@ suite "RST parsing":
   let expectCodeBlock = dedent"""
       rnCodeBlock
         [nil]
-        [nil]
+        rnFieldList
+          rnField
+            rnFieldName
+              rnLeaf  'default-language'
+            rnFieldBody
+              rnLeaf  'Nim'
         rnLiteralBlock
           rnLeaf  '
       let a = 1
@@ -571,28 +576,68 @@ suite "RST parsing":
       # | |
       # |  \ indentation of exactly two spaces before 'let a = 1'
 
+  test "no blank line is required before or after Markdown code block":
+    let inputBacktick = dedent"""
+        Some text
+        ```
+        CodeBlock()
+        ```
+        Other text"""
+    let inputTilde = dedent"""
+        Some text
+        ~~~~~~~~~
+        CodeBlock()
+        ~~~~~~~~~
+        Other text"""
+    let expected = dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Some'
+            rnLeaf  ' '
+            rnLeaf  'text'
+          rnParagraph
+            rnCodeBlock
+              [nil]
+              rnFieldList
+                rnField
+                  rnFieldName
+                    rnLeaf  'default-language'
+                  rnFieldBody
+                    rnLeaf  'Nim'
+              rnLiteralBlock
+                rnLeaf  '
+        CodeBlock()'
+            rnLeaf  ' '
+            rnLeaf  'Other'
+            rnLeaf  ' '
+            rnLeaf  'text'
+      """
+    check inputBacktick.toAst == expected
+    check inputTilde.toAst == expected
+
   test "option list has priority over definition list":
-    check(dedent"""
-        --defusages
-                      file
-        -o            set
-        """.toAst ==
-      dedent"""
-        rnOptionList
-          rnOptionListItem  order=1
-            rnOptionGroup
-              rnLeaf  '--'
-              rnLeaf  'defusages'
-            rnDescription
-              rnInner
-                rnLeaf  'file'
-          rnOptionListItem  order=2
-            rnOptionGroup
-              rnLeaf  '-'
-              rnLeaf  'o'
-            rnDescription
-              rnLeaf  'set'
-        """)
+    for opt in [preferMarkdown, preferRst]:
+      check(dedent"""
+          --defusages
+                        file
+          -o            set
+          """.toAst(rstOptions = opt) ==
+        dedent"""
+          rnOptionList
+            rnOptionListItem  order=1
+              rnOptionGroup
+                rnLeaf  '--'
+                rnLeaf  'defusages'
+              rnDescription
+                rnInner
+                  rnLeaf  'file'
+            rnOptionListItem  order=2
+              rnOptionGroup
+                rnLeaf  '-'
+                rnLeaf  'o'
+              rnDescription
+                rnLeaf  'set'
+          """)
 
   test "items of 1 option list can be separated by blank lines":
     check(dedent"""
@@ -616,13 +661,13 @@ suite "RST parsing":
               rnLeaf  'desc2'
       """)
 
-  test "option list has priority over definition list":
+  test "definition list does not gobble up the following blocks":
     check(dedent"""
         defName
             defBody
 
         -b  desc2
-        """.toAst ==
+        """.toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnDefList
@@ -1010,7 +1055,7 @@ suite "RST indentation":
          term2
            Definition2
     """
-    check(input.toAst == dedent"""
+    check(input.toAst(rstOptions = preferRst) == dedent"""
       rnEnumList  labelFmt=1)
         rnEnumItem
           rnAdmonition  adType=hint
@@ -1113,6 +1158,85 @@ suite "RST indentation":
     # "template..." should be parsed as a definition list attached to ":test:":
     check inputWrong.toAst != ast
 
+  test "Markdown definition lists work in conjunction with bullet lists":
+    check(dedent"""
+        * some term
+          : the definition
+
+        Paragraph.""".toAst ==
+      dedent"""
+        rnInner
+          rnBulletList
+            rnBulletItem
+              rnMdDefList
+                rnDefItem
+                  rnDefName
+                    rnLeaf  'some'
+                    rnLeaf  ' '
+                    rnLeaf  'term'
+                  rnDefBody
+                    rnInner
+                      rnLeaf  'the'
+                      rnLeaf  ' '
+                      rnLeaf  'definition'
+          rnParagraph
+            rnLeaf  'Paragraph'
+            rnLeaf  '.'
+      """)
+
+  test "Markdown definition lists work with blank lines and extra paragraphs":
+    check(dedent"""
+        Term1
+
+        :   Definition1
+
+        Term2 *inline markup*
+
+        :   Definition2
+
+            Paragraph2
+
+        Term3
+        : * point1
+          * point2
+        : term3definition2
+      """.toAst == dedent"""
+        rnMdDefList
+          rnDefItem
+            rnDefName
+              rnLeaf  'Term1'
+            rnDefBody
+              rnInner
+                rnLeaf  'Definition1'
+          rnDefItem
+            rnDefName
+              rnLeaf  'Term2'
+              rnLeaf  ' '
+              rnEmphasis
+                rnLeaf  'inline'
+                rnLeaf  ' '
+                rnLeaf  'markup'
+            rnDefBody
+              rnParagraph
+                rnLeaf  'Definition2'
+              rnParagraph
+                rnLeaf  'Paragraph2'
+          rnDefItem
+            rnDefName
+              rnLeaf  'Term3'
+            rnDefBody
+              rnBulletList
+                rnBulletItem
+                  rnInner
+                    rnLeaf  'point1'
+                rnBulletItem
+                  rnInner
+                    rnLeaf  'point2'
+            rnDefBody
+              rnInner
+                rnLeaf  'term3definition2'
+      """)
+
 suite "Warnings":
   test "warnings for broken footnotes/links/substitutions":
     let input = dedent"""
@@ -1129,13 +1253,29 @@ suite "Warnings":
       lastParagraph
       """
     var warnings = new seq[string]
-    let output = input.toAst(warnings=warnings)
+    let output = input.toAst(rstOptions=preferRst, warnings=warnings)
     check(warnings[] == @[
         "input(3, 14) Warning: broken link 'citation-som'",
         "input(5, 7) Warning: broken link 'a broken Link'",
         "input(7, 15) Warning: unknown substitution 'undefined subst'",
         "input(9, 6) Warning: broken link 'short.link'"
         ])
+
+  test "Pandoc Markdown concise link warning points to target":
+    var warnings = new seq[string]
+    check(
+      "ref [here][target]".toAst(warnings=warnings) ==
+      dedent"""
+        rnInner
+          rnLeaf  'ref'
+          rnLeaf  ' '
+          rnPandocRef
+            rnInner
+              rnLeaf  'here'
+            rnInner
+              rnLeaf  'target'
+      """)
+    check warnings[] == @["input(1, 12) Warning: broken link 'target'"]
 
   test "With include directive and blank lines at the beginning":
     "other.rst".writeFile(dedent"""
@@ -1155,7 +1295,7 @@ suite "Warnings":
         rnParagraph
           rnLeaf  'here'
           rnLeaf  ' '
-          rnRef
+          rnRstRef
             rnLeaf  'brokenLink'
       """)
     removeFile("other.rst")
@@ -1514,7 +1654,7 @@ suite "RST inline markup":
 
   test "no punctuation in the end of a standalone URI is allowed":
     check(dedent"""
-        [see (http://no.org)], end""".toAst ==
+        [see (http://no.org)], end""".toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnLeaf  '['
@@ -1561,6 +1701,19 @@ suite "RST inline markup":
           rnLeaf  ' '
           rnLeaf  'end'
         """)
+
+  test "Markdown-style link can be split to a few lines":
+    check(dedent"""
+        is [term-rewriting
+        macros](manual.html#term-rewriting-macros)""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'is'
+          rnLeaf  ' '
+          rnHyperlink
+            rnLeaf  'term-rewriting macros'
+            rnLeaf  'manual.html#term-rewriting-macros'
+      """)
 
   test "URL with balanced parentheses (Markdown rule)":
     # 2 balanced parens, 1 unbalanced:

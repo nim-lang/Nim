@@ -35,7 +35,7 @@ the involved heap sizes.
 
 The reference counting operations (= "RC ops") do not use atomic instructions and do not have to --
 instead entire subgraphs are *moved* between threads. The Nim compiler also aggressively
-optimizes away RC ops and exploits `move semantics <destructors.html#move-semantics>`_.
+optimizes away RC ops and exploits [move semantics](destructors.html#move-semantics).
 
 Nim performs a fair share of optimizations for ARC/ORC; you can inspect what it did
 to your time critical function via `--expandArc:functionName`.
@@ -62,7 +62,7 @@ Other MM modes
 --mm:refc    This is the default memory management strategy. It's a
   deferred reference counting based garbage collector
   with a simple Mark&Sweep backup GC in order to collect cycles. Heaps are thread-local.
-  `This document <refc.html>`_ contains further information.
+  [This document](refc.html) contains further information.
 --mm:markAndSweep  Simple Mark-And-Sweep based garbage collector.
   Heaps are thread-local.
 --mm:boehm    Boehm based garbage collector, it offers a shared heap.
@@ -89,7 +89,7 @@ None               Manual   Manual            Manual         `--mm:none`
 .. default-role:: code
 .. include:: rstcommon.rst
 
-JavaScript's garbage collector is used for the `JavaScript and NodeJS
-<backends.html#backends-the-javascript-target>`_ compilation targets.
-The `NimScript <nims.html>`_ target uses the memory management strategy built into
+JavaScript's garbage collector is used for the [JavaScript and NodeJS](
+backends.html#backends-the-javascript-target) compilation targets.
+The [NimScript](nims.html) target uses the memory management strategy built into
 the Nim compiler.

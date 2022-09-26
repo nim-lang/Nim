@@ -84,7 +84,8 @@ proc mangleLocalName(p: BProc; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
     var key = s.name.s.mangle
-    shallow(key)
+    when not defined(nimSeqsV2):
+      shallow(key)
     let counter = p.sigConflicts.getOrDefault(key)
     result = key.rope
     if s.kind == skTemp:
@@ -102,7 +103,8 @@ proc scopeMangledParam(p: BProc; param: PSym) =
   ## generate unique identifiers reliably (consider that ``var a = a`` is
   ## even an idiom in Nim).
   var key = param.name.s.mangle
-  shallow(key)
+  when not defined(nimSeqsV2):
+    shallow(key)
   p.sigConflicts.inc(key)
 
 const
@@ -1278,7 +1280,7 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
   var it = t
   while it != nil:
     it = it.skipTypes(skipPtrs)
-    if it.sym != nil:
+    if it.sym != nil and tfFromGeneric notin it.flags:
       var m = it.sym.owner
       while m != nil and m.kind != skModule: m = m.owner
       if m == nil or sfSystemModule in m.flags:

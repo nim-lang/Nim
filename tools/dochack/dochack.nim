@@ -2,81 +2,50 @@ import dom
 import fuzzysearch
 
 
-proc switchTheme(event: Event) =
-  if event.target.checked:
-    document.documentElement.setAttribute("data-theme", "dark")
-    window.localStorage.setItem("theme", "dark")
-  else:
-    document.documentElement.setAttribute("data-theme", "light")
-    window.localStorage.setItem("theme", "light")
+proc setTheme(theme: cstring) {.exportc.} =
+  document.documentElement.setAttribute("data-theme", theme)
+  window.localStorage.setItem("theme", theme)
 
+# set `data-theme` attribute early to prevent white flash
+setTheme:
+  let t = window.localStorage.getItem("theme")
+  if t.isNil: cstring"auto" else: t
 
-proc nimThemeSwitch(event: Event) {.exportC.} =
-  var pragmaDots = document.getElementsByClassName("pragmadots")
-  for i in 0..<pragmaDots.len:
-    pragmaDots[i].onclick = proc (event: Event) =
+proc onDOMLoaded(e: Event) {.exportc.} =
+  # set theme select value
+  document.getElementById("theme-select").value = window.localStorage.getItem("theme")
+
+  for pragmaDots in document.getElementsByClassName("pragmadots"):
+    pragmaDots.onclick = proc (event: Event) =
       # Hide tease
       event.target.parentNode.style.display = "none"
       # Show actual
       event.target.parentNode.nextSibling.style.display = "inline"
 
-  let toggleSwitch = document.querySelector(".theme-switch input[type=\"checkbox\"]")
 
-  if toggleSwitch != nil:
-    toggleSwitch.addEventListener("change", switchTheme, false)
-
-  var currentTheme = window.localStorage.getItem("theme")
-  if currentTheme.len == 0 and window.matchMedia("(prefers-color-scheme: dark)").matches:
-    currentTheme = "dark"
-  if currentTheme.len > 0:
-    document.documentElement.setAttribute("data-theme", currentTheme);
-
-    if currentTheme == "dark" and toggleSwitch != nil:
-      toggleSwitch.checked = true
-
-proc textContent(e: Element): cstring {.
-  importcpp: "#.textContent", nodecl.}
-
-proc textContent(e: Node): cstring {.
-  importcpp: "#.textContent", nodecl.}
-
-proc tree(tag: string; kids: varargs[Element]): Element =
+proc tree(tag: cstring; kids: varargs[Element]): Element =
   result = document.createElement tag
   for k in kids:
     result.appendChild k
 
 proc add(parent, kid: Element) =
-  if parent.nodeName == cstring"TR" and (
-      kid.nodeName == cstring"TD" or kid.nodeName == cstring"TH"):
+  if parent.nodeName == "TR" and (kid.nodeName == "TD" or kid.nodeName == "TH"):
     let k = document.createElement("TD")
     appendChild(k, kid)
     appendChild(parent, k)
   else:
     appendChild(parent, kid)
 
-proc setClass(e: Element; value: string) =
+proc setClass(e: Element; value: cstring) =
   e.setAttribute("class", value)
-proc text(s: string): Element = cast[Element](document.createTextNode(s))
 proc text(s: cstring): Element = cast[Element](document.createTextNode(s))
 
-proc getElementById(id: cstring): Element {.importc: "document.getElementById", nodecl.}
-
 proc replaceById(id: cstring; newTree: Node) =
-  let x = getElementById(id)
+  let x = document.getElementById(id)
   x.parentNode.replaceChild(newTree, x)
   newTree.id = id
 
-proc findNodeWith(x: Element; tag, content: cstring): Element =
-  if x.nodeName == tag and x.textContent == content:
-    return x
-  for i in 0..<x.len:
-    let it = x[i]
-    let y = findNodeWith(it, tag, content)
-    if y != nil: return y
-  return nil
-
 proc clone(e: Element): Element {.importcpp: "#.cloneNode(true)", nodecl.}
-proc parent(e: Element): Element {.importcpp: "#.parentNode", nodecl.}
 proc markElement(x: Element) {.importcpp: "#.__karaxMarker__ = true", nodecl.}
 proc isMarked(x: Element): bool {.
   importcpp: "#.hasOwnProperty('__karaxMarker__')", nodecl.}
@@ -85,20 +54,13 @@ proc title(x: Element): cstring {.importcpp: "#.title", nodecl.}
 proc sort[T](x: var openArray[T]; cmp: proc(a, b: T): int) {.importcpp:
   "#.sort(#)", nodecl.}
 
-proc parentWith(x: Element; tag: cstring): Element =
-  result = x.parent
-  while result.nodeName != tag:
-    result = result.parent
-    if result == nil: return nil
-
 proc extractItems(x: Element; items: var seq[Element]) =
   if x == nil: return
-  if x.nodeName == cstring"A":
+  if x.nodeName == "A":
     items.add x
   else:
     for i in 0..<x.len:
-      let it = x[i]
-      extractItems(it, items)
+      extractItems(x[i], items)
 
 # HTML trees are so shitty we transform the TOC into a decent
 # data-structure instead and work on that.
@@ -109,16 +71,14 @@ type
     sortId: int
     doSort: bool
 
-proc extractItems(x: TocEntry; heading: cstring;
-                  items: var seq[Element]) =
+proc extractItems(x: TocEntry; heading: cstring; items: var seq[Element]) =
   if x == nil: return
   if x.heading != nil and x.heading.textContent == heading:
     for i in 0..<x.kids.len:
       items.add x.kids[i].heading
   else:
-    for i in 0..<x.kids.len:
-      let it = x.kids[i]
-      extractItems(it, heading, items)
+    for k in x.kids:
+      extractItems(k, heading, items)
 
 proc toHtml(x: TocEntry; isRoot=false): Element =
   if x == nil: return nil
@@ -152,31 +112,21 @@ proc toHtml(x: TocEntry; isRoot=false): Element =
   if ul.len != 0: result.add ul
   if result.len == 0: result = nil
 
-#proc containsWord(a, b: cstring): bool {.asmNoStackFrame.} =
-  #{.emit: """
-     #var escaped = `b`.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
-     #return new RegExp("\\b" + escaped + "\\b").test(`a`);
-  #""".}
-
-proc isWhitespace(text: cstring): bool {.asmNoStackFrame.} =
-  {.emit: """
-     return !/[^\s]/.test(`text`);
-  """.}
+proc isWhitespace(text: cstring): bool {.importcpp: r"!/\S/.test(#)".}
 
 proc isWhitespace(x: Element): bool =
-  x.nodeName == cstring"#text" and x.textContent.isWhitespace or
-    x.nodeName == cstring"#comment"
+  x.nodeName == "#text" and x.textContent.isWhitespace or x.nodeName == "#comment"
 
 proc toToc(x: Element; father: TocEntry) =
-  if x.nodeName == cstring"UL":
+  if x.nodeName == "UL":
     let f = TocEntry(heading: nil, kids: @[], sortId: father.kids.len)
     var i = 0
     while i < x.len:
       var nxt = i+1
       while nxt < x.len and x[nxt].isWhitespace:
         inc nxt
-      if nxt < x.len and x[i].nodeName == cstring"LI" and x[i].len == 1 and
-          x[nxt].nodeName == cstring"UL":
+      if nxt < x.len and x[i].nodeName == "LI" and x[i].len == 1 and
+          x[nxt].nodeName == "UL":
         let e = TocEntry(heading: x[i][0], kids: @[], sortId: f.kids.len)
         let it = x[nxt]
         for j in 0..<it.len:
@@ -189,13 +139,12 @@ proc toToc(x: Element; father: TocEntry) =
     father.kids.add f
   elif isWhitespace(x):
     discard
-  elif x.nodeName == cstring"LI":
+  elif x.nodeName == "LI":
     var idx: seq[int] = @[]
     for i in 0 ..< x.len:
       if not x[i].isWhitespace: idx.add i
-    if idx.len == 2 and x[idx[1]].nodeName == cstring"UL":
-      let e = TocEntry(heading: x[idx[0]], kids: @[],
-                       sortId: father.kids.len)
+    if idx.len == 2 and x[idx[1]].nodeName == "UL":
+      let e = TocEntry(heading: x[idx[0]], kids: @[], sortId: father.kids.len)
       let it = x[idx[1]]
       for j in 0..<it.len:
         toToc(it[j], e)
@@ -204,31 +153,25 @@ proc toToc(x: Element; father: TocEntry) =
       for i in 0..<x.len:
         toToc(x[i], father)
   else:
-    father.kids.add TocEntry(heading: x, kids: @[],
-                             sortId: father.kids.len)
+    father.kids.add TocEntry(heading: x, kids: @[], sortId: father.kids.len)
 
 proc tocul(x: Element): Element =
   # x is a 'ul' element
   result = tree("UL")
   for i in 0..<x.len:
     let it = x[i]
-    if it.nodeName == cstring"LI":
+    if it.nodeName == "LI":
       result.add it.clone
-    elif it.nodeName == cstring"UL":
+    elif it.nodeName == "UL":
       result.add tocul(it)
-
-proc getSection(toc: Element; name: cstring): Element =
-  let sec = findNodeWith(toc, "A", name)
-  if sec != nil:
-    result = sec.parentWith("LI")
 
 proc uncovered(x: TocEntry): TocEntry =
   if x.kids.len == 0 and x.heading != nil:
     return if not isMarked(x.heading): x else: nil
   result = TocEntry(heading: x.heading, kids: @[], sortId: x.sortId,
                     doSort: x.doSort)
-  for i in 0..<x.kids.len:
-    let y = uncovered(x.kids[i])
+  for k in x.kids:
+    let y = uncovered(k)
     if y != nil: result.kids.add y
   if result.kids.len == 0: result = nil
 
@@ -247,9 +190,8 @@ proc buildToc(orig: TocEntry; types, procs: seq[Element]): TocEntry =
     t.markElement()
     for p in procs:
       if not isMarked(p):
-        let xx = getElementsByClass(p.parent, cstring"attachedType")
+        let xx = getElementsByClass(p.parentNode, "attachedType")
         if xx.len == 1 and xx[0].textContent == t.textContent:
-          #kout(cstring"found ", p.nodeName)
           let q = tree("A", text(p.title))
           q.setAttr("href", p.getAttribute("href"))
           c.kids.add TocEntry(heading: q, kids: @[])
@@ -260,15 +202,13 @@ proc buildToc(orig: TocEntry; types, procs: seq[Element]): TocEntry =
 var alternative: Element
 
 proc togglevis(d: Element) =
-  asm """
-    if (`d`.style.display == 'none')
-      `d`.style.display = 'inline';
-    else
-      `d`.style.display = 'none';
-  """
+  if d.style.display == "none":
+    d.style.display = "inline"
+  else:
+    d.style.display = "none"
 
 proc groupBy*(value: cstring) {.exportc.} =
-  let toc = getElementById("toc-list")
+  let toc = document.getElementById("toc-list")
   if alternative.isNil:
     var tt = TocEntry(heading: nil, kids: @[])
     toToc(toc, tt)
@@ -288,17 +228,16 @@ proc groupBy*(value: cstring) {.exportc.} =
     let ntoc = buildToc(tt, types, procs)
     let x = toHtml(ntoc, isRoot=true)
     alternative = tree("DIV", x)
-  if value == cstring"type":
+  if value == "type":
     replaceById("tocRoot", alternative)
   else:
     replaceById("tocRoot", tree("DIV"))
-  togglevis(getElementById"toc-list")
+  togglevis(document.getElementById"toc-list")
 
 var
   db: seq[Node]
   contents: seq[cstring]
 
-template normalize(x: cstring): cstring = x.toLower.replace("_", "")
 
 proc escapeCString(x: var cstring) =
   # Original strings are already escaped except HTML tags, so
@@ -322,9 +261,6 @@ proc dosearch(value: cstring): Element =
     var doc = document.implementation.createHTMLDocument("theindex");
     doc.documentElement.innerHTML = request.responseText;
 
-    //parser=new DOMParser();
-    //doc=parser.parseFromString("<html></html>", "text/html");
-
     `stuff` = doc.documentElement;
     """.}
     db = stuff.getElementsByClass"reference"
@@ -337,7 +273,7 @@ proc dosearch(value: cstring): Element =
   var matches: seq[(Node, int)] = @[]
   for i in 0..<db.len:
     let c = contents[i]
-    if c == cstring"Examples" or c == cstring"PEG construction":
+    if c == "Examples" or c == "PEG construction":
     # Some manual exclusions.
     # Ideally these should be fixed in the index to be more
     # descriptive of what they are.
@@ -362,11 +298,11 @@ var timer: Timeout
 
 proc search*() {.exportc.} =
   proc wrapper() =
-    let elem = getElementById("searchInput")
+    let elem = document.getElementById("searchInput")
     let value = elem.value
     if value.len != 0:
       if oldtoc.isNil:
-        oldtoc = getElementById("tocRoot")
+        oldtoc = document.getElementById("tocRoot")
       let results = dosearch(value)
       replaceById("tocRoot", results)
     elif not oldtoc.isNil:
@@ -393,7 +329,7 @@ proc copyToClipboard*() {.exportc.} =
           const button = document.createElement("button")
           button.value = e.textContent.replace('...', '') 
           button.classList.add("copyToClipBoardBtn")
-          button.style = "cursor: pointer"
+          button.style.cursor = "pointer"
     
           div.appendChild(preTag)
           div.appendChild(button)
@@ -431,4 +367,4 @@ proc copyToClipboard*() {.exportc.} =
     .}
 
 copyToClipboard()
-window.addEventListener("DOMContentLoaded", nimThemeSwitch)
+window.addEventListener("DOMContentLoaded", onDOMLoaded)

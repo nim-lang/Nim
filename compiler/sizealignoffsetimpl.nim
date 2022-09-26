@@ -454,9 +454,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     setSize typ, 1
   of tyInt16, tyUInt16:
     setSize typ, 2
-  of tyInt32, tyUInt32:
+  of tyInt32, tyUInt32, tyFloat32:
     setSize typ, 4
-  of tyInt64, tyUInt64:
+  of tyInt64, tyUInt64, tyFloat64, tyFloat:
     setSize typ, 8
   else:
     typ.size = szUnknownSize

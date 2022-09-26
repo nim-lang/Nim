@@ -1,5 +1,5 @@
 discard """
-errormsg: "'+' cannot be passed to a procvar"
+errormsg: "'+' is a built-in and cannot be used as a first-class procedure"
 line: 8
 """
 
