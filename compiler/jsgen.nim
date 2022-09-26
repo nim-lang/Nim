@@ -111,14 +111,14 @@ type
 template config*(p: PProc): ConfigRef = p.module.config
 
 proc indentLine(p: PProc, r: Rope): Rope =
-  result = r
   var p = p
+  var ind = 0
   while true:
-    for i in 0..<p.blocks.len + p.extraIndent:
-      prepend(result, rope"  ")
+    inc ind, p.blocks.len + p.extraIndent
     if p.up == nil or p.up.prc != p.prc.owner:
       break
     p = p.up
+  result = repeat(' ', ind) & r
 
 template line(p: PProc, added: string) =
   p.body.add(indentLine(p, rope(added)))
