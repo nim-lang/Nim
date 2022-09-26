@@ -1573,7 +1573,7 @@ proc semTypeSection(c: PContext, n: PNode): PNode =
   result = n
 
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym) =
-  s.typ = semProcTypeNode(c, n, genericParams, nil, s.kind)
+  s.typ = semProcTypeNode(c, n, genericParams, nil, s.kind, false, s)
 
 proc addParams(c: PContext, n: PNode, kind: TSymKind) =
   for i in 1..<n.len:

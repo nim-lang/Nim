@@ -1235,14 +1235,13 @@ proc isMagic(sym: PSym): bool =
   return hasPragma(nPragmas, wMagic)
 
 proc semProcTypeNode(c: PContext, n, genericParams: PNode,
-                     prev: PType, kind: TSymKind; isType=false): PType =
+                     prev: PType, kind: TSymKind, isType=false, s: PSym = nil): PType =
   # for historical reasons (code grows) this is invoked for parameter
   # lists too and then 'isType' is false.
   checkMinSonsLen(n, 1, c.config)
   result = newProcType(c, n.info, prev)
   var check = initIntSet()
   var counter = 0
-
   for i in 1..<n.len:
     var a = n[i]
     if a.kind != nkIdentDefs:
@@ -1325,6 +1324,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         else:
           localError(c.config, a.info, "parameter '$1' requires a type" % arg.name.s)
           typ = errorType(c)
+
+      let base = typ.skipTypes(abstractPtrs)
+      if base.kind == tyProc and base.sym != nil:
+        if s != nil and s.name.id == base.sym.name.id:
+          localError(c.config, a.info, "'$1' itself cannot be used as type of parameter '$2'" % [base.sym.name.s, arg.name.s])
+          typ = errorType(c)
+
       let lifted = liftParamType(c, kind, genericParams, typ,
                                  arg.name.s, arg.info)
       let finalType = if lifted != nil: lifted else: typ.skipIntLit(c.idgen)
@@ -1692,7 +1698,7 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
       return semTypeNode(c, macroEval, prev)
 
   openScope(c)
-  result = semProcTypeNode(c, n[0], nil, prev, kind, isType=true)
+  result = semProcTypeNode(c, n[0], nil, prev, kind, isType=true, c.getCurrOwner)
   # start with 'ccClosure', but of course pragmas can overwrite this:
   result.callConv = ccClosure
   # dummy symbol for `pragma`:
