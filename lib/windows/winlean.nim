@@ -502,9 +502,9 @@ type
   Sockaddr_storage* {.importc: "SOCKADDR_STORAGE",
                       header: "winsock2.h".} = object
     ss_family*: uint16
-    ss_pad1: array[6, byte]
-    ss_align: int64
-    ss_pad2: array[112, byte]
+    ss_pad1 {.importc: "__ss_pad1".}: array[6, byte]
+    ss_align {.importc: "__ss_align".}: int64
+    ss_pad2 {.importc: "__ss_pad2".}: array[112, byte]
 
   Servent* = object
     s_name*: cstring
