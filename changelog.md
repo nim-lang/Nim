@@ -3,6 +3,17 @@
 
 ## Changes affecting backward compatibility
 
+- `addr` is now available for all addressable locations,
+  `unsafeAddr` is now deprecated and an alias for `addr`.
+
+- `io`, `assertions`, `formatfloat`, and `` dollars.`$` `` for objects are about to move out of the `system` module. You may instead import `std/syncio`, `std/assertions`, `std/formatfloat` and `std/objectdollar`.
+  The `-d:nimPreviewSlimSystem` option makes these imports required.
+
+- The `gc:v2` option is removed.
+
+- The `mainmodule` and `m` options are removed.
+
+- The `threads:on` option is now the default.
 
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
   `experimental:flexibleOptionalParams`.
