@@ -221,12 +221,12 @@ proc semBindSym(c: PContext, n: PNode): PNode =
 
   let sl = semConstExpr(c, n[1])
   if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
-    return localErrorNode(c, n, n[1].info, errStringLiteralExpected)
+    return reportError(c.graph.config, n, n[1].info, errStringLiteralExpected)
 
   let isMixin = semConstExpr(c, n[2])
   if isMixin.kind != nkIntLit or isMixin.intVal < 0 or
       isMixin.intVal > high(TSymChoiceRule).int:
-    return localErrorNode(c, n, n[2].info, errConstExprExpected)
+    return reportError(c.graph.config, n, n[2].info, errConstExprExpected)
 
   let id = newIdentNode(getIdent(c.cache, sl.strVal), n.info)
   let s = qualifiedLookUp(c, id, {checkUndeclared})
@@ -243,10 +243,10 @@ proc semBindSym(c: PContext, n: PNode): PNode =
 
 proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode): PNode =
   if n.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit, nkIdent}:
-    return localErrorNode(c, n, info.info, errStringOrIdentNodeExpected)
+    return reportError(c.graph.config, n, info.info, errStringOrIdentNodeExpected)
 
   if isMixin < 0 or isMixin > high(TSymChoiceRule).int:
-    return localErrorNode(c, n, info.info, errConstExprExpected)
+    return reportError(c.graph.config, n, info.info, errConstExprExpected)
 
   let id = if n.kind == nkIdent: n
     else: newIdentNode(getIdent(c.cache, n.strVal), info.info)
