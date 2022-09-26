@@ -31,8 +31,7 @@ ARC/ORC
 ORC is the default memory management strategy. It is a memory
 management mode primarily based on reference counting. Reference cycles are
 handled by a cycle collection mechanism based on "trial deletion".
-Since algorithms based on "tracing" are not used, a program's stack size will
-not impact memory management performance.
+Since algorithms based on "tracing" are not used, the runtime behavior is oblivious to the involved heap and stack sizes.
 
 The reference counting operations (= "RC ops") do not use atomic instructions and do not have to --
 instead entire subgraphs are *moved* between threads. The Nim compiler also aggressively
