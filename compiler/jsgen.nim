@@ -1921,8 +1921,7 @@ proc genVarStmt(p: PProc, n: PNode) =
 
 proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):
-    let oldBody = p.body
-    p.body = ""
+    let oldBody = move p.body
     #genLineDir(p, c.ast)
     genVarInit(p, c, c.ast)
     p.g.constants.add(p.body)
@@ -1985,7 +1984,7 @@ proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic: string, typ: Rope = 
   if magic == "reprAny":
     # the pointer argument in reprAny is expandend to
     # (pointedto, pointer), so we need to fill it
-    if a.address.isNil:
+    if a.address.len == 0:
       r.res.add(a.res)
       r.res.add(", null")
     else:
@@ -1993,14 +1992,14 @@ proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic: string, typ: Rope = 
   else:
     r.res.add(a.res)
 
-  if not typ.isNil:
+  if typ != "":
     r.res.add(", ")
     r.res.add(typ)
   r.res.add(")")
 
 proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
   let t = skipTypes(n[1].typ, abstractVarRange)
-  case t.kind:
+  case t.kind
   of tyInt..tyInt64, tyUInt..tyUInt64:
     genReprAux(p, n, r, "reprInt")
   of tyChar:
