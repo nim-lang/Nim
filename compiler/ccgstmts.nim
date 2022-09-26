@@ -24,7 +24,7 @@ proc registerTraverseProc(p: BProc, v: PSym) =
     # that it works out of the box for thread local storage then :-)
     traverseProc = genTraverseProcForGlobal(p.module, v, v.info)
 
-  if traverseProc != nil and not p.hcrOn:
+  if traverseProc.len != 0 and not p.hcrOn:
     if sfThread in v.flags:
       appcg(p.module, p.module.preInitProc.procSec(cpsInit),
         "$n\t#nimRegisterThreadLocalMarker($1);$n$n", [traverseProc])
@@ -171,7 +171,7 @@ proc endBlock(p: BProc) =
   var blockEnd: Rope
   if frameLen > 0:
     blockEnd.addf("FR_.len-=$1;$n", [frameLen.rope])
-  if p.blocks[topBlock].label != nil:
+  if p.blocks[topBlock].label.len != 0:
     blockEnd.addf("} $1: ;$n", [p.blocks[topBlock].label])
   else:
     blockEnd.addf("}$n", [])
@@ -312,7 +312,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     # That's why we are doing the construction inside the preInitProc.
     # genObjectInit relies on the C runtime's guarantees that
     # global variables will be initialized to zero.
-    if valueAsRope == nil:
+    if valueAsRope.len == 0:
       var loc = v.loc
 
       # When the native TLS is unavailable, a global thread-local variable needs
@@ -346,7 +346,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
         for i in 1..<value.len:
           assert(typ.len == typ.n.len)
           genOtherArg(p, value, i, typ, params, argsCounter)
-        if params == nil:
+        if params.len == 0:
           lineF(p, cpsStmts, "$#;$n", [decl])
         else:
           lineF(p, cpsStmts, "$#($#);$n", [decl, params])
@@ -377,7 +377,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     lineCg(targetProc, cpsStmts, "if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))$N",
            [v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc])
     startBlock(targetProc)
-  if value.kind != nkEmpty and valueAsRope == nil:
+  if value.kind != nkEmpty and valueAsRope.len == 0:
     genLineDir(targetProc, vn)
     loadInto(targetProc, vn, value, v.loc)
   if forHcr:
@@ -1293,10 +1293,10 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       linefmt(p, cpsStmts, "*nimErr_ = NIM_FALSE;$n", [])
       expr(p, t[i][0], d)
     else:
-      var orExpr: Rope = nil
+      var orExpr = newRopeAppender()
       for j in 0..<t[i].len - 1:
         assert(t[i][j].kind == nkType)
-        if orExpr != nil: orExpr.add("||")
+        if orExpr.len != 0: orExpr.add("||")
         let checkFor = if optTinyRtti in p.config.globalOptions:
           genTypeInfo2Name(p.module, t[i][j].typ)
         else:
@@ -1437,10 +1437,10 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "#popCurrentException();$n", [])
       endBlock(p)
     else:
-      var orExpr: Rope = nil
+      var orExpr = newRopeAppender()
       for j in 0..<t[i].len - 1:
         assert(t[i][j].kind == nkType)
-        if orExpr != nil: orExpr.add("||")
+        if orExpr.len != 0: orExpr.add("||")
         let checkFor = if optTinyRtti in p.config.globalOptions:
           genTypeInfo2Name(p.module, t[i][j].typ)
         else:
