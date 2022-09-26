@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim check $file"
+  cmd: "nim check --hint:Conf:off --hint:XDeclaredButNotUsed:off $file"
   nimout: '''
 teffects1.nim(17, 28) template/generic instantiation from here
 '''
@@ -27,14 +27,15 @@ proc forw: int =
 type
   MyProcType* = proc(x: int): string #{.raises: [ValueError, Defect].}
 
-proc foo(x: int): string {.raises: [ValueError].} =
+proc foo(x: int): string {.nimcall, raises: [ValueError].} =
   if x > 9:
     raise newException(ValueError, "Use single digit")
   $x
 
 var p: MyProcType = foo #[tt.Error
                     ^
-type mismatch: got <proc (x: int): string{.noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
+type mismatch: got <proc (x: int): string{.nimcall, noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
+  Calling convention mismatch: got '{.nimcall.}', but expected '{.closure.}'.
 .raise effects differ
 ]#
 {.pop.}
