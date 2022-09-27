@@ -330,7 +330,9 @@ proc isSimpleExpr(p: PProc; n: PNode): bool =
   # calls all the way down --> can stay expression based
   case n.kind
   of nkCallKinds, nkBracketExpr, nkDotExpr, nkPar, nkTupleConstr,
-    nkObjConstr, nkBracket, nkCurly:
+    nkObjConstr, nkBracket, nkCurly,
+    nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr,
+    nkConv, nkHiddenStdConv, nkHiddenSubConv:
     for c in n:
       if not p.isSimpleExpr(c): return false
     result = true
