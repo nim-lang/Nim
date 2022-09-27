@@ -172,6 +172,8 @@ import db_common
 export db_common
 
 import std/private/[since, dbutils]
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   DbConn* = PSqlite3  ## Encapsulates a database connection.
