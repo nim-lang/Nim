@@ -290,6 +290,21 @@ proc makeJSString(s: string, escapeNonAscii = true): Rope =
   else:
     result = escapeJSString(s).rope
 
+proc makeJsNimStrLit(s: string): Rope =
+  var x = newStringOfCap(4*s.len+1)
+  x.add "["
+  var i = 0
+  if i < s.len:
+    x.addInt int64(s[i])
+    inc i
+  while i < s.len:
+    x.add ","
+    x.addInt int64(s[i])
+    inc i
+  x.add "]"
+  result = rope(x)
+
+
 include jstypes
 
 proc gen(p: PProc, n: PNode, r: var TCompRes)
@@ -2605,11 +2620,11 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.kind = resExpr
   of nkStrLit..nkTripleStrLit:
     if skipTypes(n.typ, abstractVarRange).kind == tyString:
-      if n.strVal.len != 0:
+      if n.strVal.len <= 64:
+        r.res = makeJsNimStrLit(n.strVal)
+      else:
         useMagic(p, "makeNimstrLit")
         r.res = "makeNimstrLit($1)" % [makeJSString(n.strVal)]
-      else:
-        r.res = rope"[]"
     else:
       r.res = makeJSString(n.strVal, false)
     r.kind = resExpr
