@@ -825,10 +825,10 @@ proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
   ## If an invalid range (`HSlice`) is passed, it raises `IndexDefect`.
   ##
   ## `slice`
-  ##   The indices of the element range that should be rotated.
+  ## : The indices of the element range that should be rotated.
   ##
   ## `dist`
-  ##   The distance in amount of elements that the data should be rotated.
+  ## : The distance in amount of elements that the data should be rotated.
   ##   Can be negative, can be any number.
   ##
   ## **See also:**
@@ -876,10 +876,10 @@ proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
   ## If an invalid range (`HSlice`) is passed, it raises `IndexDefect`.
   ##
   ## `slice`
-  ##   The indices of the element range that should be rotated.
+  ## : The indices of the element range that should be rotated.
   ##
   ## `dist`
-  ##   The distance in amount of elements that the data should be rotated.
+  ## : The distance in amount of elements that the data should be rotated.
   ##   Can be negative, can be any number.
   ##
   ## **See also:**

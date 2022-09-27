@@ -153,6 +153,8 @@ type
     cmdDoc2tex  # convert .nim doc comments to LaTeX
     cmdRst2html # convert a reStructuredText file to HTML
     cmdRst2tex # convert a reStructuredText file to TeX
+    cmdMd2html # convert a Markdown file to HTML
+    cmdMd2tex # convert a Markdown file to TeX
     cmdJsondoc0
     cmdJsondoc
     cmdCtags
@@ -190,7 +192,7 @@ type
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
-    ideRecompile, ideChanged
+    ideRecompile, ideChanged, ideType
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     implicitDeref,
@@ -211,7 +213,7 @@ type
     strictFuncs,
     views,
     strictNotNil,
-    overloadableEnums,
+    overloadableEnums, # not experimental anymore
     strictEffects,
     unicodeOperators,
     flexibleOptionalParams
@@ -502,7 +504,7 @@ when defined(nimDebugUtils):
   export debugutils
 
 proc initConfigRefCommon(conf: ConfigRef) =
-  conf.selectedGC = gcRefc
+  conf.selectedGC = gcUnselected
   conf.verbosity = 1
   conf.hintProcessingDots = true
   conf.options = DefaultOptions
@@ -852,7 +854,7 @@ when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
     let ret = relativePath(path, base)
     result = path.len > 0 and not ret.startsWith ".."
 
-const stdlibDirs = [
+const stdlibDirs* = [
   "pure", "core", "arch",
   "pure/collections",
   "pure/concurrency",
@@ -1004,6 +1006,7 @@ proc parseIdeCmd*(s: string): IdeCmd =
   of "globalSymbols": ideGlobalSymbols
   of "recompile": ideRecompile
   of "changed": ideChanged
+  of "type": ideType
   else: ideNone
 
 proc `$`*(c: IdeCmd): string =
@@ -1025,6 +1028,7 @@ proc `$`*(c: IdeCmd): string =
   of ideGlobalSymbols: "globalSymbols"
   of ideRecompile: "recompile"
   of ideChanged: "changed"
+  of ideType: "type"
 
 proc floatInt64Align*(conf: ConfigRef): int16 =
   ## Returns either 4 or 8 depending on reasons.

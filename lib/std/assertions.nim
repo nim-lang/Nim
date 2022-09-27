@@ -85,7 +85,9 @@ template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
     onFailedAssert(msg):
       raise (ref MyError)(msg: msg, lineinfo: instantiationInfo(-2))
     doAssertRaises(MyError): doAssert false
-  template failedAssertImpl(msgIMPL: string): untyped {.dirty.} =
+  when not defined(nimHasTemplateRedefinitionPragma):
+    {.pragma: redefine.}
+  template failedAssertImpl(msgIMPL: string): untyped {.dirty, redefine.} =
     let msg = msgIMPL
     code
 
@@ -98,7 +100,7 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
   var wrong = false
   const begin = "expected raising '" & astToStr(exception) & "', instead"
   const msgEnd = " by: " & astToStr(code)
-  template raisedForeign = raiseAssert(begin & " raised foreign exception" & msgEnd)
+  template raisedForeign {.gensym.} = raiseAssert(begin & " raised foreign exception" & msgEnd)
   when Exception is exception:
     try:
       if true:
