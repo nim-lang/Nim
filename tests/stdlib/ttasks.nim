@@ -4,6 +4,7 @@ discard """
 """
 
 import std/[tasks, strformat]
+import std/assertions
 
 block:
   var s = ""

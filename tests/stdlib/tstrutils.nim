@@ -4,6 +4,7 @@ discard """
 
 import std/strutils
 from stdtest/testutils import disableVm
+import std/assertions
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
 template rejectParse(e) =

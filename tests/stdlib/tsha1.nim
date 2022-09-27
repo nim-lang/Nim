@@ -1,4 +1,5 @@
 import std/sha1
+import std/assertions
 
 let hash1 = secureHash("a93tgj0p34jagp9[agjp98ajrhp9aej]")
 doAssert hash1 == hash1

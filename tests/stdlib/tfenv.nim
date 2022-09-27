@@ -1,4 +1,5 @@
 import std/fenv
+import std/assertions
 
 
 func is_significant(x: float): bool =

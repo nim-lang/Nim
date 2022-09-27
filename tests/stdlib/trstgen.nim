@@ -8,6 +8,7 @@ import ../../lib/packages/docutils/rstgen
 import ../../lib/packages/docutils/rst
 import unittest, strutils, strtabs
 import std/private/miscdollars
+import std/assertions
 
 const
   NoSandboxOpts = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
