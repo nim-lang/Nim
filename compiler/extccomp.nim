@@ -14,7 +14,9 @@
 
 import ropes, platform, condsyms, options, msgs, lineinfos, pathutils, modulepaths
 
-import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar, parseutils]
+import std/[os, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar, parseutils]
+
+import std / strutils except addf
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -616,7 +618,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
           "for the selected C compiler: " & CC[conf.cCompiler].name)
 
   result.add(' ')
-  result.addf(CC[c].compileTmpl, [
+  strutils.addf(result, CC[c].compileTmpl, [
     "dfile", dfile,
     "file", cfsh, "objfile", quoteShell(objfile),
     "options", options, "include", includeCmd,
@@ -707,7 +709,7 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
         "exefile", exefile, "nim", getPrefixDir(conf).string, "lib", conf.libpath.string])
     result.add ' '
-    result.addf(linkTmpl, ["builddll", builddll,
+    strutils.addf(result, linkTmpl, ["builddll", builddll,
         "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions,
         "objfiles", objfiles, "exefile", exefile,
@@ -856,7 +858,7 @@ proc callCCompiler*(conf: ConfigRef) =
     return # speed up that call if only compiling and no script shall be
            # generated
   #var c = cCompiler
-  var script: Rope = nil
+  var script: Rope = ""
   var cmds: TStringSeq
   var prettyCmds: TStringSeq
   let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
