@@ -12,6 +12,8 @@
 
 - The `gc:v2` option is removed.
 
+- The `mainmodule` and `m` options are removed.
+
 - The `threads:on` option is now the default.
 
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
@@ -49,6 +51,9 @@
 
 - Static linking against OpenSSL versions below 1.1, previously done by
   setting `-d:openssl10`, is no longer supported.
+
+- ORC is now the default memory management strategy. Use
+  `--mm:refc` for a transition period.
 
 ## Standard library additions and changes
 
