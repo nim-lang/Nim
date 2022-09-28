@@ -213,9 +213,9 @@ type
     strictFuncs,
     views,
     strictNotNil,
-    overloadableEnums, # not experimental anymore
+    overloadableEnums, # deadcode
     strictEffects,
-    unicodeOperators,
+    unicodeOperators, # deadcode
     flexibleOptionalParams
 
   LegacyFeature* = enum
