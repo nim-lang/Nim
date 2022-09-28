@@ -704,7 +704,7 @@ These Unicode operators are also parsed as operators::
   ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
 
 
-If enabled, Unicode operators can be combined with non-Unicode operator
+Unicode operators can be combined with non-Unicode operator
 symbols. The usual precedence extensions then apply, for example, `⊠=` is an
 assignment like operator just like `*=` is.
 
