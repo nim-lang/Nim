@@ -107,6 +107,7 @@ proc transformSons(c: PTransf, n: PNode): PNode =
 proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode): PNode =
   result = newTransNode(kind, ri.info, 2)
   result[0] = le
+  le.flags.incl nfFirstWrite2
   result[1] = ri
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
