@@ -401,7 +401,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       n.sons[0..1] = [callOp, n[1], calleeName]
       orig.sons[0..1] = [callOp, orig[1], calleeName]
       pickBest(callOp)
-    elif n.kind == nkCall and n[0].kind == nkDotExpr:
+    elif n.kind == nkCall and n[0].kind == nkDotExpr and n[0][1].kind == nkSym and n[0][0].kind == nkSym:
       let op = newIdentNode(getIdent(c.cache, n[0][1].sym.name.s), n[0][1].info)
       let first = newIdentNode(getIdent(c.cache, n[0][0].sym.name.s), n[0][0].info)
       let len  = n.len
