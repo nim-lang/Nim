@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc"
 targets: "cpp"
 output: '''
 caught as std::exception

@@ -94,6 +94,7 @@ iterator mitems*(a: var cstring): var char {.inline.} =
   runnableExamples:
     from std/sugar import collect
     var a = "abc\0def"
+    prepareMutation(a)
     var b = a.cstring
     let s = collect:
       for bi in mitems(b):

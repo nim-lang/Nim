@@ -1,5 +1,5 @@
 import std/[complex, math]
-
+import std/assertions
 
 proc `=~`[T](x, y: Complex[T]): bool =
   result = abs(x.re-y.re) < 1e-6 and abs(x.im-y.im) < 1e-6

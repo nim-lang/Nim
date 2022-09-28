@@ -115,7 +115,8 @@ proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ##   ```
   discard
 
-proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
+proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect,
+    deprecated: "'unsafeAddr' is a deprecated alias for 'addr'".} =
   ## Builtin `addr` operator for taking the address of a memory
   ## location.
   ##

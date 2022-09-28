@@ -4,6 +4,9 @@ discard """
 Half read size: 10 Data: Hello'''
 """
 import memfiles, os
+import std/syncio
+
+
 const
   fn = "test.mmap"
 var

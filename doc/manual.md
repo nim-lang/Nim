@@ -4237,16 +4237,16 @@ observable differences in behavior:
   ```
 
 
-However, the current implementation produces a warning in these cases.
-There are different ways to deal with this warning:
+The compiler can produce a warning in these cases, however this behavior is
+turned off by default. It can be enabled for a section of code via the
+`warning[ObservableStores]` and `push`/`pop` pragmas. Take the above code
+as an example:
 
-1. Disable the warning via `{.push warning[ObservableStores]: off.}` ... `{.pop.}`.
-   Then one may need to ensure that `p` only raises *before* any stores to `result`
-   happen.
-
-2. One can use a temporary helper variable, for example instead of `x = p(8)`
-   use `let tmp = p(8); x = tmp`.
-
+  ```nim
+  {.push warning[ObservableStores]: on.}
+  main()
+  {.pop.}
+  ```
 
 Overloading of the subscript operator
 -------------------------------------
@@ -4320,7 +4320,7 @@ dispatching:
     Unit = ref object of Thing
       x: int
 
-  method collide(a, b: Thing) {.inline.} =
+  method collide(a, b: Thing) {.base, inline.} =
     quit "to override!"
 
   method collide(a: Thing, b: Unit) {.inline.} =
@@ -4625,7 +4625,7 @@ the "implicitly convertible" type relation (see [Convertible relation]):
 
 A converter can also be explicitly invoked for improved readability. Note that
 implicit converter chaining is not supported: If there is a converter from
-type A to type B and from type B to type C the implicit conversion from A to C
+type A to type B and from type B to type C, the implicit conversion from A to C
 is not provided.
 
 
@@ -4799,8 +4799,8 @@ Instead of a `try finally` statement a `defer` statement can be used, which
 avoids lexical nesting and offers more flexibility in terms of scoping as shown
 below.
 
-Any statements following the `defer` in the current block will be considered
-to be in an implicit try block:
+Any statements following the `defer` will be considered
+to be in an implicit try block in the current block:
 
   ```nim  test = "nim c $1"
   proc main =
@@ -4823,7 +4823,7 @@ Is rewritten to:
   ```
 
 When `defer` is at the outermost scope of a template/macro, its scope extends
-to the block where the template is called from:
+to the block where the template/macro is called from:
 
   ```nim  test = "nim c $1"
   template safeOpenDefer(f, path) =
@@ -4991,7 +4991,7 @@ possibly raised exceptions; the algorithm operates on `p`'s call graph:
    The call is optimistically assumed to have no effect.
    Rule 2 compensates for this case.
 2. Every expression `e` of some proc type within a call that is passed to parameter
-   marked as `.effectsOf` is assumed to be called indirectly and thus
+   marked as `.effectsOf` of proc `p` is assumed to be called indirectly and thus
    its raises list is added to `p`'s raises list.
 3. Every call to a proc `q` which has an unknown body (due to a forward
    declaration) is assumed to
@@ -5138,14 +5138,15 @@ procedure types without such lists:
 
   ## this will fail because toBeCalled1 uses MyEffect which was forbidden by ProcType1:
   caller1(toBeCalled1)
-  ## this is OK because both toBeCalled1 and ProcType1 have the same requirements:
+  ## this is OK because both toBeCalled2 and ProcType1 have the same requirements:
   caller1(toBeCalled2)
   ## these are OK because ProcType2 doesn't have any effect requirement:
   caller2(toBeCalled1)
   caller2(toBeCalled2)
   ```
 
-`ProcType2` is a subtype of `ProcType1`. Unlike with tags, the parent context - the function which calls other functions with forbidden effects - doesn't inherit the forbidden list of effects.
+`ProcType2` is a subtype of `ProcType1`. Unlike with the `tags` pragma, the parent context - the
+function which calls other functions with forbidden effects - doesn't inherit the forbidden list of effects.
 
 
 Side effects

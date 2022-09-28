@@ -9,6 +9,7 @@ discard """
 
 import ../../lib/packages/docutils/[rstast, rst, dochelpers]
 import unittest
+import std/assertions
 
 proc testMsgHandler(filename: string, line, col: int, msgkind: MsgKind,
                     arg: string) =

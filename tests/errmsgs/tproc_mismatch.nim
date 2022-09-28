@@ -3,9 +3,9 @@ discard """
   cmd: '''nim check --hints:off $options $file'''
   nimoutFull: true
   nimout: '''
-tproc_mismatch.nim(35, 52) Error: type mismatch: got <proc (a: int, c: float){.cdecl, noSideEffect, gcsafe, locks: 0.}> but expected 'proc (a: int, c: float){.closure, noSideEffect.}'
+tproc_mismatch.nim(38, 52) Error: type mismatch: got <proc (a: int, c: float){.cdecl, noSideEffect, gcsafe, locks: 0.}> but expected 'proc (a: int, c: float){.closure, noSideEffect.}'
   Calling convention mismatch: got '{.cdecl.}', but expected '{.closure.}'.
-tproc_mismatch.nim(39, 6) Error: type mismatch: got <proc (){.inline, noSideEffect, gcsafe, locks: 0.}>
+tproc_mismatch.nim(42, 6) Error: type mismatch: got <proc (){.inline, noSideEffect, gcsafe, locks: 0.}>
 but expected one of:
 proc bar(a: proc ())
   first type mismatch at position: 1
@@ -14,18 +14,21 @@ proc bar(a: proc ())
   Calling convention mismatch: got '{.inline.}', but expected '{.closure.}'.
 
 expression: bar(fn1)
-tproc_mismatch.nim(43, 8) Error: type mismatch: got <proc (){.inline, noSideEffect, gcsafe, locks: 0.}> but expected 'proc (){.closure.}'
+tproc_mismatch.nim(46, 8) Error: type mismatch: got <proc (){.inline, noSideEffect, gcsafe, locks: 0.}> but expected 'proc (){.closure.}'
   Calling convention mismatch: got '{.inline.}', but expected '{.closure.}'.
-tproc_mismatch.nim(48, 8) Error: type mismatch: got <proc (){.locks: 0.}> but expected 'proc (){.closure, noSideEffect.}'
+tproc_mismatch.nim(51, 8) Error: type mismatch: got <proc (){.locks: 0.}> but expected 'proc (){.closure, noSideEffect.}'
+  Calling convention mismatch: got '{.nimcall.}', but expected '{.closure.}'.
   Pragma mismatch: got '{..}', but expected '{.noSideEffect.}'.
-tproc_mismatch.nim(52, 8) Error: type mismatch: got <proc (a: int){.noSideEffect, gcsafe, locks: 0.}> but expected 'proc (a: float){.closure.}'
-tproc_mismatch.nim(61, 9) Error: type mismatch: got <proc (a: int){.locks: 0.}> but expected 'proc (a: int){.closure, gcsafe.}'
+tproc_mismatch.nim(55, 8) Error: type mismatch: got <proc (a: int){.noSideEffect, gcsafe, locks: 0.}> but expected 'proc (a: float){.closure.}'
+  Calling convention mismatch: got '{.nimcall.}', but expected '{.closure.}'.
+tproc_mismatch.nim(64, 9) Error: type mismatch: got <proc (a: int){.locks: 0.}> but expected 'proc (a: int){.closure, gcsafe.}'
+  Calling convention mismatch: got '{.nimcall.}', but expected '{.closure.}'.
   Pragma mismatch: got '{..}', but expected '{.gcsafe.}'.
-tproc_mismatch.nim(69, 9) Error: type mismatch: got <proc (a: int): int{.nimcall.}> but expected 'proc (a: int): int{.cdecl.}'
+tproc_mismatch.nim(72, 9) Error: type mismatch: got <proc (a: int): int{.nimcall.}> but expected 'proc (a: int): int{.cdecl.}'
   Calling convention mismatch: got '{.nimcall.}', but expected '{.cdecl.}'.
-tproc_mismatch.nim(70, 9) Error: type mismatch: got <proc (a: int): int{.cdecl.}> but expected 'proc (a: int): int{.nimcall.}'
+tproc_mismatch.nim(73, 9) Error: type mismatch: got <proc (a: int): int{.cdecl.}> but expected 'proc (a: int): int{.nimcall.}'
   Calling convention mismatch: got '{.cdecl.}', but expected '{.nimcall.}'.
-tproc_mismatch.nim(74, 9) Error: type mismatch: got <proc (a: int){.closure, locks: 3.}> but expected 'proc (a: int){.closure, locks: 1.}'
+tproc_mismatch.nim(77, 9) Error: type mismatch: got <proc (a: int){.closure, locks: 3.}> but expected 'proc (a: int){.closure, locks: 1.}'
   Pragma mismatch: got '{.locks: 3.}', but expected '{.locks: 1.}'.
 lock levels differ
 '''
