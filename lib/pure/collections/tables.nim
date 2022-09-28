@@ -2903,5 +2903,5 @@ proc hash*[K,V](s: OrderedTable[K,V]): Hash =
 
 proc hash*[V](s: CountTable[V]): Hash =
   for p in pairs(s):
-    result = result +% hash(p)
+    result = result xor hash(p)
   result = !$result
