@@ -1810,6 +1810,15 @@ func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
   for i in 0 ..< m - 1:
     a[sub[i]] = m - 1 - i
 
+func initSkipTable*(sub: string): SkipTable {.noinit, rtl,
+    extern: "nsuInitNewSkipTable".} =
+  ## Returns a new table initialized for `sub`.
+  ##
+  ## See also:
+  ## * `initSkipTable func<#initSkipTable,SkipTable,string>`_
+  ## * `find func<#find,SkipTable,string,string,Natural,int>`_
+  initSkipTable(result, sub)
+
 func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
     rtl, extern: "nsuFindStrA".} =
   ## Searches for `sub` in `s` inside range `start..last` using preprocessed
@@ -1842,9 +1851,6 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
   func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
                 importc: "memchr", header: "<string.h>".}
-  func c_strstr(haystack, needle: cstring): cstring {.
-    importc: "strstr", header: "<string.h>".}
-
   const hasCStringBuiltin = true
 else:
   const hasCStringBuiltin = false
@@ -1909,28 +1915,7 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
 
-  template useSkipTable {.dirty.} =
-    var a {.noinit.}: SkipTable
-    initSkipTable(a, sub)
-    result = find(a, s, sub, start, last)
-
-  when not hasCStringBuiltin:
-    useSkipTable()
-  else:
-    when nimvm:
-      useSkipTable()
-    else:
-      when hasCStringBuiltin:
-        if last == 0 and s.len > start:
-          let found = c_strstr(s[start].unsafeAddr, sub)
-          if not found.isNil:
-            result = cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
-          else:
-            result = -1
-        else:
-          useSkipTable()
-      else:
-        useSkipTable()
+  result = find(initSkipTable(sub), s, sub, start, last)
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
