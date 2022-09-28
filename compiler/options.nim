@@ -217,6 +217,7 @@ type
     strictEffects,
     unicodeOperators, # deadcode
     flexibleOptionalParams
+    dynamicBindSymProc # moves dynamicBindSym behavior to separate proc
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

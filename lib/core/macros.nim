@@ -495,23 +495,16 @@ proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
   ## 
   ## See also `dynamicBindSym`_.
 
-proc dynamicBindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
-              magic: "NBindSym", noSideEffect.}
-  ## Creates a node that binds `ident` to a symbol node. The bound symbol
-  ## may be an overloaded symbol.
-  ## if `ident` is a NimNode, it must have `nnkIdent` kind.
-  ## If `rule == brClosed` either an `nnkClosedSymChoice` tree is
-  ## returned or `nnkSym` if the symbol is not ambiguous.
-  ## If `rule == brOpen` either an `nnkOpenSymChoice` tree is
-  ## returned or `nnkSym` if the symbol is not ambiguous.
-  ## If `rule == brForceOpen` always an `nnkOpenSymChoice` tree is
-  ## returned even if the symbol is not ambiguous.
-  ## 
-  ## In contrast to `bindSym`_, `ident` does not have to be a constant value,
-  ## and instead may be a computed value (however still only at compile time).
-  ## Note that this behavior is experimental.
-  ##
-  ## See the `manual <manual.html#macros-bindsym>`_ for more details.
+when defined(nimHasDynamicBindSymMagic):
+  proc dynamicBindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
+                magic: "NDynamicBindSym", noSideEffect.}
+    ## Same as `bindSym`_, except `ident` does not have to be constant,
+    ## and instead may be a computed value.
+    ## 
+    ## The `dynamicBindSymProc` experimental switch must be enabled
+    ## to use this proc.
+    ##
+    ## See the `experimental manual <manual_experimental.html#dynamic-arguments-for-bindsym>`_ for more details.
 
 proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   magic: "NGenSym", noSideEffect.}

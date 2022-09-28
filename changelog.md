@@ -204,9 +204,10 @@
   need to convert to `string`. On the JS backend, this is translated directly
   to a `switch` statement.
 
-- `macros.dynamicBindSym` has been added as a variant of `bindSym` with an
-  [experimental feature](https://nim-lang.github.io/Nim/manual_experimental.html#dynamic-arguments-for-bindsym)
-  enabled that allows computed argument values.
+- `macros.dynamicBindSym` has been added as an alternative to the
+  [`dynamicBindSym` experimental switch](https://nim-lang.github.io/Nim/manual_experimental.html#dynamic-arguments-for-bindsym)
+  that does not modify the behavior of the original `bindSym` proc.
+  To use this new proc, enable the `dynamicBindSymProc` experimental switch.
 
 ## Compiler changes
 

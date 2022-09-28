@@ -5,33 +5,13 @@ Coral
 enum
   redCoral, blackCoral
 proc (x: int; y: float): int'''
-  output: '''TFoo
-TBar'''
 """
 
-# bug #1319
+# mirrored with tbindsym.nim 
 
 import macros
 
-type
-  TTextKind = enum
-    TFoo, TBar
-
-macro test: untyped =
-  var x = @[TFoo, TBar]
-  result = newStmtList()
-  for i in x:
-    result.add newCall(newIdentNode("echo"),
-      case i
-      of TFoo:
-        bindSym("TFoo")
-      of TBar:
-        bindSym("TBar"))
-
-test()
-
 # issue 7827, bindSym power up
-{.experimental: "dynamicBindSym".}
 type
   Apple = ref object
     name: string
@@ -44,10 +24,20 @@ proc initApple(name: string): Apple =
 proc deinitApple(x: Apple) =
   discard
 
+static:
+  doAssert not (compiles do:
+    macro wrapObject(obj: typed, n: varargs[untyped]): untyped =
+      let m = n[0]
+      for x in m:
+        var z = dynamicBindSym x
+        echo z.repr)
+
+{.experimental: "dynamicBindSymProc".}
+
 macro wrapObject(obj: typed, n: varargs[untyped]): untyped =
   let m = n[0]
   for x in m:
-    var z = bindSym x
+    var z = dynamicBindSym x
     echo z.repr
 
 wrapObject(Apple):
@@ -61,7 +51,7 @@ type
 
 macro mixer(): untyped =
   let m = "Co" & "ral"
-  let x = bindSym(m)
+  let x = dynamicBindSym(m)
   echo x.repr
   echo getType(x).repr
 
@@ -73,7 +63,7 @@ block: # #11496
   macro macroA(call: untyped): untyped =
     let
       name = call.findChild(it.kind == nnkIdent).strVal
-      inst = name.bindSym().getTypeInst()
+      inst = name.dynamicBindSym().getTypeInst()
     echo inst.repr
 
   #macro macroB(call: untyped): untyped =

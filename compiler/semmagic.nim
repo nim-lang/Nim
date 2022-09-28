@@ -547,7 +547,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result = semBindSym(c, n)
     else:
       result = semDynamicBindSym(c, n)
-  of mNDynamicBindSym: result = semDynamicBindSym(c, n)
+  of mNDynamicBindSym:
+    if dynamicBindSymProc notin c.features:
+      localError(c.config, n.info, "experimental switch 'dynamicBindSymProc' must be enabled to call `dynamicBindSym`")
+    result = semDynamicBindSym(c, n)
   of mProcCall:
     result = n
     result.typ = n[1].typ

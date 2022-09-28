@@ -1302,8 +1302,21 @@ to be computed dynamically.
   echo callOp("-", 5, 4)
   ```
 
-The proc `dynamicBindSym` may also be used instead of `bindSym`
-to access this behavior without enabling the experimental switch.  
+The experimental switch `dynamicBindSymProc` may instead be enabled to
+use a proc named `dynamicBindSym` to achieve this behavior instead of
+modifying the behavior of `bindSym`.
+
+  ```nim
+  {.experimental: "dynamicBindSymProc".}
+
+  import macros
+
+  macro callOp(opName, arg1, arg2): untyped =
+    result = newCall(dynamicBindSym($opName), arg1, arg2)
+
+  echo callOp("+", 1, 2)
+  echo callOp("-", 5, 4)
+  ```
 
 
 Term rewriting macros
