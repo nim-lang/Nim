@@ -211,7 +211,8 @@ proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ##   ```
   discard
 
-proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
+proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect,
+    deprecated: "'unsafeAddr' is a deprecated alias for 'addr'".} =
   ## Builtin `addr` operator for taking the address of a memory
   ## location.
   ##
@@ -2147,7 +2148,7 @@ const
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
-  NimPatch* {.intdefine.}: int = 1
+  NimPatch* {.intdefine.}: int = 3
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 

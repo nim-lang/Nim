@@ -5,6 +5,7 @@ discard """
 import unidecode
 
 import std/unidecode # #14112
+import std/assertions
 
 loadUnidecodeTable("lib/pure/unidecode/unidecode.dat")
 

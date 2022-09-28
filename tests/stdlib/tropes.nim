@@ -3,6 +3,7 @@ discard """
 """
 
 import std/ropes
+import std/assertions
 
 template main() =
   block:

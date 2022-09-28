@@ -960,7 +960,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.loc.flags, lfHeader)
         incl(sym.loc.flags, lfNoDecl)
         # implies nodecl, because otherwise header would not make sense
-        if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
+        if sym.loc.r == "": sym.loc.r = rope(sym.name.s)
       of wNoSideEffect:
         noVal(c, it)
         if sym != nil:
@@ -1247,7 +1247,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
     else:
-      if sym == nil or (sym.kind in {skVar, skLet, skParam,
+      if sym == nil or (sym.kind in {skVar, skLet, skParam, skIterator,
                         skField, skProc, skFunc, skConverter, skMethod, skType}):
         n[i] = semCustomPragma(c, it)
       elif sym != nil:
@@ -1290,7 +1290,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
         sfImportc in sym.flags and lib != nil:
       incl(sym.loc.flags, lfDynamicLib)
       addToLib(lib, sym)
-      if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
+      if sym.loc.r == "": sym.loc.r = rope(sym.name.s)
 
 proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
   if n == nil: return false

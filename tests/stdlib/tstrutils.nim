@@ -4,6 +4,7 @@ discard """
 
 import std/strutils
 from stdtest/testutils import disableVm
+import std/assertions
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
 template rejectParse(e) =
@@ -360,19 +361,23 @@ template main() =
     doAssert "///".rfind("//", start=3) == -1
 
     # searching for empty string
-    doAssert "".rfind("") == -1
-    doAssert "abc".rfind("") == -1
-    doAssert "abc".rfind("", start=1) == -1
-    doAssert "abc".rfind("", start=2) == -1
-    doAssert "abc".rfind("", start=3) == -1
-    doAssert "abc".rfind("", start=4) == -1
-    doAssert "abc".rfind("", start=400) == -1
+    doAssert "".rfind("") == 0
+    doAssert "abc".rfind("") == 3
+    doAssert "abc".rfind("", start=1) == 3
+    doAssert "abc".rfind("", start=2) == 3
+    doAssert "abc".rfind("", start=3) == 3
+    doAssert "abc".rfind("", start=4) == 4
+    doAssert "abc".rfind("", start=400) == 400
 
-    doAssert "abc".rfind("", start=1, last=3) == -1
-    doAssert "abc".rfind("", start=1, last=2) == -1
-    doAssert "abc".rfind("", start=1, last=1) == -1
-    doAssert "abc".rfind("", start=1, last=0) == -1
-    doAssert "abc".rfind("", start=1, last = -1) == -1
+    doAssert "abc".rfind("", start=1, last=3) == 3
+    doAssert "abc".rfind("", start=1, last=2) == 2
+    doAssert "abc".rfind("", start=1, last=1) == 1
+    # This returns the start index instead of the last index
+    # because start > last
+    doAssert "abc".rfind("", start=1, last=0) == 1
+    doAssert "abc".rfind("", start=1, last = -1) == 3
+    
+    doAssert "abc".rfind("", start=0, last=0) == 0
 
     # when last <= start, searching for non-empty string
     block:

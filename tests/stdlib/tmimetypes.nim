@@ -3,6 +3,9 @@ discard """
 """
 
 import std/mimetypes
+import std/assertions
+
+
 template main() =
   var m = newMimetypes()
   doAssert m.getMimetype("mp4") == "video/mp4"

@@ -561,35 +561,8 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   gcTrace(res, csAllocated)
   track("growObj old", ol, 0)
   track("growObj new", res, newsize)
-  when defined(nimIncrSeqV3):
-    # since we steal the old seq's contents, we set the old length to 0.
-    cast[PGenericSeq](old).len = 0
-  elif reallyDealloc:
-    sysAssert(allocInv(gch.region), "growObj before dealloc")
-    if ol.refcount shr rcShift <=% 1:
-      # free immediately to save space:
-      if (ol.refcount and ZctFlag) != 0:
-        var j = gch.zct.len-1
-        var d = gch.zct.d
-        while j >= 0:
-          if d[j] == ol:
-            d[j] = res
-            break
-          dec(j)
-      beforeDealloc(gch, ol, "growObj stack trash")
-      decTypeSize(ol, ol.typ)
-      rawDealloc(gch.region, ol)
-    else:
-      # we split the old refcount in 2 parts. XXX This is still not entirely
-      # correct if the pointer that receives growObj's result is on the stack.
-      # A better fix would be to emit the location specific write barrier for
-      # 'growObj', but this is lots of more work and who knows what new problems
-      # this would create.
-      res.refcount = rcIncrement
-      decRef(ol)
-  else:
-    sysAssert(ol.typ != nil, "growObj: 5")
-    zeroMem(ol, sizeof(Cell))
+  # since we steal the old seq's contents, we set the old length to 0.
+  cast[PGenericSeq](old).len = 0
   when useCellIds:
     inc gch.idGenerator
     res.id = gch.idGenerator * 1000_000 + gch.gcThreadId
