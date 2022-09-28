@@ -745,7 +745,7 @@ const
     mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInSet, mRepr, mOpenArrayToSeq}
-  
+
   generatedMagics* = {mNone, mIsolate, mFinished, mOpenArrayToSeq}
     ## magics that are generated as normal procs in the backend
 
@@ -1523,7 +1523,7 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.storage == low(typeof(a.storage)): a.storage = b.storage
   a.flags.incl b.flags
   if a.lode == nil: a.lode = b.lode
-  if a.r == nil: a.r = b.r
+  if a.r == "": a.r = b.r
 
 proc newSons*(father: Indexable, length: int) =
   setLen(father.sons, length)

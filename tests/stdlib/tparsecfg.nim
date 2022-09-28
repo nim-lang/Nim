@@ -3,6 +3,7 @@ discard """
 """
 
 import parsecfg, streams, sequtils
+import std/assertions
 
 when not defined(js):
   from stdtest/specialpaths import buildDir

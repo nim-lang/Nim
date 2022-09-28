@@ -141,7 +141,7 @@ you should familiarize yourself with the following repository structure:
     dependencies written in other languages.
     * ``wrappers/`` - modules that wrap dependencies written in other languages.
 * ``tests/`` - contains categorized tests for the compiler and standard library.
-* ``tools/`` - the tools including ``niminst`` and ``nimweb`` (mostly invoked via
+* ``tools/`` - the tools including ``niminst`` (mostly invoked via
   ``koch``).
 * ``koch.nim`` - the tool used to bootstrap Nim, generate C sources, build the website,
   and generate the documentation.

@@ -24,6 +24,10 @@ else:
 
 import os, streams
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
+
 proc newEIO(msg: string): ref IOError =
   new(result)
   result.msg = msg
