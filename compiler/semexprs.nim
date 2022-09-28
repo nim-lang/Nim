@@ -1239,11 +1239,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       else:
         result = newSymNode(s, n.info)
     of tyProc:
-      if sym.typ.callConv == ccClosure:
-        localError(c.config, sym.info, "$1 '$2' cannot be assigned to $3 of calling convention '$4'" % [
-                toHumanStr(sym.kind), sym.name.s, toHumanStr(typ.kind), $sym.typ.callConv])
-      else:
-        result = newSymNode(s, n.info)
+      result = newSymNode(s, n.info)
     else:
       result = newSymNode(s, n.info)
   of skMacro:

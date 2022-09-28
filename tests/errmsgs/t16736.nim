@@ -1,7 +1,14 @@
 discard """
-  action: reject
-  errormsg: "const 'something' cannot be assigned to proc of calling convention 'closure'"
+  cmd: "nim check --hints:off $file"
+  errormsg: ""
+  nimout: '''
+t16736.nim(12, 7) Error: invalid type: 'ProcType' for const
+t16736.nim(14, 7) Error: invalid type: 'proc (){.closure, noSideEffect, gcsafe, locks: 0.}' for const
+'''
 """
+
+
 type ProcType = proc()
-const something: ProcType = proc() = discard
-discard typeof(something)
+const a: ProcType = proc() = discard
+
+const b = proc() {.closure.} = discard

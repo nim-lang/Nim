@@ -82,7 +82,9 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
         if kind notin {skParam, skResult} and views notin c.features: result = t
         else: result = typeAllowedAux(marker, t2, kind, c, flags)
   of tyProc:
-    if kind in {skVar, skLet, skConst} and taIsTemplateOrMacro in flags:
+    if typ.callConv == ccClosure and tfIterator notin typ.flags and kind == skConst:
+      result = typ
+    elif kind in {skVar, skLet, skConst} and taIsTemplateOrMacro in flags:
       result = t
     else:
       if isInlineIterator(typ) and kind in {skVar, skLet, skConst, skParam, skResult}:
