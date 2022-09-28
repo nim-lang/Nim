@@ -23,7 +23,7 @@
 ##    if cond: b = x else: b = y
 ##
 
-import std / intsets
+import std / [intsets, assertions]
 import ast, renderer, aliasanalysis, trees, parampatterns, lineinfos
 
 type

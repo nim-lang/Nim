@@ -1,6 +1,8 @@
 
 import ast
 
+import std / assertions
+
 const
   PathKinds0* = {nkDotExpr, nkCheckedFieldExpr,
                  nkBracketExpr, nkDerefExpr, nkHiddenDeref,
