@@ -40,6 +40,10 @@ include "system/hti.nim"
 
 {.pop.}
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   AnyKind* = enum       ## The kind of `Any`.
     akNone = 0,         ## invalid

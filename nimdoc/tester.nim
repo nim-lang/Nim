@@ -36,7 +36,7 @@ proc testNimDoc(prjDir, docsDir: string; switches: NimSwitches; fixup = false) =
   if nimBuildIndexSwitches != "":
     exec("$1 buildIndex $2" % [nimExe, nimBuildIndexSwitches])
 
-  for expected in walkDirRec(prjDir / "expected/"):
+  for expected in walkDirRec(prjDir / "expected/", checkDir=true):
     let produced = expected.replace('\\', '/').replace("/expected/", "/$1/" % [docsDir])
     if not fileExists(produced):
       echo "FAILURE: files not found: ", produced
@@ -78,6 +78,15 @@ let
                               buildIndex: @["--out:$1/$2/theindex.html" % [test2Dir, test2DocsDir],
                                             "$1/$2" % [test2Dir, test2DocsDir]])
 testNimDoc(test2Dir, test2DocsDir, test2Switches, fixup)
+
+# Test `nim doc` on file with `{.doctype.}` pragma
+let
+  test3PrjDir = "test_doctype"
+  test3PrjName = "test_doctype"
+  test3Dir = baseDir / test3PrjDir
+  test3DocsDir = "htmldocs"
+  test3Switches = NimSwitches(doc: @["$1/$2.nim" % [test3Dir, test3PrjName]])
+testNimDoc(test3Dir, test3DocsDir, test3Switches, fixup)
 
 if failures > 0:
   quit "$# failures occurred; see note in nimdoc/tester.nim regarding -d:nimTestsNimdocFixup" %  $failures

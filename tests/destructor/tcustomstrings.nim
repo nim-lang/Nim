@@ -8,8 +8,6 @@ after 20 20'''
 joinable: false
 """
 
-{.this: self.}
-
 type
   mystring = object
     len, cap: int
@@ -51,7 +49,7 @@ proc resize(self: var mystring) =
   if self.cap == 0: self.cap = 8
   else: self.cap = (self.cap * 3) shr 1
   if self.data == nil: inc allocCount
-  self.data = cast[type(data)](realloc(self.data, self.cap + 1))
+  self.data = cast[type(self.data)](realloc(self.data, self.cap + 1))
 
 proc add*(self: var mystring; c: char) =
   if self.len >= self.cap: resize(self)
@@ -60,17 +58,17 @@ proc add*(self: var mystring; c: char) =
   inc self.len
 
 proc ensure(self: var mystring; newLen: int) =
-  if newLen >= cap:
-    cap = max((cap * 3) shr 1, newLen)
-    if cap > 0:
-      if data == nil: inc allocCount
-      data = cast[type(data)](realloc(data, cap + 1))
+  if newLen >= self.cap:
+    self.cap = max((self.cap * 3) shr 1, newLen)
+    if self.cap > 0:
+      if self.data == nil: inc allocCount
+      self.data = cast[type(self.data)](realloc(self.data, self.cap + 1))
 
 proc add*(self: var mystring; y: mystring) =
-  let newLen = len + y.len
+  let newLen = self.len + y.len
   ensure(self, newLen)
-  copyMem(addr data[len], y.data, y.data.len + 1)
-  len = newLen
+  copyMem(addr self.data[self.len], y.data, y.data.len + 1)
+  self.len = newLen
 
 proc create*(lit: string): mystring =
   let newLen = lit.len

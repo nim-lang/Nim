@@ -1,4 +1,5 @@
 discard """
+  targets: "c cpp"
   matrix: "--mm:arc; --mm:orc"
 """
 
@@ -20,3 +21,15 @@ block:
 
   let keys = initKeyPair()
   doAssert keys.public[0] == 88
+
+
+template minIndexByIt: untyped =
+  var other = 3
+  other
+
+proc bug20303() =
+  var hlibs = @["hello", "world", "how", "are", "you"]
+  let res = hlibs[minIndexByIt()]
+  doAssert res == "are"
+
+bug20303()

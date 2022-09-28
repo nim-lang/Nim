@@ -172,6 +172,8 @@ import db_common
 export db_common
 
 import std/private/[since, dbutils]
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   DbConn* = PSqlite3  ## Encapsulates a database connection.
@@ -235,7 +237,7 @@ proc tryExec*(db: DbConn, query: SqlQuery,
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   var stmt: sqlite3.PStmt
-  if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
+  if prepare_v2(db, q.cstring, q.len.cint, stmt, nil) == SQLITE_OK:
     let x = step(stmt)
     if x in {SQLITE_DONE, SQLITE_ROW}:
       result = finalize(stmt) == SQLITE_OK
@@ -278,7 +280,7 @@ proc setupQuery(db: DbConn, query: SqlQuery,
                 args: varargs[string]): PStmt =
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
-  if prepare_v2(db, q, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
+  if prepare_v2(db, q.cstring, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
 
 proc setupQuery(db: DbConn, stmtName: SqlPrepared): SqlPrepared {.since: (1, 3).} =
   assert(not db.isNil, "Database not connected.")
@@ -653,7 +655,7 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
   var q = dbFormat(query, args)
   var stmt: sqlite3.PStmt
   result = -1
-  if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
+  if prepare_v2(db, q.cstring, q.len.cint, stmt, nil) == SQLITE_OK:
     if step(stmt) == SQLITE_DONE:
       result = last_insert_rowid(db)
     if finalize(stmt) != SQLITE_OK:

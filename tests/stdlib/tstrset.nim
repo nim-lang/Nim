@@ -3,7 +3,7 @@
 type
   TRadixNodeKind = enum rnLinear, rnFull, rnLeaf
   PRadixNode = ref TRadixNode
-  TRadixNode = object {.inheritable.}
+  TRadixNode {.inheritable.} = object
     kind: TRadixNodeKind
   TRadixNodeLinear = object of TRadixNode
     len: int8

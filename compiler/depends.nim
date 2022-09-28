@@ -13,8 +13,13 @@ import options, ast, ropes, passes, pathutils, msgs, lineinfos
 
 import modulegraphs
 
-import std/[os, strutils, parseutils]
+import std/[os, parseutils]
+import strutils except addf
 import std/private/globs
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 type
   TGen = object of PPassContext
@@ -105,7 +110,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
   g.config = graph.config
   g.graph = graph
   if graph.backend == nil:
-    graph.backend = Backend(dotGraph: nil)
+    graph.backend = Backend(dotGraph: "")
   result = g
 
 const gendependPass* = makePass(open = myOpen, process = addDotDependency)
