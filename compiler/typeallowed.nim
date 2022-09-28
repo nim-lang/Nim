@@ -48,6 +48,9 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
           result = typeAllowedNode(marker, it, kind, c, flags)
           if result != nil: break
 
+proc hasNone(typ: PType): bool =
+  result = typ.lastSon.kind == tyNone
+
 proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
                     c: PContext; flags: TTypeAllowedFlags = {}): PType =
   assert(kind in {skVar, skLet, skConst, skProc, skFunc, skParam, skResult})
@@ -158,12 +161,16 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     else:
       result = typeAllowedAux(marker, lastSon(t), kind, c, flags-{taHeap})
   of tySequence:
-    if t[0].kind != tyEmpty:
+    if typ.hasNone():
+      return typ.lastSon
+    elif t[0].kind != tyEmpty:
       result = typeAllowedAux(marker, t[0], kind, c, flags+{taHeap})
     elif kind in {skVar, skLet}:
       result = t[0]
   of tyArray:
-    if t[1].kind == tyTypeDesc:
+    if typ.hasNone():
+      return typ.lastSon
+    elif t[1].kind == tyTypeDesc:
       result = t[1]
     elif t[1].kind != tyEmpty:
       result = typeAllowedAux(marker, t[1], kind, c, flags)
@@ -175,6 +182,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyPtr:
     result = typeAllowedAux(marker, t.lastSon, kind, c, flags+{taHeap})
   of tySet:
+    if typ.hasNone():
+      return typ.lastSon
     for i in 0..<t.len:
       result = typeAllowedAux(marker, t[i], kind, c, flags)
       if result != nil: break

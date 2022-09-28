@@ -1279,17 +1279,6 @@ proc readTypeParameter(c: PContext, typ: PType,
   return nil
 
 proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
-  proc symCheck(sym: PSym; c: PContext) =
-    case sym.typ.kind
-    of tyArray:
-      if sym.typ.hasNone():
-        localError(c.config, sym.info, errArrayExpectsTwoTypeParams)
-    of tySequence, tySet:
-      if sym.typ.hasNone():
-        localError(c.config, sym.info, "$1 expects one type parameter" % toHumanStr(sym.typ.kind))
-    else:
-      discard
-
   let s = getGenSym(c, sym)
   case s.kind
   of skConst:
@@ -1303,7 +1292,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       if s.magic == mNone: result = inlineConst(c, n, s)
       else: result = newSymNode(s, n.info)
     of tyArray, tySequence:
-      symCheck(sym, c)
       # Consider::
       #     const x = []
       #     proc p(a: openarray[int])
@@ -1347,7 +1335,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       internalAssert c.config, s.owner != nil
     result = newSymNode(s, n.info)
   of skVar, skLet, skResult, skForVar:
-    symCheck(sym, c)
     if s.magic == mNimvm:
       localError(c.config, n.info, "illegal context for 'nimvm' magic")
 
