@@ -2092,6 +2092,11 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
     elif etyp.kind == tyBool and srcTyp.kind in IntegralTypes:
       putIntoDest(p, d, e, "(($1) != 0)" % [rdCharLoc(a)], a.storage)
     else:
+      if etyp.kind == tyPtr:
+        # generates the definition of structs for casts like cast[ptr object](addr x)[]
+        let internalType = etyp.skipTypes({tyPtr})
+        if internalType.kind == tyObject:
+          discard getTypeDesc(p.module, internalType)
       putIntoDest(p, d, e, "(($1) ($2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
 
