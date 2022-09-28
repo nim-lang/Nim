@@ -76,6 +76,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   var symbols: TStrTable
   if isPure: initStrTable(symbols)
   var hasNull = false
+  var isUnsigned = false
   for i in 1..<n.len:
     if n[i].kind == nkEmpty: continue
     case n[i].kind
@@ -97,6 +98,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
             if not isOrdinalType(v[0].typ, allowEnumWithHoles=true):
               localError(c.config, v[0].info, errOrdinalTypeExpected % typeToString(v[0].typ, preferDesc))
             x = toInt64(getOrdValue(v[0])) # first tuple part is the ordinal
+            isUnsigned = v[0].kind in nkUIntLit..nkUInt64Lit or tfEnumIsUnsigned in v[0].typ.flags or isUnsigned
             n[i][1][0] = newIntTypeNode(x, getSysType(c.graph, unknownLineInfo, tyInt))
           else:
             localError(c.config, strVal.info, errStringLiteralExpected)
@@ -109,6 +111,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
         if not isOrdinalType(v.typ, allowEnumWithHoles=true):
           localError(c.config, v.info, errOrdinalTypeExpected % typeToString(v.typ, preferDesc))
         x = toInt64(getOrdValue(v))
+        isUnsigned = v.kind in nkUIntLit..nkUInt64Lit or tfEnumIsUnsigned in v.typ.flags or isUnsigned
         n[i][1] = newIntTypeNode(x, getSysType(c.graph, unknownLineInfo, tyInt))
       if i != 1:
         if x != counter: incl(result.flags, tfEnumHasHoles)
@@ -130,6 +133,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       illFormedAst(n[i], c.config)
     e.typ = result
     e.position = int(counter)
+    if isUnsigned:
+        incl(result.flags, tfEnumIsUnsigned)
     let symNode = newSymNode(e)
     if optNimV1Emulation notin c.config.globalOptions and identToReplace != nil and
         c.config.cmd notin cmdDocLike: # A hack to produce documentation for enum fields.
