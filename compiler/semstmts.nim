@@ -1359,12 +1359,15 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         body.sym = s
         body.size = -1 # could not be computed properly
         if body.kind == tyObject:
+          if tfMaybeCyclicGeneric in s.typ.flags and tfInContainer notin s.typ.flags:
+            localError(c.config, a[0].info, "illegal recursion in type '" & typeToString(s.typ) & "'")
           # add flags applied to generic type to object (nominal) type
           incl(body.flags, oldFlags)
           # {.inheritable, final.} is already disallowed, but
           # object might have been assumed to be final
           if tfInheritable in oldFlags and tfFinal in body.flags:
             excl(body.flags, tfFinal)
+        s.typ.flags.excl tfMaybeCyclicGeneric
         s.typ[^1] = body
         if tfCovariant in s.typ.flags:
           checkCovariantParamsUsages(c, s.typ)

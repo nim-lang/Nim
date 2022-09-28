@@ -172,7 +172,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
 
 proc semContainerArg(c: PContext; n: PNode, kindStr: string; result: PType) =
   if n.len == 2:
-    var base = semTypeNode(c, n[1], nil)
+    var base = semTypeNode(c, n[1], nil, {tfInContainer})
     if base.kind == tyVoid:
       localError(c.config, n.info, errTIsNotAConcreteType % typeToString(base))
     addSonSkipIntLit(result, base, c.idgen)
@@ -1455,7 +1455,7 @@ proc semObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType) =
   var newf = newNodeI(nkRecList, n.info)
   semRecordNodeAux(c, t.n, check, pos, newf, t)
 
-proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
+proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType, flags: TTypeFlags): PType =
   if s.typ == nil:
     localError(c.config, n.info, "cannot instantiate the '$1' $2" %
                [s.name.s, s.kind.toHumanStr])
@@ -1519,7 +1519,11 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       else:
         result = instGenericContainer(c, n.info, result,
                                       allowMetaTypes = false)
-
+  if c.inTypeContext > 0:
+    if result.kind == tyGenericInvocation and s.typ == result.base:
+      if tfAcyclic notin s.typ.flags:
+        s.typ.flags = s.typ.flags + flags
+        s.typ.flags.incl tfMaybeCyclicGeneric
   # special check for generic object with
   # generic/partial specialized parent
   let tx = result.skipTypes(abstractPtrs, 50)
@@ -1743,7 +1747,7 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   fixupTypeOf(c, prev, t)
   result = t.typ
 
-proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
+proc semTypeNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags = {}): PType =
   result = nil
   inc c.inTypeContext
 
@@ -1913,7 +1917,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mRef: result = semAnyRef(c, n, tyRef, prev)
     of mPtr: result = semAnyRef(c, n, tyPtr, prev)
     of mTuple: result = semTuple(c, n, prev)
-    else: result = semGeneric(c, n, s, prev)
+    else: result = semGeneric(c, n, s, prev, flags)
   of nkDotExpr:
     let typeExpr = semExpr(c, n)
     if typeExpr.typ.isNil:

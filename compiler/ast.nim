@@ -581,6 +581,8 @@ type
     tfExplicitCallConv
     tfIsConstructor
     tfEffectSystemWorkaround
+    tfMaybeCyclicGeneric
+    tfInContainer
 
   TTypeFlags* = set[TTypeFlag]
 

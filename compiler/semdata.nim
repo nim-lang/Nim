@@ -131,7 +131,7 @@ type
     semConstBoolExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # XXX bite the bullet
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
                               filter: TSymKinds, flags: TExprFlags): PNode {.nimcall.}
-    semTypeNode*: proc(c: PContext, n: PNode, prev: PType): PType {.nimcall.}
+    semTypeNode*: proc(c: PContext, n: PNode, prev: PType; flags: TTypeFlags = {}): PType {.nimcall.}
     semInferredLambda*: proc(c: PContext, pt: TIdTable, n: PNode): PNode
     semGenerateInstance*: proc (c: PContext, fn: PSym, pt: TIdTable,
                                 info: TLineInfo): PSym
