@@ -241,7 +241,10 @@ proc isCastable(c: PContext; dst, src: PType, info: TLineInfo): bool =
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
     if result and (dstSize > srcSize):
-      message(conf, info, warnCastSizes, "target type is larger than source type")
+      var warnMsg = "target type is larger than source type"
+      warnMsg.add("\n  target type: '$1' ($2)" % [$dst, if dstSize == 1: "1 byte" else: $dstSize & " bytes"])
+      warnMsg.add("\n  source type: '$1' ($2)" % [$src, if srcSize == 1: "1 byte" else: $srcSize & " bytes"])
+      message(conf, info, warnCastSizes, warnMsg)
   if result and src.kind == tyNil:
     return dst.size <= conf.target.ptrSize
 
@@ -363,10 +366,7 @@ proc semCast(c: PContext, n: PNode): PNode =
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
-    let tar = $targetType
-    let alt = typeToString(targetType, preferDesc)
-    let msg = if tar != alt: tar & "=" & alt else: tar
-    localError(c.config, n.info, "expression cannot be cast to " & msg)
+    localError(c.config, n.info, "expression cannot be cast to '$1'" % $targetType)
   result = newNodeI(nkCast, n.info)
   result.typ = targetType
   result.add copyTree(n[0])
