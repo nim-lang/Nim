@@ -16,9 +16,9 @@ type
 
 proc c_str(a: stdString): cstring {.importcpp: "(char *)(#.c_str())", header: "<string>".}
 
-proc len(a: stdString): csize {.importcpp: "(#.length())", header: "<string>".}
+proc len(a: stdString): csize_t {.importcpp: "(#.length())", header: "<string>".}
 
-proc setChar(a: var stdString, i: csize, c: char) {.importcpp: "(#[#] = #)", header: "<string>".}
+proc setChar(a: var stdString, i: csize_t, c: char) {.importcpp: "(#[#] = #)", header: "<string>".}
 
 proc `*`*[T](this: stdUniquePtr[T]): var T {.noSideEffect, importcpp: "(* #)", header: "<memory>".}
 

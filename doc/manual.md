@@ -1066,17 +1066,6 @@ operation                meaning
 `a %% b`                 unsigned integer modulo operation
 `a <% b`                 treat `a` and `b` as unsigned and compare
 `a <=% b`                treat `a` and `b` as unsigned and compare
-`ze(a)`                  extends the bits of `a` with zeros until it has the
-                         width of the `int` type
-`toU8(a)`                treats `a` as unsigned and converts it to an
-                         unsigned integer of 8 bits (but still the
-                         `int8` type)
-`toU16(a)`               treats `a` as unsigned and converts it to an
-                         unsigned integer of 16 bits (but still the
-                         `int16` type)
-`toU32(a)`               treats `a` as unsigned and converts it to an
-                         unsigned integer of 32 bits (but still the
-                         `int32` type)
 ======================   ======================================================
 
 `Automatic type conversion`:idx: is performed in expressions where different

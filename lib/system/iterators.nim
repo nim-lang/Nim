@@ -1,3 +1,5 @@
+## Default iterators for some Nim types.
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 

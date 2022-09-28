@@ -1,4 +1,5 @@
 discard """
+disabled: true
 output: '''
 just exiting...
 '''
