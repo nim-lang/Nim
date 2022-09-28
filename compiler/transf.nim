@@ -104,10 +104,11 @@ proc transformSons(c: PTransf, n: PNode): PNode =
   for i in 0..<n.len:
     result[i] = transform(c, n[i])
 
-proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode): PNode =
+proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode; isFirstWrite: bool): PNode =
   result = newTransNode(kind, ri.info, 2)
   result[0] = le
-  le.flags.incl nfFirstWrite2
+  if isFirstWrite:
+    le.flags.incl nfFirstWrite2
   result[1] = ri
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
@@ -364,9 +365,9 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     case lhs.kind
     of nkSym:
       internalAssert c.graph.config, lhs.sym.kind == skForVar
-      result = newAsgnStmt(c, nkFastAsgn, lhs, rhs)
+      result = newAsgnStmt(c, nkFastAsgn, lhs, rhs, false)
     of nkDotExpr:
-      result = newAsgnStmt(c, nkAsgn, lhs, rhs)
+      result = newAsgnStmt(c, nkAsgn, lhs, rhs, false)
     else:
       internalAssert c.graph.config, false
   result = newTransNode(nkStmtList, n.info, 0)
@@ -733,7 +734,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, t, formal.info)
       addVar(v, temp)
-      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
+      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
       idNodeTablePut(newC.mapping, formal, temp)
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind in {tyVar})
@@ -743,7 +744,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       # arrays will deep copy here (pretty bad).
       var temp = newTemp(c, arg.typ, formal.info)
       addVar(v, temp)
-      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
+      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
       idNodeTablePut(newC.mapping, formal, temp)
 
   let body = transformBody(c.graph, c.idgen, iter, true)
