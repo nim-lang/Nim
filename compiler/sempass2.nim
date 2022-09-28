@@ -1126,11 +1126,12 @@ proc track(tracked: PEffects, n: PNode) =
           createTypeBoundOps(tracked, child[0].typ, child.info)
       if child.kind == nkIdentDefs:
         for i in 0..<child.len-2:
-          varDecl(tracked, child[i])
+          let a = skipPragmaExpr(child[i])
+          varDecl(tracked, a)
           if last.kind != nkEmpty:
-            initVar(tracked, child[i], volatileCheck=false)
-            addAsgnFact(tracked.guards, child[i], last)
-            notNilCheck(tracked, last, child[i].typ)
+            initVar(tracked, a, volatileCheck=false)
+            addAsgnFact(tracked.guards, a, last)
+            notNilCheck(tracked, last, a.typ)
       elif child.kind == nkVarTuple:
         for i in 0..<child.len-1:
           if child[i].kind == nkEmpty or

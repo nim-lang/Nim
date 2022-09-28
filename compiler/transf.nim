@@ -186,10 +186,12 @@ proc transformVarSection(c: PTransf, v: PNode): PNode =
     if it.kind == nkCommentStmt:
       result[i] = it
     elif it.kind == nkIdentDefs:
-      if it[0].kind == nkSym:
+      var vn = it[0]
+      if vn.kind == nkPragmaExpr: vn = vn[0]
+      if vn.kind == nkSym:
         internalAssert(c.graph.config, it.len == 3)
-        let x = freshVar(c, it[0].sym)
-        idNodeTablePut(c.transCon.mapping, it[0].sym, x)
+        let x = freshVar(c, vn.sym)
+        idNodeTablePut(c.transCon.mapping, vn.sym, x)
         var defs = newTransNode(nkIdentDefs, it.info, 3)
         if importantComments(c.graph.config):
           # keep documentation information:
@@ -1038,7 +1040,7 @@ proc transform(c: PTransf, n: PNode): PNode =
     result = transformAsgn(c, n)
   of nkIdentDefs, nkConstDef:
     result = newTransNode(n)
-    result[0] = transform(c, n[0])
+    result[0] = transform(c, skipPragmaExpr(n[0]))
     # Skip the second son since it only contains an unsemanticized copy of the
     # variable type used by docgen
     let last = n.len-1

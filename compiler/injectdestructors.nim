@@ -898,9 +898,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         if it.kind == nkVarTuple and hasDestructor(c, ri.typ):
           let x = lowerTupleUnpacking(c.graph, it, c.idgen, c.owner)
           result.add p(x, c, s, consumed)
-        elif it.kind == nkIdentDefs and hasDestructor(c, it[0].typ):
+        elif it.kind == nkIdentDefs and hasDestructor(c, skipPragmaExpr(it[0]).typ):
           for j in 0..<it.len-2:
-            let v = it[j]
+            let v = skipPragmaExpr(it[j])
             if v.kind == nkSym:
               if sfCompileTime in v.sym.flags: continue
               pVarTopLevel(v, c, s, result)
@@ -1158,7 +1158,7 @@ when false:
         if it.kind == nkIdentDefs and it[^1].kind == nkEmpty:
           computeUninit(c)
           for j in 0..<it.len-2:
-            let v = it[j]
+            let v = skipPragmaExpr(it[j])
             doAssert v.kind == nkSym
             if c.uninit.contains(v.sym.id):
               it[^1] = genDefaultCall(v.sym.typ, c, v.info)
