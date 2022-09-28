@@ -695,6 +695,21 @@ are used for other notational purposes.
 The `not` keyword is always a unary operator, `a not b` is parsed
 as `a(not b)`, not as `(a) not (b)`.
 
+Unicode Operators
+-----------------
+
+These Unicode operators are also parsed as operators::
+
+  ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
+  ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
+
+
+If enabled, Unicode operators can be combined with non-Unicode operator
+symbols. The usual precedence extensions then apply, for example, `⊠=` is an
+assignment like operator just like `*=` is.
+
+No Unicode normalization step is performed.
+
 
 Other tokens
 ------------

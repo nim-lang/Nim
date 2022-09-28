@@ -44,7 +44,7 @@
 - Removed two type pragma syntaxes deprecated since 0.20, namely
   `type Foo = object {.final.}`, and `type Foo {.final.} [T] = object`.
 
-- [Overloadable enums](https://nim-lang.github.io/Nim/manual_experimental.html#overloadable-enum-value-names)
+- [Overloadable enums](https://nim-lang.github.io/Nim/manual_experimental.html#overloadable-enum-value-names) and Unicode Operators
   are no longer experimental.
 
 - Removed the `nimIncrSeqV3` define.
