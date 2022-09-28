@@ -505,11 +505,11 @@ proc getNumber(L: var Lexer, result: var Token) =
         of tkUInt16Lit: setNumber result.iNumber, xi and 0xffff
         of tkUInt32Lit: setNumber result.iNumber, xi and 0xffffffff
         of tkFloat32Lit:
-          setNumber result.fNumber, (cast[PFloat32](addr(xi)))[]
+          setNumber result.fNumber, (cast[ptr float32](addr(xi)))[]
           # note: this code is endian neutral!
           # XXX: Test this on big endian machine!
         of tkFloat64Lit, tkFloatLit:
-          setNumber result.fNumber, (cast[PFloat64](addr(xi)))[]
+          setNumber result.fNumber, (cast[ptr float64](addr(xi)))[]
         else: internalError(L.config, getLineInfo(L), "getNumber")
 
         # Bounds checks. Non decimal literals are allowed to overflow the range of

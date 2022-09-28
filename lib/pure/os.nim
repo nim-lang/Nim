@@ -3121,7 +3121,7 @@ when defined(haiku):
     B_FIND_PATH_IMAGE_PATH = 1000
 
   proc find_path(codePointer: pointer, baseDirectory: cint, subPath: cstring,
-                 pathBuffer: cstring, bufferSize: csize): int32
+                 pathBuffer: cstring, bufferSize: csize_t): int32
                 {.importc, header: "<FindDirectory.h>".}
 
   proc getApplHaiku(): string =
