@@ -868,5 +868,10 @@ bar
     doAssert nimIdentNormalize("Foo_bar") == "Foobar"
     doAssert nimIdentNormalize("_Foo_bar") == "_foobar"
 
+  block: # bug #19500
+    doAssert "abc \0 def".find("def") == 6
+    doAssert "abc \0 def".find('d') == 6
+
+
 static: main()
 main()
