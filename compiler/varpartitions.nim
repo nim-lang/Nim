@@ -580,24 +580,33 @@ proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
   if dest.kind == nkSym:
     if directViewType(dest.typ) != noView:
       borrowFrom(c, dest.sym, src)
-  elif dest.kind in {nkHiddenDeref, nkDerefExpr, nkBracketExpr}:
-    case directViewType(dest[0].typ)
-    of mutableView, immutableView:
-      # we do not borrow, but we use the view to mutate the borrowed
-      # location:
-      let viewOrigin = pathExpr(dest, c.owner)
-      if viewOrigin.kind == nkSym:
-        let vid = variableId(c, viewOrigin.sym)
+  else:
+    let viewOrigin = pathExpr(dest, c.owner)
+    if viewOrigin != nil and viewOrigin.kind == nkSym:
+      let viewSym = viewOrigin.sym
+      let directView = directViewType(dest[0].typ) # check something like result[first] = toOpenArray(s, first, last-1)
+                                                   # so we don't need to iterate the original type
+      let originSymbolView = directViewType(viewSym.typ) # find the original symbol which preserves the view type
+                                                    #  var foo: var Object = a
+                                                    #  foo.id = 777 # the type of foo is no view, so we need
+                                                    #  to check the original symbol
+      let viewSets = {directView, originSymbolView}
+
+      if viewSets * {mutableView, immutableView} != {}:
+        # we do not borrow, but we use the view to mutate the borrowed
+        # location:
+        let vid = variableId(c, viewSym)
         if vid >= 0:
           c.s[vid].flags.incl viewDoesMutate
-    #[of immutableView:
-      if dest.kind == nkBracketExpr and dest[0].kind == nkHiddenDeref and
-          mutableParameter(dest[0][0]):
-        discard "remains a mutable location anyhow"
+      #[of immutableView:
+        if dest.kind == nkBracketExpr and dest[0].kind == nkHiddenDeref and
+            mutableParameter(dest[0][0]):
+          discard "remains a mutable location anyhow"
+        else:
+          localError(c.g.config, dest.info, "attempt to mutate a borrowed location from an immutable view")
+          ]#
       else:
-        localError(c.g.config, dest.info, "attempt to mutate a borrowed location from an immutable view")
-        ]#
-    of noView: discard "nothing to do"
+        discard "nothing to do"
 
 proc containsPointer(t: PType): bool =
   proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr}
