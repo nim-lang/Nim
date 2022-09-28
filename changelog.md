@@ -51,6 +51,9 @@
 
 - Static linking against OpenSSL versions below 1.1, previously done by
   setting `-d:openssl10`, is no longer supported.
+  
+- `macros.getImpl` for `const` symbols now returns the full definition node
+  (as `nnkConstDef`) rather than the AST of the constant value.
 
 - ORC is now the default memory management strategy. Use
   `--mm:refc` for a transition period.

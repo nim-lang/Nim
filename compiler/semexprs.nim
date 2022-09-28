@@ -108,7 +108,7 @@ proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   result = symChoice(c, n, s, scClosed)
 
 proc inlineConst(c: PContext, n: PNode, s: PSym): PNode {.inline.} =
-  result = copyTree(s.ast)
+  result = copyTree(s.astdef)
   if result.isNil:
     localError(c.config, n.info, "constant of type '" & typeToString(s.typ) & "' has no value")
     result = newSymNode(s)
@@ -1230,7 +1230,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       # It is clear that ``[]`` means two totally different things. Thus, we
       # copy `x`'s AST into each context, so that the type fixup phase can
       # deal with two different ``[]``.
-      if s.ast.safeLen == 0: result = inlineConst(c, n, s)
+      if s.astdef.safeLen == 0: result = inlineConst(c, n, s)
       else: result = newSymNode(s, n.info)
     of tyStatic:
       if typ.n != nil:
