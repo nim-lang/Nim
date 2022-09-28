@@ -428,8 +428,8 @@ type
                        header: "<sys/socket.h>",
                        pure, final.} = object ## struct sockaddr_storage
     ss_family*: TSa_Family ## Address family.
-    ss_padding: array[128 - sizeof(cshort) - sizeof(culong), char]
-    ss_align: clong
+    ss_padding {.importc: "__ss_padding".}: array[128 - sizeof(cshort) - sizeof(culong), char]
+    ss_align {.importc: "__ss_align".}: clong
 
   Tif_nameindex* {.importc: "struct if_nameindex", final,
                    pure, header: "<net/if.h>".} = object ## struct if_nameindex

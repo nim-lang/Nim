@@ -139,6 +139,9 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
       var n = newNodeI(nkDiscardStmt, result.info, 1)
       n[0] = result
     elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
+      if result.typ.kind == tyNone:
+        localError(c.config, result.info, "expression has no type: " &
+               renderTree(result, {renderNoComments}))
       var n = result
       while n.kind in skipForDiscardable:
         if n.kind == nkTryStmt: n = n[0]
@@ -1422,6 +1425,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         excl(objTy.flags, tfFinal)
       let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
                        nextSymId c.idgen, getCurrOwner(c), s.info)
+      obj.flags.incl sfGeneratedType
       let symNode = newSymNode(obj)
       obj.ast = a.shallowCopy
       case a[0].kind

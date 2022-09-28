@@ -1,5 +1,5 @@
 import std/private/decode_helpers
-
+import std/assertions
 
 block:
   var i = 0

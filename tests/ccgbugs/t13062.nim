@@ -1,5 +1,5 @@
 discard """
-  output: "[p = nil]"
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp"
 """
 
@@ -24,4 +24,7 @@ type
     fulfilled: Atomic[bool]
 
 var x: Pledge
-echo x.repr
+when defined(gcRefc):
+  doAssert x.repr == "[p = nil]"
+elif not defined(cpp): # fixme # bug #20081
+  doAssert x.repr == "Pledge(p: nil)"

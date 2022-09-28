@@ -28,6 +28,7 @@ Raises
 
 import os, strutils, pathnorm
 from stdtest/specialpaths import buildDir
+import std/[syncio, assertions]
 
 block fileOperations:
   let files = @["these.txt", "are.x", "testing.r", "files.q"]

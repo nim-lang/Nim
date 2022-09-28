@@ -32,6 +32,9 @@
 import strutils, os, strtabs, cookies, uri
 export uri.encodeUrl, uri.decodeUrl
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 
 proc addXmlChar(dest: var string, c: char) {.inline.} =
   case c
