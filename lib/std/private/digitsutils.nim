@@ -49,7 +49,7 @@ func addChars[T](result: var string, x: T, start: int, n: int) {.inline.} =
     when defined(js) or defined(nimscript): impl
     else:
       {.noSideEffect.}:
-        copyMem result[old].addr, x[start].addr, n
+        copyMem result[old].addr, x[start].unsafeAddr, n
 
 func addChars[T](result: var string, x: T) {.inline.} =
   addChars(result, x, 0, x.len)

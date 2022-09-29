@@ -91,7 +91,7 @@ func find*(s: cstring, sub: char, start: Natural = 0, last = 0): int =
   let last = if last == 0: s.high else: last
   let L = last-start+1
   if L > 0:
-    let found = c_memchr(s[start].addr, sub, cast[csize_t](L))
+    let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](L))
     if not found.isNil:
       return cast[ByteAddress](found) -% cast[ByteAddress](s)
   return -1
@@ -106,7 +106,7 @@ func find*(s, sub: cstring, start: Natural = 0, last = 0): int =
   if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
   if last == 0 and s.len > start:
-    let found = c_strstr(s[start].addr, sub)
+    let found = c_strstr(s[start].unsafeAddr, sub)
     if not found.isNil:
       result = cast[ByteAddress](found) -% cast[ByteAddress](s)
     else:
