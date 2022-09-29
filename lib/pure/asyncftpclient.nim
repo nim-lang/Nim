@@ -410,6 +410,7 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
     if sendFut == nil or sendFut.finished:
       # TODO: Async file reading.
       let len = file.readBuffer(addr data[0], 4000)
+      setLen(data, len)
       if len == 0:
         # File finished uploading.
         ftp.dsock.close()
