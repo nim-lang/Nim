@@ -3,7 +3,7 @@ discard """
 """
 
 import std/cstrutils
-
+import std/assertions
 
 proc main() =
   let s = cstring "abcdef"

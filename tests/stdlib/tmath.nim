@@ -7,6 +7,8 @@ discard """
 # but it requires disabling certain lines with `when not defined(nimTmathCase2)`
 
 import std/math
+import std/assertions
+
 
 # Function for approximate comparison of floats
 proc `==~`(x, y: float): bool = abs(x - y) < 1e-9

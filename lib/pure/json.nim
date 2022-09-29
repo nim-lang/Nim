@@ -165,7 +165,7 @@ import options # xxx remove this dependency using same approach as https://githu
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/[syncio, assertions, formatfloat]
 
 export
   tables.`$`
@@ -217,10 +217,6 @@ proc newJRawNumber(s: string): JsonNode =
   ## with the additional information that it should be converted back
   ## to the string representation without the quotes.
   result = JsonNode(kind: JString, str: s, isUnquoted: true)
-
-proc newJStringMove(s: string): JsonNode =
-  result = JsonNode(kind: JString)
-  shallowCopy(result.str, s)
 
 proc newJInt*(n: BiggestInt): JsonNode =
   ## Creates a new `JInt JsonNode`.
@@ -859,8 +855,12 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool, depth = 0): Json
   case p.tok
   of tkString:
     # we capture 'p.a' here, so we need to give it a fresh buffer afterwards:
-    result = newJStringMove(p.a)
-    p.a = ""
+    when defined(gcArc) or defined(gcOrc):
+      result = JsonNode(kind: JString, str: move p.a)
+    else:
+      result = JsonNode(kind: JString)
+      shallowCopy(result.str, p.a)
+      p.a = ""
     discard getTok(p)
   of tkInt:
     if rawIntegers:
@@ -958,12 +958,12 @@ proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats
 
 when defined(js):
   from math import `mod`
-  from std/jsffi import JSObject, `[]`, to
+  from std/jsffi import JsObject, `[]`, to
   from std/private/jsutils import getProtoName, isInteger, isSafeInteger
 
-  proc parseNativeJson(x: cstring): JSObject {.importjs: "JSON.parse(#)".}
+  proc parseNativeJson(x: cstring): JsObject {.importjs: "JSON.parse(#)".}
 
-  proc getVarType(x: JSObject, isRawNumber: var bool): JsonNodeKind =
+  proc getVarType(x: JsObject, isRawNumber: var bool): JsonNodeKind =
     result = JNull
     case $getProtoName(x) # TODO: Implicit returns fail here.
     of "[object Array]": return JArray
@@ -982,12 +982,12 @@ when defined(js):
     of "[object String]": return JString
     else: assert false
 
-  proc len(x: JSObject): int =
+  proc len(x: JsObject): int =
     asm """
       `result` = `x`.length;
     """
 
-  proc convertObject(x: JSObject): JsonNode =
+  proc convertObject(x: JsObject): JsonNode =
     var isRawNumber = false
     case getVarType(x, isRawNumber)
     of JArray:
@@ -1000,7 +1000,7 @@ when defined(js):
         if (`x`.hasOwnProperty(property)) {
       """
       var nimProperty: cstring
-      var nimValue: JSObject
+      var nimValue: JsObject
       asm "`nimProperty` = property; `nimValue` = `x`[property];"
       result[$nimProperty] = nimValue.convertObject()
       asm "}}"

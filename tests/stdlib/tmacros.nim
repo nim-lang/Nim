@@ -5,6 +5,7 @@ See also:
 ]#
 
 import std/macros
+import std/assertions
 
 block: # hasArgOfName
   macro m(u: untyped): untyped =
@@ -144,3 +145,15 @@ block: # extractDocCommentsAndRunnables
     
   proc c() {.checkComments("Hello world").} =
     ## Hello world
+
+block: # bug #19020
+  type
+    foo = object
+
+  template typ(T:typedesc) {.pragma.}
+
+  proc bar() {.typ: foo.} = discard
+
+  static:
+    doAssert $bar.getCustomPragmaVal(typ) == "foo"
+  doAssert $bar.getCustomPragmaVal(typ) == "foo"

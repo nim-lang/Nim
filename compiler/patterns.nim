@@ -146,7 +146,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
   elif n.kind == nkSym and n.sym.kind == skConst:
     # try both:
     if p.kind == nkSym: result = p.sym == n.sym
-    elif matches(c, p, n.sym.ast): result = true
+    elif matches(c, p, n.sym.astdef): result = true
   elif p.kind == nkPattern:
     # pattern operators: | *
     let opr = p[0].ident.s

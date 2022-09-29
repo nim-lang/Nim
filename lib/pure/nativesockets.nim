@@ -16,6 +16,8 @@ import os, options
 import std/private/since
 import std/strbasics
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
@@ -167,7 +169,7 @@ when not useWinVersion:
 
 else:
   proc toInt(domain: Domain): cint =
-    result = toU32(ord(domain)).cint
+    result = cast[cint](uint32(ord(domain)))
 
   proc toKnownDomain*(family: cint): Option[Domain] =
     ## Converts the platform-dependent `cint` to the Domain or none(),
@@ -214,7 +216,7 @@ proc getProtoByName*(name: string): int {.since: (1, 3, 5).} =
     let protoent = posix.getprotobyname(name.cstring)
 
   if protoent == nil:
-    raise newException(OSError, "protocol not found")
+    raise newException(OSError, "protocol not found: " & name)
 
   result = protoent.p_proto.int
 
@@ -300,7 +302,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
     if domain == AF_INET6:
       hints.ai_flags = AI_V4MAPPED
   let socketPort = if sockType == SOCK_RAW: "" else: $port
-  var gaiResult = getaddrinfo(address, socketPort, addr(hints), result)
+  var gaiResult = getaddrinfo(address, socketPort.cstring, addr(hints), result)
   if gaiResult != 0'i32:
     when useWinVersion or defined(freertos):
       raiseOSError(osLastError())
@@ -373,9 +375,9 @@ when not useNimNetLite:
     ##
     ## On posix this will search through the `/etc/services` file.
     when useWinVersion:
-      var s = winlean.getservbyport(ze(int16(port)).cint, proto)
+      var s = winlean.getservbyport(uint16(port).cint, proto)
     else:
-      var s = posix.getservbyport(ze(int16(port)).cint, proto)
+      var s = posix.getservbyport(uint16(port).cint, proto)
     if s == nil: raiseOSError(osLastError(), "Service not found.")
     result.name = $s.s_name
     result.aliases = cstringArrayToSeq(s.s_aliases)
@@ -460,10 +462,10 @@ when not useNimNetLite:
     const size = 256
     result = newString(size)
     when useWinVersion:
-      let success = winlean.gethostname(result, size)
+      let success = winlean.gethostname(result.cstring, size)
     else:
       # Posix
-      let success = posix.gethostname(result, size)
+      let success = posix.gethostname(result.cstring, size)
     if success != 0.cint:
       raiseOSError(osLastError())
     let x = len(cstring(result))
@@ -633,8 +635,8 @@ when useNimNetLite:
       INET_ADDRSTRLEN = 16
       INET6_ADDRSTRLEN = 46 # it's actually 46 in both cases
 
-  proc sockAddrToStr(sa: ptr Sockaddr): string {.noinit.} =
-    let af_family = sa.sa_family 
+  proc sockAddrToStr(sa: ptr SockAddr): string {.noinit.} =
+    let af_family = sa.sa_family
     var nl, v4Slice: cint
     var si_addr: ptr InAddr
 

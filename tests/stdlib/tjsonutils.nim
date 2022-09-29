@@ -7,6 +7,7 @@ import std/json
 from std/math import isNaN, signbit
 from std/fenv import epsilon
 from stdtest/testutils import whenRuntimeJs
+import std/[assertions, objectdollar]
 
 proc testRoundtrip[T](t: T, expected: string) =
   # checks that `T => json => T2 => json2` is such that json2 = json
@@ -320,7 +321,7 @@ template fn() =
             b: int
 
         var a = A()
-        fromJson(a, """{"is_a": true, "a":1, "extra_key": 1}""".parse_json, Joptions(allowExtraKeys: true))
+        fromJson(a, """{"is_a": true, "a":1, "extra_key": 1}""".parseJson, Joptions(allowExtraKeys: true))
         doAssert $a[] == "(is_a: true, a: 1)"
 
     block testAllowMissingKeys:

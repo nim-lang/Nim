@@ -5,6 +5,7 @@ discard """
 """
 
 import os, osproc, times, std / monotimes
+import std/assertions
 
 when defined(windows):
   const ProgramWhichDoesNotEnd = "notepad"

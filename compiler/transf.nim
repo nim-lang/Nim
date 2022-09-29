@@ -184,10 +184,12 @@ proc transformVarSection(c: PTransf, v: PNode): PNode =
     if it.kind == nkCommentStmt:
       result[i] = it
     elif it.kind == nkIdentDefs:
-      if it[0].kind == nkSym:
+      var vn = it[0]
+      if vn.kind == nkPragmaExpr: vn = vn[0]
+      if vn.kind == nkSym:
         internalAssert(c.graph.config, it.len == 3)
-        let x = freshVar(c, it[0].sym)
-        idNodeTablePut(c.transCon.mapping, it[0].sym, x)
+        let x = freshVar(c, vn.sym)
+        idNodeTablePut(c.transCon.mapping, vn.sym, x)
         var defs = newTransNode(nkIdentDefs, it.info, 3)
         if importantComments(c.graph.config):
           # keep documentation information:
@@ -806,6 +808,8 @@ proc getMergeOp(n: PNode): PSym =
   else: discard
 
 proc flattenTreeAux(d, a: PNode, op: PSym) =
+  ## Optimizes away the `&` calls in the children nodes and
+  ## lifts the leaf nodes to the same level as `op2`.
   let op2 = getMergeOp(a)
   if op2 != nil and
       (op2.id == op.id or op.magic != mNone and op2.magic == op.magic):
@@ -898,6 +902,9 @@ proc transformExceptBranch(c: PTransf, n: PNode): PNode =
     result = transformSons(c, n)
 
 proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode): PNode =
+  ## Merges adjacent constant expressions of the children of the `&` call into
+  ## a single constant expression. It also inlines constant expressions which are not
+  ## complex.
   result = n
   for i in 0..<n.safeLen:
     result[i] = commonOptimizations(g, idgen, c, n[i])
@@ -1031,7 +1038,7 @@ proc transform(c: PTransf, n: PNode): PNode =
     result = transformAsgn(c, n)
   of nkIdentDefs, nkConstDef:
     result = newTransNode(n)
-    result[0] = transform(c, n[0])
+    result[0] = transform(c, skipPragmaExpr(n[0]))
     # Skip the second son since it only contains an unsemanticized copy of the
     # variable type used by docgen
     let last = n.len-1

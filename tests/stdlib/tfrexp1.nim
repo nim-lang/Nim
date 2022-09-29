@@ -3,6 +3,7 @@ discard """
 """
 
 import std/math
+import std/assertions
 
 const manualTest = false
 

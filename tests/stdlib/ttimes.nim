@@ -3,6 +3,7 @@ discard """
 """
 
 import times, strutils, unittest
+import std/assertions
 
 when not defined(js):
   import os
@@ -20,7 +21,7 @@ proc staticTz(hours, minutes, seconds: int = 0): Timezone {.noSideEffect.} =
     result.utcOffset = offset
     result.time = time
 
-  newTimezone("", zonedTimeFromTime, zonedTImeFromAdjTime)
+  newTimezone("", zonedTimeFromTime, zonedTimeFromAdjTime)
 
 template parseTest(s, f, sExpected: string, ydExpected: int) =
   let

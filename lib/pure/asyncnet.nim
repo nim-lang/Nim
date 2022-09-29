@@ -96,6 +96,10 @@
 ##
 
 import std/private/since
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 import asyncdispatch, nativesockets, net, os
 
 export SOBool
@@ -399,7 +403,8 @@ proc recv*(socket: AsyncSocket, size: int,
   ## to be read then the future will complete with a value of `""`.
   if socket.isBuffered:
     result = newString(size)
-    shallow(result)
+    when not defined(nimSeqsV2):
+      shallow(result)
     let originalBufPos = socket.currPos
 
     if socket.bufLen == 0:
@@ -648,9 +653,9 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
 
   var aiList = getAddrInfo(realaddr, port, socket.domain)
   if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
-    freeaddrinfo(aiList)
+    freeAddrInfo(aiList)
     raiseOSError(osLastError())
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
 
 proc hasDataBuffered*(s: AsyncSocket): bool {.since: (1, 5).} =
   ## Determines whether an AsyncSocket has data buffered.
@@ -859,7 +864,7 @@ proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: string,
 
     it = it.ai_next
 
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
 
   if not success:
     if lastException != nil:

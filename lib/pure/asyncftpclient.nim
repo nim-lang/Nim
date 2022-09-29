@@ -91,6 +91,9 @@ when defined(ssl):
     result = defaultSSLContext
 
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   AsyncFtpClient* = ref object
     csock*: AsyncSocket

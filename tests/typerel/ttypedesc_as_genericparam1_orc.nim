@@ -1,0 +1,1 @@
+doAssert repr(int) == "int"
