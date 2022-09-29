@@ -92,7 +92,7 @@ import strutils, odbcsql
 import db_common
 export db_common
 
-import std/private/since
+import std/private/[since, dbutils]
 
 type
   OdbcConnTyp = tuple[hDb: SqlHDBC, env: SqlHEnv, stmt: SqlHStmt]
@@ -197,14 +197,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string {.
                   noSideEffect.} =
   ## Replace any `?` placeholders with `args`,
   ## and quotes the arguments
-  result = ""
-  var a = 0
-  for c in items(string(formatstr)):
-    if c == '?':
-      add(result, dbQuote(args[a]))
-      inc(a)
-    else:
-      add(result, c)
+  dbFormatImpl(formatstr, dbQuote, args)
 
 proc prepareFetch(db: var DbConn, query: SqlQuery,
                 args: varargs[string, `$`]): TSqlSmallInt {.
