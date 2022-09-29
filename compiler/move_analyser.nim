@@ -493,12 +493,15 @@ proc beginTraverse(c: var Context; b: var BlockInfo; parent, n: PNode; nindex: i
   # location we're interested in:
   case n.kind
   of nkVarSection, nkLetSection:
-    for ch in items(n):
+    for i in 0..<n.len:
+      let ch = n[i]
       for j in 0 ..< ch.len - 2:
         let v = ch[j]
         if v.kind == nkSym and v.sym == c.root:
           c.foundDecl = true
           if parent.kind in {nkStmtList, nkStmtListExpr}:
+            for k in i+1 ..< n.len:
+              traverse(c, b, n[k].lastSon)
             for i in nindex+1 ..< parent.len:
               traverse(c, b, parent[i])
           else:
