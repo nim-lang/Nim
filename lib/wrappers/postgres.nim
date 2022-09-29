@@ -27,6 +27,10 @@ elif defined(macosx):
 else:
   const
     dllName = "libpq.so(.5|)"
+    
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   POid* = ptr Oid
   Oid* = int32
