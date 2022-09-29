@@ -4,6 +4,7 @@ discard """
 
 import std/strutils
 from stdtest/testutils import disableVm
+import std/assertions
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
 template rejectParse(e) =
@@ -866,6 +867,11 @@ bar
     doAssert nimIdentNormalize("foo_bar") == "foobar"
     doAssert nimIdentNormalize("Foo_bar") == "Foobar"
     doAssert nimIdentNormalize("_Foo_bar") == "_foobar"
+
+  block: # bug #19500
+    doAssert "abc \0 def".find("def") == 6
+    doAssert "abc \0 def".find('d') == 6
+
 
 static: main()
 main()

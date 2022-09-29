@@ -19,6 +19,9 @@ when defined(windows):
 elif defined(linux):
   from cpuinfo import countProcessors
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   ThreadPoolAdvice* = enum
     doNothing,

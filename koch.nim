@@ -251,20 +251,6 @@ proc install(args: string) =
   geninstall()
   exec("sh ./install.sh $#" % args)
 
-when false:
-  proc web(args: string) =
-    nimexec("js tools/dochack/dochack.nim")
-    nimexec("cc -r tools/nimweb.nim $# web/website.ini --putenv:nimversion=$#" %
-        [args, VersionAsString])
-
-  proc website(args: string) =
-    nimexec("cc -r tools/nimweb.nim $# --website web/website.ini --putenv:nimversion=$#" %
-        [args, VersionAsString])
-
-  proc pdf(args="") =
-    exec("$# cc -r tools/nimweb.nim $# --pdf web/website.ini --putenv:nimversion=$#" %
-        [findNim().quoteShell(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
-
 # -------------- boot ---------------------------------------------------------
 
 proc findStartNim: string =

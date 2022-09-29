@@ -2,6 +2,8 @@ discard """
   output: '''OK'''
 """
 
+import std/[syncio, assertions]
+
 #assume WideCharToMultiByte always produce correct result
 #windows only
 
