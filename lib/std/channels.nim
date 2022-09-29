@@ -24,7 +24,7 @@
 ## blocking and non-blocking.
 ##
 
-runnableExamples("--threads:on --gc:orc"):
+runnableExamples:
   import std/os
 
   # In this example a channel is declared at module scope.
@@ -75,9 +75,6 @@ runnableExamples("--threads:on --gc:orc"):
 
   # Wait for the second thread to exit before cleaning up the channel.
   worker2.joinThread()
-
-  # Clean up the channel.
-  assert chan.close()
 
   assert messages[^1] == "Another message"
   assert messages.len >= 2
