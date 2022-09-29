@@ -1682,29 +1682,6 @@ proc isTupleRecursive*(t: PType): bool =
   var cycleDetector = initIntSet()
   isTupleRecursive(t, cycleDetector)
 
-proc isObjectRecursive(t:PType, cycleDetector: var IntSet): bool =
-  if t == nil:
-    return false
-  if t.sym != nil and cycleDetector.containsOrIncl(t.sym.name.id):
-    return true
-  case t.kind
-  of tyObject:
-    var cycleDetectorCopy: IntSet
-    for son in t.n.sons:
-      assign(cycleDetectorCopy, cycleDetector)
-      if isObjectRecursive(son.typ, cycleDetectorCopy):
-        return true
-  of tyGenericInvocation:
-    return isObjectRecursive(t.base, cycleDetector)
-  of tyGenericBody:
-    discard
-  else:
-    return false
-
-proc isObjectRecursive*(t: PType): bool =
-  var cycleDetector = initIntSet()
-  isObjectRecursive(t, cycleDetector)
-
 proc isException*(t: PType): bool =
   # check if `y` is object type and it inherits from Exception
   assert(t != nil)
