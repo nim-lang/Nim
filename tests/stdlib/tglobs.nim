@@ -1,4 +1,5 @@
 import std/private/globs
+import std/assertions
 
 template main =
   when defined(windows):

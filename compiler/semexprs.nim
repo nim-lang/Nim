@@ -108,7 +108,7 @@ proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   result = symChoice(c, n, s, scClosed)
 
 proc inlineConst(c: PContext, n: PNode, s: PSym): PNode {.inline.} =
-  result = copyTree(s.ast)
+  result = copyTree(s.astdef)
   if result.isNil:
     localError(c.config, n.info, "constant of type '" & typeToString(s.typ) & "' has no value")
     result = newSymNode(s)
@@ -241,7 +241,10 @@ proc isCastable(c: PContext; dst, src: PType, info: TLineInfo): bool =
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
     if result and (dstSize > srcSize):
-      message(conf, info, warnCastSizes, "target type is larger than source type")
+      var warnMsg = "target type is larger than source type"
+      warnMsg.add("\n  target type: '$1' ($2)" % [$dst, if dstSize == 1: "1 byte" else: $dstSize & " bytes"])
+      warnMsg.add("\n  source type: '$1' ($2)" % [$src, if srcSize == 1: "1 byte" else: $srcSize & " bytes"])
+      message(conf, info, warnCastSizes, warnMsg)
   if result and src.kind == tyNil:
     return dst.size <= conf.target.ptrSize
 
@@ -363,10 +366,7 @@ proc semCast(c: PContext, n: PNode): PNode =
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
-    let tar = $targetType
-    let alt = typeToString(targetType, preferDesc)
-    let msg = if tar != alt: tar & "=" & alt else: tar
-    localError(c.config, n.info, "expression cannot be cast to " & msg)
+    localError(c.config, n.info, "expression cannot be cast to '$1'" % $targetType)
   result = newNodeI(nkCast, n.info)
   result.typ = targetType
   result.add copyTree(n[0])
@@ -1230,7 +1230,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       # It is clear that ``[]`` means two totally different things. Thus, we
       # copy `x`'s AST into each context, so that the type fixup phase can
       # deal with two different ``[]``.
-      if s.ast.safeLen == 0: result = inlineConst(c, n, s)
+      if s.astdef.safeLen == 0: result = inlineConst(c, n, s)
       else: result = newSymNode(s, n.info)
     of tyStatic:
       if typ.n != nil:
@@ -2259,7 +2259,7 @@ proc instantiateCreateFlowVarCall(c: PContext; t: PType;
   # codegen would fail:
   if sfCompilerProc in result.flags:
     result.flags.excl {sfCompilerProc, sfExportc, sfImportc}
-    result.loc.r = nil
+    result.loc.r = ""
 
 proc setMs(n: PNode, s: PSym): PNode =
   result = n
@@ -2836,7 +2836,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     defer:
       if isCompilerDebug():
         echo ("<", c.config$n.info, n, ?.result.typ)
-  
+
   template directLiteral(typeKind: TTypeKind) =
     if result.typ == nil:
       if expectedType != nil and (

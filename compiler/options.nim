@@ -213,9 +213,9 @@ type
     strictFuncs,
     views,
     strictNotNil,
-    overloadableEnums, # not experimental anymore
+    overloadableEnums, # deadcode
     strictEffects,
-    unicodeOperators,
+    unicodeOperators, # deadcode
     flexibleOptionalParams
 
   LegacyFeature* = enum
@@ -504,7 +504,7 @@ when defined(nimDebugUtils):
   export debugutils
 
 proc initConfigRefCommon(conf: ConfigRef) =
-  conf.selectedGC = gcRefc
+  conf.selectedGC = gcUnselected
   conf.verbosity = 1
   conf.hintProcessingDots = true
   conf.options = DefaultOptions

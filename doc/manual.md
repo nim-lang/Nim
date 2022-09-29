@@ -695,6 +695,21 @@ are used for other notational purposes.
 The `not` keyword is always a unary operator, `a not b` is parsed
 as `a(not b)`, not as `(a) not (b)`.
 
+Unicode Operators
+-----------------
+
+These Unicode operators are also parsed as operators::
+
+  ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
+  ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
+
+
+Unicode operators can be combined with non-Unicode operator
+symbols. The usual precedence extensions then apply, for example, `⊠=` is an
+assignment like operator just like `*=` is.
+
+No Unicode normalization step is performed.
+
 
 Other tokens
 ------------
@@ -1066,17 +1081,6 @@ operation                meaning
 `a %% b`                 unsigned integer modulo operation
 `a <% b`                 treat `a` and `b` as unsigned and compare
 `a <=% b`                treat `a` and `b` as unsigned and compare
-`ze(a)`                  extends the bits of `a` with zeros until it has the
-                         width of the `int` type
-`toU8(a)`                treats `a` as unsigned and converts it to an
-                         unsigned integer of 8 bits (but still the
-                         `int8` type)
-`toU16(a)`               treats `a` as unsigned and converts it to an
-                         unsigned integer of 16 bits (but still the
-                         `int16` type)
-`toU32(a)`               treats `a` as unsigned and converts it to an
-                         unsigned integer of 32 bits (but still the
-                         `int32` type)
 ======================   ======================================================
 
 `Automatic type conversion`:idx: is performed in expressions where different

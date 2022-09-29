@@ -6,6 +6,7 @@ x + y = 30
 """
 
 import std/[sugar, algorithm, random, sets, tables, strutils]
+import std/[syncio, assertions]
 
 template main() =
   block: # `=>`

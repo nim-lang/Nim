@@ -22,7 +22,7 @@ discard """
 targets: "c js"
 """
 
-import std/[unittest, sequtils]
+import std/[unittest, sequtils, assertions]
 
 proc doThings(spuds: var int): int =
   spuds = 24

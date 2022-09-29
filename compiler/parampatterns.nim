@@ -224,7 +224,7 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
     const kinds = {skVar, skResult, skTemp, skParam, skLet, skForVar}
     if n.sym.kind == skParam:
       result = if n.sym.typ.kind in {tyVar, tySink}: arLValue else: arAddressableConst
-    elif n.sym.kind == skConst and dontInlineConstant(n, n.sym.ast):
+    elif n.sym.kind == skConst and dontInlineConstant(n, n.sym.astdef):
       result = arAddressableConst
     elif n.sym.kind in kinds:
       if n.sym.kind in {skParam, skLet, skForVar}:
