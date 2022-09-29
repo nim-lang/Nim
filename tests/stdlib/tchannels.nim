@@ -1,6 +1,5 @@
 discard """
   matrix: "--mm:orc; --mm:arc"
-  disabled: "freebsd"
 """
 
 import std/channels
