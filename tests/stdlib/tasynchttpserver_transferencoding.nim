@@ -8,6 +8,7 @@ import net
 
 import std/asyncnet
 import std/nativesockets
+import std/assertions
 
 const postBegin = """
 POST / HTTP/1.1

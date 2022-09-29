@@ -28,6 +28,7 @@ Raises
 
 import os, strutils, pathnorm
 from stdtest/specialpaths import buildDir
+import std/[syncio, assertions]
 
 block fileOperations:
   let files = @["these.txt", "are.x", "testing.r", "files.q"]
@@ -155,6 +156,9 @@ block fileOperations:
   doAssert dirExists("../dest/a/b")
   doAssert fileExists("../dest/a/file.txt")
   removeDir("../dest")
+
+  # createDir should not fail if `dir` is empty
+  createDir("")
 
   # Symlink handling in `copyFile`, `copyFileWithPermissions`, `copyFileToDir`,
   # `copyDir`, `copyDirWithPermissions`, `moveFile`, and `moveDir`.
@@ -508,7 +512,11 @@ block ospaths:
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/other/bad", '/') == "../../me/bar/z.nim"
 
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/other", '/') == "../me/bar/z.nim"
-  doAssert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
+
+  # `//` is a UNC path, `/` is the current working directory's drive, so can't
+  # run this test on Windows.
+  when not doslikeFileSystem:
+    doAssert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
   doAssert relativePath("", "/users/moo", '/') == ""
   doAssert relativePath("foo", "", '/') == "foo"
@@ -707,3 +715,81 @@ block: # isAdmin
   if isAzure and defined(windows): doAssert isAdmin()
   # In Azure on POSIX tests run as a normal user
   if isAzure and defined(posix): doAssert not isAdmin()
+
+import std/sequtils
+
+when doslikeFileSystem:
+  import std/private/ntpath
+
+  block: # Bug #19103 UNC paths
+
+    # Easiest way of generating a valid, readable and writable UNC path
+    let tempDir = r"\\?\" & getTempDir()
+    doAssert dirExists tempDir
+    createDir tempDir / "test"
+    removeDir tempDir / "test"
+    createDir tempDir / "recursive" / "test"
+    removeDir tempDir / "recursive" / "test"
+
+    let tempDir2 = getTempDir()
+    let (drive, pathNoDrive) = splitDrive(tempDir2)
+    setCurrentDir drive
+    doAssert cmpIgnoreCase(getCurrentDir().splitDrive.drive, drive) == 0
+
+    # Test `\Users` path syntax on Windows by stripping away drive. `\`
+    # resolves to the drive in current working directory. This drive will be
+    # the same as `tempDir2` because of the `setCurrentDir` above.
+    doAssert pathNoDrive[0] == '\\'
+    createDir pathNoDrive / "test"
+    doAssert dirExists pathNoDrive / "test"
+    removeDir pathNoDrive / "test"
+
+    doAssert splitPath("//?/c:") == ("//?/c:", "")
+
+    doAssert relativePath("//?/c:///Users//me", "//?/c:", '/') == "Users/me"
+
+    doAssert parentDir(r"\\?\c:") == r""
+    doAssert parentDir(r"//?/c:/Users") == r"\\?\c:"
+    doAssert parentDir(r"\\localhost\c$") == r""
+    doAssert parentDir(r"\Users") == r"\"
+
+    doAssert tailDir("//?/c:") == ""
+    doAssert tailDir("//?/c:/Users") == "Users"
+    doAssert tailDir(r"\\localhost\c$\Windows\System32") == r"Windows\System32"
+
+    doAssert isRootDir("//?/c:")
+    doAssert isRootDir("//?/UNC/localhost/c$")
+    doAssert not isRootDir(r"\\?\c:\Users")
+
+    doAssert parentDirs(r"C:\Users", fromRoot = true).toSeq == @[r"C:\", r"C:\Users"]
+    doAssert parentDirs(r"C:\Users", fromRoot = false).toSeq == @[r"C:\Users", r"C:"]
+    doAssert parentDirs(r"\\?\c:\Users", fromRoot = true).toSeq ==
+      @[r"\\?\c:\", r"\\?\c:\Users"]
+    doAssert parentDirs(r"\\?\c:\Users", fromRoot = false).toSeq ==
+      @[r"\\?\c:\Users", r"\\?\c:"]
+    doAssert parentDirs(r"//localhost/c$/Users", fromRoot = true).toSeq ==
+      @[r"//localhost/c$/", r"//localhost/c$/Users"]
+    doAssert parentDirs(r"//?/UNC/localhost/c$/Users", fromRoot = false).toSeq ==
+      @[r"//?/UNC/localhost/c$/Users", r"\\?\UNC\localhost\c$"]
+    doAssert parentDirs(r"\Users", fromRoot = true).toSeq == @[r"\", r"\Users"]
+    doAssert parentDirs(r"\Users", fromRoot = false).toSeq == @[r"\Users", r"\"]
+
+    doAssert r"//?/c:" /../ "d/e" == r"\\?\c:\d\e"
+    doAssert r"//?/c:/Users" /../ "d/e" == r"\\?\c:\d\e"
+    doAssert r"\\localhost\c$" /../ "d/e" == r"\\localhost\c$\d\e"
+
+    doAssert splitFile("//?/c:") == ("//?/c:", "", "")
+    doAssert splitFile("//?/c:/Users") == ("//?/c:", "Users", "")
+    doAssert splitFile(r"\\localhost\c$\test.txt") == (r"\\localhost\c$", "test", ".txt")
+
+else:
+  block: # parentDirs
+    doAssert parentDirs("/home", fromRoot=true).toSeq == @["/", "/home"]
+    doAssert parentDirs("/home", fromRoot=false).toSeq == @["/home", "/"]
+    doAssert parentDirs("home", fromRoot=true).toSeq == @["home"]
+    doAssert parentDirs("home", fromRoot=false).toSeq == @["home"]
+
+    doAssert parentDirs("/home/user", fromRoot=true).toSeq == @["/", "/home/", "/home/user"]
+    doAssert parentDirs("/home/user", fromRoot=false).toSeq == @["/home/user", "/home", "/"]
+    doAssert parentDirs("home/user", fromRoot=true).toSeq == @["home/", "home/user"]
+    doAssert parentDirs("home/user", fromRoot=false).toSeq == @["home/user", "home"]

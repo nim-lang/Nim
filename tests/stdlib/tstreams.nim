@@ -16,7 +16,7 @@ GROOT
 """
 
 
-import streams
+import std/[syncio, streams, assertions]
 
 
 block tstreams:
@@ -85,3 +85,13 @@ block:
 static: # Ensure streams it doesnt break with nimscript on arc/orc #19716
   let s = newStringStream("a")
   doAssert s.data == "a"
+
+template main =
+  var strm = newStringStream("abcde")
+  var buffer = "12345"
+  doAssert strm.readDataStr(buffer, 0..3) == 4
+  doAssert buffer == "abcd5"
+  strm.close()
+
+static: main()
+main()

@@ -216,11 +216,13 @@ type
     defaultCharset*: cstring
     fgColor*: cstring
     head*: Element
+    hidden*: bool
     lastModified*: cstring
     linkColor*: cstring
     referrer*: cstring
     title*: cstring
     URL*: cstring
+    visibilityState*: cstring
     vlinkColor*: cstring
     anchors*: seq[AnchorElement]
     forms*: seq[FormElement]
@@ -1780,3 +1782,60 @@ since (1, 3):
 
 since (1, 5):
   proc elementsFromPoint*(n: DocumentOrShadowRoot; x, y: float): seq[Element] {.importcpp.}
+
+
+since (1, 7):
+
+  proc insertAdjacentText*(self: Node; position, data: cstring) {.importjs: "#.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/insertAdjacentText
+
+  proc insertAdjacentElement*(self: Node; position: cstring; element: Node) {.importjs: "#.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/insertAdjacentElement
+
+  proc insertAdjacentHTML*(self: Node; position, html: cstring) {.importjs: "#.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/insertAdjacentHTML
+
+  proc after*(self: Node; element: Node): Node {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/after
+
+  proc before*(self: Node; element: Node): Node {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/before
+
+  proc append*(self: Node; element: Node): Node {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/append
+
+  proc closest*(self: Node; cssSelector: cstring): Node {.importjs: "#.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/closest
+
+  proc hasAttributeNS*(self: Node; namespace, localName: cstring): bool {.importjs: "(#.$1(#, #) || false)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/hasAttributeNS
+
+  proc removeAttributeNS*(self: Node; namespace, attributeName: cstring) {.importjs: "#.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/removeAttributeNS
+
+  proc hasPointerCapture*(self: Node; pointerId: SomeNumber): bool {.importjs: "(#.$1(#) || false)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/hasPointerCapture
+
+  proc releasePointerCapture*(self: Node; pointerId: SomeNumber) {.importjs: "#.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/releasePointerCapture
+
+  proc requestPointerLock*(self: Node) {.importjs: "#.$1()".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/requestPointerLock
+
+  proc replaceChildren*(self: Node; replacements: Node) {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceChildren
+
+  proc replaceWith*(self: Node; replacements: Node) {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceWith
+
+  proc scrollIntoViewIfNeeded*(self: Node; centerIfNeeded: bool) {.importjs: "#.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoViewIfNeeded
+
+  proc setHTML*(self: Node; html: cstring) {.importjs: "#.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/setHTML
+
+  proc toggleAttribute*(self: Node; name: cstring; force = false): bool {.importjs: "(#.$1(#, #) || false)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/toggleAttribute
+
+  proc matches*(self: Node; cssSelector: cstring): bool {.importjs: "(#.$1(#) || false)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/matches

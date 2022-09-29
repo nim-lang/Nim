@@ -12,6 +12,12 @@ block: # Nim tokenizing
        @[("\"\"\"ok1\\nok2\\nok3\"\"\"", gtLongStringLit)
       ])
 
+  test "whitespace at beginning of line is preserved":
+    check("  discard 1".tokenize(langNim) ==
+       @[("  ", gtWhitespace), ("discard", gtKeyword), (" ", gtWhitespace),
+         ("1", gtDecNumber)
+       ])
+
 block: # Cmd (shell) tokenizing
   test "cmd with dollar and output":
     check(

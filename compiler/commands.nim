@@ -116,7 +116,7 @@ const
   errInvalidCmdLineOption = "invalid command line option: '$1'"
   errOnOrOffExpectedButXFound = "'on' or 'off' expected, but '$1' found"
   errOnOffOrListExpectedButXFound = "'on', 'off' or 'list' expected, but '$1' found"
-  errOffHintsError = "'off', 'hint' or 'error' expected, but '$1' found"
+  errOffHintsError = "'off', 'hint', 'error' or 'usages' expected, but '$1' found"
 
 proc invalidCmdLineOption(conf: ConfigRef; pass: TCmdLinePass, switch: string, info: TLineInfo) =
   if switch == " ": localError(conf, info, errInvalidCmdLineOption % "-")
@@ -262,7 +262,6 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
-    of "v2", "generational": warningOptionNoop(arg)
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
     case arg.normalize
@@ -450,6 +449,8 @@ proc parseCommand*(command: string): Command =
   of "doc2", "doc": cmdDoc
   of "doc2tex": cmdDoc2tex
   of "rst2html": cmdRst2html
+  of "md2tex": cmdMd2tex
+  of "md2html": cmdMd2html
   of "rst2tex": cmdRst2tex
   of "jsondoc0": cmdJsondoc0
   of "jsondoc2", "jsondoc": cmdJsondoc
@@ -481,7 +482,8 @@ proc setCommandEarly*(conf: ConfigRef, command: string) =
   # command early customizations
   # must be handled here to honor subsequent `--hint:x:on|off`
   case conf.cmd
-  of cmdRst2html, cmdRst2tex: # xxx see whether to add others: cmdGendepend, etc.
+  of cmdRst2html, cmdRst2tex, cmdMd2html, cmdMd2tex:
+      # xxx see whether to add others: cmdGendepend, etc.
     conf.foreignPackageNotes = {hintSuccessX}
   else:
     conf.foreignPackageNotes = foreignPackageNotesDefault
@@ -501,6 +503,17 @@ proc specialDefine(conf: ConfigRef, key: string; pass: TCmdLinePass) =
         optOverflowCheck, optAssert, optStackTrace, optLineTrace, optLineDir}
       conf.globalOptions.excl {optCDebug}
 
+proc initOrcDefines*(conf: ConfigRef) =
+  conf.selectedGC = gcOrc
+  defineSymbol(conf.symbols, "gcorc")
+  defineSymbol(conf.symbols, "gcdestructors")
+  incl conf.globalOptions, optSeqDestructors
+  incl conf.globalOptions, optTinyRtti
+  defineSymbol(conf.symbols, "nimSeqsV2")
+  defineSymbol(conf.symbols, "nimV2")
+  if conf.exc == excNone and conf.backend != backendCpp:
+    conf.exc = excGoto
+
 proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
   if isOrc:
     conf.selectedGC = gcOrc
@@ -508,7 +521,7 @@ proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
   else:
     conf.selectedGC = gcArc
     defineSymbol(conf.symbols, "gcarc")
-  
+
   defineSymbol(conf.symbols, "gcdestructors")
   incl conf.globalOptions, optSeqDestructors
   incl conf.globalOptions, optTinyRtti
@@ -540,6 +553,7 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
     of "refc":
       unregisterArcOrc(conf)
+      defineSymbol(conf.symbols, "gcrefc")
       conf.selectedGC = gcRefc
     of "markandsweep":
       unregisterArcOrc(conf)
@@ -568,7 +582,6 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       unregisterArcOrc(conf)
       conf.selectedGC = gcRegions
       defineSymbol(conf.symbols, "gcregions")
-    of "v2": warningOptionNoop(arg)
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
@@ -801,7 +814,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "clib":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
-      conf.cLinkedLibs.add processPath(conf, arg, info).string
+      conf.cLinkedLibs.add arg
   of "header":
     if conf != nil: conf.headerFile = arg
     incl(conf.globalOptions, optGenIndex)
@@ -1081,7 +1094,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optEnableDeepCopy}, arg, pass, info)
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
     handleStdinInput(conf)
-  of "nilseqs", "nilchecks", "mainmodule", "m", "symbol", "taintmode", "cs", "deadcodeelim": warningOptionNoop(switch)
+  of "nilseqs", "nilchecks", "symbol", "taintmode", "cs", "deadcodeelim": warningOptionNoop(switch)
   of "nimmainprefix": conf.nimMainPrefix = arg
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)

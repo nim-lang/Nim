@@ -180,15 +180,15 @@ The square brackets `[]` indicate an optional element.
 The optional `align` flag can be one of the following:
 
 `<`
-    Forces the field to be left-aligned within the available
+:   Forces the field to be left-aligned within the available
     space. (This is the default for strings.)
 
 `>`
-    Forces the field to be right-aligned within the available space.
+:   Forces the field to be right-aligned within the available space.
     (This is the default for numbers.)
 
 `^`
-    Forces the field to be centered within the available space.
+:   Forces the field to be centered within the available space.
 
 Note that unless a minimum field width is defined, the field width
 will always be the same size as the data to fill it, so that the alignment
@@ -705,6 +705,6 @@ macro `&`*(pattern: string{lit}): string =
   runnableExamples:
     let x = 7
     assert &"{x}\n" == "7\n" # regular string literal
-    assert &"{x}\n" == "7\n".fmt # `fmt` can be used instead
-    assert &"{x}\n" != fmt"7\n" # see `fmt` docs, this would use a raw string literal
+    assert &"{x}\n" == "{x}\n".fmt # `fmt` can be used instead
+    assert &"{x}\n" != fmt"{x}\n" # see `fmt` docs, this would use a raw string literal
   strformatImpl(pattern.strVal, '{', '}')

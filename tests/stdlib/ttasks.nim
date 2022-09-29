@@ -1,9 +1,10 @@
 discard """
   targets: "c cpp"
-  matrix: "--gc:orc"
+  matrix: "--gc:orc --threads:off"
 """
 
 import std/[tasks, strformat]
+import std/assertions
 
 block:
   var s = ""

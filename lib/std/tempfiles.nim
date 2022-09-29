@@ -19,6 +19,8 @@ See also:
 
 import os, random
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 const
   maxRetry = 10000

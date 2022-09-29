@@ -32,6 +32,10 @@ doAssert objDeref.x == 42
 
 # String tests
 obj.s = "lorem ipsum dolor sit amet"
+when defined(gcArc) or defined(gcOrc):
+  prepareMutation(obj.s)
+
+
 var indexAddr = addr(obj.s[2])
 
 doAssert indexAddr[] == 'r'
@@ -232,8 +236,17 @@ block: # bug #15939
     const bar = proc2(foo)
     doAssert bar == "foo"
 
+template prepareMutationForOrc(x: string) =
+  when defined(gcArc) or defined(gcOrc):
+    when nimvm:
+      discard
+    else:
+      prepareMutation(x)
+
 proc test15939() = # bug #15939 (v2)
   template fn(a) =
+    when typeof(a) is string:
+      prepareMutationForOrc(a)
     let pa = a[0].addr
     doAssert pa != nil
     doAssert pa[] == 'a'
@@ -253,6 +266,7 @@ proc test15939() = # bug #15939 (v2)
   # mycstring[ind].addr
   template cstringTest =
     var a2 = "abc"
+    prepareMutationForOrc(a2)
     var b2 = a2.cstring
     fn(b2)
   when nimvm: cstringTest()

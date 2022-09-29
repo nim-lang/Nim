@@ -894,18 +894,8 @@ proc CMSG_NXTHDR*(mhdr: ptr Tmsghdr, cmsg: ptr Tcmsghdr): ptr Tcmsghdr {.
 proc CMSG_FIRSTHDR*(mhdr: ptr Tmsghdr): ptr Tcmsghdr {.
   importc, header: "<sys/socket.h>".}
 
-{.push warning[deprecated]: off.}
-proc CMSG_SPACE*(len: csize): csize {.
-  importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
-{.pop.}
-
 proc CMSG_SPACE*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}
-
-{.push warning[deprecated]: off.}
-proc CMSG_LEN*(len: csize): csize {.
-  importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
-{.pop.}
 
 proc CMSG_LEN*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}

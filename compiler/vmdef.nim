@@ -102,7 +102,7 @@ type
     opcMulSet, opcPlusSet, opcMinusSet, opcConcatStr,
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcIsNil, opcOf, opcIs,
-    opcSubStr, opcParseFloat, opcConv, opcCast,
+    opcParseFloat, opcConv, opcCast,
     opcQuit, opcInvalidField,
     opcNarrowS, opcNarrowU,
     opcSignExtend,
@@ -306,7 +306,7 @@ proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.disca
 const
   firstABxInstr* = opcTJmp
   largeInstrs* = { # instructions which use 2 int32s instead of 1:
-    opcSubStr, opcConv, opcCast, opcNewSeq, opcOf
+    opcConv, opcCast, opcNewSeq, opcOf
     }
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
