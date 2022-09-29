@@ -328,7 +328,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     typ.size = typ[0].size
     typ.align = typ[0].align
     typ.paddingAtEnd = typ[0].paddingAtEnd
-
+  of tyGenericInvocation:
+    computeSizeAlign(conf, typ[0])
+    typ.size = typ[0].size
+    typ.align = typ[0].align
+    typ.paddingAtEnd = typ[0].paddingAtEnd
   of tyTuple:
     try:
       var accum = OffsetAccum(maxAlign: 1)

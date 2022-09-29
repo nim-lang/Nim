@@ -1485,18 +1485,16 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     # check the style here after the pragmas have been processed:
     styleCheckDef(c, s)
     # compute the type's size and check for illegal recursions:
-    if a[1].kind in {nkGenericParams, nkEmpty}:
+    if a[1].kind == nkEmpty or a[2].kind == nkObjectTy:
       var x = a[2]
       if x.kind in nkCallKinds and nfSem in x.flags:
         discard "already semchecked, see line marked with bug #10548"
-      elif x.kind == nkEmpty:
-        discard
       else:
         while x.kind in {nkStmtList, nkStmtListExpr} and x.len > 0:
           x = x.lastSon
         # we need the 'safeSkipTypes' here because illegally recursive types
         # can enter at this point, see bug #13763
-        if x.kind notin {nkObjectTy, nkSym, nkTupleConstr, nkDistinctTy, nkEnumTy, nkEmpty} and
+        if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
             s.typ.safeSkipTypes(abstractPtrs).kind notin {tyObject, tyEnum}:
           # type aliases are hard:
           var t = semTypeNode(c, x, nil)
@@ -1509,8 +1507,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
               assert s.typ != nil
               assignType(s.typ, t)
               s.typ.itemId = t.itemId     # same id
-        var checkType = if a[1].kind == nkEmpty: s.typ else: x.typ
-        checkConstructedType(c.config, s.info, checkType)
+        checkConstructedType(c.config, s.info, s.typ)
         if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
           checkForMetaFields(c, s.typ.n)
 
