@@ -97,6 +97,10 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if not self.loadConfigsAndProcessCmdLine(cache, conf, graph):
     return
 
+  if conf.cmd == cmdCheck and optWasNimscript notin conf.globalOptions and
+       conf.backend == backendInvalid:
+    conf.backend = backendC
+
   if conf.selectedGC == gcUnselected:
     if conf.backend in {backendC, backendCpp, backendObjc}:
       initOrcDefines(conf)
