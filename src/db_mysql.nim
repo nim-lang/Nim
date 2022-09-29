@@ -90,7 +90,7 @@ import strutils, mysql
 import db_common
 export db_common
 
-import std/private/since
+import std/private/[since, dbutils]
 
 type
   DbConn* = distinct PMySQL ## encapsulates a database connection
@@ -138,14 +138,7 @@ proc dbQuote*(s: string): string =
   add(result, '\'')
 
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
-  result = ""
-  var a = 0
-  for c in items(string(formatstr)):
-    if c == '?':
-      add(result, dbQuote(args[a]))
-      inc(a)
-    else:
-      add(result, c)
+  dbFormatImpl(formatstr, dbQuote, args)
 
 proc tryExec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
   tags: [ReadDbEffect, WriteDbEffect].} =
@@ -358,7 +351,7 @@ proc getValue*(db: DbConn, query: SqlQuery,
   result = getRow(db, query, args)[0]
 
 proc tryInsertId*(db: DbConn, query: SqlQuery,
-                  args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =
+                  args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect], raises: [DbError].} =
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   var q = dbFormat(query, args)
@@ -376,7 +369,7 @@ proc insertId*(db: DbConn, query: SqlQuery,
 
 proc tryInsert*(db: DbConn, query: SqlQuery, pkName: string,
                 args: varargs[string, `$`]): int64
-               {.tags: [WriteDbEffect], raises: [], since: (1, 3).} =
+               {.tags: [WriteDbEffect], raises: [DbError], since: (1, 3).} =
   ## same as tryInsertID
   tryInsertID(db, query, args)
 
