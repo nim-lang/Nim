@@ -496,7 +496,7 @@ proc beginTraverse(c: var Context; b: var BlockInfo; parent, n: PNode; nindex: i
     for i in 0..<n.len:
       let ch = n[i]
       for j in 0 ..< ch.len - 2:
-        let v = ch[j]
+        let v = skipPragmaExpr(ch[j])
         if v.kind == nkSym and v.sym == c.root:
           c.foundDecl = true
           if parent.kind in {nkStmtList, nkStmtListExpr}:

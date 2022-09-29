@@ -1123,7 +1123,7 @@ proc track(tracked: PEffects, n: PNode) =
           for i in 0..<child.len-2:
             createTypeBoundOps(tracked, child[i].typ, child.info)
         else:
-          createTypeBoundOps(tracked, child[0].typ, child.info)
+          createTypeBoundOps(tracked, skipPragmaExpr(child[0]).typ, child.info)
       if child.kind == nkIdentDefs:
         for i in 0..<child.len-2:
           let a = skipPragmaExpr(child[i])
