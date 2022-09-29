@@ -87,6 +87,12 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
   result = semExprCheck(c, n, flags, expectedType)
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
+  elif (result.typ == nil or result.typ.kind == tyNone) and
+      result.kind == nkClosedSymChoice and result.len != 0 and
+      result[0].sym.kind == skEnumField:
+    # if overloaded enum field could not choose a type from a closed list,
+    # choose the first resolved enum field, i.e. the latest in scope
+    result = result[0]
   elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
