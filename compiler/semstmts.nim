@@ -574,9 +574,13 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
                 pragma(c, defs[lhsPos][namePos].sym, defs[lhsPos][pragmaPos], validPragmas)
         return result
 
-proc errorSymChoiceUseQualifier(c: PContext; n: PNode) =
+proc msgSymChoiceUseQualifier(c: PContext; n: PNode; note = errGenerated) =
   assert n.kind in nkSymChoices
-  var err = "ambiguous identifier: '" & $n[0] & "'"
+  var err =
+    if note == warnAmbiguousEnum:
+      "ambiguous enum field '$1' assumed to be of type $2, this will become an error in the future" % [$n[0], typeToString(n[0].typ)]
+    else:
+      "ambiguous identifier: '" & $n[0] & "'"
   var i = 0
   for child in n:
     let candidate = child.sym
@@ -584,7 +588,7 @@ proc errorSymChoiceUseQualifier(c: PContext; n: PNode) =
     else: err.add "\n"
     err.add "  " & candidate.owner.name.s & "." & candidate.name.s
     inc i
-  localError(c.config, n.info, errGenerated, err)
+  message(c.config, n.info, note, err)
 
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
@@ -611,8 +615,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {}, typ)
 
-      if def.kind in nkSymChoices and def[0].typ.skipTypes(abstractInst).kind == tyEnum:
-        errorSymChoiceUseQualifier(c, def)
+      if def.kind in nkSymChoices and def[0].sym.kind == skEnumField:
+        msgSymChoiceUseQualifier(c, def, errGenerated)
       elif def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
       elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:

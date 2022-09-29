@@ -9,7 +9,7 @@ template t =
 
 t()
 
-block: # behavior before overloadableEnums
-  # in case of ambiguity in closed environment, pick latest enum in scope
+block: # legacy support for behavior before overloadableEnums
+  # warning: ambiguous enum field 'Success' assumed to be of type MyEnum
   let x = {Success}
   doAssert x is set[MyEnum]

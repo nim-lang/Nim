@@ -88,10 +88,12 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
   elif (result.typ == nil or result.typ.kind == tyNone) and
-      result.kind == nkClosedSymChoice and result.len != 0 and
+      result.kind == nkClosedSymChoice and
       result[0].sym.kind == skEnumField:
     # if overloaded enum field could not choose a type from a closed list,
     # choose the first resolved enum field, i.e. the latest in scope
+    # to mirror old behavior
+    msgSymChoiceUseQualifier(c, result, warnAmbiguousEnum)
     result = result[0]
   elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %

@@ -82,6 +82,7 @@ type
     warnEffect = "Effect",
     warnCastSizes = "CastSizes"
     warnTemplateRedefinition = "TemplateRedefinition",
+    warnAmbiguousEnum = "AmbiguousEnum",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -177,6 +178,7 @@ const
     warnEffect: "$1",
     warnCastSizes: "$1",
     warnTemplateRedefinition: "template '$1' is implicitly redefined, consider adding an explicit .redefine pragma",
+    warnAmbiguousEnum: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
