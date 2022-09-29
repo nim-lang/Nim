@@ -366,7 +366,7 @@ proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool 
 
 proc send*[TMsg](c: var Channel[TMsg], msg: sink TMsg) {.inline.} =
   ## Sends a message to a thread. `msg` is deeply copied.
-  discard sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), false)
+  discard sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), addr(msg), false)
   when defined(gcDestructors):
     wasMoved(msg)
 
@@ -377,7 +377,7 @@ proc trySend*[TMsg](c: var Channel[TMsg], msg: sink TMsg): bool {.inline.} =
   ##
   ## Returns `false` if the message was not sent because number of pending items
   ## in the channel exceeded `maxItems`.
-  result = sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), true)
+  result = sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), addr(msg), true)
   when defined(gcDestructors):
     if result:
       wasMoved(msg)

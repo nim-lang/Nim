@@ -15,7 +15,7 @@ type
 template sdata(arg: Int128, idx: int): int32 =
   # udata and sdata was supposed to be in a union, but unions are
   # handled incorrectly in the VM.
-  cast[ptr int32](arg.udata[idx].unsafeAddr)[]
+  cast[ptr int32](arg.udata[idx].addr)[]
 
 # encoding least significant int first (like LittleEndian)
 

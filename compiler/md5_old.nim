@@ -251,7 +251,7 @@ proc md5Init*(c: var MD5Context) =
 
 proc writeBuffer(c: var MD5Context, index: int,
                  input: openArray[uint8], inputIndex, len: int) {.inline.} =
-  copyMem(addr(c.buffer[index]), unsafeAddr(input[inputIndex]), len)
+  copyMem(addr(c.buffer[index]), addr(input[inputIndex]), len)
 
 proc md5Update*(c: var MD5Context, input: openArray[uint8]) =
   ## Updates the `MD5Context` with the `input` data.

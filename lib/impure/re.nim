@@ -125,7 +125,7 @@ proc bufSubstr(b: cstring, sPos, ePos: int): string {.inline.} =
   ## Don't assume cstring is '\0' terminated
   let sz = ePos - sPos
   result = newString(sz+1)
-  copyMem(addr(result[0]), unsafeAddr(b[sPos]), sz)
+  copyMem(addr(result[0]), addr(b[sPos]), sz)
   result.setLen(sz)
 
 proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
@@ -430,7 +430,7 @@ iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string
     let b = rawMatches[1]
     if a == b and a == i: break
     var str = newString(b-a)
-    copyMem(str[0].addr, unsafeAddr(buf[a]), b-a)
+    copyMem(str[0].addr, addr(buf[a]), b-a)
     yield str
     i = b
 

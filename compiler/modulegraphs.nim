@@ -360,10 +360,10 @@ proc loadPackedSym*(g: ModuleGraph; s: var LazySym) =
     s.sym = loadSymFromId(g.config, g.cache, g.packed, s.id.module, s.id.packed)
 
 proc `$`*(u: SigHash): string =
-  toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
+  toBase64a(cast[cstring](addr u), sizeof(u))
 
 proc `==`*(a, b: SigHash): bool =
-  result = equalMem(unsafeAddr a, unsafeAddr b, sizeof(a))
+  result = equalMem(addr a, addr b, sizeof(a))
 
 proc hash*(u: SigHash): Hash =
   result = 0

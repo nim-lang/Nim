@@ -253,7 +253,7 @@ when defined(windows):
           break
         inc i
       else:
-        let w = c_fprintf(f, "%s", unsafeAddr s[i])
+        let w = c_fprintf(f, "%s", addr s[i])
         if w <= 0:
           if doRaise: raiseEIO("cannot write string to file")
           break
@@ -852,7 +852,7 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   var f: File = nil
   if open(f, filename, fmWrite):
     try:
-      f.writeBuffer(unsafeAddr content[0], content.len)
+      f.writeBuffer(addr content[0], content.len)
     finally:
       close(f)
   else:

@@ -41,7 +41,7 @@ proc setResult*(a: VmArgs; v: seq[string]) =
 
 template getReg(a, i): untyped =
   doAssert i < a.rc-1
-  a.slots[i+a.rb+1].unsafeAddr
+  a.slots[i+a.rb+1].addr
 
 template getX(k, field): untyped {.dirty.} =
   let p = getReg(a, i)

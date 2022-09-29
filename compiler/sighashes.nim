@@ -20,16 +20,16 @@ when defined(nimPreviewSlimSystem):
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
 proc `&=`(c: var MD5Context, ch: char) =
   # XXX suspicious code here; relies on ch being zero terminated?
-  md5Update(c, unsafeAddr ch, 1)
+  md5Update(c, addr ch, 1)
 
 proc `&=`(c: var MD5Context, i: BiggestInt) =
-  md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))
+  md5Update(c, cast[cstring](addr i), sizeof(i))
 proc `&=`(c: var MD5Context, f: BiggestFloat) =
-  md5Update(c, cast[cstring](unsafeAddr f), sizeof(f))
+  md5Update(c, cast[cstring](addr f), sizeof(f))
 proc `&=`(c: var MD5Context, s: SigHash) =
-  md5Update(c, cast[cstring](unsafeAddr s), sizeof(s))
+  md5Update(c, cast[cstring](addr s), sizeof(s))
 template lowlevel(v) =
-  md5Update(c, cast[cstring](unsafeAddr(v)), sizeof(v))
+  md5Update(c, cast[cstring](addr(v)), sizeof(v))
 
 
 type

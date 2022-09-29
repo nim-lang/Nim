@@ -18,7 +18,7 @@ proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
   result = 0
   when defined(x86) or defined(amd64):
     while i < len - 8:
-      inc(result, countBits64((cast[ptr uint64](s[i].unsafeAddr))[]))
+      inc(result, countBits64((cast[ptr uint64](s[i].addr))[]))
       inc(i, 8)
 
   while i < len:

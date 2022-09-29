@@ -130,7 +130,7 @@ proc storePrim*(f: var RodFile; s: string) =
     setError f, ioFailure
   else:
     if s.len != 0:
-      if writeBuffer(f.f, unsafeAddr(s[0]), s.len) != s.len:
+      if writeBuffer(f.f, addr(s[0]), s.len) != s.len:
         setError f, ioFailure
 
 proc storePrim*[T](f: var RodFile; x: T) =
@@ -139,7 +139,7 @@ proc storePrim*[T](f: var RodFile; x: T) =
   ## are written -- the user from context will need to know which `T` to load.
   if f.err != ok: return
   when supportsCopyMem(T):
-    if writeBuffer(f.f, unsafeAddr(x), sizeof(x)) != sizeof(x):
+    if writeBuffer(f.f, addr(x), sizeof(x)) != sizeof(x):
       setError f, ioFailure
   elif T is tuple:
     for y in fields(x):
@@ -175,14 +175,14 @@ proc loadPrim*(f: var RodFile; s: var string) =
   else:
     s = newString(lenPrefix)
     if lenPrefix > 0:
-      if readBuffer(f.f, unsafeAddr(s[0]), s.len) != s.len:
+      if readBuffer(f.f, addr(s[0]), s.len) != s.len:
         setError f, ioFailure
 
 proc loadPrim*[T](f: var RodFile; x: var T) =
   ## Load a non-sequence/string `T`.
   if f.err != ok: return
   when supportsCopyMem(T):
-    if readBuffer(f.f, unsafeAddr(x), sizeof(x)) != sizeof(x):
+    if readBuffer(f.f, addr(x), sizeof(x)) != sizeof(x):
       setError f, ioFailure
   elif T is tuple:
     for y in fields(x):
