@@ -19,6 +19,7 @@ when defined(nimHasStyleChecks):
 
 when defined(nimPreviewSlimSystem):
   from std/syncio import FileHandle
+  import std/widestrs
 
 const
   useWinUnicode* = not defined(useWinAnsi)

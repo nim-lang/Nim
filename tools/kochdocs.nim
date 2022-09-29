@@ -192,7 +192,6 @@ lib/system/assertions.nim
 lib/system/iterators.nim
 lib/system/exceptions.nim
 lib/system/dollars.nim
-lib/system/widestrs.nim
 lib/system/ctypes.nim
 """.splitWhitespace()
 

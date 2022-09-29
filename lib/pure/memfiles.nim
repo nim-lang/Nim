@@ -17,6 +17,8 @@
 
 when defined(windows):
   import winlean
+  when useWinUnicode and defined(nimPreviewSlimSystem):
+    import std/widestrs
 elif defined(posix):
   import posix
 else:

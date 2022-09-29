@@ -49,6 +49,7 @@ template main =
 main()
 
 when defined(windows):
+  import std/widestrs
   proc c_wgetenv(env: WideCString): WideCString {.importc: "_wgetenv", header: "<stdlib.h>".}
 proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
 

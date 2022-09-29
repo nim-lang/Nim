@@ -968,6 +968,9 @@ proc getCacheDir*(app: string): string =
 when defined(windows):
   type DWORD = uint32
 
+  when defined(nimPreviewSlimSystem):
+    import std/widestrs
+
   proc getTempPath(
     nBufferLength: DWORD, lpBuffer: WideCString
   ): DWORD {.stdcall, dynlib: "kernel32.dll", importc: "GetTempPathW".} =
