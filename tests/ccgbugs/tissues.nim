@@ -30,7 +30,7 @@ echo bazObj[string](troz).x
 
 # bug #14880
 type step = object
-  exec: proc ()
+  exec: proc () {.nimcall.}
 
 const pipeline = @[step()]
 

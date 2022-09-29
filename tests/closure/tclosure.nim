@@ -65,7 +65,7 @@ block tclosure:
 
   # bug #5015
 
-  type Mutator = proc(matched: string): string {.noSideEffect, gcsafe, locks: 0.}
+  type Mutator = proc(matched: string): string {.nimcall, noSideEffect, gcsafe, locks: 0.}
 
   proc putMutated(
       MutatorCount: static[int],
