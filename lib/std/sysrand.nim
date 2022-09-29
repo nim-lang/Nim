@@ -42,6 +42,10 @@
 ## for targets running kernel version < 3.17) by passing a compile flag of
 ## `-d:nimNoGetRandom`. If this flag is passed, sysrand will use `/dev/urandom`
 ## as with any other POSIX compliant OS.
+## 
+## On a macOS target, you can choose to use `/dev/urandom` instead of
+## the one from `sys/random.h` by passing `-d:nimNoGetEntropy`. This is 
+## useful if you are running macOS prior to 10.12.
 ##
 
 runnableExamples:
@@ -66,7 +70,7 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 const
-  batchImplOS = defined(freebsd) or defined(openbsd) or defined(zephyr) or (defined(macosx) and not defined(ios))
+  batchImplOS = defined(freebsd) or defined(openbsd) or defined(zephyr) or (defined(macosx) and not defined(nimNoGetEntropy) and not defined(ios))
   batchSize {.used.} = 256
 
 when batchImplOS:
@@ -254,7 +258,7 @@ elif defined(ios):
 
     result = secRandomCopyBytes(nil, csize_t(size), addr dest[0])
 
-elif defined(macosx):
+elif defined(macosx) and not defined(nimNoGetEntropy):
   const sysrandomHeader = """#include <Availability.h>
 #include <sys/random.h>
 """
