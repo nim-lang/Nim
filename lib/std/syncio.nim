@@ -852,7 +852,7 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   var f: File = nil
   if open(f, filename, fmWrite):
     try:
-      f.writeBuffer(addr content[0], content.len)
+      f.writeBuffer(unsafeAddr content[0], content.len)
     finally:
       close(f)
   else:

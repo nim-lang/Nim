@@ -162,7 +162,7 @@ proc addChar(s: NimString, c: char): NimString =
       let r = resize(result.space)
       result = rawNewStringNoInit(r)
       result.len = s.len
-      copyMem(addr result.data[0], addr(s.data[0]), s.len+1)
+      copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
       result.reserved = r
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
@@ -208,7 +208,7 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     let sp = max(resize(dest.space), dest.len + addlen)
     result = rawNewStringNoInit(sp)
     result.len = dest.len
-    copyMem(addr result.data[0], addr(dest.data[0]), dest.len+1)
+    copyMem(addr result.data[0], unsafeAddr(dest.data[0]), dest.len+1)
     result.reserved = sp
     #result = rawNewString(sp)
     #copyMem(result, dest, dest.len + sizeof(TGenericSeq))
@@ -234,7 +234,7 @@ proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
     let sp = max(resize(s.space), newLen)
     result = rawNewStringNoInit(sp)
     result.len = s.len
-    copyMem(addr result.data[0], addr(s.data[0]), s.len+1)
+    copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
     zeroMem(addr result.data[s.len], newLen - s.len)
     result.reserved = sp
   result.len = n

@@ -17,7 +17,7 @@ proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let blen = b.len
   let minlen = min(alen, blen)
   if minlen > 0:
-    result = c_memcmp(addr a[0], addr b[0], cast[csize_t](minlen))
+    result = c_memcmp(unsafeAddr a[0], unsafeAddr b[0], cast[csize_t](minlen))
     if result == 0:
       result = alen - blen
   else:
@@ -28,7 +28,7 @@ proc eqStrings(a, b: string): bool {.inline, compilerproc.} =
   let blen = b.len
   if alen == blen:
     if alen == 0: return true
-    return equalMem(addr(a[0]), addr(b[0]), alen)
+    return equalMem(unsafeAddr(a[0]), unsafeAddr(b[0]), alen)
 
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
