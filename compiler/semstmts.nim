@@ -225,8 +225,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
 
       if a.len == 2 and a[0].kind == nkBracket:
         # rewrite ``except [a, b, c]: body`` -> ```except a, b, c: body```
-        let sons = move a[0].sons # todo why copy is needed?
-        a.sons[0..0] = sons
+        a.sons[0..0] = move a[0].sons
 
       if a.len == 2 and a[0].isInfixAs():
         # support ``except Exception as ex: body``
