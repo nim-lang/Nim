@@ -1,3 +1,7 @@
+discard """
+  joinable: false
+"""
+
 import std/[osproc, os, strformat]
 from stdtest/specialpaths import testsDir
 
