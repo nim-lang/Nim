@@ -82,7 +82,6 @@ type
     warnEffect = "Effect",
     warnCastSizes = "CastSizes"
     warnTemplateRedefinition = "TemplateRedefinition",
-    warnAmbiguousEnum = "AmbiguousEnum",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -97,6 +96,7 @@ type
     hintPattern = "Pattern", hintExecuting = "Exec", hintLinking = "Link", hintDependency = "Dependency",
     hintSource = "Source", hintPerformance = "Performance", hintStackTrace = "StackTrace",
     hintGCStats = "GCStats", hintGlobalVar = "GlobalVar", hintExpandMacro = "ExpandMacro",
+    hintAmbiguousEnum = "AmbiguousEnum",
     hintUser = "User", hintUserRaw = "UserRaw", hintExtendedContext = "ExtendedContext",
     hintMsgOrigin = "MsgOrigin", # since 1.3.5
     hintDeclaredLoc = "DeclaredLoc", # since 1.5.1
@@ -178,7 +178,6 @@ const
     warnEffect: "$1",
     warnCastSizes: "$1",
     warnTemplateRedefinition: "template '$1' is implicitly redefined, consider adding an explicit .redefine pragma",
-    warnAmbiguousEnum: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
@@ -211,6 +210,7 @@ const
     hintGCStats: "$1",
     hintGlobalVar: "global variable declared here",
     hintExpandMacro: "expanded macro: $1",
+    hintAmbiguousEnum: "$1",
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",

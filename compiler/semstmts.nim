@@ -577,7 +577,7 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
 proc msgSymChoiceUseQualifier(c: PContext; n: PNode; note = errGenerated) =
   assert n.kind in nkSymChoices
   var err =
-    if note == warnAmbiguousEnum:
+    if note == hintAmbiguousEnum:
       "ambiguous enum field '$1' assumed to be of type $2, this will become an error in the future" % [$n[0], typeToString(n[0].typ)]
     else:
       "ambiguous identifier: '" & $n[0] & "'"

@@ -93,7 +93,7 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
     # if overloaded enum field could not choose a type from a closed list,
     # choose the first resolved enum field, i.e. the latest in scope
     # to mirror old behavior
-    msgSymChoiceUseQualifier(c, result, warnAmbiguousEnum)
+    msgSymChoiceUseQualifier(c, result, hintAmbiguousEnum)
     result = result[0]
   elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
