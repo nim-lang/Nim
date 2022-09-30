@@ -22,6 +22,8 @@ runnableExamples:
   doAssert r1 / r2 == -2 // 3
 
 import math, hashes
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type Rational*[T] = object
   ## A rational number, consisting of a numerator `num` and a denominator `den`.

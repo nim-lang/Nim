@@ -9,8 +9,7 @@
 
 ## Nim OID support. An OID is a global ID that consists of a timestamp,
 ## a unique counter and a random value. This combination should suffice to
-## produce a globally distributed unique ID. This implementation was extracted
-## from the MongoDB interface and is thus binary compatible with a MongoDB OID.
+## produce a globally distributed unique ID.
 ##
 ## This implementation calls `initRand()` for the first call of
 ## `genOid`.
@@ -20,7 +19,7 @@ from std/private/decode_helpers import handleHexChar
 
 type
   Oid* = object ## An OID.
-    time: int32
+    time: int64
     fuzz: int32
     count: int32
 
@@ -44,37 +43,27 @@ proc parseOid*(str: cstring): Oid =
   ## Parses an OID.
   var bytes = cast[cstring](addr(result.time))
   var i = 0
-  while i < 12:
+  while i < 16:
     bytes[i] = chr((hexbyte(str[2 * i]) shl 4) or hexbyte(str[2 * i + 1]))
     inc(i)
 
-template toStringImpl[T: string | cstring](result: var T, oid: Oid) =
-  ## Stringifies `oid`.
+proc `$`*(oid: Oid): string =
+  ## Converts an OID to a string.
   const hex = "0123456789abcdef"
-  const N = 24
 
-  when T is string:
-    result.setLen N
+  result.setLen 32
 
   var o = oid
   var bytes = cast[cstring](addr(o))
   var i = 0
-  while i < 12:
+  while i < 16:
     let b = bytes[i].ord
     result[2 * i] = hex[(b and 0xF0) shr 4]
     result[2 * i + 1] = hex[b and 0xF]
     inc(i)
-  when T is cstring:
-    result[N] = '\0'
-
-
-proc `$`*(oid: Oid): string =
-  ## Converts an OID to a string.
-  toStringImpl(result, oid)
-
 
 let
-  t = getTime().toUnix.int32
+  t = getTime().toUnix
 
 var
   seed = initRand(t)
@@ -84,24 +73,24 @@ let fuzz = cast[int32](seed.rand(high(int)))
 
 
 template genOid(result: var Oid, incr: var int, fuzz: int32) =
-  var time = getTime().toUnix.int32
+  var time = getTime().toUnix
   var i = cast[int32](atomicInc(incr))
 
-  bigEndian32(addr result.time, addr(time))
+  bigEndian64(addr result.time, addr(time))
   result.fuzz = fuzz
   bigEndian32(addr result.count, addr(i))
 
 proc genOid*(): Oid =
   ## Generates a new OID.
   runnableExamples:
-    doAssert ($genOid()).len == 24
+    doAssert ($genOid()).len == 32
   runnableExamples("-r:off"):
-    echo $genOid() # for example, "5fc7f546ddbbc84800006aaf"
+    echo $genOid() # for example, "00000000632c452db08c3d19ee9073e5"
   genOid(result, incr, fuzz)
 
 proc generatedTime*(oid: Oid): Time =
   ## Returns the generated timestamp of the OID.
-  var tmp: int32
+  var tmp: int64
   var dummy = oid.time
-  bigEndian32(addr(tmp), addr(dummy))
+  bigEndian64(addr(tmp), addr(dummy))
   result = fromUnix(tmp)

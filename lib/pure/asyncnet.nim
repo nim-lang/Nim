@@ -96,6 +96,10 @@
 ##
 
 import std/private/since
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 import asyncdispatch, nativesockets, net, os
 
 export SOBool

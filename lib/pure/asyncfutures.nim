@@ -13,6 +13,7 @@ import system/stacktraces
 
 when defined(nimPreviewSlimSystem):
   import std/objectdollar # for StackTraceEntry
+  import std/assertions
 
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type

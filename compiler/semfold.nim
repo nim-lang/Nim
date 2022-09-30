@@ -517,12 +517,12 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
               "{.intdefine.} const was set to an invalid integer: '" &
                 g.config.symbols[s.name.s] & "'")
         else:
-          result = copyTree(s.ast)
+          result = copyTree(s.astdef)
       of mStrDefine:
         if isDefined(g.config, s.name.s):
           result = newStrNodeT(g.config.symbols[s.name.s], n, g)
         else:
-          result = copyTree(s.ast)
+          result = copyTree(s.astdef)
       of mBoolDefine:
         if isDefined(g.config, s.name.s):
           try:
@@ -532,9 +532,9 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
               "{.booldefine.} const was set to an invalid bool: '" &
                 g.config.symbols[s.name.s] & "'")
         else:
-          result = copyTree(s.ast)
+          result = copyTree(s.astdef)
       else:
-        result = copyTree(s.ast)
+        result = copyTree(s.astdef)
     of skProc, skFunc, skMethod:
       result = n
     of skParam:
