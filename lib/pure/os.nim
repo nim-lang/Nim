@@ -2291,11 +2291,12 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ##
   ## **Example:**
   ##
-  ## This directory structure::
-  ##   dirA / dirB / fileB1.txt
-  ##        / dirC
-  ##        / fileA1.txt
-  ##        / fileA2.txt
+  ## This directory structure:
+  ##
+  ##     dirA / dirB / fileB1.txt
+  ##          / dirC
+  ##          / fileA1.txt
+  ##          / fileA2.txt
   ##
   ## and this code:
   runnableExamples("-r:off"):

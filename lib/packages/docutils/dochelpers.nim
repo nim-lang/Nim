@@ -75,10 +75,10 @@ proc toLangSymbol*(linkText: PRstNode): LangSymbol =
   ## Parses `linkText` into a more structured form using a state machine.
   ##
   ## This proc is designed to allow link syntax with operators even
-  ## without escaped backticks inside::
+  ## without escaped backticks inside:
   ##   
-  ##   `proc *`_
-  ##   `proc []`_
+  ##     `proc *`_
+  ##     `proc []`_
   ##
   ## This proc should be kept in sync with the `renderTypes` proc from
   ## ``compiler/typesrenderer.nim``.
