@@ -488,6 +488,16 @@ proc traverse(c: var Context; b: var BlockInfo; n: PNode) =
     for ch in items(n):
       traverse(c, b, ch)
 
+proc unnestStmts(n, result: PNode) =
+  if n.kind in {nkStmtList, nkStmtListExpr}:
+    for x in items(n): unnestStmts(x, result)
+  elif n.kind != nkCommentStmt:
+    result.add(n)
+
+proc flattenStmtExprs(n: PNode): PNode =
+  result = newNodeI(nkStmtList, n.info)
+  unnestStmts(n, result)
+
 proc beginTraverse(c: var Context; b: var BlockInfo; parent, n: PNode; nindex: int) =
   # we search the innermost block that contains the var declaration of the
   # location we're interested in:
@@ -511,15 +521,20 @@ proc beginTraverse(c: var Context; b: var BlockInfo; parent, n: PNode; nindex: i
         beginTraverse(c, b, parent, ch.lastSon, nindex)
   of nodesToIgnoreSet:
     discard
-  of nkStmtList:
+  of nkStmtList, nkStmtListExpr:
     var isNested = false
     for ch in items(n):
-      if ch.kind == nkStmtList:
+      if ch.kind in {nkStmtList, nkStmtListExpr}:
         isNested = true
         break
-    let flat = if isNested: trees.flattenStmts(n) else: n
-    for i in 0..<flat.safeLen:
-      beginTraverse(c, b, flat, flat[i], i)
+    let flat = if isNested: flattenStmtExprs(n) else: n
+
+    if parent.kind in {nkStmtList, nkStmtListExpr}:
+      for i in 0..<flat.safeLen:
+        beginTraverse(c, b, parent, flat[i], nindex+1)
+    else:
+      for i in 0..<flat.safeLen:
+        beginTraverse(c, b, flat, flat[i], i)
   else:
     for i in 0..<n.safeLen:
       beginTraverse(c, b, n, n[i], i)

@@ -819,3 +819,24 @@ proc atomicClosureOp =
 
 atomicClosureOp()
 
+
+template assertEq(a, b: untyped): untyped =
+  block:
+    let
+      aval = a
+      bval = b
+
+    if aval != bval:
+      quit "bug!"
+
+proc convoluted =
+  let _ = (;
+    var val1: string;
+    if true: val1 = "22"
+    true
+  )
+
+  assertEq val1, "22"
+  assertEq val1, "22"
+
+convoluted()
