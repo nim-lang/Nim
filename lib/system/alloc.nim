@@ -11,6 +11,7 @@
 {.push profiler:off.}
 
 include osalloc
+import std/private/syslocks
 
 template track(op, address, size) =
   when defined(memTracker):

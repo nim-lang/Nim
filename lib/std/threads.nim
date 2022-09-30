@@ -52,8 +52,19 @@ import std/private/threadlocalstorage
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+include system/inclrtl
+
 const
   hasAllocStack = defined(zephyr) # maybe freertos too?
+  hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
+  hasThreadSupport = compileOption("threads") and not defined(nimscript)
+  usesDestructors = defined(gcDestructors) or defined(gcHooks)
+
+when hasThreadSupport:
+  {.pragma: rtlThreadVar, threadvar.}
+else:
+  {.pragma: rtlThreadVar.}
+
 
 when hasAllocStack or defined(zephyr) or defined(freertos):
   const
@@ -133,10 +144,10 @@ template afterThreadRuns() =
   for i in countdown(threadDestructionHandlers.len-1, 0):
     threadDestructionHandlers[i]()
 
-when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
-  proc deallocOsPages() {.rtl, raises: [].}
+# when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
+#   proc deallocOsPages() {.rtl, raises: [].}
 
-proc threadTrouble() {.raises: [], gcsafe.}
+# proc threadTrouble() {.raises: [], gcsafe.}
   ## defined in system/excpt.nim
 
 when defined(boehmgc):
@@ -157,7 +168,8 @@ when defined(boehmgc):
       else:
         thrd.dataFn(thrd.data)
     except:
-      threadTrouble()
+      discard
+      # threadTrouble()
     finally:
       afterThreadRuns()
     boehmGC_unregister_my_thread()
@@ -174,7 +186,8 @@ else:
           deepCopy(x, thrd.data)
           thrd.dataFn(x)
     except:
-      threadTrouble()
+      discard
+      # threadTrouble()
     finally:
       afterThreadRuns()
       when hasAllocStack:

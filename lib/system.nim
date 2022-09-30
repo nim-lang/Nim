@@ -1605,8 +1605,8 @@ when notJSnotNims:
 
 when not defined(js) and hasThreadSupport and hostOS != "standalone":
   const insideRLocksModule = false
-  include "system/syslocks"
-  include "system/threadlocalstorage"
+  import std/private/[syslocks, threadlocalstorage]
+
 
 when not defined(js) and defined(nimV2):
   type
@@ -2095,7 +2095,9 @@ when not defined(js):
   when declared(initAllocator):
     initAllocator()
   when hasThreadSupport:
-    when hostOS != "standalone": include "system/threads"
+    when hostOS != "standalone":
+      import std/threads
+      export threads
   elif not defined(nogc) and not defined(nimscript):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
     when declared(initGC): initGC()

@@ -1,33 +1,37 @@
+include system/inclrtl
+import system/ansi_c
+
+const hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
 
 when defined(windows):
-  import winlean
   type
+    Handle = int
     SysThread* = Handle
-    WinThreadProc = proc (x: pointer): int32 {.stdcall.}
+    WinThreadProc* = proc (x: pointer): int32 {.stdcall.}
 
-  proc createThread(lpThreadAttributes: pointer, dwStackSize: int32,
+  proc createThread*(lpThreadAttributes: pointer, dwStackSize: int32,
                      lpStartAddress: WinThreadProc,
                      lpParameter: pointer,
                      dwCreationFlags: int32,
                      lpThreadId: var int32): SysThread {.
     stdcall, dynlib: "kernel32", importc: "CreateThread".}
 
-  proc winSuspendThread(hThread: SysThread): int32 {.
+  proc winSuspendThread*(hThread: SysThread): int32 {.
     stdcall, dynlib: "kernel32", importc: "SuspendThread".}
 
-  proc winResumeThread(hThread: SysThread): int32 {.
+  proc winResumeThread*(hThread: SysThread): int32 {.
     stdcall, dynlib: "kernel32", importc: "ResumeThread".}
 
-  proc waitForSingleObject(hHandle: SysThread, dwMilliseconds: int32): int32 {.
+  proc waitForSingleObject*(hHandle: SysThread, dwMilliseconds: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "WaitForSingleObject".}
 
-  proc waitForMultipleObjects(nCount: int32,
+  proc waitForMultipleObjects*(nCount: int32,
                               lpHandles: ptr SysThread,
                               bWaitAll: int32,
                               dwMilliseconds: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "WaitForMultipleObjects".}
 
-  proc terminateThread(hThread: SysThread, dwExitCode: int32): int32 {.
+  proc terminateThread*(hThread: SysThread, dwExitCode: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "TerminateThread".}
 
   type
@@ -58,7 +62,7 @@ when defined(windows):
     proc threadVarGetValue(dwTlsIndex: ThreadVarSlot): pointer {.
       importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
 
-  proc setThreadAffinityMask(hThread: SysThread, dwThreadAffinityMask: uint) {.
+  proc setThreadAffinityMask*(hThread: SysThread, dwThreadAffinityMask: uint) {.
     importc: "SetThreadAffinityMask", stdcall, header: "<windows.h>".}
 
 elif defined(genode):
@@ -71,7 +75,7 @@ elif defined(genode):
     GenodeThreadProc = proc (x: pointer) {.noconv.}
     ThreadVarSlot = int
 
-  proc initThread(s: var SysThread,
+  proc initThread*(s: var SysThread,
                   env: GenodeEnv,
                   stackSize: culonglong,
                   entry: GenodeThreadProc,
@@ -95,13 +99,13 @@ elif defined(genode):
 
   var mainTls: pointer
 
-  proc threadVarSetValue(s: ThreadVarSlot, value: pointer) {.inline.} =
+  proc threadVarSetValue*(s: ThreadVarSlot, value: pointer) {.inline.} =
     if offMainThread():
       threadVarSetValue(value);
     else:
       mainTls = value
 
-  proc threadVarGetValue(s: ThreadVarSlot): pointer {.inline.} =
+  proc threadVarGetValue*(s: ThreadVarSlot): pointer {.inline.} =
     if offMainThread():
       threadVarGetValue();
     else:
@@ -161,11 +165,11 @@ else:
   proc pthread_attr_destroy(a1: var Pthread_attr): cint {.
     importc, header: pthreadh.}
 
-  proc pthread_create(a1: var SysThread, a2: var Pthread_attr,
+  proc pthread_create*(a1: var SysThread, a2: var Pthread_attr,
             a3: proc (x: pointer): pointer {.noconv.},
             a4: pointer): cint {.importc: "pthread_create",
             header: pthreadh.}
-  proc pthread_join(a1: SysThread, a2: ptr pointer): cint {.
+  proc pthread_join*(a1: SysThread, a2: ptr pointer): cint {.
     importc, header: pthreadh.}
 
   proc pthread_cancel(a1: SysThread): cint {.
@@ -189,12 +193,12 @@ else:
   proc threadVarGetValue(s: ThreadVarSlot): pointer {.inline.} =
     result = pthread_getspecific(s)
 
-  type CpuSet {.importc: "cpu_set_t", header: schedh.} = object
+  type CpuSet* {.importc: "cpu_set_t", header: schedh.} = object
      when defined(linux) and defined(amd64):
        abi: array[1024 div (8 * sizeof(culong)), culong]
 
-  proc cpusetZero(s: var CpuSet) {.importc: "CPU_ZERO", header: schedh.}
-  proc cpusetIncl(cpu: cint; s: var CpuSet) {.
+  proc cpusetZero*(s: var CpuSet) {.importc: "CPU_ZERO", header: schedh.}
+  proc cpusetIncl*(cpu: cint; s: var CpuSet) {.
     importc: "CPU_SET", header: schedh.}
 
   when defined(android):
@@ -209,10 +213,10 @@ else:
     proc pthread_gettid_np(thread: SysThread): Pid {.
       importc: "pthread_gettid_np", header: pthreadh.}
 
-    proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) =
+    proc setAffinity*(thread: SysThread; setsize: csize_t; s: var CpuSet) =
       setAffinityTID(pthread_gettid_np(thread), setsize, s)
   else:
-    proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) {.
+    proc setAffinity*(thread: SysThread; setsize: csize_t; s: var CpuSet) {.
       importc: "pthread_setaffinity_np", header: pthreadh.}
 
 
@@ -230,8 +234,8 @@ when emulatedThreadVars:
 const nimTlsSize {.intdefine.} = 16000
 type
   ThreadLocalStorage = array[0..(nimTlsSize div sizeof(float)), float]
-  PGcThread = ptr GcThread
-  GcThread {.pure, inheritable.} = object
+  PGcThread* = ptr GcThread
+  GcThread* {.pure, inheritable.} = object
     when emulatedThreadVars:
       tls: ThreadLocalStorage
     else:
