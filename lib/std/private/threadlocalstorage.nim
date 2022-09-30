@@ -5,7 +5,7 @@ const hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; eve
 
 when defined(windows):
   type
-    Handle = int
+    Handle* = int
     SysThread* = Handle
     WinThreadProc* = proc (x: pointer): int32 {.stdcall.}
 
@@ -35,7 +35,7 @@ when defined(windows):
     stdcall, dynlib: "kernel32", importc: "TerminateThread".}
 
   type
-    ThreadVarSlot = distinct int32
+    ThreadVarSlot* = distinct int32
 
   when true:
     proc threadVarAlloc(): ThreadVarSlot {.
@@ -50,7 +50,7 @@ when defined(windows):
     proc setLastError(x: uint32) {.
       importc: "SetLastError", stdcall, header: "<windows.h>".}
 
-    proc threadVarGetValue(dwTlsIndex: ThreadVarSlot): pointer =
+    proc threadVarGetValue*(dwTlsIndex: ThreadVarSlot): pointer =
       let realLastError = getLastError()
       result = tlsGetValue(dwTlsIndex)
       setLastError(realLastError)
@@ -73,7 +73,7 @@ elif defined(genode):
     SysThread* {.importcpp: "Nim::SysThread",
                  header: GenodeHeader, final, pure.} = object
     GenodeThreadProc = proc (x: pointer) {.noconv.}
-    ThreadVarSlot = int
+    ThreadVarSlot* = int
 
   proc initThread*(s: var SysThread,
                   env: GenodeEnv,
@@ -93,7 +93,7 @@ elif defined(genode):
     importcpp: "Nim::SysThread::threadVarSetValue(@)",
     header: GenodeHeader.}
 
-  proc threadVarGetValue(): pointer {.
+  proc threadVarGetValue*(): pointer {.
     importcpp: "Nim::SysThread::threadVarGetValue()",
     header: GenodeHeader.}
 
@@ -135,21 +135,21 @@ else:
       Pthread_attr {.importc: "pthread_attr_t",
                     header: "<sys/types.h>".} = object
         abi: array[56 div sizeof(clong), clong]
-      ThreadVarSlot {.importc: "pthread_key_t",
+      ThreadVarSlot* {.importc: "pthread_key_t",
                     header: "<sys/types.h>".} = distinct cuint
   elif defined(openbsd) and defined(amd64):
     type
       SysThread* {.importc: "pthread_t", header: "<pthread.h>".} = object
       Pthread_attr {.importc: "pthread_attr_t",
                        header: "<pthread.h>".} = object
-      ThreadVarSlot {.importc: "pthread_key_t",
+      ThreadVarSlot* {.importc: "pthread_key_t",
                      header: "<pthread.h>".} = cint
   else:
     type
       SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = int
       Pthread_attr {.importc: "pthread_attr_t",
                        header: "<sys/types.h>".} = object
-      ThreadVarSlot {.importc: "pthread_key_t",
+      ThreadVarSlot* {.importc: "pthread_key_t",
                      header: "<sys/types.h>".} = object
   type
     Timespec {.importc: "struct timespec", header: "<time.h>".} = object
@@ -188,9 +188,9 @@ else:
 
   proc threadVarAlloc(): ThreadVarSlot {.inline.} =
     discard pthread_key_create(addr(result), nil)
-  proc threadVarSetValue(s: ThreadVarSlot, value: pointer) {.inline.} =
+  proc threadVarSetValue*(s: ThreadVarSlot, value: pointer) {.inline.} =
     discard pthread_setspecific(s, value)
-  proc threadVarGetValue(s: ThreadVarSlot): pointer {.inline.} =
+  proc threadVarSetValue*(s: ThreadVarSlot): pointer {.inline.} =
     result = pthread_getspecific(s)
 
   type CpuSet* {.importc: "cpu_set_t", header: schedh.} = object
@@ -221,7 +221,7 @@ else:
 
 
 const
-  emulatedThreadVars = compileOption("tlsEmulation")
+  emulatedThreadVars* = compileOption("tlsEmulation")
 
 when emulatedThreadVars:
   # the compiler generates this proc for us, so that we can get the size of
@@ -248,15 +248,15 @@ type
       nil
 
 when emulatedThreadVars:
-  var globalsSlot: ThreadVarSlot
+  var globalsSlot*: ThreadVarSlot
 
   when not defined(useNimRtl):
     var mainThread: GcThread
 
-  proc GetThreadLocalVars(): pointer {.compilerRtl, inl.} =
+  proc GetThreadLocalVars*(): pointer {.compilerRtl, inl.} =
     result = addr(cast[PGcThread](threadVarGetValue(globalsSlot)).tls)
 
-  proc initThreadVarsEmulation() {.compilerproc, inline.} =
+  proc initThreadVarsEmulation*() {.compilerproc, inline.} =
     when not defined(useNimRtl):
       globalsSlot = threadVarAlloc()
       when declared(mainThread):
