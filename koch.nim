@@ -682,7 +682,7 @@ when isMainModule:
       case normalize(op.key)
       of "boot": boot(op.cmdLineRest)
       of "clean": clean(op.cmdLineRest)
-      of "doc", "docs": buildDocs(op.cmdLineRest, localDocsOnly, localDocsOut)
+      of "doc", "docs": buildDocs(op.cmdLineRest & " --undef:nimPreviewSlimSystem", localDocsOnly, localDocsOut)
       of "doc0", "docs0":
         # undocumented command for Araq-the-merciful:
         buildDocs(op.cmdLineRest & gaCode)
