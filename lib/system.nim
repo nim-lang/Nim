@@ -1211,10 +1211,10 @@ else:
 
 
 when defined(nimSeqsV2):
-  template movingCopy(a, b) =
+  template movingCopy(a, b: typed) =
     a = move(b)
 else:
-  template movingCopy(a, b) =
+  template movingCopy(a, b: typed) =
     shallowCopy(a, b)
 
 proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
