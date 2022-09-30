@@ -92,9 +92,6 @@ Commands for core developers:
   tests [options]          run the testsuite (run a subset of tests by
                            specifying a category, e.g. `tests cat async`)
   temp options             creates a temporary compiler for testing
-Web options:
-  --googleAnalytics:UA-... add the given google analytics code to the docs. To
-                           build the official docs, use UA-48159761-1
 """
 
 let kochExe* = when isMainModule: os.getAppFilename() # always correct when koch is main program, even if `koch` exe renamed e.g.: `nim c -o:koch_debug koch.nim`
@@ -679,7 +676,7 @@ when isMainModule:
       case normalize(op.key)
       of "boot": boot(op.cmdLineRest)
       of "clean": clean(op.cmdLineRest)
-      of "doc", "docs": buildDocs(op.cmdLineRest, localDocsOnly, localDocsOut)
+      of "doc", "docs": buildDocs(op.cmdLineRest & paCode, localDocsOnly, localDocsOut)
       of "doc0", "docs0":
         # undocumented command for Araq-the-merciful:
         buildDocs(op.cmdLineRest & gaCode)
