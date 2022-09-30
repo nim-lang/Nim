@@ -688,6 +688,21 @@ proc gen(c: var Con; n: PNode) =
   of nkDefer: doAssert false, "dfa construction pass requires the elimination of 'defer'"
   else: discard
 
+proc optimizeJumps(c: var ControlFlowGraph) =
+  for i in 0..<c.len:
+    case c[i].kind
+    of goto, fork:
+      var pc = i + c[i].dest
+      if pc < c.len and c[pc].kind == goto:
+        while pc < c.len and c[pc].kind == goto:
+          let newPc = pc + c[pc].dest
+          if newPc > pc:
+            pc = newPc
+          else:
+            break
+        c[i].dest = pc - i
+    of loop, def, use: discard
+
 proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
   ## constructs a control flow graph for ``body``.
   var c = Con(code: @[], blocks: @[], owner: s)
@@ -698,3 +713,4 @@ proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
     result = c.code # will move
   else:
     shallowCopy(result, c.code)
+  optimizeJumps result

@@ -224,7 +224,8 @@ proc myIsLastRead(n: PNode; c: var Con): bool =
           of goto:
             pc = pc + c.g[pc].dest
           of fork:
-            pcs.add pc + 1
+            if not marked.contains(pc+1):
+              pcs.add pc + 1
             pc = pc + c.g[pc].dest
           of use:
             if c.g[pc].n.aliases(n) != no or n.aliases(c.g[pc].n) != no:
