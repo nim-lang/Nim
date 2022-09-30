@@ -232,7 +232,7 @@ elif defined(freebsd):
     result = getrandom(p, csize_t(size), 0)
 
 elif defined(ios) or defined(macosx):
-  {.passL: "-framework Security".}
+  {.passl: "-framework Security".}
 
   const errSecSuccess = 0 ## No error.
 
