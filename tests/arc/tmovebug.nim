@@ -1,6 +1,6 @@
 discard """
   cmd: "nim c --gc:arc $file"
-  output: '''6
+  output: '''5
 (w: 5)
 (w: -5)
 c.text = hello
@@ -34,7 +34,6 @@ fff
 fff
 3
 mmm
-assign me (sink)
 sink me (sink)
 assign me (not sink)
 sink me (not sink)

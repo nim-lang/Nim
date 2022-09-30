@@ -37,11 +37,11 @@ when defined(nimPreviewSlimSystem):
 
 type
   InstrKind* = enum
-    goto, fork, def, use
+    goto, loop, fork, def, use
   Instr* = object
     n*: PNode # contains the def/use location.
     case kind*: InstrKind
-    of goto, fork: dest*: int
+    of goto, fork, loop: dest*: int
     else: discard
 
   ControlFlowGraph* = seq[Instr]
@@ -69,7 +69,7 @@ proc codeListing(c: ControlFlowGraph, start = 0; last = -1): string =
   var jumpTargets = initIntSet()
   let last = if last < 0: c.len-1 else: min(last, c.len-1)
   for i in start..last:
-    if c[i].kind in {goto, fork}:
+    if c[i].kind in {goto, fork, loop}:
       jumpTargets.incl(i+c[i].dest)
   var i = start
   while i <= last:
@@ -80,7 +80,7 @@ proc codeListing(c: ControlFlowGraph, start = 0; last = -1): string =
     case c[i].kind
     of def, use:
       result.add renderTree(c[i].n)
-    of goto, fork:
+    of goto, fork, loop:
       result.add "L"
       result.addInt c[i].dest+i
     result.add("\t#")
@@ -276,7 +276,7 @@ template checkedDistance(dist): int =
   dist
 
 proc jmpBack(c: var Con, n: PNode, p = TPosition(0)) =
-  c.code.add Instr(n: n, kind: goto, dest: checkedDistance(p.int - c.code.len))
+  c.code.add Instr(n: n, kind: loop, dest: checkedDistance(p.int - c.code.len))
 
 proc patch(c: var Con, p: TPosition) =
   # patch with current index
@@ -306,7 +306,12 @@ proc isTrue(n: PNode): bool =
   n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
     n.kind == nkIntLit and n.intVal != 0
 
-when true:
+template forkT(n, body) =
+  let lab1 = c.forkI(n)
+  body
+  c.patch(lab1)
+
+when false:
   proc genWhile(c: var Con; n: PNode) =
     # We unroll every loop 3 times. We emulate 0, 1, 2 iterations
     # through the loop. We need to prove this is correct for our
@@ -385,11 +390,6 @@ else:
         forkT(n):
           c.gen(n[1])
           c.jmpBack(n, lab1)
-
-template forkT(n, body) =
-  let lab1 = c.forkI(n)
-  body
-  c.patch(lab1)
 
 proc genIf(c: var Con, n: PNode) =
   #[

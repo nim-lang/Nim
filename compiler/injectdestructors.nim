@@ -21,7 +21,7 @@ import
 
 const nimOldMoveAnalyser = defined(nimCompareAnalysers)
 
-when nimOldMoveAnalyser:
+when true:
   import dfa
 
 when defined(nimPreviewSlimSystem):
@@ -32,7 +32,7 @@ from trees import exprStructuralEquivalent, getRoot
 type
   Con = object
     owner: PSym
-    when nimOldMoveAnalyser:
+    when true:
       g: ControlFlowGraph
     graph: ModuleGraph
     inLoop, inSpawn, inLoopCond: int
@@ -97,9 +97,10 @@ when nimOldMoveAnalyser:
       alreadySeen: HashSet[PNode]
 
   proc preprocessCfg(cfg: var ControlFlowGraph) =
-    for i in 0..<cfg.len:
-      if cfg[i].kind in {goto, fork} and i + cfg[i].dest > cfg.len:
-        cfg[i].dest = cfg.len - i
+    when false:
+      for i in 0..<cfg.len:
+        if cfg[i].kind in {goto, fork, loop} and i + cfg[i].dest > cfg.len:
+          cfg[i].dest = cfg.len - i
 
   proc mergeStates(a: var State, b: sink State) =
     # Inplace for performance:
@@ -188,6 +189,53 @@ when nimOldMoveAnalyser:
           if p notin lastReads: break checkIfAllPosLastRead
         node.flags.incl nfLastRead
 
+proc myIsLastRead(n: PNode; c: var Con): bool =
+  var j = 0
+  while j < c.g.len:
+    if c.g[j].kind == use and c.g[j].n == n: break
+    inc j
+  if j < c.g.len:
+    var pcs = @[j+1]
+    var marked = initIntSet()
+    result = true
+    while pcs.len > 0:
+      var pc = pcs.pop()
+      if not marked.contains(pc):
+        let oldPc = pc
+        while pc < c.g.len:
+          dbg:
+            echo pc, " ", n, " ", c.g[pc].kind
+          case c.g[pc].kind
+          of loop:
+            let back = pc + c.g[pc].dest
+            if not marked.containsOrIncl(back):
+              pc = back
+            else:
+              break
+          of goto:
+            pc = pc + c.g[pc].dest
+          of fork:
+            pcs.add pc + 1
+            pc = pc + c.g[pc].dest
+          of use:
+            if c.g[pc].n.aliases(n) != no or n.aliases(c.g[pc].n) != no:
+              c.otherUsage = c.g[pc].n.info
+              return false
+            inc pc
+          of def:
+            if c.g[pc].n.aliases(n) == yes:
+              # the path leads to a redefinition of 's' --> sink 's'.
+              break
+            elif n.aliases(c.g[pc].n) != no:
+              # only partially writes to 's' --> can't sink 's', so this def reads 's'
+              # or maybe writes to 's' --> can't sink 's'
+              c.otherUsage = c.g[pc].n.info
+              return false
+            inc pc
+        marked.incl oldPc
+  else:
+    result = false
+
 proc isLastRead(n: PNode; c: var Con): bool =
   when nimOldMoveAnalyser:
     let m = skipConvDfa(n)
@@ -195,7 +243,8 @@ proc isLastRead(n: PNode; c: var Con): bool =
   else:
     let m = skipConvDfa(n)
     result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or
-      isLastRead(c.body, n, c.otherUsage)
+       myIsLastRead(n, c)
+       #isLastRead(c.body, n, c.otherUsage)
 
   when defined(nimCompareAnalysers):
     # first only test if it crashes:
@@ -1176,7 +1225,7 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
   if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
     return n
   var c = Con(owner: owner, graph: g, idgen: idgen, body: n, otherUsage: unknownLineInfo)
-  when nimOldMoveAnalyser:
+  when true:
     c.g = constructCfg(owner, n)
 
     dbg:

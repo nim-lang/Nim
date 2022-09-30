@@ -1,6 +1,6 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  errormsg: "'=copy' is not available for type <owned Button>; requires a copy because it's not the last read of ':envAlt.b1'; routine: main"
+  errormsg: "'=copy' is not available for type <owned Button>; requires a copy because it's not the last read of ':envAlt.b1'; another read is done here: tuse_ownedref_after_move.nim(45, 7); routine: main"
   line: 48
 """
 
