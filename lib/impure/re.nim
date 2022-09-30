@@ -34,6 +34,9 @@ runnableExamples:
 import
   pcre, strutils, rtarrays
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 const
   MaxSubpatterns* = 20
     ## defines the maximum number of subpatterns that can be captured.

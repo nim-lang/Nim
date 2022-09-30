@@ -81,6 +81,9 @@
 import asyncdispatch, asyncnet, nativesockets, strutils, parseutils, os, times
 from net import BufferSize
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   AsyncFtpClient* = ref object
     csock*: AsyncSocket

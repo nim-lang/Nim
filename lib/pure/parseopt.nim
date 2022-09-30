@@ -192,6 +192,10 @@ proc parseWord(s: string, i: int, w: var string,
       add(w, s[result])
       inc(result)
 
+proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
+                    longNoVal: seq[string] = @[];
+                    allowWhitespaceAfterColon = true): OptParser
+
 proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
                     longNoVal: seq[string] = @[];
                     allowWhitespaceAfterColon = true): OptParser =
@@ -214,28 +218,7 @@ proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
     p = initOptParser("--left --debug:3 -l -r:2",
                       shortNoVal = {'l'}, longNoVal = @["left"])
 
-  result.pos = 0
-  result.idx = 0
-  result.inShortState = false
-  result.shortNoVal = shortNoVal
-  result.longNoVal = longNoVal
-  result.allowWhitespaceAfterColon = allowWhitespaceAfterColon
-  if cmdline != "":
-    result.cmds = parseCmdLine(cmdline)
-  else:
-    when declared(paramCount):
-      result.cmds = newSeq[string](paramCount())
-      for i in countup(1, paramCount()):
-        result.cmds[i-1] = paramStr(i)
-    else:
-      # we cannot provide this for NimRtl creation on Posix, because we can't
-      # access the command line arguments then!
-      doAssert false, "empty command line given but" &
-        " real command line is not accessible"
-
-  result.kind = cmdEnd
-  result.key = ""
-  result.val = ""
+  initOptParser(parseCmdLine(cmdline), shortNoVal, longNoVal, allowWhitespaceAfterColon)
 
 proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
                     longNoVal: seq[string] = @[];

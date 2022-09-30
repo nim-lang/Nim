@@ -200,7 +200,7 @@ proc highBound*(conf: ConfigRef; x: PNode; o: Operators): PNode =
              nkIntLit.newIntNode(lastOrd(conf, typ))
            elif typ.kind == tySequence and x.kind == nkSym and
                x.sym.kind == skConst:
-             nkIntLit.newIntNode(x.sym.ast.len-1)
+             nkIntLit.newIntNode(x.sym.astdef.len-1)
            else:
              o.opAdd.buildCall(o.opLen.buildCall(x), minusOne())
   result.info = x.info

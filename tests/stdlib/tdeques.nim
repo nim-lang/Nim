@@ -5,7 +5,7 @@ discard """
 
 import std/deques
 from std/sequtils import toSeq
-
+import std/assertions
 
 block:
   proc index(self: Deque[int], idx: Natural): int =

@@ -1,5 +1,6 @@
 import std/nativesockets
 import stdtest/testutils
+import std/assertions
 
 block:
   let hostname = getHostname()
