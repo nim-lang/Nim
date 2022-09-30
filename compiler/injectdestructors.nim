@@ -37,7 +37,7 @@ type
     graph: ModuleGraph
     inLoop, inSpawn, inLoopCond: int
     uninit: IntSet # set of uninit'ed vars
-    uninitComputed: bool
+    gComputed: bool
     idgen: IdGenerator
     body: PNode
     otherUsage: TLineInfo
@@ -190,6 +190,14 @@ when nimOldMoveAnalyser:
         node.flags.incl nfLastRead
 
 proc myIsLastRead(n: PNode; c: var Con): bool =
+  if not c.gComputed:
+    c.gComputed = true
+    c.g = constructCfg(c.owner, c.body)
+    dbg:
+      echo "\n### ", c.owner.name.s, ":\nCFG:"
+      echoCfg(c.g)
+      echo c.body
+
   var j = 0
   while j < c.g.len:
     if c.g[j].kind == use and c.g[j].n == n: break
@@ -1225,14 +1233,7 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     shouldDebug = toDebug == owner.name.s or toDebug == "always"
   if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
     return n
-  var c = Con(owner: owner, graph: g, idgen: idgen, body: n, otherUsage: unknownLineInfo)
-  when true:
-    c.g = constructCfg(owner, n)
-
-    dbg:
-      echo "\n### ", owner.name.s, ":\nCFG:"
-      echoCfg(c.g)
-      echo n
+  var c = Con(owner: owner, graph: g, idgen: idgen, body: n, otherUsage: unknownLineInfo, gComputed: false)
 
   if optCursorInference in g.config.options:
     computeCursors(owner, n, g)
