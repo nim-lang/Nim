@@ -366,6 +366,21 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   else:
     initialBinding = nil
 
+  if n.kind == nkCall and n[0].kind == nkDotExpr and n[0][1].kind == nkSym and n[0][0].kind == nkSym:
+    f = newIdentNode(getIdent(c.cache, n[0][1].sym.name.s), n[0][1].info)
+    let first = newIdentNode(getIdent(c.cache, n[0][0].sym.name.s), n[0][0].info)
+    let len  = n.len
+    var args = newSeq[PNode](len - 1)
+    for i, c in n.sons[1 ..< len]:
+      args[i] = c
+    n.sons.setLen(len + 1)
+    n.sons[0..1] = [f, first]
+    orig.sons.setLen(len + 1)
+    orig.sons[0..1] = [f, first]
+    for i, a in args:
+      n.sons[2 + i] = a
+      orig.sons[2 + i] = a
+
   template pickBest(headSymbol) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
                       filter, result, alt, errors, efExplain in flags,
