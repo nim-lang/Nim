@@ -499,6 +499,12 @@ proc errorUseQualifier(c: PContext; info: TLineInfo; candidates: seq[PSym]) =
     inc i
   localError(c.config, info, errGenerated, err)
 
+proc errorUseQualifier*(c: PContext; info:TLineInfo; choices: PNode) =
+  var candidates = newSeq[PSym](choices.len)
+  for i, n in choices:
+    candidates[i] = n.sym
+  errorUseQualifier(c, info, candidates)
+
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extra = "") =
   var err = "undeclared identifier: '" & name & "'" & extra
   if c.recursiveDep.len > 0:
