@@ -34,6 +34,9 @@ import std/[os, strutils, parseopt, osproc]
   # If this fails with: `Error: cannot open file: std/os`, see
   # https://github.com/nim-lang/Nim/pull/14291 for explanation + how to fix.
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 import tools / kochdocs
 import tools / deps
 
