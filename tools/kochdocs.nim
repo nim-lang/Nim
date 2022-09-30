@@ -1,6 +1,10 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm, sequtils
+import std/[os, strutils, osproc, sets, pathnorm, sequtils]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # XXX: Remove this feature check once the csources supports it.
 when defined(nimHasCastPragmaBlocks):
   import std/pegs
