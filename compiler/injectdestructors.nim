@@ -194,6 +194,7 @@ proc myIsLastRead(n: PNode; c: var Con): bool =
   while j < c.g.len:
     if c.g[j].kind == use and c.g[j].n == n: break
     inc j
+  c.otherUsage = unknownLineInfo
   if j < c.g.len:
     var pcs = @[j+1]
     var marked = initIntSet()
