@@ -37,7 +37,6 @@ type
     graph: ModuleGraph
     inLoop, inSpawn, inLoopCond: int
     uninit: IntSet # set of uninit'ed vars
-    gComputed: bool
     idgen: IdGenerator
     body: PNode
     otherUsage: TLineInfo
@@ -48,6 +47,8 @@ type
     vars: seq[PSym]
     wasMoved: seq[PNode]
     final: seq[PNode] # finally section
+    locals: seq[PSym]
+    body: PNode
     needsTry: bool
     parent: ptr Scope
 
@@ -78,8 +79,8 @@ proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
   s.vars.add(sym)
   result = newSymNode(sym)
 
-proc nestedScope(parent: var Scope): Scope =
-  Scope(vars: @[], wasMoved: @[], final: @[], needsTry: false, parent: addr(parent))
+proc nestedScope(parent: var Scope; body: PNode): Scope =
+  Scope(vars: @[], locals: @[], wasMoved: @[], final: @[], body: body, needsTry: false, parent: addr(parent))
 
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
@@ -189,14 +190,20 @@ when nimOldMoveAnalyser:
           if p notin lastReads: break checkIfAllPosLastRead
         node.flags.incl nfLastRead
 
-proc myIsLastRead(n: PNode; c: var Con): bool =
-  if not c.gComputed:
-    c.gComputed = true
-    c.g = constructCfg(c.owner, c.body)
-    dbg:
-      echo "\n### ", c.owner.name.s, ":\nCFG:"
-      echoCfg(c.g)
-      echo c.body
+proc myIsLastRead(n: PNode; c: var Con; scope: var Scope): bool =
+  let root = parampatterns.exprRoot(n, allowCalls=false)
+  if root == nil: return false
+
+  var s = addr(scope)
+  while s != nil:
+    if s.locals.contains(root): break
+    s = s.parent
+
+  c.g = constructCfg(c.owner, if s != nil: s.body else: c.body, root)
+  dbg:
+    echo "\n### ", c.owner.name.s, ":\nCFG:"
+    echoCfg(c.g)
+    echo c.body
 
   var j = 0
   while j < c.g.len:
@@ -246,14 +253,16 @@ proc myIsLastRead(n: PNode; c: var Con): bool =
   else:
     result = false
 
-proc isLastRead(n: PNode; c: var Con): bool =
+proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
+  if not hasDestructor(c, n.typ): return false
+
   when nimOldMoveAnalyser:
     let m = skipConvDfa(n)
     result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or nfLastRead in m.flags
   else:
     let m = skipConvDfa(n)
     result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or
-       myIsLastRead(n, c)
+       myIsLastRead(n, c, s)
        #isLastRead(c.body, n, c.otherUsage)
 
   when defined(nimCompareAnalysers):
@@ -716,7 +725,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
       var branch = shallowCopy(it)
       for j in 0 ..< it.len-1:
         branch[j] = copyTree(it[j])
-      var ofScope = nestedScope(s)
+      var ofScope = nestedScope(s, it.lastSon)
       branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt:
                      processScope(c, ofScope, maybeVoid(it[^1], ofScope))
                    else:
@@ -729,7 +738,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
     result = copyNode(n)
     result.add p(n[0], c, s, normal)
     dec c.inLoopCond
-    var bodyScope = nestedScope(s)
+    var bodyScope = nestedScope(s, n[1])
     let bodyResult = p(n[1], c, bodyScope, normal)
     result.add processScope(c, bodyScope, bodyResult)
     dec c.inLoop
@@ -741,7 +750,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
     for i in 0..<last-1:
       result[i] = n[i]
     result[last-1] = p(n[last-1], c, s, normal)
-    var bodyScope = nestedScope(s)
+    var bodyScope = nestedScope(s, n[1])
     let bodyResult = p(n[last], c, bodyScope, normal)
     result[last] = processScope(c, bodyScope, bodyResult)
     dec c.inLoop
@@ -749,7 +758,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
   of nkBlockStmt, nkBlockExpr:
     result = copyNode(n)
     result.add n[0]
-    var bodyScope = nestedScope(s)
+    var bodyScope = nestedScope(s, n[1])
     result.add if n[1].typ.isEmptyType or willProduceStmt:
                  processScope(c, bodyScope, processCall(n[1], bodyScope))
                else:
@@ -760,7 +769,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
     for i in 0..<n.len:
       let it = n[i]
       var branch = shallowCopy(it)
-      var branchScope = nestedScope(s)
+      var branchScope = nestedScope(s, it.lastSon)
       if it.kind in {nkElifBranch, nkElifExpr}:
         #Condition needs to be destroyed outside of the condition/branch scope
         branch[0] = p(it[0], c, s, normal)
@@ -773,7 +782,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
 
   of nkTryStmt:
     result = copyNode(n)
-    var tryScope = nestedScope(s)
+    var tryScope = nestedScope(s, n[0])
     result.add if n[0].typ.isEmptyType or willProduceStmt:
                  processScope(c, tryScope, maybeVoid(n[0], tryScope))
                else:
@@ -782,7 +791,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
     for i in 1..<n.len:
       let it = n[i]
       var branch = copyTree(it)
-      var branchScope = nestedScope(s)
+      var branchScope = nestedScope(s, it[^1])
       branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt or it.kind == nkFinally:
                      processScope(c, branchScope, if it.kind == nkFinally: p(it[^1], c, branchScope, normal)
                                                   else: maybeVoid(it[^1], branchScope))
@@ -835,7 +844,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
          nkCallKinds + nkLiterals:
       result = p(n, c, s, consumed)
     elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
-        isLastRead(n, c) and not (n.kind == nkSym and isCursor(n)):
+        isLastRead(n, c, s) and not (n.kind == nkSym and isCursor(n)):
       # Sinked params can be consumed only once. We need to reset the memory
       # to disable the destructor which we have not elided
       result = destructiveMoveVar(n, c, s)
@@ -955,6 +964,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       for it in n:
         var ri = it[^1]
         if it.kind == nkVarTuple and hasDestructor(c, ri.typ):
+          for i in 0..<it.len-2:
+            if it[i].kind == nkSym: s.locals.add it[i].sym
           let x = lowerTupleUnpacking(c.graph, it, c.idgen, c.owner)
           result.add p(x, c, s, consumed)
         elif it.kind == nkIdentDefs and hasDestructor(c, skipPragmaExpr(it[0]).typ):
@@ -962,6 +973,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
             let v = skipPragmaExpr(it[j])
             if v.kind == nkSym:
               if sfCompileTime in v.sym.flags: continue
+              s.locals.add v.sym
               pVarTopLevel(v, c, s, result)
             if ri.kind != nkEmpty:
               result.add moveOrCopy(v, ri, c, s, isDecl = v.kind == nkSym)
@@ -1034,7 +1046,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       for i in 1 ..< n.len:
         result[i] = n[i]
       if mode == sinkArg and hasDestructor(c, n.typ):
-        if isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c):
+        if isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c, s):
           s.wasMoved.add c.genWasMoved(n)
         else:
           result = passCopyToSink(result, c, s)
@@ -1044,7 +1056,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       for i in 0 ..< n.len:
         result[i] = p(n[i], c, s, normal)
       if mode == sinkArg and hasDestructor(c, n.typ):
-        if isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c):
+        if isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c, s):
           # consider 'a[(g; destroy(g); 3)]', we want to say 'wasMoved(a[3])'
           # without the junk, hence 'c.genWasMoved(n)'
           # and not 'c.genWasMoved(result)':
@@ -1145,7 +1157,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
       if isUnpackedTuple(ri[0]):
         # unpacking of tuple: take over the elements
         result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
-      elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
+      elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c, s):
         if aliases(dest, ri) == no:
           # Rule 3: `=sink`(x, z); wasMoved(z)
           if isAtom(ri[1]):
@@ -1170,12 +1182,12 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
     of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
       result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
     of nkSym:
-      if isSinkParam(ri.sym) and isLastRead(ri, c):
+      if isSinkParam(ri.sym) and isLastRead(ri, c, s):
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(dest, ri, isDecl)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
       elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
-          isLastRead(ri, c) and canBeMoved(c, dest.typ) and not isCursor(ri):
+          isLastRead(ri, c, s) and canBeMoved(c, dest.typ) and not isCursor(ri):
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(dest, ri, isDecl)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
@@ -1192,7 +1204,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
     of nkRaiseStmt:
       result = pRaiseStmt(ri, c, s)
     else:
-      if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
+      if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c, s) and
           canBeMoved(c, dest.typ):
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(dest, ri, isDecl)
@@ -1234,7 +1246,7 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     shouldDebug = toDebug == owner.name.s or toDebug == "always"
   if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
     return n
-  var c = Con(owner: owner, graph: g, idgen: idgen, body: n, otherUsage: unknownLineInfo, gComputed: false)
+  var c = Con(owner: owner, graph: g, idgen: idgen, body: n, otherUsage: unknownLineInfo)
 
   if optCursorInference in g.config.options:
     computeCursors(owner, n, g)
@@ -1242,7 +1254,7 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
   when nimOldMoveAnalyser:
     computeLastReadsAndFirstWrites(c.g)
 
-  var scope: Scope
+  var scope = Scope(body: n)
   let body = p(n, c, scope, normal)
 
   if owner.kind in {skProc, skFunc, skMethod, skIterator, skConverter}:

@@ -62,6 +62,7 @@ type
     inTryStmt: int
     blocks: seq[TBlock]
     owner: PSym
+    root: PSym
 
 proc codeListing(c: ControlFlowGraph, start = 0; last = -1): string =
   # for debugging purposes
@@ -581,7 +582,7 @@ proc genUse(c: var Con; orig: PNode) =
   let n = c.skipTrivials(orig)
 
   if n.kind == nkSym:
-    if n.sym.kind in InterestingSyms:
+    if n.sym.kind in InterestingSyms and n.sym == c.root:
       c.code.add Instr(n: orig, kind: use)
   else:
     gen(c, n)
@@ -590,7 +591,8 @@ proc genDef(c: var Con; orig: PNode) =
   let n = c.skipTrivials(orig)
 
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: orig, kind: def)
+    if n.sym == c.root:
+      c.code.add Instr(n: orig, kind: def)
 
 proc genCall(c: var Con; n: PNode) =
   gen(c, n[0])
@@ -703,9 +705,9 @@ proc optimizeJumps(c: var ControlFlowGraph) =
         c[i].dest = pc - i
     of loop, def, use: discard
 
-proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
+proc constructCfg*(s: PSym; body: PNode; root: PSym): ControlFlowGraph =
   ## constructs a control flow graph for ``body``.
-  var c = Con(code: @[], blocks: @[], owner: s)
+  var c = Con(code: @[], blocks: @[], owner: s, root: root)
   withBlock(s):
     gen(c, body)
     genImplicitReturn(c)
