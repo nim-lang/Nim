@@ -313,7 +313,7 @@ proc genArgNoParam(p: BProc, n: PNode; result: var Rope; needsTmp = false) =
     initLocExprSingleUse(p, n, a)
     addRdLoc(withTmpIfNeeded(p, a, needsTmp), result)
 
-from dfa import aliases, AliasKind
+import aliasanalysis
 
 proc potentialAlias(n: PNode, potentialWrites: seq[PNode]): bool =
   for p in potentialWrites:
