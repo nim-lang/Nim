@@ -591,7 +591,9 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
       branch[i] = semCaseBranchRange(c, t, b, covered)
     else:
       # constant sets and arrays are allowed:
-      var r = semConstExpr(c, b)
+      # set expected type to selector type for type inference
+      # even if it can be a different type like a set or array
+      var r = semConstExpr(c, b, expectedType = t[0].typ)
       if r.kind in {nkCurly, nkBracket} and r.len == 0 and branch.len == 2:
         # discarding ``{}`` and ``[]`` branches silently
         delSon(branch, 0)
