@@ -17,12 +17,7 @@ import
   intsets, strtabs, ast, astalgo, msgs, renderer, magicsys, types, idents,
   strutils, options, lowerings, tables, modulegraphs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
-  varpartitions, move_analyser, aliasanalysis
-
-const nimOldMoveAnalyser = defined(nimCompareAnalysers)
-
-when true:
-  import dfa
+  varpartitions, aliasanalysis, dfa
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -85,111 +80,6 @@ proc nestedScope(parent: var Scope; body: PNode): Scope =
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
 
-when nimOldMoveAnalyser:
-  import sets, hashes
-
-  proc hash(n: PNode): Hash = hash(cast[pointer](n))
-
-  type
-    State = ref object
-      lastReads: IntSet
-      potentialLastReads: IntSet
-      notLastReads: IntSet
-      alreadySeen: HashSet[PNode]
-
-  proc preprocessCfg(cfg: var ControlFlowGraph) =
-    when false:
-      for i in 0..<cfg.len:
-        if cfg[i].kind in {goto, fork, loop} and i + cfg[i].dest > cfg.len:
-          cfg[i].dest = cfg.len - i
-
-  proc mergeStates(a: var State, b: sink State) =
-    # Inplace for performance:
-    #   lastReads = a.lastReads + b.lastReads
-    #   potentialLastReads = (a.potentialLastReads + b.potentialLastReads) - (a.notLastReads + b.notLastReads)
-    #   notLastReads = a.notLastReads + b.notLastReads
-    #   alreadySeen = a.alreadySeen + b.alreadySeen
-    # b is never nil
-    if a == nil:
-      a = b
-    else:
-      a.lastReads.incl b.lastReads
-      a.potentialLastReads.incl b.potentialLastReads
-      a.potentialLastReads.excl a.notLastReads
-      a.potentialLastReads.excl b.notLastReads
-      a.notLastReads.incl b.notLastReads
-      a.alreadySeen.incl b.alreadySeen
-
-  proc computeLastReadsAndFirstWrites(cfg: ControlFlowGraph) =
-    template aliasesCached(obj, field: PNode): AliasKind =
-      aliases(obj, field)
-
-    var cfg = cfg
-    preprocessCfg(cfg)
-
-    var states = newSeq[State](cfg.len + 1)
-    states[0] = State()
-
-    for pc in 0..<cfg.len:
-      template state: State = states[pc]
-      if state != nil:
-        case cfg[pc].kind
-        of def:
-          var potentialLastReadsCopy = state.potentialLastReads
-          for r in potentialLastReadsCopy:
-            if cfg[pc].n.aliasesCached(cfg[r].n) == yes:
-              # the path leads to a redefinition of 's' --> sink 's'.
-              state.lastReads.incl r
-              state.potentialLastReads.excl r
-            elif cfg[r].n.aliasesCached(cfg[pc].n) != no:
-              # only partially writes to 's' --> can't sink 's', so this def reads 's'
-              # or maybe writes to 's' --> can't sink 's'
-              cfg[r].n.comment = '\n' & $pc
-              state.potentialLastReads.excl r
-              state.notLastReads.incl r
-
-          var alreadySeenThisNode = false
-          for s in state.alreadySeen:
-            if cfg[pc].n.aliasesCached(s) != no or s.aliasesCached(cfg[pc].n) != no:
-              alreadySeenThisNode = true; break
-          if alreadySeenThisNode: cfg[pc].n.flags.excl nfFirstWrite
-          else: cfg[pc].n.flags.incl nfFirstWrite
-
-          state.alreadySeen.incl cfg[pc].n
-
-          mergeStates(states[pc + 1], move(states[pc]))
-        of use:
-          var potentialLastReadsCopy = state.potentialLastReads
-          for r in potentialLastReadsCopy:
-            if cfg[pc].n.aliasesCached(cfg[r].n) != no or cfg[r].n.aliasesCached(cfg[pc].n) != no:
-              cfg[r].n.comment = '\n' & $pc
-              state.potentialLastReads.excl r
-              state.notLastReads.incl r
-
-          state.potentialLastReads.incl pc
-
-          state.alreadySeen.incl cfg[pc].n
-
-          mergeStates(states[pc + 1], move(states[pc]))
-        of goto:
-          mergeStates(states[pc + cfg[pc].dest], move(states[pc]))
-        of fork:
-          var copy = State()
-          copy[] = states[pc][]
-          mergeStates(states[pc + cfg[pc].dest], copy)
-          mergeStates(states[pc + 1], move(states[pc]))
-
-    let lastReads = (states[^1].lastReads + states[^1].potentialLastReads) - states[^1].notLastReads
-    var lastReadTable: Table[PNode, seq[int]]
-    for position, node in cfg:
-      if node.kind == use:
-        lastReadTable.mgetOrPut(node.n, @[]).add position
-    for node, positions in lastReadTable:
-      block checkIfAllPosLastRead:
-        for p in positions:
-          if p notin lastReads: break checkIfAllPosLastRead
-        node.flags.incl nfLastRead
-
 when false:
   var
     perfCounters: array[InstrKind, int]
@@ -198,7 +88,7 @@ when false:
     for i in low(InstrKind)..high(InstrKind):
       echo "INSTR ", i, " ", perfCounters[i]
 
-proc myIsLastRead(n: PNode; c: var Con; scope: var Scope): bool =
+proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope): bool =
   let root = parampatterns.exprRoot(n, allowCalls=false)
   if root == nil: return false
 
@@ -266,72 +156,13 @@ proc myIsLastRead(n: PNode; c: var Con; scope: var Scope): bool =
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
   if not hasDestructor(c, n.typ): return true
 
-  when nimOldMoveAnalyser:
-    let m = skipConvDfa(n)
-    result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or nfLastRead in m.flags
-  else:
-    let m = skipConvDfa(n)
-    result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or
-       myIsLastRead(n, c, s)
-       #isLastRead(c.body, n, c.otherUsage)
-
-  when defined(nimCompareAnalysers):
-    # first only test if it crashes:
-    let oldResult = nfLastRead in m.flags
-    let alternativeResult = move_analyser.isLastRead(c.body, n, c.otherUsage)
-    if alternativeResult != oldResult:
-      echo "##### algorithms differ for ", c.graph.config $ n.info, " ", renderTree(n)
-      echo "##### old algorithm said ", oldResult, " new one said ", alternativeResult
+  let m = skipConvDfa(n)
+  result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or
+      isLastReadImpl(n, c, s)
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
   let m = skipConvDfa(n)
-  when nimOldMoveAnalyser:
-    result = nfFirstWrite in m.flags
-  else:
-    result = nfFirstWrite2 in m.flags
-  when defined(nimCompareAnalysers):
-    if (nfFirstWrite in m.flags) != (nfFirstWrite2 in m.flags):
-      echo "----- algorithms differ for ", c.graph.config $ n.info, " ", renderTree(n)
-      echo "----- old algorithm said ", nfFirstWrite in m.flags, " new one said ", nfFirstWrite2 in m.flags
-
-when false:
-  proc initialized(code: ControlFlowGraph; pc: int,
-                  init, uninit: var IntSet; until: int): int =
-    ## Computes the set of definitely initialized variables across all code paths
-    ## as an IntSet of IDs.
-    var pc = pc
-    while pc < code.len:
-      case code[pc].kind
-      of goto:
-        pc += code[pc].dest
-      of fork:
-        var initA = initIntSet()
-        var initB = initIntSet()
-        var variantA = pc + 1
-        var variantB = pc + code[pc].dest
-        while variantA != variantB:
-          if max(variantA, variantB) > until:
-            break
-          if variantA < variantB:
-            variantA = initialized(code, variantA, initA, uninit, min(variantB, until))
-          else:
-            variantB = initialized(code, variantB, initB, uninit, min(variantA, until))
-        pc = min(variantA, variantB)
-        # we add vars if they are in both branches:
-        for v in initA:
-          if v in initB:
-            init.incl v
-      of use:
-        let v = code[pc].n.sym
-        if v.kind != skParam and v.id notin init:
-          # attempt to read an uninit'ed variable
-          uninit.incl v.id
-        inc pc
-      of def:
-        let v = code[pc].n.sym
-        init.incl v.id
-        inc pc
-    return pc
+  result = nfFirstWrite2 in m.flags
 
 proc isCursor(n: PNode): bool =
   case n.kind
@@ -1260,9 +1091,6 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
 
   if optCursorInference in g.config.options:
     computeCursors(owner, n, g)
-
-  when nimOldMoveAnalyser:
-    computeLastReadsAndFirstWrites(c.g)
 
   var scope = Scope(body: n)
   let body = p(n, c, scope, normal)
