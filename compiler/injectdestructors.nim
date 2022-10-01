@@ -254,7 +254,7 @@ proc myIsLastRead(n: PNode; c: var Con; scope: var Scope): bool =
     result = false
 
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
-  if not hasDestructor(c, n.typ): return false
+  if not hasDestructor(c, n.typ): return true
 
   when nimOldMoveAnalyser:
     let m = skipConvDfa(n)
