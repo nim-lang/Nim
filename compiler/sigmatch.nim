@@ -1282,6 +1282,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = isGeneric
   of tyForward:
     #internalError("forward type in typeRel()")
+    if a.kind == tyNil:
+      return f.allowsNil
     result = isNone
   of tyNil:
     skipOwned(a)
