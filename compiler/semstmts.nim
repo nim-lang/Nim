@@ -853,6 +853,9 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var iterAfterVarLent = iter.skipTypes({tyGenericInst, tyAlias, tyLent, tyVar})
   # n.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
+  if iterAfterVarLent.kind == tyEmpty:
+    localError(c.config, n[^2].info, "cannot infer element type of $1" %
+               renderTree(n[^2], {renderNoComments}))
   if iterAfterVarLent.kind != tyTuple or n.len == 3:
     if n.len == 3:
       if n[0].kind == nkVarTuple:
