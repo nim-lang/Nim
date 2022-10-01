@@ -190,6 +190,14 @@ when nimOldMoveAnalyser:
           if p notin lastReads: break checkIfAllPosLastRead
         node.flags.incl nfLastRead
 
+when false:
+  var
+    perfCounters: array[InstrKind, int]
+
+  proc showCounters*() =
+    for i in low(InstrKind)..high(InstrKind):
+      echo "INSTR ", i, " ", perfCounters[i]
+
 proc myIsLastRead(n: PNode; c: var Con; scope: var Scope): bool =
   let root = parampatterns.exprRoot(n, allowCalls=false)
   if root == nil: return false
@@ -203,7 +211,7 @@ proc myIsLastRead(n: PNode; c: var Con; scope: var Scope): bool =
   dbg:
     echo "\n### ", c.owner.name.s, ":\nCFG:"
     echoCfg(c.g)
-    echo c.body
+    #echo c.body
 
   var j = 0
   while j < c.g.len:
@@ -220,7 +228,9 @@ proc myIsLastRead(n: PNode; c: var Con; scope: var Scope): bool =
         let oldPc = pc
         while pc < c.g.len:
           dbg:
-            echo pc, " ", n, " ", c.g[pc].kind
+            echo "EXEC ", c.g[pc].kind, " ", pc, " ", n
+          when false:
+            inc perfCounters[c.g[pc].kind]
           case c.g[pc].kind
           of loop:
             let back = pc + c.g[pc].dest

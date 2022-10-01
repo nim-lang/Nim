@@ -59,7 +59,7 @@ type
 
   Con = object
     code: ControlFlowGraph
-    inTryStmt: int
+    inTryStmt, interestingInstructions: int
     blocks: seq[TBlock]
     owner: PSym
     root: PSym
@@ -430,15 +430,22 @@ proc genIf(c: var Con, n: PNode) =
 
   ]#
   var endings: seq[TPosition] = @[]
+  let oldInteresting = c.interestingInstructions
+  let oldLen = c.code.len
+
   for i in 0..<n.len:
     let it = n[i]
     c.gen(it[0])
     if it.len == 2:
-      forkT(it[1]):
-        c.gen(it[1])
-        endings.add c.gotoI(it[1])
-  for i in countdown(endings.high, 0):
-    c.patch(endings[i])
+      forkT(it.lastSon):
+        c.gen(it.lastSon)
+        endings.add c.gotoI(it.lastSon)
+
+  if oldInteresting == c.interestingInstructions:
+    setLen c.code, oldLen
+  else:
+    for i in countdown(endings.high, 0):
+      c.patch(endings[i])
 
 proc genAndOr(c: var Con; n: PNode) =
   #   asgn dest, a
@@ -466,6 +473,8 @@ proc genCase(c: var Con; n: PNode) =
 
   var endings: seq[TPosition] = @[]
   c.gen(n[0])
+  let oldInteresting = c.interestingInstructions
+  let oldLen = c.code.len
   for i in 1..<n.len:
     let it = n[i]
     if it.len == 1 or (i == n.len-1 and isExhaustive):
@@ -475,8 +484,12 @@ proc genCase(c: var Con; n: PNode) =
       forkT(it.lastSon):
         c.gen(it.lastSon)
         endings.add c.gotoI(it.lastSon)
-  for i in countdown(endings.high, 0):
-    c.patch(endings[i])
+
+  if oldInteresting == c.interestingInstructions:
+    setLen c.code, oldLen
+  else:
+    for i in countdown(endings.high, 0):
+      c.patch(endings[i])
 
 proc genBlock(c: var Con; n: PNode) =
   withBlock(n[0].sym):
@@ -496,6 +509,7 @@ proc genBreakOrRaiseAux(c: var Con, i: int, n: PNode) =
     c.blocks[i].breakFixups.add (lab1, trailingFinales)
 
 proc genBreak(c: var Con; n: PNode) =
+  inc c.interestingInstructions
   if n[0].kind == nkSym:
     for i in countdown(c.blocks.high, 0):
       if not c.blocks[i].isTryBlock and c.blocks[i].label == n[0].sym:
@@ -541,6 +555,7 @@ template genNoReturn(c: var Con; n: PNode) =
   c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
 
 proc genRaise(c: var Con; n: PNode) =
+  inc c.interestingInstructions
   gen(c, n[0])
   if c.inTryStmt > 0:
     for i in countdown(c.blocks.high, 0):
@@ -556,6 +571,7 @@ proc genImplicitReturn(c: var Con) =
     gen(c, c.owner.ast[resultPos])
 
 proc genReturn(c: var Con; n: PNode) =
+  inc c.interestingInstructions
   if n[0].kind != nkEmpty:
     gen(c, n[0])
   else:
@@ -584,6 +600,7 @@ proc genUse(c: var Con; orig: PNode) =
   if n.kind == nkSym:
     if n.sym.kind in InterestingSyms and n.sym == c.root:
       c.code.add Instr(n: orig, kind: use)
+      inc c.interestingInstructions
   else:
     gen(c, n)
 
@@ -593,6 +610,7 @@ proc genDef(c: var Con; orig: PNode) =
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     if n.sym == c.root:
       c.code.add Instr(n: orig, kind: def)
+      inc c.interestingInstructions
 
 proc genCall(c: var Con; n: PNode) =
   gen(c, n[0])
@@ -605,7 +623,7 @@ proc genCall(c: var Con; n: PNode) =
         # Pass by 'out' is a 'must def'. Good enough for a move optimizer.
         genDef(c, n[i])
   # every call can potentially raise:
-  if c.inTryStmt > 0 and canRaiseConservative(n[0]):
+  if false: # c.inTryStmt > 0 and canRaiseConservative(n[0]):
     # we generate the instruction sequence:
     # fork lab1
     # goto exceptionHandler (except or finally)
@@ -715,4 +733,4 @@ proc constructCfg*(s: PSym; body: PNode; root: PSym): ControlFlowGraph =
     result = c.code # will move
   else:
     shallowCopy(result, c.code)
-  optimizeJumps result
+  #optimizeJumps result
