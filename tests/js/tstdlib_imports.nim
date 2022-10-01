@@ -4,6 +4,11 @@ discard """
 
 {.warning[UnusedImport]: off.}
 
+when defined(nimPreviewSlimSystem):
+  import std/[
+    syncio, assertions, formatfloat, objectdollar, widestrs
+  ]
+
 import std/[
   # Core:
   bitops, typetraits, lenientops, macros, volatile, typeinfo,
