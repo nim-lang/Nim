@@ -554,7 +554,7 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var Int128): PNode =
   checkMinSonsLen(t, 1, c.config)
   let ac = semConstExpr(c, a)
   let bc = semConstExpr(c, b)
-  if ac.kind == nkStrLit or bc.kind == nkStrLit:
+  if ac.kind in {nkStrLit..nkTripleStrLit} or bc.kind in {nkStrLit..nkTripleStrLit}:
     localError(c.config, b.info, "range of string is invalid")
   let at = fitNode(c, t[0].typ, ac, ac.info).skipConvTakeType
   let bt = fitNode(c, t[0].typ, bc, bc.info).skipConvTakeType
