@@ -13,6 +13,9 @@
 import std/[macros, isolation, typetraits]
 import system/ansi_c
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 export isolation
 
 

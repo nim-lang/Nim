@@ -535,16 +535,6 @@ proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; i
       if parentFileIndex == conf.m.trackPos.fileIndex:
         suggestResult(conf, symToSuggest(g, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
-proc extractPragma(s: PSym): PNode =
-  if s.kind in routineKinds:
-    result = s.ast[pragmasPos]
-  elif s.kind in {skType, skVar, skLet}:
-    if s.ast != nil and s.ast.len > 0:
-      if s.ast[0].kind == nkPragmaExpr and s.ast[0].len > 1:
-        # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
-        result = s.ast[0][1]
-  doAssert result == nil or result.kind == nkPragma
-
 proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
   var pragmaNode: PNode
   pragmaNode = if s.kind == skEnumField: extractPragma(s.owner) else: extractPragma(s)

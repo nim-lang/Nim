@@ -8,7 +8,9 @@ discard """
 """
 ## Authors: quantimnot, a-mr
 
-import osproc, os, streams, unittest, strutils
+import std/[osproc, os, streams, unittest, strutils]
+
+import std/syncio
 
 #=======
 # setup

@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc"
   ccodeCheck: "@'genericDeepCopy(' .*"
   action: compile
 """

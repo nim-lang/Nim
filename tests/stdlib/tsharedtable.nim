@@ -5,6 +5,7 @@ output: '''
 """
 
 import sharedtables
+import std/assertions
 
 block:
   var table: SharedTable[int, int]

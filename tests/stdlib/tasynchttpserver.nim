@@ -7,6 +7,7 @@ discard """
 
 import strutils
 from net import TimeoutError
+import std/assertions
 
 import httpclient, asynchttpserver, asyncdispatch, asyncfutures
 

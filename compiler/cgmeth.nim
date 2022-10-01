@@ -123,7 +123,7 @@ proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
   if disp.typ.callConv == ccInline: disp.typ.callConv = ccNimCall
   disp.ast = copyTree(s.ast)
   disp.ast[bodyPos] = newNodeI(nkEmpty, s.info)
-  disp.loc.r = nil
+  disp.loc.r = ""
   if s.typ[0] != nil:
     if disp.ast.len > resultPos:
       disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym, nextSymId(idgen))

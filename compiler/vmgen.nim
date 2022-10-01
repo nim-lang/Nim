@@ -2000,7 +2000,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       elif importcCond(c, s): c.importcSym(n.info, s)
       genLit(c, n, dest)
     of skConst:
-      let constVal = if s.ast != nil: s.ast else: s.typ.n
+      let constVal = if s.astdef != nil: s.astdef else: s.typ.n
       gen(c, constVal, dest)
     of skEnumField:
       # we never reach this case - as of the time of this comment,

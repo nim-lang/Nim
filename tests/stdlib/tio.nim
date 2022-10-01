@@ -2,6 +2,7 @@
 
 import std/os
 from stdtest/specialpaths import buildDir
+import std/[assertions, syncio]
 
 block: # readChars
   let file = buildDir / "D20201118T205105.txt"
