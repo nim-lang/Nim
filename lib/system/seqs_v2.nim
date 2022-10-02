@@ -125,8 +125,9 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
       if xu.p == nil or xu.p.cap < newlen:
         xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
+      let defaultValue = default(T)
       for i in oldLen..<newlen:
-        xu.p.data[i] = default(T)
+        xu.p.data[i] = defaultValue
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
