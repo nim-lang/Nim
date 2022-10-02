@@ -1545,7 +1545,7 @@ proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
         checkMeta(c, n, t, hasError)
       else:
         hasError = true
-        localError(c.config, n.info, "cannot use $1 as a field type" % toHumanStr(t.kind))
+        localError(c.config, n.info, "cannot use $1 as a field type without view types enabled" % toHumanStr(t.kind))
     else:
       checkMeta(c, n, t, hasError)
   else:
