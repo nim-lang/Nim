@@ -968,6 +968,9 @@ proc getCacheDir*(app: string): string =
 when defined(windows):
   type DWORD = uint32
 
+  when defined(nimPreviewSlimSystem):
+    import std/widestrs
+
   proc getTempPath(
     nBufferLength: DWORD, lpBuffer: WideCString
   ): DWORD {.stdcall, dynlib: "kernel32.dll", importc: "GetTempPathW".} =
@@ -3121,7 +3124,7 @@ when defined(haiku):
     B_FIND_PATH_IMAGE_PATH = 1000
 
   proc find_path(codePointer: pointer, baseDirectory: cint, subPath: cstring,
-                 pathBuffer: cstring, bufferSize: csize): int32
+                 pathBuffer: cstring, bufferSize: csize_t): int32
                 {.importc, header: "<FindDirectory.h>".}
 
   proc getApplHaiku(): string =
@@ -3500,14 +3503,21 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noWeirdTarget.} =
     discard h.closeHandle
     if res == 0'i32: raiseOSError(osLastError(), file)
 
-func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1), deprecated: "Deprecated since v1.5.1".} =
-  ## Returns true if ``filename`` is valid for crossplatform use.
+
+func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1).} =
+  ## Returns `true` if `filename` is valid for crossplatform use.
   ##
   ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
-  ## You can pass full paths as argument too, but func only checks filenames.
-  ##
   ## It uses `invalidFilenameChars`, `invalidFilenames` and `maxLen` to verify the specified `filename`.
   ##
+  ## See also:
+  ##
+  ## * https://docs.microsoft.com/en-us/dotnet/api/system.io.pathtoolongexception
+  ## * https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+  ## * https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
+  ##
+  ## .. warning:: This only checks filenames, not whole paths
+  ##    (because basically you can mount anything as a path on Linux).
   runnableExamples:
     assert not isValidFilename(" foo")     # Leading white space
     assert not isValidFilename("foo ")     # Trailing white space
@@ -3518,9 +3528,6 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
     assert not isValidFilename("")         # Empty string
     assert not isValidFilename("foo/")     # Filename is empty
 
-  # https://docs.microsoft.com/en-us/dotnet/api/system.io.pathtoolongexception
-  # https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
-  # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
   result = true
   let f = filename.splitFile()
   if unlikely(f.name.len + f.ext.len > maxLen or f.name.len == 0 or
@@ -3528,6 +3535,7 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
     find(f.name, invalidFilenameChars) != -1): return false
   for invalid in invalidFilenames:
     if cmpIgnoreCase(f.name, invalid) == 0: return false
+
 
 # deprecated declarations
 when not defined(nimscript):

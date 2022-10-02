@@ -4,6 +4,7 @@ discard """
 """
 
 import json, strutils, options, tables
+import std/assertions
 
 # The definition of the `%` proc needs to be here, since the `% c` calls below
 # can only find our custom `%` proc for `Pix` if defined in global scope.

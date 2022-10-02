@@ -65,27 +65,6 @@ However, a `void` type cannot be inferred in generic code:
 The `void` type is only valid for parameters and return types; other symbols
 cannot have the type `void`.
 
-
-Unicode Operators
-=================
-
-Under the `--experimental:unicodeOperators`:option: switch,
-these Unicode operators are also parsed as operators::
-
-  ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
-  ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
-
-
-If enabled, Unicode operators can be combined with non-Unicode operator
-symbols. The usual precedence extensions then apply, for example, `⊠=` is an
-assignment like operator just like `*=` is.
-
-No Unicode normalization step is performed.
-
-.. note:: Due to parser limitations one **cannot** enable this feature via a
-  pragma `{.experimental: "unicodeOperators".}` reliably.
-
-
 Top-down type inference
 =======================
 

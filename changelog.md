@@ -7,8 +7,35 @@
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
 
-- `io`, `assertions`, `formatfloat`, and `` dollars.`$` `` for objects are about to move out of the `system` module. You may instead import `std/syncio`, `std/assertions`, `std/formatfloat` and `std/objectdollar`.
-  The `-d:nimPreviewSlimSystem` option makes these imports required.
+- Certain definitions from the default `system` module have been moved to
+  the following new modules:
+
+  - `std/syncio`
+  - `std/assertions`
+  - `std/formatfloat`
+  - `std/objectdollar`
+  - `std/widestrs`
+
+  In the future, these definitions will be removed from the `system` module,
+  and their respective modules will have to be imported to use them.
+  Currently, to make these imports required, the `-d:nimPreviewSlimSystem` option
+  may be used.
+
+- Enabling `-d:nimPreviewSlimSystem` also removes the following deprecated
+  symbols in the `system` module:
+  - Aliases with `Error` suffix to exception types that have a `Defect` suffix
+    (see [exceptions](https://nim-lang.org/docs/exceptions.html)):
+    `ArithmeticError`, `DivByZeroError`, `OverflowError`,
+    `AccessViolationError`, `AssertionError`, `OutOfMemError`, `IndexError`,
+    `FieldError`, `RangeError`, `StackOverflowError`, `ReraiseError`,
+    `ObjectAssignmentError`, `ObjectConversionError`, `FloatingPointError`,
+    `FloatOverflowError`, `FloatUnderflowError`, `FloatInexactError`,
+    `DeadThreadError`, `NilAccessError`
+  - `addQuitProc`, replaced by `exitprocs.addExitProc`
+  - Legacy unsigned conversion operations: `ze`, `ze64`, `toU8`, `toU16`, `toU32`
+  - `TaintedString`, formerly a distinct alias to `string`
+  - `PInt32`, `PInt64`, `PFloat32`, `PFloat64`, aliases to
+    `ptr int32`, `ptr int64`, `ptr float32`, `ptr float64`
 
 - The `gc:v2` option is removed.
 
@@ -44,13 +71,19 @@
 - Removed two type pragma syntaxes deprecated since 0.20, namely
   `type Foo = object {.final.}`, and `type Foo {.final.} [T] = object`.
 
-- [Overloadable enums](https://nim-lang.github.io/Nim/manual_experimental.html#overloadable-enum-value-names)
+- [Overloadable enums](https://nim-lang.github.io/Nim/manual.html#overloadable-enum-value-names) and Unicode Operators
   are no longer experimental.
 
 - Removed the `nimIncrSeqV3` define.
 
 - Static linking against OpenSSL versions below 1.1, previously done by
   setting `-d:openssl10`, is no longer supported.
+  
+- `macros.getImpl` for `const` symbols now returns the full definition node
+  (as `nnkConstDef`) rather than the AST of the constant value.
+
+- ORC is now the default memory management strategy. Use
+  `--mm:refc` for a transition period.
 
 ## Standard library additions and changes
 
@@ -67,6 +100,7 @@
 - `strutils.find` now uses and defaults to `last = -1` for whole string searches,
   making limiting it to just the first char (`last = 0`) valid.
 - `random.rand` now works with `Ordinal`s.
+- Undeprecated `os.isvalidfilename`.
 - `std/oids` now uses `int64` to store time internally (before it was int32), the length of
   the string form of `Oid` changes from 24 to 32.
 

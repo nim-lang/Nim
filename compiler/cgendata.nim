@@ -27,6 +27,7 @@ type
     cfsFieldInfo,             # section for field information
     cfsTypeInfo,              # section for type information (ag ABI checks)
     cfsProcHeaders,           # section for C procs prototypes
+    cfsStrData,               # section for constant string literals
     cfsData,                  # section for C constant data
     cfsVars,                  # section for C variable declarations
     cfsProcs,                 # section for C procs that are not inline
@@ -190,13 +191,18 @@ proc procSec*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # top level proc sections
   result = p.blocks[0].sections[s]
 
+proc initBlock*(): TBlock =
+  result = TBlock()
+  for i in low(result.sections)..high(result.sections):
+    result.sections[i] = newRopeAppender()
+
 proc newProc*(prc: PSym, module: BModule): BProc =
   new(result)
   result.prc = prc
   result.module = module
   result.options = if prc != nil: prc.options
                    else: module.config.options
-  newSeq(result.blocks, 1)
+  result.blocks = @[initBlock()]
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
   result.sigConflicts = initCountTable[string]()

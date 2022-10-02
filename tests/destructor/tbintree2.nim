@@ -21,21 +21,21 @@ proc merge(lower, greater: owned Node): owned Node =
   elif greater.isNil:
     result = lower
   elif lower.y < greater.y:
-    lower.right = merge(lower.right, greater)
+    lower.right = merge(move lower.right, greater)
     result = lower
   else:
-    greater.left = merge(lower, greater.left)
+    greater.left = merge(lower, move greater.left)
     result = greater
 
 proc splitBinary(orig: owned Node, value: int32): (owned Node, owned Node) =
   if orig.isNil:
     result = (nil, nil)
   elif orig.x < value:
-    let splitPair = splitBinary(orig.right, value)
+    let splitPair = splitBinary(move orig.right, value)
     orig.right = splitPair[0]
     result = (orig, splitPair[1])
   else:
-    let splitPair = splitBinary(orig.left, value)
+    let splitPair = splitBinary(move orig.left, value)
     orig.left = splitPair[1]
     result = (splitPair[0], orig)
 

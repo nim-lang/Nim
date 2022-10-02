@@ -21,6 +21,8 @@ when defined(nimPreviewSlimSystem):
 
 when defined(windows):
   import winlean
+  when useWinUnicode and defined(nimPreviewSlimSystem):
+    import std/widestrs
   from os import absolutePath
 else:
   import os
