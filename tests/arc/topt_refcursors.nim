@@ -5,21 +5,28 @@ discard """
 
 var
   it_cursor
-  jt_cursor
-it_cursor = root
-block :tmp:
-  while (
-    not (it_cursor == nil)):
-    echo [it_cursor.s]
-    it_cursor = it_cursor.ri
-jt_cursor = root
-block :tmp_1:
-  while (
-    not (jt_cursor == nil)):
-    var ri_1_cursor
-    ri_1_cursor = jt_cursor.ri
-    echo [jt_cursor.s]
-    jt_cursor = ri_1_cursor
+  jt
+try:
+  it_cursor = root
+  block :tmp:
+    while (
+      not (it_cursor == nil)):
+      echo [it_cursor.s]
+      it_cursor = it_cursor.ri
+  `=copy`(jt, root)
+  block :tmp_1:
+    while (
+      not (jt == nil)):
+      var ri_1
+      try:
+        `=copy`(ri_1, jt.ri)
+        echo [jt.s]
+        `=sink`(jt, ri_1)
+        wasMoved(ri_1)
+      finally:
+        `=destroy`(ri_1)
+finally:
+  `=destroy`(jt)
 -- end of expandArc ------------------------'''
 """
 

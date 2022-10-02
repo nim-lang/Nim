@@ -11,6 +11,9 @@
 
 import winlean, os
 
+when defined(nimPreviewSlimSystem):
+  import std/widestrs
+
 type
   HKEY* = uint
 

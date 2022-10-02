@@ -64,7 +64,7 @@ And for a debug version compatible with GDB:
 
 The `koch`:cmd: program is Nim's maintenance script. It is a replacement for
 make and shell scripting with the advantage that it is much more portable.
-More information about its options can be found in the `koch <koch.html>`_
+More information about its options can be found in the [koch](koch.html)
 documentation.
 
 
@@ -105,7 +105,7 @@ current commit:
 
 You can also bisect using custom options to build the compiler, for example if
 you don't need a debug version of the compiler (which runs slower), you can replace
-`./koch temp`:cmd: by explicit compilation command, see `Bootstrapping the compiler`_.
+`./koch temp`:cmd: by explicit compilation command, see [Bootstrapping the compiler].
 
 
 Building an instrumented compiler
@@ -269,7 +269,7 @@ Native debugging
 
 Stepping through the compiler with a native debugger is a very powerful tool to
 both learn and debug it. However, there is still the need to constrain when
-breakpoints are triggered. The same methods as in `Debug logging`_ can be applied
+breakpoints are triggered. The same methods as in [Debug logging] can be applied
 here when combined with calls to the debug helpers `enteringDebugSection()`:nim:
 and `exitingDebugSection()`:nim:.
 
@@ -309,7 +309,7 @@ The syntax tree consists of nodes which may have an arbitrary number of
 children. Types and symbols are represented by other nodes, because they
 may contain cycles. The AST changes its shape after semantic checking. This
 is needed to make life easier for the code generators. See the "ast" module
-for the type definitions. The `macros <macros.html>`_ module contains many
+for the type definitions. The [macros](macros.html) module contains many
 examples how the AST represents each syntactic structure.
 
 
@@ -324,15 +324,15 @@ ARC/ORC. The new runtime is active `when defined(nimV2)`.
 Coding Guidelines
 =================
 
-* We follow Nim's official style guide, see `<nep1.html>`_.
+* We follow Nim's official style guide, see [NEP1](nep1.html).
 * Max line length is 100 characters.
 * Provide spaces around binary operators if that enhances readability.
 * Use a space after a colon, but not before it.
-* [deprecated] Start types with a capital `T`, unless they are
+* (deprecated) Start types with a capital `T`, unless they are
   pointers/references which start with `P`.
 * Prefer `import package`:nim: over `from package import symbol`:nim:.
 
-See also the `API naming design <apis.html>`_ document.
+See also the [API naming design](apis.html) document.
 
 
 Porting to new platforms
@@ -398,11 +398,11 @@ Runtime type information
 programming language:
 
 Garbage collection
-  The old GCs use the RTTI for traversing arbitrary Nim types, but usually
+: The old GCs use the RTTI for traversing arbitrary Nim types, but usually
   only the `marker` field which contains a proc that does the traversal.
 
 Complex assignments
-  Sequences and strings are implemented as
+: Sequences and strings are implemented as
   pointers to resizable buffers, but Nim requires copying for
   assignments. Apart from RTTI the compiler also generates copy procedures
   as a specialization.
@@ -452,7 +452,7 @@ could stem from a complex expression:
   receivesClosure(returnsDefaultCC[i])
   ```
 
-A thunk would need to call 'returnsDefaultCC[i]' somehow and that would require
+A thunk would need to call `returnsDefaultCC[i]` somehow and that would require
 an *additional* closure generation... Ok, not really, but it requires to pass
 the function to call. So we'd end up with 2 indirect calls instead of one.
 Another much more severe problem with this solution is that it's not GC-safe

@@ -6,6 +6,7 @@ on:
       - 'compiler/renderverbatim.nim'
       - 'config/nimdoc.cfg'
       - 'doc/**.rst'
+      - 'doc/**.md'
       - 'doc/nimdoc.css'
       - 'lib/**.nim'
       - 'nimdoc/testproject/expected/testproject.html'
@@ -20,6 +21,7 @@ on:
       - 'compiler/renderverbatim.nim'
       - 'config/nimdoc.cfg'
       - 'doc/**.rst'
+      - 'doc/**.md'
       - 'doc/nimdoc.css'
       - 'lib/**.nim'
       - 'nimdoc/testproject/expected/testproject.html'
@@ -27,6 +29,10 @@ on:
       - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
       - 'koch.nim'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -48,7 +54,7 @@ jobs:
 
     steps:
       - name: 'Checkout'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 2
 
@@ -104,7 +110,7 @@ jobs:
         if: |
           github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
           matrix.target == 'linux'
-        uses: crazy-max/ghaction-github-pages@v1
+        uses: crazy-max/ghaction-github-pages@v3
         with:
           build_dir: doc/html
         env:

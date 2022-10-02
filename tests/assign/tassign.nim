@@ -80,7 +80,7 @@ block tcopy:
 
 block tgenericassign:
   type
-    TAny = object {.pure.}
+    TAny {.pure.} = object
       value: pointer
       rawType: pointer
 

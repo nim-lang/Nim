@@ -96,6 +96,10 @@
 ##
 
 import std/private/since
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 import asyncdispatch, nativesockets, net, os
 
 export SOBool
@@ -399,7 +403,8 @@ proc recv*(socket: AsyncSocket, size: int,
   ## to be read then the future will complete with a value of `""`.
   if socket.isBuffered:
     result = newString(size)
-    shallow(result)
+    when not defined(nimSeqsV2):
+      shallow(result)
     let originalBufPos = socket.currPos
 
     if socket.bufLen == 0:

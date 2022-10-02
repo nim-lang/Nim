@@ -4,6 +4,8 @@ import std/sets
 import sequtils
 import algorithm
 
+import std/assertions
+
 block basicIntSetTests:
   var y = initPackedSet[int]()
   y.incl(1)

@@ -28,31 +28,12 @@ proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
       # it is not an error to shadow fields via parameters
   else: discard
 
-proc rawPushProcCon(c: PContext, owner: PSym) =
+proc pushProcCon*(c: PContext; owner: PSym) =
   var x: PProcCon
   new(x)
   x.owner = owner
   x.next = c.p
   c.p = x
-
-proc rawHandleSelf(c: PContext; owner: PSym) =
-  const callableSymbols = {skProc, skFunc, skMethod, skConverter, skIterator, skMacro}
-  if c.selfName != nil and owner.kind in callableSymbols and owner.typ != nil:
-    let params = owner.typ.n
-    if params.len > 1:
-      let arg = params[1].sym
-      if arg.name.id == c.selfName.id:
-        c.p.selfSym = arg
-        arg.flags.incl sfIsSelf
-        var t = c.p.selfSym.typ.skipTypes(abstractPtrs)
-        while t.kind == tyObject:
-          addObjFieldsToLocalScope(c, t.n)
-          if t[0] == nil: break
-          t = t[0].skipTypes(skipPtrs)
-
-proc pushProcCon*(c: PContext; owner: PSym) =
-  rawPushProcCon(c, owner)
-  rawHandleSelf(c, owner)
 
 const
   errCannotInstantiateX = "cannot instantiate: '$1'"
@@ -73,7 +54,8 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
           # later by semAsgn in return type inference scenario
           t = q.typ
         else:
-          localError(c.config, a.info, errCannotInstantiateX % s.name.s)
+          if q.typ.kind != tyCompositeTypeClass:
+            localError(c.config, a.info, errCannotInstantiateX % s.name.s)
           t = errorType(c)
       elif t.kind in {tyGenericParam, tyConcept}:
         localError(c.config, a.info, errCannotInstantiateX % q.name.s)
@@ -379,7 +361,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     addDecl(c, s)
     entry.concreteTypes[i] = s.typ
     inc i
-  rawPushProcCon(c, result)
+  pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
   for j in 1..<result.typ.len:
     entry.concreteTypes[i] = result.typ[j]
@@ -394,7 +376,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     # a ``compiles`` context but this is the lesser evil. See
     # bug #1055 (tevilcompiles).
     #if c.compilesContextId == 0:
-    rawHandleSelf(c, result)
     entry.compilesId = c.compilesContextId
     addToGenericProcCache(c, fn, entry)
     c.generics.add(makeInstPair(fn, entry))

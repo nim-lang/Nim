@@ -88,7 +88,7 @@ import strutils, postgres
 import db_common
 export db_common
 
-import std/private/since
+import std/private/[since, dbutils]
 
 type
   DbConn* = PPGconn    ## encapsulates a database connection
@@ -116,24 +116,12 @@ proc dbQuote*(s: string): string =
   add(result, '\'')
 
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
-  result = ""
-  var a = 0
-  if args.len > 0 and not string(formatstr).contains("?"):
-    dbError("""parameter substitution expects "?" """)
-  if args.len == 0:
-    return string(formatstr)
-  else:
-    for c in items(string(formatstr)):
-      if c == '?':
-        add(result, dbQuote(args[a]))
-        inc(a)
-      else:
-        add(result, c)
+  dbFormatImpl(formatstr, dbQuote, args)
 
 proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.tags: [ReadDbEffect, WriteDbEffect].} =
   ## tries to execute the query and returns true if successful, false otherwise.
-  var res = pqexecParams(db, dbFormat(query, args), 0, nil, nil,
+  var res = pqexecParams(db, dbFormat(query, args).cstring, 0, nil, nil,
                         nil, nil, 0)
   result = pqresultStatus(res) == PGRES_COMMAND_OK
   pqclear(res)
@@ -143,7 +131,7 @@ proc tryExec*(db: DbConn, stmtName: SqlPrepared,
               ReadDbEffect, WriteDbEffect].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var arr = allocCStringArray(args)
-  var res = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+  var res = pqexecPrepared(db, stmtName.cstring, int32(args.len), arr,
                            nil, nil, 0)
   deallocCStringArray(arr)
   result = pqresultStatus(res) == PGRES_COMMAND_OK
@@ -152,7 +140,7 @@ proc tryExec*(db: DbConn, stmtName: SqlPrepared,
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## executes the query and raises EDB if not successful.
-  var res = pqexecParams(db, dbFormat(query, args), 0, nil, nil,
+  var res = pqexecParams(db, dbFormat(query, args).cstring, 0, nil, nil,
                         nil, nil, 0)
   if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   pqclear(res)
@@ -160,7 +148,7 @@ proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
 proc exec*(db: DbConn, stmtName: SqlPrepared,
           args: varargs[string]) {.tags: [ReadDbEffect, WriteDbEffect].} =
   var arr = allocCStringArray(args)
-  var res = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+  var res = pqexecPrepared(db, stmtName.cstring, int32(args.len), arr,
                            nil, nil, 0)
   deallocCStringArray(arr)
   if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
@@ -172,20 +160,20 @@ proc newRow(L: int): Row =
 
 proc setupQuery(db: DbConn, query: SqlQuery,
                 args: varargs[string]): PPGresult =
-  result = pqexec(db, dbFormat(query, args))
+  result = pqexec(db, dbFormat(query, args).cstring)
   if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
 
 proc setupQuery(db: DbConn, stmtName: SqlPrepared,
                  args: varargs[string]): PPGresult =
   var arr = allocCStringArray(args)
-  result = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+  result = pqexecPrepared(db, stmtName.cstring, int32(args.len), arr,
                           nil, nil, 0)
   deallocCStringArray(arr)
   if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
 
 proc setupSingeRowQuery(db: DbConn, query: SqlQuery,
                         args: varargs[string]) =
-  if pqsendquery(db, dbFormat(query, args)) != 1:
+  if pqsendquery(db, dbFormat(query, args).cstring) != 1:
     dbError(db)
   if pqSetSingleRowMode(db) != 1:
     dbError(db)
@@ -193,7 +181,7 @@ proc setupSingeRowQuery(db: DbConn, query: SqlQuery,
 proc setupSingeRowQuery(db: DbConn, stmtName: SqlPrepared,
                        args: varargs[string]) =
   var arr = allocCStringArray(args)
-  if pqsendqueryprepared(db, stmtName.string, int32(args.len), arr, nil, nil, 0) != 1:
+  if pqsendqueryprepared(db, stmtName.cstring, int32(args.len), arr, nil, nil, 0) != 1:
     dbError(db)
   if pqSetSingleRowMode(db) != 1:
     dbError(db)
@@ -205,7 +193,7 @@ proc prepare*(db: DbConn; stmtName: string, query: SqlQuery;
   ## via `$1`, `$2`, `$3`, etc.
   if nParams > 0 and not string(query).contains("$1"):
     dbError("parameter substitution expects \"$1\"")
-  var res = pqprepare(db, stmtName, query.string, int32(nParams), nil)
+  var res = pqprepare(db, stmtName, query.cstring, int32(nParams), nil)
   if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   return SqlPrepared(stmtName)
 
@@ -271,7 +259,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
   ## same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within iterator body.
+  ## on demand using `[]`. Returned handle is valid only within iterator body.
   setupSingeRowQuery(db, query, args)
   fetchinstantRows(db)
 
@@ -279,7 +267,7 @@ iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
   ## same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within iterator body.
+  ## on demand using `[]`. Returned handle is valid only within iterator body.
   setupSingeRowQuery(db, stmtName, args)
   fetchinstantRows(db)
 
@@ -590,7 +578,7 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
   ## executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
   var q = dbFormat(query, args)
-  var res = pqExec(db, q)
+  var res = pqExec(db, q.cstring)
   if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   result = parseBiggestInt($pqcmdTuples(res))
   pqclear(res)
@@ -601,7 +589,7 @@ proc execAffectedRows*(db: DbConn, stmtName: SqlPrepared,
   ## executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
   var arr = allocCStringArray(args)
-  var res = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+  var res = pqexecPrepared(db, stmtName.cstring, int32(args.len), arr,
                            nil, nil, 0)
   deallocCStringArray(arr)
   if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
@@ -634,7 +622,7 @@ proc open*(connection, user, password, database: string): DbConn {.
            else: substr(connection, 0, colonPos-1)
     port = if colonPos < 0: ""
            else: substr(connection, colonPos+1)
-  result = pqsetdbLogin(host, port, nil, nil, database, user, password)
+  result = pqsetdbLogin(host.cstring, port.cstring, nil, nil, database, user, password)
   if pqStatus(result) != CONNECTION_OK: dbError(result) # result = nil
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.

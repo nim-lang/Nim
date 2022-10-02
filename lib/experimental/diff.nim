@@ -45,6 +45,9 @@ jkl"""
 
 import tables, strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   Item* = object    ## An Item in the list of differences.
     startA*: int    ## Start Line number in Data A.

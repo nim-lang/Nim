@@ -302,8 +302,7 @@ proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
       unzipped2 = @['a', 'b', 'c']
     assert zipped.unzip() == (unzipped1, unzipped2)
     assert zip(unzipped1, unzipped2).unzip() == (unzipped1, unzipped2)
-  result[0] = newSeq[S](s.len)
-  result[1] = newSeq[T](s.len)
+  result = (newSeq[S](s.len), newSeq[T](s.len))
   for i in 0..<s.len:
     result[0][i] = s[i][0]
     result[1][i] = s[i][1]
@@ -791,7 +790,7 @@ template toSeq1(s: not iterator): untyped =
         i += 1
       result
   else:
-    var result: seq[OutType] = @[]
+    var result: seq[OutType]# = @[]
     for it in s:
       result.add(it)
     result
@@ -808,7 +807,7 @@ template toSeq2(iter: iterator): untyped =
     result
   else:
     type OutType = typeof(iter2())
-    var result: seq[OutType] = @[]
+    var result: seq[OutType]# = @[]
     when compiles(iter2()):
       evalOnceAs(iter4, iter, false)
       let iter3 = iter4()
@@ -852,7 +851,7 @@ template toSeq*(iter: untyped): untyped =
           inc i
         result
     else:
-      var result: seq[typeof(iter)] = @[]
+      var result: seq[typeof(iter)]# = @[]
       for x in iter:
         result.add(x)
       result
@@ -1020,7 +1019,7 @@ template mapIt*(s: typed, op: untyped): untyped =
           i += 1
         result
     else:
-      var result: seq[OutType] = @[]
+      var result: seq[OutType]# = @[]
       # use `items` to avoid https://github.com/nim-lang/Nim/issues/12639
       for it {.inject.} in items(s):
         result.add(op)

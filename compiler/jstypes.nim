@@ -19,13 +19,13 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
     s, u: Rope
     field: PSym
     b: PNode
-  result = nil
+  result = ""
   case n.kind
   of nkRecList:
     if n.len == 1:
       result = genObjectFields(p, typ, n[0])
     else:
-      s = nil
+      s = ""
       for i in 0..<n.len:
         if i > 0: s.add(", \L")
         s.add(genObjectFields(p, typ, n[i]))
@@ -44,13 +44,13 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
     s = genTypeInfo(p, field.typ)
     for i in 1..<n.len:
       b = n[i]           # branch
-      u = nil
+      u = ""
       case b.kind
       of nkOfBranch:
         if b.len < 2:
           internalError(p.config, b.info, "genObjectFields; nkOfBranch broken")
         for j in 0..<b.len - 1:
-          if u != nil: u.add(", ")
+          if u != "": u.add(", ")
           if b[j].kind == nkRange:
             u.addf("[$1, $2]", [rope(getOrdValue(b[j][0])),
                                  rope(getOrdValue(b[j][1]))])
@@ -59,7 +59,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
       of nkElse:
         u = rope(lengthOrd(p.config, field.typ))
       else: internalError(p.config, n.info, "genObjectFields(nkRecCase)")
-      if result != nil: result.add(", \L")
+      if result != "": result.add(", \L")
       result.addf("[setConstr($1), $2]",
            [u, genObjectFields(p, typ, lastSon(b))])
     result = ("{kind: 3, offset: \"$1\", len: $3, " &
@@ -84,7 +84,7 @@ proc genObjectInfo(p: PProc, typ: PType, name: Rope) =
          [name, genTypeInfo(p, typ[0].skipTypes(skipPtrs))])
 
 proc genTupleFields(p: PProc, typ: PType): Rope =
-  var s: Rope = nil
+  var s: Rope = ""
   for i in 0..<typ.len:
     if i > 0: s.add(", \L")
     s.addf("{kind: 1, offset: \"Field$1\", len: 0, " &
@@ -102,7 +102,7 @@ proc genTupleInfo(p: PProc, typ: PType, name: Rope) =
   p.g.typeInfo.addf("$1.node = NNI$2;$n", [name, rope(typ.id)])
 
 proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
-  var s: Rope = nil
+  var s: Rope = ""
   for i in 0..<typ.n.len:
     if (typ.n[i].kind != nkSym): internalError(p.config, typ.n.info, "genEnumInfo")
     let field = typ.n[i].sym

@@ -398,18 +398,6 @@ proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
       if s.fds[i].ident == fdi:
         return true
 
-when hasThreadSupport:
-  template withSelectLock[T](s: Selector[T], body: untyped) =
-    acquire(s.lock)
-    {.locks: [s.lock].}:
-      try:
-        body
-      finally:
-        release(s.lock)
-else:
-  template withSelectLock[T](s: Selector[T], body: untyped) =
-    body
-
 proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   s.withSelectLock():
     let fdi = int(fd)

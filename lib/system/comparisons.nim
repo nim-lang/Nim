@@ -206,6 +206,14 @@ proc `==`*(x, y: uint16): bool {.magic: "EqI", noSideEffect.}
 proc `==`*(x, y: uint32): bool {.magic: "EqI", noSideEffect.}
 proc `==`*(x, y: uint64): bool {.magic: "EqI", noSideEffect.}
 
+proc `<=`*(x, y: float32): bool {.magic: "LeF64", noSideEffect.}
+proc `<=`*(x, y: float): bool {.magic: "LeF64", noSideEffect.}
+
+proc `<`*(x, y: float32): bool {.magic: "LtF64", noSideEffect.}
+proc `<`*(x, y: float): bool {.magic: "LtF64", noSideEffect.}
+
+proc `==`*(x, y: float32): bool {.magic: "EqF64", noSideEffect.}
+proc `==`*(x, y: float): bool {.magic: "EqF64", noSideEffect.}
 
 {.push stackTrace: off.}
 
@@ -220,6 +228,13 @@ proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.} =
 proc min*(x, y: int64): int64 {.magic: "MinI", noSideEffect.} =
   ## The minimum value of two integers.
   if x <= y: x else: y
+proc min*(x, y: float32): float32 {.noSideEffect, inline.} =
+  if x <= y or y != y: x else: y
+proc min*(x, y: float64): float64 {.noSideEffect, inline.} =
+  if x <= y or y != y: x else: y
+proc min*[T: not SomeFloat](x, y: T): T {.inline.} =
+  ## Generic minimum operator of 2 values based on `<=`.
+  if x <= y: x else: y
 
 proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
@@ -231,6 +246,13 @@ proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
 proc max*(x, y: int64): int64 {.magic: "MaxI", noSideEffect.} =
   ## The maximum value of two integers.
+  if y <= x: x else: y
+proc max*(x, y: float32): float32 {.noSideEffect, inline.} =
+  if y <= x or y != y: x else: y
+proc max*(x, y: float64): float64 {.noSideEffect, inline.} =
+  if y <= x or y != y: x else: y
+proc max*[T: not SomeFloat](x, y: T): T {.inline.} =
+  ## Generic maximum operator of 2 values based on `<=`.
   if y <= x: x else: y
 
 
@@ -250,7 +272,7 @@ proc max*[T](x: openArray[T]): T =
 
 
 proc clamp*[T](x, a, b: T): T =
-  ## Limits the value `x` within the interval [a, b].
+  ## Limits the value `x` within the interval \[a, b].
   ## This proc is equivalent to but faster than `max(a, min(b, x))`.
   ## 
   ## .. warning:: `a <= b` is assumed and will not be checked (currently).

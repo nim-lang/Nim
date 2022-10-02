@@ -10,7 +10,25 @@
 # This include file implements the semantic checking for magics.
 # included from sem.nim
 
-proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
+proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode
+
+
+proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
+  result = n
+  let typ = result[1].typ # new(x)
+  if typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyRef and typ.skipTypes({tyGenericInst, tyAlias, tySink})[0].kind == tyObject:
+    var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, result[1].info, typ))
+    asgnExpr.typ = typ
+    var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
+    while true:
+      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n)
+      let base = t[0]
+      if base == nil:
+        break
+      t = skipTypes(base, skipPtrs)
+
+    if asgnExpr.sons.len > 1:
+      result = newTree(nkAsgn, result[1], asgnExpr)
 
 proc semAddrArg(c: PContext; n: PNode): PNode =
   let x = semExprWithType(c, n)
@@ -214,7 +232,7 @@ proc semOrd(c: PContext, n: PNode): PNode =
   if isOrdinalType(parType, allowEnumWithHoles=true):
     discard
   else:
-    localError(c.config, n.info, errOrdinalTypeExpected)
+    localError(c.config, n.info, errOrdinalTypeExpected % typeToString(parType, preferDesc))
     result.typ = errorType(c)
 
 proc semBindSym(c: PContext, n: PNode): PNode =
@@ -451,27 +469,57 @@ proc semOld(c: PContext; n: PNode): PNode =
     localError(c.config, n[1].info, n[1].sym.name.s & " does not belong to " & getCurrOwner(c).name.s)
   result = n
 
+proc semNewFinalize(c: PContext; n: PNode): PNode =
+  # Make sure the finalizer procedure refers to a procedure
+  if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
+    localError(c.config, n.info, "finalizer must be a direct reference to a proc")
+  elif optTinyRtti in c.config.globalOptions:
+    let nfin = skipConvCastAndClosure(n[^1])
+    let fin = case nfin.kind
+      of nkSym: nfin.sym
+      of nkLambda, nkDo: nfin[namePos].sym
+      else:
+        localError(c.config, n.info, "finalizer must be a direct reference to a proc")
+        nil
+    if fin != nil:
+      if fin.kind notin {skProc, skFunc}:
+        # calling convention is checked in codegen
+        localError(c.config, n.info, "finalizer must be a direct reference to a proc")
+
+      # check if we converted this finalizer into a destructor already:
+      let t = whereToBindTypeHook(c, fin.typ[1].skipTypes(abstractInst+{tyRef}))
+      if t != nil and getAttachedOp(c.graph, t, attachedDestructor) != nil and
+          getAttachedOp(c.graph, t, attachedDestructor).owner == fin:
+        discard "already turned this one into a finalizer"
+      else:
+        if sfForward in fin.flags:
+          let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), nextSymId c.idgen, fin.owner, fin.info)
+          let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, nextSymId c.idgen))
+          wrapperSym.flags.incl sfUsed
+          let wrapper = c.semExpr(c, newProcNode(nkProcDef, fin.info, body = newTree(nkCall, newSymNode(fin), selfSymNode),
+            params = nkFormalParams.newTree(c.graph.emptyNode,
+                    newTree(nkIdentDefs, selfSymNode, fin.ast[paramsPos][1][1], c.graph.emptyNode)
+                    ),
+            name = newSymNode(wrapperSym), pattern = c.graph.emptyNode,
+            genericParams = c.graph.emptyNode, pragmas = c.graph.emptyNode, exceptions = c.graph.emptyNode), {})
+          var transFormedSym = turnFinalizerIntoDestructor(c, wrapperSym, wrapper.info)
+          transFormedSym.owner = fin
+          if c.config.backend == backendCpp or sfCompileToCpp in c.module.flags:
+            let origParamType = transFormedSym.ast[bodyPos][1].typ
+            let selfSymbolType = makePtrType(c, origParamType.skipTypes(abstractPtrs))
+            let selfPtr = newNodeI(nkHiddenAddr, transFormedSym.ast[bodyPos][1].info)
+            selfPtr.add transFormedSym.ast[bodyPos][1]
+            selfPtr.typ = selfSymbolType
+            transFormedSym.ast[bodyPos][1] = c.semExpr(c, selfPtr)
+          bindTypeHook(c, transFormedSym, n, attachedDestructor)
+        else:
+          bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
+  result = addDefaultFieldForNew(c, n)
+
 proc semPrivateAccess(c: PContext, n: PNode): PNode =
   let t = n[1].typ[0].toObjectFromRefPtrGeneric
   c.currentScope.allowPrivateAccess.add t.sym
   result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
-
-proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
-  result = n
-  let typ = result[1].typ # new(x)
-  if typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyRef and typ.skipTypes({tyGenericInst, tyAlias, tySink})[0].kind == tyObject:
-    var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, result[1].info, typ))
-    asgnExpr.typ = typ
-    var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
-    while true:
-      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n)
-      let base = t[0]
-      if base == nil:
-        break
-      t = skipTypes(base, skipPtrs)
-
-    if asgnExpr.sons.len > 1:
-      result = newTree(nkAsgn, result[1], asgnExpr)
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
@@ -534,30 +582,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mNew:
     result = addDefaultFieldForNew(c, n)
   of mNewFinalize:
-    # Make sure the finalizer procedure refers to a procedure
-    if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
-      localError(c.config, n.info, "finalizer must be a direct reference to a proc")
-    elif optTinyRtti in c.config.globalOptions:
-      let nfin = skipConvCastAndClosure(n[^1])
-      let fin = case nfin.kind
-        of nkSym: nfin.sym
-        of nkLambda, nkDo: nfin[namePos].sym
-        else:
-          localError(c.config, n.info, "finalizer must be a direct reference to a proc")
-          nil
-      if fin != nil:
-        if fin.kind notin {skProc, skFunc}:
-          # calling convention is checked in codegen
-          localError(c.config, n.info, "finalizer must be a direct reference to a proc")
-
-        # check if we converted this finalizer into a destructor already:
-        let t = whereToBindTypeHook(c, fin.typ[1].skipTypes(abstractInst+{tyRef}))
-        if t != nil and getAttachedOp(c.graph, t, attachedDestructor) != nil and
-            getAttachedOp(c.graph, t, attachedDestructor).owner == fin:
-          discard "already turned this one into a finalizer"
-        else:
-          bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
-    result = addDefaultFieldForNew(c, n)
+    result = semNewFinalize(c, n)
   of mDestroy:
     result = n
     let t = n[1].typ.skipTypes(abstractVar)

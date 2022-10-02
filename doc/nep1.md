@@ -21,7 +21,7 @@ library should follow.
 Note that there can be exceptions to these rules. Nim being as flexible as it
 is, there will be parts of this style guide that don't make sense in certain
 contexts. Furthermore, just as
-`Python's style guide<http://legacy.python.org/dev/peps/pep-0008/>`_ changes
+[Python's style guide](http://legacy.python.org/dev/peps/pep-0008/) changes
 over time, this style guide will too.
 
 These rules will only be enforced for contributions to the Nim
@@ -49,7 +49,7 @@ Spacing and Whitespace Conventions
   Not all editors support automatic alignment of code sections, and re-aligning
   long sections of code by hand can quickly become tedious.
 
-  .. code-block:: nim
+    ```nim
     # This is bad, as the next time someone comes
     # to edit this code block, they
     # must re-align all the assignments again:
@@ -60,6 +60,7 @@ Spacing and Whitespace Conventions
       CalId*       = int
       LongLong*    = int64
       LongLongPtr* = ptr LongLong
+    ```
 
 
 Naming Conventions
@@ -69,7 +70,7 @@ Naming Conventions
   camelCase with the exception of constants which **may** use PascalCase but
   are not required to.
 
-  .. code-block:: nim
+    ```nim
     # Constants can start with either a lower case or upper case letter.
     const aConstant = 42
     const FooBar = 4.2
@@ -79,6 +80,7 @@ Naming Conventions
     # Types must start with an uppercase letter.
     type
       FooBar = object
+    ```
 
   For constants coming from a C/C++ wrapper, ALL_UPPERCASE are allowed, but ugly.
   (Why shout CONSTANT? Constants do no harm, variables do!)
@@ -89,41 +91,45 @@ Naming Conventions
   that will be used the most, add the suffixes to the pointer variants only. The
   same applies to C/C++ wrappers.
 
-  .. code-block:: nim
+    ```nim
     type
       Handle = object # Will be used most often
         fd: int64
       HandleRef = ref Handle # Will be used less often
+    ```
 
 - Exception and Error types should have the "Error" or "Defect" suffix.
 
-  .. code-block:: nim
+    ```nim
     type
       ValueError = object of CatchableError
       AssertionDefect = object of Defect
       Foo = object of Exception # bad style, try to inherit CatchableError or Defect
+    ```
 
 - Unless marked with the `{.pure.}` pragma, members of enums should have an
   identifying prefix, such as an abbreviation of the enum's name.
 
-  .. code-block:: nim
+    ```nim
     type
       PathComponent = enum
         pcDir
         pcLinkToDir
         pcFile
         pcLinkToFile
+    ```
 
 - Non-pure enum values should use camelCase whereas pure enum values should use
   PascalCase.
 
-  .. code-block:: nim
+    ```nim
     type
       PathComponent {.pure.} = enum
         Dir
         LinkToDir
         File
         LinkToFile
+    ```
 
 - In the age of HTTP, HTML, FTP, TCP, IP, UTF, WWW it is foolish to pretend
   these are somewhat special words requiring all uppercase. Instead treat them
@@ -230,12 +236,13 @@ Coding Conventions
   are required. Use a procedure's implicit `result` variable whenever possible.
   This improves readability.
 
-  .. code-block:: nim
+    ```nim
     proc repeat(text: string, x: int): string =
       result = ""
 
       for i in 0..x:
         result.add($i)
+    ```
 
 - Use a proc when possible, only using the more powerful facilities of macros,
   templates, iterators, and converters when necessary.
@@ -252,15 +259,16 @@ Conventions for multi-line statements and expressions
 - Tuples which are longer than one line should indent their parameters to
   align with the parameters above it.
 
-  .. code-block:: nim
+    ```nim
     type
       LongTupleA = tuple[wordyTupleMemberOne: int, wordyTupleMemberTwo: string,
                          wordyTupleMemberThree: float]
+    ```
 
 - Similarly, any procedure and procedure type declarations that are longer
   than one line should do the same thing.
 
-  .. code-block:: nim
+    ```nim
     type
       EventCallback = proc (timeReceived: Time, errorCode: int, event: Event,
                             output: var string)
@@ -268,13 +276,15 @@ Conventions for multi-line statements and expressions
     proc lotsOfArguments(argOne: string, argTwo: int, argThree: float,
                          argFour: proc(), argFive: bool): int
                         {.heyLookALongPragma.} =
+    ```
 
 - Multi-line procedure calls should continue on the same column as the opening
   parenthesis (like multi-line procedure declarations).
 
-  .. code-block:: nim
+    ```nim
     startProcess(nimExecutable, currentDirectory, compilerArguments
                  environment, processOptions)
+    ```
 
 Miscellaneous
 -------------
@@ -290,18 +300,20 @@ Miscellaneous
 
   use this:
 
-  .. code-block:: nim
+    ```nim
     let a = """
     foo
     bar
     """
+    ```
 
   instead of:
 
-  .. code-block:: nim
+    ```nim
     let a = """foo
     bar
     """
+    ```
 
 - A getter API for a private field `foo` should preferably be named `foo`, not `getFoo`.
   A getter-like API should preferably be named `getFoo`, not `foo` if:

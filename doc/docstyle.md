@@ -4,7 +4,7 @@ Documentation Style
 General Guidelines
 ------------------
 
-* See also `nep1<https://nim-lang.github.io/Nim/nep1.html>`_ which should probably be merged here.
+* See also [nep1](nep1.html) which should probably be merged here.
 * Authors should document anything that is exported; documentation for private
   procs can be useful too (visible via `nim doc --docInternal foo.nim`:cmd:).
 * Within documentation, a period (`.`) should follow each sentence (or sentence fragment) in a comment block.
@@ -72,12 +72,12 @@ Whenever an example of usage would be helpful to the user, you should include on
     ## truncating the result.
     ##
     ##   ```
-    ##   # things that aren't suitable for a `runnableExamples` go in code-block:
+    ##   # things that aren't suitable for a `runnableExamples` go in code block:
     ##   echo execCmdEx("git pull")
     ##   drawOnScreen()
     ##   ```
     runnableExamples:
-      # `runnableExamples` is usually preferred to ``code-block``, when possible.
+      # `runnableExamples` is usually preferred to code blocks, when possible.
       doAssert addThree(3, 125, 6) == -122
     result = x +% y +% z
   ````

@@ -399,6 +399,13 @@ block:
 
   discard Hello(a: 1.0, b: 12)
 
+# custom pragma on iterators
+block:
+  template prag {.pragma.}
+  {.push prag.}
+  proc hello = discard
+  iterator hello2: int = discard
+
 # issue #11511
 when false:
   template myAttr {.pragma.}
@@ -432,3 +439,43 @@ when false:
 
   # left-to-right priority/override order for getCustomPragmaVal
   assert bb.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
+
+{.experimental: "dynamicBindSym".}
+
+# const
+block:
+  template myAttr() {.pragma.}
+  template myAttr2(x: int) {.pragma.}
+  template myAttr3(x: string) {.pragma.}
+
+  type
+    MyObj2 = ref object
+
+  const a {.myAttr,myAttr2(2),myAttr3:"test".}: int = 0
+  const b {.myAttr,myAttr2(2),myAttr3:"test".} = 0
+
+  macro forceHasCustomPragma(x: untyped, y: typed): untyped =
+    var x = bindSym(x.repr)
+    for c in x:
+      if c.symKind == nskConst:
+        x = c
+        break
+    result = getAst(hasCustomPragma(x, y))
+
+  macro forceGetCustomPragmaVal(x: untyped, y: typed): untyped =
+    var x = bindSym(x.repr)
+    for c in x:
+      if c.symKind == nskConst:
+        x = c
+        break
+    result = getAst(getCustomPragmaVal(x, y))
+
+  template check(s: untyped) =
+    doAssert forceHasCustomPragma(s, myAttr)
+    doAssert forceHasCustomPragma(s, myAttr2)
+    doAssert forceGetCustomPragmaVal(s, myAttr2) == 2
+    doAssert forceHasCustomPragma(s, myAttr3)
+    doAssert forceGetCustomPragmaVal(s, myAttr3) == "test"
+
+  check(a)
+  check(b)

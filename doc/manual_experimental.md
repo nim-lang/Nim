@@ -65,64 +65,63 @@ However, a `void` type cannot be inferred in generic code:
 The `void` type is only valid for parameters and return types; other symbols
 cannot have the type `void`.
 
+Top-down type inference
+=======================
 
-Unicode Operators
-=================
+In expressions such as:
 
-Under the `--experimental:unicodeOperators`:option: switch,
-these Unicode operators are also parsed as operators::
+```nim
+let a: T = ex
+```
 
-  ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
-  ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
+Normally, the compiler type checks the expression `ex` by itself, then
+attempts to statically convert the type-checked expression to the given type
+`T` as much as it can, while making sure it matches the type. The extent of
+this process is limited however due to the expression usually having
+an assumed type that might clash with the given type.
 
+With top-down type inference, the expression is type checked with the
+extra knowledge that it is supposed to be of type `T`. For example,
+the following code is does not compile with the former method, but
+compiles with top-down type inference:
 
-If enabled, Unicode operators can be combined with non-Unicode operator
-symbols. The usual precedence extensions then apply, for example, `⊠=` is an
-assignment like operator just like `*=` is.
+```nim
+let foo: (float, uint8, cstring) = (1, 2, "abc")
+```
 
-No Unicode normalization step is performed.
+The tuple expression has an expected type of `(float, uint8, cstring)`.
+Since it is a tuple literal, we can use this information to assume the types
+of its elements. The expected types for the expressions `1`, `2` and `"abc"`
+are respectively `float`, `uint8`, and `cstring`; and these expressions can be
+statically converted to these types.
 
-.. note:: Due to parser limitations one **cannot** enable this feature via a
-  pragma `{.experimental: "unicodeOperators".}` reliably.
+Without this information, the type of the tuple expression would have been
+assumed to be `(int, int, string)`. Thus the type of the tuple expression
+would not match the type of the variable, and an error would be given.
 
+The extent of this varies, but there are some notable special cases.
 
-Overloadable enum value names
-=============================
+Sequence literals
+-----------------
 
-Enabled via `{.experimental: "overloadableEnums".}`.
+Top-down type inference applies to sequence literals.
 
-Enum value names are overloadable, much like routines. If both of the enums
-`T` and `U` have a member named `foo`, then the identifier `foo` corresponds
-to a choice between `T.foo` and `U.foo`. During overload resolution,
-the correct type of `foo` is decided from the context. If the type of `foo` is
-ambiguous, a static error will be produced.
+```nim
+let x: seq[seq[float]] = @[@[1, 2, 3], @[4, 5, 6]]
+```
 
-  ```nim  test = "nim c $1"
-  {.experimental: "overloadableEnums".}
+This behavior is tied to the `@` overloads in the `system` module,
+so overloading `@` can disable this behavior. This can be circumvented by
+specifying the `` system.`@` `` overload. 
 
-  type
-    E1 = enum
-      value1,
-      value2
-    E2 = enum
-      value1,
-      value2 = 4
+```nim
+proc `@`(x: string): string = "@" & x
 
-  const
-    Lookuptable = [
-      E1.value1: "1",
-      # no need to qualify value2, known to be E1.value2
-      value2: "2"
-    ]
-
-  proc p(e: E1) =
-    # disambiguation in 'case' statements:
-    case e
-    of value1: echo "A"
-    of value2: echo "B"
-
-  p value2
-  ```
+# does not compile:
+let x: seq[float] = @[1, 2, 3]
+# compiles:
+let x: seq[float] = system.`@`([1, 2, 3])
+```
 
 
 Package level objects
@@ -175,7 +174,7 @@ from a module. The syntax `import foo {.all.}` can be used to import all
 symbols from the module `foo`. Note that importing private symbols is
 generally not recommended.
 
-See also the experimental `importutils <importutils.html>`_ module.
+See also the experimental [importutils](importutils.html) module.
 
 
 Code reordering
@@ -406,7 +405,7 @@ to use this operator.
 Extended macro pragmas
 ======================
 
-Macro pragmas as described in `the manual <manual.html#userminusdefined-pragmas-macro-pragmas>`_
+Macro pragmas as described in [the manual](manual.html#userminusdefined-pragmas-macro-pragmas)
 can also be applied to type, variable and constant declarations.
 
 For types:
@@ -572,7 +571,7 @@ For example:
 
 
 The algorithm behind this analysis is described in
-the `view types section <#view-types-algorithm>`_.
+the [view types algorithm].
 
 
 View types
@@ -686,7 +685,7 @@ has `source` as the owner. A path expression `e` is defined recursively:
 
 If a view type is used as a return type, the location must borrow from a location
 that is derived from the first parameter that is passed to the proc.
-See `the manual <manual.html#procedures-var-return-type>`_
+See [the manual](manual.html#procedures-var-return-type)
 for details about how this is done for `var T`.
 
 A mutable view can borrow from a mutable location, an immutable view can borrow
@@ -727,7 +726,7 @@ The scope of the view does not matter:
 
 
 The analysis requires as much precision about mutations as is reasonably obtainable,
-so it is more effective with the experimental `strict funcs <#strict-funcs>`_
+so it is more effective with the experimental [strict funcs]
 feature. In other words `--experimental:views`:option: works better
 with `--experimental:strictFuncs`:option:.
 
@@ -1282,7 +1281,7 @@ object inheritance syntax involving the `of` keyword:
   like channels, to implement thread safe automatic memory management.
 
   The builtin `deepCopy` can even clone closures and their environments. See
-  the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
+  the documentation of [spawn][spawn statement] for details.
 
 
 Dynamic arguments for bindSym
@@ -1713,7 +1712,7 @@ Nim has two flavors of parallelism:
 
 Nim has a builtin thread pool that can be used for CPU intensive tasks. For
 IO intensive tasks the `async` and `await` features should be
-used instead. Both parallel and spawn need the `threadpool <threadpool.html>`_
+used instead. Both parallel and spawn need the [threadpool](threadpool.html)
 module to work.
 
 Somewhat confusingly, `spawn` is also used in the `parallel` statement

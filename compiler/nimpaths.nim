@@ -9,7 +9,7 @@ specialpaths is simpler because it doesn't need variables to be relocatable at
 runtime (eg for use in testament)
 
 interpolation variables:
-  $nimr: such that `$nimr/lib/system.nim` exists (avoids confusion with $nim binary)
+: $nimr: such that `$nimr/lib/system.nim` exists (avoids confusion with $nim binary)
          in compiler, it's obtainable via getPrefixDir(); for other tools (eg koch),
         this could be getCurrentDir() or getAppFilename().parentDir.parentDir,
         depending on use case

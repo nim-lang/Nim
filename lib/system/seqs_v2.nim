@@ -131,3 +131,19 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
   setLen(s, len)
+
+
+template capacityImpl(sek: NimSeqV2): int =
+  if sek.p != nil: sek.p.cap else: 0
+
+func capacity*[T](self: seq[T]): int {.inline.} =
+  ## Returns the current capacity of the seq.
+  # See https://github.com/nim-lang/RFCs/issues/460
+  runnableExamples:
+    var lst = newSeqOfCap[string](cap = 42)
+    lst.add "Nim"
+    assert lst.capacity == 42
+
+  {.cast(noSideEffect).}:
+    let sek = unsafeAddr self
+    result = capacityImpl(cast[ptr NimSeqV2](sek)[])

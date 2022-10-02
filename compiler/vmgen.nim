@@ -15,11 +15,10 @@
 #   this doesn't matter. However it matters for strings and other complex
 #   types that use the 'node' field; the reason is that slots are
 #   re-used in a register based VM. Example:
-#
-#.. code-block:: nim
-#   let s = a & b  # no matter what, create fresh node
-#   s = a & b  # no matter what, keep the node
-#
+#     ```nim
+#     let s = a & b  # no matter what, create fresh node
+#     s = a & b  # no matter what, keep the node
+#     ```
 # Also *stores* into non-temporary memory need to perform deep copies:
 # a.b = x.y
 # We used to generate opcAsgn for the *load* of 'x.y' but this is clearly
@@ -1026,7 +1025,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.genAsgnPatch(n[1], d)
     c.freeTemp(d)
   of mOrd, mChr, mArrToSeq, mUnown: c.gen(n[1], dest)
-  of mIsolate, mFinished:
+  of generatedMagics:
     genCall(c, n, dest)
   of mNew, mNewFinalize:
     unused(c, n, dest)
@@ -2001,7 +2000,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       elif importcCond(c, s): c.importcSym(n.info, s)
       genLit(c, n, dest)
     of skConst:
-      let constVal = if s.ast != nil: s.ast else: s.typ.n
+      let constVal = if s.astdef != nil: s.astdef else: s.typ.n
       gen(c, constVal, dest)
     of skEnumField:
       # we never reach this case - as of the time of this comment,

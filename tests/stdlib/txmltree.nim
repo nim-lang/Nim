@@ -1,4 +1,4 @@
-import xmltree
+import std/[xmltree, assertions]
 
 
 block:
