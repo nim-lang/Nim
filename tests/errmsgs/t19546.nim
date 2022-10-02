@@ -3,13 +3,13 @@ discard """
   cmd: "nim check --hints:off $file"
   errormsg: ""
   nimout: '''
-t19546.nim(17, 5) Error: array expects two type parameters
-t19546.nim(21, 5) Error: sequence expects one type parameter
-t19546.nim(25, 5) Error: set expects one type parameter
+t19546.nim(17, 5) Error: 'array' is not a concrete type
+t19546.nim(21, 5) Error: 'seq' is not a concrete type
+t19546.nim(25, 5) Error: 'set' is not a concrete type
 t19546.nim(28, 3) Error: cannot use sink as a field type
-t19546.nim(29, 3) Error: openArray expects one type parameter
-t19546.nim(30, 3) Error: lent expects one type parameter
-t19546.nim(47, 16) Error: sequence expects one type parameter
+t19546.nim(29, 3) Error: 'openArray' is not a concrete type
+t19546.nim(30, 3) Error: 'lent' is not a concrete type
+t19546.nim(47, 16) Error: 'seq' is not a concrete type
 '''
 """
 type

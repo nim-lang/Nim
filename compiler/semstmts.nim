@@ -1517,9 +1517,9 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       obj.typ = objTy
       objTy.sym = obj
 
-proc checkForMetaFields(c: PContext; n: PNode) =
-  proc checkMeta(c: PContext; n: PNode; t: PType) =
-    if t != nil and t.isMetaType and tfGenericTypeParam notin t.flags:
+proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
+  proc checkMeta(c: PContext; n: PNode; t: PType; hasError: var bool) =
+    if t != nil and (t.isMetaType or t.kind == tyNone) and tfGenericTypeParam notin t.flags:
       if t.kind == tyBuiltInTypeClass and t.len == 1 and t[0].kind == tyProc:
         hasError = true
         localError(c.config, n.info, ("'$1' is not a concrete type; " &
@@ -1542,26 +1542,10 @@ proc checkForMetaFields(c: PContext; n: PNode) =
       localError(c.config, n.info, "cannot use $1 as a field type" % toHumanStr(t.kind))
     of tyOpenArray, tyLent:
       if views in c.features:
-        if t.hasNone():
-          hasError = true
-          localError(c.config, n.info, "$1 expects one type parameter" % toHumanStr(t.kind))
+        checkMeta(c, n, t, hasError)
       else:
         hasError = true
         localError(c.config, n.info, "cannot use $1 as a field type" % toHumanStr(t.kind))
-    of tySequence, tySet, tyArray, tyVar, tyPtr, tyRef,
-       tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tyOwned:
-      let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
-      if t.hasNone():
-        hasError = true
-        case t.kind
-        of tyArray:
-          localError(c.config, n.info, errArrayExpectsTwoTypeParams)
-        of tySequence, tySet:
-          localError(c.config, n.info, "$1 expects one type parameter" % toHumanStr(t.kind))
-        else:
-          discard
-      for i in start..<t.len:
-        checkMeta(c, n, t[i], hasError)
     else:
       checkMeta(c, n, t, hasError)
   else:
