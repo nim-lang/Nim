@@ -183,7 +183,7 @@ type
     arLentValue,              # lent value
     arStrange                 # it is a strange beast like 'typedesc[var T]'
 
-proc exprRoot*(n: PNode): PSym =
+proc exprRoot*(n: PNode; allowCalls = true): PSym =
   var it = n
   while true:
     case it.kind
@@ -204,7 +204,7 @@ proc exprRoot*(n: PNode): PSym =
       if it.len > 0 and it.typ != nil: it = it.lastSon
       else: break
     of nkCallKinds:
-      if it.typ != nil and it.typ.kind in {tyVar, tyLent} and it.len > 1:
+      if allowCalls and it.typ != nil and it.typ.kind in {tyVar, tyLent} and it.len > 1:
         # See RFC #7373, calls returning 'var T' are assumed to
         # return a view into the first argument (if there is one):
         it = it[1]

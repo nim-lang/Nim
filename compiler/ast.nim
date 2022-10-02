@@ -508,7 +508,8 @@ type
                        # the flag is applied to proc default values and to calls
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
     nfLastRead  # this node is a last read
-    nfFirstWrite# this node is a first write
+    nfFirstWrite # this node is a first write
+    nfFirstWrite2 # alternative first write implementation
     nfHasComment # node has a comment
 
   TNodeFlags* = set[TNodeFlag]
@@ -1075,7 +1076,8 @@ const
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
-                                      nfExecuteOnReload, nfLastRead, nfFirstWrite}
+                                      nfExecuteOnReload, nfLastRead,
+                                      nfFirstWrite, nfFirstWrite2}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

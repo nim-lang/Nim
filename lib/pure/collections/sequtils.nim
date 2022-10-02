@@ -302,8 +302,7 @@ proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
       unzipped2 = @['a', 'b', 'c']
     assert zipped.unzip() == (unzipped1, unzipped2)
     assert zip(unzipped1, unzipped2).unzip() == (unzipped1, unzipped2)
-  result[0] = newSeq[S](s.len)
-  result[1] = newSeq[T](s.len)
+  result = (newSeq[S](s.len), newSeq[T](s.len))
   for i in 0..<s.len:
     result[0][i] = s[i][0]
     result[1][i] = s[i][1]
