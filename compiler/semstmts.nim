@@ -431,10 +431,6 @@ proc hasEmpty(typ: PType): bool =
     for s in typ.sons:
       result = result or hasEmpty(s)
 
-proc hasNone(typ: PType): bool =
-  if typ.kind in {tySequence, tyArray, tySet, tyLent, tyOpenArray}:
-    result = typ.lastSon.kind == tyNone
-
 proc hasUnresolvedParams(n: PNode; flags: TExprFlags): bool =
   result = tfUnresolved in n.typ.flags
   when false:
@@ -1519,7 +1515,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
 
 proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
   proc checkMeta(c: PContext; n: PNode; t: PType; hasError: var bool) =
-    if t != nil and (t.isMetaType or t.kind == tyNone) and tfGenericTypeParam notin t.flags:
+    if t != nil and t.isMetaType and tfGenericTypeParam notin t.flags:
       if t.kind == tyBuiltInTypeClass and t.len == 1 and t[0].kind == tyProc:
         hasError = true
         localError(c.config, n.info, ("'$1' is not a concrete type; " &
@@ -1527,6 +1523,12 @@ proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
       else:
         hasError = true
         localError(c.config, n.info, errTIsNotAConcreteType % t.typeToString)
+
+  proc checkHasNone(c: PContext; n: PNode; t: PType; hasError: var bool): bool =
+    if t.kind in ConstantDataTypes + {tyOpenArray, tyLent} and t.sons.len > 0 and t.lastSon.kind == tyNone:
+      hasError = true
+      localError(c.config, n.info, errTIsNotAConcreteType % t.typeToString)
+      return hasError
 
   if n.isNil: return
   case n.kind
@@ -1536,16 +1538,28 @@ proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
     checkForMetaFields(c, n.lastSon, hasError)
   of nkSym:
     let t = n.sym.typ
+    var start: int
     case t.kind
     of tySink:
       hasError = true
       localError(c.config, n.info, "cannot use '$1' as a field type" % toHumanStr(t.kind))
     of tyOpenArray, tyLent:
       if views in c.features:
-        checkMeta(c, n, t, hasError)
+        if checkHasNone(c, n, t, hasError):
+          return
+        start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
+        for i in start..<t.len:
+          checkMeta(c, n, t[i], hasError)
       else:
         hasError = true
         localError(c.config, n.info, "cannot use '$1' as a field type without view types enabled" % toHumanStr(t.kind))
+    of tySequence, tySet, tyArray, tyVar, tyPtr, tyRef,
+       tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tyOwned:
+      start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
+      if checkHasNone(c, n, t, hasError):
+        return
+      for i in start..<t.len:
+        checkMeta(c, n, t[i], hasError)
     else:
       checkMeta(c, n, t, hasError)
   else:
