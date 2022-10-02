@@ -158,7 +158,7 @@ proc encode*[T: byte|char](s: openArray[T], safe = false): string =
     assert encode("Hello World") == "SGVsbG8gV29ybGQ="
     assert encode(['n', 'i', 'm']) == "bmlt"
     assert encode(@['n', 'i', 'm']) == "bmlt"
-    assert encode([1, 2, 3, 4, 5]) == "AQIDBAU="
+    assert encode([1'u8, 2, 3, 4, 5]) == "AQIDBAU="
   encodeImpl()
 
 proc encodeMime*(s: string, lineLen = 75.Positive, newLine = "\r\n"): string =
