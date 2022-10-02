@@ -328,7 +328,7 @@ proc murmurHash(x: openArray[byte]): Hash =
         dec j
         k1 = (k1 shl 8) or (ord(x[i+j])).uint32
     else:
-      k1 = cast[ptr uint32](unsafeAddr x[i])[]
+      k1 = cast[ptr uint32](addr x[i])[]
     inc i, stepSize
 
     k1 = imul(k1, c1)

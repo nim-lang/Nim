@@ -31,7 +31,7 @@ const
 proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline.} =
   buf[pos] = digits100[2 * digits]
   buf[pos+1] = digits100[2 * digits + 1]
-  #copyMem(buf, unsafeAddr(digits100[2 * digits]), 2 * sizeof((char)))
+  #copyMem(buf, addr(digits100[2 * digits]), 2 * sizeof((char)))
 
 proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
   return trailingZeros100[digits]
@@ -49,7 +49,7 @@ func addChars[T](result: var string, x: T, start: int, n: int) {.inline.} =
     when defined(js) or defined(nimscript): impl
     else:
       {.noSideEffect.}:
-        copyMem result[old].addr, x[start].unsafeAddr, n
+        copyMem result[old].addr, x[start].addr, n
 
 func addChars[T](result: var string, x: T) {.inline.} =
   addChars(result, x, 0, x.len)

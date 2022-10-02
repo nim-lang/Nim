@@ -308,7 +308,7 @@ static int __tcc_cas(int *ptr, int oldVal, int newVal)
     tcc_cas(cast[ptr int](p), cast[int](oldValue), cast[int](newValue))
 elif declared(atomicCompareExchangeN):
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
-    atomicCompareExchangeN(p, oldValue.unsafeAddr, newValue, false, ATOMIC_SEQ_CST, ATOMIC_SEQ_CST)
+    atomicCompareExchangeN(p, oldValue.addr, newValue, false, ATOMIC_SEQ_CST, ATOMIC_SEQ_CST)
 else:
   # this is valid for GCC and Intel C++
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool

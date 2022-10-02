@@ -295,7 +295,7 @@ proc md5Init*(c: var MD5Context) =
 proc writeBuffer(c: var MD5Context, index: int,
                  input: openArray[uint8], inputIndex, len: int) {.inline.} =
   memOrNot:
-    copyMem(addr(c.buffer[index]), unsafeAddr(input[inputIndex]), len)
+    copyMem(addr(c.buffer[index]), addr(input[inputIndex]), len)
   do:
     # cannot use system.`[]=` for arrays and openarrays as
     # it can raise RangeDefect which gets tracked

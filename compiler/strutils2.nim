@@ -15,9 +15,9 @@ proc dataPointer*[T](a: T): pointer =
   # this could be improved with ocmpiler support to avoid the `if`, e.g. in C++
   # `&a[0]` is well defined even if a.size() == 0
   when T is string | seq:
-    if a.len == 0: nil else: cast[pointer](a[0].unsafeAddr)
+    if a.len == 0: nil else: cast[pointer](a[0].addr)
   elif T is array:
-    when a.len > 0: a.unsafeAddr
+    when a.len > 0: a.addr
     else: nil
   elif T is cstring:
     cast[pointer](a)

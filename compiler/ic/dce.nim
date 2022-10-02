@@ -31,7 +31,7 @@ type
 proc isExportedToC(c: var AliveContext; g: PackedModuleGraph; symId: int32): bool =
   ## "Exported to C" procs are special (these are marked with '.exportc') because these
   ## must not be optimized away!
-  let symPtr = unsafeAddr g[c.thisModule].fromDisk.syms[symId]
+  let symPtr = addr g[c.thisModule].fromDisk.syms[symId]
   let flags = symPtr.flags
   # due to a bug/limitation in the lambda lifting, unused inner procs
   # are not transformed correctly; issue (#411). However, the whole purpose here

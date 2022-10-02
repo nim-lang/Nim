@@ -602,7 +602,7 @@ proc forall(ctx: Z3_context; vars: seq[Z3_ast]; assumption, body: Z3_ast): Z3_as
 
 proc conj(ctx: Z3_context; conds: seq[Z3_ast]): Z3_ast =
   if conds.len > 0:
-    result = Z3_mk_and(ctx, cuint(conds.len), unsafeAddr conds[0])
+    result = Z3_mk_and(ctx, cuint(conds.len), addr conds[0])
   else:
     result = Z3_mk_true(ctx)
 

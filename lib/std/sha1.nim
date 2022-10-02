@@ -155,7 +155,7 @@ proc update*(ctx: var Sha1State, data: openArray[char]) =
   # Gather 64-bytes worth of data in order to perform a round with the leftover
   # data we had stored (but not processed yet)
   if len > 64 - i:
-    copyMem(addr ctx.buf[i], unsafeAddr data[j], 64 - i)
+    copyMem(addr ctx.buf[i], addr data[j], 64 - i)
     len -= 64 - i
     j += 64 - i
     transform(ctx)
@@ -164,7 +164,7 @@ proc update*(ctx: var Sha1State, data: openArray[char]) =
     i = 0
   # Process the bulk of the payload
   while len >= 64:
-    copyMem(addr ctx.buf[0], unsafeAddr data[j], 64)
+    copyMem(addr ctx.buf[0], addr data[j], 64)
     len -= 64
     j += 64
     transform(ctx)

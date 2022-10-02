@@ -20,7 +20,7 @@ template main2 = # bug #15958
   when defined(js):
     proc sameAddress[T](a, b: T): bool {.importjs: "(# === #)".}
   else:
-    template sameAddress(a, b): bool = a.unsafeAddr == b.unsafeAddr
+    template sameAddress(a, b): bool = a.addr == b.addr
   proc byLent[T](a: T): lent T = a
   let a = [11,12]
   let b = @[21,23]

@@ -1912,7 +1912,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     when hasCStringBuiltin:
       let length = last-start+1
       if length > 0:
-        let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](length))
+        let found = c_memchr(s[start].addr, sub, cast[csize_t](length))
         if not found.isNil:
           return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
     else:

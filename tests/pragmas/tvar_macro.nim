@@ -98,7 +98,7 @@ block: # with stropping
       ex = def[2]
       addrTyp = if typ.kind == nnkEmpty: typ else: newTree(nnkPtrTy, typ)
     result = quote do:
-      let tmp: `addrTyp` = unsafeAddr(`ex`)
+      let tmp: `addrTyp` = addr(`ex`)
       template `lhs`: untyped = tmp[]
   
   macro assign(def) =

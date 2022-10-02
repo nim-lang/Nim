@@ -143,5 +143,5 @@ func capacity*[T](self: seq[T]): int {.inline.} =
     assert lst.capacity == 42
 
   {.cast(noSideEffect).}:
-    let sek = unsafeAddr self
+    let sek = addr self
     result = capacityImpl(cast[ptr NimSeqV2](sek)[])
