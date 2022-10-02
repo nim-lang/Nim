@@ -297,7 +297,7 @@ proc pathExpr(node: PNode; owner: PSym): PNode =
   - Object field access ``e.field`` is a path expression.
   - ``system.toOpenArray(e, ...)`` is a path expression.
   - Pointer dereference ``e[]`` is a path expression.
-  - An address ``addr e``, ``addr e`` is a path expression.
+  - An address ``addr e`` is a path expression.
   - A type conversion ``T(e)`` is a path expression.
   - A cast expression ``cast[T](e)`` is a path expression.
   - ``f(e, ...)`` is a path expression if ``f``'s return type is a view type.
