@@ -45,3 +45,9 @@ type
     of tBool: boolValue: bool
     of tString: stringValue: string
     of tArray: arrayValue: seq
+
+type
+  SomeGeneric[T] = object
+    a: seq[T]
+  MyObject = object
+    tab: SomeGeneric[int]

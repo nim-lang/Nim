@@ -1515,7 +1515,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
 
 proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
   proc checkMeta(c: PContext; n: PNode; t: PType; hasError: var bool) =
-    if t != nil and t.isMetaType and tfGenericTypeParam notin t.flags:
+    if t != nil and t.isMetaType and {tfGenericTypeParam, tfFromGeneric} * t.flags == {}:
       if t.kind == tyBuiltInTypeClass and t.len == 1 and t[0].kind == tyProc:
         hasError = true
         localError(c.config, n.info, ("'$1' is not a concrete type; " &
