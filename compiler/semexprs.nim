@@ -2397,12 +2397,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: P
   of mSizeOf:
     markUsed(c, n.info, s)
     result = semSizeof(c, setMs(n, s))
-  of mDefault:
-    result = semDirectOp(c, n, flags)
-    let typ = result[^1].typ.skipTypes({tyTypeDesc})
-    let defaultExpr = defaultNodeField(c, result[^1], typ)
-    if defaultExpr != nil:
-      result = defaultExpr
   of mArrToSeq, mOpenArrayToSeq:
     if n.len == 2 and expectedType != nil and (
         let expected = expectedType.skipTypes(abstractRange-{tyDistinct});

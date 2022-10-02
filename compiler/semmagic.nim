@@ -521,6 +521,13 @@ proc semPrivateAccess(c: PContext, n: PNode): PNode =
   c.currentScope.allowPrivateAccess.add t.sym
   result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
 
+proc checkDefault(c: PContext, n: PNode): PNode =
+  result = n
+  c.config.internalAssert result[1].typ.kind == tyTypeDesc
+  let constructed = result[1].typ.base
+  if constructed.requiresInit:
+    message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -608,12 +615,14 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                            tyAlias, tyUserTypeClassInst})
     if seqType.kind == tySequence and seqType.base.requiresInit:
       message(c.config, n.info, warnUnsafeSetLen, typeToString(seqType.base))
-  of mDefault, mZeroDefault:
-    result = n
-    c.config.internalAssert result[1].typ.kind == tyTypeDesc
-    let constructed = result[1].typ.base
-    if constructed.requiresInit:
-      message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
+  of mDefault:
+    result = checkDefault(c, n)
+    let typ = result[^1].typ.skipTypes({tyTypeDesc})
+    let defaultExpr = defaultNodeField(c, result[^1], typ)
+    if defaultExpr != nil:
+      result = defaultExpr
+  of mZeroDefault:
+    result = checkDefault(c, n)
   of mIsolate:
     if not checkIsolate(n[1]):
       localError(c.config, n.info, "expression cannot be isolated: " & $n[1])
