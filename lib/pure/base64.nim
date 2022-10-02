@@ -31,7 +31,7 @@ runnableExamples:
 ##
 
 runnableExamples:
-  let encodedInts = encode([1,2,3])
+  let encodedInts = encode([1'u8,2,3])
   assert encodedInts == "AQID"
   let encodedChars = encode(['h','e','y'])
   assert encodedChars == "aGV5"
