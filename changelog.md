@@ -129,6 +129,8 @@
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
 - Deprecated `std/sums`.
+- Deprecated `std/base64.encode` for collections of arbitrary integer element type.
+  Now only `byte` and `char` are supported.
 
 [//]: # "Removals:"
 - Removed deprecated module `parseopt2`.
@@ -215,7 +217,7 @@
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
   without requiring `-d:nimVersion140` which is now a noop.
 
-- `--styleCheck`, `--hintAsError` and `--warningAsError` now only applies to the current package.
+- `--styleCheck`, `--hintAsError` and `--warningAsError` now only apply to the current package.
 
 - The switch `--nimMainPrefix:prefix` has been added to add a prefix to the names of `NimMain` and
   related functions produced on the backend. This prevents conflicts with other Nim
