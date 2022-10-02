@@ -25,4 +25,6 @@ when defined(windows) and not defined(booting):
   # toolchain: https://github.com/nim-lang/Nim/pull/19197
   switch("define", "nimRawSetjmp")
 
+switch("define", "nimPreviewSlimSystem")
+
 switch("define", "nimVersion:" & NimVersion)

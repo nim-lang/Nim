@@ -3,6 +3,9 @@ deadcode?
 ]#
 import base64, strutils, json, htmlgen, dom, algorithm
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   TData = object
     content {.importc.}: cstring
