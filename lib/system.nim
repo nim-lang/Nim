@@ -2658,8 +2658,9 @@ when defined(genode):
         # and return to thread entrypoint.
 
 
-import system/widestrs
-export widestrs
+when not defined(nimPreviewSlimSystem):
+  import std/widestrs
+  export widestrs
 
 when notJSnotNims:
   when defined(windows) and compileOption("threads"):

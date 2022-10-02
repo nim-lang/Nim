@@ -23,6 +23,9 @@ check errno_t vs cint
 
 when not defined(windows): discard
 else:
+  when defined(nimPreviewSlimSystem):
+    import std/widestrs
+
   type wchar_t  {.importc: "wchar_t".} = int16
 
   proc setEnvironmentVariableW*(lpName, lpValue: WideCString): int32 {.

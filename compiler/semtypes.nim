@@ -554,6 +554,8 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var Int128): PNode =
   checkMinSonsLen(t, 1, c.config)
   let ac = semConstExpr(c, a)
   let bc = semConstExpr(c, b)
+  if ac.kind in {nkStrLit..nkTripleStrLit} or bc.kind in {nkStrLit..nkTripleStrLit}:
+    localError(c.config, b.info, "range of string is invalid")
   let at = fitNode(c, t[0].typ, ac, ac.info).skipConvTakeType
   let bt = fitNode(c, t[0].typ, bc, bc.info).skipConvTakeType
 
@@ -591,7 +593,9 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
       branch[i] = semCaseBranchRange(c, t, b, covered)
     else:
       # constant sets and arrays are allowed:
-      var r = semConstExpr(c, b)
+      # set expected type to selector type for type inference
+      # even if it can be a different type like a set or array
+      var r = semConstExpr(c, b, expectedType = t[0].typ)
       if r.kind in {nkCurly, nkBracket} and r.len == 0 and branch.len == 2:
         # discarding ``{}`` and ``[]`` branches silently
         delSon(branch, 0)

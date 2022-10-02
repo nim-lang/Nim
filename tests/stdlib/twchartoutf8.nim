@@ -10,6 +10,7 @@ import std/[syncio, assertions]
 when not defined(windows):
   echo "OK"
 else:
+  import std/widestrs
   {.push gcsafe.}
 
   const CP_UTF8 = 65001'i32
