@@ -50,7 +50,9 @@ type
                              ## TCP/IP tunnel, usually used for proxies.
     HttpPatch = "PATCH"      ## Applies partial modifications to a resource.
 
-  PreparedRequest* = tuple[httpMethod: HttpMethod, url: Uri, headers: seq[(string, string)], body: string]
+
+since (1, 7):
+  type PreparedRequest* = tuple[httpMethod: HttpMethod, url: Uri, headers: seq[(string, string)], body: string]
     ## Represents an HTTP request prepared to be sent "over-the-wire" by an HTTP client,
     ## this allows to use any API client with any HTTP client for any target,
     ## see https://github.com/nim-lang/RFCs/issues/487
