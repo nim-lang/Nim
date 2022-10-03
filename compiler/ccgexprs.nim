@@ -2993,7 +2993,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         internalError(p.config, n.info, "expr: param not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
     of skModule:
-      localError(p.config, n.info, "expression has no type: " & sym.name.s)
+      localError(p.config, n.info, "module has no type: " & sym.name.s)
     else: internalError(p.config, n.info, "expr(" & $sym.kind & "); unknown symbol")
   of nkNilLit:
     if not isEmptyType(n.typ):
