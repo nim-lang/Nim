@@ -13,7 +13,7 @@
 # included from testament.nim
 
 import important_packages
-import std/strformat
+import std/[strformat, strutils]
 from std/sequtils import filterIt
 
 const
@@ -59,10 +59,10 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
-  var test3 = makeTest("lib/nimhcr.nim", options & " --outdir:tests/dll" & rpath, cat)
+  var test3 = makeTest("lib/nimhcr.nim", options & " --threads:off --outdir:tests/dll" & rpath, cat)
   test3.spec.action = actionCompile
   testSpec c, test3
-  var test4 = makeTest("tests/dll/visibility.nim", options & " --app:lib" & rpath, cat)
+  var test4 = makeTest("tests/dll/visibility.nim", options & " --threads:off --app:lib" & rpath, cat)
   test4.spec.action = actionCompile
   testSpec c, test4
 
@@ -77,13 +77,13 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     defer: putEnv(libpathenv, libpath)
 
   testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
-  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & rpath, cat)
-  testSpec r, makeTest("tests/dll/visibility.nim", options & rpath, cat)
+  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
+  testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
   if "boehm" notin options:
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
-                                   options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
+                                   options & " --threads:off --forceBuild --hotCodeReloading:on" & rpath, cat)
     let nimcache = nimcacheDir(hcri.name, hcri.options, getTestSpecTarget())
     let cmd = prepareTestCmd(hcri.spec.getCmd, hcri.name,
                                 hcri.options, nimcache, getTestSpecTarget())
@@ -94,8 +94,8 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
   var c = initResults()
 
-  runBasicDLLTest c, r, cat, options
-  runBasicDLLTest c, r, cat, options & " -d:release"
+  runBasicDLLTest c, r, cat, options & " --mm:refc"
+  runBasicDLLTest c, r, cat, options & " -d:release --mm:refc"
   when not defined(windows):
     # still cannot find a recent Windows version of boehm.dll:
     runBasicDLLTest c, r, cat, options & " --gc:boehm"
@@ -105,9 +105,9 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
   template testWithoutMs(filename: untyped) =
-    testSpec r, makeTest("tests/gc" / filename, options, cat)
+    testSpec r, makeTest("tests/gc" / filename, options & "--mm:refc", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release -d:useRealtimeGC", cat)
+                  " -d:release -d:useRealtimeGC --mm:refc", cat)
     when filename != "gctest":
       testSpec r, makeTest("tests/gc" / filename, options &
                     " --gc:orc", cat)
@@ -448,7 +448,10 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
           let describeOutput = tryCommand("git describe --tags --abbrev=0")
           discard tryCommand("git checkout $#" % [describeOutput.strip.quoteShell])
         discard tryCommand("nimble install --depsOnly -y", maxRetries = 3)
-      discard tryCommand(pkg.cmd, reFailed = reBuildFailed)
+      let cmds = pkg.cmd.split(';')
+      for i in 0 ..< cmds.len - 1:
+        discard tryCommand(cmds[i], maxRetries = 3)
+      discard tryCommand(cmds[^1], reFailed = reBuildFailed)
       inc r.passed
       r.addResult(test, targetC, "", "", "", reSuccess, allowFailure = pkg.allowFailure)
 

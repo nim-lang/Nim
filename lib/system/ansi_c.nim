@@ -122,22 +122,26 @@ elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
     # No `_longjmp()` on Windows.
     proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
       header: "<setjmp.h>", importc: "longjmp".}
-    # The Windows `_setjmp()` takes two arguments, with the second being an
-    # undocumented buffer used by the SEH mechanism for stack unwinding.
-    # Mingw-w64 has been trying to get it right for years, but it's still
-    # prone to stack corruption during unwinding, so we disable that by setting
-    # it to NULL.
-    # More details: https://github.com/status-im/nimbus-eth2/issues/3121
-    when defined(nimHasStyleChecks):
-      {.push styleChecks: off.}
+    when defined(vcc) or defined(clangcl):
+      proc c_setjmp*(jmpb: C_JmpBuf): cint {.
+        header: "<setjmp.h>", importc: "setjmp".}
+    else:
+      # The Windows `_setjmp()` takes two arguments, with the second being an
+      # undocumented buffer used by the SEH mechanism for stack unwinding.
+      # Mingw-w64 has been trying to get it right for years, but it's still
+      # prone to stack corruption during unwinding, so we disable that by setting
+      # it to NULL.
+      # More details: https://github.com/status-im/nimbus-eth2/issues/3121
+      when defined(nimHasStyleChecks):
+        {.push styleChecks: off.}
 
-    proc c_setjmp*(jmpb: C_JmpBuf): cint =
-      proc c_setjmp_win(jmpb: C_JmpBuf, ctx: pointer): cint {.
-        header: "<setjmp.h>", importc: "_setjmp".}
-      c_setjmp_win(jmpb, nil)
+      proc c_setjmp*(jmpb: C_JmpBuf): cint =
+        proc c_setjmp_win(jmpb: C_JmpBuf, ctx: pointer): cint {.
+          header: "<setjmp.h>", importc: "_setjmp".}
+        c_setjmp_win(jmpb, nil)
 
-    when defined(nimHasStyleChecks):
-      {.pop.}
+      when defined(nimHasStyleChecks):
+        {.pop.}
   else:
     proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
       header: "<setjmp.h>", importc: "_longjmp".}
@@ -176,6 +180,8 @@ proc c_printf*(frmt: cstring): cint {.
 
 proc c_fputs*(c: cstring, f: CFilePtr): cint {.
   importc: "fputs", header: "<stdio.h>", discardable.}
+proc c_fputc*(c: char, f: CFilePtr): cint {.
+  importc: "fputc", header: "<stdio.h>", discardable.}
 
 proc c_sprintf*(buf, frmt: cstring): cint {.
   importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
@@ -208,7 +214,7 @@ else:
 proc c_fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): cint {.
   importc: "fwrite", header: "<stdio.h>".}
 
-proc c_fflush(f: CFilePtr): cint {.
+proc c_fflush*(f: CFilePtr): cint {.
   importc: "fflush", header: "<stdio.h>".}
 
 proc rawWriteString*(f: CFilePtr, s: cstring, length: int) {.compilerproc, nonReloadable, inline.} =

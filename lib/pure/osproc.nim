@@ -33,6 +33,8 @@ when defined(linux) and defined(useClone):
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
+  when defined(windows):
+    import std/widestrs
 
 
 type
@@ -1086,9 +1088,9 @@ elif not defined(useNimRtl):
       var pid: Pid
 
       if (poUsePath in data.options):
-        res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
+        res = posix_spawnp(pid, data.sysCommand.cstring, fops, attr, data.sysArgs, data.sysEnv)
       else:
-        res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
+        res = posix_spawn(pid, data.sysCommand.cstring, fops, attr, data.sysArgs, data.sysEnv)
 
       discard posix_spawn_file_actions_destroy(fops)
       discard posix_spawnattr_destroy(attr)
@@ -1174,14 +1176,14 @@ elif not defined(useNimRtl):
         when defined(uClibc) or defined(linux) or defined(haiku):
           # uClibc environment (OpenWrt included) doesn't have the full execvpe
           let exe = findExe(data.sysCommand)
-          discard execve(exe, data.sysArgs, data.sysEnv)
+          discard execve(exe.cstring, data.sysArgs, data.sysEnv)
         else:
           # MacOSX doesn't have execvpe, so we need workaround.
           # On MacOSX we can arrive here only from fork, so this is safe:
           environ = data.sysEnv
-          discard execvp(data.sysCommand, data.sysArgs)
+          discard execvp(data.sysCommand.cstring, data.sysArgs)
       else:
-        discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
+        discard execve(data.sysCommand.cstring, data.sysArgs, data.sysEnv)
 
       startProcessFail(data)
     {.pop.}
@@ -1523,7 +1525,7 @@ elif not defined(useNimRtl):
                                      header: "<stdlib.h>".}
 
   proc execCmd(command: string): int =
-    when defined(linux):
+    when defined(posix):
       let tmp = csystem(command)
       result = if tmp == -1: tmp else: exitStatusLikeShell(tmp)
     else:

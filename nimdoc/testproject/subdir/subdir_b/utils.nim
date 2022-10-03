@@ -79,7 +79,9 @@ func fn9*(a: int): int = 42  ## comment
 func fn10*(a: int): int = a  ## comment
 
 # Note capital letter N will be handled correctly in
-# group references like fN11_ or fn11_:
+# group references like fN11_ or fn11_
+# (or [fN11] or [fn11] in Markdown Syntax):
+
 func fN11*() = discard
 func fN11*(x: int) = discard
 
@@ -160,3 +162,52 @@ proc fn*[T; U, V: SomeFloat]() = discard
 ## Ref. `'big`_ or `func \`'big\``_ or `\`'big\`(string)`_.
 
 func `'big`*(a: string): SomeType = discard
+
+##[
+
+Pandoc Markdown
+===============
+
+Now repeat all the auto links of above in Pandoc Markdown Syntax.
+
+Ref group [fn2] or specific function like [fn2()]
+or [fn2(  int  )] or [fn2(int,
+float)].
+
+Ref generics like this: [binarySearch] or [binarySearch(openArray[T], K,
+proc (T, K))] or [proc binarySearch(openArray[T], K,  proc (T, K))] or
+in different style: [proc binarysearch(openarray[T], K, proc(T, K))].
+Can be combined with export symbols and type parameters:
+[binarysearch*[T, K](openArray[T], K, proc (T, K))].
+With spaces [binary search].
+
+Note that `proc` can be used in postfix form: [binarySearch proc].
+
+Ref. type like [G] and [type G] and [G[T]] and [type G*[T]].
+
+Group ref. with capital letters works: [fN11] or [fn11]
+
+Ref. [`[]`] is the same as [proc `[]`(G[T])] because there are no
+overloads. The full form: [proc `[]`*[T](x: G[T]): T]
+Ref. [`[]=`] aka [`[]=`(G[T], int, T)].
+Ref. [$] aka [proc $] or [proc `$`].
+Ref. [$(a: ref SomeType)].
+Ref. [foo_bar] aka [iterator foo_bar_].
+Ref. [fn[T; U,V: SomeFloat]()].
+Ref. ['big] or [func `'big`] or [`'big`(string)].
+
+Link name syntax
+----------------
+
+Pandoc Markdown has synax for changing text of links:
+Ref. [this proc][`[]`] or [another symbol][G[T]].
+
+Symbols documentation
+---------------------
+
+Let us repeat auto links from symbols section below:
+
+There is also variant [f(G[string])].
+See also [f(G[int])].
+
+]##

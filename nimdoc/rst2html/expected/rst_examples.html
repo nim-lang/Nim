@@ -27,12 +27,13 @@
       <h1 class="title">Not a Nim Manual</h1>
       <div class="row">
   <div class="three columns">
-    <div class="theme-switch-wrapper">
-      <label class="theme-switch" for="checkbox">
-        <input type="checkbox" id="checkbox" />
-        <div class="slider round"></div>
-      </label>
-      &nbsp;&nbsp;&nbsp; <em>Dark Mode</em>
+    <div class="theme-select-wrapper">
+      <label for="theme-select">Theme:&nbsp;</label>
+      <select id="theme-select" onchange="setTheme(this.value)">
+        <option value="auto">🌗 Match OS</option>
+        <option value="dark">🌑 Dark</option>
+        <option value="light">🌕 Light</option>
+      </select>
     </div>
     <div id="global-links">
       <ul class="simple">
@@ -49,7 +50,6 @@
         <option value="type">Type</option>
       </select>
     </div>
-    <div id="tocRoot"></div>
     <ul class="simple simple-toc" id="toc-list">
   <li><a class="reference" id="about-this-document_toc" href="#about-this-document">About this document</a></li>
 <ul class="simple"><li><a class="reference" id="about-this-document-encoding_toc" href="#about-this-document-encoding">Encoding</a></li>
@@ -75,6 +75,7 @@
   </div>
   <div class="nine columns" id="content">
     
+    <div id="tocRoot"></div>
     
     <p class="module-desc"><table class="docinfo" frame="void" rules="none"><col class="docinfo-name" /><col class="docinfo-content" /><tbody valign="top"><tr><th class="docinfo-name">Authors:</th><td>Andreas Rumpf, Zahary Karadjov</td></tr>
 <tr><th class="docinfo-name">Version:</th><td>|nimversion|</td></tr>

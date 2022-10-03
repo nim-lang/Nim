@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   output: '''(x: "string here", a: 1)
 b is 5
 x is 12'''

@@ -236,6 +236,9 @@ proc `/`*(head, tail: string): string {.noSideEffect, inline.} =
 
   result = joinPath(head, tail)
 
+when doslikeFileSystem:
+  import std/private/ntpath
+
 proc splitPath*(path: string): tuple[head, tail: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a directory into `(head, tail)` tuple, so that
@@ -258,8 +261,14 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
     assert splitPath("bin") == ("", "bin")
     assert splitPath("") == ("", "")
 
+  when doslikeFileSystem:
+    let (drive, splitpath) = splitDrive(path)
+    let stop = drive.len
+  else:
+    const stop = 0
+
   var sepPos = -1
-  for i in countdown(len(path)-1, 0):
+  for i in countdown(len(path)-1, stop):
     if path[i] in {DirSep, AltSep}:
       sepPos = i
       break
@@ -272,8 +281,12 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
     )
     result.tail = substr(path, sepPos+1)
   else:
-    result.head = ""
-    result.tail = path
+    when doslikeFileSystem:
+      result.head = drive
+      result.tail = splitpath
+    else:
+      result.head = ""
+      result.tail = path
 
 proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].} =
   ## Checks whether a given `path` is absolute.
@@ -318,9 +331,6 @@ when doslikeFileSystem:
      (path[0] == DirSep and
       (path.len == 1 or path[1] notin {DirSep, AltSep, ':'})))
 
-  proc isUNCPrefix(path: string): bool {.noSideEffect, raises: [].} =
-    path[0] == DirSep and path[1] == DirSep
-
   proc sameRoot(path1, path2: string): bool {.noSideEffect, raises: [].} =
     ## Return true if path1 and path2 have a same root.
     ##
@@ -330,40 +340,12 @@ when doslikeFileSystem:
     assert(isAbsolute(path1))
     assert(isAbsolute(path2))
 
-    let
-      len1 = path1.len
-      len2 = path2.len
-    assert(len1 != 0 and len2 != 0)
-
     if isAbsFromCurrentDrive(path1) and isAbsFromCurrentDrive(path2):
-      return true
-    elif len1 == 1 or len2 == 1:
-      return false
+      result = true
+    elif cmpIgnoreCase(splitDrive(path1).drive, splitDrive(path2).drive) == 0:
+      result = true
     else:
-      if path1[1] == ':' and path2[1] == ':':
-        return path1[0].toLowerAscii() == path2[0].toLowerAscii()
-      else:
-        var
-          p1, p2: PathIter
-          pp1 = next(p1, path1)
-          pp2 = next(p2, path2)
-        if pp1[1] - pp1[0] == 1 and pp2[1] - pp2[0] == 1 and
-           isUNCPrefix(path1) and isUNCPrefix(path2):
-          #UNC
-          var h = 0
-          while p1.hasNext(path1) and p2.hasNext(path2) and h < 2:
-            pp1 = next(p1, path1)
-            pp2 = next(p2, path2)
-            let diff = pp1[1] - pp1[0]
-            if diff != pp2[1] - pp2[0]:
-              return false
-            for i in 0..diff:
-              if path1[i + pp1[0]] !=? path2[i + pp2[0]]:
-                return false
-            inc h
-          return h == 2
-        else:
-          return false
+      result = false
 
 proc relativePath*(path, base: string, sep = DirSep): string {.
   rtl, extern: "nos$1".} =
@@ -384,7 +366,8 @@ proc relativePath*(path, base: string, sep = DirSep): string {.
   runnableExamples:
     assert relativePath("/Users/me/bar/z.nim", "/Users/other/bad", '/') == "../../me/bar/z.nim"
     assert relativePath("/Users/me/bar/z.nim", "/Users/other", '/') == "../me/bar/z.nim"
-    assert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
+    when not doslikeFileSystem: # On Windows, UNC-paths start with `//`
+      assert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
     assert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
     assert relativePath("", "/users/moo", '/') == ""
     assert relativePath("foo", ".", '/') == "foo"
@@ -497,6 +480,9 @@ proc parentDir*(path: string): string {.
       assert parentDir("a//./") == "."
       assert parentDir("a/b/c/..") == "a"
   result = pathnorm.normalizePath(path)
+  when doslikeFileSystem:
+    let (drive, splitpath) = splitDrive(result)
+    result = splitpath
   var sepPos = parentDirPos(result)
   if sepPos >= 0:
     result = substr(result, 0, sepPos)
@@ -507,6 +493,13 @@ proc parentDir*(path: string): string {.
     result = ""
   else:
     result = "."
+  when doslikeFileSystem:
+    if result.len == 0:
+      discard
+    elif drive.len > 0 and result.len == 1 and result[0] in {DirSep, AltSep}:
+      result = drive
+    else:
+      result = drive & result
 
 proc tailDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -526,6 +519,10 @@ proc tailDir*(path: string): string {.
     assert tailDir("usr/local/bin") == "local/bin"
 
   var i = 0
+  when doslikeFileSystem:
+    let (drive, splitpath) = path.splitDrive
+    if drive != "":
+      return splitpath.strip(chars = {DirSep, AltSep}, trailing = false)
   while i < len(path):
     if path[i] in {DirSep, AltSep}:
       while i < len(path) and path[i] in {DirSep, AltSep}: inc i
@@ -544,6 +541,9 @@ proc isRootDir*(path: string): bool {.
     assert not isRootDir("/a")
     assert not isRootDir("a/b/c")
 
+  when doslikeFileSystem:
+    if splitDrive(path).path == "":
+      return true
   result = parentDirPos(path) < 0
 
 iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
@@ -588,7 +588,11 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
       current = current.parentDir
       yield current
   else:
-    for i in countup(0, path.len - 2): # ignore the last /
+    when doslikeFileSystem:
+      let start = path.splitDrive.drive.len
+    else:
+      const start = 0
+    for i in countup(start, path.len - 2): # ignore the last /
       # deal with non-normalized paths such as /foo//bar//baz
       if path[i] in {DirSep, AltSep} and
           (i == 0 or path[i-1] notin {DirSep, AltSep}):
@@ -608,11 +612,15 @@ proc `/../`*(head, tail: string): string {.noSideEffect.} =
       assert "a/b/c" /../ "d/e" == "a/b/d/e"
       assert "a" /../ "d/e" == "a/d/e"
 
+  when doslikeFileSystem:
+    let (drive, head) = splitDrive(head)
   let sepPos = parentDirPos(head)
   if sepPos >= 0:
     result = substr(head, 0, sepPos-1) / tail
   else:
     result = head / tail
+  when doslikeFileSystem:
+    result = drive / result
 
 proc normExt(ext: string): string =
   if ext == "" or ext[0] == ExtSep: result = ext # no copy needed here
@@ -680,7 +688,13 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
 
   var namePos = 0
   var dotPos = 0
-  for i in countdown(len(path) - 1, 0):
+  when doslikeFileSystem:
+    let (drive, _) = splitDrive(path)
+    let stop = len(drive)
+    result.dir = drive
+  else:
+    const stop = 0
+  for i in countdown(len(path) - 1, stop):
     if path[i] in {DirSep, AltSep} or i == 0:
       if path[i] in {DirSep, AltSep}:
         result.dir = substr(path, 0, if likely(i >= 1): i - 1 else: 0)
@@ -953,6 +967,9 @@ proc getCacheDir*(app: string): string =
 
 when defined(windows):
   type DWORD = uint32
+
+  when defined(nimPreviewSlimSystem):
+    import std/widestrs
 
   proc getTempPath(
     nBufferLength: DWORD, lpBuffer: WideCString
@@ -1259,12 +1276,12 @@ proc findExe*(exe: string, followSymlinks: bool = true;
           while followSymlinks: # doubles as if here
             if x.symlinkExists:
               var r = newString(maxSymlinkLen)
-              var len = readlink(x, r, maxSymlinkLen)
+              var len = readlink(x.cstring, r.cstring, maxSymlinkLen)
               if len < 0:
                 raiseOSError(osLastError(), exe)
               if len > maxSymlinkLen:
                 r = newString(len+1)
-                len = readlink(x, r, len)
+                len = readlink(x.cstring, r.cstring, len)
               setLen(r, len)
               if isAbsolute(r):
                 x = r
@@ -1404,8 +1421,8 @@ when not defined(nimscript):
       var bufsize = 1024 # should be enough
       result = newString(bufsize)
       while true:
-        if getcwd(result, bufsize) != nil:
-          setLen(result, c_strlen(result))
+        if getcwd(result.cstring, bufsize) != nil:
+          setLen(result, c_strlen(result.cstring))
           break
         else:
           let err = osLastError()
@@ -1741,7 +1758,7 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## by `src`. On most operating systems, will fail if a link already exists.
   ##
   ## .. warning:: Some OS's (such as Microsoft Windows) restrict the creation
-  ##   of symlinks to root users (administrators) or users with developper mode enabled.
+  ##   of symlinks to root users (administrators) or users with developer mode enabled.
   ##
   ## See also:
   ## * `createHardlink proc`_
@@ -1774,12 +1791,12 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
     result = symlinkPath
   else:
     result = newString(maxSymlinkLen)
-    var len = readlink(symlinkPath, result, maxSymlinkLen)
+    var len = readlink(symlinkPath, result.cstring, maxSymlinkLen)
     if len < 0:
       raiseOSError(osLastError(), symlinkPath)
     if len > maxSymlinkLen:
       result = newString(len+1)
-      len = readlink(symlinkPath, result, len)
+      len = readlink(symlinkPath, result.cstring, len)
     setLen(result, len)
 
 const hasCCopyfile = defined(osx) and not defined(nimLegacyCopyFile)
@@ -2344,7 +2361,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
             var k = pcFile
 
             template kSetGeneric() =  # pure Posix component `k` resolution
-              if lstat(path, s) < 0'i32: continue  # don't yield
+              if lstat(path.cstring, s) < 0'i32: continue  # don't yield
               elif S_ISDIR(s.st_mode):
                 k = pcDir
               elif S_ISLNK(s.st_mode):
@@ -2539,20 +2556,14 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1",
   ## * `copyDir proc`_
   ## * `copyDirWithPermissions proc`_
   ## * `moveDir proc`_
-  var omitNext = false
-  when doslikeFileSystem:
-    omitNext = isAbsolute(dir)
-  for i in 1.. dir.len-1:
-    if dir[i] in {DirSep, AltSep}:
-      if omitNext:
-        omitNext = false
-      else:
-        discard existsOrCreateDir(substr(dir, 0, i-1))
-
-  # The loop does not create the dir itself if it doesn't end in separator
-  if dir.len > 0 and not omitNext and
-     dir[^1] notin {DirSep, AltSep}:
-    discard existsOrCreateDir(dir)
+  if dir == "":
+    return
+  var omitNext = isAbsolute(dir)
+  for p in parentDirs(dir, fromRoot=true):
+    if omitNext:
+      omitNext = false
+    else:
+      discard existsOrCreateDir(p)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadDirEffect, WriteIOEffect, ReadIOEffect], benign, noWeirdTarget.} =
@@ -2939,7 +2950,7 @@ elif defined(genode):
 
   proc paramCount*(): int =
     raise newException(OSError, "paramCount is not implemented on Genode")
-elif weirdTarget:
+elif weirdTarget or (defined(posix) and appType == "lib"):
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on current platform")
 
@@ -3041,10 +3052,10 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
 when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
   proc getApplAux(procPath: string): string =
     result = newString(maxSymlinkLen)
-    var len = readlink(procPath, result, maxSymlinkLen)
+    var len = readlink(procPath, result.cstring, maxSymlinkLen)
     if len > maxSymlinkLen:
       result = newString(len+1)
-      len = readlink(procPath, result, len)
+      len = readlink(procPath, result.cstring, len)
     setLen(result, len)
 
 when not weirdTarget and defined(openbsd):
@@ -3113,7 +3124,7 @@ when defined(haiku):
     B_FIND_PATH_IMAGE_PATH = 1000
 
   proc find_path(codePointer: pointer, baseDirectory: cint, subPath: cstring,
-                 pathBuffer: cstring, bufferSize: csize): int32
+                 pathBuffer: cstring, bufferSize: csize_t): int32
                 {.importc, header: "<FindDirectory.h>".}
 
   proc getApplHaiku(): string =
@@ -3169,7 +3180,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     var size = cuint32(0)
     getExecPath1(nil, size)
     result = newString(int(size))
-    if getExecPath2(result, size):
+    if getExecPath2(result.cstring, size):
       result = "" # error!
     if result.len > 0:
       result = result.expandFilename
@@ -3492,14 +3503,21 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noWeirdTarget.} =
     discard h.closeHandle
     if res == 0'i32: raiseOSError(osLastError(), file)
 
-func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1), deprecated: "Deprecated since v1.5.1".} =
-  ## Returns true if ``filename`` is valid for crossplatform use.
+
+func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1).} =
+  ## Returns `true` if `filename` is valid for crossplatform use.
   ##
   ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
-  ## You can pass full paths as argument too, but func only checks filenames.
-  ##
   ## It uses `invalidFilenameChars`, `invalidFilenames` and `maxLen` to verify the specified `filename`.
   ##
+  ## See also:
+  ##
+  ## * https://docs.microsoft.com/en-us/dotnet/api/system.io.pathtoolongexception
+  ## * https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+  ## * https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
+  ##
+  ## .. warning:: This only checks filenames, not whole paths
+  ##    (because basically you can mount anything as a path on Linux).
   runnableExamples:
     assert not isValidFilename(" foo")     # Leading white space
     assert not isValidFilename("foo ")     # Trailing white space
@@ -3510,9 +3528,6 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
     assert not isValidFilename("")         # Empty string
     assert not isValidFilename("foo/")     # Filename is empty
 
-  # https://docs.microsoft.com/en-us/dotnet/api/system.io.pathtoolongexception
-  # https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
-  # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
   result = true
   let f = filename.splitFile()
   if unlikely(f.name.len + f.ext.len > maxLen or f.name.len == 0 or
@@ -3520,6 +3535,7 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
     find(f.name, invalidFilenameChars) != -1): return false
   for invalid in invalidFilenames:
     if cmpIgnoreCase(f.name, invalid) == 0: return false
+
 
 # deprecated declarations
 when not defined(nimscript):

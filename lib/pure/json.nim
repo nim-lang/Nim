@@ -165,7 +165,7 @@ import options # xxx remove this dependency using same approach as https://githu
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/[syncio, assertions, formatfloat]
 
 export
   tables.`$`
@@ -217,10 +217,6 @@ proc newJRawNumber(s: string): JsonNode =
   ## with the additional information that it should be converted back
   ## to the string representation without the quotes.
   result = JsonNode(kind: JString, str: s, isUnquoted: true)
-
-proc newJStringMove(s: string): JsonNode =
-  result = JsonNode(kind: JString)
-  shallowCopy(result.str, s)
 
 proc newJInt*(n: BiggestInt): JsonNode =
   ## Creates a new `JInt JsonNode`.
@@ -859,8 +855,12 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool, depth = 0): Json
   case p.tok
   of tkString:
     # we capture 'p.a' here, so we need to give it a fresh buffer afterwards:
-    result = newJStringMove(p.a)
-    p.a = ""
+    when defined(gcArc) or defined(gcOrc):
+      result = JsonNode(kind: JString, str: move p.a)
+    else:
+      result = JsonNode(kind: JString)
+      shallowCopy(result.str, p.a)
+      p.a = ""
     discard getTok(p)
   of tkInt:
     if rawIntegers:

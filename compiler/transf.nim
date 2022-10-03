@@ -104,9 +104,11 @@ proc transformSons(c: PTransf, n: PNode): PNode =
   for i in 0..<n.len:
     result[i] = transform(c, n[i])
 
-proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode): PNode =
+proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode; isFirstWrite: bool): PNode =
   result = newTransNode(kind, ri.info, 2)
   result[0] = le
+  if isFirstWrite:
+    le.flags.incl nfFirstWrite2
   result[1] = ri
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
@@ -184,10 +186,12 @@ proc transformVarSection(c: PTransf, v: PNode): PNode =
     if it.kind == nkCommentStmt:
       result[i] = it
     elif it.kind == nkIdentDefs:
-      if it[0].kind == nkSym:
+      var vn = it[0]
+      if vn.kind == nkPragmaExpr: vn = vn[0]
+      if vn.kind == nkSym:
         internalAssert(c.graph.config, it.len == 3)
-        let x = freshVar(c, it[0].sym)
-        idNodeTablePut(c.transCon.mapping, it[0].sym, x)
+        let x = freshVar(c, vn.sym)
+        idNodeTablePut(c.transCon.mapping, vn.sym, x)
         var defs = newTransNode(nkIdentDefs, it.info, 3)
         if importantComments(c.graph.config):
           # keep documentation information:
@@ -363,9 +367,9 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     case lhs.kind
     of nkSym:
       internalAssert c.graph.config, lhs.sym.kind == skForVar
-      result = newAsgnStmt(c, nkFastAsgn, lhs, rhs)
+      result = newAsgnStmt(c, nkFastAsgn, lhs, rhs, false)
     of nkDotExpr:
-      result = newAsgnStmt(c, nkAsgn, lhs, rhs)
+      result = newAsgnStmt(c, nkAsgn, lhs, rhs, false)
     else:
       internalAssert c.graph.config, false
   result = newTransNode(nkStmtList, n.info, 0)
@@ -732,7 +736,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, t, formal.info)
       addVar(v, temp)
-      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
+      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
       idNodeTablePut(newC.mapping, formal, temp)
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind in {tyVar})
@@ -742,7 +746,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       # arrays will deep copy here (pretty bad).
       var temp = newTemp(c, arg.typ, formal.info)
       addVar(v, temp)
-      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
+      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
       idNodeTablePut(newC.mapping, formal, temp)
 
   let body = transformBody(c.graph, c.idgen, iter, true)
@@ -806,6 +810,8 @@ proc getMergeOp(n: PNode): PSym =
   else: discard
 
 proc flattenTreeAux(d, a: PNode, op: PSym) =
+  ## Optimizes away the `&` calls in the children nodes and
+  ## lifts the leaf nodes to the same level as `op2`.
   let op2 = getMergeOp(a)
   if op2 != nil and
       (op2.id == op.id or op.magic != mNone and op2.magic == op.magic):
@@ -898,6 +904,9 @@ proc transformExceptBranch(c: PTransf, n: PNode): PNode =
     result = transformSons(c, n)
 
 proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode): PNode =
+  ## Merges adjacent constant expressions of the children of the `&` call into
+  ## a single constant expression. It also inlines constant expressions which are not
+  ## complex.
   result = n
   for i in 0..<n.safeLen:
     result[i] = commonOptimizations(g, idgen, c, n[i])
@@ -1031,7 +1040,7 @@ proc transform(c: PTransf, n: PNode): PNode =
     result = transformAsgn(c, n)
   of nkIdentDefs, nkConstDef:
     result = newTransNode(n)
-    result[0] = transform(c, n[0])
+    result[0] = transform(c, skipPragmaExpr(n[0]))
     # Skip the second son since it only contains an unsemanticized copy of the
     # variable type used by docgen
     let last = n.len-1

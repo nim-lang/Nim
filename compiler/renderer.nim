@@ -18,7 +18,7 @@ import
   lexer, options, idents, strutils, ast, msgs, lineinfos
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio, assertions]
+  import std/[syncio, assertions, formatfloat]
 
 type
   TRenderFlag* = enum
@@ -398,18 +398,18 @@ proc atom(g: TSrcGen; n: PNode): string =
   of nkUInt64Lit: result = ulitAux(g, n, n.intVal, 8) & "\'u64"
   of nkFloatLit:
     if n.flags * {nfBase2, nfBase8, nfBase16} == {}: result = $(n.floatVal)
-    else: result = litAux(g, n, (cast[PInt64](addr(n.floatVal)))[] , 8)
+    else: result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[] , 8)
   of nkFloat32Lit:
     if n.flags * {nfBase2, nfBase8, nfBase16} == {}:
       result = $n.floatVal & "\'f32"
     else:
       f = n.floatVal.float32
-      result = litAux(g, n, (cast[PInt32](addr(f)))[], 4) & "\'f32"
+      result = litAux(g, n, (cast[ptr int32](addr(f)))[], 4) & "\'f32"
   of nkFloat64Lit:
     if n.flags * {nfBase2, nfBase8, nfBase16} == {}:
       result = $n.floatVal & "\'f64"
     else:
-      result = litAux(g, n, (cast[PInt64](addr(n.floatVal)))[], 8) & "\'f64"
+      result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[], 8) & "\'f64"
   of nkNilLit: result = "nil"
   of nkType:
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s

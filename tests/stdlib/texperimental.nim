@@ -1,1 +1,0 @@
-doAssert defined(nimPreviewDotLikeOps)

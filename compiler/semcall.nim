@@ -154,6 +154,8 @@ proc effectProblem(f, a: PType; result: var string; c: PContext) =
             "proc with {.locks: 0.} to get extended error information."
       of efEffectsDelayed:
         result.add "\n  The `.effectsOf` annotations differ."
+      of efTagsIllegal:
+        result.add "\n  The `.forbids` requirements caught an illegal tag."
       when defined(drnim):
         if not c.graph.compatibleProps(c.graph, f, a):
           result.add "\n  The `.requires` or `.ensures` properties are incompatible."
@@ -372,22 +374,6 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
   let overloadsState = result.state
   if overloadsState != csMatch:
-    if c.p != nil and c.p.selfSym != nil:
-      # we need to enforce semchecking of selfSym again because it
-      # might need auto-deref:
-      var hiddenArg = newSymNode(c.p.selfSym)
-      hiddenArg.typ = nil
-      n.sons.insert(hiddenArg, 1)
-      orig.sons.insert(hiddenArg, 1)
-
-      pickBest(f)
-
-      if result.state != csMatch:
-        n.sons.delete(1)
-        orig.sons.delete(1)
-        excl n.flags, nfExprCall
-      else: return
-
     if nfDotField in n.flags:
       internalAssert c.config, f.kind == nkIdent and n.len >= 2
 
@@ -558,8 +544,8 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
         of skConst:
-          if not s.ast.isNil:
-            x.call.add s.ast
+          if not s.astdef.isNil:
+            x.call.add s.astdef
           else:
             x.call.add c.graph.emptyNode
         of skType:

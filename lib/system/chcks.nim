@@ -9,6 +9,8 @@
 
 # Implementation of some runtime checks.
 include system/indexerrors
+when defined(nimPreviewSlimSystem):
+  import std/formatfloat
 
 proc raiseRangeError(val: BiggestInt) {.compilerproc, noinline.} =
   when hostOS == "standalone":
@@ -35,11 +37,11 @@ proc raiseFieldError(f: string) {.compilerproc, noinline.} =
 when defined(nimV2):
   proc raiseFieldError2(f: string, discVal: int) {.compilerproc, noinline.} =
     ## raised when field is inaccessible given runtime value of discriminant
-    sysFatal(FieldError, f & $discVal & "'")
+    sysFatal(FieldDefect, f & $discVal & "'")
 else:
   proc raiseFieldError2(f: string, discVal: string) {.compilerproc, noinline.} =
     ## raised when field is inaccessible given runtime value of discriminant
-    sysFatal(FieldError, formatFieldDefect(f, discVal))
+    sysFatal(FieldDefect, formatFieldDefect(f, discVal))
 
 proc raiseRangeErrorI(i, a, b: BiggestInt) {.compilerproc, noinline.} =
   when defined(standalone):
