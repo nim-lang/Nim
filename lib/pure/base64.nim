@@ -31,7 +31,7 @@ runnableExamples:
 ##
 
 runnableExamples:
-  let encodedInts = encode([1'u8,2,3])
+  let encodedInts = encode([1,2,3])
   assert encodedInts == "AQID"
   let encodedChars = encode(['h','e','y'])
   assert encodedChars == "aGV5"
@@ -143,7 +143,7 @@ template encodeImpl() {.dirty.} =
       let lookupTable = if safe: unsafeAddr(cb64safe) else: unsafeAddr(cb64)
       encodeInternal(s, lookupTable)
 
-proc encode*[T: byte|char](s: openArray[T], safe = false): string =
+proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
   ## Encodes `s` into base64 representation.
   ##
   ## If `safe` is `true` then it will encode using the
@@ -158,7 +158,7 @@ proc encode*[T: byte|char](s: openArray[T], safe = false): string =
     assert encode("Hello World") == "SGVsbG8gV29ybGQ="
     assert encode(['n', 'i', 'm']) == "bmlt"
     assert encode(@['n', 'i', 'm']) == "bmlt"
-    assert encode([1'u8, 2, 3, 4, 5]) == "AQIDBAU="
+    assert encode([1, 2, 3, 4, 5]) == "AQIDBAU="
   encodeImpl()
 
 proc encode*[T: SomeInteger and not byte](s: openArray[T], safe = false): string  =
