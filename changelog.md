@@ -2,7 +2,7 @@
 
 
 ## Changes affecting backward compatibility
-- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response, it followed Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously raise `ValueError`.  
+- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response, it followed Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously raise `ValueError`.
 
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
@@ -78,7 +78,7 @@
 
 - Static linking against OpenSSL versions below 1.1, previously done by
   setting `-d:openssl10`, is no longer supported.
-  
+
 - `macros.getImpl` for `const` symbols now returns the full definition node
   (as `nnkConstDef`) rather than the AST of the constant value.
 
@@ -125,6 +125,8 @@
   `toggleAttribute`, and `matches` to `std/dom`.
 - Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
 - Added `capacity` for `string` and `seq` to return the current capacity, see https://github.com/nim-lang/RFCs/issues/460
+- Added `httpcore.PreparedRequest`, allows to use any API client with any HTTP client for any target, see https://github.com/nim-lang/RFCs/issues/487
+
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
