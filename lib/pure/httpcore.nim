@@ -12,7 +12,7 @@
 ##
 ## Unstable API.
 import std/private/since
-import tables, strutils, parseutils
+import std/[tables, strutils, parseutils, uri]
 
 type
   HttpHeaders* = ref object
@@ -49,6 +49,53 @@ type
     HttpConnect = "CONNECT"  ## Converts the request connection to a transparent
                              ## TCP/IP tunnel, usually used for proxies.
     HttpPatch = "PATCH"      ## Applies partial modifications to a resource.
+
+  PreparedRequest* = tuple[httpMethod: HttpMethod, url: Uri, headers: seq[(string, string)], body: string]
+    ## Represents an HTTP request prepared to be sent "over-the-wire" by an HTTP client,
+    ## this allows to use any API client with any HTTP client for any target,
+    ## see https://github.com/nim-lang/RFCs/issues/487
+    ##
+    ## Example
+    ## =======
+    ##
+    ## API client:
+    ##
+    ## .. code-block:: nim
+    ##   # yourapiclient.nim
+    ##
+    ##   import std/[httpcore, uri]
+    ##
+    ##   func someEndpoint*(user: string; age: Positive; someData: string): PreparedRequest =
+    ##     # Some code here for the API endpoint...
+    ##     (httpMethod: HttpPost, url: parseUri"https://httpbin.org/post", headers: @{"k0": user, "k1": $age}, body: someData)
+    ##
+    ## HTTP client:
+    ##
+    ## .. code-block:: nim
+    ##   # yourhttpclient.nim
+    ##
+    ##   import std/[httpcore, httpclient]
+    ##
+    ##   proc someRequest*(r: PreparedRequest): Response =
+    ##     let
+    ##       client = newHttpClient()  # Can be replaced with jsfetch or other HTTP clients.
+    ##       header = newHttpHeaders(r.headers)
+    ##     result = client.request(url = r.url, httpMethod = r.httpMethod, body = r.body, headers = header)
+    ##     client.close()
+    ##
+    ## Usage:
+    ##
+    ## .. code-block:: nim
+    ##   # main_app.nim
+    ##
+    ##   import std/[httpcore, httpclient]
+    ##   import yourapiclient, yourhttpclient
+    ##
+    ##   let
+    ##     prepared: PreparedRequest = yourapiclient.someEndpoint(user = "pepe", age = 22, someData = "foo")
+    ##     respon: Response = yourhttpclient.someRequest(prepared)
+    ##
+    ##   echo respon.body  # Use the Response.
 
 
 const
