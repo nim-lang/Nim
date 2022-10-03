@@ -76,12 +76,13 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType 
 
   if isEmpty or isTypeError:
     # bug #12741, redundant error messages are the lesser evil here:
-    localError(c.config, n.info, errExprXHasNoType %
-                renderTree(result, {renderNoComments}))
+    if efNoError notin flags:
+      localError(c.config, n.info, errExprXHasNoType %
+                  renderTree(n, {renderNoComments}))
 
   if isEmpty:
     # do not produce another redundant error message:
-    result = errorNode(c, n)
+    result = errorNode(c, result)
 
 proc ambiguousSymChoice(c: PContext, orig, n: PNode): PNode =
   let first = n[0].sym
@@ -117,8 +118,9 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
       result.kind == nkClosedSymChoice and result.len > 0:
     result = ambiguousSymChoice(c, n, result)
   elif result.typ == nil or result.typ == c.enforceVoidContext:
-    localError(c.config, n.info, errExprXHasNoType %
-                renderTree(result, {renderNoComments}))
+    if efNoError notin flags:
+      localError(c.config, n.info, errExprXHasNoType %
+                  renderTree(n, {renderNoComments}))
     result.typ = errorType(c)
   elif result.typ.kind == tyError:
     # associates the type error to the current owner
@@ -1568,8 +1570,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     return
   checkMinSonsLen(n, 2, c.config)
   # make sure we don't evaluate generic macros/templates
-  n[0] = semExprWithType(c, n[0],
-                              {efNoEvaluateGeneric})
+  n[0] = semExprWithType(c, n[0], flags + {efNoEvaluateGeneric})
   var arr = skipTypes(n[0].typ, {tyGenericInst, tyUserTypeClassInst, tyOwned,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   if arr.kind == tyStatic:
@@ -1581,7 +1582,6 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return semSubscript(c, arr.n, flags)
     else:
       arr = arr.base
-
   case arr.kind
   of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCstring,
     tyUncheckedArray:
@@ -1656,7 +1656,19 @@ proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
   result = semSubscript(c, n, flags)
   if result == nil:
     # overloaded [] operator:
-    result = semExpr(c, buildOverloadedSubscripts(n, getIdent(c.cache, "[]")), flags, expectedType)
+    let id = getIdent(c.cache, "[]")
+    let sub = buildOverloadedSubscripts(n, id)
+    if efFromUnpack in flags:
+      var errors: CandidateErrors
+      var r = resolveOverloads(c, sub, sub, {}, {efNoUndeclared},
+                            errors, false)                      
+      if r.state == csMatch:
+        let toExpand = semResolvedCall(c, r, r.call, {})
+        result = semExpr(c, toExpand, flags, expectedType)
+      else:
+        return errorNode(c, n)
+    else:
+      result = semExpr(c, sub, flags, expectedType)
 
 proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   var id = considerQuotedIdent(c, a[1], a)
@@ -1814,7 +1826,19 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       # unfortunately we need to rewrite ``(x, y) = foo()`` already here so
       # that overloading of the assignment operator still works. Usually we
       # prefer to do these rewritings in transf.nim:
-      return semStmt(c, lowerTupleUnpackingForAsgn(c.graph, n, c.idgen, c.p.owner), {})
+      let owner = c.p.owner
+      let idgen = c.idgen
+      let value = n.lastSon
+      if value.isAtom and value.kind != nkTupleConstr:
+        let v = semExpr(c, value, {efNoError, efFromUnpack})
+        if v.typ.kind != tyTuple:
+          let temp = newSym(skTemp, getIdent(c.graph.cache, "_"), nextSymId(idgen), owner, value.info, owner.options)
+          let tempAsNode = newSymNode(temp)
+          let tempSub = semExpr(c, newTupleAccessRaw(tempAsNode, 0), {efNoError, efFromUnpack})
+          if tempSub.kind == nkEmpty:
+            localError(c.config, value.info, "cannot unpack '$1'" % renderTree(value, {renderNoComments}))
+            return errorNode(c, value)
+      return semStmt(c, lowerTupleUnpackingForAsgn(c.graph, n, idgen, owner), {})
     else:
       a = semExprWithType(c, a, {efLValue})
   else:

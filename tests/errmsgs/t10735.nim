@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim check $file"
+  cmd: "nim check --hints:off $file"
   errormsg: "selector must be of an ordinal type, float or string"
   nimout: '''
 t10735.nim(38, 5) Error: 'let' symbol requires an initialization

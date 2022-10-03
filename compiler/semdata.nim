@@ -74,7 +74,9 @@ type
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
     efNoDiagnostics,
-    efTypeAllowed # typeAllowed will be called after
+    efTypeAllowed, # typeAllowed will be called after
+    efNoError,
+    efFromUnpack
 
   TExprFlags* = set[TExprFlag]
 
