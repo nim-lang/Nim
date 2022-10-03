@@ -1,5 +1,5 @@
 discard """
-  errormsg: "expression has no type: sequtils"
+  errormsg: "module has no type: sequtils"
 """
 
 
