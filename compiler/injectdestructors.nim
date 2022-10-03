@@ -77,7 +77,7 @@ proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
 proc nestedScope(parent: var Scope; body: PNode): Scope =
   Scope(vars: @[], locals: @[], wasMoved: @[], final: @[], body: body, needsTry: false, parent: addr(parent))
 
-proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
+proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
 
 when false:
@@ -508,14 +508,14 @@ proc processScope(c: var Con; s: var Scope; ret: PNode): PNode =
 
   if s.parent != nil: s.parent[].needsTry = s.parent[].needsTry or s.needsTry
 
-template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: untyped): PNode =
+template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: untyped, tmpFlags: TSymFlags): PNode =
   assert not ret.typ.isEmptyType
   var result = newNodeIT(nkStmtListExpr, ret.info, ret.typ)
   # There is a possibility to do this check: s.wasMoved.len > 0 or s.final.len > 0
   # later and use it to eliminate the temporary when theres no need for it, but its
   # tricky because you would have to intercept moveOrCopy at a certain point
   let tmp = c.getTemp(s.parent[], ret.typ, ret.info)
-  tmp.sym.flags.incl sfSingleUsedTemp
+  tmp.sym.flags = tmpFlags
   let cpy = if hasDestructor(c, ret.typ):
               s.parent[].final.add c.genDestroy(tmp)
               moveOrCopy(tmp, ret, c, s, isDecl = true)
@@ -542,7 +542,8 @@ template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: unt
 
   result
 
-template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
+template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
+                           tmpFlags = {sfSingleUsedTemp}) =
   template maybeVoid(child, s): untyped =
     if isEmptyType(child.typ): p(child, c, s, normal)
     else: processCall(child, s)
@@ -570,7 +571,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
       branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt:
                      processScope(c, ofScope, maybeVoid(it[^1], ofScope))
                    else:
-                     processScopeExpr(c, ofScope, it[^1], processCall)
+                     processScopeExpr(c, ofScope, it[^1], processCall, tmpFlags)
       result.add branch
 
   of nkWhileStmt:
@@ -603,7 +604,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
     result.add if n[1].typ.isEmptyType or willProduceStmt:
                  processScope(c, bodyScope, processCall(n[1], bodyScope))
                else:
-                 processScopeExpr(c, bodyScope, n[1], processCall)
+                 processScopeExpr(c, bodyScope, n[1], processCall, tmpFlags)
 
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
@@ -618,7 +619,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
       branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt:
                      processScope(c, branchScope, maybeVoid(it[^1], branchScope))
                    else:
-                     processScopeExpr(c, branchScope, it[^1], processCall)
+                     processScopeExpr(c, branchScope, it[^1], processCall, tmpFlags)
       result.add branch
 
   of nkTryStmt:
@@ -627,7 +628,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
     result.add if n[0].typ.isEmptyType or willProduceStmt:
                  processScope(c, tryScope, maybeVoid(n[0], tryScope))
                else:
-                 processScopeExpr(c, tryScope, n[0], maybeVoid)
+                 processScopeExpr(c, tryScope, n[0], maybeVoid, tmpFlags)
 
     for i in 1..<n.len:
       let it = n[i]
@@ -637,7 +638,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
                      processScope(c, branchScope, if it.kind == nkFinally: p(it[^1], c, branchScope, normal)
                                                   else: maybeVoid(it[^1], branchScope))
                    else:
-                     processScopeExpr(c, branchScope, it[^1], processCall)
+                     processScopeExpr(c, branchScope, it[^1], processCall, tmpFlags)
       result.add branch
 
   of nkWhen: # This should be a "when nimvm" node.
@@ -670,11 +671,11 @@ proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
       result.add copyNode(n[0])
   s.needsTry = true
 
-proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
+proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt}:
     template process(child, s): untyped = p(child, c, s, mode)
-    handleNestedTempl(n, process)
+    handleNestedTempl(n, process, tmpFlags = tmpFlags)
   elif mode == sinkArg:
     if n.containsConstSeq:
       # const sequences are not mutable and so we need to pass a copy to the
@@ -825,7 +826,11 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
           var itCopy = copyNode(it)
           for j in 0..<it.len-1:
             itCopy.add it[j]
-          itCopy.add p(it[^1], c, s, normal)
+          var flags = {sfSingleUsedTemp}
+          if it.kind == nkIdentDefs and it.len == 3 and it[0].kind == nkSym and
+                                        sfGlobal in it[0].sym.flags:
+            flags.incl sfGlobal
+          itCopy.add p(it[^1], c, s, normal, tmpFlags = flags)
           v.add itCopy
           result.add v
     of nkAsgn, nkFastAsgn:
