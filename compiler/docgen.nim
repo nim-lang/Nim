@@ -304,6 +304,10 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
                    conf.configVars, filename.string,
                    docgenFindFile, compilerMsgHandler)
 
+  if conf.configVars.hasKey("doc.googleAnalytics") and
+      conf.configVars.hasKey("doc.plausibleAnalytics"):
+    doAssert false, "Either use googleAnalytics or plausibleAnalytics"
+
   if conf.configVars.hasKey("doc.googleAnalytics"):
     result.analytics = """
 <script>
@@ -317,6 +321,10 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
 
 </script>
     """ % [conf.configVars.getOrDefault"doc.googleAnalytics"]
+  elif conf.configVars.hasKey("doc.plausibleAnalytics"):
+    result.analytics = """
+    <script defer data-domain="$1" src="https://plausible.io/js/plausible.js"></script>
+    """ % [conf.configVars.getOrDefault"doc.plausibleAnalytics"]
   else:
     result.analytics = ""
 
@@ -1124,6 +1132,8 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
         for kind in genericParam.sym.typ.sons:
           param["types"].add %($kind)
         result.json["signature"]["genericParams"].add param
+  if optGenIndex in d.conf.globalOptions:
+    genItem(d, n, nameNode, k, kForceExport)
 
 proc setDoctype(d: PDoc, n: PNode) =
   ## Processes `{.doctype.}` pragma changing Markdown/RST parsing options.
@@ -1780,5 +1790,19 @@ proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") 
 
   try:
     writeFile(filename, code)
+  except:
+    rawMessage(conf, errCannotOpenFile, filename.string)
+
+proc commandBuildIndexJson*(conf: ConfigRef, dir: string, outFile = RelativeFile"") =
+  var (modules, symbols, docs) = readIndexDir(dir)
+  let documents = toSeq(keys(Table[IndexEntry, seq[IndexEntry]](docs)))
+  let body = %*({"documents": documents, "modules": modules, "symbols": symbols})
+
+  var outFile = outFile
+  if outFile.isEmpty: outFile = theindexFname.RelativeFile.changeFileExt("")
+  let filename = getOutFile(conf, outFile, JsonExt)
+
+  try:
+    writeFile(filename, $body)
   except:
     rawMessage(conf, errCannotOpenFile, filename.string)

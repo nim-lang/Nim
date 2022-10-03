@@ -1,5 +1,5 @@
 discard """
-  output: '''(repo: "", package: "meo", ext: "")
+  output: '''(package: "", ext: "meo")
 doing shady stuff...
 3
 6
@@ -11,24 +11,17 @@ doing shady stuff...
   cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
   nimout: '''--expandArc: newTarget
 
-var
-  splat
-  :tmp
-  :tmp_1
-  :tmp_2
-splat = splitFile(path)
-:tmp = splat.dir
-wasMoved(splat.dir)
-:tmp_1 = splat.name
-wasMoved(splat.name)
-:tmp_2 = splat.ext
-wasMoved(splat.ext)
+splat = splitDrive do:
+  let blitTmp = path
+  blitTmp
+:tmp = splat.drive
+wasMoved(splat.drive)
+:tmp_1 = splat.path_1
+wasMoved(splat.path_1)
 result = (
-  let blitTmp = :tmp
-  blitTmp,
-  let blitTmp_1 = :tmp_1
+  let blitTmp_1 = :tmp
   blitTmp_1,
-  let blitTmp_2 = :tmp_2
+  let blitTmp_2 = :tmp_1
   blitTmp_2)
 `=destroy`(splat)
 -- end of expandArc ------------------------
@@ -56,7 +49,7 @@ _ = (
   blitTmp, ";")
 lvalue = _[0]
 lnext = _[1]
-result.value = move lvalue
+`=sink`(result.value, move lvalue)
 `=destroy`(lnext)
 `=destroy_1`(lvalue)
 -- end of expandArc ------------------------
@@ -145,11 +138,11 @@ if dirExists(this.value):
   par = (dir_1: parentDir(this.value), front_1:
     wasMoved(:tmpD_1)
     `=copy`(:tmpD_1,
-      :tmpD_3 = splitPath do:
+      :tmpD_3 = splitDrive do:
         wasMoved(:tmpD_2)
         `=copy`(:tmpD_2, this.value)
         :tmpD_2
-      :tmpD_3.tail)
+      :tmpD_3.path)
     :tmpD_1)
   `=destroy`(:tmpD_3)
 if dirExists(par.dir):
@@ -160,13 +153,13 @@ else:
 -- end of expandArc ------------------------'''
 """
 
-import os
+import os, std/private/ntpath
 
-type Target = tuple[repo, package, ext: string]
+type Target = tuple[package, ext: string]
 
 proc newTarget*(path: string): Target =
-  let splat = path.splitFile
-  result = (repo: splat.dir, package: splat.name, ext: splat.ext)
+  let splat = path.splitDrive
+  result = (package: splat.drive, ext: splat.path)
 
 echo newTarget("meo")
 
@@ -364,7 +357,7 @@ proc getSubDirs(parent, front: string): seq[string] = @[]
 method check(this: Foo) {.base.} =
   this.isValid = fileExists(this.value)
   let par = if dirExists(this.value): (dir: this.value, front: "")
-            else: (dir: parentDir(this.value), front: splitPath(this.value).tail)
+            else: (dir: parentDir(this.value), front: splitDrive(this.value).path)
   if dirExists(par.dir):
     this.matchDirs = getSubDirs(par.dir, par.front)
   else:

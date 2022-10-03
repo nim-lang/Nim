@@ -62,6 +62,9 @@ when not defined(js):
 when defined(posix):
   import posix
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const
   batchImplOS = defined(freebsd) or defined(openbsd) or defined(zephyr) or (defined(macosx) and not defined(ios))
   batchSize {.used.} = 256

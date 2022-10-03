@@ -8,6 +8,7 @@ import ../../lib/packages/docutils/rstgen
 import ../../lib/packages/docutils/rst
 import unittest, strutils, strtabs
 import std/private/miscdollars
+import std/assertions
 
 const
   NoSandboxOpts = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
@@ -983,7 +984,7 @@ Test1
 
       Ref. [#note]_
       """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml(preferRst)
     doAssert output1.count(">[1]</a>") == 1
     doAssert output1.count(">[2]</a>") == 2
     doAssert "href=\"#footnote-note\"" in output1
@@ -1001,7 +1002,7 @@ Test1
 
       Not references[#note]_[1 #]_ [wrong citation]_ and [not&allowed]_.
       """
-    let output2 = input2.toHtml
+    let output2 = input2.toHtml(preferRst)
     doAssert output2 == "Not references[#note]_[1 #]_ [wrong citation]_ and [not&amp;allowed]_."
 
     # check that auto-symbol footnotes work:
@@ -1017,7 +1018,7 @@ Test1
 
       And [*]_.
       """
-    let output3 = input3.toHtml
+    let output3 = input3.toHtml(preferRst)
     # both references and footnotes. Footnotes have link to themselves.
     doAssert output3.count("href=\"#footnotesym-1\">[*]</a>") == 2
     doAssert output3.count("href=\"#footnotesym-2\">[**]</a>") == 2
@@ -1047,7 +1048,7 @@ Test1
 
       Ref. [#note]_ and [#]_ and [#]_.
       """
-    let output4 = input4.toHtml
+    let output4 = input4.toHtml(preferRst)
     doAssert ">[-1]" notin output1
     let order = @[
         "footnote-3", "[3]", "Manual1.",
@@ -1072,7 +1073,7 @@ Test1
       Ref. [#note]_
       """
     var error5 = new string
-    let output5 = input5.toHtml(error=error5)
+    let output5 = input5.toHtml(preferRst, error=error5)
     check(error5[] == "input(1, 1) Error: mismatch in number of footnotes " &
             "and their refs: 1 (lines 2) != 0 (lines ) for auto-numbered " &
             "footnotes")
@@ -1086,7 +1087,7 @@ Test1
       Ref. [*]_
       """
     var error6 = new string
-    let output6 = input6.toHtml(error=error6)
+    let output6 = input6.toHtml(preferRst, error=error6)
     check(error6[] == "input(1, 1) Error: mismatch in number of footnotes " &
             "and their refs: 1 (lines 3) != 2 (lines 2, 6) for auto-symbol " &
             "footnotes")
@@ -1096,7 +1097,7 @@ Test1
 
       Ref. [some:citation-2020]_.
       """
-    let output7 = input7.toHtml
+    let output7 = input7.toHtml(preferRst)
     doAssert output7.count("href=\"#citation-somecoloncitationminus2020\"") == 2
     doAssert output7.count("[Some:CITATION-2020]") == 1
     doAssert output7.count("[some:citation-2020]") == 1
@@ -1109,7 +1110,7 @@ Test1
       Ref. [som]_.
       """
     var warnings8 = new seq[string]
-    let output8 = input8.toHtml(warnings=warnings8)
+    let output8 = input8.toHtml(preferRst, warnings=warnings8)
     check(warnings8[] == @["input(3, 7) Warning: broken link 'citation-som'"])
 
     # check that footnote group does not break parsing of other directives:
@@ -1145,7 +1146,7 @@ Test1
 
             .. [Third] Citation.
       """
-    let output10 = input10.toHtml
+    let output10 = input10.toHtml(preferRst)
     doAssert output10.count("<hr class=\"footnote\">" &
                             "<div class=\"footnote-group\">") == 3
     doAssert output10.count("<div class=\"footnote-label\">") == 3
@@ -1165,7 +1166,7 @@ Test1
       .. [#] Body3
       .. [2] Body2.
       """
-    let output12 = input12.toHtml
+    let output12 = input12.toHtml(preferRst)
     let orderAuto = @[
         "#footnoteauto-1", "[1]",
         "#footnoteauto-2", "[3]",
