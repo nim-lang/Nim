@@ -125,15 +125,18 @@ proc `<`*[T](x, y: ref T): bool {.magic: "LtPtr", noSideEffect.}
 proc `<`*[T](x, y: ptr T): bool {.magic: "LtPtr", noSideEffect.}
 proc `<`*(x, y: pointer): bool {.magic: "LtPtr", noSideEffect.}
 
-template `!=`*(x, y: untyped): untyped =
+when not defined(nimHasCallsitePragma):
+  {.pragma: callsite.}
+
+template `!=`*(x, y: untyped): untyped {.callsite.} =
   ## Unequals operator. This is a shorthand for `not (x == y)`.
   not (x == y)
 
-template `>=`*(x, y: untyped): untyped =
+template `>=`*(x, y: untyped): untyped {.callsite.} =
   ## "is greater or equals" operator. This is the same as `y <= x`.
   y <= x
 
-template `>`*(x, y: untyped): untyped =
+template `>`*(x, y: untyped): untyped {.callsite.} =
   ## "is greater" operator. This is the same as `y < x`.
   y < x
 
