@@ -117,7 +117,8 @@ type
     currMem, maxMem, freeMem, occ: int # memory sizes (allocated from OS)
     lastSize: int # needed for the case that OS gives us pages linearly
     chunkStarts: IntSet
-    root, deleted, last, freeAvlNodes: PAvlNode
+    when not defined(gcDestructors):
+      root, deleted, last, freeAvlNodes: PAvlNode
     locked, blockChunkSizeIncrease: bool # if locked, we cannot free pages.
     nextChunkSize: int
     bottomData: AvlNode
@@ -264,35 +265,36 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
   inc(a.llmem.acc, size)
   zeroMem(result, size)
 
-proc getBottom(a: var MemRegion): PAvlNode =
-  result = addr(a.bottomData)
-  if result.link[0] == nil:
-    result.link[0] = result
-    result.link[1] = result
+when not defined(gcDestructors):
+  proc getBottom(a: var MemRegion): PAvlNode =
+    result = addr(a.bottomData)
+    if result.link[0] == nil:
+      result.link[0] = result
+      result.link[1] = result
 
-proc allocAvlNode(a: var MemRegion, key, upperBound: int): PAvlNode =
-  if a.freeAvlNodes != nil:
-    result = a.freeAvlNodes
-    a.freeAvlNodes = a.freeAvlNodes.link[0]
-  else:
-    result = cast[PAvlNode](llAlloc(a, sizeof(AvlNode)))
-    when defined(nimAvlcorruption):
-      cprintf("tracking location: %p\n", result)
-  result.key = key
-  result.upperBound = upperBound
-  let bottom = getBottom(a)
-  result.link[0] = bottom
-  result.link[1] = bottom
-  result.level = 1
-  #when defined(nimAvlcorruption):
-  #  track("allocAvlNode", result, sizeof(AvlNode))
-  sysAssert(bottom == addr(a.bottomData), "bottom data")
-  sysAssert(bottom.link[0] == bottom, "bottom link[0]")
-  sysAssert(bottom.link[1] == bottom, "bottom link[1]")
+  proc allocAvlNode(a: var MemRegion, key, upperBound: int): PAvlNode =
+    if a.freeAvlNodes != nil:
+      result = a.freeAvlNodes
+      a.freeAvlNodes = a.freeAvlNodes.link[0]
+    else:
+      result = cast[PAvlNode](llAlloc(a, sizeof(AvlNode)))
+      when defined(nimAvlcorruption):
+        cprintf("tracking location: %p\n", result)
+    result.key = key
+    result.upperBound = upperBound
+    let bottom = getBottom(a)
+    result.link[0] = bottom
+    result.link[1] = bottom
+    result.level = 1
+    #when defined(nimAvlcorruption):
+    #  track("allocAvlNode", result, sizeof(AvlNode))
+    sysAssert(bottom == addr(a.bottomData), "bottom data")
+    sysAssert(bottom.link[0] == bottom, "bottom link[0]")
+    sysAssert(bottom.link[1] == bottom, "bottom link[1]")
 
-proc deallocAvlNode(a: var MemRegion, n: PAvlNode) {.inline.} =
-  n.link[0] = a.freeAvlNodes
-  a.freeAvlNodes = n
+  proc deallocAvlNode(a: var MemRegion, n: PAvlNode) {.inline.} =
+    n.link[0] = a.freeAvlNodes
+    a.freeAvlNodes = n
 
 proc addHeapLink(a: var MemRegion; p: PBigChunk, size: int) =
   var it = addr(a.heapLinks)
@@ -308,7 +310,8 @@ proc addHeapLink(a: var MemRegion; p: PBigChunk, size: int) =
     it.chunks[L] = (p, size)
     inc it.len
 
-include "system/avltree"
+when not defined(gcDestructors):
+  include "system/avltree"
 
 proc llDeallocAll(a: var MemRegion) =
   var it = a.llmem
@@ -686,64 +689,6 @@ else:
   template trackSize(x) = discard
   template untrackSize(x) = discard
 
-when false:
-  # not yet used by the GCs
-  proc rawTryAlloc(a: var MemRegion; requestedSize: int): pointer =
-    sysAssert(allocInv(a), "rawAlloc: begin")
-    sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
-    sysAssert(requestedSize >= sizeof(FreeCell), "rawAlloc: requested size too small")
-    var size = roundup(requestedSize, MemAlign)
-    inc a.occ, size
-    trackSize(size)
-    sysAssert(size >= requestedSize, "insufficient allocated size!")
-    #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
-    if size <= SmallChunkSize-smallChunkOverhead():
-      # allocate a small block: for small chunks, we use only its next pointer
-      var s = size div MemAlign
-      var c = a.freeSmallChunks[s]
-      if c == nil:
-        result = nil
-      else:
-        sysAssert c.size == size, "rawAlloc 6"
-        if c.freeList == nil:
-          sysAssert(c.acc + smallChunkOverhead() + size <= SmallChunkSize,
-                    "rawAlloc 7")
-          result = cast[pointer](cast[ByteAddress](addr(c.data)) +% c.acc)
-          inc(c.acc, size)
-        else:
-          result = c.freeList
-          sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
-          c.freeList = c.freeList.next
-        dec(c.free, size)
-        sysAssert((cast[ByteAddress](result) and (MemAlign-1)) == 0, "rawAlloc 9")
-        if c.free < size:
-          listRemove(a.freeSmallChunks[s], c)
-          sysAssert(allocInv(a), "rawAlloc: end listRemove test")
-        sysAssert(((cast[ByteAddress](result) and PageMask) - smallChunkOverhead()) %%
-                  size == 0, "rawAlloc 21")
-        sysAssert(allocInv(a), "rawAlloc: end small size")
-    else:
-      inc size, bigChunkOverhead()
-      var fl, sl: int
-      mappingSearch(size, fl, sl)
-      sysAssert((size and PageMask) == 0, "getBigChunk: unaligned chunk")
-      let c = findSuitableBlock(a, fl, sl)
-      if c != nil:
-        removeChunkFromMatrix2(a, c, fl, sl)
-        if c.size >= size + PageSize:
-          splitChunk(a, c, size)
-        # set 'used' to to true:
-        c.prevSize = 1
-        incl(a, a.chunkStarts, pageIndex(c))
-        dec(a.freeMem, size)
-        result = addr(c.data)
-        sysAssert((cast[ByteAddress](c) and (MemAlign-1)) == 0, "rawAlloc 13")
-        sysAssert((cast[ByteAddress](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
-        if a.root == nil: a.root = getBottom(a)
-        add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
-      else:
-        result = nil
-
 proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   when defined(nimTypeNames):
     inc(a.allocCounter)
@@ -809,8 +754,9 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     result = addr(c.data)
     sysAssert((cast[ByteAddress](c) and (MemAlign-1)) == 0, "rawAlloc 13")
     sysAssert((cast[ByteAddress](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
-    if a.root == nil: a.root = getBottom(a)
-    add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
+    when not defined(gcDestructors):
+      if a.root == nil: a.root = getBottom(a)
+      add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
     inc a.occ, c.size
     trackSize(c.size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
@@ -868,8 +814,9 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     dec a.occ, c.size
     untrackSize(c.size)
     sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case B)"
-    a.deleted = getBottom(a)
-    del(a, a.root, cast[int](addr(c.data)))
+    when not defined(gcDestructors):
+      a.deleted = getBottom(a)
+      del(a, a.root, cast[int](addr(c.data)))
     if c.size >= HugeChunkSize: freeHugeChunk(a, c)
     else: freeBigChunk(a, c)
   sysAssert(allocInv(a), "rawDealloc: end")
