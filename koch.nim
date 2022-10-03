@@ -589,8 +589,6 @@ proc runCI(cmd: string) =
 
     execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
 
-
-
   kochExecFold("Boot Nim ORC with mimalloc", "boot -d:release --mm:orc --lib:lib -d:useMimalloc")
 
 proc testUnixInstall(cmdLineRest: string) =
