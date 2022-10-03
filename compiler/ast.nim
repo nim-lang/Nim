@@ -1254,6 +1254,12 @@ proc skipPragmaExpr*(n: PNode): PNode =
   else:
     result = n
 
+proc setInfoRecursive*(n: PNode, info: TLineInfo) =
+  ## set line info recursively
+  if n != nil:
+    for i in 0..<n.safeLen: setInfoRecursive(n[i], info)
+    n.info = info
+
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int

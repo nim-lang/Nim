@@ -2338,11 +2338,6 @@ proc evalInclude(c: PContext, n: PNode): PNode =
     else:
       incMod(c, n, it, result)
 
-proc setLine(n: PNode, info: TLineInfo) =
-  if n != nil:
-    for i in 0..<n.safeLen: setLine(n[i], info)
-    n.info = info
-
 proc recursiveSetFlag(n: PNode, flag: TNodeFlag) =
   if n != nil:
     for i in 0..<n.safeLen: recursiveSetFlag(n[i], flag)
@@ -2371,7 +2366,7 @@ proc semPragmaBlock(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   result.typ = n[1].typ
   for i in 0..<pragmaList.len:
     case whichPragma(pragmaList[i])
-    of wLine: setLine(result, pragmaList[i].info)
+    of wLine: setInfoRecursive(result, pragmaList[i].info)
     of wNoRewrite: recursiveSetFlag(result, nfNoRewrite)
     else: discard
 

@@ -731,13 +731,16 @@ proc contains*[U, V, W](s: HSlice[U, V], value: W): bool {.noSideEffect, inline.
   ##   ```
   result = s.a <= value and value <= s.b
 
-template `in`*(x, y: untyped): untyped {.dirty.} = contains(y, x)
+when not defined(nimHasCallsitePragma):
+  {.pragma: callsite.}
+
+template `in`*(x, y: untyped): untyped {.dirty, callsite.} = contains(y, x)
   ## Sugar for `contains`.
   ##   ```
   ##   assert(1 in (1..3) == true)
   ##   assert(5 in (1..3) == false)
   ##   ```
-template `notin`*(x, y: untyped): untyped {.dirty.} = not contains(y, x)
+template `notin`*(x, y: untyped): untyped {.dirty, callsite.} = not contains(y, x)
   ## Sugar for `not contains`.
   ##   ```
   ##   assert(1 notin (1..3) == false)
@@ -762,7 +765,7 @@ proc `is`*[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
   ##   assert(test[int](3) == 3)
   ##   assert(test[string]("xyz") == 0)
   ##   ```
-template `isnot`*(x, y: untyped): untyped = not (x is y)
+template `isnot`*(x, y: untyped): untyped {.callsite.} = not (x is y)
   ## Negated version of `is <#is,T,S>`_. Equivalent to `not(x is y)`.
   ##   ```
   ##   assert 42 isnot float

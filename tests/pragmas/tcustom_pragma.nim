@@ -423,6 +423,31 @@ when false:
 
   doAssert hasMyAttr(TObj)
 
+
+# bug #11415
+template noserialize() {.pragma.}
+
+type
+  Point[T] = object
+    x, y: T
+
+  ReplayEventKind = enum
+    FoodAppeared, FoodEaten, DirectionChanged
+
+  ReplayEvent = object
+    case kind: ReplayEventKind
+    of FoodEaten, FoodAppeared: # foodPos is in multiple branches
+      foodPos {.noserialize.}: Point[float]
+    of DirectionChanged:
+      playerPos: float
+let ev = ReplayEvent(
+    kind: FoodEaten,
+    foodPos: Point[float](x: 5.0, y: 1.0)
+  )
+
+doAssert ev.foodPos.hasCustomPragma(noserialize)
+
+
 when false:
   # misc
   {.pragma: haha.}
