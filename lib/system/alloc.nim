@@ -108,7 +108,8 @@ type
     next: ptr HeapLinks
 
   MemRegion = object
-    minLargeObj, maxLargeObj: int
+    when not defined(gcDestructors):
+      minLargeObj, maxLargeObj: int
     freeSmallChunks: array[0..SmallChunkSize div MemAlign-1, PSmallChunk]
     flBitmap: uint32
     slBitmap: array[RealFli, uint32]
@@ -121,7 +122,8 @@ type
       root, deleted, last, freeAvlNodes: PAvlNode
     locked, blockChunkSizeIncrease: bool # if locked, we cannot free pages.
     nextChunkSize: int
-    bottomData: AvlNode
+    when not defined(gcDestructors):
+      bottomData: AvlNode
     heapLinks: HeapLinks
     when defined(nimTypeNames):
       allocCounter, deallocCounter: int
