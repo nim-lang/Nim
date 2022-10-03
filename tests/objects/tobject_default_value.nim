@@ -132,18 +132,6 @@ template main {.dirty.} =
     doAssert createABC().w == 20
 
   block:
-    var x: ObjectBase
-    doAssert x.value == 12
-    let y = default(ObjectBase)
-    doAssert y.value == 12
-
-    proc hello(): ObjectBase =
-      discard
-
-    let z = hello()
-    doAssert z.value == 12
-  
-  block:
     var x = new ObjectBase
     doAssert x.value == 12
 
@@ -177,15 +165,6 @@ template main {.dirty.} =
     doAssert x.value == 12
     doAssert x.time == 1.2
     doAssert x.scale == 1
-
-    proc hello(): Object =
-      var dummy = 1
-      dummy += 18
-
-    let h1 = hello()
-    doAssert h1.value == 12
-    doAssert h1.time == 1.2
-    doAssert h1.scale == 1
 
     let y = default(Object)
     doAssert y.value == 12
@@ -369,13 +348,6 @@ template main {.dirty.} =
         of Yellow:
           time3 = 1.8'f32
           him: int
-    block:
-      proc check: ObjectVarint3 =
-        discard
-      var x = check()
-      doAssert x.kind == Blue
-      doAssert x.name == Blue
-      doAssert x.go == 12
 
     block:
       var x: ObjectVarint3
@@ -388,28 +360,6 @@ template main {.dirty.} =
       doAssert x.kind == Blue
       doAssert x.name == Red
       doAssert x.temp == 99
-
-  block:
-    type
-      Default = object
-        id: int = 1
-
-    proc hello[T](): array[10, T] =
-      let x = 1
-      doAssert result[0].id == x
-
-    doAssert hello[Default]()[^1].id == 1
-
-  block:
-    type
-      Default = tuple
-        id: int = 1
-
-      Default2 = tuple[id: int = 1]
-
-    var x: Default
-    proc hello(): Default2 = discard
-    doAssert hello().id == x.id
 
   block:
     type

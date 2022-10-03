@@ -1650,20 +1650,6 @@ proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
       n.add newSymNode(c.p.resultSym)
     addParamOrResult(c, c.p.resultSym, owner)
 
-proc addDefaultFieldForResult(c: PContext, n: PNode, t: PType) =
-  if t != nil and n.len > resultPos and n[resultPos] != nil and
-                                c.config.cmd notin cmdDocLike:
-    var field = defaultNodeField(c, n[resultPos])
-    if field != nil:
-      field = semExpr(c, field)
-      if n[bodyPos].kind in {nkStmtList, nkStmtListExpr}:
-        n[bodyPos].sons.insert(newTree(nkAsgn, n[resultPos], field), 0)
-      else:
-        var bodyWithDefaultResult = newNodeIT(nkStmtList, n.info, nil)
-        bodyWithDefaultResult.add newTree(nkAsgn, n[resultPos], field)
-        bodyWithDefaultResult.add n[bodyPos]
-        n[bodyPos] = bodyWithDefaultResult
-
 proc semProcAnnotation(c: PContext, prc: PNode;
                        validPragmas: TSpecialWords): PNode =
   # Mirrored with semVarMacroPragma
@@ -1749,8 +1735,6 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   pushProcCon(c, s)
   addResult(c, n, n.typ[0], skProc)
   s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], n.typ[0]))
-  if s.kind notin {skMacro, skTemplate} and s.magic == mNone and sfNoInit notin s.flags:
-    addDefaultFieldForResult(c, n, n.typ[0])
   trackProc(c, s, s.ast[bodyPos])
   popProcCon(c)
   popOwner(c)
@@ -2173,8 +2157,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         pushProcCon(c, s)
         addResult(c, n, s.typ[0], skProc)
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], s.typ[0]))
-        if s.kind notin {skMacro, skTemplate} and s.magic == mNone and sfNoInit notin s.flags:
-          addDefaultFieldForResult(c, n, s.typ[0])
         trackProc(c, s, s.ast[bodyPos])
         popProcCon(c)
       elif efOperand notin flags:
@@ -2196,8 +2178,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
             nil
         # semantic checking also needed with importc in case used in VM
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
-        if s.kind notin {skMacro, skTemplate} and s.magic == mNone and sfNoInit notin s.flags:
-          addDefaultFieldForResult(c, n, s.typ[0])
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
         trackProc(c, s, s.ast[bodyPos])
