@@ -1,5 +1,5 @@
 discard """
-  matrix: "-d:nimPreviewRangeDefault; -d:nimPreviewRangeDefault --warningAsError:ProveInit --mm:orc"
+  matrix: "-d:nimPreviewRangeDefault --mm:refc; -d:nimPreviewRangeDefault --warningAsError:ProveInit --mm:orc"
   targets: "c cpp js"
 """
 
@@ -443,6 +443,21 @@ template main {.dirty.} =
         doAssert x.def.id == 777
         doAssert x.def.obj == default(ObjectBase)
         doAssert x.def.name == "fine"
+
+  block:
+    var x {.noinit.} = 12
+    doAssert x == 12
+
+    type
+      Pure = object
+        id: int = 12
+
+    var y {.noinit.}: Pure
+    doAssert y.id == 0
+
+    var z {.noinit.}: Pure = Pure(id: 77)
+    doAssert z.id == 77
+
 
 proc main1 =
   var my = @[1, 2, 3, 4, 5]
