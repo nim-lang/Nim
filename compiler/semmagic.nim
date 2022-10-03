@@ -389,7 +389,7 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
     if sameTypeOrNil(n.typ, old):
       result.typ = fresh
     if n.kind == nkSym and n.sym == oldParam:
-        result.sym = newParam
+      result.sym = newParam
     for i in 0 ..< safeLen(n):
       result[i] = transform(c, n[i], old, fresh, oldParam, newParam)
     #if n.kind == nkDerefExpr and sameType(n[0].typ, old):
