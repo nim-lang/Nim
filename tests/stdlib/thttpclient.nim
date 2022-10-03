@@ -14,6 +14,8 @@ from net import TimeoutError
 
 import nativesockets, os, httpclient, asyncdispatch
 
+import std/[assertions, syncio]
+
 const manualTests = false
 
 proc makeIPv6HttpServer(hostname: string, port: Port,

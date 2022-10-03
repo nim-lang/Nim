@@ -508,7 +508,8 @@ type
                        # the flag is applied to proc default values and to calls
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
     nfLastRead  # this node is a last read
-    nfFirstWrite# this node is a first write
+    nfFirstWrite # this node is a first write
+    nfFirstWrite2 # alternative first write implementation
     nfHasComment # node has a comment
 
   TNodeFlags* = set[TNodeFlag]
@@ -1075,7 +1076,8 @@ const
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
-                                      nfExecuteOnReload, nfLastRead, nfFirstWrite}
+                                      nfExecuteOnReload, nfLastRead,
+                                      nfFirstWrite, nfFirstWrite2}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1233,6 +1235,25 @@ proc getDeclPragma*(n: PNode): PNode =
   if result != nil:
     assert result.kind == nkPragma, $(result.kind, n.kind)
 
+proc extractPragma*(s: PSym): PNode =
+  ## gets the pragma node of routine/type/var/let/const symbol `s`
+  if s.kind in routineKinds:
+    result = s.ast[pragmasPos]
+  elif s.kind in {skType, skVar, skLet, skConst}:
+    if s.ast != nil and s.ast.len > 0:
+      if s.ast[0].kind == nkPragmaExpr and s.ast[0].len > 1:
+        # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
+        result = s.ast[0][1]
+  assert result == nil or result.kind == nkPragma
+
+proc skipPragmaExpr*(n: PNode): PNode =
+  ## if pragma expr, give the node the pragmas are applied to,
+  ## otherwise give node itself
+  if n.kind == nkPragmaExpr:
+    result = n[0]
+  else:
+    result = n
+
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
@@ -1321,7 +1342,7 @@ proc newSym*(symKind: TSymKind, name: PIdent, id: ItemId, owner: PSym,
 
 proc astdef*(s: PSym): PNode =
   # get only the definition (initializer) portion of the ast
-  if s.ast != nil and s.ast.kind == nkIdentDefs:
+  if s.ast != nil and s.ast.kind in {nkIdentDefs, nkConstDef}:
     s.ast[2]
   else:
     s.ast

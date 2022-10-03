@@ -1,5 +1,6 @@
+import std/[stats, assertions]
 import std/math
-import std/stats
+
 
 func `~=`(x, y: float32): bool =
   math.almostEqual(x, y)

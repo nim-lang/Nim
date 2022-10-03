@@ -304,6 +304,10 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
                    conf.configVars, filename.string,
                    docgenFindFile, compilerMsgHandler)
 
+  if conf.configVars.hasKey("doc.googleAnalytics") and
+      conf.configVars.hasKey("doc.plausibleAnalytics"):
+    doAssert false, "Either use googleAnalytics or plausibleAnalytics"
+
   if conf.configVars.hasKey("doc.googleAnalytics"):
     result.analytics = """
 <script>
@@ -317,6 +321,10 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
 
 </script>
     """ % [conf.configVars.getOrDefault"doc.googleAnalytics"]
+  elif conf.configVars.hasKey("doc.plausibleAnalytics"):
+    result.analytics = """
+    <script defer data-domain="$1" src="https://plausible.io/js/plausible.js"></script>
+    """ % [conf.configVars.getOrDefault"doc.plausibleAnalytics"]
   else:
     result.analytics = ""
 

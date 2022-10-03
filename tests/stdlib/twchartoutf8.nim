@@ -2,12 +2,15 @@ discard """
   output: '''OK'''
 """
 
+import std/[syncio, assertions]
+
 #assume WideCharToMultiByte always produce correct result
 #windows only
 
 when not defined(windows):
   echo "OK"
 else:
+  import std/widestrs
   {.push gcsafe.}
 
   const CP_UTF8 = 65001'i32

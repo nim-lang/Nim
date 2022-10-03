@@ -3,6 +3,7 @@ discard """
 """
 
 import std/[lists, sequtils]
+import std/assertions
 
 const
   data = [1, 2, 3, 4, 5, 6]

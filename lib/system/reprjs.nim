@@ -8,6 +8,9 @@
 #
 # The generic ``repr`` procedure for the javascript backend.
 
+when defined(nimPreviewSlimSystem):
+  import std/formatfloat
+
 proc reprInt(x: int64): string {.compilerproc.} = $x
 proc reprFloat(x: float): string {.compilerproc.} = $x
 

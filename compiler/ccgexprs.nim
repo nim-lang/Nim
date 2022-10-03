@@ -2189,6 +2189,11 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
     elif etyp.kind == tyBool and srcTyp.kind in IntegralTypes:
       putIntoDest(p, d, e, "(($1) != 0)" % [rdCharLoc(a)], a.storage)
     else:
+      if etyp.kind == tyPtr:
+        # generates the definition of structs for casts like cast[ptr object](addr x)[]
+        let internalType = etyp.skipTypes({tyPtr})
+        if internalType.kind == tyObject:
+          discard getTypeDesc(p.module, internalType)
       putIntoDest(p, d, e, "(($1) ($2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
 
@@ -2247,8 +2252,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
       cgsym(p.module, raiser)
 
       let boundaryCast =
-        if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64} or
-            (n0t.sym != nil and sfSystemModule in n0t.sym.owner.flags and n0t.sym.name.s == "csize"):
+        if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64}:
           "(NI64)"
         else:
           ""
@@ -2851,7 +2855,7 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   useHeader(m, sym)
   if sym.loc.k == locNone:
     fillBackendName(p.module, sym)
-    fillLoc(sym.loc, locData, sym.ast, OnStatic)
+    fillLoc(sym.loc, locData, sym.astdef, OnStatic)
   if m.hcrOn: incl(sym.loc.flags, lfIndirect)
   result = lfNoDecl notin sym.loc.flags
 
@@ -2877,7 +2881,7 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
   var data = newRopeAppender()
   data.addf("N_LIB_PRIVATE NIM_CONST $1 $2 = ",
            [getTypeDesc(q, sym.typ), actualConstName])
-  genBracedInit(q.initProc, sym.ast, isConst = true, sym.typ, data)
+  genBracedInit(q.initProc, sym.astdef, isConst = true, sym.typ, data)
   data.addf(";$n", [])
   q.s[cfsData].add data
   if q.hcrOn:
@@ -2937,7 +2941,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skConst:
       if isSimpleConst(sym.typ):
         var lit = newRopeAppender()
-        genLiteral(p, sym.ast, sym.typ, lit)
+        genLiteral(p, sym.astdef, sym.typ, lit)
         putIntoDest(p, d, n, lit, OnStatic)
       elif useAliveDataFromDce in p.module.flags:
         genConstHeader(p.module, p.module, p, sym)

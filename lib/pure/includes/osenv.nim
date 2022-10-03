@@ -43,6 +43,8 @@ when not defined(nimscript):
   else:
 
     when defined(windows):
+      when defined(nimPreviewSlimSystem):
+        import std/widestrs
       proc c_putenv(envstring: cstring): cint {.importc: "_putenv", header: "<stdlib.h>".}
       from std/private/win_setenv import setEnvImpl
       proc c_wgetenv(varname: WideCString): WideCString {.importc: "_wgetenv",

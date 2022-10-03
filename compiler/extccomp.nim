@@ -155,7 +155,7 @@ compiler vcc:
     compileTmpl: "/c$vccplatform $options $include /nologo /Fo$objfile $file",
     buildGui: " /SUBSYSTEM:WINDOWS user32.lib ",
     buildDll: " /LD",
-    buildLib: "lib /OUT:$libfile $objfiles",
+    buildLib: "vccexe --command:lib$vccplatform /nologo /OUT:$libfile $objfiles",
     linkerExe: "cl",
     linkTmpl: "$builddll$vccplatform /Fe$exefile $objfiles $buildgui /nologo $options",
     includeCmd: " /I",
@@ -676,7 +676,8 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
     if removeStaticFile:
       removeFile output # fixes: bug #16947
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(output),
-                                            "objfiles", objfiles]
+                                            "objfiles", objfiles,
+                                            "vccplatform", vccplatform(conf)]
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
     if linkerExe.len == 0: linkerExe = getLinkerExe(conf, conf.cCompiler)

@@ -290,6 +290,21 @@ proc makeJSString(s: string, escapeNonAscii = true): Rope =
   else:
     result = escapeJSString(s).rope
 
+proc makeJsNimStrLit(s: string): Rope =
+  var x = newStringOfCap(4*s.len+1)
+  x.add "["
+  var i = 0
+  if i < s.len:
+    x.addInt int64(s[i])
+    inc i
+  while i < s.len:
+    x.add ","
+    x.addInt int64(s[i])
+    inc i
+  x.add "]"
+  result = rope(x)
+
+
 include jstypes
 
 proc gen(p: PProc, n: PNode, r: var TCompRes)
@@ -315,7 +330,9 @@ proc isSimpleExpr(p: PProc; n: PNode): bool =
   # calls all the way down --> can stay expression based
   case n.kind
   of nkCallKinds, nkBracketExpr, nkDotExpr, nkPar, nkTupleConstr,
-    nkObjConstr, nkBracket, nkCurly:
+    nkObjConstr, nkBracket, nkCurly,
+    nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr,
+    nkConv, nkHiddenStdConv, nkHiddenSubConv:
     for c in n:
       if not p.isSimpleExpr(c): return false
     result = true
@@ -1467,7 +1484,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
     if s.loc.r == "":
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
     if sfCompileTime in s.flags:
-      genVarInit(p, s, if s.ast != nil: s.ast else: newNodeI(nkEmpty, s.info))
+      genVarInit(p, s, if s.astdef != nil: s.astdef else: newNodeI(nkEmpty, s.info))
     if s.kind == skParam:
       genCopyForParamIfNeeded(p, n)
     let k = mapType(p, s.typ)
@@ -1928,8 +1945,8 @@ proc genVarStmt(p: PProc, n: PNode) =
 proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):
     let oldBody = move p.body
-    #genLineDir(p, c.ast)
-    genVarInit(p, c, c.ast)
+    #genLineDir(p, c.astdef)
+    genVarInit(p, c, c.astdef)
     p.g.constants.add(p.body)
     p.body = oldBody
 
@@ -2605,11 +2622,11 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.kind = resExpr
   of nkStrLit..nkTripleStrLit:
     if skipTypes(n.typ, abstractVarRange).kind == tyString:
-      if n.strVal.len != 0:
+      if n.strVal.len <= 64:
+        r.res = makeJsNimStrLit(n.strVal)
+      else:
         useMagic(p, "makeNimstrLit")
         r.res = "makeNimstrLit($1)" % [makeJSString(n.strVal)]
-      else:
-        r.res = rope"[]"
     else:
       r.res = makeJSString(n.strVal, false)
     r.kind = resExpr

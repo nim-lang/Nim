@@ -1,6 +1,10 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm, sequtils
+import std/[os, strutils, osproc, sets, pathnorm, sequtils]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # XXX: Remove this feature check once the csources supports it.
 when defined(nimHasCastPragmaBlocks):
   import std/pegs
@@ -9,6 +13,7 @@ import "../compiler/nimpaths"
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
+  paCode* = " --doc.plausibleAnalytics:nim-lang.org"
   # errormax: subsequent errors are probably consequences of 1st one; a simple
   # bug could cause unlimited number of errors otherwise, hard to debug in CI.
   docDefines = "-d:nimExperimentalLinenoiseExtra"
@@ -190,8 +195,9 @@ proc getDocList(): seq[string] =
 lib/system/nimscript.nim
 lib/system/assertions.nim
 lib/system/iterators.nim
+lib/system/exceptions.nim
 lib/system/dollars.nim
-lib/system/widestrs.nim
+lib/system/ctypes.nim
 """.splitWhitespace()
 
   proc follow(a: PathEntry): bool =
