@@ -1076,43 +1076,30 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
         it = it.next
 
   when hasThreadSupport:
-    proc addSysExitProc(quitProc: proc() {.noconv.}) {.importc: "atexit", header: "<stdlib.h>".}
-
     var sharedHeap: MemRegion
-    var heapLock: SysLock
-    initSysLock(heapLock)
-    addSysExitProc(proc() {.noconv.} = deinitSys(heapLock))
 
   proc getFreeMem(): int =
     #sysAssert(result == countFreeMem())
     when hasThreadSupport and defined(gcDestructors):
-      acquireSys(heapLock)
       result = sharedHeap.freeMem
-      releaseSys(heapLock)
     else:
       result = allocator.freeMem
 
   proc getTotalMem(): int =
     when hasThreadSupport and defined(gcDestructors):
-      acquireSys(heapLock)
       result = sharedHeap.currMem.loada
-      releaseSys(heapLock)
     else:
       result = allocator.currMem.loada
 
   proc getOccupiedMem(): int =
     when hasThreadSupport and defined(gcDestructors):
-      acquireSys(heapLock)
       result = sharedHeap.occ
-      releaseSys(heapLock)
     else:
       result = allocator.occ #getTotalMem() - getFreeMem()
 
   proc getMaxMem*(): int =
     when hasThreadSupport and defined(gcDestructors):
-      acquireSys(heapLock)
       result = getMaxMem(sharedHeap)
-      releaseSys(heapLock)
     else:
       result = getMaxMem(allocator)
 
@@ -1123,9 +1110,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
 
   proc allocSharedImpl(size: Natural): pointer =
     when hasThreadSupport:
-      acquireSys(heapLock)
       result = alloc(sharedHeap, size)
-      releaseSys(heapLock)
     else:
       result = allocImpl(size)
 
@@ -1135,33 +1120,25 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
 
   proc deallocSharedImpl(p: pointer) =
     when hasThreadSupport:
-      acquireSys(heapLock)
       dealloc(sharedHeap, p)
-      releaseSys(heapLock)
     else:
       deallocImpl(p)
 
   proc reallocSharedImpl(p: pointer, newSize: Natural): pointer =
     when hasThreadSupport:
-      acquireSys(heapLock)
       result = realloc(sharedHeap, p, newSize)
-      releaseSys(heapLock)
     else:
       result = reallocImpl(p, newSize)
 
   proc reallocShared0Impl(p: pointer, oldSize, newSize: Natural): pointer =
     when hasThreadSupport:
-      acquireSys(heapLock)
       result = realloc0(sharedHeap, p, oldSize, newSize)
-      releaseSys(heapLock)
     else:
       result = realloc0Impl(p, oldSize, newSize)
 
   when hasThreadSupport:
     template sharedMemStatsShared(v: int) =
-      acquireSys(heapLock)
       result = v
-      releaseSys(heapLock)
 
     proc getFreeSharedMem(): int =
       sharedMemStatsShared(sharedHeap.freeMem)
