@@ -470,13 +470,17 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
       else:
         let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), nextSymId c.idgen, fin.owner, fin.info)
         let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, nextSymId c.idgen))
+        selfSymNode.typ = fin.typ[1]
         wrapperSym.flags.incl sfUsed
+
         let wrapper = c.semExpr(c, newProcNode(nkProcDef, fin.info, body = newTree(nkCall, newSymNode(fin), selfSymNode),
           params = nkFormalParams.newTree(c.graph.emptyNode,
-                  newTree(nkIdentDefs, selfSymNode, fin.ast[paramsPos][1][1], c.graph.emptyNode)
+                  newTree(nkIdentDefs, selfSymNode, newNodeIT(nkType,
+                  fin.ast[paramsPos][1][1].info, fin.typ[1]), c.graph.emptyNode)
                   ),
-          name = newSymNode(wrapperSym), pattern = c.graph.emptyNode,
-          genericParams = c.graph.emptyNode, pragmas = c.graph.emptyNode, exceptions = c.graph.emptyNode), {})
+          name = newSymNode(wrapperSym), pattern = fin.ast[patternPos],
+          genericParams = fin.ast[genericParamsPos], pragmas = fin.ast[pragmasPos], exceptions = fin.ast[miscPos]), {})
+
         var transFormedSym = turnFinalizerIntoDestructor(c, wrapperSym, wrapper.info)
         transFormedSym.owner = fin
         if c.config.backend == backendCpp or sfCompileToCpp in c.module.flags:
