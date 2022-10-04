@@ -12,7 +12,7 @@
 ##
 ## Unstable API.
 import std/private/since
-import std/[tables, strutils, parseutils, uri]
+import std/[tables, strutils, parseutils]
 
 type
   HttpHeaders* = ref object
@@ -52,7 +52,10 @@ type
 
 
 since (1, 7):
-  type PreparedRequest* = tuple[httpMethod: HttpMethod, url: Uri, headers: seq[(string, string)], body: string]
+
+  from std/uri import Uri
+
+  type PreparedRequest* = object
     ## Represents an HTTP request prepared to be sent "over-the-wire" by an HTTP client,
     ## this allows to use any API client with any HTTP client for any target.
     ##
@@ -101,6 +104,10 @@ since (1, 7):
     ##     respon: Response = yourhttpclient.someRequest(prepared)
     ##
     ##   echo respon.body  # Use the Response.
+    httpMethod*: HttpMethod
+    url*: Uri
+    headers*: seq[(string, string)]
+    body*: string
 
 
 const
