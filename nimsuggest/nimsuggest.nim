@@ -909,7 +909,8 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
 
     # ... and send first 100 results
     if res.len > 0:
-      for s in res[0 .. min(100, res.len - 1)]:
+      for i in 0 .. min(100, res.len - 1):
+        let s = res[i]
         graph.suggestResult(s.sym, s.info)
 
   of ideDeclaration:
