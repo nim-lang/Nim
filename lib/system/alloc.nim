@@ -1114,13 +1114,13 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
       result = v
 
     proc getFreeSharedMem(): int =
-      sharedMemStatsShared(sharedHeap.freeMem)
+      sharedMemStatsShared(allocator.freeMem)
 
     proc getTotalSharedMem(): int =
-      sharedMemStatsShared(sharedHeap.currMem.loada)
+      sharedMemStatsShared(allocator.currMem.loada)
 
     proc getOccupiedSharedMem(): int =
-      sharedMemStatsShared(sharedHeap.occ)
+      sharedMemStatsShared(allocator.occ)
       #sharedMemStatsShared(sharedHeap.currMem - sharedHeap.freeMem)
   {.pop.}
 
