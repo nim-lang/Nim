@@ -740,16 +740,16 @@ when defined(gcDestructors):
     # we split the list in order to achieve bounded response times.
     var it = c.freeList
     var x = 0
-    var maxIters = 20 # make it time-bounded
+    #var maxIters = 20 # make it time-bounded
     while it != nil:
-      if maxIters == 0:
-        let rest = it.next.loada
-        it.next = nil
-        addToSharedFreeList(c, rest)
-        break
+      #if maxIters == 0:
+      #  let rest = it.next.loada
+      #  it.next = nil
+      #  addToSharedFreeList(c, rest)
+      #  break
       inc x, size
       it = it.next
-      dec maxIters
+      #dec maxIters
     inc(c.free, x)
     dec(a.occ, x)
 
