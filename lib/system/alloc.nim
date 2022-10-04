@@ -1075,33 +1075,18 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
         inc(result, it.size)
         it = it.next
 
-  when hasThreadSupport:
-    var sharedHeap: MemRegion
-
   proc getFreeMem(): int =
     #sysAssert(result == countFreeMem())
-    when hasThreadSupport and defined(gcDestructors):
-      result = sharedHeap.freeMem
-    else:
-      result = allocator.freeMem
+    result = allocator.freeMem
 
   proc getTotalMem(): int =
-    when hasThreadSupport and defined(gcDestructors):
-      result = sharedHeap.currMem.loada
-    else:
-      result = allocator.currMem.loada
+    result = allocator.currMem.loada
 
   proc getOccupiedMem(): int =
-    when hasThreadSupport and defined(gcDestructors):
-      result = sharedHeap.occ
-    else:
-      result = allocator.occ #getTotalMem() - getFreeMem()
+    result = allocator.occ #getTotalMem() - getFreeMem()
 
   proc getMaxMem*(): int =
-    when hasThreadSupport and defined(gcDestructors):
-      result = getMaxMem(sharedHeap)
-    else:
-      result = getMaxMem(allocator)
+    result = getMaxMem(allocator)
 
   when defined(nimTypeNames):
     proc getMemCounters*(): (int, int) = getMemCounters(allocator)
@@ -1109,32 +1094,20 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
   # -------------------- shared heap region ----------------------------------
 
   proc allocSharedImpl(size: Natural): pointer =
-    when hasThreadSupport:
-      result = alloc(sharedHeap, size)
-    else:
-      result = allocImpl(size)
+    result = allocImpl(size)
 
   proc allocShared0Impl(size: Natural): pointer =
     result = allocSharedImpl(size)
     zeroMem(result, size)
 
   proc deallocSharedImpl(p: pointer) =
-    when hasThreadSupport:
-      dealloc(sharedHeap, p)
-    else:
-      deallocImpl(p)
+    deallocImpl(p)
 
   proc reallocSharedImpl(p: pointer, newSize: Natural): pointer =
-    when hasThreadSupport:
-      result = realloc(sharedHeap, p, newSize)
-    else:
-      result = reallocImpl(p, newSize)
+    result = reallocImpl(p, newSize)
 
   proc reallocShared0Impl(p: pointer, oldSize, newSize: Natural): pointer =
-    when hasThreadSupport:
-      result = realloc0(sharedHeap, p, oldSize, newSize)
-    else:
-      result = realloc0Impl(p, oldSize, newSize)
+    result = realloc0Impl(p, oldSize, newSize)
 
   when hasThreadSupport:
     template sharedMemStatsShared(v: int) =
