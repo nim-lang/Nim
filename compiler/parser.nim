@@ -1960,16 +1960,12 @@ proc parseObjectCase(p: var Parser): PNode =
   #| objectBranches = objectBranch (IND{=} objectBranch)*
   #|                       (IND{=} 'elif' expr colcom objectPart)*
   #|                       (IND{=} 'else' colcom objectPart)?
-  #| objectCase = 'case' identWithPragma ':' typeDesc ':'? COMMENT?
+  #| objectCase = 'case' declColonEquals ':'? COMMENT?
   #|             (IND{>} objectBranches DED
   #|             | IND{=} objectBranches)
   result = newNodeP(nkRecCase, p)
   getTokNoInd(p)
-  var a = newNodeP(nkIdentDefs, p)
-  a.add(identWithPragma(p))
-  eat(p, tkColon)
-  a.add(parseTypeDesc(p))
-  a.add(p.emptyNode)
+  var a = parseIdentColonEquals(p, {withPragma})
   result.add(a)
   if p.tok.tokType == tkColon: getTok(p)
   flexComment(p, result)

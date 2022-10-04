@@ -24,6 +24,9 @@
 
 include "system/basic_types"
 
+func zeroDefault*[T](_: typedesc[T]): T {.magic: "ZeroDefault".} =
+  ## returns the default value of the type `T`.
+
 include "system/compilation"
 
 {.push warning[GcMem]: off, warning[Uninit]: off.}
@@ -910,6 +913,7 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
     var a3 = Foo.default # this works, but generates a `UnsafeDefault` warning.
   # note: the doc comment also explains why `default` can't be implemented
   # via: `template default*[T](t: typedesc[T]): T = (var v: T; v)`
+
 
 proc reset*[T](obj: var T) {.noSideEffect.} =
   ## Resets an object `obj` to its default value.
@@ -2753,3 +2757,8 @@ when notJSnotNims and not defined(nimSeqsV2):
       moveMem(addr y[0], addr x[0], x.len)
       assert y == "abcgh"
     discard
+
+proc arrayWith*[T](y: T, size: static int): array[size, T] {.noinit.} = # ? exempt from default value for result
+  ## Creates a new array filled with `y`.
+  for i in 0..size-1:
+    result[i] = y
