@@ -65,7 +65,7 @@ proc main =
         echo "got ", x, ", but expected ", iters - i
     echo b2.len
 
-  when false:
+  when true:
     var b2 = initBTree[int, string]()
     var t2 = initTable[int, string]()
     const iters = 100_000
