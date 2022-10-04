@@ -197,6 +197,14 @@
 ##    let myProxy = newProxy("http://myproxy.network")
 ##    let client = newHttpClient(proxy = myProxy)
 ##
+## Use proxies with basic authentication:
+##
+## .. code-block:: Nim
+##    import std/httpclient
+##    
+##    let myProxy = newProxy("http://myproxy.network", auth="user:password")
+##    let client = newHttpClient(proxy = myProxy)
+##
 ## Get Proxy URL from environment variables:
 ##
 ## .. code-block:: Nim
