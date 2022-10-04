@@ -620,12 +620,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     s = semIdentVis(c, skTemplate, n[namePos], {})
   assert s.kind == skTemplate
 
-  if s.owner != nil:
-    const names = ["!=", ">=", ">", "incl", "excl", "in", "notin", "isnot"]
-    if sfSystemModule in s.owner.flags and s.name.s in names or
-       s.owner.name.s == "vm" and s.name.s == "stackTrace":
-      incl(s.flags, sfCallsite)
-
   styleCheckDef(c, s)
   onDef(n[namePos].info, s)
   # check parameter list:

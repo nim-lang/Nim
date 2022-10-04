@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim check --showAllMismatches:on --mm:refc --hints:off $file"
+  cmd: "nim check --mm:refc --showAllMismatches:on --hints:off $file"
   nimout: '''
 tsigmatch.nim(111, 4) Error: type mismatch: got <A, string>
 but expected one of:
