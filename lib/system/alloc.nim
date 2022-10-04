@@ -133,7 +133,7 @@ template smallChunkOverhead(): untyped = sizeof(SmallChunk)
 template bigChunkOverhead(): untyped = sizeof(BigChunk)
 
 when hasThreadSupport:
-  template loada(x: untyped): untyped = atomicLoadN(addr x, ATOMIC_RELAXED)
+  template loada(x: untyped): untyped = atomicLoadN(unsafeAddr x, ATOMIC_RELAXED)
 else:
   template loada(x: untyped): untyped = x
 
