@@ -40,5 +40,6 @@ switch("define", "nimPreviewFloatRoundtrip")
 switch("define", "nimPreviewDotLikeOps")
 switch("define", "nimPreviewJsonutilsHoleyEnum")
 switch("define", "nimPreviewHashRef")
+switch("define", "nimPreviewRangeDefault")
 when defined(windows):
   switch("tlsEmulation", "off")

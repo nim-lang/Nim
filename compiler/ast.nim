@@ -509,8 +509,8 @@ type
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
     nfLastRead  # this node is a last read
     nfFirstWrite # this node is a first write
-    nfFirstWrite2 # alternative first write implementation
     nfHasComment # node has a comment
+    nfUseDefaultField # node has a default value (object constructor)
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 45)
@@ -713,7 +713,7 @@ type
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId, mPrivateAccess
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault
 
 
 const
@@ -1077,7 +1077,7 @@ const
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
-                                      nfFirstWrite, nfFirstWrite2}
+                                      nfFirstWrite}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
