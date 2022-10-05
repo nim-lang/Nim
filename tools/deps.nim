@@ -29,7 +29,7 @@ proc cloneDependency*(destDirBase: string, url: string, commit = commitHead,
   if not dirExists(destDir):
     # note: old code used `destDir / .git` but that wouldn't prevent git clone
     # from failing
-    execRetry fmt"git clone -q --depth 1 {url} {quotedDestDir}"
+    execRetry fmt"git clone -q {url} {quotedDestDir}"
   if isGitRepo(destDir):
     let oldDir = getCurrentDir()
     setCurrentDir(destDir)
