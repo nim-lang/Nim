@@ -499,7 +499,7 @@ proc buildDrNim(args: string) =
     execFold("build drnim", "nim c -o:$1 $2 drnim/drnim" % ["bin/drnim".exe, args])
   else:
     if not dirExists("dist/z3"):
-      exec("git clone -q --depth 1 https://github.com/Z3Prover/z3.git dist/z3")
+      exec("git clone -q https://github.com/Z3Prover/z3.git dist/z3")
       withDir("dist/z3"):
         exec("git fetch")
         exec("git checkout " & Z3StableCommit)
