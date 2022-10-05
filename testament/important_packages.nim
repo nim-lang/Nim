@@ -33,7 +33,7 @@ var packages*: seq[NimblePackage]
 proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailure = false) =
   packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead, allowFailure: allowFailure)
 
-pkg "alea", allowFailure = true
+pkg "alea"
 pkg "argparse"
 pkg "arraymancer", "nim c tests/tests_cpu.nim"
 pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim", allowFailure = true
@@ -125,7 +125,7 @@ pkg "patty"
 pkg "pixie"
 pkg "plotly", "nim c examples/all.nim"
 pkg "pnm"
-pkg "polypbren", allowFailure = true
+pkg "polypbren"
 pkg "prologue", "nimble tcompile"
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim"
 pkg "pylib"
