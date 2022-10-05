@@ -46,7 +46,6 @@ type
     module: PSym
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
-    nestedProcs: int         # > 0 if we are in a nested proc
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
     deferDetected, tooEarly: bool
     graph: ModuleGraph
@@ -104,9 +103,11 @@ proc transformSons(c: PTransf, n: PNode): PNode =
   for i in 0..<n.len:
     result[i] = transform(c, n[i])
 
-proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode): PNode =
+proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode; isFirstWrite: bool): PNode =
   result = newTransNode(kind, ri.info, 2)
   result[0] = le
+  if isFirstWrite:
+    le.flags.incl nfFirstWrite
   result[1] = ri
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
@@ -365,9 +366,9 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     case lhs.kind
     of nkSym:
       internalAssert c.graph.config, lhs.sym.kind == skForVar
-      result = newAsgnStmt(c, nkFastAsgn, lhs, rhs)
+      result = newAsgnStmt(c, nkFastAsgn, lhs, rhs, false)
     of nkDotExpr:
-      result = newAsgnStmt(c, nkAsgn, lhs, rhs)
+      result = newAsgnStmt(c, nkAsgn, lhs, rhs, false)
     else:
       internalAssert c.graph.config, false
   result = newTransNode(nkStmtList, n.info, 0)
@@ -734,7 +735,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, t, formal.info)
       addVar(v, temp)
-      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
+      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
       idNodeTablePut(newC.mapping, formal, temp)
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind in {tyVar})
@@ -744,7 +745,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       # arrays will deep copy here (pretty bad).
       var temp = newTemp(c, arg.typ, formal.info)
       addVar(v, temp)
-      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
+      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
       idNodeTablePut(newC.mapping, formal, temp)
 
   let body = transformBody(c.graph, c.idgen, iter, true)
@@ -1059,6 +1060,13 @@ proc transform(c: PTransf, n: PNode): PNode =
       result = n
   of nkExceptBranch:
     result = transformExceptBranch(c, n)
+  of nkObjConstr:
+    result = n
+    if result.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject or
+       result.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyRef and result.typ.skipTypes({tyGenericInst, tyAlias, tySink})[0].kind == tyObject:
+      result.sons.add result[0].sons
+      result[0] = newNodeIT(nkType, result.info, result.typ)
+    result = transformSons(c, result)
   of nkCheckedFieldExpr:
     result = transformSons(c, n)
     if result[0].kind != nkDotExpr:

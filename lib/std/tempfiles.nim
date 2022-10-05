@@ -30,6 +30,8 @@ const
 
 when defined(windows):
   import winlean
+  when defined(nimPreviewSlimSystem):
+    import std/widestrs
 
   var O_RDWR {.importc: "_O_RDWR", header: "<fcntl.h>".}: cint
 

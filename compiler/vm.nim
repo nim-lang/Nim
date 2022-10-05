@@ -75,8 +75,11 @@ proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int,
   let lineInfo = if lineInfo == TLineInfo.default: c.debug[pc] else: lineInfo
   liMessage(c.config, lineInfo, errGenerated, msg, action, infoOrigin)
 
+when not defined(nimHasCallsitePragma):
+  {.pragma: callsite.}
+
 template stackTrace(c: PCtx, tos: PStackFrame, pc: int,
-                    msg: string, lineInfo: TLineInfo = TLineInfo.default) =
+                    msg: string, lineInfo: TLineInfo = TLineInfo.default) {.callsite.} =
   stackTraceImpl(c, tos, pc, msg, lineInfo, instantiationInfo(-2, fullPaths = true))
   return
 

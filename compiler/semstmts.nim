@@ -225,7 +225,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
 
       if a.len == 2 and a[0].kind == nkBracket:
         # rewrite ``except [a, b, c]: body`` -> ```except a, b, c: body```
-        a.sons[0..0] = a[0].sons
+        a.sons[0..0] = move a[0].sons
 
       if a.len == 2 and a[0].isInfixAs():
         # support ``except Exception as ex: body``
@@ -574,9 +574,13 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
                 pragma(c, defs[lhsPos][namePos].sym, defs[lhsPos][pragmaPos], validPragmas)
         return result
 
-proc errorSymChoiceUseQualifier(c: PContext; n: PNode) =
+proc msgSymChoiceUseQualifier(c: PContext; n: PNode; note = errGenerated) =
   assert n.kind in nkSymChoices
-  var err = "ambiguous identifier: '" & $n[0] & "'"
+  var err =
+    if note == hintAmbiguousEnum:
+      "ambiguous enum field '$1' assumed to be of type $2, this will become an error in the future" % [$n[0], typeToString(n[0].typ)]
+    else:
+      "ambiguous identifier: '" & $n[0] & "'"
   var i = 0
   for child in n:
     let candidate = child.sym
@@ -584,7 +588,7 @@ proc errorSymChoiceUseQualifier(c: PContext; n: PNode) =
     else: err.add "\n"
     err.add "  " & candidate.owner.name.s & "." & candidate.name.s
     inc i
-  localError(c.config, n.info, errGenerated, err)
+  message(c.config, n.info, note, err)
 
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
@@ -608,11 +612,16 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var typFlags: TTypeAllowedFlags
 
     var def: PNode = c.graph.emptyNode
+    if a[^1].kind == nkEmpty and symkind == skVar and a[^2].typ != nil:
+      let field = defaultNodeField(c, a[^2])
+      if field != nil:
+        a[^1] = field
+        field.flags.incl nfUseDefaultField
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {}, typ)
 
-      if def.kind in nkSymChoices and def[0].typ.skipTypes(abstractInst).kind == tyEnum:
-        errorSymChoiceUseQualifier(c, def)
+      if def.kind in nkSymChoices and def[0].sym.kind == skEnumField:
+        msgSymChoiceUseQualifier(c, def, errGenerated)
       elif def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
       elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
@@ -676,6 +685,12 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addToVarSection(c, result, n, a)
         continue
       var v = semIdentDef(c, a[j], symkind, false)
+      if a[^1].kind != nkEmpty:
+        if {sfThread, sfNoInit} * v.flags != {} and
+                        nfUseDefaultField in a[^1].flags:
+          a[^1] = c.graph.emptyNode
+          def = c.graph.emptyNode
+        a[^1].flags.excl nfUseDefaultField
       styleCheckDef(c, v)
       onDef(a[j].info, v)
       if sfGenSym notin v.flags:
@@ -849,6 +864,9 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var iterAfterVarLent = iter.skipTypes({tyGenericInst, tyAlias, tyLent, tyVar})
   # n.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
+  if iterAfterVarLent.kind == tyEmpty:
+    localError(c.config, n[^2].info, "cannot infer element type of $1" %
+               renderTree(n[^2], {renderNoComments}))
   if iterAfterVarLent.kind != tyTuple or n.len == 3:
     if n.len == 3:
       if n[0].kind == nkVarTuple:
@@ -2331,11 +2349,6 @@ proc evalInclude(c: PContext, n: PNode): PNode =
     else:
       incMod(c, n, it, result)
 
-proc setLine(n: PNode, info: TLineInfo) =
-  if n != nil:
-    for i in 0..<n.safeLen: setLine(n[i], info)
-    n.info = info
-
 proc recursiveSetFlag(n: PNode, flag: TNodeFlag) =
   if n != nil:
     for i in 0..<n.safeLen: recursiveSetFlag(n[i], flag)
@@ -2364,7 +2377,7 @@ proc semPragmaBlock(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   result.typ = n[1].typ
   for i in 0..<pragmaList.len:
     case whichPragma(pragmaList[i])
-    of wLine: setLine(result, pragmaList[i].info)
+    of wLine: setInfoRecursive(result, pragmaList[i].info)
     of wNoRewrite: recursiveSetFlag(result, nfNoRewrite)
     else: discard
 

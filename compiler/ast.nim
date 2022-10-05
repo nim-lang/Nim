@@ -508,8 +508,9 @@ type
                        # the flag is applied to proc default values and to calls
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
     nfLastRead  # this node is a last read
-    nfFirstWrite# this node is a first write
+    nfFirstWrite # this node is a first write
     nfHasComment # node has a comment
+    nfUseDefaultField # node has a default value (object constructor)
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 45)
@@ -712,7 +713,7 @@ type
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId, mPrivateAccess
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault
 
 
 const
@@ -1075,7 +1076,8 @@ const
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
-                                      nfExecuteOnReload, nfLastRead, nfFirstWrite}
+                                      nfExecuteOnReload, nfLastRead,
+                                      nfFirstWrite}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1251,6 +1253,12 @@ proc skipPragmaExpr*(n: PNode): PNode =
     result = n[0]
   else:
     result = n
+
+proc setInfoRecursive*(n: PNode, info: TLineInfo) =
+  ## set line info recursively
+  if n != nil:
+    for i in 0..<n.safeLen: setInfoRecursive(n[i], info)
+    n.info = info
 
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968

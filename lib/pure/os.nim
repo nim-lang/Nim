@@ -968,6 +968,9 @@ proc getCacheDir*(app: string): string =
 when defined(windows):
   type DWORD = uint32
 
+  when defined(nimPreviewSlimSystem):
+    import std/widestrs
+
   proc getTempPath(
     nBufferLength: DWORD, lpBuffer: WideCString
   ): DWORD {.stdcall, dynlib: "kernel32.dll", importc: "GetTempPathW".} =
@@ -2291,11 +2294,12 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ##
   ## **Example:**
   ##
-  ## This directory structure::
-  ##   dirA / dirB / fileB1.txt
-  ##        / dirC
-  ##        / fileA1.txt
-  ##        / fileA2.txt
+  ## This directory structure:
+  ##
+  ##     dirA / dirB / fileB1.txt
+  ##          / dirC
+  ##          / fileA1.txt
+  ##          / fileA2.txt
   ##
   ## and this code:
   runnableExamples("-r:off"):

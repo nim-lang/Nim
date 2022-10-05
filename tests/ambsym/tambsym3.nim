@@ -1,11 +1,14 @@
 discard """
-  errormsg: "ambiguous identifier"
+  errormsg: "ambiguous enum field"
   file: "tambsym3.nim"
-  line: 11
+  line: 14
 """
 # Test ambiguous symbols
 
 import mambsym1, times
+
+{.hint[AmbiguousEnum]: on.}
+{.hintAsError[AmbiguousEnum]: on.}
 
 var
   v = mDec #ERROR_MSG ambiguous identifier

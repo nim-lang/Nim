@@ -55,7 +55,7 @@ template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
 template `^^`(s, i: untyped): untyped =
   (when i is BackwardsIndex: s.len - int(i) else: int(i))
 
-template spliceImpl(s, a, L, b: untyped): untyped =
+template spliceImpl(s, a, L, b: typed): untyped =
   # make room for additional elements or cut:
   var shift = b.len - max(0,L)  # ignore negative slice size
   var newLen = s.len + shift
@@ -147,7 +147,6 @@ proc `[]=`*[T; U, V: Ordinal](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
     var s = @"abcdefgh"
     s[1 .. ^2] = @"xyz"
     assert s == @"axyzh"
-
   let a = s ^^ x.a
   let L = (s ^^ x.b) - a + 1
   if L == b.len:
