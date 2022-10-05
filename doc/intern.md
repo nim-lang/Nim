@@ -593,14 +593,14 @@ Integer literals
 In Nim, there is a redundant way to specify the type of an
 integer literal. First, it should be unsurprising that every
 node has a node kind. The node of an integer literal can be any of the
-following values::
+following values:
 
     nkIntLit, nkInt8Lit, nkInt16Lit, nkInt32Lit, nkInt64Lit,
     nkUIntLit, nkUInt8Lit, nkUInt16Lit, nkUInt32Lit, nkUInt64Lit
 
 On top of that, there is also the `typ` field for the type. The
 kind of the `typ` field can be one of the following ones, and it
-should be matching the literal kind::
+should be matching the literal kind:
 
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, tyUInt, tyUInt8,
     tyUInt16, tyUInt32, tyUInt64
@@ -656,7 +656,6 @@ pointing back to the integer literal node in the ast containing the
 integer value. These are the properties that hold true for integer
 literal types.
 
-::
     n.kind == nkIntLit
     n.typ.kind == tyInt
     n.typ.n == n

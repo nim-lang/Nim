@@ -790,9 +790,9 @@ be part of a single graph.
 Assignments like `a = b` "connect" two variables, both variables end up in the
 same graph `{a, b} = G(a) = G(b)`. Unfortunately, the pattern to look for is
 much more complex than that and can involve multiple assignment targets
-and sources::
+and sources:
 
-  f(x, y) = g(a, b)
+    f(x, y) = g(a, b)
 
 connects `x` and `y` to `a` and `b`: `G(x) = G(y) = G(a) = G(b) = {x, y, a, b}`.
 A type based alias analysis rules out some of these combinations, for example
@@ -1586,16 +1586,16 @@ all the arguments, but also the matched operators in reverse polish notation:
   ```
 
 This passes the expression `x + y * z - x` to the `optM` macro as
-an `nnkArgList` node containing::
+an `nnkArgList` node containing:
 
-  Arglist
-    Sym "x"
-    Sym "y"
-    Sym "z"
-    Sym "*"
-    Sym "+"
-    Sym "x"
-    Sym "-"
+    Arglist
+      Sym "x"
+      Sym "y"
+      Sym "z"
+      Sym "*"
+      Sym "+"
+      Sym "x"
+      Sym "-"
 
 (This is the reverse polish notation of `x + y * z - x`.)
 

@@ -241,13 +241,13 @@ found an ambiguity error is produced.
 
 However before the PATH is used the current directory is checked for the
 file's existence. So if PATH contains ``$lib`` and ``$lib/bar`` and the
-directory structure looks like this::
+directory structure looks like this:
 
-  $lib/x.nim
-  $lib/bar/x.nim
-  foo/x.nim
-  foo/main.nim
-  other.nim
+    $lib/x.nim
+    $lib/bar/x.nim
+    foo/x.nim
+    foo/main.nim
+    other.nim
 
 And `main` imports `x`, `foo/x` is imported. If `other` imports `x`
 then both ``$lib/x.nim`` and ``$lib/bar/x.nim`` match but ``$lib/x.nim`` is used
@@ -319,11 +319,11 @@ Another way is to make Nim invoke a cross compiler toolchain:
 For cross compilation, the compiler invokes a C compiler named
 like `$cpu.$os.$cc` (for example arm.linux.gcc) and the configuration
 system is used to provide meaningful defaults. For example for `ARM` your
-configuration file should contain something like::
+configuration file should contain something like:
 
-  arm.linux.gcc.path = "/usr/bin"
-  arm.linux.gcc.exe = "arm-linux-gcc"
-  arm.linux.gcc.linkerexe = "arm-linux-gcc"
+    arm.linux.gcc.path = "/usr/bin"
+    arm.linux.gcc.exe = "arm-linux-gcc"
+    arm.linux.gcc.linkerexe = "arm-linux-gcc"
 
 Cross-compilation for Windows
 =============================
@@ -435,13 +435,13 @@ and `passL`:option: command line switches to something like:
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
   ```
 
-or setup a ``nim.cfg`` file like so::
+or setup a ``nim.cfg`` file like so:
 
-  #nim.cfg
-  --mm:orc
-  --d:nimAllocPagesViaMalloc
-  --passC="-I$DEVKITPRO/libnx/include"
-  --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
+    #nim.cfg
+    --mm:orc
+    --d:nimAllocPagesViaMalloc
+    --passC="-I$DEVKITPRO/libnx/include"
+    --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
 The devkitPro setup must be the same as the default with their new installer
 [here for Mac/Linux](https://github.com/devkitPro/pacman/releases) or
