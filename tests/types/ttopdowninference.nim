@@ -193,3 +193,10 @@ block: # templates
   doAssert a == float(1)
   doAssert b == byte(2)
   doAssert c == cstring("abc")
+
+
+proc foo(): set[char] = # bug #11259
+  discard "a"
+  {}
+
+discard foo()
