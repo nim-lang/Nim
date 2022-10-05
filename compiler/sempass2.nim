@@ -218,7 +218,7 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
       run outside of the while loop. This is why we need the check here that
       the assignment is done in the same logical block as `x` was declared in.
       ]#
-      n.flags.incl nfFirstWrite2
+      n.flags.incl nfFirstWrite
 
 proc initVarViaNew(a: PEffects, n: PNode) =
   if n.kind != nkSym: return
