@@ -442,7 +442,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
         outp
 
       if not dirExists(buildPath):
-        discard tryCommand("git clone $# $#" % [pkg.url.quoteShell, buildPath.quoteShell], workingDir2 = ".", maxRetries = 3)
+        discard tryCommand("git clone --depth 1 $# $#" % [pkg.url.quoteShell, buildPath.quoteShell], workingDir2 = ".", maxRetries = 3)
         if not pkg.useHead:
           discard tryCommand("git fetch --tags", maxRetries = 3)
           let describeOutput = tryCommand("git describe --tags --abbrev=0")
