@@ -200,3 +200,20 @@ proc foo(): set[char] = # bug #11259
   {}
 
 discard foo()
+
+block: # bug #11085
+  const ok1: set[char] = {}
+  var ok1b: set[char] = {}
+
+  const ok2: set[char] = block:
+    {}
+
+  const ok3: set[char] = block:
+    var x: set[char] = {}
+    x
+  var ok3b: set[char] = block:
+    var x: set[char] = {}
+    x
+
+  var bad: set[char] = block:
+    {}
