@@ -221,7 +221,7 @@
   related functions produced on the backend. This prevents conflicts with other Nim
   static libraries.
 
-- When compiling with `-d:danger` the flag `-fno-math-errno` is used for GCC.
+- When compiling for Release the flag `-fno-math-errno` is used for GCC.
 
 
 ## Tool changes
