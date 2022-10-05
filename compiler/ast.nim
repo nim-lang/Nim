@@ -509,7 +509,6 @@ type
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
     nfLastRead  # this node is a last read
     nfFirstWrite # this node is a first write
-    nfFirstWrite2 # alternative first write implementation
     nfHasComment # node has a comment
     nfUseDefaultField # node has a default value (object constructor)
 
@@ -1078,7 +1077,7 @@ const
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
-                                      nfFirstWrite, nfFirstWrite2}
+                                      nfFirstWrite}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

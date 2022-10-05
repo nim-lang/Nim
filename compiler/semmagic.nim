@@ -404,18 +404,14 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   # Replace nkDerefExpr by nkHiddenDeref
   # nkDeref is for 'ref T':  x[].field
   # nkHiddenDeref is for 'var T': x<hidden deref [] here>.field
-  proc transform(c: PContext; procSym: PSym; n: PNode; old, fresh: PType; oldParam, newParam: PSym): PNode =
+  proc transform(c: PContext; n: PNode; old, fresh: PType; oldParam, newParam: PSym): PNode =
     result = shallowCopy(n)
     if sameTypeOrNil(n.typ, old):
       result.typ = fresh
-    if n.kind == nkSym:
-      if n.sym == oldParam:
-        result.sym = newParam
-      elif n.sym.owner == orig:
-        result.sym = copySym(n.sym, nextSymId c.idgen)
-        result.sym.owner = procSym
+    if n.kind == nkSym and n.sym == oldParam:
+      result.sym = newParam
     for i in 0 ..< safeLen(n):
-      result[i] = transform(c, procSym, n[i], old, fresh, oldParam, newParam)
+      result[i] = transform(c, n[i], old, fresh, oldParam, newParam)
     #if n.kind == nkDerefExpr and sameType(n[0].typ, old):
     #  result =
 
@@ -429,7 +425,7 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   let newParam = newSym(skParam, oldParam.name, nextSymId c.idgen, result, result.info)
   newParam.typ = newParamType
   # proc body:
-  result.ast = transform(c, result, orig.ast, origParamType, newParamType, oldParam, newParam)
+  result.ast = transform(c, orig.ast, origParamType, newParamType, oldParam, newParam)
   # proc signature:
   result.typ = newProcType(result.info, nextTypeId c.idgen, result)
   result.typ.addParam newParam
@@ -492,28 +488,29 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
           getAttachedOp(c.graph, t, attachedDestructor).owner == fin:
         discard "already turned this one into a finalizer"
       else:
-        if sfForward in fin.flags:
-          let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), nextSymId c.idgen, fin.owner, fin.info)
-          let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, nextSymId c.idgen))
-          wrapperSym.flags.incl sfUsed
-          let wrapper = c.semExpr(c, newProcNode(nkProcDef, fin.info, body = newTree(nkCall, newSymNode(fin), selfSymNode),
-            params = nkFormalParams.newTree(c.graph.emptyNode,
-                    newTree(nkIdentDefs, selfSymNode, fin.ast[paramsPos][1][1], c.graph.emptyNode)
-                    ),
-            name = newSymNode(wrapperSym), pattern = c.graph.emptyNode,
-            genericParams = c.graph.emptyNode, pragmas = c.graph.emptyNode, exceptions = c.graph.emptyNode), {})
-          var transFormedSym = turnFinalizerIntoDestructor(c, wrapperSym, wrapper.info)
-          transFormedSym.owner = fin
-          if c.config.backend == backendCpp or sfCompileToCpp in c.module.flags:
-            let origParamType = transFormedSym.ast[bodyPos][1].typ
-            let selfSymbolType = makePtrType(c, origParamType.skipTypes(abstractPtrs))
-            let selfPtr = newNodeI(nkHiddenAddr, transFormedSym.ast[bodyPos][1].info)
-            selfPtr.add transFormedSym.ast[bodyPos][1]
-            selfPtr.typ = selfSymbolType
-            transFormedSym.ast[bodyPos][1] = c.semExpr(c, selfPtr)
-          bindTypeHook(c, transFormedSym, n, attachedDestructor)
-        else:
-          bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
+        let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), nextSymId c.idgen, fin.owner, fin.info)
+        let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, nextSymId c.idgen))
+        selfSymNode.typ = fin.typ[1]
+        wrapperSym.flags.incl sfUsed
+
+        let wrapper = c.semExpr(c, newProcNode(nkProcDef, fin.info, body = newTree(nkCall, newSymNode(fin), selfSymNode),
+          params = nkFormalParams.newTree(c.graph.emptyNode,
+                  newTree(nkIdentDefs, selfSymNode, newNodeIT(nkType,
+                  fin.ast[paramsPos][1][1].info, fin.typ[1]), c.graph.emptyNode)
+                  ),
+          name = newSymNode(wrapperSym), pattern = fin.ast[patternPos],
+          genericParams = fin.ast[genericParamsPos], pragmas = fin.ast[pragmasPos], exceptions = fin.ast[miscPos]), {})
+
+        var transFormedSym = turnFinalizerIntoDestructor(c, wrapperSym, wrapper.info)
+        transFormedSym.owner = fin
+        if c.config.backend == backendCpp or sfCompileToCpp in c.module.flags:
+          let origParamType = transFormedSym.ast[bodyPos][1].typ
+          let selfSymbolType = makePtrType(c, origParamType.skipTypes(abstractPtrs))
+          let selfPtr = newNodeI(nkHiddenAddr, transFormedSym.ast[bodyPos][1].info)
+          selfPtr.add transFormedSym.ast[bodyPos][1]
+          selfPtr.typ = selfSymbolType
+          transFormedSym.ast[bodyPos][1] = c.semExpr(c, selfPtr)
+        bindTypeHook(c, transFormedSym, n, attachedDestructor)
   result = addDefaultFieldForNew(c, n)
 
 proc semPrivateAccess(c: PContext, n: PNode): PNode =
