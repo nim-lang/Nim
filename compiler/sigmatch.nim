@@ -545,8 +545,9 @@ proc allowsNil(f: PType): TTypeRelation {.inline.} =
   result = if tfNotNil notin f.flags: isSubtype else: isNone
 
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
-  result = f.kind != a.kind and
-    (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})
+  result = (f.kind != a.kind and
+    (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})) or
+    isOutParam(f) != isOutParam(a)
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
@@ -1163,8 +1164,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyFloat64:  result = handleFloatRange(f, a)
   of tyFloat128: result = handleFloatRange(f, a)
   of tyVar, tyLent:
-    if aOrig.kind == f.kind: result = typeRel(c, f.base, aOrig.base, flags)
-    else: result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
+    if aOrig.kind == f.kind and (isOutParam(aOrig) == isOutParam(f)):
+      result = typeRel(c, f.base, aOrig.base, flags)
+    else:
+      result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyArray:
     case a.kind
@@ -1637,7 +1640,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         elif a.len > 0 and a.lastSon == f:
           # Needed for checking `Y` == `Addable` in the following
           #[
-            type 
+            type
               Addable = concept a, type A
                 a + a is A
               MyType[T: Addable; Y: static T] = object

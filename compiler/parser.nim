@@ -1323,10 +1323,7 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
     optInd(p, result)
     result.add(primary(p, pmNormal))
   of tkVar: result = parseTypeDescKAux(p, nkVarTy, mode)
-  of tkOut:
-    # I like this parser extension to be in 1.4 as it still might turn out
-    # useful in the long run.
-    result = parseTypeDescKAux(p, nkMutableTy, mode)
+  of tkOut: result = parseTypeDescKAux(p, nkOutTy, mode)
   of tkRef: result = parseTypeDescKAux(p, nkRefTy, mode)
   of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, mode)
   of tkDistinct: result = parseTypeDescKAux(p, nkDistinctTy, mode)

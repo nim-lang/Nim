@@ -195,9 +195,10 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errXExpectsOneTypeParam % "varargs")
     addSonSkipIntLit(result, errorType(c), c.idgen)
 
-proc semVarOutType(c: PContext, n: PNode, prev: PType; kind: TTypeKind): PType =
+proc semVarOutType(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType =
   if n.len == 1:
-    result = newOrPrevType(kind, prev, c)
+    result = newOrPrevType(tyVar, prev, c)
+    result.flags = flags
     var base = semTypeNode(c, n[0], nil)
     if base.kind == tyTypeDesc and not isSelf(base):
       base = base[0]
@@ -206,7 +207,7 @@ proc semVarOutType(c: PContext, n: PNode, prev: PType; kind: TTypeKind): PType =
       base = base[0]
     addSonSkipIntLit(result, base, c.idgen)
   else:
-    result = newConstraint(c, kind)
+    result = newConstraint(c, tyVar)
 
 proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
   if t == nil:
@@ -2015,7 +2016,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTypeClassTy: result = semTypeClass(c, n, prev)
   of nkRefTy: result = semAnyRef(c, n, tyRef, prev)
   of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)
-  of nkVarTy: result = semVarOutType(c, n, prev, tyVar)
+  of nkVarTy: result = semVarOutType(c, n, prev, {})
+  of nkOutTy: result = semVarOutType(c, n, prev, {tfIsOutParam})
   of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkStaticTy: result = semStaticType(c, n[0], prev)
   of nkIteratorTy:

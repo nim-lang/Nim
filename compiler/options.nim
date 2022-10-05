@@ -216,7 +216,8 @@ type
     overloadableEnums, # deadcode
     strictEffects,
     unicodeOperators, # deadcode
-    flexibleOptionalParams
+    flexibleOptionalParams,
+    strictDefs
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

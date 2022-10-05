@@ -112,7 +112,7 @@ let x: seq[seq[float]] = @[@[1, 2, 3], @[4, 5, 6]]
 
 This behavior is tied to the `@` overloads in the `system` module,
 so overloading `@` can disable this behavior. This can be circumvented by
-specifying the `` system.`@` `` overload. 
+specifying the `` system.`@` `` overload.
 
 ```nim
 proc `@`(x: string): string = "@" & x
@@ -463,7 +463,7 @@ expressions that cannot conveniently be represented as runtime values.
   ```nim
   type Foo = object
     bar: int
-  
+
   var foo = Foo(bar: 10)
   template bar: untyped = foo.bar
   assert bar == 10
@@ -1729,7 +1729,7 @@ the overhead of an indirection via `FlowVar[T]` to ensure correctness.
 .. note:: Currently exceptions are not propagated between `spawn`'ed tasks!
 
 This feature is likely to be removed in the future as external packages
-can have better solutions. 
+can have better solutions.
 
 
 Spawn statement
@@ -1937,3 +1937,9 @@ having unknown lock level as well:
   ```
 
 This feature may be removed in the future due to its practical difficulties.
+
+
+Strict definitions and `out` parameters
+=======================================
+
+`experimental: "strictDefs"` enables ...

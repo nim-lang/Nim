@@ -104,9 +104,8 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
     tracked.owner.flags.incl sfInjectDestructors
 
 proc isLocalVar(a: PEffects, s: PSym): bool =
-  # and (s.kind != skParam or s.typ.kind == tyOut)
-  s.kind in {skVar, skResult} and sfGlobal notin s.flags and
-    s.owner == a.owner and s.typ != nil
+  s.typ != nil and (s.kind in {skVar, skResult} or (s.kind == skParam and isOutParam(s.typ))) and
+    sfGlobal notin s.flags and s.owner == a.owner
 
 proc getLockLevel(t: PType): TLockLevel =
   var t = t
@@ -194,7 +193,11 @@ proc varDecl(a: PEffects; n: PNode) {.inline.} =
   if n.kind == nkSym:
     a.scopes[n.sym.id] = a.currentBlock
 
+proc skipHiddenDeref(n: PNode): PNode {.inline.} =
+  result = if n.kind == nkHiddenDeref: n[0] else: n
+
 proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
+  let n = skipHiddenDeref(n)
   if n.kind != nkSym: return
   let s = n.sym
   if isLocalVar(a, s):
@@ -221,6 +224,7 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
       n.flags.incl nfFirstWrite
 
 proc initVarViaNew(a: PEffects, n: PNode) =
+  let n = skipHiddenDeref(n)
   if n.kind != nkSym: return
   let s = n.sym
   if {tfRequiresInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
@@ -348,7 +352,8 @@ proc useVar(a: PEffects, n: PNode) =
       if s.typ.requiresInit:
         message(a.config, n.info, warnProveInit, s.name.s)
       elif a.leftPartOfAsgn <= 0:
-        message(a.config, n.info, warnUninit, s.name.s)
+        if strictDefs in a.c.features:
+          message(a.config, n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
   useVarNoInitCheck(a, n, s)
@@ -945,17 +950,18 @@ proc trackCall(tracked: PEffects; n: PNode) =
 
   if op != nil and op.kind == tyProc:
     for i in 1..<min(n.safeLen, op.len):
-      case op[i].kind
+      let paramType = op[i]
+      case paramType.kind
       of tySink:
-        createTypeBoundOps(tracked,  op[i][0], n.info)
+        createTypeBoundOps(tracked, paramType[0], n.info)
         checkForSink(tracked, n[i])
       of tyVar:
         tracked.hasDangerousAssign = true
-      #of tyOut:
-      # consider this case: p(out x, x); we want to remark that 'x' is not
-      # initialized until after the call. Since we do this after we analysed the
-      # call, this is fine.
-      # initVar(tracked, n[i].skipAddr, false)
+        if isOutParam(paramType):
+          # consider this case: p(out x, x); we want to remark that 'x' is not
+          # initialized until after the call. Since we do this after we analysed the
+          # call, this is fine.
+          initVar(tracked, n[i].skipAddr, false)
       else: discard
 
 type
@@ -1504,13 +1510,13 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
           (t.config.selectedGC in {gcArc, gcOrc} and
             (isClosure(typ.skipTypes(abstractInst)) or param.id in t.escapingParams)):
         createTypeBoundOps(t, typ, param.info)
-      when false:
-        if typ.kind == tyOut and param.id notin t.init:
-          message(g.config, param.info, warnProveInit, param.name.s)
+      if isOutParam(typ) and param.id notin t.init:
+        message(g.config, param.info, warnProveInit, param.name.s)
 
   if not isEmptyType(s.typ[0]) and
-     (s.typ[0].requiresInit or s.typ[0].skipTypes(abstractInst).kind == tyVar) and
-     s.kind in {skProc, skFunc, skConverter, skMethod}:
+     (s.typ[0].requiresInit or s.typ[0].skipTypes(abstractInst).kind == tyVar or
+       strictDefs in c.features) and
+     s.kind in {skProc, skFunc, skConverter, skMethod} and s.magic == mNone:
     var res = s.ast[resultPos].sym # get result symbol
     if res.id notin t.init:
       message(g.config, body.info, warnProveInit, "result")
