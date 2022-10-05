@@ -57,9 +57,10 @@ proc memoryLock*(a1: pointer, a2: int) =
 proc memoryLockAll*(flags: int) =
   ## Locks all memory for the running process to prevent swapping.
   ##
-  ## example::
-  ##
+  ## example:
+  ##   ```nim
   ##   memoryLockAll(MCL_CURRENT or MCL_FUTURE)
+  ##   ```
   if mlockall(flags.cint) != 0:
     raise newException(OSError, $strerror(errno))
 

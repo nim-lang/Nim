@@ -107,7 +107,7 @@ proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode; isFirstWrite
   result = newTransNode(kind, ri.info, 2)
   result[0] = le
   if isFirstWrite:
-    le.flags.incl nfFirstWrite2
+    le.flags.incl nfFirstWrite
   result[1] = ri
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
