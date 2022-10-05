@@ -632,7 +632,7 @@ Test literal block
 ::
 
   check """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml(preferRst)
     doAssert "<pre>" in output1
 
   test "Markdown code block":

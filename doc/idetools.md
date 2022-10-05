@@ -36,13 +36,17 @@ Specifying the location of the query
 
 All of the available idetools commands require you to specify a
 query location through the `--track` or `--trackDirty` switches.
-The general idetools invocations are::
+The general idetools invocations are:
 
-    nim idetools --track:FILE,LINE,COL <switches> proj.nim
+  ```cmd
+  nim idetools --track:FILE,LINE,COL <switches> proj.nim
+  ```
 
-Or::
+Or:
 
-    nim idetools --trackDirty:DIRTY_FILE,FILE,LINE,COL <switches> proj.nim
+  ```cmd
+  nim idetools --trackDirty:DIRTY_FILE,FILE,LINE,COL <switches> proj.nim
+  ```
 
 `proj.nim`
 :   This is the main *project* filename. Most of the time you will
@@ -178,14 +182,18 @@ results of the compilation, and subsequent queries should be fast
 in the millisecond range, thus being responsive enough for IDEs.
 
 If you want to start the server using stdin/stdout as communication
-you need to type::
+you need to type:
 
-    nim serve --server.type:stdin proj.nim
+  ```cmd
+  nim serve --server.type:stdin proj.nim
+  ```
 
-If you want to start the server using tcp and a port, you need to type::
+If you want to start the server using tcp and a port, you need to type:
 
-    nim serve --server.type:tcp --server.port:6000 \
+  ```cmd
+  nim serve --server.type:tcp --server.port:6000 \
       --server.address:hostname proj.nim
+  ```
 
 In both cases the server will start up and await further commands.
 The syntax of the commands you can now send to the server is
@@ -542,10 +550,12 @@ Running the test suite
 
 At the moment idetools support is still in development so the test
 suite is not integrated with the main test suite and you have to
-run it manually. First you have to compile the tester::
+run it manually. First you have to compile the tester:
 
-	$ cd my/nim/checkout/tests
-	$ nim c testament/caasdriver.nim
+  ```cmd
+  $ cd my/nim/checkout/tests
+  $ nim c testament/caasdriver.nim
+  ```
 
 Running the `caasdriver` without parameters will attempt to process
 all the test cases in all three operation modes. If a test succeeds
@@ -567,9 +577,11 @@ If you don't want to run all the test case files you can pass any
 substring as a parameter to `caasdriver`. Only files matching the
 passed substring will be run. The filtering doesn't use any globbing
 metacharacters, it's a plain match. For example, to run only
-`*-compile*.txt` tests in verbose mode::
+`*-compile*.txt` tests in verbose mode:
 
-	./caasdriver verbose -compile
+  ```cmd
+  ./caasdriver verbose -compile
+  ```
 
 
 Test case file format
