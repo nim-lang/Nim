@@ -1006,7 +1006,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
 
   var errors: CandidateErrors
   var r = resolveOverloads(c, toResolve, toResolve, {skTemplate, skMacro}, {},
-                           errors, false, true)
+                           errors, false, false)
   if r.state == csMatch:
     var match = r.calleeSym
     markUsed(c, n[0].info, match)
