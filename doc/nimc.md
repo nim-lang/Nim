@@ -778,20 +778,6 @@ For `let` symbols a copy is not always necessary:
   let s = varA    # may only copy a pointer if it safe to do so
   ```
 
-
-If you know what you're doing, you can also mark single-string (or sequence)
-objects as `shallow`:idx:\:
-
-  ```Nim
-  var s = "abc"
-  shallow(s) # mark 's' as a shallow string
-  var x = s  # now might not copy the string!
-  ```
-
-Usage of `shallow` is always safe once you know the string won't be modified
-anymore, similar to Ruby's `freeze`:idx:.
-
-
 The compiler optimizes string case statements: A hashing scheme is used for them
 if several different string constants are used. So code like this is reasonably
 efficient:

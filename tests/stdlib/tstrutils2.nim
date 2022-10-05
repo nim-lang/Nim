@@ -18,7 +18,8 @@ block: # setLen
 block: # forceCopy
   var a: string
   a = "foo"
-  shallow(a)
+  when defined(gcRefc):
+    shallow(a)
   var b: string
   b = a
   doAssert b[0].addr == a[0].addr
