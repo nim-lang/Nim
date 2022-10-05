@@ -491,15 +491,15 @@ proc icTest(args: string) =
 
 proc buildDrNim(args: string) =
   if not dirExists("dist/nimz3"):
-    exec("git clone https://github.com/zevv/nimz3.git dist/nimz3")
+    exec("git clone --depth 1 https://github.com/zevv/nimz3.git dist/nimz3")
   when defined(windows):
     if not dirExists("dist/dlls"):
-      exec("git clone -q https://github.com/nim-lang/dlls.git dist/dlls")
+      exec("git clone -q --depth 1 https://github.com/nim-lang/dlls.git dist/dlls")
     copyExe("dist/dlls/libz3.dll", "bin/libz3.dll")
     execFold("build drnim", "nim c -o:$1 $2 drnim/drnim" % ["bin/drnim".exe, args])
   else:
     if not dirExists("dist/z3"):
-      exec("git clone -q https://github.com/Z3Prover/z3.git dist/z3")
+      exec("git clone -q --depth 1 https://github.com/Z3Prover/z3.git dist/z3")
       withDir("dist/z3"):
         exec("git fetch")
         exec("git checkout " & Z3StableCommit)
