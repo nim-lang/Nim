@@ -109,7 +109,7 @@ pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
-pkg "nimsl", "nimble install -y variant@#HEAD;nimble test", "https://github.com/nim-lang/nimsl", useHead = true
+pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
 pkg "nimwc", "nim c nimwc.nim"

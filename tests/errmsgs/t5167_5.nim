@@ -1,5 +1,5 @@
 discard """
-cmd: "nim check $file"
+cmd: "nim check --mm:refc $file"
 errormsg: "'t' has unspecified generic parameters"
 nimout: '''
 t5167_5.nim(10, 16) Error: expression 'system' has no type (or is ambiguous)
