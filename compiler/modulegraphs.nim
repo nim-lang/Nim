@@ -643,11 +643,11 @@ proc `==`*(a, b: SymInfoPair): bool =
   result = a.sym == b.sym and a.info.exactEquals(b.info)
 
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): seq[SymInfoPair] =
-  result = graph.suggestSymbols.getOrDefault(fileIdx, @[]).deduplicate
+  result = graph.suggestSymbols.getOrDefault(fileIdx, @[])
 
 iterator suggestSymbolsIter*(g: ModuleGraph): SymInfoPair =
   for xs in g.suggestSymbols.values:
-    for x in xs.deduplicate:
+    for x in xs:
       yield x
 
 iterator suggestErrorsIter*(g: ModuleGraph): Suggest =

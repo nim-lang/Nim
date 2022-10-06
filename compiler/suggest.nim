@@ -164,7 +164,7 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
     result.tokenLen = 0
   else:
     let infox =
-      if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline}:
+      if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline, ideDeclaration}:
         info
       else:
         s.info
