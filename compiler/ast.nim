@@ -207,7 +207,7 @@ type
     nkPtrTy,              # ``ptr T``
     nkVarTy,              # ``var T``
     nkConstTy,            # ``const T``
-    nkMutableTy,          # ``mutable T``
+    nkOutTy,              # ``out T``
     nkDistinctTy,         # distinct type
     nkProcTy,             # proc type
     nkIteratorTy,         # iterator type
@@ -513,7 +513,7 @@ type
     nfUseDefaultField # node has a default value (object constructor)
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 45)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 46)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -582,6 +582,7 @@ type
     tfExplicitCallConv
     tfIsConstructor
     tfEffectSystemWorkaround
+    tfIsOutParam
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -632,7 +633,7 @@ const
   skError* = skUnknown
 
 var
-  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect}
+  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam}
     ## type flags that are essential for type equality.
     ## This is now a variable because for emulation of version:1.0 we
     ## might exclude {tfGcSafe, tfNoSideEffect}.
@@ -2128,6 +2129,8 @@ proc skipAddr*(n: PNode): PNode {.inline.} =
 proc isNewStyleConcept*(n: PNode): bool {.inline.} =
   assert n.kind == nkTypeClassTy
   result = n[0].kind == nkEmpty
+
+proc isOutParam*(t: PType): bool {.inline.} = tfIsOutParam in t.flags
 
 const
   nodesToIgnoreSet* = {nkNone..pred(nkSym), succ(nkSym)..nkNilLit,

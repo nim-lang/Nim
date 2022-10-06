@@ -117,7 +117,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     case conf.cmd
     of cmdBackends, cmdTcc:
       let nimRunExe = getNimRunExe(conf)
-      var cmdPrefix: string
+      var cmdPrefix = ""
       if nimRunExe.len > 0: cmdPrefix.add nimRunExe.quoteShell
       case conf.backend
       of backendC, backendCpp, backendObjc: discard
