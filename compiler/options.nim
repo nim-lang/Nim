@@ -185,7 +185,7 @@ type
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
-    ideRecompile, ideChanged, ideType
+    ideRecompile, ideChanged, ideType, ideDeclaration
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     implicitDeref,
@@ -1019,6 +1019,7 @@ proc `$`*(c: IdeCmd): string =
   of ideMsg: "msg"
   of ideProject: "project"
   of ideGlobalSymbols: "globalSymbols"
+  of ideDeclaration: "declaration"
   of ideRecompile: "recompile"
   of ideChanged: "changed"
   of ideType: "type"
