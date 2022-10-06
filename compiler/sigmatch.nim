@@ -1169,7 +1169,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if aOrig.kind == f.kind and (isOutParam(aOrig) == isOutParam(f)):
       result = typeRel(c, f.base, aOrig.base, flags)
     else:
-      result = typeRel(c, f.base, aOrig, flags)
+      result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyLent:
     if aOrig.kind == f.kind:
