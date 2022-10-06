@@ -8,6 +8,7 @@ import ../../lib/packages/docutils/rstgen
 import ../../lib/packages/docutils/rst
 import unittest, strutils, strtabs
 import std/private/miscdollars
+import std/assertions
 
 const
   NoSandboxOpts = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
@@ -631,7 +632,7 @@ Test literal block
 ::
 
   check """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml(preferRst)
     doAssert "<pre>" in output1
 
   test "Markdown code block":

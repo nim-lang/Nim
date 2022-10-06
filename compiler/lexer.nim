@@ -505,11 +505,11 @@ proc getNumber(L: var Lexer, result: var Token) =
         of tkUInt16Lit: setNumber result.iNumber, xi and 0xffff
         of tkUInt32Lit: setNumber result.iNumber, xi and 0xffffffff
         of tkFloat32Lit:
-          setNumber result.fNumber, (cast[PFloat32](addr(xi)))[]
+          setNumber result.fNumber, (cast[ptr float32](addr(xi)))[]
           # note: this code is endian neutral!
           # XXX: Test this on big endian machine!
         of tkFloat64Lit, tkFloatLit:
-          setNumber result.fNumber, (cast[PFloat64](addr(xi)))[]
+          setNumber result.fNumber, (cast[ptr float64](addr(xi)))[]
         else: internalError(L.config, getLineInfo(L), "getNumber")
 
         # Bounds checks. Non decimal literals are allowed to overflow the range of
@@ -907,7 +907,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
       inc(pos)
       suspicious = true
     of '\x80'..'\xFF':
-      if c in UnicodeOperatorStartChars and unicodeOperators in L.config.features and unicodeOprLen(L.buf, pos)[0] != 0:
+      if c in UnicodeOperatorStartChars and unicodeOprLen(L.buf, pos)[0] != 0:
         break
       else:
         h = h !& ord(c)
@@ -943,7 +943,7 @@ proc getOperator(L: var Lexer, tok: var Token) =
     if c in OpChars:
       h = h !& ord(c)
       inc(pos)
-    elif c in UnicodeOperatorStartChars and unicodeOperators in L.config.features:
+    elif c in UnicodeOperatorStartChars:
       let oprLen = unicodeOprLen(L.buf, pos)[0]
       if oprLen == 0: break
       for i in 0..<oprLen:
@@ -1244,7 +1244,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
   else:
     case c
     of UnicodeOperatorStartChars:
-      if unicodeOperators in L.config.features and unicodeOprLen(L.buf, L.bufpos)[0] != 0:
+      if unicodeOprLen(L.buf, L.bufpos)[0] != 0:
         getOperator(L, tok)
       else:
         getSymbol(L, tok)
@@ -1355,7 +1355,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
       getNumber(L, tok)
       let c = L.buf[L.bufpos]
       if c in SymChars+{'_'}:
-        if c in UnicodeOperatorStartChars and unicodeOperators in L.config.features and
+        if c in UnicodeOperatorStartChars and
             unicodeOprLen(L.buf, L.bufpos)[0] != 0:
           discard
         else:
@@ -1370,7 +1370,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
         getNumber(L, tok)
         let c = L.buf[L.bufpos]
         if c in SymChars+{'_'}:
-          if c in UnicodeOperatorStartChars and unicodeOperators in L.config.features and
+          if c in UnicodeOperatorStartChars and
               unicodeOprLen(L.buf, L.bufpos)[0] != 0:
             discard
           else:

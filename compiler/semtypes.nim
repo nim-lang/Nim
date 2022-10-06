@@ -23,7 +23,6 @@ const
   errXExpectsOneTypeParam = "'$1' expects one type parameter"
   errArrayExpectsTwoTypeParams = "array expects two type parameters"
   errInvalidVisibilityX = "invalid visibility: '$1'"
-  errInitHereNotAllowed = "initialization not allowed here"
   errXCannotBeAssignedTo = "'$1' cannot be assigned to"
   errIteratorNotAllowed = "iterators can only be defined at the module's top level"
   errXNeedsReturnType = "$1 needs a return type"
@@ -293,17 +292,18 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 2:
     if isRange(n[1]):
       result = semRangeAux(c, n[1], prev)
-      let n = result.n
-      if n[0].kind in {nkCharLit..nkUInt64Lit} and n[0].intVal > 0:
-        incl(result.flags, tfRequiresInit)
-      elif n[1].kind in {nkCharLit..nkUInt64Lit} and n[1].intVal < 0:
-        incl(result.flags, tfRequiresInit)
-      elif n[0].kind in {nkFloatLit..nkFloat64Lit} and
-          n[0].floatVal > 0.0:
-        incl(result.flags, tfRequiresInit)
-      elif n[1].kind in {nkFloatLit..nkFloat64Lit} and
-          n[1].floatVal < 0.0:
-        incl(result.flags, tfRequiresInit)
+      if not isDefined(c.config, "nimPreviewRangeDefault"):
+        let n = result.n
+        if n[0].kind in {nkCharLit..nkUInt64Lit} and n[0].intVal > 0:
+          incl(result.flags, tfRequiresInit)
+        elif n[1].kind in {nkCharLit..nkUInt64Lit} and n[1].intVal < 0:
+          incl(result.flags, tfRequiresInit)
+        elif n[0].kind in {nkFloatLit..nkFloat64Lit} and
+            n[0].floatVal > 0.0:
+          incl(result.flags, tfRequiresInit)
+        elif n[1].kind in {nkFloatLit..nkFloat64Lit} and
+            n[1].floatVal < 0.0:
+          incl(result.flags, tfRequiresInit)
     else:
       if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<":
         localError(c.config, n[0].info, "range types need to be constructed with '..', '..<' is not supported")
@@ -481,13 +481,19 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     var a = n[i]
     if (a.kind != nkIdentDefs): illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
-    if a[^2].kind != nkEmpty:
+    var hasDefaultField = a[^1].kind != nkEmpty
+    if hasDefaultField:
+      a[^1] = semConstExpr(c, a[^1])
+      typ = a[^1].typ
+    elif a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
+      if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
+        a[^1] = newIntNode(nkIntLit, firstOrd(c.config, typ))
+        a[^1].typ = typ
+        hasDefaultField = true
     else:
       localError(c.config, a.info, errTypeExpected)
       typ = errorType(c)
-    if a[^1].kind != nkEmpty:
-      localError(c.config, a[^1].info, errInitHereNotAllowed)
     for j in 0..<a.len - 2:
       var field = newSymG(skField, a[j], c)
       field.typ = typ
@@ -496,7 +502,11 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       if containsOrIncl(check, field.name.id):
         localError(c.config, a[j].info, "attempt to redefine: '" & field.name.s & "'")
       else:
-        result.n.add newSymNode(field)
+        let fSym = newSymNode(field)
+        if hasDefaultField:
+          fSym.sym.ast = a[^1]
+          fSym.sym.ast.flags.incl nfUseDefaultField
+        result.n.add fSym
         addSonSkipIntLit(result, typ, c.idgen)
       styleCheckDef(c, a[j].info, field)
       onDef(field.info, field)
@@ -554,6 +564,8 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var Int128): PNode =
   checkMinSonsLen(t, 1, c.config)
   let ac = semConstExpr(c, a)
   let bc = semConstExpr(c, b)
+  if ac.kind in {nkStrLit..nkTripleStrLit} or bc.kind in {nkStrLit..nkTripleStrLit}:
+    localError(c.config, b.info, "range of string is invalid")
   let at = fitNode(c, t[0].typ, ac, ac.info).skipConvTakeType
   let bt = fitNode(c, t[0].typ, bc, bc.info).skipConvTakeType
 
@@ -591,7 +603,9 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
       branch[i] = semCaseBranchRange(c, t, b, covered)
     else:
       # constant sets and arrays are allowed:
-      var r = semConstExpr(c, b)
+      # set expected type to selector type for type inference
+      # even if it can be a different type like a set or array
+      var r = semConstExpr(c, b, expectedType = t[0].typ)
       if r.kind in {nkCurly, nkBracket} and r.len == 0 and branch.len == 2:
         # discarding ``{}`` and ``[]`` branches silently
         delSon(branch, 0)
@@ -801,14 +815,21 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     var a: PNode
     if father.kind != nkRecList and n.len >= 4: a = newNodeI(nkRecList, n.info)
     else: a = newNodeI(nkEmpty, n.info)
-    if n[^1].kind != nkEmpty:
-      localError(c.config, n[^1].info, errInitHereNotAllowed)
     var typ: PType
-    if n[^2].kind == nkEmpty:
+    var hasDefaultField = n[^1].kind != nkEmpty
+    if hasDefaultField:
+      n[^1] = semConstExpr(c, n[^1])
+      typ = n[^1].typ
+      propagateToOwner(rectype, typ)
+    elif n[^2].kind == nkEmpty:
       localError(c.config, n.info, errTypeExpected)
       typ = errorType(c)
     else:
       typ = semTypeNode(c, n[^2], nil)
+      if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
+        n[^1] = newIntNode(nkIntLit, firstOrd(c.config, typ))
+        n[^1].typ = typ
+        hasDefaultField = true
       propagateToOwner(rectype, typ)
     var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner
                      else: rectype.sym
@@ -824,14 +845,18 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       f.options = c.config.options
       if fieldOwner != nil and
          {sfImportc, sfExportc} * fieldOwner.flags != {} and
-         not hasCaseFields and f.loc.r == nil:
+         not hasCaseFields and f.loc.r == "":
         f.loc.r = rope(f.name.s)
         f.flags.incl {sfImportc, sfExportc} * fieldOwner.flags
       inc(pos)
       if containsOrIncl(check, f.name.id):
         localError(c.config, info, "attempt to redefine: '" & f.name.s & "'")
-      if a.kind == nkEmpty: father.add newSymNode(f)
-      else: a.add newSymNode(f)
+      let fSym = newSymNode(f)
+      if hasDefaultField:
+        fSym.sym.ast = n[^1]
+        fSym.sym.ast.flags.incl nfUseDefaultField
+      if a.kind == nkEmpty: father.add fSym
+      else: a.add fSym
       styleCheckDef(c, f)
       onDef(f.info, f)
     if a.kind != nkEmpty: father.add a

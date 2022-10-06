@@ -4,6 +4,7 @@ discard """
 
 import std/enumutils
 from std/sequtils import toSeq
+import std/assertions
 
 template main =
   block: # items

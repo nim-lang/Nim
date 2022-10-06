@@ -29,6 +29,9 @@
 
 import os, nativesockets
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
 const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or

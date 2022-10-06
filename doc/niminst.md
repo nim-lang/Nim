@@ -72,11 +72,11 @@ Key                    description
 Many sections support the `files` key. Listed filenames
 can be separated by semicolon or the `files` key can be repeated. Wildcards
 in filenames are supported. If it is a directory name, all files in the
-directory are used::
+directory are used:
 
-  [Config]
-  Files: "configDir"
-  Files: "otherconfig/*.conf;otherconfig/*.cfg"
+    [Config]
+    Files: "configDir"
+    Files: "otherconfig/*.conf;otherconfig/*.cfg"
 
 
 Config section

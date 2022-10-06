@@ -508,8 +508,9 @@ type
                        # the flag is applied to proc default values and to calls
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
     nfLastRead  # this node is a last read
-    nfFirstWrite# this node is a first write
+    nfFirstWrite # this node is a first write
     nfHasComment # node has a comment
+    nfUseDefaultField # node has a default value (object constructor)
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 45)
@@ -712,7 +713,7 @@ type
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId, mPrivateAccess
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault
 
 
 const
@@ -745,7 +746,7 @@ const
     mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInSet, mRepr, mOpenArrayToSeq}
-  
+
   generatedMagics* = {mNone, mIsolate, mFinished, mOpenArrayToSeq}
     ## magics that are generated as normal procs in the backend
 
@@ -1075,7 +1076,8 @@ const
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
-                                      nfExecuteOnReload, nfLastRead, nfFirstWrite}
+                                      nfExecuteOnReload, nfLastRead,
+                                      nfFirstWrite}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1233,6 +1235,31 @@ proc getDeclPragma*(n: PNode): PNode =
   if result != nil:
     assert result.kind == nkPragma, $(result.kind, n.kind)
 
+proc extractPragma*(s: PSym): PNode =
+  ## gets the pragma node of routine/type/var/let/const symbol `s`
+  if s.kind in routineKinds:
+    result = s.ast[pragmasPos]
+  elif s.kind in {skType, skVar, skLet, skConst}:
+    if s.ast != nil and s.ast.len > 0:
+      if s.ast[0].kind == nkPragmaExpr and s.ast[0].len > 1:
+        # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
+        result = s.ast[0][1]
+  assert result == nil or result.kind == nkPragma
+
+proc skipPragmaExpr*(n: PNode): PNode =
+  ## if pragma expr, give the node the pragmas are applied to,
+  ## otherwise give node itself
+  if n.kind == nkPragmaExpr:
+    result = n[0]
+  else:
+    result = n
+
+proc setInfoRecursive*(n: PNode, info: TLineInfo) =
+  ## set line info recursively
+  if n != nil:
+    for i in 0..<n.safeLen: setInfoRecursive(n[i], info)
+    n.info = info
+
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
@@ -1321,7 +1348,7 @@ proc newSym*(symKind: TSymKind, name: PIdent, id: ItemId, owner: PSym,
 
 proc astdef*(s: PSym): PNode =
   # get only the definition (initializer) portion of the ast
-  if s.ast != nil and s.ast.kind == nkIdentDefs:
+  if s.ast != nil and s.ast.kind in {nkIdentDefs, nkConstDef}:
     s.ast[2]
   else:
     s.ast
@@ -1504,7 +1531,7 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.storage == low(typeof(a.storage)): a.storage = b.storage
   a.flags.incl b.flags
   if a.lode == nil: a.lode = b.lode
-  if a.r == nil: a.r = b.r
+  if a.r == "": a.r = b.r
 
 proc newSons*(father: Indexable, length: int) =
   setLen(father.sons, length)

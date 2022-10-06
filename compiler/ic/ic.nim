@@ -403,7 +403,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
       p.bitsize = s.bitsize
       p.alignment = s.alignment
 
-    p.externalName = toLitId(if s.loc.r.isNil: "" else: $s.loc.r, m)
+    p.externalName = toLitId(s.loc.r, m)
     p.locFlags = s.loc.flags
     c.addMissing s.typ
     p.typ = s.typ.storeType(c, m)

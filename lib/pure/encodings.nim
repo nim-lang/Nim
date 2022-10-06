@@ -40,6 +40,8 @@ runnableExamples:
 
 
 import os
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 when not defined(windows):
   type

@@ -6,7 +6,9 @@
 from stdtest/specialpaths import buildDir
 
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[
+    syncio, assertions, formatfloat, objectdollar, widestrs
+  ]
 
 import std/[
   # Core:

@@ -763,7 +763,7 @@ proc stripTocHtml(s: string): string =
     if last < 0:
       # Abort, since we didn't found a closing angled bracket.
       return
-    result.delete(first, last)
+    result.delete(first..last)
     first = result.find('<', first)
 
 proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =

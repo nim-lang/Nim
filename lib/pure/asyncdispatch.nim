@@ -232,6 +232,9 @@ import asyncfutures except callSoon
 
 import nativesockets, net, deques
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 export Port, SocketFlag
 export asyncfutures except callSoon
 export asyncstreams

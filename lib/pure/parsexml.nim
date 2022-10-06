@@ -149,6 +149,9 @@ an HTML document contains.
 import
   strutils, lexbase, streams, unicode
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # the parser treats ``<br />`` as ``<br></br>``
 
 #  xmlElementCloseEnd, ## ``/>``
