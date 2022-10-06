@@ -86,6 +86,7 @@ type
     trDontBind
     trNoCovariance
     trBindGenericParam  # bind tyGenericParam even with trDontBind
+    trIsOutParam
 
   TTypeRelFlags* = set[TTypeRelFlag]
 
@@ -1163,8 +1164,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyFloat32:  result = handleFloatRange(f, a)
   of tyFloat64:  result = handleFloatRange(f, a)
   of tyFloat128: result = handleFloatRange(f, a)
-  of tyVar, tyLent:
+  of tyVar:
+    let flags = if isOutParam(f): flags + {trIsOutParam} else: flags
     if aOrig.kind == f.kind and (isOutParam(aOrig) == isOutParam(f)):
+      result = typeRel(c, f.base, aOrig.base, flags)
+    else:
+      result = typeRel(c, f.base, aOrig, flags)
+    subtypeCheck()
+  of tyLent:
+    if aOrig.kind == f.kind:
       result = typeRel(c, f.base, aOrig.base, flags)
     else:
       result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
@@ -1296,7 +1304,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if sameObjectTypes(f, a):
         result = isEqual
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
-      else:
+      elif trIsOutParam notin flags:
         var depth = isObjectSubtype(c, a, f, nil)
         if depth > 0:
           inc(c.inheritancePenalty, depth)
@@ -1464,7 +1472,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           elif aAsObject.kind == fKind:
             aAsObject = aAsObject.base
 
-        if aAsObject.kind == tyObject:
+        if aAsObject.kind == tyObject and trIsOutParam notin flags:
           let baseType = aAsObject.base
           if baseType != nil:
             c.inheritancePenalty += 1
