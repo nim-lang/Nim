@@ -1942,4 +1942,13 @@ This feature may be removed in the future due to its practical difficulties.
 Strict definitions and `out` parameters
 =======================================
 
-`experimental: "strictDefs"` enables ...
+With `experimental: "strictDefs"` *every* local variable must be initialized explicitly before it can be used:
+
+  ```nim
+  {.experimental: "strictDefs".}
+
+  proc test =
+    var s: seq[string]
+    s.add "abc" # invalid!
+
+  ```
