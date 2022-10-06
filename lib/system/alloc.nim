@@ -138,8 +138,16 @@ template bigChunkOverhead(): untyped = sizeof(BigChunk)
 
 when hasThreadSupport:
   template loada(x: untyped): untyped = atomicLoadN(unsafeAddr x, ATOMIC_RELAXED)
+  template storea(x, y: untyped) = atomicStoreN(unsafeAddr x, y, ATOMIC_RELAXED)
+
+  template atomicStatDec(x, diff: untyped) = discard atomicSubFetch(unsafeAddr x, diff, ATOMIC_RELAXED)
+  template atomicStatInc(x, diff: untyped) = discard atomicAddFetch(unsafeAddr x, diff, ATOMIC_RELAXED)
 else:
   template loada(x: untyped): untyped = x
+  template storea(x, y: untyped) = x = y
+
+  template atomicStatDec(x, diff: untyped) = dec x, diff
+  template atomicStatInc(x, diff: untyped) = inc x, diff
 
 const
   fsLookupTable: array[byte, int8] = [
@@ -247,11 +255,11 @@ proc addChunkToMatrix(a: var MemRegion; b: PBigChunk) =
   setBit(fl, a.flBitmap)
 
 proc incCurrMem(a: var MemRegion, bytes: int) {.inline.} =
-  atomicInc(a.currMem, bytes)
+  atomicStatInc(a.currMem, bytes)
 
 proc decCurrMem(a: var MemRegion, bytes: int) {.inline.} =
   a.maxMem = max(a.maxMem, a.currMem.loada)
-  atomicDec(a.currMem, bytes)
+  atomicStatDec(a.currMem, bytes)
 
 proc getMaxMem(a: var MemRegion): int =
   # Since we update maxPagesCount only when freeing pages,
@@ -728,7 +736,7 @@ when defined(gcDestructors):
   proc addToSharedFreeList(c: PSmallChunk; f: ptr FreeCell) {.inline.} =
     # see also https://en.cppreference.com/w/cpp/atomic/atomic_compare_exchange
     while true:
-      f.next = c.sharedFreeList.loada
+      f.next.storea c.sharedFreeList.loada
       if atomicCompareExchangeN(addr c.sharedFreeList, addr f.next, f, weak = true, ATOMIC_RELEASE, ATOMIC_RELAXED):
         break
 
@@ -740,15 +748,15 @@ when defined(gcDestructors):
     # we split the list in order to achieve bounded response times.
     var it = c.freeList
     var x = 0
-    #var maxIters = 20 # make it time-bounded
+    var maxIters = 20 # make it time-bounded
     while it != nil:
-      #if maxIters == 0:
-      #  let rest = it.next.loada
-      #  it.next = nil
-      #  addToSharedFreeList(c, rest)
-      #  break
+      if maxIters == 0:
+        let rest = it.next.loada
+        it.next.storea nil
+        addToSharedFreeList(c, rest)
+        break
       inc x, size
-      it = it.next
+      it = it.next.loada
       #dec maxIters
     inc(c.free, x)
     dec(a.occ, x)
