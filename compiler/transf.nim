@@ -46,7 +46,6 @@ type
     module: PSym
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
-    nestedProcs: int         # > 0 if we are in a nested proc
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
     deferDetected, tooEarly: bool
     graph: ModuleGraph
@@ -108,7 +107,7 @@ proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode; isFirstWrite
   result = newTransNode(kind, ri.info, 2)
   result[0] = le
   if isFirstWrite:
-    le.flags.incl nfFirstWrite2
+    le.flags.incl nfFirstWrite
   result[1] = ri
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
@@ -1061,6 +1060,13 @@ proc transform(c: PTransf, n: PNode): PNode =
       result = n
   of nkExceptBranch:
     result = transformExceptBranch(c, n)
+  of nkObjConstr:
+    result = n
+    if result.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject or
+       result.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyRef and result.typ.skipTypes({tyGenericInst, tyAlias, tySink})[0].kind == tyObject:
+      result.sons.add result[0].sons
+      result[0] = newNodeIT(nkType, result.info, result.typ)
+    result = transformSons(c, result)
   of nkCheckedFieldExpr:
     result = transformSons(c, n)
     if result[0].kind != nkDotExpr:
