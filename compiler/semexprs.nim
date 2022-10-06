@@ -82,7 +82,7 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType 
 
   if isEmpty:
     # do not produce another redundant error message:
-    result = errorNode(c, result)
+    result = errorNode(c, n)
 
 proc ambiguousSymChoice(c: PContext, orig, n: PNode): PNode =
   let first = n[0].sym
@@ -1784,6 +1784,14 @@ proc goodLineInfo(arg: PNode): TLineInfo =
   else:
     arg.info
 
+proc isSubscrible(c: PContext, n: PNode): bool =
+  let idt = getIdent(c.graph.cache, "_")
+  let sid = nextSymId(c.idgen)
+  let temp = newSym(skTemp, idt, sid, c.p.owner, n.info, c.p.owner.options)
+  let tempAsNode = newSymNode(temp)
+  let tempSub = semExpr(c, newTupleAccessRaw(tempAsNode, 0), {efNoError, efFromUnpack})
+  return tempSub.kind != nkEmpty
+
 proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   checkSonsLen(n, 2, c.config)
   var a = n[0]
@@ -1826,19 +1834,14 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       # unfortunately we need to rewrite ``(x, y) = foo()`` already here so
       # that overloading of the assignment operator still works. Usually we
       # prefer to do these rewritings in transf.nim:
-      let owner = c.p.owner
-      let idgen = c.idgen
       let value = n.lastSon
       if value.isAtom and value.kind != nkTupleConstr:
         let v = semExpr(c, value, {efNoError, efFromUnpack})
         if v.typ.kind != tyTuple:
-          let temp = newSym(skTemp, getIdent(c.graph.cache, "_"), nextSymId(idgen), owner, value.info, owner.options)
-          let tempAsNode = newSymNode(temp)
-          let tempSub = semExpr(c, newTupleAccessRaw(tempAsNode, 0), {efNoError, efFromUnpack})
-          if tempSub.kind == nkEmpty:
+          if not isSubscrible(c, value):
             localError(c.config, value.info, "cannot unpack '$1'" % renderTree(value, {renderNoComments}))
             return errorNode(c, value)
-      return semStmt(c, lowerTupleUnpackingForAsgn(c.graph, n, idgen, owner), {})
+      return semStmt(c, lowerTupleUnpackingForAsgn(c.graph, n, c.idgen, c.p.owner), {})
     else:
       a = semExprWithType(c, a, {efLValue})
   else:
