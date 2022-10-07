@@ -287,7 +287,7 @@ block bunch:
     result[] = b
 
   var
-    aa = default(A)
+    aa = A
     bb: B = B(a: "inner", b: @['o', 'b', 'j'])
     cc: A = A(a: 12, b: 1, c: 1.2, d: '\0', e: eC,
                 f: "hello", g: {'A'}, h: {2'i16},
