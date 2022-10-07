@@ -207,7 +207,7 @@ type
     nkPtrTy,              # ``ptr T``
     nkVarTy,              # ``var T``
     nkConstTy,            # ``const T``
-    nkMutableTy,          # ``mutable T``
+    nkOutTy,              # ``out T``
     nkDistinctTy,         # distinct type
     nkProcTy,             # proc type
     nkIteratorTy,         # iterator type
@@ -509,11 +509,11 @@ type
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
     nfLastRead  # this node is a last read
     nfFirstWrite # this node is a first write
-    nfFirstWrite2 # alternative first write implementation
     nfHasComment # node has a comment
+    nfUseDefaultField # node has a default value (object constructor)
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 45)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 46)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -582,6 +582,7 @@ type
     tfExplicitCallConv
     tfIsConstructor
     tfEffectSystemWorkaround
+    tfIsOutParam
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -632,7 +633,7 @@ const
   skError* = skUnknown
 
 var
-  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect}
+  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam}
     ## type flags that are essential for type equality.
     ## This is now a variable because for emulation of version:1.0 we
     ## might exclude {tfGcSafe, tfNoSideEffect}.
@@ -713,7 +714,7 @@ type
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId, mPrivateAccess
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault
 
 
 const
@@ -1077,7 +1078,7 @@ const
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
-                                      nfFirstWrite, nfFirstWrite2}
+                                      nfFirstWrite}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -2128,6 +2129,8 @@ proc skipAddr*(n: PNode): PNode {.inline.} =
 proc isNewStyleConcept*(n: PNode): bool {.inline.} =
   assert n.kind == nkTypeClassTy
   result = n[0].kind == nkEmpty
+
+proc isOutParam*(t: PType): bool {.inline.} = tfIsOutParam in t.flags
 
 const
   nodesToIgnoreSet* = {nkNone..pred(nkSym), succ(nkSym)..nkNilLit,

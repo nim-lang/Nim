@@ -685,7 +685,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           elif t.len == 1: result.add(",")
         result.add(')')
     of tyPtr, tyRef, tyVar, tyLent:
-      result = typeToStr[t.kind]
+      result = if isOutParam(t): "out " else: typeToStr[t.kind]
       if t.len >= 2:
         setLen(result, result.len-1)
         result.add '['
@@ -1211,7 +1211,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameChildrenAux(a, b, c)
     if result:
       if IgnoreTupleFields in c.flags:
-        result = a.flags * {tfVarIsPtr} == b.flags * {tfVarIsPtr}
+        result = a.flags * {tfVarIsPtr, tfIsOutParam} == b.flags * {tfVarIsPtr, tfIsOutParam}
       else:
         result = sameFlags(a, b)
     if result and ExactGcSafety in c.flags:

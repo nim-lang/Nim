@@ -381,10 +381,9 @@ proc genCall(c: var Con; n: PNode) =
   if t != nil: t = t.skipTypes(abstractInst)
   for i in 1..<n.len:
     gen(c, n[i])
-    when false:
-      if t != nil and i < t.len and t[i].kind == tyOut:
-        # Pass by 'out' is a 'must def'. Good enough for a move optimizer.
-        genDef(c, n[i])
+    if t != nil and i < t.len and isOutParam(t[i]):
+      # Pass by 'out' is a 'must def'. Good enough for a move optimizer.
+      genDef(c, n[i])
   # every call can potentially raise:
   if false: # c.inTryStmt > 0 and canRaiseConservative(n[0]):
     # we generate the instruction sequence:

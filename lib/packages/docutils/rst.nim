@@ -2172,7 +2172,7 @@ proc whichSection(p: RstParser): RstNodeKind =
     # for punctuation sequences that can be both tkAdornment and tkPunct
     if isMarkdownCodeBlock(p):
       return rnCodeBlock
-    elif currentTok(p).symbol == "::":
+    elif isRst(p) and currentTok(p).symbol == "::":
       return rnLiteralBlock
     elif currentTok(p).symbol == ".."  and
        nextTok(p).kind in {tkWhite, tkIndent}:
@@ -2362,8 +2362,10 @@ proc parseParagraph(p: var RstParser, result: PRstNode) =
     of tkIndent:
       if nextTok(p).kind == tkIndent:
         inc p.idx
-        break
-      elif currentTok(p).ival == currInd(p):
+        break  # blank line breaks paragraph for both Md & Rst
+      elif currentTok(p).ival == currInd(p) or (
+          isMd(p) and currentTok(p).ival > currInd(p)):
+          # (Md allows adding additional indentation inside paragraphs)
         inc p.idx
         case whichSection(p)
         of rnParagraph, rnLeaf, rnHeadline, rnMarkdownHeadline,
@@ -2377,7 +2379,8 @@ proc parseParagraph(p: var RstParser, result: PRstNode) =
       else:
         break
     of tkPunct:
-      if (let literalBlockKind = whichRstLiteralBlock(p);
+      if isRst(p) and (
+          let literalBlockKind = whichRstLiteralBlock(p);
           literalBlockKind != lbNone):
         result.add newLeaf(":")
         inc p.idx            # skip '::'
@@ -2932,11 +2935,11 @@ proc parseSection(p: var RstParser, result: PRstNode) =
       elif currentTok(p).ival > currInd(p):
         if roPreferMarkdown in p.s.options:  # Markdown => normal paragraphs
           if currentTok(p).ival - currInd(p) >= 4:
-            rstMessage(p, mwRstStyle,
-                       "Markdown indented code not implemented")
-          pushInd(p, currentTok(p).ival)
-          parseSection(p, result)
-          popInd(p)
+            result.add parseLiteralBlock(p)
+          else:
+            pushInd(p, currentTok(p).ival)
+            parseSection(p, result)
+            popInd(p)
         else:  # RST mode => block quotes
           pushInd(p, currentTok(p).ival)
           var a = newRstNodeA(p, rnBlockQuote)

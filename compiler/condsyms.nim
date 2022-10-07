@@ -145,3 +145,5 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasCstringCase")
   defineSymbol("nimHasCallsitePragma")
   defineSymbol("nimHasAmbiguousEnumHint")
+
+  defineSymbol("nimHasOutParams")

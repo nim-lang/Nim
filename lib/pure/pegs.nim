@@ -2058,9 +2058,9 @@ func parsePeg*(pattern: string, filename = "pattern", line = 1, col = 0): Peg =
 
 func peg*(pattern: string): Peg =
   ## constructs a Peg object from the `pattern`. The short name has been
-  ## chosen to encourage its use as a raw string modifier::
+  ## chosen to encourage its use as a raw string modifier:
   ##
-  ##   peg"{\ident} \s* '=' \s* {.*}"
+  ##     peg"{\ident} \s* '=' \s* {.*}"
   result = parsePeg(pattern, "pattern")
 
 func escapePeg*(s: string): string =

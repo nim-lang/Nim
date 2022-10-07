@@ -314,14 +314,14 @@ To avoid accidental highlighting follow this rule in ``*.nim`` files:
   programming languages, including identifiers, in ``*.nim`` files.
 
   For languages other than Nim add a role after final backtick,
-  e.g. for C++ inline highlighting::
+  e.g. for C++ inline highlighting:
 
-    `#include <stdio.h>`:cpp:
+      `#include <stdio.h>`:cpp:
 
   For a currently unsupported language add the `:code:` role,
-  like for SQL in this example::
+  like for SQL in this example:
 
-    `SELECT * FROM <table_name>;`:code:
+      `SELECT * FROM <table_name>;`:code:
 
   Highlight shell commands by ``:cmd:`` role; for command line options use
   ``:option:`` role, e.g.: \`--docInternal\`:option:.
@@ -335,17 +335,17 @@ To avoid accidental highlighting follow this rule in ``*.nim`` files:
     ``\`` and a final \` would get escaped)
 
 .. Note:: ``*.rst`` files have ``:literal:`` as their default role.
-          So for them the rule above is only applicable if the ``:nim:`` role
-          is set up manually as the default \[*]::
+  So for them the rule above is only applicable if the ``:nim:`` role
+  is set up manually as the default \[*]:
 
-            .. role:: nim(code)
-               :language: nim
-            .. default-role:: nim
+      .. role:: nim(code)
+         :language: nim
+      .. default-role:: nim
 
-          The first 2 lines are for other RST implementations,
-          including Github one.
+  The first 2 lines are for other RST implementations,
+  including Github one.
 
-          \[*] this is fulfilled when ``doc/rstcommon.rst`` is included.
+  \[*] this is fulfilled when ``doc/rstcommon.rst`` is included.
 
 Best practices
 ==============
@@ -489,9 +489,9 @@ General commit rules
      git diff --check --cached || exit $?
      ```
 5. Describe your commit and use your common sense.
-   Example commit message::
+   Example commit message:
 
-     Fixes #123; refs #124
+       Fixes #123; refs #124
 
    indicates that issue ``#123`` is completely fixed (GitHub may automatically
    close it when the PR is committed), whereas issue ``#124`` is referenced
@@ -581,11 +581,9 @@ Code reviews
 3. In addition, you can view GitHub-like diffs locally to identify what was changed
    within a code block using `diff-highlight`:cmd: or `diff-so-fancy`:cmd:, e.g.:
 
-   ::
-
-      # put this in ~/.gitconfig:
-      [core]
-        pager = "diff-so-fancy | less -R" # or: use: `diff-highlight`
+        # put this in ~/.gitconfig:
+        [core]
+          pager = "diff-so-fancy | less -R" # or: use: `diff-highlight`
 
 
 

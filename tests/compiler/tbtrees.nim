@@ -68,7 +68,7 @@ proc main =
   when true:
     var b2 = initBTree[int, string]()
     var t2 = initTable[int, string]()
-    const iters = 100_000
+    const iters = 100
     for i in 1..iters:
       let x = rand(high(int))
       if not t2.hasKey(x):
