@@ -125,6 +125,9 @@ type
 
   TNimSymKinds* {.deprecated.} = set[NimSymKind]
 
+const
+  nnkMutableTy* {.deprecated.} = nnkOutTy
+
 type
   NimIdent* {.deprecated.} = object of RootObj
     ## Represents a Nim identifier in the AST. **Note**: This is only
