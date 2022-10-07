@@ -1,3 +1,7 @@
+discard """
+  exitcode: 0
+"""
+
 # xxx consider merging with `tests/stdlib/trepr.nim` to increase overall test coverage
 
 block ints:
