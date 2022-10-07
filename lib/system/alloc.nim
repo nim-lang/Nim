@@ -65,7 +65,7 @@ type
     level: int
 
 const
-  RegionHasLock = hasThreadSupport and defined(gcDestructors)
+  RegionHasLock = false # hasThreadSupport and defined(gcDestructors)
 
 type
   FreeCell {.final, pure.} = object
@@ -122,6 +122,9 @@ type
     lastSize: int # needed for the case that OS gives us pages linearly
     when RegionHasLock:
       lock: SysLock
+    when defined(gcDestructors):
+      sharedFreeListBigChunks: PBigChunk # make no attempt at avoiding false sharing for now for this object field
+
     chunkStarts: IntSet
     when not defined(gcDestructors):
       root, deleted, last, freeAvlNodes: PAvlNode
@@ -557,10 +560,6 @@ proc splitChunk2(a: var MemRegion, c: PBigChunk, size: int): PBigChunk =
   result = cast[PBigChunk](cast[ByteAddress](c) +% size)
   result.size = c.size - size
   track("result.size", addr result.size, sizeof(int))
-  # XXX check if these two nil assignments are dead code given
-  # addChunkToMatrix's implementation:
-  result.next = nil
-  result.prev = nil
   # size and not used:
   result.prevSize = size
   result.owner = addr a
@@ -594,6 +593,8 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
           c = cast[PBigChunk](le)
           if c.size > MaxBigChunkSize:
             let rest = splitChunk2(a, c, MaxBigChunkSize)
+            rest.next = nil
+            rest.prev = nil
             addChunkToMatrix(a, c)
             c = rest
   when coalescRight:
@@ -732,13 +733,33 @@ else:
   template trackSize(x) = discard
   template untrackSize(x) = discard
 
+proc deallocBigChunk(a: var MemRegion, c: PBigChunk) =
+  when RegionHasLock:
+    acquireSys a.lock
+  dec a.occ, c.size
+  untrackSize(c.size)
+  sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case B)"
+  when not defined(gcDestructors):
+    a.deleted = getBottom(a)
+    del(a, a.root, cast[int](addr(c.data)))
+  if c.size >= HugeChunkSize: freeHugeChunk(a, c)
+  else: freeBigChunk(a, c)
+  when RegionHasLock:
+    releaseSys a.lock
+
 when defined(gcDestructors):
-  proc addToSharedFreeList(c: PSmallChunk; f: ptr FreeCell) {.inline.} =
+  template atomicPrepend(head, elem: untyped) =
     # see also https://en.cppreference.com/w/cpp/atomic/atomic_compare_exchange
     while true:
-      f.next.storea c.sharedFreeList.loada
-      if atomicCompareExchangeN(addr c.sharedFreeList, addr f.next, f, weak = true, ATOMIC_RELEASE, ATOMIC_RELAXED):
+      elem.next.storea head.loada
+      if atomicCompareExchangeN(addr head, addr elem.next, elem, weak = true, ATOMIC_RELEASE, ATOMIC_RELAXED):
         break
+
+  proc addToSharedFreeListBigChunks(a: var MemRegion; c: PBigChunk) {.inline.} =
+    atomicPrepend a.sharedFreeListBigChunks, c
+
+  proc addToSharedFreeList(c: PSmallChunk; f: ptr FreeCell) {.inline.} =
+    atomicPrepend c.sharedFreeList, f
 
   proc compensateCounters(a: var MemRegion; c: PSmallChunk; size: int) =
     # rawDealloc did NOT do the usual:
@@ -757,9 +778,22 @@ when defined(gcDestructors):
         break
       inc x, size
       it = it.next.loada
-      #dec maxIters
+      dec maxIters
     inc(c.free, x)
     dec(a.occ, x)
+
+  proc freeDeferredObjects(a: var MemRegion; root: PBigChunk) =
+    var it = root
+    var maxIters = 20 # make it time-bounded
+    while true:
+      if maxIters == 0:
+        let rest = it.next.loada
+        it.next.storea nil
+        addToSharedFreeListBigChunks(a, rest)
+        break
+      it = it.next.loada
+      dec maxIters
+      if it == nil: break
 
 proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   when defined(nimTypeNames):
@@ -824,6 +858,11 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     inc a.occ, size
     trackSize(c.size)
   else:
+    when defined(gcDestructors):
+      let deferredFrees = atomicExchangeN(addr a.sharedFreeListBigChunks, nil, ATOMIC_RELAXED)
+      if deferredFrees != nil:
+        freeDeferredObjects(a, deferredFrees)
+
     size = requestedSize + bigChunkOverhead() #  roundup(requestedSize+bigChunkOverhead(), PageSize)
     # allocate a large block
     var c = if size >= HugeChunkSize: getHugeChunk(a, size)
@@ -845,20 +884,6 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
 proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
   result = rawAlloc(a, requestedSize)
   zeroMem(result, requestedSize)
-
-proc deallocBigChunk(a: var MemRegion, c: PBigChunk) =
-  when RegionHasLock:
-    acquireSys a.lock
-  dec a.occ, c.size
-  untrackSize(c.size)
-  sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case B)"
-  when not defined(gcDestructors):
-    a.deleted = getBottom(a)
-    del(a, a.root, cast[int](addr(c.data)))
-  if c.size >= HugeChunkSize: freeHugeChunk(a, c)
-  else: freeBigChunk(a, c)
-  when RegionHasLock:
-    releaseSys a.lock
 
 proc rawDealloc(a: var MemRegion, p: pointer) =
   when defined(nimTypeNames):
@@ -909,7 +934,10 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
   else:
     # set to 0xff to check for usage after free bugs:
     when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead())
-    deallocBigChunk(c.owner[], cast[PBigChunk](c))
+    if c.owner == addr(a):
+      deallocBigChunk(a, cast[PBigChunk](c))
+    else:
+      addToSharedFreeListBigChunks(c.owner[], cast[PBigChunk](c))
   sysAssert(allocInv(a), "rawDealloc: end")
   when logAlloc: cprintf("dealloc(pointer_%p)\n", p)
 
