@@ -114,8 +114,8 @@ template main {.dirty.} =
         r: R
 
     var
-      rVal: R  # Works fine
-      objVal: Obj
+      rVal: R = default(R) # Works fine
+      objVal = default(Obj)
 
     doAssert rVal == 0 # it should be 1
     doAssert objVal.r == 1
@@ -142,7 +142,7 @@ template main {.dirty.} =
     doAssert z.value == 12
 
   block:
-    var base: ObjectBase
+    var base = ObjectBase()
     var x: ObjectBaseDistinct = ObjectBaseDistinct(base)
     doAssert ObjectBase(x).value == 12
     let y = ObjectBaseDistinct(default(ObjectBase))
@@ -161,7 +161,7 @@ template main {.dirty.} =
     doAssert ObjectBase(x.data).value == 12
 
   block:
-    var x: Object
+    var x = Object()
     doAssert x.value == 12
     doAssert x.time == 1.2
     doAssert x.scale == 1
@@ -171,7 +171,7 @@ template main {.dirty.} =
     doAssert y.time == 1.2
     doAssert y.scale == 1
 
-    var x1, x2, x3: Object
+    var x1, x2, x3 = default(Object)
     doAssert x1.value == 12
     doAssert x1.time == 1.2
     doAssert x1.scale == 1
@@ -187,7 +187,7 @@ template main {.dirty.} =
     doAssert x[] == default(Object)
 
   block:
-    var x: Object2
+    var x = default(Object2)
     doAssert x.name.value == 12
     doAssert x.name.time == 1.2
     doAssert x.name.scale == 1
@@ -198,7 +198,7 @@ template main {.dirty.} =
     doAssert x[] == default(Object2)
 
   block:
-    var x: Object3
+    var x = default(Object3) # todo Object3() ?
     doAssert x.obj.name.value == 12
     doAssert x.obj.name.time == 1.2
     doAssert x.obj.name.scale == 1
@@ -223,7 +223,7 @@ template main {.dirty.} =
         doAssert y.scale == 1
 
   block: # array
-    var x: array[10, Object]
+    var x: array[10, Object] = arrayWith(default(Object), 10)
     let y = x[0]
     doAssert y.value == 12
     doAssert y.time == 1.2
@@ -234,7 +234,7 @@ template main {.dirty.} =
     discard x
 
   block: # tuple
-    var x: ObjectTuple
+    var x = default(ObjectTuple)
     doAssert x.base.value == 12
     doAssert x.typ == 0
     doAssert x.obj.time == 1.2
@@ -243,7 +243,7 @@ template main {.dirty.} =
     doAssert x.obj.value == 12
 
   block: # tuple in object
-    var x: TupleInObject
+    var x = default(TupleInObject)
     doAssert x.data.base.value == 12
     doAssert x.data.typ == 0
     doAssert x.data.obj.time == 1.2
@@ -257,7 +257,7 @@ template main {.dirty.} =
       data: array[10, Object]
 
   block:
-    var x: ObjectArray
+    var x = default(ObjectArray)
     let y = x.data[0]
     doAssert y.value == 12
     doAssert y.time == 1.2
@@ -308,7 +308,7 @@ template main {.dirty.} =
     doAssert typeof(x.time) is float32
 
   block:
-    var x: ObjectVarint1
+    var x = default(ObjectVarint1)
     doAssert x.kind == Blue
     doAssert x.fill2 == "123"
     x.cry = 326
@@ -350,7 +350,7 @@ template main {.dirty.} =
           him: int
 
     block:
-      var x: ObjectVarint3
+      var x = default(ObjectVarint3)
       doAssert x.kind == Blue
       doAssert x.name == Blue
       doAssert x.go == 12
@@ -375,13 +375,13 @@ template main {.dirty.} =
         def: Default = (id: 777, obj: ObjectBase(), name: "fine")
 
     block:
-      var x: Default
+      var x = default(Default)
       doAssert x.id == 1
       doAssert x.obj == default(ObjectBase)
       doAssert x.name == ""
     
     block:
-      var x: Class
+      var x = default(Class)
       doAssert x.def == default(Default)
       doAssert x.def.id == 1
       doAssert x.def.obj == default(ObjectBase)
@@ -389,7 +389,7 @@ template main {.dirty.} =
 
     when not defined(cpp):
       block:
-        var x: Member
+        var x = default(Member)
         doAssert x.def.id == 777
         doAssert x.def.obj == default(ObjectBase)
         doAssert x.def.name == "fine"

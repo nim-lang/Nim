@@ -86,6 +86,7 @@ type
     trDontBind
     trNoCovariance
     trBindGenericParam  # bind tyGenericParam even with trDontBind
+    trIsOutParam
 
   TTypeRelFlags* = set[TTypeRelFlag]
 
@@ -545,8 +546,9 @@ proc allowsNil(f: PType): TTypeRelation {.inline.} =
   result = if tfNotNil notin f.flags: isSubtype else: isNone
 
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
-  result = f.kind != a.kind and
-    (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})
+  result = (f.kind != a.kind and
+    (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})) or
+    isOutParam(f) != isOutParam(a)
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
@@ -1162,9 +1164,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyFloat32:  result = handleFloatRange(f, a)
   of tyFloat64:  result = handleFloatRange(f, a)
   of tyFloat128: result = handleFloatRange(f, a)
-  of tyVar, tyLent:
-    if aOrig.kind == f.kind: result = typeRel(c, f.base, aOrig.base, flags)
-    else: result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
+  of tyVar:
+    let flags = if isOutParam(f): flags + {trIsOutParam} else: flags
+    if aOrig.kind == f.kind and (isOutParam(aOrig) == isOutParam(f)):
+      result = typeRel(c, f.base, aOrig.base, flags)
+    else:
+      result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
+    subtypeCheck()
+  of tyLent:
+    if aOrig.kind == f.kind:
+      result = typeRel(c, f.base, aOrig.base, flags)
+    else:
+      result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyArray:
     case a.kind
@@ -1293,7 +1304,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if sameObjectTypes(f, a):
         result = isEqual
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
-      else:
+      elif trIsOutParam notin flags:
         var depth = isObjectSubtype(c, a, f, nil)
         if depth > 0:
           inc(c.inheritancePenalty, depth)
@@ -1461,7 +1472,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           elif aAsObject.kind == fKind:
             aAsObject = aAsObject.base
 
-        if aAsObject.kind == tyObject:
+        if aAsObject.kind == tyObject and trIsOutParam notin flags:
           let baseType = aAsObject.base
           if baseType != nil:
             c.inheritancePenalty += 1
@@ -1637,7 +1648,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         elif a.len > 0 and a.lastSon == f:
           # Needed for checking `Y` == `Addable` in the following
           #[
-            type 
+            type
               Addable = concept a, type A
                 a + a is A
               MyType[T: Addable; Y: static T] = object
