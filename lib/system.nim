@@ -2313,28 +2313,29 @@ when compileOption("rangechecks"):
 else:
   template rangeCheck*(cond) = discard
 
-proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
-  ## Marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
-  ## perform deep copies of `s`.
-  ##
-  ## This is only useful for optimization purposes.
-  if s.len == 0: return
-  when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
-    var s = cast[PGenericSeq](s)
-    s.reserved = s.reserved or seqShallowFlag
-
-proc shallow*(s: var string) {.noSideEffect, inline.} =
-  ## Marks a string `s` as `shallow`:idx:. Subsequent assignments will not
-  ## perform deep copies of `s`.
-  ##
-  ## This is only useful for optimization purposes.
-  when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
-    var s = cast[PGenericSeq](s)
-    if s == nil:
-      s = cast[PGenericSeq](newString(0))
-    # string literals cannot become 'shallow':
-    if (s.reserved and strlitFlag) == 0:
+when not defined(gcArc) and not defined(gcOrc):
+  proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
+    ## Marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
+    ## perform deep copies of `s`.
+    ##
+    ## This is only useful for optimization purposes.
+    if s.len == 0: return
+    when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
+      var s = cast[PGenericSeq](s)
       s.reserved = s.reserved or seqShallowFlag
+
+  proc shallow*(s: var string) {.noSideEffect, inline.} =
+    ## Marks a string `s` as `shallow`:idx:. Subsequent assignments will not
+    ## perform deep copies of `s`.
+    ##
+    ## This is only useful for optimization purposes.
+    when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
+      var s = cast[PGenericSeq](s)
+      if s == nil:
+        s = cast[PGenericSeq](newString(0))
+      # string literals cannot become 'shallow':
+      if (s.reserved and strlitFlag) == 0:
+        s.reserved = s.reserved or seqShallowFlag
 
 type
   NimNodeObj = object

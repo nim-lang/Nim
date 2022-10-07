@@ -112,7 +112,7 @@ let x: seq[seq[float]] = @[@[1, 2, 3], @[4, 5, 6]]
 
 This behavior is tied to the `@` overloads in the `system` module,
 so overloading `@` can disable this behavior. This can be circumvented by
-specifying the `` system.`@` `` overload. 
+specifying the `` system.`@` `` overload.
 
 ```nim
 proc `@`(x: string): string = "@" & x
@@ -463,7 +463,7 @@ expressions that cannot conveniently be represented as runtime values.
   ```nim
   type Foo = object
     bar: int
-  
+
   var foo = Foo(bar: 10)
   template bar: untyped = foo.bar
   assert bar == 10
@@ -1729,7 +1729,7 @@ the overhead of an indirection via `FlowVar[T]` to ensure correctness.
 .. note:: Currently exceptions are not propagated between `spawn`'ed tasks!
 
 This feature is likely to be removed in the future as external packages
-can have better solutions. 
+can have better solutions.
 
 
 Spawn statement
@@ -1937,3 +1937,129 @@ having unknown lock level as well:
   ```
 
 This feature may be removed in the future due to its practical difficulties.
+
+
+Strict definitions and `out` parameters
+=======================================
+
+With `experimental: "strictDefs"` *every* local variable must be initialized explicitly before it can be used:
+
+  ```nim
+  {.experimental: "strictDefs".}
+
+  proc test =
+    var s: seq[string]
+    s.add "abc" # invalid!
+
+  ```
+
+Needs to be written as:
+
+  ```nim
+  {.experimental: "strictDefs".}
+
+  proc test =
+    var s: seq[string] = @[]
+    s.add "abc" # valid!
+
+  ```
+
+A control flow analysis is performed in order to prove that a variable has been written to
+before it is used. Thus the following is valid:
+
+  ```nim
+  {.experimental: "strictDefs".}
+
+  proc test(cond: bool) =
+    var s: seq[string]
+    if cond:
+      s = @["y"]
+    else:
+      s = @[]
+    s.add "abc" # valid!
+  ```
+
+In this example every path does set `s` to a value before it is used.
+
+`out` parameters
+----------------
+
+An `out` parameter is like a `var` parameter but it must be written to before it can be used:
+
+  ```nim
+
+  proc myopen(f: out File; name: string): bool =
+    f = default(File)
+    result = open(f, name)
+
+  ```
+
+While it is usually the better style to use the return type in order to return results API and ABI
+considerations might make this infeasible. Like for `var T` Nim maps `out T` to a hidden pointer.
+For example POSIX's `stat` routine can be wrapped as:
+
+  ```nim
+
+  proc stat*(a1: cstring, a2: out Stat): cint {.importc, header: "<sys/stat.h>".}
+
+  ```
+
+When the implementation of a routine with output parameters is analysed, the compiler
+checks that every path before the (implicit or explicit) return does set every output
+parameter:
+
+  ```nim
+
+  proc p(x: out int; y: out string; cond: bool) =
+    x = 4
+    if cond:
+      y = "abc"
+    # error: not every path initializes 'y'
+
+  ```
+
+
+Out parameters and exception handling
+-------------------------------------
+
+The analysis should take exceptions into account (but currently does not):
+
+  ```nim
+
+  proc p(x: out int; y: out string; cond: bool) =
+    x = canRaise(45)
+    y = "abc" # <-- error: not every path initializes 'y'
+
+  ```
+
+Once the implementation takes exceptions into account it is easy enough to
+use `outParam = default(typeof(outParam))` in the beginning of the proc body.
+
+Out parameters and inheritance
+------------------------------
+
+It is not valid to pass an lvalue of a supertype to an `out T` parameter:
+
+  ```nim
+
+  type
+    Superclass = object of RootObj
+      a: int
+    Subclass = object of Superclass
+      s: string
+
+  proc init(x: out Superclass) =
+    x = Superclass(a: 8)
+
+  var v: Subclass
+  init v
+  use v.s # the 's' field was never initialized!
+
+  ```
+
+However, in the future this could be allowed and provide a better way to write object
+constructors that take inheritance into account.
+
+
+**Note**: The implementation of "strict definitions" and "out parameters" is experimental but the concept
+is solid and it is expected that eventually this mode becomes the default in later versions.
