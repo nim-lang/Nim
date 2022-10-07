@@ -572,3 +572,26 @@ block:
     let y = x + 1
     # Error: unhandled exception: value out of range: -8 notin 0 .. 65535 [RangeDefect]
     echo y
+
+
+type Atom* = object
+  bar: int
+
+proc main() = # bug #12994
+  var s: seq[Atom]
+  var atom: Atom
+  var checked = 0
+  for i in 0..<2:
+    atom.bar = 5
+    s.add atom
+    atom.reset
+    if i == 0:
+      checked += 1
+      doAssert $s == "@[(bar: 5)]"
+    else:
+      checked += 1
+      doAssert $s == "@[(bar: 5), (bar: 5)]"
+  doAssert checked == 2
+
+static: main()
+main()
