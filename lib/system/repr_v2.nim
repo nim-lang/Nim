@@ -100,7 +100,7 @@ template repr*(x: distinct): string =
 
 template repr*(t: typedesc): string = $t
 
-proc reprObject[T: tuple|object](res: var string, x: T) =
+proc reprObject[T: tuple|object](res: var string, x: T) {.noSideEffect.} =
   res.add '('
   var firstElement = true
   const isNamed = T is object or isNamedTuple(T)
@@ -121,7 +121,7 @@ proc reprObject[T: tuple|object](res: var string, x: T) =
   res.add(')')
 
 
-proc repr*[T: tuple|object](x: T): string =
+proc repr*[T: tuple|object](x: T): string {.noSideEffect.} =
   ## Generic `repr` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
@@ -133,7 +133,7 @@ proc repr*[T: tuple|object](x: T): string =
     result = $typeof(x)
   reprObject(result, x)
 
-proc repr*[T](x: ref T | ptr T): string =
+proc repr*[T](x: ref T | ptr T): string {.noSideEffect.} =
   if isNil(x): return "nil"
   when T is object:
     result = $typeof(x)
@@ -142,7 +142,7 @@ proc repr*[T](x: ref T | ptr T): string =
     result = when typeof(x) is ref: "ref " else: "ptr "
     result.add repr(x[])
 
-proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string =
+proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string {.noSideEffect.} =
   result = prefix
   var firstElement = true
   for value in items(x):
