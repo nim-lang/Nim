@@ -60,7 +60,7 @@ when defined(gcDestructors):
 
   proc deallocThreadStorage(p: pointer) = c_free(p)
 else:
-  template allocThreadStorage(size: untyped): untyped = allocShared0(x)
+  template allocThreadStorage(size: untyped): untyped = allocShared0(size)
   template deallocThreadStorage(p: pointer) = deallocShared(p)
 
 when hasAllocStack or defined(zephyr) or defined(freertos):

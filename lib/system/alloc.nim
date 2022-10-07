@@ -934,10 +934,13 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
   else:
     # set to 0xff to check for usage after free bugs:
     when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead())
-    if c.owner == addr(a):
-      deallocBigChunk(a, cast[PBigChunk](c))
+    when defined(gcDestructors):
+      if c.owner == addr(a):
+        deallocBigChunk(a, cast[PBigChunk](c))
+      else:
+        addToSharedFreeListBigChunks(c.owner[], cast[PBigChunk](c))
     else:
-      addToSharedFreeListBigChunks(c.owner[], cast[PBigChunk](c))
+      deallocBigChunk(a, cast[PBigChunk](c))
   sysAssert(allocInv(a), "rawDealloc: end")
   when logAlloc: cprintf("dealloc(pointer_%p)\n", p)
 
