@@ -136,7 +136,6 @@ body {
 .container {
   position: relative;
   width: 100%;
-  max-width: 1050px;
   margin: 0 auto;
   padding: 0;
   box-sizing: border-box; }
