@@ -200,6 +200,7 @@ input#searchInput {
  */
 input {
   -moz-appearance: none;
+  appearance: none;
   background-color: var(--secondary-background);
   color: var(--text);
   border: 1px solid var(--border);
@@ -215,6 +216,7 @@ input:focus {
 
 select {
   -moz-appearance: none;
+  appearance: none;
   background-color: var(--secondary-background);
   color: var(--text);
   border: 1px solid var(--border);
