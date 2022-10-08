@@ -756,6 +756,7 @@ when defined(gcDestructors):
         break
 
   proc addToSharedFreeListBigChunks(a: var MemRegion; c: PBigChunk) {.inline.} =
+    sysAssert c.next == nil, "c.next pointer must be nil"
     atomicPrepend a.sharedFreeListBigChunks, c
 
   proc addToSharedFreeList(c: PSmallChunk; f: ptr FreeCell) {.inline.} =
