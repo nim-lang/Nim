@@ -80,7 +80,7 @@ proc genLiteral(p: BProc, n: PNode, ty: PType; result: var Rope) =
              "static NIM_CONST $1 $2 = {NIM_NIL,NIM_NIL};$n",
              [getTypeDesc(p.module, ty), tmpName])
       result.add tmpName
-    elif k in {tyPointer, tyNil, tyProc}:
+    elif k in {tyPointer, tyPtr, tyNil, tyProc}:
       result.add rope("NIM_NIL")
     else:
       result.add "(($1) NIM_NIL)" % [getTypeDesc(p.module, ty)]
