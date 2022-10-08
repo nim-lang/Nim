@@ -116,9 +116,6 @@ when hasAlloc and not defined(js):
     ##
     ## See also:
     ## * `create <#create,typedesc>`_
-    static:
-      when sizeof(T) <= 0:
-        {.fatal: "createU does not support types T where sizeof(T) == 0".}
     cast[ptr T](alloc(T.sizeof * size))
 
   template alloc0*(size: Natural): pointer =
@@ -144,9 +141,6 @@ when hasAlloc and not defined(js):
     ##
     ## The allocated memory belongs to its allocating thread!
     ## Use `createShared <#createShared,typedesc>`_ to allocate from a shared heap.
-    static:
-      when sizeof(T) <= 0:
-        {.fatal: "create does not support types T where sizeof(T) == 0".}
     cast[ptr T](alloc0(sizeof(T) * size))
 
   template realloc*(p: pointer, newSize: Natural): pointer =
