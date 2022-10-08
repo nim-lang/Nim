@@ -2868,7 +2868,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
           s = f.sym
           break
     if s == nil:
-      let checks = if efNoEvaluateGeneric in flags:
+      let checks =
+        if efNoEvaluateGeneric in flags:
           {checkUndeclared, checkPureEnumFields}
         elif efInCall in flags:
           {checkUndeclared, checkModule, checkPureEnumFields}

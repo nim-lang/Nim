@@ -55,6 +55,33 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
                   result[0].scope, diagnostics)
     best.state = csNoMatch
 
+proc scopeExtension(c: PContext; n: PNode): PSym =
+  # This is a particularly elegant way to implement
+  # https://github.com/nim-lang/RFCs/issues/380.
+  # If there is at least one argument `a` passed to `f` we
+  # use the module where `a`'s type comes from in addition to
+  # other candidates.
+  if n.len <= 1: return nil
+  var arg = n[1]
+  if arg.kind == nkExprEqExpr: arg = arg[1]
+  if arg.kind in {nkStmtList, nkStmtListExpr, nkDo, nkElse, nkOfBranch, nkElifBranch, nkExceptBranch}:
+    return nil
+
+  if arg.typ.isNil:
+    arg = c.semOperand(c, arg, {efDetermineType})
+    if n[1].kind == nkExprEqExpr:
+      n[1][1] = arg
+    else:
+      n[1] = arg
+  var t = arg.typ
+  result = nil
+  if t != nil:
+    t = t.skipTypes({tyVar, tyAlias, tySink, tyTypeDesc, tyGenericInst, tyGenericBody, tyStatic})
+    if t.kind == tyGenericInvocation:
+      t = t[0]
+    if t.kind in {tyEnum, tyObject, tyDistinct} and t.owner != nil and t.owner.kind == skModule:
+      result = t.owner
+
 proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        n, orig: PNode,
                        initialBinding: PNode,
@@ -65,6 +92,13 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        errorsEnabled: bool, flags: TExprFlags) =
   var o: TOverloadIter
   var sym = initOverloadIter(o, c, headSymbol)
+
+  if sym != nil:
+    if sym.typ != nil and sym.typ.len > 1 and sym.typ[1].kind == tyUntyped:
+      discard
+    else:
+      discard scopeExtension(c, n)
+
   var scope = o.lastOverloadScope
   # Thanks to the lazy semchecking for operands, we need to check whether
   # 'initCandidate' modifies the symbol table (via semExpr).
