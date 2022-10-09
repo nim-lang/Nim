@@ -94,7 +94,8 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   var sym = initOverloadIter(o, c, headSymbol)
 
   if sym != nil:
-    if sym.typ != nil and sym.typ.len > 1 and sym.typ[1].kind == tyUntyped:
+    if sym.typ != nil and sym.typ.len > 1 and (
+        sym.typ[1].kind == tyUntyped or (sym.typ[1].kind == tyVarargs and sym.typ[1][0].kind == tyUntyped)):
       discard
     else:
       discard scopeExtension(c, n)
