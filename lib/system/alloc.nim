@@ -562,6 +562,10 @@ proc splitChunk2(a: var MemRegion, c: PBigChunk, size: int): PBigChunk =
   result = cast[PBigChunk](cast[ByteAddress](c) +% size)
   result.size = c.size - size
   track("result.size", addr result.size, sizeof(int))
+  when not defined(nimOptimizedSplitChunk):
+    # still active because of weird codegen issue on some of our CIs:
+    result.next = nil
+    result.prev = nil
   # size and not used:
   result.prevSize = size
   result.owner = addr a
@@ -595,8 +599,9 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
           c = cast[PBigChunk](le)
           if c.size > MaxBigChunkSize:
             let rest = splitChunk2(a, c, MaxBigChunkSize)
-            rest.next = nil
-            rest.prev = nil
+            when defined(nimOptimizedSplitChunk):
+              rest.next = nil
+              rest.prev = nil
             addChunkToMatrix(a, c)
             c = rest
   when coalescRight:
