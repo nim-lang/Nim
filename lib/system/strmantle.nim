@@ -78,7 +78,7 @@ const
 when defined(nimHasInvariant):
   {.push staticBoundChecks: off.}
 
-proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
+proc nimParseBiggestFloat(s: openArray[char], number: var BiggestFloat,
                           start = 0): int {.compilerproc.} =
   # This routine attempt to parse float that can parsed quickly.
   # i.e. whose integer part can fit inside a 53bits integer.
