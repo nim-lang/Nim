@@ -1595,10 +1595,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         c.inheritancePenalty = 0
         let x = typeRel(c, branch, aOrig, flags)
         maxInheritance = max(maxInheritance, c.inheritancePenalty)
-
         # 'or' implies maximum matching result:
         if x > result: result = x
-      if result >= isSubtype:
+      if result >= isConvertible:
         if result > isGeneric: result = isGeneric
         bindingRet result
       else:
