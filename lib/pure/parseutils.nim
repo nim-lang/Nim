@@ -316,7 +316,7 @@ proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
   while start+result < s.len and s[result+start] != until: inc(result)
 
 proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
-  ## Skips all characters while one char from the set `token` is found.
+  ## Skips all characters while one char from the set `toSkip` is found.
   ## Returns number of characters skipped.
   runnableExamples:
     doAssert skipWhile("Hello World", {'H', 'e'}) == 2
