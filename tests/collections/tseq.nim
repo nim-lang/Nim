@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   output: '''
 Hithere, what's your name?Hathere, what's your name?
 fA13msg1falsefB14msg2truefC15msg3false
@@ -11,8 +12,6 @@ FilterIt: [1, 3, 7]
 Concat: [1, 3, 5, 7, 2, 4, 6]
 Deduplicate: [1, 2, 3, 4, 5, 7]
 @[()]
-@[1, 42, 3]
-@[1, 42, 3]
 2345623456
 '''
 """
@@ -158,41 +157,43 @@ block tsequtils:
   echo someObjSeq
 
 
+when not defined(nimseqsv2):
+  block tshallowseq:
+    proc xxx() =
+      var x: seq[int] = @[1, 2, 3]
+      var y: seq[int]
+      system.shallowCopy(y, x)
+      y[1] = 42
+      doAssert y == @[1, 42, 3]
+      doAssert x == @[1, 42, 3]
+    xxx()
 
-block tshallowseq:
-  proc xxx() =
-    var x: seq[int] = @[1, 2, 3]
-    var y: seq[int]
-    system.shallowCopy(y, x)
-    y[1] = 42
-    echo y
-    echo x
-  xxx()
 
-
-block tshallowemptyseq:
-  proc test() =
-    var nilSeq: seq[int] = @[]
-    var emptySeq: seq[int] = newSeq[int]()
-    block:
-      var t = @[1,2,3]
-      shallow(nilSeq)
-      t = nilSeq
-      doAssert t == @[]
-    block:
-      var t = @[1,2,3]
-      shallow(emptySeq)
-      t = emptySeq
-      doAssert t == @[]
-    block:
-      var t = @[1,2,3]
-      shallowCopy(t, nilSeq)
-      doAssert t == @[]
-    block:
-      var t = @[1,2,3]
-      shallowCopy(t, emptySeq)
-      doAssert t == @[]
-  test()
+  block tshallowemptyseq:
+    proc test() =
+      var nilSeq: seq[int] = @[]
+      var emptySeq: seq[int] = newSeq[int]()
+      block:
+        var t = @[1,2,3]
+        when defined(gcRefc):
+          shallow(nilSeq)
+        t = nilSeq
+        doAssert t == @[]
+      block:
+        var t = @[1,2,3]
+        when defined(gcRefc):
+          shallow(emptySeq)
+        t = emptySeq
+        doAssert t == @[]
+      block:
+        var t = @[1,2,3]
+        shallowCopy(t, nilSeq)
+        doAssert t == @[]
+      block:
+        var t = @[1,2,3]
+        shallowCopy(t, emptySeq)
+        doAssert t == @[]
+    test()
 
 
 import strutils

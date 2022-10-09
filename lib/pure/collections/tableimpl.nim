@@ -23,7 +23,7 @@ template rawInsertImpl() {.dirty.} =
   data[h].val = val
   data[h].hcode = hc
 
-proc rawGetDeep[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
+proc rawGetDeep[X, A](t: X, key: A, hc: var Hash): int {.inline, outParamsAt: [3].} =
   rawGetDeepImpl()
 
 proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],

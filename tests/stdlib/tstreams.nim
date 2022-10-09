@@ -16,7 +16,7 @@ GROOT
 """
 
 
-import streams
+import std/[syncio, streams, assertions]
 
 
 block tstreams:

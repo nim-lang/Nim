@@ -19,6 +19,8 @@ See also:
 
 import os, random
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 const
   maxRetry = 10000
@@ -28,6 +30,8 @@ const
 
 when defined(windows):
   import winlean
+  when defined(nimPreviewSlimSystem):
+    import std/widestrs
 
   var O_RDWR {.importc: "_O_RDWR", header: "<fcntl.h>".}: cint
 
