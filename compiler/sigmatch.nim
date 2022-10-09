@@ -1597,7 +1597,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         maxInheritance = max(maxInheritance, c.inheritancePenalty)
         # 'or' implies maximum matching result:
         if x > result: result = x
-      if result >= isConvertible:
+      if result >= isIntConv:
         if result > isGeneric: result = isGeneric
         bindingRet result
       else:
