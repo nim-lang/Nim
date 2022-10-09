@@ -41,13 +41,13 @@
 ## requested amount of data is read **or** an exception occurs.
 ##
 ## Code to read some data from a socket may look something like this:
-##
-## .. code-block:: Nim
-##    var future = socket.recv(100)
-##    future.addCallback(
-##      proc () =
-##        echo(future.read)
-##    )
+##   ```Nim
+##   var future = socket.recv(100)
+##   future.addCallback(
+##     proc () =
+##       echo(future.read)
+##   )
+##   ```
 ##
 ## All asynchronous functions returning a `Future` will not block. They
 ## will not however return immediately. An asynchronous function will have
@@ -108,24 +108,24 @@
 ## You can handle exceptions in the same way as in ordinary Nim code;
 ## by using the try statement:
 ##
-##
-## .. code-block:: Nim
+##   ```Nim
 ##   try:
 ##     let data = await sock.recv(100)
 ##     echo("Received ", data)
 ##   except:
 ##     # Handle exception
-##
-##
+##   ```
 ##
 ## An alternative approach to handling exceptions is to use `yield` on a future
 ## then check the future's `failed` property. For example:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   var future = sock.recv(100)
 ##   yield future
 ##   if future.failed:
 ##     # Handle exception
+##   ```
+##
 ##
 ## Discarding futures
 ## ==================
