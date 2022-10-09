@@ -31,7 +31,7 @@ runnableExamples:
 ##
 
 runnableExamples:
-  let encodedInts = encode([1,2,3])
+  let encodedInts = encode([1'u8,2,3])
   assert encodedInts == "AQID"
   let encodedChars = encode(['h','e','y'])
   assert encodedChars == "aGV5"
@@ -84,10 +84,13 @@ template encodeInternal(s, alphabet: typed): untyped =
 
   result.setLen(encodeSize(s.len))
 
+  let
+    padding = s.len mod 3
+    inputEnds = s.len - padding
+
   var
     inputIndex = 0
     outputIndex = 0
-    inputEnds = s.len - s.len mod 3
     n: uint32
     b: uint32
 
@@ -113,7 +116,6 @@ template encodeInternal(s, alphabet: typed): untyped =
     outputChar(n shr 6)
     outputChar(n shr 0)
 
-  var padding = s.len mod 3
   if padding == 1:
     inputByte(b shl 16)
     outputChar(n shr 18)
@@ -141,11 +143,8 @@ template encodeImpl() {.dirty.} =
       let lookupTable = if safe: unsafeAddr(cb64safe) else: unsafeAddr(cb64)
       encodeInternal(s, lookupTable)
 
-proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
+proc encode*[T: byte|char](s: openArray[T], safe = false): string =
   ## Encodes `s` into base64 representation.
-  ##
-  ## This procedure encodes an openarray (array or sequence) of either integers
-  ## or characters.
   ##
   ## If `safe` is `true` then it will encode using the
   ## URL-Safe and Filesystem-safe standard alphabet characters,
@@ -154,30 +153,15 @@ proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
   ## * https://tools.ietf.org/html/rfc4648#page-7
   ##
   ## **See also:**
-  ## * `encode proc<#encode,string>`_ for encoding a string
-  ## * `decode proc<#decode,string>`_ for decoding a string
-  runnableExamples:
-    assert encode(['n', 'i', 'm']) == "bmlt"
-    assert encode(@['n', 'i', 'm']) == "bmlt"
-    assert encode([1, 2, 3, 4, 5]) == "AQIDBAU="
-  encodeImpl()
-
-proc encode*(s: string, safe = false): string =
-  ## Encodes `s` into base64 representation.
-  ##
-  ## This procedure encodes a string.
-  ##
-  ## If `safe` is `true` then it will encode using the
-  ## URL-Safe and Filesystem-safe standard alphabet characters,
-  ## which substitutes `-` instead of `+` and `_` instead of `/`.
-  ## * https://en.wikipedia.org/wiki/Base64#URL_applications
-  ## * https://tools.ietf.org/html/rfc4648#page-7
-  ##
-  ## **See also:**
-  ## * `encode proc<#encode,openArray[T]>`_ for encoding an openarray
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encode("Hello World") == "SGVsbG8gV29ybGQ="
+    assert encode(['n', 'i', 'm']) == "bmlt"
+    assert encode(@['n', 'i', 'm']) == "bmlt"
+    assert encode([1'u8, 2, 3, 4, 5]) == "AQIDBAU="
+  encodeImpl()
+
+proc encode*[T: SomeInteger and not byte](s: openArray[T], safe = false): string {.deprecated: "use `byte` or `char` instead".} =
   encodeImpl()
 
 proc encodeMime*(s: string, lineLen = 75.Positive, newLine = "\r\n"): string =
@@ -187,7 +171,7 @@ proc encodeMime*(s: string, lineLen = 75.Positive, newLine = "\r\n"): string =
   ## This procedure encodes a string according to MIME spec.
   ##
   ## **See also:**
-  ## * `encode proc<#encode,string>`_ for encoding a string
+  ## * `encode proc<#encode,openArray[T]>`_ for encoding an openArray
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encodeMime("Hello World", 4, "\n") == "SGVs\nbG8g\nV29y\nbGQ="
@@ -232,7 +216,6 @@ proc decode*(s: string): string =
   ##
   ## **See also:**
   ## * `encode proc<#encode,openArray[T]>`_ for encoding an openarray
-  ## * `encode proc<#encode,string>`_ for encoding a string
   runnableExamples:
     assert decode("SGVsbG8gV29ybGQ=") == "Hello World"
     assert decode("  SGVsbG8gV29ybGQ=") == "Hello World"
