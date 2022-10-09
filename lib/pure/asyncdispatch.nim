@@ -227,7 +227,7 @@
 ## asynchronous API, to disable the latter.
 
 import os, tables, strutils, times, heapqueue, options, asyncstreams
-import options, math, std/monotimes
+import math, std/monotimes
 import asyncfutures except callSoon
 
 import nativesockets, net, deques

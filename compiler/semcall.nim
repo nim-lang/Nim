@@ -68,7 +68,7 @@ proc scopeExtension(c: PContext; n: PNode): PSym =
     return nil
 
   if arg.typ.isNil:
-    arg = c.semOperand(c, arg, {efDetermineType})
+    arg = c.semOperand(c, arg, {efDetermineType, efAllowStmt})
     if n[1].kind == nkExprEqExpr:
       n[1][1] = arg
     else:
