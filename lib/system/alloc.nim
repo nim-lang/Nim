@@ -143,14 +143,16 @@ when hasThreadSupport:
   template loada(x: untyped): untyped = atomicLoadN(unsafeAddr x, ATOMIC_RELAXED)
   template storea(x, y: untyped) = atomicStoreN(unsafeAddr x, y, ATOMIC_RELAXED)
 
-  template atomicStatDec(x, diff: untyped) = discard atomicSubFetch(unsafeAddr x, diff, ATOMIC_RELAXED)
-  template atomicStatInc(x, diff: untyped) = discard atomicAddFetch(unsafeAddr x, diff, ATOMIC_RELAXED)
+  when false:
+    # not yet required
+    template atomicStatDec(x, diff: untyped) = discard atomicSubFetch(unsafeAddr x, diff, ATOMIC_RELAXED)
+    template atomicStatInc(x, diff: untyped) = discard atomicAddFetch(unsafeAddr x, diff, ATOMIC_RELAXED)
 else:
   template loada(x: untyped): untyped = x
   template storea(x, y: untyped) = x = y
 
-  template atomicStatDec(x, diff: untyped) = dec x, diff
-  template atomicStatInc(x, diff: untyped) = inc x, diff
+template atomicStatDec(x, diff: untyped) = dec x, diff
+template atomicStatInc(x, diff: untyped) = inc x, diff
 
 const
   fsLookupTable: array[byte, int8] = [
@@ -261,14 +263,14 @@ proc incCurrMem(a: var MemRegion, bytes: int) {.inline.} =
   atomicStatInc(a.currMem, bytes)
 
 proc decCurrMem(a: var MemRegion, bytes: int) {.inline.} =
-  a.maxMem = max(a.maxMem, a.currMem.loada)
+  a.maxMem = max(a.maxMem, a.currMem)
   atomicStatDec(a.currMem, bytes)
 
 proc getMaxMem(a: var MemRegion): int =
   # Since we update maxPagesCount only when freeing pages,
   # maxPagesCount may not be up to date. Thus we use the
   # maximum of these both values here:
-  result = max(a.currMem.loada, a.maxMem)
+  result = max(a.currMem, a.maxMem)
 
 proc llAlloc(a: var MemRegion, size: int): pointer =
   # *low-level* alloc for the memory managers data structures. Deallocation
@@ -1074,7 +1076,7 @@ proc deallocOsPages(a: var MemRegion) =
   llDeallocAll(a)
 
 proc getFreeMem(a: MemRegion): int {.inline.} = result = a.freeMem
-proc getTotalMem(a: MemRegion): int {.inline.} = result = a.currMem.loada
+proc getTotalMem(a: MemRegion): int {.inline.} = result = a.currMem
 proc getOccupiedMem(a: MemRegion): int {.inline.} =
   result = a.occ
   # a.currMem - a.freeMem
@@ -1136,7 +1138,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
     result = allocator.freeMem
 
   proc getTotalMem(): int =
-    result = allocator.currMem.loada
+    result = allocator.currMem
 
   proc getOccupiedMem(): int =
     result = allocator.occ #getTotalMem() - getFreeMem()
@@ -1191,7 +1193,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
         allocator.freeMem
 
       proc getTotalSharedMem(): int =
-        allocator.currMem.loada
+        allocator.currMem
 
       proc getOccupiedSharedMem(): int =
         allocator.occ
@@ -1206,7 +1208,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
         sharedMemStatsShared(sharedHeap.freeMem)
 
       proc getTotalSharedMem(): int =
-        sharedMemStatsShared(sharedHeap.currMem.loada)
+        sharedMemStatsShared(sharedHeap.currMem)
 
       proc getOccupiedSharedMem(): int =
         sharedMemStatsShared(sharedHeap.occ)
