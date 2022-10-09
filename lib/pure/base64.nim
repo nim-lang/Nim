@@ -161,8 +161,7 @@ proc encode*[T: byte|char](s: openArray[T], safe = false): string =
     assert encode([1'u8, 2, 3, 4, 5]) == "AQIDBAU="
   encodeImpl()
 
-proc encode*[T: SomeInteger and not byte](s: openArray[T], safe = false): string  =
-  {.warning: "Deprecated Element type of `s`. use `byte` or `char` instead".}
+proc encode*[T: SomeInteger and not byte](s: openArray[T], safe = false): string {.deprecated: "use `byte` or `char` instead".} =
   encodeImpl()
 
 proc encodeMime*(s: string, lineLen = 75.Positive, newLine = "\r\n"): string =
