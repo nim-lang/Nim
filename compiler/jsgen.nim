@@ -2494,7 +2494,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, cache = false)
+  var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, dontUseCache)
   if sfInjectDestructors in prc.flags:
     transformedBody = injectDestructorCalls(p.module.graph, p.module.idgen, prc, transformedBody)
 
