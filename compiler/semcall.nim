@@ -10,7 +10,8 @@
 ## This module implements semantic checking for calls.
 # included from sem.nim
 
-from algorithm import sort
+from std/algorithm import sort
+
 
 proc sameMethodDispatcher(a, b: PSym): bool =
   result = false
@@ -211,6 +212,10 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     if filterOnlyFirst and err.firstMismatch.arg == 1:
       inc skipped
       continue
+
+    if isDefined(c.config, "nimPreviewTypeMismatch"):
+      candidates.add "[" & $err.firstMismatch.arg & "] "
+
     if err.sym.kind in routineKinds and err.sym.ast != nil:
       candidates.add(renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
@@ -277,6 +282,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 const
   errTypeMismatch = "type mismatch: got <"
   errButExpected = "but expected one of:"
+  errExpectedPosition = "Expected one of (mismatch at position [#]):"
   errUndeclaredField = "undeclared field: '$1'"
   errUndeclaredRoutine = "attempting to call undeclared routine: '$1'"
   errBadRoutine = "attempting to call routine: '$1'$2"
@@ -299,7 +305,10 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   result.add(describeArgs(c, n, 1, prefer))
   result.add('>')
   if candidates != "":
-    result.add("\n" & errButExpected & "\n" & candidates)
+    if isDefined(c.config, "nimPreviewTypeMismatch"):
+      result.add("\n" & errExpectedPosition & "\n" & candidates)
+    else:
+      result.add("\n" & errButExpected & "\n" & candidates)
   localError(c.config, n.info, result & "\nexpression: " & $n)
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
