@@ -352,7 +352,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
           "Array length can't be negative, but was " & $e.intVal)
       result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
     elif e.kind == nkSym:
-      if  e.typ.kind == tyStatic:
+      if e.typ.kind == tyStatic:
         if e.sym.ast != nil:
           return semArrayIndex(c, e.sym.ast)
         if e.typ.lastSon.kind != tyGenericParam and not isOrdinalType(e.typ.lastSon):
@@ -361,7 +361,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
         result = makeRangeWithStaticExpr(c, e)
       else:
         result = e.typ.skipTypes({tyTypeDesc})
-        result.flags.incl tfInferrableStatic
+        result.flags.incl tfImplicitStatic
       if c.inGenericContext > 0: result.flags.incl tfUnresolved
     elif e.kind in (nkCallKinds + {nkBracketExpr}) and hasUnresolvedArgs(c, e):
       if not isOrdinalType(e.typ.skipTypes({tyStatic, tyAlias, tyGenericInst, tySink})):
@@ -1546,7 +1546,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         typ = typ.skipTypes({tyTypeDesc})
         if containsGenericType(typ): isConcrete = false
         var skip = true
-        if isArray and i == 1 and tfInferrableStatic in m.call[0].typ[0].flags and isIntLit(typ):
+        if isArray and i == 1 and tfImplicitStatic in m.call[0].typ[0].flags and isIntLit(typ):
           skip = false
         addToResult(typ, skip)
 
