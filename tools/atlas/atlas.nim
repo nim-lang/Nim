@@ -30,6 +30,7 @@ Options:
   --keepCommits         do not perform any `git checkouts`
   --cfgHere             also create/maintain a nim.cfg in the current
                         working directory
+  --workspace=DIR       use DIR as workspace
   --version             show the version
   --help                show this help
 """
@@ -460,7 +461,7 @@ proc main =
 
   var c = AtlasContext(
     projectDir: getCurrentDir(),
-    workspace: getCurrentDir())
+    workspace: "")
 
   for kind, key, val in getopt():
     case kind
@@ -474,12 +475,23 @@ proc main =
       of "help", "h": writeHelp()
       of "version", "v": writeVersion()
       of "keepcommits": c.keepCommits = true
+      of "workspace":
+        if val.len > 0:
+          c.workspace = val
+          createDir(val)
+        else:
+          writeHelp()
       of "cfghere": c.cfgHere = true
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
 
-  while c.workspace.len > 0 and dirExists(c.workspace / ".git"):
-    c.workspace = c.workspace.parentDir()
+  if c.workspace.len > 0:
+    if not dirExists(c.workspace): error "Workspace directory '" & c.workspace & "' not found."
+  else:
+    c.workspace = getCurrentDir()
+    while c.workspace.len > 0 and dirExists(c.workspace / ".git"):
+      c.workspace = c.workspace.parentDir()
+  echo "Using workspace ", c.workspace
 
   case action
   of "":
