@@ -79,7 +79,8 @@ proc scopeExtension(c: PContext; n: PNode): PSym =
     t = t.skipTypes({tyVar, tyAlias, tySink, tyTypeDesc, tyGenericInst, tyGenericBody, tyStatic})
     if t.kind == tyGenericInvocation:
       t = t[0]
-    if t.kind in {tyEnum, tyObject, tyDistinct} and t.owner != nil and t.owner.kind == skModule:
+    if t.kind in {tyEnum, tyObject, tyDistinct} and t.owner != nil and
+        t.owner.kind == skModule and t.owner != c.module:
       result = t.owner
 
 proc pickBestCandidate(c: PContext, headSymbol: PNode,
