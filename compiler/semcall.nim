@@ -195,7 +195,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   # argument in order to remove plenty of candidates. This is
   # comparable to what C# does and C# is doing fine.
   var filterOnlyFirst = false
-  if optShowAllMismatches notin c.config.globalOptions:
+  if optShowAllMismatches notin c.config.globalOptions and not isDefined(c.config, "nimPreviewTypeMismatch"):
     for err in errors:
       if err.firstMismatch.arg > 1:
         filterOnlyFirst = true
@@ -220,7 +220,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     candidates.add("\n")
     let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
-    if n.len > 1:
+    if n.len > 1 and not isDefined(c.config, "nimPreviewTypeMismatch"):
       candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
       # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
       case err.firstMismatch.kind
