@@ -286,29 +286,6 @@ scope. Therefore, the following will *fail to compile:*
 This feature will likely be replaced with a better solution to remove
 the need for forward declarations.
 
-
-Automatic dereferencing
-=======================
-
-Automatic dereferencing is performed for the first argument of a routine call.
-This feature has to be enabled via `{.experimental: "implicitDeref".}`:
-
-  ```nim
-  {.experimental: "implicitDeref".}
-
-  type
-    NodeObj = object
-      # ...
-    Node = ref NodeObj
-
-  proc depth(x: NodeObj): int = ...
-
-  let n = Node()
-  echo n.depth
-  # no need to write n[].depth
-  ```
-
-
 Special Operators
 =================
 
