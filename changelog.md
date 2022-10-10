@@ -46,6 +46,8 @@
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
   `experimental:flexibleOptionalParams`.
 
+- Automatic dereferencing (experimental feature) is removed.
+
 - The `Math.trunc` polyfill for targeting Internet Explorer was
   previously included in most JavaScript output files.
   Now, it is only included with `-d:nimJsMathTruncPolyfill`.

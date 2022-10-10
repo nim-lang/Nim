@@ -580,27 +580,6 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
               "Non-matching candidates for " & renderTree(n) & "\n" &
               candidates)
     result = semResolvedCall(c, r, n, flags)
-  elif implicitDeref in c.features and canDeref(n):
-    # try to deref the first argument and then try overloading resolution again:
-    #
-    # XXX: why is this here?
-    # it could be added to the long list of alternatives tried
-    # inside `resolveOverloads` or it could be moved all the way
-    # into sigmatch with hidden conversion produced there
-    #
-    n[1] = n[1].tryDeref
-    var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
-    if r.state == csMatch: result = semResolvedCall(c, r, n, flags)
-    else:
-      # get rid of the deref again for a better error message:
-      n[1] = n[1][0]
-      #notFoundError(c, n, errors)
-      if efExplain notin flags:
-        # repeat the overload resolution,
-        # this time enabling all the diagnostic output (this should fail again)
-        discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-      elif efNoUndeclared notin flags:
-        notFoundError(c, n, errors)
   else:
     if efExplain notin flags:
       # repeat the overload resolution,

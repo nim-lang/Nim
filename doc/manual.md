@@ -1984,10 +1984,6 @@ dereferencing operations for reference types:
   # no need to write n[].data; in fact n[].data is highly discouraged!
   ```
 
-Automatic dereferencing can be performed for the first argument of a routine
-call, but this is an experimental feature and is described [here](
-manual_experimental.html#automatic-dereferencing).
-
 In order to simplify structural type checking, recursive tuples are not valid:
 
   ```nim
