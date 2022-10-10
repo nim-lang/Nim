@@ -335,6 +335,14 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errXExpectsOneTypeParam % "range")
     result = newOrPrevType(tyError, prev, c)
 
+proc semArrayIndexConst(c: PContext, e: PNode, info: TLineInfo): PType =
+  let x = semConstExpr(c, e)
+  if x.kind in {nkIntLit..nkUInt64Lit}:
+    result = makeRangeType(c, 0, x.intVal-1, info,
+                        x.typ.skipTypes({tyTypeDesc}))
+  else:
+    result = x.typ.skipTypes({tyTypeDesc})
+
 proc semArrayIndex(c: PContext, n: PNode): PType =
   if isRange(n):
     result = semRangeAux(c, n, nil)
@@ -351,7 +359,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
         localError(c.config, n.info,
           "Array length can't be negative, but was " & $e.intVal)
       result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
-    elif e.kind == nkSym:
+    elif e.kind == nkSym and (e.typ.kind == tyStatic or e.typ.kind == tyTypeDesc) :
       if e.typ.kind == tyStatic:
         if e.sym.ast != nil:
           return semArrayIndex(c, e.sym.ast)
@@ -375,12 +383,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
     elif e.kind == nkIdent:
       result = e.typ.skipTypes({tyTypeDesc})
     else:
-      let x = semConstExpr(c, e)
-      if x.kind in {nkIntLit..nkUInt64Lit}:
-        result = makeRangeType(c, 0, x.intVal-1, n.info,
-                             x.typ.skipTypes({tyTypeDesc}))
-      else:
-        result = x.typ.skipTypes({tyTypeDesc})
+      result = semArrayIndexConst(c, e, n.info)
         #localError(c.config, n[1].info, errConstExprExpected)
 
 proc semArray(c: PContext, n: PNode, prev: PType): PType =
@@ -1533,7 +1536,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       return newOrPrevType(tyError, prev, c)
 
     var isConcrete = true
-    let isArray = m.call[0].typ.lastSon.kind == tyArray
+    let isArray = m.call[0].typ != nil and m.call[0].typ.lastSon.kind == tyArray
     for i in 1..<m.call.len:
       var typ = m.call[i].typ
       # is this a 'typedesc' *parameter*? If so, use the typedesc type,
