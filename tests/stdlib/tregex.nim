@@ -11,7 +11,7 @@ when defined(powerpc64):
 else:
   import
     re
-
+  import std/syncio
   if "keyA = valueA" =~ re"\s*(\w+)\s*\=\s*(\w+)":
     write(stdout, "key: ", matches[0])
   elif "# comment!" =~ re.re"\s*(\#.*)":

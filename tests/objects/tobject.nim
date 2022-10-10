@@ -1,4 +1,3 @@
-import unittest
 
 type Obj = object
   foo: int
@@ -10,9 +9,9 @@ block: # object basic methods
   block: # it should convert an object to a string
     var obj = makeObj(1)
     # Should be "obj: (foo: 1)" or similar.
-    check($obj == "(foo: 1)")
+    doAssert($obj == "(foo: 1)")
   block: # it should test equality based on fields
-    check(makeObj(1) == makeObj(1))
+    doAssert(makeObj(1) == makeObj(1))
 
 # bug #10203
 

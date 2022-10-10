@@ -192,7 +192,7 @@ type
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
-    ideRecompile, ideChanged, ideType
+    ideRecompile, ideChanged, ideType, ideDeclaration
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     implicitDeref,
@@ -213,10 +213,11 @@ type
     strictFuncs,
     views,
     strictNotNil,
-    overloadableEnums,
+    overloadableEnums, # deadcode
     strictEffects,
-    unicodeOperators,
-    flexibleOptionalParams
+    unicodeOperators, # deadcode
+    flexibleOptionalParams,
+    strictDefs
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -504,7 +505,7 @@ when defined(nimDebugUtils):
   export debugutils
 
 proc initConfigRefCommon(conf: ConfigRef) =
-  conf.selectedGC = gcRefc
+  conf.selectedGC = gcUnselected
   conf.verbosity = 1
   conf.hintProcessingDots = true
   conf.options = DefaultOptions
@@ -1026,6 +1027,7 @@ proc `$`*(c: IdeCmd): string =
   of ideMsg: "msg"
   of ideProject: "project"
   of ideGlobalSymbols: "globalSymbols"
+  of ideDeclaration: "declaration"
   of ideRecompile: "recompile"
   of ideChanged: "changed"
   of ideType: "type"

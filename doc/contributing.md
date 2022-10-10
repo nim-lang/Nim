@@ -216,7 +216,7 @@ must be marked as deprecated using the `deprecated` pragma:
   ```
 
 
-See also `Deprecated <manual.html#pragmas-deprecated-pragma>`_
+See also [Deprecated](manual.html#pragmas-deprecated-pragma)
 pragma in the manual.
 
 
@@ -242,7 +242,7 @@ as well as `testament`:cmd: and guarantee they stay in sync.
     result = a & "Bar"
   ```
 
-See `parentDir <os.html#parentDir,string>`_ example.
+See [parentDir](os.html#parentDir,string) example.
 
 The RestructuredText Nim uses has a special syntax for including code snippets
 embedded in documentation; these are not run by `nim doc`:cmd: and therefore are
@@ -297,7 +297,7 @@ the first is preferred.
 When you specify an *RST role* (highlighting/interpretation marker) do it
 in the postfix form for uniformity, that is after \`text in backticks\`.
 For example an ``:idx:`` role for referencing a topic ("SQLite" in the
-example below) from `Nim Index`_ can be used in doc comment this way:
+example below) from [Nim Index] can be used in doc comment this way:
 
   ```nim
   ## A higher level `SQLite`:idx: database wrapper.
@@ -314,14 +314,14 @@ To avoid accidental highlighting follow this rule in ``*.nim`` files:
   programming languages, including identifiers, in ``*.nim`` files.
 
   For languages other than Nim add a role after final backtick,
-  e.g. for C++ inline highlighting::
+  e.g. for C++ inline highlighting:
 
-    `#include <stdio.h>`:cpp:
+      `#include <stdio.h>`:cpp:
 
   For a currently unsupported language add the `:code:` role,
-  like for SQL in this example::
+  like for SQL in this example:
 
-    `SELECT * FROM <table_name>;`:code:
+      `SELECT * FROM <table_name>;`:code:
 
   Highlight shell commands by ``:cmd:`` role; for command line options use
   ``:option:`` role, e.g.: \`--docInternal\`:option:.
@@ -335,17 +335,17 @@ To avoid accidental highlighting follow this rule in ``*.nim`` files:
     ``\`` and a final \` would get escaped)
 
 .. Note:: ``*.rst`` files have ``:literal:`` as their default role.
-          So for them the rule above is only applicable if the ``:nim:`` role
-          is set up manually as the default [*]_::
+  So for them the rule above is only applicable if the ``:nim:`` role
+  is set up manually as the default \[*]:
 
-            .. role:: nim(code)
-               :language: nim
-            .. default-role:: nim
+      .. role:: nim(code)
+         :language: nim
+      .. default-role:: nim
 
-          The first 2 lines are for other RST implementations,
-          including Github one.
+  The first 2 lines are for other RST implementations,
+  including Github one.
 
-          .. [*] this is fulfilled when ``doc/rstcommon.rst`` is included.
+  \[*] this is fulfilled when ``doc/rstcommon.rst`` is included.
 
 Best practices
 ==============
@@ -431,7 +431,7 @@ including prepending location info, writing to log files, etc.).
   ```
 
 .. _use_Option:
-[Ongoing debate] Consider using Option instead of return bool + var argument,
+(Ongoing debate) Consider using Option instead of return bool + var argument,
 unless stack allocation is needed (e.g. for efficiency).
 
   ```nim
@@ -466,8 +466,8 @@ General commit rules
 
 2. If you introduce changes which affect backward compatibility,
    make breaking changes, or have PR which is tagged as ``[feature]``,
-   the changes should be mentioned in `the changelog
-   <https://github.com/nim-lang/Nim/blob/devel/changelog.md>`_.
+   the changes should be mentioned in [the changelog](
+   https://github.com/nim-lang/Nim/blob/devel/changelog.md).
 
 3. All changes introduced by the commit (diff lines) must be related to the
    subject of the commit.
@@ -489,9 +489,9 @@ General commit rules
      git diff --check --cached || exit $?
      ```
 5. Describe your commit and use your common sense.
-   Example commit message::
+   Example commit message:
 
-     Fixes #123; refs #124
+       Fixes #123; refs #124
 
    indicates that issue ``#123`` is completely fixed (GitHub may automatically
    close it when the PR is committed), whereas issue ``#124`` is referenced
@@ -525,8 +525,10 @@ Continuous Integration (CI)
    documentation only changes), add ``[skip ci]`` to your commit message title.
    This convention is supported by our GitHub actions pipelines and our azure pipeline
    (using custom logic, which should complete in < 1mn) as well as our former other pipelines:
-   `Appveyor <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
-   and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_.
+   [Appveyor](
+   https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message)
+   and [Travis](
+   https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build).
 
 2. Consider enabling CI (azure, GitHub actions and builds.sr.ht) in your own Nim fork, and
    waiting for CI to be green in that fork (fixing bugs as needed) before
@@ -568,7 +570,8 @@ Code reviews
 
 2. When reviewing large diffs that may involve code moving around, GitHub's interface
    doesn't help much, as it doesn't highlight moves. Instead, you can use something
-   like this, see visual results `here <https://github.com/nim-lang/Nim/pull/10431#issuecomment-456968196>`_:
+   like this, see visual results [here](
+   https://github.com/nim-lang/Nim/pull/10431#issuecomment-456968196):
 
      ```cmd
      git fetch origin pull/10431/head && git checkout FETCH_HEAD
@@ -578,11 +581,9 @@ Code reviews
 3. In addition, you can view GitHub-like diffs locally to identify what was changed
    within a code block using `diff-highlight`:cmd: or `diff-so-fancy`:cmd:, e.g.:
 
-   ::
-
-      # put this in ~/.gitconfig:
-      [core]
-        pager = "diff-so-fancy | less -R" # or: use: `diff-highlight`
+        # put this in ~/.gitconfig:
+        [core]
+          pager = "diff-so-fancy | less -R" # or: use: `diff-highlight`
 
 
 

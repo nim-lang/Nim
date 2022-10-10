@@ -88,7 +88,7 @@ import strutils, postgres
 import db_common
 export db_common
 
-import std/private/since
+import std/private/[since, dbutils]
 
 type
   DbConn* = PPGconn    ## encapsulates a database connection
@@ -116,19 +116,7 @@ proc dbQuote*(s: string): string =
   add(result, '\'')
 
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
-  result = ""
-  var a = 0
-  if args.len > 0 and not string(formatstr).contains("?"):
-    dbError("""parameter substitution expects "?" """)
-  if args.len == 0:
-    return string(formatstr)
-  else:
-    for c in items(string(formatstr)):
-      if c == '?':
-        add(result, dbQuote(args[a]))
-        inc(a)
-      else:
-        add(result, c)
+  dbFormatImpl(formatstr, dbQuote, args)
 
 proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.tags: [ReadDbEffect, WriteDbEffect].} =
@@ -271,7 +259,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
   ## same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within iterator body.
+  ## on demand using `[]`. Returned handle is valid only within iterator body.
   setupSingeRowQuery(db, query, args)
   fetchinstantRows(db)
 
@@ -279,7 +267,7 @@ iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
   ## same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within iterator body.
+  ## on demand using `[]`. Returned handle is valid only within iterator body.
   setupSingeRowQuery(db, stmtName, args)
   fetchinstantRows(db)
 

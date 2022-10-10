@@ -2,12 +2,15 @@ discard """
   output: '''OK'''
 """
 
+import std/[syncio, assertions]
+
 #assume WideCharToMultiByte always produce correct result
 #windows only
 
 when not defined(windows):
   echo "OK"
 else:
+  import std/widestrs
   {.push gcsafe.}
 
   const CP_UTF8 = 65001'i32
@@ -66,8 +69,7 @@ else:
 
   #RFC-2781 "UTF-16, an encoding of ISO 10646"
 
-  var wc: WideCString
-  unsafeNew(wc, 1024 * 4 + 2)
+  var wc: WideCString = newWideCString(1024 * 2)
 
   #U+0000 to U+D7FF
   #skip the U+0000

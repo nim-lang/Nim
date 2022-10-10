@@ -75,14 +75,14 @@ proc toLangSymbol*(linkText: PRstNode): LangSymbol =
   ## Parses `linkText` into a more structured form using a state machine.
   ##
   ## This proc is designed to allow link syntax with operators even
-  ## without escaped backticks inside::
+  ## without escaped backticks inside:
   ##   
-  ##   `proc *`_
-  ##   `proc []`_
+  ##     `proc *`_
+  ##     `proc []`_
   ##
   ## This proc should be kept in sync with the `renderTypes` proc from
   ## ``compiler/typesrenderer.nim``.
-  assert linkText.kind in {rnRef, rnInner}
+  assert linkText.kind in {rnRstRef, rnInner}
 
   const NimDefs = ["proc", "func", "macro", "method", "iterator",
                    "template", "converter", "const", "type", "var",

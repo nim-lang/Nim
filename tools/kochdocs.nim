@@ -1,6 +1,10 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm, sequtils
+import std/[os, strutils, osproc, sets, pathnorm, sequtils]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # XXX: Remove this feature check once the csources supports it.
 when defined(nimHasCastPragmaBlocks):
   import std/pegs
@@ -9,6 +13,7 @@ import "../compiler/nimpaths"
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
+  paCode* = " --doc.plausibleAnalytics:nim-lang.org"
   # errormax: subsequent errors are probably consequences of 1st one; a simple
   # bug could cause unlimited number of errors otherwise, hard to debug in CI.
   docDefines = "-d:nimExperimentalLinenoiseExtra"
@@ -121,15 +126,15 @@ proc getMd2html(): seq[string] =
   doAssert "doc/manual/var_t_return.md".unixToNativePath in result # sanity check
 
 const
-  rstPdfList = """
-manual.rst
-lib.rst
-tut1.rst
-tut2.rst
-tut3.rst
-nimc.rst
-niminst.rst
-mm.rst
+  mdPdfList = """
+manual.md
+lib.md
+tut1.md
+tut2.md
+tut3.md
+nimc.md
+niminst.md
+mm.md
 """.splitWhitespace().mapIt("doc" / it)
 
   doc0 = """
@@ -190,8 +195,9 @@ proc getDocList(): seq[string] =
 lib/system/nimscript.nim
 lib/system/assertions.nim
 lib/system/iterators.nim
+lib/system/exceptions.nim
 lib/system/dollars.nim
-lib/system/widestrs.nim
+lib/system/ctypes.nim
 """.splitWhitespace()
 
   proc follow(a: PathEntry): bool =
@@ -293,7 +299,7 @@ proc nim2pdf(src: string, dst: string, nimArgs: string) =
   # xxx expose as a `nim` command or in some other reusable way.
   let outDir = "build" / "xelatextmp" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
   # note: this will generate temporary files in gitignored `outDir`: aux toc log out tex
-  exec("$# rst2tex $# --outdir:$# $#" % [findNim().quoteShell(), nimArgs, outDir.quoteShell, src.quoteShell])
+  exec("$# md2tex $# --outdir:$# $#" % [findNim().quoteShell(), nimArgs, outDir.quoteShell, src.quoteShell])
   let texFile = outDir / src.lastPathPart.changeFileExt("tex")
   for i in 0..<3: # call LaTeX three times to get cross references right:
     let xelatexLog = outDir / "xelatex.log"
@@ -314,7 +320,7 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
   if os.execShellCmd("xelatex -version") != 0:
     doAssert false, "xelatex not found" # or, raise an exception
   else:
-    for src in items(rstPdfList):
+    for src in items(mdPdfList):
       let dst = destPath / src.lastPathPart.changeFileExt("pdf")
       pdfList.add dst
       nim2pdf(src, dst, nimArgs)

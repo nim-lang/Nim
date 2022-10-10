@@ -125,7 +125,7 @@ The Syntax Tree
 In order to build a Nim syntax tree one needs to know how Nim source
 code is represented as a syntax tree, and how such a tree needs to
 look like so that the Nim compiler will understand it. The nodes of the
-Nim syntax tree are documented in the `macros <macros.html>`_ module.
+Nim syntax tree are documented in the [macros](macros.html) module.
 But a more interactive way to explore the Nim
 syntax tree is with `macros.treeRepr`, it converts a syntax tree
 into a multi-line string for printing on the console. It can be used
@@ -366,7 +366,7 @@ recommended way. But still `strformat` is a good example for a
 practical use case for a macro that is slightly more complex than the
 `assert` macro.
 
-`Strformat <https://github.com/nim-lang/Nim/blob/5845716df8c96157a047c2bd6bcdd795a7a2b9b1/lib/pure/strformat.nim#L280>`_
+[Strformat](https://github.com/nim-lang/Nim/blob/5845716df8c96157a047c2bd6bcdd795a7a2b9b1/lib/pure/strformat.nim#L280)
 
 Ast Pattern Matching
 --------------------
@@ -375,7 +375,7 @@ Ast Pattern Matching is a macro library to aid in writing complex
 macros. This can be seen as a good example of how to repurpose the
 Nim syntax tree with new semantics.
 
-`Ast Pattern Matching <https://github.com/krux02/ast-pattern-matching>`_
+[Ast Pattern Matching](https://github.com/krux02/ast-pattern-matching)
 
 OpenGL Sandbox
 --------------
@@ -384,4 +384,4 @@ This project has a working Nim to GLSL compiler written entirely in
 macros. It scans recursively through all used function symbols to
 compile them so that cross library functions can be executed on the GPU.
 
-`OpenGL Sandbox <https://github.com/krux02/opengl-sandbox>`_
+[OpenGL Sandbox](https://github.com/krux02/opengl-sandbox)

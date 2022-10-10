@@ -11,6 +11,8 @@ when not defined(nimscript):
 
   when defined(windows):
     import winlean
+    when useWinUnicode and defined(nimPreviewSlimSystem):
+      import std/widestrs
 
 proc `==`*(err1, err2: OSErrorCode): bool {.borrow.}
 proc `$`*(err: OSErrorCode): string {.borrow.}

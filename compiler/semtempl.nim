@@ -250,8 +250,14 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of OverloadableSyms-{skEnumField}:
+  of OverloadableSyms-{skTemplate,skMacro}:
     result = symChoice(c, n, s, scOpen, isField)
+  of skTemplate, skMacro:
+    result = symChoice(c, n, s, scOpen, isField)
+    if result.kind == nkSym:
+      # template/macro symbols might need to be semchecked again
+      # prepareOperand etc don't do this without setting the type to nil
+      result.typ = nil
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
@@ -261,12 +267,8 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
-    if s.kind == skEnumField and overloadableEnums in c.features:
-      result = symChoice(c, n, s, scOpen, isField)
-    elif isField and sfGenSym in s.flags:
-      result = n
-    else:
-      result = newSymNode(s, n.info)
+    if isField and sfGenSym in s.flags: result = n
+    else: result = newSymNode(s, n.info)
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
@@ -617,12 +619,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   else:
     s = semIdentVis(c, skTemplate, n[namePos], {})
   assert s.kind == skTemplate
-
-  if s.owner != nil:
-    const names = ["!=", ">=", ">", "incl", "excl", "in", "notin", "isnot"]
-    if sfSystemModule in s.owner.flags and s.name.s in names or
-       s.owner.name.s == "vm" and s.name.s == "stackTrace":
-      incl(s.flags, sfCallsite)
 
   styleCheckDef(c, s)
   onDef(n[namePos].info, s)

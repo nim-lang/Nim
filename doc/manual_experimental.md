@@ -65,65 +65,6 @@ However, a `void` type cannot be inferred in generic code:
 The `void` type is only valid for parameters and return types; other symbols
 cannot have the type `void`.
 
-
-Unicode Operators
-=================
-
-Under the `--experimental:unicodeOperators`:option: switch,
-these Unicode operators are also parsed as operators::
-
-  ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
-  ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
-
-
-If enabled, Unicode operators can be combined with non-Unicode operator
-symbols. The usual precedence extensions then apply, for example, `⊠=` is an
-assignment like operator just like `*=` is.
-
-No Unicode normalization step is performed.
-
-.. note:: Due to parser limitations one **cannot** enable this feature via a
-  pragma `{.experimental: "unicodeOperators".}` reliably.
-
-
-Overloadable enum value names
-=============================
-
-Enabled via `{.experimental: "overloadableEnums".}`.
-
-Enum value names are overloadable, much like routines. If both of the enums
-`T` and `U` have a member named `foo`, then the identifier `foo` corresponds
-to a choice between `T.foo` and `U.foo`. During overload resolution,
-the correct type of `foo` is decided from the context. If the type of `foo` is
-ambiguous, a static error will be produced.
-
-  ```nim  test = "nim c $1"
-  {.experimental: "overloadableEnums".}
-
-  type
-    E1 = enum
-      value1,
-      value2
-    E2 = enum
-      value1,
-      value2 = 4
-
-  const
-    Lookuptable = [
-      E1.value1: "1",
-      # no need to qualify value2, known to be E1.value2
-      value2: "2"
-    ]
-
-  proc p(e: E1) =
-    # disambiguation in 'case' statements:
-    case e
-    of value1: echo "A"
-    of value2: echo "B"
-
-  p value2
-  ```
-
 Top-down type inference
 =======================
 
@@ -171,7 +112,7 @@ let x: seq[seq[float]] = @[@[1, 2, 3], @[4, 5, 6]]
 
 This behavior is tied to the `@` overloads in the `system` module,
 so overloading `@` can disable this behavior. This can be circumvented by
-specifying the `` system.`@` `` overload. 
+specifying the `` system.`@` `` overload.
 
 ```nim
 proc `@`(x: string): string = "@" & x
@@ -233,7 +174,7 @@ from a module. The syntax `import foo {.all.}` can be used to import all
 symbols from the module `foo`. Note that importing private symbols is
 generally not recommended.
 
-See also the experimental `importutils <importutils.html>`_ module.
+See also the experimental [importutils](importutils.html) module.
 
 
 Code reordering
@@ -464,7 +405,7 @@ to use this operator.
 Extended macro pragmas
 ======================
 
-Macro pragmas as described in `the manual <manual.html#userminusdefined-pragmas-macro-pragmas>`_
+Macro pragmas as described in [the manual](manual.html#userminusdefined-pragmas-macro-pragmas)
 can also be applied to type, variable and constant declarations.
 
 For types:
@@ -522,7 +463,7 @@ expressions that cannot conveniently be represented as runtime values.
   ```nim
   type Foo = object
     bar: int
-  
+
   var foo = Foo(bar: 10)
   template bar: untyped = foo.bar
   assert bar == 10
@@ -630,7 +571,7 @@ For example:
 
 
 The algorithm behind this analysis is described in
-the `view types section <#view-types-algorithm>`_.
+the [view types algorithm].
 
 
 View types
@@ -744,7 +685,7 @@ has `source` as the owner. A path expression `e` is defined recursively:
 
 If a view type is used as a return type, the location must borrow from a location
 that is derived from the first parameter that is passed to the proc.
-See `the manual <manual.html#procedures-var-return-type>`_
+See [the manual](manual.html#procedures-var-return-type)
 for details about how this is done for `var T`.
 
 A mutable view can borrow from a mutable location, an immutable view can borrow
@@ -785,7 +726,7 @@ The scope of the view does not matter:
 
 
 The analysis requires as much precision about mutations as is reasonably obtainable,
-so it is more effective with the experimental `strict funcs <#strict-funcs>`_
+so it is more effective with the experimental [strict funcs]
 feature. In other words `--experimental:views`:option: works better
 with `--experimental:strictFuncs`:option:.
 
@@ -849,9 +790,9 @@ be part of a single graph.
 Assignments like `a = b` "connect" two variables, both variables end up in the
 same graph `{a, b} = G(a) = G(b)`. Unfortunately, the pattern to look for is
 much more complex than that and can involve multiple assignment targets
-and sources::
+and sources:
 
-  f(x, y) = g(a, b)
+    f(x, y) = g(a, b)
 
 connects `x` and `y` to `a` and `b`: `G(x) = G(y) = G(a) = G(b) = {x, y, a, b}`.
 A type based alias analysis rules out some of these combinations, for example
@@ -1340,7 +1281,7 @@ object inheritance syntax involving the `of` keyword:
   like channels, to implement thread safe automatic memory management.
 
   The builtin `deepCopy` can even clone closures and their environments. See
-  the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
+  the documentation of [spawn][spawn statement] for details.
 
 
 Dynamic arguments for bindSym
@@ -1645,16 +1586,16 @@ all the arguments, but also the matched operators in reverse polish notation:
   ```
 
 This passes the expression `x + y * z - x` to the `optM` macro as
-an `nnkArgList` node containing::
+an `nnkArgList` node containing:
 
-  Arglist
-    Sym "x"
-    Sym "y"
-    Sym "z"
-    Sym "*"
-    Sym "+"
-    Sym "x"
-    Sym "-"
+    Arglist
+      Sym "x"
+      Sym "y"
+      Sym "z"
+      Sym "*"
+      Sym "+"
+      Sym "x"
+      Sym "-"
 
 (This is the reverse polish notation of `x + y * z - x`.)
 
@@ -1771,7 +1712,7 @@ Nim has two flavors of parallelism:
 
 Nim has a builtin thread pool that can be used for CPU intensive tasks. For
 IO intensive tasks the `async` and `await` features should be
-used instead. Both parallel and spawn need the `threadpool <threadpool.html>`_
+used instead. Both parallel and spawn need the [threadpool](threadpool.html)
 module to work.
 
 Somewhat confusingly, `spawn` is also used in the `parallel` statement
@@ -1788,7 +1729,7 @@ the overhead of an indirection via `FlowVar[T]` to ensure correctness.
 .. note:: Currently exceptions are not propagated between `spawn`'ed tasks!
 
 This feature is likely to be removed in the future as external packages
-can have better solutions. 
+can have better solutions.
 
 
 Spawn statement
@@ -1996,3 +1937,129 @@ having unknown lock level as well:
   ```
 
 This feature may be removed in the future due to its practical difficulties.
+
+
+Strict definitions and `out` parameters
+=======================================
+
+With `experimental: "strictDefs"` *every* local variable must be initialized explicitly before it can be used:
+
+  ```nim
+  {.experimental: "strictDefs".}
+
+  proc test =
+    var s: seq[string]
+    s.add "abc" # invalid!
+
+  ```
+
+Needs to be written as:
+
+  ```nim
+  {.experimental: "strictDefs".}
+
+  proc test =
+    var s: seq[string] = @[]
+    s.add "abc" # valid!
+
+  ```
+
+A control flow analysis is performed in order to prove that a variable has been written to
+before it is used. Thus the following is valid:
+
+  ```nim
+  {.experimental: "strictDefs".}
+
+  proc test(cond: bool) =
+    var s: seq[string]
+    if cond:
+      s = @["y"]
+    else:
+      s = @[]
+    s.add "abc" # valid!
+  ```
+
+In this example every path does set `s` to a value before it is used.
+
+`out` parameters
+----------------
+
+An `out` parameter is like a `var` parameter but it must be written to before it can be used:
+
+  ```nim
+
+  proc myopen(f: out File; name: string): bool =
+    f = default(File)
+    result = open(f, name)
+
+  ```
+
+While it is usually the better style to use the return type in order to return results API and ABI
+considerations might make this infeasible. Like for `var T` Nim maps `out T` to a hidden pointer.
+For example POSIX's `stat` routine can be wrapped as:
+
+  ```nim
+
+  proc stat*(a1: cstring, a2: out Stat): cint {.importc, header: "<sys/stat.h>".}
+
+  ```
+
+When the implementation of a routine with output parameters is analysed, the compiler
+checks that every path before the (implicit or explicit) return does set every output
+parameter:
+
+  ```nim
+
+  proc p(x: out int; y: out string; cond: bool) =
+    x = 4
+    if cond:
+      y = "abc"
+    # error: not every path initializes 'y'
+
+  ```
+
+
+Out parameters and exception handling
+-------------------------------------
+
+The analysis should take exceptions into account (but currently does not):
+
+  ```nim
+
+  proc p(x: out int; y: out string; cond: bool) =
+    x = canRaise(45)
+    y = "abc" # <-- error: not every path initializes 'y'
+
+  ```
+
+Once the implementation takes exceptions into account it is easy enough to
+use `outParam = default(typeof(outParam))` in the beginning of the proc body.
+
+Out parameters and inheritance
+------------------------------
+
+It is not valid to pass an lvalue of a supertype to an `out T` parameter:
+
+  ```nim
+
+  type
+    Superclass = object of RootObj
+      a: int
+    Subclass = object of Superclass
+      s: string
+
+  proc init(x: out Superclass) =
+    x = Superclass(a: 8)
+
+  var v: Subclass
+  init v
+  use v.s # the 's' field was never initialized!
+
+  ```
+
+However, in the future this could be allowed and provide a better way to write object
+constructors that take inheritance into account.
+
+
+**Note**: The implementation of "strict definitions" and "out parameters" is experimental but the concept
+is solid and it is expected that eventually this mode becomes the default in later versions.

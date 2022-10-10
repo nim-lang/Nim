@@ -245,6 +245,13 @@ proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen
     if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
       owner.flags.incl sfInjectDestructors
 
+proc genCreateEnv(env: PNode): PNode =
+  var c = newNodeIT(nkObjConstr, env.info, env.typ)
+  c.add newNodeIT(nkType, env.info, env.typ)
+  let e = copyTree(env)
+  e.flags.incl nfFirstWrite
+  result = newAsgnStmt(e, c)
+
 proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
   if liftingHarmful(g.config, owner): return n
@@ -268,7 +275,8 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
     addVar(v, env)
     result.add(v)
   # add 'new' statement:
-  result.add newCall(getSysSym(g, n.info, "internalNew"), env)
+  #result.add newCall(getSysSym(g, n.info, "internalNew"), env)
+  result.add genCreateEnv(env)
   createTypeBoundOpsLL(g, env.typ, n.info, idgen, owner)
   result.add makeClosure(g, idgen, iter, env, n.info)
 
@@ -596,7 +604,7 @@ proc rawClosureCreation(owner: PSym;
         addVar(v, unowned)
 
     # add 'new' statement:
-    result.add(newCall(getSysSym(d.graph, env.info, "internalNew"), env))
+    result.add genCreateEnv(env)
     if optOwnedRefs in d.graph.config.globalOptions:
       let unowned = c.unownedEnvVars[owner.id]
       assert unowned != nil
@@ -658,7 +666,7 @@ proc closureCreationForIter(iter: PNode;
     var vs = newNodeI(nkVarSection, iter.info)
     addVar(vs, vnode)
     result.add(vs)
-  result.add(newCall(getSysSym(d.graph, iter.info, "internalNew"), vnode))
+  result.add genCreateEnv(vnode)
   createTypeBoundOpsLL(d.graph, vnode.typ, iter.info, d.idgen, owner)
 
   let upField = lookupInRecord(v.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
@@ -943,7 +951,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
     addVar(v, newSymNode(env))
     result.add(v)
     # add 'new' statement:
-    result.add(newCall(getSysSym(g, env.info, "internalNew"), env.newSymNode))
+    result.add genCreateEnv(env.newSymNode)
     createTypeBoundOpsLL(g, env.typ, body.info, idgen, owner)
 
   elif op.kind == nkStmtListExpr:

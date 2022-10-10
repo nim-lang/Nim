@@ -92,7 +92,7 @@ import strutils, odbcsql
 import db_common
 export db_common
 
-import std/private/since
+import std/private/[since, dbutils]
 
 type
   OdbcConnTyp = tuple[hDb: SqlHDBC, env: SqlHEnv, stmt: SqlHStmt]
@@ -168,7 +168,7 @@ proc dbError*(db: var DbConn) {.
     raise e
 
 proc sqlCheck(db: var DbConn, resVal: TSqlSmallInt) {.raises: [DbError]} =
-  ## Wrapper that raises [EDb] if `resVal` is neither SQL_SUCCESS or SQL_NO_DATA
+  ## Wrapper that raises `EDb` if `resVal` is neither SQL_SUCCESS or SQL_NO_DATA
   if resVal notIn [SQL_SUCCESS, SQL_NO_DATA]: dbError(db)
 
 proc sqlGetDBMS(db: var DbConn): string {.
@@ -197,14 +197,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string {.
                   noSideEffect.} =
   ## Replace any `?` placeholders with `args`,
   ## and quotes the arguments
-  result = ""
-  var a = 0
-  for c in items(string(formatstr)):
-    if c == '?':
-      add(result, dbQuote(args[a]))
-      inc(a)
-    else:
-      add(result, c)
+  dbFormatImpl(formatstr, dbQuote, args)
 
 proc prepareFetch(db: var DbConn, query: SqlQuery,
                 args: varargs[string, `$`]): TSqlSmallInt {.
@@ -304,7 +297,7 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                 {.tags: [ReadDbEffect, WriteDbEffect].} =
   ## Same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within the iterator body.
+  ## on demand using `[]`. Returned handle is valid only within the iterator body.
   var
     rowRes: Row = @[]
     sz: TSqlLen = 0
