@@ -75,7 +75,7 @@ type
     nnkTupleTy, nnkTupleClassTy, nnkTypeClassTy, nnkStaticTy,
     nnkRecList, nnkRecCase, nnkRecWhen,
     nnkRefTy, nnkPtrTy, nnkVarTy,
-    nnkConstTy, nnkMutableTy,
+    nnkConstTy, nnkOutTy,
     nnkDistinctTy,
     nnkProcTy,
     nnkIteratorTy,         # iterator type
@@ -124,6 +124,9 @@ type
     nskStub
 
   TNimSymKinds* {.deprecated.} = set[NimSymKind]
+
+const
+  nnkMutableTy* {.deprecated.} = nnkOutTy
 
 type
   NimIdent* {.deprecated.} = object of RootObj
