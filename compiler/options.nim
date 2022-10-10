@@ -195,7 +195,7 @@ type
     ideRecompile, ideChanged, ideType, ideDeclaration
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
-    implicitDeref,
+    implicitDeref, # deadcode; remains here for backwards compatibility
     dotOperators,
     callOperator,
     parallel,
