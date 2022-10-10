@@ -43,7 +43,6 @@ type
     reexports*: seq[(LitId, PackedItemId)]
     compilerProcs*: seq[(LitId, int32)]
     converters*, methods*, trmacros*, pureEnums*: seq[int32]
-    macroUsages*: seq[(PackedItemId, PackedLineInfo)]
 
     typeInstCache*: seq[(PackedItemId, PackedItemId)]
     procInstCache*: seq[PackedInstantiation]
@@ -597,7 +596,6 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection convertersSection, m.converters
   loadSeqSection methodsSection, m.methods
   loadSeqSection pureEnumsSection, m.pureEnums
-  loadSeqSection macroUsagesSection, m.macroUsages
 
   loadSeqSection toReplaySection, m.toReplay.nodes
   loadSeqSection topLevelSection, m.topLevel.nodes
@@ -661,7 +659,6 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection convertersSection, m.converters
   storeSeqSection methodsSection, m.methods
   storeSeqSection pureEnumsSection, m.pureEnums
-  storeSeqSection macroUsagesSection, m.macroUsages
 
   storeSeqSection toReplaySection, m.toReplay.nodes
   storeSeqSection topLevelSection, m.topLevel.nodes
