@@ -13,7 +13,7 @@ import std/[parseopt, strutils, os, osproc, unicode, tables, sets, json, jsonuti
 import parse_requires, osutils, packagesjson
 
 const
-  Version = "0.1"
+  Version = "0.2"
   Usage = "atlas - Nim Package Cloner Version " & Version & """
 
   (c) 2021 Andreas Rumpf
@@ -21,6 +21,7 @@ Usage:
   atlas [options] [command] [arguments]
 Command:
   clone url|pkgname     clone a package and all of its dependencies
+  install proj.nimble   use the .nimble file to setup the project's dependencies
   search keyw keywB...  search for package that contains the given keywords
   extract file.nimble   extract the requirements and custom commands from
                         the given Nimble file
@@ -87,7 +88,7 @@ include testdata
 
 proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, int) =
   when MockupRun:
-    assert TestLog[c.step].cmd == cmd
+    assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd)
     case cmd
     of GitDiff, GitTags, GitRevParse, GitPull, GitCurrentCommit:
       result = (TestLog[c.step].output, TestLog[c.step].exitCode)
@@ -318,53 +319,55 @@ proc addUniqueDep(c: var AtlasContext; work: var seq[Dependency];
     work.add Dependency(name: toName(tokens[0]), url: url, commit: tokens[2],
                         rel: toDepRelation(tokens[1]))
 
+template toDestDir(p: PackageName): string = p.string
+
+proc collectDeps(c: var AtlasContext; work: var seq[Dependency];
+                 dep: Dependency; nimbleFile: string): string =
+  # If there is a .nimble file, return the dependency path & srcDir
+  # else return "".
+  assert nimbleFile != ""
+  let nimbleInfo = extractRequiresInfo(c, nimbleFile)
+  for r in nimbleInfo.requires:
+    var tokens: seq[string] = @[]
+    for token in tokenizeRequires(r):
+      tokens.add token
+    if tokens.len == 1:
+      # nimx uses dependencies like 'requires "sdl2"'.
+      # Via this hack we map them to the first tagged release.
+      # (See the `isStrictlySmallerThan` logic.)
+      tokens.add "<"
+      tokens.add InvalidCommit
+    elif tokens.len == 2 and tokens[1].startsWith("#"):
+      # Dependencies can also look like 'requires "sdl2#head"
+      var commit = tokens[1][1 .. ^1]
+      tokens[1] = "=="
+      tokens.add commit
+
+    if tokens.len >= 3 and cmpIgnoreCase(tokens[0], "nim") != 0:
+      c.addUniqueDep work, tokens
+  result = toDestDir(dep.name) / nimbleInfo.srcDir
+
 proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
                     dep: Dependency; result: var seq[string];
                     isMainProject: bool) =
   let nimbleFile = findNimbleFile(c, dep)
   if nimbleFile != "":
-    let nimbleInfo = extractRequiresInfo(c, nimbleFile)
-    for r in nimbleInfo.requires:
-      var tokens: seq[string] = @[]
-      for token in tokenizeRequires(r):
-        tokens.add token
-      if tokens.len == 1:
-        # nimx uses dependencies like 'requires "sdl2"'.
-        # Via this hack we map them to the first tagged release.
-        # (See the `isStrictlySmallerThan` logic.)
-        tokens.add "<"
-        tokens.add InvalidCommit
-      elif tokens.len == 2 and tokens[1].startsWith("#"):
-        # Dependencies can also look like 'requires "sdl2#head"
-        var commit = tokens[1][1 .. ^1]
-        tokens[1] = "=="
-        tokens.add commit
-
-      if tokens.len >= 3 and cmpIgnoreCase(tokens[0], "nim") != 0:
-        c.addUniqueDep work, tokens
-
-    result.add dep.name.string / nimbleInfo.srcDir
+    let x = collectDeps(c, work, dep, nimbleFile)
+    result.add x
   else:
-    result.add dep.name.string
+    result.add toDestDir(dep.name)
 
-proc clone(c: var AtlasContext; start: string): seq[string] =
-  # non-recursive clone.
-  let oldErrors = c.errors
-  var work = @[Dependency(name: toName(start), url: toUrl(c, start), commit: "")]
-
-  if oldErrors != c.errors:
-    error c, toName(start), "cannot resolve package name"
-    return
-
-  c.projectDir = c.workspace / work[0].name.string
+proc cloneLoop(c: var AtlasContext; work: var seq[Dependency]): seq[string] =
   result = @[]
   var i = 0
   while i < work.len:
     let w = work[i]
+    let destDir = toDestDir(w.name)
     let oldErrors = c.errors
-    if not dirExists(c.workspace / w.name.string):
+
+    if not dirExists(c.workspace / destDir):
       withDir c, c.workspace:
-        let err = cloneUrl(c, w.url, w.name.string, false)
+        let err = cloneUrl(c, w.url, destDir, false)
         if err != "":
           error c, w.name, err
     if oldErrors == c.errors:
@@ -375,30 +378,38 @@ proc clone(c: var AtlasContext; start: string): seq[string] =
       collectNewDeps(c, work, w, result, i == 0)
     inc i
 
+proc clone(c: var AtlasContext; start: string): seq[string] =
+  # non-recursive clone.
+  let url = toUrl(c, start)
+  var work = @[Dependency(name: toName(start), url: url, commit: "")]
+
+  if url == "":
+    error c, toName(start), "cannot resolve package name"
+    return
+
+  c.projectDir = c.workspace / toDestDir(work[0].name)
+  result = cloneLoop(c, work)
+
 const
   configPatternBegin = "############# begin Atlas config section ##########\n"
   configPatternEnd =   "############# end Atlas config section   ##########\n"
 
-proc patchNimCfg(c: var AtlasContext; deps: seq[string]; cfgHere: bool) =
+proc patchNimCfg(c: var AtlasContext; deps: seq[string]; cfgPath: string) =
   var paths = "--noNimblePath\n"
-  if cfgHere:
-    let cwd = getCurrentDir()
-    for d in deps:
-      let x = relativePath(c.workspace / d, cwd, '/')
-      paths.add "--path:\"" & x & "\"\n"
-  else:
-    for d in deps:
-      paths.add "--path:\"../" & d.replace("\\", "/") & "\"\n"
-
+  for d in deps:
+    let pkgname = toDestDir d.PackageName
+    let x = relativePath(c.workspace / pkgname, cfgPath, '/')
+    paths.add "--path:\"" & x & "\"\n"
   var cfgContent = configPatternBegin & paths & configPatternEnd
 
   when MockupRun:
     assert readFile(TestsDir / "nim.cfg") == cfgContent
     c.mockupSuccess = true
   else:
-    let cfg = if cfgHere: getCurrentDir() / "nim.cfg"
-              else: c.projectDir / "nim.cfg"
-    if not fileExists(cfg):
+    let cfg = cfgPath / "nim.cfg"
+    if cfgPath.len > 0 and not dirExists(cfgPath):
+      error(c, c.projectDir.PackageName, "could not write the nim.cfg")
+    elif not fileExists(cfg):
       writeFile(cfg, cfgContent)
     else:
       let content = readFile(cfg)
@@ -419,6 +430,22 @@ proc error*(msg: string) =
   when defined(debug):
     writeStackTrace()
   quit "[Error] " & msg
+
+proc findSrcDir(c: var AtlasContext): string =
+  for nimbleFile in walkPattern("*.nimble"):
+    let nimbleInfo = extractRequiresInfo(c, nimbleFile)
+    return nimbleInfo.srcDir
+  return ""
+
+proc installDependencies(c: var AtlasContext; nimbleFile: string) =
+  # 1. find .nimble file in CWD
+  # 2. install deps from .nimble
+  var work: seq[Dependency] = @[]
+  let (path, pkgname, _) = splitFile(nimbleFile)
+  let dep = Dependency(name: toName(pkgname), url: "", commit: "")
+  discard collectDeps(c, work, dep, nimbleFile)
+  let paths = cloneLoop(c, work)
+  patchNimCfg(c, paths, if c.cfgHere: getCurrentDir() else: findSrcDir(c))
 
 proc main =
   var action = ""
@@ -460,15 +487,26 @@ proc main =
   of "clone":
     singleArg()
     let deps = clone(c, args[0])
-    patchNimCfg c, deps, false
-    if c.cfgHere:
-      patchNimCfg c, deps, true
+    patchNimCfg c, deps, if c.cfgHere: getCurrentDir() else: findSrcDir(c)
     when MockupRun:
       if not c.mockupSuccess:
         error "There were problems."
     else:
       if c.errors > 0:
         error "There were problems."
+  of "install":
+    if args.len > 1:
+      error "install command takes a single argument"
+    var nimbleFile = ""
+    if args.len == 1:
+      nimbleFile = args[0]
+    else:
+      for x in walkPattern("*.nimble"):
+        nimbleFile = x
+        break
+    if nimbleFile.len == 0:
+      error "could not find a .nimble file"
+    installDependencies(c, nimbleFile)
   of "refresh":
     noArgs()
     updatePackages(c)
