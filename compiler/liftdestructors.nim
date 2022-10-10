@@ -137,7 +137,10 @@ proc genContainerOf(c: var TLiftCtx; objType: PType, field, x: PSym): PNode =
 proc destructorCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   var destroy = newNodeIT(nkCall, x.info, op.typ[0])
   destroy.add(newSymNode(op))
-  destroy.add genAddr(c, x)
+  if op.typ[1].kind != tyVar:
+    destroy.add x
+  else:
+    destroy.add genAddr(c, x)
   if sfNeverRaises notin op.flags:
     c.canRaise = true
   if c.addMemReset:
@@ -920,7 +923,10 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   let dest = newSym(skParam, getIdent(g.cache, "dest"), nextSymId(idgen), result, info)
   let src = newSym(skParam, getIdent(g.cache, if kind == attachedTrace: "env" else: "src"),
                    nextSymId(idgen), result, info)
-  dest.typ = makeVarType(typ.owner, typ, idgen)
+  if kind == attachedDestructor:
+    dest.typ = typ
+  else:
+    dest.typ = makeVarType(typ.owner, typ, idgen)
   if kind == attachedTrace:
     src.typ = getSysType(g, info, tyPointer)
   else:
@@ -967,7 +973,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
                    fn: result)
 
   let dest = result.typ.n[1].sym
-  let d = newDeref(newSymNode(dest))
+  let d = if result.typ[1].kind == tyVar: newDeref(newSymNode(dest)) else: newSymNode(dest)
   let src = if kind == attachedDestructor: newNodeIT(nkSym, info, getSysType(g, info, tyPointer))
             else: newSymNode(result.typ.n[2].sym)
 

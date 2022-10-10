@@ -1783,7 +1783,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
   var noError = false
   let cond = if op == attachedDestructor:
-               t.len == 2 and t[0] == nil and t[1].kind == tyVar
+               t.len == 2 and t[0] == nil # and t[1].kind == tyVar
              elif op == attachedTrace:
                t.len == 3 and t[0] == nil and t[1].kind == tyVar and t[2].kind == tyPointer
              else:
@@ -2158,7 +2158,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
         maybeAddResult(c, s, n)
-        let resultType = 
+        let resultType =
           if s.kind == skMacro:
             sysTypeFromName(c.graph, n.info, "NimNode")
           elif not isInlineIterator(s.typ):
