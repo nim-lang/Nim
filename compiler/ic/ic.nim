@@ -46,7 +46,7 @@ type
 
     typeInstCache*: seq[(PackedItemId, PackedItemId)]
     procInstCache*: seq[PackedInstantiation]
-    attachedOps*: seq[(TTypeAttachedOp, PackedItemId, PackedItemId)]
+    attachedOps*: seq[(PackedItemId, TTypeAttachedOp, PackedItemId)]
     methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
 
@@ -527,6 +527,15 @@ proc toPackedGeneratedProcDef*(s: PSym, encoder: var PackedEncoder; m: var Packe
   assert s.kind in routineKinds
   toPackedProcDef(s.ast, m.topLevel, encoder, m)
   #flush encoder, m
+
+proc storeAttachedProcDef*(t: PType; op: TTypeAttachedOp; s: PSym,
+                           encoder: var PackedEncoder; m: var PackedModule) =
+  assert s.kind in routineKinds
+  assert isActive(encoder)
+  let tid = storeTypeLater(t, encoder, m)
+  let sid = storeSymLater(s, encoder, m)
+  m.attachedOps.add (tid, op, sid)
+  toPackedGeneratedProcDef(s, encoder, m)
 
 proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: PInstantiation) =
   var t = newSeq[PackedItemId](i.concreteTypes.len)
