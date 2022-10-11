@@ -929,7 +929,6 @@ type
       allUsages*: seq[TLineInfo]
 
   TTypeSeq* = seq[PType]
-  TLockLevel* = distinct int16
 
   TTypeAttachedOp* = enum ## as usual, order is important here
     attachedDestructor,
@@ -963,7 +962,6 @@ type
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
     paddingAtEnd*: int16      #
-    lockLevel*: TLockLevel    # lock level as required for deadlock checking
     loc*: TLoc
     typeInst*: PType          # for generic instantiations the tyGenericInst that led to this
                               # type.
@@ -1499,16 +1497,8 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
                   pragmas, exceptions, body]
 
 const
-  UnspecifiedLockLevel* = TLockLevel(-1'i16)
-  MaxLockLevel* = 1000'i16
-  UnknownLockLevel* = TLockLevel(1001'i16)
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
     "=destroy", "=copy", "=sink", "=trace", "=deepcopy"]
-
-proc `$`*(x: TLockLevel): string =
-  if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"
-  elif x.ord == UnknownLockLevel.ord: result = "<unknown>"
-  else: result = $int16(x)
 
 proc `$`*(s: PSym): string =
   if s != nil:
@@ -1519,7 +1509,6 @@ proc `$`*(s: PSym): string =
 proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
   result = PType(kind: kind, owner: owner, size: defaultSize,
                  align: defaultAlignment, itemId: id,
-                 lockLevel: UnspecifiedLockLevel,
                  uniqueId: id)
   when false:
     if result.itemId.module == 55 and result.itemId.item == 2:
@@ -1544,7 +1533,6 @@ proc assignType*(dest, src: PType) =
   dest.n = src.n
   dest.size = src.size
   dest.align = src.align
-  dest.lockLevel = src.lockLevel
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:

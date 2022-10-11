@@ -354,7 +354,7 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
 
     var p = PackedType(kind: t.kind, flags: t.flags, callConv: t.callConv,
       size: t.size, align: t.align, nonUniqueId: t.itemId.item,
-      paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel)
+      paddingAtEnd: t.paddingAtEnd)
     storeNode(p, t, n)
     p.typeInst = t.typeInst.storeType(c, m)
     for kid in items t.sons:
@@ -891,7 +891,7 @@ proc typeHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                           t: PackedType; si, item: int32): PType =
   result = PType(itemId: ItemId(module: si, item: t.nonUniqueId), kind: t.kind,
                 flags: t.flags, size: t.size, align: t.align,
-                paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,
+                paddingAtEnd: t.paddingAtEnd,
                 uniqueId: ItemId(module: si, item: item),
                 callConv: t.callConv)
 
