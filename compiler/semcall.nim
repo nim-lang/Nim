@@ -288,6 +288,13 @@ const
   errBadRoutine = "attempting to call routine: '$1'$2"
   errAmbiguousCallXYZ = "ambiguous call; both $1 and $2 match for: $3"
 
+proc describeParamList(c: PContext, n: PNode, startIdx = 1; prefer = preferName): string =
+  result = "Expression: " & $n
+  for i in startIdx..<n.len:
+    result.add "\n  [" & $i & "] " & renderTree(n[i]) & ": "
+    result.add describeArg(c, n, i, startIdx, prefer)
+  result.add "\n"
+
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverloadedCall is already pretty slow (and we need this information
@@ -301,15 +308,14 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     return
 
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
-  var result = errTypeMismatch
-  result.add(describeArgs(c, n, 1, prefer))
-  result.add('>')
+  var result = "type mismatch\n"
+  result.add describeParamList(c, n, 1, prefer)
   if candidates != "":
     if isDefined(c.config, "nimConciseTypeMismatch"):
       result.add("\n" & errExpectedPosition & "\n" & candidates)
     else:
       result.add("\n" & errButExpected & "\n" & candidates)
-  localError(c.config, n.info, result & "\nexpression: " & $n)
+  localError(c.config, n.info, result)
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
   var errors: CandidateErrors = @[]
