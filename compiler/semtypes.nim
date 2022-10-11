@@ -1536,7 +1536,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       return newOrPrevType(tyError, prev, c)
 
     var isConcrete = true
-    let isArray = m.call[0].typ != nil and m.call[0].typ.lastSon.kind == tyArray
+    let rType = m.call[0].typ
+    let mIndex = if rType != nil: rType.len - 1 else: -1
     for i in 1..<m.call.len:
       var typ = m.call[i].typ
       # is this a 'typedesc' *parameter*? If so, use the typedesc type,
@@ -1549,7 +1550,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         typ = typ.skipTypes({tyTypeDesc})
         if containsGenericType(typ): isConcrete = false
         var skip = true
-        if isArray and i == 1 and tfImplicitStatic in m.call[0].typ[0].flags and isIntLit(typ):
+        if mIndex >= i - 1 and tfImplicitStatic in rType[i - 1].flags and isIntLit(typ):
           skip = false
         addToResult(typ, skip)
 
