@@ -84,6 +84,8 @@
 - `macros.getImpl` for `const` symbols now returns the full definition node
   (as `nnkConstDef`) rather than the AST of the constant value.
 
+- Lock levels are deprecated, now a noop.
+
 - ORC is now the default memory management strategy. Use
   `--mm:refc` for a transition period.
 

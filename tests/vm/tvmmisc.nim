@@ -361,7 +361,7 @@ block: # bug #14340
     envelopeSin[a]()
 
   block:
-    type Mutator = proc() {.noSideEffect, gcsafe, locks: 0.}
+    type Mutator = proc() {.noSideEffect, gcsafe.}
     proc mutator0() = discard
     const mTable = [Mutator(mutator0)]
     var i=0
