@@ -3,7 +3,7 @@ discard """
   errormsg: "type mismatch: got <int64, int literal(1000)>"
   nimout: '''
 tconcisetypemismatch.nim(21, 43) Error: type mismatch: got <int64, int literal(1000)>
-Expected one of (mismatch at position [#]):
+Expected one of (first mismatch at position [#]):
 [1] proc `/`(x, y: float): float
 [1] proc `/`(x, y: float32): float32
 [1] proc `/`(x, y: int): float
