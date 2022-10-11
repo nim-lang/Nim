@@ -88,7 +88,7 @@ type
     ## for hyperlinks. See renderIndexTerm proc for details.
     id*: int               ## A counter useful for generating IDs.
     onTestSnippet*: proc (d: var RstGenerator; filename, cmd: string; status: int;
-                          content: string)
+                          content: string) {.gcsafe.}
     escMode*: EscapeMode
     curQuotationDepth: int
 
@@ -283,7 +283,7 @@ proc dispA(target: OutputTarget, dest: var string,
 proc `or`(x, y: string): string {.inline.} =
   result = if x.len == 0: y else: x
 
-proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
+proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string) {.gcsafe.}
   ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
   ##
   ## Before using this proc you need to initialise a ``RstGenerator`` with
@@ -763,7 +763,7 @@ proc stripTocHtml(s: string): string =
     if last < 0:
       # Abort, since we didn't found a closing angled bracket.
       return
-    result.delete(first, last)
+    result.delete(first..last)
     first = result.find('<', first)
 
 proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
@@ -1028,7 +1028,7 @@ proc renderCodeLang*(result: var string, lang: SourceLanguage, code: string,
 proc renderNimCode*(result: var string, code: string, target: OutputTarget) =
   renderCodeLang(result, langNim, code, target)
 
-proc renderCode(d: PDoc, n: PRstNode, result: var string) =
+proc renderCode(d: PDoc, n: PRstNode, result: var string) {.gcsafe.} =
   ## Renders a code (code block or inline code), appending it to `result`.
   ##
   ## If the code block uses the ``number-lines`` option, a table will be
@@ -1592,7 +1592,7 @@ $content
 
 proc rstToHtml*(s: string, options: RstParseOptions,
                 config: StringTableRef,
-                msgHandler: MsgHandler = rst.defaultMsgHandler): string =
+                msgHandler: MsgHandler = rst.defaultMsgHandler): string {.gcsafe.} =
   ## Converts an input rst string into embeddable HTML.
   ##
   ## This convenience proc parses any input string using rst markup (it doesn't

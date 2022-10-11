@@ -54,7 +54,7 @@ Event parser output
 when defined(nimHasEffectsOf):
   {.experimental: "strictEffects".}
 
-import std/[strutils, streams, pegs]
+import std/[strutils, streams, pegs, assertions]
 
 const
   indent = "  "

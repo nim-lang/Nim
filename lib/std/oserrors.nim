@@ -16,6 +16,8 @@ type
 when not defined(nimscript):
   when defined(windows):
     import winlean
+    when defined(nimPreviewSlimSystem):
+      import std/widestrs
   else:
     var errno {.importc, header: "<errno.h>".}: cint
 

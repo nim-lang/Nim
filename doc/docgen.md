@@ -20,16 +20,6 @@ from input ``.nim`` files and projects, as well as HTML and LaTeX from input RST
 dependencies (`import`), any top-level documentation comments (`##`), and
 exported symbols (`*`), including procedures, types, and variables.
 
-===================   ======================   ============   ==============
-command               runs on...               input format   output format
-===================   ======================   ============   ==============
-`nim doc`:cmd:        documentation comments   ``.nim``       ``.html`` HTML
-`nim doc2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
-`nim jsondoc`:cmd:    ″                        ″              ``.json`` JSON
-`nim rst2html`:cmd:   standalone rst files     ``.rst``       ``.html`` HTML
-`nim rst2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
-===================   ======================   ============   ==============
-
 Quick start
 -----------
 
@@ -74,10 +64,11 @@ Example:
     age: int
   ```
 
-Outputs::
-  Person* = object
-    name: string
-    age: int
+Outputs:
+
+    Person* = object
+      name: string
+      age: int
 
   This type contains a description of a person
 
@@ -143,10 +134,11 @@ The `doc`:option: command:
   nim doc docgen_sample.nim
   ```
 
-Partial Output::
-  ...
-  proc helloWorld(times: int) {.raises: [], tags: [].}
-  ...
+Partial Output:
+
+    ...
+    proc helloWorld(times: int) {.raises: [], tags: [].}
+    ...
 
 The full output can be seen here: [docgen_sample.html](docgen_sample.html).
 It runs after semantic checking and includes pragmas attached implicitly by the
@@ -189,22 +181,23 @@ The `jsondoc`:option: command:
   nim jsondoc docgen_sample.nim
   ```
 
-Output::
-  {
-    "orig": "docgen_sample.nim",
-    "nimble": "",
-    "moduleDescription": "This module is a sample",
-    "entries": [
-      {
-        "name": "helloWorld",
-        "type": "skProc",
-        "line": 5,
-        "col": 0,
-        "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
-        "code": "proc helloWorld(times: int) {.raises: [], tags: [].}"
-      }
-    ]
-  }
+Output:
+
+    {
+      "orig": "docgen_sample.nim",
+      "nimble": "",
+      "moduleDescription": "This module is a sample",
+      "entries": [
+        {
+          "name": "helloWorld",
+          "type": "skProc",
+          "line": 5,
+          "col": 0,
+          "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
+          "code": "proc helloWorld(times: int) {.raises: [], tags: [].}"
+        }
+      ]
+    }
 
 Similarly to the old `doc`:option: command, the old `jsondoc`:option: command has been
 renamed to `jsondoc0`:option:.
@@ -215,18 +208,19 @@ The `jsondoc0`:option: command:
   nim jsondoc0 docgen_sample.nim
   ```
 
-Output::
-  [
-    {
-      "comment": "This module is a sample."
-    },
-    {
-      "name": "helloWorld",
-      "type": "skProc",
-      "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
-      "code": "proc helloWorld*(times: int)"
-    }
-  ]
+Output:
+
+    [
+      {
+        "comment": "This module is a sample."
+      },
+      {
+        "name": "helloWorld",
+        "type": "skProc",
+        "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
+        "code": "proc helloWorld*(times: int)"
+      }
+    ]
 
 Note that the `jsondoc`:option: command outputs its JSON without pretty-printing it,
 while `jsondoc0`:option: outputs pretty-printed JSON.
@@ -257,10 +251,13 @@ If you have a constant:
 
 then it should be referenced in one of the 2 forms:
 
-A. non-qualified (no symbol kind specification)::
-     pi_
-B. qualified (with symbol kind specification)::
-     `const pi`_
+A. non-qualified (no symbol kind specification):
+
+       pi_
+
+B. qualified (with symbol kind specification):
+
+       `const pi`_
 
 For routine kinds there are more options. Consider this definition:
 
@@ -272,52 +269,52 @@ Generally following syntax is allowed for referencing `foo`:
 
 *  short (without parameters):
 
-   A. non-qualified::
+   A. non-qualified:
 
-        foo_
+          foo_
 
-   B. qualified::
+   B. qualified:
 
-        `proc foo`_
+          `proc foo`_
 
 *  longer variants (with parameters):
 
    A. non-qualified:
 
-      1) specifying parameters names::
+      1) specifying parameters names:
 
-          `foo(a, b)`_
+             `foo(a, b)`_
 
-      2) specifying parameters types::
+      2) specifying parameters types:
 
-          `foo(int, float)`_
+             `foo(int, float)`_
 
-      3) specifying both names and types::
+      3) specifying both names and types:
 
-          `foo(a: int, b: float)`_
+             `foo(a: int, b: float)`_
 
-      4) output parameter can also be specified if you wish::
+      4) output parameter can also be specified if you wish:
 
-          `foo(a: int, b: float): string`_
+             `foo(a: int, b: float): string`_
 
    B. qualified: all 4 options above are valid.
-      Particularly you can use the full format::
+      Particularly you can use the full format:
 
-        `proc foo(a: int, b: float): string`_
+          `proc foo(a: int, b: float): string`_
 
 .. Tip:: Avoid cluttering your text with extraneous information by using
-   one of shorter forms::
+   one of shorter forms:
 
-     binarySearch_
-     `binarySearch(a, key, cmp)`_
+       binarySearch_
+       `binarySearch(a, key, cmp)`_
 
    Brevity is better for reading! If you use a short form and have an
    ambiguity problem (see below) then just add some additional info.
 
-Symbol kind like `proc` can also be specified in the postfix form::
+Symbol kind like `proc` can also be specified in the postfix form:
 
-  `foo proc`_
-  `walkDir(d: string) iterator`_
+    `foo proc`_
+    `walkDir(d: string) iterator`_
 
 .. Warning:: An ambiguity in resolving documentation links may arise because of:
 
@@ -330,9 +327,9 @@ Symbol kind like `proc` can also be specified in the postfix form::
         `proc` and `template`. In this case they are split between their
         corresponding sections in output file. Qualified references are
         useful in this case -- just disambiguate by referring to these
-        sections explicitly::
+        sections explicitly:
 
-          See `foo proc`_ and `foo template`_.
+            See `foo proc`_ and `foo template`_.
 
       * because in Nim `proc` and `iterator` belong to different namespaces,
         so there can be a collision even if parameters are the same.
@@ -344,9 +341,9 @@ Symbol kind like `proc` can also be specified in the postfix form::
    (while procs have higher priority than other Nim symbol kinds).
 
 Generic parameters can also be used. All in all, this long form will be
-recognized fine::
+recognized fine:
 
-  `proc binarySearch*[T; K](a: openArray[T], key: K, cmp: proc(T, K)): int`_
+    `proc binarySearch*[T; K](a: openArray[T], key: K, cmp: proc(T, K)): int`_
 
 **Limitations**:
 
@@ -361,16 +358,16 @@ recognized fine::
       ```
 
    you cannot use names underlined by `~~` so it must be referenced with
-   ``cmp: proc(T, K)``. Hence these forms are valid::
+   ``cmp: proc(T, K)``. Hence these forms are valid:
 
-     `binarySearch(a: openArray[T], key: K, cmp: proc(T, K))`_
-     `binarySearch(openArray[T], K, proc(T, K))`_
-     `binarySearch(a, key, cmp)`_
+       `binarySearch(a: openArray[T], key: K, cmp: proc(T, K))`_
+       `binarySearch(openArray[T], K, proc(T, K))`_
+       `binarySearch(a, key, cmp)`_
 2. Default values in routine parameters are not recognized, one needs to
    specify the type and/or name instead. E.g. for referencing `proc f(x = 7)`
-   use one of the mentioned forms::
+   use one of the mentioned forms:
 
-     `f(int)`_ or `f(x)`_ or `f(x: int)`_.
+       `f(int)`_ or `f(x)`_ or `f(x: int)`_.
 3. Generic parameters must be given the same way as in the
    definition of referenced symbol.
 
@@ -386,27 +383,27 @@ recognized fine::
       func `[]`*[T](x: openArray[T]): T
       ```
 
-   A short form works without additional backticks::
+   A short form works without additional backticks:
 
-     `$`_
-     `[]`_
+       `$`_
+       `[]`_
 
    However for fully-qualified reference copy-pasting backticks (`) into other
    backticks will not work in our RST parser (because we use Markdown-like
    inline markup rules). You need either to delete backticks or keep
-   them and escape with backslash \\::
+   them and escape with backslash \\:
 
-      no backticks: `func $`_
-      escaped:  `func \`$\``_
-      no backticks: `func [][T](x: openArray[T]): T`_
-      escaped:  `func \`[]\`[T](x: openArray[T]): T`_
+       no backticks: `func $`_
+       escaped:  `func \`$\``_
+       no backticks: `func [][T](x: openArray[T]): T`_
+       escaped:  `func \`[]\`[T](x: openArray[T]): T`_
 
 .. Note:: Types that defined as `enum`, or `object`, or `tuple` can also be
-   referenced with those names directly (instead of `type`)::
+   referenced with those names directly (instead of `type`):
 
-     type CopyFlag = enum
-       ...
-     ## Ref. `CopyFlag enum`_
+       type CopyFlag = enum
+         ...
+       ## Ref. `CopyFlag enum`_
 
 Related Options
 ===============
@@ -473,11 +470,7 @@ You can edit ``config/nimdoc.cfg`` and modify the ``doc.item.seesrc`` value
 with a hyperlink to your own code repository.
 
 In the case of Nim's own documentation, the `commit` value is just a commit
-hash to append to a formatted URL to https://github.com/nim-lang/Nim. The
-``tools/nimweb.nim`` helper queries the current git commit hash during the doc
-generation, but since you might be working on an unpublished repository, it
-also allows specifying a `githash` value in ``web/website.ini`` to force a
-specific commit in the output.
+hash to append to a formatted URL to https://github.com/nim-lang/Nim.
 
 
 Other Input Formats
@@ -490,18 +483,8 @@ highlighting with the ``.. code-block:: nim`` prefix. ``code-block`` also
 supports highlighting of a few other languages supported by the
 [packages/docutils/highlite module](highlite.html).
 
-Usage:
-
-  ```cmd
-  nim rst2html docgen.rst
-  ```
-
-Output::
-  You're reading it!
-
-The `rst2tex`:option: command is invoked identically to `rst2html`:option:,
-but outputs a ``.tex`` file instead of ``.html``.
-
+See [Markdown and RST markup languages](markdown_rst.html) for
+usage of those commands.
 
 HTML anchor generation
 ======================
@@ -628,10 +611,9 @@ Additional resources
 
 * [Nim Compiler User Guide](nimc.html#compiler-usage-commandminusline-switches)
 
-* Documentation for [rst module](rst.html) -- Nim RST/Markdown parser.
-
-* [RST Quick Reference](
-  http://docutils.sourceforge.net/docs/user/rst/quickref.html)
+* already mentioned documentation for
+  [Markdown and RST markup languages](markdown_rst.html), which also
+  contains the list of implemented features of these markup languages.
 
 The output for HTML and LaTeX comes from the ``config/nimdoc.cfg`` and
 ``config/nimdoc.tex.cfg`` configuration files. You can add and modify these

@@ -75,7 +75,7 @@ type
     nnkTupleTy, nnkTupleClassTy, nnkTypeClassTy, nnkStaticTy,
     nnkRecList, nnkRecCase, nnkRecWhen,
     nnkRefTy, nnkPtrTy, nnkVarTy,
-    nnkConstTy, nnkMutableTy,
+    nnkConstTy, nnkOutTy,
     nnkDistinctTy,
     nnkProcTy,
     nnkIteratorTy,         # iterator type
@@ -124,6 +124,9 @@ type
     nskStub
 
   TNimSymKinds* {.deprecated.} = set[NimSymKind]
+
+const
+  nnkMutableTy* {.deprecated.} = nnkOutTy
 
 type
   NimIdent* {.deprecated.} = object of RootObj
@@ -212,12 +215,12 @@ template `or`*(x, y: NimNode): NimNode =
     y
 
 proc add*(father, child: NimNode): NimNode {.magic: "NAdd", discardable,
-  noSideEffect, locks: 0.}
+  noSideEffect.}
   ## Adds the `child` to the `father` node. Returns the
   ## father node so that calls can be nested.
 
 proc add*(father: NimNode, children: varargs[NimNode]): NimNode {.
-  magic: "NAddMultiple", discardable, noSideEffect, locks: 0.}
+  magic: "NAddMultiple", discardable, noSideEffect.}
   ## Adds each child of `children` to the `father` node.
   ## Returns the `father` node so that calls can be nested.
 
@@ -1567,7 +1570,7 @@ proc customPragmaNode(n: NimNode): NimNode =
     let impl = n.getImpl()
     if impl.kind in RoutineNodes:
       return impl.pragma
-    elif impl.kind == nnkIdentDefs and impl[0].kind == nnkPragmaExpr:
+    elif impl.kind in {nnkIdentDefs, nnkConstDef} and impl[0].kind == nnkPragmaExpr:
       return impl[0][1]
     else:
       let timpl = typ.getImpl()

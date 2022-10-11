@@ -75,8 +75,11 @@ proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int,
   let lineInfo = if lineInfo == TLineInfo.default: c.debug[pc] else: lineInfo
   liMessage(c.config, lineInfo, errGenerated, msg, action, infoOrigin)
 
+when not defined(nimHasCallsitePragma):
+  {.pragma: callsite.}
+
 template stackTrace(c: PCtx, tos: PStackFrame, pc: int,
-                    msg: string, lineInfo: TLineInfo = TLineInfo.default) =
+                    msg: string, lineInfo: TLineInfo = TLineInfo.default) {.callsite.} =
   stackTraceImpl(c, tos, pc, msg, lineInfo, instantiationInfo(-2, fullPaths = true))
   return
 
@@ -1165,7 +1168,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
             let ast = a.sym.ast.shallowCopy
             for i in 0..<a.sym.ast.len:
               ast[i] = a.sym.ast[i]
-            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, cache=true)
+            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, useCache)
             ast.copyTree()
     of opcSymOwner:
       decodeB(rkNode)

@@ -1,4 +1,5 @@
 import std/mersenne
+import std/assertions
 
 template main() =
   var mt = newMersenneTwister(2525)

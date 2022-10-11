@@ -10,7 +10,9 @@
 import
   std/[strutils, os, tables, terminal, macros, times],
   std/private/miscdollars,
-  options, ropes, lineinfos, pathutils, strutils2
+  options, lineinfos, pathutils, strutils2
+
+import ropes except `%`
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -43,18 +45,16 @@ proc toCChar*(c: char; result: var string) {.inline.} =
     result.add c
 
 proc makeCString*(s: string): Rope =
-  result = nil
-  var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
-  res.add("\"")
+  result = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
+  result.add("\"")
   for i in 0..<s.len:
     # line wrapping of string litterals in cgen'd code was a bad idea, e.g. causes: bug #16265
     # It also makes reading c sources or grepping harder, for zero benefit.
     # const MaxLineLength = 64
     # if (i + 1) mod MaxLineLength == 0:
     #   res.add("\"\L\"")
-    toCChar(s[i], res)
-  res.add('\"')
-  result.add(rope(res))
+    toCChar(s[i], result)
+  result.add('\"')
 
 proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
   result.fullPath = fullPath
@@ -504,7 +504,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
 proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
-               eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.noinline.} =
+               eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.gcsafe, noinline.} =
   var
     title: string
     color: ForegroundColor

@@ -90,6 +90,9 @@ runnableExamples("-r:off"):
 
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import nativesockets
 import os, strutils, times, sets, options, std/monotimes
 import ssl_config
@@ -1022,7 +1025,7 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
 proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
                  flags = {SocketFlag.SafeDisconn},
                  inheritable = defined(nimInheritHandles)) {.
-                 tags: [ReadIOEffect], gcsafe, locks: 0.} =
+                 tags: [ReadIOEffect], gcsafe.} =
   ## Blocks until a connection is being made from a client. When a connection
   ## is made sets `client` to the client socket and `address` to the address
   ## of the connecting client.

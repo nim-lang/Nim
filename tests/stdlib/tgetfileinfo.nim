@@ -4,6 +4,7 @@ discard """
 """
 
 import os, strutils
+import std/syncio
 # Cases
 #  1 - String : Existing File : Symlink true
 #  2 - String : Existing File : Symlink false
