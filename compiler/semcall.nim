@@ -282,7 +282,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 const
   errTypeMismatch = "type mismatch: got <"
   errButExpected = "but expected one of:"
-  errExpectedPosition = "Expected one of (mismatch at position [#]):"
+  errExpectedPosition = "Expected one of (first mismatch at position [#]):"
   errUndeclaredField = "undeclared field: '$1'"
   errUndeclaredRoutine = "attempting to call undeclared routine: '$1'"
   errBadRoutine = "attempting to call routine: '$1'$2"
