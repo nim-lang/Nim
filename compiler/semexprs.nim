@@ -1784,8 +1784,8 @@ proc goodLineInfo(arg: PNode): TLineInfo =
   else:
     arg.info
 
-proc isSubscrible(c: PContext, tempAsNode: PNode): bool =
-  let tempSub = semExpr(c, newTupleAccessRaw(tempAsNode, 0), {efNoError, efFromUnpack})
+proc isSubscrible(c: PContext, n: PNode): bool =
+  let tempSub = semExpr(c, newTupleAccessRaw(n, 0), {efNoError, efFromUnpack})
   return tempSub.kind != nkEmpty
 
 proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
@@ -1831,7 +1831,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       # that overloading of the assignment operator still works. Usually we
       # prefer to do these rewritings in transf.nim:
       let value = n.lastSon
-      let tempAsNode = getTempSymNode(c.graph, value, c.idgen, c.p.owner)
+      let tempAsNode = genTempSymNode(c.graph, value.info, c.idgen, c.p.owner)
       if value.isAtom and value.kind != nkTupleConstr:
         let v = semExpr(c, value, {efNoError, efFromUnpack})
         if v.typ.kind != tyTuple:

@@ -122,16 +122,16 @@ proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
 proc newTryFinally*(body, final: PNode): PNode =
   result = newTree(nkHiddenTryStmt, body, newTree(nkFinally, final))
 
-proc getTempSymNode*(g: ModuleGraph; value: PNode; idgen: IdGenerator; owner: PSym): PNode =
-  var temp = newSym(skTemp, getIdent(g.cache, "_"), nextSymId(idgen), owner, value.info, owner.options)
+proc genTempSymNode*(g: ModuleGraph; info: TLineInfo; idgen: IdGenerator; owner: PSym): PNode =
+  var temp = newSym(skTemp, getIdent(g.cache, "_"), nextSymId(idgen), owner, info, owner.options)
   result = newSymNode(temp)
 
-proc lowerTupleUnpackingForAsgn*(n: PNode; tempAsNode: PNode): PNode =
+proc lowerTupleUnpackingForAsgn*(n: PNode; temp: PNode): PNode =
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
   var v = newNodeI(nkLetSection, value.info)
-  var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
-  vpart[0] = tempAsNode
+  var vpart = newNodeI(nkIdentDefs, n.info, 3)
+  vpart[0] = temp
   vpart[1] = newNodeI(nkEmpty, value.info)
   vpart[2] = value
   v.add vpart
@@ -139,7 +139,7 @@ proc lowerTupleUnpackingForAsgn*(n: PNode; tempAsNode: PNode): PNode =
 
   let lhs = n[0]
   for i in 0..<lhs.len:
-    result.add newAsgnStmt(lhs[i], newTupleAccessRaw(tempAsNode, i))
+    result.add newAsgnStmt(lhs[i], newTupleAccessRaw(temp, i))
 
 proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   result = newNodeI(nkStmtList, n.info)

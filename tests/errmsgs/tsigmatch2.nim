@@ -1,7 +1,7 @@
 discard """
   cmd: "nim check --showAllMismatches:on --hints:off $file"
   nimout: '''
-tsigmatch2.nim(39, 14) Error: type mismatch: got <float64>
+tsigmatch2.nim(40, 14) Error: type mismatch: got <float64>
 but expected one of:
 proc foo(args: varargs[string, myproc]): string
   first type mismatch at position: 1
@@ -13,12 +13,8 @@ proc foo(i: Foo): string
   but expression '1.2' is of type: float64
 
 expression: foo(1.2)
-<<<<<<< HEAD
-tsigmatch2.nim(40, 14) Error: expression '' has no type (or is ambiguous)
+tsigmatch2.nim(40, 14) Error: expression 'foo(1.2)' has no type (or is ambiguous)
 tsigmatch2.nim(46, 3) Error: type mismatch: got <int literal(1)>
-=======
-tsigmatch2.nim(45, 7) Error: type mismatch: got <int literal(1)>
->>>>>>> c090739df (fix #10853 unpack given invalid value error about subscript)
 but expected one of:
 proc foo(args: varargs[string, myproc])
   first type mismatch at position: 1
