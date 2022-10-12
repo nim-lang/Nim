@@ -457,6 +457,7 @@ proc foldArrayAccess(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNo
 
 proc foldFieldAccess(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   # a real field access; proc calls have already been transformed
+  if n[1].kind != nkSym: return nil
   var x = getConstExpr(m, n[0], idgen, g)
   if x == nil or x.kind notin {nkObjConstr, nkPar, nkTupleConstr}: return
 
