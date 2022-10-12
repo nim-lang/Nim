@@ -89,6 +89,9 @@
 - ORC is now the default memory management strategy. Use
   `--mm:refc` for a transition period.
 
+- The `gorge`/`staticExec` calls will now return a descriptive message in the output
+  if the execution fails for whatever reason. To get back legacy behaviour use `-d:nimLegacyGorgeErrors`.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
