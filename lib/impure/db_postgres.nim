@@ -20,8 +20,9 @@
 ## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
 ##
-## .. code-block:: Nim
-##     sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
+##   ```Nim
+##   sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
+##   ```
 ##
 ## **Note**: There are two approaches to parameter substitution support by
 ## this module.
@@ -30,12 +31,13 @@
 ##
 ## 2. `SqlPrepared` using `$1, $2, $3, ...`
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   prepare(db, "myExampleInsert",
 ##           sql"""INSERT INTO myTable
 ##                 (colA, colB, colC)
 ##                 VALUES ($1, $2, $3)""",
 ##           3)
+##   ```
 ##
 ##
 ## Unix Socket
@@ -46,11 +48,12 @@
 ##
 ## To use Unix sockets with `db_postgres`, change the server address to the socket file path:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/db_postgres ## Change "localhost" or "127.0.0.1" to the socket file path
 ##   let db = db_postgres.open("/run/postgresql", "user", "password", "database")
 ##   echo db.getAllRows(sql"SELECT version();")
 ##   db.close()
+##   ```
 ##
 ## The socket file path is operating system specific and distribution specific,
 ## additional configuration may or may not be needed on your `postgresql.conf`.
@@ -63,26 +66,29 @@
 ## Opening a connection to a database
 ## ----------------------------------
 ##
-## .. code-block:: Nim
-##     import std/db_postgres
-##     let db = open("localhost", "user", "password", "dbname")
-##     db.close()
+##   ```Nim
+##   import std/db_postgres
+##   let db = open("localhost", "user", "password", "dbname")
+##   db.close()
+##   ```
 ##
 ## Creating a table
 ## ----------------
 ##
-## .. code-block:: Nim
-##      db.exec(sql"DROP TABLE IF EXISTS myTable")
-##      db.exec(sql("""CREATE TABLE myTable (
-##                       id integer,
-##                       name varchar(50) not null)"""))
+##   ```Nim
+##   db.exec(sql"DROP TABLE IF EXISTS myTable")
+##   db.exec(sql("""CREATE TABLE myTable (
+##                    id integer,
+##                    name varchar(50) not null)"""))
+##   ```
 ##
 ## Inserting data
 ## --------------
 ##
-## .. code-block:: Nim
-##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
-##             "Dominik")
+##   ```Nim
+##   db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
+##           "Dominik")
+##   ```
 import strutils, postgres
 
 import db_common
@@ -609,10 +615,9 @@ proc open*(connection, user, password, database: string): DbConn {.
   ## connect.
   ##
   ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##      con = open("", "", "", "host=localhost port=5432 dbname=mydb")
+  ##   ```nim
+  ##   con = open("", "", "", "host=localhost port=5432 dbname=mydb")
+  ##   ```
   ##
   ## See http://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
   ## for more information.
