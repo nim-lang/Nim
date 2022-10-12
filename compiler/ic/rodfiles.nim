@@ -84,7 +84,6 @@ type
     convertersSection
     methodsSection
     pureEnumsSection
-    macroUsagesSection
     toReplaySection
     topLevelSection
     bodiesSection

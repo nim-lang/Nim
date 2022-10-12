@@ -162,7 +162,7 @@ proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
   let m = skipConvDfa(n)
-  result = nfFirstWrite2 in m.flags
+  result = nfFirstWrite in m.flags
 
 proc isCursor(n: PNode): bool =
   case n.kind

@@ -68,7 +68,8 @@ type
     warnUnreachableElse = "UnreachableElse", warnUnreachableCode = "UnreachableCode",
     warnStaticIndexCheck = "IndexCheck", warnGcUnsafe = "GcUnsafe", warnGcUnsafe2 = "GcUnsafe2",
     warnUninit = "Uninit", warnGcMem = "GcMem", warnDestructor = "Destructor",
-    warnLockLevel = "LockLevel", warnResultShadowed = "ResultShadowed",
+    warnLockLevel = "LockLevel", # deadcode
+    warnResultShadowed = "ResultShadowed",
     warnInconsistentSpacing = "Spacing",  warnCaseTransition = "CaseTransition",
     warnCycleCreated = "CycleCreated", warnObservableStores = "ObservableStores",
     warnStrictNotNil = "StrictNotNil",
@@ -161,7 +162,7 @@ const
     warnUninit: "use explicit initialization of '$1' for clarity",
     warnGcMem: "'$1' uses GC'ed memory",
     warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future.",
-    warnLockLevel: "$1",
+    warnLockLevel: "$1", # deadcode
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnCaseTransition: "Potential object case transition, instantiate new object instead",
@@ -234,7 +235,7 @@ type
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv}
-  result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
+  result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin, hintPerformance}

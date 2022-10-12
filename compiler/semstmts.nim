@@ -612,11 +612,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var typFlags: TTypeAllowedFlags
 
     var def: PNode = c.graph.emptyNode
-    if a[^1].kind == nkEmpty and symkind == skVar and a[^2].typ != nil:
-      let field = defaultNodeField(c, a[^2])
-      if field != nil:
-        a[^1] = field
-        field.flags.incl nfUseDefaultField
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {}, typ)
 
@@ -685,12 +680,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addToVarSection(c, result, n, a)
         continue
       var v = semIdentDef(c, a[j], symkind, false)
-      if a[^1].kind != nkEmpty:
-        if {sfThread, sfNoInit} * v.flags != {} and
-                        nfUseDefaultField in a[^1].flags:
-          a[^1] = c.graph.emptyNode
-          def = c.graph.emptyNode
-        a[^1].flags.excl nfUseDefaultField
       styleCheckDef(c, v)
       onDef(a[j].info, v)
       if sfGenSym notin v.flags:

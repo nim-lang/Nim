@@ -506,7 +506,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkTypeOfExpr: result = (if n.len > 0: lsub(g, n[0]) else: 0)+len("typeof()")
   of nkRefTy: result = (if n.len > 0: lsub(g, n[0])+1 else: 0) + len("ref")
   of nkPtrTy: result = (if n.len > 0: lsub(g, n[0])+1 else: 0) + len("ptr")
-  of nkVarTy: result = (if n.len > 0: lsub(g, n[0])+1 else: 0) + len("var")
+  of nkVarTy, nkOutTy: result = (if n.len > 0: lsub(g, n[0])+1 else: 0) + len("var")
   of nkDistinctTy:
     result = len("distinct") + (if n.len > 0: lsub(g, n[0])+1 else: 0)
     if n.len > 1:
@@ -598,7 +598,7 @@ proc isHideable(config: ConfigRef, n: PNode): bool =
   # xxx compare `ident` directly with `getIdent(cache, wRaises)`, but
   # this requires a `cache`.
   case n.kind
-  of nkExprColonExpr: result = n[0].kind == nkIdent and n[0].ident.s in ["raises", "tags", "extern", "deprecated"]
+  of nkExprColonExpr: result = n[0].kind == nkIdent and n[0].ident.s in ["raises", "tags", "extern", "deprecated", "forbids"]
   of nkIdent: result = n.ident.s in ["gcsafe", "deprecated"]
   else: result = false
 
@@ -607,8 +607,8 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
   let inPragma = g.inPragma == 1 # just the top-level
   var inHideable = false
   for i in start..n.len + theEnd:
-    var c = i < n.len + theEnd
-    var sublen = lsub(g, n[i]) + ord(c)
+    let c = i < n.len + theEnd
+    let sublen = lsub(g, n[i]) + ord(c)
     if not fits(g, g.lineLen + sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
     let oldLen = g.tokens.len
     if inPragma:
@@ -1384,6 +1384,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
       gsub(g, n[0])
     else:
       put(g, tkVar, "var")
+  of nkOutTy:
+    if n.len > 0:
+      putWithSpace(g, tkOut, "out")
+      gsub(g, n[0])
+    else:
+      put(g, tkOut, "out")
   of nkDistinctTy:
     if n.len > 0:
       putWithSpace(g, tkDistinct, "distinct")

@@ -1648,7 +1648,7 @@ func removePrefix*(s: var string, chars: set[char] = Newlines) {.rtl,
 
   var start = 0
   while start < s.len and s[start] in chars: start += 1
-  if start > 0: s.delete(0, start - 1)
+  if start > 0: s.delete(0..start - 1)
 
 func removePrefix*(s: var string, c: char) {.rtl,
     extern: "nsuRemovePrefixChar".} =
@@ -1675,8 +1675,8 @@ func removePrefix*(s: var string, prefix: string) {.rtl,
     var answers = "yesyes"
     answers.removePrefix("yes")
     doAssert answers == "yes"
-  if s.startsWith(prefix):
-    s.delete(0, prefix.len - 1)
+  if s.startsWith(prefix) and prefix.len > 0:
+    s.delete(0..prefix.len - 1)
 
 func removeSuffix*(s: var string, chars: set[char] = Newlines) {.rtl,
     extern: "nsuRemoveSuffixCharSet".} =
@@ -2495,7 +2495,8 @@ func trimZeros*(x: var string; decimalSep = '.') =
     var pos = last
     while pos >= 0 and x[pos] == '0': dec(pos)
     if pos > sPos: inc(pos)
-    x.delete(pos, last)
+    if last >= pos:
+      x.delete(pos..last)
 
 type
   BinaryPrefixMode* = enum ## The different names for binary prefixes.

@@ -375,7 +375,7 @@ Ast Pattern Matching is a macro library to aid in writing complex
 macros. This can be seen as a good example of how to repurpose the
 Nim syntax tree with new semantics.
 
-[Ast Pattern Matching](https://github.com/krux02/ast-pattern-matching)
+[Ast Pattern Matching](https://github.com/nim-lang/ast-pattern-matching)
 
 OpenGL Sandbox
 --------------

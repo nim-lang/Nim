@@ -1067,7 +1067,7 @@ proc genProcAux(m: BModule, prc: PSym) =
   var returnStmt: Rope = ""
   assert(prc.ast != nil)
 
-  var procBody = transformBody(m.g.graph, m.idgen, prc, cache = false)
+  var procBody = transformBody(m.g.graph, m.idgen, prc, dontUseCache)
   if sfInjectDestructors in prc.flags:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 
