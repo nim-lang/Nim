@@ -93,12 +93,12 @@ pkg "nake", "nim c nakefile.nim"
 pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim"
 pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true
 pkg "netty"
-pkg "nico", allowFailure = true
+pkg "nico", "nimble install -y nimPNG@#HEAD; nimble test"
 pkg "nicy", "nim c -r src/nicy.nim"
 pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
 pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround needed, see D20210308T165435
 pkg "NimData", "nim c -o:nimdataa src/nimdata.nim"
-pkg "nimes", "nimble install -y sdl2@#HEAD;nim c src/nimes.nim"
+pkg "nimes", "nim c src/nimes.nim"
 pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
 pkg "nimgame2", "nim c --mm:refc nimgame2/nimgame.nim"
   # XXX Doesn't work with deprecated 'randomize', will create a PR.
