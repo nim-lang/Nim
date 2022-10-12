@@ -302,7 +302,7 @@ template legacynotFoundError(c: PContext, n: PNode, errors: CandidateErrors) =
   result.add('>')
   if candidates != "":
     result.add("\n" & errButExpected & "\n" & candidates)
-  localError(c.config, n.info, result)
+  llocalError(c.config, n.info, result & "\nexpression: " & $n)
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
