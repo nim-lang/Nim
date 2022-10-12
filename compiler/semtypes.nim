@@ -1257,6 +1257,7 @@ proc newProcType(c: PContext; info: TLineInfo; prev: PType = nil): PType =
   result.n.add newNodeI(nkEffectList, info)
 
 proc isMagic(sym: PSym): bool =
+  if sym.ast == nil: return false
   let nPragmas = sym.ast[pragmasPos]
   return hasPragma(nPragmas, wMagic)
 
