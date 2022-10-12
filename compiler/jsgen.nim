@@ -897,7 +897,7 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
   of tyString:
     useMagic(p, "toJSStr")
     lineF(p, "switch (toJSStr($1)) {$n", [cond.rdLoc])
-  of tyFloat..tyFloat128:
+  of tyFloat..tyFloat128, tyInt..tyInt64, tyUInt..tyUInt64:
     transferRange = true
   else:
     lineF(p, "switch ($1) {$n", [cond.rdLoc])
