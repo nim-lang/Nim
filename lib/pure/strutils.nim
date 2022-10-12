@@ -1959,10 +1959,8 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
 
-  template useSkipTable {.dirty.} =
-    var a {.noinit.}: SkipTable
-    initSkipTable(a, sub)
-    result = find(a, s, sub, start, last)
+  template useSkipTable =
+    result = find(initSkipTable(sub), s, sub, start, last)
 
   when nimvm:
     useSkipTable()
