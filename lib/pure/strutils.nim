@@ -1964,23 +1964,20 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
     initSkipTable(a, sub)
     result = find(a, s, sub, start, last)
 
-  when declared(memmem):
-    when nimvm:
-      useSkipTable()
-    else:
-      when declared(memmem):
-        if last < 0 and start < s.len:
-          let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(sub.len))
-          result = if not found.isNil:
-              cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
-            else:
-              -1
-        else:
-          useSkipTable()
+  when nimvm:
+    useSkipTable()
+  else:
+    when declared(memmem):
+      if last < 0 and start < s.len:
+        let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(sub.len))
+        result = if not found.isNil:
+            cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+          else:
+            -1
       else:
         useSkipTable()
-  else:
-    useSkipTable()
+    else:
+      useSkipTable()
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
