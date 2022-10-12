@@ -161,10 +161,12 @@ proc encode*[T: byte|char](s: openArray[T], safe = false): string =
     assert encode([1'u8, 2, 3, 4, 5]) == "AQIDBAU="
   encodeImpl()
 
-proc encode*[T: SomeInteger and not byte](s: openArray[T], safe = false): string {.deprecated: "use `byte` or `char` instead".} =
+proc encode*[T: SomeInteger and not byte](s: openArray[T], safe = false): string
+  {.deprecated: "use `byte` or `char` instead".} =
   encodeImpl()
 
-proc encodeMime*(s: string, lineLen = 75.Positive, newLine = "\r\n"): string =
+proc encodeMime*[T: char|byte](s: openArray[T], lineLen = 75.Positive,
+                               newLine = "\r\n", safe = false): string =
   ## Encodes `s` into base64 representation as lines.
   ## Used in email MIME format, use `lineLen` and `newline`.
   ##
@@ -183,7 +185,7 @@ proc encodeMime*(s: string, lineLen = 75.Positive, newLine = "\r\n"): string =
       inc idx
 
   if s.len == 0: return
-  let e = encode(s)
+  let e = encode(s, safe)
   if e.len <= lineLen or newLine.len == 0:
     return e
   result = newString(e.len + newLine.len * ((e.len div lineLen) - int(e.len mod lineLen == 0)))
