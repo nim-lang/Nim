@@ -1966,8 +1966,9 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
     useSkipTable()
   else:
     when declared(memmem):
-      if last < 0 and start < s.len:
-        let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(sub.len))
+      let subLen = sub.len
+      if last < 0 and start < s.len and subLen != 0:
+        let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(subLen))
         result = if not found.isNil:
             cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
           else:
