@@ -887,7 +887,6 @@ proc genRaiseStmt(p: PProc, n: PNode) =
 proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
   var
     a, b, cond, stmt: TCompRes
-    totalRange = 0
   genLineDir(p, n)
   gen(p, n[0], cond)
   let typeKind = skipTypes(n[0].typ, abstractVar).kind
@@ -926,10 +925,6 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
               lineF(p, "$1 >= $2 && $1 <= $3", [cond.rdLoc, a.rdLoc, b.rdLoc])
           else:
             var v = copyNode(e[0])
-            inc(totalRange, int(e[1].intVal - v.intVal))
-            if totalRange > 65535:
-              localError(p.config, n.info,
-                        "Your case statement contains too many branches, consider using if/else instead!")
             while v.intVal <= e[1].intVal:
               gen(p, v, cond)
               lineF(p, "case $1:$n", [cond.rdLoc])
