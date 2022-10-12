@@ -107,6 +107,7 @@
 - Undeprecated `os.isvalidfilename`.
 - `std/oids` now uses `int64` to store time internally (before it was int32), the length of
   the string form of `Oid` changes from 24 to 32.
+- Made `getDataDir()`, `getStateDir()`, `getConfigDir()` and`getCacheDir` from `std/os` uniform in terms of code and documentation.
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
@@ -129,6 +130,7 @@
   `toggleAttribute`, and `matches` to `std/dom`.
 - Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
 - Added `capacity` for `string` and `seq` to return the current capacity, see https://github.com/nim-lang/RFCs/issues/460
+- Added `getDataDir()` and `getStateDir()` besides `getConfigDir()` and `getCacheDir` in `std/os`.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.

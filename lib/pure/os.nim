@@ -905,14 +905,17 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   when defined(windows): return getEnv("USERPROFILE") & "\\"
   else: return getEnv("HOME") & "/"
 
-proc getConfigDir*(): string {.rtl, extern: "nos$1",
+proc getDataDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
-  ## Returns the config directory of the current user for applications.
+  ## Returns the data directory of the current user for applications.
   ##
-  ## On non-Windows OSs, this proc conforms to the XDG Base Directory
-  ## spec. Thus, this proc returns the value of the `XDG_CONFIG_HOME` environment
-  ## variable if it is set, otherwise it returns the default configuration
-  ## directory ("~/.config/").
+  ## This makes use of the following environment variables:
+  ##
+  ## * On Windows: `getEnv("LOCALAPPDATA")`
+  ##
+  ## * On macOS: `getEnv("XDG_DATA_HOME", getEnv("HOME") / "Library/Application Support")`
+  ##
+  ## * On other platforms: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".local/share")`
   ##
   ## An OS-dependent trailing slash is always present at the end of the
   ## returned string: `\\` on Windows and `/` on all other OSs.
@@ -923,12 +926,77 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ## * `expandTilde proc`_
   ## * `getCurrentDir proc`_
   ## * `setCurrentDir proc`_
+  ##
+  ## Follows <https://crates.io/crates/platform-dirs>.
+  when defined(windows):
+    result = getEnv("LOCALAPPDATA")
+  elif defined(osx):
+    result = getEnv("XDG_DATA_HOME", getEnv("HOME") / "Library/Application Support")
+  else:
+    result = getEnv("XDG_DATA_HOME", getEnv("HOME") / ".local/share")
+  result.normalizePathEnd(trailingSep = true)
+
+proc getConfigDir*(): string {.rtl, extern: "nos$1",
+  tags: [ReadEnvEffect, ReadIOEffect].} =
+  ## Returns the config directory of the current user for applications.
+  ##
+  ## This makes use of the following environment variables:
+  ##
+  ## * On Windows: `getEnv("APPDATA")`
+  ##
+  ## * On macOS: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / "Library/Preferences")`
+  ##
+  ## * On other platforms: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".config")`
+  ##
+  ## An OS-dependent trailing slash is always present at the end of the
+  ## returned string: `\\` on Windows and `/` on all other OSs.
+  ##
+  ## See also:
+  ## * `getHomeDir proc`_
+  ## * `getTempDir proc`_
+  ## * `expandTilde proc`_
+  ## * `getCurrentDir proc`_
+  ## * `setCurrentDir proc`_
+  ##
+  ## Follows <https://crates.io/crates/platform-dirs>.
   when defined(windows):
     result = getEnv("APPDATA")
+  elif defined(osx):
+    result = getEnv("XDG_CONFIG_HOME", getEnv("HOME") / "Library/Preferences")
   else:
     result = getEnv("XDG_CONFIG_HOME", getEnv("HOME") / ".config")
   result.normalizePathEnd(trailingSep = true)
 
+proc getStateDir*(): string {.rtl, extern: "nos$1",
+  tags: [ReadEnvEffect, ReadIOEffect].} =
+  ## Returns the state directory of the current user for applications.
+  ##
+  ## This makes use of the following environment variables:
+  ##
+  ## * On Windows: `getEnv("LOCALAPPDATA")`
+  ##
+  ## * On macOS: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / "Library/Application Support")`
+  ##
+  ## * On other platforms: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".local/state")`
+  ##
+  ## An OS-dependent trailing slash is always present at the end of the
+  ## returned string: `\\` on Windows and `/` on all other OSs.
+  ##
+  ## See also:
+  ## * `getHomeDir proc`_
+  ## * `getTempDir proc`_
+  ## * `expandTilde proc`_
+  ## * `getCurrentDir proc`_
+  ## * `setCurrentDir proc`_
+  ##
+  ## Follows <https://crates.io/crates/platform-dirs>.
+  when defined(windows):
+    result = getEnv("LOCALAPPDATA")
+  elif defined(osx):
+    result = getEnv("XDG_STATE_HOME", getEnv("HOME") / "Library/Application Support")
+  else:
+    result = getEnv("XDG_STATE_HOME", getEnv("HOME") / ".local/state")
+  result.normalizePathEnd(trailingSep = true)
 
 proc getCacheDir*(): string =
   ## Returns the cache directory of the current user for applications.
@@ -941,11 +1009,17 @@ proc getCacheDir*(): string =
   ##
   ## * On other platforms: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".cache")`
   ##
-  ## **See also:**
+  ## An OS-dependent trailing slash is always present at the end of the
+  ## returned string: `\\` on Windows and `/` on all other OSs.
+  ##
+  ## See also:
   ## * `getHomeDir proc`_
   ## * `getTempDir proc`_
-  ## * `getConfigDir proc`_
-  # follows https://crates.io/crates/platform-dirs
+  ## * `expandTilde proc`_
+  ## * `getCurrentDir proc`_
+  ## * `setCurrentDir proc`_
+  ##
+  ## Follows <https://crates.io/crates/platform-dirs>.
   when defined(windows):
     result = getEnv("LOCALAPPDATA")
   elif defined(osx):
