@@ -78,7 +78,7 @@
 
 - Removed the `nimIncrSeqV3` define.
 
-- Added the `nimConciseTypeMismatch` switch to get concise type mismatch error messages.
+- Added the `nimLegacyTypeMismatch` switch to get legacy type mismatch error messages.
 
 - Static linking against OpenSSL versions below 1.1, previously done by
   setting `-d:openssl10`, is no longer supported.

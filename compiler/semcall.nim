@@ -196,7 +196,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   # argument in order to remove plenty of candidates. This is
   # comparable to what C# does and C# is doing fine.
   var filterOnlyFirst = false
-  if optShowAllMismatches notin c.config.globalOptions and not isDefined(c.config, "nimConciseTypeMismatch"):
+  if optShowAllMismatches notin c.config.globalOptions and isDefined(c.config, "nimLegacyTypeMismatch"):
     for err in errors:
       if err.firstMismatch.arg > 1:
         filterOnlyFirst = true
@@ -213,7 +213,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       inc skipped
       continue
 
-    if isDefined(c.config, "nimConciseTypeMismatch"):
+    if not isDefined(c.config, "nimLegacyTypeMismatch"):
       candidates.add "[" & $err.firstMismatch.arg & "] "
 
     if err.sym.kind in routineKinds and err.sym.ast != nil:
@@ -225,7 +225,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     candidates.add("\n")
     let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
-    if n.len > 1 and not isDefined(c.config, "nimConciseTypeMismatch"):
+    if n.len > 1 and isDefined(c.config, "nimLegacyTypeMismatch"):
       candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
       # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
       case err.firstMismatch.kind
@@ -295,6 +295,15 @@ proc describeParamList(c: PContext, n: PNode, startIdx = 1; prefer = preferName)
     result.add describeArg(c, n, i, startIdx, prefer)
   result.add "\n"
 
+template legacynotFoundError(c: PContext, n: PNode, errors: CandidateErrors) =
+  let (prefer, candidates) = presentFailedCandidates(c, n, errors)
+  var result = errTypeMismatch
+  result.add(describeArgs(c, n, 1, prefer))
+  result.add('>')
+  if candidates != "":
+    result.add("\n" & errButExpected & "\n" & candidates)
+  localError(c.config, n.info, result)
+
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverloadedCall is already pretty slow (and we need this information
@@ -307,15 +316,15 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree)
     return
 
-  let (prefer, candidates) = presentFailedCandidates(c, n, errors)
-  var result = "type mismatch\n"
-  result.add describeParamList(c, n, 1, prefer)
-  if candidates != "":
-    if isDefined(c.config, "nimConciseTypeMismatch"):
+  if isDefined(c.config, "nimLegacyTypeMismatch"):
+    legacynotFoundError(c, n, errors)
+  else:
+    let (prefer, candidates) = presentFailedCandidates(c, n, errors)
+    var result = "type mismatch\n"
+    result.add describeParamList(c, n, 1, prefer)
+    if candidates != "":
       result.add("\n" & errExpectedPosition & "\n" & candidates)
-    else:
-      result.add("\n" & errButExpected & "\n" & candidates)
-  localError(c.config, n.info, result)
+    localError(c.config, n.info, result)
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
   var errors: CandidateErrors = @[]

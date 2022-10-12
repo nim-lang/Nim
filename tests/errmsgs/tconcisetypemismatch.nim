@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c -d:nimConciseTypeMismatch --hints:off $file"
+  cmd: "nim c --hints:off $file"
   errormsg: "type mismatch: got <int64, int literal(1000)>"
   nimout: '''
 tconcisetypemismatch.nim(21, 43) Error: type mismatch: got <int64, int literal(1000)>
