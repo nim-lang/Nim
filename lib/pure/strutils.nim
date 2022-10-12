@@ -1936,6 +1936,14 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
     if s[i] in chars:
       return i
 
+when defined(linux):
+  proc memmem(haystack: pointer, haystacklen: csize_t,
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: """#define _GNU_SOURCE
+#include <string.h>""".}
+elif defined(bsd) or (defined(macosx) and not defined(ios)):
+  proc memmem(haystack: pointer, haystacklen: csize_t,
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: "#include <string.h>".}
+
 func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuFindStr".} =
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
@@ -1951,7 +1959,28 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
 
-  result = find(initSkipTable(sub), s, sub, start, last)
+  template useSkipTable {.dirty.} =
+    var a {.noinit.}: SkipTable
+    initSkipTable(a, sub)
+    result = find(a, s, sub, start, last)
+
+  when declared(memmem):
+    when nimvm:
+      useSkipTable()
+    else:
+      when declared(memmem):
+        if last < 0 and start < s.len:
+          let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(sub.len))
+          result = if not found.isNil:
+              cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+            else:
+              -1
+        else:
+          useSkipTable()
+      else:
+        useSkipTable()
+  else:
+    useSkipTable()
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
