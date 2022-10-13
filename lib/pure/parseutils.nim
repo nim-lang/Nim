@@ -242,7 +242,7 @@ proc parseIdent*(s: openArray[char]): string =
   if i < s.len and s[i] in IdentStartChars:
     inc(i)
     while i < s.len and s[i] in IdentChars: inc(i)
-    result = substr(s)
+    result = substr(s.toOpenArray(0, i - 1))
 
 proc parseChar*(s: openArray[char], c: var char): int =
   ## Parses a single character, stores it in `c` and returns 1.
