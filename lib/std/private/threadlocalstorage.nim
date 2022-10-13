@@ -40,7 +40,7 @@ when defined(windows):
   when true:
     proc threadVarAlloc(): ThreadVarSlot {.
       importc: "TlsAlloc", stdcall, header: "<windows.h>".}
-    proc threadVarSetValue(dwTlsIndex: ThreadVarSlot, lpTlsValue: pointer) {.
+    proc threadVarSetValue*(dwTlsIndex: ThreadVarSlot, lpTlsValue: pointer) {.
       importc: "TlsSetValue", stdcall, header: "<windows.h>".}
     proc tlsGetValue(dwTlsIndex: ThreadVarSlot): pointer {.
       importc: "TlsGetValue", stdcall, header: "<windows.h>".}
@@ -57,7 +57,7 @@ when defined(windows):
   else:
     proc threadVarAlloc(): ThreadVarSlot {.
       importc: "TlsAlloc", stdcall, dynlib: "kernel32".}
-    proc threadVarSetValue(dwTlsIndex: ThreadVarSlot, lpTlsValue: pointer) {.
+    proc threadVarSetValue*(dwTlsIndex: ThreadVarSlot, lpTlsValue: pointer) {.
       importc: "TlsSetValue", stdcall, dynlib: "kernel32".}
     proc threadVarGetValue(dwTlsIndex: ThreadVarSlot): pointer {.
       importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
@@ -89,7 +89,7 @@ elif defined(genode):
     importcpp: "Nim::SysThread::offMainThread",
     header: GenodeHeader.}
 
-  proc threadVarSetValue(value: pointer) {.
+  proc threadVarSetValue*(value: pointer) {.
     importcpp: "Nim::SysThread::threadVarSetValue(@)",
     header: GenodeHeader.}
 
@@ -132,7 +132,7 @@ else:
     type
       SysThread* {.importc: "pthread_t",
                   header: "<sys/types.h>" .} = distinct culong
-      Pthread_attr {.importc: "pthread_attr_t",
+      Pthread_attr* {.importc: "pthread_attr_t",
                     header: "<sys/types.h>".} = object
         abi: array[56 div sizeof(clong), clong]
       ThreadVarSlot* {.importc: "pthread_key_t",
@@ -140,14 +140,14 @@ else:
   elif defined(openbsd) and defined(amd64):
     type
       SysThread* {.importc: "pthread_t", header: "<pthread.h>".} = object
-      Pthread_attr {.importc: "pthread_attr_t",
+      Pthread_attr* {.importc: "pthread_attr_t",
                        header: "<pthread.h>".} = object
       ThreadVarSlot* {.importc: "pthread_key_t",
                      header: "<pthread.h>".} = cint
   else:
     type
       SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = int
-      Pthread_attr {.importc: "pthread_attr_t",
+      Pthread_attr* {.importc: "pthread_attr_t",
                        header: "<sys/types.h>".} = object
       ThreadVarSlot* {.importc: "pthread_key_t",
                      header: "<sys/types.h>".} = object

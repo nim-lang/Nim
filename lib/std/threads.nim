@@ -44,9 +44,6 @@
 ##
 ##  deinitLock(L)
 
-# when not declared(ThisIsSystem):
-#   {.error: "You must not import this module explicitly".}
-
 import std/private/threadlocalstorage
 import system/ansi_c
 
