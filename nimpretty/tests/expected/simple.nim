@@ -13,7 +13,7 @@ proc a() =
   discard
 
 # bug #15596
-discard## comment 3
+discard ## comment 3
 
 discard # comment 4
 
