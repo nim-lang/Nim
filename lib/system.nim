@@ -1601,7 +1601,6 @@ when notJSnotNims:
 {.push stackTrace: off.}
 
 when not defined(js) and hasThreadSupport and hostOS != "standalone":
-  const insideRLocksModule = false
   import std/private/[syslocks, threadlocalstorage]
 
 

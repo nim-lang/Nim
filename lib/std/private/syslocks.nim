@@ -182,53 +182,53 @@ else:
     template releaseSys*(L: var SysLock) =
       releaseSysAux(L)
 
-  when insideRLocksModule:
-    let SysLockType_Reentrant {.importc: "PTHREAD_MUTEX_RECURSIVE",
-      header: "<pthread.h>".}: SysLockType
-    proc initSysLockAttr(a: var SysLockAttr) {.
-      importc: "pthread_mutexattr_init", header: "<pthread.h>", noSideEffect.}
-    proc setSysLockType(a: var SysLockAttr, t: SysLockType) {.
-      importc: "pthread_mutexattr_settype", header: "<pthread.h>", noSideEffect.}
+  # rlocks
+  let SysLockType_Reentrant* {.importc: "PTHREAD_MUTEX_RECURSIVE",
+    header: "<pthread.h>".}: SysLockType
+  proc initSysLockAttr*(a: var SysLockAttr) {.
+    importc: "pthread_mutexattr_init", header: "<pthread.h>", noSideEffect.}
+  proc setSysLockType*(a: var SysLockAttr, t: SysLockType) {.
+    importc: "pthread_mutexattr_settype", header: "<pthread.h>", noSideEffect.}
 
+  # locks
+  proc initSysCondAux(cond: var SysCondObj, cond_attr: ptr SysCondAttr = nil) {.
+    importc: "pthread_cond_init", header: "<pthread.h>", noSideEffect.}
+  proc deinitSysCondAux(cond: var SysCondObj) {.noSideEffect,
+    importc: "pthread_cond_destroy", header: "<pthread.h>".}
+
+  proc waitSysCondAux(cond: var SysCondObj, lock: var SysLockObj): cint {.
+    importc: "pthread_cond_wait", header: "<pthread.h>", noSideEffect.}
+  proc signalSysCondAux(cond: var SysCondObj) {.
+    importc: "pthread_cond_signal", header: "<pthread.h>", noSideEffect.}
+  proc broadcastSysCondAux(cond: var SysCondObj) {.
+    importc: "pthread_cond_broadcast", header: "<pthread.h>", noSideEffect.}
+
+  when defined(ios):
+    proc initSysCond*(cond: var SysCond, cond_attr: ptr SysCondAttr = nil) =
+      cond = cast[SysCond](c_malloc(csize_t(sizeof(SysCondObj))))
+      initSysCondAux(cond[], cond_attr)
+
+    proc deinitSysCond*(cond: var SysCond) =
+      deinitSysCondAux(cond[])
+      c_free(cond)
+
+    template waitSysCond*(cond: var SysCond, lock: var SysLock) =
+      discard waitSysCondAux(cond[], lock[])
+    template signalSysCond*(cond: var SysCond) =
+      signalSysCondAux(cond[])
+    template broadcastSysCond*(cond: var SysCond) =
+      broadcastSysCondAux(cond[])
   else:
-    proc initSysCondAux(cond: var SysCondObj, cond_attr: ptr SysCondAttr = nil) {.
-      importc: "pthread_cond_init", header: "<pthread.h>", noSideEffect.}
-    proc deinitSysCondAux(cond: var SysCondObj) {.noSideEffect,
-      importc: "pthread_cond_destroy", header: "<pthread.h>".}
+    template initSysCond*(cond: var SysCond, cond_attr: ptr SysCondAttr = nil) =
+      initSysCondAux(cond, cond_attr)
+    template deinitSysCond*(cond: var SysCond) =
+      deinitSysCondAux(cond)
 
-    proc waitSysCondAux(cond: var SysCondObj, lock: var SysLockObj): cint {.
-      importc: "pthread_cond_wait", header: "<pthread.h>", noSideEffect.}
-    proc signalSysCondAux(cond: var SysCondObj) {.
-      importc: "pthread_cond_signal", header: "<pthread.h>", noSideEffect.}
-    proc broadcastSysCondAux(cond: var SysCondObj) {.
-      importc: "pthread_cond_broadcast", header: "<pthread.h>", noSideEffect.}
-
-    when defined(ios):
-      proc initSysCond*(cond: var SysCond, cond_attr: ptr SysCondAttr = nil) =
-        cond = cast[SysCond](c_malloc(csize_t(sizeof(SysCondObj))))
-        initSysCondAux(cond[], cond_attr)
-
-      proc deinitSysCond*(cond: var SysCond) =
-        deinitSysCondAux(cond[])
-        c_free(cond)
-
-      template waitSysCond*(cond: var SysCond, lock: var SysLock) =
-        discard waitSysCondAux(cond[], lock[])
-      template signalSysCond*(cond: var SysCond) =
-        signalSysCondAux(cond[])
-      template broadcastSysCond*(cond: var SysCond) =
-        broadcastSysCondAux(cond[])
-    else:
-      template initSysCond*(cond: var SysCond, cond_attr: ptr SysCondAttr = nil) =
-        initSysCondAux(cond, cond_attr)
-      template deinitSysCond*(cond: var SysCond) =
-        deinitSysCondAux(cond)
-
-      template waitSysCond*(cond: var SysCond, lock: var SysLock) =
-        discard waitSysCondAux(cond, lock)
-      template signalSysCond*(cond: var SysCond) =
-        signalSysCondAux(cond)
-      template broadcastSysCond*(cond: var SysCond) =
-        broadcastSysCondAux(cond)
+    template waitSysCond*(cond: var SysCond, lock: var SysLock) =
+      discard waitSysCondAux(cond, lock)
+    template signalSysCond*(cond: var SysCond) =
+      signalSysCondAux(cond)
+    template broadcastSysCond*(cond: var SysCond) =
+      broadcastSysCondAux(cond)
 
 {.pop.}

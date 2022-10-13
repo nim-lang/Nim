@@ -16,7 +16,6 @@ when not compileOption("threads") and not defined(nimdoc):
     # so they can replace each other seamlessly.
     {.error: "Rlocks requires --threads:on option.".}
 
-const insideRLocksModule = true
 import std/private/syslocks
 
 type
