@@ -1475,7 +1475,7 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this is difficult, because the '.' is used in many different contexts
   # in Nim. We first allow types in the semantic checking.
   result = builtinFieldAccess(c, n, flags - {efIsDotCall})
-  if result == nil or ((result.typ == nil or result.typ.kind != tyProc) and efIsDotCall in flags):
+  if result == nil or ((result.typ == nil or result.typ.skipTypes(abstractInst).kind != tyProc) and efIsDotCall in flags):
     result = dotTransformation(c, n)
 
 proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
