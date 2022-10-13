@@ -13,6 +13,17 @@ proc a() =
   discard
 
 # bug #15596
-discard ## comment 3
+discard## comment 3
 
 discard # comment 4
+
+
+# bug #20553
+
+let `'hello` = 12
+echo `'hello`
+
+
+proc `'u4`(n: string) =
+  # The leading ' is required.
+  discard
