@@ -12,6 +12,8 @@
 include system/inclrtl
 import std/private/since
 import std/formatfloat
+when defined(windows):
+  import std/widestrs
 
 # ----------------- IO Part ------------------------------------------------
 type

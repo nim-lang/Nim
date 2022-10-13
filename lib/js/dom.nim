@@ -1335,9 +1335,10 @@ since (1, 3):
       ## DOM Parser object (defined on browser only, may not be on NodeJS).
       ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
       ##
-      ## .. code-block:: nim
+      ##   ```nim
       ##   let prsr = newDomParser()
       ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
+      ##   ```
 
     DomException* = ref DOMExceptionObj
       ## The DOMException interface represents an abnormal event (called an exception)

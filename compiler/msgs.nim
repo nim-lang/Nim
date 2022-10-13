@@ -504,7 +504,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
 proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
-               eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.noinline.} =
+               eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.gcsafe, noinline.} =
   var
     title: string
     color: ForegroundColor

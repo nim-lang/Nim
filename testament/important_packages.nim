@@ -33,10 +33,10 @@ var packages*: seq[NimblePackage]
 proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailure = false) =
   packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead, allowFailure: allowFailure)
 
-pkg "alea", allowFailure = true
+pkg "alea"
 pkg "argparse"
 pkg "arraymancer", "nim c tests/tests_cpu.nim"
-pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim", allowFailure = true
+pkg "ast_pattern_matching", "nim c -r tests/test1.nim"
 pkg "asyncthreadpool", "nimble test --mm:refc"
 pkg "awk"
 pkg "bigints"
@@ -59,7 +59,7 @@ pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehensio
 pkg "criterion", allowFailure = true # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
 pkg "datamancer"
 pkg "dashing", "nim c tests/functional.nim"
-pkg "delaunay"
+pkg "delaunay", url = "https://github.com/nim-lang/DelaunayNim", useHead = true
 pkg "docopt"
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
@@ -103,13 +103,13 @@ pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
 pkg "nimgame2", "nim c --mm:refc nimgame2/nimgame.nim"
   # XXX Doesn't work with deprecated 'randomize', will create a PR.
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
-pkg "nimlsp", allowFailure = true # dependency on ast_pattern_matching
+pkg "nimlsp"
 pkg "nimly", "nim c -r tests/test_readme_example.nim"
 pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
-pkg "nimsl", "nimble install -y variant@#HEAD;nimble test", "https://github.com/nim-lang/nimsl", useHead = true
+pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
 pkg "nimwc", "nim c nimwc.nim"
@@ -125,7 +125,7 @@ pkg "patty"
 pkg "pixie"
 pkg "plotly", "nim c examples/all.nim"
 pkg "pnm"
-pkg "polypbren", allowFailure = true
+pkg "polypbren"
 pkg "prologue", "nimble tcompile"
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim"
 pkg "pylib"

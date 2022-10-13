@@ -66,13 +66,23 @@ else:
   {.pragma: rtlThreadVar.}
 
 
+when defined(gcDestructors):
+  proc allocThreadStorage(size: int): pointer =
+    result = c_malloc(csize_t size)
+    zeroMem(result, size)
+
+  proc deallocThreadStorage(p: pointer) = c_free(p)
+else:
+  template allocThreadStorage(size: untyped): untyped = allocShared0(size)
+  template deallocThreadStorage(p: pointer) = deallocShared(p)
+
 when hasAllocStack or defined(zephyr) or defined(freertos):
   const
-    nimThreadStackSize {.intdefine.} = 8192 
+    nimThreadStackSize {.intdefine.} = 8192
     nimThreadStackGuard {.intdefine.} = 128
 
-    StackGuardSize = nimThreadStackGuard 
-    ThreadStackSize = nimThreadStackSize - nimThreadStackGuard 
+    StackGuardSize = nimThreadStackGuard
+    ThreadStackSize = nimThreadStackSize - nimThreadStackGuard
 else:
   const
     StackGuardSize = 4096
@@ -191,7 +201,7 @@ else:
     finally:
       afterThreadRuns()
       when hasAllocStack:
-        deallocShared(thrd.rawStack)
+        deallocThreadStorage(thrd.rawStack)
 
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
   when defined(boehmgc):
@@ -222,7 +232,7 @@ template threadProcWrapperBody(closure: untyped): untyped =
   # mark as not running anymore:
   thrd.core = nil
   thrd.dataFn = nil
-  deallocShared(cast[pointer](core))
+  deallocThreadStorage(cast[pointer](core))
 
 {.push stack_trace:off.}
 when defined(windows):
@@ -293,7 +303,7 @@ when false:
     t.dataFn = nil
     ## if thread `t` already exited, `t.core` will be `null`.
     if not isNil(t.core):
-      deallocShared(t.core)
+      deallocThreadStorage(t.core)
       t.core = nil
 
 when hostOS == "windows":
@@ -305,7 +315,7 @@ when hostOS == "windows":
     ## Entry point is the proc `tp`.
     ## `param` is passed to `tp`. `TArg` can be `void` if you
     ## don't need to pass any data to the thread.
-    t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
+    t.core = cast[PGcThread](allocThreadStorage(sizeof(GcThread)))
 
     when TArg isnot void: t.data = param
     t.dataFn = tp
@@ -330,7 +340,7 @@ elif defined(genode):
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
-    t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
+    t.core = cast[PGcThread](allocThreadStorage(sizeof(GcThread)))
 
     when TArg isnot void: t.data = param
     t.dataFn = tp
@@ -354,7 +364,7 @@ else:
     ## Entry point is the proc `tp`. `param` is passed to `tp`.
     ## `TArg` can be `void` if you
     ## don't need to pass any data to the thread.
-    t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
+    t.core = cast[PGcThread](allocThreadStorage(sizeof(GcThread)))
 
     when TArg isnot void: t.data = param
     t.dataFn = tp
@@ -363,7 +373,7 @@ else:
     doAssert pthread_attr_init(a) == 0
     when hasAllocStack:
       var
-        rawstk = allocShared0(ThreadStackSize + StackGuardSize)
+        rawstk = allocThreadStorage(ThreadStackSize + StackGuardSize)
         stk = cast[pointer](cast[uint](rawstk) + StackGuardSize)
       let setstacksizeResult = pthread_attr_setstack(addr a, stk, ThreadStackSize)
       t.rawStack = rawstk

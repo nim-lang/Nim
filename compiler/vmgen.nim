@@ -1181,7 +1181,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.gABx(n, opcLdNull, d, c.genType(n[1].typ))
     c.gABx(n, opcNodeToReg, d, d)
     c.genAsgnPatch(n[1], d)
-  of mDefault:
+  of mDefault, mZeroDefault:
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABx(n, ldNullOpcode(n.typ), dest, c.genType(n.typ))
   of mOf, mIs:
@@ -2252,7 +2252,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.procToCodePos[s.id] = result
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
-    let body = transformBody(c.graph, c.idgen, s, cache = not isCompileTimeProc(s))
+    let body = transformBody(c.graph, c.idgen, s, if isCompileTimeProc(s): dontUseCache else: useCache)
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc

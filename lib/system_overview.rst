@@ -8,7 +8,6 @@ is in separate files:
 * `exceptions <exceptions.html>`_
 * `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
-* `widestrs <widestrs.html>`_
 * `ctypes <ctypes.html>`_
 
 

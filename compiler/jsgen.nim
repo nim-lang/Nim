@@ -597,7 +597,7 @@ template unaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
 proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   var
     x, y: TCompRes
-    xLoc,yLoc: Rope
+    xLoc, yLoc: Rope
   let i = ord(optOverflowCheck notin p.options)
   useMagic(p, jsMagics[op][i])
   if n.len > 2:
@@ -614,7 +614,7 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   template applyFormat(frmtA, frmtB) =
     if i == 0: applyFormat(frmtA) else: applyFormat(frmtB)
 
-  case op:
+  case op
   of mAddI: applyFormat("addInt($1, $2)", "($1 + $2)")
   of mSubI: applyFormat("subInt($1, $2)", "($1 - $2)")
   of mMulI: applyFormat("mulInt($1, $2)", "($1 * $2)")
@@ -2231,7 +2231,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNewSeq: genNewSeq(p, n)
   of mNewSeqOfCap: unaryExpr(p, n, r, "", "[]")
   of mOf: genOf(p, n, r)
-  of mDefault: genDefault(p, n, r)
+  of mDefault, mZeroDefault: genDefault(p, n, r)
   of mReset, mWasMoved: genReset(p, n)
   of mEcho: genEcho(p, n, r)
   of mNLen..mNError, mSlurp, mStaticExec:
@@ -2342,7 +2342,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, val, a)
     var f = it[0].sym
     if f.loc.r == "": f.loc.r = mangleName(p.module, f)
-    fieldIDs.incl(lookupFieldAgain(nTyp, f).id)
+    fieldIDs.incl(lookupFieldAgain(n.typ.skipTypes({tyDistinct}), f).id)
 
     let typ = val.typ.skipTypes(abstractInst)
     if a.typ == etyBaseIndex:
@@ -2494,7 +2494,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, cache = false)
+  var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, dontUseCache)
   if sfInjectDestructors in prc.flags:
     transformedBody = injectDestructorCalls(p.module.graph, p.module.idgen, prc, transformedBody)
 

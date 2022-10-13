@@ -304,6 +304,10 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
                    conf.configVars, filename.string,
                    docgenFindFile, compilerMsgHandler)
 
+  if conf.configVars.hasKey("doc.googleAnalytics") and
+      conf.configVars.hasKey("doc.plausibleAnalytics"):
+    doAssert false, "Either use googleAnalytics or plausibleAnalytics"
+
   if conf.configVars.hasKey("doc.googleAnalytics"):
     result.analytics = """
 <script>
@@ -317,6 +321,10 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
 
 </script>
     """ % [conf.configVars.getOrDefault"doc.googleAnalytics"]
+  elif conf.configVars.hasKey("doc.plausibleAnalytics"):
+    result.analytics = """
+    <script defer data-domain="$1" src="https://plausible.io/js/plausible.js"></script>
+    """ % [conf.configVars.getOrDefault"doc.plausibleAnalytics"]
   else:
     result.analytics = ""
 
@@ -325,7 +333,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
   result.jEntriesFinal = newJArray()
   initStrTable result.types
   result.onTestSnippet =
-    proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
+    proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) {.gcsafe.} =
       if conf.docCmd == docCmdSkip: return
       inc(gen.id)
       var d = (ptr TDocumentor)(addr gen)
@@ -1724,7 +1732,7 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf, hasToc = true)
   d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
-                          status: int; content: string) =
+                          status: int; content: string) {.gcsafe.} =
     localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
                warnUser, "the ':test:' attribute is not supported by this backend")
   generateJson(d, ast)
@@ -1747,7 +1755,7 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf, hasToc = true)
   d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
-                          status: int; content: string) =
+                          status: int; content: string) {.gcsafe.} =
     localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
                warnUser, "the ':test:' attribute is not supported by this backend")
   var

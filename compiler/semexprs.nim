@@ -87,6 +87,14 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
   result = semExprCheck(c, n, flags, expectedType)
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
+  elif (result.typ == nil or result.typ.kind == tyNone) and
+      result.kind == nkClosedSymChoice and
+      result[0].sym.kind == skEnumField:
+    # if overloaded enum field could not choose a type from a closed list,
+    # choose the first resolved enum field, i.e. the latest in scope
+    # to mirror old behavior
+    msgSymChoiceUseQualifier(c, result, hintAmbiguousEnum)
+    result = result[0]
   elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
@@ -363,6 +371,8 @@ proc semCast(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2, c.config)
   let targetType = semTypeNode(c, n[0], nil)
   let castedExpr = semExprWithType(c, n[1])
+  if castedExpr.kind == nkClosedSymChoice:
+    errorUseQualifier(c, n[1].info, castedExpr)
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
@@ -918,18 +928,10 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
           rawAddSon(typ, result.typ)
           result.typ = typ
 
-proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode
-
 proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
                          t: PType): TCandidate =
   initCandidate(c, result, t)
   matches(c, n, nOrig, result)
-  if result.state != csMatch:
-    # try to deref the first argument:
-    if implicitDeref in c.features and canDeref(n):
-      n[1] = n[1].tryDeref
-      initCandidate(c, result, t)
-      matches(c, n, nOrig, result)
 
 proc bracketedMacro(n: PNode): PSym =
   if n.len >= 1 and n[0].kind == nkSym:

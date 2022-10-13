@@ -2,7 +2,7 @@
 
 
 ## Changes affecting backward compatibility
-- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response, it followed Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously raise `ValueError`.  
+- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response, it followed Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously raise `ValueError`.
 
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
@@ -14,6 +14,7 @@
   - `std/assertions`
   - `std/formatfloat`
   - `std/objectdollar`
+  - `std/widestrs`
 
   In the future, these definitions will be removed from the `system` module,
   and their respective modules will have to be imported to use them.
@@ -45,6 +46,8 @@
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
   `experimental:flexibleOptionalParams`.
 
+- Automatic dereferencing (experimental feature) is removed.
+
 - The `Math.trunc` polyfill for targeting Internet Explorer was
   previously included in most JavaScript output files.
   Now, it is only included with `-d:nimJsMathTruncPolyfill`.
@@ -52,7 +55,7 @@
   or define your own `Math.trunc` polyfill using the [`emit` pragma](https://nim-lang.org/docs/manual.html#implementation-specific-pragmas-emit-pragma).
   Nim uses `Math.trunc` for the division and modulo operators for integers.
 
-- `shallowCopy` is removed for ARC/ORC. Use `move` when possible or combine assignment and
+- `shallowCopy` and `shallow` are removed for ARC/ORC. Use `move` when possible or combine assignment and
 `sink` for optimization purposes.
 
 - The `nimPreviewDotLikeOps` define is going to be removed or deprecated.
@@ -77,12 +80,17 @@
 
 - Static linking against OpenSSL versions below 1.1, previously done by
   setting `-d:openssl10`, is no longer supported.
-  
+
 - `macros.getImpl` for `const` symbols now returns the full definition node
   (as `nnkConstDef`) rather than the AST of the constant value.
 
+- Lock levels are deprecated, now a noop.
+
 - ORC is now the default memory management strategy. Use
   `--mm:refc` for a transition period.
+
+- The `gorge`/`staticExec` calls will now return a descriptive message in the output
+  if the execution fails for whatever reason. To get back legacy behaviour use `-d:nimLegacyGorgeErrors`.
 
 ## Standard library additions and changes
 
@@ -128,6 +136,8 @@
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
 - Deprecated `std/sums`.
+- Deprecated `std/base64.encode` for collections of arbitrary integer element type.
+  Now only `byte` and `char` are supported.
 
 [//]: # "Removals:"
 - Removed deprecated module `parseopt2`.
@@ -214,11 +224,13 @@
 - `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
   without requiring `-d:nimVersion140` which is now a noop.
 
-- `--styleCheck`, `--hintAsError` and `--warningAsError` now only applies to the current package.
+- `--styleCheck`, `--hintAsError` and `--warningAsError` now only apply to the current package.
 
 - The switch `--nimMainPrefix:prefix` has been added to add a prefix to the names of `NimMain` and
   related functions produced on the backend. This prevents conflicts with other Nim
   static libraries.
+
+- When compiling for Release the flag `-fno-math-errno` is used for GCC.
 
 
 ## Tool changes

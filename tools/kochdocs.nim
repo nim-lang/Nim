@@ -13,6 +13,7 @@ import "../compiler/nimpaths"
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
+  paCode* = " --doc.plausibleAnalytics:nim-lang.org"
   # errormax: subsequent errors are probably consequences of 1st one; a simple
   # bug could cause unlimited number of errors otherwise, hard to debug in CI.
   docDefines = "-d:nimExperimentalLinenoiseExtra"
@@ -196,7 +197,6 @@ lib/system/assertions.nim
 lib/system/iterators.nim
 lib/system/exceptions.nim
 lib/system/dollars.nim
-lib/system/widestrs.nim
 lib/system/ctypes.nim
 """.splitWhitespace()
 

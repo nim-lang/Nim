@@ -294,7 +294,6 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdDoc0: docLikeCmd commandDoc(cache, conf)
   of cmdDoc:
     docLikeCmd():
-      conf.setNoteDefaults(warnLockLevel, false) # issue #13218
       conf.setNoteDefaults(warnRstRedefinitionOfLabel, false) # issue #13218
         # because currently generates lots of false positives due to conflation
         # of labels links in doc comments, e.g. for random.rand:

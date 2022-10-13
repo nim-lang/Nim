@@ -1,9 +1,9 @@
 discard """
 output: '''
 312
-1000000
-1000000
-500000
+1000
+1000
+500
 0
 '''
 """
@@ -445,7 +445,7 @@ proc test() =
   var it1 = internalFind(root, 312)
   echo it1.value
 
-  for i in 1..1_000_000:
+  for i in 1..1_000:
     root = internalPut(root, i, i, oldvalue)
 
   var cnt = 0
