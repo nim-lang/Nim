@@ -48,6 +48,7 @@
 #   {.error: "You must not import this module explicitly".}
 
 import std/private/threadlocalstorage
+import system/ansi_c
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
