@@ -61,8 +61,7 @@ const
 proc toLower(c: char): char {.inline.} =
   result = if c in {'A'..'Z'}: chr(ord(c)-ord('A')+ord('a')) else: c
 
-proc parseBin*[T: SomeInteger](s: openArray[char], number: var T, start = 0,
-    maxLen = 0): int {.noSideEffect.} =
+proc parseBin*[T: SomeInteger](s: openArray[char], number: var T, maxLen = 0): int {.noSideEffect.} =
   ## Parses a binary number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -91,7 +90,7 @@ proc parseBin*[T: SomeInteger](s: openArray[char], number: var T, start = 0,
     var num64: int64
     doAssert parseBin("0100111001101001111011010100111001101001", num64) == 40
     doAssert num64 == 336784608873
-  var i = start
+  var i = 0
   var output = T(0)
   var foundDigit = false
   let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
@@ -106,10 +105,9 @@ proc parseBin*[T: SomeInteger](s: openArray[char], number: var T, start = 0,
     inc(i)
   if foundDigit:
     number = output
-    result = i - start
+    result = i
 
-proc parseOct*[T: SomeInteger](s: openArray[char], number: var T, start = 0,
-    maxLen = 0): int {.noSideEffect.} =
+proc parseOct*[T: SomeInteger](s: openArray[char], number: var T, maxLen = 0): int {.noSideEffect.} =
   ## Parses an octal number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -138,7 +136,7 @@ proc parseOct*[T: SomeInteger](s: openArray[char], number: var T, start = 0,
     var num64: int64
     doAssert parseOct("2346475523464755", num64) == 16
     doAssert num64 == 86216859871725
-  var i = start
+  var i = 0
   var output = T(0)
   var foundDigit = false
   let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
@@ -153,10 +151,9 @@ proc parseOct*[T: SomeInteger](s: openArray[char], number: var T, start = 0,
     inc(i)
   if foundDigit:
     number = output
-    result = i - start
+    result = i
 
-proc parseHex*[T: SomeInteger](s: openArray[char], number: var T, start = 0,
-    maxLen = 0): int {.noSideEffect.} =
+proc parseHex*[T: SomeInteger](s: openArray[char], number: var T, maxLen = 0): int {.noSideEffect.} =
   ## Parses a hexadecimal number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -186,7 +183,7 @@ proc parseHex*[T: SomeInteger](s: openArray[char], number: var T, start = 0,
     var num64: int64
     doAssert parseHex("4E69ED4E69ED", num64) == 12
     doAssert num64 == 86216859871725
-  var i = start
+  var i = 0
   var output = T(0)
   var foundDigit = false
   let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
@@ -208,9 +205,9 @@ proc parseHex*[T: SomeInteger](s: openArray[char], number: var T, start = 0,
     inc(i)
   if foundDigit:
     number = output
-    result = i - start
+    result = i
 
-proc parseIdent*(s: openArray[char], ident: var string, start = 0): int =
+proc parseIdent*(s: openArray[char], ident: var string): int =
   ## Parses an identifier and stores it in ``ident``. Returns
   ## the number of the parsed characters or 0 in case of an error.
   ## If error, the value of `ident` is not changed.
@@ -222,12 +219,12 @@ proc parseIdent*(s: openArray[char], ident: var string, start = 0): int =
     doAssert res == "ello"
     doAssert parseIdent("Hello World", res, 6) == 5
     doAssert res == "World"
-  var i = start
+  var i = 0
   if i < s.len and s[i] in IdentStartChars:
     inc(i)
     while i < s.len and s[i] in IdentChars: inc(i)
-    ident = substr(s.toOpenArray(start, i-1))
-    result = i-start
+    ident = substr(s.toOpenArray(0, i-1))
+    result = i
 
 proc parseIdent*(s: openArray[char]): string =
   ## Parses an identifier and returns it or an empty string in
@@ -415,7 +412,7 @@ proc captureBetween*(s: openArray[char], first: char, second = '\0'): string =
   runnableExamples:
     doAssert captureBetween("Hello World", 'e') == "llo World"
     doAssert captureBetween("Hello World", 'e', 'r') == "llo Wo"
-    doAssert captureBetween("Hello World", 'l', start = 6) == "d"
+    doAssert captureBetween("Hello World".toOpenArray(6, "Hello World".high), 'l') == "d"
   var i = skipUntil(s, first) + 1
   result = ""
   discard s.parseUntil(result, if second == '\0': first else: second)
