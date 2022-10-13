@@ -2588,7 +2588,7 @@ proc substr*(s: openArray[char]): string =
     assert a.substr(2, 5) == "cdef"
     assert a.substr(2) == "cdefgh"
     assert a.substr(5, 99) == "fgh"
-  result = newString(s.high)
+  result = newString(s.len)
   for i, ch in s:
     result[i] = ch
 
