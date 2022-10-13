@@ -139,8 +139,6 @@ type
 
 proc `=copy`*[TArg](x: var Thread[TArg], y: Thread[TArg]) {.error.}
 
-var
-  threadDestructionHandlers {.rtlThreadVar.}: seq[proc () {.closure, gcsafe, raises: [].}]
 
 proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
   ## Registers a *thread local* handler that is called at the thread's
@@ -403,4 +401,4 @@ proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)
 
 when not defined(gcOrc):
-  include threadids
+  include system/threadids
