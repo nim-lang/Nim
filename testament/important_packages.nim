@@ -93,7 +93,7 @@ pkg "nake", "nim c nakefile.nim"
 pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim"
 pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true
 pkg "netty"
-pkg "nico", "nimble install -y nimPNG@#HEAD; nimble test"
+pkg "nico", allowFailure = true
 pkg "nicy", "nim c -r src/nicy.nim"
 pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
 pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround needed, see D20210308T165435
@@ -107,6 +107,7 @@ pkg "nimlsp"
 pkg "nimly", "nim c -r tests/test_readme_example.nim"
 pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
+pkg "nimPNG", useHead = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
 pkg "nimsl"
