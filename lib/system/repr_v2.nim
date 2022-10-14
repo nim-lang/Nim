@@ -133,7 +133,7 @@ proc repr*[T: tuple|object](x: T): string {.noSideEffect.} =
     result = $typeof(x)
   reprObject(result, x)
 
-proc repr*[T](x: ref T | ptr T): string {.noSideEffect.} =
+proc repr*[T](x: ref T | ptr T): string {.noSideEffect, raises: [].} =
   if isNil(x): return "nil"
   when T is object:
     result = $typeof(x)
