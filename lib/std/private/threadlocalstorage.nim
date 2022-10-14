@@ -178,7 +178,7 @@ else:
   proc pthread_setspecific(a1: ThreadVarSlot, a2: pointer): int32 {.
     importc: "pthread_setspecific", header: pthreadh.}
 
-  proc threadVarAlloc(): ThreadVarSlot {.inline.} =
+  proc threadVarAlloc*(): ThreadVarSlot {.inline.} =
     discard pthread_key_create(addr(result), nil)
   proc threadVarSetValue*(s: ThreadVarSlot, value: pointer) {.inline.} =
     discard pthread_setspecific(s, value)
