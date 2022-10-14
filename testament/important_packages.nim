@@ -60,7 +60,7 @@ pkg "criterion", allowFailure = true # pending https://github.com/disruptek/crit
 pkg "datamancer"
 pkg "dashing", "nim c tests/functional.nim"
 pkg "delaunay", url = "https://github.com/nim-lang/DelaunayNim", useHead = true
-pkg "docopt"
+pkg "docopt", url = "https://github.com/nim-lang/docopt.nim", useHead = true
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
 pkg "fidget"
