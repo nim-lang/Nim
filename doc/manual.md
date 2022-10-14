@@ -4952,8 +4952,7 @@ Effect system
 =============
 
 **Note**: The rules for effect tracking changed with the release of version
-1.6 of the Nim compiler. This section describes the new rules that are activated
-via `--experimental:strictEffects`.
+1.6 of the Nim compiler.
 
 
 Exception tracking
@@ -5073,7 +5072,6 @@ conservative in its effect analysis:
 
   ```nim  test = "nim c $1"  status = 1
   {.push warningAsError[Effect]: on.}
-  {.experimental: "strictEffects".}
 
   import algorithm
 

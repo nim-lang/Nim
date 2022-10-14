@@ -67,7 +67,7 @@ pkg "fidget"
 pkg "fragments", "nim c -r fragments/dsl.nim", allowFailure = true # pending https://github.com/nim-lang/packages/issues/2115 
 pkg "fusion"
 pkg "gara"
-pkg "glob"
+pkg "glob", "nimble install -y regex@#HEAD;nimble test"
 pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
 pkg "gittyup", "nimble test", "https://github.com/disruptek/gittyup", allowFailure = true
 pkg "gnuplot", "nim c gnuplot.nim"

@@ -27,6 +27,3 @@ when defined(windows) and not defined(booting):
 
 switch("define", "nimVersion:" & NimVersion)
 
-when defined(nimHasEffectsOf):
-  switch("experimental", "strictEffects")
-  switch("warningAsError", "Effect:on")
