@@ -156,7 +156,7 @@ else:
       tv_sec: Time
       tv_nsec: clong
 
-  proc pthread_attr_init(a1: var Pthread_attr): cint {.
+  proc pthread_attr_init*(a1: var Pthread_attr): cint {.
     importc, header: pthreadh.}
   proc pthread_attr_setstack*(a1: ptr Pthread_attr, a2: pointer, a3: int): cint {.
     importc, header: pthreadh.}
