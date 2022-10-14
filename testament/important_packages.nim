@@ -67,7 +67,7 @@ pkg "fidget"
 pkg "fragments", "nim c -r fragments/dsl.nim", allowFailure = true # pending https://github.com/nim-lang/packages/issues/2115 
 pkg "fusion"
 pkg "gara"
-pkg "glob", "nimble install -y regex@#HEAD;nimble test"
+pkg "glob"
 pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
 pkg "gittyup", "nimble test", "https://github.com/disruptek/gittyup", allowFailure = true
 pkg "gnuplot", "nim c gnuplot.nim"
@@ -109,7 +109,7 @@ pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
 pkg "nimPNG", useHead = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
-pkg "nimquery"
+pkg "nimquery", url = "https://github.com/nim-lang/nimquery"
 pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
@@ -146,7 +146,7 @@ pkg "strslice"
 pkg "strunicode", "nim c -r --mm:refc src/strunicode.nim"
 pkg "supersnappy"
 pkg "synthesis"
-pkg "telebot", "nim c -o:tbot -r src/telebot.nim"
+pkg "telebot", "nim c -o:tbot -r src/telebot.nim", url = "https://github.com/nim-lang/telebot.nim"
 pkg "tempdir"
 pkg "templates"
 pkg "tensordsl", "nim c -r --mm:refc tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
