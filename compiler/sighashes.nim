@@ -180,7 +180,8 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
           # type name.
           c &= ".empty"
       else:
-        c &= t.id
+        if sfCompilerProc notin t.sym.flags:
+          c &= t.id
     else:
       c &= t.id
     if t.len > 0 and t[0] != nil:
