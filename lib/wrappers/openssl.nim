@@ -531,7 +531,10 @@ proc i2d_X509*(cert: PX509): string =
   if length.int <= 0:
     raise newException(Exception, "X.509 certificate encoding failed")
 
-when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):
+const
+  useNimsAlloc = not defined(nimNoAllocForSSL) and not defined(gcDestructors)
+
+when not useWinVersion and not defined(macosx) and not defined(android) and useNimsAlloc:
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
     dynlib: DLLUtilName, importc.}
 
@@ -545,7 +548,7 @@ when not useWinVersion and not defined(macosx) and not defined(android) and not 
     if p != nil: deallocShared(p)
 
 proc CRYPTO_malloc_init*() =
-  when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):
+  when not useWinVersion and not defined(macosx) and not defined(android) and useNimsAlloc:
     CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
 
 proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cint, larg: clong, parg: pointer): clong{.
