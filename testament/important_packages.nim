@@ -163,6 +163,6 @@ pkg "websocket", "nim c websocket.nim"
 pkg "winim", "nim c winim.nim"
 pkg "with"
 pkg "ws", allowFailure = true
-pkg "yaml", "nim c -r test/tserialization.nim"
+pkg "yaml", "nim c -r test/tserialization.nim", url = "https://github.com/flyx/NimYAML/pull/125", useHead = true
 pkg "zero_functional", "nim c -r -d:nimNoLentIterators test.nim"
 pkg "zippy"
