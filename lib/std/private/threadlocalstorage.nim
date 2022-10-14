@@ -182,7 +182,7 @@ else:
     discard pthread_key_create(addr(result), nil)
   proc threadVarSetValue*(s: ThreadVarSlot, value: pointer) {.inline.} =
     discard pthread_setspecific(s, value)
-  proc threadVarSetValue*(s: ThreadVarSlot): pointer {.inline.} =
+  proc threadVarGetValue*(s: ThreadVarSlot): pointer {.inline.} =
     result = pthread_getspecific(s)
 
   type CpuSet* {.importc: "cpu_set_t", header: schedh.} = object
