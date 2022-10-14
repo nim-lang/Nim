@@ -146,7 +146,7 @@ pkg "strslice"
 pkg "strunicode", "nim c -r --mm:refc src/strunicode.nim"
 pkg "supersnappy"
 pkg "synthesis"
-pkg "telebot", "nim c -o:tbot -r src/telebot.nim", url = "https://github.com/nim-lang/telebot.nim, useHead = true"
+pkg "telebot", "nim c -o:tbot -r src/telebot.nim", url = "https://github.com/nim-lang/telebot.nim", useHead = true
 pkg "tempdir"
 pkg "templates"
 pkg "tensordsl", "nim c -r --mm:refc tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
