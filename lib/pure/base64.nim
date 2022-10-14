@@ -177,7 +177,7 @@ proc encodeMime*[T: char|byte](s: openArray[T], lineLen = 75.Positive,
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encodeMime("Hello World", 4, "\n") == "SGVs\nbG8g\nV29y\nbGQ="
-  template cpy(l, src, idx) =
+  template cpy(i, b, l, src, idx) =
     b = l
     while i < b:
       result[i] = src[idx]
@@ -192,10 +192,10 @@ proc encodeMime*[T: char|byte](s: openArray[T], lineLen = 75.Positive,
   var i, j, k, b: int
   let nd = e.len - lineLen
   while j < nd:
-    cpy(i + lineLen, e, j)
-    cpy(i + newLine.len, newLine, k)
+    cpy(i, b, i + lineLen, e, j)
+    cpy(i, b, i + newLine.len, newLine, k)
     k = 0
-  cpy(result.len, e, j)
+  cpy(i, b, result.len, e, j)
 
 proc initDecodeTable*(): array[256, char] =
   # computes a decode table at compile time
