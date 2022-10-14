@@ -147,23 +147,6 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
      disp.ast[resultPos].kind == nkEmpty:
     disp.ast[resultPos] = copyTree(meth.ast[resultPos])
 
-  # The following code works only with lock levels, so we disable
-  # it when they're not available.
-  when declared(TLockLevel):
-    proc `<`(a, b: TLockLevel): bool {.borrow.}
-    proc `==`(a, b: TLockLevel): bool {.borrow.}
-    if disp.typ.lockLevel == UnspecifiedLockLevel:
-      disp.typ.lockLevel = meth.typ.lockLevel
-    elif meth.typ.lockLevel != UnspecifiedLockLevel and
-         meth.typ.lockLevel != disp.typ.lockLevel:
-      message(conf, meth.info, warnLockLevel,
-        "method has lock level $1, but another method has $2" %
-        [$meth.typ.lockLevel, $disp.typ.lockLevel])
-      # XXX The following code silences a duplicate warning in
-      # checkMethodeffects() in sempass2.nim for now.
-      if disp.typ.lockLevel < meth.typ.lockLevel:
-        disp.typ.lockLevel = meth.typ.lockLevel
-
 proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   var witness: PSym
   for i in 0..<g.methods.len:

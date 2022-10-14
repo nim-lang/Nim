@@ -1168,7 +1168,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
             let ast = a.sym.ast.shallowCopy
             for i in 0..<a.sym.ast.len:
               ast[i] = a.sym.ast[i]
-            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, cache=true)
+            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, useCache)
             ast.copyTree()
     of opcSymOwner:
       decodeB(rkNode)

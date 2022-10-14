@@ -333,7 +333,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
   result.jEntriesFinal = newJArray()
   initStrTable result.types
   result.onTestSnippet =
-    proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
+    proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) {.gcsafe.} =
       if conf.docCmd == docCmdSkip: return
       inc(gen.id)
       var d = (ptr TDocumentor)(addr gen)
@@ -1732,7 +1732,7 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf, hasToc = true)
   d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
-                          status: int; content: string) =
+                          status: int; content: string) {.gcsafe.} =
     localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
                warnUser, "the ':test:' attribute is not supported by this backend")
   generateJson(d, ast)
@@ -1755,7 +1755,7 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf, hasToc = true)
   d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
-                          status: int; content: string) =
+                          status: int; content: string) {.gcsafe.} =
     localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
                warnUser, "the ':test:' attribute is not supported by this backend")
   var

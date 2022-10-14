@@ -46,6 +46,8 @@
 - Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
   `experimental:flexibleOptionalParams`.
 
+- Automatic dereferencing (experimental feature) is removed.
+
 - The `Math.trunc` polyfill for targeting Internet Explorer was
   previously included in most JavaScript output files.
   Now, it is only included with `-d:nimJsMathTruncPolyfill`.
@@ -82,8 +84,13 @@
 - `macros.getImpl` for `const` symbols now returns the full definition node
   (as `nnkConstDef`) rather than the AST of the constant value.
 
+- Lock levels are deprecated, now a noop.
+
 - ORC is now the default memory management strategy. Use
   `--mm:refc` for a transition period.
+
+- The `gorge`/`staticExec` calls will now return a descriptive message in the output
+  if the execution fails for whatever reason. To get back legacy behaviour use `-d:nimLegacyGorgeErrors`.
 
 ## Standard library additions and changes
 

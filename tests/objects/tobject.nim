@@ -57,3 +57,18 @@ block: # bug #14698
     x1: int
     x3: seq[int]
   doAssert t[].sizeof == Foo1.sizeof
+
+# bug #147
+type
+  TValue* {.pure, final.} = object of RootObj
+    a: int
+  PValue = ref TValue
+  PPValue = ptr PValue
+
+
+var x: PValue
+new x
+var sp: PPValue = addr x
+
+sp.a = 2
+doAssert sp.a == 2
