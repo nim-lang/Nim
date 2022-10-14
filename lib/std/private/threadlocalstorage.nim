@@ -37,30 +37,22 @@ when defined(windows):
   type
     ThreadVarSlot* = distinct int32
 
-  when true:
-    proc threadVarAlloc*(): ThreadVarSlot {.
-      importc: "TlsAlloc", stdcall, header: "<windows.h>".}
-    proc threadVarSetValue*(dwTlsIndex: ThreadVarSlot, lpTlsValue: pointer) {.
-      importc: "TlsSetValue", stdcall, header: "<windows.h>".}
-    proc tlsGetValue(dwTlsIndex: ThreadVarSlot): pointer {.
-      importc: "TlsGetValue", stdcall, header: "<windows.h>".}
+  proc threadVarAlloc*(): ThreadVarSlot {.
+    importc: "TlsAlloc", stdcall, header: "<windows.h>".}
+  proc threadVarSetValue*(dwTlsIndex: ThreadVarSlot, lpTlsValue: pointer) {.
+    importc: "TlsSetValue", stdcall, header: "<windows.h>".}
+  proc tlsGetValue(dwTlsIndex: ThreadVarSlot): pointer {.
+    importc: "TlsGetValue", stdcall, header: "<windows.h>".}
 
-    proc getLastError(): uint32 {.
-      importc: "GetLastError", stdcall, header: "<windows.h>".}
-    proc setLastError(x: uint32) {.
-      importc: "SetLastError", stdcall, header: "<windows.h>".}
+  proc getLastError(): uint32 {.
+    importc: "GetLastError", stdcall, header: "<windows.h>".}
+  proc setLastError(x: uint32) {.
+    importc: "SetLastError", stdcall, header: "<windows.h>".}
 
-    proc threadVarGetValue*(dwTlsIndex: ThreadVarSlot): pointer =
-      let realLastError = getLastError()
-      result = tlsGetValue(dwTlsIndex)
-      setLastError(realLastError)
-  else:
-    proc threadVarAlloc*(): ThreadVarSlot {.
-      importc: "TlsAlloc", stdcall, dynlib: "kernel32".}
-    proc threadVarSetValue*(dwTlsIndex: ThreadVarSlot, lpTlsValue: pointer) {.
-      importc: "TlsSetValue", stdcall, dynlib: "kernel32".}
-    proc threadVarGetValue(dwTlsIndex: ThreadVarSlot): pointer {.
-      importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
+  proc threadVarGetValue*(dwTlsIndex: ThreadVarSlot): pointer =
+    let realLastError = getLastError()
+    result = tlsGetValue(dwTlsIndex)
+    setLastError(realLastError)
 
   proc setThreadAffinityMask*(hThread: SysThread, dwThreadAffinityMask: uint) {.
     importc: "SetThreadAffinityMask", stdcall, header: "<windows.h>".}

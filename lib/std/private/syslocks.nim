@@ -105,7 +105,7 @@ else:
       when defined(linux) and defined(amd64):
         abi: array[40 div sizeof(clong), clong]
 
-    SysLockAttr {.importc: "pthread_mutexattr_t", pure, final
+    SysLockAttr* {.importc: "pthread_mutexattr_t", pure, final
                header: """#include <sys/types.h>
                           #include <pthread.h>""".} = object
       when defined(linux) and defined(amd64):
