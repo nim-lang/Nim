@@ -1603,6 +1603,21 @@ when notJSnotNims:
 when not defined(js) and hasThreadSupport and hostOS != "standalone":
   import std/private/[syslocks, threadlocalstorage]
 
+  when emulatedThreadVars:
+    var globalsSlot: ThreadVarSlot
+
+    when not defined(useNimRtl):
+      var mainThread: GcThread
+
+    proc GetThreadLocalVars(): pointer {.compilerRtl, inl.} =
+      result = addr(cast[PGcThread](threadVarGetValue(globalsSlot)).tls)
+
+    proc initThreadVarsEmulation() {.compilerproc, inline.} =
+      when not defined(useNimRtl):
+        globalsSlot = threadVarAlloc()
+        when declared(mainThread):
+          threadVarSetValue(globalsSlot, addr(mainThread))
+
 
 when not defined(js) and defined(nimV2):
   type

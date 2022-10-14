@@ -38,7 +38,7 @@ when defined(windows):
     ThreadVarSlot* = distinct int32
 
   when true:
-    proc threadVarAlloc(): ThreadVarSlot {.
+    proc threadVarAlloc*(): ThreadVarSlot {.
       importc: "TlsAlloc", stdcall, header: "<windows.h>".}
     proc threadVarSetValue*(dwTlsIndex: ThreadVarSlot, lpTlsValue: pointer) {.
       importc: "TlsSetValue", stdcall, header: "<windows.h>".}
@@ -55,7 +55,7 @@ when defined(windows):
       result = tlsGetValue(dwTlsIndex)
       setLastError(realLastError)
   else:
-    proc threadVarAlloc(): ThreadVarSlot {.
+    proc threadVarAlloc*(): ThreadVarSlot {.
       importc: "TlsAlloc", stdcall, dynlib: "kernel32".}
     proc threadVarSetValue*(dwTlsIndex: ThreadVarSlot, lpTlsValue: pointer) {.
       importc: "TlsSetValue", stdcall, dynlib: "kernel32".}
@@ -83,7 +83,7 @@ elif defined(genode):
                   affinity: cuint) {.
     importcpp: "#.initThread(@)".}
 
-  proc threadVarAlloc(): ThreadVarSlot = 0
+  proc threadVarAlloc*(): ThreadVarSlot = 0
 
   proc offMainThread(): bool {.
     importcpp: "Nim::SysThread::offMainThread",
@@ -237,7 +237,7 @@ type
   PGcThread* = ptr GcThread
   GcThread* {.pure, inheritable.} = object
     when emulatedThreadVars:
-      tls: ThreadLocalStorage
+      tls*: ThreadLocalStorage
     else:
       nil
     when hasSharedHeap:
@@ -246,21 +246,6 @@ type
       stackSize: int
     else:
       nil
-
-when emulatedThreadVars:
-  var globalsSlot*: ThreadVarSlot
-
-  when not defined(useNimRtl):
-    var mainThread: GcThread
-
-  proc GetThreadLocalVars*(): pointer {.compilerRtl, inl.} =
-    result = addr(cast[PGcThread](threadVarGetValue(globalsSlot)).tls)
-
-  proc initThreadVarsEmulation*() {.compilerproc, inline.} =
-    when not defined(useNimRtl):
-      globalsSlot = threadVarAlloc()
-      when declared(mainThread):
-        threadVarSetValue(globalsSlot, addr(mainThread))
 
 when not defined(useNimRtl):
   when emulatedThreadVars:
