@@ -109,7 +109,7 @@ pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
 pkg "nimPNG", useHead = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
-pkg "nimquery", url = "https://github.com/nim-lang/nimquery"
+pkg "nimquery", url = "https://github.com/nim-lang/nimquery", useHead = true
 pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
@@ -146,7 +146,7 @@ pkg "strslice"
 pkg "strunicode", "nim c -r --mm:refc src/strunicode.nim"
 pkg "supersnappy"
 pkg "synthesis"
-pkg "telebot", "nim c -o:tbot -r src/telebot.nim", url = "https://github.com/nim-lang/telebot.nim"
+pkg "telebot", "nim c -o:tbot -r src/telebot.nim", url = "https://github.com/nim-lang/telebot.nim, useHead = true"
 pkg "tempdir"
 pkg "templates"
 pkg "tensordsl", "nim c -r --mm:refc tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
@@ -158,7 +158,7 @@ pkg "tiny_sqlite"
 pkg "unicodedb", "nim c -d:release -r tests/tests.nim"
 pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "unpack"
-pkg "weave", "nimble install -y cligen synthesis;nimble test_gc_arc", url = "https://github.com/nim-lang/weave"
+pkg "weave", "nimble install -y cligen synthesis;nimble test_gc_arc", url = "https://github.com/nim-lang/weave", useHead = true
 pkg "websocket", "nim c websocket.nim"
 pkg "winim", "nim c winim.nim"
 pkg "with"
