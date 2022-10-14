@@ -2,6 +2,7 @@ discard """
   targets: "c js"
   matrix: "--gc:refc; --gc:arc"
 """
+{.experimental: "strictEffects".}
 
 import std/times
 

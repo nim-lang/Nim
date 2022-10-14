@@ -15,7 +15,7 @@ GROOT
 '''
 """
 
-
+{.experimental: "strictEffects".}
 import std/[syncio, streams, assertions]
 
 
