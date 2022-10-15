@@ -100,7 +100,7 @@ template repr*(x: distinct): string =
 
 template repr*(t: typedesc): string = $t
 
-proc reprObject[T: tuple|object](res: var string, x: T) {.noSideEffect.} =
+proc reprObject[T: tuple|object](res: var string, x: T) {.noSideEffect, raises: [].} =
   res.add '('
   var firstElement = true
   const isNamed = T is object or isNamedTuple(T)
