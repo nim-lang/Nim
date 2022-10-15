@@ -1344,6 +1344,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     elif a.kind == tyNil: result = f.allowsNil
     else: discard
   of tyProc:
+    if a.owner != nil and a.owner.kind in {skTemplate, skMacro}:
+      return isNone
     skipOwned(a)
     result = procTypeRel(c, f, a)
     if result != isNone and tfNotNil in f.flags and tfNotNil notin a.flags:
