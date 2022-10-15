@@ -1536,6 +1536,14 @@ const
     ## and expect a reasonable result - use the `isNaN` or `classify` procedure
     ## in the `math module <math.html>`_ for checking for NaN.
 
+when not defined(nimscript):
+  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
+                                                     discardable, raises: [], tags: [], benign.}
+  ## Atomic increment of `memLoc`. Returns the value after the operation.
+
+  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
+                                                     discardable, raises: [], tags: [], benign.}
+  ## Atomic decrement of `memLoc`. Returns the value after the operation.
 
 include "system/memalloc"
 
@@ -1807,14 +1815,6 @@ when not declared(sysFatal):
 
 when not defined(nimscript):
   {.push stackTrace: off, profiler: off.}
-
-  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
-    discardable, benign.}
-    ## Atomic increment of `memLoc`. Returns the value after the operation.
-
-  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
-    discardable, benign.}
-    ## Atomic decrement of `memLoc`. Returns the value after the operation.
 
   include "system/atomics"
 
