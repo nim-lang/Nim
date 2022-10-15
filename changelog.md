@@ -89,6 +89,9 @@
 - ORC is now the default memory management strategy. Use
   `--mm:refc` for a transition period.
 
+- `strictEffects` are no longer experimental.
+  Use `legacy:laxEffects` to keep backward compatibility.
+
 - The `gorge`/`staticExec` calls will now return a descriptive message in the output
   if the execution fails for whatever reason. To get back legacy behaviour use `-d:nimLegacyGorgeErrors`.
 
