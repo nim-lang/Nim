@@ -68,7 +68,10 @@ proc copyHalf[Key, Val](h, result: Node[Key, Val]) =
       result.links[j] = h.links[Mhalf + j]
   else:
     for j in 0..<Mhalf:
-      shallowCopy(result.vals[j], h.vals[Mhalf + j])
+      when defined(gcArc) or defined(gcOrc):
+        result.vals[j] = move h.vals[Mhalf + j]
+      else:
+        shallowCopy(result.vals[j], h.vals[Mhalf + j])
 
 proc split[Key, Val](h: Node[Key, Val]): Node[Key, Val] =
   ## split node in half
@@ -88,7 +91,10 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
       if less(key, h.keys[j]): break
       inc j
     for i in countdown(h.entries, j+1):
-      shallowCopy(h.vals[i], h.vals[i-1])
+      when defined(gcArc) or defined(gcOrc):
+        h.vals[i] = move h.vals[i-1]
+      else:
+        shallowCopy(h.vals[i], h.vals[i-1])
     h.vals[j] = val
   else:
     var newLink: Node[Key, Val] = nil

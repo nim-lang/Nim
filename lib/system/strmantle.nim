@@ -43,6 +43,29 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
+proc eqCstrings(a, b: cstring): bool {.inline, compilerproc.} =
+  if pointer(a) == pointer(b): result = true
+  elif a.isNil or b.isNil: result = false
+  else: result = c_strcmp(a, b) == 0
+
+proc hashCstring(s: cstring): int {.compilerproc.} =
+  # the compiler needs exactly the same hash function!
+  # this used to be used for efficient generation of cstring case statements
+  if s.isNil: return 0
+  var h : uint = 0
+  var i = 0
+  while true:
+    let c = s[i]
+    if c == '\0': break
+    h = h + uint(c)
+    h = h + h shl 10
+    h = h xor (h shr 6)
+    inc i
+  h = h + h shl 3
+  h = h xor (h shr 11)
+  h = h + h shl 15
+  result = cast[int](h)
+
 proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
   importc: "strtod", header: "<stdlib.h>", noSideEffect.}
 

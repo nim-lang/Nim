@@ -148,7 +148,7 @@ proc thinout*[T](x: ref T) {.inline.} =
   ## and thus would keep the graph from being freed are `nil`'ed.
   ## This is a form of cycle collection that works well with Nim's ARC
   ## and its associated cost model.
-  proc getDynamicTypeInfo[T](x: T): PNimTypeV2 {.magic: "GetTypeInfoV2", noSideEffect, locks: 0.}
+  proc getDynamicTypeInfo[T](x: T): PNimTypeV2 {.magic: "GetTypeInfoV2", noSideEffect.}
 
   breakCycles(head(cast[pointer](x)), getDynamicTypeInfo(x[]))
 

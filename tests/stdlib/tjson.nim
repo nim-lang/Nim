@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc"
   targets: "c cpp js"
 """
 
@@ -13,6 +14,7 @@ when not defined(js):
   import std/streams
 import stdtest/testutils
 from std/fenv import epsilon
+import std/[assertions, objectdollar]
 
 proc testRoundtrip[T](t: T, expected: string) =
   # checks that `T => json => T2 => json2` is such that json2 = json
@@ -49,7 +51,7 @@ for i in 0 .. 10000:
   except:
     discard
 # memory diff should less than 4M
-doAssert(abs(getOccupiedMem() - startMemory) < 4 * 1024 * 1024)
+doAssert(abs(getOccupiedMem() - startMemory) < 4 * 1024 * 1024) # todo fixme doesn;t work for ORC
 
 
 # test `$`

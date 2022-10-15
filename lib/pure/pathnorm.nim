@@ -29,10 +29,6 @@ proc next*(it: var PathIter; x: string): (int, int) =
   if not it.notFirst and x[it.i] in {DirSep, AltSep}:
     # absolute path:
     inc it.i
-    when doslikeFileSystem: # UNC paths have leading `\\`
-      if hasNext(it, x) and x[it.i] == DirSep and
-          it.i+1 < x.len and x[it.i+1] != DirSep:
-        inc it.i
   else:
     while it.i < x.len and x[it.i] notin {DirSep, AltSep}: inc it.i
   if it.i > it.prev:
@@ -56,9 +52,22 @@ proc isDotDot(x: string; bounds: (int, int)): bool =
 proc isSlash(x: string; bounds: (int, int)): bool =
   bounds[1] == bounds[0] and x[bounds[0]] in {DirSep, AltSep}
 
+when doslikeFileSystem:
+  import std/private/ntpath
+
 proc addNormalizePath*(x: string; result: var string; state: var int;
     dirSep = DirSep) =
   ## Low level proc. Undocumented.
+
+  when doslikeFileSystem: # Add Windows drive at start without normalization
+    var x = x
+    if result == "":
+      let (drive, file) = splitDrive(x)
+      x = file
+      result.add drive
+      for c in result.mitems:
+        if c in {DirSep, AltSep}:
+          c = dirSep
 
   # state: 0th bit set if isAbsolute path. Other bits count
   # the number of path components.
