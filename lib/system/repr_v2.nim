@@ -31,7 +31,7 @@ proc repr*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## repr for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
 
-proc repr*(x: char): string {.noSideEffect.} =
+proc repr*(x: char): string {.noSideEffect, raises: [].} =
   ## repr for a character argument. Returns `x`
   ## converted to an escaped string.
   ##
@@ -47,7 +47,7 @@ proc repr*(x: char): string {.noSideEffect.} =
     result.add x
   result.add '\''
 
-proc repr*(x: string | cstring): string {.noSideEffect.} =
+proc repr*(x: string | cstring): string {.noSideEffect, raises: [].} =
   ## repr for a string argument. Returns `x`
   ## converted to a quoted and escaped string.
   result.add '\"'
@@ -63,7 +63,7 @@ proc repr*(x: string | cstring): string {.noSideEffect.} =
       result.add x[i]
   result.add '\"'
 
-proc repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
+proc repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect, raises: [].}
   ## repr for an enumeration argument. This works for
   ## any enumeration type thanks to compiler magic.
   ##
@@ -121,7 +121,7 @@ proc reprObject[T: tuple|object](res: var string, x: T) {.noSideEffect, raises: 
   res.add(')')
 
 
-proc repr*[T: tuple|object](x: T): string {.noSideEffect.} =
+proc repr*[T: tuple|object](x: T): string {.noSideEffect, raises: [].} =
   ## Generic `repr` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
