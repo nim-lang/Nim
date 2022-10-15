@@ -11,7 +11,6 @@ set -e # exit on first error
 . ci/funs.sh
 nimBuildCsourcesIfNeeded "$@"
 
-echo_run bin/nim c --noNimblePath --skipUserCfg --skipParentCfg --hints:off koch
-echo_run ./koch boot -d:release --skipUserCfg --skipParentCfg --hints:off
-echo_run ./koch tools --skipUserCfg --skipParentCfg --hints:off
-
+echo_run bin/nim c --cc:clang --mm:markandsweep -d:release --skipUserCfg --skipParentCfg --hints:off koch
+echo_run ./koch boot --cc:clang --mm:markandsweep -d:release --skipUserCfg --skipParentCfg --hints:off -l:\"-fuse-ld\=mold\"
+echo_run ./koch --latest tools --cc:clang --mm:markandsweep -d:release --skipUserCfg --skipParentCfg --hints:off -l:\"-fuse-ld\=mold\"

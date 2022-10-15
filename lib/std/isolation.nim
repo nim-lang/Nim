@@ -25,6 +25,7 @@ proc `=sink`*[T](dest: var Isolated[T]; src: Isolated[T]) {.inline.} =
   `=sink`(dest.value, src.value)
 
 proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
+  mixin `=destroy`
   # delegate to value's destroy operation
   `=destroy`(dest.value)
 

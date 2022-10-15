@@ -9,7 +9,7 @@
 ## Simple tool to automate frequent workflows: Can "clone"
 ## a Nimble dependency and its dependencies recursively.
 
-import std/[parseopt, strutils, os, osproc, unicode, tables, sets, json, jsonutils]
+import std/[parseopt, strutils, os, osproc, unicode, tables, sets]
 import parse_requires, osutils, packagesjson
 
 const
@@ -23,8 +23,6 @@ Command:
   clone url|pkgname     clone a package and all of its dependencies
   install proj.nimble   use the .nimble file to setup the project's dependencies
   search keyw keywB...  search for package that contains the given keywords
-  extract file.nimble   extract the requirements and custom commands from
-                        the given Nimble file
 
 Options:
   --keepCommits         do not perform any `git checkouts`
@@ -525,12 +523,6 @@ proc main =
   of "search", "list":
     updatePackages(c)
     search getPackages(c.workspace), args
-  of "extract":
-    singleArg()
-    if fileExists(args[0]):
-      echo toJson(extractRequiresInfo(args[0]))
-    else:
-      error "File does not exist: " & args[0]
   else:
     error "Invalid action: " & action
 
