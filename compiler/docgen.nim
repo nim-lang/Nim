@@ -20,7 +20,6 @@ import
 import packages/docutils/rstast except FileIndex, TLineInfo
 
 from uri import encodeUrl
-from std/private/globs import nativeToUnixPath
 from nodejs import findNodeJs
 
 when defined(nimPreviewSlimSystem):

@@ -11,7 +11,7 @@
 
 import
   intsets, options, ast, msgs, idents, renderer, types, magicsys,
-  sempass2, strutils, modulegraphs, lineinfos
+  sempass2, modulegraphs, lineinfos
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
