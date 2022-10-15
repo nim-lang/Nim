@@ -68,7 +68,7 @@ pkg "fragments", "nim c -r fragments/dsl.nim", allowFailure = true # pending htt
 pkg "fusion"
 pkg "gara"
 pkg "glob", url = "https://github.com/nim-lang/glob", useHead = true
-pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
+pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim", url = "https://github.com/nim-lang/ggplotnim", useHead = true
 pkg "gittyup", "nimble test", "https://github.com/disruptek/gittyup", allowFailure = true
 pkg "gnuplot", "nim c gnuplot.nim"
 # pkg "gram", "nim c -r --gc:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
