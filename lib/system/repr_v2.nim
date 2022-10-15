@@ -142,7 +142,7 @@ proc repr*[T](x: ref T | ptr T): string {.noSideEffect, raises: [].} =
     result = when typeof(x) is ref: "ref " else: "ptr "
     result.add repr(x[])
 
-proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string {.noSideEffect.} =
+proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string {.noSideEffect, raises: [].} =
   result = prefix
   var firstElement = true
   for value in items(x):
