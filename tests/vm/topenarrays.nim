@@ -12,5 +12,3 @@ static:
   assert a.toOpenArray(0, 2) == [0, 1, 2]
   assert a.toOpenArray(0, 0) == [0]
   assert a.toOpenArray(1, 2) == [1, 2]
-
-

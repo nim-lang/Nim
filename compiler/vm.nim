@@ -677,7 +677,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         ind = regs[instr.regC].intVal
         collection = regs[rb].node
 
-      if collection.kind != nkOpenArray: # Emit nkCall(collection, rc.intVal)
+      if collection.kind != nkOpenArray: # Emit nkOpenArray(collection, rc.intVal)
         regs[rb].node = newNode(nkOpenArray)
         regs[rb].node.addSonNilAllowed collection
         regs[rb].node.addSonNilAllowed newIntNode(nkIntLit, BiggestInt ind)
@@ -702,10 +702,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         let
           left = src[1].intVal
           right = src[2].intVal
-        if left + idx > right or idx - left < 0:
+          realIndex = left + idx
+        if realIndex > right or realIndex < 0:
           stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
         else:
-          regs[ra].node = src[0][int left + idx]
+          regs[ra].node = src[0][int realIndex]
       of nkStrLit..nkTripleStrLit:
         if idx <% src.strVal.len:
           regs[ra].node = newNodeI(nkCharLit, c.debug[pc])
@@ -727,7 +728,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of nkOpenArray:
         let
           left = src[1].intVal
-        takeAddress regs[ra], src.sons[0].sons[left + idx]
+          right = src[2].intVal
+          realIndex = left + idx
+        if idx in 0..(right - left):
+          takeAddress regs[ra], src.sons[0].sons[realIndex]
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
       else:
         if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
           takeAddress regs[ra], src.sons[idx]
@@ -768,8 +774,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         let
           left = arr[1].intVal
           right = arr[2].intVal
-        if idx in left..right:
-          arr[0][int(idx - left)] = regs[rc].node
+          realIndex = left + idx
+        if idx in 0..(right - left):
+          arr[0][int(realIndex)] = regs[rc].node
         else:
           stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
       of {nkStrLit..nkTripleStrLit}:
