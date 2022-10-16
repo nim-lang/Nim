@@ -703,7 +703,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           left = src[1].intVal
           right = src[2].intVal
           realIndex = left + idx
-        if realIndex > right or realIndex < 0:
+        if idx in 0..(right - left):
           stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
         else:
           regs[ra].node = src[0][int realIndex]
