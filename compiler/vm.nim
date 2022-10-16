@@ -670,20 +670,20 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].node = nb
     of opcSlice:
       # A bodge, but this takes in `toOpenArray(rb, rc, rc)` and emits
-      # nkCall(x, y, z) into the `regs[ra]`. These can later be used for calculating the slice we have taken.
+      # nkOpenArray(x, y, z) into the `regs[ra]`. These can later be used for calculating the slice we have taken.
       let
         ra = instr.regA
         rb = instr.regB
         ind = regs[instr.regC].intVal
         collection = regs[rb].node
 
-      if collection.kind != nkCall: # Emit nkCall(collection, rc.intVal)
-        regs[rb].node = newNode(nkCall)
+      if collection.kind != nkOpenArray: # Emit nkCall(collection, rc.intVal)
+        regs[rb].node = newNode(nkOpenArray)
         regs[rb].node.addSonNilAllowed collection
         regs[rb].node.addSonNilAllowed newIntNode(nkIntLit, BiggestInt ind)
         if ind < 0:
           stackTrace(c, tos, pc, formatErrorIndexBound(ind, collection.safeLen-1))
-      else: # add `rc.intval` to make `nkCall(collection, left, right)
+      else: # add `rc.intval` to make `nkOpenArray(collection, left, right)
         regs[rb].node.addSonNilAllowed newIntNode(nkIntLit, BiggestInt ind)
         if ind > collection.safeLen-1:
           stackTrace(c, tos, pc, formatErrorIndexBound(ind, collection.safeLen-1))
@@ -698,7 +698,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
       case src.kind
-      of nkCall: # refer to `of opcSlice`
+      of nkOpenArray: # refer to `of opcSlice`
         let
           left = src[1].intVal
           right = src[2].intVal
@@ -724,7 +724,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let idx = regs[rc].intVal.int
       let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
       case src.kind
-      of nkCall:
+      of nkOpenArray:
         let
           left = src[1].intVal
         takeAddress regs[ra], src.sons[0].sons[left + idx]
@@ -764,7 +764,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let idx = regs[rb].intVal.int
       let arr = regs[ra].node
       case arr.kind
-      of nkCall:
+      of nkOpenArray: # refer to `opcSlice`
         let
           left = arr[1].intVal
           right = arr[2].intVal
@@ -934,7 +934,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         high = (imm and 1) # discard flags
         node = regs[rb].node
       case node.kind
-      of nkCall: # refer to `of opcSlice`
+      of nkOpenArray: # refer to `of opcSlice`
         regs[ra].intVal = node[2].intVal - node[1].intVal + 1 - high
       else:
         if (imm and nimNodeFlag) != 0:
