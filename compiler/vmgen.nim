@@ -1054,6 +1054,21 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     of tyString: genUnaryABI(c, n, dest, opcLenStr)
     of tyCstring: genUnaryABI(c, n, dest, opcLenCstring)
     else: doAssert false, $n[1].typ.kind
+  of mSlice:
+    var
+      d = c.genx(n[1])
+      left = c.genx(n[2])
+      right = c.genx(n[3])
+    if dest < 0: dest = c.getTemp(n.typ)
+    c.gABC(n, opcSlice, d, d, left)
+    c.gABC(n, opcSlice, d, d, right)
+    c.gABx(n, opcNodeToReg, dest, d)
+    c.freeTemp(left)
+    c.freeTemp(right)
+    c.freeTemp(d)
+
+
+
   of mIncl, mExcl:
     unused(c, n, dest)
     var d = c.genx(n[1])

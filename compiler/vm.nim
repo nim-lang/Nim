@@ -668,6 +668,28 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         else:
           ensureKind(rkNode)
           regs[ra].node = nb
+    of opcSlice:
+      # A bodge, but this takes in `toOpenArray(rb, rc, rc)` and emits
+      # nkCall(x, y, z) into the `regs[ra]`. These can later be used for calculating the slice we have taken.
+      let
+        ra = instr.regA
+        rb = instr.regB
+        ind = regs[instr.regC].intVal
+        collection = regs[rb].node
+
+      if collection.kind != nkCall: # Emit nkCall(collection, rc.intVal)
+        regs[rb].node = newNode(nkCall)
+        regs[rb].node.addSonNilAllowed collection
+        regs[rb].node.addSonNilAllowed newIntNode(nkIntLit, BiggestInt ind)
+        if ind < 0:
+          stackTrace(c, tos, pc, formatErrorIndexBound(ind, collection.safeLen-1))
+      else: # add `rc.intval` to make `nkCall(collection, left, right)
+        regs[rb].node.addSonNilAllowed newIntNode(nkIntLit, BiggestInt ind)
+        if ind > collection.safeLen-1:
+          stackTrace(c, tos, pc, formatErrorIndexBound(ind, collection.safeLen-1))
+
+      regs[ra].node = regs[rb].node
+
     of opcLdArr:
       # a = b[c]
       decodeBC(rkNode)
@@ -675,7 +697,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, formatErrorIndexBound(regs[rc].intVal, high(int)))
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
-      if src.kind in {nkStrLit..nkTripleStrLit}:
+      case src.kind
+      of nkCall: # refer to `of opcSlice`
+        let
+          left = src[1].intVal
+          right = src[2].intVal
+        if left + idx > right or idx - left < 0:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
+        else:
+          regs[ra].node = src[0][int left + idx]
+      of nkStrLit..nkTripleStrLit:
         if idx <% src.strVal.len:
           regs[ra].node = newNodeI(nkCharLit, c.debug[pc])
           regs[ra].node.intVal = src.strVal[idx].ord
@@ -692,10 +723,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, formatErrorIndexBound(regs[rc].intVal, high(int)))
       let idx = regs[rc].intVal.int
       let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
-      if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
-        takeAddress regs[ra], src.sons[idx]
+      case src.kind
+      of nkCall:
+        let
+          left = src[1].intVal
+        takeAddress regs[ra], src.sons[0].sons[left + idx]
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
+        if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
+          takeAddress regs[ra], src.sons[idx]
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
     of opcLdStrIdx:
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
@@ -726,7 +763,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       let arr = regs[ra].node
-      if arr.kind in {nkStrLit..nkTripleStrLit}:
+      case arr.kind
+      of nkCall:
+        let
+          left = arr[1].intVal
+          right = arr[2].intVal
+        if idx in left..right:
+          arr[0][int(idx - left)] = regs[rc].node
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
+      of {nkStrLit..nkTripleStrLit}:
         if idx <% arr.strVal.len:
           arr.strVal[idx] = chr(regs[rc].intVal)
         else:
@@ -884,14 +930,20 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLenSeq:
       decodeBImm(rkInt)
       #assert regs[rb].kind == nkBracket
-      let high = (imm and 1) # discard flags
-      if (imm and nimNodeFlag) != 0:
-        # used by mNLen (NimNode.len)
-        regs[ra].intVal = regs[rb].node.safeLen - high
+      let
+        high = (imm and 1) # discard flags
+        node = regs[rb].node
+      case node.kind
+      of nkCall: # refer to `of opcSlice`
+        regs[ra].intVal = node[2].intVal - node[1].intVal + 1 - high
       else:
-        # safeArrLen also return string node len
-        # used when string is passed as openArray in VM
-        regs[ra].intVal = regs[rb].node.safeArrLen - high
+        if (imm and nimNodeFlag) != 0:
+          # used by mNLen (NimNode.len)
+          regs[ra].intVal = node.safeLen - high
+        else:
+          # safeArrLen also return string node len
+          # used when string is passed as openArray in VM
+          regs[ra].intVal = node.safeArrLen - high
     of opcLenStr:
       decodeBImm(rkInt)
       assert regs[rb].kind == rkNode
