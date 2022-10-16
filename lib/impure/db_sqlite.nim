@@ -26,79 +26,78 @@
 ## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
 ##
-## .. code-block:: Nim
-##
-##    sql"INSERT INTO my_table (colA, colB, colC) VALUES (?, ?, ?)"
+##   ```Nim
+##   sql"INSERT INTO my_table (colA, colB, colC) VALUES (?, ?, ?)"
+##   ```
 ##
 ## Opening a connection to a database
 ## ----------------------------------
 ##
-## .. code-block:: Nim
+##   ```Nim
+##   import std/db_sqlite
 ##
-##    import std/db_sqlite
-##
-##    # user, password, database name can be empty.
-##    # These params are not used on db_sqlite module.
-##    let db = open("mytest.db", "", "", "")
-##    db.close()
+##   # user, password, database name can be empty.
+##   # These params are not used on db_sqlite module.
+##   let db = open("mytest.db", "", "", "")
+##   db.close()
+##   ```
 ##
 ## Creating a table
 ## ----------------
 ##
-## .. code-block:: Nim
-##
-##    db.exec(sql"DROP TABLE IF EXISTS my_table")
-##    db.exec(sql"""CREATE TABLE my_table (
-##                     id   INTEGER,
-##                     name VARCHAR(50) NOT NULL
-##                  )""")
+##   ```Nim
+##   db.exec(sql"DROP TABLE IF EXISTS my_table")
+##   db.exec(sql"""CREATE TABLE my_table (
+##                    id   INTEGER,
+##                    name VARCHAR(50) NOT NULL
+##                 )""")
+##   ```
 ##
 ## Inserting data
 ## --------------
 ##
-## .. code-block:: Nim
-##
-##    db.exec(sql"INSERT INTO my_table (id, name) VALUES (0, ?)",
-##            "Jack")
+##   ```Nim
+##   db.exec(sql"INSERT INTO my_table (id, name) VALUES (0, ?)",
+##           "Jack")
+##   ```
 ##
 ## Larger example
 ## --------------
 ##
-## .. code-block:: nim
+##   ```Nim
+##   import std/[db_sqlite, math]
 ##
-##    import std/[db_sqlite, math]
+##   let db = open("mytest.db", "", "", "")
 ##
-##    let db = open("mytest.db", "", "", "")
+##   db.exec(sql"DROP TABLE IF EXISTS my_table")
+##   db.exec(sql"""CREATE TABLE my_table (
+##                    id    INTEGER PRIMARY KEY,
+##                    name  VARCHAR(50) NOT NULL,
+##                    i     INT(11),
+##                    f     DECIMAL(18, 10)
+##                 )""")
 ##
-##    db.exec(sql"DROP TABLE IF EXISTS my_table")
-##    db.exec(sql"""CREATE TABLE my_table (
-##                     id    INTEGER PRIMARY KEY,
-##                     name  VARCHAR(50) NOT NULL,
-##                     i     INT(11),
-##                     f     DECIMAL(18, 10)
-##                  )""")
+##   db.exec(sql"BEGIN")
+##   for i in 1..1000:
+##     db.exec(sql"INSERT INTO my_table (name, i, f) VALUES (?, ?, ?)",
+##             "Item#" & $i, i, sqrt(i.float))
+##   db.exec(sql"COMMIT")
 ##
-##    db.exec(sql"BEGIN")
-##    for i in 1..1000:
-##      db.exec(sql"INSERT INTO my_table (name, i, f) VALUES (?, ?, ?)",
-##              "Item#" & $i, i, sqrt(i.float))
-##    db.exec(sql"COMMIT")
+##   for x in db.fastRows(sql"SELECT * FROM my_table"):
+##     echo x
 ##
-##    for x in db.fastRows(sql"SELECT * FROM my_table"):
-##      echo x
+##   let id = db.tryInsertId(sql"""INSERT INTO my_table (name, i, f)
+##                                 VALUES (?, ?, ?)""",
+##                           "Item#1001", 1001, sqrt(1001.0))
+##   echo "Inserted item: ", db.getValue(sql"SELECT name FROM my_table WHERE id=?", id)
 ##
-##    let id = db.tryInsertId(sql"""INSERT INTO my_table (name, i, f)
-##                                  VALUES (?, ?, ?)""",
-##                            "Item#1001", 1001, sqrt(1001.0))
-##    echo "Inserted item: ", db.getValue(sql"SELECT name FROM my_table WHERE id=?", id)
-##
-##    db.close()
+##   db.close()
+##   ```
 ##
 ## Storing binary data example
 ##----------------------------
 ##
-## .. code-block:: nim
-##
+##   ```nim
 ##   import std/random
 ##
 ##   ## Generate random float datas
@@ -144,6 +143,7 @@
 ##     doAssert res == orig
 ##
 ##   db.close()
+##   ```
 ##
 ##
 ## Note
@@ -187,13 +187,12 @@ proc dbError*(db: DbConn) {.noreturn.} =
   ## Raises a `DbError` exception.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block:: Nim
-  ##
-  ##    let db = open("mytest.db", "", "", "")
-  ##    if not db.tryExec(sql"SELECT * FROM not_exist_table"):
-  ##      dbError(db)
-  ##    db.close()
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
+  ##   if not db.tryExec(sql"SELECT * FROM not_exist_table"):
+  ##     dbError(db)
+  ##   db.close()
+  ##   ```
   var e: ref DbError
   new(e)
   e.msg = $sqlite3.errmsg(db)
@@ -227,13 +226,12 @@ proc tryExec*(db: DbConn, query: SqlQuery,
   ## Tries to execute the query and returns `true` if successful, `false` otherwise.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block:: Nim
-  ##
-  ##    let db = open("mytest.db", "", "", "")
-  ##    if not db.tryExec(sql"SELECT * FROM my_table"):
-  ##      dbError(db)
-  ##    db.close()
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
+  ##   if not db.tryExec(sql"SELECT * FROM my_table"):
+  ##     dbError(db)
+  ##   db.close()
+  ##   ```
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   var stmt: sqlite3.PStmt
@@ -259,17 +257,16 @@ proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   ## Executes the query and raises a `DbError` exception if not successful.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block:: Nim
-  ##
-  ##    let db = open("mytest.db", "", "", "")
-  ##    try:
-  ##      db.exec(sql"INSERT INTO my_table (id, name) VALUES (?, ?)",
-  ##              1, "item#1")
-  ##    except:
-  ##      stderr.writeLine(getCurrentExceptionMsg())
-  ##    finally:
-  ##      db.close()
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
+  ##   try:
+  ##     db.exec(sql"INSERT INTO my_table (id, name) VALUES (?, ?)",
+  ##             1, "item#1")
+  ##   except:
+  ##     stderr.writeLine(getCurrentExceptionMsg())
+  ##   finally:
+  ##     db.close()
+  ##   ```
   if not tryExec(db, query, args): dbError(db)
 
 proc newRow(L: int): Row =
@@ -310,24 +307,24 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ##
   ## **Examples:**
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
   ##
-  ##    let db = open("mytest.db", "", "", "")
+  ##   # Records of my_table:
+  ##   # | id | name     |
+  ##   # |----|----------|
+  ##   # |  1 | item#1   |
+  ##   # |  2 | item#2   |
   ##
-  ##    # Records of my_table:
-  ##    # | id | name     |
-  ##    # |----|----------|
-  ##    # |  1 | item#1   |
-  ##    # |  2 | item#2   |
+  ##   for row in db.fastRows(sql"SELECT id, name FROM my_table"):
+  ##     echo row
   ##
-  ##    for row in db.fastRows(sql"SELECT id, name FROM my_table"):
-  ##      echo row
+  ##   # Output:
+  ##   # @["1", "item#1"]
+  ##   # @["2", "item#2"]
   ##
-  ##    # Output:
-  ##    # @["1", "item#1"]
-  ##    # @["2", "item#2"]
-  ##
-  ##    db.close()
+  ##   db.close()
+  ##   ```
   var stmt = setupQuery(db, query, args)
   var L = (column_count(stmt))
   var result = newRow(L)
@@ -359,8 +356,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
   ##
   ## **Examples:**
   ##
-  ## .. code-block:: Nim
-  ##
+  ##   ```Nim
   ##    let db = open("mytest.db", "", "", "")
   ##
   ##    # Records of my_table:
@@ -383,6 +379,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
   ##    # length:2
   ##
   ##    db.close()
+  ##    ```
   var stmt = setupQuery(db, query, args)
   try:
     while step(stmt) == SQLITE_ROW:
@@ -429,28 +426,28 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery,
   ##
   ## **Examples:**
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
   ##
-  ##    let db = open("mytest.db", "", "", "")
+  ##   # Records of my_table:
+  ##   # | id | name     |
+  ##   # |----|----------|
+  ##   # |  1 | item#1   |
+  ##   # |  2 | item#2   |
   ##
-  ##    # Records of my_table:
-  ##    # | id | name     |
-  ##    # |----|----------|
-  ##    # |  1 | item#1   |
-  ##    # |  2 | item#2   |
+  ##   var columns: DbColumns
+  ##   for row in db.instantRows(columns, sql"SELECT * FROM my_table"):
+  ##     discard
+  ##   echo columns[0]
   ##
-  ##    var columns: DbColumns
-  ##    for row in db.instantRows(columns, sql"SELECT * FROM my_table"):
-  ##      discard
-  ##    echo columns[0]
+  ##   # Output:
+  ##   # (name: "id", tableName: "my_table", typ: (kind: dbNull,
+  ##   # notNull: false, name: "INTEGER", size: 0, maxReprLen: 0, precision: 0,
+  ##   # scale: 0, min: 0, max: 0, validValues: @[]), primaryKey: false,
+  ##   # foreignKey: false)
   ##
-  ##    # Output:
-  ##    # (name: "id", tableName: "my_table", typ: (kind: dbNull,
-  ##    # notNull: false, name: "INTEGER", size: 0, maxReprLen: 0, precision: 0,
-  ##    # scale: 0, min: 0, max: 0, validValues: @[]), primaryKey: false,
-  ##    # foreignKey: false)
-  ##
-  ##    db.close()
+  ##   db.close()
+  ##   ```
   var stmt = setupQuery(db, query, args)
   setColumns(columns, stmt)
   try:
@@ -490,28 +487,28 @@ proc getRow*(db: DbConn, query: SqlQuery,
   ##
   ## **Examples:**
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
   ##
-  ##    let db = open("mytest.db", "", "", "")
+  ##   # Records of my_table:
+  ##   # | id | name     |
+  ##   # |----|----------|
+  ##   # |  1 | item#1   |
+  ##   # |  2 | item#2   |
   ##
-  ##    # Records of my_table:
-  ##    # | id | name     |
-  ##    # |----|----------|
-  ##    # |  1 | item#1   |
-  ##    # |  2 | item#2   |
+  ##   doAssert db.getRow(sql"SELECT id, name FROM my_table"
+  ##                      ) == Row(@["1", "item#1"])
+  ##   doAssert db.getRow(sql"SELECT id, name FROM my_table WHERE id = ?",
+  ##                      2) == Row(@["2", "item#2"])
   ##
-  ##    doAssert db.getRow(sql"SELECT id, name FROM my_table"
-  ##                       ) == Row(@["1", "item#1"])
-  ##    doAssert db.getRow(sql"SELECT id, name FROM my_table WHERE id = ?",
-  ##                       2) == Row(@["2", "item#2"])
-  ##
-  ##    # Returns empty.
-  ##    doAssert db.getRow(sql"INSERT INTO my_table (id, name) VALUES (?, ?)",
-  ##                       3, "item#3") == @[]
-  ##    doAssert db.getRow(sql"DELETE FROM my_table WHERE id = ?", 3) == @[]
-  ##    doAssert db.getRow(sql"UPDATE my_table SET name = 'ITEM#1' WHERE id = ?",
-  ##                       1) == @[]
-  ##    db.close()
+  ##   # Returns empty.
+  ##   doAssert db.getRow(sql"INSERT INTO my_table (id, name) VALUES (?, ?)",
+  ##                      3, "item#3") == @[]
+  ##   doAssert db.getRow(sql"DELETE FROM my_table WHERE id = ?", 3) == @[]
+  ##   doAssert db.getRow(sql"UPDATE my_table SET name = 'ITEM#1' WHERE id = ?",
+  ##                      1) == @[]
+  ##   db.close()
+  ##   ```
   var stmt = setupQuery(db, query, args)
   var L = (column_count(stmt))
   result = newRow(L)
@@ -525,18 +522,18 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
   ##
   ## **Examples:**
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
   ##
-  ##    let db = open("mytest.db", "", "", "")
+  ##   # Records of my_table:
+  ##   # | id | name     |
+  ##   # |----|----------|
+  ##   # |  1 | item#1   |
+  ##   # |  2 | item#2   |
   ##
-  ##    # Records of my_table:
-  ##    # | id | name     |
-  ##    # |----|----------|
-  ##    # |  1 | item#1   |
-  ##    # |  2 | item#2   |
-  ##
-  ##    doAssert db.getAllRows(sql"SELECT id, name FROM my_table") == @[Row(@["1", "item#1"]), Row(@["2", "item#2"])]
-  ##    db.close()
+  ##   doAssert db.getAllRows(sql"SELECT id, name FROM my_table") == @[Row(@["1", "item#1"]), Row(@["2", "item#2"])]
+  ##   db.close()
+  ##   ```
   result = @[]
   for r in fastRows(db, query, args):
     result.add(r)
@@ -554,24 +551,24 @@ iterator rows*(db: DbConn, query: SqlQuery,
   ##
   ## **Examples:**
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
   ##
-  ##    let db = open("mytest.db", "", "", "")
+  ##   # Records of my_table:
+  ##   # | id | name     |
+  ##   # |----|----------|
+  ##   # |  1 | item#1   |
+  ##   # |  2 | item#2   |
   ##
-  ##    # Records of my_table:
-  ##    # | id | name     |
-  ##    # |----|----------|
-  ##    # |  1 | item#1   |
-  ##    # |  2 | item#2   |
+  ##   for row in db.rows(sql"SELECT id, name FROM my_table"):
+  ##     echo row
   ##
-  ##    for row in db.rows(sql"SELECT id, name FROM my_table"):
-  ##      echo row
+  ##   ## Output:
+  ##   ## @["1", "item#1"]
+  ##   ## @["2", "item#2"]
   ##
-  ##    ## Output:
-  ##    ## @["1", "item#1"]
-  ##    ## @["2", "item#2"]
-  ##
-  ##    db.close()
+  ##   db.close()
+  ##   ```
   for r in fastRows(db, query, args): yield r
 
 iterator rows*(db: DbConn, stmtName: SqlPrepared): Row
@@ -586,22 +583,22 @@ proc getValue*(db: DbConn, query: SqlQuery,
   ##
   ## **Examples:**
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
   ##
-  ##    let db = open("mytest.db", "", "", "")
+  ##   # Records of my_table:
+  ##   # | id | name     |
+  ##   # |----|----------|
+  ##   # |  1 | item#1   |
+  ##   # |  2 | item#2   |
   ##
-  ##    # Records of my_table:
-  ##    # | id | name     |
-  ##    # |----|----------|
-  ##    # |  1 | item#1   |
-  ##    # |  2 | item#2   |
+  ##   doAssert db.getValue(sql"SELECT name FROM my_table WHERE id = ?",
+  ##                        2) == "item#2"
+  ##   doAssert db.getValue(sql"SELECT id, name FROM my_table") == "1"
+  ##   doAssert db.getValue(sql"SELECT name, id FROM my_table") == "item#1"
   ##
-  ##    doAssert db.getValue(sql"SELECT name FROM my_table WHERE id = ?",
-  ##                         2) == "item#2"
-  ##    doAssert db.getValue(sql"SELECT id, name FROM my_table") == "1"
-  ##    doAssert db.getValue(sql"SELECT name, id FROM my_table") == "item#1"
-  ##
-  ##    db.close()
+  ##   db.close()
+  ##   ```
   var stmt = setupQuery(db, query, args)
   if step(stmt) == SQLITE_ROW:
     let cb = column_bytes(stmt, 0)
@@ -643,14 +640,14 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
   ##
   ## **Examples:**
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
+  ##   db.exec(sql"CREATE TABLE my_table (id INTEGER, name VARCHAR(50) NOT NULL)")
   ##
-  ##    let db = open("mytest.db", "", "", "")
-  ##    db.exec(sql"CREATE TABLE my_table (id INTEGER, name VARCHAR(50) NOT NULL)")
-  ##
-  ##    doAssert db.tryInsertID(sql"INSERT INTO not_exist_table (id, name) VALUES (?, ?)",
-  ##                            1, "item#1") == -1
-  ##    db.close()
+  ##   doAssert db.tryInsertID(sql"INSERT INTO not_exist_table (id, name) VALUES (?, ?)",
+  ##                           1, "item#1") == -1
+  ##   db.close()
+  ##   ```
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   var stmt: sqlite3.PStmt
@@ -674,21 +671,21 @@ proc insertID*(db: DbConn, query: SqlQuery,
   ##
   ## **Examples:**
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
+  ##   db.exec(sql"CREATE TABLE my_table (id INTEGER, name VARCHAR(50) NOT NULL)")
   ##
-  ##    let db = open("mytest.db", "", "", "")
-  ##    db.exec(sql"CREATE TABLE my_table (id INTEGER, name VARCHAR(50) NOT NULL)")
+  ##   for i in 0..2:
+  ##     let id = db.insertID(sql"INSERT INTO my_table (id, name) VALUES (?, ?)", i, "item#" & $i)
+  ##     echo "LoopIndex = ", i, ", InsertID = ", id
   ##
-  ##    for i in 0..2:
-  ##      let id = db.insertID(sql"INSERT INTO my_table (id, name) VALUES (?, ?)", i, "item#" & $i)
-  ##      echo "LoopIndex = ", i, ", InsertID = ", id
+  ##   # Output:
+  ##   # LoopIndex = 0, InsertID = 1
+  ##   # LoopIndex = 1, InsertID = 2
+  ##   # LoopIndex = 2, InsertID = 3
   ##
-  ##    # Output:
-  ##    # LoopIndex = 0, InsertID = 1
-  ##    # LoopIndex = 1, InsertID = 2
-  ##    # LoopIndex = 2, InsertID = 3
-  ##
-  ##    db.close()
+  ##   db.close()
+  ##   ```
   result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
 
@@ -713,19 +710,19 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
   ##
   ## **Examples:**
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
   ##
-  ##    let db = open("mytest.db", "", "", "")
+  ##   # Records of my_table:
+  ##   # | id | name     |
+  ##   # |----|----------|
+  ##   # |  1 | item#1   |
+  ##   # |  2 | item#2   |
   ##
-  ##    # Records of my_table:
-  ##    # | id | name     |
-  ##    # |----|----------|
-  ##    # |  1 | item#1   |
-  ##    # |  2 | item#2   |
+  ##   doAssert db.execAffectedRows(sql"UPDATE my_table SET name = 'TEST'") == 2
   ##
-  ##    doAssert db.execAffectedRows(sql"UPDATE my_table SET name = 'TEST'") == 2
-  ##
-  ##    db.close()
+  ##   db.close()
+  ##   ```
   exec(db, query, args)
   result = changes(db)
 
@@ -738,11 +735,10 @@ proc close*(db: DbConn) {.tags: [DbEffect].} =
   ## Closes the database connection.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block:: Nim
-  ##
-  ##    let db = open("mytest.db", "", "", "")
-  ##    db.close()
+  ##   ```Nim
+  ##   let db = open("mytest.db", "", "", "")
+  ##   db.close()
+  ##   ```
   if sqlite3.close(db) != SQLITE_OK: dbError(db)
 
 proc open*(connection, user, password, database: string): DbConn {.
@@ -753,16 +749,15 @@ proc open*(connection, user, password, database: string): DbConn {.
   ## **Note:** Only the `connection` parameter is used for `sqlite`.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block:: Nim
-  ##
-  ##    try:
-  ##      let db = open("mytest.db", "", "", "")
-  ##      ## do something...
-  ##      ## db.getAllRows(sql"SELECT * FROM my_table")
-  ##      db.close()
-  ##    except:
-  ##      stderr.writeLine(getCurrentExceptionMsg())
+  ##   ```Nim
+  ##   try:
+  ##     let db = open("mytest.db", "", "", "")
+  ##     ## do something...
+  ##     ## db.getAllRows(sql"SELECT * FROM my_table")
+  ##     db.close()
+  ##   except:
+  ##     stderr.writeLine(getCurrentExceptionMsg())
+  ##   ```
   var db: DbConn
   if sqlite3.open(connection, db) == SQLITE_OK:
     result = db

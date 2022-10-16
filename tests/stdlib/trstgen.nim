@@ -1684,3 +1684,8 @@ suite "local file inclusion":
     discard "```nim file = ./readme.md\n```".toHtml(error=error)
     check(error[] == "input(1, 23) Error: disabled directive: 'file'")
 
+proc documentToHtml*(doc: string, isMarkdown: bool = false): string {.gcsafe.} =
+  var options = {roSupportMarkdown}
+  if isMarkdown:
+    options.incl roPreferMarkdown
+  result = rstToHtml(doc, options, defaultConfig())

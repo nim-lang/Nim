@@ -88,7 +88,7 @@ type
     ## for hyperlinks. See renderIndexTerm proc for details.
     id*: int               ## A counter useful for generating IDs.
     onTestSnippet*: proc (d: var RstGenerator; filename, cmd: string; status: int;
-                          content: string)
+                          content: string) {.gcsafe.}
     escMode*: EscapeMode
     curQuotationDepth: int
 
@@ -153,12 +153,12 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   ##
   ## Example:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   import packages/docutils/rstgen
   ##
   ##   var gen: RstGenerator
   ##   gen.initRstGenerator(outHtml, defaultConfig(), "filename", {})
+  ##   ```
   g.config = config
   g.target = target
   g.tocPart = @[]
@@ -283,19 +283,18 @@ proc dispA(target: OutputTarget, dest: var string,
 proc `or`(x, y: string): string {.inline.} =
   result = if x.len == 0: y else: x
 
-proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
+proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string) {.gcsafe.}
   ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
   ##
   ## Before using this proc you need to initialise a ``RstGenerator`` with
   ## ``initRstGenerator`` and parse a rst file with ``rstParse`` from the
   ## `packages/docutils/rst module <rst.html>`_. Example:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   # ...configure gen and rst vars...
   ##   var generatedHtml = ""
   ##   renderRstToOut(gen, rst, generatedHtml)
   ##   echo generatedHtml
+  ##   ```
 
 proc renderAux(d: PDoc, n: PRstNode, result: var string) =
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
@@ -1028,7 +1027,7 @@ proc renderCodeLang*(result: var string, lang: SourceLanguage, code: string,
 proc renderNimCode*(result: var string, code: string, target: OutputTarget) =
   renderCodeLang(result, langNim, code, target)
 
-proc renderCode(d: PDoc, n: PRstNode, result: var string) =
+proc renderCode(d: PDoc, n: PRstNode, result: var string) {.gcsafe.} =
   ## Renders a code (code block or inline code), appending it to `result`.
   ##
   ## If the code block uses the ``number-lines`` option, a table will be
@@ -1592,7 +1591,7 @@ $content
 
 proc rstToHtml*(s: string, options: RstParseOptions,
                 config: StringTableRef,
-                msgHandler: MsgHandler = rst.defaultMsgHandler): string =
+                msgHandler: MsgHandler = rst.defaultMsgHandler): string {.gcsafe.} =
   ## Converts an input rst string into embeddable HTML.
   ##
   ## This convenience proc parses any input string using rst markup (it doesn't
@@ -1602,12 +1601,13 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   ## work. For an explanation of the ``config`` parameter see the
   ## ``initRstGenerator`` proc. Example:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   import packages/docutils/rstgen, strtabs
   ##
   ##   echo rstToHtml("*Hello* **world**!", {},
   ##     newStringTable(modeStyleInsensitive))
   ##   # --> <em>Hello</em> <strong>world</strong>!
+  ##   ```
   ##
   ## If you need to allow the rst ``include`` directive or tweak the generated
   ## output you have to create your own ``RstGenerator`` with

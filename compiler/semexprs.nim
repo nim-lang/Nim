@@ -371,6 +371,8 @@ proc semCast(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2, c.config)
   let targetType = semTypeNode(c, n[0], nil)
   let castedExpr = semExprWithType(c, n[1])
+  if castedExpr.kind == nkClosedSymChoice:
+    errorUseQualifier(c, n[1].info, castedExpr)
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
@@ -930,12 +932,6 @@ proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
                          t: PType): TCandidate =
   initCandidate(c, result, t)
   matches(c, n, nOrig, result)
-  if result.state != csMatch:
-    # try to deref the first argument:
-    if implicitDeref in c.features and canDeref(n):
-      n[1] = n[1].tryDeref
-      initCandidate(c, result, t)
-      matches(c, n, nOrig, result)
 
 proc bracketedMacro(n: PNode): PSym =
   if n.len >= 1 and n[0].kind == nkSym:
@@ -977,7 +973,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
   var prc = n[0]
   if n[0].kind == nkDotExpr:
     checkSonsLen(n[0], 2, c.config)
-    let n0 = semFieldAccess(c, n[0])
+    let n0 = semFieldAccess(c, n[0], {efIsDotCall})
     if n0.kind == nkDotCall:
       # it is a static call!
       result = n0
@@ -1478,8 +1474,9 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this is difficult, because the '.' is used in many different contexts
   # in Nim. We first allow types in the semantic checking.
-  result = builtinFieldAccess(c, n, flags)
-  if result == nil:
+  result = builtinFieldAccess(c, n, flags - {efIsDotCall})
+  if result == nil or ((result.typ == nil or result.typ.skipTypes(abstractInst).kind != tyProc) and 
+      efIsDotCall in flags and callOperator notin c.features):
     result = dotTransformation(c, n)
 
 proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =

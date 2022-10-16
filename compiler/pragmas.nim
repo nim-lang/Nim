@@ -684,23 +684,6 @@ proc pragmaLockStmt(c: PContext; it: PNode) =
       for i in 0..<n.len:
         n[i] = c.semExpr(c, n[i])
 
-proc pragmaLocks(c: PContext, it: PNode): TLockLevel =
-  if it.kind notin nkPragmaCallKinds or it.len != 2:
-    invalidPragma(c, it)
-  else:
-    case it[1].kind
-    of nkStrLit, nkRStrLit, nkTripleStrLit:
-      if it[1].strVal == "unknown":
-        result = UnknownLockLevel
-      else:
-        localError(c.config, it[1].info, "invalid string literal for locks pragma (only allowed string is \"unknown\")")
-    else:
-      let x = expectIntLit(c, it)
-      if x < 0 or x > MaxLockLevel:
-        localError(c.config, it[1].info, "integer must be within 0.." & $MaxLockLevel)
-      else:
-        result = TLockLevel(x)
-
 proc typeBorrow(c: PContext; sym: PSym, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2:
     let it = n[1]
@@ -1196,7 +1179,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wLocks:
         if sym == nil: pragmaLockStmt(c, it)
         elif sym.typ == nil: invalidPragma(c, it)
-        else: sym.typ.lockLevel = pragmaLocks(c, it)
+        else: warningDeprecated(c.config, n.info, "'Lock levels' are deprecated, now a noop")
       of wBitsize:
         if sym == nil or sym.kind != skField:
           invalidPragma(c, it)

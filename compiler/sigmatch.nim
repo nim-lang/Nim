@@ -1595,10 +1595,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         c.inheritancePenalty = 0
         let x = typeRel(c, branch, aOrig, flags)
         maxInheritance = max(maxInheritance, c.inheritancePenalty)
-
         # 'or' implies maximum matching result:
         if x > result: result = x
-      if result >= isSubtype:
+      if result >= isIntConv:
         if result > isGeneric: result = isGeneric
         bindingRet result
       else:
@@ -2131,6 +2130,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
       result = c.semInferredLambda(c, m.bindings, arg)
     elif arg.kind != nkSym:
+      return nil
+    elif arg.sym.kind in {skMacro, skTemplate}:
       return nil
     else:
       let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)

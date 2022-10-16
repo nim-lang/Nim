@@ -1257,6 +1257,7 @@ proc newProcType(c: PContext; info: TLineInfo; prev: PType = nil): PType =
   result.n.add newNodeI(nkEffectList, info)
 
 proc isMagic(sym: PSym): bool =
+  if sym.ast == nil: return false
   let nPragmas = sym.ast[pragmasPos]
   return hasPragma(nPragmas, wMagic)
 
@@ -1298,7 +1299,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if hasDefault:
       def = a[^1]
       block determineType:
-        if genericParams.isGenericParams:
+        if genericParams != nil and genericParams.len > 0:
           def = semGenericStmt(c, def)
           if hasUnresolvedArgs(c, def):
             def.typ = makeTypeFromExpr(c, def.copyTree)
@@ -1426,7 +1427,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           result.flags.excl tfHasMeta
       result.n.typ = r
 
-  if genericParams.isGenericParams:
+  if genericParams != nil and genericParams.len > 0:
     for n in genericParams:
       if {sfUsed, sfAnon} * n.sym.flags == {}:
         result.flags.incl tfUnresolved

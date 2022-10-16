@@ -441,7 +441,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     if innerProc:
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
-        let body = transformBody(c.graph, c.idgen, s, cache = true)
+        let body = transformBody(c.graph, c.idgen, s, useCache)
         detectCapturedVars(body, s, c)
     let ow = s.skipGenericOwner
     if ow == owner:
@@ -737,7 +737,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
         #  echo renderTree(s.getBody, {renderIds})
         let oldInContainer = c.inContainer
         c.inContainer = 0
-        var body = transformBody(d.graph, d.idgen, s, cache = false)
+        var body = transformBody(d.graph, d.idgen, s, dontUseCache)
         body = liftCapturedVars(body, s, d, c)
         if c.envVars.getOrDefault(s.id).isNil:
           s.transformedBody = body
