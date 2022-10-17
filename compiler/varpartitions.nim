@@ -686,7 +686,7 @@ proc traverse(c: var Partitions; n: PNode) =
         for i in 0..<child.len-2:
           #registerVariable(c, child[i])
           deps(c, child[i], last)
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     traverse(c, n[0])
     inc c.inAsgnSource
     traverse(c, n[1])
@@ -779,7 +779,7 @@ proc traverse(c: var Partitions; n: PNode) =
 
     if n.kind == nkWhileStmt:
       traverse(c, n[0])
-      # variables in while condition has longer alive time than local variables 
+      # variables in while condition has longer alive time than local variables
       # in the while loop body
   else:
     for child in n: traverse(c, child)
@@ -811,7 +811,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
           registerVariable(c, child[i])
           #deps(c, child[i], last)
 
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     computeLiveRanges(c, n[0])
     computeLiveRanges(c, n[1])
     if n[0].kind == nkSym:
@@ -871,7 +871,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
 
     if n.kind == nkWhileStmt:
       computeLiveRanges(c, n[0])
-      # variables in while condition has longer alive time than local variables 
+      # variables in while condition has longer alive time than local variables
       # in the while loop body
   of nkElifBranch, nkElifExpr, nkElse, nkOfBranch:
     inc c.inConditional
