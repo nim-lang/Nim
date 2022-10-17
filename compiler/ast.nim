@@ -796,6 +796,8 @@ type
       ident*: PIdent
     else:
       sons*: TNodeSeq
+    when defined(nimsuggest):
+      endInfo*: TLineInfo
 
   TStrTable* = object         # a table[PIdent] of PSym
     counter*: int
@@ -892,6 +894,8 @@ type
     typ*: PType
     name*: PIdent
     info*: TLineInfo
+    when defined(nimsuggest):
+      endInfo*: TLineInfo
     owner*: PSym
     flags*: TSymFlags
     ast*: PNode               # syntax tree of proc, iterator, etc.:
@@ -1690,6 +1694,8 @@ proc copyNode*(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else: discard
+  when defined(nimsuggest):
+    result.endInfo = src.endInfo
 
 template transitionNodeKindCommon(k: TNodeKind) =
   let obj {.inject.} = n[]
@@ -1742,6 +1748,8 @@ template copyNodeImpl(dst, src, processSonsStmt) =
   if src == nil: return
   dst = newNode(src.kind)
   dst.info = src.info
+  when defined(nimsuggest):
+    result.endInfo = src.endInfo
   dst.typ = src.typ
   dst.flags = src.flags * PersistentNodeFlags
   dst.comment = src.comment

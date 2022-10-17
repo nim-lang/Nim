@@ -27,7 +27,7 @@ import compiler / [options, commands, modules, sem,
   passes, passaux, msgs,
   sigmatch, ast,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
-  pathutils, condsyms]
+  pathutils, condsyms, syntaxes]
 
 when defined(nimPreviewSlimSystem):
   import std/typedthreads
@@ -88,7 +88,7 @@ var
   requests: Channel[string]
   results: Channel[Suggest]
 
-proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, line, col: int;
+proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, line, col: int; tag: string,
   graph: ModuleGraph);
 
 proc writelnToChannel(line: string) =
@@ -140,6 +140,9 @@ proc sexp(s: Suggest): SexpNode =
   ])
   if s.section == ideSug:
     result.add convertSexp(s.prefix)
+  if s.section in {ideOutline, ideExpand} and s.version == 3:
+    result.add convertSexp(s.endLine.int)
+    result.add convertSexp(s.endCol)
 
 proc sexp(s: seq[Suggest]): SexpNode =
   result = newSList()
@@ -175,12 +178,23 @@ proc symFromInfo(graph: ModuleGraph; trackPos: TLineInfo): PSym =
   if m != nil and m.ast != nil:
     result = findNode(m.ast, trackPos)
 
-proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
+template benchmark(benchmarkName: untyped, code: untyped) =
+  block:
+    myLog "Started [" & benchmarkName & "]..."
+    let t0 = epochTime()
+    code
+    let elapsed = epochTime() - t0
+    let elapsedStr = elapsed.formatFloat(format = ffDecimal, precision = 3)
+    myLog "CPU Time [" & benchmarkName & "] " & elapsedStr & "s"
+
+proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, tag: string,
              graph: ModuleGraph) =
   let conf = graph.config
 
   if conf.suggestVersion == 3:
-    executeNoHooksV3(cmd, file, dirtyfile, line, col, graph)
+    let command = fmt "cmd = {cmd} {file}:{line}:{col}"
+    benchmark command:
+      executeNoHooksV3(cmd, file, dirtyfile, line, col, tag, graph)
     return
 
   myLog("cmd: " & $cmd & ", file: " & file.string &
@@ -219,7 +233,10 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
     else:
       localError(conf, conf.m.trackPos, "found no symbol at this position " & (conf $ conf.m.trackPos))
 
-proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
+proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, graph: ModuleGraph) =
+  executeNoHooks(cmd, file, dirtyfile, line, col, graph)
+
+proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int; tag: string,
              graph: ModuleGraph) =
   if cmd == ideChk:
     graph.config.structuredErrorHook = errorHook
@@ -227,7 +244,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
   else:
     graph.config.structuredErrorHook = nil
     graph.config.writelnHook = myLog
-  executeNoHooks(cmd, file, dirtyfile, line, col, graph)
+  executeNoHooks(cmd, file, dirtyfile, line, col, tag, graph)
 
 proc executeEpc(cmd: IdeCmd, args: SexpNode;
                 graph: ModuleGraph) =
@@ -238,7 +255,7 @@ proc executeEpc(cmd: IdeCmd, args: SexpNode;
   var dirtyfile = AbsoluteFile""
   if len(args) > 3:
     dirtyfile = AbsoluteFile args[3].getStr("")
-  execute(cmd, file, dirtyfile, int(line), int(column), graph)
+  execute(cmd, file, dirtyfile, int(line), int(column), args[3].getStr, graph)
 
 proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
                returnSymbol = "return") =
@@ -459,6 +476,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   of "changed": conf.ideCmd = ideChanged
   of "globalsymbols": conf.ideCmd = ideGlobalSymbols
   of "declaration": conf.ideCmd = ideDeclaration
+  of "expand": conf.ideCmd = ideExpand
   of "chkfile": conf.ideCmd = ideChkFile
   of "recompile": conf.ideCmd = ideRecompile
   of "type": conf.ideCmd = ideType
@@ -478,6 +496,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   i += parseInt(cmd, line, i)
   i += skipWhile(cmd, seps, i)
   i += parseInt(cmd, col, i)
+  let tag = substr(cmd, i)
 
   if conf.ideCmd == ideKnown:
     results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, AbsoluteFile orig))))
@@ -486,17 +505,8 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   else:
     if conf.ideCmd == ideChk:
       for cm in cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
-    execute(conf.ideCmd, AbsoluteFile orig, AbsoluteFile dirtyfile, line, col, graph)
+    execute(conf.ideCmd, AbsoluteFile orig, AbsoluteFile dirtyfile, line, col, tag, graph)
   sentinel()
-
-template benchmark(benchmarkName: string, code: untyped) =
-  block:
-    myLog "Started [" & benchmarkName & "]..."
-    let t0 = epochTime()
-    code
-    let elapsed = epochTime() - t0
-    let elapsedStr = elapsed.formatFloat(format = ffDecimal, precision = 3)
-    myLog "CPU Time [" & benchmarkName & "] " & elapsedStr & "s"
 
 proc recompileFullProject(graph: ModuleGraph) =
   benchmark "Recompilation(clean)":
@@ -509,9 +519,9 @@ proc recompileFullProject(graph: ModuleGraph) =
 
 proc mainThread(graph: ModuleGraph) =
   let conf = graph.config
-  if gLogging:
-    for it in conf.searchPaths:
-      log(it.string)
+  myLog "searchPaths: "
+  for it in conf.searchPaths:
+    myLog("  " & it.string)
 
   proc wrHook(line: string) {.closure.} =
     if gMode == mepc:
@@ -732,16 +742,20 @@ func deduplicateSymInfoPair[SymInfoPair](xs: seq[SymInfoPair]): seq[SymInfoPair]
       result.add(itm)
   result.reverse()
 
+proc findSymData(graph: ModuleGraph, trackPos: TLineInfo):
+    ref SymInfoPair =
+  for s in graph.fileSymbols(trackPos.fileIndex).deduplicateSymInfoPair:
+    if isTracked(s.info, trackPos, s.sym.name.s.len):
+      new(result)
+      result[] = s
+      break
+
 proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int):
     ref SymInfoPair =
   let
     fileIdx = fileInfoIdx(graph.config, file)
     trackPos = newLineInfo(fileIdx, line, col)
-  for s in graph.fileSymbols(fileIdx).deduplicateSymInfoPair:
-    if isTracked(s.info, trackPos, s.sym.name.s.len):
-      new(result)
-      result[] = s
-      break
+  result = findSymData(graph, trackPos)
 
 proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIndex) =
   let sha = $sha1.secureHashFile(file)
@@ -752,7 +766,8 @@ proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIn
   else:
     myLog fmt "No changes in file {file} compared to last compilation"
 
-proc suggestResult(graph: ModuleGraph, sym: PSym, info: TLineInfo, defaultSection = ideNone) =
+proc suggestResult(graph: ModuleGraph, sym: PSym, info: TLineInfo,
+                   defaultSection = ideNone, endLine: uint16 = 0, endCol = 0) =
   let section = if defaultSection != ideNone:
                   defaultSection
                 elif sym.info.exactEquals(info):
@@ -760,7 +775,8 @@ proc suggestResult(graph: ModuleGraph, sym: PSym, info: TLineInfo, defaultSectio
                 else:
                   ideUse
   let suggest = symToSuggest(graph, sym, isLocal=false, section,
-                             info, 100, PrefixMatch.None, false, 0)
+                             info, 100, PrefixMatch.None, false, 0,
+                             endLine = endLine, endCol = endCol)
   suggestResult(graph.config, suggest)
 
 const
@@ -771,7 +787,75 @@ proc symbolEqual(left, right: PSym): bool =
   # More relaxed symbol comparison
   return left.info.exactEquals(right.info) and left.name == right.name
 
-proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, line, col: int;
+proc findDef(n: PNode, line: uint16, col: int16): PNode =
+  if n.kind in {nkProcDef, nkIteratorDef, nkTemplateDef, nkMethodDef, nkMacroDef}:
+    if n.info.line == line:
+      return n
+  else:
+    for i in 0 ..< safeLen(n):
+      let res = findDef(n[i], line, col)
+      if res != nil: return res
+
+proc findByTLineInfo(trackPos: TLineInfo, infoPairs: seq[SymInfoPair]):
+    ref SymInfoPair =
+  for s in infoPairs:
+    if s.info.exactEquals trackPos:
+      new(result)
+      result[] = s
+      break
+
+proc outlineNode(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: seq[SymInfoPair]): bool =
+  proc checkSymbol(sym: PSym, info: TLineInfo): bool =
+    result = (sym.owner.kind in {skModule, skType} or sym.kind in {skProc, skMethod, skIterator, skTemplate, skType})
+
+  if n.kind == nkSym and n.sym.checkSymbol(n.info):
+    graph.suggestResult(n.sym, n.sym.info, ideOutline, endInfo.line, endInfo.col)
+    return true
+  elif n.kind == nkIdent:
+    let symData = findByTLineInfo(n.info, infoPairs)
+    if symData != nil and symData.sym.checkSymbol(symData.info):
+       let sym = symData.sym
+       graph.suggestResult(sym, sym.info, ideOutline, endInfo.line, endInfo.col)
+       return true
+
+proc handleIdentOrSym(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: seq[SymInfoPair]): bool =
+  for child in n:
+    if child.kind in {nkIdent, nkSym}:
+      if graph.outlineNode(child, endInfo, infoPairs):
+        return true
+    elif child.kind == nkPostfix:
+      if graph.handleIdentOrSym(child, endInfo, infoPairs):
+        return true
+
+proc iterateOutlineNodes(graph: ModuleGraph, n: PNode, infoPairs: seq[SymInfoPair]) =
+  var matched = true
+  if n.kind == nkIdent:
+    let symData = findByTLineInfo(n.info, infoPairs)
+    if symData != nil and symData.sym.kind == skEnumField and symData.info.exactEquals(symData.sym.info):
+       let sym = symData.sym
+       graph.suggestResult(sym, sym.info, ideOutline, n.endInfo.line, n.endInfo.col)
+  elif (n.kind in {nkFuncDef, nkProcDef, nkTypeDef, nkMacroDef, nkTemplateDef, nkConverterDef, nkEnumFieldDef, nkConstDef}):
+    matched = handleIdentOrSym(graph, n, n.endInfo, infoPairs)
+  else:
+    matched = false
+
+  if n.kind != nkFormalParams:
+    for child in n:
+      graph.iterateOutlineNodes(child, infoPairs)
+
+proc calculateExpandRange(n: PNode, info: TLineInfo): TLineInfo =
+  if ((n.kind in {nkFuncDef, nkProcDef, nkIteratorDef, nkTemplateDef, nkMethodDef, nkConverterDef} and
+          n.info.exactEquals(info)) or
+         (n.kind in {nkCall, nkCommand} and n[0].info.exactEquals(info))):
+    result = n.endInfo
+  else:
+    for child in n:
+      result = child.calculateExpandRange(info)
+      if result != unknownLineInfo:
+        return result
+    result = unknownLineInfo
+
+proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, line, col: int; tag: string,
     graph: ModuleGraph) =
   let conf = graph.config
   conf.writelnHook = proc (s: string) = discard
@@ -783,7 +867,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
 
   conf.ideCmd = cmd
 
-  myLog fmt "cmd: {cmd}, file: {file}[{line}:{col}], dirtyFile: {dirtyfile}"
+  myLog fmt "cmd: {cmd}, file: {file}[{line}:{col}], dirtyFile: {dirtyfile}, tag: {tag}"
 
   var fileIndex: FileIndex
 
@@ -811,7 +895,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     graph.unmarkAllDirty()
 
   # these commands require partially compiled project
-  elif cmd in {ideSug, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration} and
+  elif cmd in {ideSug, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
        (graph.needsCompilation(fileIndex) or cmd == ideSug):
     # for ideSug use v2 implementation
     if cmd == ideSug:
@@ -861,16 +945,8 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     # future calls.
     graph.markDirtyIfNeeded(file.string, fileIndex)
   of ideOutline:
-    let
-      module = graph.getModule fileIndex
-      symbols = graph.fileSymbols(fileIndex)
-        .deduplicateSymInfoPair
-        .filterIt(it.sym.info.exactEquals(it.info) and
-                    (it.sym.owner == module or
-                     it.sym.kind in searchableSymKinds))
-
-    for s in symbols:
-      graph.suggestResult(s.sym, s.info, ideOutline)
+    let n = parseFile(fileIndex, graph.cache, graph.config)
+    graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair)
   of ideChk:
     myLog fmt "Reporting errors for {graph.suggestErrors.len} file(s)"
     for sug in graph.suggestErrorsIter:
@@ -933,6 +1009,39 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       else:
         # we are on definition or usage, look for declaration
         graph.suggestResult(first.sym, first.info, ideDeclaration)
+  of ideExpand:
+    var level: int = high(int)
+    let index = skipWhitespace(tag, 0);
+    let trimmed = substr(tag, index)
+    if not (trimmed == "" or trimmed == "all"):
+      discard parseInt(trimmed, level, 0)
+
+    conf.expandPosition = newLineInfo(fileIndex, line, col)
+    conf.expandLevels = level
+    conf.expandProgress = false
+    conf.expandNodeResult = ""
+
+    graph.markDirty fileIndex
+    graph.markClientsDirty fileIndex
+    graph.recompilePartially()
+    var suggest = Suggest()
+    suggest.section = ideExpand
+    suggest.version = 3
+    suggest.line = line
+    suggest.column = col
+    suggest.doc = graph.config.expandNodeResult
+    if suggest.doc != "":
+      let
+        n = parseFile(fileIndex, graph.cache, graph.config)
+        endInfo = n.calculateExpandRange(conf.expandPosition)
+
+      suggest.endLine = endInfo.line
+      suggest.endCol = endInfo.col
+
+    suggestResult(graph.config, suggest)
+
+    graph.markDirty fileIndex
+    graph.markClientsDirty fileIndex
   else:
     myLog fmt "Discarding {cmd}"
 
@@ -1018,9 +1127,9 @@ else:
     if self.loadConfigsAndProcessCmdLine(cache, conf, graph):
       mockCommand(graph)
     if gLogging:
-      log("Search paths:")
+      myLog("Search paths:")
       for it in conf.searchPaths:
-        log(" " & it.string)
+        myLog(" " & it.string)
 
     retval.doStopCompile = proc (): bool = false
     return NimSuggest(graph: retval, idle: 0, cachedMsgs: @[])
