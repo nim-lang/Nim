@@ -19,19 +19,19 @@ func delete*(self: FormData; name: cstring) {.importjs: "#.$1(#)".}
   ##
   ## .. warning:: Deletes *all items* with the same key name.
 
-func getAll*(self: FormData; name: cstring): seq[cstring] {.importjs: "#.$1(#)".}
+func getAll*(self: FormData; name: cstring): seq[cstring] {.importjs: "(#.$1(#) || [])".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/getAll
 
-func hasKey*(self: FormData; name: cstring): bool {.importjs: "#.has(#)".}
+func hasKey*(self: FormData; name: cstring): bool {.importjs: "(#.has(#) || false)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/has
 
-func keys*(self: FormData): seq[cstring] {.importjs: "Array.from(#.$1())".}
+func keys*(self: FormData): seq[cstring] {.importjs: "(Array.from(#.$1()) || [])".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/keys
 
-func values*(self: FormData): seq[cstring] {.importjs: "Array.from(#.$1())".}
+func values*(self: FormData): seq[cstring] {.importjs: "(Array.from(#.$1()) || [])".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/values
 
-func pairs*(self: FormData): seq[tuple[key, val: cstring]] {.importjs: "Array.from(#.entries())".}
+func pairs*(self: FormData): seq[tuple[key, val: cstring]] {.importjs: "(Array.from(#.entries()) || [])".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/entries
 
 func put*(self: FormData; name, value, filename: cstring) {.importjs: "#.set(#, #, #)".}
@@ -40,18 +40,18 @@ func put*(self: FormData; name, value, filename: cstring) {.importjs: "#.set(#, 
 func `[]=`*(self: FormData; name, value: cstring) {.importjs: "#.set(#, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/set
 
-func `[]`*(self: FormData; name: cstring): cstring {.importjs: "#.get(#)".}
+func `[]`*(self: FormData; name: cstring): cstring {.importjs: "(#.get(#) || '')".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/get
 
 func clear*(self: FormData) {.importjs:
   "(() => { const frmdt = #; Array.from(frmdt.keys()).forEach((key) => frmdt.delete(key)) })()".}
   ## Convenience func to delete all items from `FormData`.
 
-func toCstring*(self: FormData): cstring {.importjs: "JSON.stringify(#)".}
+func toCstring*(self: FormData): cstring {.importjs: "(JSON.stringify(#) || '')".}
 
 func `$`*(self: FormData): string = $toCstring(self)
 
-func len*(self: FormData): int {.importjs: "Array.from(#.entries()).length".}
+func len*(self: FormData): int {.importjs: "(Array.from(#.entries()).length || 0)".}
 
 
 runnableExamples("-r:off"):
