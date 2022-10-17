@@ -16,19 +16,19 @@ func delete*(self: Headers; key: cstring) {.importjs: "#.$1(#)".}
   ##
   ## .. warning:: Delete *all* items with `key` from the headers, including duplicated keys.
 
-func hasKey*(self: Headers; key: cstring): bool {.importjs: "#.has(#)".}
+func hasKey*(self: Headers; key: cstring): bool {.importjs: "(#.has(#) || false)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/has
 
-func keys*(self: Headers): seq[cstring] {.importjs: "Array.from(#.$1())".}
+func keys*(self: Headers): seq[cstring] {.importjs: "(Array.from(#.$1()) || [])".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/keys
 
-func values*(self: Headers): seq[cstring] {.importjs: "Array.from(#.$1())".}
+func values*(self: Headers): seq[cstring] {.importjs: "(Array.from(#.$1()) || [])".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/values
 
-func entries*(self: Headers): seq[tuple[key, value: cstring]] {.importjs: "Array.from(#.$1())".}
+func entries*(self: Headers): seq[tuple[key, value: cstring]] {.importjs: "(Array.from(#.$1()) || [])".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/entries
 
-func `[]`*(self: Headers; key: cstring): cstring {.importjs: "#.get(#)".}
+func `[]`*(self: Headers; key: cstring): cstring {.importjs: "(#.get(#) || '')".}
   ## Get *all* items with `key` from the headers, including duplicated values.
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/get
 
@@ -40,12 +40,12 @@ func clear*(self: Headers) {.importjs:
   "(() => { const header = #; Array.from(header.keys()).forEach((key) => header.delete(key)) })()".}
   ## Convenience func to delete all items from `Headers`.
 
-func toCstring*(self: Headers): cstring {.importjs: "JSON.stringify(Array.from(#.entries()))".}
+func toCstring*(self: Headers): cstring {.importjs: "(JSON.stringify(Array.from(#.entries())) || '')".}
   ## Returns a `cstring` representation of `Headers`.
 
 func `$`*(self: Headers): string = $toCstring(self)
 
-func len*(self: Headers): int {.importjs: "Array.from(#.entries()).length".}
+func len*(self: Headers): int {.importjs: "(Array.from(#.entries()).length || 0)".}
 
 
 runnableExamples("-r:off"):
