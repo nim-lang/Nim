@@ -704,9 +704,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           right = src[2].intVal
           realIndex = left + idx
         if idx in 0..(right - left):
-          stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
-        else:
           regs[ra].node = src[0][int realIndex]
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
+
       of nkStrLit..nkTripleStrLit:
         if idx <% src.strVal.len:
           regs[ra].node = newNodeI(nkCharLit, c.debug[pc])
