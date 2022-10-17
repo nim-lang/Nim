@@ -1268,7 +1268,7 @@ proc inheritanceDiff*(a, b: PType): int =
     inc(result)
   result = high(int)
 
-proc commonSuperclass*(a, b: PType): PType =
+proc commonSuperclass*(a, b: PType, skipRoot = false): PType =
   # quick check: are they the same?
   if sameObjectTypes(a, b): return a
 
@@ -1280,6 +1280,8 @@ proc commonSuperclass*(a, b: PType): PType =
   var ancestors = initIntSet()
   while x != nil:
     x = skipTypes(x, skipPtrs)
+    if skipRoot and sfCompilerProc in x.sym.flags:
+      break
     ancestors.incl(x.id)
     x = x[0]
   var y = b

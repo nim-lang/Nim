@@ -1044,7 +1044,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   # start the param matching process. This could be done in `prepareOperand`
   # for example, but unfortunately `prepareOperand` is not called in certain
   # situation when nkDotExpr are rotated to nkDotCalls
-
   if aOrig.kind in {tyAlias, tySink}:
     return typeRel(c, f, lastSon(aOrig), flags)
 
@@ -1338,6 +1337,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if typeRel(c, f[i], a[i], flags) == isNone: return isNone
       result = typeRel(c, f.lastSon, a.lastSon, flags + {trNoCovariance})
       subtypeCheck()
+      if result == isNone and tfCommonType in f.flags:
+        var x = skipTypes(f, {tyGenericInst, tyAlias, tySink})
+        var y = skipTypes(a, {tyGenericInst, tyAlias, tySink})
+        x = x.lastSon.skipTypes({tyGenericInst, tyRef, tyPtr})
+        y = y.lastSon.skipTypes({tyGenericInst, tyRef, tyPtr})
+        if x.kind == tyObject and y.kind == tyObject:
+          let common = commonSuperclass(x, y, true)
+          if common == f.skipTypes({tyRef, tyPtr}):
+            result = isSubtype
       if result <= isIntConv: result = isNone
       elif tfNotNil in f.flags and tfNotNil notin a.flags:
         result = isNilConversion

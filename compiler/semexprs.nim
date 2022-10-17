@@ -662,6 +662,8 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
       #result.add fitNode(c, typ, n[i])
       inc(lastIndex)
     addSonSkipIntLit(result.typ, typ, c.idgen)
+    if typ.skipTypes({tyPtr, tyRef}).kind in {tyGenericInst, tyObject}:
+      typ.flags.incl tfCommonType
     for i in 0..<result.len:
       result[i] = fitNode(c, typ, result[i], result[i].info)
   result.typ[0] = makeRangeType(c, toInt64(firstIndex), toInt64(lastIndex), n.info,

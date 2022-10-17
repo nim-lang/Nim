@@ -583,6 +583,7 @@ type
     tfIsConstructor
     tfEffectSystemWorkaround
     tfIsOutParam
+    tfCommonType
 
   TTypeFlags* = set[TTypeFlag]
 
