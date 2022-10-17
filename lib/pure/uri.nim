@@ -14,6 +14,8 @@
 ## as a locator, a name, or both. The term "Uniform Resource Locator"
 ## (URL) refers to the subset of URIs.
 ##
+## .. warning:: Maximum length of HTTP URLs https://stackoverflow.com/a/417184
+##
 ## # Basic usage
 
 
