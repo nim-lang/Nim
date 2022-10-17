@@ -433,7 +433,7 @@ proc gen(c: var Con; n: PNode) =
     else:
       genCall(c, n)
   of nkCharLit..nkNilLit: discard
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     gen(c, n[1])
 
     if n[0].kind in PathKinds0:
