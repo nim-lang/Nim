@@ -8,8 +8,13 @@ import strutils, pathnorm
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
 
-const weirdTarget = defined(nimscript) or defined(js)
-
+type
+  ReadDirEffect* = object of ReadIOEffect   ## Effect that denotes a read
+                                            ## operation from the directory
+                                            ## structure.
+  WriteDirEffect* = object of WriteIOEffect ## Effect that denotes a write
+                                            ## operation to
+                                            ## the directory structure.
 
 proc normalizePathEnd(path: var string, trailingSep = false) =
   ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
@@ -100,12 +105,51 @@ func joinPath(head, tail: string): string =
       else:
         result = head & DirSep & tail
 
+func isAbsoluteImpl(path: string): bool {.raises: [].} =
+  ## Checks whether a given `path` is absolute.
+  ##
+  ## On Windows, network paths are considered absolute too.
+  runnableExamples:
+    assert not "".isAbsolute
+    assert not ".".isAbsolute
+    when defined(posix):
+      assert "/".isAbsolute
+      assert not "a/".isAbsolute
+      assert "/a/".isAbsolute
+
+  if len(path) == 0: return false
+
+  when doslikeFileSystem:
+    var len = len(path)
+    result = (path[0] in {'/', '\\'}) or
+              (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
+  elif defined(macos):
+    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
+    result = path[0] != ':'
+  elif defined(RISCOS):
+    result = path[0] == '$'
+  elif defined(posix) or defined(js):
+    # `or defined(js)` wouldn't be needed pending https://github.com/nim-lang/Nim/issues/13469
+    # This works around the problem for posix, but Windows is still broken with nim js -d:nodejs
+    result = path[0] == '/'
+  else:
+    doAssert false # if ever hits here, adapt as needed
+
 when doslikeFileSystem:
   import std/private/ntpath
 
 type
   Path* = distinct string
 
+func len*(x: Path): int =
+  len(string(x))
+
+
+func isAbsolute*(path: Path): bool {.inline, raises: [].} =
+  result = isAbsoluteImpl(path.string)
+
+func joinPath*(head, tail: Path): Path {.inline.} =
+  result = Path(joinPath(head.string, tail.string))
 
 func joinPath*(parts: varargs[Path]): Path =
   var estimatedLen = 0
@@ -115,6 +159,9 @@ func joinPath*(parts: varargs[Path]): Path =
   for i in 0..high(parts):
     joinPathImpl(res, state, parts[i].string)
   result = Path(res)
+
+func `/`*(head, tail: Path): Path {.inline.} =
+  result = joinPath(head, tail)
 
 func splitPathImpl(path: string): tuple[head, tail: Path] =
   ## Splits a directory into `(head, tail)` tuple, so that
@@ -150,9 +197,6 @@ func splitPathImpl(path: string): tuple[head, tail: Path] =
       break
   if sepPos >= 0:
     result.head = Path(substr(path, 0,
-      when (NimMajor, NimMinor) <= (1, 0):
-        sepPos-1
-      else:
         if likely(sepPos >= 1): sepPos-1 else: 0
     ))
     result.tail = Path(substr(path, sepPos+1))
@@ -166,3 +210,24 @@ func splitPathImpl(path: string): tuple[head, tail: Path] =
 
 func splitPath*(path: Path): tuple[head, tail: Path] {.inline.} =
   splitPathImpl(path.string)
+
+func extractFilename*(path: Path): Path =
+  ## Extracts the filename of a given `path`.
+  ##
+  ## This is the same as ``name & ext`` from `splitFile(path) proc`_.
+  ##
+  ## See also:
+  ## * `searchExtPos proc`_
+  ## * `splitFile proc`_
+  ## * `lastPathPart proc`_
+  ## * `changeFileExt proc`_
+  ## * `addFileExt proc`_
+  runnableExamples:
+    assert extractFilename("foo/bar/") == ""
+    assert extractFilename("foo/bar") == "bar"
+    assert extractFilename("foo/bar.baz") == "bar.baz"
+
+  if path.len == 0 or path.string[path.len-1] in {DirSep, AltSep}:
+    result = Path("")
+  else:
+    result = splitPath(path).tail
