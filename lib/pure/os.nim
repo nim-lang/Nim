@@ -95,7 +95,8 @@ type
 
   OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
-include "includes/osseps"
+import std/private/osseps
+export osseps
 
 proc absolutePathInternal(path: string): string {.gcsafe.}
 
