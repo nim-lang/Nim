@@ -685,8 +685,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           stackTrace(c, tos, pc, formatErrorIndexBound(ind, collection.safeLen-1))
       else: # add `rc.intval` to make `nkOpenArray(collection, left, right)
         regs[rb].node.addSonNilAllowed newIntNode(nkIntLit, BiggestInt ind)
-        if ind > collection.safeLen-1:
-          stackTrace(c, tos, pc, formatErrorIndexBound(ind, collection.safeLen-1))
+        let safeLen =
+          if collection[0].kind == nkStrLit:
+            collection[0].strVal.len
+          else:
+            collection[0].safeLen - 1
+        if ind > safeLen:
+          stackTrace(c, tos, pc, formatErrorIndexBound(ind, safeLen))
 
       regs[ra].node = regs[rb].node
 
@@ -704,7 +709,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           right = src[2].intVal
           realIndex = left + idx
         if idx in 0..(right - left):
-          regs[ra].node = src[0][int realIndex]
+          case src[0].kind
+          of nkStrLit:
+            let intLit = newNode(nkIntLit)
+            intLit.intVal = ord src[0].strVal[int realIndex]
+            regs[ra].node = intLit
+          else:
+            regs[ra].node = src[0][int realIndex]
         else:
           stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
 
@@ -732,7 +743,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           right = src[2].intVal
           realIndex = left + idx
         if idx in 0..(right - left):
-          takeAddress regs[ra], src.sons[0].sons[realIndex]
+          case src[0].kind
+          of nkStrLit:
+            let typ = newType(tyPtr, nextTypeId c.idgen, c.module.owner)
+            typ.add getSysType(c.graph, c.debug[pc], tyChar)
+            var node = newNodeIT(nkIntLit, c.debug[pc], typ) # xxx nkPtrLit
+            node.intVal = cast[int](src[0].strVal[realIndex].addr)
+            node.flags.incl nfIsPtr
+            regs[ra] = TFullReg(kind: rkNode, node: node)
+          of nkBracket:
+            takeAddress regs[ra], src.sons[0].sons[realIndex]
+          else:
+            assert false, "InternalError: Openarray should only have nkStrLit or nkBracket"
         else:
           stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
       else:
@@ -756,7 +778,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let idx = regs[rc].intVal.int
       let s = regs[rb].node.strVal.addr # or `byaddr`
       if idx <% s[].len:
-         # `makePtrType` not accessible from vm.nim
+        # `makePtrType` not accessible from vm.nim
         let typ = newType(tyPtr, nextTypeId c.idgen, c.module.owner)
         typ.add getSysType(c.graph, c.debug[pc], tyChar)
         let node = newNodeIT(nkIntLit, c.debug[pc], typ) # xxx nkPtrLit
