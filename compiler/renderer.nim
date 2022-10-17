@@ -518,7 +518,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkOfInherit: result = lsub(g, n[0]) + len("of_")
   of nkProcTy: result = lsons(g, n) + len("proc_")
   of nkIteratorTy: result = lsons(g, n) + len("iterator_")
-  of nkSharedTy: result = lsons(g, n) + len("shared_")
+  of nkSinkAsgn: result = lsons(g, n) + len("`=sink`(, )")
   of nkEnumTy:
     if n.len > 0:
       result = lsub(g, n[0]) + lcomma(g, n, 1) + len("enum_")
@@ -1170,6 +1170,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     put(g, tkSpaces, Space)
     putWithSpace(g, tkEquals, "=")
     gsub(g, n, 1)
+  of nkSinkAsgn:
+    put(g, tkSymbol, "`=sink`")
+    put(g, tkParLe, "(")
+    gcomma(g, n)
+    put(g, tkParRi, ")")
   of nkChckRangeF:
     put(g, tkSymbol, "chckRangeF")
     put(g, tkParLe, "(")
