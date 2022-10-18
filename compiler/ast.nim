@@ -229,7 +229,6 @@ type
     nkReplayAction        # for .rod file support: A replay action
     nkNilRodNode          # for .rod file support: a 'nil' PNode
 
-
   TNodeKinds* = set[TNodeKind]
 
 type

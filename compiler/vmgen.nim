@@ -1057,10 +1057,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mSlice:
     var
       d = c.genx(n[1])
-      left = c.genx(n[2])
-      right = c.genx(n[3])
+      left = c.genIndex(n[2], n[1].typ)
+      right = c.genIndex(n[3], n[1].typ)
     if dest < 0: dest = c.getTemp(n.typ)
-    c.gABx(n, opcNodeToReg, dest, d)
+    c.gABC(n, opcNodeToReg, dest, d)
     c.gABC(n, opcSlice, dest, left, right)
     c.freeTemp(left)
     c.freeTemp(right)
@@ -1191,7 +1191,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     var d = c.genx(n[1])
     # XXX use ldNullOpcode() here?
     c.gABx(n, opcLdNull, d, c.genType(n[1].typ))
-    c.gABx(n, opcNodeToReg, d, d)
+    c.gABC(n, opcNodeToReg, d, d)
     c.genAsgnPatch(n[1], d)
   of mDefault, mZeroDefault:
     if dest < 0: dest = c.getTemp(n.typ)

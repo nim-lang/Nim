@@ -27,5 +27,12 @@ static:
   assert str == "Heaaa"
   assert str.toOpenArray(0, 4) == "Heaaa"
 
+  var arr: array[3..4, int] = [1, 2]
+  assert arr.toOpenArray(3, 4) == [1, 2]
+  assert arr.toOpenArray(3, 4).len == 2
+  assert arr.toOpenArray(3, 3).high == 0
+
+  assert arr.toOpenArray(3, 4).toOpenArray(0, 0) == [1]
+
 
 
