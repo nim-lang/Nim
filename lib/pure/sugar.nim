@@ -11,7 +11,7 @@
 ## macro system.
 
 import std/private/since
-import std/macros
+import macros
 
 proc checkPragma(ex, prag: var NimNode) =
   since (1, 3):
@@ -54,6 +54,8 @@ proc createProcType(p, b: NimNode): NimNode =
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures. It also supports pragmas.
+  ##
+  ## .. warning:: Semicolons can not be used to separate procedure arguments.
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
 
@@ -119,9 +121,9 @@ macro `=>`*(p, b: untyped): untyped =
       else:
         error("Incorrect procedure parameter.", c)
       params.add(identDefs)
-  of nnkIdent:
+  of nnkIdent, nnkOpenSymChoice, nnkClosedSymChoice, nnkSym:
     var identDefs = newNimNode(nnkIdentDefs)
-    identDefs.add(p)
+    identDefs.add(ident $p)
     identDefs.add(ident"auto")
     identDefs.add(newEmptyNode())
     params.add(identDefs)
@@ -133,6 +135,8 @@ macro `=>`*(p, b: untyped): untyped =
 
 macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types. It also supports pragmas.
+  ##
+  ## .. warning:: Semicolons can not be used to separate procedure arguments.
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
     # is the same as:
@@ -186,7 +190,7 @@ macro dumpToString*(x: untyped): string =
     assert dumpToString(a + x) == "a + x: 1 + x = 11"
     template square(x): untyped = x * x
     assert dumpToString(square(x)) == "square(x): x * x = 100"
-    assert not compiles dumpToString(1 + nonexistant)
+    assert not compiles dumpToString(1 + nonexistent)
     import std/strutils
     assert "failedAssertImpl" in dumpToString(assert true) # example with a statement
   result = newCall(bindSym"dumpToStringImpl")
@@ -387,6 +391,10 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
 
 macro collect*(body: untyped): untyped {.since: (1, 5).} =
   ## Same as `collect` but without an `init` parameter.
+  ##
+  ## **See also:**
+  ## * `sequtils.toSeq proc<sequtils.html#toSeq.t%2Cuntyped>`_
+  ## * `sequtils.mapIt template<sequtils.html#mapIt.t%2Ctyped%2Cuntyped>`_
   runnableExamples:
     import std/[sets, tables]
     let data = @["bird", "word"]
@@ -406,11 +414,5 @@ macro collect*(body: untyped): untyped {.since: (1, 5).} =
     let m = collect:
       for i, d in data.pairs: {i: d}
     assert m == {0: "bird", 1: "word"}.toTable
-
-    # avoid `collect` when `sequtils.toSeq` suffices:
-    assert collect(for i in 1..3: i*i) == @[1, 4, 9] # ok in this case
-    assert collect(for i in 1..3: i) == @[1, 2, 3] # overkill in this case
-    from std/sequtils import toSeq
-    assert toSeq(1..3) == @[1, 2, 3] # simpler
 
   result = collectImpl(nil, body)

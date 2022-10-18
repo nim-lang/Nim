@@ -1,6 +1,6 @@
 # Include file that implements 'osErrorMsg' and friends. Do not import it!
 
-when not declared(os) and not declared(ospaths):
+when not declared(os):
   {.error: "This is an include file for os.nim!".}
 
 when not defined(nimscript):
@@ -11,6 +11,8 @@ when not defined(nimscript):
 
   when defined(windows):
     import winlean
+    when useWinUnicode and defined(nimPreviewSlimSystem):
+      import std/widestrs
 
 proc `==`*(err1, err2: OSErrorCode): bool {.borrow.}
 proc `$`*(err: OSErrorCode): string {.borrow.}
@@ -18,7 +20,7 @@ proc `$`*(err: OSErrorCode): string {.borrow.}
 proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## Converts an OS error code into a human readable string.
   ##
-  ## The error code can be retrieved using the `osLastError proc <#osLastError>`_.
+  ## The error code can be retrieved using the `osLastError proc`_.
   ##
   ## If conversion fails, or `errorCode` is `0` then `""` will be
   ## returned.
@@ -28,8 +30,8 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## message.
   ##
   ## See also:
-  ## * `raiseOSError proc <#raiseOSError,OSErrorCode,string>`_
-  ## * `osLastError proc <#osLastError>`_
+  ## * `raiseOSError proc`_
+  ## * `osLastError proc`_
   runnableExamples:
     when defined(linux):
       assert osErrorMsg(OSErrorCode(0)) == ""
@@ -63,25 +65,25 @@ proc newOSError*(
   ## Creates a new `OSError exception <system.html#OSError>`_.
   ##
   ## The `errorCode` will determine the
-  ## message, `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_ will be used
+  ## message, `osErrorMsg proc`_ will be used
   ## to get this message.
   ##
-  ## The error code can be retrieved using the `osLastError proc
-  ## <#osLastError>`_.
+  ## The error code can be retrieved using the `osLastError proc`_.
   ##
   ## If the error code is `0` or an error message could not be retrieved,
   ## the message `unknown OS error` will be used.
   ##
   ## See also:
-  ## * `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_
-  ## * `osLastError proc <#osLastError>`_
+  ## * `osErrorMsg proc`_
+  ## * `osLastError proc`_
   var e: owned(ref OSError); new(e)
   e.errorCode = errorCode.int32
   e.msg = osErrorMsg(errorCode)
   if additionalInfo.len > 0:
     if e.msg.len > 0 and e.msg[^1] != '\n': e.msg.add '\n'
-    e.msg.add  "Additional info: "
-    e.msg.addQuoted additionalInfo
+    e.msg.add "Additional info: "
+    e.msg.add additionalInfo
+      # don't add trailing `.` etc, which negatively impacts "jump to file" in IDEs.
   if e.msg == "":
     e.msg = "unknown OS error"
   return e
@@ -89,7 +91,7 @@ proc newOSError*(
 proc raiseOSError*(errorCode: OSErrorCode, additionalInfo = "") {.noinline.} =
   ## Raises an `OSError exception <system.html#OSError>`_.
   ##
-  ## Read the description of the `newOSError proc <#newOSError,OSErrorCode,string>`_ to learn
+  ## Read the description of the `newOSError proc`_ to learn
   ## how the exception object is created.
   raise newOSError(errorCode, additionalInfo)
 
@@ -108,8 +110,8 @@ proc osLastError*(): OSErrorCode {.sideEffect.} =
   ##   immediately after an OS call fails. On POSIX systems this is not a problem.
   ##
   ## See also:
-  ## * `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_
-  ## * `raiseOSError proc <#raiseOSError,OSErrorCode,string>`_
+  ## * `osErrorMsg proc`_
+  ## * `raiseOSError proc`_
   when defined(nimscript):
     discard
   elif defined(windows):

@@ -121,7 +121,10 @@
 #   yield 2
 #   if :unrollFinally: # This node is created by `newEndFinallyNode`
 #     if :curExc.isNil:
-#       return :tmpResult
+#       if nearestFinally == 0:
+#         return :tmpResult
+#       else:
+#         :state = nearestFinally # bubble up
 #     else:
 #       closureIterSetupExc(nil)
 #       raise
@@ -132,6 +135,9 @@ import
   ast, msgs, idents,
   renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos,
   tables, options
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   Ctx = object
@@ -414,8 +420,11 @@ proc exprToStmtList(n: PNode): tuple[s, res: PNode] =
 
 
 proc newEnvVarAsgn(ctx: Ctx, s: PSym, v: PNode): PNode =
-  result = newTree(nkFastAsgn, ctx.newEnvVarAccess(s), v)
-  result.info = v.info
+  if isEmptyType(v.typ):
+    result = v
+  else:
+    result = newTree(nkFastAsgn, ctx.newEnvVarAccess(s), v)
+    result.info = v.info
 
 proc addExprAssgn(ctx: Ctx, output, input: PNode, sym: PSym) =
   if input.kind == nkStmtListExpr:
@@ -427,8 +436,7 @@ proc addExprAssgn(ctx: Ctx, output, input: PNode, sym: PSym) =
 
 proc convertExprBodyToAsgn(ctx: Ctx, exprBody: PNode, res: PSym): PNode =
   result = newNodeI(nkStmtList, exprBody.info)
-  if exprBody.typ != nil:
-    ctx.addExprAssgn(result, exprBody, res)
+  ctx.addExprAssgn(result, exprBody, res)
 
 proc newNotCall(g: ModuleGraph; e: PNode): PNode =
   result = newTree(nkCall, newSymNode(g.getSysMagic(e.info, "not", mNot), e.info), e)
@@ -606,6 +614,12 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
             internalError(ctx.g.config, "lowerStmtListExpr(nkCaseStmt): " & $branch.kind)
         result.add(n)
         result.add(ctx.newEnvVarAccess(tmp))
+      elif n[0].kind == nkStmtListExpr:
+        result = newNodeI(nkStmtList, n.info)
+        let (st, ex) = exprToStmtList(n[0])
+        result.add(st)
+        n[0] = ex
+        result.add(n)
 
   of nkCallKinds, nkChckRange, nkChckRangeF, nkChckRange64:
     var ns = false
@@ -704,7 +718,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[^1] = ex
       result.add(n)
 
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     var ns = false
     for i in 0..<n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
@@ -796,7 +810,10 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   # Generate the following code:
   #   if :unrollFinally:
   #       if :curExc.isNil:
-  #         return :tmpResult
+  #         if nearestFinally == 0:
+  #           return :tmpResult
+  #         else:
+  #           :state = nearestFinally # bubble up
   #       else:
   #         raise
   let curExc = ctx.newCurExcAccess()
@@ -805,11 +822,20 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   let cmp = newTree(nkCall, newSymNode(ctx.g.getSysMagic(info, "==", mEqRef), info), curExc, nilnode)
   cmp.typ = ctx.g.getSysType(info, tyBool)
 
-  let asgn = newTree(nkFastAsgn,
-    newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), info),
-    ctx.newTmpResultAccess())
+  let retStmt =
+    if ctx.nearestFinally == 0:
+      # last finally, we can return
+      let retValue = if ctx.fn.typ[0].isNil:
+                   ctx.g.emptyNode
+                 else:
+                   newTree(nkFastAsgn,
+                           newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), info),
+                           ctx.newTmpResultAccess())
+      newTree(nkReturnStmt, retValue)
+    else:
+      # bubble up to next finally
+      newTree(nkGotoState, ctx.g.newIntLit(info, ctx.nearestFinally))
 
-  let retStmt = newTree(nkReturnStmt, asgn)
   let branch = newTree(nkElifBranch, cmp, retStmt)
 
   let nullifyExc = newTree(nkCall, newSymNode(ctx.g.getCompilerProc("closureIterSetupExc")), nilnode)
@@ -842,7 +868,7 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
     if n[0].kind != nkEmpty:
       let asgnTmpResult = newNodeI(nkAsgn, n.info)
       asgnTmpResult.add(ctx.newTmpResultAccess())
-      let x = if n[0].kind in {nkAsgn, nkFastAsgn}: n[0][1] else: n[0]
+      let x = if n[0].kind in {nkAsgn, nkFastAsgn, nkSinkAsgn}: n[0][1] else: n[0]
       asgnTmpResult.add(x)
       result.add(asgnTmpResult)
 
@@ -853,6 +879,13 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
 
   of nkSkip:
     discard
+  of nkTryStmt:
+    if n.hasYields:
+      # the inner try will handle these transformations
+      discard
+    else:
+      for i in 0..<n.len:
+        n[i] = ctx.transformReturnsInTry(n[i])
   else:
     for i in 0..<n.len:
       n[i] = ctx.transformReturnsInTry(n[i])
@@ -1343,13 +1376,15 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
   case n.kind
   of nkTryStmt:
     let f = n.lastSon
+    var didAddSomething = false
     if f.kind == nkFinally:
       c.finallys.add f.lastSon
+      didAddSomething = true
 
     for i in 0 ..< n.len:
       result[i] = preprocess(c, n[i])
 
-    if f.kind == nkFinally:
+    if didAddSomething:
       discard c.finallys.pop()
 
   of nkWhileStmt, nkBlockStmt:
@@ -1376,7 +1411,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
         result = newNodeI(nkStmtList, n.info)
         for i in countdown(c.finallys.high, fin):
           var vars = FreshVarsContext(tab: initTable[int, PSym](), config: c.config, info: n.info, idgen: c.idgen)
-          result.add freshVars(preprocess(c, c.finallys[i]), vars)
+          result.add freshVars(copyTree(c.finallys[i]), vars)
           c.idgen = vars.idgen
         result.add n
   of nkSkip: discard

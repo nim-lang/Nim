@@ -10,8 +10,9 @@
 ## An implementation of a `deque`:idx: (double-ended queue).
 ## The underlying implementation uses a `seq`.
 ##
-## Note that none of the procs that get an individual value from the deque should be used
-## on an empty deque.
+## .. note:: None of the procs that get an individual value from the deque should be used
+##   on an empty deque.
+##
 ## If compiled with the `boundChecks` option, those procs will raise an `IndexDefect`
 ## on such access. This should not be relied upon, as `-d:danger` or `--checks:off` will
 ## disable those checks and then the procs may return garbage or crash the program.
@@ -86,20 +87,6 @@ proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ## * `toDeque proc <#toDeque,openArray[T]>`_
   result.initImpl(initialSize)
 
-proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
-  ## Creates a new deque that contains the elements of `x` (in the same order).
-  ##
-  ## **See also:**
-  ## * `initDeque proc <#initDeque,int>`_
-  runnableExamples:
-    let a = toDeque([7, 8, 9])
-    assert len(a) == 3
-    assert $a == "[7, 8, 9]"
-
-  result.initImpl(x.len)
-  for item in items(x):
-    result.addLast(item)
-
 proc len*[T](deq: Deque[T]): int {.inline.} =
   ## Returns the number of elements of `deq`.
   result = deq.count
@@ -120,7 +107,7 @@ template xBoundsCheck(deq, i) =
       raise newException(IndexDefect,
                          "Out of bounds: " & $i & " < 0")
 
-proc `[]`*[T](deq: Deque[T], i: Natural): T {.inline.} =
+proc `[]`*[T](deq: Deque[T], i: Natural): lent T {.inline.} =
   ## Accesses the `i`-th element of `deq`.
   runnableExamples:
     let a = [10, 20, 30, 40, 50].toDeque
@@ -142,7 +129,7 @@ proc `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
   xBoundsCheck(deq, i)
   return deq.data[(deq.head + i) and deq.mask]
 
-proc `[]=`*[T](deq: var Deque[T], i: Natural, val: T) {.inline.} =
+proc `[]=`*[T](deq: var Deque[T], i: Natural, val: sink T) {.inline.} =
   ## Sets the `i`-th element of `deq` to `val`.
   runnableExamples:
     var a = [10, 20, 30, 40, 50].toDeque
@@ -154,7 +141,7 @@ proc `[]=`*[T](deq: var Deque[T], i: Natural, val: T) {.inline.} =
   xBoundsCheck(deq, i)
   deq.data[(deq.head + i) and deq.mask] = val
 
-proc `[]`*[T](deq: Deque[T], i: BackwardsIndex): T {.inline.} =
+proc `[]`*[T](deq: Deque[T], i: BackwardsIndex): lent T {.inline.} =
   ## Accesses the backwards indexed `i`-th element.
   ##
   ## `deq[^1]` is the last element.
@@ -180,7 +167,7 @@ proc `[]`*[T](deq: var Deque[T], i: BackwardsIndex): var T {.inline.} =
   xBoundsCheck(deq, deq.len - int(i))
   return deq[deq.len - int(i)]
 
-proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: T) {.inline.} =
+proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: sink T) {.inline.} =
   ## Sets the backwards indexed `i`-th element of `deq` to `x`.
   ##
   ## `deq[^1]` is the last element.
@@ -194,11 +181,11 @@ proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: T) {.inline.} =
   xBoundsCheck(deq, deq.len - int(i))
   deq[deq.len - int(i)] = x
 
-iterator items*[T](deq: Deque[T]): T =
+iterator items*[T](deq: Deque[T]): lent T =
   ## Yields every element of `deq`.
   ##
   ## **See also:**
-  ## * `mitems iterator <#mitems,Deque[T]>`_
+  ## * `mitems iterator <#mitems.i,Deque[T]>`_
   runnableExamples:
     from std/sequtils import toSeq
 
@@ -214,7 +201,7 @@ iterator mitems*[T](deq: var Deque[T]): var T =
   ## Yields every element of `deq`, which can be modified.
   ##
   ## **See also:**
-  ## * `items iterator <#items,Deque[T]>`_
+  ## * `items iterator <#items.i,Deque[T]>`_
   runnableExamples:
     var a = [10, 20, 30, 40, 50].toDeque
     assert $a == "[10, 20, 30, 40, 50]"
@@ -262,7 +249,7 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
     var n = newSeq[T](cap * 2)
     var i = 0
     for x in mitems(deq):
-      when nimVM: n[i] = x # workaround for VM bug
+      when nimvm: n[i] = x # workaround for VM bug
       else: n[i] = move(x)
       inc i
     deq.data = move(n)
@@ -270,11 +257,11 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
     deq.tail = deq.count
     deq.head = 0
 
-proc addFirst*[T](deq: var Deque[T], item: T) =
+proc addFirst*[T](deq: var Deque[T], item: sink T) =
   ## Adds an `item` to the beginning of `deq`.
   ##
   ## **See also:**
-  ## * `addLast proc <#addLast,Deque[T],T>`_
+  ## * `addLast proc <#addLast,Deque[T],sinkT>`_
   runnableExamples:
     var a = initDeque[int]()
     for i in 1 .. 5:
@@ -286,11 +273,11 @@ proc addFirst*[T](deq: var Deque[T], item: T) =
   deq.head = (deq.head - 1) and deq.mask
   deq.data[deq.head] = item
 
-proc addLast*[T](deq: var Deque[T], item: T) =
+proc addLast*[T](deq: var Deque[T], item: sink T) =
   ## Adds an `item` to the end of `deq`.
   ##
   ## **See also:**
-  ## * `addFirst proc <#addFirst,Deque[T],T>`_
+  ## * `addFirst proc <#addFirst,Deque[T],sinkT>`_
   runnableExamples:
     var a = initDeque[int]()
     for i in 1 .. 5:
@@ -302,7 +289,21 @@ proc addLast*[T](deq: var Deque[T], item: T) =
   deq.data[deq.tail] = item
   deq.tail = (deq.tail + 1) and deq.mask
 
-proc peekFirst*[T](deq: Deque[T]): T {.inline.} =
+proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
+  ## Creates a new deque that contains the elements of `x` (in the same order).
+  ##
+  ## **See also:**
+  ## * `initDeque proc <#initDeque,int>`_
+  runnableExamples:
+    let a = toDeque([7, 8, 9])
+    assert len(a) == 3
+    assert $a == "[7, 8, 9]"
+
+  result.initImpl(x.len)
+  for item in items(x):
+    result.addLast(item)
+
+proc peekFirst*[T](deq: Deque[T]): lent T {.inline.} =
   ## Returns the first element of `deq`, but does not remove it from the deque.
   ##
   ## **See also:**
@@ -317,7 +318,7 @@ proc peekFirst*[T](deq: Deque[T]): T {.inline.} =
   emptyCheck(deq)
   result = deq.data[deq.head]
 
-proc peekLast*[T](deq: Deque[T]): T {.inline.} =
+proc peekLast*[T](deq: Deque[T]): lent T {.inline.} =
   ## Returns the last element of `deq`, but does not remove it from the deque.
   ##
   ## **See also:**
@@ -379,8 +380,7 @@ proc popFirst*[T](deq: var Deque[T]): T {.inline, discardable.} =
 
   emptyCheck(deq)
   dec deq.count
-  result = deq.data[deq.head]
-  destroy(deq.data[deq.head])
+  result = move deq.data[deq.head]
   deq.head = (deq.head + 1) and deq.mask
 
 proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
@@ -398,8 +398,7 @@ proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
   emptyCheck(deq)
   dec deq.count
   deq.tail = (deq.tail - 1) and deq.mask
-  result = deq.data[deq.tail]
-  destroy(deq.data[deq.tail])
+  result = move deq.data[deq.tail]
 
 proc clear*[T](deq: var Deque[T]) {.inline.} =
   ## Resets the deque so that it is empty.

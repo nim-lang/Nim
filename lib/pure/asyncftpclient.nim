@@ -21,13 +21,14 @@
 ## In order to begin any sort of transfer of files you must first
 ## connect to an FTP server. You can do so with the `connect` procedure.
 ##
-## .. code-block::nim
-##    import std/[asyncdispatch, asyncftpclient]
-##    proc main() {.async.} =
-##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
-##      await ftp.connect()
-##      echo("Connected")
-##    waitFor(main())
+##   ```Nim
+##   import std/[asyncdispatch, asyncftpclient]
+##   proc main() {.async.} =
+##     var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
+##     await ftp.connect()
+##     echo("Connected")
+##   waitFor(main())
+##   ```
 ##
 ## A new `main` async procedure must be declared to allow the use of the
 ## `await` keyword. The connection will complete asynchronously and the
@@ -41,16 +42,17 @@
 ## working directory before you do so with the `pwd` procedure, you can also
 ## instead specify an absolute path.
 ##
-## .. code-block::nim
-##    import std/[asyncdispatch, asyncftpclient]
-##    proc main() {.async.} =
-##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
-##      await ftp.connect()
-##      let currentDir = await ftp.pwd()
-##      assert currentDir == "/home/user/"
-##      await ftp.store("file.txt", "file.txt")
-##      echo("File finished uploading")
-##    waitFor(main())
+##   ```Nim
+##   import std/[asyncdispatch, asyncftpclient]
+##   proc main() {.async.} =
+##     var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
+##     await ftp.connect()
+##     let currentDir = await ftp.pwd()
+##     assert currentDir == "/home/user/"
+##     await ftp.store("file.txt", "file.txt")
+##     echo("File finished uploading")
+##   waitFor(main())
+##   ```
 ##
 ## Checking the progress of a file transfer
 ## ========================================
@@ -62,24 +64,38 @@
 ## Procs that take an `onProgressChanged` callback will call this every
 ## `progressInterval` milliseconds.
 ##
-## .. code-block::nim
-##    import std/[asyncdispatch, asyncftpclient]
+##   ```Nim
+##   import std/[asyncdispatch, asyncftpclient]
 ##
-##    proc onProgressChanged(total, progress: BiggestInt,
-##                            speed: float) {.async.} =
-##      echo("Uploaded ", progress, " of ", total, " bytes")
-##      echo("Current speed: ", speed, " kb/s")
+##   proc onProgressChanged(total, progress: BiggestInt,
+##                           speed: float) {.async.} =
+##     echo("Uploaded ", progress, " of ", total, " bytes")
+##     echo("Current speed: ", speed, " kb/s")
 ##
-##    proc main() {.async.} =
-##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test", progressInterval = 500)
-##      await ftp.connect()
-##      await ftp.store("file.txt", "/home/user/file.txt", onProgressChanged)
-##      echo("File finished uploading")
-##    waitFor(main())
+##   proc main() {.async.} =
+##     var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test", progressInterval = 500)
+##     await ftp.connect()
+##     await ftp.store("file.txt", "/home/user/file.txt", onProgressChanged)
+##     echo("File finished uploading")
+##   waitFor(main())
+##   ```
 
 
 import asyncdispatch, asyncnet, nativesockets, strutils, parseutils, os, times
-from net import BufferSize
+from net import BufferSize, SslContext
+
+when defined(ssl):
+  from net import SslHandshakeType, newContext, SslCVerifyMode
+  var defaultSslContext {.threadvar.}: SslContext
+
+  proc getSSLContext(): SslContext =
+    if defaultSSLContext == nil:
+      defaultSSLContext = newContext(verifyMode = CVerifyPeer)
+    result = defaultSSLContext
+
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   AsyncFtpClient* = ref object
@@ -92,6 +108,9 @@ type
     jobInProgress*: bool
     job*: FtpJob
     dsockConnected*: bool
+    useTls: bool
+    when defined(ssl):
+      sslContext: SslContext
 
   FtpJobType* = enum
     JRetrText, JRetr, JStore
@@ -176,8 +195,19 @@ proc pasv(ftp: AsyncFtpClient) {.async.} =
   var ip = nums[0 .. ^3]
   var port = nums[^2 .. ^1]
   var properPort = port[0].parseInt()*256+port[1].parseInt()
-  await ftp.dsock.connect(ip.join("."), Port(properPort))
+  let address = ip.join(".")
+  await ftp.dsock.connect(address, Port(properPort))
   ftp.dsockConnected = true
+
+  if ftp.useTls:
+    when defined(ssl):
+      try:
+        ftp.sslContext.wrapConnectedSocket(ftp.dsock, handshakeAsClient, address)
+      except:
+        ftp.dsock.close()
+        raise getCurrentException()
+    else:
+      doAssert false, "TLS support is not available. Cannot connect over TLS. Compile with -d:ssl to enable."
 
 proc normalizePathSep(path: string): string =
   return replace(path, '\\', '/')
@@ -195,11 +225,27 @@ proc connect*(ftp: AsyncFtpClient) {.async.} =
   # Handle 220 messages from the server
   assertReply(reply, "220")
 
+  if ftp.useTls:
+    when defined(ssl):
+      assertReply(await(ftp.send("AUTH TLS")), "234")
+      try:
+        ftp.sslContext.wrapConnectedSocket(ftp.csock, handshakeAsClient, ftp.address)
+      except:
+        ftp.csock.close()
+        raise getCurrentException()
+    else:
+      doAssert false, "TLS support is not available. Cannot connect over TLS. Compile with -d:ssl to enable."
+
   if ftp.user != "":
     assertReply(await(ftp.send("USER " & ftp.user)), "230", "331")
 
   if ftp.pass != "":
     assertReply(await(ftp.send("PASS " & ftp.pass)), "230")
+
+  if ftp.useTls:
+    assertReply(await(ftp.send("PBSZ 0")), "200")
+    assertReply(await(ftp.send("PROT P")), "200")
+    assertReply(await(ftp.send("TYPE I")), "200")
 
 proc pwd*(ftp: AsyncFtpClient): Future[string] {.async.} =
   ## Returns the current working directory.
@@ -217,15 +263,15 @@ proc cdup*(ftp: AsyncFtpClient) {.async.} =
 
 proc getLines(ftp: AsyncFtpClient): Future[string] {.async.} =
   ## Downloads text data in ASCII mode
-  result = ""
   assert ftp.dsockConnected
   while ftp.dsockConnected:
     let r = await ftp.dsock.recvLine()
-    if r == "":
+    if r.len == 0:
+      ftp.dsock.close()
       ftp.dsockConnected = false
     else:
-      result.add(r & "\n")
-
+      if result.len > 0: result.add "\n"
+      result.add r
   assertReply(await(ftp.expectReply()), "226")
 
 proc listDirs*(ftp: AsyncFtpClient, dir = ""): Future[seq[string]] {.async.} =
@@ -319,13 +365,14 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
 
     if dataFut.finished:
       let data = dataFut.read
-      if data != "":
+      if data.len > 0:
         progress.inc(data.len)
         progressInSecond.inc(data.len)
         file.write(data)
         dataFut = ftp.dsock.recv(BufferSize)
       else:
         ftp.dsockConnected = false
+        ftp.dsock.close()
 
   assertReply(await(ftp.expectReply()), "226")
 
@@ -368,7 +415,7 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
   while ftp.dsockConnected:
     if sendFut == nil or sendFut.finished:
       # TODO: Async file reading.
-      let len = file.readBuffer(addr(data[0]), 4000)
+      let len = file.readBuffer(addr data[0], 4000)
       setLen(data, len)
       if len == 0:
         # File finished uploading.
@@ -419,7 +466,7 @@ proc removeDir*(ftp: AsyncFtpClient, dir: string) {.async.} =
   assertReply(await ftp.send("RMD " & dir), "250")
 
 proc newAsyncFtpClient*(address: string, port = Port(21),
-    user, pass = "", progressInterval: int = 1000): AsyncFtpClient =
+    user, pass = "", progressInterval: int = 1000, useTls = false, sslContext: SslContext = nil): AsyncFtpClient =
   ## Creates a new `AsyncFtpClient` object.
   new result
   result.user = user
@@ -429,8 +476,17 @@ proc newAsyncFtpClient*(address: string, port = Port(21),
   result.progressInterval = progressInterval
   result.dsockConnected = false
   result.csock = newAsyncSocket()
+  if useTls:
+    when defined(ssl):
+      result.useTls = true
+      if sslContext == nil:
+        result.sslContext = getSSLContext()
+      else:
+        result.sslContext = sslContext
+    else:
+      doAssert false, "TLS support is not available. Cannot connect over TLS. Compile with -d:ssl to enable."
 
-when not defined(testing) and isMainModule:
+when not defined(testing) and defined(ssl) and isMainModule:
   var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
   proc main(ftp: AsyncFtpClient) {.async.} =
     await ftp.connect()
@@ -445,4 +501,19 @@ when not defined(testing) and isMainModule:
     await ftp.removeDir("deleteme")
     echo("Finished")
 
+  var ftps = newAsyncFtpClient("example.com", user = "test", pass = "test", useTls = true)
+  proc main1(ftp: AsyncFtpClient) {.async.} =
+    await ftps.connect()
+    echo await ftps.pwd()
+    echo await ftps.listDirs()
+    await ftps.store("payload.jpg", "payload.jpg")
+    await ftps.retrFile("payload.jpg", "payload2.jpg")
+    await ftps.rename("payload.jpg", "payload_renamed.jpg")
+    await ftps.store("payload.jpg", "payload_remove.jpg")
+    await ftps.removeFile("payload_remove.jpg")
+    await ftps.createDir("deleteme")
+    await ftps.removeDir("deleteme")
+    echo("Finished")
+
   waitFor main(ftp)
+  waitFor main1(ftp)

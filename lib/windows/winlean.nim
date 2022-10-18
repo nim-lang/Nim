@@ -17,6 +17,10 @@ when defined(nimHasStyleChecks):
 
 {.passc: "-DWIN32_LEAN_AND_MEAN".}
 
+when defined(nimPreviewSlimSystem):
+  from std/syncio import FileHandle
+  import std/widestrs
+
 const
   useWinUnicode* = not defined(useWinAnsi)
 
@@ -42,7 +46,7 @@ type
   PULONG_PTR* = ptr uint
   HDC* = Handle
   HGLRC* = Handle
-  BYTE* = cuchar
+  BYTE* = uint8
 
   SECURITY_ATTRIBUTES* {.final, pure.} = object
     nLength*: int32
@@ -419,10 +423,10 @@ else:
     importc: "GetCommandLineA", stdcall, dynlib: "kernel32", sideEffect.}
 
 proc rdFileTime*(f: FILETIME): int64 =
-  result = ze64(f.dwLowDateTime) or (ze64(f.dwHighDateTime) shl 32)
+  result = int64(cast[uint32](f.dwLowDateTime)) or (int64(cast[uint32](f.dwHighDateTime)) shl 32)
 
 proc rdFileSize*(f: WIN32_FIND_DATA): int64 =
-  result = ze64(f.nFileSizeLow) or (ze64(f.nFileSizeHigh) shl 32)
+  result = int64(cast[uint32](f.nFileSizeLow)) or (int64(cast[uint32](f.nFileSizeHigh)) shl 32)
 
 proc getSystemTimeAsFileTime*(lpSystemTimeAsFileTime: var FILETIME) {.
   importc: "GetSystemTimeAsFileTime", dynlib: "kernel32", stdcall, sideEffect.}
@@ -478,7 +482,7 @@ type
 
   PSockAddr = ptr SockAddr
 
-  InAddr* {.importc: "IN_ADDR", header: "winsock2.h".} = object
+  InAddr* {.importc: "IN_ADDR", header: "winsock2.h", union.} = object
     s_addr*: uint32  # IP address
 
   Sockaddr_in* {.importc: "SOCKADDR_IN",
@@ -502,9 +506,9 @@ type
   Sockaddr_storage* {.importc: "SOCKADDR_STORAGE",
                       header: "winsock2.h".} = object
     ss_family*: uint16
-    ss_pad1: array[6, byte]
-    ss_align: int64
-    ss_pad2: array[112, byte]
+    ss_pad1 {.importc: "__ss_pad1".}: array[6, byte]
+    ss_align {.importc: "__ss_align".}: int64
+    ss_pad2 {.importc: "__ss_pad2".}: array[112, byte]
 
   Servent* = object
     s_name*: cstring
@@ -667,7 +671,7 @@ proc getaddrinfo*(nodename, servname: cstring, hints: ptr AddrInfo,
                   res: var ptr AddrInfo): cint {.
   stdcall, importc: "getaddrinfo", dynlib: ws2dll.}
 
-proc freeaddrinfo*(ai: ptr AddrInfo) {.
+proc freeAddrInfo*(ai: ptr AddrInfo) {.
   stdcall, importc: "freeaddrinfo", dynlib: ws2dll.}
 
 proc inet_ntoa*(i: InAddr): cstring {.
@@ -718,12 +722,13 @@ const
 
 # Error Constants
 const
-  ERROR_FILE_NOT_FOUND* = 2
+  ERROR_FILE_NOT_FOUND* = 2 ## https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
   ERROR_PATH_NOT_FOUND* = 3
   ERROR_ACCESS_DENIED* = 5
   ERROR_NO_MORE_FILES* = 18
   ERROR_LOCK_VIOLATION* = 33
   ERROR_HANDLE_EOF* = 38
+  ERROR_FILE_EXISTS* = 80
   ERROR_BAD_ARGUMENTS* = 165
 
 proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,
@@ -926,6 +931,9 @@ proc getSystemTimes*(lpIdleTime, lpKernelTime,
 proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   lpKernelTime, lpUserTime: var FILETIME): WINBOOL {.stdcall,
   dynlib: "kernel32", importc: "GetProcessTimes".}
+
+proc getSystemTimePreciseAsFileTime*(lpSystemTimeAsFileTime: var FILETIME) {.
+  importc: "GetSystemTimePreciseAsFileTime", dynlib: "kernel32", stdcall, sideEffect.}
 
 type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
                       stringBufSize: int32): cstring {.gcsafe, stdcall, tags: [].}
@@ -1139,7 +1147,7 @@ proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
 type
   # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid_identifier_authority
   SID_IDENTIFIER_AUTHORITY* {.importc, header: "<windows.h>".} = object
-    value* {.importc: "Value"}: array[6, BYTE]
+    value* {.importc: "Value".}: array[6, BYTE]
   # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid
   SID* {.importc, header: "<windows.h>".} = object
     Revision: BYTE

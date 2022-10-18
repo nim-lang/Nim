@@ -72,8 +72,11 @@ runnableExamples:
 ## * `list of cryptographic and hashing modules <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
-import std/[algorithm, math]
+import algorithm, math
 import std/private/since
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 include system/inclrtl
 {.push debugger: off.}
@@ -108,10 +111,19 @@ when defined(js):
     a0: 0x69B4C98Cu32,
     a1: 0xFED1DD30u32) # global for backwards compatibility
 else:
-  # racy for multi-threading but good enough for now:
-  var state = Rand(
+  const DefaultRandSeed = Rand(
     a0: 0x69B4C98CB8530805u64,
-    a1: 0xFED1DD3004688D67CAu64) # global for backwards compatibility
+    a1: 0xFED1DD3004688D67CAu64)
+
+  # racy for multi-threading but good enough for now:
+  var state = DefaultRandSeed # global for backwards compatibility
+
+func isValid(r: Rand): bool {.inline.} =
+  ## Check whether state of `r` is valid.
+  ##
+  ## In `xoroshiro128+`, if all bits of `a0` and `a1` are zero,
+  ## they are always zero after calling `next(r: var Rand)`.
+  not (r.a0 == 0 and r.a1 == 0)
 
 since (1, 5):
   template randState*(): untyped =
@@ -133,11 +145,10 @@ proc next*(r: var Rand): uint64 =
   ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   ## * `skipRandomNumbers proc<#skipRandomNumbers,Rand>`_
-  runnableExamples:
+  runnableExamples("-r:off"):
     var r = initRand(2019)
-    doAssert r.next() == 138_744_656_611_299'u64
-    doAssert r.next() == 979_810_537_855_049_344'u64
-    doAssert r.next() == 3_628_232_584_225_300_704'u64
+    assert r.next() == 13223559681708962501'u64 # implementation defined
+    assert r.next() == 7229677234260823147'u64 # ditto
 
   let s0 = r.a0
   var s1 = r.a1
@@ -170,24 +181,33 @@ proc skipRandomNumbers*(s: var Rand) =
   ## **See also:**
   ## * `next proc<#next,Rand>`_
   runnableExamples("--threads:on"):
-    import std/[random, threadpool]
+    import std/random
 
-    const spawns = 4
     const numbers = 100000
 
-    proc randomSum(r: Rand): int =
-      var r = r
+    var
+      thr: array[0..3, Thread[(Rand, int)]]
+      vals: array[0..3, int]
+
+    proc randomSum(params: tuple[r: Rand, index: int]) {.thread.} =
+      var r = params.r
+      var s = 0 # avoid cache thrashing
       for i in 1..numbers:
-        result += r.rand(0..10)
+        s += r.rand(0..10)
+      vals[params.index] = s
 
     var r = initRand(2019)
-    var vals: array[spawns, FlowVar[int]]
-    for val in vals.mitems:
-      val = spawn randomSum(r)
+    for i in 0..<thr.len:
+      createThread(thr[i], randomSum, (r, i))
       r.skipRandomNumbers()
 
+    joinThreads(thr)
+
     for val in vals:
-      doAssert abs(^val - numbers * 5) / numbers < 0.1
+      doAssert abs(val - numbers * 5) / numbers < 0.1
+
+    doAssert vals == [501737, 497901, 500683, 500157]
+
 
   when defined(js):
     const helper = [0xbeac0467u32, 0xd86b048bu32]
@@ -205,6 +225,19 @@ proc skipRandomNumbers*(s: var Rand) =
   s.a0 = s0
   s.a1 = s1
 
+proc rand[T: uint | uint64](r: var Rand; max: T): T =
+  # xxx export in future work
+  if max == 0: return
+  else:
+    let max = uint64(max)
+    when T.high.uint64 == uint64.high:
+      if max == uint64.high: return T(next(r))
+    while true:
+      let x = next(r)
+      # avoid `mod` bias
+      if x <= randMax - (randMax mod max):
+        return T(x mod (max + 1))
+
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
@@ -216,15 +249,11 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     var r = initRand(123)
-    doAssert r.rand(100) == 0
-    doAssert r.rand(100) == 96
-    doAssert r.rand(100) == 66
-
-  if max == 0: return
-  while true:
-    let x = next(r)
-    if x <= randMax - (randMax mod Ui(max)):
-      return int(x mod (uint64(max) + 1u64))
+    if false:
+      assert r.rand(100) == 96 # implementation defined
+  # bootstrap: can't use `runnableExamples("-r:off")`
+  cast[int](rand(r, uint64(max)))
+    # xxx toUnsigned pending https://github.com/nim-lang/Nim/pull/18445
 
 proc rand*(max: int): int {.benign.} =
   ## Returns a random integer in the range `0..max`.
@@ -241,11 +270,9 @@ proc rand*(max: int): int {.benign.} =
   ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
-  runnableExamples:
+  runnableExamples("-r:off"):
     randomize(123)
-    doAssert rand(100) == 0
-    doAssert rand(100) == 96
-    doAssert rand(100) == 66
+    assert [rand(100), rand(100)] == [96, 63] # implementation defined
 
   rand(state, max)
 
@@ -305,15 +332,16 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     var r = initRand(345)
-    doAssert r.rand(1..6) == 4
-    doAssert r.rand(1..6) == 4
-    doAssert r.rand(1..6) == 6
-    let f = r.rand(-1.0 .. 1.0) # 0.8741183448756229
+    assert r.rand(1..5) <= 5
+    assert r.rand(-1.1 .. 1.2) >= -1.1
   assert x.a <= x.b
   when T is SomeFloat:
     result = rand(r, x.b - x.a) + x.a
   else: # Integers and Enum types
-    result = T(rand(r, int(x.b) - int(x.a)) + int(x.a))
+    when defined(js):
+      result = cast[T](rand(r, cast[uint](x.b) - cast[uint](x.a)) + cast[uint](x.a))
+    else:
+      result = cast[T](rand(r, cast[uint64](x.b) - cast[uint64](x.a)) + cast[uint64](x.a))
 
 proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.
@@ -333,14 +361,36 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(345)
-    doAssert rand(1..6) == 4
-    doAssert rand(1..6) == 4
-    doAssert rand(1..6) == 6
+    assert rand(1..6) <= 6
 
   result = rand(state, x)
 
-proc rand*[T: SomeInteger](t: typedesc[T]): T =
-  ## Returns a random integer in the range `low(T)..high(T)`.
+proc rand*[T: Ordinal](r: var Rand; t: typedesc[T]): T {.since: (1, 7, 1).} =
+  ## Returns a random Ordinal in the range `low(T)..high(T)`.
+  ##
+  ## If `randomize <#randomize>`_ has not been called, the sequence of random
+  ## numbers returned from this proc will always be the same.
+  ##
+  ## **See also:**
+  ## * `rand proc<#rand,int>`_ that returns an integer
+  ## * `rand proc<#rand,float>`_ that returns a floating point number
+  ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
+  when T is range or T is enum:
+    result = rand(r, low(T)..high(T))
+  elif T is bool:
+    when defined(js):
+      result = (r.next or 0) < 0
+    else:
+      result = cast[int64](r.next) < 0
+  else:
+    when defined(js):
+      result = cast[T](r.next shr (sizeof(uint)*8 - sizeof(T)*8))
+    else:
+      result = cast[T](r.next shr (sizeof(uint64)*8 - sizeof(T)*8))
+
+proc rand*[T: Ordinal](t: typedesc[T]): T =
+  ## Returns a random Ordinal in the range `low(T)..high(T)`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
@@ -354,20 +404,15 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ##   that accepts a slice
   runnableExamples:
     randomize(567)
-    doAssert rand(int8) == 55
-    doAssert rand(int8) == -42
-    doAssert rand(int8) == 43
-    doAssert rand(uint32) == 578980729'u32
-    doAssert rand(uint32) == 4052940463'u32
-    doAssert rand(uint32) == 2163872389'u32
-    doAssert rand(range[1..16]) == 11
-    doAssert rand(range[1..16]) == 4
-    doAssert rand(range[1..16]) == 16
+    type E = enum a, b, c, d
 
-  when T is range:
-    result = rand(state, low(T)..high(T))
-  else:
-    result = cast[T](state.next)
+    assert rand(E) in a..d
+    assert rand(char) in low(char)..high(char)
+    assert rand(int8) in low(int8)..high(int8)
+    assert rand(uint32) in low(uint32)..high(uint32)
+    assert rand(range[1..16]) in 1..16
+
+  result = rand(state, t)
 
 proc sample*[T](r: var Rand; s: set[T]): T =
   ## Returns a random element from the set `s` using the given state.
@@ -380,9 +425,7 @@ proc sample*[T](r: var Rand; s: set[T]): T =
   runnableExamples:
     var r = initRand(987)
     let s = {1, 3, 5, 7, 9}
-    doAssert r.sample(s) == 5
-    doAssert r.sample(s) == 7
-    doAssert r.sample(s) == 1
+    assert r.sample(s) in s
 
   assert card(s) != 0
   var i = rand(r, card(s) - 1)
@@ -406,9 +449,7 @@ proc sample*[T](s: set[T]): T =
   runnableExamples:
     randomize(987)
     let s = {1, 3, 5, 7, 9}
-    doAssert sample(s) == 5
-    doAssert sample(s) == 7
-    doAssert sample(s) == 1
+    assert sample(s) in s
 
   sample(state, s)
 
@@ -423,13 +464,11 @@ proc sample*[T](r: var Rand; a: openArray[T]): T =
   runnableExamples:
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     var r = initRand(456)
-    doAssert r.sample(marbles) == "blue"
-    doAssert r.sample(marbles) == "yellow"
-    doAssert r.sample(marbles) == "red"
+    assert r.sample(marbles) in marbles
 
   result = a[r.rand(a.low..a.high)]
 
-proc sample*[T](a: openArray[T]): T =
+proc sample*[T](a: openArray[T]): lent T =
   ## Returns a random element from `a`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
@@ -445,9 +484,7 @@ proc sample*[T](a: openArray[T]): T =
   runnableExamples:
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     randomize(456)
-    doAssert sample(marbles) == "blue"
-    doAssert sample(marbles) == "yellow"
-    doAssert sample(marbles) == "red"
+    assert sample(marbles) in marbles
 
   result = a[rand(a.low..a.high)]
 
@@ -476,9 +513,7 @@ proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
     let count = [1, 6, 8, 3, 4]
     let cdf = count.cumsummed
     var r = initRand(789)
-    doAssert r.sample(marbles, cdf) == "red"
-    doAssert r.sample(marbles, cdf) == "green"
-    doAssert r.sample(marbles, cdf) == "blue"
+    assert r.sample(marbles, cdf) in marbles
 
   assert(cdf.len == a.len) # Two basic sanity checks.
   assert(float(cdf[^1]) > 0.0)
@@ -512,9 +547,7 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
     let count = [1, 6, 8, 3, 4]
     let cdf = count.cumsummed
     randomize(789)
-    doAssert sample(marbles, cdf) == "red"
-    doAssert sample(marbles, cdf) == "green"
-    doAssert sample(marbles, cdf) == "blue"
+    assert sample(marbles, cdf) in marbles
 
   state.sample(a, cdf)
 
@@ -547,10 +580,10 @@ proc gauss*(mu = 0.0, sigma = 1.0): float {.since: (1, 3).} =
 proc initRand*(seed: int64): Rand =
   ## Initializes a new `Rand <#Rand>`_ state using the given seed.
   ##
-  ## `seed` must not be zero. Providing a specific seed will produce
-  ## the same results for that seed each time.
+  ## Providing a specific seed will produce the same results for that seed each time.
   ##
-  ## The resulting state is independent of the default RNG's state.
+  ## The resulting state is independent of the default RNG's state. When `seed == 0`,
+  ## we internally set the seed to an implementation defined non-zero value.
   ##
   ## **See also:**
   ## * `initRand proc<#initRand>`_ that uses the current time
@@ -560,20 +593,22 @@ proc initRand*(seed: int64): Rand =
     from std/times import getTime, toUnix, nanosecond
 
     var r1 = initRand(123)
-
     let now = getTime()
     var r2 = initRand(now.toUnix * 1_000_000_000 + now.nanosecond)
-
-  doAssert seed != 0 # 0 causes `rand(int)` to always return 0 for example.
+  const seedFallback0 = int32.high # arbitrary
+  let seed = if seed != 0: seed else: seedFallback0 # because 0 is a fixed point
   result.a0 = Ui(seed shr 16)
   result.a1 = Ui(seed and 0xffff)
+  when not defined(nimLegacyRandomInitRand):
+    # calling `discard next(result)` (even a few times) would still produce
+    # skewed numbers for the 1st call to `rand()`.
+    skipRandomNumbers(result)
   discard next(result)
 
 proc randomize*(seed: int64) {.benign.} =
   ## Initializes the default random number generator with the given seed.
   ##
-  ## `seed` must not be zero. Providing a specific seed will produce
-  ## the same results for that seed each time.
+  ## Providing a specific seed will produce the same results for that seed each time.
   ##
   ## **See also:**
   ## * `initRand proc<#initRand,int64>`_ that initializes a Rand state
@@ -600,7 +635,8 @@ proc shuffle*[T](r: var Rand; x: var openArray[T]) =
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
     var r = initRand(678)
     r.shuffle(cards)
-    doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
+    import std/algorithm
+    assert cards.sorted == @["Ace", "Jack", "King", "Queen", "Ten"]
 
   for i in countdown(x.high, 1):
     let j = r.rand(i)
@@ -620,19 +656,33 @@ proc shuffle*[T](x: var openArray[T]) =
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
     randomize(678)
     shuffle(cards)
-    doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
+    import std/algorithm
+    assert cards.sorted == @["Ace", "Jack", "King", "Queen", "Ten"]
 
   shuffle(state, x)
 
-when not defined(nimscript) and not defined(standalone):
-  import std/times
+when not defined(standalone):
+  when defined(js):
+    import std/times
+  else:
+    when defined(nimscript):
+      import std/hashes
+    else:
+      import std/[hashes, os, sysrand, monotimes]
+
+      when compileOption("threads"):
+        import locks
+        var baseSeedLock: Lock
+        baseSeedLock.initLock
+
+    var baseState: Rand
 
   proc initRand(): Rand =
-    ## Initializes a new Rand state with a seed based on the current time.
+    ## Initializes a new Rand state.
     ##
     ## The resulting state is independent of the default RNG's state.
     ##
-    ## **Note:** Does not work for NimScript or the compile-time VM.
+    ## **Note:** Does not work for the compile-time VM.
     ##
     ## See also:
     ## * `initRand proc<#initRand,int64>`_ that accepts a seed for a new Rand state
@@ -642,20 +692,50 @@ when not defined(nimscript) and not defined(standalone):
       let time = int64(times.epochTime() * 1000) and 0x7fff_ffff
       result = initRand(time)
     else:
-      let now = times.getTime()
-      result = initRand(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
+      proc getRandomState(): Rand =
+        when defined(nimscript):
+          result = Rand(
+            a0: CompileTime.hash.Ui,
+            a1: CompileDate.hash.Ui)
+          if not result.isValid:
+            result = DefaultRandSeed
+        else:
+          var urand: array[sizeof(Rand), byte]
+
+          for i in 0 .. 7:
+            if sysrand.urandom(urand):
+              copyMem(result.addr, urand[0].addr, sizeof(Rand))
+              if result.isValid:
+                break
+
+          if not result.isValid:
+            # Don't try to get alternative random values from other source like time or process/thread id,
+            # because such code would be never tested and is a liability for security.
+            quit("Failed to initializes baseState in random module as sysrand.urandom doesn't work.")
+
+      when compileOption("threads"):
+        baseSeedLock.withLock:
+          if not baseState.isValid:
+            baseState = getRandomState()
+          result = baseState
+          baseState.skipRandomNumbers
+      else:
+        if not baseState.isValid:
+          baseState = getRandomState()
+        result = baseState
+        baseState.skipRandomNumbers
 
   since (1, 5, 1):
     export initRand
 
   proc randomize*() {.benign.} =
     ## Initializes the default random number generator with a seed based on
-    ## the current time.
+    ## random number source.
     ##
     ## This proc only needs to be called once, and it should be called before
     ## the first usage of procs from this module that use the default RNG.
     ##
-    ## **Note:** Does not work for NimScript or the compile-time VM.
+    ## **Note:** Does not work for the compile-time VM.
     ##
     ## **See also:**
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed

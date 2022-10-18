@@ -9,14 +9,19 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, md5, modulegraphs
+import ast, tables, ropes, md5_old, modulegraphs
 from hashes import Hash
 import types
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
-proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
-proc `&=`(c: var MD5Context, r: Rope) =
-  for l in leaves(r): md5Update(c, l, l.len)
+proc `&=`(c: var MD5Context, ch: char) =
+  # XXX suspicious code here; relies on ch being zero terminated?
+  md5Update(c, unsafeAddr ch, 1)
+
 proc `&=`(c: var MD5Context, i: BiggestInt) =
   md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))
 proc `&=`(c: var MD5Context, f: BiggestFloat) =
@@ -144,22 +149,31 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
       if {sfCompilerProc} * t.sym.flags != {}:
-        doAssert t.sym.loc.r != nil
+        doAssert t.sym.loc.r != ""
         # The user has set a specific name for this type
         c &= t.sym.loc.r
       elif CoOwnerSig in flags:
         c.hashTypeSym(t.sym)
       else:
         c.hashSym(t.sym)
-      if {sfAnon, sfGenSym} * t.sym.flags != {}:
+
+      var symWithFlags: PSym
+      template hasFlag(sym): bool =
+        let ret = {sfAnon, sfGenSym} * sym.flags != {}
+        if ret: symWithFlags = sym
+        ret
+      if hasFlag(t.sym) or (t.kind == tyObject and t.owner.kind == skType and t.owner.typ.kind == tyRef and hasFlag(t.owner)):
+        # for `PFoo:ObjectType`, arising from `type PFoo = ref object`
         # Generated object names can be identical, so we need to
         # disambiguate furthermore by hashing the field types and names.
         if t.n.len > 0:
-          let oldFlags = t.sym.flags
-          # Mild hack to prevent endless recursion.
-          t.sym.flags.excl {sfAnon, sfGenSym}
+          let oldFlags = symWithFlags.flags
+          # Hack to prevent endless recursion
+          # xxx instead, use a hash table to indicate we've already visited a type, which
+          # would also be more efficient.
+          symWithFlags.flags.excl {sfAnon, sfGenSym}
           hashTree(c, t.n, flags + {CoHashTypeInsideNode})
-          t.sym.flags = oldFlags
+          symWithFlags.flags = oldFlags
         else:
           # The object has no fields: we _must_ add something here in order to
           # make the hash different from the one we produce by hashing only the
@@ -319,7 +333,7 @@ proc hashVarSymBody(graph: ModuleGraph, c: var MD5Context, s: PSym) =
     c &= hashNonProc(s)
     # this one works for let and const but not for var. True variables can change value
     # later on. it is user resposibility to hash his global state if required
-    if s.ast != nil and s.ast.kind == nkIdentDefs:
+    if s.ast != nil and s.ast.kind in {nkIdentDefs, nkConstDef}:
       hashBodyTree(graph, c, s.ast[^1])
     else:
       hashBodyTree(graph, c, s.ast)
@@ -379,7 +393,7 @@ proc idOrSig*(s: PSym, currentModule: string,
               sigCollisions: var CountTable[SigHash]): Rope =
   if s.kind in routineKinds and s.typ != nil:
     # signatures for exported routines are reliable enough to
-    # produce a unique name and this means produced C++ is more stable wrt
+    # produce a unique name and this means produced C++ is more stable regarding
     # Nim changes:
     let sig = hashProc(s)
     result = rope($sig)

@@ -16,8 +16,13 @@ import std/private/since
 
 import strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when defined(windows):
   import winlean
+  when useWinUnicode and defined(nimPreviewSlimSystem):
+    import std/widestrs
   from os import absolutePath
 else:
   import os
@@ -64,8 +69,9 @@ proc openDefaultBrowser*(url: string) =
   ##
   ## This proc doesn't raise an exception on error, beware.
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   block: openDefaultBrowser("https://nim-lang.org")
+  ##   ```
   doAssert url.len > 0, "URL must not be empty string"
   openDefaultBrowserImpl(url)
 
@@ -80,10 +86,11 @@ proc openDefaultBrowser*() {.since: (1, 1).} =
   ##
   ## This proc doesn't raise an exception on error, beware.
   ##
+  ##   ```nim
+  ##   block: openDefaultBrowser()
+  ##   ```
+  ##
   ## **See also:**
   ##
   ## * https://tools.ietf.org/html/rfc6694#section-3
-  ##
-  ## .. code-block:: nim
-  ##   block: openDefaultBrowser()
   openDefaultBrowserImpl("http:about:blank")  # See IETF RFC-6694 Section 3.

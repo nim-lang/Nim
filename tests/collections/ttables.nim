@@ -7,7 +7,11 @@ And we get here
 3
 '''
 joinable: false
+targets: "c cpp js"
 """
+
+# xxx wrap in a template to test in VM, see https://github.com/timotheecour/Nim/issues/534#issuecomment-769565033
+
 import hashes, sequtils, tables, algorithm
 
 proc sortedPairs[T](t: T): auto = toSeq(t.pairs).sorted
@@ -167,22 +171,20 @@ block tableconstr:
   # NEW:
   doAssert 56 in 50..100
 
-  doAssert 56 in ..60
+  doAssert 56 in 0..60
 
 
 block ttables2:
   proc TestHashIntInt() =
     var tab = initTable[int,int]()
-    let n = 100_000
+    let n = 10
     for i in 1..n:
       tab[i] = i
     for i in 1..n:
       var x = tab[i]
       if x != i : echo "not found ", i
 
-  proc run1() =
-    for i in 1 .. 50:
-      TestHashIntInt()
+  TestHashIntInt()
 
   # bug #2107
 
@@ -194,7 +196,6 @@ block ttables2:
   delTab[5] = 5
 
 
-  run1()
   echo "2"
 
 block tablesref:
@@ -444,3 +445,13 @@ block emptyOrdered:
   var t2: OrderedTable[int, string]
   doAssert t1 == t2
 
+block: # Table[ref, int]
+  type A = ref object
+    x: int
+  var t: OrderedTable[A, int]
+  let a1 = A(x: 3)
+  let a2 = A(x: 3)
+  t[a1] = 10
+  t[a2] = 11
+  doAssert t[a1] == 10
+  doAssert t[a2] == 11

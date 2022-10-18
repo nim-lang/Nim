@@ -74,6 +74,20 @@ runnableExamples:
   assert fmt"{123.456:13e}" == " 1.234560e+02"
 
 ##[
+# Expressions
+]##
+runnableExamples:
+  let x = 3.14
+  assert fmt"{(if x!=0: 1.0/x else: 0):.5}" == "0.31847"
+  assert fmt"""{(block:
+    var res: string
+    for i in 1..15:
+      res.add (if i mod 15 == 0: "FizzBuzz"
+        elif i mod 5 == 0: "Buzz"
+        elif i mod 3 == 0: "Fizz"
+        else: $i) & " "
+    res)}""" == "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz "
+##[
 # Debugging strings
 
 `fmt"{expr=}"` expands to `fmt"expr={expr}"` namely the text of the expression,
@@ -128,8 +142,21 @@ An expression like `&"{key} is {value:arg} {{z}}"` is transformed into:
   temp
 
 Parts of the string that are enclosed in the curly braces are interpreted
-as Nim code, to escape a `{` or `}`, double it.
+as Nim code. To escape a `{` or `}`, double it.
 
+Within a curly expression, however, `{`, `}`, must be escaped with a backslash.
+
+To enable evaluating Nim expressions within curlies, colons inside parentheses
+do not need to be escaped.
+]##
+
+runnableExamples:
+  let x = "hello"
+  assert fmt"""{ "\{(" & x & ")\}" }""" == "{(hello)}"
+  assert fmt"""{{({ x })}}""" == "{(hello)}"
+  assert fmt"""{ $(\{x:1,"world":2\}) }""" == """[("hello", 1), ("world", 2)]"""
+
+##[
 `&` delegates most of the work to an open overloaded set
 of `formatValue` procs. The required signature for a type `T` that supports
 formatting is usually `proc formatValue(result: var string; x: T; specifier: string)`.
@@ -144,34 +171,34 @@ For strings and numeric types the optional argument is a so-called
 
 # Standard format specifiers for strings, integers and floats
 
-The general form of a standard format specifier is::
+The general form of a standard format specifier is:
 
-  [[fill]align][sign][#][0][minimumwidth][.precision][type]
+    [[fill]align][sign][#][0][minimumwidth][.precision][type]
 
 The square brackets `[]` indicate an optional element.
 
-The optional 'align' flag can be one of the following:
+The optional `align` flag can be one of the following:
 
-'<'
-    Forces the field to be left-aligned within the available
+`<`
+:   Forces the field to be left-aligned within the available
     space. (This is the default for strings.)
 
-'>'
-    Forces the field to be right-aligned within the available space.
+`>`
+:   Forces the field to be right-aligned within the available space.
     (This is the default for numbers.)
 
-'^'
-    Forces the field to be centered within the available space.
+`^`
+:   Forces the field to be centered within the available space.
 
 Note that unless a minimum field width is defined, the field width
 will always be the same size as the data to fill it, so that the alignment
 option has no meaning in this case.
 
-The optional 'fill' character defines the character to be used to pad
+The optional `fill` character defines the character to be used to pad
 the field to the minimum width. The fill character, if present, must be
 followed by an alignment flag.
 
-The 'sign' option is only valid for numeric types, and can be one of the following:
+The `sign` option is only valid for numeric types, and can be one of the following:
 
 =================        ====================================================
   Sign                   Meaning
@@ -184,22 +211,22 @@ The 'sign' option is only valid for numeric types, and can be one of the followi
                          positive numbers.
 =================        ====================================================
 
-If the '#' character is present, integers use the 'alternate form' for formatting.
+If the `#` character is present, integers use the 'alternate form' for formatting.
 This means that binary, octal and hexadecimal output will be prefixed
-with '0b', '0o' and '0x', respectively.
+with `0b`, `0o` and `0x`, respectively.
 
-'width' is a decimal integer defining the minimum field width. If not specified,
+`width` is a decimal integer defining the minimum field width. If not specified,
 then the field width will be determined by the content.
 
-If the width field is preceded by a zero ('0') character, this enables
+If the width field is preceded by a zero (`0`) character, this enables
 zero-padding.
 
-The 'precision' is a decimal number indicating how many digits should be displayed
+The `precision` is a decimal number indicating how many digits should be displayed
 after the decimal point in a floating point conversion. For non-numeric types the
 field indicates the maximum field size - in other words, how many characters will
 be used from the field content. The precision is ignored for integer conversions.
 
-Finally, the 'type' determines how the data should be presented.
+Finally, the `type` determines how the data should be presented.
 
 The available integer presentation types are:
 
@@ -213,7 +240,7 @@ The available integer presentation types are:
                          lower-case letters for the digits above 9.
 `X`                      Hex format. Outputs the number in base 16, using
                          uppercase letters for the digits above 9.
-(None)                   The same as 'd'.
+(None)                   The same as `d`.
 =================        ====================================================
 
 The available floating point presentation types are:
@@ -222,21 +249,21 @@ The available floating point presentation types are:
   Type                   Result
 =================        ====================================================
 `e`                      Exponent notation. Prints the number in scientific
-                         notation using the letter 'e' to indicate the
+                         notation using the letter `e` to indicate the
                          exponent.
-`E`                      Exponent notation. Same as 'e' except it converts
+`E`                      Exponent notation. Same as `e` except it converts
                          the number to uppercase.
 `f`                      Fixed point. Displays the number as a fixed-point
                          number.
-`F`                      Fixed point. Same as 'f' except it converts the
+`F`                      Fixed point. Same as `f` except it converts the
                          number to uppercase.
 `g`                      General format. This prints the number as a
                          fixed-point number, unless the number is too
-                         large, in which case it switches to 'e'
+                         large, in which case it switches to `e`
                          exponent notation.
-`G`                      General format. Same as 'g' except it switches to 'E'
+`G`                      General format. Same as `g` except it switches to `E`
                          if the number gets to large.
-(None)                   Similar to 'g', except that it prints at least one
+(None)                   Similar to `g`, except that it prints at least one
                          digit after the decimal point.
 =================        ====================================================
 
@@ -275,6 +302,7 @@ keep the hygiene of `myTemplate`, and we do not want `arg1`
 to be injected into the context where `myTemplate` is expanded,
 everything is wrapped in a `block`.
 
+
 # Future directions
 
 A curly expression with commas in it like `{x, argA, argB}` could be
@@ -285,8 +313,12 @@ help with readability, since there is only so much you can cram into
 single letter DSLs.
 ]##
 
-import std/[macros, parseutils, unicode]
-import std/strutils except format
+import macros, parseutils, unicode
+import strutils except format
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 proc mkDigit(v: int, typ: char): string {.inline.} =
   assert(v < 26)
@@ -391,9 +423,9 @@ proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string
 proc parseStandardFormatSpecifier*(s: string; start = 0;
                                    ignoreUnknownSuffix = false): StandardFormatSpecifier =
   ## An exported helper proc that parses the "standard format specifiers",
-  ## as specified by the grammar::
+  ## as specified by the grammar:
   ##
-  ##   [[fill]align][sign][#][0][minimumwidth][.precision][type]
+  ##     [[fill]align][sign][#][0][minimumwidth][.precision][type]
   ##
   ## This is only of interest if you want to write a custom `format` proc that
   ## should support the standard format specifiers. If `ignoreUnknownSuffix` is true,
@@ -545,19 +577,19 @@ template formatValue(result: var string; value: char; specifier: string) =
 template formatValue(result: var string; value: cstring; specifier: string) =
   result.add value
 
-proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
-  if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
-    error "string formatting (fmt(), &) only works with string literals", pattern
+proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
+  template missingCloseChar =
+    error("invalid format string: missing closing character '" & closeChar & "'")
+
   if openChar == ':' or closeChar == ':':
     error "openChar and closeChar must not be ':'"
-  let f = pattern.strVal
   var i = 0
   let res = genSym(nskVar, "fmtRes")
-  result = newNimNode(nnkStmtListExpr, lineInfoFrom = pattern)
+  result = newNimNode(nnkStmtListExpr)
   # XXX: https://github.com/nim-lang/Nim/issues/8405
   # When compiling with -d:useNimRtl, certain procs such as `count` from the strutils
   # module are not accessible at compile-time:
-  let expectedGrowth = when defined(useNimRtl): 0 else: count(f, '{') * 10
+  let expectedGrowth = when defined(useNimRtl): 0 else: count(f, openChar) * 10
   result.add newVarStmt(res, newCall(bindSym"newStringOfCap",
                                      newLit(f.len + expectedGrowth)))
   var strlit = ""
@@ -573,28 +605,45 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
           strlit = ""
 
         var subexpr = ""
-        while i < f.len and f[i] != closeChar and f[i] != ':':
-          if f[i] == '=':
+        var inParens = 0
+        var inSingleQuotes = false
+        var inDoubleQuotes = false
+        template notEscaped:bool = f[i-1]!='\\'
+        while i < f.len and f[i] != closeChar and (f[i] != ':' or inParens != 0):
+          case f[i]
+          of '\\':
+            if i < f.len-1 and f[i+1] in {openChar,closeChar,':'}: inc i
+          of '\'':
+            if not inDoubleQuotes and notEscaped: inSingleQuotes = not inSingleQuotes
+          of '\"':
+            if notEscaped: inDoubleQuotes = not inDoubleQuotes
+          of '(':
+            if not (inSingleQuotes or inDoubleQuotes): inc inParens
+          of ')':
+            if not (inSingleQuotes or inDoubleQuotes): dec inParens
+          of '=':
             let start = i
             inc i
             i += f.skipWhitespace(i)
+            if i == f.len:
+              missingCloseChar
             if f[i] == closeChar or f[i] == ':':
               result.add newCall(bindSym"add", res, newLit(subexpr & f[start ..< i]))
             else:
               subexpr.add f[start ..< i]
-          else:
-            subexpr.add f[i]
-            inc i
+            continue
+          else: discard
+          subexpr.add f[i]
+          inc i
+
+        if i == f.len:
+          missingCloseChar
 
         var x: NimNode
         try:
           x = parseExpr(subexpr)
-        except ValueError:
-          when declared(getCurrentExceptionMsg):
-            let msg = getCurrentExceptionMsg()
-            error("could not parse `" & subexpr & "`.\n" & msg, pattern)
-          else:
-            error("could not parse `" & subexpr & "`.\n", pattern)
+        except ValueError as e:
+          error("could not parse `$#` in `$#`.\n$#" % [subexpr, f, e.msg])
         let formatSym = bindSym("formatValue", brOpen)
         var options = ""
         if f[i] == ':':
@@ -602,17 +651,17 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
           while i < f.len and f[i] != closeChar:
             options.add f[i]
             inc i
+        if i == f.len:
+          missingCloseChar
         if f[i] == closeChar:
           inc i
-        else:
-          doAssert false, "invalid format string: missing '}'"
         result.add newCall(formatSym, res, x, newLit(options))
     elif f[i] == closeChar:
-      if f[i+1] == closeChar:
+      if i<f.len-1 and f[i+1] == closeChar:
         strlit.add closeChar
         inc i, 2
       else:
-        doAssert false, "invalid format string: '}' instead of '}}'"
+        doAssert false, "invalid format string: '$1' instead of '$1$1'" % $closeChar
         inc i
     else:
       strlit.add f[i]
@@ -623,19 +672,39 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
   when defined(debugFmtDsl):
     echo repr result
 
-macro `&`*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
-  ## For a specification of the `&` macro, see the module level documentation.
-
-macro fmt*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
-  ## An alias for `& <#&.m,string>`_.
-
-macro fmt*(pattern: string; openChar, closeChar: char): untyped =
-  ## The same as `fmt <#fmt.m,string>`_, but uses `openChar` instead of `'{'`
-  ## and `closeChar` instead of `'}'`.
+macro fmt*(pattern: static string; openChar: static char, closeChar: static char): string =
+  ## Interpolates `pattern` using symbols in scope.
   runnableExamples:
-    let testInt = 123
-    assert "<testInt>".fmt('<', '>') == "123"
-    assert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
-    assert """ ""{"123+123"}"" """.fmt('"', '"') == " \"{246}\" "
+    let x = 7
+    assert "var is {x * 2}".fmt == "var is 14"
+    assert "var is {{x}}".fmt == "var is {x}" # escape via doubling
+    const s = "foo: {x}"
+    assert s.fmt == "foo: 7" # also works with const strings
 
-  strformatImpl(pattern, openChar.intVal.char, closeChar.intVal.char)
+    assert fmt"\n" == r"\n" # raw string literal
+    assert "\n".fmt == "\n" # regular literal (likewise with `fmt("\n")` or `fmt "\n"`)
+  runnableExamples:
+    # custom `openChar`, `closeChar`
+    let x = 7
+    assert "<x>".fmt('<', '>') == "7"
+    assert "<<<x>>>".fmt('<', '>') == "<7>"
+    assert "`x`".fmt('`', '`') == "7"
+  strformatImpl(pattern, openChar, closeChar)
+
+template fmt*(pattern: static string): untyped =
+  ## Alias for `fmt(pattern, '{', '}')`.
+  fmt(pattern, '{', '}')
+
+macro `&`*(pattern: string{lit}): string =
+  ## `&pattern` is the same as `pattern.fmt`.
+  ## For a specification of the `&` macro, see the module level documentation.
+  # pending bug #18275, bug #18278, use `pattern: static string`
+  # consider deprecating this, it's redundant with `fmt` and `fmt` is strictly
+  # more flexible, readable (no confusion with the binary `&`), self-documenting,
+  # not to mention #18275, bug #18278.
+  runnableExamples:
+    let x = 7
+    assert &"{x}\n" == "7\n" # regular string literal
+    assert &"{x}\n" == "{x}\n".fmt # `fmt` can be used instead
+    assert &"{x}\n" != fmt"{x}\n" # see `fmt` docs, this would use a raw string literal
+  strformatImpl(pattern.strVal, '{', '}')

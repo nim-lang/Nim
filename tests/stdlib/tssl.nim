@@ -4,7 +4,7 @@ discard """
   disabled: "openbsd"
 """
 # disabled: pending bug #15713
-import net, nativesockets
+import std/[net, nativesockets, assertions]
 
 when defined(posix): import os, posix
 else:
@@ -37,8 +37,8 @@ proc notifiedShutdown(port: Port) {.thread.} =
 proc main() =
   when defined(posix):
     var
-      ignoreAction = SigAction(sa_handler: SIG_IGN)
-      oldSigPipeHandler: SigAction
+      ignoreAction = Sigaction(sa_handler: SIG_IGN)
+      oldSigPipeHandler: Sigaction
     if sigemptyset(ignoreAction.sa_mask) == -1:
       raiseOSError(osLastError(), "Couldn't create an empty signal set")
     if sigaction(SIGPIPE, ignoreAction, oldSigPipeHandler) == -1:

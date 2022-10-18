@@ -1,323 +1,242 @@
-# v1.6.x - yyyy-mm-dd
+# v1.8.x - yyyy-mm-dd
 
 
+## Changes affecting backward compatibility
+- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response, it followed Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously raise `ValueError`.
+
+- `addr` is now available for all addressable locations,
+  `unsafeAddr` is now deprecated and an alias for `addr`.
+
+- Certain definitions from the default `system` module have been moved to
+  the following new modules:
+
+  - `std/syncio`
+  - `std/assertions`
+  - `std/formatfloat`
+  - `std/objectdollar`
+  - `std/widestrs`
+
+  In the future, these definitions will be removed from the `system` module,
+  and their respective modules will have to be imported to use them.
+  Currently, to make these imports required, the `-d:nimPreviewSlimSystem` option
+  may be used.
+
+- Enabling `-d:nimPreviewSlimSystem` also removes the following deprecated
+  symbols in the `system` module:
+  - Aliases with `Error` suffix to exception types that have a `Defect` suffix
+    (see [exceptions](https://nim-lang.org/docs/exceptions.html)):
+    `ArithmeticError`, `DivByZeroError`, `OverflowError`,
+    `AccessViolationError`, `AssertionError`, `OutOfMemError`, `IndexError`,
+    `FieldError`, `RangeError`, `StackOverflowError`, `ReraiseError`,
+    `ObjectAssignmentError`, `ObjectConversionError`, `FloatingPointError`,
+    `FloatOverflowError`, `FloatUnderflowError`, `FloatInexactError`,
+    `DeadThreadError`, `NilAccessError`
+  - `addQuitProc`, replaced by `exitprocs.addExitProc`
+  - Legacy unsigned conversion operations: `ze`, `ze64`, `toU8`, `toU16`, `toU32`
+  - `TaintedString`, formerly a distinct alias to `string`
+  - `PInt32`, `PInt64`, `PFloat32`, `PFloat64`, aliases to
+    `ptr int32`, `ptr int64`, `ptr float32`, `ptr float64`
+
+- The `gc:v2` option is removed.
+
+- The `mainmodule` and `m` options are removed.
+
+- The `threads:on` option is now the default.
+
+- Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
+  `experimental:flexibleOptionalParams`.
+
+- Automatic dereferencing (experimental feature) is removed.
+
+- The `Math.trunc` polyfill for targeting Internet Explorer was
+  previously included in most JavaScript output files.
+  Now, it is only included with `-d:nimJsMathTruncPolyfill`.
+  If you are targeting Internet Explorer, you may choose to enable this option
+  or define your own `Math.trunc` polyfill using the [`emit` pragma](https://nim-lang.org/docs/manual.html#implementation-specific-pragmas-emit-pragma).
+  Nim uses `Math.trunc` for the division and modulo operators for integers.
+
+- `shallowCopy` and `shallow` are removed for ARC/ORC. Use `move` when possible or combine assignment and
+`sink` for optimization purposes.
+
+- The `nimPreviewDotLikeOps` define is going to be removed or deprecated.
+
+- The `{.this.}` pragma, deprecated since 0.19, has been removed.
+- `nil` literals can no longer be directly assigned to variables or fields of `distinct` pointer types. They must be converted instead.
+  ```nim
+  type Foo = distinct ptr int
+
+  # Before:
+  var x: Foo = nil
+  # After:
+  var x: Foo = Foo(nil)
+  ```
+- Removed two type pragma syntaxes deprecated since 0.20, namely
+  `type Foo = object {.final.}`, and `type Foo {.final.} [T] = object`.
+
+- [Overloadable enums](https://nim-lang.github.io/Nim/manual.html#overloadable-enum-value-names) and Unicode Operators
+  are no longer experimental.
+
+- Removed the `nimIncrSeqV3` define.
+
+- Static linking against OpenSSL versions below 1.1, previously done by
+  setting `-d:openssl10`, is no longer supported.
+
+- `macros.getImpl` for `const` symbols now returns the full definition node
+  (as `nnkConstDef`) rather than the AST of the constant value.
+
+- Lock levels are deprecated, now a noop.
+
+- ORC is now the default memory management strategy. Use
+  `--mm:refc` for a transition period.
+
+- `strictEffects` are no longer experimental.
+  Use `legacy:laxEffects` to keep backward compatibility.
+
+- The `gorge`/`staticExec` calls will now return a descriptive message in the output
+  if the execution fails for whatever reason. To get back legacy behaviour use `-d:nimLegacyGorgeErrors`.
 
 ## Standard library additions and changes
 
-- Make custom op in macros.quote work for all statements.
-
-- On Windows the SSL library now checks for valid certificates.
-  It uses the `cacert.pem` file for this purpose which was extracted
-  from `https://curl.se/ca/cacert.pem`. Besides
-  the OpenSSL DLLs (e.g. libssl-1_1-x64.dll, libcrypto-1_1-x64.dll) you
-  now also need to ship `cacert.pem` with your `.exe` file.
-
-
-- Make `{.requiresInit.}` pragma to work for `distinct` types.
-
-- Added a macros `enumLen` for returning the number of items in an enum to the
-  `typetraits.nim` module.
-
-- `prelude` now works with the JavaScript target.
-  Added `sequtils` import to `prelude`.
-  `prelude` can now be used via `include std/prelude`, but `include prelude` still works.
-
-- Added `almostEqual` in `math` for comparing two float values using a machine epsilon.
-
-- Added `clamp` in `math` which allows using a `Slice` to clamp to a value.
-
-- The JSON module can now handle integer literals and floating point literals of
-  arbitrary length and precision.
-  Numbers that do not fit the underlying `BiggestInt` or `BiggestFloat` fields are
-  kept as string literals and one can use external BigNum libraries to handle these.
-  The `parseFloat` family of functions also has now optional `rawIntegers` and
-  `rawFloats` parameters that can be used to enforce that all integer or float
-  literals remain in the "raw" string form so that client code can easily treat
-  small and large numbers uniformly.
-
-- Added `BackwardsIndex` overload for `JsonNode`.
-
-- added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
-
-- `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
-  instead of raising (as in 1.4) or giving wrong results (as in 1.2).
-
-- Added an overload for the `collect` macro that inferes the container type based
-  on the syntax of the last expression. Works with std seqs, tables and sets.
-
-- Added `randState` template that exposes the default random number generator.
-  Useful for library authors.
-
-- Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
-  Added `items` for enums with holes.
-  Added `symbolName` to return the enum symbol name ignoring the human readable name.
-
-- Added `typetraits.HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
-
-- Removed deprecated `iup` module from stdlib, it has already moved to
-  [nimble](https://github.com/nim-lang/iup).
-
-- various functions in `httpclient` now accept `url` of type `Uri`. Moreover `request` function's
-  `httpMethod` argument of type `string` was deprecated in favor of `HttpMethod` enum type.
-
-- `nodejs` backend now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`.
-
-- Added `cmpMem` to `system`.
-
-- `doAssertRaises` now correctly handles foreign exceptions.
-
-- Added `asyncdispatch.activeDescriptors` that returns the number of currently
-  active async event handles/file descriptors.
-
-- `--gc:orc` is now 10% faster than previously for common workloads. If
-  you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
-
-
-- `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
-  determining preferred I/O block size for this file object.
-
-- Added a simpler to use `io.readChars` overload.
-
-- `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
-  see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
-
-- Added `**` to jsffi.
-
-- `writeStackTrace` is available in JS backend now.
-
-- Added `decodeQuery` to `std/uri`.
-
-- `strscans.scanf` now supports parsing single characters.
-
-- `strscans.scanTuple` added which uses `strscans.scanf` internally,
-  returning a tuple which can be unpacked for easier usage of `scanf`.
-
-- Added `setutils.toSet` that can take any iterable and convert it to a built-in `set`,
-  if the iterable yields a built-in settable type.
-
-- Added `setutils.fullSet` which returns a full built-in `set` for a valid type.
-
-- Added `setutils.complement` which returns the complement of a built-in `set`.
-
-- Added `setutils.[]=`.
-
-- Added `math.isNaN`.
-
-- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
-  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
-
-- Added `jsbigints` module, arbitrary precision integers for JavaScript target.
-
-- Added `math.copySign`.
-
-- Added new operations for singly- and doubly linked lists: `lists.toSinglyLinkedList`
-  and `lists.toDoublyLinkedList` convert from `openArray`s; `lists.copy` implements
-  shallow copying; `lists.add` concatenates two lists - an O(1) variation that consumes
-  its argument, `addMoved`, is also supplied.
-
-- Added `euclDiv` and `euclMod` to `math`.
-
-- Added `httpcore.is1xx` and missing HTTP codes.
-
-- Added `jsconsole.jsAssert` for JavaScript target.
-
-- Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
-  https://www.freedesktop.org/software/systemd/man/os-release.html
-
-- `math.round` now is rounded "away from zero" in JS backend which is consistent
-  with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
-
-- Added `socketstream` module that wraps sockets in the stream interface
-
-- Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
-  characters in the decoded values. Prior versions would raise an error. This is
-  no longer the case to comply with the HTML spec and other languages
-  implementations. Old behavior can be obtained with
-  `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
-  underlying code is also updated the same way.
-
-- Added `sugar.dumpToString` which improves on `sugar.dump`.
-
-- Added `math.signbit`.
-
-- Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
-
-- In `lists`: renamed `append` to `add` and retained `append` as an alias;
-  added `prepend` and `prependMoved` analogously to `add` and `addMoved`;
-  added `remove` for `SinglyLinkedList`s.
-
-- Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
-
-- Added `std/sysrand` module to get random numbers from a secure source
-  provided by the operating system.
-
-- Added optional `options` argument to `copyFile`, `copyFileToDir`, and
-  `copyFileWithPermissions`. By default, on non-Windows OSes, symlinks are
-  followed (copy files symlinks point to); on Windows, `options` argument is
-  ignored and symlinks are skipped.
-
-- On non-Windows OSes, `copyDir` and `copyDirWithPermissions` copy symlinks as
-  symlinks (instead of skipping them as it was before); on Windows symlinks are
-  skipped.
-
-- On non-Windows OSes, `moveFile` and `moveDir` move symlinks as symlinks
-  (instead of skipping them sometimes as it was before).
-
-- Added optional `followSymlinks` argument to `setFilePermissions`.
-
-- Added `os.isAdmin` to tell whether the caller's process is a member of the
-  Administrators local group (on Windows) or a root (on POSIX).
-
-- Added `random.initRand()` overload with no argument which uses the current time as a seed.
-
-- Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
-
-- Added `compilesettings.SingleValueSetting.libPath`.
-
-- `std/wrapnils` doesn't use `experimental:dotOperators` anymore, avoiding
-  issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
-  for modules importing `std/wrapnils`.
-  Added `??.` macro which returns an `Option`.
-
-- Added `math.frexp` overload procs. Deprecated `c_frexp`, use `frexp` instead.
-
-- `parseopt.initOptParser` has been made available and `parseopt` has been
-  added back to `prelude` for all backends. Previously `initOptParser` was
-  unavailable if the `os` module did not have `paramCount` or `paramStr`,
-  but the use of these in `initOptParser` were conditionally to the runtime
-  arguments passed to it, so `initOptParser` has been changed to raise
-  `ValueError` when the real command line is not available. `parseopt` was
-  previously excluded from `prelude` for JS, as it could not be imported.
-
-- On POSIX systems, the default signal handlers used for Nim programs (it's
-  used for printing the stacktrace on fatal signals) will now re-raise the
-  signal for the OS default handlers to handle.
-
-  This lets the OS perform its default actions, which might include core
-  dumping (on select signals) and notifying the parent process about the cause
-  of termination.
-
-- Added `system.prepareStrMutation` for better support of low
-  level `moveMem`, `copyMem` operations for Orc's copy-on-write string
-  implementation.
-
-- `hashes.hash` now supports `object`, but can be overloaded.
-
-- Added `std/strbasics` for high performance string operations.
-  Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
-
-- `hashes.hash` now supports `object`, but can be overloaded.
-
-- Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
-
-- `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
-  and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
-
-- Added `algorithm.merge`.
-
-
-- Added `std/jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
-
-- Added `std/jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
-
-- Added `std/jsformdata` module [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData) wrapper for JavaScript target.
-
-- `system.addEscapedChar` now renders `\r` as `\r` instead of `\c`, to be compatible
-  with most other languages.
-
-- Removed support for named procs in `sugar.=>`.
-
-- Added `jscore.debugger` to [call any available debugging functionality, such as breakpoints.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger).
-
-
-- Added `std/channels`.
-
-- Added `htmlgen.portal` for [making "SPA style" pages using HTML only](https://web.dev/hands-on-portals).
-
-- Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
-  zone offsets without colons, e.g. `UTC+7 -> +0700`.
-
-- In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
-  unless `-d:nimLegacyHomeDir` is specified (for a transition period).
-
-- Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
-
-- Added dollar `$` and `len` for `jsre.RegExp`.
-
+[//]: # "Changes:"
+- OpenSSL version 3 is now supported by setting either `-d:sslVersion=3` or `-d:useOpenssl3`.
+- `macros.parseExpr` and `macros.parseStmt` now accept an optional
+  filename argument for more informative errors.
+- Module `colors` expanded with missing colors from the CSS color standard.
+  `colPaleVioletRed` and `colMediumPurple` have also been changed to match the CSS color standard.
+- Fixed `lists.SinglyLinkedList` being broken after removing the last node ([#19353](https://github.com/nim-lang/Nim/pull/19353)).
+- The `md5` module now works at compile time and in JavaScript.
+- `std/smtp` sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
+- Changed `mimedb` to use an `OrderedTable` instead of `OrderedTableRef` to support `const` tables.
+- `strutils.find` now uses and defaults to `last = -1` for whole string searches,
+  making limiting it to just the first char (`last = 0`) valid.
+- `random.rand` now works with `Ordinal`s.
+- Undeprecated `os.isvalidfilename`.
+- `std/oids` now uses `int64` to store time internally (before it was int32).
+
+[//]: # "Additions:"
+- Added ISO 8601 week date utilities in `times`:
+  - Added `IsoWeekRange`, a range type for weeks in a week-based year.
+  - Added `IsoYear`, a distinct type for a week-based year in contrast to a regular year.
+  - Added a `initDateTime` overload to create a datetime from an ISO week date.
+  - Added `getIsoWeekAndYear` to get an ISO week number and week-based year from a datetime.
+  - Added `getIsoWeeksInYear` to return the number of weeks in a week-based year.
+- Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
+- Added `sep` parameter in `std/uri` to specify the query separator.
+- Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
+  and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
+  in `jscore` for JavaScript targets.
+- Added `UppercaseLetters`, `LowercaseLetters`, `PunctuationChars`, `PrintableChars` sets to `std/strutils`.
+- Added `complex.sgn` for obtaining the phase of complex numbers.
+- Added `insertAdjacentText`, `insertAdjacentElement`, `insertAdjacentHTML`,
+  `after`, `before`, `closest`, `append`, `hasAttributeNS`, `removeAttributeNS`,
+  `hasPointerCapture`, `releasePointerCapture`, `requestPointerLock`,
+  `replaceChildren`, `replaceWith`, `scrollIntoViewIfNeeded`, `setHTML`,
+  `toggleAttribute`, and `matches` to `std/dom`.
+- Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
+- Added `capacity` for `string` and `seq` to return the current capacity, see https://github.com/nim-lang/RFCs/issues/460
+
+[//]: # "Deprecations:"
+- Deprecated `selfExe` for Nimscript.
+- Deprecated `std/sums`.
+- Deprecated `std/base64.encode` for collections of arbitrary integer element type.
+  Now only `byte` and `char` are supported.
+
+[//]: # "Removals:"
+- Removed deprecated module `parseopt2`.
+- Removed deprecated module `sharedstrings`.
+- Removed deprecated module `dom_extensions`.
+- Removed deprecated module `LockFreeHash`.
+- Removed deprecated module `events`.
+- Removed deprecated `oids.oidToString`.
+- Removed define `nimExperimentalAsyncjsThen` for `std/asyncjs.then` and `std/jsfetch`.
+- Removed deprecated `jsre.test` and `jsre.toString`.
+- Removed deprecated `math.c_frexp`.
+- Removed deprecated `` httpcore.`==` ``.
+- Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that takes wrong argument types.
+- Removed deprecated `osproc.poDemon`, symbol with typo.
 
 ## Language changes
 
-- `nimscript` now handles `except Exception as e`.
+- [Tag tracking](https://nim-lang.github.io/Nim/manual.html#effect-system-tag-tracking) supports the definition of forbidden tags by the `.forbids` pragma
+  which can be used to disable certain effects in proc types.
+- [Case statement macros](https://nim-lang.github.io/Nim/manual.html#macros-case-statement-macros) are no longer experimental,
+  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
+- Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
+  for the right-hand side of type definitions in type sections. Previously
+  they would error with "invalid indentation".
+- `defined` now accepts identifiers separated by dots, i.e. `defined(a.b.c)`.
+  In the command line, this is defined as `-d:a.b.c`. Older versions can
+  use accents as in ``defined(`a.b.c`)`` to access such defines.
+- [Macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas) changes:
+  - Templates now accept macro pragmas.
+  - Macro pragmas for var/let/const sections have been redesigned in a way that works
+    similarly to routine macro pragmas. The new behavior is documented in the
+    [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#extended-macro-pragmas).
+  - Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
+    allowing multiple type definitions to be injected in place of the original type definition.
 
-- The `cstring` doesn't support `[]=` operator in JS backend.
+    ```nim
+    import macros
+    macro multiply(amount: static int, s: untyped): untyped =
+      let name = $s[0].basename
+      result = newNimNode(nnkTypeSection)
+      for i in 1 .. amount:
+        result.add(newTree(nnkTypeDef, ident(name & $i), s[1], s[2]))
+    type
+      Foo = object
+      Bar {.multiply: 3.} = object
+        x, y, z: int
+      Baz = object
+    # becomes
+    type
+      Foo = object
+      Bar1 = object
+        x, y, z: int
+      Bar2 = object
+        x, y, z: int
+      Bar3 = object
+        x, y, z: int
+      Baz = object
+    ```
 
-- nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
+- Redefining templates with the same signature implicitly was previously
+  allowed to support certain macro code. A `{.redefine.}` pragma has been
+  added to make this work explicitly, and a warning is generated in the case
+  where it is implicit. This behavior only applies to templates, redefinition
+  is generally disallowed for other symbols.
 
-- `typetraits.distinctBase` now is identity instead of error for non distinct types.
+- A new form of type inference called [top-down inference](https://nim-lang.github.io/Nim/manual_experimental.html#topminusdown-type-inference)
+  has been implemented for a variety of basic cases. For example, code like the following now compiles:
 
-- `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
-  use `-d:nimLegacyCopyFile` for OSX < 10.5.
+  ```nim
+  let foo: seq[(float, byte, cstring)] = @[(1, 2, "abc")]
+  ```
 
-- The required name of case statement macros for the experimental
-  `caseStmtMacros` feature has changed from `match` to `` `case` ``.
-
-- `typedesc[Foo]` now renders as such instead of `type Foo` in compiler messages.
-
-- The unary minus in `-1` is now part of the integer literal, it is now parsed as a single token.
-  This implies that edge cases like `-128'i8` finally work correctly.
-
-- Custom numeric literals (e.g. `-128'bignum`) are now supported.
-
+- `cstring` is now accepted as a selector in `case` statements, removing the
+  need to convert to `string`. On the JS backend, this is translated directly
+  to a `switch` statement.
 
 ## Compiler changes
 
-- Added `--declaredlocs` to show symbol declaration location in messages.
+- The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
+  reality better. (Nim moved away from all techniques based on "tracing".)
 
-- Deprecated `TaintedString` and `--taintmode`.
+- Defines the `gcRefc` symbol which allows writing specific code for the refc GC.
 
-- Deprecated `--nilseqs` which is now a noop.
+- `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
+  without requiring `-d:nimVersion140` which is now a noop.
 
-- Added `--spellSuggest` to show spelling suggestions on typos.
+- `--styleCheck`, `--hintAsError` and `--warningAsError` now only apply to the current package.
 
-- Source+Edit links now appear on top of every docgen'd page when
-  `nim doc --git.url:url ...` is given.
+- The switch `--nimMainPrefix:prefix` has been added to add a prefix to the names of `NimMain` and
+  related functions produced on the backend. This prevents conflicts with other Nim
+  static libraries.
 
-- Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
-
-- VM now supports `addr(mystring[ind])` (index + index assignment)
-
-- Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
-  behavior.
-
-- Added `--hintAsError` with similar semantics as `--warningAsError`.
-
-- TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
-  such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
-
-- Now array literals(JS backend) uses JS typed arrays when the corresponding js typed array exists, for example `[byte(1), 2, 3]` generates `new Uint8Array([1, 2, 3])`.
-
-- docgen: rst files can now use single backticks instead of double backticks and correctly render
-  in both rst2html (as before) as well as common tools rendering rst directly (e.g. github), by
-  adding: `default-role:: code` directive inside the rst file, which is now handled by rst2html.
-
-- Added `-d:nimStrictMode` in CI in several places to ensure code doesn't have certain hints/warnings
-
-- Added `then`, `catch` to `asyncjs`, for now hidden behind `-d:nimExperimentalAsyncjsThen`.
-
-- `--newruntime` and `--refchecks` are deprecated.
-
-- Added `unsafeIsolate` and `extract` to `std/isolation`.
-
-- `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
+- When compiling for Release the flag `-fno-math-errno` is used for GCC.
 
 
 ## Tool changes
 
-- The rst parser now supports markdown table syntax.
-  Known limitations:
-  - cell alignment is not supported, i.e. alignment annotations in a delimiter
-    row (`:---`, `:--:`, `---:`) are ignored,
-  - every table row must start with `|`, e.g. `| cell 1 | cell 2 |`.
-
-- `fusion` is now un-bundled from nim, `./koch fusion` will
-  install it via nimble at a fixed hash.
+- Nim now supports Nimble version 0.14 which added support for lock-files. This is done by
+  a simple configuration change setting that you can do yourself too. In `$nim/config/nim.cfg`
+  replace `pkgs` by `pkgs2`.

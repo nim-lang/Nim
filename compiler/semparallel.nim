@@ -323,7 +323,7 @@ proc analyseIf(c: var AnalysisCtx; n: PNode) =
 
 proc analyse(c: var AnalysisCtx; n: PNode) =
   case n.kind
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     let y = n[1].skipConv
     if n[0].isSingleAssignable and y.isLocal:
       let slot = c.getSlot(y.sym)
@@ -442,7 +442,7 @@ proc transformSpawn(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier:
         else:
           it[^1] = wrapProcForSpawn(g, idgen, owner, m, b.typ, barrier, nil)
     if result.isNil: result = n
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     let b = n[1]
     if getMagic(b) == mSpawn and (let t = b[1][0].typ[0];
         spawnResult(t, true) == srByVar):
@@ -460,10 +460,10 @@ proc transformSpawn(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier:
     result = n
 
 proc checkArgs(a: var AnalysisCtx; n: PNode) =
-  discard "too implement"
+  discard "to implement"
 
 proc generateAliasChecks(a: AnalysisCtx; result: PNode) =
-  discard "too implement"
+  discard "to implement"
 
 proc liftParallel*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
   # this needs to be called after the 'for' loop elimination

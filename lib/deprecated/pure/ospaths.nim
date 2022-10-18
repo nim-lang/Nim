@@ -7,8 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
-## This module is deprecated, `import os` instead.
-{.deprecated: "import os.nim instead".}
+## This module is deprecated since 0.20.0, `import std/os` instead.
+
+{.deprecated: "use `std/os` instead".}
 
 import os
 export ReadEnvEffect, WriteEnvEffect, ReadDirEffect, WriteDirEffect, OSErrorCode,

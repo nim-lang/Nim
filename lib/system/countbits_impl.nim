@@ -9,8 +9,7 @@
 
 ## Contains the used algorithms for counting bits.
 
-from std/private/vmutils import forwardImpl, toUnsigned
-
+from std/private/bitops_utils import forwardImpl, castToUnsigned
 
 const useBuiltins* = not defined(noIntrinsicsBitOpts)
 const noUndefined* = defined(noUndefinedBitOpts)
@@ -18,6 +17,7 @@ const useGCC_builtins* = (defined(gcc) or defined(llvm_gcc) or
                          defined(clang)) and useBuiltins
 const useICC_builtins* = defined(icc) and useBuiltins
 const useVCC_builtins* = defined(vcc) and useBuiltins
+const arch64* = sizeof(int) == 8
 
 template countBitsImpl(n: uint32): int =
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
@@ -64,8 +64,7 @@ func countSetBitsImpl*(x: SomeInteger): int {.inline.} =
   ## Counts the set bits in an integer (also called `Hamming weight`:idx:).
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
   # like GCC and MSVC
-  when x is SomeSignedInt:
-    let x = x.toUnsigned
+  let x = x.castToUnsigned
   when nimvm:
     result = forwardImpl(countBitsImpl, x)
   else:

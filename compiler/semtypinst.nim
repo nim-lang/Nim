@@ -14,6 +14,9 @@ import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
 
 from concepts import makeTypeDesc
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
@@ -35,7 +38,7 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
 proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
   let genericTyp = key[0]
   if not (genericTyp.kind == tyGenericBody and
-      key[0] == genericTyp and genericTyp.sym != nil): return
+      genericTyp.sym != nil): return
 
   for inst in typeInstCacheItems(g, genericTyp.sym):
     if inst.id == key.id: return inst
@@ -51,7 +54,7 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
       for j in 1..high(key.sons):
         # XXX sameType is not really correct for nested generics?
         if not compareTypes(inst[j], key[j],
-                            flags = {ExactGenericParams}):
+                            flags = {ExactGenericParams, PickyCAliases}):
           break matchType
 
       return inst
@@ -64,7 +67,7 @@ proc cacheTypeInst(c: PContext; inst: PType) =
   addToGenericCache(c, gt.sym, inst)
 
 type
-  LayeredIdTable* = ref object
+  LayeredIdTable* {.acyclic.} = ref object
     topLayer*: TIdTable
     nextLayer*: LayeredIdTable
 
@@ -378,7 +381,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   cl.typeMap = newTypeMapLayer(cl)
 
   for i in 1..<t.len:
-    var x = replaceTypeVarsT(cl, t[i])
+    var x = replaceTypeVarsT(cl):
+      if header[i].kind == tyGenericInst:
+        t[i]
+      else:
+        header[i]
     assert x.kind != tyGenericInvocation
     header[i] = x
     propagateToOwner(header, x)
@@ -492,17 +499,20 @@ proc propagateFieldFlags(t: PType, n: PNode) =
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   template bailout =
-    if cl.recursionLimit > 100:
-      # bail out, see bug #2509. But note this caching is in general wrong,
-      # look at this example where TwoVectors should not share the generic
-      # instantiations (bug #3112):
-
-      # type
-      #   Vector[N: static[int]] = array[N, float64]
-      #   TwoVectors[Na, Nb: static[int]] = (Vector[Na], Vector[Nb])
-      result = PType(idTableGet(cl.localCache, t))
-      if result != nil: return result
-    inc cl.recursionLimit
+    if t.sym != nil and sfGeneratedType in t.sym.flags:
+      # Only consider the recursion limit if the symbol is a type with generic
+      # parameters that have not been explicitly supplied, typechecking should
+      # terminate when generic parameters are explicitly supplied.
+      if cl.recursionLimit > 100:
+        # bail out, see bug #2509. But note this caching is in general wrong,
+        # look at this example where TwoVectors should not share the generic
+        # instantiations (bug #3112):
+        # type
+        #   Vector[N: static[int]] = array[N, float64]
+        #   TwoVectors[Na, Nb: static[int]] = (Vector[Na], Vector[Nb])
+        result = PType(idTableGet(cl.localCache, t))
+        if result != nil: return result
+      inc cl.recursionLimit
 
   result = t
   if t == nil: return
@@ -544,7 +554,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result = n.typ.skipTypes({tyTypeDesc})
       # result = n.typ.base
     else:
-      if n.typ.kind != tyStatic:
+      if n.typ.kind != tyStatic and n.kind != nkType:
         # XXX: In the future, semConstExpr should
         # return tyStatic values to let anyone make
         # use of this knowledge. The patching here

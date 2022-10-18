@@ -18,7 +18,7 @@ proc createTree(x: int): Foo =
 proc take2(a, b: sink Foo) =
   echo a.x, " ", b.x
 
-proc allowThis() =
+when false:
   var otherTree: Foo
   try:
     for i in 0..3:
@@ -47,7 +47,7 @@ proc preventThis2() =
   finally:
     echo otherTree
 
-allowThis()
+#allowThis()
 preventThis2()
 
 

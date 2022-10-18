@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc"
   output: '''0
 0
 0

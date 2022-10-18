@@ -26,6 +26,7 @@ batchable: false
 ## * unicode
 ## * pegs
 ## * ropes
+## * cstrutils
 ##
 
 when system.appType != "lib":

@@ -7,17 +7,20 @@
 #    distribution, for details about the copyright.
 #
 
-# This scanner is handwritten for efficiency. I used an elegant buffering
+# This lexer is handwritten for efficiency. I used an elegant buffering
 # scheme which I have not seen anywhere else:
 # We guarantee that a whole line is in the buffer. Thus only when scanning
 # the \n or \r character we have to check whether we need to read in the next
 # chunk. (\n or \r already need special handling for incrementing the line
-# counter; choosing both \n and \r allows the scanner to properly read Unix,
+# counter; choosing both \n and \r allows the lexer to properly read Unix,
 # DOS or Macintosh text files, even when it is not the native format.
 
 import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
   wordrecg, lineinfos, pathutils, parseutils
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, formatfloat]
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -72,7 +75,7 @@ type
     tkDot = ".", tkDotDot = "..", tkBracketLeColon = "[:",
     tkOpr, tkComment, tkAccent = "`",
     # these are fake tokens used by renderer.nim
-    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
+    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr, tkHideableStart, tkHideableEnd
 
   TokTypes* = set[TokType]
 
@@ -163,6 +166,7 @@ proc prettyTok*(tok: Token): string =
   else: $tok
 
 proc printTok*(conf: ConfigRef; tok: Token) =
+  # xxx factor with toLocation
   msgWriteln(conf, $tok.line & ":" & $tok.col & "\t" & $tok.tokType & " " & $tok)
 
 proc initToken*(L: var Token) =
@@ -412,14 +416,12 @@ proc getNumber(L: var Lexer, result: var Token) =
       customLitPossible = true
 
     if L.buf[postPos] in SymChars:
-      var suffixAsLower = newStringOfCap(10)
       var suffix = newStringOfCap(10)
       while true:
-        let c = L.buf[postPos]
-        suffix.add c
-        suffixAsLower.add toLowerAscii(c)
+        suffix.add L.buf[postPos]
         inc postPos
         if L.buf[postPos] notin SymChars+{'_'}: break
+      let suffixAsLower = suffix.toLowerAscii
       case suffixAsLower
       of "f", "f32": result.tokType = tkFloat32Lit
       of "d", "f64": result.tokType = tkFloat64Lit
@@ -433,16 +435,15 @@ proc getNumber(L: var Lexer, result: var Token) =
       of "u16": result.tokType = tkUInt16Lit
       of "u32": result.tokType = tkUInt32Lit
       of "u64": result.tokType = tkUInt64Lit
+      elif customLitPossible:
+        # remember the position of the `'` so that the parser doesn't
+        # have to reparse the custom literal:
+        result.iNumber = len(result.literal)
+        result.literal.add '\''
+        result.literal.add suffix
+        result.tokType = tkCustomLit
       else:
-        if customLitPossible:
-          # remember the position of the ``'`` so that the parser doesn't
-          # have to reparse the custom literal:
-          result.iNumber = len(result.literal)
-          result.literal.add '\''
-          result.literal.add suffix
-          result.tokType = tkCustomLit
-        else:
-          lexMessageLitNum(L, "invalid number suffix: '$1'", errPos)
+        lexMessageLitNum(L, "invalid number suffix: '$1'", errPos)
     else:
       lexMessageLitNum(L, "invalid number suffix: '$1'", errPos)
 
@@ -467,7 +468,7 @@ proc getNumber(L: var Lexer, result: var Token) =
             if L.buf[pos] != '_':
               xi = `shl`(xi, 1) or (ord(L.buf[pos]) - ord('0'))
             inc(pos)
-        # 'c', 'C' is deprecated
+        # 'c', 'C' is deprecated (a warning is issued elsewhere)
         of 'o', 'c', 'C':
           result.base = base8
           while pos < endpos:
@@ -504,11 +505,11 @@ proc getNumber(L: var Lexer, result: var Token) =
         of tkUInt16Lit: setNumber result.iNumber, xi and 0xffff
         of tkUInt32Lit: setNumber result.iNumber, xi and 0xffffffff
         of tkFloat32Lit:
-          setNumber result.fNumber, (cast[PFloat32](addr(xi)))[]
+          setNumber result.fNumber, (cast[ptr float32](addr(xi)))[]
           # note: this code is endian neutral!
           # XXX: Test this on big endian machine!
         of tkFloat64Lit, tkFloatLit:
-          setNumber result.fNumber, (cast[PFloat64](addr(xi)))[]
+          setNumber result.fNumber, (cast[ptr float64](addr(xi)))[]
         else: internalError(L.config, getLineInfo(L), "getNumber")
 
         # Bounds checks. Non decimal literals are allowed to overflow the range of
@@ -538,9 +539,9 @@ proc getNumber(L: var Lexer, result: var Token) =
           try:
             len = parseBiggestUInt(result.literal, iNumber)
           except ValueError:
-            raise newException(OverflowDefect, "number out of range: " & $result.literal)
+            raise newException(OverflowDefect, "number out of range: " & result.literal)
           if len != result.literal.len:
-            raise newException(ValueError, "invalid integer: " & $result.literal)
+            raise newException(ValueError, "invalid integer: " & result.literal)
           result.iNumber = cast[int64](iNumber)
         else:
           var iNumber: int64
@@ -548,9 +549,9 @@ proc getNumber(L: var Lexer, result: var Token) =
           try:
             len = parseBiggestInt(result.literal, iNumber)
           except ValueError:
-            raise newException(OverflowDefect, "number out of range: " & $result.literal)
+            raise newException(OverflowDefect, "number out of range: " & result.literal)
           if len != result.literal.len:
-            raise newException(ValueError, "invalid integer: " & $result.literal)
+            raise newException(ValueError, "invalid integer: " & result.literal)
           result.iNumber = iNumber
 
         # Explicit bounds checks.
@@ -840,6 +841,49 @@ proc getCharacter(L: var Lexer; tok: var Token) =
       lexMessage(L, errGenerated, "missing closing ' for character literal")
     tokenEndIgnore(tok, L.bufpos)
 
+const
+  UnicodeOperatorStartChars = {'\226', '\194', '\195'}
+    # the allowed unicode characters ("∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔")
+    # all start with one of these.
+
+type
+  UnicodeOprPred = enum
+    Mul, Add
+
+proc unicodeOprLen(buf: cstring; pos: int): (int8, UnicodeOprPred) =
+  template m(len): untyped = (int8(len), Mul)
+  template a(len): untyped = (int8(len), Add)
+  result = 0.m
+  case buf[pos]
+  of '\226':
+    if buf[pos+1] == '\136':
+      if buf[pos+2] == '\152': result = 3.m # ∘
+      elif buf[pos+2] == '\153': result = 3.m # ∙
+      elif buf[pos+2] == '\167': result = 3.m # ∧
+      elif buf[pos+2] == '\168': result = 3.a # ∨
+      elif buf[pos+2] == '\169': result = 3.m # ∩
+      elif buf[pos+2] == '\170': result = 3.a # ∪
+    elif buf[pos+1] == '\138':
+      if buf[pos+2] == '\147': result = 3.m # ⊓
+      elif buf[pos+2] == '\148': result = 3.a # ⊔
+      elif buf[pos+2] == '\149': result = 3.a # ⊕
+      elif buf[pos+2] == '\150': result = 3.a # ⊖
+      elif buf[pos+2] == '\151': result = 3.m # ⊗
+      elif buf[pos+2] == '\152': result = 3.m # ⊘
+      elif buf[pos+2] == '\153': result = 3.m # ⊙
+      elif buf[pos+2] == '\155': result = 3.m # ⊛
+      elif buf[pos+2] == '\158': result = 3.a # ⊞
+      elif buf[pos+2] == '\159': result = 3.a # ⊟
+      elif buf[pos+2] == '\160': result = 3.m # ⊠
+      elif buf[pos+2] == '\161': result = 3.m # ⊡
+    elif buf[pos+1] == '\152' and buf[pos+2] == '\133': result = 3.m # ★
+  of '\194':
+    if buf[pos+1] == '\177': result = 2.a # ±
+  of '\195':
+    if buf[pos+1] == '\151': result = 2.m # ×
+  else:
+    discard
+
 proc getSymbol(L: var Lexer, tok: var Token) =
   var h: Hash = 0
   var pos = L.bufpos
@@ -848,7 +892,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
   while true:
     var c = L.buf[pos]
     case c
-    of 'a'..'z', '0'..'9', '\x80'..'\xFF':
+    of 'a'..'z', '0'..'9':
       h = h !& ord(c)
       inc(pos)
     of 'A'..'Z':
@@ -862,6 +906,12 @@ proc getSymbol(L: var Lexer, tok: var Token) =
         break
       inc(pos)
       suspicious = true
+    of '\x80'..'\xFF':
+      if c in UnicodeOperatorStartChars and unicodeOprLen(L.buf, pos)[0] != 0:
+        break
+      else:
+        h = h !& ord(c)
+        inc(pos)
     else: break
   tokenEnd(tok, pos-1)
   h = !$h
@@ -890,9 +940,17 @@ proc getOperator(L: var Lexer, tok: var Token) =
   var h: Hash = 0
   while true:
     var c = L.buf[pos]
-    if c notin OpChars: break
-    h = h !& ord(c)
-    inc(pos)
+    if c in OpChars:
+      h = h !& ord(c)
+      inc(pos)
+    elif c in UnicodeOperatorStartChars:
+      let oprLen = unicodeOprLen(L.buf, pos)[0]
+      if oprLen == 0: break
+      for i in 0..<oprLen:
+        h = h !& ord(L.buf[pos])
+        inc pos
+    else:
+      break
   endOperator(L, tok, pos, h)
   tokenEnd(tok, pos-1)
   # advance pos but don't store it in L.bufpos so the next token (which might
@@ -906,26 +964,38 @@ proc getOperator(L: var Lexer, tok: var Token) =
 
 proc getPrecedence*(tok: Token): int =
   ## Calculates the precedence of the given token.
+  const
+    MulPred = 9
+    PlusPred = 8
   case tok.tokType
   of tkOpr:
     let relevantChar = tok.ident.s[0]
 
     # arrow like?
     if tok.ident.s.len > 1 and tok.ident.s[^1] == '>' and
-      tok.ident.s[^2] in {'-', '~', '='}: return 1
+      tok.ident.s[^2] in {'-', '~', '='}: return 0
 
     template considerAsgn(value: untyped) =
       result = if tok.ident.s[^1] == '=': 1 else: value
 
     case relevantChar
     of '$', '^': considerAsgn(10)
-    of '*', '%', '/', '\\': considerAsgn(9)
+    of '*', '%', '/', '\\': considerAsgn(MulPred)
     of '~': result = 8
-    of '+', '-', '|': considerAsgn(8)
+    of '+', '-', '|': considerAsgn(PlusPred)
     of '&': considerAsgn(7)
     of '=', '<', '>', '!': result = 5
     of '.': considerAsgn(6)
     of '?': result = 2
+    of UnicodeOperatorStartChars:
+      if tok.ident.s[^1] == '=':
+        result = 1
+      else:
+        let (len, pred) = unicodeOprLen(cstring(tok.ident.s), 0)
+        if len != 0:
+          result = if pred == Mul: MulPred else: PlusPred
+        else:
+          result = 2
     else: considerAsgn(2)
   of tkDiv, tkMod, tkShl, tkShr: result = 9
   of tkDotDot: result = 6
@@ -1169,10 +1239,15 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
   var c = L.buf[L.bufpos]
   tok.line = L.lineNumber
   tok.col = getColNumber(L, L.bufpos)
-  if c in SymStartChars - {'r', 'R'}:
+  if c in SymStartChars - {'r', 'R'} - UnicodeOperatorStartChars:
     getSymbol(L, tok)
   else:
     case c
+    of UnicodeOperatorStartChars:
+      if unicodeOprLen(L.buf, L.bufpos)[0] != 0:
+        getOperator(L, tok)
+      else:
+        getSymbol(L, tok)
     of '#':
       scanComment(L, tok)
     of '*':
@@ -1280,7 +1355,11 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
       getNumber(L, tok)
       let c = L.buf[L.bufpos]
       if c in SymChars+{'_'}:
-        lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
+        if c in UnicodeOperatorStartChars and
+            unicodeOprLen(L.buf, L.bufpos)[0] != 0:
+          discard
+        else:
+          lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
     of '-':
       if L.buf[L.bufpos+1] in {'0'..'9'} and
           (L.bufpos-1 == 0 or L.buf[L.bufpos-1] in UnaryMinusWhitelist):
@@ -1291,7 +1370,11 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
         getNumber(L, tok)
         let c = L.buf[L.bufpos]
         if c in SymChars+{'_'}:
-          lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
+          if c in UnicodeOperatorStartChars and
+              unicodeOprLen(L.buf, L.bufpos)[0] != 0:
+            discard
+          else:
+            lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
       else:
         getOperator(L, tok)
     else:

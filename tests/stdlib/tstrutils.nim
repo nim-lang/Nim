@@ -3,7 +3,8 @@ discard """
 """
 
 import std/strutils
-
+from stdtest/testutils import disableVm
+import std/assertions
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
 template rejectParse(e) =
@@ -11,10 +12,6 @@ template rejectParse(e) =
     discard e
     raise newException(AssertionDefect, "This was supposed to fail: $#!" % astToStr(e))
   except ValueError: discard
-
-template disableVm(body) =
-  when nimvm: discard
-  else: body
 
 template main() =
   block: # strip
@@ -202,7 +199,30 @@ template main() =
     s.removePrefix("")
     doAssert s == "\r\n\r\nhello"
 
-  block: # delete
+  block: # delete(slice)
+    var s = "0123456789ABCDEFGH"
+    delete(s, 4 .. 5)
+    doAssert s == "01236789ABCDEFGH"
+    delete(s, s.len-1 .. s.len-1)
+    doAssert s == "01236789ABCDEFG"
+    delete(s, 0..0)
+    doAssert s == "1236789ABCDEFG"
+    s = ""
+    doAssertRaises(IndexDefect): delete(s, 0..0)
+    doAssert s == ""
+    s = "abc"
+    doAssertRaises(IndexDefect): delete(s, -1 .. -2)
+    doAssertRaises(IndexDefect): delete(s, 2..3)
+    doAssertRaises(IndexDefect): delete(s, 3..2)
+    delete(s, 2..2)
+    doAssert s == "ab"
+    delete(s, 1..0)
+    doAssert s == "ab"
+    delete(s, 0..0)
+    doAssert s == "b"
+
+  block: # delete(first, last)
+    {.push warning[deprecated]:off.}
     var s = "0123456789ABCDEFGH"
     delete(s, 4, 5)
     doAssert s == "01236789ABCDEFGH"
@@ -210,20 +230,88 @@ template main() =
     doAssert s == "01236789ABCDEFG"
     delete(s, 0, 0)
     doAssert s == "1236789ABCDEFG"
+    {.pop.}
 
   block: # find
-    doAssert "0123456789ABCDEFGH".find('A') == 10
-    doAssert "0123456789ABCDEFGH".find('A', 5) == 10
-    doAssert "0123456789ABCDEFGH".find('A', 5, 10) == 10
-    doAssert "0123456789ABCDEFGH".find('A', 5, 9) == -1
-    doAssert "0123456789ABCDEFGH".find("A") == 10
-    doAssert "0123456789ABCDEFGH".find("A", 5) == 10
-    doAssert "0123456789ABCDEFGH".find("A", 5, 10) == 10
-    doAssert "0123456789ABCDEFGH".find("A", 5, 9) == -1
-    doAssert "0123456789ABCDEFGH".find({'A'..'C'}) == 10
-    doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5) == 10
-    doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 10) == 10
-    doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 9) == -1
+    const haystack: string = "0123456789ABCDEFGH"
+    doAssert haystack.find('A') == 10
+    doAssert haystack.find('A', 5) == 10
+    doAssert haystack.find('A', 5, 10) == 10
+    doAssert haystack.find('A', 5, 9) == -1
+    doAssert haystack.find("A") == 10
+    doAssert haystack.find("A", 5) == 10
+    doAssert haystack.find("A", 5, 10) == 10
+    doAssert haystack.find("A", 5, 9) == -1
+    doAssert haystack.find({'A'..'C'}) == 10
+    doAssert haystack.find({'A'..'C'}, 5) == 10
+    doAssert haystack.find({'A'..'C'}, 5, 10) == 10
+    doAssert haystack.find({'A'..'C'}, 5, 9) == -1
+    doAssert haystack.find('A', 0, 0) == -1 # search limited to the first char
+    doAssert haystack.find('A', 5, 0) == -1 # last < start
+    doAssert haystack.find('A', 5, 4) == -1 # last < start
+
+    block:
+      const haystack: string = "ABCABABABABCAB"
+      doAssert haystack.len == 14
+
+      # only last argument
+      doAssert haystack.find("ABC") == 0
+      doAssert haystack.find("ABC", last=13) == 0 # after the second ABC
+      doAssert haystack.find("ABC", last=5) == 0 # before the second ABC
+
+      # only start argument
+      doAssert haystack.find("ABC", start=0) == 0
+      doAssert haystack.find("ABC", start=1) == 9
+      doAssert haystack.find("ABC", start=9) == 9
+      doAssert haystack.find("ABC", start=10) == -1
+
+      # both start and last arguments
+      doAssert haystack.find("ABC", start=0, last=14) == 0
+      doAssert haystack.find("ABC", start=0, last=13) == 0
+      doAssert haystack.find("ABC", start=0, last=12) == 0
+      doAssert haystack.find("ABC", start=1, last=13) == 9
+      doAssert haystack.find("ABC", start=1, last=12) == 9
+      doAssert haystack.find("ABC", start=1, last=11) == 9
+      doAssert haystack.find("ABC", start=1, last=10) == -1
+
+    doAssert "".find("/") == -1
+    doAssert "/".find("/") == 0
+    doAssert "/".find("//") == -1
+    doAssert "///".find("//", start=3) == -1
+
+    # searching for empty string
+    doAssert "".find("") == 0
+    doAssert "abc".find("") == 0
+    doAssert "abc".find("", start=1) == 1
+    doAssert "abc".find("", start=2) == 2
+    doAssert "abc".find("", start=3) == 3
+    doAssert "abc".find("", start=4) == -1
+    doAssert "abc".find("", start=400) == -1
+    doAssert "abc".find("", start=1, last=3) == 1
+    doAssert "abc".find("", start=1, last=2) == 1
+    doAssert "abc".find("", start=1, last=1) == 1
+    doAssert "abc".find("", start=1, last=0) == 1
+    doAssert "abc".find("", start=1, last = -1) == 1
+
+    # when last <= start, searching for non-empty string
+    block:
+      let last: int = -1 # searching through whole line
+      doAssert "abcd".find("ab", start=0, last=last) == 0
+      doAssert "abcd".find("ab", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=1, last=last) == 1
+      doAssert "abcd".find("bc", start=2, last=last) == -1
+    block:
+      let last: int = 0
+      doAssert "abcd".find("ab", start=0, last=last) == -1
+      doAssert "abcd".find("ab", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=2, last=last) == -1
+    block:
+      let last: int = 1
+      doAssert "abcd".find("ab", start=0, last=last) == 0
+      doAssert "abcd".find("ab", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=2, last=last) == -1
 
   block: # rfind
     doAssert "0123456789ABCDEFGAH".rfind('A') == 17
@@ -246,6 +334,70 @@ template main() =
     doAssert "/1/2/3".rfind('/') == 4
     doAssert "/1/2/3".rfind('/', last=1) == 0
     doAssert "/1/2/3".rfind('0') == -1
+
+    block:
+      const haystack: string = "ABCABABABABCAB"
+      doAssert haystack.len == 14
+      doAssert haystack.rfind("ABC") == 9
+      doAssert haystack.rfind("ABC", last=13) == 9
+      doAssert haystack.rfind("ABC", last=12) == 9
+      doAssert haystack.rfind("ABC", last=11) == 9
+      doAssert haystack.rfind("ABC", last=10) == 0
+
+      doAssert haystack.rfind("ABC", start=0) == 9
+      doAssert haystack.rfind("ABC", start=1) == 9
+      doAssert haystack.rfind("ABC", start=9) == 9
+      doAssert haystack.rfind("ABC", start=10) == -1
+
+      doAssert haystack.rfind("ABC", start=0, last=13) == 9
+      doAssert haystack.rfind("ABC", start=0, last=12) == 9
+      doAssert haystack.rfind("ABC", start=0, last=11) == 9
+      doAssert haystack.rfind("ABC", start=0, last=10) == 0
+      doAssert haystack.rfind("ABC", start=1, last=10) == -1
+
+    doAssert "".rfind("/") == -1
+    doAssert "/".rfind("/") == 0
+    doAssert "/".rfind("//") == -1
+    doAssert "///".rfind("//", start=3) == -1
+
+    # searching for empty string
+    doAssert "".rfind("") == 0
+    doAssert "abc".rfind("") == 3
+    doAssert "abc".rfind("", start=1) == 3
+    doAssert "abc".rfind("", start=2) == 3
+    doAssert "abc".rfind("", start=3) == 3
+    doAssert "abc".rfind("", start=4) == 4
+    doAssert "abc".rfind("", start=400) == 400
+
+    doAssert "abc".rfind("", start=1, last=3) == 3
+    doAssert "abc".rfind("", start=1, last=2) == 2
+    doAssert "abc".rfind("", start=1, last=1) == 1
+    # This returns the start index instead of the last index
+    # because start > last
+    doAssert "abc".rfind("", start=1, last=0) == 1
+    doAssert "abc".rfind("", start=1, last = -1) == 3
+    
+    doAssert "abc".rfind("", start=0, last=0) == 0
+
+    # when last <= start, searching for non-empty string
+    block:
+      let last: int = -1
+      doAssert "abcd".rfind("ab", start=0, last=last) == 0
+      doAssert "abcd".rfind("ab", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=1, last=last) == 1
+      doAssert "abcd".rfind("bc", start=2, last=last) == -1
+    block:
+      let last: int = 0
+      doAssert "abcd".rfind("ab", start=0, last=last) == -1
+      doAssert "abcd".rfind("ab", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=2, last=last) == -1
+    block:
+      let last: int = 1
+      doAssert "abcd".rfind("ab", start=0, last=last) == 0
+      doAssert "abcd".rfind("ab", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=2, last=last) == -1
 
   block: # trimZeros
     var x = "1200"
@@ -281,6 +433,9 @@ template main() =
     x = "1e0"
     x.trimZeros()
     doAssert x == "1e0"
+    x = "1.23"
+    x.trimZeros()
+    doAssert x == "1.23"
 
   block: # countLines
     proc assertCountLines(s: string) = doAssert s.countLines == s.splitLines.len
@@ -439,6 +594,17 @@ template main() =
       # finally using default
       let g = parseEnum[Foo]("Bar", A)
       doAssert g == A
+
+    block: # bug #19463
+      const CAMPAIGN_TABLE = "wikientries_campaign"
+      const CHARACTER_TABLE = "wikientries_character"
+
+      type Tables = enum
+        a = CAMPAIGN_TABLE,
+        b = CHARACTER_TABLE,
+
+      let myA = CAMPAIGN_TABLE
+      doAssert $parseEnum[Tables](myA) == "wikientries_campaign"
 
     block: # check enum defined in block
       type
@@ -697,6 +863,18 @@ bar
     doAssert s.endsWith('f')
     doAssert s.endsWith('a') == false
     doAssert s.endsWith('\0') == false
+
+  block: # nimIdentNormalize
+    doAssert nimIdentNormalize("") == ""
+    doAssert nimIdentNormalize("foo") == "foo"
+    doAssert nimIdentNormalize("foo_bar") == "foobar"
+    doAssert nimIdentNormalize("Foo_bar") == "Foobar"
+    doAssert nimIdentNormalize("_Foo_bar") == "_foobar"
+
+  block: # bug #19500
+    doAssert "abc \0 def".find("def") == 6
+    doAssert "abc \0 def".find('d') == 6
+
 
 static: main()
 main()

@@ -36,7 +36,7 @@ runnableExamples:
 {.push checks: off, line_dir: off, stack_trace: off, debugger: off.}
 # the user does not want to trace a part of the standard library!
 
-import std/math
+import math
 
 type
   Complex*[T: SomeFloat] = object
@@ -81,6 +81,13 @@ func abs2*[T](z: Complex[T]): T =
   ## that is the squared distance from (0, 0) to `z`.
   ## This is more efficient than `abs(z) ^ 2`.
   result = z.re * z.re + z.im * z.im
+  
+func sgn*[T](z: Complex[T]): Complex[T] =
+  ## Returns the phase of `z` as a unit complex number,
+  ## or 0 if `z` is 0.
+  let a = abs(z)
+  if a != 0:
+    result = z / a
 
 func conjugate*[T](z: Complex[T]): Complex[T] =
   ## Returns the complex conjugate of `z` (`complex(z.re, -z.im)`).
@@ -156,18 +163,7 @@ func `/`*[T](x: T; y: Complex[T]): Complex[T] =
 
 func `/`*[T](x, y: Complex[T]): Complex[T] =
   ## Divides two complex numbers.
-  var r, den: T
-  if abs(y.re) < abs(y.im):
-    r = y.re / y.im
-    den = y.im + r * y.re
-    result.re = (x.re * r + x.im) / den
-    result.im = (x.im * r - x.re) / den
-  else:
-    r = y.im / y.re
-    den = y.re + r * y.im
-    result.re = (x.re + r * x.im) / den
-    result.im = (x.im - r * x.re) / den
-
+  x * conjugate(y) / abs2(y)
 
 func `+=`*[T](x: var Complex[T]; y: Complex[T]) =
   ## Adds `y` to `x`.

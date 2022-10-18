@@ -57,6 +57,16 @@ elif defined(gogc):
 elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
   include system / mm / malloc
 
+  when defined(nogc):
+    proc GC_getStatistics(): string = ""
+    proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
+      result = alloc0(size)
+
+    proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
+      result = newObj(typ, align(GenericSeqSize, typ.align) + len * typ.base.size)
+      cast[PGenericSeq](result).len = len
+      cast[PGenericSeq](result).reserved = len
+
 elif defined(nogc):
   include system / mm / none
 
@@ -72,8 +82,9 @@ else:
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
   elif defined(nimV2) or usesDestructors:
-    var allocator {.rtlThreadVar.}: MemRegion
-    instantiateForRegion(allocator)
+    when not defined(useNimRtl):
+      var allocator {.rtlThreadVar.}: MemRegion
+      instantiateForRegion(allocator)
     when defined(gcHooks):
       include "system/gc_hooks"
   elif defined(gcMarkAndSweep):

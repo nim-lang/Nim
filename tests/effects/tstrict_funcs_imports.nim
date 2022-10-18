@@ -7,6 +7,15 @@ discard """
 when defined(linux):
   import linenoise
 
+when defined(nimPreviewSlimSystem):
+  import std/[
+    assertions,
+    formatfloat,
+    objectdollar,
+    syncio,
+    widestrs,
+  ]
+
 import
   algorithm,
   asyncdispatch,
@@ -84,7 +93,7 @@ import
   parseutils,
   parsexml,
   pathnorm,
-  # pegs,
+  pegs,
   posix_utils,
   prelude,
   punycode,

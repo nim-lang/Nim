@@ -8,11 +8,14 @@
 #
 
 # This module implements lookup helpers.
+import std/[algorithm, strutils]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, strutils,
-  modulegraphs
+  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -75,7 +78,7 @@ proc closeScope*(c: PContext) =
   ensureNoMissingOrUnusedSymbols(c, c.currentScope)
   rawCloseScope(c)
 
-iterator allScopes(scope: PScope): PScope =
+iterator allScopes*(scope: PScope): PScope =
   var current = scope
   while current != nil:
     yield current
@@ -178,14 +181,16 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
   var marked = initIntSet()
+  var symSet = OverloadableSyms
   result = nil
-  for im in c.imports.mitems:
-    for s in symbols(im, marked, name, c.graph):
-      if result == nil:
-        result = s
-      else:
-        if s.kind notin OverloadableSyms or result.kind notin OverloadableSyms:
+  block outer:
+    for im in c.imports.mitems:
+      for s in symbols(im, marked, name, c.graph):
+        if result == nil:
+          result = s
+        elif s.kind notin symSet or result.kind notin symSet:
           ambiguous = true
+          break outer
 
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
   for scope in allScopes(c.currentScope):
@@ -208,14 +213,16 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
 
 proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
   result = @[]
-  for scope in allScopes(c.currentScope):
-    var ti: TIdentIter
-    var candidate = initIdentIter(ti, scope.symbols, s)
-    while candidate != nil:
-      if candidate.kind in filter:
-        if result.len == 0:
+  block outer:
+    for scope in allScopes(c.currentScope):
+      var ti: TIdentIter
+      var candidate = initIdentIter(ti, scope.symbols, s)
+      while candidate != nil:
+        if candidate.kind in filter:
           result.add candidate
-      candidate = nextIdentIter(ti, scope.symbols)
+          # Break here, because further symbols encountered would be shadowed
+          break outer
+        candidate = nextIdentIter(ti, scope.symbols)
 
   if result.len == 0:
     var marked = initIntSet()
@@ -268,6 +275,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
   var it: TTabIter
   var s = initTabIter(it, scope.symbols)
   var missingImpls = 0
+  var unusedSyms: seq[tuple[sym: PSym, key: string]]
   while s != nil:
     if sfForward in s.flags and s.kind notin {skType, skModule}:
       # too many 'implementation of X' errors are annoying
@@ -282,46 +290,73 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
         # maybe they can be made skGenericParam as well.
         if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
            s.typ.kind != tyGenericParam:
-          message(c.config, s.info, hintXDeclaredButNotUsed, s.name.s)
+          unusedSyms.add (s, toFileLineCol(c.config, s.info))
     s = nextIter(it, scope.symbols)
+  for (s, _) in sortedByIt(unusedSyms, it.key):
+    message(c.config, s.info, hintXDeclaredButNotUsed, s.name.s)
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
-                        conflictsWith: TLineInfo) =
+                        conflictsWith: TLineInfo, note = errGenerated) =
   ## Emit a redefinition error if in non-interactive mode
   if c.config.cmd != cmdInteractive:
-    localError(c.config, info,
+    localError(c.config, info, note,
       "redefinition of '$1'; previous declaration here: $2" %
       [s, c.config $ conflictsWith])
 
-proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
-  let conflict = c.currentScope.addUniqueSym(sym)
+# xxx pending bootstrap >= 1.4, replace all those overloads with a single one:
+# proc addDecl*(c: PContext, sym: PSym, info = sym.info, scope = c.currentScope) {.inline.} =
+proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
+  let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
-    wrongRedefinition(c, info, sym.name.s, conflict.info)
+    if sym.kind == skModule and conflict.kind == skModule and sym.owner == conflict.owner:
+      # e.g.: import foo; import foo
+      # xxx we could refine this by issuing a different hint for the case
+      # where a duplicate import happens inside an include.
+      localError(c.config, info, hintDuplicateModuleImport,
+        "duplicate import of '$1'; previous import here: $2" %
+        [sym.name.s, c.config $ conflict.info])
+    else:
+      wrongRedefinition(c, info, sym.name.s, conflict.info, errGenerated)
 
-proc addDecl*(c: PContext, sym: PSym) =
-  let conflict = strTableInclReportConflict(c.currentScope.symbols, sym, true)
-  if conflict != nil:
-    wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
+proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) {.inline.} =
+  addDeclAt(c, scope, sym, sym.info)
+
+proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) {.inline.} =
+  addDeclAt(c, c.currentScope, sym, info)
+
+proc addDecl*(c: PContext, sym: PSym) {.inline.} =
+  addDeclAt(c, c.currentScope, sym)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
   discard c.currentScope.addUniqueSym(sym)
 
-proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
-  let conflict = scope.addUniqueSym(sym)
-  if conflict != nil:
-    wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
+from ic / ic import addHidden
 
 proc addInterfaceDeclAux(c: PContext, sym: PSym) =
+  ## adds symbol to the module for either private or public access.
   if sfExported in sym.flags:
     # add to interface:
     if c.module != nil: exportSym(c, sym)
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
+  elif sym.kind in ExportableSymKinds and c.module != nil and isTopLevelInsideDeclaration(c, sym):
+    strTableAdd(semtabAll(c.graph, c.module), sym)
+    if c.config.symbolFiles != disabledSf:
+      addHidden(c.encoder, c.packedRepr, sym)
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
+  ## adds a symbol on the scope and the interface if appropriate
   addDeclAt(c, scope, sym)
-  addInterfaceDeclAux(c, sym)
+  if not scope.isShadowScope:
+    # adding into a non-shadow scope, we need to handle exports, etc
+    addInterfaceDeclAux(c, sym)
+
+proc addInterfaceDecl*(c: PContext, sym: PSym) {.inline.} =
+  ## adds a decl and the interface if appropriate
+  addInterfaceDeclAt(c, c.currentScope, sym)
 
 proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
+  ## adds an symbol to the given scope, will check for and raise errors if it's
+  ## a redefinition as opposed to an overload.
   if fn.kind notin OverloadableSyms:
     internalError(c.config, fn.info, "addOverloadableSymAt")
     return
@@ -331,25 +366,33 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
   else:
     scope.addSym(fn)
 
-proc addInterfaceDecl*(c: PContext, sym: PSym) =
-  # it adds the symbol to the interface if appropriate
-  addDecl(c, sym)
-  addInterfaceDeclAux(c, sym)
-
 proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
-  # it adds the symbol to the interface if appropriate
+  ## adds an overloadable symbol on the scope and the interface if appropriate
   addOverloadableSymAt(c, scope, sym)
-  addInterfaceDeclAux(c, sym)
+  if not scope.isShadowScope:
+    # adding into a non-shadow scope, we need to handle exports, etc
+    addInterfaceDeclAux(c, sym)
 
 proc openShadowScope*(c: PContext) =
+  ## opens a shadow scope, just like any other scope except the depth is the
+  ## same as the parent -- see `isShadowScope`.
   c.currentScope = PScope(parent: c.currentScope,
                           symbols: newStrTable(),
                           depthLevel: c.scopeDepth)
 
 proc closeShadowScope*(c: PContext) =
-  c.closeScope
+  ## closes the shadow scope, but doesn't merge any of the symbols
+  ## Does not check for unused symbols or missing forward decls since a macro
+  ## or template consumes this AST
+  rawCloseScope(c)
 
 proc mergeShadowScope*(c: PContext) =
+  ## close the existing scope and merge in all defined symbols, this will also
+  ## trigger any export related code if this is into a non-shadow scope.
+  ##
+  ## Merges:
+  ## shadow -> shadow: add symbols to the parent but check for redefinitions etc
+  ## shadow -> non-shadow: the above, but also handle exports and all that
   let shadowScope = c.currentScope
   c.rawCloseScope
   for sym in shadowScope.symbols:
@@ -366,7 +409,7 @@ when false:
     of 'a'..'z': result = getIdent(c.cache, toLowerAscii(x.s[0]) & x.s.substr(1))
     else: result = x
 
-import std/[editdistance, heapqueue]
+import std/editdistance, heapqueue
 
 type SpellCandidate = object
   dist: int
@@ -445,16 +488,23 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
   var amb: bool
   discard errorUseQualifier(c, info, s, amb)
 
-proc errorUseQualifier(c: PContext; info: TLineInfo; candidates: seq[PSym]) =
+proc errorUseQualifier(c: PContext; info: TLineInfo; candidates: seq[PSym]; prefix = "use one of") =
   var err = "ambiguous identifier: '" & candidates[0].name.s & "'"
   var i = 0
   for candidate in candidates:
-    if i == 0: err.add " -- use one of the following:\n"
+    if i == 0: err.add " -- $1 the following:\n" % prefix
     else: err.add "\n"
     err.add "  " & candidate.owner.name.s & "." & candidate.name.s
     err.add ": " & typeToString(candidate.typ)
     inc i
   localError(c.config, info, errGenerated, err)
+
+proc errorUseQualifier*(c: PContext; info:TLineInfo; choices: PNode) =
+  var candidates = newSeq[PSym](choices.len)
+  let prefix = if choices[0].typ.kind != tyProc: "use one of" else: "you need a helper proc to disambiguate"
+  for i, n in choices:
+    candidates[i] = n.sym
+  errorUseQualifier(c, info, candidates, prefix)
 
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extra = "") =
   var err = "undeclared identifier: '" & name & "'" & extra

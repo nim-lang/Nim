@@ -1,6 +1,5 @@
 discard """
-cmd: "nim check $file"
-action: "reject"
+action: compile
 """
 
 import tables
@@ -194,7 +193,7 @@ proc testAliasChanging(a: Nilable) =
 # # proc testPtrAlias(a: Nilable) =
 # #   # pointer to a: hm.
 # #   # alias to a?
-# #   var ptrA = a.unsafeAddr # {0, 1} 
+# #   var ptrA = a.addr # {0, 1} 
 # #   if not a.isNil: # {0, 1}
 # #     ptrA[] = nil # {0, 1} 0: MaybeNil 1: MaybeNil
 # #     echo a.a #[ tt.Warning

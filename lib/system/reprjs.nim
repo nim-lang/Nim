@@ -8,6 +8,9 @@
 #
 # The generic ``repr`` procedure for the javascript backend.
 
+when defined(nimPreviewSlimSystem):
+  import std/formatfloat
+
 proc reprInt(x: int64): string {.compilerproc.} = $x
 proc reprFloat(x: float): string {.compilerproc.} = $x
 
@@ -29,6 +32,8 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
     result = makeNimstrLit(item.name)
   else:
     result = $e & " (invalid data!)"
+
+include system/repr_impl
 
 proc reprChar(x: char): string {.compilerRtl.} =
   result = "\'"
@@ -113,7 +118,6 @@ proc reprArray(a: pointer, typ: PNimType,
   # We prepend @ to seq, the C backend prepends the pointer to the seq.
   result = if typ.kind == tySequence: "@[" else: "["
   var len: int = 0
-  var i: int = 0
 
   {. emit: "`len` = `a`.length;\n" .}
   var dereffed: pointer = a
@@ -200,7 +204,7 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
     var fp: int
     {. emit: "`fp` = `p`;\n" .}
     add(result, reprStr(cast[string](p)))
-  of tyCString:
+  of tyCstring:
     var fp: cstring
     {. emit: "`fp` = `p`;\n" .}
     if fp.isNil:

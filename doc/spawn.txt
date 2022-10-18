@@ -6,7 +6,7 @@ Nim has two flavors of parallelism:
 1) `Structured`:idx parallelism via the ``parallel`` statement.
 2) `Unstructured`:idx: parallelism via the standalone ``spawn`` statement.
 
-Both need the `threadpool <threadpool.html>`_ module to work.
+Both need the [threadpool](threadpool.html) module to work.
 
 Somewhat confusingly, ``spawn`` is also used in the ``parallel`` statement
 with slightly different semantics. ``spawn`` always takes a call expression of
@@ -28,7 +28,7 @@ the passed expression on the thread pool and returns a `data flow variable`:idx:
 **blocking**. However, one can use ``blockUntilAny`` to wait on multiple flow
 variables at the same time:
 
-.. code-block:: nim
+  ```nim
   import std/threadpool, ...
 
   # wait until 2 out of 3 servers received the update:
@@ -40,6 +40,7 @@ variables at the same time:
     assert index >= 0
     responses.del(index)
     discard blockUntilAny(responses)
+  ```
 
 Data flow variables ensure that no data races
 are possible. Due to technical limitations not every type ``T`` is possible in
@@ -54,7 +55,7 @@ Parallel statement
 
 Example:
 
-.. code-block:: nim
+  ```nim
   # Compute PI in an inefficient way
   import std/[strutils, math, threadpool]
 
@@ -69,6 +70,7 @@ Example:
       result += ch[k]
 
   echo formatFloat(pi(5000))
+  ```
 
 
 The parallel statement is the preferred mechanism to introduce parallelism

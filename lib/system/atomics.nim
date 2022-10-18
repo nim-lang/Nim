@@ -17,7 +17,7 @@ type
   AtomType* = SomeNumber|pointer|ptr|char|bool
     ## Type Class representing valid types for use with atomic procs
 
-when someGcc and hasThreadSupport:
+when someGcc:
   type AtomMemModel* = distinct cint
 
   var ATOMIC_RELAXED* {.importc: "__ATOMIC_RELAXED", nodecl.}: AtomMemModel
@@ -73,7 +73,7 @@ when someGcc and hasThreadSupport:
 
   proc atomicCompareExchangeN*[T: AtomType](p, expected: ptr T, desired: T,
     weak: bool, success_memmodel: AtomMemModel, failure_memmodel: AtomMemModel): bool {.
-    importc: "__atomic_compare_exchange_n ", nodecl.}
+    importc: "__atomic_compare_exchange_n", nodecl.}
     ## This proc implements an atomic compare and exchange operation. This compares the
     ## contents at p with the contents at expected and if equal, writes desired at p.
     ## If they are not equal, the current contents at p is written into expected.
@@ -100,13 +100,13 @@ when someGcc and hasThreadSupport:
   proc atomicSubFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
     importc: "__atomic_sub_fetch", nodecl.}
   proc atomicOrFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_or_fetch ", nodecl.}
+    importc: "__atomic_or_fetch", nodecl.}
   proc atomicAndFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
     importc: "__atomic_and_fetch", nodecl.}
   proc atomicXorFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
     importc: "__atomic_xor_fetch", nodecl.}
   proc atomicNandFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_nand_fetch ", nodecl.}
+    importc: "__atomic_nand_fetch", nodecl.}
 
   ## Perform the operation return the old value, all memory models are valid
   proc atomicFetchAdd*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
@@ -164,7 +164,7 @@ when someGcc and hasThreadSupport:
     ## ignore this parameter.
 
   template fence*() = atomicThreadFence(ATOMIC_SEQ_CST)
-elif someVcc and hasThreadSupport:
+elif someVcc:
   type AtomMemModel* = distinct cint
 
   const
@@ -177,8 +177,8 @@ elif someVcc and hasThreadSupport:
 
   proc `==`(x1, x2: AtomMemModel): bool {.borrow.}
 
-  proc readBarrier() {.importc: "_ReadBarrier",  header: "<intrin.h>".}
-  proc writeBarrier() {.importc: "_WriteBarrier",  header: "<intrin.h>".}
+  proc readBarrier() {.importc: "_ReadBarrier", header: "<intrin.h>".}
+  proc writeBarrier() {.importc: "_WriteBarrier", header: "<intrin.h>".}
   proc fence*() {.importc: "_ReadWriteBarrier", header: "<intrin.h>".}
 
   template barrier(mem: AtomMemModel) =
@@ -217,7 +217,7 @@ else:
 
 proc atomicInc*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
-    result = atomicAddFetch(memLoc.addr, x, ATOMIC_RELAXED)
+    result = atomicAddFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
   elif someVcc and hasThreadSupport:
     result = addAndFetch(memLoc.addr, x)
     inc(result, x)
@@ -228,9 +228,9 @@ proc atomicInc*(memLoc: var int, x: int = 1): int =
 proc atomicDec*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
     when declared(atomicSubFetch):
-      result = atomicSubFetch(memLoc.addr, x, ATOMIC_RELAXED)
+      result = atomicSubFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
     else:
-      result = atomicAddFetch(memLoc.addr, -x, ATOMIC_RELAXED)
+      result = atomicAddFetch(memLoc.addr, -x, ATOMIC_SEQ_CST)
   elif someVcc and hasThreadSupport:
     result = addAndFetch(memLoc.addr, -x)
     dec(result, x)

@@ -17,12 +17,18 @@
 
 when defined(windows):
   import winlean
+  when useWinUnicode and defined(nimPreviewSlimSystem):
+    import std/widestrs
 elif defined(posix):
   import posix
 else:
   {.error: "the memfiles module is not supported on your operating system!".}
 
 import os, streams
+
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 
 proc newEIO(msg: string): ref IOError =
   new(result)
@@ -313,9 +319,9 @@ when defined(posix) or defined(nimdoc):
         raiseOSError(osLastError())
       when defined(linux): #Maybe NetBSD, too?
         #On Linux this can be over 100 times faster than a munmap,mmap cycle.
-        proc mremap(old: pointer; oldSize, newSize: csize; flags: cint):
+        proc mremap(old: pointer; oldSize, newSize: csize_t; flags: cint):
             pointer {.importc: "mremap", header: "<sys/mman.h>".}
-        let newAddr = mremap(f.mem, csize(f.size), csize(newFileSize), cint(1))
+        let newAddr = mremap(f.mem, csize_t(f.size), csize_t(newFileSize), cint(1))
         if newAddr == cast[pointer](MAP_FAILED):
           raiseOSError(osLastError())
       else:
@@ -377,7 +383,7 @@ proc `$`*(ms: MemSlice): string {.inline.} =
   copyMem(addr(result[0]), ms.data, ms.size)
 
 iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline.} =
-  ## Iterates over [optional `eat`] `delim`-delimited slices in MemFile `mfile`.
+  ## Iterates over \[optional `eat`] `delim`-delimited slices in MemFile `mfile`.
   ##
   ## Default parameters parse lines ending in either Unix(\\l) or Windows(\\r\\l)
   ## style on on a line-by-line basis.  I.e., not every line needs the same ending.
@@ -408,7 +414,7 @@ iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline
   ##       inc(count)
   ##   echo count
 
-  proc c_memchr(cstr: pointer, c: char, n: csize): pointer {.
+  proc c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
        importc: "memchr", header: "<string.h>".}
   proc `-!`(p, q: pointer): int {.inline.} = return cast[int](p) -% cast[int](q)
   var ms: MemSlice
@@ -416,7 +422,7 @@ iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline
   ms.data = mfile.mem
   var remaining = mfile.size
   while remaining > 0:
-    ending = c_memchr(ms.data, delim, remaining)
+    ending = c_memchr(ms.data, delim, csize_t(remaining))
     if ending == nil: # unterminated final slice
       ms.size = remaining # Weird case..check eat?
       yield ms
@@ -431,7 +437,7 @@ iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline
 iterator lines*(mfile: MemFile, buf: var string, delim = '\l',
     eat = '\r'): string {.inline.} =
   ## Replace contents of passed buffer with each new line, like
-  ## `readLine(File) <io.html#readLine,File,string>`_.
+  ## `readLine(File) <syncio.html#readLine,File,string>`_.
   ## `delim`, `eat`, and delimiting logic is exactly as for `memSlices
   ## <#memSlices.i,MemFile,char,char>`_, but Nim strings are returned.
   ##
@@ -450,7 +456,7 @@ iterator lines*(mfile: MemFile, buf: var string, delim = '\l',
 
 iterator lines*(mfile: MemFile, delim = '\l', eat = '\r'): string {.inline.} =
   ## Return each line in a file as a Nim string, like
-  ## `lines(File) <io.html#lines.i,File>`_.
+  ## `lines(File) <syncio.html#lines.i,File>`_.
   ## `delim`, `eat`, and delimiting logic is exactly as for `memSlices
   ## <#memSlices.i,MemFile,char,char>`_, but Nim strings are returned.
   ##

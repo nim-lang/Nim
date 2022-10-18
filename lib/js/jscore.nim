@@ -110,3 +110,30 @@ proc parse*(l: JsonLib, s: cstring): JsRoot {.importcpp.}
 since (1, 5):
   func debugger*() {.importjs: "debugger@".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger
+
+  func copyWithin*[T](self: openArray[T]; target: int): seq[T] {.importjs: "#.copyWithin(#)".}
+  func copyWithin*[T](self: openArray[T]; target, start: int): seq[T] {.importjs: "#.copyWithin(#, #)".}
+  func copyWithin*[T](self: openArray[T]; target, start, ends: int): seq[T] {.importjs: "#.copyWithin(#, #, #)".} =
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin
+    ## `copyWithin` uses shallow copy.
+    runnableExamples:
+      assert ['a', 'b', 'c', 'd', 'e'].copyWithin(0, 3, 4) == @['d', 'b', 'c', 'd', 'e']
+      assert ['a', 'b', 'c', 'd', 'e'].copyWithin(1, 3) == @['a', 'd', 'e', 'd', 'e']
+      assert [1, 2, 3, 4, 5].copyWithin(-2) == @[1, 2, 3, 1, 2]
+      assert [1, 2, 3, 4, 5].copyWithin(0, 3) == @[4, 5, 3, 4, 5]
+      assert [1, 2, 3, 4, 5].copyWithin(0, 3, 4) == @[4, 2, 3, 4, 5]
+      assert [1, 2, 3, 4, 5].copyWithin(-2, -3, -1) == @[1, 2, 3, 3, 4]
+
+
+since (1, 7):
+  func shift*[T](self: seq[T]): T {.importjs: "#.$1()".} =
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift
+    runnableExamples:
+      var arrai = @[1, 2, 3]
+      assert arrai.shift() == 1
+      assert arrai == @[2, 3]
+
+  func queueMicrotask*(function: proc) {.importjs: "$1(#)".} =
+    ## * https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask
+    ## * https://developer.mozilla.org/en-US/docs/Web/API/HTML_DOM_API/Microtask_guide
+    runnableExamples"-r:off": queueMicrotask(proc() = echo "Microtask")

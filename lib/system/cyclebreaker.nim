@@ -53,7 +53,6 @@ depth-first traversal suffices.
 
 ]#
 
-type PT = ptr pointer
 include cellseqs_v2
 
 const
@@ -78,7 +77,7 @@ proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} = discard
 
 type
   GcEnv = object
-    traceStack: CellSeq
+    traceStack: CellSeq[ptr pointer]
 
 proc trace(p: pointer; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
   when false:
@@ -149,7 +148,7 @@ proc thinout*[T](x: ref T) {.inline.} =
   ## and thus would keep the graph from being freed are `nil`'ed.
   ## This is a form of cycle collection that works well with Nim's ARC
   ## and its associated cost model.
-  proc getDynamicTypeInfo[T](x: T): PNimTypeV2 {.magic: "GetTypeInfoV2", noSideEffect, locks: 0.}
+  proc getDynamicTypeInfo[T](x: T): PNimTypeV2 {.magic: "GetTypeInfoV2", noSideEffect.}
 
   breakCycles(head(cast[pointer](x)), getDynamicTypeInfo(x[]))
 

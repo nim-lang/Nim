@@ -19,7 +19,10 @@
 ## .. code-block:: Nim
 ##   import std/httpclient
 ##   var client = newHttpClient()
-##   echo client.getContent("http://google.com")
+##   try:
+##     echo client.getContent("http://google.com")
+##   finally:
+##     client.close()
 ##
 ## The same action can also be performed asynchronously, simply use the
 ## `AsyncHttpClient`:
@@ -29,7 +32,10 @@
 ##
 ##   proc asyncProc(): Future[string] {.async.} =
 ##     var client = newAsyncHttpClient()
-##     return await client.getContent("http://example.com")
+##     try:
+##       return await client.getContent("http://example.com")
+##     finally:
+##       client.close()
 ##
 ##   echo waitFor asyncProc()
 ##
@@ -53,8 +59,10 @@
 ##   data["output"] = "soap12"
 ##   data["uploaded_file"] = ("test.html", "text/html",
 ##     "<html><head></head><body><p>test</p></body></html>")
-##
-##   echo client.postContent("http://validator.w3.org/check", multipart=data)
+##   try:
+##     echo client.postContent("http://validator.w3.org/check", multipart=data)
+##   finally:
+##     client.close()
 ##
 ## To stream files from disk when performing the request, use `addFiles`.
 ##
@@ -66,8 +74,10 @@
 ##   var client = newHttpClient()
 ##   var data = newMultipartData()
 ##   data.addFiles({"uploaded_file": "test.html"}, mimeDb = mimes)
-##
-##   echo client.postContent("http://validator.w3.org/check", multipart=data)
+##   try:
+##     echo client.postContent("http://validator.w3.org/check", multipart=data)
+##   finally:
+##     client.close()
 ##
 ## You can also make post requests with custom headers.
 ## This example sets `Content-Type` to `application/json`
@@ -81,8 +91,11 @@
 ##   let body = %*{
 ##       "data": "some text"
 ##   }
-##   let response = client.request("http://some.api", httpMethod = HttpPost, body = $body)
-##   echo response.status
+##   try:
+##     let response = client.request("http://some.api", httpMethod = HttpPost, body = $body)
+##     echo response.status
+##   finally:
+##     client.close()
 ##
 ## Progress reporting
 ## ==================
@@ -101,7 +114,10 @@
 ##    proc asyncProc() {.async.} =
 ##      var client = newAsyncHttpClient()
 ##      client.onProgressChanged = onProgressChanged
-##      discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+##      try:
+##        discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+##      finally:
+##        client.close()
 ##
 ##    waitFor asyncProc()
 ##
@@ -115,7 +131,7 @@
 ##
 ## SSL/TLS support
 ## ===============
-## This requires the OpenSSL library, fortunately it's widely used and installed
+## This requires the OpenSSL library. Fortunately it's widely used and installed
 ## on many operating systems. httpclient will use SSL automatically if you give
 ## any of the functions a url with the `https` schema, for example:
 ## `https://github.com/`.
@@ -123,11 +139,24 @@
 ## You will also have to compile with `ssl` defined like so:
 ## `nim c -d:ssl ...`.
 ##
-## Certificate validation is NOT performed by default.
-## This will change in the future.
+## Certificate validation is performed by default.
 ##
 ## A set of directories and files from the `ssl_certs <ssl_certs.html>`_
 ## module are scanned to locate CA certificates.
+##
+## Example of setting SSL verification parameters in a new client:
+##
+## .. code-block:: Nim
+##    import httpclient
+##    var client = newHttpClient(sslContext=newContext(verifyMode=CVerifyPeer))
+##
+## There are three options for verify mode:
+##
+## * ``CVerifyNone``: certificates are not verified;
+## * ``CVerifyPeer``: certificates are verified;
+## * ``CVerifyPeerUseEnvVars``: certificates are verified and the optional
+##   environment variables SSL_CERT_FILE and SSL_CERT_DIR are also used to
+##   locate certificates
 ##
 ## See `newContext <net.html#newContext.string,string,string,string>`_ to tweak or disable certificate validation.
 ##
@@ -166,6 +195,14 @@
 ##    import std/httpclient
 ##
 ##    let myProxy = newProxy("http://myproxy.network")
+##    let client = newHttpClient(proxy = myProxy)
+##
+## Use proxies with basic authentication:
+##
+## .. code-block:: Nim
+##    import std/httpclient
+##    
+##    let myProxy = newProxy("http://myproxy.network", auth="user:password")
 ##    let client = newHttpClient(proxy = myProxy)
 ##
 ## Get Proxy URL from environment variables:
@@ -208,6 +245,9 @@ import std/[
   asyncnet, asyncdispatch, asyncfile, nativesockets,
 ]
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 export httpcore except parseHeader # TODO: The `except` doesn't work
 
 type
@@ -245,9 +285,9 @@ proc contentLength*(response: Response | AsyncResponse): int =
   ## This is effectively the value of the "Content-Length" header.
   ##
   ## A `ValueError` exception will be raised if the value is not an integer.
-  var contentLengthHeader = response.headers.getOrDefault("Content-Length")
+  ## If the Content-Length header is not set in the response, ContentLength is set to the value -1.
+  var contentLengthHeader = response.headers.getOrDefault("Content-Length", @["-1"])
   result = contentLengthHeader.parseInt()
-  doAssert(result >= 0 and result <= high(int32))
 
 proc lastModified*(response: Response | AsyncResponse): DateTime =
   ## Retrieves the specified response's last modified time.
@@ -510,7 +550,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
   # Proxy auth header.
   if not proxy.isNil and proxy.auth != "":
     let auth = base64.encode(proxy.auth)
-    add(result, "Proxy-Authorization: basic " & auth & httpNewLine)
+    add(result, "Proxy-Authorization: Basic " & auth & httpNewLine)
 
   for key, val in headers:
     add(result, key & ": " & val & httpNewLine)
@@ -574,15 +614,11 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ##
   ## `headers` specifies the HTTP Headers.
   runnableExamples:
-    import std/[asyncdispatch, httpclient, strutils]
+    import std/strutils
 
-    proc asyncProc(): Future[string] {.async.} =
-      var client = newAsyncHttpClient()
-      return await client.getContent("http://example.com")
-
-    let exampleHtml = waitFor asyncProc()
+    let exampleHtml = newHttpClient().getContent("http://example.com")
     assert "Example Domain" in exampleHtml
-    assert not ("Pizza" in exampleHtml)
+    assert "Pizza" notin exampleHtml
 
   new result
   result.headers = headers
@@ -616,6 +652,17 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## connections.
   ##
   ## `headers` specifies the HTTP Headers.
+  runnableExamples:
+    import std/[asyncdispatch, strutils]
+
+    proc asyncProc(): Future[string] {.async.} =
+      let client = newAsyncHttpClient()
+      result = await client.getContent("http://example.com")
+
+    let exampleHtml = waitFor asyncProc()
+    assert "Example Domain" in exampleHtml
+    assert "Pizza" notin exampleHtml
+  
   new result
   result.headers = headers
   result.userAgent = userAgent
@@ -653,7 +700,7 @@ proc reportProgress(client: HttpClient | AsyncHttpClient,
                     progress: BiggestInt) {.multisync.} =
   client.contentProgress += progress
   client.oneSecondProgress += progress
-  if (getMonoTime() - client.lastProgressReport).inSeconds > 1:
+  if (getMonoTime() - client.lastProgressReport).inSeconds >= 1:
     if not client.onProgressChanged.isNil:
       await client.onProgressChanged(client.contentTotal,
                                      client.contentProgress,
@@ -751,7 +798,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient, headers: HttpHeaders,
           httpError("Got disconnected while trying to read body.")
         if recvLen != length:
           httpError("Received length doesn't match expected length. Wanted " &
-                    $length & " got " & $recvLen)
+                    $length & " got: " & $recvLen)
     else:
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
 
@@ -849,6 +896,9 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       client.parseBodyFut.addCallback do():
         if client.parseBodyFut.failed:
           client.bodyStream.fail(client.parseBodyFut.error)
+  else:
+    when client is AsyncHttpClient:
+      result.bodyStream.complete()
 
 proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =
@@ -955,19 +1005,22 @@ proc format(client: HttpClient | AsyncHttpClient,
     if entry.isFile:
       length += entry.fileSize + httpNewLine.len
 
-  result.add "--" & bound & "--"
+  result.add "--" & bound & "--" & httpNewLine
 
   for s in result: length += s.len
   client.headers["Content-Length"] = $length
 
 proc override(fallback, override: HttpHeaders): HttpHeaders =
   # Right-biased map union for `HttpHeaders`
-  if override.isNil:
-    return fallback
 
   result = newHttpHeaders()
   # Copy by value
   result.table[] = fallback.table[]
+
+  if override.isNil:
+    # Return the copy of fallback so it does not get modified
+    return result
+
   for k, vs in override.table:
     result[k] = vs
 
@@ -987,12 +1040,16 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
 
   await newConnection(client, url)
 
-  let newHeaders = client.headers.override(headers)
+  var newHeaders: HttpHeaders
 
   var data: seq[string]
   if multipart != nil and multipart.content.len > 0:
+    # `format` modifies `client.headers`, see 
+    # https://github.com/nim-lang/Nim/pull/18208#discussion_r647036979
     data = await client.format(multipart)
+    newHeaders = client.headers.override(headers)
   else:
+    newHeaders = client.headers.override(headers)
     # Only change headers if they have not been specified already
     if not newHeaders.hasKey("Content-Length"):
       if body.len != 0:

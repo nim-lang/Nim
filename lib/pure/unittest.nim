@@ -108,15 +108,18 @@
 import std/private/since
 import std/exitprocs
 
-import std/[macros, strutils, streams, times, sets, sequtils]
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+import macros, strutils, streams, times, sets, sequtils
 
 when declared(stdout):
-  import std/os
+  import os
 
 const useTerminal = not defined(js)
 
 when useTerminal:
-  import std/terminal
+  import terminal
 
 type
   TestStatus* = enum ## The status of a test when it is done.
@@ -218,7 +221,7 @@ proc resetOutputFormatters* {.since: (1, 1).} =
   formatters = @[]
 
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = outputLevelDefault,
-                                colorOutput = true): <//>ConsoleOutputFormatter =
+                                colorOutput = true): ConsoleOutputFormatter =
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
     colorOutput: colorOutput
@@ -246,7 +249,7 @@ proc colorOutput(): bool =
       deprecateEnvVarHere()
       result = false
 
-proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
+proc defaultConsoleFormatter*(): ConsoleOutputFormatter =
   var colorOutput = colorOutput()
   var outputLevel = nimUnittestOutputLevel.parseEnum[:OutputLevel]
   when declared(stdout):
@@ -315,7 +318,7 @@ proc xmlEscape(s: string): string =
       else:
         result.add(c)
 
-proc newJUnitOutputFormatter*(stream: Stream): <//>JUnitOutputFormatter =
+proc newJUnitOutputFormatter*(stream: Stream): JUnitOutputFormatter =
   ## Creates a formatter that writes report to the specified stream in
   ## JUnit format.
   ## The ``stream`` is NOT closed automatically when the test are finished,
@@ -704,7 +707,9 @@ macro check*(conditions: untyped): untyped =
     result = quote do:
       block:
         `assigns`
-        if not `check`:
+        if `check`:
+          discard
+        else:
           checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
           `printOuts`
           fail()
@@ -720,7 +725,9 @@ macro check*(conditions: untyped): untyped =
     let callLit = checked.toStrLit
 
     result = quote do:
-      if not `checked`:
+      if `checked`:
+        discard
+      else:
         checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
         fail()
 
@@ -747,7 +754,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
       of 2: discard parseInt("Hello World!")
       of 3: raise newException(IOError, "I can't do that Dave.")
       else: assert 2 + 2 == 5
-    
+
     expect IOError, OSError, ValueError, AssertionDefect:
       defectiveRobot()
 

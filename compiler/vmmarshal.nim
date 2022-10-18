@@ -12,6 +12,9 @@
 import streams, json, intsets, tables, ast, astalgo, idents, types, msgs,
   options, lineinfos
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, formatfloat]
+
 proc ptrToInt(x: PNode): int {.inline.} =
   result = cast[int](x) # don't skip alignment
 
@@ -92,7 +95,8 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
       if a[i].kind == nkRange:
         var x = copyNode(a[i][0])
         storeAny(s, t.lastSon, x, stored, conf)
-        while x.intVal+1 <= a[i][1].intVal:
+        inc x.intVal
+        while x.intVal <= a[i][1].intVal:
           s.add(", ")
           storeAny(s, t.lastSon, x, stored, conf)
           inc x.intVal
@@ -121,7 +125,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
       s.add(", ")
       storeAny(s, t.lastSon, a, stored, conf)
       s.add("]")
-  of tyString, tyCString:
+  of tyString, tyCstring:
     if a.kind == nkNilLit: s.add("null")
     else: s.add(escapeJson(a.strVal))
   of tyInt..tyInt64, tyUInt..tyUInt64: s.add($a.intVal)
@@ -231,7 +235,6 @@ proc loadAny(p: var JsonParser, t: PType,
     result = newNode(nkCurly)
     while p.kind != jsonArrayEnd and p.kind != jsonEof:
       result.add loadAny(p, t.lastSon, tab, cache, conf, idgen)
-      next(p)
     if p.kind == jsonArrayEnd: next(p)
     else: raiseParseErr(p, "']' end of array expected")
   of tyPtr, tyRef:
@@ -255,7 +258,7 @@ proc loadAny(p: var JsonParser, t: PType,
       if p.kind == jsonArrayEnd: next(p)
       else: raiseParseErr(p, "']' end of ref-address pair expected")
     else: raiseParseErr(p, "int for pointer type expected")
-  of tyString, tyCString:
+  of tyString, tyCstring:
     case p.kind
     of jsonNull:
       result = newNode(nkNilLit)

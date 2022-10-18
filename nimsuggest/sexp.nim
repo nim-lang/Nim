@@ -288,10 +288,6 @@ proc newSString*(s: string): SexpNode =
   ## Creates a new `SString SexpNode`.
   result = SexpNode(kind: SString, str: s)
 
-proc newSStringMove(s: string): SexpNode =
-  result = SexpNode(kind: SString)
-  shallowCopy(result.str, s)
-
 proc newSInt*(n: BiggestInt): SexpNode =
   ## Creates a new `SInt SexpNode`.
   result = SexpNode(kind: SInt, num: n)
@@ -314,10 +310,6 @@ proc newSList*(): SexpNode =
 
 proc newSSymbol*(s: string): SexpNode =
   result = SexpNode(kind: SSymbol, symbol: s)
-
-proc newSSymbolMove(s: string): SexpNode =
-  result = SexpNode(kind: SSymbol)
-  shallowCopy(result.symbol, s)
 
 proc getStr*(n: SexpNode, default: string = ""): string =
   ## Retrieves the string value of a `SString SexpNode`.
@@ -409,7 +401,7 @@ macro convertSexp*(x: untyped): untyped =
   ## `%` for every element.
   result = toSexp(x)
 
-proc `==`* (a,b: SexpNode): bool =
+func `==`* (a, b: SexpNode): bool =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
@@ -596,8 +588,7 @@ proc parseSexp(p: var SexpParser): SexpNode =
   case p.tok
   of tkString:
     # we capture 'p.a' here, so we need to give it a fresh buffer afterwards:
-    result = newSStringMove(p.a)
-    p.a = ""
+    result = SexpNode(kind: SString, str: move p.a)
     discard getTok(p)
   of tkInt:
     result = newSInt(parseBiggestInt(p.a))
@@ -609,8 +600,7 @@ proc parseSexp(p: var SexpParser): SexpNode =
     result = newSNil()
     discard getTok(p)
   of tkSymbol:
-    result = newSSymbolMove(p.a)
-    p.a = ""
+    result = SexpNode(kind: SSymbol, symbol: move p.a)
     discard getTok(p)
   of tkParensLe:
     result = newSList()

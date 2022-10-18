@@ -28,7 +28,7 @@ const
 type
   PunyError* = object of ValueError
 
-proc decodeDigit(x: char): int {.raises: [PunyError].} =
+func decodeDigit(x: char): int {.raises: [PunyError].} =
   if '0' <= x and x <= '9':
     result = ord(x) - (ord('0') - 26)
   elif 'A' <= x and x <= 'Z':
@@ -38,7 +38,7 @@ proc decodeDigit(x: char): int {.raises: [PunyError].} =
   else:
     raise newException(PunyError, "Bad input")
 
-proc encodeDigit(digit: int): Rune {.raises: [PunyError].} =
+func encodeDigit(digit: int): Rune {.raises: [PunyError].} =
   if 0 <= digit and digit < 26:
     result = Rune(digit + ord('a'))
   elif 26 <= digit and digit < 36:
@@ -46,10 +46,10 @@ proc encodeDigit(digit: int): Rune {.raises: [PunyError].} =
   else:
     raise newException(PunyError, "internal error in punycode encoding")
 
-proc isBasic(c: char): bool = ord(c) < 0x80
-proc isBasic(r: Rune): bool = int(r) < 0x80
+func isBasic(c: char): bool = ord(c) < 0x80
+func isBasic(r: Rune): bool = int(r) < 0x80
 
-proc adapt(delta, numPoints: int, first: bool): int =
+func adapt(delta, numPoints: int, first: bool): int =
   var d = if first: delta div Damp else: delta div 2
   d += d div numPoints
   var k = 0
@@ -58,7 +58,7 @@ proc adapt(delta, numPoints: int, first: bool): int =
     k += Base
   result = k + (Base - TMin + 1) * d div (d + Skew)
 
-proc encode*(prefix, s: string): string {.raises: [PunyError].} =
+func encode*(prefix, s: string): string {.raises: [PunyError].} =
   ## Encode a string that may contain Unicode.
   ## Prepend `prefix` to the result
   result = prefix
@@ -114,18 +114,18 @@ proc encode*(prefix, s: string): string {.raises: [PunyError].} =
     inc d
     inc n
 
-proc encode*(s: string): string {.raises: [PunyError].} =
+func encode*(s: string): string {.raises: [PunyError].} =
   ## Encode a string that may contain Unicode. Prefix is empty.
   result = encode("", s)
 
-proc decode*(encoded: string): string {.raises: [PunyError].} =
+func decode*(encoded: string): string {.raises: [PunyError].} =
   ## Decode a Punycode-encoded string
   var
     n = InitialN
     i = 0
     bias = InitialBias
   var d = rfind(encoded, Delimiter)
-  result = ""
+  var output: seq[Rune]
 
   if d > 0:
     # found Delimiter
@@ -133,7 +133,7 @@ proc decode*(encoded: string): string {.raises: [PunyError].} =
       var c = encoded[j] # char
       if not c.isBasic:
         raise newException(PunyError, "Encoded contains a non-basic char")
-      result.add(c) # add the character
+      output.add(Rune(c)) # add the character
     inc d
   else:
     d = 0 # set to first index
@@ -161,16 +161,17 @@ proc decode*(encoded: string): string {.raises: [PunyError].} =
         break
       w *= Base - t
       k += Base
-    bias = adapt(i - oldi, runeLen(result) + 1, oldi == 0)
+    bias = adapt(i - oldi, len(output) + 1, oldi == 0)
 
-    if i div (runeLen(result) + 1) > high(int32) - n:
+    if i div (len(output) + 1) > high(int32) - n:
       raise newException(PunyError, "Value too large")
 
-    n += i div (runeLen(result) + 1)
-    i = i mod (runeLen(result) + 1)
-    insert(result, $Rune(n), i)
+    n += i div (len(output) + 1)
+    i = i mod (len(output) + 1)
+    insert(output, Rune(n), i)
     inc i
 
+  result = $output
 
 runnableExamples:
   static:

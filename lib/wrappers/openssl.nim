@@ -7,33 +7,40 @@
 #    distribution, for details about the copyright.
 #
 
-## OpenSSL support
+## OpenSSL wrapper. Supports OpenSSL >= 1.1.0 dynamically (as default) or statically linked
+## using `--dynlibOverride:ssl`.
 ##
-## When OpenSSL is dynamically linked, the wrapper provides partial forward and backward
-## compatibility for OpenSSL versions above and below 1.1.0
-##
-## OpenSSL can also be statically linked using `--dynlibOverride:ssl` for OpenSSL >= 1.1.0.
-## If you want to statically link against OpenSSL 1.0.x, you now have to
-## define the `openssl10` symbol via `-d:openssl10`.
+## To use openSSL 3, either set `-d:sslVersion=3` or `-d:useOpenssl3`.
 ##
 ## Build and test examples:
 ##
 ## .. code-block::
+##   ./bin/nim c -d:ssl -p:. -r tests/stdlib/tssl.nim
+##   ./bin/nim c -d:ssl --threads:on -p:. -r tests/stdlib/thttpclient_ssl.nim
 ##   ./bin/nim c -d:ssl -p:. -r tests/untestable/tssl.nim
 ##   ./bin/nim c -d:ssl -p:. --dynlibOverride:ssl --passl:-lcrypto --passl:-lssl -r tests/untestable/tssl.nim
+##   ./bin/nim r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:ssl -p:testament/lib --threads:on tests/untestable/thttpclient_ssl_remotenetwork.nim
+
+# https://www.feistyduck.com/library/openssl-cookbook/online/ch-testing-with-openssl.html
+#
+from strutils import startsWith
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
 const useWinVersion = defined(windows) or defined(nimdoc)
 
-# To force openSSL version use -d:sslVersion=1.0.0
+# To force openSSL version use -d:sslVersion=1.2.3
 # See: #10281, #10230
 # General issue:
 # Other dynamic libraries (like libpg) load different openSSL version then what nim loads.
 # Having two different openSSL loaded version causes a crash.
 # Use this compile time define to force the openSSL version that your other dynamic libraries want.
 const sslVersion {.strdefine.}: string = ""
+const useOpenssl3* {.booldefine.} = sslVersion.startsWith('3')
 when sslVersion != "":
   when defined(macosx):
     const
@@ -52,21 +59,31 @@ when sslVersion != "":
     from posix import SocketHandle
 
 elif useWinVersion:
-  when not defined(nimOldDlls) and defined(cpu64):
+  when defined(nimOldDlls):
+    when defined(cpu64):
+      const
+        DLLSSLName* = "(ssleay32|ssleay64).dll"
+        DLLUtilName* = "(libeay32|libeay64).dll"
+    else:
+      const
+        DLLSSLName* = "ssleay32.dll"
+        DLLUtilName* = "libeay32.dll"
+  elif defined(cpu64):
     const
       DLLSSLName* = "(libssl-1_1-x64|ssleay64|libssl64).dll"
       DLLUtilName* = "(libcrypto-1_1-x64|libeay64).dll"
   else:
     const
       DLLSSLName* = "(libssl-1_1|ssleay32|libssl32).dll"
-      DLLUtilName* =  "(libcrypto-1_1|libeay32).dll"
+      DLLUtilName* = "(libcrypto-1_1|libeay32).dll"
 
   from winlean import SocketHandle
 else:
+  # same list of versions but ordered differently?
   when defined(osx):
-    const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.46|.47|.48|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
+    const versions = "(.3|.1.1|.38|.39|.41|.43|.44|.45|.46|.47|.48|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
   else:
-    const versions = "(.1.1|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|.48|.47|.46|.45|.44|.43|.41|.39|.38|.10|)"
+    const versions = "(.3|.1.1|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|.48|.47|.46|.45|.44|.43|.41|.39|.38|.10|)"
 
   when defined(macosx):
     const
@@ -84,6 +101,9 @@ else:
 
 import dynlib
 
+{.pragma: lcrypto, cdecl, dynlib: DLLUtilName, importc.}
+{.pragma: lssl, cdecl, dynlib: DLLSSLName, importc.}
+
 type
   SslStruct {.final, pure.} = object
   SslPtr* = ptr SslStruct
@@ -93,7 +113,6 @@ type
   PSTACK* = SslPtr
   PX509* = SslPtr
   PX509_NAME* = SslPtr
-  PEVP_MD* = SslPtr
   PBIO_METHOD* = SslPtr
   BIO* = SslPtr
   EVP_PKEY* = SslPtr
@@ -257,40 +276,29 @@ proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 # and support SSLv3, TLSv1, TLSv1.1 and TLSv1.2
 # SSLv23_method(), SSLv23_server_method(), SSLv23_client_method() are removed in 1.1.0
 
-when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
+when compileOption("dynlibOverride", "ssl"):
   # Static linking
-
-  when defined(openssl10):
-    proc SSL_library_init*(): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
-    proc SSL_load_error_strings*() {.cdecl, dynlib: DLLSSLName, importc.}
-    proc SSLv23_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
-    proc SSLeay(): culong {.cdecl, dynlib: DLLUtilName, importc.}
-
-    proc getOpenSSLVersion*(): culong =
-      SSLeay()
-  else:
+  when not useOpenssl3:
     proc OPENSSL_init_ssl*(opts: uint64, settings: uint8): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_library_init*(): cint {.discardable.} =
       ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0
       return OPENSSL_init_ssl(0.uint64, 0.uint8)
 
-    proc TLS_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
-    proc SSLv23_method*(): PSSL_METHOD =
-      TLS_method()
+  proc TLS_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
 
-    proc OpenSSL_version_num(): culong {.cdecl, dynlib: DLLUtilName, importc.}
+  proc OpenSSL_version_num(): culong {.cdecl, dynlib: DLLUtilName, importc.}
 
-    proc getOpenSSLVersion*(): culong =
-      ## Return OpenSSL version as unsigned long
-      OpenSSL_version_num()
+  proc getOpenSSLVersion*(): culong =
+    ## Return OpenSSL version as unsigned long
+    OpenSSL_version_num()
 
-    proc SSL_load_error_strings*() =
-      ## Removed from OpenSSL 1.1.0
-      # This proc prevents breaking existing code calling SslLoadErrorStrings
-      # Static linking against OpenSSL < 1.1.0 is not supported
-      discard
+  proc SSL_load_error_strings*() =
+    ## Removed from OpenSSL 1.1.0
+    # This proc prevents breaking existing code calling SslLoadErrorStrings
+    # Static linking against OpenSSL < 1.1.0 is not supported
+    discard
 
-  when defined(libressl) or defined(openssl10):
+  when defined(libressl):
     proc SSL_state(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSL_in_init*(ssl: SslPtr): cint {.inline.} =
       SSl_state(ssl) and SSL_ST_INIT
@@ -300,12 +308,8 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
 
   template OpenSSL_add_all_algorithms*() = discard
 
-  proc SSLv23_client_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
-  proc SSLv2_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
-  proc SSLv3_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
-
 else:
-  # Here we're trying to stay compatible with openssl 1.0.* and 1.1.*. Some
+  # Here we're trying to stay compatible with openssl 1.1.*. Some
   # symbols are loaded dynamically and we don't use them if not found.
   proc thisModule(): LibHandle {.inline.} =
     var thisMod {.global.}: LibHandle
@@ -313,9 +317,12 @@ else:
 
     result = thisMod
 
-  proc sslModule(): LibHandle {.inline.} =
+  proc sslModule(): LibHandle {.inline, raises: [LibraryError], tags:[RootEffect].} =
     var sslMod {.global.}: LibHandle
-    if sslMod.isNil: sslMod = loadLibPattern(DLLSSLName)
+    try:
+      if sslMod.isNil: sslMod = loadLibPattern(DLLSSLName)
+    except:
+      raise newException(LibraryError, "Could not load SSL using " & DLLSSLName)
 
     result = sslMod
 
@@ -340,62 +347,48 @@ else:
       if result.isNil and alternativeName.len > 0:
         result = symAddr(thisDynlib, alternativeName)
 
-  proc sslSymNullable(name: string, alternativeName = ""): pointer =
+  proc sslSymNullable(name: string, alternativeName = ""): pointer {.raises: [LibraryError], tags:[RootEffect].} =
     sslModule().symNullable(name, alternativeName)
 
-  proc sslSymThrows(name: string, alternativeName = ""): pointer =
+  proc sslSymThrows(name: string, alternativeName = ""): pointer {.raises: [LibraryError].} =
     result = sslSymNullable(name, alternativeName)
     if result.isNil: raiseInvalidLibrary(name)
 
   proc utilSymNullable(name: string, alternativeName = ""): pointer =
     utilModule().symNullable(name, alternativeName)
 
-  proc loadPSSLMethod(method1, method2: string): PSSL_METHOD =
+  proc loadPSSLMethod(method1, method2: string): PSSL_METHOD {.raises: [LibraryError], tags:[RootEffect].} =
     ## Load <method1> from OpenSSL if available, otherwise <method2>
     ##
     let methodSym = sslSymNullable(method1, method2)
     if methodSym.isNil:
       raise newException(LibraryError, "Could not load " & method1 & " nor " & method2)
 
-    let method2Proc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](methodSym)
+    let method2Proc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe, raises: [].}](methodSym)
     return method2Proc()
 
-  proc SSL_library_init*(): cint {.discardable.} =
-    ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0 otherwise
-    ## SSL_library_init
-    let newInitSym = sslSymNullable("OPENSSL_init_ssl")
-    if not newInitSym.isNil:
-      let newInitProc =
-        cast[proc(opts: uint64, settings: uint8): cint {.cdecl.}](newInitSym)
-      return newInitProc(0, 0)
-    let olderProc = cast[proc(): cint {.cdecl.}](sslSymThrows("SSL_library_init"))
-    if not olderProc.isNil: result = olderProc()
+  when not useOpenssl3:
+    proc SSL_library_init*(): cint {.discardable.} =
+      ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0 otherwise
+      ## SSL_library_init
+      let newInitSym = sslSymNullable("OPENSSL_init_ssl")
+      if not newInitSym.isNil:
+        let newInitProc =
+          cast[proc(opts: uint64, settings: uint8): cint {.cdecl.}](newInitSym)
+        return newInitProc(0, 0)
+      let olderProc = cast[proc(): cint {.cdecl.}](sslSymThrows("SSL_library_init"))
+      if not olderProc.isNil: result = olderProc()
 
   proc SSL_load_error_strings*() =
     # TODO: Are we ignoring this on purpose? SSL GitHub CI fails otherwise.
     let theProc = cast[proc() {.cdecl.}](sslSymNullable("SSL_load_error_strings"))
     if not theProc.isNil: theProc()
 
-  proc SSLv23_client_method*(): PSSL_METHOD =
-    loadPSSLMethod("SSLv23_client_method", "TLS_client_method")
-
-  proc SSLv23_method*(): PSSL_METHOD =
-    loadPSSLMethod("SSLv23_method", "TLS_method")
-
-  proc SSLv2_method*(): PSSL_METHOD =
-    loadPSSLMethod("SSLv2_method", "TLS_method")
-
   proc SSLv3_method*(): PSSL_METHOD =
     loadPSSLMethod("SSLv3_method", "TLS_method")
 
   proc TLS_method*(): PSSL_METHOD =
     loadPSSLMethod("TLS_method", "SSLv23_method")
-
-  proc TLS_client_method*(): PSSL_METHOD =
-    loadPSSLMethod("TLS_client_method", "SSLv23_client_method")
-
-  proc TLS_server_method*(): PSSL_METHOD =
-    loadPSSLMethod("TLS_server_method", "SSLv23_server_method")
 
   proc OpenSSL_add_all_algorithms*() =
     # TODO: Are we ignoring this on purpose? SSL GitHub CI fails otherwise.
@@ -431,6 +424,9 @@ else:
     theProc(ctx, str)
 
 proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
+
+proc TLS_client_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+
 
 proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
@@ -511,16 +507,16 @@ proc OPENSSL_sk_num*(stack: PSTACK): int {.cdecl, dynlib: DLLSSLName, importc.}
 proc OPENSSL_sk_value*(stack: PSTACK, index: int): pointer {.cdecl,
     dynlib: DLLSSLName, importc.}
 
-proc d2i_X509*(px: ptr PX509, i: ptr ptr cuchar, len: cint): PX509 {.cdecl,
+proc d2i_X509*(px: ptr PX509, i: ptr ptr uint8, len: cint): PX509 {.cdecl,
     dynlib: DLLUtilName, importc.}
 
-proc i2d_X509*(cert: PX509; o: ptr ptr cuchar): cint {.cdecl,
+proc i2d_X509*(cert: PX509; o: ptr ptr uint8): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
 
 proc d2i_X509*(b: string): PX509 =
   ## decode DER/BER bytestring into X.509 certificate struct
   var bb = b.cstring
-  let i = cast[ptr ptr cuchar](addr bb)
+  let i = cast[ptr ptr uint8](addr bb)
   let ret = d2i_X509(addr result, i, b.len.cint)
   if ret.isNil:
     raise newException(Exception, "X.509 certificate decoding failed")
@@ -530,12 +526,15 @@ proc i2d_X509*(cert: PX509): string =
   let encoded_length = i2d_X509(cert, nil)
   result = newString(encoded_length)
   var q = result.cstring
-  let o = cast[ptr ptr cuchar](addr q)
+  let o = cast[ptr ptr uint8](addr q)
   let length = i2d_X509(cert, o)
   if length.int <= 0:
     raise newException(Exception, "X.509 certificate encoding failed")
 
-when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):
+const
+  useNimsAlloc = not defined(nimNoAllocForSSL) and not defined(gcDestructors)
+
+when not useWinVersion and not defined(macosx) and not defined(android) and useNimsAlloc:
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
     dynlib: DLLUtilName, importc.}
 
@@ -549,7 +548,7 @@ when not useWinVersion and not defined(macosx) and not defined(android) and not 
     if p != nil: deallocShared(p)
 
 proc CRYPTO_malloc_init*() =
-  when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):
+  when not useWinVersion and not defined(macosx) and not defined(android) and useNimsAlloc:
     CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
 
 proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cint, larg: clong, parg: pointer): clong{.
@@ -565,10 +564,9 @@ proc SSL_ctrl*(ssl: SslPtr, cmd: cint, larg: int, parg: pointer): int{.
   cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSL_set_tlsext_host_name*(ssl: SslPtr, name: cstring): int =
-  result = SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, name)
   ## Set the SNI server name extension to be used in a client hello.
   ## Returns 1 if SNI was set, 0 if current SSL configuration doesn't support SNI.
-
+  result = SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, name)
 
 proc SSL_get_servername*(ssl: SslPtr, typ: cint = TLSEXT_NAMETYPE_host_name): cstring {.cdecl, dynlib: DLLSSLName, importc.}
   ## Retrieve the server name requested in the client hello. This can be used
@@ -591,11 +589,11 @@ proc SSL_CTX_set_tlsext_servername_arg*(ctx: SslCtx, arg: pointer): int =
 
 type
   PskClientCallback* = proc (ssl: SslPtr;
-    hint: cstring; identity: cstring; max_identity_len: cuint; psk: ptr cuchar;
+    hint: cstring; identity: cstring; max_identity_len: cuint; psk: ptr uint8;
     max_psk_len: cuint): cuint {.cdecl.}
 
   PskServerCallback* = proc (ssl: SslPtr;
-    identity: cstring; psk: ptr cuchar; max_psk_len: cint): cuint {.cdecl.}
+    identity: cstring; psk: ptr uint8; max_psk_len: cint): cuint {.cdecl.}
 
 proc SSL_CTX_set_psk_client_callback*(ctx: SslCtx; callback: PskClientCallback) {.cdecl, dynlib: DLLSSLName, importc.}
   ## Set callback called when OpenSSL needs PSK (for client).
@@ -664,60 +662,60 @@ proc PEM_read_bio_RSAPublicKey*(bp: BIO, x: ptr PRSA, cb: pem_password_cb, u: po
     dynlib: DLLUtilName, importc.}
 proc PEM_read_bio_RSAPrivateKey*(bp: BIO, x: ptr PRSA, cb: pem_password_cb, u: pointer): PRSA {.cdecl,
     dynlib: DLLUtilName, importc.}
-proc RSA_private_encrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+proc RSA_private_encrypt*(flen: cint, fr: ptr uint8, to: ptr uint8, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
-proc RSA_public_encrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+proc RSA_public_encrypt*(flen: cint, fr: ptr uint8, to: ptr uint8, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
-proc RSA_private_decrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+proc RSA_private_decrypt*(flen: cint, fr: ptr uint8, to: ptr uint8, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
-proc RSA_public_decrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+proc RSA_public_decrypt*(flen: cint, fr: ptr uint8, to: ptr uint8, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLUtilName, importc.}
 proc RSA_free*(rsa: PRSA) {.cdecl, dynlib: DLLUtilName, importc.}
 proc RSA_size*(rsa: PRSA): cint {.cdecl, dynlib: DLLUtilName, importc.}
 
 # sha types
-proc EVP_md_null*(): EVP_MD   {.cdecl, importc.}
-proc EVP_md2*(): EVP_MD       {.cdecl, importc.}
-proc EVP_md4*(): EVP_MD       {.cdecl, importc.}
-proc EVP_md5*(): EVP_MD       {.cdecl, importc.}
-proc EVP_sha*(): EVP_MD       {.cdecl, importc.}
-proc EVP_sha1*(): EVP_MD      {.cdecl, importc.}
-proc EVP_dss*(): EVP_MD       {.cdecl, importc.}
-proc EVP_dss1*(): EVP_MD      {.cdecl, importc.}
-proc EVP_ecdsa*(): EVP_MD     {.cdecl, importc.}
-proc EVP_sha224*(): EVP_MD    {.cdecl, importc.}
-proc EVP_sha256*(): EVP_MD    {.cdecl, importc.}
-proc EVP_sha384*(): EVP_MD    {.cdecl, importc.}
-proc EVP_sha512*(): EVP_MD    {.cdecl, importc.}
-proc EVP_mdc2*(): EVP_MD      {.cdecl, importc.}
-proc EVP_ripemd160*(): EVP_MD {.cdecl, importc.}
-proc EVP_whirlpool*(): EVP_MD {.cdecl, importc.}
-proc EVP_MD_size*(md: EVP_MD): cint {.cdecl, importc.}
+proc EVP_md_null*(): EVP_MD   {.lcrypto.}
+proc EVP_md2*(): EVP_MD       {.lcrypto.}
+proc EVP_md4*(): EVP_MD       {.lcrypto.}
+proc EVP_md5*(): EVP_MD       {.lcrypto.}
+proc EVP_sha*(): EVP_MD       {.lcrypto.}
+proc EVP_sha1*(): EVP_MD      {.lcrypto.}
+proc EVP_dss*(): EVP_MD       {.lcrypto.}
+proc EVP_dss1*(): EVP_MD      {.lcrypto.}
+proc EVP_ecdsa*(): EVP_MD     {.lcrypto.}
+proc EVP_sha224*(): EVP_MD    {.lcrypto.}
+proc EVP_sha256*(): EVP_MD    {.lcrypto.}
+proc EVP_sha384*(): EVP_MD    {.lcrypto.}
+proc EVP_sha512*(): EVP_MD    {.lcrypto.}
+proc EVP_mdc2*(): EVP_MD      {.lcrypto.}
+proc EVP_ripemd160*(): EVP_MD {.lcrypto.}
+proc EVP_whirlpool*(): EVP_MD {.lcrypto.}
+proc EVP_MD_size*(md: EVP_MD): cint {.lcrypto.}
 
 # hmac functions
-proc HMAC*(evp_md: EVP_MD; key: pointer; key_len: cint; d: cstring; n: csize_t; md: cstring; md_len: ptr cuint): cstring {.cdecl, importc.}
+proc HMAC*(evp_md: EVP_MD; key: pointer; key_len: cint; d: cstring; n: csize_t; md: cstring; md_len: ptr cuint): cstring {.lcrypto.}
 
 # RSA key functions
-proc PEM_read_bio_PrivateKey*(bp: BIO, x: ptr EVP_PKEY, cb: pointer, u: pointer): EVP_PKEY {.cdecl, importc.}
-proc EVP_PKEY_free*(p: EVP_PKEY)  {.cdecl, importc.}
-proc EVP_DigestSignInit*(ctx: EVP_MD_CTX, pctx: ptr EVP_PKEY_CTX, typ: EVP_MD, e: ENGINE, pkey: EVP_PKEY): cint {.cdecl, importc.}
-proc EVP_DigestInit_ex*(ctx: EVP_MD_CTX, typ: PEVP_MD, engine: SslPtr = nil): cint {.cdecl, importc.}
-proc EVP_DigestUpdate*(ctx: EVP_MD_CTX, data: pointer, len: cuint): cint {.cdecl, importc.}
-proc EVP_DigestFinal_ex*(ctx: EVP_MD_CTX, buffer: pointer, size: ptr cuint): cint {.cdecl, importc.}
-proc EVP_DigestSignFinal*(ctx: EVP_MD_CTX, data: pointer, len: ptr csize_t): cint {.cdecl, importc.}
-proc EVP_PKEY_CTX_new*(pkey: EVP_PKEY, e: ENGINE): EVP_PKEY_CTX {.cdecl, importc.}
-proc EVP_PKEY_CTX_free*(pkeyCtx: EVP_PKEY_CTX) {.cdecl, importc.}
-proc EVP_PKEY_sign_init*(c: EVP_PKEY_CTX): cint {.cdecl, importc.}
+proc PEM_read_bio_PrivateKey*(bp: BIO, x: ptr EVP_PKEY, cb: pointer, u: pointer): EVP_PKEY {.lcrypto.}
+proc EVP_PKEY_free*(p: EVP_PKEY)  {.lcrypto.}
+proc EVP_DigestSignInit*(ctx: EVP_MD_CTX, pctx: ptr EVP_PKEY_CTX, typ: EVP_MD, e: ENGINE, pkey: EVP_PKEY): cint {.lcrypto.}
+proc EVP_DigestInit_ex*(ctx: EVP_MD_CTX, typ: EVP_MD, engine: SslPtr = nil): cint {.lcrypto.}
+proc EVP_DigestUpdate*(ctx: EVP_MD_CTX, data: pointer, len: cuint): cint {.lcrypto.}
+proc EVP_DigestFinal_ex*(ctx: EVP_MD_CTX, buffer: pointer, size: ptr cuint): cint {.lcrypto.}
+proc EVP_DigestSignFinal*(ctx: EVP_MD_CTX, data: pointer, len: ptr csize_t): cint {.lcrypto.}
+proc EVP_PKEY_CTX_new*(pkey: EVP_PKEY, e: ENGINE): EVP_PKEY_CTX {.lcrypto.}
+proc EVP_PKEY_CTX_free*(pkeyCtx: EVP_PKEY_CTX) {.lcrypto.}
+proc EVP_PKEY_sign_init*(c: EVP_PKEY_CTX): cint {.lcrypto.}
 
 when defined(macosx) or defined(windows):
-  proc EVP_MD_CTX_create*(): EVP_MD_CTX {.cdecl, importc.}
-  proc EVP_MD_CTX_destroy*(ctx: EVP_MD_CTX) {.cdecl, importc.}
-  proc EVP_MD_CTX_cleanup*(ctx: EVP_MD_CTX): cint {.cdecl, importc.}
+  proc EVP_MD_CTX_create*(): EVP_MD_CTX {.lcrypto.}
+  proc EVP_MD_CTX_destroy*(ctx: EVP_MD_CTX) {.lcrypto.}
+  proc EVP_MD_CTX_cleanup*(ctx: EVP_MD_CTX): cint {.lcrypto.}
 else:
   # some times you will need this instead:
-  proc EVP_MD_CTX_create*(): EVP_MD_CTX {.cdecl, importc: "EVP_MD_CTX_new".}
-  proc EVP_MD_CTX_destroy*(ctx: EVP_MD_CTX) {.cdecl, importc: "EVP_MD_CTX_free".}
-  proc EVP_MD_CTX_cleanup*(ctx: EVP_MD_CTX): cint {.cdecl, importc: "EVP_MD_CTX_cleanup".}
+  proc EVP_MD_CTX_create*(): EVP_MD_CTX {.cdecl, importc: "EVP_MD_CTX_new", dynlib: DLLUtilName.}
+  proc EVP_MD_CTX_destroy*(ctx: EVP_MD_CTX) {.cdecl, importc: "EVP_MD_CTX_free", dynlib: DLLUtilName.}
+  proc EVP_MD_CTX_cleanup*(ctx: EVP_MD_CTX): cint {.cdecl, importc: "EVP_MD_CTX_cleanup", dynlib: DLLUtilName.}
 
 # <openssl/md5.h>
 type
@@ -736,8 +734,8 @@ type
 proc md5_Init*(c: var MD5_CTX): cint{.importc: "MD5_Init".}
 proc md5_Update*(c: var MD5_CTX; data: pointer; len: csize_t): cint{.importc: "MD5_Update".}
 proc md5_Final*(md: cstring; c: var MD5_CTX): cint{.importc: "MD5_Final".}
-proc md5*(d: ptr cuchar; n: csize_t; md: ptr cuchar): ptr cuchar{.importc: "MD5".}
-proc md5_Transform*(c: var MD5_CTX; b: ptr cuchar){.importc: "MD5_Transform".}
+proc md5*(d: ptr uint8; n: csize_t; md: ptr uint8): ptr uint8{.importc: "MD5".}
+proc md5_Transform*(c: var MD5_CTX; b: ptr uint8){.importc: "MD5_Transform".}
 {.pop.}
 
 from strutils import toHex, toLowerAscii
@@ -794,8 +792,17 @@ when defined(nimHasStyleChecks):
 # On old openSSL version some of these symbols are not available
 when not defined(nimDisableCertificateValidation) and not defined(windows):
 
-  proc SSL_get_peer_certificate*(ssl: SslCtx): PX509{.cdecl, dynlib: DLLSSLName,
-      importc.}
+  # proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 =
+  #  loadPSSLMethod("SSL_get_peer_certificate", "SSL_get1_peer_certificate")
+
+  when useOpenssl3:
+    proc SSL_get1_peer_certificate*(ssl: SslCtx): PX509 {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 =
+      SSL_get1_peer_certificate(ssl)
+
+  else:
+    proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 {.cdecl, dynlib: DLLSSLName, importc.}
+
 
   proc X509_get_subject_name*(a: PX509): PX509_NAME{.cdecl, dynlib: DLLSSLName, importc.}
 
@@ -808,6 +815,8 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
     cdecl, dynlib:DLLSSLName, importc.}
 
   proc X509_check_host*(cert: PX509, name: cstring, namelen: cint, flags:cuint, peername: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
+
+  proc X509_free*(cert: PX509) {.cdecl, dynlib: DLLSSLName, importc.}
 
   # Certificates store
 
@@ -837,3 +846,17 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
     let cert = d2i_X509(certbytes)
     let encoded = cert.i2d_X509()
     assert encoded == certbytes
+
+# Application Layer Protocol Negociation extension (TLS-ALPN, RFC7301)
+# Available in at least OpenSSL 1.1.1 and later, not sure if earlier
+# --Iced Quinn
+
+proc SSL_CTX_set_alpn_protos*(ctx: SslCtx; protos: cstring; protos_len: cuint): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_set_alpn_protos*(ssl: SslPtr; protos: cstring; protos_len: cuint): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_alpn_select_cb*(ctx: SslCtx; cb: proc(ssl: SslPtr; out_proto: ptr cstring; outlen: cstring; in_proto: cstring; inlen: cuint; arg: pointer): cint {.cdecl.}; arg: pointer): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get0_alpn_selected*(ssl: SslPtr; data: ptr cstring; len: ptr cuint) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_next_protos_advertised_cb*(ctx: SslCtx; cb: proc(ssl: SslPtr; out_proto: ptr cstring; outlen: ptr cuint; arg: pointer): cint {.cdecl.}; arg: pointer) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_next_proto_select_cb*(ctx: SslCtx; cb: proc(s: SslPtr; out_proto: cstring; outlen: cstring; in_proto: cstring; inlen: cuint; arg: pointer): cint {.cdecl.}; arg: pointer) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_select_next_proto*(out_proto: ptr cstring; outlen: cstring; server: cstring; server_len: cuint; client: cstring; client_len: cuint): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get0_next_proto_negotiated*(s: SslPtr; data: ptr cstring; len: ptr cuint) {.cdecl, dynlib: DLLSSLName, importc.}
+

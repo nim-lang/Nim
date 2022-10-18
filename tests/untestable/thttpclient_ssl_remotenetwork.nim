@@ -32,7 +32,7 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
       good, bad, dubious, good_broken, bad_broken, dubious_broken
     CertTest = tuple[url:string, category:Category, desc: string]
 
-  const certificate_tests: array[0..55, CertTest] = [
+  const certificate_tests: array[0..54, CertTest] = [
     ("https://wrong.host.badssl.com/", bad, "wrong.host"),
     ("https://captive-portal.badssl.com/", bad, "captive-portal"),
     ("https://expired.badssl.com/", bad, "expired"),
@@ -41,17 +41,16 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
     ("https://untrusted-root.badssl.com/", bad, "untrusted-root"),
     ("https://revoked.badssl.com/", bad_broken, "revoked"),
     ("https://pinning-test.badssl.com/", bad_broken, "pinning-test"),
-    ("https://no-common-name.badssl.com/", dubious_broken, "no-common-name"),
-    ("https://no-subject.badssl.com/", dubious_broken, "no-subject"),
-    ("https://incomplete-chain.badssl.com/", dubious_broken, "incomplete-chain"),
+    ("https://no-common-name.badssl.com/", bad, "no-common-name"),
+    ("https://no-subject.badssl.com/", bad, "no-subject"),
     ("https://sha1-intermediate.badssl.com/", bad, "sha1-intermediate"),
     ("https://sha256.badssl.com/", good, "sha256"),
-    ("https://sha384.badssl.com/", good, "sha384"),
-    ("https://sha512.badssl.com/", good, "sha512"),
-    ("https://1000-sans.badssl.com/", good, "1000-sans"),
+    ("https://sha384.badssl.com/", bad, "sha384"),
+    ("https://sha512.badssl.com/", bad, "sha512"),
+    ("https://1000-sans.badssl.com/", bad, "1000-sans"),
     ("https://10000-sans.badssl.com/", good_broken, "10000-sans"),
-    ("https://ecc256.badssl.com/", good, "ecc256"),
-    ("https://ecc384.badssl.com/", good, "ecc384"),
+    ("https://ecc256.badssl.com/", good_broken, "ecc256"),
+    ("https://ecc384.badssl.com/", good_broken, "ecc384"),
     ("https://rsa2048.badssl.com/", good, "rsa2048"),
     ("https://rsa8192.badssl.com/", dubious_broken, "rsa8192"),
     ("http://http.badssl.com/", good, "regular http"),

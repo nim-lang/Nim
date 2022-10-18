@@ -57,8 +57,8 @@ const x1 = cast[uint](-1)
 discard $(x1,)
 
 # bug #13698
-let n: csize = 1 # xxx should that be csize_t or is that essential here?
-doAssert $n.int32 == "1"
+let n2: csize_t = 1
+doAssert $n2.int32 == "1"
 
 # bug #14616
 
@@ -66,8 +66,7 @@ let limit = 1'u64
 
 let rangeVar = 0'u64 ..< limit
 
-doAssert repr(rangeVar) == """[a = 0,
-b = 0]"""
+doAssert repr(rangeVar) == """0 .. 0""", repr(rangeVar)
 
 # bug #15210
 
@@ -79,3 +78,19 @@ except RangeDefect:
   success = true
 
 doAssert success, "conversion should fail at runtime"
+
+template main() =
+  # xxx move all tests under here so it gets tested in CT and RT
+  block: # bug #17572
+    type T = distinct uint64
+    func f(x: uint64): auto =
+      let a = T(x)
+      (x, a.uint64)
+    const x = 1'u64 shl 63 or 7
+    const b = T(x)
+    doAssert b.uint64 == 9223372036854775815'u64
+    doAssert $b.uint64 == "9223372036854775815"
+    doAssert f(x) == (9223372036854775815'u64, 9223372036854775815'u64)
+
+static: main()
+main()

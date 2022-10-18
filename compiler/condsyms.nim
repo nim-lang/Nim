@@ -70,7 +70,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimVmExportFixed") # deadcode
   defineSymbol("nimHasSymOwnerInMacro") # deadcode
   defineSymbol("nimNewRuntime") # deadcode
-  defineSymbol("nimIncrSeqV3") # xxx: turn this into deadcode
+  defineSymbol("nimIncrSeqV3") # deadcode
   defineSymbol("nimAshr") # deadcode
   defineSymbol("nimNoNilSeqs") # deadcode
   defineSymbol("nimNoNilSeqs2") # deadcode
@@ -130,3 +130,20 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasWarningAsError")
   defineSymbol("nimHasHintAsError")
   defineSymbol("nimHasSpellSuggest")
+  defineSymbol("nimHasCustomLiterals")
+  defineSymbol("nimHasUnifiedTuple")
+  defineSymbol("nimHasIterable")
+  defineSymbol("nimHasTypeofVoid")
+  defineSymbol("nimHasDragonBox")
+  defineSymbol("nimHasHintAll")
+  defineSymbol("nimHasTrace")
+  defineSymbol("nimHasEffectsOf")
+
+  defineSymbol("nimHasEnforceNoRaises")
+  defineSymbol("nimHasTopDownInference")
+  defineSymbol("nimHasTemplateRedefinitionPragma")
+  defineSymbol("nimHasCstringCase")
+  defineSymbol("nimHasCallsitePragma")
+  defineSymbol("nimHasAmbiguousEnumHint")
+
+  defineSymbol("nimHasOutParams")

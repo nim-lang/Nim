@@ -3,7 +3,7 @@ discard """
   matrix: "--gc:refc; --gc:arc"
 """
 
-import std/[strbasics, sugar]
+import std/[strbasics, sugar, assertions]
 
 template strip2(input: string, args: varargs[untyped]): untyped =
   var a = input
@@ -73,7 +73,7 @@ proc main() =
 
   block: # setSlice
     var a = "Hello, Nim!"
-    doassert a.dup(setSlice(7 .. 9)) == "Nim"
+    doAssert a.dup(setSlice(7 .. 9)) == "Nim"
     doAssert a.dup(setSlice(0 .. 0)) == "H"
     doAssert a.dup(setSlice(0 .. 1)) == "He"
     doAssert a.dup(setSlice(0 .. 10)) == a
