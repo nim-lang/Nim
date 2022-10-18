@@ -1261,6 +1261,14 @@ proc isMagic(sym: PSym): bool =
   let nPragmas = sym.ast[pragmasPos]
   return hasPragma(nPragmas, wMagic)
 
+proc maybeForkType(c: PContext, t: PType): PType =
+  if t.kind in {tyOr} and t.sym != nil:
+    result = newTypeS(t.kind, c)
+    newSons(result, t.len)
+    for i in 0..<t.len: result[i] = t[i]
+  else:
+    return t
+
 proc semProcTypeNode(c: PContext, n, genericParams: PNode,
                      prev: PType, kind: TSymKind; isType=false): PType =
   # for historical reasons (code grows) this is invoked for parameter
@@ -1352,6 +1360,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         else:
           localError(c.config, a.info, "parameter '$1' requires a type" % arg.name.s)
           typ = errorType(c)
+      typ = maybeForkType(c, typ)
       let lifted = liftParamType(c, kind, genericParams, typ,
                                  arg.name.s, arg.info)
       let finalType = if lifted != nil: lifted else: typ.skipIntLit(c.idgen)
