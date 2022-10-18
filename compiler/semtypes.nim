@@ -1263,17 +1263,17 @@ proc isMagic(sym: PSym): bool =
 
 proc maybeForkType(c: PContext, t: PType): PType =
   if t.kind in {tyOr} and t.sym != nil:
-    result = newTypeS(t.kind, c)
-    newSons(result, t.len)
-    var hasMeta = false
+    var noFork = false
     for i in 0..<t.len:
-      if isMetaType(t[i]):
-        hasMeta = true
+      if isMetaType(t[i]) or t[i].kind notin ConcreteTypes:
+        noFork = true
         break
-      result[i] = t[i]
-    if hasMeta:
+    if noFork:
       return t
     else:
+      result = exactReplica(t)
+      result.itemId = nextTypeId(c.idgen)
+      result.sym = nil
       return result
   else:
     return t
