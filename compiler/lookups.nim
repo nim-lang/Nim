@@ -48,7 +48,7 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
         case x.kind
         of nkIdent: id.add(x.ident.s)
         of nkSym: id.add(x.sym.name.s)
-        of nkOpenSymChoice:
+        of nkSymChoices:
           if x[0].kind == nkSym:
             id.add(x[0].sym.name.s)
           else:
