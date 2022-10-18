@@ -150,9 +150,12 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; packed: bool; a
     for i, child in n.sons:
       computeObjectOffsetsFoldFunction(conf, child, packed, accum)
   of nkSym:
+    if sfCursor in n.sym.flags:
+      accum.maxAlign = szUnknownSize
+      accum.offset = szUnknownSize
     var size = szUnknownSize
     var align = szUnknownSize
-    if n.sym.bitsize == 0: # 0 represents bitsize not set
+    if n.sym.bitsize == 0 and sfCursor notin n.sym.flags: # 0 represents bitsize not set
       computeSizeAlign(conf, n.sym.typ)
       size = n.sym.typ.size.int
       align = if packed: 1 else: n.sym.typ.align.int
@@ -205,7 +208,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   assert typ != nil
   let hasSize = typ.size != szUncomputedSize
   let hasAlign = typ.align != szUncomputedSize
-
+  let acyclic = tfAcyclic in typ.flags
+  if acyclic:
+    typ.size = szUnknownSize
+    typ.align = szUnknownSize
+    return
   if hasSize and hasAlign:
     # nothing to do, size and align already computed
     return
@@ -229,7 +236,6 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   typ.size = szIllegalRecursion
   typ.align = szIllegalRecursion
   typ.paddingAtEnd = 0
-
   var tk = typ.kind
   case tk
   of tyProc:
@@ -434,9 +440,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
 
   of tyForward:
     # is this really illegal recursion, or maybe just unknown?
-    typ.size = szIllegalRecursion
-    typ.align = szIllegalRecursion
-    typ.paddingAtEnd = szIllegalRecursion
+    typ.size = szUnknownSize
+    typ.align = szUnknownSize
+    typ.paddingAtEnd = szUnknownSize
 
   of tyStatic:
     if typ.n != nil:
