@@ -81,11 +81,6 @@ else:
 proc normalizePathAux(path: var string){.inline, raises: [], noSideEffect.}
 
 type
-  ReadEnvEffect* = object of ReadIOEffect   ## Effect that denotes a read
-                                            ## from an environment variable.
-  WriteEnvEffect* = object of WriteIOEffect ## Effect that denotes a write
-                                            ## to an environment variable.
-
   ReadDirEffect* = object of ReadIOEffect   ## Effect that denotes a read
                                             ## operation from the directory
                                             ## structure.
