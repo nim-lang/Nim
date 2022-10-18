@@ -227,8 +227,7 @@ type
     nkError               # erroneous AST node
     nkModuleRef           # for .rod file support: A (moduleId, itemId) pair
     nkReplayAction        # for .rod file support: A replay action
-    nkNilRodNode,          # for .rod file support: a 'nil' PNode
-    nkOpenArray # For VM support of `toOpenArray`, should never leak to user code.
+    nkNilRodNode          # for .rod file support: a 'nil' PNode
 
 
   TNodeKinds* = set[TNodeKind]

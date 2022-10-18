@@ -1060,14 +1060,11 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
       left = c.genx(n[2])
       right = c.genx(n[3])
     if dest < 0: dest = c.getTemp(n.typ)
-    c.gABC(n, opcSlice, d, d, left)
-    c.gABC(n, opcSlice, d, d, right)
     c.gABx(n, opcNodeToReg, dest, d)
+    c.gABC(n, opcSlice, dest, left, right)
     c.freeTemp(left)
     c.freeTemp(right)
     c.freeTemp(d)
-
-
 
   of mIncl, mExcl:
     unused(c, n, dest)
@@ -1691,9 +1688,7 @@ proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   c.freeTemp(a)
   c.freeTemp(b)
 
-proc genObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
-  let a = c.genx(n[0], flags)
-  let b = genField(c, n[1])
+proc genObjAccessAux(c: PCtx; n: PNode; a, b: int, dest: var TDest; flags: TGenFlags) =
   if dest < 0: dest = c.getTemp(n.typ)
   if {gfNodeAddr} * flags != {}:
     c.gABC(n, opcLdObjAddr, dest, a, b)
@@ -1705,6 +1700,11 @@ proc genObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   else:
     c.gABC(n, opcLdObj, dest, a, b)
   c.freeTemp(a)
+
+proc genObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
+  genObjAccessAux(c, n, c.genx(n[0], flags), genField(c, n[1]), dest, flags)
+
+
 
 proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   internalAssert c.config, n.kind == nkCheckedFieldExpr
@@ -1773,10 +1773,13 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let arrayType = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
-  if arrayType in {tyString, tyCstring}:
+  case arrayType
+  of tyString, tyCstring:
     let opc = if gfNodeAddr in flags: opcLdStrIdxAddr else: opcLdStrIdx
     genArrAccessOpcode(c, n, dest, opc, flags)
-  elif arrayType == tyTypeDesc:
+  of tyTuple:
+    c.genObjAccessAux(n, c.genx(n[0], flags), int n[1].intVal, dest, flags)
+  of tyTypeDesc:
     c.genTypeLit(n.typ, dest)
   else:
     let opc = if gfNodeAddr in flags: opcLdArrAddr else: opcLdArr

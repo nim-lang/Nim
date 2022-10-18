@@ -9,6 +9,7 @@ proc mutate(a: var openarray[char]) =
   for ch in a.mitems:
     ch = 'a'
 
+
 static:
   var a = [10, 20, 30]
   assert a.toOpenArray(1, 2).len == 2
@@ -20,8 +21,11 @@ static:
   assert "Hello".toOpenArray(1, 4) == "ello"
   var str = "Hello"
   str.toOpenArray(2, 4).mutate()
-  assert str == "Heaaa"
-  assert str.toOpenArray(0, 4) == "Heaaa"
   assert str.toOpenArray(0, 4).len == 5
   assert str.toOpenArray(0, 0).len == 1
   assert str.toOpenArray(0, 0).high == 0
+  assert str == "Heaaa"
+  assert str.toOpenArray(0, 4) == "Heaaa"
+
+
+
