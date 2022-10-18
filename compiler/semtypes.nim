@@ -1265,7 +1265,16 @@ proc maybeForkType(c: PContext, t: PType): PType =
   if t.kind in {tyOr} and t.sym != nil:
     result = newTypeS(t.kind, c)
     newSons(result, t.len)
-    for i in 0..<t.len: result[i] = t[i]
+    var hasMeta = false
+    for i in 0..<t.len:
+      if isMetaType(t[i]):
+        hasMeta = true
+        break
+      result[i] = t[i]
+    if hasMeta:
+      return t
+    else:
+      return result
   else:
     return t
 
