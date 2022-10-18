@@ -640,9 +640,19 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
 proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
   case le.kind
   of nkBracketExpr:
-    let dest = c.genx(le[0], {gfNode})
-    let idx = c.genIndex(le[1], le[0].typ)
-    c.gABC(le, opcWrArr, dest, idx, value)
+    let
+      dest = c.genx(le[0], {gfNode})
+      idx = c.genIndex(le[1], le[0].typ)
+      collTyp = le[0].typ.skipTypes(abstractVarRange-{tyTypeDesc})
+
+    case collTyp.kind
+    of tyString, tyCstring:
+      c.gABC(le, opcWrStrIdx, dest, idx, value)
+    of tyTuple:
+      c.gABC(le, opcWrObj, dest, int le[1].intVal, value)
+    else:
+      c.gABC(le, opcWrArr, dest, idx, value)
+
     c.freeTemp(dest)
     c.freeTemp(idx)
   of nkCheckedFieldExpr:
@@ -1519,12 +1529,16 @@ proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
 proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   case le.kind
   of nkBracketExpr:
-    let dest = c.genx(le[0], {gfNode})
-    let idx = c.genIndex(le[1], le[0].typ)
-    let tmp = c.genx(ri)
-    if le[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind in {
-        tyString, tyCstring}:
+    let
+      dest = c.genx(le[0], {gfNode})
+      idx = c.genIndex(le[1], le[0].typ)
+      tmp = c.genx(ri)
+      collTyp = le[0].typ.skipTypes(abstractVarRange-{tyTypeDesc})
+    case collTyp.kind
+    of tyString, tyCstring:
       c.preventFalseAlias(le, opcWrStrIdx, dest, idx, tmp)
+    of tyTuple:
+      c.preventFalseAlias(le, opcWrObj, dest, int le[1].intVal, tmp)
     else:
       c.preventFalseAlias(le, opcWrArr, dest, idx, tmp)
     c.freeTemp(tmp)
