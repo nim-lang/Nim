@@ -1868,21 +1868,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   else:
     internalError c.c.graph.config, " unknown type kind " & $f.kind
 
-when false:
-  var nowDebug = false
-  var dbgCount = 0
-
-  proc typeRel(c: var TCandidate, f, aOrig: PType,
-              flags: TTypeRelFlags = {}): TTypeRelation =
-    if nowDebug:
-      echo f, " <- ", aOrig
-      inc dbgCount
-      if dbgCount == 2:
-        writeStackTrace()
-    result = typeRelImpl(c, f, aOrig, flags)
-    if nowDebug:
-      echo f, " <- ", aOrig, " res ", result
-
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   var m = newCandidate(c, f)
   result = typeRel(m, f, a)
