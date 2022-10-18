@@ -11,6 +11,13 @@ import
   os, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
   std / sha1
 
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
+when not defined(nimHasEffectsOf):
+  {.pragma: effectsOf.}
+
 const
   maxOS = 20 # max number of OSes
   maxCPU = 20 # max number of CPUs
@@ -198,7 +205,7 @@ proc parseCmdLine(c: var ConfigData) =
   if c.infile.len == 0: quit(Usage)
   if c.mainfile.len == 0: c.mainfile = changeFileExt(c.infile, "nim")
 
-proc eqT(a, b: string; t: proc (a: char): char{.nimcall.}): bool =
+proc eqT(a, b: string; t: proc (a: char): char {.nimcall.}): bool {.effectsOf: t.} =
   ## equality under a transformation ``t``. candidate for the stdlib?
   var i = 0
   var j = 0
