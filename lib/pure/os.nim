@@ -81,19 +81,12 @@ else:
 proc normalizePathAux(path: var string){.inline, raises: [], noSideEffect.}
 
 type
-  ReadEnvEffect* = object of ReadIOEffect   ## Effect that denotes a read
-                                            ## from an environment variable.
-  WriteEnvEffect* = object of WriteIOEffect ## Effect that denotes a write
-                                            ## to an environment variable.
-
   ReadDirEffect* = object of ReadIOEffect   ## Effect that denotes a read
                                             ## operation from the directory
                                             ## structure.
   WriteDirEffect* = object of WriteIOEffect ## Effect that denotes a write
                                             ## operation to
                                             ## the directory structure.
-
-  OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
 import std/private/osseps
 export osseps
@@ -884,8 +877,11 @@ proc unixToNativePath*(path: string, drive=""): string {.
         add result, path[i]
         inc(i)
 
-include "includes/oserr"
-include "includes/osenv"
+import std/oserrors
+export oserrors
+
+import std/envvars
+export envvars
 
 proc getHomeDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
