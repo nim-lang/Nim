@@ -364,8 +364,6 @@ when not weirdTarget:
   when not defined(windows):
     proc c_rename(oldname, newname: cstring): cint {.
       importc: "rename", header: "<stdio.h>".}
-    proc c_strlen(a: cstring): cint {.
-      importc: "strlen", header: "<string.h>", noSideEffect.}
     proc c_free(p: pointer) {.
       importc: "free", header: "<stdlib.h>".}
 

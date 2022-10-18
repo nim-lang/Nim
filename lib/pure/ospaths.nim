@@ -28,7 +28,7 @@ when weirdTarget:
 elif defined(windows):
   import winlean, times
 elif defined(posix):
-  import posix, times
+  import posix, times, ansi_c
 
   proc toTime(ts: Timespec): times.Time {.inline.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
