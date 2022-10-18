@@ -93,8 +93,6 @@ type
                                             ## operation to
                                             ## the directory structure.
 
-  OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
-
 import std/private/osseps
 export osseps
 
@@ -884,8 +882,11 @@ proc unixToNativePath*(path: string, drive=""): string {.
         add result, path[i]
         inc(i)
 
-include "includes/oserr"
-include "includes/osenv"
+import std/oserrors
+export oserrors
+
+import std/envvars
+export envvars
 
 proc getHomeDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
