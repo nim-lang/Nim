@@ -1,4 +1,3 @@
-
 include std/prelude
 import intsets
 
@@ -17,7 +16,6 @@ type
     roots: Table[int, NodeKind]
 
 proc add(father: Node; son: int) =
-  if father.kids.isNil: father.kids = @[]
   father.kids.add(son)
 
 proc renderNode(g: Graph; id: int) =
@@ -141,8 +139,8 @@ proc importData(input: string): Graph =
     close(i)
   else:
     quit "error: cannot open " & input
-  shallowCopy(result.nodes, nodes)
-  shallowCopy(result.roots, roots)
+  result.nodes = move nodes
+  result.roots = move roots
 
 if paramCount() == 1:
   repl(importData(paramStr(1)))

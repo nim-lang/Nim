@@ -1,6 +1,6 @@
 # Include file that implements 'osErrorMsg' and friends. Do not import it!
 
-when not declared(os) and not declared(ospaths):
+when not declared(os):
   {.error: "This is an include file for os.nim!".}
 
 when not defined(nimscript):
@@ -11,6 +11,8 @@ when not defined(nimscript):
 
   when defined(windows):
     import winlean
+    when useWinUnicode and defined(nimPreviewSlimSystem):
+      import std/widestrs
 
 proc `==`*(err1, err2: OSErrorCode): bool {.borrow.}
 proc `$`*(err: OSErrorCode): string {.borrow.}

@@ -17,7 +17,7 @@
 
 include "system/inclrtl"
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
 
 const
   useUnicode = true ## change this to deactivate proper UTF-8 support
@@ -561,7 +561,7 @@ template matchOrParse(mopProc: untyped) =
   # procs. For the former, *enter* and *leave* event handler code generators
   # are provided which just return *discard*.
 
-  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int =
+  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int {.gcsafe.} =
     proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int =
       # Parse handler code must run in an *of* clause of its own for each
       # *PegKind*, so we encapsulate the identical clause body for
@@ -838,10 +838,13 @@ template matchOrParse(mopProc: untyped) =
         var idx = c.ml # reserve a slot for the subpattern
         result = mopProc(s, p.sons[0], start, c)
         if result >= 0:
-          inc(c.ml)
           if idx < MaxSubpatterns:
+            if idx != c.ml:
+              for i in countdown(c.ml, idx):
+                c.matches[i+1] = c.matches[i]
             c.matches[idx] = (start, start+result-1)
           #else: silently ignore the capture
+          inc(c.ml)
       leave(pkCapture, s, p, start, result)
     of pkBackRef:
       enter(pkBackRef, s, p, start)
@@ -2055,9 +2058,9 @@ func parsePeg*(pattern: string, filename = "pattern", line = 1, col = 0): Peg =
 
 func peg*(pattern: string): Peg =
   ## constructs a Peg object from the `pattern`. The short name has been
-  ## chosen to encourage its use as a raw string modifier::
+  ## chosen to encourage its use as a raw string modifier:
   ##
-  ##   peg"{\ident} \s* '=' \s* {.*}"
+  ##     peg"{\ident} \s* '=' \s* {.*}"
   result = parsePeg(pattern, "pattern")
 
 func escapePeg*(s: string): string =

@@ -154,7 +154,7 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
       nkTypeOfExpr, nkMixinStmt, nkBindStmt:
     discard "do not follow the construct"
 
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     # reverse order, see remark for `=sink`:
     analyse(c, b, n[1])
     analyse(c, b, n[0])
@@ -178,7 +178,7 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
 
   of nkCaseStmt:
     let isExhaustive = skipTypes(n[0].typ,
-      abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString} or
+      abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString, tyCstring} or
       n[^1].kind == nkElse
 
     analyse(c, b, n[0])

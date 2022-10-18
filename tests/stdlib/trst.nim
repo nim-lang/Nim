@@ -3,7 +3,11 @@ discard """
 
 [Suite] RST parsing
 
+[Suite] RST tables
+
 [Suite] RST indentation
+
+[Suite] Markdown indentation
 
 [Suite] Warnings
 
@@ -21,9 +25,13 @@ import ../../lib/packages/docutils/[rstgen, rst, rstast]
 import unittest, strutils
 import std/private/miscdollars
 import os
+import std/[assertions, syncio]
+
+const preferMarkdown = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
+const preferRst = {roSupportMarkdown, roNimFile, roSandboxDisabled}
 
 proc toAst(input: string,
-            rstOptions: RstParseOptions = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled},
+            rstOptions: RstParseOptions = preferMarkdown,
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
@@ -69,7 +77,7 @@ suite "RST parsing":
         """.toAst ==
       dedent"""
         rnInner
-          rnHeadline  level=1
+          rnHeadline  level=1  anchor='lexical-analysis'
             rnLeaf  'Lexical'
             rnLeaf  ' '
             rnLeaf  'Analysis'
@@ -118,12 +126,12 @@ suite "RST parsing":
     check(dedent"""
         Paragraph::
 
-        >x""".toAst == expected)
+        >x""".toAst(rstOptions = preferRst) == expected)
 
     check(dedent"""
         Paragraph::
 
-            >x""".toAst == expected)
+            >x""".toAst(rstOptions = preferRst) == expected)
 
   test "RST quoted literal blocks, :: at a separate line":
     let expected =
@@ -142,7 +150,7 @@ suite "RST parsing":
         ::
 
         >x
-        >>y""".toAst == expected)
+        >>y""".toAst(rstOptions = preferRst) == expected)
 
     check(dedent"""
         Paragraph
@@ -150,7 +158,7 @@ suite "RST parsing":
         ::
 
           >x
-          >>y""".toAst == expected)
+          >>y""".toAst(rstOptions = preferRst) == expected)
 
   test "Markdown quoted blocks":
     check(dedent"""
@@ -418,21 +426,21 @@ suite "RST parsing":
         .. Note:: deflist:
                     >> quote
                     continuation
-        """.toAst == expected)
+        """.toAst(rstOptions = preferRst) == expected)
 
     check(dedent"""
         .. Note::
            deflist:
              >> quote
              continuation
-        """.toAst == expected)
+        """.toAst(rstOptions = preferRst) == expected)
 
     check(dedent"""
         .. Note::
            deflist:
              >> quote
              >> continuation
-        """.toAst == expected)
+        """.toAst(rstOptions = preferRst) == expected)
 
     # spaces are not significant between `>`:
     check(dedent"""
@@ -440,7 +448,7 @@ suite "RST parsing":
            deflist:
              > > quote
              > > continuation
-        """.toAst == expected)
+        """.toAst(rstOptions = preferRst) == expected)
 
   test "Markdown quoted blocks: de-indent handled well":
     check(dedent"""
@@ -449,7 +457,7 @@ suite "RST parsing":
         >   - y
         >
         > Paragraph.
-        """.toAst == dedent"""
+        """.toAst(rstOptions = preferRst) == dedent"""
           rnMarkdownBlockQuote
             rnMarkdownBlockQuoteItem  quotationDepth=1
               rnInner
@@ -466,28 +474,173 @@ suite "RST parsing":
                   rnLeaf  '.'
           """)
 
-  test "option list has priority over definition list":
+  let expectCodeBlock = dedent"""
+      rnCodeBlock
+        [nil]
+        rnFieldList
+          rnField
+            rnFieldName
+              rnLeaf  'default-language'
+            rnFieldBody
+              rnLeaf  'Nim'
+        rnLiteralBlock
+          rnLeaf  '
+      let a = 1
+      ```'
+      """
+
+  test "Markdown code blocks with more > 3 backticks":
     check(dedent"""
-        --defusages
-                      file
-        -o            set
-        """.toAst ==
+        ````
+        let a = 1
+        ```
+        ````""".toAst == expectCodeBlock)
+
+  test "Markdown code blocks with ~~~":
+    check(dedent"""
+        ~~~
+        let a = 1
+        ```
+        ~~~""".toAst == expectCodeBlock)
+    check(dedent"""
+        ~~~~~
+        let a = 1
+        ```
+        ~~~~~""".toAst == expectCodeBlock)
+
+  test "Markdown code blocks with Nim-specific arguments":
+    check(dedent"""
+        ```nim number-lines=1 test
+        let a = 1
+        ```""".toAst ==
       dedent"""
-        rnOptionList
-          rnOptionListItem  order=1
-            rnOptionGroup
-              rnLeaf  '--'
-              rnLeaf  'defusages'
-            rnDescription
-              rnInner
-                rnLeaf  'file'
-          rnOptionListItem  order=2
-            rnOptionGroup
-              rnLeaf  '-'
-              rnLeaf  'o'
-            rnDescription
-              rnLeaf  'set'
+        rnCodeBlock
+          rnDirArg
+            rnLeaf  'nim'
+          rnFieldList
+            rnField
+              rnFieldName
+                rnLeaf  'number-lines'
+              rnFieldBody
+                rnLeaf  '1'
+            rnField
+              rnFieldName
+                rnLeaf  'test'
+              rnFieldBody
+          rnLiteralBlock
+            rnLeaf  '
+        let a = 1'
         """)
+
+    check(dedent"""
+        ```nim test = "nim c $1"  number-lines = 1
+        let a = 1
+        ```""".toAst ==
+      dedent"""
+        rnCodeBlock
+          rnDirArg
+            rnLeaf  'nim'
+          rnFieldList
+            rnField
+              rnFieldName
+                rnLeaf  'test'
+              rnFieldBody
+                rnLeaf  '"nim c $1"'
+            rnField
+              rnFieldName
+                rnLeaf  'number-lines'
+              rnFieldBody
+                rnLeaf  '1'
+          rnLiteralBlock
+            rnLeaf  '
+        let a = 1'
+        """)
+
+  test "additional indentation < 4 spaces is handled fine":
+    check(dedent"""
+        Indentation
+
+          ```nim
+            let a = 1
+          ```""".toAst ==
+      dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Indentation'
+          rnParagraph
+            rnCodeBlock
+              rnDirArg
+                rnLeaf  'nim'
+              [nil]
+              rnLiteralBlock
+                rnLeaf  '
+          let a = 1'
+      """)
+      # | |
+      # |  \ indentation of exactly two spaces before 'let a = 1'
+
+  test "no blank line is required before or after Markdown code block":
+    let inputBacktick = dedent"""
+        Some text
+        ```
+        CodeBlock()
+        ```
+        Other text"""
+    let inputTilde = dedent"""
+        Some text
+        ~~~~~~~~~
+        CodeBlock()
+        ~~~~~~~~~
+        Other text"""
+    let expected = dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Some'
+            rnLeaf  ' '
+            rnLeaf  'text'
+          rnParagraph
+            rnCodeBlock
+              [nil]
+              rnFieldList
+                rnField
+                  rnFieldName
+                    rnLeaf  'default-language'
+                  rnFieldBody
+                    rnLeaf  'Nim'
+              rnLiteralBlock
+                rnLeaf  '
+        CodeBlock()'
+            rnLeaf  ' '
+            rnLeaf  'Other'
+            rnLeaf  ' '
+            rnLeaf  'text'
+      """
+    check inputBacktick.toAst == expected
+    check inputTilde.toAst == expected
+
+  test "option list has priority over definition list":
+    for opt in [preferMarkdown, preferRst]:
+      check(dedent"""
+          --defusages
+                        file
+          -o            set
+          """.toAst(rstOptions = opt) ==
+        dedent"""
+          rnOptionList
+            rnOptionListItem  order=1
+              rnOptionGroup
+                rnLeaf  '--'
+                rnLeaf  'defusages'
+              rnDescription
+                rnInner
+                  rnLeaf  'file'
+            rnOptionListItem  order=2
+              rnOptionGroup
+                rnLeaf  '-'
+                rnLeaf  'o'
+              rnDescription
+                rnLeaf  'set'
+          """)
 
   test "items of 1 option list can be separated by blank lines":
     check(dedent"""
@@ -511,13 +664,13 @@ suite "RST parsing":
               rnLeaf  'desc2'
       """)
 
-  test "option list has priority over definition list":
+  test "definition list does not gobble up the following blocks":
     check(dedent"""
         defName
             defBody
 
         -b  desc2
-        """.toAst ==
+        """.toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnDefList
@@ -560,7 +713,7 @@ suite "RST parsing":
 
          notAcomment1
          notAcomment2
-        someParagraph""".toAst ==
+        someParagraph""".toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnBlockQuote
@@ -568,6 +721,25 @@ suite "RST parsing":
               rnLeaf  'notAcomment1'
               rnLeaf  ' '
               rnLeaf  'notAcomment2'
+          rnParagraph
+            rnLeaf  'someParagraph'
+        """)
+
+  test "check that additional line right after .. ends comment (Markdown mode)":
+    # in Markdown small indentation does not matter so this should
+    # just be split to 2 paragraphs.
+    check(dedent"""
+        ..
+
+         notAcomment1
+         notAcomment2
+        someParagraph""".toAst ==
+      dedent"""
+        rnInner
+          rnInner
+            rnLeaf  'notAcomment1'
+            rnLeaf  ' '
+            rnLeaf  'notAcomment2'
           rnParagraph
             rnLeaf  'someParagraph'
         """)
@@ -590,7 +762,7 @@ suite "RST parsing":
 
         ..
 
-          someBlockQuote""".toAst ==
+          someBlockQuote""".toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnAdmonition  adType=note
@@ -609,7 +781,7 @@ suite "RST parsing":
 
         code
 
-      """.toAst ==
+      """.toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnLeaf  'Check'
@@ -617,6 +789,259 @@ suite "RST parsing":
           rnLiteralBlock
             rnLeaf  'code'
       """)
+
+  test "Markdown indented code blocks":
+    check(dedent"""
+      See
+
+          some code""".toAst ==
+      dedent"""
+        rnInner
+          rnInner
+            rnLeaf  'See'
+          rnLiteralBlock
+            rnLeaf  'some code'
+      """)
+
+    # not a code block -- no blank line before:
+    check(dedent"""
+      See
+          some code""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'See'
+          rnLeaf  ' '
+          rnLeaf  'some'
+          rnLeaf  ' '
+          rnLeaf  'code'
+      """)
+
+suite "RST tables":
+
+  test "formatting in tables works":
+    check(
+      dedent"""
+        =========  ===
+        `build`    `a`
+        =========  ===
+        """.toAst ==
+      dedent"""
+        rnTable  colCount=2
+          rnTableRow
+            rnTableDataCell
+              rnInlineCode
+                rnDirArg
+                  rnLeaf  'nim'
+                [nil]
+                rnLiteralBlock
+                  rnLeaf  'build'
+            rnTableDataCell
+              rnInlineCode
+                rnDirArg
+                  rnLeaf  'nim'
+                [nil]
+                rnLiteralBlock
+                  rnLeaf  'a'
+      """)
+
+  test "tables with slightly overflowed cells cause an error (1)":
+    var error = new string
+    check(
+      dedent"""
+        ======   ======
+         Inputs  Output
+        ======   ======
+        """.toAst(error=error) == "")
+    check(error[] == "input(2, 2) Error: Illformed table: " &
+                     "this word crosses table column from the right")
+
+  test "tables with slightly overflowed cells cause an error (2)":
+    var error = new string
+    check("" == dedent"""
+      =====  =====  ======
+      Input  Output
+      =====  =====  ======
+      False  False  False
+      =====  =====  ======
+      """.toAst(error=error))
+    check(error[] == "input(2, 8) Error: Illformed table: " &
+                     "this word crosses table column from the right")
+
+  test "tables with slightly underflowed cells cause an error":
+    var error = new string
+    check("" == dedent"""
+      =====  =====  ======
+      Input Output
+      =====  =====  ======
+      False  False  False
+      =====  =====  ======
+      """.toAst(error=error))
+    check(error[] == "input(2, 7) Error: Illformed table: " &
+                     "this word crosses table column from the left")
+
+  test "tables with unequal underlines should be reported (1)":
+    var error = new string
+    error[] = "none"
+    check("" == dedent"""
+      =====  ======
+      Input  Output
+      =====  ======
+      False  False
+      =====  =======
+      """.toAst(error=error))
+    check(error[] == "input(5, 14) Error: Illformed table: " &
+                     "end of table column #2 should end at position 13")
+
+  test "tables with unequal underlines should be reported (2)":
+    var error = new string
+    check("" == dedent"""
+      =====  ======
+      Input  Output
+      =====  =======
+      False  False
+      =====  ======
+      """.toAst(error=error))
+    check(error[] == "input(3, 14) Error: Illformed table: " &
+                     "end of table column #2 should end at position 13")
+
+  test "tables with empty first cells":
+    check(
+      dedent"""
+          = = =
+          x y z
+              t
+          = = =
+          """.toAst ==
+      dedent"""
+        rnTable  colCount=3
+          rnTableRow
+            rnTableDataCell
+              rnLeaf  'x'
+            rnTableDataCell
+              rnInner
+                rnLeaf  'y'
+                rnLeaf  ' '
+            rnTableDataCell
+              rnInner
+                rnLeaf  'z'
+                rnLeaf  ' '
+                rnLeaf  't'
+        """)
+
+  test "tables with spanning cells & separators":
+    check(
+      dedent"""
+        =====  =====  ======
+           Inputs     Output
+        ------------  ------
+          A      B    A or B
+        =====  =====  ======
+        False  False  False
+        True   False  True
+        -----  -----  ------
+        False  True   True
+        True   True   True
+        =====  =====  ======
+        """.toAst ==
+      dedent"""
+        rnTable  colCount=3
+          rnTableRow
+            rnTableHeaderCell  span=2
+              rnLeaf  'Inputs'
+            rnTableHeaderCell  span=1
+              rnLeaf  'Output'
+          rnTableRow  endsHeader
+            rnTableHeaderCell
+              rnLeaf  'A'
+            rnTableHeaderCell
+              rnLeaf  'B'
+            rnTableHeaderCell
+              rnInner
+                rnLeaf  'A'
+                rnLeaf  ' '
+                rnLeaf  'or'
+                rnLeaf  ' '
+                rnLeaf  'B'
+          rnTableRow
+            rnTableDataCell
+              rnLeaf  'False'
+            rnTableDataCell
+              rnLeaf  'False'
+            rnTableDataCell
+              rnLeaf  'False'
+          rnTableRow
+            rnTableDataCell  span=1
+              rnLeaf  'True'
+            rnTableDataCell  span=1
+              rnLeaf  'False'
+            rnTableDataCell  span=1
+              rnLeaf  'True'
+          rnTableRow
+            rnTableDataCell
+              rnLeaf  'False'
+            rnTableDataCell
+              rnLeaf  'True'
+            rnTableDataCell
+              rnLeaf  'True'
+          rnTableRow
+            rnTableDataCell
+              rnLeaf  'True'
+            rnTableDataCell
+              rnLeaf  'True'
+            rnTableDataCell
+              rnLeaf  'True'
+      """)
+
+  test "tables with spanning cells with uneqal underlines cause an error":
+    var error = new string
+    check(
+      dedent"""
+        =====  =====  ======
+           Inputs     Output
+        ------------- ------
+          A      B    A or B
+        =====  =====  ======
+        """.toAst(error=error) == "")
+    check(error[] == "input(3, 1) Error: Illformed table: " &
+                     "spanning underline does not match main table columns")
+
+  let expTable = dedent"""
+      rnTable  colCount=2
+        rnTableRow
+          rnTableDataCell
+            rnLeaf  'Inputs'
+          rnTableDataCell
+            rnLeaf  'Output'
+      """
+
+  test "only tables with `=` columns specs are allowed (1)":
+    var warnings = new seq[string]
+    check(
+      dedent"""
+        ------  ------
+        Inputs  Output
+        ------  ------
+        """.toAst(warnings=warnings) ==
+      expTable)
+    check(warnings[] ==
+          @["input(1, 1) Warning: RST style: " &
+              "only tables with `=` columns specification are allowed",
+            "input(3, 1) Warning: RST style: " &
+              "only tables with `=` columns specification are allowed"])
+
+  test "only tables with `=` columns specs are allowed (2)":
+    var warnings = new seq[string]
+    check(
+      dedent"""
+        ======  ======
+        Inputs  Output
+        ~~~~~~  ~~~~~~
+        """.toAst(warnings=warnings) ==
+      expTable)
+    check(warnings[] ==
+          @["input(3, 1) Warning: RST style: "&
+              "only tables with `=` columns specification are allowed"])
+
 
 suite "RST indentation":
   test "nested bullet lists":
@@ -659,7 +1084,7 @@ suite "RST indentation":
          term2
            Definition2
     """
-    check(input.toAst == dedent"""
+    check(input.toAst(rstOptions = preferRst) == dedent"""
       rnEnumList  labelFmt=1)
         rnEnumItem
           rnAdmonition  adType=hint
@@ -762,6 +1187,110 @@ suite "RST indentation":
     # "template..." should be parsed as a definition list attached to ":test:":
     check inputWrong.toAst != ast
 
+  test "Markdown definition lists work in conjunction with bullet lists":
+    check(dedent"""
+        * some term
+          : the definition
+
+        Paragraph.""".toAst ==
+      dedent"""
+        rnInner
+          rnBulletList
+            rnBulletItem
+              rnMdDefList
+                rnDefItem
+                  rnDefName
+                    rnLeaf  'some'
+                    rnLeaf  ' '
+                    rnLeaf  'term'
+                  rnDefBody
+                    rnInner
+                      rnLeaf  'the'
+                      rnLeaf  ' '
+                      rnLeaf  'definition'
+          rnParagraph
+            rnLeaf  'Paragraph'
+            rnLeaf  '.'
+      """)
+
+  test "Markdown definition lists work with blank lines and extra paragraphs":
+    check(dedent"""
+        Term1
+
+        :   Definition1
+
+        Term2 *inline markup*
+
+        :   Definition2
+
+            Paragraph2
+
+        Term3
+        : * point1
+          * point2
+        : term3definition2
+      """.toAst == dedent"""
+        rnMdDefList
+          rnDefItem
+            rnDefName
+              rnLeaf  'Term1'
+            rnDefBody
+              rnInner
+                rnLeaf  'Definition1'
+          rnDefItem
+            rnDefName
+              rnLeaf  'Term2'
+              rnLeaf  ' '
+              rnEmphasis
+                rnLeaf  'inline'
+                rnLeaf  ' '
+                rnLeaf  'markup'
+            rnDefBody
+              rnParagraph
+                rnLeaf  'Definition2'
+              rnParagraph
+                rnLeaf  'Paragraph2'
+          rnDefItem
+            rnDefName
+              rnLeaf  'Term3'
+            rnDefBody
+              rnBulletList
+                rnBulletItem
+                  rnInner
+                    rnLeaf  'point1'
+                rnBulletItem
+                  rnInner
+                    rnLeaf  'point2'
+            rnDefBody
+              rnInner
+                rnLeaf  'term3definition2'
+      """)
+
+suite "Markdown indentation":
+  test "Markdown paragraph indentation":
+    # Additional spaces (<=3) of indentation does not break the paragraph.
+    # TODO: in 2nd case de-indentation causes paragraph to break, this is
+    # reasonable but does not seem to conform the Markdown spec.
+    check(dedent"""
+      Start1
+        stop1
+
+        Start2
+      stop2
+      """.toAst ==
+      dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Start1'
+            rnLeaf  ' '
+            rnLeaf  'stop1'
+          rnParagraph
+            rnLeaf  'Start2'
+          rnParagraph
+            rnLeaf  'stop2'
+            rnLeaf  ' '
+      """)
+
 suite "Warnings":
   test "warnings for broken footnotes/links/substitutions":
     let input = dedent"""
@@ -778,13 +1307,29 @@ suite "Warnings":
       lastParagraph
       """
     var warnings = new seq[string]
-    let output = input.toAst(warnings=warnings)
+    let output = input.toAst(rstOptions=preferRst, warnings=warnings)
     check(warnings[] == @[
         "input(3, 14) Warning: broken link 'citation-som'",
         "input(5, 7) Warning: broken link 'a broken Link'",
         "input(7, 15) Warning: unknown substitution 'undefined subst'",
         "input(9, 6) Warning: broken link 'short.link'"
         ])
+
+  test "Pandoc Markdown concise link warning points to target":
+    var warnings = new seq[string]
+    check(
+      "ref [here][target]".toAst(warnings=warnings) ==
+      dedent"""
+        rnInner
+          rnLeaf  'ref'
+          rnLeaf  ' '
+          rnPandocRef
+            rnInner
+              rnLeaf  'here'
+            rnInner
+              rnLeaf  'target'
+      """)
+    check warnings[] == @["input(1, 12) Warning: broken link 'target'"]
 
   test "With include directive and blank lines at the beginning":
     "other.rst".writeFile(dedent"""
@@ -804,7 +1349,7 @@ suite "Warnings":
         rnParagraph
           rnLeaf  'here'
           rnLeaf  ' '
-          rnRef
+          rnRstRef
             rnLeaf  'brokenLink'
       """)
     removeFile("other.rst")
@@ -1163,7 +1708,7 @@ suite "RST inline markup":
 
   test "no punctuation in the end of a standalone URI is allowed":
     check(dedent"""
-        [see (http://no.org)], end""".toAst ==
+        [see (http://no.org)], end""".toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnLeaf  '['
@@ -1210,6 +1755,19 @@ suite "RST inline markup":
           rnLeaf  ' '
           rnLeaf  'end'
         """)
+
+  test "Markdown-style link can be split to a few lines":
+    check(dedent"""
+        is [term-rewriting
+        macros](manual.html#term-rewriting-macros)""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'is'
+          rnLeaf  ' '
+          rnHyperlink
+            rnLeaf  'term-rewriting macros'
+            rnLeaf  'manual.html#term-rewriting-macros'
+      """)
 
   test "URL with balanced parentheses (Markdown rule)":
     # 2 balanced parens, 1 unbalanced:

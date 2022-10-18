@@ -379,22 +379,22 @@ func sort*[T](a: var openArray[T],
   ## `cmp`, you may use `system.cmp` or instead call the overloaded
   ## version of `sort`, which uses `system.cmp`.
   ##
-  ## .. code-block:: nim
-  ##
-  ##    sort(myIntArray, system.cmp[int])
-  ##    # do not use cmp[string] here as we want to use the specialized
-  ##    # overload:
-  ##    sort(myStrArray, system.cmp)
+  ##   ```nim
+  ##   sort(myIntArray, system.cmp[int])
+  ##   # do not use cmp[string] here as we want to use the specialized
+  ##   # overload:
+  ##   sort(myStrArray, system.cmp)
+  ##   ```
   ##
   ## You can inline adhoc comparison procs with the `do notation
   ## <manual_experimental.html#do-notation>`_. Example:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   people.sort do (x, y: Person) -> int:
   ##     result = cmp(x.surname, y.surname)
   ##     if result == 0:
   ##       result = cmp(x.name, y.name)
+  ##   ```
   ##
   ## **See also:**
   ## * `sort proc<#sort,openArray[T]>`_
@@ -825,10 +825,10 @@ proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
   ## If an invalid range (`HSlice`) is passed, it raises `IndexDefect`.
   ##
   ## `slice`
-  ##   The indices of the element range that should be rotated.
+  ## : The indices of the element range that should be rotated.
   ##
   ## `dist`
-  ##   The distance in amount of elements that the data should be rotated.
+  ## : The distance in amount of elements that the data should be rotated.
   ##   Can be negative, can be any number.
   ##
   ## **See also:**
@@ -876,10 +876,10 @@ proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
   ## If an invalid range (`HSlice`) is passed, it raises `IndexDefect`.
   ##
   ## `slice`
-  ##   The indices of the element range that should be rotated.
+  ## : The indices of the element range that should be rotated.
   ##
   ## `dist`
-  ##   The distance in amount of elements that the data should be rotated.
+  ## : The distance in amount of elements that the data should be rotated.
   ##   Can be negative, can be any number.
   ##
   ## **See also:**

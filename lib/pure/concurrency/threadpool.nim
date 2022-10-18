@@ -23,6 +23,9 @@ when not compileOption("threads"):
 
 import cpuinfo, cpuload, locks, os
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 {.push stackTrace:off.}
 
 type

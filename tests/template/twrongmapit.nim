@@ -1,4 +1,5 @@
 discard """
+  disabled: true
   output: "####"
 """
 # unfortunately our tester doesn't support multiple lines of compiler
