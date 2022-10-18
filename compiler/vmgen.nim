@@ -2045,7 +2045,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkNilLit:
     if not n.typ.isEmptyType: genLit(c, getNullValue(n.typ, n.info, c.config), dest)
     else: unused(c, n, dest)
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     unused(c, n, dest)
     genAsgn(c, n[0], n[1], n.kind == nkAsgn)
   of nkDotExpr: genObjAccess(c, n, dest, flags)

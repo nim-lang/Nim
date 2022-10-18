@@ -33,7 +33,7 @@ py
 py
 px
 6
-proc (){.closure, gcsafe.}
+proc (){.closure, noSideEffect, gcsafe.}
 '''
 """
 

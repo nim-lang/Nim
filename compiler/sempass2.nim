@@ -259,10 +259,15 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: Co
     of routineKinds:
       # recursive call *always* produces only a warning so the full error
       # message is printed:
-      listGcUnsafety(u, true, cycleCheck, conf)
-      message(conf, s.info, msgKind,
-        "'$#' is not GC-safe as it calls '$#'" %
-        [s.name.s, u.name.s])
+      if u.kind == skMethod and {sfBase, sfThread} * u.flags == {sfBase}:
+        message(conf, u.info, msgKind,
+          "Base method '$#' requires explicit '{.gcsafe.}' to be GC-safe" %
+          [u.name.s])
+      else:
+        listGcUnsafety(u, true, cycleCheck, conf)
+        message(conf, s.info, msgKind,
+          "'$#' is not GC-safe as it calls '$#'" %
+          [s.name.s, u.name.s])
     of skParam, skForVar:
       message(conf, s.info, msgKind,
         "'$#' is not GC-safe as it performs an indirect call via '$#'" %
@@ -495,7 +500,7 @@ proc isIndirectCall(tracked: PEffects; n: PNode): bool =
   if n.kind != nkSym:
     result = true
   elif n.sym.kind == skParam:
-    if strictEffects in tracked.c.features:
+    if laxEffects notin tracked.c.config.legacyFeatures:
       if tracked.owner == n.sym.owner and sfEffectsDelayed in n.sym.flags:
         result = false # it is not a harmful call
       else:
@@ -581,7 +586,7 @@ proc isOwnedProcVar(tracked: PEffects; n: PNode): bool =
     tracked.owner == n.sym.owner
   #if result and sfPolymorphic notin n.sym.flags:
   #  echo tracked.config $ n.info, " different here!"
-  if strictEffects in tracked.c.features:
+  if laxEffects notin tracked.c.config.legacyFeatures:
     result = result and sfEffectsDelayed in n.sym.flags
 
 proc isNoEffectList(n: PNode): bool {.inline.} =
@@ -598,7 +603,7 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; ar
   # assume indirect calls are taken here:
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit and
       not isTrival(caller) and
-      ((param != nil and sfEffectsDelayed in param.flags) or strictEffects notin tracked.c.features):
+      ((param != nil and sfEffectsDelayed in param.flags) or laxEffects in tracked.c.config.legacyFeatures):
 
     internalAssert tracked.config, op.n[0].kind == nkEffectList
     var effectList = op.n[0]
@@ -836,6 +841,9 @@ proc trackCall(tracked: PEffects; n: PNode) =
         discard
       var effectList = op.n[0]
       if a.kind == nkSym and a.sym.kind == skMethod:
+        if {sfBase, sfThread} * a.sym.flags == {sfBase}:
+          if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
+          markGcUnsafe(tracked, a)
         propagateEffects(tracked, n, a.sym)
       elif isNoEffectList(effectList):
         if isForwardedProc(a):
@@ -844,7 +852,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
           assumeTheWorst(tracked, n, op)
           gcsafeAndSideeffectCheck()
         else:
-          if strictEffects in tracked.c.features and a.kind == nkSym and
+          if laxEffects notin tracked.c.config.legacyFeatures and a.kind == nkSym and
               a.sym.kind in routineKinds:
             propagateEffects(tracked, n, a.sym)
       else:
@@ -1045,7 +1053,7 @@ proc track(tracked: PEffects, n: PNode) =
       checkFieldAccess(tracked.guards, n, tracked.config)
   of nkTryStmt: trackTryStmt(tracked, n)
   of nkPragma: trackPragmaStmt(tracked, n)
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     track(tracked, n[1])
     initVar(tracked, n[0], volatileCheck=true)
     invalidateFacts(tracked.guards, n[0])

@@ -228,6 +228,8 @@ type
       ## Historically and especially in version 1.0.0 of the language
       ## conversions to unsigned numbers were checked. In 1.0.4 they
       ## are not anymore.
+    laxEffects
+      ## Lax effects system prior to Nim 2.0.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest

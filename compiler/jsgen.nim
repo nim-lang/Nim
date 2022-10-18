@@ -2711,7 +2711,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkReturnStmt: genReturnStmt(p, n)
   of nkBreakStmt: genBreakStmt(p, n)
   of nkAsgn: genAsgn(p, n)
-  of nkFastAsgn: genFastAsgn(p, n)
+  of nkFastAsgn, nkSinkAsgn: genFastAsgn(p, n)
   of nkDiscardStmt:
     if n[0].kind != nkEmpty:
       genLineDir(p, n)
