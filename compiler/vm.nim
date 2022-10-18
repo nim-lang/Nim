@@ -768,7 +768,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           realIndex = left + idx
         if idx in 0..(right - left): # Refer to `opcSlice`
           case src[0].kind
-          of nkStrLit:
+          of nkStrKinds:
             regs[ra] = takeCharAddress(c, src[0], realIndex, pc)
           of nkBracket:
             takeAddress regs[ra], src.sons[0].sons[realIndex]
