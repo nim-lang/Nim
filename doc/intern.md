@@ -42,29 +42,29 @@ Bootstrapping the compiler
 
 Compiling the compiler is a simple matter of running:
 
-.. code:: cmd
-
+  ```cmd
   nim c koch.nim
   koch boot -d:release
+  ```
 
 For a debug version use:
 
-.. code:: cmd
-
+  ```cmd
   nim c koch.nim
   koch boot
+  ```
 
 
 And for a debug version compatible with GDB:
 
-.. code:: cmd
-
+  ```cmd
   nim c koch.nim
   koch boot --debuginfo --linedir:on
+  ```
 
 The `koch`:cmd: program is Nim's maintenance script. It is a replacement for
 make and shell scripting with the advantage that it is much more portable.
-More information about its options can be found in the `koch <koch.html>`_
+More information about its options can be found in the [koch](koch.html)
 documentation.
 
 
@@ -73,10 +73,10 @@ Reproducible builds
 
 Set the compilation timestamp with the `SOURCE_DATE_EPOCH` environment variable.
 
-.. code:: cmd
-
+  ```cmd
   export SOURCE_DATE_EPOCH=$(git log -n 1 --format=%at)
   koch boot # or `./build_all.sh`
+  ```
 
 
 Debugging the compiler
@@ -87,7 +87,7 @@ Bisecting for regressions
 -------------------------
 
 There are often times when there is a bug that is caused by a regression in the
-compiler or stdlib. Bisecting the Nim repo commits is a usefull tool to identify
+compiler or stdlib. Bisecting the Nim repo commits is a useful tool to identify
 what commit introduced the regression.
 
 Even if it's not known whether a bug is caused by a regression, bisection can reduce
@@ -98,14 +98,14 @@ focus on the changes introduced by that one specific commit.
 compilation fails. This exit code tells `git bisect`:cmd: to skip the
 current commit:
 
-.. code:: cmd
-
+  ```cmd
   git bisect start bad-commit good-commit
   git bisect run ./koch temp -r c test-source.nim
+  ```
 
 You can also bisect using custom options to build the compiler, for example if
 you don't need a debug version of the compiler (which runs slower), you can replace
-`./koch temp`:cmd: by explicit compilation command, see `Bootstrapping the compiler`_.
+`./koch temp`:cmd: by explicit compilation command, see [Bootstrapping the compiler].
 
 
 Building an instrumented compiler
@@ -117,7 +117,7 @@ fastest to build a compiler that is instrumented for debugging from an
 existing release build. `koch temp`:cmd: provides a convenient method of doing
 just that.
 
-By default running `koch temp`:cmd: will build a lean version of the compiler
+By default, running `koch temp`:cmd: will build a lean version of the compiler
 with `-d:debug`:option: enabled. The compiler is written to `bin/nim_temp` by
 default. A lean version of the compiler lacks JS and documentation generation.
 
@@ -125,7 +125,7 @@ default. A lean version of the compiler lacks JS and documentation generation.
 with `testament --nim:bin/nim_temp r tests/category/tsometest`:cmd:.
 
 `koch temp`:cmd: will build the temporary compiler with the `-d:debug`:option:
-enabled. Here are compiler options that are of interest for debugging:
+enabled. Here are compiler options that are of interest when debugging:
 
 * `-d:debug`:option:\: enables `assert` statements and stacktraces and all
   runtime checks
@@ -141,8 +141,7 @@ enabled. Here are compiler options that are of interest for debugging:
 
 Another method to build and run the compiler is directly through `koch`:cmd:\:
 
-.. code:: cmd
-
+  ```cmd
   koch temp [options] c test.nim
 
   # (will build with js support)
@@ -150,33 +149,33 @@ Another method to build and run the compiler is directly through `koch`:cmd:\:
 
   # (will build with doc support)
   koch temp [options] doc test.nim
+  ```
 
 Debug logging
 -------------
 
 "Printf debugging" is still the most appropriate way to debug many problems
 arising in compiler development. The typical usage of breakpoints to debug
-the code is often less practical, because almost all of the code paths in the
+the code is often less practical, because almost all code paths in the
 compiler will be executed hundreds of times before a particular section of the
 tested program is reached where the newly developed code must be activated.
 
-To work-around this problem, you'll typically introduce an if statement in the
+To work around this problem, you'll typically introduce an if statement in the
 compiler code detecting more precisely the conditions where the tested feature
 is being used. One very common way to achieve this is to use the `mdbg` condition,
 which will be true only in contexts, processing expressions and statements from
 the currently compiled main module:
 
-.. code-block:: nim
-
+  ```nim
   # inside some compiler module
   if mdbg:
     debug someAstNode
+  ```
 
 Using the `isCompilerDebug`:nim: condition along with inserting some statements
 into the testcase provides more granular logging:
 
-.. code-block:: nim
-
+  ```nim
   # compilermodule.nim
   if isCompilerDebug():
     debug someAstNode
@@ -186,21 +185,21 @@ into the testcase provides more granular logging:
     {.define(nimCompilerDebug).}
     let a = 2.5 * 3
     {.undef(nimCompilerDebug).}
+  ```
 
 Logging can also be scoped to a specific filename as well. This will of course
 match against every module with that name.
 
-.. code-block:: nim
-
+  ```nim
   if `??`(conf, n.info, "module.nim"):
     debug(n)
+  ```
 
 The above examples also makes use of the `debug`:nim: proc, which is able to
 print a human-readable form of an arbitrary AST tree. Other common ways to print
 information about the internal compiler types include:
 
-.. code-block:: nim
-
+  ```nim
   # pretty print PNode
 
   # pretty prints the Nim ast
@@ -246,30 +245,31 @@ information about the internal compiler types include:
 
   # print the structure of any type
   repr(someVar)
+  ```
 
 Here are some other helpful utilities:
 
-.. code-block:: nim
-
+  ```nim
   # how did execution reach this location?
   writeStackTrace()
+  ```
 
 These procs may not already be imported by the module you're editing.
 You can import them directly for debugging:
 
-.. code-block:: nim
-
+  ```nim
   from astalgo import debug
   from types import typeToString
   from renderer import renderTree
   from msgs import `??`
+  ```
 
 Native debugging
 ----------------
 
 Stepping through the compiler with a native debugger is a very powerful tool to
 both learn and debug it. However, there is still the need to constrain when
-breakpoints are triggered. The same methods as in `Debug logging`_ can be applied
+breakpoints are triggered. The same methods as in [Debug logging] can be applied
 here when combined with calls to the debug helpers `enteringDebugSection()`:nim:
 and `exitingDebugSection()`:nim:.
 
@@ -280,12 +280,12 @@ and `exitingDebugSection()`:nim:.
    * LLDB execute `command source tools/compiler.lldb` at startup
 #. Use one of the scoping helpers like so:
 
-.. code-block:: nim
-
+  ```nim
   if isCompilerDebug():
     enteringDebugSection()
   else:
     exitingDebugSection()
+  ```
 
 A caveat of this method is that all breakpoints and watchpoints are enabled or
 disabled. Also, due to a bug, only breakpoints can be constrained for LLDB.
@@ -309,7 +309,7 @@ The syntax tree consists of nodes which may have an arbitrary number of
 children. Types and symbols are represented by other nodes, because they
 may contain cycles. The AST changes its shape after semantic checking. This
 is needed to make life easier for the code generators. See the "ast" module
-for the type definitions. The `macros <macros.html>`_ module contains many
+for the type definitions. The [macros](macros.html) module contains many
 examples how the AST represents each syntactic structure.
 
 
@@ -324,15 +324,15 @@ ARC/ORC. The new runtime is active `when defined(nimV2)`.
 Coding Guidelines
 =================
 
-* We follow Nim's official style guide, see `<nep1.html>`_.
+* We follow Nim's official style guide, see [NEP1](nep1.html).
 * Max line length is 100 characters.
 * Provide spaces around binary operators if that enhances readability.
 * Use a space after a colon, but not before it.
-* [deprecated] Start types with a capital `T`, unless they are
+* (deprecated) Start types with a capital `T`, unless they are
   pointers/references which start with `P`.
 * Prefer `import package`:nim: over `from package import symbol`:nim:.
 
-See also the `API naming design <apis.html>`_ document.
+See also the [API naming design](apis.html) document.
 
 
 Porting to new platforms
@@ -364,7 +364,7 @@ Files that may need changed for your platform include:
   Add os/cpu to `Project.Platforms` field.
 * `lib/system/platforms.nim`
   Add os/cpu.
-* `lib/pure/include/osseps.nim`
+* `std/private/osseps.nim`
   Add os specializations.
 * `lib/pure/distros.nim`
   Add os, package handler.
@@ -374,7 +374,7 @@ Files that may need changed for your platform include:
   Add os/cpu compiler/linker flags.
 
 If the `--os` or `--cpu` options aren't passed to the compiler, then Nim will
-determine the current host os, cpu and endianess from `system.cpuEndian`,
+determine the current host os, cpu and endianness from `system.cpuEndian`,
 `system.hostOS` and `system.hostCPU`. Those values are derived from
 `compiler/platform.nim`.
 
@@ -398,17 +398,17 @@ Runtime type information
 programming language:
 
 Garbage collection
-  The old GCs use the RTTI for traversing abitrary Nim types, but usually
+: The old GCs use the RTTI for traversing arbitrary Nim types, but usually
   only the `marker` field which contains a proc that does the traversal.
 
 Complex assignments
-  Sequences and strings are implemented as
-  pointers to resizeable buffers, but Nim requires copying for
+: Sequences and strings are implemented as
+  pointers to resizable buffers, but Nim requires copying for
   assignments. Apart from RTTI the compiler also generates copy procedures
   as a specialization.
 
 We already know the type information as a graph in the compiler.
-Thus we need to serialize this graph as RTTI for C code generation.
+Thus, we need to serialize this graph as RTTI for C code generation.
 Look at the file ``lib/system/hti.nim`` for more information.
 
 
@@ -418,7 +418,7 @@ Magics and compilerProcs
 The `system` module contains the part of the RTL which needs support by
 compiler magic. The C code generator generates the C code for it, just like any other
 module. However, calls to some procedures like `addInt` are inserted by
-the generator. Therefore there is a table (`compilerprocs`)
+the generator. Therefore, there is a table (`compilerprocs`)
 with all symbols that are marked as `compilerproc`. `compilerprocs` are
 needed by the code generator. A `magic` proc is not the same as a
 `compilerproc`: A `magic` is a proc that needs compiler magic for its
@@ -448,10 +448,11 @@ Tests with GCC on Amd64 showed that it's really beneficial if the
 Proper thunk generation is harder because the proc that is to wrap
 could stem from a complex expression:
 
-.. code-block:: nim
+  ```nim
   receivesClosure(returnsDefaultCC[i])
+  ```
 
-A thunk would need to call 'returnsDefaultCC[i]' somehow and that would require
+A thunk would need to call `returnsDefaultCC[i]` somehow and that would require
 an *additional* closure generation... Ok, not really, but it requires to pass
 the function to call. So we'd end up with 2 indirect calls instead of one.
 Another much more severe problem with this solution is that it's not GC-safe
@@ -460,17 +461,18 @@ to pass a proc pointer around via a generic `ref` type.
 
 Example code:
 
-.. code-block:: nim
+  ```nim
   proc add(x: int): proc (y: int): int {.closure.} =
     return proc (y: int): int =
       return x + y
 
   var add2 = add(2)
   echo add2(5) #OUT 7
+  ```
 
 This should produce roughly this code:
 
-.. code-block:: nim
+  ```nim
   type
     Env = ref object
       x: int # data
@@ -487,11 +489,12 @@ This should produce roughly this code:
   var add2 = add(2)
   let tmp = if add2.data == nil: add2.prc(5) else: add2.prc(5, add2.data)
   echo tmp
+  ```
 
 
 Beware of nesting:
 
-.. code-block:: nim
+  ```nim
   proc add(x: int): proc (y: int): proc (z: int): int {.closure.} {.closure.} =
     return lambda (y: int): proc (z: int): int {.closure.} =
       return lambda (z: int): int =
@@ -499,10 +502,11 @@ Beware of nesting:
 
   var add24 = add(2)(4)
   echo add24(5) #OUT 11
+  ```
 
 This should produce roughly this code:
 
-.. code-block:: nim
+  ```nim
   type
     EnvX = ref object
       x: int # data
@@ -524,12 +528,13 @@ This should produce roughly this code:
   proc add(x: int): tuple[prc, data: EnvX] =
     var ex: EnvX
     ex.x = x
-    result = (labmdaY, ex)
+    result = (lambdaY, ex)
 
   var tmp = add(2)
   var tmp2 = tmp.fn(4, tmp.data)
   var add24 = tmp2.fn(4, tmp2.data)
   echo add24(5)
+  ```
 
 
 We could get rid of nesting environments by always inlining inner anon procs.
@@ -540,8 +545,7 @@ however.
 Accumulator
 -----------
 
-.. code-block:: nim
-
+  ```nim
   proc getAccumulator(start: int): proc (): int {.closure} =
     var i = start
     return lambda: int =
@@ -560,18 +564,19 @@ Accumulator
     var a = accumulator(3)
     var b = accumulator(4)
     echo a() + b()
+  ```
 
 
 Internals
 ---------
 
 Lambda lifting is implemented as part of the `transf` pass. The `transf`
-pass generates code to setup the environment and to pass it around. However,
+pass generates code to set up the environment and to pass it around. However,
 this pass does not change the types! So we have some kind of mismatch here; on
 the one hand the proc expression becomes an explicit tuple, on the other hand
 the tyProc(ccClosure) type is not changed. For C code generation it's also
 important the hidden formal param is `void*`:c: and not something more
-specialized. However the more specialized env type needs to passed to the
+specialized. However, the more specialized env type needs to passed to the
 backend somehow. We deal with this by modifying `s.ast[paramPos]` to contain
 the formal hidden parameter, but not `s.typ`!
 
@@ -586,16 +591,16 @@ Integer literals
 ----------------
 
 In Nim, there is a redundant way to specify the type of an
-integer literal. First of all, it should be unsurprising that every
+integer literal. First, it should be unsurprising that every
 node has a node kind. The node of an integer literal can be any of the
-following values::
+following values:
 
     nkIntLit, nkInt8Lit, nkInt16Lit, nkInt32Lit, nkInt64Lit,
     nkUIntLit, nkUInt8Lit, nkUInt16Lit, nkUInt32Lit, nkUInt64Lit
 
-On top of that, there is also the `typ` field for the type. It the
+On top of that, there is also the `typ` field for the type. The
 kind of the `typ` field can be one of the following ones, and it
-should be matching the literal kind::
+should be matching the literal kind:
 
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, tyUInt, tyUInt8,
     tyUInt16, tyUInt32, tyUInt64
@@ -614,36 +619,36 @@ keeps the full `int literal(321)` type. Here is an example where that
 difference matters.
 
 
-.. code-block:: nim
+  ```nim
+  proc foo(arg: int8) =
+    echo "def"
 
-   proc foo(arg: int8) =
-     echo "def"
+  const tmp1 = 123
+  foo(tmp1)  # OK
 
-   const tmp1 = 123
-   foo(tmp1)  # OK
-
-   let tmp2 = 123
-   foo(tmp2) # Error
+  let tmp2 = 123
+  foo(tmp2) # Error
+  ```
 
 In a context with multiple overloads, the integer literal kind will
 always prefer the `int` type over all other types. If none of the
 overloads is of type `int`, then there will be an error because of
 ambiguity.
 
-.. code-block:: nim
+  ```nim
+  proc foo(arg: int) =
+    echo "abc"
+  proc foo(arg: int8) =
+    echo "def"
+  foo(123) # output: abc
 
-   proc foo(arg: int) =
-     echo "abc"
-   proc foo(arg: int8) =
-     echo "def"
-   foo(123) # output: abc
+  proc bar(arg: int16) =
+    echo "abc"
+  proc bar(arg: int8) =
+    echo "def"
 
-   proc bar(arg: int16) =
-     echo "abc"
-   proc bar(arg: int8) =
-     echo "def"
-
-   bar(123) # Error ambiguous call
+  bar(123) # Error ambiguous call
+  ```
 
 In the compiler these integer literal types are represented with the
 node kind `nkIntLit`, type kind `tyInt` and the member `n` of the type
@@ -651,7 +656,6 @@ pointing back to the integer literal node in the ast containing the
 integer value. These are the properties that hold true for integer
 literal types.
 
-::
     n.kind == nkIntLit
     n.typ.kind == tyInt
     n.typ.n == n

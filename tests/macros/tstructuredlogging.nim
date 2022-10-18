@@ -66,7 +66,7 @@ macro mergeScopes(scopeHolders: typed, newBindings: untyped): untyped =
     newScopeDefinition.add newAssignment(newIdentNode(k), v)
 
   result = quote:
-    template scopeHolder = `newScopeDefinition`
+    template scopeHolder {.redefine.} = `newScopeDefinition`
 
 template scope(newBindings: untyped) {.dirty.} =
   mergeScopes(bindSym"scopeHolder", newBindings)

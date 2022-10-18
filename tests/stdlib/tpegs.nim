@@ -54,7 +54,7 @@ Event parser output
 when defined(nimHasEffectsOf):
   {.experimental: "strictEffects".}
 
-import std/[strutils, streams, pegs]
+import std/[strutils, streams, pegs, assertions]
 
 const
   indent = "  "
@@ -106,9 +106,9 @@ block:
 
 block:
   var
-    pStack: seq[string] = @[]
-    valStack: seq[float] = @[]
-    opStack = ""
+    pStack {.threadvar.}: seq[string]
+    valStack {.threadvar.}: seq[float]
+    opStack {.threadvar.}: string
   let
     parseArithExpr = pegAst.eventParser:
       pkNonTerminal:
@@ -157,6 +157,10 @@ block:
   proc pegsTest() =
     privateAccess(NonTerminal)
     privateAccess(Captures)
+
+    if "test" =~ peg"s <- {{\ident}}": # bug #19104
+      doAssert matches[0] == "test"
+      doAssert matches[1] == "test", $matches[1]
 
     doAssert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"
     doAssert match("(a b c)", peg"'(' @ ')'")

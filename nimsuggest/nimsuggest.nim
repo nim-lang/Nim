@@ -9,6 +9,7 @@
 
 import compiler/renderer
 import strformat
+import algorithm
 import tables
 import std/sha1
 import times
@@ -149,7 +150,7 @@ proc listEpc(): SexpNode =
     argspecs = sexp("file line column dirtyfile".split(" ").map(newSSymbol))
     docstring = sexp("line starts at 1, column at 0, dirtyfile is optional")
   result = newSList()
-  for command in ["sug", "con", "def", "use", "dus", "chk", "mod", "globalSymbols", "recompile", "saved", "chkFile"]:
+  for command in ["sug", "con", "def", "use", "dus", "chk", "mod", "globalSymbols", "recompile", "saved", "chkFile", "declaration"]:
     let
       cmd = sexp(command)
       methodDesc = newSList()
@@ -455,6 +456,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   of "project": conf.ideCmd = ideProject
   of "changed": conf.ideCmd = ideChanged
   of "globalsymbols": conf.ideCmd = ideGlobalSymbols
+  of "declaration": conf.ideCmd = ideDeclaration
   of "chkfile": conf.ideCmd = ideChkFile
   of "recompile": conf.ideCmd = ideRecompile
   of "type": conf.ideCmd = ideType
@@ -711,17 +713,32 @@ proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =
     except Exception as e:
       myLog fmt "Failed clean recompilation:\n {e.msg} \n\n {e.getStackTrace()}"
 
-proc fileSymbols(graph: ModuleGraph, fileIdx: FileIndex): seq[tuple[sym: PSym, info: TLineInfo]] =
-  result = graph.suggestSymbols.getOrDefault(fileIdx, @[]).deduplicate
+func deduplicateSymInfoPair[SymInfoPair](xs: seq[SymInfoPair]): seq[SymInfoPair] =
+  # xs contains duplicate items and we want to filter them by range because the
+  # sym may not match. This can happen when xs contains the same definition but
+  # with different signature becase suggestSym might be called multiple times
+  # for the same symbol (e. g. including/excluding the pragma)
+  result = @[]
+  for itm in xs.reversed:
+    var found = false
+    for res in result:
+      if res.info.exactEquals(itm.info):
+        found = true
+        break
+    if not found:
+      result.add(itm)
+  result.reverse()
 
 proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int):
-    tuple[sym: PSym, info: TLineInfo] =
+    ref SymInfoPair =
   let
     fileIdx = fileInfoIdx(graph.config, file)
     trackPos = newLineInfo(fileIdx, line, col)
-  for (sym, info) in graph.fileSymbols(fileIdx):
-    if isTracked(info, trackPos, sym.name.s.len):
-      return (sym, info)
+  for s in graph.fileSymbols(fileIdx).deduplicateSymInfoPair:
+    if isTracked(s.info, trackPos, s.sym.name.s.len):
+      new(result)
+      result[] = s
+      break
 
 proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIndex) =
   let sha = $sha1.secureHashFile(file)
@@ -735,7 +752,7 @@ proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIn
 proc suggestResult(graph: ModuleGraph, sym: PSym, info: TLineInfo, defaultSection = ideNone) =
   let section = if defaultSection != ideNone:
                   defaultSection
-                elif sym.info == info:
+                elif sym.info.exactEquals(info):
                   ideDef
                 else:
                   ideUse
@@ -746,6 +763,10 @@ proc suggestResult(graph: ModuleGraph, sym: PSym, info: TLineInfo, defaultSectio
 const
   # kinds for ideOutline and ideGlobalSymbols
   searchableSymKinds = {skField, skEnumField, skIterator, skMethod, skFunc, skProc, skConverter, skTemplate}
+
+proc symbolEqual(left, right: PSym): bool =
+  # More relaxed symbol comparison
+  return left.info.exactEquals(right.info) and left.name == right.name
 
 proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, line, col: int;
     graph: ModuleGraph) =
@@ -787,7 +808,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     graph.unmarkAllDirty()
 
   # these commands require partially compiled project
-  elif cmd in {ideSug, ideOutline, ideHighlight, ideDef, ideChkFile, ideType} and
+  elif cmd in {ideSug, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration} and
        (graph.needsCompilation(fileIndex) or cmd == ideSug):
     # for ideSug use v2 implementation
     if cmd == ideSug:
@@ -800,31 +821,34 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
 
   case cmd
   of ideDef:
-    let (sym, info) = graph.findSymData(file, line, col)
-    if sym != nil:
-      graph.suggestResult(sym, sym.info)
+    let s = graph.findSymData(file, line, col)
+    if not s.isNil:
+      graph.suggestResult(s.sym, s.sym.info)
   of ideType:
-    let (sym, _) = graph.findSymData(file, line, col)
-    if sym != nil:
-      let typeSym = sym.typ.sym
+    let s = graph.findSymData(file, line, col)
+    if not s.isNil:
+      let typeSym = s.sym.typ.sym
       if typeSym != nil:
         graph.suggestResult(typeSym, typeSym.info, ideType)
-      elif sym.typ.len != 0:
-        let genericType = sym.typ[0].sym
+      elif s.sym.typ.len != 0:
+        let genericType = s.sym.typ[0].sym
         graph.suggestResult(genericType, genericType.info, ideType)
   of ideUse, ideDus:
-    let symbol = graph.findSymData(file, line, col).sym
-    if symbol != nil:
-      for (sym, info) in graph.suggestSymbolsIter:
-        if sym == symbol:
-          graph.suggestResult(sym, info)
+    let symbol = graph.findSymData(file, line, col)
+    if not symbol.isNil:
+      var res: seq[SymInfoPair] = @[]
+      for s in graph.suggestSymbolsIter:
+        if s.sym.symbolEqual(symbol.sym):
+          res.add(s)
+      for s in res.deduplicateSymInfoPair():
+        graph.suggestResult(s.sym, s.info)
   of ideHighlight:
-    let sym = graph.findSymData(file, line, col).sym
-    if sym != nil:
-      let usages = graph.fileSymbols(fileIndex).filterIt(it.sym == sym)
+    let sym = graph.findSymData(file, line, col)
+    if not sym.isNil:
+      let usages = graph.fileSymbols(fileIndex).filterIt(it.sym == sym.sym)
       myLog fmt "Found {usages.len} usages in {file.string}"
-      for (sym, info) in usages:
-        graph.suggestResult(sym, info)
+      for s in usages:
+        graph.suggestResult(s.sym, s.info)
   of ideRecompile:
     graph.recompileFullProject()
   of ideChanged:
@@ -837,14 +861,13 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     let
       module = graph.getModule fileIndex
       symbols = graph.fileSymbols(fileIndex)
-        .filterIt(it.sym.info == it.info and
+        .deduplicateSymInfoPair
+        .filterIt(it.sym.info.exactEquals(it.info) and
                     (it.sym.owner == module or
                      it.sym.kind in searchableSymKinds))
-    for (sym, _) in symbols:
-      suggestResult(
-        conf,
-        symToSuggest(graph, sym, false,
-                     ideOutline, sym.info, 100, PrefixMatch.None, false, 0))
+
+    for s in symbols:
+      graph.suggestResult(s.sym, s.info, ideOutline)
   of ideChk:
     myLog fmt "Reporting errors for {graph.suggestErrors.len} file(s)"
     for sug in graph.suggestErrorsIter:
@@ -855,17 +878,58 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     for error in errors:
       suggestResult(graph.config, error)
   of ideGlobalSymbols:
-    var counter = 0
-    for (sym, info) in graph.suggestSymbolsIter:
-      if sfGlobal in sym.flags or sym.kind in searchableSymKinds:
-        if contains(sym.name.s, file.string):
+    var
+      counter = 0
+      res: seq[SymInfoPair] = @[]
+
+    for s in graph.suggestSymbolsIter:
+      if (sfGlobal in s.sym.flags or s.sym.kind in searchableSymKinds) and
+          s.sym.info == s.info:
+        if contains(s.sym.name.s, file.string):
           inc counter
-          suggestResult(conf,
-                        symToSuggest(graph, sym, isLocal=false,
-                                     ideDef, info, 100, PrefixMatch.None, false, 0))
-        # stop after first 100 results
-        if counter > 100:
+          res = res.filterIt(not it.info.exactEquals(s.info))
+          res.add s
+          # stop after first 1000 matches...
+          if counter > 1000:
+            break
+
+    # ... then sort them by weight ...
+    res.sort() do (left, right: SymInfoPair) -> int:
+      let
+        leftString = left.sym.name.s
+        rightString = right.sym.name.s
+        leftIndex = leftString.find(file.string)
+        rightIndex = rightString.find(file.string)
+
+      if leftIndex == rightIndex:
+        result = cmp(toLowerAscii(leftString),
+                     toLowerAscii(rightString))
+      else:
+        result = cmp(leftIndex, rightIndex)
+
+    # ... and send first 100 results
+    if res.len > 0:
+      for i in 0 .. min(100, res.len - 1):
+        let s = res[i]
+        graph.suggestResult(s.sym, s.info)
+
+  of ideDeclaration:
+    let s = graph.findSymData(file, line, col)
+    if not s.isNil:
+      # find first mention of the symbol in the file containing the definition.
+      # It is either the definition or the declaration.
+      var first: SymInfoPair
+      for symbol in graph.fileSymbols(s.sym.info.fileIndex).deduplicateSymInfoPair:
+        if s.sym.symbolEqual(symbol.sym):
+          first = symbol
           break
+
+      if s.info.exactEquals(first.info):
+        # we are on declaration, go to definition
+        graph.suggestResult(first.sym, first.sym.info, ideDeclaration)
+      else:
+        # we are on definition or usage, look for declaration
+        graph.suggestResult(first.sym, first.info, ideDeclaration)
   else:
     myLog fmt "Discarding {cmd}"
 

@@ -6,6 +6,7 @@ import db_sqlite
 import random
 import os
 from stdtest/specialpaths import buildDir
+import std/assertions
 
 block tsqlitebindatas: ## db_sqlite binary data
   const dbName = buildDir / "tsqlitebindatas.db"

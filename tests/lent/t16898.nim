@@ -1,5 +1,5 @@
 discard """
-  errormsg: "invalid type: 'lent QuadraticExt' in this context: 'proc (r: var QuadraticExt, a: lent QuadraticExt, b: lent QuadraticExt){.noSideEffect, gcsafe, locks: 0.}' for proc"
+  errormsg: "invalid type: 'lent QuadraticExt' in this context: 'proc (r: var QuadraticExt, a: lent QuadraticExt, b: lent QuadraticExt){.noSideEffect, gcsafe.}' for proc"
 """
 
 # bug #16898

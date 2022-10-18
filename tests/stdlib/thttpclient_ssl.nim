@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim $target --threads:on -d:ssl $options $file"
+  cmd: "nim $target --mm:refc -d:ssl $options $file"
   disabled: "openbsd"
 """
 
@@ -15,7 +15,7 @@ discard """
 
 when not defined(windows):
   # Disabled on Windows due to old OpenSSL version
-
+  import std/[formatfloat, syncio]
   import
     httpclient,
     net,

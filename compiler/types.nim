@@ -14,7 +14,7 @@ import
   lineinfos, int128, modulegraphs, astmsgs
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, formatfloat]
 
 type
   TPreferedDesc* = enum
@@ -48,7 +48,6 @@ type
   ProcConvMismatch* = enum
     pcmNoSideEffect
     pcmNotGcSafe
-    pcmLockDifference
     pcmNotIterator
     pcmDifferentCallConv
 
@@ -685,7 +684,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           elif t.len == 1: result.add(",")
         result.add(')')
     of tyPtr, tyRef, tyVar, tyLent:
-      result = typeToStr[t.kind]
+      result = if isOutParam(t): "out " else: typeToStr[t.kind]
       if t.len >= 2:
         setLen(result, result.len-1)
         result.add '['
@@ -728,9 +727,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if tfThread in t.flags:
         addSep(prag)
         prag.add("gcsafe")
-      if t.lockLevel.ord != UnspecifiedLockLevel.ord:
-        addSep(prag)
-        prag.add("locks: " & $t.lockLevel)
       if prag.len != 0: result.add("{." & prag & ".}")
     of tyVarargs:
       result = typeToStr[t.kind] % typeToString(t[0])
@@ -1211,7 +1207,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameChildrenAux(a, b, c)
     if result:
       if IgnoreTupleFields in c.flags:
-        result = a.flags * {tfVarIsPtr} == b.flags * {tfVarIsPtr}
+        result = a.flags * {tfVarIsPtr, tfIsOutParam} == b.flags * {tfVarIsPtr, tfIsOutParam}
       else:
         result = sameFlags(a, b)
     if result and ExactGcSafety in c.flags:
@@ -1386,7 +1382,6 @@ type
     efRaisesUnknown
     efTagsDiffer
     efTagsUnknown
-    efLockLevelsDiffer
     efEffectsDelayed
     efTagsIllegal
 
@@ -1430,17 +1425,13 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
       elif hasIncompatibleEffect(sn, real[tagEffects]):
         return efTagsIllegal
 
-  if formal.lockLevel.ord < 0 or
-      actual.lockLevel.ord <= formal.lockLevel.ord:
+  for i in 1 ..< min(formal.n.len, actual.n.len):
+    if formal.n[i].sym.flags * {sfEffectsDelayed} != actual.n[i].sym.flags * {sfEffectsDelayed}:
+      result = efEffectsDelayed
+      break
 
-    for i in 1 ..< min(formal.n.len, actual.n.len):
-      if formal.n[i].sym.flags * {sfEffectsDelayed} != actual.n[i].sym.flags * {sfEffectsDelayed}:
-        result = efEffectsDelayed
-        break
+  result = efCompat
 
-    result = efCompat
-  else:
-    result = efLockLevelsDiffer
 
 proc isCompileTimeOnly*(t: PType): bool {.inline.} =
   result = t.kind in {tyTypeDesc, tyStatic}
@@ -1572,16 +1563,10 @@ proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel = isNone): (set[ProcCon
       of isInferred: result[1] = isInferredConvertible
       of isBothMetaConvertible: result[1] = isBothMetaConvertible
       elif result[1] != isNone: result[1] = isConvertible
+      else: result[0].incl pcmDifferentCallConv
     else:
       result[1] = isNone
       result[0].incl pcmDifferentCallConv
-
-  if f.lockLevel.ord != UnspecifiedLockLevel.ord and
-     a.lockLevel.ord != UnspecifiedLockLevel.ord:
-       # proctypeRel has more logic to catch this difference,
-       # so dont need to do `rel = isNone`
-       # but it's a pragma mismatch reason which is why it's here
-       result[0].incl pcmLockDifference
 
 proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, conf: ConfigRef) =
   assert formal.kind == tyProc and actual.kind == tyProc
@@ -1597,9 +1582,6 @@ proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, c
       expectedPragmas.add "noSideEffect, "
     of pcmNotGcSafe:
       expectedPragmas.add "gcsafe, "
-    of pcmLockDifference:
-      gotPragmas.add("locks: " & $actual.lockLevel & ", ")
-      expectedPragmas.add("locks: " & $formal.lockLevel & ", ")
     of pcmNotIterator: discard
 
   if expectedPragmas.len > 0:
@@ -1607,6 +1589,23 @@ proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, c
     expectedPragmas.setLen(max(0, expectedPragmas.len - 2)) # Remove ", "
     message.add "\n  Pragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [gotPragmas, expectedPragmas]
 
+proc processPragmaAndCallConvMismatch(msg: var string, formal, actual: PType, conf: ConfigRef) =
+  if formal.kind == tyProc and actual.kind == tyProc:
+    msg.addPragmaAndCallConvMismatch(formal, actual, conf)
+    case compatibleEffects(formal, actual)
+    of efCompat: discard
+    of efRaisesDiffer:
+      msg.add "\n.raise effects differ"
+    of efRaisesUnknown:
+      msg.add "\n.raise effect is 'can raise any'"
+    of efTagsDiffer:
+      msg.add "\n.tag effects differ"
+    of efTagsUnknown:
+      msg.add "\n.tag effect is 'any tag allowed'"
+    of efEffectsDelayed:
+      msg.add "\n.effectsOf annotations differ"
+    of efTagsIllegal:
+      msg.add "\n.notTag catched an illegal effect"
 
 proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
@@ -1626,25 +1625,18 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
       msg.add "\n"
     msg.add " but expected '$1'" % x
     if verbose: msg.addDeclaredLoc(conf, formal)
-
-    if formal.kind == tyProc and actual.kind == tyProc:
-      msg.addPragmaAndCallConvMismatch(formal, actual, conf)
-      case compatibleEffects(formal, actual)
-      of efCompat: discard
-      of efRaisesDiffer:
-        msg.add "\n.raise effects differ"
-      of efRaisesUnknown:
-        msg.add "\n.raise effect is 'can raise any'"
-      of efTagsDiffer:
-        msg.add "\n.tag effects differ"
-      of efTagsUnknown:
-        msg.add "\n.tag effect is 'any tag allowed'"
-      of efLockLevelsDiffer:
-        msg.add "\nlock levels differ"
-      of efEffectsDelayed:
-        msg.add "\n.effectsOf annotations differ"
-      of efTagsIllegal:
-        msg.add "\n.notTag catched an illegal effect"
+    var a = formal
+    var b = actual
+    if formal.kind == tyArray and actual.kind == tyArray:
+      a = formal[1]
+      b = actual[1]
+      processPragmaAndCallConvMismatch(msg, a, b, conf)
+    elif formal.kind == tySequence and actual.kind == tySequence:
+      a = formal[0]
+      b = actual[0]
+      processPragmaAndCallConvMismatch(msg, a, b, conf)
+    else:
+      processPragmaAndCallConvMismatch(msg, a, b, conf)
     localError(conf, info, msg)
 
 proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =

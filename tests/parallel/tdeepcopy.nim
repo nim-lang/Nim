@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc"
   output: '''
 13 abc
 called deepCopy for int

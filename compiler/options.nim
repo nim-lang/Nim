@@ -192,10 +192,10 @@ type
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
-    ideRecompile, ideChanged, ideType
+    ideRecompile, ideChanged, ideType, ideDeclaration
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
-    implicitDeref,
+    implicitDeref, # deadcode; remains here for backwards compatibility
     dotOperators,
     callOperator,
     parallel,
@@ -213,10 +213,11 @@ type
     strictFuncs,
     views,
     strictNotNil,
-    overloadableEnums,
+    overloadableEnums, # deadcode
     strictEffects,
-    unicodeOperators,
-    flexibleOptionalParams
+    unicodeOperators, # deadcode
+    flexibleOptionalParams,
+    strictDefs
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -227,6 +228,8 @@ type
       ## Historically and especially in version 1.0.0 of the language
       ## conversions to unsigned numbers were checked. In 1.0.4 they
       ## are not anymore.
+    laxEffects
+      ## Lax effects system prior to Nim 2.0.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
@@ -394,7 +397,7 @@ type
     suggestVersion*: int
     suggestMaxResults*: int
     lastLineInfo*: TLineInfo
-    writelnHook*: proc (output: string) {.closure.} # cannot make this gcsafe yet because of Nimble
+    writelnHook*: proc (output: string) {.closure, gcsafe.}
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
@@ -504,7 +507,7 @@ when defined(nimDebugUtils):
   export debugutils
 
 proc initConfigRefCommon(conf: ConfigRef) =
-  conf.selectedGC = gcRefc
+  conf.selectedGC = gcUnselected
   conf.verbosity = 1
   conf.hintProcessingDots = true
   conf.options = DefaultOptions
@@ -1026,6 +1029,7 @@ proc `$`*(c: IdeCmd): string =
   of ideMsg: "msg"
   of ideProject: "project"
   of ideGlobalSymbols: "globalSymbols"
+  of ideDeclaration: "declaration"
   of ideRecompile: "recompile"
   of ideChanged: "changed"
   of ideType: "type"

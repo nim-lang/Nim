@@ -12,8 +12,10 @@
 # the data structures here are used in various places of the compiler.
 
 import
-  ast, hashes, intsets, strutils, options, lineinfos, ropes, idents, rodutils,
+  ast, hashes, intsets, options, lineinfos, ropes, idents, rodutils,
   msgs
+
+import strutils except addf
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -227,11 +229,10 @@ proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ## Named parameters are special because a named parameter can be
   ## gensym'ed and then they have '\`<number>' suffix that we need to
   ## ignore, see compiler / evaltempl.nim, snippet:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```
   ##   result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
+  ##   ```
   for i in 1..<list.len:
     let it = list[i].sym
     if it.name.id == ident.id or
@@ -259,7 +260,7 @@ proc makeYamlString*(s: string): Rope =
   # this could trigger InternalError(111). See the ropes module for
   # further information.
   const MaxLineLength = 64
-  result = nil
+  result = ""
   var res = "\""
   for i in 0..<s.len:
     if (i + 1) mod MaxLineLength == 0:
@@ -275,9 +276,9 @@ proc flagsToStr[T](flags: set[T]): Rope =
   if flags == {}:
     result = rope("[]")
   else:
-    result = nil
+    result = ""
     for x in items(flags):
-      if result != nil: result.add(", ")
+      if result != "": result.add(", ")
       result.add(makeYamlString($x))
     result = "[" & result & "]"
 

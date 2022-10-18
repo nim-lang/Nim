@@ -86,6 +86,7 @@ type
     trDontBind
     trNoCovariance
     trBindGenericParam  # bind tyGenericParam even with trDontBind
+    trIsOutParam
 
   TTypeRelFlags* = set[TTypeRelFlag]
 
@@ -545,16 +546,16 @@ proc allowsNil(f: PType): TTypeRelation {.inline.} =
   result = if tfNotNil notin f.flags: isSubtype else: isNone
 
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
-  result = f.kind != a.kind and
-    (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})
+  result = (f.kind != a.kind and
+    (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})) or
+    isOutParam(f) != isOutParam(a)
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
-  ##
-  ## .. code-block:: nim
+  ##   ```
   ##   proc myMap[T,S](sIn: seq[T], f: proc(x: T): S): seq[S] = ...
   ##   proc innerProc[Q,W](q: Q): W = ...
-  ##
+  ##   ```
   ## And we want to match: myMap(@[1,2,3], innerProc)
   ## This proc (procParamTypeRel) will do the following steps in
   ## three different calls:
@@ -1163,9 +1164,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyFloat32:  result = handleFloatRange(f, a)
   of tyFloat64:  result = handleFloatRange(f, a)
   of tyFloat128: result = handleFloatRange(f, a)
-  of tyVar, tyLent:
-    if aOrig.kind == f.kind: result = typeRel(c, f.base, aOrig.base, flags)
-    else: result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
+  of tyVar:
+    let flags = if isOutParam(f): flags + {trIsOutParam} else: flags
+    if aOrig.kind == f.kind and (isOutParam(aOrig) == isOutParam(f)):
+      result = typeRel(c, f.base, aOrig.base, flags)
+    else:
+      result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
+    subtypeCheck()
+  of tyLent:
+    if aOrig.kind == f.kind:
+      result = typeRel(c, f.base, aOrig.base, flags)
+    else:
+      result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyArray:
     case a.kind
@@ -1294,7 +1304,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if sameObjectTypes(f, a):
         result = isEqual
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
-      else:
+      elif trIsOutParam notin flags:
         var depth = isObjectSubtype(c, a, f, nil)
         if depth > 0:
           inc(c.inheritancePenalty, depth)
@@ -1305,8 +1315,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if sameDistinctTypes(f, a): result = isEqual
       #elif f.base.kind == tyAnything: result = isGeneric  # issue 4435
       elif c.coerceDistincts: result = typeRel(c, f.base, a, flags)
-    elif a.kind == tyNil and f.base.kind in NilableTypes:
-      result = f.allowsNil # XXX remove this typing rule, it is not in the spec
     elif c.coerceDistincts: result = typeRel(c, f.base, a, flags)
   of tySet:
     if a.kind == tySet:
@@ -1464,7 +1472,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           elif aAsObject.kind == fKind:
             aAsObject = aAsObject.base
 
-        if aAsObject.kind == tyObject:
+        if aAsObject.kind == tyObject and trIsOutParam notin flags:
           let baseType = aAsObject.base
           if baseType != nil:
             c.inheritancePenalty += 1
@@ -1587,10 +1595,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         c.inheritancePenalty = 0
         let x = typeRel(c, branch, aOrig, flags)
         maxInheritance = max(maxInheritance, c.inheritancePenalty)
-
         # 'or' implies maximum matching result:
         if x > result: result = x
-      if result >= isSubtype:
+      if result >= isIntConv:
         if result > isGeneric: result = isGeneric
         bindingRet result
       else:
@@ -1640,7 +1647,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         elif a.len > 0 and a.lastSon == f:
           # Needed for checking `Y` == `Addable` in the following
           #[
-            type 
+            type
               Addable = concept a, type A
                 a + a is A
               MyType[T: Addable; Y: static T] = object
@@ -2123,6 +2130,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
       result = c.semInferredLambda(c, m.bindings, arg)
     elif arg.kind != nkSym:
+      return nil
+    elif arg.sym.kind in {skMacro, skTemplate}:
       return nil
     else:
       let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)

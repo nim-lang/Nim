@@ -294,7 +294,6 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdDoc0: docLikeCmd commandDoc(cache, conf)
   of cmdDoc:
     docLikeCmd():
-      conf.setNoteDefaults(warnLockLevel, false) # issue #13218
       conf.setNoteDefaults(warnRstRedefinitionOfLabel, false) # issue #13218
         # because currently generates lots of false positives due to conflation
         # of labels links in doc comments, e.g. for random.rand:
@@ -325,7 +324,11 @@ proc mainCommand*(graph: ModuleGraph) =
       else:
         docLikeCmd commandDoc2(graph, TexExt)
   of cmdJsondoc0: docLikeCmd commandJson(cache, conf)
-  of cmdJsondoc: docLikeCmd commandDoc2(graph, JsonExt)
+  of cmdJsondoc:
+    docLikeCmd():
+      commandDoc2(graph, JsonExt)
+      if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
+        commandBuildIndexJson(conf, $conf.outDir)
   of cmdCtags: docLikeCmd commandTags(cache, conf)
   of cmdBuildindex: docLikeCmd commandBuildIndex(conf, $conf.projectFull, conf.outFile)
   of cmdGendepend: commandGenDepend(graph)

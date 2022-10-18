@@ -1093,11 +1093,11 @@ template onSignal*(signals: varargs[cint], body: untyped) =
   ## scope.
   ##
   ## Example:
-  ##
-  ## .. code-block::
+  ##   ```Nim
   ##   from std/posix import SIGINT, SIGTERM, onSignal
   ##   onSignal(SIGINT, SIGTERM):
   ##     echo "bye from signal ", sig
+  ##   ```
 
   for s in signals:
     handle_signal(s,

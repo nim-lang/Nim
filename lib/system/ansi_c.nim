@@ -180,6 +180,8 @@ proc c_printf*(frmt: cstring): cint {.
 
 proc c_fputs*(c: cstring, f: CFilePtr): cint {.
   importc: "fputs", header: "<stdio.h>", discardable.}
+proc c_fputc*(c: char, f: CFilePtr): cint {.
+  importc: "fputc", header: "<stdio.h>", discardable.}
 
 proc c_sprintf*(buf, frmt: cstring): cint {.
   importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
@@ -212,7 +214,7 @@ else:
 proc c_fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): cint {.
   importc: "fwrite", header: "<stdio.h>".}
 
-proc c_fflush(f: CFilePtr): cint {.
+proc c_fflush*(f: CFilePtr): cint {.
   importc: "fflush", header: "<stdio.h>".}
 
 proc rawWriteString*(f: CFilePtr, s: cstring, length: int) {.compilerproc, nonReloadable, inline.} =

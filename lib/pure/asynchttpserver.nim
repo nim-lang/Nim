@@ -44,6 +44,9 @@ import httpcore
 from nativesockets import getLocalAddr, Domain, AF_INET, AF_INET6
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 export httpcore except parseHeader
 
 const

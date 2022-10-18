@@ -14,7 +14,7 @@ Introduction
 ============
 
 This document describes the usage of the *DrNim* tool. DrNim combines
-the Nim frontend with the `Z3 <https://github.com/Z3Prover/z3>`_ proof
+the Nim frontend with the [Z3](https://github.com/Z3Prover/z3) proof
 engine, in order to allow verify/validate software written in Nim.
 DrNim's command-line options are the same as the Nim compiler's.
 
@@ -22,11 +22,11 @@ DrNim's command-line options are the same as the Nim compiler's.
 DrNim currently only checks the sections of your code that are marked
 via `staticBoundChecks: on`:
 
-.. code-block:: nim
-
+  ```nim
   {.push staticBoundChecks: on.}
   # <--- code section here ---->
   {.pop.}
+  ```
 
 DrNim currently only tries to prove array indexing or subrange checks,
 overflow errors are *not* prevented. Overflows will be checked for in
@@ -53,8 +53,7 @@ Motivating Example
 The follow example highlights what DrNim can easily do, even
 without additional annotations:
 
-.. code-block:: nim
-
+  ```nim
   {.push staticBoundChecks: on.}
 
   proc sum(a: openArray[int]): int =
@@ -64,11 +63,12 @@ without additional annotations:
   {.pop.}
 
   echo sum([1, 2, 3])
+  ```
 
 This program contains a famous "index out of bounds" bug. DrNim
-detects it and produces the following error message::
+detects it and produces the following error message:
 
-  cannot prove: i <= len(a) + -1; counter example: i -> 0 a.len -> 0 [IndexCheck]
+    cannot prove: i <= len(a) + -1; counter example: i -> 0 a.len -> 0 [IndexCheck]
 
 In other words for `i == 0` and `a.len == 0` (for example!) there would be
 an index out of bounds error.
@@ -125,8 +125,7 @@ Example: insertionSort
 
 **Note**: This example does not yet work with DrNim.
 
-.. code-block:: nim
-
+  ```nim
   import std / logic
 
   proc insertionSort(a: var openArray[int]) {.
@@ -142,27 +141,28 @@ Example: insertionSort
         {.invariant: forall(j in 1..k, i in 0..<j, j == t or a[i] <= a[j]).}
         swap a[t], a[t-1]
         dec t
+  ```
 
 Unfortunately, the invariants required to prove that this code is correct take more
 code than the imperative instructions. However, this effort can be compensated
 by the fact that the result needs very little testing. Be aware though that
-DrNim only proves that after `insertionSort` this condition holds::
+DrNim only proves that after `insertionSort` this condition holds:
 
-  forall(i in 1..<a.len, a[i-1] <= a[i])
+    forall(i in 1..<a.len, a[i-1] <= a[i])
 
 
 This is required, but not sufficient to describe that a `sort` operation
 was performed. For example, the same postcondition is true for this proc
 which doesn't sort at all:
 
-.. code-block:: nim
-
+  ```nim
   import std / logic
 
   proc insertionSort(a: var openArray[int]) {.
       ensures: forall(i in 1..<a.len, a[i-1] <= a[i]).} =
     # does not sort, overwrites `a`'s contents!
     for i in 0..<a.len: a[i] = i
+  ```
 
 
 
@@ -170,23 +170,23 @@ Syntax of propositions
 ======================
 
 The basic syntax is `ensures|requires|invariant: <prop>`.
-A `prop` is either a comparison or a compound::
+A `prop` is either a comparison or a compound:
 
-  prop = nim_bool_expression
-       | prop 'and' prop
-       | prop 'or' prop
-       | prop '->' prop # implication
-       | prop '<->' prop
-       | 'not' prop
-       | '(' prop ')' # you can group props via ()
-       | forallProp
-       | existsProp
+    prop = nim_bool_expression
+         | prop 'and' prop
+         | prop 'or' prop
+         | prop '->' prop # implication
+         | prop '<->' prop
+         | 'not' prop
+         | '(' prop ')' # you can group props via ()
+         | forallProp
+         | existsProp
 
-  forallProp = 'forall' '(' quantifierList ',' prop ')'
-  existsProp = 'exists' '(' quantifierList ',' prop ')'
+    forallProp = 'forall' '(' quantifierList ',' prop ')'
+    existsProp = 'exists' '(' quantifierList ',' prop ')'
 
-  quantifierList = quantifier (',' quantifier)*
-  quantifier = <new identifier> 'in' nim_iteration_expression
+    quantifierList = quantifier (',' quantifier)*
+    quantifier = <new identifier> 'in' nim_iteration_expression
 
 
 `nim_iteration_expression` here is an ordinary expression of Nim code

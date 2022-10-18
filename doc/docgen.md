@@ -14,21 +14,11 @@ Introduction
 ============
 
 This document describes the `documentation generation tools`:idx: built into
-the `Nim compiler <nimc.html>`_, which can generate HTML, Latex and JSON output
+the [Nim compiler](nimc.html), which can generate HTML, Latex and JSON output
 from input ``.nim`` files and projects, as well as HTML and LaTeX from input RST
 (reStructuredText) files. The output documentation will include the module
 dependencies (`import`), any top-level documentation comments (`##`), and
 exported symbols (`*`), including procedures, types, and variables.
-
-===================   ======================   ============   ==============
-command               runs on...               input format   output format
-===================   ======================   ============   ==============
-`nim doc`:cmd:        documentation comments   ``.nim``       ``.html`` HTML
-`nim doc2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
-`nim jsondoc`:cmd:    ″                        ″              ``.json`` JSON
-`nim rst2html`:cmd:   standalone rst files     ``.rst``       ``.html`` HTML
-`nim rst2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
-===================   ======================   ============   ==============
 
 Quick start
 -----------
@@ -59,32 +49,35 @@ Documentation Comments
 ----------------------
 
 Any comments which are preceded by a double-hash (`##`), are interpreted as
-documentation.  Comments are parsed as RST (see `reference
-<http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_), providing
+documentation.  Comments are parsed as RST (see [reference](
+http://docutils.sourceforge.net/docs/user/rst/quickref.html)), providing
 Nim module authors the ability to easily generate richly formatted
 documentation with only their well-documented code!
 Basic Markdown syntax is also supported inside the doc comments.
 
 Example:
 
-.. code-block:: nim
+  ```nim
   type Person* = object
     ## This type contains a description of a person
     name: string
     age: int
+  ```
 
-Outputs::
-  Person* = object
-    name: string
-    age: int
+Outputs:
+
+    Person* = object
+      name: string
+      age: int
 
   This type contains a description of a person
 
 Field documentation comments can be added to fields like so:
 
-.. code-block:: nim
+  ```nim
   var numValues: int ## \
     ## `numValues` stores the number of values
+  ```
 
 Note that without the `*` following the name of the type, the documentation for
 this type would not be generated. Documentation will only be generated for
@@ -102,12 +95,13 @@ won't influence RST formatting.
    If you still need to add an additional indentation at the very beginning
    (for RST block quote syntax) use backslash \\ before it:
 
-   .. code-block:: nim
-      ## \
-      ##
-      ##    Block quote at the first line.
-      ##
-      ## Paragraph.
+     ```nim
+     ## \
+     ##
+     ##    Block quote at the first line.
+     ##
+     ## Paragraph.
+     ```
 
 
 Document Types
@@ -140,12 +134,13 @@ The `doc`:option: command:
   nim doc docgen_sample.nim
   ```
 
-Partial Output::
-  ...
-  proc helloWorld(times: int) {.raises: [], tags: [].}
-  ...
+Partial Output:
 
-The full output can be seen here: `docgen_sample.html <docgen_sample.html>`_.
+    ...
+    proc helloWorld(times: int) {.raises: [], tags: [].}
+    ...
+
+The full output can be seen here: [docgen_sample.html](docgen_sample.html).
 It runs after semantic checking and includes pragmas attached implicitly by the
 compiler.
 
@@ -186,22 +181,23 @@ The `jsondoc`:option: command:
   nim jsondoc docgen_sample.nim
   ```
 
-Output::
-  {
-    "orig": "docgen_sample.nim",
-    "nimble": "",
-    "moduleDescription": "This module is a sample",
-    "entries": [
-      {
-        "name": "helloWorld",
-        "type": "skProc",
-        "line": 5,
-        "col": 0,
-        "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
-        "code": "proc helloWorld(times: int) {.raises: [], tags: [].}"
-      }
-    ]
-  }
+Output:
+
+    {
+      "orig": "docgen_sample.nim",
+      "nimble": "",
+      "moduleDescription": "This module is a sample",
+      "entries": [
+        {
+          "name": "helloWorld",
+          "type": "skProc",
+          "line": 5,
+          "col": 0,
+          "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
+          "code": "proc helloWorld(times: int) {.raises: [], tags: [].}"
+        }
+      ]
+    }
 
 Similarly to the old `doc`:option: command, the old `jsondoc`:option: command has been
 renamed to `jsondoc0`:option:.
@@ -212,18 +208,19 @@ The `jsondoc0`:option: command:
   nim jsondoc0 docgen_sample.nim
   ```
 
-Output::
-  [
-    {
-      "comment": "This module is a sample."
-    },
-    {
-      "name": "helloWorld",
-      "type": "skProc",
-      "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
-      "code": "proc helloWorld*(times: int)"
-    }
-  ]
+Output:
+
+    [
+      {
+        "comment": "This module is a sample."
+      },
+      {
+        "name": "helloWorld",
+        "type": "skProc",
+        "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
+        "code": "proc helloWorld*(times: int)"
+      }
+    ]
 
 Note that the `jsondoc`:option: command outputs its JSON without pretty-printing it,
 while `jsondoc0`:option: outputs pretty-printed JSON.
@@ -242,79 +239,82 @@ underscore `_` to a *link text*.
 Link text is either one word or a group of words enclosed by backticks `\``
 (for a one word case backticks are usually omitted).
 Link text will be displayed *as is* while *link target* will be set to
-the anchor [*]_ of Nim symbol that corresponds to link text.
+the anchor \[*] of Nim symbol that corresponds to link text.
 
-.. [*] anchors' format is described in `HTML anchor generation`_ section below.
+\[*] anchors' format is described in [HTML anchor generation] section below.
 
 If you have a constant:
 
-   ```Nim
-   const pi* = 3.14
-   ```
+  ```Nim
+  const pi* = 3.14
+  ```
 
 then it should be referenced in one of the 2 forms:
 
-A. non-qualified (no symbol kind specification)::
-     pi_
-B. qualified (with symbol kind specification)::
-     `const pi`_
+A. non-qualified (no symbol kind specification):
+
+       pi_
+
+B. qualified (with symbol kind specification):
+
+       `const pi`_
 
 For routine kinds there are more options. Consider this definition:
 
-   ```Nim
-   proc foo*(a: int, b: float): string
-   ```
+  ```Nim
+  proc foo*(a: int, b: float): string
+  ```
 
 Generally following syntax is allowed for referencing `foo`:
 
 *  short (without parameters):
 
-   A. non-qualified::
+   A. non-qualified:
 
-        foo_
+          foo_
 
-   B. qualified::
+   B. qualified:
 
-        `proc foo`_
+          `proc foo`_
 
 *  longer variants (with parameters):
 
    A. non-qualified:
 
-      1) specifying parameters names::
+      1) specifying parameters names:
 
-          `foo(a, b)`_
+             `foo(a, b)`_
 
-      2) specifying parameters types::
+      2) specifying parameters types:
 
-          `foo(int, float)`_
+             `foo(int, float)`_
 
-      3) specifying both names and types::
+      3) specifying both names and types:
 
-          `foo(a: int, b: float)`_
+             `foo(a: int, b: float)`_
 
-      4) output parameter can also be specified if you wish::
+      4) output parameter can also be specified if you wish:
 
-          `foo(a: int, b: float): string`_
+             `foo(a: int, b: float): string`_
 
    B. qualified: all 4 options above are valid.
-      Particularly you can use the full format::
+      Particularly you can use the full format:
 
-        `proc foo(a: int, b: float): string`_
+          `proc foo(a: int, b: float): string`_
 
 .. Tip:: Avoid cluttering your text with extraneous information by using
-   one of shorter forms::
+   one of shorter forms:
 
-     binarySearch_
-     `binarySearch(a, key, cmp)`_
+       binarySearch_
+       `binarySearch(a, key, cmp)`_
 
    Brevity is better for reading! If you use a short form and have an
    ambiguity problem (see below) then just add some additional info.
 
-Symbol kind like `proc` can also be specified in the postfix form::
+Symbol kind like `proc` can also be specified in the postfix form:
 
-  `foo proc`_
-  `walkDir(d: string) iterator`_
+    `foo proc`_
+    `walkDir(d: string) iterator`_
 
 .. Warning:: An ambiguity in resolving documentation links may arise because of:
 
@@ -327,9 +327,9 @@ Symbol kind like `proc` can also be specified in the postfix form::
         `proc` and `template`. In this case they are split between their
         corresponding sections in output file. Qualified references are
         useful in this case -- just disambiguate by referring to these
-        sections explicitly::
+        sections explicitly:
 
-          See `foo proc`_ and `foo template`_.
+            See `foo proc`_ and `foo template`_.
 
       * because in Nim `proc` and `iterator` belong to different namespaces,
         so there can be a collision even if parameters are the same.
@@ -341,9 +341,9 @@ Symbol kind like `proc` can also be specified in the postfix form::
    (while procs have higher priority than other Nim symbol kinds).
 
 Generic parameters can also be used. All in all, this long form will be
-recognized fine::
+recognized fine:
 
-  `proc binarySearch*[T; K](a: openArray[T], key: K, cmp: proc(T, K)): int`_
+    `proc binarySearch*[T; K](a: openArray[T], key: K, cmp: proc(T, K)): int`_
 
 **Limitations**:
 
@@ -358,16 +358,16 @@ recognized fine::
       ```
 
    you cannot use names underlined by `~~` so it must be referenced with
-   ``cmp: proc(T, K)``. Hence these forms are valid::
+   ``cmp: proc(T, K)``. Hence these forms are valid:
 
-     `binarySearch(a: openArray[T], key: K, cmp: proc(T, K))`_
-     `binarySearch(openArray[T], K, proc(T, K))`_
-     `binarySearch(a, key, cmp)`_
+       `binarySearch(a: openArray[T], key: K, cmp: proc(T, K))`_
+       `binarySearch(openArray[T], K, proc(T, K))`_
+       `binarySearch(a, key, cmp)`_
 2. Default values in routine parameters are not recognized, one needs to
    specify the type and/or name instead. E.g. for referencing `proc f(x = 7)`
-   use one of the mentioned forms::
+   use one of the mentioned forms:
 
-     `f(int)`_ or `f(x)`_ or `f(x: int)`_.
+       `f(int)`_ or `f(x)`_ or `f(x: int)`_.
 3. Generic parameters must be given the same way as in the
    definition of referenced symbol.
 
@@ -383,27 +383,27 @@ recognized fine::
       func `[]`*[T](x: openArray[T]): T
       ```
 
-   A short form works without additional backticks::
+   A short form works without additional backticks:
 
-     `$`_
-     `[]`_
+       `$`_
+       `[]`_
 
    However for fully-qualified reference copy-pasting backticks (`) into other
    backticks will not work in our RST parser (because we use Markdown-like
    inline markup rules). You need either to delete backticks or keep
-   them and escape with backslash \\::
+   them and escape with backslash \\:
 
-      no backticks: `func $`_
-      escaped:  `func \`$\``_
-      no backticks: `func [][T](x: openArray[T]): T`_
-      escaped:  `func \`[]\`[T](x: openArray[T]): T`_
+       no backticks: `func $`_
+       escaped:  `func \`$\``_
+       no backticks: `func [][T](x: openArray[T]): T`_
+       escaped:  `func \`[]\`[T](x: openArray[T]): T`_
 
 .. Note:: Types that defined as `enum`, or `object`, or `tuple` can also be
-   referenced with those names directly (instead of `type`)::
+   referenced with those names directly (instead of `type`):
 
-     type CopyFlag = enum
-       ...
-     ## Ref. `CopyFlag enum`_
+       type CopyFlag = enum
+         ...
+       ## Ref. `CopyFlag enum`_
 
 Related Options
 ===============
@@ -432,11 +432,11 @@ This will generate an index of all the exported symbols in the input Nim
 module, and put it into a neighboring file with the extension of ``.idx``. The
 index file is line-oriented (newlines have to be escaped). Each line
 represents a tab-separated record of several columns, the first two mandatory,
-the rest optional. See the `Index (idx) file format`_ section for details.
+the rest optional. See the [Index (idx) file format] section for details.
 
 Once index files have been generated for one or more modules, the Nim
 compiler command `buildIndex directory` can be run to go over all the index
-files in the specified directory to generate a `theindex.html <theindex.html>`_
+files in the specified directory to generate a [theindex.html](theindex.html)
 file.
 
 See source switch
@@ -470,11 +470,7 @@ You can edit ``config/nimdoc.cfg`` and modify the ``doc.item.seesrc`` value
 with a hyperlink to your own code repository.
 
 In the case of Nim's own documentation, the `commit` value is just a commit
-hash to append to a formatted URL to https://github.com/nim-lang/Nim. The
-``tools/nimweb.nim`` helper queries the current git commit hash during the doc
-generation, but since you might be working on an unpublished repository, it
-also allows specifying a `githash` value in ``web/website.ini`` to force a
-specific commit in the output.
+hash to append to a formatted URL to https://github.com/nim-lang/Nim.
 
 
 Other Input Formats
@@ -485,20 +481,10 @@ the `rst2html`:option: and `rst2tex`:option: commands. Documents like this one a
 initially written in a dialect of RST which adds support for Nim source code
 highlighting with the ``.. code-block:: nim`` prefix. ``code-block`` also
 supports highlighting of a few other languages supported by the
-`packages/docutils/highlite module <highlite.html>`_.
+[packages/docutils/highlite module](highlite.html).
 
-Usage:
-
-  ```cmd
-  nim rst2html docgen.rst
-  ```
-
-Output::
-  You're reading it!
-
-The `rst2tex`:option: command is invoked identically to `rst2html`:option:,
-but outputs a ``.tex`` file instead of ``.html``.
-
+See [Markdown and RST markup languages](markdown_rst.html) for
+usage of those commands.
 
 HTML anchor generation
 ======================
@@ -547,38 +533,38 @@ Callable type    Suffix
 
 The relationship of type to suffix is made by the proc `complexName` in the
 ``compiler/docgen.nim`` file. Here are some examples of complex names for
-symbols in the `system module <system.html>`_.
+symbols in the [system module](system.html).
 
 * `type SomeSignedInt = int | int8 | int16 | int32 | int64` **=>**
-  `#SomeSignedInt <system.html#SomeSignedInt>`_
+  [#SomeSignedInt](system.html#SomeSignedInt)
 * `var globalRaiseHook: proc (e: ref E_Base): bool {.nimcall.}` **=>**
-  `#globalRaiseHook <system.html#globalRaiseHook>`_
+  [#globalRaiseHook](system.html#globalRaiseHook)
 * `const NimVersion = "0.0.0"` **=>**
-  `#NimVersion <system.html#NimVersion>`_
+  [#NimVersion](system.html#NimVersion)
 * `proc getTotalMem(): int {.rtl, raises: [], tags: [].}` **=>**
-  `#getTotalMem, <system.html#getTotalMem>`_
+  [#getTotalMem](system.html#getTotalMem)
 * `proc len[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}` **=>**
-  `#len,seq[T] <system.html#len,seq[T]>`_
+  [#len,seq[T]](system.html#len,seq[T])
 * `iterator pairs[T](a: seq[T]): tuple[key: int, val: T] {.inline.}` **=>**
-  `#pairs.i,seq[T] <iterators.html#pairs.i,seq[T]>`_
+  [#pairs.i,seq[T]](iterators.html#pairs.i,seq[T])
 * `template newException[](exceptn: typedesc; message: string;
     parentException: ref Exception = nil): untyped` **=>**
-  `#newException.t,typedesc,string,ref.Exception
-  <system.html#newException.t,typedesc,string,ref.Exception>`_
+  [#newException.t,typedesc,string,ref.Exception](
+  system.html#newException.t,typedesc,string,ref.Exception)
 
 
 Index (idx) file format
 =======================
 
-Files with the ``.idx`` extension are generated when you use the `Index
-switch <#related-options-index-switch>`_ along with commands to generate
+Files with the ``.idx`` extension are generated when you use the [Index
+switch] along with commands to generate
 documentation from source or text files. You can programmatically generate
-indices with the `setIndexTerm()
-<rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string>`_
+indices with the [setIndexTerm()](
+rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string)
 and `writeIndexFile() <rstgen.html#writeIndexFile,RstGenerator,string>`_ procs.
 The purpose of `idx` files is to hold the interesting symbols and their HTML
 references so they can be later concatenated into a big index file with
-`mergeIndexes() <rstgen.html#mergeIndexes,string>`_.  This section documents
+[mergeIndexes()](rstgen.html#mergeIndexes,string).  This section documents
 the file format in detail.
 
 Index files are line-oriented and tab-separated (newline and tab characters
@@ -623,16 +609,15 @@ final index, and TOC entries found in ``.nim`` files are discarded.
 Additional resources
 ====================
 
-* `Nim Compiler User Guide <nimc.html#compiler-usage-commandminusline-switches>`_
+* [Nim Compiler User Guide](nimc.html#compiler-usage-commandminusline-switches)
 
-* Documentation for `rst module <rst.html>`_ -- Nim RST/Markdown parser.
-
-* `RST Quick Reference
-  <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_
+* already mentioned documentation for
+  [Markdown and RST markup languages](markdown_rst.html), which also
+  contains the list of implemented features of these markup languages.
 
 The output for HTML and LaTeX comes from the ``config/nimdoc.cfg`` and
 ``config/nimdoc.tex.cfg`` configuration files. You can add and modify these
 files to your project to change the look of the docgen output.
 
-You can import the `packages/docutils/rstgen module <rstgen.html>`_ in your
+You can import the [packages/docutils/rstgen module](rstgen.html) in your
 programs if you want to reuse the compiler's documentation generation procs.
