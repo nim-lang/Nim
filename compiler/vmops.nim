@@ -23,7 +23,9 @@ when declared(math.signbit):
   from std/math as math3 import signbit
 
 from std/os import getEnv, existsEnv, delEnv, putEnv, envPairs,
-  dirExists, fileExists, walkDir, getAppFilename, raiseOSError, osLastError
+  walkDir, getAppFilename, raiseOSError, osLastError
+
+from std/oscommon import dirExists, fileExists
 
 from std/times import cpuTime
 from std/hashes import hash
@@ -43,6 +45,9 @@ template mathop(op) {.dirty.} =
 
 template osop(op) {.dirty.} =
   registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
+
+template oscommonop(op) {.dirty.} =
+  registerCallback(c, "stdlib.oscommon." & astToStr(op), `op Wrapper`)
 
 template timesop(op) {.dirty.} =
   registerCallback(c, "stdlib.times." & astToStr(op), `op Wrapper`)
@@ -223,8 +228,8 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap1s(existsEnv, osop)
     wrap2svoid(putEnv, osop)
     wrap1svoid(delEnv, osop)
-    wrap1s(dirExists, osop)
-    wrap1s(fileExists, osop)
+    wrap1s(dirExists, oscommonop)
+    wrap1s(fileExists, oscommonop)
     wrapDangerous(writeFile, ioop)
     wrap1s(readFile, ioop)
     wrap2si(readLines, ioop)
