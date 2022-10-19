@@ -31,15 +31,8 @@ elif defined(js):
 else:
   {.pragma: noNimJs.}
 
-{.pragma: paths.}
-{.pragma: files.}
-{.pragma: dirs.}
-{.pragma: symlinks.}
-{.pragma: appdirs.}
 
-
-
-proc createSymlink*(src, dest: string) {.noWeirdTarget, symlinks.} =
+proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a symbolic link at `dest` which points to the item specified
   ## by `src`. On most operating systems, will fail if a link already exists.
   ##
@@ -66,7 +59,7 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget, symlinks.} =
     if symlink(src, dest) != 0:
       raiseOSError(osLastError(), $(src, dest))
 
-proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget, symlinks.} =
+proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ## Returns a string representing the path to which the symbolic link points.
   ##
   ## On Windows this is a noop, `symlinkPath` is simply returned.
