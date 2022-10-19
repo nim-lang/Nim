@@ -47,7 +47,7 @@ export osseps
 
 proc absolutePathInternal(path: string): string {.gcsafe.}
 
-proc normalizePathEnd(path: var string, trailingSep = false) =
+proc normalizePathEnd*(path: var string, trailingSep = false) =
   ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
   ## ``trailingSep``, and taking care of edge cases: it preservers whether
   ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
@@ -70,7 +70,7 @@ proc normalizePathEnd(path: var string, trailingSep = false) =
     # // => / (empty case was already taken care of)
     path = $DirSep
 
-proc normalizePathEnd(path: string, trailingSep = false): string =
+proc normalizePathEnd*(path: string, trailingSep = false): string =
   ## outplace overload
   runnableExamples:
     when defined(posix):
@@ -81,9 +81,6 @@ proc normalizePathEnd(path: string, trailingSep = false): string =
       assert normalizePathEnd("/", trailingSep = false) == "/" # not "" !
   result = path
   result.normalizePathEnd(trailingSep)
-
-since((1, 1)):
-  export normalizePathEnd
 
 template endsWith(a: string, b: set[char]): bool =
   a.len > 0 and a[^1] in b

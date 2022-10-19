@@ -143,7 +143,6 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
     result = getEnv("XDG_CONFIG_HOME", getEnv("HOME") / ".config")
   result.normalizePathEnd(trailingSep = true)
 
-
 proc getCacheDir*(): string =
   ## Returns the cache directory of the current user for applications.
   ##

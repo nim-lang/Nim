@@ -106,6 +106,7 @@ iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect], noWeirdT
   ## * `walkDir iterator`_
   ## * `walkDirRec iterator`_
   runnableExamples:
+    import std/os
     import std/sequtils
     let paths = toSeq(walkPattern("lib/pure/*")) # works on Windows too
     assert "lib/pure/concurrency".unixToNativePath in paths
