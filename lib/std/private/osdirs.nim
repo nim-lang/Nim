@@ -112,7 +112,7 @@ iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect], noWeirdT
     assert "lib/pure/os.nim".unixToNativePath in paths
   walkCommon(pattern, defaultWalkFilter)
 
-iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarget, files.} =
+iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarget.} =
   ## Iterate over all the files that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
