@@ -88,6 +88,9 @@ export oserrors
 import std/envvars
 export envvars
 
+import std/private/osseps
+export osseps
+
 when defined(windows) and not weirdTarget:
   when useWinUnicode:
     template wrapUnary(varname, winApiProc, arg: untyped) =
@@ -108,12 +111,12 @@ when defined(windows) and not weirdTarget:
     template getCommandLine(): untyped = getCommandLineA()
 
     template getFilename(f: untyped): untyped = $cstring(addr f.cFileName)
-
   proc skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring
     const dot = ord('.')
     result = f.cFileName[0].int == dot and (f.cFileName[1].int == 0 or
              f.cFileName[1].int == dot and f.cFileName[2].int == 0)
+
 
 proc getHomeDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect], appdirs.} =
