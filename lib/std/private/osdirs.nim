@@ -126,6 +126,7 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTar
   ## * `walkDir iterator`_
   ## * `walkDirRec iterator`_
   runnableExamples:
+    import std/os
     import std/sequtils
     assert "lib/pure/os.nim".unixToNativePath in toSeq(walkFiles("lib/pure/*.nim")) # works on Windows too
   walkCommon(pattern, isFile)
@@ -143,6 +144,7 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarg
   ## * `walkDir iterator`_
   ## * `walkDirRec iterator`_
   runnableExamples:
+    import std/os
     import std/sequtils
     let paths = toSeq(walkDirs("lib/pure/*")) # works on Windows too
     assert "lib/pure/concurrency".unixToNativePath in paths
