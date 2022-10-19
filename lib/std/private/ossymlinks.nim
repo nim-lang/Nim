@@ -2,7 +2,7 @@ include system/inclrtl
 import std/oserrors
 
 
-import ospaths
+import ospaths2
 import oscommon
 export symlinkExists
 

@@ -2,7 +2,7 @@ include system/inclrtl
 import std/oserrors
 
 
-import ospaths, osfiles
+import ospaths2, osfiles
 import oscommon
 export dirExists
 

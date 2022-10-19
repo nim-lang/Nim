@@ -5,7 +5,7 @@ import std/oserrors
 import oscommon
 export fileExists
 
-import ospaths
+import ospaths2
 
 
 when defined(nimPreviewSlimSystem):

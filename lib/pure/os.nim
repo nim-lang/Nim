@@ -28,16 +28,16 @@ runnableExamples:
 ## * `distros module <distros.html>`_
 ## * `dynlib module <dynlib.html>`_
 ## * `streams module <streams.html>`_
-import ospaths
-export ospaths
+import std/private/ospaths2
+export ospaths2
 
-import osfiles
+import std/private/osfiles
 export osfiles
 
-import osdirs
+import std/private/osdirs
 export osdirs
 
-import ossymlinks
+import std/private/ossymlinks
 export ossymlinks
 
 
@@ -77,12 +77,6 @@ else:
   {.pragma: noNimJs.}
 
 
-{.pragma: paths.}
-{.pragma: files.}
-{.pragma: dirs.}
-{.pragma: symlinks.}
-{.pragma: appdirs.}
-
 import std/oserrors
 export oserrors
 import std/envvars
@@ -119,7 +113,7 @@ when defined(windows) and not weirdTarget:
 
 
 proc getHomeDir*(): string {.rtl, extern: "nos$1",
-  tags: [ReadEnvEffect, ReadIOEffect], appdirs.} =
+  tags: [ReadEnvEffect, ReadIOEffect].} =
   ## Returns the home directory of the current user.
   ##
   ## This proc is wrapped by the `expandTilde proc`_
@@ -138,7 +132,7 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   else: return getEnv("HOME") & "/"
 
 proc getConfigDir*(): string {.rtl, extern: "nos$1",
-  tags: [ReadEnvEffect, ReadIOEffect], appdirs.} =
+  tags: [ReadEnvEffect, ReadIOEffect].} =
   ## Returns the config directory of the current user for applications.
   ##
   ## On non-Windows OSs, this proc conforms to the XDG Base Directory
@@ -162,7 +156,7 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   result.normalizePathEnd(trailingSep = true)
 
 
-proc getCacheDir*(): string {.appdirs.} =
+proc getCacheDir*(): string =
   ## Returns the cache directory of the current user for applications.
   ##
   ## This makes use of the following environment variables:
@@ -186,7 +180,7 @@ proc getCacheDir*(): string {.appdirs.} =
     result = getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".cache")
   result.normalizePathEnd(false)
 
-proc getCacheDir*(app: string): string {.appdirs.} =
+proc getCacheDir*(app: string): string =
   ## Returns the cache directory for an application `app`.
   ##
   ## * On Windows, this uses: `getCacheDir() / app / "cache"`
@@ -221,7 +215,7 @@ template getTempDirImpl(result: var string) =
     getEnvImpl(result, ["TMPDIR", "TEMP", "TMP", "TEMPDIR"])
 
 proc getTempDir*(): string {.rtl, extern: "nos$1",
-  tags: [ReadEnvEffect, ReadIOEffect], appdirs.} =
+  tags: [ReadEnvEffect, ReadIOEffect].} =
   ## Returns the temporary directory of the current user for applications to
   ## save temporary files in.
   ##
@@ -263,7 +257,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   normalizePathEnd(result, trailingSep=true)
 
 proc expandTilde*(path: string): string {.
-  tags: [ReadEnvEffect, ReadIOEffect], paths.} =
+  tags: [ReadEnvEffect, ReadIOEffect].} =
   ## Expands ``~`` or a path starting with ``~/`` to a full path, replacing
   ## ``~`` with `getHomeDir()`_ (otherwise returns ``path`` unmodified).
   ##
