@@ -36,12 +36,6 @@ elif defined(js):
 else:
   {.pragma: noNimJs.}
 
-{.pragma: paths.}
-{.pragma: files.}
-{.pragma: dirs.}
-{.pragma: symlinks.}
-{.pragma: appdirs.}
-
 # Templates for filtering directories and files
 when defined(windows) and not weirdTarget:
   template isDir(f: WIN32_FIND_DATA): bool =
@@ -135,7 +129,7 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTar
     assert "lib/pure/os.nim".unixToNativePath in toSeq(walkFiles("lib/pure/*.nim")) # works on Windows too
   walkCommon(pattern, isFile)
 
-iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarget, dirs.} =
+iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarget.} =
   ## Iterate over all the directories that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
@@ -158,7 +152,7 @@ proc staticWalkDir(dir: string; relative: bool): seq[
   discard
 
 iterator walkDir*(dir: string; relative = false, checkDir = false):
-  tuple[kind: PathComponent, path: string] {.tags: [ReadDirEffect], dirs.} =
+  tuple[kind: PathComponent, path: string] {.tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
   ##
@@ -262,7 +256,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
 
 iterator walkDirRec*(dir: string,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
-                     relative = false, checkDir = false): string {.tags: [ReadDirEffect], dirs.} =
+                     relative = false, checkDir = false): string {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
@@ -331,7 +325,7 @@ proc rawRemoveDir(dir: string) {.noWeirdTarget.} =
     if rmdir(dir) != 0'i32 and errno != ENOENT: raiseOSError(osLastError(), dir)
 
 proc removeDir*(dir: string, checkDir = false) {.rtl, extern: "nos$1", tags: [
-  WriteDirEffect, ReadDirEffect], benign, noWeirdTarget, dirs.} =
+  WriteDirEffect, ReadDirEffect], benign, noWeirdTarget.} =
   ## Removes the directory `dir` including all subdirectories and files
   ## in `dir` (recursively).
   ##
@@ -400,7 +394,7 @@ proc rawCreateDir(dir: string): bool {.noWeirdTarget.} =
       raiseOSError(osLastError(), dir)
 
 proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
-  tags: [WriteDirEffect, ReadDirEffect], noWeirdTarget, dirs.} =
+  tags: [WriteDirEffect, ReadDirEffect], noWeirdTarget.} =
   ## Checks if a `directory`:idx: `dir` exists, and creates it otherwise.
   ##
   ## Does not create parent directories (raises `OSError` if parent directories do not exist).
@@ -419,7 +413,7 @@ proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
       raise newException(IOError, "Failed to create '" & dir & "'")
 
 proc createDir*(dir: string) {.rtl, extern: "nos$1",
-  tags: [WriteDirEffect, ReadDirEffect], noWeirdTarget, dirs.} =
+  tags: [WriteDirEffect, ReadDirEffect], noWeirdTarget.} =
   ## Creates the `directory`:idx: `dir`.
   ##
   ## The directory may contain several subdirectories that do not exist yet.
@@ -444,7 +438,7 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1",
       discard existsOrCreateDir(p)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [ReadDirEffect, WriteIOEffect, ReadIOEffect], benign, noWeirdTarget, dirs.} =
+  tags: [ReadDirEffect, WriteIOEffect, ReadIOEffect], benign, noWeirdTarget.} =
   ## Copies a directory from `source` to `dest`.
   ##
   ## On non-Windows OSes, symlinks are copied as symlinks. On Windows, symlinks
@@ -522,7 +516,7 @@ proc copyDirWithPermissions*(source, dest: string,
     else:
       copyFileWithPermissions(path, dest / noSource, ignorePermissionErrors, {cfSymlinkAsIs})
 
-proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget, dirs.} =
+proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
   ## Moves a directory from `source` to `dest`.
   ##
   ## Symlinks are not followed: if `source` contains symlinks, they themself are
