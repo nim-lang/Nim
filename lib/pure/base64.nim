@@ -165,8 +165,8 @@ proc encode*[T: SomeInteger and not byte](s: openArray[T], safe = false): string
   {.deprecated: "use `byte` or `char` instead".} =
   encodeImpl()
 
-proc encodeMime*[T: char|byte](s: openArray[T], lineLen = 75.Positive,
-                               newLine = "\r\n", safe = false): string =
+proc encodeMime*(s: string, lineLen = 75.Positive, newLine = "\r\n",
+                 safe = false): string =
   ## Encodes `s` into base64 representation as lines.
   ## Used in email MIME format, use `lineLen` and `newline`.
   ##
