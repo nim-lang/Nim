@@ -4,18 +4,8 @@ import std/oserrors
 
 import ospaths2, osfiles
 import oscommon
-export dirExists
+export dirExists, PathComponent
 
-type
-  PathComponent* = enum   ## Enumeration specifying a path component.
-    ##
-    ## See also:
-    ## * `walkDirRec iterator`_
-    ## * `FileInfo object`_
-    pcFile,               ## path refers to a file
-    pcLinkToFile,         ## path refers to a symbolic link to a file
-    pcDir,                ## path refers to a directory
-    pcLinkToDir           ## path refers to a symbolic link to a directory
 
 
 when defined(nimPreviewSlimSystem):
@@ -194,16 +184,6 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarg
     let paths = toSeq(walkDirs("lib/pure/*")) # works on Windows too
     assert "lib/pure/concurrency".unixToNativePath in paths
   walkCommon(pattern, isDir)
-
-when defined(posix) and not weirdTarget:
-  proc getSymlinkFileKind(path: string): PathComponent =
-    # Helper function.
-    var s: Stat
-    assert(path != "")
-    if stat(path, s) == 0'i32 and S_ISDIR(s.st_mode):
-      result = pcLinkToDir
-    else:
-      result = pcLinkToFile
 
 proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
@@ -573,34 +553,6 @@ proc copyDirWithPermissions*(source, dest: string,
       copyDirWithPermissions(path, dest / noSource, ignorePermissionErrors)
     else:
       copyFileWithPermissions(path, dest / noSource, ignorePermissionErrors, {cfSymlinkAsIs})
-
-
-proc tryMoveFSObject(source, dest: string, isDir: bool): bool {.noWeirdTarget.} =
-  ## Moves a file (or directory if `isDir` is true) from `source` to `dest`.
-  ##
-  ## Returns false in case of `EXDEV` error or `AccessDeniedError` on Windows (if `isDir` is true).
-  ## In case of other errors `OSError` is raised.
-  ## Returns true in case of success.
-  when defined(windows):
-    when useWinUnicode:
-      let s = newWideCString(source)
-      let d = newWideCString(dest)
-      result = moveFileExW(s, d, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
-    else:
-      result = moveFileExA(source, dest, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
-  else:
-    result = c_rename(source, dest) == 0'i32
-
-  if not result:
-    let err = osLastError()
-    let isAccessDeniedError =
-      when defined(windows):
-        const AccessDeniedError = OSErrorCode(5)
-        isDir and err == AccessDeniedError
-      else:
-        err == EXDEV.OSErrorCode
-    if not isAccessDeniedError:
-      raiseOSError(err, $(source, dest))
 
 proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget, dirs.} =
   ## Moves a directory from `source` to `dest`.

@@ -1,6 +1,7 @@
 include system/inclrtl
 
 import ospaths2
+import std/[oserrors]
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
@@ -14,6 +15,9 @@ elif defined(windows):
   import winlean, times
 elif defined(posix):
   import posix, times
+
+  proc c_rename(oldname, newname: cstring): cint {.
+    importc: "rename", header: "<stdio.h>".}
 
   proc toTime(ts: Timespec): times.Time {.inline.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
@@ -35,11 +39,6 @@ elif defined(js):
 else:
   {.pragma: noNimJs.}
 
-{.pragma: paths.}
-{.pragma: files.}
-{.pragma: dirs.}
-{.pragma: symlinks.}
-{.pragma: appdirs.}
 
 when defined(windows) and not weirdTarget:
   when useWinUnicode:
@@ -69,9 +68,60 @@ when defined(windows) and not weirdTarget:
              f.cFileName[1].int == dot and f.cFileName[2].int == 0)
 
 
+type
+  PathComponent* = enum   ## Enumeration specifying a path component.
+    ##
+    ## See also:
+    ## * `walkDirRec iterator`_
+    ## * `FileInfo object`_
+    pcFile,               ## path refers to a file
+    pcLinkToFile,         ## path refers to a symbolic link to a file
+    pcDir,                ## path refers to a directory
+    pcLinkToDir           ## path refers to a symbolic link to a directory
+
+
+when defined(posix) and not weirdTarget:
+  proc getSymlinkFileKind*(path: string): PathComponent =
+    # Helper function.
+    var s: Stat
+    assert(path != "")
+    if stat(path, s) == 0'i32 and S_ISDIR(s.st_mode):
+      result = pcLinkToDir
+    else:
+      result = pcLinkToFile
+
+proc tryMoveFSObject*(source, dest: string, isDir: bool): bool {.noWeirdTarget.} =
+  ## Moves a file (or directory if `isDir` is true) from `source` to `dest`.
+  ##
+  ## Returns false in case of `EXDEV` error or `AccessDeniedError` on Windows (if `isDir` is true).
+  ## In case of other errors `OSError` is raised.
+  ## Returns true in case of success.
+  when defined(windows):
+    when useWinUnicode:
+      let s = newWideCString(source)
+      let d = newWideCString(dest)
+      result = moveFileExW(s, d, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
+    else:
+      result = moveFileExA(source, dest, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
+  else:
+    result = c_rename(source, dest) == 0'i32
+
+  if not result:
+    let err = osLastError()
+    let isAccessDeniedError =
+      when defined(windows):
+        const AccessDeniedError = OSErrorCode(5)
+        isDir and err == AccessDeniedError
+      else:
+        err == EXDEV.OSErrorCode
+    if not isAccessDeniedError:
+      raiseOSError(err, $(source, dest))
+
+when not defined(windows):
+  const maxSymlinkLen* = 1024
 
 proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
-                                          tags: [ReadDirEffect], noNimJs, files.} =
+                                          tags: [ReadDirEffect], noNimJs.} =
   ## Returns true if `filename` exists and is a regular file or symlink.
   ##
   ## Directories, device files, named pipes and sockets return false.
@@ -92,7 +142,7 @@ proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
 
 
 proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
-                                     noNimJs, dirs.} =
+                                     noNimJs.} =
   ## Returns true if the directory `dir` exists. If `dir` is a file, false
   ## is returned. Follows symlinks.
   ##
@@ -113,7 +163,7 @@ proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
 
 proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect],
-                                          noWeirdTarget, symlinks.} =
+                                          noWeirdTarget.} =
   ## Returns true if the symlink `link` exists. Will return true
   ## regardless of whether the link points to a directory or file.
   ##

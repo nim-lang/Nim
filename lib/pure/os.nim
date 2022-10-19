@@ -40,6 +40,7 @@ export osdirs
 import std/private/ossymlinks
 export ossymlinks
 
+import std/private/oscommon
 
 include system/inclrtl
 import std/private/since
@@ -359,13 +360,9 @@ when not weirdTarget:
     importc: "system", header: "<stdlib.h>".}
 
   when not defined(windows):
-    proc c_rename(oldname, newname: cstring): cint {.
-      importc: "rename", header: "<stdio.h>".}
     proc c_free(p: pointer) {.
       importc: "free", header: "<stdlib.h>".}
 
-when not defined(windows):
-  const maxSymlinkLen = 1024
 
 const
   ExeExts* = ## Platform specific file extension for executables.
@@ -569,117 +566,6 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
       raiseOSError(osLastError(), $(path1, path2))
     else:
       result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
-
-type
-  FilePermission* = enum   ## File access permission, modelled after UNIX.
-    ##
-    ## See also:
-    ## * `getFilePermissions`_
-    ## * `setFilePermissions`_
-    ## * `FileInfo object`_
-    fpUserExec,            ## execute access for the file owner
-    fpUserWrite,           ## write access for the file owner
-    fpUserRead,            ## read access for the file owner
-    fpGroupExec,           ## execute access for the group
-    fpGroupWrite,          ## write access for the group
-    fpGroupRead,           ## read access for the group
-    fpOthersExec,          ## execute access for others
-    fpOthersWrite,         ## write access for others
-    fpOthersRead           ## read access for others
-
-proc getFilePermissions*(filename: string): set[FilePermission] {.
-  rtl, extern: "nos$1", tags: [ReadDirEffect], noWeirdTarget.} =
-  ## Retrieves file permissions for `filename`.
-  ##
-  ## `OSError` is raised in case of an error.
-  ## On Windows, only the ``readonly`` flag is checked, every other
-  ## permission is available in any case.
-  ##
-  ## See also:
-  ## * `setFilePermissions proc`_
-  ## * `FilePermission enum`_
-  when defined(posix):
-    var a: Stat
-    if stat(filename, a) < 0'i32: raiseOSError(osLastError(), filename)
-    result = {}
-    if (a.st_mode and S_IRUSR.Mode) != 0.Mode: result.incl(fpUserRead)
-    if (a.st_mode and S_IWUSR.Mode) != 0.Mode: result.incl(fpUserWrite)
-    if (a.st_mode and S_IXUSR.Mode) != 0.Mode: result.incl(fpUserExec)
-
-    if (a.st_mode and S_IRGRP.Mode) != 0.Mode: result.incl(fpGroupRead)
-    if (a.st_mode and S_IWGRP.Mode) != 0.Mode: result.incl(fpGroupWrite)
-    if (a.st_mode and S_IXGRP.Mode) != 0.Mode: result.incl(fpGroupExec)
-
-    if (a.st_mode and S_IROTH.Mode) != 0.Mode: result.incl(fpOthersRead)
-    if (a.st_mode and S_IWOTH.Mode) != 0.Mode: result.incl(fpOthersWrite)
-    if (a.st_mode and S_IXOTH.Mode) != 0.Mode: result.incl(fpOthersExec)
-  else:
-    when useWinUnicode:
-      wrapUnary(res, getFileAttributesW, filename)
-    else:
-      var res = getFileAttributesA(filename)
-    if res == -1'i32: raiseOSError(osLastError(), filename)
-    if (res and FILE_ATTRIBUTE_READONLY) != 0'i32:
-      result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead,
-                fpOthersExec, fpOthersRead}
-    else:
-      result = {fpUserExec..fpOthersRead}
-
-proc setFilePermissions*(filename: string, permissions: set[FilePermission],
-                         followSymlinks = true)
-  {.rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect],
-   noWeirdTarget.} =
-  ## Sets the file permissions for `filename`.
-  ##
-  ## If `followSymlinks` set to true (default) and ``filename`` points to a
-  ## symlink, permissions are set to the file symlink points to.
-  ## `followSymlinks` set to false is a noop on Windows and some POSIX
-  ## systems (including Linux) on which `lchmod` is either unavailable or always
-  ## fails, given that symlinks permissions there are not observed.
-  ##
-  ## `OSError` is raised in case of an error.
-  ## On Windows, only the ``readonly`` flag is changed, depending on
-  ## ``fpUserWrite`` permission.
-  ##
-  ## See also:
-  ## * `getFilePermissions proc`_
-  ## * `FilePermission enum`_
-  when defined(posix):
-    var p = 0.Mode
-    if fpUserRead in permissions: p = p or S_IRUSR.Mode
-    if fpUserWrite in permissions: p = p or S_IWUSR.Mode
-    if fpUserExec in permissions: p = p or S_IXUSR.Mode
-
-    if fpGroupRead in permissions: p = p or S_IRGRP.Mode
-    if fpGroupWrite in permissions: p = p or S_IWGRP.Mode
-    if fpGroupExec in permissions: p = p or S_IXGRP.Mode
-
-    if fpOthersRead in permissions: p = p or S_IROTH.Mode
-    if fpOthersWrite in permissions: p = p or S_IWOTH.Mode
-    if fpOthersExec in permissions: p = p or S_IXOTH.Mode
-
-    if not followSymlinks and filename.symlinkExists:
-      when declared(lchmod):
-        if lchmod(filename, cast[Mode](p)) != 0:
-          raiseOSError(osLastError(), $(filename, permissions))
-    else:
-      if chmod(filename, cast[Mode](p)) != 0:
-        raiseOSError(osLastError(), $(filename, permissions))
-  else:
-    when useWinUnicode:
-      wrapUnary(res, getFileAttributesW, filename)
-    else:
-      var res = getFileAttributesA(filename)
-    if res == -1'i32: raiseOSError(osLastError(), filename)
-    if fpUserWrite in permissions:
-      res = res and not FILE_ATTRIBUTE_READONLY
-    else:
-      res = res or FILE_ATTRIBUTE_READONLY
-    when useWinUnicode:
-      wrapBinary(res2, setFileAttributesW, filename, res)
-    else:
-      var res2 = setFileAttributesA(filename, res)
-    if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
 proc isAdmin*: bool {.noWeirdTarget.} =
   ## Returns whether the caller's process is a member of the Administrators local

@@ -5,7 +5,7 @@ import std/oserrors
 import oscommon
 export fileExists
 
-import ospaths2
+import ospaths2, ossymlinks
 
 
 when defined(nimPreviewSlimSystem):
@@ -38,11 +38,117 @@ elif defined(js):
 else:
   {.pragma: noNimJs.}
 
-{.pragma: paths.}
-{.pragma: files.}
-{.pragma: dirs.}
-{.pragma: symlinks.}
-{.pragma: appdirs.}
+
+type
+  FilePermission* = enum   ## File access permission, modelled after UNIX.
+    ##
+    ## See also:
+    ## * `getFilePermissions`_
+    ## * `setFilePermissions`_
+    ## * `FileInfo object`_
+    fpUserExec,            ## execute access for the file owner
+    fpUserWrite,           ## write access for the file owner
+    fpUserRead,            ## read access for the file owner
+    fpGroupExec,           ## execute access for the group
+    fpGroupWrite,          ## write access for the group
+    fpGroupRead,           ## read access for the group
+    fpOthersExec,          ## execute access for others
+    fpOthersWrite,         ## write access for others
+    fpOthersRead           ## read access for others
+
+proc getFilePermissions*(filename: string): set[FilePermission] {.
+  rtl, extern: "nos$1", tags: [ReadDirEffect], noWeirdTarget.} =
+  ## Retrieves file permissions for `filename`.
+  ##
+  ## `OSError` is raised in case of an error.
+  ## On Windows, only the ``readonly`` flag is checked, every other
+  ## permission is available in any case.
+  ##
+  ## See also:
+  ## * `setFilePermissions proc`_
+  ## * `FilePermission enum`_
+  when defined(posix):
+    var a: Stat
+    if stat(filename, a) < 0'i32: raiseOSError(osLastError(), filename)
+    result = {}
+    if (a.st_mode and S_IRUSR.Mode) != 0.Mode: result.incl(fpUserRead)
+    if (a.st_mode and S_IWUSR.Mode) != 0.Mode: result.incl(fpUserWrite)
+    if (a.st_mode and S_IXUSR.Mode) != 0.Mode: result.incl(fpUserExec)
+
+    if (a.st_mode and S_IRGRP.Mode) != 0.Mode: result.incl(fpGroupRead)
+    if (a.st_mode and S_IWGRP.Mode) != 0.Mode: result.incl(fpGroupWrite)
+    if (a.st_mode and S_IXGRP.Mode) != 0.Mode: result.incl(fpGroupExec)
+
+    if (a.st_mode and S_IROTH.Mode) != 0.Mode: result.incl(fpOthersRead)
+    if (a.st_mode and S_IWOTH.Mode) != 0.Mode: result.incl(fpOthersWrite)
+    if (a.st_mode and S_IXOTH.Mode) != 0.Mode: result.incl(fpOthersExec)
+  else:
+    when useWinUnicode:
+      wrapUnary(res, getFileAttributesW, filename)
+    else:
+      var res = getFileAttributesA(filename)
+    if res == -1'i32: raiseOSError(osLastError(), filename)
+    if (res and FILE_ATTRIBUTE_READONLY) != 0'i32:
+      result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead,
+                fpOthersExec, fpOthersRead}
+    else:
+      result = {fpUserExec..fpOthersRead}
+
+proc setFilePermissions*(filename: string, permissions: set[FilePermission],
+                         followSymlinks = true)
+  {.rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect],
+   noWeirdTarget.} =
+  ## Sets the file permissions for `filename`.
+  ##
+  ## If `followSymlinks` set to true (default) and ``filename`` points to a
+  ## symlink, permissions are set to the file symlink points to.
+  ## `followSymlinks` set to false is a noop on Windows and some POSIX
+  ## systems (including Linux) on which `lchmod` is either unavailable or always
+  ## fails, given that symlinks permissions there are not observed.
+  ##
+  ## `OSError` is raised in case of an error.
+  ## On Windows, only the ``readonly`` flag is changed, depending on
+  ## ``fpUserWrite`` permission.
+  ##
+  ## See also:
+  ## * `getFilePermissions proc`_
+  ## * `FilePermission enum`_
+  when defined(posix):
+    var p = 0.Mode
+    if fpUserRead in permissions: p = p or S_IRUSR.Mode
+    if fpUserWrite in permissions: p = p or S_IWUSR.Mode
+    if fpUserExec in permissions: p = p or S_IXUSR.Mode
+
+    if fpGroupRead in permissions: p = p or S_IRGRP.Mode
+    if fpGroupWrite in permissions: p = p or S_IWGRP.Mode
+    if fpGroupExec in permissions: p = p or S_IXGRP.Mode
+
+    if fpOthersRead in permissions: p = p or S_IROTH.Mode
+    if fpOthersWrite in permissions: p = p or S_IWOTH.Mode
+    if fpOthersExec in permissions: p = p or S_IXOTH.Mode
+
+    if not followSymlinks and filename.symlinkExists:
+      when declared(lchmod):
+        if lchmod(filename, cast[Mode](p)) != 0:
+          raiseOSError(osLastError(), $(filename, permissions))
+    else:
+      if chmod(filename, cast[Mode](p)) != 0:
+        raiseOSError(osLastError(), $(filename, permissions))
+  else:
+    when useWinUnicode:
+      wrapUnary(res, getFileAttributesW, filename)
+    else:
+      var res = getFileAttributesA(filename)
+    if res == -1'i32: raiseOSError(osLastError(), filename)
+    if fpUserWrite in permissions:
+      res = res and not FILE_ATTRIBUTE_READONLY
+    else:
+      res = res or FILE_ATTRIBUTE_READONLY
+    when useWinUnicode:
+      wrapBinary(res2, setFileAttributesW, filename, res)
+    else:
+      var res2 = setFileAttributesA(filename, res)
+    if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
 
 const hasCCopyfile = defined(osx) and not defined(nimLegacyCopyFile)
@@ -73,7 +179,7 @@ const copyFlagSymlink = {cfSymlinkAsIs, cfSymlinkFollow, cfSymlinkIgnore}
 
 proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   extern: "nos$1", tags: [ReadDirEffect, ReadIOEffect, WriteIOEffect],
-  noWeirdTarget, files.} =
+  noWeirdTarget.} =
   ## Copies a file from `source` to `dest`, where `dest.parentDir` must exist.
   ##
   ## On non-Windows OSes, `options` specify the way file is copied; by default,
@@ -163,7 +269,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
         close(d)
 
 proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
-  {.noWeirdTarget, since: (1,3,7), files.} =
+  {.noWeirdTarget, since: (1,3,7).} =
   ## Copies a file `source` into directory `dir`, which must exist.
   ##
   ## On non-Windows OSes, `options` specify the way file is copied; by default,
@@ -236,7 +342,7 @@ when defined(windows) and not weirdTarget:
     template setFileAttributes(file, attrs: untyped): untyped =
       setFileAttributesA(file, attrs)
 
-proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirEffect], noWeirdTarget, files.} =
+proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirEffect], noWeirdTarget.} =
   ## Removes the `file`.
   ##
   ## If this fails, returns `false`. This does not fail
@@ -285,35 +391,8 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect], n
   if not tryRemoveFile(file):
     raiseOSError(osLastError(), file)
 
-proc tryMoveFSObject(source, dest: string, isDir: bool): bool {.noWeirdTarget.} =
-  ## Moves a file (or directory if `isDir` is true) from `source` to `dest`.
-  ##
-  ## Returns false in case of `EXDEV` error or `AccessDeniedError` on Windows (if `isDir` is true).
-  ## In case of other errors `OSError` is raised.
-  ## Returns true in case of success.
-  when defined(windows):
-    when useWinUnicode:
-      let s = newWideCString(source)
-      let d = newWideCString(dest)
-      result = moveFileExW(s, d, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
-    else:
-      result = moveFileExA(source, dest, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
-  else:
-    result = c_rename(source, dest) == 0'i32
-
-  if not result:
-    let err = osLastError()
-    let isAccessDeniedError =
-      when defined(windows):
-        const AccessDeniedError = OSErrorCode(5)
-        isDir and err == AccessDeniedError
-      else:
-        err == EXDEV.OSErrorCode
-    if not isAccessDeniedError:
-      raiseOSError(err, $(source, dest))
-
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [ReadDirEffect, ReadIOEffect, WriteIOEffect], noWeirdTarget, files.} =
+  tags: [ReadDirEffect, ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
   ## Moves a file from `source` to `dest`.
   ##
   ## Symlinks are not followed: if `source` is a symlink, it is itself moved,
