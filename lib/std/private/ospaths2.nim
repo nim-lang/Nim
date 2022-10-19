@@ -26,7 +26,7 @@ since (1, 1):
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean, times
+  import winlean
 elif defined(posix):
   import posix, system/ansi_c
 else:

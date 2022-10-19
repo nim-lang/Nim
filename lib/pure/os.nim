@@ -86,33 +86,6 @@ export envvars
 import std/private/osseps
 export osseps
 
-when defined(windows) and not weirdTarget:
-  when useWinUnicode:
-    template wrapUnary(varname, winApiProc, arg: untyped) =
-      var varname = winApiProc(newWideCString(arg))
-
-    template wrapBinary(varname, winApiProc, arg, arg2: untyped) =
-      var varname = winApiProc(newWideCString(arg), arg2)
-    proc findFirstFile(a: string, b: var WIN32_FIND_DATA): Handle =
-      result = findFirstFileW(newWideCString(a), b)
-    template findNextFile(a, b: untyped): untyped = findNextFileW(a, b)
-    template getCommandLine(): untyped = getCommandLineW()
-
-    template getFilename(f: untyped): untyped =
-      $cast[WideCString](addr(f.cFileName[0]))
-  else:
-    template findFirstFile(a, b: untyped): untyped = findFirstFileA(a, b)
-    template findNextFile(a, b: untyped): untyped = findNextFileA(a, b)
-    template getCommandLine(): untyped = getCommandLineA()
-
-    template getFilename(f: untyped): untyped = $cstring(addr f.cFileName)
-  proc skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
-    # Note - takes advantage of null delimiter in the cstring
-    const dot = ord('.')
-    result = f.cFileName[0].int == dot and (f.cFileName[1].int == 0 or
-             f.cFileName[1].int == dot and f.cFileName[2].int == 0)
-
-
 proc getHomeDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
   ## Returns the home directory of the current user.

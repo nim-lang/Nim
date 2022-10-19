@@ -14,7 +14,7 @@ when defined(nimPreviewSlimSystem):
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean, times
+  import winlean
 elif defined(posix):
   import posix, times
 
