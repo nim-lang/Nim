@@ -172,6 +172,12 @@ proc encodeMime*(s: string, lineLen = 75.Positive, newLine = "\r\n",
   ##
   ## This procedure encodes a string according to MIME spec.
   ##
+  ## If `safe` is `true` then it will encode using the
+  ## URL-Safe and Filesystem-safe standard alphabet characters,
+  ## which substitutes `-` instead of `+` and `_` instead of `/`.
+  ## * https://en.wikipedia.org/wiki/Base64#URL_applications
+  ## * https://tools.ietf.org/html/rfc4648#page-7
+  ##
   ## **See also:**
   ## * `encode proc<#encode,openArray[T]>`_ for encoding an openArray
   ## * `decode proc<#decode,string>`_ for decoding a string
