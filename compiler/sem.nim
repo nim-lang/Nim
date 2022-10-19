@@ -375,6 +375,11 @@ proc semConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
     return n
   if e.kind in nkSymChoices and e[0].typ.skipTypes(abstractInst).kind == tyEnum:
     return e
+  if e.typ.kind == tyProc and e.typ.callConv == ccClosure and {tfHasAsgn, tfEffectSystemWorkaround} * e.typ.flags != {}:
+    localError(c.config, n.info, "closure proc cannot cross environment: " &
+                   renderTree(n, {renderNoComments}))
+    return e
+
   result = getConstExpr(c.module, e, c.idgen, c.graph)
   if result == nil:
     #if e.kind == nkEmpty: globalError(n.info, errConstExprExpected)
