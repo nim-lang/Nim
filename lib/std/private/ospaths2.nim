@@ -28,10 +28,7 @@ when weirdTarget:
 elif defined(windows):
   import winlean, times
 elif defined(posix):
-  import posix, times, system/ansi_c
-
-  proc toTime(ts: Timespec): times.Time {.inline.} =
-    result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
+  import posix, system/ansi_c
 else:
   {.error: "OS module not ported to your operating system!".}
 

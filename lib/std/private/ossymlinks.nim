@@ -1,25 +1,18 @@
 include system/inclrtl
 import std/oserrors
 
-
-import ospaths2
 import oscommon
 export symlinkExists
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
 
-const weirdTarget = defined(nimscript) or defined(js)
-
 when weirdTarget:
   discard
 elif defined(windows):
   import winlean, times
 elif defined(posix):
-  import posix, times
-
-  proc toTime(ts: Timespec): times.Time {.inline.} =
-    result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
+  import posix
 else:
   {.error: "OS module not ported to your operating system!".}
 

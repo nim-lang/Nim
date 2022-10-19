@@ -7,11 +7,8 @@ import oscommon
 export dirExists, PathComponent
 
 
-
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
-
-const weirdTarget = defined(nimscript) or defined(js)
 
 
 when weirdTarget:
@@ -21,8 +18,6 @@ elif defined(windows):
 elif defined(posix):
   import posix, times
 
-  proc toTime(ts: Timespec): times.Time {.inline.} =
-    result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
 else:
   {.error: "OS module not ported to your operating system!".}
 

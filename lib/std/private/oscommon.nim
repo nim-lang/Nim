@@ -14,13 +14,9 @@ when weirdTarget:
 elif defined(windows):
   import winlean, times
 elif defined(posix):
-  import posix, times
-
+  import posix
   proc c_rename(oldname, newname: cstring): cint {.
     importc: "rename", header: "<stdio.h>".}
-
-  proc toTime(ts: Timespec): times.Time {.inline.} =
-    result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
 else:
   {.error: "OS module not ported to your operating system!".}
 
