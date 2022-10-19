@@ -782,7 +782,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
       n[1] = liftCapturedVars(n[1], owner, d, c)
       if n[1].kind == nkClosure: result = n[1]
   of nkReturnStmt:
-    if n[0].kind in {nkAsgn, nkFastAsgn}:
+    if n[0].kind in {nkAsgn, nkFastAsgn, nkSinkAsgn}:
       # we have a `result = result` expression produced by the closure
       # transform, let's not touch the LHS in order to make the lifting pass
       # correct when `result` is lifted

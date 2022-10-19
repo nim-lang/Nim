@@ -60,7 +60,7 @@ pkg "criterion", allowFailure = true # pending https://github.com/disruptek/crit
 pkg "datamancer"
 pkg "dashing", "nim c tests/functional.nim"
 pkg "delaunay", url = "https://github.com/nim-lang/DelaunayNim", useHead = true
-pkg "docopt"
+pkg "docopt", url = "https://github.com/nim-lang/docopt.nim", useHead = true
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
 pkg "fidget"
@@ -68,7 +68,7 @@ pkg "fragments", "nim c -r fragments/dsl.nim", allowFailure = true # pending htt
 pkg "fusion"
 pkg "gara"
 pkg "glob"
-pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
+pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim", url = "https://github.com/nim-lang/ggplotnim", useHead = true
 pkg "gittyup", "nimble test", "https://github.com/disruptek/gittyup", allowFailure = true
 pkg "gnuplot", "nim c gnuplot.nim"
 # pkg "gram", "nim c -r --gc:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
@@ -109,7 +109,7 @@ pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
 pkg "nimPNG", useHead = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
-pkg "nimquery"
+pkg "nimquery", url = "https://github.com/nim-lang/nimquery", useHead = true
 pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
@@ -121,7 +121,7 @@ pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nimble nimCI"
 pkg "optionsutils"
 pkg "ormin", "nim c -o:orminn ormin.nim"
-pkg "parsetoml"
+pkg "parsetoml", url = "https://github.com/nim-lang/parsetoml", useHead = true
 pkg "patty"
 pkg "pixie"
 pkg "plotly", "nim c examples/all.nim"
@@ -158,11 +158,11 @@ pkg "tiny_sqlite"
 pkg "unicodedb", "nim c -d:release -r tests/tests.nim"
 pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "unpack"
-pkg "weave", "nimble install -y cligen synthesis;nimble test_gc_arc"
+pkg "weave", "nimble install -y cligen synthesis;nimble test_gc_arc", url = "https://github.com/nim-lang/weave", useHead = true
 pkg "websocket", "nim c websocket.nim"
 pkg "winim", "nim c winim.nim"
 pkg "with"
 pkg "ws", allowFailure = true
-pkg "yaml", "nim c -r test/tserialization.nim"
+pkg "yaml", "nim c -r test/tserialization.nim", url = "https://github.com/nim-lang/NimYAML", useHead = true
 pkg "zero_functional", "nim c -r -d:nimNoLentIterators test.nim"
 pkg "zippy"

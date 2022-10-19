@@ -3086,7 +3086,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     cow(p, n[1])
     if nfPreventCg notin n.flags:
       genAsgn(p, n, fastAsgn=false)
-  of nkFastAsgn:
+  of nkFastAsgn, nkSinkAsgn:
     cow(p, n[1])
     if nfPreventCg notin n.flags:
       # transf is overly aggressive with 'nkFastAsgn', so we work around here.

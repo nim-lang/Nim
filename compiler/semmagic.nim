@@ -78,8 +78,8 @@ proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result[1] = n.lastSon
   result = semAsgn(c, result, noOverloadedSubscript)
 
-proc semAsgnOpr(c: PContext; n: PNode): PNode =
-  result = newNodeI(nkAsgn, n.info, 2)
+proc semAsgnOpr(c: PContext; n: PNode; k: TNodeKind): PNode =
+  result = newNodeI(k, n.info, 2)
   result[0] = n[1]
   result[1] = n[2]
   result = semAsgn(c, result, noOverloadedAsgn)
@@ -553,7 +553,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = semArrPut(c, n, flags)
   of mAsgn:
     if n[0].sym.name.s == "=":
-      result = semAsgnOpr(c, n)
+      result = semAsgnOpr(c, n, nkAsgn)
+    elif n[0].sym.name.s == "=sink":
+      result = semAsgnOpr(c, n, nkSinkAsgn)
     else:
       result = semShallowCopy(c, n, flags)
   of mIsPartOf: result = semIsPartOf(c, n, flags)

@@ -211,8 +211,7 @@ type
     nkDistinctTy,         # distinct type
     nkProcTy,             # proc type
     nkIteratorTy,         # iterator type
-    nkSharedTy,           # 'shared T'
-                          # we use 'nkPostFix' for the 'not nil' addition
+    nkSinkAsgn,           # '=sink(x, y)'
     nkEnumTy,             # enum body
     nkEnumFieldDef,       # `ident = expr` in an enumeration
     nkArgList,            # argument list

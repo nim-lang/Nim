@@ -21,7 +21,7 @@ createMenuItem(s, "Go to definition...",
 )
 
 
-proc noRaise(x: proc()) {.raises: [].} =
+proc noRaise(x: proc()) {.raises: [], effectsOf: x.} =
   # unknown call that might raise anything, but valid:
   x()
 
