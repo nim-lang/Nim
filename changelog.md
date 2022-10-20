@@ -216,7 +216,8 @@
   need to convert to `string`. On the JS backend, this is translated directly
   to a `switch` statement.
 
-- Nim now supports `out` parameters.
+- Nim now supports `out` parameters and ["strict definitions"](https://nim-lang.github.io/Nim/manual_experimental.html#strict-definitions-and-nimout-parameters).
+- Nim now offers a [strict mode](https://nim-lang.github.io/Nim/manual_experimental.html#strict-case-objects) for `case objects`.
 
 
 ## Compiler changes
