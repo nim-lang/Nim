@@ -81,6 +81,7 @@ type
     opcWrStrIdx,
     opcLdStrIdx, # a = b[c]
     opcLdStrIdxAddr,  # a = addr(b[c])
+    opcSlice, # toOpenArray(collection, left, right)
 
     opcAddInt,
     opcAddImmInt,
