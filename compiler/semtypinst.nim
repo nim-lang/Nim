@@ -205,9 +205,9 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
   of nkOpenSymChoice, nkClosedSymChoice: result = n
   of nkSym:
     result.sym = replaceTypeVarsS(cl, n.sym)
-    if result.sym.typ.kind == tyVoid:
+    #if result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
-      result = newNodeI(nkRecList, n.info)
+    #  result = newNodeI(nkRecList, n.info)
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
     for i in 0..<n.len:

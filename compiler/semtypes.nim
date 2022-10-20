@@ -1339,8 +1339,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if isType: localError(c.config, a.info, "':' expected")
       if kind in {skTemplate, skMacro}:
         typ = newTypeS(tyUntyped, c)
-    elif skipTypes(typ, {tyGenericInst, tyAlias, tySink}).kind == tyVoid:
-      continue
+    #elif skipTypes(typ, {tyGenericInst, tyAlias, tySink}).kind == tyVoid:
+    #  continue
 
     for j in 0..<a.len-2:
       var arg = newSymG(skParam, if a[j].kind == nkPragmaExpr: a[j][0] else: a[j], c)

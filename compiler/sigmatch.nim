@@ -2594,7 +2594,11 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           var container = newNodeIT(cnKind, n.info, arrayConstr(c, n.info))
           setSon(m.call, formal.position + 1,
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+        elif formal.typ.kind == tyVoid:
+          # Void parameters count as fully optional as they are the absence of data
+          discard
         else:
+          #echo m.callee
           # no default value
           m.state = csNoMatch
           m.firstMismatch.kind = kMissingParam

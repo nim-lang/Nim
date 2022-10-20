@@ -299,7 +299,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   if result[0] != nil:
     propagateToOwner(result, result[0])
 
-  eraseVoidParams(result)
+  #eraseVoidParams(result)
   skipIntLiteralParams(result, c.idgen)
 
   prc.typ = result
