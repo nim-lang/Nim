@@ -16,6 +16,7 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   ## * `getCurrentDir proc`_
   ## * `setCurrentDir proc`_
   runnableExamples:
+    import std/os
     assert getHomeDir() == expandTilde("~")
 
   when defined(windows): return getEnv("USERPROFILE") & "\\"
