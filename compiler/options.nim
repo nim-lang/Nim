@@ -764,7 +764,8 @@ proc getOsCacheDir(): string =
   when defined(posix):
     result = getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache") / "nim"
   else:
-    result = getHomeDir() / genSubDir.string
+    let nimCacheHome = getEnv("NIM_CACHE_HOME")
+    result = if nimCacheHome == "": (getHomeDir() / genSubDir.string) else: nimCacheHome
 
 proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
   proc nimcacheSuffix(conf: ConfigRef): string =
