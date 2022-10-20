@@ -866,7 +866,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       call.add(a)
 
     #echo "NOW evaluating at compile time: ", call.renderTree
-    if c.inStaticContext == 0 or sfNoSideEffect in callee.flags:
+    if (c.inStaticContext == 0 and callee.kind != skConst) or sfNoSideEffect in callee.flags:
       if sfCompileTime in callee.flags:
         result = evalStaticExpr(c.module, c.idgen, c.graph, call, c.p.owner)
         if result.isNil:

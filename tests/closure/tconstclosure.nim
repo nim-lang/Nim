@@ -3,9 +3,9 @@ discard """
   cmd: "nim check --hints:off --warnings:off $file"
   action: "reject"
   nimout: '''
-tconstclosure.nim(34, 11) Error: closure proc cannot cross environment: proc () {.closure.} = echo ["Hello"]
-tconstclosure.nim(35, 2) Error: VM problem: dest register is not set
-tconstclosure.nim(44, 24) Error: closure proc cannot cross environment: makeMyClosure(myRef)
+tconstclosure.nim(44, 24) Error: const closure proc with an environment cannot be used at runtime: makeMyClosure(myRef)
+
+
 
 
 

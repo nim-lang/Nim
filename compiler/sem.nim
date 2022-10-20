@@ -375,8 +375,8 @@ proc semConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
     return n
   if e.kind in nkSymChoices and e[0].typ.skipTypes(abstractInst).kind == tyEnum:
     return e
-  if e.typ.kind == tyProc and e.typ.callConv == ccClosure and {tfHasAsgn, tfEffectSystemWorkaround} * e.typ.flags != {}:
-    localError(c.config, n.info, "closure proc cannot cross environment: " &
+  if e.typ.kind == tyProc and e.typ.callConv == ccClosure and {tfHasAsgn} * e.typ.flags != {}:
+    localError(c.config, n.info, "const closure proc with an environment cannot be used at runtime: " &
                    renderTree(n, {renderNoComments}))
     return e
 
