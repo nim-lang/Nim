@@ -580,6 +580,8 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
 
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   let s = n.sym
+  if s.typ.kind == tyVoid: return
+
   if s.loc.k == locNone:
     fillBackendName(p.module, s)
     fillLoc(s.loc, locGlobalVar, n, OnHeap)

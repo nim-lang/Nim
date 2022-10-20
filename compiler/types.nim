@@ -1434,7 +1434,7 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
 
 
 proc isCompileTimeOnly*(t: PType): bool {.inline.} =
-  result = t.kind in {tyTypeDesc, tyStatic}
+  result = t.kind in {tyTypeDesc, tyStatic, tyVoid}
 
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true

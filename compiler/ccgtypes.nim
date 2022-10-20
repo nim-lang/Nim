@@ -908,7 +908,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
      tyUserTypeClass, tyUserTypeClassInst, tyInferred:
     result = getTypeDescAux(m, lastSon(t), check, kind)
   of tyVoid:
-    result = ""
+    result = "void"
   else:
     internalError(m.config, "getTypeDescAux(" & $t.kind & ')')
     result = ""

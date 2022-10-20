@@ -2496,6 +2496,13 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         if flexibleOptionalParams in c.features and a >= firstArgBlock:
           f = max(f, m.callee.n.len - (n.len - a))
         formal = m.callee.n[f].sym
+
+        #echo n[a].typ.kind, " ::: ", formal.typ
+        #echo formal.typ.kind
+        #if formal.typ.kind == tyVoid and n[a].typ.kind != tyVoid:
+        #  inc f
+        #  continue
+
         m.firstMismatch.kind = kTypeMismatch
         if containsOrIncl(marker, formal.position) and container.isNil:
           m.firstMismatch.kind = kPositionalAlreadyGiven
