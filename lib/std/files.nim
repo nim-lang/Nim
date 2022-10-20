@@ -1,4 +1,4 @@
-import paths
+from paths import Path, ReadDirEffect, WriteDirEffect
 
 from std/private/osfiles import fileExists, tryRemoveFile, removeFile,
                                 removeFile, moveFile

@@ -1,4 +1,4 @@
-import paths
+from paths import Path, ReadDirEffect
 
 from std/private/ossymlinks import symlinkExists, createSymlink, expandSymlink
 
@@ -10,4 +10,4 @@ proc createSymlink*(src, dest: Path) =
   createSymlink(src.string, dest.string)
 
 proc expandSymlink*(symlinkPath: Path): Path =
-  result = expandSymlink(symlinkPath)
+  result = Path(expandSymlink(symlinkPath.string))
