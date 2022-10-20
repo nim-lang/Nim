@@ -89,6 +89,9 @@
 - ORC is now the default memory management strategy. Use
   `--mm:refc` for a transition period.
 
+- `strictEffects` are no longer experimental.
+  Use `legacy:laxEffects` to keep backward compatibility.
+
 - The `gorge`/`staticExec` calls will now return a descriptive message in the output
   if the execution fails for whatever reason. To get back legacy behaviour use `-d:nimLegacyGorgeErrors`.
 
@@ -108,8 +111,7 @@
   making limiting it to just the first char (`last = 0`) valid.
 - `random.rand` now works with `Ordinal`s.
 - Undeprecated `os.isvalidfilename`.
-- `std/oids` now uses `int64` to store time internally (before it was int32), the length of
-  the string form of `Oid` changes from 24 to 32.
+- `std/oids` now uses `int64` to store time internally (before it was int32).
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:

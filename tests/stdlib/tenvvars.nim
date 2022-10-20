@@ -46,6 +46,7 @@ template main =
       doAssert not existsEnv("NIM_TESTS_TOSENV_PUT=DUMMY_VALUE")
       doAssert not existsEnv("NIM_TESTS_TOSENV_PUT")
 
+static: main()
 main()
 
 when defined(windows):
@@ -69,7 +70,7 @@ when not defined(js) and not defined(nimscript):
 
     doAssertRaises(OSError): delEnv("foo=bar")
 
-when defined(windows):
+when defined(windows) and not defined(nimscript):
   import std/encodings
 
   proc c_putenv(env: cstring): int32 {.importc: "putenv", header: "<stdlib.h>".}

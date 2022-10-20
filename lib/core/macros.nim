@@ -79,7 +79,7 @@ type
     nnkDistinctTy,
     nnkProcTy,
     nnkIteratorTy,         # iterator type
-    nnkSharedTy,           # 'shared T'
+    nnkSinkAsgn,
     nnkEnumTy,
     nnkEnumFieldDef,
     nnkArgList, nnkPattern
@@ -127,6 +127,7 @@ type
 
 const
   nnkMutableTy* {.deprecated.} = nnkOutTy
+  nnkSharedTy* {.deprecated.} = nnkSinkAsgn
 
 type
   NimIdent* {.deprecated.} = object of RootObj

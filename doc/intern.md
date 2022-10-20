@@ -364,7 +364,7 @@ Files that may need changed for your platform include:
   Add os/cpu to `Project.Platforms` field.
 * `lib/system/platforms.nim`
   Add os/cpu.
-* `lib/pure/include/osseps.nim`
+* `std/private/osseps.nim`
   Add os specializations.
 * `lib/pure/distros.nim`
   Add os, package handler.

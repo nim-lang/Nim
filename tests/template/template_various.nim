@@ -353,3 +353,18 @@ block gensym3:
   echo a ! b ! c ! d
   echo a ! b ! c ! d ! e
   echo x,y,z
+
+
+block identifier_construction_with_overridden_symbol:
+  # could use add, but wanna make sure it's an override no matter what
+  func examplefn = discard
+  func examplefn(x: int) = discard
+
+  # the function our template wants to use
+  func examplefn1 = discard
+
+  template exampletempl(n) =
+    # attempt to build a name using the overridden symbol "examplefn"
+    `examplefn n`()
+
+  exampletempl(1)

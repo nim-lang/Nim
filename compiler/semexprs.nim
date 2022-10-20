@@ -973,7 +973,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
   var prc = n[0]
   if n[0].kind == nkDotExpr:
     checkSonsLen(n[0], 2, c.config)
-    let n0 = semFieldAccess(c, n[0])
+    let n0 = semFieldAccess(c, n[0], {efIsDotCall})
     if n0.kind == nkDotCall:
       # it is a static call!
       result = n0
@@ -1474,8 +1474,9 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this is difficult, because the '.' is used in many different contexts
   # in Nim. We first allow types in the semantic checking.
-  result = builtinFieldAccess(c, n, flags)
-  if result == nil:
+  result = builtinFieldAccess(c, n, flags - {efIsDotCall})
+  if result == nil or ((result.typ == nil or result.typ.skipTypes(abstractInst).kind != tyProc) and 
+      efIsDotCall in flags and callOperator notin c.features):
     result = dotTransformation(c, n)
 
 proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
@@ -2421,8 +2422,8 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   #   ...
   var whenNimvm = false
   var typ = commonTypeBegin
-  if n.len == 2 and n[0].kind == nkElifBranch and
-      n[1].kind == nkElse:
+  if n.len in 1..2 and n[0].kind == nkElifBranch and (
+      n.len == 1 or n[1].kind == nkElse):
     let exprNode = n[0][0]
     if exprNode.kind == nkIdent:
       whenNimvm = lookUp(c, exprNode).magic == mNimvm
@@ -2460,7 +2461,10 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
     else: illFormedAst(n, c.config)
   if result == nil:
     result = newNodeI(nkEmpty, n.info)
-  if whenNimvm: result.typ = typ
+  if whenNimvm:
+    result.typ = typ
+    if n.len == 1:
+      result.add(newTree(nkElse, newNode(nkStmtList)))
 
 proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
   result = newNodeI(nkCurly, n.info)
