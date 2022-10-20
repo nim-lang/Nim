@@ -1054,8 +1054,12 @@ proc buildProperFieldCheck(access, check: PNode; o: Operators): PNode =
     assert check.getMagic == mNot
     result = buildProperFieldCheck(access, check[1], o).neg(o)
 
-proc checkFieldAccess*(m: TModel, n: PNode; conf: ConfigRef) =
+proc checkFieldAccess*(m: TModel, n: PNode; conf: ConfigRef; produceError: bool) =
   for i in 1..<n.len:
     let check = buildProperFieldCheck(n[0], n[i], m.g.operators)
     if check != nil and m.doesImply(check) != impYes:
-      message(conf, n.info, warnProveField, renderTree(n[0])); break
+      if produceError:
+        localError(conf, n.info, "field access outside of valid case branch: " & renderTree(n[0]))
+      else:
+        message(conf, n.info, warnProveField, renderTree(n[0]))
+      break
