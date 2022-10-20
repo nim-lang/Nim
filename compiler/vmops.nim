@@ -24,7 +24,8 @@ when declared(math.signbit):
 
 
 from std/envvars import getEnv, existsEnv, delEnv, putEnv, envPairs
-from std/os import walkDir, getAppFilename, dirExists, fileExists
+from std/os import walkDir, getAppFilename
+from std/private/oscommon import dirExists, fileExists
 
 from std/times import cpuTime
 from std/hashes import hash
