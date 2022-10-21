@@ -1,8 +1,8 @@
-# v1.8.x - yyyy-mm-dd
+# v2.0.0 - yyyy-mm-dd
 
 
 ## Changes affecting backward compatibility
-- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response, it followed Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously raise `ValueError`.
+- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response, it followed Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously it raised `ValueError`.
 
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
@@ -215,6 +215,10 @@
 - `cstring` is now accepted as a selector in `case` statements, removing the
   need to convert to `string`. On the JS backend, this is translated directly
   to a `switch` statement.
+
+- Nim now supports `out` parameters and ["strict definitions"](https://nim-lang.github.io/Nim/manual_experimental.html#strict-definitions-and-nimout-parameters).
+- Nim now offers a [strict mode](https://nim-lang.github.io/Nim/manual_experimental.html#strict-case-objects) for `case objects`.
+
 
 ## Compiler changes
 

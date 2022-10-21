@@ -217,7 +217,8 @@ type
     strictEffects,
     unicodeOperators, # deadcode
     flexibleOptionalParams,
-    strictDefs
+    strictDefs,
+    strictCaseObjects
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
