@@ -6,7 +6,7 @@ from std/private/ospaths2 {.all.} import joinPathImpl, joinPath, splitPath,
                                       isAbsolute, relativePath, normalizedPath,
                                       normalizePathEnd, isRelativeTo, parentDir,
                                       tailDir, isRootDir, parentDirs, `/../`,
-                                      searchExtPos, extractFilename, lastPathPart,
+                                      extractFilename, lastPathPart,
                                       changeFileExt, addFileExt, cmpPaths, splitFile,
                                       unixToNativePath, absolutePath, normalizeExe,
                                       normalizePath
@@ -15,21 +15,6 @@ export ReadDirEffect, WriteDirEffect
 type
   Path* = distinct string
 
-
-func joinPath*(head, tail: Path): Path {.inline.} =
-  ## Joins two directory names to one.
-  ##
-  ## returns normalized path concatenation of `head` and `tail`, preserving
-  ## whether or not `tail` has a trailing slash (or, if tail if empty, whether
-  ## head has one).
-  ##
-  ## See also:
-  ## * `joinPath(parts: varargs[Path]) proc`_
-  ## * `/ proc`_
-  ## * `splitPath proc`_
-  ## * `uri.combine proc <uri.html#combine,Uri,Uri>`_
-  ## * `uri./ proc <uri.html#/,Uri,string>`_
-  result = Path(joinPath(head.string, tail.string))
 
 func joinPath*(parts: varargs[Path]): Path =
   ## The same as `joinPath(head, tail) proc`_,
@@ -52,16 +37,18 @@ func joinPath*(parts: varargs[Path]): Path =
   result = Path(res)
 
 func `/`*(head, tail: Path): Path {.inline.} =
-  ## The same as `joinPath(head, tail) proc`_.
+  ## Joins two directory names to one.
+  ##
+  ## returns normalized path concatenation of `head` and `tail`, preserving
+  ## whether or not `tail` has a trailing slash (or, if tail if empty, whether
+  ## head has one).
   ##
   ## See also:
-  ## * `/../ proc`_
-  ## * `joinPath(head, tail) proc`_
   ## * `joinPath(parts: varargs[Path]) proc`_
   ## * `splitPath proc`_
   ## * `uri.combine proc <uri.html#combine,Uri,Uri>`_
   ## * `uri./ proc <uri.html#/,Uri,string>`_
-  joinPath(head, tail)
+  Path(joinPath(head.string, tail.string))
 
 func splitPath*(path: Path): tuple[head, tail: Path] {.inline.} =
   ## Splits a directory into `(head, tail)` tuple, so that
@@ -76,7 +63,7 @@ func splitPath*(path: Path): tuple[head, tail: Path] {.inline.} =
   let res = splitPath(path.string)
   result = (Path(res.head), Path(res.tail))
 
-func splitFile*(path: Path): tuple[dir, name, ext: Path] {.inline.} =
+func splitFile*(path: Path): tuple[dir, name: Path, ext: string] {.inline.} =
   ## Splits a filename into `(dir, name, extension)` tuple.
   ##
   ## `dir` does not end in DirSep_ unless it's `/`.
@@ -87,13 +74,12 @@ func splitFile*(path: Path): tuple[dir, name, ext: Path] {.inline.} =
   ## If `path` has no filename component, `name` and `ext` are empty strings.
   ##
   ## See also:
-  ## * `searchExtPos proc`_
   ## * `extractFilename proc`_
   ## * `lastPathPart proc`_
   ## * `changeFileExt proc`_
   ## * `addFileExt proc`_
   let res = splitFile(path.string)
-  result = (Path(res.dir), Path(res.name), Path(res.ext))
+  result = (Path(res.dir), Path(res.name), res.ext)
 
 func isAbsolute*(path: Path): bool {.inline, raises: [].} =
   ## Checks whether a given `path` is absolute.
@@ -187,25 +173,12 @@ func `/../`*(head, tail: Path): Path {.inline.} =
   ## * `parentDir proc`_
   Path(`/../`(head.string, tail.string))
 
-proc searchExtPos*(path: Path): int {.inline.} =
-  ## Returns index of the `'.'` char in `path` if it signifies the beginning
-  ## of extension. Returns -1 otherwise.
-  ##
-  ## See also:
-  ## * `splitFile proc`_
-  ## * `extractFilename proc`_
-  ## * `lastPathPart proc`_
-  ## * `changeFileExt proc`_
-  ## * `addFileExt proc`_
-  result = searchExtPos(path.string)
-
 func extractFilename*(path: Path): Path {.inline.} =
   ## Extracts the filename of a given `path`.
   ##
   ## This is the same as ``name & ext`` from `splitFile(path) proc`_.
   ##
   ## See also:
-  ## * `searchExtPos proc`_
   ## * `splitFile proc`_
   ## * `lastPathPart proc`_
   ## * `changeFileExt proc`_
@@ -217,14 +190,13 @@ func lastPathPart*(path: Path): Path {.inline.} =
   ## trailing dir separator; aka: `baseName`:idx: in some other languages.
   ##
   ## See also:
-  ## * `searchExtPos proc`_
   ## * `splitFile proc`_
   ## * `extractFilename proc`_
   ## * `changeFileExt proc`_
   ## * `addFileExt proc`_
   result = Path(lastPathPart(path.string))
 
-func changeFileExt*(filename, ext: Path): Path {.inline.} =
+func changeFileExt*(filename: Path, ext: string): Path {.inline.} =
   ## Changes the file extension to `ext`.
   ##
   ## If the `filename` has no extension, `ext` will be added.
@@ -235,14 +207,13 @@ func changeFileExt*(filename, ext: Path): Path {.inline.} =
   ## of none such beast.)
   ##
   ## See also:
-  ## * `searchExtPos proc`_
   ## * `splitFile proc`_
   ## * `extractFilename proc`_
   ## * `lastPathPart proc`_
   ## * `addFileExt proc`_
-  result = Path(changeFileExt(filename.string, ext.string))
+  result = Path(changeFileExt(filename.string, ext))
 
-func addFileExt*(filename, ext: Path): Path {.inline.} =
+func addFileExt*(filename: Path, ext: string): Path {.inline.} =
   ## Adds the file extension `ext` to `filename`, unless
   ## `filename` already has an extension.
   ##
@@ -251,12 +222,11 @@ func addFileExt*(filename, ext: Path): Path {.inline.} =
   ## (Although I know of none such beast.)
   ##
   ## See also:
-  ## * `searchExtPos proc`_
   ## * `splitFile proc`_
   ## * `extractFilename proc`_
   ## * `lastPathPart proc`_
   ## * `changeFileExt proc`_
-  result = Path(addFileExt(filename.string, ext.string))
+  result = Path(addFileExt(filename.string, ext))
 
 func cmpPaths*(pathA, pathB: Path): int {.inline.} =
   ## Compares two paths.
@@ -301,9 +271,6 @@ proc setCurrentDir*(newDir: Path) {.inline, tags: [].} =
   ## is raised if `newDir` cannot been set.
   ##
   ## See also:
-  ## * `getHomeDir proc`_
-  ## * `getConfigDir proc`_
-  ## * `getTempDir proc`_
   ## * `getCurrentDir proc`_
   ospaths2.setCurrentDir(newDir.string)
 

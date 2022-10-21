@@ -8,6 +8,10 @@ proc normalizePath*(path: Path; dirSep = DirSep): Path =
 func `==`(x, y: Path): bool =
   x.string == y.string
 
+
+func joinPath(head, tail: Path): Path {.inline.} =
+  head / tail
+
 block absolutePath:
   doAssertRaises(ValueError): discard absolutePath(Path"a", Path"b")
   doAssert absolutePath(Path"a") == getCurrentDir() / Path"a"
@@ -18,22 +22,22 @@ block absolutePath:
     doAssert absolutePath(Path"/a", Path"b/") == Path"/a"
 
 block splitFile:
-  doAssert splitFile(Path"") == (Path"", Path"", Path"")
-  doAssert splitFile(Path"abc/") == (Path"abc", Path"", Path"")
-  doAssert splitFile(Path"/") == (Path"/", Path"", Path"")
-  doAssert splitFile(Path"./abc") == (Path".", Path"abc", Path"")
-  doAssert splitFile(Path".txt") == (Path"", Path".txt", Path"")
-  doAssert splitFile(Path"abc/.txt") == (Path"abc", Path".txt", Path"")
-  doAssert splitFile(Path"abc") == (Path"", Path"abc", Path"")
-  doAssert splitFile(Path"abc.txt") == (Path"", Path"abc", Path".txt")
-  doAssert splitFile(Path"/abc.txt") == (Path"/", Path"abc", Path".txt")
-  doAssert splitFile(Path"/foo/abc.txt") == (Path"/foo", Path"abc", Path".txt")
-  doAssert splitFile(Path"/foo/abc.txt.gz") == (Path"/foo", Path"abc.txt", Path".gz")
-  doAssert splitFile(Path".") == (Path"", Path".", Path"")
-  doAssert splitFile(Path"abc/.") == (Path"abc", Path".", Path"")
-  doAssert splitFile(Path"..") == (Path"", Path"..", Path"")
-  doAssert splitFile(Path"a/..") == (Path"a", Path"..", Path"")
-  doAssert splitFile(Path"/foo/abc....txt") == (Path"/foo", Path"abc...", Path".txt")
+  doAssert splitFile(Path"") == (Path"", Path"", "")
+  doAssert splitFile(Path"abc/") == (Path"abc", Path"", "")
+  doAssert splitFile(Path"/") == (Path"/", Path"", "")
+  doAssert splitFile(Path"./abc") == (Path".", Path"abc", "")
+  doAssert splitFile(Path".txt") == (Path"", Path".txt", "")
+  doAssert splitFile(Path"abc/.txt") == (Path"abc", Path".txt", "")
+  doAssert splitFile(Path"abc") == (Path"", Path"abc", "")
+  doAssert splitFile(Path"abc.txt") == (Path"", Path"abc", ".txt")
+  doAssert splitFile(Path"/abc.txt") == (Path"/", Path"abc", ".txt")
+  doAssert splitFile(Path"/foo/abc.txt") == (Path"/foo", Path"abc", ".txt")
+  doAssert splitFile(Path"/foo/abc.txt.gz") == (Path"/foo", Path"abc.txt", ".gz")
+  doAssert splitFile(Path".") == (Path"", Path".", "")
+  doAssert splitFile(Path"abc/.") == (Path"abc", Path".", "")
+  doAssert splitFile(Path"..") == (Path"", Path"..", "")
+  doAssert splitFile(Path"a/..") == (Path"a", Path"..", "")
+  doAssert splitFile(Path"/foo/abc....txt") == (Path"/foo", Path"abc...", ".txt")
 
 # execShellCmd is tested in tosproc
 
