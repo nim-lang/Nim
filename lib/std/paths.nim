@@ -7,8 +7,9 @@ from std/private/ospaths2 {.all.} import joinPathImpl, joinPath, splitPath,
                                       normalizePathEnd, isRelativeTo, parentDir,
                                       tailDir, isRootDir, parentDirs, `/../`,
                                       searchExtPos, extractFilename, lastPathPart,
-                                      changeFileExt, addFileExt, cmpPaths,
-                                      unixToNativePath, absolutePath, normalizeExe
+                                      changeFileExt, addFileExt, cmpPaths, splitFile,
+                                      unixToNativePath, absolutePath, normalizeExe,
+                                      normalizePath
 export ReadDirEffect, WriteDirEffect
 
 type
@@ -74,6 +75,25 @@ func splitPath*(path: Path): tuple[head, tail: Path] {.inline.} =
   ## * `relativePath proc`_
   let res = splitPath(path.string)
   result = (Path(res.head), Path(res.tail))
+
+func splitFile*(path: Path): tuple[dir, name, ext: Path] {.inline.} =
+  ## Splits a filename into `(dir, name, extension)` tuple.
+  ##
+  ## `dir` does not end in DirSep_ unless it's `/`.
+  ## `extension` includes the leading dot.
+  ##
+  ## If `path` has no extension, `ext` is the empty string.
+  ## If `path` has no directory component, `dir` is the empty string.
+  ## If `path` has no filename component, `name` and `ext` are empty strings.
+  ##
+  ## See also:
+  ## * `searchExtPos proc`_
+  ## * `extractFilename proc`_
+  ## * `lastPathPart proc`_
+  ## * `changeFileExt proc`_
+  ## * `addFileExt proc`_
+  let res = splitFile(path.string)
+  result = (Path(res.dir), Path(res.name), Path(res.ext))
 
 func isAbsolute*(path: Path): bool {.inline, raises: [].} =
   ## Checks whether a given `path` is absolute.
@@ -288,3 +308,15 @@ proc setCurrentDir*(newDir: Path) {.inline, tags: [].} =
   ospaths2.setCurrentDir(newDir.string)
 
 proc normalizeExe*(file: var Path) {.borrow.}
+
+proc normalizePath*(path: var Path) {.borrow.}
+
+proc absolutePath*(path: Path, root = getCurrentDir()): Path =
+  ## Returns the absolute path of `path`, rooted at `root` (which must be absolute;
+  ## default: current directory).
+  ## If `path` is absolute, return it, ignoring `root`.
+  ##
+  ## See also:
+  ## * `normalizedPath proc`_
+  ## * `normalizePath proc`_
+  result = Path(absolutePath(path.string, root.string))
