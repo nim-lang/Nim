@@ -134,6 +134,7 @@
   `toggleAttribute`, and `matches` to `std/dom`.
 - Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
 - Added `capacity` for `string` and `seq` to return the current capacity, see https://github.com/nim-lang/RFCs/issues/460
+- Added `safe` parameter to `base64.encodeMime`
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
