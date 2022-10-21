@@ -458,7 +458,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
             else:
               discard addField(obj, s, c.graph.cache, c.idgen)
     # direct or indirect dependency:
-    elif (innerProc and s.typ.callConv == ccClosure) or interestingVar(s):
+    elif (innerProc and not s.isIterator and s.typ.callConv == ccClosure) or interestingVar(s):
       discard """
         proc outer() =
           var x: int
