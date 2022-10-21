@@ -68,9 +68,12 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
     case n.kind
     of nkDotExpr, nkCheckedFieldExpr, nkObjUpConv, nkObjDownConv:
       n = n[0]
-    of nkDerefExpr, nkHiddenDeref:
+    of nkDerefExpr:
       n = n[0]
       inc derefs
+    of nkHiddenDeref:
+      n = n[0]
+      if not isApprox: inc derefs
     of nkBracketExpr:
       if isConstExpr(n[1]) or isLet(n[1]) or isConstExpr(n[1].skipConv):
         n = n[0]
