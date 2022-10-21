@@ -51,7 +51,6 @@ proc removeDir*(dir: Path, checkDir = false
   ## existed in the first place, unless `checkDir` = true.
   ##
   ## See also:
-  ## * `tryRemoveFile proc`_
   ## * `removeFile proc`_
   ## * `existsOrCreateDir proc`_
   ## * `createDir proc`_

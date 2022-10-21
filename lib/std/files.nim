@@ -1,7 +1,7 @@
 from paths import Path, ReadDirEffect, WriteDirEffect
 
-from std/private/osfiles import fileExists, tryRemoveFile, removeFile,
-                                removeFile, moveFile
+from std/private/osfiles import fileExists, removeFile,
+                                moveFile
 
 
 proc fileExists*(filename: Path): bool {.inline, tags: [ReadDirEffect].} =
