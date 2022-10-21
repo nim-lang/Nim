@@ -22,7 +22,6 @@ proc removeFile*(file: Path) {.inline, tags: [WriteDirEffect].} =
   ## * `removeDir proc`_
   ## * `copyFile proc`_
   ## * `copyFileWithPermissions proc`_
-  ## * `tryRemoveFile proc`_
   ## * `moveFile proc`_
   removeFile(file.string)
 
@@ -43,5 +42,4 @@ proc moveFile*(source, dest: Path) {.inline,
   ## * `copyFile proc`_
   ## * `copyFileWithPermissions proc`_
   ## * `removeFile proc`_
-  ## * `tryRemoveFile proc`_
   moveFile(source.string, dest.string)

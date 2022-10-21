@@ -5,7 +5,7 @@ import pathnorm
 
 from std/private/ospaths2 import  joinPath, splitPath,
                                   ReadDirEffect, WriteDirEffect,
-                                  isAbsolute, relativePath, normalizedPath,
+                                  isAbsolute, relativePath,
                                   normalizePathEnd, isRelativeTo, parentDir,
                                   tailDir, isRootDir, parentDirs, `/../`,
                                   extractFilename, lastPathPart,
@@ -266,6 +266,5 @@ proc absolutePath*(path: Path, root = getCurrentDir()): Path =
   ## If `path` is absolute, return it, ignoring `root`.
   ##
   ## See also:
-  ## * `normalizedPath proc`_
   ## * `normalizePath proc`_
   result = Path(absolutePath(path.string, root.string))
