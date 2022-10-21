@@ -261,7 +261,7 @@ The generated files that Nim produces all go into a subdirectory called
 
 - ``$XDG_CACHE_HOME/nim/$projectname(_r|_d)`` or ``~/.cache/nim/$projectname(_r|_d)``
   on Posix
-- ``$NIM_CACHE_HOME/$projectname(_r|_d)`` or ``$HOME\nimcache\$projectname(_r|_d)`` on Windows.
+- ``$NIM_CACHE_HOME\$projectname(_r|_d)`` or ``$HOME\nimcache\$projectname(_r|_d)`` on Windows.
 
 The `_r` suffix is used for release builds, `_d` is for debug builds.
 
