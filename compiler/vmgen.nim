@@ -1189,11 +1189,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
       d2 = c.genx(d2AsNode)
     var
       tmp1 = c.genx(n[1])
-      tmp3 = c.genx(n[3])
     c.gABC(n, opcParseFloat, dest, tmp1, d2)
-    c.gABC(n, opcParseFloat, tmp3)
     c.freeTemp(tmp1)
-    c.freeTemp(tmp3)
     c.genAsgnPatch(d2AsNode, d2)
     c.freeTemp(d2)
   of mReset:
