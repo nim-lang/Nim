@@ -10,21 +10,6 @@ proc fileExists*(filename: Path): bool {.inline, tags: [ReadDirEffect].} =
   ## Directories, device files, named pipes and sockets return false.
   result = fileExists(filename.string)
 
-proc tryRemoveFile*(file: Path): bool {.inline, tags: [WriteDirEffect].} =
-  ## Removes the `file`.
-  ##
-  ## If this fails, returns `false`. This does not fail
-  ## if the file never existed in the first place.
-  ##
-  ## On Windows, ignores the read-only attribute.
-  ##
-  ## See also:
-  ## * `copyFile proc`_
-  ## * `copyFileWithPermissions proc`_
-  ## * `removeFile proc`_
-  ## * `moveFile proc`_
-  result = tryRemoveFile(file.string)
-
 proc removeFile*(file: Path) {.inline, tags: [WriteDirEffect].} =
   ## Removes the `file`.
   ##
