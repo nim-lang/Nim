@@ -1504,6 +1504,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             return if ret in {isEqual,isGeneric}: isSubtype else: ret
 
         result = isNone
+    elif a.kind == tyObject and roota.len > 0 and  roota.lastSon != nil and roota.lastSon.kind == tyGenericInst:
+      return typeRel(c, rootf.base, roota.base, flags)
     else:
       assert lastSon(origF) != nil
       result = typeRel(c, lastSon(origF), a, flags)
