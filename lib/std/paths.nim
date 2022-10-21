@@ -3,15 +3,15 @@ export osseps
 
 import pathnorm
 
-from std/private/ospaths2 import      joinPath, splitPath,
-                                      ReadDirEffect, WriteDirEffect,
-                                      isAbsolute, relativePath, normalizedPath,
-                                      normalizePathEnd, isRelativeTo, parentDir,
-                                      tailDir, isRootDir, parentDirs, `/../`,
-                                      extractFilename, lastPathPart,
-                                      changeFileExt, addFileExt, cmpPaths, splitFile,
-                                      unixToNativePath, absolutePath, normalizeExe,
-                                      normalizePath
+from std/private/ospaths2 import  joinPath, splitPath,
+                                  ReadDirEffect, WriteDirEffect,
+                                  isAbsolute, relativePath, normalizedPath,
+                                  normalizePathEnd, isRelativeTo, parentDir,
+                                  tailDir, isRootDir, parentDirs, `/../`,
+                                  extractFilename, lastPathPart,
+                                  changeFileExt, addFileExt, cmpPaths, splitFile,
+                                  unixToNativePath, absolutePath, normalizeExe,
+                                  normalizePath
 export ReadDirEffect, WriteDirEffect
 
 type
@@ -37,7 +37,6 @@ func `/`*(head, tail: Path): Path {.inline.} =
   ## head has one).
   ##
   ## See also:
-  ## * `joinPath(parts: varargs[Path]) proc`_
   ## * `splitPath proc`_
   ## * `uri.combine proc <uri.html#combine,Uri,Uri>`_
   ## * `uri./ proc <uri.html#/,Uri,string>`_
@@ -48,8 +47,7 @@ func splitPath*(path: Path): tuple[head, tail: Path] {.inline.} =
   ## ``head / tail == path`` (except for edge cases like "/usr").
   ##
   ## See also:
-  ## * `joinPath(head, tail) proc`_
-  ## * `joinPath(parts: varargs[Path]) proc`_
+  ## * `add proc`_
   ## * `/ proc`_
   ## * `/../ proc`_
   ## * `relativePath proc`_
@@ -101,15 +99,6 @@ proc isRelativeTo*(path: Path, base: Path): bool {.inline.} =
   ## Returns true if `path` is relative to `base`.
   result = isRelativeTo(path.string, base.string)
 
-proc normalizedPath*(path: Path): Path {.inline, tags: [].} =
-  ## Returns a normalized path for the current OS.
-  ##
-  ## See also:
-  ## * `absolutePath proc`_
-  ## * `normalizePath proc`_ for the in-place version
-  result = Path(normalizedPath(path.string))
-
-proc normalizePathEnd*(path: var Path, trailingSep = false) {.borrow.}
 
 func parentDir*(path: Path): Path {.inline.} =
   ## Returns the parent directory of `path`.
@@ -268,6 +257,8 @@ proc setCurrentDir*(newDir: Path) {.inline, tags: [].} =
 proc normalizeExe*(file: var Path) {.borrow.}
 
 proc normalizePath*(path: var Path) {.borrow.}
+
+proc normalizePathEnd*(path: var Path, trailingSep = false) {.borrow.}
 
 proc absolutePath*(path: Path, root = getCurrentDir()): Path =
   ## Returns the absolute path of `path`, rooted at `root` (which must be absolute;
