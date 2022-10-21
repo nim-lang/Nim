@@ -1,12 +1,24 @@
 import std/paths
 import std/assertions
 import pathnorm
+from std/private/ospaths2 {.all.} import joinPathImpl
+import std/sugar
+
 
 proc normalizePath*(path: Path; dirSep = DirSep): Path =
   result = Path(pathnorm.normalizePath(path.string, dirSep))
 
 func `==`(x, y: Path): bool =
   x.string == y.string
+
+func joinPath*(parts: varargs[Path]): Path =
+  var estimatedLen = 0
+  var state = 0
+  for p in parts: estimatedLen += p.string.len
+  var res = newStringOfCap(estimatedLen)
+  for i in 0..high(parts):
+    joinPathImpl(res, state, parts[i].string)
+  result = Path(res)
 
 
 func joinPath(head, tail: Path): Path {.inline.} =
@@ -165,19 +177,27 @@ block ospaths:
     doAssert relativePath(r"c:\foo.nim".Path, r"\foo".Path) == r"c:\foo.nim".Path
 
   doAssert joinPath(Path"usr", Path"") == unixToNativePath(Path"usr")
+  doAssert joinPath(Path"usr", Path"") == (Path"usr").dup(add Path"")
   doAssert joinPath(Path"", Path"lib") == Path"lib"
+  doAssert joinPath(Path"", Path"lib") == Path"".dup(add Path"lib")
   doAssert joinPath(Path"", Path"/lib") == unixToNativePath(Path"/lib")
-  doAssert joinPath(Path"usr/", Path"/lib") == unixToNativePath(Path"usr/lib")
+  doAssert joinPath(Path"", Path"/lib") == unixToNativePath(Path"/lib")
+  doAssert joinPath(Path"usr/", Path"/lib") == Path"usr/".dup(add Path"/lib")
   doAssert joinPath(Path"", Path"") == unixToNativePath(Path"") # issue #13455
+  doAssert joinPath(Path"", Path"") == Path"".dup(add Path"")
   doAssert joinPath(Path"", Path"/") == unixToNativePath(Path"/")
+  doAssert joinPath(Path"", Path"/") == Path"".dup(add Path"/")
   doAssert joinPath(Path"/", Path"/") == unixToNativePath(Path"/")
+  doAssert joinPath(Path"/", Path"/") == Path"/".dup(add Path"/")
   doAssert joinPath(Path"/", Path"") == unixToNativePath(Path"/")
   doAssert joinPath(Path"/" / Path"") == unixToNativePath(Path"/") # weird test case...
   doAssert joinPath(Path"/", Path"/a/b/c") == unixToNativePath(Path"/a/b/c")
   doAssert joinPath(Path"foo/", Path"") == unixToNativePath(Path"foo/")
   doAssert joinPath(Path"foo/", Path"abc") == unixToNativePath(Path"foo/abc")
   doAssert joinPath(Path"foo//./", Path"abc/.//") == unixToNativePath(Path"foo/abc/")
+  doAssert Path"foo//./".dup(add Path"abc/.//") == unixToNativePath(Path"foo/abc/")
   doAssert joinPath(Path"foo", Path"abc") == unixToNativePath(Path"foo/abc")
+  doAssert Path"foo".dup(add Path"abc") == unixToNativePath(Path"foo/abc")
   doAssert joinPath(Path"", Path"abc") == unixToNativePath(Path"abc")
 
   doAssert joinPath(Path"zook/.", Path"abc") == unixToNativePath(Path"zook/abc")

@@ -1,7 +1,9 @@
 import std/private/osseps
 export osseps
 
-from std/private/ospaths2 {.all.} import joinPathImpl, joinPath, splitPath,
+import pathnorm
+
+from std/private/ospaths2 import      joinPath, splitPath,
                                       ReadDirEffect, WriteDirEffect,
                                       isAbsolute, relativePath, normalizedPath,
                                       normalizePathEnd, isRelativeTo, parentDir,
@@ -15,26 +17,17 @@ export ReadDirEffect, WriteDirEffect
 type
   Path* = distinct string
 
+template endsWith(a: string, b: set[char]): bool =
+  a.len > 0 and a[^1] in b
 
-func joinPath*(parts: varargs[Path]): Path =
-  ## The same as `joinPath(head, tail) proc`_,
-  ## but works with any number of directory parts.
-  ##
-  ## You need to pass at least one element or the proc
-  ## will assert in debug builds and crash on release builds.
-  ##
-  ## See also:
-  ## * `joinPath(head, tail) proc`_
-  ## * `/ proc`_
-  ## * `/../ proc`_
-  ## * `splitPath proc`_
-  var estimatedLen = 0
-  for p in parts: estimatedLen += p.string.len
-  var res = newStringOfCap(estimatedLen)
+func add(x: var string, tail: string) =
   var state = 0
-  for i in 0..high(parts):
-    joinPathImpl(res, state, parts[i].string)
-  result = Path(res)
+  let trailingSep = tail.endsWith({DirSep, AltSep}) or tail.len == 0 and x.endsWith({DirSep, AltSep})
+  normalizePathEnd(x, trailingSep=false)
+  addNormalizePath(tail, x, state, DirSep)
+  normalizePathEnd(x, trailingSep=trailingSep)
+
+func add*(x: var Path, y: Path) {.borrow.}
 
 func `/`*(head, tail: Path): Path {.inline.} =
   ## Joins two directory names to one.
@@ -117,8 +110,6 @@ proc normalizedPath*(path: Path): Path {.inline, tags: [].} =
   result = Path(normalizedPath(path.string))
 
 proc normalizePathEnd*(path: var Path, trailingSep = false) {.borrow.}
-
-proc normalizePathEnd*(path: Path, trailingSep = false): Path {.borrow.}
 
 func parentDir*(path: Path): Path {.inline.} =
   ## Returns the parent directory of `path`.
