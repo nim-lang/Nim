@@ -87,6 +87,7 @@ type
     trNoCovariance
     trBindGenericParam  # bind tyGenericParam even with trDontBind
     trIsOutParam
+    trForwardGeneric
 
   TTypeRelFlags* = set[TTypeRelFlag]
 
@@ -1122,6 +1123,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let x = typeRel(c, a, f, flags + {trDontBind})
       if x >= isGeneric:
         return isGeneric
+  of tyForward:
+    if trForwardGeneric in flags:
+      return isGeneric
   else: discard
 
   case f.kind

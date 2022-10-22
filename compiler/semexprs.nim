@@ -423,7 +423,7 @@ proc fixupStaticType(c: PContext, n: PNode) =
     n.typ.n = n # XXX: cycles like the one here look dangerous.
                 # Consider using `n.copyTree`
 
-proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
+proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags; relFlags: TTypeRelFlags = {}): PNode =
   internalAssert c.config,
     n.len == 3 and
     n[1].typ != nil and
@@ -464,7 +464,8 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if efExplain in flags:
       m.diagnostics = @[]
       m.diagnosticsEnabled = true
-    res = typeRel(m, t2, t1) >= isSubtype # isNone
+
+    res = typeRel(m, t2, t1, relFlags) >= isSubtype # isNone
     # `res = sameType(t1, t2)` would be wrong, e.g. for `int is (int|float)`
 
   result = newIntNode(nkIntLit, ord(res))
@@ -501,6 +502,7 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
     n[2] = semExpr(c, n[2])
 
   var lhsType = n[1].typ
+  var relFlags: TTypeRelFlags = {}
   if lhsType.kind != tyTypeDesc:
     if liftLhs:
       n[1] = makeTypeSymNode(c, lhsType, n[1].info)
@@ -511,7 +513,10 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # BUGFIX: don't evaluate this too early: ``T is void``
       return
 
-  result = isOpImpl(c, n, flags)
+  if n[2].typ.containsGenericType and c.inTypeContext > 0:
+    relFlags.incl {trForwardGeneric, trDontBind}
+
+  result = isOpImpl(c, n, flags, relFlags)
 
 proc semOpAux(c: PContext, n: PNode) =
   const flags = {efDetermineType}
