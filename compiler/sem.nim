@@ -389,6 +389,11 @@ proc semConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       # error correction:
       result = e
     else:
+      if result.typ != nil and result.typ.kind == tyProc and result.typ.callConv == ccClosure and
+          result.kind == nkTupleConstr and result[1].kind != nkNilLit:
+        localError(c.config, n.info, "const closure proc with an environment cannot be used at runtime: " &
+                   renderTree(n, {renderNoComments}))
+
       result = fixupTypeAfterEval(c, result, e)
 
 proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
