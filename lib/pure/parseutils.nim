@@ -415,7 +415,7 @@ proc captureBetween*(s: openArray[char], first: char, second = '\0'): string =
     doAssert captureBetween("Hello World".toOpenArray(6, "Hello World".high), 'l') == "d"
   var i = skipUntil(s, first) + 1
   result = ""
-  discard s.parseUntil(result, if second == '\0': first else: second)
+  discard parseUntil(s.toOpenArray(i, s.high), result, if second == '\0': first else: second)
 
 proc integerOutOfRangeError() {.noinline.} =
   raise newException(ValueError, "Parsed integer outside of valid range")
