@@ -2592,6 +2592,27 @@ proc substr*(s: openArray[char]): string =
   for i, ch in s:
     result[i] = ch
 
+proc substr*(s: openArray[char] , first, last: int): string =
+  ## Copies a slice of `s` into a new string and returns this new
+  ## string.
+  ##
+  ## The bounds `first` and `last` denote the indices of
+  ## the first and last characters that shall be copied. If `last`
+  ## is omitted, it is treated as `high(s)`. If `last >= s.len`, `s.len`
+  ## is used instead: This means `substr` can also be used to `cut`:idx:
+  ## or `limit`:idx: a string's length.
+  runnableExamples:
+    let a = "abcdefgh"
+    assert a.substr(2, 5) == "cdef"
+    assert a.substr(2) == "cdefgh"
+    assert a.substr(5, 99) == "fgh"
+
+  let first = max(first, 0)
+  let L = max(min(last, high(s)) - first + 1, 0)
+  result = newString(L)
+  for i in 0 .. L-1:
+    result[i] = s[i+first]
+
 proc substr*(s: string, first, last: int): string = # A bug with `magic: Slice` requires this to exist this way
   ## Copies a slice of `s` into a new string and returns this new
   ## string.
