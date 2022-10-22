@@ -35,6 +35,10 @@ static:
   assert arr.toOpenArray(3, 4).toOpenArray(0, 0) == [1]
 
 
+proc doThing(s: static openArray[int]) = discard
+
+doThing([10, 20, 30].toOpenArray(0, 0))
+
 # bug #19969
 proc f(): array[1, byte] =
   var a: array[1, byte]

@@ -24,3 +24,14 @@ proc `$`(x: openArray[int]): string =
 echo c
 echo c2.data
 
+
+type MyObj = object
+  data: openarray[char]
+
+const
+  val1 = Foo(data: toOpenArray([1, 2, 3], 1, 1))
+  val2 = Foo(data: toOpenArray([1, 2, 3], 0, 2))
+  val3 = MyObj(data: "Hello".toOpenArray(0, 2))
+assert val1.data == [2]
+assert val2.data == [1, 2, 3]
+assert val3.data == "Hel"
