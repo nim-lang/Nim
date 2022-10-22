@@ -155,6 +155,12 @@ proc reifiedOpenArray(n: PNode): bool {.inline.} =
   else:
     result = true
 
+proc fromVarParam(n: PNode): bool =
+  var x = n
+  while x.kind in {nkDerefExpr, nkHiddenDeref}:
+    x = x[0]
+  result = x.kind == nkSym and (x.typ.kind == tyVar or x.sym.kind == skVar)
+
 proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, Rope) =
   var a, b, c: TLoc
   initLocExpr(p, q[1], a)
@@ -190,7 +196,7 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, 
               lengthExpr)
   of tyString, tySequence:
     let atyp = skipTypes(a.t, abstractInst)
-    if formalType.skipTypes(abstractInst).kind in {tyVar} and atyp.kind == tyString and
+    if (formalType.skipTypes(abstractInst).kind in {tyVar} or fromVarParam(q[1])) and atyp.kind == tyString and
         optSeqDestructors in p.config.globalOptions:
       linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
     if atyp.kind in {tyVar} and not compileToCpp(p.module):

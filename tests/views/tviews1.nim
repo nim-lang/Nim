@@ -77,3 +77,22 @@ type Inner = object
 var o = Outer(value: 1234)
 var v = Inner(owner: o).owner.value
 doAssert v == 1234
+
+
+block:
+  proc f(a: var string) =
+    var v = a.toOpenArray(1, 3)
+    v[0] = 'a'  # <--
+  var a = "Hello"
+  f(a)
+
+block:
+  proc f(a: string) =
+    var v = a.toOpenArray(1, 3)
+    doAssert v[0] == 'H'
+  f("Hello")
+
+block:
+  var a = "Hello"
+  var v = a.toOpenArray(1, 3)
+  v[0] = 'a'  # <--
