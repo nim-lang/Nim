@@ -2130,10 +2130,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         localError(c.config, n.info, "the overloaded " & s.name.s &
           " operator has to be enabled with {.experimental: \"callOperator\".}")
 
+  if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
+    result[bodyPos] = c.graph.emptyNode
+
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
-    if sfBorrow in s.flags:
-      localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)
     if c.config.ideCmd in {ideSug, ideCon} and s.kind notin {skMacro, skTemplate} and not
         cursorInProc(c.config, n[bodyPos]):
       # speed up nimsuggest
