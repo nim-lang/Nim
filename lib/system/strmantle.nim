@@ -209,7 +209,7 @@ proc nimParseBiggestFloat(s: openArray[char], number: var BiggestFloat,
   let maxlen = t.high - "e+000".len # reserve enough space for exponent
 
   let endPos = i
-  result = endPos - 0
+  result = endPos
   i = 0
   # re-parse without error checking, any error should be handled by the code above.
   if i < endPos and s[i] == '.': i.inc
