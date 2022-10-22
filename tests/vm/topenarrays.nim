@@ -35,4 +35,35 @@ static:
   assert arr.toOpenArray(3, 4).toOpenArray(0, 0) == [1]
 
 
+proc doThing(s: static openArray[int]) = discard
 
+doThing([10, 20, 30].toOpenArray(0, 0))
+
+# bug #19969
+proc f(): array[1, byte] =
+  var a: array[1, byte]
+  result[0..0] = a.toOpenArray(0, 0)
+
+doAssert static(f()) == [byte(0)]
+
+
+# bug #15952
+proc main1[T](a: openArray[T]) = discard
+proc main2[T](a: var openArray[T]) = discard
+
+proc main =
+  var a = [1,2,3,4,5]
+  main1(a.toOpenArray(1,3))
+  main2(a.toOpenArray(1,3))
+static: main()
+main()
+
+# bug #16306
+{.experimental: "views".}
+proc test(x: openArray[int]): tuple[id: int] =
+  let y: openArray[int] = toOpenArray(x, 0, 2)
+  result = (y[0],)
+template fn=
+  doAssert test([0,1,2,3,4,5]).id == 0
+fn() # ok
+static: fn()
