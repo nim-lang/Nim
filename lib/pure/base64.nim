@@ -140,7 +140,7 @@ template encodeImpl() {.dirty.} =
       encodeInternal(s, lookupTableVM)
   else:
     block:
-      let lookupTable = if safe: unsafeAddr(cb64safe) else: unsafeAddr(cb64)
+      let lookupTable = if safe: addr(cb64safe) else: addr(cb64)
       encodeInternal(s, lookupTable)
 
 proc encode*[T: byte|char](s: openArray[T], safe = false): string =
