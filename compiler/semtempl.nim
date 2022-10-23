@@ -359,7 +359,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   case n.kind
   of nkIdent:
     if n.ident.id in c.toInject: return n
-    let s = qualifiedLookUp(c.c, n, {})
+    let s = qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
     if s != nil:
       if s.owner == c.owner and s.kind == skParam and sfTemplateParam in s.flags:
         incl(s.flags, sfUsed)
