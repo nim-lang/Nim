@@ -32,7 +32,7 @@ add a way to customize serialization, for e.g.:
 
 import macros
 from enumutils import symbolName
-from typetraits import OrdinalEnum,tupleLen
+from typetraits import OrdinalEnum, tupleLen
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
