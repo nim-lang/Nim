@@ -16,7 +16,7 @@ runnableExamples:
   assert 0.0.toJson.kind == JFloat
   assert Inf.toJson.kind == JString
 
-import json, strutils, tables, sets, strtabs, options
+import json, strutils, tables, sets, strtabs, options, strformat
 
 #[
 Future directions:
@@ -168,7 +168,7 @@ template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
           if discKeys.len == 0 or hasField(oldObj, key):
             val = accessField(oldObj, key)
       else:
-        checkJson false, $($T, key, json)
+        checkJson false, "key '$1' for $2 not in $3" % [key, $T, json.pretty()]
     else:
       if json.hasKey key:
         numMatched.inc
@@ -187,7 +187,7 @@ template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
     else:
       json.len == num and num == numMatched
 
-  checkJson ok, $(json.len, num, numMatched, $T, json)
+  checkJson ok, "There were $1 keys (expecting $2) for $3 with $4" % [$json.len, $num, $T, json.pretty()]
 
 proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions())
 
@@ -226,7 +226,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     case b.kind
     of JInt: a = T(b.getBiggestInt())
     of JString: a = parseEnum[T](b.getStr())
-    else: checkJson false, $($T, " ", b)
+    else: checkJson false, fmt"Expecting int/string for {$T} got {b.pretty()}"
   elif T is uint|uint64: a = T(to(b, uint64))
   elif T is Ordinal: a = cast[T](to(b, int))
   elif T is pointer: a = cast[pointer](to(b, int))
@@ -241,7 +241,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     case b.kind
     of JNull: a = nil
     of JString: a = b.str
-    else: checkJson false, $($T, " ", b)
+    else: checkJson false, fmt"Expecting null/string for {$T} got {b.pretty()}"
   elif T is JsonNode: a = b
   elif T is ref | ptr:
     if b.kind == JNull: a = nil
@@ -249,7 +249,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
       a = T()
       fromJson(a[], b, opt)
   elif T is array:
-    checkJson a.len == b.len, $(a.len, b.len, $T)
+    checkJson a.len == b.len, fmt"Json array size doesn't match for {$T}"
     var i = 0
     for ai in mitems(a):
       fromJson(ai, b[i], opt)
@@ -289,7 +289,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
       for val in fields(a):
         fromJson(val, b[i], opt)
         i.inc
-      checkJson b.len == i, $(b.len, i, $T, b) # could customize
+      checkJson b.len == i, "Json doesn't match expected length of {i}, got {b.pretty()}"
   else:
     # checkJson not appropriate here
     static: doAssert false, "not yet implemented: " & $T
