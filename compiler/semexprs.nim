@@ -932,6 +932,9 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
           localError(c.config, n.info, errCannotInterpretNodeX % renderTree(call))
         else: result = fixupTypeAfterEval(c, result, n)
       else:
+        let noneCtProc = sfCompileTime notin n[0].typ.owner.flags
+        if callee.kind == skConst and (n.typ == nil and noneCtProc):
+          return n
         result = evalConstExpr(c.module, c.idgen, c.graph, call)
         if result.isNil: result = n
         else: result = fixupTypeAfterEval(c, result, n)
