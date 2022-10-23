@@ -410,6 +410,12 @@ template fn() =
       doAssert foo.c == 0
       doAssert foo.c0 == 42
 
+    block testInvalidTupleLength:
+      let json = parseJson("[0]")
+      # Should raise ValueError instead of index error
+      doAssertRaises(ValueError):
+        discard json.jsonTo((int, int))
+
     when false:
       ## TODO: Implement support for nested variant objects allowing the tests
       ## bellow to pass.
