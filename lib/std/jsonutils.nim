@@ -289,7 +289,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
       for val in fields(a):
         fromJson(val, b[i], opt)
         i.inc
-      checkJson b.len == i, "Json doesn't match expected length of {i}, got {b.pretty()}"
+      checkJson b.len == i, fmt"Json doesn't match expected length of {i}, got {b.pretty()}"
   else:
     # checkJson not appropriate here
     static: doAssert false, "not yet implemented: " & $T
