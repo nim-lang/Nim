@@ -285,7 +285,16 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
       fromJsonFields(a, nil, b, seq[string].default, opt)
     else:
       checkJson b.kind == JArray, $(b.kind) # we could customize whether to allow JNull
-      let tupleSize = tupleLen(T)
+
+      when compiles(tupleLen(T)):
+        let tupleSize = tupleLen(T)
+      else:
+        # Tuple len isn't in csources_v1 so using tupleLen would fail.
+        # Else branch basically never runs (tupleLen added in 1.1 and jsonutils in 1.4), but here for consistency
+        var tupleSize = 0
+        for val in fields(a):
+          tupleSize.inc
+
       checkJson b.len == tupleSize, $(b.len, tupleSize, $T, b) # could customize
       var i = 0
       for val in fields(a):
