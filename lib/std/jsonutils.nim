@@ -32,7 +32,7 @@ add a way to customize serialization, for e.g.:
 
 import macros
 from enumutils import symbolName
-from typetraits import OrdinalEnum
+from typetraits import OrdinalEnum,tupleLen
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -285,11 +285,12 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
       fromJsonFields(a, nil, b, seq[string].default, opt)
     else:
       checkJson b.kind == JArray, $(b.kind) # we could customize whether to allow JNull
+      let tupleSize = tupleLen(T)
+      checkJson b.len == tupleSize, $(b.len, tupleSize, $T, b) # could customize
       var i = 0
       for val in fields(a):
         fromJson(val, b[i], opt)
         i.inc
-      checkJson b.len == i, $(b.len, i, $T, b) # could customize
   else:
     # checkJson not appropriate here
     static: doAssert false, "not yet implemented: " & $T
