@@ -499,8 +499,10 @@ proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
 
 proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   magic: "NGenSym", noSideEffect.}
-  ## Generates a fresh symbol that is guaranteed to be unique. The symbol
-  ## needs to occur in a declaration context.
+  ## Generates a fresh symbol.
+  ## if `ident` is not empty, the generated symbol maybe ambiguous.
+  ## if `ident` is empty, generates a fresh symbol that is guaranteed to be unique.
+  ## The symbol needs to occur in a declaration context.
 
 proc callsite*(): NimNode {.magic: "NCallSite", benign, deprecated:
   "Deprecated since v0.18.1; use `varargs[untyped]` in the macro prototype instead".}
