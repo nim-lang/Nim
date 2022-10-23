@@ -689,6 +689,7 @@ proc genParForStmt(p: BProc, t: PNode) =
   dec(p.withinLoop)
 
 proc genBreakStmt(p: BProc, t: PNode) =
+  
   var idx = p.breakIdx
   if t[0].kind != nkEmpty:
     # named break?
@@ -702,9 +703,10 @@ proc genBreakStmt(p: BProc, t: PNode) =
     if idx < 0 or not p.blocks[idx].isLoop:
       internalError(p.config, t.info, "no loop to break")
   p.blocks[idx].label = "LA" & p.blocks[idx].id.rope
-  blockLeaveActions(p,
-    p.nestedTryStmts.len - p.blocks[idx].nestedTryStmts,
-    p.inExceptBlockLen - p.blocks[idx].nestedExceptStmts)
+  if p.nestedTryStmts.len > 0 and not p.nestedTryStmts[^1].inExcept:
+    blockLeaveActions(p,
+      p.nestedTryStmts.len - p.blocks[idx].nestedTryStmts,
+      p.inExceptBlockLen - p.blocks[idx].nestedExceptStmts)
   genLineDir(p, t)
   lineF(p, cpsStmts, "goto $1;$n", [p.blocks[idx].label])
 
