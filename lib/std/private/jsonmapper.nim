@@ -1,6 +1,6 @@
 import std/[tables, options, macros]
 
-import jsontree
+import jsonbuilder, jsontypes
 
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.

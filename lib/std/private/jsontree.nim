@@ -1,75 +1,15 @@
 import std/[tables, hashes, macros, strutils]
 import std/private/since
 
+
+export
+  tables.`$`
+
 when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]
 
-type
-  JsonNodeKind* = enum ## possible JSON node types
-    JNull,
-    JBool,
-    JInt,
-    JFloat,
-    JString,
-    JObject,
-    JArray
-
-  JsonNode* = ref JsonNodeObj ## JSON node
-  JsonNodeObj* {.acyclic.} = object
-    isUnquoted: bool # the JString was a number-like token and
-                     # so shouldn't be quoted
-    case kind*: JsonNodeKind
-    of JString:
-      str*: string
-    of JInt:
-      num*: BiggestInt
-    of JFloat:
-      fnum*: float
-    of JBool:
-      bval*: bool
-    of JNull:
-      nil
-    of JObject:
-      fields*: OrderedTable[string, JsonNode]
-    of JArray:
-      elems*: seq[JsonNode]
-
-
-proc newJString*(s: string): JsonNode =
-  ## Creates a new `JString JsonNode`.
-  result = JsonNode(kind: JString, str: s)
-
-# todo it is not public before
-proc newJRawNumber*(s: string): JsonNode =
-  ## Creates a "raw JS number", that is a number that does not
-  ## fit into Nim's `BiggestInt` field. This is really a `JString`
-  ## with the additional information that it should be converted back
-  ## to the string representation without the quotes.
-  result = JsonNode(kind: JString, str: s, isUnquoted: true)
-
-proc newJInt*(n: BiggestInt): JsonNode =
-  ## Creates a new `JInt JsonNode`.
-  result = JsonNode(kind: JInt, num: n)
-
-proc newJFloat*(n: float): JsonNode =
-  ## Creates a new `JFloat JsonNode`.
-  result = JsonNode(kind: JFloat, fnum: n)
-
-proc newJBool*(b: bool): JsonNode =
-  ## Creates a new `JBool JsonNode`.
-  result = JsonNode(kind: JBool, bval: b)
-
-proc newJNull*(): JsonNode =
-  ## Creates a new `JNull JsonNode`.
-  result = JsonNode(kind: JNull)
-
-proc newJObject*(): JsonNode =
-  ## Creates a new `JObject JsonNode`
-  result = JsonNode(kind: JObject, fields: initOrderedTable[string, JsonNode](2))
-
-proc newJArray*(): JsonNode =
-  ## Creates a new `JArray JsonNode`
-  result = JsonNode(kind: JArray, elems: @[])
+import jsontypes, jsonbuilder
+export JsonNodeKind, JsonNode, JsonNodeObj
 
 proc getStr*(n: JsonNode, default: string = ""): string =
   ## Retrieves the string value of a `JString JsonNode`.

@@ -1,4 +1,7 @@
-import jsontree, parsejson, strutils, streams
+import parsejson, strutils, streams
+
+import jsontypes, jsontree, jsonbuilder
+
 export
   open, close, str, getInt, getFloat, kind, getColumn, getLine, getFilename,
   errorMsg, errorMsgExpected, next, JsonParsingError, raiseParseErr, nimIdentNormalize
