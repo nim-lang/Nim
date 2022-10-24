@@ -3,7 +3,7 @@ discard """
   targets: "c cpp js"
 """
 
-import times
+import std/[times, tables]
 
 type
   Guess = object
@@ -206,21 +206,32 @@ template main {.dirty.} =
   when nimvm:
     discard "fixme"
   else:
-    when defined(gcArc) or defined(gcOrc):
-      block: #seq
-        var x = newSeq[Object](10)
-        let y = x[0]
-        doAssert y.value == 12
-        doAssert y.time == 1.2
-        doAssert y.scale == 1
+    block: #seq
+      var x = newSeq[Object](10)
+      let y = x[0]
+      doAssert y.value == 12
+      doAssert y.time == 1.2
+      doAssert y.scale == 1
 
-      block:
-        var x: seq[Object]
-        setLen(x, 5)
-        let y = x[^1]
-        doAssert y.value == 12
-        doAssert y.time == 1.2
-        doAssert y.scale == 1
+    block:
+      var x: seq[Object]
+      setLen(x, 5)
+      let y = x[^1]
+      doAssert y.value == 12
+      doAssert y.time == 1.2
+      doAssert y.scale == 1
+
+    block:
+      var my = @[1, 2, 3, 4, 5]
+      my.setLen(0)
+      my.setLen(5)
+      doAssert my == @[0, 0, 0, 0, 0]
+
+    block:
+      var my = "hello"
+      my.setLen(0)
+      my.setLen(5)
+      doAssert $(@my) == """@['\x00', '\x00', '\x00', '\x00', '\x00']"""
 
   block: # array
     var x: array[10, Object] = arrayWith(default(Object), 10)
@@ -379,7 +390,7 @@ template main {.dirty.} =
       doAssert x.id == 1
       doAssert x.obj == default(ObjectBase)
       doAssert x.name == ""
-    
+
     block:
       var x = default(Class)
       doAssert x.def == default(Default)
@@ -387,12 +398,11 @@ template main {.dirty.} =
       doAssert x.def.obj == default(ObjectBase)
       doAssert x.def.name == ""
 
-    when not defined(cpp):
-      block:
-        var x = default(Member)
-        doAssert x.def.id == 777
-        doAssert x.def.obj == default(ObjectBase)
-        doAssert x.def.name == "fine"
+    block:
+      var x = default(Member)
+      doAssert x.def.id == 777
+      doAssert x.def.obj == default(ObjectBase)
+      doAssert x.def.name == "fine"
 
   block:
     var x {.noinit.} = 12
@@ -409,21 +419,20 @@ template main {.dirty.} =
     doAssert z.id == 77
 
 
-proc main1 =
-  var my = @[1, 2, 3, 4, 5]
-  my.setLen(0)
-  my.setLen(5)
-  doAssert my == @[0, 0, 0, 0, 0]
+  block:
+    type TokenData = object
+      campaignMemberships: Table = Table[string, string]()
 
-proc main2 =
-  var my = "hello"
-  my.setLen(0)
-  my.setLen(5)
-  doAssert $(@my) == """@['\x00', '\x00', '\x00', '\x00', '\x00']"""
+    let x = default(TokenData)
+    doAssert x.campaignMemberships.len == 0
 
-when defined(gcArc) or defined(gcOrc):
-  main1()
-  main2()
+  block:
+    type TokenData = object
+      campaignMemberships: Table = newTable[string, string]()
+
+    let x = default(TokenData)
+    doAssert x.campaignMemberships.len == 0
+
 
 static: main()
 main()
