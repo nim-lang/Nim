@@ -665,7 +665,7 @@ proc trackCase(tracked: PEffects, n: PNode) =
   let stringCase = n[0].typ != nil and skipTypes(n[0].typ,
         abstractVarRange-{tyTypeDesc}).kind in {tyFloat..tyFloat128, tyString, tyCstring}
   let interesting = not stringCase and interestingCaseExpr(n[0]) and
-        tracked.config.hasWarn(warnProveField)
+        (tracked.config.hasWarn(warnProveField) or strictCaseObjects in tracked.c.features)
   var inter: TIntersection = @[]
   var toCover = 0
   for i in 1..<n.len:
@@ -1049,8 +1049,8 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 0..<n.len: track(tracked, n[i])
   of nkCheckedFieldExpr:
     track(tracked, n[0])
-    if tracked.config.hasWarn(warnProveField):
-      checkFieldAccess(tracked.guards, n, tracked.config)
+    if tracked.config.hasWarn(warnProveField) or strictCaseObjects in tracked.c.features:
+      checkFieldAccess(tracked.guards, n, tracked.config, strictCaseObjects in tracked.c.features)
   of nkTryStmt: trackTryStmt(tracked, n)
   of nkPragma: trackPragmaStmt(tracked, n)
   of nkAsgn, nkFastAsgn, nkSinkAsgn:

@@ -220,7 +220,8 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
   adding "json path" leading to `b` can be added in future work.
   ]#
   checkJson b != nil, $($T, b)
-  when compiles(fromJsonHook(a, b)): fromJsonHook(a, b)
+  when compiles(fromJsonHook(a, b, opt)): fromJsonHook(a, b, opt)
+  elif compiles(fromJsonHook(a, b)): fromJsonHook(a, b)
   elif T is bool: a = to(b,T)
   elif T is enum:
     case b.kind
@@ -305,7 +306,8 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   ## .. note:: With `-d:nimPreviewJsonutilsHoleyEnum`, `toJson` now can 
   ##    serialize/deserialize holey enums as regular enums (via `ord`) instead of as strings.
   ##    It is expected that this behavior becomes the new default in upcoming versions.
-  when compiles(toJsonHook(a)): result = toJsonHook(a)
+  when compiles(toJsonHook(a, opt)): result = toJsonHook(a, opt)
+  elif compiles(toJsonHook(a)): result = toJsonHook(a)
   elif T is object | tuple:
     when T is object or isNamedTuple(T):
       result = newJObject()
@@ -348,7 +350,7 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   else: result = %a
 
 proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V]),
-                         jsonNode: JsonNode) =
+                         jsonNode: JsonNode, opt = Joptions()) =
   ## Enables `fromJson` for `Table` and `OrderedTable` types.
   ##
   ## See also:
@@ -366,9 +368,9 @@ proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V
           "type is `" & $jsonNode.kind & "`."
   clear(t)
   for k, v in jsonNode:
-    t[k] = jsonTo(v, V)
+    t[k] = jsonTo(v, V, opt)
 
-proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): JsonNode =
+proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V]), opt = initToJsonOptions()): JsonNode =
   ## Enables `toJson` for `Table` and `OrderedTable` types.
   ##
   ## See also:
@@ -388,9 +390,9 @@ proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): J
   result = newJObject()
   for k, v in pairs(t):
     # not sure if $k has overhead for string
-    result[(when K is string: k else: $k)] = toJson(v)
+    result[(when K is string: k else: $k)] = toJson(v, opt)
 
-proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
+proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode, opt = Joptions()) =
   ## Enables `fromJson` for `HashSet` and `OrderedSet` types.
   ##
   ## See also:
@@ -408,9 +410,9 @@ proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
           "type is `" & $jsonNode.kind & "`."
   clear(s)
   for v in jsonNode:
-    incl(s, jsonTo(v, A))
+    incl(s, jsonTo(v, A, opt))
 
-proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
+proc toJsonHook*[A](s: SomeSet[A], opt = initToJsonOptions()): JsonNode =
   ## Enables `toJson` for `HashSet` and `OrderedSet` types.
   ##
   ## See also:
@@ -422,9 +424,9 @@ proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
 
   result = newJArray()
   for k in s:
-    add(result, toJson(k))
+    add(result, toJson(k, opt))
 
-proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
+proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode, opt = Joptions()) =
   ## Enables `fromJson` for `Option` types.
   ##
   ## See also:
@@ -438,11 +440,11 @@ proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
     assert isNone(opt)
 
   if jsonNode.kind != JNull:
-    self = some(jsonTo(jsonNode, T))
+    self = some(jsonTo(jsonNode, T, opt))
   else:
     self = none[T]()
 
-proc toJsonHook*[T](self: Option[T]): JsonNode =
+proc toJsonHook*[T](self: Option[T], opt = initToJsonOptions()): JsonNode =
   ## Enables `toJson` for `Option` types.
   ##
   ## See also:
@@ -455,7 +457,7 @@ proc toJsonHook*[T](self: Option[T]): JsonNode =
     assert $toJson(optNone) == "null"
 
   if isSome(self):
-    toJson(get(self))
+    toJson(get(self), opt)
   else:
     newJNull()
 

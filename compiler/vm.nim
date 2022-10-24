@@ -535,6 +535,15 @@ template takeAddress(reg, source) =
   reg.nodeAddr = addr source
   GC_ref source
 
+proc takeCharAddress(c: PCtx, src: PNode, index: BiggestInt, pc: int): TFullReg =
+  let typ = newType(tyPtr, nextTypeId c.idgen, c.module.owner)
+  typ.add getSysType(c.graph, c.debug[pc], tyChar)
+  var node = newNodeIT(nkIntLit, c.debug[pc], typ) # xxx nkPtrLit
+  node.intVal = cast[int](src.strVal[index].addr)
+  node.flags.incl nfIsPtr
+  TFullReg(kind: rkNode, node: node)
+
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -668,6 +677,48 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         else:
           ensureKind(rkNode)
           regs[ra].node = nb
+    of opcSlice:
+      # A bodge, but this takes in `toOpenArray(rb, rc, rc)` and emits
+      # nkTupleConstr(x, y, z) into the `regs[ra]`. These can later be used for calculating the slice we have taken.
+      decodeBC(rkNode)
+      let
+        collection = regs[ra].node
+        leftInd = regs[rb].intVal
+        rightInd = regs[rc].intVal
+
+      proc rangeCheck(left, right: BiggestInt, safeLen: BiggestInt) =
+        if left < 0:
+          stackTrace(c, tos, pc, formatErrorIndexBound(left, safeLen))
+
+        if right > safeLen:
+          stackTrace(c, tos, pc, formatErrorIndexBound(right, safeLen))
+
+      case collection.kind
+      of nkTupleConstr: # slice of a slice
+        let safeLen = collection[2].intVal - collection[1].intVal
+        rangeCheck(leftInd, rightInd, safeLen)
+        let
+          leftInd = leftInd + collection[1].intVal # Slice is from the start of the old
+          rightInd = rightInd + collection[1].intVal
+
+        regs[ra].node = newTree(
+          nkTupleConstr,
+          collection[0],
+          newIntNode(nkIntLit, BiggestInt leftInd),
+          newIntNode(nkIntLit, BiggestInt rightInd)
+        )
+
+      else:
+        let safeLen = safeArrLen(collection) - 1
+        rangeCheck(leftInd, rightInd, safeLen)
+        regs[ra].node = newTree(
+          nkTupleConstr,
+          collection,
+          newIntNode(nkIntLit, BiggestInt leftInd),
+          newIntNode(nkIntLit, BiggestInt rightInd)
+        )
+
+
     of opcLdArr:
       # a = b[c]
       decodeBC(rkNode)
@@ -675,7 +726,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, formatErrorIndexBound(regs[rc].intVal, high(int)))
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
-      if src.kind in {nkStrLit..nkTripleStrLit}:
+      case src.kind
+      of nkTupleConstr: # refer to `of opcSlice`
+        let
+          left = src[1].intVal
+          right = src[2].intVal
+          realIndex = left + idx
+        if idx in 0..(right - left):
+          case src[0].kind
+          of nkStrKinds:
+            regs[ra].node =  newIntNode(nkCharLit, ord src[0].strVal[int realIndex])
+          of nkBracket:
+            regs[ra].node = src[0][int realIndex]
+          else:
+            stackTrace(c, tos, pc, "opcLdArr internal error")
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
+
+      of nkStrLit..nkTripleStrLit:
         if idx <% src.strVal.len:
           regs[ra].node = newNodeI(nkCharLit, c.debug[pc])
           regs[ra].node.intVal = src.strVal[idx].ord
@@ -692,10 +760,27 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, formatErrorIndexBound(regs[rc].intVal, high(int)))
       let idx = regs[rc].intVal.int
       let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
-      if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
-        takeAddress regs[ra], src.sons[idx]
+      case src.kind
+      of nkTupleConstr:
+        let
+          left = src[1].intVal
+          right = src[2].intVal
+          realIndex = left + idx
+        if idx in 0..(right - left): # Refer to `opcSlice`
+          case src[0].kind
+          of nkStrKinds:
+            regs[ra] = takeCharAddress(c, src[0], realIndex, pc)
+          of nkBracket:
+            takeAddress regs[ra], src.sons[0].sons[realIndex]
+          else:
+            stackTrace(c, tos, pc, "opcLdArrAddr internal error")
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
+        if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
+          takeAddress regs[ra], src.sons[idx]
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
     of opcLdStrIdx:
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
@@ -712,13 +797,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let idx = regs[rc].intVal.int
       let s = regs[rb].node.strVal.addr # or `byaddr`
       if idx <% s[].len:
-         # `makePtrType` not accessible from vm.nim
-        let typ = newType(tyPtr, nextTypeId c.idgen, c.module.owner)
-        typ.add getSysType(c.graph, c.debug[pc], tyChar)
-        let node = newNodeIT(nkIntLit, c.debug[pc], typ) # xxx nkPtrLit
-        node.intVal = cast[int](s[][idx].addr)
-        node.flags.incl nfIsPtr
-        regs[ra].node = node
+        regs[ra] = takeCharAddress(c, regs[rb].node, idx, pc)
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, s[].len-1))
     of opcWrArr:
@@ -726,7 +805,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       let arr = regs[ra].node
-      if arr.kind in {nkStrLit..nkTripleStrLit}:
+      case arr.kind
+      of nkTupleConstr: # refer to `opcSlice`
+        let
+          src = arr[0]
+          left = arr[1].intVal
+          right = arr[2].intVal
+          realIndex = left + idx
+        if idx in 0..(right - left):
+          case src.kind
+          of nkStrKinds:
+            src.strVal[int(realIndex)] = char(regs[rc].intVal)
+          of nkBracket:
+            src[int(realIndex)] = regs[rc].node
+          else:
+            stackTrace(c, tos, pc, "opcWrArr internal error")
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
+      of {nkStrLit..nkTripleStrLit}:
         if idx <% arr.strVal.len:
           arr.strVal[idx] = chr(regs[rc].intVal)
         else:
@@ -884,14 +980,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLenSeq:
       decodeBImm(rkInt)
       #assert regs[rb].kind == nkBracket
-      let high = (imm and 1) # discard flags
+      let
+        high = (imm and 1) # discard flags
+        node = regs[rb].node
       if (imm and nimNodeFlag) != 0:
         # used by mNLen (NimNode.len)
         regs[ra].intVal = regs[rb].node.safeLen - high
       else:
-        # safeArrLen also return string node len
-        # used when string is passed as openArray in VM
-        regs[ra].intVal = regs[rb].node.safeArrLen - high
+        case node.kind
+        of nkTupleConstr: # refer to `of opcSlice`
+          regs[ra].intVal = node[2].intVal - node[1].intVal + 1 - high
+        else:
+          # safeArrLen also return string node len
+          # used when string is passed as openArray in VM
+          regs[ra].intVal = node.safeArrLen - high
+
     of opcLenStr:
       decodeBImm(rkInt)
       assert regs[rb].kind == rkNode
