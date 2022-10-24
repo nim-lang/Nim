@@ -220,7 +220,8 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
   adding "json path" leading to `b` can be added in future work.
   ]#
   checkJson b != nil, $($T, b)
-  when compiles(fromJsonHook(a, b)): fromJsonHook(a, b)
+  when compiles(fromJsonHook(a, b, opt)): fromJsonHook(a, b, opt)
+  elif compiles(fromJsonHook(a, b)): fromJsonHook(a, b)
   elif T is bool: a = to(b,T)
   elif T is enum:
     case b.kind
@@ -305,7 +306,8 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   ## .. note:: With `-d:nimPreviewJsonutilsHoleyEnum`, `toJson` now can 
   ##    serialize/deserialize holey enums as regular enums (via `ord`) instead of as strings.
   ##    It is expected that this behavior becomes the new default in upcoming versions.
-  when compiles(toJsonHook(a)): result = toJsonHook(a)
+  when compiles(toJsonHook(a, opt)): result = toJsonHook(a, opt)
+  elif compiles(toJsonHook(a)): result = toJsonHook(a)
   elif T is object | tuple:
     when T is object or isNamedTuple(T):
       result = newJObject()
@@ -424,11 +426,11 @@ proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
   for k in s:
     add(result, toJson(k))
 
-proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
+proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode, opt = Joptions()) =
   ## Enables `fromJson` for `Option` types.
   ##
   ## See also:
-  ## * `toJsonHook proc<#toJsonHook,Option[T]>`_
+  ## * `toJsonHook proc<#toJsonHook,Option[T],ToJsonOptions>`_
   runnableExamples:
     import std/[options, json]
     var opt: Option[string]
@@ -438,15 +440,15 @@ proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
     assert isNone(opt)
 
   if jsonNode.kind != JNull:
-    self = some(jsonTo(jsonNode, T))
+    self = some(jsonTo(jsonNode, T, opt))
   else:
     self = none[T]()
 
-proc toJsonHook*[T](self: Option[T]): JsonNode =
+proc toJsonHook*[T](self: Option[T], opt = initToJsonOptions()): JsonNode =
   ## Enables `toJson` for `Option` types.
   ##
   ## See also:
-  ## * `fromJsonHook proc<#fromJsonHook,Option[T],JsonNode>`_
+  ## * `fromJsonHook proc<#fromJsonHook,Option[T],JsonNode,Joptions>`_
   runnableExamples:
     import std/[options, json]
     let optSome = some("test")
@@ -455,7 +457,7 @@ proc toJsonHook*[T](self: Option[T]): JsonNode =
     assert $toJson(optNone) == "null"
 
   if isSome(self):
-    toJson(get(self))
+    toJson(get(self), opt)
   else:
     newJNull()
 
