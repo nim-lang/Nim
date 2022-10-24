@@ -265,7 +265,7 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
       if fmoduleId == module.id: return true
     if f.kind == skField:
       var symObj = f.owner
-      if symObj.typ.skipTypes({tyGenericBody}).kind in {tyRef, tyPtr}:
+      if symObj.typ.skipTypes({tyGenericBody, tyGenericInst, tyGenericInvocation, tyAlias}).kind in {tyRef, tyPtr}:
         symObj = symObj.typ.toObjectFromRefPtrGeneric.sym
       for scope in allScopes(c.currentScope):
         for sym in scope.allowPrivateAccess:
