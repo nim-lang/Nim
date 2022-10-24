@@ -37,6 +37,10 @@ nested finally
 outer finally
 nested finally
 outer finally
+In defer
+trying
+exception caught
+finally block
 '''
 """
 
@@ -350,3 +354,29 @@ block:
 
   for _ in p4():
     discard
+
+# bug #18824
+iterator poc_iterator: int {.closure.}  =
+  block:
+    try:
+      break
+    finally:
+      echo "In defer"
+
+for _ in poc_iterator():
+  discard
+
+# bug #20624
+iterator tryFinally() {.closure.} =
+  block route:
+    try:
+      echo "trying"
+      raise
+    except:
+      echo "exception caught"
+      break route
+    finally:
+      echo "finally block"
+
+var x = tryFinally
+x()
