@@ -105,7 +105,7 @@ proc c_feof(f: File): cint {.
   importc: "feof", header: "<stdio.h>".}
 
 when not declared(c_fwrite):
-  proc c_fwrite(buf: pointer, size, n: csize_t, f: File): cint {.
+  proc c_fwrite(buf: pointer, size, n: csize_t, f: File): c_sizet {.
     importc: "fwrite", header: "<stdio.h>".}
 
 # C routine that is used here:

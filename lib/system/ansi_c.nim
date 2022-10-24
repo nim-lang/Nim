@@ -211,7 +211,7 @@ else:
   proc c_realloc*(p: pointer, newsize: csize_t): pointer {.
     importc: "realloc", header: "<stdlib.h>".}
 
-proc c_fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): cint {.
+proc c_fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): csize_t {.
   importc: "fwrite", header: "<stdio.h>".}
 
 proc c_fflush*(f: CFilePtr): cint {.
