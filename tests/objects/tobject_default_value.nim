@@ -421,14 +421,14 @@ template main {.dirty.} =
 
   block:
     type TokenData = object
-      campaignMemberships: Table = Table[string, string]()
+      campaignMemberships = Table[string, string]()
 
     let x = default(TokenData)
     doAssert x.campaignMemberships.len == 0
 
   block:
     type TokenData = object
-      campaignMemberships: Table = newTable[string, string]()
+      campaignMemberships = newTable[string, string]()
 
     let x = default(TokenData)
     doAssert x.campaignMemberships.len == 0
