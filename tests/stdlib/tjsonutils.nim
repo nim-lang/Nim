@@ -410,6 +410,28 @@ template fn() =
       doAssert foo.c == 0
       doAssert foo.c0 == 42
 
+    type
+      InnerEnum = enum
+        A
+        B
+        C
+      InnerObject = object
+        x: string
+        y: InnerEnum
+
+    block testOptionsArePassedWhenDeserialising:
+      let json = parseJson("""{"x": "hello"}""")
+      let inner = json.jsonTo(Option[InnerObject], Joptions(allowMissingKeys: true))
+      doAssert inner.isSome()
+      doAssert inner.get().x == "hello"
+      doAssert inner.get().y == A
+
+    block testOptionsArePassedWhenSerialising:
+      let inner = some InnerObject(x: "hello", y: A)
+      let json = inner.toJson(ToJsonOptions(enumMode: joptEnumSymbol))
+      doAssert $json == """{"x": "hello", "y": "A"}"""
+
+
     when false:
       ## TODO: Implement support for nested variant objects allowing the tests
       ## bellow to pass.
