@@ -1,6 +1,9 @@
 import std/[tables, hashes, macros, strutils]
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, formatfloat]
+
 type
   JsonNodeKind* = enum ## possible JSON node types
     JNull,
@@ -31,8 +34,6 @@ type
     of JArray:
       elems*: seq[JsonNode]
 
-
-const DepthLimit = 1000
 
 proc newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.
