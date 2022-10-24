@@ -110,7 +110,8 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
     let b = toTask hello(13)
     assert b is Task
 
-  doAssert getTypeInst(e).typeKind == ntyVoid
+  if getTypeInst(e).typeKind != ntyVoid:
+    error("'toTask' cannot accept a call with a return value", e)
 
   when compileOption("threads"):
     if not isGcSafe(e[0]):

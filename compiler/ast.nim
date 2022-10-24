@@ -207,12 +207,11 @@ type
     nkPtrTy,              # ``ptr T``
     nkVarTy,              # ``var T``
     nkConstTy,            # ``const T``
-    nkMutableTy,          # ``mutable T``
+    nkOutTy,              # ``out T``
     nkDistinctTy,         # distinct type
     nkProcTy,             # proc type
     nkIteratorTy,         # iterator type
-    nkSharedTy,           # 'shared T'
-                          # we use 'nkPostFix' for the 'not nil' addition
+    nkSinkAsgn,           # '=sink(x, y)'
     nkEnumTy,             # enum body
     nkEnumFieldDef,       # `ident = expr` in an enumeration
     nkArgList,            # argument list
@@ -508,11 +507,12 @@ type
                        # the flag is applied to proc default values and to calls
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
     nfLastRead  # this node is a last read
-    nfFirstWrite# this node is a first write
+    nfFirstWrite # this node is a first write
     nfHasComment # node has a comment
+    nfUseDefaultField # node has a default value (object constructor)
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 45)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 46)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -581,6 +581,7 @@ type
     tfExplicitCallConv
     tfIsConstructor
     tfEffectSystemWorkaround
+    tfIsOutParam
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -631,7 +632,7 @@ const
   skError* = skUnknown
 
 var
-  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect}
+  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam}
     ## type flags that are essential for type equality.
     ## This is now a variable because for emulation of version:1.0 we
     ## might exclude {tfGcSafe, tfNoSideEffect}.
@@ -712,7 +713,7 @@ type
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId, mPrivateAccess
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault
 
 
 const
@@ -927,7 +928,6 @@ type
       allUsages*: seq[TLineInfo]
 
   TTypeSeq* = seq[PType]
-  TLockLevel* = distinct int16
 
   TTypeAttachedOp* = enum ## as usual, order is important here
     attachedDestructor,
@@ -961,7 +961,6 @@ type
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
     paddingAtEnd*: int16      #
-    lockLevel*: TLockLevel    # lock level as required for deadlock checking
     loc*: TLoc
     typeInst*: PType          # for generic instantiations the tyGenericInst that led to this
                               # type.
@@ -1075,7 +1074,8 @@ const
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
-                                      nfExecuteOnReload, nfLastRead, nfFirstWrite}
+                                      nfExecuteOnReload, nfLastRead,
+                                      nfFirstWrite}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1251,6 +1251,12 @@ proc skipPragmaExpr*(n: PNode): PNode =
     result = n[0]
   else:
     result = n
+
+proc setInfoRecursive*(n: PNode, info: TLineInfo) =
+  ## set line info recursively
+  if n != nil:
+    for i in 0..<n.safeLen: setInfoRecursive(n[i], info)
+    n.info = info
 
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
@@ -1490,16 +1496,8 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
                   pragmas, exceptions, body]
 
 const
-  UnspecifiedLockLevel* = TLockLevel(-1'i16)
-  MaxLockLevel* = 1000'i16
-  UnknownLockLevel* = TLockLevel(1001'i16)
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
     "=destroy", "=copy", "=sink", "=trace", "=deepcopy"]
-
-proc `$`*(x: TLockLevel): string =
-  if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"
-  elif x.ord == UnknownLockLevel.ord: result = "<unknown>"
-  else: result = $int16(x)
 
 proc `$`*(s: PSym): string =
   if s != nil:
@@ -1510,7 +1508,6 @@ proc `$`*(s: PSym): string =
 proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
   result = PType(kind: kind, owner: owner, size: defaultSize,
                  align: defaultAlignment, itemId: id,
-                 lockLevel: UnspecifiedLockLevel,
                  uniqueId: id)
   when false:
     if result.itemId.module == 55 and result.itemId.item == 2:
@@ -1535,7 +1532,6 @@ proc assignType*(dest, src: PType) =
   dest.n = src.n
   dest.size = src.size
   dest.align = src.align
-  dest.lockLevel = src.lockLevel
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
@@ -2120,6 +2116,8 @@ proc skipAddr*(n: PNode): PNode {.inline.} =
 proc isNewStyleConcept*(n: PNode): bool {.inline.} =
   assert n.kind == nkTypeClassTy
   result = n[0].kind == nkEmpty
+
+proc isOutParam*(t: PType): bool {.inline.} = tfIsOutParam in t.flags
 
 const
   nodesToIgnoreSet* = {nkNone..pred(nkSym), succ(nkSym)..nkNilLit,

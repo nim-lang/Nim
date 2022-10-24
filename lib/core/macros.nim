@@ -75,11 +75,11 @@ type
     nnkTupleTy, nnkTupleClassTy, nnkTypeClassTy, nnkStaticTy,
     nnkRecList, nnkRecCase, nnkRecWhen,
     nnkRefTy, nnkPtrTy, nnkVarTy,
-    nnkConstTy, nnkMutableTy,
+    nnkConstTy, nnkOutTy,
     nnkDistinctTy,
     nnkProcTy,
     nnkIteratorTy,         # iterator type
-    nnkSharedTy,           # 'shared T'
+    nnkSinkAsgn,
     nnkEnumTy,
     nnkEnumFieldDef,
     nnkArgList, nnkPattern
@@ -124,6 +124,10 @@ type
     nskStub
 
   TNimSymKinds* {.deprecated.} = set[NimSymKind]
+
+const
+  nnkMutableTy* {.deprecated.} = nnkOutTy
+  nnkSharedTy* {.deprecated.} = nnkSinkAsgn
 
 type
   NimIdent* {.deprecated.} = object of RootObj
@@ -212,12 +216,12 @@ template `or`*(x, y: NimNode): NimNode =
     y
 
 proc add*(father, child: NimNode): NimNode {.magic: "NAdd", discardable,
-  noSideEffect, locks: 0.}
+  noSideEffect.}
   ## Adds the `child` to the `father` node. Returns the
   ## father node so that calls can be nested.
 
 proc add*(father: NimNode, children: varargs[NimNode]): NimNode {.
-  magic: "NAddMultiple", discardable, noSideEffect, locks: 0.}
+  magic: "NAddMultiple", discardable, noSideEffect.}
   ## Adds each child of `children` to the `father` node.
   ## Returns the `father` node so that calls can be nested.
 

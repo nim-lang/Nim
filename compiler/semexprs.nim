@@ -87,6 +87,14 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
   result = semExprCheck(c, n, flags, expectedType)
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
+  elif (result.typ == nil or result.typ.kind == tyNone) and
+      result.kind == nkClosedSymChoice and
+      result[0].sym.kind == skEnumField:
+    # if overloaded enum field could not choose a type from a closed list,
+    # choose the first resolved enum field, i.e. the latest in scope
+    # to mirror old behavior
+    msgSymChoiceUseQualifier(c, result, hintAmbiguousEnum)
+    result = result[0]
   elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
@@ -363,6 +371,8 @@ proc semCast(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2, c.config)
   let targetType = semTypeNode(c, n[0], nil)
   let castedExpr = semExprWithType(c, n[1])
+  if castedExpr.kind == nkClosedSymChoice:
+    errorUseQualifier(c, n[1].info, castedExpr)
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
@@ -918,18 +928,10 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
           rawAddSon(typ, result.typ)
           result.typ = typ
 
-proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode
-
 proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
                          t: PType): TCandidate =
   initCandidate(c, result, t)
   matches(c, n, nOrig, result)
-  if result.state != csMatch:
-    # try to deref the first argument:
-    if implicitDeref in c.features and canDeref(n):
-      n[1] = n[1].tryDeref
-      initCandidate(c, result, t)
-      matches(c, n, nOrig, result)
 
 proc bracketedMacro(n: PNode): PSym =
   if n.len >= 1 and n[0].kind == nkSym:
@@ -971,7 +973,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
   var prc = n[0]
   if n[0].kind == nkDotExpr:
     checkSonsLen(n[0], 2, c.config)
-    let n0 = semFieldAccess(c, n[0])
+    let n0 = semFieldAccess(c, n[0], {efIsDotCall})
     if n0.kind == nkDotCall:
       # it is a static call!
       result = n0
@@ -1472,8 +1474,9 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this is difficult, because the '.' is used in many different contexts
   # in Nim. We first allow types in the semantic checking.
-  result = builtinFieldAccess(c, n, flags)
-  if result == nil:
+  result = builtinFieldAccess(c, n, flags - {efIsDotCall})
+  if result == nil or ((result.typ == nil or result.typ.skipTypes(abstractInst).kind != tyProc) and 
+      efIsDotCall in flags and callOperator notin c.features):
     result = dotTransformation(c, n)
 
 proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
@@ -2419,8 +2422,8 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   #   ...
   var whenNimvm = false
   var typ = commonTypeBegin
-  if n.len == 2 and n[0].kind == nkElifBranch and
-      n[1].kind == nkElse:
+  if n.len in 1..2 and n[0].kind == nkElifBranch and (
+      n.len == 1 or n[1].kind == nkElse):
     let exprNode = n[0][0]
     if exprNode.kind == nkIdent:
       whenNimvm = lookUp(c, exprNode).magic == mNimvm
@@ -2458,7 +2461,10 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
     else: illFormedAst(n, c.config)
   if result == nil:
     result = newNodeI(nkEmpty, n.info)
-  if whenNimvm: result.typ = typ
+  if whenNimvm:
+    result.typ = typ
+    if n.len == 1:
+      result.add(newTree(nkElse, newNode(nkStmtList)))
 
 proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
   result = newNodeI(nkCurly, n.info)

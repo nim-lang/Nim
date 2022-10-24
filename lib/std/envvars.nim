@@ -61,6 +61,8 @@ when not defined(nimscript):
       proc c_putenv(envstring: cstring): cint {.importc: "_putenv", header: "<stdlib.h>".}
       from std/private/win_setenv import setEnvImpl
       import winlean
+      when defined(nimPreviewSlimSystem):
+        import std/widestrs
       proc c_wgetenv(varname: WideCString): WideCString {.importc: "_wgetenv",
           header: "<stdlib.h>".}
       proc getEnvImpl(env: cstring): WideCString = c_wgetenv(env.newWideCString)

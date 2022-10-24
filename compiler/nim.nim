@@ -97,6 +97,10 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if not self.loadConfigsAndProcessCmdLine(cache, conf, graph):
     return
 
+  if conf.cmd == cmdCheck and optWasNimscript notin conf.globalOptions and
+       conf.backend == backendInvalid:
+    conf.backend = backendC
+
   if conf.selectedGC == gcUnselected:
     if conf.backend in {backendC, backendCpp, backendObjc}:
       initOrcDefines(conf)
@@ -113,7 +117,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     case conf.cmd
     of cmdBackends, cmdTcc:
       let nimRunExe = getNimRunExe(conf)
-      var cmdPrefix: string
+      var cmdPrefix = ""
       if nimRunExe.len > 0: cmdPrefix.add nimRunExe.quoteShell
       case conf.backend
       of backendC, backendCpp, backendObjc: discard

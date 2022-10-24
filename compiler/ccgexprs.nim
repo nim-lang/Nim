@@ -2252,8 +2252,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
       cgsym(p.module, raiser)
 
       let boundaryCast =
-        if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64} or
-            (n0t.sym != nil and sfSystemModule in n0t.sym.owner.flags and n0t.sym.name.s == "csize"):
+        if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64}:
           "(NI64)"
         else:
           ""
@@ -2573,7 +2572,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
         p.module.s[cfsDynLibInit].addf("\t$1 = ($2) hcrGetProc($3, \"$1\");$n",
              [mangleDynLibProc(prc), getTypeDesc(p.module, prc.loc.t), getModuleDllPath(p.module, prc)])
     genCall(p, e, d)
-  of mDefault: genDefault(p, e, d)
+  of mDefault, mZeroDefault: genDefault(p, e, d)
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)
@@ -3087,7 +3086,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     cow(p, n[1])
     if nfPreventCg notin n.flags:
       genAsgn(p, n, fastAsgn=false)
-  of nkFastAsgn:
+  of nkFastAsgn, nkSinkAsgn:
     cow(p, n[1])
     if nfPreventCg notin n.flags:
       # transf is overly aggressive with 'nkFastAsgn', so we work around here.
