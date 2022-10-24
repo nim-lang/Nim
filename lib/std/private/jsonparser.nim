@@ -3,9 +3,9 @@ import parsejson, strutils, streams
 import jsontypes, jsontree, jsonbuilder
 
 export
+  parsejson.JsonEventKind, parsejson.JsonError, JsonParser, JsonKindError,
   open, close, str, getInt, getFloat, kind, getColumn, getLine, getFilename,
   errorMsg, errorMsgExpected, next, JsonParsingError, raiseParseErr, nimIdentNormalize
-
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio]
