@@ -1,5 +1,6 @@
 discard """
-  output: '''true'''
+  output: '''true
+5.0'''
 """
 
 #bug #592
@@ -89,3 +90,12 @@ proc does_fail(): Foo =
   result.bar(5, a)
 
 doAssert does_fail().bar == 0
+
+# bug #20645
+
+type Zzz[Gen] = object
+
+proc testZ(z: Zzz) =
+  echo z.Gen(5)
+
+testZ(Zzz[float]())
