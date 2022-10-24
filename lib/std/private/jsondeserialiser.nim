@@ -293,6 +293,7 @@ when defined(nimFixedForwardGeneric):
     ##   * Not nil annotations are not supported.
     ##
     runnableExamples:
+      import std/json
       let jsonNode = parseJson("""
         {
           "person": {

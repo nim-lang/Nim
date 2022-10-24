@@ -165,6 +165,7 @@ proc `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline, since: (1,
   ##
   ## i.e. `j[^i]` is a shortcut for `j[j.len-i]`.
   runnableExamples:
+    import std/json
     let
       j = parseJson("[1,2,3,4,5]")
 
@@ -220,6 +221,7 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## fly (sometimes called `autovivification`:idx:):
   ##
   runnableExamples:
+    import std/json
     var myjson = %* {"parent": {"child": {"grandchild": 1}}}
     doAssert myjson{"parent", "child", "grandchild"} == newJInt(1)
 
@@ -440,6 +442,7 @@ proc pretty*(node: JsonNode, indent = 2): string =
   ##
   ## Similar to prettyprint in Python.
   runnableExamples:
+    import std/json
     let j = %* {"name": "Isaac", "books": ["Robot Dreams"],
                 "details": {"age": 35, "pi": 3.1415}}
     doAssert pretty(j) == """

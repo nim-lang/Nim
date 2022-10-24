@@ -1,6 +1,6 @@
 import std/[tables, options, macros]
 
-import jsonbuilder, jsontypes
+import jsonbuilder, jsontypes, jsontree
 
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
@@ -31,7 +31,8 @@ proc `%`*(n: BiggestInt): JsonNode =
 proc `%`*(n: float): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JFloat JsonNode`.
   runnableExamples:
-    assert $(%[NaN, Inf, -Inf, 0.0, -0.0, 1.0, 1e-2]) == """["nan","inf","-inf",0.0,-0.0,1.0,0.01]"""
+    from std/json import `$`, JString, JFloat
+    assert `$`(%[NaN, Inf, -Inf, 0.0, -0.0, 1.0, 1e-2]) == """["nan","inf","-inf",0.0,-0.0,1.0,0.01]"""
     assert (%NaN).kind == JString
     assert (%0.0).kind == JFloat
   # for those special cases, we could also have used `newJRawNumber` but then
