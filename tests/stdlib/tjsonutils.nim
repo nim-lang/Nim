@@ -429,7 +429,7 @@ template fn() =
     block testOptionsArePassedWhenSerialising:
       let inner = some InnerObject(x: "hello", y: A)
       let json = inner.toJson(ToJsonOptions(enumMode: joptEnumSymbol))
-      doAssert $json == """{"x": "hello", "y": "A"}"""
+      doAssert $json == """{"x":"hello","y":"A"}"""
 
 
     when false:
