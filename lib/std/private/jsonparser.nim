@@ -8,7 +8,7 @@ export
   errorMsg, errorMsgExpected, next, JsonParsingError, raiseParseErr, nimIdentNormalize
 
 when defined(nimPreviewSlimSystem):
-  import std/[syncio]
+  import std/[syncio, assertions]
 
 const DepthLimit = 1000
 
