@@ -354,10 +354,13 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyProc:
     if containsGarbageCollectedRef(dest.t):
       # optimize closure assignment:
-      let a = optAsgnLoc(dest, dest.t, "ClE_0".rope)
-      let b = optAsgnLoc(src, dest.t, "ClE_0".rope)
-      genRefAssign(p, a, b)
-      linefmt(p, cpsStmts, "$1.ClP_0 = $2.ClP_0;$n", [rdLoc(dest), rdLoc(src)])
+      if containsGarbageCollectedRef(src.t):
+        let a = optAsgnLoc(dest, dest.t, "ClE_0".rope)
+        let b = optAsgnLoc(src, dest.t, "ClE_0".rope)
+        genRefAssign(p, a, b)
+        linefmt(p, cpsStmts, "$1.ClP_0 = $2.ClP_0;$n", [rdLoc(dest), rdLoc(src)])
+      else:
+        linefmt(p, cpsStmts, "$1.ClP_0 = $2;$n", [rdLoc(dest), rdLoc(src)])
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyTuple:
