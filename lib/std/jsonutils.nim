@@ -430,7 +430,7 @@ proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode, opt = Joptions())
   ## Enables `fromJson` for `Option` types.
   ##
   ## See also:
-  ## * `toJsonHook proc<#toJsonHook,Option[T],ToJsonOptions>`_
+  ## * `toJsonHook proc<#toJsonHook,Option[T]>`_
   runnableExamples:
     import std/[options, json]
     var opt: Option[string]
@@ -448,7 +448,7 @@ proc toJsonHook*[T](self: Option[T], opt = initToJsonOptions()): JsonNode =
   ## Enables `toJson` for `Option` types.
   ##
   ## See also:
-  ## * `fromJsonHook proc<#fromJsonHook,Option[T],JsonNode,Joptions>`_
+  ## * `fromJsonHook proc<#fromJsonHook,Option[T],JsonNode>`_
   runnableExamples:
     import std/[options, json]
     let optSome = some("test")
