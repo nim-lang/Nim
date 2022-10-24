@@ -350,7 +350,7 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   else: result = %a
 
 proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V]),
-                         jsonNode: JsonNode) =
+                         jsonNode: JsonNode, opt = Joptions()) =
   ## Enables `fromJson` for `Table` and `OrderedTable` types.
   ##
   ## See also:
@@ -368,9 +368,9 @@ proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V
           "type is `" & $jsonNode.kind & "`."
   clear(t)
   for k, v in jsonNode:
-    t[k] = jsonTo(v, V)
+    t[k] = jsonTo(v, V, opt)
 
-proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): JsonNode =
+proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V]), opt = initToJsonOptions()): JsonNode =
   ## Enables `toJson` for `Table` and `OrderedTable` types.
   ##
   ## See also:
@@ -390,9 +390,9 @@ proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): J
   result = newJObject()
   for k, v in pairs(t):
     # not sure if $k has overhead for string
-    result[(when K is string: k else: $k)] = toJson(v)
+    result[(when K is string: k else: $k)] = toJson(v, opt)
 
-proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
+proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode, opt = Joptions()) =
   ## Enables `fromJson` for `HashSet` and `OrderedSet` types.
   ##
   ## See also:
@@ -410,9 +410,9 @@ proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
           "type is `" & $jsonNode.kind & "`."
   clear(s)
   for v in jsonNode:
-    incl(s, jsonTo(v, A))
+    incl(s, jsonTo(v, A, opt))
 
-proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
+proc toJsonHook*[A](s: SomeSet[A], opt = initToJsonOptions()): JsonNode =
   ## Enables `toJson` for `HashSet` and `OrderedSet` types.
   ##
   ## See also:
@@ -424,7 +424,7 @@ proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
 
   result = newJArray()
   for k in s:
-    add(result, toJson(k))
+    add(result, toJson(k, opt))
 
 proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode, opt = Joptions()) =
   ## Enables `fromJson` for `Option` types.
