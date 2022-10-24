@@ -597,7 +597,7 @@ template unaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
 proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   var
     x, y: TCompRes
-    xLoc,yLoc: Rope
+    xLoc, yLoc: Rope
   let i = ord(optOverflowCheck notin p.options)
   useMagic(p, jsMagics[op][i])
   if n.len > 2:
@@ -614,7 +614,7 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   template applyFormat(frmtA, frmtB) =
     if i == 0: applyFormat(frmtA) else: applyFormat(frmtB)
 
-  case op:
+  case op
   of mAddI: applyFormat("addInt($1, $2)", "($1 + $2)")
   of mSubI: applyFormat("subInt($1, $2)", "($1 - $2)")
   of mMulI: applyFormat("mulInt($1, $2)", "($1 * $2)")
@@ -887,7 +887,6 @@ proc genRaiseStmt(p: PProc, n: PNode) =
 proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
   var
     a, b, cond, stmt: TCompRes
-    totalRange = 0
   genLineDir(p, n)
   gen(p, n[0], cond)
   let typeKind = skipTypes(n[0].typ, abstractVar).kind
@@ -897,7 +896,7 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
   of tyString:
     useMagic(p, "toJSStr")
     lineF(p, "switch (toJSStr($1)) {$n", [cond.rdLoc])
-  of tyFloat..tyFloat128:
+  of tyFloat..tyFloat128, tyInt..tyInt64, tyUInt..tyUInt64:
     transferRange = true
   else:
     lineF(p, "switch ($1) {$n", [cond.rdLoc])
@@ -926,10 +925,6 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
               lineF(p, "$1 >= $2 && $1 <= $3", [cond.rdLoc, a.rdLoc, b.rdLoc])
           else:
             var v = copyNode(e[0])
-            inc(totalRange, int(e[1].intVal - v.intVal))
-            if totalRange > 65535:
-              localError(p.config, n.info,
-                        "Your case statement contains too many branches, consider using if/else instead!")
             while v.intVal <= e[1].intVal:
               gen(p, v, cond)
               lineF(p, "case $1:$n", [cond.rdLoc])
@@ -2231,7 +2226,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNewSeq: genNewSeq(p, n)
   of mNewSeqOfCap: unaryExpr(p, n, r, "", "[]")
   of mOf: genOf(p, n, r)
-  of mDefault: genDefault(p, n, r)
+  of mDefault, mZeroDefault: genDefault(p, n, r)
   of mReset, mWasMoved: genReset(p, n)
   of mEcho: genEcho(p, n, r)
   of mNLen..mNError, mSlurp, mStaticExec:
@@ -2342,7 +2337,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, val, a)
     var f = it[0].sym
     if f.loc.r == "": f.loc.r = mangleName(p.module, f)
-    fieldIDs.incl(lookupFieldAgain(nTyp, f).id)
+    fieldIDs.incl(lookupFieldAgain(n.typ.skipTypes({tyDistinct}), f).id)
 
     let typ = val.typ.skipTypes(abstractInst)
     if a.typ == etyBaseIndex:
@@ -2494,7 +2489,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, cache = false)
+  var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, dontUseCache)
   if sfInjectDestructors in prc.flags:
     transformedBody = injectDestructorCalls(p.module.graph, p.module.idgen, prc, transformedBody)
 
@@ -2716,7 +2711,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkReturnStmt: genReturnStmt(p, n)
   of nkBreakStmt: genBreakStmt(p, n)
   of nkAsgn: genAsgn(p, n)
-  of nkFastAsgn: genFastAsgn(p, n)
+  of nkFastAsgn, nkSinkAsgn: genFastAsgn(p, n)
   of nkDiscardStmt:
     if n[0].kind != nkEmpty:
       genLineDir(p, n)

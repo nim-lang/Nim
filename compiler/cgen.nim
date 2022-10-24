@@ -926,7 +926,7 @@ proc easyResultAsgn(n: PNode): PNode =
     var i = 0
     while i < n.len and n[i].kind in harmless: inc i
     if i < n.len: result = easyResultAsgn(n[i])
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     if n[0].kind == nkSym and n[0].sym.kind == skResult and not containsResult(n[1]):
       incl n.flags, nfPreventCg
       return n[1]
@@ -968,7 +968,7 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
     for it in n:
       result = allPathsAsgnResult(it)
       if result != Unknown: return result
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     if n[0].kind == nkSym and n[0].sym.kind == skResult:
       if not containsResult(n[1]): result = InitSkippable
       else: result = InitRequired
@@ -1067,7 +1067,7 @@ proc genProcAux(m: BModule, prc: PSym) =
   var returnStmt: Rope = ""
   assert(prc.ast != nil)
 
-  var procBody = transformBody(m.g.graph, m.idgen, prc, cache = false)
+  var procBody = transformBody(m.g.graph, m.idgen, prc, dontUseCache)
   if sfInjectDestructors in prc.flags:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 

@@ -1648,7 +1648,7 @@ func removePrefix*(s: var string, chars: set[char] = Newlines) {.rtl,
 
   var start = 0
   while start < s.len and s[start] in chars: start += 1
-  if start > 0: s.delete(0, start - 1)
+  if start > 0: s.delete(0..start - 1)
 
 func removePrefix*(s: var string, c: char) {.rtl,
     extern: "nsuRemovePrefixChar".} =
@@ -1675,8 +1675,8 @@ func removePrefix*(s: var string, prefix: string) {.rtl,
     var answers = "yesyes"
     answers.removePrefix("yes")
     doAssert answers == "yes"
-  if s.startsWith(prefix):
-    s.delete(0, prefix.len - 1)
+  if s.startsWith(prefix) and prefix.len > 0:
+    s.delete(0..prefix.len - 1)
 
 func removeSuffix*(s: var string, chars: set[char] = Newlines) {.rtl,
     extern: "nsuRemoveSuffixCharSet".} =
@@ -1936,6 +1936,14 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
     if s[i] in chars:
       return i
 
+when defined(linux):
+  proc memmem(haystack: pointer, haystacklen: csize_t,
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: """#define _GNU_SOURCE
+#include <string.h>""".}
+elif defined(bsd) or (defined(macosx) and not defined(ios)):
+  proc memmem(haystack: pointer, haystacklen: csize_t,
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: "#include <string.h>".}
+
 func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuFindStr".} =
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
@@ -1951,7 +1959,24 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
 
-  result = find(initSkipTable(sub), s, sub, start, last)
+  template useSkipTable =
+    result = find(initSkipTable(sub), s, sub, start, last)
+
+  when nimvm:
+    useSkipTable()
+  else:
+    when declared(memmem):
+      let subLen = sub.len
+      if last < 0 and start < s.len and subLen != 0:
+        let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(subLen))
+        result = if not found.isNil:
+            cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+          else:
+            -1
+      else:
+        useSkipTable()
+    else:
+      useSkipTable()
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
@@ -2469,7 +2494,8 @@ func trimZeros*(x: var string; decimalSep = '.') =
     var pos = last
     while pos >= 0 and x[pos] == '0': dec(pos)
     if pos > sPos: inc(pos)
-    x.delete(pos, last)
+    if last >= pos:
+      x.delete(pos..last)
 
 type
   BinaryPrefixMode* = enum ## The different names for binary prefixes.

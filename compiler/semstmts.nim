@@ -574,9 +574,13 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
                 pragma(c, defs[lhsPos][namePos].sym, defs[lhsPos][pragmaPos], validPragmas)
         return result
 
-proc errorSymChoiceUseQualifier(c: PContext; n: PNode) =
+proc msgSymChoiceUseQualifier(c: PContext; n: PNode; note = errGenerated) =
   assert n.kind in nkSymChoices
-  var err = "ambiguous identifier: '" & $n[0] & "'"
+  var err =
+    if note == hintAmbiguousEnum:
+      "ambiguous enum field '$1' assumed to be of type $2, this will become an error in the future" % [$n[0], typeToString(n[0].typ)]
+    else:
+      "ambiguous identifier: '" & $n[0] & "'"
   var i = 0
   for child in n:
     let candidate = child.sym
@@ -584,7 +588,7 @@ proc errorSymChoiceUseQualifier(c: PContext; n: PNode) =
     else: err.add "\n"
     err.add "  " & candidate.owner.name.s & "." & candidate.name.s
     inc i
-  localError(c.config, n.info, errGenerated, err)
+  message(c.config, n.info, note, err)
 
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
@@ -611,8 +615,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {}, typ)
 
-      if def.kind in nkSymChoices and def[0].typ.skipTypes(abstractInst).kind == tyEnum:
-        errorSymChoiceUseQualifier(c, def)
+      if def.kind in nkSymChoices and def[0].sym.kind == skEnumField:
+        msgSymChoiceUseQualifier(c, def, errGenerated)
       elif def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
       elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
@@ -849,6 +853,9 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var iterAfterVarLent = iter.skipTypes({tyGenericInst, tyAlias, tyLent, tyVar})
   # n.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
+  if iterAfterVarLent.kind == tyEmpty:
+    localError(c.config, n[^2].info, "cannot infer element type of $1" %
+               renderTree(n[^2], {renderNoComments}))
   if iterAfterVarLent.kind != tyTuple or n.len == 3:
     if n.len == 3:
       if n[0].kind == nkVarTuple:
@@ -2331,11 +2338,6 @@ proc evalInclude(c: PContext, n: PNode): PNode =
     else:
       incMod(c, n, it, result)
 
-proc setLine(n: PNode, info: TLineInfo) =
-  if n != nil:
-    for i in 0..<n.safeLen: setLine(n[i], info)
-    n.info = info
-
 proc recursiveSetFlag(n: PNode, flag: TNodeFlag) =
   if n != nil:
     for i in 0..<n.safeLen: recursiveSetFlag(n[i], flag)
@@ -2364,7 +2366,7 @@ proc semPragmaBlock(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   result.typ = n[1].typ
   for i in 0..<pragmaList.len:
     case whichPragma(pragmaList[i])
-    of wLine: setLine(result, pragmaList[i].info)
+    of wLine: setInfoRecursive(result, pragmaList[i].info)
     of wNoRewrite: recursiveSetFlag(result, nfNoRewrite)
     else: discard
 

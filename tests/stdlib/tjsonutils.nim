@@ -410,11 +410,33 @@ template fn() =
       doAssert foo.c == 0
       doAssert foo.c0 == 42
 
+
     block testInvalidTupleLength:
       let json = parseJson("[0]")
       # Should raise ValueError instead of index error
       doAssertRaises(ValueError):
         discard json.jsonTo((int, int))
+
+    type
+      InnerEnum = enum
+        A
+        B
+        C
+      InnerObject = object
+        x: string
+        y: InnerEnum
+
+    block testOptionsArePassedWhenDeserialising:
+      let json = parseJson("""{"x": "hello"}""")
+      let inner = json.jsonTo(Option[InnerObject], Joptions(allowMissingKeys: true))
+      doAssert inner.isSome()
+      doAssert inner.get().x == "hello"
+      doAssert inner.get().y == A
+
+    block testOptionsArePassedWhenSerialising:
+      let inner = some InnerObject(x: "hello", y: A)
+      let json = inner.toJson(ToJsonOptions(enumMode: joptEnumSymbol))
+      doAssert $json == """{"x":"hello","y":"A"}"""
 
     when false:
       ## TODO: Implement support for nested variant objects allowing the tests

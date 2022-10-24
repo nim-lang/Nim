@@ -53,7 +53,7 @@ proc findDocComment(n: PNode): PNode =
     if result != nil: return
     if n.len > 1:
       result = findDocComment(n[1])
-  elif n.kind in {nkAsgn, nkFastAsgn} and n.len == 2:
+  elif n.kind in {nkAsgn, nkFastAsgn, nkSinkAsgn} and n.len == 2:
     result = findDocComment(n[1])
 
 proc extractDocComment(g: ModuleGraph; s: PSym): string =
@@ -164,7 +164,7 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
     result.tokenLen = 0
   else:
     let infox =
-      if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline}:
+      if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline, ideDeclaration}:
         info
       else:
         s.info

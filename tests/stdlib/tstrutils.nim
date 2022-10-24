@@ -433,6 +433,9 @@ template main() =
     x = "1e0"
     x.trimZeros()
     doAssert x == "1e0"
+    x = "1.23"
+    x.trimZeros()
+    doAssert x == "1.23"
 
   block: # countLines
     proc assertCountLines(s: string) = doAssert s.countLines == s.splitLines.len

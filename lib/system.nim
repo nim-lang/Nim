@@ -24,6 +24,9 @@
 
 include "system/basic_types"
 
+func zeroDefault*[T](_: typedesc[T]): T {.magic: "ZeroDefault".} =
+  ## returns the default value of the type `T`.
+
 include "system/compilation"
 
 {.push warning[GcMem]: off, warning[Uninit]: off.}
@@ -115,19 +118,9 @@ proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ##   ```
   discard
 
-proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect,
-    deprecated: "'unsafeAddr' is a deprecated alias for 'addr'".} =
-  ## Builtin `addr` operator for taking the address of a memory
-  ## location.
-  ##
-  ## .. note:: This works for `let` variables or parameters
-  ##   for better interop with C. When you use it to write a wrapper
-  ##   for a C library and take the address of `let` variables or parameters,
-  ##   you should always check that the original library
-  ##   does never write to data behind the pointer that is returned from
-  ##   this procedure.
-  ##
-  ## Cannot be overloaded.
+proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
+  ## .. warning:: `unsafeAddr` is a deprecated alias for `addr`,
+  ##    use `addr` instead.
   discard
 
 
@@ -731,13 +724,16 @@ proc contains*[U, V, W](s: HSlice[U, V], value: W): bool {.noSideEffect, inline.
   ##   ```
   result = s.a <= value and value <= s.b
 
-template `in`*(x, y: untyped): untyped {.dirty.} = contains(y, x)
+when not defined(nimHasCallsitePragma):
+  {.pragma: callsite.}
+
+template `in`*(x, y: untyped): untyped {.dirty, callsite.} = contains(y, x)
   ## Sugar for `contains`.
   ##   ```
   ##   assert(1 in (1..3) == true)
   ##   assert(5 in (1..3) == false)
   ##   ```
-template `notin`*(x, y: untyped): untyped {.dirty.} = not contains(y, x)
+template `notin`*(x, y: untyped): untyped {.dirty, callsite.} = not contains(y, x)
   ## Sugar for `not contains`.
   ##   ```
   ##   assert(1 notin (1..3) == false)
@@ -762,7 +758,7 @@ proc `is`*[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
   ##   assert(test[int](3) == 3)
   ##   assert(test[string]("xyz") == 0)
   ##   ```
-template `isnot`*(x, y: untyped): untyped = not (x is y)
+template `isnot`*(x, y: untyped): untyped {.callsite.} = not (x is y)
   ## Negated version of `is <#is,T,S>`_. Equivalent to `not(x is y)`.
   ##   ```
   ##   assert 42 isnot float
@@ -907,6 +903,7 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
     var a3 = Foo.default # this works, but generates a `UnsafeDefault` warning.
   # note: the doc comment also explains why `default` can't be implemented
   # via: `template default*[T](t: typedesc[T]): T = (var v: T; v)`
+
 
 proc reset*[T](obj: var T) {.noSideEffect.} =
   ## Resets an object `obj` to its default value.
@@ -1422,6 +1419,14 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
     # unnecessary slow down in this case.
     swap(cast[ptr pointer](addr arr[a])[], cast[ptr pointer](addr arr[b])[])
 
+when not defined(nimscript):
+  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
+                                                     discardable, raises: [], tags: [], benign.}
+  ## Atomic increment of `memLoc`. Returns the value after the operation.
+
+  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
+                                                     discardable, raises: [], tags: [], benign.}
+  ## Atomic decrement of `memLoc`. Returns the value after the operation.
 
 include "system/memalloc"
 
@@ -1639,14 +1644,6 @@ when not declared(sysFatal):
 when not defined(nimscript):
   {.push stackTrace: off, profiler: off.}
 
-  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
-    discardable, benign.}
-    ## Atomic increment of `memLoc`. Returns the value after the operation.
-
-  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
-    discardable, benign.}
-    ## Atomic decrement of `memLoc`. Returns the value after the operation.
-
   include "system/atomics"
 
   {.pop.}
@@ -1704,7 +1701,7 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     result = s[L]
     setLen(s, L)
 
-proc `==`*[T: tuple|object](x, y: T): bool =
+func `==`*[T: tuple|object](x, y: T): bool =
   ## Generic `==` operator for tuples that is lifted from the components.
   ## of `x` and `y`.
   for a, b in fields(x, y):
@@ -2316,28 +2313,29 @@ when compileOption("rangechecks"):
 else:
   template rangeCheck*(cond) = discard
 
-proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
-  ## Marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
-  ## perform deep copies of `s`.
-  ##
-  ## This is only useful for optimization purposes.
-  if s.len == 0: return
-  when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
-    var s = cast[PGenericSeq](s)
-    s.reserved = s.reserved or seqShallowFlag
-
-proc shallow*(s: var string) {.noSideEffect, inline.} =
-  ## Marks a string `s` as `shallow`:idx:. Subsequent assignments will not
-  ## perform deep copies of `s`.
-  ##
-  ## This is only useful for optimization purposes.
-  when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
-    var s = cast[PGenericSeq](s)
-    if s == nil:
-      s = cast[PGenericSeq](newString(0))
-    # string literals cannot become 'shallow':
-    if (s.reserved and strlitFlag) == 0:
+when not defined(gcArc) and not defined(gcOrc):
+  proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
+    ## Marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
+    ## perform deep copies of `s`.
+    ##
+    ## This is only useful for optimization purposes.
+    if s.len == 0: return
+    when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
+      var s = cast[PGenericSeq](s)
       s.reserved = s.reserved or seqShallowFlag
+
+  proc shallow*(s: var string) {.noSideEffect, inline.} =
+    ## Marks a string `s` as `shallow`:idx:. Subsequent assignments will not
+    ## perform deep copies of `s`.
+    ##
+    ## This is only useful for optimization purposes.
+    when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
+      var s = cast[PGenericSeq](s)
+      if s == nil:
+        s = cast[PGenericSeq](newString(0))
+      # string literals cannot become 'shallow':
+      if (s.reserved and strlitFlag) == 0:
+        s.reserved = s.reserved or seqShallowFlag
 
 type
   NimNodeObj = object
@@ -2655,8 +2653,9 @@ when defined(genode):
         # and return to thread entrypoint.
 
 
-import system/widestrs
-export widestrs
+when not defined(nimPreviewSlimSystem):
+  import std/widestrs
+  export widestrs
 
 when notJSnotNims:
   when defined(windows) and compileOption("threads"):
@@ -2749,3 +2748,8 @@ when notJSnotNims and not defined(nimSeqsV2):
       moveMem(addr y[0], addr x[0], x.len)
       assert y == "abcgh"
     discard
+
+proc arrayWith*[T](y: T, size: static int): array[size, T] {.noinit.} = # ? exempt from default value for result
+  ## Creates a new array filled with `y`.
+  for i in 0..size-1:
+    result[i] = y

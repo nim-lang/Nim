@@ -511,7 +511,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
     for i in 0..<n.len: result.add(n[i])
     result = semTemplBodySons(c, result)
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     checkSonsLen(n, 2, c.c.config)
     let a = n[0]
     let b = n[1]
@@ -619,12 +619,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   else:
     s = semIdentVis(c, skTemplate, n[namePos], {})
   assert s.kind == skTemplate
-
-  if s.owner != nil:
-    const names = ["!=", ">=", ">", "incl", "excl", "in", "notin", "isnot"]
-    if sfSystemModule in s.owner.flags and s.name.s in names or
-       s.owner.name.s == "vm" and s.name.s == "stackTrace":
-      incl(s.flags, sfCallsite)
 
   styleCheckDef(c, s)
   onDef(n[namePos].info, s)
