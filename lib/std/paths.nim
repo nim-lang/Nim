@@ -24,7 +24,7 @@ func `==`*(x, y: Path): bool {.inline.} =
   ## Compares two paths.
   ##
   ## On a case-sensitive filesystem this is done
-  ## case-sensitively otherwise case-insensitively. Returns:
+  ## case-sensitively otherwise case-insensitively.
   result = cmpPaths(x.string, y.string) == 0
 
 template endsWith(a: string, b: set[char]): bool =
