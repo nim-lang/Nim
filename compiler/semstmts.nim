@@ -370,7 +370,8 @@ proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
     result.add identDefs
 
 proc isDiscardUnderscore(v: PSym): bool =
-  if v.name.s == "_":
+  # template generated underscore symbol name starts with _`gensym
+  if v.name.s == "_" or v.name.s.startsWith("_`"):
     v.flags.incl(sfGenSym)
     result = true
 
