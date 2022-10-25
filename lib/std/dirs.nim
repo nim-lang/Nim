@@ -1,7 +1,7 @@
 from paths import Path, ReadDirEffect, WriteDirEffect
 
 from std/private/osdirs import dirExists, createDir, existsOrCreateDir, removeDir,
-                               moveDir, walkPattern, walkFiles, walkDirs, walkDir,
+                               moveDir, walkDir, setCurrentDir,
                                walkDirRec, PathComponent
 
 export PathComponent
@@ -76,51 +76,6 @@ proc moveDir*(source, dest: Path) {.inline, tags: [ReadIOEffect, WriteIOEffect].
   ## * `createDir proc`_
   moveDir(source.string, dest.string)
 
-iterator walkPattern*(pattern: Path): Path {.tags: [ReadDirEffect].} =
-  ## Iterate over all the files and directories that match the `pattern`.
-  ##
-  ## On POSIX this uses the `glob`:idx: call.
-  ## `pattern` is OS dependent, but at least the `"*.ext"`
-  ## notation is supported.
-  ##
-  ## See also:
-  ## * `walkFiles iterator`_
-  ## * `walkDirs iterator`_
-  ## * `walkDir iterator`_
-  ## * `walkDirRec iterator`_
-  for p in walkPattern(pattern.string):
-    yield Path(p)
-
-iterator walkFiles*(pattern: Path): Path {.tags: [ReadDirEffect].} =
-  ## Iterate over all the files that match the `pattern`.
-  ##
-  ## On POSIX this uses the `glob`:idx: call.
-  ## `pattern` is OS dependent, but at least the `"*.ext"`
-  ## notation is supported.
-  ##
-  ## See also:
-  ## * `walkPattern iterator`_
-  ## * `walkDirs iterator`_
-  ## * `walkDir iterator`_
-  ## * `walkDirRec iterator`_
-  for p in walkFiles(pattern.string):
-    yield Path(p)
-
-iterator walkDirs*(pattern: Path): Path {.tags: [ReadDirEffect].} =
-  ## Iterate over all the directories that match the `pattern`.
-  ##
-  ## On POSIX this uses the `glob`:idx: call.
-  ## `pattern` is OS dependent, but at least the `"*.ext"`
-  ## notation is supported.
-  ##
-  ## See also:
-  ## * `walkPattern iterator`_
-  ## * `walkFiles iterator`_
-  ## * `walkDir iterator`_
-  ## * `walkDirRec iterator`_
-  for p in walkDirs(pattern.string):
-    yield Path(p)
-
 iterator walkDir*(dir: Path; relative = false, checkDir = false):
     tuple[kind: PathComponent, path: Path] {.tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
@@ -175,3 +130,11 @@ iterator walkDirRec*(dir: Path,
   ## * `walkDir iterator`_
   for p in walkDirRec(dir.string, yieldFilter, followFilter, relative, checkDir):
     yield Path(p)
+
+proc setCurrentDir*(newDir: Path) {.inline, tags: [].} =
+  ## Sets the `current working directory`:idx:; `OSError`
+  ## is raised if `newDir` cannot been set.
+  ##
+  ## See also:
+  ## * `getCurrentDir proc`_
+  osdirs.setCurrentDir(newDir.string)

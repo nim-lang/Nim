@@ -538,3 +538,21 @@ proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWei
     # Fallback to copy & del
     copyDir(source, dest)
     removeDir(source)
+
+proc setCurrentDir*(newDir: string) {.inline, tags: [], noWeirdTarget.} =
+  ## Sets the `current working directory`:idx:; `OSError`
+  ## is raised if `newDir` cannot been set.
+  ##
+  ## See also:
+  ## * `getHomeDir proc`_
+  ## * `getConfigDir proc`_
+  ## * `getTempDir proc`_
+  ## * `getCurrentDir proc`_
+  when defined(windows):
+    when useWinUnicode:
+      if setCurrentDirectoryW(newWideCString(newDir)) == 0'i32:
+        raiseOSError(osLastError(), newDir)
+    else:
+      if setCurrentDirectoryA(newDir) == 0'i32: raiseOSError(osLastError(), newDir)
+  else:
+    if chdir(newDir) != 0'i32: raiseOSError(osLastError(), newDir)
