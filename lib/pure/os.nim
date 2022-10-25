@@ -350,70 +350,6 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1", noWeirdTarget.} =
   else:
     result = getLastModificationTime(a) > getLastModificationTime(b)
 
-when defined(windows) and not weirdTarget:
-  proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
-    var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
-    if not followSymlink:
-      flags = flags or FILE_FLAG_OPEN_REPARSE_POINT
-    let access = if writeAccess: GENERIC_WRITE else: 0'i32
-
-    when useWinUnicode:
-      result = createFileW(
-        newWideCString(path), access,
-        FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
-        nil, OPEN_EXISTING, flags, 0
-        )
-    else:
-      result = createFileA(
-        path, access,
-        FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
-        nil, OPEN_EXISTING, flags, 0
-        )
-
-proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
-  tags: [ReadDirEffect], noWeirdTarget.} =
-  ## Returns true if both pathname arguments refer to the same physical
-  ## file or directory.
-  ##
-  ## Raises `OSError` if any of the files does not
-  ## exist or information about it can not be obtained.
-  ##
-  ## This proc will return true if given two alternative hard-linked or
-  ## sym-linked paths to the same file or directory.
-  ##
-  ## See also:
-  ## * `sameFileContent proc`_
-  when defined(windows):
-    var success = true
-    var f1 = openHandle(path1)
-    var f2 = openHandle(path2)
-
-    var lastErr: OSErrorCode
-    if f1 != INVALID_HANDLE_VALUE and f2 != INVALID_HANDLE_VALUE:
-      var fi1, fi2: BY_HANDLE_FILE_INFORMATION
-
-      if getFileInformationByHandle(f1, addr(fi1)) != 0 and
-         getFileInformationByHandle(f2, addr(fi2)) != 0:
-        result = fi1.dwVolumeSerialNumber == fi2.dwVolumeSerialNumber and
-                 fi1.nFileIndexHigh == fi2.nFileIndexHigh and
-                 fi1.nFileIndexLow == fi2.nFileIndexLow
-      else:
-        lastErr = osLastError()
-        success = false
-    else:
-      lastErr = osLastError()
-      success = false
-
-    discard closeHandle(f1)
-    discard closeHandle(f2)
-
-    if not success: raiseOSError(lastErr, $(path1, path2))
-  else:
-    var a, b: Stat
-    if stat(path1, a) < 0'i32 or stat(path2, b) < 0'i32:
-      raiseOSError(osLastError(), $(path1, path2))
-    else:
-      result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
 
 proc isAdmin*: bool {.noWeirdTarget.} =
   ## Returns whether the caller's process is a member of the Administrators local
@@ -445,7 +381,6 @@ proc isAdmin*: bool {.noWeirdTarget.} =
 
   else:
     result = geteuid() == 0
-
 
 
 proc exitStatusLikeShell*(status: cint): cint =
