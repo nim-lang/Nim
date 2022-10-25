@@ -217,3 +217,30 @@ block: # bug #11085
 
   var bad: set[char] = block:
     {}
+
+# bug #6213
+block:
+  block:
+    type MyEnum = enum a, b
+    type MyTuple = tuple[x: set[MyEnum]]
+
+    var myVar: seq[MyTuple] = @[ (x: {}) ]
+    doAssert myVar.len == 1
+
+  block:
+    type
+      Foo = tuple
+        f: seq[string]
+        s: string
+
+    proc e(): seq[Foo] =
+      return @[
+        (@[], "asd")
+      ]
+
+    doAssert e()[0].f == @[]
+
+block: # bug #11777
+  type S = set[0..5]
+  var s: S = {1, 2}
+  doAssert 1 in s
