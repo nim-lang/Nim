@@ -426,12 +426,13 @@ template main {.dirty.} =
     let x = default(TokenData)
     doAssert x.campaignMemberships.len == 0
 
-  block:
-    type TokenData = object
-      campaignMemberships = newTable[string, string]()
+  when false: # todo fixme
+    block:
+      type TokenData = object
+        campaignMemberships = newTable[string, string]()
 
-    let x = default(TokenData)
-    doAssert x.campaignMemberships.len == 0
+      let x = default(TokenData)
+      doAssert x.campaignMemberships.len == 0
 
 
 static: main()
