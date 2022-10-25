@@ -320,6 +320,14 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
   when true:
     if eOrig.typ.kind in {tyUntyped, tyTyped, tyTypeDesc}:
       result = semExprWithType(c, evaluated)
+    elif eOrig.typ.kind == tyProc and eOrig.typ.callConv == ccClosure and
+      evaluated.typ.callConv == ccNimCall:
+      result = newNodeIT(nkClosure, eOrig.info, eOrig.typ)
+      var conv = newNodeIT(nkHiddenSubConv, eOrig.info, eOrig.typ)
+      conv.add(newNodeI(nkEmpty, eOrig.info))
+      conv.add(evaluated)
+      result.add(conv)
+      result.add(newNodeIT(nkNilLit, eOrig.info, getSysType(c.graph, eOrig.info, tyNil)))
     else:
       result = evaluated
       let expectedType = eOrig.typ.skipTypes({tyStatic})
