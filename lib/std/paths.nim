@@ -21,7 +21,11 @@ type
   Path* = distinct string
 
 func `==`*(x, y: Path): bool {.inline.} =
-  x.string == y.string
+  ## Compares two paths.
+  ##
+  ## On a case-sensitive filesystem this is done
+  ## case-sensitively otherwise case-insensitively. Returns:
+  result = cmpPaths(x.string, y.string) == 0
 
 template endsWith(a: string, b: set[char]): bool =
   a.len > 0 and a[^1] in b
@@ -213,17 +217,6 @@ func addFileExt*(filename: Path, ext: string): Path {.inline.} =
   ## * `lastPathPart proc`_
   ## * `changeFileExt proc`_
   result = Path(addFileExt(filename.string, ext))
-
-func cmpPaths*(pathA, pathB: Path): int {.inline.} =
-  ## Compares two paths.
-  ##
-  ## On a case-sensitive filesystem this is done
-  ## case-sensitively otherwise case-insensitively. Returns:
-  ##
-  ## | 0 if pathA == pathB
-  ## | < 0 if pathA < pathB
-  ## | > 0 if pathA > pathB
-  result = cmpPaths(pathA.string, pathB.string)
 
 func unixToNativePath*(path: Path, drive=Path("")): Path {.inline.} =
   ## Converts an UNIX-like path to a native one.
