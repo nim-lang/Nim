@@ -1462,6 +1462,12 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result.typ = sym.typ
   result.info = info
 
+proc newSymNode*(sym: PSym, info: TLineInfo, typ: PType): PNode =
+  result = newNode(nkSym)
+  result.sym = sym
+  result.typ = typ
+  result.info = info
+
 proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
   result = newNode(kind)
   result.intVal = intVal

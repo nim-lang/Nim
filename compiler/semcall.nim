@@ -776,13 +776,18 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   # for borrowing the sym in the symbol table is returned, else nil.
   # New approach: generate fn(x, y, z) where x, y, z have the proper types
   # and use the overloading resolution mechanism:
-  result = nil
+  const desiredTypes = abstractVar + {tyCompositeTypeClass} - {tyTypeDesc, tyDistinct}
+
+  template getType(isDistinct: bool; t: PType):untyped =
+    if isDistinct: t.baseOfDistinct(c.graph, c.idgen) else: t
+
   var call = newNodeI(nkCall, fn.info)
   var hasDistinct = false
+  var isDistinct: bool
+  var x: PType
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1..<fn.typ.n.len:
     let param = fn.typ.n[i]
-    const desiredTypes = abstractVar + {tyCompositeTypeClass} - {tyTypeDesc, tyDistinct}
     #[.
       # We only want the type not any modifiers such as `ptr`, `var`, `ref` ...
       # tyCompositeTypeClass is here for
@@ -792,14 +797,14 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
       # We want to skip the `Foo` to get `int`
     ]#
     let t = skipTypes(param.typ, desiredTypes)
-    if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
-    var x: PType
+    isDistinct = t.kind == tyDistinct or param.typ.kind == tyDistinct
+    if isDistinct: hasDistinct = true
     if param.typ.kind == tyVar:
       x = newTypeS(param.typ.kind, c)
-      x.addSonSkipIntLit(t.baseOfDistinct(c.graph, c.idgen), c.idgen)
+      x.addSonSkipIntLit(getType(isDistinct, t), c.idgen)
     else:
-      x = t.baseOfDistinct(c.graph, c.idgen)
-    call.add(newNodeIT(nkEmpty, fn.info, x))
+      x = getType(isDistinct, t)
+    call.add(newSymNode(param.sym, fn.info, x))
   if hasDistinct:
     let filter = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}
     var resolved = semOverloadedCall(c, call, call, filter, {})
