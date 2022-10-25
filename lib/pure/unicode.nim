@@ -1141,7 +1141,7 @@ proc alignLeft*(s: openArray[char], count: Natural, padding = ' '.Rune): string 
     result = s.substr
 
 
-proc runeLen*(s: string): int =
+proc runeLen*(s: string): int {.inline.} =
   ## Returns the number of runes of the string ``s``.
   runnableExamples:
     let a = "añyóng"
@@ -1149,7 +1149,7 @@ proc runeLen*(s: string): int =
     ## note: a.len == 8
   runeLen(toOa(s))
 
-proc runeLenAt*(s: string, i: Natural): int =
+proc runeLenAt*(s: string, i: Natural): int {.inline.} =
   ## Returns the number of bytes the rune starting at ``s[i]`` takes.
   ##
   ## See also:
@@ -1160,7 +1160,7 @@ proc runeLenAt*(s: string, i: Natural): int =
     doAssert a.runeLenAt(1) == 2
   runeLenAt(toOa(s), i)
 
-proc runeAt*(s: string, i: Natural): Rune =
+proc runeAt*(s: string, i: Natural): Rune {.inline.} =
   ## Returns the rune in ``s`` at **byte index** ``i``.
   ##
   ## See also:
@@ -1174,7 +1174,7 @@ proc runeAt*(s: string, i: Natural): Rune =
     doAssert a.runeAt(3) == "y".runeAt(0)
   fastRuneAt(s, i, result, false)
 
-proc validateUtf8*(s: string): int =
+proc validateUtf8*(s: string): int {.inline.} =
   ## Returns the position of the invalid byte in ``s`` if the string ``s`` does
   ## not hold valid UTF-8 data. Otherwise ``-1`` is returned.
   ##
@@ -1184,7 +1184,7 @@ proc validateUtf8*(s: string): int =
   ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
   validateUtf8(toOa(s))
 
-proc runeOffset*(s: string, pos: Natural, start: Natural = 0): int =
+proc runeOffset*(s: string, pos: Natural, start: Natural = 0): int {.inline.} =
   ## Returns the byte position of rune
   ## at position ``pos`` in ``s`` with an optional start byte position.
   ## Returns the special value -1 if it runs out of the string.
@@ -1202,7 +1202,7 @@ proc runeOffset*(s: string, pos: Natural, start: Natural = 0): int =
     doAssert a.runeOffset(4) == 6
   runeOffset(toOa(s), pos, start)
 
-proc runeReverseOffset*(s: string, rev: Positive): (int, int) =
+proc runeReverseOffset*(s: string, rev: Positive): (int, int) {.inline.} =
   ## Returns a tuple with the byte offset of the
   ## rune at position ``rev`` in ``s``, counting
   ## from the end (starting with 1) and the total
@@ -1219,7 +1219,7 @@ proc runeReverseOffset*(s: string, rev: Positive): (int, int) =
   ## * `runeOffset proc <#runeOffset,string,Natural,Natural>`_
   runeReverseOffset(toOa(s), rev)
 
-proc runeAtPos*(s: string, pos: int): Rune =
+proc runeAtPos*(s: string, pos: int): Rune {.inline.} =
   ## Returns the rune at position ``pos``.
   ##
   ## **Beware:** This can lead to unoptimized code and slow execution!
@@ -1232,7 +1232,7 @@ proc runeAtPos*(s: string, pos: int): Rune =
   ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   fastRuneAt(toOa(s), runeOffset(s, pos), result, false)
 
-proc runeStrAtPos*(s: string, pos: Natural): string =
+proc runeStrAtPos*(s: string, pos: Natural): string {.inline.} =
   ## Returns the rune at position ``pos`` as UTF8 String.
   ##
   ## **Beware:** This can lead to unoptimized code and slow execution!
@@ -1246,7 +1246,7 @@ proc runeStrAtPos*(s: string, pos: Natural): string =
   let o = runeOffset(s, pos)
   substr(s.toOpenArray(o, (o+runeLenAt(s, o)-1)))
 
-proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
+proc runeSubStr*(s: string, pos: int, len: int = int.high): string {.inline.} =
   ## Returns the UTF-8 substring starting at code point ``pos``
   ## with ``len`` code points.
   ##
@@ -1264,14 +1264,14 @@ proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
   runeSubStr(toOa(s), pos, len)
 
 
-proc isAlpha*(s: string): bool {.noSideEffect.} =
+proc isAlpha*(s: string): bool {.noSideEffect, inline.} =
   ## Returns true if ``s`` contains all alphabetic runes.
   runnableExamples:
     let a = "añyóng"
     doAssert a.isAlpha
   isAlpha(toOa(s))
 
-proc isSpace*(s: string): bool {.noSideEffect.} =
+proc isSpace*(s: string): bool {.noSideEffect, inline.} =
   ## Returns true if ``s`` contains all whitespace runes.
   runnableExamples:
     let a = "\t\l \v\r\f"
@@ -1279,19 +1279,19 @@ proc isSpace*(s: string): bool {.noSideEffect.} =
   isSpace(toOa(s))
 
 
-proc toUpper*(s: string): string {.noSideEffect.} =
+proc toUpper*(s: string): string {.noSideEffect, inline.} =
   ## Converts ``s`` into upper-case runes.
   runnableExamples:
     doAssert toUpper("abγ") == "ABΓ"
   toUpper(toOa(s))
 
-proc toLower*(s: string): string {.noSideEffect.} =
+proc toLower*(s: string): string {.noSideEffect, inline.} =
   ## Converts ``s`` into lower-case runes.
   runnableExamples:
     doAssert toLower("ABΓ") == "abγ"
   toLower(toOa(s))
 
-proc swapCase*(s: string): string {.noSideEffect.} =
+proc swapCase*(s: string): string {.noSideEffect, inline.} =
   ## Swaps the case of runes in ``s``.
   ##
   ## Returns a new string such that the cases of all runes
@@ -1307,7 +1307,7 @@ proc capitalize*(s: string): string {.noSideEffect.} =
   capitalize(toOa(s))
 
 
-proc translate*(s: string, replacements: proc(key: string): string): string {.effectsOf: replacements.} =
+proc translate*(s: string, replacements: proc(key: string): string): string {.effectsOf: replacements, inline.} =
   ## Translates words in a string using the ``replacements`` proc to substitute
   ## words inside ``s`` with their replacements.
   ##
@@ -1323,7 +1323,7 @@ proc translate*(s: string, replacements: proc(key: string): string): string {.ef
     doAssert a.translate(wordToNumber) == "1 2 three four"
   translate(toOa(s), replacements)
 
-proc title*(s: string): string {.noSideEffect.} =
+proc title*(s: string): string {.noSideEffect, inline.} =
   ## Converts ``s`` to a unicode title.
   ##
   ## Returns a new string such that the first character
@@ -1349,7 +1349,7 @@ iterator utf8*(s: string): string =
   for str in utf8(toOa(s)):
     yield str
 
-proc toRunes*(s: string): seq[Rune] =
+proc toRunes*(s: string): seq[Rune] {.inline.} =
   ## Obtains a sequence containing the Runes in ``s``.
   ##
   ## See also:
@@ -1359,7 +1359,7 @@ proc toRunes*(s: string): seq[Rune] =
     doAssert a == @["a".runeAt(0), "á".runeAt(0), "ä".runeAt(0)]
   toRunes(toOa(s))
 
-proc cmpRunesIgnoreCase*(a, b: string): int =
+proc cmpRunesIgnoreCase*(a, b: string): int {.inline.} =
   ## Compares two UTF-8 strings and ignores the case. Returns:
   ##
   ## | 0 if a == b
@@ -1367,7 +1367,7 @@ proc cmpRunesIgnoreCase*(a, b: string): int =
   ## | > 0 if a > b
   cmpRunesIgnoreCase(a.toOa(), b.toOa())
 
-proc reversed*(s: string): string =
+proc reversed*(s: string): string {.inline.} =
   ## Returns the reverse of ``s``, interpreting it as runes.
   ##
   ## Unicode combining characters are correctly interpreted as well.
@@ -1378,7 +1378,7 @@ proc reversed*(s: string): string =
     assert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
   reversed(toOa(s))
 
-proc graphemeLen*(s: string; i: Natural): Natural =
+proc graphemeLen*(s: string; i: Natural): Natural {.inline.} =
   ## The number of bytes belonging to byte index ``s[i]``,
   ## including following combining code unit.
   runnableExamples:
@@ -1388,7 +1388,7 @@ proc graphemeLen*(s: string; i: Natural): Natural =
     doAssert a.graphemeLen(4) == 2 ## ó
   graphemeLen(toOa(s), i)
 
-proc lastRune*(s: string; last: int): (Rune, int) =
+proc lastRune*(s: string; last: int): (Rune, int) {.inline.} =
   ## Length of the last rune in ``s[0..last]``. Returns the rune and its length
   ## in bytes.
   lastRune(toOa(s), last)
@@ -1424,7 +1424,7 @@ iterator splitWhitespace*(s: string): string =
   splitCommon(s.toOa(), unicodeSpaces, -1)
 
 
-proc splitWhitespace*(s: string): seq[string] {.noSideEffect.}=
+proc splitWhitespace*(s: string): seq[string] {.noSideEffect, inline.}=
   ## The same as the `splitWhitespace <#splitWhitespace.i,string>`_
   ## iterator, but is a proc that returns a sequence of substrings.
   accResult(splitWhitespace(toOa(s)))
@@ -1441,18 +1441,18 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   splitCommon(toOa(s), sep, maxsplit)
 
 proc split*(s: string, seps: openArray[Rune] = unicodeSpaces, maxsplit: int = -1):
-    seq[string] {.noSideEffect.} =
+    seq[string] {.noSideEffect, inline.} =
   ## The same as the `split iterator <#split.i,string,openArray[Rune],int>`_,
   ## but is a proc that returns a sequence of substrings.
   accResult(split(toOa(s), seps, maxsplit))
 
-proc split*(s: string, sep: Rune, maxsplit: int = -1): seq[string] {.noSideEffect.} =
+proc split*(s: string, sep: Rune, maxsplit: int = -1): seq[string] {.noSideEffect, inline.} =
   ## The same as the `split iterator <#split.i,string,Rune,int>`_, but is a proc
   ## that returns a sequence of substrings.
   accResult(split(toOa(s), sep, maxsplit))
 
 proc strip*(s: string, leading = true, trailing = true,
-            runes: openArray[Rune] = unicodeSpaces): string {.noSideEffect.} =
+            runes: openArray[Rune] = unicodeSpaces): string {.noSideEffect, inline.} =
   ## Strips leading or trailing ``runes`` from ``s`` and returns
   ## the resulting string.
   ##
@@ -1467,7 +1467,7 @@ proc strip*(s: string, leading = true, trailing = true,
   strip(toOa(s), leading, trailing, runes)
 
 
-proc align*(s: string, count: Natural, padding = ' '.Rune): string {.noSideEffect.} =
+proc align*(s: string, count: Natural, padding = ' '.Rune): string {.noSideEffect, inline.} =
   ## Aligns a unicode string ``s`` with ``padding``, so that it has a rune-length
   ## of ``count``.
   ##
@@ -1484,7 +1484,7 @@ proc align*(s: string, count: Natural, padding = ' '.Rune): string {.noSideEffec
     assert align("×", 4, '_'.Rune) == "___×"
   align(toOa(s), count, padding)
 
-proc alignLeft*(s: string, count: Natural, padding = ' '.Rune): string {.noSideEffect.} =
+proc alignLeft*(s: string, count: Natural, padding = ' '.Rune): string {.noSideEffect, inline.} =
   ## Left-aligns a unicode string ``s`` with ``padding``, so that it has a
   ## rune-length of ``count``.
   ##
