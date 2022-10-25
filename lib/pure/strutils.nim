@@ -83,6 +83,9 @@ import std/private/since
 from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl,
     startsWithImpl, endsWithImpl
 
+import std/strbasics
+template toOa(s: string): auto = s.toOpenArray(0, s.high)
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -224,7 +227,8 @@ template toImpl(call) =
   for i in 0..len(s) - 1:
     result[i] = call(s[i])
 
-func toLowerAscii*(s: string): string {.rtl, extern: "nsuToLowerAsciiStr".} =
+
+func toLowerAscii*(s: openArray[char]): string {.rtl, extern: "nsuToLowerAsciiStr".} =
   ## Converts string `s` into lower case.
   ##
   ## This works only for the letters `A-Z`. See `unicode.toLower
@@ -236,6 +240,19 @@ func toLowerAscii*(s: string): string {.rtl, extern: "nsuToLowerAsciiStr".} =
   runnableExamples:
     doAssert toLowerAscii("FooBar!") == "foobar!"
   toImpl toLowerAscii
+
+func toLowerAscii*(s: string): string {.rtl, extern: "nsuToLowerAsciiStr".} =
+  ## Converts string `s` into lower case.
+  ##
+  ## This works only for the letters `A-Z`. See `unicode.toLower
+  ## <unicode.html#toLower,string>`_ for a version that works for any Unicode
+  ## character.
+  ##
+  ## See also:
+  ## * `normalize func<#normalize,string>`_
+  runnableExamples:
+    doAssert toLowerAscii("FooBar!") == "foobar!"
+  toLowerAscii(toOa(s))
 
 func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
   ## Converts character `c` into upper case.
@@ -256,7 +273,7 @@ func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
   else:
     result = c
 
-func toUpperAscii*(s: string): string {.rtl, extern: "nsuToUpperAsciiStr".} =
+func toUpperAscii*(s: openArray[char]): string {.rtl, extern: "nsuToUpperAsciiStr".} =
   ## Converts string `s` into upper case.
   ##
   ## This works only for the letters `A-Z`.  See `unicode.toUpper
@@ -269,7 +286,20 @@ func toUpperAscii*(s: string): string {.rtl, extern: "nsuToUpperAsciiStr".} =
     doAssert toUpperAscii("FooBar!") == "FOOBAR!"
   toImpl toUpperAscii
 
-func capitalizeAscii*(s: string): string {.rtl, extern: "nsuCapitalizeAscii".} =
+func toUpperAscii*(s: string): string {.rtl, extern: "nsuToUpperAsciiStr".} =
+  ## Converts string `s` into upper case.
+  ##
+  ## This works only for the letters `A-Z`.  See `unicode.toUpper
+  ## <unicode.html#toUpper,string>`_ for a version that works for any Unicode
+  ## character.
+  ##
+  ## See also:
+  ## * `capitalizeAscii func<#capitalizeAscii,string>`_
+  runnableExamples:
+    doAssert toUpperAscii("FooBar!") == "FOOBAR!"
+  toUpperAscii(toOa(s))
+
+func capitalizeAscii*(s: openArray[char]): string {.rtl, extern: "nsuCapitalizeAscii".} =
   ## Converts the first character of string `s` into upper case.
   ##
   ## This works only for the letters `A-Z`.
@@ -283,7 +313,20 @@ func capitalizeAscii*(s: string): string {.rtl, extern: "nsuCapitalizeAscii".} =
   if s.len == 0: result = ""
   else: result = toUpperAscii(s[0]) & substr(s, 1)
 
-func nimIdentNormalize*(s: string): string =
+func capitalizeAscii*(s: string): string {.rtl, extern: "nsuCapitalizeAscii".} =
+  ## Converts the first character of string `s` into upper case.
+  ##
+  ## This works only for the letters `A-Z`.
+  ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
+  ##
+  ## See also:
+  ## * `toUpperAscii func<#toUpperAscii,char>`_
+  runnableExamples:
+    doAssert capitalizeAscii("foo") == "Foo"
+    doAssert capitalizeAscii("-bar") == "-bar"
+  capitalizeAscii(toOa(s))
+
+func nimIdentNormalize*(s: openArray[char]): string =
   ## Normalizes the string `s` as a Nim identifier.
   ##
   ## That means to convert to lower case and remove any '_' on all characters
@@ -309,7 +352,33 @@ func nimIdentNormalize*(s: string): string =
       inc j
   if j != s.len: setLen(result, j)
 
-func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
+func nimIdentNormalize*(s: string): string =
+  ## Normalizes the string `s` as a Nim identifier.
+  ##
+  ## That means to convert to lower case and remove any '_' on all characters
+  ## except first one.
+  ##
+  ## .. Warning:: Backticks (`) are not handled: they remain *as is* and
+  ##    spaces are preserved. See `nimIdentBackticksNormalize
+  ##    <dochelpers.html#nimIdentBackticksNormalize,string>`_ for
+  ##    an alternative approach.
+  runnableExamples:
+    doAssert nimIdentNormalize("Foo_bar") == "Foobar"
+  result = newString(s.len)
+  if s.len == 0:
+    return
+  result[0] = s[0]
+  var j = 1
+  for i in 1..len(s) - 1:
+    if s[i] in {'A'..'Z'}:
+      result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
+      inc j
+    elif s[i] != '_':
+      result[j] = s[i]
+      inc j
+  nimIdentNormalize(toOa(s))
+
+func normalize*(s: openArray[char]): string {.rtl, extern: "nsuNormalize".} =
   ## Normalizes the string `s`.
   ##
   ## That means to convert it to lower case and remove any '_'. This
@@ -331,7 +400,20 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
       inc j
   if j != s.len: setLen(result, j)
 
-func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
+func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
+  ## Normalizes the string `s`.
+  ##
+  ## That means to convert it to lower case and remove any '_'. This
+  ## should NOT be used to normalize Nim identifier names.
+  ##
+  ## See also:
+  ## * `toLowerAscii func<#toLowerAscii,string>`_
+  runnableExamples:
+    doAssert normalize("Foo_bar") == "foobar"
+    doAssert normalize("Foo Bar") == "foo bar"
+  normalize(toOa(s))
+
+func cmpIgnoreCase*(a, b: openArray[char]): int {.rtl, extern: "nsuCmpIgnoreCase".} =
   ## Compares two strings in a case insensitive manner. Returns:
   ##
   ## | 0 if a == b
@@ -343,8 +425,36 @@ func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
     doAssert cmpIgnoreCase("Foo5", "foo4") > 0
   cmpIgnoreCaseImpl(a, b)
 
+func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
+  ## Compares two strings in a case insensitive manner. Returns:
+  ##
+  ## | 0 if a == b
+  ## | < 0 if a < b
+  ## | > 0 if a > b
+  runnableExamples:
+    doAssert cmpIgnoreCase("FooBar", "foobar") == 0
+    doAssert cmpIgnoreCase("bar", "Foo") < 0
+    doAssert cmpIgnoreCase("Foo5", "foo4") > 0
+  cmpIgnoreCase(toOa(a), toOa(b))
+
 {.push checks: off, line_trace: off.} # this is a hot-spot in the compiler!
                                       # thus we compile without checks here
+
+func cmpIgnoreStyle*(a, b: openArray[char]): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
+  ## Semantically the same as `cmp(normalize(a), normalize(b))`. It
+  ## is just optimized to not allocate temporary strings. This should
+  ## NOT be used to compare Nim identifier names.
+  ## Use `macros.eqIdent<macros.html#eqIdent,string,string>`_ for that.
+  ##
+  ## Returns:
+  ##
+  ## | 0 if a == b
+  ## | < 0 if a < b
+  ## | > 0 if a > b
+  runnableExamples:
+    doAssert cmpIgnoreStyle("foo_bar", "FooBar") == 0
+    doAssert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0
+  cmpIgnoreStyleImpl(a, b)
 
 func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
   ## Semantically the same as `cmp(normalize(a), normalize(b))`. It
@@ -360,25 +470,25 @@ func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
   runnableExamples:
     doAssert cmpIgnoreStyle("foo_bar", "FooBar") == 0
     doAssert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0
-  cmpIgnoreStyleImpl(a, b)
+  cmpIgnoreStyle(toOa(a), toOa(b))
 {.pop.}
 
 # --------- Private templates for different split separators -----------
 
-func substrEq(s: string, pos: int, substr: string): bool =
+func substrEq(s: openArray[char], pos: int, substr: openArray[char]): bool =
   var i = 0
   var length = substr.len
   while i < length and pos+i < s.len and s[pos+i] == substr[i]:
     inc i
   return i == length
 
-template stringHasSep(s: string, index: int, seps: set[char]): bool =
+template stringHasSep(s: openArray[char], index: int, seps: set[char]): bool =
   s[index] in seps
 
-template stringHasSep(s: string, index: int, sep: char): bool =
+template stringHasSep(s: openArray[char], index: int, sep: char): bool =
   s[index] == sep
 
-template stringHasSep(s: string, index: int, sep: string): bool =
+template stringHasSep(s: openArray[char], index: int, sep: openArray[char]): bool =
   s.substrEq(index, sep)
 
 template splitCommon(s, sep, maxsplit, sepLen) =
@@ -415,7 +525,7 @@ template accResult(iter: untyped) =
   for x in iter: add(result, x)
 
 
-iterator split*(s: string, sep: char, maxsplit: int = -1): string =
+iterator split*(s: openArray[char], sep: char, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a single separator.
   ##
   ## Substrings are separated by the character `sep`.
@@ -446,7 +556,38 @@ iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## * `split func<#split,string,char,int>`_
   splitCommon(s, sep, maxsplit, 1)
 
-iterator split*(s: string, seps: set[char] = Whitespace,
+iterator split*(s: string, sep: char, maxsplit: int = -1): string =
+  ## Splits the string `s` into substrings using a single separator.
+  ##
+  ## Substrings are separated by the character `sep`.
+  ## The code:
+  ##
+  ## .. code-block:: nim
+  ##   for word in split(";;this;is;an;;example;;;", ';'):
+  ##     writeLine(stdout, word)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block::
+  ##   ""
+  ##   ""
+  ##   "this"
+  ##   "is"
+  ##   "an"
+  ##   ""
+  ##   "example"
+  ##   ""
+  ##   ""
+  ##   ""
+  ##
+  ## See also:
+  ## * `rsplit iterator<#rsplit.i,string,char,int>`_
+  ## * `splitLines iterator<#splitLines.i,string>`_
+  ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
+  ## * `split func<#split,string,char,int>`_
+  splitCommon(toOa(s), sep, maxsplit, 1)
+
+iterator split*(s: openArray[char], seps: set[char] = Whitespace,
                 maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a group of separators.
   ##
@@ -495,7 +636,56 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ## * `split func<#split,string,set[char],int>`_
   splitCommon(s, seps, maxsplit, 1)
 
-iterator split*(s: string, sep: string, maxsplit: int = -1): string =
+iterator split*(s: string, seps: set[char] = Whitespace,
+                maxsplit: int = -1): string =
+  ## Splits the string `s` into substrings using a group of separators.
+  ##
+  ## Substrings are separated by a substring containing only `seps`.
+  ##
+  ## .. code-block:: nim
+  ##   for word in split("this\lis an\texample"):
+  ##     writeLine(stdout, word)
+  ##
+  ## ...generates this output:
+  ##
+  ## .. code-block::
+  ##   "this"
+  ##   "is"
+  ##   "an"
+  ##   "example"
+  ##
+  ## And the following code:
+  ##
+  ## .. code-block:: nim
+  ##   for word in split("this:is;an$example", {';', ':', '$'}):
+  ##     writeLine(stdout, word)
+  ##
+  ## ...produces the same output as the first example. The code:
+  ##
+  ## .. code-block:: nim
+  ##   let date = "2012-11-20T22:08:08.398990"
+  ##   let separators = {' ', '-', ':', 'T'}
+  ##   for number in split(date, separators):
+  ##     writeLine(stdout, number)
+  ##
+  ## ...results in:
+  ##
+  ## .. code-block::
+  ##   "2012"
+  ##   "11"
+  ##   "20"
+  ##   "22"
+  ##   "08"
+  ##   "08.398990"
+  ##
+  ## See also:
+  ## * `rsplit iterator<#rsplit.i,string,set[char],int>`_
+  ## * `splitLines iterator<#splitLines.i,string>`_
+  ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
+  ## * `split func<#split,string,set[char],int>`_
+  splitCommon(toOa(s), seps, maxsplit, 1)
+
+iterator split*(s: openArray[char], sep: openArray[char], maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`.
@@ -518,6 +708,30 @@ iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `split func<#split,string,string,int>`_
   splitCommon(s, sep, maxsplit, sep.len)
+
+iterator split*(s: string, sep: string, maxsplit: int = -1): string =
+  ## Splits the string `s` into substrings using a string separator.
+  ##
+  ## Substrings are separated by the string `sep`.
+  ## The code:
+  ##
+  ## .. code-block:: nim
+  ##   for word in split("thisDATAisDATAcorrupted", "DATA"):
+  ##     writeLine(stdout, word)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block::
+  ##   "this"
+  ##   "is"
+  ##   "corrupted"
+  ##
+  ## See also:
+  ## * `rsplit iterator<#rsplit.i,string,string,int,bool>`_
+  ## * `splitLines iterator<#splitLines.i,string>`_
+  ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
+  ## * `split func<#split,string,string,int>`_
+  splitCommon(toOa(s), toOa(sep), maxsplit, sep.len)
 
 
 template rsplitCommon(s, sep, maxsplit, sepLen) =
@@ -544,7 +758,7 @@ template rsplitCommon(s, sep, maxsplit, sepLen) =
     dec(first)
     last = first
 
-iterator rsplit*(s: string, sep: char,
+iterator rsplit*(s: openArray[char], sep: char,
                  maxsplit: int = -1): string =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
@@ -569,7 +783,32 @@ iterator rsplit*(s: string, sep: char,
   ## * `rsplit func<#rsplit,string,char,int>`_
   rsplitCommon(s, sep, maxsplit, 1)
 
-iterator rsplit*(s: string, seps: set[char] = Whitespace,
+iterator rsplit*(s: string, sep: char,
+                 maxsplit: int = -1): string =
+  ## Splits the string `s` into substrings from the right using a
+  ## string separator. Works exactly the same as `split iterator
+  ## <#split.i,string,char,int>`_ except in reverse order.
+  ##
+  ## .. code-block:: nim
+  ##   for piece in "foo:bar".rsplit(':'):
+  ##     echo piece
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nim
+  ##   "bar"
+  ##   "foo"
+  ##
+  ## Substrings are separated from the right by the char `sep`.
+  ##
+  ## See also:
+  ## * `split iterator<#split.i,string,char,int>`_
+  ## * `splitLines iterator<#splitLines.i,string>`_
+  ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
+  ## * `rsplit func<#rsplit,string,char,int>`_
+  rsplitCommon(toOa(s), sep, maxsplit, 1)
+
+iterator rsplit*(s: openArray[char], seps: set[char] = Whitespace,
                  maxsplit: int = -1): string =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
@@ -594,7 +833,32 @@ iterator rsplit*(s: string, seps: set[char] = Whitespace,
   ## * `rsplit func<#rsplit,string,set[char],int>`_
   rsplitCommon(s, seps, maxsplit, 1)
 
-iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
+iterator rsplit*(s: string, seps: set[char] = Whitespace,
+                 maxsplit: int = -1): string =
+  ## Splits the string `s` into substrings from the right using a
+  ## string separator. Works exactly the same as `split iterator
+  ## <#split.i,string,char,int>`_ except in reverse order.
+  ##
+  ## .. code-block:: nim
+  ##   for piece in "foo bar".rsplit(WhiteSpace):
+  ##     echo piece
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nim
+  ##   "bar"
+  ##   "foo"
+  ##
+  ## Substrings are separated from the right by the set of chars `seps`
+  ##
+  ## See also:
+  ## * `split iterator<#split.i,string,set[char],int>`_
+  ## * `splitLines iterator<#splitLines.i,string>`_
+  ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
+  ## * `rsplit func<#rsplit,string,set[char],int>`_
+  rsplitCommon(toOa(s), seps, maxsplit, 1)
+
+iterator rsplit*(s: openArray[char], sep: openArray[char], maxsplit: int = -1,
                  keepSeparators: bool = false): string =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
@@ -618,6 +882,80 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `rsplit func<#rsplit,string,string,int>`_
   rsplitCommon(s, sep, maxsplit, sep.len)
+
+iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
+                 keepSeparators: bool = false): string =
+  ## Splits the string `s` into substrings from the right using a
+  ## string separator. Works exactly the same as `split iterator
+  ## <#split.i,string,string,int>`_ except in reverse order.
+  ##
+  ## .. code-block:: nim
+  ##   for piece in "foothebar".rsplit("the"):
+  ##     echo piece
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nim
+  ##   "bar"
+  ##   "foo"
+  ##
+  ## Substrings are separated from the right by the string `sep`
+  ##
+  ## See also:
+  ## * `split iterator<#split.i,string,string,int>`_
+  ## * `splitLines iterator<#splitLines.i,string>`_
+  ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
+  ## * `rsplit func<#rsplit,string,string,int>`_
+  rsplitCommon(toOa(s), toOa(sep), maxsplit, sep.len)
+
+iterator splitLines*(s: openArray[char], keepEol = false): string =
+  ## Splits the string `s` into its containing lines.
+  ##
+  ## Every `character literal <manual.html#lexical-analysis-character-literals>`_
+  ## newline combination (CR, LF, CR-LF) is supported. The result strings
+  ## contain no trailing end of line characters unless parameter `keepEol`
+  ## is set to `true`.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   for line in splitLines("\nthis\nis\nan\n\nexample\n"):
+  ##     writeLine(stdout, line)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nim
+  ##   ""
+  ##   "this"
+  ##   "is"
+  ##   "an"
+  ##   ""
+  ##   "example"
+  ##   ""
+  ##
+  ## See also:
+  ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  var first = 0
+  var last = 0
+  var eolpos = 0
+  while true:
+    while last < s.len and s[last] notin {'\c', '\l'}: inc(last)
+
+    eolpos = last
+    if last < s.len:
+      if s[last] == '\l': inc(last)
+      elif s[last] == '\c':
+        inc(last)
+        if last < s.len and s[last] == '\l': inc(last)
+
+    yield substr(s, first, if keepEol: last-1 else: eolpos-1)
+
+    # no eol characters consumed means that the string is over
+    if eolpos == last:
+      break
+
+    first = last
 
 iterator splitLines*(s: string, keepEol = false): string =
   ## Splits the string `s` into its containing lines.
@@ -668,7 +1006,7 @@ iterator splitLines*(s: string, keepEol = false): string =
 
     first = last
 
-iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
+iterator splitWhitespace*(s: openArray[char], maxsplit: int = -1): string =
   ## Splits the string `s` at whitespace stripping leading and trailing
   ## whitespace if necessary. If `maxsplit` is specified and is positive,
   ## no more than `maxsplit` splits is made.
@@ -706,9 +1044,47 @@ iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
   ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   oldSplit(s, Whitespace, maxsplit)
 
+iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
+  ## Splits the string `s` at whitespace stripping leading and trailing
+  ## whitespace if necessary. If `maxsplit` is specified and is positive,
+  ## no more than `maxsplit` splits is made.
+  ##
+  ## The following code:
+  ##
+  ## .. code-block:: nim
+  ##   let s = "  foo \t bar  baz  "
+  ##   for ms in [-1, 1, 2, 3]:
+  ##     echo "------ maxsplit = ", ms, ":"
+  ##     for item in s.splitWhitespace(maxsplit=ms):
+  ##       echo '"', item, '"'
+  ##
+  ## ...results in:
+  ##
+  ## .. code-block::
+  ##   ------ maxsplit = -1:
+  ##   "foo"
+  ##   "bar"
+  ##   "baz"
+  ##   ------ maxsplit = 1:
+  ##   "foo"
+  ##   "bar  baz  "
+  ##   ------ maxsplit = 2:
+  ##   "foo"
+  ##   "bar"
+  ##   "baz  "
+  ##   ------ maxsplit = 3:
+  ##   "foo"
+  ##   "bar"
+  ##   "baz"
+  ##
+  ## See also:
+  ## * `splitLines iterator<#splitLines.i,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
+  oldSplit(toOa(s), Whitespace, maxsplit)
 
 
-func split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
+
+func split*(s: openArray[char], sep: char, maxsplit: int = -1): seq[string] {.rtl,
     extern: "nsuSplitChar".} =
   ## The same as the `split iterator <#split.i,string,char,int>`_ (see its
   ## documentation), but is a func that returns a sequence of substrings.
@@ -723,7 +1099,22 @@ func split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
     doAssert "".split(' ') == @[""]
   accResult(split(s, sep, maxsplit))
 
-func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
+func split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
+    extern: "nsuSplitChar".} =
+  ## The same as the `split iterator <#split.i,string,char,int>`_ (see its
+  ## documentation), but is a func that returns a sequence of substrings.
+  ##
+  ## See also:
+  ## * `split iterator <#split.i,string,char,int>`_
+  ## * `rsplit func<#rsplit,string,char,int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
+  runnableExamples:
+    doAssert "a,b,c".split(',') == @["a", "b", "c"]
+    doAssert "".split(' ') == @[""]
+  split(toOa(s), sep, maxsplit)
+
+func split*(s: openArray[char], seps: set[char] = Whitespace, maxsplit: int = -1): seq[
     string] {.rtl, extern: "nsuSplitCharSet".} =
   ## The same as the `split iterator <#split.i,string,set[char],int>`_ (see its
   ## documentation), but is a func that returns a sequence of substrings.
@@ -738,7 +1129,22 @@ func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
     doAssert "".split({' '}) == @[""]
   accResult(split(s, seps, maxsplit))
 
-func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
+func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
+    string] {.rtl, extern: "nsuSplitCharSet".} =
+  ## The same as the `split iterator <#split.i,string,set[char],int>`_ (see its
+  ## documentation), but is a func that returns a sequence of substrings.
+  ##
+  ## See also:
+  ## * `split iterator <#split.i,string,set[char],int>`_
+  ## * `rsplit func<#rsplit,string,set[char],int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
+  runnableExamples:
+    doAssert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
+    doAssert "".split({' '}) == @[""]
+  split(toOa(s), seps, maxsplit)
+
+func split*(s: openArray[char], sep: openArray[char], maxsplit: int = -1): seq[string] {.rtl,
     extern: "nsuSplitString".} =
   ## Splits the string `s` into substrings using a string separator.
   ##
@@ -761,7 +1167,30 @@ func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
 
   accResult(split(s, sep, maxsplit))
 
-func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
+func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
+    extern: "nsuSplitString".} =
+  ## Splits the string `s` into substrings using a string separator.
+  ##
+  ## Substrings are separated by the string `sep`. This is a wrapper around the
+  ## `split iterator <#split.i,string,string,int>`_.
+  ##
+  ## See also:
+  ## * `split iterator <#split.i,string,string,int>`_
+  ## * `rsplit func<#rsplit,string,string,int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
+  runnableExamples:
+    doAssert "a,b,c".split(",") == @["a", "b", "c"]
+    doAssert "a man a plan a canal panama".split("a ") == @["", "man ", "plan ", "canal panama"]
+    doAssert "".split("Elon Musk") == @[""]
+    doAssert "a  largely    spaced sentence".split(" ") == @["a", "", "largely",
+        "", "", "", "spaced", "sentence"]
+    doAssert "a  largely    spaced sentence".split(" ", maxsplit = 1) == @["a", " largely    spaced sentence"]
+  doAssert(sep.len > 0)
+
+  split(toOa(s), toOa(sep), maxsplit)
+
+func rsplit*(s: openArray[char], sep: char, maxsplit: int = -1): seq[string] {.rtl,
     extern: "nsuRSplitChar".} =
   ## The same as the `rsplit iterator <#rsplit.i,string,char,int>`_, but is a func
   ## that returns a sequence of substrings.
@@ -788,7 +1217,33 @@ func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
   accResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
-func rsplit*(s: string, seps: set[char] = Whitespace,
+func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
+    extern: "nsuRSplitChar".} =
+  ## The same as the `rsplit iterator <#rsplit.i,string,char,int>`_, but is a func
+  ## that returns a sequence of substrings.
+  ##
+  ## A possible common use case for `rsplit` is path manipulation,
+  ## particularly on systems that don't use a common delimiter.
+  ##
+  ## For example, if a system had `#` as a delimiter, you could
+  ## do the following to get the tail of the path:
+  ##
+  ## .. code-block:: nim
+  ##   var tailSplit = rsplit("Root#Object#Method#Index", '#', maxsplit=1)
+  ##
+  ## Results in `tailSplit` containing:
+  ##
+  ## .. code-block:: nim
+  ##   @["Root#Object#Method", "Index"]
+  ##
+  ## See also:
+  ## * `rsplit iterator <#rsplit.i,string,char,int>`_
+  ## * `split func<#split,string,char,int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
+  rsplit(toOa(s), sep, maxsplit)
+
+func rsplit*(s: openArray[char], seps: set[char] = Whitespace,
              maxsplit: int = -1): seq[string]
              {.rtl, extern: "nsuRSplitCharSet".} =
   ## The same as the `rsplit iterator <#rsplit.i,string,set[char],int>`_, but is a
@@ -816,7 +1271,34 @@ func rsplit*(s: string, seps: set[char] = Whitespace,
   accResult(rsplit(s, seps, maxsplit))
   result.reverse()
 
-func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
+func rsplit*(s: string, seps: set[char] = Whitespace,
+             maxsplit: int = -1): seq[string]
+             {.rtl, extern: "nsuRSplitCharSet".} =
+  ## The same as the `rsplit iterator <#rsplit.i,string,set[char],int>`_, but is a
+  ## func that returns a sequence of substrings.
+  ##
+  ## A possible common use case for `rsplit` is path manipulation,
+  ## particularly on systems that don't use a common delimiter.
+  ##
+  ## For example, if a system had `#` as a delimiter, you could
+  ## do the following to get the tail of the path:
+  ##
+  ## .. code-block:: nim
+  ##   var tailSplit = rsplit("Root#Object#Method#Index", {'#'}, maxsplit=1)
+  ##
+  ## Results in `tailSplit` containing:
+  ##
+  ## .. code-block:: nim
+  ##   @["Root#Object#Method", "Index"]
+  ##
+  ## See also:
+  ## * `rsplit iterator <#rsplit.i,string,set[char],int>`_
+  ## * `split func<#split,string,set[char],int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
+  rsplit(toOa(s), seps, maxsplit)
+
+func rsplit*(s: openArray[char], sep: openArray[char], maxsplit: int = -1): seq[string] {.rtl,
     extern: "nsuRSplitString".} =
   ## The same as the `rsplit iterator <#rsplit.i,string,string,int,bool>`_, but is a func
   ## that returns a sequence of substrings.
@@ -852,7 +1334,42 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   accResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
-func splitLines*(s: string, keepEol = false): seq[string] {.rtl,
+func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
+    extern: "nsuRSplitString".} =
+  ## The same as the `rsplit iterator <#rsplit.i,string,string,int,bool>`_, but is a func
+  ## that returns a sequence of substrings.
+  ##
+  ## A possible common use case for `rsplit` is path manipulation,
+  ## particularly on systems that don't use a common delimiter.
+  ##
+  ## For example, if a system had `#` as a delimiter, you could
+  ## do the following to get the tail of the path:
+  ##
+  ## .. code-block:: nim
+  ##   var tailSplit = rsplit("Root#Object#Method#Index", "#", maxsplit=1)
+  ##
+  ## Results in `tailSplit` containing:
+  ##
+  ## .. code-block:: nim
+  ##   @["Root#Object#Method", "Index"]
+  ##
+  ## See also:
+  ## * `rsplit iterator <#rsplit.i,string,string,int,bool>`_
+  ## * `split func<#split,string,string,int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
+  runnableExamples:
+    doAssert "a  largely    spaced sentence".rsplit(" ", maxsplit = 1) == @[
+        "a  largely    spaced", "sentence"]
+    doAssert "a,b,c".rsplit(",") == @["a", "b", "c"]
+    doAssert "a man a plan a canal panama".rsplit("a ") == @["", "man ",
+        "plan ", "canal panama"]
+    doAssert "".rsplit("Elon Musk") == @[""]
+    doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "",
+        "largely", "", "", "", "spaced", "sentence"]
+  rsplit(toOa(s), toOa(sep), maxsplit)
+
+func splitLines*(s: openArray[char], keepEol = false): seq[string] {.rtl,
     extern: "nsuSplitLines".} =
   ## The same as the `splitLines iterator<#splitLines.i,string>`_ (see its
   ## documentation), but is a func that returns a sequence of substrings.
@@ -863,7 +1380,18 @@ func splitLines*(s: string, keepEol = false): seq[string] {.rtl,
   ## * `countLines func<#countLines,string>`_
   accResult(splitLines(s, keepEol = keepEol))
 
-func splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.rtl,
+func splitLines*(s: string, keepEol = false): seq[string] {.rtl,
+    extern: "nsuSplitLines".} =
+  ## The same as the `splitLines iterator<#splitLines.i,string>`_ (see its
+  ## documentation), but is a func that returns a sequence of substrings.
+  ##
+  ## See also:
+  ## * `splitLines iterator<#splitLines.i,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
+  ## * `countLines func<#countLines,string>`_
+  splitLines(toOa(s), keepEol = keepEol)
+
+func splitWhitespace*(s: openArray[char], maxsplit: int = -1): seq[string] {.rtl,
     extern: "nsuSplitWhitespace".} =
   ## The same as the `splitWhitespace iterator <#splitWhitespace.i,string,int>`_
   ## (see its documentation), but is a func that returns a sequence of substrings.
@@ -872,6 +1400,16 @@ func splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.rtl,
   ## * `splitWhitespace iterator <#splitWhitespace.i,string,int>`_
   ## * `splitLines func<#splitLines,string>`_
   accResult(splitWhitespace(s, maxsplit))
+
+func splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.rtl,
+    extern: "nsuSplitWhitespace".} =
+  ## The same as the `splitWhitespace iterator <#splitWhitespace.i,string,int>`_
+  ## (see its documentation), but is a func that returns a sequence of substrings.
+  ##
+  ## See also:
+  ## * `splitWhitespace iterator <#splitWhitespace.i,string,int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  splitWhitespace(toOa(s), maxsplit)
 
 func toBin*(x: BiggestInt, len: Positive): string {.rtl, extern: "nsuToBin".} =
   ## Converts `x` into its binary representation.
@@ -953,7 +1491,7 @@ func toHex*[T: SomeInteger](x: T): string =
     doAssert toHex(1984'i16) == "07C0"
   toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
 
-func toHex*(s: string): string {.rtl.} =
+func toHex*(s: openArray[char]): string {.rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
   ##
   ## The output is twice the input long. No prefix like
@@ -978,6 +1516,25 @@ func toHex*(s: string): string {.rtl.} =
     n = n shr 4
     result[pos * 2] = HexChars[n]
 
+func toHex*(s: string): string {.rtl.} =
+  ## Converts a bytes string to its hexadecimal representation.
+  ##
+  ## The output is twice the input long. No prefix like
+  ## `0x` is generated.
+  ##
+  ## See also:
+  ## * `parseHexStr func<#parseHexStr,string>`_ for the reverse operation
+  runnableExamples:
+    let
+      a = "1"
+      b = "A"
+      c = "\0\255"
+    doAssert a.toHex() == "31"
+    doAssert b.toHex() == "41"
+    doAssert c.toHex() == "00FF"
+
+  toHex(toOa(s))
+
 func toOctal*(c: char): string {.rtl, extern: "nsuToOctal".} =
   ## Converts a character `c` to its octal representation.
   ##
@@ -997,7 +1554,7 @@ func toOctal*(c: char): string {.rtl, extern: "nsuToOctal".} =
     result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
 
-func fromBin*[T: SomeInteger](s: string): T =
+func fromBin*[T: SomeInteger](s: openArray[char]): T =
   ## Parses a binary integer value from a string `s`.
   ##
   ## If `s` is not a valid binary integer, `ValueError` is raised. `s` can have
@@ -1020,7 +1577,28 @@ func fromBin*[T: SomeInteger](s: string): T =
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid binary integer: " & s)
 
-func fromOct*[T: SomeInteger](s: string): T =
+func fromBin*[T: SomeInteger](s: string): T =
+  ## Parses a binary integer value from a string `s`.
+  ##
+  ## If `s` is not a valid binary integer, `ValueError` is raised. `s` can have
+  ## one of the following optional prefixes: `0b`, `0B`. Underscores within
+  ## `s` are ignored.
+  ##
+  ## Does not check for overflow. If the value represented by `s`
+  ## is too big to fit into a return type, only the value of the rightmost
+  ## binary digits of `s` is returned without producing an error.
+  runnableExamples:
+    let s = "0b_0100_1000_1000_1000_1110_1110_1001_1001"
+    doAssert fromBin[int](s) == 1216933529
+    doAssert fromBin[int8](s) == 0b1001_1001'i8
+    doAssert fromBin[int8](s) == -103'i8
+    doAssert fromBin[uint8](s) == 153
+    doAssert s.fromBin[:int16] == 0b1110_1110_1001_1001'i16
+    doAssert s.fromBin[:uint64] == 1216933529'u64
+
+  fromBin[T](toOa(s))
+
+func fromOct*[T: SomeInteger](s: openArray[char]): T =
   ## Parses an octal integer value from a string `s`.
   ##
   ## If `s` is not a valid octal integer, `ValueError` is raised. `s` can have
@@ -1043,7 +1621,28 @@ func fromOct*[T: SomeInteger](s: string): T =
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid oct integer: " & s)
 
-func fromHex*[T: SomeInteger](s: string): T =
+func fromOct*[T: SomeInteger](s: string): T =
+  ## Parses an octal integer value from a string `s`.
+  ##
+  ## If `s` is not a valid octal integer, `ValueError` is raised. `s` can have
+  ## one of the following optional prefixes: `0o`, `0O`. Underscores within
+  ## `s` are ignored.
+  ##
+  ## Does not check for overflow. If the value represented by `s`
+  ## is too big to fit into a return type, only the value of the rightmost
+  ## octal digits of `s` is returned without producing an error.
+  runnableExamples:
+    let s = "0o_123_456_777"
+    doAssert fromOct[int](s) == 21913087
+    doAssert fromOct[int8](s) == 0o377'i8
+    doAssert fromOct[int8](s) == -1'i8
+    doAssert fromOct[uint8](s) == 255'u8
+    doAssert s.fromOct[:int16] == 24063'i16
+    doAssert s.fromOct[:uint64] == 21913087'u64
+
+  fromOct[T](toOa(s))
+
+func fromHex*[T: SomeInteger](s: openArray[char]): T =
   ## Parses a hex integer value from a string `s`.
   ##
   ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have
@@ -1065,6 +1664,27 @@ func fromHex*[T: SomeInteger](s: string): T =
   let p = parseutils.parseHex(s, result)
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid hex integer: " & s)
+
+func fromHex*[T: SomeInteger](s: string): T =
+  ## Parses a hex integer value from a string `s`.
+  ##
+  ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have
+  ## one of the following optional prefixes: `0x`, `0X`, `#`. Underscores within
+  ## `s` are ignored.
+  ##
+  ## Does not check for overflow. If the value represented by `s`
+  ## is too big to fit into a return type, only the value of the rightmost
+  ## hex digits of `s` is returned without producing an error.
+  runnableExamples:
+    let s = "0x_1235_8df6"
+    doAssert fromHex[int](s) == 305499638
+    doAssert fromHex[int8](s) == 0xf6'i8
+    doAssert fromHex[int8](s) == -10'i8
+    doAssert fromHex[uint8](s) == 246'u8
+    doAssert s.fromHex[:int16] == -29194'i16
+    doAssert s.fromHex[:uint64] == 305499638'u64
+
+  fromHex[T](toOa(s))
 
 func intToStr*(x: int, minchars: Positive = 1): string {.rtl,
     extern: "nsuIntToStr".} =
