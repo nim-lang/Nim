@@ -1,6 +1,9 @@
 import std/private/osseps
 export osseps
 
+import std/envvars
+import std/private/osappdirs
+
 import pathnorm
 
 from std/private/ospaths2 import  joinPath, splitPath,
@@ -16,6 +19,13 @@ export ReadDirEffect, WriteDirEffect
 
 type
   Path* = distinct string
+
+func `==`*(x, y: Path): bool {.inline.} =
+  ## Compares two paths.
+  ##
+  ## On a case-sensitive filesystem this is done
+  ## case-sensitively otherwise case-insensitively.
+  result = cmpPaths(x.string, y.string) == 0
 
 template endsWith(a: string, b: set[char]): bool =
   a.len > 0 and a[^1] in b
@@ -208,17 +218,6 @@ func addFileExt*(filename: Path, ext: string): Path {.inline.} =
   ## * `changeFileExt proc`_
   result = Path(addFileExt(filename.string, ext))
 
-func cmpPaths*(pathA, pathB: Path): int {.inline.} =
-  ## Compares two paths.
-  ##
-  ## On a case-sensitive filesystem this is done
-  ## case-sensitively otherwise case-insensitively. Returns:
-  ##
-  ## | 0 if pathA == pathB
-  ## | < 0 if pathA < pathB
-  ## | > 0 if pathA > pathB
-  result = cmpPaths(pathA.string, pathB.string)
-
 func unixToNativePath*(path: Path, drive=Path("")): Path {.inline.} =
   ## Converts an UNIX-like path to a native one.
   ##
@@ -246,14 +245,6 @@ proc getCurrentDir*(): Path {.inline, tags: [].} =
   ## * `getProjectPath proc <macros.html#getProjectPath>`_
   result = Path(ospaths2.getCurrentDir())
 
-proc setCurrentDir*(newDir: Path) {.inline, tags: [].} =
-  ## Sets the `current working directory`:idx:; `OSError`
-  ## is raised if `newDir` cannot been set.
-  ##
-  ## See also:
-  ## * `getCurrentDir proc`_
-  ospaths2.setCurrentDir(newDir.string)
-
 proc normalizeExe*(file: var Path) {.borrow.}
 
 proc normalizePath*(path: var Path) {.borrow.}
@@ -268,3 +259,29 @@ proc absolutePath*(path: Path, root = getCurrentDir()): Path =
   ## See also:
   ## * `normalizePath proc`_
   result = Path(absolutePath(path.string, root.string))
+
+proc expandTildeImpl(path: string): string {.
+  tags: [ReadEnvEffect, ReadIOEffect].} =
+  if len(path) == 0 or path[0] != '~':
+    result = path
+  elif len(path) == 1:
+    result = getHomeDir()
+  elif (path[1] in {DirSep, AltSep}):
+    result = joinPath(getHomeDir(), path.substr(2))
+  else:
+    # TODO: handle `~bob` and `~bob/` which means home of bob
+    result = path
+
+proc expandTilde*(path: Path): Path {.inline,
+  tags: [ReadEnvEffect, ReadIOEffect].} =
+  ## Expands ``~`` or a path starting with ``~/`` to a full path, replacing
+  ## ``~`` with `getHomeDir()`_ (otherwise returns ``path`` unmodified).
+  ##
+  ## Windows: this is still supported despite the Windows platform not having this
+  ## convention; also, both ``~/`` and ``~\`` are handled.
+  runnableExamples:
+    import std/appdirs
+    assert expandTilde(Path("~") / Path("appname.cfg")) == getHomeDir() / Path("appname.cfg")
+    assert expandTilde(Path("~/foo/bar")) == getHomeDir() / Path("foo/bar")
+    assert expandTilde(Path("/foo/bar")) == Path("/foo/bar")
+  result = Path(expandTildeImpl(path.string))

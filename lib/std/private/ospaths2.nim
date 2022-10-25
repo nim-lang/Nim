@@ -4,6 +4,9 @@ import std/private/since
 import strutils, pathnorm
 import std/oserrors
 
+import oscommon
+export ReadDirEffect, WriteDirEffect
+
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
 
@@ -34,13 +37,6 @@ else:
 
 proc normalizePathAux(path: var string){.inline, raises: [], noSideEffect.}
 
-type
-  ReadDirEffect* = object of ReadIOEffect   ## Effect that denotes a read
-                                            ## operation from the directory
-                                            ## structure.
-  WriteDirEffect* = object of WriteIOEffect ## Effect that denotes a write
-                                            ## operation to
-                                            ## the directory structure.
 
 import std/private/osseps
 export osseps
@@ -891,25 +887,6 @@ when not defined(nimscript):
           else:
             raiseOSError(osLastError())
 
-proc setCurrentDir*(newDir: string) {.inline, tags: [], noWeirdTarget.} =
-  ## Sets the `current working directory`:idx:; `OSError`
-  ## is raised if `newDir` cannot been set.
-  ##
-  ## See also:
-  ## * `getHomeDir proc`_
-  ## * `getConfigDir proc`_
-  ## * `getTempDir proc`_
-  ## * `getCurrentDir proc`_
-  when defined(windows):
-    when useWinUnicode:
-      if setCurrentDirectoryW(newWideCString(newDir)) == 0'i32:
-        raiseOSError(osLastError(), newDir)
-    else:
-      if setCurrentDirectoryA(newDir) == 0'i32: raiseOSError(osLastError(), newDir)
-  else:
-    if chdir(newDir) != 0'i32: raiseOSError(osLastError(), newDir)
-
-
 proc absolutePath*(path: string, root = getCurrentDir()): string =
   ## Returns the absolute path of `path`, rooted at `root` (which must be absolute;
   ## default: current directory).
@@ -1004,3 +981,48 @@ proc normalizeExe*(file: var string) {.since: (1, 3, 5).} =
   when defined(posix):
     if file.len > 0 and DirSep notin file and file != "." and file != "..":
       file = "./" & file
+
+proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
+  tags: [ReadDirEffect], noWeirdTarget.} =
+  ## Returns true if both pathname arguments refer to the same physical
+  ## file or directory.
+  ##
+  ## Raises `OSError` if any of the files does not
+  ## exist or information about it can not be obtained.
+  ##
+  ## This proc will return true if given two alternative hard-linked or
+  ## sym-linked paths to the same file or directory.
+  ##
+  ## See also:
+  ## * `sameFileContent proc`_
+  when defined(windows):
+    var success = true
+    var f1 = openHandle(path1)
+    var f2 = openHandle(path2)
+
+    var lastErr: OSErrorCode
+    if f1 != INVALID_HANDLE_VALUE and f2 != INVALID_HANDLE_VALUE:
+      var fi1, fi2: BY_HANDLE_FILE_INFORMATION
+
+      if getFileInformationByHandle(f1, addr(fi1)) != 0 and
+         getFileInformationByHandle(f2, addr(fi2)) != 0:
+        result = fi1.dwVolumeSerialNumber == fi2.dwVolumeSerialNumber and
+                 fi1.nFileIndexHigh == fi2.nFileIndexHigh and
+                 fi1.nFileIndexLow == fi2.nFileIndexLow
+      else:
+        lastErr = osLastError()
+        success = false
+    else:
+      lastErr = osLastError()
+      success = false
+
+    discard closeHandle(f1)
+    discard closeHandle(f2)
+
+    if not success: raiseOSError(lastErr, $(path1, path2))
+  else:
+    var a, b: Stat
+    if stat(path1, a) < 0'i32 or stat(path2, b) < 0'i32:
+      raiseOSError(osLastError(), $(path1, path2))
+    else:
+      result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
