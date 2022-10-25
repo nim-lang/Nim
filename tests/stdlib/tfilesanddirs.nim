@@ -1,4 +1,4 @@
-import std/[paths, files, dirs]
+import std/[paths, files, dirs, appdirs]
 
 from stdtest/specialpaths import buildDir
 import std/[syncio, assertions]
@@ -21,3 +21,16 @@ block fileOperations:
     let fh = open(string(dname/file), fmReadWrite) # createFile
     fh.close()
     doAssert fileExists(Path(dname/file))
+
+block: # getCacheDir
+  doAssert getCacheDir().dirExists
+
+block: # moveFile
+  let tempDir = getTempDir() / Path("D20221022T151608")
+  createDir(tempDir)
+  defer: removeDir(tempDir)
+
+block: # moveDir
+  let tempDir = getTempDir() / Path("D20220609T161443")
+  createDir(tempDir)
+  defer: removeDir(tempDir)

@@ -154,16 +154,21 @@ proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
-iterator walkDir*(dir: string; relative = false, checkDir = false):
+iterator walkDir*(dir: string; relative = false, checkDir = false,
+                  onlyRegular = false):
   tuple[kind: PathComponent, path: string] {.tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
   ##
-  ## Walking is not recursive. If ``relative`` is true (default: false)
-  ## the resulting path is shortened to be relative to ``dir``.
-  ##
-  ## If `checkDir` is true, `OSError` is raised when `dir`
-  ## doesn't exist.
+  ## Walking is not recursive.
+  ## * If `relative` is true (default: false)
+  ##   the resulting path is shortened to be relative to ``dir``,
+  ##   otherwise the full path is returned.
+  ## * If `checkDir` is true, `OSError` is raised when `dir`
+  ##   doesn't exist.
+  ## * If `onlyRegular` is true, then (besides all directories) only *regular*
+  ##   files (**without** special "file" objects like FIFOs, device files,
+  ##   etc) will be yielded on Unix.
   ##
   ## **Example:**
   ##
@@ -234,24 +239,30 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
               y = path
             var k = pcFile
 
+            template resolveSymlink() =
+              var isRegular: bool
+              (k, isRegular) = getSymlinkFileKind(path)
+              if onlyRegular and not isRegular: continue
+
             template kSetGeneric() =  # pure Posix component `k` resolution
               if lstat(path.cstring, s) < 0'i32: continue  # don't yield
               elif S_ISDIR(s.st_mode):
                 k = pcDir
               elif S_ISLNK(s.st_mode):
-                k = getSymlinkFileKind(path)
+                resolveSymlink()
+              elif onlyRegular and not S_ISREG(s.st_mode): continue
 
             when defined(linux) or defined(macosx) or
                  defined(bsd) or defined(genode) or defined(nintendoswitch):
               case x.d_type
               of DT_DIR: k = pcDir
               of DT_LNK:
-                if dirExists(path): k = pcLinkToDir
-                else: k = pcLinkToFile
+                resolveSymlink()
               of DT_UNKNOWN:
                 kSetGeneric()
-              else: # e.g. DT_REG etc
-                discard # leave it as pcFile
+              else: # DT_REG or special "files" like FIFOs
+                if onlyRegular and x.d_type != DT_REG: continue
+                else: discard # leave it as pcFile
             else:  # assuming that field `d_type` is not present
               kSetGeneric()
 
@@ -259,15 +270,13 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
 
 iterator walkDirRec*(dir: string,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
-                     relative = false, checkDir = false): string {.tags: [ReadDirEffect].} =
+                     relative = false, checkDir = false, onlyRegular = false):
+                    string {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
-  ## If ``relative`` is true (default: false) the resulting path is
-  ## shortened to be relative to ``dir``, otherwise the full path is returned.
-  ##
-  ## If `checkDir` is true, `OSError` is raised when `dir`
-  ## doesn't exist.
+  ## Options `relative`, `checkdir`, `onlyRegular` are explained in
+  ## [walkDir iterator] description.
   ##
   ## .. warning:: Modifying the directory structure while the iterator
   ##   is traversing may result in undefined behavior!
@@ -301,7 +310,8 @@ iterator walkDirRec*(dir: string,
   var checkDir = checkDir
   while stack.len > 0:
     let d = stack.pop()
-    for k, p in walkDir(dir / d, relative = true, checkDir = checkDir):
+    for k, p in walkDir(dir / d, relative = true, checkDir = checkDir,
+                        onlyRegular = onlyRegular):
       let rel = d / p
       if k in {pcDir, pcLinkToDir} and k in followFilter:
         stack.add rel

@@ -121,30 +121,33 @@ iterator walkDirs*(pattern: Path): Path {.tags: [ReadDirEffect].} =
   for p in walkDirs(pattern.string):
     yield Path(p)
 
-iterator walkDir*(dir: Path; relative = false, checkDir = false):
+iterator walkDir*(dir: Path; relative = false, checkDir = false,
+                 onlyRegular = false):
     tuple[kind: PathComponent, path: Path] {.tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
   ##
-  ## Walking is not recursive. If ``relative`` is true (default: false)
-  ## the resulting path is shortened to be relative to ``dir``.
-  ##
-  ## If `checkDir` is true, `OSError` is raised when `dir`
-  ## doesn't exist.
-  for (k, p) in walkDir(dir.string, relative, checkDir):
+  ## Walking is not recursive.
+  ## * If `relative` is true (default: false)
+  ##   the resulting path is shortened to be relative to ``dir``,
+  ##   otherwise the full path is returned.
+  ## * If `checkDir` is true, `OSError` is raised when `dir`
+  ##   doesn't exist.
+  ## * If `onlyRegular` is true, then (besides all directories) only *regular*
+  ##   files (**without** special "file" objects like FIFOs, device files,
+  ##   etc) will be yielded on Unix.
+  for (k, p) in walkDir(dir.string, relative, checkDir, onlyRegular):
     yield (k, Path(p))
 
 iterator walkDirRec*(dir: Path,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
-                     relative = false, checkDir = false): Path {.tags: [ReadDirEffect].} =
+                     relative = false, checkDir = false, onlyRegular = false):
+                    Path {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
-  ## If ``relative`` is true (default: false) the resulting path is
-  ## shortened to be relative to ``dir``, otherwise the full path is returned.
-  ##
-  ## If `checkDir` is true, `OSError` is raised when `dir`
-  ## doesn't exist.
+  ## Options `relative`, `checkdir`, `onlyRegular` are explained in
+  ## [walkDir iterator] description.
   ##
   ## .. warning:: Modifying the directory structure while the iterator
   ##   is traversing may result in undefined behavior!
@@ -173,5 +176,6 @@ iterator walkDirRec*(dir: Path,
   ## * `walkFiles iterator`_
   ## * `walkDirs iterator`_
   ## * `walkDir iterator`_
-  for p in walkDirRec(dir.string, yieldFilter, followFilter, relative, checkDir):
+  for p in walkDirRec(dir.string, yieldFilter, followFilter, relative,
+                      checkDir, onlyRegular):
     yield Path(p)

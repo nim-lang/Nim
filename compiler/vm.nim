@@ -1308,15 +1308,32 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].regToNode))
     of opcParseFloat:
       decodeBC(rkInt)
-      inc pc
-      assert c.code[pc].opcode == opcParseFloat
-      let rd = c.code[pc].regA
       var rcAddr = addr(regs[rc])
       if rcAddr.kind == rkRegisterAddr: rcAddr = rcAddr.regAddr
       elif regs[rc].kind != rkFloat:
         regs[rc] = TFullReg(kind: rkFloat)
-      regs[ra].intVal = parseBiggestFloat(regs[rb].node.strVal,
-                                          rcAddr.floatVal, regs[rd].intVal.int)
+
+      let coll = regs[rb].node
+
+      case coll.kind
+      of nkTupleConstr:
+        let
+          data = coll[0]
+          left = coll[1].intVal
+          right = coll[2].intVal
+        case data.kind
+        of nkStrKinds:
+          regs[ra].intVal = parseBiggestFloat(data.strVal.toOpenArray(int left, int right), rcAddr.floatVal)
+        of nkBracket:
+          var s = newStringOfCap(right - left + 1)
+          for i in left..right:
+            s.add char data[int i].intVal
+          regs[ra].intVal = parseBiggestFloat(s, rcAddr.floatVal)
+        else:
+          internalError(c.config, c.debug[pc], "opcParseFloat: Incorrectly created openarray")
+      else:
+        regs[ra].intVal = parseBiggestFloat(regs[ra].node.strVal, rcAddr.floatVal)
+
     of opcRangeChck:
       let rb = instr.regB
       let rc = instr.regC
