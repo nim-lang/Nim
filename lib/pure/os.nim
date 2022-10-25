@@ -1030,6 +1030,8 @@ type
     creationTime*: times.Time         ## Time file was created. Not supported on all systems!
     blockSize*: int                   ## Preferred I/O block size for this object.
                                       ## In some filesystems, this may vary from file to file.
+    isRegular*: bool                  ## Is file regular? (on Unix some "files"
+                                      ## can be non-regular like FIFOs, devices)
 
 template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
@@ -1090,14 +1092,14 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     checkAndIncludeMode(S_IWOTH, fpOthersWrite)
     checkAndIncludeMode(S_IXOTH, fpOthersExec)
 
-    formalInfo.kind =
+    (formalInfo.kind, formalInfo.isRegular) =
       if S_ISDIR(rawInfo.st_mode):
-        pcDir
+        (pcDir, true)
       elif S_ISLNK(rawInfo.st_mode):
         assert(path != "") # symlinks can't occur for file handles
         getSymlinkFileKind(path)
       else:
-        pcFile
+        (pcFile, S_ISREG(rawInfo.st_mode))
 
 when defined(js):
   when not declared(FileHandle):
@@ -1150,7 +1152,8 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
   ##
   ## When `followSymlink` is true (default), symlinks are followed and the
   ## information retrieved is information related to the symlink's target.
-  ## Otherwise, information on the symlink itself is retrieved.
+  ## Otherwise, information on the symlink itself is retrieved (however,
+  ## field `isRegular` is still determined from the target on Unix).
   ##
   ## If the information cannot be retrieved, such as when the path doesn't
   ## exist, or when permission restrictions prevent the program from retrieving

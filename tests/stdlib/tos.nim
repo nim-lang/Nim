@@ -344,6 +344,8 @@ block walkDirRec:
 
   removeDir("walkdir_test")
 
+import std/sequtils
+
 block: # walkDir
   doAssertRaises(OSError):
     for a in walkDir("nonexistent", checkDir = true): discard
@@ -356,6 +358,21 @@ block: # walkDir
       createSymlink(".", "walkdir_test/c")
       for k, p in walkDir("walkdir_test", true):
         doAssert k == pcLinkToDir
+      removeDir("walkdir_test")
+
+  when defined(posix):
+    block walkDirRegular:
+      createDir("walkdir_test")
+      doAssert execShellCmd("mkfifo walkdir_test/fifo") == 0
+      createSymlink("fifo", "walkdir_test/fifo_link")
+      let withSpecialFiles = toSeq(walkDir("walkdir_test", relative = true))
+      doAssert (withSpecialFiles.len == 2 and
+                (pcFile, "fifo") in withSpecialFiles and
+                (pcLinkToFile, "fifo_link") in withSpecialFiles)
+      # now Unix special files are excluded from walkdir output:
+      let onlyRegularFiles = toSeq(walkDir("walkdir_test", relative = true,
+                                           onlyRegular = true))
+      doAssert onlyRegularFiles.len == 0
       removeDir("walkdir_test")
 
 block normalizedPath:
@@ -707,8 +724,6 @@ block: # isAdmin
   if isAzure and defined(windows): doAssert isAdmin()
   # In Azure on POSIX tests run as a normal user
   if isAzure and defined(posix): doAssert not isAdmin()
-
-import std/sequtils
 
 when doslikeFileSystem:
   import std/private/ntpath

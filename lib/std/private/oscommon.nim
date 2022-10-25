@@ -85,14 +85,17 @@ type
 
 
 when defined(posix) and not weirdTarget:
-  proc getSymlinkFileKind*(path: string): PathComponent =
+  proc getSymlinkFileKind*(path: string):
+      tuple[pc: PathComponent, isRegular: bool] =
     # Helper function.
     var s: Stat
     assert(path != "")
-    if stat(path, s) == 0'i32 and S_ISDIR(s.st_mode):
-      result = pcLinkToDir
-    else:
-      result = pcLinkToFile
+    result = (pcLinkToFile, true)
+    if stat(path, s) == 0'i32:
+      if S_ISDIR(s.st_mode):
+        result = (pcLinkToDir, true)
+      elif not S_ISREG(s.st_mode):
+        result = (pcLinkToFile, false)
 
 proc tryMoveFSObject*(source, dest: string, isDir: bool): bool {.noWeirdTarget.} =
   ## Moves a file (or directory if `isDir` is true) from `source` to `dest`.
